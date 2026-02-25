@@ -30,6 +30,29 @@ export interface BookDesignerTemplate {
     targetPath?: string;
 }
 
+export type ManuscriptSceneHeadingMode = 'scene-number' | 'scene-number-title' | 'title-only';
+
+export interface ManuscriptExportTemplate {
+    id: string;
+    name: string;
+    createdAt: string;
+    exportType: 'manuscript' | 'outline';
+    manuscriptPreset: 'novel' | 'screenplay' | 'podcast';
+    outlinePreset: 'beat-sheet' | 'episode-rundown' | 'shooting-schedule' | 'index-cards-csv' | 'index-cards-json';
+    outputFormat: 'markdown' | 'pdf' | 'csv' | 'json';
+    tocMode: 'markdown' | 'plain' | 'none';
+    sceneHeadingMode: ManuscriptSceneHeadingMode;
+    order: 'narrative' | 'chronological' | 'reverse-narrative' | 'reverse-chronological';
+    subplot: string;
+    updateWordCounts: boolean;
+    includeSynopsis: boolean;
+    includeMatter: boolean;
+    saveMarkdownArtifact: boolean;
+    splitMode: 'single' | 'parts';
+    splitParts: number;
+    selectedLayoutId?: string;
+}
+
 export interface BeatSystemConfig {
     beatYamlAdvanced: string;
     beatHoverMetadataFields: HoverMetadataField[];
@@ -440,6 +463,8 @@ export interface RadialTimelineSettings {
         advanced: string;
     };
     bookDesignerTemplates?: BookDesignerTemplate[];
+    manuscriptExportTemplates?: ManuscriptExportTemplate[];
+    lastUsedManuscriptExportTemplateId?: string;
     /** @deprecated Use backdropYamlTemplates instead. Kept for migration. */
     backdropYamlTemplate?: string;
     backdropYamlTemplates?: {

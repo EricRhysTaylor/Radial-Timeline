@@ -6,6 +6,7 @@ import type RadialTimelinePlugin from '../main';
 import type { TimelineItem, BookMeta, MatterMeta } from '../types';
 import { getScenePrefixNumber } from './text';
 import { getActiveBookExportContext } from './exportContext';
+import { normalizeMatterBodyMode, parseMatterMetaFromFrontmatter, type MatterBodyMode } from './matterMeta';
 
 export interface SceneContent {
   title: string;
@@ -38,7 +39,14 @@ export interface ManuscriptSceneSelection {
 }
 
 export type TocMode = 'markdown' | 'plain' | 'none';
-type MatterBodyMode = 'latex' | 'plain' | 'auto';
+export type ManuscriptSceneHeadingMode = 'scene-number' | 'scene-number-title' | 'title-only';
+export type SceneHeadingRenderMode = 'markdown-h2' | 'latex-section-starred';
+
+export interface AssembleManuscriptOptions {
+  sceneHeadingMode?: ManuscriptSceneHeadingMode;
+  sceneHeadingRenderMode?: SceneHeadingRenderMode;
+}
+
 type EffectiveBodyMode = 'latex' | 'plain';
 let matterOrderIgnoredWarned = false;
 
@@ -92,18 +100,9 @@ export function extractBodyText(content: string): string {
 // ════════════════════════════════════════════════════════════════════════════
 
 /**
- * Extract matter metadata from raw file content by parsing its YAML frontmatter.
- * Returns null if the file is not a Frontmatter/Backmatter/Matter note or has no Matter: block.
+ * Extract matter metadata from raw file content by parsing YAML frontmatter.
+ * Uses simplified front/back matter keys (Class + Role/UseBookMeta/BodyMode).
  */
-function normalizeMatterBodyMode(value: unknown): MatterBodyMode {
-  if (typeof value === 'string') {
-    const normalized = value.trim().toLowerCase();
-    if (normalized === 'latex') return 'latex';
-    if (normalized === 'plain') return 'plain';
-  }
-  return 'auto';
-}
-
 function extractMatterMeta(content: string): MatterMeta | null {
   try {
     const fmInfo = getFrontMatterInfo(content);
@@ -111,30 +110,13 @@ function extractMatterMeta(content: string): MatterMeta | null {
     if (!fmText) return null;
 
     const yaml = parseYaml(fmText);
-    if (!yaml) return null;
+    if (!yaml || typeof yaml !== 'object' || Array.isArray(yaml)) return null;
 
-    // Only process Frontmatter/Backmatter/Matter class notes
-    const classValRaw = yaml.Class || yaml.class;
-    const classVal = typeof classValRaw === 'string' ? classValRaw.trim().toLowerCase() : '';
-    if (classVal !== 'frontmatter' && classVal !== 'backmatter' && classVal !== 'matter') return null;
-
-    // Look for nested Matter: block (optional)
-    const matter = yaml.Matter || yaml.matter;
-    const matterBlock = matter && typeof matter === 'object'
-      ? matter as Record<string, unknown>
-      : undefined;
-    if (matterBlock?.order !== undefined) {
+    const parsed = parseMatterMetaFromFrontmatter(yaml as Record<string, unknown>);
+    if (parsed?.order !== undefined) {
       warnMatterOrderIgnoredOnce();
     }
-
-    const defaultSide = classVal === 'backmatter' ? 'back' : classVal === 'frontmatter' ? 'front' : undefined;
-
-    return {
-      side: typeof matterBlock?.side === 'string' ? matterBlock.side : defaultSide,
-      role: typeof matterBlock?.role === 'string' ? matterBlock.role : undefined,
-      usesBookMeta: typeof matterBlock?.usesBookMeta === 'boolean' ? matterBlock.usesBookMeta : undefined,
-      bodyMode: normalizeMatterBodyMode(matterBlock?.bodyMode),
-    };
+    return parsed;
   } catch {
     return null;
   }
@@ -152,6 +134,43 @@ function resolveEffectiveBodyMode(bodyText: string, declared: MatterBodyMode = '
   if (declared === 'latex' || declared === 'plain') return declared;
   const latexSignature = /\\begin\{|\\vspace|\\textcopyright|\\newpage|\\thispagestyle|\\chapter\*?|\\centering|\\[A-Za-z]+(?:\*|\b)/;
   return latexSignature.test(bodyText) ? 'latex' : 'plain';
+}
+
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function stripScenePrefix(title: string, prefix: string | null): string {
+  const trimmed = title.trim();
+  if (!prefix) return trimmed;
+  const pattern = new RegExp(`^${escapeRegex(prefix)}(?:\\s+|[._:-]+\\s*)?`, 'i');
+  return trimmed.replace(pattern, '').trim();
+}
+
+function extractScenePrefixFromTitle(title: string): string | null {
+  const match = title.trim().match(/^(\d+(?:\.\d+)?)/);
+  return match?.[1] || null;
+}
+
+function resolveSceneHeading(
+  title: string,
+  mode: ManuscriptSceneHeadingMode,
+  fallbackNumber: number
+): string {
+  const trimmed = title.trim();
+  const prefix = extractScenePrefixFromTitle(trimmed);
+  const strippedTitle = stripScenePrefix(trimmed, prefix);
+
+  switch (mode) {
+    case 'scene-number':
+      return prefix || `Scene ${fallbackNumber}`;
+    case 'title-only':
+      return strippedTitle || trimmed || `Scene ${fallbackNumber}`;
+    case 'scene-number-title':
+    default:
+      if (prefix && strippedTitle) return `${prefix} ${strippedTitle}`;
+      return trimmed || `Scene ${fallbackNumber}`;
+  }
 }
 
 /**
@@ -561,11 +580,14 @@ export async function assembleManuscript(
   sortOrder?: string,
   includeToc: boolean = true,
   bookMeta?: BookMeta | null,
-  matterMetaByPath?: Map<string, MatterMeta>
+  matterMetaByPath?: Map<string, MatterMeta>,
+  options?: AssembleManuscriptOptions
 ): Promise<AssembledManuscript> {
   const scenes: SceneContent[] = [];
   const textParts: string[] = [];
   let totalWords = 0;
+  const sceneHeadingMode = options?.sceneHeadingMode || 'scene-number-title';
+  const sceneHeadingRenderMode = options?.sceneHeadingRenderMode || 'markdown-h2';
   const matterDiagnostics: Array<{
     filePath: string;
     side: 'front' | 'back';
@@ -641,12 +663,17 @@ export async function assembleManuscript(
       } else {
         // ── Normal rendering path ──────────────────────────────────────
         const wordCount = countWords(bodyText);
+        const heading = resolveSceneHeading(title, sceneHeadingMode, i + 1);
 
-        scenes.push({ title, bodyText, wordCount });
+        scenes.push({ title: heading, bodyText, wordCount });
         totalWords += wordCount;
 
-        // Format: ## 44 Michi Updates Rel Newlan (markdown heading for TOC)
-        textParts.push(`## ${title}\n\n${bodyText}\n\n`);
+        if (sceneHeadingRenderMode === 'latex-section-starred') {
+          // Force header/footer suppression on scene-opener pages.
+          textParts.push(`\\section*{${escapeLatex(heading)}}\n\\thispagestyle{empty}\n\n${bodyText}\n\n`);
+        } else {
+          textParts.push(`## ${heading}\n\n${bodyText}\n\n`);
+        }
       }
     } catch (error) {
       console.error(`Error reading scene file ${file.path}:`, error);
@@ -702,11 +729,20 @@ export async function updateSceneWordCounts(
     if (!file || !scene) continue;
 
     try {
+      let didUpdate = false;
       await app.fileManager.processFrontMatter(file, (fm) => {
         const fmObj = fm as Record<string, unknown>;
-        fmObj['Words'] = scene.wordCount;
+        const rawClass = fmObj['Class'] ?? fmObj['class'];
+        const classValue = typeof rawClass === 'string' ? rawClass.trim().toLowerCase() : '';
+        const wordsKey = Object.keys(fmObj).find(key => key.toLowerCase() === 'words') ?? 'Words';
+
+        // Only scene notes should receive word-count writes.
+        if (classValue && classValue !== 'scene') return;
+
+        fmObj[wordsKey] = scene.wordCount;
+        didUpdate = true;
       });
-      updatedCount++;
+      if (didUpdate) updatedCount++;
     } catch (error) {
       console.error(`[updateSceneWordCounts] Error updating ${file.path}:`, error);
     }

@@ -208,6 +208,8 @@ Range: {{Range}}`,
         advanced: ``
     },
     bookDesignerTemplates: [],
+    manuscriptExportTemplates: [],
+    lastUsedManuscriptExportTemplateId: undefined,
     backdropYamlTemplate: `Class: Backdrop                   # Backdrop events appear below the outer ring in Chronologue Mode
 When: {{When}}                       # Start Date/Time (YYYY-MM-DD HH:MM)
 End: {{End}}                         # End Date/Time (YYYY-MM-DD HH:MM)

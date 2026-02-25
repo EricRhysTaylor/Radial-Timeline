@@ -102,8 +102,7 @@ export function normalizeFrontmatterKeys(fm: Record<string, unknown>, customMapp
     'when': 'When',
     'place': 'Place',
     'scope': 'Scope',
-    // BookMeta & Matter keys
-    'matter': 'Matter',
+    // BookMeta keys
     'book': 'Book',
     'rights': 'Rights',
     'identifiers': 'Identifiers',

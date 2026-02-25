@@ -7,7 +7,7 @@ import { normalizePath, FileSystemAdapter, Vault, TFile } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import type { PandocLayoutTemplate } from '../types';
 import type { ManuscriptSceneSelection, ManuscriptOrder } from './manuscript';
-import { execFile } from 'child_process'; // SAFE: Node child_process for Pandoc subprocess
+import { execFile, execFileSync } from 'child_process'; // SAFE: Node child_process for Pandoc subprocess + font probes
 import * as fs from 'fs'; // SAFE: Node fs required for Pandoc temp files
 import * as os from 'os'; // SAFE: Node os required for temp directory resolution
 import * as path from 'path'; // SAFE: Node path required for temp/absolute paths
@@ -255,16 +255,139 @@ export interface PdfEngineSelection {
     templateNeedsUnicode: boolean;
 }
 
-function templateNeedsUnicodeEngine(templatePath?: string): boolean {
-    if (!templatePath || !templatePath.trim()) return false;
+export interface TemplateFontDiagnostics {
+    usesFontspec: boolean;
+    fontsEmbeddedInPdf: boolean;
+    requiredFonts: string[];
+    optionalFonts: string[];
+    missingRequiredFonts: string[];
+    missingOptionalFonts: string[];
+    canVerifySystemFonts: boolean;
+}
+
+let systemFontCatalogCache: string[] | null = null;
+let systemFontCatalogLoaded = false;
+
+function readTemplateText(templatePath?: string): string {
+    if (!templatePath || !templatePath.trim()) return '';
     const trimmed = templatePath.trim();
-    if (!path.isAbsolute(trimmed) || !fs.existsSync(trimmed)) return false;
+    if (!path.isAbsolute(trimmed) || !fs.existsSync(trimmed)) return '';
     try {
-        const tex = fs.readFileSync(trimmed, 'utf8');
-        return /\\usepackage\s*\{fontspec\}|\\setmainfont|\\newfontface|\\defaultfontfeatures/i.test(tex);
+        return fs.readFileSync(trimmed, 'utf8');
     } catch {
-        return false;
+        return '';
     }
+}
+
+function normalizeFontFamilyName(value: string): string {
+    return value.toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+function extractFontFamiliesFromTemplate(tex: string): string[] {
+    const fonts = new Set<string>();
+    const add = (value: string) => {
+        const trimmed = value.trim();
+        if (trimmed) fonts.add(trimmed);
+    };
+    const patterns = [
+        /\\setmainfont(?:\[[^\]]*])?\{([^}]+)\}(?:\[[^\]]*])?/g,
+        /\\newfontface\\[A-Za-z@]+(?:\[[^\]]*])?\{([^}]+)\}(?:\[[^\]]*])?/g
+    ];
+
+    for (const pattern of patterns) {
+        let match: RegExpExecArray | null;
+        while ((match = pattern.exec(tex)) !== null) {
+            add(match[1]);
+        }
+    }
+
+    return Array.from(fonts);
+}
+
+function extractConditionalFontsFromTemplate(tex: string): string[] {
+    const fonts = new Set<string>();
+    const conditionalPattern = /\\IfFontExistsTF\{([^}]+)\}/g;
+    let match: RegExpExecArray | null;
+    while ((match = conditionalPattern.exec(tex)) !== null) {
+        const trimmed = match[1].trim();
+        if (trimmed) fonts.add(trimmed);
+    }
+    return Array.from(fonts);
+}
+
+function loadSystemFontCatalog(): string[] | null {
+    if (systemFontCatalogLoaded) return systemFontCatalogCache;
+    systemFontCatalogLoaded = true;
+
+    try {
+        const output = execFileSync('fc-list', [':', 'family'], {
+            encoding: 'utf8',
+            stdio: ['ignore', 'pipe', 'ignore']
+        });
+        const entries = output
+            .split(/\r?\n/)
+            .flatMap(line => line.split(':')[0]?.split(',') || [])
+            .map(entry => entry.trim())
+            .filter(Boolean);
+        systemFontCatalogCache = Array.from(new Set(entries));
+        return systemFontCatalogCache;
+    } catch {
+        systemFontCatalogCache = null;
+        return null;
+    }
+}
+
+function isFontInstalled(fontName: string, catalog: string[]): boolean {
+    const target = normalizeFontFamilyName(fontName);
+    if (!target) return true;
+
+    for (const entry of catalog) {
+        const normalizedEntry = normalizeFontFamilyName(entry);
+        if (!normalizedEntry) continue;
+        if (normalizedEntry === target) return true;
+        if (normalizedEntry.includes(target) || target.includes(normalizedEntry)) return true;
+    }
+    return false;
+}
+
+function isLikelyBundledLatexFont(fontName: string): boolean {
+    const normalized = fontName.trim().toLowerCase();
+    return normalized.startsWith('tex gyre')
+        || normalized.startsWith('latin modern')
+        || normalized.startsWith('computer modern');
+}
+
+export function getTemplateFontDiagnostics(templatePath?: string): TemplateFontDiagnostics {
+    const tex = readTemplateText(templatePath);
+    const usesFontspec = /\\usepackage\s*\{fontspec\}|\\setmainfont|\\newfontface|\\defaultfontfeatures/i.test(tex);
+    const allFonts = extractFontFamiliesFromTemplate(tex);
+    const optionalFonts = extractConditionalFontsFromTemplate(tex);
+    const optionalSet = new Set(optionalFonts.map(font => font.toLowerCase()));
+    const requiredFonts = allFonts.filter(font => !optionalSet.has(font.toLowerCase()));
+    const catalog = loadSystemFontCatalog();
+    const canVerifySystemFonts = Array.isArray(catalog);
+
+    const missingRequiredFonts = canVerifySystemFonts
+        ? requiredFonts.filter(font => !isLikelyBundledLatexFont(font) && !isFontInstalled(font, catalog))
+        : [];
+    const missingOptionalFonts = canVerifySystemFonts
+        ? optionalFonts.filter(font => !isFontInstalled(font, catalog))
+        : [];
+
+    return {
+        usesFontspec,
+        fontsEmbeddedInPdf: usesFontspec,
+        requiredFonts,
+        optionalFonts,
+        missingRequiredFonts,
+        missingOptionalFonts,
+        canVerifySystemFonts
+    };
+}
+
+function templateNeedsUnicodeEngine(templatePath?: string): boolean {
+    const diagnostics = getTemplateFontDiagnostics(templatePath);
+    return diagnostics.usesFontspec;
 }
 
 function getEngineCandidatePaths(engine: PdfEngine): string[] {
@@ -377,22 +500,6 @@ function preparePandocContent(content: string, options: PandocOptions): string {
     const hasTightlistDefinition = /\\(?:providecommand|newcommand|def)\s*\\tightlist|\\(?:providecommand|newcommand)\s*\{\\tightlist\}/.test(content);
     if (!hasTightlistDefinition) {
         injectLines.push('\\providecommand{\\tightlist}{\\setlength{\\itemsep}{0pt}\\setlength{\\parskip}{0pt}}');
-    }
-
-    // Runtime compatibility shim for AJ Finn templates that predate RT-native scene opener formatting.
-    const templatePath = options.templatePath?.toLowerCase() || '';
-    const isAjFinnTemplate = templatePath.includes('ajfinn');
-    if (isAjFinnTemplate) {
-        injectLines.push(
-            '\\titleformat{\\section}[display]{\\normalfont\\bfseries\\centering\\fontsize{30}{34}\\selectfont}{\\arabic{section}}{0.2em}{}',
-            '\\titleformat{name=\\section,numberless}[display]{\\normalfont\\bfseries\\centering\\fontsize{30}{34}\\selectfont}{}{0pt}{}',
-            '\\titlespacing*{\\section}{0pt}{\\dimexpr\\textheight/5\\relax}{\\dimexpr\\textheight/5\\relax}',
-            '\\preto\\section{\\clearpage\\thispagestyle{empty}}',
-            '\\titleformat{\\subsection}[display]{\\normalfont\\bfseries\\centering\\fontsize{30}{34}\\selectfont}{\\arabic{subsection}}{0.2em}{}',
-            '\\titleformat{name=\\subsection,numberless}[display]{\\normalfont\\bfseries\\centering\\fontsize{30}{34}\\selectfont}{}{0pt}{}',
-            '\\titlespacing*{\\subsection}{0pt}{\\dimexpr\\textheight/5\\relax}{\\dimexpr\\textheight/5\\relax}',
-            '\\preto\\subsection{\\clearpage\\thispagestyle{empty}}'
-        );
     }
 
     if (injectLines.length === 0) return content;

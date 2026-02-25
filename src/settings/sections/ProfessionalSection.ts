@@ -13,12 +13,13 @@ import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import { execFile } from 'child_process'; // SAFE: Node child_process for system path scanning
 import { generateSceneContent } from '../../utils/sceneGenerator';
 import { DEFAULT_SETTINGS } from '../defaults';
-import { validatePandocLayout, slugifyToFileStem } from '../../utils/exportFormats';
+import { getTemplateFontDiagnostics, resolveTemplatePath, validatePandocLayout, slugifyToFileStem } from '../../utils/exportFormats';
 import type { PandocLayoutTemplate } from '../../types';
 import type { BookMeta } from '../../types';
 import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { getActiveBookExportContext } from '../../utils/exportContext';
 import { isPathInFolderScope } from '../../utils/pathScope';
+import { inferMatterSideFromFilename, parseMatterMetaFromFrontmatter } from '../../utils/matterMeta';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // SYSTEM PATH SCANNING
@@ -347,7 +348,7 @@ class MatterSampleLaneModal extends Modal {
                     ]
                     : [
                         '000 BookMeta.md (master publishing metadata file)',
-                        'Front/back matter stubs set to bodyMode: auto (mix semantic + inline LaTeX)',
+                        'Front/back matter stubs set to BodyMode: auto (mix semantic + inline LaTeX)',
                         'Scene examples',
                         'PDF layout templates'
                     ];
@@ -423,7 +424,7 @@ class MatterSampleLaneModal extends Modal {
         makeOption(
             'mixed',
             'Mixed (Semantic + LaTeX)',
-            'Uses matter metadata with bodyMode:auto so each page can be plain frontmatter-driven content or inline LaTeX.',
+            'Uses flat matter metadata with BodyMode:auto so each page can be plain content or inline LaTeX.',
             'blend'
         );
         refreshOptionState();
@@ -480,19 +481,6 @@ interface ActiveBookMetaStatus {
     bookMeta?: BookMeta;
 }
 
-function normalizeMatterSideFromContext(classValue: string, filename: string, existingSide?: unknown): 'front' | 'back' {
-    if (typeof existingSide === 'string') {
-        const normalized = existingSide.trim().toLowerCase();
-        if (normalized === 'front' || normalized === 'frontmatter') return 'front';
-        if (normalized === 'back' || normalized === 'backmatter') return 'back';
-    }
-    if (classValue === 'backmatter') return 'back';
-    if (classValue === 'frontmatter') return 'front';
-    if (/^200(?:\.|$)/.test(filename.trim())) return 'back';
-    if (/^0(?:\.|$)/.test(filename.trim())) return 'front';
-    return 'front';
-}
-
 async function applyMatterWorkflowToActiveBook(
     plugin: RadialTimelinePlugin,
     workflow: MatterSampleLane
@@ -517,38 +505,41 @@ async function applyMatterWorkflowToActiveBook(
         const rawFrontmatter = cache?.frontmatter as Record<string, unknown> | undefined;
         if (!rawFrontmatter) continue;
         const normalized = normalizeFrontmatterKeys(rawFrontmatter, mappings);
-        const classRaw = normalized.Class;
-        const classValue = typeof classRaw === 'string' ? classRaw.trim().toLowerCase() : '';
-        if (classValue !== 'matter' && classValue !== 'frontmatter' && classValue !== 'backmatter') continue;
+        const existingMeta = parseMatterMetaFromFrontmatter(normalized);
+        if (!existingMeta) continue;
 
         scanned += 1;
         let changed = false;
 
         await plugin.app.fileManager.processFrontMatter(file, (frontmatter) => {
             const fm = frontmatter as Record<string, unknown>;
-            const currentMatter = fm.Matter && typeof fm.Matter === 'object'
-                ? { ...(fm.Matter as Record<string, unknown>) }
-                : {};
-
-            const side = normalizeMatterSideFromContext(classValue, file.basename, currentMatter.side);
-            const nextMatter: Record<string, unknown> = {
-                ...currentMatter,
-                side
-            };
-
+            const before = JSON.stringify(fm);
+            const side = existingMeta.side || inferMatterSideFromFilename(file.basename);
+            const nextClass = side === 'back' ? 'Backmatter' : 'Frontmatter';
+            const currentRole = typeof fm.Role === 'string' ? fm.Role.trim() : '';
+            const nextRole = (existingMeta.role || currentRole || 'other').trim();
             if (workflow === 'guided') {
-                nextMatter.bodyMode = 'plain';
+                fm.BodyMode = 'plain';
             } else if (workflow === 'advanced') {
-                nextMatter.bodyMode = 'latex';
-                nextMatter.usesBookMeta = false;
+                fm.BodyMode = 'latex';
+                fm.UseBookMeta = false;
             } else {
-                nextMatter.bodyMode = 'auto';
+                fm.BodyMode = 'auto';
             }
 
-            if (JSON.stringify(currentMatter) !== JSON.stringify(nextMatter)) {
-                fm.Matter = nextMatter;
-                changed = true;
+            if (nextRole) {
+                fm.Role = nextRole;
             }
+            if (existingMeta.usesBookMeta === true && workflow !== 'advanced') {
+                fm.UseBookMeta = true;
+            } else if (existingMeta.usesBookMeta === false && workflow !== 'advanced') {
+                fm.UseBookMeta = false;
+            }
+
+            delete fm.Matter;
+            delete fm.matter;
+            fm.Class = nextClass;
+            if (before !== JSON.stringify(fm)) changed = true;
         });
 
         if (changed) updated += 1;
@@ -899,12 +890,10 @@ async function generateSampleTemplates(plugin: RadialTimelinePlugin, matterLane:
             name: '0.2 Title Page (Semantic).md',
             content: [
                 '---',
-                'Class: Matter',
-                'Matter:',
-                '  side: front',
-                '  role: title-page',
-                '  usesBookMeta: true',
-                '  bodyMode: plain',
+                'Class: Frontmatter',
+                'Role: title-page',
+                'UseBookMeta: true',
+                'BodyMode: plain',
                 '---',
                 '',
                 ...guidedMatterComment,
@@ -915,12 +904,10 @@ async function generateSampleTemplates(plugin: RadialTimelinePlugin, matterLane:
             name: '0.3 Copyright (Semantic).md',
             content: [
                 '---',
-                'Class: Matter',
-                'Matter:',
-                '  side: front',
-                '  role: copyright',
-                '  usesBookMeta: true',
-                '  bodyMode: plain',
+                'Class: Frontmatter',
+                'Role: copyright',
+                'UseBookMeta: true',
+                'BodyMode: plain',
                 '---',
                 '',
                 ...guidedMatterComment,
@@ -932,12 +919,9 @@ async function generateSampleTemplates(plugin: RadialTimelinePlugin, matterLane:
             name: '0.04 Dedication (Semantic).md',
             content: [
                 '---',
-                'Class: Matter',
-                'Matter:',
-                '  side: front',
-                '  role: dedication',
-                '  usesBookMeta: false',
-                '  bodyMode: plain',
+                'Class: Frontmatter',
+                'Role: dedication',
+                'BodyMode: plain',
                 '---',
                 '',
                 ...guidedMatterComment,
@@ -949,12 +933,9 @@ async function generateSampleTemplates(plugin: RadialTimelinePlugin, matterLane:
             name: '0.05 Epigraph (Semantic).md',
             content: [
                 '---',
-                'Class: Matter',
-                'Matter:',
-                '  side: front',
-                '  role: epigraph',
-                '  usesBookMeta: false',
-                '  bodyMode: plain',
+                'Class: Frontmatter',
+                'Role: epigraph',
+                'BodyMode: plain',
                 '---',
                 '',
                 ...guidedMatterComment,
@@ -966,12 +947,9 @@ async function generateSampleTemplates(plugin: RadialTimelinePlugin, matterLane:
             name: '200.01 Acknowledgments (Semantic).md',
             content: [
                 '---',
-                'Class: Matter',
-                'Matter:',
-                '  side: back',
-                '  role: acknowledgments',
-                '  usesBookMeta: false',
-                '  bodyMode: plain',
+                'Class: Backmatter',
+                'Role: acknowledgments',
+                'BodyMode: plain',
                 '---',
                 '',
                 ...guidedMatterComment,
@@ -983,12 +961,10 @@ async function generateSampleTemplates(plugin: RadialTimelinePlugin, matterLane:
             name: '200.02 About the Author (Semantic).md',
             content: [
                 '---',
-                'Class: Matter',
-                'Matter:',
-                '  side: back',
-                '  role: about-author',
-                '  usesBookMeta: true',
-                '  bodyMode: plain',
+                'Class: Backmatter',
+                'Role: about-author',
+                'UseBookMeta: true',
+                'BodyMode: plain',
                 '---',
                 '',
                 ...guidedMatterComment,
@@ -1003,12 +979,9 @@ async function generateSampleTemplates(plugin: RadialTimelinePlugin, matterLane:
             name: '0.02 Title Page (Body LaTeX).md',
             content: [
                 '---',
-                'Class: Matter',
-                'Matter:',
-                '  side: front',
-                '  role: title-page',
-                '  usesBookMeta: false',
-                '  bodyMode: latex',
+                'Class: Frontmatter',
+                'Role: title-page',
+                'BodyMode: latex',
                 '---',
                 '',
                 ...advancedMatterComment,
@@ -1025,12 +998,9 @@ async function generateSampleTemplates(plugin: RadialTimelinePlugin, matterLane:
             name: '0.03 Copyright (Body LaTeX).md',
             content: [
                 '---',
-                'Class: Matter',
-                'Matter:',
-                '  side: front',
-                '  role: copyright',
-                '  usesBookMeta: false',
-                '  bodyMode: latex',
+                'Class: Frontmatter',
+                'Role: copyright',
+                'BodyMode: latex',
                 '---',
                 '',
                 ...advancedMatterComment,
@@ -1046,12 +1016,9 @@ async function generateSampleTemplates(plugin: RadialTimelinePlugin, matterLane:
             name: '0.04 Dedication (Body LaTeX).md',
             content: [
                 '---',
-                'Class: Matter',
-                'Matter:',
-                '  side: front',
-                '  role: dedication',
-                '  usesBookMeta: false',
-                '  bodyMode: latex',
+                'Class: Frontmatter',
+                'Role: dedication',
+                'BodyMode: latex',
                 '---',
                 '',
                 ...advancedMatterComment,
@@ -1067,12 +1034,9 @@ async function generateSampleTemplates(plugin: RadialTimelinePlugin, matterLane:
             name: '0.05 Epigraph (Body LaTeX).md',
             content: [
                 '---',
-                'Class: Matter',
-                'Matter:',
-                '  side: front',
-                '  role: epigraph',
-                '  usesBookMeta: false',
-                '  bodyMode: latex',
+                'Class: Frontmatter',
+                'Role: epigraph',
+                'BodyMode: latex',
                 '---',
                 '',
                 ...advancedMatterComment,
@@ -1086,12 +1050,9 @@ async function generateSampleTemplates(plugin: RadialTimelinePlugin, matterLane:
             name: '200.01 Acknowledgments (Body LaTeX).md',
             content: [
                 '---',
-                'Class: Matter',
-                'Matter:',
-                '  side: back',
-                '  role: acknowledgments',
-                '  usesBookMeta: false',
-                '  bodyMode: latex',
+                'Class: Backmatter',
+                'Role: acknowledgments',
+                'BodyMode: latex',
                 '---',
                 '',
                 ...advancedMatterComment,
@@ -1104,12 +1065,9 @@ async function generateSampleTemplates(plugin: RadialTimelinePlugin, matterLane:
             name: '200.02 About the Author (Body LaTeX).md',
             content: [
                 '---',
-                'Class: Matter',
-                'Matter:',
-                '  side: back',
-                '  role: about-author',
-                '  usesBookMeta: false',
-                '  bodyMode: latex',
+                'Class: Backmatter',
+                'Role: about-author',
+                'BodyMode: latex',
                 '---',
                 '',
                 ...advancedMatterComment,
@@ -1123,11 +1081,11 @@ async function generateSampleTemplates(plugin: RadialTimelinePlugin, matterLane:
     const mixedMatterSamples: { name: string; content: string }[] = guidedMatterSamples.map((sample) => ({
         name: sample.name,
         content: sample.content
-            .replace(/bodyMode:\s*plain/g, 'bodyMode: auto')
+            .replace(/BodyMode:\s*plain/g, 'BodyMode: auto')
             .replace(/Guided Matter Page/g, 'Mixed Matter Page')
             .replace(
                 /Rendered using BookMeta and the selected PDF template\./g,
-                'Uses bodyMode:auto so each page can be semantic plain content or inline LaTeX.'
+                'Uses BodyMode:auto so each page can be semantic plain content or inline LaTeX.'
             )
     }));
 
@@ -1285,10 +1243,14 @@ async function generateSampleTemplates(plugin: RadialTimelinePlugin, matterLane:
                 '\\newcommand{\\HeaderSeparator}{\\raisebox{0.2ex}{\\textbar}}',
                 '',
                 '\\fancyhead[CE]{%',
-                '  \\PageNumber{\\thepage}\\hspace{1em}\\HeaderSeparator\\hspace{1em}\\KernedText{\\AuthorName}',
+                '  \\ifnum\\value{page}=1\\relax\\else',
+                '    \\PageNumber{\\thepage}\\hspace{1em}\\HeaderSeparator\\hspace{1em}\\KernedText{\\AuthorName}',
+                '  \\fi',
                 '}',
                 '\\fancyhead[CO]{%',
-                '  \\KernedText{\\BookTitle}\\hspace{1em}\\HeaderSeparator\\hspace{1em}\\PageNumber{\\thepage}',
+                '  \\ifnum\\value{page}=1\\relax\\else',
+                '    \\KernedText{\\BookTitle}\\hspace{1em}\\HeaderSeparator\\hspace{1em}\\PageNumber{\\thepage}',
+                '  \\fi',
                 '}',
                 '\\fancyfoot{}',
                 '\\pagestyle{fancy}',
@@ -1759,7 +1721,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         text: 'Advanced (LaTeX in Body) — Write raw LaTeX directly inside matter note bodies.'
     });
     workflowList.createEl('li', {
-        text: 'Mixed — Keep semantic metadata and allow per-note bodyMode:auto (plain or inline LaTeX).'
+        text: 'Mixed — Keep semantic metadata and allow per-note BodyMode:auto (plain or inline LaTeX).'
     });
 
     const presetDescriptions: Record<string, string> = {
@@ -1770,7 +1732,26 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
     const buildLayoutDescription = (layout: PandocLayoutTemplate): string => {
         const base = presetDescriptions[layout.preset] || 'Custom PDF layout.';
         const pathLabel = layout.path || '(no path)';
-        return `${base} Template path: ${pathLabel}`;
+        const absolutePath = layout.path ? resolveTemplatePath(plugin, layout.path) : '';
+        const fontDiagnostics = getTemplateFontDiagnostics(absolutePath);
+
+        if (!fontDiagnostics.usesFontspec) {
+            return `${base} Template path: ${pathLabel}`;
+        }
+
+        if (fontDiagnostics.missingRequiredFonts.length > 0) {
+            return `${base} Template path: ${pathLabel} · Missing required font(s): ${fontDiagnostics.missingRequiredFonts.join(', ')}`;
+        }
+
+        if (fontDiagnostics.missingOptionalFonts.length > 0) {
+            return `${base} Template path: ${pathLabel} · Optional font missing (fallback will be used): ${fontDiagnostics.missingOptionalFonts.join(', ')}`;
+        }
+
+        if (!fontDiagnostics.canVerifySystemFonts && fontDiagnostics.requiredFonts.length > 0) {
+            return `${base} Template path: ${pathLabel} · Font check unavailable on this platform.`;
+        }
+
+        return `${base} Template path: ${pathLabel} · Fonts verified.`;
     };
 
     /** Flash-validate a layout path input using the centralized helper. */
@@ -1926,7 +1907,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
     let selectedMatterWorkflow = getSavedWorkflowMode();
     const workflowSetting = addProRow(new Setting(templatePackSection))
         .setName('Matter workflow')
-        .setDesc('Guided = frontmatter plain text. Advanced = inline LaTeX. Mixed = bodyMode:auto per note.')
+        .setDesc('Guided = plain text. Advanced = inline LaTeX. Mixed = BodyMode:auto per note.')
         .addDropdown(dd => {
             dd.addOption('guided', 'Guided (frontmatter)');
             dd.addOption('advanced', 'Advanced (LaTeX body)');
@@ -1941,7 +1922,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         });
     workflowSetting.addButton(button => {
         button.setButtonText('Apply to active book');
-        button.setTooltip('Updates Matter.bodyMode for front/back matter notes in the active book source folder.');
+        button.setTooltip('Updates BodyMode for front/back matter notes in the active book source folder.');
         button.onClick(async () => {
             button.setDisabled(true);
             button.setButtonText('Applying…');

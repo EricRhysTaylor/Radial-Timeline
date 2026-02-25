@@ -18,7 +18,7 @@ import { generateSceneContent } from '../utils/sceneGenerator';
 import { sanitizeSourcePath, buildInitialSceneFilename, buildInitialBackdropFilename } from '../utils/sceneCreation';
 import { getTemplateParts } from '../utils/yamlTemplateNormalize';
 import { ensureManuscriptOutputFolder, ensureOutlineOutputFolder } from '../utils/aiOutput';
-import { buildExportFilename, buildPrecursorFilename, buildOutlineExport, getExportFormatExtension, getLayoutById, getVaultAbsolutePath, resolveTemplatePath, runPandocOnContent, stemToReadable, validatePandocLayout } from '../utils/exportFormats';
+import { buildExportFilename, buildPrecursorFilename, buildOutlineExport, getExportFormatExtension, getLayoutById, getTemplateFontDiagnostics, getVaultAbsolutePath, resolveTemplatePath, runPandocOnContent, stemToReadable, validatePandocLayout } from '../utils/exportFormats';
 import { isProfessionalActive } from '../settings/sections/ProfessionalSection';
 import { getActiveBookExportContext } from '../utils/exportContext';
 import { getActiveBook } from '../utils/books';
@@ -26,6 +26,7 @@ import { normalizeFrontmatterKeys } from '../utils/frontmatter';
 import { isPathInFolderScope } from '../utils/pathScope';
 import { ensureSceneTemplateFrontmatter } from '../utils/sceneIds';
 import { chunkScenesIntoParts } from '../utils/splitOutput';
+import { parseMatterMetaFromFrontmatter } from '../utils/matterMeta';
 
 import { getRuntimeSettings } from '../utils/runtimeEstimator';
 
@@ -366,6 +367,7 @@ export class CommandRegistrar {
             }
 
             const extension = getExportFormatExtension(result.outputFormat);
+            const sceneHeadingMode = result.sceneHeadingMode || 'scene-number-title';
             const baseOutputFolder = await ensureManuscriptOutputFolder(this.plugin);
             const outputFolder = isSplitRun
                 ? await this.createSplitOutputFolder(baseOutputFolder, baseTitle)
@@ -382,7 +384,11 @@ export class CommandRegistrar {
                         filteredSelection.sortOrder,
                         result.tocMode !== 'none',
                         bookMetaResolution.bookMeta,
-                        filteredSelection.matterMetaByPath
+                        filteredSelection.matterMetaByPath,
+                        {
+                            sceneHeadingMode,
+                            sceneHeadingRenderMode: 'markdown-h2'
+                        }
                     );
 
                     if (result.updateWordCounts) {
@@ -439,6 +445,19 @@ export class CommandRegistrar {
 
             const templatePath = resolveTemplatePath(this.plugin, layout.path);
             const shouldSaveMarkdown = result.saveMarkdownArtifact ?? true;
+            const useLatexSceneOpeners = /ajfinn|aj finn/i.test(`${layout.id} ${layout.name} ${layout.path}`);
+            const sceneHeadingRenderMode = useLatexSceneOpeners ? 'latex-section-starred' : 'markdown-h2';
+            const fontDiagnostics = getTemplateFontDiagnostics(templatePath);
+            if (fontDiagnostics.fontsEmbeddedInPdf) {
+                statusMessages.push('Font embedding: XeLaTeX/LuaLaTeX embed resolved OpenType/TrueType fonts in the exported PDF.');
+            }
+            if (fontDiagnostics.missingRequiredFonts.length > 0) {
+                const fontWarning = `Missing required system font(s): ${fontDiagnostics.missingRequiredFonts.join(', ')}. Install them or switch layouts before exporting.`;
+                statusMessages.push(fontWarning);
+                new Notice(fontWarning);
+            } else if (!fontDiagnostics.canVerifySystemFonts && fontDiagnostics.requiredFonts.length > 0) {
+                statusMessages.push('Unable to verify required system fonts on this platform. PDF export may fail if fonts are unavailable.');
+            }
 
             new Notice('Running Pandoc...');
             for (const range of partRanges) {
@@ -451,7 +470,11 @@ export class CommandRegistrar {
                     filteredSelection.sortOrder,
                     result.tocMode !== 'none',
                     bookMetaResolution.bookMeta,
-                    filteredSelection.matterMetaByPath
+                    filteredSelection.matterMetaByPath,
+                    {
+                        sceneHeadingMode,
+                        sceneHeadingRenderMode
+                    }
                 );
 
                 if (result.updateWordCounts) {
@@ -657,13 +680,8 @@ export class CommandRegistrar {
 
             const frontmatter = this.app.metadataCache.getFileCache(file)?.frontmatter as Record<string, unknown> | undefined;
             if (!frontmatter) continue;
-
-            const classRaw = frontmatter.Class ?? frontmatter.class;
-            const classValue = typeof classRaw === 'string' ? classRaw.trim().toLowerCase() : '';
-            if (classValue !== 'matter' && classValue !== 'frontmatter' && classValue !== 'backmatter') continue;
-
-            const matterBlock = (frontmatter.Matter ?? frontmatter.matter) as Record<string, unknown> | undefined;
-            if (matterBlock?.usesBookMeta === true) return true;
+            const matterMeta = parseMatterMetaFromFrontmatter(frontmatter);
+            if (matterMeta?.usesBookMeta === true) return true;
         }
 
         return false;
@@ -818,12 +836,8 @@ export class CommandRegistrar {
 
             const filePath = `${sanitizedPath}/${filename}`;
             const yaml = [
-                'Class: Matter',
-                'Matter:',
-                `  side: ${isFront ? 'front' : 'back'}`,
-                '  role: other',
-                '  usesBookMeta: false',
-                '  bodyMode: auto'
+                `Class: ${classValue}`,
+                'Role: other'
             ].join('\n');
 
             const fileContent = `---\n${yaml}\n---\n\n`;

@@ -31,8 +31,8 @@ export interface BookMeta {
 }
 
 /**
- * Metadata extracted from a Matter note's nested Matter: YAML block.
- * Used to drive role-based rendering during export.
+ * Metadata extracted from matter note YAML.
+ * Uses flat fields such as `Role`, `UseBookMeta`, and `BodyMode`.
  */
 export interface MatterMeta {
     /** front or back */
@@ -156,7 +156,7 @@ export interface TimelineItem {
     GossamerStage29?: string;
     GossamerStage30?: string;
     End?: string;
-    /** Parsed Matter: nested block for semantic matter notes */
+    /** Parsed matter metadata for semantic front/back notes */
     matterMeta?: MatterMeta;
     /** Raw frontmatter data for custom field access */
     rawFrontmatter?: Record<string, unknown>;

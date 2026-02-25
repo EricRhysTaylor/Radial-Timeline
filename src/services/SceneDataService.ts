@@ -21,57 +21,11 @@ import { filterBeatsBySystem } from '../utils/gossamer';
 import { clampActNumber, getConfiguredActCount } from '../utils/acts';
 import { isPathInFolderScope } from '../utils/pathScope';
 import { readSceneId } from '../utils/sceneIds';
+import { isMatterClassValue, parseMatterMetaFromFrontmatter } from '../utils/matterMeta';
 
 export interface GetSceneDataOptions {
     filterBeatsBySystem?: boolean;
     sourcePath?: string;  // Override the default source path (used for Social APR project targeting)
-}
-
-type MatterSide = 'front' | 'back';
-type MatterBodyMode = 'latex' | 'plain' | 'auto';
-let matterOrderIgnoredWarned = false;
-
-function isDevMode(): boolean {
-    return typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production';
-}
-
-function inferMatterSideFromFilename(name: string): MatterSide {
-    const match = name.trim().match(/^(\d+(?:\.\d+)?)/);
-    if (!match) return 'front';
-    const prefix = match[1];
-    if (/^200(?:\.|$)/.test(prefix)) return 'back';
-    if (/^0(?:\.|$)/.test(prefix)) return 'front';
-    return 'front';
-}
-
-function normalizeMatterSide(rawSide: unknown, classValue: string, filename: string): MatterSide {
-    if (typeof rawSide === 'string') {
-        const normalized = rawSide.trim().toLowerCase();
-        if (normalized === 'front' || normalized === 'frontmatter') return 'front';
-        if (normalized === 'back' || normalized === 'backmatter') return 'back';
-    }
-
-    if (classValue === 'Frontmatter') return 'front';
-    if (classValue === 'Backmatter') return 'back';
-    return inferMatterSideFromFilename(filename);
-}
-
-function parseMatterOrder(rawOrder: unknown): number | undefined {
-    if (rawOrder === undefined || rawOrder === null) return undefined;
-    if (isDevMode() && !matterOrderIgnoredWarned) {
-        matterOrderIgnoredWarned = true;
-        console.warn('Matter.order is ignored; ordering uses filename prefixes.');
-    }
-    return undefined;
-}
-
-function normalizeMatterBodyMode(rawMode: unknown): MatterBodyMode {
-    if (typeof rawMode === 'string') {
-        const normalized = rawMode.trim().toLowerCase();
-        if (normalized === 'latex') return 'latex';
-        if (normalized === 'plain') return 'plain';
-    }
-    return 'auto';
 }
 
 // [PULSE_FLAG_METADATA_KEYS and helper removed - normalization handles this]
@@ -393,26 +347,13 @@ export class SceneDataService {
                         });
                     }
 
-                } else if (metadata && (metadata.Class === "Frontmatter" || metadata.Class === "Backmatter" || metadata.Class === "Matter")) {
+                } else if (metadata && isMatterClassValue(metadata.Class)) {
                     // Front-matter / back-matter notes – included in manuscript pipeline,
                     // excluded from timeline stats via isNonSceneItem().
 
-                    // Parse nested Matter: block for semantic role metadata
-                    let matterMeta: MatterMeta | undefined;
-                    const classValue = String(metadata.Class);
-                    const matterBlock = metadata.Matter as Record<string, unknown> | undefined;
-                    const side = normalizeMatterSide(matterBlock?.side, classValue, file.basename);
-                    if (matterBlock && typeof matterBlock === 'object') {
-                        parseMatterOrder(matterBlock.order);
-                        matterMeta = {
-                            side,
-                            role: matterBlock.role as string | undefined,
-                            usesBookMeta: typeof matterBlock.usesBookMeta === 'boolean' ? matterBlock.usesBookMeta : undefined,
-                            bodyMode: normalizeMatterBodyMode(matterBlock.bodyMode)
-                        };
-                    } else {
-                        matterMeta = { side, bodyMode: 'auto' };
-                    }
+                    const parsed = parseMatterMetaFromFrontmatter(metadata);
+                    const matterMeta: MatterMeta | undefined = parsed || undefined;
+                    const side = parsed?.side === 'back' ? 'back' : 'front';
 
                     scenes.push({
                         date: '',
