@@ -81,6 +81,10 @@ export function validatePandocLayout(
         return { valid: false, error: 'No template path configured.' };
     }
     const trimmed = layout.path.trim();
+    const ext = path.extname(trimmed).toLowerCase();
+    if (ext !== '.tex') {
+        return { valid: false, error: 'Template file must use a .tex extension.' };
+    }
 
     // Absolute path: check via Node fs
     if (path.isAbsolute(trimmed)) {

@@ -49,6 +49,7 @@ export interface AssembleManuscriptOptions {
 
 type EffectiveBodyMode = 'latex' | 'plain';
 let matterOrderIgnoredWarned = false;
+const matterLikeMissingClassWarnings = new Set<string>();
 
 function isDevMode(): boolean {
   return typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production';
@@ -59,6 +60,14 @@ function warnMatterOrderIgnoredOnce(): void {
     matterOrderIgnoredWarned = true;
     console.warn('Matter.order is ignored; ordering uses filename prefixes.');
   }
+}
+
+function warnMatterLikeWithoutClass(scene: TimelineItem): void {
+  if (!isDevMode()) return;
+  const key = scene.path || scene.title || '(unknown)';
+  if (matterLikeMissingClassWarnings.has(key)) return;
+  matterLikeMissingClassWarnings.add(key);
+  console.warn(`[Matter Export] Note looks like matter by prefix but has no Frontmatter/Backmatter Class: ${key}`);
 }
 
 /**
@@ -333,7 +342,7 @@ export async function getSceneFilesByOrder(
     return false;
   });
 
-  const { sortScenes, sortScenesChronologically, sortByManuscriptOrder } = await import('./sceneHelpers');
+  const { sortScenes, sortScenesChronologically } = await import('./sceneHelpers');
   let sortedScenes: TimelineItem[];
   let sortOrder: string;
 
@@ -358,37 +367,54 @@ export async function getSceneFilesByOrder(
   const isMatterItem = (scene: TimelineItem): boolean =>
     scene.itemType === 'Frontmatter' || scene.itemType === 'Backmatter';
 
-  const normalizeMatterSide = (scene: TimelineItem): 'front' | 'back' => {
-    const title = (scene.title || '').trim();
-    if (/^200(?:\.|$)/.test(title)) return 'back';
-    if (/^0(?:\.|$)/.test(title)) return 'front';
+  const resolveMatterSideFromClass = (scene: TimelineItem): 'front' | 'back' =>
+    scene.itemType === 'Backmatter' ? 'back' : 'front';
 
-    if (scene.itemType === 'Backmatter') return 'back';
-    if (scene.itemType === 'Frontmatter') return 'front';
+  const extractMatterPrefixToken = (title: string): string | null => {
+    const match = title.trim().match(/^(\d+(?:\.\d+)?)/);
+    return match?.[1] || null;
+  };
 
-    const rawSide = scene.matterMeta?.side;
-    if (typeof rawSide === 'string') {
-      const normalized = rawSide.trim().toLowerCase();
-      if (normalized === 'back' || normalized === 'backmatter') return 'back';
-      if (normalized === 'front' || normalized === 'frontmatter') return 'front';
-    }
-    return 'front';
+  const looksLikeMatterByPrefix = (title: string): boolean => {
+    const match = title.trim().match(/^(\d+(?:\.\d+)?)/);
+    if (!match) return false;
+    return /^0(?:\.|$)/.test(match[1]) || /^200(?:\.|$)/.test(match[1]);
   };
 
   const compareMatterItems = (a: TimelineItem, b: TimelineItem): number => {
-    return sortByManuscriptOrder(a, b);
+    const aTitle = a.title || '';
+    const bTitle = b.title || '';
+    const aPrefix = extractMatterPrefixToken(aTitle);
+    const bPrefix = extractMatterPrefixToken(bTitle);
+
+    if (aPrefix && bPrefix) {
+      const prefixCmp = aPrefix.localeCompare(bPrefix, undefined, { numeric: true, sensitivity: 'base' });
+      if (prefixCmp !== 0) return prefixCmp;
+    } else if (aPrefix && !bPrefix) {
+      return -1;
+    } else if (!aPrefix && bPrefix) {
+      return 1;
+    }
+
+    return aTitle.localeCompare(bTitle, undefined, { numeric: true, sensitivity: 'base' });
   };
 
   const orderedItems = (() => {
     if (!includeMatter) return sortedScenes;
 
     const frontMatter = sortedScenes
-      .filter(s => isMatterItem(s) && normalizeMatterSide(s) === 'front')
+      .filter(s => isMatterItem(s) && resolveMatterSideFromClass(s) === 'front')
       .sort(compareMatterItems);
     const backMatter = sortedScenes
-      .filter(s => isMatterItem(s) && normalizeMatterSide(s) === 'back')
+      .filter(s => isMatterItem(s) && resolveMatterSideFromClass(s) === 'back')
       .sort(compareMatterItems);
-    const sceneItems = sortedScenes.filter(s => !isMatterItem(s));
+    const sceneItems = sortedScenes.filter(s => {
+      if (isMatterItem(s)) return false;
+      if (includeMatter && looksLikeMatterByPrefix((s.title || '').trim())) {
+        warnMatterLikeWithoutClass(s);
+      }
+      return true;
+    });
     return [...frontMatter, ...sceneItems, ...backMatter];
   })();
 
@@ -441,7 +467,7 @@ export async function getSceneFilesByOrder(
       if (scene.matterMeta?.order !== undefined) {
         warnMatterOrderIgnoredOnce();
       }
-      const normalizedSide: 'front' | 'back' = normalizeMatterSide(scene);
+      const normalizedSide: 'front' | 'back' = resolveMatterSideFromClass(scene);
       matterMetaByPath.set(scene.path, {
         ...(scene.matterMeta || {}),
         side: normalizedSide,
@@ -597,13 +623,9 @@ export async function assembleManuscript(
     bodyModeResolution: 'explicit' | 'auto-detected';
   }> = [];
 
-  const inferMatterSide = (title: string, meta?: MatterMeta): 'front' | 'back' => {
-    const trimmed = title.trim();
-    if (/^200(?:\.|$)/.test(trimmed)) return 'back';
-    if (/^0(?:\.|$)/.test(trimmed)) return 'front';
+  const inferMatterSide = (meta?: MatterMeta): 'front' | 'back' => {
     const side = (meta?.side || '').toString().trim().toLowerCase();
-    if (side === 'back' || side === 'backmatter') return 'back';
-    return 'front';
+    return side === 'back' || side === 'backmatter' ? 'back' : 'front';
   };
 
   const extractPrefix = (title: string): number | null => {
@@ -638,7 +660,7 @@ export async function assembleManuscript(
         const bodyModeResolution: 'explicit' | 'auto-detected' = declaredMode === 'auto' ? 'auto-detected' : 'explicit';
         matterDiagnostics.push({
           filePath: file.path,
-          side: inferMatterSide(title, matterMeta || undefined),
+          side: inferMatterSide(matterMeta || undefined),
           prefix: extractPrefix(title),
           declaredBodyMode: declaredMode,
           effectiveBodyMode: chosenBodyMode,

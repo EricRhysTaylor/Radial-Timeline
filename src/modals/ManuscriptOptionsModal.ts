@@ -391,7 +391,7 @@ export class ManuscriptOptionsModal extends Modal {
         this.createSectionHeading(this.splitCard, 'Split Output', 'split');
         this.splitCard.createDiv({
             cls: 'rt-sub-card-note',
-            text: 'Export as one file or split into multiple parts.'
+            text: 'Export as one file or split into multiple equal-sized files.'
         });
         const splitModeRow = this.splitCard.createDiv({ cls: 'ert-manuscript-split-grid' });
         const splitModeGroup = `rt-manuscript-split-${Date.now()}`;

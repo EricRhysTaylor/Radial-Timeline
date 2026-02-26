@@ -50,23 +50,6 @@ function parseOrder(value: unknown): number | undefined {
   return undefined;
 }
 
-function normalizeSideValue(value: unknown): MatterSide | undefined {
-  if (typeof value !== 'string') return undefined;
-  const normalized = value.trim().toLowerCase();
-  if (normalized === 'front' || normalized === 'frontmatter') return 'front';
-  if (normalized === 'back' || normalized === 'backmatter') return 'back';
-  return undefined;
-}
-
-export function inferMatterSideFromFilename(name: string): MatterSide {
-  const match = name.trim().match(/^(\d+(?:\.\d+)?)/);
-  if (!match) return 'front';
-  const prefix = match[1];
-  if (/^200(?:\.|$)/.test(prefix)) return 'back';
-  if (/^0(?:\.|$)/.test(prefix)) return 'front';
-  return 'front';
-}
-
 export function normalizeMatterBodyMode(value: unknown): MatterBodyMode {
   if (typeof value === 'string') {
     const normalized = value.trim().toLowerCase();
@@ -104,15 +87,12 @@ export function parseMatterMetaFromFrontmatter(
   const classValue = normalizeMatterClassValue(classRaw);
   if (!classValue) return null;
 
-  const rawSide = getFieldValue(frontmatter, ['Side']);
   const rawRole = getFieldValue(frontmatter, ['Role']);
   const rawUseBookMeta = getFieldValue(frontmatter, ['UseBookMeta', 'UsesBookMeta']);
   const rawBodyMode = getFieldValue(frontmatter, ['BodyMode', 'MatterBodyMode', 'Mode']);
   const rawOrder = getFieldValue(frontmatter, ['Order', 'MatterOrder']);
 
-  const explicitSide = normalizeSideValue(rawSide);
-  const defaultSide = classValue === 'backmatter' ? 'back' : 'front';
-  const side = explicitSide ?? defaultSide;
+  const side: MatterSide = classValue === 'backmatter' ? 'back' : 'front';
 
   const meta: MatterMeta = {
     side,

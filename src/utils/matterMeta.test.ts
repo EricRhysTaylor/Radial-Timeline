@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { inferMatterSideFromFilename, parseMatterMetaFromFrontmatter } from './matterMeta';
+import { parseMatterMetaFromFrontmatter } from './matterMeta';
 
 describe('matterMeta parser', () => {
   it('parses simplified flat frontmatter fields', () => {
@@ -28,12 +28,12 @@ describe('matterMeta parser', () => {
     expect(parsed?.role).toBe('acknowledgments');
   });
 
-  it('supports Side override on front/back classes', () => {
+  it('ignores Side overrides and resolves side strictly from Class', () => {
     const parsed = parseMatterMetaFromFrontmatter(
       { Class: 'Frontmatter', Side: 'back', Role: 'other' }
     );
 
-    expect(parsed?.side).toBe('back');
+    expect(parsed?.side).toBe('front');
   });
 
   it('does not parse nested Matter block keys anymore', () => {
@@ -78,10 +78,5 @@ describe('matterMeta parser', () => {
     );
 
     expect(parsed).toBeNull();
-  });
-
-  it('infers side from filename prefixes', () => {
-    expect(inferMatterSideFromFilename('0.01 Front Matter')).toBe('front');
-    expect(inferMatterSideFromFilename('200.01 Back Matter')).toBe('back');
   });
 });
