@@ -340,6 +340,42 @@
   line-height: 1.5;
 }
 
+.ert-ui.ert-scope--settings .ert-pro-hero-tagline {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+.ert-ui.ert-scope--settings .ert-pro-hero-kicker {
+  margin: calc(var(--ert-gap-xs) / 2) 0 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.ert-ui.ert-scope--settings .ert-pro-unlock-list {
+  margin: 0;
+  padding-left: 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--text-muted);
+}
+
+.ert-ui.ert-scope--settings .ert-pro-unlock-list li {
+  margin: 0;
+  line-height: 1.35;
+}
+
+.ert-ui.ert-scope--settings .setting-item.ert-pro-status-row {
+  margin-top: calc(var(--ert-gap-sm) - 1px);
+  padding-top: var(--ert-gap-xs);
+  border-top: 1px solid color-mix(in srgb, var(--background-modifier-border) 90%, transparent);
+}
+
 .ert-ui.ert-scope--settings .ert-kicker {
   margin: 0;
   font-size: 12px;

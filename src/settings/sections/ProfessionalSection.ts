@@ -1579,53 +1579,6 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
     // ─────────────────────────────────────────────────────────────────────────
     const hero = section.createDiv({ cls: `${ERT_CLASSES.CARD} ${ERT_CLASSES.CARD_HERO} ${ERT_CLASSES.STACK}` });
 
-    // Badge Row
-    const badgeRow = hero.createDiv({ cls: ERT_CLASSES.INLINE });
-
-    // Status Badge (Standardized Pill)
-    const badge = badgeRow.createSpan({ cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO}` });
-
-    const iconSpan = badge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON });
-    setIcon(iconSpan, 'signature');
-
-    badge.createSpan({
-        cls: ERT_CLASSES.BADGE_PILL_TEXT,
-        text: isActive ? 'PRO FEATURES ACTIVE' : 'PRO INACTIVE'
-    });
-
-    // Wiki Link Icon
-    const wikiLink = badge.createEl('a', {
-        href: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#professional',
-        cls: 'ert-badgePill__rightIcon',
-        attr: {
-            'aria-label': 'Read more in the Wiki',
-            'target': '_blank',
-            'rel': 'noopener'
-        }
-    });
-    setIcon(wikiLink, 'external-link');
-
-    // Beta Badge
-    if (OPEN_BETA_ACTIVE) {
-        const betaBadge = badgeRow.createSpan({
-            cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_NEUTRAL} ${ERT_CLASSES.BADGE_PILL_SM}`
-        });
-        betaBadge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'EARLY ACCESS BETA' });
-    }
-
-    // Toggle (Moved to Top Right)
-    const toggleContainer = badgeRow.createDiv({ cls: `${ERT_CLASSES.SECTION_ACTIONS} ${ERT_CLASSES.CHIP}` });
-
-    toggleContainer.createSpan({
-        cls: `ert-toggle-label ${isActive ? ERT_CLASSES.IS_ACTIVE : ''}`,
-        text: isActive ? 'Active' : 'Inactive'
-    });
-
-    const checkbox = toggleContainer.createEl('input', {
-        type: 'checkbox',
-        cls: 'ert-toggle-input'
-    });
-    checkbox.checked = plugin.settings.devProActive !== false;
     const rerender = () => {
         if (onProToggle) {
             onProToggle();
@@ -1639,56 +1592,40 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         void plugin.saveSettings();
     }
 
-    checkbox.onchange = async () => {
-        plugin.settings.devProActive = checkbox.checked;
-        await plugin.saveSettings();
-        rerender();
-    };
+    hero.createEl('h2', { cls: 'ert-hero-title', text: 'PRO · SIGNATURE' });
+    hero.createDiv({ cls: 'ert-pro-hero-tagline', text: 'Pro extends the core experience.' });
+    hero.createDiv({
+        cls: ERT_CLASSES.SECTION_DESC,
+        text: 'More control, more capacity, and deeper narrative tools.'
+    });
+    hero.createDiv({ cls: 'ert-pro-hero-kicker', text: 'Pro unlocks:' });
+    const proUnlocks = hero.createEl('ul', { cls: 'ert-pro-unlock-list' });
+    [
+        'Advanced exports — PDF, Outline, and structured data formats',
+        'Unlimited beat systems and Pro Sets',
+        'Extended Inquiry prompts',
+        'Runtime estimation and session planning',
+        'APR campaign management and teaser controls'
+    ].forEach(item => {
+        proUnlocks.createEl('li', { text: item });
+    });
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // CONTENT STACK
-    // ─────────────────────────────────────────────────────────────────────────
-    const addProRow = (setting: Setting) => setting;
-    const lockPanel = (panel: HTMLElement) => {
-        if (!isActive) {
-            panel.addClass('ert-pro-locked');
-        }
-        return panel;
-    };
-    let refreshPublishingStatusCard: () => void = () => {};
+    const proStatusSetting = new Setting(hero)
+        .setName(OPEN_BETA_ACTIVE ? 'Pro (Early Access)' : 'Pro Subscription');
+    proStatusSetting.settingEl.addClass('ert-pro-status-row');
 
-    // Open Beta Banner
     if (OPEN_BETA_ACTIVE) {
-        const betaPanel = lockPanel(section.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` }));
-
-        const bannerHeader = betaPanel.createDiv({ cls: ERT_CLASSES.INLINE });
-        const bannerIcon = bannerHeader.createSpan({ cls: 'ert-setting-heading-icon' });
-        setIcon(bannerIcon, 'shell');
-        bannerHeader.createEl('strong', { text: 'Thank you for supporting the future of Radial Timeline [RT].' });
-
-        betaPanel.createEl('p', {
-            cls: ERT_CLASSES.SECTION_DESC,
-            text: 'Pro features are currently free during the Open Beta.'
+        proStatusSetting.addToggle(toggle => {
+            toggle
+                .setValue(plugin.settings.devProActive !== false)
+                .onChange(async (value) => {
+                    plugin.settings.devProActive = value;
+                    await plugin.saveSettings();
+                    rerender();
+                });
         });
-
-        const rewardBox = betaPanel.createDiv({ cls: [ERT_CLASSES.PREVIEW_FRAME, 'ert-previewFrame--flush'] });
-        const p = rewardBox.createEl('p', { attr: { style: 'margin: 0; line-height: 1.5;' } });
-        p.createEl('strong', { text: 'A new phase in development begins. ' });
-        p.createSpan({ text: 'During this phase, bug fixes, stability, and workflow optimization are top priorities. Reproducible technical issues and clear usability problems are actively reviewed and addressed as part of iterative development. Your feedback helps shape what gets refined and improved next.' });
-
-        const feedbackLink = betaPanel.createEl('a', {
-            text: 'Share feedback →',
-            href: 'https://radial-timeline.com/feedback',
-            cls: 'ert-link-accent',
-            attr: { target: '_blank', rel: 'noopener' }
-        });
-    }
-
-    // License Key (Post-Beta)
-    if (!OPEN_BETA_ACTIVE) {
-        const licensePanel = lockPanel(section.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` }));
-        const licenseSetting = addProRow(new Setting(licensePanel))
-            .setName('License Key')
+    } else {
+        proStatusSetting
             .setDesc('Enter your Pro license key to unlock advanced features.')
             .addText(text => {
                 text.setPlaceholder('XXXX-XXXX-XXXX-XXXX');
@@ -1696,7 +1633,6 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
                 text.inputEl.addClass('ert-input--lg');
                 text.inputEl.type = 'password';
 
-                // Show/Hide Toggle
                 const toggleVis = text.inputEl.parentElement?.createEl('button', {
                     cls: 'ert-clickable-icon clickable-icon', // SAFE: clickable-icon used for Obsidian icon button styling
                     attr: { type: 'button', 'aria-label': 'Show/hide license key' }
@@ -1722,8 +1658,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
                 });
             });
 
-        // "Get key" link
-        const nameEl = licenseSetting.nameEl;
+        const nameEl = proStatusSetting.nameEl;
         nameEl.createEl('a', {
             text: ' Get key →',
             href: 'https://radial-timeline.com/signature',
@@ -1731,6 +1666,18 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
             attr: { target: '_blank', rel: 'noopener' }
         });
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // CONTENT STACK
+    // ─────────────────────────────────────────────────────────────────────────
+    const addProRow = (setting: Setting) => setting;
+    const lockPanel = (panel: HTMLElement) => {
+        if (!isActive) {
+            panel.addClass('ert-pro-locked');
+        }
+        return panel;
+    };
+    let refreshPublishingStatusCard: () => void = () => {};
 
     // ─────────────────────────────────────────────────────────────────────────
     // PANDOC & EXPORT SETTINGS
@@ -2476,10 +2423,10 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
     setupButtonComponent = new ButtonComponent(setupActionRow);
     setupButtonComponent
         .setButtonText('Set up publishing for active book')
-        .setCta()
         .onClick(() => {
             void runPublishingSetup();
         });
+    setupButtonComponent.buttonEl.addClass('ert-pillBtn', 'ert-pillBtn--pro');
 
     const matterPreviewFrame = publishingSetupPanel.createDiv({ cls: `${ERT_CLASSES.PREVIEW_FRAME} ert-previewFrame--flush` });
     matterPreviewFrame.createDiv({ cls: 'ert-planetary-preview-heading ert-previewFrame__title', text: 'Matter preview' });
