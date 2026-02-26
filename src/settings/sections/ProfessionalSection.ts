@@ -2049,10 +2049,6 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
                 if (variantDiff !== 0) return variantDiff;
                 return getLayoutDisplayName(a).localeCompare(getLayoutDisplayName(b));
             });
-        const categoryRows = [
-            { key: 'fiction', title: 'Fiction', icon: 'book-open-text', items: fictionLayouts }
-        ].filter(category => category.items.length > 0);
-
         const renderLayoutRow = (parent: HTMLElement, layout: PandocLayoutTemplate) => {
             const row = parent.createDiv({ cls: 'ert-layout-row' });
             const isBundled = layout.bundled === true;
@@ -2140,17 +2136,8 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
             }
         };
 
-        categoryRows.forEach((category, categoryIndex) => {
-            const categoryEl = layoutRowsContainer.createDiv({
-                cls: `ert-layout-category ${categoryIndex > 0 ? 'ert-layout-category--spaced' : ''}`
-            });
-            const categoryHeader = categoryEl.createDiv({ cls: 'ert-layout-category-header' });
-            const categoryIcon = categoryHeader.createSpan({ cls: 'ert-layout-category-icon' });
-            setIcon(categoryIcon, category.icon);
-            categoryHeader.createEl('strong', { cls: 'ert-layout-category-title', text: category.title });
-            const rows = categoryEl.createDiv({ cls: 'ert-layout-category-rows' });
-            category.items.forEach(layout => renderLayoutRow(rows, layout));
-        });
+        const rows = layoutRowsContainer.createDiv({ cls: 'ert-layout-category-rows' });
+        fictionLayouts.forEach(layout => renderLayoutRow(rows, layout));
     };
 
     renderLayoutRows();
@@ -2312,6 +2299,74 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         }
     };
 
+    const bookMetaPreviewPanel = pandocPanel.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
+    bookMetaPreviewPanel.style.order = '10';
+    const previewFrame = bookMetaPreviewPanel.createDiv({ cls: `${ERT_CLASSES.PREVIEW_FRAME} ert-previewFrame--center ert-previewFrame--flush` });
+    previewFrame.createDiv({ cls: 'ert-planetary-preview-heading ert-previewFrame__title', text: 'BookMeta preview' });
+    const previewBody = previewFrame.createDiv({ cls: 'ert-bookmeta-preview-body' });
+    const renderBookMetaPreview = () => {
+        previewBody.empty();
+        const activeBookMetaStatus = getActiveBookMetaStatus(plugin);
+
+        if (!activeBookMetaStatus.found || !activeBookMetaStatus.bookMeta) {
+            const empty = previewBody.createDiv({ cls: 'ert-bookmeta-preview-empty' });
+            empty.createDiv({ cls: 'ert-bookmeta-preview-empty-title', text: 'BookMeta not found for active book' });
+            if (activeBookMetaStatus.sourceFolder) {
+                empty.createDiv({ cls: 'ert-bookmeta-preview-empty-desc', text: `Expected in: ${activeBookMetaStatus.sourceFolder}` });
+            }
+            const actions = empty.createDiv({ cls: 'ert-bookmeta-preview-empty-actions' });
+            new ButtonComponent(actions)
+                .setButtonText('Set up publishing for active book')
+                .setCta()
+                .onClick(() => {
+                    void runPublishingSetup();
+                });
+            new ButtonComponent(actions)
+                .setButtonText('Create BookMeta only')
+                .onClick(async () => {
+                    const created = await createBookMetaOnly(plugin);
+                    if (created.created) {
+                        new Notice(`Created BookMeta note: ${created.path}`);
+                    } else {
+                        new Notice(created.reason || 'BookMeta note was not created.');
+                    }
+                    rerender();
+                });
+            return;
+        }
+
+        if (activeBookMetaStatus.warning) {
+            const warningRow = previewBody.createDiv({ cls: 'ert-bookmeta-status is-warning' });
+            const warningIcon = warningRow.createSpan({ cls: 'ert-bookmeta-status-icon' });
+            setIcon(warningIcon, 'alert-circle');
+            warningRow.createSpan({ text: activeBookMetaStatus.warning });
+        }
+
+        const previewGrid = previewBody.createDiv({ cls: 'ert-bookmeta-preview-grid' });
+        const addPreviewField = (label: string, value?: string | number | null) => {
+            const item = previewGrid.createDiv({ cls: 'ert-bookmeta-preview-item' });
+            item.createDiv({ cls: 'ert-bookmeta-preview-label', text: label });
+            const normalized = value === undefined || value === null || String(value).trim().length === 0
+                ? 'Not set'
+                : String(value);
+            const valueEl = item.createDiv({ cls: 'ert-bookmeta-preview-value', text: normalized });
+            valueEl.toggleClass('ert-bookmeta-preview-value--empty', normalized === 'Not set');
+        };
+
+        const meta = activeBookMetaStatus.bookMeta;
+        addPreviewField('Title', meta.title);
+        addPreviewField('Author', meta.author);
+        addPreviewField('Copyright holder', meta.rights?.copyright_holder);
+        addPreviewField('Rights year', meta.rights?.year);
+        addPreviewField('ISBN paperback', meta.identifiers?.isbn_paperback);
+        addPreviewField('Publisher', meta.publisher?.name);
+        addPreviewField('Source note', meta.sourcePath || activeBookMetaStatus.path);
+        if (activeBookMetaStatus.sourceFolder) {
+            addPreviewField('Active book folder', activeBookMetaStatus.sourceFolder);
+        }
+    };
+    renderBookMetaPreview();
+
     // ── Publishing Setup ────────────────────────────────────────────────────
     const publishingSetupPanel = pandocPanel.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
     publishingSetupPanel.style.order = '30';
@@ -2322,7 +2377,8 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
     addHeadingIcon(publishingHeading, 'book-open-text');
     applyErtHeaderLayout(publishingHeading);
 
-    const statusGrid = publishingSetupPanel.createDiv({ cls: 'ert-publishing-status-grid' });
+    const statusShell = publishingSetupPanel.createDiv({ cls: 'ert-publishing-status-shell' });
+    const statusGrid = statusShell.createDiv({ cls: 'ert-publishing-status-grid' });
     const buildStatusColumn = (
         iconName: string,
         title: string,
@@ -2416,82 +2472,14 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
     refreshPublishingStatusCard = renderPublishingStatusCard;
     renderPublishingStatusCard();
 
-    const setupActionSetting = addProRow(new Setting(publishingSetupPanel));
-    setupActionSetting.addButton(button => {
-        setupButtonComponent = button;
-        button.setButtonText('Set up publishing for active book');
-        button.setCta();
-        button.onClick(() => {
+    const setupActionRow = statusShell.createDiv({ cls: 'ert-publishing-status-action' });
+    setupButtonComponent = new ButtonComponent(setupActionRow);
+    setupButtonComponent
+        .setButtonText('Set up publishing for active book')
+        .setCta()
+        .onClick(() => {
             void runPublishingSetup();
         });
-    });
-
-    const previewPanel = publishingSetupPanel.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
-    const previewFrame = previewPanel.createDiv({ cls: `${ERT_CLASSES.PREVIEW_FRAME} ert-previewFrame--center ert-previewFrame--flush` });
-    previewFrame.createDiv({ cls: 'ert-planetary-preview-heading ert-previewFrame__title', text: 'BookMeta preview' });
-    const previewBody = previewFrame.createDiv({ cls: 'ert-bookmeta-preview-body' });
-    const renderBookMetaPreview = () => {
-        previewBody.empty();
-        const activeBookMetaStatus = getActiveBookMetaStatus(plugin);
-
-        if (!activeBookMetaStatus.found || !activeBookMetaStatus.bookMeta) {
-            const empty = previewBody.createDiv({ cls: 'ert-bookmeta-preview-empty' });
-            empty.createDiv({ cls: 'ert-bookmeta-preview-empty-title', text: 'BookMeta not found for active book' });
-            if (activeBookMetaStatus.sourceFolder) {
-                empty.createDiv({ cls: 'ert-bookmeta-preview-empty-desc', text: `Expected in: ${activeBookMetaStatus.sourceFolder}` });
-            }
-            const actions = empty.createDiv({ cls: 'ert-bookmeta-preview-empty-actions' });
-            new ButtonComponent(actions)
-                .setButtonText('Set up publishing for active book')
-                .setCta()
-                .onClick(() => {
-                    void runPublishingSetup();
-                });
-            new ButtonComponent(actions)
-                .setButtonText('Create BookMeta only')
-                .onClick(async () => {
-                    const created = await createBookMetaOnly(plugin);
-                    if (created.created) {
-                        new Notice(`Created BookMeta note: ${created.path}`);
-                    } else {
-                        new Notice(created.reason || 'BookMeta note was not created.');
-                    }
-                    rerender();
-                });
-            return;
-        }
-
-        if (activeBookMetaStatus.warning) {
-            const warningRow = previewBody.createDiv({ cls: 'ert-bookmeta-status is-warning' });
-            const warningIcon = warningRow.createSpan({ cls: 'ert-bookmeta-status-icon' });
-            setIcon(warningIcon, 'alert-circle');
-            warningRow.createSpan({ text: activeBookMetaStatus.warning });
-        }
-
-        const previewGrid = previewBody.createDiv({ cls: 'ert-bookmeta-preview-grid' });
-        const addPreviewField = (label: string, value?: string | number | null) => {
-            const item = previewGrid.createDiv({ cls: 'ert-bookmeta-preview-item' });
-            item.createDiv({ cls: 'ert-bookmeta-preview-label', text: label });
-            const normalized = value === undefined || value === null || String(value).trim().length === 0
-                ? 'Not set'
-                : String(value);
-            const valueEl = item.createDiv({ cls: 'ert-bookmeta-preview-value', text: normalized });
-            valueEl.toggleClass('ert-bookmeta-preview-value--empty', normalized === 'Not set');
-        };
-
-        const meta = activeBookMetaStatus.bookMeta;
-        addPreviewField('Title', meta.title);
-        addPreviewField('Author', meta.author);
-        addPreviewField('Copyright holder', meta.rights?.copyright_holder);
-        addPreviewField('Rights year', meta.rights?.year);
-        addPreviewField('ISBN paperback', meta.identifiers?.isbn_paperback);
-        addPreviewField('Publisher', meta.publisher?.name);
-        addPreviewField('Source note', meta.sourcePath || activeBookMetaStatus.path);
-        if (activeBookMetaStatus.sourceFolder) {
-            addPreviewField('Active book folder', activeBookMetaStatus.sourceFolder);
-        }
-    };
-    renderBookMetaPreview();
 
     const matterPreviewFrame = publishingSetupPanel.createDiv({ cls: `${ERT_CLASSES.PREVIEW_FRAME} ert-previewFrame--flush` });
     matterPreviewFrame.createDiv({ cls: 'ert-planetary-preview-heading ert-previewFrame__title', text: 'Matter preview' });

@@ -9,7 +9,8 @@ import { ExportFormat, ExportType, ManuscriptPreset, OutlinePreset, getAutoPdfEn
 import { isProfessionalActive } from '../settings/sections/ProfessionalSection';
 import { getActiveBook, getActiveBookTitle, DEFAULT_BOOK_TITLE } from '../utils/books';
 import { chunkScenesIntoParts } from '../utils/splitOutput';
-import type { ManuscriptExportTemplate } from '../types';
+import { getDefaultManuscriptCleanupOptions, normalizeManuscriptCleanupOptions } from '../utils/manuscriptSanitize';
+import type { ManuscriptExportCleanupOptions, ManuscriptExportTemplate } from '../types';
 
 export interface ManuscriptModalResult {
     order: ManuscriptOrder;
@@ -25,6 +26,7 @@ export interface ManuscriptModalResult {
     includeSynopsis?: boolean;
     includeMatter?: boolean;
     saveMarkdownArtifact?: boolean;
+    exportCleanup?: ManuscriptExportCleanupOptions;
     selectedLayoutId?: string;
     splitMode?: 'single' | 'parts';
     splitParts?: number;
@@ -140,6 +142,8 @@ export class ManuscriptOptionsModal extends Modal {
     private includeSynopsis: boolean = true;
     private includeMatter: boolean = true;
     private saveMarkdownArtifact: boolean = true;
+    private markdownCleanupOptions: ManuscriptExportCleanupOptions = getDefaultManuscriptCleanupOptions('markdown');
+    private pdfCleanupOptions: ManuscriptExportCleanupOptions = getDefaultManuscriptCleanupOptions('pdf');
     private hasWhenDates: boolean = false;
     private includeMatterUserChoice: boolean = true;
     private includeSynopsisUserChoice: boolean = true;
@@ -193,7 +197,12 @@ export class ManuscriptOptionsModal extends Modal {
     private publishingHeadingTextEl?: HTMLElement;
     private artifactRowEl?: HTMLElement;
     private includeMatterCard?: HTMLElement;
+    private exportCleanupCard?: HTMLElement;
     private synopsisRow?: HTMLElement;
+    private cleanupCommentsToggle?: ToggleComponent;
+    private cleanupLinksToggle?: ToggleComponent;
+    private cleanupCalloutsToggle?: ToggleComponent;
+    private cleanupBlockIdsToggle?: ToggleComponent;
     private templateWarningEl?: HTMLElement;
     private layoutHeaderEl?: HTMLElement;
     private layoutContainerEl?: HTMLElement;
@@ -241,6 +250,7 @@ export class ManuscriptOptionsModal extends Modal {
         showPublishing: boolean;
         showWordCount: boolean;
         showIncludeMatter: boolean;
+        showExportCleanup: boolean;
         showSavePrecompile: boolean;
         showSceneHeading: boolean;
         showSplit: boolean;
@@ -271,6 +281,7 @@ export class ManuscriptOptionsModal extends Modal {
             showPublishing: isManuscript,
             showWordCount: isManuscript,
             showIncludeMatter: isManuscript,
+            showExportCleanup: isManuscript,
             showSavePrecompile: isPdfManuscript,
             showSceneHeading: isPdfManuscript,
             showSplit: isManuscript,
@@ -625,7 +636,7 @@ export class ManuscriptOptionsModal extends Modal {
             });
 
         this.artifactRowEl = publishingBody.createDiv({ cls: 'rt-manuscript-toggle-row' });
-        this.artifactRowEl.createSpan({ cls: 'rt-manuscript-toggle-label', text: 'Save precompile Markdown file' });
+        this.artifactRowEl.createSpan({ cls: 'rt-manuscript-toggle-label', text: 'Save compiled + sanitized Markdown files' });
         this.markdownArtifactToggle = new ToggleComponent(this.artifactRowEl)
             .setValue(this.saveMarkdownArtifact)
             .onChange((value) => {
@@ -633,7 +644,39 @@ export class ManuscriptOptionsModal extends Modal {
             });
         publishingBody.createDiv({
             cls: 'rt-sub-card-note',
-            text: 'Saves the manuscript Markdown input before PDF rendering.'
+            text: 'Saves both pre-sanitize (__compiled__) and Pandoc-ready (__sanitized__) Markdown files.'
+        });
+
+        this.exportCleanupCard = publishingBody.createDiv({ cls: 'ert-manuscript-rule-block' });
+        this.exportCleanupCard.createDiv({ cls: 'rt-manuscript-toggle-label', text: 'Export cleanup' });
+
+        const commentsRow = this.exportCleanupCard.createDiv({ cls: 'rt-manuscript-toggle-row' });
+        commentsRow.createSpan({ cls: 'rt-manuscript-toggle-label', text: 'Strip comments (%%...%%, <!--...-->)' });
+        this.cleanupCommentsToggle = new ToggleComponent(commentsRow).onChange((value) => {
+            this.setActiveCleanupOption('stripComments', value);
+        });
+
+        const linksRow = this.exportCleanupCard.createDiv({ cls: 'rt-manuscript-toggle-row' });
+        linksRow.createSpan({ cls: 'rt-manuscript-toggle-label', text: 'Strip links (keep label text)' });
+        this.cleanupLinksToggle = new ToggleComponent(linksRow).onChange((value) => {
+            this.setActiveCleanupOption('stripLinks', value);
+        });
+
+        const calloutsRow = this.exportCleanupCard.createDiv({ cls: 'rt-manuscript-toggle-row' });
+        calloutsRow.createSpan({ cls: 'rt-manuscript-toggle-label', text: 'Strip callouts' });
+        this.cleanupCalloutsToggle = new ToggleComponent(calloutsRow).onChange((value) => {
+            this.setActiveCleanupOption('stripCallouts', value);
+        });
+
+        const blockIdsRow = this.exportCleanupCard.createDiv({ cls: 'rt-manuscript-toggle-row' });
+        blockIdsRow.createSpan({ cls: 'rt-manuscript-toggle-label', text: 'Strip block IDs (^id)' });
+        this.cleanupBlockIdsToggle = new ToggleComponent(blockIdsRow).onChange((value) => {
+            this.setActiveCleanupOption('stripBlockIds', value);
+        });
+
+        this.exportCleanupCard.createDiv({
+            cls: 'rt-sub-card-note',
+            text: 'YAML frontmatter is always removed from manuscript exports.'
         });
 
         // H) PDF SCENE OPENERS
@@ -784,6 +827,38 @@ export class ManuscriptOptionsModal extends Modal {
         return 'serif';
     }
 
+    private getCleanupFormatForState(outputFormat: ExportFormat): 'markdown' | 'pdf' {
+        return outputFormat === 'pdf' ? 'pdf' : 'markdown';
+    }
+
+    private getActiveCleanupOptions(): ManuscriptExportCleanupOptions {
+        return this.getCleanupFormatForState(this.outputFormat) === 'pdf'
+            ? { ...this.pdfCleanupOptions }
+            : { ...this.markdownCleanupOptions };
+    }
+
+    private getNormalizedCleanupOptions(
+        options: Partial<ManuscriptExportCleanupOptions> | undefined,
+        outputFormat: ExportFormat
+    ): ManuscriptExportCleanupOptions {
+        return normalizeManuscriptCleanupOptions(options, this.getCleanupFormatForState(outputFormat));
+    }
+
+    private setActiveCleanupOption(key: keyof ManuscriptExportCleanupOptions, value: boolean): void {
+        const target = this.getCleanupFormatForState(this.outputFormat) === 'pdf'
+            ? this.pdfCleanupOptions
+            : this.markdownCleanupOptions;
+        target[key] = value;
+    }
+
+    private updateCleanupToggleState(): void {
+        const options = this.getActiveCleanupOptions();
+        this.cleanupCommentsToggle?.setValue(options.stripComments);
+        this.cleanupLinksToggle?.setValue(options.stripLinks);
+        this.cleanupCalloutsToggle?.setValue(options.stripCallouts);
+        this.cleanupBlockIdsToggle?.setValue(options.stripBlockIds);
+    }
+
     private createTemplateSnapshot(name: string, existingId?: string): ManuscriptExportTemplate {
         const mode = this.getUiMode();
         return {
@@ -802,6 +877,9 @@ export class ManuscriptOptionsModal extends Modal {
             includeSynopsis: mode.isOutline ? this.includeSynopsisUserChoice : false,
             includeMatter: mode.showIncludeMatter ? this.includeMatterUserChoice : false,
             saveMarkdownArtifact: mode.showSavePrecompile ? this.saveMarkdownArtifact : false,
+            exportCleanup: mode.isManuscript
+                ? this.getActiveCleanupOptions()
+                : getDefaultManuscriptCleanupOptions('markdown'),
             splitMode: mode.showSplit ? this.splitMode : 'single',
             splitParts: mode.showSplit && this.splitMode === 'parts' ? this.splitParts : 1,
             selectedLayoutId: mode.isPdfManuscript ? this.selectedLayoutId : undefined
@@ -876,6 +954,12 @@ export class ManuscriptOptionsModal extends Modal {
         this.includeMatter = this.includeMatterUserChoice;
         this.hasTouchedMatterToggle = true;
         this.saveMarkdownArtifact = !!template.saveMarkdownArtifact;
+        const templateCleanup = this.getNormalizedCleanupOptions(template.exportCleanup, template.outputFormat);
+        if (this.getCleanupFormatForState(template.outputFormat) === 'pdf') {
+            this.pdfCleanupOptions = templateCleanup;
+        } else {
+            this.markdownCleanupOptions = templateCleanup;
+        }
         this.splitMode = template.splitMode === 'parts' ? 'parts' : 'single';
         this.splitParts = this.clampSplitParts(template.splitParts ?? this.splitParts);
         this.selectedLayoutId = template.selectedLayoutId;
@@ -1083,6 +1167,7 @@ export class ManuscriptOptionsModal extends Modal {
         this.publishingCard?.toggleClass('rt-hidden', !mode.showPublishing);
         this.wordCountCard?.toggleClass('rt-hidden', !mode.showWordCount);
         this.includeMatterCard?.toggleClass('rt-hidden', !mode.showIncludeMatter);
+        this.exportCleanupCard?.toggleClass('rt-hidden', !mode.showExportCleanup);
         this.synopsisRow?.toggleClass('rt-hidden', !mode.showOutlinePreset);
         this.scopeCard?.toggleClass('rt-hidden', !showSceneSelectionCards || !mode.showScope);
         this.orderingCard?.toggleClass('rt-hidden', !showSceneSelectionCards || !mode.showOrdering);
@@ -1135,6 +1220,7 @@ export class ManuscriptOptionsModal extends Modal {
         this.syncOutputFormatPills();
         this.updateLayoutPicker();
         this.updateTemplateWarning();
+        this.updateCleanupToggleState();
         this.updateSceneHeadingPills();
         this.updateOrderPillsState();
         this.updateSplitUi();
@@ -1938,6 +2024,7 @@ Sarah stood at the window, watching the world wake up.`;
                 includeSynopsis,
                 includeMatter,
                 saveMarkdownArtifact: mode.showSavePrecompile ? this.saveMarkdownArtifact : false,
+                exportCleanup: mode.isManuscript ? this.getActiveCleanupOptions() : undefined,
                 selectedLayoutId: mode.isPdfManuscript ? this.selectedLayoutId : undefined,
                 splitMode: mode.showSplit ? this.splitMode : 'single',
                 splitParts: mode.showSplit && this.isSplitEnabled() ? this.splitParts : 1,

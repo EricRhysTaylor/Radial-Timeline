@@ -32,6 +32,13 @@ export interface BookDesignerTemplate {
 
 export type ManuscriptSceneHeadingMode = 'scene-number' | 'scene-number-title' | 'title-only';
 
+export interface ManuscriptExportCleanupOptions {
+    stripComments: boolean;
+    stripLinks: boolean;
+    stripCallouts: boolean;
+    stripBlockIds: boolean;
+}
+
 export interface ManuscriptExportTemplate {
     id: string;
     name: string;
@@ -48,6 +55,7 @@ export interface ManuscriptExportTemplate {
     includeSynopsis: boolean;
     includeMatter: boolean;
     saveMarkdownArtifact: boolean;
+    exportCleanup: ManuscriptExportCleanupOptions;
     splitMode: 'single' | 'parts';
     splitParts: number;
     selectedLayoutId?: string;

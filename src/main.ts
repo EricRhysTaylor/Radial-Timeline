@@ -21,7 +21,7 @@ import { RadialTimelineSettingsTab } from './settings/SettingsTab';
 import { parseWhenField } from './utils/date';
 import { normalizeBooleanValue } from './utils/sceneHelpers';
 import { cleanupTooltipAnchors } from './utils/tooltip';
-import type { RadialTimelineSettings, TimelineItem, BookMeta, EmbeddedReleaseNotesBundle, EmbeddedReleaseNotesEntry, BookProfile } from './types';
+import type { RadialTimelineSettings, TimelineItem, BookMeta, EmbeddedReleaseNotesBundle, EmbeddedReleaseNotesEntry, BookProfile, ManuscriptExportCleanupOptions } from './types';
 import { ReleaseNotesService } from './services/ReleaseNotesService';
 import { CommandRegistrar } from './services/CommandRegistrar';
 import { HoverHighlighter } from './services/HoverHighlighter';
@@ -53,6 +53,7 @@ import { initVersionCheckService, getVersionCheckService } from './services/Vers
 import { registerRuntimeCommands } from './RuntimeCommands';
 import { AuthorProgressService } from './services/AuthorProgressService';
 import { ensureBundledPandocLayoutsRegistered } from './utils/pandocBundledLayouts';
+import { normalizeManuscriptCleanupOptions } from './utils/manuscriptSanitize';
 
 
 // Declare the variable that will be injected by the build process
@@ -798,12 +799,26 @@ export default class RadialTimelinePlugin extends Plugin {
             'bundled-novel-signature-literary-rt': 'bundled-novel',
         };
         let pandocLayoutReferenceMigrated = false;
+        let manuscriptExportCleanupMigrated = false;
         if (Array.isArray(this.settings.manuscriptExportTemplates)) {
             for (const template of this.settings.manuscriptExportTemplates) {
                 const selected = template.selectedLayoutId;
                 if (selected && legacyLayoutIdMap[selected]) {
                     template.selectedLayoutId = legacyLayoutIdMap[selected];
                     pandocLayoutReferenceMigrated = true;
+                }
+                const cleanupFormat = template.outputFormat === 'pdf' ? 'pdf' : 'markdown';
+                const existingCleanup = (template as { exportCleanup?: Partial<ManuscriptExportCleanupOptions> }).exportCleanup;
+                const normalizedCleanup = normalizeManuscriptCleanupOptions(existingCleanup, cleanupFormat);
+                if (
+                    !existingCleanup
+                    || existingCleanup.stripComments !== normalizedCleanup.stripComments
+                    || existingCleanup.stripLinks !== normalizedCleanup.stripLinks
+                    || existingCleanup.stripCallouts !== normalizedCleanup.stripCallouts
+                    || existingCleanup.stripBlockIds !== normalizedCleanup.stripBlockIds
+                ) {
+                    template.exportCleanup = normalizedCleanup;
+                    manuscriptExportCleanupMigrated = true;
                 }
             }
         }
@@ -855,7 +870,7 @@ export default class RadialTimelinePlugin extends Plugin {
             });
         }
 
-        if (before !== after || aiSettingsMigrated || templatesMigrated || actionNotesTargetMigrated || exportFolderMigrated || beatConfigMigrated || backdropTemplateMigrated || pandocLayoutsMigrated || bundledPandocLayoutsRegistered || matterWorkflowMigrated || pandocLayoutReferenceMigrated || booksMigrated || schemaOntologyMigrated || beatIdMigrated) {
+        if (before !== after || aiSettingsMigrated || templatesMigrated || actionNotesTargetMigrated || exportFolderMigrated || beatConfigMigrated || backdropTemplateMigrated || pandocLayoutsMigrated || bundledPandocLayoutsRegistered || matterWorkflowMigrated || pandocLayoutReferenceMigrated || manuscriptExportCleanupMigrated || booksMigrated || schemaOntologyMigrated || beatIdMigrated) {
             await this.saveSettings();
         }
     }

@@ -71,37 +71,11 @@ function warnMatterLikeWithoutClass(scene: TimelineItem): void {
 }
 
 /**
- * Strip YAML frontmatter from file content
- */
-function stripYamlFrontmatter(content: string): string {
-  // Remove YAML frontmatter between --- markers
-  const yamlPattern = /^---\s*\n([\s\S]*?)\n---\s*\n/;
-  return content.replace(yamlPattern, '');
-}
-
-/**
- * Strip Obsidian comments (%% ... %%)
- */
-function stripObsidianComments(content: string): string {
-  // Remove single-line comments
-  content = content.replace(/%%.*?%%/g, '');
-  // Remove multi-line comments
-  content = content.replace(/%%[\s\S]*?%%/g, '');
-  return content;
-}
-
-function stripHtmlComments(content: string): string {
-  return content.replace(/<!--[\s\S]*?-->/g, '');
-}
-
-/**
- * Extract clean body text from file content
+ * Extract note body with minimal normalization only.
+ * Cleanup is handled centrally by manuscriptSanitize.ts at export time.
  */
 export function extractBodyText(content: string): string {
-  let text = stripYamlFrontmatter(content);
-  text = stripObsidianComments(text);
-  text = stripHtmlComments(text);
-  return text.trim();
+  return content.replace(/\r\n?/g, '\n').trim();
 }
 
 // ════════════════════════════════════════════════════════════════════════════

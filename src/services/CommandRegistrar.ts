@@ -5,7 +5,7 @@
 
 import { App, Notice, TFile } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
-import type { BookMeta, MatterMeta } from '../types';
+import type { BookMeta, ManuscriptExportCleanupOptions, MatterMeta } from '../types';
 import { assembleManuscript, getSceneFilesByOrder, ManuscriptSceneSelection, updateSceneWordCounts } from '../utils/manuscript';
 import { openGossamerScoreEntry, runGossamerAiAnalysis } from '../GossamerCommands';
 import { ManageSubplotsModal } from '../modals/ManageSubplotsModal';
@@ -28,6 +28,7 @@ import { ensureSceneTemplateFrontmatter } from '../utils/sceneIds';
 import { chunkScenesIntoParts } from '../utils/splitOutput';
 import { parseMatterMetaFromFrontmatter } from '../utils/matterMeta';
 import { ensureBundledLayoutInstalledForExport } from '../utils/pandocBundledLayouts';
+import { getDefaultManuscriptCleanupOptions, normalizeManuscriptCleanupOptions, sanitizeCompiledManuscript } from '../utils/manuscriptSanitize';
 
 import { getRuntimeSettings } from '../utils/runtimeEstimator';
 
@@ -222,6 +223,26 @@ export class CommandRegistrar {
         });
     }
 
+    private resolveCleanupOptions(result: ManuscriptModalResult): ManuscriptExportCleanupOptions {
+        const format = result.outputFormat === 'pdf' ? 'pdf' : 'markdown';
+        const defaults = getDefaultManuscriptCleanupOptions(format);
+        return normalizeManuscriptCleanupOptions(result.exportCleanup ?? defaults, format);
+    }
+
+    private buildSanitizedArtifactNames(baseMarkdownName: string): { compiledName: string; sanitizedName: string } {
+        if (baseMarkdownName.toLowerCase().endsWith('.md')) {
+            const stem = baseMarkdownName.slice(0, -3);
+            return {
+                compiledName: `${stem}__compiled__.md`,
+                sanitizedName: `${stem}__sanitized__.md`
+            };
+        }
+        return {
+            compiledName: `${baseMarkdownName}__compiled__.md`,
+            sanitizedName: `${baseMarkdownName}__sanitized__.md`
+        };
+    }
+
     private async handleManuscriptExport(result: ManuscriptModalResult): Promise<ManuscriptExportOutcome> {
         if (this.requiresPro(result) && !isProfessionalActive(this.plugin)) {
             new Notice('This export configuration requires a Professional license.');
@@ -373,6 +394,7 @@ export class CommandRegistrar {
             const outputFolder = isSplitRun
                 ? await this.createSplitOutputFolder(baseOutputFolder, baseTitle)
                 : baseOutputFolder;
+            const cleanupOptions = this.resolveCleanupOptions(result);
 
             if (result.outputFormat === 'markdown') {
                 for (const range of partRanges) {
@@ -396,6 +418,8 @@ export class CommandRegistrar {
                         await updateSceneWordCounts(this.app, partSelection.files, assembled.scenes);
                     }
 
+                    const sanitizedText = sanitizeCompiledManuscript(assembled.text, cleanupOptions);
+
                     const filename = isSplitRun
                         ? `${baseTitle} - Part ${range.part}.${extension}`
                         : buildExportFilename({
@@ -406,7 +430,7 @@ export class CommandRegistrar {
                             extension
                         });
                     const vaultPath = `${outputFolder}/${filename}`;
-                    await this.writeVaultTextFile(vaultPath, assembled.text);
+                    await this.writeVaultTextFile(vaultPath, sanitizedText);
                     savedPaths.push(vaultPath);
                 }
 
@@ -491,8 +515,11 @@ export class CommandRegistrar {
                     await updateSceneWordCounts(this.app, partSelection.files, assembled.scenes);
                 }
 
+                const compiledMarkdown = assembled.text;
+                const sanitizedMarkdown = sanitizeCompiledManuscript(compiledMarkdown, cleanupOptions);
+
                 if (shouldSaveMarkdown) {
-                    const precursorName = isSplitRun
+                    const basePrecursorName = isSplitRun
                         ? `${baseTitle} - Part ${range.part}.md`
                         : buildPrecursorFilename(
                             ctx.fileStem,
@@ -500,9 +527,12 @@ export class CommandRegistrar {
                             effectiveOrder,
                             effectiveSubplot
                         );
-                    const precursorPath = `${outputFolder}/${precursorName}`;
-                    await this.writeVaultTextFile(precursorPath, assembled.text);
-                    savedPaths.push(precursorPath);
+                    const artifactNames = this.buildSanitizedArtifactNames(basePrecursorName);
+                    const compiledPath = `${outputFolder}/${artifactNames.compiledName}`;
+                    const sanitizedPath = `${outputFolder}/${artifactNames.sanitizedName}`;
+                    await this.writeVaultTextFile(compiledPath, compiledMarkdown);
+                    await this.writeVaultTextFile(sanitizedPath, sanitizedMarkdown);
+                    savedPaths.push(compiledPath, sanitizedPath);
                 }
 
                 const renderedFilename = isSplitRun
@@ -518,7 +548,7 @@ export class CommandRegistrar {
                 const renderedAbsolutePath = `${absoluteOutputFolder}/${renderedFilename}`;
                 const renderedVaultPath = `${outputFolder}/${renderedFilename}`;
 
-                await runPandocOnContent(assembled.text, renderedAbsolutePath, {
+                await runPandocOnContent(sanitizedMarkdown, renderedAbsolutePath, {
                     targetFormat: 'pdf',
                     templatePath,
                     workingDir: absoluteOutputFolder,
