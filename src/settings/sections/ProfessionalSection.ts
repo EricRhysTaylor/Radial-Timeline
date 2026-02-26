@@ -2225,7 +2225,6 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
     const bookMetaPreviewPanel = pandocPanel.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
     bookMetaPreviewPanel.style.order = '10';
     const previewFrame = bookMetaPreviewPanel.createDiv({ cls: `${ERT_CLASSES.PREVIEW_FRAME} ert-previewFrame--center ert-previewFrame--flush` });
-    previewFrame.createDiv({ cls: 'ert-planetary-preview-heading ert-previewFrame__title', text: 'BookMeta preview' });
     const previewBody = previewFrame.createDiv({ cls: 'ert-bookmeta-preview-body' });
     const renderBookMetaPreview = () => {
         previewBody.empty();
@@ -2265,27 +2264,55 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
             warningRow.createSpan({ text: activeBookMetaStatus.warning });
         }
 
-        const previewGrid = previewBody.createDiv({ cls: 'ert-bookmeta-preview-grid' });
-        const addPreviewField = (label: string, value?: string | number | null) => {
-            const item = previewGrid.createDiv({ cls: 'ert-bookmeta-preview-item' });
-            item.createDiv({ cls: 'ert-bookmeta-preview-label', text: label });
-            const normalized = value === undefined || value === null || String(value).trim().length === 0
+        const normalizeValue = (value?: string | number | null): string =>
+            value === undefined || value === null || String(value).trim().length === 0
                 ? 'Not set'
                 : String(value);
-            const valueEl = item.createDiv({ cls: 'ert-bookmeta-preview-value', text: normalized });
-            valueEl.toggleClass('ert-bookmeta-preview-value--empty', normalized === 'Not set');
-        };
 
         const meta = activeBookMetaStatus.bookMeta;
-        addPreviewField('Title', meta.title);
-        addPreviewField('Author', meta.author);
-        addPreviewField('Copyright holder', meta.rights?.copyright_holder);
-        addPreviewField('Rights year', meta.rights?.year);
-        addPreviewField('ISBN paperback', meta.identifiers?.isbn_paperback);
-        addPreviewField('Publisher', meta.publisher?.name);
-        addPreviewField('Source note', meta.sourcePath || activeBookMetaStatus.path);
-        if (activeBookMetaStatus.sourceFolder) {
-            addPreviewField('Active book folder', activeBookMetaStatus.sourceFolder);
+        const titleCard = previewBody.createDiv({ cls: 'ert-bookmeta-title-card' });
+        titleCard.createDiv({ cls: 'ert-planetary-preview-heading', text: 'Preview' });
+        titleCard.createDiv({ cls: 'ert-planetary-preview-body ert-bookmeta-title-main', text: 'BookMeta' });
+
+        const primary = previewBody.createDiv({ cls: 'ert-bookmeta-primary' });
+        const addPrimaryField = (label: string, value?: string | number | null) => {
+            const field = primary.createDiv({ cls: 'ert-bookmeta-primary-field' });
+            const normalized = normalizeValue(value);
+            const valueEl = field.createDiv({ cls: 'ert-bookmeta-primary-value', text: normalized });
+            valueEl.toggleClass('ert-bookmeta-preview-value--empty', normalized === 'Not set');
+            field.createDiv({ cls: 'ert-bookmeta-primary-label', text: label });
+        };
+        addPrimaryField('Title', meta.title);
+        addPrimaryField('Author', meta.author);
+
+        const details = previewBody.createDiv({ cls: 'ert-bookmeta-detail-grid' });
+        const leftCol = details.createDiv({ cls: 'ert-bookmeta-detail-col ert-bookmeta-detail-col--left' });
+        const rightCol = details.createDiv({ cls: 'ert-bookmeta-detail-col ert-bookmeta-detail-col--right' });
+        const addDetailField = (target: HTMLElement, label: string, value?: string | number | null) => {
+            const field = target.createDiv({ cls: 'ert-bookmeta-detail-field' });
+            const normalized = normalizeValue(value);
+            const valueEl = field.createDiv({ cls: 'ert-bookmeta-detail-value', text: normalized });
+            valueEl.toggleClass('ert-bookmeta-preview-value--empty', normalized === 'Not set');
+            field.createDiv({ cls: 'ert-bookmeta-detail-label', text: label });
+        };
+        addDetailField(leftCol, 'Copyright holder', meta.rights?.copyright_holder);
+        addDetailField(leftCol, 'ISBN', meta.identifiers?.isbn_paperback);
+        addDetailField(rightCol, 'Rights year', meta.rights?.year);
+        addDetailField(rightCol, 'Publisher', meta.publisher?.name);
+
+        const sourcePath = (meta.sourcePath || activeBookMetaStatus.path || '').trim();
+        if (sourcePath.length > 0) {
+            const sourceRow = previewBody.createDiv({ cls: 'ert-bookmeta-source-row' });
+            sourceRow.createSpan({ cls: 'ert-bookmeta-source-label', text: 'Source' });
+            const sourceLink = sourceRow.createEl('a', {
+                cls: 'ert-bookmeta-source-link',
+                text: sourcePath,
+                attr: { href: '#', title: sourcePath }
+            });
+            sourceLink.addEventListener('click', (evt) => {
+                evt.preventDefault();
+                void plugin.app.workspace.openLinkText(sourcePath, '', false);
+            });
         }
     };
     renderBookMetaPreview();
