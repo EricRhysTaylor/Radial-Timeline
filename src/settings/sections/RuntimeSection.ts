@@ -106,7 +106,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
     }
 
     // Header row with Pro badge and description
-    const runtimeDescOn = 'Activate film and book runtime estimates to the scene hover metadata, Chronologue Mode, and the Command Palette Runtime Estimator.';
+    const runtimeDescOn = 'Activate runtime estimate sub-mode in Chronologue Mode, timeline hover text, and command palette runtime estimator.';
     const panelHeader = new Setting(proContainer)
         .setName('Runtime estimation')
         .setHeading()

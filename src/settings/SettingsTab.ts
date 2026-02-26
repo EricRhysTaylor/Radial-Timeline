@@ -676,17 +676,19 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
     private renderProHero(containerEl: HTMLElement): void {
         this.renderSettingsHero(containerEl, {
-            badgeLabel: 'Pro · Signature',
+            badgeLabel: 'PRO · SIGNATURE',
             badgeIcon: 'signature',
             badgeVariant: ERT_CLASSES.BADGE_PILL_PRO,
             wikiHref: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#professional',
-            title: 'Signature tools for professional workflows.',
-            subtitle: 'Premium exports, runtime intelligence, and Pandoc templates. Make your publishing pipeline radial and your story ever revolving.',
-            kicker: 'Included in Early Access:',
+            title: 'Pro extends the core experience.',
+            subtitle: 'More control, more capacity, and deeper narrative tools. Take your writing to the next level with the features that speed workflow and elevate productivity.',
+            kicker: 'Pro unlocks:',
             features: [
-                { icon: 'film', text: 'Runtime Estimation — Screenplay and audiobook duration analysis' },
-                { icon: 'file-output', text: 'Pro Exports — Screenplay, podcast, and novel manuscript formats via Pandoc' },
-                { icon: 'radio', text: 'Teaser Campaign — Progressive reveal for Author Progress Reports (APR)' },
+                { icon: 'file-output', text: 'Advanced exports — PDF, Outline, and structured data formats' },
+                { icon: 'layout-grid', text: 'Unlimited beat systems and Pro Sets' },
+                { icon: 'waves', text: 'Extended Inquiry prompts' },
+                { icon: 'timer', text: 'Runtime estimation and session planning' },
+                { icon: 'radio', text: 'APR campaign management and teaser controls' },
             ]
         });
     }
@@ -701,7 +703,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             subtitle: 'Evaluate how scenes, books, and entire sagas work together. Inquiry uses your manuscript(s), outlines, characters, and worldbuilding to surface structural weak points, missing or underdeveloped material, and momentum issues—all in a single view with clear visual signals and quantifiers.',
             kicker: 'Inquiry Focus Areas:',
             features: [
-                { icon: 'search', text: 'Source Scans — Choose scan locations, class scopes, and source types to watch' },
+                { icon: 'search', text: 'Source Scans — Choose scan locations, class scopes, and source types to include.' },
                 { icon: 'list', text: 'Prompt Slots — Draft reusable inquiry questions' },
                 { icon: 'layout-grid', text: 'Corpus Tiers — Calibrate source quality thresholds from sketchy → substantive depth' },
             ]

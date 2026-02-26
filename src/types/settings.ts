@@ -499,7 +499,7 @@ export interface RadialTimelineSettings {
 
     // Professional License
     professionalLicenseKey?: string;
-    devProActive?: boolean;  // Dev toggle to test Pro features as active/inactive (defaults to true during beta)
+    devProActive?: boolean;  // Core-vs-Pro simulation toggle used during Early Access only
 
     // Runtime Estimation Settings (Professional feature)
     runtimeRateProfiles?: RuntimeRateProfile[];

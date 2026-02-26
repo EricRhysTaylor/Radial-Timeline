@@ -23,6 +23,11 @@ import { isPathInFolderScope } from '../../utils/pathScope';
 import { normalizeMatterClassValue } from '../../utils/matterMeta';
 import { extractBodyText, getSceneFilesByOrder } from '../../utils/manuscript';
 import {
+    getProEntitlementState,
+    isEarlyAccessWindow
+} from '../proEntitlement';
+export { isProfessionalLicenseValid } from '../proEntitlement';
+import {
     ensureBundledPandocLayoutsRegistered,
     getBundledPandocLayouts,
     installBundledPandocLayouts,
@@ -1509,10 +1514,8 @@ async function generateSampleTemplates(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// OPEN BETA CONFIGURATION
-// Set to false when transitioning to paid licensing
+// PROFESSIONAL SECTION FLAGS
 // ═══════════════════════════════════════════════════════════════════════════════
-const OPEN_BETA_ACTIVE = true;
 const SHOW_SCREENPLAY_LAYOUT_CATEGORY = false;
 const SHOW_PODCAST_LAYOUT_CATEGORY = false;
 
@@ -1525,42 +1528,23 @@ interface SectionParams {
 }
 
 /**
- * Check if a professional license key is valid
- */
-export function isProfessionalLicenseValid(key: string | undefined): boolean {
-    if (!key || key.trim().length === 0) {
-        return false;
-    }
-    // TODO(#SAN-1): Connect to license validation API when beta ends.
-    return key.trim().length >= 16;
-}
-
-/**
  * Check if the professional tier is active
- * During Open Beta, Pro features are enabled for everyone (unless dev toggle is off)
  */
 export function isProfessionalActive(plugin: RadialTimelinePlugin): boolean {
-    // Check dev toggle for testing (defaults to true if undefined)
-    if (plugin.settings.devProActive === false) {
-        return false;
-    }
-
-    // During Open Beta, everyone gets Pro access
-    if (OPEN_BETA_ACTIVE) {
-        return true;
-    }
-    return isProfessionalLicenseValid(plugin.settings.professionalLicenseKey);
+    const entitlement = getProEntitlementState(plugin);
+    return entitlement === 'beta_active' || entitlement === 'licensed_active';
 }
 
 /**
- * Check if we're in Open Beta mode
+ * Check if the early-access window is still active
  */
 export function isOpenBeta(): boolean {
-    return OPEN_BETA_ACTIVE;
+    return isEarlyAccessWindow();
 }
 
 export function renderProfessionalSection({ plugin, containerEl, renderHero, onProToggle }: SectionParams): HTMLElement {
-    const hasValidKey = isProfessionalLicenseValid(plugin.settings.professionalLicenseKey);
+    const needsKey = getProEntitlementState(plugin) === 'needs_key';
+    const earlyAccessActive = isEarlyAccessWindow();
     const isActive = isProfessionalActive(plugin);
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -1573,11 +1557,6 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
     // ─────────────────────────────────────────────────────────────────────────
     // Render external hero hook (if any)
     renderHero?.(section);
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // HERO / HEADER (Legacy Layout Restored)
-    // ─────────────────────────────────────────────────────────────────────────
-    const hero = section.createDiv({ cls: `${ERT_CLASSES.CARD} ${ERT_CLASSES.CARD_HERO} ${ERT_CLASSES.STACK}` });
 
     const rerender = () => {
         if (onProToggle) {
@@ -1592,41 +1571,30 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         void plugin.saveSettings();
     }
 
-    hero.createEl('h2', { cls: 'ert-hero-title', text: 'PRO · SIGNATURE' });
-    hero.createDiv({ cls: 'ert-pro-hero-tagline', text: 'Pro extends the core experience.' });
-    hero.createDiv({
-        cls: ERT_CLASSES.SECTION_DESC,
-        text: 'More control, more capacity, and deeper narrative tools.'
-    });
-    hero.createDiv({ cls: 'ert-pro-hero-kicker', text: 'Pro unlocks:' });
-    const proUnlocks = hero.createEl('ul', { cls: 'ert-pro-unlock-list' });
-    [
-        'Advanced exports — PDF, Outline, and structured data formats',
-        'Unlimited beat systems and Pro Sets',
-        'Extended Inquiry prompts',
-        'Runtime estimation and session planning',
-        'APR campaign management and teaser controls'
-    ].forEach(item => {
-        proUnlocks.createEl('li', { text: item });
-    });
+    const proStatusPanel = section.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK_TIGHT}` });
+    if (earlyAccessActive) {
+        const statusRow = proStatusPanel.createDiv({ cls: 'ert-pro-status-inline' });
+        statusRow.createSpan({ cls: 'ert-pro-status-label', text: 'Pro (Early Access)' });
 
-    const proStatusSetting = new Setting(hero)
-        .setName(OPEN_BETA_ACTIVE ? 'Pro (Early Access)' : 'Pro Subscription');
-    proStatusSetting.settingEl.addClass('ert-pro-status-row');
-
-    if (OPEN_BETA_ACTIVE) {
-        proStatusSetting.addToggle(toggle => {
-            toggle
-                .setValue(plugin.settings.devProActive !== false)
-                .onChange(async (value) => {
-                    plugin.settings.devProActive = value;
-                    await plugin.saveSettings();
-                    rerender();
-                });
+        const toggleContainer = statusRow.createDiv({ cls: `${ERT_CLASSES.SECTION_ACTIONS} ${ERT_CLASSES.CHIP}` });
+        toggleContainer.createSpan({
+            cls: `ert-toggle-label ${(plugin.settings.devProActive !== false) ? ERT_CLASSES.IS_ACTIVE : ''}`,
+            text: (plugin.settings.devProActive !== false) ? 'ACTIVE' : 'INACTIVE'
         });
-    } else {
-        proStatusSetting
-            .setDesc('Enter your Pro license key to unlock advanced features.')
+        const checkbox = toggleContainer.createEl('input', {
+            type: 'checkbox',
+            cls: 'ert-toggle-input'
+        });
+        checkbox.checked = plugin.settings.devProActive !== false;
+        plugin.registerDomEvent(checkbox, 'change', async () => {
+            plugin.settings.devProActive = checkbox.checked;
+            await plugin.saveSettings();
+            rerender();
+        });
+    } else if (needsKey) {
+        const proStatusSetting = new Setting(proStatusPanel)
+            .setName('Pro Subscription')
+            .setDesc('Pro subscription required')
             .addText(text => {
                 text.setPlaceholder('XXXX-XXXX-XXXX-XXXX');
                 text.setValue(plugin.settings.professionalLicenseKey || '');
@@ -1665,6 +1633,14 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
             cls: 'ert-link-accent',
             attr: { target: '_blank', rel: 'noopener' }
         });
+    } else {
+        const licensedRow = proStatusPanel.createDiv({ cls: 'ert-pro-status-inline' });
+        const licensedBadge = licensedRow.createSpan({
+            cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO}`
+        });
+        const licensedBadgeIcon = licensedBadge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON });
+        setIcon(licensedBadgeIcon, 'signature');
+        licensedBadge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'PRO SUBSCRIPTION ACTIVE' });
     }
 
     // ─────────────────────────────────────────────────────────────────────────
