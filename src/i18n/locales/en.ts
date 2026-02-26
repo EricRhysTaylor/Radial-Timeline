@@ -179,12 +179,8 @@ export interface TranslationKeys {
         proRequired: string;
         proEnabled: string;
         manuscriptPresetHeading: string;
-        presetScreenplay: string;
-        presetPodcast: string;
         presetNovel: string;
         presetNovelDesc: string;
-        presetScreenplayDesc: string;
-        presetPodcastDesc: string;
         outlineBeatSheetDesc: string;
         outlineEpisodeRundownDesc: string;
         outlineShootingScheduleDesc: string;
@@ -424,10 +420,10 @@ export const en: TranslationKeys = {
     },
     manuscriptModal: {
         badge: 'Export',
-        title: 'Manuscript export',
-        description: 'Choose export presets for manuscripts or outlines. Use markdown-linked TOC for Obsidian-friendly navigation, or plain TOC for AI processing. PDF layouts are configured in Settings → Pro → Export Layouts.',
+        title: 'Export',
+        description: 'Export your active book as a manuscript or a structural outline. Choose what to include and how it should be formatted.',
         heroLoading: 'Loading scenes...',
-        heroNarrativeMeta: 'Drag handles to select range',
+        heroNarrativeMeta: 'Adjust scene range below.',
         exportHeading: 'Export type',
         exportTypeManuscript: 'Manuscript',
         exportTypeOutline: 'Outline',
@@ -435,16 +431,12 @@ export const en: TranslationKeys = {
         proRequired: 'Pro export required for this option.',
         proEnabled: 'Pro export enabled (beta).',
         manuscriptPresetHeading: 'Manuscript preset',
-        presetScreenplay: 'Screenplay (Pandoc template)',
-        presetPodcast: 'Podcast script (Pandoc template)',
         presetNovel: 'Novel manuscript',
-        presetNovelDesc: 'Traditional book manuscript format for prose scenes. Best for editing, sharing, and publishing drafts.',
-        presetScreenplayDesc: 'Screenplay-style output for scenes already written with slug lines and dialogue blocks. PDF rendering uses a Pandoc layout.',
-        presetPodcastDesc: 'Podcast script output with segment and speaker cues. PDF rendering uses a Pandoc layout.',
-        outlineBeatSheetDesc: 'Save-the-Cat style beat list from scene metadata. Best for structure planning.',
-        outlineEpisodeRundownDesc: 'Episode-style scene rundown with timing details. Best for production planning.',
-        outlineShootingScheduleDesc: 'Production table with scene, location, timing, and subplot columns. Best for shoot scheduling.',
-        outlineIndexCardsDesc: 'Structured scene data for CSV or JSON workflows. Best for external tools and automation.',
+        presetNovelDesc: 'A formatted document of your scenes in reading order.',
+        outlineBeatSheetDesc: 'Save-the-Cat style beat list from scene metadata.',
+        outlineEpisodeRundownDesc: 'Ordered scene rundown with timing-oriented structure.',
+        outlineShootingScheduleDesc: 'Production-oriented scene table with location and schedule context.',
+        outlineIndexCardsDesc: 'Structured scene data for external tools and automation.',
         formatMarkdown: 'Markdown',
         formatPdf: 'PDF',
         formatCsv: 'CSV',
@@ -459,13 +451,13 @@ export const en: TranslationKeys = {
         tocMarkdown: 'Markdown links (default)',
         tocPlain: 'Plain text',
         tocNone: 'No TOC',
-        tocNote: 'Exactly one TOC format will be used. Markdown adds clickable scene anchors.',
+        tocNote: 'Choose a navigation style for the scene list.',
         orderHeading: 'Scene ordering',
         orderNarrative: 'Narrative',
         orderReverseNarrative: 'Reverse',
         orderChronological: 'Chronological',
         orderReverseChronological: 'Reverse chrono',
-        orderNote: 'Chronological follows When dates. Reverse options invert the ordering.',
+        orderNote: 'Choose how scenes are ordered in the export.',
         rangeHeading: 'Scene range',
         rangeFirst: 'First scene',
         rangeLast: 'Last scene',
@@ -479,7 +471,7 @@ export const en: TranslationKeys = {
         actionCreate: 'Manuscript generate',
         actionCancel: 'Cancel',
         emptyNotice: 'No scenes available to assemble.',
-        templateNotConfigured: '⚠️ Template not configured. PDF will use Pandoc defaults (may not match screenplay/podcast format).',
+        templateNotConfigured: '⚠️ Template not configured. PDF will use Pandoc defaults.',
         templateNotFound: '⚠️ Template file not found: {{path}}. Export may fail or use defaults.',
         templateFound: '✅ Template configured: {{path}}',
         configureInSettings: 'Configure in Settings → Pro',
@@ -489,7 +481,7 @@ export const en: TranslationKeys = {
         wordCountToggle: 'Update Words in scene YAML',
         wordCountNote: 'Updates the Words field in each scene\'s frontmatter with accurate counts (excludes YAML and comments).',
         includeSynopsis: 'Include scene synopsis',
-        includeSynopsisNote: 'Adds the Synopsis field from each scene\'s frontmatter to the outline.',
+        includeSynopsisNote: 'Adds the Synopsis field from each scene.',
     },
     planetary: {
         heading: 'Planetary calendar system',

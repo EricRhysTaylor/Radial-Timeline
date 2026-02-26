@@ -7023,12 +7023,51 @@
 .ert-ui.ert-scope--settings .ert-layout-rows {
   display: flex;
   flex-direction: column;
+  gap: 0;
+}
+
+.ert-ui.ert-scope--settings .ert-layout-category {
+  display: flex;
+  flex-direction: column;
   gap: var(--ert-gap-xs);
+}
+
+.ert-ui.ert-scope--settings .ert-layout-category--spaced {
+  margin-top: var(--ert-gap-md);
+}
+
+.ert-ui.ert-scope--settings .ert-layout-category-header {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ert-gap-xs);
+  min-height: 20px;
+}
+
+.ert-ui.ert-scope--settings .ert-layout-category-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  color: var(--text-muted);
+}
+
+.ert-ui.ert-scope--settings .ert-layout-category-title {
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--text-normal);
+}
+
+.ert-ui.ert-scope--settings .ert-layout-category-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .ert-ui.ert-scope--settings .ert-layout-row .setting-item.ert-layout-row-setting {
   --ert-row-pad: var(--ert-pad-sm);
-  row-gap: var(--ert-gap-xs);
+  row-gap: 4px;
 }
 
 .ert-ui.ert-scope--settings .ert-layout-row-name {
@@ -7064,7 +7103,7 @@
 .ert-ui.ert-scope--settings .ert-layout-row-desc {
   line-height: 1.35;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -7200,29 +7239,29 @@
 .ert-ui.ert-scope--settings .ert-matter-preview-body {
   display: flex;
   flex-direction: column;
-  gap: var(--ert-gap-sm);
-}
-
-.ert-ui.ert-scope--settings .ert-matter-preview-section {
-  display: flex;
-  flex-direction: column;
   gap: var(--ert-gap-xs);
 }
 
-.ert-ui.ert-scope--settings .ert-matter-preview-section-title {
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-muted);
-  font-weight: 600;
+.ert-ui.ert-scope--settings .ert-matter-preview-list {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
 }
 
 .ert-ui.ert-scope--settings .ert-matter-preview-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--ert-gap-sm);
+  gap: var(--ert-gap-xs);
   min-width: 0;
+  padding: 5px 8px;
+  border-bottom: none;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--background-secondary) 18%, transparent);
+}
+
+.ert-ui.ert-scope--settings .ert-matter-preview-row.is-alt {
+  background: color-mix(in srgb, var(--background-secondary) 26%, transparent);
 }
 
 .ert-ui.ert-scope--settings .ert-matter-preview-link {
@@ -7232,15 +7271,23 @@
   cursor: pointer;
   text-align: left;
   padding: 0;
-  font-size: 0.92rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  text-decoration-line: underline;
+  text-decoration-style: dashed;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  text-decoration-color: color-mix(in srgb, var(--text-muted) 65%, transparent);
 }
 
 .ert-ui.ert-scope--settings .ert-matter-preview-link:hover {
   color: var(--interactive-accent);
-  text-decoration: underline;
+  text-decoration-color: currentColor;
 }
 
 .ert-ui.ert-scope--settings .ert-matter-preview-badges {
@@ -7253,10 +7300,12 @@
 .ert-ui.ert-scope--settings .ert-matter-preview-badge {
   display: inline-flex;
   align-items: center;
-  padding: 1px 8px;
+  padding: 1px 7px;
   border-radius: 999px;
   border: 1px solid var(--background-modifier-border);
-  font-size: 0.72rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
   line-height: 1.2;
 }
 
@@ -7279,13 +7328,14 @@
 
 .ert-ui.ert-scope--settings .ert-matter-preview-divider {
   text-align: center;
-  font-size: 0.78rem;
+  font-size: 0.74rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--text-muted);
-  padding: 4px 0;
+  padding: 6px 0;
   border-top: 1px solid var(--background-modifier-border);
   border-bottom: 1px solid var(--background-modifier-border);
+  margin: 4px 0;
 }
 
 .ert-ui.ert-scope--settings .ert-matter-preview-empty-line {

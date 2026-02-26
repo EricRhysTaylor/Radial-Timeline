@@ -20,8 +20,7 @@ import type { BookMeta } from '../../types';
 import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { getActiveBookExportContext } from '../../utils/exportContext';
 import { isPathInFolderScope } from '../../utils/pathScope';
-import { normalizeMatterClassValue, parseMatterMetaFromFrontmatter } from '../../utils/matterMeta';
-import { getActiveBook } from '../../utils/books';
+import { normalizeMatterClassValue } from '../../utils/matterMeta';
 import { extractBodyText, getSceneFilesByOrder } from '../../utils/manuscript';
 import {
     ensureBundledPandocLayoutsRegistered,
@@ -544,13 +543,109 @@ interface ActiveBookMetaStatus {
     bookMeta?: BookMeta;
 }
 
-async function applyMatterWorkflowToActiveBook(
-    plugin: RadialTimelinePlugin,
-    workflow: MatterSampleLane
-): Promise<{ scanned: number; updated: number; sourceFolder: string }> {
+interface MatterRepairIssue {
+    file: TFile;
+    reasons: string[];
+    nextClass?: 'Frontmatter' | 'Backmatter';
+    nextRole?: 'other';
+    nextBodyMode?: 'auto';
+}
+
+interface MatterRepairPlan {
+    sourceFolder: string;
+    issues: MatterRepairIssue[];
+    repairableIssues: MatterRepairIssue[];
+    unresolvedIssues: MatterRepairIssue[];
+}
+
+const VALID_MATTER_ROLES = new Set([
+    'title-page',
+    'copyright',
+    'dedication',
+    'epigraph',
+    'acknowledgments',
+    'about-author',
+    'other'
+]);
+
+function normalizeFrontmatterLookupKey(key: string): string {
+    return key.toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+function getFrontmatterField(
+    source: Record<string, unknown>,
+    aliases: string[]
+): { key: string; value: unknown } | null {
+    const aliasSet = new Set(aliases.map(normalizeFrontmatterLookupKey));
+    for (const [key, value] of Object.entries(source)) {
+        if (aliasSet.has(normalizeFrontmatterLookupKey(key))) {
+            return { key, value };
+        }
+    }
+    return null;
+}
+
+function deleteFrontmatterAliases(frontmatter: Record<string, unknown>, aliases: string[]): void {
+    const aliasSet = new Set(aliases.map(normalizeFrontmatterLookupKey));
+    for (const key of Object.keys(frontmatter)) {
+        if (aliasSet.has(normalizeFrontmatterLookupKey(key))) {
+            delete frontmatter[key];
+        }
+    }
+}
+
+function normalizeMatterSideToken(value: unknown): 'front' | 'back' | null {
+    if (typeof value !== 'string') return null;
+    const normalized = value.trim().toLowerCase().replace(/[^a-z]/g, '');
+    if (normalized === 'front' || normalized === 'frontmatter') return 'front';
+    if (normalized === 'back' || normalized === 'backmatter') return 'back';
+    return null;
+}
+
+function resolveLegacyMatterSide(
+    normalizedFrontmatter: Record<string, unknown>,
+    legacyMatterValue: unknown
+): 'front' | 'back' | null {
+    const directSide = normalizeMatterSideToken(getFrontmatterField(normalizedFrontmatter, ['Side'])?.value);
+    if (directSide) return directSide;
+
+    const directClass = normalizeMatterSideToken(getFrontmatterField(normalizedFrontmatter, ['MatterClass'])?.value);
+    if (directClass) return directClass;
+
+    if (!legacyMatterValue || typeof legacyMatterValue !== 'object' || Array.isArray(legacyMatterValue)) {
+        return normalizeMatterSideToken(legacyMatterValue);
+    }
+
+    const legacy = legacyMatterValue as Record<string, unknown>;
+    return normalizeMatterSideToken(legacy.side)
+        || normalizeMatterSideToken(legacy.Side)
+        || normalizeMatterSideToken(legacy.class)
+        || normalizeMatterSideToken(legacy.Class);
+}
+
+function normalizeRoleForRepair(value: unknown): { invalid: boolean; nextRole?: 'other' } {
+    if (value === undefined || value === null) return { invalid: false };
+    if (typeof value !== 'string') return { invalid: true, nextRole: 'other' };
+    const normalized = value.trim().toLowerCase();
+    if (!normalized.length) return { invalid: true, nextRole: 'other' };
+    if (VALID_MATTER_ROLES.has(normalized)) return { invalid: false };
+    return { invalid: true, nextRole: 'other' };
+}
+
+function normalizeBodyModeForRepair(value: unknown): { invalid: boolean; nextBodyMode?: 'auto' } {
+    if (value === undefined || value === null) return { invalid: false };
+    if (typeof value !== 'string') return { invalid: true, nextBodyMode: 'auto' };
+    const normalized = value.trim().toLowerCase();
+    if (normalized === 'plain' || normalized === 'latex' || normalized === 'auto') {
+        return { invalid: false };
+    }
+    return { invalid: true, nextBodyMode: 'auto' };
+}
+
+function buildMatterRepairPlan(plugin: RadialTimelinePlugin): MatterRepairPlan {
     const sourceFolder = getActiveBookExportContext(plugin).sourceFolder.trim();
     if (!sourceFolder) {
-        throw new Error('Active book source folder is not set.');
+        return { sourceFolder: '', issues: [], repairableIssues: [], unresolvedIssues: [] };
     }
 
     const mappings = plugin.settings.enableCustomMetadataMapping
@@ -560,53 +655,117 @@ async function applyMatterWorkflowToActiveBook(
     const files = plugin.app.vault.getMarkdownFiles()
         .filter(file => isPathInFolderScope(file.path, sourceFolder));
 
-    let scanned = 0;
-    let updated = 0;
+    const issues: MatterRepairIssue[] = [];
 
     for (const file of files) {
         const cache = plugin.app.metadataCache.getFileCache(file);
         const rawFrontmatter = cache?.frontmatter as Record<string, unknown> | undefined;
         if (!rawFrontmatter) continue;
         const normalized = normalizeFrontmatterKeys(rawFrontmatter, mappings);
-        const existingMeta = parseMatterMetaFromFrontmatter(normalized);
-        if (!existingMeta) continue;
+        const classValue = normalizeMatterClassValue(getFrontmatterField(normalized, ['Class'])?.value);
+        const legacyMatterValue = getFrontmatterField(normalized, ['Matter', 'matter'])?.value;
+        const roleValue = getFrontmatterField(normalized, ['Role'])?.value;
+        const bodyModeValue = getFrontmatterField(normalized, ['BodyMode'])?.value;
+        const legacyBodyModeValue = getFrontmatterField(normalized, ['MatterBodyMode'])?.value;
+        const useBookMetaValue = getFrontmatterField(normalized, ['UseBookMeta', 'UsesBookMeta'])?.value;
 
-        scanned += 1;
-        let changed = false;
+        const hasMatterSignal = !!classValue
+            || legacyMatterValue !== undefined
+            || roleValue !== undefined
+            || bodyModeValue !== undefined
+            || legacyBodyModeValue !== undefined
+            || useBookMetaValue !== undefined;
+        if (!hasMatterSignal) continue;
 
-        await plugin.app.fileManager.processFrontMatter(file, (frontmatter) => {
-            const fm = frontmatter as Record<string, unknown>;
-            const before = JSON.stringify(fm);
-            const side = existingMeta.side;
-            const nextClass = side === 'back' ? 'Backmatter' : 'Frontmatter';
-            const currentRole = typeof fm.Role === 'string' ? fm.Role.trim() : '';
-            const nextRole = (existingMeta.role || currentRole || 'other').trim();
-            if (workflow === 'guided') {
-                fm.BodyMode = 'plain';
-            } else if (workflow === 'advanced') {
-                fm.BodyMode = 'latex';
-                fm.UseBookMeta = false;
-            }
+        const reasons: string[] = [];
+        let nextClass: MatterRepairIssue['nextClass'];
+        if (classValue === 'frontmatter') {
+            nextClass = 'Frontmatter';
+        } else if (classValue === 'backmatter') {
+            nextClass = 'Backmatter';
+        } else {
+            reasons.push('missing-class');
+            const sideFromLegacy = resolveLegacyMatterSide(normalized, legacyMatterValue);
+            if (sideFromLegacy === 'front') nextClass = 'Frontmatter';
+            if (sideFromLegacy === 'back') nextClass = 'Backmatter';
+        }
 
-            if (nextRole) {
-                fm.Role = nextRole;
-            }
-            if (existingMeta.usesBookMeta === true && workflow !== 'advanced') {
-                fm.UseBookMeta = true;
-            } else if (existingMeta.usesBookMeta === false && workflow !== 'advanced') {
-                fm.UseBookMeta = false;
-            }
+        if (legacyMatterValue !== undefined) {
+            reasons.push('legacy-matter');
+        }
 
-            delete fm.Matter;
-            delete fm.matter;
-            fm.Class = nextClass;
-            if (before !== JSON.stringify(fm)) changed = true;
+        const roleRepair = normalizeRoleForRepair(roleValue);
+        if (roleRepair.invalid) {
+            reasons.push('invalid-role');
+        }
+
+        const bodyModeRepair = normalizeBodyModeForRepair(bodyModeValue ?? legacyBodyModeValue);
+        if (bodyModeRepair.invalid) {
+            reasons.push('invalid-bodymode');
+        }
+
+        if (reasons.length === 0) continue;
+        issues.push({
+            file,
+            reasons,
+            nextClass,
+            nextRole: roleRepair.nextRole,
+            nextBodyMode: bodyModeRepair.nextBodyMode
         });
-
-        if (changed) updated += 1;
     }
 
-    return { scanned, updated, sourceFolder };
+    const repairableIssues = issues.filter(issue => !!issue.nextClass);
+    const unresolvedIssues = issues.filter(issue => !issue.nextClass);
+    return { sourceFolder, issues, repairableIssues, unresolvedIssues };
+}
+
+async function applyMatterRepairPlan(
+    plugin: RadialTimelinePlugin,
+    plan: MatterRepairPlan
+): Promise<{ updated: number; attempted: number; unresolved: number; sourceFolder: string; repairedPaths: string[] }> {
+    let updated = 0;
+    const repairedPaths: string[] = [];
+
+    for (const issue of plan.repairableIssues) {
+        if (!issue.nextClass) continue;
+        let changed = false;
+        await plugin.app.fileManager.processFrontMatter(issue.file, (frontmatter) => {
+            const fm = frontmatter as Record<string, unknown>;
+            const before = JSON.stringify(fm);
+
+            deleteFrontmatterAliases(fm, ['Class']);
+            fm.Class = issue.nextClass;
+
+            if (issue.nextRole) {
+                deleteFrontmatterAliases(fm, ['Role']);
+                fm.Role = issue.nextRole;
+            }
+
+            if (issue.nextBodyMode) {
+                deleteFrontmatterAliases(fm, ['BodyMode', 'MatterBodyMode']);
+                fm.BodyMode = issue.nextBodyMode;
+            }
+
+            deleteFrontmatterAliases(fm, ['Matter', 'matter']);
+
+            if (before !== JSON.stringify(fm)) {
+                changed = true;
+            }
+        });
+
+        if (changed) {
+            updated += 1;
+            repairedPaths.push(issue.file.path);
+        }
+    }
+
+    return {
+        updated,
+        attempted: plan.repairableIssues.length,
+        unresolved: plan.unresolvedIssues.length,
+        sourceFolder: plan.sourceFolder,
+        repairedPaths
+    };
 }
 
 function parseBookMetaFromFrontmatter(frontmatter: Record<string, unknown>, sourcePath: string): BookMeta {
@@ -724,17 +883,6 @@ function getActiveBookMatterSummary(plugin: RadialTimelinePlugin): ActiveBookMat
     };
 }
 
-function areScriptPresetsInUse(plugin: RadialTimelinePlugin): boolean {
-    const activeBook = getActiveBook(plugin.settings);
-    const activeBookUsed = !!(activeBook?.lastUsedPandocLayoutByPreset?.screenplay || activeBook?.lastUsedPandocLayoutByPreset?.podcast);
-    if (activeBookUsed) return true;
-
-    const hasCustomScriptLayouts = (plugin.settings.pandocLayouts || [])
-        .some(layout => !layout.bundled && (layout.preset === 'screenplay' || layout.preset === 'podcast'));
-
-    return hasCustomScriptLayouts;
-}
-
 function isConfiguredPandocPathValid(plugin: RadialTimelinePlugin): boolean {
     const candidate = (plugin.settings.pandocPath || '').trim();
     if (!candidate) return false;
@@ -749,14 +897,14 @@ function isConfiguredPandocPathValid(plugin: RadialTimelinePlugin): boolean {
 }
 
 function getPdfLayoutSummary(plugin: RadialTimelinePlugin): PdfLayoutSummary {
-    const manuscriptLayouts = (plugin.settings.pandocLayouts || [])
-        .filter(layout => layout.preset === 'novel' || layout.preset === 'screenplay' || layout.preset === 'podcast');
-    const validCount = manuscriptLayouts
+    const fictionLayouts = (plugin.settings.pandocLayouts || [])
+        .filter(layout => layout.preset === 'novel');
+    const validCount = fictionLayouts
         .filter(layout => validatePandocLayout(plugin, layout).valid)
         .length;
     return {
         validCount,
-        totalCount: manuscriptLayouts.length
+        totalCount: fictionLayouts.length
     };
 }
 
@@ -1365,6 +1513,8 @@ async function generateSampleTemplates(
 // Set to false when transitioning to paid licensing
 // ═══════════════════════════════════════════════════════════════════════════════
 const OPEN_BETA_ACTIVE = true;
+const SHOW_SCREENPLAY_LAYOUT_CATEGORY = false;
+const SHOW_PODCAST_LAYOUT_CATEGORY = false;
 
 interface SectionParams {
     app: App;
@@ -1745,13 +1895,52 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
     addHeadingIcon(layoutHeading, 'book-open');
     applyErtHeaderLayout(layoutHeading);
 
-    const presetDescriptions: Record<string, string> = {
-        screenplay: 'Industry-standard screenplay formatting. Scene headings, dialogue blocks, and submission-ready margins.',
-        podcast: 'Structured narration layout optimized for voice-driven scripts and clean print output.',
-        novel: 'Refined literary manuscript layout with elevated typography and spacing. Scenes become chapters or sections. Suitable for print-ready PDF.'
+    const normalizeVersionLabels = (label: string): string =>
+        label.replace(/\bv(?:ersion)?\s*\d+(?:\.\d+)?\b/gi, '').replace(/\s{2,}/g, ' ').trim();
+
+    type FictionLayoutVariant = 'traditional' | 'signature' | 'contemporary' | 'generic';
+    const getFictionVariant = (layout: PandocLayoutTemplate): FictionLayoutVariant => {
+        const source = `${layout.id} ${layout.name} ${layout.path}`.toLowerCase();
+        if (source.includes('contemporary')) return 'contemporary';
+        if (source.includes('signature') || source.includes('signature_literary_rt') || layout.id === 'bundled-novel') return 'signature';
+        if (source.includes('traditional') || source.includes('novel_template') || source.includes('novel manuscript')) return 'traditional';
+        return 'generic';
+    };
+    const getLayoutDisplayName = (layout: PandocLayoutTemplate): string => {
+        if (layout.preset === 'novel') {
+            const variant = getFictionVariant(layout);
+            if (variant === 'traditional') return 'Traditional Fiction';
+            if (variant === 'signature') return 'Signature Literary';
+            if (variant === 'contemporary') return 'Contemporary Literary';
+        }
+        if (layout.preset === 'screenplay' && layout.bundled) return 'Screenplay';
+        return normalizeVersionLabels(layout.name || 'Custom Layout');
     };
     const buildLayoutDescription = (layout: PandocLayoutTemplate): string => {
-        return presetDescriptions[layout.preset] || 'Custom PDF layout.';
+        if (layout.preset === 'screenplay') {
+            return 'Industry-standard screenplay formatting. Scene headings, dialogue blocks, and submission-ready margins.';
+        }
+        if (layout.preset === 'novel') {
+            const variant = getFictionVariant(layout);
+            if (variant === 'traditional') {
+                return 'Classic fiction manuscript styling with familiar chapter flow and print-friendly spacing.';
+            }
+            if (variant === 'signature') {
+                return 'Refined literary manuscript style with elevated typography, alternating headers, and balanced page rhythm.';
+            }
+            if (variant === 'contemporary') {
+                return 'Contemporary literary manuscript styling with crisp hierarchy and clean readability for fiction.';
+            }
+            return 'Refined fiction manuscript layout with polished typography and chapter-first structure.';
+        }
+        if (layout.preset === 'podcast') {
+            return 'Structured narration layout optimized for voice-driven scripts and clean print output.';
+        }
+        return 'Custom PDF layout.';
+    };
+    const getLayoutInstalledState = (layout: PandocLayoutTemplate): boolean => {
+        if (layout.bundled) return isBundledPandocLayoutInstalled(plugin, layout);
+        return validatePandocLayout(plugin, layout).valid;
     };
 
     /** Flash-validate a layout path input using the centralized helper. */
@@ -1825,36 +2014,62 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         new Notice(`Created editable copy '${copyName}'.`);
     };
 
-    /** Render one row per existing layout. */
-    const renderLayoutRows = () => {
-        // Clear previous rows (keep header)
-        const existingRows = layoutRowsContainer.querySelectorAll('.ert-layout-row');
-        existingRows.forEach(el => el.remove());
+    const getVisibleLayouts = (): PandocLayoutTemplate[] => {
+        const all = plugin.settings.pandocLayouts || [];
+        return all.filter(layout => {
+            if (layout.preset === 'novel') return true;
+            if (layout.preset === 'screenplay') return SHOW_SCREENPLAY_LAYOUT_CATEGORY;
+            if (layout.preset === 'podcast') return SHOW_PODCAST_LAYOUT_CATEGORY;
+            return false;
+        });
+    };
 
-        const layouts = plugin.settings.pandocLayouts || [];
+    /** Render category groups with layout rows. */
+    const renderLayoutRows = () => {
+        layoutRowsContainer.empty();
+
+        const layouts = getVisibleLayouts();
 
         if (layouts.length === 0) {
             const emptyEl = layoutRowsContainer.createDiv({ cls: 'ert-layout-row setting-item' });
             emptyEl.createSpan({ text: 'No layouts configured yet.', cls: 'setting-item-description' });
+            return;
         }
 
-        for (const layout of layouts) {
-            const row = layoutRowsContainer.createDiv({ cls: 'ert-layout-row' });
+        const fictionVariantOrder: Record<FictionLayoutVariant, number> = {
+            traditional: 1,
+            signature: 2,
+            contemporary: 3,
+            generic: 4
+        };
+        const fictionLayouts = layouts
+            .filter(layout => layout.preset === 'novel')
+            .sort((a, b) => {
+                const variantDiff = fictionVariantOrder[getFictionVariant(a)] - fictionVariantOrder[getFictionVariant(b)];
+                if (variantDiff !== 0) return variantDiff;
+                return getLayoutDisplayName(a).localeCompare(getLayoutDisplayName(b));
+            });
+        const categoryRows = [
+            { key: 'fiction', title: 'Fiction', icon: 'book-open-text', items: fictionLayouts }
+        ].filter(category => category.items.length > 0);
+
+        const renderLayoutRow = (parent: HTMLElement, layout: PandocLayoutTemplate) => {
+            const row = parent.createDiv({ cls: 'ert-layout-row' });
             const isBundled = layout.bundled === true;
-            const bundledInstalled = isBundled ? isBundledPandocLayoutInstalled(plugin, layout) : false;
+            const installed = getLayoutInstalledState(layout);
 
             const s = addProRow(new Setting(row))
-                .setName(layout.name)
+                .setName(getLayoutDisplayName(layout))
                 .setDesc(buildLayoutDescription(layout));
             s.settingEl.addClass('ert-layout-row-setting');
             s.descEl?.addClass('ert-layout-row-desc');
-            if (isBundled && s.nameEl) {
+            if (s.nameEl) {
                 s.nameEl.addClass('ert-layout-row-name');
                 const pill = s.nameEl.createSpan({
-                    cls: `ert-layout-status-pill ${bundledInstalled ? 'is-installed' : 'is-not-installed'}`,
-                    text: bundledInstalled ? 'Installed' : 'Not installed'
+                    cls: `ert-layout-status-pill ${installed ? 'is-installed' : 'is-not-installed'}`,
+                    text: installed ? 'Installed' : 'Not installed'
                 });
-                pill.setAttr('aria-label', bundledInstalled ? 'Installed' : 'Not installed');
+                pill.setAttr('aria-label', installed ? 'Installed' : 'Not installed');
             }
 
             if (!isBundled) {
@@ -1871,29 +2086,28 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
                         s.setDesc(buildLayoutDescription(layout));
                         refreshPublishingStatusCard();
                     };
-                    attachTemplatePathSuggest(plugin, text, (path) => {
-                        layout.path = path.trim();
+                    attachTemplatePathSuggest(plugin, text, (selectedPath) => {
+                        layout.path = selectedPath.trim();
                         void saveAndValidate();
                     });
 
-                    // SAFE: direct addEventListener; Modal/Settings lifecycle manages cleanup
                     text.inputEl.addEventListener('blur', saveAndValidate);
                     text.inputEl.addEventListener('keydown', (e: KeyboardEvent) => {
-                        if (e.key === 'Enter') { e.preventDefault(); saveAndValidate(); }
+                        if (e.key === 'Enter') { e.preventDefault(); void saveAndValidate(); }
                     });
                 });
             }
 
-            if (isBundled && !bundledInstalled) {
+            if (isBundled && !installed) {
                 s.addButton(btn => {
                     btn.setButtonText('Install');
                     btn.setTooltip('Install bundled layout');
                     btn.onClick(async () => {
                         const result = await installBundledPandocLayouts(plugin, [layout.id]);
                         if (result.installed.length > 0) {
-                            new Notice(`Installed bundled layout: ${layout.name}`);
+                            new Notice(`Installed bundled layout: ${getLayoutDisplayName(layout)}`);
                         } else if (result.failed.length > 0) {
-                            new Notice(`Failed to install bundled layout: ${layout.name}`);
+                            new Notice(`Failed to install bundled layout: ${getLayoutDisplayName(layout)}`);
                         }
                         renderLayoutRows();
                         refreshPublishingStatusCard();
@@ -1917,14 +2131,26 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
                     btn.setIcon('trash');
                     btn.setTooltip('Remove layout');
                     btn.onClick(async () => {
-                        plugin.settings.pandocLayouts = (plugin.settings.pandocLayouts || []).filter(l => l.id !== layout.id);
+                        plugin.settings.pandocLayouts = (plugin.settings.pandocLayouts || []).filter(item => item.id !== layout.id);
                         await plugin.saveSettings();
                         renderLayoutRows();
                         refreshPublishingStatusCard();
                     });
                 });
             }
-        }
+        };
+
+        categoryRows.forEach((category, categoryIndex) => {
+            const categoryEl = layoutRowsContainer.createDiv({
+                cls: `ert-layout-category ${categoryIndex > 0 ? 'ert-layout-category--spaced' : ''}`
+            });
+            const categoryHeader = categoryEl.createDiv({ cls: 'ert-layout-category-header' });
+            const categoryIcon = categoryHeader.createSpan({ cls: 'ert-layout-category-icon' });
+            setIcon(categoryIcon, category.icon);
+            categoryHeader.createEl('strong', { cls: 'ert-layout-category-title', text: category.title });
+            const rows = categoryEl.createDiv({ cls: 'ert-layout-category-rows' });
+            category.items.forEach(layout => renderLayoutRow(rows, layout));
+        });
     };
 
     renderLayoutRows();
@@ -1948,8 +2174,12 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
     });
     addFormSetting.addDropdown(dd => {
         dd.addOption('novel', 'Novel');
-        dd.addOption('screenplay', 'Screenplay');
-        dd.addOption('podcast', 'Podcast');
+        if (SHOW_SCREENPLAY_LAYOUT_CATEGORY) {
+            dd.addOption('screenplay', 'Screenplay');
+        }
+        if (SHOW_PODCAST_LAYOUT_CATEGORY) {
+            dd.addOption('podcast', 'Podcast');
+        }
         dd.onChange(v => { newPreset = v as typeof newPreset; });
     });
     addFormSetting.addText(text => {
@@ -2014,7 +2244,15 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
     layoutManageSetting.addButton(button => {
         button.setButtonText('Install all');
         button.onClick(async () => {
-            const result = await installBundledPandocLayouts(plugin);
+            const bundledIds = getBundledPandocLayouts()
+                .filter(layout => {
+                    if (layout.preset === 'novel') return true;
+                    if (layout.preset === 'screenplay') return SHOW_SCREENPLAY_LAYOUT_CATEGORY;
+                    if (layout.preset === 'podcast') return SHOW_PODCAST_LAYOUT_CATEGORY;
+                    return false;
+                })
+                .map(layout => layout.id);
+            const result = await installBundledPandocLayouts(plugin, bundledIds);
             if (result.installed.length > 0) {
                 new Notice(`Installed ${result.installed.length} bundled layout template(s) in ${getConfiguredPandocFolder(plugin)}/.`);
             } else if (result.failed.length > 0) {
@@ -2033,7 +2271,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         return 'guided';
     };
     let selectedMatterWorkflow = getSavedWorkflowMode();
-    const includeScriptExamples = areScriptPresetsInUse(plugin);
+    const includeScriptExamples = false;
     let setupInFlight = false;
     let setupButtonComponent: ButtonComponent | null = null;
     const setSetupButtonState = (busy: boolean) => {
@@ -2258,6 +2496,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
     const matterPreviewFrame = publishingSetupPanel.createDiv({ cls: `${ERT_CLASSES.PREVIEW_FRAME} ert-previewFrame--flush` });
     matterPreviewFrame.createDiv({ cls: 'ert-planetary-preview-heading ert-previewFrame__title', text: 'Matter preview' });
     const matterPreviewBody = matterPreviewFrame.createDiv({ cls: 'ert-matter-preview-body' });
+    const formatRoleLabel = (role: string): string => role.replace(/[_-]+/g, ' ').trim();
     const renderMatterPreview = async () => {
         matterPreviewBody.empty();
         try {
@@ -2275,32 +2514,38 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
                 return;
             }
 
-            const renderMatterSection = (label: string, items: MatterPreviewItem[]) => {
-                const sectionEl = matterPreviewBody.createDiv({ cls: 'ert-matter-preview-section' });
-                sectionEl.createDiv({ cls: 'ert-matter-preview-section-title', text: label });
-                if (items.length === 0) {
-                    sectionEl.createDiv({ cls: 'ert-matter-preview-empty-line', text: `No ${label.toLowerCase()} pages` });
-                    return;
-                }
-
+            const list = matterPreviewBody.createDiv({ cls: 'ert-matter-preview-list' });
+            let rowIndex = 0;
+            const renderMatterRows = (items: MatterPreviewItem[]) => {
                 items.forEach(item => {
-                    const row = sectionEl.createDiv({ cls: 'ert-matter-preview-row' });
-                    const titleButton = row.createEl('button', { cls: 'ert-matter-preview-link', text: item.file.basename });
-                    titleButton.setAttr('type', 'button');
-                    titleButton.addEventListener('click', () => {
+                    const row = list.createDiv({ cls: 'ert-matter-preview-row' });
+                    row.toggleClass('is-alt', rowIndex % 2 === 1);
+                    rowIndex += 1;
+                    const titleLink = row.createEl('a', {
+                        cls: 'ert-matter-preview-link',
+                        text: item.file.basename,
+                        attr: { href: '#', title: item.file.path }
+                    });
+                    titleLink.addEventListener('click', (evt) => {
+                        evt.preventDefault();
                         void plugin.app.workspace.openLinkText(item.file.path, '', false);
                     });
+
                     const badges = row.createDiv({ cls: 'ert-matter-preview-badges' });
                     badges.createSpan({ cls: `ert-matter-preview-badge ert-matter-preview-badge--${item.modeTone}`, text: item.modeLabel });
-                    if (item.role) {
-                        badges.createSpan({ cls: 'ert-matter-preview-badge ert-matter-preview-badge--role', text: item.role });
+                    const role = (item.role || '').trim();
+                    if (role && role.toLowerCase() !== 'other') {
+                        badges.createSpan({
+                            cls: 'ert-matter-preview-badge ert-matter-preview-badge--role',
+                            text: formatRoleLabel(role)
+                        });
                     }
                 });
             };
 
-            renderMatterSection('Front matter', preview.front);
-            matterPreviewBody.createDiv({ cls: 'ert-matter-preview-divider', text: 'Manuscript' });
-            renderMatterSection('Back matter', preview.back);
+            renderMatterRows(preview.front);
+            list.createDiv({ cls: 'ert-matter-preview-divider', text: 'Manuscript' });
+            renderMatterRows(preview.back);
         } catch (e) {
             const message = (e as Error).message || String(e);
             matterPreviewBody.createDiv({ cls: 'ert-matter-preview-empty-line', text: `Matter preview unavailable: ${message}` });
@@ -2308,61 +2553,73 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
     };
     void renderMatterPreview();
 
-    // ── System Configuration: Migration tools ──────────────────────────────
-    const migrationHeading = addProRow(new Setting(systemConfigPanel))
-        .setName('Migration tools')
-        .setDesc('Metadata normalization for existing matter notes in the active book.')
-        .setHeading();
-    addHeadingIcon(migrationHeading, 'refresh-cw');
-    applyErtHeaderLayout(migrationHeading);
+    // ── System Configuration: Repair tools (only when mismatches exist) ────
+    const repairPlan = buildMatterRepairPlan(plugin);
+    if (repairPlan.issues.length > 0) {
+        const repairHeading = addProRow(new Setting(systemConfigPanel))
+            .setName('Repair tools')
+            .setDesc('Repair detected metadata mismatches for matter notes in the active book.')
+            .setHeading();
+        addHeadingIcon(repairHeading, 'wrench');
+        applyErtHeaderLayout(repairHeading);
 
-    const workflowSetting = addProRow(new Setting(systemConfigPanel))
-        .setName('Normalize matter metadata')
-        .setDesc('Updates frontmatter fields on existing matter notes. Does not rewrite note content or move files.')
-        .addDropdown(dd => {
-            dd.addOption('guided', 'Guided');
-            dd.addOption('advanced', 'Advanced');
-            dd.setValue(selectedMatterWorkflow);
-            dd.onChange(async (value) => {
-                const next = value as MatterSampleLane;
-                selectedMatterWorkflow = next;
-                plugin.settings.matterWorkflowMode = next;
-                await plugin.saveSettings();
-            });
-        });
-    workflowSetting.addButton(button => {
-        button.setButtonText('Normalize active book');
-        button.setTooltip('Updates Class/Role/BodyMode/UseBookMeta and removes legacy Matter/matter fields.');
-        button.onClick(async () => {
-            const matterSummary = getActiveBookMatterSummary(plugin);
-            if (matterSummary.totalCount > 0) {
+        const repairSetting = addProRow(new Setting(systemConfigPanel))
+            .setName('Repair matter metadata')
+            .setDesc('Updates frontmatter only on detected matter notes. No file moves. No note body edits.');
+        repairSetting.addButton(button => {
+            button.setButtonText('Repair active book');
+            button.setTooltip('Repairs metadata mismatches and removes legacy Matter/matter fields.');
+            if (repairPlan.repairableIssues.length === 0) {
+                button.setDisabled(true);
+            }
+            button.onClick(async () => {
+                const currentPlan = buildMatterRepairPlan(plugin);
+                const targetCount = currentPlan.repairableIssues.length;
+                if (targetCount === 0) {
+                    new Notice('No repairable matter metadata mismatches found.');
+                    return;
+                }
                 const proceed = window.confirm(
-                    `Normalize metadata for ${matterSummary.totalCount} matter note${matterSummary.totalCount === 1 ? '' : 's'} in the active book?\n\nThis updates frontmatter fields only.`
+                    `This will update frontmatter on ${targetCount} notes in the active book. Continue?`
                 );
                 if (!proceed) return;
-            }
-            button.setDisabled(true);
-            button.setButtonText('Normalizing…');
-            try {
-                const result = await applyMatterWorkflowToActiveBook(plugin, selectedMatterWorkflow);
-                if (result.scanned === 0) {
-                    new Notice(`No matter notes found in active book folder: ${result.sourceFolder}`);
-                } else {
-                    new Notice(`Normalized ${result.updated}/${result.scanned} matter notes.`);
+
+                button.setDisabled(true);
+                button.setButtonText('Repairing…');
+                try {
+                    const result = await applyMatterRepairPlan(plugin, currentPlan);
+                    console.info('[Matter Repair]', {
+                        sourceFolder: result.sourceFolder,
+                        repaired: result.updated,
+                        attempted: result.attempted,
+                        unresolved: result.unresolved,
+                        repairedPaths: result.repairedPaths
+                    });
+                    new Notice(`Repaired ${result.updated} notes. See logs for details.`);
+                    rerender();
+                } catch (e) {
+                    const msg = (e as Error).message || String(e);
+                    new Notice(`Failed to repair matter metadata: ${msg}`);
+                } finally {
+                    button.setDisabled(false);
+                    button.setButtonText('Repair active book');
                 }
-                rerender();
-            } catch (e) {
-                const msg = (e as Error).message || String(e);
-                new Notice(`Failed to normalize matter metadata: ${msg}`);
-            } finally {
-                button.setDisabled(false);
-                button.setButtonText('Normalize active book');
-            }
+            });
         });
-    });
-    const changeList = workflowSetting.settingEl.createEl('ul', { cls: 'ert-migration-change-list' });
-    changeList.createEl('li', { text: 'Updates: Class, Role, BodyMode, UseBookMeta' });
-    changeList.createEl('li', { text: 'Removes legacy fields: Matter, matter' });
+
+        const changeList = repairSetting.settingEl.createEl('ul', { cls: 'ert-migration-change-list' });
+        changeList.createEl('li', {
+            text: `Detected on ${repairPlan.issues.length} note${repairPlan.issues.length === 1 ? '' : 's'} in the active book.`
+        });
+        changeList.createEl('li', {
+            text: `Repairable now: ${repairPlan.repairableIssues.length}`
+        });
+        if (repairPlan.unresolvedIssues.length > 0) {
+            changeList.createEl('li', {
+                text: `${repairPlan.unresolvedIssues.length} note${repairPlan.unresolvedIssues.length === 1 ? '' : 's'} require Class to be set to Frontmatter or Backmatter.`
+            });
+        }
+    }
 
     return section;
 }
