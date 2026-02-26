@@ -788,6 +788,41 @@ export default class RadialTimelinePlugin extends Plugin {
             }
         }
         const bundledPandocLayoutsRegistered = ensureBundledPandocLayoutsRegistered(this);
+        let matterWorkflowMigrated = false;
+        const legacyMatterWorkflowMode = (this.settings as { matterWorkflowMode?: string }).matterWorkflowMode;
+        if (legacyMatterWorkflowMode === 'mixed') {
+            this.settings.matterWorkflowMode = 'guided';
+            matterWorkflowMigrated = true;
+        }
+        const legacyLayoutIdMap: Record<string, string> = {
+            'bundled-novel-signature-literary-rt': 'bundled-novel',
+        };
+        let pandocLayoutReferenceMigrated = false;
+        if (Array.isArray(this.settings.manuscriptExportTemplates)) {
+            for (const template of this.settings.manuscriptExportTemplates) {
+                const selected = template.selectedLayoutId;
+                if (selected && legacyLayoutIdMap[selected]) {
+                    template.selectedLayoutId = legacyLayoutIdMap[selected];
+                    pandocLayoutReferenceMigrated = true;
+                }
+            }
+        }
+        if (Array.isArray(this.settings.books)) {
+            for (const book of this.settings.books) {
+                const lastUsed = book.lastUsedPandocLayoutByPreset;
+                if (!lastUsed) continue;
+                const novelLayout = lastUsed.novel;
+                if (novelLayout && legacyLayoutIdMap[novelLayout]) {
+                    lastUsed.novel = legacyLayoutIdMap[novelLayout];
+                    pandocLayoutReferenceMigrated = true;
+                }
+            }
+        }
+        const globalLastUsed = this.settings.lastUsedPandocLayoutByPreset;
+        if (globalLastUsed?.novel && legacyLayoutIdMap[globalLastUsed.novel]) {
+            globalLastUsed.novel = legacyLayoutIdMap[globalLastUsed.novel];
+            pandocLayoutReferenceMigrated = true;
+        }
         // ─── Beat Id migration: assign GUIDs to custom/saved beats lacking ids ───
         let beatIdMigrated = false;
         if (Array.isArray(this.settings.customBeatSystemBeats)) {
@@ -820,7 +855,7 @@ export default class RadialTimelinePlugin extends Plugin {
             });
         }
 
-        if (before !== after || aiSettingsMigrated || templatesMigrated || actionNotesTargetMigrated || exportFolderMigrated || beatConfigMigrated || backdropTemplateMigrated || pandocLayoutsMigrated || bundledPandocLayoutsRegistered || booksMigrated || schemaOntologyMigrated || beatIdMigrated) {
+        if (before !== after || aiSettingsMigrated || templatesMigrated || actionNotesTargetMigrated || exportFolderMigrated || beatConfigMigrated || backdropTemplateMigrated || pandocLayoutsMigrated || bundledPandocLayoutsRegistered || matterWorkflowMigrated || pandocLayoutReferenceMigrated || booksMigrated || schemaOntologyMigrated || beatIdMigrated) {
             await this.saveSettings();
         }
     }

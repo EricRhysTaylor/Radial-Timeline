@@ -243,8 +243,9 @@ export interface OutlineExportResult {
 
 function resolveVaultAbsolutePath(plugin: RadialTimelinePlugin, vaultPath: string): string | null {
     const adapter = plugin.app.vault.adapter; // SAFE: adapter needed to resolve absolute path for Pandoc output
-    if (adapter instanceof FileSystemAdapter) {
-        const basePath = adapter.getBasePath();
+    const fileSystemAdapterCtor = FileSystemAdapter as unknown as (new (...args: unknown[]) => FileSystemAdapter) | undefined;
+    if (fileSystemAdapterCtor && adapter instanceof fileSystemAdapterCtor) {
+        const basePath = (adapter as FileSystemAdapter).getBasePath();
         return path.join(basePath, normalizePath(vaultPath));
     }
     return null;
@@ -857,12 +858,17 @@ export function resolveTemplatePath(plugin: RadialTimelinePlugin, templatePath: 
     
     const candidates = getTemplatePathCandidates(plugin, trimmed);
     for (const candidate of candidates) {
-        const absolutePath = resolveVaultAbsolutePath(plugin, candidate);
-        if (absolutePath) {
-            return absolutePath;
+        const file = plugin.app.vault.getAbstractFileByPath(candidate);
+        if (file instanceof TFile) {
+            const absolutePath = resolveVaultAbsolutePath(plugin, candidate);
+            return absolutePath || candidate;
         }
     }
-    return trimmed; // Fallback to original if resolution fails
+
+    // Fallback: prefer the Pandoc-folder candidate when available, then original.
+    const preferred = candidates[1] || candidates[0] || trimmed;
+    const absolutePreferred = resolveVaultAbsolutePath(plugin, preferred);
+    return absolutePreferred || preferred || trimmed;
 }
 
 export async function writeTextFile(

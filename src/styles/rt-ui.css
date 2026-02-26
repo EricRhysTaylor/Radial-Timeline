@@ -7023,7 +7023,50 @@
 .ert-ui.ert-scope--settings .ert-layout-rows {
   display: flex;
   flex-direction: column;
-  gap: var(--ert-gap-sm);
+  gap: var(--ert-gap-xs);
+}
+
+.ert-ui.ert-scope--settings .ert-layout-row .setting-item.ert-layout-row-setting {
+  --ert-row-pad: var(--ert-pad-sm);
+  row-gap: var(--ert-gap-xs);
+}
+
+.ert-ui.ert-scope--settings .ert-layout-row-name {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ert-gap-xs);
+  flex-wrap: wrap;
+}
+
+.ert-ui.ert-scope--settings .ert-layout-status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--background-modifier-border);
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.ert-ui.ert-scope--settings .ert-layout-status-pill.is-installed {
+  color: var(--text-success);
+  border-color: color-mix(in srgb, var(--text-success) 35%, var(--background-modifier-border));
+  background: color-mix(in srgb, var(--text-success) 11%, transparent);
+}
+
+.ert-ui.ert-scope--settings .ert-layout-status-pill.is-not-installed {
+  color: var(--text-muted);
+  border-color: var(--background-modifier-border);
+  background: color-mix(in srgb, var(--background-secondary) 80%, transparent);
+}
+
+.ert-ui.ert-scope--settings .ert-layout-row-desc {
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .ert-ui.ert-scope--settings .ert-layout-add-form {
@@ -7037,10 +7080,6 @@
 .ert-ui.ert-scope--settings .ert-layout-add-form-hint {
   margin-top: var(--ert-gap-xs);
   padding-left: 2px;
-}
-
-.ert-ui.ert-scope--settings .ert-layout-input-readonly {
-  opacity: 0.78;
 }
 
 .ert-ui.ert-scope--settings .ert-publishing-status-row {
@@ -7130,19 +7169,6 @@
 .ert-ui.ert-scope--settings .ert-bookmeta-status.is-missing .ert-bookmeta-status-icon,
 .ert-ui.ert-scope--settings .ert-bookmeta-status.is-warning .ert-bookmeta-status-icon {
   color: var(--text-warning, var(--color-orange, #f5a97a));
-}
-
-.ert-ui.ert-scope--settings .ert-bookmeta-preview-header {
-  margin-bottom: var(--ert-gap-sm);
-}
-
-.ert-ui.ert-scope--settings .ert-bookmeta-preview-header-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 16px;
-  height: 16px;
-  color: var(--text-muted);
 }
 
 .ert-ui.ert-scope--settings .ert-bookmeta-preview-grid {

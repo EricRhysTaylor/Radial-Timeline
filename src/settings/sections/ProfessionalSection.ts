@@ -14,7 +14,7 @@ import { execFile } from 'child_process'; // SAFE: Node child_process for system
 import * as path from 'path'; // SAFE: Node path for absolute-path detection in layout input normalization
 import { generateSceneContent } from '../../utils/sceneGenerator';
 import { DEFAULT_SETTINGS } from '../defaults';
-import { getTemplateFontDiagnostics, resolveTemplatePath, validatePandocLayout, slugifyToFileStem } from '../../utils/exportFormats';
+import { validatePandocLayout, slugifyToFileStem } from '../../utils/exportFormats';
 import type { PandocLayoutTemplate } from '../../types';
 import type { BookMeta } from '../../types';
 import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
@@ -227,7 +227,7 @@ function listAvailableLatexEngines(): Array<{ engine: string; path: string }> {
 // SAMPLE TEMPLATE GENERATION
 // ═══════════════════════════════════════════════════════════════════════════════
 
-type MatterSampleLane = 'guided' | 'advanced' | 'mixed';
+type MatterSampleLane = 'guided' | 'advanced';
 
 interface TemplatePathSuggestion {
     fullPath: string;
@@ -412,16 +412,10 @@ class MatterSampleLaneModal extends Modal {
                     'Back matter stubs (Acknowledgments, About the Author)',
                     'PDF layout templates'
                 ]
-                : this.selected === 'advanced'
-                    ? [
+                : [
                     'Front/back matter examples with working LaTeX bodies',
                     'PDF layout templates'
-                    ]
-                    : [
-                        '000 BookMeta.md (master publishing metadata file)',
-                        'Front/back matter stubs set to BodyMode: auto (mix semantic + inline LaTeX)',
-                        'PDF layout templates'
-                    ];
+                ];
             if (this.includeScriptExamples) {
                 items.splice(items.length - 1, 0, 'Script examples (screenplay + podcast)');
             }
@@ -494,12 +488,6 @@ class MatterSampleLaneModal extends Modal {
             'Advanced (LaTeX in Body)',
             'Canonical inline-LaTeX front/back matter pages for the ST (Signature Literary) template. Best for advanced users comfortable with LaTeX.',
             'code'
-        );
-        makeOption(
-            'mixed',
-            'Mixed (Semantic + LaTeX)',
-            'Uses flat matter metadata with BodyMode:auto so each page can be plain content or inline LaTeX.',
-            'blend'
         );
         refreshOptionState();
 
@@ -597,8 +585,6 @@ async function applyMatterWorkflowToActiveBook(
             } else if (workflow === 'advanced') {
                 fm.BodyMode = 'latex';
                 fm.UseBookMeta = false;
-            } else {
-                fm.BodyMode = 'auto';
             }
 
             if (nextRole) {
@@ -1175,22 +1161,9 @@ async function generateSampleTemplates(
         }
     ];
 
-    const mixedMatterSamples: { name: string; content: string }[] = guidedMatterSamples.map((sample) => ({
-        name: sample.name,
-        content: sample.content
-            .replace(/BodyMode:\s*plain/g, 'BodyMode: auto')
-            .replace(/Guided Matter Page/g, 'Mixed Matter Page')
-            .replace(
-                /Rendered using BookMeta and the selected PDF template\./g,
-                'Uses BodyMode:auto so each page can be semantic plain content or inline LaTeX.'
-            )
-    }));
-
     const matterSamples = matterLane === 'advanced'
         ? advancedMatterSamples
-        : matterLane === 'mixed'
-            ? mixedMatterSamples
-            : guidedMatterSamples;
+        : guidedMatterSamples;
 
     // Create all files (skip existing)
     if (includeScriptExamples) {
@@ -1203,7 +1176,7 @@ async function generateSampleTemplates(
         }
     }
 
-    if (matterLane === 'guided' || matterLane === 'mixed') {
+    if (matterLane === 'guided') {
         const bookMetaPath = normalizePath(`${matterTargetFolder}/${bookMetaSample.name}`);
         if (!vault.getAbstractFileByPath(bookMetaPath)) {
             await vault.create(bookMetaPath, bookMetaSample.content);
@@ -1467,7 +1440,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
     systemConfigPanel.style.order = '50';
     const systemConfigHeading = addProRow(new Setting(systemConfigPanel))
         .setName('System Configuration')
-        .setDesc('Configure your Pandoc executable and global Pandoc folder.')
+        .setDesc('Configure Pandoc for PDF export.')
         .setHeading();
     addHeadingIcon(systemConfigHeading, 'settings');
     applyErtHeaderLayout(systemConfigHeading);
@@ -1613,42 +1586,12 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
     applyErtHeaderLayout(layoutHeading);
 
     const presetDescriptions: Record<string, string> = {
-        novel: 'ST = Signature Literary. Print-ready novel layout with alternating title/author running headers and page-number formatting.',
-        screenplay: 'Screenplay formatting for industry-standard PDF scripts.',
-        podcast: 'Structured podcast script layout for narration-based formats.'
+        screenplay: 'Industry-standard screenplay formatting. Scene headings, dialogue blocks, and submission-ready margins.',
+        podcast: 'Structured narration layout optimized for voice-driven scripts and clean print output.',
+        novel: 'Refined literary manuscript layout with elevated typography and spacing. Scenes become chapters or sections. Suitable for print-ready PDF.'
     };
     const buildLayoutDescription = (layout: PandocLayoutTemplate): string => {
-        const base = presetDescriptions[layout.preset] || 'Custom PDF layout.';
-        const pathLabel = layout.path || '(no path)';
-        const bundledInstalled = layout.bundled ? isBundledPandocLayoutInstalled(plugin, layout) : false;
-        const sourceLabel = layout.bundled
-            ? (bundledInstalled ? 'Bundled (Installed)' : 'Bundled (Not installed)')
-            : 'Custom';
-
-        if (layout.bundled && !bundledInstalled) {
-            return `${sourceLabel} · ${base} Template path: ${pathLabel} · Install to copy this bundled layout into ${getConfiguredPandocFolder(plugin)}/.`;
-        }
-
-        const absolutePath = layout.path ? resolveTemplatePath(plugin, layout.path) : '';
-        const fontDiagnostics = getTemplateFontDiagnostics(absolutePath);
-
-        if (!fontDiagnostics.usesFontspec) {
-            return `${sourceLabel} · ${base} Template path: ${pathLabel}`;
-        }
-
-        if (fontDiagnostics.missingRequiredFonts.length > 0) {
-            return `${sourceLabel} · ${base} Template path: ${pathLabel} · Missing required font(s): ${fontDiagnostics.missingRequiredFonts.join(', ')}`;
-        }
-
-        if (fontDiagnostics.missingOptionalFonts.length > 0) {
-            return `${sourceLabel} · ${base} Template path: ${pathLabel} · Optional font missing (fallback will be used): ${fontDiagnostics.missingOptionalFonts.join(', ')}`;
-        }
-
-        if (!fontDiagnostics.canVerifySystemFonts && fontDiagnostics.requiredFonts.length > 0) {
-            return `${sourceLabel} · ${base} Template path: ${pathLabel} · Font check unavailable on this platform.`;
-        }
-
-        return `${sourceLabel} · ${base} Template path: ${pathLabel} · Fonts verified.`;
+        return presetDescriptions[layout.preset] || 'Custom PDF layout.';
     };
 
     /** Flash-validate a layout path input using the centralized helper. */
@@ -1738,21 +1681,27 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         for (const layout of layouts) {
             const row = layoutRowsContainer.createDiv({ cls: 'ert-layout-row' });
             const isBundled = layout.bundled === true;
+            const bundledInstalled = isBundled ? isBundledPandocLayoutInstalled(plugin, layout) : false;
 
             const s = addProRow(new Setting(row))
                 .setName(layout.name)
                 .setDesc(buildLayoutDescription(layout));
+            s.settingEl.addClass('ert-layout-row-setting');
+            s.descEl?.addClass('ert-layout-row-desc');
+            if (isBundled && s.nameEl) {
+                s.nameEl.addClass('ert-layout-row-name');
+                const pill = s.nameEl.createSpan({
+                    cls: `ert-layout-status-pill ${bundledInstalled ? 'is-installed' : 'is-not-installed'}`,
+                    text: bundledInstalled ? 'Installed' : 'Not installed'
+                });
+                pill.setAttr('aria-label', bundledInstalled ? 'Installed' : 'Not installed');
+            }
 
-            s.addText(text => {
+            if (!isBundled) {
+                s.addText(text => {
                     text.inputEl.addClass('ert-input--lg');
                     text.setPlaceholder('template.tex or path/to/template.tex');
                     text.setValue(layout.path);
-                    if (isBundled) {
-                        text.setDisabled(true);
-                        text.inputEl.addClass('ert-layout-input-readonly');
-                        return;
-                    }
-
                     const saveAndValidate = async () => {
                         const normalizedPath = compactTemplatePathForStorage(plugin, text.getValue());
                         layout.path = normalizedPath;
@@ -1772,8 +1721,9 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
                         if (e.key === 'Enter') { e.preventDefault(); saveAndValidate(); }
                     });
                 });
+            }
 
-            if (isBundled && !isBundledPandocLayoutInstalled(plugin, layout)) {
+            if (isBundled && !bundledInstalled) {
                 s.addButton(btn => {
                     btn.setButtonText('Install');
                     btn.setTooltip('Install bundled layout');
@@ -1915,14 +1865,14 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
     publishingSetupPanel.style.order = '30';
     const publishingHeading = addProRow(new Setting(publishingSetupPanel))
         .setName('Publishing Setup')
-        .setDesc('Set up publishing notes for the active book. BookMeta + matter notes are activated from the active book folder.')
+        .setDesc('Set up front and back matter for the active book.')
         .setHeading();
     addHeadingIcon(publishingHeading, 'book-open-text');
     applyErtHeaderLayout(publishingHeading);
 
     const getSavedWorkflowMode = (): MatterSampleLane => {
         const saved = plugin.settings.matterWorkflowMode;
-        if (saved === 'guided' || saved === 'advanced' || saved === 'mixed') return saved;
+        if (saved === 'advanced') return 'advanced';
         return 'guided';
     };
 
@@ -1978,7 +1928,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
             const sourceFolder = getActiveBookExportContext(plugin).sourceFolder.trim();
             const matterTargetLabel = sourceFolder || scriptTargetLabel;
             if (created.length > 0) {
-                const laneLabel = lane === 'guided' ? 'guided' : lane === 'advanced' ? 'advanced' : 'mixed';
+                const laneLabel = lane === 'guided' ? 'guided' : 'advanced';
                 new Notice(`Created ${created.length} ${laneLabel} setup files. Matter + BookMeta → ${matterTargetLabel}, Layouts → ${getConfiguredPandocFolder(plugin)}/.`);
             } else {
                 new Notice('Publishing setup already exists. Bundled layouts are registered.');
@@ -2033,11 +1983,10 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
 
     const workflowSetting = addProRow(new Setting(advancedPanel))
         .setName('Matter workflow')
-        .setDesc('Used by setup. Guided = plain text, Advanced = inline LaTeX, Mixed = BodyMode:auto per note.')
+        .setDesc('Used by setup. Guided = structured publishing pages. Advanced = full LaTeX matter pages.')
         .addDropdown(dd => {
             dd.addOption('guided', 'Guided (frontmatter)');
             dd.addOption('advanced', 'Advanced (LaTeX body)');
-            dd.addOption('mixed', 'Mixed');
             dd.setValue(selectedMatterWorkflow);
             dd.onChange(async (value) => {
                 const next = value as MatterSampleLane;
@@ -2048,7 +1997,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         });
     workflowSetting.addButton(button => {
         button.setButtonText('Apply to active book');
-        button.setTooltip('Updates BodyMode for front/back matter notes in the active book source folder.');
+        button.setTooltip('Updates front/back matter metadata for notes in the active book source folder.');
         button.onClick(async () => {
             button.setDisabled(true);
             button.setButtonText('Applying…');
@@ -2067,6 +2016,10 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
                 button.setButtonText('Apply to active book');
             }
         });
+    });
+    workflowSetting.settingEl.createDiv({
+        cls: 'setting-item-description',
+        text: 'Applies the selected matter workflow to existing notes without regenerating files.'
     });
 
     const activeBookMetaSetting = addProRow(new Setting(advancedPanel))
@@ -2092,34 +2045,11 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         }
     }
 
-    const templatePackHelp = advancedPanel.createEl('ul', { cls: ERT_CLASSES.SECTION_DESC });
-    templatePackHelp.createEl('li', { text: 'BookMeta + front/back matter notes are activated from the active book folder.' });
-    templatePackHelp.createEl('li', { text: 'Pandoc PDF layouts (.tex) are global files in your Pandoc folder.' });
-    if (includeScriptExamples) {
-        templatePackHelp.createEl('li', { text: 'Script examples (screenplay + podcast) are included because script presets are in use.' });
-    }
-    advancedPanel.createEl('p', {
-        cls: ERT_CLASSES.SECTION_DESC,
-        text: 'Use Apply to active book to migrate existing matter notes to the selected workflow without re-generating files.'
-    });
-
     const previewPanel = pandocPanel.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
     previewPanel.style.order = '10';
-    const previewPanelHeading = addProRow(new Setting(previewPanel))
-        .setName('Preview')
-        .setDesc('BookMeta values detected in the active book folder.')
-        .setHeading();
-    addHeadingIcon(previewPanelHeading, 'book-copy');
-    applyErtHeaderLayout(previewPanelHeading);
 
     const previewFrame = previewPanel.createDiv({ cls: `${ERT_CLASSES.PREVIEW_FRAME} ert-previewFrame--center ert-previewFrame--flush` });
-    const previewHeader = previewFrame.createDiv({ cls: 'ert-previewFrame__header ert-bookmeta-preview-header' });
-    const previewHeaderIcon = previewHeader.createSpan({ cls: 'ert-bookmeta-preview-header-icon' });
-    setIcon(previewHeaderIcon, 'book-copy');
-    previewHeader.createDiv({
-        cls: 'ert-planetary-preview-heading ert-previewFrame__title',
-        text: 'BookMeta preview'
-    });
+    previewFrame.createDiv({ cls: 'ert-planetary-preview-heading ert-previewFrame__title', text: 'BookMeta preview' });
 
     const previewGrid = previewFrame.createDiv({ cls: 'ert-bookmeta-preview-grid' });
     const addPreviewField = (label: string, value?: string | number | null) => {
