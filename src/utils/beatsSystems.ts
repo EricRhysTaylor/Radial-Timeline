@@ -2,6 +2,7 @@
  * Plot System Presets for Gossamer Scoring
  */
 import { normalizeBeatNameInput, normalizeBeatSetNameInput } from './beatsInputNormalize';
+import type { BeatDefinition } from '../types/settings';
 
 export interface PlotBeatInfo {
   name: string;
@@ -10,6 +11,8 @@ export interface PlotBeatInfo {
   range?: string;     // Formerly momentumRange: ideal momentum/score band (0-100)
   act?: number;       // Explicit act assignment (1, 2, 3)
   id?: string;        // Stable Beat Id for audit/repair matching (e.g. "save-the-cat:midpoint")
+  chapterBreak?: boolean;
+  chapterTitle?: string;
 }
 
 /** Lowercase slug: spaces/special → hyphens, collapse, trim. */
@@ -326,7 +329,7 @@ export interface ProBeatSet {
   id: string;
   name: string;
   description: string;
-  beats: { name: string; act: number; purpose?: string; id?: string; range?: string }[];
+  beats: BeatDefinition[];
   beatYamlAdvanced: string;
   beatHoverMetadataFields: { key: string; label: string; icon: string; enabled: boolean }[];
 }
@@ -490,7 +493,7 @@ export const PRO_BEAT_SETS: ProBeatSet[] = [
  * Shared helper to construct the custom system object from settings.
  * Accepts any object that matches the minimal settings shape needed.
  */
-export function getCustomSystemFromSettings(settings: { customBeatSystemName?: string; customBeatSystemBeats?: { name: string; act: number; purpose?: string; id?: string; range?: string }[] }): PlotSystemPreset {
+export function getCustomSystemFromSettings(settings: { customBeatSystemName?: string; customBeatSystemBeats?: BeatDefinition[] }): PlotSystemPreset {
     const name = normalizeBeatSetNameInput(settings.customBeatSystemName ?? '', 'Custom');
     const beatObjs = settings.customBeatSystemBeats || [];
 
@@ -505,7 +508,9 @@ export function getCustomSystemFromSettings(settings: { customBeatSystemName?: s
             description: typeof b.purpose === 'string' ? b.purpose.trim() : '',
             range: typeof b.range === 'string' ? b.range.trim() : '',
             act: b.act,
-            id: b.id
+            id: b.id,
+            chapterBreak: b.chapterBreak === true,
+            chapterTitle: typeof b.chapterTitle === 'string' ? b.chapterTitle.trim() : undefined
         }));
 
     return {

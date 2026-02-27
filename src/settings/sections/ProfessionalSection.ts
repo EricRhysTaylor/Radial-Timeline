@@ -15,10 +15,10 @@ import * as path from 'path'; // SAFE: Node path for absolute-path detection in 
 import { generateSceneContent } from '../../utils/sceneGenerator';
 import { DEFAULT_SETTINGS } from '../defaults';
 import { validatePandocLayout, slugifyToFileStem } from '../../utils/exportFormats';
-import type { PandocLayoutTemplate } from '../../types';
-import type { BookMeta } from '../../types';
+import type { BookLayoutOptions, BookMeta, BookProfile, PandocLayoutTemplate } from '../../types';
 import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { getActiveBookExportContext } from '../../utils/exportContext';
+import { getActiveBook } from '../../utils/books';
 import { isPathInFolderScope } from '../../utils/pathScope';
 import { normalizeMatterClassValue } from '../../utils/matterMeta';
 import { extractBodyText, getSceneFilesByOrder } from '../../utils/manuscript';
@@ -1870,6 +1870,89 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         if (layout.bundled) return isBundledPandocLayoutInstalled(plugin, layout);
         return validatePandocLayout(plugin, layout).valid;
     };
+    type LayoutSpecialCapabilities = {
+        usesModernClassicStructure: boolean;
+        hasEpigraphs: boolean;
+    };
+    const getLayoutSpecialCapabilities = (layout: PandocLayoutTemplate): LayoutSpecialCapabilities => {
+        const usesModernClassicStructure = layout.usesModernClassicStructure === true;
+        const hasEpigraphs = layout.hasEpigraphs === true || usesModernClassicStructure;
+        return { usesModernClassicStructure, hasEpigraphs };
+    };
+    const hasLayoutSpecialOptions = (layout: PandocLayoutTemplate): boolean => {
+        const caps = getLayoutSpecialCapabilities(layout);
+        return caps.usesModernClassicStructure || caps.hasEpigraphs;
+    };
+    const toRomanNumeral = (value: number): string => {
+        if (!Number.isFinite(value) || value <= 0) return '';
+        const table: Array<[number, string]> = [
+            [1000, 'M'], [900, 'CM'], [500, 'D'], [400, 'CD'],
+            [100, 'C'], [90, 'XC'], [50, 'L'], [40, 'XL'],
+            [10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']
+        ];
+        let remainder = Math.floor(value);
+        let output = '';
+        for (const [numeric, roman] of table) {
+            while (remainder >= numeric) {
+                output += roman;
+                remainder -= numeric;
+            }
+        }
+        return output;
+    };
+    const getActCount = (): number => {
+        const parsed = Math.floor(Number(plugin.settings.actCount ?? 3));
+        return Number.isFinite(parsed) && parsed > 0 ? parsed : 3;
+    };
+    const getActiveBookReference = (): BookProfile | null => {
+        const active = getActiveBook(plugin.settings);
+        if (!active) return null;
+        const index = (plugin.settings.books || []).findIndex(book => book.id === active.id);
+        if (index < 0) return null;
+        return plugin.settings.books[index];
+    };
+    const normalizeLayoutOptionList = (values: unknown): string[] => {
+        if (!Array.isArray(values)) return [];
+        return values.map(value => (typeof value === 'string' ? value : ''));
+    };
+    const getLayoutOptionsForActiveBook = (layoutId: string): BookLayoutOptions => {
+        const activeBook = getActiveBookReference();
+        if (!activeBook) return {};
+        const scoped = activeBook.layoutOptions?.[layoutId];
+        if (!scoped) return {};
+        return {
+            actEpigraphs: normalizeLayoutOptionList(scoped.actEpigraphs),
+            actEpigraphAttributions: normalizeLayoutOptionList(scoped.actEpigraphAttributions)
+        };
+    };
+    const saveLayoutOptionsForActiveBook = async (layoutId: string, next: BookLayoutOptions): Promise<void> => {
+        const activeBook = getActiveBookReference();
+        if (!activeBook) return;
+        if (!activeBook.layoutOptions) activeBook.layoutOptions = {};
+        const trimTrailingEmpty = (values: string[]): string[] => {
+            const normalized = values.map(value => value.trim());
+            let lastNonEmptyIndex = -1;
+            for (let i = 0; i < normalized.length; i++) {
+                if (normalized[i].length > 0) lastNonEmptyIndex = i;
+            }
+            if (lastNonEmptyIndex < 0) return [];
+            return normalized.slice(0, lastNonEmptyIndex + 1);
+        };
+        const hasEpigraphText = (next.actEpigraphs || []).some(value => value.trim().length > 0);
+        const hasAttributionText = (next.actEpigraphAttributions || []).some(value => value.trim().length > 0);
+        if (!hasEpigraphText && !hasAttributionText) {
+            delete activeBook.layoutOptions[layoutId];
+            if (Object.keys(activeBook.layoutOptions).length === 0) {
+                delete activeBook.layoutOptions;
+            }
+        } else {
+            activeBook.layoutOptions[layoutId] = {
+                actEpigraphs: trimTrailingEmpty(next.actEpigraphs || []),
+                actEpigraphAttributions: trimTrailingEmpty(next.actEpigraphAttributions || [])
+            };
+        }
+        await plugin.saveSettings();
+    };
 
     /** Flash-validate a layout path input using the centralized helper. */
     const flashValidateLayoutPath = (inputEl: HTMLInputElement, layout: PandocLayoutTemplate) => {
@@ -1883,6 +1966,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
     };
 
     const layoutRowsContainer = layoutPanel.createDiv({ cls: 'ert-layout-rows' });
+    let expandedSpecialLayoutId: string | null = null;
 
     const duplicateBundledLayout = async (layout: PandocLayoutTemplate): Promise<void> => {
         const installResult = await installBundledPandocLayouts(plugin, [layout.id]);
@@ -1935,7 +2019,9 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
             name: copyName,
             preset: layout.preset,
             path: compactTemplatePathForStorage(plugin, copyFilename),
-            bundled: false
+            bundled: false,
+            ...(layout.usesModernClassicStructure === true ? { usesModernClassicStructure: true } : {}),
+            ...(layout.hasEpigraphs === true ? { hasEpigraphs: true } : {})
         });
         plugin.settings.pandocLayouts = existing;
         await plugin.saveSettings();
@@ -1957,6 +2043,9 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         layoutRowsContainer.empty();
 
         const layouts = getVisibleLayouts();
+        if (expandedSpecialLayoutId && !layouts.some(layout => layout.id === expandedSpecialLayoutId)) {
+            expandedSpecialLayoutId = null;
+        }
 
         if (layouts.length === 0) {
             const emptyEl = layoutRowsContainer.createDiv({ cls: 'ert-layout-row setting-item' });
@@ -1982,6 +2071,10 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
             const row = parent.createDiv({ cls: 'ert-layout-row' });
             const isBundled = layout.bundled === true;
             const installed = getLayoutInstalledState(layout);
+            const specialCapabilities = getLayoutSpecialCapabilities(layout);
+            const showsSpecialOptions = hasLayoutSpecialOptions(layout);
+            const expanded = expandedSpecialLayoutId === layout.id;
+            if (expanded) row.addClass('is-special-expanded');
 
             const s = addProRow(new Setting(row))
                 .setName(getLayoutDisplayName(layout))
@@ -2051,6 +2144,18 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
                 });
             }
 
+            if (showsSpecialOptions) {
+                s.addExtraButton(btn => {
+                    btn.extraSettingsEl.addClass('ert-iconBtn', 'ert-layout-special-toggle');
+                    btn.setIcon(expanded ? 'minus' : 'plus');
+                    btn.setTooltip(expanded ? 'Hide special features' : 'Show special features');
+                    btn.onClick(() => {
+                        expandedSpecialLayoutId = expandedSpecialLayoutId === layout.id ? null : layout.id;
+                        renderLayoutRows();
+                    });
+                });
+            }
+
             if (!isBundled) {
                 s.addExtraButton(btn => {
                     btn.setIcon('trash');
@@ -2062,6 +2167,72 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
                         refreshPublishingStatusCard();
                     });
                 });
+            }
+
+            if (showsSpecialOptions && expanded) {
+                const panel = row.createDiv({ cls: 'ert-layout-special-panel' });
+                panel.createDiv({ cls: 'ert-layout-special-divider' });
+
+                if (specialCapabilities.hasEpigraphs) {
+                    const epigraphTitle = panel.createDiv({ cls: 'ert-layout-special-title', text: 'Act epigraphs (optional)' });
+                    epigraphTitle.setAttr('role', 'heading');
+                    panel.createDiv({ cls: 'ert-layout-special-helper', text: 'Printed after PART pages.' });
+
+                    const activeBook = getActiveBookReference();
+                    if (!activeBook) {
+                        panel.createDiv({ cls: 'ert-layout-special-empty', text: 'Select an active book to edit layout-specific options.' });
+                    } else {
+                        const actCount = getActCount();
+                        const scopedOptions = getLayoutOptionsForActiveBook(layout.id);
+                        const actEpigraphs = scopedOptions.actEpigraphs || [];
+                        const actEpigraphAttributions = scopedOptions.actEpigraphAttributions || [];
+                        const rows = panel.createDiv({ cls: 'ert-layout-epigraph-rows' });
+
+                        for (let actIndex = 0; actIndex < actCount; actIndex++) {
+                            const epigraphRow = rows.createDiv({ cls: 'ert-layout-epigraph-row' });
+                            epigraphRow.createDiv({
+                                cls: 'ert-layout-epigraph-act',
+                                text: `Act ${toRomanNumeral(actIndex + 1) || String(actIndex + 1)}`
+                            });
+
+                            const fields = epigraphRow.createDiv({ cls: 'ert-layout-epigraph-fields' });
+
+                            const quoteLabel = fields.createDiv({ cls: 'ert-layout-epigraph-label', text: 'Quote' });
+                            quoteLabel.setAttr('role', 'note');
+                            const quoteInput = fields.createEl('textarea', {
+                                cls: 'ert-input ert-layout-epigraph-quote',
+                                attr: { rows: '2' }
+                            });
+                            quoteInput.value = actEpigraphs[actIndex] || '';
+                            plugin.registerDomEvent(quoteInput, 'change', () => {
+                                const nextQuotes = [...(getLayoutOptionsForActiveBook(layout.id).actEpigraphs || [])];
+                                const nextAttributions = [...(getLayoutOptionsForActiveBook(layout.id).actEpigraphAttributions || [])];
+                                nextQuotes[actIndex] = quoteInput.value;
+                                void saveLayoutOptionsForActiveBook(layout.id, {
+                                    actEpigraphs: nextQuotes,
+                                    actEpigraphAttributions: nextAttributions
+                                });
+                            });
+
+                            const attributionLabel = fields.createDiv({ cls: 'ert-layout-epigraph-label', text: 'Attribution' });
+                            attributionLabel.setAttr('role', 'note');
+                            const attributionInput = fields.createEl('input', {
+                                type: 'text',
+                                cls: 'ert-input ert-layout-epigraph-attribution'
+                            });
+                            attributionInput.value = actEpigraphAttributions[actIndex] || '';
+                            plugin.registerDomEvent(attributionInput, 'change', () => {
+                                const nextQuotes = [...(getLayoutOptionsForActiveBook(layout.id).actEpigraphs || [])];
+                                const nextAttributions = [...(getLayoutOptionsForActiveBook(layout.id).actEpigraphAttributions || [])];
+                                nextAttributions[actIndex] = attributionInput.value;
+                                void saveLayoutOptionsForActiveBook(layout.id, {
+                                    actEpigraphs: nextQuotes,
+                                    actEpigraphAttributions: nextAttributions
+                                });
+                            });
+                        }
+                    }
+                }
             }
         };
 

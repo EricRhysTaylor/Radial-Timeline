@@ -5,8 +5,8 @@
 
 import { App, Notice, TFile } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
-import type { BookMeta, ManuscriptExportCleanupOptions, MatterMeta } from '../types';
-import { assembleManuscript, getSceneFilesByOrder, ManuscriptSceneSelection, updateSceneWordCounts } from '../utils/manuscript';
+import type { BeatDefinition, BookLayoutOptions, BookMeta, ManuscriptExportCleanupOptions, MatterMeta } from '../types';
+import { assembleManuscript, getSceneFilesByOrder, ManuscriptSceneSelection, type ModernClassicBeatDefinition, updateSceneWordCounts } from '../utils/manuscript';
 import { openGossamerScoreEntry, runGossamerAiAnalysis } from '../GossamerCommands';
 import { ManageSubplotsModal } from '../modals/ManageSubplotsModal';
 import { ManuscriptOptionsModal, ManuscriptModalResult, type ManuscriptExportOutcome } from '../modals/ManuscriptOptionsModal';
@@ -29,6 +29,7 @@ import { chunkScenesIntoParts } from '../utils/splitOutput';
 import { parseMatterMetaFromFrontmatter } from '../utils/matterMeta';
 import { ensureBundledLayoutInstalledForExport } from '../utils/pandocBundledLayouts';
 import { getDefaultManuscriptCleanupOptions, normalizeManuscriptCleanupOptions, sanitizeCompiledManuscript } from '../utils/manuscriptSanitize';
+import { getPlotSystem } from '../utils/beatsSystems';
 
 import { getRuntimeSettings } from '../utils/runtimeEstimator';
 
@@ -389,7 +390,6 @@ export class CommandRegistrar {
             }
 
             const extension = getExportFormatExtension(result.outputFormat);
-            const sceneHeadingMode = result.sceneHeadingMode || 'scene-number-title';
             const baseOutputFolder = await ensureManuscriptOutputFolder(this.plugin);
             const outputFolder = isSplitRun
                 ? await this.createSplitOutputFolder(baseOutputFolder, baseTitle)
@@ -409,7 +409,6 @@ export class CommandRegistrar {
                         bookMetaResolution.bookMeta,
                         filteredSelection.matterMetaByPath,
                         {
-                            sceneHeadingMode,
                             sceneHeadingRenderMode: 'markdown-h2'
                         }
                     );
@@ -478,6 +477,13 @@ export class CommandRegistrar {
             const templatePath = resolveTemplatePath(this.plugin, layout.path);
             const shouldSaveMarkdown = result.saveMarkdownArtifact ?? true;
             const useLatexSceneOpeners = /signature literary|signature[-_ ]literary/i.test(`${layout.id} ${layout.name} ${layout.path}`);
+            const useModernClassicStructure = layout.usesModernClassicStructure === true;
+            const modernClassicBeatDefinitions = useModernClassicStructure
+                ? this.resolveModernClassicBeatDefinitions()
+                : [];
+            const modernClassicLayoutOptions = useModernClassicStructure
+                ? this.resolveModernClassicLayoutOptions(layout.id)
+                : undefined;
             const sceneHeadingRenderMode = useLatexSceneOpeners ? 'latex-section-starred' : 'markdown-h2';
             const pandocMetadata: Record<string, string | undefined> = {
                 title: bookMetaResolution.bookMeta?.title,
@@ -506,8 +512,15 @@ export class CommandRegistrar {
                     bookMetaResolution.bookMeta,
                     filteredSelection.matterMetaByPath,
                     {
-                        sceneHeadingMode,
-                        sceneHeadingRenderMode
+                        sceneHeadingRenderMode,
+                        modernClassicStructure: useModernClassicStructure
+                            ? {
+                                enabled: true,
+                                beatDefinitions: modernClassicBeatDefinitions,
+                                actEpigraphs: modernClassicLayoutOptions?.actEpigraphs,
+                                actEpigraphAttributions: modernClassicLayoutOptions?.actEpigraphAttributions
+                            }
+                            : undefined
                     }
                 );
 
@@ -764,6 +777,77 @@ export class CommandRegistrar {
         }
 
         return { bookMeta: selected.meta };
+    }
+
+    private resolveModernClassicActIndex(value: unknown, fallback: number): number {
+        const parsed = typeof value === 'number'
+            ? value
+            : typeof value === 'string'
+                ? Number(value)
+                : NaN;
+        if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+        return Math.floor(parsed);
+    }
+
+    private toModernClassicBeatDefinition(
+        beat: BeatDefinition,
+        fallbackActIndex: number
+    ): ModernClassicBeatDefinition | null {
+        const name = typeof beat.name === 'string' ? beat.name.trim() : '';
+        if (!name) return null;
+        const chapterTitle = typeof beat.chapterTitle === 'string' ? beat.chapterTitle.trim() : '';
+        return {
+            name,
+            id: typeof beat.id === 'string' && beat.id.trim().length > 0 ? beat.id.trim() : undefined,
+            actIndex: this.resolveModernClassicActIndex(beat.act, fallbackActIndex),
+            chapterBreak: beat.chapterBreak === true,
+            chapterTitle: chapterTitle || undefined
+        };
+    }
+
+    private resolveModernClassicBeatDefinitions(): ModernClassicBeatDefinition[] {
+        const selectedSystem = (this.plugin.settings.beatSystem || 'Custom').trim();
+        if (selectedSystem === 'Custom') {
+            return (this.plugin.settings.customBeatSystemBeats || [])
+                .map((beat, index) => this.toModernClassicBeatDefinition(beat, index + 1))
+                .filter((beat): beat is ModernClassicBeatDefinition => !!beat);
+        }
+
+        const builtin = getPlotSystem(selectedSystem);
+        if (!builtin) return [];
+
+        return builtin.beatDetails
+            .map((detail, index) => {
+                const beat: BeatDefinition = {
+                    name: detail.name,
+                    id: detail.id,
+                    act: this.resolveModernClassicActIndex(detail.act, 1),
+                    chapterBreak: detail.chapterBreak === true,
+                    chapterTitle: typeof detail.chapterTitle === 'string' ? detail.chapterTitle : undefined
+                };
+                return this.toModernClassicBeatDefinition(beat, index + 1);
+            })
+            .filter((beat): beat is ModernClassicBeatDefinition => !!beat);
+    }
+
+    private resolveModernClassicLayoutOptions(layoutId: string): BookLayoutOptions | undefined {
+        const activeBook = getActiveBook(this.plugin.settings);
+        if (!activeBook || !layoutId) return undefined;
+        const scopedOptions = activeBook.layoutOptions?.[layoutId];
+        if (!scopedOptions) return undefined;
+
+        const normalizeList = (values: unknown): string[] | undefined => {
+            if (!Array.isArray(values)) return undefined;
+            const normalized = values.map(value => (typeof value === 'string' ? value.trim() : ''));
+            return normalized.some(value => value.length > 0) ? normalized : undefined;
+        };
+        const actEpigraphs = normalizeList(scopedOptions.actEpigraphs);
+        const actEpigraphAttributions = normalizeList(scopedOptions.actEpigraphAttributions);
+        if (!actEpigraphs && !actEpigraphAttributions) return undefined;
+        return {
+            ...(actEpigraphs ? { actEpigraphs } : {}),
+            ...(actEpigraphAttributions ? { actEpigraphAttributions } : {})
+        };
     }
 
     private requiresPro(options: ManuscriptModalResult): boolean {

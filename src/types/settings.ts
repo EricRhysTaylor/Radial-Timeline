@@ -48,7 +48,7 @@ export interface ManuscriptExportTemplate {
     outlinePreset: 'beat-sheet' | 'episode-rundown' | 'shooting-schedule' | 'index-cards-csv' | 'index-cards-json';
     outputFormat: 'markdown' | 'pdf' | 'csv' | 'json';
     tocMode: 'markdown' | 'plain' | 'none';
-    sceneHeadingMode: ManuscriptSceneHeadingMode;
+    sceneHeadingMode?: ManuscriptSceneHeadingMode;
     order: 'narrative' | 'chronological' | 'reverse-narrative' | 'reverse-chronological';
     subplot: string;
     updateWordCounts: boolean;
@@ -66,11 +66,21 @@ export interface BeatSystemConfig {
     beatHoverMetadataFields: HoverMetadataField[];
 }
 
+export interface BeatDefinition {
+    name: string;
+    act: number;
+    purpose?: string;
+    id?: string;
+    range?: string;
+    chapterBreak?: boolean;
+    chapterTitle?: string;
+}
+
 export interface SavedBeatSystem {
     id: string;
     name: string;
     description?: string;
-    beats: { name: string; act: number; purpose?: string; id?: string; range?: string }[];
+    beats: BeatDefinition[];
     beatYamlAdvanced?: string;
     beatHoverMetadataFields?: HoverMetadataField[];
     createdAt: string;
@@ -123,6 +133,12 @@ export interface BookProfile {
     sourceFolder: string;
     fileStem?: string;
     lastUsedPandocLayoutByPreset?: Partial<Record<'novel' | 'screenplay' | 'podcast', string>>;
+    layoutOptions?: Record<string, BookLayoutOptions>;
+}
+
+export interface BookLayoutOptions {
+    actEpigraphs?: string[];
+    actEpigraphAttributions?: string[];
 }
 
 export type AuthorProgressPublishTarget = 'folder' | 'github_pages' | 'note';
@@ -359,6 +375,8 @@ export interface PandocLayoutTemplate {
     preset: 'novel' | 'screenplay' | 'podcast';
     path: string;              // vault-relative or absolute path to .tex file
     bundled?: boolean;         // true for RT-generated sample templates
+    usesModernClassicStructure?: boolean; // emit rtPart/rtChapter/rtSceneSep markers in PDF compilation
+    hasEpigraphs?: boolean;
 }
 
 export interface RadialTimelineSettings {
@@ -440,7 +458,7 @@ export interface RadialTimelineSettings {
     beatSystem?: string;
     customBeatSystemName?: string;
     customBeatSystemDescription?: string;
-    customBeatSystemBeats?: { name: string; act: number; purpose?: string; id?: string; range?: string }[];
+    customBeatSystemBeats?: BeatDefinition[];
     dominantSubplots?: Record<string, string>;
     globalPovMode?: GlobalPovMode;
     readabilityScale?: ReadabilityScale;

@@ -27,11 +27,36 @@ export function normalizeBookProfile(profile: BookProfile): BookProfile {
   const title = profile.title?.trim() || DEFAULT_BOOK_TITLE;
   const sourceFolder = (profile.sourceFolder || '').trim();
   const fileStem = profile.fileStem?.trim();
+  const normalizedLayoutOptions: BookProfile['layoutOptions'] = {};
+  for (const [layoutId, options] of Object.entries(profile.layoutOptions || {})) {
+    const layoutKey = layoutId.trim();
+    if (!layoutKey) continue;
+    const normalizeList = (values: unknown): string[] | undefined => {
+      if (!Array.isArray(values)) return undefined;
+      const normalized = values.map(value => (typeof value === 'string' ? value.trim() : ''));
+      let lastNonEmptyIndex = -1;
+      for (let i = 0; i < normalized.length; i++) {
+        if (normalized[i].length > 0) lastNonEmptyIndex = i;
+      }
+      if (lastNonEmptyIndex < 0) return undefined;
+      return normalized.slice(0, lastNonEmptyIndex + 1);
+    };
+    const actEpigraphs = normalizeList(options?.actEpigraphs);
+    const actEpigraphAttributions = normalizeList(options?.actEpigraphAttributions);
+    if (!actEpigraphs && !actEpigraphAttributions) continue;
+    normalizedLayoutOptions[layoutKey] = {
+      ...(actEpigraphs ? { actEpigraphs } : {}),
+      ...(actEpigraphAttributions ? { actEpigraphAttributions } : {})
+    };
+  }
+
   return {
     id: profile.id || createBookId(),
     title,
     sourceFolder,
-    fileStem: fileStem && fileStem.length > 0 ? fileStem : undefined
+    fileStem: fileStem && fileStem.length > 0 ? fileStem : undefined,
+    ...(profile.lastUsedPandocLayoutByPreset ? { lastUsedPandocLayoutByPreset: { ...profile.lastUsedPandocLayoutByPreset } } : {}),
+    ...(Object.keys(normalizedLayoutOptions).length > 0 ? { layoutOptions: normalizedLayoutOptions } : {})
   };
 }
 

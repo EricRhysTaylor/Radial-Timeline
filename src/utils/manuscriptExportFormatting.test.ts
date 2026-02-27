@@ -82,4 +82,67 @@ describe('assembleManuscript scene heading formatting', () => {
         expect(assembled.text).toContain('\\thispagestyle{empty}');
         expect(assembled.text).not.toContain('## 3 Arrival');
     });
+
+    it('injects Modern Classic part/chapter/scene markers and suppresses scene headings', async () => {
+        const scene1 = makeFile('Scenes/1 Opening.md', '1 Opening');
+        const scene2 = makeFile('Scenes/2 Midpoint.md', '2 Midpoint');
+        const scene3 = makeFile('Scenes/3 Turn.md', '3 Turn');
+        const vault = makeVault({
+            [scene1.path]: '---\nClass: Scene\nBeat: Opening Image\n---\n\nFirst body.',
+            [scene2.path]: '---\nClass: Scene\nBeat: Midpoint\n---\n\nSecond body.',
+            [scene3.path]: '---\nClass: Scene\nBeat: Break into 3\n---\n\nThird body.'
+        });
+
+        const assembled = await assembleManuscript(
+            [scene1, scene2, scene3],
+            vault,
+            undefined,
+            false,
+            undefined,
+            false,
+            undefined,
+            undefined,
+            {
+                sceneHeadingMode: 'scene-number-title',
+                sceneHeadingRenderMode: 'markdown-h2',
+                modernClassicStructure: {
+                    enabled: true,
+                    actEpigraphs: ['The beginning of all things.', 'A turn into possibility.'],
+                    actEpigraphAttributions: ['Anonymous', 'The Narrator'],
+                    beatDefinitions: [
+                        { name: 'Opening Image', actIndex: 1, chapterBreak: true, chapterTitle: 'Boy {with a} \\Skull' },
+                        { name: 'Midpoint', actIndex: 1, chapterBreak: false },
+                        { name: 'Break into 3', actIndex: 2, chapterBreak: true, chapterTitle: 'Everything of Possibility.' }
+                    ]
+                }
+            }
+        );
+
+        expect(assembled.text).toContain('\\rtPart{I}');
+        expect(assembled.text).toContain('\\rtPart{II}');
+        expect(assembled.text).toContain('\\rtEpigraph{The beginning of all things.}{Anonymous}');
+        expect(assembled.text).toContain('\\rtEpigraph{A turn into possibility.}{The Narrator}');
+        expect(assembled.text).toContain('\\rtChapter{I}{Boy with a Skull}');
+        expect(assembled.text).toContain('\\rtChapter{II}{Everything of Possibility.}');
+
+        const partOneIndex = assembled.text.indexOf('\\rtPart{I}');
+        const partTwoIndex = assembled.text.indexOf('\\rtPart{II}');
+        const partOneEpigraphIndex = assembled.text.indexOf('\\rtEpigraph{The beginning of all things.}{Anonymous}');
+        const partTwoEpigraphIndex = assembled.text.indexOf('\\rtEpigraph{A turn into possibility.}{The Narrator}');
+        const chapterTwoIndex = assembled.text.indexOf('\\rtChapter{II}{Everything of Possibility.}');
+        expect(partOneEpigraphIndex).toBeGreaterThan(partOneIndex);
+        expect(partTwoEpigraphIndex).toBeGreaterThan(partTwoIndex);
+        expect(partTwoIndex).toBeGreaterThanOrEqual(0);
+        expect(chapterTwoIndex).toBeGreaterThan(partTwoIndex);
+
+        const sceneSepCount = (assembled.text.match(/\\rtSceneSep/g) || []).length;
+        expect(sceneSepCount).toBe(1);
+
+        expect(assembled.text).not.toContain('## 1 Opening');
+        expect(assembled.text).not.toContain('## 2 Midpoint');
+        expect(assembled.text).not.toContain('## 3 Turn');
+        expect(assembled.text).toContain('First body.');
+        expect(assembled.text).toContain('Second body.');
+        expect(assembled.text).toContain('Third body.');
+    });
 });

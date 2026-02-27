@@ -4,7 +4,7 @@ import type { TimelineItem } from '../../types';
 import { CreateBeatSetModal } from '../../modals/CreateBeatsTemplatesModal';
 import { getPlotSystem, getCustomSystemFromSettings, PRO_BEAT_SETS } from '../../utils/beatsSystems';
 import { createBeatNotesFromSet, getBeatConfigForSystem, ensureBeatConfigForSystem, spreadBeatsAcrossScenes } from '../../utils/beatsTemplates';
-import type { BeatSystemConfig } from '../../types/settings';
+import type { BeatSystemConfig, BeatDefinition } from '../../types/settings';
 import { DEFAULT_SETTINGS } from '../defaults';
 
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
@@ -53,7 +53,7 @@ import { IMPACT_FULL } from '../SettingImpact';
 
 type FieldEntryValue = string | string[];
 type FieldEntry = { key: string; value: FieldEntryValue; required: boolean };
-type BeatRow = { name: string; act: number; purpose?: string; id?: string; range?: string };
+type BeatRow = BeatDefinition;
 type BeatSystemMode = 'builtin' | 'custom';
 type BuiltinBeatSetId = 'save_the_cat' | 'heros_journey' | 'story_grid';
 
@@ -318,13 +318,31 @@ export function renderStoryBeatsSection(params: {
 
     const parseBeatRow = (item: unknown): BeatRow => {
         if (typeof item === 'object' && item !== null && (item as { name?: unknown }).name) {
-            const obj = item as { name?: unknown; act?: unknown; purpose?: unknown; id?: unknown; range?: unknown };
+            const obj = item as {
+                name?: unknown;
+                act?: unknown;
+                purpose?: unknown;
+                id?: unknown;
+                range?: unknown;
+                chapterBreak?: unknown;
+                chapterTitle?: unknown;
+            };
             const objName = normalizeBeatNameInput(typeof obj.name === 'string' ? obj.name : String(obj.name ?? ''), '');
             const objAct = typeof obj.act === 'number' ? obj.act : 1;
             const objPurpose = typeof obj.purpose === 'string' ? obj.purpose.trim() : '';
             const objId = typeof obj.id === 'string' ? obj.id : undefined;
             const objRange = typeof obj.range === 'string' ? obj.range.trim() : undefined;
-            return { name: objName, act: objAct, purpose: objPurpose || undefined, id: objId, range: objRange || undefined };
+            const objChapterBreak = obj.chapterBreak === true;
+            const objChapterTitle = typeof obj.chapterTitle === 'string' ? obj.chapterTitle.trim() : '';
+            return {
+                name: objName,
+                act: objAct,
+                purpose: objPurpose || undefined,
+                id: objId,
+                range: objRange || undefined,
+                chapterBreak: objChapterBreak,
+                chapterTitle: objChapterTitle || undefined
+            };
         }
         const raw = normalizeBeatNameInput(String(item ?? ''), '');
         if (!raw) return { name: '', act: 1 };
@@ -690,7 +708,9 @@ export function renderStoryBeatsSection(params: {
 
     /** Produce a lightweight hash string from the current custom beat state. */
     const snapshotHash = (): string => {
-        const beats = (plugin.settings.customBeatSystemBeats ?? []).map(b => `${b.name}|${b.act}|${(b as { purpose?: string }).purpose ?? ''}|${(b as { range?: string }).range ?? ''}`).join(';');
+        const beats = (plugin.settings.customBeatSystemBeats ?? [])
+            .map(b => `${b.name}|${b.act}|${(b as { purpose?: string }).purpose ?? ''}|${(b as { range?: string }).range ?? ''}|${(b as { chapterBreak?: boolean }).chapterBreak ? '1' : '0'}|${(b as { chapterTitle?: string }).chapterTitle ?? ''}`)
+            .join(';');
         const configKey = `custom:${plugin.settings.activeCustomBeatSystemId ?? 'default'}`;
         const cfg = plugin.settings.beatSystemConfigs?.[configKey];
         const yaml = cfg?.beatYamlAdvanced ?? '';
@@ -1132,6 +1152,8 @@ export function renderStoryBeatsSection(params: {
                 ...beat,
                 name: normalizeBeatNameInput(beat.name, ''),
                 act: clampBeatAct(beat.act, maxActs),
+                chapterBreak: beat.chapterBreak === true,
+                chapterTitle: typeof beat.chapterTitle === 'string' ? beat.chapterTitle.trim() || undefined : undefined,
             }));
             if (normalized.some(beat => !hasBeatReadableText(beat.name))) {
                 new Notice('Beat names must include letters or numbers.');
@@ -1371,6 +1393,25 @@ export function renderStoryBeatsSection(params: {
                         renderList();
                     });
 
+                    const chapterBtn = row.createEl('button', {
+                        cls: ['ert-iconBtn', 'ert-beat-chapter-btn'],
+                        attr: { 'aria-label': 'Start chapter here', 'aria-pressed': beatLine.chapterBreak === true ? 'true' : 'false' }
+                    });
+                    setIcon(chapterBtn, 'book');
+                    setTooltip(chapterBtn, beatLine.chapterBreak === true ? 'Chapter start (edit title below)' : 'Start chapter here');
+                    chapterBtn.toggleClass('is-active', beatLine.chapterBreak === true);
+                    chapterBtn.onclick = () => {
+                        const updated = [...orderedBeats];
+                        const current = updated[index];
+                        const nextBreak = current.chapterBreak !== true;
+                        updated[index] = {
+                            ...current,
+                            chapterBreak: nextBreak
+                        };
+                        saveBeats(updated);
+                        renderList();
+                    };
+
                     // Delete button
                     const delBtn = row.createEl('button', { cls: 'ert-iconBtn' });
                     setIcon(delBtn, 'trash');
@@ -1403,6 +1444,29 @@ export function renderStoryBeatsSection(params: {
                         saveBeats(updated);
                         renderList();
                     });
+
+                    if (beatLine.chapterBreak === true) {
+                        const chapterRow = listContainer.createDiv({ cls: 'ert-beat-chapter-subrow' });
+                        chapterRow.createDiv({ cls: 'ert-beat-chapter-subrow-spacer' });
+                        chapterRow.createDiv({ cls: 'ert-beat-chapter-subrow-spacer' });
+                        chapterRow.createDiv({ cls: 'ert-beat-chapter-subrow-spacer' });
+                        const chapterField = chapterRow.createDiv({ cls: 'ert-beat-chapter-field' });
+                        chapterField.createDiv({ cls: 'ert-beat-chapter-label', text: 'Chapter title (optional)' });
+                        const chapterTitleInput = chapterField.createEl('input', {
+                            type: 'text',
+                            cls: 'ert-input ert-beat-chapter-title-input',
+                            attr: { placeholder: 'Optional' }
+                        });
+                        chapterTitleInput.value = beatLine.chapterTitle ?? '';
+                        plugin.registerDomEvent(chapterTitleInput, 'change', () => {
+                            const updated = [...orderedBeats];
+                            updated[index] = {
+                                ...updated[index],
+                                chapterTitle: chapterTitleInput.value.trim() || undefined
+                            };
+                            saveBeats(updated);
+                        });
+                    }
                 });
             }
 
@@ -1423,8 +1487,47 @@ export function renderStoryBeatsSection(params: {
                 if (defaultAct === n) opt.selected = true;
             });
 
+            let addChapterBreak = false;
+            let addChapterTitle = '';
+            const addChapterBtn = addRow.createEl('button', {
+                cls: ['ert-iconBtn', 'ert-beat-chapter-btn'],
+                attr: { 'aria-label': 'Start chapter here', 'aria-pressed': 'false' }
+            });
+            setIcon(addChapterBtn, 'book');
+            setTooltip(addChapterBtn, 'Start chapter here');
+
             const addBtn = addRow.createEl('button', { cls: ['ert-iconBtn', 'ert-beat-add-btn'], attr: { 'aria-label': 'Add beat' } });
             setIcon(addBtn, 'plus');
+
+            const addChapterRow = listContainer.createDiv({ cls: ['ert-beat-chapter-subrow', 'ert-beat-chapter-subrow--add', 'ert-hidden'] });
+            addChapterRow.createDiv({ cls: 'ert-beat-chapter-subrow-spacer' });
+            addChapterRow.createDiv({ cls: 'ert-beat-chapter-subrow-spacer' });
+            addChapterRow.createDiv({ cls: 'ert-beat-chapter-subrow-spacer' });
+            const addChapterField = addChapterRow.createDiv({ cls: 'ert-beat-chapter-field' });
+            addChapterField.createDiv({ cls: 'ert-beat-chapter-label', text: 'Chapter title (optional)' });
+            const addChapterTitleInput = addChapterField.createEl('input', {
+                type: 'text',
+                cls: 'ert-input ert-beat-chapter-title-input',
+                attr: { placeholder: 'Optional' }
+            });
+
+            const syncAddChapterState = () => {
+                addChapterBtn.toggleClass('is-active', addChapterBreak);
+                addChapterBtn.setAttr('aria-pressed', addChapterBreak ? 'true' : 'false');
+                addChapterBtn.setAttr('aria-label', addChapterBreak ? 'Chapter start (edit title below)' : 'Start chapter here');
+                setTooltip(addChapterBtn, addChapterBreak ? 'Chapter start (edit title below)' : 'Start chapter here');
+                addChapterRow.toggleClass('ert-hidden', !addChapterBreak);
+            };
+
+            addChapterBtn.onclick = () => {
+                addChapterBreak = !addChapterBreak;
+                syncAddChapterState();
+            };
+
+            plugin.registerDomEvent(addChapterTitleInput, 'input', () => {
+                addChapterTitle = addChapterTitleInput.value;
+            });
+            syncAddChapterState();
 
             const commitAdd = () => {
                 const name = normalizeBeatNameInput(addNameInput.value || 'New Beat', 'New Beat');
@@ -1435,7 +1538,15 @@ export function renderStoryBeatsSection(params: {
                 const act = clampBeatAct(parseInt(addActSelect.value, 10) || defaultAct || 1, maxActs);
                 const id = `custom:${plugin.settings.activeCustomBeatSystemId ?? 'default'}:${generateBeatGuid()}`;
                 const rangeVal = addRangeInput.value.trim() || undefined;
-                const updated = [...orderedBeats, { name, act, id, range: rangeVal }];
+                const chapterTitleValue = addChapterTitle.trim() || undefined;
+                const updated = [...orderedBeats, {
+                    name,
+                    act,
+                    id,
+                    range: rangeVal,
+                    chapterBreak: addChapterBreak,
+                    chapterTitle: chapterTitleValue
+                }];
                 saveBeats(updated);
                 renderList();
             };
@@ -1653,6 +1764,10 @@ export function renderStoryBeatsSection(params: {
                 name: normalizeBeatNameInput(b.name, ''),
                 purpose: typeof (b as { purpose?: unknown }).purpose === 'string'
                     ? String((b as { purpose?: unknown }).purpose).trim()
+                    : undefined,
+                chapterBreak: (b as { chapterBreak?: unknown }).chapterBreak === true,
+                chapterTitle: typeof (b as { chapterTitle?: unknown }).chapterTitle === 'string'
+                    ? String((b as { chapterTitle?: unknown }).chapterTitle).trim() || undefined
                     : undefined,
             }))
             .filter(b => hasBeatReadableText(b.name));
@@ -2385,7 +2500,7 @@ export function renderStoryBeatsSection(params: {
     // Both dirty indicators (dropdown warning + dirty notice) now use the same baseline.
 
     /** Apply a saved or built-in system as the active system and refresh UI. */
-    const applyLoadedSystem = (system: { id: string; name: string; description?: string; beats: { name: string; act: number; purpose?: string; id?: string; range?: string }[]; beatYamlAdvanced?: string; beatHoverMetadataFields?: { key: string; label: string; icon: string; enabled: boolean }[] }) => {
+    const applyLoadedSystem = (system: { id: string; name: string; description?: string; beats: BeatDefinition[]; beatYamlAdvanced?: string; beatHoverMetadataFields?: { key: string; label: string; icon: string; enabled: boolean }[] }) => {
         // 1. Guarantee we're on the Custom system (config resolution depends on this)
         plugin.settings.beatSystem = 'Custom';
         // 2. Activate this set's id so config resolves to custom:<id>
@@ -2665,7 +2780,14 @@ export function renderStoryBeatsSection(params: {
         // ── Shared: save-as-copy modal + persistence ─────────────────
         const saveSetModal = async (opts: { isCopy: boolean }): Promise<void> => {
             const currentBeats = (plugin.settings.customBeatSystemBeats || [])
-                .map(b => ({ ...b, name: normalizeBeatNameInput(b.name, '') }));
+                .map(b => ({
+                    ...b,
+                    name: normalizeBeatNameInput(b.name, ''),
+                    chapterBreak: (b as { chapterBreak?: unknown }).chapterBreak === true,
+                    chapterTitle: typeof (b as { chapterTitle?: unknown }).chapterTitle === 'string'
+                        ? String((b as { chapterTitle?: unknown }).chapterTitle).trim() || undefined
+                        : undefined,
+                }));
             if (currentBeats.some(b => !hasBeatReadableText(b.name))) {
                 new Notice('Beat names must include letters or numbers before saving a set.');
                 return;

@@ -83,5 +83,35 @@ Ends here ^scene-end`;
         expect(sanitized).not.toContain('This line should also go.');
         expect(sanitized).not.toContain('^scene-end');
     });
-});
 
+    it('preserves Pandoc raw LaTeX blocks used by Modern Classic structure markers', () => {
+        const input = `Visible prose.
+\`\`\`{=latex}
+\\rtPart{I}
+\`\`\`
+
+\`\`\`{=latex}
+\\rtEpigraph{A quote}{Author}
+\`\`\`
+
+\`\`\`{=latex}
+\\rtChapter{I}{Chapter Title}
+\`\`\`
+
+\`\`\`{=latex}
+\\rtSceneSep
+\`\`\``;
+
+        const sanitized = sanitizeCompiledManuscript(input, {
+            stripComments: true,
+            stripLinks: true,
+            stripCallouts: true,
+            stripBlockIds: true
+        });
+
+        expect(sanitized).toContain('\\rtPart{I}');
+        expect(sanitized).toContain('\\rtEpigraph{A quote}{Author}');
+        expect(sanitized).toContain('\\rtChapter{I}{Chapter Title}');
+        expect(sanitized).toContain('\\rtSceneSep');
+    });
+});

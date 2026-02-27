@@ -372,6 +372,8 @@ const BUNDLED_PANDOC_LAYOUT_TEMPLATES: BundledPandocLayoutTemplate[] = [
         preset: 'novel',
         path: 'rt_modern_classic.tex',
         bundled: true,
+        usesModernClassicStructure: true,
+        hasEpigraphs: true,
         content: [
             '% rt_modern_classic.tex',
             '% Modern Classic fiction layout for 6x9 trade',
@@ -507,7 +509,9 @@ export function getBundledPandocLayouts(): PandocLayoutTemplate[] {
         name: layout.name,
         preset: layout.preset,
         path: layout.path,
-        bundled: true
+        bundled: true,
+        ...(layout.usesModernClassicStructure === true ? { usesModernClassicStructure: true } : {}),
+        ...(layout.hasEpigraphs === true ? { hasEpigraphs: true } : {})
     }));
 }
 
@@ -550,13 +554,17 @@ export function ensureBundledPandocLayoutsRegistered(plugin: RadialTimelinePlugi
             name: canonical.name,
             preset: canonical.preset,
             path: canonical.path,
-            bundled: true
+            bundled: true,
+            ...(canonical.usesModernClassicStructure === true ? { usesModernClassicStructure: true } : {}),
+            ...(canonical.hasEpigraphs === true ? { hasEpigraphs: true } : {})
         };
         if (
             migrated.id !== layout.id
             || migrated.name !== layout.name
             || migrated.preset !== layout.preset
             || migrated.path !== layout.path
+            || migrated.usesModernClassicStructure !== layout.usesModernClassicStructure
+            || migrated.hasEpigraphs !== layout.hasEpigraphs
             || layout.bundled !== true
         ) {
             changed = true;

@@ -561,6 +561,12 @@
   gap: 10px;
 }
 
+.ert-manuscript-rule-block--cleanup {
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
 .rt-manuscript-modal .rt-template-actions {
   display: flex;
   flex-wrap: wrap;

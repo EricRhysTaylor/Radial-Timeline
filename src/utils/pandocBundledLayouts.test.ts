@@ -77,6 +77,9 @@ describe('bundled pandoc layout export auto-install', () => {
             'rt_contemporary_literary.tex',
             'rt_modern_classic.tex'
         ]);
+        const modernClassic = fictionLayouts.find(layout => layout.id === 'bundled-fiction-modern-classic');
+        expect(modernClassic?.usesModernClassicStructure).toBe(true);
+        expect(modernClassic?.hasEpigraphs).toBe(true);
     });
 
     it('installs missing bundled .tex template and then validates successfully', async () => {

@@ -3,7 +3,7 @@
  */
 import { App, ButtonComponent, DropdownComponent, Modal, Notice, Platform, setIcon, TAbstractFile, TFile, ToggleComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
-import { getSceneFilesByOrder, ManuscriptOrder, TocMode, ManuscriptSceneHeadingMode } from '../utils/manuscript';
+import { getSceneFilesByOrder, ManuscriptOrder, TocMode } from '../utils/manuscript';
 import { t } from '../i18n';
 import { ExportFormat, ExportType, ManuscriptPreset, OutlinePreset, getAutoPdfEngineSelection, getLayoutsForPreset, resolveTemplatePath, validatePandocLayout, getTemplateFontDiagnostics } from '../utils/exportFormats';
 import { isProfessionalActive } from '../settings/sections/ProfessionalSection';
@@ -30,7 +30,6 @@ export interface ManuscriptModalResult {
     selectedLayoutId?: string;
     splitMode?: 'single' | 'parts';
     splitParts?: number;
-    sceneHeadingMode?: ManuscriptSceneHeadingMode;
 }
 
 export interface ManuscriptExportOutcome {
@@ -194,7 +193,9 @@ export class ManuscriptOptionsModal extends Modal {
     private publishingCard?: HTMLElement;
     private publishingHeadingTextEl?: HTMLElement;
     private artifactRowEl?: HTMLElement;
+    private artifactHelperEl?: HTMLElement;
     private includeMatterCard?: HTMLElement;
+    private includeMatterToggle?: ToggleComponent;
     private exportCleanupCard?: HTMLElement;
     private synopsisRow?: HTMLElement;
     private cleanupCommentsToggle?: ToggleComponent;
@@ -605,13 +606,15 @@ export class ManuscriptOptionsModal extends Modal {
             text: t('manuscriptModal.tocNote')
         });
 
-        // G) PUBLISHING OPTIONS
+        // G) PDF EXPORT CONTROLS
         this.publishingCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card' });
         const publishingHeading = this.createSectionHeading(this.publishingCard, 'Manuscript Options', 'settings');
         this.publishingHeadingTextEl = publishingHeading.querySelector('.rt-sub-card-head-text') as HTMLElement | null || undefined;
         const publishingBody = this.publishingCard.createDiv({ cls: 'ert-manuscript-advanced-body' });
 
-        this.wordCountCard = publishingBody.createDiv({ cls: 'rt-manuscript-toggle-row' });
+        const exportControlsCard = publishingBody.createDiv({ cls: 'ert-manuscript-rule-block' });
+
+        this.wordCountCard = exportControlsCard.createDiv({ cls: 'rt-manuscript-toggle-row' });
         this.wordCountCard.createSpan({ cls: 'rt-manuscript-toggle-label', text: t('manuscriptModal.wordCountToggle') });
         new ToggleComponent(this.wordCountCard)
             .setValue(this.updateWordCounts)
@@ -619,9 +622,9 @@ export class ManuscriptOptionsModal extends Modal {
                 this.updateWordCounts = value;
             });
 
-        this.includeMatterCard = publishingBody.createDiv({ cls: 'rt-manuscript-toggle-row' });
+        this.includeMatterCard = exportControlsCard.createDiv({ cls: 'rt-manuscript-toggle-row' });
         this.includeMatterCard.createSpan({ cls: 'rt-manuscript-toggle-label', text: 'Include front & back matter' });
-        new ToggleComponent(this.includeMatterCard)
+        this.includeMatterToggle = new ToggleComponent(this.includeMatterCard)
             .setValue(this.includeMatterUserChoice)
             .onChange((value) => {
                 this.hasTouchedMatterToggle = true;
@@ -629,19 +632,19 @@ export class ManuscriptOptionsModal extends Modal {
                 this.includeMatter = value;
             });
 
-        this.artifactRowEl = publishingBody.createDiv({ cls: 'rt-manuscript-toggle-row' });
+        this.artifactRowEl = exportControlsCard.createDiv({ cls: 'rt-manuscript-toggle-row' });
         this.artifactRowEl.createSpan({ cls: 'rt-manuscript-toggle-label', text: 'Save compiled + sanitized Markdown files' });
         this.markdownArtifactToggle = new ToggleComponent(this.artifactRowEl)
             .setValue(this.saveMarkdownArtifact)
             .onChange((value) => {
                 this.saveMarkdownArtifact = value;
             });
-        publishingBody.createDiv({
+        this.artifactHelperEl = exportControlsCard.createDiv({
             cls: 'rt-sub-card-note',
             text: 'Saves both pre-sanitize (__compiled__) and Pandoc-ready (__sanitized__) Markdown files.'
         });
 
-        this.exportCleanupCard = publishingBody.createDiv({ cls: 'ert-manuscript-rule-block' });
+        this.exportCleanupCard = publishingBody.createDiv({ cls: 'ert-manuscript-rule-block ert-manuscript-rule-block--cleanup' });
         this.createSectionHeading(this.exportCleanupCard, 'Export Cleanup');
         this.exportCleanupCard.createDiv({
             cls: 'rt-sub-card-note',
@@ -856,7 +859,6 @@ export class ManuscriptOptionsModal extends Modal {
             outlinePreset: this.outlinePreset,
             outputFormat: mode.isOutline ? 'markdown' : this.outputFormat,
             tocMode: mode.showToc ? this.tocMode : 'none',
-            sceneHeadingMode: 'scene-number-title',
             order: this.order,
             subplot: this.subplot,
             updateWordCounts: mode.showWordCount ? this.updateWordCounts : false,
@@ -1135,6 +1137,7 @@ export class ManuscriptOptionsModal extends Modal {
         this.publishingCard?.toggleClass('rt-hidden', !mode.showPublishing);
         this.wordCountCard?.toggleClass('rt-hidden', !mode.showWordCount);
         this.includeMatterCard?.toggleClass('rt-hidden', !mode.showIncludeMatter);
+        this.includeMatterToggle?.setValue(this.includeMatterUserChoice);
         this.exportCleanupCard?.toggleClass('rt-hidden', !mode.showExportCleanup);
         this.synopsisRow?.toggleClass('rt-hidden', !mode.showOutlinePreset);
         this.scopeCard?.toggleClass('rt-hidden', !showSceneSelectionCards || !mode.showScope);
@@ -1183,6 +1186,7 @@ export class ManuscriptOptionsModal extends Modal {
         this.markdownArtifactToggle?.setValue(this.saveMarkdownArtifact);
         this.markdownArtifactToggle?.setDisabled(!mode.showSavePrecompile);
         this.artifactRowEl?.toggleClass('rt-hidden', !mode.showSavePrecompile);
+        this.artifactHelperEl?.toggleClass('rt-hidden', !mode.showSavePrecompile);
 
         this.syncOutputFormatPills();
         this.updateLayoutPicker();
@@ -1963,7 +1967,6 @@ Sarah stood at the window, watching the world wake up.`;
         const includeSynopsis = mode.isOutline ? this.includeSynopsisUserChoice : false;
         const lockSceneSelection = mode.lockSceneSelectionToFullBook;
         const submissionOrder: ManuscriptOrder = lockSceneSelection ? 'narrative' : this.order;
-        const submissionSceneHeadingMode: ManuscriptSceneHeadingMode = 'scene-number-title';
         const submissionRangeStart = lockSceneSelection ? undefined : this.rangeStart;
         const submissionRangeEnd = lockSceneSelection ? undefined : this.rangeEnd;
         const submissionSubplot = lockSceneSelection
@@ -2001,8 +2004,7 @@ Sarah stood at the window, watching the world wake up.`;
                 exportCleanup: mode.isManuscript ? this.getActiveCleanupOptions() : undefined,
                 selectedLayoutId: mode.isPdfManuscript ? this.selectedLayoutId : undefined,
                 splitMode: mode.showSplit ? this.splitMode : 'single',
-                splitParts: mode.showSplit && this.isSplitEnabled() ? this.splitParts : 1,
-                sceneHeadingMode: submissionSceneHeadingMode
+                splitParts: mode.showSplit && this.isSplitEnabled() ? this.splitParts : 1
             });
             const hasOutcome = Boolean(
                 outcome.savedPath
