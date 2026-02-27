@@ -2293,7 +2293,7 @@ export function renderStoryBeatsSection(params: {
             setIcon(addIconPreview, DEFAULT_HOVER_ICON);
             const addIconInput = addIconWrapper.createEl('input', {
                 type: 'text',
-                cls: 'ert-input ert-input--lg ert-icon-input',
+                cls: 'ert-input ert-input--md ert-icon-input',
                 attr: { placeholder: 'Icon name...' }
             });
             addIconInput.value = DEFAULT_HOVER_ICON;
@@ -2323,10 +2323,10 @@ export function renderStoryBeatsSection(params: {
             setTooltip(addCheckbox, 'Show in beat hover synopsis');
 
             // 3. Key input
-            const addKeyInput = addRow.createEl('input', { type: 'text', cls: 'ert-input ert-input--md', attr: { placeholder: 'New key' } });
+            const addKeyInput = addRow.createEl('input', { type: 'text', cls: 'ert-input ert-input--full', attr: { placeholder: 'New key' } });
 
             // 4. Value input
-            const addValInput = addRow.createEl('input', { type: 'text', cls: 'ert-input ert-input--md', attr: { placeholder: 'Value' } }) as HTMLInputElement;
+            const addValInput = addRow.createEl('input', { type: 'text', cls: 'ert-input ert-input--full', attr: { placeholder: 'Value' } }) as HTMLInputElement;
 
             // 5. Buttons wrapper (holds add + revert)
             const btnWrap = addRow.createDiv({ cls: ['ert-iconBtnGroup', 'ert-template-actions'] });
@@ -3518,7 +3518,7 @@ export function renderStoryBeatsSection(params: {
             setIcon(addIconPreview, DEFAULT_HOVER_ICON);
             const addIconInput = addIconWrapper.createEl('input', { 
                 type: 'text', 
-                cls: 'ert-input ert-input--lg ert-icon-input',
+                cls: 'ert-input ert-input--md ert-icon-input',
                 attr: { placeholder: 'Icon name...' }
             });
             addIconInput.value = DEFAULT_HOVER_ICON;
@@ -3549,10 +3549,10 @@ export function renderStoryBeatsSection(params: {
             setTooltip(addCheckbox, 'Show in hover synopsis');
 
             // 5. Key input (direct child - no wrapper!)
-            const keyInput = addRow.createEl('input', { type: 'text', cls: 'ert-input ert-input--md', attr: { placeholder: 'New key' } });
+            const keyInput = addRow.createEl('input', { type: 'text', cls: 'ert-input ert-input--full', attr: { placeholder: 'New key' } });
 
             // 6. Value input (direct child - no wrapper!)
-            const valInput = addRow.createEl('input', { type: 'text', cls: 'ert-input ert-input--md', attr: { placeholder: 'Value' } }) as HTMLInputElement;
+            const valInput = addRow.createEl('input', { type: 'text', cls: 'ert-input ert-input--full', attr: { placeholder: 'Value' } }) as HTMLInputElement;
 
             // 7. Buttons wrapper (holds both + and reset)
             const btnWrap = addRow.createDiv({ cls: ['ert-iconBtnGroup', 'ert-template-actions'] });
@@ -3759,6 +3759,30 @@ export function renderStoryBeatsSection(params: {
     const backdropBaseKeys = extractKeysInOrder(backdropBaseTemplate);
     // `Synopsis` is legacy for Backdrop and should not be written by new templates.
     const backdropDisallowedNewWriteKeys = new Set(['Synopsis']);
+    const backdropReservedSystemKeys = new Set(['id', 'class']);
+    const normalizeBackdropFieldKey = (value: string): string => {
+        return (value || '')
+            .replace(/[\u0000-\u001f\u007f]+/g, ' ')
+            .replace(/:/g, ' - ')
+            .replace(/\s+/g, ' ')
+            .trim();
+    };
+    const backdropKeyMatch = (value: string): string => normalizeBackdropFieldKey(value).toLowerCase();
+    const isBackdropBaseKey = (value: string): boolean => {
+        const match = backdropKeyMatch(value);
+        return backdropBaseKeys.some(baseKey => backdropKeyMatch(baseKey) === match);
+    };
+    const isBackdropLegacyKey = (value: string): boolean => {
+        const match = backdropKeyMatch(value);
+        return [...backdropDisallowedNewWriteKeys].some(legacyKey => backdropKeyMatch(legacyKey) === match);
+    };
+    const isBackdropReservedSystemKey = (value: string): boolean => {
+        return backdropReservedSystemKeys.has(backdropKeyMatch(value));
+    };
+    const backdropHasCustomKey = (entries: FieldEntry[], value: string, skipIndex?: number): boolean => {
+        const match = backdropKeyMatch(value);
+        return entries.some((entry, index) => index !== skipIndex && backdropKeyMatch(entry.key) === match);
+    };
 
     const renderBackdropYamlEditor = () => {
         backdropYamlContainer.empty();
@@ -3769,7 +3793,7 @@ export function renderStoryBeatsSection(params: {
         const currentBackdropAdvanced = plugin.settings.backdropYamlTemplates?.advanced ?? '';
         const backdropAdvancedObj = safeParseYaml(currentBackdropAdvanced);
 
-        const backdropOptionalOrder = extractKeysInOrder(currentBackdropAdvanced).filter(k => !backdropBaseKeys.includes(k));
+        const backdropOptionalOrder = extractKeysInOrder(currentBackdropAdvanced).filter(k => !isBackdropBaseKey(k));
         const backdropEntries: FieldEntry[] = backdropOptionalOrder.map(key => ({
             key,
             value: backdropAdvancedObj[key] ?? '',
@@ -3901,18 +3925,37 @@ export function renderStoryBeatsSection(params: {
 
                 // Key rename
                 keyInput.addEventListener('blur', () => {
-                    const newKey = keyInput.value.trim();
-                    if (!newKey || newKey === entry.key) return;
-                    if (backdropBaseKeys.includes(newKey)) {
+                    const newKey = normalizeBackdropFieldKey(keyInput.value);
+                    if (!newKey || backdropKeyMatch(newKey) === backdropKeyMatch(entry.key)) {
+                        keyInput.value = entry.key;
+                        return;
+                    }
+                    if (!hasBeatReadableText(newKey)) {
+                        new Notice('Field key must include letters or numbers.');
+                        keyInput.value = entry.key;
+                        return;
+                    }
+                    if (isBackdropReservedSystemKey(newKey)) {
+                        new Notice(`"${newKey}" is system-managed. Use "Insert missing IDs" from the audit panel instead.`);
+                        keyInput.value = entry.key;
+                        return;
+                    }
+                    if (isBackdropBaseKey(newKey)) {
                         new Notice(`"${newKey}" is a base field and cannot be used as a custom key.`);
                         keyInput.value = entry.key;
                         return;
                     }
-                    if (backdropDisallowedNewWriteKeys.has(newKey)) {
+                    if (isBackdropLegacyKey(newKey)) {
                         new Notice(`"${newKey}" is a legacy backdrop key. Use "Context" instead.`);
                         keyInput.value = entry.key;
                         return;
                     }
+                    if (backdropHasCustomKey(list, newKey, idx)) {
+                        new Notice(`Key "${newKey}" already exists.`);
+                        keyInput.value = entry.key;
+                        return;
+                    }
+                    keyInput.value = newKey;
                     renameBackdropHoverMetadataKey(entry.key, newKey);
                     const next = list.map((e, i) => i === idx ? { ...e, key: newKey } : e);
                     saveBackdropEntries(next);
@@ -3969,7 +4012,7 @@ export function renderStoryBeatsSection(params: {
             setIcon(addIconPreview, DEFAULT_HOVER_ICON);
             const addIconInput = addIconWrapper.createEl('input', {
                 type: 'text',
-                cls: 'ert-input ert-input--lg ert-icon-input',
+                cls: 'ert-input ert-input--md ert-icon-input',
                 attr: { placeholder: 'Icon name...' }
             });
             addIconInput.value = DEFAULT_HOVER_ICON;
@@ -3999,10 +4042,10 @@ export function renderStoryBeatsSection(params: {
             setTooltip(addCheckbox, 'Show in backdrop hover synopsis');
 
             // 5. Key input (direct child)
-            const addKeyInput = addRow.createEl('input', { type: 'text', cls: 'ert-input ert-input--md', attr: { placeholder: 'New key' } });
+            const addKeyInput = addRow.createEl('input', { type: 'text', cls: 'ert-input ert-input--full', attr: { placeholder: 'New key' } });
 
             // 6. Value input (direct child)
-            const addValInput = addRow.createEl('input', { type: 'text', cls: 'ert-input ert-input--md', attr: { placeholder: 'Value' } }) as HTMLInputElement;
+            const addValInput = addRow.createEl('input', { type: 'text', cls: 'ert-input ert-input--full', attr: { placeholder: 'Value' } }) as HTMLInputElement;
 
             // 7. Buttons wrapper (holds both + and reset)
             const btnWrap = addRow.createDiv({ cls: ['ert-iconBtnGroup', 'ert-template-actions'] });
@@ -4011,17 +4054,25 @@ export function renderStoryBeatsSection(params: {
             setIcon(addBtn, 'plus');
             setTooltip(addBtn, 'Add custom field');
             addBtn.addEventListener('click', () => {
-                const k = (addKeyInput.value || '').trim();
-                if (!k) return;
-                if (backdropBaseKeys.includes(k)) {
+                const k = normalizeBackdropFieldKey(addKeyInput.value || '');
+                if (!k || !hasBeatReadableText(k)) {
+                    new Notice('Field key must include letters or numbers.');
+                    return;
+                }
+                addKeyInput.value = k;
+                if (isBackdropReservedSystemKey(k)) {
+                    new Notice(`"${k}" is system-managed. Use "Insert missing IDs" from the audit panel instead.`);
+                    return;
+                }
+                if (isBackdropBaseKey(k)) {
                     new Notice(`"${k}" is a base field and cannot be used as a custom key.`);
                     return;
                 }
-                if (backdropDisallowedNewWriteKeys.has(k)) {
+                if (isBackdropLegacyKey(k)) {
                     new Notice(`"${k}" is a legacy backdrop key. Use "Context" instead.`);
                     return;
                 }
-                if (data.some(e => e.key === k)) {
+                if (backdropHasCustomKey(data, k)) {
                     new Notice(`Key "${k}" already exists.`);
                     return;
                 }

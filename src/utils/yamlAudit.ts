@@ -291,7 +291,9 @@ export async function runYamlAudit(options: YamlAuditOptions): Promise<YamlAudit
 
         // Missing: template keys not present in note
         const missingFields = [...allTemplateKeys].filter(k => !noteKeys.includes(k));
-        const missingReferenceId = !readReferenceId(fm);
+        // Check both raw and normalized frontmatter so user-defined key mappings
+        // cannot accidentally hide an existing system reference id.
+        const missingReferenceId = !readReferenceId(rawFm) && !readReferenceId(fm);
 
         // Extra: note keys not in any template and not excluded
         const extraKeys = noteKeys.filter(k =>

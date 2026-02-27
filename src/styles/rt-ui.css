@@ -3600,6 +3600,14 @@
   --ert-control-width: var(--rt-settings-select-width);
 }
 
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .setting-item .setting-item-control select.dropdown:not(.ert-setting-dropdown):not(.ert-setting-dropdown--wide):not([class*="ert-input--"]) {
+  width: var(--rt-settings-select-width);
+  min-width: var(--rt-settings-select-width);
+  max-width: var(--rt-settings-select-width);
+  flex: 0 0 var(--rt-settings-select-width);
+  --ert-control-width: var(--rt-settings-select-width);
+}
+
 :is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .setting-item .setting-item-control select.ert-setting-dropdown--wide {
   width: var(--ert-settings-select-width-wide);
   min-width: var(--ert-settings-select-width-wide);
