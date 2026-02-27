@@ -497,10 +497,10 @@ class MatterSampleLaneModal extends Modal {
         refreshOptionState();
 
         const actions = contentEl.createDiv({ cls: 'ert-modal-actions ert-template-pack-actions' });
-        new ButtonComponent(actions)
-            .setButtonText('Generate Template Pack')
-            .setCta()
-            .onClick(() => {
+        const generateButton = new ButtonComponent(actions)
+            .setButtonText('Generate Template Pack');
+        generateButton.buttonEl.addClass('ert-btn', 'ert-btn--standard-pro');
+        generateButton.onClick(() => {
                 this.resolved = true;
                 this.close();
                 this.onPick(this.selected);
@@ -1843,26 +1843,26 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
     };
     const buildLayoutDescription = (layout: PandocLayoutTemplate): string => {
         if (layout.preset === 'screenplay') {
-            return 'Industry-standard screenplay formatting. Scene headings, dialogue blocks, and submission-ready margins.';
+            return 'Industry screenplay format with uppercase sluglines, dialogue-first spacing, and production-safe margins. Page numbers run in the header with a Courier-family typewriter look.';
         }
         if (layout.preset === 'novel') {
             const variant = getFictionVariant(layout);
             if (variant === 'classic') {
-                return 'Traditional manuscript layout with simple headers and centered page numbers. Minimal styling.';
+                return 'Traditional manuscript treatment with restrained running headers and centered folios for clean draft review. Uses classic serif body typography with minimal decorative styling.';
             }
             if (variant === 'modernClassic') {
-                return 'Modern Classic fiction layout for 6x9 trade trim with RT-controlled part/chapter macros and scene separators.';
+                return '6x9 trade-book design with RT-driven part/chapter openers and structured scene-break handling. Headers are balanced for long-form fiction, with folios placed for print-first readability and modern serif text.';
             }
             if (variant === 'signature') {
-                return 'Refined literary manuscript style with elevated typography, alternating headers, and balanced page rhythm.';
+                return 'Literary-forward composition with alternating verso/recto headers and carefully tuned vertical rhythm. Folios and heading treatments are spaced to support long reads, paired with elevated serif typography.';
             }
             if (variant === 'contemporary') {
-                return 'Running headers: book title on left pages, section title on right. Chapter openers suppress headers and folios.';
+                return 'Running-header system: book title on left pages, section/chapter context on right for quick navigation. Chapter openers suppress header and page number marks, with contemporary serif styling and generous white space.';
             }
-            return 'Refined fiction manuscript layout with polished typography and chapter-first structure.';
+            return 'Refined fiction layout with chapter-first pacing, polished header structure, and print-friendly folio placement. Built around readable serif typography for manuscript and proof workflows.';
         }
         if (layout.preset === 'podcast') {
-            return 'Structured narration layout optimized for voice-driven scripts and clean print output.';
+            return 'Narration-first script format with speaker/segment clarity, timing-friendly spacing, and clean cue separation. Header metadata and page numbering are positioned for fast booth or desk reference.';
         }
         return 'Custom PDF layout.';
     };

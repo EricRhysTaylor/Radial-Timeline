@@ -6000,6 +6000,10 @@
   padding: 0 0 0 calc(var(--ert-gap-md) + 8px);
 }
 
+.ert-ui.ert-scope--modal.ert-modal--template-pack .ert-template-pack-list--ordered {
+  margin-inline-start: calc(var(--ert-gap-sm) + 2px);
+}
+
 .ert-ui.ert-scope--modal.ert-modal--template-pack .ert-template-pack-list-item {
   display: list-item;
   margin: 0 0 var(--ert-gap-xs) 0;
@@ -7120,7 +7124,7 @@
 .ert-ui.ert-scope--settings .ert-layout-row-desc {
   line-height: 1.35;
   display: -webkit-box;
-  -webkit-line-clamp: 1;
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
