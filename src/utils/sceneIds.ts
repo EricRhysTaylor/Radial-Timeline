@@ -4,6 +4,7 @@ const MIN_HEX_LENGTH = 8;
 const MAX_HEX_LENGTH = 10;
 const SCENE_CLASS_KEY = 'class';
 const SCENE_ID_KEY = 'id';
+const CANONICAL_REFERENCE_ID_KEY = 'ID';
 
 export function generateSceneId(hexLength: number = DEFAULT_HEX_LENGTH): string {
     const length = clampHexLength(hexLength);
@@ -75,7 +76,7 @@ export function ensureReferenceIdFrontmatter(
     const idKey = findCaseInsensitiveKey(frontmatter, SCENE_ID_KEY);
     const ordered: Record<string, unknown> = {};
 
-    ordered.id = id;
+    ordered[CANONICAL_REFERENCE_ID_KEY] = id;
     if (classKey) {
         ordered[classKey] = frontmatter[classKey];
     } else if (options.classFallback) {
@@ -89,8 +90,8 @@ export function ensureReferenceIdFrontmatter(
     }
 
     const changed = !!forcedId
-        ? (existingId !== forcedId || idKey !== 'id' || (!classKey && !!options.classFallback))
-        : (!existingId || idKey !== 'id' || (!classKey && !!options.classFallback));
+        ? (existingId !== forcedId || idKey !== CANONICAL_REFERENCE_ID_KEY || (!classKey && !!options.classFallback))
+        : (!existingId || idKey !== CANONICAL_REFERENCE_ID_KEY || (!classKey && !!options.classFallback));
     return {
         frontmatter: ordered,
         id,
@@ -124,7 +125,7 @@ export function ensureReferenceIdTemplateFrontmatter(
     }
 
     const id = existingId ?? generateSceneId();
-    const outputLines = [`id: ${id}`, classLine ?? `Class: ${classFallback}`, ...remaining];
+    const outputLines = [`${CANONICAL_REFERENCE_ID_KEY}: ${id}`, classLine ?? `Class: ${classFallback}`, ...remaining];
     return {
         frontmatter: outputLines.join('\n').trimEnd(),
         id

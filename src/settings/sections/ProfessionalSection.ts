@@ -1933,47 +1933,25 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
     };
 
     // ── Layout Visual: Pictogram Spread Configs ───────────────────────────
-    const BODY_LINES = 8;
+    const BODY_LINES = 14;
 
-    const getLayoutPrimarySpread = (variant: FictionLayoutVariant): PictogramSpread => {
+    const getLayoutSpreads = (variant: FictionLayoutVariant): PictogramSpread[] => {
         switch (variant) {
             case 'classic':
-                return {
-                    label: '',
-                    leftPage: { headerCenter: 'TITLE', folioBottom: '12', bodyLines: BODY_LINES },
-                    rightPage: { headerCenter: 'TITLE', folioBottom: '13', bodyLines: BODY_LINES },
-                };
-            case 'modernClassic':
-                return {
-                    label: '',
-                    leftPage: { headerLeft: '12', headerRight: 'AUTH', bodyLines: BODY_LINES },
-                    rightPage: { headerLeft: 'TITLE', headerRight: '13', bodyLines: BODY_LINES },
-                };
-            case 'signature':
-                return {
-                    label: '',
-                    leftPage: { headerLeft: '12', headerRight: 'AUTH', bodyLines: BODY_LINES },
-                    rightPage: { headerLeft: 'TITLE', headerRight: '13', bodyLines: BODY_LINES },
-                };
-            case 'contemporary':
-                return {
-                    label: '',
-                    leftPage: { headerLeft: 'title', folioBottom: '12', bodyLines: BODY_LINES },
-                    rightPage: { headerRight: 'section', folioBottom: '13', bodyLines: BODY_LINES },
-                };
-            default:
-                return {
-                    label: '',
-                    leftPage: { bodyLines: BODY_LINES },
-                    rightPage: { bodyLines: BODY_LINES },
-                };
-        }
-    };
-
-    const getLayoutSecondarySpreads = (variant: FictionLayoutVariant): PictogramSpread[] => {
-        switch (variant) {
+                return [
+                    {
+                        label: 'BODY',
+                        leftPage: { headerCenter: 'TITLE', folioBottom: '12', bodyLines: BODY_LINES },
+                        rightPage: { headerCenter: 'TITLE', folioBottom: '13', bodyLines: BODY_LINES },
+                    },
+                ];
             case 'modernClassic':
                 return [
+                    {
+                        label: 'BODY',
+                        leftPage: { headerLeft: '12 | AUTH', bodyLines: BODY_LINES },
+                        rightPage: { headerRight: 'TITLE | 13', bodyLines: BODY_LINES },
+                    },
                     {
                         label: 'PART',
                         leftPage: null,
@@ -1991,8 +1969,8 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
                             bodyLines: 0,
                             suppressHeader: true,
                             suppressFooter: true,
-                            specialText: 'CH. I',
-                            specialSubtext: 'Title',
+                            specialText: 'CHAPTER I',
+                            specialSubtext: 'Boy with a Skull',
                         },
                     },
                     {
@@ -2000,55 +1978,63 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
                         leftPage: null,
                         rightPage: {
                             bodyLines: 0,
-                            suppressHeader: true,
-                            suppressFooter: true,
                             separatorText: 'ii.',
-                            linesBeforeSeparator: 3,
-                            linesAfterSeparator: 3,
+                            linesBeforeSeparator: 5,
+                            linesAfterSeparator: 5,
                         },
                     },
                 ];
             case 'signature':
                 return [
                     {
-                        label: 'NUMBER',
+                        label: 'BODY',
+                        leftPage: { headerLeft: '12 | AUTH', bodyLines: BODY_LINES },
+                        rightPage: { headerRight: 'TITLE | 13', bodyLines: BODY_LINES },
+                    },
+                    {
+                        label: 'SCENE #',
                         leftPage: null,
                         rightPage: {
-                            bodyLines: 3,
+                            bodyLines: 4,
                             suppressHeader: true,
                             suppressFooter: true,
                             specialText: '3',
                         },
                     },
                     {
-                        label: 'NUM+TITLE',
+                        label: '#+TITLE',
                         leftPage: null,
                         rightPage: {
-                            bodyLines: 3,
+                            bodyLines: 4,
                             suppressHeader: true,
                             suppressFooter: true,
                             specialText: '3',
-                            specialSubtext: '(Escape)',
+                            specialSubtext: '(The Escape)',
                         },
                     },
                     {
                         label: 'TITLE',
                         leftPage: null,
                         rightPage: {
-                            bodyLines: 3,
+                            bodyLines: 4,
                             suppressHeader: true,
                             suppressFooter: true,
-                            specialText: 'Escape',
+                            specialText: 'The Escape',
                         },
                     },
                 ];
             case 'contemporary':
                 return [
                     {
+                        label: 'BODY',
+                        leftPage: { headerLeft: 'title', folioBottom: '12', bodyLines: BODY_LINES },
+                        rightPage: { headerRight: 'section', folioBottom: '13', bodyLines: BODY_LINES },
+                    },
+                    {
                         label: 'CHAPTER',
                         leftPage: null,
                         rightPage: {
-                            bodyLines: 4,
+                            bodyLines: 5,
                             suppressHeader: true,
                             suppressFooter: true,
                             specialText: 'Chapter',
@@ -2056,7 +2042,13 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
                     },
                 ];
             default:
-                return [];
+                return [
+                    {
+                        label: '',
+                        leftPage: { bodyLines: BODY_LINES },
+                        rightPage: { bodyLines: BODY_LINES },
+                    },
+                ];
         }
     };
 
@@ -2161,8 +2153,8 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         const features = getLayoutFeatures(variant);
         renderLayoutFeatureList(cols, features);
 
-        const primarySpread = getLayoutPrimarySpread(variant);
-        renderLayoutPictograms(cols, [primarySpread]);
+        const spreads = getLayoutSpreads(variant);
+        renderLayoutPictograms(cols, spreads);
     };
 
     const getLayoutInstalledState = (layout: PandocLayoutTemplate): boolean => {
@@ -2499,16 +2491,6 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
 
             if (showsSpecialOptions && expanded) {
                 const panel = row.createDiv({ cls: 'ert-layout-special-panel' });
-
-                // Secondary pictograms (Part, Chapter, Scene treatments)
-                const secondarySpreads = getLayoutSecondarySpreads(variant);
-                if (secondarySpreads.length > 0) {
-                    const secondaryPictos = panel.createDiv({ cls: 'ert-layout-special-pictograms' });
-                    for (const spread of secondarySpreads) {
-                        renderLayoutSpread(secondaryPictos, spread);
-                    }
-                }
-
                 panel.createDiv({ cls: 'ert-layout-special-divider' });
 
                 if (specialCapabilities.hasEpigraphs) {

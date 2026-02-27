@@ -24,9 +24,9 @@ describe('yamlTemplateNormalize', () => {
         expect(isExcluded('id')).toBe(true);
     });
 
-    it('keeps reference id first in canonical order', () => {
+    it('keeps reference ID first in canonical order', () => {
         const order = computeCanonicalOrder('Scene', DEFAULT_SETTINGS);
-        expect(order[0]).toBe('id');
+        expect(order[0]).toBe('ID');
     });
 
     it('does not exclude scene triplet analysis fields when AI is disabled', () => {

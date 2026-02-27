@@ -125,7 +125,11 @@ export function getTemplateParts(
         case 'Beat': {
             const configuredBase = settings.beatYamlTemplates?.base
                 ?? DEFAULT_SETTINGS.beatYamlTemplates!.base;
-            const base = configuredBase.replace(/^Description:/gm, 'Purpose:');
+            const base = configuredBase
+                .replace(/^Beat Id\s*:\s*.*$/gim, '')
+                .replace(/^Description:/gm, 'Purpose:')
+                .replace(/\n{3,}/g, '\n\n')
+                .trim();
             const config = getBeatConfigForSystem(settings, beatSystemKey);
             const advanced = sanitizeBeatAdvancedForWrite(config.beatYamlAdvanced);
             const merged = advanced.trim()
@@ -235,7 +239,7 @@ export function computeCanonicalOrder(
     );
     // Reference ID is system-managed and always canonical-first for note types
     // that use IDs (Scene, Beat, Backdrop).
-    const result: string[] = ['id'];
+    const result: string[] = ['ID'];
     const seen = new Set<string>(['id']);
     for (const key of mergedOrder) {
         const lower = key.toLowerCase();
@@ -300,12 +304,8 @@ export function getExcludeKeyPredicate(
                 // All Gossamer-injected fields: Gossamer1, GossamerStage1,
                 // Gossamer1 Justification, Gossamer Last Updated, etc.
                 if (/^Gossamer/i.test(key)) return true;
-                // Beat Id is system-managed identity; never flag as extra
-                if (key === 'Beat Id') return true;
                 // Legacy base field (removed from template but may exist in older notes)
                 if (key === 'When') return true;
-                // Legacy beat narrative field (renamed to Purpose)
-                if (key === 'Description') return true;
                 // Obsidian-internal keys
                 if (RESERVED_OBSIDIAN_KEYS.has(key)) return true;
                 return false;

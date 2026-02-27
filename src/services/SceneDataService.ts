@@ -448,7 +448,6 @@ export class SceneDataService {
                 Purpose: purpose,
                 Description: metadata.Description as string | undefined,
                 "Beat Model": beatModel,
-                "Beat Id": typeof metadata["Beat Id"] === 'string' ? String(metadata["Beat Id"]).trim() || undefined : undefined,
                 missingBeatModel,
                 Range: metadata.Range as string | undefined,
                 "Suggest Placement": metadata["Suggest Placement"] as string | undefined,

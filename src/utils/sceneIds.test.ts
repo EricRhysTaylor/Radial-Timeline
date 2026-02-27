@@ -16,19 +16,19 @@ describe('sceneIds', () => {
         });
 
         expect(result.sceneId).toMatch(/^scn_[0-9a-f]{8,10}$/);
-        expect(result.frontmatter.id).toBe(result.sceneId);
+        expect(result.frontmatter.ID).toBe(result.sceneId);
         expect(result.frontmatter.Class).toBe('Scene');
     });
 
     it('preserves an existing scene id value', () => {
         const result = ensureSceneIdFrontmatter({
-            id: 'scn_deadbeef',
+            ID: 'scn_deadbeef',
             Class: 'Scene',
             Summary: 'Keep me'
         });
 
         expect(result.sceneId).toBe('scn_deadbeef');
-        expect(result.frontmatter.id).toBe('scn_deadbeef');
+        expect(result.frontmatter.ID).toBe('scn_deadbeef');
     });
 
     it('keeps scene identity stable across rename/reorder by preferring sceneId over path', () => {
@@ -40,7 +40,7 @@ describe('sceneIds', () => {
         expect(resolveSceneReferenceId(sceneId, renamedPath)).toBe(sceneId);
     });
 
-    it('puts id above class in generated scene template frontmatter', () => {
+    it('puts ID above class in generated scene template frontmatter', () => {
         const template = [
             'Class: Scene',
             'When: {{When}}',
@@ -49,13 +49,13 @@ describe('sceneIds', () => {
         const result = ensureSceneTemplateFrontmatter(template);
         const lines = result.frontmatter.split('\n');
 
-        expect(lines[0]).toMatch(/^id:\s+scn_[0-9a-f]{8,10}$/);
+        expect(lines[0]).toMatch(/^ID:\s+scn_[0-9a-f]{8,10}$/);
         expect(lines[1]).toBe('Class: Scene');
     });
 
     it('forces a replacement reference id when requested', () => {
         const result = ensureReferenceIdFrontmatter({
-            id: 'scn_deadbeef',
+            ID: 'scn_deadbeef',
             Class: 'Backdrop',
             Context: 'context'
         }, {
@@ -64,15 +64,15 @@ describe('sceneIds', () => {
         });
 
         expect(result.id).toBe('scn_feedface');
-        expect(result.frontmatter.id).toBe('scn_feedface');
+        expect(result.frontmatter.ID).toBe('scn_feedface');
         expect(result.changed).toBe(true);
     });
 
-    it('normalizes template frontmatter with id first and class fallback', () => {
+    it('normalizes template frontmatter with ID first and class fallback', () => {
         const result = ensureReferenceIdTemplateFrontmatter('When: {{When}}\nContext:', 'Backdrop');
         const lines = result.frontmatter.split('\n');
 
-        expect(lines[0]).toMatch(/^id:\s+scn_[0-9a-f]{8,10}$/);
+        expect(lines[0]).toMatch(/^ID:\s+scn_[0-9a-f]{8,10}$/);
         expect(lines[1]).toBe('Class: Backdrop');
         expect(lines[2]).toBe('When: {{When}}');
     });

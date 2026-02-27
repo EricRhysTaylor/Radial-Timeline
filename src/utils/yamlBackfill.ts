@@ -45,6 +45,20 @@ export interface FillEmptyValuesResult {
     errors: { file: TFile; error: string }[];
 }
 
+export interface BeatPurposeMigrationResult {
+    /** Notes where at least one migration change was applied. */
+    updated: number;
+    /** Purpose values copied from legacy Description values. */
+    movedToPurpose: number;
+    /** Description keys removed after migration or when empty. */
+    removedDescription: number;
+    /** Notes with no applicable legacy change. */
+    skipped: number;
+    /** Notes where processFrontMatter threw. */
+    failed: number;
+    errors: { file: TFile; error: string }[];
+}
+
 // ─── Helpers ────────────────────────────────────────────────────────────
 
 /**
@@ -119,6 +133,77 @@ export async function runYamlBackfill(options: BackfillOptions): Promise<Backfil
             }
         } catch (error) {
             result.failed++;
+            result.errors.push({
+                file,
+                error: error instanceof Error ? error.message : String(error),
+            });
+        }
+    }
+
+    return result;
+}
+
+/**
+ * Beat legacy migration helper:
+ * - If Purpose is missing/empty and Description has content, move content to Purpose.
+ * - Remove empty Description keys (and remove moved Description keys).
+ */
+export async function runBeatDescriptionToPurposeMigration(options: {
+    app: App;
+    files: TFile[];
+    onProgress?: (current: number, total: number, filename: string) => void;
+    abortSignal?: AbortSignal;
+}): Promise<BeatPurposeMigrationResult> {
+    const { app, files, onProgress, abortSignal } = options;
+    const result: BeatPurposeMigrationResult = {
+        updated: 0,
+        movedToPurpose: 0,
+        removedDescription: 0,
+        skipped: 0,
+        failed: 0,
+        errors: [],
+    };
+
+    for (let i = 0; i < files.length; i++) {
+        if (abortSignal?.aborted) break;
+
+        const file = files[i];
+        onProgress?.(i + 1, files.length, file.basename);
+
+        try {
+            let didChange = false;
+
+            await app.fileManager.processFrontMatter(file, (fm) => {
+                const fmObj = fm as Record<string, unknown>;
+                const hasDescription = Object.prototype.hasOwnProperty.call(fmObj, 'Description');
+                const descriptionRaw = typeof fmObj['Description'] === 'string' ? fmObj['Description'] : undefined;
+                const descriptionValue = (descriptionRaw ?? '').trim();
+                const purposeRaw = typeof fmObj['Purpose'] === 'string' ? fmObj['Purpose'] : undefined;
+                const hasPurposeValue = typeof purposeRaw === 'string' && purposeRaw.trim().length > 0;
+
+                if (!hasPurposeValue && descriptionValue.length > 0) {
+                    fmObj['Purpose'] = descriptionRaw;
+                    delete fmObj['Description'];
+                    result.movedToPurpose += 1;
+                    result.removedDescription += 1;
+                    didChange = true;
+                    return;
+                }
+
+                if (hasDescription && descriptionValue.length === 0) {
+                    delete fmObj['Description'];
+                    result.removedDescription += 1;
+                    didChange = true;
+                }
+            });
+
+            if (didChange) {
+                result.updated += 1;
+            } else {
+                result.skipped += 1;
+            }
+        } catch (error) {
+            result.failed += 1;
             result.errors.push({
                 file,
                 error: error instanceof Error ? error.message : String(error),

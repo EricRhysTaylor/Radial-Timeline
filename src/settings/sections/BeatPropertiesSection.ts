@@ -44,7 +44,7 @@ import {
     RESERVED_OBSIDIAN_KEYS,
 } from '../../utils/yamlTemplateNormalize';
 import { runYamlAudit, collectFilesForAudit, collectFilesForAuditWithScope, formatAuditReport, type YamlAuditResult, type NoteAuditEntry } from '../../utils/yamlAudit';
-import { runYamlBackfill, runYamlFillEmptyValues, type BackfillResult } from '../../utils/yamlBackfill';
+import { runBeatDescriptionToPurposeMigration, runYamlBackfill, runYamlFillEmptyValues, type BackfillResult } from '../../utils/yamlBackfill';
 import { runReferenceIdBackfill, runReferenceIdDuplicateRepair } from '../../utils/referenceIdBackfill';
 import { runYamlDeleteFields, runYamlDeleteEmptyExtraFields, runYamlReorder, previewDeleteFields, previewReorder, type DeleteResult, type ReorderResult } from '../../utils/yamlManager';
 import { type FrontmatterSafetyResult, formatSafetyIssues } from '../../utils/yamlSafety';
@@ -480,7 +480,6 @@ export function renderStoryBeatsSection(params: {
 
     const buildExistingBeatLookup = (beats: TimelineItem[]): Map<string, TimelineItem[]> => {
         const lookup = new Map<string, TimelineItem[]>();
-        const idLookup = new Map<string, TimelineItem[]>();
         beats.forEach(beat => {
             const key = normalizeBeatTitle(getBeatBasename(beat));
             if (key) {
@@ -488,14 +487,7 @@ export function renderStoryBeatsSection(params: {
                 list.push(beat);
                 lookup.set(key, list);
             }
-            const beatId = beat["Beat Id"];
-            if (beatId) {
-                const idList = idLookup.get(beatId) ?? [];
-                idList.push(beat);
-                idLookup.set(beatId, idList);
-            }
         });
-        existingBeatIdLookup = idLookup;
         return lookup;
     };
 
@@ -508,24 +500,6 @@ export function renderStoryBeatsSection(params: {
         }
         const system = getPlotSystem(selectedSystem);
         return system?.beats ?? [];
-    };
-
-    /** Map of expected Beat Id → normalized beat name key for the selected system. */
-    const buildExpectedBeatIdMap = (selectedSystem: string): Map<string, string> => {
-        const map = new Map<string, string>();
-        if (selectedSystem === 'Custom') {
-            for (const b of (plugin.settings.customBeatSystemBeats || [])) {
-                if (b.id && b.name) map.set(b.id, normalizeBeatTitle(b.name));
-            }
-        } else {
-            const system = getPlotSystem(selectedSystem);
-            if (system?.beatDetails) {
-                for (const d of system.beatDetails) {
-                    if (d.id) map.set(d.id, normalizeBeatTitle(d.name));
-                }
-            }
-        }
-        return map;
     };
 
     const collectBeatNotesByTemplateNames = (expectedKeys: Set<string>, selectedSystem: string): TimelineItem[] => {
@@ -670,7 +644,6 @@ export function renderStoryBeatsSection(params: {
     };
 
     let existingBeatLookup = new Map<string, TimelineItem[]>();
-    let existingBeatIdLookup = new Map<string, TimelineItem[]>();
     let existingBeatCount = 0;
     let existingBeatMatchedCount = 0;
     let existingBeatExpectedCount = 0;
@@ -679,7 +652,6 @@ export function renderStoryBeatsSection(params: {
     let existingBeatSyncedCount = 0;
     let existingBeatNewCount = 0;
     let existingBeatMissingModelCount = 0;
-    let existingBeatLegacyMatchedCount = 0;
     let existingBeatMissingDiagnostics: BeatMissingDiagnostic[] = [];
     let existingBeatStatsSystem = '';
     let existingBeatKey = '';
@@ -746,13 +718,6 @@ export function renderStoryBeatsSection(params: {
                 tooltip: `${existingBeatNewCount} beat note${existingBeatNewCount !== 1 ? 's' : ''} not yet created.`
             };
         }
-        if (allGood && existingBeatLegacyMatchedCount > 0) {
-            return {
-                icon: 'alert-triangle',
-                statusClass: 'ert-beat-health-icon--warning',
-                tooltip: `${existingBeatLegacyMatchedCount} beat note${existingBeatLegacyMatchedCount !== 1 ? 's' : ''} matched by filename (run Repair to lock Beat Id).`
-            };
-        }
         if (allGood) {
             return {
                 icon: 'check-circle',
@@ -810,7 +775,6 @@ export function renderStoryBeatsSection(params: {
         const expectedKeys = new Set(expectedNames.map(name => normalizeBeatTitle(name)).filter(k => k.length > 0));
         const missingModelCandidates = collectBeatNotesMissingModelByExpectedNames(expectedKeys);
         const missingModelLookup = buildExistingBeatLookup(missingModelCandidates);
-        const expectedIdMap = buildExpectedBeatIdMap(selectedSystem);
         const buildCounts = (lookup: Map<string, TimelineItem[]>, total: number) => {
             existingBeatLookup = lookup;
             existingBeatCount = total;
@@ -818,40 +782,19 @@ export function renderStoryBeatsSection(params: {
             existingBeatExpectedCount = expectedNames.length;
             existingBeatMissingDiagnostics = [];
 
-            // Match by Beat Id first, then fall back to normalized name
+            // Match by normalized title key
             let matched = 0;
-            let legacyMatched = 0;
             let duplicates = 0;
-            const matchedByIdKeys = new Set<string>();
             const matchedKeys = new Set<string>();
             for (const key of expectedKeys) {
-                // Try Beat Id match first
-                let foundById = false;
-                for (const [beatId, nameKey] of expectedIdMap) {
-                    if (nameKey === key && existingBeatIdLookup.has(beatId)) {
-                        foundById = true;
-                        matchedByIdKeys.add(key);
-                        matchedKeys.add(key);
-                        const idMatches = existingBeatIdLookup.get(beatId) ?? [];
-                        if (idMatches.length > 1) duplicates++;
-                        break;
-                    }
-                }
-                if (foundById) {
-                    matched++;
-                    continue;
-                }
-                // Fall back to name-based matching (legacy)
                 if (lookup.has(key)) {
                     matched++;
                     matchedKeys.add(key);
-                    legacyMatched++;
                     if ((lookup.get(key)?.length ?? 0) > 1) duplicates++;
                 }
             }
             existingBeatMatchedCount = matched;
             existingBeatDuplicateCount = duplicates;
-            existingBeatLegacyMatchedCount = legacyMatched;
             existingBeatMissingModelCount = missingModelCandidates.length;
 
             // Compute misaligned count: beats matched by name but wrong Act.
@@ -1147,7 +1090,6 @@ export function renderStoryBeatsSection(params: {
             const hasMisaligned = existingBeatMisalignedCount > 0;
             const hasMissing = existingBeatNewCount > 0;
             const hasMissingModel = existingBeatMissingModelCount > 0;
-            const hasLegacy = existingBeatLegacyMatchedCount > 0;
             const allGood = existingBeatSyncedCount === existingBeatExpectedCount
                 && !hasMisaligned && !hasDups && !hasMissingModel;
 
@@ -1167,10 +1109,6 @@ export function renderStoryBeatsSection(params: {
                 healthIcon.className = 'ert-beat-health-icon ert-beat-health-icon--warning';
                 setIcon(healthIcon, 'alert-triangle');
                 setTooltip(healthIcon, `${existingBeatNewCount} beat note${existingBeatNewCount !== 1 ? 's' : ''} not yet created.`);
-            } else if (allGood && hasLegacy) {
-                healthIcon.className = 'ert-beat-health-icon ert-beat-health-icon--warning';
-                setIcon(healthIcon, 'alert-triangle');
-                setTooltip(healthIcon, `${existingBeatLegacyMatchedCount} beat note${existingBeatLegacyMatchedCount !== 1 ? 's' : ''} matched by filename (run Repair to lock Beat Id).`);
             } else if (allGood) {
                 healthIcon.className = 'ert-beat-health-icon ert-beat-health-icon--success';
                 setIcon(healthIcon, 'check-circle');
@@ -5129,6 +5067,14 @@ export function renderStoryBeatsSection(params: {
 
             if (!confirmed) return;
 
+            let beatPurposeMigration: Awaited<ReturnType<typeof runBeatDescriptionToPurposeMigration>> | null = null;
+            if (noteType === 'Beat') {
+                beatPurposeMigration = await runBeatDescriptionToPurposeMigration({
+                    app,
+                    files: targetFiles
+                });
+            }
+
             const result: BackfillResult = await runYamlBackfill({
                 app,
                 files: targetFiles,
@@ -5144,6 +5090,12 @@ export function renderStoryBeatsSection(params: {
             });
 
             const parts: string[] = [];
+            if (beatPurposeMigration && beatPurposeMigration.movedToPurpose > 0) {
+                parts.push(`Migrated ${beatPurposeMigration.movedToPurpose} Description→Purpose`);
+            }
+            if (beatPurposeMigration && beatPurposeMigration.removedDescription > 0) {
+                parts.push(`Removed ${beatPurposeMigration.removedDescription} Description key${beatPurposeMigration.removedDescription !== 1 ? 's' : ''}`);
+            }
             if (result.updated > 0) parts.push(`Updated ${result.updated} note${result.updated !== 1 ? 's' : ''}`);
             if (result.skipped > 0) parts.push(`${result.skipped} already had all fields`);
             if (result.failed > 0) parts.push(`${result.failed} failed`);
@@ -5240,7 +5192,6 @@ export function renderStoryBeatsSection(params: {
             );
             if (notesWithExtra.length === 0) return;
 
-            // Build protected key set from merged schema (base + advanced)
             const templateParts = getTemplateParts(noteType, plugin.settings, activeBeatSystemKey);
             const mergedKeys = sharedExtractKeysInOrder(templateParts.merged);
             const isExcluded = getExcludeKeyPredicate(noteType, plugin.settings);
@@ -5249,7 +5200,6 @@ export function renderStoryBeatsSection(params: {
                 ...RESERVED_OBSIDIAN_KEYS,
             ]);
 
-            // Collect extra keys — skip dynamic/excluded and reserved
             const allExtraKeys = new Set<string>();
             for (const n of notesWithExtra) {
                 for (const k of n.extraKeys) {
@@ -5260,13 +5210,64 @@ export function renderStoryBeatsSection(params: {
             }
             if (allExtraKeys.size === 0) return;
 
-            // Preview what will be deleted
+            const isBeatDescriptionFlow = noteType === 'Beat' && allExtraKeys.has('Description');
+            const primaryDeleteKeys = [...allExtraKeys].filter((key) => !(isBeatDescriptionFlow && key === 'Description'));
             const targetFiles = notesWithExtra.map(n => n.file);
-            const preview = previewDeleteFields(
-                app, targetFiles, [...allExtraKeys], protectedKeys
-            );
 
-            // Separate empty and valued fields
+            const descMigrationTargets: TFile[] = [];
+            let descPreservedCount = 0;
+            if (isBeatDescriptionFlow) {
+                const mappings = plugin.settings.enableCustomMetadataMapping ? plugin.settings.frontmatterMappings : undefined;
+                for (const file of targetFiles) {
+                    const cache = app.metadataCache.getFileCache(file);
+                    if (!cache?.frontmatter) continue;
+                    const raw = cache.frontmatter as Record<string, unknown>;
+                    const normalized = mappings ? normalizeFrontmatterKeys(raw, mappings) : raw;
+                    const desc = typeof normalized['Description'] === 'string' ? normalized['Description'].trim() : '';
+                    const purpose = typeof normalized['Purpose'] === 'string' ? normalized['Purpose'].trim() : '';
+                    if (desc.length === 0) continue;
+                    if (purpose.length === 0) {
+                        descMigrationTargets.push(file);
+                    } else {
+                        descPreservedCount += 1;
+                    }
+                }
+            }
+
+            const previewPrimary = previewDeleteFields(
+                app, targetFiles, primaryDeleteKeys, protectedKeys
+            );
+            const previewDescriptionEmpty = isBeatDescriptionFlow
+                ? previewDeleteFields(app, targetFiles, ['Description'], protectedKeys, true)
+                : new Map<TFile, { fields: string[]; values: Record<string, unknown> }>();
+
+            const preview = new Map<TFile, { fields: string[]; values: Record<string, unknown> }>();
+            for (const [file, detail] of previewPrimary.entries()) {
+                preview.set(file, { fields: [...detail.fields], values: { ...detail.values } });
+            }
+            for (const [file, detail] of previewDescriptionEmpty.entries()) {
+                const existing = preview.get(file);
+                if (existing) {
+                    for (const field of detail.fields) {
+                        if (!existing.fields.includes(field)) existing.fields.push(field);
+                        existing.values[field] = detail.values[field];
+                    }
+                } else {
+                    preview.set(file, { fields: [...detail.fields], values: { ...detail.values } });
+                }
+            }
+
+            if (preview.size === 0 && descMigrationTargets.length === 0) {
+                new Notice('No deletable extra fields found.');
+                return;
+            }
+
+            const descriptionKeysHandledByMigration = isBeatDescriptionFlow ? descMigrationTargets.length : 0;
+            const fieldsToDeleteList = new Set<string>([
+                ...primaryDeleteKeys,
+                ...(isBeatDescriptionFlow && (previewDescriptionEmpty.size > 0 || descriptionKeysHandledByMigration > 0) ? ['Description'] : [])
+            ]);
+
             let emptyFieldCount = 0;
             let valuedFieldCount = 0;
             const valuedFieldSamples: { key: string; value: string }[] = [];
@@ -5288,15 +5289,12 @@ export function renderStoryBeatsSection(params: {
                 }
             }
 
-            const totalFieldCount = emptyFieldCount + valuedFieldCount;
+            const totalFieldCount = emptyFieldCount + valuedFieldCount + descriptionKeysHandledByMigration;
             const hasValuedFields = valuedFieldCount > 0;
-
-            // Determine how many unsafe files were excluded
             const unsafeSkippedCount = auditResult.notes.filter(n =>
                 n.extraKeys.length > 0 && n.safetyResult?.status === 'dangerous'
             ).length;
 
-            // Confirmation modal
             const confirmed = await new Promise<boolean>((resolve) => {
                 const modal = new Modal(app);
                 modal.titleEl.setText('');
@@ -5312,13 +5310,11 @@ export function renderStoryBeatsSection(params: {
                     text: `Remove ${totalFieldCount} extra field${totalFieldCount !== 1 ? 's' : ''} from ${notesWithExtra.length} ${noteType.toLowerCase()} note${notesWithExtra.length !== 1 ? 's' : ''}.`
                 });
 
-                // Safety banner for dangerous exclusions
                 if (unsafeSkippedCount > 0) {
                     const banner = modal.contentEl.createDiv({ cls: 'ert-audit-safety-banner ert-audit-safety-banner--danger' });
                     banner.createSpan({ text: `${unsafeSkippedCount} note${unsafeSkippedCount !== 1 ? 's' : ''} with unsafe frontmatter excluded from this operation.` });
                 }
 
-                // Suspicious file warning
                 const suspiciousCount = notesWithExtra.filter(n => n.safetyResult?.status === 'suspicious').length;
                 if (suspiciousCount > 0) {
                     const banner = modal.contentEl.createDiv({ cls: 'ert-audit-safety-banner ert-audit-safety-banner--warning' });
@@ -5327,6 +5323,17 @@ export function renderStoryBeatsSection(params: {
 
                 const body = modal.contentEl.createDiv({ cls: ['ert-panel', 'ert-panel--glass'] });
                 body.createDiv({ text: `Scope: ${auditScopeSummary}`, cls: 'ert-modal-subtitle' });
+
+                if (noteType === 'Beat' && descMigrationTargets.length > 0) {
+                    body.createDiv({
+                        text: `${descMigrationTargets.length} Description value${descMigrationTargets.length !== 1 ? 's' : ''} will be migrated to Purpose before cleanup.`
+                    });
+                }
+                if (noteType === 'Beat' && descPreservedCount > 0) {
+                    body.createDiv({
+                        text: `${descPreservedCount} Description value${descPreservedCount !== 1 ? 's' : ''} already have Purpose and will be preserved (not auto-deleted).`
+                    });
+                }
 
                 if (emptyFieldCount > 0) {
                     body.createDiv({ text: `${emptyFieldCount} empty field${emptyFieldCount !== 1 ? 's' : ''} will be removed (no data loss).` });
@@ -5349,11 +5356,10 @@ export function renderStoryBeatsSection(params: {
                 const fieldListEl = body.createDiv();
                 fieldListEl.createDiv({ text: 'Fields to delete:', cls: 'ert-modal-subtitle' });
                 const ul = fieldListEl.createEl('ul');
-                for (const key of allExtraKeys) {
+                for (const key of fieldsToDeleteList) {
                     ul.createEl('li', { text: key });
                 }
 
-                // Typed confirmation for valued fields
                 let confirmInput: HTMLInputElement | undefined;
                 if (hasValuedFields) {
                     const confirmEl = body.createDiv({ cls: 'ert-modal-confirm-type' });
@@ -5389,26 +5395,73 @@ export function renderStoryBeatsSection(params: {
 
             if (!confirmed) return;
 
-            const result: DeleteResult = await runYamlDeleteFields({
-                app,
-                files: targetFiles,
-                fieldsToDelete: [...allExtraKeys],
-                protectedKeys,
-                safetyResults: auditResult.safetyResults,
-            });
+            let migratedToPurpose = 0;
+            let removedDescriptionByMigration = 0;
+            if (isBeatDescriptionFlow && descMigrationTargets.length > 0) {
+                const migrated = await runBeatDescriptionToPurposeMigration({
+                    app,
+                    files: descMigrationTargets
+                });
+                migratedToPurpose = migrated.movedToPurpose;
+                removedDescriptionByMigration = migrated.removedDescription;
+            }
+
+            let primaryResult: DeleteResult | null = null;
+            if (primaryDeleteKeys.length > 0) {
+                primaryResult = await runYamlDeleteFields({
+                    app,
+                    files: targetFiles,
+                    fieldsToDelete: primaryDeleteKeys,
+                    protectedKeys,
+                    safetyResults: auditResult.safetyResults,
+                });
+            }
+
+            let descriptionEmptyResult: DeleteResult | null = null;
+            if (isBeatDescriptionFlow) {
+                descriptionEmptyResult = await runYamlDeleteFields({
+                    app,
+                    files: targetFiles,
+                    fieldsToDelete: ['Description'],
+                    protectedKeys,
+                    safetyResults: auditResult.safetyResults,
+                    onlyEmpty: true,
+                });
+            }
+
+            const deletedPaths = new Set<string>();
+            const addDeleted = (result: DeleteResult | null) => {
+                if (!result) return;
+                for (const entry of result.deletedFields) deletedPaths.add(entry.file.path);
+            };
+            addDeleted(primaryResult);
+            addDeleted(descriptionEmptyResult);
+
+            const failed = (primaryResult?.failed ?? 0) + (descriptionEmptyResult?.failed ?? 0);
+            const safetySkipped = Math.max(primaryResult?.safetySkipped ?? 0, descriptionEmptyResult?.safetySkipped ?? 0);
+            const removedEmptyDescription = descriptionEmptyResult?.deletedFields.reduce((sum, entry) => (
+                sum + entry.fields.filter(field => field === 'Description').length
+            ), 0) ?? 0;
 
             console.debug('[YamlManager] yaml_delete_extra_execute', {
                 noteType,
-                deleted: result.deleted,
-                skipped: result.skipped,
-                failed: result.failed,
-                safetySkipped: result.safetySkipped,
+                deleted: deletedPaths.size,
+                failed,
+                safetySkipped,
+                migratedToPurpose,
+                removedDescriptionByMigration,
+                removedEmptyDescription,
             });
 
             const parts: string[] = [];
-            if (result.deleted > 0) parts.push(`Cleaned ${result.deleted} note${result.deleted !== 1 ? 's' : ''}`);
-            if (result.safetySkipped > 0) parts.push(`${result.safetySkipped} skipped (unsafe)`);
-            if (result.failed > 0) parts.push(`${result.failed} failed`);
+            if (migratedToPurpose > 0) parts.push(`Migrated ${migratedToPurpose} Description→Purpose`);
+            if (removedDescriptionByMigration + removedEmptyDescription > 0) {
+                const totalRemovedDescription = removedDescriptionByMigration + removedEmptyDescription;
+                parts.push(`Removed ${totalRemovedDescription} Description key${totalRemovedDescription !== 1 ? 's' : ''}`);
+            }
+            if (deletedPaths.size > 0) parts.push(`Cleaned ${deletedPaths.size} note${deletedPaths.size !== 1 ? 's' : ''}`);
+            if (safetySkipped > 0) parts.push(`${safetySkipped} skipped (unsafe)`);
+            if (failed > 0) parts.push(`${failed} failed`);
             new Notice(parts.join(', ') || 'No changes made.');
 
             setTimeout(() => runAudit(), 750);
@@ -5982,16 +6035,13 @@ export function renderStoryBeatsSection(params: {
             }
 
             // Build concise status description from non-zero counts
-            const legacyMatched = existingBeatLegacyMatchedCount;
             const parts: string[] = [];
             if (synced > 0) parts.push(`${synced} synced`);
             if (misaligned > 0) parts.push(`${misaligned} misaligned`);
             if (newBeats > 0) parts.push(`${newBeats} missing`);
             if (duplicates > 0) parts.push(`${duplicates} duplicate${duplicates > 1 ? 's' : ''}`);
             if (missingModel > 0) parts.push(`Missing Beat Model (${missingModel})`);
-            if (legacyMatched > 0) parts.push(`${legacyMatched} matched by filename`);
             let statusDesc = parts.join(', ') + '.';
-            if (legacyMatched > 0) statusDesc += ' Run Repair to lock Beat Id.';
 
             if (allSynced) {
                 // Scenario B: All synced — nothing to do
@@ -6034,17 +6084,15 @@ export function renderStoryBeatsSection(params: {
             }
 
             // Show Repair only when the beat-note audit reports canonical mismatches.
-            const hasLegacyToRepair = legacyMatched > 0;
-            if (repairBeatNotesButton && isCustom && (hasMisaligned || hasMissingModel || hasLegacyToRepair)) {
+            if (repairBeatNotesButton && isCustom && (hasMisaligned || hasMissingModel)) {
                 repairBeatNotesButton.buttonEl.removeClass('ert-hidden');
                 repairBeatNotesButton.setDisabled(false);
-                const repairCount = misaligned + missingModel + legacyMatched;
+                const repairCount = misaligned + missingModel;
                 repairBeatNotesButton.setButtonText(`Repair ${repairCount} beat note${repairCount > 1 ? 's' : ''}`);
                 const repairBits: string[] = [];
                 if (misaligned > 0) repairBits.push(`${misaligned} misaligned`);
                 if (missingModel > 0) repairBits.push(`${missingModel} missing Beat Model`);
-                if (legacyMatched > 0) repairBits.push(`${legacyMatched} missing Beat Id`);
-                repairBeatNotesButton.setTooltip(`Update Act, Beat Model, and Beat Id for ${repairBits.join(' and ')} beat note${repairCount > 1 ? 's' : ''}. Prefix numbers are not changed.`);
+                repairBeatNotesButton.setTooltip(`Update Act and Beat Model for ${repairBits.join(' and ')} beat note${repairCount > 1 ? 's' : ''}. Prefix numbers are not changed.`);
             }
 
             if (hasDuplicates) {
@@ -6095,8 +6143,7 @@ export function renderStoryBeatsSection(params: {
             : storyStructureName;
         const conflicts: string[] = [];
         const duplicates: string[] = [];
-        const beatIdConflicts: string[] = [];
-        const updates: Array<{ file: TFile; targetPath: string; act: number; needsBeatModelFix: boolean; beatId?: string }> = [];
+        const updates: Array<{ file: TFile; targetPath: string; act: number; needsBeatModelFix: boolean }> = [];
         const duplicateKeys = new Set<string>();
 
         const keyCounts = new Map<string, number>();
@@ -6117,15 +6164,9 @@ export function renderStoryBeatsSection(params: {
                 return;
             }
 
-            // Try Beat Id matching first
             let matches: TimelineItem[] | undefined;
             let needsBeatModelFix = false;
-            if (beatLine.id && existingBeatIdLookup.has(beatLine.id)) {
-                matches = existingBeatIdLookup.get(beatLine.id);
-            }
-            if (!matches || matches.length === 0) {
-                matches = existingLookup.get(key);
-            }
+            matches = existingLookup.get(key);
             if (!matches || matches.length === 0) {
                 const missingMatches = missingModelLookup.get(key);
                 if (!missingMatches || missingMatches.length === 0) return;
@@ -6142,15 +6183,7 @@ export function renderStoryBeatsSection(params: {
             const file = app.vault.getAbstractFileByPath(match.path);
             if (!(file instanceof TFile)) return;
 
-            // Check Beat Id conflict: note already has a different Beat Id
-            const existingBeatId = match["Beat Id"];
-            let beatIdToWrite = beatLine.id;
-            if (existingBeatId && beatLine.id && existingBeatId !== beatLine.id) {
-                beatIdConflicts.push(beatLine.name);
-                beatIdToWrite = undefined;
-            }
-
-            updates.push({ file, targetPath: file.path, act: beatLine.act, needsBeatModelFix, beatId: beatIdToWrite });
+            updates.push({ file, targetPath: file.path, act: beatLine.act, needsBeatModelFix });
         });
 
         if (updates.length === 0) {
@@ -6160,16 +6193,11 @@ export function renderStoryBeatsSection(params: {
             return;
         }
 
-        let beatIdWrittenCount = 0;
         for (const update of updates) {
             await app.fileManager.processFrontMatter(update.file, (fm: Record<string, unknown>) => {
                 fm['Act'] = update.act;
                 fm['Beat Model'] = customModelName;
                 if (!fm['Class']) fm['Class'] = 'Beat';
-                if (update.beatId && !fm['Beat Id']) {
-                    fm['Beat Id'] = update.beatId;
-                    beatIdWrittenCount++;
-                }
             });
         }
 
@@ -6214,9 +6242,7 @@ export function renderStoryBeatsSection(params: {
         const conflictHint = conflicts.length > 0 ? ` ${conflicts.length} conflict${conflicts.length > 1 ? 's' : ''} skipped.` : '';
         const duplicateHint = duplicates.length > 0 ? ` ${duplicates.length} duplicate title${duplicates.length > 1 ? 's' : ''} skipped (manually delete duplicate beat notes).` : '';
         const modelHint = modelFixedCount > 0 ? ` Set Beat Model on ${modelFixedCount} note${modelFixedCount > 1 ? 's' : ''}.` : '';
-        const beatIdHint = beatIdWrittenCount > 0 ? ` Locked Beat Id on ${beatIdWrittenCount} note${beatIdWrittenCount > 1 ? 's' : ''}.` : '';
-        const beatIdConflictHint = beatIdConflicts.length > 0 ? ` ${beatIdConflicts.length} Beat Id conflict${beatIdConflicts.length > 1 ? 's' : ''} (existing id differs).` : '';
-        new Notice(`Repaired ${updatedCount} beat note${updatedCount > 1 ? 's' : ''} (Act, Beat Model).${modelHint}${beatIdHint}${conflictHint}${duplicateHint}${beatIdConflictHint}`);
+        new Notice(`Repaired ${updatedCount} beat note${updatedCount > 1 ? 's' : ''} (Act, Beat Model).${modelHint}${conflictHint}${duplicateHint}`);
     }
 
     async function createBeatTemplates(): Promise<void> {

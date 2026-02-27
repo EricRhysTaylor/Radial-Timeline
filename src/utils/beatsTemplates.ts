@@ -242,10 +242,10 @@ function generatePlotNoteContent(
       foundId = true;
       const current = line.replace(/^id\s*:/i, '').trim();
       if (current.length > 0) return line;
-      return `id: ${generateSceneId()}`;
+      return `ID: ${generateSceneId()}`;
     });
     if (!foundId) {
-      output.unshift(`id: ${generateSceneId()}`);
+      output.unshift(`ID: ${generateSceneId()}`);
     }
     return output.join('\n');
   };
@@ -259,18 +259,15 @@ function generatePlotNoteContent(
     content = content.replace(/{{Description}}/g, purpose);
     content = content.replace(/{{BeatModel}}/g, beatSystem);
     content = content.replace(/{{Range}}/g, rangeValue);
-    content = content.replace(/{{BeatId}}/g, beatInfo.id ?? '');
     content = ensureReferenceIdLine(content);
 
     return `---\n${content}\n---\n` + buildBeatBody(beatInfo);
   }
 
   // Legacy hardcoded output (backward compatibility)
-  const beatId = beatInfo.id ?? '';
   const frontmatter = [
     '---',
-    `id: ${generateSceneId()}`,
-    `Beat Id: ${beatId}`,
+    `ID: ${generateSceneId()}`,
     'Class: Beat',
     `Act: ${act}`,
     `Purpose: ${purpose}`,

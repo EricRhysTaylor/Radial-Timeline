@@ -7327,9 +7327,11 @@
 .ert-ui.ert-scope--settings .ert-layout-visual-pictograms {
   flex: 0 0 auto;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  flex-wrap: wrap;
   gap: var(--ert-gap-sm);
-  align-items: center;
+  align-items: flex-start;
+  justify-content: flex-end;
 }
 
 /* -- Spread (label + page pair) -- */
@@ -7358,37 +7360,37 @@
 /* -- Individual Page -- */
 
 .ert-ui.ert-scope--settings .ert-layout-page {
-  width: 52px;
-  height: 72px;
+  width: 80px;
+  height: 110px;
   border: 1px solid color-mix(in srgb, var(--background-modifier-border) 80%, transparent);
   background: var(--background-primary);
   display: flex;
   flex-direction: column;
-  padding: 4px 3px;
+  padding: 6px 5px;
   box-sizing: border-box;
   position: relative;
   overflow: hidden;
 }
 
 .ert-ui.ert-scope--settings .ert-layout-page.is-left {
-  border-radius: 2px 0 0 2px;
+  border-radius: 3px 0 0 3px;
   border-right: none;
 }
 
 .ert-ui.ert-scope--settings .ert-layout-page.is-right {
-  border-radius: 0 2px 2px 0;
+  border-radius: 0 3px 3px 0;
   border-left: none;
 }
 
 .ert-ui.ert-scope--settings .ert-layout-page.is-single {
-  border-radius: 2px;
+  border-radius: 3px;
   border: 1px solid color-mix(in srgb, var(--background-modifier-border) 80%, transparent);
 }
 
 /* -- Spine / Gutter -- */
 
 .ert-ui.ert-scope--settings .ert-layout-spread-spine {
-  width: 2px;
+  width: 3px;
   background: color-mix(in srgb, var(--background-modifier-border) 90%, transparent);
   flex-shrink: 0;
 }
@@ -7399,8 +7401,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  min-height: 8px;
-  margin-bottom: 2px;
+  min-height: 10px;
+  margin-bottom: 3px;
   flex-shrink: 0;
 }
 
@@ -7430,18 +7432,18 @@
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  gap: 3px;
-  padding-top: 2px;
+  gap: 4px;
+  padding-top: 3px;
 }
 
 .ert-ui.ert-scope--settings .ert-layout-page-line {
   height: 1px;
-  background: color-mix(in srgb, var(--text-muted) 25%, transparent);
+  background: color-mix(in srgb, var(--text-muted) 22%, transparent);
   border-radius: 0.5px;
 }
 
 .ert-ui.ert-scope--settings .ert-layout-page-line:last-child {
-  width: 65%;
+  width: 60%;
 }
 
 /* -- Page Body: Special (Part / Chapter / Scene opener) -- */
@@ -7449,12 +7451,12 @@
 .ert-ui.ert-scope--settings .ert-layout-page-body.is-special {
   justify-content: center;
   align-items: center;
-  gap: 2px;
+  gap: 4px;
 }
 
 .ert-ui.ert-scope--settings .ert-layout-page-special-text {
   font-family: '04b03b', 'Monaco', 'Courier New', monospace;
-  font-size: 8px;
+  font-size: 10px;
   line-height: 1;
   color: var(--text-normal);
   text-align: center;
@@ -7468,7 +7470,6 @@
   color: var(--text-muted);
   text-align: center;
   white-space: nowrap;
-  font-style: italic;
 }
 
 /* -- Page Body: Scene separator (text + rule in flowing body) -- */
@@ -7477,8 +7478,8 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1px;
-  margin: 2px 0;
+  gap: 2px;
+  margin: 3px 0;
 }
 
 .ert-ui.ert-scope--settings .ert-layout-page-separator-text {
@@ -7490,7 +7491,7 @@
 }
 
 .ert-ui.ert-scope--settings .ert-layout-page-separator-rule {
-  width: 16px;
+  width: 24px;
   height: 1px;
   background: color-mix(in srgb, var(--text-muted) 40%, transparent);
 }
@@ -7501,8 +7502,8 @@
   display: flex;
   justify-content: center;
   align-items: flex-end;
-  min-height: 8px;
-  margin-top: 2px;
+  min-height: 10px;
+  margin-top: 3px;
   flex-shrink: 0;
 }
 

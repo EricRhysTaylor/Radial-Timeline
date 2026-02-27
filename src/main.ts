@@ -839,7 +839,7 @@ export default class RadialTimelinePlugin extends Plugin {
             globalLastUsed.novel = legacyLayoutIdMap[globalLastUsed.novel];
             pandocLayoutReferenceMigrated = true;
         }
-        // ─── Beat Id migration: assign GUIDs to custom/saved beats lacking ids ───
+        // ─── Beat definition-id migration: assign GUIDs to custom/saved beats lacking ids ───
         let beatIdMigrated = false;
         if (Array.isArray(this.settings.customBeatSystemBeats)) {
             for (const b of this.settings.customBeatSystemBeats) {
@@ -861,13 +861,16 @@ export default class RadialTimelinePlugin extends Plugin {
                 }
             }
         }
-        // Ensure base template includes Beat Id placeholder (prepend before Class)
-        if (this.settings.beatYamlTemplates?.base && !this.settings.beatYamlTemplates.base.includes('Beat Id:')) {
-            this.settings.beatYamlTemplates.base = `Beat Id: {{BeatId}}\n${this.settings.beatYamlTemplates.base}`;
+        // Clean deprecated Beat Id placeholder from beat base template.
+        if (this.settings.beatYamlTemplates?.base && /(^|\n)Beat Id\s*:/i.test(this.settings.beatYamlTemplates.base)) {
+            this.settings.beatYamlTemplates.base = this.settings.beatYamlTemplates.base
+                .replace(/^Beat Id\s*:\s*.*$/gim, '')
+                .replace(/\n{3,}/g, '\n\n')
+                .trim();
             beatIdMigrated = true;
             console.debug('[SchemaMigration]', {
-                event: 'beat_id_template_prepended',
-                action: 'prepended Beat Id placeholder to beat base template',
+                event: 'beat_id_template_removed',
+                action: 'removed deprecated Beat Id placeholder from beat base template',
             });
         }
 

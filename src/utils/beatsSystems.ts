@@ -10,7 +10,7 @@ export interface PlotBeatInfo {
   placement?: string; // Formerly location/percentageRange: where this beat typically lands
   range?: string;     // Formerly momentumRange: ideal momentum/score band (0-100)
   act?: number;       // Explicit act assignment (1, 2, 3)
-  id?: string;        // Stable Beat Id for audit/repair matching (e.g. "save-the-cat:midpoint")
+  id?: string;        // Stable internal beat-definition id (e.g. "save-the-cat:midpoint")
   chapterBreak?: boolean;
   chapterTitle?: string;
 }
@@ -20,7 +20,7 @@ export function slugifyBeat(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 }
 
-/** Deterministic Beat Id for built-in beats: <system-slug>:<beat-slug> */
+/** Deterministic internal beat-definition id: <system-slug>:<beat-slug> */
 export function buildBuiltinBeatId(systemName: string, beatName: string): string {
   return `${slugifyBeat(systemName)}:${slugifyBeat(beatName)}`;
 }
