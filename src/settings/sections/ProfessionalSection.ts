@@ -1866,6 +1866,305 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         }
         return 'Custom PDF layout.';
     };
+
+    // ── Layout Visual: Types ──────────────────────────────────────────────
+    type LayoutFeatureRow = { label: string; value: string };
+
+    type PictogramPageSide = {
+        headerLeft?: string;
+        headerCenter?: string;
+        headerRight?: string;
+        folioBottom?: string;
+        bodyLines: number;
+        suppressHeader?: boolean;
+        suppressFooter?: boolean;
+        specialText?: string;
+        specialSubtext?: string;
+        /** Body lines before a scene separator, followed by separator, then more lines */
+        separatorText?: string;
+        linesBeforeSeparator?: number;
+        linesAfterSeparator?: number;
+    };
+
+    type PictogramSpread = {
+        label: string;
+        leftPage: PictogramPageSide | null;
+        rightPage: PictogramPageSide | null;
+    };
+
+    // ── Layout Visual: Feature Data ───────────────────────────────────────
+    const getLayoutFeatures = (variant: FictionLayoutVariant): LayoutFeatureRow[] => {
+        switch (variant) {
+            case 'classic':
+                return [
+                    { label: 'Headers', value: 'Title centered (both pages)' },
+                    { label: 'Folios', value: 'Bottom center' },
+                    { label: 'Font', value: 'Sorts Mill Goudy (serif)' },
+                    { label: 'Spacing', value: '1.5 lines' },
+                    { label: 'Chapters', value: 'Centered, bold' },
+                ];
+            case 'modernClassic':
+                return [
+                    { label: 'Headers', value: 'Page|Author (left) · Title|Page (right)' },
+                    { label: 'Folios', value: 'In headers' },
+                    { label: 'Font', value: 'Latin Modern (serif)' },
+                    { label: 'Spacing', value: '1.18×' },
+                    { label: 'Chapters', value: 'Roman numeral + optional title' },
+                ];
+            case 'signature':
+                return [
+                    { label: 'Headers', value: 'Page|Author (left) · Title|Page (right)' },
+                    { label: 'Folios', value: 'Header-only, letter-spaced' },
+                    { label: 'Font', value: 'Sorts Mill Goudy (serif)' },
+                    { label: 'Spacing', value: '1.5 lines' },
+                    { label: 'Chapters', value: '30pt bold, opener suppresses headers' },
+                ];
+            case 'contemporary':
+                return [
+                    { label: 'Headers', value: 'Book title (left) · Section (right), sans' },
+                    { label: 'Folios', value: 'Bottom center (serif)' },
+                    { label: 'Font', value: 'Sorts Mill Goudy body, sans headers' },
+                    { label: 'Spacing', value: '1.5 lines' },
+                    { label: 'Chapters', value: 'Centered, bold — opener suppresses headers' },
+                ];
+            default:
+                return [];
+        }
+    };
+
+    // ── Layout Visual: Pictogram Spread Configs ───────────────────────────
+    const BODY_LINES = 8;
+
+    const getLayoutPrimarySpread = (variant: FictionLayoutVariant): PictogramSpread => {
+        switch (variant) {
+            case 'classic':
+                return {
+                    label: '',
+                    leftPage: { headerCenter: 'TITLE', folioBottom: '12', bodyLines: BODY_LINES },
+                    rightPage: { headerCenter: 'TITLE', folioBottom: '13', bodyLines: BODY_LINES },
+                };
+            case 'modernClassic':
+                return {
+                    label: '',
+                    leftPage: { headerLeft: '12', headerRight: 'AUTH', bodyLines: BODY_LINES },
+                    rightPage: { headerLeft: 'TITLE', headerRight: '13', bodyLines: BODY_LINES },
+                };
+            case 'signature':
+                return {
+                    label: '',
+                    leftPage: { headerLeft: '12', headerRight: 'AUTH', bodyLines: BODY_LINES },
+                    rightPage: { headerLeft: 'TITLE', headerRight: '13', bodyLines: BODY_LINES },
+                };
+            case 'contemporary':
+                return {
+                    label: '',
+                    leftPage: { headerLeft: 'title', folioBottom: '12', bodyLines: BODY_LINES },
+                    rightPage: { headerRight: 'section', folioBottom: '13', bodyLines: BODY_LINES },
+                };
+            default:
+                return {
+                    label: '',
+                    leftPage: { bodyLines: BODY_LINES },
+                    rightPage: { bodyLines: BODY_LINES },
+                };
+        }
+    };
+
+    const getLayoutSecondarySpreads = (variant: FictionLayoutVariant): PictogramSpread[] => {
+        switch (variant) {
+            case 'modernClassic':
+                return [
+                    {
+                        label: 'PART',
+                        leftPage: null,
+                        rightPage: {
+                            bodyLines: 0,
+                            suppressHeader: true,
+                            suppressFooter: true,
+                            specialText: 'PART I',
+                        },
+                    },
+                    {
+                        label: 'CHAPTER',
+                        leftPage: null,
+                        rightPage: {
+                            bodyLines: 0,
+                            suppressHeader: true,
+                            suppressFooter: true,
+                            specialText: 'CH. I',
+                            specialSubtext: 'Title',
+                        },
+                    },
+                    {
+                        label: 'SCENE',
+                        leftPage: null,
+                        rightPage: {
+                            bodyLines: 0,
+                            suppressHeader: true,
+                            suppressFooter: true,
+                            separatorText: 'ii.',
+                            linesBeforeSeparator: 3,
+                            linesAfterSeparator: 3,
+                        },
+                    },
+                ];
+            case 'signature':
+                return [
+                    {
+                        label: 'NUMBER',
+                        leftPage: null,
+                        rightPage: {
+                            bodyLines: 3,
+                            suppressHeader: true,
+                            suppressFooter: true,
+                            specialText: '3',
+                        },
+                    },
+                    {
+                        label: 'NUM+TITLE',
+                        leftPage: null,
+                        rightPage: {
+                            bodyLines: 3,
+                            suppressHeader: true,
+                            suppressFooter: true,
+                            specialText: '3',
+                            specialSubtext: '(Escape)',
+                        },
+                    },
+                    {
+                        label: 'TITLE',
+                        leftPage: null,
+                        rightPage: {
+                            bodyLines: 3,
+                            suppressHeader: true,
+                            suppressFooter: true,
+                            specialText: 'Escape',
+                        },
+                    },
+                ];
+            case 'contemporary':
+                return [
+                    {
+                        label: 'CHAPTER',
+                        leftPage: null,
+                        rightPage: {
+                            bodyLines: 4,
+                            suppressHeader: true,
+                            suppressFooter: true,
+                            specialText: 'Chapter',
+                        },
+                    },
+                ];
+            default:
+                return [];
+        }
+    };
+
+    // ── Layout Visual: DOM Builders ───────────────────────────────────────
+    const renderLayoutPage = (parent: HTMLElement, side: PictogramPageSide, sideClass: string): void => {
+        const page = parent.createDiv({ cls: `ert-layout-page ${sideClass}` });
+
+        // Header
+        const hdr = page.createDiv({ cls: 'ert-layout-page-header' });
+        if (side.suppressHeader) hdr.addClass('is-suppressed');
+        if (side.headerCenter) {
+            hdr.addClass('is-centered');
+            hdr.createSpan({ cls: 'ert-layout-page-hdr-center', text: side.headerCenter });
+        } else {
+            if (side.headerLeft) hdr.createSpan({ cls: 'ert-layout-page-hdr-left', text: side.headerLeft });
+            if (side.headerRight) hdr.createSpan({ cls: 'ert-layout-page-hdr-right', text: side.headerRight });
+        }
+
+        // Body
+        const body = page.createDiv({ cls: 'ert-layout-page-body' });
+
+        if (side.separatorText != null) {
+            // Scene separator mode: lines → separator → lines
+            for (let i = 0; i < (side.linesBeforeSeparator || 3); i++) {
+                body.createDiv({ cls: 'ert-layout-page-line' });
+            }
+            const sep = body.createDiv({ cls: 'ert-layout-page-separator' });
+            sep.createSpan({ cls: 'ert-layout-page-separator-text', text: side.separatorText });
+            sep.createDiv({ cls: 'ert-layout-page-separator-rule' });
+            for (let i = 0; i < (side.linesAfterSeparator || 3); i++) {
+                body.createDiv({ cls: 'ert-layout-page-line' });
+            }
+        } else if (side.specialText) {
+            // Special text mode: centered Part/Chapter/Scene text
+            body.addClass('is-special');
+            body.createSpan({ cls: 'ert-layout-page-special-text', text: side.specialText });
+            if (side.specialSubtext) {
+                body.createSpan({ cls: 'ert-layout-page-special-subtext', text: side.specialSubtext });
+            }
+            // Add body lines below special text if specified
+            if (side.bodyLines > 0) {
+                const bodyBelow = page.createDiv({ cls: 'ert-layout-page-body' });
+                bodyBelow.style.flex = '0 0 auto';
+                for (let i = 0; i < side.bodyLines; i++) {
+                    bodyBelow.createDiv({ cls: 'ert-layout-page-line' });
+                }
+            }
+        } else {
+            // Normal body lines
+            for (let i = 0; i < side.bodyLines; i++) {
+                body.createDiv({ cls: 'ert-layout-page-line' });
+            }
+        }
+
+        // Footer
+        const ftr = page.createDiv({ cls: 'ert-layout-page-footer' });
+        if (side.suppressFooter) ftr.addClass('is-suppressed');
+        if (side.folioBottom) {
+            ftr.createSpan({ cls: 'ert-layout-page-folio', text: side.folioBottom });
+        }
+    };
+
+    const renderLayoutSpread = (parent: HTMLElement, spread: PictogramSpread): void => {
+        const spreadEl = parent.createDiv({ cls: 'ert-layout-spread' });
+        const pagesEl = spreadEl.createDiv({ cls: 'ert-layout-spread-pages' });
+
+        if (spread.leftPage && spread.rightPage) {
+            renderLayoutPage(pagesEl, spread.leftPage, 'is-left');
+            pagesEl.createDiv({ cls: 'ert-layout-spread-spine' });
+            renderLayoutPage(pagesEl, spread.rightPage, 'is-right');
+        } else if (spread.rightPage) {
+            renderLayoutPage(pagesEl, spread.rightPage, 'is-single');
+        } else if (spread.leftPage) {
+            renderLayoutPage(pagesEl, spread.leftPage, 'is-single');
+        }
+
+        if (spread.label) {
+            spreadEl.createSpan({ cls: 'ert-layout-spread-label', text: spread.label });
+        }
+    };
+
+    const renderLayoutFeatureList = (parent: HTMLElement, features: LayoutFeatureRow[]): void => {
+        const featureCol = parent.createDiv({ cls: 'ert-layout-visual-features' });
+        for (const feat of features) {
+            const row = featureCol.createDiv({ cls: 'ert-layout-feature-row' });
+            row.createSpan({ cls: 'ert-layout-feature-label', text: feat.label });
+            row.createSpan({ cls: 'ert-layout-feature-value', text: feat.value });
+        }
+    };
+
+    const renderLayoutPictograms = (parent: HTMLElement, spreads: PictogramSpread[]): void => {
+        const pictoCol = parent.createDiv({ cls: 'ert-layout-visual-pictograms' });
+        for (const spread of spreads) {
+            renderLayoutSpread(pictoCol, spread);
+        }
+    };
+
+    const buildLayoutVisual = (container: HTMLElement, variant: FictionLayoutVariant): void => {
+        const visual = container.createDiv({ cls: 'ert-layout-visual' });
+        const cols = visual.createDiv({ cls: 'ert-layout-visual-cols' });
+
+        const features = getLayoutFeatures(variant);
+        renderLayoutFeatureList(cols, features);
+
+        const primarySpread = getLayoutPrimarySpread(variant);
+        renderLayoutPictograms(cols, [primarySpread]);
+    };
+
     const getLayoutInstalledState = (layout: PandocLayoutTemplate): boolean => {
         if (layout.bundled) return isBundledPandocLayoutInstalled(plugin, layout);
         return validatePandocLayout(plugin, layout).valid;
@@ -2095,11 +2394,21 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
             const expanded = expandedSpecialLayoutId === layout.id;
             if (expanded) row.addClass('is-special-expanded');
 
+            const variant = getFictionVariant(layout);
+            const useVisual = layout.preset === 'novel' && variant !== 'generic';
+
             const s = addProRow(new Setting(row))
                 .setName(getLayoutDisplayName(layout))
-                .setDesc(buildLayoutDescription(layout));
+                .setDesc('');
             s.settingEl.addClass('ert-layout-row-setting');
             s.descEl?.addClass('ert-layout-row-desc');
+
+            if (useVisual && s.descEl) {
+                buildLayoutVisual(s.descEl, variant);
+            } else {
+                s.setDesc(buildLayoutDescription(layout));
+            }
+
             if (s.nameEl) {
                 s.nameEl.addClass('ert-layout-row-name');
                 const pill = s.nameEl.createSpan({
@@ -2190,6 +2499,16 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
 
             if (showsSpecialOptions && expanded) {
                 const panel = row.createDiv({ cls: 'ert-layout-special-panel' });
+
+                // Secondary pictograms (Part, Chapter, Scene treatments)
+                const secondarySpreads = getLayoutSecondarySpreads(variant);
+                if (secondarySpreads.length > 0) {
+                    const secondaryPictos = panel.createDiv({ cls: 'ert-layout-special-pictograms' });
+                    for (const spread of secondarySpreads) {
+                        renderLayoutSpread(secondaryPictos, spread);
+                    }
+                }
+
                 panel.createDiv({ cls: 'ert-layout-special-divider' });
 
                 if (specialCapabilities.hasEpigraphs) {

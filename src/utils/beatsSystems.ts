@@ -42,14 +42,14 @@ export const PLOT_SYSTEMS: Record<string, PlotSystemPreset> = {
       "Setup",
       "Catalyst",
       "Debate",
-      "Break into 2",
+      "Break into Two",
       "B Story",
       "Fun and Games",
       "Midpoint",
       "Bad Guys Close In",
       "All Is Lost",
       "Dark Night of the Soul",
-      "Break into 3",
+      "Break into Three",
       "Finale",
       "Final Image"
     ],
@@ -90,7 +90,7 @@ export const PLOT_SYSTEMS: Record<string, PlotSystemPreset> = {
         range: "20-30"
       },
       {
-        name: "Break into 2",
+        name: "Break into Two",
         id: "save-the-cat:break-into-2",
         description: "The protagonist makes a choice and crosses the threshold into a new world or situation. They commit to the journey, leaving the familiar behind. This decision propels them into Act Two and sets the main story in motion. There's no turning back.",
         placement: "20%",
@@ -139,7 +139,7 @@ export const PLOT_SYSTEMS: Record<string, PlotSystemPreset> = {
         range: "70-80"
       },
       {
-        name: "Break into 3",
+        name: "Break into Three",
         id: "save-the-cat:break-into-3",
         description: "The protagonist has an epiphany or receives crucial information that provides a solution. They synthesize what they've learned from both the A Story and B Story. Armed with new understanding, they formulate a plan and commit to one final attempt. Hope returns with newfound wisdom.",
         placement: "80%",

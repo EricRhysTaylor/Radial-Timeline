@@ -907,7 +907,7 @@ export function renderStoryBeatsSection(params: {
             for (const [key, name] of expectedNameByKey.entries()) {
                 if (matchedKeys.has(key) || missingModelLookup.has(key)) continue;
                 const bucket = diagnosticsByKey.get(key);
-                let reason = 'No note with a matching beat title was found in the active source path.';
+                let reason = 'No matching title note.';
                 if (bucket && bucket.wrongModels.size > 0) {
                     const models = [...bucket.wrongModels].slice(0, 3);
                     const suffix = bucket.wrongModels.size > 3 ? ` (+${bucket.wrongModels.size - 3} more)` : '';
@@ -5787,13 +5787,12 @@ export function renderStoryBeatsSection(params: {
     backdropYamlToggleBtn.addEventListener('click', () => { renderBackdropAuditVisibility(); });
     renderAuditPanel(backdropAuditContainer, 'Backdrop');
 
-    const buildMissingBeatInlineSummary = (maxItems = 2): string => {
+    const buildMissingBeatInlineSummary = (): string => {
         if (existingBeatMissingDiagnostics.length === 0) return '';
-        const head = existingBeatMissingDiagnostics.slice(0, maxItems);
-        const detail = head.map((entry) => `${entry.name} (${entry.reason})`).join(' · ');
-        const remaining = existingBeatMissingDiagnostics.length - head.length;
-        const tail = remaining > 0 ? ` · +${remaining} more` : '';
-        return `Missing details: ${detail}${tail}`;
+        const detail = existingBeatMissingDiagnostics
+            .map((entry) => `${entry.name} (${entry.reason})`)
+            .join(' · ');
+        return `Missing details: ${detail}`;
     };
 
     const buildMissingBeatTooltip = (): string | null => {

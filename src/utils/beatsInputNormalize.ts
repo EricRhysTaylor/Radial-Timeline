@@ -55,6 +55,7 @@ export function sanitizeBeatFilenameSegment(value: string, fallback = 'Beat'): s
 
 function normalizeForMatching(value: string): string {
   return normalizeInlineText(value)
+    .replace(/&/g, ' and ')
     .replace(/[\/\\\-_‐‑‒–—―]+/g, ' ')
     .replace(/[^A-Za-z0-9\s]+/g, ' ')
     .replace(/\s+/g, ' ')
@@ -62,12 +63,32 @@ function normalizeForMatching(value: string): string {
     .toLowerCase();
 }
 
+const WORD_NUMBER_MAP: Record<string, string> = {
+  one: '1',
+  two: '2',
+  three: '3',
+  four: '4',
+  five: '5',
+  six: '6',
+  seven: '7',
+  eight: '8',
+  nine: '9',
+  ten: '10'
+};
+
+function normalizeWordNumbers(value: string): string {
+  return value.replace(/\b(one|two|three|four|five|six|seven|eight|nine|ten)\b/gi, (token) => {
+    const mapped = WORD_NUMBER_MAP[token.toLowerCase()];
+    return mapped ?? token;
+  });
+}
+
 export function toBeatMatchKey(value: string): string {
   const trimmed = normalizeInlineText(value);
   if (!trimmed) return '';
   const withoutAct = trimmed.replace(/^Act\s*\d+\s*:\s*/i, '');
   const withoutPrefix = withoutAct.replace(/^\d+(?:\.\d+)?\s*[.\-:)]?\s*/i, '');
-  return normalizeForMatching(withoutPrefix);
+  return normalizeForMatching(normalizeWordNumbers(withoutPrefix));
 }
 
 export function toBeatModelMatchKey(value: string): string {
