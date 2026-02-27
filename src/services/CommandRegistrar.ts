@@ -6,7 +6,7 @@
 import { App, Notice, TFile } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import type { BeatDefinition, BookLayoutOptions, BookMeta, ManuscriptExportCleanupOptions, MatterMeta } from '../types';
-import { assembleManuscript, getSceneFilesByOrder, ManuscriptSceneSelection, type ModernClassicBeatDefinition, updateSceneWordCounts } from '../utils/manuscript';
+import { assembleManuscript, getSceneFilesByOrder, ManuscriptSceneSelection, type ManuscriptSceneHeadingMode, type ModernClassicBeatDefinition, updateSceneWordCounts } from '../utils/manuscript';
 import { openGossamerScoreEntry, runGossamerAiAnalysis } from '../GossamerCommands';
 import { ManageSubplotsModal } from '../modals/ManageSubplotsModal';
 import { ManuscriptOptionsModal, ManuscriptModalResult, type ManuscriptExportOutcome } from '../modals/ManuscriptOptionsModal';
@@ -484,6 +484,7 @@ export class CommandRegistrar {
             const modernClassicLayoutOptions = useModernClassicStructure
                 ? this.resolveModernClassicLayoutOptions(layout.id)
                 : undefined;
+            const layoutSceneHeadingMode = this.resolveLayoutSceneHeadingMode(layout.id);
             const sceneHeadingRenderMode = useLatexSceneOpeners ? 'latex-section-starred' : 'markdown-h2';
             const pandocMetadata: Record<string, string | undefined> = {
                 title: bookMetaResolution.bookMeta?.title,
@@ -512,7 +513,9 @@ export class CommandRegistrar {
                     bookMetaResolution.bookMeta,
                     filteredSelection.matterMetaByPath,
                     {
+                        sceneHeadingMode: layoutSceneHeadingMode,
                         sceneHeadingRenderMode,
+                        suppressMatterPageChrome: true,
                         modernClassicStructure: useModernClassicStructure
                             ? {
                                 enabled: true,
@@ -848,6 +851,16 @@ export class CommandRegistrar {
             ...(actEpigraphs ? { actEpigraphs } : {}),
             ...(actEpigraphAttributions ? { actEpigraphAttributions } : {})
         };
+    }
+
+    private resolveLayoutSceneHeadingMode(layoutId: string): ManuscriptSceneHeadingMode | undefined {
+        if (!layoutId) return undefined;
+        const activeBook = getActiveBook(this.plugin.settings);
+        const mode = activeBook?.layoutOptions?.[layoutId]?.sceneHeadingMode;
+        if (mode === 'scene-number' || mode === 'scene-number-title' || mode === 'title-only') {
+            return mode;
+        }
+        return undefined;
     }
 
     private requiresPro(options: ManuscriptModalResult): boolean {

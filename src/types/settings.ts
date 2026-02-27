@@ -139,6 +139,7 @@ export interface BookProfile {
 export interface BookLayoutOptions {
     actEpigraphs?: string[];
     actEpigraphAttributions?: string[];
+    sceneHeadingMode?: ManuscriptSceneHeadingMode;
 }
 
 export type AuthorProgressPublishTarget = 'folder' | 'github_pages' | 'note';
@@ -377,6 +378,7 @@ export interface PandocLayoutTemplate {
     bundled?: boolean;         // true for RT-generated sample templates
     usesModernClassicStructure?: boolean; // emit rtPart/rtChapter/rtSceneSep markers in PDF compilation
     hasEpigraphs?: boolean;
+    hasSceneOpenerHeadingOptions?: boolean;
 }
 
 export interface RadialTimelineSettings {

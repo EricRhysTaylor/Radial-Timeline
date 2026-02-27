@@ -125,6 +125,7 @@ const BUNDLED_PANDOC_LAYOUT_TEMPLATES: BundledPandocLayoutTemplate[] = [
         preset: 'novel',
         path: 'rt_signature_literary.tex',
         bundled: true,
+        hasSceneOpenerHeadingOptions: true,
         content: [
             '% Pandoc LaTeX Template - Signature Literary',
             '% Refined fiction layout with alternating running heads.',
@@ -228,12 +229,12 @@ const BUNDLED_PANDOC_LAYOUT_TEMPLATES: BundledPandocLayoutTemplate[] = [
     },
     {
         id: BUNDLED_FICTION_CLASSIC_ID,
-        name: 'Classic Manuscript',
+        name: 'Basic Manuscript',
         preset: 'novel',
         path: 'rt_classic_manuscript.tex',
         bundled: true,
         content: [
-            '% Pandoc LaTeX Template - Classic Manuscript',
+            '% Pandoc LaTeX Template - Basic Manuscript',
             '% Traditional manuscript layout with simple headers and centered folios.',
             '\\documentclass[11pt,letterpaper,twoside]{book}',
             '',
@@ -417,13 +418,13 @@ const BUNDLED_PANDOC_LAYOUT_TEMPLATES: BundledPandocLayoutTemplate[] = [
             '',
             '% --- fancyhdr setup ---',
             '\\pagestyle{fancy}',
-            '\\fancyhf{} % clear all',
-            '% Left (even) page header: book title',
-            '\\fancyhead[LE]{\\sffamily\\footnotesize\\MakeUppercase{\\rtBookTitle}}',
-            '% Right (odd) page header: chapter title (set by rtChapter)',
-            '\\fancyhead[RO]{\\sffamily\\footnotesize\\MakeUppercase{\\rtChapterHead}}',
-            '% Folio bottom center: serif, small',
-            '\\fancyfoot[C]{\\rmfamily\\footnotesize\\thepage}',
+            '\\fancyhf{} % clear everything',
+            '% Left (even) pages',
+            '\\fancyhead[LE]{\\rmfamily\\footnotesize \\thepage\\enspace|\\enspace \\MakeUppercase{\\rtBookAuthor}}',
+            '% Right (odd) pages',
+            '\\fancyhead[RO]{\\rmfamily\\footnotesize \\MakeUppercase{\\rtBookTitle}\\enspace|\\enspace \\thepage}',
+            '% No footer',
+            '\\fancyfoot{}',
             '\\renewcommand{\\headrulewidth}{0pt}',
             '\\renewcommand{\\footrulewidth}{0pt}',
             '',
@@ -511,7 +512,8 @@ export function getBundledPandocLayouts(): PandocLayoutTemplate[] {
         path: layout.path,
         bundled: true,
         ...(layout.usesModernClassicStructure === true ? { usesModernClassicStructure: true } : {}),
-        ...(layout.hasEpigraphs === true ? { hasEpigraphs: true } : {})
+        ...(layout.hasEpigraphs === true ? { hasEpigraphs: true } : {}),
+        ...(layout.hasSceneOpenerHeadingOptions === true ? { hasSceneOpenerHeadingOptions: true } : {})
     }));
 }
 
@@ -556,7 +558,8 @@ export function ensureBundledPandocLayoutsRegistered(plugin: RadialTimelinePlugi
             path: canonical.path,
             bundled: true,
             ...(canonical.usesModernClassicStructure === true ? { usesModernClassicStructure: true } : {}),
-            ...(canonical.hasEpigraphs === true ? { hasEpigraphs: true } : {})
+            ...(canonical.hasEpigraphs === true ? { hasEpigraphs: true } : {}),
+            ...(canonical.hasSceneOpenerHeadingOptions === true ? { hasSceneOpenerHeadingOptions: true } : {})
         };
         if (
             migrated.id !== layout.id
@@ -565,6 +568,7 @@ export function ensureBundledPandocLayoutsRegistered(plugin: RadialTimelinePlugi
             || migrated.path !== layout.path
             || migrated.usesModernClassicStructure !== layout.usesModernClassicStructure
             || migrated.hasEpigraphs !== layout.hasEpigraphs
+            || migrated.hasSceneOpenerHeadingOptions !== layout.hasSceneOpenerHeadingOptions
             || layout.bundled !== true
         ) {
             changed = true;

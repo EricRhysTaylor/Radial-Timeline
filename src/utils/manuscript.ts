@@ -62,6 +62,7 @@ export interface AssembleManuscriptOptions {
   sceneHeadingMode?: ManuscriptSceneHeadingMode;
   sceneHeadingRenderMode?: SceneHeadingRenderMode;
   modernClassicStructure?: ModernClassicStructureOptions;
+  suppressMatterPageChrome?: boolean;
 }
 
 type EffectiveBodyMode = 'latex' | 'plain';
@@ -171,6 +172,29 @@ function resolveSceneHeading(
       if (prefix && strippedTitle) return `${prefix} ${strippedTitle}`;
       return trimmed || `Scene ${fallbackNumber}`;
   }
+}
+
+function resolveLatexSceneHeading(
+  title: string,
+  mode: ManuscriptSceneHeadingMode,
+  fallbackNumber: number
+): string {
+  const trimmed = title.trim();
+  const prefix = extractScenePrefixFromTitle(trimmed);
+  const strippedTitle = stripScenePrefix(trimmed, prefix);
+
+  if (mode === 'scene-number') {
+    return escapeLatex(prefix || `Scene ${fallbackNumber}`);
+  }
+  if (mode === 'title-only') {
+    return escapeLatex(strippedTitle || trimmed || `Scene ${fallbackNumber}`);
+  }
+  if (prefix && strippedTitle) {
+    const safePrefix = escapeLatex(prefix);
+    const safeTitle = escapeLatex(strippedTitle);
+    return `${safePrefix}\\\\[0.25em]{\\normalsize\\itshape (${safeTitle})}`;
+  }
+  return escapeLatex(trimmed || `Scene ${fallbackNumber}`);
 }
 
 /**
@@ -746,6 +770,7 @@ export async function assembleManuscript(
   let totalWords = 0;
   const sceneHeadingMode = options?.sceneHeadingMode || 'scene-number-title';
   const sceneHeadingRenderMode = options?.sceneHeadingRenderMode || 'markdown-h2';
+  const suppressMatterPageChrome = options?.suppressMatterPageChrome === true;
   const matterDiagnostics: Array<{
     filePath: string;
     side: 'front' | 'back';
@@ -755,6 +780,19 @@ export async function assembleManuscript(
     bodyModeResolution: 'explicit' | 'auto-detected';
   }> = [];
   const modernClassicState = createModernClassicState(options?.modernClassicStructure);
+  let matterChromeActive = false;
+
+  const beginMatterChrome = () => {
+    if (!suppressMatterPageChrome || matterChromeActive) return;
+    textParts.push(buildRawLatexBlock('\\clearpage\\pagestyle{empty}\\thispagestyle{empty}'));
+    matterChromeActive = true;
+  };
+
+  const endMatterChrome = () => {
+    if (!suppressMatterPageChrome || !matterChromeActive) return;
+    textParts.push(buildRawLatexBlock('\\clearpage\\pagestyle{fancy}'));
+    matterChromeActive = false;
+  };
 
   const inferMatterSide = (meta?: MatterMeta): 'front' | 'back' => {
     const side = (meta?.side || '').toString().trim().toLowerCase();
@@ -785,6 +823,11 @@ export async function assembleManuscript(
       // the appropriate template instead of the default heading + body.
       const matterMeta = (file.path && matterMetaByPath?.get(file.path)) || extractMatterMeta(content);
       const isMatterNote = !!matterMeta;
+      if (isMatterNote) {
+        beginMatterChrome();
+      } else {
+        endMatterChrome();
+      }
       const bodyText = extractBodyText(content);
       const declaredMode = normalizeMatterBodyMode(matterMeta?.bodyMode);
       const chosenBodyMode = resolveEffectiveBodyMode(bodyText, declaredMode);
@@ -860,8 +903,9 @@ export async function assembleManuscript(
           totalWords += wordCount;
 
           if (sceneHeadingRenderMode === 'latex-section-starred') {
+            const latexHeading = resolveLatexSceneHeading(title, sceneHeadingMode, i + 1);
             // Force header/footer suppression on scene-opener pages.
-            textParts.push(`\\section*{${escapeLatex(heading)}}\n\\thispagestyle{empty}\n\n${bodyText}\n\n`);
+            textParts.push(`\\section*{${latexHeading}}\n\\thispagestyle{empty}\n\n${bodyText}\n\n`);
           } else {
             textParts.push(`## ${heading}\n\n${bodyText}\n\n`);
           }
@@ -873,6 +917,8 @@ export async function assembleManuscript(
       textParts.push(`## ${title}\n\n[Error reading scene]\n\n`);
     }
   }
+
+  endMatterChrome();
 
   if (isDevMode() && matterDiagnostics.length > 0) {
     const ordered = matterDiagnostics.map((entry, index) => ({

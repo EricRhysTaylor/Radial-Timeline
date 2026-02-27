@@ -1284,20 +1284,24 @@ export class ManuscriptOptionsModal extends Modal {
             return;
         }
         const key = layoutName.toLowerCase();
-        if (key.includes('classic manuscript') || key.includes('traditional')) {
-            desc.setText('Traditional manuscript layout with simple headers and centered page numbers. Minimal styling.');
+        if (key.includes('basic manuscript') || key.includes('classic manuscript') || key.includes('traditional')) {
+            desc.setText('Centered running header with book title and bottom-centered page numbers. One-inch margins, 1.5 line spacing, serif body text, and minimal ornamentation.');
+            return;
+        }
+        if (key.includes('modern classic') || key.includes('modern-classic') || key.includes('modern_classic')) {
+            desc.setText('Acts can open with optional epigraphs and Roman numeral PART pages. Chapters use Roman numerals with optional titles. Page numbers live in the headers: the left-page header pairs page number with author, and the right-page header pairs title with page number. Scene breaks use lower-case Roman numerals with a short rule.');
             return;
         }
         if (key.includes('contemporary literary') || key.includes('contemporary')) {
-            desc.setText('Running headers: book title on left pages, section title on right. Chapter openers suppress headers and folios.');
+            desc.setText('Running headers show book title on even pages and section context on odd pages. Page numbers are centered at the bottom. Chapter and section opener pages suppress headers and page numbers.');
             return;
         }
         if (key.includes('signature literary') || key.includes('(st)') || key.includes('signature')) {
-            desc.setText('Refined literary manuscript style with elevated typography, alternating headers, and balanced page rhythm.');
+            desc.setText('Page numbers are header-only: the left-page header pairs page number with author, and the right-page header pairs title with page number. Scene opener pages use generous vertical spacing and suppress headers and folios. Refined serif body typography.');
             return;
         }
         if (key.includes('novel')) {
-            desc.setText('Refined literary manuscript style with elevated typography, alternating headers, and balanced page rhythm.');
+            desc.setText('Serif fiction layout with print-oriented margins and running headers.');
             return;
         }
         desc.setText('Custom layout for manuscript PDF rendering.');

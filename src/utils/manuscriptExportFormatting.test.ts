@@ -78,7 +78,7 @@ describe('assembleManuscript scene heading formatting', () => {
             }
         );
 
-        expect(assembled.text).toContain('\\section*{3 Arrival}');
+        expect(assembled.text).toContain('\\section*{3\\\\[0.25em]{\\normalsize\\itshape (Arrival)}}');
         expect(assembled.text).toContain('\\thispagestyle{empty}');
         expect(assembled.text).not.toContain('## 3 Arrival');
     });
@@ -144,5 +144,35 @@ describe('assembleManuscript scene heading formatting', () => {
         expect(assembled.text).toContain('First body.');
         expect(assembled.text).toContain('Second body.');
         expect(assembled.text).toContain('Third body.');
+    });
+
+    it('suppresses headers and footers across matter runs when enabled', async () => {
+        const matter = makeFile('Matter/0.1 Title Page.md', '0.1 Title Page');
+        const scene = makeFile('Scenes/1 Opening.md', '1 Opening');
+        const vault = makeVault({
+            [matter.path]: '---\nClass: Frontmatter\nRole: title-page\nBodyMode: plain\n---\n\nMatter body.',
+            [scene.path]: 'Scene body.'
+        });
+
+        const assembled = await assembleManuscript(
+            [matter, scene],
+            vault,
+            undefined,
+            false,
+            undefined,
+            false,
+            undefined,
+            undefined,
+            {
+                sceneHeadingMode: 'scene-number-title',
+                sceneHeadingRenderMode: 'markdown-h2',
+                suppressMatterPageChrome: true
+            }
+        );
+
+        expect(assembled.text).toContain('\\clearpage\\pagestyle{empty}\\thispagestyle{empty}');
+        expect(assembled.text).toContain('\\clearpage\\pagestyle{fancy}');
+        expect(assembled.text).toContain('Matter body.');
+        expect(assembled.text).toContain('Scene body.');
     });
 });

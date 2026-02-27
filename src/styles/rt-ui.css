@@ -7128,6 +7128,7 @@
 .ert-ui.ert-scope--settings .ert-layout-row .setting-item.ert-layout-row-setting {
   --ert-row-pad: var(--ert-pad-sm);
   row-gap: 4px;
+  margin-bottom: 0;
 }
 
 .ert-ui.ert-scope--settings .ert-layout-row-name {
@@ -7172,7 +7173,7 @@
 }
 
 .ert-ui.ert-scope--settings .ert-layout-special-panel {
-  margin: 0;
+  margin: -1px 0 0;
   padding: 0 var(--ert-pad-sm) var(--ert-gap-sm);
   border-left: 1px solid var(--ert-pro-border);
   border-right: 1px solid var(--ert-pro-border);
@@ -7203,6 +7204,23 @@
 .ert-ui.ert-scope--settings .ert-layout-special-empty {
   font-size: 0.78rem;
   color: var(--text-muted);
+}
+
+.ert-ui.ert-scope--settings .ert-layout-special-mode {
+  display: grid;
+  gap: var(--ert-gap-xs);
+}
+
+.ert-ui.ert-scope--settings .ert-layout-special-mode-row {
+  display: grid;
+  grid-template-columns: 90px minmax(0, 1fr);
+  gap: var(--ert-gap-sm);
+  align-items: center;
+}
+
+.ert-ui.ert-scope--settings .ert-layout-special-mode-select {
+  width: 100%;
+  min-width: 0;
 }
 
 .ert-ui.ert-scope--settings .ert-layout-epigraph-rows {

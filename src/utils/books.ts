@@ -3,6 +3,7 @@
  */
 import type { RadialTimelineSettings } from '../types/settings';
 import type { BookProfile } from '../types/settings';
+import type { ManuscriptSceneHeadingMode } from '../types/settings';
 
 export const DEFAULT_BOOK_TITLE = 'Untitled Manuscript';
 
@@ -28,6 +29,10 @@ export function normalizeBookProfile(profile: BookProfile): BookProfile {
   const sourceFolder = (profile.sourceFolder || '').trim();
   const fileStem = profile.fileStem?.trim();
   const normalizedLayoutOptions: BookProfile['layoutOptions'] = {};
+  const normalizeSceneHeadingMode = (value: unknown): ManuscriptSceneHeadingMode | undefined => {
+    if (value === 'scene-number' || value === 'scene-number-title' || value === 'title-only') return value;
+    return undefined;
+  };
   for (const [layoutId, options] of Object.entries(profile.layoutOptions || {})) {
     const layoutKey = layoutId.trim();
     if (!layoutKey) continue;
@@ -43,10 +48,12 @@ export function normalizeBookProfile(profile: BookProfile): BookProfile {
     };
     const actEpigraphs = normalizeList(options?.actEpigraphs);
     const actEpigraphAttributions = normalizeList(options?.actEpigraphAttributions);
-    if (!actEpigraphs && !actEpigraphAttributions) continue;
+    const sceneHeadingMode = normalizeSceneHeadingMode(options?.sceneHeadingMode);
+    if (!actEpigraphs && !actEpigraphAttributions && !sceneHeadingMode) continue;
     normalizedLayoutOptions[layoutKey] = {
       ...(actEpigraphs ? { actEpigraphs } : {}),
-      ...(actEpigraphAttributions ? { actEpigraphAttributions } : {})
+      ...(actEpigraphAttributions ? { actEpigraphAttributions } : {}),
+      ...(sceneHeadingMode ? { sceneHeadingMode } : {})
     };
   }
 

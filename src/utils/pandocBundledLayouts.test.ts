@@ -67,7 +67,7 @@ describe('bundled pandoc layout export auto-install', () => {
         expect(fictionLayouts).toHaveLength(4);
         expect(fictionLayouts.map(layout => layout.name)).toEqual([
             'Signature Literary',
-            'Classic Manuscript',
+            'Basic Manuscript',
             'Contemporary Literary',
             'Modern Classic'
         ]);
@@ -80,6 +80,8 @@ describe('bundled pandoc layout export auto-install', () => {
         const modernClassic = fictionLayouts.find(layout => layout.id === 'bundled-fiction-modern-classic');
         expect(modernClassic?.usesModernClassicStructure).toBe(true);
         expect(modernClassic?.hasEpigraphs).toBe(true);
+        const signature = fictionLayouts.find(layout => layout.id === 'bundled-fiction-signature-literary');
+        expect(signature?.hasSceneOpenerHeadingOptions).toBe(true);
     });
 
     it('installs missing bundled .tex template and then validates successfully', async () => {

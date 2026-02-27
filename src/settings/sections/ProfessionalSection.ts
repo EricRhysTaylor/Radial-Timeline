@@ -15,7 +15,7 @@ import * as path from 'path'; // SAFE: Node path for absolute-path detection in 
 import { generateSceneContent } from '../../utils/sceneGenerator';
 import { DEFAULT_SETTINGS } from '../defaults';
 import { validatePandocLayout, slugifyToFileStem } from '../../utils/exportFormats';
-import type { BookLayoutOptions, BookMeta, BookProfile, PandocLayoutTemplate } from '../../types';
+import type { BookLayoutOptions, BookMeta, BookProfile, ManuscriptSceneHeadingMode, PandocLayoutTemplate } from '../../types';
 import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { getActiveBookExportContext } from '../../utils/exportContext';
 import { getActiveBook } from '../../utils/books';
@@ -1833,7 +1833,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
     const getLayoutDisplayName = (layout: PandocLayoutTemplate): string => {
         if (layout.preset === 'novel') {
             const variant = getFictionVariant(layout);
-            if (variant === 'classic') return 'Classic Manuscript';
+            if (variant === 'classic') return 'Basic Manuscript';
             if (variant === 'modernClassic') return 'Modern Classic';
             if (variant === 'signature') return 'Signature Literary';
             if (variant === 'contemporary') return 'Contemporary Literary';
@@ -1848,18 +1848,18 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         if (layout.preset === 'novel') {
             const variant = getFictionVariant(layout);
             if (variant === 'classic') {
-                return 'Traditional manuscript treatment with restrained running headers and centered folios for clean draft review. Uses classic serif body typography with minimal decorative styling.';
+                return 'Centered running header with book title and bottom-centered page numbers. One-inch margins, 1.5 line spacing, serif body text, and minimal ornamentation.';
             }
             if (variant === 'modernClassic') {
-                return '6x9 trade-book design with RT-driven part/chapter openers and structured scene-break handling. Headers are balanced for long-form fiction, with folios placed for print-first readability and modern serif text.';
+                return 'Acts can open with optional epigraphs and Roman numeral PART pages. Chapters use Roman numerals with optional titles. Page numbers live in the headers: the left-page header pairs page number with author, and the right-page header pairs title with page number. Scene breaks use lower-case Roman numerals with a short rule.';
             }
             if (variant === 'signature') {
-                return 'Literary-forward composition with alternating verso/recto headers and carefully tuned vertical rhythm. Folios and heading treatments are spaced to support long reads, paired with elevated serif typography.';
+                return 'Page numbers are header-only: the left-page header pairs page number with author, and the right-page header pairs title with page number. Scene opener pages use generous vertical spacing and suppress headers and folios. Refined serif body typography.';
             }
             if (variant === 'contemporary') {
-                return 'Running-header system: book title on left pages, section/chapter context on right for quick navigation. Chapter openers suppress header and page number marks, with contemporary serif styling and generous white space.';
+                return 'Running headers show book title on even pages and section context on odd pages. Page numbers are centered at the bottom. Chapter and section opener pages suppress headers and page numbers.';
             }
-            return 'Refined fiction layout with chapter-first pacing, polished header structure, and print-friendly folio placement. Built around readable serif typography for manuscript and proof workflows.';
+            return 'Serif fiction layout with print-oriented margins and running headers.';
         }
         if (layout.preset === 'podcast') {
             return 'Narration-first script format with speaker/segment clarity, timing-friendly spacing, and clean cue separation. Header metadata and page numbering are positioned for fast booth or desk reference.';
@@ -1873,15 +1873,18 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
     type LayoutSpecialCapabilities = {
         usesModernClassicStructure: boolean;
         hasEpigraphs: boolean;
+        hasSceneOpenerHeadingOptions: boolean;
     };
     const getLayoutSpecialCapabilities = (layout: PandocLayoutTemplate): LayoutSpecialCapabilities => {
         const usesModernClassicStructure = layout.usesModernClassicStructure === true;
         const hasEpigraphs = layout.hasEpigraphs === true || usesModernClassicStructure;
-        return { usesModernClassicStructure, hasEpigraphs };
+        const variant = getFictionVariant(layout);
+        const hasSceneOpenerHeadingOptions = layout.hasSceneOpenerHeadingOptions === true || variant === 'signature';
+        return { usesModernClassicStructure, hasEpigraphs, hasSceneOpenerHeadingOptions };
     };
     const hasLayoutSpecialOptions = (layout: PandocLayoutTemplate): boolean => {
         const caps = getLayoutSpecialCapabilities(layout);
-        return caps.usesModernClassicStructure || caps.hasEpigraphs;
+        return caps.usesModernClassicStructure || caps.hasEpigraphs || caps.hasSceneOpenerHeadingOptions;
     };
     const toRomanNumeral = (value: number): string => {
         if (!Number.isFinite(value) || value <= 0) return '';
@@ -1920,9 +1923,15 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         if (!activeBook) return {};
         const scoped = activeBook.layoutOptions?.[layoutId];
         if (!scoped) return {};
+        const sceneHeadingMode = scoped.sceneHeadingMode === 'scene-number'
+            || scoped.sceneHeadingMode === 'scene-number-title'
+            || scoped.sceneHeadingMode === 'title-only'
+            ? scoped.sceneHeadingMode
+            : undefined;
         return {
             actEpigraphs: normalizeLayoutOptionList(scoped.actEpigraphs),
-            actEpigraphAttributions: normalizeLayoutOptionList(scoped.actEpigraphAttributions)
+            actEpigraphAttributions: normalizeLayoutOptionList(scoped.actEpigraphAttributions),
+            ...(sceneHeadingMode ? { sceneHeadingMode } : {})
         };
     };
     const saveLayoutOptionsForActiveBook = async (layoutId: string, next: BookLayoutOptions): Promise<void> => {
@@ -1940,15 +1949,24 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         };
         const hasEpigraphText = (next.actEpigraphs || []).some(value => value.trim().length > 0);
         const hasAttributionText = (next.actEpigraphAttributions || []).some(value => value.trim().length > 0);
-        if (!hasEpigraphText && !hasAttributionText) {
+        const sceneHeadingMode = next.sceneHeadingMode === 'scene-number'
+            || next.sceneHeadingMode === 'scene-number-title'
+            || next.sceneHeadingMode === 'title-only'
+            ? next.sceneHeadingMode
+            : undefined;
+        const hasSceneHeadingModeOverride = !!sceneHeadingMode && sceneHeadingMode !== 'scene-number-title';
+        if (!hasEpigraphText && !hasAttributionText && !hasSceneHeadingModeOverride) {
             delete activeBook.layoutOptions[layoutId];
             if (Object.keys(activeBook.layoutOptions).length === 0) {
                 delete activeBook.layoutOptions;
             }
         } else {
+            const trimmedEpigraphs = trimTrailingEmpty(next.actEpigraphs || []);
+            const trimmedAttributions = trimTrailingEmpty(next.actEpigraphAttributions || []);
             activeBook.layoutOptions[layoutId] = {
-                actEpigraphs: trimTrailingEmpty(next.actEpigraphs || []),
-                actEpigraphAttributions: trimTrailingEmpty(next.actEpigraphAttributions || [])
+                ...(trimmedEpigraphs.length > 0 ? { actEpigraphs: trimmedEpigraphs } : {}),
+                ...(trimmedAttributions.length > 0 ? { actEpigraphAttributions: trimmedAttributions } : {}),
+                ...(hasSceneHeadingModeOverride ? { sceneHeadingMode } : {})
             };
         }
         await plugin.saveSettings();
@@ -2021,7 +2039,8 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
             path: compactTemplatePathForStorage(plugin, copyFilename),
             bundled: false,
             ...(layout.usesModernClassicStructure === true ? { usesModernClassicStructure: true } : {}),
-            ...(layout.hasEpigraphs === true ? { hasEpigraphs: true } : {})
+            ...(layout.hasEpigraphs === true ? { hasEpigraphs: true } : {}),
+            ...(layout.hasSceneOpenerHeadingOptions === true ? { hasSceneOpenerHeadingOptions: true } : {})
         });
         plugin.settings.pandocLayouts = existing;
         await plugin.saveSettings();
@@ -2232,6 +2251,36 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
                             });
                         }
                     }
+                }
+
+                if (specialCapabilities.hasSceneOpenerHeadingOptions) {
+                    const headingPanel = panel.createDiv({ cls: 'ert-layout-special-mode' });
+                    const headingTitle = headingPanel.createDiv({ cls: 'ert-layout-special-title', text: 'Opener scene heading' });
+                    headingTitle.setAttr('role', 'heading');
+                    const modeRow = headingPanel.createDiv({ cls: 'ert-layout-special-mode-row' });
+                    modeRow.createDiv({ cls: 'ert-layout-epigraph-label', text: 'Style' });
+                    const modeSelect = modeRow.createEl('select', { cls: 'ert-input ert-layout-special-mode-select' });
+
+                    const options: Array<{ value: ManuscriptSceneHeadingMode; label: string }> = [
+                        { value: 'scene-number', label: 'Scene number only' },
+                        { value: 'scene-number-title', label: 'Scene number + title (title in parentheses)' },
+                        { value: 'title-only', label: 'Title only' }
+                    ];
+                    options.forEach(option => {
+                        modeSelect.createEl('option', { value: option.value, text: option.label });
+                    });
+
+                    const activeMode = getLayoutOptionsForActiveBook(layout.id).sceneHeadingMode || 'scene-number-title';
+                    modeSelect.value = activeMode;
+                    plugin.registerDomEvent(modeSelect, 'change', () => {
+                        const scoped = getLayoutOptionsForActiveBook(layout.id);
+                        const nextMode = modeSelect.value as ManuscriptSceneHeadingMode;
+                        void saveLayoutOptionsForActiveBook(layout.id, {
+                            actEpigraphs: scoped.actEpigraphs,
+                            actEpigraphAttributions: scoped.actEpigraphAttributions,
+                            sceneHeadingMode: nextMode
+                        });
+                    });
                 }
             }
         };
