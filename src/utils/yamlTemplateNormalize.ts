@@ -190,7 +190,18 @@ function filterDeprecatedBackdropKeys(advancedRaw: string): string {
  * Return the base template keys for a given note type.
  */
 export function getBaseKeys(noteType: NoteType, settings: RadialTimelineSettings): string[] {
-    return extractKeysInOrder(getTemplateParts(noteType, settings).base);
+    const baseKeys = extractKeysInOrder(getTemplateParts(noteType, settings).base);
+    // System-managed scene update flags should always exist in schema, even if
+    // a customized base template accidentally removed them.
+    if (noteType === 'Scene') {
+        if (!baseKeys.includes('Pulse Update')) {
+            baseKeys.push('Pulse Update');
+        }
+        if (!baseKeys.includes('Summary Update')) {
+            baseKeys.push('Summary Update');
+        }
+    }
+    return baseKeys;
 }
 
 /**
@@ -219,9 +230,29 @@ export function computeCanonicalOrder(
     settings: RadialTimelineSettings,
     beatSystemKey?: string
 ): string[] {
-    return extractKeysInOrder(
+    const mergedOrder = extractKeysInOrder(
         getTemplateParts(noteType, settings, beatSystemKey).merged
     );
+    // Reference ID is system-managed and always canonical-first for note types
+    // that use IDs (Scene, Beat, Backdrop).
+    const result: string[] = ['id'];
+    const seen = new Set<string>(['id']);
+    for (const key of mergedOrder) {
+        const lower = key.toLowerCase();
+        if (seen.has(lower)) continue;
+        result.push(key);
+        seen.add(lower);
+    }
+    if (noteType === 'Scene') {
+        for (const sceneKey of ['Pulse Update', 'Summary Update']) {
+            const lower = sceneKey.toLowerCase();
+            if (!seen.has(lower)) {
+                result.push(sceneKey);
+                seen.add(lower);
+            }
+        }
+    }
+    return result;
 }
 
 /**
@@ -257,10 +288,15 @@ export function getCustomDefaults(
  *
  * Example: Gossamer score fields on beats (Gossamer1, Gossamer2, GossamerStage1, …)
  */
-export function getExcludeKeyPredicate(noteType: NoteType): (key: string) => boolean {
+export function getExcludeKeyPredicate(
+    noteType: NoteType,
+    settings?: Pick<RadialTimelineSettings, 'enableAiSceneAnalysis'>
+): (key: string) => boolean {
     switch (noteType) {
         case 'Beat':
             return (key: string) => {
+                // System-managed reference id; never flag as extra
+                if (key.toLowerCase() === 'id') return true;
                 // All Gossamer-injected fields: Gossamer1, GossamerStage1,
                 // Gossamer1 Justification, Gossamer Last Updated, etc.
                 if (/^Gossamer/i.test(key)) return true;
@@ -276,23 +312,26 @@ export function getExcludeKeyPredicate(noteType: NoteType): (key: string) => boo
             };
         case 'Scene':
             return (key: string) => {
+                // System-managed reference id; never flag as extra
+                if (key.toLowerCase() === 'id') return true;
                 const legacyNarrativeKey = 'long' + 'form';
+                const aiEnabled = settings?.enableAiSceneAnalysis ?? true;
                 // Scene analysis dynamic fields
-                if (/^(previous|current|next)SceneAnalysis$/i.test(key)) return true;
+                if (aiEnabled && /^(previous|current|next)SceneAnalysis$/i.test(key)) return true;
                 // Legacy analysis fields
                 if (/^[123]beats$/i.test(key)) return true;
                 // Legacy narrative field
                 if (key === legacyNarrativeKey) return true;
                 // Repair metadata
                 if (['WhenSource', 'WhenConfidence', 'DurationSource', 'NeedsReview'].includes(key)) return true;
-                // AI-generated timestamp fields (written/deleted by purgeScenesBeats)
-                if (key === 'Pulse Last Updated' || key === 'Beats Last Updated') return true;
                 // Obsidian-internal keys
                 if (RESERVED_OBSIDIAN_KEYS.has(key)) return true;
                 return false;
             };
         case 'Backdrop':
             return (key: string) => {
+                // System-managed reference id; never flag as extra
+                if (key.toLowerCase() === 'id') return true;
                 // Legacy backdrop narrative field (renamed to Context)
                 if (key === 'Synopsis') return true;
                 // Obsidian-internal keys

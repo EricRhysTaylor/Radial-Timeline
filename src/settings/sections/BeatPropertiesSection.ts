@@ -45,7 +45,7 @@ import {
 } from '../../utils/yamlTemplateNormalize';
 import { runYamlAudit, collectFilesForAudit, collectFilesForAuditWithScope, formatAuditReport, type YamlAuditResult, type NoteAuditEntry } from '../../utils/yamlAudit';
 import { runYamlBackfill, runYamlFillEmptyValues, type BackfillResult } from '../../utils/yamlBackfill';
-import { runReferenceIdBackfill } from '../../utils/referenceIdBackfill';
+import { runReferenceIdBackfill, runReferenceIdDuplicateRepair } from '../../utils/referenceIdBackfill';
 import { runYamlDeleteFields, runYamlDeleteEmptyExtraFields, runYamlReorder, previewDeleteFields, previewReorder, type DeleteResult, type ReorderResult } from '../../utils/yamlManager';
 import { type FrontmatterSafetyResult, formatSafetyIssues } from '../../utils/yamlSafety';
 import { isPathInFolderScope } from '../../utils/pathScope';
@@ -609,6 +609,66 @@ export function renderStoryBeatsSection(params: {
         return matches;
     };
 
+    type BeatMissingDiagnostic = {
+        name: string;
+        reason: string;
+    };
+
+    const collectBeatNoteDiagnosticsByExpectedNames = (
+        expectedKeys: Set<string>,
+        selectedSystem: string
+    ): Map<string, { missingModel: number; wrongModels: Set<string>; nonBeatClass: number }> => {
+        const diagnostics = new Map<string, { missingModel: number; wrongModels: Set<string>; nonBeatClass: number }>();
+        if (expectedKeys.size === 0) return diagnostics;
+
+        const bookScope = (plugin.settings.sourcePath || '').trim();
+        const files = app.vault.getMarkdownFiles().filter(f => isPathInFolderScope(f.path, bookScope));
+        const expectedModel = selectedSystem === 'Custom'
+            ? normalizeBeatSetNameInput(plugin.settings.customBeatSystemName || '', 'Custom')
+            : selectedSystem;
+        const expectedModelKey = normalizeBeatModel(expectedModel);
+        if (!expectedModelKey) return diagnostics;
+
+        const getOrCreate = (key: string) => {
+            const existing = diagnostics.get(key);
+            if (existing) return existing;
+            const next = { missingModel: 0, wrongModels: new Set<string>(), nonBeatClass: 0 };
+            diagnostics.set(key, next);
+            return next;
+        };
+
+        files.forEach((file) => {
+            const key = normalizeBeatTitle(file.basename);
+            if (!expectedKeys.has(key)) return;
+
+            const cache = app.metadataCache.getFileCache(file);
+            const fm = (cache?.frontmatter ?? {}) as Record<string, unknown>;
+            const normalized = normalizeFrontmatterKeys(fm, plugin.settings.frontmatterMappings);
+            const classValue = normalized['Class'];
+            const bucket = getOrCreate(key);
+
+            if (classValue && !isStoryBeat(classValue)) {
+                bucket.nonBeatClass += 1;
+                return;
+            }
+
+            const beatModelValue = typeof normalized['Beat Model'] === 'string'
+                ? (normalized['Beat Model'] as string).trim()
+                : '';
+
+            if (beatModelValue.length === 0) {
+                bucket.missingModel += 1;
+                return;
+            }
+
+            if (normalizeBeatModel(beatModelValue) !== expectedModelKey) {
+                bucket.wrongModels.add(beatModelValue);
+            }
+        });
+
+        return diagnostics;
+    };
+
     let existingBeatLookup = new Map<string, TimelineItem[]>();
     let existingBeatIdLookup = new Map<string, TimelineItem[]>();
     let existingBeatCount = 0;
@@ -620,6 +680,7 @@ export function renderStoryBeatsSection(params: {
     let existingBeatNewCount = 0;
     let existingBeatMissingModelCount = 0;
     let existingBeatLegacyMatchedCount = 0;
+    let existingBeatMissingDiagnostics: BeatMissingDiagnostic[] = [];
     let existingBeatStatsSystem = '';
     let existingBeatKey = '';
     let existingBeatReady = false;
@@ -755,12 +816,14 @@ export function renderStoryBeatsSection(params: {
             existingBeatCount = total;
             existingBeatStatsSystem = selectedSystem;
             existingBeatExpectedCount = expectedNames.length;
+            existingBeatMissingDiagnostics = [];
 
             // Match by Beat Id first, then fall back to normalized name
             let matched = 0;
             let legacyMatched = 0;
             let duplicates = 0;
             const matchedByIdKeys = new Set<string>();
+            const matchedKeys = new Set<string>();
             for (const key of expectedKeys) {
                 // Try Beat Id match first
                 let foundById = false;
@@ -768,6 +831,7 @@ export function renderStoryBeatsSection(params: {
                     if (nameKey === key && existingBeatIdLookup.has(beatId)) {
                         foundById = true;
                         matchedByIdKeys.add(key);
+                        matchedKeys.add(key);
                         const idMatches = existingBeatIdLookup.get(beatId) ?? [];
                         if (idMatches.length > 1) duplicates++;
                         break;
@@ -780,6 +844,7 @@ export function renderStoryBeatsSection(params: {
                 // Fall back to name-based matching (legacy)
                 if (lookup.has(key)) {
                     matched++;
+                    matchedKeys.add(key);
                     legacyMatched++;
                     if ((lookup.get(key)?.length ?? 0) > 1) duplicates++;
                 }
@@ -830,6 +895,29 @@ export function renderStoryBeatsSection(params: {
             existingBeatSyncedCount = Math.max(0, existingBeatMatchedCount - existingBeatMisalignedCount - existingBeatDuplicateCount);
             const missingModelMatchedCount = Array.from(expectedKeys).filter(key => missingModelLookup.has(key)).length;
             existingBeatNewCount = Math.max(0, existingBeatExpectedCount - existingBeatMatchedCount - missingModelMatchedCount);
+
+            const diagnosticsByKey = collectBeatNoteDiagnosticsByExpectedNames(expectedKeys, selectedSystem);
+            const expectedNameByKey = new Map<string, string>();
+            expectedNames.forEach((name) => {
+                const key = normalizeBeatTitle(name);
+                if (key && !expectedNameByKey.has(key)) expectedNameByKey.set(key, name);
+            });
+
+            const missingDiagnostics: BeatMissingDiagnostic[] = [];
+            for (const [key, name] of expectedNameByKey.entries()) {
+                if (matchedKeys.has(key) || missingModelLookup.has(key)) continue;
+                const bucket = diagnosticsByKey.get(key);
+                let reason = 'No note with a matching beat title was found in the active source path.';
+                if (bucket && bucket.wrongModels.size > 0) {
+                    const models = [...bucket.wrongModels].slice(0, 3);
+                    const suffix = bucket.wrongModels.size > 3 ? ` (+${bucket.wrongModels.size - 3} more)` : '';
+                    reason = `Matching title found, but Beat Model differs (${models.join(', ')}${suffix}).`;
+                } else if (bucket && bucket.nonBeatClass > 0) {
+                    reason = 'Matching title found, but Class is not Beat/Plot.';
+                }
+                missingDiagnostics.push({ name, reason });
+            }
+            existingBeatMissingDiagnostics = missingDiagnostics;
         };
 
         const initialLookup = buildExistingBeatLookup(beats);
@@ -4326,6 +4414,15 @@ export function renderStoryBeatsSection(params: {
             insertMissingIdsBtn = button.buttonEl;
             insertMissingIdsBtn.classList.add('ert-settings-hidden');
         });
+        let fixDuplicateIdsBtn: HTMLButtonElement | undefined;
+        auditSetting.addButton(button => {
+            button
+                .setButtonText('Fix duplicate IDs')
+                .setTooltip('Reassign duplicate Reference IDs in this scope')
+                .onClick(() => void handleFixDuplicateIds());
+            fixDuplicateIdsBtn = button.buttonEl;
+            fixDuplicateIdsBtn.classList.add('ert-settings-hidden');
+        });
         let fillEmptyBtn: HTMLButtonElement | undefined;
         auditSetting.addButton(button => {
             button
@@ -4459,6 +4556,7 @@ export function renderStoryBeatsSection(params: {
                 totalNotes: auditResult.summary.totalNotes,
                 missing: auditResult.summary.notesWithMissing,
                 missingIds: auditResult.summary.notesMissingIds,
+                duplicateIds: auditResult.summary.notesDuplicateIds,
                 extra: auditResult.summary.notesWithExtra,
                 drift: auditResult.summary.notesWithDrift,
                 warnings: auditResult.summary.notesWithWarnings,
@@ -4479,6 +4577,11 @@ export function renderStoryBeatsSection(params: {
                 insertMissingIdsBtn?.classList.remove('ert-settings-hidden');
             } else {
                 insertMissingIdsBtn?.classList.add('ert-settings-hidden');
+            }
+            if (auditResult.summary.notesDuplicateIds > 0) {
+                fixDuplicateIdsBtn?.classList.remove('ert-settings-hidden');
+            } else {
+                fixDuplicateIdsBtn?.classList.add('ert-settings-hidden');
             }
 
             fillEmptyPlan = buildFillEmptyPlan(files, activeBeatSystemKey);
@@ -4561,6 +4664,7 @@ export function renderStoryBeatsSection(params: {
                     .filter(n =>
                         n.missingFields.length > 0
                         || n.missingReferenceId
+                        || !!n.duplicateReferenceId
                         || n.extraKeys.length > 0
                         || n.orderDrift
                         || n.semanticWarnings.length > 0
@@ -4575,7 +4679,7 @@ export function renderStoryBeatsSection(params: {
             // Schema health + summary in one line
             const healthLevel = (s.notesUnsafe > 0)
                 ? 'unsafe'
-                : (s.notesMissingIds > 0)
+                : (s.notesMissingIds > 0 || s.notesDuplicateIds > 0)
                     ? 'critical'
                     : (s.notesWithMissing > 0 || emptyValueNotes > 0)
                     ? 'needs-attention'
@@ -4597,6 +4701,12 @@ export function renderStoryBeatsSection(params: {
             if (s.notesMissingIds > 0) {
                 resultsEl.createDiv({
                     text: `Critical: Missing IDs (${s.notesMissingIds})`,
+                    cls: 'ert-audit-critical-summary'
+                });
+            }
+            if (s.notesDuplicateIds > 0) {
+                resultsEl.createDiv({
+                    text: `Critical: Duplicate IDs (${s.notesDuplicateIds})`,
                     cls: 'ert-audit-critical-summary'
                 });
             }
@@ -4652,6 +4762,7 @@ export function renderStoryBeatsSection(params: {
                 && s.notesUnsafe === 0
                 && s.notesSuspicious === 0
                 && s.notesMissingIds === 0
+                && s.notesDuplicateIds === 0
                 && emptyValueNotes === 0
             ) {
                 resultsEl.createDiv({
@@ -4665,13 +4776,15 @@ export function renderStoryBeatsSection(params: {
             interface ChipConfig {
                 label: string;
                 count: number;
-                kind: 'critical' | 'missing' | 'extra' | 'drift' | 'warning' | 'unsafe' | 'suspicious';
+                kind: 'critical' | 'duplicate' | 'missing' | 'extra' | 'drift' | 'warning' | 'unsafe' | 'suspicious';
                 entries: NoteAuditEntry[];
             }
 
             const chips: ChipConfig[] = [
                 { label: 'Critical: Missing IDs', count: s.notesMissingIds, kind: 'critical',
                   entries: auditResult.notes.filter(n => n.missingReferenceId) },
+                { label: 'Critical: Duplicate IDs', count: s.notesDuplicateIds, kind: 'duplicate',
+                  entries: auditResult.notes.filter(n => !!n.duplicateReferenceId) },
                 { label: 'Unsafe', count: s.notesUnsafe, kind: 'unsafe',
                   entries: auditResult.notes.filter(n => n.safetyResult?.status === 'dangerous') },
                 { label: 'Suspicious', count: s.notesSuspicious, kind: 'suspicious',
@@ -4696,8 +4809,9 @@ export function renderStoryBeatsSection(params: {
                 chipsEl.empty();
                 for (const chip of chips) {
                     if (chip.count === 0) continue;
+                    const chipStyleKind = chip.kind === 'duplicate' ? 'critical' : chip.kind;
                     const chipBtn = chipsEl.createEl('button', {
-                        cls: `ert-chip ert-audit-chip ert-audit-chip--${chip.kind}${activeKind === chip.kind ? ' is-active' : ''}`,
+                        cls: `ert-chip ert-audit-chip ert-audit-chip--${chipStyleKind}${activeKind === chip.kind ? ' is-active' : ''}`,
                         text: `${chip.count} ${chip.label.toLowerCase()}`,
                         attr: { type: 'button' }
                     });
@@ -4735,6 +4849,11 @@ export function renderStoryBeatsSection(params: {
                         case 'critical':
                             reason = 'Missing Reference ID';
                             break;
+                        case 'duplicate':
+                            reason = entry.duplicateReferenceId
+                                ? `Duplicate Reference ID: ${entry.duplicateReferenceId}`
+                                : 'Duplicate Reference ID';
+                            break;
                         case 'missing':
                             reason = entry.missingFields.join(', ');
                             break;
@@ -4754,9 +4873,10 @@ export function renderStoryBeatsSection(params: {
                             reason = 'order drift';
                     }
                     const reasonShort = reason.length > 40 ? reason.slice(0, 39) + '…' : reason;
+                    const pillStyleKind = activeChip.kind === 'duplicate' ? 'critical' : activeChip.kind;
 
                     const pillEl = pillsEl.createEl('button', {
-                        cls: `ert-audit-note-pill ert-audit-note-pill--${activeChip.kind}`,
+                        cls: `ert-audit-note-pill ert-audit-note-pill--${pillStyleKind}`,
                         attr: { type: 'button' }
                     });
 
@@ -4779,6 +4899,8 @@ export function renderStoryBeatsSection(params: {
                         await openOrRevealFile(app, entry.file, false);
                         if (activeChip.kind === 'critical') {
                             new Notice('Missing Reference ID');
+                        } else if (activeChip.kind === 'duplicate') {
+                            new Notice(reason);
                         } else if (activeChip.kind === 'unsafe' || activeChip.kind === 'suspicious') {
                             new Notice(`Safety: ${reason}`);
                         } else if (entry.missingFields.length > 0) {
@@ -4883,6 +5005,71 @@ export function renderStoryBeatsSection(params: {
             const parts: string[] = [];
             if (result.updated > 0) parts.push(`Updated ${result.updated} note${result.updated !== 1 ? 's' : ''}`);
             if (result.skipped > 0) parts.push(`${result.skipped} already had IDs`);
+            if (result.failed > 0) parts.push(`${result.failed} failed`);
+            new Notice(parts.join(', ') || 'No changes made.');
+
+            setTimeout(() => runAudit(), 750);
+        };
+
+        // ─── Fix duplicate IDs action ────────────────────────────────────
+        const handleFixDuplicateIds = async () => {
+            if (!auditResult || auditResult.summary.notesDuplicateIds === 0) return;
+
+            const duplicateEntries = auditResult.notes.filter(n => !!n.duplicateReferenceId);
+            if (duplicateEntries.length === 0) return;
+            const targetFiles = [...new Set(duplicateEntries.map(n => n.file))];
+            const duplicateIdCount = new Set(
+                duplicateEntries
+                    .map(n => n.duplicateReferenceId)
+                    .filter((id): id is string => !!id)
+            ).size;
+
+            const confirmed = await new Promise<boolean>((resolve) => {
+                const modal = new Modal(app);
+                modal.titleEl.setText('');
+                modal.contentEl.empty();
+                modal.modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal-shell--md');
+                modal.contentEl.addClass('ert-modal-container', 'ert-stack');
+
+                const header = modal.contentEl.createDiv({ cls: 'ert-modal-header' });
+                header.createSpan({ cls: 'ert-modal-badge', text: `${noteType.toUpperCase()} AUDIT` });
+                header.createDiv({ cls: 'ert-modal-title', text: 'Fix duplicate IDs' });
+                header.createDiv({
+                    cls: 'ert-modal-subtitle',
+                    text: `Resolve ${duplicateIdCount} duplicate Reference ID group${duplicateIdCount !== 1 ? 's' : ''} across ${targetFiles.length} ${noteType.toLowerCase()} note${targetFiles.length !== 1 ? 's' : ''}.`
+                });
+
+                const body = modal.contentEl.createDiv({ cls: ['ert-panel', 'ert-panel--glass'] });
+                body.createDiv({ text: `Scope: ${auditScopeSummary}`, cls: 'ert-modal-subtitle' });
+                body.createDiv({ text: 'For each duplicate ID, one note keeps the existing ID and the others receive new IDs.' });
+
+                const footer = modal.contentEl.createDiv({ cls: 'ert-modal-actions' });
+                new ButtonComponent(footer).setButtonText('Fix duplicates').setCta().onClick(() => { resolve(true); modal.close(); });
+                new ButtonComponent(footer).setButtonText('Cancel').onClick(() => { resolve(false); modal.close(); });
+
+                modal.onClose = () => resolve(false);
+                modal.open();
+            });
+
+            if (!confirmed) return;
+
+            const result = await runReferenceIdDuplicateRepair({
+                app,
+                files: targetFiles,
+                noteType
+            });
+
+            console.debug('[YamlAudit] reference_id_duplicate_repair_execute', {
+                noteType,
+                scope: auditScopeSummary,
+                updated: result.updated,
+                skipped: result.skipped,
+                failed: result.failed
+            });
+
+            const parts: string[] = [];
+            if (result.updated > 0) parts.push(`Updated ${result.updated} note${result.updated !== 1 ? 's' : ''}`);
+            if (result.skipped > 0) parts.push(`${result.skipped} unchanged`);
             if (result.failed > 0) parts.push(`${result.failed} failed`);
             new Notice(parts.join(', ') || 'No changes made.');
 
@@ -5056,7 +5243,7 @@ export function renderStoryBeatsSection(params: {
             // Build protected key set from merged schema (base + advanced)
             const templateParts = getTemplateParts(noteType, plugin.settings, activeBeatSystemKey);
             const mergedKeys = sharedExtractKeysInOrder(templateParts.merged);
-            const isExcluded = getExcludeKeyPredicate(noteType);
+            const isExcluded = getExcludeKeyPredicate(noteType, plugin.settings);
             const protectedKeys = new Set([
                 ...mergedKeys,
                 ...RESERVED_OBSIDIAN_KEYS,
@@ -5238,7 +5425,7 @@ export function renderStoryBeatsSection(params: {
                 .filter(k => !baseKeySet.has(k));
             if (advancedKeys.length === 0) return;
 
-            const isExcluded = getExcludeKeyPredicate(noteType);
+            const isExcluded = getExcludeKeyPredicate(noteType, plugin.settings);
             // Advanced keys eligible for deletion (not base, not excluded, not reserved)
             const deletableAdvKeys = advancedKeys.filter(
                 k => !isExcluded(k) && !RESERVED_OBSIDIAN_KEYS.has(k)
@@ -5600,6 +5787,21 @@ export function renderStoryBeatsSection(params: {
     backdropYamlToggleBtn.addEventListener('click', () => { renderBackdropAuditVisibility(); });
     renderAuditPanel(backdropAuditContainer, 'Backdrop');
 
+    const buildMissingBeatInlineSummary = (maxItems = 2): string => {
+        if (existingBeatMissingDiagnostics.length === 0) return '';
+        const head = existingBeatMissingDiagnostics.slice(0, maxItems);
+        const detail = head.map((entry) => `${entry.name} (${entry.reason})`).join(' · ');
+        const remaining = existingBeatMissingDiagnostics.length - head.length;
+        const tail = remaining > 0 ? ` · +${remaining} more` : '';
+        return `Missing details: ${detail}${tail}`;
+    };
+
+    const buildMissingBeatTooltip = (): string | null => {
+        if (existingBeatMissingDiagnostics.length === 0) return null;
+        const lines = existingBeatMissingDiagnostics.map((entry) => `- ${entry.name}: ${entry.reason}`);
+        return `Why these beats are marked missing:\n${lines.join('\n')}`;
+    };
+
     function updateTemplateButton(setting: Settings, selectedSystem: string): void {
         const isCustom = selectedSystem === 'Custom';
         const isTemplateMode = !isCustom;
@@ -5710,6 +5912,8 @@ export function renderStoryBeatsSection(params: {
 
             const newBeats = existingBeatNewCount;
             const hasNew = newBeats > 0;
+            const missingInlineSummary = buildMissingBeatInlineSummary();
+            const missingTooltip = buildMissingBeatTooltip();
 
             // ── Template mode (built-in systems): simplified status ──────
             // Built-in systems (Save The Cat, StoryGrid, Hero's Journey) only
@@ -5732,10 +5936,13 @@ export function renderStoryBeatsSection(params: {
                 } else if (hasNew) {
                     // Some exist, some missing
                     const statusDesc = `${foundCount} of ${expectedCount} beat notes found.`;
-                    setting.setDesc(`${baseDesc} ${statusDesc}`);
+                    const details = missingInlineSummary ? ` ${missingInlineSummary}` : '';
+                    setting.setDesc(`${baseDesc} ${statusDesc}${details}`);
                     setPrimaryDesignButton(
                         `Create ${newBeats} missing beat note${newBeats > 1 ? 's' : ''}`,
-                        `Create the remaining ${newBeats} beat note${newBeats > 1 ? 's' : ''} for ${selectedSystem}`,
+                        missingTooltip
+                            ? `${missingTooltip}\n\nCreate the remaining ${newBeats} beat note${newBeats > 1 ? 's' : ''} for ${selectedSystem}`
+                            : `Create the remaining ${newBeats} beat note${newBeats > 1 ? 's' : ''} for ${selectedSystem}`,
                         false,
                         async () => { await createBeatTemplates(); }
                     );
@@ -5800,10 +6007,15 @@ export function renderStoryBeatsSection(params: {
                 }
             } else if (hasNew) {
                 // Scenario D: Has new beats to create
+                if (missingInlineSummary) {
+                    statusDesc += ` ${missingInlineSummary}`;
+                }
                 if (createTemplatesButton) {
                     setPrimaryDesignButton(
                         `Create ${newBeats} missing beat note${newBeats > 1 ? 's' : ''}`,
-                        `Create missing beat notes for ${newBeats} beat${newBeats > 1 ? 's' : ''} without files`,
+                        missingTooltip
+                            ? `${missingTooltip}\n\nCreate missing beat notes for ${newBeats} beat${newBeats > 1 ? 's' : ''} without files`
+                            : `Create missing beat notes for ${newBeats} beat${newBeats > 1 ? 's' : ''} without files`,
                         false,
                         async () => { await createBeatTemplates(); }
                     );

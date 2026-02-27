@@ -11,6 +11,7 @@ import type { BeatSystemConfig, RadialTimelineSettings } from '../types/settings
 import { normalizeBeatSetNameInput, sanitizeBeatFilenameSegment, toBeatModelMatchKey } from './beatsInputNormalize';
 import { mergeTemplateParts } from './templateMerge';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
+import { generateSceneId } from './sceneIds';
 
 // ─── Per-system Beat Config Resolvers ────────────────────────────────
 
@@ -233,6 +234,22 @@ function generatePlotNoteContent(
   const purpose = beatInfo.description ? `"${yamlEscape(beatInfo.description)}"` : '""';
   const rangeValue = getRangeValue(beatInfo);
 
+  const ensureReferenceIdLine = (frontmatterBlock: string): string => {
+    const lines = frontmatterBlock.split('\n');
+    let foundId = false;
+    const output = lines.map((line) => {
+      if (!/^id\s*:/i.test(line.trim())) return line;
+      foundId = true;
+      const current = line.replace(/^id\s*:/i, '').trim();
+      if (current.length > 0) return line;
+      return `id: ${generateSceneId()}`;
+    });
+    if (!foundId) {
+      output.unshift(`id: ${generateSceneId()}`);
+    }
+    return output.join('\n');
+  };
+
   if (template) {
     // Template-based generation using {{Placeholder}} substitution
     let content = template;
@@ -243,6 +260,7 @@ function generatePlotNoteContent(
     content = content.replace(/{{BeatModel}}/g, beatSystem);
     content = content.replace(/{{Range}}/g, rangeValue);
     content = content.replace(/{{BeatId}}/g, beatInfo.id ?? '');
+    content = ensureReferenceIdLine(content);
 
     return `---\n${content}\n---\n` + buildBeatBody(beatInfo);
   }
@@ -251,6 +269,7 @@ function generatePlotNoteContent(
   const beatId = beatInfo.id ?? '';
   const frontmatter = [
     '---',
+    `id: ${generateSceneId()}`,
     `Beat Id: ${beatId}`,
     'Class: Beat',
     `Act: ${act}`,

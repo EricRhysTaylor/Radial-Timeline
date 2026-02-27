@@ -24,7 +24,7 @@ import { getActiveBookExportContext } from '../utils/exportContext';
 import { getActiveBook } from '../utils/books';
 import { normalizeFrontmatterKeys } from '../utils/frontmatter';
 import { isPathInFolderScope } from '../utils/pathScope';
-import { ensureSceneTemplateFrontmatter } from '../utils/sceneIds';
+import { ensureReferenceIdTemplateFrontmatter, ensureSceneTemplateFrontmatter } from '../utils/sceneIds';
 import { chunkScenesIntoParts } from '../utils/splitOutput';
 import { parseMatterMetaFromFrontmatter } from '../utils/matterMeta';
 import { ensureBundledLayoutInstalledForExport } from '../utils/pandocBundledLayouts';
@@ -1091,8 +1091,9 @@ export class CommandRegistrar {
             const content = template
                 .replace(/{{When}}/g, today)
                 .replace(/{{End}}/g, today);
+            const withReferenceId = ensureReferenceIdTemplateFrontmatter(content, 'Backdrop');
 
-            const fileContent = `---\n${content}\n---\n\n`;
+            const fileContent = `---\n${withReferenceId.frontmatter}\n---\n\n`;
 
             const newFile = await this.app.vault.create(path, fileContent);
             const leaf = this.app.workspace.getLeaf(true);

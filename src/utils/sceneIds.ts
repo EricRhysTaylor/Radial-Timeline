@@ -65,10 +65,12 @@ export function ensureReferenceIdFrontmatter(
     options: {
         providedId?: string;
         classFallback?: string;
+        forceId?: string;
     } = {}
 ): { frontmatter: Record<string, unknown>; id: string; changed: boolean } {
     const existingId = readReferenceId(frontmatter);
-    const id = existingId ?? normalizeSceneIdValue(options.providedId) ?? generateSceneId();
+    const forcedId = normalizeSceneIdValue(options.forceId);
+    const id = forcedId ?? existingId ?? normalizeSceneIdValue(options.providedId) ?? generateSceneId();
     const classKey = findCaseInsensitiveKey(frontmatter, SCENE_CLASS_KEY);
     const idKey = findCaseInsensitiveKey(frontmatter, SCENE_ID_KEY);
     const ordered: Record<string, unknown> = {};
@@ -86,7 +88,9 @@ export function ensureReferenceIdFrontmatter(
         ordered[key] = value;
     }
 
-    const changed = !existingId || idKey !== 'id' || (!classKey && !!options.classFallback);
+    const changed = !!forcedId
+        ? (existingId !== forcedId || idKey !== 'id' || (!classKey && !!options.classFallback))
+        : (!existingId || idKey !== 'id' || (!classKey && !!options.classFallback));
     return {
         frontmatter: ordered,
         id,
@@ -94,7 +98,10 @@ export function ensureReferenceIdFrontmatter(
     };
 }
 
-export function ensureSceneTemplateFrontmatter(template: string): { frontmatter: string; sceneId: string } {
+export function ensureReferenceIdTemplateFrontmatter(
+    template: string,
+    classFallback: string
+): { frontmatter: string; id: string } {
     const lines = template.split('\n');
     const remaining: string[] = [];
     let classLine: string | undefined;
@@ -116,11 +123,19 @@ export function ensureSceneTemplateFrontmatter(template: string): { frontmatter:
         remaining.push(line);
     }
 
-    const sceneId = existingId ?? generateSceneId();
-    const outputLines = [`id: ${sceneId}`, classLine ?? 'Class: Scene', ...remaining];
+    const id = existingId ?? generateSceneId();
+    const outputLines = [`id: ${id}`, classLine ?? `Class: ${classFallback}`, ...remaining];
     return {
         frontmatter: outputLines.join('\n').trimEnd(),
-        sceneId
+        id
+    };
+}
+
+export function ensureSceneTemplateFrontmatter(template: string): { frontmatter: string; sceneId: string } {
+    const ensured = ensureReferenceIdTemplateFrontmatter(template, 'Scene');
+    return {
+        frontmatter: ensured.frontmatter,
+        sceneId: ensured.id
     };
 }
 

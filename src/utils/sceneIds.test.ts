@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+    ensureReferenceIdFrontmatter,
+    ensureReferenceIdTemplateFrontmatter,
     ensureSceneIdFrontmatter,
     ensureSceneTemplateFrontmatter,
     generateSceneId,
@@ -49,5 +51,29 @@ describe('sceneIds', () => {
 
         expect(lines[0]).toMatch(/^id:\s+scn_[0-9a-f]{8,10}$/);
         expect(lines[1]).toBe('Class: Scene');
+    });
+
+    it('forces a replacement reference id when requested', () => {
+        const result = ensureReferenceIdFrontmatter({
+            id: 'scn_deadbeef',
+            Class: 'Backdrop',
+            Context: 'context'
+        }, {
+            classFallback: 'Backdrop',
+            forceId: 'scn_feedface'
+        });
+
+        expect(result.id).toBe('scn_feedface');
+        expect(result.frontmatter.id).toBe('scn_feedface');
+        expect(result.changed).toBe(true);
+    });
+
+    it('normalizes template frontmatter with id first and class fallback', () => {
+        const result = ensureReferenceIdTemplateFrontmatter('When: {{When}}\nContext:', 'Backdrop');
+        const lines = result.frontmatter.split('\n');
+
+        expect(lines[0]).toMatch(/^id:\s+scn_[0-9a-f]{8,10}$/);
+        expect(lines[1]).toBe('Class: Backdrop');
+        expect(lines[2]).toBe('When: {{When}}');
     });
 });

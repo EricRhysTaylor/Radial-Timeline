@@ -54,19 +54,24 @@ class SaveExportTemplateModal extends Modal {
     }
 
     onOpen(): void {
-        const { contentEl } = this;
+        const { contentEl, modalEl, titleEl } = this;
         contentEl.empty();
+        titleEl.setText('');
+
+        if (modalEl) {
+            modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal-shell--md');
+        }
         contentEl.addClass('ert-modal-container', 'ert-stack', 'rt-template-dialog');
 
         const hero = contentEl.createDiv({ cls: 'ert-modal-header' });
-        hero.createDiv({ cls: 'ert-modal-title', text: 'Save export template' });
+        hero.createDiv({ cls: 'ert-modal-title', text: 'Save export preset' });
         hero.createDiv({ cls: 'ert-modal-subtitle', text: 'Name this manuscript export setup for reuse.' });
 
         const body = contentEl.createDiv({ cls: 'rt-glass-card rt-sub-card' });
         let currentName = this.defaultName;
         const input = body.createEl('input', {
             cls: 'ert-input ert-input--full',
-            attr: { type: 'text', placeholder: 'Template name', value: this.defaultName }
+            attr: { type: 'text', placeholder: 'Preset name', value: this.defaultName }
         });
         input.addEventListener('input', () => {
             currentName = input.value;
@@ -74,12 +79,12 @@ class SaveExportTemplateModal extends Modal {
 
         const actions = contentEl.createDiv({ cls: 'ert-modal-actions' });
         new ButtonComponent(actions)
-            .setButtonText('Save')
+            .setButtonText('Create preset')
             .setCta()
             .onClick(() => {
                 const trimmed = currentName.trim();
                 if (!trimmed) {
-                    new Notice('Template name is required.');
+                    new Notice('Preset name is required.');
                     return;
                 }
                 this.onSave(trimmed);
@@ -102,12 +107,17 @@ class DeleteExportTemplateModal extends Modal {
     }
 
     onOpen(): void {
-        const { contentEl } = this;
+        const { contentEl, modalEl, titleEl } = this;
         contentEl.empty();
+        titleEl.setText('');
+
+        if (modalEl) {
+            modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal-shell--sm');
+        }
         contentEl.addClass('ert-modal-container', 'ert-stack', 'rt-template-dialog');
 
         const hero = contentEl.createDiv({ cls: 'ert-modal-header' });
-        hero.createDiv({ cls: 'ert-modal-title', text: 'Delete export template' });
+        hero.createDiv({ cls: 'ert-modal-title', text: 'Delete export preset' });
         hero.createDiv({ cls: 'ert-modal-subtitle', text: `Delete "${this.templateName}"? This cannot be undone.` });
 
         const actions = contentEl.createDiv({ cls: 'ert-modal-actions' });
@@ -227,6 +237,7 @@ export class ManuscriptOptionsModal extends Modal {
     private cancelButton?: ButtonComponent;
     private templateCard?: HTMLElement;
     private exportTemplateDropdown?: HTMLSelectElement;
+    private saveTemplateButton?: ButtonComponent;
     private deleteTemplateButton?: ButtonComponent;
     private activeExportTemplateId: string | null = null;
 
@@ -620,6 +631,7 @@ export class ManuscriptOptionsModal extends Modal {
             .setValue(this.updateWordCounts)
             .onChange((value) => {
                 this.updateWordCounts = value;
+                this.updateTemplateActionButtonState();
             });
 
         this.includeMatterCard = exportControlsCard.createDiv({ cls: 'rt-manuscript-toggle-row' });
@@ -630,6 +642,7 @@ export class ManuscriptOptionsModal extends Modal {
                 this.hasTouchedMatterToggle = true;
                 this.includeMatterUserChoice = value;
                 this.includeMatter = value;
+                this.updateTemplateActionButtonState();
             });
 
         this.artifactRowEl = exportControlsCard.createDiv({ cls: 'rt-manuscript-toggle-row' });
@@ -638,6 +651,7 @@ export class ManuscriptOptionsModal extends Modal {
             .setValue(this.saveMarkdownArtifact)
             .onChange((value) => {
                 this.saveMarkdownArtifact = value;
+                this.updateTemplateActionButtonState();
             });
         this.artifactHelperEl = exportControlsCard.createDiv({
             cls: 'rt-sub-card-note',
@@ -689,8 +703,7 @@ export class ManuscriptOptionsModal extends Modal {
         templateSetting.onChange((value) => {
             if (!value) {
                 this.activeExportTemplateId = null;
-                this.deleteTemplateButton?.setDisabled(true);
-                void this.rememberLastUsedTemplate(null);
+                this.updateTemplateActionButtonState();
                 return;
             }
             void this.applyTemplateById(value);
@@ -700,8 +713,8 @@ export class ManuscriptOptionsModal extends Modal {
             text: 'Save current export configuration and quickly reload it next time.'
         });
         const templateActions = this.templateCard.createDiv({ cls: 'rt-template-actions' });
-        new ButtonComponent(templateActions)
-            .setButtonText('Save preset')
+        this.saveTemplateButton = new ButtonComponent(templateActions)
+            .setButtonText('Create preset')
             .onClick(() => {
                 void this.saveOrUpdateTemplate();
             });
@@ -791,19 +804,30 @@ export class ManuscriptOptionsModal extends Modal {
         const templates = this.getTemplateList();
         const placeholder = document.createElement('option');
         placeholder.value = '';
-        placeholder.text = templates.length > 0 ? 'Select template…' : 'No templates saved yet';
+        placeholder.text = 'Create new preset';
+        placeholder.disabled = false;
+        placeholder.selected = !this.activeExportTemplateId;
         this.exportTemplateDropdown.appendChild(placeholder);
 
         templates.forEach(template => {
             const option = document.createElement('option');
             option.value = template.id;
             option.text = template.name;
+            if (this.activeExportTemplateId && this.activeExportTemplateId === template.id) {
+                option.selected = true;
+                placeholder.selected = false;
+            }
             this.exportTemplateDropdown?.appendChild(option);
         });
 
-        this.exportTemplateDropdown.value = this.activeExportTemplateId ?? '';
+        const hasActiveTemplate = !!this.activeExportTemplateId
+            && templates.some(template => template.id === this.activeExportTemplateId);
+        this.exportTemplateDropdown.value = hasActiveTemplate ? this.activeExportTemplateId! : '';
         this.exportTemplateDropdown.disabled = false;
-        this.deleteTemplateButton?.setDisabled(!this.activeExportTemplateId);
+        if (!hasActiveTemplate) {
+            this.activeExportTemplateId = null;
+        }
+        this.updateTemplateActionButtonState();
     }
 
     private getFontFamilyType(fontName?: string | null): 'serif' | 'sans-serif' | 'monospace' | 'script' | 'display' {
@@ -838,6 +862,7 @@ export class ManuscriptOptionsModal extends Modal {
             ? this.pdfCleanupOptions
             : this.markdownCleanupOptions;
         target[key] = value;
+        this.updateTemplateActionButtonState();
     }
 
     private updateCleanupToggleState(): void {
@@ -874,6 +899,100 @@ export class ManuscriptOptionsModal extends Modal {
         };
     }
 
+    private createComparableTemplatePayload(template: ManuscriptExportTemplate): {
+        exportType: ExportType;
+        manuscriptPreset: ManuscriptPreset;
+        outlinePreset: OutlinePreset;
+        outputFormat: ExportFormat;
+        tocMode: TocMode;
+        order: ManuscriptOrder;
+        subplot: string;
+        updateWordCounts: boolean;
+        includeSynopsis: boolean;
+        includeMatter: boolean;
+        saveMarkdownArtifact: boolean;
+        exportCleanup: ManuscriptExportCleanupOptions;
+        splitMode: 'single' | 'parts';
+        splitParts: number;
+        selectedLayoutId?: string;
+    } {
+        return {
+            exportType: template.exportType,
+            manuscriptPreset: this.normalizeManuscriptPreset(template.manuscriptPreset),
+            outlinePreset: template.outlinePreset,
+            outputFormat: template.outputFormat,
+            tocMode: template.tocMode,
+            order: template.order,
+            subplot: template.subplot,
+            updateWordCounts: template.updateWordCounts,
+            includeSynopsis: template.includeSynopsis,
+            includeMatter: template.includeMatter,
+            saveMarkdownArtifact: template.saveMarkdownArtifact,
+            exportCleanup: this.getNormalizedCleanupOptions(template.exportCleanup, template.outputFormat),
+            splitMode: template.splitMode,
+            splitParts: template.splitParts,
+            selectedLayoutId: template.selectedLayoutId
+        };
+    }
+
+    private createComparablePayloadFromCurrent(template: ManuscriptExportTemplate): ReturnType<ManuscriptOptionsModal['createComparableTemplatePayload']> {
+        const current = this.createTemplateSnapshot(template.name, template.id);
+        return this.createComparableTemplatePayload(current);
+    }
+
+    private createComparablePayloadFromSavedTemplate(template: ManuscriptExportTemplate): ReturnType<ManuscriptOptionsModal['createComparableTemplatePayload']> {
+        const isOutline = template.exportType === 'outline';
+        const outputFormat: ExportFormat = isOutline ? 'markdown' : template.outputFormat;
+        const isPdfManuscript = !isOutline && outputFormat === 'pdf';
+        const normalizedCleanup = isOutline
+            ? getDefaultManuscriptCleanupOptions('markdown')
+            : this.getNormalizedCleanupOptions(template.exportCleanup, outputFormat);
+        const normalized: ManuscriptExportTemplate = {
+            ...template,
+            manuscriptPreset: this.normalizeManuscriptPreset(template.manuscriptPreset),
+            outputFormat,
+            tocMode: !isOutline && outputFormat === 'markdown' ? template.tocMode : 'none',
+            updateWordCounts: !isOutline ? !!template.updateWordCounts : false,
+            includeSynopsis: isOutline ? !!template.includeSynopsis : false,
+            includeMatter: !isOutline ? !!template.includeMatter : false,
+            saveMarkdownArtifact: isPdfManuscript ? !!template.saveMarkdownArtifact : false,
+            exportCleanup: normalizedCleanup,
+            splitMode: !isOutline && template.splitMode === 'parts' ? 'parts' : 'single',
+            splitParts: !isOutline && template.splitMode === 'parts'
+                ? this.clampSplitParts(template.splitParts ?? 1)
+                : 1,
+            selectedLayoutId: isPdfManuscript ? template.selectedLayoutId : undefined
+        };
+        return this.createComparableTemplatePayload(normalized);
+    }
+
+    private hasSelectedTemplateChanges(template: ManuscriptExportTemplate): boolean {
+        const currentPayload = this.createComparablePayloadFromCurrent(template);
+        const savedPayload = this.createComparablePayloadFromSavedTemplate(template);
+        return JSON.stringify(currentPayload) !== JSON.stringify(savedPayload);
+    }
+
+    private updateTemplateActionButtonState(): void {
+        const selectedId = this.getCurrentTemplateSelection();
+        const selectedTemplate = selectedId
+            ? this.getTemplateList().find(item => item.id === selectedId)
+            : undefined;
+        const isCreateMode = !selectedTemplate;
+
+        if (this.saveTemplateButton) {
+            if (isCreateMode) {
+                this.saveTemplateButton.setButtonText('Create preset');
+                this.saveTemplateButton.setDisabled(false);
+            } else {
+                const hasChanges = this.hasSelectedTemplateChanges(selectedTemplate);
+                this.saveTemplateButton.setButtonText(hasChanges ? 'Update preset' : 'Preset up to date');
+                this.saveTemplateButton.setDisabled(!hasChanges);
+            }
+        }
+
+        this.deleteTemplateButton?.setDisabled(!selectedTemplate);
+    }
+
     private async saveTemplate(name: string, existingId?: string): Promise<void> {
         const template = this.createTemplateSnapshot(name, existingId);
         const current = this.getTemplateList().filter(item => item.id !== template.id);
@@ -882,7 +1001,7 @@ export class ManuscriptOptionsModal extends Modal {
         this.activeExportTemplateId = template.id;
         await this.rememberLastUsedTemplate(template.id);
         this.refreshTemplateDropdown();
-        new Notice(`Template "${template.name}" ${existingId ? 'updated' : 'saved'}.`);
+        new Notice(`Preset "${template.name}" ${existingId ? 'updated' : 'saved'}.`);
     }
 
     private async saveOrUpdateTemplate(): Promise<void> {
@@ -890,6 +1009,10 @@ export class ManuscriptOptionsModal extends Modal {
         if (selectedId) {
             const existing = this.getTemplateList().find(item => item.id === selectedId);
             if (!existing) return;
+            if (!this.hasSelectedTemplateChanges(existing)) {
+                this.updateTemplateActionButtonState();
+                return;
+            }
             await this.saveTemplate(existing.name, existing.id);
             return;
         }
@@ -909,13 +1032,13 @@ export class ManuscriptOptionsModal extends Modal {
             await this.rememberLastUsedTemplate(null);
         }
         this.refreshTemplateDropdown();
-        new Notice('Template deleted.');
+        new Notice('Preset deleted.');
     }
 
     private async applyTemplateById(templateId: string): Promise<void> {
         const template = this.getTemplateList().find(item => item.id === templateId);
         if (!template) {
-            new Notice('Template not found.');
+            new Notice('Preset not found.');
             return;
         }
         await this.applyTemplate(template);
@@ -970,7 +1093,7 @@ export class ManuscriptOptionsModal extends Modal {
             await this.rememberLastUsedTemplate(template.id);
         }
         if (showNotice) {
-            new Notice(`Applied template "${template.name}".`);
+            new Notice(`Applied preset "${template.name}".`);
         }
     }
 
@@ -998,6 +1121,7 @@ export class ManuscriptOptionsModal extends Modal {
             parent.querySelectorAll('.rt-manuscript-pill').forEach(el => el.removeClass('rt-is-active'));
             pill.classList.add('rt-is-active');
             onClick();
+            this.updateTemplateActionButtonState();
         });
     }
 
@@ -1195,6 +1319,7 @@ export class ManuscriptOptionsModal extends Modal {
         this.updateOrderPillsState();
         this.updateSplitUi();
         this.updateActionButtonLabel();
+        this.updateTemplateActionButtonState();
     }
 
     /**
@@ -1268,6 +1393,7 @@ export class ManuscriptOptionsModal extends Modal {
                 const selected = layouts.find(l => l.id === val);
                 this.renderLayoutDescription(selected?.name);
                 this.updateTemplateWarning();
+                this.updateTemplateActionButtonState();
             });
         }
 
@@ -1604,6 +1730,7 @@ Sarah stood at the window, watching the world wake up.`;
         }
 
         this.updateActionButtonDisabledState();
+        this.updateTemplateActionButtonState();
     }
 
     private getPrimaryActionLabel(): string {

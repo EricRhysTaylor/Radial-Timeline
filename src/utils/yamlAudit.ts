@@ -32,6 +32,7 @@ export interface NoteAuditEntry {
     file: TFile;
     missingFields: string[];
     missingReferenceId: boolean;
+    duplicateReferenceId?: string;
     extraKeys: string[];
     orderDrift: boolean;
     semanticWarnings: string[];
@@ -47,6 +48,7 @@ export interface YamlAuditSummary {
     unreadNotes: number;
     notesWithMissing: number;
     notesMissingIds: number;
+    notesDuplicateIds: number;
     notesWithExtra: number;
     /** Only counted when missingFields.length === 0 for a note. */
     notesWithDrift: number;
@@ -100,6 +102,18 @@ function countSentences(value: string): number {
 
 function stripSceneNumberPrefix(title: string): string {
     return title.replace(/^\d+(?:\.\d+)?\s+/, '').trim();
+}
+
+function hasCanonicalPulseUpdateKey(frontmatter: Record<string, unknown>): boolean {
+    return Object.keys(frontmatter).some((key) => (
+        key.toLowerCase().replace(/[\s_-]/g, '') === 'pulseupdate'
+    ));
+}
+
+function hasCanonicalSummaryUpdateKey(frontmatter: Record<string, unknown>): boolean {
+    return Object.keys(frontmatter).some((key) => (
+        key.toLowerCase().replace(/[\s_-]/g, '') === 'summaryupdate'
+    ));
 }
 
 function collectSceneTitleIndex(app: App, settings: RadialTimelineSettings): string[] {
@@ -243,9 +257,23 @@ export async function runYamlAudit(options: YamlAuditOptions): Promise<YamlAudit
 
     const baseKeys = getBaseKeys(noteType, settings);
     const customKeys = getCustomKeys(noteType, settings, beatSystemKey);
-    const canonicalOrder = computeCanonicalOrder(noteType, settings, beatSystemKey);
+    let canonicalOrder = computeCanonicalOrder(noteType, settings, beatSystemKey);
     const allTemplateKeys = new Set([...baseKeys, ...customKeys]);
-    const excludeKey = getExcludeKeyPredicate(noteType);
+    const excludeKey = getExcludeKeyPredicate(noteType, settings);
+    const aiEnabled = settings.enableAiSceneAnalysis ?? true;
+    const sceneAiSchemaKeys = new Set([
+        'Pulse Update',
+        'Summary Update',
+        'previousSceneAnalysis',
+        'currentSceneAnalysis',
+        'nextSceneAnalysis',
+    ]);
+    if (noteType === 'Scene' && !aiEnabled) {
+        for (const key of sceneAiSchemaKeys) {
+            allTemplateKeys.delete(key);
+        }
+        canonicalOrder = canonicalOrder.filter((key) => !sceneAiSchemaKeys.has(key));
+    }
 
     const mappings = settings.enableCustomMetadataMapping ? settings.frontmatterMappings : undefined;
     const sceneTitleIndex = noteType === 'Backdrop' ? collectSceneTitleIndex(app, settings) : [];
@@ -255,6 +283,18 @@ export async function runYamlAudit(options: YamlAuditOptions): Promise<YamlAudit
     // Add common Obsidian-internal keys
     for (const k of ['position', 'cssclasses', 'tags', 'aliases']) knownKeysForSafety.add(k);
 
+    type AuditedNoteRecord = {
+        file: TFile;
+        missingFields: string[];
+        missingReferenceId: boolean;
+        referenceId?: string;
+        extraKeys: string[];
+        orderDrift: boolean;
+        semanticWarnings: string[];
+        safetyResult?: FrontmatterSafetyResult;
+    };
+
+    const auditedNotes: AuditedNoteRecord[] = [];
     const notes: NoteAuditEntry[] = [];
     const unreadFiles: TFile[] = [];
     const safetyResultsMap = includeSafetyScan
@@ -291,9 +331,18 @@ export async function runYamlAudit(options: YamlAuditOptions): Promise<YamlAudit
 
         // Missing: template keys not present in note
         const missingFields = [...allTemplateKeys].filter(k => !noteKeys.includes(k));
+        // For Scene notes, legacy aliases like "Beats Update" are deprecated and
+        // should not satisfy the canonical "Pulse Update" schema key.
+        if (noteType === 'Scene' && aiEnabled && !hasCanonicalPulseUpdateKey(rawFm) && !missingFields.includes('Pulse Update')) {
+            missingFields.push('Pulse Update');
+        }
+        if (noteType === 'Scene' && aiEnabled && !hasCanonicalSummaryUpdateKey(rawFm) && !missingFields.includes('Summary Update')) {
+            missingFields.push('Summary Update');
+        }
         // Check both raw and normalized frontmatter so user-defined key mappings
         // cannot accidentally hide an existing system reference id.
-        const missingReferenceId = !readReferenceId(rawFm) && !readReferenceId(fm);
+        const referenceId = readReferenceId(rawFm) ?? readReferenceId(fm);
+        const missingReferenceId = !referenceId;
 
         // Extra: note keys not in any template and not excluded
         const extraKeys = noteKeys.filter(k =>
@@ -306,50 +355,88 @@ export async function runYamlAudit(options: YamlAuditOptions): Promise<YamlAudit
             : false;
         const semanticWarnings = buildSemanticWarnings(noteType, fm, sceneTitleIndex);
 
+        auditedNotes.push({
+            file,
+            missingFields,
+            missingReferenceId,
+            referenceId,
+            extraKeys,
+            orderDrift,
+            semanticWarnings,
+            safetyResult,
+        });
+    }
+
+    const idIndex = new Map<string, AuditedNoteRecord[]>();
+    for (const record of auditedNotes) {
+        if (!record.referenceId) continue;
+        const entries = idIndex.get(record.referenceId) ?? [];
+        entries.push(record);
+        idIndex.set(record.referenceId, entries);
+    }
+    const duplicateIds = new Set<string>();
+    for (const [id, entries] of idIndex.entries()) {
+        if (entries.length > 1) duplicateIds.add(id);
+    }
+
+    for (const record of auditedNotes) {
+        const duplicateReferenceId = record.referenceId && duplicateIds.has(record.referenceId)
+            ? record.referenceId
+            : undefined;
+
         // Build concise reason string
         const reasons: string[] = [];
-        if (missingFields.length > 0) {
-            reasons.push(`missing: ${missingFields.join(', ')}`);
+        if (record.missingFields.length > 0) {
+            reasons.push(`missing: ${record.missingFields.join(', ')}`);
         }
-        if (missingReferenceId) {
+        if (record.missingReferenceId) {
             reasons.push('missing reference id');
         }
-        if (extraKeys.length > 0) {
-            reasons.push(`extra: ${extraKeys.join(', ')}`);
+        if (duplicateReferenceId) {
+            reasons.push(`duplicate reference id: ${duplicateReferenceId}`);
         }
-        if (orderDrift) {
+        if (record.extraKeys.length > 0) {
+            reasons.push(`extra: ${record.extraKeys.join(', ')}`);
+        }
+        if (record.orderDrift) {
             reasons.push('field order differs from template');
         }
-        if (semanticWarnings.length > 0) {
-            reasons.push(`warnings: ${semanticWarnings.join(' | ')}`);
+        if (record.semanticWarnings.length > 0) {
+            reasons.push(`warnings: ${record.semanticWarnings.join(' | ')}`);
         }
-        if (safetyResult && safetyResult.status !== 'safe') {
-            const label = safetyResult.status === 'dangerous' ? 'UNSAFE' : 'review';
-            reasons.push(`safety: ${label} (${safetyResult.issues.length} issue${safetyResult.issues.length !== 1 ? 's' : ''})`);
+        if (record.safetyResult && record.safetyResult.status !== 'safe') {
+            const label = record.safetyResult.status === 'dangerous' ? 'UNSAFE' : 'review';
+            reasons.push(`safety: ${label} (${record.safetyResult.issues.length} issue${record.safetyResult.issues.length !== 1 ? 's' : ''})`);
         }
 
-        const hasSchemaIssues = missingFields.length > 0 || missingReferenceId || extraKeys.length > 0 || orderDrift || semanticWarnings.length > 0;
-        const hasSafetyIssues = safetyResult && safetyResult.status !== 'safe';
+        const hasSchemaIssues = record.missingFields.length > 0
+            || record.missingReferenceId
+            || !!duplicateReferenceId
+            || record.extraKeys.length > 0
+            || record.orderDrift
+            || record.semanticWarnings.length > 0;
+        const hasSafetyIssues = record.safetyResult && record.safetyResult.status !== 'safe';
 
         if (!hasSchemaIssues && !hasSafetyIssues) {
-            // Clean note — don't add to results
             continue;
         }
 
         notes.push({
-            file,
-            missingFields,
-            missingReferenceId,
-            extraKeys,
-            orderDrift,
-            semanticWarnings,
+            file: record.file,
+            missingFields: record.missingFields,
+            missingReferenceId: record.missingReferenceId,
+            duplicateReferenceId,
+            extraKeys: record.extraKeys,
+            orderDrift: record.orderDrift,
+            semanticWarnings: record.semanticWarnings,
             reason: capReason(reasons.join(' | ')),
-            safetyResult,
+            safetyResult: record.safetyResult,
         });
     }
 
     const notesWithMissing = notes.filter(n => n.missingFields.length > 0).length;
     const notesMissingIds = notes.filter(n => n.missingReferenceId).length;
+    const notesDuplicateIds = notes.filter(n => !!n.duplicateReferenceId).length;
     const notesWithExtra = notes.filter(n => n.extraKeys.length > 0).length;
     const notesWithDrift = notes.filter(n => n.orderDrift).length;
     const notesWithWarnings = notes.filter(n => n.semanticWarnings.length > 0).length;
@@ -364,6 +451,7 @@ export async function runYamlAudit(options: YamlAuditOptions): Promise<YamlAudit
             unreadNotes: unreadFiles.length,
             notesWithMissing,
             notesMissingIds,
+            notesDuplicateIds,
             notesWithExtra,
             notesWithDrift,
             notesWithWarnings,
@@ -477,6 +565,7 @@ export function formatAuditReport(result: YamlAuditResult, noteType: NoteType): 
     lines.push(`Clean:           ${s.clean}`);
     lines.push(`Missing fields:  ${s.notesWithMissing} note(s)`);
     lines.push(`Missing IDs:     ${s.notesMissingIds} note(s)`);
+    lines.push(`Duplicate IDs:   ${s.notesDuplicateIds} note(s)`);
     lines.push(`Extra keys:      ${s.notesWithExtra} note(s)`);
     lines.push(`Order drift:     ${s.notesWithDrift} note(s)`);
     lines.push(`Warnings:        ${s.notesWithWarnings} note(s)`);
