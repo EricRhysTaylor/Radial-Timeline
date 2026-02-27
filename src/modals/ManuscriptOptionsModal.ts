@@ -150,7 +150,6 @@ export class ManuscriptOptionsModal extends Modal {
     private hasTouchedMatterToggle: boolean = false;
     private splitMode: 'single' | 'parts' = 'single';
     private splitParts: number = 3;
-    private sceneHeadingMode: ManuscriptSceneHeadingMode = 'scene-number-title';
 
     private sceneTitles: string[] = [];
     private sceneWhenDates: (string | null)[] = [];
@@ -175,7 +174,6 @@ export class ManuscriptOptionsModal extends Modal {
     private chronoHelperEl?: HTMLElement;
     private outputStatusEl?: HTMLElement;
     private orderPills: { el: HTMLElement, order: ManuscriptOrder }[] = [];
-    private sceneHeadingPills: { el: HTMLElement, mode: ManuscriptSceneHeadingMode }[] = [];
     private exportTypePills: { el: HTMLElement, type: ExportType }[] = [];
     private outputFormatPills: { el: HTMLElement, format: ExportFormat }[] = [];
     private formatPillRowEl?: HTMLElement;
@@ -226,7 +224,6 @@ export class ManuscriptOptionsModal extends Modal {
     private splitSingleInputEl?: HTMLInputElement;
     private splitPartsRadioInputEl?: HTMLInputElement;
     private cancelButton?: ButtonComponent;
-    private sceneHeadingCard?: HTMLElement;
     private templateCard?: HTMLElement;
     private exportTemplateDropdown?: HTMLSelectElement;
     private deleteTemplateButton?: ButtonComponent;
@@ -252,7 +249,6 @@ export class ManuscriptOptionsModal extends Modal {
         showIncludeMatter: boolean;
         showExportCleanup: boolean;
         showSavePrecompile: boolean;
-        showSceneHeading: boolean;
         showSplit: boolean;
         showScope: boolean;
         showOrdering: boolean;
@@ -283,7 +279,6 @@ export class ManuscriptOptionsModal extends Modal {
             showIncludeMatter: isManuscript,
             showExportCleanup: isManuscript,
             showSavePrecompile: isPdfManuscript,
-            showSceneHeading: isPdfManuscript,
             showSplit: isManuscript,
             showScope,
             showOrdering: showScope,
@@ -328,7 +323,6 @@ export class ManuscriptOptionsModal extends Modal {
     async onOpen(): Promise<void> {
         const { contentEl, modalEl } = this;
         contentEl.empty();
-        this.sceneHeadingPills = [];
         this.activeExportTemplateId = null;
 
         // Apply generic modal shell + modal-specific class
@@ -648,7 +642,11 @@ export class ManuscriptOptionsModal extends Modal {
         });
 
         this.exportCleanupCard = publishingBody.createDiv({ cls: 'ert-manuscript-rule-block' });
-        this.exportCleanupCard.createDiv({ cls: 'rt-manuscript-toggle-label', text: 'Export cleanup' });
+        this.createSectionHeading(this.exportCleanupCard, 'Export Cleanup');
+        this.exportCleanupCard.createDiv({
+            cls: 'rt-sub-card-note',
+            text: 'Controls how draft-only elements are removed before final output.'
+        });
 
         const commentsRow = this.exportCleanupCard.createDiv({ cls: 'rt-manuscript-toggle-row' });
         commentsRow.createSpan({ cls: 'rt-manuscript-toggle-label', text: 'Strip comments (%%...%%, <!--...-->)' });
@@ -679,19 +677,7 @@ export class ManuscriptOptionsModal extends Modal {
             text: 'YAML frontmatter is always removed from manuscript exports.'
         });
 
-        // H) PDF SCENE OPENERS
-        this.sceneHeadingCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card' });
-        this.createSectionHeading(this.sceneHeadingCard, 'PDF Scene Openers', 'book-marked');
-        this.sceneHeadingCard.createDiv({
-            cls: 'rt-sub-card-note',
-            text: 'Choose how each new scene is shown on PDF opener pages.'
-        });
-        const sceneHeadingRow = this.sceneHeadingCard.createDiv({ cls: 'rt-manuscript-pill-row' });
-        this.createSceneHeadingPill(sceneHeadingRow, 'Scene Number only', 'scene-number');
-        this.createSceneHeadingPill(sceneHeadingRow, 'Scene Number and Title', 'scene-number-title');
-        this.createSceneHeadingPill(sceneHeadingRow, 'Title only', 'title-only');
-
-        // I) EXPORT TEMPLATES
+        // H) EXPORT TEMPLATES
         this.templateCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card rt-layout-templates-card' });
         this.createSectionHeading(this.templateCard, 'Saved export presets', 'bookmark');
         const templateSetting = new DropdownComponent(this.templateCard.createDiv({ cls: 'rt-manuscript-input-container' }));
@@ -731,7 +717,7 @@ export class ManuscriptOptionsModal extends Modal {
             });
         this.refreshTemplateDropdown();
 
-        // J) FOOTER
+        // I) FOOTER
         const actions = container.createDiv({ cls: 'ert-modal-actions' });
         this.actionButton = new ButtonComponent(actions)
             .setButtonText(this.getPrimaryActionLabel())
@@ -870,7 +856,7 @@ export class ManuscriptOptionsModal extends Modal {
             outlinePreset: this.outlinePreset,
             outputFormat: mode.isOutline ? 'markdown' : this.outputFormat,
             tocMode: mode.showToc ? this.tocMode : 'none',
-            sceneHeadingMode: this.sceneHeadingMode,
+            sceneHeadingMode: 'scene-number-title',
             order: this.order,
             subplot: this.subplot,
             updateWordCounts: mode.showWordCount ? this.updateWordCounts : false,
@@ -945,7 +931,6 @@ export class ManuscriptOptionsModal extends Modal {
         this.outlinePreset = template.outlinePreset;
         this.outputFormat = template.outputFormat;
         this.tocMode = template.tocMode;
-        this.sceneHeadingMode = template.sceneHeadingMode || 'scene-number-title';
         this.order = template.order;
         this.subplot = template.subplot || 'All Subplots';
         this.updateWordCounts = !!template.updateWordCounts;
@@ -1011,23 +996,6 @@ export class ManuscriptOptionsModal extends Modal {
             parent.querySelectorAll('.rt-manuscript-pill').forEach(el => el.removeClass('rt-is-active'));
             pill.classList.add('rt-is-active');
             onClick();
-        });
-    }
-
-    private createSceneHeadingPill(parent: HTMLElement, label: string, mode: ManuscriptSceneHeadingMode): void {
-        const pill = parent.createDiv({ cls: 'rt-manuscript-pill' });
-        pill.createSpan({ text: label });
-        if (this.sceneHeadingMode === mode) pill.addClass('rt-is-active');
-        this.sceneHeadingPills.push({ el: pill, mode });
-        pill.onClickEvent(() => {
-            this.sceneHeadingMode = mode;
-            this.updateSceneHeadingPills();
-        });
-    }
-
-    private updateSceneHeadingPills(): void {
-        this.sceneHeadingPills.forEach(item => {
-            item.el.toggleClass('rt-is-active', item.mode === this.sceneHeadingMode);
         });
     }
 
@@ -1172,7 +1140,6 @@ export class ManuscriptOptionsModal extends Modal {
         this.scopeCard?.toggleClass('rt-hidden', !showSceneSelectionCards || !mode.showScope);
         this.orderingCard?.toggleClass('rt-hidden', !showSceneSelectionCards || !mode.showOrdering);
         this.filterCard?.toggleClass('rt-hidden', !mode.showSubplotFilter);
-        this.sceneHeadingCard?.toggleClass('rt-hidden', !mode.showSceneHeading);
         this.splitCard?.toggleClass('rt-hidden', !mode.showSplit);
         this.formatPillRowEl?.toggleClass('rt-hidden', !mode.showFormatPills);
         this.formatStaticEl?.toggleClass('rt-hidden', !mode.showFormatStatic);
@@ -1190,7 +1157,7 @@ export class ManuscriptOptionsModal extends Modal {
         }
 
         if (this.publishingHeadingTextEl) {
-            this.publishingHeadingTextEl.setText(mode.isPdfManuscript ? 'PDF Publishing Options' : 'Manuscript Options');
+            this.publishingHeadingTextEl.setText(mode.isPdfManuscript ? 'PDF Export Controls' : 'Manuscript Options');
         }
 
         let shouldReloadScenes = false;
@@ -1221,7 +1188,6 @@ export class ManuscriptOptionsModal extends Modal {
         this.updateLayoutPicker();
         this.updateTemplateWarning();
         this.updateCleanupToggleState();
-        this.updateSceneHeadingPills();
         this.updateOrderPillsState();
         this.updateSplitUi();
         this.updateActionButtonLabel();
@@ -1314,12 +1280,20 @@ export class ManuscriptOptionsModal extends Modal {
             return;
         }
         const key = layoutName.toLowerCase();
-        if (key.includes('signature literary') || key.includes('(st)')) {
-            desc.setText('ST = Signature Literary. Print-ready novel layout with alternating title/author running headers and page-number formatting.');
+        if (key.includes('classic manuscript') || key.includes('traditional')) {
+            desc.setText('Traditional manuscript layout with simple headers and centered page numbers. Minimal styling.');
+            return;
+        }
+        if (key.includes('contemporary literary') || key.includes('contemporary')) {
+            desc.setText('Running headers: book title on left pages, section title on right. Chapter openers suppress headers and folios.');
+            return;
+        }
+        if (key.includes('signature literary') || key.includes('(st)') || key.includes('signature')) {
+            desc.setText('Refined literary manuscript style with elevated typography, alternating headers, and balanced page rhythm.');
             return;
         }
         if (key.includes('novel')) {
-            desc.setText('ST = Signature Literary. Print-ready novel layout with alternating title/author running headers and page-number formatting.');
+            desc.setText('Refined literary manuscript style with elevated typography, alternating headers, and balanced page rhythm.');
             return;
         }
         desc.setText('Custom layout for manuscript PDF rendering.');
@@ -1989,7 +1963,7 @@ Sarah stood at the window, watching the world wake up.`;
         const includeSynopsis = mode.isOutline ? this.includeSynopsisUserChoice : false;
         const lockSceneSelection = mode.lockSceneSelectionToFullBook;
         const submissionOrder: ManuscriptOrder = lockSceneSelection ? 'narrative' : this.order;
-        const submissionSceneHeadingMode: ManuscriptSceneHeadingMode = lockSceneSelection ? this.sceneHeadingMode : 'scene-number-title';
+        const submissionSceneHeadingMode: ManuscriptSceneHeadingMode = 'scene-number-title';
         const submissionRangeStart = lockSceneSelection ? undefined : this.rangeStart;
         const submissionRangeEnd = lockSceneSelection ? undefined : this.rangeEnd;
         const submissionSubplot = lockSceneSelection

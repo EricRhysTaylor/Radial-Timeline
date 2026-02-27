@@ -10,6 +10,46 @@ interface BundledPandocLayoutTemplate extends PandocLayoutTemplate {
     content: string;
 }
 
+const BUNDLED_FICTION_SIGNATURE_ID = 'bundled-fiction-signature-literary';
+const BUNDLED_FICTION_CLASSIC_ID = 'bundled-fiction-classic-manuscript';
+const BUNDLED_FICTION_MODERN_CLASSIC_ID = 'bundled-fiction-modern-classic';
+const BUNDLED_FICTION_CONTEMPORARY_ID = 'bundled-fiction-contemporary-literary';
+
+const LEGACY_BUNDLED_LAYOUT_ID_MAP: Record<string, string> = {
+    'bundled-novel': BUNDLED_FICTION_SIGNATURE_ID,
+    'bundled-novel-signature-literary-rt': BUNDLED_FICTION_SIGNATURE_ID,
+};
+const LEGACY_BUNDLED_LAYOUT_BASENAME_MAP: Record<string, string> = {
+    'signature_literary_rt.tex': BUNDLED_FICTION_SIGNATURE_ID,
+};
+
+const LEGACY_SIGNATURE_SECTION_SPACING = '\\titlespacing*{\\section}{0pt}{\\dimexpr\\textheight/5\\relax}{\\dimexpr\\textheight/5\\relax}';
+const LEGACY_SIGNATURE_SUBSECTION_SPACING = '\\titlespacing*{\\subsection}{0pt}{\\dimexpr\\textheight/5\\relax}{\\dimexpr\\textheight/5\\relax}';
+const FIXED_SIGNATURE_SECTION_SPACING = '\\titlespacing*{\\section}{0pt}{0.2\\textheight}{0.2\\textheight}';
+const FIXED_SIGNATURE_SUBSECTION_SPACING = '\\titlespacing*{\\subsection}{0pt}{0.2\\textheight}{0.2\\textheight}';
+
+function normalizeLegacySignatureSpacing(content: string): { content: string; changed: boolean } {
+    let updated = content;
+    updated = updated.replace(LEGACY_SIGNATURE_SECTION_SPACING, FIXED_SIGNATURE_SECTION_SPACING);
+    updated = updated.replace(LEGACY_SIGNATURE_SUBSECTION_SPACING, FIXED_SIGNATURE_SUBSECTION_SPACING);
+    return { content: updated, changed: updated !== content };
+}
+
+function resolveCanonicalBundledLayoutId(layout: PandocLayoutTemplate, canonicalIds: Set<string>): string | null {
+    const rawId = (layout.id || '').trim();
+    if (canonicalIds.has(rawId)) return rawId;
+
+    const mappedById = LEGACY_BUNDLED_LAYOUT_ID_MAP[rawId];
+    if (mappedById && canonicalIds.has(mappedById)) return mappedById;
+
+    const normalizedPath = normalizePath((layout.path || '').trim().replace(/^\/+/, ''));
+    const basename = path.basename(normalizedPath).toLowerCase();
+    const mappedByPath = LEGACY_BUNDLED_LAYOUT_BASENAME_MAP[basename];
+    if (mappedByPath && canonicalIds.has(mappedByPath)) return mappedByPath;
+
+    return null;
+}
+
 const BUNDLED_PANDOC_LAYOUT_TEMPLATES: BundledPandocLayoutTemplate[] = [
     {
         id: 'bundled-screenplay',
@@ -80,14 +120,14 @@ const BUNDLED_PANDOC_LAYOUT_TEMPLATES: BundledPandocLayoutTemplate[] = [
         ].join('\n')
     },
     {
-        id: 'bundled-novel',
-        name: 'Novel Manuscript (ST)',
+        id: BUNDLED_FICTION_SIGNATURE_ID,
+        name: 'Signature Literary',
         preset: 'novel',
-        path: 'signature_literary_rt.tex',
+        path: 'rt_signature_literary.tex',
         bundled: true,
         content: [
-            '% Pandoc LaTeX Template - Signature Literary (Radial Timeline native)',
-            '% Sophisticated print styling without external JS compile layer.',
+            '% Pandoc LaTeX Template - Signature Literary',
+            '% Refined fiction layout with alternating running heads.',
             '\\documentclass[11pt,letterpaper,twoside]{book}',
             '',
             '\\usepackage{fontspec}',
@@ -99,21 +139,41 @@ const BUNDLED_PANDOC_LAYOUT_TEMPLATES: BundledPandocLayoutTemplate[] = [
             '\\usepackage{graphicx}',
             '\\usepackage{etoolbox}',
             '',
-            '% Pandoc compatibility macro for compact lists',
             '\\providecommand{\\tightlist}{%',
             '  \\setlength{\\itemsep}{0pt}\\setlength{\\parskip}{0pt}',
             '}',
             '',
-            '% Print trim-style page geometry',
-            '\\geometry{paperwidth=6in,paperheight=9in,top=1in,bottom=1in,left=1in,right=1in}',
+            '\\geometry{',
+            '  paperwidth=6in,',
+            '  paperheight=9in,',
+            '  top=0.85in,',
+            '  bottom=1.05in,',
+            '  inner=1.05in,',
+            '  outer=0.75in',
+            '}',
             '',
             '\\defaultfontfeatures{Ligatures=TeX}',
             '\\IfFontExistsTF{Sorts Mill Goudy}{',
             '  \\setmainfont{Sorts Mill Goudy}[ItalicFont={Sorts Mill Goudy Italic}]',
             '  \\newfontface\\headerfont{Sorts Mill Goudy}[LetterSpace=15.0]',
             '}{',
-            '  \\setmainfont{TeX Gyre Pagella}',
-            '  \\newfontface\\headerfont{TeX Gyre Pagella}[LetterSpace=12.0]',
+            '  \\IfFontExistsTF{TeX Gyre Pagella}{',
+            '    \\setmainfont{TeX Gyre Pagella}',
+            '    \\newfontface\\headerfont{TeX Gyre Pagella}[LetterSpace=12.0]',
+            '  }{',
+            '    \\IfFontExistsTF{Times New Roman}{',
+            '      \\setmainfont{Times New Roman}',
+            '      \\newfontface\\headerfont{Times New Roman}[LetterSpace=8.0]',
+            '    }{',
+            '      \\IfFontExistsTF{Times}{',
+            '        \\setmainfont{Times}',
+            '        \\newfontface\\headerfont{Times}[LetterSpace=8.0]',
+            '      }{',
+            '        \\setmainfont{Arial}',
+            '        \\newfontface\\headerfont{Arial}[LetterSpace=8.0]',
+            '      }',
+            '    }',
+            '  }',
             '}',
             '',
             '\\newcommand{\\BookTitle}{$if(title)$$title$$else$Untitled Manuscript$endif$}',
@@ -145,16 +205,14 @@ const BUNDLED_PANDOC_LAYOUT_TEMPLATES: BundledPandocLayoutTemplate[] = [
             '',
             '\\setcounter{secnumdepth}{1}',
             '',
-            '% Scene opener pages (new scene starts): headerless, centered, cinematic spacing',
             '\\titleformat{\\section}[display]{\\normalfont\\bfseries\\centering\\fontsize{30}{34}\\selectfont}{\\arabic{section}}{0.2em}{}',
             '\\titleformat{name=\\section,numberless}[display]{\\normalfont\\bfseries\\centering\\fontsize{30}{34}\\selectfont}{}{0pt}{}',
-            '\\titlespacing*{\\section}{0pt}{\\dimexpr\\textheight/5\\relax}{\\dimexpr\\textheight/5\\relax}',
+            '\\titlespacing*{\\section}{0pt}{0.2\\textheight}{0.2\\textheight}',
             '\\preto\\section{\\clearpage\\thispagestyle{empty}}',
             '',
-            '% Pandoc may emit subsection headings depending on markdown level/template defaults',
             '\\titleformat{\\subsection}[display]{\\normalfont\\bfseries\\centering\\fontsize{30}{34}\\selectfont}{\\arabic{subsection}}{0.2em}{}',
             '\\titleformat{name=\\subsection,numberless}[display]{\\normalfont\\bfseries\\centering\\fontsize{30}{34}\\selectfont}{}{0pt}{}',
-            '\\titlespacing*{\\subsection}{0pt}{\\dimexpr\\textheight/5\\relax}{\\dimexpr\\textheight/5\\relax}',
+            '\\titlespacing*{\\subsection}{0pt}{0.2\\textheight}{0.2\\textheight}',
             '\\preto\\subsection{\\clearpage\\thispagestyle{empty}}',
             '',
             '\\onehalfspacing',
@@ -162,6 +220,279 @@ const BUNDLED_PANDOC_LAYOUT_TEMPLATES: BundledPandocLayoutTemplate[] = [
             '',
             '\\begin{document}',
             '\\setcounter{page}{1}',
+            '',
+            '$body$',
+            '',
+            '\\end{document}'
+        ].join('\n')
+    },
+    {
+        id: BUNDLED_FICTION_CLASSIC_ID,
+        name: 'Classic Manuscript',
+        preset: 'novel',
+        path: 'rt_classic_manuscript.tex',
+        bundled: true,
+        content: [
+            '% Pandoc LaTeX Template - Classic Manuscript',
+            '% Traditional manuscript layout with simple headers and centered folios.',
+            '\\documentclass[11pt,letterpaper,twoside]{book}',
+            '',
+            '\\usepackage{fontspec}',
+            '\\usepackage{fancyhdr}',
+            '\\usepackage{titlesec}',
+            '\\usepackage{geometry}',
+            '\\usepackage{setspace}',
+            '',
+            '\\providecommand{\\tightlist}{%',
+            '  \\setlength{\\itemsep}{0pt}\\setlength{\\parskip}{0pt}',
+            '}',
+            '',
+            '\\geometry{paperwidth=6in,paperheight=9in,top=1in,bottom=1in,inner=1in,outer=1in}',
+            '',
+            '\\defaultfontfeatures{Ligatures=TeX}',
+            '\\IfFontExistsTF{Sorts Mill Goudy}{',
+            '  \\setmainfont{Sorts Mill Goudy}[ItalicFont={Sorts Mill Goudy Italic}]',
+            '}{',
+            '  \\IfFontExistsTF{TeX Gyre Pagella}{',
+            '    \\setmainfont{TeX Gyre Pagella}',
+            '  }{',
+            '    \\IfFontExistsTF{Times New Roman}{',
+            '      \\setmainfont{Times New Roman}',
+            '    }{',
+            '      \\IfFontExistsTF{Times}{\\setmainfont{Times}}{\\setmainfont{Arial}}',
+            '    }',
+            '  }',
+            '}',
+            '',
+            '\\newcommand{\\BookTitle}{$if(title)$$title$$else$Untitled Manuscript$endif$}',
+            '',
+            '\\fancyhf{}',
+            '\\renewcommand{\\headrulewidth}{0pt}',
+            '\\renewcommand{\\footrulewidth}{0pt}',
+            '\\fancyhead[C]{\\nouppercase{\\BookTitle}}',
+            '\\fancyfoot[C]{\\thepage}',
+            '\\pagestyle{fancy}',
+            '',
+            '\\fancypagestyle{plain}{%',
+            '  \\fancyhf{}',
+            '  \\fancyhead[C]{\\nouppercase{\\BookTitle}}',
+            '  \\fancyfoot[C]{\\thepage}',
+            '  \\renewcommand{\\headrulewidth}{0pt}',
+            '  \\renewcommand{\\footrulewidth}{0pt}',
+            '}',
+            '',
+            '\\titleformat{name=\\section,numberless}[display]{\\normalfont\\bfseries\\centering\\Large}{}{0pt}{}',
+            '\\titlespacing*{\\section}{0pt}{0.16\\textheight}{0.12\\textheight}',
+            '',
+            '\\onehalfspacing',
+            '\\setlength{\\parindent}{1.5em}',
+            '',
+            '\\begin{document}',
+            '',
+            '$body$',
+            '',
+            '\\end{document}'
+        ].join('\n')
+    },
+    {
+        id: BUNDLED_FICTION_CONTEMPORARY_ID,
+        name: 'Contemporary Literary',
+        preset: 'novel',
+        path: 'rt_contemporary_literary.tex',
+        bundled: true,
+        content: [
+            '% Pandoc LaTeX Template - Contemporary Literary',
+            '% Running headers: title (left pages) and section title (right pages).',
+            '\\documentclass[11pt,letterpaper,twoside]{book}',
+            '',
+            '\\usepackage{fontspec}',
+            '\\usepackage{fancyhdr}',
+            '\\usepackage{titlesec}',
+            '\\usepackage{geometry}',
+            '\\usepackage{setspace}',
+            '\\usepackage{etoolbox}',
+            '',
+            '\\providecommand{\\tightlist}{%',
+            '  \\setlength{\\itemsep}{0pt}\\setlength{\\parskip}{0pt}',
+            '}',
+            '',
+            '\\geometry{',
+            '  paperwidth=6in,',
+            '  paperheight=9in,',
+            '  top=0.9in,',
+            '  bottom=1.0in,',
+            '  inner=1.05in,',
+            '  outer=0.75in',
+            '}',
+            '',
+            '\\defaultfontfeatures{Ligatures=TeX}',
+            '\\IfFontExistsTF{Sorts Mill Goudy}{',
+            '  \\setmainfont{Sorts Mill Goudy}[ItalicFont={Sorts Mill Goudy Italic}]',
+            '}{',
+            '  \\IfFontExistsTF{TeX Gyre Pagella}{',
+            '    \\setmainfont{TeX Gyre Pagella}',
+            '  }{',
+            '    \\IfFontExistsTF{Times New Roman}{',
+            '      \\setmainfont{Times New Roman}',
+            '    }{',
+            '      \\IfFontExistsTF{Times}{\\setmainfont{Times}}{\\setmainfont{Arial}}',
+            '    }',
+            '  }',
+            '}',
+            '',
+            '\\newcommand{\\BookTitle}{$if(title)$$title$$else$Untitled Manuscript$endif$}',
+            '',
+            '\\fancyhf{}',
+            '\\renewcommand{\\headrulewidth}{0pt}',
+            '\\renewcommand{\\footrulewidth}{0pt}',
+            '\\renewcommand{\\sectionmark}[1]{\\markright{#1}}',
+            '\\fancyhead[LE]{\\sffamily\\footnotesize\\nouppercase{\\BookTitle}}',
+            '\\fancyhead[RO]{\\sffamily\\footnotesize\\nouppercase{\\rightmark}}',
+            '\\fancyfoot[C]{\\rmfamily\\footnotesize\\thepage}',
+            '\\pagestyle{fancy}',
+            '',
+            '\\titleformat{name=\\section,numberless}[display]{\\normalfont\\bfseries\\centering\\Large}{}{0pt}{}',
+            '\\titlespacing*{\\section}{0pt}{0.18\\textheight}{0.14\\textheight}',
+            '\\preto\\chapter{\\clearpage\\thispagestyle{empty}}',
+            '\\preto\\section{\\clearpage\\thispagestyle{empty}}',
+            '',
+            '\\onehalfspacing',
+            '\\setlength{\\parindent}{1.5em}',
+            '',
+            '\\begin{document}',
+            '',
+            '$body$',
+            '',
+            '\\end{document}'
+        ].join('\n')
+    },
+    {
+        id: BUNDLED_FICTION_MODERN_CLASSIC_ID,
+        name: 'Modern Classic',
+        preset: 'novel',
+        path: 'rt_modern_classic.tex',
+        bundled: true,
+        content: [
+            '% rt_modern_classic.tex',
+            '% Modern Classic fiction layout for 6x9 trade',
+            '% Assumes Pandoc -> LaTeX with raw LaTeX blocks inserted by RT export pipeline.',
+            '',
+            '\\documentclass[11pt,twoside,openany]{book}',
+            '',
+            '% --- page geometry (6x9, print-friendly) ---',
+            '\\usepackage[',
+            '  paperwidth=6in,',
+            '  paperheight=9in,',
+            '  top=0.95in,',
+            '  bottom=1.15in,',
+            '  inner=1.10in,',
+            '  outer=0.85in',
+            ']{geometry}',
+            '',
+            '\\usepackage{microtype}',
+            '\\usepackage[T1]{fontenc}',
+            '\\usepackage{lmodern} % safe default; swap later if you prefer a specific serif family',
+            '\\usepackage{setspace}',
+            '\\setstretch{1.18} % slightly generous leading',
+            '',
+            '\\usepackage{fancyhdr}',
+            '\\usepackage{titlesec}',
+            '\\usepackage{ifthen}',
+            '',
+            '% --- Pandoc sometimes uses \\tightlist ---',
+            '\\providecommand{\\tightlist}{%',
+            '  \\setlength{\\itemsep}{0pt}\\setlength{\\parskip}{0pt}}',
+            '',
+            '% --- capture Pandoc title/author ---',
+            '\\makeatletter',
+            '\\newcommand{\\rtBookTitle}{\\@title}',
+            '\\newcommand{\\rtBookAuthor}{\\@author}',
+            '\\makeatother',
+            '',
+            '% --- running head state ---',
+            '\\newcommand{\\rtChapterHead}{}',
+            '\\newcommand{\\rtSetChapterHead}[1]{\\renewcommand{\\rtChapterHead}{#1}}',
+            '',
+            '% --- fancyhdr setup ---',
+            '\\pagestyle{fancy}',
+            '\\fancyhf{} % clear all',
+            '% Left (even) page header: book title',
+            '\\fancyhead[LE]{\\sffamily\\footnotesize\\MakeUppercase{\\rtBookTitle}}',
+            '% Right (odd) page header: chapter title (set by rtChapter)',
+            '\\fancyhead[RO]{\\sffamily\\footnotesize\\MakeUppercase{\\rtChapterHead}}',
+            '% Folio bottom center: serif, small',
+            '\\fancyfoot[C]{\\rmfamily\\footnotesize\\thepage}',
+            '\\renewcommand{\\headrulewidth}{0pt}',
+            '\\renewcommand{\\footrulewidth}{0pt}',
+            '',
+            '% --- opener pages: no header/folio ---',
+            '\\fancypagestyle{rtEmpty}{%',
+            '  \\fancyhf{}',
+            '  \\renewcommand{\\headrulewidth}{0pt}',
+            '  \\renewcommand{\\footrulewidth}{0pt}',
+            '}',
+            '',
+            '% --- Part + Chapter macros (called via raw LaTeX blocks) ---',
+            '% PART I (Roman numerals) --- big, centered',
+            '\\newcommand{\\rtPart}[1]{%',
+            '  \\cleardoublepage',
+            '  \\thispagestyle{rtEmpty}%',
+            '  \\rtSetChapterHead{}%',
+            '  \\vspace*{2.1in}%',
+            '  \\begin{center}',
+            '    {\\sffamily\\bfseries\\Large PART~#1}',
+            '  \\end{center}',
+            '  \\vspace*{1.2in}%',
+            '  \\cleardoublepage',
+            '}',
+            '',
+            '% CHAPTER I + optional title line',
+            '% Usage: \\rtChapter{I}{Boy with a Skull}',
+            '\\newcommand{\\rtChapter}[2]{%',
+            '  \\cleardoublepage',
+            '  \\thispagestyle{rtEmpty}%',
+            '  \\rtSetChapterHead{#2}%',
+            '  \\vspace*{1.9in}%',
+            '  \\begin{center}',
+            '    {\\sffamily\\bfseries\\large CHAPTER~#1}\\par',
+            '    \\vspace{0.35in}%',
+            '    \\ifthenelse{\\equal{#2}{}}{}{%',
+            '      {\\rmfamily\\itshape\\Large #2}\\par',
+            '    }%',
+            '  \\end{center}',
+            '  \\vspace*{0.9in}%',
+            '}',
+            '',
+            '% --- scene separator: i. + underline (centered) ---',
+            '\\newcounter{rtscene}',
+            '\\setcounter{rtscene}{0}',
+            '\\newcommand{\\rtSceneSep}{%',
+            '  \\par\\bigskip',
+            '  \\stepcounter{rtscene}%',
+            '  \\begin{center}',
+            '    {\\rmfamily\\small\\roman{rtscene}.}\\par',
+            '    \\vspace{0.08in}%',
+            '    \\rule{1.2in}{0.4pt}%',
+            '  \\end{center}',
+            '  \\bigskip\\par',
+            '}',
+            '',
+            '% --- do not print default chapter/section headings from Pandoc ---',
+            '% We want RT-controlled structure (rtPart/rtChapter) and scene separators instead.',
+            '\\titleformat{\\chapter}[display]{\\normalfont}{}{0pt}{}',
+            '\\titlespacing*{\\chapter}{0pt}{0pt}{0pt}',
+            '\\titleformat{\\section}{\\normalfont}{}{0pt}{}',
+            '\\titlespacing*{\\section}{0pt}{0pt}{0pt}',
+            '\\titleformat{\\subsection}{\\normalfont}{}{0pt}{}',
+            '\\titlespacing*{\\subsection}{0pt}{0pt}{0pt}',
+            '',
+            '% --- document begins ---',
+            '\\begin{document}',
+            '',
+            "% Pandoc will insert title/metadata; if you want no title page, remove \\maketitle.",
+            '% For Modern Classic, you likely rely on BookMeta/matter pages instead.',
+            "% If you don't want Pandoc's title page:",
+            '% \\maketitle',
             '',
             '$body$',
             '',
@@ -181,37 +512,69 @@ export function getBundledPandocLayouts(): PandocLayoutTemplate[] {
 }
 
 export function ensureBundledPandocLayoutsRegistered(plugin: RadialTimelinePlugin): boolean {
-    let existing = plugin.settings.pandocLayouts || [];
-    const canonicalIds = new Set(getBundledPandocLayouts().map(layout => layout.id));
-    const filtered = existing.filter(layout => !(layout.bundled && !canonicalIds.has(layout.id)));
-    let changed = filtered.length !== existing.length;
-    existing = filtered;
-    const byId = new Map(existing.map(layout => [layout.id, layout]));
+    const canonicalLayouts = getBundledPandocLayouts();
+    const canonicalIds = new Set(canonicalLayouts.map(layout => layout.id));
+    const canonicalById = new Map(canonicalLayouts.map(layout => [layout.id, layout]));
 
-    for (const bundled of getBundledPandocLayouts()) {
-        const current = byId.get(bundled.id);
-        if (!current) {
-            existing.push({ ...bundled });
+    const existing = plugin.settings.pandocLayouts || [];
+    const normalized: PandocLayoutTemplate[] = [];
+    const seenBundledCanonicalIds = new Set<string>();
+    let changed = false;
+
+    for (const layout of existing) {
+        if (!layout.bundled) {
+            normalized.push(layout);
+            continue;
+        }
+
+        const canonicalId = resolveCanonicalBundledLayoutId(layout, canonicalIds);
+        if (!canonicalId) {
             changed = true;
             continue;
         }
 
-        const needsUpdate = current.name !== bundled.name
-            || current.preset !== bundled.preset
-            || current.path !== bundled.path
-            || current.bundled !== true;
+        if (seenBundledCanonicalIds.has(canonicalId)) {
+            changed = true;
+            continue;
+        }
 
-        if (needsUpdate) {
-            current.name = bundled.name;
-            current.preset = bundled.preset;
-            current.path = bundled.path;
-            current.bundled = true;
+        const canonical = canonicalById.get(canonicalId);
+        if (!canonical) {
+            changed = true;
+            continue;
+        }
+
+        const migrated: PandocLayoutTemplate = {
+            ...layout,
+            id: canonical.id,
+            name: canonical.name,
+            preset: canonical.preset,
+            path: canonical.path,
+            bundled: true
+        };
+        if (
+            migrated.id !== layout.id
+            || migrated.name !== layout.name
+            || migrated.preset !== layout.preset
+            || migrated.path !== layout.path
+            || layout.bundled !== true
+        ) {
             changed = true;
         }
+
+        normalized.push(migrated);
+        seenBundledCanonicalIds.add(canonicalId);
+    }
+
+    for (const canonical of canonicalLayouts) {
+        if (seenBundledCanonicalIds.has(canonical.id)) continue;
+        normalized.push({ ...canonical });
+        seenBundledCanonicalIds.add(canonical.id);
+        changed = true;
     }
 
     if (changed) {
-        plugin.settings.pandocLayouts = existing;
+        plugin.settings.pandocLayouts = normalized;
     }
 
     return changed;
@@ -301,6 +664,27 @@ export async function ensureBundledLayoutInstalledForExport(
     layout: PandocLayoutTemplate
 ): Promise<{ installed: boolean; failed: boolean }> {
     if (!layout.bundled) return { installed: false, failed: false };
+
+    // Hotfix legacy bundled templates that used invalid titlesec spacing.
+    // Older installed files can trigger TeX "Missing number ... \\penalty".
+    const vault = plugin.app.vault;
+    const normalizedPath = normalizePath((layout.path || '').trim().replace(/^\/+/, ''));
+    if (normalizedPath) {
+        const direct = vault.getAbstractFileByPath(normalizedPath);
+        const bundled = direct instanceof TFile ? direct : vault.getAbstractFileByPath(resolveBundledVaultPath(plugin, normalizedPath));
+        if (bundled instanceof TFile) {
+            try {
+                const raw = await vault.read(bundled);
+                const normalized = normalizeLegacySignatureSpacing(raw);
+                if (normalized.changed) {
+                    await vault.modify(bundled, normalized.content);
+                }
+            } catch {
+                // Non-fatal: continue with standard install/validation flow.
+            }
+        }
+    }
+
     if (isBundledPandocLayoutInstalled(plugin, layout)) return { installed: false, failed: false };
 
     const result = await installBundledPandocLayouts(plugin, [layout.id]);

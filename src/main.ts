@@ -796,7 +796,8 @@ export default class RadialTimelinePlugin extends Plugin {
             matterWorkflowMigrated = true;
         }
         const legacyLayoutIdMap: Record<string, string> = {
-            'bundled-novel-signature-literary-rt': 'bundled-novel',
+            'bundled-novel-signature-literary-rt': 'bundled-fiction-signature-literary',
+            'bundled-novel': 'bundled-fiction-signature-literary',
         };
         let pandocLayoutReferenceMigrated = false;
         let manuscriptExportCleanupMigrated = false;

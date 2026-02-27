@@ -7278,12 +7278,14 @@
 .ert-ui.ert-scope--settings .ert-matter-preview-body {
   display: flex;
   flex-direction: column;
-  gap: var(--ert-gap-xs);
+  gap: var(--ert-gap-sm);
+  margin-top: var(--ert-gap-sm);
 }
 
 .ert-ui.ert-scope--settings .ert-matter-preview-list {
   display: flex;
   flex-direction: column;
+  gap: 4px;
   width: 100%;
 }
 
@@ -7485,12 +7487,6 @@
   align-items: center;
   gap: 2px;
   text-align: center;
-}
-
-.ert-ui.ert-scope--settings .ert-bookmeta-title-main {
-  font-size: 1.55em;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
 }
 
 .ert-ui.ert-scope--settings .ert-bookmeta-primary {

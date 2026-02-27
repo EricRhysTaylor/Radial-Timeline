@@ -1821,18 +1821,20 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
     const normalizeVersionLabels = (label: string): string =>
         label.replace(/\bv(?:ersion)?\s*\d+(?:\.\d+)?\b/gi, '').replace(/\s{2,}/g, ' ').trim();
 
-    type FictionLayoutVariant = 'traditional' | 'signature' | 'contemporary' | 'generic';
+    type FictionLayoutVariant = 'classic' | 'modernClassic' | 'signature' | 'contemporary' | 'generic';
     const getFictionVariant = (layout: PandocLayoutTemplate): FictionLayoutVariant => {
         const source = `${layout.id} ${layout.name} ${layout.path}`.toLowerCase();
+        if (source.includes('modern classic') || source.includes('modern-classic') || source.includes('modern_classic') || source.includes('rt_modern_classic') || layout.id === 'bundled-fiction-modern-classic') return 'modernClassic';
+        if (source.includes('classic') || source.includes('traditional')) return 'classic';
         if (source.includes('contemporary')) return 'contemporary';
-        if (source.includes('signature') || source.includes('signature_literary_rt') || layout.id === 'bundled-novel') return 'signature';
-        if (source.includes('traditional') || source.includes('novel_template') || source.includes('novel manuscript')) return 'traditional';
+        if (source.includes('signature') || source.includes('signature_literary_rt') || source.includes('rt_signature_literary') || layout.id === 'bundled-fiction-signature-literary' || layout.id === 'bundled-novel') return 'signature';
         return 'generic';
     };
     const getLayoutDisplayName = (layout: PandocLayoutTemplate): string => {
         if (layout.preset === 'novel') {
             const variant = getFictionVariant(layout);
-            if (variant === 'traditional') return 'Traditional Fiction';
+            if (variant === 'classic') return 'Classic Manuscript';
+            if (variant === 'modernClassic') return 'Modern Classic';
             if (variant === 'signature') return 'Signature Literary';
             if (variant === 'contemporary') return 'Contemporary Literary';
         }
@@ -1845,14 +1847,17 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         }
         if (layout.preset === 'novel') {
             const variant = getFictionVariant(layout);
-            if (variant === 'traditional') {
-                return 'Classic fiction manuscript styling with familiar chapter flow and print-friendly spacing.';
+            if (variant === 'classic') {
+                return 'Traditional manuscript layout with simple headers and centered page numbers. Minimal styling.';
+            }
+            if (variant === 'modernClassic') {
+                return 'Modern Classic fiction layout for 6x9 trade trim with RT-controlled part/chapter macros and scene separators.';
             }
             if (variant === 'signature') {
                 return 'Refined literary manuscript style with elevated typography, alternating headers, and balanced page rhythm.';
             }
             if (variant === 'contemporary') {
-                return 'Contemporary literary manuscript styling with crisp hierarchy and clean readability for fiction.';
+                return 'Running headers: book title on left pages, section title on right. Chapter openers suppress headers and folios.';
             }
             return 'Refined fiction manuscript layout with polished typography and chapter-first structure.';
         }
@@ -1960,10 +1965,11 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         }
 
         const fictionVariantOrder: Record<FictionLayoutVariant, number> = {
-            traditional: 1,
-            signature: 2,
-            contemporary: 3,
-            generic: 4
+            classic: 1,
+            modernClassic: 2,
+            signature: 3,
+            contemporary: 4,
+            generic: 5
         };
         const fictionLayouts = layouts
             .filter(layout => layout.preset === 'novel')
@@ -2271,8 +2277,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
 
         const meta = activeBookMetaStatus.bookMeta;
         const titleCard = previewBody.createDiv({ cls: 'ert-bookmeta-title-card' });
-        titleCard.createDiv({ cls: 'ert-planetary-preview-heading', text: 'Preview' });
-        titleCard.createDiv({ cls: 'ert-planetary-preview-body ert-bookmeta-title-main', text: 'BookMeta' });
+        titleCard.createDiv({ cls: 'ert-planetary-preview-heading', text: 'PREVIEW (BookMeta)' });
 
         const primary = previewBody.createDiv({ cls: 'ert-bookmeta-primary' });
         const addPrimaryField = (label: string, value?: string | number | null) => {
@@ -2432,7 +2437,8 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
     setupButtonComponent.buttonEl.addClass('ert-pillBtn', 'ert-pillBtn--pro');
 
     const matterPreviewFrame = publishingSetupPanel.createDiv({ cls: `${ERT_CLASSES.PREVIEW_FRAME} ert-previewFrame--flush` });
-    matterPreviewFrame.createDiv({ cls: 'ert-planetary-preview-heading ert-previewFrame__title', text: 'Matter preview' });
+    const matterPreviewHeader = matterPreviewFrame.createDiv({ cls: 'ert-previewFrame__header' });
+    matterPreviewHeader.createDiv({ cls: 'ert-planetary-preview-heading ert-previewFrame__title', text: 'Preview (Matter)' });
     const matterPreviewBody = matterPreviewFrame.createDiv({ cls: 'ert-matter-preview-body' });
     const formatRoleLabel = (role: string): string => role.replace(/[_-]+/g, ' ').trim();
     const renderMatterPreview = async () => {

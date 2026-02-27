@@ -354,8 +354,8 @@ export interface InquirySessionCacheRecord {
 
 /** A Pandoc LaTeX layout template scoped to a manuscript preset. */
 export interface PandocLayoutTemplate {
-    id: string;                // unique, e.g. "bundled-novel"
-    name: string;              // display name, e.g. "Novel Manuscript (ST)"
+    id: string;                // unique, e.g. "bundled-fiction-signature-literary"
+    name: string;              // display name, e.g. "Signature Literary"
     preset: 'novel' | 'screenplay' | 'podcast';
     path: string;              // vault-relative or absolute path to .tex file
     bundled?: boolean;         // true for RT-generated sample templates
