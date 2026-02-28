@@ -2696,6 +2696,8 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
                             actEpigraphAttributions: scoped.actEpigraphAttributions,
                             sceneHeadingMode: nextMode
                         });
+                        // Re-render so pictogram highlight updates to match
+                        renderLayoutRows();
                     });
                 }
             }
