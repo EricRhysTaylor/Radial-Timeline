@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { App, TFile } from 'obsidian';
-import { runBeatDescriptionToPurposeMigration } from './yamlBackfill';
+import { runBackdropSynopsisToContextMigration, runBeatDescriptionToPurposeMigration } from './yamlBackfill';
 
 function makeFile(path: string): TFile {
     const parts = path.split('/');
@@ -68,5 +68,23 @@ describe('runBeatDescriptionToPurposeMigration', () => {
         expect(result.removedDescription).toBe(0);
         expect(frontmatterByPath[file.path].Purpose).toBe('Existing purpose');
         expect(frontmatterByPath[file.path].Description).toBe('Legacy note');
+    });
+});
+
+describe('runBackdropSynopsisToContextMigration', () => {
+    it('moves Synopsis to Context when Context is empty and removes Synopsis', async () => {
+        const file = makeFile('Story/Backdrop.md');
+        const frontmatterByPath: Record<string, Record<string, unknown>> = {
+            [file.path]: { Class: 'Backdrop', Synopsis: 'Legacy context', Context: '' }
+        };
+        const app = makeApp(frontmatterByPath);
+
+        const result = await runBackdropSynopsisToContextMigration({ app, files: [file] });
+
+        expect(result.updated).toBe(1);
+        expect(result.movedToContext).toBe(1);
+        expect(result.removedSynopsis).toBe(1);
+        expect(frontmatterByPath[file.path].Context).toBe('Legacy context');
+        expect(frontmatterByPath[file.path].Synopsis).toBeUndefined();
     });
 });

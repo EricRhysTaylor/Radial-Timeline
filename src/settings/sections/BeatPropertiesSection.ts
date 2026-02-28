@@ -44,7 +44,7 @@ import {
     RESERVED_OBSIDIAN_KEYS,
 } from '../../utils/yamlTemplateNormalize';
 import { runYamlAudit, collectFilesForAudit, collectFilesForAuditWithScope, formatAuditReport, type YamlAuditResult, type NoteAuditEntry } from '../../utils/yamlAudit';
-import { runBeatDescriptionToPurposeMigration, runYamlBackfill, runYamlFillEmptyValues, type BackfillResult } from '../../utils/yamlBackfill';
+import { runBackdropSynopsisToContextMigration, runBeatDescriptionToPurposeMigration, runYamlBackfill, runYamlFillEmptyValues, type BackfillResult } from '../../utils/yamlBackfill';
 import { runReferenceIdBackfill, runReferenceIdDuplicateRepair } from '../../utils/referenceIdBackfill';
 import { runYamlDeleteFields, runYamlDeleteEmptyExtraFields, runYamlReorder, previewDeleteFields, previewReorder, type DeleteResult, type ReorderResult } from '../../utils/yamlManager';
 import { type FrontmatterSafetyResult, formatSafetyIssues } from '../../utils/yamlSafety';
@@ -64,6 +64,13 @@ const BEAT_PRESETS: Array<{ id: BuiltinBeatSetId; label: string; systemName: str
     { id: 'story_grid', label: 'Story Grid', systemName: 'Story Grid' },
 ];
 const CUSTOM_SYSTEM_OPTION = { id: 'custom' as const, label: 'Custom', systemName: 'Custom' };
+const SCENE_AI_SCHEMA_KEYS = [
+    'Pulse Update',
+    'Summary Update',
+    'previousSceneAnalysis',
+    'currentSceneAnalysis',
+    'nextSceneAnalysis'
+] as const;
 const BEAT_SYSTEM_COPY: Record<string, { title: string; description: string; examples?: string }> = {
     'Save The Cat': {
         title: 'Save the Cat',
@@ -4206,7 +4213,16 @@ export function renderStoryBeatsSection(params: {
             touchedKeys: string[];
             sourcePath: string;
         };
+        type DeprecatedMigrationPlan = {
+            legacyKey: 'Description' | 'Synopsis';
+            canonicalKey: 'Purpose' | 'Context';
+            files: TFile[];
+            moveCount: number;
+            removeEmptyCount: number;
+            preservedCount: number;
+        };
         let fillEmptyPlan: FillEmptyPlan | null = null;
+        let deprecatedMigrationPlan: DeprecatedMigrationPlan | null = null;
 
         const resolveBeatAuditSystemKey = (): string | undefined => {
             if (noteType !== 'Beat') return beatSystemKey;
@@ -4304,6 +4320,129 @@ export function renderStoryBeatsSection(params: {
                 sourcePath,
             };
         };
+        const buildDeprecatedMigrationPlan = (files: TFile[]): DeprecatedMigrationPlan | null => {
+            if (noteType !== 'Beat' && noteType !== 'Backdrop') return null;
+            const mappings = plugin.settings.enableCustomMetadataMapping ? plugin.settings.frontmatterMappings : undefined;
+            const legacyKey = noteType === 'Beat' ? 'Description' : 'Synopsis';
+            const canonicalKey = noteType === 'Beat' ? 'Purpose' : 'Context';
+
+            const targetFiles: TFile[] = [];
+            let moveCount = 0;
+            let removeEmptyCount = 0;
+            let preservedCount = 0;
+
+            for (const file of files) {
+                const cache = app.metadataCache.getFileCache(file);
+                if (!cache?.frontmatter) continue;
+                const raw = cache.frontmatter as Record<string, unknown>;
+                const normalized = mappings ? normalizeFrontmatterKeys(raw, mappings) : raw;
+                const hasLegacy = Object.prototype.hasOwnProperty.call(normalized, legacyKey);
+                if (!hasLegacy) continue;
+
+                const legacyRaw = typeof normalized[legacyKey] === 'string' ? String(normalized[legacyKey]) : '';
+                const legacy = legacyRaw.trim();
+                const canonicalRaw = typeof normalized[canonicalKey] === 'string' ? String(normalized[canonicalKey]) : '';
+                const canonical = canonicalRaw.trim();
+
+                targetFiles.push(file);
+
+                if (legacy.length === 0) {
+                    removeEmptyCount += 1;
+                    continue;
+                }
+                if (canonical.length === 0) {
+                    moveCount += 1;
+                } else {
+                    preservedCount += 1;
+                }
+            }
+
+            if (moveCount === 0 && removeEmptyCount === 0) return null;
+            return {
+                legacyKey,
+                canonicalKey,
+                files: targetFiles,
+                moveCount,
+                removeEmptyCount,
+                preservedCount,
+            };
+        };
+
+        type DeletePreviewDetail = { fields: string[]; values: Record<string, unknown> };
+        const applySceneAiOffDeletePolicy = (protectedKeys: Set<string>): void => {
+            if (noteType !== 'Scene') return;
+            if (plugin.settings.enableAiSceneAnalysis ?? true) return;
+
+            const aiKeysLower = new Set(SCENE_AI_SCHEMA_KEYS.map((key) => key.toLowerCase()));
+            for (const key of [...protectedKeys]) {
+                if (aiKeysLower.has(key.toLowerCase())) {
+                    protectedKeys.delete(key);
+                }
+            }
+        };
+        const ensureVaultFolder = async (folderPath: string): Promise<string> => {
+            const normalized = normalizePath(folderPath.trim());
+            if (!normalized) return '';
+            const parts = normalized.split('/').filter(Boolean);
+            let current = '';
+            for (const part of parts) {
+                current = current ? `${current}/${part}` : part;
+                if (!app.vault.getAbstractFileByPath(current)) {
+                    try {
+                        await app.vault.createFolder(current);
+                    } catch {
+                        // Folder may already exist if created concurrently.
+                    }
+                }
+            }
+            return normalized;
+        };
+        const writeDeletionSnapshot = async (params: {
+            operation: 'delete_extra' | 'delete_advanced';
+            preview: Map<TFile, DeletePreviewDetail>;
+            scopeSummary: string;
+        }): Promise<string | null> => {
+            const entries: Array<{
+                path: string;
+                basename: string;
+                fields: Array<{ key: string; value: unknown }>;
+            }> = [];
+
+            for (const [file, detail] of params.preview.entries()) {
+                const fields = detail.fields
+                    .filter((field) => !isEmptyValue(detail.values[field]))
+                    .map((field) => ({ key: field, value: detail.values[field] }));
+                if (fields.length === 0) continue;
+                entries.push({
+                    path: file.path,
+                    basename: file.basename,
+                    fields
+                });
+            }
+
+            if (entries.length === 0) return null;
+
+            const baseFolder = normalizePath((plugin.settings.aiOutputFolder || DEFAULT_SETTINGS.aiOutputFolder || 'Radial Timeline/Logs').trim() || 'Radial Timeline/Logs');
+            const snapshotFolder = await ensureVaultFolder(`${baseFolder}/YAML Safety/Deletion Snapshots`);
+            if (!snapshotFolder) return null;
+
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const filename = `${timestamp}-${noteType.toLowerCase()}-${params.operation}.json`;
+            const snapshotPath = normalizePath(`${snapshotFolder}/${filename}`);
+            const payload = {
+                version: 1,
+                createdAt: new Date().toISOString(),
+                noteType,
+                operation: params.operation,
+                scopeSummary: params.scopeSummary,
+                filesWithValuedDeletes: entries.length,
+                valuedFieldDeletes: entries.reduce((sum, entry) => sum + entry.fields.length, 0),
+                entries
+            };
+
+            await app.vault.create(snapshotPath, `${JSON.stringify(payload, null, 2)}\n`);
+            return snapshotPath;
+        };
 
         // ─── Header row: two-column Setting layout (title+desc left, audit button right) ──
         const auditSetting = new Settings(parentEl)
@@ -4369,6 +4508,17 @@ export function renderStoryBeatsSection(params: {
                 .onClick(() => void handleFillEmptyValues());
             fillEmptyBtn = button.buttonEl;
             fillEmptyBtn.classList.add('ert-settings-hidden');
+        });
+
+        // Migrate deprecated fields button (hidden until audit finds legacy keys with safe migration path)
+        let migrateDeprecatedBtn: HTMLButtonElement | undefined;
+        auditSetting.addButton(button => {
+            button
+                .setButtonText('Migrate deprecated fields')
+                .setTooltip('Migrate deprecated YAML keys to canonical fields before cleanup')
+                .onClick(() => void handleMigrateDeprecatedFields());
+            migrateDeprecatedBtn = button.buttonEl;
+            migrateDeprecatedBtn.classList.add('ert-settings-hidden');
         });
 
         // Delete extra fields button (hidden until audit finds extra keys)
@@ -4460,6 +4610,8 @@ export function renderStoryBeatsSection(params: {
             const files = auditScope.files;
             auditScopeSummary = auditScope.scopeSummary;
             if (auditScope.reason) {
+                deprecatedMigrationPlan = null;
+                migrateDeprecatedBtn?.classList.add('ert-settings-hidden');
                 resultsEl.empty();
                 resultsEl.classList.remove('ert-settings-hidden');
                 resultsEl.createDiv({
@@ -4470,6 +4622,8 @@ export function renderStoryBeatsSection(params: {
                 return;
             }
             if (files.length === 0) {
+                deprecatedMigrationPlan = null;
+                migrateDeprecatedBtn?.classList.add('ert-settings-hidden');
                 resultsEl.empty();
                 resultsEl.classList.remove('ert-settings-hidden');
                 resultsEl.createDiv({
@@ -4531,6 +4685,18 @@ export function renderStoryBeatsSection(params: {
                 );
             } else {
                 fillEmptyBtn?.classList.add('ert-settings-hidden');
+            }
+
+            deprecatedMigrationPlan = buildDeprecatedMigrationPlan(files);
+            if (deprecatedMigrationPlan) {
+                const actionable = deprecatedMigrationPlan.moveCount + deprecatedMigrationPlan.removeEmptyCount;
+                migrateDeprecatedBtn?.classList.remove('ert-settings-hidden');
+                migrateDeprecatedBtn?.setAttribute(
+                    'aria-label',
+                    `Migrate ${actionable} deprecated ${deprecatedMigrationPlan.legacyKey} field${actionable !== 1 ? 's' : ''} to ${deprecatedMigrationPlan.canonicalKey}`
+                );
+            } else {
+                migrateDeprecatedBtn?.classList.add('ert-settings-hidden');
             }
 
             // Show delete-extra button when audit finds extra keys (and not all files are unsafe)
@@ -5182,6 +5348,83 @@ export function renderStoryBeatsSection(params: {
             setTimeout(() => runAudit(), 750);
         };
 
+        const handleMigrateDeprecatedFields = async () => {
+            if (!deprecatedMigrationPlan) {
+                new Notice('No deprecated field migrations available.');
+                return;
+            }
+
+            const { legacyKey, canonicalKey, files, moveCount, removeEmptyCount, preservedCount } = deprecatedMigrationPlan;
+            const actionableCount = moveCount + removeEmptyCount;
+
+            const confirmed = await new Promise<boolean>((resolve) => {
+                const modal = new Modal(app);
+                modal.titleEl.setText('');
+                modal.contentEl.empty();
+                modal.modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal-shell--md');
+                modal.contentEl.addClass('ert-modal-container', 'ert-stack');
+
+                const header = modal.contentEl.createDiv({ cls: 'ert-modal-header' });
+                header.createSpan({ cls: 'ert-modal-badge', text: 'YAML MANAGER' });
+                header.createDiv({ cls: 'ert-modal-title', text: 'Migrate deprecated fields' });
+                header.createDiv({
+                    cls: 'ert-modal-subtitle',
+                    text: `Migrate ${actionableCount} deprecated field value${actionableCount !== 1 ? 's' : ''} from ${legacyKey} to ${canonicalKey}.`
+                });
+
+                const body = modal.contentEl.createDiv({ cls: ['ert-panel', 'ert-panel--glass'] });
+                body.createDiv({ text: `Scope: ${auditScopeSummary}`, cls: 'ert-modal-subtitle' });
+                if (moveCount > 0) {
+                    body.createDiv({
+                        text: `${moveCount} note${moveCount !== 1 ? 's' : ''}: copy ${legacyKey} content into ${canonicalKey}, then remove ${legacyKey}.`
+                    });
+                }
+                if (removeEmptyCount > 0) {
+                    body.createDiv({
+                        text: `${removeEmptyCount} note${removeEmptyCount !== 1 ? 's' : ''}: remove empty ${legacyKey} key${removeEmptyCount !== 1 ? 's' : ''}.`
+                    });
+                }
+                if (preservedCount > 0) {
+                    body.createDiv({
+                        text: `${preservedCount} note${preservedCount !== 1 ? 's' : ''}: ${legacyKey} preserved because ${canonicalKey} already has content.`
+                    });
+                }
+
+                const footer = modal.contentEl.createDiv({ cls: 'ert-modal-actions' });
+                new ButtonComponent(footer).setButtonText('Migrate').setCta().onClick(() => {
+                    resolve(true);
+                    modal.close();
+                });
+                new ButtonComponent(footer).setButtonText('Cancel').onClick(() => {
+                    resolve(false);
+                    modal.close();
+                });
+
+                modal.onClose = () => resolve(false);
+                modal.open();
+            });
+
+            if (!confirmed) return;
+
+            if (noteType === 'Beat') {
+                const migrated = await runBeatDescriptionToPurposeMigration({ app, files });
+                const parts: string[] = [];
+                if (migrated.movedToPurpose > 0) parts.push(`Migrated ${migrated.movedToPurpose} ${legacyKey}→${canonicalKey}`);
+                if (migrated.removedDescription > 0) parts.push(`Removed ${migrated.removedDescription} ${legacyKey} key${migrated.removedDescription !== 1 ? 's' : ''}`);
+                if (migrated.failed > 0) parts.push(`${migrated.failed} failed`);
+                new Notice(parts.join(', ') || 'No changes made.');
+            } else if (noteType === 'Backdrop') {
+                const migrated = await runBackdropSynopsisToContextMigration({ app, files });
+                const parts: string[] = [];
+                if (migrated.movedToContext > 0) parts.push(`Migrated ${migrated.movedToContext} ${legacyKey}→${canonicalKey}`);
+                if (migrated.removedSynopsis > 0) parts.push(`Removed ${migrated.removedSynopsis} ${legacyKey} key${migrated.removedSynopsis !== 1 ? 's' : ''}`);
+                if (migrated.failed > 0) parts.push(`${migrated.failed} failed`);
+                new Notice(parts.join(', ') || 'No changes made.');
+            }
+
+            setTimeout(() => runAudit(), 750);
+        };
+
         // ─── Delete extra fields action ─────────────────────────────────
         const handleDeleteExtraFields = async () => {
             if (!auditResult) return;
@@ -5199,12 +5442,29 @@ export function renderStoryBeatsSection(params: {
                 ...mergedKeys,
                 ...RESERVED_OBSIDIAN_KEYS,
             ]);
+            applySceneAiOffDeletePolicy(protectedKeys);
 
             const allExtraKeys = new Set<string>();
             for (const n of notesWithExtra) {
                 for (const k of n.extraKeys) {
                     if (!isExcluded(k) && !RESERVED_OBSIDIAN_KEYS.has(k)) {
                         allExtraKeys.add(k);
+                    }
+                }
+            }
+            if (noteType === 'Scene' && !(plugin.settings.enableAiSceneAnalysis ?? true)) {
+                const aiSchemaKeysLower = new Set(SCENE_AI_SCHEMA_KEYS.map((key) => key.toLowerCase()));
+                for (const file of notesWithExtra.map((note) => note.file)) {
+                    const cache = app.metadataCache.getFileCache(file);
+                    const rawFm = cache?.frontmatter as Record<string, unknown> | undefined;
+                    if (!rawFm) continue;
+                    for (const rawKey of Object.keys(rawFm)) {
+                        if (rawKey === 'position' || RESERVED_OBSIDIAN_KEYS.has(rawKey)) continue;
+                        const normalized = normalizeFrontmatterKeys({ [rawKey]: rawFm[rawKey] });
+                        const canonical = Object.keys(normalized)[0];
+                        if (canonical && aiSchemaKeysLower.has(canonical.toLowerCase())) {
+                            allExtraKeys.add(rawKey);
+                        }
                     }
                 }
             }
@@ -5291,6 +5551,7 @@ export function renderStoryBeatsSection(params: {
 
             const totalFieldCount = emptyFieldCount + valuedFieldCount + descriptionKeysHandledByMigration;
             const hasValuedFields = valuedFieldCount > 0;
+            const deletePhrase = `DELETE ${valuedFieldCount}`;
             const unsafeSkippedCount = auditResult.notes.filter(n =>
                 n.extraKeys.length > 0 && n.safetyResult?.status === 'dangerous'
             ).length;
@@ -5351,6 +5612,9 @@ export function renderStoryBeatsSection(params: {
                     if (valuedFieldCount > valuedFieldSamples.length) {
                         sampleList.createEl('li', { text: `... and ${valuedFieldCount - valuedFieldSamples.length} more` });
                     }
+                    body.createDiv({
+                        text: 'A deletion snapshot file will be created before this destructive step.'
+                    });
                 }
 
                 const fieldListEl = body.createDiv();
@@ -5361,10 +5625,15 @@ export function renderStoryBeatsSection(params: {
                 }
 
                 let confirmInput: HTMLInputElement | undefined;
+                let acknowledgeInput: HTMLInputElement | undefined;
                 if (hasValuedFields) {
                     const confirmEl = body.createDiv({ cls: 'ert-modal-confirm-type' });
-                    confirmEl.createDiv({ text: 'Type DELETE to confirm:', cls: 'ert-modal-subtitle' });
-                    confirmInput = confirmEl.createEl('input', { type: 'text', attr: { placeholder: 'DELETE' } });
+                    confirmEl.createDiv({ text: `Type ${deletePhrase} to confirm:`, cls: 'ert-modal-subtitle' });
+                    confirmInput = confirmEl.createEl('input', { type: 'text', attr: { placeholder: deletePhrase } });
+                    const acknowledgeEl = body.createDiv({ cls: 'ert-modal-confirm-type' });
+                    const acknowledgeLabel = acknowledgeEl.createEl('label');
+                    acknowledgeInput = acknowledgeLabel.createEl('input', { type: 'checkbox' });
+                    acknowledgeLabel.appendText(' I understand non-empty values will be permanently deleted.');
                 }
 
                 const footer = modal.contentEl.createDiv({ cls: 'ert-modal-actions' });
@@ -5372,20 +5641,29 @@ export function renderStoryBeatsSection(params: {
                     .setButtonText('Delete')
                     .setWarning()
                     .onClick(() => {
-                        if (hasValuedFields && confirmInput?.value.trim() !== 'DELETE') {
-                            confirmInput?.classList.add('ert-input-error');
-                            confirmInput?.focus();
-                            return;
+                        if (hasValuedFields) {
+                            if (confirmInput?.value.trim() !== deletePhrase) {
+                                confirmInput?.classList.add('ert-input-error');
+                                confirmInput?.focus();
+                                return;
+                            }
+                            if (!acknowledgeInput?.checked) {
+                                return;
+                            }
                         }
                         resolve(true);
                         modal.close();
                     });
                 if (hasValuedFields) {
                     deleteBtn.setDisabled(true);
-                    confirmInput?.addEventListener('input', () => {
-                        deleteBtn.setDisabled(confirmInput?.value.trim() !== 'DELETE');
+                    const updateDeleteState = () => {
+                        const confirmedPhrase = confirmInput?.value.trim() === deletePhrase;
+                        const acknowledged = !!acknowledgeInput?.checked;
+                        deleteBtn.setDisabled(!(confirmedPhrase && acknowledged));
                         confirmInput?.classList.remove('ert-input-error');
-                    });
+                    };
+                    confirmInput?.addEventListener('input', updateDeleteState);
+                    acknowledgeInput?.addEventListener('change', updateDeleteState);
                 }
                 new ButtonComponent(footer).setButtonText('Cancel').onClick(() => { resolve(false); modal.close(); });
 
@@ -5394,6 +5672,25 @@ export function renderStoryBeatsSection(params: {
             });
 
             if (!confirmed) return;
+
+            let deletionSnapshotPath: string | null = null;
+            if (hasValuedFields) {
+                try {
+                    deletionSnapshotPath = await writeDeletionSnapshot({
+                        operation: 'delete_extra',
+                        preview,
+                        scopeSummary: auditScopeSummary
+                    });
+                } catch (error) {
+                    console.error('[YamlManager] yaml_delete_extra_snapshot_failed', error);
+                    new Notice('Delete cancelled: could not create deletion snapshot.');
+                    return;
+                }
+                if (!deletionSnapshotPath) {
+                    new Notice('Delete cancelled: no valued deletion snapshot was generated.');
+                    return;
+                }
+            }
 
             let migratedToPurpose = 0;
             let removedDescriptionByMigration = 0;
@@ -5460,6 +5757,7 @@ export function renderStoryBeatsSection(params: {
                 parts.push(`Removed ${totalRemovedDescription} Description key${totalRemovedDescription !== 1 ? 's' : ''}`);
             }
             if (deletedPaths.size > 0) parts.push(`Cleaned ${deletedPaths.size} note${deletedPaths.size !== 1 ? 's' : ''}`);
+            if (deletionSnapshotPath) parts.push(`Snapshot: ${deletionSnapshotPath}`);
             if (safetySkipped > 0) parts.push(`${safetySkipped} skipped (unsafe)`);
             if (failed > 0) parts.push(`${failed} failed`);
             new Notice(parts.join(', ') || 'No changes made.');
@@ -5534,6 +5832,7 @@ export function renderStoryBeatsSection(params: {
 
             const totalFieldCount = emptyFieldCount + valuedFieldCount;
             const hasValuedFields = valuedFieldCount > 0;
+            const deletePhrase = `DELETE ${valuedFieldCount}`;
 
             const unsafeSkippedCount = auditResult.notes.filter(n =>
                 n.safetyResult?.status === 'dangerous'
@@ -5585,6 +5884,9 @@ export function renderStoryBeatsSection(params: {
                     if (valuedFieldCount > valuedFieldSamples.length) {
                         sampleList.createEl('li', { text: `... and ${valuedFieldCount - valuedFieldSamples.length} more` });
                     }
+                    body.createDiv({
+                        text: 'A deletion snapshot file will be created before this destructive step.'
+                    });
                 }
 
                 const fieldListEl = body.createDiv();
@@ -5602,10 +5904,15 @@ export function renderStoryBeatsSection(params: {
 
                 // Typed confirmation for valued fields
                 let confirmInput: HTMLInputElement | undefined;
+                let acknowledgeInput: HTMLInputElement | undefined;
                 if (hasValuedFields) {
                     const confirmEl = body.createDiv({ cls: 'ert-modal-confirm-type' });
-                    confirmEl.createDiv({ text: 'Type DELETE to confirm:', cls: 'ert-modal-subtitle' });
-                    confirmInput = confirmEl.createEl('input', { type: 'text', attr: { placeholder: 'DELETE' } });
+                    confirmEl.createDiv({ text: `Type ${deletePhrase} to confirm:`, cls: 'ert-modal-subtitle' });
+                    confirmInput = confirmEl.createEl('input', { type: 'text', attr: { placeholder: deletePhrase } });
+                    const acknowledgeEl = body.createDiv({ cls: 'ert-modal-confirm-type' });
+                    const acknowledgeLabel = acknowledgeEl.createEl('label');
+                    acknowledgeInput = acknowledgeLabel.createEl('input', { type: 'checkbox' });
+                    acknowledgeLabel.appendText(' I understand non-empty values will be permanently deleted.');
                 }
 
                 const footer = modal.contentEl.createDiv({ cls: 'ert-modal-actions' });
@@ -5613,20 +5920,29 @@ export function renderStoryBeatsSection(params: {
                     .setButtonText('Delete advanced fields')
                     .setWarning()
                     .onClick(() => {
-                        if (hasValuedFields && confirmInput?.value.trim() !== 'DELETE') {
-                            confirmInput?.classList.add('ert-input-error');
-                            confirmInput?.focus();
-                            return;
+                        if (hasValuedFields) {
+                            if (confirmInput?.value.trim() !== deletePhrase) {
+                                confirmInput?.classList.add('ert-input-error');
+                                confirmInput?.focus();
+                                return;
+                            }
+                            if (!acknowledgeInput?.checked) {
+                                return;
+                            }
                         }
                         resolve(true);
                         modal.close();
                     });
                 if (hasValuedFields) {
                     deleteBtn.setDisabled(true);
-                    confirmInput?.addEventListener('input', () => {
-                        deleteBtn.setDisabled(confirmInput?.value.trim() !== 'DELETE');
+                    const updateDeleteState = () => {
+                        const confirmedPhrase = confirmInput?.value.trim() === deletePhrase;
+                        const acknowledged = !!acknowledgeInput?.checked;
+                        deleteBtn.setDisabled(!(confirmedPhrase && acknowledged));
                         confirmInput?.classList.remove('ert-input-error');
-                    });
+                    };
+                    confirmInput?.addEventListener('input', updateDeleteState);
+                    acknowledgeInput?.addEventListener('change', updateDeleteState);
                 }
                 new ButtonComponent(footer).setButtonText('Cancel').onClick(() => { resolve(false); modal.close(); });
 
@@ -5635,6 +5951,25 @@ export function renderStoryBeatsSection(params: {
             });
 
             if (!confirmed) return;
+
+            let deletionSnapshotPath: string | null = null;
+            if (hasValuedFields) {
+                try {
+                    deletionSnapshotPath = await writeDeletionSnapshot({
+                        operation: 'delete_advanced',
+                        preview,
+                        scopeSummary: auditScopeSummary
+                    });
+                } catch (error) {
+                    console.error('[YamlManager] yaml_delete_advanced_snapshot_failed', error);
+                    new Notice('Delete cancelled: could not create deletion snapshot.');
+                    return;
+                }
+                if (!deletionSnapshotPath) {
+                    new Notice('Delete cancelled: no valued deletion snapshot was generated.');
+                    return;
+                }
+            }
 
             const result: DeleteResult = await runYamlDeleteFields({
                 app,
@@ -5655,6 +5990,7 @@ export function renderStoryBeatsSection(params: {
 
             const msgParts: string[] = [];
             if (result.deleted > 0) msgParts.push(`Cleaned ${result.deleted} note${result.deleted !== 1 ? 's' : ''}`);
+            if (deletionSnapshotPath) msgParts.push(`Snapshot: ${deletionSnapshotPath}`);
             if (result.safetySkipped > 0) msgParts.push(`${result.safetySkipped} skipped (unsafe)`);
             if (result.failed > 0) msgParts.push(`${result.failed} failed`);
             new Notice(msgParts.join(', ') || 'No changes made.');

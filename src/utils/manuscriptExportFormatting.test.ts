@@ -122,14 +122,14 @@ describe('assembleManuscript scene heading formatting', () => {
         expect(assembled.text).toContain('\\rtPart{II}');
         expect(assembled.text).toContain('\\rtEpigraph{The beginning of all things.}{Anonymous}');
         expect(assembled.text).toContain('\\rtEpigraph{A turn into possibility.}{The Narrator}');
-        expect(assembled.text).toContain('\\rtChapter{I}{Boy with a Skull}');
-        expect(assembled.text).toContain('\\rtChapter{II}{Everything of Possibility.}');
+        expect(assembled.text).toContain('\\rtChapter{1}{Boy with a Skull}');
+        expect(assembled.text).toContain('\\rtChapter{2}{Everything of Possibility.}');
 
         const partOneIndex = assembled.text.indexOf('\\rtPart{I}');
         const partTwoIndex = assembled.text.indexOf('\\rtPart{II}');
         const partOneEpigraphIndex = assembled.text.indexOf('\\rtEpigraph{The beginning of all things.}{Anonymous}');
         const partTwoEpigraphIndex = assembled.text.indexOf('\\rtEpigraph{A turn into possibility.}{The Narrator}');
-        const chapterTwoIndex = assembled.text.indexOf('\\rtChapter{II}{Everything of Possibility.}');
+        const chapterTwoIndex = assembled.text.indexOf('\\rtChapter{2}{Everything of Possibility.}');
         expect(partOneEpigraphIndex).toBeGreaterThan(partOneIndex);
         expect(partTwoEpigraphIndex).toBeGreaterThan(partTwoIndex);
         expect(partTwoIndex).toBeGreaterThanOrEqual(0);

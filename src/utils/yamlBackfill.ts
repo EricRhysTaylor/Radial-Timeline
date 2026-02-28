@@ -59,6 +59,29 @@ export interface BeatPurposeMigrationResult {
     errors: { file: TFile; error: string }[];
 }
 
+export interface BackdropContextMigrationResult {
+    /** Notes where at least one migration change was applied. */
+    updated: number;
+    /** Context values copied from legacy Synopsis values. */
+    movedToContext: number;
+    /** Synopsis keys removed after migration or when empty. */
+    removedSynopsis: number;
+    /** Notes with no applicable legacy change. */
+    skipped: number;
+    /** Notes where processFrontMatter threw. */
+    failed: number;
+    errors: { file: TFile; error: string }[];
+}
+
+interface LegacyFieldMigrationResult {
+    updated: number;
+    movedToCanonical: number;
+    removedLegacy: number;
+    skipped: number;
+    failed: number;
+    errors: { file: TFile; error: string }[];
+}
+
 // ─── Helpers ────────────────────────────────────────────────────────────
 
 /**
@@ -154,11 +177,66 @@ export async function runBeatDescriptionToPurposeMigration(options: {
     onProgress?: (current: number, total: number, filename: string) => void;
     abortSignal?: AbortSignal;
 }): Promise<BeatPurposeMigrationResult> {
-    const { app, files, onProgress, abortSignal } = options;
-    const result: BeatPurposeMigrationResult = {
+    const migrated = await runLegacyFieldMigration({
+        app: options.app,
+        files: options.files,
+        legacyKey: 'Description',
+        canonicalKey: 'Purpose',
+        onProgress: options.onProgress,
+        abortSignal: options.abortSignal,
+    });
+    return {
+        updated: migrated.updated,
+        movedToPurpose: migrated.movedToCanonical,
+        removedDescription: migrated.removedLegacy,
+        skipped: migrated.skipped,
+        failed: migrated.failed,
+        errors: migrated.errors,
+    };
+}
+
+/**
+ * Backdrop legacy migration helper:
+ * - If Context is missing/empty and Synopsis has content, move content to Context.
+ * - Remove empty Synopsis keys (and remove moved Synopsis keys).
+ */
+export async function runBackdropSynopsisToContextMigration(options: {
+    app: App;
+    files: TFile[];
+    onProgress?: (current: number, total: number, filename: string) => void;
+    abortSignal?: AbortSignal;
+}): Promise<BackdropContextMigrationResult> {
+    const migrated = await runLegacyFieldMigration({
+        app: options.app,
+        files: options.files,
+        legacyKey: 'Synopsis',
+        canonicalKey: 'Context',
+        onProgress: options.onProgress,
+        abortSignal: options.abortSignal,
+    });
+    return {
+        updated: migrated.updated,
+        movedToContext: migrated.movedToCanonical,
+        removedSynopsis: migrated.removedLegacy,
+        skipped: migrated.skipped,
+        failed: migrated.failed,
+        errors: migrated.errors,
+    };
+}
+
+async function runLegacyFieldMigration(options: {
+    app: App;
+    files: TFile[];
+    legacyKey: string;
+    canonicalKey: string;
+    onProgress?: (current: number, total: number, filename: string) => void;
+    abortSignal?: AbortSignal;
+}): Promise<LegacyFieldMigrationResult> {
+    const { app, files, legacyKey, canonicalKey, onProgress, abortSignal } = options;
+    const result: LegacyFieldMigrationResult = {
         updated: 0,
-        movedToPurpose: 0,
-        removedDescription: 0,
+        movedToCanonical: 0,
+        removedLegacy: 0,
         skipped: 0,
         failed: 0,
         errors: [],
@@ -175,24 +253,24 @@ export async function runBeatDescriptionToPurposeMigration(options: {
 
             await app.fileManager.processFrontMatter(file, (fm) => {
                 const fmObj = fm as Record<string, unknown>;
-                const hasDescription = Object.prototype.hasOwnProperty.call(fmObj, 'Description');
-                const descriptionRaw = typeof fmObj['Description'] === 'string' ? fmObj['Description'] : undefined;
-                const descriptionValue = (descriptionRaw ?? '').trim();
-                const purposeRaw = typeof fmObj['Purpose'] === 'string' ? fmObj['Purpose'] : undefined;
-                const hasPurposeValue = typeof purposeRaw === 'string' && purposeRaw.trim().length > 0;
+                const hasLegacy = Object.prototype.hasOwnProperty.call(fmObj, legacyKey);
+                const legacyRaw = typeof fmObj[legacyKey] === 'string' ? String(fmObj[legacyKey]) : undefined;
+                const legacyValue = (legacyRaw ?? '').trim();
+                const canonicalRaw = typeof fmObj[canonicalKey] === 'string' ? String(fmObj[canonicalKey]) : undefined;
+                const hasCanonicalValue = typeof canonicalRaw === 'string' && canonicalRaw.trim().length > 0;
 
-                if (!hasPurposeValue && descriptionValue.length > 0) {
-                    fmObj['Purpose'] = descriptionRaw;
-                    delete fmObj['Description'];
-                    result.movedToPurpose += 1;
-                    result.removedDescription += 1;
+                if (!hasCanonicalValue && legacyValue.length > 0) {
+                    fmObj[canonicalKey] = legacyRaw;
+                    delete fmObj[legacyKey];
+                    result.movedToCanonical += 1;
+                    result.removedLegacy += 1;
                     didChange = true;
                     return;
                 }
 
-                if (hasDescription && descriptionValue.length === 0) {
-                    delete fmObj['Description'];
-                    result.removedDescription += 1;
+                if (hasLegacy && legacyValue.length === 0) {
+                    delete fmObj[legacyKey];
+                    result.removedLegacy += 1;
                     didChange = true;
                 }
             });

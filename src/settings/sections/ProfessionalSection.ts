@@ -1851,7 +1851,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
                 return 'Centered running header with book title and bottom-centered page numbers. One-inch margins, 1.5 line spacing, serif body text, and minimal ornamentation.';
             }
             if (variant === 'modernClassic') {
-                return 'Acts can open with optional epigraphs and Roman numeral PART pages. Chapters use Roman numerals with optional titles. Page numbers live in the headers: the left-page header pairs page number with author, and the right-page header pairs title with page number. Scene breaks use lower-case Roman numerals with a short rule.';
+                return 'Acts can open with optional epigraphs and Roman numeral PART pages. Chapters use Arabic numerals with optional titles. Centered headers pair page number with author (even) or title with page number (odd). Scene breaks use lower-case Roman numerals with a short rule.';
             }
             if (variant === 'signature') {
                 return 'Page numbers are header-only: the left-page header pairs page number with author, and the right-page header pairs title with page number. Scene opener pages use generous vertical spacing and suppress headers and folios. Refined serif body typography.';
@@ -1880,6 +1880,12 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         suppressFooter?: boolean;
         specialText?: string;
         specialSubtext?: string;
+        /** Short rule rendered below specialText (like scene separator rule) */
+        specialRule?: boolean;
+        /** Italic epigraph quote below the special block */
+        epigraphText?: string;
+        /** Attribution line below epigraph — rendered all-caps with em-dash prefix */
+        epigraphAttribution?: string;
         /** Body lines before a scene separator, followed by separator, then more lines */
         separatorText?: string;
         linesBeforeSeparator?: number;
@@ -1890,9 +1896,17 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         label: string;
         leftPage: PictogramPageSide | null;
         rightPage: PictogramPageSide | null;
+        /** When set, this spread represents a selectable scene heading mode */
+        sceneMode?: ManuscriptSceneHeadingMode;
     };
 
     // ── Layout Visual: Feature Data ───────────────────────────────────────
+    // RT terminology → LaTeX template structure:
+    //   Parts  = Acts (determined by Act count in settings; emit \rtPart{I})
+    //   Chapters = Beats (beat definitions with chapterBreak; emit \rtChapter{1}{Title})
+    //   Scenes = Scene notes (the primary content unit; scene separators via \rtSceneSep)
+    // RT supports scenes as the base content unit. "Chapters" in templates are
+    // beat-driven openers, not standalone content divisions.
     const getLayoutFeatures = (variant: FictionLayoutVariant): LayoutFeatureRow[] => {
         switch (variant) {
             case 'classic':
@@ -1901,23 +1915,28 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
                     { label: 'Folios', value: 'Bottom center' },
                     { label: 'Font', value: 'Sorts Mill Goudy (serif)' },
                     { label: 'Spacing', value: '1.5 lines' },
-                    { label: 'Chapters', value: 'Centered, bold' },
+                    { label: 'Scenes', value: 'Opener page — centered, bold' },
                 ];
             case 'modernClassic':
                 return [
-                    { label: 'Headers', value: 'Page|Author (left) · Title|Page (right)' },
+                    { label: 'Headers', value: 'Centered: Page|Author (even) · Title|Page (odd)' },
                     { label: 'Folios', value: 'In headers' },
                     { label: 'Font', value: 'Latin Modern (serif)' },
                     { label: 'Spacing', value: '1.18×' },
-                    { label: 'Chapters', value: 'Roman numeral + optional title' },
+                    { label: 'Parts', value: 'Act opener — Roman numeral with optional epigraph' },
+                    { label: 'Chapters', value: 'Beat opener — Arabic numeral + optional title' },
+                    { label: 'Scenes', value: 'Lowercase Roman numeral (i. ii.) with short rule' },
                 ];
             case 'signature':
                 return [
-                    { label: 'Headers', value: 'Page|Author (left) · Title|Page (right)' },
+                    { label: 'Headers', value: 'Centered: Page|Author (even) · Title|Page (odd)' },
                     { label: 'Folios', value: 'Header-only, letter-spaced' },
                     { label: 'Font', value: 'Sorts Mill Goudy (serif)' },
                     { label: 'Spacing', value: '1.5 lines' },
-                    { label: 'Chapters', value: '30pt bold, opener suppresses headers' },
+                    { label: 'Scenes', value: 'Opener page — 30pt bold, suppresses headers' },
+                    { label: 'Scene #', value: 'Number only' },
+                    { label: 'Scene #+T', value: 'Number + title (in parentheses)' },
+                    { label: 'Scene T', value: 'Title only' },
                 ];
             case 'contemporary':
                 return [
@@ -1925,7 +1944,8 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
                     { label: 'Folios', value: 'Bottom center (serif)' },
                     { label: 'Font', value: 'Sorts Mill Goudy body, sans headers' },
                     { label: 'Spacing', value: '1.5 lines' },
-                    { label: 'Chapters', value: 'Centered, bold — opener suppresses headers' },
+                    { label: 'Scenes', value: 'Opener page — centered, bold, suppresses headers' },
+                    { label: 'Chapters', value: 'Beat opener — same style as scene opener' },
                 ];
             default:
                 return [];
@@ -1933,122 +1953,174 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
     };
 
     // ── Layout Visual: Pictogram Spread Configs ───────────────────────────
+    // Pictograms represent the physical PDF page layout for each template.
+    // Scene separators appear inline within body text (not on dedicated pages).
+    // "Special" spreads show dedicated opener pages:
+    //   PART   = Act opener page (RT Acts → LaTeX \rtPart)
+    //   CHAPTER = Beat-driven chapter opener (RT Beats → LaTeX \rtChapter)
+    //   SCENE # / #+TITLE / TITLE = Scene heading modes (Signature only)
     const BODY_LINES = 14;
 
-    const getLayoutSpreads = (variant: FictionLayoutVariant): PictogramSpread[] => {
+    type LayoutPictogramRows = {
+        /** Primary row: scene separator page (optional) + body spread — always right-aligned */
+        scene: PictogramSpread | null;
+        body: PictogramSpread;
+        /** Special row: Part (Act), Chapter (Beat), or Scene heading mode variants */
+        special: PictogramSpread[];
+    };
+
+    const getLayoutPictogramRows = (variant: FictionLayoutVariant): LayoutPictogramRows => {
         switch (variant) {
             case 'classic':
-                return [
-                    {
+                return {
+                    // Scene opener: centered scene heading with body text below
+                    scene: {
+                        label: 'SCENE',
+                        leftPage: null,
+                        rightPage: {
+                            headerCenter: 'TITLE',
+                            folioBottom: '14',
+                            bodyLines: 5,
+                            specialText: '3',
+                        },
+                    },
+                    body: {
                         label: 'BODY',
                         leftPage: { headerCenter: 'TITLE', folioBottom: '12', bodyLines: BODY_LINES },
                         rightPage: { headerCenter: 'TITLE', folioBottom: '13', bodyLines: BODY_LINES },
                     },
-                ];
+                    special: [],
+                };
             case 'modernClassic':
-                return [
-                    {
-                        label: 'BODY',
-                        leftPage: { headerLeft: '12 | AUTH', bodyLines: BODY_LINES },
-                        rightPage: { headerRight: 'TITLE | 13', bodyLines: BODY_LINES },
-                    },
-                    {
-                        label: 'PART',
-                        leftPage: null,
-                        rightPage: {
-                            bodyLines: 0,
-                            suppressHeader: true,
-                            suppressFooter: true,
-                            specialText: 'PART I',
-                        },
-                    },
-                    {
-                        label: 'CHAPTER',
-                        leftPage: null,
-                        rightPage: {
-                            bodyLines: 0,
-                            suppressHeader: true,
-                            suppressFooter: true,
-                            specialText: 'CHAPTER I',
-                            specialSubtext: 'Boy with a Skull',
-                        },
-                    },
-                    {
+                return {
+                    scene: {
                         label: 'SCENE',
                         leftPage: null,
                         rightPage: {
                             bodyLines: 0,
                             separatorText: 'ii.',
-                            linesBeforeSeparator: 5,
+                            linesBeforeSeparator: 0,
                             linesAfterSeparator: 5,
                         },
                     },
-                ];
+                    body: {
+                        label: 'BODY',
+                        leftPage: { headerCenter: '12 | AUTH', bodyLines: BODY_LINES },
+                        rightPage: { headerCenter: 'TITLE | 13', bodyLines: BODY_LINES },
+                    },
+                    special: [
+                        {
+                            label: 'PART',
+                            leftPage: null,
+                            rightPage: {
+                                bodyLines: 0,
+                                suppressHeader: true,
+                                suppressFooter: true,
+                                specialText: 'I',
+                                specialRule: true,
+                                epigraphText: 'a quote',
+                                epigraphAttribution: '\u2014J. Name',
+                            },
+                        },
+                        {
+                            label: 'CHAPTER',
+                            leftPage: null,
+                            rightPage: {
+                                bodyLines: 0,
+                                suppressHeader: true,
+                                suppressFooter: true,
+                                specialText: 'Chapter 1',
+                                specialSubtext: 'Boy with a Skull',
+                            },
+                        },
+                    ],
+                };
             case 'signature':
-                return [
-                    {
+                return {
+                    scene: null,
+                    body: {
                         label: 'BODY',
-                        leftPage: { headerLeft: '12 | AUTH', bodyLines: BODY_LINES },
-                        rightPage: { headerRight: 'TITLE | 13', bodyLines: BODY_LINES },
+                        leftPage: { headerCenter: '12 | AUTH', bodyLines: BODY_LINES },
+                        rightPage: { headerCenter: 'TITLE | 13', bodyLines: BODY_LINES },
                     },
-                    {
-                        label: 'SCENE #',
-                        leftPage: null,
-                        rightPage: {
-                            bodyLines: 4,
-                            suppressHeader: true,
-                            suppressFooter: true,
-                            specialText: '3',
+                    special: [
+                        {
+                            label: 'SCENE #',
+                            sceneMode: 'scene-number',
+                            leftPage: null,
+                            rightPage: {
+                                bodyLines: 4,
+                                suppressHeader: true,
+                                suppressFooter: true,
+                                specialText: '3',
+                            },
                         },
-                    },
-                    {
-                        label: '#+TITLE',
-                        leftPage: null,
-                        rightPage: {
-                            bodyLines: 4,
-                            suppressHeader: true,
-                            suppressFooter: true,
-                            specialText: '3',
-                            specialSubtext: '(The Escape)',
+                        {
+                            label: '#+TITLE',
+                            sceneMode: 'scene-number-title',
+                            leftPage: null,
+                            rightPage: {
+                                bodyLines: 4,
+                                suppressHeader: true,
+                                suppressFooter: true,
+                                specialText: '3',
+                                specialSubtext: '(The Escape)',
+                            },
                         },
-                    },
-                    {
-                        label: 'TITLE',
-                        leftPage: null,
-                        rightPage: {
-                            bodyLines: 4,
-                            suppressHeader: true,
-                            suppressFooter: true,
-                            specialText: 'The Escape',
+                        {
+                            label: 'TITLE',
+                            sceneMode: 'title-only',
+                            leftPage: null,
+                            rightPage: {
+                                bodyLines: 4,
+                                suppressHeader: true,
+                                suppressFooter: true,
+                                specialText: 'The Escape',
+                            },
                         },
-                    },
-                ];
+                    ],
+                };
             case 'contemporary':
-                return [
-                    {
-                        label: 'BODY',
-                        leftPage: { headerLeft: 'title', folioBottom: '12', bodyLines: BODY_LINES },
-                        rightPage: { headerRight: 'section', folioBottom: '13', bodyLines: BODY_LINES },
-                    },
-                    {
-                        label: 'CHAPTER',
+                return {
+                    // Scene opener: suppresses headers/footers (\thispagestyle{empty})
+                    scene: {
+                        label: 'SCENE',
                         leftPage: null,
                         rightPage: {
                             bodyLines: 5,
                             suppressHeader: true,
                             suppressFooter: true,
-                            specialText: 'Chapter',
+                            specialText: '3',
                         },
                     },
-                ];
+                    body: {
+                        label: 'BODY',
+                        leftPage: { headerLeft: 'title', folioBottom: '12', bodyLines: BODY_LINES },
+                        rightPage: { headerRight: 'section', folioBottom: '13', bodyLines: BODY_LINES },
+                    },
+                    special: [
+                        {
+                            label: 'CHAPTER',
+                            leftPage: null,
+                            rightPage: {
+                                bodyLines: 5,
+                                suppressHeader: true,
+                                suppressFooter: true,
+                                specialText: 'Chapter',
+                            },
+                        },
+                    ],
+                };
             default:
-                return [
-                    {
+                return {
+                    scene: null,
+                    body: {
                         label: '',
                         leftPage: { bodyLines: BODY_LINES },
                         rightPage: { bodyLines: BODY_LINES },
                     },
-                ];
+                    special: [],
+                };
         }
     };
 
@@ -2072,21 +2144,31 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
 
         if (side.separatorText != null) {
             // Scene separator mode: lines → separator → lines
-            for (let i = 0; i < (side.linesBeforeSeparator || 3); i++) {
+            // Use ?? (not ||) so that 0 is respected as "no lines above"
+            for (let i = 0; i < (side.linesBeforeSeparator ?? 3); i++) {
                 body.createDiv({ cls: 'ert-layout-page-line' });
             }
             const sep = body.createDiv({ cls: 'ert-layout-page-separator' });
             sep.createSpan({ cls: 'ert-layout-page-separator-text', text: side.separatorText });
             sep.createDiv({ cls: 'ert-layout-page-separator-rule' });
-            for (let i = 0; i < (side.linesAfterSeparator || 3); i++) {
+            for (let i = 0; i < (side.linesAfterSeparator ?? 3); i++) {
                 body.createDiv({ cls: 'ert-layout-page-line' });
             }
         } else if (side.specialText) {
             // Special text mode: centered Part/Chapter/Scene text
             body.addClass('is-special');
             body.createSpan({ cls: 'ert-layout-page-special-text', text: side.specialText });
+            if (side.specialRule) {
+                body.createDiv({ cls: 'ert-layout-page-separator-rule' });
+            }
             if (side.specialSubtext) {
                 body.createSpan({ cls: 'ert-layout-page-special-subtext', text: side.specialSubtext });
+            }
+            if (side.epigraphText) {
+                body.createSpan({ cls: 'ert-layout-page-epigraph-text', text: side.epigraphText });
+            }
+            if (side.epigraphAttribution) {
+                body.createSpan({ cls: 'ert-layout-page-epigraph-attr', text: side.epigraphAttribution });
             }
             // Add body lines below special text if specified
             if (side.bodyLines > 0) {
@@ -2111,7 +2193,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         }
     };
 
-    const renderLayoutSpread = (parent: HTMLElement, spread: PictogramSpread): void => {
+    const renderLayoutSpread = (parent: HTMLElement, spread: PictogramSpread): HTMLElement => {
         const spreadEl = parent.createDiv({ cls: 'ert-layout-spread' });
         const pagesEl = spreadEl.createDiv({ cls: 'ert-layout-spread-pages' });
 
@@ -2128,6 +2210,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         if (spread.label) {
             spreadEl.createSpan({ cls: 'ert-layout-spread-label', text: spread.label });
         }
+        return spreadEl;
     };
 
     const renderLayoutFeatureList = (parent: HTMLElement, features: LayoutFeatureRow[]): void => {
@@ -2139,22 +2222,50 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         }
     };
 
-    const renderLayoutPictograms = (parent: HTMLElement, spreads: PictogramSpread[]): void => {
+    const renderLayoutPictograms = (
+        parent: HTMLElement,
+        rows: LayoutPictogramRows,
+        activeSceneMode?: ManuscriptSceneHeadingMode,
+    ): void => {
         const pictoCol = parent.createDiv({ cls: 'ert-layout-visual-pictograms' });
-        for (const spread of spreads) {
-            renderLayoutSpread(pictoCol, spread);
+
+        // Primary row: scene (optional, left) + body spread (right)
+        const primaryRow = pictoCol.createDiv({ cls: 'ert-layout-picto-row' });
+        if (rows.scene) renderLayoutSpread(primaryRow, rows.scene);
+        renderLayoutSpread(primaryRow, rows.body);
+
+        // Special row: Part, Chapter, Scene mode variants
+        // When spreads have sceneMode, highlight the active one and dim the rest
+        const hasSceneModes = rows.special.some(s => s.sceneMode);
+        if (rows.special.length > 0) {
+            const specialRow = pictoCol.createDiv({ cls: 'ert-layout-picto-row' });
+            for (const spread of rows.special) {
+                const spreadEl = renderLayoutSpread(specialRow, spread);
+                if (hasSceneModes && spread.sceneMode && activeSceneMode) {
+                    if (spread.sceneMode === activeSceneMode) {
+                        spreadEl.addClass('is-scene-active');
+                    } else {
+                        spreadEl.addClass('is-scene-dimmed');
+                    }
+                }
+            }
         }
     };
 
-    const buildLayoutVisual = (container: HTMLElement, variant: FictionLayoutVariant): void => {
+    const buildLayoutVisual = (container: HTMLElement, variant: FictionLayoutVariant, layoutId?: string): void => {
         const visual = container.createDiv({ cls: 'ert-layout-visual' });
         const cols = visual.createDiv({ cls: 'ert-layout-visual-cols' });
 
         const features = getLayoutFeatures(variant);
         renderLayoutFeatureList(cols, features);
 
-        const spreads = getLayoutSpreads(variant);
-        renderLayoutPictograms(cols, spreads);
+        // Resolve the active scene heading mode for this layout (Signature only)
+        const activeSceneMode = layoutId
+            ? (getLayoutOptionsForActiveBook(layoutId).sceneHeadingMode || 'scene-number-title')
+            : undefined;
+
+        const rows = getLayoutPictogramRows(variant);
+        renderLayoutPictograms(cols, rows, activeSceneMode);
     };
 
     const getLayoutInstalledState = (layout: PandocLayoutTemplate): boolean => {
@@ -2396,7 +2507,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
             s.descEl?.addClass('ert-layout-row-desc');
 
             if (useVisual && s.descEl) {
-                buildLayoutVisual(s.descEl, variant);
+                buildLayoutVisual(s.descEl, variant, layout.id);
             } else {
                 s.setDesc(buildLayoutDescription(layout));
             }
@@ -2493,6 +2604,8 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
                 const panel = row.createDiv({ cls: 'ert-layout-special-panel' });
                 panel.createDiv({ cls: 'ert-layout-special-divider' });
 
+                // Parts = Acts: determined by Act count in settings.
+                // Epigraphs are optional quotes printed after each PART page.
                 if (specialCapabilities.hasEpigraphs) {
                     const epigraphTitle = panel.createDiv({ cls: 'ert-layout-special-title', text: 'Act epigraphs (optional)' });
                     epigraphTitle.setAttr('role', 'heading');
@@ -2554,6 +2667,8 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
                     }
                 }
 
+                // Scenes = scene notes. Scene opener heading mode controls how
+                // each scene's dedicated opener page renders its heading.
                 if (specialCapabilities.hasSceneOpenerHeadingOptions) {
                     const headingPanel = panel.createDiv({ cls: 'ert-layout-special-mode' });
                     const headingTitle = headingPanel.createDiv({ cls: 'ert-layout-special-title', text: 'Opener scene heading' });

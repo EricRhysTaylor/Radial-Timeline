@@ -866,8 +866,13 @@ export async function assembleManuscript(
           const beatDef = resolveModernClassicBeatDefinition(modernClassicState, beatRef);
           let emittedStructureOpener = false;
 
+          // RT terminology → LaTeX structure mapping:
+          //   Acts (from settings Act count) → \rtPart{Roman} — dedicated Part page
+          //   Beats (with chapterBreak flag)  → \rtChapter{n}{Title} — chapter opener
+          //   Scenes (scene notes)            → \rtSceneSep — inline scene separator
           const nextActIndex = beatDef?.actIndex;
           if (typeof nextActIndex === 'number' && nextActIndex > 0 && nextActIndex !== modernClassicState.currentActIndex) {
+            // Act boundary → emit Part page (with optional epigraph)
             const actRoman = toRomanNumeral(nextActIndex);
             if (actRoman) {
               textParts.push(buildRawLatexBlock(`\\rtPart{${actRoman}}`));
@@ -883,12 +888,13 @@ export async function assembleManuscript(
 
           const startsChapter = beatDef?.chapterBreak === true;
           if (startsChapter) {
+            // Beat with chapterBreak → emit Chapter opener page
             modernClassicState.chapterIndex += 1;
-            const chapterRoman = toRomanNumeral(modernClassicState.chapterIndex);
             const chapterTitle = sanitizeModernClassicMacroArg(beatDef?.chapterTitle || '');
-            textParts.push(buildRawLatexBlock(`\\rtChapter{${chapterRoman}}{${chapterTitle}}`));
+            textParts.push(buildRawLatexBlock(`\\rtChapter{${modernClassicState.chapterIndex}}{${chapterTitle}}`));
             emittedStructureOpener = true;
           } else if (modernClassicState.emittedSceneCount > 0 && !emittedStructureOpener) {
+            // Scene boundary → emit inline scene separator
             textParts.push(buildRawLatexBlock('\\rtSceneSep'));
           }
 

@@ -95,7 +95,7 @@ Ends here ^scene-end`;
 \`\`\`
 
 \`\`\`{=latex}
-\\rtChapter{I}{Chapter Title}
+\\rtChapter{1}{Chapter Title}
 \`\`\`
 
 \`\`\`{=latex}
@@ -111,7 +111,7 @@ Ends here ^scene-end`;
 
         expect(sanitized).toContain('\\rtPart{I}');
         expect(sanitized).toContain('\\rtEpigraph{A quote}{Author}');
-        expect(sanitized).toContain('\\rtChapter{I}{Chapter Title}');
+        expect(sanitized).toContain('\\rtChapter{1}{Chapter Title}');
         expect(sanitized).toContain('\\rtSceneSep');
     });
 });

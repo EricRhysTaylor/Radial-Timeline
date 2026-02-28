@@ -7327,12 +7327,17 @@
 .ert-ui.ert-scope--settings .ert-layout-visual-pictograms {
   flex: 0 0 auto;
   display: flex;
+  flex-direction: column;
+  gap: var(--ert-gap-sm);
+  align-items: flex-end;
+}
+
+.ert-ui.ert-scope--settings .ert-layout-picto-row {
+  display: flex;
   flex-direction: row;
-  flex-wrap: wrap;
   gap: var(--ert-gap-sm);
   align-items: flex-start;
   justify-content: flex-end;
-  max-width: 360px;
 }
 
 /* -- Spread (label + page pair) -- */
@@ -7346,11 +7351,21 @@
 
 .ert-ui.ert-scope--settings .ert-layout-spread-label {
   font-family: '04b03b', 'Monaco', 'Courier New', monospace;
-  font-size: 8px;
+  font-size: 10px; /* 04b03b base size — caption scale beneath pages */
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   line-height: 1;
+}
+
+/* -- Scene Mode Highlight (Signature: active vs dimmed) -- */
+
+.ert-ui.ert-scope--settings .ert-layout-spread.is-scene-dimmed {
+  opacity: 0.3;
+}
+
+.ert-ui.ert-scope--settings .ert-layout-spread.is-scene-active .ert-layout-spread-label {
+  color: var(--text-accent);
 }
 
 .ert-ui.ert-scope--settings .ert-layout-spread-pages {
@@ -7361,8 +7376,8 @@
 /* -- Individual Page -- */
 
 .ert-ui.ert-scope--settings .ert-layout-page {
-  width: 80px;
-  height: 110px;
+  width: 86px;
+  height: 118px;
   border: 1px solid color-mix(in srgb, var(--background-modifier-border) 80%, transparent);
   background: var(--background-primary);
   display: flex;
@@ -7416,14 +7431,23 @@
 }
 
 .ert-ui.ert-scope--settings .ert-layout-page-hdr-left,
-.ert-ui.ert-scope--settings .ert-layout-page-hdr-center,
-.ert-ui.ert-scope--settings .ert-layout-page-hdr-right {
+.ert-ui.ert-scope--settings .ert-layout-page-hdr-center {
   font-family: '04b03b', 'Monaco', 'Courier New', monospace;
-  font-size: 8px;
+  font-size: 10px; /* 04b03b base size */
   line-height: 1;
   color: var(--text-muted);
   white-space: nowrap;
   overflow: hidden;
+}
+
+.ert-ui.ert-scope--settings .ert-layout-page-hdr-right {
+  font-family: '04b03b', 'Monaco', 'Courier New', monospace;
+  font-size: 10px; /* 04b03b base size */
+  line-height: 1;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  margin-left: auto; /* push right even when no left sibling */
 }
 
 /* -- Page Body (text lines) -- */
@@ -7466,7 +7490,7 @@
 
 .ert-ui.ert-scope--settings .ert-layout-page-special-subtext {
   font-family: '04b03b', 'Monaco', 'Courier New', monospace;
-  font-size: 8px;
+  font-size: 10px; /* 04b03b base size */
   line-height: 1;
   color: var(--text-muted);
   text-align: center;
@@ -7485,16 +7509,40 @@
 
 .ert-ui.ert-scope--settings .ert-layout-page-separator-text {
   font-family: '04b03b', 'Monaco', 'Courier New', monospace;
-  font-size: 8px;
+  font-size: 10px; /* 04b03b base size */
   line-height: 1;
   color: var(--text-muted);
   text-align: center;
 }
 
 .ert-ui.ert-scope--settings .ert-layout-page-separator-rule {
-  width: 24px;
+  width: 12px;
   height: 1px;
   background: color-mix(in srgb, var(--text-muted) 40%, transparent);
+}
+
+/* -- Page Body: Epigraph (italic quote + attribution below Part) -- */
+
+.ert-ui.ert-scope--settings .ert-layout-page-epigraph-text {
+  font-family: '04b03b', 'Monaco', 'Courier New', monospace;
+  font-size: 10px; /* 04b03b base size */
+  font-style: italic;
+  line-height: 1;
+  color: var(--text-muted);
+  text-align: center;
+  white-space: nowrap;
+  margin-top: 4px;
+}
+
+.ert-ui.ert-scope--settings .ert-layout-page-epigraph-attr {
+  font-family: '04b03b', 'Monaco', 'Courier New', monospace;
+  font-size: 10px; /* 04b03b base size */
+  line-height: 1;
+  color: var(--text-muted);
+  text-align: center;
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 /* -- Page Footer -- */
@@ -7514,7 +7562,7 @@
 
 .ert-ui.ert-scope--settings .ert-layout-page-folio {
   font-family: '04b03b', 'Monaco', 'Courier New', monospace;
-  font-size: 8px;
+  font-size: 10px; /* 04b03b base size */
   line-height: 1;
   color: var(--text-muted);
 }
