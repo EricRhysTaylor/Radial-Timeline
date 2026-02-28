@@ -375,6 +375,7 @@ export interface PandocLayoutTemplate {
     name: string;              // display name, e.g. "Signature Literary"
     preset: 'novel' | 'screenplay' | 'podcast';
     path: string;              // vault-relative or absolute path to .tex file
+    description?: string;      // optional user-editable description shown in Pro settings
     bundled?: boolean;         // true for RT-generated sample templates
     usesModernClassicStructure?: boolean; // emit rtPart/rtChapter/rtSceneSep markers in PDF compilation
     hasEpigraphs?: boolean;

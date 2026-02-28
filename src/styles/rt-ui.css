@@ -7176,6 +7176,25 @@
   white-space: normal;
 }
 
+.ert-ui.ert-scope--settings .ert-layout-description-editor {
+  display: grid;
+  gap: 4px;
+  padding: 0 var(--ert-pad-sm) var(--ert-gap-sm);
+}
+
+.ert-ui.ert-scope--settings .ert-layout-description-label {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ert-ui.ert-scope--settings .ert-layout-description-input {
+  width: 100%;
+  min-height: 3.25rem;
+  font-family: var(--font-text);
+}
+
 .ert-ui.ert-scope--settings .ert-layout-special-toggle {
   margin-left: 2px;
 }

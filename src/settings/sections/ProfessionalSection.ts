@@ -1918,7 +1918,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         return 'generic';
     };
     const getLayoutDisplayName = (layout: PandocLayoutTemplate): string => {
-        if (layout.preset === 'novel') {
+        if (layout.preset === 'novel' && layout.bundled) {
             const variant = getFictionVariant(layout);
             if (variant === 'classic') return 'Basic Manuscript';
             if (variant === 'modernClassic') return 'Modern Classic';
@@ -1928,7 +1928,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         if (layout.preset === 'screenplay' && layout.bundled) return 'Screenplay';
         return normalizeVersionLabels(layout.name || 'Custom Layout');
     };
-    const buildLayoutDescription = (layout: PandocLayoutTemplate): string => {
+    const buildDefaultLayoutDescription = (layout: PandocLayoutTemplate): string => {
         if (layout.preset === 'screenplay') {
             return 'Industry screenplay format with uppercase sluglines, dialogue-first spacing, and production-safe margins. Page numbers run in the header with a Courier-family typewriter look.';
         }
@@ -1952,6 +1952,11 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
             return 'Narration-first script format with speaker/segment clarity, timing-friendly spacing, and clean cue separation. Header metadata and page numbering are positioned for fast booth or desk reference.';
         }
         return 'Custom PDF layout.';
+    };
+    const buildLayoutDescription = (layout: PandocLayoutTemplate): string => {
+        const customDescription = typeof layout.description === 'string' ? layout.description.trim() : '';
+        if (customDescription.length > 0) return customDescription;
+        return buildDefaultLayoutDescription(layout);
     };
 
     // ── Layout Visual: Types ──────────────────────────────────────────────
@@ -2526,6 +2531,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
             name: copyName,
             preset: layout.preset,
             path: compactTemplatePathForStorage(plugin, copyFilename),
+            description: buildDefaultLayoutDescription(layout),
             bundled: false,
             ...(layout.usesModernClassicStructure === true ? { usesModernClassicStructure: true } : {}),
             ...(layout.hasEpigraphs === true ? { hasEpigraphs: true } : {}),
@@ -2585,7 +2591,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
             if (expanded) row.addClass('is-special-expanded');
 
             const variant = getFictionVariant(layout);
-            const useVisual = layout.preset === 'novel' && variant !== 'generic';
+            const useVisual = isBundled && layout.preset === 'novel' && variant !== 'generic';
 
             const s = addProRow(new Setting(row))
                 .setName(getLayoutDisplayName(layout))
@@ -2610,6 +2616,30 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
 
             if (!isBundled) {
                 s.addText(text => {
+                    text.inputEl.addClass('ert-input--md');
+                    text.setPlaceholder('Layout name');
+                    text.setValue(layout.name);
+                    const saveName = async () => {
+                        const nextName = text.getValue().trim();
+                        if (!nextName) {
+                            new Notice('Layout name is required.');
+                            text.setValue(layout.name);
+                            return;
+                        }
+                        if (nextName === layout.name) return;
+                        layout.name = nextName;
+                        await plugin.saveSettings();
+                        renderLayoutRows();
+                        refreshPublishingStatusCard();
+                    };
+                    text.inputEl.addEventListener('blur', () => { void saveName(); });
+                    text.inputEl.addEventListener('keydown', (e: KeyboardEvent) => {
+                        if (e.key === 'Enter') { e.preventDefault(); void saveName(); }
+                    });
+                });
+
+                let descriptionInputEl: HTMLTextAreaElement | null = null;
+                s.addText(text => {
                     text.inputEl.addClass('ert-input--lg');
                     text.setPlaceholder('template.tex or path/to/template.tex');
                     text.setValue(layout.path);
@@ -2627,6 +2657,11 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
                         await plugin.saveSettings();
                         flashValidateLayoutPath(text.inputEl, layout);
                         s.setDesc(buildLayoutDescription(layout));
+                        if (descriptionInputEl && (!layout.description || !layout.description.trim())) {
+                            const defaultDescription = buildDefaultLayoutDescription(layout);
+                            descriptionInputEl.value = defaultDescription;
+                            descriptionInputEl.placeholder = defaultDescription;
+                        }
                         refreshPublishingStatusCard();
                     };
                     attachTemplatePathSuggest(plugin, text, (selectedPath) => {
@@ -2639,6 +2674,31 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
                         if (e.key === 'Enter') { e.preventDefault(); void saveAndValidate(); }
                     });
                 });
+
+                const descriptionEditor = row.createDiv({ cls: 'ert-layout-description-editor' });
+                descriptionEditor.createDiv({ cls: 'ert-layout-description-label', text: 'Description' });
+                descriptionInputEl = descriptionEditor.createEl('textarea', {
+                    cls: 'ert-textarea ert-textarea--compact ert-layout-description-input',
+                    attr: { rows: '2' }
+                });
+                const seededDescription = buildLayoutDescription(layout);
+                descriptionInputEl.value = seededDescription;
+                descriptionInputEl.placeholder = buildDefaultLayoutDescription(layout);
+                const saveDescription = async () => {
+                    if (!descriptionInputEl) return;
+                    const nextDescription = descriptionInputEl.value.trim();
+                    const defaultDescription = buildDefaultLayoutDescription(layout).trim();
+                    if (!nextDescription || nextDescription === defaultDescription) {
+                        delete layout.description;
+                        descriptionInputEl.value = defaultDescription;
+                    } else {
+                        layout.description = nextDescription;
+                    }
+                    await plugin.saveSettings();
+                    s.setDesc(buildLayoutDescription(layout));
+                };
+                descriptionInputEl.addEventListener('blur', () => { void saveDescription(); });
+                descriptionInputEl.addEventListener('change', () => { void saveDescription(); });
             }
 
             if (isBundled && !installed) {
