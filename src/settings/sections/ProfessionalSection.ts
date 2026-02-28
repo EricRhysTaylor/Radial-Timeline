@@ -1915,7 +1915,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
                     { label: 'Folios', value: 'Bottom center' },
                     { label: 'Font', value: 'Sorts Mill Goudy (serif)' },
                     { label: 'Spacing', value: '1.5 lines' },
-                    { label: 'Scenes', value: 'Opener page — centered, bold' },
+                    { label: 'Scenes', value: 'Opener page — centered, bold, suppresses headers' },
                 ];
             case 'modernClassic':
                 return [
@@ -1973,14 +1973,14 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         switch (variant) {
             case 'classic':
                 return {
-                    // Scene opener: centered scene heading with body text below
+                    // Scene opener: suppresses headers/footers (\thispagestyle{empty})
                     scene: {
                         label: 'SCENE',
                         leftPage: null,
                         rightPage: {
-                            headerCenter: 'TITLE',
-                            folioBottom: '14',
                             bodyLines: 5,
+                            suppressHeader: true,
+                            suppressFooter: true,
                             specialText: '3',
                         },
                     },

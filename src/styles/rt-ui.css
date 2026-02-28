@@ -7376,6 +7376,8 @@
 /* -- Individual Page -- */
 
 .ert-ui.ert-scope--settings .ert-layout-page {
+  --_picto-mono: 'SF Mono', 'Cascadia Mono', 'Menlo', 'Consolas', 'DejaVu Sans Mono', monospace;
+  --_picto-font-size: 7.5px;
   width: 86px;
   height: 118px;
   border: 1px solid color-mix(in srgb, var(--background-modifier-border) 80%, transparent);
@@ -7432,8 +7434,8 @@
 
 .ert-ui.ert-scope--settings .ert-layout-page-hdr-left,
 .ert-ui.ert-scope--settings .ert-layout-page-hdr-center {
-  font-family: '04b03b', 'Monaco', 'Courier New', monospace;
-  font-size: 10px; /* 04b03b base size */
+  font-family: var(--_picto-mono);
+  font-size: var(--_picto-font-size);
   line-height: 1;
   color: var(--text-muted);
   white-space: nowrap;
@@ -7441,8 +7443,8 @@
 }
 
 .ert-ui.ert-scope--settings .ert-layout-page-hdr-right {
-  font-family: '04b03b', 'Monaco', 'Courier New', monospace;
-  font-size: 10px; /* 04b03b base size */
+  font-family: var(--_picto-mono);
+  font-size: var(--_picto-font-size);
   line-height: 1;
   color: var(--text-muted);
   white-space: nowrap;
@@ -7480,8 +7482,8 @@
 }
 
 .ert-ui.ert-scope--settings .ert-layout-page-special-text {
-  font-family: '04b03b', 'Monaco', 'Courier New', monospace;
-  font-size: 10px;
+  font-family: var(--_picto-mono);
+  font-size: var(--_picto-font-size);
   line-height: 1;
   color: var(--text-normal);
   text-align: center;
@@ -7489,8 +7491,8 @@
 }
 
 .ert-ui.ert-scope--settings .ert-layout-page-special-subtext {
-  font-family: '04b03b', 'Monaco', 'Courier New', monospace;
-  font-size: 10px; /* 04b03b base size */
+  font-family: var(--_picto-mono);
+  font-size: var(--_picto-font-size);
   line-height: 1;
   color: var(--text-muted);
   text-align: center;
@@ -7508,8 +7510,8 @@
 }
 
 .ert-ui.ert-scope--settings .ert-layout-page-separator-text {
-  font-family: '04b03b', 'Monaco', 'Courier New', monospace;
-  font-size: 10px; /* 04b03b base size */
+  font-family: var(--_picto-mono);
+  font-size: var(--_picto-font-size);
   line-height: 1;
   color: var(--text-muted);
   text-align: center;
@@ -7524,8 +7526,8 @@
 /* -- Page Body: Epigraph (italic quote + attribution below Part) -- */
 
 .ert-ui.ert-scope--settings .ert-layout-page-epigraph-text {
-  font-family: '04b03b', 'Monaco', 'Courier New', monospace;
-  font-size: 10px; /* 04b03b base size */
+  font-family: var(--_picto-mono);
+  font-size: var(--_picto-font-size);
   font-style: italic;
   line-height: 1;
   color: var(--text-muted);
@@ -7535,8 +7537,8 @@
 }
 
 .ert-ui.ert-scope--settings .ert-layout-page-epigraph-attr {
-  font-family: '04b03b', 'Monaco', 'Courier New', monospace;
-  font-size: 10px; /* 04b03b base size */
+  font-family: var(--_picto-mono);
+  font-size: var(--_picto-font-size);
   line-height: 1;
   color: var(--text-muted);
   text-align: center;
@@ -7561,8 +7563,8 @@
 }
 
 .ert-ui.ert-scope--settings .ert-layout-page-folio {
-  font-family: '04b03b', 'Monaco', 'Courier New', monospace;
-  font-size: 10px; /* 04b03b base size */
+  font-family: var(--_picto-mono);
+  font-size: var(--_picto-font-size);
   line-height: 1;
   color: var(--text-muted);
 }
