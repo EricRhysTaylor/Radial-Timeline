@@ -264,6 +264,93 @@ function compactTemplatePathForStorage(plugin: RadialTimelinePlugin, rawPath: st
     return normalized;
 }
 
+function buildTemplatePathCandidates(plugin: RadialTimelinePlugin, rawPath: string): string[] {
+    const trimmed = rawPath.trim();
+    if (!trimmed) return [];
+    if (path.isAbsolute(trimmed) || /^[A-Za-z]:[\\/]/.test(trimmed)) return [];
+
+    const normalized = normalizePath(trimmed.replace(/^\/+/, ''));
+    if (!normalized) return [];
+
+    const pandocFolder = getConfiguredPandocFolder(plugin);
+    const prefixed = normalizePath(`${pandocFolder}/${normalized}`);
+    if (!normalized.startsWith(`${pandocFolder}/`) && prefixed !== normalized) {
+        return [prefixed, normalized];
+    }
+    return [normalized];
+}
+
+function resolveExistingTemplateVaultPath(plugin: RadialTimelinePlugin, rawPath: string): string | null {
+    const candidates = buildTemplatePathCandidates(plugin, rawPath);
+    for (const candidate of candidates) {
+        if (plugin.app.vault.getAbstractFileByPath(candidate) instanceof TFile) {
+            return candidate;
+        }
+    }
+    return null;
+}
+
+function resolveTargetTemplateVaultPath(plugin: RadialTimelinePlugin, rawPath: string): string | null {
+    const trimmed = rawPath.trim();
+    if (!trimmed) return null;
+    if (path.isAbsolute(trimmed) || /^[A-Za-z]:[\\/]/.test(trimmed)) return null;
+
+    const normalized = normalizePath(trimmed.replace(/^\/+/, ''));
+    if (!normalized) return null;
+
+    const pandocFolder = getConfiguredPandocFolder(plugin);
+    if (normalized.startsWith(`${pandocFolder}/`)) return normalized;
+    if (normalized.includes('/')) return normalized;
+    return normalizePath(`${pandocFolder}/${normalized}`);
+}
+
+async function ensureVaultFolderPath(plugin: RadialTimelinePlugin, folderPath: string): Promise<void> {
+    const normalized = normalizePath(folderPath.trim().replace(/^\/+/, ''));
+    if (!normalized) return;
+
+    const segments = normalized.split('/').filter(Boolean);
+    let current = '';
+    for (const segment of segments) {
+        current = current ? `${current}/${segment}` : segment;
+        const existing = plugin.app.vault.getAbstractFileByPath(current);
+        if (existing instanceof TFolder) continue;
+        if (existing) throw new Error(`Cannot create folder "${current}" because a file exists at that path.`);
+        await plugin.app.vault.createFolder(current);
+    }
+}
+
+async function maybeRenameTemplateFileForPathChange(
+    plugin: RadialTimelinePlugin,
+    previousStoredPath: string,
+    nextStoredPath: string
+): Promise<boolean> {
+    const previous = compactTemplatePathForStorage(plugin, previousStoredPath);
+    const next = compactTemplatePathForStorage(plugin, nextStoredPath);
+    if (!previous || !next || previous === next) return false;
+
+    if (path.extname(next).toLowerCase() !== '.tex') return false;
+
+    const sourceVaultPath = resolveExistingTemplateVaultPath(plugin, previous);
+    if (!sourceVaultPath) return false;
+
+    const targetVaultPath = resolveTargetTemplateVaultPath(plugin, next);
+    if (!targetVaultPath) return false;
+    if (normalizePath(targetVaultPath) === normalizePath(sourceVaultPath)) return false;
+    if (plugin.app.vault.getAbstractFileByPath(targetVaultPath)) return false;
+
+    const sourceFile = plugin.app.vault.getAbstractFileByPath(sourceVaultPath);
+    if (!(sourceFile instanceof TFile)) return false;
+
+    const slashIndex = targetVaultPath.lastIndexOf('/');
+    const targetFolder = slashIndex > 0 ? targetVaultPath.slice(0, slashIndex) : '';
+    if (targetFolder) {
+        await ensureVaultFolderPath(plugin, targetFolder);
+    }
+
+    await plugin.app.fileManager.renameFile(sourceFile, targetVaultPath);
+    return true;
+}
+
 class PandocTemplatePathSuggest extends AbstractInputSuggest<TemplatePathSuggestion> {
     private readonly plugin: RadialTimelinePlugin;
     private readonly inputRef: HTMLInputElement;
@@ -2527,7 +2614,14 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
                     text.setPlaceholder('template.tex or path/to/template.tex');
                     text.setValue(layout.path);
                     const saveAndValidate = async () => {
+                        const previousPath = layout.path;
                         const normalizedPath = compactTemplatePathForStorage(plugin, text.getValue());
+                        try {
+                            await maybeRenameTemplateFileForPathChange(plugin, previousPath, normalizedPath);
+                        } catch (error) {
+                            const message = error instanceof Error ? error.message : String(error);
+                            new Notice(`Could not rename template file: ${message}`);
+                        }
                         layout.path = normalizedPath;
                         try { text.setValue(normalizedPath); } catch {}
                         await plugin.saveSettings();
