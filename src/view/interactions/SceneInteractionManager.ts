@@ -40,7 +40,7 @@ export class SceneInteractionManager {
     // Original state storage for reset
     private originalAngles = new Map<string, { start: number; end: number }>();
     private originalSquareTransforms = new Map<string, string>();
-    
+
     // Text measurement element (reused to avoid constant creation/destruction)
     private measurementText: SVGTextElement;
     
@@ -469,20 +469,27 @@ export class SceneInteractionManager {
             actBounds.end
         );
         
-        // Apply redistribution
+        // Apply redistribution (skip unchanged elements to avoid unnecessary DOM mutations)
         redistribution.forEach(result => {
+            const original = this.originalAngles.get(result.id);
+            if (original &&
+                result.newStartAngle === original.start &&
+                result.newEndAngle === original.end) {
+                return; // Unchanged — no DOM update needed
+            }
+
             const group = this.svg.getElementById(result.id);
             if (!group) return;
-            
+
             const innerR = Number(group.getAttribute('data-inner-r')) || 0;
             const outerR = Number(group.getAttribute('data-outer-r')) || 0;
-            
+
             // Update scene path
             const path = group.querySelector('.rt-scene-path') as SVGPathElement;
             if (path) {
                 path.setAttribute('d', buildArcPath(innerR, outerR, result.newStartAngle, result.newEndAngle));
             }
-            
+
             // Update text path
             const textPath = group.querySelector('path[id^="textPath-"]') as SVGPathElement;
             if (textPath) {
@@ -491,7 +498,7 @@ export class SceneInteractionManager {
                 const textPathRadius = Math.max(innerR, outerR - titleInset);
                 textPath.setAttribute('d', buildTextPath(textPathRadius, result.newStartAngle, result.newEndAngle));
             }
-            
+
             // Update number square position
             const scenePathEl = group.querySelector('.rt-scene-path') as SVGPathElement;
             if (scenePathEl) {
@@ -499,7 +506,7 @@ export class SceneInteractionManager {
                 const squareRadius = (innerR + outerR) / 2;
                 const squareX = squareRadius * Math.cos(result.newStartAngle);
                 const squareY = squareRadius * Math.sin(result.newStartAngle);
-                
+
                 const view = this.getView();
                 if (view) {
                     view.setNumberSquareGroupPosition(this.svg, sceneId, squareX, squareY);
