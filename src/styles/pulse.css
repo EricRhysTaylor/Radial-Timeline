@@ -1638,7 +1638,6 @@
   display: inline-block;
   width: var(--rt-tooltip-width, auto);
   text-align: center;
-  text-wrap: balance;
   white-space: pre-wrap;
   word-wrap: break-word;
   overflow-wrap: anywhere;

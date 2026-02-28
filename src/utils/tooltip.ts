@@ -276,10 +276,33 @@ function ensureCustomTooltip() {
 function updateTooltipWidth(): void {
     if (!customTooltipEl) return;
     customTooltipEl.style.removeProperty('--rt-tooltip-width');
-    const rect = customTooltipEl.getBoundingClientRect();
-    if (rect.width > 0) {
-        customTooltipEl.style.setProperty('--rt-tooltip-width', `${Math.ceil(rect.width)}px`);
+    const naturalWidth = customTooltipEl.getBoundingClientRect().width;
+    const naturalHeight = customTooltipEl.getBoundingClientRect().height;
+
+    if (naturalWidth <= 0) return;
+
+    // Single line — just lock width as-is
+    if (naturalHeight <= 20) {
+        customTooltipEl.style.setProperty('--rt-tooltip-width', `${Math.ceil(naturalWidth)}px`);
+        return;
     }
+
+    // Multi-line: binary-search for the narrowest width that keeps the same line count.
+    // This produces balanced-looking lines with a tight-fitting box.
+    let lo = naturalWidth * 0.5;
+    let hi = naturalWidth;
+
+    while (hi - lo > 1) {
+        const mid = (lo + hi) / 2;
+        customTooltipEl.style.setProperty('--rt-tooltip-width', `${mid}px`);
+        if (customTooltipEl.getBoundingClientRect().height > naturalHeight) {
+            lo = mid;
+        } else {
+            hi = mid;
+        }
+    }
+
+    customTooltipEl.style.setProperty('--rt-tooltip-width', `${Math.ceil(hi)}px`);
 }
 
 type TooltipAnchorPoint = { x: number; y: number };
