@@ -209,7 +209,20 @@ export class SceneInteractionManager {
             this.rafId = null;
             
             const view = this.getView();
-            if (!view || !this.currentSynopsis || !this.currentSceneId) return;
+            if (!view) return;
+
+            // Live-sync title expansion with current setting without requiring view reopen.
+            const autoExpandEnabled = Boolean((view.plugin.settings as any).enableSceneTitleAutoExpand);
+            if ((!this.enabled || !autoExpandEnabled) && this.originalAngles.size > 0) {
+                this.resetAngularRedistribution();
+            } else if (this.enabled && autoExpandEnabled && this.currentGroup && this.originalAngles.size === 0) {
+                const sceneTitle = this.currentGroup.querySelector('.rt-scene-title');
+                if (sceneTitle) {
+                    this.redistributeActScenes(this.currentGroup);
+                }
+            }
+
+            if (!this.currentSynopsis || !this.currentSceneId) return;
             if (!this.currentSynopsis.classList.contains('rt-visible')) return;
             
             view.plugin.synopsisManager.updatePosition(

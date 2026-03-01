@@ -82,7 +82,9 @@ export function setupAllScenesDelegatedHover(view: AllScenesView, container: HTM
         ? svgActs
         : Math.max(3, (view.plugin.settings as any).actCount ?? 3);
     const manager = new SceneInteractionManager(view as any, svg, totalActs);
-    manager.setTitleExpansionEnabled(view.plugin.settings.enableSceneTitleAutoExpand ?? true);
+    // Keep manager enabled in this mode and read the user setting live at hover-time.
+    // This allows toggling auto-expand without reopening the timeline view.
+    manager.setTitleExpansionEnabled(true);
 
     let currentGroup: Element | null = null;
     let currentSceneId: string | null = null;
