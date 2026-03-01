@@ -35,10 +35,9 @@ export function comparePrefixTokens(a: string | null, b: string | null): number 
     return 0;
 }
 
-export function formatIntegerPrefix(index: number, width: number): string {
-    const raw = String(index);
-    if (width > 1) return raw.padStart(width, '0');
-    return raw;
+export function formatIntegerPrefix(index: number, _width: number = 0): string {
+    const normalized = Number.isFinite(index) ? Math.max(0, Math.floor(index)) : 0;
+    return String(normalized);
 }
 
 export function formatBeatDecimalPrefix(majorPrefix: string, minorIndex: number, minorWidth: number = 2): string {

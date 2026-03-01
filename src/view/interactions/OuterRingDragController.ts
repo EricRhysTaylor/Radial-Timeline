@@ -44,9 +44,18 @@ type OuterRingOrderEntry = {
  */
 let dragInProgress = false;
 let lastInteractionTime = 0;
+let dragInteractionActive = false;
 
 export function isDragInProgress(): boolean {
     return dragInProgress;
+}
+
+/**
+ * Check if drag interaction is active (arming or dragging).
+ * Use this to suspend hover expansion while pointer is engaged for reorder.
+ */
+export function isDragInteractionActive(): boolean {
+    return dragInteractionActive;
 }
 
 /**
@@ -92,6 +101,7 @@ export class OuterRingDragController {
     private dropArc: SVGPathElement | null = null;
     private sourcePath: string | null = null;
     private dragIndicator: SVGGElement | null = null; // Tangent-aligned reorder indicator
+    private sourceScenePathEl: SVGPathElement | null = null;
 
     constructor(view: OuterRingViewAdapter, svg: SVGSVGElement, options: OuterRingDragOptions) {
         this.view = view;
@@ -545,10 +555,15 @@ export class OuterRingDragController {
         }
         this.dragging = false;
         dragInProgress = false;
+        dragInteractionActive = false;
         this.sourceSceneId = null;
         this.sourcePath = null;
         this.sourceItemType = 'Scene';
         this.originModalColor = undefined;
+        if (this.sourceScenePathEl) {
+            this.sourceScenePathEl.style.removeProperty('fill');
+        }
+        this.sourceScenePathEl = null;
         if (this.sourceSceneGroup) {
             this.sourceSceneGroup.classList.remove('rt-drag-source');
             this.sourceSceneGroup.style.removeProperty('--rt-drag-stroke-color');
@@ -572,8 +587,14 @@ export class OuterRingDragController {
         this.sourceSceneGroup.classList.add('rt-drag-source');
         if (this.originColor) {
             this.sourceSceneGroup.style.setProperty('--rt-drag-stroke-color', this.originColor);
+            if (this.sourceScenePathEl) {
+                this.sourceScenePathEl.style.setProperty('fill', this.originColor);
+            }
         } else {
             this.sourceSceneGroup.style.removeProperty('--rt-drag-stroke-color');
+            if (this.sourceScenePathEl) {
+                this.sourceScenePathEl.style.removeProperty('fill');
+            }
         }
         this.hideDragIndicator(); // Hide tangent arrows during drag
         this.log('beginDrag', { sceneId: this.sourceSceneId, itemType: this.sourceItemType });
@@ -617,7 +638,10 @@ export class OuterRingDragController {
         }
 
         const moved = order[fromIdx];
-        const insertionIndex = fromIdx < toIdx ? toIdx : toIdx + 1;
+        const insertionRelation: 'before' = 'before';
+        // Always insert before the drop target.
+        // When moving forward (fromIdx < toIdx), the target shifts left after removal.
+        const insertionIndex = fromIdx < toIdx ? Math.max(0, toIdx - 1) : toIdx;
         const isNoOpReorder = insertionIndex === fromIdx;
         const reordered = [...order];
         if (!isNoOpReorder) {
@@ -664,7 +688,7 @@ export class OuterRingDragController {
         const sourceLabel = sourceType === 'Beat' ? 'beat' : 'scene';
         const targetLabel = (targetItemType === 'Beat') ? 'beat' : 'scene';
         const summaryLines = [
-            `Place ${sourceLabel} ${sourceOriginalNumber} after ${targetLabel} ${targetOriginalNumber}.`,
+            `Place ${sourceLabel} ${sourceOriginalNumber} ${insertionRelation} ${targetLabel} ${targetOriginalNumber}.`,
             this.buildResequenceSummaryLine(renumberUpdates, reordered),
         ];
         this.appendRippleRenameSummary(summaryLines);
@@ -724,7 +748,7 @@ export class OuterRingDragController {
                     modal.updateProgress(this.formatRenameProgressLine('Reorder', progress));
                 }
             });
-            new Notice(`Moved ${sourceLabel} ${sourceOriginalNumber} → after ${targetLabel} ${targetOriginalNumber}`, 2000);
+            new Notice(`Moved ${sourceLabel} ${sourceOriginalNumber} → ${insertionRelation} ${targetLabel} ${targetOriginalNumber}`, 2000);
             await this.runRippleRenameIfEnabled((message) => modal.updateProgress(message));
             modal.updateProgress('Refreshing timeline...');
             // Small delay to allow Obsidian's metadata cache to update before refresh
@@ -1046,8 +1070,10 @@ export class OuterRingDragController {
         
         this.sourceSceneId = sceneId;
         this.sourceSceneGroup = group;
+        this.sourceScenePathEl = group.querySelector<SVGPathElement>('.rt-scene-path');
         this.sourceItemType = (group.getAttribute('data-item-type') as 'Scene' | 'Beat') || 'Scene';
         this.sourcePath = filePath;
+        dragInteractionActive = true;
         this.startX = evt.clientX;
         this.startY = evt.clientY;
         this.startTime = Date.now();

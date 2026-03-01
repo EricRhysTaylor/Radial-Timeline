@@ -4,7 +4,7 @@ import type { TimelineItem } from '../../types';
 import { handleDominantSubplotSelection } from '../interactions/DominantSubplotHandler';
 import { SceneInteractionManager } from '../interactions/SceneInteractionManager';
 import { updateSynopsisTitleColor } from '../interactions/SynopsisTitleColorManager';
-import { OuterRingDragController, isDragInProgress, wasRecentlyHandledByDrag } from '../interactions/OuterRingDragController';
+import { OuterRingDragController, isDragInProgress, isDragInteractionActive, wasRecentlyHandledByDrag } from '../interactions/OuterRingDragController';
 import { maybeHandleZeroDraftClick } from '../interactions/ZeroDraftHandler';
 
 export interface AllScenesView {
@@ -100,6 +100,14 @@ export function setupAllScenesDelegatedHover(view: AllScenesView, container: HTM
     };
 
     view.registerDomEvent(svg as unknown as HTMLElement, 'pointerover', (e: PointerEvent) => {
+        if (isDragInteractionActive()) {
+            if (currentGroup) {
+                svg.classList.remove('scene-hover');
+                clearSelection();
+            }
+            return;
+        }
+
         // Check SVG data-mode attribute for definitive mode state
         const svgMode = svg.getAttribute('data-mode');
         if (svgMode === 'gossamer') return;
@@ -118,6 +126,14 @@ export function setupAllScenesDelegatedHover(view: AllScenesView, container: HTM
     });
 
     view.registerDomEvent(svg as unknown as HTMLElement, 'pointerout', (e: PointerEvent) => {
+        if (isDragInteractionActive()) {
+            if (currentGroup) {
+                svg.classList.remove('scene-hover');
+                clearSelection();
+            }
+            return;
+        }
+
         // Check SVG data-mode attribute for definitive mode state  
         const svgMode = svg.getAttribute('data-mode');
         if (svgMode === 'gossamer') return;
@@ -129,6 +145,14 @@ export function setupAllScenesDelegatedHover(view: AllScenesView, container: HTM
     });
 
     view.registerDomEvent(svg as unknown as HTMLElement, 'pointermove', (e: PointerEvent) => {
+        if (isDragInteractionActive()) {
+            if (currentGroup) {
+                svg.classList.remove('scene-hover');
+                clearSelection();
+            }
+            return;
+        }
+
         if (rafId !== null) return;
         rafId = window.requestAnimationFrame(() => {
             manager.onMouseMove(e as unknown as MouseEvent);

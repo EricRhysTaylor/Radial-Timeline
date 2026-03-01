@@ -64,31 +64,18 @@ export function calculateTargetSize(
  * Calculate act boundaries based on act number
  */
 export function getActBoundaries(actNumber: number, totalActs: number = 3): { start: number; end: number } {
-    if (actNumber === 0) {
-        // Chronologue mode: full 360° circle starting at top
-        return {
-            start: -Math.PI / 2,
-            end: -Math.PI / 2 + (2 * Math.PI)
-        };
-    } else {
-        const NUM_ACTS = Math.max(3, totalActs);
-        return {
-            start: (actNumber * 2 * Math.PI / NUM_ACTS) - Math.PI / 2,
-            end: ((actNumber + 1) * 2 * Math.PI / NUM_ACTS) - Math.PI / 2
-        };
-    }
+    const NUM_ACTS = Math.max(3, totalActs);
+    return {
+        start: (actNumber * 2 * Math.PI / NUM_ACTS) - Math.PI / 2,
+        end: ((actNumber + 1) * 2 * Math.PI / NUM_ACTS) - Math.PI / 2
+    };
 }
 
 /**
  * Redistribute angles for scenes in an act when one is expanded.
  *
- * Uses an "anchored" approach: the hovered scene keeps its original start angle
- * and expands forward. Only elements AFTER the hovered scene are compressed.
- * Elements before it stay at their original positions.
- *
- * This prevents hover flickering: since the expanded scene's path always covers
- * its original angular range, the pointer (which entered via the original path)
- * remains inside the expanded path after redistribution.
+ * All other scenes shrink equally to make room for the expanded scene.
+ * Elements are packed from actStartAngle maintaining their original order.
  */
 export function redistributeAngles(
     elements: SceneAngleData[],
@@ -97,73 +84,59 @@ export function redistributeAngles(
     actStartAngle: number,
     actEndAngle?: number
 ): RedistributionResult[] {
-    const hoveredIdx = elements.findIndex(e => e.id === hoveredId);
-    if (hoveredIdx === -1) {
-        return elements.map(e => ({ id: e.id, newStartAngle: e.startAngle, newEndAngle: e.endAngle }));
-    }
+    // Separate scenes from beat slices
+    const scenes = elements.filter(e => e.isScene);
+    const beats = elements.filter(e => !e.isScene);
 
-    const hovered = elements[hoveredIdx];
+    // Calculate beat space (beats keep original size, but clamp if rounding would overflow the act)
+    const rawBeatSpace = beats.reduce((sum, beat) => sum + (beat.endAngle - beat.startAngle), 0);
 
-    // Total act space from authoritative boundaries
+    // Calculate total act space using configured act boundaries when provided
+    // This avoids accumulated rounding loss from per-scene data attributes.
     const totalActSpace = (typeof actEndAngle === 'number')
         ? (actEndAngle - actStartAngle)
         : elements.reduce((sum, el) => sum + (el.endAngle - el.startAngle), 0);
-    const effectiveActEnd = actStartAngle + totalActSpace;
 
-    // Anchor: hovered scene keeps its original start angle, expands forward
-    const hoveredNewStart = hovered.startAngle;
-    const maxForwardSpace = effectiveActEnd - hoveredNewStart;
-    const clampedTarget = Math.min(targetSize, maxForwardSpace);
-    const hoveredNewEnd = hoveredNewStart + clampedTarget;
+    // If beats would overrun the act span (rare), scale them down proportionally
+    const beatScale = (rawBeatSpace > totalActSpace && rawBeatSpace > 0)
+        ? (totalActSpace / rawBeatSpace)
+        : 1;
+    const totalBeatSpace = rawBeatSpace * beatScale;
 
-    // --- Elements AFTER the hovered scene: compress into remaining space ---
-    const afterElements = elements.slice(hoveredIdx + 1);
-    const spaceAfter = Math.max(effectiveActEnd - hoveredNewEnd, 0);
+    // Space available for scenes after subtracting beat space
+    const availableSceneSpace = Math.max(totalActSpace - totalBeatSpace, 0);
+    const safeTargetSize = Math.min(targetSize, availableSceneSpace);
+    const otherSceneCount = Math.max(scenes.length - 1, 0);
+    const spaceForOtherScenes = Math.max(availableSceneSpace - safeTargetSize, 0);
+    const sizePerOtherScene = otherSceneCount > 0 ? (spaceForOtherScenes / otherSceneCount) : 0;
 
-    const afterBeats = afterElements.filter(e => !e.isScene);
-    const afterScenes = afterElements.filter(e => e.isScene);
-    const afterBeatSpace = afterBeats.reduce((sum, e) => sum + (e.endAngle - e.startAngle), 0);
-    const afterBeatScale = (afterBeatSpace > spaceAfter && afterBeatSpace > 0)
-        ? (spaceAfter / afterBeatSpace) : 1;
-    const afterTotalBeatSpace = afterBeatSpace * afterBeatScale;
-    const afterSceneSpace = Math.max(spaceAfter - afterTotalBeatSpace, 0);
-    const afterSceneSize = afterScenes.length > 0 ? (afterSceneSpace / afterScenes.length) : 0;
-
-    // --- Build results ---
+    // Redistribute elements maintaining their order
     const results: RedistributionResult[] = [];
+    let currentAngle = actStartAngle;
 
-    // Before hovered: keep original positions (no path shift → no spurious hover)
-    for (let i = 0; i < hoveredIdx; i++) {
-        results.push({
-            id: elements[i].id,
-            newStartAngle: elements[i].startAngle,
-            newEndAngle: elements[i].endAngle
-        });
-    }
+    for (const element of elements) {
+        let newStart = currentAngle;
+        let newEnd: number;
 
-    // Hovered scene: anchored at original start
-    results.push({
-        id: hovered.id,
-        newStartAngle: hoveredNewStart,
-        newEndAngle: hoveredNewEnd
-    });
-
-    // After hovered: compressed into remaining space
-    let currentAngle = hoveredNewEnd;
-    for (let i = hoveredIdx + 1; i < elements.length; i++) {
-        const el = elements[i];
-        let size: number;
-        if (el.isScene) {
-            size = afterSceneSize;
+        if (element.id === hoveredId) {
+            // Expanded scene (bounded by available space in the act)
+            newEnd = currentAngle + safeTargetSize;
+        } else if (element.isScene) {
+            // Other scenes (compressed)
+            newEnd = currentAngle + sizePerOtherScene;
         } else {
-            size = (el.endAngle - el.startAngle) * afterBeatScale;
+            // Beat slice (keep original size, scaled only if beats would overflow the act)
+            const originalSize = element.endAngle - element.startAngle;
+            newEnd = currentAngle + (originalSize * beatScale);
         }
+
         results.push({
-            id: el.id,
-            newStartAngle: currentAngle,
-            newEndAngle: currentAngle + size
+            id: element.id,
+            newStartAngle: newStart,
+            newEndAngle: newEnd
         });
-        currentAngle += size;
+
+        currentAngle = newEnd;
     }
 
     return results;

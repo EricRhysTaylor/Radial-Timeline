@@ -26,6 +26,14 @@ export function decodeHtmlEntities(text: string): string {
 
 export interface SceneTitleParts { sceneNumber: string; title: string; date: string; duration: string; }
 
+function normalizeIntegerPrefixToken(token: string): string {
+  const trimmed = token.trim();
+  if (!/^\d+$/.test(trimmed)) return trimmed;
+  const parsed = Number.parseInt(trimmed, 10);
+  if (Number.isFinite(parsed)) return String(parsed);
+  return trimmed.replace(/^0+(?=\d)/, '');
+}
+
 export function parseSceneTitleComponents(titleText: string, sceneNumber?: number | null, date?: string, duration?: string): SceneTitleParts {
   const result: SceneTitleParts = { sceneNumber: '', title: '', date: '', duration: '' };
   if (!titleText) return result;
@@ -55,7 +63,7 @@ export function parseSceneTitleComponents(titleText: string, sceneNumber?: numbe
       const titlePart = decodedText.substring(0, dateMatch.index).trim();
       const titleMatch = titlePart.match(/^(\d+(?:\.\d+)?)\s+(.+)$/);
       if (titleMatch) {
-        if (result.sceneNumber === '') result.sceneNumber = titleMatch[1];
+        if (result.sceneNumber === '') result.sceneNumber = normalizeIntegerPrefixToken(titleMatch[1]);
         result.title = titleMatch[2];
       } else {
         result.title = titlePart;
@@ -63,7 +71,7 @@ export function parseSceneTitleComponents(titleText: string, sceneNumber?: numbe
     } else {
       const titleMatch = decodedText.match(/^(\d+(?:\.\d+)?)\s+(.+)$/);
       if (titleMatch) {
-        if (result.sceneNumber === '') result.sceneNumber = titleMatch[1];
+        if (result.sceneNumber === '') result.sceneNumber = normalizeIntegerPrefixToken(titleMatch[1]);
         result.title = titleMatch[2];
       } else {
         result.title = decodedText;
@@ -317,7 +325,7 @@ export function parseSceneTitle(title: string, sceneNumber?: number | null): { n
   // Fallback to regex parsing for legacy data
   const match = title.match(/^(\d+(?:\.\d+)?)\s+(.+)/);
   if (match) {
-    const number = match[1];
+    const number = normalizeIntegerPrefixToken(match[1]);
     const text = match[2];
     return { number, text: escapeXml(text) };
   }
@@ -351,7 +359,7 @@ export function getScenePrefixNumber(title: string | undefined | null, sceneNumb
   const decoded = decodeHtmlEntities(title);
   // Titles are of the form: "12.3 Title here" or "12 Title here" (no dates)
   const m = decoded.match(/^(\d+(?:\.\d+)?)\s+.+/);
-  return m ? m[1] : null;
+  return m ? normalizeIntegerPrefixToken(m[1]) : null;
 }
 
 export function getNumberSquareSize(num: string, scale: number = 1): { width: number; height: number } {

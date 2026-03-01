@@ -41,6 +41,9 @@ export class SceneInteractionManager {
     private originalAngles = new Map<string, { start: number; end: number }>();
     private originalSquareTransforms = new Map<string, string>();
 
+    // Groups with suppressed pointer-events during expansion (prevents hover flickering)
+    private suppressedGroups = new Set<string>();
+
     // Text measurement element (reused to avoid constant creation/destruction)
     private measurementText: SVGTextElement;
     
@@ -136,6 +139,12 @@ export class SceneInteractionManager {
     onSceneHover(group: Element, sceneId: string, mouseEvent?: MouseEvent): void {
         const view = this.getView();
         if (!view) return;
+
+        // If an expanded state is already active, always return to baseline first.
+        // This keeps consecutive hover transitions deterministic.
+        if (this.originalAngles.size > 0) {
+            this.resetAngularRedistribution();
+        }
         
         this.currentGroup = group;
         this.currentSceneId = sceneId;
@@ -229,6 +238,13 @@ export class SceneInteractionManager {
         
         this.resetAngularRedistribution();
         this.clearSelection();
+
+        // Belt-and-suspenders: ensure pointer-events restored even if reset was a no-op
+        this.suppressedGroups.forEach(id => {
+            const group = this.svg.getElementById(id);
+            if (group) group.removeAttribute('pointer-events');
+        });
+        this.suppressedGroups.clear();
 
         this.cleanupCallbacks.forEach(fn => {
             try { fn(); } catch { /* ignore */ }
@@ -378,6 +394,13 @@ export class SceneInteractionManager {
             }
         });
         
+        // Restore pointer-events on suppressed groups
+        this.suppressedGroups.forEach(id => {
+            const group = this.svg.getElementById(id);
+            if (group) group.removeAttribute('pointer-events');
+        });
+        this.suppressedGroups.clear();
+
         // Clear stored state after reset
         this.originalAngles.clear();
         this.originalSquareTransforms.clear();
@@ -469,28 +492,21 @@ export class SceneInteractionManager {
             actBounds.end
         );
         
-        // Apply redistribution (skip unchanged elements to avoid unnecessary DOM mutations)
+        // Apply redistribution
         redistribution.forEach(result => {
-            const original = this.originalAngles.get(result.id);
-            if (original &&
-                result.newStartAngle === original.start &&
-                result.newEndAngle === original.end) {
-                return; // Unchanged — no DOM update needed
-            }
-
             const group = this.svg.getElementById(result.id);
             if (!group) return;
 
             const innerR = Number(group.getAttribute('data-inner-r')) || 0;
             const outerR = Number(group.getAttribute('data-outer-r')) || 0;
 
-            // Update scene path
+            // Update scene path (hotspot)
             const path = group.querySelector('.rt-scene-path') as SVGPathElement;
             if (path) {
                 path.setAttribute('d', buildArcPath(innerR, outerR, result.newStartAngle, result.newEndAngle));
             }
 
-            // Update text path
+            // Update text path (use redistributed angles for correct text positioning)
             const textPath = group.querySelector('path[id^="textPath-"]') as SVGPathElement;
             if (textPath) {
                 const insetAttr = group.getAttribute('data-title-inset');

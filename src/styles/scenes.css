@@ -147,7 +147,7 @@
 /* Fill with drag arc color instead of border to indicate drag source */
 .radial-timeline-svg[data-mode="narrative"] .rt-scene-group.rt-drag-source .rt-scene-path {
   fill: var(--rt-drag-stroke-color, var(--interactive-accent, #705DCF));
-  fill-opacity: 0.65;
+  fill-opacity: 1;
 }
 
 /* Narrative mode: grab cursor on outer ring scene/beat arcs only (inner subplot rings are read-only) */

@@ -3,7 +3,6 @@ import type { TimelineItem } from '../types';
 import { filterBeatsBySystem } from '../utils/gossamer';
 import {
     comparePrefixTokens,
-    extractIntegerPrefixWidth,
     extractPrefixToken,
     formatBeatDecimalPrefix,
     formatIntegerPrefix
@@ -259,8 +258,7 @@ export function buildRippleRenamePlan(items: TimelineItem[], options?: RippleRen
         const currentBasename = entry.basename;
         const newNumber = entry.itemType === 'Scene'
             ? (() => {
-                const width = extractIntegerPrefixWidth(currentBasename);
-                const prefix = formatIntegerPrefix(nextSceneNumber, width);
+                const prefix = formatIntegerPrefix(nextSceneNumber);
                 currentScenePrefix = prefix;
                 nextSceneNumber += 1;
                 return prefix;
