@@ -257,16 +257,22 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
         scenesBySubplot[subplot].push(scene);
     });
 
-    // Sort subplots: Main Plot always outermost, then by scene count (most → least)
-    // Ring index 0 = innermost, so we order: least scenes → most scenes → Main Plot
-    const subplotOrder = Object.keys(scenesBySubplot)
-        .filter(s => s !== 'Main Plot')
-        .sort((a, b) => scenesBySubplot[a].length - scenesBySubplot[b].length); // least to most
+    // Match timeline subplot ordering logic exactly (outer -> inner):
+    // Main Plot first, then by scene count desc, then subplot name asc (tie-break).
+    const subplotCounts = Object.entries(scenesBySubplot).map(([subplot, items]) => ({
+        subplot,
+        count: items.length
+    }));
+    subplotCounts.sort((a, b) => {
+        if (a.subplot === 'Main Plot' || !a.subplot) return -1;
+        if (b.subplot === 'Main Plot' || !b.subplot) return 1;
+        if (a.count !== b.count) return b.count - a.count;
+        return a.subplot.localeCompare(b.subplot);
+    });
 
-    // Main Plot goes last (outermost ring)
-    if (scenesBySubplot['Main Plot']) {
-        subplotOrder.push('Main Plot');
-    }
+    // APR ring layout is built from inner -> outer.
+    // Convert timeline order (outer -> inner) to APR order (inner -> outer).
+    const subplotOrder = subplotCounts.map(item => item.subplot).reverse();
 
     const ringsToRender: RingData[] = [];
     if (showSubplots) {

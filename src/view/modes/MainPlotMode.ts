@@ -33,6 +33,7 @@ export function setupMainPlotMode(view: ViewLike, svg: SVGSVGElement): void {
     let currentGroup: Element | null = null;
     let currentSceneId: string | null = null;
     let rafId: number | null = null;
+    let suspendHoverUntilPointerMove = false;
 
     const clearSelection = () => {
         manager.onSceneLeave();
@@ -47,6 +48,8 @@ export function setupMainPlotMode(view: ViewLike, svg: SVGSVGElement): void {
 
     // Register handlers for Scene elements (main plot scenes)
     view.registerDomEvent(svg as unknown as HTMLElement, 'pointerover', (e: PointerEvent) => {
+        if (suspendHoverUntilPointerMove) return;
+
         const g = (e.target as Element).closest('.rt-scene-group[data-item-type="Scene"]');
         if (!g || g === currentGroup) return;
         
@@ -68,6 +71,8 @@ export function setupMainPlotMode(view: ViewLike, svg: SVGSVGElement): void {
     });
 
     view.registerDomEvent(svg as unknown as HTMLElement, 'pointerout', (e: PointerEvent) => {
+        if (suspendHoverUntilPointerMove) return;
+
         const toEl = e.relatedTarget as Element | null;
         if (currentGroup && toEl && currentGroup.contains(toEl)) return;
         
@@ -78,6 +83,11 @@ export function setupMainPlotMode(view: ViewLike, svg: SVGSVGElement): void {
     });
 
     view.registerDomEvent(svg as unknown as HTMLElement, 'pointermove', (e: PointerEvent) => {
+        if (suspendHoverUntilPointerMove) {
+            suspendHoverUntilPointerMove = false;
+            return;
+        }
+
         if (rafId !== null) return;
         rafId = window.requestAnimationFrame(() => {
             manager.onMouseMove(e as unknown as MouseEvent);
@@ -97,6 +107,13 @@ export function setupMainPlotMode(view: ViewLike, svg: SVGSVGElement): void {
         const g = (e.target as Element).closest('.rt-scene-group[data-item-type="Scene"]');
         if (!g) return;
         e.stopPropagation();
+
+        // Suspend hover until pointer moves again after click-open.
+        // Prevents stale re-hover when timeline remains visible in split panes.
+        suspendHoverUntilPointerMove = true;
+        svg.classList.remove('scene-hover');
+        clearSelection();
+
         const encodedPath = g.getAttribute('data-path');
         if (!encodedPath) return;
         const filePath = decodeURIComponent(encodedPath);

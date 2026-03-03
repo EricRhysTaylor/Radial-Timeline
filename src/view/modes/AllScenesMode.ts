@@ -36,6 +36,10 @@ export function setupSceneInteractions(view: AllScenesView, group: Element, svgE
             // Skip if drag controller is handling this interaction
             // The drag controller handles click-to-open for quick clicks and drag operations
             if (isDragInProgress() || wasRecentlyHandledByDrag()) return;
+
+            // Suspend hover until pointer moves again after click-open.
+            // This prevents immediate stale re-hover when the timeline stays visible in a split pane.
+            svgElement.dispatchEvent(new CustomEvent('rt-scene-open-begin', { bubbles: true }));
             
             const file = view.plugin.app.vault.getAbstractFileByPath(filePath);
             if (!(file instanceof TFile)) return;
@@ -89,6 +93,7 @@ export function setupAllScenesDelegatedHover(view: AllScenesView, container: HTM
     let currentGroup: Element | null = null;
     let currentSceneId: string | null = null;
     let rafId: number | null = null;
+    let suspendHoverUntilPointerMove = false;
 
     const clearSelection = () => {
         manager.onSceneLeave();
@@ -96,12 +101,20 @@ export function setupAllScenesDelegatedHover(view: AllScenesView, container: HTM
         currentSceneId = null;
     };
 
+    view.registerDomEvent(svg as unknown as HTMLElement, 'rt-scene-open-begin', () => {
+        suspendHoverUntilPointerMove = true;
+        svg.classList.remove('scene-hover');
+        clearSelection();
+    });
+
     const getSceneIdFromGroup = (group: Element): string | null => {
         const pathEl = group.querySelector('.rt-scene-path') as SVGPathElement | null;
         return pathEl?.id || null;
     };
 
     view.registerDomEvent(svg as unknown as HTMLElement, 'pointerover', (e: PointerEvent) => {
+        if (suspendHoverUntilPointerMove) return;
+
         if (isDragInteractionActive()) {
             if (currentGroup) {
                 svg.classList.remove('scene-hover');
@@ -128,6 +141,8 @@ export function setupAllScenesDelegatedHover(view: AllScenesView, container: HTM
     });
 
     view.registerDomEvent(svg as unknown as HTMLElement, 'pointerout', (e: PointerEvent) => {
+        if (suspendHoverUntilPointerMove) return;
+
         if (isDragInteractionActive()) {
             if (currentGroup) {
                 svg.classList.remove('scene-hover');
@@ -147,6 +162,11 @@ export function setupAllScenesDelegatedHover(view: AllScenesView, container: HTM
     });
 
     view.registerDomEvent(svg as unknown as HTMLElement, 'pointermove', (e: PointerEvent) => {
+        if (suspendHoverUntilPointerMove) {
+            suspendHoverUntilPointerMove = false;
+            return;
+        }
+
         if (isDragInteractionActive()) {
             if (currentGroup) {
                 svg.classList.remove('scene-hover');
