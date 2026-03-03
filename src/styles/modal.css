@@ -1447,6 +1447,10 @@
   width: 100%;
 }
 
+.ert-ui.ert-scope--modal .ert-apr-status-grid--with-format {
+  grid-template-columns: fit-content(32ch) fit-content(20ch) max-content max-content max-content max-content max-content;
+}
+
 .ert-ui.ert-scope--modal .ert-apr-status-row {
   display: contents;
 }
@@ -1456,6 +1460,10 @@
   align-items: center;
   min-height: 28px;
   color: var(--text-normal);
+}
+
+.ert-ui.ert-scope--modal .ert-apr-status-cell--export {
+  gap: var(--ert-gap-xs);
 }
 
 .ert-ui.ert-scope--modal .ert-apr-status-cell--header {
@@ -1522,6 +1530,12 @@
 
 .ert-ui.ert-scope--modal .ert-badgePill--sm {
   min-height: 24px;
+}
+
+.ert-ui.ert-scope--modal .ert-apr-format-pill {
+  min-width: 56px;
+  justify-content: center;
+  padding-inline: 12px;
 }
 
 /* Omnibus grids (APR-aligned layout) */

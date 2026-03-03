@@ -238,7 +238,7 @@ export class AuthorProgressModal extends Modal {
         this.renderRefreshAlert(this.statusSectionEl);
 
         const statusTargets = this.getAprStatusTargets().filter(target => !target.campaign);
-        this.renderStatusGrid(this.statusSectionEl, statusTargets);
+        this.renderStatusGrid(this.statusSectionEl, statusTargets, false);
     }
 
     private renderCampaignStatusSection(): void {
@@ -266,7 +266,7 @@ export class AuthorProgressModal extends Modal {
             return;
         }
 
-        this.renderStatusGrid(this.campaignsSectionEl, campaignTargets);
+        this.renderStatusGrid(this.campaignsSectionEl, campaignTargets, true);
     }
 
     private renderStatusGrid(container: HTMLElement, targets: Array<{
@@ -277,13 +277,15 @@ export class AuthorProgressModal extends Modal {
         path: string;
         size: 'thumb' | 'small' | 'medium' | 'large';
         campaign?: AprCampaign;
-    }>): void {
+    }>, includeFormatColumn = false): void {
         if (targets.length === 0) return;
 
         const settings = this.plugin.settings.authorProgress;
-        const statusGrid = container.createDiv({ cls: 'ert-apr-status-grid' });
+        const statusGrid = container.createDiv({ cls: `ert-apr-status-grid${includeFormatColumn ? ' ert-apr-status-grid--with-format' : ''}` });
         const statusHeaderRow = statusGrid.createDiv({ cls: 'ert-apr-status-row ert-apr-status-row--header' });
-        const headerLabels = ['APR', 'Book Title', 'Export', 'Stage', 'Update In', 'Reminder'];
+        const headerLabels = includeFormatColumn
+            ? ['APR', 'Book Title', 'Format', 'Export', 'Stage', 'Update In', 'Reminder']
+            : ['APR', 'Book Title', 'Export', 'Stage', 'Update In', 'Reminder'];
         headerLabels.forEach(label => {
             const headerCell = statusHeaderRow.createDiv({
                 text: label,
@@ -313,7 +315,16 @@ export class AuthorProgressModal extends Modal {
                 bookLabel.setAttr('title', `Project: ${target.projectPath}`);
             }
 
-            const exportCell = dataRow.createDiv({ cls: 'ert-apr-status-cell' });
+            if (includeFormatColumn) {
+                const formatCell = dataRow.createDiv({ cls: 'ert-apr-status-cell' });
+                const formatPill = formatCell.createSpan({
+                    cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_SM} ert-apr-format-pill`
+                });
+                const format = this.getCampaignExportFormat(target.campaign);
+                formatPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: this.getFormatLabel(format) });
+            }
+
+            const exportCell = dataRow.createDiv({ cls: 'ert-apr-status-cell ert-apr-status-cell--export' });
             const exportPill = exportCell.createSpan({
                 cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_SM}`
             });
@@ -586,15 +597,15 @@ export class AuthorProgressModal extends Modal {
         bookLabel.setAttr('title', `Project: ${projectPath}`);
 
         // Export cell
-        const exportCell = statusRow.createDiv({ cls: 'ert-apr-status-cell' });
+        const exportCell = statusRow.createDiv({ cls: 'ert-apr-status-cell ert-apr-status-cell--export' });
+        const formatPill = exportCell.createSpan({
+            cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_SM} ert-apr-format-pill`
+        });
+        formatPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: this.getFormatLabel(format) });
         const exportPill = exportCell.createSpan({
             cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_SM}`
         });
         exportPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: this.getSizeLabelPx(activeSize) });
-        const formatPill = exportCell.createSpan({
-            cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_SM}`
-        });
-        formatPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: this.getFormatLabel(format) });
 
         // Type cell (Thumb / Standard)
         const typeCell = statusRow.createDiv({ cls: 'ert-apr-status-cell' });

@@ -172,6 +172,14 @@ export class AuthorProgressService {
         return fallback;
     }
 
+    private getPngExportScale(): number {
+        if (typeof window === 'undefined') return 2;
+        const dpr = Number(window.devicePixelRatio || 1);
+        if (!Number.isFinite(dpr) || dpr <= 0) return 2;
+        // Clamp to avoid oversized files on very high-DPI screens.
+        return Math.min(3, Math.max(2, Math.round(dpr)));
+    }
+
     private async svgToPngBuffer(svgString: string, width: number, height: number): Promise<ArrayBuffer> {
         if (typeof window === 'undefined' || typeof document === 'undefined') {
             throw new Error('PNG export is unavailable in this environment.');
@@ -187,13 +195,19 @@ export class AuthorProgressService {
                 img.src = objectUrl;
             });
 
+            const scale = this.getPngExportScale();
+            const targetWidth = Math.max(1, Math.round(width));
+            const targetHeight = Math.max(1, Math.round(height));
             const canvas = document.createElement('canvas');
-            canvas.width = Math.max(1, Math.round(width));
-            canvas.height = Math.max(1, Math.round(height));
+            canvas.width = targetWidth * scale;
+            canvas.height = targetHeight * scale;
             const ctx = canvas.getContext('2d');
             if (!ctx) throw new Error('Could not initialize canvas context.');
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+            ctx.setTransform(scale, 0, 0, scale, 0, 0);
+            ctx.drawImage(image, 0, 0, targetWidth, targetHeight);
 
             const pngBlob = await new Promise<Blob | null>((resolve) => {
                 canvas.toBlob((result) => resolve(result), 'image/png');
