@@ -97,7 +97,7 @@ export const REFACTOR_ALERTS: RefactorAlert[] = [
         severity: 'info',
         icon: 'folder-plus',
         title: 'New Radial Timeline Folder',
-        description: 'A new Radial Timeline folder has been created in your Obsidian vault to organize files under the updated structure, including AI API logs, Inquiry Briefs, Social APR SVGs and campaigns, and other related assets.',
+        description: 'A new Radial Timeline folder has been created in your Obsidian vault to organize files under the updated structure, including AI API logs, Inquiry Briefs, Social APR exports and campaigns, and other related assets.',
     }
 ];
 

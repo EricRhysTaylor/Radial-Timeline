@@ -10,7 +10,12 @@ import { isProfessionalActive } from './ProfessionalSection';
 import { getTeaserThresholds, teaserLevelToRevealOptions, TEASER_LEVEL_INFO } from '../../renderer/apr/AprConstants';
 import { createAprSVG } from '../../renderer/apr/AprRenderer';
 import { getAllScenes } from '../../utils/manuscript';
-import { buildCampaignEmbedPath, type AprSize } from '../../utils/aprPaths';
+import {
+    buildCampaignEmbedPath,
+    normalizeAprExportFormat,
+    type AprExportFormat,
+    type AprSize
+} from '../../utils/aprPaths';
 import { resolveBookTitle, resolveProjectPath, validateAndRememberProjectPath } from '../../renderer/apr/aprHelpers';
 
 import { ERT_CLASSES } from '../../ui/classes';
@@ -158,6 +163,19 @@ function describeAprSize(size: AprSize): string {
     }
 }
 
+function describeAprExportFormat(format: AprExportFormat): string {
+    return format === 'svg' ? 'SVG (Website Embed)' : 'PNG (Social Default)';
+}
+
+function resolveCampaignExportFormat(campaign: AprCampaign | undefined): AprExportFormat {
+    if (!campaign) return 'png';
+    if (typeof campaign.exportFormat === 'string' && campaign.exportFormat.trim()) {
+        return normalizeAprExportFormat(campaign.exportFormat);
+    }
+    const path = campaign.embedPath?.toLowerCase() ?? '';
+    return path.endsWith('.svg') ? 'svg' : 'png';
+}
+
 function getScheduleBadge(campaign: AprCampaign): { label: string; cls: string } {
     if (!campaign.isActive) return { label: 'Paused', cls: 'is-paused' };
     const frequency = campaign.updateFrequency ?? 'manual';
@@ -197,7 +215,8 @@ export function createDefaultCampaign(
         campaignName: name,
         updateFrequency: 'manual',
         aprSize: options?.aprSize,
-        teaserEnabled: true
+        teaserEnabled: true,
+        exportFormat: 'png'
     });
     return {
         id: generateCampaignId(),
@@ -208,6 +227,7 @@ export function createDefaultCampaign(
         refreshThresholdDays: 7,
         lastPublishedDate: undefined,
         embedPath,
+        exportFormat: 'png',
         // aprSize defaults to global setting (undefined)
         customTransparent: true,
         customTheme: 'dark',
@@ -540,7 +560,8 @@ function renderCampaignRow(
                     updateFrequency: campaign.updateFrequency,
                     aprSize: campaign.aprSize,
                     fallbackSize: plugin.settings.authorProgress?.aprSize,
-                    teaserEnabled: campaign.teaserReveal?.enabled ?? true
+                    teaserEnabled: campaign.teaserReveal?.enabled ?? true,
+                    exportFormat: resolveCampaignExportFormat(campaign)
                 });
                 const newDefaultPath = buildCampaignEmbedPath({
                     bookTitle: resolvedBookTitle,
@@ -548,7 +569,8 @@ function renderCampaignRow(
                     updateFrequency: campaign.updateFrequency,
                     aprSize: campaign.aprSize,
                     fallbackSize: plugin.settings.authorProgress?.aprSize,
-                    teaserEnabled: campaign.teaserReveal?.enabled ?? true
+                    teaserEnabled: campaign.teaserReveal?.enabled ?? true,
+                    exportFormat: resolveCampaignExportFormat(campaign)
                 });
 
                 plugin.settings.authorProgress.campaigns[index].name = newName;
@@ -656,6 +678,7 @@ function renderCampaignDetails(
         .setName('Update Frequency')
         .setDesc('How often to auto-update this campaign\'s embed file. "Manual" requires clicking the Publish button.')
         .addDropdown(dropdown => {
+            dropdown.selectEl.addClass('ert-input', 'ert-input--lg');
             dropdown
                 .addOption('manual', 'Manual Only')
                 .addOption('daily', 'Daily')
@@ -678,7 +701,8 @@ function renderCampaignDetails(
                         updateFrequency: target.updateFrequency,
                         aprSize: target.aprSize,
                         fallbackSize: settings.aprSize,
-                        teaserEnabled: target.teaserReveal?.enabled ?? true
+                        teaserEnabled: target.teaserReveal?.enabled ?? true,
+                        exportFormat: resolveCampaignExportFormat(target)
                     });
                     target.updateFrequency = val as 'manual' | 'daily' | 'weekly' | 'monthly';
                     if (settings.autoUpdateEmbedPaths && target.embedPath === oldDefaultPath) {
@@ -688,7 +712,8 @@ function renderCampaignDetails(
                             updateFrequency: target.updateFrequency,
                             aprSize: target.aprSize,
                             fallbackSize: settings.aprSize,
-                            teaserEnabled: target.teaserReveal?.enabled ?? true
+                            teaserEnabled: target.teaserReveal?.enabled ?? true,
+                            exportFormat: resolveCampaignExportFormat(target)
                         });
                     }
                     await plugin.saveSettings();
@@ -952,11 +977,12 @@ function renderCampaignDetails(
         updateFrequency: campaign.updateFrequency,
         aprSize: campaign.aprSize,
         fallbackSize: plugin.settings.authorProgress?.aprSize,
-        teaserEnabled: campaign.teaserReveal?.enabled ?? true
+        teaserEnabled: campaign.teaserReveal?.enabled ?? true,
+        exportFormat: resolveCampaignExportFormat(campaign)
     });
     const embedPathSetting = new Setting(details)
         .setName('Embed File Path')
-        .setDesc(`Location for the embed SVG file.`);
+        .setDesc('Location for the exported campaign file.');
 
 
     embedPathSetting.addText(text => {
@@ -987,9 +1013,11 @@ function renderCampaignDetails(
             const val = text.getValue().trim();
             clearInputState();
 
-            if (val && !val.endsWith('.svg')) {
+            const format = resolveCampaignExportFormat(plugin.settings.authorProgress?.campaigns?.[index] ?? campaign);
+            const requiredExt = `.${format}`;
+            if (val && !val.toLowerCase().endsWith(requiredExt)) {
                 flashError();
-                new Notice('Embed path must end with .svg');
+                new Notice(`Embed path must end with ${requiredExt}`);
                 return;
             }
 
@@ -1019,15 +1047,64 @@ function renderCampaignDetails(
             });
     });
 
+    // Export format (Pro Campaigns only)
+    const exportFormatSetting = new Setting(details)
+        .setName('Export Format')
+        .setDesc('PNG is recommended for Bluesky, Patreon, Kickstarter, and most social/newsletter uploads. Use SVG for your author website embed; a future auto-update website flow can refresh in place without manual reposts.')
+        .addDropdown(drop => {
+            drop.selectEl.addClass('ert-input', 'ert-input--lg');
+            const currentCampaign = plugin.settings.authorProgress?.campaigns?.[index];
+            const format = resolveCampaignExportFormat(currentCampaign ?? campaign);
+            drop.addOption('png', describeAprExportFormat('png'));
+            drop.addOption('svg', describeAprExportFormat('svg'));
+            drop.setValue(format);
+            drop.onChange(async (val) => {
+                if (!plugin.settings.authorProgress?.campaigns) return;
+                const settings = plugin.settings.authorProgress;
+                if (!settings.campaigns) return;
+                const target = settings.campaigns[index];
+                const resolvedBookTitle = resolveCampaignBookTitle(
+                    settings,
+                    target,
+                    plugin.settings.sourcePath
+                );
+                const oldDefaultPath = buildCampaignEmbedPath({
+                    bookTitle: resolvedBookTitle,
+                    campaignName: target.name,
+                    updateFrequency: target.updateFrequency,
+                    aprSize: normalizeAprSize(target.aprSize),
+                    fallbackSize: settings.aprSize,
+                    teaserEnabled: target.teaserReveal?.enabled ?? true,
+                    exportFormat: resolveCampaignExportFormat(target)
+                });
+                target.exportFormat = normalizeAprExportFormat(val);
+                if (settings.autoUpdateEmbedPaths && target.embedPath === oldDefaultPath) {
+                    target.embedPath = buildCampaignEmbedPath({
+                        bookTitle: resolvedBookTitle,
+                        campaignName: target.name,
+                        updateFrequency: target.updateFrequency,
+                        aprSize: normalizeAprSize(target.aprSize),
+                        fallbackSize: settings.aprSize,
+                        teaserEnabled: target.teaserReveal?.enabled ?? true,
+                        exportFormat: target.exportFormat
+                    });
+                }
+                await plugin.saveSettings();
+                onUpdate();
+            });
+        });
+
     // Size
     const exportSizeSetting = new Setting(details)
         .setName('Export Size')
-        .setDesc('SVG dimensions: Small for widgets, Medium for social/newsletters, Large for website embeds.')
+        .setDesc('Dimensions: Small for widgets, Medium for social/newsletters, Large for website embeds.')
         .addDropdown(drop => {
+            drop.selectEl.addClass('ert-input', 'ert-input--lg');
             const globalSize = normalizeAprSize(plugin.settings.authorProgress?.aprSize) ?? 'medium';
             const latestCampaign = plugin.settings.authorProgress?.campaigns?.[index];
             const campaignSize = normalizeAprSize(latestCampaign?.aprSize ?? campaign.aprSize);
-            drop.addOption('', `Default (Global: ${describeAprSize(globalSize)})`);
+            const defaultSizeLabel = describeAprSize(globalSize).replace(/\s*\(([^)]+)\)/, ' $1');
+            drop.addOption('', `Default (${defaultSizeLabel})`);
             drop.addOption('thumb', 'Thumb (100px)');
             drop.addOption('small', 'Small (150px)');
             drop.addOption('medium', 'Medium (300px)');
@@ -1049,7 +1126,8 @@ function renderCampaignDetails(
                     updateFrequency: target.updateFrequency,
                     aprSize: normalizeAprSize(target.aprSize),
                     fallbackSize: settings.aprSize,
-                    teaserEnabled: target.teaserReveal?.enabled ?? true
+                    teaserEnabled: target.teaserReveal?.enabled ?? true,
+                    exportFormat: resolveCampaignExportFormat(target)
                 });
                 target.aprSize = val === '' ? undefined : normalizeAprSize(val);
                 if (settings.autoUpdateEmbedPaths && target.embedPath === oldDefaultPath) {
@@ -1059,7 +1137,8 @@ function renderCampaignDetails(
                         updateFrequency: target.updateFrequency,
                         aprSize: normalizeAprSize(target.aprSize),
                         fallbackSize: settings.aprSize,
-                        teaserEnabled: target.teaserReveal?.enabled ?? true
+                        teaserEnabled: target.teaserReveal?.enabled ?? true,
+                        exportFormat: resolveCampaignExportFormat(target)
                     });
                 }
                 await plugin.saveSettings();
@@ -1123,7 +1202,7 @@ function renderCampaignDetails(
             const scheduleRow = scheduleContainer.createDiv({ cls: `${ERT_CLASSES.INLINE} ert-teaser__scheduleRow` });
             scheduleRow.createSpan({ text: 'Reveal Schedule', cls: 'ert-teaser__scheduleLabel' });
 
-            const dropdown = scheduleRow.createEl('select', { cls: 'ert-teaser__preset dropdown' });
+            const dropdown = scheduleRow.createEl('select', { cls: 'ert-teaser__preset ert-input ert-input--lg' });
             const options = [
                 { value: 'slow', label: 'Slow (15/40/70%)' },
                 { value: 'standard', label: 'Standard (10/30/60%)' },

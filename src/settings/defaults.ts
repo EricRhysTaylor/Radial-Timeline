@@ -325,7 +325,7 @@ Context:`,
         updateFrequency: 'manual',
         stalenessThresholdDays: 30,
         enableReminders: true,
-        dynamicEmbedPath: 'Radial Timeline/Social/book/apr-default-manual-medium.svg',
+        dynamicEmbedPath: 'Radial Timeline/Social/book/apr-default-manual-medium.png',
         autoUpdateEmbedPaths: true,
 
         // Pro Feature: Campaign Manager (empty by default)

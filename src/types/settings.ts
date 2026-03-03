@@ -144,6 +144,7 @@ export interface BookLayoutOptions {
 
 export type AuthorProgressPublishTarget = 'folder' | 'github_pages' | 'note';
 export type AuthorProgressFrequency = 'manual' | 'daily' | 'weekly' | 'monthly';
+export type AprExportFormat = 'png' | 'svg';
 
 export interface AuthorProgressSettings {
     enabled: boolean;
@@ -273,7 +274,8 @@ export interface AprCampaign {
     lastPublishedDate?: string;      // ISO string - when last updated
 
     // Output
-    embedPath: string;               // Where to save the SVG for this campaign
+    embedPath: string;               // Where to save the exported APR file for this campaign
+    exportFormat?: AprExportFormat;  // Campaign export format (PNG recommended, SVG optional for web embeds)
 
     // Campaign-specific Project Configuration (Pro overrides)
     projectPath?: string;            // Override project folder path (inherits from socialProjectPath if not set)

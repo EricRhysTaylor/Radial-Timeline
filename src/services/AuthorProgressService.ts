@@ -7,7 +7,7 @@ import type { AprCampaign, AuthorProgressSettings } from '../types/settings';
 import { getTeaserThresholds, getTeaserRevealLevel, teaserLevelToRevealOptions } from '../renderer/apr/AprConstants';
 import { isProfessionalActive } from '../settings/sections/ProfessionalSection';
 import { isBeatNote, isSceneItem } from '../utils/sceneHelpers';
-import { buildDefaultEmbedPath } from '../utils/aprPaths';
+import { buildDefaultEmbedPath, normalizeAprExportFormat, type AprExportFormat } from '../utils/aprPaths';
 import { resolveBookTitle, resolveProjectPath } from '../renderer/apr/aprHelpers';
 
 export class AuthorProgressService {
@@ -148,6 +148,81 @@ export class AuthorProgressService {
         };
     }
 
+    private getDefaultExportPath(settings: AuthorProgressSettings): string {
+        return settings.dynamicEmbedPath || buildDefaultEmbedPath({
+            bookTitle: settings.bookTitle,
+            updateFrequency: settings.updateFrequency,
+            aprSize: settings.aprSize,
+            exportFormat: 'png'
+        });
+    }
+
+    private getCampaignExportFormat(campaign?: AprCampaign): AprExportFormat {
+        if (!campaign) return 'png';
+        if (typeof campaign.exportFormat === 'string' && campaign.exportFormat.trim()) {
+            return normalizeAprExportFormat(campaign.exportFormat);
+        }
+        return this.pathFormat(campaign.embedPath ?? '', 'png');
+    }
+
+    private pathFormat(path: string, fallback: AprExportFormat): AprExportFormat {
+        const normalized = path.trim().toLowerCase();
+        if (normalized.endsWith('.svg')) return 'svg';
+        if (normalized.endsWith('.png')) return 'png';
+        return fallback;
+    }
+
+    private async svgToPngBuffer(svgString: string, width: number, height: number): Promise<ArrayBuffer> {
+        if (typeof window === 'undefined' || typeof document === 'undefined') {
+            throw new Error('PNG export is unavailable in this environment.');
+        }
+
+        const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+        const objectUrl = URL.createObjectURL(blob);
+        try {
+            const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.onerror = () => reject(new Error('Failed to load SVG for PNG rendering.'));
+                img.src = objectUrl;
+            });
+
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.max(1, Math.round(width));
+            canvas.height = Math.max(1, Math.round(height));
+            const ctx = canvas.getContext('2d');
+            if (!ctx) throw new Error('Could not initialize canvas context.');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+            const pngBlob = await new Promise<Blob | null>((resolve) => {
+                canvas.toBlob((result) => resolve(result), 'image/png');
+            });
+            if (!pngBlob) {
+                throw new Error('Canvas failed to produce PNG data.');
+            }
+            return await pngBlob.arrayBuffer();
+        } finally {
+            URL.revokeObjectURL(objectUrl);
+        }
+    }
+
+    private async saveAprOutput(path: string, format: AprExportFormat, svgString: string, width: number, height: number): Promise<void> {
+        await this.ensureFolder(path);
+        if (format === 'svg') {
+            const existingFile = this.app.vault.getAbstractFileByPath(path);
+            if (existingFile && 'path' in existingFile) {
+                await this.app.vault.modify(existingFile as Parameters<typeof this.app.vault.modify>[0], svgString);
+            } else {
+                await this.app.vault.create(path, svgString);
+            }
+            return;
+        }
+
+        const png = await this.svgToPngBuffer(svgString, width, height);
+        await this.app.vault.adapter.writeBinary(path, png);
+    }
+
     /**
      * Generates and saves the APR report using the dedicated APR renderer.
      */
@@ -172,7 +247,7 @@ export class AuthorProgressService {
         // Resolve book title using inheritance (Core Social → fallback)
         const bookTitle = resolveBookTitle(settings, null, projectPath);
 
-        const { svgString } = createAprSVG(scenesFiltered, {
+        const { svgString, width, height } = createAprSVG(scenesFiltered, {
             size,
             progressPercent,
             bookTitle,
@@ -219,8 +294,8 @@ export class AuthorProgressService {
             // Portable SVG mode: export standalone SVGs without CSS vars (Figma/Illustrator safe)
             portableSvg: true
         });
-
-        let finalSvg = svgString;
+        const defaultPath = this.getDefaultExportPath(settings);
+        const exportFormat = this.pathFormat(defaultPath, 'png');
 
         // Save logic
         if (mode === 'dynamic') {
@@ -230,67 +305,44 @@ export class AuthorProgressService {
                     new Notice('Note publishing is a Pro feature. Upgrade to Pro to use this feature.');
                     return null;
                 }
-                return await this.createNoteWithApr(finalSvg, settings);
+                return await this.createNoteWithApr(svgString, settings, exportFormat, width, height);
             }
-
-            const path = settings.dynamicEmbedPath || buildDefaultEmbedPath({
-                bookTitle: settings.bookTitle,
-                updateFrequency: settings.updateFrequency,
-                aprSize: settings.aprSize
-            });
-            await this.ensureFolder(path);
-
-            // Use Vault API: modify if exists, create if not
-            const existingFile = this.app.vault.getAbstractFileByPath(path);
-            if (existingFile) {
-                await this.app.vault.modify(existingFile as any, finalSvg);
-            } else {
-                await this.app.vault.create(path, finalSvg);
-            }
+            await this.saveAprOutput(defaultPath, exportFormat, svgString, width, height);
 
             // Update last published
             settings.lastPublishedDate = new Date().toISOString();
             await this.plugin.saveSettings();
 
-            return path;
+            return defaultPath;
         } else {
             // Static snapshot - save alongside the embed destination
-            const embedPath = settings.dynamicEmbedPath || buildDefaultEmbedPath({
-                bookTitle: settings.bookTitle,
-                updateFrequency: settings.updateFrequency,
-                aprSize: settings.aprSize
-            });
-            const path = this.buildSnapshotPath(embedPath);
-            await this.ensureFolder(path);
-            await this.app.vault.create(path, finalSvg);
+            const path = this.buildSnapshotPath(defaultPath);
+            await this.saveAprOutput(path, exportFormat, svgString, width, height);
             return path;
         }
     }
 
     /**
-     * Create a note with embedded APR SVG (Pro feature).
+     * Create a note with embedded APR image export (Pro feature).
      * Supports preset layout or custom template based on defaultNoteBehavior.
      */
-    private async createNoteWithApr(svgString: string, settings: AuthorProgressSettings): Promise<string | null> {
-        // First, save the SVG file
-        const svgPath = settings.dynamicEmbedPath || buildDefaultEmbedPath({
-            bookTitle: settings.bookTitle,
-            updateFrequency: settings.updateFrequency,
-            aprSize: settings.aprSize
-        });
-        await this.ensureFolder(svgPath);
-        const existingSvgFile = this.app.vault.getAbstractFileByPath(svgPath);
-        if (existingSvgFile) {
-            await this.app.vault.modify(existingSvgFile as any, svgString);
-        } else {
-            await this.app.vault.create(svgPath, svgString);
-        }
+    private async createNoteWithApr(
+        svgString: string,
+        settings: AuthorProgressSettings,
+        format: AprExportFormat,
+        width: number,
+        height: number
+    ): Promise<string | null> {
+        // First, save the exported image file.
+        const exportPath = this.getDefaultExportPath(settings);
+        await this.saveAprOutput(exportPath, format, svgString, width, height);
 
-        // Determine note path (same folder as SVG, different filename)
-        const svgFolder = svgPath.substring(0, svgPath.lastIndexOf('/')) || 'Radial Timeline/Social';
-        const svgFileName = svgPath.substring(svgPath.lastIndexOf('/') + 1);
-        const noteFileName = svgFileName.replace(/\.svg$/, '.md');
-        const notePath = `${svgFolder}/${noteFileName}`;
+        // Determine note path (same folder as export, different filename)
+        const exportFolder = exportPath.substring(0, exportPath.lastIndexOf('/')) || 'Radial Timeline/Social';
+        const exportFileName = exportPath.substring(exportPath.lastIndexOf('/') + 1);
+        const stem = exportFileName.includes('.') ? exportFileName.replace(/\.[^.]+$/, '') : exportFileName;
+        const noteFileName = `${stem}.md`;
+        const notePath = `${exportFolder}/${noteFileName}`;
 
         let noteContent: string;
 
@@ -300,21 +352,22 @@ export class AuthorProgressService {
                 const templateFile = this.app.vault.getAbstractFileByPath(settings.customNoteTemplatePath);
                 if (templateFile && 'path' in templateFile) {
                     const templateContent = await this.app.vault.read(templateFile as any);
-                    // Replace placeholders: {{SVG_PATH}}, {{AUTHOR_COMMENT}}
+                    // Replace placeholders: {{SVG_PATH}}/{{APR_PATH}} and {{AUTHOR_COMMENT}}
                     noteContent = templateContent
-                        .replace(/{{SVG_PATH}}/g, svgPath)
+                        .replace(/{{SVG_PATH}}/g, exportPath)
+                        .replace(/{{APR_PATH}}/g, exportPath)
                         .replace(/{{AUTHOR_COMMENT}}/g, '');
                 } else {
                     // Template not found, fall back to preset
-                    noteContent = this.createPresetNoteContent(svgPath);
+                    noteContent = this.createPresetNoteContent(exportPath);
                 }
             } catch (error) {
                 console.warn('Failed to load custom template, using preset:', error);
-                noteContent = this.createPresetNoteContent(svgPath);
+                noteContent = this.createPresetNoteContent(exportPath);
             }
         } else {
             // Use preset layout
-            noteContent = this.createPresetNoteContent(svgPath);
+            noteContent = this.createPresetNoteContent(exportPath);
         }
 
         // Create or update the note
@@ -333,7 +386,7 @@ export class AuthorProgressService {
     }
 
     /**
-     * Create preset note content with SVG embed and author comment placeholder.
+     * Create preset note content with APR image embed and author comment placeholder.
      */
     private createPresetNoteContent(svgPath: string): string {
         const settings = this.plugin.settings.authorProgress;
@@ -429,19 +482,12 @@ export class AuthorProgressService {
         if (!settings) return null;
         const result = await this.buildCampaignSvg(campaignId);
         if (!result) return null;
-        const { svgString, campaign } = result;
+        const { svgString, campaign, width, height } = result;
 
         // Save to campaign's embed path
         const path = campaign.embedPath;
-        await this.ensureFolder(path);
-
-        const existingFile = this.app.vault.getAbstractFileByPath(path);
-        if (existingFile && 'path' in existingFile) {
-            // SAFE: Cast required for Obsidian API compatibility
-            await this.app.vault.modify(existingFile as Parameters<typeof this.app.vault.modify>[0], svgString);
-        } else {
-            await this.app.vault.create(path, svgString);
-        }
+        const format = this.pathFormat(path, this.getCampaignExportFormat(campaign));
+        await this.saveAprOutput(path, format, svgString, width, height);
 
         // Update campaign's last published date
         const campaignIndex = settings.campaigns?.findIndex((c: AprCampaign) => c.id === campaignId);
@@ -451,7 +497,7 @@ export class AuthorProgressService {
         }
 
         if (!options?.silent) {
-            new Notice(`Campaign "${campaign.name}" published!\nSize: ${result.meta.size} | Stage: ${result.meta.stage} | Progress: ${result.meta.percent.toFixed(1)}%`);
+            new Notice(`Campaign "${campaign.name}" published!\nFormat: ${result.meta.format.toUpperCase()} | Size: ${result.meta.size} | Stage: ${result.meta.stage} | Progress: ${result.meta.percent.toFixed(1)}%`);
         }
         return path;
     }
@@ -463,14 +509,14 @@ export class AuthorProgressService {
     public async generateCampaignSnapshot(campaignId: string): Promise<string | null> {
         const result = await this.buildCampaignSvg(campaignId);
         if (!result) return null;
-        const { svgString, campaign } = result;
+        const { svgString, campaign, width, height } = result;
         const path = this.buildSnapshotPath(campaign.embedPath, campaign.name);
-        await this.ensureFolder(path);
-        await this.app.vault.create(path, svgString);
+        const format = this.pathFormat(path, this.getCampaignExportFormat(campaign));
+        await this.saveAprOutput(path, format, svgString, width, height);
         return path;
     }
 
-    private async buildCampaignSvg(campaignId: string): Promise<{ svgString: string; campaign: AprCampaign; meta: { size: string; stage: string; percent: number } } | null> {
+    private async buildCampaignSvg(campaignId: string): Promise<{ svgString: string; width: number; height: number; campaign: AprCampaign; meta: { format: AprExportFormat; size: string; stage: string; percent: number } } | null> {
         const settings = this.plugin.settings.authorProgress;
         if (!settings) return null;
 
@@ -534,7 +580,7 @@ export class AuthorProgressService {
         // Resolve book title using inheritance (Campaign override → Core Social → fallback)
         const bookTitle = resolveBookTitle(settings, campaign, projectPath);
 
-        const { svgString } = createAprSVG(scenesFiltered, {
+        const { svgString, width, height } = createAprSVG(scenesFiltered, {
             size,
             progressPercent,
             bookTitle,
@@ -587,8 +633,11 @@ export class AuthorProgressService {
 
         return {
             svgString,
+            width,
+            height,
             campaign,
             meta: {
+                format: this.getCampaignExportFormat(campaign),
                 size,
                 stage: debugStage,
                 percent: progressPercent
@@ -635,9 +684,11 @@ export class AuthorProgressService {
         const lastSlash = trimmed.lastIndexOf('/');
         const folder = lastSlash >= 0 ? trimmed.slice(0, lastSlash) : '';
         const file = lastSlash >= 0 ? trimmed.slice(lastSlash + 1) : trimmed;
-        const base = file.toLowerCase().endsWith('.svg') ? file.slice(0, -4) : file;
+        const extMatch = file.match(/\.([a-z0-9]+)$/i);
+        const ext = (extMatch?.[1] ?? 'png').toLowerCase();
+        const base = extMatch ? file.slice(0, -(ext.length + 1)) : file;
         const safeBase = base.trim() || fallbackBase;
-        const fileName = `${safeBase}-snapshot-${Date.now()}.svg`;
+        const fileName = `${safeBase}-snapshot-${Date.now()}.${ext}`;
         return folder ? `${folder}/${fileName}` : fileName;
     }
 }

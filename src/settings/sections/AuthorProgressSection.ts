@@ -141,14 +141,16 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             const oldDefaultPath = buildDefaultEmbedPath({
                 bookTitle: settings.bookTitle,
                 updateFrequency: settings.updateFrequency,
-                aprSize: settings.aprSize
+                aprSize: settings.aprSize,
+                exportFormat: 'png'
             });
             settings.aprSize = size;
             if (settings.autoUpdateEmbedPaths && settings.dynamicEmbedPath === oldDefaultPath) {
                 settings.dynamicEmbedPath = buildDefaultEmbedPath({
                     bookTitle: settings.bookTitle,
                     updateFrequency: settings.updateFrequency,
-                    aprSize: size
+                    aprSize: size,
+                    exportFormat: 'png'
                 });
             }
             await plugin.saveSettings();
@@ -174,7 +176,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
     if (isProActive) {
         teaserSelectWrap = sizeSelectorControls.createDiv({ cls: ERT_CLASSES.SKIN_PRO });
-        const teaserSelect = teaserSelectWrap.createEl('select', { cls: 'dropdown ert-input ert-input--lg' });
+        const teaserSelect = teaserSelectWrap.createEl('select', { cls: 'dropdown ert-input ert-input--md' });
         const teaserOptions: { value: TeaserPreviewMode; label: string }[] = [
             { value: 'auto', label: 'Auto (Current Stage)' },
             { value: 'bar', label: 'Ring' },
@@ -1249,14 +1251,16 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                         const oldDefaultPath = buildDefaultEmbedPath({
                             bookTitle: current.bookTitle,
                             updateFrequency: current.updateFrequency,
-                            aprSize: current.aprSize
+                            aprSize: current.aprSize,
+                            exportFormat: 'png'
                         });
                         current.updateFrequency = val as any;
                         if (current.autoUpdateEmbedPaths && current.dynamicEmbedPath === oldDefaultPath) {
                             current.dynamicEmbedPath = buildDefaultEmbedPath({
                                 bookTitle: current.bookTitle,
                                 updateFrequency: current.updateFrequency,
-                                aprSize: current.aprSize
+                                aprSize: current.aprSize,
+                                exportFormat: 'png'
                             });
                         }
                         await plugin.saveSettings();
@@ -1313,14 +1317,15 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
         const embedPathSetting = new Setting(automationCard)
             .setName('Embed File Path')
-            .setDesc(`Location for the "Live Embed" SVG file.`);
+            .setDesc('Location for the live export file (PNG recommended for social platforms).');
 
 
         embedPathSetting.addText(text => {
             const defaultPath = buildDefaultEmbedPath({
                 bookTitle: settings?.bookTitle,
                 updateFrequency: settings?.updateFrequency,
-                aprSize: settings?.aprSize
+                aprSize: settings?.aprSize,
+                exportFormat: 'png'
             });
             const successClass = 'ert-input--success';
             const errorClass = 'ert-input--error';
@@ -1354,7 +1359,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                     return;
                 }
 
-                if (!val.toLowerCase().endsWith('.svg')) {
+                if (!val.toLowerCase().endsWith('.png')) {
                     flashError();
                     return;
                 }

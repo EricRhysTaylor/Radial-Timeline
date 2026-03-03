@@ -1587,33 +1587,6 @@
   background-size: 14px 14px;
 }
 
-/* Settings-only: normalize dropdown indicators so arrow gutter is consistent
-   across tabs without changing width tokens. */
-.ert-ui.ert-scope--settings select {
-  -webkit-appearance: none;
-  appearance: none;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  overflow: hidden;
-  --ert-select-chevron-color: color-mix(in srgb, var(--ert-control-color) 72%, transparent);
-  --ert-select-chevron-size: 7px;
-  background-image:
-    linear-gradient(45deg, transparent 43%, var(--ert-select-chevron-color) 43%, var(--ert-select-chevron-color) 57%, transparent 57%),
-    linear-gradient(-45deg, transparent 43%, var(--ert-select-chevron-color) 43%, var(--ert-select-chevron-color) 57%, transparent 57%);
-  background-repeat: no-repeat;
-  background-size:
-    var(--ert-select-chevron-size) var(--ert-select-chevron-size),
-    var(--ert-select-chevron-size) var(--ert-select-chevron-size);
-  background-position:
-    calc(100% - 8px) calc(50% + 1px),
-    calc(100% - 4px) calc(50% + 1px);
-}
-
-.ert-ui.ert-scope--settings select:disabled {
-  --ert-select-chevron-color: color-mix(in srgb, var(--text-faint) 70%, transparent);
-}
-
-
 .ert-ui textarea {
   padding: var(--ert-control-pad-y) var(--ert-control-pad-x);
   font-size: var(--ert-control-font-size);
@@ -6824,6 +6797,14 @@
   border: 1px solid var(--background-modifier-border);
   border-top: none;
   border-radius: 0 0 var(--ert-control-radius) var(--ert-control-radius);
+}
+
+.ert-ui.ert-scope--settings .ert-campaign-details .setting-item-control input[type="range"]::-webkit-slider-runnable-track {
+  background: var(--background-secondary);
+}
+
+.ert-ui.ert-scope--settings .ert-campaign-details .setting-item-control input[type="range"]::-moz-range-track {
+  background: var(--background-secondary);
 }
 
 .ert-ui.ert-scope--settings .ert-campaign-add-section {

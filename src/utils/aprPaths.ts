@@ -1,5 +1,6 @@
 export type AprSize = 'thumb' | 'small' | 'medium' | 'large';
 export type AprFrequency = 'manual' | 'daily' | 'weekly' | 'monthly';
+export type AprExportFormat = 'png' | 'svg';
 
 /**
  * APR Path Schema (LOCKED - do not modify without migration plan)
@@ -11,17 +12,18 @@ export type AprFrequency = 'manual' | 'daily' | 'weekly' | 'monthly';
  *   Campaigns:     Radial Timeline/Social/{bookSlug}/campaigns/
  *
  * Filename schema (frozen token order):
- *   apr-{campaignSlug}-{mode}-{size}{-teaser}.svg
+ *   apr-{campaignSlug}-{mode}-{size}{-teaser}.{format}
  *
  * Where:
  *   {campaignSlug} = slugified campaign name (use "default" for core report)
  *   {mode}         = manual | auto-daily | auto-weekly | auto-monthly
  *   {size}         = thumb | small | medium | large
  *   {-teaser}      = suffix only if teaser enabled
+ *   {format}       = png | svg
  *
  * Examples:
- *   Core:     Radial Timeline/Social/my-novel/apr-default-manual-large.svg
- *   Campaign: Radial Timeline/Social/my-novel/campaigns/apr-kickstarter-auto-weekly-large-teaser.svg
+ *   Core:     Radial Timeline/Social/my-novel/apr-default-manual-large.png
+ *   Campaign: Radial Timeline/Social/my-novel/campaigns/apr-kickstarter-auto-weekly-large-teaser.png
  */
 
 export function slugify(value: string | undefined, fallback: string): string {
@@ -42,6 +44,14 @@ function resolveAprSize(primary?: AprSize, fallback?: AprSize): AprSize {
     return primary ?? fallback ?? 'medium';
 }
 
+const EXPORT_FORMATS: AprExportFormat[] = ['png', 'svg'];
+
+export function normalizeAprExportFormat(value: unknown): AprExportFormat {
+    if (typeof value !== 'string') return 'png';
+    const normalized = value.toLowerCase();
+    return EXPORT_FORMATS.includes(normalized as AprExportFormat) ? normalized as AprExportFormat : 'png';
+}
+
 const DEFAULT_SIZES: AprSize[] = ['thumb', 'small', 'medium', 'large'];
 
 /**
@@ -49,15 +59,17 @@ const DEFAULT_SIZES: AprSize[] = ['thumb', 'small', 'medium', 'large'];
  * Matches current format (apr-default-{mode}-{size}.svg) and legacy format (apr-{bookSlug}-default-{mode}-{size}.svg).
  */
 export function isDefaultEmbedPath(path: string | undefined, options: { bookTitle?: string; updateFrequency?: AprFrequency }): boolean {
-    if (!path?.trim() || !path.toLowerCase().endsWith('.svg')) return false;
+    if (!path?.trim()) return false;
     const bookSlug = slugify(options.bookTitle, 'book');
     const mode = formatAprMode(options.updateFrequency);
     const prefix = `Radial Timeline/Social/${bookSlug}/`;
     if (!path.startsWith(prefix)) return false;
     const filename = path.slice(prefix.length);
     for (const size of DEFAULT_SIZES) {
-        if (filename === `apr-default-${mode}-${size}.svg`) return true;
-        if (filename === `apr-${bookSlug}-default-${mode}-${size}.svg`) return true;
+        for (const format of EXPORT_FORMATS) {
+            if (filename === `apr-default-${mode}-${size}.${format}`) return true;
+            if (filename === `apr-${bookSlug}-default-${mode}-${size}.${format}`) return true;
+        }
     }
     return false;
 }
@@ -70,12 +82,14 @@ export function buildDefaultEmbedPath(options: {
     bookTitle?: string;
     updateFrequency?: AprFrequency;
     aprSize?: AprSize;
+    exportFormat?: AprExportFormat;
 }): string {
     const bookSlug = slugify(options.bookTitle, 'book');
     const mode = formatAprMode(options.updateFrequency);
     const size = resolveAprSize(options.aprSize);
-    // Filename: apr-default-{mode}-{size}.svg (no bookSlug in filename)
-    return `Radial Timeline/Social/${bookSlug}/apr-default-${mode}-${size}.svg`;
+    const format = normalizeAprExportFormat(options.exportFormat);
+    // Filename: apr-default-{mode}-{size}.{format} (no bookSlug in filename)
+    return `Radial Timeline/Social/${bookSlug}/apr-default-${mode}-${size}.${format}`;
 }
 
 /**
@@ -89,12 +103,14 @@ export function buildCampaignEmbedPath(options: {
     aprSize?: AprSize;
     fallbackSize?: AprSize;
     teaserEnabled?: boolean;
+    exportFormat?: AprExportFormat;
 }): string {
     const bookSlug = slugify(options.bookTitle, 'book');
     const campaignSlug = slugify(options.campaignName, 'campaign');
     const mode = formatAprMode(options.updateFrequency);
     const size = resolveAprSize(options.aprSize, options.fallbackSize);
     const teaserSuffix = options.teaserEnabled ? '-teaser' : '';
-    // Filename: apr-{campaignSlug}-{mode}-{size}{-teaser}.svg (no bookSlug in filename)
-    return `Radial Timeline/Social/${bookSlug}/campaigns/apr-${campaignSlug}-${mode}-${size}${teaserSuffix}.svg`;
+    const format = normalizeAprExportFormat(options.exportFormat);
+    // Filename: apr-{campaignSlug}-{mode}-{size}{-teaser}.{format} (no bookSlug in filename)
+    return `Radial Timeline/Social/${bookSlug}/campaigns/apr-${campaignSlug}-${mode}-${size}${teaserSuffix}.${format}`;
 }
