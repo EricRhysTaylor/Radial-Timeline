@@ -287,6 +287,7 @@ Context:`,
         aprProgressDateStart: undefined,
         aprProgressDateTarget: undefined,
         aprSize: 'medium',
+        exportFormat: 'png',
         aprBackgroundColor: '#0d0d0f',
         aprCenterTransparent: true, // Recommended: transparent shows page background
         aprBookAuthorColor: '#6FB971', // Press stage default

@@ -77,6 +77,8 @@
   /* Settings UI sizing (character-based for consistency) */
   --rt-input-width-xs: 6ch;
   /* very short numbers / codes */
+  --rt-input-width-2digit: 4.75ch;
+  /* compact numeric controls capped at two digits */
   --rt-input-width-sm: 10ch;
   /* small text / short IDs */
   --rt-input-width-md: 18ch;

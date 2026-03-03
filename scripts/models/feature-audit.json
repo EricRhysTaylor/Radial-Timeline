@@ -1,0 +1,213 @@
+{
+  "generatedAt": "2026-03-03T21:57:54.903Z",
+  "validationErrors": [],
+  "providerSummaries": {
+    "anthropic": {
+      "total": 9,
+      "implemented": 0,
+      "highImpactGaps": 2
+    },
+    "openai": {
+      "total": 6,
+      "implemented": 1,
+      "highImpactGaps": 1
+    },
+    "google": {
+      "total": 5,
+      "implemented": 2,
+      "highImpactGaps": 1
+    }
+  },
+  "highImpactGaps": [
+    {
+      "id": "anthropic-prompt-caching",
+      "name": "Prompt Caching",
+      "description": "Cache system prompts and large content blocks using cache_control markers. Subsequent requests pay only for cache reads (~90% cheaper). Requires content block array format for system prompt.",
+      "priority": "p0",
+      "relevantPluginFeatures": [
+        "gossamer",
+        "inquiry",
+        "sceneAnalysis"
+      ],
+      "complexity": "medium"
+    },
+    {
+      "id": "anthropic-system-content-blocks",
+      "name": "System Content Blocks",
+      "description": "Send system prompt as an array of typed content blocks instead of a plain string. Prerequisite for prompt caching and multi-part system instructions.",
+      "priority": "p0",
+      "relevantPluginFeatures": [
+        "gossamer",
+        "inquiry",
+        "sceneAnalysis",
+        "synopsis",
+        "pulse"
+      ],
+      "complexity": "low"
+    },
+    {
+      "id": "openai-automatic-prompt-caching",
+      "name": "Automatic Prompt Caching",
+      "description": "Automatic 50% discount on cached input tokens for prompts >1024 tokens with identical prefixes. Requires stable system message prefix — currently defeated by system/user concatenation.",
+      "priority": "p0",
+      "relevantPluginFeatures": [
+        "gossamer",
+        "inquiry",
+        "sceneAnalysis"
+      ],
+      "complexity": "low"
+    },
+    {
+      "id": "gemini-context-caching",
+      "name": "Context Caching",
+      "description": "Explicit cache creation for large context via cachedContents API. Minimum 60-minute TTL, minimum 32K tokens. Cached tokens billed at reduced rate.",
+      "priority": "p0",
+      "relevantPluginFeatures": [
+        "gossamer",
+        "inquiry"
+      ],
+      "complexity": "medium"
+    }
+  ],
+  "costOpportunities": [
+    {
+      "id": "anthropic-prompt-caching",
+      "name": "Prompt Caching",
+      "maturity": "ga",
+      "complexity": "medium"
+    },
+    {
+      "id": "anthropic-batch-api",
+      "name": "Batch API",
+      "maturity": "ga",
+      "complexity": "high"
+    },
+    {
+      "id": "openai-automatic-prompt-caching",
+      "name": "Automatic Prompt Caching",
+      "maturity": "ga",
+      "complexity": "low"
+    },
+    {
+      "id": "openai-batch-api",
+      "name": "Batch API",
+      "maturity": "ga",
+      "complexity": "high"
+    },
+    {
+      "id": "gemini-context-caching",
+      "name": "Context Caching",
+      "maturity": "ga",
+      "complexity": "medium"
+    }
+  ],
+  "betaFeatures": [
+    {
+      "id": "openai-responses-api",
+      "name": "Responses API",
+      "maturity": "preview",
+      "complexity": "architectural"
+    }
+  ],
+  "gaGaps": [
+    {
+      "id": "anthropic-prompt-caching",
+      "name": "Prompt Caching",
+      "complexity": "medium",
+      "priority": "p0"
+    },
+    {
+      "id": "anthropic-system-content-blocks",
+      "name": "System Content Blocks",
+      "complexity": "low",
+      "priority": "p0"
+    },
+    {
+      "id": "anthropic-temperature-topP",
+      "name": "Temperature & Top-P",
+      "complexity": "low",
+      "priority": "p1"
+    },
+    {
+      "id": "anthropic-extended-thinking",
+      "name": "Extended Thinking",
+      "complexity": "medium",
+      "priority": "p2"
+    },
+    {
+      "id": "anthropic-token-counting",
+      "name": "Token Count API",
+      "complexity": "low",
+      "priority": "p1"
+    },
+    {
+      "id": "anthropic-citations",
+      "name": "Citations",
+      "complexity": "medium",
+      "priority": "p2"
+    },
+    {
+      "id": "anthropic-batch-api",
+      "name": "Batch API",
+      "complexity": "high",
+      "priority": "p2"
+    },
+    {
+      "id": "openai-automatic-prompt-caching",
+      "name": "Automatic Prompt Caching",
+      "complexity": "low",
+      "priority": "p0"
+    },
+    {
+      "id": "openai-batch-api",
+      "name": "Batch API",
+      "complexity": "high",
+      "priority": "p2"
+    }
+  ],
+  "sourceFindings": [
+    {
+      "file": "anthropicApi.ts",
+      "finding": "system prompt is plain string (blocks prompt caching)",
+      "relatedFeatures": [
+        "anthropic-system-content-blocks",
+        "anthropic-prompt-caching"
+      ]
+    },
+    {
+      "file": "anthropicApi.ts",
+      "finding": "no anthropic-beta headers configured",
+      "relatedFeatures": [
+        "anthropic-prompt-caching",
+        "anthropic-extended-thinking"
+      ]
+    },
+    {
+      "file": "anthropicApi.ts",
+      "finding": "anthropic-version header: 2023-06-01",
+      "relatedFeatures": []
+    },
+    {
+      "file": "anthropicApi.ts",
+      "finding": "temperature/topP not in request body",
+      "relatedFeatures": [
+        "anthropic-temperature-topP"
+      ]
+    },
+    {
+      "file": "openaiApi.ts",
+      "finding": "system+user concatenated into single message (defeats auto-caching)",
+      "relatedFeatures": [
+        "openai-automatic-prompt-caching",
+        "openai-reasoning-model-system-role"
+      ]
+    },
+    {
+      "file": "geminiApi.ts",
+      "finding": "createGeminiCache() has 0 callers in src/",
+      "relatedFeatures": [
+        "gemini-context-caching"
+      ]
+    }
+  ]
+}

@@ -16,7 +16,7 @@ import { colorSwatch, type ColorSwatchHandle } from '../../ui/ui';
 import { ERT_CLASSES } from '../../ui/classes';
 import { STAGE_ORDER } from '../../utils/constants';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
-import { buildDefaultEmbedPath } from '../../utils/aprPaths';
+import { buildDefaultEmbedPath, normalizeAprExportFormat, type AprExportFormat } from '../../utils/aprPaths';
 import { ProjectPathSuggest } from '../ProjectPathSuggest';
 import { validateAndRememberProjectPath } from '../../renderer/apr/aprHelpers';
 
@@ -27,6 +27,73 @@ export interface AuthorProgressSectionProps {
 }
 
 type TeaserPreviewMode = 'auto' | TeaserRevealLevel;
+
+function fitSelectToSelectedLabel(
+    selectEl: HTMLSelectElement,
+    options: {
+        extraPx?: number;
+        minPx?: number;
+        maxPx?: number;
+    } = {}
+): void {
+    const selectedLabel = selectEl.options[selectEl.selectedIndex]?.text ?? '';
+    if (!selectedLabel) return;
+
+    const doc = selectEl.ownerDocument;
+    const view = doc.defaultView;
+    if (!view) return;
+
+    const sample = doc.createElement('span');
+    sample.className = 'ert-metrics-sample';
+    sample.textContent = selectedLabel;
+    doc.body.appendChild(sample);
+
+    const computed = view.getComputedStyle(selectEl);
+    sample.style.fontFamily = computed.fontFamily;
+    sample.style.fontSize = computed.fontSize; // SAFE: inline style used for off-screen measurement element
+    sample.style.fontWeight = computed.fontWeight;
+    sample.style.letterSpacing = computed.letterSpacing;
+
+    const textWidth = Math.ceil(sample.getBoundingClientRect().width);
+    sample.remove();
+
+    const paddingLeft = Number.parseFloat(computed.paddingLeft) || 0;
+    const paddingRight = Number.parseFloat(computed.paddingRight) || 0;
+    const borderLeft = Number.parseFloat(computed.borderLeftWidth) || 0;
+    const borderRight = Number.parseFloat(computed.borderRightWidth) || 0;
+    const extraPx = options.extraPx ?? 16;
+    const minPx = options.minPx ?? 0;
+    const maxPx = options.maxPx ?? Number.POSITIVE_INFINITY;
+    const isBorderBox = computed.boxSizing === 'border-box';
+
+    let rawWidth = textWidth + extraPx;
+    if (isBorderBox) {
+        rawWidth += paddingLeft + paddingRight + borderLeft + borderRight;
+    }
+
+    const nextWidth = Math.min(maxPx, Math.max(minPx, Math.ceil(rawWidth)));
+    const nextWidthPx = `${nextWidth}px`;
+    selectEl.style.width = nextWidthPx; // SAFE: inline style used for dynamic fit-to-content width
+    selectEl.style.minWidth = nextWidthPx;
+    selectEl.style.maxWidth = nextWidthPx;
+    selectEl.style.flex = `0 0 ${nextWidthPx}`;
+    selectEl.style.setProperty('--ert-control-width', nextWidthPx);
+}
+
+function inferExportFormatFromPath(path: string | undefined, fallback: AprExportFormat = 'png'): AprExportFormat {
+    const normalized = path?.trim().toLowerCase() ?? '';
+    if (normalized.endsWith('.svg')) return 'svg';
+    if (normalized.endsWith('.png')) return 'png';
+    return fallback;
+}
+
+function resolveDefaultExportFormat(settings?: AuthorProgressSettings): AprExportFormat {
+    if (!settings) return 'png';
+    if (typeof settings.exportFormat === 'string' && settings.exportFormat.trim()) {
+        return normalizeAprExportFormat(settings.exportFormat);
+    }
+    return inferExportFormatFromPath(settings.dynamicEmbedPath, 'png');
+}
 
 export function renderAuthorProgressSection({ app, plugin, containerEl }: AuthorProgressSectionProps): void {
     // Social is ERT-only; avoid legacy classes.
@@ -138,11 +205,12 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         btn.onclick = async () => {
             if (!plugin.settings.authorProgress) return;
             const settings = plugin.settings.authorProgress;
+            const defaultFormat = resolveDefaultExportFormat(settings);
             const oldDefaultPath = buildDefaultEmbedPath({
                 bookTitle: settings.bookTitle,
                 updateFrequency: settings.updateFrequency,
                 aprSize: settings.aprSize,
-                exportFormat: 'png'
+                exportFormat: defaultFormat
             });
             settings.aprSize = size;
             if (settings.autoUpdateEmbedPaths && settings.dynamicEmbedPath === oldDefaultPath) {
@@ -150,7 +218,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                     bookTitle: settings.bookTitle,
                     updateFrequency: settings.updateFrequency,
                     aprSize: size,
-                    exportFormat: 'png'
+                    exportFormat: defaultFormat
                 });
             }
             await plugin.saveSettings();
@@ -176,7 +244,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
     if (isProActive) {
         teaserSelectWrap = sizeSelectorControls.createDiv({ cls: ERT_CLASSES.SKIN_PRO });
-        const teaserSelect = teaserSelectWrap.createEl('select', { cls: 'dropdown ert-input ert-input--md' });
+        const teaserSelect = teaserSelectWrap.createEl('select', { cls: 'dropdown ert-input ert-input--fit-selected' });
         const teaserOptions: { value: TeaserPreviewMode; label: string }[] = [
             { value: 'auto', label: 'Auto (Current Stage)' },
             { value: 'bar', label: 'Ring' },
@@ -190,8 +258,10 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         teaserSelect.value = teaserPreviewMode;
         teaserSelect.onchange = () => {
             teaserPreviewMode = teaserSelect.value as TeaserPreviewMode;
+            fitSelectToSelectedLabel(teaserSelect, { extraPx: 16, minPx: 72 });
             refreshPreview?.();
         };
+        fitSelectToSelectedLabel(teaserSelect, { extraPx: 16, minPx: 72 });
         updateTeaserPreviewVisibility(currentSize);
     }
 
@@ -1248,11 +1318,12 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                 .onChange(async (val) => {
                     if (plugin.settings.authorProgress) {
                         const current = plugin.settings.authorProgress;
+                        const defaultFormat = resolveDefaultExportFormat(current);
                         const oldDefaultPath = buildDefaultEmbedPath({
                             bookTitle: current.bookTitle,
                             updateFrequency: current.updateFrequency,
                             aprSize: current.aprSize,
-                            exportFormat: 'png'
+                            exportFormat: defaultFormat
                         });
                         current.updateFrequency = val as any;
                         if (current.autoUpdateEmbedPaths && current.dynamicEmbedPath === oldDefaultPath) {
@@ -1260,7 +1331,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                                 bookTitle: current.bookTitle,
                                 updateFrequency: current.updateFrequency,
                                 aprSize: current.aprSize,
-                                exportFormat: 'png'
+                                exportFormat: defaultFormat
                             });
                         }
                         await plugin.saveSettings();
@@ -1317,15 +1388,17 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
         const embedPathSetting = new Setting(automationCard)
             .setName('Embed File Path')
-            .setDesc('Location for the live export file (PNG recommended for social platforms).');
+            .setDesc('Location for the live export file. Format follows the APR modal setting.');
 
+        embedPathSetting.settingEl.addClass('ert-setting-full-width-input');
 
         embedPathSetting.addText(text => {
+            const defaultFormat = resolveDefaultExportFormat(settings);
             const defaultPath = buildDefaultEmbedPath({
                 bookTitle: settings?.bookTitle,
                 updateFrequency: settings?.updateFrequency,
                 aprSize: settings?.aprSize,
-                exportFormat: 'png'
+                exportFormat: defaultFormat
             });
             const successClass = 'ert-input--success';
             const errorClass = 'ert-input--error';
@@ -1347,6 +1420,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             };
             text.setPlaceholder(defaultPath)
                 .setValue(settings?.dynamicEmbedPath || defaultPath);
+            text.inputEl.addClass('ert-input--full');
 
             // Validate on blur
             const handleBlur = async () => {
@@ -1359,7 +1433,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                     return;
                 }
 
-                if (!val.toLowerCase().endsWith('.png')) {
+                if (!val.toLowerCase().endsWith(`.${defaultFormat}`)) {
                     flashError();
                     return;
                 }

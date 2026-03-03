@@ -1734,10 +1734,11 @@
 
 /* Actions Status Row (campaign mode): grid-style row matching Status section */
 .ert-ui.ert-scope--modal .ert-apr-actions-status {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content max-content max-content max-content;
   align-items: center;
-  gap: var(--ert-gap-sm) var(--ert-gap-md);
+  column-gap: var(--ert-gap-sm);
+  row-gap: var(--ert-gap-xs);
   padding: var(--ert-gap-sm) 0;
 }
 
@@ -1746,7 +1747,6 @@
 }
 
 .ert-ui.ert-scope--modal .ert-apr-actions-status .ert-apr-status-cell--book {
-  flex: 1 1 auto;
   min-width: 0;
 }
 

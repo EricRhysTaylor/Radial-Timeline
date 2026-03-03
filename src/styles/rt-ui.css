@@ -168,6 +168,7 @@
   );
   --ert-modal-glow: 0 18px 50px color-mix(in srgb, var(--ert-accent) 22%, transparent);
   --ert-input-width-xs: var(--rt-input-width-xs, 6ch);
+  --ert-input-width-2digit: var(--rt-input-width-2digit, 4.75ch);
   --ert-input-width-sm: var(--rt-input-width-sm, 10ch);
   --ert-input-width-md: var(--rt-input-width-md, 18ch);
   --ert-input-width-lg: var(--rt-input-width-lg, 24ch);
@@ -221,6 +222,12 @@
   --ert-control-width: var(--ert-input-width-xs);
 }
 
+.ert-ui :is(input, select).ert-input--2digit {
+  width: var(--ert-input-width-2digit);
+  min-width: var(--ert-input-width-2digit);
+  --ert-control-width: var(--ert-input-width-2digit);
+}
+
 .ert-ui :is(input, select).ert-input--sm {
   width: var(--ert-input-width-sm);
   min-width: var(--ert-input-width-sm);
@@ -251,12 +258,20 @@
   --ert-control-width: 100%;
 }
 
+.ert-ui select.ert-input--fit-selected {
+  width: fit-content;
+  min-width: 0;
+  max-width: 100%;
+  flex: 0 0 auto;
+  --ert-control-width: fit-content;
+}
+
 .ert-ui :is(input, select).ert-input {
   height: var(--ert-control-height);
   padding: var(--ert-control-pad-y) var(--ert-control-pad-x);
   border-radius: var(--ert-control-radius);
   border: 1px solid var(--ert-control-border);
-  background: var(--ert-control-bg);
+  background-color: var(--ert-control-bg);
   color: var(--ert-control-color);
 }
 
@@ -1567,7 +1582,7 @@
   padding: var(--ert-control-pad-y) var(--ert-control-pad-x);
   font-size: var(--ert-control-font-size);
   border-radius: var(--ert-control-radius);
-  background: var(--ert-control-bg);
+  background-color: var(--ert-control-bg);
   border: 1px solid var(--ert-control-border);
   color: var(--ert-control-color);
   line-height: 1.2;
@@ -1578,7 +1593,7 @@
   padding: var(--ert-control-pad-y) var(--ert-control-pad-x);
   font-size: var(--ert-control-font-size);
   border-radius: var(--ert-control-radius);
-  background: var(--ert-control-bg);
+  background-color: var(--ert-control-bg);
   border: 1px solid var(--ert-control-border);
   color: var(--ert-control-color);
   line-height: 1.2;
@@ -1591,7 +1606,7 @@
   padding: var(--ert-control-pad-y) var(--ert-control-pad-x);
   font-size: var(--ert-control-font-size);
   border-radius: var(--ert-control-radius);
-  background: var(--ert-control-bg);
+  background-color: var(--ert-control-bg);
   border: 1px solid var(--ert-control-border);
   color: var(--ert-control-color);
 }

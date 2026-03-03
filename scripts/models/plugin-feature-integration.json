@@ -1,0 +1,345 @@
+{
+  "schemaVersion": 1,
+  "lastUpdated": "2026-03-03",
+  "integrations": [
+    {
+      "id": "anthropic-prompt-caching",
+      "relevantPluginFeatures": [
+        "gossamer",
+        "inquiry",
+        "sceneAnalysis"
+      ],
+      "impactAssessment": "high",
+      "implementationStatus": "not_implemented",
+      "implementationNotes": "System prompt sent as plain string in anthropicApi.ts. Needs content block array with cache_control: { type: 'ephemeral' } on evidence blocks. Gossamer and Inquiry send identical evidence across calls — caching would save ~90% on input tokens.",
+      "sourceFiles": [
+        "src/api/anthropicApi.ts",
+        "src/ai/providers/anthropicProvider.ts",
+        "src/api/providerRouter.ts"
+      ],
+      "blockers": [
+        "Requires anthropic-system-content-blocks to be implemented first"
+      ],
+      "addedToRegistry": "2026-03-03",
+      "priority": "p0"
+    },
+    {
+      "id": "anthropic-system-content-blocks",
+      "relevantPluginFeatures": [
+        "gossamer",
+        "inquiry",
+        "sceneAnalysis",
+        "synopsis",
+        "pulse"
+      ],
+      "impactAssessment": "high",
+      "implementationStatus": "not_implemented",
+      "implementationNotes": "callAnthropicApi sends system as a plain string (line 47: requestBody.system = systemPrompt). Must restructure to array of content blocks: [{ type: 'text', text: ... }]. Prerequisite for prompt caching.",
+      "sourceFiles": [
+        "src/api/anthropicApi.ts"
+      ],
+      "blockers": [],
+      "addedToRegistry": "2026-03-03",
+      "priority": "p0"
+    },
+    {
+      "id": "anthropic-temperature-topP",
+      "relevantPluginFeatures": [
+        "gossamer",
+        "inquiry",
+        "sceneAnalysis"
+      ],
+      "impactAssessment": "medium",
+      "implementationStatus": "not_implemented",
+      "implementationNotes": "callAnthropicApi does not accept or send temperature/topP. The providerCapabilities sanitizer strips these for Anthropic. Gossamer temperature of 0.45 and Inquiry temperature of 0.2 are silently dropped when using Anthropic.",
+      "sourceFiles": [
+        "src/api/anthropicApi.ts",
+        "src/api/providerCapabilities.ts"
+      ],
+      "blockers": [],
+      "addedToRegistry": "2026-03-03",
+      "priority": "p1"
+    },
+    {
+      "id": "anthropic-extended-thinking",
+      "relevantPluginFeatures": [
+        "inquiry",
+        "gossamer"
+      ],
+      "impactAssessment": "medium",
+      "implementationStatus": "not_implemented",
+      "implementationNotes": "Could improve analysis quality for complex Inquiry questions and Gossamer beat analysis by allowing Claude to reason through evidence before answering.",
+      "sourceFiles": [
+        "src/api/anthropicApi.ts",
+        "src/ai/types.ts"
+      ],
+      "blockers": [],
+      "addedToRegistry": "2026-03-03",
+      "priority": "p2"
+    },
+    {
+      "id": "anthropic-token-counting",
+      "relevantPluginFeatures": [
+        "gossamer",
+        "inquiry"
+      ],
+      "impactAssessment": "medium",
+      "implementationStatus": "not_implemented",
+      "implementationNotes": "Current token estimation uses chars/4 heuristic (estimateTokensFromVault.ts). Anthropic's count_tokens endpoint provides exact counts. Would improve the 80% input guard accuracy in aiClient.ts line 350.",
+      "sourceFiles": [
+        "src/ai/forecast/estimateTokensFromVault.ts",
+        "src/ai/runtime/aiClient.ts"
+      ],
+      "blockers": [],
+      "addedToRegistry": "2026-03-03",
+      "priority": "p1"
+    },
+    {
+      "id": "anthropic-citations",
+      "relevantPluginFeatures": [
+        "inquiry"
+      ],
+      "impactAssessment": "medium",
+      "implementationStatus": "not_implemented",
+      "implementationNotes": "Inquiry findings could include source citations linking back to specific scenes/documents. Would strengthen evidence attribution in InquiryResult findings.",
+      "sourceFiles": [
+        "src/inquiry/runner/InquiryRunnerService.ts",
+        "src/inquiry/state.ts"
+      ],
+      "blockers": [],
+      "addedToRegistry": "2026-03-03",
+      "priority": "p2"
+    },
+    {
+      "id": "anthropic-batch-api",
+      "relevantPluginFeatures": [
+        "gossamer"
+      ],
+      "impactAssessment": "medium",
+      "implementationStatus": "not_implemented",
+      "implementationNotes": "Gossamer currently runs a single unified API call. Batch API would help if architecture changed to per-beat analysis, or for bulk processing of multiple manuscripts. 50% cost reduction but 24h turnaround.",
+      "sourceFiles": [
+        "src/GossamerCommands.ts"
+      ],
+      "blockers": [
+        "Current architecture uses single unified call, not per-beat"
+      ],
+      "addedToRegistry": "2026-03-03",
+      "priority": "p2"
+    },
+    {
+      "id": "anthropic-streaming",
+      "relevantPluginFeatures": [
+        "gossamer",
+        "inquiry",
+        "sceneAnalysis"
+      ],
+      "impactAssessment": "low",
+      "implementationStatus": "deferred",
+      "implementationNotes": "Would enable real-time progress feedback during long AI calls. Currently users see a spinner with no intermediate results.",
+      "sourceFiles": [
+        "src/api/anthropicApi.ts"
+      ],
+      "blockers": [
+        "Obsidian requestUrl() does not support SSE streaming. Would need browser fetch() with ReadableStream, which may not work on mobile Obsidian."
+      ],
+      "addedToRegistry": "2026-03-03",
+      "priority": "p3"
+    },
+    {
+      "id": "anthropic-pdf-support",
+      "relevantPluginFeatures": [],
+      "impactAssessment": "low",
+      "implementationStatus": "not_applicable",
+      "implementationNotes": "Plugin works with Obsidian markdown vault files, not PDFs. Manuscript content is already available as text.",
+      "sourceFiles": [],
+      "blockers": [],
+      "addedToRegistry": "2026-03-03",
+      "priority": "p3"
+    },
+    {
+      "id": "openai-automatic-prompt-caching",
+      "relevantPluginFeatures": [
+        "gossamer",
+        "inquiry",
+        "sceneAnalysis"
+      ],
+      "impactAssessment": "high",
+      "implementationStatus": "not_implemented",
+      "implementationNotes": "OpenAI automatically caches prompts >1024 tokens with stable prefixes (50% discount). Currently DEFEATED because openaiApi.ts line 82 concatenates system+user into a single user message. Fix: separate into system and user messages for non-reasoning models.",
+      "sourceFiles": [
+        "src/api/openaiApi.ts"
+      ],
+      "blockers": [],
+      "addedToRegistry": "2026-03-03",
+      "priority": "p0"
+    },
+    {
+      "id": "openai-structured-outputs",
+      "relevantPluginFeatures": [
+        "gossamer",
+        "inquiry",
+        "sceneAnalysis"
+      ],
+      "impactAssessment": "none",
+      "implementationStatus": "complete",
+      "implementationNotes": "Implemented via response_format: { type: 'json_schema', json_schema: { name: 'ai_result', schema: req.jsonSchema } } in openaiProvider.ts generateJson method.",
+      "sourceFiles": [
+        "src/ai/providers/openaiProvider.ts",
+        "src/api/openaiApi.ts"
+      ],
+      "blockers": [],
+      "addedToRegistry": "2026-03-03",
+      "priority": "p3"
+    },
+    {
+      "id": "openai-reasoning-model-system-role",
+      "relevantPluginFeatures": [
+        "gossamer",
+        "inquiry"
+      ],
+      "impactAssessment": "medium",
+      "implementationStatus": "partial",
+      "implementationNotes": "openaiApi.ts concatenates all prompts into a single user message 'because reasoning models don't support system role'. This is over-broad — only o1/o1-mini lack system role support. GPT-5.x and later o-series models support system/developer roles. Need precise model detection.",
+      "sourceFiles": [
+        "src/api/openaiApi.ts"
+      ],
+      "blockers": [],
+      "addedToRegistry": "2026-03-03",
+      "priority": "p1"
+    },
+    {
+      "id": "openai-batch-api",
+      "relevantPluginFeatures": [
+        "gossamer"
+      ],
+      "impactAssessment": "medium",
+      "implementationStatus": "not_implemented",
+      "implementationNotes": "Similar to Anthropic batch API. 50% cost reduction for async processing. Same architectural constraint: Gossamer currently uses a single unified call.",
+      "sourceFiles": [
+        "src/GossamerCommands.ts"
+      ],
+      "blockers": [
+        "Current architecture uses single unified call, not per-beat"
+      ],
+      "addedToRegistry": "2026-03-03",
+      "priority": "p2"
+    },
+    {
+      "id": "openai-streaming",
+      "relevantPluginFeatures": [
+        "gossamer",
+        "inquiry",
+        "sceneAnalysis"
+      ],
+      "impactAssessment": "low",
+      "implementationStatus": "deferred",
+      "implementationNotes": "Same blocker as Anthropic streaming. Would enable progress feedback.",
+      "sourceFiles": [
+        "src/api/openaiApi.ts"
+      ],
+      "blockers": [
+        "Obsidian requestUrl() does not support SSE streaming."
+      ],
+      "addedToRegistry": "2026-03-03",
+      "priority": "p3"
+    },
+    {
+      "id": "openai-responses-api",
+      "relevantPluginFeatures": [],
+      "impactAssessment": "low",
+      "implementationStatus": "deferred",
+      "implementationNotes": "New API replacing chat completions for some use cases. Still in preview. Current chat completions API is stable and sufficient.",
+      "sourceFiles": [
+        "src/api/openaiApi.ts"
+      ],
+      "blockers": [
+        "API still in preview",
+        "No clear benefit over chat completions for plugin's use cases"
+      ],
+      "addedToRegistry": "2026-03-03",
+      "priority": "p3"
+    },
+    {
+      "id": "gemini-context-caching",
+      "relevantPluginFeatures": [
+        "gossamer",
+        "inquiry"
+      ],
+      "impactAssessment": "high",
+      "implementationStatus": "partial",
+      "implementationNotes": "createGeminiCache() exists at geminiApi.ts:186 and callGeminiApi() accepts cachedContentName at param 9. However, NO CALLERS wire these together. Need a GeminiCacheManager that creates cache resources and threads the cache name through the provider.",
+      "sourceFiles": [
+        "src/api/geminiApi.ts",
+        "src/ai/providers/googleProvider.ts",
+        "src/api/providerRouter.ts"
+      ],
+      "blockers": [],
+      "addedToRegistry": "2026-03-03",
+      "priority": "p0"
+    },
+    {
+      "id": "gemini-1m-context",
+      "relevantPluginFeatures": [
+        "gossamer",
+        "inquiry"
+      ],
+      "impactAssessment": "none",
+      "implementationStatus": "complete",
+      "implementationNotes": "Gemini models configured with contextWindow: 1048576 in builtinModels.ts. Full manuscript fits in context.",
+      "sourceFiles": [
+        "src/ai/registry/builtinModels.ts"
+      ],
+      "blockers": [],
+      "addedToRegistry": "2026-03-03",
+      "priority": "p3"
+    },
+    {
+      "id": "gemini-structured-outputs",
+      "relevantPluginFeatures": [
+        "gossamer",
+        "inquiry",
+        "sceneAnalysis"
+      ],
+      "impactAssessment": "none",
+      "implementationStatus": "complete",
+      "implementationNotes": "Implemented via responseMimeType: 'application/json' and responseSchema in geminiApi.ts generationConfig.",
+      "sourceFiles": [
+        "src/api/geminiApi.ts"
+      ],
+      "blockers": [],
+      "addedToRegistry": "2026-03-03",
+      "priority": "p3"
+    },
+    {
+      "id": "gemini-streaming",
+      "relevantPluginFeatures": [
+        "gossamer",
+        "inquiry",
+        "sceneAnalysis"
+      ],
+      "impactAssessment": "low",
+      "implementationStatus": "deferred",
+      "implementationNotes": "Same Obsidian requestUrl blocker as other providers.",
+      "sourceFiles": [
+        "src/api/geminiApi.ts"
+      ],
+      "blockers": [
+        "Obsidian requestUrl() does not support SSE streaming."
+      ],
+      "addedToRegistry": "2026-03-03",
+      "priority": "p3"
+    },
+    {
+      "id": "gemini-grounding",
+      "relevantPluginFeatures": [],
+      "impactAssessment": "low",
+      "implementationStatus": "not_applicable",
+      "implementationNotes": "Search grounding is useful for factual queries but not for manuscript analysis. Plugin's analysis is based on vault content, not web search.",
+      "sourceFiles": [],
+      "blockers": [],
+      "addedToRegistry": "2026-03-03",
+      "priority": "p3"
+    }
+  ]
+}

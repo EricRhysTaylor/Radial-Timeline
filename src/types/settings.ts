@@ -161,6 +161,7 @@ export interface AuthorProgressSettings {
     aprProgressDateStart?: string;
     aprProgressDateTarget?: string;
     aprSize?: 'thumb' | 'small' | 'medium' | 'large';
+    exportFormat?: AprExportFormat; // Core/default report export format
     aprBackgroundColor?: string;
     aprCenterTransparent?: boolean;
     aprBookAuthorColor?: string;

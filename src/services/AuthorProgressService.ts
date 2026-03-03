@@ -148,12 +148,19 @@ export class AuthorProgressService {
         };
     }
 
+    private getDefaultExportFormat(settings: AuthorProgressSettings): AprExportFormat {
+        if (typeof settings.exportFormat === 'string' && settings.exportFormat.trim()) {
+            return normalizeAprExportFormat(settings.exportFormat);
+        }
+        return this.pathFormat(settings.dynamicEmbedPath ?? '', 'png');
+    }
+
     private getDefaultExportPath(settings: AuthorProgressSettings): string {
         return settings.dynamicEmbedPath || buildDefaultEmbedPath({
             bookTitle: settings.bookTitle,
             updateFrequency: settings.updateFrequency,
             aprSize: settings.aprSize,
-            exportFormat: 'png'
+            exportFormat: this.getDefaultExportFormat(settings)
         });
     }
 
@@ -172,12 +179,115 @@ export class AuthorProgressService {
         return fallback;
     }
 
-    private getPngExportScale(): number {
-        if (typeof window === 'undefined') return 2;
-        const dpr = Number(window.devicePixelRatio || 1);
-        if (!Number.isFinite(dpr) || dpr <= 0) return 2;
-        // Clamp to avoid oversized files on very high-DPI screens.
-        return Math.min(3, Math.max(2, Math.round(dpr)));
+    private writeUint32BE(target: Uint8Array, offset: number, value: number): void {
+        target[offset] = (value >>> 24) & 0xff;
+        target[offset + 1] = (value >>> 16) & 0xff;
+        target[offset + 2] = (value >>> 8) & 0xff;
+        target[offset + 3] = value & 0xff;
+    }
+
+    private readUint32BE(source: Uint8Array, offset: number): number {
+        return (
+            (source[offset] << 24) |
+            (source[offset + 1] << 16) |
+            (source[offset + 2] << 8) |
+            source[offset + 3]
+        ) >>> 0;
+    }
+
+    private crc32(bytes: Uint8Array): number {
+        let crc = 0xffffffff;
+        for (let i = 0; i < bytes.length; i++) {
+            crc ^= bytes[i];
+            for (let bit = 0; bit < 8; bit++) {
+                if ((crc & 1) === 1) {
+                    crc = (crc >>> 1) ^ 0xedb88320;
+                } else {
+                    crc = crc >>> 1;
+                }
+            }
+        }
+        return (crc ^ 0xffffffff) >>> 0;
+    }
+
+    private createPngPhysChunk(dpi: number): Uint8Array {
+        const pixelsPerMeter = Math.max(1, Math.round(dpi * 39.37007874));
+        const type = new Uint8Array([0x70, 0x48, 0x59, 0x73]); // pHYs
+        const data = new Uint8Array(9);
+        this.writeUint32BE(data, 0, pixelsPerMeter);
+        this.writeUint32BE(data, 4, pixelsPerMeter);
+        data[8] = 1; // unit = meter
+
+        const crcInput = new Uint8Array(type.length + data.length);
+        crcInput.set(type, 0);
+        crcInput.set(data, type.length);
+        const crc = this.crc32(crcInput);
+
+        const chunk = new Uint8Array(4 + type.length + data.length + 4);
+        this.writeUint32BE(chunk, 0, data.length);
+        chunk.set(type, 4);
+        chunk.set(data, 8);
+        this.writeUint32BE(chunk, 8 + data.length, crc);
+        return chunk;
+    }
+
+    private applyPngDensity(pngBuffer: ArrayBuffer, dpi: number): ArrayBuffer {
+        const bytes = new Uint8Array(pngBuffer);
+        const signature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+        for (let i = 0; i < signature.length; i++) {
+            if (bytes[i] !== signature[i]) return pngBuffer;
+        }
+
+        const parts: Uint8Array[] = [bytes.slice(0, 8)];
+        const densityChunk = this.createPngPhysChunk(dpi);
+        let offset = 8;
+        let insertedDensity = false;
+
+        while (offset + 12 <= bytes.length) {
+            const length = this.readUint32BE(bytes, offset);
+            const total = 12 + length;
+            if (offset + total > bytes.length) return pngBuffer;
+
+            const typeStart = offset + 4;
+            const type = String.fromCharCode(
+                bytes[typeStart],
+                bytes[typeStart + 1],
+                bytes[typeStart + 2],
+                bytes[typeStart + 3]
+            );
+            const rawChunk = bytes.slice(offset, offset + total);
+
+            if (type === 'IHDR') {
+                parts.push(rawChunk);
+                if (!insertedDensity) {
+                    parts.push(densityChunk);
+                    insertedDensity = true;
+                }
+            } else if (type === 'pHYs') {
+                if (!insertedDensity) {
+                    parts.push(densityChunk);
+                    insertedDensity = true;
+                }
+            } else {
+                parts.push(rawChunk);
+            }
+
+            offset += total;
+            if (type === 'IEND') break;
+        }
+
+        if (offset < bytes.length) {
+            parts.push(bytes.slice(offset));
+        }
+
+        const finalLength = parts.reduce((sum, part) => sum + part.length, 0);
+        const output = new Uint8Array(finalLength);
+        let cursor = 0;
+        for (const part of parts) {
+            output.set(part, cursor);
+            cursor += part.length;
+        }
+        return output.buffer;
     }
 
     private async svgToPngBuffer(svgString: string, width: number, height: number): Promise<ArrayBuffer> {
@@ -195,18 +305,16 @@ export class AuthorProgressService {
                 img.src = objectUrl;
             });
 
-            const scale = this.getPngExportScale();
             const targetWidth = Math.max(1, Math.round(width));
             const targetHeight = Math.max(1, Math.round(height));
             const canvas = document.createElement('canvas');
-            canvas.width = targetWidth * scale;
-            canvas.height = targetHeight * scale;
+            canvas.width = targetWidth;
+            canvas.height = targetHeight;
             const ctx = canvas.getContext('2d');
             if (!ctx) throw new Error('Could not initialize canvas context.');
             ctx.imageSmoothingEnabled = true;
             ctx.imageSmoothingQuality = 'high';
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.setTransform(scale, 0, 0, scale, 0, 0);
             ctx.drawImage(image, 0, 0, targetWidth, targetHeight);
 
             const pngBlob = await new Promise<Blob | null>((resolve) => {
@@ -215,7 +323,8 @@ export class AuthorProgressService {
             if (!pngBlob) {
                 throw new Error('Canvas failed to produce PNG data.');
             }
-            return await pngBlob.arrayBuffer();
+            const rawPng = await pngBlob.arrayBuffer();
+            return this.applyPngDensity(rawPng, 144);
         } finally {
             URL.revokeObjectURL(objectUrl);
         }
@@ -309,7 +418,7 @@ export class AuthorProgressService {
             portableSvg: true
         });
         const defaultPath = this.getDefaultExportPath(settings);
-        const exportFormat = this.pathFormat(defaultPath, 'png');
+        const exportFormat = this.pathFormat(defaultPath, this.getDefaultExportFormat(settings));
 
         // Save logic
         if (mode === 'dynamic') {

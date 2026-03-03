@@ -163,10 +163,6 @@ function describeAprSize(size: AprSize): string {
     }
 }
 
-function describeAprExportFormat(format: AprExportFormat): string {
-    return format === 'svg' ? 'SVG (Website Embed)' : 'PNG (Social Default)';
-}
-
 function resolveCampaignExportFormat(campaign: AprCampaign | undefined): AprExportFormat {
     if (!campaign) return 'png';
     if (typeof campaign.exportFormat === 'string' && campaign.exportFormat.trim()) {
@@ -198,6 +194,65 @@ function resolveCampaignBookTitle(
     if (!settings) return undefined;
     const projectPath = resolveProjectPath(settings, campaign, sourcePath);
     return resolveBookTitle(settings, campaign, projectPath);
+}
+
+function fitSelectToSelectedLabel(
+    selectEl: HTMLSelectElement,
+    options: {
+        extraPx?: number;
+        minPx?: number;
+        maxPx?: number;
+    } = {}
+): void {
+    const selectedLabel = selectEl.options[selectEl.selectedIndex]?.text ?? '';
+    if (!selectedLabel) return;
+
+    const doc = selectEl.ownerDocument;
+    const view = doc.defaultView;
+    if (!view) return;
+
+    const sample = doc.createElement('span');
+    sample.className = 'ert-metrics-sample';
+    sample.textContent = selectedLabel;
+    doc.body.appendChild(sample);
+
+    const computed = view.getComputedStyle(selectEl);
+    sample.style.fontFamily = computed.fontFamily;
+    sample.style.fontSize = computed.fontSize; // SAFE: inline style used for off-screen measurement element
+    sample.style.fontWeight = computed.fontWeight;
+    sample.style.letterSpacing = computed.letterSpacing;
+
+    const textWidth = Math.ceil(sample.getBoundingClientRect().width);
+    sample.remove();
+
+    const paddingLeft = Number.parseFloat(computed.paddingLeft) || 0;
+    const paddingRight = Number.parseFloat(computed.paddingRight) || 0;
+    const borderLeft = Number.parseFloat(computed.borderLeftWidth) || 0;
+    const borderRight = Number.parseFloat(computed.borderRightWidth) || 0;
+    const extraPx = options.extraPx ?? 16;
+    const minPx = options.minPx ?? 0;
+    const maxPx = options.maxPx ?? Number.POSITIVE_INFINITY;
+    const isBorderBox = computed.boxSizing === 'border-box';
+
+    let rawWidth = textWidth + extraPx;
+    if (isBorderBox) {
+        rawWidth += paddingLeft + paddingRight + borderLeft + borderRight;
+    }
+
+    const nextWidth = Math.min(
+        maxPx,
+        Math.max(
+            minPx,
+            Math.ceil(rawWidth)
+        )
+    );
+    const nextWidthPx = `${nextWidth}px`;
+
+    selectEl.style.width = nextWidthPx; // SAFE: inline style used for dynamic fit-to-content width
+    selectEl.style.minWidth = nextWidthPx;
+    selectEl.style.maxWidth = nextWidthPx;
+    selectEl.style.flex = `0 0 ${nextWidthPx}`;
+    selectEl.style.setProperty('--ert-control-width', nextWidthPx);
 }
 
 /**
@@ -678,7 +733,7 @@ function renderCampaignDetails(
         .setName('Update Frequency')
         .setDesc('How often to auto-update this campaign\'s embed file. "Manual" requires clicking the Publish button.')
         .addDropdown(dropdown => {
-            dropdown.selectEl.addClass('ert-input', 'ert-input--lg');
+            dropdown.selectEl.addClass('ert-input', 'ert-input--fit-selected'); // SAFE: removed unprefixed 'dropdown' class
             dropdown
                 .addOption('manual', 'Manual Only')
                 .addOption('daily', 'Daily')
@@ -686,6 +741,7 @@ function renderCampaignDetails(
                 .addOption('monthly', 'Monthly')
                 .setValue(campaign.updateFrequency || 'manual')
                 .onChange(async (val) => {
+                    fitSelectToSelectedLabel(dropdown.selectEl, { minPx: 72, extraPx: 16 });
                     if (!plugin.settings.authorProgress?.campaigns) return;
                     const settings = plugin.settings.authorProgress;
                     if (!settings.campaigns) return;
@@ -719,6 +775,7 @@ function renderCampaignDetails(
                     await plugin.saveSettings();
                     onUpdate();
                 });
+            fitSelectToSelectedLabel(dropdown.selectEl, { minPx: 72, extraPx: 16 });
         });
 
     // Refresh threshold (with dynamic description and editable value input)
@@ -784,7 +841,7 @@ function renderCampaignDetails(
         if (controlEl) {
             refreshValueInput = controlEl.createEl('input', {
                 type: 'number',
-                cls: 'ert-input ert-input--xs',
+                cls: 'ert-input ert-input--2digit',
                 value: String(getRefreshValue()),
                 attr: {
                     min: String(refreshMin),
@@ -984,6 +1041,7 @@ function renderCampaignDetails(
         .setName('Embed File Path')
         .setDesc('Location for the exported campaign file.');
 
+    embedPathSetting.settingEl.addClass('ert-setting-full-width-input');
 
     embedPathSetting.addText(text => {
         const successClass = 'ert-input--success';
@@ -1006,7 +1064,7 @@ function renderCampaignDetails(
         };
         text.setPlaceholder(defaultPath)
             .setValue(campaign.embedPath);
-        text.inputEl.addClass('ert-input--xl');
+        text.inputEl.addClass('ert-input--full');
 
         // Validate on blur
         const handleBlur = async () => {
@@ -1046,53 +1104,6 @@ function renderCampaignDetails(
                 onUpdate();
             });
     });
-
-    // Export format (Pro Campaigns only)
-    const exportFormatSetting = new Setting(details)
-        .setName('Export Format')
-        .setDesc('PNG is recommended for Bluesky, Patreon, Kickstarter, and most social/newsletter uploads. Use SVG for your author website embed; a future auto-update website flow can refresh in place without manual reposts.')
-        .addDropdown(drop => {
-            drop.selectEl.addClass('ert-input', 'ert-input--lg');
-            const currentCampaign = plugin.settings.authorProgress?.campaigns?.[index];
-            const format = resolveCampaignExportFormat(currentCampaign ?? campaign);
-            drop.addOption('png', describeAprExportFormat('png'));
-            drop.addOption('svg', describeAprExportFormat('svg'));
-            drop.setValue(format);
-            drop.onChange(async (val) => {
-                if (!plugin.settings.authorProgress?.campaigns) return;
-                const settings = plugin.settings.authorProgress;
-                if (!settings.campaigns) return;
-                const target = settings.campaigns[index];
-                const resolvedBookTitle = resolveCampaignBookTitle(
-                    settings,
-                    target,
-                    plugin.settings.sourcePath
-                );
-                const oldDefaultPath = buildCampaignEmbedPath({
-                    bookTitle: resolvedBookTitle,
-                    campaignName: target.name,
-                    updateFrequency: target.updateFrequency,
-                    aprSize: normalizeAprSize(target.aprSize),
-                    fallbackSize: settings.aprSize,
-                    teaserEnabled: target.teaserReveal?.enabled ?? true,
-                    exportFormat: resolveCampaignExportFormat(target)
-                });
-                target.exportFormat = normalizeAprExportFormat(val);
-                if (settings.autoUpdateEmbedPaths && target.embedPath === oldDefaultPath) {
-                    target.embedPath = buildCampaignEmbedPath({
-                        bookTitle: resolvedBookTitle,
-                        campaignName: target.name,
-                        updateFrequency: target.updateFrequency,
-                        aprSize: normalizeAprSize(target.aprSize),
-                        fallbackSize: settings.aprSize,
-                        teaserEnabled: target.teaserReveal?.enabled ?? true,
-                        exportFormat: target.exportFormat
-                    });
-                }
-                await plugin.saveSettings();
-                onUpdate();
-            });
-        });
 
     // Size
     const exportSizeSetting = new Setting(details)
