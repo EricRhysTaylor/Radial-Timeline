@@ -66,8 +66,16 @@ export class AuthorProgressModal extends Modal {
         return this.selectedTargetId !== 'default';
     }
 
+    private getGlobalAprSize(): 'thumb' | 'small' | 'medium' | 'large' {
+        return this.plugin.settings.authorProgress?.aprSize ?? this.aprSize ?? 'medium';
+    }
+
+    private getEffectiveAprSize(campaign?: AprCampaign): 'thumb' | 'small' | 'medium' | 'large' {
+        return campaign?.aprSize ?? this.getGlobalAprSize();
+    }
+
     private getActiveAprSize(): 'thumb' | 'small' | 'medium' | 'large' {
-        return this.getSelectedCampaign()?.aprSize ?? this.aprSize;
+        return this.getEffectiveAprSize(this.getSelectedCampaign());
     }
 
     async onOpen() {
@@ -376,6 +384,7 @@ export class AuthorProgressModal extends Modal {
                 this.selectedTargetId = targetSelect.value === 'default' ? 'default' : targetSelect.value;
                 await this.loadData();
                 this.renderStatusSection();
+                this.renderCampaignStatusSection();
                 this.renderActions();
             };
         }
@@ -507,6 +516,7 @@ export class AuthorProgressModal extends Modal {
             this.selectedTargetId = targetSelect.value === 'default' ? 'default' : targetSelect.value;
             await this.loadData();
             this.renderStatusSection();
+            this.renderCampaignStatusSection();
             this.renderActions();
         };
 
@@ -537,7 +547,7 @@ export class AuthorProgressModal extends Modal {
         // === STATUS ROW (grid-style: Book, Export, Type, Stage) ===
         const projectPath = resolveProjectPath(settings, campaign, this.plugin.settings.sourcePath);
         const bookTitle = resolveBookTitle(settings, campaign, projectPath);
-        const activeSize = this.getActiveAprSize();
+        const activeSize = this.getEffectiveAprSize(campaign);
         const activeView = activeSize === 'thumb' ? 'thumb' : 'full';
         // Render-mode pill: Thumb (ring-only) or Standard (full APR render). Distinct from reveal-stage "Complete".
         const viewLabel = activeView === 'thumb' ? 'Thumb' : 'Standard';
@@ -672,7 +682,7 @@ export class AuthorProgressModal extends Modal {
             updateFrequency: settings.updateFrequency,
             aprSize: settings.aprSize
         });
-        const defaultSize = settings.aprSize ?? 'medium';
+        const defaultSize = this.getGlobalAprSize();
         targets.push({
             id: 'default',
             label: 'Default Report',
@@ -693,7 +703,7 @@ export class AuthorProgressModal extends Modal {
                 bookTitle: campaignBookTitle,
                 projectPath: campaignProjectPath,
                 path: campaign.embedPath,
-                size: campaign.aprSize ?? defaultSize,
+                size: this.getEffectiveAprSize(campaign),
                 campaign
             });
         });

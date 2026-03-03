@@ -138,6 +138,25 @@ function getNextUpdateLabel(campaign: AprCampaign): string {
 }
 
 const AUTO_UPDATE_FREQUENCIES: readonly string[] = ['daily', 'weekly', 'monthly'];
+const APR_SIZE_OPTIONS: readonly AprSize[] = ['thumb', 'small', 'medium', 'large'];
+
+function normalizeAprSize(value: unknown): AprSize | undefined {
+    if (typeof value !== 'string') return undefined;
+    return APR_SIZE_OPTIONS.includes(value as AprSize) ? value as AprSize : undefined;
+}
+
+function describeAprSize(size: AprSize): string {
+    switch (size) {
+        case 'thumb':
+            return 'Thumb (100px)';
+        case 'small':
+            return 'Small (150px)';
+        case 'large':
+            return 'Large (450px)';
+        default:
+            return 'Medium (300px)';
+    }
+}
 
 function getScheduleBadge(campaign: AprCampaign): { label: string; cls: string } {
     if (!campaign.isActive) return { label: 'Paused', cls: 'is-paused' };
@@ -1005,13 +1024,15 @@ function renderCampaignDetails(
         .setName('Export Size')
         .setDesc('SVG dimensions: Small for widgets, Medium for social/newsletters, Large for website embeds.')
         .addDropdown(drop => {
-            const globalSize = plugin.settings.authorProgress?.aprSize || 'medium';
-            drop.addOption('', `Default (Global: ${globalSize})`);
+            const globalSize = normalizeAprSize(plugin.settings.authorProgress?.aprSize) ?? 'medium';
+            const latestCampaign = plugin.settings.authorProgress?.campaigns?.[index];
+            const campaignSize = normalizeAprSize(latestCampaign?.aprSize ?? campaign.aprSize);
+            drop.addOption('', `Default (Global: ${describeAprSize(globalSize)})`);
             drop.addOption('thumb', 'Thumb (100px)');
             drop.addOption('small', 'Small (150px)');
             drop.addOption('medium', 'Medium (300px)');
             drop.addOption('large', 'Large (450px)');
-            drop.setValue(campaign.aprSize || '');
+            drop.setValue(campaignSize ?? '');
             drop.onChange(async (val) => {
                 if (!plugin.settings.authorProgress?.campaigns) return;
                 const settings = plugin.settings.authorProgress;
@@ -1026,17 +1047,17 @@ function renderCampaignDetails(
                     bookTitle: resolvedBookTitle,
                     campaignName: target.name,
                     updateFrequency: target.updateFrequency,
-                    aprSize: target.aprSize,
+                    aprSize: normalizeAprSize(target.aprSize),
                     fallbackSize: settings.aprSize,
                     teaserEnabled: target.teaserReveal?.enabled ?? true
                 });
-                target.aprSize = val === '' ? undefined : val as 'thumb' | 'small' | 'medium' | 'large';
+                target.aprSize = val === '' ? undefined : normalizeAprSize(val);
                 if (settings.autoUpdateEmbedPaths && target.embedPath === oldDefaultPath) {
                     target.embedPath = buildCampaignEmbedPath({
                         bookTitle: resolvedBookTitle,
                         campaignName: target.name,
                         updateFrequency: target.updateFrequency,
-                        aprSize: target.aprSize,
+                        aprSize: normalizeAprSize(target.aprSize),
                         fallbackSize: settings.aprSize,
                         teaserEnabled: target.teaserReveal?.enabled ?? true
                     });

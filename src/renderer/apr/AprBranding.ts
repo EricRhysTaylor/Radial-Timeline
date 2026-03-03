@@ -20,6 +20,8 @@ const resolveOpacity = (portable: boolean) =>
     (varExpr: string, fallback: string): string =>
         portable ? fallback : varExpr;
 
+const APR_DEFAULT_FONT_STACK = '"Inter Variable", Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+
 const escapeXmlAttr = (value: string): string =>
     value
         .replace(/&/g, '&amp;')
@@ -60,6 +62,20 @@ function quoteFontFamily(fontFamily: string): string {
             return /\s/.test(part) ? `"${part}"` : part;
         })
         .join(', ');
+}
+
+function resolveAprFontFamily(fontFamily?: string): string {
+    const trimmed = (fontFamily ?? '').trim();
+    if (!trimmed) return APR_DEFAULT_FONT_STACK;
+
+    const normalized = trimmed.replace(/^['"]|['"]$/g, '').trim().toLowerCase();
+    if (normalized === 'default' || normalized === 'inter' || normalized === 'inter variable') {
+        return APR_DEFAULT_FONT_STACK;
+    }
+
+    const quoted = quoteFontFamily(trimmed);
+    const hasGenericFamily = /\b(sans-serif|serif|monospace|cursive|fantasy|system-ui|ui-sans-serif|math|emoji|fangsong)\b/i.test(trimmed);
+    return hasGenericFamily ? quoted : `${quoted}, sans-serif`;
 }
 
 function measureTextBoxMetrics(
@@ -159,6 +175,8 @@ export function renderAprBranding(options: AprBrandingOptions): string {
     // Use custom font sizes if provided, otherwise use preset defaults
     const bookTitleSize = bookTitleFontSize ?? brandingFontSize;
     const authorNameSize = authorNameFontSize ?? brandingFontSize;
+    const resolvedBookTitleFontFamily = resolveAprFontFamily(bookTitleFontFamily);
+    const resolvedAuthorNameFontFamily = resolveAprFontFamily(authorNameFontFamily);
     // Fallback to Press stage green if no color provided (matches RT default)
     const bookColor = bookAuthorColor || '#6FB971';
     const authColor = authorColor || bookColor; // Default to book color if not specified
@@ -202,7 +220,7 @@ export function renderAprBranding(options: AprBrandingOptions): string {
                 'position:absolute',
                 'visibility:hidden',
                 'white-space:nowrap',
-                `font-family:${bookTitleFontFamily}`,
+                `font-family:${resolvedBookTitleFontFamily}`,
                 `font-weight:${bookTitleFontWeight}`,
                 `font-size:${avgFontSize}px`,
                 `letter-spacing:${brandingLetterSpacing}`,
@@ -269,8 +287,8 @@ export function renderAprBranding(options: AprBrandingOptions): string {
 
     // Construct the seamless text content
     let textContent = '';
-    const bookTspanStart = `<tspan fill="${color('--apr-book-title-color', bookColor)}" font-family="${escapeXmlAttr(bookTitleFontFamily)}" font-weight="${bookTitleFontWeight}" font-size="${bookTitleSize}" ${italicAttr(bookTitleFontItalic)}>`;
-    const authorTspanStart = `<tspan fill="${color('--apr-author-color', authColor)}" font-family="${escapeXmlAttr(authorNameFontFamily)}" font-weight="${authorNameFontWeight}" font-size="${authorNameSize}" ${italicAttr(authorNameFontItalic)}>`;
+    const bookTspanStart = `<tspan fill="${color('--apr-book-title-color', bookColor)}" font-family="${escapeXmlAttr(resolvedBookTitleFontFamily)}" font-weight="${bookTitleFontWeight}" font-size="${bookTitleSize}" ${italicAttr(bookTitleFontItalic)}>`;
+    const authorTspanStart = `<tspan fill="${color('--apr-author-color', authColor)}" font-family="${escapeXmlAttr(resolvedAuthorNameFontFamily)}" font-weight="${authorNameFontWeight}" font-size="${authorNameSize}" ${italicAttr(authorNameFontItalic)}>`;
     const endTspan = `</tspan>`;
 
     for (let i = 0; i < repeats; i += 1) {
@@ -284,7 +302,7 @@ export function renderAprBranding(options: AprBrandingOptions): string {
 
     // Build the SVG text element - IMPORTANT: minimize whitespace since xml:space="preserve"
     // causes all whitespace to be rendered as actual space characters on the path
-    const brandingText = `<text font-family="${escapeXmlAttr(bookTitleFontFamily)}" font-size="${avgFontSize}" font-weight="${bookTitleFontWeight}" ${italicAttr(bookTitleFontItalic)} letter-spacing="${adjustedLetterSpacing}" xml:space="preserve"><textPath href="#${circlePathId}" startOffset="${startOffset}">${textContent}</textPath></text>`;
+    const brandingText = `<text font-family="${escapeXmlAttr(resolvedBookTitleFontFamily)}" font-size="${avgFontSize}" font-weight="${bookTitleFontWeight}" ${italicAttr(bookTitleFontItalic)} letter-spacing="${adjustedLetterSpacing}" xml:space="preserve"><textPath href="#${circlePathId}" startOffset="${startOffset}">${textContent}</textPath></text>`;
 
 
 
@@ -370,7 +388,7 @@ export function renderAprBadges(options: AprBadgeOptions): string {
     const countdownOpacity = opacity('var(--apr-countdown-opacity, 0.7)', '0.7');
     const rtFill = color('--apr-rt-attrib-color', rtAttributionColor || badgeColor || APR_TEXT_COLORS.primary);
     const rtOpacity = opacity('var(--apr-rt-attrib-opacity, 0.35)', '0.35');
-    const badgeFontFamilyEscaped = escapeXmlAttr(rtBadgeFontFamily);
+    const badgeFontFamilyEscaped = escapeXmlAttr(resolveAprFontFamily(rtBadgeFontFamily));
 
     const stageBadge = showStageBadge ? `
         <text 

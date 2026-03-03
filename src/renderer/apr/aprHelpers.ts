@@ -39,9 +39,8 @@ export function resolveProjectPath(
  *
  * Inheritance order:
  * 1. Campaign override (campaign.bookTitle)
- * 2. Core Social configuration (socialBookTitle)
- * 3. Fallback to existing bookTitle
- * 4. Fallback to derived title from project path folder basename
+ * 2. Core APR title (bookTitle)
+ * 3. Fallback to derived title from project path folder basename
  *
  * @param authorProgress - Core Social settings
  * @param campaign - Optional campaign with possible override
@@ -58,12 +57,7 @@ export function resolveBookTitle(
         return campaign.bookTitle.trim();
     }
 
-    // Use Core Social configuration
-    if (authorProgress.socialBookTitle && authorProgress.socialBookTitle.trim()) {
-        return authorProgress.socialBookTitle.trim();
-    }
-
-    // Fallback to existing bookTitle
+    // Use canonical APR title
     if (authorProgress.bookTitle && authorProgress.bookTitle.trim()) {
         return authorProgress.bookTitle.trim();
     }

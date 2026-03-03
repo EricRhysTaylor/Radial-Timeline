@@ -230,56 +230,18 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // ─────────────────────────────────────────────────────────────────────────
     const contentWrapper = section.createDiv({ cls: `ert-apr-content ${ERT_CLASSES.STACK}` });
 
-    // Configuration (project setup, book title, and styling) - placed first, close to preview
+    // Configuration (project setup) - placed first, close to preview
     const stylingCard = contentWrapper.createDiv({ cls: ERT_CLASSES.PANEL });
     const stylingBlock = stylingCard.createDiv({ cls: ERT_CLASSES.STACK });
     const stylingHeader = stylingBlock.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
     const stylingHeading = new Setting(stylingHeader)
         .setName('Configuration')
-        .setDesc('Configure your project settings and customize the look of your APR. Set the book title, project path.')
+        .setDesc('Configure your project settings and APR destination details, including project path and link URL.')
         .setHeading();
     addHeadingIcon(stylingHeading, 'settings');
     addWikiLink(stylingHeading, 'Settings#social-media-styling');
     applyErtHeaderLayout(stylingHeading, { variant: 'inline' });
     const stylingBody = stylingBlock.createDiv({ cls: 'ert-typography-stack' });
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // BOOK TITLE & PROJECT PATH (Core Social Configuration)
-    // ─────────────────────────────────────────────────────────────────────────
-
-    // Book Title for Social
-    const bookTitleSetting = new Setting(stylingBody)
-        .setName('Book Title')
-        .setDesc('Display title for your Social APR graphic. Leave blank to use the main book title.');
-
-    bookTitleSetting.settingEl.addClass('ert-setting-full-width-input');
-
-    bookTitleSetting.addText(text => {
-        text.setPlaceholder('Book 1, Songrise 2.0, etc.')
-            .setValue(settings?.socialBookTitle || '')
-            .onChange(async (val) => {
-                if (!plugin.settings.authorProgress) return;
-                plugin.settings.authorProgress.socialBookTitle = val.trim();
-                await plugin.saveSettings();
-                refreshPreview();
-            });
-
-        // Apply same blur/enter handling as other fields
-        plugin.registerDomEvent(text.inputEl, 'blur', async () => {
-            if (!plugin.settings.authorProgress) return;
-            const val = text.getValue().trim();
-            plugin.settings.authorProgress.socialBookTitle = val;
-            await plugin.saveSettings();
-            refreshPreview();
-        });
-
-        plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
-            if (evt.key === 'Enter') {
-                evt.preventDefault();
-                text.inputEl.blur();
-            }
-        });
-    });
 
     // Project Path for Social
     const projectPathSetting = new Setting(stylingBody)

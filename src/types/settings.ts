@@ -199,7 +199,6 @@ export interface AuthorProgressSettings {
 
     // Social Project Configuration (Core)
     socialProjectPath?: string;  // Project folder path for Social target
-    socialBookTitle?: string;    // Display title for Social target (overrides bookTitle)
 
     // Updates & Frequency
     lastPublishedDate?: string; // ISO string
@@ -278,7 +277,7 @@ export interface AprCampaign {
 
     // Campaign-specific Project Configuration (Pro overrides)
     projectPath?: string;            // Override project folder path (inherits from socialProjectPath if not set)
-    bookTitle?: string;              // Override display title (inherits from socialBookTitle if not set)
+    bookTitle?: string;              // Override display title (inherits from bookTitle if not set)
 
     aprSize?: 'thumb' | 'small' | 'medium' | 'large';
 
