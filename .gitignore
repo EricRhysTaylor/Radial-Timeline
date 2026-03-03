@@ -37,3 +37,6 @@ main.lostacts.ts
 *.pkg
 # Do not commit build artifacts for Obsidian plugin
 release/
+
+# Generated audit reports (regenerated every build)
+scripts/models/feature-audit.json

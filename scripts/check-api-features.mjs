@@ -1,18 +1,20 @@
 #!/usr/bin/env node
 /**
- * Provider API Feature Audit Script
+ * Provider API Feature Audit Script (v2)
  *
  * Loads provider-capabilities.json and plugin-feature-integration.json,
  * validates schemas, scans source files for implementation markers,
- * cross-references claimed status against reality, and produces
- * a gap analysis report.
+ * verifies implementation evidence, cross-references claimed status
+ * against reality, scores and ranks gaps, and produces a
+ * decision-ready gap analysis report.
  *
  * Runs every build (no network calls). Purely local analysis.
  *
  * Usage:
- *   node scripts/check-api-features.mjs
- *   node scripts/check-api-features.mjs --issues   (also generate GitHub issue stubs)
- *   node scripts/check-api-features.mjs --quiet     (suppress console output, write report only)
+ *   node scripts/check-api-features.mjs              (standard audit)
+ *   node scripts/check-api-features.mjs --issues      (also generate GitHub issue stubs)
+ *   node scripts/check-api-features.mjs --strict      (fail on violations — use in CI)
+ *   node scripts/check-api-features.mjs --quiet       (suppress console, write report only)
  */
 import fs from 'fs';
 import path from 'path';
@@ -34,6 +36,7 @@ const CYAN = '\x1b[36m';
 const DIM = '\x1b[2m';
 const RESET = '\x1b[0m';
 const BOLD = '\x1b[1m';
+const WHITE = '\x1b[37m';
 
 // ── Allowed enum values ────────────────────────────────────────────────────────
 
@@ -47,7 +50,8 @@ const ALLOWED_IMPACT = new Set(['high', 'medium', 'low', 'none']);
 
 // ── CLI flags ──────────────────────────────────────────────────────────────────
 
-const generateIssues = process.argv.includes('--issues');
+const doGenerateIssues = process.argv.includes('--issues');
+const strictMode = process.argv.includes('--strict');
 const quietMode = process.argv.includes('--quiet');
 
 function log(msg = '') {
@@ -70,18 +74,19 @@ function loadJson(filePath) {
 
 function validateCapabilities(data) {
     const errors = [];
-    if (!data || data.schemaVersion !== 1) {
+    const warnings = [];
+    if (!data || (data.schemaVersion !== 1 && data.schemaVersion !== 2)) {
         errors.push('provider-capabilities.json: missing or invalid schemaVersion');
-        return errors;
+        return { errors, warnings };
     }
     if (!Array.isArray(data.capabilities)) {
         errors.push('provider-capabilities.json: capabilities must be an array');
-        return errors;
+        return { errors, warnings };
     }
     const ids = new Set();
     for (const cap of data.capabilities) {
         if (!cap.id) { errors.push('Capability missing id'); continue; }
-        if (ids.has(cap.id)) errors.push(`Duplicate capability id: ${cap.id}`);
+        if (ids.has(cap.id)) errors.push(`${cap.id}: duplicate capability id`);
         ids.add(cap.id);
         if (!cap.provider) errors.push(`${cap.id}: missing provider`);
         if (!cap.name) errors.push(`${cap.id}: missing name`);
@@ -97,24 +102,35 @@ function validateCapabilities(data) {
         if (cap.roiCategory && !ALLOWED_ROI.has(cap.roiCategory)) {
             errors.push(`${cap.id}: invalid roiCategory '${cap.roiCategory}'`);
         }
+        // Provider reality guardrails
+        if (!cap.availableSince || cap.availableSince === 'TODO') {
+            warnings.push(`${cap.id}: missing availableSince (required for provider reality)`);
+        }
+        if (!cap.documentationUrl || cap.documentationUrl === 'TODO') {
+            warnings.push(`${cap.id}: missing documentationUrl (required for provider reality)`);
+        }
+        if (cap.requiredApiVersion === undefined) {
+            warnings.push(`${cap.id}: missing requiredApiVersion (use null with note if not versioned)`);
+        }
     }
-    return errors;
+    return { errors, warnings };
 }
 
 function validateIntegrations(data, capabilityIds) {
     const errors = [];
-    if (!data || data.schemaVersion !== 1) {
+    const warnings = [];
+    if (!data || (data.schemaVersion !== 1 && data.schemaVersion !== 2)) {
         errors.push('plugin-feature-integration.json: missing or invalid schemaVersion');
-        return errors;
+        return { errors, warnings };
     }
     if (!Array.isArray(data.integrations)) {
         errors.push('plugin-feature-integration.json: integrations must be an array');
-        return errors;
+        return { errors, warnings };
     }
     const ids = new Set();
     for (const int of data.integrations) {
         if (!int.id) { errors.push('Integration missing id'); continue; }
-        if (ids.has(int.id)) errors.push(`Duplicate integration id: ${int.id}`);
+        if (ids.has(int.id)) errors.push(`${int.id}: duplicate integration id`);
         ids.add(int.id);
         if (!capabilityIds.has(int.id)) {
             errors.push(`${int.id}: no matching capability in provider-capabilities.json`);
@@ -129,13 +145,60 @@ function validateIntegrations(data, capabilityIds) {
             errors.push(`${int.id}: invalid impactAssessment '${int.impactAssessment}'`);
         }
     }
-    // Check for orphaned capabilities (no integration entry)
+    // Orphaned capabilities
     for (const capId of capabilityIds) {
         if (!ids.has(capId)) {
             errors.push(`${capId}: capability exists but has no integration entry`);
         }
     }
-    return errors;
+    return { errors, warnings };
+}
+
+// ── Implementation evidence verification ──────────────────────────────────────
+
+function verifyEvidence(integrations) {
+    const failures = [];
+    for (const int of integrations) {
+        if (int.implementationStatus !== 'complete') continue;
+        const patterns = int.implementationEvidence;
+        if (!patterns || patterns.length === 0) {
+            failures.push({
+                id: int.id,
+                reason: '"complete" status with no implementationEvidence patterns'
+            });
+            continue;
+        }
+        // Check evidence patterns against source files
+        const sources = int.sourceFiles || [];
+        for (const pattern of patterns) {
+            let found = false;
+            for (const srcFile of sources) {
+                const fullPath = path.resolve(srcFile);
+                if (!fs.existsSync(fullPath)) continue;
+                const content = fs.readFileSync(fullPath, 'utf8');
+                try {
+                    if (new RegExp(pattern).test(content)) {
+                        found = true;
+                        break;
+                    }
+                } catch {
+                    failures.push({
+                        id: int.id,
+                        reason: `invalid regex pattern: ${pattern}`
+                    });
+                    found = true; // don't double-report
+                    break;
+                }
+            }
+            if (!found) {
+                failures.push({
+                    id: int.id,
+                    reason: `evidence pattern not found in source: /${pattern}/`
+                });
+            }
+        }
+    }
+    return failures;
 }
 
 // ── Source scanning ────────────────────────────────────────────────────────────
@@ -152,7 +215,6 @@ function scanSources() {
     // ── Anthropic API ──
     const anthropicSrc = readSourceFile('src/api/anthropicApi.ts');
     if (anthropicSrc) {
-        // System prompt structure
         if (anthropicSrc.includes('requestBody.system = systemPrompt') ||
             (anthropicSrc.includes('system?: string') && !anthropicSrc.includes('system?: Array'))) {
             findings.push({
@@ -161,8 +223,6 @@ function scanSources() {
                 relatedFeatures: ['anthropic-system-content-blocks', 'anthropic-prompt-caching']
             });
         }
-
-        // Beta headers
         if (!anthropicSrc.includes('anthropic-beta')) {
             findings.push({
                 file: 'anthropicApi.ts',
@@ -170,8 +230,6 @@ function scanSources() {
                 relatedFeatures: ['anthropic-prompt-caching', 'anthropic-extended-thinking']
             });
         }
-
-        // API version
         const versionMatch = anthropicSrc.match(/apiVersion\s*=\s*'([^']+)'/);
         if (versionMatch) {
             findings.push({
@@ -180,8 +238,6 @@ function scanSources() {
                 relatedFeatures: []
             });
         }
-
-        // Temperature/topP
         const hasTemperature = anthropicSrc.includes('temperature') &&
             (anthropicSrc.includes('body.temperature') || anthropicSrc.includes('requestBody.temperature'));
         if (!hasTemperature) {
@@ -196,7 +252,6 @@ function scanSources() {
     // ── OpenAI API ──
     const openaiSrc = readSourceFile('src/api/openaiApi.ts');
     if (openaiSrc) {
-        // Message concatenation
         if (openaiSrc.includes('${systemPrompt}\\n\\n${userPrompt}') ||
             openaiSrc.includes('`${systemPrompt}\\n\\n${userPrompt}`')) {
             findings.push({
@@ -210,10 +265,8 @@ function scanSources() {
     // ── Gemini API ──
     const geminiSrc = readSourceFile('src/api/geminiApi.ts');
     if (geminiSrc) {
-        // createGeminiCache callers
         const hasCreateFunction = geminiSrc.includes('export async function createGeminiCache');
         if (hasCreateFunction) {
-            // Scan src/ for callers
             const callerCount = countCallersInSrc('createGeminiCache', 'src/api/geminiApi.ts');
             findings.push({
                 file: 'geminiApi.ts',
@@ -234,7 +287,6 @@ function countCallersInSrc(functionName, definitionFile) {
         if (!filePath.endsWith('.ts') && !filePath.endsWith('.tsx')) return;
         if (path.resolve(filePath) === path.resolve(definitionFile)) return;
         const content = fs.readFileSync(filePath, 'utf8');
-        // Count import references and call-site references
         const importMatch = content.match(new RegExp(`import.*${functionName}`, 'g'));
         if (importMatch) count += importMatch.length;
     });
@@ -252,6 +304,30 @@ function walkDir(dir, callback) {
             callback(fullPath);
         }
     }
+}
+
+// ── Priority scoring ──────────────────────────────────────────────────────────
+
+const IMPACT_SCORE = { high: 3, medium: 2, low: 1, none: 0 };
+const ROI_SCORE = { cost: 2, quality: 1, latency: 1, capability: 1, 'developer-experience': 0 };
+const MATURITY_SCORE = { ga: 2, preview: 1, beta: 1, experimental: 0, deprecated: 0, removed: 0 };
+const COMPLEXITY_PENALTY = { architectural: 2, high: 1, medium: 0, low: 0 };
+
+function computeScore(cap, int) {
+    const impact = IMPACT_SCORE[int.impactAssessment] ?? 0;
+    const roi = ROI_SCORE[cap.roiCategory] ?? 0;
+    const maturity = MATURITY_SCORE[cap.maturity] ?? 0;
+    const penalty = COMPLEXITY_PENALTY[cap.implementationComplexity] ?? 0;
+    return impact + roi + maturity - penalty;
+}
+
+function payoffClass(cap) {
+    const category = cap.roiCategory;
+    if (category === 'cost') return 'Cost';
+    if (category === 'quality') return 'Quality';
+    if (category === 'latency') return 'Latency';
+    if (category === 'capability') return 'Capability';
+    return 'DX';
 }
 
 // ── Analytics ──────────────────────────────────────────────────────────────────
@@ -278,79 +354,91 @@ function buildAnalytics(capabilities, integrations) {
         providerSummaries[provider] = { total, implemented, highImpactGaps };
     }
 
-    // High impact gaps
-    const highImpactGaps = integrations
-        .filter(i => i.impactAssessment === 'high' && i.implementationStatus !== 'complete')
+    // All actionable gaps (not complete, not not_applicable, not deferred)
+    const actionableGaps = integrations
+        .filter(i => i.implementationStatus === 'not_implemented' || i.implementationStatus === 'partial')
         .map(i => {
             const cap = capMap.get(i.id);
+            if (!cap) return null;
+            const score = computeScore(cap, i);
             return {
                 id: i.id,
-                name: cap?.name || i.id,
-                description: cap?.description || '',
+                name: cap.name,
+                description: cap.description,
+                provider: cap.provider,
                 priority: i.priority,
+                score,
+                payoff: payoffClass(cap),
+                complexity: cap.implementationComplexity,
+                maturity: cap.maturity,
+                roiCategory: cap.roiCategory,
                 relevantPluginFeatures: i.relevantPluginFeatures,
-                complexity: cap?.implementationComplexity
+                implementationNotes: i.implementationNotes,
+                sourceFiles: i.sourceFiles,
+                targetRelease: i.targetRelease,
+                owner: i.owner
             };
-        });
+        })
+        .filter(Boolean)
+        .sort((a, b) => b.score - a.score);
+
+    // Top 5 next actions
+    const top5 = actionableGaps.slice(0, 5).map(gap => {
+        // Extract the first actionable sentence from implementation notes
+        const notes = gap.implementationNotes || '';
+        const actionHint = notes.split('.').find(s =>
+            /needs|must|fix|separate|restructure|wire|add|change|replace|implement/i.test(s)
+        )?.trim() || notes.split('.')[0]?.trim() || 'See implementation notes';
+        const primaryFile = gap.sourceFiles?.[0] || 'TBD';
+        return { ...gap, actionHint, primaryFile };
+    });
+
+    // High impact gaps
+    const highImpactGaps = actionableGaps.filter(g => {
+        const int = intMap.get(g.id);
+        return int && int.impactAssessment === 'high';
+    });
 
     // Cost optimization opportunities
-    const costOpportunities = capabilities
-        .filter(c => c.roiCategory === 'cost')
-        .filter(c => {
-            const int = intMap.get(c.id);
-            return int && int.implementationStatus !== 'complete';
-        })
-        .map(c => ({
-            id: c.id,
-            name: c.name,
-            maturity: c.maturity,
-            complexity: c.implementationComplexity
-        }));
+    const costOpportunities = actionableGaps.filter(g => g.roiCategory === 'cost');
 
     // Beta/preview features not implemented
-    const betaFeatures = capabilities
-        .filter(c => c.maturity === 'beta' || c.maturity === 'preview')
-        .filter(c => {
-            const int = intMap.get(c.id);
-            return int && int.implementationStatus !== 'complete';
-        })
-        .map(c => ({
-            id: c.id,
-            name: c.name,
-            maturity: c.maturity,
-            complexity: c.implementationComplexity
-        }));
+    const betaFeatures = actionableGaps.filter(g =>
+        g.maturity === 'beta' || g.maturity === 'preview'
+    );
 
-    // GA features missing implementation
-    const gaGaps = capabilities
-        .filter(c => c.maturity === 'ga')
-        .filter(c => {
-            const int = intMap.get(c.id);
-            return int && int.implementationStatus === 'not_implemented';
-        })
-        .map(c => {
-            const int = intMap.get(c.id);
-            return {
-                id: c.id,
-                name: c.name,
-                complexity: c.implementationComplexity,
-                priority: int?.priority
-            };
-        });
+    // GA features missing implementation (exclude architectural)
+    const gaGaps = actionableGaps.filter(g =>
+        g.maturity === 'ga' && g.complexity !== 'architectural'
+    );
 
-    return { providerSummaries, highImpactGaps, costOpportunities, betaFeatures, gaGaps };
+    return { providerSummaries, actionableGaps, top5, highImpactGaps, costOpportunities, betaFeatures, gaGaps };
 }
 
 // ── Console output ─────────────────────────────────────────────────────────────
 
-function printReport(analytics, sourceFindings, validationErrors) {
+function printReport(analytics, sourceFindings, validationErrors, validationWarnings, evidenceFailures) {
     const now = new Date().toISOString().slice(0, 10);
     log(`\n${BOLD}[api-features] Provider API Feature Audit (${now})${RESET}\n`);
 
     // Validation errors
     if (validationErrors.length > 0) {
         log(`${RED}  VALIDATION ERRORS:${RESET}`);
-        validationErrors.forEach(e => log(`  ${RED}✗${RESET} ${e}`));
+        validationErrors.forEach(e => log(`  ${RED}x${RESET} ${e}`));
+        log('');
+    }
+
+    // Validation warnings (strict mode)
+    if (validationWarnings.length > 0 && strictMode) {
+        log(`${YELLOW}  PROVIDER REALITY WARNINGS:${RESET}`);
+        validationWarnings.forEach(w => log(`  ${YELLOW}?${RESET} ${w}`));
+        log('');
+    }
+
+    // Evidence failures
+    if (evidenceFailures.length > 0) {
+        log(`${RED}  EVIDENCE FAILURES:${RESET}`);
+        evidenceFailures.forEach(f => log(`  ${RED}x${RESET} ${f.id}: ${f.reason}`));
         log('');
     }
 
@@ -367,6 +455,18 @@ function printReport(analytics, sourceFindings, validationErrors) {
         log(`  ${label.padEnd(12)} ${color}${summary.implemented}/${summary.total} implemented (${pct}%)${RESET}${gapNote}`);
     }
     log('');
+
+    // ── TOP 5 NEXT ACTIONS (decision-ready) ──
+    if (analytics.top5.length > 0) {
+        log(`${WHITE}${BOLD}  TOP 5 NEXT ACTIONS:${RESET}`);
+        analytics.top5.forEach((action, i) => {
+            const num = `${i + 1}.`;
+            log(`  ${GREEN}${num}${RESET} ${action.id} ${DIM}(score: ${action.score}, ${action.payoff})${RESET}`);
+            log(`     ${action.actionHint}`);
+            log(`     ${DIM}${action.primaryFile}${RESET}`);
+        });
+        log('');
+    }
 
     // High impact gaps
     if (analytics.highImpactGaps.length > 0) {
@@ -397,11 +497,10 @@ function printReport(analytics, sourceFindings, validationErrors) {
         log('');
     }
 
-    // GA features missing
-    const filteredGaGaps = analytics.gaGaps.filter(g => g.complexity !== 'architectural');
-    if (filteredGaGaps.length > 0) {
+    // GA features missing (non-architectural)
+    if (analytics.gaGaps.length > 0) {
         log(`${DIM}  GA FEATURES MISSING IMPLEMENTATION:${RESET}`);
-        filteredGaGaps.forEach(g => {
+        analytics.gaGaps.forEach(g => {
             const prio = g.priority ? ` [${g.priority}]` : '';
             log(`  ${DIM}-${RESET} ${g.id} — ${g.maturity || 'ga'}, ${g.complexity} complexity${prio}`);
         });
@@ -444,6 +543,16 @@ function generateIssueStubs(highImpactGaps, capMap, intMap) {
             ? int.blockers.map(b => `- ${b}`).join('\n')
             : 'None';
 
+        // Build evidence patterns for DoD
+        const evidencePatterns = (int.implementationEvidence || []).length > 0
+            ? int.implementationEvidence.map(p => `- [ ] Evidence pattern matches: \`/${p}/\``).join('\n')
+            : '- [ ] Add implementationEvidence patterns to registry';
+
+        // Build required headers DoD items
+        const headerItems = Object.entries(cap.requiredHeaders || {})
+            .map(([k, v]) => `- [ ] Header \`${k}: ${v}\` sent in requests`)
+            .join('\n');
+
         const content = `---
 title: "Implement ${cap.name} (${cap.provider})"
 labels: ai-feature, ${cap.provider}, ${int.priority || 'p2'}
@@ -456,6 +565,7 @@ labels: ai-feature, ${cap.provider}, ${int.priority || 'p2'}
 **Maturity:** ${cap.maturity}
 **ROI Category:** ${cap.roiCategory}
 **Implementation Complexity:** ${cap.implementationComplexity}
+**Priority Score:** ${gap.score}
 
 ## Description
 
@@ -480,6 +590,25 @@ ${sources || 'None identified'}
 ## Blockers
 
 ${blockers}
+
+## Definition of Done
+
+### Request Shape
+- [ ] API request body matches provider documentation
+${headerItems ? `\n### Headers\n${headerItems}` : ''}
+
+### Tests
+- [ ] Unit test covering request construction
+- [ ] Integration test verifying response parsing
+
+### Audit Evidence
+${evidencePatterns}
+- [ ] \`implementationStatus\` set to \`"complete"\` in plugin-feature-integration.json
+- [ ] \`node scripts/check-api-features.mjs --strict\` passes
+
+### Obsidian Compatibility
+- [ ] Works with \`requestUrl()\` (no browser-only APIs)
+- [ ] Fallback behavior if feature unavailable (older API version, rate limit, mobile)
 `;
         fs.writeFileSync(filePath, content, 'utf8');
         generated += 1;
@@ -493,11 +622,14 @@ ${blockers}
 
 // ── Report file ────────────────────────────────────────────────────────────────
 
-function writeAuditReport(analytics, sourceFindings, validationErrors) {
+function writeAuditReport(analytics, sourceFindings, validationErrors, validationWarnings, evidenceFailures) {
     const report = {
         generatedAt: new Date().toISOString(),
         validationErrors,
+        validationWarnings,
+        evidenceFailures,
         providerSummaries: analytics.providerSummaries,
+        top5: analytics.top5,
         highImpactGaps: analytics.highImpactGaps,
         costOpportunities: analytics.costOpportunities,
         betaFeatures: analytics.betaFeatures,
@@ -526,10 +658,14 @@ function main() {
     }
 
     // Validate
-    const capErrors = validateCapabilities(capData);
+    const capResult = validateCapabilities(capData);
     const capabilityIds = new Set((capData.capabilities || []).map(c => c.id));
-    const intErrors = validateIntegrations(intData, capabilityIds);
-    const validationErrors = [...capErrors, ...intErrors];
+    const intResult = validateIntegrations(intData, capabilityIds);
+    const validationErrors = [...capResult.errors, ...intResult.errors];
+    const validationWarnings = [...capResult.warnings, ...intResult.warnings];
+
+    // Evidence verification
+    const evidenceFailures = verifyEvidence(intData.integrations || []);
 
     // Source scan
     const sourceFindings = scanSources();
@@ -538,16 +674,29 @@ function main() {
     const analytics = buildAnalytics(capData.capabilities || [], intData.integrations || []);
 
     // Console output
-    printReport(analytics, sourceFindings, validationErrors);
+    printReport(analytics, sourceFindings, validationErrors, validationWarnings, evidenceFailures);
 
     // Write report
-    writeAuditReport(analytics, sourceFindings, validationErrors);
+    writeAuditReport(analytics, sourceFindings, validationErrors, validationWarnings, evidenceFailures);
 
     // Issue generation
-    if (generateIssues) {
+    if (doGenerateIssues) {
         const capMap = new Map((capData.capabilities || []).map(c => [c.id, c]));
         const intMap = new Map((intData.integrations || []).map(i => [i.id, i]));
         generateIssueStubs(analytics.highImpactGaps, capMap, intMap);
+    }
+
+    // Strict mode: exit with error if violations found
+    if (strictMode) {
+        const strictFailures = [];
+        if (validationErrors.length > 0) strictFailures.push(`${validationErrors.length} validation error(s)`);
+        if (validationWarnings.length > 0) strictFailures.push(`${validationWarnings.length} provider reality warning(s)`);
+        if (evidenceFailures.length > 0) strictFailures.push(`${evidenceFailures.length} evidence failure(s)`);
+
+        if (strictFailures.length > 0) {
+            console.error(`[api-features] --strict: ${strictFailures.join(', ')}`);
+            process.exit(1);
+        }
     }
 }
 

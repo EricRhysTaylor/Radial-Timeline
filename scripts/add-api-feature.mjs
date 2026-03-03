@@ -18,6 +18,9 @@
  *     --roi cost             (default: capability)
  *     --priority p1          (default: p2)
  *     --description "..."    (default: derived from name)
+ *     --target next          (default: backlog)
+ *     --owner eric           (default: tbd)
+ *     --evidence "pattern1,pattern2"  (regex evidence patterns)
  */
 import fs from 'fs';
 import path from 'path';
@@ -84,6 +87,9 @@ function main() {
     const roi = args.roi || 'capability';
     const priority = args.priority || 'p2';
     const description = args.description || `${name} for ${provider}. See documentation for details.`;
+    const targetRelease = args.target || 'backlog';
+    const owner = args.owner || 'tbd';
+    const evidence = args.evidence ? args.evidence.split(',').map(s => s.trim()) : [];
 
     // Load existing registries
     let capData;
@@ -135,10 +141,14 @@ function main() {
         impactAssessment: impact,
         implementationStatus: 'not_implemented',
         implementationNotes: notes || 'TODO: Add implementation details.',
+        implementationEvidence: evidence,
         sourceFiles: [],
         blockers: [],
         addedToRegistry: today(),
-        priority
+        priority,
+        targetRelease,
+        owner,
+        lastTouched: today()
     };
 
     // Append to registries
@@ -163,6 +173,8 @@ function main() {
     console.log(`    impact: ${impact}`);
     console.log(`    status: not_implemented`);
     console.log(`    priority: ${priority}`);
+    console.log(`    target: ${targetRelease}`);
+    console.log(`    owner: ${owner}`);
     console.log('');
 
     // Flag TODO fields

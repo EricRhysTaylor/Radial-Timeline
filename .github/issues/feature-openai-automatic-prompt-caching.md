@@ -10,6 +10,7 @@ labels: ai-feature, openai, p0
 **Maturity:** ga
 **ROI Category:** cost
 **Implementation Complexity:** low
+**Priority Score:** 7
 
 ## Description
 
@@ -36,3 +37,22 @@ OpenAI automatically caches prompts >1024 tokens with stable prefixes (50% disco
 ## Blockers
 
 None
+
+## Definition of Done
+
+### Request Shape
+- [ ] API request body matches provider documentation
+
+
+### Tests
+- [ ] Unit test covering request construction
+- [ ] Integration test verifying response parsing
+
+### Audit Evidence
+- [ ] Add implementationEvidence patterns to registry
+- [ ] `implementationStatus` set to `"complete"` in plugin-feature-integration.json
+- [ ] `node scripts/check-api-features.mjs --strict` passes
+
+### Obsidian Compatibility
+- [ ] Works with `requestUrl()` (no browser-only APIs)
+- [ ] Fallback behavior if feature unavailable (older API version, rate limit, mobile)

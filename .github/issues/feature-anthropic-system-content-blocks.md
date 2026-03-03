@@ -10,6 +10,7 @@ labels: ai-feature, anthropic, p0
 **Maturity:** ga
 **ROI Category:** capability
 **Implementation Complexity:** low
+**Priority Score:** 6
 
 ## Description
 
@@ -38,3 +39,22 @@ callAnthropicApi sends system as a plain string (line 47: requestBody.system = s
 ## Blockers
 
 None
+
+## Definition of Done
+
+### Request Shape
+- [ ] API request body matches provider documentation
+
+
+### Tests
+- [ ] Unit test covering request construction
+- [ ] Integration test verifying response parsing
+
+### Audit Evidence
+- [ ] Add implementationEvidence patterns to registry
+- [ ] `implementationStatus` set to `"complete"` in plugin-feature-integration.json
+- [ ] `node scripts/check-api-features.mjs --strict` passes
+
+### Obsidian Compatibility
+- [ ] Works with `requestUrl()` (no browser-only APIs)
+- [ ] Fallback behavior if feature unavailable (older API version, rate limit, mobile)

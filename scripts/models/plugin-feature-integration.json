@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "lastUpdated": "2026-03-03",
   "integrations": [
     {
@@ -21,7 +21,11 @@
         "Requires anthropic-system-content-blocks to be implemented first"
       ],
       "addedToRegistry": "2026-03-03",
-      "priority": "p0"
+      "priority": "p0",
+      "implementationEvidence": [],
+      "targetRelease": "next",
+      "owner": "eric",
+      "lastTouched": "2026-03-03"
     },
     {
       "id": "anthropic-system-content-blocks",
@@ -40,7 +44,11 @@
       ],
       "blockers": [],
       "addedToRegistry": "2026-03-03",
-      "priority": "p0"
+      "priority": "p0",
+      "implementationEvidence": [],
+      "targetRelease": "next",
+      "owner": "eric",
+      "lastTouched": "2026-03-03"
     },
     {
       "id": "anthropic-temperature-topP",
@@ -58,7 +66,11 @@
       ],
       "blockers": [],
       "addedToRegistry": "2026-03-03",
-      "priority": "p1"
+      "priority": "p1",
+      "implementationEvidence": [],
+      "targetRelease": "backlog",
+      "owner": "tbd",
+      "lastTouched": "2026-03-03"
     },
     {
       "id": "anthropic-extended-thinking",
@@ -75,7 +87,11 @@
       ],
       "blockers": [],
       "addedToRegistry": "2026-03-03",
-      "priority": "p2"
+      "priority": "p2",
+      "implementationEvidence": [],
+      "targetRelease": "backlog",
+      "owner": "tbd",
+      "lastTouched": "2026-03-03"
     },
     {
       "id": "anthropic-token-counting",
@@ -92,7 +108,11 @@
       ],
       "blockers": [],
       "addedToRegistry": "2026-03-03",
-      "priority": "p1"
+      "priority": "p1",
+      "implementationEvidence": [],
+      "targetRelease": "backlog",
+      "owner": "tbd",
+      "lastTouched": "2026-03-03"
     },
     {
       "id": "anthropic-citations",
@@ -108,7 +128,11 @@
       ],
       "blockers": [],
       "addedToRegistry": "2026-03-03",
-      "priority": "p2"
+      "priority": "p2",
+      "implementationEvidence": [],
+      "targetRelease": "backlog",
+      "owner": "tbd",
+      "lastTouched": "2026-03-03"
     },
     {
       "id": "anthropic-batch-api",
@@ -125,7 +149,11 @@
         "Current architecture uses single unified call, not per-beat"
       ],
       "addedToRegistry": "2026-03-03",
-      "priority": "p2"
+      "priority": "p2",
+      "implementationEvidence": [],
+      "targetRelease": "backlog",
+      "owner": "tbd",
+      "lastTouched": "2026-03-03"
     },
     {
       "id": "anthropic-streaming",
@@ -144,7 +172,11 @@
         "Obsidian requestUrl() does not support SSE streaming. Would need browser fetch() with ReadableStream, which may not work on mobile Obsidian."
       ],
       "addedToRegistry": "2026-03-03",
-      "priority": "p3"
+      "priority": "p3",
+      "implementationEvidence": [],
+      "targetRelease": "backlog",
+      "owner": "tbd",
+      "lastTouched": "2026-03-03"
     },
     {
       "id": "anthropic-pdf-support",
@@ -155,7 +187,11 @@
       "sourceFiles": [],
       "blockers": [],
       "addedToRegistry": "2026-03-03",
-      "priority": "p3"
+      "priority": "p3",
+      "implementationEvidence": [],
+      "targetRelease": "backlog",
+      "owner": "tbd",
+      "lastTouched": "2026-03-03"
     },
     {
       "id": "openai-automatic-prompt-caching",
@@ -172,7 +208,11 @@
       ],
       "blockers": [],
       "addedToRegistry": "2026-03-03",
-      "priority": "p0"
+      "priority": "p0",
+      "implementationEvidence": [],
+      "targetRelease": "next",
+      "owner": "eric",
+      "lastTouched": "2026-03-03"
     },
     {
       "id": "openai-structured-outputs",
@@ -190,7 +230,14 @@
       ],
       "blockers": [],
       "addedToRegistry": "2026-03-03",
-      "priority": "p3"
+      "priority": "p3",
+      "implementationEvidence": [
+        "json_schema",
+        "type.*json_schema"
+      ],
+      "targetRelease": "shipped",
+      "owner": "eric",
+      "lastTouched": "2026-03-03"
     },
     {
       "id": "openai-reasoning-model-system-role",
@@ -206,7 +253,11 @@
       ],
       "blockers": [],
       "addedToRegistry": "2026-03-03",
-      "priority": "p1"
+      "priority": "p1",
+      "implementationEvidence": [],
+      "targetRelease": "backlog",
+      "owner": "tbd",
+      "lastTouched": "2026-03-03"
     },
     {
       "id": "openai-batch-api",
@@ -223,7 +274,11 @@
         "Current architecture uses single unified call, not per-beat"
       ],
       "addedToRegistry": "2026-03-03",
-      "priority": "p2"
+      "priority": "p2",
+      "implementationEvidence": [],
+      "targetRelease": "backlog",
+      "owner": "tbd",
+      "lastTouched": "2026-03-03"
     },
     {
       "id": "openai-streaming",
@@ -242,7 +297,11 @@
         "Obsidian requestUrl() does not support SSE streaming."
       ],
       "addedToRegistry": "2026-03-03",
-      "priority": "p3"
+      "priority": "p3",
+      "implementationEvidence": [],
+      "targetRelease": "backlog",
+      "owner": "tbd",
+      "lastTouched": "2026-03-03"
     },
     {
       "id": "openai-responses-api",
@@ -258,7 +317,11 @@
         "No clear benefit over chat completions for plugin's use cases"
       ],
       "addedToRegistry": "2026-03-03",
-      "priority": "p3"
+      "priority": "p3",
+      "implementationEvidence": [],
+      "targetRelease": "backlog",
+      "owner": "tbd",
+      "lastTouched": "2026-03-03"
     },
     {
       "id": "gemini-context-caching",
@@ -276,7 +339,11 @@
       ],
       "blockers": [],
       "addedToRegistry": "2026-03-03",
-      "priority": "p0"
+      "priority": "p0",
+      "implementationEvidence": [],
+      "targetRelease": "next",
+      "owner": "eric",
+      "lastTouched": "2026-03-03"
     },
     {
       "id": "gemini-1m-context",
@@ -292,7 +359,13 @@
       ],
       "blockers": [],
       "addedToRegistry": "2026-03-03",
-      "priority": "p3"
+      "priority": "p3",
+      "implementationEvidence": [
+        "contextWindow.*1048576"
+      ],
+      "targetRelease": "shipped",
+      "owner": "eric",
+      "lastTouched": "2026-03-03"
     },
     {
       "id": "gemini-structured-outputs",
@@ -309,7 +382,14 @@
       ],
       "blockers": [],
       "addedToRegistry": "2026-03-03",
-      "priority": "p3"
+      "priority": "p3",
+      "implementationEvidence": [
+        "responseMimeType.*application/json",
+        "responseSchema"
+      ],
+      "targetRelease": "shipped",
+      "owner": "eric",
+      "lastTouched": "2026-03-03"
     },
     {
       "id": "gemini-streaming",
@@ -328,7 +408,11 @@
         "Obsidian requestUrl() does not support SSE streaming."
       ],
       "addedToRegistry": "2026-03-03",
-      "priority": "p3"
+      "priority": "p3",
+      "implementationEvidence": [],
+      "targetRelease": "backlog",
+      "owner": "tbd",
+      "lastTouched": "2026-03-03"
     },
     {
       "id": "gemini-grounding",
@@ -339,7 +423,11 @@
       "sourceFiles": [],
       "blockers": [],
       "addedToRegistry": "2026-03-03",
-      "priority": "p3"
+      "priority": "p3",
+      "implementationEvidence": [],
+      "targetRelease": "backlog",
+      "owner": "tbd",
+      "lastTouched": "2026-03-03"
     }
   ]
 }
