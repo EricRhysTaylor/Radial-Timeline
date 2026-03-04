@@ -205,6 +205,12 @@ export interface AIRunAdvancedContext {
     executionPassCount?: number;
     packagingTriggerReason?: string;
     reuseState?: 'idle' | 'eligible' | 'warm';
+    /** 0–1: fraction of total input in the cached stable prefix (only set when reuseState is warm). */
+    cachedStableRatio?: number;
+    /** Estimated token count of the cached stable portion. */
+    cachedStableTokens?: number;
+    /** Estimated total input tokens (same estimator as pressure bar fillRatio). */
+    totalInputTokens?: number;
     featureModeInstructions: string;
     finalPrompt: string;
 }

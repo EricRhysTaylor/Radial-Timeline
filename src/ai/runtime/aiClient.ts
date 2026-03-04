@@ -429,6 +429,25 @@ export class AIClient {
             reuseState = 'eligible';
         }
 
+        // Compute cached stable ratio from delimiter split
+        // Uses tokenEstimateInput (same estimator as pressure bar fillRatio) for visual consistency.
+        let cachedStableRatio: number | undefined;
+        let cachedStableTokens: number | undefined;
+        if (cacheDelimiterUsed) {
+            const delimIndex = userPrompt.indexOf(CACHE_BREAK_DELIMITER);
+            if (delimIndex > 0) {
+                const stableText = userPrompt.slice(0, delimIndex);
+                // Anthropic: only user stable block is cached
+                // Gemini: system instruction goes inside cached content too
+                const stableTokens = provider === 'google'
+                    ? estimateTokens(stableText) + estimateTokens(systemPrompt)
+                    : estimateTokens(stableText);
+                cachedStableTokens = stableTokens;
+                cachedStableRatio = tokenEstimateInput > 0
+                    ? Math.min(stableTokens / tokenEstimateInput, 1) : 0;
+            }
+        }
+
         const advancedContext: AIRunAdvancedContext = {
             roleTemplateName: roleTemplate.name,
             provider,
@@ -441,6 +460,10 @@ export class AIClient {
             analysisPackaging: aiSettings.analysisPackaging,
             executionPassCount: 1,
             reuseState,
+            // Anthropic: set immediately (cache_control blocks always sent)
+            cachedStableRatio: provider === 'anthropic' && cacheDelimiterUsed ? cachedStableRatio : undefined,
+            cachedStableTokens: provider === 'anthropic' && cacheDelimiterUsed ? cachedStableTokens : undefined,
+            totalInputTokens: cacheDelimiterUsed ? tokenEstimateInput : undefined,
             featureModeInstructions,
             finalPrompt: envelope.finalPrompt
         };
@@ -461,6 +484,8 @@ export class AIClient {
         // if cache was actually created and sent (truth-safe).
         if (provider === 'google' && cacheDelimiterUsed && execution.cacheUsed) {
             advancedContext.reuseState = 'warm';
+            advancedContext.cachedStableRatio = cachedStableRatio;
+            advancedContext.cachedStableTokens = cachedStableTokens;
             setLastRunAdvanced(this.plugin, request.feature, advancedContext);
         }
 

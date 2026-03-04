@@ -70,6 +70,7 @@
 .ert-inquiry-svg.is-guidance-lockout .ert-inquiry-minimap-tokencap-bar,
 .ert-inquiry-svg.is-guidance-lockout .ert-inquiry-minimap-tokencap-endcap,
 .ert-inquiry-svg.is-guidance-lockout .ert-inquiry-minimap-tokencap-splits,
+.ert-inquiry-svg.is-guidance-lockout .ert-inquiry-minimap-tokencap-cached,
 .ert-inquiry-svg.is-guidance-lockout .ert-inquiry-minimap-reuse-band,
 .ert-inquiry-svg.is-guidance-lockout .ert-inquiry-minimap-reuse-dot {
   display: none;
@@ -496,6 +497,32 @@
 .ert-inquiry-svg.is-running .ert-inquiry-minimap-tokencap-endcap,
 .ert-inquiry-svg.is-running .ert-inquiry-minimap-tokencap-split {
   opacity: 0.3;
+}
+
+/* ── Cached portion overlay (hatched segment on tokencap bar) ── */
+.ert-inquiry-minimap-tokencap-cached {
+  fill: url(#ert-inquiry-minimap-cached-hatch);
+  opacity: 0.7;
+  pointer-events: none;
+  transition: opacity 300ms ease;
+}
+
+.ert-inquiry-minimap-cached-hatch-stroke {
+  stroke: var(--ert-alert-success-color);
+  stroke-width: 1.5;
+}
+
+.ert-inquiry-svg.is-running .ert-inquiry-minimap-tokencap-cached {
+  opacity: 0.3;
+}
+
+.ert-inquiry-minimap[data-reuse-state="warm"] .ert-inquiry-minimap-tokencap-cached {
+  animation: ert-minimap-cached-pulse 2.5s ease-in-out infinite;
+}
+
+@keyframes ert-minimap-cached-pulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 0.85; }
 }
 
 /* ── Reuse band ── */

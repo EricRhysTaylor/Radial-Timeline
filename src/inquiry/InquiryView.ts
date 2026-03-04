@@ -107,9 +107,9 @@ const INQUIRY_SYNOPSIS_CAPABLE_CLASSES = new Set(['scene', 'outline']);
 const INQUIRY_CONTEXT_CLASSES = new Set(['character', 'place', 'power']);
 const MINIMAP_GROUP_Y = -520;
 const MINIMAP_TOKEN_CAP_Y = 7;
-const MINIMAP_TOKEN_CAP_BAR_HEIGHT = 2;
+const MINIMAP_TOKEN_CAP_BAR_HEIGHT = 4;
 const MINIMAP_TOKEN_CAP_ENDCAP_HEIGHT = 10;
-const MINIMAP_TOKEN_CAP_SPLIT_TICK_HEIGHT = 6;
+const MINIMAP_TOKEN_CAP_SPLIT_TICK_HEIGHT = 4;
 const MINIMAP_TOKEN_CAP_SPLIT_TICK_WIDTH = 2;
 const PREVIEW_PANEL_WIDTH = 640;
 const PREVIEW_PANEL_Y = -390;
@@ -1009,6 +1009,7 @@ export class InquiryView extends ItemView {
     private minimapTokenCapStartCap?: SVGRectElement;
     private minimapTokenCapEndCap?: SVGRectElement;
     private minimapTokenCapSplitGroup?: SVGGElement;
+    private minimapTokenCapCachedOverlay?: SVGRectElement;
     private minimapTicks: SVGGElement[] = [];
     private minimapGroup?: SVGGElement;
     private minimapBackboneGroup?: SVGGElement;
@@ -1331,6 +1332,11 @@ export class InquiryView extends ItemView {
         this.minimapTokenCapEndCap.classList.add('ert-inquiry-minimap-tokencap-endcap');
         minimapGroup.appendChild(this.minimapTokenCapEndCap);
         this.minimapTokenCapSplitGroup = this.createSvgGroup(minimapGroup, 'ert-inquiry-minimap-tokencap-splits');
+
+        this.minimapTokenCapCachedOverlay = this.createSvgElement('rect');
+        this.minimapTokenCapCachedOverlay.classList.add('ert-inquiry-minimap-tokencap-cached');
+        this.minimapTokenCapCachedOverlay.classList.add('ert-hidden');
+        minimapGroup.appendChild(this.minimapTokenCapCachedOverlay);
 
         this.minimapReuseBand = this.createSvgElement('line');
         this.minimapReuseBand.classList.add('ert-inquiry-minimap-reuse-band');
@@ -3303,6 +3309,22 @@ export class InquiryView extends ItemView {
             this.minimapBackboneClip = backboneClip;
             this.minimapBackboneClipRect = clipRect;
         }
+
+        // Hatched pattern for cached portion overlay on token cap bar
+        const cachedPattern = this.createSvgElement('pattern');
+        cachedPattern.setAttribute('id', 'ert-inquiry-minimap-cached-hatch');
+        cachedPattern.setAttribute('width', '4');
+        cachedPattern.setAttribute('height', '4');
+        cachedPattern.setAttribute('patternUnits', 'userSpaceOnUse');
+        cachedPattern.setAttribute('patternTransform', 'rotate(45)');
+        const hatchLine = this.createSvgElement('line');
+        hatchLine.setAttribute('x1', '0');
+        hatchLine.setAttribute('y1', '0');
+        hatchLine.setAttribute('x2', '0');
+        hatchLine.setAttribute('y2', '4');
+        hatchLine.classList.add('ert-inquiry-minimap-cached-hatch-stroke');
+        cachedPattern.appendChild(hatchLine);
+        defs.appendChild(cachedPattern);
     }
 
     private createIconSymbol(defs: SVGDefsElement, iconName: string): string | null {
@@ -4241,12 +4263,21 @@ export class InquiryView extends ItemView {
             this.minimapTokenCapEndCap.setAttribute('width', String(Math.round(capWidth)));
             this.minimapTokenCapEndCap.setAttribute('height', String(Math.round(tokenCapCapHeight)));
         }
+        if (this.minimapTokenCapCachedOverlay) {
+            this.minimapTokenCapCachedOverlay.setAttribute('x', String(baselineStart));
+            this.minimapTokenCapCachedOverlay.setAttribute('y', String(tokenCapY));
+            this.minimapTokenCapCachedOverlay.setAttribute('width', '0');
+            this.minimapTokenCapCachedOverlay.setAttribute('height', String(tokenCapBarHeight));
+            this.minimapTokenCapCachedOverlay.setAttribute('rx', String(Math.round(tokenCapBarHeight / 2)));
+            this.minimapTokenCapCachedOverlay.setAttribute('ry', String(Math.round(tokenCapBarHeight / 2)));
+            this.minimapTokenCapCachedOverlay.classList.add('ert-hidden');
+        }
         if (this.minimapTokenCapSplitGroup) {
             this.clearSvgChildren(this.minimapTokenCapSplitGroup);
             this.minimapTokenCapSplitGroup.classList.add('ert-hidden');
         }
         const reuseBandY = MINIMAP_TOKEN_CAP_Y + MINIMAP_TOKEN_CAP_BAR_HEIGHT
-                           + MINIMAP_TOKEN_CAP_SPLIT_TICK_HEIGHT; // 7+2+6 = 15
+                           + MINIMAP_TOKEN_CAP_SPLIT_TICK_HEIGHT; // 7+4+4 = 15
         if (this.minimapReuseBand) {
             this.minimapReuseBand.setAttribute('x1', String(baselineStart));
             this.minimapReuseBand.setAttribute('y1', String(reuseBandY));
@@ -4640,9 +4671,14 @@ export class InquiryView extends ItemView {
             const stateDetail = reuseState === 'warm'
                 ? 'Warm (evidence prefix cached)'
                 : 'Eligible (prompt optimized for caching)';
+            const cachedRatio = advanced?.cachedStableRatio;
+            const cachedTokens = advanced?.cachedStableTokens;
+            const ratioDetail = cachedRatio && cachedRatio > 0
+                ? `\nCached: ${Math.round(cachedRatio * 100)}% of input (\u2248${cachedTokens?.toLocaleString() ?? '?'} tokens)`
+                : '';
             addTooltipData(
                 this.minimapReuseBand,
-                this.balanceTooltipText(`Reuse: ${stateDetail}\nCorpus ${corpusShort} \u2022 ${providerLabel}`),
+                this.balanceTooltipText(`Reuse: ${stateDetail}\nCorpus ${corpusShort} \u2022 ${providerLabel}${ratioDetail}`),
                 'bottom'
             );
         }
@@ -6346,6 +6382,33 @@ export class InquiryView extends ItemView {
         this.minimapTokenCapStartCap?.classList.remove(inverseStateClass);
         this.minimapTokenCapEndCap?.classList.remove(inverseStateClass);
         this.updateTokenCapPassSplits(isOverCapacity ? Math.max(1, totalPassCount) : 1);
+        this.updateTokenCapCachedOverlay(fillRatio);
+    }
+
+    private updateTokenCapCachedOverlay(fillRatio: number): void {
+        if (!this.minimapTokenCapCachedOverlay || !this.minimapLayout) return;
+
+        const advanced = getLastAiAdvancedContext(this.plugin, 'InquiryMode');
+        const cachedRatio = advanced?.cachedStableRatio;
+
+        if (!cachedRatio || cachedRatio <= 0 || advanced?.reuseState !== 'warm') {
+            this.minimapTokenCapCachedOverlay.classList.add('ert-hidden');
+            return;
+        }
+
+        const length = this.minimapLayout.length;
+        const barWidth = length * Math.min(Math.max(fillRatio, 0), 1);
+        const cachedWidth = barWidth * Math.min(cachedRatio, 1);
+
+        // Edge case: hide when overlay would be too narrow to see pattern
+        if (cachedWidth < 3) {
+            this.minimapTokenCapCachedOverlay.classList.add('ert-hidden');
+            return;
+        }
+
+        this.minimapTokenCapCachedOverlay.classList.remove('ert-hidden');
+        this.minimapTokenCapCachedOverlay.setAttribute('x', String(Math.round(this.minimapLayout.startX)));
+        this.minimapTokenCapCachedOverlay.setAttribute('width', cachedWidth.toFixed(2));
     }
 
     private applyBackboneOscillationColors(progress: number): void {
