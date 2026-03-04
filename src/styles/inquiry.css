@@ -69,7 +69,9 @@
 .ert-inquiry-svg.is-guidance-lockout .ert-inquiry-minimap-backbone-shine,
 .ert-inquiry-svg.is-guidance-lockout .ert-inquiry-minimap-tokencap-bar,
 .ert-inquiry-svg.is-guidance-lockout .ert-inquiry-minimap-tokencap-endcap,
-.ert-inquiry-svg.is-guidance-lockout .ert-inquiry-minimap-tokencap-splits {
+.ert-inquiry-svg.is-guidance-lockout .ert-inquiry-minimap-tokencap-splits,
+.ert-inquiry-svg.is-guidance-lockout .ert-inquiry-minimap-reuse-band,
+.ert-inquiry-svg.is-guidance-lockout .ert-inquiry-minimap-reuse-dot {
   display: none;
 }
 
@@ -494,6 +496,59 @@
 .ert-inquiry-svg.is-running .ert-inquiry-minimap-tokencap-endcap,
 .ert-inquiry-svg.is-running .ert-inquiry-minimap-tokencap-split {
   opacity: 0.3;
+}
+
+/* ── Reuse band ── */
+.ert-inquiry-minimap-reuse-band {
+  stroke: var(--text-muted);
+  stroke-width: 2;
+  opacity: 0.3;
+  vector-effect: non-scaling-stroke;
+  pointer-events: auto;
+  transition: stroke 300ms ease, opacity 300ms ease;
+}
+
+.ert-inquiry-minimap[data-reuse-state="eligible"] .ert-inquiry-minimap-reuse-band {
+  stroke: var(--text-accent);
+  opacity: 0.55;
+}
+
+.ert-inquiry-minimap[data-reuse-state="warm"] .ert-inquiry-minimap-reuse-band {
+  stroke: var(--ert-alert-success-color);
+  opacity: 0.9;
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--ert-alert-success-color) 60%, transparent));
+}
+
+.ert-inquiry-svg.is-running .ert-inquiry-minimap-reuse-band {
+  animation: ert-minimap-reuse-pulse 2s ease-in-out infinite;
+}
+
+@keyframes ert-minimap-reuse-pulse {
+  0%   { filter: drop-shadow(0 0 0 transparent); }
+  50%  { filter: drop-shadow(0 0 8px color-mix(in srgb, var(--text-accent) 45%, transparent)); }
+  100% { filter: drop-shadow(0 0 0 transparent); }
+}
+
+.ert-inquiry-svg.is-running .ert-inquiry-minimap-reuse-dot {
+  opacity: 0.3;
+}
+
+/* ── Reuse dot ── */
+.ert-inquiry-minimap-reuse-dot {
+  fill: var(--text-muted);
+  opacity: 0;
+  pointer-events: none;
+  transition: fill 300ms ease, opacity 300ms ease;
+}
+
+.ert-inquiry-minimap[data-reuse-state="eligible"] .ert-inquiry-minimap-reuse-dot {
+  fill: var(--text-accent);
+  opacity: 0.75;
+}
+
+.ert-inquiry-minimap[data-reuse-state="warm"] .ert-inquiry-minimap-reuse-dot {
+  fill: var(--ert-alert-success-color);
+  opacity: 0.95;
 }
 
 .ert-inquiry-minimap-ticks {

@@ -202,6 +202,7 @@ export interface AIRunAdvancedContext {
     analysisPackaging: AnalysisPackaging;
     executionPassCount?: number;
     packagingTriggerReason?: string;
+    reuseState?: 'idle' | 'eligible' | 'warm';
     featureModeInstructions: string;
     finalPrompt: string;
 }

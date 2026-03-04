@@ -771,8 +771,6 @@ export class InquiryRunnerService implements InquiryRunner {
         }).join('\n\n');
 
         const userPrompt = [
-            `Question: ${input.questionText}`,
-            '',
             'Answer the editorial question using the evidence.',
             'Independently assign corpus-level diagnostics (0-100):',
             '- Flow: momentum/causality/pressure progression across the evaluated corpus.',

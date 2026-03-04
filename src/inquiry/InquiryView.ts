@@ -1028,6 +1028,8 @@ export class InquiryView extends ItemView {
     private minimapBackboneShineStops: SVGStopElement[] = [];
     private minimapPassIndicatorGroup?: SVGGElement;
     private minimapPassIndicatorText?: SVGTextElement;
+    private minimapReuseBand?: SVGLineElement;
+    private minimapReuseDot?: SVGCircleElement;
     private backboneStartColors?: BackboneColors;
     private backboneTargetColors?: BackboneColors;
     private backboneOscillationColors?: { base: BackboneColors; target: BackboneColors };
@@ -1329,6 +1331,10 @@ export class InquiryView extends ItemView {
         this.minimapTokenCapEndCap.classList.add('ert-inquiry-minimap-tokencap-endcap');
         minimapGroup.appendChild(this.minimapTokenCapEndCap);
         this.minimapTokenCapSplitGroup = this.createSvgGroup(minimapGroup, 'ert-inquiry-minimap-tokencap-splits');
+
+        this.minimapReuseBand = this.createSvgElement('line');
+        this.minimapReuseBand.classList.add('ert-inquiry-minimap-reuse-band');
+        minimapGroup.appendChild(this.minimapReuseBand);
 
         this.minimapTicksEl = this.createSvgGroup(minimapGroup, 'ert-inquiry-minimap-ticks', baselineStartX, 0);
         this.renderModeIcons(minimapGroup);
@@ -4239,6 +4245,14 @@ export class InquiryView extends ItemView {
             this.clearSvgChildren(this.minimapTokenCapSplitGroup);
             this.minimapTokenCapSplitGroup.classList.add('ert-hidden');
         }
+        const reuseBandY = MINIMAP_TOKEN_CAP_Y + MINIMAP_TOKEN_CAP_BAR_HEIGHT
+                           + MINIMAP_TOKEN_CAP_SPLIT_TICK_HEIGHT; // 7+2+6 = 15
+        if (this.minimapReuseBand) {
+            this.minimapReuseBand.setAttribute('x1', String(baselineStart));
+            this.minimapReuseBand.setAttribute('y1', String(reuseBandY));
+            this.minimapReuseBand.setAttribute('x2', String(baselineEnd));
+            this.minimapReuseBand.setAttribute('y2', String(reuseBandY));
+        }
         this.minimapBottomOffset = tokenCapCapY + tokenCapCapHeight;
         this.minimapTicksEl.setAttribute('transform', `translate(${baselineStart} 0)`);
         this.renderMinimapBackbone(baselineStart, length);
@@ -4437,6 +4451,14 @@ export class InquiryView extends ItemView {
             passText.setAttribute('dominant-baseline', 'middle');
             this.minimapPassIndicatorText = passText;
         }
+        if (!this.minimapReuseDot && passGroup) {
+            this.minimapReuseDot = this.createSvgElement('circle');
+            this.minimapReuseDot.classList.add('ert-inquiry-minimap-reuse-dot');
+            this.minimapReuseDot.setAttribute('r', '3');
+            this.minimapReuseDot.setAttribute('cx', '-6');
+            this.minimapReuseDot.setAttribute('cy', '0');
+            passGroup.appendChild(this.minimapReuseDot);
+        }
 
         glow.setAttribute('x', baselineStart.toFixed(2));
         glow.setAttribute('y', String(glowY));
@@ -4591,6 +4613,38 @@ export class InquiryView extends ItemView {
                     'top'
                 );
             }
+        }
+        this.updateMinimapReuseStatus();
+    }
+
+    private updateMinimapReuseStatus(): void {
+        if (!this.minimapGroup) return;
+
+        const advanced = getLastAiAdvancedContext(this.plugin, 'InquiryMode');
+        const reuseState = advanced?.reuseState ?? 'idle';
+        const provider = advanced?.provider ?? 'none';
+
+        this.minimapGroup.setAttribute('data-reuse-state', reuseState);
+        this.minimapReuseBand?.classList.toggle('ert-hidden', reuseState === 'idle');
+        this.minimapReuseDot?.classList.toggle('ert-hidden', reuseState === 'idle');
+
+        const fingerprint = this.state.corpusFingerprint
+            ?? this.payloadStats?.manifestFingerprint;
+        const corpusShort = fingerprint
+            ? fingerprint.replace(/^h/, '').slice(0, 4).toUpperCase()
+            : '----';
+
+        if (this.minimapReuseBand && reuseState !== 'idle') {
+            const providerLabel = provider === 'google' ? 'Gemini'
+                : provider.charAt(0).toUpperCase() + provider.slice(1);
+            const stateDetail = reuseState === 'warm'
+                ? 'Warm (evidence prefix cached)'
+                : 'Eligible (prompt optimized for caching)';
+            addTooltipData(
+                this.minimapReuseBand,
+                this.balanceTooltipText(`Reuse: ${stateDetail}\nCorpus ${corpusShort} \u2022 ${providerLabel}`),
+                'bottom'
+            );
         }
     }
 

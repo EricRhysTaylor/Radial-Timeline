@@ -1,3 +1,6 @@
+/** Delimiter injected before volatile question section for Anthropic prompt caching. */
+export const CACHE_BREAK_DELIMITER = '<<<CACHE_BREAK>>>';
+
 export interface EnvelopeInput {
     roleTemplateName: string;
     roleTemplateText: string;
@@ -7,6 +10,8 @@ export interface EnvelopeInput {
     userQuestion?: string;
     outputRules: string;
     placeUserQuestionLast?: boolean;
+    /** When set, inserted before the volatile question section so the Anthropic adapter can split stable/volatile content. */
+    cacheBreakDelimiter?: string;
 }
 
 export interface ComposedEnvelope {
@@ -34,6 +39,9 @@ export function composeEnvelope(input: EnvelopeInput): ComposedEnvelope {
 
     if (input.placeUserQuestionLast && includeQuestion) {
         parts.push(section('Output Schema / Formatting Rules', input.outputRules));
+        if (input.cacheBreakDelimiter) {
+            parts.push(input.cacheBreakDelimiter);
+        }
         parts.push(section('User Question (highest priority)', input.userQuestion || ''));
     } else {
         if (includeQuestion) {

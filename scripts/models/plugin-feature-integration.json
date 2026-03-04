@@ -10,20 +10,23 @@
         "sceneAnalysis"
       ],
       "impactAssessment": "high",
-      "implementationStatus": "not_implemented",
-      "implementationNotes": "System prompt sent as plain string in anthropicApi.ts. Needs content block array with cache_control: { type: 'ephemeral' } on evidence blocks. Gossamer and Inquiry send identical evidence across calls — caching would yield significant savings on repeated input tokens (see provider pricing docs).",
+      "implementationStatus": "complete",
+      "implementationNotes": "Inquiry single-question path has full caching: user message split on CACHE_BREAK_DELIMITER with cache_control on stable evidence prefix. Omnibus and other features inherit system block caching only; user message caching deferred (same delimiter pattern). Beta header prompt-caching-2024-07-31 sent on all Anthropic requests.",
       "sourceFiles": [
         "src/api/anthropicApi.ts",
-        "src/ai/providers/anthropicProvider.ts",
-        "src/api/providerRouter.ts"
+        "src/api/requestPayload.ts",
+        "src/ai/prompts/composeEnvelope.ts",
+        "src/inquiry/runner/InquiryRunnerService.ts"
       ],
-      "blockers": [
-        "Requires anthropic-system-content-blocks to be implemented first"
-      ],
+      "blockers": [],
       "addedToRegistry": "2026-03-03",
       "priority": "p0",
-      "implementationEvidence": [],
-      "targetRelease": "next",
+      "implementationEvidence": [
+        "cache_control\\s*:\\s*\\{\\s*type:\\s*'ephemeral'",
+        "anthropic-beta",
+        "CACHE_BREAK_DELIMITER"
+      ],
+      "targetRelease": "shipped",
       "owner": "eric",
       "lastTouched": "2026-03-03"
     },
@@ -37,16 +40,20 @@
         "pulse"
       ],
       "impactAssessment": "high",
-      "implementationStatus": "not_implemented",
-      "implementationNotes": "callAnthropicApi sends system as a plain string (line 47: requestBody.system = systemPrompt). Must restructure to array of content blocks: [{ type: 'text', text: ... }]. Prerequisite for prompt caching.",
+      "implementationStatus": "complete",
+      "implementationNotes": "System prompt sent as AnthropicTextBlock[] content blocks. User messages also always use content blocks (foundation for citations/extended thinking). Mirrored in requestPayload.ts diagnostic shim.",
       "sourceFiles": [
-        "src/api/anthropicApi.ts"
+        "src/api/anthropicApi.ts",
+        "src/api/requestPayload.ts"
       ],
       "blockers": [],
       "addedToRegistry": "2026-03-03",
       "priority": "p0",
-      "implementationEvidence": [],
-      "targetRelease": "next",
+      "implementationEvidence": [
+        "\\.system\\s*=\\s*\\[\\{\\s*type:\\s*'text'",
+        "AnthropicTextBlock"
+      ],
+      "targetRelease": "shipped",
       "owner": "eric",
       "lastTouched": "2026-03-03"
     },

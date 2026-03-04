@@ -6,6 +6,13 @@
 // DEPRECATED: Legacy provider adapter; prefer aiClient entrypoints.
 import { requestUrl } from 'obsidian';
 import { warnLegacyAccess } from './legacyAccessGuard';
+import { CACHE_BREAK_DELIMITER } from '../ai/prompts/composeEnvelope';
+
+export type AnthropicTextBlock = {
+  type: 'text';
+  text: string;
+  cache_control?: { type: 'ephemeral' };
+};
 
 interface AnthropicSuccessResponse {
   content: { type: string; text: string }[];
@@ -38,13 +45,29 @@ export async function callAnthropicApi(
   if (!modelId) {
     return { success: false, content: null, responseData: { type: 'error', error: { type: 'plugin_config_error', message: 'Anthropic model ID not configured.' } }, error: 'Anthropic model ID not configured.' };  }
 
+  // Always use content blocks for Anthropic (foundation for caching, citations, extended thinking)
+  const delimIndex = userPrompt.indexOf(CACHE_BREAK_DELIMITER);
+  let userContent: AnthropicTextBlock[];
+  if (delimIndex > 0) {
+    const stableText = userPrompt.slice(0, delimIndex).trimEnd();
+    const volatileText = userPrompt.slice(delimIndex + CACHE_BREAK_DELIMITER.length).trimStart();
+    userContent = [
+      { type: 'text', text: stableText, cache_control: { type: 'ephemeral' } },
+      { type: 'text', text: volatileText },
+    ];
+  } else {
+    userContent = [{ type: 'text', text: userPrompt }];
+  }
+
   const requestBody: {
     model: string;
-    messages: { role: string; content: string }[];
+    messages: { role: string; content: AnthropicTextBlock[] }[];
     max_tokens: number;
-    system?: string;
-  } = { model: modelId, messages: [{ role: 'user', content: userPrompt }], max_tokens: maxTokens };
-  if (systemPrompt) requestBody.system = systemPrompt;
+    system?: AnthropicTextBlock[];
+  } = { model: modelId, messages: [{ role: 'user', content: userContent }], max_tokens: maxTokens };
+  if (systemPrompt) {
+    requestBody.system = [{ type: 'text', text: systemPrompt }];
+  }
 
   let responseData: unknown;
   try {
@@ -53,6 +76,7 @@ export async function callAnthropicApi(
       method: 'POST',
       headers: {
         'anthropic-version': apiVersion,
+        'anthropic-beta': 'prompt-caching-2024-07-31',
         'x-api-key': apiKey,
         'Content-Type': 'application/json',
       },

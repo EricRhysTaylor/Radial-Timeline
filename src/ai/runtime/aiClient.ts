@@ -3,7 +3,8 @@ import type { RadialTimelineSettings } from '../../types';
 import { computeCaps, type ComputedCaps } from '../caps/computeCaps';
 import { mapErrorToUserMessage, mapProviderFailureToError, MalformedJsonError } from '../errors';
 import { compilePrompt } from '../prompts/compilePrompt';
-import { composeEnvelope } from '../prompts/composeEnvelope';
+import { composeEnvelope, CACHE_BREAK_DELIMITER } from '../prompts/composeEnvelope';
+import { openAiModelSupportsSystemRole } from '../../api/openaiApi';
 import { ModelRegistry } from '../registry/modelRegistry';
 import { findSnapshotModel, loadProviderSnapshot, type ProviderSnapshotLoadResult } from '../registry/providerSnapshot';
 import { selectModel } from '../router/selectModel';
@@ -323,7 +324,8 @@ export class AIClient {
             userInput: request.userInput ?? compiledPrompt.userPrompt ?? request.promptText ?? '',
             userQuestion: request.userQuestion,
             outputRules: getOutputRules(request),
-            placeUserQuestionLast: request.feature.toLowerCase().includes('inquiry')
+            placeUserQuestionLast: request.feature.toLowerCase().includes('inquiry'),
+            cacheBreakDelimiter: provider === 'anthropic' ? CACHE_BREAK_DELIMITER : undefined
         });
         const userPrompt = envelope.userPrompt || '';
         const systemPrompt = envelope.systemPrompt || '';
@@ -410,6 +412,17 @@ export class AIClient {
             ? 'unknown'
             : (availableModel ? 'visible' : 'not_visible');
 
+        // Truth-safe reuse state — warm only when provable
+        const cacheDelimiterUsed = provider === 'anthropic'
+            && request.feature.toLowerCase().includes('inquiry');
+        let reuseState: AIRunAdvancedContext['reuseState'] = 'idle';
+        if (provider === 'anthropic') {
+            reuseState = cacheDelimiterUsed ? 'warm' : 'eligible';
+        } else if (provider === 'openai' && systemPrompt
+                   && openAiModelSupportsSystemRole(modelSelection.model.id)) {
+            reuseState = 'eligible';
+        }
+
         const advancedContext: AIRunAdvancedContext = {
             roleTemplateName: roleTemplate.name,
             provider,
@@ -421,6 +434,7 @@ export class AIClient {
             maxOutputTokens: caps.maxOutputTokens,
             analysisPackaging: aiSettings.analysisPackaging,
             executionPassCount: 1,
+            reuseState,
             featureModeInstructions,
             finalPrompt: envelope.finalPrompt
         };

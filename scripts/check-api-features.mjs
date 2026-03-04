@@ -217,8 +217,9 @@ function scanSources() {
     // ── Anthropic API ──
     const anthropicSrc = readSourceFile('src/api/anthropicApi.ts');
     if (anthropicSrc) {
-        if (anthropicSrc.includes('requestBody.system = systemPrompt') ||
-            (anthropicSrc.includes('system?: string') && !anthropicSrc.includes('system?: Array'))) {
+        // Only flag if system is still plain string and NOT block array
+        if ((anthropicSrc.includes('system?: string') && !anthropicSrc.includes('AnthropicTextBlock')) ||
+            (/requestBody\.system\s*=\s*systemPrompt/.test(anthropicSrc) && !(/requestBody\.system\s*=\s*\[/.test(anthropicSrc)))) {
             findings.push({
                 file: 'anthropicApi.ts',
                 finding: 'system prompt is plain string (blocks prompt caching)',

@@ -1,6 +1,8 @@
 // DEPRECATED: Legacy provider payload shim; route new call paths through aiClient.
 import type { AiProvider, ProviderCallArgs } from './providerCapabilities';
 import { openAiModelSupportsSystemRole } from './openaiApi';
+import type { AnthropicTextBlock } from './anthropicApi';
+import { CACHE_BREAK_DELIMITER } from '../ai/prompts/composeEnvelope';
 
 type OpenAiPayload = {
     model: string;
@@ -13,9 +15,9 @@ type OpenAiPayload = {
 
 type AnthropicPayload = {
     model: string;
-    messages: { role: string; content: string }[];
+    messages: { role: string; content: AnthropicTextBlock[] }[];
     max_tokens: number;
-    system?: string;
+    system?: AnthropicTextBlock[];
 };
 
 type GeminiPayload = {
@@ -37,13 +39,26 @@ export function buildProviderRequestPayload(
 ): OpenAiPayload | AnthropicPayload | GeminiPayload {
     if (provider === 'anthropic') {
         const resolvedMaxTokens = typeof callArgs.maxTokens === 'number' ? callArgs.maxTokens : 4000;
+        // Always use content blocks for Anthropic (mirrors anthropicApi.ts)
+        const delimIndex = callArgs.userPrompt.indexOf(CACHE_BREAK_DELIMITER);
+        let userContent: AnthropicTextBlock[];
+        if (delimIndex > 0) {
+            const stableText = callArgs.userPrompt.slice(0, delimIndex).trimEnd();
+            const volatileText = callArgs.userPrompt.slice(delimIndex + CACHE_BREAK_DELIMITER.length).trimStart();
+            userContent = [
+                { type: 'text', text: stableText, cache_control: { type: 'ephemeral' } },
+                { type: 'text', text: volatileText },
+            ];
+        } else {
+            userContent = [{ type: 'text', text: callArgs.userPrompt }];
+        }
         const payload: AnthropicPayload = {
             model: modelId,
-            messages: [{ role: 'user', content: callArgs.userPrompt }],
+            messages: [{ role: 'user', content: userContent }],
             max_tokens: resolvedMaxTokens
         };
         if (callArgs.systemPrompt) {
-            payload.system = callArgs.systemPrompt;
+            payload.system = [{ type: 'text', text: callArgs.systemPrompt }];
         }
         return payload;
     }
