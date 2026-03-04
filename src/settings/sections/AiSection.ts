@@ -238,40 +238,47 @@ export function renderAiSection(params: {
     const capacitySection = largeHandlingBody.createDiv({ cls: 'ert-ai-capacity-section' });
     capacitySection.createDiv({ cls: 'ert-ai-capacity-title', text: 'Context and forecast' });
     const capacityGrid = capacitySection.createDiv({ cls: 'ert-ai-capacity-grid' });
-    const createCapacityCell = (label: string): { cellEl: HTMLElement; valueEl: HTMLElement } => {
+    const createCapacityCell = (label: string): { cellEl: HTMLElement; valueEl: HTMLElement; labelEl: HTMLElement } => {
         const cell = capacityGrid.createDiv({ cls: 'ert-ai-capacity-cell' });
-        cell.createDiv({ cls: 'ert-ai-capacity-label', text: label });
-        const valueEl = cell.createDiv({ cls: 'ert-ai-capacity-value', text: '—' });
-        return { cellEl: cell, valueEl };
+        const labelEl = cell.createDiv({ cls: 'ert-ai-capacity-label', text: label });
+        const valueEl = cell.createDiv({ cls: 'ert-ai-capacity-value' });
+        return { cellEl: cell, valueEl, labelEl };
+    };
+    const setTokenDisplay = (el: HTMLElement, numericText: string, unitText: string): void => {
+        el.empty();
+        el.createSpan({ cls: 'ert-ai-token-value', text: numericText });
+        el.createSpan({ cls: 'ert-ai-token-unit', text: unitText });
     };
     const capacitySafeInput = createCapacityCell('Safe input (per pass)');
     const capacityOutput = createCapacityCell('Response (per pass)');
     const capacityInquiry = createCapacityCell('Inquiry');
+    capacityInquiry.labelEl.addClass('ert-ai-capacity-label--forecast');
+    const capacityInquiryToken = capacityInquiry.valueEl.createDiv({
+        cls: 'ert-ai-capacity-meta',
+        text: 'Calculating...'
+    });
     const capacityInquiryScope = capacityInquiry.valueEl.createDiv({
-        cls: 'ert-ai-capacity-subcopy',
+        cls: 'ert-ai-capacity-meta',
         text: 'Scanning vault…'
     });
-    const capacityInquiryEstimate = capacityInquiry.valueEl.createDiv({
-        cls: 'ert-ai-capacity-estimate',
-        text: 'Estimate: —'
-    });
     const capacityInquiryExpected = capacityInquiry.valueEl.createDiv({
-        cls: 'ert-ai-capacity-estimate',
-        text: 'Expected: —'
+        cls: 'ert-ai-capacity-meta',
+        text: 'Calculating...'
     });
 
     const capacityGossamer = createCapacityCell('Gossamer');
+    capacityGossamer.labelEl.addClass('ert-ai-capacity-label--forecast');
+    const capacityGossamerToken = capacityGossamer.valueEl.createDiv({
+        cls: 'ert-ai-capacity-meta',
+        text: 'Calculating...'
+    });
     const capacityGossamerScope = capacityGossamer.valueEl.createDiv({
-        cls: 'ert-ai-capacity-subcopy',
+        cls: 'ert-ai-capacity-meta',
         text: 'Scanning vault…'
     });
-    const capacityGossamerEstimate = capacityGossamer.valueEl.createDiv({
-        cls: 'ert-ai-capacity-estimate',
-        text: 'Estimate: —'
-    });
     const capacityGossamerExpected = capacityGossamer.valueEl.createDiv({
-        cls: 'ert-ai-capacity-estimate',
-        text: 'Expected: —'
+        cls: 'ert-ai-capacity-meta',
+        text: 'Calculating...'
     });
 
 
@@ -377,19 +384,6 @@ export function renderAiSection(params: {
                 modal.open();
             }));
     params.addAiRelatedElement(contextTemplateSetting.settingEl);
-
-    const tripletDisplaySetting = new Settings(aiSettingsGroup)
-        .setName('Pulse: Show previous and next scene triplet analysis')
-        .setDesc('When enabled, scene hover fields include the AI pulse for the previous and next scenes. Turn off to display only the current scene for a more compact view.')
-        .addToggle(toggle => toggle
-            .setValue(plugin.settings.showFullTripletAnalysis ?? true)
-            .onChange(async (value) => {
-                plugin.settings.showFullTripletAnalysis = value;
-                await plugin.saveSettings();
-                // Tier 1: triplet display is read at hover time, no SVG change needed
-            }));
-    tripletDisplaySetting.settingEl.addClass(ERT_CLASSES.ROW);
-    params.addAiRelatedElement(tripletDisplaySetting.settingEl);
 
     let gossamerEvidenceDropdown: DropdownComponent | null = null;
     const getGossamerEvidencePreference = (): GossamerEvidencePreference => {
@@ -550,7 +544,7 @@ export function renderAiSection(params: {
     const ACCESS_TIER_COPY = 'Increase available context headroom if your provider has granted you a higher Tier.';
 
     const accessTierSetting = new Settings(quickSetupGrid)
-        .setName('Access Tier')
+        .setName('Access')
         .setDesc(ACCESS_TIER_COPY);
     accessTierSetting.settingEl.setAttr('data-ert-role', 'ai-setting:access-level');
     let accessTierDropdown: DropdownComponent | null = null;
@@ -838,13 +832,13 @@ export function renderAiSection(params: {
 
         return {
             inquiry: {
-                label: `Inquiry — ${inquiryEstimate.selectionLabel} (${inquiryEstimate.evidenceLabel})`,
+                label: `${inquiryEstimate.selectionLabel} (${inquiryEstimate.evidenceLabel})`,
                 estimatedInputTokens: inquiryEstimate.estimatedInputTokens,
             },
             gossamer: {
                 label: gossamerPreference === 'auto'
-                    ? `Gossamer — Full manuscript (${gossamerEstimate.evidenceLabel} first, auto summary fallback)`
-                    : `Gossamer — Full manuscript (${gossamerEstimate.evidenceLabel})`,
+                    ? `Full manuscript (${gossamerEstimate.evidenceLabel} first, auto summary fallback)`
+                    : `Full manuscript (${gossamerEstimate.evidenceLabel})`,
                 estimatedInputTokens: gossamerEstimate.estimatedInputTokens,
             },
         };
@@ -870,7 +864,7 @@ export function renderAiSection(params: {
 
             if (modelOverrideDropdown) {
                 modelOverrideDropdown.selectEl.empty();
-                modelOverrideDropdown.addOption('auto', 'Auto (latest stable)');
+                modelOverrideDropdown.addOption('auto', 'Auto');
                 providerAliases.forEach(alias => {
                     const model = BUILTIN_MODELS.find(entry => entry.alias === alias);
                     const label = model ? `${model.label} (${alias})` : alias;
@@ -913,10 +907,12 @@ export function renderAiSection(params: {
 
         capacitySafeInput.valueEl.setText('Calculating...');
         capacityOutput.valueEl.setText('Calculating...');
-        capacityInquiryEstimate.setText('Estimate: Calculating...');
-        capacityInquiryExpected.setText('Expected: Calculating...');
-        capacityGossamerEstimate.setText('Estimate: Calculating...');
-        capacityGossamerExpected.setText('Expected: Calculating...');
+        capacityInquiryToken.setText('Calculating...');
+        capacityInquiryScope.setText('Scanning vault…');
+        capacityInquiryExpected.setText('Calculating...');
+        capacityGossamerToken.setText('Calculating...');
+        capacityGossamerScope.setText('Scanning vault…');
+        capacityGossamerExpected.setText('Calculating...');
 
         // Reset status grid chips
         singlePassRow.chipEl.setText('Calculating...');
@@ -943,11 +939,11 @@ export function renderAiSection(params: {
             const safeBudgetTokens = Math.max(0, Math.floor(caps.maxInputTokens));
             const formatForecastPasses = (estimatedTokens: number, singlePassOnly: boolean): string => {
                 if (estimatedTokens <= 0) return 'No content detected';
-                if (estimatedTokens <= safeBudgetTokens) return 'Fits safely — single pass';
-                if (singlePassOnly) return 'Not possible (single-pass only)';
-                if (safeBudgetTokens <= 0) return 'Unavailable';
+                if (estimatedTokens <= safeBudgetTokens) return 'Single pass expected';
+                if (singlePassOnly) return 'Exceeds single-pass limit';
+                if (safeBudgetTokens <= 0) return 'Forecast unavailable';
                 const passes = Math.ceil(estimatedTokens / safeBudgetTokens);
-                return `${passes} structured passes (Automatic)`;
+                return `${passes} passes expected`;
             };
             const previewState: ResolvedPreviewRenderState = {
                 modelKey: `${provider}:${selection.model.id}`,
@@ -967,26 +963,18 @@ export function renderAiSection(params: {
             };
             renderResolvedPreview(previewState);
             void refreshResolvedPreviewAvailability(previewState);
-            capacitySafeInput.valueEl.setText(`~${safeBudgetTokens.toLocaleString()} tokens (safe window)`);
-            capacityOutput.valueEl.setText(`~${caps.maxOutputTokens.toLocaleString()} tokens`);
+            setTokenDisplay(capacitySafeInput.valueEl, `~${safeBudgetTokens.toLocaleString()}`, 'tokens (safe window)');
+            setTokenDisplay(capacityOutput.valueEl, `~${caps.maxOutputTokens.toLocaleString()}`, 'tokens');
 
             const singlePassOnly = aiSettings.analysisPackaging === 'singlePassOnly';
             void computeVaultForecasts().then(forecasts => {
                 capacityInquiryScope.setText(forecasts.inquiry.label);
-                capacityInquiryEstimate.setText(
-                    `Estimate: ~${forecasts.inquiry.estimatedInputTokens.toLocaleString()} tokens`
-                );
-                capacityInquiryExpected.setText(
-                    `Expected: ${formatForecastPasses(forecasts.inquiry.estimatedInputTokens, singlePassOnly)}`
-                );
+                setTokenDisplay(capacityInquiryToken, forecasts.inquiry.estimatedInputTokens.toLocaleString(), 'tokens');
+                capacityInquiryExpected.setText(formatForecastPasses(forecasts.inquiry.estimatedInputTokens, singlePassOnly));
 
                 capacityGossamerScope.setText(forecasts.gossamer.label);
-                capacityGossamerEstimate.setText(
-                    `Estimate: ~${forecasts.gossamer.estimatedInputTokens.toLocaleString()} tokens`
-                );
-                capacityGossamerExpected.setText(
-                    `Expected: ${formatForecastPasses(forecasts.gossamer.estimatedInputTokens, singlePassOnly)}`
-                );
+                setTokenDisplay(capacityGossamerToken, forecasts.gossamer.estimatedInputTokens.toLocaleString(), 'tokens');
+                capacityGossamerExpected.setText(formatForecastPasses(forecasts.gossamer.estimatedInputTokens, singlePassOnly));
 
                 // ── Mode-aware status grid chips ──
                 const maxEstimate = Math.max(
@@ -1036,7 +1024,7 @@ export function renderAiSection(params: {
                     segmentedRow.chipEl.setText('Forcing split');
                     segmentedRow.chipEl.addClass('ert-ai-chip--success');
                 } else {
-                    segmentedRow.chipEl.setText('Off');
+                    segmentedRow.chipEl.setText('Available');
                     segmentedRow.chipEl.addClass('ert-ai-chip--muted');
                 }
 
@@ -1064,9 +1052,11 @@ export function renderAiSection(params: {
             });
             capacitySafeInput.valueEl.setText('Unavailable');
             capacityOutput.valueEl.setText('Unavailable');
-            capacityInquiryEstimate.setText('Unavailable');
+            capacityInquiryToken.setText('Unavailable');
+            capacityInquiryScope.setText('Unavailable');
             capacityInquiryExpected.setText('Unavailable');
-            capacityGossamerEstimate.setText('Unavailable');
+            capacityGossamerToken.setText('Unavailable');
+            capacityGossamerScope.setText('Unavailable');
             capacityGossamerExpected.setText('Unavailable');
         }
 
@@ -1804,19 +1794,18 @@ export function renderAiSection(params: {
     }
 
     // Final section order in AI tab:
-    // 1) AI Display (Pulse toggle)
-    // 2) Role context
-    // 3) Preview
-    // 4) AI Strategy
+    // 1) AI Strategy
+    // 2) Preview (Active Model)
+    // 3) Role context
+    // 4) Gossamer material
     // 5) Large Manuscript Handling
     // 6) Configuration
     // 7) Advanced & Diagnostics
     [
-        tripletDisplaySetting.settingEl,
-        gossamerEvidenceSetting.settingEl,
-        roleContextSection,
-        quickSetupPreviewSection,
         quickSetupSection,
+        quickSetupPreviewSection,
+        roleContextSection,
+        gossamerEvidenceSetting.settingEl,
         largeHandlingFold,
         configurationFold,
         advancedFold

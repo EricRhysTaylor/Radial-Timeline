@@ -13,11 +13,11 @@ describe('AI settings models table', () => {
         expect(source.includes('computeRecommendedPicks')).toBe(false);
     });
 
-    it('keeps AI Strategy to provider, model, and tier controls', () => {
+    it('keeps AI Strategy to provider, model, and access controls', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
         expect(source.includes(".setName('Provider')")).toBe(true);
         expect(source.includes(".setName('Model')")).toBe(true);
-        expect(source.includes(".setName('Access Tier')")).toBe(true);
+        expect(source.includes(".setName('Access')")).toBe(true);
         expect(source.includes(".setName('Thinking Style')")).toBe(false);
     });
 

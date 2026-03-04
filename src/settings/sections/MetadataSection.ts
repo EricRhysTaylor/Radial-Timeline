@@ -15,7 +15,7 @@ export function renderMetadataSection(params: { app: App; plugin: RadialTimeline
     let nextPendingId = 1;
 
     // Single toggle that both enables the feature and controls visibility
-    new Settings(containerEl)
+    const remapSetting = new Settings(containerEl)
         .setName('Remap frontmatter field keys')
         .setDesc('Map your custom frontmatter keys to Radial Timeline base keys.')
         .addToggle(toggle => {
@@ -27,6 +27,7 @@ export function renderMetadataSection(params: { app: App; plugin: RadialTimeline
                     renderMappings(); // Refresh visibility
                 });
         });
+    remapSetting.settingEl.addClass('ert-settingRow');
 
     const mappingContainer = containerEl.createDiv({ cls: 'ert-mapping-body ert-stack' });
 

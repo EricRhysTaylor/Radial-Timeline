@@ -1,5 +1,6 @@
 // DEPRECATED: Legacy provider payload shim; route new call paths through aiClient.
 import type { AiProvider, ProviderCallArgs } from './providerCapabilities';
+import { openAiModelSupportsSystemRole } from './openaiApi';
 
 type OpenAiPayload = {
     model: string;
@@ -71,11 +72,20 @@ export function buildProviderRequestPayload(
         return payload;
     }
 
-    const fullPrompt = callArgs.systemPrompt ? `${callArgs.systemPrompt}\n\n${callArgs.userPrompt}` : callArgs.userPrompt;
-    const payload: OpenAiPayload = {
-        model: modelId,
-        messages: [{ role: 'user', content: fullPrompt }]
-    };
+    // Mirror openaiApi.ts: separate system/user when model supports it
+    let openAiMessages: { role: string; content: string }[];
+    if (callArgs.systemPrompt && openAiModelSupportsSystemRole(modelId)) {
+        openAiMessages = [
+            { role: 'system', content: callArgs.systemPrompt },
+            { role: 'user', content: callArgs.userPrompt },
+        ];
+    } else {
+        const fullPrompt = callArgs.systemPrompt
+            ? `${callArgs.systemPrompt}\n\n${callArgs.userPrompt}`
+            : callArgs.userPrompt;
+        openAiMessages = [{ role: 'user', content: fullPrompt }];
+    }
+    const payload: OpenAiPayload = { model: modelId, messages: openAiMessages };
     if (callArgs.maxTokens !== null && callArgs.maxTokens !== undefined) {
         payload.max_completion_tokens = callArgs.maxTokens;
     }

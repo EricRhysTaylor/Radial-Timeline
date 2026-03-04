@@ -7,6 +7,15 @@
 import { requestUrl } from 'obsidian'; // Use requestUrl for consistency
 import { warnLegacyAccess } from './legacyAccessGuard';
 
+/** Conservative heuristic for system role support.
+ *  o1 and o1-mini lack a system role; all GPT-series and later o-series support it.
+ *  Local/Ollama models are handled separately via baseUrl guard in callOpenAiApi. */
+export function openAiModelSupportsSystemRole(modelId: string): boolean {
+    const id = (modelId ?? '').toLowerCase();
+    if (id === 'o1' || id === 'o1-mini' || id === 'o1-preview') return false;
+    return true;
+}
+
 // Interface for the expected successful OpenAI Chat Completion response
 interface OpenAiChatSuccessResponse {
     choices: {
@@ -78,9 +87,20 @@ export async function callOpenAiApi(
         return { success: false, content: null, responseData: { error: { message: 'Model ID not configured.', type: 'plugin_error' } }, error: 'OpenAI Model ID not configured.' };
     }
 
-    // Prepend system prompt to user message (reasoning models don't support system role)
-    const fullPrompt = systemPrompt ? `${systemPrompt}\n\n${userPrompt}` : userPrompt;
-    const messages = [{ role: 'user', content: fullPrompt }];
+    // Separate system/user messages to enable OpenAI automatic prompt caching.
+    // baseUrl indicates a local/custom endpoint (Ollama etc.) — always concatenate there.
+    const supportsSystem = !baseUrl && openAiModelSupportsSystemRole(modelId);
+    let messages: { role: string; content: string }[];
+    if (systemPrompt && supportsSystem) {
+        messages = [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt },
+        ];
+    } else {
+        // Fallback: reasoning models (o1/o1-mini), local endpoints, or no system prompt
+        const fullPrompt = systemPrompt ? `${systemPrompt}\n\n${userPrompt}` : userPrompt;
+        messages = [{ role: 'user', content: fullPrompt }];
+    }
 
     const requestBody: {
         model: string;

@@ -560,6 +560,22 @@
   align-items: center;
 }
 
+.ert-ui.ert-scope--settings .ert-config-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ert-gap-xs);
+  margin-bottom: 12px;
+}
+
+.ert-ui.ert-scope--settings .ert-config-group-title {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-inline-start: var(--ert-pad-md);
+  margin-bottom: 4px;
+}
+
 .ert-ui .ert-label {
   font-weight: 600;
   color: var(--text-muted);
@@ -2059,6 +2075,7 @@
 .ert-ui.ert-scope--settings .ert-ai-quick-grid {
   grid-template-columns: repeat(3, minmax(220px, 1fr));
   gap: var(--ert-gap-sm) var(--ert-gap-md);
+  --ert-ai-strategy-select-width-md: 14ch;
 }
 
 /* ── AI Strategy compact cards (Step 3 grid items) ───────────────────── */
@@ -2110,6 +2127,14 @@
   margin: 0;
   padding: 0;
   min-width: 0;
+}
+
+.ert-ui.ert-scope--settings :is(.ert-ai-quick-grid, .ert-ai-step3-grid, .ert-ai-step-card) .setting-item.ert-ai-strategy-row > .setting-item-control :is(select, .dropdown).ert-input--md {
+  width: var(--ert-ai-strategy-select-width-md);
+  min-width: var(--ert-ai-strategy-select-width-md);
+  max-width: var(--ert-ai-strategy-select-width-md);
+  flex: 0 0 var(--ert-ai-strategy-select-width-md);
+  --ert-control-width: var(--ert-ai-strategy-select-width-md);
 }
 
 .ert-ui.ert-scope--settings :is(.ert-ai-quick-grid, .ert-ai-step3-grid, .ert-ai-step-card) .setting-item.ert-ai-strategy-row > .ert-ai-strategy-row__desc {
@@ -2242,17 +2267,30 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(180px, 1fr));
   gap: 8px;
+  font-variant-numeric: tabular-nums;
 }
 
 .ert-ui.ert-scope--settings .ert-ai-capacity-cell {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   border: 1px solid color-mix(in srgb, var(--background-modifier-border) 75%, transparent);
   border-radius: 8px;
   background: color-mix(in srgb, var(--background-primary) 88%, transparent);
-  padding: 8px 10px;
+  padding: 10px 14px;
 }
 
 .ert-ui.ert-scope--settings .ert-ai-capacity-label {
   font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-capacity-label--forecast {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   color: var(--text-muted);
   margin-bottom: 2px;
 }
@@ -2263,11 +2301,10 @@
   color: var(--text-normal);
 }
 
-.ert-ui.ert-scope--settings .ert-ai-capacity-subcopy {
+.ert-ui.ert-scope--settings .ert-ai-capacity-meta {
   font-size: 11px;
-  font-weight: 500;
   color: var(--text-muted);
-  line-height: 1.4;
+  line-height: 1.3;
 }
 
 .ert-ui.ert-scope--settings .ert-ai-capacity-estimate {
@@ -2275,6 +2312,24 @@
   font-weight: 600;
   color: var(--text-normal);
   line-height: 1.4;
+}
+
+/* ── Token number / unit (capacity grid emphasis) ──────────────────── */
+.ert-ui.ert-scope--settings .ert-ai-token-value {
+  font-size: 18px;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  display: block;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-token-unit {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+  line-height: 1.2;
+  display: block;
 }
 
 /* ── Status grid (2-column: label + chip) ─────────────────────────── */
@@ -2289,7 +2344,7 @@
   grid-template-columns: 160px auto;
   gap: var(--ert-gap-sm);
   align-items: center;
-  padding: 6px 10px;
+  padding: 4px 10px;
   border-radius: 6px;
   background: color-mix(in srgb, var(--background-primary) 88%, transparent);
   border: 1px solid color-mix(in srgb, var(--background-modifier-border) 60%, transparent);
@@ -2297,7 +2352,7 @@
 
 .ert-ui.ert-scope--settings .ert-ai-status-label {
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--text-normal);
 }
 
@@ -2330,6 +2385,7 @@
   display: flex;
   align-items: center;
   gap: var(--ert-gap-xs);
+  margin-top: -4px;
   padding: 6px 10px;
   border-radius: 6px;
   background: color-mix(in srgb, var(--ert-alert-warning-color) 10%, transparent);
@@ -2352,7 +2408,9 @@
 /* ── Details link ─────────────────────────────────────────────────── */
 .ert-ui.ert-scope--settings .ert-ai-details-link {
   font-size: 11px;
+  font-weight: 500;
   color: var(--text-accent);
+  opacity: 0.85;
   cursor: pointer;
   padding-top: 2px;
 }

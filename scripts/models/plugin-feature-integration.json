@@ -201,18 +201,24 @@
         "sceneAnalysis"
       ],
       "impactAssessment": "high",
-      "implementationStatus": "not_implemented",
-      "implementationNotes": "OpenAI automatically caches prompts >1024 tokens with stable prefixes (provider-reported discount). Currently DEFEATED because openaiApi.ts line 82 concatenates system+user into a single user message. Fix: separate into system and user messages for non-reasoning models.",
+      "implementationStatus": "complete",
+      "implementationNotes": "System and user messages are now separated for models that support the system role, enabling OpenAI automatic prompt caching for stable prefixes. Concatenation fallback preserved for reasoning models (o1/o1-mini) and local endpoints (baseUrl guard). Active call chain: aiClient \u2192 OpenAIProvider \u2192 callProvider \u2192 callOpenAiApi.",
       "sourceFiles": [
-        "src/api/openaiApi.ts"
+        "src/api/openaiApi.ts",
+        "src/api/requestPayload.ts",
+        "src/ai/providers/openaiProvider.ts"
       ],
       "blockers": [],
       "addedToRegistry": "2026-03-03",
       "priority": "p0",
-      "implementationEvidence": [],
-      "targetRelease": "next",
+      "implementationEvidence": [
+        "messages\\s*=\\s*\\[\\s*\\{\\s*role:\\s*'system'",
+        "!baseUrl\\s*&&\\s*openAiModelSupportsSystemRole",
+        "role:\\s*'user'\\s*,\\s*content:\\s*userPrompt"
+      ],
+      "targetRelease": "shipped",
       "owner": "eric",
-      "lastTouched": "2026-03-03"
+      "lastTouched": "2026-03-04"
     },
     {
       "id": "openai-structured-outputs",
@@ -247,17 +253,22 @@
       ],
       "impactAssessment": "medium",
       "implementationStatus": "partial",
-      "implementationNotes": "openaiApi.ts concatenates all prompts into a single user message 'because reasoning models don't support system role'. This is over-broad — only o1/o1-mini lack system role support. GPT-5.x and later o-series models support system/developer roles. Need precise model detection.",
+      "implementationNotes": "Legacy adapter now uses openAiModelSupportsSystemRole() heuristic that excludes o1/o1-mini/o1-preview from system-role path. Still partial: detection is string-matching in the adapter, not a formal capability in the model registry or caps layer. Promote to complete when caps layer includes supportsSystemRole.",
       "sourceFiles": [
         "src/api/openaiApi.ts"
       ],
-      "blockers": [],
+      "blockers": [
+        "Heuristic is string-matching in legacy adapter, not in caps/registry layer"
+      ],
       "addedToRegistry": "2026-03-03",
       "priority": "p1",
-      "implementationEvidence": [],
+      "implementationEvidence": [
+        "openAiModelSupportsSystemRole",
+        "o1.*false"
+      ],
       "targetRelease": "backlog",
-      "owner": "tbd",
-      "lastTouched": "2026-03-03"
+      "owner": "eric",
+      "lastTouched": "2026-03-04"
     },
     {
       "id": "openai-batch-api",

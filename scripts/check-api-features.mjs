@@ -254,8 +254,10 @@ function scanSources() {
     // ── OpenAI API ──
     const openaiSrc = readSourceFile('src/api/openaiApi.ts');
     if (openaiSrc) {
-        if (openaiSrc.includes('${systemPrompt}\\n\\n${userPrompt}') ||
-            openaiSrc.includes('`${systemPrompt}\\n\\n${userPrompt}`')) {
+        // Only flag concatenation if there's no separate system-role path alongside it.
+        // The fallback concatenation is expected (for reasoning models / local endpoints).
+        const hasSystemRole = /role:\s*['"]system['"]/.test(openaiSrc);
+        if (!hasSystemRole) {
             findings.push({
                 file: 'openaiApi.ts',
                 finding: 'system+user concatenated into single message (defeats auto-caching)',

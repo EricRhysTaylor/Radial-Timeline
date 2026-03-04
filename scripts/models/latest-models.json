@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-03-03T14:55:36.216Z",
+  "generatedAt": "2026-03-04T15:38:43.453Z",
   "summary": {
-    "openai": 116,
+    "openai": 117,
     "anthropic": 9,
-    "google": 44
+    "google": 45
   },
   "models": [
     {
@@ -841,6 +841,17 @@
         "owned_by": "system"
       },
       "createdAt": "2025-12-10T05:19:19.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-5.3-chat-latest",
+      "raw": {
+        "id": "gpt-5.3-chat-latest",
+        "object": "model",
+        "created": 1772236571,
+        "owned_by": "system"
+      },
+      "createdAt": "2026-02-27T23:56:11.000Z"
     },
     {
       "provider": "openai",
@@ -1930,6 +1941,32 @@
       },
       "label": "Nano Banana 2",
       "inputTokenLimit": 65536,
+      "outputTokenLimit": 65536
+    },
+    {
+      "provider": "google",
+      "id": "gemini-3.1-flash-lite-preview",
+      "raw": {
+        "name": "models/gemini-3.1-flash-lite-preview",
+        "version": "3.1-flash-lite-preview-03-2026",
+        "displayName": "Gemini 3.1 Flash Lite Preview",
+        "description": "Gemini 3.1 Flash Lite Preview",
+        "inputTokenLimit": 1048576,
+        "outputTokenLimit": 65536,
+        "supportedGenerationMethods": [
+          "generateContent",
+          "countTokens",
+          "createCachedContent",
+          "batchGenerateContent"
+        ],
+        "temperature": 1,
+        "topP": 0.95,
+        "topK": 64,
+        "maxTemperature": 2,
+        "thinking": true
+      },
+      "label": "Gemini 3.1 Flash Lite Preview",
+      "inputTokenLimit": 1048576,
       "outputTokenLimit": 65536
     },
     {
