@@ -500,7 +500,7 @@ export function renderAiSection(params: {
     let providerDropdown: DropdownComponent | null = null;
     providerSetting.addDropdown(dropdown => {
         providerDropdown = dropdown;
-        dropdown.selectEl.addClass('ert-input', 'ert-input--sm');
+        dropdown.selectEl.addClass('ert-input', 'ert-input--md');
         dropdown.addOption('anthropic', 'Anthropic');
         dropdown.addOption('openai', 'OpenAI');
         dropdown.addOption('google', 'Google');
@@ -531,7 +531,7 @@ export function renderAiSection(params: {
     let modelOverrideDropdown: DropdownComponent | null = null;
     modelOverrideSetting.addDropdown(dropdown => {
         modelOverrideDropdown = dropdown;
-        dropdown.selectEl.addClass('ert-input', 'ert-input--sm');
+        dropdown.selectEl.addClass('ert-input', 'ert-input--md');
         dropdown.onChange(async value => {
             if (isSyncingRoutingUi) return;
             const aiSettings = ensureCanonicalAiSettings();
@@ -556,7 +556,7 @@ export function renderAiSection(params: {
     let accessTierDropdown: DropdownComponent | null = null;
     accessTierSetting.addDropdown(dropdown => {
         accessTierDropdown = dropdown;
-        dropdown.selectEl.addClass('ert-input', 'ert-input--sm');
+        dropdown.selectEl.addClass('ert-input', 'ert-input--md');
         dropdown.addOption('1', 'Tier 1');
         dropdown.addOption('2', 'Tier 2');
         dropdown.addOption('3', 'Tier 3');

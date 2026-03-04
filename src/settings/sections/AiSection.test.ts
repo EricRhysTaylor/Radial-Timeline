@@ -43,11 +43,11 @@ describe('AI settings models table', () => {
         expect(source.includes('Best for')).toBe(false);
     });
 
-    it('uses small dropdown sizing for all AI Strategy controls', () => {
+    it('uses medium dropdown sizing for all AI Strategy controls', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
-        expect(source.includes("providerDropdown = dropdown;\n        dropdown.selectEl.addClass('ert-input', 'ert-input--sm');")).toBe(true);
-        expect(source.includes("modelOverrideDropdown = dropdown;\n        dropdown.selectEl.addClass('ert-input', 'ert-input--sm');")).toBe(true);
-        expect(source.includes("accessTierDropdown = dropdown;\n        dropdown.selectEl.addClass('ert-input', 'ert-input--sm');")).toBe(true);
+        expect(source.includes("providerDropdown = dropdown;\n        dropdown.selectEl.addClass('ert-input', 'ert-input--md');")).toBe(true);
+        expect(source.includes("modelOverrideDropdown = dropdown;\n        dropdown.selectEl.addClass('ert-input', 'ert-input--md');")).toBe(true);
+        expect(source.includes("accessTierDropdown = dropdown;\n        dropdown.selectEl.addClass('ert-input', 'ert-input--md');")).toBe(true);
     });
 
     it('renders Large Manuscript Handling section with execution preference controls', () => {
