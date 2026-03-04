@@ -1,4 +1,4 @@
-/** Delimiter injected before volatile question section for Anthropic prompt caching. */
+/** Delimiter injected before volatile question section for provider prompt caching (Anthropic, Gemini). */
 export const CACHE_BREAK_DELIMITER = '<<<CACHE_BREAK>>>';
 
 export interface EnvelopeInput {
@@ -10,7 +10,7 @@ export interface EnvelopeInput {
     userQuestion?: string;
     outputRules: string;
     placeUserQuestionLast?: boolean;
-    /** When set, inserted before the volatile question section so the Anthropic adapter can split stable/volatile content. */
+    /** When set, inserted before the volatile question section so the provider adapter can split stable/volatile content. */
     cacheBreakDelimiter?: string;
 }
 

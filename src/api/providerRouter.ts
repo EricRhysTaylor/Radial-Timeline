@@ -12,6 +12,8 @@ import { buildProviderRequestPayload } from './requestPayload';
 import { classifyProviderError, type AiStatus } from './providerErrors';
 import { warnLegacyAccess } from './legacyAccessGuard';
 import { getCredential } from '../ai/credentials/credentials';
+import { CACHE_BREAK_DELIMITER } from '../ai/prompts/composeEnvelope';
+import { getOrCreateGeminiCache } from './geminiCacheManager';
 
 export interface ProviderCallArgs extends ProviderCallArgsBase {
   provider?: AiProvider;
@@ -35,6 +37,7 @@ export interface ProviderResult<T = unknown> {
   sanitizationNotes?: string[];
   sanitizedParams?: string[];
   retryCount?: number;
+  cacheUsed?: boolean;
 }
 
 export async function callProvider(plugin: RadialTimelinePlugin, args: ProviderCallArgs): Promise<ProviderResult> {
@@ -87,20 +90,54 @@ export async function callProvider(plugin: RadialTimelinePlugin, args: ProviderC
     }
     if (provider === 'gemini') {
       const apiKey = await getCredential(plugin, 'google');
+
+      let effectiveUserPrompt = callArgs.userPrompt;
+      let effectiveSystemPrompt = callArgs.systemPrompt || null;
+      let cachedContentName: string | undefined;
+
+      const delimIndex = callArgs.userPrompt.indexOf(CACHE_BREAK_DELIMITER);
+      if (delimIndex > 0) {
+        const stableText = callArgs.userPrompt.slice(0, delimIndex).trimEnd();
+        const volatileText = callArgs.userPrompt
+            .slice(delimIndex + CACHE_BREAK_DELIMITER.length).trimStart();
+        try {
+          const cacheName = await getOrCreateGeminiCache(
+              apiKey, requestedModelId, stableText,
+              callArgs.systemPrompt || undefined
+          );
+          if (cacheName) {
+            cachedContentName = cacheName;
+            effectiveUserPrompt = volatileText;
+            effectiveSystemPrompt = null;   // system is inside the cache
+          } else {
+            // Below min token threshold — recombine, send uncached
+            effectiveUserPrompt = stableText + '\n\n' + volatileText;
+          }
+        } catch {
+          // Cache creation failed (rate limit, unsupported model, etc.)
+          // Fall back: recombine, send uncached
+          effectiveUserPrompt = stableText + '\n\n' + volatileText;
+        }
+      }
+
       const resp: GeminiApiResponse = await callGeminiApi(
         apiKey,
         requestedModelId,
-        callArgs.systemPrompt || null,
-        callArgs.userPrompt,
+        effectiveSystemPrompt,
+        effectiveUserPrompt,
         openAiMaxTokens,
         callArgs.temperature,
         callArgs.jsonSchema,
         callArgs.disableThinking,
-        undefined,
+        cachedContentName,
         callArgs.top_p,
         true
       );
-      return { ...buildProviderResult(provider, requestedModelId, resp), requestPayload };
+      return {
+        ...buildProviderResult(provider, requestedModelId, resp),
+        requestPayload,
+        cacheUsed: !!cachedContentName
+      };
     }
     if (provider === 'local') {
       const apiKey = await getCredential(plugin, 'ollama');

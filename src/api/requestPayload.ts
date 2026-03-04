@@ -30,6 +30,7 @@ type GeminiPayload = {
         responseSchema?: Record<string, unknown>;
     };
     systemInstruction?: { parts: { text: string }[] };
+    cachedContent?: string;
 };
 
 export function buildProviderRequestPayload(
@@ -64,11 +65,26 @@ export function buildProviderRequestPayload(
     }
 
     if (provider === 'gemini') {
+        // Mirror providerRouter: split on delimiter when present
+        const delimIndex = callArgs.userPrompt.indexOf(CACHE_BREAK_DELIMITER);
+        let userText = callArgs.userPrompt;
+        let cachedContentNote: string | undefined;
+        let includeSystem = true;
+        if (delimIndex > 0) {
+            const stableText = callArgs.userPrompt.slice(0, delimIndex).trimEnd();
+            userText = callArgs.userPrompt
+                .slice(delimIndex + CACHE_BREAK_DELIMITER.length).trimStart();
+            cachedContentNote = `[cached: ${stableText.length} chars stable prefix]`;
+            includeSystem = false;  // system goes in cache, not in request
+        }
         const payload: GeminiPayload = {
-            contents: [{ role: 'user', parts: [{ text: callArgs.userPrompt }] }],
+            contents: [{ role: 'user', parts: [{ text: userText }] }],
             generationConfig: {}
         };
-        if (callArgs.systemPrompt) {
+        if (cachedContentNote) {
+            payload.cachedContent = cachedContentNote;
+        }
+        if (callArgs.systemPrompt && includeSystem) {
             payload.systemInstruction = { parts: [{ text: callArgs.systemPrompt }] };
         }
         if (callArgs.maxTokens !== null && callArgs.maxTokens !== undefined) {

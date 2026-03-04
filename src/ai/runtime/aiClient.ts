@@ -325,7 +325,8 @@ export class AIClient {
             userQuestion: request.userQuestion,
             outputRules: getOutputRules(request),
             placeUserQuestionLast: request.feature.toLowerCase().includes('inquiry'),
-            cacheBreakDelimiter: provider === 'anthropic' ? CACHE_BREAK_DELIMITER : undefined
+            cacheBreakDelimiter: (provider === 'anthropic' || provider === 'google')
+                ? CACHE_BREAK_DELIMITER : undefined
         });
         const userPrompt = envelope.userPrompt || '';
         const systemPrompt = envelope.systemPrompt || '';
@@ -413,11 +414,16 @@ export class AIClient {
             : (availableModel ? 'visible' : 'not_visible');
 
         // Truth-safe reuse state — warm only when provable
-        const cacheDelimiterUsed = provider === 'anthropic'
+        const cacheDelimiterUsed = (provider === 'anthropic' || provider === 'google')
             && request.feature.toLowerCase().includes('inquiry');
         let reuseState: AIRunAdvancedContext['reuseState'] = 'idle';
         if (provider === 'anthropic') {
+            // Anthropic: warm when delimiter used — cache_control blocks are definitely sent
             reuseState = cacheDelimiterUsed ? 'warm' : 'eligible';
+        } else if (provider === 'google') {
+            // Gemini: eligible when delimiter used — cache creation may fail (min tokens, rate limit).
+            // Upgraded to warm post-execute if cacheUsed === true.
+            reuseState = cacheDelimiterUsed ? 'eligible' : 'idle';
         } else if (provider === 'openai' && systemPrompt
                    && openAiModelSupportsSystemRole(modelSelection.model.id)) {
             reuseState = 'eligible';
@@ -450,6 +456,13 @@ export class AIClient {
             jsonSchema: request.responseSchema,
             jsonStrict: overrides.jsonStrict ?? true
         }, request.returnType, caps);
+
+        // Post-execute: upgrade Gemini reuseState from eligible → warm
+        // if cache was actually created and sent (truth-safe).
+        if (provider === 'google' && cacheDelimiterUsed && execution.cacheUsed) {
+            advancedContext.reuseState = 'warm';
+            setLastRunAdvanced(this.plugin, request.feature, advancedContext);
+        }
 
         const warnings = [...modelSelection.warnings];
         if (execution.aiReason === 'truncated') {

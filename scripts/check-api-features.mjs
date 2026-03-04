@@ -279,6 +279,24 @@ function scanSources() {
                 relatedFeatures: ['gemini-context-caching']
             });
         }
+        // Check systemInstruction suppression when cachedContent is set
+        if (geminiSrc.includes('!cachedContentName')) {
+            findings.push({
+                file: 'geminiApi.ts',
+                finding: 'systemInstruction suppressed when cachedContentName is set (Gemini restriction)',
+                relatedFeatures: ['gemini-context-caching']
+            });
+        }
+    }
+    const cacheManagerSrc = readSourceFile('src/api/geminiCacheManager.ts');
+    if (cacheManagerSrc) {
+        const routerSrc = readSourceFile('src/api/providerRouter.ts');
+        const routerWired = !!routerSrc?.includes('getOrCreateGeminiCache');
+        findings.push({
+            file: 'geminiCacheManager.ts',
+            finding: `Cache manager exists, router wires it: ${routerWired}`,
+            relatedFeatures: ['gemini-context-caching']
+        });
     }
 
     return findings;

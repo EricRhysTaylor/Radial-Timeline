@@ -80,8 +80,10 @@ export async function callGeminiApi(
   if (cachedContentName) {
     body.cachedContent = cachedContentName;
   }
-  if (systemPrompt) {
-    // v1beta accepts systemInstruction as top-level
+  if (systemPrompt && !cachedContentName) {
+    // v1beta accepts systemInstruction as top-level.
+    // When cachedContentName is set, systemInstruction is already inside the
+    // cached content — Gemini rejects the combination. // SAFE: Gemini restriction
     body.systemInstruction = { parts: [{ text: systemPrompt }] };
   }
   if (maxTokens !== null) {
@@ -179,22 +181,26 @@ export async function callGeminiApi(
  * Create a cached content resource for Gemini
  * @param apiKey Gemini API key
  * @param modelId Model ID to associate with cache (e.g. "gemini-1.5-pro-001")
- * @param content Full text content to cache
+ * @param content Full text content to cache (as user-role contents)
  * @param ttlSeconds Time to live in seconds (default 3600 = 1 hour)
+ * @param systemInstruction Optional system instruction to include in the cached content.
+ *   When provided, the generate request must NOT also set systemInstruction
+ *   (Gemini rejects the combination).
  * @returns Name of the cached content resource (e.g. "cachedContents/123...")
  */
 export async function createGeminiCache(
   apiKey: string,
   modelId: string,
   content: string,
-  ttlSeconds: number = 3600
+  ttlSeconds: number = 3600,
+  systemInstruction?: string
 ): Promise<string> {
   if (!apiKey) throw new Error('Gemini API key is required to create cache.');
-  
+
   const cleanModelId = modelId.startsWith('models/') ? modelId.slice(7) : modelId;
   const url = `https://generativelanguage.googleapis.com/v1beta/cachedContents?key=${encodeURIComponent(apiKey)}`;
-  
-  const body = {
+
+  const body: Record<string, unknown> = {
     model: `models/${cleanModelId}`,
     contents: [
       {
@@ -204,6 +210,9 @@ export async function createGeminiCache(
     ],
     ttl: `${ttlSeconds}s`
   };
+  if (systemInstruction) {
+    body.systemInstruction = { parts: [{ text: systemInstruction }] };
+  }
 
   const resp = await requestUrl({
     url,

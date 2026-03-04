@@ -348,20 +348,26 @@
         "inquiry"
       ],
       "impactAssessment": "high",
-      "implementationStatus": "partial",
-      "implementationNotes": "createGeminiCache() exists at geminiApi.ts:186 and callGeminiApi() accepts cachedContentName at param 9. However, NO CALLERS wire these together. Need a GeminiCacheManager that creates cache resources and threads the cache name through the provider.",
+      "implementationStatus": "complete",
+      "implementationNotes": "getOrCreateGeminiCache() in geminiCacheManager.ts creates/reuses cached content resources. providerRouter.ts splits on CACHE_BREAK_DELIMITER, caches stable prefix (including systemInstruction), passes cacheName to callGeminiApi(). In-memory store with SHA-256 fingerprint enables cross-question reuse. systemInstruction suppressed in generate request when cachedContent is set (Gemini restriction).",
       "sourceFiles": [
         "src/api/geminiApi.ts",
-        "src/ai/providers/googleProvider.ts",
-        "src/api/providerRouter.ts"
+        "src/api/geminiCacheManager.ts",
+        "src/api/providerRouter.ts",
+        "src/ai/runtime/aiClient.ts"
       ],
       "blockers": [],
       "addedToRegistry": "2026-03-03",
       "priority": "p0",
-      "implementationEvidence": [],
+      "implementationEvidence": [
+        "getOrCreateGeminiCache",
+        "CACHE_BREAK_DELIMITER",
+        "cachedContent",
+        "systemPrompt\\s*&&\\s*!cachedContentName"
+      ],
       "targetRelease": "next",
       "owner": "eric",
-      "lastTouched": "2026-03-03"
+      "lastTouched": "2026-03-04"
     },
     {
       "id": "gemini-1m-context",

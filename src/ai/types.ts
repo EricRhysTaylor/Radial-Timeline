@@ -139,6 +139,8 @@ export interface ProviderExecutionResult {
     error?: string;
     sanitizationNotes?: string[];
     retryCount?: number;
+    /** True when a provider-level content cache was used (e.g. Gemini cachedContent). */
+    cacheUsed?: boolean;
 }
 
 export interface AIProvider {
