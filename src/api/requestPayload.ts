@@ -1,6 +1,6 @@
 // DEPRECATED: Legacy provider payload shim; route new call paths through aiClient.
 import type { AiProvider, ProviderCallArgs } from './providerCapabilities';
-import { openAiModelSupportsSystemRole } from './openaiApi';
+import { modelSupportsSystemRole } from './providerCapabilities';
 import type { AnthropicTextBlock } from './anthropicApi';
 import { CACHE_BREAK_DELIMITER } from '../ai/prompts/composeEnvelope';
 
@@ -18,6 +18,8 @@ type AnthropicPayload = {
     messages: { role: string; content: AnthropicTextBlock[] }[];
     max_tokens: number;
     system?: AnthropicTextBlock[];
+    temperature?: number;
+    top_p?: number;
 };
 
 type GeminiPayload = {
@@ -60,6 +62,12 @@ export function buildProviderRequestPayload(
         };
         if (callArgs.systemPrompt) {
             payload.system = [{ type: 'text', text: callArgs.systemPrompt }];
+        }
+        if (typeof callArgs.temperature === 'number') {
+            payload.temperature = callArgs.temperature;
+        }
+        if (typeof callArgs.top_p === 'number') {
+            payload.top_p = callArgs.top_p;
         }
         return payload;
     }
@@ -105,7 +113,7 @@ export function buildProviderRequestPayload(
 
     // Mirror openaiApi.ts: separate system/user when model supports it
     let openAiMessages: { role: string; content: string }[];
-    if (callArgs.systemPrompt && openAiModelSupportsSystemRole(modelId)) {
+    if (callArgs.systemPrompt && modelSupportsSystemRole(provider, modelId)) {
         openAiMessages = [
             { role: 'system', content: callArgs.systemPrompt },
             { role: 'user', content: callArgs.userPrompt },

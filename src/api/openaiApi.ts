@@ -6,14 +6,12 @@
 // DEPRECATED: Legacy provider adapter; prefer aiClient entrypoints.
 import { requestUrl } from 'obsidian'; // Use requestUrl for consistency
 import { warnLegacyAccess } from './legacyAccessGuard';
+import { modelSupportsSystemRole } from './providerCapabilities';
 
-/** Conservative heuristic for system role support.
- *  o1 and o1-mini lack a system role; all GPT-series and later o-series support it.
- *  Local/Ollama models are handled separately via baseUrl guard in callOpenAiApi. */
+/** @deprecated Use modelSupportsSystemRole(provider, modelId) from providerCapabilities.
+ *  Retained as thin wrapper for backward compat and evidence pattern validation. */
 export function openAiModelSupportsSystemRole(modelId: string): boolean {
-    const id = (modelId ?? '').toLowerCase();
-    if (id === 'o1' || id === 'o1-mini' || id === 'o1-preview') return false;
-    return true;
+    return modelSupportsSystemRole('openai', modelId);
 }
 
 // Interface for the expected successful OpenAI Chat Completion response

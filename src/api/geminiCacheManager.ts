@@ -18,6 +18,11 @@ interface GeminiCacheEntry {
     expiresAt: number;      // Date.now() + ttl
 }
 
+export interface GeminiCacheResult {
+    cacheName: string;
+    status: 'hit' | 'created';
+}
+
 /** In-memory store: content fingerprint → cache resource */
 const cacheStore = new Map<string, GeminiCacheEntry>();
 
@@ -29,6 +34,9 @@ const GEMINI_MIN_CACHE_CHARS = GEMINI_MIN_CACHE_TOKENS * CHARS_PER_TOKEN;
 
 /** Default cache TTL: 15 minutes. Long enough for multi-question sessions. */
 const DEFAULT_TTL_SECONDS = 900;
+
+/** 30-second safety margin — avoids racing the API expiration. */
+const EXPIRY_SAFETY_MARGIN_MS = 30_000;
 
 /**
  * SHA-256 fingerprint of modelId + systemPrompt + stableContent.
@@ -42,6 +50,11 @@ function hashCacheKey(modelId: string, systemPrompt: string, stableContent: stri
         .digest('hex').slice(0, 16);
 }
 
+/** Check whether a cache entry is still valid (with safety margin). */
+function isEntryValid(entry: GeminiCacheEntry): boolean {
+    return entry.expiresAt - EXPIRY_SAFETY_MARGIN_MS > Date.now();
+}
+
 /** Remove expired entries from the store. */
 export function pruneGeminiCacheStore(): void {
     const now = Date.now();
@@ -51,11 +64,29 @@ export function pruneGeminiCacheStore(): void {
 }
 
 /**
+ * Pure in-memory check: does a valid cache entry exist for this content?
+ *
+ * No API calls, no side effects. Used by aiClient to determine whether
+ * optimistic warm state is safe before execute().
+ */
+export function peekGeminiCache(
+    modelId: string,
+    systemPrompt: string,
+    stableContent: string
+): boolean {
+    const estimatedTokens = Math.ceil(stableContent.length / CHARS_PER_TOKEN);
+    if (estimatedTokens < GEMINI_MIN_CACHE_TOKENS) return false;
+    const fp = hashCacheKey(modelId, systemPrompt, stableContent);
+    const hit = cacheStore.get(fp);
+    return !!hit && isEntryValid(hit);
+}
+
+/**
  * Get or create a Gemini cached content resource for the stable prefix.
  *
- * Returns the cache resource name (e.g. "cachedContents/...") if caching is
- * viable and successful, or `null` if the stable prefix is too small for
- * Gemini's minimum token threshold.
+ * Returns `{ cacheName, status }` if caching is viable and successful,
+ * or `null` if the stable prefix is too small for Gemini's minimum
+ * token threshold.
  *
  * @throws if cache creation fails (caller should catch and fall back to uncached).
  */
@@ -65,7 +96,7 @@ export async function getOrCreateGeminiCache(
     stableContent: string,
     systemPrompt?: string,
     ttlSeconds: number = DEFAULT_TTL_SECONDS
-): Promise<string | null> {
+): Promise<GeminiCacheResult | null> {
     // Housekeeping: prune expired entries on each call
     pruneGeminiCacheStore();
 
@@ -75,8 +106,7 @@ export async function getOrCreateGeminiCache(
 
     const fp = hashCacheKey(modelId, systemPrompt ?? '', stableContent);
     const hit = cacheStore.get(fp);
-    // 30-second safety margin — avoids racing the API expiration
-    if (hit && hit.expiresAt - 30_000 > Date.now()) return hit.cacheName;
+    if (hit && isEntryValid(hit)) return { cacheName: hit.cacheName, status: 'hit' };
     cacheStore.delete(fp);      // expired or missing
 
     const cacheName = await createGeminiCache(
@@ -86,5 +116,5 @@ export async function getOrCreateGeminiCache(
         cacheName,
         expiresAt: Date.now() + (ttlSeconds * 1000),
     });
-    return cacheName;
+    return { cacheName, status: 'created' };
 }

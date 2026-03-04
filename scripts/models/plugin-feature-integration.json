@@ -65,19 +65,28 @@
         "sceneAnalysis"
       ],
       "impactAssessment": "medium",
-      "implementationStatus": "not_implemented",
-      "implementationNotes": "callAnthropicApi does not accept or send temperature/topP. The providerCapabilities sanitizer strips these for Anthropic. Gossamer temperature of 0.45 and Inquiry temperature of 0.2 are silently dropped when using Anthropic.",
+      "implementationStatus": "complete",
+      "implementationNotes": "callAnthropicApi accepts temperature/topP and includes them in the Messages API request body. providerCapabilities allows temperature/topP for Anthropic. AnthropicProvider forwards req.temperature/req.topP. Feature-specific defaults from computeCaps (Inquiry 0.2, Gossamer 0.45) are now respected.",
       "sourceFiles": [
         "src/api/anthropicApi.ts",
-        "src/api/providerCapabilities.ts"
+        "src/api/providerCapabilities.ts",
+        "src/ai/providers/anthropicProvider.ts",
+        "src/api/providerRouter.ts",
+        "src/api/requestPayload.ts"
       ],
       "blockers": [],
       "addedToRegistry": "2026-03-03",
       "priority": "p1",
-      "implementationEvidence": [],
+      "implementationEvidence": [
+        "requestBody\\.temperature\\s*=",
+        "requestBody\\.top_p\\s*=",
+        "temperature:\\s*req\\.temperature",
+        "top_p:\\s*req\\.topP",
+        "supportsTemperature:\\s*true"
+      ],
       "targetRelease": "backlog",
       "owner": "tbd",
-      "lastTouched": "2026-03-03"
+      "lastTouched": "2026-03-04"
     },
     {
       "id": "anthropic-extended-thinking",
@@ -259,21 +268,24 @@
         "inquiry"
       ],
       "impactAssessment": "medium",
-      "implementationStatus": "partial",
-      "implementationNotes": "Legacy adapter now uses openAiModelSupportsSystemRole() heuristic that excludes o1/o1-mini/o1-preview from system-role path. Still partial: detection is string-matching in the adapter, not a formal capability in the model registry or caps layer. Promote to complete when caps layer includes supportsSystemRole.",
+      "implementationStatus": "complete",
+      "implementationNotes": "System role support is now a formal capability in providerCapabilities. supportsSystemRole boolean on ProviderCapabilities with MODEL_SYSTEM_ROLE_UNSUPPORTED per-model exclusion (o1/o1-mini/o1-preview for openai). modelSupportsSystemRole(provider, modelId) exported from providerCapabilities.ts. Legacy openAiModelSupportsSystemRole() retained as deprecated thin wrapper. aiClient.ts and requestPayload.ts import directly from caps layer. Local provider diagnostic now correctly shows concatenation.",
       "sourceFiles": [
-        "src/api/openaiApi.ts"
+        "src/api/providerCapabilities.ts",
+        "src/api/openaiApi.ts",
+        "src/ai/runtime/aiClient.ts",
+        "src/api/requestPayload.ts"
       ],
-      "blockers": [
-        "Heuristic is string-matching in legacy adapter, not in caps/registry layer"
-      ],
+      "blockers": [],
       "addedToRegistry": "2026-03-03",
       "priority": "p1",
       "implementationEvidence": [
-        "openAiModelSupportsSystemRole",
-        "o1.*false"
+        "modelSupportsSystemRole",
+        "MODEL_SYSTEM_ROLE_UNSUPPORTED",
+        "supportsSystemRole:\\s*true",
+        "supportsSystemRole:\\s*false"
       ],
-      "targetRelease": "backlog",
+      "targetRelease": "shipped",
       "owner": "eric",
       "lastTouched": "2026-03-04"
     },

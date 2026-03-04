@@ -14,6 +14,7 @@ export interface ComputedCaps {
     temperature: number;
     retryPolicy: RetryPolicy;
     requestPerMinute: number;
+    thinkingBudgetTokens?: number;
 }
 
 export interface ComputeCapsInput {

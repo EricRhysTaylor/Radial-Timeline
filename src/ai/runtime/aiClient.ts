@@ -4,7 +4,7 @@ import { computeCaps, type ComputedCaps } from '../caps/computeCaps';
 import { mapErrorToUserMessage, mapProviderFailureToError, MalformedJsonError } from '../errors';
 import { compilePrompt } from '../prompts/compilePrompt';
 import { composeEnvelope, CACHE_BREAK_DELIMITER } from '../prompts/composeEnvelope';
-import { openAiModelSupportsSystemRole } from '../../api/openaiApi';
+import { modelSupportsSystemRole } from '../../api/providerCapabilities';
 import { ModelRegistry } from '../registry/modelRegistry';
 import { findSnapshotModel, loadProviderSnapshot, type ProviderSnapshotLoadResult } from '../registry/providerSnapshot';
 import { selectModel } from '../router/selectModel';
@@ -25,6 +25,7 @@ import type {
     RegistryRefreshResult
 } from '../types';
 import { buildProviders } from '../providers/provider';
+import { peekGeminiCache } from '../../api/geminiCacheManager';
 import { AICache } from './cache';
 import { buildTelemetryEvent, emitTelemetry } from './aiTelemetry';
 import { AIRateLimiter } from './rateLimit';
@@ -421,22 +422,22 @@ export class AIClient {
             // Anthropic: warm when delimiter used — cache_control blocks are definitely sent
             reuseState = cacheDelimiterUsed ? 'warm' : 'eligible';
         } else if (provider === 'google') {
-            // Gemini: eligible when delimiter used — cache creation may fail (min tokens, rate limit).
-            // Upgraded to warm post-execute if cacheUsed === true.
             reuseState = cacheDelimiterUsed ? 'eligible' : 'idle';
         } else if (provider === 'openai' && systemPrompt
-                   && openAiModelSupportsSystemRole(modelSelection.model.id)) {
+                   && modelSupportsSystemRole('openai', modelSelection.model.id)) {
             reuseState = 'eligible';
         }
 
-        // Compute cached stable ratio from delimiter split
+        // Compute cached stable ratio from delimiter split.
+        // Single stableText variable — reused for ratio estimation and optimistic peek.
         // Uses tokenEstimateInput (same estimator as pressure bar fillRatio) for visual consistency.
         let cachedStableRatio: number | undefined;
         let cachedStableTokens: number | undefined;
+        let stableText: string | undefined;
         if (cacheDelimiterUsed) {
             const delimIndex = userPrompt.indexOf(CACHE_BREAK_DELIMITER);
             if (delimIndex > 0) {
-                const stableText = userPrompt.slice(0, delimIndex);
+                stableText = userPrompt.slice(0, delimIndex);
                 // Anthropic: only user stable block is cached
                 // Gemini: system instruction goes inside cached content too
                 const stableTokens = provider === 'google'
@@ -446,6 +447,17 @@ export class AIClient {
                 cachedStableRatio = tokenEstimateInput > 0
                     ? Math.min(stableTokens / tokenEstimateInput, 1) : 0;
             }
+        }
+
+        // Optimistic warm: if the in-memory cache store already has a valid entry,
+        // we know the upcoming execute will hit it. Set warm + ratio immediately
+        // so the UI shows the hatched overlay from the start of the run.
+        const optimisticWarm = provider === 'google' && cacheDelimiterUsed
+            && stableText !== undefined && cachedStableRatio !== undefined
+            && peekGeminiCache(modelSelection.model.id, systemPrompt, stableText);
+
+        if (optimisticWarm) {
+            reuseState = 'warm';
         }
 
         const advancedContext: AIRunAdvancedContext = {
@@ -461,8 +473,11 @@ export class AIClient {
             executionPassCount: 1,
             reuseState,
             // Anthropic: set immediately (cache_control blocks always sent)
-            cachedStableRatio: provider === 'anthropic' && cacheDelimiterUsed ? cachedStableRatio : undefined,
-            cachedStableTokens: provider === 'anthropic' && cacheDelimiterUsed ? cachedStableTokens : undefined,
+            // Gemini optimistic: set when peek confirms cache exists
+            cachedStableRatio: (provider === 'anthropic' && cacheDelimiterUsed) || optimisticWarm
+                ? cachedStableRatio : undefined,
+            cachedStableTokens: (provider === 'anthropic' && cacheDelimiterUsed) || optimisticWarm
+                ? cachedStableTokens : undefined,
             totalInputTokens: cacheDelimiterUsed ? tokenEstimateInput : undefined,
             featureModeInstructions,
             finalPrompt: envelope.finalPrompt
@@ -480,13 +495,22 @@ export class AIClient {
             jsonStrict: overrides.jsonStrict ?? true
         }, request.returnType, caps);
 
-        // Post-execute: upgrade Gemini reuseState from eligible → warm
-        // if cache was actually created and sent (truth-safe).
-        if (provider === 'google' && cacheDelimiterUsed && execution.cacheUsed) {
-            advancedContext.reuseState = 'warm';
-            advancedContext.cachedStableRatio = cachedStableRatio;
-            advancedContext.cachedStableTokens = cachedStableTokens;
-            setLastRunAdvanced(this.plugin, request.feature, advancedContext);
+        // Post-execute: confirm or downgrade Gemini reuseState
+        if (provider === 'google' && cacheDelimiterUsed) {
+            if (execution.cacheUsed) {
+                // Confirmed — ensure warm + ratio are set (covers first-run case too)
+                advancedContext.reuseState = 'warm';
+                advancedContext.cachedStableRatio = cachedStableRatio;
+                advancedContext.cachedStableTokens = cachedStableTokens;
+                advancedContext.cacheStatus = execution.cacheStatus;
+                setLastRunAdvanced(this.plugin, request.feature, advancedContext);
+            } else if (optimisticWarm) {
+                // Peek said yes but execute said no — downgrade
+                advancedContext.reuseState = 'eligible';
+                advancedContext.cachedStableRatio = undefined;
+                advancedContext.cachedStableTokens = undefined;
+                setLastRunAdvanced(this.plugin, request.feature, advancedContext);
+            }
         }
 
         const warnings = [...modelSelection.warnings];

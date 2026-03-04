@@ -20,6 +20,7 @@ type ProviderCapabilities = {
     supportsResponseFormat: boolean;
     supportsJsonSchema: boolean;
     supportsThinkingConfig: boolean;
+    supportsSystemRole: boolean;
 };
 
 const PROVIDER_CAPABILITIES: Record<AiProvider, ProviderCapabilities> = {
@@ -28,33 +29,44 @@ const PROVIDER_CAPABILITIES: Record<AiProvider, ProviderCapabilities> = {
         supportsTopP: true,
         supportsResponseFormat: true,
         supportsJsonSchema: false,
-        supportsThinkingConfig: false
+        supportsThinkingConfig: false,
+        supportsSystemRole: true
     },
     anthropic: {
-        supportsTemperature: false,
-        supportsTopP: false,
+        supportsTemperature: true,
+        supportsTopP: true,
         supportsResponseFormat: false,
         supportsJsonSchema: false,
-        supportsThinkingConfig: false
+        supportsThinkingConfig: false,
+        supportsSystemRole: true
     },
     gemini: {
         supportsTemperature: true,
         supportsTopP: true,
         supportsResponseFormat: false,
         supportsJsonSchema: true,
-        supportsThinkingConfig: true
+        supportsThinkingConfig: true,
+        supportsSystemRole: true
     },
     local: {
         supportsTemperature: true,
         supportsTopP: true,
         supportsResponseFormat: true,
         supportsJsonSchema: false,
-        supportsThinkingConfig: false
+        supportsThinkingConfig: false,
+        supportsSystemRole: false
     }
 };
 
 const MODEL_TEMPERATURE_UNSUPPORTED: Record<AiProvider, Set<string>> = {
     openai: new Set(),
+    anthropic: new Set(),
+    gemini: new Set(),
+    local: new Set()
+};
+
+const MODEL_SYSTEM_ROLE_UNSUPPORTED: Record<AiProvider, Set<string>> = {
+    openai: new Set(['o1', 'o1-mini', 'o1-preview']),
     anthropic: new Set(),
     gemini: new Set(),
     local: new Set()
@@ -105,4 +117,15 @@ export function sanitizeProviderArgs(
     }
 
     return sanitized;
+}
+
+/** Capability-driven check for system role support.
+ *  Checks provider-level flag, then per-model exclusion set.
+ *  Use instead of the deprecated openAiModelSupportsSystemRole heuristic. */
+export function modelSupportsSystemRole(provider: AiProvider, modelId?: string): boolean {
+    const capabilities = PROVIDER_CAPABILITIES[provider];
+    if (!capabilities.supportsSystemRole) return false;
+    const normalizedId = normalizeModelId(provider, modelId).toLowerCase();
+    if (!normalizedId) return true;
+    return !MODEL_SYSTEM_ROLE_UNSUPPORTED[provider].has(normalizedId);
 }

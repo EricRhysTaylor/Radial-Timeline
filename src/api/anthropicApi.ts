@@ -35,6 +35,8 @@ export async function callAnthropicApi(
   userPrompt: string,
   maxTokens: number = 4000,
   internalAdapterAccess?: boolean,
+  temperature?: number,
+  topP?: number
 ): Promise<AnthropicApiResponse> {
   warnLegacyAccess('anthropicApi.callAnthropicApi', internalAdapterAccess);
   const apiUrl = 'https://api.anthropic.com/v1/messages';
@@ -64,9 +66,17 @@ export async function callAnthropicApi(
     messages: { role: string; content: AnthropicTextBlock[] }[];
     max_tokens: number;
     system?: AnthropicTextBlock[];
+    temperature?: number;
+    top_p?: number;
   } = { model: modelId, messages: [{ role: 'user', content: userContent }], max_tokens: maxTokens };
   if (systemPrompt) {
     requestBody.system = [{ type: 'text', text: systemPrompt }];
+  }
+  if (typeof temperature === 'number') {
+    requestBody.temperature = temperature;
+  }
+  if (typeof topP === 'number') {
+    requestBody.top_p = topP;
   }
 
   let responseData: unknown;

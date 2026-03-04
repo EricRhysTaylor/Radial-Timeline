@@ -38,6 +38,7 @@ export interface ProviderResult<T = unknown> {
   sanitizedParams?: string[];
   retryCount?: number;
   cacheUsed?: boolean;
+  cacheStatus?: 'hit' | 'created';
 }
 
 export async function callProvider(plugin: RadialTimelinePlugin, args: ProviderCallArgs): Promise<ProviderResult> {
@@ -84,7 +85,9 @@ export async function callProvider(plugin: RadialTimelinePlugin, args: ProviderC
         callArgs.systemPrompt || null,
         callArgs.userPrompt,
         resolvedMaxTokens,
-        true
+        true,
+        callArgs.temperature,
+        callArgs.top_p
       );
       return { ...buildProviderResult(provider, requestedModelId, resp), requestPayload };
     }
@@ -94,6 +97,7 @@ export async function callProvider(plugin: RadialTimelinePlugin, args: ProviderC
       let effectiveUserPrompt = callArgs.userPrompt;
       let effectiveSystemPrompt = callArgs.systemPrompt || null;
       let cachedContentName: string | undefined;
+      let cacheStatus: 'hit' | 'created' | undefined;
 
       const delimIndex = callArgs.userPrompt.indexOf(CACHE_BREAK_DELIMITER);
       if (delimIndex > 0) {
@@ -101,12 +105,13 @@ export async function callProvider(plugin: RadialTimelinePlugin, args: ProviderC
         const volatileText = callArgs.userPrompt
             .slice(delimIndex + CACHE_BREAK_DELIMITER.length).trimStart();
         try {
-          const cacheName = await getOrCreateGeminiCache(
+          const cacheResult = await getOrCreateGeminiCache(
               apiKey, requestedModelId, stableText,
               callArgs.systemPrompt || undefined
           );
-          if (cacheName) {
-            cachedContentName = cacheName;
+          if (cacheResult) {
+            cachedContentName = cacheResult.cacheName;
+            cacheStatus = cacheResult.status;
             effectiveUserPrompt = volatileText;
             effectiveSystemPrompt = null;   // system is inside the cache
           } else {
@@ -136,7 +141,8 @@ export async function callProvider(plugin: RadialTimelinePlugin, args: ProviderC
       return {
         ...buildProviderResult(provider, requestedModelId, resp),
         requestPayload,
-        cacheUsed: !!cachedContentName
+        cacheUsed: !!cachedContentName,
+        cacheStatus
       };
     }
     if (provider === 'local') {

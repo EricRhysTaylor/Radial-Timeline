@@ -141,6 +141,8 @@ export interface ProviderExecutionResult {
     retryCount?: number;
     /** True when a provider-level content cache was used (e.g. Gemini cachedContent). */
     cacheUsed?: boolean;
+    /** Whether the cache was a hit (reuse) or freshly created. */
+    cacheStatus?: 'hit' | 'created';
 }
 
 export interface AIProvider {
@@ -211,6 +213,8 @@ export interface AIRunAdvancedContext {
     cachedStableTokens?: number;
     /** Estimated total input tokens (same estimator as pressure bar fillRatio). */
     totalInputTokens?: number;
+    /** Whether the Gemini cache was a hit (reuse) or freshly created. */
+    cacheStatus?: 'hit' | 'created';
     featureModeInstructions: string;
     finalPrompt: string;
 }

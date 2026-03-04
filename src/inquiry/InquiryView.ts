@@ -4676,9 +4676,13 @@ export class InquiryView extends ItemView {
             const ratioDetail = cachedRatio && cachedRatio > 0
                 ? `\nCached: ${Math.round(cachedRatio * 100)}% of input (\u2248${cachedTokens?.toLocaleString() ?? '?'} tokens)`
                 : '';
+            const cacheStatus = advanced?.cacheStatus;
+            const cacheDetail = cacheStatus && provider === 'google'
+                ? `\nCache: ${cacheStatus} \u2022 TTL: 15m`
+                : '';
             addTooltipData(
                 this.minimapReuseBand,
-                this.balanceTooltipText(`Reuse: ${stateDetail}\nCorpus ${corpusShort} \u2022 ${providerLabel}${ratioDetail}`),
+                this.balanceTooltipText(`Reuse: ${stateDetail}\nCorpus ${corpusShort} \u2022 ${providerLabel}${ratioDetail}${cacheDetail}`),
                 'bottom'
             );
         }

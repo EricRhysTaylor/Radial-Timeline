@@ -20,7 +20,9 @@ export class AnthropicProvider implements AIProvider {
             modelId: req.modelId,
             systemPrompt: req.systemPrompt ?? null,
             userPrompt: req.userPrompt,
-            maxTokens: req.maxOutputTokens
+            maxTokens: req.maxOutputTokens,
+            temperature: req.temperature,
+            top_p: req.topP
         });
         return result;
     }
@@ -32,7 +34,9 @@ export class AnthropicProvider implements AIProvider {
             modelId: req.modelId,
             systemPrompt: req.systemPrompt ?? null,
             userPrompt: req.userPrompt,
-            maxTokens: req.maxOutputTokens
+            maxTokens: req.maxOutputTokens,
+            temperature: req.temperature,
+            top_p: req.topP
         });
         return result;
     }
