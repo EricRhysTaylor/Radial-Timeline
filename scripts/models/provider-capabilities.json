@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "lastUpdated": "2026-03-03",
   "capabilities": [
     {
@@ -7,7 +7,7 @@
       "provider": "anthropic",
       "name": "Prompt Caching",
       "category": "cost-optimization",
-      "description": "Cache system prompts and large content blocks using cache_control markers. Subsequent requests pay only for cache reads (~90% cheaper). Requires content block array format for system prompt.",
+      "description": "Cache system prompts and large content blocks using cache_control markers. Subsequent requests pay only for cache reads (provider-reported reduced rate). Requires content block array format for system prompt.",
       "availableSince": "2024-07-31",
       "requiredApiVersion": "2023-06-01",
       "requiredHeaders": {
@@ -101,7 +101,7 @@
       "provider": "anthropic",
       "name": "Batch API",
       "category": "cost-optimization",
-      "description": "Submit up to 10,000 requests as an async batch for 50% cost reduction. Results available within 24 hours. Useful for bulk analysis jobs.",
+      "description": "Submit large request batches asynchronously for provider-reported cost reduction. Results available within 24 hours. Useful for bulk analysis jobs.",
       "availableSince": "2024-09-24",
       "requiredApiVersion": "2023-06-01",
       "requiredHeaders": {},
@@ -146,7 +146,7 @@
       "provider": "openai",
       "name": "Automatic Prompt Caching",
       "category": "cost-optimization",
-      "description": "Automatic 50% discount on cached input tokens for prompts >1024 tokens with identical prefixes. Requires stable system message prefix — currently defeated by system/user concatenation.",
+      "description": "Automatic provider-reported discount on cached input tokens for prompts >1024 tokens with identical prefixes. Requires stable system message prefix — currently defeated by system/user concatenation.",
       "availableSince": "2024-10-01",
       "requiredApiVersion": null,
       "requiredHeaders": {},
@@ -191,7 +191,7 @@
       "provider": "openai",
       "name": "Batch API",
       "category": "cost-optimization",
-      "description": "Submit async batch requests for 50% cost reduction with 24-hour turnaround. Upload JSONL file of requests, poll for completion.",
+      "description": "Submit async batch requests for provider-reported cost reduction with 24-hour turnaround. Upload JSONL file of requests, poll for completion.",
       "availableSince": "2024-04-15",
       "requiredApiVersion": null,
       "requiredHeaders": {},

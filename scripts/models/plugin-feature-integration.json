@@ -11,7 +11,7 @@
       ],
       "impactAssessment": "high",
       "implementationStatus": "not_implemented",
-      "implementationNotes": "System prompt sent as plain string in anthropicApi.ts. Needs content block array with cache_control: { type: 'ephemeral' } on evidence blocks. Gossamer and Inquiry send identical evidence across calls — caching would save ~90% on input tokens.",
+      "implementationNotes": "System prompt sent as plain string in anthropicApi.ts. Needs content block array with cache_control: { type: 'ephemeral' } on evidence blocks. Gossamer and Inquiry send identical evidence across calls — caching would yield significant savings on repeated input tokens (see provider pricing docs).",
       "sourceFiles": [
         "src/api/anthropicApi.ts",
         "src/ai/providers/anthropicProvider.ts",
@@ -141,7 +141,7 @@
       ],
       "impactAssessment": "medium",
       "implementationStatus": "not_implemented",
-      "implementationNotes": "Gossamer currently runs a single unified API call. Batch API would help if architecture changed to per-beat analysis, or for bulk processing of multiple manuscripts. 50% cost reduction but 24h turnaround.",
+      "implementationNotes": "Gossamer currently runs a single unified API call. Batch API would help if architecture changed to per-beat analysis, or for bulk processing of multiple manuscripts. Provider-reported cost reduction but 24h turnaround.",
       "sourceFiles": [
         "src/GossamerCommands.ts"
       ],
@@ -202,7 +202,7 @@
       ],
       "impactAssessment": "high",
       "implementationStatus": "not_implemented",
-      "implementationNotes": "OpenAI automatically caches prompts >1024 tokens with stable prefixes (50% discount). Currently DEFEATED because openaiApi.ts line 82 concatenates system+user into a single user message. Fix: separate into system and user messages for non-reasoning models.",
+      "implementationNotes": "OpenAI automatically caches prompts >1024 tokens with stable prefixes (provider-reported discount). Currently DEFEATED because openaiApi.ts line 82 concatenates system+user into a single user message. Fix: separate into system and user messages for non-reasoning models.",
       "sourceFiles": [
         "src/api/openaiApi.ts"
       ],
@@ -232,8 +232,8 @@
       "addedToRegistry": "2026-03-03",
       "priority": "p3",
       "implementationEvidence": [
-        "json_schema",
-        "type.*json_schema"
+        "type:\\s*'json_schema'",
+        "json_schema:\\s*\\{"
       ],
       "targetRelease": "shipped",
       "owner": "eric",
@@ -266,7 +266,7 @@
       ],
       "impactAssessment": "medium",
       "implementationStatus": "not_implemented",
-      "implementationNotes": "Similar to Anthropic batch API. 50% cost reduction for async processing. Same architectural constraint: Gossamer currently uses a single unified call.",
+      "implementationNotes": "Similar to Anthropic batch API. Provider-reported cost reduction for async processing. Same architectural constraint: Gossamer currently uses a single unified call.",
       "sourceFiles": [
         "src/GossamerCommands.ts"
       ],

@@ -14,6 +14,7 @@
  *   node scripts/check-api-features.mjs              (standard audit)
  *   node scripts/check-api-features.mjs --issues      (also generate GitHub issue stubs)
  *   node scripts/check-api-features.mjs --strict      (fail on violations — use in CI)
+ *   node scripts/check-api-features.mjs --summary     (compact output for backup pipeline)
  *   node scripts/check-api-features.mjs --quiet       (suppress console, write report only)
  */
 import fs from 'fs';
@@ -52,6 +53,7 @@ const ALLOWED_IMPACT = new Set(['high', 'medium', 'low', 'none']);
 
 const doGenerateIssues = process.argv.includes('--issues');
 const strictMode = process.argv.includes('--strict');
+const summaryMode = process.argv.includes('--summary');
 const quietMode = process.argv.includes('--quiet');
 
 function log(msg = '') {
@@ -468,52 +470,55 @@ function printReport(analytics, sourceFindings, validationErrors, validationWarn
         log('');
     }
 
-    // High impact gaps
-    if (analytics.highImpactGaps.length > 0) {
-        log(`${RED}  HIGH IMPACT GAPS:${RESET}`);
-        analytics.highImpactGaps.forEach(gap => {
-            const features = gap.relevantPluginFeatures?.join(', ') || '';
-            const prio = gap.priority ? ` [${gap.priority}]` : '';
-            log(`  ${RED}!${RESET} ${gap.id} — ${gap.description.slice(0, 60)}${features ? ` (${features})` : ''}${prio}`);
-        });
-        log('');
-    }
+    // ── Verbose sections (skipped in --summary mode) ──
+    if (!summaryMode) {
+        // High impact gaps
+        if (analytics.highImpactGaps.length > 0) {
+            log(`${RED}  HIGH IMPACT GAPS:${RESET}`);
+            analytics.highImpactGaps.forEach(gap => {
+                const features = gap.relevantPluginFeatures?.join(', ') || '';
+                const prio = gap.priority ? ` [${gap.priority}]` : '';
+                log(`  ${RED}!${RESET} ${gap.id} — ${gap.description.slice(0, 60)}${features ? ` (${features})` : ''}${prio}`);
+            });
+            log('');
+        }
 
-    // Cost optimization opportunities
-    if (analytics.costOpportunities.length > 0) {
-        log(`${YELLOW}  COST OPTIMIZATION OPPORTUNITIES:${RESET}`);
-        analytics.costOpportunities.forEach(op => {
-            log(`  ${YELLOW}$${RESET} ${op.id} — ${op.maturity}, ${op.complexity} complexity`);
-        });
-        log('');
-    }
+        // Cost optimization opportunities
+        if (analytics.costOpportunities.length > 0) {
+            log(`${YELLOW}  COST OPTIMIZATION OPPORTUNITIES:${RESET}`);
+            analytics.costOpportunities.forEach(op => {
+                log(`  ${YELLOW}$${RESET} ${op.id} — ${op.maturity}, ${op.complexity} complexity`);
+            });
+            log('');
+        }
 
-    // Beta/preview features
-    if (analytics.betaFeatures.length > 0) {
-        log(`${CYAN}  BETA/PREVIEW FEATURES NOT YET IMPLEMENTED:${RESET}`);
-        analytics.betaFeatures.forEach(f => {
-            log(`  ${CYAN}~${RESET} ${f.id} — ${f.maturity}, ${f.complexity} complexity`);
-        });
-        log('');
-    }
+        // Beta/preview features
+        if (analytics.betaFeatures.length > 0) {
+            log(`${CYAN}  BETA/PREVIEW FEATURES NOT YET IMPLEMENTED:${RESET}`);
+            analytics.betaFeatures.forEach(f => {
+                log(`  ${CYAN}~${RESET} ${f.id} — ${f.maturity}, ${f.complexity} complexity`);
+            });
+            log('');
+        }
 
-    // GA features missing (non-architectural)
-    if (analytics.gaGaps.length > 0) {
-        log(`${DIM}  GA FEATURES MISSING IMPLEMENTATION:${RESET}`);
-        analytics.gaGaps.forEach(g => {
-            const prio = g.priority ? ` [${g.priority}]` : '';
-            log(`  ${DIM}-${RESET} ${g.id} — ${g.maturity || 'ga'}, ${g.complexity} complexity${prio}`);
-        });
-        log('');
-    }
+        // GA features missing (non-architectural)
+        if (analytics.gaGaps.length > 0) {
+            log(`${DIM}  GA FEATURES MISSING IMPLEMENTATION:${RESET}`);
+            analytics.gaGaps.forEach(g => {
+                const prio = g.priority ? ` [${g.priority}]` : '';
+                log(`  ${DIM}-${RESET} ${g.id} — ${g.maturity || 'ga'}, ${g.complexity} complexity${prio}`);
+            });
+            log('');
+        }
 
-    // Source code findings
-    if (sourceFindings.length > 0) {
-        log(`${DIM}  SOURCE CODE FINDINGS:${RESET}`);
-        sourceFindings.forEach(f => {
-            log(`  ${DIM}-${RESET} ${f.file}: ${f.finding}`);
-        });
-        log('');
+        // Source code findings
+        if (sourceFindings.length > 0) {
+            log(`${DIM}  SOURCE CODE FINDINGS:${RESET}`);
+            sourceFindings.forEach(f => {
+                log(`  ${DIM}-${RESET} ${f.file}: ${f.finding}`);
+            });
+            log('');
+        }
     }
 }
 
