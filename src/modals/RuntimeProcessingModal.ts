@@ -664,7 +664,7 @@ export class RuntimeProcessingModal extends Modal {
             `Model selection reason: ${redactSensitiveValue(ctx.modelSelectionReason)}`,
             `Availability: ${ctx.availabilityStatus === 'visible' ? 'Visible to your key ✅' : ctx.availabilityStatus === 'not_visible' ? 'Not visible ⚠️' : 'Unknown (snapshot unavailable)'}`,
             `Applied caps: input=${ctx.maxInputTokens}, output=${ctx.maxOutputTokens}`,
-            `Packaging: ${ctx.analysisPackaging === 'singlePassOnly' ? 'Single-pass only' : 'Automatic'}`,
+            `Packaging: ${ctx.analysisPackaging === 'singlePassOnly' ? 'Single-pass only' : ctx.analysisPackaging === 'segmented' ? 'Segmented' : 'Automatic'}`,
             '',
             'Feature mode instructions:',
             redactSensitiveValue(ctx.featureModeInstructions || '(none)'),

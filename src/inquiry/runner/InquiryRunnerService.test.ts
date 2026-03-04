@@ -15,4 +15,13 @@ describe('InquiryRunnerService packaging integrity', () => {
         expect(source).toContain('cleanEvidenceBody(raw)');
         expect(source).toContain("from '../utils/evidenceCleaning'");
     });
+
+    it('segmented mode forces multi-pass even when content fits (forced-split contract)', () => {
+        const source = readFileSync(resolve(process.cwd(), 'src/inquiry/runner/InquiryRunnerService.ts'), 'utf8');
+        // The segmented check must appear BEFORE the exceedsSafeBudget check,
+        // using OR logic so it enters the multi-pass path regardless of size.
+        expect(source).toContain("analysisPackaging === 'segmented'");
+        // getAnalysisPackaging must return 'segmented' when that's the setting
+        expect(source).toContain("pkg === 'segmented' ? 'segmented'");
+    });
 });

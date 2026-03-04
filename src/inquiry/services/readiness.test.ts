@@ -40,6 +40,19 @@ describe('readiness', () => {
         expect(state.cause).toBe('single_pass_limit');
     });
 
+    it('returns large (not blocked) when segmented mode exceeds budget', () => {
+        const state = evaluateInquiryReadiness({
+            hasEligibleModel: true,
+            hasCredential: true,
+            analysisPackaging: 'segmented',
+            estimatedInputTokens: 120000,
+            safeInputBudget: 100000
+        });
+        expect(state.state).toBe('large');
+        expect(state.cause).toBe('packaging_expected');
+        expect(state.pressureTone).toBe('red');
+    });
+
     it('returns blocked when capability floor is not met', () => {
         const state = evaluateInquiryReadiness({
             hasEligibleModel: false,

@@ -82,6 +82,20 @@ describe('validateAiSettings', () => {
         expect((result.value as unknown as Record<string, unknown>).analysisMethod).toBeUndefined();
     });
 
+    it('preserves segmented analysisPackaging through validation', () => {
+        const result = validateAiSettings({
+            schemaVersion: 1,
+            provider: 'openai',
+            modelPolicy: { type: 'latestStable' },
+            analysisPackaging: 'segmented',
+            overrides: {},
+            aiAccessProfile: {},
+            privacy: { allowTelemetry: false, allowRemoteRegistry: false, allowProviderSnapshot: false }
+        } as unknown as AiSettingsV1);
+
+        expect(result.value.analysisPackaging).toBe('segmented');
+    });
+
     it('falls back invalid model policy type to latestStable', () => {
         const result = validateAiSettings({
             schemaVersion: 1,

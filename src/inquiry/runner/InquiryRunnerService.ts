@@ -999,7 +999,11 @@ export class InquiryRunnerService implements InquiryRunner {
             return this.buildSinglePassOnlyOverflowResult(ai, reason);
         }
 
-        if (analysisPackaging === 'automatic' && packagingPrecheck.exceedsSafeBudget) {
+        if (analysisPackaging === 'segmented' ||
+            (analysisPackaging === 'automatic' && packagingPrecheck.exceedsSafeBudget)) {
+            const triggerReason = analysisPackaging === 'segmented'
+                ? 'Segmented mode forces multi-pass segmentation.'
+                : `Estimated input ${Math.round(packagingPrecheck.inputTokens).toLocaleString()} exceeded safe input budget ${Math.round(packagingPrecheck.safeInputTokens).toLocaleString()}.`;
             const packaged = await this.runChunkedInquiry(aiClient, {
                 systemPrompt,
                 userPrompt,
@@ -1013,7 +1017,7 @@ export class InquiryRunnerService implements InquiryRunner {
                 return this.toProviderResult(this.withExecutionContext(packaged, {
                     analysisPackaging,
                     executionPassCount: packaged.advancedContext?.executionPassCount,
-                    packagingTriggerReason: `Estimated input ${Math.round(packagingPrecheck.inputTokens).toLocaleString()} exceeded safe input budget ${Math.round(packagingPrecheck.safeInputTokens).toLocaleString()}.`
+                    packagingTriggerReason: triggerReason
                 }));
             }
         }
@@ -1097,7 +1101,7 @@ export class InquiryRunnerService implements InquiryRunner {
             requiredCapabilities: ['longContext', 'jsonStrict', 'reasoningStrong', 'highOutputCap'],
             featureModeInstructions: [
                 options.systemPrompt,
-                'Do not reinterpret or expand the user’s question. Answer it directly. The role template provides tonal and contextual framing only.'
+                'Do not reinterpret or expand the user\u2019s question. Answer it directly. The role template provides tonal and contextual framing only.'
             ].filter(Boolean).join('\n'),
             userInput: options.userPrompt,
             userQuestion: options.userQuestion,
@@ -1128,7 +1132,10 @@ export class InquiryRunnerService implements InquiryRunner {
 
     private getAnalysisPackaging(): AnalysisPackaging {
         const aiSettings = validateAiSettings(this.plugin.settings.aiSettings ?? buildDefaultAiSettings()).value;
-        return aiSettings.analysisPackaging === 'singlePassOnly' ? 'singlePassOnly' : 'automatic';
+        const pkg = aiSettings.analysisPackaging;
+        return pkg === 'singlePassOnly' ? 'singlePassOnly'
+            : pkg === 'segmented' ? 'segmented'
+            : 'automatic';
     }
 
     private getAccessTier(provider: AIProviderId): AccessTier {

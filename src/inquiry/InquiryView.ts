@@ -749,7 +749,7 @@ class InquiryOmnibusModal extends Modal {
             `Model selection reason: ${redactSensitiveValue(ctx.modelSelectionReason)}`,
             `Availability: ${ctx.availabilityStatus === 'visible' ? 'Visible to your key ✅' : ctx.availabilityStatus === 'not_visible' ? 'Not visible ⚠️' : 'Unknown (snapshot unavailable)'}`,
             `Applied caps: input=${ctx.maxInputTokens}, output=${ctx.maxOutputTokens}`,
-            `Packaging: ${ctx.analysisPackaging === 'singlePassOnly' ? 'Single-pass only' : 'Automatic'}`,
+            `Packaging: ${ctx.analysisPackaging === 'singlePassOnly' ? 'Single-pass only' : ctx.analysisPackaging === 'segmented' ? 'Segmented' : 'Automatic'}`,
             '',
             'Feature mode instructions:',
             redactSensitiveValue(ctx.featureModeInstructions || '(none)'),
@@ -6095,7 +6095,7 @@ export class InquiryView extends ItemView {
     private countWords(content: string): number {
         const trimmed = content.trim();
         if (!trimmed) return 0;
-        const matches = trimmed.match(/[A-Za-z0-9]+(?:['’-][A-Za-z0-9]+)*/g);
+        const matches = trimmed.match(/[A-Za-z0-9]+(?:['\u2019'-][A-Za-z0-9]+)*/g);
         return matches ? matches.length : 0;
     }
 
@@ -11294,7 +11294,7 @@ export class InquiryView extends ItemView {
         lines.push('');
 
         lines.push('## Execution');
-        lines.push(`- Packaging: ${trace.analysisPackaging === 'singlePassOnly' ? 'Single-pass only' : 'Automatic'}`);
+        lines.push(`- Packaging: ${trace.analysisPackaging === 'singlePassOnly' ? 'Single-pass only' : trace.analysisPackaging === 'segmented' ? 'Segmented' : 'Automatic'}`);
         if (typeof trace.executionPassCount === 'number' && trace.executionPassCount > 1) {
             lines.push(`- Pass count: ${trace.executionPassCount}`);
         }
@@ -11397,7 +11397,7 @@ export class InquiryView extends ItemView {
             `- AI model requested: ${result.aiModelRequested || 'unknown'}`,
             `- AI model resolved: ${result.aiModelResolved || 'unknown'}`,
             `- AI next-run override: ${typeof result.aiModelNextRunOnly === 'boolean' ? String(result.aiModelNextRunOnly) : 'unknown'}`,
-            `- Packaging: ${trace.analysisPackaging === 'singlePassOnly' ? 'singlePassOnly' : 'automatic'}`,
+            `- Packaging: ${trace.analysisPackaging === 'singlePassOnly' ? 'singlePassOnly' : trace.analysisPackaging === 'segmented' ? 'segmented' : 'automatic'}`,
             `- AI status: ${result.aiStatus || 'unknown'}`,
             `- AI reason: ${result.aiReason || 'none'}`,
             `- Submitted at (raw): ${result.submittedAt || 'unknown'}`,

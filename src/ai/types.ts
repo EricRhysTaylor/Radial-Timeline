@@ -81,7 +81,7 @@ export interface AIProviderConnectionSettings {
     ollamaBaseUrl?: string;
 }
 
-export type AnalysisPackaging = 'automatic' | 'singlePassOnly';
+export type AnalysisPackaging = 'automatic' | 'singlePassOnly' | 'segmented';
 
 export interface AiSettingsV1 {
     schemaVersion: 1;

@@ -23,7 +23,7 @@ import {
     setCredentialSecretId
 } from '../../ai/credentials/credentials';
 import { getSecret, hasSecret, isSecretStorageAvailable, setSecret } from '../../ai/credentials/secretStorage';
-import type { AccessTier, AIProviderId, ModelPolicy, Capability } from '../../ai/types';
+import type { AccessTier, AIProviderId, AnalysisPackaging, ModelPolicy, Capability } from '../../ai/types';
 import { estimateGossamerTokens, estimateInquiryTokens } from '../../ai/forecast/estimateTokensFromVault';
 
 type Provider = 'anthropic' | 'gemini' | 'openai' | 'local';
@@ -84,7 +84,7 @@ export function renderAiSection(params: {
     const heroOnState = aiHero.createDiv({ cls: `${ERT_CLASSES.STACK} ert-ai-hero-state-on` });
     heroOnState.createEl('p', {
         cls: `${ERT_CLASSES.SECTION_DESC} ert-hero-subtitle`,
-        text: 'Radial Timeline’s AI phylosophy is about helping the author efficiently and effectively prepare their creative work for human editors and a human audience. AI acts as a rigorous, genre-aware editor - analyzing structure, momentum, and continuity across scenes and materials. Use it to stress-test your manuscript, uncover hidden contradictions, and sharpen narrative identity while your voice remains fully your own.'
+        text: 'Radial Timeline\u2019s AI phylosophy is about helping the author efficiently and effectively prepare their creative work for human editors and a human audience. AI acts as a rigorous, genre-aware editor - analyzing structure, momentum, and continuity across scenes and materials. Use it to stress-test your manuscript, uncover hidden contradictions, and sharpen narrative identity while your voice remains fully your own.'
     });
     const heroOnFeatures = heroOnState.createDiv({
         cls: `${ERT_CLASSES.HERO_FEATURES} ${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}`
@@ -93,7 +93,7 @@ export function renderAiSection(params: {
     const heroOnList = heroOnFeatures.createEl('ul', { cls: ERT_CLASSES.STACK });
     [
         { icon: 'waves', text: 'Inquiry - Ask precise, cross-scene questions and receive structured editorial feedback.' },
-        { icon: 'activity', text: 'Pulse (Triplet Analysis) - Examine scenes in context using Radial Timeline’s three-scene lens.' },
+        { icon: 'activity', text: 'Pulse (Triplet Analysis) - Examine scenes in context using Radial Timeline\u2019s three-scene lens.' },
         { icon: 'waypoints', text: 'Gossamer Momentum - Measure beat-level tension and narrative drive.' },
         { icon: 'sparkles', text: 'Force multiplier - Expand analytical reach while saving time with contextual, actionable insight.' }
     ].forEach(item => {
@@ -275,75 +275,36 @@ export function renderAiSection(params: {
     });
 
 
-    const packagingSection = largeHandlingBody.createDiv({
-        cls: `${ERT_CLASSES.HERO_FEATURES} ${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}`
-    });
-    const analysisModes = packagingSection.createDiv({ cls: `${ERT_CLASSES.STACK} ert-ai-analysis-modes` });
-    const createAnalysisModeBlock = (config: {
-        icon: string;
-        title: string;
-        body: string;
-        example?: string;
-        questions: string[];
-        note?: string;
-        support?: string;
-    }): void => {
-        const block = analysisModes.createDiv({ cls: `${ERT_CLASSES.STACK} ert-ai-analysis-mode` });
-        const content = block.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT} ert-ai-analysis-mode-content` });
-        content.createDiv({ cls: 'ert-ai-analysis-mode-title', text: config.title });
-        content.createDiv({ cls: 'ert-ai-analysis-mode-body', text: config.body });
-        if (config.example) {
-            content.createDiv({ cls: 'ert-ai-analysis-mode-example', text: config.example });
-        }
-
-        block.createDiv({ cls: 'ert-ai-analysis-mode-question-divider' });
-        const questionRow = block.createDiv({ cls: 'ert-ai-analysis-mode-question-row' });
-        const icon = questionRow.createSpan({ cls: 'ert-ai-analysis-mode-icon' });
-        setIcon(icon, config.icon);
-        const questionList = questionRow.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT} ert-ai-analysis-mode-questions` });
-        config.questions.forEach(question => {
-            const row = questionList.createDiv({ cls: 'ert-ai-analysis-mode-question' });
-            const questionIcon = row.createSpan({ cls: 'ert-ai-analysis-mode-question-icon' });
-            setIcon(questionIcon, 'message-circle-question-mark');
-            row.createSpan({ cls: 'ert-ai-analysis-mode-question-text', text: question });
-        });
-        if (config.note) {
-            block.createDiv({ cls: 'ert-ai-analysis-mode-note', text: config.note });
-        }
-        if (config.support) {
-            block.createDiv({ cls: 'ert-ai-analysis-mode-support', text: config.support });
-        }
+    // ── Status grid: compact 2-column (label + chip) ──
+    const statusGrid = largeHandlingBody.createDiv({ cls: 'ert-ai-status-grid' });
+    const createStatusRow = (label: string): { rowEl: HTMLElement; chipEl: HTMLElement } => {
+        const row = statusGrid.createDiv({ cls: 'ert-ai-status-row' });
+        row.createDiv({ cls: 'ert-ai-status-label', text: label });
+        const chipEl = row.createDiv({ cls: 'ert-ai-status-chip' });
+        return { rowEl: row, chipEl };
     };
+    const singlePassRow = createStatusRow('Single-Pass');
+    const multiPassRow = createStatusRow('Multi-Pass');
+    const segmentedRow = createStatusRow('Segmented');
 
-    createAnalysisModeBlock({
-        icon: 'git-commit-vertical',
-        title: 'Single-Pass Analysis',
-        body: 'Entire manuscript analyzed in one request. Best suited for deeply global thematic questions that depend on the full manuscript being considered at once.',
-        questions: [
-            'What is the central moral argument of this book?',
-            'Does the ending fulfill the thematic promise of the opening?',
-            'Is the protagonist’s transformation coherent across all acts?',
-            'How does the midpoint reframe the final resolution?'
-        ]
+    // ── Near-limit indicator ──
+    const nearLimitEl = largeHandlingBody.createDiv({ cls: 'ert-ai-near-limit ert-settings-hidden' });
+    const nearLimitIcon = nearLimitEl.createSpan({ cls: 'ert-ai-near-limit-icon' });
+    setIcon(nearLimitIcon, 'alert-triangle');
+    nearLimitEl.createSpan({ text: 'Near context limit \u2014 segmentation may activate (or costs may rise)' });
+
+    // ── Details link → modal ──
+    const detailsBtn = largeHandlingBody.createDiv({ cls: 'ert-ai-details-link' });
+    detailsBtn.createSpan({ text: 'How analysis passes work \u2192' });
+    detailsBtn.addEventListener('click', () => {
+        const { AiPassStrategyDetailsModal } = require('../../modals/AiPassStrategyDetailsModal');
+        new AiPassStrategyDetailsModal(plugin.app).open();
     });
 
-    analysisModes.createDiv({ cls: 'ert-ai-analysis-mode-divider' });
-
-    createAnalysisModeBlock({
-        icon: 'git-fork',
-        title: 'Multi-Pass Analysis',
-        body: 'Large manuscripts are split into structured segments. Each segment is evaluated independently, and the findings are combined into one unified response. These questions evaluate structural patterns that can be analyzed segment by segment.',
-        questions: [
-            'Identify unresolved character arcs across the manuscript.',
-            'Where does tension stall or repeat structurally?',
-            'Detect timeline inconsistencies or continuity errors.',
-            'Compare scene-level pacing patterns across acts.'
-        ]
-    });
-
+    // ── Execution preference dropdown ──
     const executionPreferenceSetting = new Settings(largeHandlingBody)
         .setName('Execution Preference')
-        .setDesc('Choose how large requests are handled during Inquiry. Tradeoff: single-pass can add nuance for highly global thematic interpretation, while multi-pass remains strong for structural diagnostics at scale. Automatic is recommended.');
+        .setDesc('Choose how large requests are handled during Inquiry. Automatic is recommended.');
     executionPreferenceSetting.settingEl.setAttr('data-ert-role', 'ai-setting:execution-preference');
     let executionPreferenceDropdown: DropdownComponent | null = null;
     executionPreferenceSetting.addDropdown(dropdown => {
@@ -351,10 +312,14 @@ export function renderAiSection(params: {
         dropdown.selectEl.addClass('ert-input', 'ert-input--lg');
         dropdown.addOption('automatic', 'Automatic');
         dropdown.addOption('singlePassOnly', 'Single-pass only');
+        dropdown.addOption('segmented', 'Segmented (always split)');
         dropdown.onChange(async value => {
             if (isSyncingRoutingUi) return;
             const aiSettings = ensureCanonicalAiSettings();
-            aiSettings.analysisPackaging = value === 'singlePassOnly' ? 'singlePassOnly' : 'automatic';
+            aiSettings.analysisPackaging =
+                value === 'singlePassOnly' ? 'singlePassOnly'
+                : value === 'segmented' ? 'segmented'
+                : 'automatic';
             await persistCanonical();
             refreshRoutingUi();
         });
@@ -365,9 +330,11 @@ export function renderAiSection(params: {
         executionPreferenceNote.setText(
             mode === 'singlePassOnly'
                 ? 'Send the full request as one pass. If it exceeds safe limits, reduce scope or adjust settings.'
+                : mode === 'segmented'
+                ? 'Always splits into structured segments, even when content fits in a single pass.'
                 : ''
         );
-        executionPreferenceNote.toggleClass('ert-settings-hidden', mode !== 'singlePassOnly');
+        executionPreferenceNote.toggleClass('ert-settings-hidden', mode === 'automatic');
     };
     updateExecutionPreferenceNote();
     params.addAiRelatedElement(largeHandlingFold);
@@ -725,7 +692,7 @@ export function renderAiSection(params: {
         modelLabel: string;
         modelAlias: string;
         strategyPill: string;
-        analysisPackaging: 'automatic' | 'singlePassOnly';
+        analysisPackaging: AnalysisPackaging;
         maxInputTokens: number | null;
         maxOutputTokens: number | null;
         reasonDetails: string;
@@ -797,7 +764,9 @@ export function renderAiSection(params: {
         resolvedPreviewProvider.setText(providerDetail);
         const previewPills = [
             state.strategyPill,
-            state.analysisPackaging === 'singlePassOnly' ? 'Single-pass only' : 'Automatic Packaging',
+            state.analysisPackaging === 'singlePassOnly' ? 'Single-pass only'
+                : state.analysisPackaging === 'segmented' ? 'Segmented'
+                : 'Automatic Packaging',
             `Input · ${state.maxInputTokens ? formatApproxTokens(state.maxInputTokens) : 'n/a'}`,
             `Response · ${state.maxOutputTokens ? `${formatApproxTokens(state.maxOutputTokens)} / pass` : 'n/a'}`
         ];
@@ -913,7 +882,7 @@ export function renderAiSection(params: {
                 setDropdownValueSafe(modelOverrideDropdown, overrideValue, 'auto');
             }
 
-            setDropdownValueSafe(executionPreferenceDropdown, aiSettings.analysisPackaging === 'singlePassOnly' ? 'singlePassOnly' : 'automatic', 'automatic');
+            setDropdownValueSafe(executionPreferenceDropdown, aiSettings.analysisPackaging, 'automatic');
             setDropdownValueSafe(
                 gossamerEvidenceDropdown,
                 getGossamerEvidencePreference(),
@@ -948,6 +917,12 @@ export function renderAiSection(params: {
         capacityInquiryExpected.setText('Expected: Calculating...');
         capacityGossamerEstimate.setText('Estimate: Calculating...');
         capacityGossamerExpected.setText('Expected: Calculating...');
+
+        // Reset status grid chips
+        singlePassRow.chipEl.setText('Calculating...');
+        multiPassRow.chipEl.setText('Calculating...');
+        segmentedRow.chipEl.setText('Calculating...');
+        nearLimitEl.toggleClass('ert-settings-hidden', true);
 
         try {
             const selection = selectModel(BUILTIN_MODELS, {
@@ -1012,6 +987,61 @@ export function renderAiSection(params: {
                 capacityGossamerExpected.setText(
                     `Expected: ${formatForecastPasses(forecasts.gossamer.estimatedInputTokens, singlePassOnly)}`
                 );
+
+                // ── Mode-aware status grid chips ──
+                const maxEstimate = Math.max(
+                    forecasts.inquiry.estimatedInputTokens,
+                    forecasts.gossamer.estimatedInputTokens
+                );
+                const fits = maxEstimate <= safeBudgetTokens;
+                const nearLimit = safeBudgetTokens > 0 && maxEstimate > safeBudgetTokens * 0.7;
+                const mode = aiSettings.analysisPackaging;
+
+                const clearChip = (el: HTMLElement): void => {
+                    el.removeClass('ert-ai-chip--success', 'ert-ai-chip--warning', 'ert-ai-chip--muted');
+                };
+
+                // Single-Pass chip
+                clearChip(singlePassRow.chipEl);
+                if (mode === 'segmented') {
+                    singlePassRow.chipEl.setText('Bypassed');
+                    singlePassRow.chipEl.addClass('ert-ai-chip--muted');
+                } else if (fits) {
+                    singlePassRow.chipEl.setText('Fits safely');
+                    singlePassRow.chipEl.addClass('ert-ai-chip--success');
+                } else {
+                    singlePassRow.chipEl.setText('Exceeds safe limit');
+                    singlePassRow.chipEl.addClass('ert-ai-chip--warning');
+                }
+
+                // Multi-Pass chip
+                clearChip(multiPassRow.chipEl);
+                if (mode === 'singlePassOnly') {
+                    multiPassRow.chipEl.setText('Disabled');
+                    multiPassRow.chipEl.addClass('ert-ai-chip--muted');
+                } else if (!fits || mode === 'segmented') {
+                    const passes = safeBudgetTokens > 0
+                        ? Math.ceil(maxEstimate / safeBudgetTokens)
+                        : 0;
+                    multiPassRow.chipEl.setText(passes > 0 ? `${passes} passes` : 'Unavailable');
+                    multiPassRow.chipEl.addClass(passes > 0 ? 'ert-ai-chip--success' : 'ert-ai-chip--warning');
+                } else {
+                    multiPassRow.chipEl.setText('Not needed');
+                    multiPassRow.chipEl.addClass('ert-ai-chip--muted');
+                }
+
+                // Segmented chip
+                clearChip(segmentedRow.chipEl);
+                if (mode === 'segmented') {
+                    segmentedRow.chipEl.setText('Forcing split');
+                    segmentedRow.chipEl.addClass('ert-ai-chip--success');
+                } else {
+                    segmentedRow.chipEl.setText('Off');
+                    segmentedRow.chipEl.addClass('ert-ai-chip--muted');
+                }
+
+                // Near-limit indicator (show whenever >70%, regardless of fit)
+                nearLimitEl.toggleClass('ert-settings-hidden', !nearLimit);
             });
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);

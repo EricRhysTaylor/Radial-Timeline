@@ -29,7 +29,7 @@ describe('AI settings models table', () => {
 
     it('keeps gossamer evidence defaulting to auto body-first behavior', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
-        expect(source.includes("dropdown.addOption('auto', 'Auto (scene bodies first)')")).toBe(true);
+        expect(source.includes("dropdown.addOption('auto', 'Auto')")).toBe(true);
         expect(source.includes('auto summary fallback')).toBe(true);
         expect(source.includes('Summaries scale better for large manuscripts.')).toBe(false);
     });
@@ -55,7 +55,7 @@ describe('AI settings models table', () => {
         expect(source.includes('Large Manuscript Handling')).toBe(true);
         expect(source.includes('Execution Preference')).toBe(true);
         expect(source.includes('singlePassOnly')).toBe(true);
-        expect(source.includes('ert-ai-analysis-mode-question-divider')).toBe(true);
+        expect(source.includes('ert-ai-status-grid')).toBe(true);
     });
 
     it('renders provider key status states without saved-not-tested phrasing', () => {

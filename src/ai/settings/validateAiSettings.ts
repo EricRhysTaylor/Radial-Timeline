@@ -62,7 +62,10 @@ export function validateAiSettings(input?: AiSettingsV1 | null): AiSettingsValid
     const incomingPackaging = typeof rawAnalysisPackaging === 'string'
         ? rawAnalysisPackaging
         : legacyAnalysisMethod;
-    value.analysisPackaging = incomingPackaging === 'singlePassOnly' ? 'singlePassOnly' : 'automatic';
+    value.analysisPackaging =
+        incomingPackaging === 'singlePassOnly' ? 'singlePassOnly'
+        : incomingPackaging === 'segmented' ? 'segmented'
+        : 'automatic';
     const legacyCleanup = value as unknown as Record<string, unknown>;
     if ('analysisMethod' in legacyCleanup) {
         delete legacyCleanup.analysisMethod;
