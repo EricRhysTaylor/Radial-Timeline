@@ -882,7 +882,6 @@ type CorpusCcSlot = {
     icon: SVGGElement;
     iconOuter: SVGCircleElement;
     iconInner: SVGCircleElement;
-    fold: SVGPathElement;
 };
 
 type CorpusCcHeader = {
@@ -1652,23 +1651,45 @@ export class InquiryView extends ItemView {
 
         const activeProvider = (this.plugin.settings.defaultAiProvider || 'openai') as EngineProvider;
         const providers: EngineProvider[] = ['anthropic', 'gemini', 'openai', 'local'];
+
+        const contextQuestion = this.getEngineContextQuestion() ?? this.getCurrentPromptQuestion();
+        const payloadSummary = this.buildEnginePayloadSummary(contextQuestion);
+        const readinessUi = this.buildReadinessUiState(contextQuestion);
+
+        // Use the policy-resolved model to determine "Active" badge.
+        // When the policy engine selects a different model than the one in settings
+        // (e.g. settings has Opus but policy picks Sonnet for capability fit),
+        // show the policy-resolved model on the active provider's card.
+        // Falls back to provider-only match when no model is resolved
+        // (e.g. capability floor not met).
+        const resolvedModel = readinessUi.model;
+        const resolvedEngineProvider: EngineProvider | undefined = resolvedModel
+            ? (resolvedModel.provider === 'google' ? 'gemini'
+                : resolvedModel.provider === 'ollama' ? 'local'
+                : resolvedModel.provider as EngineProvider)
+            : undefined;
+
         const choices: EngineChoice[] = providers.map(provider => {
-            const modelId = getProviderModelId(provider);
+            const settingsModelId = getProviderModelId(provider);
             const availability = this.getProviderAvailability(provider);
+            const isActive = resolvedEngineProvider
+                ? provider === resolvedEngineProvider
+                : provider === activeProvider;
+            // Show the policy-resolved model on the active card when it differs
+            // from the settings model (policy override).
+            const modelId = (isActive && resolvedModel && resolvedModel.id !== settingsModelId)
+                ? resolvedModel.id
+                : settingsModelId;
             return {
                 provider,
                 providerLabel: this.getInquiryProviderLabel(provider),
                 modelId,
                 modelLabel: getModelDisplayName(modelId),
-                isActive: provider === activeProvider,
+                isActive,
                 enabled: availability.enabled,
                 disabledReason: availability.reason
             };
         });
-
-        const contextQuestion = this.getEngineContextQuestion() ?? this.getCurrentPromptQuestion();
-        const payloadSummary = this.buildEnginePayloadSummary(contextQuestion);
-        const readinessUi = this.buildReadinessUiState(contextQuestion);
         this.lastReadinessUiState = readinessUi;
         const tokenTier: TokenTier = readinessUi.readiness.pressureTone === 'red'
             ? 'red'
@@ -4299,7 +4320,6 @@ export class InquiryView extends ItemView {
 
         this.minimapBackboneGroup?.removeAttribute('display');
         const tickCorner = Math.max(2, Math.round(tickWidth * 0.18));
-        const foldSize = Math.max(3, Math.round(tickWidth * 0.5));
         const markerWidth = Math.max(3, Math.round(tickWidth * 0.18));
         const markerHeight = Math.min(8, Math.max(6, Math.round(tickHeight * 0.35)));
         const markerInsetX = 4;
@@ -4348,11 +4368,6 @@ export class InquiryView extends ItemView {
                 marker.setAttribute('rx', '1');
                 marker.setAttribute('ry', '1');
                 tick.appendChild(marker);
-            } else {
-                const fold = this.createSvgElement('path');
-                fold.classList.add('ert-inquiry-minimap-tick-fold');
-                fold.setAttribute('d', `M ${tickWidth - foldSize} 0 L ${tickWidth} 0 L ${tickWidth} ${foldSize} Z`);
-                tick.appendChild(fold);
             }
             const label = item.displayLabel;
             const fullLabel = this.getMinimapItemTitle(item) || label;
@@ -4931,7 +4946,6 @@ export class InquiryView extends ItemView {
         }
 
         const corner = Math.max(2, Math.round(layout.pageWidth * 0.125));
-        const foldSize = Math.max(4, Math.round(layout.pageWidth * 0.5));
 
         const totalEntries = entries.length;
         while (this.ccSlots.length < totalEntries) {
@@ -4949,12 +4963,9 @@ export class InquiryView extends ItemView {
             iconInner.classList.add('ert-inquiry-cc-cell-icon-inner');
             icon.appendChild(iconOuter);
             icon.appendChild(iconInner);
-            const fold = this.createSvgElement('path');
-            fold.classList.add('ert-inquiry-cc-cell-fold');
             group.appendChild(base);
             group.appendChild(fill);
             group.appendChild(border);
-            group.appendChild(fold);
             group.appendChild(icon);
             this.registerDomEvent(group as unknown as HTMLElement, 'click', (evt) => {
                 if (this.state.isRunning) return;
@@ -4971,7 +4982,7 @@ export class InquiryView extends ItemView {
                 }
                 this.handleCorpusItemToggle(entryKey);
             });
-            this.ccSlots.push({ group, base, fill, border, icon, iconOuter, iconInner, fold });
+            this.ccSlots.push({ group, base, fill, border, icon, iconOuter, iconInner });
         }
 
         this.ccSlots.forEach((slot, idx) => {
@@ -4999,7 +5010,6 @@ export class InquiryView extends ItemView {
             slot.border.setAttribute('y', '0');
             slot.border.setAttribute('rx', String(corner));
             slot.border.setAttribute('ry', String(corner));
-            slot.fold.setAttribute('d', `M ${layout.pageWidth - foldSize} 0 L ${layout.pageWidth} 0 L ${layout.pageWidth} ${foldSize} Z`);
             const iconCenterX = Math.round(layout.pageWidth / 2);
             const iconCenterY = Math.round(layout.pageHeight / 2) + CC_CELL_ICON_OFFSET;
             const maxRadius = Math.max(2, (layout.pageWidth - 2) / 2);
