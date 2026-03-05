@@ -109,7 +109,7 @@ const MINIMAP_GROUP_Y = -520;
 const MINIMAP_TOKEN_CAP_Y = 7;
 const MINIMAP_TOKEN_CAP_BAR_HEIGHT = 4;
 const MINIMAP_TOKEN_CAP_ENDCAP_HEIGHT = 10;
-const MINIMAP_TOKEN_CAP_SPLIT_TICK_HEIGHT = 4;
+const MINIMAP_TOKEN_CAP_SPLIT_TICK_HEIGHT = MINIMAP_TOKEN_CAP_ENDCAP_HEIGHT;
 const MINIMAP_TOKEN_CAP_SPLIT_TICK_WIDTH = 2;
 const PREVIEW_PANEL_WIDTH = 640;
 const PREVIEW_PANEL_Y = -390;
@@ -1115,6 +1115,7 @@ export class InquiryView extends ItemView {
     private navNextButton?: SVGGElement;
     private navPrevIcon?: SVGUseElement;
     private navNextIcon?: SVGUseElement;
+    private navSessionLabel?: SVGTextElement;
     private helpToggleButton?: SVGGElement;
     private helpTipsEnabled = false;
     private iconSymbols = new Set<string>();
@@ -1405,6 +1406,17 @@ export class InquiryView extends ItemView {
         this.navNextIcon = this.navNextButton.querySelector('.ert-inquiry-icon') as SVGUseElement;
         this.registerDomEvent(this.navPrevButton as unknown as HTMLElement, 'click', () => this.shiftFocus(-1));
         this.registerDomEvent(this.navNextButton as unknown as HTMLElement, 'click', () => this.shiftFocus(1));
+
+        // Session timestamp label — to the right of nav arrows, same gap (10px).
+        // Nav buttons: prev at x=0 (w=44), next at x=54 (w=44) → next ends at x=98. Gap = 10.
+        this.navSessionLabel = this.createSvgElement('text') as unknown as SVGTextElement;
+        this.navSessionLabel.classList.add('ert-inquiry-nav-session-label');
+        this.navSessionLabel.setAttribute('x', '108');
+        this.navSessionLabel.setAttribute('y', '4');  // vertical center of 44px buttons at y=-18
+        this.navSessionLabel.setAttribute('dominant-baseline', 'central');
+        this.navSessionLabel.setAttribute('text-anchor', 'start');
+        this.navSessionLabel.textContent = '';
+        navGroup.appendChild(this.navSessionLabel);
 
         this.buildBriefingPanel();
         this.buildEnginePanel();
@@ -3898,6 +3910,7 @@ export class InquiryView extends ItemView {
         this.updateFindingsIndicators();
         this.updateFooterStatus();
         this.updateNavigationIcons();
+        this.updateNavSessionLabel();
         this.updateRunningState();
         this.updateBriefingButtonState();
         this.refreshBriefingPanel();
@@ -4298,7 +4311,7 @@ export class InquiryView extends ItemView {
             this.minimapTokenCapSplitGroup.classList.add('ert-hidden');
         }
         const reuseBandY = MINIMAP_TOKEN_CAP_Y + MINIMAP_TOKEN_CAP_BAR_HEIGHT
-                           + MINIMAP_TOKEN_CAP_SPLIT_TICK_HEIGHT; // 7+4+4 = 15
+                           + MINIMAP_TOKEN_CAP_SPLIT_TICK_HEIGHT; // 7+4+10 = 21
         if (this.minimapReuseBand) {
             this.minimapReuseBand.setAttribute('x1', String(baselineStart));
             this.minimapReuseBand.setAttribute('y1', String(reuseBandY));
@@ -6347,7 +6360,10 @@ export class InquiryView extends ItemView {
         this.applyBackboneStopColors(gradientColors, shineColors);
     }
 
-    private updateTokenCapPassSplits(totalPassCount: number): void {
+    private updateTokenCapPassSplits(
+        totalPassCount: number,
+        overCapacityTone?: 'amber' | 'red'
+    ): void {
         if (!this.minimapTokenCapSplitGroup || !this.minimapLayout) return;
         this.clearSvgChildren(this.minimapTokenCapSplitGroup);
         if (totalPassCount <= 1) {
@@ -6357,13 +6373,19 @@ export class InquiryView extends ItemView {
 
         const baselineStart = Math.round(this.minimapLayout.startX);
         const length = this.minimapLayout.length;
-        const splitY = MINIMAP_TOKEN_CAP_Y + MINIMAP_TOKEN_CAP_BAR_HEIGHT;
+        // Position + appearance matches tokencap endcap ticks.
+        const splitY = MINIMAP_TOKEN_CAP_Y;
         const tickHalfWidth = MINIMAP_TOKEN_CAP_SPLIT_TICK_WIDTH / 2;
+        const stateClass = overCapacityTone === 'amber' ? 'is-warning-capacity'
+            : overCapacityTone === 'red' ? 'is-over-capacity'
+            : undefined;
         for (let index = 1; index < totalPassCount; index += 1) {
             const ratio = index / totalPassCount;
             const centerX = baselineStart + (length * ratio);
             const splitTick = this.createSvgElement('rect');
+            splitTick.classList.add('ert-inquiry-minimap-tokencap-endcap');
             splitTick.classList.add('ert-inquiry-minimap-tokencap-split');
+            if (stateClass) splitTick.classList.add(stateClass);
             splitTick.setAttribute('x', (centerX - tickHalfWidth).toFixed(2));
             splitTick.setAttribute('y', String(splitY));
             splitTick.setAttribute('width', String(MINIMAP_TOKEN_CAP_SPLIT_TICK_WIDTH));
@@ -6395,7 +6417,10 @@ export class InquiryView extends ItemView {
         this.minimapTokenCapEndCap?.classList.toggle(endcapStateClass, isOverCapacity);
         this.minimapTokenCapStartCap?.classList.remove(inverseStateClass);
         this.minimapTokenCapEndCap?.classList.remove(inverseStateClass);
-        this.updateTokenCapPassSplits(isOverCapacity ? Math.max(1, totalPassCount) : 1);
+        this.updateTokenCapPassSplits(
+            isOverCapacity ? Math.max(1, totalPassCount) : 1,
+            isOverCapacity ? overCapacityTone : undefined
+        );
         this.updateTokenCapCachedOverlay(fillRatio);
     }
 
@@ -6694,6 +6719,31 @@ export class InquiryView extends ItemView {
         addTooltipData(this.navNextButton, this.balanceTooltipText(nextTooltip), 'top');
         this.navPrevButton.setAttribute('aria-label', prevTooltip);
         this.navNextButton.setAttribute('aria-label', nextTooltip);
+    }
+
+    private updateNavSessionLabel(): void {
+        if (!this.navSessionLabel) return;
+        const sessionId = this.state.activeSessionId;
+        if (!sessionId) {
+            this.navSessionLabel.textContent = 'Pending';
+            return;
+        }
+        const session = this.sessionStore.peekSession(sessionId);
+        if (!session) {
+            this.navSessionLabel.textContent = 'Pending';
+            return;
+        }
+        const timestamp = session.createdAt || session.lastAccessed;
+        const date = new Date(timestamp);
+        const formatted = date.toLocaleString(undefined, {
+            month: 'short',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+        });
+        // Compact: "Mar 5, 3:45 PM" → lowercase AM/PM, no spaces
+        this.navSessionLabel.textContent = formatted.replace(/\s+(AM|PM)/i, (_, m) => m.toLowerCase());
     }
 
     private updateRunningState(): void {
