@@ -10,6 +10,7 @@ import { callGeminiApi, type GeminiApiResponse } from './geminiApi';
 import { sanitizeProviderArgs, type AiProvider, type ProviderCallArgs as ProviderCallArgsBase } from './providerCapabilities';
 import { buildProviderRequestPayload } from './requestPayload';
 import { classifyProviderError, type AiStatus } from './providerErrors';
+import type { SourceCitation } from '../ai/types';
 import { warnLegacyAccess } from './legacyAccessGuard';
 import { getCredential } from '../ai/credentials/credentials';
 import { CACHE_BREAK_DELIMITER } from '../ai/prompts/composeEnvelope';
@@ -39,6 +40,7 @@ export interface ProviderResult<T = unknown> {
   retryCount?: number;
   cacheUsed?: boolean;
   cacheStatus?: 'hit' | 'created';
+  citations?: SourceCitation[];
 }
 
 export async function callProvider(plugin: RadialTimelinePlugin, args: ProviderCallArgs): Promise<ProviderResult> {
@@ -63,7 +65,10 @@ export async function callProvider(plugin: RadialTimelinePlugin, args: ProviderC
     top_p: args.top_p,
     responseFormat: args.responseFormat,
     jsonSchema: args.jsonSchema,
-    disableThinking: args.disableThinking
+    disableThinking: args.disableThinking,
+    thinkingBudgetTokens: args.thinkingBudgetTokens,
+    citationsEnabled: args.citationsEnabled,
+    evidenceDocuments: args.evidenceDocuments
   };
   if (provider === 'local' && !rawArgs.responseFormat) {
     rawArgs.responseFormat = { type: 'json_object' };
@@ -87,9 +92,12 @@ export async function callProvider(plugin: RadialTimelinePlugin, args: ProviderC
         resolvedMaxTokens,
         true,
         callArgs.temperature,
-        callArgs.top_p
+        callArgs.top_p,
+        callArgs.thinkingBudgetTokens,
+        callArgs.citationsEnabled,
+        callArgs.evidenceDocuments
       );
-      return { ...buildProviderResult(provider, requestedModelId, resp), requestPayload };
+      return { ...buildProviderResult(provider, requestedModelId, resp), requestPayload, citations: resp.citations };
     }
     if (provider === 'gemini') {
       const apiKey = await getCredential(plugin, 'google');

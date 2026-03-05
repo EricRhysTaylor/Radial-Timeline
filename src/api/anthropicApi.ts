@@ -14,8 +14,27 @@ export type AnthropicTextBlock = {
   cache_control?: { type: 'ephemeral' };
 };
 
+export type AnthropicDocumentBlock = {
+  type: 'document';
+  source: { type: 'text'; media_type: 'text/plain'; data: string };
+  title?: string;
+  citations: { enabled: true };
+  cache_control?: { type: 'ephemeral' };
+};
+
+export type AnthropicContentBlock = AnthropicTextBlock | AnthropicDocumentBlock;
+
+interface AnthropicResponseCitation {
+  type: string;
+  cited_text: string;
+  document_index: number;
+  document_title?: string;
+  start_char_index?: number;
+  end_char_index?: number;
+}
+
 interface AnthropicSuccessResponse {
-  content: { type: string; text: string }[];
+  content: { type: string; text?: string; thinking?: string; citations?: AnthropicResponseCitation[] }[];
   usage?: { input_tokens: number; output_tokens: number };
 }
 interface AnthropicErrorResponse {
@@ -27,6 +46,8 @@ export interface AnthropicApiResponse {
   content: string | null;
   responseData: unknown;
   error?: string;
+  citations?: { citedText: string; documentIndex: number; documentTitle?: string;
+                startCharIndex?: number; endCharIndex?: number }[];
 }
 export async function callAnthropicApi(
   apiKey: string,
@@ -36,7 +57,10 @@ export async function callAnthropicApi(
   maxTokens: number = 4000,
   internalAdapterAccess?: boolean,
   temperature?: number,
-  topP?: number
+  topP?: number,
+  thinkingBudgetTokens?: number,
+  citationsEnabled?: boolean,
+  evidenceDocuments?: { title: string; content: string }[]
 ): Promise<AnthropicApiResponse> {
   warnLegacyAccess('anthropicApi.callAnthropicApi', internalAdapterAccess);
   const apiUrl = 'https://api.anthropic.com/v1/messages';
@@ -49,34 +73,70 @@ export async function callAnthropicApi(
 
   // Always use content blocks for Anthropic (foundation for caching, citations, extended thinking)
   const delimIndex = userPrompt.indexOf(CACHE_BREAK_DELIMITER);
-  let userContent: AnthropicTextBlock[];
+  let userContent: AnthropicContentBlock[];
   if (delimIndex > 0) {
     const stableText = userPrompt.slice(0, delimIndex).trimEnd();
     const volatileText = userPrompt.slice(delimIndex + CACHE_BREAK_DELIMITER.length).trimStart();
-    userContent = [
-      { type: 'text', text: stableText, cache_control: { type: 'ephemeral' } },
-      { type: 'text', text: volatileText },
-    ];
+
+    if (citationsEnabled && evidenceDocuments?.length) {
+      // Per-scene document blocks with citations enabled.
+      // Instructions/rules stay in the stable text block; evidence goes in document blocks.
+      // cache_control on last document only — caches entire evidence prefix.
+      const docBlocks: AnthropicContentBlock[] = evidenceDocuments.map(
+        (doc, i) => ({
+          type: 'document' as const,
+          source: { type: 'text' as const, media_type: 'text/plain' as const, data: doc.content },
+          title: doc.title,
+          citations: { enabled: true as const },
+          ...(i === evidenceDocuments.length - 1
+            ? { cache_control: { type: 'ephemeral' as const } } : {})
+        })
+      );
+      userContent = [
+        { type: 'text', text: stableText },
+        ...docBlocks,
+        { type: 'text', text: volatileText },
+      ];
+    } else {
+      // Standard caching path (no citations)
+      userContent = [
+        { type: 'text', text: stableText, cache_control: { type: 'ephemeral' } },
+        { type: 'text', text: volatileText },
+      ];
+    }
   } else {
     userContent = [{ type: 'text', text: userPrompt }];
   }
 
+  const thinkingEnabled = typeof thinkingBudgetTokens === 'number' && thinkingBudgetTokens >= 1024;
+  const effectiveMaxTokens = thinkingEnabled ? maxTokens + thinkingBudgetTokens : maxTokens;
+
   const requestBody: {
     model: string;
-    messages: { role: string; content: AnthropicTextBlock[] }[];
+    messages: { role: string; content: AnthropicContentBlock[] }[];
     max_tokens: number;
     system?: AnthropicTextBlock[];
     temperature?: number;
     top_p?: number;
-  } = { model: modelId, messages: [{ role: 'user', content: userContent }], max_tokens: maxTokens };
+    thinking?: { type: 'enabled'; budget_tokens: number };
+  } = { model: modelId, messages: [{ role: 'user', content: userContent }], max_tokens: effectiveMaxTokens };
   if (systemPrompt) {
     requestBody.system = [{ type: 'text', text: systemPrompt }];
   }
-  if (typeof temperature === 'number') {
+  // When thinking is enabled, Anthropic requires temperature=1 (omit to let API default).
+  if (!thinkingEnabled && typeof temperature === 'number') {
     requestBody.temperature = temperature;
   }
   if (typeof topP === 'number') {
     requestBody.top_p = topP;
+  }
+  if (thinkingEnabled) {
+    requestBody.thinking = { type: 'enabled', budget_tokens: thinkingBudgetTokens };
+  }
+
+  const betaHeaders = ['prompt-caching-2024-07-31'];
+  if (thinkingEnabled) {
+    betaHeaders.push('output-128k-2025-02-19');
   }
 
   let responseData: unknown;
@@ -86,7 +146,7 @@ export async function callAnthropicApi(
       method: 'POST',
       headers: {
         'anthropic-version': apiVersion,
-        'anthropic-beta': 'prompt-caching-2024-07-31',
+        'anthropic-beta': betaHeaders.join(','),
         'x-api-key': apiKey,
         'Content-Type': 'application/json',
       },
@@ -100,8 +160,23 @@ export async function callAnthropicApi(
       return { success: false, content: null, responseData, error: msg };
     }
     const success = responseData as AnthropicSuccessResponse;
-    const content = success?.content?.[0]?.text?.trim();
-    if (content) return { success: true, content, responseData };
+    // Skip thinking blocks — concatenate all text content blocks.
+    // Handles both single-block (non-citation) and multi-block (citation) responses.
+    const textBlocks = (success?.content ?? []).filter(
+      (b: { type: string }) => b.type === 'text'
+    ) as { type: string; text?: string; citations?: AnthropicResponseCitation[] }[];
+    const content = textBlocks.map(b => b.text ?? '').join('').trim();
+    const responseCitations = textBlocks.flatMap(b => b.citations ?? []);
+    const mappedCitations = responseCitations.length > 0
+      ? responseCitations.map(c => ({
+          citedText: c.cited_text,
+          documentIndex: c.document_index,
+          documentTitle: c.document_title,
+          startCharIndex: c.start_char_index,
+          endCharIndex: c.end_char_index
+        }))
+      : undefined;
+    if (content) return { success: true, content, responseData, citations: mappedCitations };
     return { success: false, content: null, responseData, error: 'Invalid response structure from Anthropic.' };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

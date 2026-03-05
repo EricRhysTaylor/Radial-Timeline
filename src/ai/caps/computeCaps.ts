@@ -15,6 +15,7 @@ export interface ComputedCaps {
     retryPolicy: RetryPolicy;
     requestPerMinute: number;
     thinkingBudgetTokens?: number;
+    citationsEnabled?: boolean;
 }
 
 export interface ComputeCapsInput {
@@ -38,6 +39,34 @@ function resolveFeatureMultiplier(feature: string): number {
     if (normalized.includes('apr')) return 0.5;
     if (normalized.includes('runtime')) return 0.4;
     return 0.7;
+}
+
+/** Extended thinking budget resolver.
+ *  First ship: Anthropic + Inquiry + deep only. Returns undefined when disabled. */
+function resolveThinkingBudget(
+    provider: AIProviderId,
+    feature: string,
+    reasoningDepth?: 'standard' | 'deep'
+): number | undefined {
+    if (provider !== 'anthropic') return undefined;
+    if (reasoningDepth !== 'deep') return undefined;
+    if (!feature.toLowerCase().includes('inquiry')) return undefined;
+    return 4096;
+}
+
+/** Citations resolver.
+ *  First ship: Anthropic + Inquiry only.
+ *  Note: citations are API-incompatible with Anthropic structured outputs
+ *  (output_config.format). Today Inquiry uses text prompting with JSON instructions,
+ *  so this is safe. If structured JSON output is ever added for Anthropic, this
+ *  resolver must also gate on that. */
+function resolveCitationsEnabled(
+    provider: AIProviderId,
+    feature: string
+): boolean {
+    if (provider !== 'anthropic') return false;
+    if (!feature.toLowerCase().includes('inquiry')) return false;
+    return true;
 }
 
 function resolveDefaultTemperature(feature: string, reasoningDepth?: 'standard' | 'deep'): number {
@@ -91,9 +120,18 @@ export function computeCaps(input: ComputeCapsInput): ComputedCaps {
         retryMalformedJson: true
     };
 
-    const temperature = typeof input.overrides?.temperature === 'number'
-        ? input.overrides.temperature
-        : resolveDefaultTemperature(input.feature, input.overrides?.reasoningDepth);
+    const thinkingBudgetTokens = resolveThinkingBudget(
+        input.provider, input.feature, input.overrides?.reasoningDepth
+    );
+
+    // When extended thinking is enabled, Anthropic requires temperature=1.
+    const temperature = thinkingBudgetTokens
+        ? 1
+        : (typeof input.overrides?.temperature === 'number'
+            ? input.overrides.temperature
+            : resolveDefaultTemperature(input.feature, input.overrides?.reasoningDepth));
+
+    const citationsEnabled = resolveCitationsEnabled(input.provider, input.feature) || undefined;
 
     return {
         maxInputTokens,
@@ -101,6 +139,8 @@ export function computeCaps(input: ComputeCapsInput): ComputedCaps {
         safeChunkThreshold,
         temperature,
         retryPolicy,
-        requestPerMinute: tierCaps.requestPerMinute
+        requestPerMinute: tierCaps.requestPerMinute,
+        thinkingBudgetTokens,
+        citationsEnabled
     };
 }

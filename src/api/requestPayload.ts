@@ -1,7 +1,7 @@
 // DEPRECATED: Legacy provider payload shim; route new call paths through aiClient.
 import type { AiProvider, ProviderCallArgs } from './providerCapabilities';
 import { modelSupportsSystemRole } from './providerCapabilities';
-import type { AnthropicTextBlock } from './anthropicApi';
+import type { AnthropicTextBlock, AnthropicContentBlock } from './anthropicApi';
 import { CACHE_BREAK_DELIMITER } from '../ai/prompts/composeEnvelope';
 
 type OpenAiPayload = {
@@ -15,11 +15,12 @@ type OpenAiPayload = {
 
 type AnthropicPayload = {
     model: string;
-    messages: { role: string; content: AnthropicTextBlock[] }[];
+    messages: { role: string; content: AnthropicContentBlock[] }[];
     max_tokens: number;
     system?: AnthropicTextBlock[];
     temperature?: number;
     top_p?: number;
+    thinking?: { type: 'enabled'; budget_tokens: number };
 };
 
 type GeminiPayload = {
@@ -44,14 +45,34 @@ export function buildProviderRequestPayload(
         const resolvedMaxTokens = typeof callArgs.maxTokens === 'number' ? callArgs.maxTokens : 4000;
         // Always use content blocks for Anthropic (mirrors anthropicApi.ts)
         const delimIndex = callArgs.userPrompt.indexOf(CACHE_BREAK_DELIMITER);
-        let userContent: AnthropicTextBlock[];
+        let userContent: AnthropicContentBlock[];
         if (delimIndex > 0) {
             const stableText = callArgs.userPrompt.slice(0, delimIndex).trimEnd();
             const volatileText = callArgs.userPrompt.slice(delimIndex + CACHE_BREAK_DELIMITER.length).trimStart();
-            userContent = [
-                { type: 'text', text: stableText, cache_control: { type: 'ephemeral' } },
-                { type: 'text', text: volatileText },
-            ];
+
+            if (callArgs.citationsEnabled && callArgs.evidenceDocuments?.length) {
+                // Per-scene document blocks with citations (mirrors anthropicApi.ts)
+                const docBlocks: AnthropicContentBlock[] = callArgs.evidenceDocuments.map(
+                    (doc, i) => ({
+                        type: 'document' as const,
+                        source: { type: 'text' as const, media_type: 'text/plain' as const, data: doc.content },
+                        title: doc.title,
+                        citations: { enabled: true as const },
+                        ...(i === callArgs.evidenceDocuments!.length - 1
+                            ? { cache_control: { type: 'ephemeral' as const } } : {})
+                    })
+                );
+                userContent = [
+                    { type: 'text', text: stableText },
+                    ...docBlocks,
+                    { type: 'text', text: volatileText },
+                ];
+            } else {
+                userContent = [
+                    { type: 'text', text: stableText, cache_control: { type: 'ephemeral' } },
+                    { type: 'text', text: volatileText },
+                ];
+            }
         } else {
             userContent = [{ type: 'text', text: callArgs.userPrompt }];
         }
@@ -68,6 +89,10 @@ export function buildProviderRequestPayload(
         }
         if (typeof callArgs.top_p === 'number') {
             payload.top_p = callArgs.top_p;
+        }
+        if (typeof callArgs.thinkingBudgetTokens === 'number' && callArgs.thinkingBudgetTokens >= 1024) {
+            payload.thinking = { type: 'enabled', budget_tokens: callArgs.thinkingBudgetTokens };
+            payload.max_tokens = payload.max_tokens + callArgs.thinkingBudgetTokens;
         }
         return payload;
     }

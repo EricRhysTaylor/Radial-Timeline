@@ -4,7 +4,7 @@ import type RadialTimelinePlugin from '../../main';
 import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { INQUIRY_MAX_OUTPUT_TOKENS, INQUIRY_SCHEMA_VERSION } from '../constants';
 import { PROVIDER_MAX_OUTPUT_TOKENS } from '../../constants/tokenLimits';
-import type { InquiryAiStatus, InquiryConfidence, InquiryFinding, InquiryResult, InquirySeverity } from '../state';
+import type { InquiryAiStatus, InquiryCitation, InquiryConfidence, InquiryFinding, InquiryResult, InquirySeverity } from '../state';
 import type {
     CorpusManifestEntry,
     InquiryAiProvider,
@@ -103,6 +103,7 @@ type ProviderResult = {
     analysisPackaging?: AnalysisPackaging;
     executionPassCount?: number;
     packagingTriggerReason?: string;
+    citations?: InquiryCitation[];
 };
 
 export class InquiryRunnerService implements InquiryRunner {
@@ -121,7 +122,7 @@ export class InquiryRunnerService implements InquiryRunner {
     async runWithTrace(
         input: InquiryRunnerInput
     ): Promise<{ result: InquiryResult; trace: InquiryRunTrace }> {
-        const { trace } = await this.buildInitialTrace(input);
+        const { trace, evidenceBlocks } = await this.buildInitialTrace(input);
         const { systemPrompt, userPrompt } = trace;
 
         const jsonSchema = this.getJsonSchema();
@@ -137,7 +138,8 @@ export class InquiryRunnerService implements InquiryRunner {
                 jsonSchema,
                 temperature,
                 maxTokens,
-                input.questionText
+                input.questionText,
+                evidenceBlocks
             );
             if (response.sanitizationNotes?.length) {
                 trace.sanitizationNotes.push(...response.sanitizationNotes);
@@ -186,7 +188,7 @@ export class InquiryRunnerService implements InquiryRunner {
 
             try {
                 const parsed = this.parseResponse(response.content);
-                return { result: this.buildResult(input, parsed, this.getAiMetaFromResponse(response)), trace };
+                return { result: this.buildResult(input, parsed, this.getAiMetaFromResponse(response), response.citations), trace };
             } catch (parseError) {
                 const message = parseError instanceof Error ? parseError.message : String(parseError);
                 trace.notes.push(`Parse error: ${message}`);
@@ -206,7 +208,8 @@ export class InquiryRunnerService implements InquiryRunner {
                             jsonSchema,
                             temperature,
                             retryMaxTokens,
-                            input.questionText
+                            input.questionText,
+                            evidenceBlocks
                         );
                         if (retryResponse.sanitizationNotes?.length) {
                             trace.sanitizationNotes.push(...retryResponse.sanitizationNotes);
@@ -249,7 +252,7 @@ export class InquiryRunnerService implements InquiryRunner {
                         try {
                             const retryParsed = this.parseResponse(retryResponse.content);
                             trace.notes.push('Parse retry succeeded.');
-                            return { result: this.buildResult(input, retryParsed, this.getAiMetaFromResponse(retryResponse)), trace };
+                            return { result: this.buildResult(input, retryParsed, this.getAiMetaFromResponse(retryResponse), retryResponse.citations), trace };
                         } catch (retryParseError) {
                             const retryMessage = retryParseError instanceof Error ? retryParseError.message : String(retryParseError);
                             trace.notes.push(`Parse retry failed: ${retryMessage}`);
@@ -286,7 +289,7 @@ export class InquiryRunnerService implements InquiryRunner {
     async runOmnibusWithTrace(
         input: InquiryOmnibusInput
     ): Promise<{ results: InquiryResult[]; trace: InquiryRunTrace; rawResponse?: RawOmnibusResponse | null }> {
-        const { trace } = await this.buildOmnibusTrace(input);
+        const { trace, evidenceBlocks } = await this.buildOmnibusTrace(input);
         const { systemPrompt, userPrompt } = trace;
 
         const jsonSchema = this.getOmnibusJsonSchema();
@@ -302,7 +305,8 @@ export class InquiryRunnerService implements InquiryRunner {
                 jsonSchema,
                 temperature,
                 maxTokens,
-                input.questions.map(question => question.question).join('\n')
+                input.questions.map(question => question.question).join('\n'),
+                evidenceBlocks
             );
             if (response.sanitizationNotes?.length) {
                 trace.sanitizationNotes.push(...response.sanitizationNotes);
@@ -355,7 +359,7 @@ export class InquiryRunnerService implements InquiryRunner {
                 const parsed = this.parseOmnibusResponse(response.content);
                 const aiMeta = this.getAiMetaFromResponse(response);
                 return {
-                    results: this.buildOmnibusResults(input, parsed, aiMeta, trace),
+                    results: this.buildOmnibusResults(input, parsed, aiMeta, trace, response.citations),
                     trace,
                     rawResponse: parsed
                 };
@@ -424,7 +428,7 @@ export class InquiryRunnerService implements InquiryRunner {
                             trace.notes.push('Parse retry succeeded.');
                             const aiMeta = this.getAiMetaFromResponse(retryResponse);
                             return {
-                                results: this.buildOmnibusResults(input, retryParsed, aiMeta, trace),
+                                results: this.buildOmnibusResults(input, retryParsed, aiMeta, trace, retryResponse.citations),
                                 trace,
                                 rawResponse: retryParsed
                             };
@@ -986,7 +990,8 @@ export class InquiryRunnerService implements InquiryRunner {
         jsonSchema: Record<string, unknown>,
         temperature: number,
         maxTokens: number,
-        userQuestion?: string
+        userQuestion?: string,
+        evidenceBlocks?: EvidenceBlock[]
     ): Promise<ProviderResult> {
         const aiClient = getAIClient(this.plugin);
         const analysisPackaging = this.getAnalysisPackaging();
@@ -1028,7 +1033,8 @@ export class InquiryRunnerService implements InquiryRunner {
             ai,
             jsonSchema,
             temperature,
-            maxTokens
+            maxTokens,
+            evidenceBlocks
         });
         run = this.withExecutionContext(run, {
             analysisPackaging,
@@ -1088,11 +1094,20 @@ export class InquiryRunnerService implements InquiryRunner {
             jsonSchema: Record<string, unknown>;
             temperature: number;
             maxTokens: number;
+            evidenceBlocks?: EvidenceBlock[];
         }
     ): Promise<AIRunResult> {
         const tokenEstimateInput = this.estimateTokensFromChars(
             (options.systemPrompt?.length ?? 0) + (options.userPrompt?.length ?? 0)
         );
+        // Map evidence blocks to evidence documents for provider-level citation support.
+        // Order is deterministic: matches the corpus assembly order from buildEvidenceBlocks().
+        const evidenceDocuments = options.evidenceBlocks?.length
+            ? options.evidenceBlocks.map(block => ({
+                title: block.label,
+                content: block.content
+            }))
+            : undefined;
         return aiClient.run({
             feature: 'InquiryMode',
             task: options.task,
@@ -1118,7 +1133,8 @@ export class InquiryRunnerService implements InquiryRunner {
                 reasoningDepth: 'deep',
                 jsonStrict: true
             },
-            tokenEstimateInput
+            tokenEstimateInput,
+            evidenceDocuments
         });
     }
 
@@ -1251,7 +1267,14 @@ export class InquiryRunnerService implements InquiryRunner {
             retryCount: run.retryCount,
             analysisPackaging: run.advancedContext?.analysisPackaging,
             executionPassCount: run.advancedContext?.executionPassCount,
-            packagingTriggerReason: run.advancedContext?.packagingTriggerReason
+            packagingTriggerReason: run.advancedContext?.packagingTriggerReason,
+            citations: run.citations?.map(c => ({
+                citedText: c.citedText,
+                documentIndex: c.documentIndex,
+                documentTitle: c.documentTitle,
+                startCharIndex: c.startCharIndex,
+                endCharIndex: c.endCharIndex
+            }))
         };
     }
 
@@ -1412,7 +1435,8 @@ export class InquiryRunnerService implements InquiryRunner {
     private buildResult(
         input: InquiryRunnerInput,
         parsed: RawInquiryResponse,
-        aiMeta: Pick<InquiryResult, 'aiProvider' | 'aiModelRequested' | 'aiModelResolved' | 'aiStatus' | 'aiReason'>
+        aiMeta: Pick<InquiryResult, 'aiProvider' | 'aiModelRequested' | 'aiModelResolved' | 'aiStatus' | 'aiReason'>,
+        citations?: InquiryCitation[]
     ): InquiryResult {
         const verdict = parsed.verdict || {};
         const flow = this.normalizeScore(verdict.flow);
@@ -1458,7 +1482,8 @@ export class InquiryRunnerService implements InquiryRunner {
             },
             findings: mappedFindings,
             corpusFingerprint: input.corpus.fingerprint,
-            ...aiMeta
+            ...aiMeta,
+            ...(citations?.length ? { citations } : {})
         };
     }
 
@@ -1466,7 +1491,8 @@ export class InquiryRunnerService implements InquiryRunner {
         input: InquiryOmnibusInput,
         parsed: RawOmnibusResponse,
         aiMeta: Pick<InquiryResult, 'aiProvider' | 'aiModelRequested' | 'aiModelResolved' | 'aiStatus' | 'aiReason'>,
-        trace: InquiryRunTrace
+        trace: InquiryRunTrace,
+        citations?: InquiryCitation[]
     ): InquiryResult[] {
         const results = Array.isArray(parsed.results) ? parsed.results : [];
         const resultsById = new Map<string, RawOmnibusQuestionResult>();
@@ -1492,7 +1518,7 @@ export class InquiryRunnerService implements InquiryRunner {
                 built.push(this.buildOmnibusMissingResult(questionInput, aiMeta));
                 return;
             }
-            built.push(this.buildResult(questionInput, raw, aiMeta));
+            built.push(this.buildResult(questionInput, raw, aiMeta, citations));
         });
 
         return built;
@@ -1688,7 +1714,7 @@ export class InquiryRunnerService implements InquiryRunner {
             const recovered = this.parseResponse(response.content);
             trace.notes.push(`${context}: recovered from invalid_response via local JSON extraction.`);
             const recoveredMeta = this.withRecoveredInvalidResponseMeta(this.getAiMetaFromResponse(response));
-            return this.buildResult(input, recovered, recoveredMeta);
+            return this.buildResult(input, recovered, recoveredMeta, response.citations);
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
             trace.notes.push(`${context}: invalid_response recovery failed (${message}).`);
@@ -1708,7 +1734,7 @@ export class InquiryRunnerService implements InquiryRunner {
             trace.notes.push(`${context}: recovered omnibus response from invalid_response via local JSON extraction.`);
             const recoveredMeta = this.withRecoveredInvalidResponseMeta(this.getAiMetaFromResponse(response));
             return {
-                results: this.buildOmnibusResults(input, recovered, recoveredMeta, trace),
+                results: this.buildOmnibusResults(input, recovered, recoveredMeta, trace, response.citations),
                 trace,
                 rawResponse: recovered
             };
@@ -1845,7 +1871,7 @@ export class InquiryRunnerService implements InquiryRunner {
 
     private async buildInitialTrace(
         input: InquiryRunnerInput
-    ): Promise<{ trace: InquiryRunTrace }> {
+    ): Promise<{ trace: InquiryRunTrace; evidenceBlocks: EvidenceBlock[] }> {
         const notes: string[] = [];
         const sanitizationNotes: string[] = [];
         let evidenceBlocks: EvidenceBlock[] = [];
@@ -1872,12 +1898,12 @@ export class InquiryRunnerService implements InquiryRunner {
             notes
         };
 
-        return { trace };
+        return { trace, evidenceBlocks };
     }
 
     private async buildOmnibusTrace(
         input: InquiryOmnibusInput
-    ): Promise<{ trace: InquiryRunTrace }> {
+    ): Promise<{ trace: InquiryRunTrace; evidenceBlocks: EvidenceBlock[] }> {
         const notes: string[] = [];
         const sanitizationNotes: string[] = [];
         let evidenceBlocks: EvidenceBlock[] = [];
@@ -1917,7 +1943,7 @@ export class InquiryRunnerService implements InquiryRunner {
             notes
         };
 
-        return { trace };
+        return { trace, evidenceBlocks };
     }
 
     private buildTokenEstimate(systemPrompt: string, userPrompt: string, outputTokens: number): InquiryRunTrace['tokenEstimate'] {

@@ -12,6 +12,9 @@ export interface ProviderCallArgs {
     responseFormat?: OpenAiResponseFormat;
     jsonSchema?: Record<string, unknown>;
     disableThinking?: boolean;
+    thinkingBudgetTokens?: number;
+    citationsEnabled?: boolean;
+    evidenceDocuments?: { title: string; content: string }[];
 }
 
 type ProviderCapabilities = {
@@ -20,6 +23,8 @@ type ProviderCapabilities = {
     supportsResponseFormat: boolean;
     supportsJsonSchema: boolean;
     supportsThinkingConfig: boolean;
+    supportsExtendedThinking: boolean;
+    supportsCitations: boolean;
     supportsSystemRole: boolean;
 };
 
@@ -30,6 +35,8 @@ const PROVIDER_CAPABILITIES: Record<AiProvider, ProviderCapabilities> = {
         supportsResponseFormat: true,
         supportsJsonSchema: false,
         supportsThinkingConfig: false,
+        supportsExtendedThinking: false,
+        supportsCitations: false,
         supportsSystemRole: true
     },
     anthropic: {
@@ -38,6 +45,8 @@ const PROVIDER_CAPABILITIES: Record<AiProvider, ProviderCapabilities> = {
         supportsResponseFormat: false,
         supportsJsonSchema: false,
         supportsThinkingConfig: false,
+        supportsExtendedThinking: true,
+        supportsCitations: true,
         supportsSystemRole: true
     },
     gemini: {
@@ -46,6 +55,8 @@ const PROVIDER_CAPABILITIES: Record<AiProvider, ProviderCapabilities> = {
         supportsResponseFormat: false,
         supportsJsonSchema: true,
         supportsThinkingConfig: true,
+        supportsExtendedThinking: false,
+        supportsCitations: false,
         supportsSystemRole: true
     },
     local: {
@@ -54,6 +65,8 @@ const PROVIDER_CAPABILITIES: Record<AiProvider, ProviderCapabilities> = {
         supportsResponseFormat: true,
         supportsJsonSchema: false,
         supportsThinkingConfig: false,
+        supportsExtendedThinking: false,
+        supportsCitations: false,
         supportsSystemRole: false
     }
 };
@@ -114,6 +127,15 @@ export function sanitizeProviderArgs(
     }
     if (capabilities.supportsThinkingConfig && args.disableThinking !== undefined) {
         sanitized.disableThinking = args.disableThinking;
+    }
+    if (capabilities.supportsExtendedThinking && typeof args.thinkingBudgetTokens === 'number') {
+        sanitized.thinkingBudgetTokens = args.thinkingBudgetTokens;
+    }
+    if (capabilities.supportsCitations && args.citationsEnabled) {
+        sanitized.citationsEnabled = args.citationsEnabled;
+    }
+    if (capabilities.supportsCitations && args.evidenceDocuments) {
+        sanitized.evidenceDocuments = args.evidenceDocuments;
     }
 
     return sanitized;

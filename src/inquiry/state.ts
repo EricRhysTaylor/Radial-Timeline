@@ -6,6 +6,14 @@ export type InquirySeverity = 'low' | 'medium' | 'high';
 export type InquiryConfidence = 'low' | 'medium' | 'high';
 export type InquiryAiStatus = 'success' | 'rejected' | 'unavailable' | 'timeout' | 'auth' | 'rate_limit';
 
+export interface InquiryCitation {
+    citedText: string;
+    documentIndex: number;
+    documentTitle?: string;
+    startCharIndex?: number;
+    endCharIndex?: number;
+}
+
 export interface InquiryVerdict {
     flow: number;
     depth: number;
@@ -56,6 +64,8 @@ export interface InquiryResult {
     submittedAt?: string;
     completedAt?: string;
     roundTripMs?: number;
+    /** Source citations from provider-level citation support (e.g. Anthropic citations). */
+    citations?: InquiryCitation[];
 }
 
 export interface InquiryState {

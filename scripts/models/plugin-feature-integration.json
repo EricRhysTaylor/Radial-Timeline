@@ -95,19 +95,26 @@
         "gossamer"
       ],
       "impactAssessment": "medium",
-      "implementationStatus": "not_implemented",
-      "implementationNotes": "Could improve analysis quality for complex Inquiry questions and Gossamer beat analysis by allowing Claude to reason through evidence before answering.",
+      "implementationStatus": "complete",
+      "implementationNotes": "Extended thinking enabled for Anthropic Inquiry deep runs only (first ship). resolveThinkingBudget() in computeCaps gates on provider=anthropic + feature=inquiry + reasoningDepth=deep → 4096 token budget. Temperature forced to 1 when thinking enabled (Anthropic requirement). thinkingBudgetTokens threaded through GenerateTextRequest → ProviderCallArgs → callAnthropicApi. Response parsing updated to skip thinking content blocks. Beta header conditionally appended. Gossamer/sceneAnalysis not yet enabled.",
       "sourceFiles": [
         "src/api/anthropicApi.ts",
-        "src/ai/types.ts"
+        "src/ai/caps/computeCaps.ts",
+        "src/api/providerCapabilities.ts",
+        "src/ai/providers/anthropicProvider.ts"
       ],
       "blockers": [],
       "addedToRegistry": "2026-03-03",
-      "priority": "p2",
-      "implementationEvidence": [],
-      "targetRelease": "backlog",
-      "owner": "tbd",
-      "lastTouched": "2026-03-03"
+      "priority": "p1",
+      "implementationEvidence": [
+        "thinking.*enabled",
+        "budget_tokens",
+        "thinkingBudgetTokens",
+        "supportsExtendedThinking"
+      ],
+      "targetRelease": "shipped",
+      "owner": "eric",
+      "lastTouched": "2026-03-04"
     },
     {
       "id": "anthropic-token-counting",
@@ -136,19 +143,34 @@
         "inquiry"
       ],
       "impactAssessment": "medium",
-      "implementationStatus": "not_implemented",
-      "implementationNotes": "Inquiry findings could include source citations linking back to specific scenes/documents. Would strengthen evidence attribution in InquiryResult findings.",
+      "implementationStatus": "complete",
+      "implementationNotes": "Per-scene document blocks with citations enabled, gated to Anthropic Inquiry. Each scene is a separate document block; document_index maps to specific scene, document_title is the scene label, cited_text shows exact passage. Response parsing concatenates all text blocks (correctness fix). Citations thread from callAnthropicApi through providerRouter, aiClient, InquiryRunnerService to InquiryResult.",
       "sourceFiles": [
+        "src/api/anthropicApi.ts",
+        "src/api/providerRouter.ts",
+        "src/api/providerCapabilities.ts",
+        "src/api/requestPayload.ts",
+        "src/ai/caps/computeCaps.ts",
+        "src/ai/types.ts",
+        "src/ai/runtime/aiClient.ts",
+        "src/ai/providers/anthropicProvider.ts",
         "src/inquiry/runner/InquiryRunnerService.ts",
         "src/inquiry/state.ts"
       ],
       "blockers": [],
       "addedToRegistry": "2026-03-03",
-      "priority": "p2",
-      "implementationEvidence": [],
-      "targetRelease": "backlog",
+      "priority": "p1",
+      "implementationEvidence": [
+        "supportsCitations",
+        "citationsEnabled",
+        "AnthropicDocumentBlock",
+        "cited_text",
+        "evidenceDocuments",
+        "InquiryCitation"
+      ],
+      "targetRelease": "shipped",
       "owner": "tbd",
-      "lastTouched": "2026-03-03"
+      "lastTouched": "2026-03-04"
     },
     {
       "id": "anthropic-batch-api",

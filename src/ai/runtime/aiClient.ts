@@ -317,12 +317,20 @@ export class AIClient {
             || request.systemPrompt
             || ''
         ).trim();
+        // When citations are enabled and per-scene evidence documents are provided,
+        // exclude evidence from the text prompt — it will be sent as document blocks.
+        const useDocumentBlocks = provider === 'anthropic'
+            && request.feature.toLowerCase().includes('inquiry')
+            && (request.evidenceDocuments?.length ?? 0) > 0;
+
         const envelope = composeEnvelope({
             roleTemplateName: roleTemplate.name,
             roleTemplateText: roleTemplate.prompt,
             projectContext: getProjectContext(this.plugin, request),
             featureModeInstructions,
-            userInput: request.userInput ?? compiledPrompt.userPrompt ?? request.promptText ?? '',
+            userInput: useDocumentBlocks
+                ? ''
+                : (request.userInput ?? compiledPrompt.userPrompt ?? request.promptText ?? ''),
             userQuestion: request.userQuestion,
             outputRules: getOutputRules(request),
             placeUserQuestionLast: request.feature.toLowerCase().includes('inquiry'),
@@ -492,7 +500,10 @@ export class AIClient {
             temperature: caps.temperature,
             topP: overrides.topP,
             jsonSchema: request.responseSchema,
-            jsonStrict: overrides.jsonStrict ?? true
+            jsonStrict: overrides.jsonStrict ?? true,
+            thinkingBudgetTokens: caps.thinkingBudgetTokens,
+            citationsEnabled: caps.citationsEnabled,
+            evidenceDocuments: useDocumentBlocks ? request.evidenceDocuments : undefined
         }, request.returnType, caps);
 
         // Post-execute: confirm or downgrade Gemini reuseState
@@ -540,7 +551,8 @@ export class AIClient {
                 error: mapErrorToUserMessage(mappedError),
                 retryCount: execution.retryCount,
                 sanitizationNotes: execution.sanitizationNotes,
-                advancedContext
+                advancedContext,
+                citations: execution.citations
             };
         }
 
@@ -576,7 +588,8 @@ export class AIClient {
                                 requestPayload: retry.requestPayload,
                                 retryCount: (retry.retryCount ?? 0) + 1,
                                 sanitizationNotes: retry.sanitizationNotes,
-                                advancedContext
+                                advancedContext,
+                                citations: retry.citations
                             };
                             this.cache.set(cacheKey, result);
                             emitTelemetry(aiSettings.privacy.allowTelemetry, buildTelemetryEvent(request, result));
@@ -601,7 +614,8 @@ export class AIClient {
                     error: mapErrorToUserMessage(parseError),
                     retryCount: execution.retryCount,
                     sanitizationNotes: execution.sanitizationNotes,
-                    advancedContext
+                    advancedContext,
+                    citations: execution.citations
                 };
             }
         }
@@ -620,7 +634,8 @@ export class AIClient {
             requestPayload: execution.requestPayload,
             retryCount: execution.retryCount,
             sanitizationNotes: execution.sanitizationNotes,
-            advancedContext
+            advancedContext,
+            citations: execution.citations
         };
 
         this.cache.set(cacheKey, result);
@@ -639,6 +654,9 @@ export class AIClient {
             topP?: number;
             jsonSchema?: Record<string, unknown>;
             jsonStrict?: boolean;
+            thinkingBudgetTokens?: number;
+            citationsEnabled?: boolean;
+            evidenceDocuments?: { title: string; content: string }[];
         },
         returnType: 'text' | 'json',
         _caps: ComputedCaps
@@ -652,7 +670,10 @@ export class AIClient {
                 temperature: params.temperature,
                 topP: params.topP,
                 jsonSchema: params.jsonSchema || { type: 'object' },
-                jsonStrict: params.jsonStrict
+                jsonStrict: params.jsonStrict,
+                thinkingBudgetTokens: params.thinkingBudgetTokens,
+                citationsEnabled: params.citationsEnabled,
+                evidenceDocuments: params.evidenceDocuments
             });
         }
 
@@ -662,7 +683,10 @@ export class AIClient {
             userPrompt: params.userPrompt,
             maxOutputTokens: params.maxOutputTokens,
             temperature: params.temperature,
-            topP: params.topP
+            topP: params.topP,
+            thinkingBudgetTokens: params.thinkingBudgetTokens,
+            citationsEnabled: params.citationsEnabled,
+            evidenceDocuments: params.evidenceDocuments
         });
     }
 }

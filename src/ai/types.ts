@@ -112,6 +112,19 @@ export interface AIThroughputCheckResult {
     heuristicSummary: string;
 }
 
+export interface SourceCitation {
+    citedText: string;
+    documentIndex: number;
+    documentTitle?: string;
+    startCharIndex?: number;
+    endCharIndex?: number;
+}
+
+export interface EvidenceDocument {
+    title: string;
+    content: string;
+}
+
 export interface GenerateTextRequest {
     modelId: string;
     systemPrompt?: string | null;
@@ -119,6 +132,9 @@ export interface GenerateTextRequest {
     maxOutputTokens?: number;
     temperature?: number;
     topP?: number;
+    thinkingBudgetTokens?: number;
+    citationsEnabled?: boolean;
+    evidenceDocuments?: EvidenceDocument[];
 }
 
 export interface GenerateJsonRequest extends GenerateTextRequest {
@@ -143,6 +159,8 @@ export interface ProviderExecutionResult {
     cacheUsed?: boolean;
     /** Whether the cache was a hit (reuse) or freshly created. */
     cacheStatus?: 'hit' | 'created';
+    /** Source citations from provider-level citation support (e.g. Anthropic citations). */
+    citations?: SourceCitation[];
 }
 
 export interface AIProvider {
@@ -192,6 +210,8 @@ export interface AIRunRequest {
         provider?: LegacyProviderId;
         modelId?: string;
     };
+    /** Per-scene evidence documents for provider-level citations. */
+    evidenceDocuments?: EvidenceDocument[];
 }
 
 export interface AIRunAdvancedContext {
@@ -235,6 +255,8 @@ export interface AIRunResult {
     retryCount?: number;
     sanitizationNotes?: string[];
     advancedContext?: AIRunAdvancedContext;
+    /** Source citations from provider-level citation support. */
+    citations?: SourceCitation[];
 }
 
 export interface RegistryRefreshResult {
