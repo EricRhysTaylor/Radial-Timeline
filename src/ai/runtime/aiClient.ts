@@ -1,6 +1,6 @@
 import type RadialTimelinePlugin from '../../main';
 import type { RadialTimelineSettings } from '../../types';
-import { computeCaps, type ComputedCaps } from '../caps/computeCaps';
+import { computeCaps, INPUT_TOKEN_GUARD_FACTOR, type ComputedCaps } from '../caps/computeCaps';
 import { mapErrorToUserMessage, mapProviderFailureToError, MalformedJsonError } from '../errors';
 import { compilePrompt } from '../prompts/compilePrompt';
 import { composeEnvelope, CACHE_BREAK_DELIMITER } from '../prompts/composeEnvelope';
@@ -359,9 +359,10 @@ export class AIClient {
             overrides
         });
 
-        if (tokenEstimateInput > Math.floor(caps.maxInputTokens * 0.8)) {
+        const effectiveInputCeiling = Math.floor(caps.maxInputTokens * INPUT_TOKEN_GUARD_FACTOR);
+        if (tokenEstimateInput > effectiveInputCeiling) {
             // Always expose the guard; Inquiry-specific chunking should happen in feature orchestration.
-            const message = `Input token estimate ${tokenEstimateInput} exceeds safe threshold (${Math.floor(caps.maxInputTokens * 0.8)}).`;
+            const message = `Input token estimate ${tokenEstimateInput} exceeds safe threshold (${effectiveInputCeiling}).`;
             return {
                 content: null,
                 responseData: null,

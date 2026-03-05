@@ -19,7 +19,7 @@ import { buildDefaultAiSettings, mapAiProviderToLegacyProvider, mapLegacyProvide
 import { validateAiSettings } from '../../ai/settings/validateAiSettings';
 import { BUILTIN_MODELS } from '../../ai/registry/builtinModels';
 import { selectModel } from '../../ai/router/selectModel';
-import { computeCaps } from '../../ai/caps/computeCaps';
+import { computeCaps, INPUT_TOKEN_GUARD_FACTOR } from '../../ai/caps/computeCaps';
 import type { AIRunResult, AnalysisPackaging, AIProviderId, AccessTier, SceneRef } from '../../ai/types';
 import { readSceneId, resolveSceneReferenceId } from '../../utils/sceneIds';
 import { buildSceneRefIndex, isStableSceneId, normalizeSceneRef } from '../../ai/references/sceneRefNormalizer';
@@ -1192,10 +1192,16 @@ export class InquiryRunnerService implements InquiryRunner {
                     jsonStrict: true
                 }
             });
+            // Match the aiClient token guard (INPUT_TOKEN_GUARD_FACTOR) applied
+            // on top of the per-tier safeUtilization already baked into maxInputTokens.
+            // Without this alignment the precheck would say "OK" at 147k < 180k,
+            // but the aiClient guard would reject at 147k > 144k (180k × 0.8),
+            // wasting the full trace-build time before the rejection.
+            const effectiveSafe = Math.floor(caps.maxInputTokens * INPUT_TOKEN_GUARD_FACTOR);
             return {
                 inputTokens,
-                safeInputTokens: caps.maxInputTokens,
-                exceedsSafeBudget: inputTokens > caps.maxInputTokens
+                safeInputTokens: effectiveSafe,
+                exceedsSafeBudget: inputTokens > effectiveSafe
             };
         } catch {
             return {

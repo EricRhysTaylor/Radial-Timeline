@@ -51,7 +51,7 @@ import {
 import { ZONE_LAYOUT } from './zoneLayout';
 import { InquiryRunnerService } from './runner/InquiryRunnerService';
 import { getLastAiAdvancedContext } from '../ai/runtime/aiClient';
-import { computeCaps } from '../ai/caps/computeCaps';
+import { computeCaps, INPUT_TOKEN_GUARD_FACTOR } from '../ai/caps/computeCaps';
 import { BUILTIN_MODELS } from '../ai/registry/builtinModels';
 import { selectModel } from '../ai/router/selectModel';
 import { buildDefaultAiSettings, mapLegacyProviderToAiProvider } from '../ai/settings/aiSettings';
@@ -1465,7 +1465,7 @@ export class InquiryView extends ItemView {
 
         const rowLabels = ['', '', '', '', '', ''];
         this.previewRowDefaultLabels = rowLabels.slice();
-        const tokensRowIndex = 3;
+        const tokensRowIndex = 4;
         this.previewRows = rowLabels.map((label, index) => {
             const group = this.createSvgGroup(panel, 'ert-inquiry-preview-pill');
             if (index === tokensRowIndex) {
@@ -2011,7 +2011,7 @@ export class InquiryView extends ItemView {
                 feature: 'InquiryMode',
                 overrides: aiSettings.overrides
             });
-            safeInputBudget = caps.maxInputTokens;
+            safeInputBudget = Math.floor(caps.maxInputTokens * INPUT_TOKEN_GUARD_FACTOR);
             outputBudget = caps.maxOutputTokens;
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
@@ -6725,12 +6725,12 @@ export class InquiryView extends ItemView {
         if (!this.navSessionLabel) return;
         const sessionId = this.state.activeSessionId;
         if (!sessionId) {
-            this.navSessionLabel.textContent = 'Pending';
+            this.navSessionLabel.textContent = 'ID: PENDING';
             return;
         }
         const session = this.sessionStore.peekSession(sessionId);
         if (!session) {
-            this.navSessionLabel.textContent = 'Pending';
+            this.navSessionLabel.textContent = 'ID: PENDING';
             return;
         }
         const timestamp = session.createdAt || session.lastAccessed;
@@ -6742,8 +6742,8 @@ export class InquiryView extends ItemView {
             minute: '2-digit',
             hour12: true
         });
-        // Compact: "Mar 5, 3:45 PM" → lowercase AM/PM, no spaces
-        this.navSessionLabel.textContent = formatted.replace(/\s+(AM|PM)/i, (_, m) => m.toLowerCase());
+        // Compact: "ID: Mar 5, 3:45pm"
+        this.navSessionLabel.textContent = `ID: ${formatted.replace(/\s+(AM|PM)/i, (_, m) => m.toLowerCase())}`;
     }
 
     private updateRunningState(): void {
@@ -10643,6 +10643,7 @@ export class InquiryView extends ItemView {
             this.getPreviewScopeValue(),
             this.getPreviewScenesValue(),
             this.getPreviewOutlinesValue(),
+            this.getPreviewModelValue(),
             this.getPreviewTokensValue(questionText)
         ];
     }
@@ -10674,6 +10675,10 @@ export class InquiryView extends ItemView {
             return `Outline · ${summaryCount} (Summary)`;
         }
         return '';
+    }
+
+    private getPreviewModelValue(): string {
+        return `Model · ${this.getActiveInquiryModelLabel()}`;
     }
 
     private getPreviewTokensValue(questionText: string): string {

@@ -1,6 +1,16 @@
 import { PROVIDER_CAPS } from './providerCaps';
 import type { AccessTier, AIProviderId, AIOverrides, ModelInfo } from '../types';
 
+/**
+ * Safety factor applied on top of the per-tier `maxInputTokens` before
+ * reaching the provider.  Accounts for token-estimation imprecision
+ * (char-based estimates can under-count vs real BPE tokenisation).
+ *
+ * Used by both the aiClient pre-flight guard and the Inquiry packaging
+ * precheck so the two layers agree on the effective ceiling.
+ */
+export const INPUT_TOKEN_GUARD_FACTOR = 0.8;
+
 export interface RetryPolicy {
     maxAttempts: number;
     baseDelayMs: number;
