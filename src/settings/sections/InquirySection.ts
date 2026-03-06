@@ -397,6 +397,49 @@ export function renderInquirySection(params: SectionParams): void {
     let scanRootsInput: TextAreaComponent | null = null;
     let classScopeInput: TextAreaComponent | null = null;
     const scanRootActionSyncers: Array<() => void> = [];
+    const autoResizeTextAreaRows = (inputEl: HTMLTextAreaElement, minRows: number) => {
+        const style = window.getComputedStyle(inputEl);
+        const lineHeight = Number.parseFloat(style.lineHeight) || 20;
+        const padTop = Number.parseFloat(style.paddingTop) || 0;
+        const padBottom = Number.parseFloat(style.paddingBottom) || 0;
+        const borderTop = Number.parseFloat(style.borderTopWidth) || 0;
+        const borderBottom = Number.parseFloat(style.borderBottomWidth) || 0;
+        const minHeight = (lineHeight * minRows) + padTop + padBottom + borderTop + borderBottom;
+        inputEl.rows = minRows;
+        if (inputEl.scrollHeight <= minHeight) return;
+        const extraHeight = inputEl.scrollHeight - minHeight;
+        const extraRows = Math.ceil(extraHeight / lineHeight);
+        inputEl.rows = minRows + extraRows;
+    };
+    const registerDeferredAutoResize = (inputEl: HTMLTextAreaElement, minRows: number): (() => void) => {
+        const runResize = () => autoResizeTextAreaRows(inputEl, minRows);
+
+        const rafId = window.requestAnimationFrame(() => {
+            runResize();
+        });
+        plugin.register(() => {
+            window.cancelAnimationFrame(rafId);
+        });
+
+        const timeoutId = window.setTimeout(() => {
+            runResize();
+        }, 0);
+        plugin.register(() => {
+            window.clearTimeout(timeoutId);
+        });
+
+        if (typeof ResizeObserver !== 'undefined') {
+            const resizeObserver = new ResizeObserver(() => {
+                runResize();
+            });
+            resizeObserver.observe(inputEl);
+            plugin.register(() => {
+                resizeObserver.disconnect();
+            });
+        }
+
+        return runResize;
+    };
 
     const scanRootsSetting = new Settings(sourcesBody)
         .setName('Scan folders')
@@ -411,22 +454,7 @@ export function renderInquirySection(params: SectionParams): void {
     scanRootsText.inputEl.addClass('ert-textarea--wide');
     scanRootsText.inputEl.addClass('mod-styled-scrollbar');
     scanRootsInput = scanRootsText;
-    const autoResizeScanRootsInput = () => {
-        const inputEl = scanRootsText.inputEl;
-        const style = window.getComputedStyle(inputEl);
-        const lineHeight = Number.parseFloat(style.lineHeight) || 20;
-        const padTop = Number.parseFloat(style.paddingTop) || 0;
-        const padBottom = Number.parseFloat(style.paddingBottom) || 0;
-        const borderTop = Number.parseFloat(style.borderTopWidth) || 0;
-        const borderBottom = Number.parseFloat(style.borderBottomWidth) || 0;
-        const minRows = 3;
-        const minHeight = (lineHeight * minRows) + padTop + padBottom + borderTop + borderBottom;
-        inputEl.rows = minRows;
-        if (inputEl.scrollHeight <= minHeight) return;
-        const extraHeight = inputEl.scrollHeight - minHeight;
-        const extraRows = Math.ceil(extraHeight / lineHeight);
-        inputEl.rows = minRows + extraRows;
-    };
+    const autoResizeScanRootsInput = registerDeferredAutoResize(scanRootsText.inputEl, 3);
     autoResizeScanRootsInput();
 
     plugin.registerDomEvent(scanRootsText.inputEl, 'input', () => {
@@ -519,6 +547,12 @@ export function renderInquirySection(params: SectionParams): void {
         text.inputEl.addClass('mod-styled-scrollbar');
         text.setPlaceholder('scene\noutline\ncharacter\nplace');
         classScopeInput = text;
+        const autoResizeClassScopeInput = registerDeferredAutoResize(text.inputEl, 4);
+        autoResizeClassScopeInput();
+
+        plugin.registerDomEvent(text.inputEl, 'input', () => {
+            autoResizeClassScopeInput();
+        });
 
         plugin.registerDomEvent(text.inputEl, 'blur', () => {
             const nextScope = parseClassScopeInput(text.getValue());
@@ -780,14 +814,19 @@ export function renderInquirySection(params: SectionParams): void {
         const merged = mergeClassConfigs(inquirySources.classes || [], seedClasses);
         const nextClasses = merged.map(config => {
             const contribution = resolvePresetContribution(preset, config.className);
+            const normalized = config.className.toLowerCase();
             const participation = contribution === 'none'
                 ? { book: false, saga: false, reference: false }
                 : defaultParticipationForClass(config.className);
+            const bookContribution: InquiryMaterialMode =
+                preset === 'default' && normalized === 'scene' ? 'full' : contribution;
+            const sagaContribution: InquiryMaterialMode =
+                preset === 'default' && normalized === 'scene' ? 'summary' : contribution;
             return normalizeClassContribution({
                 ...config,
                 enabled: contribution !== 'none',
-                bookScope: participation.book ? contribution : 'none',
-                sagaScope: participation.saga ? contribution : 'none',
+                bookScope: participation.book ? bookContribution : 'none',
+                sagaScope: participation.saga ? sagaContribution : 'none',
                 referenceScope: participation.reference ? contribution : 'none'
             });
         });
@@ -798,14 +837,6 @@ export function renderInquirySection(params: SectionParams): void {
         };
         syncPresetButtons();
         void refreshClassScan();
-    };
-
-    const getContainerStatusLabel = (book: InquiryResolvedBook): string => {
-        if (book.included) return 'Included';
-        if (book.status === 'excluded_variant') return 'Excluded: duplicate/variant';
-        if (book.status === 'excluded_nested') return 'Excluded: nested draft';
-        if (book.status === 'excluded_manual') return 'Excluded: manual';
-        return 'Excluded';
     };
 
     const buildContainerMaterialSummary = (
@@ -872,10 +903,6 @@ export function renderInquirySection(params: SectionParams): void {
                         text: displayRoot
                     });
                 }
-                pathCell.createDiv({
-                    cls: 'ert-controlGroup__cell--meta',
-                    text: getContainerStatusLabel(book)
-                });
 
                 const summaryCell = row.createDiv({ cls: ['ert-controlGroup__cell', 'ert-controlGroup__cell--meta'] });
                 const summary = buildContainerMaterialSummary(containerClassCounts[book.rootPath] || {}, participatingClasses);
@@ -932,7 +959,11 @@ export function renderInquirySection(params: SectionParams): void {
     const applyClassScope = (nextScope: string[]) => {
         const normalized = parseClassScopeInput(nextScope.join('\n'));
         inquirySources = { ...inquirySources, classScope: normalized };
-        classScopeInput?.setValue(listToText(normalized));
+        const nextValue = listToText(normalized);
+        classScopeInput?.setValue(nextValue);
+        if (classScopeInput) {
+            autoResizeTextAreaRows(classScopeInput.inputEl, 4);
+        }
         void refreshClassScan();
     };
 

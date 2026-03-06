@@ -7332,6 +7332,7 @@ export class InquiryView extends ItemView {
             const rawResult = result;
             result = this.normalizeLegacyResult(result);
             const normalizationNotes = this.collectNormalizationNotes(rawResult, result);
+            result = this.applyExecutionObservabilityFromTrace(result, runTrace);
 
             if (cacheEnabled && !this.isErrorResult(result)) {
                 cacheStatus = 'fresh';
@@ -7832,9 +7833,10 @@ export class InquiryView extends ItemView {
         if (typeof timedResult.aiModelNextRunOnly !== 'boolean') {
             timedResult.aiModelNextRunOnly = false;
         }
+        const tracedResult = this.applyExecutionObservabilityFromTrace(timedResult, options.trace);
 
-        const normalized = this.normalizeLegacyResult(timedResult);
-        const normalizationNotes = this.collectNormalizationNotes(timedResult, normalized);
+        const normalized = this.normalizeLegacyResult(tracedResult);
+        const normalizationNotes = this.collectNormalizationNotes(tracedResult, normalized);
         const baseKey = this.sessionStore.buildBaseKey({
             questionId: normalized.questionId,
             scope: normalized.scope,
@@ -8547,7 +8549,33 @@ export class InquiryView extends ItemView {
     private formatApiErrorReason(result: InquiryResult): string {
         const status = result.aiStatus || 'unknown';
         const reason = result.aiReason;
-        return reason ? `${status} (${reason})` : status;
+        const reasonText = reason ? `${status} (${reason})` : status;
+        const executionBits: string[] = [];
+        if (result.executionState) executionBits.push(`state=${result.executionState}`);
+        if (result.executionPath) executionBits.push(`path=${result.executionPath}`);
+        if (result.failureStage) executionBits.push(`stage=${result.failureStage}`);
+        if (typeof result.tokenUsageKnown === 'boolean') {
+            executionBits.push(`usage=${result.tokenUsageKnown ? 'known' : 'unknown'}`);
+        }
+        if (!executionBits.length) return reasonText;
+        return `${reasonText} [${executionBits.join(', ')}]`;
+    }
+
+    private applyExecutionObservabilityFromTrace(
+        result: InquiryResult,
+        trace?: InquiryRunTrace | null
+    ): InquiryResult {
+        if (!trace) return result;
+        const usageKnown = typeof trace.tokenUsageKnown === 'boolean'
+            ? trace.tokenUsageKnown
+            : !!trace.usage;
+        return {
+            ...result,
+            executionState: trace.executionState,
+            executionPath: trace.executionPath,
+            failureStage: trace.failureStage,
+            tokenUsageKnown: usageKnown
+        };
     }
 
     private startApiSimulation(): void {
@@ -11321,6 +11349,9 @@ export class InquiryView extends ItemView {
             ?? (trace.response?.responseData && result.aiProvider
                 ? extractTokenUsage(result.aiProvider, trace.response.responseData)
                 : null);
+        const usageKnown = typeof trace.tokenUsageKnown === 'boolean'
+            ? trace.tokenUsageKnown
+            : !!usage;
         const usageText = usage
             ? `input=${formatTokenCount(usage.inputTokens)}, output=${formatTokenCount(usage.outputTokens)}, total=${formatTokenCount(usage.totalTokens)}`
             : 'not available';
@@ -11482,11 +11513,15 @@ export class InquiryView extends ItemView {
         lines.push('## Tokens');
         lines.push(`- Estimated input: ${formatTokenCount(tokenEstimateInput, true)}`);
         lines.push(`- Actual usage: ${usageText}`);
+        lines.push(`- Usage visibility: ${usageKnown ? 'known' : 'unknown'}`);
         lines.push(`- Tier: ${tokenTier ?? 'unknown'}`);
         lines.push('');
 
         lines.push('## Execution');
         lines.push(`- Packaging: ${trace.analysisPackaging === 'singlePassOnly' ? 'Single-pass only' : trace.analysisPackaging === 'segmented' ? 'Segmented' : 'Automatic'}`);
+        lines.push(`- Execution state: ${trace.executionState ?? 'unknown'}`);
+        lines.push(`- Execution path: ${trace.executionPath ?? ((typeof trace.executionPassCount === 'number' && trace.executionPassCount > 1) ? 'multi_pass' : 'one_pass')}`);
+        lines.push(`- Failure stage: ${trace.failureStage ?? (status === 'error' ? 'provider_response_parsing' : 'none')}`);
         if (typeof trace.executionPassCount === 'number' && trace.executionPassCount > 1) {
             lines.push(`- Pass count: ${trace.executionPassCount}`);
         }
@@ -11562,6 +11597,9 @@ export class InquiryView extends ItemView {
 
         const tokenUsage = trace.usage
             ?? (trace.response?.responseData ? extractTokenUsage(aiProvider, trace.response.responseData) : null);
+        const tokenUsageKnown = typeof trace.tokenUsageKnown === 'boolean'
+            ? trace.tokenUsageKnown
+            : !!tokenUsage;
         const { sanitized: sanitizedPayload, hadRedactions } = sanitizeLogPayload(trace.requestPayload ?? null);
         const redactionNotes = hadRedactions
             ? ['Redacted sensitive credential values from request payload.']
@@ -11592,6 +11630,10 @@ export class InquiryView extends ItemView {
             `- Packaging: ${trace.analysisPackaging === 'singlePassOnly' ? 'singlePassOnly' : trace.analysisPackaging === 'segmented' ? 'segmented' : 'automatic'}`,
             `- AI status: ${result.aiStatus || 'unknown'}`,
             `- AI reason: ${result.aiReason || 'none'}`,
+            `- Execution state: ${trace.executionState ?? 'unknown'}`,
+            `- Execution path: ${trace.executionPath ?? ((typeof trace.executionPassCount === 'number' && trace.executionPassCount > 1) ? 'multi_pass' : 'one_pass')}`,
+            `- Failure stage: ${trace.failureStage ?? (status === 'error' ? 'provider_response_parsing' : 'none')}`,
+            `- Token usage visibility: ${tokenUsageKnown ? 'known' : 'unknown'}`,
             `- Submitted at (raw): ${result.submittedAt || 'unknown'}`,
             `- Returned at (raw): ${result.completedAt || 'unknown'}`,
             `- Round trip ms: ${typeof result.roundTripMs === 'number' ? String(result.roundTripMs) : 'unknown'}`,

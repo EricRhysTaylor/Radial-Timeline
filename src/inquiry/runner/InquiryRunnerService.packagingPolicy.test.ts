@@ -77,7 +77,12 @@ describe('InquiryRunnerService packaging policy', () => {
         const service = createService();
         const getAnalysisPackaging = vi.fn().mockReturnValue('automatic');
         const getPackagingPrecheck = vi.fn().mockResolvedValue(buildPrecheck({ onePassFit: 'overflows' }));
-        const runChunkedInquiry = vi.fn().mockResolvedValue(null);
+        const runChunkedInquiry = vi.fn().mockResolvedValue({
+            ok: false,
+            failureStage: 'chunk_execution',
+            failureReason: 'chunk failed',
+            tokenUsageKnown: false
+        });
         const runInquiryRequest = vi.fn();
         Object.assign(service, {
             getAnalysisPackaging,
@@ -99,6 +104,10 @@ describe('InquiryRunnerService packaging policy', () => {
         expect(result.aiStatus).toBe('rejected');
         expect(result.aiReason).toBe('packaging_failed');
         expect(result.analysisPackaging).toBe('automatic');
+        expect(result.executionState).toBe('packaging_failed');
+        expect(result.executionPath).toBe('multi_pass');
+        expect(result.failureStage).toBe('chunk_execution');
+        expect(result.tokenUsageKnown).toBe(false);
         expect(runChunkedInquiry).toHaveBeenCalledTimes(1);
         expect(runInquiryRequest).not.toHaveBeenCalled();
     });
@@ -107,7 +116,12 @@ describe('InquiryRunnerService packaging policy', () => {
         const service = createService();
         const getAnalysisPackaging = vi.fn().mockReturnValue('segmented');
         const getPackagingPrecheck = vi.fn().mockResolvedValue(buildPrecheck({ onePassFit: 'overflows' }));
-        const runChunkedInquiry = vi.fn().mockResolvedValue(null);
+        const runChunkedInquiry = vi.fn().mockResolvedValue({
+            ok: false,
+            failureStage: 'chunk_execution',
+            failureReason: 'chunk failed',
+            tokenUsageKnown: false
+        });
         const runInquiryRequest = vi.fn();
         Object.assign(service, {
             getAnalysisPackaging,
@@ -129,6 +143,10 @@ describe('InquiryRunnerService packaging policy', () => {
         expect(result.aiStatus).toBe('rejected');
         expect(result.aiReason).toBe('packaging_failed');
         expect(result.analysisPackaging).toBe('segmented');
+        expect(result.executionState).toBe('packaging_failed');
+        expect(result.executionPath).toBe('multi_pass');
+        expect(result.failureStage).toBe('chunk_execution');
+        expect(result.tokenUsageKnown).toBe(false);
         expect(runChunkedInquiry).toHaveBeenCalledTimes(1);
         expect(runInquiryRequest).not.toHaveBeenCalled();
     });
@@ -137,7 +155,11 @@ describe('InquiryRunnerService packaging policy', () => {
         const service = createService();
         const getAnalysisPackaging = vi.fn().mockReturnValue('segmented');
         const getPackagingPrecheck = vi.fn().mockResolvedValue(buildPrecheck({ onePassFit: 'fits' }));
-        const runChunkedInquiry = vi.fn().mockResolvedValue(buildChunkedSuccessRun());
+        const runChunkedInquiry = vi.fn().mockResolvedValue({
+            ok: true,
+            run: buildChunkedSuccessRun(),
+            tokenUsageKnown: false
+        });
         const runInquiryRequest = vi.fn();
         Object.assign(service, {
             getAnalysisPackaging,
@@ -157,6 +179,10 @@ describe('InquiryRunnerService packaging policy', () => {
         );
 
         expect(result.success).toBe(true);
+        expect(result.executionState).toBe('dispatched_to_provider');
+        expect(result.executionPath).toBe('multi_pass');
+        expect(result.failureStage).toBeUndefined();
+        expect(result.tokenUsageKnown).toBe(false);
         expect(runChunkedInquiry).toHaveBeenCalledTimes(1);
         expect(runInquiryRequest).not.toHaveBeenCalled();
     });
@@ -186,8 +212,11 @@ describe('InquiryRunnerService packaging policy', () => {
 
         expect(result.aiStatus).toBe('rejected');
         expect(result.aiReason).toBe('truncated');
+        expect(result.executionState).toBe('blocked_before_send');
+        expect(result.executionPath).toBe('one_pass');
+        expect(result.failureStage).toBe('preflight');
+        expect(result.tokenUsageKnown).toBe(false);
         expect(runChunkedInquiry).not.toHaveBeenCalled();
         expect(runInquiryRequest).not.toHaveBeenCalled();
     });
 });
-

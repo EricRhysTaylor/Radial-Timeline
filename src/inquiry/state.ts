@@ -70,6 +70,10 @@ export interface InquiryResult {
     aiModelNextRunOnly?: boolean;
     aiStatus?: InquiryAiStatus;
     aiReason?: string;
+    executionState?: 'blocked_before_send' | 'dispatched_to_provider' | 'packaging_failed';
+    executionPath?: 'one_pass' | 'multi_pass';
+    failureStage?: 'preflight' | 'chunk_execution' | 'synthesis' | 'provider_response_parsing';
+    tokenUsageKnown?: boolean;
     tokenEstimateInput?: number;
     tokenEstimateTier?: 'normal' | 'amber' | 'red';
     submittedAt?: string;

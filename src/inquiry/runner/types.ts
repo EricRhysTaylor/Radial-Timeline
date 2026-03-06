@@ -6,6 +6,9 @@ import type { TokenEstimateMethod } from '../../ai/tokens/inputTokenEstimate';
 export type EvidenceClass = string;
 
 export type InquiryAiProvider = 'openai' | 'anthropic' | 'gemini' | 'local';
+export type InquiryExecutionState = 'blocked_before_send' | 'dispatched_to_provider' | 'packaging_failed';
+export type InquiryExecutionPath = 'one_pass' | 'multi_pass';
+export type InquiryFailureStage = 'preflight' | 'chunk_execution' | 'synthesis' | 'provider_response_parsing';
 
 export interface InquiryAiEngineInfo {
     provider: InquiryAiProvider;
@@ -99,6 +102,10 @@ export interface InquiryRunTrace {
     analysisPackaging?: AnalysisPackaging;
     executionPassCount?: number;
     packagingTriggerReason?: string;
+    executionState?: InquiryExecutionState;
+    executionPath?: InquiryExecutionPath;
+    failureStage?: InquiryFailureStage;
+    tokenUsageKnown?: boolean;
     usage?: {
         inputTokens?: number;
         outputTokens?: number;

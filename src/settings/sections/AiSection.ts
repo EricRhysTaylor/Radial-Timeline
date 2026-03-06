@@ -642,7 +642,6 @@ export function renderAiSection(params: {
         cls: [ERT_CLASSES.PREVIEW_FRAME, ERT_CLASSES.STACK, 'ert-previewFrame--flush', 'ert-ai-inquiry-advisory'],
         attr: { 'data-ert-role': 'ai-setting:inquiry-advisory' }
     });
-    params.addAiRelatedElement(inquiryAdvisoryFrame);
 
     const formatExpectedPassCopy = (passCount: number): string => {
         if (passCount <= 1) return 'Single pass expected';

@@ -8,6 +8,9 @@ import type { EvidenceDocumentMeta, InquiryAiStatus, InquiryCitation, InquiryCon
 import type {
     CorpusManifestEntry,
     InquiryAiProvider,
+    InquiryExecutionPath,
+    InquiryExecutionState,
+    InquiryFailureStage,
     InquiryOmnibusInput,
     InquiryOmnibusQuestion,
     InquiryRunTrace,
@@ -104,8 +107,16 @@ type ProviderResult = {
     analysisPackaging?: AnalysisPackaging;
     executionPassCount?: number;
     packagingTriggerReason?: string;
+    executionState?: InquiryExecutionState;
+    executionPath?: InquiryExecutionPath;
+    failureStage?: InquiryFailureStage;
+    tokenUsageKnown?: boolean;
     citations?: InquiryCitation[];
 };
+
+type MultiPassExecutionResult =
+    | { ok: true; run: AIRunResult; tokenUsageKnown: boolean }
+    | { ok: false; failureStage: 'preflight' | 'chunk_execution' | 'synthesis'; failureReason: string; tokenUsageKnown: boolean };
 
 export class InquiryRunnerService implements InquiryRunner {
     private tokenEstimateCache = new Map<string, InquiryRunTrace['tokenEstimate']>();
@@ -170,8 +181,7 @@ export class InquiryRunnerService implements InquiryRunner {
                 aiReason: response.aiReason,
                 error: response.error
             };
-            const usage = this.extractUsage(response.responseData);
-            if (usage) trace.usage = usage;
+            this.applyResponseExecutionReporting(trace, response);
 
             if (!response.success || !response.content || response.aiStatus !== 'success') {
                 const status = response.aiStatus || 'unknown';
@@ -196,6 +206,9 @@ export class InquiryRunnerService implements InquiryRunner {
             } catch (parseError) {
                 const message = parseError instanceof Error ? parseError.message : String(parseError);
                 trace.notes.push(`Parse error: ${message}`);
+                trace.executionState = 'dispatched_to_provider';
+                trace.failureStage = 'provider_response_parsing';
+                trace.tokenUsageKnown = trace.tokenUsageKnown ?? !!trace.usage;
 
                 const usage = trace.usage ?? this.extractUsage(response.responseData);
                 if (usage) trace.usage = usage;
@@ -232,8 +245,7 @@ export class InquiryRunnerService implements InquiryRunner {
                             aiReason: retryResponse.aiReason,
                             error: retryResponse.error
                         };
-                        const retryUsage = this.extractUsage(retryResponse.responseData);
-                        if (retryUsage) trace.usage = retryUsage;
+                        this.applyResponseExecutionReporting(trace, retryResponse);
 
                         if (!retryResponse.success || !retryResponse.content || retryResponse.aiStatus !== 'success') {
                             const status = retryResponse.aiStatus || 'unknown';
@@ -260,6 +272,9 @@ export class InquiryRunnerService implements InquiryRunner {
                         } catch (retryParseError) {
                             const retryMessage = retryParseError instanceof Error ? retryParseError.message : String(retryParseError);
                             trace.notes.push(`Parse retry failed: ${retryMessage}`);
+                            trace.executionState = 'dispatched_to_provider';
+                            trace.failureStage = 'provider_response_parsing';
+                            trace.tokenUsageKnown = trace.tokenUsageKnown ?? !!trace.usage;
                             const fallbackMeta = this.withParseFailureMeta(this.getAiMetaFromResponse(retryResponse), retryResponse.aiStatus ?? 'rejected');
                             return {
                                 result: this.buildStubResult(input, fallbackMeta, retryParseError),
@@ -338,8 +353,7 @@ export class InquiryRunnerService implements InquiryRunner {
                 aiReason: response.aiReason,
                 error: response.error
             };
-            const usage = this.extractUsage(response.responseData);
-            if (usage) trace.usage = usage;
+            this.applyResponseExecutionReporting(trace, response);
 
             if (!response.success || !response.content || response.aiStatus !== 'success') {
                 const status = response.aiStatus || 'unknown';
@@ -371,6 +385,9 @@ export class InquiryRunnerService implements InquiryRunner {
             } catch (parseError) {
                 const message = parseError instanceof Error ? parseError.message : String(parseError);
                 trace.notes.push(`Parse error: ${message}`);
+                trace.executionState = 'dispatched_to_provider';
+                trace.failureStage = 'provider_response_parsing';
+                trace.tokenUsageKnown = trace.tokenUsageKnown ?? !!trace.usage;
 
                 const usage = trace.usage ?? this.extractUsage(response.responseData);
                 if (usage) trace.usage = usage;
@@ -406,8 +423,7 @@ export class InquiryRunnerService implements InquiryRunner {
                             aiReason: retryResponse.aiReason,
                             error: retryResponse.error
                         };
-                        const retryUsage = this.extractUsage(retryResponse.responseData);
-                        if (retryUsage) trace.usage = retryUsage;
+                        this.applyResponseExecutionReporting(trace, retryResponse);
 
                         if (!retryResponse.success || !retryResponse.content || retryResponse.aiStatus !== 'success') {
                             const status = retryResponse.aiStatus || 'unknown';
@@ -440,6 +456,9 @@ export class InquiryRunnerService implements InquiryRunner {
                         } catch (retryParseError) {
                             const retryMessage = retryParseError instanceof Error ? retryParseError.message : String(retryParseError);
                             trace.notes.push(`Parse retry failed: ${retryMessage}`);
+                            trace.executionState = 'dispatched_to_provider';
+                            trace.failureStage = 'provider_response_parsing';
+                            trace.tokenUsageKnown = trace.tokenUsageKnown ?? !!trace.usage;
                             const fallbackMeta = this.withParseFailureMeta(this.getAiMetaFromResponse(retryResponse), retryResponse.aiStatus ?? 'rejected');
                             return {
                                 results: this.buildOmnibusStubResults(input, fallbackMeta, retryParseError),
@@ -1047,7 +1066,7 @@ export class InquiryRunnerService implements InquiryRunner {
                 : onePassFit === 'overflows'
                     ? `Estimated input ${Math.round(packagingPrecheck.inputTokens).toLocaleString()} exceeded safe input budget ${Math.round(packagingPrecheck.safeInputTokens).toLocaleString()}.`
                     : 'One-pass fit estimate was unavailable, so automatic mode preferred multi-pass packaging.';
-            const packaged = await this.runChunkedInquiry(aiClient, {
+            const multiPass = await this.runChunkedInquiry(aiClient, {
                 systemPrompt,
                 userPrompt,
                 userQuestion,
@@ -1056,10 +1075,10 @@ export class InquiryRunnerService implements InquiryRunner {
                 temperature,
                 maxTokens
             });
-            if (packaged) {
-                return this.toProviderResult(this.withExecutionContext(packaged, {
+            if (multiPass.ok) {
+                return this.toProviderResult(this.withExecutionContext(multiPass.run, {
                     analysisPackaging,
-                    executionPassCount: packaged.advancedContext?.executionPassCount,
+                    executionPassCount: multiPass.run.advancedContext?.executionPassCount,
                     packagingTriggerReason: triggerReason
                 }));
             }
@@ -1068,7 +1087,14 @@ export class InquiryRunnerService implements InquiryRunner {
                 : onePassFit === 'overflows'
                     ? `Automatic mode routed to multi-pass because estimated input ${Math.round(packagingPrecheck.inputTokens).toLocaleString()} exceeded safe input budget ${Math.round(packagingPrecheck.safeInputTokens).toLocaleString()}, but chunking/synthesis did not complete.`
                     : 'Automatic mode preferred multi-pass because one-pass fit was unknown, but chunking/synthesis did not complete.';
-            return this.buildPackagingFailedResult(ai, analysisPackaging, reason);
+            const reasonWithStage = `${reason} ${multiPass.failureReason}`.trim();
+            return this.buildPackagingFailedResult(
+                ai,
+                analysisPackaging,
+                reasonWithStage,
+                multiPass.failureStage,
+                multiPass.tokenUsageKnown
+            );
         }
 
         let run = await this.runInquiryRequest(aiClient, {
@@ -1106,7 +1132,7 @@ export class InquiryRunnerService implements InquiryRunner {
                     packagingTriggerReason: 'Single-pass response exceeded safe limits, but automatic packaging is disabled.'
                 });
             } else {
-                const chunked = await this.runChunkedInquiry(aiClient, {
+                const multiPass = await this.runChunkedInquiry(aiClient, {
                     systemPrompt,
                     userPrompt,
                     userQuestion,
@@ -1115,13 +1141,15 @@ export class InquiryRunnerService implements InquiryRunner {
                     temperature,
                     maxTokens
                 });
-                if (chunked) {
-                    run = chunked;
+                if (multiPass.ok) {
+                    run = multiPass.run;
                 } else {
                     return this.buildPackagingFailedResult(
                         ai,
                         analysisPackaging,
-                        'Single-pass response was truncated, and fallback multi-pass packaging did not complete.'
+                        `Single-pass response was truncated, and fallback multi-pass packaging did not complete. ${multiPass.failureReason}`.trim(),
+                        multiPass.failureStage,
+                        multiPass.tokenUsageKnown
                     );
                 }
             }
@@ -1332,7 +1360,11 @@ export class InquiryRunnerService implements InquiryRunner {
             error: 'This request exceeds the safe limit for a single pass. Switch Execution Preference to Automatic, or reduce scope.',
             analysisPackaging: 'singlePassOnly',
             executionPassCount: 1,
-            packagingTriggerReason: reason
+            packagingTriggerReason: reason,
+            executionState: 'blocked_before_send',
+            executionPath: 'one_pass',
+            failureStage: 'preflight',
+            tokenUsageKnown: false
         };
     }
 
@@ -1354,14 +1386,20 @@ export class InquiryRunnerService implements InquiryRunner {
             error: 'Unable to verify one-pass fit in Single-pass only mode. Try again, or switch Execution Preference to Automatic.',
             analysisPackaging: 'singlePassOnly',
             executionPassCount: 1,
-            packagingTriggerReason: reason
+            packagingTriggerReason: reason,
+            executionState: 'blocked_before_send',
+            executionPath: 'one_pass',
+            failureStage: 'preflight',
+            tokenUsageKnown: false
         };
     }
 
     private buildPackagingFailedResult(
         ai: InquiryRunnerInput['ai'],
         analysisPackaging: AnalysisPackaging,
-        reason: string
+        reason: string,
+        failureStage: InquiryFailureStage,
+        tokenUsageKnown: boolean
     ): ProviderResult {
         return {
             success: false,
@@ -1377,7 +1415,11 @@ export class InquiryRunnerService implements InquiryRunner {
             error: 'Multi-pass packaging could not be completed. Reduce corpus size, switch some evidence to Summary, or try another model/provider.',
             analysisPackaging,
             executionPassCount: 1,
-            packagingTriggerReason: reason
+            packagingTriggerReason: reason,
+            executionState: 'packaging_failed',
+            executionPath: 'multi_pass',
+            failureStage,
+            tokenUsageKnown
         };
     }
 
@@ -1403,6 +1445,20 @@ export class InquiryRunnerService implements InquiryRunner {
 
     private toProviderResult(run: AIRunResult): ProviderResult {
         const legacyProvider = mapAiProviderToLegacyProvider(run.provider);
+        const executionPath: InquiryExecutionPath = (run.advancedContext?.executionPassCount ?? 1) > 1
+            ? 'multi_pass'
+            : 'one_pass';
+        const usageKnown = !!this.extractUsage(run.responseData);
+        const preflightBlocked = run.aiStatus === 'rejected'
+            && run.aiReason === 'truncated'
+            && typeof run.reason === 'string'
+            && run.reason.toLowerCase().includes('token guard rejected request before execution');
+        const executionState: InquiryExecutionState = preflightBlocked
+            ? 'blocked_before_send'
+            : 'dispatched_to_provider';
+        const failureStage: InquiryFailureStage | undefined = run.aiStatus === 'success'
+            ? undefined
+            : (preflightBlocked ? 'preflight' : 'provider_response_parsing');
         return {
             success: run.aiStatus === 'success' && !!run.content,
             content: run.content,
@@ -1421,6 +1477,10 @@ export class InquiryRunnerService implements InquiryRunner {
             analysisPackaging: run.advancedContext?.analysisPackaging,
             executionPassCount: run.advancedContext?.executionPassCount,
             packagingTriggerReason: run.advancedContext?.packagingTriggerReason,
+            executionState,
+            executionPath,
+            failureStage,
+            tokenUsageKnown: usageKnown,
             citations: run.citations?.map(c => ({
                 citedText: c.citedText,
                 documentIndex: c.documentIndex,
@@ -1442,15 +1502,21 @@ export class InquiryRunnerService implements InquiryRunner {
             temperature: number;
             maxTokens: number;
         }
-    ): Promise<AIRunResult | null> {
+    ): Promise<MultiPassExecutionResult> {
         const chunkPrompts = this.buildEvidenceChunkPrompts(options.userPrompt, 6000);
         if (!chunkPrompts || chunkPrompts.length <= 1) {
             console.warn('[Inquiry] Chunked execution aborted: evidence could not be split into multiple chunks.');
-            return null;
+            return {
+                ok: false,
+                failureStage: 'preflight',
+                failureReason: 'Evidence could not be split into multiple chunks.',
+                tokenUsageKnown: false
+            };
         }
 
         console.info(`[Inquiry] Chunked execution: ${chunkPrompts.length} chunks to process.`);
         const chunkOutputs: string[] = [];
+        let tokenUsageKnown = false;
         for (let i = 0; i < chunkPrompts.length; i += 1) {
             const chunkRun = await this.runInquiryRequest(aiClient, {
                 task: `AnalyzeCorpusChunk${i + 1}`,
@@ -1462,20 +1528,32 @@ export class InquiryRunnerService implements InquiryRunner {
                 temperature: options.temperature,
                 maxTokens: options.maxTokens
             });
+            tokenUsageKnown = tokenUsageKnown || !!this.extractUsage(chunkRun.responseData);
             if (chunkRun.aiStatus !== 'success' || !chunkRun.content) {
-                console.warn(
-                    `[Inquiry] Chunk ${i + 1}/${chunkPrompts.length} failed:`
+                const failureReason = `[Inquiry] Chunk ${i + 1}/${chunkPrompts.length} failed:`
                     + ` status=${chunkRun.aiStatus}, reason=${chunkRun.aiReason ?? 'none'}`
-                    + `, error=${chunkRun.error ?? 'none'}`
-                );
-                return null;
+                    + `, error=${chunkRun.error ?? 'none'}`;
+                console.warn(failureReason);
+                return {
+                    ok: false,
+                    failureStage: 'chunk_execution',
+                    failureReason,
+                    tokenUsageKnown
+                };
             }
             chunkOutputs.push(chunkRun.content);
         }
 
         const marker = '\nEvidence:\n';
         const splitAt = options.userPrompt.indexOf(marker);
-        if (splitAt < 0) return null;
+        if (splitAt < 0) {
+            return {
+                ok: false,
+                failureStage: 'preflight',
+                failureReason: 'Evidence marker missing before synthesis stage.',
+                tokenUsageKnown
+            };
+        }
         const prefix = options.userPrompt.slice(0, splitAt + marker.length);
         const synthesisEvidence = chunkOutputs
             .map((output, index) => `## Chunk ${index + 1} analysis\n${output}`)
@@ -1491,25 +1569,34 @@ export class InquiryRunnerService implements InquiryRunner {
             temperature: options.temperature,
             maxTokens: options.maxTokens
         });
+        tokenUsageKnown = tokenUsageKnown || !!this.extractUsage(synthesisRun.responseData);
 
         if (synthesisRun.aiStatus !== 'success' || !synthesisRun.content) {
-            console.warn(
-                `[Inquiry] Synthesis pass failed after ${chunkOutputs.length} successful chunks:`
+            const failureReason = `[Inquiry] Synthesis pass failed after ${chunkOutputs.length} successful chunks:`
                 + ` status=${synthesisRun.aiStatus}, reason=${synthesisRun.aiReason ?? 'none'}`
-                + `, error=${synthesisRun.error ?? 'none'}`
-            );
-            return null;
+                + `, error=${synthesisRun.error ?? 'none'}`;
+            console.warn(failureReason);
+            return {
+                ok: false,
+                failureStage: 'synthesis',
+                failureReason,
+                tokenUsageKnown
+            };
         }
 
         const passCount = chunkPrompts.length + 1;
-        return this.withExecutionContext({
-            ...synthesisRun,
-            warnings: [...(synthesisRun.warnings || []), `Inquiry chunked execution used ${chunkPrompts.length} chunks before synthesis.`]
-        }, {
-            analysisPackaging: 'automatic',
-            executionPassCount: passCount,
-            packagingTriggerReason: 'Single-pass request exceeded safe limits, so structured packaging and synthesis were used.'
-        });
+        return {
+            ok: true,
+            tokenUsageKnown,
+            run: this.withExecutionContext({
+                ...synthesisRun,
+                warnings: [...(synthesisRun.warnings || []), `Inquiry chunked execution used ${chunkPrompts.length} chunks before synthesis.`]
+            }, {
+                analysisPackaging: 'automatic',
+                executionPassCount: passCount,
+                packagingTriggerReason: 'Single-pass request exceeded safe limits, so structured packaging and synthesis were used.'
+            })
+        };
     }
 
     private buildEvidenceChunkPrompts(userPrompt: string, maxChunkTokens: number): string[] | null {
@@ -2181,6 +2268,43 @@ export class InquiryRunnerService implements InquiryRunner {
         const inquiryRetryCap = Math.min(providerCap, INQUIRY_MAX_OUTPUT_TOKENS * 2);
         const retryTarget = Math.max(currentCap * 2, INQUIRY_MAX_OUTPUT_TOKENS);
         return Math.max(currentCap, Math.min(inquiryRetryCap, retryTarget));
+    }
+
+    private applyResponseExecutionReporting(trace: InquiryRunTrace, response: ProviderResult): void {
+        const usage = this.extractUsage(response.responseData);
+        if (usage) {
+            trace.usage = usage;
+        }
+        trace.tokenUsageKnown = response.tokenUsageKnown ?? !!usage;
+
+        const executionState = response.executionState ?? this.inferExecutionState(response);
+        trace.executionState = executionState;
+        trace.executionPath = response.executionPath
+            ?? ((typeof response.executionPassCount === 'number' && response.executionPassCount > 1)
+                ? 'multi_pass'
+                : 'one_pass');
+
+        if (response.failureStage) {
+            trace.failureStage = response.failureStage;
+            return;
+        }
+        if (response.aiStatus === 'success' && response.success) {
+            trace.failureStage = undefined;
+            return;
+        }
+        trace.failureStage = executionState === 'blocked_before_send'
+            ? 'preflight'
+            : 'provider_response_parsing';
+    }
+
+    private inferExecutionState(response: ProviderResult): InquiryExecutionState {
+        if (response.aiReason === 'packaging_failed') return 'packaging_failed';
+        if (response.aiStatus === 'rejected'
+            && typeof response.error === 'string'
+            && response.error.toLowerCase().includes('safe limit for a single pass')) {
+            return 'blocked_before_send';
+        }
+        return 'dispatched_to_provider';
     }
 
     private shouldRetryParseFailure(

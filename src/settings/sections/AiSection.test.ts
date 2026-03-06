@@ -43,6 +43,12 @@ describe('AI settings models table', () => {
         expect(source.includes('Best for')).toBe(false);
     });
 
+    it('keeps inquiry advisory hidden when no handoff context exists', () => {
+        const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
+        expect(source.includes('renderInquiryAdvisoryBanner(plugin.consumeInquiryAdvisoryHandoffContext());')).toBe(true);
+        expect(source.includes('params.addAiRelatedElement(inquiryAdvisoryFrame);')).toBe(false);
+    });
+
     it('uses medium dropdown sizing for all AI Strategy controls', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
         expect(source.includes("providerDropdown = dropdown;\n        dropdown.selectEl.addClass('ert-input', 'ert-input--md');")).toBe(true);
