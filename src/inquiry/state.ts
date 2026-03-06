@@ -14,6 +14,17 @@ export interface InquiryCitation {
     endCharIndex?: number;
 }
 
+export interface EvidenceDocumentMeta {
+    /** Display title (e.g. "The Red Night" or "Book outline"). */
+    title: string;
+    /** Vault-relative file path for navigation. */
+    path?: string;
+    /** Scene ID (e.g. "S42"), if a scene document. */
+    sceneId?: string;
+    /** Evidence class: "scene", "outline", or formatted reference class. */
+    evidenceClass: string;
+}
+
 export interface InquiryVerdict {
     flow: number;
     depth: number;
