@@ -1873,7 +1873,7 @@ export class InquiryView extends ItemView {
             engine.provider,
             engine.modelId,
             readinessUi.packaging,
-            estimatedInputTokens,
+            Math.round(estimatedInputTokens / 5000) * 5000,
             expectedPassCount,
             corpusFingerprint,
             overrideSummary.active ? 1 : 0,

@@ -649,6 +649,23 @@ export function renderAiSection(params: {
         return `${passCount} passes expected`;
     };
 
+    const formatAdvisoryTimestamp = (createdAt: string): string => {
+        const parsed = Date.parse(createdAt);
+        if (!Number.isFinite(parsed)) return createdAt;
+        try {
+            return new Intl.DateTimeFormat(undefined, {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+                timeZoneName: 'short'
+            }).format(new Date(parsed));
+        } catch {
+            return new Date(parsed).toLocaleString();
+        }
+    };
+
     const renderInquiryAdvisoryBanner = (context: InquiryAdvisoryContext | null): void => {
         inquiryAdvisoryFrame.empty();
         if (!context) {
@@ -686,15 +703,23 @@ export function renderAiSection(params: {
         });
         body.createDiv({
             cls: 'ert-ai-inquiry-advisory-line',
+            text: context.recommendation.currentEngineBehavior
+        });
+        body.createDiv({
+            cls: 'ert-ai-inquiry-advisory-line',
             text: `Suggestion: ${context.recommendation.providerLabel} · ${context.recommendation.modelLabel}`
         });
         body.createDiv({
             cls: 'ert-ai-inquiry-advisory-line ert-ai-inquiry-advisory-line--reason',
             text: context.recommendation.message
         });
+        body.createDiv({
+            cls: 'ert-ai-inquiry-advisory-line',
+            text: `Snapshot captured: ${formatAdvisoryTimestamp(context.createdAt)}`
+        });
     };
 
-    renderInquiryAdvisoryBanner(plugin.getInquiryAdvisoryHandoffContext());
+    renderInquiryAdvisoryBanner(plugin.consumeInquiryAdvisoryHandoffContext());
 
     const resolvedPreviewFrame = quickSetupPreviewSection.createDiv({
         cls: [ERT_CLASSES.PREVIEW_FRAME, ERT_CLASSES.STACK, 'ert-previewFrame--center', 'ert-previewFrame--flush', 'ert-ai-resolved-preview'],

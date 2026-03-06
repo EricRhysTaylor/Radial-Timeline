@@ -93,6 +93,28 @@ describe('computeInquiryAdvisoryContext', () => {
         expect(advisory).toBeNull();
     });
 
+    it('does not recommend single-pass on marginal over-limit deltas', () => {
+        const aiSettings = buildDefaultAiSettings();
+        aiSettings.provider = 'anthropic';
+        aiSettings.aiAccessProfile.anthropicTier = 1;
+
+        const advisory = computeInquiryAdvisoryContext({
+            scope: 'book',
+            focusLabel: 'B1',
+            resolvedEngine: buildResolvedEngine('claude-sonnet-4-6', 'Anthropic'),
+            currentModel: getModel('claude-sonnet-4-6'),
+            models: BUILTIN_MODELS,
+            aiSettings,
+            analysisPackaging: 'automatic',
+            estimatedInputTokens: 120000,
+            expectedPassCount: 2,
+            corpusFingerprint: 'fp-marginal',
+            overrideSummary: { active: false, classCount: 0, itemCount: 0, total: 0 },
+        });
+
+        expect(advisory).toBeNull();
+    });
+
     it('keeps createdAt stable when advisory identity does not change', () => {
         const aiSettings = buildDefaultAiSettings();
         aiSettings.provider = 'openai';

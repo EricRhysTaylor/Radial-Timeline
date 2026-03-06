@@ -25,6 +25,7 @@ import {
     toVaultRoot
 } from '../../inquiry/utils/scanRoots';
 import {
+    findInquiryBookForPath,
     isPathIncludedByInquiryBooks,
     normalizeInquiryBookInclusion,
     resolveInquiryBookResolution,
@@ -88,6 +89,17 @@ const formatClassCountLabel = (className: string, count: number): string => {
     const normalized = normalizeClassLabel(className);
     if (!normalized) return count === 1 ? 'item' : 'items';
     return count === 1 ? normalized : pluralizePhrase(normalized);
+};
+
+const CLASS_SUMMARY_ORDER = ['scene', 'outline', 'character', 'place', 'power'];
+
+const compareClassSummary = (a: string, b: string): number => {
+    const aIdx = CLASS_SUMMARY_ORDER.indexOf(a);
+    const bIdx = CLASS_SUMMARY_ORDER.indexOf(b);
+    if (aIdx !== -1 || bIdx !== -1) {
+        return (aIdx === -1 ? Number.POSITIVE_INFINITY : aIdx) - (bIdx === -1 ? Number.POSITIVE_INFINITY : bIdx);
+    }
+    return a.localeCompare(b);
 };
 
 type LegacyInquirySourcesSettings = {
@@ -386,8 +398,8 @@ export function renderInquirySection(params: SectionParams): void {
     let classScopeInput: TextAreaComponent | null = null;
 
     const scanRootsSetting = new Settings(sourcesBody)
-        .setName('Inquiry scan folders')
-        .setDesc('Inquiry only scans within these folders. One path per line. Wildcards like /Book */ or /Book 1-7 */ are allowed. Use / for the vault root. Empty = no scan.');
+        .setName('Scan folders')
+        .setDesc('Inquiry scans only within these folders. One path per line. Wildcards like /Book */ or /Book 1-7 */ are allowed. Use / for the vault root. Empty = no scan.');
     scanRootsSetting.settingEl.setAttribute('data-ert-role', 'inquiry-setting:scan-roots');
     scanRootsSetting.settingEl.classList.add(ERT_CLASSES.ROW, 'ert-row--stack');
 
@@ -435,36 +447,30 @@ export function renderInquirySection(params: SectionParams): void {
         applyScanRoots(nextRoots);
     });
 
-    const resolvedPreview = sourcesBody.createDiv({
-        cls: [ERT_CLASSES.PREVIEW_FRAME, ERT_CLASSES.STACK, 'ert-previewFrame--flush'],
-        attr: { 'data-preview': 'inquiry-resolved' }
-    });
-    const resolvedHeading = resolvedPreview.createDiv({
-        cls: ['ert-planetary-preview-heading', 'ert-previewFrame__title'],
-        text: 'Resolved Folders (0)'
-    });
-    const resolvedList = resolvedPreview.createDiv({ cls: 'ert-controlGroup ert-controlGroup--scroll' });
-    resolvedList.addClass('mod-styled-scrollbar');
-    resolvedList.style.setProperty('--ert-controlGroup-columns', '1fr');
-    resolvedList.style.setProperty('--ert-controlGroup-max-height', '220px');
-
     const resolvedBooksPreview = sourcesBody.createDiv({
         cls: [ERT_CLASSES.PREVIEW_FRAME, ERT_CLASSES.STACK, 'ert-previewFrame--flush'],
-        attr: { 'data-preview': 'inquiry-resolved-books' }
+        attr: { 'data-preview': 'inquiry-detected-containers' }
     });
     const resolvedBooksHeading = resolvedBooksPreview.createDiv({
         cls: ['ert-planetary-preview-heading', 'ert-previewFrame__title'],
-        text: 'Resolved Books (0 included / 0 total)'
+        text: 'Detected containers (0 included / 0 detected)'
     });
-    const resolvedBooksList = resolvedBooksPreview.createDiv({ cls: 'ert-controlGroup ert-controlGroup--scroll' });
+    const resolvedBooksList = resolvedBooksPreview.createDiv({
+        cls: ['ert-controlGroup', 'ert-controlGroup--scroll', 'ert-controlGroup--inquiry-containers']
+    });
     resolvedBooksList.addClass('mod-styled-scrollbar');
-    resolvedBooksList.style.setProperty('--ert-controlGroup-columns', '1fr');
     resolvedBooksList.style.setProperty('--ert-controlGroup-max-height', '220px');
     const resolvedBooksWarnings = resolvedBooksPreview.createDiv({ cls: ERT_CLASSES.STACK });
 
+    const materialRulesHeader = new Settings(sourcesBody)
+        .setName('Material rules')
+        .setDesc('Define how each material type participates in Book, Saga, and Reference analysis.');
+    materialRulesHeader.setHeading();
+    applyErtHeaderLayout(materialRulesHeader);
+
     const classScopeSetting = new Settings(sourcesBody)
-        .setName('Inquiry class scope')
-        .setDesc('A class is the label in a note\'s YAML (frontmatter) that says what kind of note it is (scene, outline, character, place). One class per line. Use / to allow all classes. Empty = no classes allowed.');
+        .setName('Material types (advanced)')
+        .setDesc('Frontmatter Class values to include. One class per line. Use / to allow all classes. Empty = no classes allowed.');
     classScopeSetting.settingEl.setAttribute('data-ert-role', 'inquiry-setting:class-scope');
     classScopeSetting.settingEl.addClass(ERT_CLASSES.ROW, ERT_CLASSES.ROW_WIDE_CONTROL);
 
@@ -482,12 +488,12 @@ export function renderInquirySection(params: SectionParams): void {
         });
     });
 
-    let resolvedRootCache: { signature: string; resolvedRoots: string[]; total: number } | null = null;
+    let resolvedRootCache: { signature: string; resolvedRoots: string[] } | null = null;
     let resolvedBookCache: InquiryBookResolution | null = null;
 
     const presetSetting = new Settings(sourcesBody)
         .setName('Presets')
-        .setDesc('Quick starters for the contribution matrix. Apply one, then tweak as needed.');
+        .setDesc('Quick starters for material rules. Apply one, then tweak as needed.');
     presetSetting.settingEl.setAttribute('data-ert-role', 'inquiry-setting:class-presets');
     presetSetting.settingEl.addClass(ERT_CLASSES.ROW, ERT_CLASSES.ROW_TIGHT);
     const presetControls = presetSetting.controlEl.createDiv({ cls: [ERT_CLASSES.INLINE] });
@@ -515,18 +521,27 @@ export function renderInquirySection(params: SectionParams): void {
     syncPresetButtons();
 
     const tableCard = sourcesBody.createDiv({ cls: ERT_CLASSES.PANEL });
-    const classTableWrap = tableCard.createDiv({ cls: ['ert-controlGroup', 'ert-controlGroup--class-scope'] });
+    const classTableWrap = tableCard.createDiv({
+        cls: ['ert-controlGroup', 'ert-controlGroup--class-scope', 'ert-controlGroup--inquiry-material-rules']
+    });
 
-    const scanInquiryClasses = async (roots: string[], includePath?: (path: string) => boolean): Promise<{
+    const scanInquiryClasses = async (
+        roots: string[],
+        includePath?: (path: string) => boolean,
+        containerCandidates: InquiryResolvedBook[] = []
+    ): Promise<{
         discoveredCounts: Record<string, number>;
         discoveredClasses: string[];
-        rootClassCounts: Record<string, Record<string, number>>;
+        containerClassCounts: Record<string, Record<string, number>>;
     }> => {
         if (!roots.length) {
-            return { discoveredCounts: {}, discoveredClasses: [], rootClassCounts: {} };
+            return { discoveredCounts: {}, discoveredClasses: [], containerClassCounts: {} };
         }
         const discoveredCounts: Record<string, number> = {};
-        const rootClassCounts: Record<string, Record<string, number>> = {};
+        const containerClassCounts: Record<string, Record<string, number>> = {};
+        containerCandidates.forEach(candidate => {
+            containerClassCounts[candidate.rootPath] = {};
+        });
         const files = plugin.app.vault.getMarkdownFiles();
         const resolvedVaultRoots = roots;
 
@@ -534,13 +549,8 @@ export function renderInquirySection(params: SectionParams): void {
             return resolvedVaultRoots.some(root => !root || path === root || path.startsWith(`${root}/`));
         };
 
-        resolvedVaultRoots.forEach(root => {
-            rootClassCounts[toDisplayRoot(root)] = {};
-        });
-
         files.forEach(file => {
             if (!inRoots(file.path)) return;
-            if (includePath && !includePath(file.path)) return;
             const cache = plugin.app.metadataCache.getFileCache(file);
             const frontmatter = cache?.frontmatter as Record<string, unknown> | undefined;
             if (!frontmatter) return;
@@ -548,26 +558,29 @@ export function renderInquirySection(params: SectionParams): void {
             const rawClass = normalized['Class'];
             if (!rawClass) return;
             const values = Array.isArray(rawClass) ? rawClass : [rawClass];
+            const ownerContainer = containerCandidates.length
+                ? findInquiryBookForPath(file.path, containerCandidates)
+                : undefined;
+            const includeInDiscoveredCounts = !includePath || includePath(file.path);
             values.forEach(value => {
                 const name = typeof value === 'string' ? value.trim() : String(value).trim();
                 if (!name) return;
                 const key = name.toLowerCase();
-                discoveredCounts[key] = (discoveredCounts[key] || 0) + 1;
-                resolvedVaultRoots.forEach(root => {
-                    if (!root || file.path === root || file.path.startsWith(`${root}/`)) {
-                        const display = toDisplayRoot(root);
-                        const bucket = rootClassCounts[display] || {};
-                        bucket[key] = (bucket[key] || 0) + 1;
-                        rootClassCounts[display] = bucket;
-                    }
-                });
+                if (includeInDiscoveredCounts) {
+                    discoveredCounts[key] = (discoveredCounts[key] || 0) + 1;
+                }
+                if (ownerContainer?.rootPath) {
+                    const bucket = containerClassCounts[ownerContainer.rootPath] || {};
+                    bucket[key] = (bucket[key] || 0) + 1;
+                    containerClassCounts[ownerContainer.rootPath] = bucket;
+                }
             });
         });
 
         return {
             discoveredCounts,
             discoveredClasses: Object.keys(discoveredCounts).sort(),
-            rootClassCounts
+            containerClassCounts
         };
     };
 
@@ -749,55 +762,34 @@ export function renderInquirySection(params: SectionParams): void {
         void refreshClassScan();
     };
 
-    const renderResolvedRoots = (
-        roots: string[],
-        total: number,
-        rootClassCounts: Record<string, Record<string, number>>,
+    const getContainerStatusLabel = (book: InquiryResolvedBook): string => {
+        if (book.included) return 'Included';
+        if (book.status === 'excluded_variant') return 'Excluded: duplicate/variant';
+        if (book.status === 'excluded_nested') return 'Excluded: nested draft';
+        if (book.status === 'excluded_manual') return 'Excluded: manual';
+        return 'Excluded';
+    };
+
+    const buildContainerMaterialSummary = (
+        classCounts: Record<string, number>,
+        participatingClasses: Set<string>
+    ): string => {
+        if (!participatingClasses.size) {
+            return 'No active material rules.';
+        }
+        const parts = Object.entries(classCounts)
+            .filter(([className, count]) => count > 0 && participatingClasses.has(className))
+            .sort(([a], [b]) => compareClassSummary(a, b))
+            .map(([className, count]) => `${count} ${formatClassCountLabel(className, count)}`);
+        return parts.length ? parts.join(' \u00b7 ') : 'No matching materials.';
+    };
+
+    const renderDetectedContainers = (
+        resolution: InquiryBookResolution,
+        containerClassCounts: Record<string, Record<string, number>>,
         participatingClasses: Set<string>
     ) => {
-        resolvedHeading.setText(`Resolved Folders (${total})`);
-        // Build into a temporary container then replace in one go to avoid empty-then-rebuild flicker.
-        const container = document.createElement('div');
-        container.className = resolvedList.className;
-
-        if (!roots.length) {
-            const emptyRow = container.createDiv({ cls: ['ert-controlGroup__row', 'ert-controlGroup__row--card'] });
-            emptyRow.createDiv({
-                cls: ['ert-controlGroup__cell', 'ert-controlGroup__cell--faint'],
-                text: 'No scan folders set. Add /Book */ or / to begin.'
-            });
-        } else {
-            roots.forEach(root => {
-                const classCounts = rootClassCounts[root] || {};
-                const parts: string[] = [];
-                participatingClasses.forEach(className => {
-                    const count = classCounts[className] || 0;
-                    if (!count) return;
-                    const label = formatClassCountLabel(className, count);
-                    parts.push(`${count} ${label}`);
-                });
-                const suffix = parts.length ? `[${parts.join(', ')}]` : '[0]';
-                const row = container.createDiv({ cls: ['ert-controlGroup__row', 'ert-controlGroup__row--card'] });
-                row.createDiv({
-                    cls: ['ert-controlGroup__cell', 'ert-controlGroup__cell--mono', 'ert-controlGroup__cell--meta'],
-                    text: `${root} ${suffix}`
-                });
-            });
-        }
-
-        resolvedList.replaceChildren(...Array.from(container.children));
-    };
-
-    const getBookStatusSuffix = (book: InquiryResolvedBook): string => {
-        if (book.status === 'excluded_variant') return 'duplicate/variant';
-        if (book.status === 'excluded_nested') return 'nested draft';
-        if (book.status === 'excluded_manual') return 'manual';
-        if (book.overrideIncluded === true && !book.defaultIncluded) return 'manual override';
-        return 'included';
-    };
-
-    const renderResolvedBooks = (resolution: InquiryBookResolution) => {
-        resolvedBooksHeading.setText(`Resolved Books (${resolution.includedBooks.length} included / ${resolution.candidates.length} total)`);
+        resolvedBooksHeading.setText(`Detected containers (${resolution.includedBooks.length} included / ${resolution.candidates.length} detected)`);
         const container = document.createElement('div');
         container.className = resolvedBooksList.className;
 
@@ -805,13 +797,13 @@ export function renderInquirySection(params: SectionParams): void {
             const emptyRow = container.createDiv({ cls: ['ert-controlGroup__row', 'ert-controlGroup__row--card'] });
             emptyRow.createDiv({
                 cls: ['ert-controlGroup__cell', 'ert-controlGroup__cell--faint'],
-                text: 'No book folders resolved from current scan roots.'
+                text: 'No containers detected from current scan folders.'
             });
         } else {
             const header = container.createDiv({ cls: ['ert-controlGroup__row', 'ert-controlGroup__row--header'] });
             header.createDiv({ cls: 'ert-controlGroup__cell', text: 'Include' });
-            header.createDiv({ cls: 'ert-controlGroup__cell', text: 'Book folder' });
-            header.createDiv({ cls: 'ert-controlGroup__cell', text: 'Status' });
+            header.createDiv({ cls: 'ert-controlGroup__cell', text: 'Container' });
+            header.createDiv({ cls: 'ert-controlGroup__cell', text: 'Detected material' });
 
             resolution.candidates.forEach(book => {
                 const row = container.createDiv({ cls: ['ert-controlGroup__row', 'ert-controlGroup__row--card'] });
@@ -824,20 +816,31 @@ export function renderInquirySection(params: SectionParams): void {
                     setBookInclusionOverride(book, includeToggle.checked);
                 });
 
-                const pathCell = row.createDiv({ cls: ['ert-controlGroup__cell', 'ert-controlGroup__cell--mono'] });
+                const pathCell = row.createDiv({ cls: ['ert-controlGroup__cell', 'ert-controlGroup__cell--stack'] });
+                const displayRoot = toDisplayRoot(book.rootPath);
                 const managerMatch = (plugin.settings.books || []).find(entry =>
                     normalizePath((entry.sourceFolder || '').trim()) === normalizePath(book.rootPath)
                 );
-                const managerLabel = managerMatch?.title?.trim() ? ` · ${managerMatch.title.trim()}` : '';
-                pathCell.setText(`${toDisplayRoot(book.rootPath)}${managerLabel}`);
+                const managerTitle = managerMatch?.title?.trim() || '';
+                const containerLabel = managerTitle || (displayRoot.split('/').filter(Boolean).pop() || displayRoot);
+                pathCell.createEl('strong', { text: containerLabel });
+                if (managerTitle) {
+                    pathCell.createDiv({
+                        cls: ['ert-controlGroup__cell--meta', 'ert-controlGroup__cell--mono'],
+                        text: displayRoot
+                    });
+                }
+                pathCell.createDiv({
+                    cls: 'ert-controlGroup__cell--meta',
+                    text: getContainerStatusLabel(book)
+                });
 
-                const statusCell = row.createDiv({ cls: ['ert-controlGroup__cell', 'ert-controlGroup__cell--meta'] });
-                const methodLabel = book.detectedBy === 'name+outline'
-                    ? 'name + outline'
-                    : book.detectedBy === 'name'
-                        ? 'name'
-                        : 'outline';
-                statusCell.setText(`${book.statusLabel} (${getBookStatusSuffix(book)}; ${methodLabel})`);
+                const summaryCell = row.createDiv({ cls: ['ert-controlGroup__cell', 'ert-controlGroup__cell--meta'] });
+                const summary = buildContainerMaterialSummary(containerClassCounts[book.rootPath] || {}, participatingClasses);
+                summaryCell.setText(summary);
+                if (summary.startsWith('No ')) {
+                    summaryCell.addClass('ert-controlGroup__cell--faint');
+                }
             });
         }
 
@@ -847,13 +850,13 @@ export function renderInquirySection(params: SectionParams): void {
         if (resolution.hasNestedExclusions) {
             resolvedBooksWarnings.createDiv({
                 cls: 'setting-item-description',
-                text: 'Nested drafts detected. Inquiry excludes nested draft folders by default. Adjust scan roots if needed.'
+                text: 'Nested drafts detected. Inquiry excludes nested draft containers by default.'
             });
         }
         if (resolution.hasVariantExclusions) {
             resolvedBooksWarnings.createDiv({
                 cls: 'setting-item-description',
-                text: 'Draft-style variants were excluded by default. Toggle Include to override for a specific folder.'
+                text: 'Draft-style variants were excluded by default. Toggle Include to override a specific container.'
             });
         }
     };
@@ -900,13 +903,12 @@ export function renderInquirySection(params: SectionParams): void {
         const signature = `${scanRoots.join('|')}::${inclusionSignature}`;
         if (!resolvedRootCache || resolvedRootCache.signature !== signature) {
             if (!scanRoots.length) {
-                resolvedRootCache = { signature, resolvedRoots: [], total: 0 };
+                resolvedRootCache = { signature, resolvedRoots: [] };
             } else {
                 const resolved = resolveScanRoots(scanRoots, plugin.app.vault, MAX_RESOLVED_SCAN_ROOTS);
                 resolvedRootCache = {
                     signature,
-                    resolvedRoots: resolved.resolvedRoots,
-                    total: resolved.totalMatches
+                    resolvedRoots: resolved.resolvedRoots
                 };
                 if (resolved.totalMatches > MAX_RESOLVED_SCAN_ROOTS) {
                     new Notice(`Pattern expands to ${resolved.totalMatches} folders; refine your root.`);
@@ -923,7 +925,8 @@ export function renderInquirySection(params: SectionParams): void {
         });
         const scan = await scanInquiryClasses(
             resolvedVaultRoots,
-            (path) => isPathIncludedByInquiryBooks(path, resolvedBookCache?.candidates || [])
+            (path) => isPathIncludedByInquiryBooks(path, resolvedBookCache?.candidates || []),
+            resolvedBookCache?.candidates || []
         );
         const scopeConfig = getClassScopeConfig(inquirySources.classScope);
         const allowedClasses = scopeConfig.allowAll ? scan.discoveredClasses : scopeConfig.allowed;
@@ -956,13 +959,7 @@ export function renderInquirySection(params: SectionParams): void {
             participatingClasses.add(config.className);
         });
 
-        renderResolvedRoots(
-            resolvedRootCache.resolvedRoots,
-            resolvedRootCache.total,
-            scan.rootClassCounts,
-            participatingClasses
-        );
-        renderResolvedBooks(resolvedBookCache);
+        renderDetectedContainers(resolvedBookCache, scan.containerClassCounts, participatingClasses);
 
     };
 

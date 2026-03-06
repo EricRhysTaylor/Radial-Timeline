@@ -376,6 +376,12 @@ export default class RadialTimelinePlugin extends Plugin {
             : null;
     }
 
+    public consumeInquiryAdvisoryHandoffContext(): InquiryAdvisoryContext | null {
+        const context = this.getInquiryAdvisoryHandoffContext();
+        this.inquiryAdvisoryHandoffContext = null;
+        return context;
+    }
+
     public clearInquiryAdvisoryHandoffContext(): void {
         this.inquiryAdvisoryHandoffContext = null;
     }

@@ -96,7 +96,8 @@ const PROVIDER_LABELS: Record<AIProviderId, string> = {
     none: 'Disabled'
 };
 
-const COST_REUSE_TOKEN_THRESHOLD = 50000;
+const COST_REUSE_TOKEN_THRESHOLD = 120000;
+const SINGLE_PASS_DELTA_FACTOR = 1.15;
 
 function getAccessTier(aiSettings: AiSettingsV1, provider: AIProviderId): 1 | 2 | 3 | 4 {
     if (provider === 'anthropic') return aiSettings.aiAccessProfile.anthropicTier ?? 1;
@@ -233,13 +234,17 @@ export function computeInquiryAdvisoryContext(input: ComputeInquiryAdvisoryInput
 
     const currentPassCount = Math.max(1, input.expectedPassCount);
     const currentBehavior = buildCurrentBehaviorLabel(currentPassCount, input.analysisPackaging);
+    const singlePassDeltaIsMaterial = currentCandidate.safeInputBudget > 0
+        && input.estimatedInputTokens >= Math.ceil(currentCandidate.safeInputBudget * SINGLE_PASS_DELTA_FACTOR);
 
     let reasonCode: InquiryAdvisoryReasonCode | null = null;
     let suggestion: AdvisoryCandidate | null = null;
     let message = '';
 
     const singlePassAlternatives = sortedAlternatives.filter(candidate =>
-        currentPassCount > 1 && candidate.expectedPassCount === 1
+        currentPassCount > 1
+        && candidate.expectedPassCount === 1
+        && singlePassDeltaIsMaterial
     );
     if (singlePassAlternatives.length) {
         reasonCode = 'single_pass_preferred';
@@ -259,7 +264,11 @@ export function computeInquiryAdvisoryContext(input: ComputeInquiryAdvisoryInput
     if (!reasonCode
         && currentCandidate.corpusReuseStatus !== 'available'
         && input.estimatedInputTokens >= COST_REUSE_TOKEN_THRESHOLD) {
-        const reuseAlternatives = sortedAlternatives.filter(candidate => candidate.corpusReuseStatus === 'available');
+        const reuseAlternatives = sortedAlternatives.filter(candidate =>
+            candidate.corpusReuseStatus === 'available'
+            && candidate.expectedPassCount <= currentPassCount
+            && currentPassCount > 1
+        );
         if (reuseAlternatives.length) {
             reasonCode = 'cost_reuse_preferred';
             suggestion = reuseAlternatives[0];
