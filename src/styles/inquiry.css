@@ -1742,7 +1742,7 @@
 }
 
 .ert-inquiry-nav-session-label {
-  font-size: 11px;
+  font-size: 12px;
   fill: var(--text-muted);
   font-family: var(--font-interface);
   user-select: none;
