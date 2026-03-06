@@ -1634,10 +1634,6 @@ export class InquiryView extends ItemView {
         if (!this.enginePanelEl) return;
         this.cancelEnginePanelHide();
         this.enginePanelEl.classList.add('ert-hidden');
-        if (this.pendingGuardQuestion && !this.state.isRunning) {
-            this.pendingGuardQuestion = undefined;
-            this.refreshEnginePanel();
-        }
     }
 
     private scheduleEnginePanelHide(): void {
@@ -4466,22 +4462,16 @@ export class InquiryView extends ItemView {
         const usesAutomaticPackaging = readinessUi.packaging === 'automatic' && readinessUi.readiness.exceedsBudget;
         const overCapacityTone: 'amber' | 'red' = usesAutomaticPackaging ? 'amber' : 'red';
         this.updateTokenCapBar(clamped, isOverCapacity, overCapacityTone, passPlan.displayPassCount);
+        this.minimapBaseline.style.stroke = '';
+        this.minimapEndCapStart?.style.removeProperty('fill');
+        this.minimapEndCapEnd?.style.removeProperty('fill');
 
         if (isOverCapacity) {
             const pressureColors = this.getBackbonePressureColors(overCapacityTone);
-            const overCapacityColor = overCapacityTone === 'amber'
-                ? this.getExecutionColorValue('--rt-ai-warning', '#ff9900')
-                : this.getExecutionColorValue('--rt-ai-error', '#f44c4c');
             this.applyBackboneStopColors(pressureColors.gradient, pressureColors.shine);
-            this.minimapBaseline.style.stroke = overCapacityColor;
-            this.minimapEndCapStart?.style.setProperty('fill', overCapacityColor);
-            this.minimapEndCapEnd?.style.setProperty('fill', overCapacityColor);
         } else {
             const pressureColors = this.getBackbonePressureColors(readinessUi.readiness.pressureTone);
             this.applyBackboneStopColors(pressureColors.gradient, pressureColors.shine);
-            this.minimapBaseline.style.stroke = '';
-            this.minimapEndCapStart?.style.removeProperty('fill');
-            this.minimapEndCapEnd?.style.removeProperty('fill');
         }
 
         this.minimapBackboneGroup.classList.remove('is-pressure-normal', 'is-pressure-amber', 'is-pressure-red', 'is-pressure-over-budget');
@@ -6288,8 +6278,10 @@ export class InquiryView extends ItemView {
 
         const endcapStateClass = overCapacityTone === 'amber' ? 'is-warning-capacity' : 'is-over-capacity';
         const inverseStateClass = overCapacityTone === 'amber' ? 'is-over-capacity' : 'is-warning-capacity';
+        this.minimapTokenCapBar.classList.toggle(endcapStateClass, isOverCapacity);
         this.minimapTokenCapStartCap?.classList.toggle(endcapStateClass, isOverCapacity);
         this.minimapTokenCapEndCap?.classList.toggle(endcapStateClass, isOverCapacity);
+        this.minimapTokenCapBar.classList.remove(inverseStateClass);
         this.minimapTokenCapStartCap?.classList.remove(inverseStateClass);
         this.minimapTokenCapEndCap?.classList.remove(inverseStateClass);
         this.updateTokenCapPassSplits(
@@ -10198,10 +10190,6 @@ export class InquiryView extends ItemView {
         const tokensRow = this.previewRows.find(row => row.group.classList.contains('is-tokens-slot'));
         if (!tokensRow) return;
         if (!questionText) return;
-        const readiness = this.buildReadinessUiState(questionText).readiness;
-        if (readiness.pressureTone === 'red' || readiness.state === 'blocked') {
-            tokensRow.group.classList.add('is-token-red');
-        }
     }
 
     private pickPillSplit(widths: number[], maxWidth: number): number {

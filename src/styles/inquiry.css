@@ -487,12 +487,17 @@
 
 .ert-inquiry-minimap-tokencap-endcap.is-over-capacity {
   fill: var(--ert-inquiry-ai-error);
-  opacity: 0.85;
+  opacity: 1;
 }
 
 .ert-inquiry-minimap-tokencap-endcap.is-warning-capacity {
   fill: var(--ert-inquiry-ai-warning);
-  opacity: 0.85;
+  opacity: 1;
+}
+
+.ert-inquiry-minimap-tokencap-bar.is-over-capacity,
+.ert-inquiry-minimap-tokencap-bar.is-warning-capacity {
+  opacity: 1;
 }
 
 .ert-inquiry-minimap-tokencap-splits {
@@ -1922,8 +1927,8 @@ body.rt-modal-open .ert-inquiry-svg * {
 }
 
 .ert-inquiry-engine-readiness.is-amber {
-  border: 2px solid var(--ert-inquiry-ai-warning);
-  background: color-mix(in srgb, var(--background-secondary) 92%, var(--ert-inquiry-ai-warning));
+  border: 2px solid var(--rt-ai-warning);
+  background: color-mix(in srgb, var(--background-secondary) 92%, var(--rt-ai-warning));
 }
 
 .ert-inquiry-engine-readiness.is-error {
@@ -1944,7 +1949,7 @@ body.rt-modal-open .ert-inquiry-svg * {
 }
 
 .ert-inquiry-engine-readiness.is-amber .ert-inquiry-engine-readiness-status {
-  color: var(--ert-inquiry-ai-warning);
+  color: var(--rt-ai-warning);
   font-weight: 800;
 }
 
