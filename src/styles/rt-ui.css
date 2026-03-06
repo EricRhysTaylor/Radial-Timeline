@@ -678,6 +678,19 @@
   gap: 2px;
 }
 
+.ert-ui.ert-scope--settings .ert-controlGroup__containerTitle {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.ert-ui.ert-scope--settings .ert-controlGroup__containerTitle--manager {
+  padding: 2px 8px;
+  border: 1px dashed color-mix(in srgb, var(--background-modifier-border) 85%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--background-primary) 55%, transparent);
+}
+
 .ert-ui.ert-scope--settings .ert-controlGroup__cell--meta {
   font-size: 12px;
   color: var(--text-muted);
@@ -4123,9 +4136,9 @@
   align-items: start;
 }
 
-/* Stack modifier: control column must be wide + stacked */
+/* Stack modifier: label/description on top, full-width control below */
 :is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .setting-item.ert-row.ert-row--stack {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
 }
 
 /* Control cell becomes vertical stack and stretches */

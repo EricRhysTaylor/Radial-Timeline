@@ -1,7 +1,7 @@
 // DEPRECATED: Legacy provider payload shim; route new call paths through aiClient.
 import type { AiProvider, ProviderCallArgs } from './providerCapabilities';
 import { modelSupportsSystemRole } from './providerCapabilities';
-import type { AnthropicTextBlock, AnthropicContentBlock } from './anthropicApi';
+import { buildAnthropicUserContent, type AnthropicTextBlock, type AnthropicContentBlock } from './anthropicApi';
 import { CACHE_BREAK_DELIMITER } from '../ai/prompts/composeEnvelope';
 
 type OpenAiPayload = {
@@ -43,39 +43,12 @@ export function buildProviderRequestPayload(
 ): OpenAiPayload | AnthropicPayload | GeminiPayload {
     if (provider === 'anthropic') {
         const resolvedMaxTokens = typeof callArgs.maxTokens === 'number' ? callArgs.maxTokens : 4000;
-        // Always use content blocks for Anthropic (mirrors anthropicApi.ts)
-        const delimIndex = callArgs.userPrompt.indexOf(CACHE_BREAK_DELIMITER);
-        let userContent: AnthropicContentBlock[];
-        if (delimIndex > 0) {
-            const stableText = callArgs.userPrompt.slice(0, delimIndex).trimEnd();
-            const volatileText = callArgs.userPrompt.slice(delimIndex + CACHE_BREAK_DELIMITER.length).trimStart();
-
-            if (callArgs.citationsEnabled && callArgs.evidenceDocuments?.length) {
-                // Per-scene document blocks with citations (mirrors anthropicApi.ts)
-                const docBlocks: AnthropicContentBlock[] = callArgs.evidenceDocuments.map(
-                    (doc, i) => ({
-                        type: 'document' as const,
-                        source: { type: 'text' as const, media_type: 'text/plain' as const, data: doc.content },
-                        title: doc.title,
-                        citations: { enabled: true as const },
-                        ...(i === callArgs.evidenceDocuments!.length - 1
-                            ? { cache_control: { type: 'ephemeral' as const } } : {})
-                    })
-                );
-                userContent = [
-                    { type: 'text', text: stableText },
-                    ...docBlocks,
-                    { type: 'text', text: volatileText },
-                ];
-            } else {
-                userContent = [
-                    { type: 'text', text: stableText, cache_control: { type: 'ephemeral' } },
-                    { type: 'text', text: volatileText },
-                ];
-            }
-        } else {
-            userContent = [{ type: 'text', text: callArgs.userPrompt }];
-        }
+        // Keep Anthropic payload shaping aligned with the runtime adapter.
+        const userContent = buildAnthropicUserContent({
+            userPrompt: callArgs.userPrompt,
+            citationsEnabled: callArgs.citationsEnabled,
+            evidenceDocuments: callArgs.evidenceDocuments
+        });
         const payload: AnthropicPayload = {
             model: modelId,
             messages: [{ role: 'user', content: userContent }],

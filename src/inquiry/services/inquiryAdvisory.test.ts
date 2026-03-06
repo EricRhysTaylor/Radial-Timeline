@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { BUILTIN_MODELS } from '../../ai/registry/builtinModels';
-import { buildDefaultAiSettings } from '../../ai/settings/aiSettings';
 import type { ResolvedInquiryEngine } from './inquiryModelResolver';
 import { computeInquiryAdvisoryContext } from './inquiryAdvisory';
 
@@ -27,19 +26,14 @@ function buildResolvedEngine(modelId: string, providerLabel: string): ResolvedIn
 
 describe('computeInquiryAdvisoryContext', () => {
     it('returns single-pass recommendation when current engine needs multiple passes', () => {
-        const aiSettings = buildDefaultAiSettings();
-        aiSettings.provider = 'openai';
-
         const advisory = computeInquiryAdvisoryContext({
             scope: 'book',
             focusLabel: 'B1',
             resolvedEngine: buildResolvedEngine('gpt-5.1-chat-latest', 'OpenAI'),
             currentModel: getModel('gpt-5.1-chat-latest'),
             models: BUILTIN_MODELS,
-            aiSettings,
             analysisPackaging: 'automatic',
             estimatedInputTokens: 300000,
-            expectedPassCount: 3,
             corpusFingerprint: 'fp-1',
             overrideSummary: { active: false, classCount: 0, itemCount: 0, total: 0 },
         });
@@ -50,19 +44,14 @@ describe('computeInquiryAdvisoryContext', () => {
     });
 
     it('returns sources recommendation when current engine lacks Sources support', () => {
-        const aiSettings = buildDefaultAiSettings();
-        aiSettings.provider = 'openai';
-
         const advisory = computeInquiryAdvisoryContext({
             scope: 'book',
             focusLabel: 'B1',
             resolvedEngine: buildResolvedEngine('gpt-5.2-chat-latest', 'OpenAI'),
             currentModel: getModel('gpt-5.2-chat-latest'),
             models: BUILTIN_MODELS,
-            aiSettings,
             analysisPackaging: 'automatic',
             estimatedInputTokens: 40000,
-            expectedPassCount: 1,
             corpusFingerprint: 'fp-2',
             overrideSummary: { active: false, classCount: 0, itemCount: 0, total: 0 },
         });
@@ -73,19 +62,14 @@ describe('computeInquiryAdvisoryContext', () => {
     });
 
     it('returns null when no meaningful advisory delta exists', () => {
-        const aiSettings = buildDefaultAiSettings();
-        aiSettings.provider = 'anthropic';
-
         const advisory = computeInquiryAdvisoryContext({
             scope: 'book',
             focusLabel: 'B1',
             resolvedEngine: buildResolvedEngine('claude-sonnet-4-6', 'Anthropic'),
             currentModel: getModel('claude-sonnet-4-6'),
             models: BUILTIN_MODELS,
-            aiSettings,
             analysisPackaging: 'automatic',
             estimatedInputTokens: 30000,
-            expectedPassCount: 1,
             corpusFingerprint: 'fp-3',
             overrideSummary: { active: false, classCount: 0, itemCount: 0, total: 0 },
         });
@@ -94,20 +78,14 @@ describe('computeInquiryAdvisoryContext', () => {
     });
 
     it('does not recommend single-pass on marginal over-limit deltas', () => {
-        const aiSettings = buildDefaultAiSettings();
-        aiSettings.provider = 'anthropic';
-        aiSettings.aiAccessProfile.anthropicTier = 1;
-
         const advisory = computeInquiryAdvisoryContext({
             scope: 'book',
             focusLabel: 'B1',
             resolvedEngine: buildResolvedEngine('claude-sonnet-4-6', 'Anthropic'),
             currentModel: getModel('claude-sonnet-4-6'),
             models: BUILTIN_MODELS,
-            aiSettings,
             analysisPackaging: 'automatic',
             estimatedInputTokens: 120000,
-            expectedPassCount: 2,
             corpusFingerprint: 'fp-marginal',
             overrideSummary: { active: false, classCount: 0, itemCount: 0, total: 0 },
         });
@@ -115,20 +93,33 @@ describe('computeInquiryAdvisoryContext', () => {
         expect(advisory).toBeNull();
     });
 
-    it('keeps createdAt stable when advisory identity does not change', () => {
-        const aiSettings = buildDefaultAiSettings();
-        aiSettings.provider = 'openai';
+    it('suppresses single-pass recommendation when overflow is inside uncertainty band', () => {
+        const advisory = computeInquiryAdvisoryContext({
+            scope: 'book',
+            focusLabel: 'B1',
+            resolvedEngine: buildResolvedEngine('claude-sonnet-4-6', 'Anthropic'),
+            currentModel: getModel('claude-sonnet-4-6'),
+            models: BUILTIN_MODELS,
+            analysisPackaging: 'automatic',
+            estimatedInputTokens: 170000,
+            currentSafeInputBudget: 160000,
+            estimateUncertaintyTokens: 20000,
+            corpusFingerprint: 'fp-uncertainty',
+            overrideSummary: { active: false, classCount: 0, itemCount: 0, total: 0 },
+        });
 
+        expect(advisory).toBeNull();
+    });
+
+    it('keeps createdAt stable when advisory identity does not change', () => {
         const first = computeInquiryAdvisoryContext({
             scope: 'book',
             focusLabel: 'B1',
             resolvedEngine: buildResolvedEngine('gpt-5.2-chat-latest', 'OpenAI'),
             currentModel: getModel('gpt-5.2-chat-latest'),
             models: BUILTIN_MODELS,
-            aiSettings,
             analysisPackaging: 'automatic',
             estimatedInputTokens: 40000,
-            expectedPassCount: 1,
             corpusFingerprint: 'fp-4',
             overrideSummary: { active: false, classCount: 0, itemCount: 0, total: 0 },
         });
@@ -141,10 +132,8 @@ describe('computeInquiryAdvisoryContext', () => {
             resolvedEngine: buildResolvedEngine('gpt-5.2-chat-latest', 'OpenAI'),
             currentModel: getModel('gpt-5.2-chat-latest'),
             models: BUILTIN_MODELS,
-            aiSettings,
             analysisPackaging: 'automatic',
             estimatedInputTokens: 40000,
-            expectedPassCount: 1,
             corpusFingerprint: 'fp-4',
             overrideSummary: { active: false, classCount: 0, itemCount: 0, total: 0 },
             previousContext: first,

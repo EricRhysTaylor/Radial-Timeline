@@ -1,6 +1,7 @@
 import type { InquiryAiStatus, InquiryMode, InquiryScope, InquiryZone, InquiryResult } from '../state';
 import type { InquiryMaterialMode } from '../../types/settings';
 import type { AnalysisPackaging } from '../../ai/types';
+import type { TokenEstimateMethod } from '../../ai/tokens/inputTokenEstimate';
 
 export type EvidenceClass = string;
 
@@ -82,6 +83,9 @@ export interface InquiryRunTrace {
         outputTokens: number;
         totalTokens: number;
         inputChars: number;
+        estimationMethod?: TokenEstimateMethod;
+        uncertaintyTokens?: number;
+        effectiveInputCeiling?: number;
     };
     outputTokenCap: number;
     retryCount?: number;

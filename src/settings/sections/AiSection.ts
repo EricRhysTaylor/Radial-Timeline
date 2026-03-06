@@ -896,8 +896,15 @@ export function renderAiSection(params: {
         estimatedInputTokens: number;
     };
 
-    const computeVaultForecasts = async (): Promise<{ inquiry: FeatureForecast; gossamer: FeatureForecast }> => {
+    const computeVaultForecasts = async (engine?: {
+        provider: AIProviderId;
+        modelId: string;
+    }): Promise<{ inquiry: FeatureForecast; gossamer: FeatureForecast }> => {
         const inquiryEstimate = await estimateInquiryTokens({
+            plugin,
+            provider: engine?.provider,
+            modelId: engine?.modelId,
+            questionText: 'Analyze corpus-level flow and depth quality.',
             vault: app.vault,
             metadataCache: app.metadataCache,
             inquirySources: plugin.settings.inquirySources,
@@ -928,7 +935,7 @@ export function renderAiSection(params: {
         };
     };
 
-    const refreshRoutingUi = (): void => {
+    const refreshRoutingUi = async (): Promise<void> => {
         const aiSettings = ensureCanonicalAiSettings();
         const provider = aiSettings.provider === 'none' ? 'openai' : aiSettings.provider;
         const providerAliases = getProviderAliases(provider);
@@ -1005,22 +1012,24 @@ export function renderAiSection(params: {
         nearLimitEl.toggleClass('ert-settings-hidden', true);
 
         try {
-            const selection = selectModel(BUILTIN_MODELS, {
-                provider,
-                policy,
-                requiredCapabilities: capabilityFloor,
-                accessTier: supportsAccessTier ? getAccessTier(provider) : 1,
-                contextTokensNeeded: 24000,
-                outputTokensNeeded: 2000
-            });
-            const caps = computeCaps({
-                provider,
-                model: selection.model,
-                accessTier: supportsAccessTier ? getAccessTier(provider) : 1,
+            const prepared = await getAIClient(plugin).prepareRunEstimate({
                 feature: 'InquiryMode',
+                task: 'SettingsCapacityPreview',
+                requiredCapabilities: capabilityFloor,
+                featureModeInstructions: 'Estimate Inquiry capacity for current settings.',
+                userInput: 'Capacity preview request.',
+                promptText: 'Capacity preview request.',
+                returnType: 'json',
+                responseSchema: { type: 'object' },
+                providerOverride: provider,
+                policyOverride: policy,
                 overrides: aiSettings.overrides
             });
-            const safeBudgetTokens = Math.max(0, Math.floor(caps.maxInputTokens));
+            if (!prepared.ok) {
+                throw new Error(prepared.result.error || prepared.result.reason || 'Unable to resolve AI capacity.');
+            }
+            const estimate = prepared.estimate;
+            const safeBudgetTokens = Math.max(0, Math.floor(estimate.effectiveInputCeiling));
             const formatForecastPasses = (estimatedTokens: number, singlePassOnly: boolean): string => {
                 if (estimatedTokens <= 0) return 'No content detected';
                 if (estimatedTokens <= safeBudgetTokens) return 'Single pass expected';
@@ -1030,17 +1039,17 @@ export function renderAiSection(params: {
                 return `${passes} passes expected`;
             };
             const previewState: ResolvedPreviewRenderState = {
-                modelKey: `${provider}:${selection.model.id}`,
+                modelKey: `${provider}:${estimate.model.id}`,
                 provider,
-                modelId: selection.model.id,
-                modelLabel: selection.model.label,
-                modelAlias: selection.model.alias,
+                modelId: estimate.model.id,
+                modelLabel: estimate.model.label,
+                modelAlias: estimate.model.alias,
                 strategyPill: strategyLabel(policy),
                 analysisPackaging: aiSettings.analysisPackaging,
-                maxInputTokens: caps.maxInputTokens,
-                maxOutputTokens: caps.maxOutputTokens,
-                reasonDetails: selection.reason,
-                warnings: selection.warnings,
+                maxInputTokens: estimate.maxInputTokens,
+                maxOutputTokens: estimate.maxOutputTokens,
+                reasonDetails: estimate.modelSelectionReason,
+                warnings: estimate.warnings,
                 availabilityStatus: 'unknown',
                 showAvailabilityPill: true,
                 passCount
@@ -1048,10 +1057,13 @@ export function renderAiSection(params: {
             renderResolvedPreview(previewState);
             void refreshResolvedPreviewAvailability(previewState);
             setTokenDisplay(capacitySafeInput.valueEl, `~${safeBudgetTokens.toLocaleString()}`, 'tokens (safe window)');
-            setTokenDisplay(capacityOutput.valueEl, `~${caps.maxOutputTokens.toLocaleString()}`, 'tokens');
+            setTokenDisplay(capacityOutput.valueEl, `~${estimate.maxOutputTokens.toLocaleString()}`, 'tokens');
 
             const singlePassOnly = aiSettings.analysisPackaging === 'singlePassOnly';
-            void computeVaultForecasts().then(forecasts => {
+            void computeVaultForecasts({
+                provider,
+                modelId: estimate.model.id
+            }).then(forecasts => {
                 capacityInquiryScope.setText(forecasts.inquiry.label);
                 setTokenDisplay(capacityInquiryToken, forecasts.inquiry.estimatedInputTokens.toLocaleString(), 'tokens');
                 capacityInquiryExpected.setText(formatForecastPasses(forecasts.inquiry.estimatedInputTokens, singlePassOnly));
@@ -1146,7 +1158,7 @@ export function renderAiSection(params: {
 
     };
 
-    refreshRoutingUi();
+    void refreshRoutingUi();
 
     // Provider sections
     const anthropicSection = configurationBody.createDiv({

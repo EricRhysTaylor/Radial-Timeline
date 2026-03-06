@@ -13,6 +13,8 @@ import { validateAiSettings } from '../settings/validateAiSettings';
 import type {
     AIProvider,
     AIProviderId,
+    AIRunEstimateResult,
+    AIRunPreparedEstimate,
     AIRunRequest,
     AIRunResult,
     AIRunAdvancedContext,
@@ -30,6 +32,7 @@ import { AICache } from './cache';
 import { buildTelemetryEvent, emitTelemetry } from './aiTelemetry';
 import { AIRateLimiter } from './rateLimit';
 import { validateJsonResponse } from './jsonValidator';
+import { estimateInputTokens, estimateUncertaintyTokens } from '../tokens/inputTokenEstimate';
 
 const DEFAULT_REMOTE_REGISTRY_URL = 'https://raw.githubusercontent.com/ericrhystaylor/radial-timeline/main/scripts/models/registry.json';
 const DEFAULT_REMOTE_PROVIDER_SNAPSHOT_URL = 'https://raw.githubusercontent.com/ericrhystaylor/radial-timeline/HEAD/scripts/models/latest-models.json';
@@ -275,7 +278,7 @@ export class AIClient {
         return this.providerSnapshot;
     }
 
-    async run(request: AIRunRequest): Promise<AIRunResult> {
+    async prepareRunEstimate(request: AIRunRequest): Promise<AIRunEstimateResult> {
         const aiSettings = getAiSettings(this.plugin.settings);
         if (!this.registryReady) {
             await this.refreshRegistry(false);
@@ -288,15 +291,18 @@ export class AIClient {
 
         if (provider === 'none') {
             return {
-                content: null,
-                responseData: null,
-                provider,
-                modelRequested: 'none',
-                modelResolved: 'none',
-                aiStatus: 'unavailable',
-                warnings: ['AI provider is disabled.'],
-                reason: 'Provider is set to none.',
-                error: 'AI provider is disabled.'
+                ok: false,
+                result: {
+                    content: null,
+                    responseData: null,
+                    provider,
+                    modelRequested: 'none',
+                    modelResolved: 'none',
+                    aiStatus: 'unavailable',
+                    warnings: ['AI provider is disabled.'],
+                    reason: 'Provider is set to none.',
+                    error: 'AI provider is disabled.'
+                }
             };
         }
 
@@ -317,8 +323,6 @@ export class AIClient {
             || request.systemPrompt
             || ''
         ).trim();
-        // When citations are enabled and per-scene evidence documents are provided,
-        // exclude evidence from the text prompt — it will be sent as document blocks.
         const useDocumentBlocks = provider === 'anthropic'
             && request.feature.toLowerCase().includes('inquiry')
             && (request.evidenceDocuments?.length ?? 0) > 0;
@@ -339,27 +343,126 @@ export class AIClient {
         });
         const userPrompt = envelope.userPrompt || '';
         const systemPrompt = envelope.systemPrompt || '';
+        const evidenceDocuments = useDocumentBlocks ? request.evidenceDocuments : undefined;
 
-        const tokenEstimateInput = request.tokenEstimateInput ?? estimateTokens(envelope.finalPrompt);
-        const modelSelection = selectModel(this.registry.getAll(), {
+        const heuristicEstimate = Number.isFinite(request.tokenEstimateInput)
+            ? Math.max(0, Math.floor(request.tokenEstimateInput as number))
+            : estimateTokens(envelope.finalPrompt) + ((evidenceDocuments || []).reduce((sum, doc) => (
+                sum + estimateTokens(doc.title || '') + estimateTokens(doc.content || '')
+            ), 0));
+        const initialSelection = selectModel(this.registry.getAll(), {
             provider,
             policy,
             requiredCapabilities,
             accessTier: resolveTier(aiSettings, provider),
-            contextTokensNeeded: tokenEstimateInput,
+            contextTokensNeeded: heuristicEstimate,
             outputTokensNeeded: 0
         });
 
         const overrides = mergeOverrides(aiSettings.overrides, request);
         const caps = computeCaps({
             provider,
-            model: modelSelection.model,
+            model: initialSelection.model,
             accessTier: resolveTier(aiSettings, provider),
             feature: request.feature,
             overrides
         });
-
         const effectiveInputCeiling = Math.floor(caps.maxInputTokens * INPUT_TOKEN_GUARD_FACTOR);
+
+        const countedEstimate = Number.isFinite(request.tokenEstimateInput)
+            ? {
+                inputTokens: heuristicEstimate,
+                method: 'heuristic_chars' as const
+            }
+            : await estimateInputTokens({
+                plugin: this.plugin,
+                provider,
+                modelId: initialSelection.model.id,
+                systemPrompt,
+                userPrompt,
+                evidenceDocuments,
+                citationsEnabled: caps.citationsEnabled,
+                safeInputBudget: effectiveInputCeiling
+            });
+        const tokenEstimateInput = countedEstimate.inputTokens;
+        const tokenEstimateMethod = countedEstimate.method;
+        const tokenEstimateUncertainty = estimateUncertaintyTokens(tokenEstimateMethod, effectiveInputCeiling);
+
+        const cacheKey = buildCacheKey({
+            provider,
+            modelAlias: initialSelection.model.alias,
+            returnType: request.returnType,
+            feature: request.feature,
+            task: request.task,
+            prompt: envelope.finalPrompt
+        });
+
+        return {
+            ok: true,
+            estimate: {
+                provider,
+                model: initialSelection.model,
+                modelSelectionReason: initialSelection.reason,
+                warnings: [...initialSelection.warnings],
+                requiredCapabilities,
+                roleTemplateName: roleTemplate.name,
+                featureModeInstructions,
+                systemPrompt,
+                userPrompt,
+                finalPrompt: envelope.finalPrompt,
+                useDocumentBlocks,
+                evidenceDocuments,
+                tokenEstimateInput,
+                tokenEstimateMethod,
+                tokenEstimateUncertainty,
+                maxInputTokens: caps.maxInputTokens,
+                maxOutputTokens: caps.maxOutputTokens,
+                effectiveInputCeiling,
+                requestPerMinute: caps.requestPerMinute,
+                temperature: caps.temperature,
+                topP: overrides.topP,
+                jsonStrict: overrides.jsonStrict ?? true,
+                thinkingBudgetTokens: caps.thinkingBudgetTokens,
+                citationsEnabled: caps.citationsEnabled,
+                retryPolicy: caps.retryPolicy,
+                analysisPackaging: aiSettings.analysisPackaging,
+                resolvedOverrides: overrides,
+                allowTelemetry: aiSettings.privacy.allowTelemetry,
+                cacheKey
+            }
+        };
+    }
+
+    async run(request: AIRunRequest): Promise<AIRunResult> {
+        const prepared = request.preparedEstimate
+            ? { ok: true as const, estimate: request.preparedEstimate }
+            : await this.prepareRunEstimate(request);
+        if (!prepared.ok) {
+            return prepared.result;
+        }
+
+        const estimate = prepared.estimate;
+        const provider = estimate.provider;
+        const modelSelection = {
+            model: estimate.model,
+            warnings: [...estimate.warnings],
+            reason: estimate.modelSelectionReason
+        };
+        const tokenEstimateInput = estimate.tokenEstimateInput;
+        const effectiveInputCeiling = estimate.effectiveInputCeiling;
+        const caps: ComputedCaps = {
+            maxInputTokens: estimate.maxInputTokens,
+            maxOutputTokens: estimate.maxOutputTokens,
+            safeChunkThreshold: 1,
+            temperature: estimate.temperature,
+            retryPolicy: estimate.retryPolicy,
+            requestPerMinute: estimate.requestPerMinute,
+            thinkingBudgetTokens: estimate.thinkingBudgetTokens,
+            citationsEnabled: estimate.citationsEnabled
+        };
+        const systemPrompt = estimate.systemPrompt;
+        const userPrompt = estimate.userPrompt;
+
         if (tokenEstimateInput > effectiveInputCeiling) {
             // Always expose the guard; Inquiry-specific chunking should happen in feature orchestration.
             const message = `Input token estimate ${tokenEstimateInput} exceeds safe threshold (${effectiveInputCeiling}).`;
@@ -374,7 +477,21 @@ export class AIClient {
                 aiReason: 'truncated',
                 warnings: [...modelSelection.warnings, message],
                 reason: `${modelSelection.reason} Token guard rejected request before execution.`,
-                error: message
+                error: message,
+                advancedContext: {
+                    roleTemplateName: estimate.roleTemplateName,
+                    provider,
+                    modelAlias: modelSelection.model.alias,
+                    modelLabel: modelSelection.model.label,
+                    modelSelectionReason: modelSelection.reason,
+                    availabilityStatus: 'unknown',
+                    maxInputTokens: estimate.maxInputTokens,
+                    maxOutputTokens: estimate.maxOutputTokens,
+                    analysisPackaging: estimate.analysisPackaging,
+                    executionPassCount: 1,
+                    featureModeInstructions: estimate.featureModeInstructions,
+                    finalPrompt: estimate.finalPrompt
+                }
             };
         }
 
@@ -394,14 +511,7 @@ export class AIClient {
             };
         }
 
-        const cacheKey = buildCacheKey({
-            provider,
-            modelAlias: modelSelection.model.alias,
-            returnType: request.returnType,
-            feature: request.feature,
-            task: request.task,
-            prompt: envelope.finalPrompt
-        });
+        const cacheKey = estimate.cacheKey;
         const cached = this.cache.get<AIRunResult>(cacheKey);
         if (cached) {
             return {
@@ -470,7 +580,7 @@ export class AIClient {
         }
 
         const advancedContext: AIRunAdvancedContext = {
-            roleTemplateName: roleTemplate.name,
+            roleTemplateName: estimate.roleTemplateName,
             provider,
             modelAlias: modelSelection.model.alias,
             modelLabel: modelSelection.model.label,
@@ -478,7 +588,9 @@ export class AIClient {
             availabilityStatus,
             maxInputTokens: caps.maxInputTokens,
             maxOutputTokens: caps.maxOutputTokens,
-            analysisPackaging: aiSettings.analysisPackaging,
+            analysisPackaging: estimate.analysisPackaging,
+            tokenEstimateMethod: estimate.tokenEstimateMethod,
+            tokenEstimateUncertainty: estimate.tokenEstimateUncertainty,
             executionPassCount: 1,
             reuseState,
             // Anthropic: set immediately (cache_control blocks always sent)
@@ -488,8 +600,8 @@ export class AIClient {
             cachedStableTokens: (provider === 'anthropic' && cacheDelimiterUsed) || optimisticWarm
                 ? cachedStableTokens : undefined,
             totalInputTokens: cacheDelimiterUsed ? tokenEstimateInput : undefined,
-            featureModeInstructions,
-            finalPrompt: envelope.finalPrompt
+            featureModeInstructions: estimate.featureModeInstructions,
+            finalPrompt: estimate.finalPrompt
         };
         setLastRunAdvanced(this.plugin, request.feature, advancedContext);
 
@@ -499,12 +611,12 @@ export class AIClient {
             userPrompt,
             maxOutputTokens: caps.maxOutputTokens,
             temperature: caps.temperature,
-            topP: overrides.topP,
+            topP: estimate.topP,
             jsonSchema: request.responseSchema,
-            jsonStrict: overrides.jsonStrict ?? true,
+            jsonStrict: estimate.jsonStrict,
             thinkingBudgetTokens: caps.thinkingBudgetTokens,
             citationsEnabled: caps.citationsEnabled,
-            evidenceDocuments: useDocumentBlocks ? request.evidenceDocuments : undefined
+            evidenceDocuments: estimate.useDocumentBlocks ? estimate.evidenceDocuments : undefined
         }, request.returnType, caps);
 
         // Post-execute: confirm or downgrade Gemini reuseState
@@ -567,9 +679,9 @@ export class AIClient {
                         userPrompt,
                         maxOutputTokens: caps.maxOutputTokens,
                         temperature: caps.temperature,
-                        topP: overrides.topP,
+                        topP: estimate.topP,
                         jsonSchema: request.responseSchema,
-                        jsonStrict: overrides.jsonStrict ?? true
+                        jsonStrict: estimate.jsonStrict
                     }, request.returnType, caps);
 
                     if (retry.aiStatus === 'success' && retry.content) {
@@ -593,7 +705,7 @@ export class AIClient {
                                 citations: retry.citations
                             };
                             this.cache.set(cacheKey, result);
-                            emitTelemetry(aiSettings.privacy.allowTelemetry, buildTelemetryEvent(request, result));
+                            emitTelemetry(estimate.allowTelemetry, buildTelemetryEvent(request, result));
                             return result;
                         }
                     }
@@ -640,7 +752,7 @@ export class AIClient {
         };
 
         this.cache.set(cacheKey, result);
-        emitTelemetry(aiSettings.privacy.allowTelemetry, buildTelemetryEvent(request, result));
+        emitTelemetry(estimate.allowTelemetry, buildTelemetryEvent(request, result));
         return result;
     }
 

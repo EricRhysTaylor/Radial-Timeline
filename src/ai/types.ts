@@ -234,9 +234,52 @@ export interface AIRunRequest {
     providerOverride?: AIProviderId;
     overrides?: Partial<AIOverrides>;
     tokenEstimateInput?: number;
+    preparedEstimate?: AIRunPreparedEstimate;
     /** Per-scene evidence documents for provider-level citations. */
     evidenceDocuments?: EvidenceDocument[];
 }
+
+export type InputTokenEstimateMethod = 'heuristic_chars' | 'anthropic_count';
+
+export interface AIRunPreparedEstimate {
+    provider: Exclude<AIProviderId, 'none'>;
+    model: ModelInfo;
+    modelSelectionReason: string;
+    warnings: string[];
+    requiredCapabilities: Capability[];
+    roleTemplateName: string;
+    featureModeInstructions: string;
+    systemPrompt: string;
+    userPrompt: string;
+    finalPrompt: string;
+    useDocumentBlocks: boolean;
+    evidenceDocuments?: EvidenceDocument[];
+    tokenEstimateInput: number;
+    tokenEstimateMethod: InputTokenEstimateMethod;
+    tokenEstimateUncertainty: number;
+    maxInputTokens: number;
+    maxOutputTokens: number;
+    effectiveInputCeiling: number;
+    requestPerMinute: number;
+    temperature: number;
+    topP?: number;
+    jsonStrict: boolean;
+    thinkingBudgetTokens?: number;
+    citationsEnabled?: boolean;
+    retryPolicy: {
+        maxAttempts: number;
+        baseDelayMs: number;
+        retryMalformedJson: boolean;
+    };
+    analysisPackaging: AnalysisPackaging;
+    resolvedOverrides: AIOverrides;
+    allowTelemetry: boolean;
+    cacheKey: string;
+}
+
+export type AIRunEstimateResult =
+    | { ok: true; estimate: AIRunPreparedEstimate }
+    | { ok: false; result: AIRunResult };
 
 export interface AIRunAdvancedContext {
     roleTemplateName: string;
@@ -247,6 +290,8 @@ export interface AIRunAdvancedContext {
     availabilityStatus: 'visible' | 'not_visible' | 'unknown';
     maxInputTokens: number;
     maxOutputTokens: number;
+    tokenEstimateMethod?: InputTokenEstimateMethod;
+    tokenEstimateUncertainty?: number;
     analysisPackaging: AnalysisPackaging;
     executionPassCount?: number;
     packagingTriggerReason?: string;

@@ -396,56 +396,96 @@ export function renderInquirySection(params: SectionParams): void {
 
     let scanRootsInput: TextAreaComponent | null = null;
     let classScopeInput: TextAreaComponent | null = null;
+    const scanRootActionSyncers: Array<() => void> = [];
 
     const scanRootsSetting = new Settings(sourcesBody)
         .setName('Scan folders')
-        .setDesc('Inquiry scans only within these folders. One path per line. Wildcards like /Book */ or /Book 1-7 */ are allowed. Use / for the vault root. Empty = no scan.');
+        .setDesc('Inquiry scans only within these folders. Separate paths with new lines, commas, or semicolons. Wildcards like /Book */ or /Book 1-7 */ are allowed. Use / for the vault root. Empty = no scan.');
     scanRootsSetting.settingEl.setAttribute('data-ert-role', 'inquiry-setting:scan-roots');
     scanRootsSetting.settingEl.classList.add(ERT_CLASSES.ROW, 'ert-row--stack');
 
     const scanRootsText = new TextAreaComponent(scanRootsSetting.controlEl);
     scanRootsText.setValue(listToText(inquirySources.scanRoots));
     scanRootsText.setPlaceholder('/Book */\n/Character/\n/World/');
-    scanRootsText.inputEl.rows = 4;
+    scanRootsText.inputEl.rows = 3;
     scanRootsText.inputEl.addClass('ert-textarea--wide');
     scanRootsText.inputEl.addClass('mod-styled-scrollbar');
     scanRootsInput = scanRootsText;
+    const autoResizeScanRootsInput = () => {
+        const inputEl = scanRootsText.inputEl;
+        const style = window.getComputedStyle(inputEl);
+        const lineHeight = Number.parseFloat(style.lineHeight) || 20;
+        const padTop = Number.parseFloat(style.paddingTop) || 0;
+        const padBottom = Number.parseFloat(style.paddingBottom) || 0;
+        const borderTop = Number.parseFloat(style.borderTopWidth) || 0;
+        const borderBottom = Number.parseFloat(style.borderBottomWidth) || 0;
+        const minRows = 3;
+        const minHeight = (lineHeight * minRows) + padTop + padBottom + borderTop + borderBottom;
+        inputEl.rows = minRows;
+        if (inputEl.scrollHeight <= minHeight) return;
+        const extraHeight = inputEl.scrollHeight - minHeight;
+        const extraRows = Math.ceil(extraHeight / lineHeight);
+        inputEl.rows = minRows + extraRows;
+    };
+    autoResizeScanRootsInput();
+
+    plugin.registerDomEvent(scanRootsText.inputEl, 'input', () => {
+        autoResizeScanRootsInput();
+    });
 
     plugin.registerDomEvent(scanRootsText.inputEl, 'blur', () => {
         const nextRoots = parseScanRootInput(scanRootsText.getValue());
         applyScanRoots(nextRoots);
     });
 
-    const scanRootActions = scanRootsSetting.controlEl.createDiv({ cls: 'ert-actions' });
-    const addActionButton = (label: string, onClick: () => void) => {
+    const scanRootActions = scanRootsSetting.controlEl.createDiv({ cls: [ERT_CLASSES.INLINE, 'ert-actions'] });
+    const getBookManagerRoots = (): string[] =>
+        Array.from(new Set(
+            (plugin.settings.books || [])
+                .map(book => normalizePath((book.sourceFolder || '').trim()))
+                .filter(Boolean)
+                .map(root => toDisplayRoot(root))
+        ));
+
+    const addScanRootToggle = (
+        label: string,
+        resolveRoots: () => string[],
+        emptyNotice?: string
+    ) => {
         const btn = scanRootActions.createEl('button', { cls: ERT_CLASSES.PILL_BTN });
         btn.createSpan({ cls: ERT_CLASSES.PILL_BTN_LABEL, text: label });
+        const syncButtonState = () => {
+            const roots = resolveRoots();
+            const hasRoots = roots.length > 0;
+            const rootSet = new Set(inquirySources.scanRoots || []);
+            const isActive = hasRoots && roots.every(root => rootSet.has(root));
+            btn.classList.toggle(ERT_CLASSES.IS_ACTIVE, isActive);
+            btn.classList.toggle(ERT_CLASSES.PILL_BTN_USED, !hasRoots);
+            btn.disabled = !hasRoots;
+        };
         plugin.registerDomEvent(btn, 'click', (evt) => {
             evt.preventDefault();
-            onClick();
+            const roots = resolveRoots();
+            if (!roots.length) {
+                if (emptyNotice) new Notice(emptyNotice);
+                return;
+            }
+            const rootSet = new Set(inquirySources.scanRoots || []);
+            const isActive = roots.every(root => rootSet.has(root));
+            if (isActive) {
+                roots.forEach(root => rootSet.delete(root));
+            } else {
+                roots.forEach(root => rootSet.add(root));
+            }
+            applyScanRoots(Array.from(rootSet));
         });
+        scanRootActionSyncers.push(syncButtonState);
+        syncButtonState();
     };
 
-    addActionButton('Add all Book folders', () => {
-        const nextRoots = Array.from(new Set([...(inquirySources.scanRoots || []), '/Book */']));
-        applyScanRoots(nextRoots);
-    });
-    addActionButton('Add Book Manager folders', () => {
-        const managerRoots = (plugin.settings.books || [])
-            .map(book => normalizePath((book.sourceFolder || '').trim()))
-            .filter(Boolean)
-            .map(root => toDisplayRoot(root));
-        if (!managerRoots.length) {
-            new Notice('No Book Manager folders are configured.');
-            return;
-        }
-        const nextRoots = Array.from(new Set([...(inquirySources.scanRoots || []), ...managerRoots]));
-        applyScanRoots(nextRoots);
-    });
-    addActionButton('Add Character folder', () => {
-        const nextRoots = Array.from(new Set([...(inquirySources.scanRoots || []), '/Character/']));
-        applyScanRoots(nextRoots);
-    });
+    addScanRootToggle('Book folders', () => ['/Book */']);
+    addScanRootToggle('Book Manager folders', getBookManagerRoots, 'No Book Manager folders are configured.');
+    addScanRootToggle('Character folder', () => ['/Character/']);
 
     const resolvedBooksPreview = sourcesBody.createDiv({
         cls: [ERT_CLASSES.PREVIEW_FRAME, ERT_CLASSES.STACK, 'ert-previewFrame--flush'],
@@ -456,10 +496,8 @@ export function renderInquirySection(params: SectionParams): void {
         text: 'Detected containers (0 included / 0 detected)'
     });
     const resolvedBooksList = resolvedBooksPreview.createDiv({
-        cls: ['ert-controlGroup', 'ert-controlGroup--scroll', 'ert-controlGroup--inquiry-containers']
+        cls: ['ert-controlGroup', 'ert-controlGroup--inquiry-containers']
     });
-    resolvedBooksList.addClass('mod-styled-scrollbar');
-    resolvedBooksList.style.setProperty('--ert-controlGroup-max-height', '220px');
     const resolvedBooksWarnings = resolvedBooksPreview.createDiv({ cls: ERT_CLASSES.STACK });
 
     const materialRulesHeader = new Settings(sourcesBody)
@@ -515,9 +553,9 @@ export function renderInquirySection(params: SectionParams): void {
         presetButtons.set(preset, btn);
     };
 
-    addPresetButton('default', 'Default (recommended)');
-    addPresetButton('light', 'Light (fast)');
-    addPresetButton('deep', 'Deep (expensive)');
+    addPresetButton('default', 'Default');
+    addPresetButton('light', 'Light');
+    addPresetButton('deep', 'Deep');
     syncPresetButtons();
 
     const tableCard = sourcesBody.createDiv({ cls: ERT_CLASSES.PANEL });
@@ -792,19 +830,19 @@ export function renderInquirySection(params: SectionParams): void {
         resolvedBooksHeading.setText(`Detected containers (${resolution.includedBooks.length} included / ${resolution.candidates.length} detected)`);
         const container = document.createElement('div');
         container.className = resolvedBooksList.className;
+        const header = container.createDiv({ cls: ['ert-controlGroup__row', 'ert-controlGroup__row--header'] });
+        header.createDiv({ cls: 'ert-controlGroup__cell', text: 'Include' });
+        header.createDiv({ cls: 'ert-controlGroup__cell', text: 'Container' });
+        header.createDiv({ cls: 'ert-controlGroup__cell', text: 'Detected material' });
 
         if (!resolution.candidates.length) {
             const emptyRow = container.createDiv({ cls: ['ert-controlGroup__row', 'ert-controlGroup__row--card'] });
-            emptyRow.createDiv({
+            const emptyCell = emptyRow.createDiv({
                 cls: ['ert-controlGroup__cell', 'ert-controlGroup__cell--faint'],
                 text: 'No containers detected from current scan folders.'
             });
+            emptyCell.style.gridColumn = '1 / -1';
         } else {
-            const header = container.createDiv({ cls: ['ert-controlGroup__row', 'ert-controlGroup__row--header'] });
-            header.createDiv({ cls: 'ert-controlGroup__cell', text: 'Include' });
-            header.createDiv({ cls: 'ert-controlGroup__cell', text: 'Container' });
-            header.createDiv({ cls: 'ert-controlGroup__cell', text: 'Detected material' });
-
             resolution.candidates.forEach(book => {
                 const row = container.createDiv({ cls: ['ert-controlGroup__row', 'ert-controlGroup__row--card'] });
                 if (!book.included) row.addClass('is-disabled');
@@ -823,7 +861,11 @@ export function renderInquirySection(params: SectionParams): void {
                 );
                 const managerTitle = managerMatch?.title?.trim() || '';
                 const containerLabel = managerTitle || (displayRoot.split('/').filter(Boolean).pop() || displayRoot);
-                pathCell.createEl('strong', { text: containerLabel });
+                const labelEl = pathCell.createEl('strong', { text: containerLabel });
+                labelEl.addClass('ert-controlGroup__containerTitle');
+                if (managerTitle) {
+                    labelEl.addClass('ert-controlGroup__containerTitle--manager');
+                }
                 if (managerTitle) {
                     pathCell.createDiv({
                         cls: ['ert-controlGroup__cell--meta', 'ert-controlGroup__cell--mono'],
@@ -880,6 +922,8 @@ export function renderInquirySection(params: SectionParams): void {
         const normalized = nextRoots.length ? normalizeScanRootPatterns(nextRoots) : [];
         inquirySources = { ...inquirySources, scanRoots: normalized };
         scanRootsInput?.setValue(listToText(normalized));
+        autoResizeScanRootsInput();
+        scanRootActionSyncers.forEach(sync => sync());
         resolvedRootCache = null;
         resolvedBookCache = null;
         void refreshClassScan();

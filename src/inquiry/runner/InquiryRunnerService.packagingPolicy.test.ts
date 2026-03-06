@@ -1,0 +1,193 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { AIRunResult } from '../../ai/types';
+
+vi.mock('../../ai/runtime/aiClient', () => ({
+    getAIClient: vi.fn(() => ({}))
+}));
+
+import { getAIClient } from '../../ai/runtime/aiClient';
+import { InquiryRunnerService } from './InquiryRunnerService';
+
+const TEST_AI = {
+    provider: 'openai',
+    modelId: 'gpt-5.2-chat-latest',
+    modelLabel: 'GPT-5.2'
+} as const;
+
+function createService() {
+    return new InquiryRunnerService(
+        { settings: {} } as never,
+        {} as never,
+        {} as never
+    ) as unknown as Record<string, unknown>;
+}
+
+function buildPrecheck(overrides?: Partial<{
+    onePassFit: 'fits' | 'overflows' | 'unknown';
+    inputTokens: number;
+    safeInputTokens: number;
+}>): Record<string, unknown> {
+    const onePassFit = overrides?.onePassFit ?? 'overflows';
+    const inputTokens = overrides?.inputTokens ?? 220000;
+    const safeInputTokens = overrides?.safeInputTokens ?? 140000;
+    return {
+        inputTokens,
+        safeInputTokens,
+        onePassFit,
+        exceedsSafeBudget: onePassFit === 'overflows',
+        estimationMethod: 'heuristic_chars',
+        uncertaintyTokens: 0,
+        preparedEstimate: null
+    };
+}
+
+function buildChunkedSuccessRun(): AIRunResult {
+    return {
+        content: '{"ok":true}',
+        responseData: {},
+        provider: 'openai',
+        modelRequested: TEST_AI.modelId,
+        modelResolved: TEST_AI.modelId,
+        aiStatus: 'success',
+        warnings: [],
+        reason: 'chunked success',
+        advancedContext: {
+            roleTemplateName: 'Default Role Template',
+            provider: 'openai',
+            modelAlias: 'gpt-5.2',
+            modelLabel: TEST_AI.modelLabel,
+            modelSelectionReason: 'test',
+            availabilityStatus: 'unknown',
+            maxInputTokens: 200000,
+            maxOutputTokens: 12000,
+            analysisPackaging: 'automatic',
+            executionPassCount: 3,
+            featureModeInstructions: '',
+            finalPrompt: ''
+        }
+    };
+}
+
+describe('InquiryRunnerService packaging policy', () => {
+    beforeEach(() => {
+        vi.mocked(getAIClient).mockReturnValue({} as never);
+    });
+
+    it('automatic overflow + chunk failure returns packaging_failed', async () => {
+        const service = createService();
+        const getAnalysisPackaging = vi.fn().mockReturnValue('automatic');
+        const getPackagingPrecheck = vi.fn().mockResolvedValue(buildPrecheck({ onePassFit: 'overflows' }));
+        const runChunkedInquiry = vi.fn().mockResolvedValue(null);
+        const runInquiryRequest = vi.fn();
+        Object.assign(service, {
+            getAnalysisPackaging,
+            getPackagingPrecheck,
+            runChunkedInquiry,
+            runInquiryRequest
+        });
+
+        const result = await (service.callProvider as (...args: unknown[]) => Promise<Record<string, unknown>>) (
+            'system',
+            'user',
+            TEST_AI,
+            { type: 'object' },
+            0.2,
+            4000,
+            'question'
+        );
+
+        expect(result.aiStatus).toBe('rejected');
+        expect(result.aiReason).toBe('packaging_failed');
+        expect(result.analysisPackaging).toBe('automatic');
+        expect(runChunkedInquiry).toHaveBeenCalledTimes(1);
+        expect(runInquiryRequest).not.toHaveBeenCalled();
+    });
+
+    it('segmented overflow + chunk failure returns packaging_failed', async () => {
+        const service = createService();
+        const getAnalysisPackaging = vi.fn().mockReturnValue('segmented');
+        const getPackagingPrecheck = vi.fn().mockResolvedValue(buildPrecheck({ onePassFit: 'overflows' }));
+        const runChunkedInquiry = vi.fn().mockResolvedValue(null);
+        const runInquiryRequest = vi.fn();
+        Object.assign(service, {
+            getAnalysisPackaging,
+            getPackagingPrecheck,
+            runChunkedInquiry,
+            runInquiryRequest
+        });
+
+        const result = await (service.callProvider as (...args: unknown[]) => Promise<Record<string, unknown>>) (
+            'system',
+            'user',
+            TEST_AI,
+            { type: 'object' },
+            0.2,
+            4000,
+            'question'
+        );
+
+        expect(result.aiStatus).toBe('rejected');
+        expect(result.aiReason).toBe('packaging_failed');
+        expect(result.analysisPackaging).toBe('segmented');
+        expect(runChunkedInquiry).toHaveBeenCalledTimes(1);
+        expect(runInquiryRequest).not.toHaveBeenCalled();
+    });
+
+    it('segmented never enters one-pass send path', async () => {
+        const service = createService();
+        const getAnalysisPackaging = vi.fn().mockReturnValue('segmented');
+        const getPackagingPrecheck = vi.fn().mockResolvedValue(buildPrecheck({ onePassFit: 'fits' }));
+        const runChunkedInquiry = vi.fn().mockResolvedValue(buildChunkedSuccessRun());
+        const runInquiryRequest = vi.fn();
+        Object.assign(service, {
+            getAnalysisPackaging,
+            getPackagingPrecheck,
+            runChunkedInquiry,
+            runInquiryRequest
+        });
+
+        const result = await (service.callProvider as (...args: unknown[]) => Promise<Record<string, unknown>>) (
+            'system',
+            'user',
+            TEST_AI,
+            { type: 'object' },
+            0.2,
+            4000,
+            'question'
+        );
+
+        expect(result.success).toBe(true);
+        expect(runChunkedInquiry).toHaveBeenCalledTimes(1);
+        expect(runInquiryRequest).not.toHaveBeenCalled();
+    });
+
+    it('singlePassOnly overflow still blocks before send', async () => {
+        const service = createService();
+        const getAnalysisPackaging = vi.fn().mockReturnValue('singlePassOnly');
+        const getPackagingPrecheck = vi.fn().mockResolvedValue(buildPrecheck({ onePassFit: 'overflows' }));
+        const runChunkedInquiry = vi.fn();
+        const runInquiryRequest = vi.fn();
+        Object.assign(service, {
+            getAnalysisPackaging,
+            getPackagingPrecheck,
+            runChunkedInquiry,
+            runInquiryRequest
+        });
+
+        const result = await (service.callProvider as (...args: unknown[]) => Promise<Record<string, unknown>>) (
+            'system',
+            'user',
+            TEST_AI,
+            { type: 'object' },
+            0.2,
+            4000,
+            'question'
+        );
+
+        expect(result.aiStatus).toBe('rejected');
+        expect(result.aiReason).toBe('truncated');
+        expect(runChunkedInquiry).not.toHaveBeenCalled();
+        expect(runInquiryRequest).not.toHaveBeenCalled();
+    });
+});
+

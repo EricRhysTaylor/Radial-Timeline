@@ -29,7 +29,7 @@ export const normalizeScanRootPatterns = (roots?: string[]): string[] => {
 
 export const parseScanRootInput = (raw: string): string[] => {
     const lines = raw
-        .split(/[\n,]/)
+        .split(/[\n,;]+/)
         .map(entry => entry.trim())
         .filter(Boolean);
     if (!lines.length) return [];

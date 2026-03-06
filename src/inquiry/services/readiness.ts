@@ -15,6 +15,7 @@ export interface EvaluateInquiryReadinessInput {
     analysisPackaging: AnalysisPackaging;
     estimatedInputTokens: number;
     safeInputBudget: number;
+    estimateUncertaintyTokens?: number;
 }
 
 export interface InquiryReadinessResult {
@@ -23,6 +24,7 @@ export interface InquiryReadinessResult {
     pressureRatio: number;
     pressureTone: InquiryPressureTone;
     exceedsBudget: boolean;
+    materiallyExceedsBudget: boolean;
 }
 
 export interface PassIndicatorResult {
@@ -44,8 +46,14 @@ function toPressureTone(ratio: number): InquiryPressureTone {
 export function evaluateInquiryReadiness(input: EvaluateInquiryReadinessInput): InquiryReadinessResult {
     const safeInputBudget = Number.isFinite(input.safeInputBudget) ? Math.max(0, input.safeInputBudget) : 0;
     const estimatedInputTokens = Number.isFinite(input.estimatedInputTokens) ? Math.max(0, input.estimatedInputTokens) : 0;
+    const uncertaintyTokens = Number.isFinite(input.estimateUncertaintyTokens)
+        ? Math.max(0, Math.floor(input.estimateUncertaintyTokens as number))
+        : 0;
     const pressureRatio = safeInputBudget > 0 ? (estimatedInputTokens / safeInputBudget) : Number.POSITIVE_INFINITY;
     const exceedsBudget = safeInputBudget > 0 ? estimatedInputTokens > safeInputBudget : true;
+    const materiallyExceedsBudget = safeInputBudget > 0
+        ? estimatedInputTokens > (safeInputBudget + uncertaintyTokens)
+        : true;
 
     if (!input.hasCredential) {
         return {
@@ -53,7 +61,8 @@ export function evaluateInquiryReadiness(input: EvaluateInquiryReadinessInput): 
             cause: 'missing_key',
             pressureRatio,
             pressureTone: toPressureTone(pressureRatio),
-            exceedsBudget
+            exceedsBudget,
+            materiallyExceedsBudget
         };
     }
 
@@ -63,7 +72,8 @@ export function evaluateInquiryReadiness(input: EvaluateInquiryReadinessInput): 
             cause: 'capability_floor',
             pressureRatio,
             pressureTone: toPressureTone(pressureRatio),
-            exceedsBudget
+            exceedsBudget,
+            materiallyExceedsBudget
         };
     }
 
@@ -73,7 +83,8 @@ export function evaluateInquiryReadiness(input: EvaluateInquiryReadinessInput): 
             cause: 'single_pass_limit',
             pressureRatio,
             pressureTone: toPressureTone(pressureRatio),
-            exceedsBudget
+            exceedsBudget,
+            materiallyExceedsBudget
         };
     }
 
@@ -83,7 +94,8 @@ export function evaluateInquiryReadiness(input: EvaluateInquiryReadinessInput): 
             cause: 'packaging_expected',
             pressureRatio,
             pressureTone: toPressureTone(pressureRatio),
-            exceedsBudget
+            exceedsBudget,
+            materiallyExceedsBudget
         };
     }
 
@@ -92,7 +104,8 @@ export function evaluateInquiryReadiness(input: EvaluateInquiryReadinessInput): 
         cause: 'ok',
         pressureRatio,
         pressureTone: toPressureTone(pressureRatio),
-        exceedsBudget
+        exceedsBudget,
+        materiallyExceedsBudget
     };
 }
 

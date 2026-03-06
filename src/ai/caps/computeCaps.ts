@@ -6,10 +6,15 @@ import type { AccessTier, AIProviderId, AIOverrides, ModelInfo } from '../types'
  * reaching the provider.  Accounts for token-estimation imprecision
  * (char-based estimates can under-count vs real BPE tokenisation).
  *
+ * 0.9 leaves ~10% headroom for BPE under-count, which is sufficient for
+ * English prose (the primary Inquiry corpus type).  The per-tier
+ * `safeUtilization` already provides an additional margin (0.7–0.9),
+ * so the combined effective ceiling is contextWindow × safeUtil × 0.9.
+ *
  * Used by both the aiClient pre-flight guard and the Inquiry packaging
  * precheck so the two layers agree on the effective ceiling.
  */
-export const INPUT_TOKEN_GUARD_FACTOR = 0.8;
+export const INPUT_TOKEN_GUARD_FACTOR = 0.9;
 
 export interface RetryPolicy {
     maxAttempts: number;

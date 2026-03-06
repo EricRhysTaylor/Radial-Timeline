@@ -93,6 +93,12 @@ import { splitIntoBalancedLinesOptimal } from '../utils/text';
 import { classifySynopsis, type SynopsisQuality } from '../sceneAnalysis/synopsisQuality';
 import { readSceneId } from '../utils/sceneIds';
 import {
+    DEFAULT_CHARS_PER_TOKEN,
+    estimateTokensFromChars as estimateTokensFromCharsHeuristic,
+    estimateUncertaintyTokens,
+    type TokenEstimateMethod
+} from '../ai/tokens/inputTokenEstimate';
+import {
     MAX_RESOLVED_SCAN_ROOTS,
     normalizeScanRootPatterns,
     resolveScanRoots,
@@ -225,7 +231,6 @@ const GUIDANCE_TEXT_Y = 360;
 const GUIDANCE_LINE_HEIGHT = 18;
 const GUIDANCE_ALERT_LINE_HEIGHT = 26;
 const INQUIRY_PROMPT_OVERHEAD_CHARS = 900;
-const INQUIRY_CHARS_PER_TOKEN = 4;
 const INQUIRY_INPUT_TOKENS_AMBER = 90000;
 const INQUIRY_INPUT_TOKENS_RED = 140000;
 const INQUIRY_REQUIRED_CAPABILITIES: Capability[] = ['longContext', 'jsonStrict', 'reasoningStrong', 'highOutputCap'];
@@ -951,6 +956,8 @@ type EngineFailureGuidance = {
 type InquiryReadinessUiState = {
     readiness: InquiryReadinessResult;
     estimateInputTokens: number;
+    estimateMethod: TokenEstimateMethod;
+    estimateUncertaintyTokens: number;
     safeInputBudget: number;
     outputBudget: number;
     packaging: AiSettingsV1['analysisPackaging'];
@@ -1858,12 +1865,6 @@ export class InquiryView extends ItemView {
             ?? null;
         if (!currentModel) return null;
 
-        const exceedsSinglePass = readinessUi.safeInputBudget > 0
-            && readinessUi.estimateInputTokens > readinessUi.safeInputBudget;
-        const passPlan = this.getCurrentPassPlan(readinessUi);
-        const expectedPassCount = exceedsSinglePass
-            ? Math.max(passPlan.displayPassCount, this.estimateStructuredPassCount(readinessUi))
-            : 1;
         const payloadStats = this.getPayloadStats();
         const corpusFingerprint = payloadStats.manifestFingerprint || this.state.corpusFingerprint || 'unknown';
         const overrideSummary = this.getCorpusOverrideSummary();
@@ -1874,7 +1875,8 @@ export class InquiryView extends ItemView {
             engine.modelId,
             readinessUi.packaging,
             Math.round(estimatedInputTokens / 5000) * 5000,
-            expectedPassCount,
+            readinessUi.estimateMethod,
+            Math.round(readinessUi.estimateUncertaintyTokens / 1000) * 1000,
             corpusFingerprint,
             overrideSummary.active ? 1 : 0,
             overrideSummary.classCount,
@@ -1885,17 +1887,17 @@ export class InquiryView extends ItemView {
             return this.lastEngineAdvisoryContext;
         }
 
-        const aiSettings = this.getCanonicalAiSettings();
         const advisory = computeInquiryAdvisoryContext({
             scope: this.state.scope,
             focusLabel: this.getFocusLabel(),
             resolvedEngine: engine,
             currentModel,
             models: BUILTIN_MODELS,
-            aiSettings,
             analysisPackaging: readinessUi.packaging,
             estimatedInputTokens,
-            expectedPassCount,
+            currentSafeInputBudget: readinessUi.safeInputBudget,
+            estimationMethod: readinessUi.estimateMethod,
+            estimateUncertaintyTokens: readinessUi.estimateUncertaintyTokens,
             corpusFingerprint,
             overrideSummary,
             previousContext: this.lastEngineAdvisoryContext
@@ -1977,38 +1979,54 @@ export class InquiryView extends ItemView {
         const question = (questionText || '').trim();
         const tokenEstimate = this.getTokenEstimateForQuestion(question);
         const estimateInputTokens = tokenEstimate.inputTokens;
+        const estimateMethod: TokenEstimateMethod = tokenEstimate.estimationMethod ?? 'heuristic_chars';
         let hasEligibleModel = false;
         let reason = 'Fits safely - single pass.';
         let safeInputBudget = 0;
         let outputBudget = INQUIRY_MAX_OUTPUT_TOKENS;
         let model: ModelInfo | undefined;
+        const preparedSafeBudget = Number.isFinite(tokenEstimate.effectiveInputCeiling)
+            ? Math.max(0, Math.floor(tokenEstimate.effectiveInputCeiling as number))
+            : 0;
+        if (preparedSafeBudget > 0) {
+            safeInputBudget = preparedSafeBudget;
+            hasEligibleModel = true;
+        }
 
         try {
             // Use the resolved model from the canonical resolver.
             const resolvedModel = BUILTIN_MODELS.find(m => m.id === engine.modelId);
             if (!resolvedModel) throw new Error(`Resolved model "${engine.modelId}" not found in registry.`);
-            hasEligibleModel = true;
             model = resolvedModel;
-            const caps = computeCaps({
-                provider,
-                model: resolvedModel,
-                accessTier: this.getAccessTierForProvider(provider, aiSettings),
-                feature: 'InquiryMode',
-                overrides: aiSettings.overrides
-            });
-            safeInputBudget = Math.floor(caps.maxInputTokens * INPUT_TOKEN_GUARD_FACTOR);
-            outputBudget = caps.maxOutputTokens;
+            if (preparedSafeBudget <= 0) {
+                hasEligibleModel = true;
+                const caps = computeCaps({
+                    provider,
+                    model: resolvedModel,
+                    accessTier: this.getAccessTierForProvider(provider, aiSettings),
+                    feature: 'InquiryMode',
+                    overrides: aiSettings.overrides
+                });
+                safeInputBudget = Math.floor(caps.maxInputTokens * INPUT_TOKEN_GUARD_FACTOR);
+                outputBudget = caps.maxOutputTokens;
+            } else {
+                outputBudget = tokenEstimate.outputTokens || outputBudget;
+            }
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
             reason = message || 'No model satisfies capability floor.';
         }
+        const estimateUncertaintyBudget = Number.isFinite(tokenEstimate.uncertaintyTokens)
+            ? Math.max(0, Math.floor(tokenEstimate.uncertaintyTokens as number))
+            : estimateUncertaintyTokens(estimateMethod, safeInputBudget);
 
         const readiness = evaluateInquiryReadiness({
             hasEligibleModel,
             hasCredential,
             analysisPackaging: aiSettings.analysisPackaging,
             estimatedInputTokens: estimateInputTokens,
-            safeInputBudget
+            safeInputBudget,
+            estimateUncertaintyTokens: estimateUncertaintyBudget
         });
 
         const canSwitchToSummaries = this.hasAnyBodyEvidence()
@@ -2033,6 +2051,8 @@ export class InquiryView extends ItemView {
         return {
             readiness,
             estimateInputTokens,
+            estimateMethod,
+            estimateUncertaintyTokens: estimateUncertaintyBudget,
             safeInputBudget,
             outputBudget,
             packaging: aiSettings.analysisPackaging,
@@ -7242,6 +7262,9 @@ export class InquiryView extends ItemView {
         }
 
         if (!options?.bypassTokenGuard) {
+            await this.requestPayloadEstimate(question.question, {
+                questionZone: question.zone
+            });
             const readinessUi = this.buildReadinessUiState(question.question);
             this.lastReadinessUiState = readinessUi;
             if (readinessUi.readiness.state === 'blocked') {
@@ -9459,10 +9482,14 @@ export class InquiryView extends ItemView {
         void this.requestPayloadEstimate(question);
     }
 
-    private async requestPayloadEstimate(questionText: string): Promise<void> {
+    private async requestPayloadEstimate(
+        questionText: string,
+        options?: { questionZone?: InquiryZone }
+    ): Promise<void> {
         if (!questionText) return;
+        const requestedZone = options?.questionZone ?? this.previewLast?.zone ?? 'setup';
         const manifest = this.buildCorpusManifest('payload-preview', {
-            questionZone: this.previewLast?.zone
+            questionZone: requestedZone
         });
         const requestedScope = this.state.scope;
         const requestedFocusBookId = this.state.focusBookId ?? this.corpus?.books?.[0]?.id;
@@ -9489,7 +9516,7 @@ export class InquiryView extends ItemView {
                 mode: this.state.mode,
                 questionId: 'payload-preview',
                 questionText,
-                questionZone: this.previewLast?.zone ?? 'setup',
+                questionZone: requestedZone,
                 corpus: manifest,
                 rules: this.getEvidenceRules(),
                 ai: {
@@ -10655,7 +10682,9 @@ export class InquiryView extends ItemView {
             inputTokens,
             outputTokens,
             totalTokens,
-            inputChars
+            inputChars,
+            estimationMethod: 'heuristic_chars',
+            uncertaintyTokens: estimateUncertaintyTokens('heuristic_chars')
         };
     }
 
@@ -10671,8 +10700,7 @@ export class InquiryView extends ItemView {
     }
 
     private estimateTokensFromChars(chars: number): number {
-        if (!Number.isFinite(chars) || chars <= 0) return 0;
-        return Math.max(1, Math.ceil(chars / INQUIRY_CHARS_PER_TOKEN));
+        return estimateTokensFromCharsHeuristic(chars, DEFAULT_CHARS_PER_TOKEN);
     }
 
     private formatTokenEstimate(value: number): string {
@@ -10851,7 +10879,9 @@ export class InquiryView extends ItemView {
                     inputTokens: 0,
                     outputTokens: INQUIRY_MAX_OUTPUT_TOKENS,
                     totalTokens: INQUIRY_MAX_OUTPUT_TOKENS,
-                    inputChars: 0
+                    inputChars: 0,
+                    estimationMethod: 'heuristic_chars',
+                    uncertaintyTokens: estimateUncertaintyTokens('heuristic_chars')
                 },
                 outputTokenCap: INQUIRY_MAX_OUTPUT_TOKENS,
                 response: null,

@@ -9,6 +9,9 @@ import { getSortedSceneFiles } from '../../utils/manuscript';
 import type { GossamerEvidenceMode } from '../../gossamer/evidence/buildGossamerEvidence';
 import { buildGossamerEvidenceDocument } from '../../gossamer/evidence/buildGossamerEvidence';
 import type { InquiryScope } from '../../inquiry/state';
+import type { TokenEstimateMethod } from '../tokens/inputTokenEstimate';
+import { getAIClient } from '../runtime/aiClient';
+import { mapLegacyProviderToAiProvider } from '../settings/aiSettings';
 
 export const FORECAST_CHARS_PER_TOKEN = 4;
 export const FORECAST_PROMPT_OVERHEAD_TOKENS = 250;
@@ -28,6 +31,7 @@ export interface InquiryTokenEstimate {
     evidenceMode: InquiryEvidenceMode;
     evidenceLabel: string;
     selectionLabel: string;
+    estimationMethod: TokenEstimateMethod;
 }
 
 export interface GossamerTokenEstimate {
@@ -156,6 +160,10 @@ const selectInquiryFiles = (
 };
 
 export async function estimateInquiryTokens(params: {
+    plugin?: RadialTimelinePlugin;
+    provider?: 'openai' | 'anthropic' | 'google' | 'ollama' | 'none' | 'gemini' | 'local';
+    modelId?: string;
+    questionText?: string;
     vault: Vault;
     metadataCache: MetadataCache;
     inquirySources?: InquirySourcesSettings;
@@ -182,6 +190,7 @@ export async function estimateInquiryTokens(params: {
             blockCount: 0,
             evidenceMode: 'none',
             evidenceLabel: 'None',
+            estimationMethod: 'heuristic_chars',
             selectionLabel: params.scopeContext?.label
                 ? `${params.scopeContext.label} (${selected.selectionLabel})`
                 : selected.selectionLabel
@@ -233,7 +242,45 @@ export async function estimateInquiryTokens(params: {
                 ? 'summary'
                 : 'full';
     const evidenceChars = blocks.reduce((sum, block) => sum + block.label.length + block.content.length + 6, 0);
-    const estimatedInputTokens = estimateTokensFromChars(evidenceChars, params.promptOverheadTokens);
+    const heuristicEstimate = estimateTokensFromChars(evidenceChars, params.promptOverheadTokens);
+    const evidenceText = blocks.map(block => `## ${block.label}\n${block.content}`).join('\n\n');
+    const questionText = params.questionText || 'Analyze the corpus and return findings.';
+    const systemPrompt = 'You are an editorial analysis engine.';
+    const userPrompt = [
+        questionText,
+        '',
+        'Evidence:',
+        evidenceText
+    ].join('\n');
+    let estimatedInputTokens = heuristicEstimate;
+    let estimationMethod: TokenEstimateMethod = 'heuristic_chars';
+    if (params.plugin && params.provider && params.modelId) {
+        try {
+            const prepared = await getAIClient(params.plugin).prepareRunEstimate({
+                feature: 'InquiryMode',
+                task: 'SettingsForecastInquiry',
+                requiredCapabilities: ['longContext', 'jsonStrict', 'reasoningStrong', 'highOutputCap'],
+                featureModeInstructions: systemPrompt,
+                userInput: userPrompt,
+                promptText: userPrompt,
+                userQuestion: questionText,
+                systemPrompt: null,
+                returnType: 'json',
+                responseSchema: { type: 'object' },
+                providerOverride: mapLegacyProviderToAiProvider(params.provider),
+                evidenceDocuments: blocks.map(block => ({
+                    title: block.label,
+                    content: block.content
+                }))
+            });
+            if (prepared.ok) {
+                estimatedInputTokens = prepared.estimate.tokenEstimateInput;
+                estimationMethod = prepared.estimate.tokenEstimateMethod;
+            }
+        } catch {
+            // Keep heuristic fallback for forecast mode when preparation fails.
+        }
+    }
     const scopePrefix = params.scopeContext?.label ? `${params.scopeContext.label} — ` : '';
 
     return {
@@ -242,6 +289,7 @@ export async function estimateInquiryTokens(params: {
         blockCount: blocks.length,
         evidenceMode,
         evidenceLabel: formatInquiryEvidenceLabel(evidenceMode),
+        estimationMethod,
         selectionLabel: `${scopePrefix}${selected.selectionLabel}`
     };
 }

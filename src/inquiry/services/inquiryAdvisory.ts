@@ -1,12 +1,12 @@
-import { INPUT_TOKEN_GUARD_FACTOR, computeCaps } from '../../ai/caps/computeCaps';
+import { INPUT_TOKEN_GUARD_FACTOR } from '../../ai/caps/computeCaps';
 import { resolveEngineCapabilities } from '../../ai/caps/engineCapabilities';
 import { selectModel } from '../../ai/router/selectModel';
 import type {
     AIProviderId,
-    AiSettingsV1,
     AnalysisPackaging,
     ModelInfo,
 } from '../../ai/types';
+import { estimateUncertaintyTokens, type TokenEstimateMethod } from '../../ai/tokens/inputTokenEstimate';
 import type { InquiryScope } from '../state';
 import { INQUIRY_REQUIRED_CAPABILITIES, type ResolvedInquiryEngine } from './inquiryModelResolver';
 
@@ -66,10 +66,11 @@ export interface ComputeInquiryAdvisoryInput {
     resolvedEngine: ResolvedInquiryEngine;
     currentModel: ModelInfo | null;
     models: ModelInfo[];
-    aiSettings: AiSettingsV1;
     analysisPackaging: AnalysisPackaging;
     estimatedInputTokens: number;
-    expectedPassCount: number;
+    currentSafeInputBudget?: number;
+    estimationMethod?: TokenEstimateMethod;
+    estimateUncertaintyTokens?: number;
     corpusFingerprint: string;
     overrideSummary: InquiryAdvisoryOverrideSummary;
     previousContext?: InquiryAdvisoryContext | null;
@@ -97,14 +98,8 @@ const PROVIDER_LABELS: Record<AIProviderId, string> = {
 };
 
 const COST_REUSE_TOKEN_THRESHOLD = 120000;
-const SINGLE_PASS_DELTA_FACTOR = 1.15;
-
-function getAccessTier(aiSettings: AiSettingsV1, provider: AIProviderId): 1 | 2 | 3 | 4 {
-    if (provider === 'anthropic') return aiSettings.aiAccessProfile.anthropicTier ?? 1;
-    if (provider === 'openai') return aiSettings.aiAccessProfile.openaiTier ?? 1;
-    if (provider === 'google') return aiSettings.aiAccessProfile.googleTier ?? 1;
-    return 1;
-}
+const SINGLE_PASS_DELTA_RATIO = 0.08;
+const SINGLE_PASS_DELTA_MIN_TOKENS = 4000;
 
 function estimatePassCount(estimatedInputTokens: number, safeInputBudget: number): number {
     if (estimatedInputTokens <= 0) return 1;
@@ -115,19 +110,14 @@ function estimatePassCount(estimatedInputTokens: number, safeInputBudget: number
 
 function buildCandidate(
     model: ModelInfo,
-    aiSettings: AiSettingsV1,
-    estimatedInputTokens: number
+    estimatedInputTokens: number,
+    safeInputBudgetOverride?: number
 ): AdvisoryCandidate {
-    const accessTier = getAccessTier(aiSettings, model.provider);
-    const caps = computeCaps({
-        provider: model.provider,
-        model,
-        accessTier,
-        feature: 'InquiryMode',
-        overrides: aiSettings.overrides
-    });
-    const safeInputBudget = Math.max(0, Math.floor(caps.maxInputTokens * INPUT_TOKEN_GUARD_FACTOR));
     const capabilities = resolveEngineCapabilities(model);
+    const contextWindow = Math.max(0, capabilities.largeContext.contextWindow || model.contextWindow || 0);
+    const safeInputBudget = Number.isFinite(safeInputBudgetOverride)
+        ? Math.max(0, Math.floor(safeInputBudgetOverride as number))
+        : Math.max(0, Math.floor(contextWindow * INPUT_TOKEN_GUARD_FACTOR));
 
     return {
         provider: model.provider,
@@ -176,6 +166,7 @@ function buildIdentity(context: InquiryAdvisoryContext): string {
         context.corpus.expectedPassCount,
         context.corpus.corpusFingerprint,
         context.corpus.overrideSummary.total,
+        context.recommendation.currentEngineBehavior,
         context.recommendation.reasonCode,
         context.recommendation.provider,
         context.recommendation.modelId
@@ -198,17 +189,20 @@ function buildProviderCandidates(
     input: ComputeInquiryAdvisoryInput
 ): AdvisoryCandidate[] {
     const providerCandidates: AdvisoryCandidate[] = [];
-    const providers: AIProviderId[] = ['anthropic', 'openai', 'google', 'ollama'];
+    const providers = Array.from(new Set(
+        input.models
+            .map(model => model.provider)
+            .filter((provider): provider is Exclude<AIProviderId, 'none'> => provider !== 'none')
+    ));
 
     providers.forEach(provider => {
         try {
             const selection = selectModel(input.models, {
                 provider,
                 policy: { type: 'latestStable' },
-                requiredCapabilities: INQUIRY_REQUIRED_CAPABILITIES,
-                accessTier: getAccessTier(input.aiSettings, provider)
+                requiredCapabilities: INQUIRY_REQUIRED_CAPABILITIES
             });
-            providerCandidates.push(buildCandidate(selection.model, input.aiSettings, input.estimatedInputTokens));
+            providerCandidates.push(buildCandidate(selection.model, input.estimatedInputTokens));
         } catch {
             // Provider has no eligible Inquiry model for current capability floor.
         }
@@ -217,11 +211,31 @@ function buildProviderCandidates(
     return providerCandidates;
 }
 
+function hasMaterialSinglePassDelta(input: ComputeInquiryAdvisoryInput, currentCandidate: AdvisoryCandidate): boolean {
+    if (currentCandidate.safeInputBudget <= 0) return false;
+    const overflowTokens = Math.max(0, input.estimatedInputTokens - currentCandidate.safeInputBudget);
+    if (overflowTokens <= 0) return false;
+
+    const uncertainty = Number.isFinite(input.estimateUncertaintyTokens)
+        ? Math.max(0, Math.floor(input.estimateUncertaintyTokens as number))
+        : estimateUncertaintyTokens(
+            input.estimationMethod ?? 'heuristic_chars',
+            currentCandidate.safeInputBudget
+        );
+    const ratioFloor = Math.floor(currentCandidate.safeInputBudget * SINGLE_PASS_DELTA_RATIO);
+    const materialFloor = Math.max(SINGLE_PASS_DELTA_MIN_TOKENS, ratioFloor, uncertainty);
+    return overflowTokens >= materialFloor;
+}
+
 export function computeInquiryAdvisoryContext(input: ComputeInquiryAdvisoryInput): InquiryAdvisoryContext | null {
     const currentModel = input.currentModel;
     if (!currentModel) return null;
 
-    const currentCandidate = buildCandidate(currentModel, input.aiSettings, input.estimatedInputTokens);
+    const currentCandidate = buildCandidate(
+        currentModel,
+        input.estimatedInputTokens,
+        input.currentSafeInputBudget
+    );
     const alternatives = dedupeCandidates(buildProviderCandidates(input));
 
     if (!alternatives.length) return null;
@@ -232,10 +246,9 @@ export function computeInquiryAdvisoryContext(input: ComputeInquiryAdvisoryInput
 
     if (!sortedAlternatives.length) return null;
 
-    const currentPassCount = Math.max(1, input.expectedPassCount);
+    const currentPassCount = Math.max(1, currentCandidate.expectedPassCount);
     const currentBehavior = buildCurrentBehaviorLabel(currentPassCount, input.analysisPackaging);
-    const singlePassDeltaIsMaterial = currentCandidate.safeInputBudget > 0
-        && input.estimatedInputTokens >= Math.ceil(currentCandidate.safeInputBudget * SINGLE_PASS_DELTA_FACTOR);
+    const singlePassDeltaIsMaterial = hasMaterialSinglePassDelta(input, currentCandidate);
 
     let reasonCode: InquiryAdvisoryReasonCode | null = null;
     let suggestion: AdvisoryCandidate | null = null;

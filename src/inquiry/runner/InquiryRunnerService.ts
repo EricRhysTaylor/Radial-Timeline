@@ -17,13 +17,11 @@ import type {
 import { getAIClient } from '../../ai/runtime/aiClient';
 import { buildDefaultAiSettings, mapAiProviderToLegacyProvider, mapLegacyProviderToAiProvider } from '../../ai/settings/aiSettings';
 import { validateAiSettings } from '../../ai/settings/validateAiSettings';
-import { BUILTIN_MODELS } from '../../ai/registry/builtinModels';
-import { selectModel } from '../../ai/router/selectModel';
-import { computeCaps, INPUT_TOKEN_GUARD_FACTOR } from '../../ai/caps/computeCaps';
-import type { AIRunResult, AnalysisPackaging, AIProviderId, AccessTier, SceneRef } from '../../ai/types';
+import type { AIRunPreparedEstimate, AIRunResult, AnalysisPackaging, SceneRef } from '../../ai/types';
 import { readSceneId, resolveSceneReferenceId } from '../../utils/sceneIds';
 import { buildSceneRefIndex, isStableSceneId, normalizeSceneRef } from '../../ai/references/sceneRefNormalizer';
 import { cleanEvidenceBody } from '../utils/evidenceCleaning';
+import { estimateTokensFromChars, type TokenEstimateMethod } from '../../ai/tokens/inputTokenEstimate';
 
 export { cleanEvidenceBody } from '../utils/evidenceCleaning';
 
@@ -34,6 +32,8 @@ type EvidenceBlock = {
     content: string;
     meta?: EvidenceDocumentMeta;
 };
+
+type OnePassFitState = 'fits' | 'overflows' | 'unknown';
 
 type SceneSnapshot = {
     path: string;
@@ -108,6 +108,8 @@ type ProviderResult = {
 };
 
 export class InquiryRunnerService implements InquiryRunner {
+    private tokenEstimateCache = new Map<string, InquiryRunTrace['tokenEstimate']>();
+
     constructor(
         private plugin: RadialTimelinePlugin,
         private vault: Vault,
@@ -1002,18 +1004,49 @@ export class InquiryRunnerService implements InquiryRunner {
     ): Promise<ProviderResult> {
         const aiClient = getAIClient(this.plugin);
         const analysisPackaging = this.getAnalysisPackaging();
-        const packagingPrecheck = this.getPackagingPrecheck(systemPrompt, userPrompt, ai, maxTokens);
+        const packagingPrecheck = await this.getPackagingPrecheck({
+            aiClient,
+            systemPrompt,
+            userPrompt,
+            ai,
+            userQuestion,
+            jsonSchema,
+            temperature,
+            maxTokens,
+            evidenceBlocks
+        });
 
-        if (analysisPackaging === 'singlePassOnly' && packagingPrecheck.exceedsSafeBudget) {
+        /**
+         * Inquiry packaging policy (overflow = tokenEstimateInput > effectiveInputCeiling)
+         *
+         * Mode            One-pass fit check role         One-pass permission         Required route
+         * singlePassOnly  hard gate                        allowed only if fits        overflow/unknown => reject before send
+         * automatic       routing hint                     allowed only if fits        overflow/unknown => multi-pass
+         * segmented       informational                    never                        always multi-pass
+         *
+         * If required multi-pass fails, return packaging_failed.
+         * Do not emit single-pass-limit rejection for automatic/segmented.
+         */
+        const onePassFit = packagingPrecheck.onePassFit;
+        const requiresMultiPass = analysisPackaging === 'segmented'
+            || (analysisPackaging === 'automatic' && onePassFit !== 'fits');
+
+        if (analysisPackaging === 'singlePassOnly' && onePassFit === 'overflows') {
             const reason = `Estimated input ${Math.round(packagingPrecheck.inputTokens).toLocaleString()} exceeds safe input budget ${Math.round(packagingPrecheck.safeInputTokens).toLocaleString()} for this Inquiry request.`;
             return this.buildSinglePassOnlyOverflowResult(ai, reason);
         }
 
-        if (analysisPackaging === 'segmented' ||
-            (analysisPackaging === 'automatic' && packagingPrecheck.exceedsSafeBudget)) {
+        if (analysisPackaging === 'singlePassOnly' && onePassFit === 'unknown') {
+            const reason = 'Unable to verify one-pass fit for this request. Single-pass only mode blocks execution without fit confirmation.';
+            return this.buildSinglePassOnlyUnknownFitResult(ai, reason);
+        }
+
+        if (requiresMultiPass) {
             const triggerReason = analysisPackaging === 'segmented'
                 ? 'Segmented mode forces multi-pass segmentation.'
-                : `Estimated input ${Math.round(packagingPrecheck.inputTokens).toLocaleString()} exceeded safe input budget ${Math.round(packagingPrecheck.safeInputTokens).toLocaleString()}.`;
+                : onePassFit === 'overflows'
+                    ? `Estimated input ${Math.round(packagingPrecheck.inputTokens).toLocaleString()} exceeded safe input budget ${Math.round(packagingPrecheck.safeInputTokens).toLocaleString()}.`
+                    : 'One-pass fit estimate was unavailable, so automatic mode preferred multi-pass packaging.';
             const packaged = await this.runChunkedInquiry(aiClient, {
                 systemPrompt,
                 userPrompt,
@@ -1030,16 +1063,12 @@ export class InquiryRunnerService implements InquiryRunner {
                     packagingTriggerReason: triggerReason
                 }));
             }
-            // Chunked execution failed.  When the precheck already detected overflow,
-            // falling through to a single-pass attempt is wasteful — the aiClient
-            // guard will reject it instantly after we already spent minutes building
-            // the trace.  Abort with a descriptive error instead.
-            if (packagingPrecheck.exceedsSafeBudget) {
-                const reason = `Chunked execution failed for ${Math.round(packagingPrecheck.inputTokens).toLocaleString()} token input `
-                    + `(safe budget ${Math.round(packagingPrecheck.safeInputTokens).toLocaleString()}). `
-                    + `Switch full materials to Summary, reduce the corpus, or try a larger-context model.`;
-                return this.buildSinglePassOnlyOverflowResult(ai, reason);
-            }
+            const reason = analysisPackaging === 'segmented'
+                ? 'Segmented mode requires multi-pass packaging, but chunking/synthesis did not complete.'
+                : onePassFit === 'overflows'
+                    ? `Automatic mode routed to multi-pass because estimated input ${Math.round(packagingPrecheck.inputTokens).toLocaleString()} exceeded safe input budget ${Math.round(packagingPrecheck.safeInputTokens).toLocaleString()}, but chunking/synthesis did not complete.`
+                    : 'Automatic mode preferred multi-pass because one-pass fit was unknown, but chunking/synthesis did not complete.';
+            return this.buildPackagingFailedResult(ai, analysisPackaging, reason);
         }
 
         let run = await this.runInquiryRequest(aiClient, {
@@ -1051,7 +1080,8 @@ export class InquiryRunnerService implements InquiryRunner {
             jsonSchema,
             temperature,
             maxTokens,
-            evidenceBlocks
+            evidenceBlocks,
+            preparedEstimate: packagingPrecheck.preparedEstimate
         });
         run = this.withExecutionContext(run, {
             analysisPackaging,
@@ -1088,11 +1118,11 @@ export class InquiryRunnerService implements InquiryRunner {
                 if (chunked) {
                     run = chunked;
                 } else {
-                    run = this.withExecutionContext(run, {
+                    return this.buildPackagingFailedResult(
+                        ai,
                         analysisPackaging,
-                        executionPassCount: 1,
-                        packagingTriggerReason: 'Single-pass response exceeded safe limits, and automatic packaging did not complete.'
-                    });
+                        'Single-pass response was truncated, and fallback multi-pass packaging did not complete.'
+                    );
                 }
             }
         }
@@ -1112,19 +1142,21 @@ export class InquiryRunnerService implements InquiryRunner {
             temperature: number;
             maxTokens: number;
             evidenceBlocks?: EvidenceBlock[];
+            preparedEstimate?: AIRunPreparedEstimate | null;
         }
     ): Promise<AIRunResult> {
-        const tokenEstimateInput = this.estimateTokensFromChars(
-            (options.systemPrompt?.length ?? 0) + (options.userPrompt?.length ?? 0)
-        );
-        // Map evidence blocks to evidence documents for provider-level citation support.
-        // Order is deterministic: matches the corpus assembly order from buildEvidenceBlocks().
-        const evidenceDocuments = options.evidenceBlocks?.length
-            ? options.evidenceBlocks.map(block => ({
-                title: block.label,
-                content: block.content
-            }))
-            : undefined;
+        const preparedEstimate = options.preparedEstimate
+            ?? await this.prepareInquiryRunEstimate(aiClient, {
+                task: options.task,
+                systemPrompt: options.systemPrompt,
+                userPrompt: options.userPrompt,
+                userQuestion: options.userQuestion,
+                ai: options.ai,
+                jsonSchema: options.jsonSchema,
+                temperature: options.temperature,
+                maxTokens: options.maxTokens,
+                evidenceBlocks: options.evidenceBlocks
+            });
         return aiClient.run({
             feature: 'InquiryMode',
             task: options.task,
@@ -1146,15 +1178,75 @@ export class InquiryRunnerService implements InquiryRunner {
                 reasoningDepth: 'deep',
                 jsonStrict: true
             },
-            tokenEstimateInput,
-            evidenceDocuments
+            preparedEstimate: preparedEstimate ?? undefined,
+            evidenceDocuments: options.evidenceBlocks?.length
+                ? options.evidenceBlocks.map(block => ({
+                    title: block.label,
+                    content: block.content
+                }))
+                : undefined
         });
+    }
+
+    private async prepareInquiryRunEstimate(
+        aiClient: ReturnType<typeof getAIClient>,
+        options: {
+            task: string;
+            systemPrompt: string;
+            userPrompt: string;
+            userQuestion?: string;
+            ai: InquiryRunnerInput['ai'];
+            jsonSchema: Record<string, unknown>;
+            temperature: number;
+            maxTokens: number;
+            evidenceBlocks?: EvidenceBlock[];
+        }
+    ): Promise<AIRunPreparedEstimate | null> {
+        const prepared = await aiClient.prepareRunEstimate({
+            feature: 'InquiryMode',
+            task: options.task,
+            requiredCapabilities: ['longContext', 'jsonStrict', 'reasoningStrong', 'highOutputCap'],
+            featureModeInstructions: [
+                options.systemPrompt,
+                'Do not reinterpret or expand the user\u2019s question. Answer it directly. The role template provides tonal and contextual framing only.'
+            ].filter(Boolean).join('\n'),
+            userInput: options.userPrompt,
+            userQuestion: options.userQuestion,
+            promptText: options.userPrompt,
+            systemPrompt: undefined,
+            returnType: 'json',
+            responseSchema: options.jsonSchema,
+            providerOverride: mapLegacyProviderToAiProvider(options.ai.provider),
+            overrides: {
+                temperature: options.temperature,
+                maxOutputMode: this.resolveMaxOutputMode(options.maxTokens),
+                reasoningDepth: 'deep',
+                jsonStrict: true
+            },
+            evidenceDocuments: options.evidenceBlocks?.length
+                ? options.evidenceBlocks.map(block => ({
+                    title: block.label,
+                    content: block.content
+                }))
+                : undefined
+        });
+        if (!prepared.ok) return null;
+        return prepared.estimate;
     }
 
     private resolveMaxOutputMode(maxTokens: number): 'auto' | 'high' | 'max' {
         if (maxTokens >= 12000) return 'max';
         if (maxTokens >= 4000) return 'high';
         return 'auto';
+    }
+
+    private hashText(input: string): string {
+        let hash = 2166136261;
+        for (let i = 0; i < input.length; i += 1) {
+            hash ^= input.charCodeAt(i);
+            hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
+        }
+        return (hash >>> 0).toString(16);
     }
 
     private getAnalysisPackaging(): AnalysisPackaging {
@@ -1165,62 +1257,59 @@ export class InquiryRunnerService implements InquiryRunner {
             : 'automatic';
     }
 
-    private getAccessTier(provider: AIProviderId): AccessTier {
-        const aiSettings = validateAiSettings(this.plugin.settings.aiSettings ?? buildDefaultAiSettings()).value;
-        if (provider === 'anthropic') return aiSettings.aiAccessProfile.anthropicTier ?? 1;
-        if (provider === 'openai') return aiSettings.aiAccessProfile.openaiTier ?? 1;
-        if (provider === 'google') return aiSettings.aiAccessProfile.googleTier ?? 1;
-        return 1;
-    }
-
-    private getPackagingPrecheck(
-        systemPrompt: string,
-        userPrompt: string,
-        ai: InquiryRunnerInput['ai'],
-        maxTokens: number
-    ): { inputTokens: number; safeInputTokens: number; exceedsSafeBudget: boolean } {
-        const inputTokens = this.estimateTokensFromChars((systemPrompt?.length ?? 0) + (userPrompt?.length ?? 0));
-        const provider = mapLegacyProviderToAiProvider(ai.provider);
-        if (provider === 'none') {
-            return { inputTokens, safeInputTokens: 0, exceedsSafeBudget: false };
-        }
-
+    private async getPackagingPrecheck(options: {
+        aiClient: ReturnType<typeof getAIClient>;
+        systemPrompt: string;
+        userPrompt: string;
+        ai: InquiryRunnerInput['ai'];
+        userQuestion?: string;
+        jsonSchema: Record<string, unknown>;
+        temperature: number;
+        maxTokens: number;
+        evidenceBlocks?: EvidenceBlock[];
+    }): Promise<{
+        inputTokens: number;
+        safeInputTokens: number;
+        onePassFit: OnePassFitState;
+        exceedsSafeBudget: boolean;
+        estimationMethod: TokenEstimateMethod;
+        uncertaintyTokens: number;
+        preparedEstimate: AIRunPreparedEstimate | null;
+    }> {
         try {
-            const modelSelection = selectModel(BUILTIN_MODELS, {
-                provider,
-                policy: { type: 'latestStable' },
-                requiredCapabilities: ['longContext', 'jsonStrict', 'reasoningStrong', 'highOutputCap'],
-                accessTier: this.getAccessTier(provider),
-                contextTokensNeeded: inputTokens,
-                outputTokensNeeded: maxTokens
+            const preparedEstimate = await this.prepareInquiryRunEstimate(options.aiClient, {
+                task: 'InquiryPackagingPrecheck',
+                systemPrompt: options.systemPrompt,
+                userPrompt: options.userPrompt,
+                userQuestion: options.userQuestion,
+                ai: options.ai,
+                jsonSchema: options.jsonSchema,
+                temperature: options.temperature,
+                maxTokens: options.maxTokens,
+                evidenceBlocks: options.evidenceBlocks
             });
-            const caps = computeCaps({
-                provider,
-                model: modelSelection.model,
-                accessTier: this.getAccessTier(provider),
-                feature: 'InquiryMode',
-                overrides: {
-                    maxOutputMode: this.resolveMaxOutputMode(maxTokens),
-                    reasoningDepth: 'deep',
-                    jsonStrict: true
-                }
-            });
-            // Match the aiClient token guard (INPUT_TOKEN_GUARD_FACTOR) applied
-            // on top of the per-tier safeUtilization already baked into maxInputTokens.
-            // Without this alignment the precheck would say "OK" at 147k < 180k,
-            // but the aiClient guard would reject at 147k > 144k (180k × 0.8),
-            // wasting the full trace-build time before the rejection.
-            const effectiveSafe = Math.floor(caps.maxInputTokens * INPUT_TOKEN_GUARD_FACTOR);
+            if (!preparedEstimate) {
+                throw new Error('prepareRunEstimate unavailable');
+            }
+            const exceedsSafeBudget = preparedEstimate.tokenEstimateInput > preparedEstimate.effectiveInputCeiling;
             return {
-                inputTokens,
-                safeInputTokens: effectiveSafe,
-                exceedsSafeBudget: inputTokens > effectiveSafe
+                inputTokens: preparedEstimate.tokenEstimateInput,
+                safeInputTokens: preparedEstimate.effectiveInputCeiling,
+                onePassFit: exceedsSafeBudget ? 'overflows' : 'fits',
+                exceedsSafeBudget,
+                estimationMethod: preparedEstimate.tokenEstimateMethod,
+                uncertaintyTokens: preparedEstimate.tokenEstimateUncertainty,
+                preparedEstimate
             };
         } catch {
             return {
-                inputTokens,
+                inputTokens: estimateTokensFromChars((options.systemPrompt?.length ?? 0) + (options.userPrompt?.length ?? 0)),
                 safeInputTokens: 0,
-                exceedsSafeBudget: false
+                onePassFit: 'unknown',
+                exceedsSafeBudget: false,
+                estimationMethod: 'heuristic_chars',
+                uncertaintyTokens: 0,
+                preparedEstimate: null
             };
         }
     }
@@ -1242,6 +1331,51 @@ export class InquiryRunnerService implements InquiryRunner {
             aiReason: 'truncated',
             error: 'This request exceeds the safe limit for a single pass. Switch Execution Preference to Automatic, or reduce scope.',
             analysisPackaging: 'singlePassOnly',
+            executionPassCount: 1,
+            packagingTriggerReason: reason
+        };
+    }
+
+    private buildSinglePassOnlyUnknownFitResult(
+        ai: InquiryRunnerInput['ai'],
+        reason: string
+    ): ProviderResult {
+        return {
+            success: false,
+            content: null,
+            responseData: null,
+            provider: ai.provider,
+            modelId: ai.modelId,
+            aiProvider: ai.provider,
+            aiModelRequested: ai.modelId,
+            aiModelResolved: ai.modelId,
+            aiStatus: 'rejected',
+            aiReason: 'packaging_failed',
+            error: 'Unable to verify one-pass fit in Single-pass only mode. Try again, or switch Execution Preference to Automatic.',
+            analysisPackaging: 'singlePassOnly',
+            executionPassCount: 1,
+            packagingTriggerReason: reason
+        };
+    }
+
+    private buildPackagingFailedResult(
+        ai: InquiryRunnerInput['ai'],
+        analysisPackaging: AnalysisPackaging,
+        reason: string
+    ): ProviderResult {
+        return {
+            success: false,
+            content: null,
+            responseData: null,
+            provider: ai.provider,
+            modelId: ai.modelId,
+            aiProvider: ai.provider,
+            aiModelRequested: ai.modelId,
+            aiModelResolved: ai.modelId,
+            aiStatus: 'rejected',
+            aiReason: 'packaging_failed',
+            error: 'Multi-pass packaging could not be completed. Reduce corpus size, switch some evidence to Summary, or try another model/provider.',
+            analysisPackaging,
             executionPassCount: 1,
             packagingTriggerReason: reason
         };
@@ -1924,7 +2058,14 @@ export class InquiryRunnerService implements InquiryRunner {
 
         const { systemPrompt, userPrompt, evidenceText } = this.buildPrompt(input, evidenceBlocks);
         const outputTokenCap = this.getOutputTokenCap(input.ai.provider);
-        const tokenEstimate = this.buildTokenEstimate(systemPrompt, userPrompt, outputTokenCap);
+        const tokenEstimate = await this.buildTokenEstimate(
+            systemPrompt,
+            userPrompt,
+            outputTokenCap,
+            input.ai,
+            evidenceBlocks,
+            this.getJsonSchema()
+        );
         const trace: InquiryRunTrace = {
             systemPrompt,
             userPrompt,
@@ -1969,7 +2110,14 @@ export class InquiryRunnerService implements InquiryRunner {
         notes.push(`Omnibus run: ${input.questions.length} questions.`);
         const { systemPrompt, userPrompt, evidenceText } = this.buildOmnibusPrompt(input, evidenceBlocks);
         const outputTokenCap = this.getOutputTokenCap(input.ai.provider);
-        const tokenEstimate = this.buildTokenEstimate(systemPrompt, userPrompt, outputTokenCap);
+        const tokenEstimate = await this.buildTokenEstimate(
+            systemPrompt,
+            userPrompt,
+            outputTokenCap,
+            input.ai,
+            evidenceBlocks,
+            this.getOmnibusJsonSchema()
+        );
         const trace: InquiryRunTrace = {
             systemPrompt,
             userPrompt,
@@ -1984,15 +2132,43 @@ export class InquiryRunnerService implements InquiryRunner {
         return { trace, evidenceBlocks };
     }
 
-    private buildTokenEstimate(systemPrompt: string, userPrompt: string, outputTokens: number): InquiryRunTrace['tokenEstimate'] {
+    private async buildTokenEstimate(
+        systemPrompt: string,
+        userPrompt: string,
+        outputTokens: number,
+        ai: InquiryRunnerInput['ai'],
+        evidenceBlocks: EvidenceBlock[],
+        jsonSchema: Record<string, unknown>
+    ): Promise<InquiryRunTrace['tokenEstimate']> {
         const inputChars = (systemPrompt?.length ?? 0) + (userPrompt?.length ?? 0);
-        const inputTokens = this.estimateTokensFromChars(inputChars);
-        return {
+        const cacheKey = this.hashText(`${ai.provider}|${ai.modelId}|${inputChars}|${outputTokens}|${systemPrompt}|${userPrompt}`);
+        const cached = this.tokenEstimateCache.get(cacheKey);
+        if (cached) return cached;
+
+        const aiClient = getAIClient(this.plugin);
+        const prepared = await this.prepareInquiryRunEstimate(aiClient, {
+            task: 'InquiryTraceEstimate',
+            systemPrompt,
+            userPrompt,
+            ai,
+            jsonSchema,
+            temperature: 0.2,
+            maxTokens: outputTokens,
+            evidenceBlocks
+        });
+        const inputTokens = prepared?.tokenEstimateInput
+            ?? estimateTokensFromChars(inputChars);
+        const tokenEstimate: InquiryRunTrace['tokenEstimate'] = {
             inputTokens,
             outputTokens,
             totalTokens: inputTokens + outputTokens,
-            inputChars
+            inputChars,
+            estimationMethod: prepared?.tokenEstimateMethod ?? 'heuristic_chars',
+            uncertaintyTokens: prepared?.tokenEstimateUncertainty ?? 0,
+            effectiveInputCeiling: prepared?.effectiveInputCeiling
         };
+        this.tokenEstimateCache.set(cacheKey, tokenEstimate);
+        return tokenEstimate;
     }
 
     private getOutputTokenCap(provider: InquiryAiProvider): number {
@@ -2016,11 +2192,6 @@ export class InquiryRunnerService implements InquiryRunner {
         const output = usage?.outputTokens;
         if (typeof output !== 'number') return false;
         return output >= currentCap;
-    }
-
-    private estimateTokensFromChars(chars: number): number {
-        if (!Number.isFinite(chars) || chars <= 0) return 0;
-        return Math.max(1, Math.ceil(chars / 4));
     }
 
     private extractUsage(responseData: unknown): InquiryRunTrace['usage'] | undefined {
