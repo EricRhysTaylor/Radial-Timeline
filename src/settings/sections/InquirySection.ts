@@ -92,6 +92,8 @@ const formatClassCountLabel = (className: string, count: number): string => {
 };
 
 const CLASS_SUMMARY_ORDER = ['scene', 'outline', 'character', 'place', 'power'];
+const PRESET_SEED_CLASSES = ['scene', 'outline', 'character', 'place', 'power'];
+const PRESET_MATCH_ORDER: InquirySourcesPreset[] = ['default', 'light', 'deep'];
 
 const compareClassSummary = (a: string, b: string): number => {
     const aIdx = CLASS_SUMMARY_ORDER.indexOf(a);
@@ -474,6 +476,21 @@ export function renderInquirySection(params: SectionParams): void {
                 .filter(Boolean)
                 .map(root => toDisplayRoot(root))
         ));
+    const MAX_SCAN_PRESET_CHECK_ROOTS = 5000;
+    const isScanPresetCovered = (presetRoots: string[], selectedRoots: string[]): boolean => {
+        const normalizedPreset = normalizeScanRootPatterns(presetRoots);
+        const normalizedSelected = normalizeScanRootPatterns(selectedRoots);
+        if (!normalizedPreset.length || !normalizedSelected.length) return false;
+        const selectedSet = new Set(normalizedSelected);
+        if (normalizedPreset.every(root => selectedSet.has(root))) return true;
+
+        const presetResolved = resolveScanRoots(normalizedPreset, plugin.app.vault, MAX_SCAN_PRESET_CHECK_ROOTS).resolvedRoots;
+        if (!presetResolved.length) return false;
+        const selectedResolved = resolveScanRoots(normalizedSelected, plugin.app.vault, MAX_SCAN_PRESET_CHECK_ROOTS).resolvedRoots;
+        if (!selectedResolved.length) return false;
+        const selectedResolvedSet = new Set(selectedResolved);
+        return presetResolved.every(root => selectedResolvedSet.has(root));
+    };
 
     const addScanRootToggle = (
         label: string,
@@ -483,24 +500,26 @@ export function renderInquirySection(params: SectionParams): void {
         const btn = scanRootActions.createEl('button', { cls: ERT_CLASSES.PILL_BTN });
         btn.createSpan({ cls: ERT_CLASSES.PILL_BTN_LABEL, text: label });
         const syncButtonState = () => {
-            const roots = resolveRoots();
+            const roots = normalizeScanRootPatterns(resolveRoots());
             const hasRoots = roots.length > 0;
-            const rootSet = new Set(inquirySources.scanRoots || []);
-            const isActive = hasRoots && roots.every(root => rootSet.has(root));
+            const selectedRoots = normalizeScanRootPatterns(inquirySources.scanRoots || []);
+            const rootSet = new Set(selectedRoots);
+            const explicitlyActive = hasRoots && roots.every(root => rootSet.has(root));
+            const isActive = explicitlyActive || (hasRoots && isScanPresetCovered(roots, selectedRoots));
             btn.classList.toggle(ERT_CLASSES.IS_ACTIVE, isActive);
             btn.classList.toggle(ERT_CLASSES.PILL_BTN_USED, !hasRoots);
             btn.disabled = !hasRoots;
         };
         plugin.registerDomEvent(btn, 'click', (evt) => {
             evt.preventDefault();
-            const roots = resolveRoots();
+            const roots = normalizeScanRootPatterns(resolveRoots());
             if (!roots.length) {
                 if (emptyNotice) new Notice(emptyNotice);
                 return;
             }
-            const rootSet = new Set(inquirySources.scanRoots || []);
-            const isActive = roots.every(root => rootSet.has(root));
-            if (isActive) {
+            const rootSet = new Set(normalizeScanRootPatterns(inquirySources.scanRoots || []));
+            const explicitlyActive = roots.every(root => rootSet.has(root));
+            if (explicitlyActive) {
                 roots.forEach(root => rootSet.delete(root));
             } else {
                 roots.forEach(root => rootSet.add(root));
@@ -571,9 +590,48 @@ export function renderInquirySection(params: SectionParams): void {
     const presetControls = presetSetting.controlEl.createDiv({ cls: [ERT_CLASSES.INLINE] });
     const presetButtons = new Map<InquirySourcesPreset, HTMLButtonElement>();
 
+    const inferPresetFromClasses = (classes: InquiryClassConfig[] | undefined): InquirySourcesPreset | null => {
+        if (!classes || !classes.length) return null;
+        const classNames = new Set<string>(PRESET_SEED_CLASSES);
+        const byName = new Map<string, InquiryClassConfig>();
+        classes.forEach(config => {
+            const className = config.className.toLowerCase();
+            classNames.add(className);
+            byName.set(className, normalizeClassContribution({
+                className,
+                enabled: !!config.enabled,
+                bookScope: normalizeMaterialMode(config.bookScope, className),
+                sagaScope: normalizeMaterialMode(config.sagaScope, className),
+                referenceScope: normalizeMaterialMode(config.referenceScope, className)
+            }));
+        });
+
+        const matchesPreset = (preset: InquirySourcesPreset): boolean => {
+            return Array.from(classNames).every(className => {
+                const current = byName.get(className) ?? defaultClassConfig(className);
+                const expected = buildPresetClassConfig(current, preset);
+                return current.enabled === expected.enabled
+                    && current.bookScope === expected.bookScope
+                    && current.sagaScope === expected.sagaScope
+                    && current.referenceScope === expected.referenceScope;
+            });
+        };
+
+        for (const preset of PRESET_MATCH_ORDER) {
+            if (matchesPreset(preset)) return preset;
+        }
+        return null;
+    };
+
+    const getEffectivePresetSelection = (): InquirySourcesPreset | null => {
+        if (inquirySources.preset) return inquirySources.preset;
+        return inferPresetFromClasses(inquirySources.classes);
+    };
+
     const syncPresetButtons = () => {
+        const activePreset = getEffectivePresetSelection();
         presetButtons.forEach((button, key) => {
-            button.classList.toggle(ERT_CLASSES.IS_ACTIVE, inquirySources.preset === key);
+            button.classList.toggle(ERT_CLASSES.IS_ACTIVE, activePreset === key);
         });
     };
 
@@ -590,7 +648,6 @@ export function renderInquirySection(params: SectionParams): void {
     addPresetButton('default', 'Default');
     addPresetButton('light', 'Light');
     addPresetButton('deep', 'Deep');
-    syncPresetButtons();
 
     const tableCard = sourcesBody.createDiv({ cls: ERT_CLASSES.PANEL });
     const classTableWrap = tableCard.createDiv({
@@ -809,27 +866,28 @@ export function renderInquirySection(params: SectionParams): void {
         return 'none';
     };
 
-    const applyPreset = (preset: InquirySourcesPreset) => {
-        const seedClasses = ['scene', 'outline', 'character', 'place', 'power'];
-        const merged = mergeClassConfigs(inquirySources.classes || [], seedClasses);
-        const nextClasses = merged.map(config => {
-            const contribution = resolvePresetContribution(preset, config.className);
-            const normalized = config.className.toLowerCase();
-            const participation = contribution === 'none'
-                ? { book: false, saga: false, reference: false }
-                : defaultParticipationForClass(config.className);
-            const bookContribution: InquiryMaterialMode =
-                preset === 'default' && normalized === 'scene' ? 'full' : contribution;
-            const sagaContribution: InquiryMaterialMode =
-                preset === 'default' && normalized === 'scene' ? 'summary' : contribution;
-            return normalizeClassContribution({
-                ...config,
-                enabled: contribution !== 'none',
-                bookScope: participation.book ? bookContribution : 'none',
-                sagaScope: participation.saga ? sagaContribution : 'none',
-                referenceScope: participation.reference ? contribution : 'none'
-            });
+    const buildPresetClassConfig = (config: InquiryClassConfig, preset: InquirySourcesPreset): InquiryClassConfig => {
+        const contribution = resolvePresetContribution(preset, config.className);
+        const normalized = config.className.toLowerCase();
+        const participation = contribution === 'none'
+            ? { book: false, saga: false, reference: false }
+            : defaultParticipationForClass(config.className);
+        const bookContribution: InquiryMaterialMode =
+            preset === 'default' && normalized === 'scene' ? 'full' : contribution;
+        const sagaContribution: InquiryMaterialMode =
+            preset === 'default' && normalized === 'scene' ? 'summary' : contribution;
+        return normalizeClassContribution({
+            ...config,
+            enabled: contribution !== 'none',
+            bookScope: participation.book ? bookContribution : 'none',
+            sagaScope: participation.saga ? sagaContribution : 'none',
+            referenceScope: participation.reference ? contribution : 'none'
         });
+    };
+
+    const applyPreset = (preset: InquirySourcesPreset) => {
+        const merged = mergeClassConfigs(inquirySources.classes || [], PRESET_SEED_CLASSES);
+        const nextClasses = merged.map(config => buildPresetClassConfig(config, preset));
         inquirySources = {
             ...inquirySources,
             preset,
@@ -838,6 +896,7 @@ export function renderInquirySection(params: SectionParams): void {
         syncPresetButtons();
         void refreshClassScan();
     };
+    syncPresetButtons();
 
     const buildContainerMaterialSummary = (
         classCounts: Record<string, number>,
@@ -1009,8 +1068,9 @@ export function renderInquirySection(params: SectionParams): void {
         const allConfigNames = Array.from(new Set([...scan.discoveredClasses, ...scopeConfig.allowed]));
         const merged = mergeClassConfigs(inquirySources.classes || [], allConfigNames);
         const visibleConfigs = merged.filter(config => allowedSet.has(config.className));
+        const effectivePreset = inquirySources.preset ?? inferPresetFromClasses(merged) ?? undefined;
         inquirySources = {
-            preset: inquirySources.preset,
+            preset: effectivePreset,
             scanRoots: rawRoots,
             bookInclusion,
             classScope: inquirySources.classScope || [],

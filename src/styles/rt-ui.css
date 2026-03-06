@@ -39,6 +39,29 @@
   --ert-alert-critical-pulse: color-mix(in srgb, var(--ert-alert-critical-color) 50%, transparent);
   --ert-alert-warning-pulse-strong: color-mix(in srgb, var(--ert-alert-warning-color) 60%, transparent);
   --ert-alert-critical-pulse-strong: color-mix(in srgb, var(--ert-alert-critical-color) 70%, transparent);
+  /*
+   * Inquiry execution semantics (separate from corpus/narrative colors):
+   * AI_EXECUTION_WARNING = multi-pass / heavy request
+   * AI_EXECUTION_FAILURE = blocked or failed execution
+   * AI_EXECUTION_ADVISORY = suggestion only
+   * Used consistently across minimap, readiness, popovers, and advisor surfaces.
+   */
+  --rt-ai-success: var(--ert-alert-success-color);
+  --rt-ai-warning: var(--ert-alert-warning-color);
+  --rt-ai-error: var(--ert-alert-critical-color);
+  --rt-ai-running: var(--interactive-accent);
+  --rt-ai-advisory: var(--text-muted);
+  --rt-ai-neutral: var(--text-normal);
+  --rt-ai-success-bg: color-mix(in srgb, var(--rt-ai-success) 12%, transparent);
+  --rt-ai-warning-bg: color-mix(in srgb, var(--rt-ai-warning) 12%, transparent);
+  --rt-ai-error-bg: color-mix(in srgb, var(--rt-ai-error) 12%, transparent);
+  --rt-ai-running-bg: color-mix(in srgb, var(--rt-ai-running) 14%, transparent);
+  --rt-ai-advisory-bg: color-mix(in srgb, var(--rt-ai-advisory) 10%, transparent);
+  --rt-ai-success-border: color-mix(in srgb, var(--rt-ai-success) 38%, transparent);
+  --rt-ai-warning-border: color-mix(in srgb, var(--rt-ai-warning) 42%, transparent);
+  --rt-ai-error-border: color-mix(in srgb, var(--rt-ai-error) 48%, transparent);
+  --rt-ai-running-border: color-mix(in srgb, var(--rt-ai-running) 42%, transparent);
+  --rt-ai-advisory-border: color-mix(in srgb, var(--rt-ai-advisory) 35%, transparent);
   --ert-shadow-soft: 0 6px 18px color-mix(in srgb, var(--background-modifier-border) 30%, transparent);
   --ert-shadow-soft-tight: 0 1px 3px color-mix(in srgb, var(--background-modifier-border) 55%, transparent);
   --ert-shadow-soft-subtle: 0 1px 2px color-mix(in srgb, var(--background-modifier-border) 45%, transparent);

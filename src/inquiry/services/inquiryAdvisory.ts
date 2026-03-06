@@ -6,7 +6,7 @@ import type {
     AnalysisPackaging,
     ModelInfo,
 } from '../../ai/types';
-import { estimateUncertaintyTokens, type TokenEstimateMethod } from '../../ai/tokens/inputTokenEstimate';
+import type { TokenEstimateMethod } from '../../ai/tokens/inputTokenEstimate';
 import type { InquiryScope } from '../state';
 import { INQUIRY_REQUIRED_CAPABILITIES, type ResolvedInquiryEngine } from './inquiryModelResolver';
 
@@ -15,7 +15,8 @@ export const INQUIRY_ADVISORY_CONTEXT_VERSION = 1 as const;
 export type InquiryAdvisoryReasonCode =
     | 'single_pass_preferred'
     | 'sources_preferred'
-    | 'cost_reuse_preferred';
+    | 'cost_reuse_preferred'
+    | 'precision_analysis_preferred';
 
 export interface InquiryAdvisoryContext {
     version: typeof INQUIRY_ADVISORY_CONTEXT_VERSION;
@@ -72,6 +73,8 @@ export interface ComputeInquiryAdvisoryInput {
     estimationMethod?: TokenEstimateMethod;
     estimateUncertaintyTokens?: number;
     corpusFingerprint: string;
+    corpusFingerprintReused?: boolean;
+    questionText?: string;
     overrideSummary: InquiryAdvisoryOverrideSummary;
     previousContext?: InquiryAdvisoryContext | null;
 }
@@ -85,6 +88,8 @@ type AdvisoryCandidate = {
     contextWindow: number;
     expectedPassCount: number;
     safeInputBudget: number;
+    reasoningSupport: 'limited' | 'standard' | 'strong';
+    structuredOutputStrength: 'limited' | 'basic' | 'strong';
     sourcesStatus: 'available' | 'provider_supported_not_used' | 'unavailable';
     corpusReuseStatus: 'available' | 'provider_supported_not_used' | 'unavailable';
 };
@@ -96,10 +101,6 @@ const PROVIDER_LABELS: Record<AIProviderId, string> = {
     ollama: 'Ollama',
     none: 'Disabled'
 };
-
-const COST_REUSE_TOKEN_THRESHOLD = 120000;
-const SINGLE_PASS_DELTA_RATIO = 0.08;
-const SINGLE_PASS_DELTA_MIN_TOKENS = 4000;
 
 function estimatePassCount(estimatedInputTokens: number, safeInputBudget: number): number {
     if (estimatedInputTokens <= 0) return 1;
@@ -128,6 +129,8 @@ function buildCandidate(
         contextWindow: model.contextWindow,
         expectedPassCount: estimatePassCount(estimatedInputTokens, safeInputBudget),
         safeInputBudget,
+        reasoningSupport: capabilities.reasoningSupport ?? 'limited',
+        structuredOutputStrength: capabilities.structuredOutputStrength ?? 'limited',
         sourcesStatus: capabilities.sources.status,
         corpusReuseStatus: capabilities.corpusReuse.status
     };
@@ -211,20 +214,67 @@ function buildProviderCandidates(
     return providerCandidates;
 }
 
-function hasMaterialSinglePassDelta(input: ComputeInquiryAdvisoryInput, currentCandidate: AdvisoryCandidate): boolean {
-    if (currentCandidate.safeInputBudget <= 0) return false;
-    const overflowTokens = Math.max(0, input.estimatedInputTokens - currentCandidate.safeInputBudget);
-    if (overflowTokens <= 0) return false;
+function getReasoningRank(value: AdvisoryCandidate['reasoningSupport']): number {
+    if (value === 'strong') return 3;
+    if (value === 'standard') return 2;
+    return 1;
+}
 
-    const uncertainty = Number.isFinite(input.estimateUncertaintyTokens)
-        ? Math.max(0, Math.floor(input.estimateUncertaintyTokens as number))
-        : estimateUncertaintyTokens(
-            input.estimationMethod ?? 'heuristic_chars',
-            currentCandidate.safeInputBudget
-        );
-    const ratioFloor = Math.floor(currentCandidate.safeInputBudget * SINGLE_PASS_DELTA_RATIO);
-    const materialFloor = Math.max(SINGLE_PASS_DELTA_MIN_TOKENS, ratioFloor, uncertainty);
-    return overflowTokens >= materialFloor;
+function getStructuredRank(value: AdvisoryCandidate['structuredOutputStrength']): number {
+    if (value === 'strong') return 3;
+    if (value === 'basic') return 2;
+    return 1;
+}
+
+function isPrecisionAnalysisQuestion(questionText?: string): boolean {
+    const normalized = questionText?.trim().toLowerCase() ?? '';
+    if (!normalized) return false;
+    if (normalized.length >= 120) return true;
+    const precisionSignals = [
+        'why',
+        'because',
+        'compare',
+        'tradeoff',
+        'implication',
+        'causal',
+        'motivation',
+        'subtext',
+        'theme',
+        'consistency',
+        'contradiction',
+        'evidence',
+        'counterfactual',
+        'arc'
+    ];
+    return precisionSignals.some(signal => normalized.includes(signal));
+}
+
+function selectPrecisionAlternative(
+    alternatives: AdvisoryCandidate[],
+    currentCandidate: AdvisoryCandidate
+): AdvisoryCandidate | null {
+    const currentReasoningRank = getReasoningRank(currentCandidate.reasoningSupport);
+    const currentStructuredRank = getStructuredRank(currentCandidate.structuredOutputStrength);
+    const stronger = alternatives.filter(candidate => {
+        const reasoningRank = getReasoningRank(candidate.reasoningSupport);
+        const structuredRank = getStructuredRank(candidate.structuredOutputStrength);
+        return reasoningRank > currentReasoningRank
+            || (reasoningRank === currentReasoningRank && structuredRank > currentStructuredRank);
+    });
+    if (!stronger.length) return null;
+    return [...stronger].sort((left, right) => {
+        const reasoningDelta = getReasoningRank(right.reasoningSupport) - getReasoningRank(left.reasoningSupport);
+        if (reasoningDelta !== 0) return reasoningDelta;
+        const structuredDelta = getStructuredRank(right.structuredOutputStrength) - getStructuredRank(left.structuredOutputStrength);
+        if (structuredDelta !== 0) return structuredDelta;
+        if (left.expectedPassCount !== right.expectedPassCount) {
+            return left.expectedPassCount - right.expectedPassCount;
+        }
+        if (left.safeInputBudget !== right.safeInputBudget) {
+            return right.safeInputBudget - left.safeInputBudget;
+        }
+        return left.modelLabel.localeCompare(right.modelLabel);
+    })[0] ?? null;
 }
 
 export function computeInquiryAdvisoryContext(input: ComputeInquiryAdvisoryInput): InquiryAdvisoryContext | null {
@@ -248,44 +298,49 @@ export function computeInquiryAdvisoryContext(input: ComputeInquiryAdvisoryInput
 
     const currentPassCount = Math.max(1, currentCandidate.expectedPassCount);
     const currentBehavior = buildCurrentBehaviorLabel(currentPassCount, input.analysisPackaging);
-    const singlePassDeltaIsMaterial = hasMaterialSinglePassDelta(input, currentCandidate);
 
     let reasonCode: InquiryAdvisoryReasonCode | null = null;
     let suggestion: AdvisoryCandidate | null = null;
     let message = '';
 
-    const singlePassAlternatives = sortedAlternatives.filter(candidate =>
-        currentPassCount > 1
-        && candidate.expectedPassCount === 1
-        && singlePassDeltaIsMaterial
-    );
-    if (singlePassAlternatives.length) {
-        reasonCode = 'single_pass_preferred';
-        suggestion = singlePassAlternatives[0];
-        message = `${suggestion.providerLabel} may fit this corpus in one pass.`;
-    }
-
-    if (!reasonCode && currentCandidate.sourcesStatus !== 'available') {
+    if (currentCandidate.sourcesStatus !== 'available') {
         const sourceAlternatives = sortedAlternatives.filter(candidate => candidate.sourcesStatus === 'available');
         if (sourceAlternatives.length) {
             reasonCode = 'sources_preferred';
             suggestion = sourceAlternatives[0];
-            message = `${sourceAlternatives[0].providerLabel} supports Sources for this analysis.`;
+            message = 'For citation-backed findings, consider an engine with Sources support:';
+        }
+    }
+
+    if (!reasonCode && currentPassCount > 1) {
+        const singlePassAlternatives = sortedAlternatives.filter(candidate => candidate.expectedPassCount === 1);
+        if (singlePassAlternatives.length) {
+            reasonCode = 'single_pass_preferred';
+            suggestion = singlePassAlternatives[0];
+            message = 'If you prefer a single-pass run, consider:';
         }
     }
 
     if (!reasonCode
-        && currentCandidate.corpusReuseStatus !== 'available'
-        && input.estimatedInputTokens >= COST_REUSE_TOKEN_THRESHOLD) {
+        && input.corpusFingerprintReused
+        && currentCandidate.corpusReuseStatus !== 'available') {
         const reuseAlternatives = sortedAlternatives.filter(candidate =>
             candidate.corpusReuseStatus === 'available'
             && candidate.expectedPassCount <= currentPassCount
-            && currentPassCount > 1
         );
         if (reuseAlternatives.length) {
             reasonCode = 'cost_reuse_preferred';
             suggestion = reuseAlternatives[0];
-            message = `${reuseAlternatives[0].providerLabel} supports corpus reuse for repeated analysis.`;
+            message = 'For repeated runs on the same corpus, cache-aware engines may reduce cost:';
+        }
+    }
+
+    if (!reasonCode && isPrecisionAnalysisQuestion(input.questionText)) {
+        const precisionSuggestion = selectPrecisionAlternative(sortedAlternatives, currentCandidate);
+        if (precisionSuggestion) {
+            reasonCode = 'precision_analysis_preferred';
+            suggestion = precisionSuggestion;
+            message = 'For deeper reasoning-oriented analysis, consider:';
         }
     }
 

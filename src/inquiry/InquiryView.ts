@@ -949,9 +949,6 @@ type AiSettingsFocus =
     | 'large-manuscript-handling';
 type EngineFailureGuidance = {
     message: string;
-    buttonLabel: string;
-    targets: AiSettingsFocus[];
-    action?: 'settings' | 'open-log';
 };
 type InquiryReadinessUiState = {
     readiness: InquiryReadinessResult;
@@ -1002,7 +999,6 @@ export class InquiryView extends ItemView {
     private enginePanelGuardEl?: HTMLDivElement;
     private enginePanelGuardNoteEl?: HTMLDivElement;
     private enginePanelGuardTokenEl?: HTMLElement;
-    private enginePanelRunAnywayButton?: HTMLButtonElement;
     private enginePanelListEl?: HTMLDivElement;
     private enginePanelMetaEl?: HTMLDivElement;
     private enginePanelReadinessEl?: HTMLDivElement;
@@ -1620,15 +1616,6 @@ export class InquiryView extends ItemView {
             cls: 'ert-inquiry-engine-guard-note'
         });
         this.enginePanelGuardNoteEl.setText('Adjust settings to continue.');
-        this.enginePanelRunAnywayButton = this.enginePanelGuardEl.createEl('button', {
-            cls: 'ert-inquiry-engine-run-anyway',
-            text: 'Adjust Settings',
-            attr: { type: 'button' }
-        });
-        this.registerDomEvent(this.enginePanelRunAnywayButton, 'click', (event: MouseEvent) => {
-            event.stopPropagation();
-            this.handleGuardSettingsClick();
-        });
 
         this.enginePanelListEl = panel.createDiv({ cls: 'ert-inquiry-engine-list' });
         this.registerDomEvent(panel, 'pointerenter', () => this.cancelEnginePanelHide());
@@ -1682,7 +1669,7 @@ export class InquiryView extends ItemView {
         const payloadSummary = this.buildEnginePayloadSummary(contextQuestion);
         const readinessUi = this.buildReadinessUiState(contextQuestion);
         this.lastReadinessUiState = readinessUi;
-        const advisoryContext = this.buildInquiryAdvisoryContext(readinessUi, payloadSummary.inputTokens);
+        const advisoryContext = this.buildInquiryAdvisoryContext(readinessUi, payloadSummary.inputTokens, contextQuestion);
         this.lastEngineAdvisoryContext = advisoryContext;
 
         const failureGuidance = this.getEngineFailureGuidance();
@@ -1705,7 +1692,6 @@ export class InquiryView extends ItemView {
                 this.enginePanelGuardNoteEl.empty();
                 this.enginePanelGuardTokenEl = undefined;
                 this.enginePanelGuardNoteEl.setText(failureGuidance.message);
-                this.enginePanelRunAnywayButton?.setText(failureGuidance.buttonLabel);
             }
         }
 
@@ -1762,24 +1748,6 @@ export class InquiryView extends ItemView {
         });
     }
 
-    private handleGuardSettingsClick(): void {
-        if (this.enginePanelFailureGuidance) {
-            const guidance = this.enginePanelFailureGuidance;
-            this.pendingGuardQuestion = undefined;
-            this.hideEnginePanel();
-            if (guidance.action === 'open-log') {
-                void this.openInquiryErrorLog();
-                return;
-            }
-            this.openAiSettings(guidance.targets, this.lastEngineAdvisoryContext);
-            return;
-        }
-        const readinessTargets = this.getReadinessTargets(this.lastReadinessUiState);
-        this.pendingGuardQuestion = undefined;
-        this.hideEnginePanel();
-        this.openAiSettings(readinessTargets, this.lastEngineAdvisoryContext);
-    }
-
     private openAiSettings(targets: AiSettingsFocus[] = [], advisoryContext: InquiryAdvisoryContext | null = null): void {
         this.plugin.setInquiryAdvisoryHandoffContext(advisoryContext);
         if (this.plugin.settingsTab) {
@@ -1820,10 +1788,7 @@ export class InquiryView extends ItemView {
         const reason = this.formatApiErrorReason(result);
         const reasonSuffix = reason ? ` (${reason})` : '';
         return {
-            message: `Inquiry failed${reasonSuffix}. Open the Inquiry Log for a detailed error report.`,
-            buttonLabel: 'Open Log',
-            targets: [],
-            action: 'open-log'
+            message: `Inquiry failed${reasonSuffix}. Use Open Inquiry Log in the footer for the detailed error report.`
         };
     }
 
@@ -1857,7 +1822,8 @@ export class InquiryView extends ItemView {
 
     private buildInquiryAdvisoryContext(
         readinessUi: InquiryReadinessUiState,
-        estimatedInputTokens: number
+        estimatedInputTokens: number,
+        questionText: string | null
     ): InquiryAdvisoryContext | null {
         const engine = this.getResolvedEngine();
         const currentModel = readinessUi.model
@@ -1866,8 +1832,11 @@ export class InquiryView extends ItemView {
         if (!currentModel) return null;
 
         const payloadStats = this.getPayloadStats();
+        const advancedContext = getLastAiAdvancedContext(this.plugin, 'InquiryMode');
         const corpusFingerprint = payloadStats.manifestFingerprint || this.state.corpusFingerprint || 'unknown';
+        const corpusFingerprintReused = advancedContext?.reuseState === 'warm';
         const overrideSummary = this.getCorpusOverrideSummary();
+        const normalizedQuestion = questionText?.trim() ?? '';
         const advisoryInputKey = [
             this.state.scope,
             this.getFocusLabel(),
@@ -1881,7 +1850,9 @@ export class InquiryView extends ItemView {
             overrideSummary.active ? 1 : 0,
             overrideSummary.classCount,
             overrideSummary.itemCount,
-            overrideSummary.total
+            overrideSummary.total,
+            corpusFingerprintReused ? 1 : 0,
+            normalizedQuestion.toLowerCase()
         ].join('|');
         if (this.lastEngineAdvisoryInputKey === advisoryInputKey) {
             return this.lastEngineAdvisoryContext;
@@ -1899,6 +1870,8 @@ export class InquiryView extends ItemView {
             estimationMethod: readinessUi.estimateMethod,
             estimateUncertaintyTokens: readinessUi.estimateUncertaintyTokens,
             corpusFingerprint,
+            corpusFingerprintReused,
+            questionText: normalizedQuestion,
             overrideSummary,
             previousContext: this.lastEngineAdvisoryContext
         });
@@ -1921,19 +1894,7 @@ export class InquiryView extends ItemView {
         });
         card.createDiv({
             cls: 'ert-inquiry-engine-advisor-suggestion',
-            text: `Suggested engine: ${advisory.recommendation.providerLabel} · ${advisory.recommendation.modelLabel}`
-        });
-
-        const actions = card.createDiv({ cls: 'ert-inquiry-engine-advisor-actions' });
-        const openSettingsButton = actions.createEl('button', {
-            cls: 'ert-inquiry-engine-advisor-button',
-            text: 'Open AI Settings',
-            attr: { type: 'button' }
-        });
-        this.registerDomEvent(openSettingsButton, 'click', (event: MouseEvent) => {
-            event.stopPropagation();
-            this.hideEnginePanel();
-            this.openAiSettings(['provider'], advisory);
+            text: `${advisory.recommendation.providerLabel} · ${advisory.recommendation.modelLabel}`
         });
     }
 
@@ -1956,17 +1917,6 @@ export class InquiryView extends ItemView {
         if (provider === 'openai') return aiSettings.aiAccessProfile.openaiTier ?? 1;
         if (provider === 'google') return aiSettings.aiAccessProfile.googleTier ?? 1;
         return 1;
-    }
-
-    private getReadinessTargets(readiness?: InquiryReadinessUiState): AiSettingsFocus[] {
-        if (!readiness) {
-            return ['provider', 'thinking-style', 'access-level'];
-        }
-        if (readiness.readiness.cause === 'missing_key') return ['provider'];
-        if (readiness.readiness.cause === 'capability_floor') return ['provider', 'thinking-style', 'access-level'];
-        if (readiness.readiness.cause === 'single_pass_limit') return ['large-manuscript-handling', 'execution-preference'];
-        if (readiness.readiness.state === 'large') return ['large-manuscript-handling', 'execution-preference'];
-        return ['provider', 'thinking-style'];
     }
 
     private buildReadinessUiState(questionText: string | null): InquiryReadinessUiState {
@@ -2043,7 +1993,7 @@ export class InquiryView extends ItemView {
         } else if (readiness.cause === 'capability_floor') {
             reason = `${providerLabel} cannot satisfy this Inquiry setup. Update Provider, Thinking Style, or Access level.`;
         } else if (readiness.cause === 'single_pass_limit') {
-            reason = 'Exceeds the single-pass safe limit. Switch to Automatic or reduce corpus.';
+            reason = 'Exceeds the single-pass safe limit. Switch to Automatic or choose a larger-context engine.';
         } else if (readiness.state === 'large') {
             reason = 'Automatic packaging will run multiple structured passes.';
         }
@@ -2174,14 +2124,14 @@ export class InquiryView extends ItemView {
             : 'n/a';
         const passPlan = this.getCurrentPassPlan(readinessUi);
         if (popoverState === 'ready') {
-            this.enginePanelReadinessMessageEl.setText(`Payload estimate: ~${inputLabel}. Fits safely - single pass.`);
+            this.enginePanelReadinessMessageEl.setText(`Payload estimate: ~${inputLabel}. Expected to run in a single pass.`);
         } else if (popoverState === 'multi-pass') {
             const estimateLabel = passPlan.estimatedPassCount ?? passPlan.displayPassCount;
             const recentRunSuffix = passPlan.recentExactPassCount
                 ? ` Recent run used ${passPlan.recentExactPassCount} passes.`
                 : '';
             this.enginePanelReadinessMessageEl.setText(
-                `Large request - estimated ~${estimateLabel} passes (Automatic). Payload estimate: ~${inputLabel}.${recentRunSuffix}`
+                `This run is expected to require ${estimateLabel} passes. Automatic packaging will split the request.${recentRunSuffix}`
             );
         } else if (readinessUi.readiness.cause === 'single_pass_limit') {
             this.enginePanelReadinessMessageEl.setText(
@@ -2193,46 +2143,6 @@ export class InquiryView extends ItemView {
         this.enginePanelReadinessScopeEl.setText(readinessUi.runScopeLabel);
 
         this.enginePanelReadinessActionsEl.empty();
-        if (this.enginePanelFailureGuidance) return;
-        if (popoverState === 'ready') return;
-
-        const tokenLimitExceeded = readinessUi.readiness.cause === 'single_pass_limit';
-
-        if (popoverState === 'multi-pass') {
-            if (readinessUi.canSwitchToSummaries) {
-                this.createReadinessActionButton('Switch to Summaries', () => {
-                    this.applySummariesSuggestion();
-                });
-            }
-            return;
-        }
-
-        this.createReadinessActionButton('Adjust Settings', () => {
-            this.openAiSettings(this.getReadinessTargets(readinessUi), this.lastEngineAdvisoryContext);
-        });
-        if (tokenLimitExceeded && readinessUi.canSwitchToSummaries) {
-            this.createReadinessActionButton('Use Summaries', () => {
-                this.applySummariesSuggestion();
-            });
-        }
-        if (tokenLimitExceeded && readinessUi.canUseSelectedScenesOnly) {
-            this.createReadinessActionButton('Reduce Corpus', () => {
-                this.applySelectedScenesSuggestion();
-            });
-        }
-    }
-
-    private createReadinessActionButton(label: string, onClick: () => void): void {
-        if (!this.enginePanelReadinessActionsEl) return;
-        const button = this.enginePanelReadinessActionsEl.createEl('button', {
-            cls: 'ert-inquiry-engine-readiness-action',
-            text: label,
-            attr: { type: 'button' }
-        });
-        this.registerDomEvent(button, 'click', (event: MouseEvent) => {
-            event.stopPropagation();
-            onClick();
-        });
     }
 
     private hasAnyBodyEvidence(): boolean {
@@ -2268,38 +2178,6 @@ export class InquiryView extends ItemView {
             selected.push({ entryKey: entry.entryKey, mode: override });
         });
         return selected;
-    }
-
-    private applySummariesSuggestion(): void {
-        if (this.state.isRunning) return;
-        const sources = this.normalizeInquirySources(this.plugin.settings.inquirySources);
-        const configMap = new Map((sources.classes || []).map(config => [config.className, config]));
-        ['scene', 'outline', 'outline-saga'].forEach(groupKey => {
-            const baseMode = this.getCorpusGroupBaseMode(groupKey, configMap);
-            if (baseMode === 'none') return;
-            const nextMode: InquiryMaterialMode = 'summary';
-            if (nextMode === baseMode) {
-                this.corpusClassOverrides.delete(groupKey);
-            } else {
-                this.corpusClassOverrides.set(groupKey, nextMode);
-            }
-            this.clearItemOverridesForGroup(groupKey);
-        });
-        this.corpusWarningActive = false;
-        this.refreshUI();
-    }
-
-    private applySelectedScenesSuggestion(): void {
-        if (this.state.isRunning || this.state.scope !== 'book') return;
-        const selected = this.getSelectedSceneOverrideEntries();
-        if (!selected.length) return;
-        this.corpusClassOverrides.set('scene', 'none');
-        this.clearItemOverridesForGroup('scene');
-        selected.forEach(entry => {
-            this.corpusItemOverrides.set(entry.entryKey, entry.mode);
-        });
-        this.corpusWarningActive = false;
-        this.refreshUI();
     }
 
     private showBriefingPanel(): void {
@@ -3307,10 +3185,14 @@ export class InquiryView extends ItemView {
         backboneGradient.setAttribute('y1', '0%');
         backboneGradient.setAttribute('x2', '100%');
         backboneGradient.setAttribute('y2', '0%');
+        const startColors = this.getBackboneStartColors();
+        const gradientStart = startColors.gradient[0] ?? { r: 255, g: 153, b: 0 };
+        const gradientMid = startColors.gradient[1] ?? { r: 255, g: 211, b: 106 };
+        const gradientEnd = startColors.gradient[2] ?? { r: 255, g: 94, b: 0 };
         const backboneGradientStops = [
-            createStop('0%', '#ff9900'),
-            createStop('50%', '#ffd36a'),
-            createStop('100%', '#ff5e00')
+            createStop('0%', this.toRgbString(gradientStart)),
+            createStop('50%', this.toRgbString(gradientMid)),
+            createStop('100%', this.toRgbString(gradientEnd))
         ];
         backboneGradientStops.forEach(stop => backboneGradient.appendChild(stop));
         this.minimapBackboneGradientStops = backboneGradientStops;
@@ -3322,11 +3204,15 @@ export class InquiryView extends ItemView {
         backboneShine.setAttribute('y1', '0%');
         backboneShine.setAttribute('x2', '100%');
         backboneShine.setAttribute('y2', '0%');
+        const shineStart = startColors.shine[0] ?? { r: 255, g: 242, b: 207 };
+        const shinePeak = startColors.shine[1] ?? { r: 255, g: 247, b: 234 };
+        const shineWarm = startColors.shine[2] ?? { r: 255, g: 179, b: 77 };
+        const shineEnd = startColors.shine[3] ?? { r: 255, g: 242, b: 207 };
         const backboneShineStops = [
-            createStop('0%', '#fff2cf', '0'),
-            createStop('40%', '#fff7ea', '1'),
-            createStop('60%', '#ffb34d', '0.9'),
-            createStop('100%', '#fff2cf', '0')
+            createStop('0%', this.toRgbString(shineStart), '0'),
+            createStop('40%', this.toRgbString(shinePeak), '1'),
+            createStop('60%', this.toRgbString(shineWarm), '0.9'),
+            createStop('100%', this.toRgbString(shineEnd), '0')
         ];
         backboneShineStops.forEach(stop => backboneShine.appendChild(stop));
         this.minimapBackboneShineStops = backboneShineStops;
@@ -4588,7 +4474,9 @@ export class InquiryView extends ItemView {
 
         if (isOverCapacity) {
             const pressureColors = this.getBackbonePressureColors(overCapacityTone);
-            const overCapacityColor = overCapacityTone === 'amber' ? '#ff9900' : '#f44c4c';
+            const overCapacityColor = overCapacityTone === 'amber'
+                ? this.getExecutionColorValue('--rt-ai-warning', '#ff9900')
+                : this.getExecutionColorValue('--rt-ai-error', '#f44c4c');
             this.applyBackboneStopColors(pressureColors.gradient, pressureColors.shine);
             this.minimapBaseline.style.stroke = overCapacityColor;
             this.minimapEndCapStart?.style.setProperty('fill', overCapacityColor);
@@ -6234,6 +6122,16 @@ export class InquiryView extends ItemView {
         return `rgb(${color.r}, ${color.g}, ${color.b})`;
     }
 
+    private getExecutionColorValue(variableName: string, fallback: string): string {
+        const styleSource: Element = this.contentEl ?? this.rootSvg ?? document.documentElement;
+        const value = getComputedStyle(styleSource).getPropertyValue(variableName).trim();
+        return value || fallback;
+    }
+
+    private getExecutionColorRgb(variableName: string, fallback: RgbColor): RgbColor {
+        return this.parseRgbColor(this.getExecutionColorValue(variableName, '')) ?? fallback;
+    }
+
     private getProAccentColor(): RgbColor {
         const root = document.documentElement;
         const styles = getComputedStyle(root);
@@ -6245,17 +6143,21 @@ export class InquiryView extends ItemView {
     }
 
     private getBackboneStartColors(): BackboneColors {
+        const warning = this.getExecutionColorRgb('--rt-ai-warning', { r: 255, g: 153, b: 0 });
+        const failure = this.getExecutionColorRgb('--rt-ai-error', { r: 244, g: 76, b: 76 });
+        const warningPeak = this.mixRgbColor(warning, { r: 255, g: 255, b: 255 }, 0.42);
+        const warningTail = this.mixRgbColor(warning, failure, 0.45);
         return {
             gradient: [
-                { r: 255, g: 153, b: 0 },
-                { r: 255, g: 211, b: 106 },
-                { r: 255, g: 94, b: 0 }
+                warning,
+                warningPeak,
+                warningTail
             ],
             shine: [
-                { r: 255, g: 242, b: 207 },
-                { r: 255, g: 247, b: 234 },
-                { r: 255, g: 179, b: 77 },
-                { r: 255, g: 242, b: 207 }
+                this.mixRgbColor(warning, { r: 255, g: 255, b: 255 }, 0.72),
+                this.mixRgbColor(warning, { r: 255, g: 255, b: 255 }, 0.9),
+                this.mixRgbColor(warningTail, { r: 255, g: 255, b: 255 }, 0.48),
+                this.mixRgbColor(warning, { r: 255, g: 255, b: 255 }, 0.72)
             ]
         };
     }
@@ -6280,7 +6182,7 @@ export class InquiryView extends ItemView {
             return this.getBackboneStartColors();
         }
         if (tone === 'red') {
-            const base = { r: 244, g: 76, b: 76 };
+            const base = this.getExecutionColorRgb('--rt-ai-error', { r: 244, g: 76, b: 76 });
             return {
                 gradient: [
                     base,
@@ -6386,8 +6288,11 @@ export class InquiryView extends ItemView {
         const filledWidth = length * Math.min(Math.max(fillRatio, 0), 1);
         this.minimapTokenCapBar.setAttribute('x', String(Math.round(this.minimapLayout.startX)));
         this.minimapTokenCapBar.setAttribute('width', filledWidth.toFixed(2));
-        const overCapacityColor = overCapacityTone === 'amber' ? '#ff9900' : '#f44c4c';
-        this.minimapTokenCapBar.style.fill = isOverCapacity ? overCapacityColor : '#ffffff';
+        const overCapacityColor = overCapacityTone === 'amber'
+            ? this.getExecutionColorValue('--rt-ai-warning', '#ff9900')
+            : this.getExecutionColorValue('--rt-ai-error', '#f44c4c');
+        const neutralColor = this.getExecutionColorValue('--rt-ai-neutral', '#ffffff');
+        this.minimapTokenCapBar.style.fill = isOverCapacity ? overCapacityColor : neutralColor;
 
         const endcapStateClass = overCapacityTone === 'amber' ? 'is-warning-capacity' : 'is-over-capacity';
         const inverseStateClass = overCapacityTone === 'amber' ? 'is-over-capacity' : 'is-warning-capacity';
@@ -6791,9 +6696,9 @@ export class InquiryView extends ItemView {
     }
 
     private getInquiryAlertColor(): string {
-        if (!this.rootSvg) return '#ff4d4d';
+        if (!this.rootSvg) return this.getExecutionColorValue('--rt-ai-error', '#ff4d4d');
         const color = getComputedStyle(this.rootSvg).getPropertyValue('--ert-inquiry-alert').trim();
-        return color || '#ff4d4d';
+        return color || this.getExecutionColorValue('--rt-ai-error', '#ff4d4d');
     }
 
     private updateGuidance(): void {

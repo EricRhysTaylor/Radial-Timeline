@@ -17,6 +17,12 @@
   --ert-inquiry-hit-color: var(--ert-inquiry-zone-setup);
   --ert-inquiry-zone-inactive-fill: var(--interactive-normal);
   --ert-inquiry-help-onboarding: var(--ert-inquiry-zone-setup);
+  --ert-inquiry-ai-success: var(--rt-ai-success, var(--ert-alert-success-color, var(--text-success)));
+  --ert-inquiry-ai-warning: var(--rt-ai-warning, var(--ert-alert-warning-color, var(--text-warning)));
+  --ert-inquiry-ai-error: var(--rt-ai-error, var(--ert-alert-critical-color, var(--text-error)));
+  --ert-inquiry-ai-running: var(--rt-ai-running, var(--interactive-accent));
+  --ert-inquiry-ai-advisory: var(--rt-ai-advisory, var(--text-muted));
+  --ert-inquiry-ai-neutral: var(--rt-ai-neutral, var(--text-normal));
 }
 
 .ert-inquiry-svg .ert-hidden {
@@ -266,13 +272,13 @@
 }
 
 .ert-inquiry-icon-btn.is-engine-pulse-amber {
-  --ert-inquiry-engine-pulse: var(--ert-inquiry-medium);
-  color: var(--ert-inquiry-medium);
+  --ert-inquiry-engine-pulse: var(--ert-inquiry-ai-warning);
+  color: var(--ert-inquiry-ai-warning);
 }
 
 .ert-inquiry-icon-btn.is-engine-pulse-red {
-  --ert-inquiry-engine-pulse: var(--ert-inquiry-high);
-  color: var(--ert-inquiry-high);
+  --ert-inquiry-engine-pulse: var(--ert-inquiry-ai-error);
+  color: var(--ert-inquiry-ai-error);
 }
 
 .ert-inquiry-icon-btn.is-engine-pulse-amber .ert-inquiry-icon-btn-bg,
@@ -326,7 +332,7 @@
 }
 
 .ert-inquiry-icon-btn.is-briefing-error .ert-inquiry-icon-btn-bg {
-  stroke: color-mix(in srgb, var(--ert-inquiry-high) 70%, var(--background-modifier-border));
+  stroke: color-mix(in srgb, var(--ert-inquiry-ai-error) 70%, var(--background-modifier-border));
 }
 
 .ert-inquiry-icon-btn.is-briefing-pulse .ert-inquiry-icon-btn-bg {
@@ -466,7 +472,7 @@
 }
 
 .ert-inquiry-minimap-tokencap-bar {
-  fill: #ffffff;
+  fill: var(--ert-inquiry-ai-neutral);
   opacity: 0.85;
   pointer-events: none;
   transition: fill 200ms ease;
@@ -480,11 +486,11 @@
 }
 
 .ert-inquiry-minimap-tokencap-endcap.is-over-capacity {
-  fill: #f44c4c;
+  fill: var(--ert-inquiry-ai-error);
 }
 
 .ert-inquiry-minimap-tokencap-endcap.is-warning-capacity {
-  fill: #ff9900;
+  fill: var(--ert-inquiry-ai-warning);
 }
 
 .ert-inquiry-minimap-tokencap-splits {
@@ -511,7 +517,7 @@
 }
 
 .ert-inquiry-minimap-cached-hatch-stroke {
-  stroke: var(--ert-alert-success-color);
+  stroke: var(--ert-inquiry-ai-success);
   stroke-width: 1.5;
 }
 
@@ -544,9 +550,9 @@
 }
 
 .ert-inquiry-minimap[data-reuse-state="warm"] .ert-inquiry-minimap-reuse-band {
-  stroke: var(--ert-alert-success-color);
+  stroke: var(--ert-inquiry-ai-success);
   opacity: 0.9;
-  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--ert-alert-success-color) 60%, transparent));
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--ert-inquiry-ai-success) 60%, transparent));
 }
 
 .ert-inquiry-svg.is-running .ert-inquiry-minimap-reuse-band {
@@ -577,7 +583,7 @@
 }
 
 .ert-inquiry-minimap[data-reuse-state="warm"] .ert-inquiry-minimap-reuse-dot {
-  fill: var(--ert-alert-success-color);
+  fill: var(--ert-inquiry-ai-success);
   opacity: 0.95;
 }
 
@@ -1072,11 +1078,11 @@
 }
 
 .ert-inquiry-svg:not(.is-running) .ert-inquiry-zone-pod.is-processed-error .ert-inquiry-zone-pill {
-  stroke: color-mix(in srgb, var(--ert-inquiry-high) 70%, #ffffff);
+  stroke: color-mix(in srgb, var(--ert-inquiry-ai-error) 70%, #ffffff);
 }
 
 .ert-inquiry-svg:not(.is-running) .ert-inquiry-zone-pod.is-processed-error .ert-inquiry-zone-pill-text {
-  fill: var(--ert-inquiry-high);
+  fill: var(--ert-inquiry-ai-error);
 }
 
 .ert-inquiry-zone-pod.is-duplicate-pulse .ert-inquiry-zone-pill {
@@ -1240,12 +1246,12 @@
 }
 
 .ert-inquiry-svg:not(.is-running) .inq-zone-dot.is-processed-error .inq-zone-dot-circle {
-  stroke: var(--ert-inquiry-high);
-  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--ert-inquiry-high) 60%, transparent));
+  stroke: var(--ert-inquiry-ai-error);
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--ert-inquiry-ai-error) 60%, transparent));
 }
 
 .ert-inquiry-svg:not(.is-running) .inq-zone-dot.is-processed-error .inq-zone-dot-text {
-  fill: var(--ert-inquiry-high);
+  fill: var(--ert-inquiry-ai-error);
 }
 
 .inq-zone-dot.is-duplicate-pulse .inq-zone-dot-circle {
@@ -1515,12 +1521,12 @@
 }
 
 .ert-inquiry-preview-pill.is-token-amber .ert-inquiry-preview-pill-bg {
-  fill: color-mix(in srgb, var(--text-warning) 16%, rgb(255 255 255 / var(--ert-inquiry-pill-fill)));
-  stroke: color-mix(in srgb, var(--text-warning) 45%, rgb(255 255 255 / var(--ert-inquiry-pill-stroke)));
+  fill: color-mix(in srgb, var(--ert-inquiry-ai-warning) 16%, rgb(255 255 255 / var(--ert-inquiry-pill-fill)));
+  stroke: color-mix(in srgb, var(--ert-inquiry-ai-warning) 45%, rgb(255 255 255 / var(--ert-inquiry-pill-stroke)));
 }
 
 .ert-inquiry-preview-pill.is-token-amber .ert-inquiry-preview-pill-text {
-  fill: var(--text-warning);
+  fill: var(--ert-inquiry-ai-warning);
   opacity: 0.95;
 }
 
@@ -1529,12 +1535,12 @@
 }
 
 .ert-inquiry-preview-pill.is-token-red .ert-inquiry-preview-pill-bg {
-  fill: color-mix(in srgb, var(--text-error) 18%, rgb(255 255 255 / var(--ert-inquiry-pill-fill)));
-  stroke: color-mix(in srgb, var(--text-error) 55%, rgb(255 255 255 / var(--ert-inquiry-pill-stroke)));
+  fill: color-mix(in srgb, var(--ert-inquiry-ai-error) 18%, rgb(255 255 255 / var(--ert-inquiry-pill-fill)));
+  stroke: color-mix(in srgb, var(--ert-inquiry-ai-error) 55%, rgb(255 255 255 / var(--ert-inquiry-pill-stroke)));
 }
 
 .ert-inquiry-preview-pill.is-token-red .ert-inquiry-preview-pill-text {
-  fill: var(--text-error);
+  fill: var(--ert-inquiry-ai-error);
   opacity: 1;
 }
 
@@ -1576,7 +1582,7 @@
 }
 
 .ert-inquiry-preview.is-error .ert-inquiry-preview-meta {
-  fill: color-mix(in srgb, var(--ert-inquiry-high) 55%, var(--text-muted));
+  fill: color-mix(in srgb, var(--ert-inquiry-ai-error) 55%, var(--text-muted));
 }
 
 .ert-inquiry-preview.is-error .ert-inquiry-preview-footer {
@@ -1792,6 +1798,22 @@
 .ert-inquiry-root {
   position: relative;
   isolation: isolate;
+  --rt-ai-success: var(--ert-alert-success-color, var(--text-success));
+  --rt-ai-warning: var(--ert-alert-warning-color, var(--text-warning));
+  --rt-ai-error: var(--ert-alert-critical-color, var(--text-error));
+  --rt-ai-running: var(--interactive-accent);
+  --rt-ai-advisory: var(--text-muted);
+  --rt-ai-neutral: var(--text-normal);
+  --rt-ai-success-bg: color-mix(in srgb, var(--rt-ai-success) 12%, transparent);
+  --rt-ai-warning-bg: color-mix(in srgb, var(--rt-ai-warning) 12%, transparent);
+  --rt-ai-error-bg: color-mix(in srgb, var(--rt-ai-error) 12%, transparent);
+  --rt-ai-running-bg: color-mix(in srgb, var(--rt-ai-running) 14%, transparent);
+  --rt-ai-advisory-bg: color-mix(in srgb, var(--rt-ai-advisory) 10%, transparent);
+  --rt-ai-success-border: color-mix(in srgb, var(--rt-ai-success) 38%, transparent);
+  --rt-ai-warning-border: color-mix(in srgb, var(--rt-ai-warning) 42%, transparent);
+  --rt-ai-error-border: color-mix(in srgb, var(--rt-ai-error) 48%, transparent);
+  --rt-ai-running-border: color-mix(in srgb, var(--rt-ai-running) 42%, transparent);
+  --rt-ai-advisory-border: color-mix(in srgb, var(--rt-ai-advisory) 35%, transparent);
 }
 
 body.rt-modal-open .ert-inquiry-root,
@@ -1893,17 +1915,18 @@ body.rt-modal-open .ert-inquiry-svg * {
 }
 
 .ert-inquiry-engine-readiness.is-ready {
-  border-color: color-mix(in srgb, var(--interactive-accent) 45%, transparent);
+  border-color: var(--rt-ai-success-border);
+  background: color-mix(in srgb, var(--rt-ai-success) 8%, var(--background-secondary));
 }
 
 .ert-inquiry-engine-readiness.is-amber {
-  border-color: color-mix(in srgb, var(--text-warning) 45%, transparent);
-  background: color-mix(in srgb, var(--text-warning) 8%, var(--background-secondary));
+  border-color: var(--rt-ai-warning-border);
+  background: color-mix(in srgb, var(--rt-ai-warning) 8%, var(--background-secondary));
 }
 
 .ert-inquiry-engine-readiness.is-error {
-  border-color: color-mix(in srgb, var(--text-error) 55%, transparent);
-  background: color-mix(in srgb, var(--text-error) 11%, var(--background-secondary));
+  border-color: var(--rt-ai-error-border);
+  background: color-mix(in srgb, var(--rt-ai-error) 11%, var(--background-secondary));
 }
 
 .ert-inquiry-engine-readiness-status {
@@ -1912,6 +1935,18 @@ body.rt-modal-open .ert-inquiry-svg * {
   text-transform: uppercase;
   font-weight: 700;
   color: var(--text-normal);
+}
+
+.ert-inquiry-engine-readiness.is-ready .ert-inquiry-engine-readiness-status {
+  color: var(--rt-ai-success);
+}
+
+.ert-inquiry-engine-readiness.is-amber .ert-inquiry-engine-readiness-status {
+  color: var(--rt-ai-warning);
+}
+
+.ert-inquiry-engine-readiness.is-error .ert-inquiry-engine-readiness-status {
+  color: var(--rt-ai-error);
 }
 
 .ert-inquiry-engine-readiness-message {
@@ -2000,8 +2035,8 @@ body.rt-modal-open .ert-inquiry-svg * {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  border: 1px solid color-mix(in srgb, var(--text-warning) 30%, transparent);
-  background: color-mix(in srgb, var(--text-warning) 10%, var(--background-secondary));
+  border: 1px solid var(--rt-ai-warning-border);
+  background: color-mix(in srgb, var(--rt-ai-warning) 10%, var(--background-secondary));
 }
 
 .ert-inquiry-engine-guard.ert-hidden {
@@ -2009,8 +2044,8 @@ body.rt-modal-open .ert-inquiry-svg * {
 }
 
 .ert-inquiry-engine-guard.is-error-guidance {
-  border-color: color-mix(in srgb, var(--text-error) 45%, transparent);
-  background: color-mix(in srgb, var(--text-error) 12%, var(--background-secondary));
+  border-color: var(--rt-ai-error-border);
+  background: color-mix(in srgb, var(--rt-ai-error) 12%, var(--background-secondary));
   animation: ert-inquiry-engine-guard-error-pulse 1.7s ease-in-out infinite;
 }
 
@@ -2020,7 +2055,7 @@ body.rt-modal-open .ert-inquiry-svg * {
 }
 
 .ert-inquiry-engine-guard.is-error-guidance .ert-inquiry-engine-guard-note {
-  color: color-mix(in srgb, var(--text-error) 85%, var(--text-normal));
+  color: color-mix(in srgb, var(--rt-ai-error) 85%, var(--text-normal));
 }
 
 .ert-inquiry-engine-guard-token {
@@ -2029,19 +2064,19 @@ body.rt-modal-open .ert-inquiry-svg * {
 }
 
 .ert-inquiry-engine-guard-token.is-large {
-  color: var(--text-error);
+  color: var(--rt-ai-error);
 }
 
 .ert-inquiry-engine-run-anyway {
-  border-color: color-mix(in srgb, var(--text-warning) 45%, transparent);
-  color: var(--text-warning);
-  background: color-mix(in srgb, var(--text-warning) 12%, transparent);
+  border-color: var(--rt-ai-warning-border);
+  color: var(--rt-ai-warning);
+  background: color-mix(in srgb, var(--rt-ai-warning) 12%, transparent);
 }
 
 .ert-inquiry-engine-guard.is-error-guidance .ert-inquiry-engine-run-anyway {
-  border-color: color-mix(in srgb, var(--text-error) 55%, transparent);
-  color: var(--text-error);
-  background: color-mix(in srgb, var(--text-error) 15%, transparent);
+  border-color: var(--rt-ai-error-border);
+  color: var(--rt-ai-error);
+  background: color-mix(in srgb, var(--rt-ai-error) 15%, transparent);
 }
 
 .ert-inquiry-engine-section-title {
@@ -2202,13 +2237,13 @@ body.rt-modal-open .ert-inquiry-svg * {
 }
 
 .ert-inquiry-engine-item-status.is-warning {
-  color: var(--text-warning);
-  background: color-mix(in srgb, var(--text-warning) 12%, transparent);
+  color: var(--rt-ai-warning);
+  background: var(--rt-ai-warning-bg);
 }
 
 .ert-inquiry-engine-item-status.is-active {
-  color: var(--text-normal);
-  background: color-mix(in srgb, var(--interactive-accent) 16%, transparent);
+  color: var(--rt-ai-running);
+  background: var(--rt-ai-running-bg);
 }
 
 .ert-inquiry-engine-note {
@@ -2261,7 +2296,7 @@ body.rt-modal-open .ert-inquiry-svg * {
 .ert-inquiry-engine-advisor-card {
   padding: 10px 12px;
   border-radius: 12px;
-  border: 1px solid color-mix(in srgb, var(--interactive-accent) 25%, var(--background-modifier-border));
+  border: 1px solid var(--rt-ai-advisory-border);
   background: color-mix(in srgb, var(--background-secondary) 82%, var(--background-primary));
   display: flex;
   flex-direction: column;
@@ -2453,7 +2488,7 @@ body.rt-modal-open .ert-inquiry-svg * {
 }
 
 .ert-inquiry-briefing-status--saved {
-  background: color-mix(in srgb, var(--ert-inquiry-zone-setup) 18%, var(--background-secondary));
+  background: color-mix(in srgb, var(--rt-ai-success) 18%, var(--background-secondary));
   color: var(--text-normal);
 }
 
@@ -2463,12 +2498,12 @@ body.rt-modal-open .ert-inquiry-svg * {
 }
 
 .ert-inquiry-briefing-status--error {
-  background: color-mix(in srgb, var(--ert-inquiry-high) 18%, var(--background-secondary));
+  background: color-mix(in srgb, var(--rt-ai-error) 18%, var(--background-secondary));
   color: var(--text-normal);
 }
 
 .ert-inquiry-briefing-status--simulated {
-  background: color-mix(in srgb, var(--ert-inquiry-zone-pressure) 14%, var(--background-secondary));
+  background: color-mix(in srgb, var(--rt-ai-advisory) 14%, var(--background-secondary));
   color: var(--text-normal);
 }
 
@@ -2583,7 +2618,7 @@ body.rt-modal-open .ert-inquiry-svg * {
 
 .ert-inquiry-briefing-purge {
   width: 100%;
-  border: 1px dashed color-mix(in srgb, var(--text-error) 40%, var(--background-modifier-border));
+  border: 1px dashed color-mix(in srgb, var(--rt-ai-error) 40%, var(--background-modifier-border));
   border-radius: 12px;
   padding: 8px 10px;
   font-size: 12px;
@@ -2595,7 +2630,7 @@ body.rt-modal-open .ert-inquiry-svg * {
 }
 
 .ert-inquiry-briefing-purge:hover {
-  border-color: color-mix(in srgb, var(--text-error) 65%, var(--background-modifier-border));
+  border-color: color-mix(in srgb, var(--rt-ai-error) 65%, var(--background-modifier-border));
   color: var(--text-normal);
   filter: brightness(1.05);
   transform: translateY(-1px);
@@ -2707,15 +2742,15 @@ body.rt-modal-open .ert-inquiry-svg * {
 
 @keyframes ert-inquiry-pulse {
   0% {
-    filter: drop-shadow(0 0 2px color-mix(in srgb, var(--ert-inquiry-high) 60%, transparent));
+    filter: drop-shadow(0 0 2px color-mix(in srgb, var(--ert-inquiry-ai-error) 60%, transparent));
   }
 
   50% {
-    filter: drop-shadow(0 0 10px color-mix(in srgb, var(--ert-inquiry-high) 35%, transparent));
+    filter: drop-shadow(0 0 10px color-mix(in srgb, var(--ert-inquiry-ai-error) 35%, transparent));
   }
 
   100% {
-    filter: drop-shadow(0 0 2px color-mix(in srgb, var(--ert-inquiry-high) 60%, transparent));
+    filter: drop-shadow(0 0 2px color-mix(in srgb, var(--ert-inquiry-ai-error) 60%, transparent));
   }
 }
 
@@ -2875,8 +2910,8 @@ body.rt-modal-open .ert-inquiry-svg * {
 }
 
 @keyframes ert-inquiry-engine-guard-error-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--text-error) 28%, transparent); }
-  50% { box-shadow: 0 0 0 7px color-mix(in srgb, var(--text-error) 8%, transparent); }
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--rt-ai-error) 28%, transparent); }
+  50% { box-shadow: 0 0 0 7px color-mix(in srgb, var(--rt-ai-error) 8%, transparent); }
 }
 
 @keyframes ert-inquiry-engine-icon {
@@ -2896,11 +2931,11 @@ body.rt-modal-open .ert-inquiry-svg * {
 @keyframes ert-inquiry-pressure-pulse {
   0%, 100% {
     opacity: 0.85;
-    filter: drop-shadow(0 0 0 color-mix(in srgb, var(--text-error) 32%, transparent));
+    filter: drop-shadow(0 0 0 color-mix(in srgb, var(--rt-ai-error) 32%, transparent));
   }
   50% {
     opacity: 1;
-    filter: drop-shadow(0 0 8px color-mix(in srgb, var(--text-error) 55%, transparent));
+    filter: drop-shadow(0 0 8px color-mix(in srgb, var(--rt-ai-error) 55%, transparent));
   }
 }
 

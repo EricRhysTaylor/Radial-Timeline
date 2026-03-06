@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BUILTIN_MODELS } from '../../ai/registry/builtinModels';
+import type { ModelInfo } from '../../ai/types';
 import type { ResolvedInquiryEngine } from './inquiryModelResolver';
 import { computeInquiryAdvisoryContext } from './inquiryAdvisory';
 
@@ -9,14 +10,13 @@ function getModel(modelId: string) {
     return model;
 }
 
-function buildResolvedEngine(modelId: string, providerLabel: string): ResolvedInquiryEngine {
-    const model = getModel(modelId);
+function buildResolvedEngine(model: ModelInfo, providerLabel?: string): ResolvedInquiryEngine {
     return {
         provider: model.provider,
         modelId: model.id,
         modelAlias: model.alias,
         modelLabel: model.label,
-        providerLabel,
+        providerLabel: providerLabel ?? model.provider,
         contextWindow: model.contextWindow,
         maxOutput: model.maxOutput,
         selectionReason: 'test',
@@ -25,12 +25,13 @@ function buildResolvedEngine(modelId: string, providerLabel: string): ResolvedIn
 }
 
 describe('computeInquiryAdvisoryContext', () => {
-    it('returns single-pass recommendation when current engine needs multiple passes', () => {
+    it('prioritizes sources recommendation over single-pass option', () => {
+        const currentModel = getModel('gpt-5.1-chat-latest');
         const advisory = computeInquiryAdvisoryContext({
             scope: 'book',
             focusLabel: 'B1',
-            resolvedEngine: buildResolvedEngine('gpt-5.1-chat-latest', 'OpenAI'),
-            currentModel: getModel('gpt-5.1-chat-latest'),
+            resolvedEngine: buildResolvedEngine(currentModel, 'OpenAI'),
+            currentModel,
             models: BUILTIN_MODELS,
             analysisPackaging: 'automatic',
             estimatedInputTokens: 300000,
@@ -39,34 +40,84 @@ describe('computeInquiryAdvisoryContext', () => {
         });
 
         expect(advisory).not.toBeNull();
-        expect(advisory?.recommendation.reasonCode).toBe('single_pass_preferred');
-        expect(advisory?.recommendation.provider).toBe('google');
+        expect(advisory?.recommendation.reasonCode).toBe('sources_preferred');
+        expect(advisory?.recommendation.provider).toBe('anthropic');
     });
 
-    it('returns sources recommendation when current engine lacks Sources support', () => {
+    it('returns single-pass recommendation when current engine supports Sources', () => {
+        const currentModel = getModel('claude-sonnet-4-6');
         const advisory = computeInquiryAdvisoryContext({
             scope: 'book',
             focusLabel: 'B1',
-            resolvedEngine: buildResolvedEngine('gpt-5.2-chat-latest', 'OpenAI'),
-            currentModel: getModel('gpt-5.2-chat-latest'),
+            resolvedEngine: buildResolvedEngine(currentModel, 'Anthropic'),
+            currentModel,
             models: BUILTIN_MODELS,
             analysisPackaging: 'automatic',
-            estimatedInputTokens: 40000,
+            estimatedInputTokens: 300000,
             corpusFingerprint: 'fp-2',
             overrideSummary: { active: false, classCount: 0, itemCount: 0, total: 0 },
         });
 
         expect(advisory).not.toBeNull();
-        expect(advisory?.recommendation.reasonCode).toBe('sources_preferred');
-        expect(advisory?.recommendation.provider).toBe('anthropic');
+        expect(advisory?.recommendation.reasonCode).toBe('single_pass_preferred');
+        expect(advisory?.recommendation.provider).toBe('google');
     });
 
-    it('returns null when no meaningful advisory delta exists', () => {
+    it('returns corpus reuse recommendation when fingerprint is reused and current engine lacks reuse', () => {
+        const currentModel = getModel('llama3');
         const advisory = computeInquiryAdvisoryContext({
             scope: 'book',
             focusLabel: 'B1',
-            resolvedEngine: buildResolvedEngine('claude-sonnet-4-6', 'Anthropic'),
-            currentModel: getModel('claude-sonnet-4-6'),
+            resolvedEngine: buildResolvedEngine(currentModel, 'Ollama'),
+            currentModel,
+            models: [currentModel, getModel('gemini-3.1-pro-preview')],
+            analysisPackaging: 'automatic',
+            estimatedInputTokens: 12000,
+            corpusFingerprint: 'fp-reuse',
+            corpusFingerprintReused: true,
+            overrideSummary: { active: false, classCount: 0, itemCount: 0, total: 0 },
+        });
+
+        expect(advisory).not.toBeNull();
+        expect(advisory?.recommendation.reasonCode).toBe('cost_reuse_preferred');
+        expect(advisory?.recommendation.provider).toBe('google');
+    });
+
+    it('returns precision recommendation for deep analysis questions when another engine is stronger', () => {
+        const openAiStrong = getModel('gpt-5.2-chat-latest');
+        const currentModel: ModelInfo = {
+            ...openAiStrong,
+            id: 'gpt-5.2-precision-lite-test',
+            alias: 'gpt-5.2-precision-lite-test',
+            label: 'GPT-5.2 Precision Lite Test',
+            capabilities: openAiStrong.capabilities.filter(capability => capability !== 'reasoningStrong')
+        };
+        const advisory = computeInquiryAdvisoryContext({
+            scope: 'book',
+            focusLabel: 'B1',
+            resolvedEngine: buildResolvedEngine(currentModel, 'OpenAI'),
+            currentModel,
+            models: [currentModel, getModel('gemini-3.1-pro-preview')],
+            analysisPackaging: 'automatic',
+            estimatedInputTokens: 10000,
+            corpusFingerprint: 'fp-precision',
+            corpusFingerprintReused: false,
+            questionText: 'Compare thematic contradictions and evaluate the causal tradeoffs across this arc.',
+            overrideSummary: { active: false, classCount: 0, itemCount: 0, total: 0 },
+        });
+
+        expect(advisory).not.toBeNull();
+        expect(advisory?.recommendation.reasonCode).toBe('precision_analysis_preferred');
+        expect(advisory?.recommendation.provider).toBe('google');
+    });
+
+    it('returns null when no meaningful advisory advantage exists', () => {
+        const currentModel = getModel('claude-sonnet-4-6');
+        const advisory = computeInquiryAdvisoryContext({
+            scope: 'book',
+            focusLabel: 'B1',
+            resolvedEngine: buildResolvedEngine(currentModel, 'Anthropic'),
+            currentModel,
             models: BUILTIN_MODELS,
             analysisPackaging: 'automatic',
             estimatedInputTokens: 30000,
@@ -77,46 +128,13 @@ describe('computeInquiryAdvisoryContext', () => {
         expect(advisory).toBeNull();
     });
 
-    it('does not recommend single-pass on marginal over-limit deltas', () => {
-        const advisory = computeInquiryAdvisoryContext({
-            scope: 'book',
-            focusLabel: 'B1',
-            resolvedEngine: buildResolvedEngine('claude-sonnet-4-6', 'Anthropic'),
-            currentModel: getModel('claude-sonnet-4-6'),
-            models: BUILTIN_MODELS,
-            analysisPackaging: 'automatic',
-            estimatedInputTokens: 120000,
-            corpusFingerprint: 'fp-marginal',
-            overrideSummary: { active: false, classCount: 0, itemCount: 0, total: 0 },
-        });
-
-        expect(advisory).toBeNull();
-    });
-
-    it('suppresses single-pass recommendation when overflow is inside uncertainty band', () => {
-        const advisory = computeInquiryAdvisoryContext({
-            scope: 'book',
-            focusLabel: 'B1',
-            resolvedEngine: buildResolvedEngine('claude-sonnet-4-6', 'Anthropic'),
-            currentModel: getModel('claude-sonnet-4-6'),
-            models: BUILTIN_MODELS,
-            analysisPackaging: 'automatic',
-            estimatedInputTokens: 170000,
-            currentSafeInputBudget: 160000,
-            estimateUncertaintyTokens: 20000,
-            corpusFingerprint: 'fp-uncertainty',
-            overrideSummary: { active: false, classCount: 0, itemCount: 0, total: 0 },
-        });
-
-        expect(advisory).toBeNull();
-    });
-
     it('keeps createdAt stable when advisory identity does not change', () => {
+        const currentModel = getModel('gpt-5.2-chat-latest');
         const first = computeInquiryAdvisoryContext({
             scope: 'book',
             focusLabel: 'B1',
-            resolvedEngine: buildResolvedEngine('gpt-5.2-chat-latest', 'OpenAI'),
-            currentModel: getModel('gpt-5.2-chat-latest'),
+            resolvedEngine: buildResolvedEngine(currentModel, 'OpenAI'),
+            currentModel,
             models: BUILTIN_MODELS,
             analysisPackaging: 'automatic',
             estimatedInputTokens: 40000,
@@ -129,8 +147,8 @@ describe('computeInquiryAdvisoryContext', () => {
         const second = computeInquiryAdvisoryContext({
             scope: 'book',
             focusLabel: 'B1',
-            resolvedEngine: buildResolvedEngine('gpt-5.2-chat-latest', 'OpenAI'),
-            currentModel: getModel('gpt-5.2-chat-latest'),
+            resolvedEngine: buildResolvedEngine(currentModel, 'OpenAI'),
+            currentModel,
             models: BUILTIN_MODELS,
             analysisPackaging: 'automatic',
             estimatedInputTokens: 40000,
