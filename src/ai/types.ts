@@ -206,10 +206,6 @@ export interface AIRunRequest {
     providerOverride?: AIProviderId;
     overrides?: Partial<AIOverrides>;
     tokenEstimateInput?: number;
-    legacySelectionHint?: {
-        provider?: LegacyProviderId;
-        modelId?: string;
-    };
     /** Per-scene evidence documents for provider-level citations. */
     evidenceDocuments?: EvidenceDocument[];
 }

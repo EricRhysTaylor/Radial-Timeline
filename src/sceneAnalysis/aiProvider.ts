@@ -238,16 +238,6 @@ export async function callAiProvider(
             returnType: 'json',
             responseSchema: jsonSchema,
             providerOverride,
-            legacySelectionHint: {
-                provider,
-                modelId: provider === 'anthropic'
-                    ? plugin.settings.anthropicModelId
-                    : provider === 'gemini'
-                        ? plugin.settings.geminiModelId
-                        : provider === 'local'
-                            ? plugin.settings.localModelId
-                            : plugin.settings.openaiModelId
-            },
             overrides: {
                 temperature: commandContext === 'synopsis' ? 0.2 : 0.1,
                 maxOutputMode: 'high',

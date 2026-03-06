@@ -54,7 +54,7 @@ import { getLastAiAdvancedContext } from '../ai/runtime/aiClient';
 import { computeCaps, INPUT_TOKEN_GUARD_FACTOR } from '../ai/caps/computeCaps';
 import { BUILTIN_MODELS } from '../ai/registry/builtinModels';
 import { selectModel } from '../ai/router/selectModel';
-import { buildDefaultAiSettings, mapLegacyProviderToAiProvider } from '../ai/settings/aiSettings';
+import { buildDefaultAiSettings, mapAiProviderToLegacyProvider, mapLegacyProviderToAiProvider } from '../ai/settings/aiSettings';
 import { validateAiSettings } from '../ai/settings/validateAiSettings';
 import type { AIRunAdvancedContext, AIProviderId, AiSettingsV1, Capability, ModelInfo, AccessTier } from '../ai/types';
 import type {
@@ -85,6 +85,7 @@ import {
     resolveInquiryBookResolution
 } from './services/bookResolution';
 import { getModelDisplayName } from '../utils/modelResolver';
+import { resolveInquiryEngine, type ResolvedInquiryEngine } from './services/inquiryModelResolver';
 import { addTooltipData, setupTooltipsFromDataAttributes } from '../utils/tooltip';
 import { splitIntoBalancedLinesOptimal } from '../utils/text';
 import { classifySynopsis, type SynopsisQuality } from '../sceneAnalysis/synopsisQuality';
@@ -998,6 +999,8 @@ export class InquiryView extends ItemView {
     private pendingGuardQuestion?: InquiryQuestion;
     private enginePanelFailureGuidance: EngineFailureGuidance | null = null;
     private lastReadinessUiState?: InquiryReadinessUiState;
+    /** Memoized per-refresh-cycle. Invalidated at top of refreshUI(). */
+    private _resolvedEngine: ResolvedInquiryEngine | null = null;
     private omnibusAbortRequested = false;
     private activeOmnibusModal?: InquiryOmnibusModal;
     private minimapTicksEl?: SVGGElement;
@@ -1610,9 +1613,7 @@ export class InquiryView extends ItemView {
             this.handleGuardSettingsClick();
         });
 
-        this.enginePanelAllLabelEl = panel.createDiv({ cls: 'ert-inquiry-engine-section-title', text: 'All models' });
         this.enginePanelListEl = panel.createDiv({ cls: 'ert-inquiry-engine-list' });
-        panel.createDiv({ cls: 'ert-inquiry-engine-note', text: 'Updates Settings > AI.' });
         this.registerDomEvent(panel, 'pointerenter', () => this.cancelEnginePanelHide());
         this.registerDomEvent(panel, 'pointerleave', () => this.scheduleEnginePanelHide());
         this.refreshEnginePanel();
@@ -1649,76 +1650,32 @@ export class InquiryView extends ItemView {
         }
     }
 
+    /**
+     * Render the engine panel as a read-only status/diagnostics display.
+     *
+     * Shows the resolved engine from canonical AI Strategy (not a model picker).
+     * Inquiry does not choose models — it reports the resolved engine.
+     */
     private refreshEnginePanel(): void {
         if (!this.enginePanelListEl) return;
         this.enginePanelListEl.empty();
 
-        const clean = (value: string) => value.replace(/^models\//, '').trim();
-        const getProviderModelId = (provider: EngineProvider): string => {
-            if (provider === 'anthropic') return clean(this.plugin.settings.anthropicModelId || 'claude-sonnet-4-6');
-            if (provider === 'gemini') return clean(this.plugin.settings.geminiModelId || 'gemini-3.1-pro-preview');
-            if (provider === 'local') return clean(this.plugin.settings.localModelId || 'local-model');
-            return clean(this.plugin.settings.openaiModelId || 'gpt-5.2-chat-latest');
-        };
-
-        const activeProvider = (this.plugin.settings.defaultAiProvider || 'openai') as EngineProvider;
-        const providers: EngineProvider[] = ['anthropic', 'gemini', 'openai', 'local'];
-
+        const engine = this.getResolvedEngine();
         const contextQuestion = this.getEngineContextQuestion() ?? this.getCurrentPromptQuestion();
         const payloadSummary = this.buildEnginePayloadSummary(contextQuestion);
         const readinessUi = this.buildReadinessUiState(contextQuestion);
-
-        // Use the policy-resolved model to determine "Active" badge.
-        // When the policy engine selects a different model than the one in settings
-        // (e.g. settings has Opus but policy picks Sonnet for capability fit),
-        // show the policy-resolved model on the active provider's card.
-        // Falls back to provider-only match when no model is resolved
-        // (e.g. capability floor not met).
-        const resolvedModel = readinessUi.model;
-        const resolvedEngineProvider: EngineProvider | undefined = resolvedModel
-            ? (resolvedModel.provider === 'google' ? 'gemini'
-                : resolvedModel.provider === 'ollama' ? 'local'
-                : resolvedModel.provider as EngineProvider)
-            : undefined;
-
-        const choices: EngineChoice[] = providers.map(provider => {
-            const settingsModelId = getProviderModelId(provider);
-            const availability = this.getProviderAvailability(provider);
-            const isActive = resolvedEngineProvider
-                ? provider === resolvedEngineProvider
-                : provider === activeProvider;
-            // Show the policy-resolved model on the active card when it differs
-            // from the settings model (policy override).
-            const modelId = (isActive && resolvedModel && resolvedModel.id !== settingsModelId)
-                ? resolvedModel.id
-                : settingsModelId;
-            return {
-                provider,
-                providerLabel: this.getInquiryProviderLabel(provider),
-                modelId,
-                modelLabel: getModelDisplayName(modelId),
-                isActive,
-                enabled: availability.enabled,
-                disabledReason: availability.reason
-            };
-        });
         this.lastReadinessUiState = readinessUi;
-        const tokenTier: TokenTier = readinessUi.readiness.pressureTone === 'red'
-            ? 'red'
-            : readinessUi.readiness.pressureTone === 'amber'
-                ? 'amber'
-                : 'normal';
+
         const failureGuidance = this.getEngineFailureGuidance();
         this.enginePanelFailureGuidance = failureGuidance;
+
+        // ── Header meta ──
         if (this.enginePanelMetaEl) {
-            const resolvedModelLabel = readinessUi.model?.label || this.getActiveInquiryModelLabel();
-            this.enginePanelMetaEl.setText(`Engine: ${readinessUi.providerLabel} · ${resolvedModelLabel} · ${payloadSummary.text}`);
+            this.enginePanelMetaEl.setText(`Engine: ${engine.providerLabel} · ${engine.modelLabel} · ${payloadSummary.text}`);
         }
         this.renderEngineReadinessStrip(readinessUi);
 
-        const recommendedChoices = tokenTier === 'red' ? this.pickRecommendedEngineChoices(choices) : [];
-        const recommendedKeys = new Set(recommendedChoices.map(choice => `${choice.provider}::${choice.modelId}`));
-
+        // ── Guard (error/failure guidance) ──
         if (this.enginePanelGuardEl) {
             const showGuard = Boolean(failureGuidance);
             this.enginePanelGuardEl.classList.toggle('ert-hidden', !showGuard);
@@ -1731,38 +1688,63 @@ export class InquiryView extends ItemView {
             }
         }
 
-        if (!choices.length) {
-            this.enginePanelListEl.createDiv({ cls: 'ert-inquiry-engine-empty', text: 'No models configured yet.' });
-            return;
-        }
+        // ── Diagnostics: resolved engine ──
+        const policyLabel = engine.policySource === 'featureOverride'
+            ? 'Inquiry override'
+            : engine.policySource === 'globalPolicy'
+                ? 'Global AI Strategy'
+                : 'Legacy fallback';
 
-        this.renderEngineChoices(this.enginePanelListEl, choices, {
-            tokenTier,
-            recommendedKeys,
-            layout: 'select'
+        const engineInfo = this.enginePanelListEl.createDiv({ cls: 'ert-inquiry-engine-diagnostics' });
+
+        // Resolved model row
+        const modelRow = engineInfo.createDiv({ cls: 'ert-inquiry-engine-diag-row' });
+        modelRow.createDiv({ cls: 'ert-inquiry-engine-diag-label', text: 'Resolved engine' });
+        modelRow.createDiv({ cls: 'ert-inquiry-engine-diag-value', text: `${engine.providerLabel} · ${engine.modelLabel}` });
+
+        // Policy source row
+        const policyRow = engineInfo.createDiv({ cls: 'ert-inquiry-engine-diag-row' });
+        policyRow.createDiv({ cls: 'ert-inquiry-engine-diag-label', text: 'Source' });
+        policyRow.createDiv({ cls: 'ert-inquiry-engine-diag-value', text: policyLabel });
+
+        // Model ID row
+        const idRow = engineInfo.createDiv({ cls: 'ert-inquiry-engine-diag-row' });
+        idRow.createDiv({ cls: 'ert-inquiry-engine-diag-label', text: 'Model ID' });
+        idRow.createDiv({ cls: 'ert-inquiry-engine-diag-value', text: engine.modelId });
+
+        // Payload estimate row
+        const payloadRow = engineInfo.createDiv({ cls: 'ert-inquiry-engine-diag-row' });
+        payloadRow.createDiv({ cls: 'ert-inquiry-engine-diag-label', text: 'Payload' });
+        payloadRow.createDiv({ cls: 'ert-inquiry-engine-diag-value', text: payloadSummary.text });
+
+        // Context window row
+        const contextRow = engineInfo.createDiv({ cls: 'ert-inquiry-engine-diag-row' });
+        contextRow.createDiv({ cls: 'ert-inquiry-engine-diag-label', text: 'Context window' });
+        contextRow.createDiv({ cls: 'ert-inquiry-engine-diag-value', text: this.formatTokenEstimate(engine.contextWindow) });
+
+        // ── Actions ──
+        const actionsRow = engineInfo.createDiv({ cls: 'ert-inquiry-engine-diag-actions' });
+        const settingsButton = actionsRow.createEl('button', {
+            cls: 'ert-inquiry-engine-diag-action',
+            text: 'Open AI Settings',
+            attr: { type: 'button' }
         });
-    }
-
-    private async applyEngineChoice(choice: { provider: EngineProvider; modelId: string }): Promise<void> {
-        this.plugin.settings.defaultAiProvider = choice.provider;
-        if (choice.provider === 'anthropic') this.plugin.settings.anthropicModelId = choice.modelId;
-        if (choice.provider === 'gemini') this.plugin.settings.geminiModelId = choice.modelId;
-        if (choice.provider === 'openai') this.plugin.settings.openaiModelId = choice.modelId;
-        if (choice.provider === 'local') this.plugin.settings.localModelId = choice.modelId;
-        await this.plugin.saveSettings();
-        this.updateEngineBadge();
-    }
-
-    private async handleEngineChoiceClick(choice: EngineChoice): Promise<void> {
-        if (!choice.enabled) return;
-        await this.applyEngineChoice({ provider: choice.provider, modelId: choice.modelId });
-        this.refreshEnginePanel();
-        if (this.pendingGuardQuestion) {
-            const pending = this.pendingGuardQuestion;
-            this.pendingGuardQuestion = undefined;
+        this.registerDomEvent(settingsButton, 'click', (event: MouseEvent) => {
+            event.stopPropagation();
             this.hideEnginePanel();
-            await this.runInquiry(pending, { bypassTokenGuard: true });
-        }
+            this.openAiSettings(['provider']);
+        });
+
+        const logButton = actionsRow.createEl('button', {
+            cls: 'ert-inquiry-engine-diag-action',
+            text: 'Open Inquiry Log',
+            attr: { type: 'button' }
+        });
+        this.registerDomEvent(logButton, 'click', (event: MouseEvent) => {
+            event.stopPropagation();
+            this.hideEnginePanel();
+            void this.openInquiryErrorLog();
+        });
     }
 
     private handleGuardSettingsClick(): void {
@@ -1829,87 +1811,6 @@ export class InquiryView extends ItemView {
         };
     }
 
-    private renderEngineChoices(
-        listEl: HTMLDivElement,
-        choices: EngineChoice[],
-        options: { tokenTier: TokenTier; recommendedKeys: Set<string>; layout?: 'pill' | 'select' }
-    ): void {
-        const showTruncateWarning = options.tokenTier === 'red';
-        const layout = options.layout ?? 'pill';
-        choices.forEach(choice => {
-            const key = `${choice.provider}::${choice.modelId}`;
-            if (layout === 'select') {
-                const item = listEl.createDiv({ cls: 'ert-inquiry-engine-item ert-inquiry-engine-item--select' });
-                if (choice.isActive) item.classList.add('is-active');
-                if (!choice.enabled) item.classList.add('is-disabled');
-                const main = item.createDiv({ cls: 'ert-inquiry-engine-item-main' });
-                main.createDiv({ cls: 'ert-inquiry-engine-item-title', text: `${choice.providerLabel} · ${choice.modelLabel}` });
-                const metaParts = [choice.modelId];
-                if (!choice.enabled && choice.disabledReason) {
-                    metaParts.push(choice.disabledReason);
-                } else if (showTruncateWarning && !options.recommendedKeys.has(key) && choice.enabled) {
-                    metaParts.push('May truncate');
-                }
-                main.createDiv({ cls: 'ert-inquiry-engine-item-meta', text: metaParts.join(' · ') });
-
-                const action = item.createDiv({ cls: 'ert-inquiry-engine-item-action' });
-                const buttonLabel = !choice.enabled ? 'Unavailable' : choice.isActive ? 'Active' : 'Select';
-                const selectButton = action.createEl('button', {
-                    cls: 'ert-inquiry-engine-item-select',
-                    text: buttonLabel,
-                    attr: { type: 'button' }
-                });
-                if (choice.isActive) {
-                    selectButton.classList.add('is-active');
-                }
-                if (!choice.enabled) {
-                    selectButton.disabled = true;
-                    selectButton.setAttribute('aria-disabled', 'true');
-                }
-                this.registerDomEvent(selectButton, 'click', (event: MouseEvent) => {
-                    event.stopPropagation();
-                    void this.handleEngineChoiceClick(choice);
-                });
-                this.registerDomEvent(item, 'click', (event: MouseEvent) => {
-                    if ((event.target as HTMLElement).closest('.ert-inquiry-engine-item-select')) return;
-                    void this.handleEngineChoiceClick(choice);
-                });
-                return;
-            }
-
-            const item = listEl.createEl('button', { cls: 'ert-inquiry-engine-item', attr: { type: 'button' } });
-            if (choice.isActive) item.classList.add('is-active');
-            if (!choice.enabled) item.classList.add('is-disabled');
-            const textRow = item.createDiv({ cls: 'ert-inquiry-engine-item-row ert-inquiry-engine-item-row--text' });
-            const main = textRow.createDiv({ cls: 'ert-inquiry-engine-item-main' });
-            main.createDiv({ cls: 'ert-inquiry-engine-item-title', text: `${choice.providerLabel} · ${choice.modelLabel}` });
-            main.createDiv({ cls: 'ert-inquiry-engine-item-meta', text: choice.modelId });
-            const statuses: Array<{ label: string; tone?: 'active' | 'warning' }> = [];
-            if (!choice.enabled && choice.disabledReason) {
-                statuses.push({ label: choice.disabledReason });
-            } else if (choice.isActive) {
-                statuses.push({ label: 'Active', tone: 'active' });
-            }
-            if (showTruncateWarning && !options.recommendedKeys.has(key) && choice.enabled) {
-                statuses.push({ label: 'May truncate', tone: 'warning' });
-            }
-            if (statuses.length) {
-                const actionRow = item.createDiv({ cls: 'ert-inquiry-engine-item-row ert-inquiry-engine-item-row--actions' });
-                const statusGroup = actionRow.createDiv({ cls: 'ert-inquiry-engine-item-statuses' });
-                statuses.forEach(status => {
-                    const statusEl = statusGroup.createDiv({ cls: 'ert-inquiry-engine-item-status', text: status.label });
-                    if (status.tone) {
-                        statusEl.classList.add(`is-${status.tone}`);
-                    }
-                });
-            }
-            this.registerDomEvent(item, 'click', (event: MouseEvent) => {
-                event.stopPropagation();
-                void this.handleEngineChoiceClick(choice);
-            });
-        });
-    }
-
     private getEngineContextQuestion(): string | null {
         if (this.pendingGuardQuestion?.question) return this.pendingGuardQuestion.question;
         if (this.previewLast?.question) return this.previewLast.question;
@@ -1972,16 +1873,10 @@ export class InquiryView extends ItemView {
 
     private buildReadinessUiState(questionText: string | null): InquiryReadinessUiState {
         const aiSettings = this.getCanonicalAiSettings();
-        const providerCandidate = aiSettings.provider === 'none'
-            ? mapLegacyProviderToAiProvider(this.plugin.settings.defaultAiProvider)
-            : aiSettings.provider;
-        const provider: Exclude<AIProviderId, 'none'> = providerCandidate === 'none' ? 'openai' : providerCandidate;
-        const engineProvider: EngineProvider = provider === 'google'
-            ? 'gemini'
-            : provider === 'ollama'
-                ? 'local'
-                : provider;
-        const providerLabel = this.getInquiryProviderLabel(engineProvider);
+        const engine = this.getResolvedEngine();
+        const provider = engine.provider === 'none' ? 'openai' as const : engine.provider;
+        const engineProvider = mapAiProviderToLegacyProvider(provider) as EngineProvider;
+        const providerLabel = engine.providerLabel;
         const hasCredential = this.getProviderAvailability(engineProvider).enabled;
         const question = (questionText || '').trim();
         const tokenEstimate = this.getTokenEstimateForQuestion(question);
@@ -1993,20 +1888,14 @@ export class InquiryView extends ItemView {
         let model: ModelInfo | undefined;
 
         try {
-            const policy = aiSettings.featureProfiles?.InquiryMode?.modelPolicy ?? aiSettings.modelPolicy;
-            const modelSelection = selectModel(BUILTIN_MODELS, {
-                provider,
-                policy,
-                requiredCapabilities: INQUIRY_REQUIRED_CAPABILITIES,
-                accessTier: this.getAccessTierForProvider(provider, aiSettings),
-                contextTokensNeeded: estimateInputTokens,
-                outputTokensNeeded: 0
-            });
+            // Use the resolved model from the canonical resolver.
+            const resolvedModel = BUILTIN_MODELS.find(m => m.id === engine.modelId);
+            if (!resolvedModel) throw new Error(`Resolved model "${engine.modelId}" not found in registry.`);
             hasEligibleModel = true;
-            model = modelSelection.model;
+            model = resolvedModel;
             const caps = computeCaps({
                 provider,
-                model: modelSelection.model,
+                model: resolvedModel,
                 accessTier: this.getAccessTierForProvider(provider, aiSettings),
                 feature: 'InquiryMode',
                 overrides: aiSettings.overrides
@@ -2295,11 +2184,6 @@ export class InquiryView extends ItemView {
         });
         this.corpusWarningActive = false;
         this.refreshUI();
-    }
-
-    private pickRecommendedEngineChoices(choices: EngineChoice[]): EngineChoice[] {
-        const geminiChoice = choices.find(choice => choice.provider === 'gemini' && choice.enabled);
-        return geminiChoice ? [geminiChoice] : [];
     }
 
     private showBriefingPanel(): void {
@@ -3894,7 +3778,15 @@ export class InquiryView extends ItemView {
         this.artifactPreviewEl.appendChild(this.artifactPreviewBg);
     }
 
+    private getResolvedEngine(): ResolvedInquiryEngine {
+        if (!this._resolvedEngine) {
+            this._resolvedEngine = resolveInquiryEngine(this.plugin, BUILTIN_MODELS);
+        }
+        return this._resolvedEngine;
+    }
+
     private refreshUI(): void {
+        this._resolvedEngine = null; // Invalidate per-refresh-cycle cache.
         this.refreshCorpus();
         this.guidanceState = this.resolveGuidanceState();
         this.updateScopeToggle();
@@ -4027,8 +3919,9 @@ export class InquiryView extends ItemView {
 
     private updateEngineBadge(): void {
         if (!this.engineBadgeGroup) return;
-        const modelLabel = this.getActiveInquiryModelLabel();
-        const providerLabel = this.getActiveInquiryProviderLabel();
+        const engine = this.getResolvedEngine();
+        const modelLabel = engine.modelLabel;
+        const providerLabel = engine.providerLabel;
         const tooltip = `AI Engine · ${providerLabel} · ${modelLabel}`;
         this.engineBadgeGroup.setAttribute('aria-label', tooltip);
         if (this.enginePanelMetaEl) {
@@ -4051,51 +3944,20 @@ export class InquiryView extends ItemView {
         this.engineBadgeGroup.classList.toggle('is-engine-pulse-red', red);
     }
 
-    private getActiveInquiryModelId(): string {
-        const provider = this.plugin.settings.defaultAiProvider || 'openai';
-        const clean = (value: string) => value.replace(/^models\//, '').trim();
-        if (provider === 'anthropic') {
-            return clean(this.plugin.settings.anthropicModelId || 'claude-sonnet-4-6');
-        }
-        if (provider === 'gemini') {
-            return clean(this.plugin.settings.geminiModelId || 'gemini-3.1-pro-preview');
-        }
-        if (provider === 'local') {
-            return clean(this.plugin.settings.localModelId || 'local-model');
-        }
-        return clean(this.plugin.settings.openaiModelId || 'gpt-5.2-chat-latest');
-    }
-
-    private getActiveInquiryProviderLabel(): string {
-        const provider = this.plugin.settings.defaultAiProvider || 'openai';
-        const labels: Record<EngineProvider, string> = {
-            anthropic: 'Anthropic',
-            gemini: 'Gemini',
-            openai: 'OpenAI',
-            local: 'Local'
-        };
-        return labels[provider as EngineProvider] || 'OpenAI';
-    }
-
-    private getActiveInquiryModelLabel(): string {
-        const modelId = this.getActiveInquiryModelId();
-        return modelId ? getModelDisplayName(modelId.replace(/^models\//, '')) : 'Unknown model';
-    }
-
+    /**
+     * Resolve the engine selection for a run submission.
+     * Delegates to the shared canonical resolver — no legacy settings read.
+     */
     private resolveEngineSelectionForRun(): {
-        provider: EngineProvider;
+        provider: AIProviderId;
         modelId: string;
         modelLabel: string;
-        nextRunOnly: boolean;
-        usedOverride: boolean;
     } {
-        const provider = (this.plugin.settings.defaultAiProvider || 'openai') as EngineProvider;
+        const engine = this.getResolvedEngine();
         return {
-            provider,
-            modelId: this.getActiveInquiryModelId(),
-            modelLabel: this.getActiveInquiryModelLabel(),
-            nextRunOnly: false,
-            usedOverride: false
+            provider: engine.provider,
+            modelId: engine.modelId,
+            modelLabel: engine.modelLabel
         };
     }
 
@@ -7318,7 +7180,7 @@ export class InquiryView extends ItemView {
             corpus: manifest,
             rules: this.getEvidenceRules(),
             ai: {
-                provider: engineSelection.provider,
+                provider: mapAiProviderToLegacyProvider(engineSelection.provider),
                 modelId: engineSelection.modelId,
                 modelLabel: engineSelection.modelLabel
             }
@@ -7346,7 +7208,7 @@ export class InquiryView extends ItemView {
             const tokenEstimate = runTrace?.tokenEstimate ?? this.getTokenEstimateForQuestion(question.question);
             result.tokenEstimateInput = tokenEstimate.inputTokens;
             result.tokenEstimateTier = this.getTokenTier(tokenEstimate.inputTokens);
-            result.aiModelNextRunOnly = engineSelection.nextRunOnly;
+            result.aiModelNextRunOnly = false; // Legacy field — always false.
             result = this.applyCorpusOverrideSummary(result);
             const rawResult = result;
             result = this.normalizeLegacyResult(result);
@@ -7402,9 +7264,6 @@ export class InquiryView extends ItemView {
                 await new Promise(resolve => window.setTimeout(resolve, MIN_PROCESSING_MS - elapsed));
             }
 
-            if (engineSelection.usedOverride) {
-                this.refreshEnginePanel();
-            }
             if (this.shouldDiscardInquiryRunOutcome(runToken)) {
                 return;
             }
@@ -8626,9 +8485,9 @@ export class InquiryView extends ItemView {
             corpus: manifest,
             rules: this.getEvidenceRules(),
             ai: {
-                provider: this.plugin.settings.defaultAiProvider || 'openai',
-                modelId: this.getActiveInquiryModelId(),
-                modelLabel: this.getActiveInquiryModelLabel()
+                provider: mapAiProviderToLegacyProvider(this.getResolvedEngine().provider),
+                modelId: this.getResolvedEngine().modelId,
+                modelLabel: this.getResolvedEngine().modelLabel
             }
         };
         const submittedAt = new Date();
@@ -8955,7 +8814,7 @@ export class InquiryView extends ItemView {
             .map(entry => `${entry.path}:${entry.sceneId ?? ''}:${entry.mtime}:${entry.mode ?? 'none'}`)
             .sort()
             .join('|');
-        const modelId = modelIdOverride ?? this.getActiveInquiryModelId();
+        const modelId = modelIdOverride ?? this.getResolvedEngine().modelId;
         const fingerprintRaw = `${INQUIRY_SCHEMA_VERSION}|${questionId}|${modelId}|${fingerprintSource}`;
         const fingerprint = this.hashString(fingerprintRaw);
 
@@ -8989,7 +8848,7 @@ export class InquiryView extends ItemView {
             this.normalizeInquirySources(this.plugin.settings.inquirySources).classScope
         );
         if (!classScope.allowAll && classScope.allowed.size === 0) {
-            const fingerprintRaw = `${INQUIRY_SCHEMA_VERSION}|${questionId}|${modelIdOverride ?? this.getActiveInquiryModelId()}|`;
+            const fingerprintRaw = `${INQUIRY_SCHEMA_VERSION}|${questionId}|${modelIdOverride ?? this.getResolvedEngine().modelId}|`;
             return {
                 entries,
                 fingerprint: this.hashString(fingerprintRaw),
@@ -9047,7 +8906,7 @@ export class InquiryView extends ItemView {
             .map(entry => `${entry.path}:${entry.sceneId ?? ''}:${entry.mtime}:${entry.mode ?? 'none'}`)
             .sort()
             .join('|');
-        const modelId = modelIdOverride ?? this.getActiveInquiryModelId();
+        const modelId = modelIdOverride ?? this.getResolvedEngine().modelId;
         const fingerprintRaw = `${INQUIRY_SCHEMA_VERSION}|${questionId}|${modelId}|${fingerprintSource}`;
         const fingerprint = this.hashString(fingerprintRaw);
 
@@ -9538,9 +9397,9 @@ export class InquiryView extends ItemView {
                 corpus: manifest,
                 rules: this.getEvidenceRules(),
                 ai: {
-                    provider: this.plugin.settings.defaultAiProvider || 'openai',
-                    modelId: this.getActiveInquiryModelId(),
-                    modelLabel: this.getActiveInquiryModelLabel()
+                    provider: mapAiProviderToLegacyProvider(this.getResolvedEngine().provider),
+                    modelId: this.getResolvedEngine().modelId,
+                    modelLabel: this.getResolvedEngine().modelLabel
                 }
             });
             if (requestId !== this.payloadEstimateRequestId) return;
@@ -10678,7 +10537,7 @@ export class InquiryView extends ItemView {
     }
 
     private getPreviewModelValue(): string {
-        return `Model · ${this.getActiveInquiryModelLabel()}`;
+        return `Model · ${this.getResolvedEngine().modelLabel}`;
     }
 
     private getPreviewTokensValue(questionText: string): string {

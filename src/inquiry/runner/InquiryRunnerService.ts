@@ -1023,6 +1023,16 @@ export class InquiryRunnerService implements InquiryRunner {
                     packagingTriggerReason: triggerReason
                 }));
             }
+            // Chunked execution failed.  When the precheck already detected overflow,
+            // falling through to a single-pass attempt is wasteful — the aiClient
+            // guard will reject it instantly after we already spent minutes building
+            // the trace.  Abort with a descriptive error instead.
+            if (packagingPrecheck.exceedsSafeBudget) {
+                const reason = `Chunked execution failed for ${Math.round(packagingPrecheck.inputTokens).toLocaleString()} token input `
+                    + `(safe budget ${Math.round(packagingPrecheck.safeInputTokens).toLocaleString()}). `
+                    + `Switch full materials to Summary, reduce the corpus, or try a larger-context model.`;
+                return this.buildSinglePassOnlyOverflowResult(ai, reason);
+            }
         }
 
         let run = await this.runInquiryRequest(aiClient, {
@@ -1123,10 +1133,6 @@ export class InquiryRunnerService implements InquiryRunner {
             returnType: 'json',
             responseSchema: options.jsonSchema,
             providerOverride: mapLegacyProviderToAiProvider(options.ai.provider),
-            legacySelectionHint: {
-                provider: options.ai.provider,
-                modelId: options.ai.modelId
-            },
             overrides: {
                 temperature: options.temperature,
                 maxOutputMode: this.resolveMaxOutputMode(options.maxTokens),
@@ -1297,8 +1303,12 @@ export class InquiryRunnerService implements InquiryRunner {
         }
     ): Promise<AIRunResult | null> {
         const chunkPrompts = this.buildEvidenceChunkPrompts(options.userPrompt, 6000);
-        if (!chunkPrompts || chunkPrompts.length <= 1) return null;
+        if (!chunkPrompts || chunkPrompts.length <= 1) {
+            console.warn('[Inquiry] Chunked execution aborted: evidence could not be split into multiple chunks.');
+            return null;
+        }
 
+        console.info(`[Inquiry] Chunked execution: ${chunkPrompts.length} chunks to process.`);
         const chunkOutputs: string[] = [];
         for (let i = 0; i < chunkPrompts.length; i += 1) {
             const chunkRun = await this.runInquiryRequest(aiClient, {
@@ -1312,6 +1322,11 @@ export class InquiryRunnerService implements InquiryRunner {
                 maxTokens: options.maxTokens
             });
             if (chunkRun.aiStatus !== 'success' || !chunkRun.content) {
+                console.warn(
+                    `[Inquiry] Chunk ${i + 1}/${chunkPrompts.length} failed:`
+                    + ` status=${chunkRun.aiStatus}, reason=${chunkRun.aiReason ?? 'none'}`
+                    + `, error=${chunkRun.error ?? 'none'}`
+                );
                 return null;
             }
             chunkOutputs.push(chunkRun.content);
@@ -1337,6 +1352,11 @@ export class InquiryRunnerService implements InquiryRunner {
         });
 
         if (synthesisRun.aiStatus !== 'success' || !synthesisRun.content) {
+            console.warn(
+                `[Inquiry] Synthesis pass failed after ${chunkOutputs.length} successful chunks:`
+                + ` status=${synthesisRun.aiStatus}, reason=${synthesisRun.aiReason ?? 'none'}`
+                + `, error=${synthesisRun.error ?? 'none'}`
+            );
             return null;
         }
 
