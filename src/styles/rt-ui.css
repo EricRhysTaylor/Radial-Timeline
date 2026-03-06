@@ -660,6 +660,25 @@
   gap: calc(var(--ert-gap-sm) - 2px);
 }
 
+.ert-ui.ert-scope--settings .ert-preset-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ert-gap-sm);
+}
+
+.ert-ui.ert-scope--settings .ert-preset-pill {
+  border: 2px solid color-mix(in srgb, var(--background-modifier-border) 92%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--background-primary) 42%, transparent);
+}
+
+.ert-ui.ert-scope--settings .ert-preset-pill.is-active {
+  border: 3px solid color-mix(in srgb, var(--interactive-accent) 85%, var(--background-modifier-border));
+  color: var(--text-normal);
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--interactive-accent) 36%, transparent),
+    var(--ert-shadow-soft-subtle);
+}
+
 .ert-ui.ert-scope--settings .ert-controlGroup--scroll {
   max-height: var(--ert-controlGroup-max-height, 220px);
   overflow-y: auto;

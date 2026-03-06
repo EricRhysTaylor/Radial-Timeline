@@ -1794,7 +1794,6 @@ export class InquiryView extends ItemView {
 
     private getEngineContextQuestion(): string | null {
         if (this.pendingGuardQuestion?.question) return this.pendingGuardQuestion.question;
-        if (this.previewLast?.question) return this.previewLast.question;
         const activeQuestion = this.getQuestionTextById(this.state.activeQuestionId);
         return activeQuestion ?? null;
     }
@@ -3936,13 +3935,12 @@ export class InquiryView extends ItemView {
 
     private syncEngineBadgePulse(): void {
         if (!this.engineBadgeGroup) return;
-        const readinessUi = this.lastReadinessUiState ?? this.buildReadinessUiState(this.getEngineContextQuestion() ?? this.getCurrentPromptQuestion());
+        const readinessUi = this.buildReadinessUiState(this.getEngineContextQuestion() ?? this.getCurrentPromptQuestion());
         const hasError = this.isErrorState();
-        const amber = !hasError && (readinessUi.readiness.state === 'large' || readinessUi.readiness.pressureTone === 'amber');
         const red = hasError
             || readinessUi.readiness.state === 'blocked'
             || (readinessUi.packaging === 'singlePassOnly' && readinessUi.readiness.exceedsBudget);
-        this.engineBadgeGroup.classList.toggle('is-engine-pulse-amber', amber && !red);
+        this.engineBadgeGroup.classList.remove('is-engine-pulse-amber');
         this.engineBadgeGroup.classList.toggle('is-engine-pulse-red', red);
     }
 
@@ -4454,10 +4452,7 @@ export class InquiryView extends ItemView {
     private updateMinimapPressureGauge(): void {
         if (!this.minimapBackboneGroup || !this.minimapBaseline || this.state.isRunning) return;
         const question = this.getEngineContextQuestion() ?? this.getCurrentPromptQuestion();
-        const readinessUi = this.lastReadinessUiState
-            && (this.previewLast?.question || this.pendingGuardQuestion?.question || this.getCurrentPromptQuestion())
-            ? this.lastReadinessUiState
-            : this.buildReadinessUiState(question);
+        const readinessUi = this.buildReadinessUiState(question);
         this.lastReadinessUiState = readinessUi;
 
         const ratio = Math.max(0, readinessUi.readiness.pressureRatio);
@@ -6144,20 +6139,17 @@ export class InquiryView extends ItemView {
 
     private getBackboneStartColors(): BackboneColors {
         const warning = this.getExecutionColorRgb('--rt-ai-warning', { r: 255, g: 153, b: 0 });
-        const failure = this.getExecutionColorRgb('--rt-ai-error', { r: 244, g: 76, b: 76 });
-        const warningPeak = this.mixRgbColor(warning, { r: 255, g: 255, b: 255 }, 0.42);
-        const warningTail = this.mixRgbColor(warning, failure, 0.45);
         return {
             gradient: [
                 warning,
-                warningPeak,
-                warningTail
+                warning,
+                warning
             ],
             shine: [
-                this.mixRgbColor(warning, { r: 255, g: 255, b: 255 }, 0.72),
-                this.mixRgbColor(warning, { r: 255, g: 255, b: 255 }, 0.9),
-                this.mixRgbColor(warningTail, { r: 255, g: 255, b: 255 }, 0.48),
-                this.mixRgbColor(warning, { r: 255, g: 255, b: 255 }, 0.72)
+                warning,
+                warning,
+                warning,
+                warning
             ]
         };
     }
@@ -10207,9 +10199,6 @@ export class InquiryView extends ItemView {
         if (!tokensRow) return;
         if (!questionText) return;
         const readiness = this.buildReadinessUiState(questionText).readiness;
-        if (readiness.pressureTone === 'amber') {
-            tokensRow.group.classList.add('is-token-amber');
-        }
         if (readiness.pressureTone === 'red' || readiness.state === 'blocked') {
             tokensRow.group.classList.add('is-token-red');
         }

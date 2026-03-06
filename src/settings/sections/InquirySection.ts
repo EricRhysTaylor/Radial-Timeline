@@ -468,7 +468,9 @@ export function renderInquirySection(params: SectionParams): void {
         applyScanRoots(nextRoots);
     });
 
-    const scanRootActions = scanRootsSetting.controlEl.createDiv({ cls: [ERT_CLASSES.INLINE, 'ert-actions'] });
+    const scanRootActions = scanRootsSetting.controlEl.createDiv({
+        cls: [ERT_CLASSES.INLINE, 'ert-actions', 'ert-preset-controls']
+    });
     const getBookManagerRoots = (): string[] =>
         Array.from(new Set(
             (plugin.settings.books || [])
@@ -497,7 +499,7 @@ export function renderInquirySection(params: SectionParams): void {
         resolveRoots: () => string[],
         emptyNotice?: string
     ) => {
-        const btn = scanRootActions.createEl('button', { cls: ERT_CLASSES.PILL_BTN });
+        const btn = scanRootActions.createEl('button', { cls: `${ERT_CLASSES.PILL_BTN} ert-preset-pill` });
         btn.createSpan({ cls: ERT_CLASSES.PILL_BTN_LABEL, text: label });
         const syncButtonState = () => {
             const roots = normalizeScanRootPatterns(resolveRoots());
@@ -507,6 +509,7 @@ export function renderInquirySection(params: SectionParams): void {
             const explicitlyActive = hasRoots && roots.every(root => rootSet.has(root));
             const isActive = explicitlyActive || (hasRoots && isScanPresetCovered(roots, selectedRoots));
             btn.classList.toggle(ERT_CLASSES.IS_ACTIVE, isActive);
+            btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
             btn.classList.toggle(ERT_CLASSES.PILL_BTN_USED, !hasRoots);
             btn.disabled = !hasRoots;
         };
@@ -587,7 +590,7 @@ export function renderInquirySection(params: SectionParams): void {
         .setDesc('Quick starters for material rules. Apply one, then tweak as needed.');
     presetSetting.settingEl.setAttribute('data-ert-role', 'inquiry-setting:class-presets');
     presetSetting.settingEl.addClass(ERT_CLASSES.ROW, ERT_CLASSES.ROW_TIGHT);
-    const presetControls = presetSetting.controlEl.createDiv({ cls: [ERT_CLASSES.INLINE] });
+    const presetControls = presetSetting.controlEl.createDiv({ cls: [ERT_CLASSES.INLINE, 'ert-preset-controls'] });
     const presetButtons = new Map<InquirySourcesPreset, HTMLButtonElement>();
 
     const inferPresetFromClasses = (classes: InquiryClassConfig[] | undefined): InquirySourcesPreset | null => {
@@ -631,12 +634,14 @@ export function renderInquirySection(params: SectionParams): void {
     const syncPresetButtons = () => {
         const activePreset = getEffectivePresetSelection();
         presetButtons.forEach((button, key) => {
-            button.classList.toggle(ERT_CLASSES.IS_ACTIVE, activePreset === key);
+            const isActive = activePreset === key;
+            button.classList.toggle(ERT_CLASSES.IS_ACTIVE, isActive);
+            button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
         });
     };
 
     const addPresetButton = (preset: InquirySourcesPreset, label: string) => {
-        const btn = presetControls.createEl('button', { cls: ERT_CLASSES.PILL_BTN });
+        const btn = presetControls.createEl('button', { cls: `${ERT_CLASSES.PILL_BTN} ert-preset-pill` });
         btn.createSpan({ cls: ERT_CLASSES.PILL_BTN_LABEL, text: label });
         plugin.registerDomEvent(btn, 'click', (evt) => {
             evt.preventDefault();
