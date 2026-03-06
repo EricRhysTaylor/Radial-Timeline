@@ -26,3 +26,4 @@ export * from './runtime/cache';
 export * from './runtime/jsonValidator';
 export * from './caps/providerCaps';
 export * from './caps/computeCaps';
+export * from './caps/engineCapabilities';

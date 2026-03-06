@@ -86,6 +86,8 @@ import {
 } from './services/bookResolution';
 import { getModelDisplayName } from '../utils/modelResolver';
 import { resolveInquiryEngine, type ResolvedInquiryEngine } from './services/inquiryModelResolver';
+import { buildInquirySourcesViewModel } from './services/inquirySources';
+import { computeInquiryAdvisoryContext, type InquiryAdvisoryContext } from './services/inquiryAdvisory';
 import { addTooltipData, setupTooltipsFromDataAttributes } from '../utils/tooltip';
 import { splitIntoBalancedLinesOptimal } from '../utils/text';
 import { classifySynopsis, type SynopsisQuality } from '../sceneAnalysis/synopsisQuality';
@@ -250,6 +252,12 @@ type InquiryBriefModel = {
         confidence: string;
         lens: string;
         bullets: string[];
+    }>;
+    sources: Array<{
+        title: string;
+        excerpt: string;
+        classLabel: string;
+        path?: string;
     }>;
     sceneNotes: Array<{ label: string; note: string; anchorId?: string }>;
     pendingActions: string[];
@@ -999,6 +1007,8 @@ export class InquiryView extends ItemView {
     private pendingGuardQuestion?: InquiryQuestion;
     private enginePanelFailureGuidance: EngineFailureGuidance | null = null;
     private lastReadinessUiState?: InquiryReadinessUiState;
+    private lastEngineAdvisoryContext: InquiryAdvisoryContext | null = null;
+    private lastEngineAdvisoryInputKey = '';
     /** Memoized per-refresh-cycle. Invalidated at top of refreshUI(). */
     private _resolvedEngine: ResolvedInquiryEngine | null = null;
     private omnibusAbortRequested = false;
@@ -1307,7 +1317,7 @@ export class InquiryView extends ItemView {
         this.engineBadgeGroup.querySelector('title')?.remove();
         this.registerDomEvent(this.engineBadgeGroup as unknown as HTMLElement, 'pointerenter', () => this.showEnginePanel());
         this.registerDomEvent(this.engineBadgeGroup as unknown as HTMLElement, 'pointerleave', () => this.scheduleEnginePanelHide());
-        this.registerDomEvent(this.engineBadgeGroup as unknown as HTMLElement, 'click', () => this.openAiSettings());
+        this.registerDomEvent(this.engineBadgeGroup as unknown as HTMLElement, 'click', () => this.openAiSettings([], this.lastEngineAdvisoryContext));
 
         const minimapGroup = this.createSvgGroup(canvasGroup, 'ert-inquiry-minimap', 0, MINIMAP_GROUP_Y);
         this.minimapGroup = minimapGroup;
@@ -1665,14 +1675,18 @@ export class InquiryView extends ItemView {
         const payloadSummary = this.buildEnginePayloadSummary(contextQuestion);
         const readinessUi = this.buildReadinessUiState(contextQuestion);
         this.lastReadinessUiState = readinessUi;
+        const advisoryContext = this.buildInquiryAdvisoryContext(readinessUi, payloadSummary.inputTokens);
+        this.lastEngineAdvisoryContext = advisoryContext;
 
         const failureGuidance = this.getEngineFailureGuidance();
         this.enginePanelFailureGuidance = failureGuidance;
 
-        // ── Header meta ──
+        // ── 1. Header summary (non-repeated) ──
         if (this.enginePanelMetaEl) {
-            this.enginePanelMetaEl.setText(`Engine: ${engine.providerLabel} · ${engine.modelLabel} · ${payloadSummary.text}`);
+            this.enginePanelMetaEl.setText(`${engine.providerLabel} · ${engine.modelLabel}`);
         }
+
+        // ── 2. Status card (readiness strip) ──
         this.renderEngineReadinessStrip(readinessUi);
 
         // ── Guard (error/failure guidance) ──
@@ -1688,55 +1702,49 @@ export class InquiryView extends ItemView {
             }
         }
 
-        // ── Diagnostics: resolved engine ──
+        // ── 3. Details card ──
         const policyLabel = engine.policySource === 'featureOverride'
             ? 'Inquiry override'
             : engine.policySource === 'globalPolicy'
                 ? 'Global AI Strategy'
                 : 'Legacy fallback';
 
-        const engineInfo = this.enginePanelListEl.createDiv({ cls: 'ert-inquiry-engine-diagnostics' });
+        const detailsCard = this.enginePanelListEl.createDiv({ cls: 'ert-inquiry-engine-details-card' });
 
-        // Resolved model row
-        const modelRow = engineInfo.createDiv({ cls: 'ert-inquiry-engine-diag-row' });
-        modelRow.createDiv({ cls: 'ert-inquiry-engine-diag-label', text: 'Resolved engine' });
-        modelRow.createDiv({ cls: 'ert-inquiry-engine-diag-value', text: `${engine.providerLabel} · ${engine.modelLabel}` });
+        const sourceRow = detailsCard.createDiv({ cls: 'ert-inquiry-engine-detail-row' });
+        sourceRow.createSpan({ cls: 'ert-inquiry-engine-detail-label', text: 'Source' });
+        sourceRow.createSpan({ cls: 'ert-inquiry-engine-detail-value', text: policyLabel });
 
-        // Policy source row
-        const policyRow = engineInfo.createDiv({ cls: 'ert-inquiry-engine-diag-row' });
-        policyRow.createDiv({ cls: 'ert-inquiry-engine-diag-label', text: 'Source' });
-        policyRow.createDiv({ cls: 'ert-inquiry-engine-diag-value', text: policyLabel });
+        const idRow = detailsCard.createDiv({ cls: 'ert-inquiry-engine-detail-row' });
+        idRow.createSpan({ cls: 'ert-inquiry-engine-detail-label', text: 'Model ID' });
+        idRow.createSpan({ cls: 'ert-inquiry-engine-detail-value', text: engine.modelId });
 
-        // Model ID row
-        const idRow = engineInfo.createDiv({ cls: 'ert-inquiry-engine-diag-row' });
-        idRow.createDiv({ cls: 'ert-inquiry-engine-diag-label', text: 'Model ID' });
-        idRow.createDiv({ cls: 'ert-inquiry-engine-diag-value', text: engine.modelId });
+        const contextRow = detailsCard.createDiv({ cls: 'ert-inquiry-engine-detail-row' });
+        contextRow.createSpan({ cls: 'ert-inquiry-engine-detail-label', text: 'Context' });
+        contextRow.createSpan({ cls: 'ert-inquiry-engine-detail-value', text: this.formatTokenEstimate(engine.contextWindow) });
 
-        // Payload estimate row
-        const payloadRow = engineInfo.createDiv({ cls: 'ert-inquiry-engine-diag-row' });
-        payloadRow.createDiv({ cls: 'ert-inquiry-engine-diag-label', text: 'Payload' });
-        payloadRow.createDiv({ cls: 'ert-inquiry-engine-diag-value', text: payloadSummary.text });
+        // ── 4. Advisor slot ──
+        const advisorSlot = this.enginePanelListEl.createDiv({ cls: 'ert-inquiry-engine-advisor-slot' });
+        if (advisoryContext) {
+            this.renderEngineAdvisoryCard(advisorSlot, advisoryContext);
+        }
 
-        // Context window row
-        const contextRow = engineInfo.createDiv({ cls: 'ert-inquiry-engine-diag-row' });
-        contextRow.createDiv({ cls: 'ert-inquiry-engine-diag-label', text: 'Context window' });
-        contextRow.createDiv({ cls: 'ert-inquiry-engine-diag-value', text: this.formatTokenEstimate(engine.contextWindow) });
+        // ── 5. Action row ──
+        const actionsRow = this.enginePanelListEl.createDiv({ cls: 'ert-inquiry-engine-actions' });
 
-        // ── Actions ──
-        const actionsRow = engineInfo.createDiv({ cls: 'ert-inquiry-engine-diag-actions' });
         const settingsButton = actionsRow.createEl('button', {
-            cls: 'ert-inquiry-engine-diag-action',
+            cls: 'ert-inquiry-engine-action-button',
             text: 'Open AI Settings',
             attr: { type: 'button' }
         });
         this.registerDomEvent(settingsButton, 'click', (event: MouseEvent) => {
             event.stopPropagation();
             this.hideEnginePanel();
-            this.openAiSettings(['provider']);
+            this.openAiSettings(['provider'], advisoryContext);
         });
 
         const logButton = actionsRow.createEl('button', {
-            cls: 'ert-inquiry-engine-diag-action',
+            cls: 'ert-inquiry-engine-action-button',
             text: 'Open Inquiry Log',
             attr: { type: 'button' }
         });
@@ -1756,16 +1764,17 @@ export class InquiryView extends ItemView {
                 void this.openInquiryErrorLog();
                 return;
             }
-            this.openAiSettings(guidance.targets);
+            this.openAiSettings(guidance.targets, this.lastEngineAdvisoryContext);
             return;
         }
         const readinessTargets = this.getReadinessTargets(this.lastReadinessUiState);
         this.pendingGuardQuestion = undefined;
         this.hideEnginePanel();
-        this.openAiSettings(readinessTargets);
+        this.openAiSettings(readinessTargets, this.lastEngineAdvisoryContext);
     }
 
-    private openAiSettings(targets: AiSettingsFocus[] = []): void {
+    private openAiSettings(targets: AiSettingsFocus[] = [], advisoryContext: InquiryAdvisoryContext | null = null): void {
+        this.plugin.setInquiryAdvisoryHandoffContext(advisoryContext);
         if (this.plugin.settingsTab) {
             this.plugin.settingsTab.setActiveTab('ai');
         }
@@ -1837,6 +1846,93 @@ export class InquiryView extends ItemView {
             tier: this.getTokenTier(estimate.inputTokens),
             hasQuestion
         };
+    }
+
+    private buildInquiryAdvisoryContext(
+        readinessUi: InquiryReadinessUiState,
+        estimatedInputTokens: number
+    ): InquiryAdvisoryContext | null {
+        const engine = this.getResolvedEngine();
+        const currentModel = readinessUi.model
+            ?? BUILTIN_MODELS.find(model => model.provider === engine.provider && model.id === engine.modelId)
+            ?? null;
+        if (!currentModel) return null;
+
+        const exceedsSinglePass = readinessUi.safeInputBudget > 0
+            && readinessUi.estimateInputTokens > readinessUi.safeInputBudget;
+        const passPlan = this.getCurrentPassPlan(readinessUi);
+        const expectedPassCount = exceedsSinglePass
+            ? Math.max(passPlan.displayPassCount, this.estimateStructuredPassCount(readinessUi))
+            : 1;
+        const payloadStats = this.getPayloadStats();
+        const corpusFingerprint = payloadStats.manifestFingerprint || this.state.corpusFingerprint || 'unknown';
+        const overrideSummary = this.getCorpusOverrideSummary();
+        const advisoryInputKey = [
+            this.state.scope,
+            this.getFocusLabel(),
+            engine.provider,
+            engine.modelId,
+            readinessUi.packaging,
+            estimatedInputTokens,
+            expectedPassCount,
+            corpusFingerprint,
+            overrideSummary.active ? 1 : 0,
+            overrideSummary.classCount,
+            overrideSummary.itemCount,
+            overrideSummary.total
+        ].join('|');
+        if (this.lastEngineAdvisoryInputKey === advisoryInputKey) {
+            return this.lastEngineAdvisoryContext;
+        }
+
+        const aiSettings = this.getCanonicalAiSettings();
+        const advisory = computeInquiryAdvisoryContext({
+            scope: this.state.scope,
+            focusLabel: this.getFocusLabel(),
+            resolvedEngine: engine,
+            currentModel,
+            models: BUILTIN_MODELS,
+            aiSettings,
+            analysisPackaging: readinessUi.packaging,
+            estimatedInputTokens,
+            expectedPassCount,
+            corpusFingerprint,
+            overrideSummary,
+            previousContext: this.lastEngineAdvisoryContext
+        });
+        this.lastEngineAdvisoryInputKey = advisoryInputKey;
+        return advisory;
+    }
+
+    private renderEngineAdvisoryCard(container: HTMLElement, advisory: InquiryAdvisoryContext): void {
+        container.empty();
+
+        const card = container.createDiv({ cls: 'ert-inquiry-engine-advisor-card' });
+        card.createDiv({ cls: 'ert-inquiry-engine-advisor-title', text: 'Inquiry Advisor' });
+        card.createDiv({
+            cls: 'ert-inquiry-engine-advisor-current',
+            text: advisory.recommendation.currentEngineBehavior
+        });
+        card.createDiv({
+            cls: 'ert-inquiry-engine-advisor-message',
+            text: advisory.recommendation.message
+        });
+        card.createDiv({
+            cls: 'ert-inquiry-engine-advisor-suggestion',
+            text: `Suggested engine: ${advisory.recommendation.providerLabel} · ${advisory.recommendation.modelLabel}`
+        });
+
+        const actions = card.createDiv({ cls: 'ert-inquiry-engine-advisor-actions' });
+        const openSettingsButton = actions.createEl('button', {
+            cls: 'ert-inquiry-engine-advisor-button',
+            text: 'Open AI Settings',
+            attr: { type: 'button' }
+        });
+        this.registerDomEvent(openSettingsButton, 'click', (event: MouseEvent) => {
+            event.stopPropagation();
+            this.hideEnginePanel();
+            this.openAiSettings(['provider'], advisory);
+        });
     }
 
     private getCurrentPromptQuestion(): string | null {
@@ -2092,7 +2188,7 @@ export class InquiryView extends ItemView {
         }
 
         this.createReadinessActionButton('Adjust Settings', () => {
-            this.openAiSettings(this.getReadinessTargets(readinessUi));
+            this.openAiSettings(this.getReadinessTargets(readinessUi), this.lastEngineAdvisoryContext);
         });
         if (tokenLimitExceeded && readinessUi.canSwitchToSummaries) {
             this.createReadinessActionButton('Use Summaries', () => {
@@ -10886,6 +10982,14 @@ export class InquiryView extends ItemView {
                 bullets: (finding.bullets || []).filter(Boolean).slice(0, 3)
             }));
 
+        const sourcesVM = buildInquirySourcesViewModel(result.citations, result.evidenceDocumentMeta);
+        const sources = sourcesVM.items.map(item => ({
+            title: item.title,
+            excerpt: item.excerpt,
+            classLabel: item.classLabel,
+            path: item.path
+        }));
+
         const sceneNotes = this.buildInquirySceneNotes(result);
         const pendingActions = this.getPendingInquiryActions(result);
         const logTitle = this.resolveInquiryLogLinkTitle(result, logPath);
@@ -10898,6 +11002,7 @@ export class InquiryView extends ItemView {
             flowSummary,
             depthSummary,
             findings,
+            sources,
             sceneNotes,
             pendingActions,
             logTitle
@@ -10931,6 +11036,18 @@ export class InquiryView extends ItemView {
                         lines.push(`- ${bullet}`);
                     });
                 }
+            });
+        }
+
+        if (brief.sources.length) {
+            lines.push('', '## Sources', '');
+            brief.sources.forEach(source => {
+                const excerptPart = source.excerpt ? ` \u2014 *"${source.excerpt}"*` : '';
+                const wikiPath = source.path?.replace(/\.md$/, '');
+                const linkPart = (wikiPath && source.classLabel === 'Scene')
+                    ? ` \u2014 [[${wikiPath}|Open scene]]`
+                    : '';
+                lines.push(`- **${source.title}** (${source.classLabel})${excerptPart}${linkPart}`);
             });
         }
 

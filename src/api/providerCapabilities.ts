@@ -25,6 +25,8 @@ type ProviderCapabilities = {
     supportsThinkingConfig: boolean;
     supportsExtendedThinking: boolean;
     supportsCitations: boolean;
+    supportsCorpusReuse: boolean;
+    supportsBatchApi: boolean;
     supportsSystemRole: boolean;
 };
 
@@ -37,6 +39,8 @@ const PROVIDER_CAPABILITIES: Record<AiProvider, ProviderCapabilities> = {
         supportsThinkingConfig: false,
         supportsExtendedThinking: false,
         supportsCitations: false,
+        supportsCorpusReuse: true,
+        supportsBatchApi: true,
         supportsSystemRole: true
     },
     anthropic: {
@@ -47,6 +51,8 @@ const PROVIDER_CAPABILITIES: Record<AiProvider, ProviderCapabilities> = {
         supportsThinkingConfig: false,
         supportsExtendedThinking: true,
         supportsCitations: true,
+        supportsCorpusReuse: true,
+        supportsBatchApi: true,
         supportsSystemRole: true
     },
     gemini: {
@@ -57,6 +63,8 @@ const PROVIDER_CAPABILITIES: Record<AiProvider, ProviderCapabilities> = {
         supportsThinkingConfig: true,
         supportsExtendedThinking: false,
         supportsCitations: false,
+        supportsCorpusReuse: true,
+        supportsBatchApi: false,
         supportsSystemRole: true
     },
     local: {
@@ -67,6 +75,8 @@ const PROVIDER_CAPABILITIES: Record<AiProvider, ProviderCapabilities> = {
         supportsThinkingConfig: false,
         supportsExtendedThinking: false,
         supportsCitations: false,
+        supportsCorpusReuse: false,
+        supportsBatchApi: false,
         supportsSystemRole: false
     }
 };
@@ -92,6 +102,22 @@ const normalizeModelId = (provider: AiProvider, modelId?: string): string => {
     }
     return modelId.trim();
 };
+
+export function getProviderCapabilities(provider: AiProvider): Readonly<ProviderCapabilities> {
+    return PROVIDER_CAPABILITIES[provider];
+}
+
+export function providerSupportsCitations(provider: AiProvider): boolean {
+    return PROVIDER_CAPABILITIES[provider].supportsCitations;
+}
+
+export function providerSupportsCorpusReuse(provider: AiProvider): boolean {
+    return PROVIDER_CAPABILITIES[provider].supportsCorpusReuse;
+}
+
+export function providerSupportsBatchApi(provider: AiProvider): boolean {
+    return PROVIDER_CAPABILITIES[provider].supportsBatchApi;
+}
 
 export function sanitizeProviderArgs(
     provider: AiProvider,

@@ -2217,6 +2217,131 @@ body.rt-modal-open .ert-inquiry-svg * {
   margin-top: 12px;
 }
 
+/* ── Engine diagnostics: details card ────────────────────────────────── */
+
+.ert-inquiry-engine-details-card {
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
+  background: color-mix(in srgb, var(--background-primary) 72%, var(--background-secondary));
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ert-inquiry-engine-detail-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ert-inquiry-engine-detail-label {
+  font-size: 10px;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.ert-inquiry-engine-detail-value {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-normal);
+  text-align: right;
+  word-break: break-all;
+  min-width: 0;
+}
+
+/* ── Engine diagnostics: advisor slot ────────────────────────────────── */
+
+.ert-inquiry-engine-advisor-slot:empty {
+  display: none;
+}
+
+.ert-inquiry-engine-advisor-card {
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--interactive-accent) 25%, var(--background-modifier-border));
+  background: color-mix(in srgb, var(--background-secondary) 82%, var(--background-primary));
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ert-inquiry-engine-advisor-title {
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.ert-inquiry-engine-advisor-current {
+  font-size: 11px;
+  color: var(--text-normal);
+}
+
+.ert-inquiry-engine-advisor-message {
+  font-size: 11px;
+  color: var(--text-normal);
+}
+
+.ert-inquiry-engine-advisor-suggestion {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.ert-inquiry-engine-advisor-actions {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: 2px;
+}
+
+.ert-inquiry-engine-advisor-button {
+  appearance: none;
+  border: 1px solid var(--background-modifier-border);
+  background: color-mix(in srgb, var(--background-primary) 78%, transparent);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-normal);
+  cursor: pointer;
+  transition: border-color 120ms ease, color 120ms ease;
+}
+
+.ert-inquiry-engine-advisor-button:hover {
+  border-color: color-mix(in srgb, var(--interactive-accent) 70%, transparent);
+  color: var(--interactive-accent);
+}
+
+/* ── Engine diagnostics: action row ──────────────────────────────────── */
+
+.ert-inquiry-engine-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ert-inquiry-engine-action-button {
+  appearance: none;
+  flex: 1;
+  border: 1px solid var(--background-modifier-border);
+  background: color-mix(in srgb, var(--background-primary) 70%, transparent);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-normal);
+  cursor: pointer;
+  text-align: center;
+  transition: border-color 120ms ease, color 120ms ease;
+}
+
+.ert-inquiry-engine-action-button:hover {
+  border-color: color-mix(in srgb, var(--interactive-accent) 70%, transparent);
+  color: var(--interactive-accent);
+}
+
 .ert-inquiry-briefing-header {
   display: flex;
   align-items: center;

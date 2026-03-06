@@ -4,7 +4,7 @@ import type RadialTimelinePlugin from '../../main';
 import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { INQUIRY_MAX_OUTPUT_TOKENS, INQUIRY_SCHEMA_VERSION } from '../constants';
 import { PROVIDER_MAX_OUTPUT_TOKENS } from '../../constants/tokenLimits';
-import type { InquiryAiStatus, InquiryCitation, InquiryConfidence, InquiryFinding, InquiryResult, InquirySeverity } from '../state';
+import type { EvidenceDocumentMeta, InquiryAiStatus, InquiryCitation, InquiryConfidence, InquiryFinding, InquiryResult, InquirySeverity } from '../state';
 import type {
     CorpusManifestEntry,
     InquiryAiProvider,
@@ -32,6 +32,7 @@ const BOOK_FOLDER_REGEX = /^Book\s+(\d+)/i;
 type EvidenceBlock = {
     label: string;
     content: string;
+    meta?: EvidenceDocumentMeta;
 };
 
 type SceneSnapshot = {
@@ -123,6 +124,7 @@ export class InquiryRunnerService implements InquiryRunner {
         input: InquiryRunnerInput
     ): Promise<{ result: InquiryResult; trace: InquiryRunTrace }> {
         const { trace, evidenceBlocks } = await this.buildInitialTrace(input);
+        const evidenceDocMeta = evidenceBlocks.map(b => b.meta).filter((m): m is EvidenceDocumentMeta => !!m);
         const { systemPrompt, userPrompt } = trace;
 
         const jsonSchema = this.getJsonSchema();
@@ -176,7 +178,7 @@ export class InquiryRunnerService implements InquiryRunner {
                 if (response.error) {
                     trace.notes.push(`Provider error: ${response.error}`);
                 }
-                const recovered = this.tryRecoverSingleInvalidResponse(input, response, trace, 'provider');
+                const recovered = this.tryRecoverSingleInvalidResponse(input, response, trace, 'provider', evidenceDocMeta);
                 if (recovered) {
                     return { result: recovered, trace };
                 }
@@ -188,7 +190,7 @@ export class InquiryRunnerService implements InquiryRunner {
 
             try {
                 const parsed = this.parseResponse(response.content);
-                return { result: this.buildResult(input, parsed, this.getAiMetaFromResponse(response), response.citations), trace };
+                return { result: this.buildResult(input, parsed, this.getAiMetaFromResponse(response), response.citations, evidenceDocMeta), trace };
             } catch (parseError) {
                 const message = parseError instanceof Error ? parseError.message : String(parseError);
                 trace.notes.push(`Parse error: ${message}`);
@@ -238,7 +240,7 @@ export class InquiryRunnerService implements InquiryRunner {
                             if (retryResponse.error) {
                                 trace.notes.push(`Parse retry provider error: ${retryResponse.error}`);
                             }
-                            const recovered = this.tryRecoverSingleInvalidResponse(input, retryResponse, trace, 'parse retry provider');
+                            const recovered = this.tryRecoverSingleInvalidResponse(input, retryResponse, trace, 'parse retry provider', evidenceDocMeta);
                             if (recovered) {
                                 return { result: recovered, trace };
                             }
@@ -252,7 +254,7 @@ export class InquiryRunnerService implements InquiryRunner {
                         try {
                             const retryParsed = this.parseResponse(retryResponse.content);
                             trace.notes.push('Parse retry succeeded.');
-                            return { result: this.buildResult(input, retryParsed, this.getAiMetaFromResponse(retryResponse), retryResponse.citations), trace };
+                            return { result: this.buildResult(input, retryParsed, this.getAiMetaFromResponse(retryResponse), retryResponse.citations, evidenceDocMeta), trace };
                         } catch (retryParseError) {
                             const retryMessage = retryParseError instanceof Error ? retryParseError.message : String(retryParseError);
                             trace.notes.push(`Parse retry failed: ${retryMessage}`);
@@ -290,6 +292,7 @@ export class InquiryRunnerService implements InquiryRunner {
         input: InquiryOmnibusInput
     ): Promise<{ results: InquiryResult[]; trace: InquiryRunTrace; rawResponse?: RawOmnibusResponse | null }> {
         const { trace, evidenceBlocks } = await this.buildOmnibusTrace(input);
+        const evidenceDocMeta = evidenceBlocks.map(b => b.meta).filter((m): m is EvidenceDocumentMeta => !!m);
         const { systemPrompt, userPrompt } = trace;
 
         const jsonSchema = this.getOmnibusJsonSchema();
@@ -343,7 +346,7 @@ export class InquiryRunnerService implements InquiryRunner {
                 if (response.error) {
                     trace.notes.push(`Provider error: ${response.error}`);
                 }
-                const recovered = this.tryRecoverOmnibusInvalidResponse(input, response, trace, 'provider');
+                const recovered = this.tryRecoverOmnibusInvalidResponse(input, response, trace, 'provider', evidenceDocMeta);
                 if (recovered) {
                     return recovered;
                 }
@@ -359,7 +362,7 @@ export class InquiryRunnerService implements InquiryRunner {
                 const parsed = this.parseOmnibusResponse(response.content);
                 const aiMeta = this.getAiMetaFromResponse(response);
                 return {
-                    results: this.buildOmnibusResults(input, parsed, aiMeta, trace, response.citations),
+                    results: this.buildOmnibusResults(input, parsed, aiMeta, trace, response.citations, evidenceDocMeta),
                     trace,
                     rawResponse: parsed
                 };
@@ -411,7 +414,7 @@ export class InquiryRunnerService implements InquiryRunner {
                             if (retryResponse.error) {
                                 trace.notes.push(`Parse retry provider error: ${retryResponse.error}`);
                             }
-                            const recovered = this.tryRecoverOmnibusInvalidResponse(input, retryResponse, trace, 'parse retry provider');
+                            const recovered = this.tryRecoverOmnibusInvalidResponse(input, retryResponse, trace, 'parse retry provider', evidenceDocMeta);
                             if (recovered) {
                                 return recovered;
                             }
@@ -428,7 +431,7 @@ export class InquiryRunnerService implements InquiryRunner {
                             trace.notes.push('Parse retry succeeded.');
                             const aiMeta = this.getAiMetaFromResponse(retryResponse);
                             return {
-                                results: this.buildOmnibusResults(input, retryParsed, aiMeta, trace, retryResponse.citations),
+                                results: this.buildOmnibusResults(input, retryParsed, aiMeta, trace, retryResponse.citations, evidenceDocMeta),
                                 trace,
                                 rawResponse: retryParsed
                             };
@@ -503,15 +506,16 @@ export class InquiryRunnerService implements InquiryRunner {
             for (const scene of scenes) {
                 const mode = sceneModeByPath.get(scene.path) ?? 'none';
                 const sceneLabel = scene.title ? `${scene.title} (${scene.label})` : scene.label;
+                const sceneMeta: EvidenceDocumentMeta = { title: scene.title || scene.label, path: scene.path, sceneId: scene.sceneId, evidenceClass: 'scene' };
                 if (mode === 'summary') {
                     if (!scene.summary) continue;
-                    blocks.push({ label: `Scene ${sceneLabel} (${scene.sceneId}) (Summary)`, content: scene.summary });
+                    blocks.push({ label: `Scene ${sceneLabel} (${scene.sceneId}) (Summary)`, content: scene.summary, meta: sceneMeta });
                     continue;
                 }
                 if (mode === 'full') {
                     const content = await this.readFileContent(scene.path);
                     if (!content) continue;
-                    blocks.push({ label: `Scene ${sceneLabel} (${scene.sceneId}) (Body)`, content });
+                    blocks.push({ label: `Scene ${sceneLabel} (${scene.sceneId}) (Body)`, content, meta: sceneMeta });
                 }
             }
 
@@ -534,15 +538,16 @@ export class InquiryRunnerService implements InquiryRunner {
             for (const scene of scenes) {
                 const mode = sceneModeByPath.get(scene.path) ?? 'none';
                 const sceneLabel = scene.title ? `${scene.title} (${scene.label})` : scene.label;
+                const sceneMeta: EvidenceDocumentMeta = { title: scene.title || scene.label, path: scene.path, sceneId: scene.sceneId, evidenceClass: 'scene' };
                 if (mode === 'summary') {
                     if (!scene.summary) continue;
-                    blocks.push({ label: `Scene ${sceneLabel} (${scene.sceneId}) (Summary)`, content: scene.summary });
+                    blocks.push({ label: `Scene ${sceneLabel} (${scene.sceneId}) (Summary)`, content: scene.summary, meta: sceneMeta });
                     continue;
                 }
                 if (mode === 'full') {
                     const content = await this.readFileContent(scene.path);
                     if (!content) continue;
-                    blocks.push({ label: `Scene ${sceneLabel} (${scene.sceneId}) (Body)`, content });
+                    blocks.push({ label: `Scene ${sceneLabel} (${scene.sceneId}) (Body)`, content, meta: sceneMeta });
                 }
             }
         }
@@ -638,15 +643,16 @@ export class InquiryRunnerService implements InquiryRunner {
             const baseLabel = entry.scope === 'book'
                 ? this.buildBookOutlineLabel(entry.path, fallbackLabel)
                 : fallbackLabel;
+            const meta: EvidenceDocumentMeta = { title: baseLabel, path: entry.path, evidenceClass: 'outline' };
             if (mode === 'summary') {
                 const summary = this.getSummaryForPath(entry.path);
                 if (!summary) continue;
-                blocks.push({ label: `${baseLabel} (Summary)`, content: summary });
+                blocks.push({ label: `${baseLabel} (Summary)`, content: summary, meta });
                 continue;
             }
             const content = await this.readFileContent(entry.path);
             if (!content) continue;
-            blocks.push({ label: `${baseLabel} (Body)`, content });
+            blocks.push({ label: `${baseLabel} (Body)`, content, meta });
         }
         return blocks;
     }
@@ -657,15 +663,16 @@ export class InquiryRunnerService implements InquiryRunner {
             const mode = this.normalizeEntryMode(entry.mode);
             if (mode === 'none') continue;
             const baseLabel = this.buildReferenceLabel(entry);
+            const meta: EvidenceDocumentMeta = { title: baseLabel, path: entry.path, evidenceClass: this.formatClassLabel(entry.class) };
             if (mode === 'summary') {
                 const summary = this.getSummaryForPath(entry.path);
                 if (!summary) continue;
-                blocks.push({ label: `${baseLabel} (Summary)`, content: summary });
+                blocks.push({ label: `${baseLabel} (Summary)`, content: summary, meta });
                 continue;
             }
             const content = await this.readFileContent(entry.path);
             if (!content) continue;
-            blocks.push({ label: `${baseLabel} (Body)`, content });
+            blocks.push({ label: `${baseLabel} (Body)`, content, meta });
         }
         return blocks;
     }
@@ -1462,7 +1469,8 @@ export class InquiryRunnerService implements InquiryRunner {
         input: InquiryRunnerInput,
         parsed: RawInquiryResponse,
         aiMeta: Pick<InquiryResult, 'aiProvider' | 'aiModelRequested' | 'aiModelResolved' | 'aiStatus' | 'aiReason'>,
-        citations?: InquiryCitation[]
+        citations?: InquiryCitation[],
+        evidenceDocumentMeta?: EvidenceDocumentMeta[]
     ): InquiryResult {
         const verdict = parsed.verdict || {};
         const flow = this.normalizeScore(verdict.flow);
@@ -1509,7 +1517,8 @@ export class InquiryRunnerService implements InquiryRunner {
             findings: mappedFindings,
             corpusFingerprint: input.corpus.fingerprint,
             ...aiMeta,
-            ...(citations?.length ? { citations } : {})
+            ...(citations?.length ? { citations } : {}),
+            ...(evidenceDocumentMeta?.length ? { evidenceDocumentMeta } : {})
         };
     }
 
@@ -1518,7 +1527,8 @@ export class InquiryRunnerService implements InquiryRunner {
         parsed: RawOmnibusResponse,
         aiMeta: Pick<InquiryResult, 'aiProvider' | 'aiModelRequested' | 'aiModelResolved' | 'aiStatus' | 'aiReason'>,
         trace: InquiryRunTrace,
-        citations?: InquiryCitation[]
+        citations?: InquiryCitation[],
+        evidenceDocumentMeta?: EvidenceDocumentMeta[]
     ): InquiryResult[] {
         const results = Array.isArray(parsed.results) ? parsed.results : [];
         const resultsById = new Map<string, RawOmnibusQuestionResult>();
@@ -1544,7 +1554,7 @@ export class InquiryRunnerService implements InquiryRunner {
                 built.push(this.buildOmnibusMissingResult(questionInput, aiMeta));
                 return;
             }
-            built.push(this.buildResult(questionInput, raw, aiMeta, citations));
+            built.push(this.buildResult(questionInput, raw, aiMeta, citations, evidenceDocumentMeta));
         });
 
         return built;
@@ -1733,14 +1743,15 @@ export class InquiryRunnerService implements InquiryRunner {
         input: InquiryRunnerInput,
         response: ProviderResult,
         trace: InquiryRunTrace,
-        context: string
+        context: string,
+        evidenceDocumentMeta?: EvidenceDocumentMeta[]
     ): InquiryResult | null {
         if (!response.content || response.aiReason !== 'invalid_response') return null;
         try {
             const recovered = this.parseResponse(response.content);
             trace.notes.push(`${context}: recovered from invalid_response via local JSON extraction.`);
             const recoveredMeta = this.withRecoveredInvalidResponseMeta(this.getAiMetaFromResponse(response));
-            return this.buildResult(input, recovered, recoveredMeta, response.citations);
+            return this.buildResult(input, recovered, recoveredMeta, response.citations, evidenceDocumentMeta);
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
             trace.notes.push(`${context}: invalid_response recovery failed (${message}).`);
@@ -1752,7 +1763,8 @@ export class InquiryRunnerService implements InquiryRunner {
         input: InquiryOmnibusInput,
         response: ProviderResult,
         trace: InquiryRunTrace,
-        context: string
+        context: string,
+        evidenceDocumentMeta?: EvidenceDocumentMeta[]
     ): { results: InquiryResult[]; trace: InquiryRunTrace; rawResponse: RawOmnibusResponse } | null {
         if (!response.content || response.aiReason !== 'invalid_response') return null;
         try {
@@ -1760,7 +1772,7 @@ export class InquiryRunnerService implements InquiryRunner {
             trace.notes.push(`${context}: recovered omnibus response from invalid_response via local JSON extraction.`);
             const recoveredMeta = this.withRecoveredInvalidResponseMeta(this.getAiMetaFromResponse(response));
             return {
-                results: this.buildOmnibusResults(input, recovered, recoveredMeta, trace, response.citations),
+                results: this.buildOmnibusResults(input, recovered, recoveredMeta, trace, response.citations, evidenceDocumentMeta),
                 trace,
                 rawResponse: recovered
             };

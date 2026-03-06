@@ -77,6 +77,8 @@ export interface InquiryResult {
     roundTripMs?: number;
     /** Source citations from provider-level citation support (e.g. Anthropic citations). */
     citations?: InquiryCitation[];
+    /** Ordered metadata for evidence documents sent to the AI. Indices match citation documentIndex. */
+    evidenceDocumentMeta?: EvidenceDocumentMeta[];
 }
 
 export interface InquiryState {

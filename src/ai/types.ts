@@ -39,6 +39,34 @@ export interface ModelInfo {
     line?: string;
 }
 
+export type EngineCapabilityStatus =
+    | 'available'
+    | 'provider_supported_not_used'
+    | 'unavailable';
+
+export interface EngineCapabilitySignal {
+    status: EngineCapabilityStatus;
+    providerSupported: boolean;
+    availableInRt: boolean;
+}
+
+export interface EngineContextCapabilitySignal extends EngineCapabilitySignal {
+    contextWindow: number;
+}
+
+export interface EngineCapabilities {
+    provider: AIProviderId;
+    modelId: string;
+    modelAlias: string;
+    modelLabel: string;
+    sources: EngineCapabilitySignal;
+    corpusReuse: EngineCapabilitySignal;
+    largeContext: EngineContextCapabilitySignal;
+    batchAnalysis: EngineCapabilitySignal;
+    structuredOutputStrength?: 'strong' | 'basic' | 'limited';
+    reasoningSupport?: 'strong' | 'standard' | 'limited';
+}
+
 export type ModelPolicy =
     | { type: 'pinned'; pinnedAlias?: string }
     | { type: 'latestStable' };

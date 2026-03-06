@@ -16,6 +16,7 @@ import type { AvailabilityStatus } from '../../ai/registry/mergeModels';
 import { selectModel } from '../../ai/router/selectModel';
 import { computeCaps } from '../../ai/caps/computeCaps';
 import { getAIClient, getLastAiAdvancedContext } from '../../ai/runtime/aiClient';
+import type { InquiryAdvisoryContext } from '../../inquiry/services/inquiryAdvisory';
 import {
     getCredential,
     getCredentialSecretId,
@@ -636,6 +637,64 @@ export function renderAiSection(params: {
         }));
     updateAiModelUpdatesDescription();
     params.addAiRelatedElement(aiModelUpdatesSetting.settingEl);
+
+    const inquiryAdvisoryFrame = quickSetupPreviewSection.createDiv({
+        cls: [ERT_CLASSES.PREVIEW_FRAME, ERT_CLASSES.STACK, 'ert-previewFrame--flush', 'ert-ai-inquiry-advisory'],
+        attr: { 'data-ert-role': 'ai-setting:inquiry-advisory' }
+    });
+    params.addAiRelatedElement(inquiryAdvisoryFrame);
+
+    const formatExpectedPassCopy = (passCount: number): string => {
+        if (passCount <= 1) return 'Single pass expected';
+        return `${passCount} passes expected`;
+    };
+
+    const renderInquiryAdvisoryBanner = (context: InquiryAdvisoryContext | null): void => {
+        inquiryAdvisoryFrame.empty();
+        if (!context) {
+            inquiryAdvisoryFrame.toggleClass('ert-settings-hidden', true);
+            inquiryAdvisoryFrame.toggleClass('ert-settings-visible', false);
+            return;
+        }
+
+        inquiryAdvisoryFrame.toggleClass('ert-settings-hidden', false);
+        inquiryAdvisoryFrame.toggleClass('ert-settings-visible', true);
+
+        const header = inquiryAdvisoryFrame.createDiv({ cls: 'ert-ai-inquiry-advisory-header' });
+        header.createDiv({
+            cls: 'ert-ai-inquiry-advisory-kicker',
+            text: 'Based on current Inquiry session'
+        });
+        const dismissButton = header.createEl('button', {
+            cls: 'ert-ai-inquiry-advisory-dismiss',
+            text: 'Dismiss',
+            attr: { type: 'button', 'aria-label': 'Dismiss Inquiry advisory context' }
+        });
+        dismissButton.addEventListener('click', () => {
+            plugin.clearInquiryAdvisoryHandoffContext();
+            renderInquiryAdvisoryBanner(null);
+        });
+
+        const body = inquiryAdvisoryFrame.createDiv({ cls: 'ert-ai-inquiry-advisory-body' });
+        body.createDiv({
+            cls: 'ert-ai-inquiry-advisory-line',
+            text: `Current engine: ${context.resolvedEngine.providerLabel} · ${context.resolvedEngine.modelLabel}`
+        });
+        body.createDiv({
+            cls: 'ert-ai-inquiry-advisory-line',
+            text: `Corpus estimate: ${formatApproxTokens(context.corpus.estimatedInputTokens)} tokens · ${formatExpectedPassCopy(context.corpus.expectedPassCount)}`
+        });
+        body.createDiv({
+            cls: 'ert-ai-inquiry-advisory-line',
+            text: `Suggestion: ${context.recommendation.providerLabel} · ${context.recommendation.modelLabel}`
+        });
+        body.createDiv({
+            cls: 'ert-ai-inquiry-advisory-line ert-ai-inquiry-advisory-line--reason',
+            text: context.recommendation.message
+        });
+    };
+
+    renderInquiryAdvisoryBanner(plugin.getInquiryAdvisoryHandoffContext());
 
     const resolvedPreviewFrame = quickSetupPreviewSection.createDiv({
         cls: [ERT_CLASSES.PREVIEW_FRAME, ERT_CLASSES.STACK, 'ert-previewFrame--center', 'ert-previewFrame--flush', 'ert-ai-resolved-preview'],
