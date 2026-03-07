@@ -88,6 +88,7 @@ import { getModelDisplayName } from '../utils/modelResolver';
 import { resolveInquiryEngine, type ResolvedInquiryEngine } from './services/inquiryModelResolver';
 import { buildInquirySourcesViewModel } from './services/inquirySources';
 import { computeInquiryAdvisoryContext, type InquiryAdvisoryContext } from './services/inquiryAdvisory';
+import type { InquiryEstimateSnapshot } from './services/inquiryEstimateSnapshot';
 import { addTooltipData, setupTooltipsFromDataAttributes } from '../utils/tooltip';
 import { splitIntoBalancedLinesOptimal } from '../utils/text';
 import { classifySynopsis, type SynopsisQuality } from '../sceneAnalysis/synopsisQuality';
@@ -848,8 +849,6 @@ type InquiryPayloadStats = {
     evidenceChars: number;
     resolvedRoots: string[];
     manifestFingerprint: string;
-    tokenEstimate?: InquiryRunTrace['tokenEstimate'];
-    tokenEstimateQuestion?: string;
 };
 
 type RgbColor = {
@@ -951,6 +950,7 @@ type EngineFailureGuidance = {
     message: string;
 };
 type InquiryReadinessUiState = {
+    pending: boolean;
     readiness: InquiryReadinessResult;
     estimateInputTokens: number;
     estimateMethod: TokenEstimateMethod;
@@ -1098,7 +1098,6 @@ export class InquiryView extends ItemView {
     private previewShimmerMaskRect?: SVGRectElement;
     private previewPanelHeight = 0;
     private payloadStats?: InquiryPayloadStats;
-    private payloadEstimateRequestId = 0;
     private duplicatePulseTimer?: number;
     private rehydratePulseTimer?: number;
     private rehydrateHighlightTimer?: number;
@@ -1661,11 +1660,10 @@ export class InquiryView extends ItemView {
         this.enginePanelListEl.empty();
 
         const engine = this.getResolvedEngine();
-        const contextQuestion = this.getEngineContextQuestion() ?? this.getCurrentPromptQuestion();
-        const payloadSummary = this.buildEnginePayloadSummary(contextQuestion);
-        const readinessUi = this.buildReadinessUiState(contextQuestion);
+        const payloadSummary = this.buildEnginePayloadSummary();
+        const readinessUi = this.buildReadinessUiState();
         this.lastReadinessUiState = readinessUi;
-        const advisoryContext = this.buildInquiryAdvisoryContext(readinessUi, payloadSummary.inputTokens, contextQuestion);
+        const advisoryContext = this.buildInquiryAdvisoryContext(readinessUi);
         this.lastEngineAdvisoryContext = advisoryContext;
 
         const failureGuidance = this.getEngineFailureGuidance();
@@ -1794,44 +1792,48 @@ export class InquiryView extends ItemView {
         return activeQuestion ?? null;
     }
 
-    private buildEnginePayloadSummary(questionText: string | null): {
+    private buildEnginePayloadSummary(): {
         text: string;
         inputTokens: number;
         tier: TokenTier;
-        hasQuestion: boolean;
     } {
-        const trimmedQuestion = questionText?.trim() ?? '';
-        const hasQuestion = Boolean(trimmedQuestion);
-        const estimate = this.getTokenEstimateForQuestion(trimmedQuestion);
-        const inputLabel = this.formatTokenEstimate(estimate.inputTokens);
+        const snapshot = this.plugin.getInquiryEstimateService().getSnapshot();
         const scopeLabel = this.state.scope === 'saga' ? 'Saga' : 'Book';
         const targetLabel = this.getFocusBookLabel();
         const contextLabel = `${scopeLabel} ${targetLabel}`;
+        if (!snapshot) {
+            return {
+                text: `Payload (${contextLabel}): Estimating…`,
+                inputTokens: 0,
+                tier: 'normal'
+            };
+        }
+        const inputLabel = this.formatTokenEstimate(snapshot.estimate.estimatedInputTokens);
         return {
             text: `Payload (${contextLabel}): ~${inputLabel} in`,
-            inputTokens: estimate.inputTokens,
-            tier: this.getTokenTier(estimate.inputTokens),
-            hasQuestion
+            inputTokens: snapshot.estimate.estimatedInputTokens,
+            tier: this.getTokenTier(snapshot.estimate.estimatedInputTokens)
         };
     }
 
     private buildInquiryAdvisoryContext(
-        readinessUi: InquiryReadinessUiState,
-        estimatedInputTokens: number,
-        questionText: string | null
+        readinessUi: InquiryReadinessUiState
     ): InquiryAdvisoryContext | null {
+        if (readinessUi.pending) return null;
+        const snapshot = this.plugin.getInquiryEstimateService().getSnapshot();
+        if (!snapshot) return null;
+
         const engine = this.getResolvedEngine();
         const currentModel = readinessUi.model
             ?? BUILTIN_MODELS.find(model => model.provider === engine.provider && model.id === engine.modelId)
             ?? null;
         if (!currentModel) return null;
 
-        const payloadStats = this.getPayloadStats();
         const advancedContext = getLastAiAdvancedContext(this.plugin, 'InquiryMode');
-        const corpusFingerprint = payloadStats.manifestFingerprint || this.state.corpusFingerprint || 'unknown';
+        const corpusFingerprint = snapshot.corpus.corpusFingerprint || this.state.corpusFingerprint || 'unknown';
         const corpusFingerprintReused = advancedContext?.reuseState === 'warm';
         const overrideSummary = this.getCorpusOverrideSummary();
-        const normalizedQuestion = questionText?.trim() ?? '';
+        const estimatedInputTokens = snapshot.estimate.estimatedInputTokens;
         const advisoryInputKey = [
             this.state.scope,
             this.getFocusLabel(),
@@ -1846,8 +1848,7 @@ export class InquiryView extends ItemView {
             overrideSummary.classCount,
             overrideSummary.itemCount,
             overrideSummary.total,
-            corpusFingerprintReused ? 1 : 0,
-            normalizedQuestion.toLowerCase()
+            corpusFingerprintReused ? 1 : 0
         ].join('|');
         if (this.lastEngineAdvisoryInputKey === advisoryInputKey) {
             return this.lastEngineAdvisoryContext;
@@ -1866,7 +1867,6 @@ export class InquiryView extends ItemView {
             estimateUncertaintyTokens: readinessUi.estimateUncertaintyTokens,
             corpusFingerprint,
             corpusFingerprintReused,
-            questionText: normalizedQuestion,
             overrideSummary,
             previousContext: this.lastEngineAdvisoryContext
         });
@@ -1910,24 +1910,56 @@ export class InquiryView extends ItemView {
         return 1;
     }
 
-    private buildReadinessUiState(questionText: string | null): InquiryReadinessUiState {
+    private buildReadinessUiState(): InquiryReadinessUiState {
+        const snapshot = this.plugin.getInquiryEstimateService().getSnapshot();
         const aiSettings = this.getCanonicalAiSettings();
         const engine = this.getResolvedEngine();
         const provider = engine.provider === 'none' ? 'openai' as const : engine.provider;
         const engineProvider = mapAiProviderToLegacyProvider(provider) as EngineProvider;
         const providerLabel = engine.providerLabel;
         const hasCredential = this.getProviderAvailability(engineProvider).enabled;
-        const question = (questionText || '').trim();
-        const tokenEstimate = this.getTokenEstimateForQuestion(question);
-        const estimateInputTokens = tokenEstimate.inputTokens;
-        const estimateMethod: TokenEstimateMethod = tokenEstimate.estimationMethod ?? 'heuristic_chars';
+
+        // If snapshot is not yet available, return a pending state.
+        if (!snapshot) {
+            const stats = this.getPayloadStats();
+            const selectedSceneOverrides = this.getSelectedSceneOverrideEntries();
+            return {
+                pending: true,
+                readiness: evaluateInquiryReadiness({
+                    hasEligibleModel: false,
+                    hasCredential,
+                    analysisPackaging: aiSettings.analysisPackaging,
+                    estimatedInputTokens: 0,
+                    safeInputBudget: 0,
+                    estimateUncertaintyTokens: 0
+                }),
+                estimateInputTokens: 0,
+                estimateMethod: 'heuristic_chars',
+                estimateUncertaintyTokens: 0,
+                safeInputBudget: 0,
+                outputBudget: INQUIRY_MAX_OUTPUT_TOKENS,
+                packaging: aiSettings.analysisPackaging,
+                hasEligibleModel: false,
+                hasCredential,
+                provider,
+                providerLabel,
+                reason: 'Estimating…',
+                runScopeLabel: this.buildRunScopeLabel(stats, selectedSceneOverrides.length),
+                canSwitchToSummaries: false,
+                canUseSelectedScenesOnly: false
+            };
+        }
+
+        const estimateInputTokens = snapshot.estimate.estimatedInputTokens;
+        const estimateMethod: TokenEstimateMethod = snapshot.estimate.estimationMethod;
+        const effectiveInputCeiling = snapshot.estimate.effectiveInputCeiling;
         let hasEligibleModel = false;
         let reason = 'Fits safely - single pass.';
         let safeInputBudget = 0;
         let outputBudget = INQUIRY_MAX_OUTPUT_TOKENS;
         let model: ModelInfo | undefined;
-        const preparedSafeBudget = Number.isFinite(tokenEstimate.effectiveInputCeiling)
-            ? Math.max(0, Math.floor(tokenEstimate.effectiveInputCeiling as number))
+        const preparedSafeBudget = Number.isFinite(effectiveInputCeiling)
+            ? Math.max(0, Math.floor(effectiveInputCeiling))
             : 0;
         if (preparedSafeBudget > 0) {
             safeInputBudget = preparedSafeBudget;
@@ -1951,14 +1983,14 @@ export class InquiryView extends ItemView {
                 safeInputBudget = Math.floor(caps.maxInputTokens * INPUT_TOKEN_GUARD_FACTOR);
                 outputBudget = caps.maxOutputTokens;
             } else {
-                outputBudget = tokenEstimate.outputTokens || outputBudget;
+                outputBudget = snapshot.estimate.maxOutputTokens || outputBudget;
             }
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
             reason = message || 'No model satisfies capability floor.';
         }
-        const estimateUncertaintyBudget = Number.isFinite(tokenEstimate.uncertaintyTokens)
-            ? Math.max(0, Math.floor(tokenEstimate.uncertaintyTokens as number))
+        const estimateUncertaintyBudget = Number.isFinite(snapshot.estimate.uncertaintyTokens)
+            ? Math.max(0, Math.floor(snapshot.estimate.uncertaintyTokens))
             : estimateUncertaintyTokens(estimateMethod, safeInputBudget);
 
         const readiness = evaluateInquiryReadiness({
@@ -1972,7 +2004,7 @@ export class InquiryView extends ItemView {
 
         const canSwitchToSummaries = this.hasAnyBodyEvidence()
             && safeInputBudget > 0
-            && this.estimateSummaryOnlyTokens(question) <= safeInputBudget;
+            && this.estimateSummaryOnlyTokens('') <= safeInputBudget;
         const selectedSceneOverrides = this.getSelectedSceneOverrideEntries();
         const stats = this.getPayloadStats();
         const canUseSelectedScenesOnly = this.state.scope === 'book'
@@ -1990,6 +2022,7 @@ export class InquiryView extends ItemView {
         }
 
         return {
+            pending: false,
             readiness,
             estimateInputTokens,
             estimateMethod,
@@ -3800,6 +3833,7 @@ export class InquiryView extends ItemView {
         this.updateBriefingButtonState();
         this.refreshBriefingPanel();
         this.updateGuidance();
+        void this.requestEstimateSnapshot();
     }
 
     private refreshCorpus(): void {
@@ -3918,7 +3952,7 @@ export class InquiryView extends ItemView {
         const tooltip = `AI Engine · ${providerLabel} · ${modelLabel}`;
         this.engineBadgeGroup.setAttribute('aria-label', tooltip);
         if (this.enginePanelMetaEl) {
-            const payloadSummary = this.buildEnginePayloadSummary(this.getEngineContextQuestion());
+            const payloadSummary = this.buildEnginePayloadSummary();
             this.enginePanelMetaEl.setText(`Active: ${providerLabel} · ${modelLabel} · ${payloadSummary.text}`);
         }
         this.syncEngineBadgePulse();
@@ -3927,7 +3961,7 @@ export class InquiryView extends ItemView {
 
     private syncEngineBadgePulse(): void {
         if (!this.engineBadgeGroup) return;
-        const readinessUi = this.buildReadinessUiState(this.getEngineContextQuestion() ?? this.getCurrentPromptQuestion());
+        const readinessUi = this.buildReadinessUiState();
         const hasError = this.isErrorState();
         const red = hasError
             || readinessUi.readiness.state === 'blocked'
@@ -4443,8 +4477,7 @@ export class InquiryView extends ItemView {
 
     private updateMinimapPressureGauge(): void {
         if (!this.minimapBackboneGroup || !this.minimapBaseline || this.state.isRunning) return;
-        const question = this.getEngineContextQuestion() ?? this.getCurrentPromptQuestion();
-        const readinessUi = this.buildReadinessUiState(question);
+        const readinessUi = this.buildReadinessUiState();
         this.lastReadinessUiState = readinessUi;
 
         const ratio = Math.max(0, readinessUi.readiness.pressureRatio);
@@ -7147,10 +7180,7 @@ export class InquiryView extends ItemView {
         }
 
         if (!options?.bypassTokenGuard) {
-            await this.requestPayloadEstimate(question.question, {
-                questionZone: question.zone
-            });
-            const readinessUi = this.buildReadinessUiState(question.question);
+            const readinessUi = this.buildReadinessUiState();
             this.lastReadinessUiState = readinessUi;
             if (readinessUi.readiness.state === 'blocked') {
                 this.pendingGuardQuestion = question;
@@ -7209,9 +7239,11 @@ export class InquiryView extends ItemView {
             result.submittedAt = submittedAt.toISOString();
             result.completedAt = completedAt.toISOString();
             result.roundTripMs = completedAt.getTime() - submittedAt.getTime();
-            const tokenEstimate = runTrace?.tokenEstimate ?? this.getTokenEstimateForQuestion(question.question);
-            result.tokenEstimateInput = tokenEstimate.inputTokens;
-            result.tokenEstimateTier = this.getTokenTier(tokenEstimate.inputTokens);
+            const traceTokens = runTrace?.tokenEstimate;
+            const snapshotTokens = this.plugin.getInquiryEstimateService().getSnapshot()?.estimate;
+            const estimatedInputTokens = traceTokens?.inputTokens ?? snapshotTokens?.estimatedInputTokens ?? 0;
+            result.tokenEstimateInput = estimatedInputTokens;
+            result.tokenEstimateTier = this.getTokenTier(estimatedInputTokens);
             result.aiModelNextRunOnly = false; // Legacy field — always false.
             result = this.applyCorpusOverrideSummary(result);
             const rawResult = result;
@@ -7698,7 +7730,9 @@ export class InquiryView extends ItemView {
         submittedAt: Date;
         completedAt: Date;
     }): Promise<{ session: InquirySession; briefPath?: string; normalized: InquiryResult }> {
-        const tokenEstimate = options.trace?.tokenEstimate ?? this.getTokenEstimateForQuestion(options.question.question);
+        const traceTokens = options.trace?.tokenEstimate;
+        const snapshotTokens = this.plugin.getInquiryEstimateService().getSnapshot()?.estimate;
+        const fallbackInputTokens = traceTokens?.inputTokens ?? snapshotTokens?.estimatedInputTokens ?? 0;
         const timedResult: InquiryResult = {
             ...options.result,
             questionId: options.result.questionId || options.question.id,
@@ -7710,10 +7744,10 @@ export class InquiryView extends ItemView {
         };
         this.applyCorpusOverrideSummary(timedResult);
         if (typeof timedResult.tokenEstimateInput !== 'number') {
-            timedResult.tokenEstimateInput = tokenEstimate.inputTokens;
+            timedResult.tokenEstimateInput = fallbackInputTokens;
         }
         if (!timedResult.tokenEstimateTier) {
-            timedResult.tokenEstimateTier = this.getTokenTier(tokenEstimate.inputTokens);
+            timedResult.tokenEstimateTier = this.getTokenTier(fallbackInputTokens);
         }
         if (typeof timedResult.aiModelNextRunOnly !== 'boolean') {
             timedResult.aiModelNextRunOnly = false;
@@ -8533,9 +8567,10 @@ export class InquiryView extends ItemView {
             result.submittedAt = submittedAt.toISOString();
             result.completedAt = completedAt.toISOString();
             result.roundTripMs = completedAt.getTime() - submittedAt.getTime();
-            const tokenEstimate = this.getTokenEstimateForQuestion(selectedPrompt.question);
-            result.tokenEstimateInput = tokenEstimate.inputTokens;
-            result.tokenEstimateTier = this.getTokenTier(tokenEstimate.inputTokens);
+            const simSnapshot = this.plugin.getInquiryEstimateService().getSnapshot();
+            const simInputTokens = simSnapshot?.estimate.estimatedInputTokens ?? 0;
+            result.tokenEstimateInput = simInputTokens;
+            result.tokenEstimateTier = this.getTokenTier(simInputTokens);
             result.aiModelNextRunOnly = false;
             result = this.applyCorpusOverrideSummary(result);
             const rawResult = result;
@@ -9390,81 +9425,76 @@ export class InquiryView extends ItemView {
         this.previewLast = { zone, question };
         this.updatePromptPreview(zone, mode, question, undefined, undefined, { hideEmpty: true });
         this.previewGroup.classList.add('is-visible');
-        this.lastReadinessUiState = this.buildReadinessUiState(question);
+        this.lastReadinessUiState = this.buildReadinessUiState();
         this.updateMinimapPressureGauge();
-        void this.requestPayloadEstimate(question);
     }
 
-    private async requestPayloadEstimate(
-        questionText: string,
-        options?: { questionZone?: InquiryZone }
-    ): Promise<void> {
-        if (!questionText) return;
-        const requestedZone = options?.questionZone ?? this.previewLast?.zone ?? 'setup';
-        const manifest = this.buildCorpusManifest('payload-preview', {
-            questionZone: requestedZone
+    /**
+     * Request an estimate snapshot from the service.
+     *
+     * This is the single entry point for triggering an estimate rebuild.
+     * Called on scope change, focus book change, engine change, corpus
+     * override toggle, vault file change, and view open.
+     *
+     * While the snapshot is building, UI shows "Estimating…" via the
+     * pending flag in buildReadinessUiState().
+     */
+    private async requestEstimateSnapshot(): Promise<void> {
+        const stats = this.getPayloadStats();
+        const engine = this.getResolvedEngine();
+        const overrides = this.getCorpusOverrideSummary();
+        const manifest = this.buildCorpusManifest('estimate-snapshot');
+
+        this.refreshEstimateDisplays(); // Shows "Estimating…" if snapshot is null
+
+        const service = this.plugin.getInquiryEstimateService();
+        const snapshot = await service.requestSnapshot({
+            scope: this.state.scope,
+            focusBookId: this.state.focusBookId ?? this.corpus?.books?.[0]?.id,
+            focusSceneId: this.state.scope === 'book' ? this.state.focusSceneId : undefined,
+            focusLabel: this.getFocusLabel(),
+            manifest,
+            payloadStats: {
+                sceneCount: stats.sceneTotal,
+                outlineCount: stats.bookOutlineCount + stats.sagaOutlineCount,
+                referenceCount: stats.referenceCounts.total,
+                evidenceChars: stats.evidenceChars
+            },
+            runner: this.runner,
+            engine,
+            overrideSummary: overrides,
+            rules: this.getEvidenceRules(),
+            mode: this.state.mode,
         });
-        const requestedScope = this.state.scope;
-        const requestedFocusBookId = this.state.focusBookId ?? this.corpus?.books?.[0]?.id;
-        const currentStats = this.payloadStats
-            && this.payloadStats.manifestFingerprint === manifest.fingerprint
-            && this.payloadStats.scope === requestedScope
-            && this.payloadStats.focusBookId === requestedFocusBookId
-            ? this.payloadStats
-            : this.buildPayloadStats();
-        if (this.payloadStats !== currentStats) {
-            this.payloadStats = currentStats;
-        }
-        if (currentStats.tokenEstimate && currentStats.tokenEstimateQuestion === questionText) {
-            return;
-        }
 
-        const requestId = ++this.payloadEstimateRequestId;
-        try {
-            const trace = await this.runner.buildTrace({
-                scope: requestedScope,
-                focusLabel: this.getFocusLabel(),
-                focusSceneId: requestedScope === 'book' ? this.state.focusSceneId : undefined,
-                focusBookId: requestedFocusBookId,
-                mode: this.state.mode,
-                questionId: 'payload-preview',
-                questionText,
-                questionZone: requestedZone,
-                corpus: manifest,
-                rules: this.getEvidenceRules(),
-                ai: {
-                    provider: mapAiProviderToLegacyProvider(this.getResolvedEngine().provider),
-                    modelId: this.getResolvedEngine().modelId,
-                    modelLabel: this.getResolvedEngine().modelLabel
-                }
-            });
-            if (requestId !== this.payloadEstimateRequestId) return;
-            const latestFocusBookId = this.state.focusBookId ?? this.corpus?.books?.[0]?.id;
-            if (this.state.scope !== requestedScope) return;
-            if (requestedScope === 'book' && latestFocusBookId !== requestedFocusBookId) return;
-            const latestStats = this.payloadStats
-                && this.payloadStats.manifestFingerprint === manifest.fingerprint
-                && this.payloadStats.scope === requestedScope
-                && this.payloadStats.focusBookId === requestedFocusBookId
-                ? this.payloadStats
-                : this.buildPayloadStats();
-            if (latestStats.manifestFingerprint !== manifest.fingerprint) return;
-            this.payloadStats = {
-                ...latestStats,
-                // Keep heuristic evidenceChars — trace length is smaller and contaminates subsequent estimates.
-                tokenEstimate: trace.tokenEstimate,
-                tokenEstimateQuestion: questionText
-            };
+        if (!snapshot) return; // stale or failed
+        this.refreshEstimateDisplays(); // Renders once with final values
+    }
 
-            // Refresh UI with the precise estimate if the preview is still showing this question.
-            if (this.previewLast?.question === questionText
-                && this.previewGroup?.classList.contains('is-visible')
-                && !this.previewLocked) {
-                this.updatePromptPreview(this.previewLast.zone, this.state.mode, questionText, undefined, undefined, { hideEmpty: true });
-                this.updateMinimapPressureGauge();
-            }
-        } catch {
-            // Ignore preview estimate failures; fallback estimates remain.
+    /**
+     * Refresh all estimate-consuming UI elements from the service snapshot.
+     *
+     * Reads the snapshot (or null) and updates:
+     *   - Engine panel (readiness strip, popover)
+     *   - Minimap pressure gauge
+     *   - Preview panel pills (if visible)
+     */
+    private refreshEstimateDisplays(): void {
+        this.updateMinimapPressureGauge();
+        if (this.enginePanelEl && !this.enginePanelEl.classList.contains('ert-hidden')) {
+            this.refreshEnginePanel();
+        }
+        if (!this.previewLocked
+            && this.previewGroup?.classList.contains('is-visible')
+            && this.previewLast) {
+            this.updatePromptPreview(
+                this.previewLast.zone,
+                this.state.mode,
+                this.previewLast.question,
+                undefined,
+                undefined,
+                { hideEmpty: true }
+            );
         }
     }
 
@@ -9524,7 +9554,7 @@ export class InquiryView extends ItemView {
     }
 
     private estimateRunDurationRange(questionText: string): { minSeconds: number; maxSeconds: number } {
-        const readinessUi = this.buildReadinessUiState(questionText);
+        const readinessUi = this.buildReadinessUiState();
         const passPlan = this.getCurrentPassPlan(readinessUi);
         const estimatedTokens = Math.max(0, readinessUi.estimateInputTokens || 0);
         const totalPasses = Math.max(1, passPlan.displayPassCount || 1);
@@ -9634,7 +9664,7 @@ export class InquiryView extends ItemView {
             + PREVIEW_META_GAP
             + PREVIEW_META_LINE_HEIGHT
             + PREVIEW_DETAIL_GAP;
-        const rows = rowsOverride ?? this.getPreviewPayloadRows(question);
+        const rows = rowsOverride ?? this.getPreviewPayloadRows();
 
         const rowCount = this.layoutPreviewPills(detailStartY, rows, layoutOptions);
         const rowsBlockHeight = rowCount
@@ -9649,7 +9679,7 @@ export class InquiryView extends ItemView {
         if (this.previewShimmerGroup) {
             this.updatePreviewShimmerText();
         }
-        this.syncTokensPillState(question);
+        this.syncTokensPillState();
         if (this.enginePanelEl && !this.enginePanelEl.classList.contains('ert-hidden')) {
             this.refreshEnginePanel();
         }
@@ -10082,7 +10112,7 @@ export class InquiryView extends ItemView {
             window.clearTimeout(this.previewHideTimer);
             this.previewHideTimer = undefined;
         }
-        const rows = this.getPreviewPayloadRows(question.question);
+        const rows = this.getPreviewPayloadRows();
         this.previewLocked = true;
         this.previewGroup.classList.add('is-visible', 'is-locked');
         this.previewGroup.classList.remove('is-results');
@@ -10091,7 +10121,7 @@ export class InquiryView extends ItemView {
         this.resetPreviewRowLabels();
         this.setPreviewFooterText('Click panel to cancel.');
         this.updatePromptPreview(question.zone, this.state.mode, question.question, rows, undefined, { hideEmpty: true });
-        this.lastReadinessUiState = this.buildReadinessUiState(question.question);
+        this.lastReadinessUiState = this.buildReadinessUiState();
         this.updateMinimapPressureGauge();
     }
 
@@ -10175,7 +10205,7 @@ export class InquiryView extends ItemView {
         row.text.appendChild(detail);
     }
 
-    private syncTokensPillState(questionText: string): void {
+    private syncTokensPillState(): void {
         if (!this.previewRows.length) return;
         this.previewRows.forEach(row => {
             row.group.classList.remove('is-token-amber', 'is-token-red');
@@ -10188,7 +10218,6 @@ export class InquiryView extends ItemView {
         if (this.previewGroup?.classList.contains('is-results')) return;
         const tokensRow = this.previewRows.find(row => row.group.classList.contains('is-tokens-slot'));
         if (!tokensRow) return;
-        if (!questionText) return;
     }
 
     private pickPillSplit(widths: number[], maxWidth: number): number {
@@ -10314,7 +10343,6 @@ export class InquiryView extends ItemView {
                 undefined,
                 { hideEmpty: true }
             );
-            void this.requestPayloadEstimate(this.previewLast.question);
         }
     }
 
@@ -10382,9 +10410,7 @@ export class InquiryView extends ItemView {
             referenceByClass: referenceStats.byClass,
             evidenceChars,
             resolvedRoots: manifest.resolvedRoots,
-            manifestFingerprint: manifest.fingerprint,
-            tokenEstimate: priorStats?.tokenEstimate,
-            tokenEstimateQuestion: priorStats?.tokenEstimateQuestion
+            manifestFingerprint: manifest.fingerprint
         };
     }
 
@@ -10529,13 +10555,13 @@ export class InquiryView extends ItemView {
         return String(raw).trim();
     }
 
-    private getPreviewPayloadRows(questionText: string): string[] {
+    private getPreviewPayloadRows(): string[] {
         return [
             this.getPreviewScopeValue(),
             this.getPreviewScenesValue(),
             this.getPreviewOutlinesValue(),
             this.getPreviewModelValue(),
-            this.getPreviewTokensValue(questionText)
+            this.getPreviewTokensValue()
         ];
     }
 
@@ -10572,30 +10598,12 @@ export class InquiryView extends ItemView {
         return `Model · ${this.getResolvedEngine().modelLabel}`;
     }
 
-    private getPreviewTokensValue(questionText: string): string {
-        const estimate = this.getTokenEstimateForQuestion(questionText);
-        return `Tokens · ~${this.formatTokenEstimate(estimate.inputTokens)}`;
+    private getPreviewTokensValue(): string {
+        const snapshot = this.plugin.getInquiryEstimateService().getSnapshot();
+        if (!snapshot) return 'Tokens · Estimating…';
+        return `Tokens · ~${this.formatTokenEstimate(snapshot.estimate.estimatedInputTokens)}`;
     }
 
-    private getTokenEstimateForQuestion(questionText: string): InquiryRunTrace['tokenEstimate'] {
-        const stats = this.getPayloadStats();
-        if (stats.tokenEstimate && stats.tokenEstimateQuestion === questionText) {
-            return stats.tokenEstimate;
-        }
-        const questionChars = questionText?.length ?? 0;
-        const inputChars = stats.evidenceChars + questionChars + INQUIRY_PROMPT_OVERHEAD_CHARS;
-        const inputTokens = this.estimateTokensFromChars(inputChars);
-        const outputTokens = INQUIRY_MAX_OUTPUT_TOKENS;
-        const totalTokens = inputTokens + outputTokens;
-        return {
-            inputTokens,
-            outputTokens,
-            totalTokens,
-            inputChars,
-            estimationMethod: 'heuristic_chars',
-            uncertaintyTokens: estimateUncertaintyTokens('heuristic_chars')
-        };
-    }
 
     private getTokenTier(inputTokens: number): TokenTier {
         if (inputTokens >= INQUIRY_INPUT_TOKENS_RED) return 'red';
@@ -10603,9 +10611,10 @@ export class InquiryView extends ItemView {
         return 'normal';
     }
 
-    private getTokenTierForQuestion(questionText: string): TokenTier {
-        const estimate = this.getTokenEstimateForQuestion(questionText);
-        return this.getTokenTier(estimate.inputTokens);
+    private getTokenTierFromSnapshot(): TokenTier {
+        const snapshot = this.plugin.getInquiryEstimateService().getSnapshot();
+        if (!snapshot) return 'normal';
+        return this.getTokenTier(snapshot.estimate.estimatedInputTokens);
     }
 
     private estimateTokensFromChars(chars: number): number {
@@ -11431,6 +11440,12 @@ export class InquiryView extends ItemView {
         lines.push(`- Actual usage: ${usageText}`);
         lines.push(`- Usage visibility: ${usageKnown ? 'known' : 'unknown'}`);
         lines.push(`- Tier: ${tokenTier ?? 'unknown'}`);
+        const logSnapshot = this.plugin.getInquiryEstimateService().getSnapshot();
+        if (logSnapshot) {
+            lines.push(`- Pre-run estimate: ${formatTokenCount(logSnapshot.estimate.estimatedInputTokens, true)} (${logSnapshot.estimate.estimationMethod})`);
+            lines.push(`- Safe ceiling: ${formatTokenCount(logSnapshot.estimate.effectiveInputCeiling)}`);
+            lines.push(`- Expected passes: ${logSnapshot.estimate.expectedPassCount}`);
+        }
         lines.push('');
 
         lines.push('## Execution');

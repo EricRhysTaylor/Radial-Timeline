@@ -15,6 +15,7 @@ import SynopsisManager from './SynopsisManager';
 import { RadialTimelineView } from './view/TimeLineView';
 import { InquiryView } from './inquiry/InquiryView';
 import { InquiryService } from './inquiry/InquiryService';
+import { InquiryEstimateService } from './inquiry/services/inquiryEstimateService';
 import { INQUIRY_VIEW_TYPE } from './inquiry/constants';
 import { RendererService } from './services/RendererService';
 import { RadialTimelineSettingsTab } from './settings/SettingsTab';
@@ -116,6 +117,7 @@ export default class RadialTimelinePlugin extends Plugin {
     // Services
     private timelineService!: TimelineService;
     private inquiryService!: InquiryService;
+    private inquiryEstimateService!: InquiryEstimateService;
     private sceneDataService!: SceneDataService;
     private searchService!: import('./services/SearchService').SearchService;
     private fileTrackingService!: import('./services/FileTrackingService').FileTrackingService;
@@ -268,6 +270,7 @@ export default class RadialTimelinePlugin extends Plugin {
         // Initialize services and managers
         this.timelineService = new TimelineService(this.app, this);
         this.inquiryService = new InquiryService(this.app, this);
+        this.inquiryEstimateService = new InquiryEstimateService();
         this.sceneDataService = new SceneDataService(this.app, this.settings);
         const { SearchService } = await import('./services/SearchService');
         const { FileTrackingService } = await import('./services/FileTrackingService');
@@ -361,6 +364,7 @@ export default class RadialTimelinePlugin extends Plugin {
     public getRendererService(): RendererService { return this.rendererService; }
     public getTimelineService(): TimelineService { return this.timelineService; }
     public getInquiryService(): InquiryService { return this.inquiryService; }
+    public getInquiryEstimateService(): InquiryEstimateService { return this.inquiryEstimateService; }
 
     private cloneInquiryAdvisoryContext(context: InquiryAdvisoryContext): InquiryAdvisoryContext {
         return JSON.parse(JSON.stringify(context)) as InquiryAdvisoryContext;

@@ -965,17 +965,32 @@ export function renderAiSection(params: {
         provider: AIProviderId;
         modelId: string;
     }): Promise<{ inquiry: FeatureForecast; gossamer: FeatureForecast }> => {
-        const inquiryEstimate = await estimateInquiryTokens({
-            plugin,
-            provider: engine?.provider,
-            modelId: engine?.modelId,
-            questionText: 'Analyze corpus-level flow and depth quality.',
-            vault: app.vault,
-            metadataCache: app.metadataCache,
-            inquirySources: plugin.settings.inquirySources,
-            frontmatterMappings: plugin.settings.frontmatterMappings,
-            scopeContext: { scope: 'book' }
-        });
+        // Prefer the shared estimate snapshot if InquiryView has been opened.
+        const snapshot = plugin.getInquiryEstimateService().getSnapshot();
+        let inquiryLabel: string;
+        let inquiryInputTokens: number;
+        if (snapshot) {
+            const scopeLabel = snapshot.scope === 'saga' ? 'Saga' : 'Book';
+            const countLabel = `${snapshot.corpus.sceneCount} scenes`;
+            inquiryLabel = `${scopeLabel} · ${countLabel}`;
+            inquiryInputTokens = snapshot.estimate.estimatedInputTokens;
+        } else {
+            // Cold-start fallback — InquiryView never opened.
+            const inquiryEstimate = await estimateInquiryTokens({
+                plugin,
+                provider: engine?.provider,
+                modelId: engine?.modelId,
+                questionText: 'Analyze corpus-level flow and depth quality.',
+                vault: app.vault,
+                metadataCache: app.metadataCache,
+                inquirySources: plugin.settings.inquirySources,
+                frontmatterMappings: plugin.settings.frontmatterMappings,
+                scopeContext: { scope: 'book' }
+            });
+            inquiryLabel = `${inquiryEstimate.selectionLabel} (${inquiryEstimate.evidenceLabel}) — approximate`;
+            inquiryInputTokens = inquiryEstimate.estimatedInputTokens;
+        }
+
         const gossamerPreference = getGossamerEvidencePreference();
         const gossamerEvidenceMode = gossamerPreference === 'summaries' ? 'summaries' : 'bodies';
         const gossamerEstimate = await estimateGossamerTokens({
@@ -988,8 +1003,8 @@ export function renderAiSection(params: {
 
         return {
             inquiry: {
-                label: `${inquiryEstimate.selectionLabel} (${inquiryEstimate.evidenceLabel})`,
-                estimatedInputTokens: inquiryEstimate.estimatedInputTokens,
+                label: inquiryLabel,
+                estimatedInputTokens: inquiryInputTokens,
             },
             gossamer: {
                 label: gossamerPreference === 'auto'

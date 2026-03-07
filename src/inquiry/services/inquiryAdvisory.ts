@@ -102,7 +102,7 @@ const PROVIDER_LABELS: Record<AIProviderId, string> = {
     none: 'Disabled'
 };
 
-function estimatePassCount(estimatedInputTokens: number, safeInputBudget: number): number {
+export function estimatePassCount(estimatedInputTokens: number, safeInputBudget: number): number {
     if (estimatedInputTokens <= 0) return 1;
     if (!Number.isFinite(safeInputBudget) || safeInputBudget <= 0) return 2;
     if (estimatedInputTokens <= safeInputBudget) return 1;
