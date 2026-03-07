@@ -7240,7 +7240,7 @@ export class InquiryView extends ItemView {
             this.sessionStore.setSession(session);
             const traceForLog = runTrace
                 ?? await this.buildFallbackTrace(runnerInput, 'Trace unavailable; log created without prompt capture.');
-            await this.saveInquiryLog(result, traceForLog, manifest, {
+            await this.saveInquiryLog(result, traceForLog, this.filterManifestForLog(manifest, this.state.scope, focusBookId), {
                 sessionKey: session.key,
                 normalizationNotes
             });
@@ -7743,7 +7743,7 @@ export class InquiryView extends ItemView {
         };
         this.sessionStore.setSession(session);
 
-        const logPath = await this.saveInquiryLog(normalized, options.trace, options.manifest, {
+        const logPath = await this.saveInquiryLog(normalized, options.trace, this.filterManifestForLog(options.manifest, normalized.scope, options.focusBookId), {
             sessionKey: session.key,
             normalizationNotes,
             silent: true
@@ -8556,7 +8556,7 @@ export class InquiryView extends ItemView {
             };
             this.sessionStore.setSession(session);
             const trace = await this.buildFallbackTrace(runnerInput, 'Simulated run: no provider call.');
-            await this.saveInquiryLog(result, trace, manifest, {
+            await this.saveInquiryLog(result, trace, this.filterManifestForLog(manifest, this.state.scope, focusBookId), {
                 sessionKey: session.key,
                 normalizationNotes
             });
@@ -11164,6 +11164,41 @@ export class InquiryView extends ItemView {
             const itemLabel = this.resolveManifestEntryLabel(entry);
             return `- ${classLabel} · ${modeLabel} · ${itemLabel} (${entry.path})`;
         });
+    }
+
+    /**
+     * Returns a copy of the manifest filtered to match the entries that
+     * buildEvidenceBlocks actually sends to the AI provider.
+     *
+     * For book scope with a focusBookId:
+     *   - Scenes: only entries whose path is within the focused book
+     *   - Outlines: only non-saga outlines whose path is within the focused book
+     *   - References: included regardless of path
+     *
+     * For saga scope or when focusBookId is absent: returns the manifest unchanged.
+     */
+    private filterManifestForLog(
+        manifest: CorpusManifest | null,
+        scope: InquiryScope,
+        focusBookId?: string
+    ): CorpusManifest | null {
+        if (!manifest || scope !== 'book' || !focusBookId) return manifest;
+
+        const isInFocusBook = (path: string): boolean =>
+            path === focusBookId || path.startsWith(`${focusBookId}/`);
+
+        const entries = manifest.entries.filter(entry => {
+            if (entry.class === 'scene') return isInFocusBook(entry.path);
+            if (entry.class === 'outline') return entry.scope !== 'saga' && isInFocusBook(entry.path);
+            return true;
+        });
+
+        const classCounts = entries.reduce<Record<string, number>>((acc, entry) => {
+            acc[entry.class] = (acc[entry.class] || 0) + 1;
+            return acc;
+        }, {}) as CorpusManifest['classCounts'];
+
+        return { ...manifest, entries, classCounts };
     }
 
     private buildInquiryLogContent(

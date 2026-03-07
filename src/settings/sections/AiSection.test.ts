@@ -43,6 +43,13 @@ describe('AI settings models table', () => {
         expect(source.includes('Best for')).toBe(false);
     });
 
+    it('renders a factual reasoning-depth comparator for known same-provider pairs', () => {
+        const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
+        expect(source.includes('resolveReasoningDepthComparator')).toBe(true);
+        expect(source.includes('Reasoning depth')).toBe(true);
+        expect(source.includes('GPT-5.4 < GPT-5.4 Pro')).toBe(true);
+    });
+
     it('keeps inquiry advisory hidden when no handoff context exists', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
         expect(source.includes('renderInquiryAdvisoryBanner(plugin.consumeInquiryAdvisoryHandoffContext());')).toBe(true);
@@ -61,8 +68,8 @@ describe('AI settings models table', () => {
         expect(source.includes('getPickerModelsForProvider')).toBe(true);
         expect(source.includes("selectLatestModelByReleaseChannel(BUILTIN_MODELS, 'openai', 'stable')")).toBe(true);
         expect(source.includes('formatOpenAiInternalPinnedLabel')).toBe(true);
-        expect(source.includes('gpt-5.4-2026-03-05')).toBe(false);
-        expect(source.includes('gpt-5.4-pro-2026-03-05')).toBe(false);
+        expect(source.includes("addOption('gpt-5.4-2026-03-05'")).toBe(false);
+        expect(source.includes("addOption('gpt-5.4-pro-2026-03-05'")).toBe(false);
     });
 
     it('renders Large Manuscript Handling section with execution preference controls', () => {

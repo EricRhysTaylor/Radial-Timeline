@@ -765,6 +765,15 @@ export function renderAiSection(params: {
         cls: 'ert-ai-resolved-preview-provider',
         text: 'Provider: —'
     });
+    const resolvedPreviewComparator = resolvedPreviewFrame.createDiv({
+        cls: 'ert-ai-resolved-preview-comparator ert-settings-hidden'
+    });
+    const resolvedPreviewComparatorLabel = resolvedPreviewComparator.createDiv({
+        cls: 'ert-ai-resolved-preview-comparator-label'
+    });
+    const resolvedPreviewComparatorValue = resolvedPreviewComparator.createDiv({
+        cls: 'ert-ai-resolved-preview-comparator-value'
+    });
     const resolvedPreviewPills = resolvedPreviewFrame.createDiv({ cls: 'ert-ai-resolved-preview-pills' });
     params.addAiRelatedElement(resolvedPreviewFrame);
 
@@ -858,6 +867,24 @@ export function renderAiSection(params: {
         }
     };
 
+    const resolveReasoningDepthComparator = (state: ResolvedPreviewRenderState): { label: string; value: string } | null => {
+        if (state.provider !== 'openai') return null;
+        const hasStandard = BUILTIN_MODELS.some(model => model.provider === 'openai' && model.alias === 'gpt-5.4');
+        const hasPro = BUILTIN_MODELS.some(model => model.provider === 'openai' && model.alias === 'gpt-5.4-pro');
+        if (!hasStandard || !hasPro) return null;
+
+        const inPair = state.modelAlias === 'gpt-5.4'
+            || state.modelAlias === 'gpt-5.4-pro'
+            || state.modelAlias === 'gpt-5.4-2026-03-05'
+            || state.modelAlias === 'gpt-5.4-pro-2026-03-05';
+        if (!inPair) return null;
+
+        return {
+            label: 'Reasoning depth',
+            value: 'GPT-5.4 < GPT-5.4 Pro'
+        };
+    };
+
     const renderResolvedPreview = (state: ResolvedPreviewRenderState): void => {
         resolvedPreviewState = state;
         activeResolvedPreviewKey = state.modelKey;
@@ -866,6 +893,18 @@ export function renderAiSection(params: {
         resolvedPreviewModel.setText(state.modelLabel);
         const providerDetail = `${providerLabel[state.provider]} · ${state.modelLabel}`;
         resolvedPreviewProvider.setText(providerDetail);
+
+        const comparator = resolveReasoningDepthComparator(state);
+        if (comparator) {
+            resolvedPreviewComparatorLabel.setText(comparator.label);
+            resolvedPreviewComparatorValue.setText(comparator.value);
+            resolvedPreviewComparator.toggleClass('ert-settings-hidden', false);
+        } else {
+            resolvedPreviewComparatorLabel.setText('');
+            resolvedPreviewComparatorValue.setText('');
+            resolvedPreviewComparator.toggleClass('ert-settings-hidden', true);
+        }
+
         const previewPills = [
             state.strategyPill,
             state.analysisPackaging === 'singlePassOnly' ? 'Single-pass only'
