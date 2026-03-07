@@ -131,8 +131,9 @@ const selectInquiryFiles = (
     vault: Vault,
     metadataCache: MetadataCache,
     inquirySources?: InquirySourcesSettings,
-    frontmatterMappings?: Record<string, string>
-): { files: TFile[]; selectionLabel: string } => {
+    frontmatterMappings?: Record<string, string>,
+    scopeFilter?: { scope: InquiryScope; focusBookId?: string }
+): { files: TFile[]; selectionLabel: string; resolvedFocusBookId?: string } => {
     const scanRoots = normalizeScanRootPatterns(inquirySources?.scanRoots);
     if (!scanRoots.length) {
         return { files: [], selectionLabel: 'No scan roots configured' };
@@ -149,14 +150,40 @@ const selectInquiryFiles = (
         frontmatterMappings,
         bookInclusion: inquirySources?.bookInclusion
     });
-    const files = vault.getMarkdownFiles().filter(file =>
+
+    let allFiles = vault.getMarkdownFiles().filter(file =>
         vaultRoots.some(root => !root || file.path === root || file.path.startsWith(`${root}/`))
         && isPathIncludedByInquiryBooks(file.path, bookResolution.candidates)
     );
+
+    // When scope is 'book', restrict files to a single focused book.
+    // Mirrors the filtering applied by buildEvidenceBlocks in InquiryRunnerService.
+    let resolvedFocusBookId: string | undefined;
+    if (scopeFilter?.scope === 'book') {
+        const includedBooks = bookResolution.candidates
+            .filter(candidate => candidate.included)
+            .sort((a, b) => {
+                const numA = a.bookNumber ?? Number.POSITIVE_INFINITY;
+                const numB = b.bookNumber ?? Number.POSITIVE_INFINITY;
+                if (numA !== numB) return numA - numB;
+                return a.rootPath.localeCompare(b.rootPath);
+            });
+        resolvedFocusBookId = scopeFilter.focusBookId
+            && includedBooks.some(book => book.rootPath === scopeFilter.focusBookId)
+            ? scopeFilter.focusBookId
+            : includedBooks[0]?.rootPath;
+
+        if (resolvedFocusBookId) {
+            allFiles = allFiles.filter(file =>
+                file.path === resolvedFocusBookId || file.path.startsWith(`${resolvedFocusBookId}/`)
+            );
+        }
+    }
+
     const selectionLabel = resolvedRoots.length
         ? `${resolvedRoots.length} scan root${resolvedRoots.length === 1 ? '' : 's'}`
         : 'No resolved scan roots';
-    return { files, selectionLabel };
+    return { files: allFiles, selectionLabel, resolvedFocusBookId };
 };
 
 export async function estimateInquiryTokens(params: {
@@ -168,7 +195,7 @@ export async function estimateInquiryTokens(params: {
     metadataCache: MetadataCache;
     inquirySources?: InquirySourcesSettings;
     frontmatterMappings?: Record<string, string>;
-    scopeContext?: { scope?: InquiryScope; label?: string };
+    scopeContext?: { scope?: InquiryScope; focusBookId?: string; label?: string };
     promptOverheadTokens?: number;
 }): Promise<InquiryTokenEstimate> {
     const scope: InquiryScope = params.scopeContext?.scope === 'saga' ? 'saga' : 'book';
@@ -179,7 +206,8 @@ export async function estimateInquiryTokens(params: {
         params.vault,
         params.metadataCache,
         params.inquirySources,
-        params.frontmatterMappings
+        params.frontmatterMappings,
+        { scope, focusBookId: params.scopeContext?.focusBookId }
     );
     const blocks: InquiryEvidenceBlock[] = [];
 
@@ -206,6 +234,14 @@ export async function estimateInquiryTokens(params: {
             if (!classScope.allowAll && !classScope.allowed.has(className)) continue;
             const config = classConfigMap.get(className);
             if (!config || !config.enabled) continue;
+
+            // Book scope excludes saga outlines — mirrors buildEvidenceBlocks filtering.
+            if (scope === 'book' && className === 'outline') {
+                const outlineScopeValue = typeof frontmatter['Scope'] === 'string'
+                    ? frontmatter['Scope'].trim().toLowerCase()
+                    : '';
+                if (outlineScopeValue === 'saga') continue;
+            }
 
             const mode = resolveInquiryModeForClass(className, config, scope, frontmatter);
             const normalizedMode = normalizeMode(mode, className);
