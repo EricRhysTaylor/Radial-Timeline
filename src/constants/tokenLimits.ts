@@ -8,7 +8,7 @@
  * room for thinking/reasoning tokens in thinking models.
  */
 
-// Known max output token limits per provider (as of Dec 2025)
+// Known max output token limits per provider (as of Mar 2026)
 // These should be updated when providers increase limits
 export const PROVIDER_MAX_OUTPUT_TOKENS = {
     // Gemini 3 Pro: 65,536 (from API)
@@ -19,9 +19,8 @@ export const PROVIDER_MAX_OUTPUT_TOKENS = {
     // Extended thinking models use separate "thinking" budget
     anthropic: 16000,
     
-    // GPT-5.x: 16,384 for most models
-    // Reasoning tokens counted separately in o-series
-    openai: 16000,
+    // GPT-5.4 / GPT-5.4 Pro: up to 128,000 output tokens
+    openai: 128000,
     
     // Local LLMs vary widely, use conservative default
     local: 4000,
@@ -32,4 +31,3 @@ export const PROVIDER_MAX_OUTPUT_TOKENS = {
 export function getSceneAnalysisTokenLimit(provider: 'anthropic' | 'openai' | 'gemini' | 'local'): number {
     return PROVIDER_MAX_OUTPUT_TOKENS[provider];
 }
-

@@ -1,4 +1,5 @@
 import type { Capability, ModelInfo, ModelSelectionRequest, ModelSelectionResult } from '../types';
+import { compareNewestModels, selectLatestModelByReleaseChannel } from '../registry/releaseChannels';
 
 function hasCapabilities(model: ModelInfo, required: Capability[]): boolean {
     return required.every(cap => model.capabilities.includes(cap));
@@ -18,30 +19,35 @@ function inferLine(model: ModelInfo): string {
     return `${model.provider}:${model.alias}`;
 }
 
-function releasedAtRank(model: ModelInfo): number {
-    if (!model.releasedAt) return Number.NEGATIVE_INFINITY;
-    const parsed = Date.parse(model.releasedAt);
-    return Number.isFinite(parsed) ? parsed : Number.NEGATIVE_INFINITY;
-}
-
-function compareNewest(a: ModelInfo, b: ModelInfo): number {
-    const releasedAtDelta = releasedAtRank(b) - releasedAtRank(a);
-    if (releasedAtDelta !== 0) return releasedAtDelta;
-    return b.alias.localeCompare(a.alias);
-}
-
-function selectLatestStable(eligible: ModelInfo[]): ModelInfo {
+function selectLatestStable(eligible: ModelInfo[], request: ModelSelectionRequest): ModelInfo {
     const stable = eligible.filter(model => model.status === 'stable');
     const pool = stable.length ? stable : eligible;
+
+    if (request.provider === 'openai') {
+        const stableChannel = selectLatestModelByReleaseChannel(pool, 'openai', 'stable');
+        if (stableChannel) return stableChannel;
+    }
+
+    if (!pool.length) {
+        throw new Error(`No latest-stable model available for provider ${request.provider}.`);
+    }
+
     const newestPerLine = new Map<string, ModelInfo>();
     for (const model of pool) {
         const line = inferLine(model);
         const current = newestPerLine.get(line);
-        if (!current || compareNewest(model, current) < 0) {
+        if (!current || compareNewestModels(model, current) < 0) {
             newestPerLine.set(line, model);
         }
     }
-    return Array.from(newestPerLine.values()).sort(compareNewest)[0];
+    return Array.from(newestPerLine.values()).sort(compareNewestModels)[0];
+}
+
+function selectLatestPro(eligible: ModelInfo[], request: ModelSelectionRequest): ModelInfo | null {
+    if (request.provider !== 'openai') return null;
+    const stable = eligible.filter(model => model.status === 'stable');
+    const pool = stable.length ? stable : eligible;
+    return selectLatestModelByReleaseChannel(pool, 'openai', 'pro') ?? null;
 }
 
 export function selectModel(models: ModelInfo[], request: ModelSelectionRequest): ModelSelectionResult {
@@ -52,7 +58,7 @@ export function selectModel(models: ModelInfo[], request: ModelSelectionRequest)
         throw new Error(`No model satisfies capability floor for provider ${request.provider}.`);
     }
 
-    const fallback = selectLatestStable(eligible);
+    const fallback = selectLatestStable(eligible, request);
 
     if (request.policy.type === 'pinned') {
         const pinnedAlias = request.policy.pinnedAlias;
@@ -78,7 +84,20 @@ export function selectModel(models: ModelInfo[], request: ModelSelectionRequest)
         };
     }
 
-    const selected = selectLatestStable(eligible);
+    if (request.policy.type === 'latestPro') {
+        const latestPro = selectLatestPro(eligible, request);
+        if (latestPro) {
+            return {
+                provider: request.provider,
+                model: latestPro,
+                warnings,
+                reason: `Auto selected latest pro model in line ${inferLine(latestPro)}: ${latestPro.alias}.`
+            };
+        }
+        warnings.push(`No pro-lane model available for provider ${request.provider}; fallback to latest stable.`);
+    }
+
+    const selected = selectLatestStable(eligible, request);
     return {
         provider: request.provider,
         model: selected,

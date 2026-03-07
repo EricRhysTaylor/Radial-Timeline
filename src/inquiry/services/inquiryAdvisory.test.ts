@@ -60,7 +60,7 @@ describe('computeInquiryAdvisoryContext', () => {
 
         expect(advisory).not.toBeNull();
         expect(advisory?.recommendation.reasonCode).toBe('single_pass_preferred');
-        expect(advisory?.recommendation.provider).toBe('google');
+        expect(advisory?.recommendation.provider).toBe('openai');
     });
 
     it('returns corpus reuse recommendation when fingerprint is reused and current engine lacks reuse', () => {

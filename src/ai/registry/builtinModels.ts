@@ -48,6 +48,120 @@ export const BUILTIN_MODELS: ModelInfo[] = [
         releasedAt: '2025-09-29',
         status: 'legacy'
     },
+    // OpenAI release channels:
+    // stable   = default latest engine
+    // pro      = explicit higher compute option
+    // rollback = prior stable fallback
+    // snapshot = dated provider snapshot
+    // legacy   = compatibility alias
+    {
+        provider: 'openai',
+        id: 'gpt-5.4',
+        alias: 'gpt-5.4',
+        label: 'GPT-5.4',
+        line: 'gpt-5',
+        tier: 'BALANCED',
+        capabilities: [...BALANCED_CAPS, 'highOutputCap', 'toolCalling', 'functionCalling'],
+        personality: { reasoning: 9, writing: 9, determinism: 9 },
+        contextWindow: 1050000,
+        maxOutput: 128000,
+        releasedAt: '2026-03-05',
+        status: 'stable',
+        rollout: {
+            channel: 'stable',
+            status: 'stable',
+            supersedes: 'gpt-5.3',
+            fallbackModelId: 'gpt-5.3',
+            lane: 'default'
+        }
+    },
+    {
+        provider: 'openai',
+        id: 'gpt-5.4-pro',
+        alias: 'gpt-5.4-pro',
+        label: 'GPT-5.4 Pro',
+        line: 'gpt-5-pro',
+        tier: 'DEEP',
+        capabilities: [...DEEP_CAPS, 'toolCalling', 'functionCalling'],
+        personality: { reasoning: 10, writing: 9, determinism: 9 },
+        contextWindow: 1050000,
+        maxOutput: 128000,
+        releasedAt: '2026-03-05',
+        status: 'stable',
+        rollout: {
+            channel: 'pro',
+            status: 'stable',
+            supersedes: 'gpt-5.3',
+            fallbackModelId: 'gpt-5.3',
+            lane: 'pro'
+        }
+    },
+    {
+        provider: 'openai',
+        id: 'gpt-5.4-2026-03-05',
+        alias: 'gpt-5.4-2026-03-05',
+        label: 'GPT-5.4 (2026-03-05)',
+        line: 'gpt-5',
+        tier: 'BALANCED',
+        capabilities: [...BALANCED_CAPS, 'highOutputCap', 'toolCalling', 'functionCalling'],
+        personality: { reasoning: 9, writing: 9, determinism: 9 },
+        contextWindow: 1050000,
+        maxOutput: 128000,
+        releasedAt: '2026-03-05',
+        status: 'legacy',
+        rollout: {
+            channel: 'snapshot',
+            hiddenFromPicker: true,
+            status: 'provisional',
+            supersedes: 'gpt-5.4',
+            fallbackModelId: 'gpt-5.3',
+            lane: 'default',
+            datedVariantOf: 'gpt-5.4'
+        }
+    },
+    {
+        provider: 'openai',
+        id: 'gpt-5.4-pro-2026-03-05',
+        alias: 'gpt-5.4-pro-2026-03-05',
+        label: 'GPT-5.4 Pro (2026-03-05)',
+        line: 'gpt-5-pro',
+        tier: 'DEEP',
+        capabilities: [...DEEP_CAPS, 'toolCalling', 'functionCalling'],
+        personality: { reasoning: 10, writing: 9, determinism: 9 },
+        contextWindow: 1050000,
+        maxOutput: 128000,
+        releasedAt: '2026-03-05',
+        status: 'legacy',
+        rollout: {
+            channel: 'snapshot',
+            hiddenFromPicker: true,
+            status: 'provisional',
+            supersedes: 'gpt-5.4-pro',
+            fallbackModelId: 'gpt-5.3',
+            lane: 'pro',
+            datedVariantOf: 'gpt-5.4-pro'
+        }
+    },
+    {
+        provider: 'openai',
+        id: 'gpt-5.3',
+        alias: 'gpt-5.3',
+        label: 'GPT-5.3',
+        line: 'gpt-5',
+        tier: 'BALANCED',
+        capabilities: [...BALANCED_CAPS, 'highOutputCap', 'toolCalling', 'functionCalling'],
+        personality: { reasoning: 9, writing: 8, determinism: 9 },
+        contextWindow: 400000,
+        maxOutput: 16000,
+        status: 'stable',
+        rollout: {
+            channel: 'rollback',
+            status: 'stable',
+            supersedes: 'gpt-5.2-chat-latest',
+            fallbackModelId: 'gpt-5.3',
+            lane: 'default'
+        }
+    },
     {
         provider: 'openai',
         id: 'gpt-5.2-chat-latest',

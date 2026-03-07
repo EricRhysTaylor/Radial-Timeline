@@ -176,7 +176,7 @@ export default class RadialTimelinePlugin extends Plugin {
         const provider = this.aiProvider;
         if (provider === 'anthropic') return this.settings.anthropicModelId || 'claude-sonnet-4-6';
         if (provider === 'gemini') return this.settings.geminiModelId || DEFAULT_GEMINI_MODEL_ID;
-        return this.settings.openaiModelId || 'gpt-5.1-chat-latest';
+        return this.settings.openaiModelId || 'gpt-5.4';
     }
 
     public getActiveBook() {

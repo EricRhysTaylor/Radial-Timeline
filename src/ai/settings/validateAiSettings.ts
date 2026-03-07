@@ -95,7 +95,7 @@ export function validateAiSettings(input?: AiSettingsV1 | null): AiSettingsValid
         }
     }
 
-    const validPolicyTypes = new Set(['pinned', 'latestStable']);
+    const validPolicyTypes = new Set(['pinned', 'latestStable', 'latestPro']);
     if (!validPolicyTypes.has(value.modelPolicy.type)) {
         warnings.push(`Unknown model policy "${String(value.modelPolicy.type)}"; switching to latestStable.`);
         value.modelPolicy = { type: 'latestStable' };

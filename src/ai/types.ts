@@ -16,6 +16,28 @@ export type Capability =
 
 export type ModelTier = 'DEEP' | 'BALANCED' | 'FAST' | 'LOCAL';
 export type ModelStatus = 'stable' | 'legacy' | 'deprecated';
+export type ModelRolloutStatus = 'stable' | 'provisional' | 'deprecated';
+export type ModelReleaseChannel = 'stable' | 'pro' | 'rollback' | 'snapshot' | 'legacy';
+
+export interface ModelRolloutMeta {
+    /** Public release channel used by picker/resolver curation. */
+    channel: ModelReleaseChannel;
+    /** Hide from normal author-facing picker while keeping model available internally. */
+    hiddenFromPicker?: boolean;
+    /** Canonical predecessor/superseded model id in this line. */
+    supersedes?: string;
+}
+
+export interface ModelRolloutInfo extends ModelRolloutMeta {
+    /** Lifecycle status for deliberate model rollouts. */
+    status: ModelRolloutStatus;
+    /** Explicit rollback target for this model line. */
+    fallbackModelId?: string;
+    /** Optional lane classification (for example: default vs pro). */
+    lane?: 'default' | 'pro';
+    /** Indicates this model is a dated/snapshot variant of a canonical model. */
+    datedVariantOf?: string;
+}
 
 export interface ModelPersonality {
     reasoning: number;
@@ -37,6 +59,8 @@ export interface ModelInfo {
     releasedAt?: string;
     /** Product line grouping (e.g. 'claude-sonnet', 'claude-opus', 'gpt-5', 'gemini-pro'). */
     line?: string;
+    /** Optional rollout metadata used for safe latest-stable promotion and rollback clarity. */
+    rollout?: ModelRolloutInfo;
 }
 
 export type EngineCapabilityStatus =
@@ -69,6 +93,7 @@ export interface EngineCapabilities {
 
 export type ModelPolicy =
     | { type: 'pinned'; pinnedAlias?: string }
+    | { type: 'latestPro' }
     | { type: 'latestStable' };
 
 export interface AIOverrides {

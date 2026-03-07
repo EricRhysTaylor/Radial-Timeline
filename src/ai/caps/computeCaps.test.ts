@@ -51,4 +51,25 @@ describe('computeCaps', () => {
         });
         expect(deep.temperature).toBeLessThanOrEqual(standard.temperature);
     });
+
+    it('uses expanded OpenAI GPT-5.4 output ceilings', () => {
+        const model = BUILTIN_MODELS.find(entry => entry.alias === 'gpt-5.4-pro');
+        expect(model).toBeDefined();
+        const tier1 = computeCaps({
+            provider: 'openai',
+            model: model!,
+            accessTier: 1,
+            feature: 'InquiryMode',
+            overrides: { maxOutputMode: 'max' }
+        });
+        const tier3 = computeCaps({
+            provider: 'openai',
+            model: model!,
+            accessTier: 3,
+            feature: 'InquiryMode',
+            overrides: { maxOutputMode: 'max' }
+        });
+        expect(tier3.maxOutputTokens).toBeGreaterThan(tier1.maxOutputTokens);
+        expect(tier3.maxOutputTokens).toBe(128000);
+    });
 });

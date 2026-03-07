@@ -7,7 +7,7 @@
 /**
  * Resolves "latest" model aliases to human-friendly display names.
  * 
- * When using aliases like "gemini-pro-latest" or "gpt-5.2-chat-latest",
+ * When using aliases like "gemini-pro-latest" or model IDs like "gpt-5.4",
  * this module provides friendly names for UI display while keeping
  * the actual alias for API calls.
  */
@@ -21,6 +21,9 @@ const LATEST_ALIAS_DISPLAY_NAMES: Record<string, string> = {
     'gemini-flash-lite-latest': 'Gemini Flash Lite',
     
     // OpenAI
+    'gpt-5.4': 'GPT-5.4',
+    'gpt-5.4-pro': 'GPT-5.4 Pro',
+    'gpt-5.3': 'GPT-5.3',
     'gpt-5.2-chat-latest': 'GPT-5.2',
     'gpt-5.1-chat-latest': 'GPT-5.1',
     'gpt-5-chat-latest': 'GPT-5',
@@ -37,8 +40,12 @@ const resolvedModelCache: Map<string, { resolvedTo: string; displayName: string;
  * @param modelId The model ID (e.g., "gemini-3.1-pro-preview" or "claude-sonnet-4-6")
  * @returns A user-friendly display name
  */
-export function getModelDisplayName(modelId: string): string {
+export function getModelDisplayName(modelId: string, options?: { debug?: boolean }): string {
     if (!modelId) return 'Unknown Model';
+    const debug = !!options?.debug;
+
+    const snapshotLabel = formatOpenAiSnapshotName(modelId, debug);
+    if (snapshotLabel) return snapshotLabel;
     
     // Check if we have a cached resolution from a recent API call
     const cached = resolvedModelCache.get(modelId);
@@ -53,13 +60,23 @@ export function getModelDisplayName(modelId: string): string {
     }
     
     // For specific versioned models, create a friendly name
-    return formatModelName(modelId);
+    return formatModelName(modelId, debug);
+}
+
+function formatOpenAiSnapshotName(modelId: string, debug: boolean): string | null {
+    const snapshotMatch = modelId.match(/^gpt-(\d+\.?\d*)(-pro)?-(\d{4}-\d{2}-\d{2})$/);
+    if (!snapshotMatch) return null;
+    const version = snapshotMatch[1];
+    const isPro = !!snapshotMatch[2];
+    const canonical = `GPT-${version}${isPro ? ' Pro' : ''}`;
+    if (debug) return `${canonical} (snapshot ${modelId})`;
+    return `${canonical} (snapshot)`;
 }
 
 /**
  * Format a model ID into a more readable display name.
  */
-function formatModelName(modelId: string): string {
+function formatModelName(modelId: string, debug: boolean): string {
     // Claude models
     if (modelId.startsWith('claude-')) {
         // claude-sonnet-4-6 -> Claude Sonnet 4.6
@@ -88,9 +105,16 @@ function formatModelName(modelId: string): string {
     
     // GPT models
     if (modelId.startsWith('gpt-')) {
-        // gpt-5.2-chat-latest -> GPT-5.2
+        // gpt-5.4-pro-2026-03-05 -> GPT-5.4 Pro (snapshot)
+        const snapshotLabel = formatOpenAiSnapshotName(modelId, debug);
+        if (snapshotLabel) return snapshotLabel;
+
         const version = modelId.match(/gpt-(\d+\.?\d*)/)?.[1];
-        if (version) return `GPT-${version}`;
+        if (version) {
+            const isPro = /-pro(?:-|$)/.test(modelId);
+            const label = `GPT-${version}${isPro ? ' Pro' : ''}`;
+            return label;
+        }
     }
     
     // Default: just capitalize and clean up
@@ -109,7 +133,7 @@ function formatModelName(modelId: string): string {
 export function cacheResolvedModel(aliasId: string, resolvedModelId: string): void {
     if (!aliasId || !resolvedModelId || aliasId === resolvedModelId) return;
     
-    const displayName = `${formatModelName(resolvedModelId)} (via ${aliasId.includes('latest') ? 'latest' : 'alias'})`;
+    const displayName = `${formatModelName(resolvedModelId, false)} (via ${aliasId.includes('latest') ? 'latest' : 'alias'})`;
     
     resolvedModelCache.set(aliasId, {
         resolvedTo: resolvedModelId,

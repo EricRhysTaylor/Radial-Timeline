@@ -1030,7 +1030,7 @@ export class SceneAnalysisProcessingModal extends Modal {
             } else if (provider === 'gemini') {
                 modelId = this.plugin.settings.geminiModelId || 'gemini-3-pro-preview';
             } else if (provider === 'openai') {
-                modelId = this.plugin.settings.openaiModelId || 'gpt-5.1-chat-latest';
+                modelId = this.plugin.settings.openaiModelId || 'gpt-5.4';
             } else if (provider === 'local') {
                 modelId = this.plugin.settings.localModelId || 'local-model';
             }
@@ -1596,7 +1596,7 @@ export class SceneAnalysisProcessingModal extends Modal {
         } else if (provider === 'local') {
             modelId = this.plugin.settings.localModelId || 'local-model';
         } else {
-            modelId = this.plugin.settings.openaiModelId || 'gpt-4o';
+            modelId = this.plugin.settings.openaiModelId || 'gpt-5.4';
         }
 
         return getModelDisplayName(modelId);

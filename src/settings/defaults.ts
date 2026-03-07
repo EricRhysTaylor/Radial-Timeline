@@ -89,7 +89,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     geminiApiKey: '',
     geminiModelId: DEFAULT_GEMINI_MODEL_ID, // Default to Gemini 3.1 Pro Preview
     defaultAiProvider: 'openai',
-    openaiModelId: 'gpt-5.1-chat-latest', // Default to GPT-5.1
+    openaiModelId: 'gpt-5.4', // Default to GPT-5.4
     enableAiSceneAnalysis: true,
     showFullTripletAnalysis: true,
     enableZeroDraftMode: false,

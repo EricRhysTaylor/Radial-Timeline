@@ -1880,10 +1880,6 @@ export class InquiryView extends ItemView {
         const card = container.createDiv({ cls: 'ert-inquiry-engine-advisor-card' });
         card.createDiv({ cls: 'ert-inquiry-engine-advisor-title', text: 'Inquiry Advisor' });
         card.createDiv({
-            cls: 'ert-inquiry-engine-advisor-current',
-            text: advisory.recommendation.currentEngineBehavior
-        });
-        card.createDiv({
             cls: 'ert-inquiry-engine-advisor-message',
             text: advisory.recommendation.message
         });
@@ -7973,7 +7969,7 @@ export class InquiryView extends ItemView {
         if (provider === 'local') {
             return clean(this.plugin.settings.localModelId || 'local-model');
         }
-        return clean(this.plugin.settings.openaiModelId || 'gpt-5.2-chat-latest');
+        return clean(this.plugin.settings.openaiModelId || 'gpt-5.4');
     }
 
     private getInquiryModelLabelForProvider(provider: EngineProvider): string {
@@ -9455,14 +9451,17 @@ export class InquiryView extends ItemView {
             if (latestStats.manifestFingerprint !== manifest.fingerprint) return;
             this.payloadStats = {
                 ...latestStats,
-                evidenceChars: trace.evidenceText.length,
+                // Keep heuristic evidenceChars — trace length is smaller and contaminates subsequent estimates.
                 tokenEstimate: trace.tokenEstimate,
                 tokenEstimateQuestion: questionText
             };
+
+            // Refresh UI with the precise estimate if the preview is still showing this question.
             if (this.previewLast?.question === questionText
                 && this.previewGroup?.classList.contains('is-visible')
                 && !this.previewLocked) {
                 this.updatePromptPreview(this.previewLast.zone, this.state.mode, questionText, undefined, undefined, { hideEmpty: true });
+                this.updateMinimapPressureGauge();
             }
         } catch {
             // Ignore preview estimate failures; fallback estimates remain.

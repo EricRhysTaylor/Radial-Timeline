@@ -109,4 +109,17 @@ describe('validateAiSettings', () => {
         expect(result.value.modelPolicy.type).toBe('latestStable');
         expect(result.warnings.some(warning => warning.includes('Unknown model policy'))).toBe(true);
     });
+
+    it('accepts latestPro model policy', () => {
+        const result = validateAiSettings({
+            schemaVersion: 1,
+            provider: 'openai',
+            modelPolicy: { type: 'latestPro' },
+            overrides: {},
+            aiAccessProfile: {},
+            privacy: { allowTelemetry: false, allowRemoteRegistry: false, allowProviderSnapshot: false }
+        } as unknown as AiSettingsV1);
+
+        expect(result.value.modelPolicy.type).toBe('latestPro');
+    });
 });

@@ -10,9 +10,9 @@ export interface CuratedModel {
 export const CURATED_MODELS: Record<AiProvider, CuratedModel[]> = {
     openai: [
         {
-            id: 'gpt-5.2-chat-latest',
-            label: 'GPT-5.2',
-            guidance: "→ GPT-5.2. Exceptional instruction following and structured output for precise scene analysis. [FYI](https://platform.openai.com/docs/models)",
+            id: 'gpt-5.4',
+            label: 'GPT-5.4',
+            guidance: "→ GPT-5.4. Deterministic latest-stable default for deep editorial analysis, with GPT-5.4 Pro available when explicitly pinned. [FYI](https://platform.openai.com/docs/models)",
         },
     ],
     anthropic: [

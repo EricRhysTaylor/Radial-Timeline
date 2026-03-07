@@ -155,7 +155,7 @@ export class SceneAnalysisService {
         if (provider === 'local') {
             return this.plugin.settings.localModelId || 'local-model';
         }
-        const modelId = this.plugin.settings.openaiModelId || 'gpt-4o';
+        const modelId = this.plugin.settings.openaiModelId || 'gpt-5.4';
         return modelId;
     }
 

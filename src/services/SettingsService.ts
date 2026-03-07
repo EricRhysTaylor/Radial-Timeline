@@ -38,7 +38,7 @@ export class SettingsService {
                 return id;
             }
             if (prov === 'openai') {
-                if (id === 'gpt-5' || id === 'o3' || id === 'gpt-4o') return 'gpt-4.1';
+                if (id === 'gpt-5' || id === 'o3' || id === 'gpt-4o') return DEFAULT_SETTINGS.openaiModelId || 'gpt-5.4';
                 return id;
             }
             if (prov === 'gemini') {

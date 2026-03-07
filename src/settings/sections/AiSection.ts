@@ -12,6 +12,7 @@ import { IMPACT_FULL } from '../SettingImpact';
 import { buildDefaultAiSettings, mapAiProviderToLegacyProvider } from '../../ai/settings/aiSettings';
 import { validateAiSettings } from '../../ai/settings/validateAiSettings';
 import { BUILTIN_MODELS } from '../../ai/registry/builtinModels';
+import { getPickerModelsForProvider, selectLatestModelByReleaseChannel } from '../../ai/registry/releaseChannels';
 import type { AvailabilityStatus } from '../../ai/registry/mergeModels';
 import { selectModel } from '../../ai/router/selectModel';
 import { computeCaps } from '../../ai/caps/computeCaps';
@@ -428,6 +429,7 @@ export function renderAiSection(params: {
 
     const strategyLabel = (policy: ModelPolicy): string => {
         if (policy.type === 'pinned') return 'Manual Selection';
+        if (policy.type === 'latestPro') return 'Auto (latest pro)';
         return 'Auto (latest stable)';
     };
 
@@ -444,13 +446,40 @@ export function renderAiSection(params: {
         return 'Availability · Unknown';
     };
 
-    const getProviderAliases = (provider: AIProviderId): string[] =>
+    const getProviderAllowedAliases = (provider: AIProviderId): string[] =>
         BUILTIN_MODELS
             .filter(model => model.provider === provider && model.status !== 'deprecated')
             .map(model => model.alias);
 
+    const getProviderPickerAliases = (provider: AIProviderId): string[] => {
+        return getPickerModelsForProvider(BUILTIN_MODELS, provider).map(model => model.alias);
+    };
+
+    const isOpenAiInternalAlias = (alias: string): boolean =>
+        !!alias
+        && BUILTIN_MODELS.some(model => model.provider === 'openai' && model.alias === alias)
+        && !getProviderPickerAliases('openai').includes(alias);
+
+    const formatOpenAiInternalPinnedLabel = (alias: string): string => {
+        const model = BUILTIN_MODELS.find(entry => entry.provider === 'openai' && entry.alias === alias);
+        if (!model) return 'Pinned internal model';
+        if (model.rollout?.datedVariantOf) {
+            const canonical = BUILTIN_MODELS.find(entry => entry.alias === model.rollout?.datedVariantOf);
+            const canonicalLabel = canonical?.label || model.label;
+            const dated = model.id.match(/(\d{4}-\d{2}-\d{2})$/)?.[1];
+            return dated
+                ? `${canonicalLabel} Snapshot (${dated}, pinned)`
+                : `${canonicalLabel} Snapshot (pinned)`;
+        }
+        return `${model.label} (Pinned internal)`;
+    };
+
     const getProviderDefaultAlias = (provider: AIProviderId): string | undefined =>
-        BUILTIN_MODELS.find(model => model.provider === provider && model.status === 'stable')?.alias
+        (provider === 'openai'
+            ? selectLatestModelByReleaseChannel(BUILTIN_MODELS, 'openai', 'stable')?.alias
+            : undefined)
+        ?? getProviderPickerAliases(provider)[0]
+        ?? BUILTIN_MODELS.find(model => model.provider === provider && model.status === 'stable')?.alias
         ?? BUILTIN_MODELS.find(model => model.provider === provider)?.alias;
 
     const getAccessTier = (provider: AIProviderId): AccessTier => {
@@ -507,7 +536,7 @@ export function renderAiSection(params: {
             aiSettings.provider = nextProvider;
 
             if (aiSettings.modelPolicy.type === 'pinned') {
-                const allowed = new Set(getProviderAliases(nextProvider));
+                const allowed = new Set(getProviderAllowedAliases(nextProvider));
                 if (!aiSettings.modelPolicy.pinnedAlias || !allowed.has(aiSettings.modelPolicy.pinnedAlias)) {
                     aiSettings.modelPolicy.pinnedAlias = getProviderDefaultAlias(nextProvider);
                 }
@@ -835,9 +864,7 @@ export function renderAiSection(params: {
 
         resolvedPreviewKicker.setText('PREVIEW (ACTIVE MODEL)');
         resolvedPreviewModel.setText(state.modelLabel);
-        const providerDetail = state.modelId && state.modelId !== 'unresolved'
-            ? `${providerLabel[state.provider]} · ${state.modelId}`
-            : `${providerLabel[state.provider]} · ${state.modelAlias}`;
+        const providerDetail = `${providerLabel[state.provider]} · ${state.modelLabel}`;
         resolvedPreviewProvider.setText(providerDetail);
         const previewPills = [
             state.strategyPill,
@@ -937,10 +964,11 @@ export function renderAiSection(params: {
     const refreshRoutingUi = async (): Promise<void> => {
         const aiSettings = ensureCanonicalAiSettings();
         const provider = aiSettings.provider === 'none' ? 'openai' : aiSettings.provider;
-        const providerAliases = getProviderAliases(provider);
+        const providerAllowedAliases = getProviderAllowedAliases(provider);
+        const providerPickerAliases = getProviderPickerAliases(provider);
 
         if (aiSettings.modelPolicy.type === 'pinned') {
-            const allowed = new Set(providerAliases);
+            const allowed = new Set(providerAllowedAliases);
             if (!aiSettings.modelPolicy.pinnedAlias || !allowed.has(aiSettings.modelPolicy.pinnedAlias)) {
                 aiSettings.modelPolicy.pinnedAlias = getProviderDefaultAlias(provider);
             }
@@ -955,11 +983,21 @@ export function renderAiSection(params: {
             if (modelOverrideDropdown) {
                 modelOverrideDropdown.selectEl.empty();
                 modelOverrideDropdown.addOption('auto', 'Auto');
-                providerAliases.forEach(alias => {
+                providerPickerAliases.forEach(alias => {
                     const model = BUILTIN_MODELS.find(entry => entry.alias === alias);
-                    const label = model ? `${model.label} (${alias})` : alias;
+                    const label = model?.label || alias;
                     modelOverrideDropdown?.addOption(alias, label);
                 });
+                if (provider === 'openai'
+                    && policy.type === 'pinned'
+                    && policy.pinnedAlias
+                    && isOpenAiInternalAlias(policy.pinnedAlias)
+                    && !providerPickerAliases.includes(policy.pinnedAlias)) {
+                    modelOverrideDropdown.addOption(
+                        policy.pinnedAlias,
+                        formatOpenAiInternalPinnedLabel(policy.pinnedAlias)
+                    );
+                }
                 const overrideValue = policy.type === 'pinned'
                     ? policy.pinnedAlias || 'auto'
                     : 'auto';

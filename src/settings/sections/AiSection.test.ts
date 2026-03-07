@@ -56,6 +56,15 @@ describe('AI settings models table', () => {
         expect(source.includes("accessTierDropdown = dropdown;\n        dropdown.selectEl.addClass('ert-input', 'ert-input--md');")).toBe(true);
     });
 
+    it('curates OpenAI model picker to canonical public aliases', () => {
+        const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
+        expect(source.includes('getPickerModelsForProvider')).toBe(true);
+        expect(source.includes("selectLatestModelByReleaseChannel(BUILTIN_MODELS, 'openai', 'stable')")).toBe(true);
+        expect(source.includes('formatOpenAiInternalPinnedLabel')).toBe(true);
+        expect(source.includes('gpt-5.4-2026-03-05')).toBe(false);
+        expect(source.includes('gpt-5.4-pro-2026-03-05')).toBe(false);
+    });
+
     it('renders Large Manuscript Handling section with execution preference controls', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
         expect(source.includes('Large Manuscript Handling')).toBe(true);

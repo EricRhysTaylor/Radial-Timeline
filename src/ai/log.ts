@@ -5,6 +5,7 @@ import type RadialTimelinePlugin from '../main';
 import { normalizePath, Notice, type Vault, TFile, TFolder } from 'obsidian';
 import { resolveInquiryLogFolder } from '../inquiry/utils/logs';
 import { redactSensitiveObject, redactSensitiveValue } from './credentials/redactSensitive';
+import { getModelDisplayName } from '../utils/modelResolver';
 
 export type AiLogFeature = 'Inquiry' | 'Pulse' | 'Synopsis' | 'Gossamer';
 export type AiLogStatus = 'success' | 'error' | 'simulated';
@@ -213,6 +214,12 @@ export function formatAiLogContent(
         return null;
     };
     const metadataExtras = options?.metadataExtras ?? [];
+    const formatModel = (modelId?: string | null): string => {
+        if (!modelId) return 'unknown';
+        return getModelDisplayName(modelId, { debug: true });
+    };
+    const modelRequestedDisplay = formatModel(envelope.metadata.modelRequested);
+    const modelResolvedDisplay = formatModel(envelope.metadata.modelResolved);
 
     lines.push(`# ${envelope.title}`, '');
 
@@ -220,7 +227,7 @@ export function formatAiLogContent(
     lines.push(`- Feature: ${envelope.metadata.feature}`);
     lines.push(`- Scope / Target: ${envelope.metadata.scopeTarget ?? 'unknown'}`);
     lines.push(`- Provider: ${envelope.metadata.provider ?? 'unknown'}`);
-    lines.push(`- Model requested / resolved: ${envelope.metadata.modelRequested ?? 'unknown'} / ${envelope.metadata.modelResolved ?? 'unknown'}`);
+    lines.push(`- Model requested / resolved: ${modelRequestedDisplay} / ${modelResolvedDisplay}`);
     if (envelope.metadata.feature === 'Inquiry') {
         lines.push(`- Next-run override: ${formatNextRunOnly(envelope.metadata.modelNextRunOnly)}`);
         lines.push(`- Estimated input tokens: ${formatTokenEstimate(envelope.metadata.estimatedInputTokens)}`);
@@ -296,6 +303,12 @@ export function formatAiLogContent(
 
 export function formatSummaryLogContent(envelope: SummaryLogEnvelope): string {
     const lines: string[] = [];
+    const formatModel = (modelId?: string | null): string => {
+        if (!modelId) return 'unknown';
+        return getModelDisplayName(modelId, { debug: true });
+    };
+    const modelRequestedDisplay = formatModel(envelope.modelRequested);
+    const modelResolvedDisplay = formatModel(envelope.modelResolved);
 
     const formatUsage = (usage?: TokenUsage | null) => {
         if (!usage || (usage.inputTokens === undefined && usage.outputTokens === undefined && usage.totalTokens === undefined)) {
@@ -315,7 +328,7 @@ export function formatSummaryLogContent(envelope: SummaryLogEnvelope): string {
     lines.push(`- Feature: ${envelope.feature}`);
     lines.push(`- Scope / Target: ${envelope.scopeTarget ?? 'unknown'}`);
     lines.push(`- Provider: ${envelope.provider ?? 'unknown'}`);
-    lines.push(`- Model requested / resolved: ${envelope.modelRequested ?? 'unknown'} / ${envelope.modelResolved ?? 'unknown'}`);
+    lines.push(`- Model requested / resolved: ${modelRequestedDisplay} / ${modelResolvedDisplay}`);
     lines.push(`- Submitted: ${formatLocalAndIso(envelope.submittedAt)}`);
     lines.push(`- Returned: ${formatLocalAndIso(envelope.returnedAt)}`);
     lines.push(`- Duration: ${formatDuration(envelope.durationMs)}`);

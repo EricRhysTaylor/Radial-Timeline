@@ -53,7 +53,7 @@ function getCurrentModelId(plugin: RadialTimelinePlugin): string {
     if (provider === 'local') {
         return plugin.settings.localModelId || 'local-model';
     }
-    return plugin.settings.openaiModelId || 'gpt-5.1-chat-latest';
+    return plugin.settings.openaiModelId || 'gpt-5.4';
 }
 
 function setCaseInsensitiveField(frontmatter: Record<string, unknown>, key: string, value: string): void {

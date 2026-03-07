@@ -1884,6 +1884,9 @@ body.rt-modal-open .ert-inquiry-svg * {
   opacity: 1;
   transform: translateY(0);
   transition: opacity 140ms ease, transform 140ms ease;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .ert-inquiry-engine-panel.ert-hidden {
@@ -1911,7 +1914,6 @@ body.rt-modal-open .ert-inquiry-svg * {
 }
 
 .ert-inquiry-engine-readiness {
-  margin-top: 8px;
   padding: 10px;
   border-radius: 12px;
   border: 1px solid color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
@@ -1995,7 +1997,6 @@ body.rt-modal-open .ert-inquiry-svg * {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  margin-top: 4px;
 }
 
 .ert-inquiry-engine-controls {
@@ -2321,11 +2322,13 @@ body.rt-modal-open .ert-inquiry-svg * {
 .ert-inquiry-engine-advisor-current {
   font-size: 11px;
   color: var(--text-normal);
+  line-height: 1.35;
 }
 
 .ert-inquiry-engine-advisor-message {
   font-size: 11px;
   color: var(--text-normal);
+  line-height: 1.35;
 }
 
 .ert-inquiry-engine-advisor-suggestion {

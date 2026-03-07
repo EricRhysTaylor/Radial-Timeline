@@ -29,14 +29,14 @@ export const PROVIDER_CAPS: Record<Exclude<AIProviderId, 'none'>, ProviderCapsDe
         }
     },
     openai: {
-        providerMaxOutputTokens: 16000,
-        defaultInputTokens: 200000,
-        defaultOutputTokens: 6000,
+        providerMaxOutputTokens: 128000,
+        defaultInputTokens: 1050000,
+        defaultOutputTokens: 12000,
         tiers: {
-            1: { maxOutputTokens: 4000, requestPerMinute: 30, retryAttempts: 1, safeUtilization: 0.7 },
-            2: { maxOutputTokens: 8000, requestPerMinute: 60, retryAttempts: 2, safeUtilization: 0.8 },
-            3: { maxOutputTokens: 16000, requestPerMinute: 80, retryAttempts: 2, safeUtilization: 0.85 },
-            4: { maxOutputTokens: 16000, requestPerMinute: 120, retryAttempts: 3, safeUtilization: 0.9 }
+            1: { maxOutputTokens: 32000, requestPerMinute: 30, retryAttempts: 1, safeUtilization: 0.7 },
+            2: { maxOutputTokens: 64000, requestPerMinute: 60, retryAttempts: 2, safeUtilization: 0.8 },
+            3: { maxOutputTokens: 128000, requestPerMinute: 80, retryAttempts: 2, safeUtilization: 0.85 },
+            4: { maxOutputTokens: 128000, requestPerMinute: 120, retryAttempts: 3, safeUtilization: 0.9 }
         }
     },
     google: {

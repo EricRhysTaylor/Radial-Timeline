@@ -450,7 +450,7 @@ export class RuntimeProcessingModal extends Modal {
     private getProviderLabel(provider: string): string {
         switch (provider) {
             case 'openai':
-                return `OpenAI (${this.plugin.settings.openaiModelId || 'gpt-5.1-chat-latest'})`;
+                return `OpenAI (${this.plugin.settings.openaiModelId || 'gpt-5.4'})`;
             case 'anthropic':
                 return `Anthropic (${this.plugin.settings.anthropicModelId || 'claude-sonnet-4-6'})`;
             case 'gemini':
