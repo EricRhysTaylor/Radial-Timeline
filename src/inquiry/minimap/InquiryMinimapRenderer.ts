@@ -189,29 +189,29 @@ export function getBackbonePressureColors(
 
 export class InquiryMinimapRenderer {
 
-    // ── SVG element refs ─────────────────────────────────────────────
+    // ── SVG element refs (private — written via initElements) ────────
 
-    minimapTicksEl?: SVGGElement;
-    minimapBaseline?: SVGLineElement;
-    minimapEndCapStart?: SVGRectElement;
-    minimapEndCapEnd?: SVGRectElement;
-    minimapTokenCapBar?: SVGRectElement;
-    minimapTokenCapStartCap?: SVGRectElement;
-    minimapTokenCapEndCap?: SVGRectElement;
-    minimapTokenCapSplitGroup?: SVGGElement;
-    minimapTokenCapCachedOverlay?: SVGRectElement;
-    minimapTicks: SVGGElement[] = [];
-    minimapGroup?: SVGGElement;
-    minimapLayout?: { startX: number; length: number };
+    private minimapTicksEl?: SVGGElement;
+    private minimapBaseline?: SVGLineElement;
+    private minimapEndCapStart?: SVGRectElement;
+    private minimapEndCapEnd?: SVGRectElement;
+    private minimapTokenCapBar?: SVGRectElement;
+    private minimapTokenCapStartCap?: SVGRectElement;
+    private minimapTokenCapEndCap?: SVGRectElement;
+    private minimapTokenCapSplitGroup?: SVGGElement;
+    private minimapTokenCapCachedOverlay?: SVGRectElement;
+    private minimapTicks: SVGGElement[] = [];
+    private minimapGroup?: SVGGElement;
+    private minimapLayout?: { startX: number; length: number };
 
     // ── Backbone ─────────────────────────────────────────────────────
 
-    minimapBackboneGroup?: SVGGElement;
-    minimapBackboneGlow?: SVGRectElement;
-    minimapBackboneShine?: SVGRectElement;
-    minimapBackboneClip?: SVGClipPathElement;
-    minimapBackboneClipRect?: SVGRectElement;
-    minimapBackboneLayout?: {
+    private minimapBackboneGroup?: SVGGElement;
+    private minimapBackboneGlow?: SVGRectElement;
+    private minimapBackboneShine?: SVGRectElement;
+    private minimapBackboneClip?: SVGClipPathElement;
+    private minimapBackboneClipRect?: SVGRectElement;
+    private minimapBackboneLayout?: {
         startX: number;
         length: number;
         glowHeight: number;
@@ -224,10 +224,10 @@ export class InquiryMinimapRenderer {
 
     // ── Pass indicator / reuse ───────────────────────────────────────
 
-    minimapPassIndicatorGroup?: SVGGElement;
-    minimapPassIndicatorText?: SVGTextElement;
-    minimapReuseBand?: SVGLineElement;
-    minimapReuseDot?: SVGCircleElement;
+    private minimapPassIndicatorGroup?: SVGGElement;
+    private minimapPassIndicatorText?: SVGTextElement;
+    private minimapReuseBand?: SVGLineElement;
+    private minimapReuseDot?: SVGCircleElement;
 
     // ── Color / animation state ──────────────────────────────────────
 
@@ -246,10 +246,97 @@ export class InquiryMinimapRenderer {
 
     // ── Layout / timing ──────────────────────────────────────────────
 
-    minimapBottomOffset = 0;
-    minimapEmptyUpdateId = 0;
+    private minimapBottomOffset = 0;
+    private minimapEmptyUpdateId = 0;
     private runningAnimationFrame?: number;
     private runningAnimationStart?: number;
+
+    // ── Initialization ───────────────────────────────────────────────
+
+    /** Create the structural SVG elements for the minimap.
+     *  Called once during InquiryView.buildSvg. */
+    initElements(parentGroup: SVGGElement, viewboxSize: number): void {
+        this.minimapGroup = parentGroup;
+        const baselineLength = viewboxSize / 2;
+        const baselineStartX = -(baselineLength / 2);
+        this.minimapLayout = { startX: baselineStartX, length: baselineLength };
+
+        this.minimapBaseline = createSvgElement('line');
+        this.minimapBaseline.classList.add('ert-inquiry-minimap-baseline');
+        parentGroup.appendChild(this.minimapBaseline);
+
+        this.minimapEndCapStart = createSvgElement('rect');
+        this.minimapEndCapStart.classList.add('ert-inquiry-minimap-endcap');
+        parentGroup.appendChild(this.minimapEndCapStart);
+        this.minimapEndCapEnd = createSvgElement('rect');
+        this.minimapEndCapEnd.classList.add('ert-inquiry-minimap-endcap');
+        parentGroup.appendChild(this.minimapEndCapEnd);
+
+        this.minimapTokenCapBar = createSvgElement('rect');
+        this.minimapTokenCapBar.classList.add('ert-inquiry-minimap-tokencap-bar');
+        parentGroup.appendChild(this.minimapTokenCapBar);
+        this.minimapTokenCapStartCap = createSvgElement('rect');
+        this.minimapTokenCapStartCap.classList.add('ert-inquiry-minimap-tokencap-endcap');
+        parentGroup.appendChild(this.minimapTokenCapStartCap);
+        this.minimapTokenCapEndCap = createSvgElement('rect');
+        this.minimapTokenCapEndCap.classList.add('ert-inquiry-minimap-tokencap-endcap');
+        parentGroup.appendChild(this.minimapTokenCapEndCap);
+        this.minimapTokenCapSplitGroup = createSvgGroup(parentGroup, 'ert-inquiry-minimap-tokencap-splits');
+
+        this.minimapTokenCapCachedOverlay = createSvgElement('rect');
+        this.minimapTokenCapCachedOverlay.classList.add('ert-inquiry-minimap-tokencap-cached');
+        this.minimapTokenCapCachedOverlay.classList.add('ert-hidden');
+        parentGroup.appendChild(this.minimapTokenCapCachedOverlay);
+
+        this.minimapReuseBand = createSvgElement('line');
+        this.minimapReuseBand.classList.add('ert-inquiry-minimap-reuse-band');
+        parentGroup.appendChild(this.minimapReuseBand);
+
+        this.minimapTicksEl = createSvgGroup(parentGroup, 'ert-inquiry-minimap-ticks', baselineStartX, 0);
+    }
+
+    /** Create the backbone clip-path in the <defs> section.
+     *  Called once during InquiryView.buildZoneGradients. */
+    initBackboneClip(defs: SVGDefsElement): void {
+        if (this.minimapBackboneClip) return;
+        const backboneClip = createSvgElement('clipPath');
+        backboneClip.setAttribute('id', 'ert-inquiry-minimap-backbone-clip');
+        backboneClip.setAttribute('clipPathUnits', 'userSpaceOnUse');
+        const clipRect = createSvgElement('rect');
+        backboneClip.appendChild(clipRect);
+        defs.appendChild(backboneClip);
+        this.minimapBackboneClip = backboneClip;
+        this.minimapBackboneClipRect = clipRect;
+    }
+
+    // ── Read-only accessors ──────────────────────────────────────────
+
+    /** Whether the minimap SVG group has been initialized. */
+    get hasGroup(): boolean {
+        return !!this.minimapGroup;
+    }
+
+    /** Current minimap layout length, or undefined if not yet laid out. */
+    get layoutLength(): number | undefined {
+        return this.minimapLayout?.length;
+    }
+
+    /** Bottom edge of the backbone glow, used for footer positioning. */
+    get backboneBottomEdge(): number {
+        return this.minimapBackboneLayout
+            ? this.minimapBackboneLayout.glowY + this.minimapBackboneLayout.glowHeight
+            : 0;
+    }
+
+    /** Increment and return the empty-state update counter. */
+    nextEmptyUpdateId(): number {
+        return ++this.minimapEmptyUpdateId;
+    }
+
+    /** Check if the given update ID is still current. */
+    isCurrentEmptyUpdate(updateId: number): boolean {
+        return updateId === this.minimapEmptyUpdateId;
+    }
 
     // ── Gradient stop setters ────────────────────────────────────────
 
@@ -869,6 +956,16 @@ export class InquiryMinimapRenderer {
                 && included
                 && ((index > 0 && prev !== included) || (index < subset.included.length - 1 && next !== included));
             tick.classList.toggle('is-selection-boundary', isBoundary);
+        });
+    }
+
+    // ── Empty-state styling ─────────────────────────────────────────
+
+    applyEmptyStates(wordCounts: number[], emptyMax: number): void {
+        wordCounts.forEach((wordCount, idx) => {
+            const tick = this.minimapTicks[idx];
+            if (!tick) return;
+            tick.classList.toggle('is-empty', wordCount < emptyMax);
         });
     }
 

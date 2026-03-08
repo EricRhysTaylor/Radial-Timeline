@@ -72,8 +72,6 @@ import type { InquirySourcesSettings } from '../types/settings';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
 import { isProfessionalActive } from '../settings/sections/ProfessionalSection';
 import { InquiryCorpusResolver, InquiryCorpusSnapshot, InquiryCorpusItem, InquirySceneItem, InquiryBookItem } from './services/InquiryCorpusResolver';
-import { buildMinimapSubsetResult } from './services/minimapSubset';
-import { buildPassIndicator } from './services/readiness';
 import {
     isPathIncludedByInquiryBooks,
     resolveInquiryBookResolution
@@ -131,18 +129,10 @@ import { createSvgElement, createSvgGroup, createSvgText, clearSvgChildren, SVG_
 import {
     InquiryMinimapRenderer,
     MINIMAP_GROUP_Y,
-    MINIMAP_TOKEN_CAP_Y,
-    MINIMAP_TOKEN_CAP_BAR_HEIGHT,
-    MINIMAP_TOKEN_CAP_ENDCAP_HEIGHT,
-    MINIMAP_TOKEN_CAP_SPLIT_TICK_HEIGHT,
     MIN_PROCESSING_MS,
-    parseRgbColor,
     toRgbString,
     getExecutionColorValue,
     getBackboneStartColors,
-    getBackbonePressureColors,
-    type RgbColor,
-    type BackboneColors
 } from './minimap/InquiryMinimapRenderer';
 import { addTooltipData, setupTooltipsFromDataAttributes } from '../utils/tooltip';
 import { splitIntoBalancedLinesOptimal } from '../utils/text';
@@ -1261,42 +1251,7 @@ export class InquiryView extends ItemView {
         this.registerDomEvent(this.engineBadgeGroup as unknown as HTMLElement, 'click', () => this.openAiSettings([], this.lastEngineAdvisoryContext));
 
         const minimapGroup = createSvgGroup(canvasGroup, 'ert-inquiry-minimap', 0, MINIMAP_GROUP_Y);
-        this.minimap.minimapGroup = minimapGroup;
-
-        const baselineLength = VIEWBOX_SIZE / 2;
-        const baselineStartX = -(baselineLength / 2);
-        this.minimap.minimapLayout = { startX: baselineStartX, length: baselineLength };
-        this.minimap.minimapBaseline = createSvgElement('line');
-        this.minimap.minimapBaseline.classList.add('ert-inquiry-minimap-baseline');
-        minimapGroup.appendChild(this.minimap.minimapBaseline);
-        this.minimap.minimapEndCapStart = createSvgElement('rect');
-        this.minimap.minimapEndCapStart.classList.add('ert-inquiry-minimap-endcap');
-        minimapGroup.appendChild(this.minimap.minimapEndCapStart);
-        this.minimap.minimapEndCapEnd = createSvgElement('rect');
-        this.minimap.minimapEndCapEnd.classList.add('ert-inquiry-minimap-endcap');
-        minimapGroup.appendChild(this.minimap.minimapEndCapEnd);
-
-        this.minimap.minimapTokenCapBar = createSvgElement('rect');
-        this.minimap.minimapTokenCapBar.classList.add('ert-inquiry-minimap-tokencap-bar');
-        minimapGroup.appendChild(this.minimap.minimapTokenCapBar);
-        this.minimap.minimapTokenCapStartCap = createSvgElement('rect');
-        this.minimap.minimapTokenCapStartCap.classList.add('ert-inquiry-minimap-tokencap-endcap');
-        minimapGroup.appendChild(this.minimap.minimapTokenCapStartCap);
-        this.minimap.minimapTokenCapEndCap = createSvgElement('rect');
-        this.minimap.minimapTokenCapEndCap.classList.add('ert-inquiry-minimap-tokencap-endcap');
-        minimapGroup.appendChild(this.minimap.minimapTokenCapEndCap);
-        this.minimap.minimapTokenCapSplitGroup = createSvgGroup(minimapGroup, 'ert-inquiry-minimap-tokencap-splits');
-
-        this.minimap.minimapTokenCapCachedOverlay = createSvgElement('rect');
-        this.minimap.minimapTokenCapCachedOverlay.classList.add('ert-inquiry-minimap-tokencap-cached');
-        this.minimap.minimapTokenCapCachedOverlay.classList.add('ert-hidden');
-        minimapGroup.appendChild(this.minimap.minimapTokenCapCachedOverlay);
-
-        this.minimap.minimapReuseBand = createSvgElement('line');
-        this.minimap.minimapReuseBand.classList.add('ert-inquiry-minimap-reuse-band');
-        minimapGroup.appendChild(this.minimap.minimapReuseBand);
-
-        this.minimap.minimapTicksEl = createSvgGroup(minimapGroup, 'ert-inquiry-minimap-ticks', baselineStartX, 0);
+        this.minimap.initElements(minimapGroup, VIEWBOX_SIZE);
         this.renderModeIcons(minimapGroup);
 
         this.glyphAnchor = createSvgGroup(canvasGroup, 'ert-inquiry-focus-area');
@@ -2965,16 +2920,7 @@ export class InquiryView extends ItemView {
         this.minimap.setShineStops(backboneShineStops);
         defs.appendChild(backboneShine);
 
-        if (!this.minimap.minimapBackboneClip) {
-            const backboneClip = createSvgElement('clipPath');
-            backboneClip.setAttribute('id', 'ert-inquiry-minimap-backbone-clip');
-            backboneClip.setAttribute('clipPathUnits', 'userSpaceOnUse');
-            const clipRect = createSvgElement('rect');
-            backboneClip.appendChild(clipRect);
-            defs.appendChild(backboneClip);
-            this.minimap.minimapBackboneClip = backboneClip;
-            this.minimap.minimapBackboneClipRect = clipRect;
-        }
+        this.minimap.initBackboneClip(defs);
 
         // Hatched pattern for cached portion overlay on token cap bar
         const cachedPattern = createSvgElement('pattern');
@@ -3775,7 +3721,7 @@ export class InquiryView extends ItemView {
     }
 
     private async refreshMinimapEmptyStates(items: InquiryCorpusItem[]): Promise<void> {
-        const updateId = ++this.minimap.minimapEmptyUpdateId;
+        const updateId = this.minimap.nextEmptyUpdateId();
         if (!items.length) return;
         const thresholds = this.getCorpusThresholds();
         const emptyMax = thresholds.emptyMax;
@@ -3820,189 +3766,18 @@ export class InquiryView extends ItemView {
             return stats.reduce((sum, stat) => sum + stat.bodyWords, 0);
         }));
 
-        if (updateId !== this.minimap.minimapEmptyUpdateId) return;
+        if (!this.minimap.isCurrentEmptyUpdate(updateId)) return;
 
-        wordCounts.forEach((wordCount, idx) => {
-            const tick = this.minimap.minimapTicks[idx];
-            if (!tick) return;
-            tick.classList.toggle('is-empty', wordCount < emptyMax);
-        });
+        this.minimap.applyEmptyStates(wordCounts, emptyMax);
     }
 
     private renderMinimapTicks(): void {
-        if (!this.minimap.minimapTicksEl || !this.minimap.minimapLayout || !this.minimap.minimapBaseline) return;
-        clearSvgChildren(this.minimap.minimapTicksEl);
-        this.minimap.minimapTicks = [];
-
         const items = this.getCurrentItems();
-        const count = items.length;
-        const length = this.minimap.minimapLayout.length;
-        const tickSize = 20;
-        const tickWidth = Math.max(12, Math.round(tickSize * 0.7));
-        const tickHeight = Math.max(tickWidth + 4, Math.round(tickWidth * 1.45));
-        const tickGap = 4;
-        const capWidth = 2;
-        const capHeight = Math.max(30, tickHeight + 12);
-        const capHalfWidth = Math.round(capWidth / 2);
-        const edgeScenePadding = tickWidth;
-        const tickInset = capWidth + (tickWidth / 2) + 4 + edgeScenePadding;
-        const availableLength = Math.max(0, length - (tickInset * 2));
-        const maxRowWidth = VIEWBOX_SIZE * 0.75;
-        const minStep = tickWidth + tickGap;
-        const isSaga = this.state.scope === 'saga';
-        const needsWrap = count > 1 && ((availableLength / (count - 1)) < minStep || (count * minStep) > maxRowWidth);
-        const rowCount = isSaga ? 1 : (needsWrap ? 2 : 1);
-        const firstRowCount = rowCount === 2 ? Math.ceil(count / 2) : count;
-        const secondRowCount = count - firstRowCount;
-        const columnCount = rowCount === 2 ? firstRowCount : count;
-        const rawColumnStep = columnCount > 1 ? (availableLength / (columnCount - 1)) : 0;
-        const columnStep = columnCount > 1 ? Math.max(1, Math.floor(rawColumnStep)) : 0;
-        const usedLength = columnStep * Math.max(0, columnCount - 1);
-        const extraSpace = Math.max(0, availableLength - usedLength);
-        const startOffset = Math.floor(extraSpace / 2);
-        const verticalGap = 10;
-        const baselineGap = verticalGap;
-        const rowGap = verticalGap;
-        const rowTopY = -(baselineGap + tickHeight + (rowCount === 2 ? (tickHeight + rowGap) : 0));
-        const rowBottomY = -(baselineGap + tickHeight);
-
-        const baselineStart = Math.round(this.minimap.minimapLayout.startX);
-        const baselineEnd = Math.round(this.minimap.minimapLayout.startX + length);
-        this.minimap.minimapBaseline.setAttribute('x1', String(baselineStart));
-        this.minimap.minimapBaseline.setAttribute('y1', '0');
-        this.minimap.minimapBaseline.setAttribute('x2', String(baselineEnd));
-        this.minimap.minimapBaseline.setAttribute('y2', '0');
-        if (this.minimap.minimapEndCapStart && this.minimap.minimapEndCapEnd) {
-            this.minimap.minimapEndCapStart.setAttribute('x', String(baselineStart - capHalfWidth));
-            this.minimap.minimapEndCapStart.setAttribute('y', String(-capHeight));
-            this.minimap.minimapEndCapStart.setAttribute('width', String(Math.round(capWidth)));
-            this.minimap.minimapEndCapStart.setAttribute('height', String(Math.round(capHeight)));
-            this.minimap.minimapEndCapEnd.setAttribute('x', String(baselineEnd - capHalfWidth));
-            this.minimap.minimapEndCapEnd.setAttribute('y', String(-capHeight));
-            this.minimap.minimapEndCapEnd.setAttribute('width', String(Math.round(capWidth)));
-            this.minimap.minimapEndCapEnd.setAttribute('height', String(Math.round(capHeight)));
-        }
-        const tokenCapY = MINIMAP_TOKEN_CAP_Y;
-        const tokenCapBarHeight = MINIMAP_TOKEN_CAP_BAR_HEIGHT;
-        const tokenCapCapHeight = MINIMAP_TOKEN_CAP_ENDCAP_HEIGHT;
-        const tokenCapCapY = tokenCapY;
-        if (this.minimap.minimapTokenCapBar) {
-            this.minimap.minimapTokenCapBar.setAttribute('x', String(baselineStart));
-            this.minimap.minimapTokenCapBar.setAttribute('y', String(tokenCapY));
-            this.minimap.minimapTokenCapBar.setAttribute('width', '0');
-            this.minimap.minimapTokenCapBar.setAttribute('height', String(tokenCapBarHeight));
-            this.minimap.minimapTokenCapBar.setAttribute('rx', String(Math.round(tokenCapBarHeight / 2)));
-            this.minimap.minimapTokenCapBar.setAttribute('ry', String(Math.round(tokenCapBarHeight / 2)));
-        }
-        if (this.minimap.minimapTokenCapStartCap && this.minimap.minimapTokenCapEndCap) {
-            this.minimap.minimapTokenCapStartCap.setAttribute('x', String(baselineStart - capHalfWidth));
-            this.minimap.minimapTokenCapStartCap.setAttribute('y', String(tokenCapCapY));
-            this.minimap.minimapTokenCapStartCap.setAttribute('width', String(Math.round(capWidth)));
-            this.minimap.minimapTokenCapStartCap.setAttribute('height', String(Math.round(tokenCapCapHeight)));
-            this.minimap.minimapTokenCapEndCap.setAttribute('x', String(baselineEnd - capHalfWidth));
-            this.minimap.minimapTokenCapEndCap.setAttribute('y', String(tokenCapCapY));
-            this.minimap.minimapTokenCapEndCap.setAttribute('width', String(Math.round(capWidth)));
-            this.minimap.minimapTokenCapEndCap.setAttribute('height', String(Math.round(tokenCapCapHeight)));
-        }
-        if (this.minimap.minimapTokenCapCachedOverlay) {
-            this.minimap.minimapTokenCapCachedOverlay.setAttribute('x', String(baselineStart));
-            this.minimap.minimapTokenCapCachedOverlay.setAttribute('y', String(tokenCapY));
-            this.minimap.minimapTokenCapCachedOverlay.setAttribute('width', '0');
-            this.minimap.minimapTokenCapCachedOverlay.setAttribute('height', String(tokenCapBarHeight));
-            this.minimap.minimapTokenCapCachedOverlay.setAttribute('rx', String(Math.round(tokenCapBarHeight / 2)));
-            this.minimap.minimapTokenCapCachedOverlay.setAttribute('ry', String(Math.round(tokenCapBarHeight / 2)));
-            this.minimap.minimapTokenCapCachedOverlay.classList.add('ert-hidden');
-        }
-        if (this.minimap.minimapTokenCapSplitGroup) {
-            clearSvgChildren(this.minimap.minimapTokenCapSplitGroup);
-            this.minimap.minimapTokenCapSplitGroup.classList.add('ert-hidden');
-        }
-        const reuseBandY = MINIMAP_TOKEN_CAP_Y + MINIMAP_TOKEN_CAP_BAR_HEIGHT
-                           + MINIMAP_TOKEN_CAP_SPLIT_TICK_HEIGHT; // 7+4+10 = 21
-        if (this.minimap.minimapReuseBand) {
-            this.minimap.minimapReuseBand.setAttribute('x1', String(baselineStart));
-            this.minimap.minimapReuseBand.setAttribute('y1', String(reuseBandY));
-            this.minimap.minimapReuseBand.setAttribute('x2', String(baselineEnd));
-            this.minimap.minimapReuseBand.setAttribute('y2', String(reuseBandY));
-        }
-        this.minimap.minimapBottomOffset = tokenCapCapY + tokenCapCapHeight;
-        this.minimap.minimapTicksEl.setAttribute('transform', `translate(${baselineStart} 0)`);
-        this.renderMinimapBackbone(baselineStart, length);
-
-        if (!count) {
-            this.minimap.minimapBackboneGroup?.setAttribute('display', 'none');
-            this.renderCorpusCcStrip();
-            this.updateMinimapFocus();
-            this.updateMinimapPressureGauge();
-            this.updatePreviewPanelPosition();
-            return;
-        }
-
-        this.minimap.minimapBackboneGroup?.removeAttribute('display');
-        const tickCorner = Math.max(2, Math.round(tickWidth * 0.18));
-        const markerWidth = Math.max(3, Math.round(tickWidth * 0.18));
-        const markerHeight = Math.min(8, Math.max(6, Math.round(tickHeight * 0.35)));
-        const markerInsetX = 4;
-        const tickLayouts: Array<{ x: number; y: number; width: number; height: number; rowIndex: number }> = [];
-
-        for (let i = 0; i < count; i += 1) {
-            const item = items[i];
-            const rowIndex = rowCount === 2 && i >= firstRowCount ? 1 : 0;
-            const colIndex = rowIndex === 0 ? i : (i - firstRowCount);
-            const pos = columnCount > 1
-                ? tickInset + startOffset + (columnStep * colIndex)
-                : tickInset + startOffset + (availableLength / 2);
-            const rowY = rowIndex === 0 ? rowTopY : rowBottomY;
-            const x = Math.round(pos - (tickWidth / 2));
-            const y = Math.round(rowY);
-            const tick = createSvgGroup(this.minimap.minimapTicksEl, 'ert-inquiry-minimap-tick', x, y);
-            const isSagaScope = this.state.scope === 'saga';
-            if (isSagaScope) {
-                tick.classList.add('is-saga');
-            }
-            const base = createSvgElement('rect');
-            base.classList.add('ert-inquiry-minimap-tick-base');
-            base.setAttribute('x', '0');
-            base.setAttribute('y', '0');
-            base.setAttribute('width', String(tickWidth));
-            base.setAttribute('height', String(tickHeight));
-            base.setAttribute('rx', String(tickCorner));
-            base.setAttribute('ry', String(tickCorner));
-            const border = createSvgElement('rect');
-            border.classList.add('ert-inquiry-minimap-tick-border');
-            border.setAttribute('x', '0');
-            border.setAttribute('y', '0');
-            border.setAttribute('width', String(tickWidth));
-            border.setAttribute('height', String(tickHeight));
-            border.setAttribute('rx', String(tickCorner));
-            border.setAttribute('ry', String(tickCorner));
-            tick.appendChild(base);
-            tick.appendChild(border);
-            if (isSagaScope) {
-                const marker = createSvgElement('rect');
-                marker.classList.add('ert-inquiry-minimap-tick-marker');
-                marker.setAttribute('width', String(markerWidth));
-                marker.setAttribute('height', String(markerHeight));
-                marker.setAttribute('x', String(Math.round(tickWidth - markerInsetX - markerWidth)));
-                marker.setAttribute('y', '0');
-                marker.setAttribute('rx', '1');
-                marker.setAttribute('ry', '1');
-                tick.appendChild(marker);
-            }
-            const label = item.displayLabel;
-            const fullLabel = this.getMinimapItemTitle(item) || label;
-            tick.setAttribute('data-index', String(i + 1));
-            tick.setAttribute('data-id', item.id);
-            tick.setAttribute('data-label', label);
-            tick.setAttribute('data-full-label', fullLabel);
-            if (item.sceneId) {
-                tick.setAttribute('data-scene-id', item.sceneId);
-            } else {
-                tick.removeAttribute('data-scene-id');
-            }
-            addTooltipData(tick, this.balanceTooltipText(fullLabel), 'bottom');
-            tick.setAttribute('data-rt-tooltip-offset-y', '6');
-            this.registerDomEvent(tick as unknown as HTMLElement, 'click', (event: MouseEvent) => {
+        const result = this.minimap.renderTicks(items, this.state.scope, VIEWBOX_SIZE, {
+            getItemTitle: (item) => this.getMinimapItemTitle(item),
+            balanceTooltipText: (text) => this.balanceTooltipText(text),
+            registerDomEvent: (el, event, handler) => this.registerDomEvent(el, event, handler),
+            onTickClick: (item, event) => {
                 this.clearErrorStateForAction();
                 if (this.state.isRunning) {
                     this.notifyInteraction('Inquiry running. Please wait.');
@@ -4021,21 +3796,28 @@ export class InquiryView extends ItemView {
                     return;
                 }
                 this.drillIntoBook(item.id);
-            });
-            this.registerDomEvent(tick as unknown as HTMLElement, 'pointerenter', () => {
+            },
+            onTickHover: (label, fullLabel) => {
                 if (this.state.isRunning) return;
                 this.handleMinimapHover(label, fullLabel);
-            });
-            this.registerDomEvent(tick as unknown as HTMLElement, 'pointerleave', () => {
+            },
+            onTickLeave: () => {
                 this.clearHoverText();
                 this.clearResultPreview();
-            });
-            this.minimap.minimapTicks.push(tick);
-            tickLayouts.push({ x, y, width: tickWidth, height: tickHeight, rowIndex });
-        }
-        this.updatePreviewPanelPosition();
+            }
+        });
 
-        this.buildMinimapSweepLayer(tickLayouts, tickWidth, length);
+        if (!result) {
+            // No items — renderer hid backbone, run post-render updates
+            this.renderCorpusCcStrip();
+            this.updateMinimapFocus();
+            this.updateMinimapPressureGauge();
+            this.updatePreviewPanelPosition();
+            return;
+        }
+
+        this.updatePreviewPanelPosition();
+        this.minimap.buildSweepLayer(result.tickLayouts, result.tickWidth, this.minimap.layoutLength ?? 0);
         void this.refreshMinimapEmptyStates(items);
         this.renderCorpusCcStrip();
         this.applyMinimapSubsetShading(items);
@@ -4044,7 +3826,7 @@ export class InquiryView extends ItemView {
     }
 
     private updatePreviewPanelPosition(): void {
-        if (!this.previewGroup || !this.minimap.minimapGroup) return;
+        if (!this.previewGroup || !this.minimap.hasGroup) return;
         const targetY = this.getPreviewPanelTargetY();
         if (!Number.isFinite(targetY)) return;
         this.previewGroup.setAttribute('transform', `translate(0 ${targetY})`);
@@ -4052,194 +3834,45 @@ export class InquiryView extends ItemView {
     }
 
     private getPreviewPanelTargetY(): number {
-        return MINIMAP_GROUP_Y
-            + this.minimap.minimapBottomOffset
-            + PREVIEW_PANEL_MINIMAP_GAP
-            - PREVIEW_PANEL_PADDING_Y;
-    }
-
-    private renderMinimapBackbone(baselineStart: number, length: number): void {
-        this.minimap.renderBackbone(baselineStart, length);
+        return this.minimap.getPreviewPanelTargetY();
     }
 
     private applyMinimapSubsetShading(items: InquiryCorpusItem[]): void {
-        if (this.state.scope !== 'book' || !this.minimap.minimapTicks.length || !items.length) {
-            this.minimap.minimapTicks.forEach(tick => {
-                tick.classList.remove('is-excluded', 'is-included', 'is-selection-boundary');
-            });
-            return;
-        }
-
         const manifest = this.buildCorpusManifest('minimap-subset', {
             questionZone: this.state.activeZone ?? undefined,
             applyOverrides: true
         });
-        const includedSceneIds = new Set(
-            manifest.entries
-                .filter(entry => entry.class === 'scene')
-                .map(entry => entry.sceneId)
-                .filter((sceneId): sceneId is string => typeof sceneId === 'string' && sceneId.trim().length > 0)
-        );
-        const includedPaths = new Set(
-            manifest.entries
-                .filter(entry => entry.class === 'scene')
-                .map(entry => entry.path)
-                .filter(path => typeof path === 'string' && path.trim().length > 0)
-        );
-
-        const subset = buildMinimapSubsetResult(
-            items.map(item => ({
-                id: item.id,
-                sceneId: item.sceneId,
-                filePath: (item as { filePath?: string }).filePath,
-                filePaths: item.filePaths
-            })),
-            includedSceneIds,
-            includedPaths
-        );
-
-        this.minimap.minimapTicks.forEach((tick, index) => {
-            const included = subset.included[index] ?? true;
-            tick.classList.toggle('is-excluded', subset.hasSubset && !included);
-            tick.classList.toggle('is-included', subset.hasSubset && included);
-            const prev = subset.included[index - 1];
-            const next = subset.included[index + 1];
-            const isBoundary = subset.hasSubset
-                && included
-                && ((index > 0 && prev !== included) || (index < subset.included.length - 1 && next !== included));
-            tick.classList.toggle('is-selection-boundary', isBoundary);
-        });
+        this.minimap.applySubsetShading(items, this.state.scope, manifest);
     }
 
     private updateMinimapPressureGauge(): void {
-        if (!this.minimap.minimapBackboneGroup || !this.minimap.minimapBaseline || this.state.isRunning) return;
+        if (this.state.isRunning) return;
         const readinessUi = this.buildReadinessUiState();
         this.lastReadinessUiState = readinessUi;
-
-        const ratio = Math.max(0, readinessUi.readiness.pressureRatio);
-        const clamped = Math.min(ratio, 1);
-        this.minimap.setFillProgress(0, 0);
-        this.minimap.minimapBackboneShine?.setAttribute('width', '0');
-        this.minimap.minimapBackboneGlow?.setAttribute('width', '0');
-
         const passPlan = this.getCurrentPassPlan(readinessUi);
-        const isOverCapacity = ratio >= 1;
-        const usesAutomaticPackaging = readinessUi.packaging === 'automatic' && readinessUi.readiness.exceedsBudget;
-        const overCapacityTone: 'amber' | 'red' = usesAutomaticPackaging ? 'amber' : 'red';
         const styleSource = this.getStyleSource();
         const isPro = isProfessionalActive(this.plugin);
         const advancedContext = getLastAiAdvancedContext(this.plugin, 'InquiryMode') ?? null;
-        this.minimap.updateTokenCapBar(clamped, isOverCapacity, overCapacityTone, passPlan.displayPassCount, styleSource, advancedContext);
-        this.minimap.minimapBaseline.style.stroke = '';
-        this.minimap.minimapEndCapStart?.style.removeProperty('fill');
-        this.minimap.minimapEndCapEnd?.style.removeProperty('fill');
-        if (isOverCapacity) {
-            const pressureColors = getBackbonePressureColors(styleSource, overCapacityTone, isPro);
-            this.minimap.applyStopColors(pressureColors.gradient, pressureColors.shine);
-        } else {
-            const pressureColors = getBackbonePressureColors(styleSource, readinessUi.readiness.pressureTone, isPro);
-            this.minimap.applyStopColors(pressureColors.gradient, pressureColors.shine);
-        }
-
-        this.minimap.minimapBackboneGroup.classList.remove('is-pressure-normal', 'is-pressure-amber', 'is-pressure-red', 'is-pressure-over-budget');
-        this.minimap.minimapBackboneGroup.classList.add(
-            isOverCapacity
-                ? (overCapacityTone === 'amber' ? 'is-pressure-amber' : 'is-pressure-red')
-                : readinessUi.readiness.pressureTone === 'red'
-                    ? 'is-pressure-red'
-                    : readinessUi.readiness.pressureTone === 'amber'
-                        ? 'is-pressure-amber'
-                        : 'is-pressure-normal'
+        this.minimap.updatePressureGauge(
+            readinessUi,
+            passPlan,
+            styleSource,
+            isPro,
+            advancedContext,
+            (value) => this.formatTokenEstimate(value),
+            (text) => this.balanceTooltipText(text)
         );
-        this.minimap.minimapBackboneGroup.classList.toggle(
-            'is-pressure-over-budget',
-            readinessUi.packaging === 'singlePassOnly' && readinessUi.readiness.exceedsBudget
-        );
-
-        const inputLabel = this.formatTokenEstimate(readinessUi.estimateInputTokens);
-        const safeLabel = readinessUi.safeInputBudget > 0 ? this.formatTokenEstimate(readinessUi.safeInputBudget) : 'n/a';
-        const packagingLabel = readinessUi.packaging === 'singlePassOnly' ? 'Single-pass only' : 'Automatic';
-        const tooltipLines = [
-            `Context usage: ~${inputLabel} / ~${safeLabel}`,
-            `Packaging: ${packagingLabel}`
-        ];
-        if (readinessUi.packaging === 'automatic' && readinessUi.readiness.exceedsBudget) {
-            tooltipLines.push('Will package into multiple passes');
-        }
-        addTooltipData(this.minimap.minimapBaseline, this.balanceTooltipText(tooltipLines.join('\n')), 'top');
-
-        const passIndicator = buildPassIndicator(
-            passPlan.recentExactPassCount ?? undefined,
-            passPlan.packagingExpected,
-            passPlan.estimatedPassCount ?? undefined
-        );
-        if (this.minimap.minimapPassIndicatorGroup && this.minimap.minimapPassIndicatorText) {
-            this.minimap.minimapPassIndicatorGroup.classList.toggle('ert-hidden', !passIndicator.visible);
-            if (passIndicator.visible) {
-                this.minimap.minimapPassIndicatorText.textContent = passIndicator.marks;
-                const reason = passPlan.packagingTriggerReason
-                    || (passIndicator.expectedOnly
-                        ? 'Large corpus expected to be packaged for stability.'
-                        : 'Large corpus packaging completed.');
-                const passText = passIndicator.exactCount
-                    ? `Passes: ${passIndicator.exactCount} total (${passIndicator.extraPassCount ?? 0} extra)`
-                    : `Estimated passes: ${passIndicator.totalPassCount ?? 2} total (${passIndicator.extraPassCount ?? 1} extra)`;
-                addTooltipData(
-                    this.minimap.minimapPassIndicatorGroup,
-                    this.balanceTooltipText(`${passText}\n${reason}`),
-                    'top'
-                );
-            }
-        }
         this.updateMinimapReuseStatus();
     }
 
     private updateMinimapReuseStatus(): void {
-        if (!this.minimap.minimapGroup) return;
-
-        const advanced = getLastAiAdvancedContext(this.plugin, 'InquiryMode');
-        const reuseState = advanced?.reuseState ?? 'idle';
-        const provider = advanced?.provider ?? 'none';
-
-        this.minimap.minimapGroup.setAttribute('data-reuse-state', reuseState);
-        this.minimap.minimapReuseBand?.classList.toggle('ert-hidden', reuseState === 'idle');
-        this.minimap.minimapReuseDot?.classList.toggle('ert-hidden', reuseState === 'idle');
-
-        const fingerprint = this.state.corpusFingerprint
-            ?? this.payloadStats?.manifestFingerprint;
-        const corpusShort = fingerprint
-            ? fingerprint.replace(/^h/, '').slice(0, 4).toUpperCase()
-            : '----';
-
-        if (this.minimap.minimapReuseBand && reuseState !== 'idle') {
-            const providerLabel = provider === 'google' ? 'Gemini'
-                : provider.charAt(0).toUpperCase() + provider.slice(1);
-            const stateDetail = reuseState === 'warm'
-                ? 'Warm (evidence prefix cached)'
-                : 'Eligible (prompt optimized for caching)';
-            const cachedRatio = advanced?.cachedStableRatio;
-            const cachedTokens = advanced?.cachedStableTokens;
-            const ratioDetail = cachedRatio && cachedRatio > 0
-                ? `\nCached: ${Math.round(cachedRatio * 100)}% of input (\u2248${cachedTokens?.toLocaleString() ?? '?'} tokens)`
-                : '';
-            const cacheStatus = advanced?.cacheStatus;
-            const cacheDetail = cacheStatus && provider === 'google'
-                ? `\nCache: ${cacheStatus} \u2022 TTL: 15m`
-                : '';
-            addTooltipData(
-                this.minimap.minimapReuseBand,
-                this.balanceTooltipText(`Reuse: ${stateDetail}\nCorpus ${corpusShort} \u2022 ${providerLabel}${ratioDetail}${cacheDetail}`),
-                'bottom'
-            );
-        }
-    }
-
-    private buildMinimapSweepLayer(
-        tickLayouts: Array<{ x: number; y: number; width: number; height: number; rowIndex: number }>,
-        tickWidth: number,
-        length: number
-    ): void {
-        this.minimap.buildSweepLayer(tickLayouts, tickWidth, length);
+        const advanced = getLastAiAdvancedContext(this.plugin, 'InquiryMode') ?? null;
+        this.minimap.updateReuseStatus(
+            advanced,
+            this.state.corpusFingerprint,
+            this.payloadStats?.manifestFingerprint,
+            (text) => this.balanceTooltipText(text)
+        );
     }
 
     private renderCorpusCcStrip(): void {
@@ -8659,7 +8292,7 @@ export class InquiryView extends ItemView {
         const zoneLabel = zone === 'setup' ? 'Setup' : zone === 'pressure' ? 'Pressure' : 'Payoff';
         const modeLabel = mode === 'flow' ? 'Flow' : 'Depth';
         const heroTargetLines = 3;
-        const heroBaseWidth = this.minimap.minimapLayout?.length ?? (PREVIEW_PANEL_WIDTH - (PREVIEW_PANEL_PADDING_X * 2));
+        const heroBaseWidth = this.minimap.layoutLength ?? (PREVIEW_PANEL_WIDTH - (PREVIEW_PANEL_PADDING_X * 2));
         let heroLines = this.setBalancedHeroText(
             this.previewHero,
             question,
@@ -9099,9 +8732,7 @@ export class InquiryView extends ItemView {
         if (!this.previewGroup.classList.contains('is-results')) return;
         const panelY = targetY ?? this.getPreviewPanelTargetY();
         if (!Number.isFinite(panelY)) return;
-        const backboneBottom = this.minimap.minimapBackboneLayout
-            ? this.minimap.minimapBackboneLayout.glowY + this.minimap.minimapBackboneLayout.glowHeight
-            : 0;
+        const backboneBottom = this.minimap.backboneBottomEdge;
         const footerY = (MINIMAP_GROUP_Y + backboneBottom + PREVIEW_RESULTS_FOOTER_OFFSET) - panelY;
         this.previewFooter.setAttribute('y', footerY.toFixed(2));
         this.updatePreviewClickTargetLayout();
