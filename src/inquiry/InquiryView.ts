@@ -51,7 +51,7 @@ import {
 import { ZONE_LAYOUT } from './zoneLayout';
 import { InquiryRunnerService } from './runner/InquiryRunnerService';
 import { getLastAiAdvancedContext } from '../ai/runtime/aiClient';
-import { computeCaps, INPUT_TOKEN_GUARD_FACTOR } from '../ai/caps/computeCaps';
+// computeCaps, INPUT_TOKEN_GUARD_FACTOR: now used in inquiryReadinessBuilder.ts
 import { BUILTIN_MODELS } from '../ai/registry/builtinModels';
 import { selectModel } from '../ai/router/selectModel';
 import { buildDefaultAiSettings, mapAiProviderToLegacyProvider, mapLegacyProviderToAiProvider } from '../ai/settings/aiSettings';
@@ -72,16 +72,10 @@ import type { InquirySourcesSettings } from '../types/settings';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
 import { isProfessionalActive } from '../settings/sections/ProfessionalSection';
 import { InquiryCorpusResolver, InquiryCorpusSnapshot, InquiryCorpusItem, InquirySceneItem, InquiryBookItem } from './services/InquiryCorpusResolver';
-import {
-    buildCorpusSelectionKey,
-    buildLegacyCorpusSelectionKey,
-    parseCorpusSelectionKey
-} from './services/corpusSelectionKeys';
 import { buildMinimapSubsetResult } from './services/minimapSubset';
-import { buildPassIndicator, evaluateInquiryReadiness, type InquiryReadinessResult } from './services/readiness';
+import { buildPassIndicator } from './services/readiness';
 import {
     isPathIncludedByInquiryBooks,
-    normalizeInquiryBookInclusion,
     resolveInquiryBookResolution
 } from './services/bookResolution';
 import { getModelDisplayName } from '../utils/modelResolver';
@@ -89,6 +83,67 @@ import { resolveInquiryEngine, type ResolvedInquiryEngine } from './services/inq
 import { buildInquirySourcesViewModel } from './services/inquirySources';
 import { computeInquiryAdvisoryContext, type InquiryAdvisoryContext } from './services/inquiryAdvisory';
 import type { InquiryEstimateSnapshot } from './services/inquiryEstimateSnapshot';
+import type {
+    TokenTier,
+    InquiryPayloadStats,
+    InquiryReadinessUiState,
+    InquiryEnginePopoverState,
+    PassPlanResult
+} from './types';
+import {
+    buildReadinessUiState as buildReadinessUiStatePure,
+    buildRunScopeLabel as buildRunScopeLabelPure,
+    buildEnginePayloadSummary as buildEnginePayloadSummaryPure,
+    resolveEnginePopoverState as resolveEnginePopoverStatePure,
+    estimateStructuredPassCount as estimateStructuredPassCountPure,
+    getCurrentPassPlan as getCurrentPassPlanPure,
+    buildAdvisoryInputKey,
+    formatTokenEstimate as formatTokenEstimatePure,
+    getTokenTier as getTokenTierPure,
+    getTokenTierFromSnapshot as getTokenTierFromSnapshotPure,
+    INQUIRY_INPUT_TOKENS_AMBER,
+    INQUIRY_INPUT_TOKENS_RED
+} from './services/inquiryReadinessBuilder';
+import {
+    InquiryCorpusService,
+    isSynopsisCapableClass as isSynopsisCapableClassPure,
+    normalizeEvidenceMode as normalizeEvidenceModePure,
+    isModeActive as isModeActivePure,
+    normalizeContributionMode as normalizeContributionModePure,
+    normalizeMaterialMode as normalizeMaterialModePure,
+    normalizeClassContribution as normalizeClassContributionPure,
+    resolveContributionMode as resolveContributionModePure,
+    getDefaultMaterialMode as getDefaultMaterialModePure,
+    hashString as hashStringPure,
+    getCorpusGroupKey as getCorpusGroupKeyPure,
+    getCorpusGroupBaseClass as getCorpusGroupBaseClassPure,
+    getCorpusItemKey as getCorpusItemKeyPure,
+    parseCorpusItemKey as parseCorpusItemKeyPure,
+    getCorpusCycleModes as getCorpusCycleModesPure,
+    getNextCorpusMode as getNextCorpusModePure,
+    getCorpusGroupKeys as getCorpusGroupKeysPure,
+    getClassScopeConfig as getClassScopeConfigPure,
+    extractClassValues as extractClassValuesPure,
+    getFrontmatterScope as getFrontmatterScopePure,
+    normalizeInquirySources as normalizeInquirySourcesPure
+} from './services/InquiryCorpusService';
+import { createSvgElement, createSvgGroup, createSvgText, clearSvgChildren, SVG_NS } from './minimap/svgUtils';
+import {
+    InquiryMinimapRenderer,
+    MINIMAP_GROUP_Y,
+    MINIMAP_TOKEN_CAP_Y,
+    MINIMAP_TOKEN_CAP_BAR_HEIGHT,
+    MINIMAP_TOKEN_CAP_ENDCAP_HEIGHT,
+    MINIMAP_TOKEN_CAP_SPLIT_TICK_HEIGHT,
+    MIN_PROCESSING_MS,
+    parseRgbColor,
+    toRgbString,
+    getExecutionColorValue,
+    getBackboneStartColors,
+    getBackbonePressureColors,
+    type RgbColor,
+    type BackboneColors
+} from './minimap/InquiryMinimapRenderer';
 import { addTooltipData, setupTooltipsFromDataAttributes } from '../utils/tooltip';
 import { splitIntoBalancedLinesOptimal } from '../utils/text';
 import { classifySynopsis, type SynopsisQuality } from '../sceneAnalysis/synopsisQuality';
@@ -96,8 +151,7 @@ import { readSceneId } from '../utils/sceneIds';
 import {
     DEFAULT_CHARS_PER_TOKEN,
     estimateTokensFromChars as estimateTokensFromCharsHeuristic,
-    estimateUncertaintyTokens,
-    type TokenEstimateMethod
+    estimateUncertaintyTokens
 } from '../ai/tokens/inputTokenEstimate';
 import {
     MAX_RESOLVED_SCAN_ROOTS,
@@ -109,18 +163,10 @@ import {
 const GLYPH_PLACEHOLDER_FLOW = 0.75;
 const GLYPH_PLACEHOLDER_DEPTH = 0.30;
 const DEBUG_SVG_OVERLAY = false;
-const SVG_NS = 'http://www.w3.org/2000/svg';
 const VIEWBOX_MIN = -800;
 const VIEWBOX_MAX = 800;
 const VIEWBOX_SIZE = 1600;
-const INQUIRY_SYNOPSIS_CAPABLE_CLASSES = new Set(['scene', 'outline']);
 const INQUIRY_CONTEXT_CLASSES = new Set(['character', 'place', 'power']);
-const MINIMAP_GROUP_Y = -520;
-const MINIMAP_TOKEN_CAP_Y = 7;
-const MINIMAP_TOKEN_CAP_BAR_HEIGHT = 4;
-const MINIMAP_TOKEN_CAP_ENDCAP_HEIGHT = 10;
-const MINIMAP_TOKEN_CAP_SPLIT_TICK_HEIGHT = MINIMAP_TOKEN_CAP_ENDCAP_HEIGHT;
-const MINIMAP_TOKEN_CAP_SPLIT_TICK_WIDTH = 2;
 const PREVIEW_PANEL_WIDTH = 640;
 const PREVIEW_PANEL_Y = -390;
 const PREVIEW_PANEL_MINIMAP_GAP = 60;
@@ -142,7 +188,6 @@ const PREVIEW_SHIMMER_WIDTH = 120;
 const PREVIEW_SHIMMER_OVERHANG = 110;
 const RESULTS_EMPTY_TEXT = 'No notable findings.';
 const RESULTS_MAX_CHIPS = 6;
-const SWEEP_RANDOM_CYCLE_MS = 2000;
 const FLOW_FINDING_ORDER: InquiryFinding['kind'][] = ['escalation', 'conflict', 'continuity', 'loose_end', 'unclear', 'error', 'none'];
 const DEPTH_FINDING_ORDER: InquiryFinding['kind'][] = ['continuity', 'loose_end', 'conflict', 'escalation', 'unclear', 'error', 'none'];
 const SIGMA_CHAR = String.fromCharCode(931);
@@ -177,13 +222,6 @@ const DEPTH_ICON_PATHS = [
     'M1551.99,1114.01c.23,1.74-2.27.94-3.49.99-28.7,1.17-57.41,3.38-86.01,6.01-50.64,4.65-102.69,10.42-152.69,19.31-45.89,8.16-90.99,20.29-137.44,25.56-70.68,8.02-151.77,8.26-222.92,5.17-53.24-2.32-94.82-10.23-146.27-20.73-38.54-7.87-77.78-13.26-116.83-18.17-54.21-6.82-108.69-12.32-163.37-13.64,0-.98,17.41-.43,19.5-.51,1.91-.07,3.84-.94,5.97-1.03,56.79-2.41,114.18-4.01,171.05-1.97,79.85,2.87,154.28,20.33,235.03,22.97,81.86,2.68,167.54,3.23,248.82-7.1,25.84-3.29,51.37-8.72,77.27-11.73,90.03-10.49,180.85-4.28,271.37-5.11v-.02Z',
     'M1464.99,1229.01l-38.18,7.3c-72.97,11.22-134.53,47.2-200.84,74.16-98.8,40.16-244.57,42.87-347.39,16.45-36.36-9.34-69.09-24.27-104.06-36.94-31.43-11.39-63.54-21.36-94.77-33.23-27.19-10.33-53.12-24.79-82.76-27.25,0-1.28,23.18,1.27,25.5,1.51,51.08,5.23,105.07,12.63,154.03,27.97,26.92,8.44,52.68,20.15,79.71,28.29,98.26,29.58,239.21,30.92,337.76,2.23,39.72-11.56,75.86-32.19,115.79-43.21,50.47-13.94,103.1-15.27,155.21-17.27h0Z'
 ];
-const BACKBONE_SWEEP_WIDTH_RATIO = 0.2;
-const BACKBONE_SWEEP_MIN_WIDTH = 80;
-const BACKBONE_SWEEP_MAX_WIDTH = 200;
-const MIN_PROCESSING_MS = 5000;
-const BACKBONE_SHINE_DURATION_MS = 7200;
-const BACKBONE_OSCILLATION_MS = 8000;
-const BACKBONE_FADE_OUT_MS = 800;
 const SIMULATION_DURATION_MS = 20000;
 const BRIEFING_SESSION_LIMIT = 10;
 const DUPLICATE_PULSE_MS = 1200;
@@ -232,8 +270,7 @@ const GUIDANCE_TEXT_Y = 360;
 const GUIDANCE_LINE_HEIGHT = 18;
 const GUIDANCE_ALERT_LINE_HEIGHT = 26;
 const INQUIRY_PROMPT_OVERHEAD_CHARS = 900;
-const INQUIRY_INPUT_TOKENS_AMBER = 90000;
-const INQUIRY_INPUT_TOKENS_RED = 140000;
+// Token tier thresholds: now exported from inquiryReadinessBuilder.ts
 const INQUIRY_REQUIRED_CAPABILITIES: Capability[] = ['longContext', 'jsonStrict', 'reasoningStrong', 'highOutputCap'];
 
 type InquiryQuestion = {
@@ -276,8 +313,6 @@ type InquiryPreviewRow = {
     text: SVGTextElement;
     label: string;
 };
-
-type TokenTier = 'normal' | 'amber' | 'red';
 
 type InquiryOmnibusPlan = {
     scope: InquiryScope;
@@ -831,37 +866,6 @@ class InquiryOmnibusModal extends Modal {
     }
 }
 
-type InquiryPayloadStats = {
-    scope: InquiryScope;
-    focusBookId?: string;
-    sceneTotal: number;
-    sceneSynopsisUsed: number;
-    sceneSynopsisAvailable: number;
-    sceneFullTextCount: number;
-    bookOutlineCount: number;
-    bookOutlineSummaryCount: number;
-    bookOutlineFullCount: number;
-    sagaOutlineCount: number;
-    sagaOutlineSummaryCount: number;
-    sagaOutlineFullCount: number;
-    referenceCounts: { character: number; place: number; power: number; other: number; total: number };
-    referenceByClass: Record<string, number>;
-    evidenceChars: number;
-    resolvedRoots: string[];
-    manifestFingerprint: string;
-};
-
-type RgbColor = {
-    r: number;
-    g: number;
-    b: number;
-};
-
-type BackboneColors = {
-    gradient: RgbColor[];
-    shine: RgbColor[];
-};
-
 type CorpusCcEntry = {
     id: string;
     entryKey: string;
@@ -949,27 +953,6 @@ type AiSettingsFocus =
 type EngineFailureGuidance = {
     message: string;
 };
-type InquiryReadinessUiState = {
-    pending: boolean;
-    readiness: InquiryReadinessResult;
-    estimateInputTokens: number;
-    estimateMethod: TokenEstimateMethod;
-    estimateUncertaintyTokens: number;
-    safeInputBudget: number;
-    outputBudget: number;
-    packaging: AiSettingsV1['analysisPackaging'];
-    hasEligibleModel: boolean;
-    hasCredential: boolean;
-    provider: AIProviderId;
-    providerLabel: string;
-    reason: string;
-    model?: ModelInfo;
-    runScopeLabel: string;
-    canSwitchToSummaries: boolean;
-    canUseSelectedScenesOnly: boolean;
-};
-type InquiryEnginePopoverState = 'ready' | 'multi-pass' | 'exceeds';
-
 export class InquiryView extends ItemView {
     static readonly viewType = INQUIRY_VIEW_TYPE;
 
@@ -1016,51 +999,8 @@ export class InquiryView extends ItemView {
     private _resolvedEngine: ResolvedInquiryEngine | null = null;
     private omnibusAbortRequested = false;
     private activeOmnibusModal?: InquiryOmnibusModal;
-    private minimapTicksEl?: SVGGElement;
-    private minimapBaseline?: SVGLineElement;
-    private minimapEndCapStart?: SVGRectElement;
-    private minimapEndCapEnd?: SVGRectElement;
-    private minimapTokenCapBar?: SVGRectElement;
-    private minimapTokenCapStartCap?: SVGRectElement;
-    private minimapTokenCapEndCap?: SVGRectElement;
-    private minimapTokenCapSplitGroup?: SVGGElement;
-    private minimapTokenCapCachedOverlay?: SVGRectElement;
-    private minimapTicks: SVGGElement[] = [];
-    private minimapGroup?: SVGGElement;
-    private minimapBackboneGroup?: SVGGElement;
-    private minimapBackboneGlow?: SVGRectElement;
-    private minimapBackboneShine?: SVGRectElement;
-    private minimapBackboneClip?: SVGClipPathElement;
-    private minimapBackboneClipRect?: SVGRectElement;
-    private minimapBackboneLayout?: {
-        startX: number;
-        length: number;
-        glowHeight: number;
-        glowY: number;
-        shineHeight: number;
-        shineY: number;
-    };
-    private minimapBackboneGradientStops: SVGStopElement[] = [];
-    private minimapBackboneShineStops: SVGStopElement[] = [];
-    private minimapPassIndicatorGroup?: SVGGElement;
-    private minimapPassIndicatorText?: SVGTextElement;
-    private minimapReuseBand?: SVGLineElement;
-    private minimapReuseDot?: SVGCircleElement;
-    private backboneStartColors?: BackboneColors;
-    private backboneTargetColors?: BackboneColors;
-    private backboneOscillationColors?: { base: BackboneColors; target: BackboneColors };
-    private backboneOscillationPhaseOffset = 0;
-    private backboneFadeTimer?: number;
-    private minimapSweepTicks: Array<{ rect: SVGRectElement; centerX: number; rowIndex: number }> = [];
-    private minimapSweepLayout?: { startX: number; endX: number; bandWidth: number };
-    private sweepRandomCycle = -1;
-    private sweepRandomActive = new Set<number>();
-    private minimapBottomOffset = 0;
-    private minimapEmptyUpdateId = 0;
-    private runningAnimationFrame?: number;
-    private runningAnimationStart?: number;
+    private readonly minimap = new InquiryMinimapRenderer();
     private wasRunning = false;
-    private minimapLayout?: { startX: number; length: number };
     private zonePromptElements = new Map<InquiryZone, {
         group: SVGGElement;
         bg: SVGRectElement;
@@ -1122,8 +1062,7 @@ export class InquiryView extends ItemView {
         status?: 'todo' | 'working' | 'complete';
         title?: string;
     }>();
-    private corpusClassOverrides = new Map<string, InquiryMaterialMode>();
-    private corpusItemOverrides = new Map<string, InquiryMaterialMode>();
+    private corpusService = new InquiryCorpusService();
     private corpusWarningActive = false;
     private apiSimulationTimer?: number;
     private navPrevButton?: SVGGElement;
@@ -1232,7 +1171,7 @@ export class InquiryView extends ItemView {
             if (!backgroundTarget) return;
             this.dismissError();
         }, { capture: true });
-        const svg = this.createSvgElement('svg');
+        const svg = createSvgElement('svg');
         svg.classList.add('ert-ui', 'ert-inquiry-svg');
         svg.setAttribute('viewBox', `${VIEWBOX_MIN} ${VIEWBOX_MIN} ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}`);
         svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
@@ -1240,13 +1179,13 @@ export class InquiryView extends ItemView {
         this.contentEl.appendChild(svg);
         setupTooltipsFromDataAttributes(svg, this.registerDomEvent.bind(this));
 
-        const defs = this.createSvgElement('defs');
+        const defs = createSvgElement('defs');
         this.svgDefs = defs;
         this.buildIconSymbols(defs);
         this.buildZoneGradients(defs);
         svg.appendChild(defs);
 
-        const background = this.createSvgElement('rect');
+        const background = createSvgElement('rect');
         background.classList.add('ert-inquiry-bg');
         background.setAttribute('x', String(VIEWBOX_MIN));
         background.setAttribute('y', String(VIEWBOX_MIN));
@@ -1254,7 +1193,7 @@ export class InquiryView extends ItemView {
         background.setAttribute('height', String(VIEWBOX_SIZE));
         svg.appendChild(background);
 
-        const bgImage = this.createSvgElement('image');
+        const bgImage = createSvgElement('image');
         bgImage.classList.add('ert-inquiry-bg-image');
         bgImage.setAttribute('x', String(VIEWBOX_MIN));
         bgImage.setAttribute('y', String(VIEWBOX_MIN));
@@ -1272,9 +1211,9 @@ export class InquiryView extends ItemView {
 
         const hudOffsetX = -760;
         const hudOffsetY = -740;
-        const hudGroup = this.createSvgGroup(svg, 'ert-inquiry-hud', hudOffsetX, hudOffsetY);
+        const hudGroup = createSvgGroup(svg, 'ert-inquiry-hud', hudOffsetX, hudOffsetY);
         hudGroup.setAttribute('id', 'inq-hud');
-        const canvasGroup = this.createSvgGroup(svg, 'ert-inquiry-canvas');
+        const canvasGroup = createSvgGroup(svg, 'ert-inquiry-canvas');
         canvasGroup.setAttribute('id', 'inq-canvas');
 
         const iconSize = 56;
@@ -1321,46 +1260,46 @@ export class InquiryView extends ItemView {
         this.registerDomEvent(this.engineBadgeGroup as unknown as HTMLElement, 'pointerleave', () => this.scheduleEnginePanelHide());
         this.registerDomEvent(this.engineBadgeGroup as unknown as HTMLElement, 'click', () => this.openAiSettings([], this.lastEngineAdvisoryContext));
 
-        const minimapGroup = this.createSvgGroup(canvasGroup, 'ert-inquiry-minimap', 0, MINIMAP_GROUP_Y);
-        this.minimapGroup = minimapGroup;
+        const minimapGroup = createSvgGroup(canvasGroup, 'ert-inquiry-minimap', 0, MINIMAP_GROUP_Y);
+        this.minimap.minimapGroup = minimapGroup;
 
         const baselineLength = VIEWBOX_SIZE / 2;
         const baselineStartX = -(baselineLength / 2);
-        this.minimapLayout = { startX: baselineStartX, length: baselineLength };
-        this.minimapBaseline = this.createSvgElement('line');
-        this.minimapBaseline.classList.add('ert-inquiry-minimap-baseline');
-        minimapGroup.appendChild(this.minimapBaseline);
-        this.minimapEndCapStart = this.createSvgElement('rect');
-        this.minimapEndCapStart.classList.add('ert-inquiry-minimap-endcap');
-        minimapGroup.appendChild(this.minimapEndCapStart);
-        this.minimapEndCapEnd = this.createSvgElement('rect');
-        this.minimapEndCapEnd.classList.add('ert-inquiry-minimap-endcap');
-        minimapGroup.appendChild(this.minimapEndCapEnd);
+        this.minimap.minimapLayout = { startX: baselineStartX, length: baselineLength };
+        this.minimap.minimapBaseline = createSvgElement('line');
+        this.minimap.minimapBaseline.classList.add('ert-inquiry-minimap-baseline');
+        minimapGroup.appendChild(this.minimap.minimapBaseline);
+        this.minimap.minimapEndCapStart = createSvgElement('rect');
+        this.minimap.minimapEndCapStart.classList.add('ert-inquiry-minimap-endcap');
+        minimapGroup.appendChild(this.minimap.minimapEndCapStart);
+        this.minimap.minimapEndCapEnd = createSvgElement('rect');
+        this.minimap.minimapEndCapEnd.classList.add('ert-inquiry-minimap-endcap');
+        minimapGroup.appendChild(this.minimap.minimapEndCapEnd);
 
-        this.minimapTokenCapBar = this.createSvgElement('rect');
-        this.minimapTokenCapBar.classList.add('ert-inquiry-minimap-tokencap-bar');
-        minimapGroup.appendChild(this.minimapTokenCapBar);
-        this.minimapTokenCapStartCap = this.createSvgElement('rect');
-        this.minimapTokenCapStartCap.classList.add('ert-inquiry-minimap-tokencap-endcap');
-        minimapGroup.appendChild(this.minimapTokenCapStartCap);
-        this.minimapTokenCapEndCap = this.createSvgElement('rect');
-        this.minimapTokenCapEndCap.classList.add('ert-inquiry-minimap-tokencap-endcap');
-        minimapGroup.appendChild(this.minimapTokenCapEndCap);
-        this.minimapTokenCapSplitGroup = this.createSvgGroup(minimapGroup, 'ert-inquiry-minimap-tokencap-splits');
+        this.minimap.minimapTokenCapBar = createSvgElement('rect');
+        this.minimap.minimapTokenCapBar.classList.add('ert-inquiry-minimap-tokencap-bar');
+        minimapGroup.appendChild(this.minimap.minimapTokenCapBar);
+        this.minimap.minimapTokenCapStartCap = createSvgElement('rect');
+        this.minimap.minimapTokenCapStartCap.classList.add('ert-inquiry-minimap-tokencap-endcap');
+        minimapGroup.appendChild(this.minimap.minimapTokenCapStartCap);
+        this.minimap.minimapTokenCapEndCap = createSvgElement('rect');
+        this.minimap.minimapTokenCapEndCap.classList.add('ert-inquiry-minimap-tokencap-endcap');
+        minimapGroup.appendChild(this.minimap.minimapTokenCapEndCap);
+        this.minimap.minimapTokenCapSplitGroup = createSvgGroup(minimapGroup, 'ert-inquiry-minimap-tokencap-splits');
 
-        this.minimapTokenCapCachedOverlay = this.createSvgElement('rect');
-        this.minimapTokenCapCachedOverlay.classList.add('ert-inquiry-minimap-tokencap-cached');
-        this.minimapTokenCapCachedOverlay.classList.add('ert-hidden');
-        minimapGroup.appendChild(this.minimapTokenCapCachedOverlay);
+        this.minimap.minimapTokenCapCachedOverlay = createSvgElement('rect');
+        this.minimap.minimapTokenCapCachedOverlay.classList.add('ert-inquiry-minimap-tokencap-cached');
+        this.minimap.minimapTokenCapCachedOverlay.classList.add('ert-hidden');
+        minimapGroup.appendChild(this.minimap.minimapTokenCapCachedOverlay);
 
-        this.minimapReuseBand = this.createSvgElement('line');
-        this.minimapReuseBand.classList.add('ert-inquiry-minimap-reuse-band');
-        minimapGroup.appendChild(this.minimapReuseBand);
+        this.minimap.minimapReuseBand = createSvgElement('line');
+        this.minimap.minimapReuseBand.classList.add('ert-inquiry-minimap-reuse-band');
+        minimapGroup.appendChild(this.minimap.minimapReuseBand);
 
-        this.minimapTicksEl = this.createSvgGroup(minimapGroup, 'ert-inquiry-minimap-ticks', baselineStartX, 0);
+        this.minimap.minimapTicksEl = createSvgGroup(minimapGroup, 'ert-inquiry-minimap-ticks', baselineStartX, 0);
         this.renderModeIcons(minimapGroup);
 
-        this.glyphAnchor = this.createSvgGroup(canvasGroup, 'ert-inquiry-focus-area');
+        this.glyphAnchor = createSvgGroup(canvasGroup, 'ert-inquiry-focus-area');
         this.glyph = new InquiryGlyph(this.glyphAnchor, {
             focusLabel: this.getFocusLabel(),
             flowValue: GLYPH_PLACEHOLDER_FLOW,
@@ -1414,7 +1353,7 @@ export class InquiryView extends ItemView {
         });
 
         const hudFooterY = 1360;
-        const navGroup = this.createSvgGroup(hudGroup, 'ert-inquiry-nav', 0, hudFooterY);
+        const navGroup = createSvgGroup(hudGroup, 'ert-inquiry-nav', 0, hudFooterY);
         this.navPrevButton = this.createIconButton(navGroup, 0, -18, 44, 'chevron-left', 'Previous book', 'ert-inquiry-nav-btn');
         this.navPrevIcon = this.navPrevButton.querySelector('.ert-inquiry-icon') as SVGUseElement;
         this.navNextButton = this.createIconButton(navGroup, 54, -18, 44, 'chevron-right', 'Next book', 'ert-inquiry-nav-btn');
@@ -1424,7 +1363,7 @@ export class InquiryView extends ItemView {
 
         // Session timestamp label — to the right of nav arrows, same gap (10px).
         // Nav buttons: prev at x=0 (w=44), next at x=54 (w=44) → next ends at x=98. Gap = 10.
-        this.navSessionLabel = this.createSvgElement('text') as unknown as SVGTextElement;
+        this.navSessionLabel = createSvgElement('text') as unknown as SVGTextElement;
         this.navSessionLabel.classList.add('ert-inquiry-nav-session-label');
         this.navSessionLabel.setAttribute('x', '108');
         this.navSessionLabel.setAttribute('y', '4');  // vertical center of 44px buttons at y=-18
@@ -1438,7 +1377,7 @@ export class InquiryView extends ItemView {
     }
 
     private buildPromptPreviewPanel(parent: SVGGElement): void {
-        const panel = this.createSvgGroup(parent, 'ert-inquiry-preview', 0, PREVIEW_PANEL_Y);
+        const panel = createSvgGroup(parent, 'ert-inquiry-preview', 0, PREVIEW_PANEL_Y);
         this.previewGroup = panel;
         this.registerDomEvent(panel as unknown as HTMLElement, 'click', (event: MouseEvent) => {
             if (this.state.isRunning) {
@@ -1456,24 +1395,24 @@ export class InquiryView extends ItemView {
             this.dismissResults();
         });
 
-        const clickTarget = this.createSvgElement('rect');
+        const clickTarget = createSvgElement('rect');
         clickTarget.classList.add('ert-inquiry-preview-hitbox');
         clickTarget.setAttribute('fill', 'transparent');
         clickTarget.setAttribute('pointer-events', 'all');
         panel.appendChild(clickTarget);
         this.previewClickTarget = clickTarget;
 
-        const runningNote = this.createSvgText(panel, 'ert-inquiry-preview-running-note ert-hidden', '', 0, -24);
+        const runningNote = createSvgText(panel, 'ert-inquiry-preview-running-note ert-hidden', '', 0, -24);
         runningNote.setAttribute('text-anchor', 'middle');
         runningNote.setAttribute('dominant-baseline', 'hanging');
         this.previewRunningNote = runningNote;
 
-        const hero = this.createSvgText(panel, 'ert-inquiry-preview-hero', '', 0, PREVIEW_PANEL_PADDING_Y);
+        const hero = createSvgText(panel, 'ert-inquiry-preview-hero', '', 0, PREVIEW_PANEL_PADDING_Y);
         hero.setAttribute('text-anchor', 'middle');
         hero.setAttribute('dominant-baseline', 'hanging');
         this.previewHero = hero;
 
-        const meta = this.createSvgText(panel, 'ert-inquiry-preview-meta', '', 0, PREVIEW_PANEL_PADDING_Y);
+        const meta = createSvgText(panel, 'ert-inquiry-preview-meta', '', 0, PREVIEW_PANEL_PADDING_Y);
         meta.setAttribute('text-anchor', 'middle');
         meta.setAttribute('dominant-baseline', 'hanging');
         this.previewMeta = meta;
@@ -1482,16 +1421,16 @@ export class InquiryView extends ItemView {
         this.previewRowDefaultLabels = rowLabels.slice();
         const tokensRowIndex = 4;
         this.previewRows = rowLabels.map((label, index) => {
-            const group = this.createSvgGroup(panel, 'ert-inquiry-preview-pill');
+            const group = createSvgGroup(panel, 'ert-inquiry-preview-pill');
             if (index === tokensRowIndex) {
                 group.classList.add('is-tokens-slot');
             }
-            const bg = this.createSvgElement('rect');
+            const bg = createSvgElement('rect');
             bg.classList.add('ert-inquiry-preview-pill-bg');
             group.appendChild(bg);
 
             const pillTextY = (PREVIEW_PILL_HEIGHT / 2) + 1;
-            const textEl = this.createSvgText(group, 'ert-inquiry-preview-pill-text', '', PREVIEW_PILL_PADDING_X, pillTextY);
+            const textEl = createSvgText(group, 'ert-inquiry-preview-pill-text', '', PREVIEW_PILL_PADDING_X, pillTextY);
             textEl.setAttribute('xml:space', 'preserve');
             textEl.setAttribute('dominant-baseline', 'middle');
             textEl.setAttribute('alignment-baseline', 'middle');
@@ -1500,14 +1439,14 @@ export class InquiryView extends ItemView {
             return { group, bg, text: textEl, label };
         });
 
-        const footer = this.createSvgText(panel, 'ert-inquiry-preview-footer', '', 0, 0);
+        const footer = createSvgText(panel, 'ert-inquiry-preview-footer', '', 0, 0);
         footer.setAttribute('text-anchor', 'middle');
         footer.setAttribute('dominant-baseline', 'hanging');
         this.previewFooter = footer;
 
         this.ensurePreviewShimmerResources(panel);
         if (!this.previewShimmerGroup) {
-            const group = this.createSvgGroup(panel, 'ert-inquiry-preview-shimmer-group');
+            const group = createSvgGroup(panel, 'ert-inquiry-preview-shimmer-group');
             if (this.previewShimmerMask) {
                 group.setAttribute('mask', `url(#${this.previewShimmerMask.getAttribute('id')})`);
             }
@@ -1797,23 +1736,11 @@ export class InquiryView extends ItemView {
         inputTokens: number;
         tier: TokenTier;
     } {
-        const snapshot = this.plugin.getInquiryEstimateService().getSnapshot();
-        const scopeLabel = this.state.scope === 'saga' ? 'Saga' : 'Book';
-        const targetLabel = this.getFocusBookLabel();
-        const contextLabel = `${scopeLabel} ${targetLabel}`;
-        if (!snapshot) {
-            return {
-                text: `Payload (${contextLabel}): Estimating…`,
-                inputTokens: 0,
-                tier: 'normal'
-            };
-        }
-        const inputLabel = this.formatTokenEstimate(snapshot.estimate.estimatedInputTokens);
-        return {
-            text: `Payload (${contextLabel}): ~${inputLabel} in`,
-            inputTokens: snapshot.estimate.estimatedInputTokens,
-            tier: this.getTokenTier(snapshot.estimate.estimatedInputTokens)
-        };
+        return buildEnginePayloadSummaryPure({
+            snapshot: this.plugin.getInquiryEstimateService().getSnapshot(),
+            scope: this.state.scope,
+            focusLabel: this.getFocusBookLabel()
+        });
     }
 
     private buildInquiryAdvisoryContext(
@@ -1834,22 +1761,19 @@ export class InquiryView extends ItemView {
         const corpusFingerprintReused = advancedContext?.reuseState === 'warm';
         const overrideSummary = this.getCorpusOverrideSummary();
         const estimatedInputTokens = snapshot.estimate.estimatedInputTokens;
-        const advisoryInputKey = [
-            this.state.scope,
-            this.getFocusLabel(),
-            engine.provider,
-            engine.modelId,
-            readinessUi.packaging,
-            Math.round(estimatedInputTokens / 5000) * 5000,
-            readinessUi.estimateMethod,
-            Math.round(readinessUi.estimateUncertaintyTokens / 1000) * 1000,
+        const advisoryInputKey = buildAdvisoryInputKey({
+            scope: this.state.scope,
+            focusLabel: this.getFocusLabel(),
+            provider: engine.provider,
+            modelId: engine.modelId,
+            packaging: readinessUi.packaging,
+            estimatedInputTokens,
+            estimateMethod: readinessUi.estimateMethod,
+            estimateUncertaintyTokens: readinessUi.estimateUncertaintyTokens,
             corpusFingerprint,
-            overrideSummary.active ? 1 : 0,
-            overrideSummary.classCount,
-            overrideSummary.itemCount,
-            overrideSummary.total,
-            corpusFingerprintReused ? 1 : 0
-        ].join('|');
+            overrideSummary,
+            corpusFingerprintReused
+        });
         if (this.lastEngineAdvisoryInputKey === advisoryInputKey) {
             return this.lastEngineAdvisoryContext;
         }
@@ -1911,210 +1835,39 @@ export class InquiryView extends ItemView {
     }
 
     private buildReadinessUiState(): InquiryReadinessUiState {
-        const snapshot = this.plugin.getInquiryEstimateService().getSnapshot();
-        const aiSettings = this.getCanonicalAiSettings();
         const engine = this.getResolvedEngine();
         const provider = engine.provider === 'none' ? 'openai' as const : engine.provider;
         const engineProvider = mapAiProviderToLegacyProvider(provider) as EngineProvider;
-        const providerLabel = engine.providerLabel;
-        const hasCredential = this.getProviderAvailability(engineProvider).enabled;
-
-        // If snapshot is not yet available, return a pending state.
-        if (!snapshot) {
-            const stats = this.getPayloadStats();
-            const selectedSceneOverrides = this.getSelectedSceneOverrideEntries();
-            return {
-                pending: true,
-                readiness: evaluateInquiryReadiness({
-                    hasEligibleModel: false,
-                    hasCredential,
-                    analysisPackaging: aiSettings.analysisPackaging,
-                    estimatedInputTokens: 0,
-                    safeInputBudget: 0,
-                    estimateUncertaintyTokens: 0
-                }),
-                estimateInputTokens: 0,
-                estimateMethod: 'heuristic_chars',
-                estimateUncertaintyTokens: 0,
-                safeInputBudget: 0,
-                outputBudget: INQUIRY_MAX_OUTPUT_TOKENS,
-                packaging: aiSettings.analysisPackaging,
-                hasEligibleModel: false,
-                hasCredential,
-                provider,
-                providerLabel,
-                reason: 'Estimating…',
-                runScopeLabel: this.buildRunScopeLabel(stats, selectedSceneOverrides.length),
-                canSwitchToSummaries: false,
-                canUseSelectedScenesOnly: false
-            };
-        }
-
-        const estimateInputTokens = snapshot.estimate.estimatedInputTokens;
-        const estimateMethod: TokenEstimateMethod = snapshot.estimate.estimationMethod;
-        const effectiveInputCeiling = snapshot.estimate.effectiveInputCeiling;
-        let hasEligibleModel = false;
-        let reason = 'Fits safely - single pass.';
-        let safeInputBudget = 0;
-        let outputBudget = INQUIRY_MAX_OUTPUT_TOKENS;
-        let model: ModelInfo | undefined;
-        const preparedSafeBudget = Number.isFinite(effectiveInputCeiling)
-            ? Math.max(0, Math.floor(effectiveInputCeiling))
-            : 0;
-        if (preparedSafeBudget > 0) {
-            safeInputBudget = preparedSafeBudget;
-            hasEligibleModel = true;
-        }
-
-        try {
-            // Use the resolved model from the canonical resolver.
-            const resolvedModel = BUILTIN_MODELS.find(m => m.id === engine.modelId);
-            if (!resolvedModel) throw new Error(`Resolved model "${engine.modelId}" not found in registry.`);
-            model = resolvedModel;
-            if (preparedSafeBudget <= 0) {
-                hasEligibleModel = true;
-                const caps = computeCaps({
-                    provider,
-                    model: resolvedModel,
-                    accessTier: this.getAccessTierForProvider(provider, aiSettings),
-                    feature: 'InquiryMode',
-                    overrides: aiSettings.overrides
-                });
-                safeInputBudget = Math.floor(caps.maxInputTokens * INPUT_TOKEN_GUARD_FACTOR);
-                outputBudget = caps.maxOutputTokens;
-            } else {
-                outputBudget = snapshot.estimate.maxOutputTokens || outputBudget;
-            }
-        } catch (error) {
-            const message = error instanceof Error ? error.message : String(error);
-            reason = message || 'No model satisfies capability floor.';
-        }
-        const estimateUncertaintyBudget = Number.isFinite(snapshot.estimate.uncertaintyTokens)
-            ? Math.max(0, Math.floor(snapshot.estimate.uncertaintyTokens))
-            : estimateUncertaintyTokens(estimateMethod, safeInputBudget);
-
-        const readiness = evaluateInquiryReadiness({
-            hasEligibleModel,
-            hasCredential,
-            analysisPackaging: aiSettings.analysisPackaging,
-            estimatedInputTokens: estimateInputTokens,
-            safeInputBudget,
-            estimateUncertaintyTokens: estimateUncertaintyBudget
+        const aiSettings = this.getCanonicalAiSettings();
+        return buildReadinessUiStatePure({
+            snapshot: this.plugin.getInquiryEstimateService().getSnapshot(),
+            scope: this.state.scope,
+            focusLabel: this.getFocusLabel(),
+            aiSettings,
+            resolvedEngine: engine,
+            hasCredential: this.getProviderAvailability(engineProvider).enabled,
+            accessTier: this.getAccessTierForProvider(provider, aiSettings),
+            payloadStats: this.getPayloadStats(),
+            selectedSceneOverrideCount: this.getSelectedSceneOverrideEntries().length,
+            hasAnyBodyEvidence: this.hasAnyBodyEvidence(),
+            estimateSummaryOnlyTokens: this.estimateSummaryOnlyTokens('')
         });
-
-        const canSwitchToSummaries = this.hasAnyBodyEvidence()
-            && safeInputBudget > 0
-            && this.estimateSummaryOnlyTokens('') <= safeInputBudget;
-        const selectedSceneOverrides = this.getSelectedSceneOverrideEntries();
-        const stats = this.getPayloadStats();
-        const canUseSelectedScenesOnly = this.state.scope === 'book'
-            && selectedSceneOverrides.length > 0
-            && selectedSceneOverrides.length < Math.max(1, stats.sceneTotal);
-
-        if (readiness.cause === 'missing_key') {
-            reason = `${providerLabel} key is missing. Add a saved key in AI settings.`;
-        } else if (readiness.cause === 'capability_floor') {
-            reason = `${providerLabel} cannot satisfy this Inquiry setup. Update Provider, Thinking Style, or Access level.`;
-        } else if (readiness.cause === 'single_pass_limit') {
-            reason = 'Exceeds the single-pass safe limit. Switch to Automatic or choose a larger-context engine.';
-        } else if (readiness.state === 'large') {
-            reason = 'Automatic packaging will run multiple structured passes.';
-        }
-
-        return {
-            pending: false,
-            readiness,
-            estimateInputTokens,
-            estimateMethod,
-            estimateUncertaintyTokens: estimateUncertaintyBudget,
-            safeInputBudget,
-            outputBudget,
-            packaging: aiSettings.analysisPackaging,
-            hasEligibleModel,
-            hasCredential,
-            provider,
-            providerLabel,
-            reason,
-            model,
-            runScopeLabel: this.buildRunScopeLabel(stats, selectedSceneOverrides.length),
-            canSwitchToSummaries,
-            canUseSelectedScenesOnly
-        };
     }
 
     private buildRunScopeLabel(stats: InquiryPayloadStats, selectedSceneCount: number): string {
-        const sceneMode = stats.sceneFullTextCount > 0
-            ? 'Bodies'
-            : stats.sceneSynopsisUsed > 0
-                ? 'Summaries'
-                : 'No scene evidence';
-        const outlineCount = stats.bookOutlineCount + stats.sagaOutlineCount;
-        const outlineMode = (stats.bookOutlineFullCount + stats.sagaOutlineFullCount) > 0
-            ? 'Body'
-            : (stats.bookOutlineSummaryCount + stats.sagaOutlineSummaryCount) > 0
-                ? 'Summary'
-                : '';
-
-        if (this.state.scope === 'book' && selectedSceneCount > 0 && selectedSceneCount < Math.max(1, stats.sceneTotal)) {
-            return `Run on ${selectedSceneCount} scenes (${sceneMode}).`;
-        }
-
-        if (this.state.scope === 'book') {
-            const parts: string[] = [];
-            if (outlineCount > 0) {
-                parts.push(`Outline (${outlineMode || 'Off'})`);
-            }
-            if (stats.sceneTotal > 0) {
-                parts.push(sceneMode);
-            }
-            return `Run on Book ${this.getFocusLabel()} (${parts.join(' + ')}).`;
-        }
-
-        return `Run on Saga ${this.getFocusLabel()} (${sceneMode}).`;
+        return buildRunScopeLabelPure(stats, selectedSceneCount, this.state.scope, this.getFocusLabel());
     }
 
     private resolveEnginePopoverState(readinessUi: InquiryReadinessUiState): InquiryEnginePopoverState {
-        if (readinessUi.readiness.state === 'ready') return 'ready';
-        if (readinessUi.readiness.state === 'large' && readinessUi.packaging === 'automatic') return 'multi-pass';
-        return 'exceeds';
+        return resolveEnginePopoverStatePure(readinessUi);
     }
 
     private estimateStructuredPassCount(readinessUi: InquiryReadinessUiState): number {
-        if (readinessUi.safeInputBudget <= 0) return 2;
-        const ratio = readinessUi.estimateInputTokens / readinessUi.safeInputBudget;
-        if (!Number.isFinite(ratio)) return 2;
-        return Math.max(2, Math.ceil(Math.max(1, ratio)));
+        return estimateStructuredPassCountPure(readinessUi);
     }
 
-    private getCurrentPassPlan(readinessUi: InquiryReadinessUiState): {
-        packagingExpected: boolean;
-        estimatedPassCount: number | null;
-        recentExactPassCount: number | null;
-        displayPassCount: number;
-        packagingTriggerReason: string | null;
-    } {
-        const packagingExpected = readinessUi.packaging === 'automatic' && readinessUi.readiness.exceedsBudget;
-        if (!packagingExpected) {
-            return {
-                packagingExpected: false,
-                estimatedPassCount: null,
-                recentExactPassCount: null,
-                displayPassCount: 1,
-                packagingTriggerReason: null
-            };
-        }
-        const advanced = getLastAiAdvancedContext(this.plugin, 'InquiryMode');
-        const recentExactPassCount = typeof advanced?.executionPassCount === 'number' && advanced.executionPassCount > 1
-            ? advanced.executionPassCount
-            : null;
-        const estimatedPassCount = this.estimateStructuredPassCount(readinessUi);
-        return {
-            packagingExpected: true,
-            estimatedPassCount,
-            recentExactPassCount,
-            displayPassCount: recentExactPassCount ?? estimatedPassCount,
-            packagingTriggerReason: advanced?.packagingTriggerReason ?? null
-        };
+    private getCurrentPassPlan(readinessUi: InquiryReadinessUiState): PassPlanResult {
+        return getCurrentPassPlanPure(readinessUi, getLastAiAdvancedContext(this.plugin, 'InquiryMode'));
     }
 
     private renderEngineReadinessStrip(readinessUi: InquiryReadinessUiState): void {
@@ -2687,10 +2440,6 @@ export class InquiryView extends ItemView {
         return true;
     }
 
-    private createSvgElement<K extends keyof SVGElementTagNameMap>(tag: K): SVGElementTagNameMap[K] {
-        return document.createElementNS(SVG_NS, tag);
-    }
-
     private getInquiryAssetHref(fileName: string): string {
         const configDir = (this.app.vault as unknown as { configDir?: string }).configDir ?? '.obsidian';
         const pluginId = this.plugin.manifest.id;
@@ -2698,32 +2447,6 @@ export class InquiryView extends ItemView {
         // SAFE: vault.adapter.getResourcePath is required for converting vault paths to asset URLs (no Vault API alternative)
         const adapter = this.app.vault.adapter as unknown as { getResourcePath?: (path: string) => string };
         return adapter.getResourcePath ? adapter.getResourcePath(assetPath) : assetPath;
-    }
-
-    private createSvgGroup(parent: SVGElement, cls: string, x?: number, y?: number): SVGGElement {
-        const group = this.createSvgElement('g');
-        group.classList.add(...cls.split(' ').filter(Boolean));
-        if (typeof x === 'number' || typeof y === 'number') {
-            group.setAttribute('transform', `translate(${x ?? 0} ${y ?? 0})`);
-        }
-        parent.appendChild(group);
-        return group;
-    }
-
-    private createSvgText(parent: SVGElement, cls: string, text: string, x: number, y: number): SVGTextElement {
-        const textEl = this.createSvgElement('text');
-        textEl.classList.add(...cls.split(' ').filter(Boolean));
-        textEl.setAttribute('x', String(x));
-        textEl.setAttribute('y', String(y));
-        textEl.textContent = text;
-        parent.appendChild(textEl);
-        return textEl;
-    }
-
-    private clearSvgChildren(el: SVGElement): void {
-        while (el.firstChild) {
-            el.removeChild(el.firstChild);
-        }
     }
 
     private loadFocusCache(): void {
@@ -2796,7 +2519,7 @@ export class InquiryView extends ItemView {
         };
         const zoneStopOpacity = '0.35';
         const createStop = (offset: string, color: string, opacity?: string): SVGStopElement => {
-            const stop = this.createSvgElement('stop');
+            const stop = createSvgElement('stop');
             stop.setAttribute('offset', offset);
             stop.setAttribute('stop-color', color);
             if (opacity) {
@@ -2810,7 +2533,7 @@ export class InquiryView extends ItemView {
             anchor: { cx: string; cy: string; r: string },
             stopOpacity?: string
         ): SVGRadialGradientElement => {
-            const gradient = this.createSvgElement('radialGradient');
+            const gradient = createSvgElement('radialGradient');
             gradient.setAttribute('id', id);
             gradient.setAttribute('cx', anchor.cx);
             gradient.setAttribute('cy', anchor.cy);
@@ -2823,7 +2546,7 @@ export class InquiryView extends ItemView {
             return gradient;
         };
 
-        const glassGradient = this.createSvgElement('radialGradient');
+        const glassGradient = createSvgElement('radialGradient');
         glassGradient.setAttribute('id', 'ert-inquiry-zone-glass');
         glassGradient.setAttribute('gradientUnits', 'userSpaceOnUse');
         glassGradient.setAttribute('cx', '0');
@@ -2879,20 +2602,20 @@ export class InquiryView extends ItemView {
         });
 
         // Neumorphic filters for zone pill states.
-        const pillOutFilter = this.createSvgElement('filter');
+        const pillOutFilter = createSvgElement('filter');
         pillOutFilter.setAttribute('id', 'ert-inquiry-zone-pill-out');
         pillOutFilter.setAttribute('x', '-50%');
         pillOutFilter.setAttribute('y', '-50%');
         pillOutFilter.setAttribute('width', '200%');
         pillOutFilter.setAttribute('height', '200%');
         pillOutFilter.setAttribute('color-interpolation-filters', 'sRGB');
-        const pillOutLight = this.createSvgElement('feDropShadow');
+        const pillOutLight = createSvgElement('feDropShadow');
         pillOutLight.setAttribute('dx', '-2');
         pillOutLight.setAttribute('dy', '-2');
         pillOutLight.setAttribute('stdDeviation', '1.6');
         pillOutLight.setAttribute('flood-color', '#ffffff');
         pillOutLight.setAttribute('flood-opacity', '0.28');
-        const pillOutDark = this.createSvgElement('feDropShadow');
+        const pillOutDark = createSvgElement('feDropShadow');
         pillOutDark.setAttribute('dx', '2');
         pillOutDark.setAttribute('dy', '2');
         pillOutDark.setAttribute('stdDeviation', '1.8');
@@ -2902,71 +2625,71 @@ export class InquiryView extends ItemView {
         pillOutFilter.appendChild(pillOutDark);
         defs.appendChild(pillOutFilter);
 
-        const pillInFilter = this.createSvgElement('filter');
+        const pillInFilter = createSvgElement('filter');
         pillInFilter.setAttribute('id', 'ert-inquiry-zone-pill-in');
         pillInFilter.setAttribute('x', '-50%');
         pillInFilter.setAttribute('y', '-50%');
         pillInFilter.setAttribute('width', '200%');
         pillInFilter.setAttribute('height', '200%');
         pillInFilter.setAttribute('color-interpolation-filters', 'sRGB');
-        const pillInOffsetDark = this.createSvgElement('feOffset');
+        const pillInOffsetDark = createSvgElement('feOffset');
         pillInOffsetDark.setAttribute('in', 'SourceAlpha');
         pillInOffsetDark.setAttribute('dx', '1.6');
         pillInOffsetDark.setAttribute('dy', '1.6');
         pillInOffsetDark.setAttribute('result', 'pill-in-offset-dark');
-        const pillInBlurDark = this.createSvgElement('feGaussianBlur');
+        const pillInBlurDark = createSvgElement('feGaussianBlur');
         pillInBlurDark.setAttribute('in', 'pill-in-offset-dark');
         pillInBlurDark.setAttribute('stdDeviation', '1.2');
         pillInBlurDark.setAttribute('result', 'pill-in-blur-dark');
-        const pillInCompositeDark = this.createSvgElement('feComposite');
+        const pillInCompositeDark = createSvgElement('feComposite');
         pillInCompositeDark.setAttribute('in', 'pill-in-blur-dark');
         pillInCompositeDark.setAttribute('in2', 'SourceAlpha');
         pillInCompositeDark.setAttribute('operator', 'arithmetic');
         pillInCompositeDark.setAttribute('k2', '-1');
         pillInCompositeDark.setAttribute('k3', '1');
         pillInCompositeDark.setAttribute('result', 'pill-in-inner-dark');
-        const pillInFloodDark = this.createSvgElement('feFlood');
+        const pillInFloodDark = createSvgElement('feFlood');
         pillInFloodDark.setAttribute('flood-color', '#000000');
         pillInFloodDark.setAttribute('flood-opacity', '0.35');
         pillInFloodDark.setAttribute('result', 'pill-in-flood-dark');
-        const pillInShadowDark = this.createSvgElement('feComposite');
+        const pillInShadowDark = createSvgElement('feComposite');
         pillInShadowDark.setAttribute('in', 'pill-in-flood-dark');
         pillInShadowDark.setAttribute('in2', 'pill-in-inner-dark');
         pillInShadowDark.setAttribute('operator', 'in');
         pillInShadowDark.setAttribute('result', 'pill-in-shadow-dark');
 
-        const pillInOffsetLight = this.createSvgElement('feOffset');
+        const pillInOffsetLight = createSvgElement('feOffset');
         pillInOffsetLight.setAttribute('in', 'SourceAlpha');
         pillInOffsetLight.setAttribute('dx', '-1.6');
         pillInOffsetLight.setAttribute('dy', '-1.6');
         pillInOffsetLight.setAttribute('result', 'pill-in-offset-light');
-        const pillInBlurLight = this.createSvgElement('feGaussianBlur');
+        const pillInBlurLight = createSvgElement('feGaussianBlur');
         pillInBlurLight.setAttribute('in', 'pill-in-offset-light');
         pillInBlurLight.setAttribute('stdDeviation', '1.2');
         pillInBlurLight.setAttribute('result', 'pill-in-blur-light');
-        const pillInCompositeLight = this.createSvgElement('feComposite');
+        const pillInCompositeLight = createSvgElement('feComposite');
         pillInCompositeLight.setAttribute('in', 'pill-in-blur-light');
         pillInCompositeLight.setAttribute('in2', 'SourceAlpha');
         pillInCompositeLight.setAttribute('operator', 'arithmetic');
         pillInCompositeLight.setAttribute('k2', '-1');
         pillInCompositeLight.setAttribute('k3', '1');
         pillInCompositeLight.setAttribute('result', 'pill-in-inner-light');
-        const pillInFloodLight = this.createSvgElement('feFlood');
+        const pillInFloodLight = createSvgElement('feFlood');
         pillInFloodLight.setAttribute('flood-color', '#ffffff');
         pillInFloodLight.setAttribute('flood-opacity', '0.22');
         pillInFloodLight.setAttribute('result', 'pill-in-flood-light');
-        const pillInShadowLight = this.createSvgElement('feComposite');
+        const pillInShadowLight = createSvgElement('feComposite');
         pillInShadowLight.setAttribute('in', 'pill-in-flood-light');
         pillInShadowLight.setAttribute('in2', 'pill-in-inner-light');
         pillInShadowLight.setAttribute('operator', 'in');
         pillInShadowLight.setAttribute('result', 'pill-in-shadow-light');
 
-        const pillInMerge = this.createSvgElement('feMerge');
-        const pillInMergeGraphic = this.createSvgElement('feMergeNode');
+        const pillInMerge = createSvgElement('feMerge');
+        const pillInMergeGraphic = createSvgElement('feMergeNode');
         pillInMergeGraphic.setAttribute('in', 'SourceGraphic');
-        const pillInMergeDark = this.createSvgElement('feMergeNode');
+        const pillInMergeDark = createSvgElement('feMergeNode');
         pillInMergeDark.setAttribute('in', 'pill-in-shadow-dark');
-        const pillInMergeLight = this.createSvgElement('feMergeNode');
+        const pillInMergeLight = createSvgElement('feMergeNode');
         pillInMergeLight.setAttribute('in', 'pill-in-shadow-light');
         pillInMerge.appendChild(pillInMergeGraphic);
         pillInMerge.appendChild(pillInMergeDark);
@@ -2986,7 +2709,7 @@ export class InquiryView extends ItemView {
         defs.appendChild(pillInFilter);
 
         // Neumorphic "up" filter for zone dot buttons.
-        const dotUpFilter = this.createSvgElement('filter');
+        const dotUpFilter = createSvgElement('filter');
         dotUpFilter.setAttribute('id', 'ert-inquiry-zone-dot-up');
         dotUpFilter.setAttribute('x', '-50%');
         dotUpFilter.setAttribute('y', '-50%');
@@ -2994,98 +2717,98 @@ export class InquiryView extends ItemView {
         dotUpFilter.setAttribute('height', '200%');
         dotUpFilter.setAttribute('color-interpolation-filters', 'sRGB');
 
-        const dotUpFlood = this.createSvgElement('feFlood');
+        const dotUpFlood = createSvgElement('feFlood');
         dotUpFlood.setAttribute('flood-opacity', '0');
         dotUpFlood.setAttribute('result', 'BackgroundImageFix');
-        const dotUpAlphaDark = this.createSvgElement('feColorMatrix');
+        const dotUpAlphaDark = createSvgElement('feColorMatrix');
         dotUpAlphaDark.setAttribute('in', 'SourceAlpha');
         dotUpAlphaDark.setAttribute('type', 'matrix');
         dotUpAlphaDark.setAttribute('values', '0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0');
         dotUpAlphaDark.setAttribute('result', 'hardAlpha');
-        const dotUpOffsetDark = this.createSvgElement('feOffset');
+        const dotUpOffsetDark = createSvgElement('feOffset');
         dotUpOffsetDark.setAttribute('dx', '2');
         dotUpOffsetDark.setAttribute('dy', '2');
-        const dotUpBlurDark = this.createSvgElement('feGaussianBlur');
+        const dotUpBlurDark = createSvgElement('feGaussianBlur');
         dotUpBlurDark.setAttribute('stdDeviation', '2');
-        const dotUpCompositeDark = this.createSvgElement('feComposite');
+        const dotUpCompositeDark = createSvgElement('feComposite');
         dotUpCompositeDark.setAttribute('in2', 'hardAlpha');
         dotUpCompositeDark.setAttribute('operator', 'out');
-        const dotUpColorDark = this.createSvgElement('feColorMatrix');
+        const dotUpColorDark = createSvgElement('feColorMatrix');
         dotUpColorDark.setAttribute('type', 'matrix');
         dotUpColorDark.setAttribute('values', '0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.3 0');
-        const dotUpBlendDark = this.createSvgElement('feBlend');
+        const dotUpBlendDark = createSvgElement('feBlend');
         dotUpBlendDark.setAttribute('mode', 'normal');
         dotUpBlendDark.setAttribute('in2', 'BackgroundImageFix');
         dotUpBlendDark.setAttribute('result', 'effect1_dropShadow');
 
-        const dotUpAlphaLight = this.createSvgElement('feColorMatrix');
+        const dotUpAlphaLight = createSvgElement('feColorMatrix');
         dotUpAlphaLight.setAttribute('in', 'SourceAlpha');
         dotUpAlphaLight.setAttribute('type', 'matrix');
         dotUpAlphaLight.setAttribute('values', '0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0');
         dotUpAlphaLight.setAttribute('result', 'hardAlpha');
-        const dotUpOffsetLight = this.createSvgElement('feOffset');
+        const dotUpOffsetLight = createSvgElement('feOffset');
         dotUpOffsetLight.setAttribute('dx', '-2');
         dotUpOffsetLight.setAttribute('dy', '-2');
-        const dotUpBlurLight = this.createSvgElement('feGaussianBlur');
+        const dotUpBlurLight = createSvgElement('feGaussianBlur');
         dotUpBlurLight.setAttribute('stdDeviation', '3');
-        const dotUpCompositeLight = this.createSvgElement('feComposite');
+        const dotUpCompositeLight = createSvgElement('feComposite');
         dotUpCompositeLight.setAttribute('in2', 'hardAlpha');
         dotUpCompositeLight.setAttribute('operator', 'out');
-        const dotUpColorLight = this.createSvgElement('feColorMatrix');
+        const dotUpColorLight = createSvgElement('feColorMatrix');
         dotUpColorLight.setAttribute('type', 'matrix');
         dotUpColorLight.setAttribute('values', '0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.11 0');
-        const dotUpBlendLight = this.createSvgElement('feBlend');
+        const dotUpBlendLight = createSvgElement('feBlend');
         dotUpBlendLight.setAttribute('mode', 'normal');
         dotUpBlendLight.setAttribute('in2', 'effect1_dropShadow');
         dotUpBlendLight.setAttribute('result', 'effect2_dropShadow');
-        const dotUpBlendShape = this.createSvgElement('feBlend');
+        const dotUpBlendShape = createSvgElement('feBlend');
         dotUpBlendShape.setAttribute('mode', 'normal');
         dotUpBlendShape.setAttribute('in', 'SourceGraphic');
         dotUpBlendShape.setAttribute('in2', 'effect2_dropShadow');
         dotUpBlendShape.setAttribute('result', 'shape');
 
-        const dotUpAlphaInnerDark = this.createSvgElement('feColorMatrix');
+        const dotUpAlphaInnerDark = createSvgElement('feColorMatrix');
         dotUpAlphaInnerDark.setAttribute('in', 'SourceAlpha');
         dotUpAlphaInnerDark.setAttribute('type', 'matrix');
         dotUpAlphaInnerDark.setAttribute('values', '0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0');
         dotUpAlphaInnerDark.setAttribute('result', 'hardAlpha');
-        const dotUpOffsetInnerDark = this.createSvgElement('feOffset');
+        const dotUpOffsetInnerDark = createSvgElement('feOffset');
         dotUpOffsetInnerDark.setAttribute('dx', '-2');
         dotUpOffsetInnerDark.setAttribute('dy', '-2');
-        const dotUpBlurInnerDark = this.createSvgElement('feGaussianBlur');
+        const dotUpBlurInnerDark = createSvgElement('feGaussianBlur');
         dotUpBlurInnerDark.setAttribute('stdDeviation', '1');
-        const dotUpCompositeInnerDark = this.createSvgElement('feComposite');
+        const dotUpCompositeInnerDark = createSvgElement('feComposite');
         dotUpCompositeInnerDark.setAttribute('in2', 'hardAlpha');
         dotUpCompositeInnerDark.setAttribute('operator', 'arithmetic');
         dotUpCompositeInnerDark.setAttribute('k2', '-1');
         dotUpCompositeInnerDark.setAttribute('k3', '1');
-        const dotUpColorInnerDark = this.createSvgElement('feColorMatrix');
+        const dotUpColorInnerDark = createSvgElement('feColorMatrix');
         dotUpColorInnerDark.setAttribute('type', 'matrix');
         dotUpColorInnerDark.setAttribute('values', '0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.17 0');
-        const dotUpBlendInnerDark = this.createSvgElement('feBlend');
+        const dotUpBlendInnerDark = createSvgElement('feBlend');
         dotUpBlendInnerDark.setAttribute('mode', 'normal');
         dotUpBlendInnerDark.setAttribute('in2', 'shape');
         dotUpBlendInnerDark.setAttribute('result', 'effect3_innerShadow');
 
-        const dotUpAlphaInnerLight = this.createSvgElement('feColorMatrix');
+        const dotUpAlphaInnerLight = createSvgElement('feColorMatrix');
         dotUpAlphaInnerLight.setAttribute('in', 'SourceAlpha');
         dotUpAlphaInnerLight.setAttribute('type', 'matrix');
         dotUpAlphaInnerLight.setAttribute('values', '0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0');
         dotUpAlphaInnerLight.setAttribute('result', 'hardAlpha');
-        const dotUpOffsetInnerLight = this.createSvgElement('feOffset');
+        const dotUpOffsetInnerLight = createSvgElement('feOffset');
         dotUpOffsetInnerLight.setAttribute('dx', '2');
         dotUpOffsetInnerLight.setAttribute('dy', '2');
-        const dotUpBlurInnerLight = this.createSvgElement('feGaussianBlur');
+        const dotUpBlurInnerLight = createSvgElement('feGaussianBlur');
         dotUpBlurInnerLight.setAttribute('stdDeviation', '1');
-        const dotUpCompositeInnerLight = this.createSvgElement('feComposite');
+        const dotUpCompositeInnerLight = createSvgElement('feComposite');
         dotUpCompositeInnerLight.setAttribute('in2', 'hardAlpha');
         dotUpCompositeInnerLight.setAttribute('operator', 'arithmetic');
         dotUpCompositeInnerLight.setAttribute('k2', '-1');
         dotUpCompositeInnerLight.setAttribute('k3', '1');
-        const dotUpColorInnerLight = this.createSvgElement('feColorMatrix');
+        const dotUpColorInnerLight = createSvgElement('feColorMatrix');
         dotUpColorInnerLight.setAttribute('type', 'matrix');
         dotUpColorInnerLight.setAttribute('values', '0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.17 0');
-        const dotUpBlendInnerLight = this.createSvgElement('feBlend');
+        const dotUpBlendInnerLight = createSvgElement('feBlend');
         dotUpBlendInnerLight.setAttribute('mode', 'color-dodge');
         dotUpBlendInnerLight.setAttribute('in2', 'effect3_innerShadow');
         dotUpBlendInnerLight.setAttribute('result', 'effect4_innerShadow');
@@ -3119,7 +2842,7 @@ export class InquiryView extends ItemView {
         defs.appendChild(dotUpFilter);
 
         // Neumorphic "down" filter for zone dot buttons.
-        const dotDownFilter = this.createSvgElement('filter');
+        const dotDownFilter = createSvgElement('filter');
         dotDownFilter.setAttribute('id', 'ert-inquiry-zone-dot-down');
         dotDownFilter.setAttribute('x', '-50%');
         dotDownFilter.setAttribute('y', '-50%');
@@ -3127,64 +2850,64 @@ export class InquiryView extends ItemView {
         dotDownFilter.setAttribute('height', '200%');
         dotDownFilter.setAttribute('color-interpolation-filters', 'sRGB');
 
-        const dotDownOffsetDark = this.createSvgElement('feOffset');
+        const dotDownOffsetDark = createSvgElement('feOffset');
         dotDownOffsetDark.setAttribute('in', 'SourceAlpha');
         dotDownOffsetDark.setAttribute('dx', '3.2');
         dotDownOffsetDark.setAttribute('dy', '3.2');
         dotDownOffsetDark.setAttribute('result', 'dot-down-offset-dark');
-        const dotDownBlurDark = this.createSvgElement('feGaussianBlur');
+        const dotDownBlurDark = createSvgElement('feGaussianBlur');
         dotDownBlurDark.setAttribute('in', 'dot-down-offset-dark');
         dotDownBlurDark.setAttribute('stdDeviation', '2.4');
         dotDownBlurDark.setAttribute('result', 'dot-down-blur-dark');
-        const dotDownCompositeDark = this.createSvgElement('feComposite');
+        const dotDownCompositeDark = createSvgElement('feComposite');
         dotDownCompositeDark.setAttribute('in', 'dot-down-blur-dark');
         dotDownCompositeDark.setAttribute('in2', 'SourceAlpha');
         dotDownCompositeDark.setAttribute('operator', 'arithmetic');
         dotDownCompositeDark.setAttribute('k2', '-1');
         dotDownCompositeDark.setAttribute('k3', '1');
         dotDownCompositeDark.setAttribute('result', 'dot-down-inner-dark');
-        const dotDownFloodDark = this.createSvgElement('feFlood');
+        const dotDownFloodDark = createSvgElement('feFlood');
         dotDownFloodDark.setAttribute('flood-color', '#000000');
         dotDownFloodDark.setAttribute('flood-opacity', '0.35');
         dotDownFloodDark.setAttribute('result', 'dot-down-flood-dark');
-        const dotDownShadowDark = this.createSvgElement('feComposite');
+        const dotDownShadowDark = createSvgElement('feComposite');
         dotDownShadowDark.setAttribute('in', 'dot-down-flood-dark');
         dotDownShadowDark.setAttribute('in2', 'dot-down-inner-dark');
         dotDownShadowDark.setAttribute('operator', 'in');
         dotDownShadowDark.setAttribute('result', 'dot-down-shadow-dark');
 
-        const dotDownOffsetLight = this.createSvgElement('feOffset');
+        const dotDownOffsetLight = createSvgElement('feOffset');
         dotDownOffsetLight.setAttribute('in', 'SourceAlpha');
         dotDownOffsetLight.setAttribute('dx', '-3.2');
         dotDownOffsetLight.setAttribute('dy', '-3.2');
         dotDownOffsetLight.setAttribute('result', 'dot-down-offset-light');
-        const dotDownBlurLight = this.createSvgElement('feGaussianBlur');
+        const dotDownBlurLight = createSvgElement('feGaussianBlur');
         dotDownBlurLight.setAttribute('in', 'dot-down-offset-light');
         dotDownBlurLight.setAttribute('stdDeviation', '2.4');
         dotDownBlurLight.setAttribute('result', 'dot-down-blur-light');
-        const dotDownCompositeLight = this.createSvgElement('feComposite');
+        const dotDownCompositeLight = createSvgElement('feComposite');
         dotDownCompositeLight.setAttribute('in', 'dot-down-blur-light');
         dotDownCompositeLight.setAttribute('in2', 'SourceAlpha');
         dotDownCompositeLight.setAttribute('operator', 'arithmetic');
         dotDownCompositeLight.setAttribute('k2', '-1');
         dotDownCompositeLight.setAttribute('k3', '1');
         dotDownCompositeLight.setAttribute('result', 'dot-down-inner-light');
-        const dotDownFloodLight = this.createSvgElement('feFlood');
+        const dotDownFloodLight = createSvgElement('feFlood');
         dotDownFloodLight.setAttribute('flood-color', '#ffffff');
         dotDownFloodLight.setAttribute('flood-opacity', '0.22');
         dotDownFloodLight.setAttribute('result', 'dot-down-flood-light');
-        const dotDownShadowLight = this.createSvgElement('feComposite');
+        const dotDownShadowLight = createSvgElement('feComposite');
         dotDownShadowLight.setAttribute('in', 'dot-down-flood-light');
         dotDownShadowLight.setAttribute('in2', 'dot-down-inner-light');
         dotDownShadowLight.setAttribute('operator', 'in');
         dotDownShadowLight.setAttribute('result', 'dot-down-shadow-light');
 
-        const dotDownMerge = this.createSvgElement('feMerge');
-        const dotDownMergeGraphic = this.createSvgElement('feMergeNode');
+        const dotDownMerge = createSvgElement('feMerge');
+        const dotDownMergeGraphic = createSvgElement('feMergeNode');
         dotDownMergeGraphic.setAttribute('in', 'SourceGraphic');
-        const dotDownMergeDark = this.createSvgElement('feMergeNode');
+        const dotDownMergeDark = createSvgElement('feMergeNode');
         dotDownMergeDark.setAttribute('in', 'dot-down-shadow-dark');
-        const dotDownMergeLight = this.createSvgElement('feMergeNode');
+        const dotDownMergeLight = createSvgElement('feMergeNode');
         dotDownMergeLight.setAttribute('in', 'dot-down-shadow-light');
         dotDownMerge.appendChild(dotDownMergeGraphic);
         dotDownMerge.appendChild(dotDownMergeDark);
@@ -3203,26 +2926,26 @@ export class InquiryView extends ItemView {
         dotDownFilter.appendChild(dotDownMerge);
         defs.appendChild(dotDownFilter);
 
-        const backboneGradient = this.createSvgElement('linearGradient');
+        const backboneGradient = createSvgElement('linearGradient');
         backboneGradient.setAttribute('id', 'ert-inquiry-minimap-backbone-grad');
         backboneGradient.setAttribute('x1', '0%');
         backboneGradient.setAttribute('y1', '0%');
         backboneGradient.setAttribute('x2', '100%');
         backboneGradient.setAttribute('y2', '0%');
-        const startColors = this.getBackboneStartColors();
+        const startColors = getBackboneStartColors(this.getStyleSource());
         const gradientStart = startColors.gradient[0] ?? { r: 255, g: 153, b: 0 };
         const gradientMid = startColors.gradient[1] ?? { r: 255, g: 211, b: 106 };
         const gradientEnd = startColors.gradient[2] ?? { r: 255, g: 94, b: 0 };
         const backboneGradientStops = [
-            createStop('0%', this.toRgbString(gradientStart)),
-            createStop('50%', this.toRgbString(gradientMid)),
-            createStop('100%', this.toRgbString(gradientEnd))
+            createStop('0%', toRgbString(gradientStart)),
+            createStop('50%', toRgbString(gradientMid)),
+            createStop('100%', toRgbString(gradientEnd))
         ];
         backboneGradientStops.forEach(stop => backboneGradient.appendChild(stop));
-        this.minimapBackboneGradientStops = backboneGradientStops;
+        this.minimap.setGradientStops(backboneGradientStops);
         defs.appendChild(backboneGradient);
 
-        const backboneShine = this.createSvgElement('linearGradient');
+        const backboneShine = createSvgElement('linearGradient');
         backboneShine.setAttribute('id', 'ert-inquiry-minimap-backbone-shine');
         backboneShine.setAttribute('x1', '0%');
         backboneShine.setAttribute('y1', '0%');
@@ -3233,34 +2956,34 @@ export class InquiryView extends ItemView {
         const shineWarm = startColors.shine[2] ?? { r: 255, g: 179, b: 77 };
         const shineEnd = startColors.shine[3] ?? { r: 255, g: 242, b: 207 };
         const backboneShineStops = [
-            createStop('0%', this.toRgbString(shineStart), '0'),
-            createStop('40%', this.toRgbString(shinePeak), '1'),
-            createStop('60%', this.toRgbString(shineWarm), '0.9'),
-            createStop('100%', this.toRgbString(shineEnd), '0')
+            createStop('0%', toRgbString(shineStart), '0'),
+            createStop('40%', toRgbString(shinePeak), '1'),
+            createStop('60%', toRgbString(shineWarm), '0.9'),
+            createStop('100%', toRgbString(shineEnd), '0')
         ];
         backboneShineStops.forEach(stop => backboneShine.appendChild(stop));
-        this.minimapBackboneShineStops = backboneShineStops;
+        this.minimap.setShineStops(backboneShineStops);
         defs.appendChild(backboneShine);
 
-        if (!this.minimapBackboneClip) {
-            const backboneClip = this.createSvgElement('clipPath');
+        if (!this.minimap.minimapBackboneClip) {
+            const backboneClip = createSvgElement('clipPath');
             backboneClip.setAttribute('id', 'ert-inquiry-minimap-backbone-clip');
             backboneClip.setAttribute('clipPathUnits', 'userSpaceOnUse');
-            const clipRect = this.createSvgElement('rect');
+            const clipRect = createSvgElement('rect');
             backboneClip.appendChild(clipRect);
             defs.appendChild(backboneClip);
-            this.minimapBackboneClip = backboneClip;
-            this.minimapBackboneClipRect = clipRect;
+            this.minimap.minimapBackboneClip = backboneClip;
+            this.minimap.minimapBackboneClipRect = clipRect;
         }
 
         // Hatched pattern for cached portion overlay on token cap bar
-        const cachedPattern = this.createSvgElement('pattern');
+        const cachedPattern = createSvgElement('pattern');
         cachedPattern.setAttribute('id', 'ert-inquiry-minimap-cached-hatch');
         cachedPattern.setAttribute('width', '4');
         cachedPattern.setAttribute('height', '4');
         cachedPattern.setAttribute('patternUnits', 'userSpaceOnUse');
         cachedPattern.setAttribute('patternTransform', 'rotate(45)');
-        const hatchLine = this.createSvgElement('line');
+        const hatchLine = createSvgElement('line');
         hatchLine.setAttribute('x1', '0');
         hatchLine.setAttribute('y1', '0');
         hatchLine.setAttribute('x2', '0');
@@ -3276,11 +2999,11 @@ export class InquiryView extends ItemView {
         const source = holder.querySelector('svg');
         if (!source) {
             if (iconName !== 'sigma') return null;
-            const symbol = this.createSvgElement('symbol');
+            const symbol = createSvgElement('symbol');
             const symbolId = `ert-icon-${iconName}`;
             symbol.setAttribute('id', symbolId);
             symbol.setAttribute('viewBox', '0 0 24 24');
-            const text = this.createSvgElement('text');
+            const text = createSvgElement('text');
             text.setAttribute('x', '12');
             text.setAttribute('y', '13');
             text.setAttribute('text-anchor', 'middle');
@@ -3292,7 +3015,7 @@ export class InquiryView extends ItemView {
             defs.appendChild(symbol);
             return symbolId;
         }
-        const symbol = this.createSvgElement('symbol');
+        const symbol = createSvgElement('symbol');
         const symbolId = `ert-icon-${iconName}`;
         symbol.setAttribute('id', symbolId);
         symbol.setAttribute('viewBox', source.getAttribute('viewBox') || '0 0 24 24');
@@ -3333,11 +3056,11 @@ export class InquiryView extends ItemView {
         label: string,
         extraClass = ''
     ): SVGGElement {
-        const group = this.createSvgGroup(parent, `ert-inquiry-icon-btn ${extraClass}`.trim(), x, y);
+        const group = createSvgGroup(parent, `ert-inquiry-icon-btn ${extraClass}`.trim(), x, y);
         group.setAttribute('role', 'button');
         group.setAttribute('tabindex', '0');
         group.setAttribute('aria-label', label);
-        const rect = this.createSvgElement('rect');
+        const rect = createSvgElement('rect');
         rect.classList.add('ert-inquiry-icon-btn-bg');
         rect.setAttribute('width', String(size));
         rect.setAttribute('height', String(size));
@@ -3352,7 +3075,7 @@ export class InquiryView extends ItemView {
     }
 
     private createIconUse(iconName: string, x: number, y: number, size: number): SVGUseElement {
-        const use = this.createSvgElement('use');
+        const use = createSvgElement('use');
         use.setAttribute('x', String(x));
         use.setAttribute('y', String(y));
         use.setAttribute('width', String(size));
@@ -3600,17 +3323,17 @@ export class InquiryView extends ItemView {
 
         zones.forEach(zone => {
             const pos = this.polarToCartesian(rZone, zone.angle);
-            const zoneEl = this.createSvgGroup(parent, `ert-inquiry-zone-pod ert-inquiry-zone--${zone.id}`, pos.x, pos.y);
+            const zoneEl = createSvgGroup(parent, `ert-inquiry-zone-pod ert-inquiry-zone--${zone.id}`, pos.x, pos.y);
             zoneEl.setAttribute('role', 'button');
             zoneEl.setAttribute('tabindex', '0');
-            const bg = this.createSvgElement('rect');
+            const bg = createSvgElement('rect');
             bg.classList.add('ert-inquiry-zone-pill');
             zoneEl.appendChild(bg);
-            const glow = this.createSvgElement('rect');
+            const glow = createSvgElement('rect');
             glow.classList.add('ert-inquiry-zone-pill-glow');
             zoneEl.appendChild(glow);
 
-            const text = this.createSvgText(zoneEl, 'ert-inquiry-zone-pill-text', '', 0, 0);
+            const text = createSvgText(zoneEl, 'ert-inquiry-zone-pill-text', '', 0, 0);
             text.setAttribute('text-anchor', 'middle');
             text.setAttribute('dominant-baseline', 'middle');
             text.setAttribute('alignment-baseline', 'middle');
@@ -3643,10 +3366,10 @@ export class InquiryView extends ItemView {
     }
 
     private buildDebugOverlay(parent: SVGElement): void {
-        const debugGroup = this.createSvgGroup(parent, 'ert-inquiry-debug');
+        const debugGroup = createSvgGroup(parent, 'ert-inquiry-debug');
         debugGroup.setAttribute('id', 'inq-debug');
 
-        const rect = this.createSvgElement('rect');
+        const rect = createSvgElement('rect');
         rect.classList.add('ert-inquiry-debug-frame');
         rect.setAttribute('x', String(VIEWBOX_MIN));
         rect.setAttribute('y', String(VIEWBOX_MIN));
@@ -3654,7 +3377,7 @@ export class InquiryView extends ItemView {
         rect.setAttribute('height', String(VIEWBOX_SIZE));
         debugGroup.appendChild(rect);
 
-        const xAxis = this.createSvgElement('line');
+        const xAxis = createSvgElement('line');
         xAxis.classList.add('ert-inquiry-debug-axis');
         xAxis.setAttribute('x1', String(VIEWBOX_MIN));
         xAxis.setAttribute('y1', '0');
@@ -3662,7 +3385,7 @@ export class InquiryView extends ItemView {
         xAxis.setAttribute('y2', '0');
         debugGroup.appendChild(xAxis);
 
-        const yAxis = this.createSvgElement('line');
+        const yAxis = createSvgElement('line');
         yAxis.classList.add('ert-inquiry-debug-axis');
         yAxis.setAttribute('x1', '0');
         yAxis.setAttribute('y1', String(VIEWBOX_MIN));
@@ -3674,7 +3397,7 @@ export class InquiryView extends ItemView {
         const tickHalf = 12;
         tickOffsets.forEach(offset => {
             [offset, -offset].forEach(position => {
-                const xTick = this.createSvgElement('line');
+                const xTick = createSvgElement('line');
                 xTick.classList.add('ert-inquiry-debug-tick');
                 xTick.setAttribute('x1', String(position));
                 xTick.setAttribute('y1', String(-tickHalf));
@@ -3682,7 +3405,7 @@ export class InquiryView extends ItemView {
                 xTick.setAttribute('y2', String(tickHalf));
                 debugGroup.appendChild(xTick);
 
-                const yTick = this.createSvgElement('line');
+                const yTick = createSvgElement('line');
                 yTick.classList.add('ert-inquiry-debug-tick');
                 yTick.setAttribute('x1', String(-tickHalf));
                 yTick.setAttribute('y1', String(position));
@@ -3692,7 +3415,7 @@ export class InquiryView extends ItemView {
             });
         });
 
-        const label = this.createSvgText(debugGroup, 'ert-inquiry-debug-label', 'ORIGIN', 0, 0);
+        const label = createSvgText(debugGroup, 'ert-inquiry-debug-label', 'ORIGIN', 0, 0);
         label.setAttribute('text-anchor', 'middle');
         label.setAttribute('dominant-baseline', 'middle');
     }
@@ -3702,11 +3425,11 @@ export class InquiryView extends ItemView {
         const iconSize = Math.round(VIEWBOX_SIZE * 0.25 * 0.7);
         const iconX = Math.round(-iconSize / 2);
         const viewBoxHalf = MODE_ICON_VIEWBOX / 2;
-        const iconGroup = this.createSvgGroup(parent, 'ert-inquiry-mode-icons', 0, iconOffsetY);
+        const iconGroup = createSvgGroup(parent, 'ert-inquiry-mode-icons', 0, iconOffsetY);
         iconGroup.setAttribute('pointer-events', 'none');
 
         const createIcon = (cls: string, paths: string[], rotateDeg = 0): void => {
-            const group = this.createSvgElement('svg');
+            const group = createSvgElement('svg');
             group.classList.add('ert-inquiry-mode-icon', cls);
             group.setAttribute('x', String(iconX));
             group.setAttribute('y', '0');
@@ -3715,14 +3438,14 @@ export class InquiryView extends ItemView {
             group.setAttribute('viewBox', `${-viewBoxHalf} ${-viewBoxHalf} ${MODE_ICON_VIEWBOX} ${MODE_ICON_VIEWBOX}`);
             group.setAttribute('preserveAspectRatio', 'xMidYMid meet');
             group.setAttribute('pointer-events', 'none');
-            const transformGroup = this.createSvgElement('g');
+            const transformGroup = createSvgElement('g');
             if (rotateDeg) {
                 transformGroup.setAttribute('transform', `rotate(${rotateDeg})`);
             }
-            const pathGroup = this.createSvgElement('g');
+            const pathGroup = createSvgElement('g');
             pathGroup.setAttribute('transform', `translate(${-viewBoxHalf} ${-viewBoxHalf})`);
             paths.forEach(d => {
-                const path = this.createSvgElement('path');
+                const path = createSvgElement('path');
                 path.setAttribute('d', d);
                 pathGroup.appendChild(path);
             });
@@ -3741,7 +3464,7 @@ export class InquiryView extends ItemView {
         const targetWidth = VIEWBOX_SIZE * 0.5;
         const scale = targetWidth / flowWidth;
         const y = VIEWBOX_MIN + 50;
-        const group = this.createSvgGroup(parent, 'ert-inquiry-wave-header');
+        const group = createSvgGroup(parent, 'ert-inquiry-wave-header');
         group.setAttribute('transform', `translate(0 ${y}) scale(${scale.toFixed(4)}) translate(${-flowWidth / 2} ${-flowOffsetY})`);
         group.setAttribute('pointer-events', 'none');
 
@@ -3760,7 +3483,7 @@ export class InquiryView extends ItemView {
         ];
 
         paths.forEach(d => {
-            const path = this.createSvgElement('path');
+            const path = createSvgElement('path');
             path.classList.add('ert-inquiry-wave-path');
             path.setAttribute('d', d);
             group.appendChild(path);
@@ -3769,7 +3492,7 @@ export class InquiryView extends ItemView {
 
 
     private buildFindingsPanel(findingsGroup: SVGGElement, width: number, height: number): void {
-        const bg = this.createSvgElement('rect');
+        const bg = createSvgElement('rect');
         bg.classList.add('ert-inquiry-panel-bg');
         bg.setAttribute('width', String(width));
         bg.setAttribute('height', String(height));
@@ -3777,25 +3500,25 @@ export class InquiryView extends ItemView {
         bg.setAttribute('ry', '22');
         findingsGroup.appendChild(bg);
 
-        this.createSvgText(findingsGroup, 'ert-inquiry-findings-title', 'Findings', 24, 36);
+        createSvgText(findingsGroup, 'ert-inquiry-findings-title', 'Findings', 24, 36);
         this.detailsToggle = this.createIconButton(findingsGroup, width - 88, 14, 32, 'chevron-down', 'Toggle details', 'ert-inquiry-details-toggle');
         this.detailsIcon = this.detailsToggle.querySelector('.ert-inquiry-icon') as SVGUseElement;
         this.registerDomEvent(this.detailsToggle as unknown as HTMLElement, 'click', () => this.toggleDetails());
 
-        this.detailsEl = this.createSvgGroup(findingsGroup, 'ert-inquiry-details ert-hidden', 24, 64);
+        this.detailsEl = createSvgGroup(findingsGroup, 'ert-inquiry-details ert-hidden', 24, 64);
         this.detailRows = [
-            this.createSvgText(this.detailsEl, 'ert-inquiry-detail-row', 'Corpus fingerprint: not available', 0, 0),
-            this.createSvgText(this.detailsEl, 'ert-inquiry-detail-row', 'Cache status: not available', 0, 20)
+            createSvgText(this.detailsEl, 'ert-inquiry-detail-row', 'Corpus fingerprint: not available', 0, 0),
+            createSvgText(this.detailsEl, 'ert-inquiry-detail-row', 'Cache status: not available', 0, 20)
         ];
 
-        this.summaryEl = this.createSvgText(findingsGroup, 'ert-inquiry-summary', 'No inquiry run yet.', 24, 120);
-        this.verdictEl = this.createSvgText(findingsGroup, 'ert-inquiry-verdict', 'Run an inquiry to see verdicts.', 24, 144);
+        this.summaryEl = createSvgText(findingsGroup, 'ert-inquiry-summary', 'No inquiry run yet.', 24, 120);
+        this.verdictEl = createSvgText(findingsGroup, 'ert-inquiry-verdict', 'Run an inquiry to see verdicts.', 24, 144);
 
-        this.findingsListEl = this.createSvgGroup(findingsGroup, 'ert-inquiry-findings-list', 24, 176);
+        this.findingsListEl = createSvgGroup(findingsGroup, 'ert-inquiry-findings-list', 24, 176);
 
         const previewY = height - 210;
-        this.artifactPreviewEl = this.createSvgGroup(findingsGroup, 'ert-inquiry-report-preview ert-hidden', 24, previewY);
-        this.artifactPreviewBg = this.createSvgElement('rect');
+        this.artifactPreviewEl = createSvgGroup(findingsGroup, 'ert-inquiry-report-preview ert-hidden', 24, previewY);
+        this.artifactPreviewBg = createSvgElement('rect');
         this.artifactPreviewBg.classList.add('ert-inquiry-report-preview-bg');
         this.artifactPreviewBg.setAttribute('width', String(width - 48));
         this.artifactPreviewBg.setAttribute('height', '180');
@@ -3988,10 +3711,7 @@ export class InquiryView extends ItemView {
     }
 
     private getClassScopeConfig(raw?: string[]): { allowAll: boolean; allowed: Set<string> } {
-        const list = (raw || []).map(entry => entry.trim().toLowerCase()).filter(Boolean);
-        const allowAll = list.includes('/');
-        const allowed = new Set(list.filter(entry => entry !== '/'));
-        return { allowAll, allowed };
+        return getClassScopeConfigPure(raw);
     }
 
     private getCurrentItems(): InquiryCorpusItem[] {
@@ -4055,7 +3775,7 @@ export class InquiryView extends ItemView {
     }
 
     private async refreshMinimapEmptyStates(items: InquiryCorpusItem[]): Promise<void> {
-        const updateId = ++this.minimapEmptyUpdateId;
+        const updateId = ++this.minimap.minimapEmptyUpdateId;
         if (!items.length) return;
         const thresholds = this.getCorpusThresholds();
         const emptyMax = thresholds.emptyMax;
@@ -4100,24 +3820,23 @@ export class InquiryView extends ItemView {
             return stats.reduce((sum, stat) => sum + stat.bodyWords, 0);
         }));
 
-        if (updateId !== this.minimapEmptyUpdateId) return;
+        if (updateId !== this.minimap.minimapEmptyUpdateId) return;
 
         wordCounts.forEach((wordCount, idx) => {
-            const tick = this.minimapTicks[idx];
+            const tick = this.minimap.minimapTicks[idx];
             if (!tick) return;
             tick.classList.toggle('is-empty', wordCount < emptyMax);
         });
     }
 
     private renderMinimapTicks(): void {
-        if (!this.minimapTicksEl || !this.minimapLayout || !this.minimapBaseline) return;
-        this.clearSvgChildren(this.minimapTicksEl);
-        this.minimapTicks = [];
-        this.minimapSweepTicks = [];
+        if (!this.minimap.minimapTicksEl || !this.minimap.minimapLayout || !this.minimap.minimapBaseline) return;
+        clearSvgChildren(this.minimap.minimapTicksEl);
+        this.minimap.minimapTicks = [];
 
         const items = this.getCurrentItems();
         const count = items.length;
-        const length = this.minimapLayout.length;
+        const length = this.minimap.minimapLayout.length;
         const tickSize = 20;
         const tickWidth = Math.max(12, Math.round(tickSize * 0.7));
         const tickHeight = Math.max(tickWidth + 4, Math.round(tickWidth * 1.45));
@@ -4147,71 +3866,71 @@ export class InquiryView extends ItemView {
         const rowTopY = -(baselineGap + tickHeight + (rowCount === 2 ? (tickHeight + rowGap) : 0));
         const rowBottomY = -(baselineGap + tickHeight);
 
-        const baselineStart = Math.round(this.minimapLayout.startX);
-        const baselineEnd = Math.round(this.minimapLayout.startX + length);
-        this.minimapBaseline.setAttribute('x1', String(baselineStart));
-        this.minimapBaseline.setAttribute('y1', '0');
-        this.minimapBaseline.setAttribute('x2', String(baselineEnd));
-        this.minimapBaseline.setAttribute('y2', '0');
-        if (this.minimapEndCapStart && this.minimapEndCapEnd) {
-            this.minimapEndCapStart.setAttribute('x', String(baselineStart - capHalfWidth));
-            this.minimapEndCapStart.setAttribute('y', String(-capHeight));
-            this.minimapEndCapStart.setAttribute('width', String(Math.round(capWidth)));
-            this.minimapEndCapStart.setAttribute('height', String(Math.round(capHeight)));
-            this.minimapEndCapEnd.setAttribute('x', String(baselineEnd - capHalfWidth));
-            this.minimapEndCapEnd.setAttribute('y', String(-capHeight));
-            this.minimapEndCapEnd.setAttribute('width', String(Math.round(capWidth)));
-            this.minimapEndCapEnd.setAttribute('height', String(Math.round(capHeight)));
+        const baselineStart = Math.round(this.minimap.minimapLayout.startX);
+        const baselineEnd = Math.round(this.minimap.minimapLayout.startX + length);
+        this.minimap.minimapBaseline.setAttribute('x1', String(baselineStart));
+        this.minimap.minimapBaseline.setAttribute('y1', '0');
+        this.minimap.minimapBaseline.setAttribute('x2', String(baselineEnd));
+        this.minimap.minimapBaseline.setAttribute('y2', '0');
+        if (this.minimap.minimapEndCapStart && this.minimap.minimapEndCapEnd) {
+            this.minimap.minimapEndCapStart.setAttribute('x', String(baselineStart - capHalfWidth));
+            this.minimap.minimapEndCapStart.setAttribute('y', String(-capHeight));
+            this.minimap.minimapEndCapStart.setAttribute('width', String(Math.round(capWidth)));
+            this.minimap.minimapEndCapStart.setAttribute('height', String(Math.round(capHeight)));
+            this.minimap.minimapEndCapEnd.setAttribute('x', String(baselineEnd - capHalfWidth));
+            this.minimap.minimapEndCapEnd.setAttribute('y', String(-capHeight));
+            this.minimap.minimapEndCapEnd.setAttribute('width', String(Math.round(capWidth)));
+            this.minimap.minimapEndCapEnd.setAttribute('height', String(Math.round(capHeight)));
         }
         const tokenCapY = MINIMAP_TOKEN_CAP_Y;
         const tokenCapBarHeight = MINIMAP_TOKEN_CAP_BAR_HEIGHT;
         const tokenCapCapHeight = MINIMAP_TOKEN_CAP_ENDCAP_HEIGHT;
         const tokenCapCapY = tokenCapY;
-        if (this.minimapTokenCapBar) {
-            this.minimapTokenCapBar.setAttribute('x', String(baselineStart));
-            this.minimapTokenCapBar.setAttribute('y', String(tokenCapY));
-            this.minimapTokenCapBar.setAttribute('width', '0');
-            this.minimapTokenCapBar.setAttribute('height', String(tokenCapBarHeight));
-            this.minimapTokenCapBar.setAttribute('rx', String(Math.round(tokenCapBarHeight / 2)));
-            this.minimapTokenCapBar.setAttribute('ry', String(Math.round(tokenCapBarHeight / 2)));
+        if (this.minimap.minimapTokenCapBar) {
+            this.minimap.minimapTokenCapBar.setAttribute('x', String(baselineStart));
+            this.minimap.minimapTokenCapBar.setAttribute('y', String(tokenCapY));
+            this.minimap.minimapTokenCapBar.setAttribute('width', '0');
+            this.minimap.minimapTokenCapBar.setAttribute('height', String(tokenCapBarHeight));
+            this.minimap.minimapTokenCapBar.setAttribute('rx', String(Math.round(tokenCapBarHeight / 2)));
+            this.minimap.minimapTokenCapBar.setAttribute('ry', String(Math.round(tokenCapBarHeight / 2)));
         }
-        if (this.minimapTokenCapStartCap && this.minimapTokenCapEndCap) {
-            this.minimapTokenCapStartCap.setAttribute('x', String(baselineStart - capHalfWidth));
-            this.minimapTokenCapStartCap.setAttribute('y', String(tokenCapCapY));
-            this.minimapTokenCapStartCap.setAttribute('width', String(Math.round(capWidth)));
-            this.minimapTokenCapStartCap.setAttribute('height', String(Math.round(tokenCapCapHeight)));
-            this.minimapTokenCapEndCap.setAttribute('x', String(baselineEnd - capHalfWidth));
-            this.minimapTokenCapEndCap.setAttribute('y', String(tokenCapCapY));
-            this.minimapTokenCapEndCap.setAttribute('width', String(Math.round(capWidth)));
-            this.minimapTokenCapEndCap.setAttribute('height', String(Math.round(tokenCapCapHeight)));
+        if (this.minimap.minimapTokenCapStartCap && this.minimap.minimapTokenCapEndCap) {
+            this.minimap.minimapTokenCapStartCap.setAttribute('x', String(baselineStart - capHalfWidth));
+            this.minimap.minimapTokenCapStartCap.setAttribute('y', String(tokenCapCapY));
+            this.minimap.minimapTokenCapStartCap.setAttribute('width', String(Math.round(capWidth)));
+            this.minimap.minimapTokenCapStartCap.setAttribute('height', String(Math.round(tokenCapCapHeight)));
+            this.minimap.minimapTokenCapEndCap.setAttribute('x', String(baselineEnd - capHalfWidth));
+            this.minimap.minimapTokenCapEndCap.setAttribute('y', String(tokenCapCapY));
+            this.minimap.minimapTokenCapEndCap.setAttribute('width', String(Math.round(capWidth)));
+            this.minimap.minimapTokenCapEndCap.setAttribute('height', String(Math.round(tokenCapCapHeight)));
         }
-        if (this.minimapTokenCapCachedOverlay) {
-            this.minimapTokenCapCachedOverlay.setAttribute('x', String(baselineStart));
-            this.minimapTokenCapCachedOverlay.setAttribute('y', String(tokenCapY));
-            this.minimapTokenCapCachedOverlay.setAttribute('width', '0');
-            this.minimapTokenCapCachedOverlay.setAttribute('height', String(tokenCapBarHeight));
-            this.minimapTokenCapCachedOverlay.setAttribute('rx', String(Math.round(tokenCapBarHeight / 2)));
-            this.minimapTokenCapCachedOverlay.setAttribute('ry', String(Math.round(tokenCapBarHeight / 2)));
-            this.minimapTokenCapCachedOverlay.classList.add('ert-hidden');
+        if (this.minimap.minimapTokenCapCachedOverlay) {
+            this.minimap.minimapTokenCapCachedOverlay.setAttribute('x', String(baselineStart));
+            this.minimap.minimapTokenCapCachedOverlay.setAttribute('y', String(tokenCapY));
+            this.minimap.minimapTokenCapCachedOverlay.setAttribute('width', '0');
+            this.minimap.minimapTokenCapCachedOverlay.setAttribute('height', String(tokenCapBarHeight));
+            this.minimap.minimapTokenCapCachedOverlay.setAttribute('rx', String(Math.round(tokenCapBarHeight / 2)));
+            this.minimap.minimapTokenCapCachedOverlay.setAttribute('ry', String(Math.round(tokenCapBarHeight / 2)));
+            this.minimap.minimapTokenCapCachedOverlay.classList.add('ert-hidden');
         }
-        if (this.minimapTokenCapSplitGroup) {
-            this.clearSvgChildren(this.minimapTokenCapSplitGroup);
-            this.minimapTokenCapSplitGroup.classList.add('ert-hidden');
+        if (this.minimap.minimapTokenCapSplitGroup) {
+            clearSvgChildren(this.minimap.minimapTokenCapSplitGroup);
+            this.minimap.minimapTokenCapSplitGroup.classList.add('ert-hidden');
         }
         const reuseBandY = MINIMAP_TOKEN_CAP_Y + MINIMAP_TOKEN_CAP_BAR_HEIGHT
                            + MINIMAP_TOKEN_CAP_SPLIT_TICK_HEIGHT; // 7+4+10 = 21
-        if (this.minimapReuseBand) {
-            this.minimapReuseBand.setAttribute('x1', String(baselineStart));
-            this.minimapReuseBand.setAttribute('y1', String(reuseBandY));
-            this.minimapReuseBand.setAttribute('x2', String(baselineEnd));
-            this.minimapReuseBand.setAttribute('y2', String(reuseBandY));
+        if (this.minimap.minimapReuseBand) {
+            this.minimap.minimapReuseBand.setAttribute('x1', String(baselineStart));
+            this.minimap.minimapReuseBand.setAttribute('y1', String(reuseBandY));
+            this.minimap.minimapReuseBand.setAttribute('x2', String(baselineEnd));
+            this.minimap.minimapReuseBand.setAttribute('y2', String(reuseBandY));
         }
-        this.minimapBottomOffset = tokenCapCapY + tokenCapCapHeight;
-        this.minimapTicksEl.setAttribute('transform', `translate(${baselineStart} 0)`);
+        this.minimap.minimapBottomOffset = tokenCapCapY + tokenCapCapHeight;
+        this.minimap.minimapTicksEl.setAttribute('transform', `translate(${baselineStart} 0)`);
         this.renderMinimapBackbone(baselineStart, length);
 
         if (!count) {
-            this.minimapBackboneGroup?.setAttribute('display', 'none');
+            this.minimap.minimapBackboneGroup?.setAttribute('display', 'none');
             this.renderCorpusCcStrip();
             this.updateMinimapFocus();
             this.updateMinimapPressureGauge();
@@ -4219,7 +3938,7 @@ export class InquiryView extends ItemView {
             return;
         }
 
-        this.minimapBackboneGroup?.removeAttribute('display');
+        this.minimap.minimapBackboneGroup?.removeAttribute('display');
         const tickCorner = Math.max(2, Math.round(tickWidth * 0.18));
         const markerWidth = Math.max(3, Math.round(tickWidth * 0.18));
         const markerHeight = Math.min(8, Math.max(6, Math.round(tickHeight * 0.35)));
@@ -4236,12 +3955,12 @@ export class InquiryView extends ItemView {
             const rowY = rowIndex === 0 ? rowTopY : rowBottomY;
             const x = Math.round(pos - (tickWidth / 2));
             const y = Math.round(rowY);
-            const tick = this.createSvgGroup(this.minimapTicksEl, 'ert-inquiry-minimap-tick', x, y);
+            const tick = createSvgGroup(this.minimap.minimapTicksEl, 'ert-inquiry-minimap-tick', x, y);
             const isSagaScope = this.state.scope === 'saga';
             if (isSagaScope) {
                 tick.classList.add('is-saga');
             }
-            const base = this.createSvgElement('rect');
+            const base = createSvgElement('rect');
             base.classList.add('ert-inquiry-minimap-tick-base');
             base.setAttribute('x', '0');
             base.setAttribute('y', '0');
@@ -4249,7 +3968,7 @@ export class InquiryView extends ItemView {
             base.setAttribute('height', String(tickHeight));
             base.setAttribute('rx', String(tickCorner));
             base.setAttribute('ry', String(tickCorner));
-            const border = this.createSvgElement('rect');
+            const border = createSvgElement('rect');
             border.classList.add('ert-inquiry-minimap-tick-border');
             border.setAttribute('x', '0');
             border.setAttribute('y', '0');
@@ -4260,7 +3979,7 @@ export class InquiryView extends ItemView {
             tick.appendChild(base);
             tick.appendChild(border);
             if (isSagaScope) {
-                const marker = this.createSvgElement('rect');
+                const marker = createSvgElement('rect');
                 marker.classList.add('ert-inquiry-minimap-tick-marker');
                 marker.setAttribute('width', String(markerWidth));
                 marker.setAttribute('height', String(markerHeight));
@@ -4311,7 +4030,7 @@ export class InquiryView extends ItemView {
                 this.clearHoverText();
                 this.clearResultPreview();
             });
-            this.minimapTicks.push(tick);
+            this.minimap.minimapTicks.push(tick);
             tickLayouts.push({ x, y, width: tickWidth, height: tickHeight, rowIndex });
         }
         this.updatePreviewPanelPosition();
@@ -4325,7 +4044,7 @@ export class InquiryView extends ItemView {
     }
 
     private updatePreviewPanelPosition(): void {
-        if (!this.previewGroup || !this.minimapGroup) return;
+        if (!this.previewGroup || !this.minimap.minimapGroup) return;
         const targetY = this.getPreviewPanelTargetY();
         if (!Number.isFinite(targetY)) return;
         this.previewGroup.setAttribute('transform', `translate(0 ${targetY})`);
@@ -4334,101 +4053,18 @@ export class InquiryView extends ItemView {
 
     private getPreviewPanelTargetY(): number {
         return MINIMAP_GROUP_Y
-            + this.minimapBottomOffset
+            + this.minimap.minimapBottomOffset
             + PREVIEW_PANEL_MINIMAP_GAP
             - PREVIEW_PANEL_PADDING_Y;
     }
 
     private renderMinimapBackbone(baselineStart: number, length: number): void {
-        if (!this.minimapGroup) return;
-        let backboneGroup = this.minimapBackboneGroup;
-        if (!backboneGroup) {
-            backboneGroup = this.createSvgGroup(this.minimapGroup, 'ert-inquiry-minimap-backbone');
-            this.minimapBackboneGroup = backboneGroup;
-            if (this.minimapTicksEl) {
-                this.minimapGroup.insertBefore(backboneGroup, this.minimapTicksEl);
-            }
-        }
-
-        const barHeight = 2;
-        const barY = -1;
-        const glowHeight = barHeight;
-        const glowY = barY;
-        const shineHeight = barHeight;
-        const shineY = barY;
-        this.minimapBackboneLayout = { startX: baselineStart, length, glowHeight, glowY, shineHeight, shineY };
-
-        if (this.minimapBackboneClipRect) {
-            this.minimapBackboneClipRect.setAttribute('x', baselineStart.toFixed(2));
-            this.minimapBackboneClipRect.setAttribute('y', String(shineY));
-            this.minimapBackboneClipRect.setAttribute('width', length.toFixed(2));
-            this.minimapBackboneClipRect.setAttribute('height', String(shineHeight));
-            this.minimapBackboneClipRect.setAttribute('rx', String(Math.round(shineHeight / 2)));
-            this.minimapBackboneClipRect.setAttribute('ry', String(Math.round(shineHeight / 2)));
-        }
-        if (!backboneGroup.getAttribute('clip-path')) {
-            backboneGroup.setAttribute('clip-path', 'url(#ert-inquiry-minimap-backbone-clip)');
-        }
-
-        let glow = this.minimapBackboneGlow;
-        if (!glow) {
-            glow = this.createSvgElement('rect');
-            glow.classList.add('ert-inquiry-minimap-backbone-glow');
-            backboneGroup.appendChild(glow);
-            this.minimapBackboneGlow = glow;
-        }
-
-        let shine = this.minimapBackboneShine;
-        if (!shine) {
-            shine = this.createSvgElement('rect');
-            shine.classList.add('ert-inquiry-minimap-backbone-shine');
-            backboneGroup.appendChild(shine);
-            this.minimapBackboneShine = shine;
-        }
-
-        let passGroup = this.minimapPassIndicatorGroup;
-        if (!passGroup) {
-            passGroup = this.createSvgGroup(this.minimapGroup, 'ert-inquiry-minimap-pass-indicator');
-            this.minimapPassIndicatorGroup = passGroup;
-        }
-        let passText = this.minimapPassIndicatorText;
-        if (!passText && passGroup) {
-            passText = this.createSvgText(passGroup, 'ert-inquiry-minimap-pass-text', '', 0, 0);
-            passText.setAttribute('text-anchor', 'start');
-            passText.setAttribute('dominant-baseline', 'middle');
-            this.minimapPassIndicatorText = passText;
-        }
-        if (!this.minimapReuseDot && passGroup) {
-            this.minimapReuseDot = this.createSvgElement('circle');
-            this.minimapReuseDot.classList.add('ert-inquiry-minimap-reuse-dot');
-            this.minimapReuseDot.setAttribute('r', '3');
-            this.minimapReuseDot.setAttribute('cx', '-6');
-            this.minimapReuseDot.setAttribute('cy', '0');
-            passGroup.appendChild(this.minimapReuseDot);
-        }
-
-        glow.setAttribute('x', baselineStart.toFixed(2));
-        glow.setAttribute('y', String(glowY));
-        glow.setAttribute('width', length.toFixed(2));
-        glow.setAttribute('height', String(glowHeight));
-        glow.setAttribute('rx', String(Math.round(glowHeight / 2)));
-        glow.setAttribute('ry', String(Math.round(glowHeight / 2)));
-
-        shine.setAttribute('x', baselineStart.toFixed(2));
-        shine.setAttribute('y', String(shineY));
-        shine.setAttribute('width', length.toFixed(2));
-        shine.setAttribute('height', String(shineHeight));
-        shine.setAttribute('rx', String(Math.round(shineHeight / 2)));
-        shine.setAttribute('ry', String(Math.round(shineHeight / 2)));
-
-        if (passGroup) {
-            passGroup.setAttribute('transform', `translate(${Math.round(baselineStart + length + 10)} 0)`);
-        }
+        this.minimap.renderBackbone(baselineStart, length);
     }
 
     private applyMinimapSubsetShading(items: InquiryCorpusItem[]): void {
-        if (this.state.scope !== 'book' || !this.minimapTicks.length || !items.length) {
-            this.minimapTicks.forEach(tick => {
+        if (this.state.scope !== 'book' || !this.minimap.minimapTicks.length || !items.length) {
+            this.minimap.minimapTicks.forEach(tick => {
                 tick.classList.remove('is-excluded', 'is-included', 'is-selection-boundary');
             });
             return;
@@ -4462,7 +4098,7 @@ export class InquiryView extends ItemView {
             includedPaths
         );
 
-        this.minimapTicks.forEach((tick, index) => {
+        this.minimap.minimapTicks.forEach((tick, index) => {
             const included = subset.included[index] ?? true;
             tick.classList.toggle('is-excluded', subset.hasSubset && !included);
             tick.classList.toggle('is-included', subset.hasSubset && included);
@@ -4476,35 +4112,37 @@ export class InquiryView extends ItemView {
     }
 
     private updateMinimapPressureGauge(): void {
-        if (!this.minimapBackboneGroup || !this.minimapBaseline || this.state.isRunning) return;
+        if (!this.minimap.minimapBackboneGroup || !this.minimap.minimapBaseline || this.state.isRunning) return;
         const readinessUi = this.buildReadinessUiState();
         this.lastReadinessUiState = readinessUi;
 
         const ratio = Math.max(0, readinessUi.readiness.pressureRatio);
         const clamped = Math.min(ratio, 1);
-        this.setBackboneFillProgress(0, 0);
-        this.minimapBackboneShine?.setAttribute('width', '0');
-        this.minimapBackboneGlow?.setAttribute('width', '0');
+        this.minimap.setFillProgress(0, 0);
+        this.minimap.minimapBackboneShine?.setAttribute('width', '0');
+        this.minimap.minimapBackboneGlow?.setAttribute('width', '0');
 
         const passPlan = this.getCurrentPassPlan(readinessUi);
         const isOverCapacity = ratio >= 1;
         const usesAutomaticPackaging = readinessUi.packaging === 'automatic' && readinessUi.readiness.exceedsBudget;
         const overCapacityTone: 'amber' | 'red' = usesAutomaticPackaging ? 'amber' : 'red';
-        this.updateTokenCapBar(clamped, isOverCapacity, overCapacityTone, passPlan.displayPassCount);
-        this.minimapBaseline.style.stroke = '';
-        this.minimapEndCapStart?.style.removeProperty('fill');
-        this.minimapEndCapEnd?.style.removeProperty('fill');
-
+        const styleSource = this.getStyleSource();
+        const isPro = isProfessionalActive(this.plugin);
+        const advancedContext = getLastAiAdvancedContext(this.plugin, 'InquiryMode') ?? null;
+        this.minimap.updateTokenCapBar(clamped, isOverCapacity, overCapacityTone, passPlan.displayPassCount, styleSource, advancedContext);
+        this.minimap.minimapBaseline.style.stroke = '';
+        this.minimap.minimapEndCapStart?.style.removeProperty('fill');
+        this.minimap.minimapEndCapEnd?.style.removeProperty('fill');
         if (isOverCapacity) {
-            const pressureColors = this.getBackbonePressureColors(overCapacityTone);
-            this.applyBackboneStopColors(pressureColors.gradient, pressureColors.shine);
+            const pressureColors = getBackbonePressureColors(styleSource, overCapacityTone, isPro);
+            this.minimap.applyStopColors(pressureColors.gradient, pressureColors.shine);
         } else {
-            const pressureColors = this.getBackbonePressureColors(readinessUi.readiness.pressureTone);
-            this.applyBackboneStopColors(pressureColors.gradient, pressureColors.shine);
+            const pressureColors = getBackbonePressureColors(styleSource, readinessUi.readiness.pressureTone, isPro);
+            this.minimap.applyStopColors(pressureColors.gradient, pressureColors.shine);
         }
 
-        this.minimapBackboneGroup.classList.remove('is-pressure-normal', 'is-pressure-amber', 'is-pressure-red', 'is-pressure-over-budget');
-        this.minimapBackboneGroup.classList.add(
+        this.minimap.minimapBackboneGroup.classList.remove('is-pressure-normal', 'is-pressure-amber', 'is-pressure-red', 'is-pressure-over-budget');
+        this.minimap.minimapBackboneGroup.classList.add(
             isOverCapacity
                 ? (overCapacityTone === 'amber' ? 'is-pressure-amber' : 'is-pressure-red')
                 : readinessUi.readiness.pressureTone === 'red'
@@ -4513,7 +4151,7 @@ export class InquiryView extends ItemView {
                         ? 'is-pressure-amber'
                         : 'is-pressure-normal'
         );
-        this.minimapBackboneGroup.classList.toggle(
+        this.minimap.minimapBackboneGroup.classList.toggle(
             'is-pressure-over-budget',
             readinessUi.packaging === 'singlePassOnly' && readinessUi.readiness.exceedsBudget
         );
@@ -4528,17 +4166,17 @@ export class InquiryView extends ItemView {
         if (readinessUi.packaging === 'automatic' && readinessUi.readiness.exceedsBudget) {
             tooltipLines.push('Will package into multiple passes');
         }
-        addTooltipData(this.minimapBaseline, this.balanceTooltipText(tooltipLines.join('\n')), 'top');
+        addTooltipData(this.minimap.minimapBaseline, this.balanceTooltipText(tooltipLines.join('\n')), 'top');
 
         const passIndicator = buildPassIndicator(
             passPlan.recentExactPassCount ?? undefined,
             passPlan.packagingExpected,
             passPlan.estimatedPassCount ?? undefined
         );
-        if (this.minimapPassIndicatorGroup && this.minimapPassIndicatorText) {
-            this.minimapPassIndicatorGroup.classList.toggle('ert-hidden', !passIndicator.visible);
+        if (this.minimap.minimapPassIndicatorGroup && this.minimap.minimapPassIndicatorText) {
+            this.minimap.minimapPassIndicatorGroup.classList.toggle('ert-hidden', !passIndicator.visible);
             if (passIndicator.visible) {
-                this.minimapPassIndicatorText.textContent = passIndicator.marks;
+                this.minimap.minimapPassIndicatorText.textContent = passIndicator.marks;
                 const reason = passPlan.packagingTriggerReason
                     || (passIndicator.expectedOnly
                         ? 'Large corpus expected to be packaged for stability.'
@@ -4547,7 +4185,7 @@ export class InquiryView extends ItemView {
                     ? `Passes: ${passIndicator.exactCount} total (${passIndicator.extraPassCount ?? 0} extra)`
                     : `Estimated passes: ${passIndicator.totalPassCount ?? 2} total (${passIndicator.extraPassCount ?? 1} extra)`;
                 addTooltipData(
-                    this.minimapPassIndicatorGroup,
+                    this.minimap.minimapPassIndicatorGroup,
                     this.balanceTooltipText(`${passText}\n${reason}`),
                     'top'
                 );
@@ -4557,15 +4195,15 @@ export class InquiryView extends ItemView {
     }
 
     private updateMinimapReuseStatus(): void {
-        if (!this.minimapGroup) return;
+        if (!this.minimap.minimapGroup) return;
 
         const advanced = getLastAiAdvancedContext(this.plugin, 'InquiryMode');
         const reuseState = advanced?.reuseState ?? 'idle';
         const provider = advanced?.provider ?? 'none';
 
-        this.minimapGroup.setAttribute('data-reuse-state', reuseState);
-        this.minimapReuseBand?.classList.toggle('ert-hidden', reuseState === 'idle');
-        this.minimapReuseDot?.classList.toggle('ert-hidden', reuseState === 'idle');
+        this.minimap.minimapGroup.setAttribute('data-reuse-state', reuseState);
+        this.minimap.minimapReuseBand?.classList.toggle('ert-hidden', reuseState === 'idle');
+        this.minimap.minimapReuseDot?.classList.toggle('ert-hidden', reuseState === 'idle');
 
         const fingerprint = this.state.corpusFingerprint
             ?? this.payloadStats?.manifestFingerprint;
@@ -4573,7 +4211,7 @@ export class InquiryView extends ItemView {
             ? fingerprint.replace(/^h/, '').slice(0, 4).toUpperCase()
             : '----';
 
-        if (this.minimapReuseBand && reuseState !== 'idle') {
+        if (this.minimap.minimapReuseBand && reuseState !== 'idle') {
             const providerLabel = provider === 'google' ? 'Gemini'
                 : provider.charAt(0).toUpperCase() + provider.slice(1);
             const stateDetail = reuseState === 'warm'
@@ -4589,7 +4227,7 @@ export class InquiryView extends ItemView {
                 ? `\nCache: ${cacheStatus} \u2022 TTL: 15m`
                 : '';
             addTooltipData(
-                this.minimapReuseBand,
+                this.minimap.minimapReuseBand,
                 this.balanceTooltipText(`Reuse: ${stateDetail}\nCorpus ${corpusShort} \u2022 ${providerLabel}${ratioDetail}${cacheDetail}`),
                 'bottom'
             );
@@ -4601,28 +4239,7 @@ export class InquiryView extends ItemView {
         tickWidth: number,
         length: number
     ): void {
-        if (!this.minimapTicksEl) return;
-        this.minimapTicksEl.querySelector('.ert-inquiry-minimap-sweep')?.remove();
-        const sweepGroup = this.createSvgGroup(this.minimapTicksEl, 'ert-inquiry-minimap-sweep');
-        const inset = Math.max(3, Math.round(tickWidth * 0.28));
-        tickLayouts.forEach(layout => {
-            const inner = this.createSvgElement('rect');
-            inner.classList.add('ert-inquiry-minimap-sweep-inner');
-            inner.setAttribute('x', String(layout.x + inset));
-            inner.setAttribute('y', String(layout.y + inset));
-            inner.setAttribute('width', String(Math.max(4, layout.width - (inset * 2))));
-            inner.setAttribute('height', String(Math.max(6, layout.height - (inset * 2))));
-            inner.setAttribute('rx', '2');
-            inner.setAttribute('ry', '2');
-            inner.setAttribute('opacity', '0');
-            sweepGroup.appendChild(inner);
-            this.minimapSweepTicks.push({ rect: inner, centerX: layout.x + (layout.width / 2), rowIndex: layout.rowIndex });
-        });
-        this.minimapSweepLayout = {
-            startX: -Math.max(tickWidth * 1.6, 36),
-            endX: length + Math.max(tickWidth * 1.6, 36),
-            bandWidth: Math.max(tickWidth * 1.6, 36)
-        };
+        this.minimap.buildSweepLayer(tickLayouts, tickWidth, length);
     }
 
     private renderCorpusCcStrip(): void {
@@ -4647,7 +4264,7 @@ export class InquiryView extends ItemView {
         }
 
         if (!this.ccGroup) {
-            this.ccGroup = this.createSvgGroup(this.rootSvg, 'ert-inquiry-cc');
+            this.ccGroup = createSvgGroup(this.rootSvg, 'ert-inquiry-cc');
         } else {
             this.ccGroup.classList.remove('ert-hidden');
         }
@@ -4767,8 +4384,8 @@ export class InquiryView extends ItemView {
         this.ccGroup.setAttribute('transform', `translate(0 ${topLimit})`);
 
         if (!this.ccLabelGroup) {
-            this.ccLabelGroup = this.createSvgGroup(this.ccGroup, 'ert-inquiry-cc-label-group', 0, 0);
-            this.ccLabelHit = this.createSvgElement('rect');
+            this.ccLabelGroup = createSvgGroup(this.ccGroup, 'ert-inquiry-cc-label-group', 0, 0);
+            this.ccLabelHit = createSvgElement('rect');
             this.ccLabelHit.classList.add('ert-inquiry-cc-label-hit');
             this.ccLabelGroup.appendChild(this.ccLabelHit);
             this.registerDomEvent(this.ccLabelGroup as unknown as HTMLElement, 'click', () => {
@@ -4776,13 +4393,13 @@ export class InquiryView extends ItemView {
             });
         }
         if (!this.ccLabel) {
-            this.ccLabel = this.createSvgText(this.ccLabelGroup ?? this.ccGroup, 'ert-inquiry-cc-label', 'Corpus', 0, 0);
+            this.ccLabel = createSvgText(this.ccLabelGroup ?? this.ccGroup, 'ert-inquiry-cc-label', 'Corpus', 0, 0);
             this.ccLabel.setAttribute('text-anchor', 'middle');
             this.ccLabel.setAttribute('dominant-baseline', 'middle');
             this.ccLabel.classList.add('is-actionable');
         }
         if (!this.ccLabelHint) {
-            this.ccLabelHint = this.createSvgGroup(this.ccGroup, 'ert-inquiry-cc-hint', 0, 0);
+            this.ccLabelHint = createSvgGroup(this.ccGroup, 'ert-inquiry-cc-hint', 0, 0);
             this.ccLabelHintIcon = this.createIconUse(
                 'arrow-big-up',
                 -CC_LABEL_HINT_SIZE / 2,
@@ -4825,7 +4442,7 @@ export class InquiryView extends ItemView {
         }
 
         if (!this.ccEmptyText) {
-            this.ccEmptyText = this.createSvgText(this.ccGroup, 'ert-inquiry-cc-empty ert-hidden', 'No corpus data', 0, 0);
+            this.ccEmptyText = createSvgText(this.ccGroup, 'ert-inquiry-cc-empty ert-hidden', 'No corpus data', 0, 0);
             this.ccEmptyText.setAttribute('text-anchor', 'start');
             this.ccEmptyText.setAttribute('dominant-baseline', 'middle');
         }
@@ -4842,17 +4459,17 @@ export class InquiryView extends ItemView {
 
         const totalEntries = entries.length;
         while (this.ccSlots.length < totalEntries) {
-            const group = this.createSvgGroup(this.ccGroup, 'ert-inquiry-cc-cell');
-            const base = this.createSvgElement('rect');
+            const group = createSvgGroup(this.ccGroup, 'ert-inquiry-cc-cell');
+            const base = createSvgElement('rect');
             base.classList.add('ert-inquiry-cc-cell-base');
-            const fill = this.createSvgElement('rect');
+            const fill = createSvgElement('rect');
             fill.classList.add('ert-inquiry-cc-cell-fill');
-            const border = this.createSvgElement('rect');
+            const border = createSvgElement('rect');
             border.classList.add('ert-inquiry-cc-cell-border');
-            const icon = this.createSvgGroup(group, 'ert-inquiry-cc-cell-icon');
-            const iconOuter = this.createSvgElement('circle');
+            const icon = createSvgGroup(group, 'ert-inquiry-cc-cell-icon');
+            const iconOuter = createSvgElement('circle');
             iconOuter.classList.add('ert-inquiry-cc-cell-icon-outer');
-            const iconInner = this.createSvgElement('circle');
+            const iconInner = createSvgElement('circle');
             iconInner.classList.add('ert-inquiry-cc-cell-icon-inner');
             icon.appendChild(iconOuter);
             icon.appendChild(iconInner);
@@ -4919,18 +4536,18 @@ export class InquiryView extends ItemView {
 
         const titleTexts = this.ccClassLabels;
         while (titleTexts.length < layout.classLayouts.length) {
-            const headerGroup = this.createSvgGroup(this.ccGroup, 'ert-inquiry-cc-class');
-            const hit = this.createSvgElement('rect');
+            const headerGroup = createSvgGroup(this.ccGroup, 'ert-inquiry-cc-class');
+            const hit = createSvgElement('rect');
             hit.classList.add('ert-inquiry-cc-class-hit');
             headerGroup.appendChild(hit);
-            const icon = this.createSvgGroup(headerGroup, 'ert-inquiry-cc-class-icon');
-            const iconOuter = this.createSvgElement('circle');
+            const icon = createSvgGroup(headerGroup, 'ert-inquiry-cc-class-icon');
+            const iconOuter = createSvgElement('circle');
             iconOuter.classList.add('ert-inquiry-cc-class-icon-outer');
-            const iconInner = this.createSvgElement('circle');
+            const iconInner = createSvgElement('circle');
             iconInner.classList.add('ert-inquiry-cc-class-icon-inner');
             icon.appendChild(iconOuter);
             icon.appendChild(iconInner);
-            const label = this.createSvgText(headerGroup, 'ert-inquiry-cc-class-label', '', 0, 0);
+            const label = createSvgText(headerGroup, 'ert-inquiry-cc-class-label', '', 0, 0);
             label.setAttribute('text-anchor', 'start');
             label.setAttribute('dominant-baseline', 'middle');
             headerGroup.appendChild(label);
@@ -5029,12 +4646,11 @@ export class InquiryView extends ItemView {
     }
 
     private getCorpusGroupBaseClass(className: string): string {
-        return className === 'outline-saga' ? 'outline' : className;
+        return getCorpusGroupBaseClassPure(className);
     }
 
     private getCorpusGroupKey(className: string, scope?: InquiryScope): string {
-        if (className === 'outline' && scope === 'saga') return 'outline-saga';
-        return className;
+        return getCorpusGroupKeyPure(className, scope);
     }
 
     private getSceneBookGroupKey(bookId: string): string {
@@ -5049,22 +4665,11 @@ export class InquiryView extends ItemView {
     }
 
     private getCorpusItemKey(className: string, filePath: string, scope?: InquiryScope, sceneId?: string): string {
-        return buildCorpusSelectionKey({
-            className,
-            filePath,
-            scope,
-            sceneId
-        });
+        return getCorpusItemKeyPure(className, filePath, scope, sceneId);
     }
 
     private parseCorpusItemKey(entryKey: string): { className: string; scope?: InquiryScope; path: string; sceneId?: string } {
-        const parsed = parseCorpusSelectionKey(entryKey);
-        return {
-            className: parsed.className,
-            scope: parsed.scope,
-            path: parsed.path ?? '',
-            sceneId: parsed.sceneId
-        };
+        return parseCorpusItemKeyPure(entryKey);
     }
 
     private getCorpusItemOverride(
@@ -5073,164 +4678,67 @@ export class InquiryView extends ItemView {
         scope?: InquiryScope,
         sceneId?: string
     ): InquiryMaterialMode | undefined {
-        const preferredKey = this.getCorpusItemKey(className, filePath, scope, sceneId);
-        const preferred = this.corpusItemOverrides.get(preferredKey);
-        if (preferred !== undefined) return preferred;
-
-        if (className !== 'scene' || !sceneId) return undefined;
-
-        const legacyKey = buildLegacyCorpusSelectionKey({
-            className,
-            filePath,
-            scope
-        });
-        const legacyValue = this.corpusItemOverrides.get(legacyKey);
-        if (legacyValue === undefined) return undefined;
-
-        this.corpusItemOverrides.set(preferredKey, legacyValue);
-        this.corpusItemOverrides.delete(legacyKey);
-        return legacyValue;
+        return this.corpusService.getItemOverride(className, filePath, scope, sceneId);
     }
 
     private getCorpusCycleModes(className: string): InquiryMaterialMode[] {
-        return ['none', 'summary', 'full'];
+        return getCorpusCycleModesPure(className);
     }
 
     private getCorpusGroupBaseMode(
         className: string,
         configMap: Map<string, InquiryClassConfig>
     ): InquiryMaterialMode {
-        const baseClass = this.getCorpusGroupBaseClass(className);
-        const config = configMap.get(baseClass);
-        if (!config) {
-            const fallback = this.ccEntries.find(entry => entry.className === className);
-            if (fallback) {
-                return this.normalizeContributionMode(fallback.mode ?? 'none', baseClass);
-            }
-            return 'none';
-        }
-        if (!config.enabled) return 'none';
-        if (baseClass === 'outline') {
-            const scopeMode = className === 'outline-saga' ? config.sagaScope : config.bookScope;
-            return this.normalizeContributionMode(scopeMode, baseClass);
-        }
-        if (!this.isSynopsisCapableClass(baseClass)) {
-            return this.normalizeContributionMode(config.referenceScope, baseClass);
-        }
-        const scopeMode = this.state.scope === 'saga' ? config.sagaScope : config.bookScope;
-        return this.normalizeContributionMode(scopeMode, baseClass);
+        return this.corpusService.getGroupBaseMode(className, configMap, this.state.scope, this.ccEntries);
     }
 
     private getCorpusGroupEffectiveMode(
         className: string,
         configMap: Map<string, InquiryClassConfig>
     ): InquiryMaterialMode {
-        const baseClass = this.getCorpusGroupBaseClass(className);
-        const baseMode = this.getCorpusGroupBaseMode(className, configMap);
-        const override = this.corpusClassOverrides.get(className);
-        const effective = override ?? baseMode;
-        return this.normalizeContributionMode(effective, baseClass);
+        return this.corpusService.getGroupEffectiveMode(className, configMap, this.state.scope, this.ccEntries);
     }
 
     private getCorpusItemEffectiveMode(
         entry: CorpusManifestEntry,
         configMap: Map<string, InquiryClassConfig>
     ): InquiryMaterialMode {
-        const groupKey = this.getCorpusGroupKey(entry.class, entry.scope);
-        const baseClass = this.getCorpusGroupBaseClass(groupKey);
-        const baseMode = this.getCorpusGroupBaseMode(groupKey, configMap);
-        const classOverride = this.corpusClassOverrides.get(groupKey);
-        const itemOverride = this.getCorpusItemOverride(entry.class, entry.path, entry.scope, entry.sceneId);
-        const effective = itemOverride ?? classOverride ?? baseMode;
-        return this.normalizeContributionMode(effective, baseClass);
+        return this.corpusService.getItemEffectiveMode(entry, configMap, this.state.scope, this.ccEntries);
     }
 
     private getCorpusGroupKeys(sources: InquirySourcesSettings): string[] {
-        const classScope = this.getClassScopeConfig(sources.classScope);
-        const keys: string[] = [];
-        const addKey = (key: string) => {
-            if (!keys.includes(key)) keys.push(key);
-        };
-        (sources.classes || []).forEach(config => {
-            if (!classScope.allowAll && !classScope.allowed.has(config.className)) return;
-            if (config.className === 'outline') {
-                addKey('outline');
-                addKey('outline-saga');
-                return;
-            }
-            addKey(config.className);
-        });
-        this.ccEntries.forEach(entry => {
-            addKey(entry.className);
-        });
-        return keys;
+        return getCorpusGroupKeysPure(sources, this.ccEntries);
     }
 
     private getCorpusGlobalMode(
         groupKeys: string[],
         configMap: Map<string, InquiryClassConfig>
     ): InquiryMaterialMode | 'mixed' {
-        if (!groupKeys.length) return 'none';
-        const groupModes = groupKeys.map(key => this.getCorpusGroupEffectiveMode(key, configMap));
-        const allNone = groupModes.every(mode => mode === 'none');
-        if (allNone) return 'none';
-        const allFull = groupModes.every(mode => mode === 'full');
-        if (allFull) return 'full';
-
-        const synopsisKeys = groupKeys.filter(key => this.isSynopsisCapableClass(this.getCorpusGroupBaseClass(key)));
-        const nonSynopsisKeys = groupKeys.filter(key => !this.isSynopsisCapableClass(this.getCorpusGroupBaseClass(key)));
-        const synopsisAllSummary = synopsisKeys.length > 0
-            && synopsisKeys.every(key => this.getCorpusGroupEffectiveMode(key, configMap) === 'summary');
-        const nonSynopsisAllFull = nonSynopsisKeys.length === 0
-            || nonSynopsisKeys.every(key => this.getCorpusGroupEffectiveMode(key, configMap) === 'full');
-        if (synopsisAllSummary && nonSynopsisAllFull) return 'summary';
-        return 'mixed';
+        return this.corpusService.getGlobalMode(groupKeys, configMap, this.state.scope, this.ccEntries);
     }
 
     private getNextCorpusMode(current: InquiryMaterialMode, modes: InquiryMaterialMode[]): InquiryMaterialMode {
-        const index = modes.indexOf(current);
-        if (index === -1) return modes[0] ?? 'none';
-        return modes[(index + 1) % modes.length] ?? 'none';
+        return getNextCorpusModePure(current, modes);
     }
 
     private clearItemOverridesForGroup(groupKey: string): void {
-        Array.from(this.corpusItemOverrides.keys()).forEach(key => {
-            const parsed = this.parseCorpusItemKey(key);
-            if (this.getCorpusGroupKey(parsed.className, parsed.scope) === groupKey) {
-                this.corpusItemOverrides.delete(key);
-            }
-        });
+        this.corpusService.clearItemOverridesForGroup(groupKey);
     }
 
     private hasCorpusOverrides(): boolean {
-        return this.corpusClassOverrides.size > 0 || this.corpusItemOverrides.size > 0;
+        return this.corpusService.hasOverrides();
     }
 
     private getCorpusOverrideSummary(): { active: boolean; classCount: number; itemCount: number; total: number } {
-        const classCount = this.corpusClassOverrides.size;
-        const itemCount = this.corpusItemOverrides.size;
-        return {
-            active: classCount > 0 || itemCount > 0,
-            classCount,
-            itemCount,
-            total: classCount + itemCount
-        };
+        return this.corpusService.getOverrideSummary();
     }
 
     private applyCorpusOverrideSummary(result: InquiryResult): InquiryResult {
-        const summary = this.getCorpusOverrideSummary();
-        result.corpusOverridesActive = summary.active;
-        result.corpusOverrideSummary = {
-            classCount: summary.classCount,
-            itemCount: summary.itemCount,
-            total: summary.total
-        };
-        return result;
+        return this.corpusService.applyOverrideSummary(result);
     }
 
     private resetCorpusOverrides(): void {
-        this.corpusClassOverrides.clear();
-        this.corpusItemOverrides.clear();
+        this.corpusService.resetOverrides();
         this.corpusWarningActive = false;
         this.refreshUI();
     }
@@ -5250,9 +4758,9 @@ export class InquiryView extends ItemView {
         const baseMode = this.getCorpusGroupBaseMode(groupKey, configMap);
         const normalizedNext = this.normalizeContributionMode(nextMode, this.getCorpusGroupBaseClass(groupKey));
         if (normalizedNext === baseMode) {
-            this.corpusClassOverrides.delete(groupKey);
+            this.corpusService.deleteClassOverride(groupKey);
         } else {
-            this.corpusClassOverrides.set(groupKey, normalizedNext);
+            this.corpusService.setClassOverride(groupKey, normalizedNext);
         }
         this.clearItemOverridesForGroup(groupKey);
         this.corpusWarningActive = false;
@@ -5290,9 +4798,9 @@ export class InquiryView extends ItemView {
 
         entries.forEach(entry => {
             if (normalizedNext === classMode) {
-                this.corpusItemOverrides.delete(entry.entryKey);
+                this.corpusService.deleteItemOverrideByKey(entry.entryKey);
             } else {
-                this.corpusItemOverrides.set(entry.entryKey, normalizedNext);
+                this.corpusService.setItemOverrideByKey(entry.entryKey, normalizedNext);
             }
         });
 
@@ -5313,9 +4821,9 @@ export class InquiryView extends ItemView {
         const nextMode = this.getNextCorpusMode(currentMode, modes);
         const normalizedNext = this.normalizeContributionMode(nextMode, this.getCorpusGroupBaseClass(groupKey));
         if (normalizedNext === classMode) {
-            this.corpusItemOverrides.delete(entryKey);
+            this.corpusService.deleteItemOverrideByKey(entryKey);
         } else {
-            this.corpusItemOverrides.set(entryKey, normalizedNext);
+            this.corpusService.setItemOverrideByKey(entryKey, normalizedNext);
         }
         this.corpusWarningActive = false;
         this.refreshUI();
@@ -5334,14 +4842,13 @@ export class InquiryView extends ItemView {
                 ? 'full'
                 : 'none';
 
-        this.corpusClassOverrides.clear();
-        this.corpusItemOverrides.clear();
+        this.corpusService.resetOverrides();
         groupKeys.forEach(groupKey => {
             const baseClass = this.getCorpusGroupBaseClass(groupKey);
             const normalizedTarget = this.normalizeContributionMode(next, baseClass);
             const baseMode = this.getCorpusGroupBaseMode(groupKey, configMap);
             if (normalizedTarget !== baseMode) {
-                this.corpusClassOverrides.set(groupKey, normalizedTarget);
+                this.corpusService.setClassOverride(groupKey, normalizedTarget);
             }
         });
         this.corpusWarningActive = false;
@@ -5565,7 +5072,7 @@ export class InquiryView extends ItemView {
 
         entriesByClass.forEach((items, className) => {
             if (groups.some(group => group.key === className || group.className === className)) return;
-            const override = this.corpusClassOverrides.get(className);
+            const override = this.corpusService.getClassOverride(className);
             const mode = override ?? items[0]?.mode ?? 'none';
             groups.push({
                 key: className,
@@ -6096,308 +5603,8 @@ export class InquiryView extends ItemView {
         return matches ? matches.length : 0;
     }
 
-    private parseRgbColor(value: string): RgbColor | null {
-        const raw = value.trim();
-        if (!raw) return null;
-        if (raw.startsWith('#')) {
-            const hex = raw.slice(1);
-            if (hex.length === 3) {
-                const r = Number.parseInt(hex[0] + hex[0], 16);
-                const g = Number.parseInt(hex[1] + hex[1], 16);
-                const b = Number.parseInt(hex[2] + hex[2], 16);
-                return { r, g, b };
-            }
-            if (hex.length === 6) {
-                const r = Number.parseInt(hex.slice(0, 2), 16);
-                const g = Number.parseInt(hex.slice(2, 4), 16);
-                const b = Number.parseInt(hex.slice(4, 6), 16);
-                return { r, g, b };
-            }
-            return null;
-        }
-        const rgbMatch = raw.match(/rgb\(([^)]+)\)/i);
-        const csv = (rgbMatch ? rgbMatch[1] : raw).split(',').map(part => part.trim());
-        if (csv.length < 3) return null;
-        const [r, g, b] = csv.map(part => Number.parseFloat(part));
-        if ([r, g, b].some(v => Number.isNaN(v))) return null;
-        return { r: Math.round(r), g: Math.round(g), b: Math.round(b) };
-    }
-
-    private mixRgbColor(a: RgbColor, b: RgbColor, t: number): RgbColor {
-        const clamped = Math.min(Math.max(t, 0), 1);
-        return {
-            r: Math.round(a.r + (b.r - a.r) * clamped),
-            g: Math.round(a.g + (b.g - a.g) * clamped),
-            b: Math.round(a.b + (b.b - a.b) * clamped)
-        };
-    }
-
-    private toRgbString(color: RgbColor): string {
-        return `rgb(${color.r}, ${color.g}, ${color.b})`;
-    }
-
-    private getExecutionColorValue(variableName: string, fallback: string): string {
-        const styleSource: Element = this.contentEl ?? this.rootSvg ?? document.documentElement;
-        const value = getComputedStyle(styleSource).getPropertyValue(variableName).trim();
-        return value || fallback;
-    }
-
-    private getExecutionColorRgb(variableName: string, fallback: RgbColor): RgbColor {
-        return this.parseRgbColor(this.getExecutionColorValue(variableName, '')) ?? fallback;
-    }
-
-    private getProAccentColor(): RgbColor {
-        const root = document.documentElement;
-        const styles = getComputedStyle(root);
-        const rgbVar = styles.getPropertyValue('--rt-pro-color-rgb');
-        const rgbFromVar = this.parseRgbColor(rgbVar);
-        if (rgbFromVar) return rgbFromVar;
-        const hexVar = styles.getPropertyValue('--rt-pro-color') || styles.getPropertyValue('--ert-pro-accent-color');
-        return this.parseRgbColor(hexVar) ?? { r: 217, g: 70, b: 239 };
-    }
-
-    private getBackboneStartColors(): BackboneColors {
-        const warning = this.getExecutionColorRgb('--rt-ai-warning', { r: 255, g: 153, b: 0 });
-        return {
-            gradient: [
-                warning,
-                warning,
-                warning
-            ],
-            shine: [
-                warning,
-                warning,
-                warning,
-                warning
-            ]
-        };
-    }
-
-    private getBackboneTargetColors(isPro: boolean): BackboneColors {
-        const base = isPro ? this.getProAccentColor() : { r: 34, g: 255, b: 120 };
-        const bright = this.mixRgbColor(base, { r: 255, g: 255, b: 255 }, isPro ? 0.55 : 0.65);
-        const deep = this.mixRgbColor(base, { r: 0, g: 0, b: 0 }, isPro ? 0.12 : 0.08);
-        return {
-            gradient: [base, bright, deep],
-            shine: [
-                this.mixRgbColor(base, { r: 255, g: 255, b: 255 }, 0.85),
-                this.mixRgbColor(base, { r: 255, g: 255, b: 255 }, 0.95),
-                this.mixRgbColor(base, { r: 255, g: 255, b: 255 }, 0.45),
-                this.mixRgbColor(base, { r: 255, g: 255, b: 255 }, 0.85)
-            ]
-        };
-    }
-
-    private getBackbonePressureColors(tone: 'normal' | 'amber' | 'red'): BackboneColors {
-        if (tone === 'amber') {
-            return this.getBackboneStartColors();
-        }
-        if (tone === 'red') {
-            const base = this.getExecutionColorRgb('--rt-ai-error', { r: 244, g: 76, b: 76 });
-            return {
-                gradient: [
-                    base,
-                    this.mixRgbColor(base, { r: 255, g: 255, b: 255 }, 0.35),
-                    this.mixRgbColor(base, { r: 0, g: 0, b: 0 }, 0.18)
-                ],
-                shine: [
-                    this.mixRgbColor(base, { r: 255, g: 255, b: 255 }, 0.68),
-                    this.mixRgbColor(base, { r: 255, g: 255, b: 255 }, 0.9),
-                    this.mixRgbColor(base, { r: 255, g: 255, b: 255 }, 0.4),
-                    this.mixRgbColor(base, { r: 255, g: 255, b: 255 }, 0.68)
-                ]
-            };
-        }
-
-        const themeBase = this.parseRgbColor(getComputedStyle(document.documentElement).getPropertyValue('--interactive-accent'))
-            ?? this.getBackboneTargetColors(isProfessionalActive(this.plugin)).gradient[0]
-            ?? { r: 87, g: 151, b: 245 };
-        return {
-            gradient: [
-                themeBase,
-                this.mixRgbColor(themeBase, { r: 255, g: 255, b: 255 }, 0.52),
-                this.mixRgbColor(themeBase, { r: 0, g: 0, b: 0 }, 0.14)
-            ],
-            shine: [
-                this.mixRgbColor(themeBase, { r: 255, g: 255, b: 255 }, 0.75),
-                this.mixRgbColor(themeBase, { r: 255, g: 255, b: 255 }, 0.92),
-                this.mixRgbColor(themeBase, { r: 255, g: 255, b: 255 }, 0.45),
-                this.mixRgbColor(themeBase, { r: 255, g: 255, b: 255 }, 0.75)
-            ]
-        };
-    }
-
-    private applyBackboneStopColors(gradientColors: RgbColor[], shineColors: RgbColor[]): void {
-        gradientColors.forEach((color, idx) => {
-            const stop = this.minimapBackboneGradientStops[idx];
-            if (stop) stop.setAttribute('stop-color', this.toRgbString(color));
-        });
-        shineColors.forEach((color, idx) => {
-            const stop = this.minimapBackboneShineStops[idx];
-            if (stop) stop.setAttribute('stop-color', this.toRgbString(color));
-        });
-    }
-
-    private applyBackboneColors(progress: number): void {
-        if (!this.backboneStartColors || !this.backboneTargetColors) return;
-        const gradientColors = this.backboneStartColors.gradient.map((color, idx) => {
-            const target = this.backboneTargetColors?.gradient[idx] ?? color;
-            return this.mixRgbColor(color, target, progress);
-        });
-        const shineColors = this.backboneStartColors.shine.map((color, idx) => {
-            const target = this.backboneTargetColors?.shine[idx] ?? color;
-            return this.mixRgbColor(color, target, progress);
-        });
-        this.applyBackboneStopColors(gradientColors, shineColors);
-    }
-
-    private updateTokenCapPassSplits(
-        totalPassCount: number,
-        overCapacityTone?: 'amber' | 'red'
-    ): void {
-        if (!this.minimapTokenCapSplitGroup || !this.minimapLayout) return;
-        this.clearSvgChildren(this.minimapTokenCapSplitGroup);
-        if (totalPassCount <= 1) {
-            this.minimapTokenCapSplitGroup.classList.add('ert-hidden');
-            return;
-        }
-
-        const baselineStart = Math.round(this.minimapLayout.startX);
-        const length = this.minimapLayout.length;
-        // Position + appearance matches tokencap endcap ticks.
-        const splitY = MINIMAP_TOKEN_CAP_Y;
-        const tickHalfWidth = MINIMAP_TOKEN_CAP_SPLIT_TICK_WIDTH / 2;
-        const stateClass = overCapacityTone === 'amber' ? 'is-warning-capacity'
-            : overCapacityTone === 'red' ? 'is-over-capacity'
-            : undefined;
-        for (let index = 1; index < totalPassCount; index += 1) {
-            const ratio = index / totalPassCount;
-            const centerX = baselineStart + (length * ratio);
-            const splitTick = this.createSvgElement('rect');
-            splitTick.classList.add('ert-inquiry-minimap-tokencap-endcap');
-            splitTick.classList.add('ert-inquiry-minimap-tokencap-split');
-            if (stateClass) splitTick.classList.add(stateClass);
-            splitTick.setAttribute('x', (centerX - tickHalfWidth).toFixed(2));
-            splitTick.setAttribute('y', String(splitY));
-            splitTick.setAttribute('width', String(MINIMAP_TOKEN_CAP_SPLIT_TICK_WIDTH));
-            splitTick.setAttribute('height', String(MINIMAP_TOKEN_CAP_SPLIT_TICK_HEIGHT));
-            splitTick.setAttribute('rx', '1');
-            splitTick.setAttribute('ry', '1');
-            this.minimapTokenCapSplitGroup.appendChild(splitTick);
-        }
-        this.minimapTokenCapSplitGroup.classList.remove('ert-hidden');
-    }
-
-    private updateTokenCapBar(
-        fillRatio: number,
-        isOverCapacity: boolean,
-        overCapacityTone: 'amber' | 'red',
-        totalPassCount: number
-    ): void {
-        if (!this.minimapTokenCapBar || !this.minimapLayout) return;
-        const length = this.minimapLayout.length;
-        const filledWidth = length * Math.min(Math.max(fillRatio, 0), 1);
-        this.minimapTokenCapBar.setAttribute('x', String(Math.round(this.minimapLayout.startX)));
-        this.minimapTokenCapBar.setAttribute('width', filledWidth.toFixed(2));
-        const overCapacityColor = overCapacityTone === 'amber'
-            ? this.getExecutionColorValue('--rt-ai-warning', '#ff9900')
-            : this.getExecutionColorValue('--rt-ai-error', '#f44c4c');
-        const neutralColor = this.getExecutionColorValue('--rt-ai-neutral', '#ffffff');
-        this.minimapTokenCapBar.style.fill = isOverCapacity ? overCapacityColor : neutralColor;
-
-        const endcapStateClass = overCapacityTone === 'amber' ? 'is-warning-capacity' : 'is-over-capacity';
-        const inverseStateClass = overCapacityTone === 'amber' ? 'is-over-capacity' : 'is-warning-capacity';
-        this.minimapTokenCapBar.classList.toggle(endcapStateClass, isOverCapacity);
-        this.minimapTokenCapStartCap?.classList.toggle(endcapStateClass, isOverCapacity);
-        this.minimapTokenCapEndCap?.classList.toggle(endcapStateClass, isOverCapacity);
-        this.minimapTokenCapBar.classList.remove(inverseStateClass);
-        this.minimapTokenCapStartCap?.classList.remove(inverseStateClass);
-        this.minimapTokenCapEndCap?.classList.remove(inverseStateClass);
-        this.updateTokenCapPassSplits(
-            isOverCapacity ? Math.max(1, totalPassCount) : 1,
-            isOverCapacity ? overCapacityTone : undefined
-        );
-        this.updateTokenCapCachedOverlay(fillRatio);
-    }
-
-    private updateTokenCapCachedOverlay(fillRatio: number): void {
-        if (!this.minimapTokenCapCachedOverlay || !this.minimapLayout) return;
-
-        const advanced = getLastAiAdvancedContext(this.plugin, 'InquiryMode');
-        const cachedRatio = advanced?.cachedStableRatio;
-
-        if (!cachedRatio || cachedRatio <= 0 || advanced?.reuseState !== 'warm') {
-            this.minimapTokenCapCachedOverlay.classList.add('ert-hidden');
-            return;
-        }
-
-        const length = this.minimapLayout.length;
-        const barWidth = length * Math.min(Math.max(fillRatio, 0), 1);
-        const cachedWidth = barWidth * Math.min(cachedRatio, 1);
-
-        // Edge case: hide when overlay would be too narrow to see pattern
-        if (cachedWidth < 3) {
-            this.minimapTokenCapCachedOverlay.classList.add('ert-hidden');
-            return;
-        }
-
-        this.minimapTokenCapCachedOverlay.classList.remove('ert-hidden');
-        this.minimapTokenCapCachedOverlay.setAttribute('x', String(Math.round(this.minimapLayout.startX)));
-        this.minimapTokenCapCachedOverlay.setAttribute('width', cachedWidth.toFixed(2));
-    }
-
-    private applyBackboneOscillationColors(progress: number): void {
-        if (!this.backboneOscillationColors) return;
-        const { base, target } = this.backboneOscillationColors;
-        const gradientColors = base.gradient.map((color, idx) => {
-            const next = target.gradient[idx] ?? color;
-            return this.mixRgbColor(color, next, progress);
-        });
-        const shineColors = base.shine.map((color, idx) => {
-            const next = target.shine[idx] ?? color;
-            return this.mixRgbColor(color, next, progress);
-        });
-        this.applyBackboneStopColors(gradientColors, shineColors);
-    }
-
-    private setBackboneFillProgress(progress: number, sweepProgress: number): void {
-        if (!this.minimapBackboneLayout || !this.minimapBackboneGlow || !this.minimapBackboneShine) return;
-        const clamped = Math.min(Math.max(progress, 0), 1);
-        const length = this.minimapBackboneLayout.length;
-        const filledWidth = length * clamped;
-        const glowRadius = Math.min(this.minimapBackboneLayout.glowHeight / 2, Math.max(0, filledWidth / 2));
-        this.minimapBackboneGlow.setAttribute('x', this.minimapBackboneLayout.startX.toFixed(2));
-        this.minimapBackboneGlow.setAttribute('width', filledWidth.toFixed(2));
-        this.minimapBackboneGlow.setAttribute('rx', String(Math.round(glowRadius)));
-        this.minimapBackboneGlow.setAttribute('ry', String(Math.round(glowRadius)));
-
-        const sweepWidthBase = Math.min(
-            length,
-            BACKBONE_SWEEP_MAX_WIDTH,
-            Math.max(length * BACKBONE_SWEEP_WIDTH_RATIO, BACKBONE_SWEEP_MIN_WIDTH)
-        );
-        const sweepWidth = Math.min(filledWidth, sweepWidthBase);
-        const sweepTravel = filledWidth + sweepWidth;
-        const sweepOffset = (sweepTravel * Math.min(Math.max(sweepProgress, 0), 1)) - sweepWidth;
-        const sweepX = this.minimapBackboneLayout.startX + sweepOffset;
-        const shineRadius = Math.min(this.minimapBackboneLayout.shineHeight / 2, Math.max(0, sweepWidth / 2));
-        this.minimapBackboneShine.setAttribute('x', sweepX.toFixed(2));
-        this.minimapBackboneShine.setAttribute('width', sweepWidth.toFixed(2));
-        this.minimapBackboneShine.setAttribute('rx', String(Math.round(shineRadius)));
-        this.minimapBackboneShine.setAttribute('ry', String(Math.round(shineRadius)));
-    }
-
-    private updateBackbonePulse(elapsed: number): void {
-        const fillProgress = Math.min(Math.max(elapsed / MIN_PROCESSING_MS, 0), 1);
-        const sweepProgress = (elapsed % BACKBONE_SHINE_DURATION_MS) / BACKBONE_SHINE_DURATION_MS;
-        this.setBackboneFillProgress(fillProgress, sweepProgress);
-        if (elapsed < MIN_PROCESSING_MS || !this.backboneOscillationColors) {
-            this.applyBackboneColors(fillProgress);
-            return;
-        }
-        const phase = ((elapsed - MIN_PROCESSING_MS) / BACKBONE_OSCILLATION_MS) * Math.PI * 2 + this.backboneOscillationPhaseOffset;
-        const oscillation = (Math.sin(phase) + 1) / 2;
-        this.applyBackboneOscillationColors(oscillation);
+    private getStyleSource(): Element {
+        return this.contentEl ?? this.rootSvg ?? document.documentElement;
     }
 
     private isTFile(file: TAbstractFile | null): file is TFile {
@@ -6405,9 +5612,7 @@ export class InquiryView extends ItemView {
     }
 
     private updateMinimapFocus(): void {
-        this.minimapTicks.forEach(tick => {
-            tick.classList.remove('is-active');
-        });
+        this.minimap.updateFocus();
     }
 
     private updateFocusGlyph(): void {
@@ -6545,34 +5750,15 @@ export class InquiryView extends ItemView {
     }
 
     private updateMinimapHitStates(result: InquiryResult | null | undefined): void {
-        if (!this.minimapTicks.length) return;
-        const severityClasses = ['is-severity-low', 'is-severity-medium', 'is-severity-high'];
-        if (this.state.isRunning || this.isErrorResult(result)) {
-            this.minimapTicks.forEach(tick => {
-                tick.classList.remove('is-hit');
-                severityClasses.forEach(cls => tick.classList.remove(cls));
-                const label = tick.getAttribute('data-label') || '';
-                if (label) {
-                    const fullLabel = tick.getAttribute('data-full-label') || label;
-                    addTooltipData(tick, this.balanceTooltipText(fullLabel), 'bottom');
-                }
-            });
-            return;
-        }
         const resultItems = result ? this.getResultItems(result) : [];
         const hitMap = this.buildHitFindingMap(result, resultItems);
-
-        this.minimapTicks.forEach((tick, idx) => {
-            const label = tick.getAttribute('data-label') || `T${idx + 1}`;
-            const finding = hitMap.get(label);
-            tick.classList.toggle('is-hit', !!finding);
-            severityClasses.forEach(cls => tick.classList.remove(cls));
-            const fullLabel = tick.getAttribute('data-full-label') || label;
-            const tooltip = finding
-                ? this.buildFindingTooltip(label, finding)
-                : fullLabel;
-            addTooltipData(tick, tooltip, 'bottom');
-        });
+        this.minimap.updateHitStates(
+            this.state.isRunning,
+            this.isErrorResult(result),
+            hitMap,
+            (label, finding) => this.buildFindingTooltip(label, finding as InquiryFinding),
+            (text) => this.balanceTooltipText(text)
+        );
     }
 
     private updateArtifactPreview(): void {
@@ -6709,9 +5895,10 @@ export class InquiryView extends ItemView {
     }
 
     private getInquiryAlertColor(): string {
-        if (!this.rootSvg) return this.getExecutionColorValue('--rt-ai-error', '#ff4d4d');
+        const styleSource = this.getStyleSource();
+        if (!this.rootSvg) return getExecutionColorValue(styleSource, '--rt-ai-error', '#ff4d4d');
         const color = getComputedStyle(this.rootSvg).getPropertyValue('--ert-inquiry-alert').trim();
-        return color || this.getExecutionColorValue('--rt-ai-error', '#ff4d4d');
+        return color || getExecutionColorValue(styleSource, '--rt-ai-error', '#ff4d4d');
     }
 
     private updateGuidance(): void {
@@ -6769,7 +5956,7 @@ export class InquiryView extends ItemView {
         if (state === 'running') {
             this.hoverTextEl.classList.add('ert-hidden');
             this.hoverTextEl.classList.remove('is-guidance', 'is-guidance-alert', 'is-guidance-results');
-            this.clearSvgChildren(this.hoverTextEl);
+            clearSvgChildren(this.hoverTextEl);
             return;
         }
 
@@ -6778,7 +5965,7 @@ export class InquiryView extends ItemView {
         if (!isAlert) {
             this.hoverTextEl.classList.add('ert-hidden');
             this.hoverTextEl.classList.remove('is-guidance', 'is-guidance-alert', 'is-guidance-results');
-            this.clearSvgChildren(this.hoverTextEl);
+            clearSvgChildren(this.hoverTextEl);
             return;
         }
 
@@ -6812,13 +5999,13 @@ export class InquiryView extends ItemView {
     ): void {
         const hoverTextEl = this.hoverTextEl;
         if (!hoverTextEl) return;
-        this.clearSvgChildren(hoverTextEl);
+        clearSvgChildren(hoverTextEl);
         const x = hoverTextEl.getAttribute('x') ?? '0';
         const primaryClass = options?.primaryClass;
         const primarySize = options?.primarySize;
         const primaryWeight = options?.primaryWeight;
         lines.forEach((line, index) => {
-            const tspan = this.createSvgElement('tspan');
+            const tspan = createSvgElement('tspan');
             tspan.setAttribute('x', x);
             tspan.setAttribute('dy', index === 0 ? '0' : String(lineHeight));
             if (index === 0 && primaryClass) {
@@ -6902,103 +6089,21 @@ export class InquiryView extends ItemView {
     }
 
     private startRunningAnimations(): void {
-        if (this.runningAnimationFrame) return;
-        this.runningAnimationStart = performance.now();
+        const styleSource: Element = this.contentEl ?? this.rootSvg ?? document.documentElement;
         const isPro = isProfessionalActive(this.plugin);
-        this.cancelBackboneFadeOut();
-        this.backboneStartColors = this.getBackboneStartColors();
-        this.backboneTargetColors = this.getBackboneTargetColors(isPro);
-        if (this.backboneStartColors && this.backboneTargetColors) {
-            this.backboneOscillationColors = {
-                base: this.backboneStartColors,
-                target: this.backboneTargetColors
-            };
-        } else {
-            this.backboneOscillationColors = undefined;
-        }
-        this.backboneOscillationPhaseOffset = Math.PI / 2;
-        this.setBackboneFillProgress(0, 0);
-        this.applyBackboneColors(0);
-        if (this.minimapBaseline) {
-            this.minimapBaseline.style.stroke = '';
-        }
-        this.minimapEndCapStart?.style.removeProperty('fill');
-        this.minimapEndCapEnd?.style.removeProperty('fill');
-        const animate = (now: number) => {
-            if (!this.state.isRunning) {
-                this.stopRunningAnimations();
-                return;
-            }
-            if (document.body.classList.contains('rt-modal-open')) {
-                this.runningAnimationFrame = window.requestAnimationFrame(animate);
-                return;
-            }
-            const elapsed = now - (this.runningAnimationStart ?? now);
-            this.updateBackbonePulse(elapsed);
-            this.updateSweep(elapsed);
-            // SAFE: requestAnimationFrame cleanup is handled in stopRunningAnimations() called from onClose()
-            this.runningAnimationFrame = window.requestAnimationFrame(animate);
-        };
-        // SAFE: requestAnimationFrame cleanup is handled in stopRunningAnimations() called from onClose()
-        this.runningAnimationFrame = window.requestAnimationFrame(animate);
+        this.minimap.startRunningAnimations(styleSource, isPro, () => this.state.isRunning);
     }
 
     private stopRunningAnimations(): void {
-        if (this.runningAnimationFrame) {
-            window.cancelAnimationFrame(this.runningAnimationFrame);
-            this.runningAnimationFrame = undefined;
-        }
-        this.runningAnimationStart = undefined;
-        this.minimapSweepTicks.forEach(tick => tick.rect.setAttribute('opacity', '0'));
-        this.backboneStartColors = undefined;
-        this.backboneTargetColors = undefined;
-        this.backboneOscillationColors = undefined;
-        this.backboneOscillationPhaseOffset = 0;
+        this.minimap.stopRunningAnimations();
     }
 
     private startBackboneFadeOut(): void {
-        this.cancelBackboneFadeOut();
-        if (!this.minimapBackboneGroup) return;
-        this.minimapBackboneGroup.classList.add('is-fading-out');
-        this.backboneFadeTimer = window.setTimeout(() => {
-            this.minimapBackboneGroup?.classList.remove('is-fading-out');
-            this.backboneFadeTimer = undefined;
-        }, BACKBONE_FADE_OUT_MS);
+        this.minimap.startFadeOut();
     }
 
     private cancelBackboneFadeOut(): void {
-        if (this.backboneFadeTimer) {
-            window.clearTimeout(this.backboneFadeTimer);
-            this.backboneFadeTimer = undefined;
-        }
-        this.minimapBackboneGroup?.classList.remove('is-fading-out');
-    }
-
-    private updateSweep(elapsed: number): void {
-        if (!this.minimapSweepLayout || !this.minimapSweepTicks.length) return;
-        const cycleIndex = Math.floor(elapsed / SWEEP_RANDOM_CYCLE_MS);
-        if (cycleIndex !== this.sweepRandomCycle) {
-            this.sweepRandomCycle = cycleIndex;
-            const total = this.minimapSweepTicks.length;
-            const count = Math.max(1, Math.floor(Math.random() * total) + 1);
-            const indices = Array.from({ length: total }, (_, idx) => idx);
-            for (let i = indices.length - 1; i > 0; i -= 1) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [indices[i], indices[j]] = [indices[j], indices[i]];
-            }
-            this.sweepRandomActive = new Set(indices.slice(0, count));
-        }
-
-        const phase = (elapsed % SWEEP_RANDOM_CYCLE_MS) / SWEEP_RANDOM_CYCLE_MS;
-        const pulse = Math.sin(Math.PI * phase);
-        const intensity = 0.2 + (pulse * 0.8);
-        this.minimapSweepTicks.forEach((tick, index) => {
-            if (!this.sweepRandomActive.has(index)) {
-                tick.rect.setAttribute('opacity', '0');
-                return;
-            }
-            tick.rect.setAttribute('opacity', intensity.toFixed(2));
-        });
+        this.minimap.cancelFadeOut();
     }
 
     private handleScopeChange(scope: InquiryScope): void {
@@ -8708,7 +7813,7 @@ export class InquiryView extends ItemView {
                 entries = entries.map(entry => {
                     const groupKey = this.getCorpusGroupKey(entry.class, entry.scope);
                     const baseClass = this.getCorpusGroupBaseClass(groupKey);
-                    const classOverride = this.corpusClassOverrides.get(groupKey);
+                    const classOverride = this.corpusService.getClassOverride(groupKey);
                     const itemOverride = this.getCorpusItemOverride(entry.class, entry.path, entry.scope, entry.sceneId);
                     const mode = this.normalizeContributionMode(itemOverride ?? classOverride ?? entry.mode ?? 'none', baseClass);
                     return { ...entry, mode };
@@ -8787,7 +7892,7 @@ export class InquiryView extends ItemView {
                     }
                     if (applyOverrides) {
                         const groupKey = this.getCorpusGroupKey(className, outlineScope);
-                        const classOverride = this.corpusClassOverrides.get(groupKey);
+                        const classOverride = this.corpusService.getClassOverride(groupKey);
                         const itemOverride = this.getCorpusItemOverride(className, file.path, outlineScope);
                         mode = itemOverride ?? classOverride ?? mode;
                         mode = this.normalizeContributionMode(mode, className);
@@ -8812,7 +7917,7 @@ export class InquiryView extends ItemView {
                     }
                     if (applyOverrides) {
                         const groupKey = this.getCorpusGroupKey(className);
-                        const classOverride = this.corpusClassOverrides.get(groupKey);
+                        const classOverride = this.corpusService.getClassOverride(groupKey);
                         const itemOverride = this.getCorpusItemOverride(className, file.path);
                         mode = itemOverride ?? classOverride ?? mode;
                         mode = this.normalizeContributionMode(mode, className);
@@ -8836,7 +7941,7 @@ export class InquiryView extends ItemView {
                 const sceneId = className === 'scene' ? readSceneId(normalized) : undefined;
                 if (applyOverrides) {
                     const groupKey = this.getCorpusGroupKey(className);
-                    const classOverride = this.corpusClassOverrides.get(groupKey);
+                    const classOverride = this.corpusService.getClassOverride(groupKey);
                     const itemOverride = this.getCorpusItemOverride(className, file.path, undefined, sceneId);
                     mode = itemOverride ?? classOverride ?? mode;
                     mode = this.normalizeContributionMode(mode, className);
@@ -8998,127 +8103,51 @@ export class InquiryView extends ItemView {
     }
 
     private getDefaultMaterialMode(className: string): InquiryMaterialMode {
-        if (className === 'scene') return 'summary';
-        return 'full';
+        return getDefaultMaterialModePure(className);
     }
 
     private isSynopsisCapableClass(className: string): boolean {
-        return INQUIRY_SYNOPSIS_CAPABLE_CLASSES.has(className.toLowerCase());
+        return isSynopsisCapableClassPure(className);
     }
 
     private normalizeContributionMode(mode: InquiryMaterialMode, className: string): InquiryMaterialMode {
-        if (mode === 'summary' && !this.isSynopsisCapableClass(className)) {
-            return 'full';
-        }
-        return mode;
+        return normalizeContributionModePure(mode, className);
     }
 
     private normalizeMaterialMode(value: unknown, className: string): InquiryMaterialMode {
-        let normalized: InquiryMaterialMode = 'none';
-        if (typeof value === 'string') {
-            const raw = value.trim().toLowerCase();
-            if (raw === 'digest') normalized = 'summary';
-            if (raw === 'none' || raw === 'summary' || raw === 'full') {
-                normalized = raw as InquiryMaterialMode;
-            }
-        }
-        if (typeof value === 'boolean') {
-            normalized = value ? this.getDefaultMaterialMode(className) : 'none';
-        }
-        return this.normalizeContributionMode(normalized, className);
+        return normalizeMaterialModePure(value, className);
     }
 
     private resolveContributionMode(config: InquiryClassConfig): InquiryMaterialMode {
-        const modes: InquiryMaterialMode[] = [config.bookScope, config.sagaScope, config.referenceScope];
-        return modes.reduce((best, mode) => {
-            const rank = { none: 0, summary: 1, full: 2 };
-            return rank[mode] > rank[best] ? mode : best;
-        }, 'none' as InquiryMaterialMode);
+        return resolveContributionModePure(config);
     }
 
     private normalizeClassContribution(config: InquiryClassConfig): InquiryClassConfig {
-        const isReference = !this.isSynopsisCapableClass(config.className);
-        const contribution = this.normalizeContributionMode(this.resolveContributionMode(config), config.className);
-        const bookActive = !isReference && config.bookScope !== 'none';
-        const sagaActive = !isReference && config.sagaScope !== 'none';
-        const referenceActive = isReference && config.referenceScope !== 'none';
-        return {
-            ...config,
-            bookScope: isReference ? 'none' : (bookActive ? contribution : 'none'),
-            sagaScope: isReference ? 'none' : (sagaActive ? contribution : 'none'),
-            referenceScope: isReference ? (referenceActive ? contribution : 'none') : 'none'
-        };
+        return normalizeClassContributionPure(config);
     }
 
     private normalizeEvidenceMode(mode?: InquiryMaterialMode): 'none' | 'summary' | 'full' {
-        if (mode === 'full') return 'full';
-        if (mode === 'summary') return 'summary';
-        return 'none';
+        return normalizeEvidenceModePure(mode);
     }
 
     private isModeActive(mode?: InquiryMaterialMode): boolean {
-        return this.normalizeEvidenceMode(mode) !== 'none';
+        return isModeActivePure(mode);
     }
 
     private normalizeInquirySources(raw?: InquirySourcesSettings): InquirySourcesSettings {
-        if (!raw) {
-            return { scanRoots: [], bookInclusion: {}, classes: [], classCounts: {}, resolvedScanRoots: [] };
-        }
-        if ('sceneFolders' in raw || 'bookOutlineFiles' in raw || 'sagaOutlineFile' in raw) {
-            return { scanRoots: [], bookInclusion: {}, classes: [], classCounts: {}, resolvedScanRoots: [] };
-        }
-        return {
-            preset: raw.preset,
-            scanRoots: raw.scanRoots && raw.scanRoots.length ? normalizeScanRootPatterns(raw.scanRoots) : [],
-            bookInclusion: normalizeInquiryBookInclusion(raw.bookInclusion),
-            classScope: raw.classScope ? raw.classScope.map(value => value.trim().toLowerCase()).filter(Boolean) : [],
-            classes: (raw.classes || []).map(config => this.normalizeClassContribution({
-                className: config.className.toLowerCase(),
-                enabled: !!config.enabled,
-                bookScope: this.normalizeMaterialMode(config.bookScope, config.className.toLowerCase()),
-                sagaScope: this.normalizeMaterialMode(config.sagaScope, config.className.toLowerCase()),
-                referenceScope: this.normalizeMaterialMode(
-                    (config as InquiryClassConfig).referenceScope
-                    ?? (!this.isSynopsisCapableClass(config.className.toLowerCase()) ? true : false),
-                    config.className.toLowerCase()
-                )
-            })),
-            classCounts: raw.classCounts || {},
-            resolvedScanRoots: raw.resolvedScanRoots ? normalizeScanRootPatterns(raw.resolvedScanRoots) : [],
-            lastScanAt: raw.lastScanAt
-        };
+        return normalizeInquirySourcesPure(raw);
     }
 
     private extractClassValues(frontmatter: Record<string, unknown>): string[] {
-        const rawClass = frontmatter['Class'];
-        const values = Array.isArray(rawClass) ? rawClass : rawClass ? [rawClass] : [];
-        return values
-            .map(value => (typeof value === 'string' ? value : String(value)).trim())
-            .filter(Boolean)
-            .map(value => value.toLowerCase());
+        return extractClassValuesPure(frontmatter);
     }
 
     private getFrontmatterScope(frontmatter: Record<string, unknown>): InquiryScope | undefined {
-        const normalizedFrontmatter = normalizeFrontmatterKeys(frontmatter, this.plugin.settings.frontmatterMappings);
-        const keys = Object.keys(normalizedFrontmatter);
-        const scopeKey = keys.find(key => key.toLowerCase() === 'scope');
-        if (!scopeKey) return undefined;
-        const value = normalizedFrontmatter[scopeKey];
-        if (typeof value !== 'string') return undefined;
-        const normalizedValue = value.trim().toLowerCase();
-        if (normalizedValue === 'book' || normalizedValue === 'saga') {
-            return normalizedValue as InquiryScope;
-        }
-        return undefined;
+        return getFrontmatterScopePure(frontmatter, this.plugin.settings.frontmatterMappings);
     }
 
     private hashString(value: string): string {
-        let hash = 0;
-        for (let i = 0; i < value.length; i += 1) {
-            hash = ((hash << 5) - hash) + value.charCodeAt(i);
-            hash |= 0;
-        }
-        return `h${Math.abs(hash)}`;
+        return hashStringPure(value);
     }
 
     private getBriefSceneAnchorId(source: string): string {
@@ -9630,7 +8659,7 @@ export class InquiryView extends ItemView {
         const zoneLabel = zone === 'setup' ? 'Setup' : zone === 'pressure' ? 'Pressure' : 'Payoff';
         const modeLabel = mode === 'flow' ? 'Flow' : 'Depth';
         const heroTargetLines = 3;
-        const heroBaseWidth = this.minimapLayout?.length ?? (PREVIEW_PANEL_WIDTH - (PREVIEW_PANEL_PADDING_X * 2));
+        const heroBaseWidth = this.minimap.minimapLayout?.length ?? (PREVIEW_PANEL_WIDTH - (PREVIEW_PANEL_PADDING_X * 2));
         let heroLines = this.setBalancedHeroText(
             this.previewHero,
             question,
@@ -9909,7 +8938,7 @@ export class InquiryView extends ItemView {
         lineHeight: number,
         maxLines = 2
     ): number {
-        this.clearSvgChildren(textEl);
+        clearSvgChildren(textEl);
         const words = text.split(/\s+/).filter(Boolean);
         if (!words.length) return 0;
         const fullLine = words.join(' ');
@@ -9950,10 +8979,10 @@ export class InquiryView extends ItemView {
             return this.setWrappedSvgText(textEl, text, maxWidth, maxLines, lineHeight);
         }
 
-        this.clearSvgChildren(textEl);
+        clearSvgChildren(textEl);
         const x = textEl.getAttribute('x') ?? '0';
         const appendTspan = (content: string, isFirst: boolean): SVGTSpanElement => {
-            const tspan = this.createSvgElement('tspan');
+            const tspan = createSvgElement('tspan');
             tspan.setAttribute('x', x);
             tspan.setAttribute('dy', isFirst ? '0' : String(lineHeight));
             tspan.textContent = content;
@@ -9974,7 +9003,7 @@ export class InquiryView extends ItemView {
         // Gradient for the shimmer band
         // Gradients usually live in defs, which is fine. CSS addressing of the rect using the url(#grad) doesn't require the gradient to be in the same scope, just available.
         if (this.svgDefs && !this.svgDefs.querySelector('#ert-inquiry-preview-shimmer-grad')) {
-            const gradient = this.createSvgElement('linearGradient');
+            const gradient = createSvgElement('linearGradient');
             gradient.setAttribute('id', 'ert-inquiry-preview-shimmer-grad');
             gradient.setAttribute('x1', '0%');
             gradient.setAttribute('y1', '0%');
@@ -9990,7 +9019,7 @@ export class InquiryView extends ItemView {
                 { offset: '100%', opacity: '0' }
             ];
             stops.forEach(stopDef => {
-                const stop = this.createSvgElement('stop');
+                const stop = createSvgElement('stop');
                 stop.setAttribute('offset', stopDef.offset);
                 stop.setAttribute('stop-color', '#fff'); // White mask = reveal
                 stop.setAttribute('stop-opacity', stopDef.opacity);
@@ -10000,12 +9029,12 @@ export class InquiryView extends ItemView {
         }
 
         // Mask that contains the moving/animating rect
-        const mask = this.createSvgElement('mask');
+        const mask = createSvgElement('mask');
         mask.setAttribute('id', 'ert-inquiry-preview-shimmer-mask');
         mask.setAttribute('maskUnits', 'userSpaceOnUse');
 
         // The moving band
-        const band = this.createSvgElement('rect');
+        const band = createSvgElement('rect');
         band.classList.add('ert-inquiry-preview-shimmer-band'); // New class for the band
         band.setAttribute('fill', 'url(#ert-inquiry-preview-shimmer-grad)');
         // Initial values, will be updated by layout
@@ -10023,7 +9052,7 @@ export class InquiryView extends ItemView {
 
     private updatePreviewShimmerText(): void {
         if (!this.previewShimmerGroup) return;
-        this.clearSvgChildren(this.previewShimmerGroup);
+        clearSvgChildren(this.previewShimmerGroup);
         const textNodes: SVGTextElement[] = [];
         if (this.previewHero) textNodes.push(this.previewHero);
         textNodes.forEach(node => {
@@ -10070,8 +9099,8 @@ export class InquiryView extends ItemView {
         if (!this.previewGroup.classList.contains('is-results')) return;
         const panelY = targetY ?? this.getPreviewPanelTargetY();
         if (!Number.isFinite(panelY)) return;
-        const backboneBottom = this.minimapBackboneLayout
-            ? this.minimapBackboneLayout.glowY + this.minimapBackboneLayout.glowHeight
+        const backboneBottom = this.minimap.minimapBackboneLayout
+            ? this.minimap.minimapBackboneLayout.glowY + this.minimap.minimapBackboneLayout.glowHeight
             : 0;
         const footerY = (MINIMAP_GROUP_Y + backboneBottom + PREVIEW_RESULTS_FOOTER_OFFSET) - panelY;
         this.previewFooter.setAttribute('y', footerY.toFixed(2));
@@ -10149,7 +9178,7 @@ export class InquiryView extends ItemView {
             const isEmpty = !value.trim();
             if (options?.hideEmpty && isEmpty) {
                 row.group.classList.add('ert-hidden');
-                this.clearSvgChildren(row.text);
+                clearSvgChildren(row.text);
                 return;
             }
             row.group.classList.remove('ert-hidden');
@@ -10190,16 +9219,16 @@ export class InquiryView extends ItemView {
     }
 
     private setPreviewPillText(row: InquiryPreviewRow, value: string): void {
-        this.clearSvgChildren(row.text);
+        clearSvgChildren(row.text);
         const labelText = row.label?.trim() ?? '';
         if (labelText) {
-            const label = this.createSvgElement('tspan');
+            const label = createSvgElement('tspan');
             label.classList.add('ert-inquiry-preview-pill-label');
             label.textContent = value ? `${labelText} ` : labelText;
             row.text.appendChild(label);
         }
         if (!value) return;
-        const detail = this.createSvgElement('tspan');
+        const detail = createSvgElement('tspan');
         detail.classList.add('ert-inquiry-preview-pill-value');
         detail.textContent = value;
         row.text.appendChild(detail);
@@ -10264,11 +9293,11 @@ export class InquiryView extends ItemView {
         maxLines: number,
         lineHeight: number
     ): number {
-        this.clearSvgChildren(textEl);
+        clearSvgChildren(textEl);
         const words = text.split(/\s+/).filter(Boolean);
         const x = textEl.getAttribute('x') ?? '0';
         const appendTspan = (content: string, isFirst: boolean): SVGTSpanElement => {
-            const tspan = this.createSvgElement('tspan');
+            const tspan = createSvgElement('tspan');
             tspan.setAttribute('x', x);
             tspan.setAttribute('dy', isFirst ? '0' : String(lineHeight));
             tspan.textContent = content;
@@ -10606,15 +9635,11 @@ export class InquiryView extends ItemView {
 
 
     private getTokenTier(inputTokens: number): TokenTier {
-        if (inputTokens >= INQUIRY_INPUT_TOKENS_RED) return 'red';
-        if (inputTokens >= INQUIRY_INPUT_TOKENS_AMBER) return 'amber';
-        return 'normal';
+        return getTokenTierPure(inputTokens);
     }
 
     private getTokenTierFromSnapshot(): TokenTier {
-        const snapshot = this.plugin.getInquiryEstimateService().getSnapshot();
-        if (!snapshot) return 'normal';
-        return this.getTokenTier(snapshot.estimate.estimatedInputTokens);
+        return getTokenTierFromSnapshotPure(this.plugin.getInquiryEstimateService().getSnapshot());
     }
 
     private estimateTokensFromChars(chars: number): number {
@@ -10622,12 +9647,7 @@ export class InquiryView extends ItemView {
     }
 
     private formatTokenEstimate(value: number): string {
-        const safe = Number.isFinite(value) ? value : 0;
-        if (safe >= 1000) {
-            const rounded = Math.round(safe / 100) / 10;
-            return `${rounded.toFixed(rounded % 1 === 0 ? 0 : 1)}k`;
-        }
-        return String(Math.round(safe));
+        return formatTokenEstimatePure(value);
     }
 
     private toggleDetails(): void {
