@@ -36,34 +36,48 @@ let customTooltipEl: HTMLElement | null = null;
 let currentTarget: Element | null = null;
 let hideTimeout: number | null = null;
 
+function isSvgLikeElement(element: Element): element is SVGElement {
+    if (element instanceof SVGElement) return true;
+    return element.namespaceURI === 'http://www.w3.org/2000/svg';
+}
+
 function readAttr(target: Element, rtAttr: string, fallbackAttr: string): string {
     return target.getAttribute(rtAttr) || target.getAttribute(fallbackAttr) || '';
 }
 
-function getTooltipText(target: Element): string {
+function readAttrWithMode(target: Element, rtAttr: string, fallbackAttr: string, rtOnly: boolean): string {
+    if (rtOnly) return target.getAttribute(rtAttr) || '';
+    return readAttr(target, rtAttr, fallbackAttr);
+}
+
+function getTooltipText(target: Element, rtOnly = false): string {
+    if (rtOnly) return target.getAttribute(RT_TOOLTIP_ATTR) || '';
     return readAttr(target, RT_TOOLTIP_ATTR, TOOLTIP_ATTR);
 }
 
-function getTooltipPlacement(target: Element): TooltipPlacement {
-    const raw = readAttr(target, RT_TOOLTIP_PLACEMENT_ATTR, TOOLTIP_PLACEMENT_ATTR);
+function getTooltipPlacement(target: Element, rtOnly = false): TooltipPlacement {
+    const raw = readAttrWithMode(target, RT_TOOLTIP_PLACEMENT_ATTR, TOOLTIP_PLACEMENT_ATTR, rtOnly);
     return (raw || 'bottom') as TooltipPlacement;
 }
 
-function getTooltipAnchor(target: Element): string {
-    return readAttr(target, RT_TOOLTIP_ANCHOR_ATTR, TOOLTIP_ANCHOR_ATTR);
+function getTooltipAnchor(target: Element, rtOnly = false): string {
+    return readAttrWithMode(target, RT_TOOLTIP_ANCHOR_ATTR, TOOLTIP_ANCHOR_ATTR, rtOnly);
 }
 
-function getTooltipOffset(target: Element): { x: number; y: number } {
-    const offsetX = parseFloat(readAttr(target, RT_TOOLTIP_OFFSET_X_ATTR, TOOLTIP_OFFSET_X_ATTR) || '0') || 0;
-    const offsetY = parseFloat(readAttr(target, RT_TOOLTIP_OFFSET_Y_ATTR, TOOLTIP_OFFSET_Y_ATTR) || '0') || 0;
+function getTooltipOffset(target: Element, rtOnly = false): { x: number; y: number } {
+    const offsetX = parseFloat(readAttrWithMode(target, RT_TOOLTIP_OFFSET_X_ATTR, TOOLTIP_OFFSET_X_ATTR, rtOnly) || '0') || 0;
+    const offsetY = parseFloat(readAttrWithMode(target, RT_TOOLTIP_OFFSET_Y_ATTR, TOOLTIP_OFFSET_Y_ATTR, rtOnly) || '0') || 0;
     return { x: offsetX, y: offsetY };
 }
 
-function resolveTooltipTarget(start: EventTarget | null): Element | null {
+function resolveTooltipTarget(start: EventTarget | null, rtOnly = false): Element | null {
     if (!(start instanceof Element)) return null;
-    const target = start.closest(`[${RT_TOOLTIP_ATTR}], [${TOOLTIP_ATTR}], .rt-tooltip-target`);
+    const selector = rtOnly
+        ? `[${RT_TOOLTIP_ATTR}]`
+        : `[${RT_TOOLTIP_ATTR}], [${TOOLTIP_ATTR}], .rt-tooltip-target`;
+    const target = start.closest(selector);
     if (!target) return null;
-    return getTooltipText(target) ? target : null;
+    return getTooltipText(target, rtOnly) ? target : null;
 }
 
 /**
@@ -78,12 +92,14 @@ export function tooltip(
     text: string,
     placement: TooltipPlacement = 'bottom'
 ): void {
+    if (isSvgLikeElement(element)) {
+        // Use data attributes for SVG delegation (handled by setupTooltipsFromDataAttributes)
+        addTooltipData(element, text, placement);
+        return;
+    }
     if (element instanceof HTMLElement) {
         // Use native Obsidian tooltip for standard HTML UI elements
         setTooltip(element, text, { placement });
-    } else if (element instanceof SVGElement) {
-        // Use data attributes for SVG delegation (handled by setupTooltipsFromDataAttributes)
-        addTooltipData(element, text, placement);
     }
 }
 
@@ -112,13 +128,16 @@ export function addTooltipData(
     text: string,
     placement: TooltipPlacement = 'bottom'
 ): void {
-    if (element instanceof SVGElement) {
+    if (isSvgLikeElement(element)) {
         // Avoid Obsidian native tooltip interception on SVG nodes.
         element.classList.remove('rt-tooltip-target');
         element.setAttribute(RT_TOOLTIP_ATTR, text);
         element.setAttribute(RT_TOOLTIP_PLACEMENT_ATTR, placement);
         element.removeAttribute(TOOLTIP_ATTR);
         element.removeAttribute(TOOLTIP_PLACEMENT_ATTR);
+        element.removeAttribute(TOOLTIP_ANCHOR_ATTR);
+        element.removeAttribute(TOOLTIP_OFFSET_X_ATTR);
+        element.removeAttribute(TOOLTIP_OFFSET_Y_ATTR);
         return;
     }
     element.classList.add('rt-tooltip-target');
@@ -131,18 +150,22 @@ export function addTooltipData(
  * Uses a single custom .rt-tooltip DOM element for performance and compatibility.
  */
 type DomEventRegistrar = (element: HTMLElement, event: string, handler: (ev: Event) => void) => void;
+type TooltipSetupOptions = { rtOnly?: boolean };
 
 export function setupTooltipsFromDataAttributes(
     container: HTMLElement | SVGElement,
-    registerDomEvent: DomEventRegistrar
+    registerDomEvent: DomEventRegistrar,
+    options?: TooltipSetupOptions
 ): void {
-    const svgElement = container instanceof SVGElement ? container : container.querySelector('svg');
+    const svgElement = isSvgLikeElement(container) ? container : container.querySelector('svg');
     if (!svgElement) return;
+    const rtOnly = options?.rtOnly === true;
+    const resolveTarget = (start: EventTarget | null): Element | null => resolveTooltipTarget(start, rtOnly);
 
     // Lazy initialization: singleton is created only when needed (in showCustomTooltip)
 
     const handleMouseOver = (e: Event) => {
-        const target = resolveTooltipTarget(e.target);
+        const target = resolveTarget(e.target);
         if (target) {
             // Cancel any pending hide immediately when entering a tooltip target
             if (hideTimeout) {
@@ -153,16 +176,16 @@ export function setupTooltipsFromDataAttributes(
             // Only update if it's a different target
             if (target !== currentTarget) {
                 currentTarget = target;
-                const text = getTooltipText(target);
-                const placement = getTooltipPlacement(target);
-                const anchor = getTooltipAnchor(target);
+                const text = getTooltipText(target, rtOnly);
+                const placement = getTooltipPlacement(target, rtOnly);
+                const anchor = getTooltipAnchor(target, rtOnly);
                 
                 if (text) {
                     const mouseEvent = e as MouseEvent;
                     const anchorPoint = anchor === 'cursor'
                         ? { x: mouseEvent.clientX, y: mouseEvent.clientY }
                         : undefined;
-                    showCustomTooltip(target, text, placement, anchorPoint);
+                    showCustomTooltip(target, text, placement, anchorPoint, rtOnly);
                 }
             }
         }
@@ -171,11 +194,11 @@ export function setupTooltipsFromDataAttributes(
     const handleMouseOut = (e: Event) => {
         if (!currentTarget) return;
 
-        const target = resolveTooltipTarget(e.target);
+        const target = resolveTarget(e.target);
         const relatedTarget = (e as MouseEvent).relatedTarget as Element | null;
 
         // Check if we moved to another tooltip target
-        const newTarget = resolveTooltipTarget(relatedTarget);
+        const newTarget = resolveTarget(relatedTarget);
 
         // If moving to another tooltip target, don't hide - mouseover will handle the switch
         if (newTarget) {
@@ -219,7 +242,7 @@ export function setupTooltipsFromDataAttributes(
 
     // Hide tooltip on click (button clicks should dismiss tooltip immediately)
     const handleClick = (e: Event) => {
-        const target = resolveTooltipTarget(e.target);
+        const target = resolveTarget(e.target);
         if (target) {
             // Immediately hide tooltip when clicking a tooltip target
             if (hideTimeout) {
@@ -232,11 +255,11 @@ export function setupTooltipsFromDataAttributes(
 
     const handleMouseMove = (e: Event) => {
         if (!currentTarget || !customTooltipEl) return;
-        const anchor = getTooltipAnchor(currentTarget);
+        const anchor = getTooltipAnchor(currentTarget, rtOnly);
         if (anchor !== 'cursor') return;
-        const placement = getTooltipPlacement(currentTarget);
+        const placement = getTooltipPlacement(currentTarget, rtOnly);
         const mouseEvent = e as MouseEvent;
-        updateTooltipPosition(currentTarget, placement, { x: mouseEvent.clientX, y: mouseEvent.clientY });
+        updateTooltipPosition(currentTarget, placement, { x: mouseEvent.clientX, y: mouseEvent.clientY }, rtOnly);
     };
 
     // Use Obsidian lifecycle-backed registration for automatic cleanup
@@ -307,7 +330,12 @@ function updateTooltipWidth(): void {
 
 type TooltipAnchorPoint = { x: number; y: number };
 
-function updateTooltipPosition(target: Element, placement: TooltipPlacement, anchorPoint?: TooltipAnchorPoint) {
+function updateTooltipPosition(
+    target: Element,
+    placement: TooltipPlacement,
+    anchorPoint?: TooltipAnchorPoint,
+    rtOnly = false
+) {
     if (!customTooltipEl) return;
 
     const tooltipRect = customTooltipEl.getBoundingClientRect();
@@ -355,7 +383,7 @@ function updateTooltipPosition(target: Element, placement: TooltipPlacement, anc
         }
     }
 
-    const offset = getTooltipOffset(target);
+    const offset = getTooltipOffset(target, rtOnly);
 
     customTooltipEl.style.top = `${top + offset.y}px`;
     customTooltipEl.style.left = `${left + offset.x}px`;
@@ -365,7 +393,8 @@ function showCustomTooltip(
     target: Element,
     text: string,
     placement: TooltipPlacement,
-    anchorPoint?: TooltipAnchorPoint
+    anchorPoint?: TooltipAnchorPoint,
+    rtOnly = false
 ) {
     if (!customTooltipEl) ensureCustomTooltip();
     if (!customTooltipEl) return;
@@ -387,7 +416,7 @@ function showCustomTooltip(
 
     customTooltipEl.classList.add(`rt-placement-${placement}`);
     
-    updateTooltipPosition(target, placement, anchorPoint);
+    updateTooltipPosition(target, placement, anchorPoint, rtOnly);
 
     // Show
     customTooltipEl.classList.add('rt-visible');

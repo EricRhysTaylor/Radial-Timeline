@@ -129,7 +129,7 @@ Each finding includes:
 
 *   **Auto-save**: When enabled, Inquiry saves a brief after each successful run to your configured Artifact folder (default `Radial Timeline/Inquiry/Briefing`).
 *   **Embed JSON payload**: Optionally includes the raw validated JSON response in the artifact file.
-*   **Session cache**: Stores recent Inquiry sessions for fast reloads (configurable limit, default 30 sessions).
+*   **Recent Inquiry History**: Keeps recent Inquiry sessions available for quick reopening (bounded to the most recent 100 sessions).
 
 ---
 

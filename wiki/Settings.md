@@ -107,9 +107,8 @@ Configure how Inquiry scans, stores, and annotates briefs. See [[Inquiry]] for f
 *   **Write Inquiry action notes to scenes**: Append Inquiry action notes to the target YAML field on hit scenes.
 *   **Action notes target YAML field**: Frontmatter field to receive Inquiry action notes (default `Pending Edits`).
 
-**Session cache:**
-*   **Enable session cache**: Stores recent Inquiry runs for fast reloads.
-*   **Max cached sessions**: Cap for stored Inquiry sessions (1–100).
+**Recent Inquiry History:**
+*   **Recent Inquiry History**: Keeps recent Inquiry results available for quick reopening. Older entries are removed automatically.
 
 <a name="inquiry-sources"></a>
 #### Inquiry sources

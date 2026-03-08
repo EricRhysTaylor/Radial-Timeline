@@ -1721,9 +1721,13 @@ Sarah stood at the window, watching the world wake up.`;
                 const preview = chunkScenesIntoParts(items, this.splitParts);
                 this.splitPreviewEl.createDiv({ text: `Will generate ${this.splitParts} files:` });
                 preview.ranges.forEach(range => {
+                    const globalStartPosition = this.rangeStart + range.start - 1;
+                    const globalEndPosition = this.rangeStart + range.end - 1;
+                    const displayStart = this.getSceneNumberAt(globalStartPosition);
+                    const displayEnd = this.getSceneNumberAt(globalEndPosition);
                     this.splitPreviewEl?.createDiv({
                         cls: 'rt-sub-card-note',
-                        text: `Part ${range.part} (Scenes ${range.start}–${range.end})`
+                        text: `Part ${range.part} (Scenes ${displayStart}–${displayEnd})`
                     });
                 });
             }

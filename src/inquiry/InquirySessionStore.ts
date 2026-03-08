@@ -1,13 +1,13 @@
 import type RadialTimelinePlugin from '../main';
 import type { InquirySession, InquirySessionCache } from './sessionTypes';
-import { DEFAULT_INQUIRY_CACHE_MAX } from './constants';
+import { MAX_INQUIRY_HISTORY } from './constants';
 
 export class InquirySessionStore {
     private cache: InquirySessionCache;
     private saveTimeout: number | null = null;
 
     constructor(private plugin: RadialTimelinePlugin) {
-        const max = plugin.settings.inquiryCacheMaxSessions ?? DEFAULT_INQUIRY_CACHE_MAX;
+        const max = MAX_INQUIRY_HISTORY;
         const stored = plugin.settings.inquirySessionCache as InquirySessionCache | undefined;
         this.cache = stored && Array.isArray(stored.sessions)
             ? { sessions: stored.sessions, max: stored.max || max }
@@ -91,7 +91,7 @@ export class InquirySessionStore {
     }
 
     private prune(): void {
-        const max = this.plugin.settings.inquiryCacheMaxSessions ?? this.cache.max;
+        const max = MAX_INQUIRY_HISTORY;
         this.cache.max = max;
         if (this.cache.sessions.length <= max) return;
         this.cache.sessions.sort((a, b) => b.lastAccessed - a.lastAccessed);

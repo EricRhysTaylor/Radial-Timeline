@@ -1561,7 +1561,7 @@ export function renderInquirySection(params: SectionParams): void {
 
     const configBody = createSection(containerEl, {
         title: 'Configuration',
-        desc: 'Briefings, action notes, and session cache defaults for Inquiry briefs.',
+        desc: 'Briefings, action notes, and recent history defaults for Inquiry briefs.',
         icon: 'settings',
         wiki: 'Settings#inquiry'
     });
@@ -1653,7 +1653,7 @@ export function renderInquirySection(params: SectionParams): void {
 
     const autoPopulateSetting = new Settings(configBody)
         .setName(`Auto-populate ${resolveActionNotesFieldLabel()}`)
-        .setDesc('Automatically write action notes to the target yaml field after each Inquiry run. When off, use the Recent Inquiries popover to write manually.')
+        .setDesc('Automatically write action notes to the target yaml field after each Inquiry run. When off, use Recent Inquiry History to write manually.')
         .addToggle(toggle => {
             toggle.setValue(plugin.settings.inquiryActionNotesAutoPopulate ?? false);
             toggle.onChange(async (value) => {
@@ -1693,47 +1693,9 @@ export function renderInquirySection(params: SectionParams): void {
             });
     });
 
-    const cacheDesc = () => `Cache up to ${plugin.settings.inquiryCacheMaxSessions ?? 30} Inquiry sessions. Set the cap here.`;
-
-    const cacheSetting = new Settings(configBody)
-        .setName('Enable session cache')
-        .setDesc(cacheDesc());
-
-    cacheSetting.addText(text => {
-        const current = String(plugin.settings.inquiryCacheMaxSessions ?? 30);
-        text.setPlaceholder('30');
-        text.setValue(current);
-        text.inputEl.addClass('ert-input--sm');
-
-        plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
-            if (evt.key === 'Enter') {
-                evt.preventDefault();
-                text.inputEl.blur();
-            }
-        });
-
-        const handleBlur = async () => {
-            const n = Number(text.getValue().trim());
-            if (!Number.isFinite(n) || n < 1 || n > 100) {
-                new Notice('Enter a number between 1 and 100.');
-                text.setValue(String(plugin.settings.inquiryCacheMaxSessions ?? 30));
-                return;
-            }
-            plugin.settings.inquiryCacheMaxSessions = n;
-            await plugin.saveSettings();
-            cacheSetting.setDesc(cacheDesc());
-        };
-
-        plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });
-    });
-
-    cacheSetting.addToggle(toggle => {
-        toggle.setValue(plugin.settings.inquiryCacheEnabled ?? true);
-        toggle.onChange(async (value) => {
-            plugin.settings.inquiryCacheEnabled = value;
-            await plugin.saveSettings();
-        });
-    });
+    new Settings(configBody)
+        .setName('Recent Inquiry History')
+        .setDesc('Keeps recent Inquiry results available for quick reopening. Older entries are removed automatically.');
 
     void refreshClassScan();
 }

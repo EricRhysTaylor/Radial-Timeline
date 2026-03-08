@@ -17,7 +17,7 @@ export class AiPassStrategyDetailsModal extends Modal {
         contentEl.empty();
         titleEl.setText('');
 
-        modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal-shell--lg');
+        modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal-shell--sm');
         contentEl.addClass('ert-modal-container', 'ert-stack');
 
         // Hero header
