@@ -182,12 +182,19 @@ const PREVIEW_FOOTER_HEIGHT = 22;
 const PREVIEW_RESULTS_FOOTER_OFFSET = 30;
 const PREVIEW_SHIMMER_WIDTH = 120;
 const PREVIEW_SHIMMER_OVERHANG = 110;
-const RESULTS_EMPTY_TEXT = 'No notable findings.';
-const RESULTS_MAX_CHIPS = 6;
 const FLOW_FINDING_ORDER: InquiryFinding['kind'][] = ['escalation', 'conflict', 'continuity', 'loose_end', 'unclear', 'error', 'none'];
 const DEPTH_FINDING_ORDER: InquiryFinding['kind'][] = ['continuity', 'loose_end', 'conflict', 'escalation', 'unclear', 'error', 'none'];
 const SIGMA_CHAR = String.fromCharCode(931);
 const MODE_ICON_VIEWBOX = 2048;
+const MODE_ICON_OFFSET_Y = -330;
+const SCENE_DOSSIER_Y = MODE_ICON_OFFSET_Y - 210;
+const SCENE_DOSSIER_WIDTH = 640;
+const SCENE_DOSSIER_MIN_HEIGHT = 124;
+const SCENE_DOSSIER_PADDING_Y = 18;
+const SCENE_DOSSIER_HEADER_SIZE = 16;
+const SCENE_DOSSIER_FOOTER_SIZE = 11;
+const SCENE_DOSSIER_LINE_HEIGHT = 20;
+const SCENE_DOSSIER_MAX_BODY_LINES = 3;
 const FLOW_ICON_PATHS = [
     'M1873.99,900.01c.23,1.74-2.27.94-3.48.99-14.3.59-28.74-.35-43.05-.04-2.37.05-4.55,1.03-6.92,1.08-124.15,2.86-248.6,8.35-373,4.92-91.61-2.53-181.2-15.53-273.08-17.92-101.98-2.65-204.05,7.25-305.95.95-83.2-5.14-164.18-24.05-247.02-31.98-121.64-11.65-245.9-13.5-368.04-15.96-2.37-.05-4.55-1.04-6.92-1.08-17.31-.34-34.77.75-52.05.04-1.22-.05-3.72.75-3.48-.99,26.49-.25,53.03.28,79.54.03,144.74-1.38,289.81-5.3,433.95,8.97,18.67,1.85,37.34,5.16,56.01,6.99,165.31,16.18,330.85-3.46,495.99,14.01,118.64,12.56,236.15,30.42,355.97,28.03,87.15,0,174.3,2.45,261.54,1.97h-.01Z',
     'M1858.99,840.01c.23,1.74-2.27.94-3.48.99-15.63.64-31.41-.36-47.05-.04-2.37.05-4.55,1.03-6.92,1.08-127.12,2.74-254.28,9.03-381.05,2.97-86.31-4.13-170.32-17.4-256.98-20.02-110.96-3.36-222.13,6.92-333-1-62.18-4.44-123.32-15.98-185.14-22.86-130.81-14.57-267.28-16.86-398.92-19.08-2.36-.04-4.55-1.04-6.92-1.08-20.56-.33-41.57.88-62.05.04-1.22-.05-3.72.75-3.48-.99,27.83-.25,55.7.28,83.54.03,110.53-1,221.67-2.9,331.92,2,82.52,3.67,164.67,14.08,247,17,120.4,4.27,240.84-7.91,361.03,1.97,68.04,5.59,135.16,18.98,203.02,25.98,102.05,10.53,205.5,10.76,307.95,12.05,50.17.63,100.37.51,150.54.97h-.01Z',
@@ -303,6 +310,12 @@ type InquiryPreviewRow = {
     bg: SVGRectElement;
     text: SVGTextElement;
     label: string;
+};
+
+type InquirySceneDossier = {
+    header: string;
+    bodyLines: string[];
+    footer?: string;
 };
 
 type InquiryOmnibusPlan = {
@@ -1007,6 +1020,8 @@ export class InquiryView extends ItemView {
     private glyphHit?: SVGRectElement;
     private flowRingHit?: SVGCircleElement;
     private depthRingHit?: SVGCircleElement;
+    private flowModeIconEl?: SVGSVGElement;
+    private depthModeIconEl?: SVGSVGElement;
     private summaryEl?: SVGTextElement;
     private verdictEl?: SVGTextElement;
     private findingsListEl?: SVGGElement;
@@ -1017,6 +1032,11 @@ export class InquiryView extends ItemView {
     private artifactPreviewEl?: SVGGElement;
     private artifactPreviewBg?: SVGRectElement;
     private hoverTextEl?: SVGTextElement;
+    private sceneDossierGroup?: SVGGElement;
+    private sceneDossierBg?: SVGRectElement;
+    private sceneDossierHeader?: SVGTextElement;
+    private sceneDossierBody?: SVGTextElement;
+    private sceneDossierFooter?: SVGTextElement;
     private previewGroup?: SVGGElement;
     private previewHero?: SVGTextElement;
     private previewMeta?: SVGTextElement;
@@ -1259,6 +1279,7 @@ export class InquiryView extends ItemView {
         const minimapGroup = createSvgGroup(canvasGroup, 'ert-inquiry-minimap', 0, MINIMAP_GROUP_Y);
         this.minimap.initElements(minimapGroup, VIEWBOX_SIZE);
         this.renderModeIcons(minimapGroup);
+        this.buildSceneDossierLayer(minimapGroup);
 
         this.glyphAnchor = createSvgGroup(canvasGroup, 'ert-inquiry-focus-area');
         this.glyph = new InquiryGlyph(this.glyphAnchor, {
@@ -1285,6 +1306,34 @@ export class InquiryView extends ItemView {
             if (this.isInquiryGuidanceLockout()) return;
             this.handleRingClick('depth');
         });
+        if (this.flowModeIconEl) {
+            this.registerDomEvent(this.flowModeIconEl as unknown as HTMLElement, 'click', () => {
+                if (this.isInquiryGuidanceLockout()) return;
+                this.handleRingClick('flow');
+            });
+            this.registerDomEvent(this.flowModeIconEl as unknown as HTMLElement, 'pointerenter', () => {
+                if (this.isInquiryGuidanceLockout()) return;
+                this.setHoverText(this.buildRingHoverText('flow'));
+            });
+            this.registerDomEvent(this.flowModeIconEl as unknown as HTMLElement, 'pointerleave', () => {
+                if (this.isInquiryGuidanceLockout()) return;
+                this.clearHoverText();
+            });
+        }
+        if (this.depthModeIconEl) {
+            this.registerDomEvent(this.depthModeIconEl as unknown as HTMLElement, 'click', () => {
+                if (this.isInquiryGuidanceLockout()) return;
+                this.handleRingClick('depth');
+            });
+            this.registerDomEvent(this.depthModeIconEl as unknown as HTMLElement, 'pointerenter', () => {
+                if (this.isInquiryGuidanceLockout()) return;
+                this.setHoverText(this.buildRingHoverText('depth'));
+            });
+            this.registerDomEvent(this.depthModeIconEl as unknown as HTMLElement, 'pointerleave', () => {
+                if (this.isInquiryGuidanceLockout()) return;
+                this.clearHoverText();
+            });
+        }
 
         this.buildPromptPreviewPanel(canvasGroup);
 
@@ -3423,23 +3472,30 @@ export class InquiryView extends ItemView {
     }
 
     private renderModeIcons(parent: SVGGElement): void {
-        const iconOffsetY = -330;
+        const iconOffsetY = MODE_ICON_OFFSET_Y;
         const iconSize = Math.round(VIEWBOX_SIZE * 0.25 * 0.7);
         const iconX = Math.round(-iconSize / 2);
         const viewBoxHalf = MODE_ICON_VIEWBOX / 2;
         const iconGroup = createSvgGroup(parent, 'ert-inquiry-mode-icons', 0, iconOffsetY);
-        iconGroup.setAttribute('pointer-events', 'none');
 
-        const createIcon = (cls: string, paths: string[], rotateDeg = 0): void => {
+        const createIcon = (
+            mode: InquiryMode,
+            cls: string,
+            paths: string[],
+            rotateDeg = 0
+        ): SVGSVGElement => {
             const group = createSvgElement('svg');
-            group.classList.add('ert-inquiry-mode-icon', cls);
+            group.classList.add('ert-inquiry-mode-icon', 'ert-inquiry-mode-icon-btn', cls);
             group.setAttribute('x', String(iconX));
             group.setAttribute('y', '0');
             group.setAttribute('width', String(iconSize));
             group.setAttribute('height', String(iconSize));
             group.setAttribute('viewBox', `${-viewBoxHalf} ${-viewBoxHalf} ${MODE_ICON_VIEWBOX} ${MODE_ICON_VIEWBOX}`);
             group.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-            group.setAttribute('pointer-events', 'none');
+            group.setAttribute('pointer-events', 'all');
+            group.setAttribute('role', 'button');
+            group.setAttribute('tabindex', '0');
+            group.setAttribute('aria-label', mode === 'flow' ? 'Flow lens' : 'Depth lens');
             const transformGroup = createSvgElement('g');
             if (rotateDeg) {
                 transformGroup.setAttribute('transform', `rotate(${rotateDeg})`);
@@ -3454,10 +3510,41 @@ export class InquiryView extends ItemView {
             transformGroup.appendChild(pathGroup);
             group.appendChild(transformGroup);
             iconGroup.appendChild(group);
+            return group as SVGSVGElement;
         };
 
-        createIcon('ert-inquiry-mode-icon--flow', FLOW_ICON_PATHS);
-        createIcon('ert-inquiry-mode-icon--depth', DEPTH_ICON_PATHS, 90);
+        this.flowModeIconEl = createIcon('flow', 'ert-inquiry-mode-icon--flow', FLOW_ICON_PATHS);
+        this.depthModeIconEl = createIcon('depth', 'ert-inquiry-mode-icon--depth', DEPTH_ICON_PATHS, 90);
+    }
+
+    private buildSceneDossierLayer(parent: SVGGElement): void {
+        const group = createSvgGroup(parent, 'ert-inquiry-scene-dossier ert-hidden', 0, SCENE_DOSSIER_Y);
+        group.setAttribute('pointer-events', 'none');
+
+        const bg = createSvgElement('rect');
+        bg.classList.add('ert-inquiry-scene-dossier-bg');
+        bg.setAttribute('x', String(-SCENE_DOSSIER_WIDTH / 2));
+        bg.setAttribute('y', '0');
+        bg.setAttribute('width', String(SCENE_DOSSIER_WIDTH));
+        bg.setAttribute('height', String(SCENE_DOSSIER_MIN_HEIGHT));
+        bg.setAttribute('rx', '18');
+        bg.setAttribute('ry', '18');
+        group.appendChild(bg);
+
+        const header = createSvgText(group, 'ert-inquiry-scene-dossier-header', '', 0, SCENE_DOSSIER_PADDING_Y + SCENE_DOSSIER_HEADER_SIZE);
+        header.setAttribute('text-anchor', 'middle');
+
+        const body = createSvgText(group, 'ert-inquiry-scene-dossier-body', '', 0, 0);
+        body.setAttribute('text-anchor', 'middle');
+
+        const footer = createSvgText(group, 'ert-inquiry-scene-dossier-footer', '', 0, 0);
+        footer.setAttribute('text-anchor', 'middle');
+
+        this.sceneDossierGroup = group;
+        this.sceneDossierBg = bg;
+        this.sceneDossierHeader = header;
+        this.sceneDossierBody = body;
+        this.sceneDossierFooter = footer;
     }
 
     private renderWaveHeader(parent: SVGElement): void {
@@ -3835,6 +3922,7 @@ export class InquiryView extends ItemView {
             balanceTooltipText: (text) => this.balanceTooltipText(text),
             registerDomEvent: (el, event, handler) => this.registerDomEvent(el, event, handler),
             onTickClick: (item, event) => {
+                this.clearResultPreview();
                 this.clearErrorStateForAction();
                 if (this.state.isRunning) {
                     this.notifyInteraction('Inquiry running. Please wait.');
@@ -3854,9 +3942,9 @@ export class InquiryView extends ItemView {
                 }
                 this.drillIntoBook(item.id);
             },
-            onTickHover: (label, fullLabel) => {
+            onTickHover: (item, label, fullLabel) => {
                 if (this.state.isRunning) return;
-                this.handleMinimapHover(label, fullLabel);
+                this.handleMinimapHover(item, label, fullLabel);
             },
             onTickLeave: () => {
                 this.clearHoverText();
@@ -5492,7 +5580,6 @@ export class InquiryView extends ItemView {
             this.state.isRunning,
             this.isErrorResult(result),
             hitMap,
-            (label, finding) => this.buildFindingTooltip(label, finding as InquiryFinding),
             (text) => this.balanceTooltipText(text)
         );
     }
@@ -8049,81 +8136,147 @@ export class InquiryView extends ItemView {
         return label;
     }
 
-    private buildFindingTooltip(label: string, finding: InquiryFinding): string {
-        const MAX_CHARS = 220;
-        const lead = (finding.bullets || [])
-            .map(entry => entry.replace(/\s+/g, ' ').trim())
-            .find(Boolean);
-        const source = lead || this.normalizeInquiryHeadline(finding.headline);
-        let line = `${label}: ${source}`;
-        if (line.length > MAX_CHARS) {
-            line = line.slice(0, MAX_CHARS - 1).trimEnd() + '…';
-        }
-        return line;
-    }
-
-    private handleMinimapHover(label: string, displayLabel?: string): void {
+    private handleMinimapHover(item: InquiryCorpusItem, label: string, displayLabel?: string): void {
         const hoverLabel = displayLabel || label;
         const result = this.state.activeResult;
         if (!result || this.isErrorResult(result)) {
+            this.hideSceneDossier();
             this.setHoverText(this.buildMinimapHoverText(hoverLabel));
             return;
         }
         const finding = this.buildHitFindingMap(result, this.getResultItems(result)).get(label);
         if (!finding) {
+            this.hideSceneDossier();
             this.setHoverText(this.buildMinimapHoverText(hoverLabel));
             return;
         }
-        if (this.previewLocked || !this.previewGroup) {
-            const summary = finding.bullets?.[0]
-                ? `${hoverLabel}: ${finding.headline} — ${finding.bullets[0]}`
-                : `${hoverLabel}: ${finding.headline}`;
-            this.setHoverText(summary);
-            return;
-        }
-        this.showResultPreview(hoverLabel, finding, result);
-    }
-
-    private showResultPreview(label: string, finding: InquiryFinding, result: InquiryResult): void {
-        if (!this.previewGroup || this.previewLocked) return;
-        const zone = this.state.activeZone ?? this.findPromptZoneById(result.questionId) ?? 'setup';
-        const hero = finding.bullets?.[0]
-            ? `${finding.headline} — ${finding.bullets[0]}`
-            : finding.headline;
-        const meta = `${label} · ${this.formatFindingKindLabel(finding.kind)}`;
-        const rows = this.buildResultPreviewRows(finding, result, label);
-        this.minimapResultPreviewActive = true;
-        this.setHoverText(`${label}: ${finding.headline}`);
-        this.previewGroup.classList.add('is-visible');
-        this.updatePromptPreview(zone, this.state.mode, hero, rows, meta);
+        this.setHoverText('');
+        this.showSceneDossier(this.buildSceneDossierModel(item, label, hoverLabel, finding));
     }
 
     private clearResultPreview(): void {
-        if (!this.minimapResultPreviewActive) return;
+        const hadPreview = this.minimapResultPreviewActive;
+        this.hideSceneDossier();
+        if (!hadPreview) return;
         this.minimapResultPreviewActive = false;
         if (this.previewLocked) return;
         this.hidePromptPreview(true);
     }
 
-    private buildResultPreviewRows(
-        finding: InquiryFinding,
-        result: InquiryResult,
-        label: string
-    ): string[] {
-        const scopeLabel = result.scope === 'saga' ? 'Saga' : 'Book';
-        return [
-            `${label} hit`,
+    private buildSceneDossierModel(
+        item: InquiryCorpusItem,
+        label: string,
+        hoverLabel: string,
+        finding: InquiryFinding
+    ): InquirySceneDossier {
+        const header = this.buildSceneDossierHeader(item, label, hoverLabel);
+        const headline = this.sanitizeDossierText(finding.headline);
+        const bullets = (finding.bullets || [])
+            .map(entry => this.sanitizeDossierText(entry))
+            .filter(Boolean)
+            .slice(0, 2);
+        const bodyLines: string[] = [];
+        if (headline) {
+            bodyLines.push(this.truncatePreviewValue(headline, 110));
+        }
+        if (bullets.length) {
+            bullets.forEach(entry => {
+                bodyLines.push(this.truncatePreviewValue(`• ${entry}`, 116));
+            });
+        } else if (!headline) {
+            bodyLines.push('Finding text unavailable.');
+        }
+
+        const footerParts = [
             `Impact ${finding.impact}`,
-            `Confidence ${finding.assessmentConfidence}`,
-            `Flow ${this.formatMetricDisplay(result.verdict.flow)}`,
-            `Depth ${this.formatMetricDisplay(result.verdict.depth)}`,
-            `${scopeLabel} ${result.focusId}`
+            `Confidence ${finding.assessmentConfidence}`
         ];
+        if (finding.lens) {
+            footerParts.push(`Lens ${finding.lens}`);
+        }
+
+        return {
+            header: this.truncatePreviewValue(header, 96),
+            bodyLines: bodyLines.slice(0, SCENE_DOSSIER_MAX_BODY_LINES),
+            footer: this.truncatePreviewValue(footerParts.join(' · '), 118)
+        };
     }
 
-    private formatFindingKindLabel(kind: InquiryFinding['kind']): string {
-        if (!kind) return 'Finding';
-        return kind.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+    private buildSceneDossierHeader(item: InquiryCorpusItem, label: string, hoverLabel: string): string {
+        const fallbackNumber = this.parseCorpusLabelNumber(label);
+        const labelNumber = this.parseCorpusLabelNumber(item.displayLabel) ?? fallbackNumber;
+        const itemTitle = this.getMinimapItemTitle(item);
+        const cleanTitle = this.stripNumericTitlePrefix(itemTitle);
+        if (labelNumber !== null && cleanTitle) {
+            return `${labelNumber} ${cleanTitle}`;
+        }
+        if (labelNumber !== null) {
+            return item.displayLabel.toUpperCase().startsWith('B') ? `Book ${labelNumber}` : `Scene ${labelNumber}`;
+        }
+        return cleanTitle || hoverLabel || `Scene ${label}`;
+    }
+
+    private parseCorpusLabelNumber(label?: string): number | null {
+        if (!label) return null;
+        const match = label.trim().match(/^[A-Za-z](\d+)$/);
+        if (!match) return null;
+        const parsed = Number(match[1]);
+        return Number.isFinite(parsed) ? parsed : null;
+    }
+
+    private stripNumericTitlePrefix(value: string): string {
+        const cleaned = (value || '').replace(/\s+/g, ' ').trim();
+        if (!cleaned) return '';
+        return cleaned.replace(/^(?:scene\s*)?\d+\s*[-:–—.)]?\s*/i, '').trim();
+    }
+
+    private sanitizeDossierText(value?: string): string {
+        if (!value) return '';
+        return value
+            .replace(/\s+/g, ' ')
+            .replace(/^(?:[SB]\d+|Scene\s+\d+)\s*[:\-–—]\s*/i, '')
+            .trim();
+    }
+
+    private showSceneDossier(dossier: InquirySceneDossier): void {
+        if (!this.sceneDossierGroup || !this.sceneDossierBg || !this.sceneDossierHeader || !this.sceneDossierBody || !this.sceneDossierFooter) {
+            return;
+        }
+        const bodyLines = dossier.bodyLines.filter(Boolean).slice(0, SCENE_DOSSIER_MAX_BODY_LINES);
+        const headerY = SCENE_DOSSIER_PADDING_Y + SCENE_DOSSIER_HEADER_SIZE;
+        const bodyStartY = headerY + 16;
+        this.sceneDossierHeader.textContent = dossier.header;
+        this.sceneDossierHeader.setAttribute('y', String(headerY));
+
+        clearSvgChildren(this.sceneDossierBody);
+        bodyLines.forEach((line, index) => {
+            const tspan = createSvgElement('tspan');
+            tspan.setAttribute('x', '0');
+            tspan.setAttribute('dy', index === 0 ? String(bodyStartY) : String(SCENE_DOSSIER_LINE_HEIGHT));
+            tspan.textContent = line;
+            this.sceneDossierBody?.appendChild(tspan);
+        });
+
+        const hasFooter = !!dossier.footer;
+        const footerY = bodyStartY + (Math.max(bodyLines.length, 1) * SCENE_DOSSIER_LINE_HEIGHT) + 4;
+        this.sceneDossierFooter.textContent = hasFooter ? dossier.footer ?? '' : '';
+        this.sceneDossierFooter.classList.toggle('ert-hidden', !hasFooter);
+        this.sceneDossierFooter.setAttribute('y', String(footerY));
+
+        const contentHeight = hasFooter
+            ? footerY + SCENE_DOSSIER_FOOTER_SIZE + SCENE_DOSSIER_PADDING_Y
+            : bodyStartY + (Math.max(bodyLines.length, 1) * SCENE_DOSSIER_LINE_HEIGHT) + SCENE_DOSSIER_PADDING_Y;
+        this.sceneDossierBg.setAttribute('height', String(Math.max(SCENE_DOSSIER_MIN_HEIGHT, contentHeight)));
+
+        this.sceneDossierGroup.classList.remove('ert-hidden');
+        this.minimapResultPreviewActive = true;
+        this.rootSvg?.classList.add('is-scene-dossier-active');
+    }
+
+    private hideSceneDossier(): void {
+        this.sceneDossierGroup?.classList.add('ert-hidden');
+        this.rootSvg?.classList.remove('is-scene-dossier-active');
+        this.minimapResultPreviewActive = false;
     }
 
     private buildHitFindingMap(
@@ -8470,9 +8623,9 @@ export class InquiryView extends ItemView {
         this.setPreviewRunningNoteText('');
         const hero = this.buildResultsHeroText(result, mode);
         const meta = this.buildResultsMetaText(result, mode, zone);
-        const chips = this.buildResultsChips(result, mode);
-        this.setPreviewRowLabels(chips.labels);
-        this.updatePromptPreview(zone, mode, hero, chips.values, meta, { hideEmpty: true });
+        const emptyRows = Array(this.previewRows.length || 6).fill('');
+        this.resetPreviewRowLabels();
+        this.updatePromptPreview(zone, mode, hero, emptyRows, meta, { hideEmpty: true });
         const scopeLabel = result.scope === 'saga' ? 'Saga' : 'Book';
         const focusLabel = result.focusId || this.getFocusLabel();
         this.setPreviewFooterText(`Focus ${scopeLabel} ${focusLabel} · Click to dismiss.`);
@@ -8489,57 +8642,6 @@ export class InquiryView extends ItemView {
         const depthText = `Depth ${this.formatMetricDisplay(result.verdict.depth)}`;
         const ordered = mode === 'flow' ? [flowText, depthText] : [depthText, flowText];
         return `${zoneLabel} · ${ordered.join(' · ')}`.toUpperCase();
-    }
-
-    private buildResultsChips(result: InquiryResult, mode: InquiryMode): { labels: string[]; values: string[] } {
-        const maxSlots = Math.min(RESULTS_MAX_CHIPS, this.previewRows.length || RESULTS_MAX_CHIPS);
-        const items = this.getResultItems(result);
-        const ordered = this.getOrderedFindings(result, mode);
-        const selections: Array<{
-            label: string;
-            value: string;
-            order: number;
-            selectionIndex: number;
-        }> = [];
-        const seen = new Set<string>();
-
-        for (const finding of ordered) {
-            if (selections.length >= maxSlots) break;
-            const label = this.resolveFindingChipLabel(finding, result, items);
-            if (!label || seen.has(label)) continue;
-            seen.add(label);
-            selections.push({
-                label,
-                value: this.truncatePreviewValue(this.normalizeInquiryHeadline(finding.headline), 46),
-                order: this.resolveFindingChipOrder(label, result, items),
-                selectionIndex: selections.length
-            });
-        }
-
-        if (!selections.length) {
-            selections.push({
-                label: '',
-                value: RESULTS_EMPTY_TEXT,
-                order: Number.POSITIVE_INFINITY,
-                selectionIndex: 0
-            });
-        } else {
-            selections.sort((a, b) => {
-                if (a.order !== b.order) return a.order - b.order;
-                return a.selectionIndex - b.selectionIndex;
-            });
-        }
-
-        const labels = selections.map(entry => entry.label);
-        const values = selections.map(entry => entry.value);
-        const targetLength = this.previewRows.length || labels.length;
-        const paddedLabels = Array(targetLength).fill('');
-        const paddedValues = Array(targetLength).fill('');
-        labels.forEach((label, index) => {
-            paddedLabels[index] = label;
-            paddedValues[index] = values[index] ?? '';
-        });
-        return { labels: paddedLabels, values: paddedValues };
     }
 
     private getResultItems(result: InquiryResult): InquiryCorpusItem[] {
@@ -8575,25 +8677,6 @@ export class InquiryView extends ItemView {
         }
 
         return null;
-    }
-
-    private resolveFindingChipOrder(
-        label: string,
-        result: InquiryResult,
-        items: InquiryCorpusItem[]
-    ): number {
-        const lower = label.toLowerCase();
-        const itemIndex = items.findIndex(item => item.displayLabel.toLowerCase() === lower);
-        if (itemIndex >= 0) return itemIndex;
-
-        const scopePrefix = result.scope === 'saga' ? 'B' : 'S';
-        const match = new RegExp(`^${scopePrefix}(\\d+)$`, 'i').exec(label);
-        if (match) {
-            const numeric = Number(match[1]);
-            if (Number.isFinite(numeric)) return numeric - 1;
-        }
-
-        return Number.POSITIVE_INFINITY;
     }
 
     private sanitizeInquirySummary(rawSummary?: string | null): string {

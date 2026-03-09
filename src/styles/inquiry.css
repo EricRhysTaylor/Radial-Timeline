@@ -121,26 +121,38 @@
 }
 
 .ert-inquiry-mode-icons {
-  pointer-events: none;
   color: var(--text-normal);
+  pointer-events: all;
 }
 
 .ert-inquiry-mode-icon {
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 240ms ease;
+  opacity: 0.16;
+  pointer-events: all;
+  cursor: pointer;
+  transition: opacity 180ms ease;
 }
 
 .ert-inquiry-mode-icon path {
   fill: currentColor;
+  pointer-events: visiblePainted;
+}
+
+.ert-inquiry-mode-icon:hover {
+  opacity: 0.28;
 }
 
 .ert-inquiry-svg.is-mode-flow .ert-inquiry-mode-icon--flow {
-  opacity: 0.3;
+  opacity: 0.36;
 }
 
 .ert-inquiry-svg.is-mode-depth .ert-inquiry-mode-icon--depth {
-  opacity: 0.3;
+  opacity: 0.36;
+}
+
+.ert-inquiry-svg.is-guidance-lockout .ert-inquiry-mode-icon {
+  pointer-events: none;
+  cursor: default;
+  opacity: 0.1;
 }
 
 .ert-inquiry-svg-frame {
@@ -1440,6 +1452,53 @@
 
 .ert-inquiry-hover.is-guidance-results {
   font-size: 13px;
+}
+
+.ert-inquiry-scene-dossier {
+  opacity: 1;
+  pointer-events: none;
+}
+
+.ert-inquiry-scene-dossier-bg {
+  fill: color-mix(in srgb, var(--background-primary) 88%, rgb(96 69 43 / 0.84));
+  stroke: color-mix(in srgb, var(--text-normal) 24%, transparent);
+  stroke-width: 1.1;
+  filter: drop-shadow(0 12px 22px rgb(0 0 0 / 0.45));
+}
+
+.ert-inquiry-scene-dossier-header {
+  font-size: 16px;
+  font-weight: 760;
+  letter-spacing: 0.01em;
+  fill: color-mix(in srgb, var(--text-normal) 88%, #f6dbc0);
+}
+
+.ert-inquiry-scene-dossier-body {
+  font-size: 13px;
+  font-weight: 560;
+  fill: color-mix(in srgb, var(--text-normal) 85%, #f0d0ad);
+}
+
+.ert-inquiry-scene-dossier-footer {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  fill: color-mix(in srgb, var(--text-muted) 86%, #d7b58e);
+}
+
+.ert-inquiry-svg.is-scene-dossier-active .ert-inquiry-mode-icon {
+  opacity: 0.09;
+}
+
+.ert-inquiry-svg.is-scene-dossier-active.is-mode-flow .ert-inquiry-mode-icon--flow,
+.ert-inquiry-svg.is-scene-dossier-active.is-mode-depth .ert-inquiry-mode-icon--depth {
+  opacity: 0.18;
+}
+
+.ert-inquiry-svg.is-scene-dossier-active .ert-inquiry-ring-track,
+.ert-inquiry-svg.is-scene-dossier-active .ert-inquiry-ring-progress,
+.ert-inquiry-svg.is-scene-dossier-active .ert-inquiry-ring-badge {
+  opacity: 0.58;
 }
 
 .ert-inquiry-preview {

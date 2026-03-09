@@ -980,7 +980,7 @@ export class InquiryMinimapRenderer {
             balanceTooltipText: (text: string) => string;
             registerDomEvent: (el: HTMLElement, event: string, handler: (e: Event) => void) => void;
             onTickClick: (item: InquiryCorpusItem, event: MouseEvent) => void;
-            onTickHover: (label: string, fullLabel: string) => void;
+            onTickHover: (item: InquiryCorpusItem, label: string, fullLabel: string) => void;
             onTickLeave: () => void;
         }
     ): { tickLayouts: Array<{ x: number; y: number; width: number; height: number; rowIndex: number }>; tickWidth: number } | null {
@@ -1155,7 +1155,7 @@ export class InquiryMinimapRenderer {
                 callbacks.onTickClick(item, event as MouseEvent);
             });
             callbacks.registerDomEvent(tick as unknown as HTMLElement, 'pointerenter', () => {
-                callbacks.onTickHover(label, fullLabel);
+                callbacks.onTickHover(item, label, fullLabel);
             });
             callbacks.registerDomEvent(tick as unknown as HTMLElement, 'pointerleave', () => {
                 callbacks.onTickLeave();
@@ -1173,7 +1173,6 @@ export class InquiryMinimapRenderer {
         isRunning: boolean,
         isError: boolean,
         hitMap: Map<string, { kind: string }>,
-        buildTooltip: (label: string, finding: { kind: string }) => string,
         balanceTooltipText: (text: string) => string
     ): void {
         if (!this.minimapTicks.length) return;
@@ -1197,10 +1196,11 @@ export class InquiryMinimapRenderer {
             tick.classList.toggle('is-hit', !!finding);
             severityClasses.forEach(cls => tick.classList.remove(cls));
             const fullLabel = tick.getAttribute('data-full-label') || label;
-            const tooltip = finding
-                ? buildTooltip(label, finding)
-                : fullLabel;
-            addTooltipData(tick, tooltip, 'bottom');
+            if (finding) {
+                addTooltipData(tick, '', 'bottom');
+            } else {
+                addTooltipData(tick, balanceTooltipText(fullLabel), 'bottom');
+            }
         });
     }
 }
