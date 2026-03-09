@@ -50,7 +50,7 @@ export const ZONE_RING_THICKNESS = 70;
 const ZONE_RING_GAP_PX = 10;
 const ZONE_DOT_RADIUS_PX = 14;
 const ZONE_DOT_TEXT_PX = 16;
-const ZONE_NUMBER_COUNT = 8;
+const ZONE_NUMBER_COUNT = 9;
 const ZONE_NUMBER_SPACING_DEG = 10;
 const ZONE_SEGMENT_VIEWBOX_WIDTH = 159;
 const ZONE_SEGMENT_VIEWBOX_HEIGHT = 257;
@@ -222,7 +222,6 @@ export class InquiryGlyph {
 
     private applyProps(props: InquiryGlyphProps): void {
         this.labelText.textContent = props.focusLabel;
-        this.labelHit.setAttribute('aria-label', `Focus target ${props.focusLabel}`);
         this.updateLabelFontSize();
 
         const errorRing = props.errorRing ?? null;
@@ -516,9 +515,9 @@ export class InquiryGlyph {
                     marker.group.removeAttribute('role');
                     marker.group.removeAttribute('tabindex');
                 }
-                marker.group.removeAttribute('data-rt-tooltip');
-                marker.group.removeAttribute('data-rt-tooltip-placement');
-                marker.group.removeAttribute('data-rt-tooltip-offset-y');
+                marker.group.removeAttribute('data-rt-tip');
+                marker.group.removeAttribute('data-rt-tip-placement');
+                marker.group.removeAttribute('data-rt-tip-offset-y');
             });
         });
     }

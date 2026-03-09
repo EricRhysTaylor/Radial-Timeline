@@ -20,6 +20,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     outlineOutputFolder: 'Radial Timeline/Export',
     inquiryArtifactFolder: 'Radial Timeline/Inquiry/Briefing',
     inquiryAutoSave: true,
+    inquiryRecentSessionsLimit: 30,
     inquirySources: {
         scanRoots: [],
         bookInclusion: {},

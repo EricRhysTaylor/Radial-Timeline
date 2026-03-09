@@ -1150,7 +1150,7 @@ export class InquiryMinimapRenderer {
                 tick.removeAttribute('data-scene-id');
             }
             addTooltipData(tick, callbacks.balanceTooltipText(fullLabel), 'bottom');
-            tick.setAttribute('data-rt-tooltip-offset-y', '6');
+            tick.setAttribute('data-rt-tip-offset-y', '6');
             callbacks.registerDomEvent(tick as unknown as HTMLElement, 'click', (event: Event) => {
                 callbacks.onTickClick(item, event as MouseEvent);
             });

@@ -107,8 +107,9 @@ Configure how Inquiry scans, stores, and annotates briefs. See [[Inquiry]] for f
 *   **Write Inquiry action notes to scenes**: Append Inquiry action notes to the target YAML field on hit scenes.
 *   **Action notes target YAML field**: Frontmatter field to receive Inquiry action notes (default `Pending Edits`).
 
-**Recent Inquiry History:**
-*   **Recent Inquiry History**: Keeps recent Inquiry results available for quick reopening. Older entries are removed automatically.
+**Inquire session history:**
+*   **Inquire session history**: This does not affect Inquiry Briefs. It relates only to Inquiry View rehydration, which loads previous sessions from the Session Manager Popover.
+*   **Remember up to**: Select how many recent sessions to keep for Inquiry View rehydration (10, 30, 60, or 100; max 100).
 
 <a name="inquiry-sources"></a>
 #### Inquiry sources

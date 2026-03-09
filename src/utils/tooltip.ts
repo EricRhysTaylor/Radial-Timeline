@@ -25,11 +25,11 @@ const TOOLTIP_PLACEMENT_ATTR = 'data-tooltip-placement';
 const TOOLTIP_ANCHOR_ATTR = 'data-tooltip-anchor';
 const TOOLTIP_OFFSET_X_ATTR = 'data-tooltip-offset-x';
 const TOOLTIP_OFFSET_Y_ATTR = 'data-tooltip-offset-y';
-const RT_TOOLTIP_ATTR = 'data-rt-tooltip';
-const RT_TOOLTIP_PLACEMENT_ATTR = 'data-rt-tooltip-placement';
-const RT_TOOLTIP_ANCHOR_ATTR = 'data-rt-tooltip-anchor';
-const RT_TOOLTIP_OFFSET_X_ATTR = 'data-rt-tooltip-offset-x';
-const RT_TOOLTIP_OFFSET_Y_ATTR = 'data-rt-tooltip-offset-y';
+const RT_TOOLTIP_ATTR = 'data-rt-tip';
+const RT_TOOLTIP_PLACEMENT_ATTR = 'data-rt-tip-placement';
+const RT_TOOLTIP_ANCHOR_ATTR = 'data-rt-tip-anchor';
+const RT_TOOLTIP_OFFSET_X_ATTR = 'data-rt-tip-offset-x';
+const RT_TOOLTIP_OFFSET_Y_ATTR = 'data-rt-tip-offset-y';
 
 // Singleton tooltip element
 let customTooltipEl: HTMLElement | null = null;

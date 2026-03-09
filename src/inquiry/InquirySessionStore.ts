@@ -1,18 +1,32 @@
 import type RadialTimelinePlugin from '../main';
 import type { InquirySession, InquirySessionCache } from './sessionTypes';
-import { MAX_INQUIRY_HISTORY } from './constants';
+import { DEFAULT_INQUIRY_HISTORY_LIMIT, INQUIRY_HISTORY_LIMIT_OPTIONS, MAX_INQUIRY_HISTORY } from './constants';
+
+type LegacyInquirySettings = {
+    inquiryCacheMaxSessions?: number;
+};
 
 export class InquirySessionStore {
     private cache: InquirySessionCache;
     private saveTimeout: number | null = null;
 
     constructor(private plugin: RadialTimelinePlugin) {
-        const max = MAX_INQUIRY_HISTORY;
+        const max = this.resolveConfiguredLimit();
         const stored = plugin.settings.inquirySessionCache as InquirySessionCache | undefined;
         this.cache = stored && Array.isArray(stored.sessions)
             ? { sessions: stored.sessions, max: stored.max || max }
             : { sessions: [], max };
         this.cache.max = max;
+        this.prune();
+    }
+
+    getConfiguredLimit(): number {
+        return this.resolveConfiguredLimit();
+    }
+
+    applyConfiguredLimit(): void {
+        this.prune();
+        this.persist();
     }
 
     getSession(key: string): InquirySession | undefined {
@@ -91,11 +105,32 @@ export class InquirySessionStore {
     }
 
     private prune(): void {
-        const max = MAX_INQUIRY_HISTORY;
+        const max = this.resolveConfiguredLimit();
         this.cache.max = max;
         if (this.cache.sessions.length <= max) return;
         this.cache.sessions.sort((a, b) => b.lastAccessed - a.lastAccessed);
         this.cache.sessions = this.cache.sessions.slice(0, max);
+    }
+
+    private resolveConfiguredLimit(): number {
+        const limit = this.plugin.settings.inquiryRecentSessionsLimit;
+        if (typeof limit === 'number' && Number.isFinite(limit)) {
+            return this.normalizeLimit(limit);
+        }
+        const legacyLimit = (this.plugin.settings as LegacyInquirySettings).inquiryCacheMaxSessions;
+        if (typeof legacyLimit === 'number' && Number.isFinite(legacyLimit)) {
+            const normalizedLegacy = this.normalizeLimit(legacyLimit);
+            this.plugin.settings.inquiryRecentSessionsLimit = normalizedLegacy;
+            return normalizedLegacy;
+        }
+        return DEFAULT_INQUIRY_HISTORY_LIMIT;
+    }
+
+    private normalizeLimit(value: number): number {
+        const clamped = Math.max(INQUIRY_HISTORY_LIMIT_OPTIONS[0], Math.min(MAX_INQUIRY_HISTORY, Math.round(value)));
+        return INQUIRY_HISTORY_LIMIT_OPTIONS.reduce((closest, option) => {
+            return Math.abs(option - clamped) < Math.abs(closest - clamped) ? option : closest;
+        }, INQUIRY_HISTORY_LIMIT_OPTIONS[0]);
     }
 
     private persist(): void {

@@ -61,7 +61,7 @@ The Inquiry Primary View is a focused inspector with a central glyph, dual rings
 |                     \     |     /                               |
 |                    [Center Glyph + Rings]                      |
 |                                                                |
-| [Prev/Next or Up/Down]  [Cache Status]  [Confidence]           |
+| [Prev/Next or Up/Down]  [Session Status]  [Confidence]         |
 ```
 
 Key elements:
@@ -87,8 +87,8 @@ Mode and scope:
 
 Inquiry triggers:
 - Hover a zone to reveal up to 10 question icons.
-- Click an icon to run Inquiry or load cached session.
-- Changing mode clears active Inquiry visuals but preserves cache.
+- Click an icon to run Inquiry or load a saved session.
+- Changing mode clears active Inquiry visuals but preserves session history.
 - Artifact generation captures the active session and resets state.
 - Question icons use Lucide and are semantic, not decorative.
 
@@ -174,9 +174,9 @@ Saga scope rings:
 
 ## Corpus Fingerprint
 - Computed as a hash of evidence file paths, modified timestamps, question id, and schema version.
-- Stored in session cache and Artifact frontmatter.
+- Stored in session history and Artifact frontmatter.
 - Not shown in the default UI; surfaced via a Details expander in the Findings panel.
-- Cache entries are marked stale when the fingerprint changes and never auto-rerun.
+- History entries are marked stale when the fingerprint changes and never auto-rerun.
 
 ## Visual Binding Rules
 UI binds to Inquiry results without altering the underlying corpus.
@@ -204,10 +204,10 @@ The view owns display state and relies on services for execution.
 Suggested state fields:
 - scope (book or saga), focusSceneId, focusBookId, mode, activeQuestionId, activeSessionId.
 - activeResult, activeZone, isRunning, lastError.
-- cacheStatus, corpusFingerprint, settingsSnapshot, isNarrowLayout.
+- sessionStatus, corpusFingerprint, settingsSnapshot, isNarrowLayout.
 
-Session cache:
-- LRU, max 30 sessions.
+Session history:
+- LRU, max 100 sessions.
 - Keyed by question id, scope, focus target, mode, corpus fingerprint.
 - Never auto-rerun; mark stale if question or corpus changes.
 - Sessions live in plugin data; report previews render from sessions, not files.
@@ -216,7 +216,7 @@ Session cache:
 Inquiry relies on plugin settings and plugin data only.
 
 Settings required:
-- Inquiry sources configuration, enable cache, max sessions.
+- Inquiry sources configuration, session history, max sessions.
 - Artifact folder path (default `Radial Timeline/Inquiry/Artifacts/`).
 - Embed JSON payload in Artifacts toggle.
 - Optional source folders for character, place, power references.
@@ -243,15 +243,15 @@ Phase 2: Inquiry execution and rendering
 - Add zone hover and question icon interactions.
 - Render summary, verdict, findings, and evidence metadata.
 - Bind ring visuals to result severity and confidence.
-- Add Details expander for corpus fingerprint and cache metadata.
+- Add Details expander for corpus fingerprint and session metadata.
 - Enforce scope-locked evidence participation and conflict-only cross-scope checks.
 - Add hover previews and click interactions for glyph, rings, and minimap.
 - Add in-memory Artifact view on ring click.
 
-Phase 3: Cache, artifacts, and settings
-- Implement LRU session cache and staleness rules.
+Phase 3: Session history, artifacts, and settings
+- Implement LRU session history and staleness rules.
 - Add artifact generation workflow and file output.
-- Expose settings for sources, cache, artifact folder, and JSON embedding.
+- Expose settings for sources, session history, artifact folder, and JSON embedding.
 - Add error handling, fallback payloads, and UI states.
 
 ## Acceptance Criteria (Planning Stage)
@@ -263,7 +263,7 @@ Phase 3: Cache, artifacts, and settings
 - Inquiry can be triggered and returns a strict result payload.
 - Findings and verdict visualize severity and confidence consistently.
 - Artifacts can be generated without modifying any story files and are stored in the configured folder.
-- Cache behavior is predictable, capped, and visibly stale when needed.
+- Session history is predictable, capped, and visibly stale when needed.
 
 ## Implementation Anchor
 Inquiry always evaluates collections (book or saga); the center glyph shows focus, the minimap shows context, and each question resolves into two diagnostic answers (flow and depth), captured visually in the rings and durably in Artifacts only by explicit user action.

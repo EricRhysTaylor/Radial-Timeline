@@ -137,6 +137,12 @@ import {
 import { addTooltipData, setupTooltipsFromDataAttributes } from '../utils/tooltip';
 import { splitIntoBalancedLinesOptimal } from '../utils/text';
 import { classifySynopsis, type SynopsisQuality } from '../sceneAnalysis/synopsisQuality';
+import {
+    isLowSubstanceTier,
+    resolveCorpusSceneStatus,
+    type CorpusSceneStatus,
+    type CorpusSubstanceTier
+} from './services/corpusCellStatus';
 import { readSceneId } from '../utils/sceneIds';
 import {
     DEFAULT_CHARS_PER_TOKEN,
@@ -881,6 +887,9 @@ type CorpusCcSlot = {
     base: SVGRectElement;
     fill: SVGRectElement;
     border: SVGRectElement;
+    lowSubstanceX: SVGGElement;
+    lowSubstanceXPrimary: SVGLineElement;
+    lowSubstanceXSecondary: SVGLineElement;
     icon: SVGGElement;
     iconOuter: SVGCircleElement;
     iconInner: SVGCircleElement;
@@ -899,7 +908,8 @@ type CorpusCcStats = {
     bodyWords: number;
     synopsisWords: number;
     synopsisQuality: SynopsisQuality;
-    status?: 'todo' | 'working' | 'complete';
+    statusRaw?: string;
+    due?: string;
     title?: string;
 };
 
@@ -1044,7 +1054,8 @@ export class InquiryView extends ItemView {
         bodyWords: number;
         synopsisWords: number;
         synopsisQuality: SynopsisQuality;
-        status?: 'todo' | 'working' | 'complete';
+        statusRaw?: string;
+        due?: string;
         title?: string;
     }>();
     private corpusService = new InquiryCorpusService();
@@ -1419,7 +1430,7 @@ export class InquiryView extends ItemView {
         const panel = this.contentEl.createDiv({ cls: 'ert-inquiry-briefing-panel ert-hidden ert-ui' });
         this.briefingPanelEl = panel;
         const header = panel.createDiv({ cls: 'ert-inquiry-briefing-header' });
-        header.createDiv({ cls: 'ert-inquiry-briefing-title', text: 'Recent Inquiry History' });
+        header.createDiv({ cls: 'ert-inquiry-briefing-title', text: 'Recent Inquiry Sessions' });
         this.briefingListEl = panel.createDiv({ cls: 'ert-inquiry-briefing-list' });
         this.briefingEmptyEl = panel.createDiv({ cls: 'ert-inquiry-briefing-empty', text: 'No recent inquiries yet.' });
         this.briefingFooterEl = panel.createDiv({ cls: 'ert-inquiry-briefing-footer' });
@@ -1433,7 +1444,7 @@ export class InquiryView extends ItemView {
         });
         this.briefingClearButton = this.briefingFooterEl.createEl('button', {
             cls: 'ert-inquiry-briefing-clear',
-            text: 'Clear recent inquiries'
+            text: 'Clear recent sessions'
         });
         this.briefingResetButton = this.briefingFooterEl.createEl('button', {
             cls: 'ert-inquiry-briefing-reset',
@@ -2153,8 +2164,8 @@ export class InquiryView extends ItemView {
         this.artifactButton.classList.toggle('is-briefing-saved', status === 'saved');
         this.artifactButton.classList.toggle('is-briefing-error', status === 'error');
         // Briefing manager has its own full panel on hover/click; keep this icon tooltip-free.
-        this.artifactButton.removeAttribute('data-rt-tooltip');
-        this.artifactButton.removeAttribute('data-rt-tooltip-placement');
+        this.artifactButton.removeAttribute('data-rt-tip');
+        this.artifactButton.removeAttribute('data-rt-tip-placement');
     }
 
     private async handleBriefingSaveClick(): Promise<void> {
@@ -2187,7 +2198,7 @@ export class InquiryView extends ItemView {
 
     private handleBriefingClearClick(): void {
         if (this.state.isRunning) {
-            this.notifyInteraction('Inquiry running. Please wait to clear recent inquiries.');
+            this.notifyInteraction('Inquiry running. Please wait to clear recent sessions.');
             return;
         }
         this.sessionStore.clearSessions();
@@ -3045,13 +3056,12 @@ export class InquiryView extends ItemView {
         y: number,
         size: number,
         iconName: string,
-        label: string,
+        _label: string,
         extraClass = ''
     ): SVGGElement {
         const group = createSvgGroup(parent, `ert-inquiry-icon-btn ${extraClass}`.trim(), x, y);
         group.setAttribute('role', 'button');
         group.setAttribute('tabindex', '0');
-        group.setAttribute('aria-label', label);
         const rect = createSvgElement('rect');
         rect.classList.add('ert-inquiry-icon-btn-bg');
         rect.setAttribute('width', String(size));
@@ -3500,7 +3510,7 @@ export class InquiryView extends ItemView {
         this.detailsEl = createSvgGroup(findingsGroup, 'ert-inquiry-details ert-hidden', 24, 64);
         this.detailRows = [
             createSvgText(this.detailsEl, 'ert-inquiry-detail-row', 'Corpus fingerprint: not available', 0, 0),
-            createSvgText(this.detailsEl, 'ert-inquiry-detail-row', 'Recent inquiry history: not available', 0, 20)
+            createSvgText(this.detailsEl, 'ert-inquiry-detail-row', 'Recent inquiry sessions: not available', 0, 20)
         ];
 
         this.summaryEl = createSvgText(findingsGroup, 'ert-inquiry-summary', 'No inquiry run yet.', 24, 120);
@@ -3628,7 +3638,6 @@ export class InquiryView extends ItemView {
                 this.setIconUse(this.scopeToggleIcon, icon);
             }
         }
-        this.scopeToggleButton?.setAttribute('aria-label', this.state.scope === 'saga' ? 'Saga scope' : 'Book scope');
     }
 
     private updateModeToggle(): void {
@@ -3637,7 +3646,6 @@ export class InquiryView extends ItemView {
             const icon = this.state.mode === 'depth' ? 'waves-arrow-down' : 'waves';
             this.setIconUse(this.modeToggleIcon, icon);
         }
-        this.modeToggleButton?.setAttribute('aria-label', this.state.mode === 'depth' ? 'Depth mode' : 'Flow mode');
     }
 
     private updateToggleButton(button: SVGElement | undefined, isActive: boolean): void {
@@ -3664,8 +3672,6 @@ export class InquiryView extends ItemView {
         const engine = this.getResolvedEngine();
         const modelLabel = engine.modelLabel;
         const providerLabel = engine.providerLabel;
-        const tooltip = `AI Engine · ${providerLabel} · ${modelLabel}`;
-        this.engineBadgeGroup.setAttribute('aria-label', tooltip);
         if (this.enginePanelMetaEl) {
             const payloadSummary = this.buildEnginePayloadSummary();
             this.enginePanelMetaEl.setText(`Active: ${providerLabel} · ${modelLabel} · ${payloadSummary.text}`);
@@ -3677,6 +3683,11 @@ export class InquiryView extends ItemView {
     private syncEngineBadgePulse(): void {
         if (!this.engineBadgeGroup) return;
         const readinessUi = this.buildReadinessUiState();
+        // While the estimate is still loading, stay neutral — don't flash red for unknown state.
+        if (readinessUi.pending) {
+            this.engineBadgeGroup.classList.remove('is-engine-pulse-amber', 'is-engine-pulse-red');
+            return;
+        }
         const hasError = this.isErrorState();
         const red = hasError
             || readinessUi.readiness.state === 'blocked'
@@ -3894,6 +3905,8 @@ export class InquiryView extends ItemView {
     private updateMinimapPressureGauge(): void {
         if (this.state.isRunning) return;
         const readinessUi = this.buildReadinessUiState();
+        // While the estimate is still loading, skip rendering — avoids a false amber/red flash.
+        if (readinessUi.pending) return;
         this.lastReadinessUiState = readinessUi;
         const passPlan = this.getCurrentPassPlan(readinessUi);
         const styleSource = this.getStyleSource();
@@ -4145,6 +4158,13 @@ export class InquiryView extends ItemView {
             fill.classList.add('ert-inquiry-cc-cell-fill');
             const border = createSvgElement('rect');
             border.classList.add('ert-inquiry-cc-cell-border');
+            const lowSubstanceX = createSvgGroup(group, 'ert-inquiry-cc-cell-low-substance-x');
+            const lowSubstanceXPrimary = createSvgElement('line');
+            lowSubstanceXPrimary.classList.add('ert-inquiry-cc-cell-low-substance-x-line');
+            const lowSubstanceXSecondary = createSvgElement('line');
+            lowSubstanceXSecondary.classList.add('ert-inquiry-cc-cell-low-substance-x-line');
+            lowSubstanceX.appendChild(lowSubstanceXPrimary);
+            lowSubstanceX.appendChild(lowSubstanceXSecondary);
             const icon = createSvgGroup(group, 'ert-inquiry-cc-cell-icon');
             const iconOuter = createSvgElement('circle');
             iconOuter.classList.add('ert-inquiry-cc-cell-icon-outer');
@@ -4156,6 +4176,7 @@ export class InquiryView extends ItemView {
             group.appendChild(fill);
             group.appendChild(border);
             group.appendChild(icon);
+            group.appendChild(lowSubstanceX);
             this.registerDomEvent(group as unknown as HTMLElement, 'click', (evt) => {
                 if (this.state.isRunning) return;
                 const entryKey = group.getAttribute('data-entry-key');
@@ -4171,7 +4192,18 @@ export class InquiryView extends ItemView {
                 }
                 this.handleCorpusItemToggle(entryKey);
             });
-            this.ccSlots.push({ group, base, fill, border, icon, iconOuter, iconInner });
+            this.ccSlots.push({
+                group,
+                base,
+                fill,
+                border,
+                lowSubstanceX,
+                lowSubstanceXPrimary,
+                lowSubstanceXSecondary,
+                icon,
+                iconOuter,
+                iconInner
+            });
         }
 
         this.ccSlots.forEach((slot, idx) => {
@@ -4199,6 +4231,16 @@ export class InquiryView extends ItemView {
             slot.border.setAttribute('y', '0');
             slot.border.setAttribute('rx', String(corner));
             slot.border.setAttribute('ry', String(corner));
+            const xInset = Math.max(2, Math.round(layout.pageWidth * 0.14));
+            const yInset = Math.max(2, Math.round(layout.pageHeight * 0.14));
+            slot.lowSubstanceXPrimary.setAttribute('x1', String(xInset));
+            slot.lowSubstanceXPrimary.setAttribute('y1', String(yInset));
+            slot.lowSubstanceXPrimary.setAttribute('x2', String(layout.pageWidth - xInset));
+            slot.lowSubstanceXPrimary.setAttribute('y2', String(layout.pageHeight - yInset));
+            slot.lowSubstanceXSecondary.setAttribute('x1', String(layout.pageWidth - xInset));
+            slot.lowSubstanceXSecondary.setAttribute('y1', String(yInset));
+            slot.lowSubstanceXSecondary.setAttribute('x2', String(xInset));
+            slot.lowSubstanceXSecondary.setAttribute('y2', String(layout.pageHeight - yInset));
             const iconCenterX = Math.round(layout.pageWidth / 2);
             const iconCenterY = Math.round(layout.pageHeight / 2) + CC_CELL_ICON_OFFSET;
             const maxRadius = Math.max(2, (layout.pageWidth - 2) / 2);
@@ -5041,6 +5083,11 @@ export class InquiryView extends ItemView {
         slot.fill.setAttribute('height', String(fillHeight));
         slot.fill.setAttribute('y', String(pageHeight - fillHeight));
 
+        const sceneStatus = entry.className === 'scene'
+            ? resolveCorpusSceneStatus({ status: stats.statusRaw, due: stats.due })
+            : undefined;
+        const lowSubstance = entry.className === 'scene' && isLowSubstanceTier(tier);
+
         slot.group.classList.remove(
             'is-tier-empty',
             'is-tier-bare',
@@ -5053,7 +5100,8 @@ export class InquiryView extends ItemView {
             'is-status-todo',
             'is-status-working',
             'is-status-complete',
-            'is-mismatch'
+            'is-status-overdue',
+            'is-low-substance'
         );
         slot.group.classList.add(`is-tier-${tier}`);
         if (mode === 'summary') {
@@ -5064,22 +5112,16 @@ export class InquiryView extends ItemView {
             slot.group.classList.add('is-mode-none');
         }
 
-        if (stats.status) {
-            slot.group.classList.add(`is-status-${stats.status}`);
+        if (sceneStatus) {
+            slot.group.classList.add(`is-status-${sceneStatus}`);
+        }
+        if (lowSubstance) {
+            slot.group.classList.add('is-low-substance');
         }
 
-        const highlightMismatch = this.plugin.settings.inquiryCorpusHighlightLowSubstanceComplete ?? true;
-        const lowSubstance = isSynopsis
-            ? stats.synopsisQuality !== 'ok'
-            : wordCount < thresholds.sketchyMin;
-        const isMismatch = highlightMismatch && stats.status === 'complete' && lowSubstance;
-        if (isMismatch) {
-            slot.group.classList.add('is-mismatch');
-        }
-
-        const tooltip = this.buildCorpusCcTooltip(entry, stats, thresholds, tier, isMismatch, wordCount);
+        const tooltip = this.buildCorpusCcTooltip(entry, stats, thresholds, tier, sceneStatus, lowSubstance, wordCount);
         addTooltipData(slot.group, tooltip, 'left');
-        slot.group.setAttribute('data-rt-tooltip-offset-x', '10');
+        slot.group.setAttribute('data-rt-tip-offset-x', '10');
         if (entry.filePath) {
             slot.group.classList.add('is-openable');
             slot.group.setAttribute('data-file-path', entry.filePath);
@@ -5108,7 +5150,7 @@ export class InquiryView extends ItemView {
     private getCorpusTier(
         wordCount: number,
         thresholds: { emptyMax: number; sketchyMin: number; mediumMin: number; substantiveMin: number }
-    ): 'empty' | 'bare' | 'sketchy' | 'medium' | 'substantive' {
+    ): CorpusSubstanceTier {
         if (wordCount < thresholds.emptyMax) return 'empty';
         if (wordCount < thresholds.sketchyMin) return 'bare';
         if (wordCount < thresholds.mediumMin) return 'sketchy';
@@ -5120,13 +5162,13 @@ export class InquiryView extends ItemView {
         quality: SynopsisQuality,
         wordCount: number,
         thresholds: { emptyMax: number; sketchyMin: number; mediumMin: number; substantiveMin: number }
-    ): 'empty' | 'bare' | 'sketchy' | 'medium' | 'substantive' {
+    ): CorpusSubstanceTier {
         if (quality === 'missing') return 'empty';
         if (quality === 'weak') return 'sketchy';
         return this.getCorpusTier(wordCount, thresholds);
     }
 
-    private getCorpusTierLabel(tier: 'empty' | 'bare' | 'sketchy' | 'medium' | 'substantive'): string {
+    private getCorpusTierLabel(tier: CorpusSubstanceTier): string {
         if (tier === 'empty') return 'Empty';
         if (tier === 'bare' || tier === 'sketchy') return 'Sketchy';
         if (tier === 'medium') return 'Medium';
@@ -5143,22 +5185,23 @@ export class InquiryView extends ItemView {
             return { bodyWords: 0, synopsisWords: 0, synopsisQuality: 'missing' };
         }
         const mtime = file.stat.mtime ?? 0;
-        const status = this.getDocumentStatus(file);
         const title = this.getDocumentTitle(file);
+        const frontmatter = this.getNormalizedFrontmatter(file) ?? {};
+        const { statusRaw, due } = this.getDocumentStatusFields(frontmatter);
         const cached = this.ccWordCache.get(filePath);
-        if (cached && cached.mtime === mtime && cached.status === status && cached.title === title) {
+        if (cached && cached.mtime === mtime && cached.statusRaw === statusRaw && cached.due === due && cached.title === title) {
             return {
                 bodyWords: cached.bodyWords,
                 synopsisWords: cached.synopsisWords,
                 synopsisQuality: cached.synopsisQuality,
-                status: cached.status,
+                statusRaw: cached.statusRaw,
+                due: cached.due,
                 title: cached.title
             };
         }
         const content = await this.app.vault.cachedRead(file);
         const body = this.stripFrontmatter(content);
         const bodyWords = this.countWords(body);
-        const frontmatter = this.getNormalizedFrontmatter(file) ?? {};
         const summary = this.extractSummary(frontmatter);
         const synopsisWords = this.countWords(summary);
         const synopsisQuality = classifySynopsis(summary);
@@ -5167,14 +5210,16 @@ export class InquiryView extends ItemView {
             bodyWords,
             synopsisWords,
             synopsisQuality,
-            status,
+            statusRaw,
+            due,
             title
         });
         return {
             bodyWords,
             synopsisWords,
             synopsisQuality,
-            status,
+            statusRaw,
+            due,
             title
         };
     }
@@ -5191,23 +5236,26 @@ export class InquiryView extends ItemView {
         });
     }
 
-    private getDocumentStatus(file: TFile): 'todo' | 'working' | 'complete' | undefined {
-        const frontmatter = this.app.metadataCache.getFileCache(file)?.frontmatter as Record<string, unknown> | undefined;
-        if (!frontmatter) return undefined;
-        const normalized = normalizeFrontmatterKeys(frontmatter, this.plugin.settings.frontmatterMappings);
-        const raw = normalized['Status'];
-        if (typeof raw !== 'string') return undefined;
-        const value = raw.trim().toLowerCase();
-        if (value === 'todo' || value === 'working' || value === 'complete') {
-            return value;
-        }
-        return undefined;
+    private getDocumentStatusFields(frontmatter: Record<string, unknown>): { statusRaw?: string; due?: string } {
+        const rawStatus = frontmatter['Status'];
+        const statusCandidate = Array.isArray(rawStatus)
+            ? String(rawStatus[0] ?? '').trim()
+            : (typeof rawStatus === 'string' ? rawStatus.trim() : '');
+
+        const rawDue = frontmatter['Due'];
+        const due = typeof rawDue === 'string' ? rawDue.trim() : '';
+
+        return {
+            statusRaw: statusCandidate || undefined,
+            due: due || undefined
+        };
     }
 
-    private getCorpusCcStatusIcon(status?: 'todo' | 'working' | 'complete'): string {
+    private getCorpusCcStatusIcon(status?: CorpusSceneStatus): string {
         if (status === 'todo') return '☐';
-        if (status === 'working') return '◐';
+        if (status === 'working') return '□';
         if (status === 'complete') return '✓';
+        if (status === 'overdue') return '⚠';
         return '';
     }
 
@@ -5215,18 +5263,27 @@ export class InquiryView extends ItemView {
         entry: CorpusCcEntry,
         stats: CorpusCcStats,
         thresholds: { emptyMax: number; sketchyMin: number; mediumMin: number; substantiveMin: number },
-        tier: 'empty' | 'bare' | 'sketchy' | 'medium' | 'substantive',
-        isMismatch: boolean,
+        tier: CorpusSubstanceTier,
+        sceneStatus: CorpusSceneStatus | undefined,
+        isLowSubstance: boolean,
         wordCount: number
     ): string {
         const tooltipTitle = stats.title || entry.label;
         const classInitial = entry.className?.trim().charAt(0).toLowerCase() || '?';
         const conditions: string[] = [];
 
-        if (stats.status) {
-            const statusLabel = `${stats.status.charAt(0).toUpperCase()}${stats.status.slice(1)}`;
-            const statusIcon = this.getCorpusCcStatusIcon(stats.status);
-            const statusBorderNote = stats.status === 'todo' ? ' (dashed border)' : '';
+        if (sceneStatus) {
+            const statusLabel = sceneStatus === 'overdue'
+                ? 'Overdue'
+                : `${sceneStatus.charAt(0).toUpperCase()}${sceneStatus.slice(1)}`;
+            const statusIcon = this.getCorpusCcStatusIcon(sceneStatus);
+            const statusBorderNote = sceneStatus === 'todo'
+                ? ' (dashed border)'
+                : sceneStatus === 'working'
+                    ? ''
+                    : sceneStatus === 'overdue'
+                        ? ' (solid red border)'
+                        : ' (solid border)';
             const statusIconText = statusIcon ? ` ${statusIcon}` : '';
             conditions.push(`Status: ${statusLabel}${statusIconText}${statusBorderNote}`);
         }
@@ -5249,8 +5306,8 @@ export class InquiryView extends ItemView {
             conditions.push(`Tier: ${tierLabel} (${wordLabel} words)`);
         }
 
-        if (isMismatch) {
-            conditions.push(`Alert: complete under ${thresholds.sketchyMin} words`);
+        if (isLowSubstance) {
+            conditions.push(`Low substance: marked with X (${thresholds.sketchyMin} words target)`);
         }
 
         return `${tooltipTitle} [${classInitial}]\n${conditions.map(item => `• ${item}`).join('\n')}`;
@@ -5406,7 +5463,7 @@ export class InquiryView extends ItemView {
         this.pulseZonePrompt(question.zone, question.id);
         this.pulseRehydrateButton(question.zone);
         this.highlightRehydrateSession(sessionKey);
-        this.notifyInteraction('Inquiry already run. Open Recent Inquiry History to reopen.');
+        this.notifyInteraction('Inquiry already run. Open Recent Inquiry Sessions to reopen.');
     }
 
     private showErrorPreview(result: InquiryResult): void {
@@ -5478,8 +5535,6 @@ export class InquiryView extends ItemView {
 
         addTooltipData(this.navPrevButton, this.balanceTooltipText(prevTooltip), 'top');
         addTooltipData(this.navNextButton, this.balanceTooltipText(nextTooltip), 'top');
-        this.navPrevButton.setAttribute('aria-label', prevTooltip);
-        this.navNextButton.setAttribute('aria-label', nextTooltip);
     }
 
     private updateNavSessionLabel(): void {
@@ -5719,7 +5774,6 @@ export class InquiryView extends ItemView {
         this.helpToggleButton.classList.toggle('is-help-results', isResults && !corpusAlert);
         this.helpToggleButton.classList.toggle('is-guidance-alert', isAlert);
         addTooltipData(this.helpToggleButton, balancedTooltip, 'left');
-        this.helpToggleButton.setAttribute('aria-label', tooltip);
     }
 
     private handleGuidanceHelpClick(): void {
@@ -6107,6 +6161,14 @@ export class InquiryView extends ItemView {
         } finally {
             this.finishInquiryRunToken(runToken);
         }
+    }
+
+    public reopenSessionByKey(sessionKey: string): boolean {
+        if (!sessionKey || this.state.isRunning || this.isInquiryBlocked()) return false;
+        const session = this.sessionStore.peekSession(sessionKey);
+        if (!session) return false;
+        this.activateSession(session);
+        return true;
     }
 
     public async runOmnibusPass(): Promise<void> {
@@ -8187,6 +8249,7 @@ export class InquiryView extends ItemView {
      *   - Preview panel pills (if visible)
      */
     private refreshEstimateDisplays(): void {
+        this.syncEngineBadgePulse();
         this.updateMinimapPressureGauge();
         if (this.enginePanelEl && !this.enginePanelEl.classList.contains('ert-hidden')) {
             this.refreshEnginePanel();
@@ -8914,8 +8977,8 @@ export class InquiryView extends ItemView {
         if (!this.previewRows.length) return;
         this.previewRows.forEach(row => {
             row.group.classList.remove('is-token-amber', 'is-token-red');
-            row.group.removeAttribute('data-rt-tooltip');
-            row.group.removeAttribute('data-rt-tooltip-placement');
+            row.group.removeAttribute('data-rt-tip');
+            row.group.removeAttribute('data-rt-tip-placement');
         });
         if (this.previewGroup?.classList.contains('is-results')) return;
         const tokensRow = this.previewRows.find(row => row.group.classList.contains('is-tokens-slot'));
@@ -9352,11 +9415,11 @@ export class InquiryView extends ItemView {
                 addTooltipData(element, balancedText, placement ?? 'bottom');
                 return;
             }
-            const rtTooltipValue = element.getAttribute('data-rt-tooltip');
+            const rtTooltipValue = element.getAttribute('data-rt-tip');
             if (rtTooltipValue === text || rtTooltipValue === balancedText) {
-                element.removeAttribute('data-rt-tooltip');
+                element.removeAttribute('data-rt-tip');
             }
-            element.removeAttribute('data-rt-tooltip-placement');
+            element.removeAttribute('data-rt-tip-placement');
         });
     }
 

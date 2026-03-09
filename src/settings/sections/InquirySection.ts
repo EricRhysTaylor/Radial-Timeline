@@ -1,4 +1,4 @@
-import { App, Setting as Settings, TextComponent, TextAreaComponent, normalizePath, Notice, setIcon, setTooltip } from 'obsidian';
+import { App, Setting as Settings, TFile, TextComponent, TextAreaComponent, normalizePath, Notice, setIcon, setTooltip } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { DEFAULT_SETTINGS } from '../defaults';
 import type {
@@ -11,11 +11,15 @@ import type {
     InquirySourcesSettings
 } from '../../types/settings';
 import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
+import { openOrRevealFile } from '../../utils/fileUtils';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import { ERT_CLASSES } from '../../ui/classes';
 import { badgePill } from '../../ui/ui';
 import { isProfessionalActive } from './ProfessionalSection';
+import { InquirySessionStore } from '../../inquiry/InquirySessionStore';
+import { DEFAULT_INQUIRY_HISTORY_LIMIT, INQUIRY_HISTORY_LIMIT_OPTIONS } from '../../inquiry/constants';
 import { buildDefaultInquiryPromptConfig, getInquiryZoneDescription, normalizeInquiryPromptConfig } from '../../inquiry/prompts';
+import type { InquirySession } from '../../inquiry/sessionTypes';
 import {
     MAX_RESOLVED_SCAN_ROOTS,
     normalizeScanRootPatterns,
@@ -102,6 +106,47 @@ const compareClassSummary = (a: string, b: string): number => {
         return (aIdx === -1 ? Number.POSITIVE_INFINITY : aIdx) - (bIdx === -1 ? Number.POSITIVE_INFINITY : bIdx);
     }
     return a.localeCompare(b);
+};
+
+const relativeTimeFormatter = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
+
+const formatRelativeTime = (timestamp: number): string => {
+    if (!Number.isFinite(timestamp)) return 'just now';
+    const deltaMs = timestamp - Date.now();
+    const minute = 60_000;
+    const hour = 60 * minute;
+    const day = 24 * hour;
+    if (Math.abs(deltaMs) >= day) {
+        return relativeTimeFormatter.format(Math.round(deltaMs / day), 'day');
+    }
+    if (Math.abs(deltaMs) >= hour) {
+        return relativeTimeFormatter.format(Math.round(deltaMs / hour), 'hour');
+    }
+    if (Math.abs(deltaMs) >= minute) {
+        return relativeTimeFormatter.format(Math.round(deltaMs / minute), 'minute');
+    }
+    return 'just now';
+};
+
+const formatSessionScopeLabel = (session: InquirySession): string => {
+    const scopeLabel = session.result.scope === 'saga' ? 'Saga' : 'Book';
+    const focus = session.result.focusId?.trim();
+    return focus ? `${scopeLabel} ${focus}` : scopeLabel;
+};
+
+const formatSessionProviderModel = (session: InquirySession): string => {
+    const providerRaw = session.result.aiProvider?.trim().toLowerCase();
+    const model = (session.result.aiModelResolved || session.result.aiModelRequested || '').trim();
+    const provider = providerRaw === 'openai'
+        ? 'OpenAI'
+        : providerRaw === 'anthropic'
+            ? 'Anthropic'
+            : providerRaw === 'gemini'
+                ? 'Gemini'
+                : providerRaw === 'local'
+                    ? 'Local'
+                    : (providerRaw ? providerRaw.charAt(0).toUpperCase() + providerRaw.slice(1) : 'Engine');
+    return model ? `${provider}/${model}` : provider;
 };
 
 type LegacyInquirySourcesSettings = {
@@ -1105,8 +1150,8 @@ export function renderInquirySection(params: SectionParams): void {
 
     function renderPromptConfiguration(targetEl: HTMLElement): void {
         const promptContainer = targetEl.createDiv({ cls: ERT_CLASSES.STACK });
-        const freeCustomLimit = 2;
-        const proCustomLimit = 7;
+        const freeCustomLimit = 3;
+        const proCustomLimit = 8;
         const isPro = isProfessionalActive(plugin);
 
         const defaultPromptConfig = buildDefaultInquiryPromptConfig();
@@ -1561,7 +1606,7 @@ export function renderInquirySection(params: SectionParams): void {
 
     const configBody = createSection(containerEl, {
         title: 'Configuration',
-        desc: 'Briefings, action notes, and recent history defaults for Inquiry briefs.',
+        desc: 'Briefings, action notes, and recent session defaults for Inquiry briefs.',
         icon: 'settings',
         wiki: 'Settings#inquiry'
     });
@@ -1653,7 +1698,7 @@ export function renderInquirySection(params: SectionParams): void {
 
     const autoPopulateSetting = new Settings(configBody)
         .setName(`Auto-populate ${resolveActionNotesFieldLabel()}`)
-        .setDesc('Automatically write action notes to the target yaml field after each Inquiry run. When off, use Recent Inquiry History to write manually.')
+        .setDesc('Automatically write action notes to the target yaml field after each Inquiry run. When off, use Recent Inquiry Sessions to write manually.')
         .addToggle(toggle => {
             toggle.setValue(plugin.settings.inquiryActionNotesAutoPopulate ?? false);
             toggle.onChange(async (value) => {
@@ -1693,9 +1738,107 @@ export function renderInquirySection(params: SectionParams): void {
             });
     });
 
-    new Settings(configBody)
-        .setName('Recent Inquiry History')
-        .setDesc('Keeps recent Inquiry results available for quick reopening. Older entries are removed automatically.');
+    const historyStore = new InquirySessionStore(plugin);
+    const resolveHistoryLimit = (): number => {
+        const normalized = historyStore.getConfiguredLimit();
+        if (plugin.settings.inquiryRecentSessionsLimit !== normalized) {
+            plugin.settings.inquiryRecentSessionsLimit = normalized;
+        }
+        return normalized;
+    };
+
+    const historyLimitSetting = new Settings(configBody)
+        .setName('Inquire session history')
+        .setDesc('This does not affect Inquiry Briefs. It relates only to Inquiry View rehydration, which loads previous sessions from the Session Manager Popover. Limited to a max of 100 sessions.');
+    historyLimitSetting.addDropdown(dropdown => {
+        INQUIRY_HISTORY_LIMIT_OPTIONS.forEach(option => dropdown.addOption(String(option), `${option}`));
+        const currentLimit = resolveHistoryLimit();
+        dropdown.setValue(String(currentLimit));
+        dropdown.selectEl.addClass('ert-input--sm');
+        dropdown.onChange(async value => {
+            const parsed = Number(value);
+            const nextLimit = INQUIRY_HISTORY_LIMIT_OPTIONS.includes(parsed as typeof INQUIRY_HISTORY_LIMIT_OPTIONS[number])
+                ? parsed
+                : DEFAULT_INQUIRY_HISTORY_LIMIT;
+            plugin.settings.inquiryRecentSessionsLimit = nextLimit;
+            historyStore.applyConfiguredLimit();
+            await plugin.saveSettings();
+            renderRecentSessionsPreview();
+        });
+    });
+
+    const sessionTitleByQuestionId = (): Map<string, string> => {
+        const config = normalizeInquiryPromptConfig(plugin.settings.inquiryPromptConfig);
+        const pairs = (Object.values(config) as InquiryPromptSlot[][])
+            .flat()
+            .map(slot => [slot.id, slot.label?.trim() || slot.question?.trim() || slot.id] as const);
+        return new Map(pairs);
+    };
+
+    const historyPreview = configBody.createDiv({
+        cls: [ERT_CLASSES.PREVIEW_FRAME, ERT_CLASSES.STACK, 'ert-previewFrame--flush', 'ert-session-history-preview']
+    });
+    historyPreview.createDiv({ cls: ['ert-planetary-preview-heading', 'ert-previewFrame__title'], text: 'Recent sessions' });
+    const historyList = historyPreview.createDiv({ cls: 'ert-session-history-preview__list' });
+
+    const openSessionPathIfAvailable = async (path: string | undefined): Promise<boolean> => {
+        const normalized = path?.trim();
+        if (!normalized) return false;
+        const file = plugin.app.vault.getAbstractFileByPath(normalized);
+        if (!(file instanceof TFile)) return false;
+        await openOrRevealFile(plugin.app, file);
+        return true;
+    };
+
+    const openRecentSession = async (session: InquirySession): Promise<void> => {
+        if (await openSessionPathIfAvailable(session.logPath)) return;
+        await plugin.getInquiryService().activateView();
+        const view = plugin.getInquiryService().getInquiryViews()[0];
+        if (view?.reopenSessionByKey(session.key)) return;
+        if (await openSessionPathIfAvailable(session.briefPath)) return;
+        new Notice('Unable to reopen this session right now.');
+    };
+
+    const renderRecentSessionsPreview = (): void => {
+        historyList.empty();
+        const sessions = historyStore.getRecentSessions(5);
+        if (!sessions.length) {
+            historyList.createDiv({
+                cls: 'ert-session-history-preview__empty',
+                text: 'No recent sessions yet. Run Inquiry to populate this list.'
+            });
+            return;
+        }
+        const titleMap = sessionTitleByQuestionId();
+        sessions.forEach(session => {
+            const row = historyList.createDiv({ cls: [ERT_CLASSES.OBJECT_ROW, 'ert-session-history-preview__item'] });
+            const left = row.createDiv({ cls: ERT_CLASSES.OBJECT_ROW_LEFT });
+            const questionTitle = titleMap.get(session.result.questionId) || session.result.questionId || 'Inquiry prompt';
+            left.createDiv({ cls: 'ert-session-history-preview__title', text: questionTitle });
+            const timestamp = session.createdAt || session.lastAccessed;
+            const passCountRaw = (session.result as unknown as Record<string, unknown>).executionPassCount;
+            const passCount = typeof passCountRaw === 'number' && passCountRaw > 1 ? passCountRaw : null;
+            const meta = [
+                formatSessionScopeLabel(session),
+                formatSessionProviderModel(session),
+                formatRelativeTime(timestamp),
+                passCount ? `Passes ${passCount}` : ''
+            ].filter(Boolean).join(' · ');
+            left.createDiv({ cls: ERT_CLASSES.OBJECT_ROW_META, text: meta });
+            row.setAttribute('role', 'button');
+            row.setAttribute('tabindex', '0');
+            row.setAttribute('aria-label', `Open recent session ${questionTitle}`);
+            plugin.registerDomEvent(row, 'click', () => { void openRecentSession(session); });
+            plugin.registerDomEvent(row, 'keydown', (evt: KeyboardEvent) => {
+                if (evt.key === 'Enter' || evt.key === ' ') {
+                    evt.preventDefault();
+                    void openRecentSession(session);
+                }
+            });
+        });
+    };
+
+    renderRecentSessionsPreview();
 
     void refreshClassScan();
 }

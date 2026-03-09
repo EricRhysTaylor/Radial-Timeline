@@ -397,6 +397,7 @@ export interface RadialTimelineSettings {
     outlineOutputFolder?: string;
     inquiryArtifactFolder?: string;
     inquiryAutoSave?: boolean;
+    inquiryRecentSessionsLimit?: number;
     inquirySources?: InquirySourcesSettings;
     inquiryPromptConfig?: InquiryPromptConfig;
     inquirySessionCache?: InquirySessionCacheRecord;
