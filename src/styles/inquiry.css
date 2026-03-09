@@ -126,9 +126,9 @@
 }
 
 .ert-inquiry-mode-icon {
-  opacity: 0.16;
-  pointer-events: all;
-  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  cursor: default;
   transition: opacity 180ms ease;
 }
 
@@ -137,22 +137,26 @@
   pointer-events: visiblePainted;
 }
 
-.ert-inquiry-mode-icon:hover {
-  opacity: 0.28;
-}
-
 .ert-inquiry-svg.is-mode-flow .ert-inquiry-mode-icon--flow {
   opacity: 0.36;
+  pointer-events: all;
+  cursor: pointer;
 }
 
 .ert-inquiry-svg.is-mode-depth .ert-inquiry-mode-icon--depth {
   opacity: 0.36;
+  pointer-events: all;
+  cursor: pointer;
 }
 
 .ert-inquiry-svg.is-guidance-lockout .ert-inquiry-mode-icon {
   pointer-events: none;
   cursor: default;
-  opacity: 0.1;
+}
+
+.ert-inquiry-svg.is-guidance-lockout.is-mode-flow .ert-inquiry-mode-icon--flow,
+.ert-inquiry-svg.is-guidance-lockout.is-mode-depth .ert-inquiry-mode-icon--depth {
+  opacity: 0.12;
 }
 
 .ert-inquiry-svg-frame {
@@ -1484,10 +1488,6 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
   fill: color-mix(in srgb, var(--text-muted) 86%, #d7b58e);
-}
-
-.ert-inquiry-svg.is-scene-dossier-active .ert-inquiry-mode-icon {
-  opacity: 0.09;
 }
 
 .ert-inquiry-svg.is-scene-dossier-active.is-mode-flow .ert-inquiry-mode-icon--flow,
