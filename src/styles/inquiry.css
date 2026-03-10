@@ -132,6 +132,12 @@
   transition: opacity 180ms ease;
 }
 
+.ert-inquiry-mode-icon-hit {
+  fill: transparent;
+  pointer-events: all;
+  cursor: pointer;
+}
+
 .ert-inquiry-mode-icon path {
   fill: currentColor;
   pointer-events: visiblePainted;
@@ -139,17 +145,18 @@
 
 .ert-inquiry-svg.is-mode-flow .ert-inquiry-mode-icon--flow {
   opacity: 0.36;
-  pointer-events: all;
-  cursor: pointer;
 }
 
 .ert-inquiry-svg.is-mode-depth .ert-inquiry-mode-icon--depth {
   opacity: 0.36;
-  pointer-events: all;
-  cursor: pointer;
 }
 
 .ert-inquiry-svg.is-guidance-lockout .ert-inquiry-mode-icon {
+  pointer-events: none;
+  cursor: default;
+}
+
+.ert-inquiry-svg.is-guidance-lockout .ert-inquiry-mode-icon-hit {
   pointer-events: none;
   cursor: default;
 }

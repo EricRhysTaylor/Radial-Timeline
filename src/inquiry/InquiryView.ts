@@ -1022,6 +1022,7 @@ export class InquiryView extends ItemView {
     private depthRingHit?: SVGCircleElement;
     private flowModeIconEl?: SVGSVGElement;
     private depthModeIconEl?: SVGSVGElement;
+    private modeIconToggleHit?: SVGRectElement;
     private summaryEl?: SVGTextElement;
     private verdictEl?: SVGTextElement;
     private findingsListEl?: SVGGElement;
@@ -1306,32 +1307,25 @@ export class InquiryView extends ItemView {
             if (this.isInquiryGuidanceLockout()) return;
             this.handleRingClick('depth');
         });
-        if (this.flowModeIconEl) {
-            this.registerDomEvent(this.flowModeIconEl as unknown as HTMLElement, 'click', () => {
+        if (this.modeIconToggleHit) {
+            this.registerDomEvent(this.modeIconToggleHit as unknown as HTMLElement, 'click', () => {
                 if (this.isInquiryGuidanceLockout()) return;
-                this.handleRingClick('flow');
+                this.handleModeIconToggleClick();
             });
-            this.registerDomEvent(this.flowModeIconEl as unknown as HTMLElement, 'pointerenter', () => {
+            this.registerDomEvent(this.modeIconToggleHit as unknown as HTMLElement, 'pointerenter', () => {
                 if (this.isInquiryGuidanceLockout()) return;
-                this.setHoverText(this.buildRingHoverText('flow'));
+                this.setHoverText(this.buildModeToggleHoverText());
             });
-            this.registerDomEvent(this.flowModeIconEl as unknown as HTMLElement, 'pointerleave', () => {
+            this.registerDomEvent(this.modeIconToggleHit as unknown as HTMLElement, 'pointerleave', () => {
                 if (this.isInquiryGuidanceLockout()) return;
                 this.clearHoverText();
             });
-        }
-        if (this.depthModeIconEl) {
-            this.registerDomEvent(this.depthModeIconEl as unknown as HTMLElement, 'click', () => {
+            this.registerDomEvent(this.modeIconToggleHit as unknown as HTMLElement, 'keydown', (event: Event) => {
                 if (this.isInquiryGuidanceLockout()) return;
-                this.handleRingClick('depth');
-            });
-            this.registerDomEvent(this.depthModeIconEl as unknown as HTMLElement, 'pointerenter', () => {
-                if (this.isInquiryGuidanceLockout()) return;
-                this.setHoverText(this.buildRingHoverText('depth'));
-            });
-            this.registerDomEvent(this.depthModeIconEl as unknown as HTMLElement, 'pointerleave', () => {
-                if (this.isInquiryGuidanceLockout()) return;
-                this.clearHoverText();
+                const keyboardEvent = event as KeyboardEvent;
+                if (keyboardEvent.key !== 'Enter' && keyboardEvent.key !== ' ') return;
+                keyboardEvent.preventDefault();
+                this.handleModeIconToggleClick();
             });
         }
 
@@ -3478,12 +3472,7 @@ export class InquiryView extends ItemView {
         const viewBoxHalf = MODE_ICON_VIEWBOX / 2;
         const iconGroup = createSvgGroup(parent, 'ert-inquiry-mode-icons', 0, iconOffsetY);
 
-        const createIcon = (
-            mode: InquiryMode,
-            cls: string,
-            paths: string[],
-            rotateDeg = 0
-        ): SVGSVGElement => {
+        const createIcon = (cls: string, paths: string[], rotateDeg = 0): SVGSVGElement => {
             const group = createSvgElement('svg');
             group.classList.add('ert-inquiry-mode-icon', 'ert-inquiry-mode-icon-btn', cls);
             group.setAttribute('x', String(iconX));
@@ -3492,10 +3481,7 @@ export class InquiryView extends ItemView {
             group.setAttribute('height', String(iconSize));
             group.setAttribute('viewBox', `${-viewBoxHalf} ${-viewBoxHalf} ${MODE_ICON_VIEWBOX} ${MODE_ICON_VIEWBOX}`);
             group.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-            group.setAttribute('pointer-events', 'all');
-            group.setAttribute('role', 'button');
-            group.setAttribute('tabindex', '0');
-            group.setAttribute('aria-label', mode === 'flow' ? 'Flow lens' : 'Depth lens');
+            group.setAttribute('pointer-events', 'none');
             const transformGroup = createSvgElement('g');
             if (rotateDeg) {
                 transformGroup.setAttribute('transform', `rotate(${rotateDeg})`);
@@ -3513,8 +3499,25 @@ export class InquiryView extends ItemView {
             return group as SVGSVGElement;
         };
 
-        this.flowModeIconEl = createIcon('flow', 'ert-inquiry-mode-icon--flow', FLOW_ICON_PATHS);
-        this.depthModeIconEl = createIcon('depth', 'ert-inquiry-mode-icon--depth', DEPTH_ICON_PATHS, 90);
+        this.flowModeIconEl = createIcon('ert-inquiry-mode-icon--flow', FLOW_ICON_PATHS);
+        this.depthModeIconEl = createIcon('ert-inquiry-mode-icon--depth', DEPTH_ICON_PATHS, 90);
+
+        const hit = createSvgElement('rect');
+        hit.classList.add('ert-inquiry-mode-icon-hit');
+        const hitHeight = Math.round(iconSize * 0.4);
+        const hitY = Math.round((iconSize - hitHeight) / 2);
+        hit.setAttribute('x', String(iconX));
+        hit.setAttribute('y', String(hitY));
+        hit.setAttribute('width', String(iconSize));
+        hit.setAttribute('height', String(hitHeight));
+        hit.setAttribute('rx', String(Math.round(iconSize * 0.2)));
+        hit.setAttribute('ry', String(Math.round(iconSize * 0.2)));
+        hit.setAttribute('pointer-events', 'all');
+        hit.setAttribute('tabindex', '0');
+        hit.setAttribute('role', 'button');
+        hit.setAttribute('aria-label', 'Toggle flow and depth lens');
+        iconGroup.appendChild(hit);
+        this.modeIconToggleHit = hit;
     }
 
     private buildSceneDossierLayer(parent: SVGGElement): void {
@@ -5969,6 +5972,16 @@ export class InquiryView extends ItemView {
             return;
         }
         this.setActiveLens(mode);
+    }
+
+    private handleModeIconToggleClick(): void {
+        const nextMode: InquiryMode = this.state.mode === 'flow' ? 'depth' : 'flow';
+        this.handleRingClick(nextMode);
+    }
+
+    private buildModeToggleHoverText(): string {
+        const nextMode = this.state.mode === 'flow' ? 'Depth' : 'Flow';
+        return `Switch to ${nextMode} lens.`;
     }
 
     private handleGlyphClick(): void {
