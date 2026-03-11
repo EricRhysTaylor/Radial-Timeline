@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "lastUpdated": "2026-03-03",
+  "lastUpdated": "2026-03-11",
   "integrations": [
     {
       "id": "anthropic-prompt-caching",
@@ -282,6 +282,32 @@
       "targetRelease": "shipped",
       "owner": "eric",
       "lastTouched": "2026-03-03"
+    },
+    {
+      "id": "openai-citations-annotations",
+      "relevantPluginFeatures": [
+        "inquiry"
+      ],
+      "impactAssessment": "medium",
+      "implementationStatus": "partial",
+      "implementationNotes": "Capability awareness exists in RT strategy/capability layers (OpenAI attribution is shown as provider-supported but not integrated), but runtime OpenAI parsing currently normalizes text/usage only and does not map OpenAI file/url citation annotations into Inquiry source citation results.",
+      "sourceFiles": [
+        "src/ai/caps/engineCapabilities.ts",
+        "src/inquiry/services/inquiryAdvisory.ts",
+        "src/settings/sections/AiSection.ts",
+        "src/api/openaiApi.ts",
+        "src/api/providerRouter.ts"
+      ],
+      "blockers": [
+        "No annotation-to-SourceCitation mapping in OpenAI adapters yet",
+        "Inquiry result contract not yet wired for OpenAI annotation payloads"
+      ],
+      "addedToRegistry": "2026-03-11",
+      "priority": "p1",
+      "implementationEvidence": [],
+      "targetRelease": "backlog",
+      "owner": "tbd",
+      "lastTouched": "2026-03-11"
     },
     {
       "id": "openai-reasoning-model-system-role",

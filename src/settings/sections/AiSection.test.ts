@@ -50,6 +50,12 @@ describe('AI settings models table', () => {
         expect(source.includes('GPT-5.4 < GPT-5.4 Pro')).toBe(true);
     });
 
+    it('shows GPT-5.4 Pro on Responses lane without legacy gap warning copy', () => {
+        const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
+        expect(source.includes('API lane · Responses API')).toBe(true);
+        expect(source.includes('Responses API gap for GPT-5.4 Pro')).toBe(false);
+    });
+
     it('keeps inquiry advisory hidden when no handoff context exists', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
         expect(source.includes('renderInquiryAdvisoryBanner(plugin.consumeInquiryAdvisoryHandoffContext());')).toBe(true);
@@ -58,9 +64,10 @@ describe('AI settings models table', () => {
 
     it('uses medium dropdown sizing for all AI Strategy controls', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
-        expect(source.includes("providerDropdown = dropdown;\n        dropdown.selectEl.addClass('ert-input', 'ert-input--md');")).toBe(true);
-        expect(source.includes("modelOverrideDropdown = dropdown;\n        dropdown.selectEl.addClass('ert-input', 'ert-input--md');")).toBe(true);
-        expect(source.includes("accessTierDropdown = dropdown;\n        dropdown.selectEl.addClass('ert-input', 'ert-input--md');")).toBe(true);
+        expect(source.includes('providerDropdown = dropdown;')).toBe(true);
+        expect(source.includes('modelOverrideDropdown = dropdown;')).toBe(true);
+        expect(source.includes('accessTierDropdown = dropdown;')).toBe(true);
+        expect(source.includes("dropdown.selectEl.addClass('ert-input', 'ert-input--md', 'ert-ai-strategy-select');")).toBe(true);
     });
 
     it('curates OpenAI model picker to canonical public aliases', () => {

@@ -476,7 +476,7 @@ export function renderAiSection(params: {
     const resolveExecutionLanePill = (provider: AIProviderId, modelAlias: string): string | null => {
         if (provider === 'openai') {
             if (isGpt54ProAlias(modelAlias)) {
-                return 'API lane · Chat Completions (Responses API gap for GPT-5.4 Pro)';
+                return 'API lane · Responses API';
             }
             return 'API lane · Chat Completions';
         }

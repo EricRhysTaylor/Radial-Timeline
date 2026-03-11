@@ -13,6 +13,19 @@ type OpenAiPayload = {
     top_p?: number;
 };
 
+type OpenAiResponsesPayload = {
+    model: string;
+    input: { role: 'system' | 'user'; content: { type: 'input_text'; text: string }[] }[];
+    max_output_tokens?: number;
+    text?: {
+        format:
+            | { type: 'json_object' }
+            | { type: 'json_schema'; name: string; schema: Record<string, unknown> };
+    };
+    temperature?: number;
+    top_p?: number;
+};
+
 type AnthropicPayload = {
     model: string;
     messages: { role: string; content: AnthropicContentBlock[] }[];
@@ -36,11 +49,68 @@ type GeminiPayload = {
     cachedContent?: string;
 };
 
+function toOpenAiResponsesFormat(
+    format: ProviderCallArgs['responseFormat']
+): { type: 'json_object' } | { type: 'json_schema'; name: string; schema: Record<string, unknown> } {
+    if (!format || format.type === 'json_object') {
+        return { type: 'json_object' };
+    }
+    const schemaEnvelope = format.json_schema && typeof format.json_schema === 'object'
+        ? format.json_schema
+        : {};
+    const name = typeof (schemaEnvelope as Record<string, unknown>).name === 'string'
+        ? ((schemaEnvelope as Record<string, unknown>).name as string).trim()
+        : '';
+    const schema = (schemaEnvelope as Record<string, unknown>).schema;
+    return {
+        type: 'json_schema',
+        name: name || 'ai_result',
+        schema: schema && typeof schema === 'object' ? schema as Record<string, unknown> : {}
+    };
+}
+
+export function buildOpenAiResponsesRequestPayload(
+    modelId: string,
+    callArgs: ProviderCallArgs
+): OpenAiResponsesPayload {
+    const input = callArgs.systemPrompt && modelSupportsSystemRole('openai', modelId)
+        ? [
+            { role: 'system' as const, content: [{ type: 'input_text' as const, text: callArgs.systemPrompt }] },
+            { role: 'user' as const, content: [{ type: 'input_text' as const, text: callArgs.userPrompt }] }
+        ]
+        : [{
+            role: 'user' as const,
+            content: [{
+                type: 'input_text' as const,
+                text: callArgs.systemPrompt
+                    ? `${callArgs.systemPrompt}\n\n${callArgs.userPrompt}`
+                    : callArgs.userPrompt
+            }]
+        }];
+    const payload: OpenAiResponsesPayload = {
+        model: modelId,
+        input
+    };
+    if (callArgs.maxTokens !== null && callArgs.maxTokens !== undefined) {
+        payload.max_output_tokens = callArgs.maxTokens;
+    }
+    if (callArgs.responseFormat) {
+        payload.text = { format: toOpenAiResponsesFormat(callArgs.responseFormat) };
+    }
+    if (typeof callArgs.temperature === 'number') {
+        payload.temperature = callArgs.temperature;
+    }
+    if (typeof callArgs.top_p === 'number') {
+        payload.top_p = callArgs.top_p;
+    }
+    return payload;
+}
+
 export function buildProviderRequestPayload(
     provider: AiProvider,
     modelId: string,
     callArgs: ProviderCallArgs
-): OpenAiPayload | AnthropicPayload | GeminiPayload {
+): OpenAiPayload | AnthropicPayload | GeminiPayload | OpenAiResponsesPayload {
     if (provider === 'anthropic') {
         const resolvedMaxTokens = typeof callArgs.maxTokens === 'number' ? callArgs.maxTokens : 4000;
         // Keep Anthropic payload shaping aligned with the runtime adapter.

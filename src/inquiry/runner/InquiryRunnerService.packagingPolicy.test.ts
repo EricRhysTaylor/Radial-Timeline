@@ -219,4 +219,20 @@ describe('InquiryRunnerService packaging policy', () => {
         expect(runChunkedInquiry).not.toHaveBeenCalled();
         expect(runInquiryRequest).not.toHaveBeenCalled();
     });
+
+    it('records OpenAI transport lane in trace notes for logging', () => {
+        const service = createService();
+        const trace = { notes: [] as string[] } as Record<string, unknown>;
+
+        (service.applyOpenAiTransportLaneTraceNote as (traceArg: Record<string, unknown>, response: Record<string, unknown>) => void)(
+            trace,
+            {
+                aiProvider: 'openai',
+                aiTransportLane: 'responses'
+            }
+        );
+
+        expect(trace.openAiTransportLane).toBe('responses');
+        expect(trace.notes).toContain('OpenAI transport lane: responses.');
+    });
 });

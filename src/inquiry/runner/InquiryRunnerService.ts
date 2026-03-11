@@ -111,6 +111,7 @@ type ProviderResult = {
     executionPath?: InquiryExecutionPath;
     failureStage?: InquiryFailureStage;
     tokenUsageKnown?: boolean;
+    aiTransportLane?: 'chat_completions' | 'responses';
     citations?: InquiryCitation[];
 };
 
@@ -182,6 +183,7 @@ export class InquiryRunnerService implements InquiryRunner {
                 error: response.error
             };
             this.applyResponseExecutionReporting(trace, response);
+            this.applyOpenAiTransportLaneTraceNote(trace, response);
 
             if (!response.success || !response.content || response.aiStatus !== 'success') {
                 const status = response.aiStatus || 'unknown';
@@ -246,6 +248,7 @@ export class InquiryRunnerService implements InquiryRunner {
                             error: retryResponse.error
                         };
                         this.applyResponseExecutionReporting(trace, retryResponse);
+                        this.applyOpenAiTransportLaneTraceNote(trace, retryResponse);
 
                         if (!retryResponse.success || !retryResponse.content || retryResponse.aiStatus !== 'success') {
                             const status = retryResponse.aiStatus || 'unknown';
@@ -354,6 +357,7 @@ export class InquiryRunnerService implements InquiryRunner {
                 error: response.error
             };
             this.applyResponseExecutionReporting(trace, response);
+            this.applyOpenAiTransportLaneTraceNote(trace, response);
 
             if (!response.success || !response.content || response.aiStatus !== 'success') {
                 const status = response.aiStatus || 'unknown';
@@ -424,6 +428,7 @@ export class InquiryRunnerService implements InquiryRunner {
                             error: retryResponse.error
                         };
                         this.applyResponseExecutionReporting(trace, retryResponse);
+                        this.applyOpenAiTransportLaneTraceNote(trace, retryResponse);
 
                         if (!retryResponse.success || !retryResponse.content || retryResponse.aiStatus !== 'success') {
                             const status = retryResponse.aiStatus || 'unknown';
@@ -1483,6 +1488,7 @@ export class InquiryRunnerService implements InquiryRunner {
             executionPath,
             failureStage,
             tokenUsageKnown: usageKnown,
+            aiTransportLane: run.aiTransportLane ?? run.advancedContext?.openAiTransportLane,
             citations: run.citations?.map(c => ({
                 citedText: c.citedText,
                 documentIndex: c.documentIndex,
@@ -2297,6 +2303,15 @@ export class InquiryRunnerService implements InquiryRunner {
         trace.failureStage = executionState === 'blocked_before_send'
             ? 'preflight'
             : 'provider_response_parsing';
+    }
+
+    private applyOpenAiTransportLaneTraceNote(trace: InquiryRunTrace, response: ProviderResult): void {
+        if (response.aiProvider !== 'openai' || !response.aiTransportLane) return;
+        trace.openAiTransportLane = response.aiTransportLane;
+        const note = `OpenAI transport lane: ${response.aiTransportLane}.`;
+        if (!trace.notes.includes(note)) {
+            trace.notes.push(note);
+        }
     }
 
     private inferExecutionState(response: ProviderResult): InquiryExecutionState {

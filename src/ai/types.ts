@@ -217,6 +217,8 @@ export interface ProviderExecutionResult {
     cacheUsed?: boolean;
     /** Whether the cache was a hit (reuse) or freshly created. */
     cacheStatus?: 'hit' | 'created';
+    /** OpenAI-only transport truth for runtime/log alignment. */
+    aiTransportLane?: 'chat_completions' | 'responses';
     /** Source citations from provider-level citation support (e.g. Anthropic citations). */
     citations?: SourceCitation[];
 }
@@ -334,6 +336,8 @@ export interface AIRunAdvancedContext {
     totalInputTokens?: number;
     /** Whether the Gemini cache was a hit (reuse) or freshly created. */
     cacheStatus?: 'hit' | 'created';
+    /** OpenAI-only transport truth for runtime/log alignment. */
+    openAiTransportLane?: 'chat_completions' | 'responses';
     featureModeInstructions: string;
     finalPrompt: string;
 }
@@ -350,6 +354,8 @@ export interface AIRunResult {
     warnings: string[];
     reason: string;
     requestPayload?: unknown;
+    /** OpenAI-only transport truth for runtime/log alignment. */
+    aiTransportLane?: 'chat_completions' | 'responses';
     error?: string;
     retryCount?: number;
     sanitizationNotes?: string[];

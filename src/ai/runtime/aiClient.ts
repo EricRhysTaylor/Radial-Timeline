@@ -619,6 +619,11 @@ export class AIClient {
             evidenceDocuments: estimate.useDocumentBlocks ? estimate.evidenceDocuments : undefined
         }, request.returnType, caps);
 
+        if (provider === 'openai' && execution.aiTransportLane) {
+            advancedContext.openAiTransportLane = execution.aiTransportLane;
+            setLastRunAdvanced(this.plugin, request.feature, advancedContext);
+        }
+
         // Post-execute: confirm or downgrade Gemini reuseState
         if (provider === 'google' && cacheDelimiterUsed) {
             if (execution.cacheUsed) {
@@ -661,6 +666,7 @@ export class AIClient {
                 warnings,
                 reason: modelSelection.reason,
                 requestPayload: execution.requestPayload,
+                aiTransportLane: execution.aiTransportLane,
                 error: mapErrorToUserMessage(mappedError),
                 retryCount: execution.retryCount,
                 sanitizationNotes: execution.sanitizationNotes,
@@ -699,6 +705,7 @@ export class AIClient {
                                 warnings: [...warnings, 'Initial JSON parse failed; retry succeeded.'],
                                 reason: modelSelection.reason,
                                 requestPayload: retry.requestPayload,
+                                aiTransportLane: retry.aiTransportLane,
                                 retryCount: (retry.retryCount ?? 0) + 1,
                                 sanitizationNotes: retry.sanitizationNotes,
                                 advancedContext,
@@ -724,6 +731,7 @@ export class AIClient {
                     warnings: [...warnings, 'JSON validation failed.'],
                     reason: modelSelection.reason,
                     requestPayload: execution.requestPayload,
+                    aiTransportLane: execution.aiTransportLane,
                     error: mapErrorToUserMessage(parseError),
                     retryCount: execution.retryCount,
                     sanitizationNotes: execution.sanitizationNotes,
@@ -745,6 +753,7 @@ export class AIClient {
             warnings,
             reason: modelSelection.reason,
             requestPayload: execution.requestPayload,
+            aiTransportLane: execution.aiTransportLane,
             retryCount: execution.retryCount,
             sanitizationNotes: execution.sanitizationNotes,
             advancedContext,

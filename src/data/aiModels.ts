@@ -12,7 +12,7 @@ export const CURATED_MODELS: Record<AiProvider, CuratedModel[]> = {
         {
             id: 'gpt-5.4',
             label: 'GPT-5.4',
-            guidance: "→ GPT-5.4 (1,050,000 context). GPT-5.4 Pro remains a separate lane; full multi-turn positioning is documented on the Responses API while RT currently routes OpenAI through Chat Completions. [FYI](https://platform.openai.com/docs/models)",
+            guidance: "→ GPT-5.4 (1,050,000 context). GPT-5.4 Pro remains a separate lane and now routes through OpenAI Responses in RT. [FYI](https://platform.openai.com/docs/models)",
         },
     ],
     anthropic: [

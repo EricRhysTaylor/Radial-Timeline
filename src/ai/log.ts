@@ -94,9 +94,15 @@ export function extractTokenUsage(provider: string, responseData: unknown): Toke
 
     if ((provider === 'openai' || provider === 'local') && data.usage && typeof data.usage === 'object') {
         const usage = data.usage as Record<string, unknown>;
-        const input = typeof usage.prompt_tokens === 'number' ? usage.prompt_tokens : undefined;
-        const output = typeof usage.completion_tokens === 'number' ? usage.completion_tokens : undefined;
-        const total = typeof usage.total_tokens === 'number' ? usage.total_tokens : undefined;
+        const input = typeof usage.prompt_tokens === 'number'
+            ? usage.prompt_tokens
+            : (typeof usage.input_tokens === 'number' ? usage.input_tokens : undefined);
+        const output = typeof usage.completion_tokens === 'number'
+            ? usage.completion_tokens
+            : (typeof usage.output_tokens === 'number' ? usage.output_tokens : undefined);
+        const total = typeof usage.total_tokens === 'number'
+            ? usage.total_tokens
+            : (input !== undefined && output !== undefined ? input + output : undefined);
         return { inputTokens: input, outputTokens: output, totalTokens: total };
     }
 

@@ -10412,6 +10412,7 @@ export class InquiryView extends ItemView {
             `- AI provider: ${result.aiProvider || 'unknown'}`,
             `- AI model requested: ${result.aiModelRequested || 'unknown'}`,
             `- AI model resolved: ${result.aiModelResolved || 'unknown'}`,
+            `- OpenAI transport lane: ${trace.openAiTransportLane || 'n/a'}`,
             `- AI next-run override: ${typeof result.aiModelNextRunOnly === 'boolean' ? String(result.aiModelNextRunOnly) : 'unknown'}`,
             `- Packaging: ${trace.analysisPackaging === 'singlePassOnly' ? 'singlePassOnly' : trace.analysisPackaging === 'segmented' ? 'segmented' : 'automatic'}`,
             `- AI status: ${result.aiStatus || 'unknown'}`,

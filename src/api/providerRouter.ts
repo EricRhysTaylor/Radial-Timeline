@@ -4,17 +4,18 @@
 // DEPRECATED: Legacy provider adapter; prefer aiClient entrypoints.
 import type RadialTimelinePlugin from '../main';
 import { DEFAULT_ANTHROPIC_MODEL_ID, DEFAULT_GEMINI_MODEL_ID, DEFAULT_OPENAI_MODEL_ID } from '../constants/aiDefaults';
-import { callOpenAiApi, type OpenAiApiResponse } from './openaiApi';
+import { callOpenAiApi, callOpenAiResponsesApi, type OpenAiApiResponse } from './openaiApi';
 import { callAnthropicApi, type AnthropicApiResponse } from './anthropicApi';
 import { callGeminiApi, type GeminiApiResponse } from './geminiApi';
 import { sanitizeProviderArgs, type AiProvider, type ProviderCallArgs as ProviderCallArgsBase } from './providerCapabilities';
-import { buildProviderRequestPayload } from './requestPayload';
+import { buildOpenAiResponsesRequestPayload, buildProviderRequestPayload } from './requestPayload';
 import { classifyProviderError, type AiStatus } from './providerErrors';
 import type { SourceCitation } from '../ai/types';
 import { warnLegacyAccess } from './legacyAccessGuard';
 import { getCredential } from '../ai/credentials/credentials';
 import { CACHE_BREAK_DELIMITER } from '../ai/prompts/composeEnvelope';
 import { getOrCreateGeminiCache } from './geminiCacheManager';
+import { resolveOpenAiTransportLane, type OpenAiTransportLane } from './openaiTransport';
 
 export interface ProviderCallArgs extends ProviderCallArgsBase {
   provider?: AiProvider;
@@ -41,6 +42,7 @@ export interface ProviderResult<T = unknown> {
   cacheUsed?: boolean;
   cacheStatus?: 'hit' | 'created';
   citations?: SourceCitation[];
+  aiTransportLane?: OpenAiTransportLane;
 }
 
 export async function callProvider(plugin: RadialTimelinePlugin, args: ProviderCallArgs): Promise<ProviderResult> {
@@ -81,7 +83,12 @@ export async function callProvider(plugin: RadialTimelinePlugin, args: ProviderC
     const runCall = async (callArgs: ProviderCallArgsBase): Promise<ProviderResult> => {
         const resolvedMaxTokens = typeof callArgs.maxTokens === 'number' ? callArgs.maxTokens : 4000;
         const openAiMaxTokens = callArgs.maxTokens === null ? null : resolvedMaxTokens;
-        const requestPayload = buildProviderRequestPayload(provider, requestedModelId, callArgs);
+        const openAiTransportLane = provider === 'openai'
+          ? resolveOpenAiTransportLane(requestedModelId)
+          : undefined;
+        const requestPayload = provider === 'openai' && openAiTransportLane === 'responses'
+          ? buildOpenAiResponsesRequestPayload(requestedModelId, callArgs)
+          : buildProviderRequestPayload(provider, requestedModelId, callArgs);
         if (provider === 'anthropic') {
       const apiKey = await getCredential(plugin, 'anthropic');
       const resp: AnthropicApiResponse = await callAnthropicApi(
@@ -172,6 +179,25 @@ export async function callProvider(plugin: RadialTimelinePlugin, args: ProviderC
       return { ...buildProviderResult(provider, requestedModelId, resp), requestPayload };
     }
     const apiKey = await getCredential(plugin, 'openai');
+    if (openAiTransportLane === 'responses') {
+      const resp: OpenAiApiResponse = await callOpenAiResponsesApi(
+        apiKey,
+        requestedModelId,
+        callArgs.systemPrompt || null,
+        callArgs.userPrompt,
+        openAiMaxTokens,
+        callArgs.responseFormat,
+        callArgs.temperature,
+        callArgs.top_p,
+        true,
+        true
+      );
+      return {
+        ...buildProviderResult(provider, requestedModelId, resp),
+        requestPayload,
+        aiTransportLane: openAiTransportLane
+      };
+    }
     const resp: OpenAiApiResponse = await callOpenAiApi(
       apiKey,
       requestedModelId,
@@ -185,7 +211,11 @@ export async function callProvider(plugin: RadialTimelinePlugin, args: ProviderC
       true,
       true
     );
-    return { ...buildProviderResult(provider, requestedModelId, resp), requestPayload };
+    return {
+      ...buildProviderResult(provider, requestedModelId, resp),
+      requestPayload,
+      aiTransportLane: openAiTransportLane
+    };
   };
 
   let result = await runCall(baseArgs);

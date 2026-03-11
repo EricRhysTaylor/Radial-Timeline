@@ -106,6 +106,7 @@ export interface InquiryRunTrace {
     executionPath?: InquiryExecutionPath;
     failureStage?: InquiryFailureStage;
     tokenUsageKnown?: boolean;
+    openAiTransportLane?: 'chat_completions' | 'responses';
     usage?: {
         inputTokens?: number;
         outputTokens?: number;
