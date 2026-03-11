@@ -250,9 +250,10 @@
       "addedToRegistry": "2026-03-03",
       "priority": "p0",
       "implementationEvidence": [
-        "messages\\s*=\\s*\\[\\s*\\{\\s*role:\\s*'system'",
+        "const\\s+messages\\s*=\\s*buildOpenAiChatMessages\\(",
         "!baseUrl\\s*&&\\s*openAiModelSupportsSystemRole",
-        "role:\\s*'user'\\s*,\\s*content:\\s*userPrompt"
+        "\\{\\s*role:\\s*'system'\\s*,\\s*content:\\s*systemPrompt\\s*\\}",
+        "\\{\\s*role:\\s*'user'\\s*,\\s*content:\\s*userPrompt\\s*\\}"
       ],
       "targetRelease": "shipped",
       "owner": "eric",
