@@ -1947,7 +1947,7 @@ body.rt-modal-open .ert-inquiry-svg * {
 .ert-inquiry-briefing-panel {
   position: absolute;
   top: 18px;
-  right: 24px;
+  right: auto;
   width: 260px;
   background: var(--background-secondary);
   border: 1px solid var(--background-modifier-border);
@@ -1970,7 +1970,7 @@ body.rt-modal-open .ert-inquiry-svg * {
 .ert-inquiry-engine-panel {
   position: absolute;
   top: 18px;
-  left: 88px;
+  left: auto;
   width: 320px;
   background: var(--background-secondary);
   border: 1px solid var(--background-modifier-border);

@@ -1570,6 +1570,7 @@ export class InquiryView extends ItemView {
         if (!this.enginePanelEl) return;
         this.cancelEnginePanelHide();
         this.refreshEnginePanel();
+        if (this.engineBadgeGroup) this.positionPanelNearButton(this.enginePanelEl, this.engineBadgeGroup, 'left');
         this.enginePanelEl.classList.remove('ert-hidden');
     }
 
@@ -1962,10 +1963,28 @@ export class InquiryView extends ItemView {
         return selected;
     }
 
+    /** Position an HTML panel near an SVG trigger button, anchored left or right. */
+    private positionPanelNearButton(panel: HTMLElement, button: SVGElement, align: 'left' | 'right'): void {
+        const containerRect = this.contentEl.getBoundingClientRect();
+        const btnRect = (button as unknown as Element).getBoundingClientRect();
+        if (align === 'right') {
+            // Align panel's right edge with the button's right edge
+            const rightOffset = containerRect.right - btnRect.right;
+            panel.style.left = '';
+            panel.style.right = `${Math.max(0, rightOffset)}px`;
+        } else {
+            // Align panel's left edge with the button's left edge
+            const leftOffset = btnRect.left - containerRect.left;
+            panel.style.right = '';
+            panel.style.left = `${Math.max(0, leftOffset)}px`;
+        }
+    }
+
     private showBriefingPanel(): void {
         if (!this.briefingPanelEl) return;
         this.cancelBriefingHide();
         this.refreshBriefingPanel();
+        if (this.artifactButton) this.positionPanelNearButton(this.briefingPanelEl, this.artifactButton, 'right');
         this.briefingPanelEl.classList.remove('ert-hidden');
     }
 
