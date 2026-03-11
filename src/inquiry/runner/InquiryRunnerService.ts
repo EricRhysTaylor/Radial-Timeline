@@ -2153,7 +2153,8 @@ export class InquiryRunnerService implements InquiryRunner {
             outputTokenCap,
             input.ai,
             evidenceBlocks,
-            this.getJsonSchema()
+            this.getJsonSchema(),
+            input.questionText
         );
         const trace: InquiryRunTrace = {
             systemPrompt,
@@ -2205,7 +2206,8 @@ export class InquiryRunnerService implements InquiryRunner {
             outputTokenCap,
             input.ai,
             evidenceBlocks,
-            this.getOmnibusJsonSchema()
+            this.getOmnibusJsonSchema(),
+            input.questions.map(question => question.question).join('\n')
         );
         const trace: InquiryRunTrace = {
             systemPrompt,
@@ -2227,10 +2229,11 @@ export class InquiryRunnerService implements InquiryRunner {
         outputTokens: number,
         ai: InquiryRunnerInput['ai'],
         evidenceBlocks: EvidenceBlock[],
-        jsonSchema: Record<string, unknown>
+        jsonSchema: Record<string, unknown>,
+        userQuestion?: string
     ): Promise<InquiryRunTrace['tokenEstimate']> {
         const inputChars = (systemPrompt?.length ?? 0) + (userPrompt?.length ?? 0);
-        const cacheKey = this.hashText(`${ai.provider}|${ai.modelId}|${inputChars}|${outputTokens}|${systemPrompt}|${userPrompt}`);
+        const cacheKey = this.hashText(`${ai.provider}|${ai.modelId}|${inputChars}|${outputTokens}|${systemPrompt}|${userPrompt}|${userQuestion ?? ''}`);
         const cached = this.tokenEstimateCache.get(cacheKey);
         if (cached) return cached;
 
@@ -2239,6 +2242,7 @@ export class InquiryRunnerService implements InquiryRunner {
             task: 'InquiryTraceEstimate',
             systemPrompt,
             userPrompt,
+            userQuestion,
             ai,
             jsonSchema,
             temperature: 0.2,

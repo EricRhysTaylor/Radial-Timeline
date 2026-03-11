@@ -1605,7 +1605,6 @@ export class InquiryView extends ItemView {
         this.enginePanelListEl.empty();
 
         const engine = this.getResolvedEngine();
-        const payloadSummary = this.buildEnginePayloadSummary();
         const readinessUi = this.buildReadinessUiState();
         this.lastReadinessUiState = readinessUi;
         const advisoryContext = this.buildInquiryAdvisoryContext(readinessUi);
@@ -1652,8 +1651,19 @@ export class InquiryView extends ItemView {
         idRow.createSpan({ cls: 'ert-inquiry-engine-detail-value', text: engine.modelId });
 
         const contextRow = detailsCard.createDiv({ cls: 'ert-inquiry-engine-detail-row' });
-        contextRow.createSpan({ cls: 'ert-inquiry-engine-detail-label', text: 'Context' });
+        contextRow.createSpan({ cls: 'ert-inquiry-engine-detail-label', text: 'Model context' });
         contextRow.createSpan({ cls: 'ert-inquiry-engine-detail-value', text: this.formatTokenEstimate(engine.contextWindow) });
+
+        const payloadRow = detailsCard.createDiv({ cls: 'ert-inquiry-engine-detail-row' });
+        payloadRow.createSpan({ cls: 'ert-inquiry-engine-detail-label', text: 'Payload (current)' });
+        payloadRow.createSpan({ cls: 'ert-inquiry-engine-detail-value', text: `~${this.formatTokenEstimate(readinessUi.estimateInputTokens)}` });
+
+        const safeRow = detailsCard.createDiv({ cls: 'ert-inquiry-engine-detail-row' });
+        safeRow.createSpan({ cls: 'ert-inquiry-engine-detail-label', text: 'Safe input (single pass)' });
+        safeRow.createSpan({
+            cls: 'ert-inquiry-engine-detail-value',
+            text: readinessUi.safeInputBudget > 0 ? `~${this.formatTokenEstimate(readinessUi.safeInputBudget)}` : 'n/a'
+        });
 
         // ── 4. Advisor slot ──
         const advisorSlot = this.enginePanelListEl.createDiv({ cls: 'ert-inquiry-engine-advisor-slot' });
@@ -1914,7 +1924,8 @@ export class InquiryView extends ItemView {
                 ? ` Recent run used ${passPlan.recentExactPassCount} passes.`
                 : '';
             this.enginePanelReadinessMessageEl.setText(
-                `This run is expected to require ${estimateLabel} passes. Automatic packaging will split the request.${recentRunSuffix}`
+                `Payload estimate: ~${inputLabel} against safe single-pass budget ~${safeLabel}. `
+                + `This run is expected to require ${estimateLabel} passes. Automatic packaging will split the request.${recentRunSuffix}`
             );
         } else if (readinessUi.readiness.cause === 'single_pass_limit') {
             this.enginePanelReadinessMessageEl.setText(

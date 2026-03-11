@@ -24,4 +24,11 @@ describe('InquiryRunnerService packaging integrity', () => {
         // getAnalysisPackaging must return 'segmented' when that's the setting
         expect(source).toContain("pkg === 'segmented' ? 'segmented'");
     });
+
+    it('threads userQuestion into trace token estimates so Anthropic document-block estimates include evidence', () => {
+        const source = readFileSync(resolve(process.cwd(), 'src/inquiry/runner/InquiryRunnerService.ts'), 'utf8');
+        expect(source).toMatch(/this\.buildTokenEstimate\([\s\S]*this\.getJsonSchema\(\),[\s\S]*input\.questionText/);
+        expect(source).toMatch(/this\.buildTokenEstimate\([\s\S]*this\.getOmnibusJsonSchema\(\),[\s\S]*input\.questions\.map\(question => question\.question\)\.join\('\\n'\)/);
+        expect(source).toMatch(/this\.prepareInquiryRunEstimate\([\s\S]*userQuestion,[\s\S]*ai,/);
+    });
 });

@@ -833,9 +833,11 @@ export function renderAiSection(params: {
     const resolvedPreviewPills = resolvedPreviewFrame.createDiv({ cls: 'ert-ai-resolved-preview-pills' });
     params.addAiRelatedElement(resolvedPreviewFrame);
 
+    // Forward-declared; populated after credential helpers are defined.
+    let localQuickConfigSection: HTMLElement | null = null;
 
     applyStrategyRowCopyLayout(providerSetting, 'Select the AI service that powers structural analysis and editorial insight.');
-    applyStrategyRowCopyLayout(modelOverrideSetting, 'Use Auto for deterministic latest-stable selection, or pin a specific model. Some provider lanes remain visible as support-status gaps until adapters are upgraded.');
+    applyStrategyRowCopyLayout(modelOverrideSetting, 'Use Auto for deterministic latest-stable selection, or pin a specific model.');
     applyStrategyRowCopyLayout(accessTierSetting, ACCESS_TIER_COPY);
 
     applyQuickSetupLayoutOrder();
@@ -1088,32 +1090,60 @@ export function renderAiSection(params: {
 
         const policy = aiSettings.modelPolicy;
 
+        const isLocal = provider === 'ollama';
+
         isSyncingRoutingUi = true;
         try {
             setDropdownValueSafe(providerDropdown, provider, 'openai');
 
             if (modelOverrideDropdown) {
                 modelOverrideDropdown.selectEl.empty();
-                modelOverrideDropdown.addOption('auto', 'Auto');
-                providerPickerAliases.forEach(alias => {
-                    const model = BUILTIN_MODELS.find(entry => entry.alias === alias);
-                    const label = model?.label || alias;
-                    modelOverrideDropdown?.addOption(alias, label);
-                });
-                if (provider === 'openai'
-                    && policy.type === 'pinned'
-                    && policy.pinnedAlias
-                    && isOpenAiInternalAlias(policy.pinnedAlias)
-                    && !providerPickerAliases.includes(policy.pinnedAlias)) {
-                    modelOverrideDropdown.addOption(
-                        policy.pinnedAlias,
-                        formatOpenAiInternalPinnedLabel(policy.pinnedAlias)
-                    );
+                if (isLocal) {
+                    modelOverrideDropdown.addOption('—', '—');
+                    modelOverrideDropdown.setValue('—');
+                    modelOverrideDropdown.selectEl.disabled = true;
+                } else {
+                    modelOverrideDropdown.selectEl.disabled = false;
+                    modelOverrideDropdown.addOption('auto', 'Auto');
+                    providerPickerAliases.forEach(alias => {
+                        const model = BUILTIN_MODELS.find(entry => entry.alias === alias);
+                        const label = model?.label || alias;
+                        modelOverrideDropdown?.addOption(alias, label);
+                    });
+                    if (provider === 'openai'
+                        && policy.type === 'pinned'
+                        && policy.pinnedAlias
+                        && isOpenAiInternalAlias(policy.pinnedAlias)
+                        && !providerPickerAliases.includes(policy.pinnedAlias)) {
+                        modelOverrideDropdown.addOption(
+                            policy.pinnedAlias,
+                            formatOpenAiInternalPinnedLabel(policy.pinnedAlias)
+                        );
+                    }
+                    const overrideValue = policy.type === 'pinned'
+                        ? policy.pinnedAlias || 'auto'
+                        : 'auto';
+                    setDropdownValueSafe(modelOverrideDropdown, overrideValue, 'auto');
                 }
-                const overrideValue = policy.type === 'pinned'
-                    ? policy.pinnedAlias || 'auto'
-                    : 'auto';
-                setDropdownValueSafe(modelOverrideDropdown, overrideValue, 'auto');
+            }
+
+            if (accessTierDropdown) {
+                if (isLocal) {
+                    accessTierDropdown.selectEl.empty();
+                    accessTierDropdown.addOption('—', '—');
+                    accessTierDropdown.setValue('—');
+                    accessTierDropdown.selectEl.disabled = true;
+                } else {
+                    accessTierDropdown.selectEl.disabled = false;
+                    // Restore tier options if they were replaced by "—"
+                    if (!Array.from(accessTierDropdown.selectEl.options).some(o => o.value === '1')) {
+                        accessTierDropdown.selectEl.empty();
+                        accessTierDropdown.addOption('1', 'Tier 1');
+                        accessTierDropdown.addOption('2', 'Tier 2');
+                        accessTierDropdown.addOption('3', 'Tier 3');
+                        accessTierDropdown.addOption('4', 'Tier 4');
+                    }
+                }
             }
 
             setDropdownValueSafe(executionPreferenceDropdown, aiSettings.analysisPackaging, 'automatic');
@@ -1128,16 +1158,29 @@ export function renderAiSection(params: {
         updateExecutionPreferenceNote();
         updateAiModelUpdatesDescription();
 
-        [providerSetting, modelOverrideSetting, accessTierSetting, gossamerEvidenceSetting].forEach(setting => {
+        [providerSetting, gossamerEvidenceSetting].forEach(setting => {
             setting.settingEl.toggleClass('ert-settings-hidden', false);
             setting.settingEl.toggleClass('ert-settings-visible', true);
         });
+        // Model and Access Tier stay visible but show "—" when local
+        modelOverrideSetting.settingEl.toggleClass('ert-settings-hidden', false);
+        modelOverrideSetting.settingEl.toggleClass('ert-settings-visible', true);
+        accessTierSetting.settingEl.toggleClass('ert-settings-hidden', false);
+        accessTierSetting.settingEl.toggleClass('ert-settings-visible', true);
 
-        const supportsAccessTier = provider === 'anthropic' || provider === 'openai' || provider === 'google';
-        if (supportsAccessTier) {
-            accessTierDropdown?.setValue(String(getAccessTier(provider)));
-        } else {
-            accessTierDropdown?.setValue('1');
+        if (!isLocal) {
+            const supportsAccessTier = provider === 'anthropic' || provider === 'openai' || provider === 'google';
+            if (supportsAccessTier) {
+                accessTierDropdown?.setValue(String(getAccessTier(provider)));
+            } else {
+                accessTierDropdown?.setValue('1');
+            }
+        }
+
+        // Toggle local quick-config section visibility
+        if (localQuickConfigSection) {
+            localQuickConfigSection.toggleClass('ert-settings-hidden', !isLocal);
+            localQuickConfigSection.toggleClass('ert-settings-visible', isLocal);
         }
 
         const inquiryAdvanced = getLastAiAdvancedContext(plugin, 'InquiryMode');
@@ -2038,9 +2081,187 @@ export function renderAiSection(params: {
         legacyLocalSetting.settingEl.addClass('ert-setting-full-width-input');
     }
 
+    // ── Local quick-config section (appears below preview card when Local is selected) ──
+    localQuickConfigSection = quickSetupPreviewSection.createDiv({
+        cls: [`${ERT_CLASSES.CARD}`, `${ERT_CLASSES.PANEL}`, `${ERT_CLASSES.STACK}`, 'ert-ai-local-quick-config', 'ert-settings-hidden']
+    });
+    localQuickConfigSection.createDiv({ cls: 'ert-section-title', text: 'Local LLM Configuration' });
+    localQuickConfigSection.createDiv({
+        cls: 'ert-section-desc',
+        text: 'Configure your local model server. The preview card above will update as you fill in these fields.'
+    });
+    params.addAiRelatedElement(localQuickConfigSection);
+
+    const localQuickBaseUrlSetting = new Settings(localQuickConfigSection)
+        .setName('Base URL')
+        .setDesc('The API endpoint for your local server (e.g., Ollama, LM Studio).');
+    localQuickBaseUrlSetting.addText(text => {
+        text.inputEl.addClass('ert-input--full');
+        text
+            .setPlaceholder('http://localhost:11434/v1')
+            .setValue(plugin.settings.localBaseUrl || 'http://localhost:11434/v1');
+        text.onChange(() => {
+            text.inputEl.removeClass('ert-setting-input-success', 'ert-setting-input-error');
+        });
+        plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
+            if (evt.key === 'Enter') { evt.preventDefault(); text.inputEl.blur(); }
+        });
+        plugin.registerDomEvent(text.inputEl, 'blur', () => {
+            void (async () => {
+                plugin.settings.localBaseUrl = text.getValue().trim();
+                const aiSettings = ensureCanonicalAiSettings();
+                aiSettings.connections = { ...(aiSettings.connections || {}), ollamaBaseUrl: plugin.settings.localBaseUrl };
+                await persistCanonical();
+                params.scheduleKeyValidation('local');
+                void refreshRoutingUi();
+            })();
+        });
+    });
+    localQuickBaseUrlSetting.settingEl.addClass('ert-setting-full-width-input');
+
+    let localQuickModelText: TextComponent | null = null;
+    const localQuickModelSetting = new Settings(localQuickConfigSection)
+        .setName('Model ID')
+        .setDesc('The exact model name your server expects (e.g., "llama3", "mistral-7b").');
+    localQuickModelSetting.addText(text => {
+        text.inputEl.addClass('ert-input--lg');
+        localQuickModelText = text;
+        text
+            .setPlaceholder('llama3')
+            .setValue(plugin.settings.localModelId || 'llama3');
+        text.onChange(() => {
+            text.inputEl.removeClass('ert-setting-input-success', 'ert-setting-input-error');
+        });
+        plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
+            if (evt.key === 'Enter') { evt.preventDefault(); text.inputEl.blur(); }
+        });
+        plugin.registerDomEvent(text.inputEl, 'blur', () => {
+            void (async () => {
+                plugin.settings.localModelId = text.getValue().trim();
+                await persistCanonical();
+                params.scheduleKeyValidation('local');
+                void refreshRoutingUi();
+            })();
+        });
+    });
+    localQuickModelSetting.settingEl.addClass(ERT_CLASSES.ROW);
+
+    localQuickModelSetting.addExtraButton(button => {
+        button
+            .setIcon('refresh-ccw')
+            .setTooltip('Detect installed models and auto-fill')
+            .onClick(async () => {
+                const baseUrl = plugin.settings.localBaseUrl?.trim();
+                if (!baseUrl) {
+                    new Notice('Set the Base URL first.');
+                    return;
+                }
+                button.setDisabled(true);
+                button.setIcon('loader-2');
+                try {
+                    const models = await fetchLocalModels(baseUrl, await getCredential(plugin, 'ollama'));
+                    if (!Array.isArray(models) || models.length === 0) {
+                        new Notice('No models reported by the local server.');
+                        return;
+                    }
+                    const existing = plugin.settings.localModelId?.trim();
+                    const chosen = existing && models.some(m => m.id === existing)
+                        ? models.find(m => m.id === existing)!
+                        : models[0];
+                    plugin.settings.localModelId = chosen.id;
+                    const aiSettingsInner = ensureCanonicalAiSettings();
+                    if (aiSettingsInner.modelPolicy.type === 'pinned' && aiSettingsInner.provider === 'ollama') {
+                        const alias = BUILTIN_MODELS.find(m => m.provider === 'ollama' && m.id === chosen.id)?.alias;
+                        if (alias) aiSettingsInner.modelPolicy.pinnedAlias = alias;
+                    }
+                    await persistCanonical();
+                    if (localQuickModelText) localQuickModelText.setValue(chosen.id);
+                    params.scheduleKeyValidation('local');
+                    const otherModels = models.map(m => m.id).filter(id => id !== chosen.id);
+                    const suffix = otherModels.length ? ` Also found: ${otherModels.join(', ')}.` : '';
+                    new Notice(`Using detected model "${chosen.id}".${suffix}`);
+                    void refreshRoutingUi();
+                } catch (error) {
+                    const message = error instanceof Error ? error.message : String(error);
+                    new Notice(`Unable to detect local models: ${message}`);
+                } finally {
+                    button.setDisabled(false);
+                    button.setIcon('refresh-ccw');
+                }
+            });
+    });
+
+    const localQuickInstructionsSetting = new Settings(localQuickConfigSection)
+        .setName('Custom Instructions')
+        .setDesc('Additional instructions prepended to the prompt for local model behavior tuning.');
+    localQuickInstructionsSetting.addTextArea(text => {
+        text
+            .setPlaceholder('e.g. Maintain strict JSON formatting...')
+            .setValue(plugin.settings.localLlmInstructions || '')
+            .onChange(async (value) => {
+                plugin.settings.localLlmInstructions = value;
+                await plugin.saveSettings();
+            });
+        text.inputEl.rows = 4;
+        text.inputEl.addClass('ert-textarea');
+    });
+    localQuickInstructionsSetting.settingEl.addClass('ert-setting-full-width-input');
+
+    const localQuickApiKeyDetails = localQuickConfigSection.createEl('details', {
+        cls: 'ert-ai-fold ert-ai-local-quick-key'
+    }) as HTMLDetailsElement;
+    const localQuickApiKeySummary = localQuickApiKeyDetails.createEl('summary', { text: 'API Key (usually not needed)' });
+    attachAiCollapseButton(localQuickApiKeyDetails, localQuickApiKeySummary);
+    const localQuickApiKeyBody = localQuickApiKeyDetails.createDiv({ cls: ERT_CLASSES.STACK });
+
+    const localQuickSecretIdSetting = new Settings(localQuickApiKeyBody)
+        .setName('Local saved key name')
+        .setDesc('Optional saved key name if your local gateway requires a key.');
+    localQuickSecretIdSetting.addText(text => {
+        text.inputEl.addClass('ert-input--full');
+        text.setPlaceholder('ollama-main').setValue(getCredentialSecretId(ensureCanonicalAiSettings(), 'ollama'));
+        plugin.registerDomEvent(text.inputEl, 'blur', () => {
+            void (async () => {
+                const ai = ensureCanonicalAiSettings();
+                setCredentialSecretId(ai, 'ollama', text.getValue().trim());
+                await persistCanonical();
+            })();
+        });
+    });
+    localQuickSecretIdSetting.settingEl.addClass('ert-setting-full-width-input');
+
+    if (secretStorageAvailable) {
+        const localQuickSecretSetting = new Settings(localQuickApiKeyBody)
+            .setName('Local API key')
+            .setDesc(SAVED_KEY_ENTRY_COPY);
+        localQuickSecretSetting.addText(text => {
+            text.inputEl.addClass('ert-input--full');
+            configureSensitiveInput(text.inputEl);
+            text.setPlaceholder('Optional local API key');
+            plugin.registerDomEvent(text.inputEl, 'keydown', (event: KeyboardEvent) => {
+                if (event.key === 'Enter') { event.preventDefault(); text.inputEl.blur(); }
+            });
+            plugin.registerDomEvent(text.inputEl, 'blur', () => {
+                void (async () => {
+                    const key = text.getValue().trim();
+                    if (!key) return;
+                    const ai = ensureCanonicalAiSettings();
+                    const secretId = getCredentialSecretId(ai, 'ollama');
+                    if (!secretId) { new Notice('Set a local saved key name first.'); return; }
+                    const stored = await setSecret(app, secretId, key);
+                    if (!stored) { new Notice('Unable to save local API key privately.'); return; }
+                    plugin.settings.localApiKey = '';
+                    await plugin.saveSettings();
+                    void params.scheduleKeyValidation('local');
+                })();
+            });
+        });
+        localQuickSecretSetting.settingEl.addClass('ert-setting-full-width-input');
+    }
+
     // Final section order in AI tab:
     // 1) AI Strategy
-    // 2) Preview (Active Model)
+    // 2) Preview (Active Model) + Local Quick Config (when local selected)
     // 3) Role context
     // 4) Gossamer material
     // 5) Large Manuscript Handling
