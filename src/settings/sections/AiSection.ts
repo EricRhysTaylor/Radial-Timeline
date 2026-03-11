@@ -13,10 +13,9 @@ import { buildDefaultAiSettings, mapAiProviderToLegacyProvider } from '../../ai/
 import { validateAiSettings } from '../../ai/settings/validateAiSettings';
 import { BUILTIN_MODELS } from '../../ai/registry/builtinModels';
 import { getPickerModelsForProvider, selectLatestModelByReleaseChannel } from '../../ai/registry/releaseChannels';
-import type { AvailabilityStatus } from '../../ai/registry/mergeModels';
 import { selectModel } from '../../ai/router/selectModel';
 import { computeCaps } from '../../ai/caps/computeCaps';
-import { getAIClient, getLastAiAdvancedContext } from '../../ai/runtime/aiClient';
+import { getAIClient } from '../../ai/runtime/aiClient';
 import type { InquiryAdvisoryContext } from '../../inquiry/services/inquiryAdvisory';
 import {
     getCredential,
@@ -25,7 +24,7 @@ import {
     setCredentialSecretId
 } from '../../ai/credentials/credentials';
 import { getSecret, hasSecret, isSecretStorageAvailable, setSecret } from '../../ai/credentials/secretStorage';
-import type { AccessTier, AIProviderId, AnalysisPackaging, ModelPolicy, Capability } from '../../ai/types';
+import type { AccessTier, AIProviderId, Capability } from '../../ai/types';
 import { estimateGossamerTokens, estimateInquiryTokens } from '../../ai/forecast/estimateTokensFromVault';
 
 type Provider = 'anthropic' | 'gemini' | 'openai' | 'local';
@@ -427,78 +426,76 @@ export function renderAiSection(params: {
         none: 'Disabled'
     };
 
-    const strategyLabel = (policy: ModelPolicy): string => {
-        if (policy.type === 'pinned') return 'Manual Selection';
-        if (policy.type === 'latestPro') return 'Auto (latest pro)';
-        return 'Auto (latest stable)';
-    };
-
     const formatApproxTokens = (value: number): string => {
         if (!Number.isFinite(value) || value <= 0) return 'n/a';
+        if (value >= 1_000_000) {
+            const millions = value / 1_000_000;
+            const formatted = millions >= 10 ? millions.toFixed(1) : millions.toFixed(2);
+            return `~${formatted}M`;
+        }
         if (value < 1000) return `~${Math.round(value)}`;
         const rounded = Math.round(value / 1000);
         return `~${rounded}k`;
     };
 
-    const availabilityPillText = (status: AvailabilityStatus): string => {
-        if (status === 'visible') return 'Availability · Visible';
-        if (status === 'not_visible') return 'Availability · Not visible';
-        return 'Availability · Unknown';
-    };
-
-    type SupportStatus = 'available_in_rt' | 'provider_supported_not_integrated' | 'not_available';
-
-    const SUPPORT_STATUS_LABEL: Record<SupportStatus, string> = {
-        available_in_rt: 'available in RT',
-        provider_supported_not_integrated: 'provider-supported, not integrated',
-        not_available: 'not available'
-    };
-
     const OPENAI_CONTEXT_WINDOW = 1_050_000;
     const GOOGLE_CONTEXT_WINDOW = 1_048_576;
 
-    const isGpt54ProAlias = (alias: string): boolean => (
-        alias === 'gpt-5.4-pro' || alias === 'gpt-5.4-pro-2026-03-05'
-    );
+    type PreviewSignalType =
+        | 'context'
+        | 'response'
+        | 'manuscriptCitations'
+        | 'contextCompare';
 
-    const resolveManuscriptCitationStatus = (provider: AIProviderId): SupportStatus => {
-        if (provider === 'anthropic') return 'available_in_rt';
-        if (provider === 'openai') return 'provider_supported_not_integrated';
-        if (provider === 'google') return 'not_available';
-        return 'not_available';
-    };
+    interface PreviewSignal {
+        type: PreviewSignalType;
+        text: string;
+    }
 
-    const resolveGroundedAttributionStatus = (provider: AIProviderId): SupportStatus => {
-        if (provider === 'openai') return 'available_in_rt';
-        if (provider === 'google') return 'provider_supported_not_integrated';
-        return 'not_available';
-    };
+    const PREVIEW_SIGNAL_PRIORITY: readonly PreviewSignalType[] = [
+        'context',
+        'response',
+        'manuscriptCitations',
+        'contextCompare'
+    ] as const;
+    const MAX_PREVIEW_SIGNALS = 4;
 
-    const resolveExecutionLanePill = (provider: AIProviderId, modelAlias: string): string | null => {
-        if (provider === 'openai') {
-            if (isGpt54ProAlias(modelAlias)) {
-                return 'API lane · Responses API';
-            }
-            return 'API lane · Chat Completions';
+    const resolvePreviewSignals = (state: {
+        provider: AIProviderId;
+        maxInputTokens: number | null;
+        maxOutputTokens: number | null;
+    }): string[] => {
+        const candidates: PreviewSignal[] = [];
+        candidates.push({
+            type: 'context',
+            text: `Context · ${state.maxInputTokens ? formatApproxTokens(state.maxInputTokens) : 'n/a'}`
+        });
+        candidates.push({
+            type: 'response',
+            text: `Response · ${state.maxOutputTokens ? `${formatApproxTokens(state.maxOutputTokens)} / pass` : 'n/a'}`
+        });
+
+        if (state.provider === 'anthropic') {
+            candidates.push({
+                type: 'manuscriptCitations',
+                text: 'Manuscript citations'
+            });
         }
-        if (provider === 'anthropic') return 'API lane · Anthropic Messages';
-        if (provider === 'google') return 'API lane · Gemini generateContent';
-        return null;
-    };
 
-    const resolveProviderAuditPills = (provider: AIProviderId, modelAlias: string): string[] => {
-        const manuscriptStatus = SUPPORT_STATUS_LABEL[resolveManuscriptCitationStatus(provider)];
-        const groundedStatus = SUPPORT_STATUS_LABEL[resolveGroundedAttributionStatus(provider)];
-        const pills = [
-            `Manuscript citations · ${manuscriptStatus}`,
-            `Grounded/tool attribution · ${groundedStatus}`
-        ];
-        const lane = resolveExecutionLanePill(provider, modelAlias);
-        if (lane) pills.push(lane);
-        if (provider === 'openai' || provider === 'google') {
-            pills.push(`Context compare · OpenAI ${OPENAI_CONTEXT_WINDOW.toLocaleString()} vs Google ${GOOGLE_CONTEXT_WINDOW.toLocaleString()}`);
+        if (state.provider === 'openai' || state.provider === 'google') {
+            candidates.push({
+                type: 'contextCompare',
+                text: `Context compare · OpenAI ${formatApproxTokens(OPENAI_CONTEXT_WINDOW)} > Gemini ${formatApproxTokens(GOOGLE_CONTEXT_WINDOW)}`
+            });
         }
-        return pills;
+
+        const allowed = new Set<PreviewSignalType>(PREVIEW_SIGNAL_PRIORITY);
+        const sorted = candidates
+            .filter(signal => allowed.has(signal.type))
+            .sort((left, right) => PREVIEW_SIGNAL_PRIORITY.indexOf(left.type) - PREVIEW_SIGNAL_PRIORITY.indexOf(right.type))
+            .slice(0, MAX_PREVIEW_SIGNALS)
+            .map(signal => signal.text);
+        return sorted;
     };
 
     const getProviderAllowedAliases = (provider: AIProviderId): string[] =>
@@ -728,27 +725,58 @@ export function renderAiSection(params: {
         attr: { 'data-ert-role': 'ai-setting:inquiry-advisory' }
     });
 
-    const formatExpectedPassCopy = (passCount: number): string => {
-        if (passCount <= 1) return 'Single pass expected';
-        return `${passCount} passes expected`;
+    interface InquiryAdvisoryPresentation {
+        reasonLine: string;
+        exampleLines: string[];
+        suggestedEngineLine: string;
+    }
+
+    const renderInquiryAdvisoryReasonLine = (context: InquiryAdvisoryContext): string => {
+        if (context.recommendation.reasonCode === 'sources_preferred') {
+            return 'Direct manuscript citations are available with this engine.';
+        }
+        if (context.recommendation.reasonCode === 'single_pass_preferred') {
+            return 'This engine can fit the current corpus in one pass.';
+        }
+        if (context.recommendation.reasonCode === 'cost_reuse_preferred') {
+            return 'This engine supports corpus reuse for repeated runs.';
+        }
+        return 'Use this when you want deeper reasoning for difficult structural analysis.';
     };
 
-    const formatAdvisoryTimestamp = (createdAt: string): string => {
-        const parsed = Date.parse(createdAt);
-        if (!Number.isFinite(parsed)) return createdAt;
-        try {
-            return new Intl.DateTimeFormat(undefined, {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric',
-                hour: 'numeric',
-                minute: '2-digit',
-                timeZoneName: 'short'
-            }).format(new Date(parsed));
-        } catch {
-            return new Date(parsed).toLocaleString();
+    const renderInquiryAdvisoryExampleLines = (context: InquiryAdvisoryContext): string[] => {
+        if (context.recommendation.reasonCode === 'sources_preferred') {
+            return [
+                'Finding',
+                'Continuity drift appears across adjacent scenes.',
+                'Source',
+                `${context.focusLabel} · scene excerpt`
+            ];
         }
+        if (context.recommendation.reasonCode === 'single_pass_preferred') {
+            const currentPasses = Math.max(1, context.corpus.expectedPassCount);
+            return [
+                `Current setup · ~${currentPasses} passes`,
+                'Suggested engine · 1 pass'
+            ];
+        }
+        if (context.recommendation.reasonCode === 'cost_reuse_preferred') {
+            return [
+                'Repeated runs resend the corpus',
+                'Reuse keeps repeated runs lighter'
+            ];
+        }
+        return [
+            'Use for difficult structural tradeoffs.',
+            'Deeper reasoning helps with causality checks.'
+        ];
     };
+
+    const presentInquiryAdvisory = (context: InquiryAdvisoryContext): InquiryAdvisoryPresentation => ({
+        reasonLine: renderInquiryAdvisoryReasonLine(context),
+        exampleLines: renderInquiryAdvisoryExampleLines(context),
+        suggestedEngineLine: `Suggested engine · ${context.recommendation.providerLabel} · ${context.recommendation.modelLabel}`
+    });
 
     const renderInquiryAdvisoryBanner = (context: InquiryAdvisoryContext | null): void => {
         inquiryAdvisoryFrame.empty();
@@ -760,11 +788,12 @@ export function renderAiSection(params: {
 
         inquiryAdvisoryFrame.toggleClass('ert-settings-hidden', false);
         inquiryAdvisoryFrame.toggleClass('ert-settings-visible', true);
+        const presentation = presentInquiryAdvisory(context);
 
         const header = inquiryAdvisoryFrame.createDiv({ cls: 'ert-ai-inquiry-advisory-header' });
-        header.createDiv({
-            cls: 'ert-ai-inquiry-advisory-kicker',
-            text: 'Based on current Inquiry session'
+        header.createEl('h4', {
+            cls: 'ert-ai-inquiry-advisory-title',
+            text: 'Inquiry Advisor'
         });
         const dismissButton = header.createEl('button', {
             cls: 'ert-ai-inquiry-advisory-dismiss',
@@ -777,30 +806,12 @@ export function renderAiSection(params: {
         });
 
         const body = inquiryAdvisoryFrame.createDiv({ cls: 'ert-ai-inquiry-advisory-body' });
-        body.createDiv({
-            cls: 'ert-ai-inquiry-advisory-line',
-            text: `Current engine: ${context.resolvedEngine.providerLabel} · ${context.resolvedEngine.modelLabel}`
+        body.createDiv({ cls: 'ert-ai-inquiry-advisory-reason', text: presentation.reasonLine });
+        const example = body.createDiv({ cls: 'ert-ai-inquiry-advisory-example' });
+        presentation.exampleLines.forEach(line => {
+            example.createDiv({ cls: 'ert-ai-inquiry-advisory-example-line', text: line });
         });
-        body.createDiv({
-            cls: 'ert-ai-inquiry-advisory-line',
-            text: `Corpus estimate: ${formatApproxTokens(context.corpus.estimatedInputTokens)} tokens · ${formatExpectedPassCopy(context.corpus.expectedPassCount)}`
-        });
-        body.createDiv({
-            cls: 'ert-ai-inquiry-advisory-line',
-            text: context.recommendation.currentEngineBehavior
-        });
-        body.createDiv({
-            cls: 'ert-ai-inquiry-advisory-line',
-            text: `Suggestion: ${context.recommendation.providerLabel} · ${context.recommendation.modelLabel}`
-        });
-        body.createDiv({
-            cls: 'ert-ai-inquiry-advisory-line ert-ai-inquiry-advisory-line--reason',
-            text: context.recommendation.message
-        });
-        body.createDiv({
-            cls: 'ert-ai-inquiry-advisory-line',
-            text: `Snapshot captured: ${formatAdvisoryTimestamp(context.createdAt)}`
-        });
+        body.createDiv({ cls: 'ert-ai-inquiry-advisory-suggestion', text: presentation.suggestedEngineLine });
     };
 
     renderInquiryAdvisoryBanner(plugin.consumeInquiryAdvisoryHandoffContext());
@@ -859,25 +870,12 @@ export function renderAiSection(params: {
     };
 
     interface ResolvedPreviewRenderState {
-        modelKey: string;
         provider: AIProviderId;
-        modelId: string;
         modelLabel: string;
         modelAlias: string;
-        strategyPill: string;
-        analysisPackaging: AnalysisPackaging;
         maxInputTokens: number | null;
         maxOutputTokens: number | null;
-        reasonDetails: string;
-        warnings: string[];
-        availabilityStatus: AvailabilityStatus;
-        showAvailabilityPill: boolean;
-        passCount: number | null;
-        errorMessage?: string;
     }
-
-    let activeResolvedPreviewKey = '';
-    let resolvedPreviewState: ResolvedPreviewRenderState | null = null;
 
     const createResolvedPreviewPill = (container: HTMLElement, text: string): void => {
         container.createSpan({
@@ -886,43 +884,12 @@ export function renderAiSection(params: {
         });
     };
 
-    const splitResolvedPreviewPills = (pillTexts: string[]): [string[], string[]] => {
-        if (pillTexts.length <= 3) return [pillTexts, []];
-
-        const weights = pillTexts.map(text => text.trim().length + 10);
-        const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
-        const targetFirstRowWeight = totalWeight * 0.6;
-
-        let runningWeight = 0;
-        let bestSplitIndex = 1;
-        let bestScore = Number.POSITIVE_INFINITY;
-        for (let index = 1; index < pillTexts.length; index += 1) {
-            runningWeight += weights[index - 1];
-            const firstRowWeight = runningWeight;
-            const secondRowWeight = totalWeight - runningWeight;
-            const penalty = firstRowWeight < secondRowWeight ? totalWeight : 0;
-            const score = Math.abs(firstRowWeight - targetFirstRowWeight) + penalty;
-            if (score < bestScore) {
-                bestScore = score;
-                bestSplitIndex = index;
-            }
-        }
-
-        return [pillTexts.slice(0, bestSplitIndex), pillTexts.slice(bestSplitIndex)];
-    };
-
     const renderResolvedPreviewPills = (pillTexts: string[]): void => {
         resolvedPreviewPills.empty();
         if (!pillTexts.length) return;
 
-        const [firstRow, secondRow] = splitResolvedPreviewPills(pillTexts);
         const firstRowEl = resolvedPreviewPills.createDiv({ cls: 'ert-ai-resolved-preview-pill-row' });
-        firstRow.forEach(text => createResolvedPreviewPill(firstRowEl, text));
-
-        if (secondRow.length) {
-            const secondRowEl = resolvedPreviewPills.createDiv({ cls: 'ert-ai-resolved-preview-pill-row' });
-            secondRow.forEach(text => createResolvedPreviewPill(secondRowEl, text));
-        }
+        pillTexts.forEach(text => createResolvedPreviewPill(firstRowEl, text));
     };
 
     const resolveReasoningDepthComparator = (state: ResolvedPreviewRenderState): { label: string; value: string } | null => {
@@ -944,9 +911,6 @@ export function renderAiSection(params: {
     };
 
     const renderResolvedPreview = (state: ResolvedPreviewRenderState): void => {
-        resolvedPreviewState = state;
-        activeResolvedPreviewKey = state.modelKey;
-
         resolvedPreviewKicker.setText('PREVIEW (ACTIVE MODEL)');
         resolvedPreviewModel.setText(state.modelLabel);
         const providerDetail = `${providerLabel[state.provider]} · ${state.modelLabel}`;
@@ -963,57 +927,14 @@ export function renderAiSection(params: {
             resolvedPreviewComparator.toggleClass('ert-settings-hidden', true);
         }
 
-        const previewPills = [
-            state.strategyPill,
-            state.analysisPackaging === 'singlePassOnly' ? 'Single-pass only'
-                : state.analysisPackaging === 'segmented' ? 'Segmented'
-                : 'Automatic Packaging',
-            `Input · ${state.maxInputTokens ? formatApproxTokens(state.maxInputTokens) : 'n/a'}`,
-            `Response · ${state.maxOutputTokens ? `${formatApproxTokens(state.maxOutputTokens)} / pass` : 'n/a'}`
-        ];
-
-        if (state.passCount && state.passCount > 1) {
-            previewPills.push(`Passes · ${state.passCount}`);
-        }
-
-        if (state.showAvailabilityPill && state.availabilityStatus !== 'unknown') {
-            previewPills.push(availabilityPillText(state.availabilityStatus));
-        }
-
-        previewPills.push(...resolveProviderAuditPills(state.provider, state.modelAlias));
+        const previewPills = resolvePreviewSignals({
+            provider: state.provider,
+            maxInputTokens: state.maxInputTokens,
+            maxOutputTokens: state.maxOutputTokens
+        });
 
         renderResolvedPreviewPills(previewPills);
 
-    };
-
-    const snapshotProviderFor = (provider: AIProviderId): 'openai' | 'anthropic' | 'google' | null => {
-        if (provider === 'openai' || provider === 'anthropic' || provider === 'google') return provider;
-        return null;
-    };
-
-    const refreshResolvedPreviewAvailability = async (state: ResolvedPreviewRenderState): Promise<void> => {
-        if (!state.showAvailabilityPill) return;
-        const snapshotProvider = snapshotProviderFor(state.provider);
-        if (!snapshotProvider) return;
-
-        try {
-            const snapshotResult = await getAIClient(plugin).getProviderSnapshot(false);
-            if (activeResolvedPreviewKey !== state.modelKey || !resolvedPreviewState) return;
-            const status: AvailabilityStatus = !snapshotResult.snapshot
-                ? 'unknown'
-                : snapshotResult.snapshot.models.some(model =>
-                    model.provider === snapshotProvider && model.id === state.modelId
-                )
-                ? 'visible'
-                : 'not_visible';
-
-            renderResolvedPreview({
-                ...state,
-                availabilityStatus: status
-            });
-        } catch {
-            // Ignore availability lookup failures; preview stays in a known-safe state.
-        }
     };
 
     type FeatureForecast = {
@@ -1183,11 +1104,6 @@ export function renderAiSection(params: {
             localQuickConfigSection.toggleClass('ert-settings-visible', isLocal);
         }
 
-        const inquiryAdvanced = getLastAiAdvancedContext(plugin, 'InquiryMode');
-        const passCount = typeof inquiryAdvanced?.executionPassCount === 'number' && inquiryAdvanced.executionPassCount > 1
-            ? inquiryAdvanced.executionPassCount
-            : null;
-
         capacitySafeInput.valueEl.setText('Calculating...');
         capacityOutput.valueEl.setText('Calculating...');
         capacityInquiryToken.setText('Calculating...');
@@ -1231,23 +1147,13 @@ export function renderAiSection(params: {
                 return `${passes} passes expected`;
             };
             const previewState: ResolvedPreviewRenderState = {
-                modelKey: `${provider}:${estimate.model.id}`,
                 provider,
-                modelId: estimate.model.id,
                 modelLabel: estimate.model.label,
                 modelAlias: estimate.model.alias,
-                strategyPill: strategyLabel(policy),
-                analysisPackaging: aiSettings.analysisPackaging,
                 maxInputTokens: estimate.maxInputTokens,
                 maxOutputTokens: estimate.maxOutputTokens,
-                reasonDetails: estimate.modelSelectionReason,
-                warnings: estimate.warnings,
-                availabilityStatus: 'unknown',
-                showAvailabilityPill: true,
-                passCount
             };
             renderResolvedPreview(previewState);
-            void refreshResolvedPreviewAvailability(previewState);
             setTokenDisplay(capacitySafeInput.valueEl, `~${safeBudgetTokens.toLocaleString()}`, 'tokens (safe window)');
             setTokenDisplay(capacityOutput.valueEl, `~${estimate.maxOutputTokens.toLocaleString()}`, 'tokens');
 
@@ -1319,24 +1225,13 @@ export function renderAiSection(params: {
                 // Near-limit indicator (show whenever >70%, regardless of fit)
                 nearLimitEl.toggleClass('ert-settings-hidden', !nearLimit);
             });
-        } catch (error) {
-            const message = error instanceof Error ? error.message : String(error);
+        } catch {
             renderResolvedPreview({
-                modelKey: `${provider}:unresolved`,
                 provider,
-                modelId: 'unresolved',
                 modelLabel: 'No eligible model',
                 modelAlias: providerLabel[provider],
-                strategyPill: strategyLabel(policy),
-                analysisPackaging: aiSettings.analysisPackaging,
                 maxInputTokens: null,
-                maxOutputTokens: null,
-                reasonDetails: message,
-                warnings: [],
-                availabilityStatus: 'unknown',
-                showAvailabilityPill: false,
-                passCount,
-                errorMessage: message
+                maxOutputTokens: null
             });
             capacitySafeInput.valueEl.setText('Unavailable');
             capacityOutput.valueEl.setText('Unavailable');

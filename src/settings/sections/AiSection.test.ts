@@ -34,12 +34,20 @@ describe('AI settings models table', () => {
         expect(source.includes('Summaries scale better for large manuscripts.')).toBe(false);
     });
 
-    it('renders active model preview container with wrapped config pill copy', () => {
+    it('renders active model preview with author-facing signals only', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
         expect(source.includes('PREVIEW (ACTIVE MODEL)')).toBe(true);
-        expect(source.includes('Automatic Packaging')).toBe(true);
-        expect(source.includes('Input ·')).toBe(true);
+        expect(source.includes('Context ·')).toBe(true);
         expect(source.includes('Response ·')).toBe(true);
+        expect(source.includes('Manuscript citations')).toBe(true);
+        expect(source.includes('Context compare · OpenAI')).toBe(true);
+        expect(source.includes('Automatic Packaging')).toBe(false);
+        expect(source.includes('Manual Selection')).toBe(false);
+        expect(source.includes('Availability ·')).toBe(false);
+        expect(source.includes('API lane ·')).toBe(false);
+        expect(source.includes('provider-supported, not integrated')).toBe(false);
+        expect(source.includes('not available')).toBe(false);
+        expect(source.includes('Grounded/tool attribution')).toBe(false);
         expect(source.includes('Best for')).toBe(false);
     });
 
@@ -50,16 +58,23 @@ describe('AI settings models table', () => {
         expect(source.includes('GPT-5.4 < GPT-5.4 Pro')).toBe(true);
     });
 
-    it('shows GPT-5.4 Pro on Responses lane without legacy gap warning copy', () => {
+    it('keeps preview context comparison factual for OpenAI vs Gemini windows', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
-        expect(source.includes('API lane · Responses API')).toBe(true);
-        expect(source.includes('Responses API gap for GPT-5.4 Pro')).toBe(false);
+        expect(source.includes('OPENAI_CONTEXT_WINDOW = 1_050_000')).toBe(true);
+        expect(source.includes('GOOGLE_CONTEXT_WINDOW = 1_048_576')).toBe(true);
+        expect(source.includes('Context compare · OpenAI')).toBe(true);
     });
 
-    it('marks OpenAI grounded attribution as available and Gemini as provider-supported-not-integrated', () => {
+    it('renders inquiry advisory as compact reason plus example mapping', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
-        expect(source.includes("if (provider === 'openai') return 'available_in_rt';")).toBe(true);
-        expect(source.includes("if (provider === 'google') return 'provider_supported_not_integrated';")).toBe(true);
+        expect(source.includes('presentInquiryAdvisory')).toBe(true);
+        expect(source.includes('renderInquiryAdvisoryReasonLine')).toBe(true);
+        expect(source.includes('renderInquiryAdvisoryExampleLines')).toBe(true);
+        expect(source.includes('Inquiry Advisor')).toBe(true);
+        expect(source.includes('Suggested engine ·')).toBe(true);
+        expect(source.includes('Current engine:')).toBe(false);
+        expect(source.includes('Corpus estimate:')).toBe(false);
+        expect(source.includes('Snapshot captured:')).toBe(false);
     });
 
     it('keeps inquiry advisory hidden when no handoff context exists', () => {
