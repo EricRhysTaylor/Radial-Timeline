@@ -14,33 +14,7 @@ describe('buildGossamerEvidenceDocument', () => {
         getFileCache: (target: TFile) => ({ frontmatter: frontmatterByPath[target.path] || {} }),
     } as unknown as MetadataCache);
 
-    it('uses Summary fields in summaries mode', async () => {
-        const raw = `---
-Class: Scene
-id: scn_a1b2c3d4
-Summary: Frontmatter summary
----
-This body should not appear in summaries mode.`;
-
-        const result = await buildGossamerEvidenceDocument({
-            sceneFiles: [sceneFile],
-            vault: makeVault({ [sceneFile.path]: raw }),
-            metadataCache: makeMetadataCache({
-                [sceneFile.path]: {
-                    Class: 'scene',
-                    id: 'scn_a1b2c3d4',
-                    Summary: 'Frontmatter summary'
-                }
-            }),
-            evidenceMode: 'summaries'
-        });
-
-        expect(result.text).toContain('Frontmatter summary');
-        expect(result.text).not.toContain('This body should not appear in summaries mode.');
-        expect(result.text).toContain('(scn_a1b2c3d4)');
-    });
-
-    it('uses cleaned scene bodies in bodies mode', async () => {
+    it('always uses cleaned scene bodies (no summary mode)', async () => {
         const raw = `---
 Class: Scene
 id: scn_deadbeef
@@ -61,14 +35,40 @@ More body.`;
                     Summary: 'Frontmatter summary'
                 }
             }),
-            evidenceMode: 'bodies'
         });
 
+        // Bodies are included and cleaned
         expect(result.text).toContain('Visible body.');
         expect(result.text).toContain('More body.');
         expect(result.text).not.toContain('Class: Scene');
         expect(result.text).not.toContain('hidden');
         expect(result.text).not.toContain('remove');
         expect(result.text).toContain('(scn_deadbeef)');
+        // Summaries are never used as evidence content
+        expect(result.text).not.toContain('Frontmatter summary');
+    });
+
+    it('does not accept an evidenceMode parameter', () => {
+        // The function signature must not include evidenceMode — bodies-only is the only path.
+        expect(buildGossamerEvidenceDocument.length).toBeLessThanOrEqual(1);
+    });
+
+    it('returns empty document when no scenes have body content', async () => {
+        const raw = `---
+Class: Scene
+Summary: Summary only scene
+---`;
+
+        const result = await buildGossamerEvidenceDocument({
+            sceneFiles: [sceneFile],
+            vault: makeVault({ [sceneFile.path]: raw }),
+            metadataCache: makeMetadataCache({
+                [sceneFile.path]: { Class: 'scene', Summary: 'Summary only scene' }
+            }),
+        });
+
+        expect(result.includedScenes).toBe(0);
+        expect(result.totalScenes).toBe(1);
+        expect(result.text).toContain('No scene body content available.');
     });
 });

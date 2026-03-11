@@ -6,7 +6,6 @@ import { normalizeScanRootPatterns, resolveScanRoots, toVaultRoot } from '../../
 import { cleanEvidenceBody } from '../../inquiry/utils/evidenceCleaning';
 import { isPathIncludedByInquiryBooks, resolveInquiryBookResolution } from '../../inquiry/services/bookResolution';
 import { getSortedSceneFiles } from '../../utils/manuscript';
-import type { GossamerEvidenceMode } from '../../gossamer/evidence/buildGossamerEvidence';
 import { buildGossamerEvidenceDocument } from '../../gossamer/evidence/buildGossamerEvidence';
 import type { InquiryScope } from '../../inquiry/state';
 import type { TokenEstimateMethod } from '../tokens/inputTokenEstimate';
@@ -37,8 +36,6 @@ export interface InquiryTokenEstimate {
 export interface GossamerTokenEstimate {
     estimatedInputTokens: number;
     evidenceChars: number;
-    evidenceMode: GossamerEvidenceMode;
-    evidenceLabel: string;
     sceneCount: number;
     includedSceneCount: number;
 }
@@ -330,11 +327,14 @@ export async function estimateInquiryTokens(params: {
     };
 }
 
+/**
+ * Estimate Gossamer input tokens from scene bodies.
+ * Always reads full scene body content — no summary mode.
+ */
 export async function estimateGossamerTokens(params: {
     plugin: RadialTimelinePlugin;
     vault: Vault;
     metadataCache: MetadataCache;
-    evidenceMode: GossamerEvidenceMode;
     frontmatterMappings?: Record<string, string>;
     promptOverheadTokens?: number;
 }): Promise<GossamerTokenEstimate> {
@@ -343,18 +343,14 @@ export async function estimateGossamerTokens(params: {
         sceneFiles,
         vault: params.vault,
         metadataCache: params.metadataCache,
-        evidenceMode: params.evidenceMode,
         frontmatterMappings: params.frontmatterMappings
     });
     const evidenceChars = evidence.includedScenes > 0 ? evidence.text.length : 0;
     const estimatedInputTokens = estimateTokensFromChars(evidenceChars, params.promptOverheadTokens);
-    const evidenceLabel = params.evidenceMode === 'summaries' ? 'Summaries' : 'Bodies';
 
     return {
         estimatedInputTokens,
         evidenceChars,
-        evidenceMode: params.evidenceMode,
-        evidenceLabel,
         sceneCount: evidence.totalScenes,
         includedSceneCount: evidence.includedScenes
     };

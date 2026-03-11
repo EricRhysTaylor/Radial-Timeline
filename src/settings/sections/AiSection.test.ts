@@ -27,11 +27,14 @@ describe('AI settings models table', () => {
         expect(source.includes('ert-ai-features-section')).toBe(false);
     });
 
-    it('keeps gossamer evidence defaulting to auto body-first behavior', () => {
+    it('locks gossamer to bodies-only with no evidence mode dropdown', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
-        expect(source.includes("dropdown.addOption('auto', 'Auto')")).toBe(true);
-        expect(source.includes('auto summary fallback')).toBe(true);
-        expect(source.includes('Summaries scale better for large manuscripts.')).toBe(false);
+        // No gossamer evidence mode dropdown exists
+        expect(source.includes('gossamerEvidenceDropdown')).toBe(false);
+        expect(source.includes('GossamerEvidencePreference')).toBe(false);
+        expect(source.includes('getGossamerEvidencePreference')).toBe(false);
+        // Forecast label confirms bodies-only
+        expect(source.includes('Full manuscript (Scene bodies)')).toBe(true);
     });
 
     it('renders active model preview with author-facing signals only', () => {

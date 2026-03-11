@@ -28,7 +28,6 @@ import type { AccessTier, AIProviderId, Capability } from '../../ai/types';
 import { estimateGossamerTokens, estimateInquiryTokens } from '../../ai/forecast/estimateTokensFromVault';
 
 type Provider = 'anthropic' | 'gemini' | 'openai' | 'local';
-type GossamerEvidencePreference = 'auto' | 'summaries' | 'bodies';
 
 export function renderAiSection(params: {
     app: App;
@@ -385,37 +384,6 @@ export function renderAiSection(params: {
                 modal.open();
             }));
     params.addAiRelatedElement(contextTemplateSetting.settingEl);
-
-    let gossamerEvidenceDropdown: DropdownComponent | null = null;
-    const getGossamerEvidencePreference = (): GossamerEvidencePreference => {
-        const mode = plugin.settings.gossamerEvidenceMode;
-        if (mode === 'summaries' || mode === 'bodies' || mode === 'auto') return mode;
-        return 'auto';
-    };
-    const gossamerEvidenceSetting = new Settings(aiSettingsGroup)
-        .setName('Gossamer material')
-        .setDesc('Auto sends current manuscript body content to AI and switches to summaries only when the selected model cannot safely accept the full body payload.')
-        .addDropdown(dropdown => {
-            gossamerEvidenceDropdown = dropdown;
-            dropdown.selectEl.addClass('ert-input', 'ert-input--md');
-            dropdown.addOption('auto', 'Auto');
-            dropdown.addOption('summaries', 'Summaries');
-            dropdown.addOption('bodies', 'Scene bodies only');
-            dropdown.onChange(async value => {
-                if (isSyncingRoutingUi) return;
-                plugin.settings.gossamerEvidenceMode = value === 'summaries'
-                    ? 'summaries'
-                    : value === 'bodies'
-                        ? 'bodies'
-                        : 'auto';
-                await persistCanonical();
-                refreshRoutingUi();
-            });
-            dropdown.setValue(getGossamerEvidencePreference());
-        });
-    gossamerEvidenceSetting.settingEl.setAttr('data-ert-role', 'ai-setting:gossamer-evidence');
-    gossamerEvidenceSetting.settingEl.addClass(ERT_CLASSES.ROW);
-    params.addAiRelatedElement(gossamerEvidenceSetting.settingEl);
 
     const capabilityFloor: Capability[] = ['longContext', 'jsonStrict', 'reasoningStrong', 'highOutputCap'];
     const providerLabel: Record<AIProviderId, string> = {
@@ -972,13 +940,10 @@ export function renderAiSection(params: {
             inquiryInputTokens = inquiryEstimate.estimatedInputTokens;
         }
 
-        const gossamerPreference = getGossamerEvidencePreference();
-        const gossamerEvidenceMode = gossamerPreference === 'summaries' ? 'summaries' : 'bodies';
         const gossamerEstimate = await estimateGossamerTokens({
             plugin,
             vault: app.vault,
             metadataCache: app.metadataCache,
-            evidenceMode: gossamerEvidenceMode,
             frontmatterMappings: plugin.settings.frontmatterMappings
         });
 
@@ -988,9 +953,7 @@ export function renderAiSection(params: {
                 estimatedInputTokens: inquiryInputTokens,
             },
             gossamer: {
-                label: gossamerPreference === 'auto'
-                    ? `Full manuscript (${gossamerEstimate.evidenceLabel} first, auto summary fallback)`
-                    : `Full manuscript (${gossamerEstimate.evidenceLabel})`,
+                label: `Full manuscript (Scene bodies)`,
                 estimatedInputTokens: gossamerEstimate.estimatedInputTokens,
             },
         };
@@ -1068,21 +1031,14 @@ export function renderAiSection(params: {
             }
 
             setDropdownValueSafe(executionPreferenceDropdown, aiSettings.analysisPackaging, 'automatic');
-            setDropdownValueSafe(
-                gossamerEvidenceDropdown,
-                getGossamerEvidencePreference(),
-                'auto'
-            );
         } finally {
             isSyncingRoutingUi = false;
         }
         updateExecutionPreferenceNote();
         updateAiModelUpdatesDescription();
 
-        [providerSetting, gossamerEvidenceSetting].forEach(setting => {
-            setting.settingEl.toggleClass('ert-settings-hidden', false);
-            setting.settingEl.toggleClass('ert-settings-visible', true);
-        });
+        providerSetting.settingEl.toggleClass('ert-settings-hidden', false);
+        providerSetting.settingEl.toggleClass('ert-settings-visible', true);
         // Model and Access Tier stay visible but show "—" when local
         modelOverrideSetting.settingEl.toggleClass('ert-settings-hidden', false);
         modelOverrideSetting.settingEl.toggleClass('ert-settings-visible', true);
@@ -2166,7 +2122,6 @@ export function renderAiSection(params: {
         quickSetupSection,
         quickSetupPreviewSection,
         roleContextSection,
-        gossamerEvidenceSetting.settingEl,
         largeHandlingFold,
         configurationFold,
         advancedFold

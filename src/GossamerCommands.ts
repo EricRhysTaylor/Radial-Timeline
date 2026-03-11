@@ -10,11 +10,7 @@ import { TimelineMode } from './modes/ModeDefinition';
 import { getSortedSceneFiles } from './utils/manuscript';
 import { buildUnifiedBeatAnalysisPrompt, getUnifiedBeatAnalysisJsonSchema, type UnifiedBeatInfo } from './ai/prompts/unifiedBeatAnalysis';
 import { getAIClient } from './ai/runtime/aiClient';
-import { buildDefaultAiSettings, mapAiProviderToLegacyProvider } from './ai/settings/aiSettings';
-import { validateAiSettings } from './ai/settings/validateAiSettings';
-import { BUILTIN_MODELS } from './ai/registry/builtinModels';
-import { selectModel } from './ai/router/selectModel';
-import { computeCaps } from './ai/caps/computeCaps';
+import { mapAiProviderToLegacyProvider } from './ai/settings/aiSettings';
 import {
   extractTokenUsage,
   formatAiLogContent,
@@ -28,8 +24,8 @@ import { ensureGossamerContentLogFolder, resolveGossamerContentLogFolder } from 
 import { resolveSelectedBeatModel } from './utils/beatsInputNormalize';
 import { isPathInFolderScope } from './utils/pathScope';
 import { FORECAST_CHARS_PER_TOKEN, FORECAST_PROMPT_OVERHEAD_TOKENS } from './ai/forecast/estimateTokensFromVault';
-import type { AccessTier, AIProviderId, AiSettingsV1, Capability } from './ai/types';
-import { buildGossamerEvidenceDocument, type GossamerEvidenceMode } from './gossamer/evidence/buildGossamerEvidence';
+import type { AIProviderId } from './ai/types';
+import { buildGossamerEvidenceDocument } from './gossamer/evidence/buildGossamerEvidence';
 
 const sanitizeSegment = (value: string | null | undefined) => {
   if (!value) return '';
@@ -41,104 +37,25 @@ const sanitizeSegment = (value: string | null | undefined) => {
     .replace(/^-+|-+$/g, '');
 };
 
-type GossamerEvidencePreference = 'auto' | 'summaries' | 'bodies';
-
 interface ResolvedGossamerEvidence {
   document: Awaited<ReturnType<typeof buildGossamerEvidenceDocument>>;
-  mode: GossamerEvidenceMode;
   label: string;
 }
 
-const GOSSAMER_CAPABILITY_FLOOR: Capability[] = ['jsonStrict', 'longContext', 'reasoningStrong', 'highOutputCap'];
-
-const estimateTokens = (text: string): number => Math.ceil(text.length / 4);
-
-const getGossamerEvidencePreference = (plugin: RadialTimelinePlugin): GossamerEvidencePreference => {
-  const mode = plugin.settings.gossamerEvidenceMode;
-  if (mode === 'summaries' || mode === 'bodies' || mode === 'auto') return mode;
-  return 'auto';
-};
-
-const resolveAccessTier = (settings: AiSettingsV1, provider: AIProviderId): AccessTier => {
-  if (provider === 'anthropic') return settings.aiAccessProfile.anthropicTier ?? 1;
-  if (provider === 'openai') return settings.aiAccessProfile.openaiTier ?? 1;
-  if (provider === 'google') return settings.aiAccessProfile.googleTier ?? 1;
-  return 1;
-};
-
-const resolveSafeGossamerInputLimit = (plugin: RadialTimelinePlugin): number | null => {
-  const aiSettings = validateAiSettings(plugin.settings.aiSettings ?? buildDefaultAiSettings()).value;
-  const provider = aiSettings.provider === 'none' ? 'openai' : aiSettings.provider;
-  const accessTier = resolveAccessTier(aiSettings, provider);
-
-  try {
-    const selection = selectModel(BUILTIN_MODELS, {
-      provider,
-      policy: aiSettings.modelPolicy,
-      requiredCapabilities: GOSSAMER_CAPABILITY_FLOOR,
-      accessTier,
-      contextTokensNeeded: 0,
-      outputTokensNeeded: 0
-    });
-    const caps = computeCaps({
-      provider,
-      model: selection.model,
-      accessTier,
-      feature: 'Gossamer',
-      overrides: aiSettings.overrides
-    });
-    return Math.max(0, Math.floor(caps.maxInputTokens * 0.8));
-  } catch {
-    return null;
-  }
-};
-
+/**
+ * Gossamer always uses full scene bodies. No summary mode, no fallback.
+ */
 const resolveGossamerEvidence = async (params: {
   plugin: RadialTimelinePlugin;
   sceneFiles: TFile[];
 }): Promise<ResolvedGossamerEvidence> => {
-  const frontmatterMappings = params.plugin.settings.frontmatterMappings;
-  const preference = getGossamerEvidencePreference(params.plugin);
-
-  if (preference === 'summaries') {
-    const document = await buildGossamerEvidenceDocument({
-      sceneFiles: params.sceneFiles,
-      vault: params.plugin.app.vault,
-      metadataCache: params.plugin.app.metadataCache,
-      evidenceMode: 'summaries',
-      frontmatterMappings
-    });
-    return { document, mode: 'summaries', label: 'Summaries (manual)' };
-  }
-
-  const bodyDocument = await buildGossamerEvidenceDocument({
+  const document = await buildGossamerEvidenceDocument({
     sceneFiles: params.sceneFiles,
     vault: params.plugin.app.vault,
     metadataCache: params.plugin.app.metadataCache,
-    evidenceMode: 'bodies',
-    frontmatterMappings
+    frontmatterMappings: params.plugin.settings.frontmatterMappings
   });
-
-  if (preference === 'bodies') {
-    return { document: bodyDocument, mode: 'bodies', label: 'Scene bodies (manual)' };
-  }
-
-  const safeLimit = resolveSafeGossamerInputLimit(params.plugin);
-  const bodyTokenEstimate = estimateTokens(bodyDocument.text || '');
-  if (safeLimit !== null && safeLimit > 0 && bodyTokenEstimate > safeLimit) {
-    const summaryDocument = await buildGossamerEvidenceDocument({
-      sceneFiles: params.sceneFiles,
-      vault: params.plugin.app.vault,
-      metadataCache: params.plugin.app.metadataCache,
-      evidenceMode: 'summaries',
-      frontmatterMappings
-    });
-    if (summaryDocument.includedScenes > 0 && summaryDocument.text.trim().length > 0) {
-      return { document: summaryDocument, mode: 'summaries', label: 'Summaries (auto fallback)' };
-    }
-  }
-
-  return { document: bodyDocument, mode: 'bodies', label: 'Scene bodies (auto)' };
+  return { document, label: 'Scene bodies' };
 };
 
 type GossamerLogPayload = {
@@ -868,15 +785,14 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       plugin,
       sceneFiles
     });
-    const evidenceMode = resolvedEvidence.mode;
     const evidenceModeLabel = resolvedEvidence.label;
     modal.setStatus(`Assembling manuscript evidence (${evidenceModeLabel})...`);
     const evidenceDocument = resolvedEvidence.document;
 
     if (!evidenceDocument.text || evidenceDocument.text.trim().length === 0 || evidenceDocument.includedScenes === 0) {
-      modal.addError(`No ${evidenceMode === 'summaries' ? 'scene summaries' : 'scene body content'} available for analysis.`);
+      modal.addError('No scene body content available for analysis.');
       modal.completeProcessing(false, 'Empty manuscript');
-      new Notice(`No ${evidenceMode === 'summaries' ? 'scene summaries' : 'scene body content'} available for analysis.`);
+      new Notice('No scene body content available for analysis.');
       return;
     }
 

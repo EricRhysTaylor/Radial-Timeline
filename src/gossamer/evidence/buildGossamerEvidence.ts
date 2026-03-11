@@ -3,14 +3,11 @@ import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { readSceneId, resolveSceneReferenceId } from '../../utils/sceneIds';
 import { cleanEvidenceBody } from '../../inquiry/utils/evidenceCleaning';
 
-export type GossamerEvidenceMode = 'summaries' | 'bodies';
-
 export interface GossamerEvidenceDocument {
     text: string;
     totalScenes: number;
     includedScenes: number;
     totalWords: number;
-    evidenceMode: GossamerEvidenceMode;
 }
 
 interface SceneEvidenceEntry {
@@ -18,14 +15,6 @@ interface SceneEvidenceEntry {
     sceneId: string;
     content: string;
 }
-
-const extractSummary = (frontmatter: Record<string, unknown>): string => {
-    const raw = frontmatter['Summary'];
-    if (Array.isArray(raw)) return raw.map(value => String(value)).join('\n').trim();
-    if (typeof raw === 'string') return raw.trim();
-    if (raw === null || raw === undefined) return '';
-    return String(raw).trim();
-};
 
 const countWords = (text: string): number =>
     text.split(/\s+/).map(word => word.trim()).filter(Boolean).length;
@@ -41,11 +30,14 @@ const getNormalizedFrontmatter = (
     return normalizeFrontmatterKeys(frontmatter, frontmatterMappings);
 };
 
+/**
+ * Build a Gossamer evidence document from scene bodies.
+ * Always reads full scene body content — no summary mode.
+ */
 export async function buildGossamerEvidenceDocument(params: {
     sceneFiles: TFile[];
     vault: Vault;
     metadataCache: MetadataCache;
-    evidenceMode: GossamerEvidenceMode;
     frontmatterMappings?: Record<string, string>;
 }): Promise<GossamerEvidenceDocument> {
     const entries: SceneEvidenceEntry[] = [];
@@ -53,13 +45,8 @@ export async function buildGossamerEvidenceDocument(params: {
         const frontmatter = getNormalizedFrontmatter(params.metadataCache, sceneFile, params.frontmatterMappings);
         const sceneId = resolveSceneReferenceId(readSceneId(frontmatter) ?? undefined, sceneFile.path);
 
-        let content = '';
-        if (params.evidenceMode === 'summaries') {
-            content = extractSummary(frontmatter);
-        } else {
-            const raw = await params.vault.read(sceneFile);
-            content = cleanEvidenceBody(raw);
-        }
+        const raw = await params.vault.read(sceneFile);
+        const content = cleanEvidenceBody(raw);
 
         if (!content) continue;
         entries.push({
@@ -71,11 +58,10 @@ export async function buildGossamerEvidenceDocument(params: {
 
     if (!entries.length) {
         return {
-            text: 'No scene evidence available for the selected mode.',
+            text: 'No scene body content available.',
             totalScenes: params.sceneFiles.length,
             includedScenes: 0,
-            totalWords: 0,
-            evidenceMode: params.evidenceMode
+            totalWords: 0
         };
     }
 
@@ -83,7 +69,7 @@ export async function buildGossamerEvidenceDocument(params: {
         '# TABLE OF CONTENTS',
         '',
         `Total Scenes: ${entries.length}`,
-        `Evidence: ${params.evidenceMode === 'summaries' ? 'Summaries' : 'Bodies'}`,
+        'Evidence: Bodies',
         '',
         '---',
         ''
@@ -103,7 +89,6 @@ export async function buildGossamerEvidenceDocument(params: {
         text,
         totalScenes: params.sceneFiles.length,
         includedScenes: entries.length,
-        totalWords,
-        evidenceMode: params.evidenceMode
+        totalWords
     };
 }
