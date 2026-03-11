@@ -1163,11 +1163,11 @@ export function renderAiSection(params: {
                 modelId: estimate.model.id
             }).then(forecasts => {
                 capacityInquiryScope.setText(forecasts.inquiry.label);
-                setTokenDisplay(capacityInquiryToken, forecasts.inquiry.estimatedInputTokens.toLocaleString(), 'tokens');
+                setTokenDisplay(capacityInquiryToken, `~${forecasts.inquiry.estimatedInputTokens.toLocaleString()}`, 'tokens (est.)');
                 capacityInquiryExpected.setText(formatForecastPasses(forecasts.inquiry.estimatedInputTokens, singlePassOnly));
 
                 capacityGossamerScope.setText(forecasts.gossamer.label);
-                setTokenDisplay(capacityGossamerToken, forecasts.gossamer.estimatedInputTokens.toLocaleString(), 'tokens');
+                setTokenDisplay(capacityGossamerToken, `~${forecasts.gossamer.estimatedInputTokens.toLocaleString()}`, 'tokens (est.)');
                 capacityGossamerExpected.setText(formatForecastPasses(forecasts.gossamer.estimatedInputTokens, singlePassOnly));
 
                 // ── Mode-aware status grid chips ──

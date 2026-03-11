@@ -42,6 +42,15 @@ export interface ResolvedInquiryEngine {
     maxOutput: number;
     selectionReason: string;
     policySource: PolicySource;
+    /**
+     * When true, the provider/model combination cannot satisfy Inquiry's
+     * capability floor.  All numeric fields (contextWindow, maxOutput) are 0
+     * and must NOT be displayed as real values.  The UI should show a
+     * blocked / unavailable state instead.
+     */
+    blocked?: boolean;
+    /** Human-readable explanation of why the engine is blocked. */
+    blockReason?: string;
 }
 
 // ── Constants ──────────────────────────────────────────────────────
@@ -117,23 +126,42 @@ export function resolveInquiryEngine(
 
     // ── Model selection ────────────────────────────────────────────
     const accessTier = resolveTier(aiSettings, provider);
+    const providerLabel = PROVIDER_LABELS[provider] ?? String(provider);
 
-    const selection = selectModel(models, {
-        provider,
-        policy,
-        requiredCapabilities: INQUIRY_REQUIRED_CAPABILITIES,
-        accessTier
-    });
+    try {
+        const selection = selectModel(models, {
+            provider,
+            policy,
+            requiredCapabilities: INQUIRY_REQUIRED_CAPABILITIES,
+            accessTier
+        });
 
-    return {
-        provider: selection.provider,
-        modelId: selection.model.id,
-        modelAlias: selection.model.alias,
-        modelLabel: selection.model.label,
-        providerLabel: PROVIDER_LABELS[selection.provider] ?? String(selection.provider),
-        contextWindow: selection.model.contextWindow,
-        maxOutput: selection.model.maxOutput,
-        selectionReason: selection.reason,
-        policySource
-    };
+        return {
+            provider: selection.provider,
+            modelId: selection.model.id,
+            modelAlias: selection.model.alias,
+            modelLabel: selection.model.label,
+            providerLabel: PROVIDER_LABELS[selection.provider] ?? String(selection.provider),
+            contextWindow: selection.model.contextWindow,
+            maxOutput: selection.model.maxOutput,
+            selectionReason: selection.reason,
+            policySource
+        };
+    } catch {
+        // Provider cannot satisfy Inquiry's capability floor (e.g. ollama/local).
+        // Return a blocked DTO with honest zeros — no fabricated numbers.
+        return {
+            provider,
+            modelId: '',
+            modelAlias: '',
+            modelLabel: 'No eligible model',
+            providerLabel,
+            contextWindow: 0,
+            maxOutput: 0,
+            selectionReason: `No model satisfies Inquiry capability floor for ${providerLabel}.`,
+            policySource,
+            blocked: true,
+            blockReason: `${providerLabel} has no model meeting Inquiry requirements.`
+        };
+    }
 }

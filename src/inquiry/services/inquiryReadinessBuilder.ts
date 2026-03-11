@@ -114,8 +114,9 @@ export function buildEnginePayloadSummary(input: BuildEnginePayloadSummaryInput)
         };
     }
     const inputLabel = formatTokenEstimate(input.snapshot.estimate.estimatedInputTokens);
+    const estTag = input.snapshot.estimate.estimationMethod === 'heuristic_chars' ? ' est.' : '';
     return {
-        text: `Payload (${contextLabel}): ~${inputLabel} in`,
+        text: `Payload (${contextLabel}): ~${inputLabel}${estTag} in`,
         inputTokens: input.snapshot.estimate.estimatedInputTokens,
         tier: getTokenTier(input.snapshot.estimate.estimatedInputTokens)
     };
@@ -230,6 +231,37 @@ export function buildReadinessUiState(input: BuildReadinessUiStateInput): Inquir
     const { snapshot, scope, focusLabel, aiSettings, resolvedEngine, hasCredential, accessTier, payloadStats, selectedSceneOverrideCount } = input;
     const provider = resolvedEngine.provider === 'none' ? 'openai' as const : resolvedEngine.provider;
     const providerLabel = resolvedEngine.providerLabel;
+
+    // If the engine itself is blocked (e.g. provider lacks Inquiry capability
+    // floor), return a definitive blocked state — no model lookup, no
+    // fabricated numbers.
+    if (resolvedEngine.blocked) {
+        return {
+            pending: false,
+            readiness: evaluateInquiryReadiness({
+                hasEligibleModel: false,
+                hasCredential,
+                analysisPackaging: aiSettings.analysisPackaging,
+                estimatedInputTokens: 0,
+                safeInputBudget: 0,
+                estimateUncertaintyTokens: 0
+            }),
+            estimateInputTokens: 0,
+            estimateMethod: 'heuristic_chars',
+            estimateUncertaintyTokens: 0,
+            safeInputBudget: 0,
+            outputBudget: INQUIRY_MAX_OUTPUT_TOKENS,
+            packaging: aiSettings.analysisPackaging,
+            hasEligibleModel: false,
+            hasCredential,
+            provider,
+            providerLabel,
+            reason: resolvedEngine.blockReason || 'No model satisfies capability floor.',
+            runScopeLabel: buildRunScopeLabel(payloadStats, selectedSceneOverrideCount, scope, focusLabel),
+            canSwitchToSummaries: false,
+            canUseSelectedScenesOnly: false
+        };
+    }
 
     // If snapshot is not yet available, return a pending state.
     if (!snapshot) {

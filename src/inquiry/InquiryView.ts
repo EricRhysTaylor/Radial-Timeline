@@ -1648,21 +1648,28 @@ export class InquiryView extends ItemView {
 
         const idRow = detailsCard.createDiv({ cls: 'ert-inquiry-engine-detail-row' });
         idRow.createSpan({ cls: 'ert-inquiry-engine-detail-label', text: 'Model ID' });
-        idRow.createSpan({ cls: 'ert-inquiry-engine-detail-value', text: engine.modelId });
+        idRow.createSpan({ cls: 'ert-inquiry-engine-detail-value', text: engine.blocked ? '—' : engine.modelId });
 
         const contextRow = detailsCard.createDiv({ cls: 'ert-inquiry-engine-detail-row' });
         contextRow.createSpan({ cls: 'ert-inquiry-engine-detail-label', text: 'Model context' });
-        contextRow.createSpan({ cls: 'ert-inquiry-engine-detail-value', text: this.formatTokenEstimate(engine.contextWindow) });
+        contextRow.createSpan({
+            cls: 'ert-inquiry-engine-detail-value',
+            text: engine.blocked ? '—' : this.formatTokenEstimate(engine.contextWindow)
+        });
 
         const payloadRow = detailsCard.createDiv({ cls: 'ert-inquiry-engine-detail-row' });
         payloadRow.createSpan({ cls: 'ert-inquiry-engine-detail-label', text: 'Payload (current)' });
-        payloadRow.createSpan({ cls: 'ert-inquiry-engine-detail-value', text: `~${this.formatTokenEstimate(readinessUi.estimateInputTokens)}` });
+        const payloadSuffix = readinessUi.estimateMethod === 'heuristic_chars' ? ' est.' : '';
+        payloadRow.createSpan({
+            cls: 'ert-inquiry-engine-detail-value',
+            text: engine.blocked ? '—' : `~${this.formatTokenEstimate(readinessUi.estimateInputTokens)}${payloadSuffix}`
+        });
 
         const safeRow = detailsCard.createDiv({ cls: 'ert-inquiry-engine-detail-row' });
         safeRow.createSpan({ cls: 'ert-inquiry-engine-detail-label', text: 'Safe input (single pass)' });
         safeRow.createSpan({
             cls: 'ert-inquiry-engine-detail-value',
-            text: readinessUi.safeInputBudget > 0 ? `~${this.formatTokenEstimate(readinessUi.safeInputBudget)}` : 'n/a'
+            text: engine.blocked ? '—' : (readinessUi.safeInputBudget > 0 ? `~${this.formatTokenEstimate(readinessUi.safeInputBudget)}` : 'n/a')
         });
 
         // ── 4. Advisor slot ──
@@ -1904,32 +1911,36 @@ export class InquiryView extends ItemView {
         this.enginePanelReadinessEl.classList.remove('is-ready', 'is-amber', 'is-error');
         this.enginePanelReadinessEl.classList.add(stateClass);
 
-        const statusText = popoverState === 'ready'
-            ? 'Ready'
-            : popoverState === 'multi-pass'
-                ? 'Multi-pass'
-                : 'Exceeds limits';
+        const engine = this.getResolvedEngine();
+        const statusText = engine.blocked
+            ? 'No working model'
+            : popoverState === 'ready'
+                ? 'Ready'
+                : popoverState === 'multi-pass'
+                    ? 'Multi-pass'
+                    : 'Exceeds limits';
         this.enginePanelReadinessStatusEl.setText(statusText);
 
         const inputLabel = this.formatTokenEstimate(readinessUi.estimateInputTokens);
+        const estTag = readinessUi.estimateMethod === 'heuristic_chars' ? ' (est.)' : '';
         const safeLabel = readinessUi.safeInputBudget > 0
             ? this.formatTokenEstimate(readinessUi.safeInputBudget)
             : 'n/a';
         const passPlan = this.getCurrentPassPlan(readinessUi);
         if (popoverState === 'ready') {
-            this.enginePanelReadinessMessageEl.setText(`Payload estimate: ~${inputLabel}. Expected to run in a single pass.`);
+            this.enginePanelReadinessMessageEl.setText(`Payload${estTag}: ~${inputLabel}. Expected to run in a single pass.`);
         } else if (popoverState === 'multi-pass') {
             const estimateLabel = passPlan.estimatedPassCount ?? passPlan.displayPassCount;
             const recentRunSuffix = passPlan.recentExactPassCount
                 ? ` Recent run used ${passPlan.recentExactPassCount} passes.`
                 : '';
             this.enginePanelReadinessMessageEl.setText(
-                `Payload estimate: ~${inputLabel} against safe single-pass budget ~${safeLabel}. `
+                `Payload${estTag}: ~${inputLabel} against safe single-pass budget ~${safeLabel}. `
                 + `This run is expected to require ${estimateLabel} passes. Automatic packaging will split the request.${recentRunSuffix}`
             );
         } else if (readinessUi.readiness.cause === 'single_pass_limit') {
             this.enginePanelReadinessMessageEl.setText(
-                `Payload estimate: ~${inputLabel} exceeds single-pass safe limit (~${safeLabel}).`
+                `Payload${estTag}: ~${inputLabel} exceeds single-pass safe limit (~${safeLabel}).`
             );
         } else {
             this.enginePanelReadinessMessageEl.setText(readinessUi.reason);
@@ -3652,6 +3663,8 @@ export class InquiryView extends ItemView {
 
     private getResolvedEngine(): ResolvedInquiryEngine {
         if (!this._resolvedEngine) {
+            // resolveInquiryEngine never throws — it returns a blocked DTO
+            // with honest zeros when the provider lacks required capabilities.
             this._resolvedEngine = resolveInquiryEngine(this.plugin, BUILTIN_MODELS);
         }
         return this._resolvedEngine;
@@ -8415,6 +8428,14 @@ export class InquiryView extends ItemView {
     private async requestEstimateSnapshot(): Promise<void> {
         const stats = this.getPayloadStats();
         const engine = this.getResolvedEngine();
+
+        // Blocked engines (e.g. ollama) cannot produce estimates — skip the
+        // snapshot request entirely and refresh displays to show the blocked state.
+        if (engine.blocked) {
+            this.refreshEstimateDisplays();
+            return;
+        }
+
         const overrides = this.getCorpusOverrideSummary();
         const manifest = this.buildCorpusManifest('estimate-snapshot');
 
@@ -9500,7 +9521,8 @@ export class InquiryView extends ItemView {
     private getPreviewTokensValue(): string {
         const snapshot = this.plugin.getInquiryEstimateService().getSnapshot();
         if (!snapshot) return 'Tokens · Estimating…';
-        return `Tokens · ~${this.formatTokenEstimate(snapshot.estimate.estimatedInputTokens)}`;
+        const estTag = snapshot.estimate.estimationMethod === 'heuristic_chars' ? ' est.' : '';
+        return `Tokens · ~${this.formatTokenEstimate(snapshot.estimate.estimatedInputTokens)}${estTag}`;
     }
 
 

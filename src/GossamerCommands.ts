@@ -27,6 +27,7 @@ import {
 import { ensureGossamerContentLogFolder, resolveGossamerContentLogFolder } from './inquiry/utils/logs';
 import { resolveSelectedBeatModel } from './utils/beatsInputNormalize';
 import { isPathInFolderScope } from './utils/pathScope';
+import { FORECAST_CHARS_PER_TOKEN, FORECAST_PROMPT_OVERHEAD_TOKENS } from './ai/forecast/estimateTokensFromVault';
 import type { AccessTier, AIProviderId, AiSettingsV1, Capability } from './ai/types';
 import { buildGossamerEvidenceDocument, type GossamerEvidenceMode } from './gossamer/evidence/buildGossamerEvidence';
 
@@ -879,9 +880,9 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       return;
     }
 
-    // Estimate tokens (rough: ~4 characters per token)
-    const estimatedTokens = Math.ceil(evidenceDocument.text.length / 4);
-    
+    // Estimate tokens: evidence chars/4 + prompt envelope overhead.
+    const estimatedTokens = Math.ceil(evidenceDocument.text.length / FORECAST_CHARS_PER_TOKEN) + FORECAST_PROMPT_OVERHEAD_TOKENS;
+
     // Update modal with manuscript info
     const manuscriptInfo: ManuscriptInfo = {
       totalScenes: evidenceDocument.totalScenes,
@@ -1171,8 +1172,9 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
     });
     const evidenceModeLabel = resolvedEvidence.label;
     const evidenceDocument = resolvedEvidence.document;
-    const estimatedTokens = Math.ceil(evidenceDocument.text.length / 4);
-    
+    // Estimate tokens: evidence chars/4 + prompt envelope overhead.
+    const estimatedTokens = Math.ceil(evidenceDocument.text.length / FORECAST_CHARS_PER_TOKEN) + FORECAST_PROMPT_OVERHEAD_TOKENS;
+
     const manuscriptInfo: ManuscriptInfo = {
       totalScenes: evidenceDocument.totalScenes,
       totalWords: evidenceDocument.totalWords,
