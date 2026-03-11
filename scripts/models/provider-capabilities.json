@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "lastUpdated": "2026-03-03",
+  "lastUpdated": "2026-03-10",
   "capabilities": [
     {
       "id": "anthropic-prompt-caching",
@@ -172,6 +172,21 @@
       "deprecationDate": null
     },
     {
+      "id": "openai-citations-annotations",
+      "provider": "openai",
+      "name": "Citations / Annotations",
+      "category": "quality",
+      "description": "OpenAI responses can return attribution annotations including file_citation and url_citation records. This is provider-supported attribution, but RT has not mapped it into Inquiry source panels yet.",
+      "availableSince": null,
+      "requiredApiVersion": null,
+      "requiredHeaders": {},
+      "documentationUrl": "https://platform.openai.com/docs/api-reference/chat/create-chat-completion",
+      "maturity": "preview",
+      "implementationComplexity": "medium",
+      "roiCategory": "quality",
+      "deprecationDate": null
+    },
+    {
       "id": "openai-reasoning-model-system-role",
       "provider": "openai",
       "name": "Reasoning Model System Role",
@@ -221,7 +236,7 @@
       "provider": "openai",
       "name": "Responses API",
       "category": "capability",
-      "description": "New stateless API replacing chat completions for some use cases. Supports built-in tools (web search, code interpreter) and simpler multi-turn patterns.",
+      "description": "Responses API supports built-in tools and multi-turn model interactions before final output. GPT-5.4 Pro is positioned on this lane; RT currently routes OpenAI through Chat Completions.",
       "availableSince": "2025-03-11",
       "requiredApiVersion": null,
       "requiredHeaders": {},
@@ -296,11 +311,11 @@
       "provider": "google",
       "name": "Search Grounding",
       "category": "quality",
-      "description": "Ground model responses with Google Search results for factual accuracy. Useful for research-oriented queries but not core manuscript analysis.",
+      "description": "Gemini grounding can return grounding metadata (chunks/supports) that maps response segments to external sources. RT does not yet map this metadata into Inquiry output.",
       "availableSince": "2024-09-24",
       "requiredApiVersion": "v1beta",
       "requiredHeaders": {},
-      "documentationUrl": "https://ai.google.dev/gemini-api/docs/grounding",
+      "documentationUrl": "https://ai.google.dev/gemini-api/docs/google-search",
       "maturity": "ga",
       "implementationComplexity": "medium",
       "roiCategory": "quality",

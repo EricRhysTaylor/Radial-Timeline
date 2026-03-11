@@ -83,6 +83,11 @@ export interface EngineCapabilities {
     modelId: string;
     modelAlias: string;
     modelLabel: string;
+    /** Direct manuscript citations in RT Inquiry (document-backed source mapping). */
+    directManuscriptCitations: EngineCapabilitySignal;
+    /** Grounded/tool attribution (for example web/file/tool citation metadata). */
+    groundedToolAttribution: EngineCapabilitySignal;
+    /** @deprecated Backward-compat alias of directManuscriptCitations. */
     sources: EngineCapabilitySignal;
     corpusReuse: EngineCapabilitySignal;
     largeContext: EngineContextCapabilitySignal;

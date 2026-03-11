@@ -13,6 +13,13 @@ export class InquiryService {
             .filter((view): view is InquiryView => view instanceof InquiryView);
     }
 
+    /** Notify all open Inquiry views that AI settings changed. */
+    notifyAiSettingsChanged(): void {
+        for (const view of this.getInquiryViews()) {
+            view.onAiSettingsChanged();
+        }
+    }
+
     async activateView(): Promise<void> {
         if (!(this.plugin.settings.enableAiSceneAnalysis ?? true)) {
             new Notice('Inquiry requires AI features to be enabled. Turn on "Enable AI LLM features" in settings.');

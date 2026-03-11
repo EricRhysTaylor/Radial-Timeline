@@ -90,7 +90,8 @@ type AdvisoryCandidate = {
     safeInputBudget: number;
     reasoningSupport: 'limited' | 'standard' | 'strong';
     structuredOutputStrength: 'limited' | 'basic' | 'strong';
-    sourcesStatus: 'available' | 'provider_supported_not_used' | 'unavailable';
+    directManuscriptCitationsStatus: 'available' | 'provider_supported_not_used' | 'unavailable';
+    groundedToolAttributionStatus: 'available' | 'provider_supported_not_used' | 'unavailable';
     corpusReuseStatus: 'available' | 'provider_supported_not_used' | 'unavailable';
 };
 
@@ -131,7 +132,8 @@ function buildCandidate(
         safeInputBudget,
         reasoningSupport: capabilities.reasoningSupport ?? 'limited',
         structuredOutputStrength: capabilities.structuredOutputStrength ?? 'limited',
-        sourcesStatus: capabilities.sources.status,
+        directManuscriptCitationsStatus: capabilities.directManuscriptCitations.status,
+        groundedToolAttributionStatus: capabilities.groundedToolAttribution.status,
         corpusReuseStatus: capabilities.corpusReuse.status
     };
 }
@@ -303,12 +305,14 @@ export function computeInquiryAdvisoryContext(input: ComputeInquiryAdvisoryInput
     let suggestion: AdvisoryCandidate | null = null;
     let message = '';
 
-    if (currentCandidate.sourcesStatus !== 'available') {
-        const sourceAlternatives = sortedAlternatives.filter(candidate => candidate.sourcesStatus === 'available');
+    if (currentCandidate.directManuscriptCitationsStatus !== 'available') {
+        const sourceAlternatives = sortedAlternatives.filter(
+            candidate => candidate.directManuscriptCitationsStatus === 'available'
+        );
         if (sourceAlternatives.length) {
             reasonCode = 'sources_preferred';
             suggestion = sourceAlternatives[0];
-            message = 'For citation-backed findings, consider an engine with Sources support:';
+            message = 'For manuscript citation-backed findings, consider an engine with direct citation support:';
         }
     }
 

@@ -2179,7 +2179,7 @@
 .ert-ui.ert-scope--settings .ert-ai-quick-grid {
   grid-template-columns: repeat(3, minmax(220px, 1fr));
   gap: var(--ert-gap-sm) var(--ert-gap-md);
-  --ert-ai-strategy-select-width-md: 14ch;
+  --ert-ai-strategy-select-width-md: 20ch;
 }
 
 /* ── AI Strategy compact cards (Step 3 grid items) ───────────────────── */
@@ -2239,6 +2239,18 @@
   max-width: var(--ert-ai-strategy-select-width-md);
   flex: 0 0 var(--ert-ai-strategy-select-width-md);
   --ert-control-width: var(--ert-ai-strategy-select-width-md);
+}
+
+.ert-ui.ert-scope--settings :is(.ert-ai-quick-grid, .ert-ai-step3-grid, .ert-ai-step-card) .setting-item.ert-ai-strategy-row > .setting-item-control :is(select, .dropdown).ert-ai-strategy-select {
+  width: 20ch;
+  min-width: 20ch;
+  max-width: 20ch;
+  flex: 0 0 20ch;
+  --ert-control-width: 20ch;
+  font-family: var(--font-monospace, ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
 }
 
 .ert-ui.ert-scope--settings :is(.ert-ai-quick-grid, .ert-ai-step3-grid, .ert-ai-step-card) .setting-item.ert-ai-strategy-row > .ert-ai-strategy-row__desc {

@@ -45,6 +45,7 @@ export const MINIMAP_TOKEN_CAP_BAR_HEIGHT = 4;
 export const MINIMAP_TOKEN_CAP_ENDCAP_HEIGHT = 10;
 export const MINIMAP_TOKEN_CAP_SPLIT_TICK_HEIGHT = MINIMAP_TOKEN_CAP_ENDCAP_HEIGHT;
 export const MINIMAP_TOKEN_CAP_SPLIT_TICK_WIDTH = 2;
+export const MINIMAP_BACKBONE_ENDCAP_OFFSET_Y = 2;
 
 export const SWEEP_RANDOM_CYCLE_MS = 2000;
 export const BACKBONE_SWEEP_WIDTH_RATIO = 0.2;
@@ -1028,11 +1029,11 @@ export class InquiryMinimapRenderer {
         this.minimapBaseline.setAttribute('y2', '0');
         if (this.minimapEndCapStart && this.minimapEndCapEnd) {
             this.minimapEndCapStart.setAttribute('x', String(baselineStart - capHalfWidth));
-            this.minimapEndCapStart.setAttribute('y', String(-capHeight));
+            this.minimapEndCapStart.setAttribute('y', String((-capHeight) + MINIMAP_BACKBONE_ENDCAP_OFFSET_Y));
             this.minimapEndCapStart.setAttribute('width', String(Math.round(capWidth)));
             this.minimapEndCapStart.setAttribute('height', String(Math.round(capHeight)));
             this.minimapEndCapEnd.setAttribute('x', String(baselineEnd - capHalfWidth));
-            this.minimapEndCapEnd.setAttribute('y', String(-capHeight));
+            this.minimapEndCapEnd.setAttribute('y', String((-capHeight) + MINIMAP_BACKBONE_ENDCAP_OFFSET_Y));
             this.minimapEndCapEnd.setAttribute('width', String(Math.round(capWidth)));
             this.minimapEndCapEnd.setAttribute('height', String(Math.round(capHeight)));
         }

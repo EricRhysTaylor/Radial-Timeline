@@ -14,6 +14,7 @@ import { isNonSceneItem } from '../utils/sceneHelpers';
 import { ERT_CLASSES } from '../ui/classes';
 import type { AIRunAdvancedContext } from '../ai/types';
 import { redactSensitiveValue } from '../ai/credentials/redactSensitive';
+import { DEFAULT_GEMINI_MODEL_ID } from '../constants/aiDefaults';
 
 export type RuntimeScope = 'current' | 'subplot' | 'all';
 export type RuntimeMode = 'local' | 'ai';
@@ -454,7 +455,7 @@ export class RuntimeProcessingModal extends Modal {
             case 'anthropic':
                 return `Anthropic (${this.plugin.settings.anthropicModelId || 'claude-sonnet-4-6'})`;
             case 'gemini':
-                return `Google Gemini (${this.plugin.settings.geminiModelId || 'gemini-2.5-flash'})`;
+                return `Google Gemini (${this.plugin.settings.geminiModelId || DEFAULT_GEMINI_MODEL_ID})`;
             case 'local':
                 const baseUrl = this.plugin.settings.localBaseUrl || 'localhost';
                 const modelId = this.plugin.settings.localModelId || 'local model';

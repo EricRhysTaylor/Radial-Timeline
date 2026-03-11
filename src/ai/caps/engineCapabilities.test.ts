@@ -18,6 +18,8 @@ describe('resolveEngineCapabilities', () => {
         const model = byAlias('claude-sonnet-4.6');
         const resolved = resolveEngineCapabilities(model);
 
+        expect(resolved.directManuscriptCitations.status).toBe('available');
+        expect(resolved.groundedToolAttribution.status).toBe('unavailable');
         expect(resolved.sources.status).toBe('available');
         expect(resolved.corpusReuse.status).toBe('available');
         expect(resolved.largeContext.status).toBe('available');
@@ -29,6 +31,8 @@ describe('resolveEngineCapabilities', () => {
         const model = byAlias('gpt-5.2-latest');
         const resolved = resolveEngineCapabilities(model);
 
+        expect(resolved.directManuscriptCitations.status).toBe('unavailable');
+        expect(resolved.groundedToolAttribution.status).toBe('provider_supported_not_used');
         expect(resolved.sources.status).toBe('unavailable');
         expect(resolved.corpusReuse.status).toBe('available');
         expect(resolved.largeContext.status).toBe('available');
@@ -52,6 +56,8 @@ describe('resolveEngineCapabilities', () => {
         const model = byAlias('gemini-3.1-pro-preview');
         const resolved = resolveEngineCapabilities(model);
 
+        expect(resolved.directManuscriptCitations.status).toBe('unavailable');
+        expect(resolved.groundedToolAttribution.status).toBe('provider_supported_not_used');
         expect(resolved.sources.status).toBe('unavailable');
         expect(resolved.corpusReuse.status).toBe('available');
         expect(resolved.largeContext.status).toBe('available');
@@ -63,6 +69,8 @@ describe('resolveEngineCapabilities', () => {
         const model = byAlias('ollama-llama3');
         const resolved = resolveEngineCapabilities(model);
 
+        expect(resolved.directManuscriptCitations.status).toBe('unavailable');
+        expect(resolved.groundedToolAttribution.status).toBe('unavailable');
         expect(resolved.sources.status).toBe('unavailable');
         expect(resolved.corpusReuse.status).toBe('unavailable');
         expect(resolved.largeContext.status).toBe('unavailable');
@@ -85,6 +93,8 @@ describe('resolveEngineCapabilities', () => {
                 modelAlias: 'claude-opus-4.6',
                 modelLabel: 'Claude Opus 4.6',
                 contextWindow: 200000,
+                directManuscriptCitations: 'available',
+                groundedToolAttribution: 'unavailable',
                 sources: 'available',
                 corpusReuse: 'available',
                 largeContext: 'available',

@@ -15,7 +15,10 @@ import type {
 } from '../types';
 
 type EngineImplementationStatus = {
-    sources: boolean;
+    /** Direct manuscript citation workflow (Inquiry evidence docs -> citations). */
+    directManuscriptCitations: boolean;
+    /** Grounded/tool attribution workflow (external-source metadata mapping). */
+    groundedToolAttribution: boolean;
     corpusReuse: boolean;
     batchAnalysis: boolean;
 };
@@ -26,22 +29,26 @@ type EngineImplementationStatus = {
  */
 const RT_IMPLEMENTATION_STATUS: Record<Exclude<AIProviderId, 'none'>, EngineImplementationStatus> = {
     anthropic: {
-        sources: true,
+        directManuscriptCitations: true,
+        groundedToolAttribution: false,
         corpusReuse: true,
         batchAnalysis: false
     },
     openai: {
-        sources: false,
+        directManuscriptCitations: false,
+        groundedToolAttribution: false,
         corpusReuse: true,
         batchAnalysis: false
     },
     google: {
-        sources: false,
+        directManuscriptCitations: false,
+        groundedToolAttribution: false,
         corpusReuse: true,
         batchAnalysis: false
     },
     ollama: {
-        sources: false,
+        directManuscriptCitations: false,
+        groundedToolAttribution: false,
         corpusReuse: false,
         batchAnalysis: false
     }
@@ -61,6 +68,9 @@ export interface EngineCapabilityMatrixRow {
     modelAlias: string;
     modelLabel: string;
     contextWindow: number;
+    directManuscriptCitations: EngineCapabilityStatus;
+    groundedToolAttribution: EngineCapabilityStatus;
+    /** @deprecated Backward-compat alias of directManuscriptCitations. */
     sources: EngineCapabilityStatus;
     corpusReuse: EngineCapabilityStatus;
     largeContext: EngineCapabilityStatus;
@@ -91,12 +101,17 @@ function buildSignal(providerSupported: boolean, availableInRt: boolean): Engine
 function resolveImplementationStatus(provider: AIProviderId): EngineImplementationStatus {
     if (provider === 'none') {
         return {
-            sources: false,
+            directManuscriptCitations: false,
+            groundedToolAttribution: false,
             corpusReuse: false,
             batchAnalysis: false
         };
     }
     return RT_IMPLEMENTATION_STATUS[provider];
+}
+
+function providerSupportsGroundedToolAttribution(provider: AiProvider): boolean {
+    return provider === 'openai' || provider === 'gemini';
 }
 
 function hasLongContext(model: ModelInfo): boolean {
@@ -131,8 +146,17 @@ export function resolveEngineCapabilities(model: ModelInfo): EngineCapabilities 
     const legacyProvider = toLegacyProvider(model.provider);
     const implementationStatus = resolveImplementationStatus(model.provider);
 
-    const supportsSources = legacyProvider ? providerSupportsCitations(legacyProvider) : false;
-    const sourcesAvailableInRt = supportsSources && implementationStatus.sources;
+    const supportsDirectManuscriptCitations = legacyProvider
+        ? providerSupportsCitations(legacyProvider)
+        : false;
+    const directManuscriptCitationsAvailableInRt = supportsDirectManuscriptCitations
+        && implementationStatus.directManuscriptCitations;
+
+    const supportsGroundedToolAttribution = legacyProvider
+        ? providerSupportsGroundedToolAttribution(legacyProvider)
+        : false;
+    const groundedToolAttributionAvailableInRt = supportsGroundedToolAttribution
+        && implementationStatus.groundedToolAttribution;
 
     const supportsCorpusReuse = legacyProvider ? providerSupportsCorpusReuse(legacyProvider) : false;
     const corpusReuseAvailableInRt = legacyProvider
@@ -143,13 +167,24 @@ export function resolveEngineCapabilities(model: ModelInfo): EngineCapabilities 
     const batchAvailableInRt = supportsBatch && implementationStatus.batchAnalysis;
 
     const supportsLargeContext = hasLongContext(model) && model.contextWindow > 0;
+    const directManuscriptCitationsSignal = buildSignal(
+        supportsDirectManuscriptCitations,
+        directManuscriptCitationsAvailableInRt
+    );
+    const groundedToolAttributionSignal = buildSignal(
+        supportsGroundedToolAttribution,
+        groundedToolAttributionAvailableInRt
+    );
 
     return {
         provider: model.provider,
         modelId: model.id,
         modelAlias: model.alias,
         modelLabel: model.label,
-        sources: buildSignal(supportsSources, sourcesAvailableInRt),
+        directManuscriptCitations: directManuscriptCitationsSignal,
+        groundedToolAttribution: groundedToolAttributionSignal,
+        // Backward compat for callers not migrated yet.
+        sources: directManuscriptCitationsSignal,
         corpusReuse: buildSignal(supportsCorpusReuse, corpusReuseAvailableInRt),
         largeContext: {
             ...buildSignal(supportsLargeContext, supportsLargeContext),
@@ -183,6 +218,8 @@ export function buildEngineCapabilityMatrix(models: ModelInfo[]): EngineCapabili
             modelAlias: resolved.modelAlias,
             modelLabel: resolved.modelLabel,
             contextWindow: resolved.largeContext.contextWindow,
+            directManuscriptCitations: resolved.directManuscriptCitations.status,
+            groundedToolAttribution: resolved.groundedToolAttribution.status,
             sources: resolved.sources.status,
             corpusReuse: resolved.corpusReuse.status,
             largeContext: resolved.largeContext.status,

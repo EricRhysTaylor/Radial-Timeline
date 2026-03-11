@@ -215,32 +215,6 @@ export const BUILTIN_MODELS: ModelInfo[] = [
         status: 'legacy'
     },
     {
-        provider: 'google',
-        id: 'gemini-2.5-flash',
-        alias: 'gemini-2.5-flash',
-        label: 'Gemini 2.5 Flash',
-        line: 'gemini-flash',
-        tier: 'FAST',
-        capabilities: ['longContext', 'jsonStrict', 'highOutputCap', 'streaming'],
-        personality: { reasoning: 7, writing: 7, determinism: 8 },
-        contextWindow: 1048576,
-        maxOutput: 65536,
-        status: 'stable'
-    },
-    {
-        provider: 'google',
-        id: 'gemini-flash-latest',
-        alias: 'gemini-flash-latest',
-        label: 'Gemini Flash Latest',
-        line: 'gemini-flash',
-        tier: 'FAST',
-        capabilities: ['longContext', 'jsonStrict', 'highOutputCap', 'streaming'],
-        personality: { reasoning: 7, writing: 7, determinism: 8 },
-        contextWindow: 1048576,
-        maxOutput: 65536,
-        status: 'legacy'
-    },
-    {
         provider: 'ollama',
         id: 'llama3',
         alias: 'ollama-llama3',

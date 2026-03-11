@@ -446,6 +446,60 @@ export function renderAiSection(params: {
         return 'Availability · Unknown';
     };
 
+    type SupportStatus = 'available_in_rt' | 'provider_supported_not_integrated' | 'not_available';
+
+    const SUPPORT_STATUS_LABEL: Record<SupportStatus, string> = {
+        available_in_rt: 'available in RT',
+        provider_supported_not_integrated: 'provider-supported, not integrated',
+        not_available: 'not available'
+    };
+
+    const OPENAI_CONTEXT_WINDOW = 1_050_000;
+    const GOOGLE_CONTEXT_WINDOW = 1_048_576;
+
+    const isGpt54ProAlias = (alias: string): boolean => (
+        alias === 'gpt-5.4-pro' || alias === 'gpt-5.4-pro-2026-03-05'
+    );
+
+    const resolveManuscriptCitationStatus = (provider: AIProviderId): SupportStatus => {
+        if (provider === 'anthropic') return 'available_in_rt';
+        if (provider === 'openai') return 'provider_supported_not_integrated';
+        if (provider === 'google') return 'not_available';
+        return 'not_available';
+    };
+
+    const resolveGroundedAttributionStatus = (provider: AIProviderId): SupportStatus => {
+        if (provider === 'openai' || provider === 'google') return 'provider_supported_not_integrated';
+        return 'not_available';
+    };
+
+    const resolveExecutionLanePill = (provider: AIProviderId, modelAlias: string): string | null => {
+        if (provider === 'openai') {
+            if (isGpt54ProAlias(modelAlias)) {
+                return 'API lane · Chat Completions (Responses API gap for GPT-5.4 Pro)';
+            }
+            return 'API lane · Chat Completions';
+        }
+        if (provider === 'anthropic') return 'API lane · Anthropic Messages';
+        if (provider === 'google') return 'API lane · Gemini generateContent';
+        return null;
+    };
+
+    const resolveProviderAuditPills = (provider: AIProviderId, modelAlias: string): string[] => {
+        const manuscriptStatus = SUPPORT_STATUS_LABEL[resolveManuscriptCitationStatus(provider)];
+        const groundedStatus = SUPPORT_STATUS_LABEL[resolveGroundedAttributionStatus(provider)];
+        const pills = [
+            `Manuscript citations · ${manuscriptStatus}`,
+            `Grounded/tool attribution · ${groundedStatus}`
+        ];
+        const lane = resolveExecutionLanePill(provider, modelAlias);
+        if (lane) pills.push(lane);
+        if (provider === 'openai' || provider === 'google') {
+            pills.push(`Context compare · OpenAI ${OPENAI_CONTEXT_WINDOW.toLocaleString()} vs Google ${GOOGLE_CONTEXT_WINDOW.toLocaleString()}`);
+        }
+        return pills;
+    };
+
     const getProviderAllowedAliases = (provider: AIProviderId): string[] =>
         BUILTIN_MODELS
             .filter(model => model.provider === provider && model.status !== 'deprecated')
@@ -515,6 +569,7 @@ export function renderAiSection(params: {
         syncLegacyFromCanonical();
         await plugin.saveSettings();
         params.refreshProviderDimming();
+        plugin.getInquiryService().notifyAiSettingsChanged();
     };
 
     const providerSetting = new Settings(quickSetupGrid)
@@ -524,7 +579,7 @@ export function renderAiSection(params: {
     let providerDropdown: DropdownComponent | null = null;
     providerSetting.addDropdown(dropdown => {
         providerDropdown = dropdown;
-        dropdown.selectEl.addClass('ert-input', 'ert-input--md');
+        dropdown.selectEl.addClass('ert-input', 'ert-input--md', 'ert-ai-strategy-select');
         dropdown.addOption('anthropic', 'Anthropic');
         dropdown.addOption('openai', 'OpenAI');
         dropdown.addOption('google', 'Google');
@@ -555,7 +610,7 @@ export function renderAiSection(params: {
     let modelOverrideDropdown: DropdownComponent | null = null;
     modelOverrideSetting.addDropdown(dropdown => {
         modelOverrideDropdown = dropdown;
-        dropdown.selectEl.addClass('ert-input', 'ert-input--md');
+        dropdown.selectEl.addClass('ert-input', 'ert-input--md', 'ert-ai-strategy-select');
         dropdown.onChange(async value => {
             if (isSyncingRoutingUi) return;
             const aiSettings = ensureCanonicalAiSettings();
@@ -580,7 +635,7 @@ export function renderAiSection(params: {
     let accessTierDropdown: DropdownComponent | null = null;
     accessTierSetting.addDropdown(dropdown => {
         accessTierDropdown = dropdown;
-        dropdown.selectEl.addClass('ert-input', 'ert-input--md');
+        dropdown.selectEl.addClass('ert-input', 'ert-input--md', 'ert-ai-strategy-select');
         dropdown.addOption('1', 'Tier 1');
         dropdown.addOption('2', 'Tier 2');
         dropdown.addOption('3', 'Tier 3');
@@ -779,7 +834,7 @@ export function renderAiSection(params: {
 
 
     applyStrategyRowCopyLayout(providerSetting, 'Select the AI service that powers structural analysis and editorial insight.');
-    applyStrategyRowCopyLayout(modelOverrideSetting, 'Use Auto for deterministic latest-stable selection, or pin a specific model.');
+    applyStrategyRowCopyLayout(modelOverrideSetting, 'Use Auto for deterministic latest-stable selection, or pin a specific model. Some provider lanes remain visible as support-status gaps until adapters are upgraded.');
     applyStrategyRowCopyLayout(accessTierSetting, ACCESS_TIER_COPY);
 
     applyQuickSetupLayoutOrder();
@@ -921,6 +976,8 @@ export function renderAiSection(params: {
         if (state.showAvailabilityPill && state.availabilityStatus !== 'unknown') {
             previewPills.push(availabilityPillText(state.availabilityStatus));
         }
+
+        previewPills.push(...resolveProviderAuditPills(state.provider, state.modelAlias));
 
         renderResolvedPreviewPills(previewPills);
 

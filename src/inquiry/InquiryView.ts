@@ -3626,6 +3626,13 @@ export class InquiryView extends ItemView {
         return this._resolvedEngine;
     }
 
+    /** Called externally (e.g. from Settings) when AI strategy changes. */
+    onAiSettingsChanged(): void {
+        this._resolvedEngine = null;
+        this.updateEngineBadge();
+        this.refreshEnginePanel();
+    }
+
     private refreshUI(): void {
         this._resolvedEngine = null; // Invalidate per-refresh-cycle cache.
         this.refreshCorpus();

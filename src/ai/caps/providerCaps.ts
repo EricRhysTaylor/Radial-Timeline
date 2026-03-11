@@ -41,7 +41,7 @@ export const PROVIDER_CAPS: Record<Exclude<AIProviderId, 'none'>, ProviderCapsDe
     },
     google: {
         providerMaxOutputTokens: 65536,
-        defaultInputTokens: 1000000,
+        defaultInputTokens: 1048576,
         defaultOutputTokens: 12000,
         tiers: {
             1: { maxOutputTokens: 8192, requestPerMinute: 30, retryAttempts: 1, safeUtilization: 0.7 },
