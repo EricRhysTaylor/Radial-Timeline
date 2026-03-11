@@ -56,6 +56,12 @@ describe('AI settings models table', () => {
         expect(source.includes('Responses API gap for GPT-5.4 Pro')).toBe(false);
     });
 
+    it('marks OpenAI grounded attribution as available and Gemini as provider-supported-not-integrated', () => {
+        const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
+        expect(source.includes("if (provider === 'openai') return 'available_in_rt';")).toBe(true);
+        expect(source.includes("if (provider === 'google') return 'provider_supported_not_integrated';")).toBe(true);
+    });
+
     it('keeps inquiry advisory hidden when no handoff context exists', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
         expect(source.includes('renderInquiryAdvisoryBanner(plugin.consumeInquiryAdvisoryHandoffContext());')).toBe(true);

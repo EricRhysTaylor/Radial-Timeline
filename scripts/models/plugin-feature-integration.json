@@ -289,24 +289,28 @@
         "inquiry"
       ],
       "impactAssessment": "medium",
-      "implementationStatus": "partial",
-      "implementationNotes": "Capability awareness exists in RT strategy/capability layers (OpenAI attribution is shown as provider-supported but not integrated), but runtime OpenAI parsing currently normalizes text/usage only and does not map OpenAI file/url citation annotations into Inquiry source citation results.",
+      "implementationStatus": "complete",
+      "implementationNotes": "OpenAI runtime adapters now parse annotation payloads from both Chat Completions and Responses lanes via extractOpenAiAnnotationCitations(), normalize them into explicit attribution types (tool_file/tool_url/grounded), thread them through providerRouter/aiClient/InquiryRunnerService, and render them truthfully in Inquiry source views. This is attribution support for external/tool sources, not direct manuscript citation parity with Anthropic.",
       "sourceFiles": [
-        "src/ai/caps/engineCapabilities.ts",
-        "src/inquiry/services/inquiryAdvisory.ts",
-        "src/settings/sections/AiSection.ts",
         "src/api/openaiApi.ts",
-        "src/api/providerRouter.ts"
+        "src/api/providerRouter.ts",
+        "src/inquiry/runner/InquiryRunnerService.ts",
+        "src/inquiry/services/inquirySources.ts",
+        "src/settings/sections/AiSection.ts",
+        "src/ai/caps/engineCapabilities.ts"
       ],
-      "blockers": [
-        "No annotation-to-SourceCitation mapping in OpenAI adapters yet",
-        "Inquiry result contract not yet wired for OpenAI annotation payloads"
-      ],
+      "blockers": [],
       "addedToRegistry": "2026-03-11",
       "priority": "p1",
-      "implementationEvidence": [],
-      "targetRelease": "backlog",
-      "owner": "tbd",
+      "implementationEvidence": [
+        "extractOpenAiAnnotationCitations",
+        "if\\s*\\(attributionType\\s*===\\s*'tool_file'\\)",
+        "if\\s*\\(attributionType\\s*===\\s*'tool_url'\\)",
+        "isExternalAttributionCitation",
+        "citations:\\s*resp\\.citations"
+      ],
+      "targetRelease": "shipped",
+      "owner": "eric",
       "lastTouched": "2026-03-11"
     },
     {

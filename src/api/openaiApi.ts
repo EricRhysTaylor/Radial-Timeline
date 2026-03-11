@@ -7,6 +7,7 @@
 import { requestUrl } from 'obsidian'; // Use requestUrl for consistency
 import { warnLegacyAccess } from './legacyAccessGuard';
 import { modelSupportsSystemRole } from './providerCapabilities';
+import type { SourceAttributionType, SourceCitation } from '../ai/types';
 
 /** @deprecated Use modelSupportsSystemRole(provider, modelId) from providerCapabilities.
  *  Retained as thin wrapper for backward compat and evidence pattern validation. */
@@ -19,7 +20,7 @@ interface OpenAiChatSuccessResponse {
     choices: {
         message: {
             role: string;
-            content: string;
+            content: unknown;
         };
         finish_reason: string;
     }[];
@@ -44,6 +45,7 @@ export interface OpenAiApiResponse {
     success: boolean;
     content: string | null;
     responseData: unknown;
+    citations?: SourceCitation[];
     error?: string;
 }
 
@@ -52,8 +54,10 @@ export type OpenAiResponseFormat =
     | { type: 'json_schema'; json_schema: Record<string, unknown> };
 
 interface OpenAiResponsesTextPart {
+    type?: string;
     text?: string;
     output_text?: string;
+    annotations?: unknown[];
     [key: string]: unknown;
 }
 
@@ -68,6 +72,18 @@ interface OpenAiResponsesOutputItem {
 type OpenAiResponsesTextFormat =
     | { type: 'json_object' }
     | { type: 'json_schema'; name: string; schema: Record<string, unknown> };
+
+interface OpenAiAnnotationRecord {
+    type?: string;
+    file_id?: string;
+    filename?: string;
+    url?: string;
+    title?: string;
+    quote?: string;
+    start_index?: number;
+    end_index?: number;
+    [key: string]: unknown;
+}
 
 function normalizeBaseUrl(baseUrl: string | undefined, endpointPath: '/chat/completions' | '/responses'): string {
     if (!baseUrl) return `https://api.openai.com/v1${endpointPath}`;
@@ -134,6 +150,186 @@ function firstString(value: unknown): string | null {
         }
     }
     return null;
+}
+
+function extractTextFromOpenAiPart(part: unknown): string | null {
+    if (!part || typeof part !== 'object') return null;
+    const record = part as Record<string, unknown>;
+    const direct = firstString(record.output_text) ?? firstString(record.text);
+    if (direct) return direct;
+    const nestedText = record.text;
+    if (nestedText && typeof nestedText === 'object') {
+        return firstString((nestedText as Record<string, unknown>).value);
+    }
+    return null;
+}
+
+function extractChatMessageContent(content: unknown): string | null {
+    const direct = firstString(content);
+    if (direct) return direct;
+    if (!Array.isArray(content)) return null;
+    const chunks = content
+        .map(part => extractTextFromOpenAiPart(part))
+        .filter((value): value is string => !!value);
+    if (!chunks.length) return null;
+    return chunks.join('\n\n').trim() || null;
+}
+
+function readIndex(value: unknown): number | undefined {
+    return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+function buildAnnotatedExcerpt(
+    text: string | null,
+    startIndex: number | undefined,
+    endIndex: number | undefined
+): string | undefined {
+    if (!text) return undefined;
+    if (startIndex === undefined || endIndex === undefined) return undefined;
+    const safeStart = Math.max(0, Math.min(Math.floor(startIndex), text.length));
+    const safeEnd = Math.max(safeStart, Math.min(Math.floor(endIndex), text.length));
+    if (safeEnd <= safeStart) return undefined;
+    const slice = text.slice(safeStart, safeEnd).trim();
+    return slice || undefined;
+}
+
+function stringField(record: Record<string, unknown>, key: string): string | undefined {
+    const value = record[key];
+    return typeof value === 'string' && value.trim() ? value.trim() : undefined;
+}
+
+function resolveAttributionType(annotationType: string): SourceAttributionType | null {
+    if (annotationType === 'file_citation') return 'tool_file';
+    if (annotationType === 'url_citation') return 'tool_url';
+    if (annotationType.includes('ground')) return 'grounded';
+    if (annotationType.includes('citation')) return 'grounded';
+    return null;
+}
+
+function buildOpenAiAnnotationCitation(
+    rawAnnotation: unknown,
+    partText: string | null
+): SourceCitation | null {
+    if (!rawAnnotation || typeof rawAnnotation !== 'object') return null;
+    const annotation = rawAnnotation as OpenAiAnnotationRecord;
+    const annotationType = typeof annotation.type === 'string'
+        ? annotation.type.trim().toLowerCase()
+        : '';
+    if (!annotationType) return null;
+    const attributionType = resolveAttributionType(annotationType);
+    if (!attributionType) return null;
+
+    const fileId = stringField(annotation, 'file_id');
+    const filename = stringField(annotation, 'filename');
+    const url = stringField(annotation, 'url');
+    const title = stringField(annotation, 'title');
+    const quote = stringField(annotation, 'quote');
+    const startCharIndex = readIndex(annotation.start_index);
+    const endCharIndex = readIndex(annotation.end_index);
+    const excerpt = quote ?? buildAnnotatedExcerpt(partText, startCharIndex, endCharIndex);
+
+    if (attributionType === 'tool_file') {
+        return {
+            attributionType,
+            sourceLabel: filename ?? fileId ?? 'Referenced file',
+            sourceId: fileId ?? filename,
+            fileId,
+            filename,
+            citedText: excerpt,
+            startCharIndex,
+            endCharIndex
+        };
+    }
+
+    if (attributionType === 'tool_url') {
+        return {
+            attributionType,
+            sourceLabel: title ?? url ?? 'Referenced URL',
+            sourceId: url,
+            url,
+            title,
+            citedText: excerpt,
+            startCharIndex,
+            endCharIndex
+        };
+    }
+
+    return {
+        attributionType: 'grounded',
+        sourceLabel: title ?? url ?? filename ?? fileId ?? 'Grounded source',
+        sourceId: url ?? fileId ?? filename,
+        url,
+        fileId,
+        filename,
+        title,
+        citedText: excerpt,
+        startCharIndex,
+        endCharIndex
+    };
+}
+
+function dedupeCitations(citations: SourceCitation[]): SourceCitation[] {
+    const seen = new Set<string>();
+    const deduped: SourceCitation[] = [];
+    for (const citation of citations) {
+        const key = [
+            citation.attributionType ?? 'direct_manuscript',
+            'sourceId' in citation ? citation.sourceId ?? '' : '',
+            'url' in citation ? citation.url ?? '' : '',
+            'fileId' in citation ? citation.fileId ?? '' : '',
+            citation.citedText ?? '',
+            citation.startCharIndex ?? '',
+            citation.endCharIndex ?? ''
+        ].join('|');
+        if (seen.has(key)) continue;
+        seen.add(key);
+        deduped.push(citation);
+    }
+    return deduped;
+}
+
+export function extractOpenAiAnnotationCitations(responseData: unknown): SourceCitation[] {
+    if (!responseData || typeof responseData !== 'object') return [];
+    const data = responseData as Record<string, unknown>;
+    const citations: SourceCitation[] = [];
+
+    const collectFromCarrier = (carrier: Record<string, unknown>, defaultText?: string | null) => {
+        const annotations = Array.isArray(carrier.annotations) ? carrier.annotations : [];
+        if (!annotations.length) return;
+        const partText = extractTextFromOpenAiPart(carrier) ?? defaultText ?? null;
+        annotations.forEach(rawAnnotation => {
+            const normalized = buildOpenAiAnnotationCitation(rawAnnotation, partText);
+            if (normalized) citations.push(normalized);
+        });
+    };
+
+    const outputItems = Array.isArray(data.output) ? data.output as Record<string, unknown>[] : [];
+    outputItems.forEach(item => {
+        const contentParts = Array.isArray(item.content) ? item.content as Record<string, unknown>[] : [];
+        contentParts.forEach(part => collectFromCarrier(part));
+    });
+
+    const choices = Array.isArray(data.choices) ? data.choices as Record<string, unknown>[] : [];
+    choices.forEach(choice => {
+        const message = choice.message && typeof choice.message === 'object'
+            ? choice.message as Record<string, unknown>
+            : null;
+        if (!message) return;
+
+        const messageContent = message.content;
+        const messageText = extractChatMessageContent(messageContent);
+        if (Array.isArray(messageContent)) {
+            messageContent.forEach(part => {
+                if (part && typeof part === 'object') {
+                    collectFromCarrier(part as Record<string, unknown>);
+                }
+            });
+        } else {
+            collectFromCarrier(message, messageText);
+        }
+    });
+
+    return dedupeCitations(citations);
 }
 
 export function extractOpenAiResponsesContent(responseData: unknown): string | null {
@@ -324,8 +520,11 @@ export async function callOpenAiApi(
             return { success: false, content: null, responseData, error: msg };
         }
         const success = responseData as OpenAiChatSuccessResponse;
-        const content = success?.choices?.[0]?.message?.content?.trim();
-        if (content) return { success: true, content, responseData };
+        const content = extractChatMessageContent(success?.choices?.[0]?.message?.content);
+        if (content) {
+            const citations = extractOpenAiAnnotationCitations(responseData);
+            return { success: true, content, responseData, ...(citations.length ? { citations } : {}) };
+        }
         return { success: false, content: null, responseData, error: 'Invalid response structure from OpenAI.' };
     } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -427,9 +626,15 @@ export async function callOpenAiResponsesApi(
         }
 
         const content = extractOpenAiResponsesContent(responseData);
+        const citations = extractOpenAiAnnotationCitations(responseData);
         const normalizedResponseData = normalizeOpenAiResponsesResponseData(responseData, modelId, content);
         if (content) {
-            return { success: true, content, responseData: normalizedResponseData };
+            return {
+                success: true,
+                content,
+                responseData: normalizedResponseData,
+                ...(citations.length ? { citations } : {})
+            };
         }
 
         const incompleteReason = extractResponsesErrorReason(responseData);

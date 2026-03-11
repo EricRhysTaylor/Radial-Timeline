@@ -469,7 +469,8 @@ export function renderAiSection(params: {
     };
 
     const resolveGroundedAttributionStatus = (provider: AIProviderId): SupportStatus => {
-        if (provider === 'openai' || provider === 'google') return 'provider_supported_not_integrated';
+        if (provider === 'openai') return 'available_in_rt';
+        if (provider === 'google') return 'provider_supported_not_integrated';
         return 'not_available';
     };
 

@@ -1,17 +1,20 @@
 /**
  * Sources ViewModel builder for Inquiry results.
  *
- * Transforms raw InquiryCitation[] + EvidenceDocumentMeta[] into a UI-ready
- * data structure for rendering the author-facing "Sources" block.
+ * Transforms normalized Inquiry attribution + optional evidence metadata into
+ * a UI-ready data structure for rendering the author-facing "Sources" block.
  *
- * Product rule: the output is author-centric. No document_index, char offsets,
- * or provider API terminology — just scene titles, short excerpts, and paths.
+ * Product rule: the output is author-centric. No provider payload internals:
+ * render scene titles/paths for manuscript citations and clear labels for
+ * tool/URL/grounded attribution.
  */
 import type { EvidenceDocumentMeta, InquiryCitation } from '../state';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
 export interface InquirySourceItem {
+    /** Normalized attribution family for truthful rendering. */
+    attributionType: 'direct_manuscript' | 'tool_file' | 'tool_url' | 'grounded';
     /** Display title (e.g. "The Departure"). */
     title: string;
     /** Short excerpt from cited text (1–2 lines, truncated). */
@@ -24,6 +27,8 @@ export interface InquirySourceItem {
     classLabel: string;
     /** Number of citations referencing this document. */
     citationCount: number;
+    /** External source URL when attribution points outside the manuscript. */
+    url?: string;
 }
 
 export interface InquirySourcesViewModel {
@@ -61,38 +66,66 @@ export function buildInquirySourcesViewModel(
         hasContent: false
     };
 
-    if (!citations?.length || !evidenceDocumentMeta?.length) return empty;
+    const items: InquirySourceItem[] = [];
+    if (!citations?.length) return empty;
 
-    // Group citations by documentIndex.
-    const byIndex = new Map<number, InquiryCitation[]>();
-    for (const c of citations) {
-        if (c.documentIndex < 0 || c.documentIndex >= evidenceDocumentMeta.length) continue;
-        const existing = byIndex.get(c.documentIndex) ?? [];
-        existing.push(c);
-        byIndex.set(c.documentIndex, existing);
+    // Direct manuscript citations remain grouped by evidence document index.
+    if (evidenceDocumentMeta?.length) {
+        const byIndex = new Map<number, InquiryCitation[]>();
+        for (const citation of citations) {
+            if (!isDirectManuscriptCitation(citation)) continue;
+            if (citation.documentIndex < 0 || citation.documentIndex >= evidenceDocumentMeta.length) continue;
+            const existing = byIndex.get(citation.documentIndex) ?? [];
+            existing.push(citation);
+            byIndex.set(citation.documentIndex, existing);
+        }
+
+        for (const [docIndex, docCitations] of byIndex) {
+            const meta = evidenceDocumentMeta[docIndex];
+            if (!meta) continue;
+            const excerpt = bestExcerpt(docCitations);
+            items.push({
+                attributionType: 'direct_manuscript',
+                title: meta.title,
+                excerpt,
+                path: meta.path,
+                sceneId: meta.sceneId,
+                classLabel: formatEvidenceClassLabel(meta.evidenceClass),
+                citationCount: docCitations.length
+            });
+        }
     }
 
-    // Build source items from grouped citations.
-    const items: InquirySourceItem[] = [];
-    for (const [docIndex, docCitations] of byIndex) {
-        const meta = evidenceDocumentMeta[docIndex];
-        if (!meta) continue;
+    // OpenAI/Gemini-style tool/grounded attribution groups by source identity.
+    const externalCitations = citations.filter(isExternalAttributionCitation);
+    if (externalCitations.length) {
+        const bySource = new Map<string, typeof externalCitations>();
+        for (const citation of externalCitations) {
+            const key = [
+                citation.attributionType,
+                citation.sourceId ?? '',
+                citation.url ?? '',
+                citation.fileId ?? '',
+                citation.filename ?? '',
+                citation.sourceLabel
+            ].join('|');
+            const existing = bySource.get(key) ?? [];
+            existing.push(citation);
+            bySource.set(key, existing);
+        }
 
-        // Pick the best excerpt: longest cited text from this document.
-        const bestCitation = docCitations
-            .filter(c => c.citedText?.trim())
-            .sort((a, b) => (b.citedText?.length ?? 0) - (a.citedText?.length ?? 0))[0];
-        const rawExcerpt = bestCitation?.citedText ?? '';
-        const excerpt = truncateExcerpt(rawExcerpt, MAX_EXCERPT_LENGTH);
-
-        items.push({
-            title: meta.title,
-            excerpt,
-            path: meta.path,
-            sceneId: meta.sceneId,
-            classLabel: formatEvidenceClassLabel(meta.evidenceClass),
-            citationCount: docCitations.length
-        });
+        for (const grouped of bySource.values()) {
+            const first = grouped[0];
+            const excerpt = bestExcerpt(grouped);
+            items.push({
+                attributionType: first.attributionType,
+                title: first.sourceLabel,
+                excerpt,
+                classLabel: formatAttributionClassLabel(first.attributionType),
+                citationCount: grouped.length,
+                url: first.url
+            });
+        }
     }
 
     // Sort: most-cited first, then alphabetically by title.
@@ -104,6 +137,24 @@ export function buildInquirySourcesViewModel(
         initialCount: Math.min(INITIAL_SHOW_COUNT, items.length),
         hasContent: items.length > 0
     };
+}
+
+function isDirectManuscriptCitation(citation: InquiryCitation): citation is Extract<InquiryCitation, { documentIndex: number }> {
+    return citation.attributionType === undefined
+        || citation.attributionType === 'direct_manuscript';
+}
+
+function isExternalAttributionCitation(citation: InquiryCitation): citation is Extract<InquiryCitation, { attributionType: 'tool_file' | 'tool_url' | 'grounded' }> {
+    return citation.attributionType === 'tool_file'
+        || citation.attributionType === 'tool_url'
+        || citation.attributionType === 'grounded';
+}
+
+function bestExcerpt(citations: Array<{ citedText?: string }>): string {
+    const best = citations
+        .filter(citation => citation.citedText?.trim())
+        .sort((a, b) => (b.citedText?.length ?? 0) - (a.citedText?.length ?? 0))[0];
+    return truncateExcerpt(best?.citedText ?? '', MAX_EXCERPT_LENGTH);
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -128,4 +179,11 @@ function formatEvidenceClassLabel(evidenceClass: string): string {
         .split(/\s+/)
         .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
         .join(' ');
+}
+
+function formatAttributionClassLabel(attributionType: InquirySourceItem['attributionType']): string {
+    if (attributionType === 'tool_file') return 'Tool File';
+    if (attributionType === 'tool_url') return 'Tool URL';
+    if (attributionType === 'grounded') return 'Grounded Source';
+    return 'Reference';
 }

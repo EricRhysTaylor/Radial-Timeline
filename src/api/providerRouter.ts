@@ -259,7 +259,7 @@ function diffProviderArgs(
   return removed;
 }
 
-function buildProviderResult<T extends { success: boolean; content: string | null; responseData: unknown; error?: string }>(
+function buildProviderResult<T extends { success: boolean; content: string | null; responseData: unknown; error?: string; citations?: SourceCitation[] }>(
   provider: AiProvider,
   requestedModelId: string,
   resp: T
@@ -280,6 +280,7 @@ function buildProviderResult<T extends { success: boolean; content: string | nul
     aiModelResolved: resolvedModelId,
     aiStatus: classification.aiStatus,
     aiReason: classification.aiReason,
+    citations: resp.citations,
     error: resp.error
   };
 }

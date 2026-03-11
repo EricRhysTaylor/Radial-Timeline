@@ -27,12 +27,12 @@ describe('resolveEngineCapabilities', () => {
         expect(resolved.batchAnalysis.status).toBe('provider_supported_not_used');
     });
 
-    it('marks OpenAI corpus reuse available for system-role models and batch as not yet used', () => {
+    it('marks OpenAI corpus reuse and grounded attribution available for system-role models', () => {
         const model = byAlias('gpt-5.2-latest');
         const resolved = resolveEngineCapabilities(model);
 
         expect(resolved.directManuscriptCitations.status).toBe('unavailable');
-        expect(resolved.groundedToolAttribution.status).toBe('provider_supported_not_used');
+        expect(resolved.groundedToolAttribution.status).toBe('available');
         expect(resolved.sources.status).toBe('unavailable');
         expect(resolved.corpusReuse.status).toBe('available');
         expect(resolved.largeContext.status).toBe('available');

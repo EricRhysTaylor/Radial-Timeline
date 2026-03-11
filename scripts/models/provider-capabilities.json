@@ -176,7 +176,7 @@
       "provider": "openai",
       "name": "Citations / Annotations",
       "category": "quality",
-      "description": "OpenAI responses can return attribution annotations including file_citation and url_citation records. This is provider-supported attribution, but RT has not mapped it into Inquiry source panels yet.",
+      "description": "OpenAI responses can return attribution annotations including file_citation and url_citation records. RT now normalizes these into Inquiry source attribution outputs (tool/file/url forms).",
       "availableSince": null,
       "requiredApiVersion": null,
       "requiredHeaders": {},

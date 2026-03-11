@@ -1,3 +1,5 @@
+import type { SourceCitation } from '../ai/types';
+
 export type InquiryScope = 'book' | 'saga';
 export type InquiryMode = 'flow' | 'depth';
 export type InquiryZone = 'setup' | 'pressure' | 'payoff';
@@ -6,13 +8,7 @@ export type InquirySeverity = 'low' | 'medium' | 'high';
 export type InquiryConfidence = 'low' | 'medium' | 'high';
 export type InquiryAiStatus = 'success' | 'rejected' | 'unavailable' | 'timeout' | 'auth' | 'rate_limit';
 
-export interface InquiryCitation {
-    citedText: string;
-    documentIndex: number;
-    documentTitle?: string;
-    startCharIndex?: number;
-    endCharIndex?: number;
-}
+export type InquiryCitation = SourceCitation;
 
 export interface EvidenceDocumentMeta {
     /** Display title (e.g. "The Red Night" or "Book outline"). */
@@ -79,7 +75,7 @@ export interface InquiryResult {
     submittedAt?: string;
     completedAt?: string;
     roundTripMs?: number;
-    /** Source citations from provider-level citation support (e.g. Anthropic citations). */
+    /** Normalized source attribution from provider runtime (manuscript and tool/file/url forms). */
     citations?: InquiryCitation[];
     /** Ordered metadata for evidence documents sent to the AI. Indices match citation documentIndex. */
     evidenceDocumentMeta?: EvidenceDocumentMeta[];

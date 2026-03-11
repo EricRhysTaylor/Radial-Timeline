@@ -170,13 +170,35 @@ export interface AIThroughputCheckResult {
     heuristicSummary: string;
 }
 
-export interface SourceCitation {
+export type SourceAttributionType =
+    | 'direct_manuscript'
+    | 'tool_file'
+    | 'tool_url'
+    | 'grounded';
+
+export interface DirectManuscriptCitation {
+    attributionType?: 'direct_manuscript';
     citedText: string;
     documentIndex: number;
     documentTitle?: string;
     startCharIndex?: number;
     endCharIndex?: number;
 }
+
+export interface ExternalAttributionCitation {
+    attributionType: Exclude<SourceAttributionType, 'direct_manuscript'>;
+    sourceLabel: string;
+    citedText?: string;
+    sourceId?: string;
+    fileId?: string;
+    filename?: string;
+    url?: string;
+    title?: string;
+    startCharIndex?: number;
+    endCharIndex?: number;
+}
+
+export type SourceCitation = DirectManuscriptCitation | ExternalAttributionCitation;
 
 export interface EvidenceDocument {
     title: string;
@@ -219,7 +241,7 @@ export interface ProviderExecutionResult {
     cacheStatus?: 'hit' | 'created';
     /** OpenAI-only transport truth for runtime/log alignment. */
     aiTransportLane?: 'chat_completions' | 'responses';
-    /** Source citations from provider-level citation support (e.g. Anthropic citations). */
+    /** Normalized source attribution (direct manuscript citations or tool/grounded attribution). */
     citations?: SourceCitation[];
 }
 
@@ -360,7 +382,7 @@ export interface AIRunResult {
     retryCount?: number;
     sanitizationNotes?: string[];
     advancedContext?: AIRunAdvancedContext;
-    /** Source citations from provider-level citation support. */
+    /** Normalized source attribution from provider responses. */
     citations?: SourceCitation[];
 }
 

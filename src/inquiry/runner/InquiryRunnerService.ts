@@ -1489,13 +1489,7 @@ export class InquiryRunnerService implements InquiryRunner {
             failureStage,
             tokenUsageKnown: usageKnown,
             aiTransportLane: run.aiTransportLane ?? run.advancedContext?.openAiTransportLane,
-            citations: run.citations?.map(c => ({
-                citedText: c.citedText,
-                documentIndex: c.documentIndex,
-                documentTitle: c.documentTitle,
-                startCharIndex: c.startCharIndex,
-                endCharIndex: c.endCharIndex
-            }))
+            citations: run.citations?.map(c => ({ ...c }))
         };
     }
 

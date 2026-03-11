@@ -8,7 +8,7 @@ Concrete status map for RT provider adapters and an execution roadmap to align c
 | Provider | Runtime adapter lane in RT | Direct manuscript citations (Inquiry workflow) | Grounded/tool attribution | Multi-turn lane before final response | Context class in RT model registry |
 | --- | --- | --- | --- | --- | --- |
 | Anthropic | `Messages API` via `callAnthropicApi` | Available in RT (document blocks + citations) | Not wired in RT | Not modeled as a separate pre-response lane in RT | 200k default in current RT registry |
-| OpenAI | `Chat Completions API` via `callOpenAiApi` | Not wired in RT manuscript flow | Provider-supported (annotation citations), not wired in RT | Provider lane exists on Responses API; RT gap | 1,050,000 |
+| OpenAI | `Chat Completions` + `Responses API` (GPT-5.4 Pro lane) | Not wired in RT manuscript flow | Available in RT via normalized file/url annotation attribution in Inquiry sources | Responses lane modeled and routed for GPT-5.4 Pro | 1,050,000 |
 | Google Gemini | `generateContent` via `callGeminiApi` | Not available in RT manuscript flow | Provider-supported (grounding metadata), not wired in RT | Multi-turn/interaction lane not modeled in RT adapter | 1,048,576 |
 
 ## File-Level Evidence
@@ -17,8 +17,9 @@ Concrete status map for RT provider adapters and an execution roadmap to align c
   - `src/api/anthropicApi.ts` (`buildAnthropicUserContent`, `citations.enabled`, citation mapping)
   - `src/ai/runtime/aiClient.ts` (`useDocumentBlocks` branch for Inquiry)
 - OpenAI current lane:
-  - `src/api/openaiApi.ts` (`/v1/chat/completions` only)
-  - `src/ai/providers/openaiProvider.ts` (routes through `callProvider` -> Chat Completions path)
+  - `src/api/openaiApi.ts` (`/v1/chat/completions` and `/v1/responses`)
+  - `src/api/providerRouter.ts` (model-lane routing + transport truth)
+  - `src/inquiry/services/inquirySources.ts` (normalized OpenAI annotation attribution rendering)
 - Gemini current lane:
   - `src/api/geminiApi.ts` (`models/*:generateContent` only)
   - `src/ai/providers/googleProvider.ts`
@@ -29,8 +30,8 @@ Concrete status map for RT provider adapters and an execution roadmap to align c
 ## Gap Statement
 
 - RT currently has one mature attribution workflow: Anthropic direct manuscript citations for Inquiry.
-- OpenAI and Gemini both have attribution-capable provider features, but RT does not map those outputs into Inquiry source UX yet.
-- GPT-5.4 Pro positioning in provider docs is on a Responses API lane that RT does not yet use.
+- Gemini has attribution-capable provider features, but RT does not map Gemini grounding outputs into Inquiry source UX yet.
+- OpenAI attribution annotations are now normalized into Inquiry sources; this is external/tool attribution, not direct manuscript citations.
 
 ## Roadmap (Ordered)
 
@@ -53,7 +54,7 @@ Concrete status map for RT provider adapters and an execution roadmap to align c
   - `src/ai/caps/engineCapabilities.ts`
   - `src/inquiry/services/inquiryAdvisory.ts`
 
-### Phase 3: OpenAI Responses Adapter
+### Phase 3 (completed): OpenAI Responses Adapter
 - Add Responses API execution path and model-lane routing rules.
 - Keep Chat Completions path for compatible models while migrating.
 - Add explicit per-model lane metadata to prevent silent fallback claims.

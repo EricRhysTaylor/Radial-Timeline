@@ -5,6 +5,7 @@ vi.mock('obsidian', () => ({
 }));
 
 import {
+    extractOpenAiAnnotationCitations,
     extractOpenAiResponsesContent,
     normalizeOpenAiResponsesResponseData,
     normalizeOpenAiResponsesUsage
@@ -60,5 +61,80 @@ describe('openai responses normalization', () => {
         expect(usage.completion_tokens).toBe(8);
         expect(usage.total_tokens).toBe(20);
         expect(message.content).toBe('hello world');
+    });
+
+    it('extracts OpenAI file citation annotations from Responses output', () => {
+        const raw = {
+            output: [
+                {
+                    type: 'message',
+                    content: [
+                        {
+                            type: 'output_text',
+                            text: 'The manuscript beat pivots at midpoint.',
+                            annotations: [
+                                {
+                                    type: 'file_citation',
+                                    file_id: 'file_123',
+                                    filename: 'midpoint.md',
+                                    quote: 'beat pivots at midpoint'
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        };
+
+        expect(extractOpenAiAnnotationCitations(raw)).toEqual([
+            {
+                attributionType: 'tool_file',
+                sourceLabel: 'midpoint.md',
+                sourceId: 'file_123',
+                fileId: 'file_123',
+                filename: 'midpoint.md',
+                citedText: 'beat pivots at midpoint',
+                startCharIndex: undefined,
+                endCharIndex: undefined
+            }
+        ]);
+    });
+
+    it('extracts OpenAI URL citation annotations from Chat-style response payloads', () => {
+        const raw = {
+            choices: [
+                {
+                    message: {
+                        role: 'assistant',
+                        content: [
+                            {
+                                type: 'output_text',
+                                text: 'Reference: style guide.',
+                                annotations: [
+                                    {
+                                        type: 'url_citation',
+                                        url: 'https://example.com/style-guide',
+                                        title: 'Style Guide'
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                }
+            ]
+        };
+
+        expect(extractOpenAiAnnotationCitations(raw)).toEqual([
+            {
+                attributionType: 'tool_url',
+                sourceLabel: 'Style Guide',
+                sourceId: 'https://example.com/style-guide',
+                url: 'https://example.com/style-guide',
+                title: 'Style Guide',
+                citedText: undefined,
+                startCharIndex: undefined,
+                endCharIndex: undefined
+            }
+        ]);
     });
 });

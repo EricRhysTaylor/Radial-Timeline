@@ -299,6 +299,7 @@ type InquiryBriefModel = {
         excerpt: string;
         classLabel: string;
         path?: string;
+        url?: string;
     }>;
     sceneNotes: Array<{ label: string; note: string; anchorId?: string }>;
     pendingActions: string[];
@@ -9790,7 +9791,8 @@ export class InquiryView extends ItemView {
             title: item.title,
             excerpt: item.excerpt,
             classLabel: item.classLabel,
-            path: item.path
+            path: item.path,
+            url: item.url
         }));
 
         const sceneNotes = this.buildInquirySceneNotes(result);
@@ -9849,7 +9851,7 @@ export class InquiryView extends ItemView {
                 const wikiPath = source.path?.replace(/\.md$/, '');
                 const linkPart = (wikiPath && source.classLabel === 'Scene')
                     ? ` \u2014 [[${wikiPath}|Open scene]]`
-                    : '';
+                    : (source.url ? ` \u2014 [Source](${source.url})` : '');
                 lines.push(`- **${source.title}** (${source.classLabel})${excerptPart}${linkPart}`);
             });
         }

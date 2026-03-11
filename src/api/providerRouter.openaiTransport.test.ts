@@ -98,4 +98,36 @@ describe('providerRouter OpenAI transport routing', () => {
         expect(mockedCallOpenAiApi).not.toHaveBeenCalled();
         expect(result.aiTransportLane).toBe('responses');
     });
+
+    it('threads OpenAI annotation citations through provider result contract', async () => {
+        mockedCallOpenAiResponsesApi.mockResolvedValueOnce({
+            success: true,
+            content: 'responses-with-citations',
+            responseData: { model: 'gpt-5.4-pro' },
+            citations: [
+                {
+                    attributionType: 'tool_url',
+                    sourceLabel: 'Style Guide',
+                    sourceId: 'https://example.com/style-guide',
+                    url: 'https://example.com/style-guide'
+                }
+            ]
+        });
+
+        const result = await callProvider(buildPlugin(), {
+            provider: 'openai',
+            modelId: 'gpt-5.4-pro',
+            userPrompt: 'hello'
+        });
+
+        expect(result.aiTransportLane).toBe('responses');
+        expect(result.citations).toEqual([
+            {
+                attributionType: 'tool_url',
+                sourceLabel: 'Style Guide',
+                sourceId: 'https://example.com/style-guide',
+                url: 'https://example.com/style-guide'
+            }
+        ]);
+    });
 });
