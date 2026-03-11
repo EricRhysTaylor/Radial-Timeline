@@ -16,7 +16,6 @@ import { getPickerModelsForProvider, selectLatestModelByReleaseChannel } from '.
 import { selectModel } from '../../ai/router/selectModel';
 import { computeCaps } from '../../ai/caps/computeCaps';
 import { getAIClient } from '../../ai/runtime/aiClient';
-import type { InquiryAdvisoryContext } from '../../inquiry/services/inquiryAdvisory';
 import {
     getCredential,
     getCredentialSecretId,
@@ -687,102 +686,6 @@ export function renderAiSection(params: {
         }));
     updateAiModelUpdatesDescription();
     params.addAiRelatedElement(aiModelUpdatesSetting.settingEl);
-
-    const inquiryAdvisoryFrame = quickSetupPreviewSection.createDiv({
-        cls: [ERT_CLASSES.PREVIEW_FRAME, ERT_CLASSES.STACK, 'ert-previewFrame--flush', 'ert-ai-inquiry-advisory'],
-        attr: { 'data-ert-role': 'ai-setting:inquiry-advisory' }
-    });
-
-    interface InquiryAdvisoryPresentation {
-        reasonLine: string;
-        exampleLines: string[];
-        suggestedEngineLine: string;
-    }
-
-    const renderInquiryAdvisoryReasonLine = (context: InquiryAdvisoryContext): string => {
-        if (context.recommendation.reasonCode === 'sources_preferred') {
-            return 'Direct manuscript citations are available with this engine.';
-        }
-        if (context.recommendation.reasonCode === 'single_pass_preferred') {
-            return 'This engine can fit the current corpus in one pass.';
-        }
-        if (context.recommendation.reasonCode === 'cost_reuse_preferred') {
-            return 'This engine supports corpus reuse for repeated runs.';
-        }
-        return 'Use this when you want deeper reasoning for difficult structural analysis.';
-    };
-
-    const renderInquiryAdvisoryExampleLines = (context: InquiryAdvisoryContext): string[] => {
-        if (context.recommendation.reasonCode === 'sources_preferred') {
-            return [
-                'Finding',
-                'Continuity drift appears across adjacent scenes.',
-                'Source',
-                `${context.focusLabel} · scene excerpt`
-            ];
-        }
-        if (context.recommendation.reasonCode === 'single_pass_preferred') {
-            const currentPasses = Math.max(1, context.corpus.expectedPassCount);
-            return [
-                `Current setup · ~${currentPasses} passes`,
-                'Suggested engine · 1 pass'
-            ];
-        }
-        if (context.recommendation.reasonCode === 'cost_reuse_preferred') {
-            return [
-                'Repeated runs resend the corpus',
-                'Reuse keeps repeated runs lighter'
-            ];
-        }
-        return [
-            'Use for difficult structural tradeoffs.',
-            'Deeper reasoning helps with causality checks.'
-        ];
-    };
-
-    const presentInquiryAdvisory = (context: InquiryAdvisoryContext): InquiryAdvisoryPresentation => ({
-        reasonLine: renderInquiryAdvisoryReasonLine(context),
-        exampleLines: renderInquiryAdvisoryExampleLines(context),
-        suggestedEngineLine: `Suggested engine · ${context.recommendation.providerLabel} · ${context.recommendation.modelLabel}`
-    });
-
-    const renderInquiryAdvisoryBanner = (context: InquiryAdvisoryContext | null): void => {
-        inquiryAdvisoryFrame.empty();
-        if (!context) {
-            inquiryAdvisoryFrame.toggleClass('ert-settings-hidden', true);
-            inquiryAdvisoryFrame.toggleClass('ert-settings-visible', false);
-            return;
-        }
-
-        inquiryAdvisoryFrame.toggleClass('ert-settings-hidden', false);
-        inquiryAdvisoryFrame.toggleClass('ert-settings-visible', true);
-        const presentation = presentInquiryAdvisory(context);
-
-        const header = inquiryAdvisoryFrame.createDiv({ cls: 'ert-ai-inquiry-advisory-header' });
-        header.createEl('h4', {
-            cls: 'ert-ai-inquiry-advisory-title',
-            text: 'Inquiry Advisor'
-        });
-        const dismissButton = header.createEl('button', {
-            cls: 'ert-ai-inquiry-advisory-dismiss',
-            text: 'Dismiss',
-            attr: { type: 'button', 'aria-label': 'Dismiss Inquiry advisory context' }
-        });
-        dismissButton.addEventListener('click', () => {
-            plugin.clearInquiryAdvisoryHandoffContext();
-            renderInquiryAdvisoryBanner(null);
-        });
-
-        const body = inquiryAdvisoryFrame.createDiv({ cls: 'ert-ai-inquiry-advisory-body' });
-        body.createDiv({ cls: 'ert-ai-inquiry-advisory-reason', text: presentation.reasonLine });
-        const example = body.createDiv({ cls: 'ert-ai-inquiry-advisory-example' });
-        presentation.exampleLines.forEach(line => {
-            example.createDiv({ cls: 'ert-ai-inquiry-advisory-example-line', text: line });
-        });
-        body.createDiv({ cls: 'ert-ai-inquiry-advisory-suggestion', text: presentation.suggestedEngineLine });
-    };
-
-    renderInquiryAdvisoryBanner(plugin.consumeInquiryAdvisoryHandoffContext());
 
     const resolvedPreviewFrame = quickSetupPreviewSection.createDiv({
         cls: [ERT_CLASSES.PREVIEW_FRAME, ERT_CLASSES.STACK, 'ert-previewFrame--center', 'ert-previewFrame--flush', 'ert-ai-resolved-preview'],

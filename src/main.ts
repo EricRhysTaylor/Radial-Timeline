@@ -55,7 +55,6 @@ import { registerRuntimeCommands } from './RuntimeCommands';
 import { AuthorProgressService } from './services/AuthorProgressService';
 import { ensureBundledPandocLayoutsRegistered } from './utils/pandocBundledLayouts';
 import { normalizeManuscriptCleanupOptions } from './utils/manuscriptSanitize';
-import type { InquiryAdvisoryContext } from './inquiry/services/inquiryAdvisory';
 
 
 // Declare the variable that will be injected by the build process
@@ -111,7 +110,6 @@ export default class RadialTimelinePlugin extends Plugin {
     searchActive: boolean = false;
     searchResults: Set<string> = new Set<string>();
     private readonly eventBus = new EventTarget();
-    private inquiryAdvisoryHandoffContext: InquiryAdvisoryContext | null = null;
     private metadataCacheListener: (() => void) | null = null;
 
     // Services
@@ -365,30 +363,6 @@ export default class RadialTimelinePlugin extends Plugin {
     public getTimelineService(): TimelineService { return this.timelineService; }
     public getInquiryService(): InquiryService { return this.inquiryService; }
     public getInquiryEstimateService(): InquiryEstimateService { return this.inquiryEstimateService; }
-
-    private cloneInquiryAdvisoryContext(context: InquiryAdvisoryContext): InquiryAdvisoryContext {
-        return JSON.parse(JSON.stringify(context)) as InquiryAdvisoryContext;
-    }
-
-    public setInquiryAdvisoryHandoffContext(context: InquiryAdvisoryContext | null): void {
-        this.inquiryAdvisoryHandoffContext = context ? this.cloneInquiryAdvisoryContext(context) : null;
-    }
-
-    public getInquiryAdvisoryHandoffContext(): InquiryAdvisoryContext | null {
-        return this.inquiryAdvisoryHandoffContext
-            ? this.cloneInquiryAdvisoryContext(this.inquiryAdvisoryHandoffContext)
-            : null;
-    }
-
-    public consumeInquiryAdvisoryHandoffContext(): InquiryAdvisoryContext | null {
-        const context = this.getInquiryAdvisoryHandoffContext();
-        this.inquiryAdvisoryHandoffContext = null;
-        return context;
-    }
-
-    public clearInquiryAdvisoryHandoffContext(): void {
-        this.inquiryAdvisoryHandoffContext = null;
-    }
 
     /** Show or hide the Inquiry ribbon icon and close open Inquiry views when hiding. */
     public setInquiryVisible(visible: boolean): void {

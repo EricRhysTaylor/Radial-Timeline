@@ -1276,7 +1276,7 @@ export class InquiryView extends ItemView {
         this.engineBadgeGroup.querySelector('title')?.remove();
         this.registerDomEvent(this.engineBadgeGroup as unknown as HTMLElement, 'pointerenter', () => this.showEnginePanel());
         this.registerDomEvent(this.engineBadgeGroup as unknown as HTMLElement, 'pointerleave', () => this.scheduleEnginePanelHide());
-        this.registerDomEvent(this.engineBadgeGroup as unknown as HTMLElement, 'click', () => this.openAiSettings([], this.lastEngineAdvisoryContext));
+        this.registerDomEvent(this.engineBadgeGroup as unknown as HTMLElement, 'click', () => this.openAiSettings());
 
         const minimapGroup = createSvgGroup(canvasGroup, 'ert-inquiry-minimap', 0, MINIMAP_GROUP_Y);
         this.minimap.initElements(minimapGroup, VIEWBOX_SIZE);
@@ -1689,7 +1689,7 @@ export class InquiryView extends ItemView {
         this.registerDomEvent(settingsButton, 'click', (event: MouseEvent) => {
             event.stopPropagation();
             this.hideEnginePanel();
-            this.openAiSettings(['provider'], advisoryContext);
+            this.openAiSettings(['provider']);
         });
 
         const logButton = actionsRow.createEl('button', {
@@ -1704,8 +1704,7 @@ export class InquiryView extends ItemView {
         });
     }
 
-    private openAiSettings(targets: AiSettingsFocus[] = [], advisoryContext: InquiryAdvisoryContext | null = null): void {
-        this.plugin.setInquiryAdvisoryHandoffContext(advisoryContext);
+    private openAiSettings(targets: AiSettingsFocus[] = []): void {
         if (this.plugin.settingsTab) {
             this.plugin.settingsTab.setActiveTab('ai');
         }
@@ -1825,10 +1824,10 @@ export class InquiryView extends ItemView {
         container.empty();
 
         const card = container.createDiv({ cls: 'ert-inquiry-engine-advisor-card' });
-        card.createDiv({ cls: 'ert-inquiry-engine-advisor-title', text: 'Inquiry Advisor' });
+        card.createDiv({ cls: 'ert-inquiry-engine-advisor-title', text: 'INQUIRY ADVISOR' });
         card.createDiv({
             cls: 'ert-inquiry-engine-advisor-message',
-            text: advisory.recommendation.message
+            text: 'Single-pass option:'
         });
         card.createDiv({
             cls: 'ert-inquiry-engine-advisor-suggestion',

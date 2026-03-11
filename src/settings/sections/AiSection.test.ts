@@ -68,21 +68,23 @@ describe('AI settings models table', () => {
         expect(source.includes('Context compare · OpenAI')).toBe(true);
     });
 
-    it('renders inquiry advisory as compact reason plus example mapping', () => {
+    it('does not render inquiry advisory UI in AI Strategy settings', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
-        expect(source.includes('presentInquiryAdvisory')).toBe(true);
-        expect(source.includes('renderInquiryAdvisoryReasonLine')).toBe(true);
-        expect(source.includes('renderInquiryAdvisoryExampleLines')).toBe(true);
-        expect(source.includes('Inquiry Advisor')).toBe(true);
-        expect(source.includes('Suggested engine ·')).toBe(true);
+        expect(source.includes('presentInquiryAdvisory')).toBe(false);
+        expect(source.includes('renderInquiryAdvisoryReasonLine')).toBe(false);
+        expect(source.includes('renderInquiryAdvisoryExampleLines')).toBe(false);
+        expect(source.includes('Inquiry Advisor')).toBe(false);
+        expect(source.includes('Suggested engine ·')).toBe(false);
         expect(source.includes('Current engine:')).toBe(false);
         expect(source.includes('Corpus estimate:')).toBe(false);
         expect(source.includes('Snapshot captured:')).toBe(false);
     });
 
-    it('keeps inquiry advisory hidden when no handoff context exists', () => {
+    it('removes inquiry advisory handoff plumbing from settings rendering', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
-        expect(source.includes('renderInquiryAdvisoryBanner(plugin.consumeInquiryAdvisoryHandoffContext());')).toBe(true);
+        expect(source.includes('renderInquiryAdvisoryBanner(')).toBe(false);
+        expect(source.includes('consumeInquiryAdvisoryHandoffContext')).toBe(false);
+        expect(source.includes('clearInquiryAdvisoryHandoffContext')).toBe(false);
         expect(source.includes('params.addAiRelatedElement(inquiryAdvisoryFrame);')).toBe(false);
     });
 
