@@ -25,6 +25,7 @@ import { readSceneId, resolveSceneReferenceId } from '../../utils/sceneIds';
 import { buildSceneRefIndex, isStableSceneId, normalizeSceneRef } from '../../ai/references/sceneRefNormalizer';
 import { cleanEvidenceBody } from '../utils/evidenceCleaning';
 import { estimateTokensFromChars, type TokenEstimateMethod } from '../../ai/tokens/inputTokenEstimate';
+import { logCountingForensics } from '../../ai/diagnostics/countingForensics';
 
 export { cleanEvidenceBody } from '../utils/evidenceCleaning';
 
@@ -2260,6 +2261,43 @@ export class InquiryRunnerService implements InquiryRunner {
             uncertaintyTokens: prepared?.tokenEstimateUncertainty ?? 0,
             effectiveInputCeiling: prepared?.effectiveInputCeiling
         };
+        const filesIncluded = Array.from(new Set(
+            evidenceBlocks
+                .map(block => block.meta?.path || block.label)
+                .filter(Boolean)
+        )).sort((a, b) => a.localeCompare(b));
+        let sceneCount = 0;
+        let outlineCount = 0;
+        let referenceCount = 0;
+        evidenceBlocks.forEach(block => {
+            if (block.meta?.evidenceClass === 'scene') {
+                sceneCount += 1;
+                return;
+            }
+            if (block.meta?.evidenceClass === 'outline') {
+                outlineCount += 1;
+                return;
+            }
+            referenceCount += 1;
+        });
+        const totalEvidenceChars = evidenceBlocks.reduce((sum, block) => (
+            sum + block.label.length + block.content.length + 6
+        ), 0);
+        const promptEnvelopeCharsAdded = prepared
+            ? ((prepared.systemPrompt?.length ?? 0) + (prepared.userPrompt?.length ?? 0))
+            : inputChars;
+        logCountingForensics({
+            path: 'inquiry',
+            phase: 'run_trace',
+            filesIncluded,
+            sceneCount,
+            outlineCount,
+            referenceCount,
+            totalEvidenceChars,
+            promptEnvelopeCharsAdded,
+            tokenMethodUsed: tokenEstimate.estimationMethod ?? 'heuristic_chars',
+            finalTokenEstimate: tokenEstimate.inputTokens
+        });
         this.tokenEstimateCache.set(cacheKey, tokenEstimate);
         return tokenEstimate;
     }

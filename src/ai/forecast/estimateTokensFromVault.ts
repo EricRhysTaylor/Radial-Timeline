@@ -11,6 +11,7 @@ import type { InquiryScope } from '../../inquiry/state';
 import type { TokenEstimateMethod } from '../tokens/inputTokenEstimate';
 import { getAIClient } from '../runtime/aiClient';
 import { mapLegacyProviderToAiProvider } from '../settings/aiSettings';
+import { logCountingForensics } from '../diagnostics/countingForensics';
 
 export const FORECAST_CHARS_PER_TOKEN = 4;
 export const FORECAST_PROMPT_OVERHEAD_TOKENS = 250;
@@ -27,6 +28,9 @@ export interface InquiryTokenEstimate {
     estimatedInputTokens: number;
     evidenceChars: number;
     blockCount: number;
+    sceneCount: number;
+    outlineCount: number;
+    referenceCount: number;
     evidenceMode: InquiryEvidenceMode;
     evidenceLabel: string;
     selectionLabel: string;
@@ -207,12 +211,18 @@ export async function estimateInquiryTokens(params: {
         { scope, focusBookId: params.scopeContext?.focusBookId }
     );
     const blocks: InquiryEvidenceBlock[] = [];
+    const scenePaths = new Set<string>();
+    const outlinePaths = new Set<string>();
+    const referencePaths = new Set<string>();
 
     if (!classScope.allowAll && classScope.allowed.size === 0) {
         return {
             estimatedInputTokens: 0,
             evidenceChars: 0,
             blockCount: 0,
+            sceneCount: 0,
+            outlineCount: 0,
+            referenceCount: 0,
             evidenceMode: 'none',
             evidenceLabel: 'None',
             estimationMethod: 'heuristic_chars',
@@ -252,6 +262,13 @@ export async function estimateInquiryTokens(params: {
                     label: `${className}: ${file.path}`,
                     content: summary
                 });
+                if (className === 'scene') {
+                    scenePaths.add(file.path);
+                } else if (className === 'outline') {
+                    outlinePaths.add(file.path);
+                } else {
+                    referencePaths.add(file.path);
+                }
                 continue;
             }
 
@@ -263,6 +280,13 @@ export async function estimateInquiryTokens(params: {
                 label: `${className}: ${file.path}`,
                 content: cleanedBody
             });
+            if (className === 'scene') {
+                scenePaths.add(file.path);
+            } else if (className === 'outline') {
+                outlinePaths.add(file.path);
+            } else {
+                referencePaths.add(file.path);
+            }
         }
     }
 
@@ -285,6 +309,7 @@ export async function estimateInquiryTokens(params: {
         'Evidence:',
         evidenceText
     ].join('\n');
+    let promptEnvelopeCharsAdded = systemPrompt.length + userPrompt.length;
     let estimatedInputTokens = heuristicEstimate;
     let estimationMethod: TokenEstimateMethod = 'heuristic_chars';
     if (params.plugin && params.provider && params.modelId) {
@@ -309,6 +334,9 @@ export async function estimateInquiryTokens(params: {
             if (prepared.ok) {
                 estimatedInputTokens = prepared.estimate.tokenEstimateInput;
                 estimationMethod = prepared.estimate.tokenEstimateMethod;
+                promptEnvelopeCharsAdded =
+                    (prepared.estimate.systemPrompt?.length ?? 0)
+                    + (prepared.estimate.userPrompt?.length ?? 0);
             }
         } catch {
             // Keep heuristic fallback for forecast mode when preparation fails.
@@ -316,10 +344,32 @@ export async function estimateInquiryTokens(params: {
     }
     const scopePrefix = params.scopeContext?.label ? `${params.scopeContext.label} — ` : '';
 
+    const filesIncluded = [
+        ...Array.from(scenePaths),
+        ...Array.from(outlinePaths),
+        ...Array.from(referencePaths)
+    ].sort((a, b) => a.localeCompare(b));
+    logCountingForensics({
+        path: 'inquiry',
+        phase: 'settings_forecast',
+        scope,
+        filesIncluded,
+        sceneCount: scenePaths.size,
+        outlineCount: outlinePaths.size,
+        referenceCount: referencePaths.size,
+        totalEvidenceChars: evidenceChars,
+        promptEnvelopeCharsAdded,
+        tokenMethodUsed: estimationMethod,
+        finalTokenEstimate: estimatedInputTokens
+    });
+
     return {
         estimatedInputTokens,
         evidenceChars,
         blockCount: blocks.length,
+        sceneCount: scenePaths.size,
+        outlineCount: outlinePaths.size,
+        referenceCount: referencePaths.size,
         evidenceMode,
         evidenceLabel: formatInquiryEvidenceLabel(evidenceMode),
         estimationMethod,
@@ -347,6 +397,19 @@ export async function estimateGossamerTokens(params: {
     });
     const evidenceChars = evidence.includedScenes > 0 ? evidence.text.length : 0;
     const estimatedInputTokens = estimateTokensFromChars(evidenceChars, params.promptOverheadTokens);
+    logCountingForensics({
+        path: 'gossamer',
+        phase: 'settings_forecast',
+        scope: 'book',
+        filesIncluded: sceneFiles.map(file => file.path).sort((a, b) => a.localeCompare(b)),
+        sceneCount: evidence.totalScenes,
+        outlineCount: 0,
+        referenceCount: 0,
+        totalEvidenceChars: evidenceChars,
+        promptEnvelopeCharsAdded: (params.promptOverheadTokens ?? FORECAST_PROMPT_OVERHEAD_TOKENS) * FORECAST_CHARS_PER_TOKEN,
+        tokenMethodUsed: 'heuristic_chars',
+        finalTokenEstimate: estimatedInputTokens
+    });
 
     return {
         estimatedInputTokens,

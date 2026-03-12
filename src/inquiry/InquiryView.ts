@@ -1120,6 +1120,18 @@ export class InquiryView extends ItemView {
         this.corpusResolver = new InquiryCorpusResolver(this.app.vault, this.app.metadataCache, this.plugin.settings.frontmatterMappings);
     }
 
+    private registerSvgEvent<TEvent extends Event>(
+        element: SVGElement | undefined,
+        event: string,
+        handler: (event: TEvent) => void,
+        options?: boolean | AddEventListenerOptions
+    ): void {
+        if (!element) return;
+        const listener = handler as unknown as EventListener;
+        element.addEventListener(event, listener, options);
+        this.register(() => element.removeEventListener(event, listener, options));
+    }
+
     getViewType(): string {
         return INQUIRY_VIEW_TYPE;
     }
@@ -1242,7 +1254,7 @@ export class InquiryView extends ItemView {
         this.scopeToggleIcon = this.scopeToggleButton.querySelector('.ert-inquiry-icon') as SVGUseElement;
         this.scopeToggleButton.querySelector('title')?.remove();
         addTooltipData(this.scopeToggleButton, this.balanceTooltipText('Toggle scope'), 'left');
-        this.registerDomEvent(this.scopeToggleButton as unknown as HTMLElement, 'click', () => {
+        this.registerSvgEvent(this.scopeToggleButton, 'click', () => {
             this.handleScopeChange(this.state.scope === 'book' ? 'saga' : 'book');
         });
 
@@ -1251,7 +1263,7 @@ export class InquiryView extends ItemView {
         const simulateX = helpX - (iconSize + iconGap);
         this.apiSimulationButton = this.createIconButton(hudGroup, simulateX, 0, iconSize, 'activity', 'Simulate API run');
         addTooltipData(this.apiSimulationButton, this.balanceTooltipText('Simulate API run'), 'left');
-        this.registerDomEvent(this.apiSimulationButton as unknown as HTMLElement, 'click', () => this.startApiSimulation());
+        this.registerSvgEvent(this.apiSimulationButton, 'click', () => this.startApiSimulation());
 
         this.helpToggleButton = this.createIconButton(
             hudGroup,
@@ -1263,20 +1275,20 @@ export class InquiryView extends ItemView {
             'ert-inquiry-help-btn'
         );
         this.helpToggleButton.querySelector('title')?.remove();
-        this.registerDomEvent(this.helpToggleButton as unknown as HTMLElement, 'click', () => this.handleGuidanceHelpClick());
+        this.registerSvgEvent(this.helpToggleButton, 'click', () => this.handleGuidanceHelpClick());
 
         this.artifactButton = this.createIconButton(hudGroup, artifactX, 0, iconSize, 'aperture', 'Briefing');
         this.artifactButton.querySelector('title')?.remove();
-        this.registerDomEvent(this.artifactButton as unknown as HTMLElement, 'pointerenter', () => this.showBriefingPanel());
-        this.registerDomEvent(this.artifactButton as unknown as HTMLElement, 'pointerleave', () => this.scheduleBriefingHide());
-        this.registerDomEvent(this.artifactButton as unknown as HTMLElement, 'click', () => this.toggleBriefingPanel());
+        this.registerSvgEvent(this.artifactButton, 'pointerenter', () => this.showBriefingPanel());
+        this.registerSvgEvent(this.artifactButton, 'pointerleave', () => this.scheduleBriefingHide());
+        this.registerSvgEvent(this.artifactButton, 'click', () => this.toggleBriefingPanel());
 
         const engineBadgeX = iconSize + iconGap;
         this.engineBadgeGroup = this.createIconButton(hudGroup, engineBadgeX, 0, iconSize, 'cpu', 'AI engine', 'ert-inquiry-engine-btn');
         this.engineBadgeGroup.querySelector('title')?.remove();
-        this.registerDomEvent(this.engineBadgeGroup as unknown as HTMLElement, 'pointerenter', () => this.showEnginePanel());
-        this.registerDomEvent(this.engineBadgeGroup as unknown as HTMLElement, 'pointerleave', () => this.scheduleEnginePanelHide());
-        this.registerDomEvent(this.engineBadgeGroup as unknown as HTMLElement, 'click', () => this.openAiSettings());
+        this.registerSvgEvent(this.engineBadgeGroup, 'pointerenter', () => this.showEnginePanel());
+        this.registerSvgEvent(this.engineBadgeGroup, 'pointerleave', () => this.scheduleEnginePanelHide());
+        this.registerSvgEvent(this.engineBadgeGroup, 'click', () => this.openAiSettings());
 
         const minimapGroup = createSvgGroup(canvasGroup, 'ert-inquiry-minimap', 0, MINIMAP_GROUP_Y);
         this.minimap.initElements(minimapGroup, VIEWBOX_SIZE);
@@ -1296,32 +1308,32 @@ export class InquiryView extends ItemView {
         this.depthRingHit = this.glyph.depthRingHit;
         this.glyphHit = this.glyph.labelHit;
 
-        this.registerDomEvent(this.glyphHit as unknown as HTMLElement, 'click', () => {
+        this.registerSvgEvent(this.glyphHit, 'click', () => {
             if (this.isInquiryGuidanceLockout()) return;
             this.handleGlyphClick();
         });
-        this.registerDomEvent(this.flowRingHit as unknown as HTMLElement, 'click', () => {
+        this.registerSvgEvent(this.flowRingHit, 'click', () => {
             if (this.isInquiryGuidanceLockout()) return;
             this.handleRingClick('flow');
         });
-        this.registerDomEvent(this.depthRingHit as unknown as HTMLElement, 'click', () => {
+        this.registerSvgEvent(this.depthRingHit, 'click', () => {
             if (this.isInquiryGuidanceLockout()) return;
             this.handleRingClick('depth');
         });
         if (this.modeIconToggleHit) {
-            this.registerDomEvent(this.modeIconToggleHit as unknown as HTMLElement, 'click', () => {
+            this.registerSvgEvent(this.modeIconToggleHit, 'click', () => {
                 if (this.isInquiryGuidanceLockout()) return;
                 this.handleModeIconToggleClick();
             });
-            this.registerDomEvent(this.modeIconToggleHit as unknown as HTMLElement, 'pointerenter', () => {
+            this.registerSvgEvent(this.modeIconToggleHit, 'pointerenter', () => {
                 if (this.isInquiryGuidanceLockout()) return;
                 this.setHoverText(this.buildModeToggleHoverText());
             });
-            this.registerDomEvent(this.modeIconToggleHit as unknown as HTMLElement, 'pointerleave', () => {
+            this.registerSvgEvent(this.modeIconToggleHit, 'pointerleave', () => {
                 if (this.isInquiryGuidanceLockout()) return;
                 this.clearHoverText();
             });
-            this.registerDomEvent(this.modeIconToggleHit as unknown as HTMLElement, 'keydown', (event: Event) => {
+            this.registerSvgEvent(this.modeIconToggleHit, 'keydown', (event: Event) => {
                 if (this.isInquiryGuidanceLockout()) return;
                 const keyboardEvent = event as KeyboardEvent;
                 if (keyboardEvent.key !== 'Enter' && keyboardEvent.key !== ' ') return;
@@ -1332,27 +1344,27 @@ export class InquiryView extends ItemView {
 
         this.buildPromptPreviewPanel(canvasGroup);
 
-        this.registerDomEvent(this.glyphHit as unknown as HTMLElement, 'pointerenter', () => {
+        this.registerSvgEvent(this.glyphHit, 'pointerenter', () => {
             if (this.isInquiryGuidanceLockout()) return;
             this.setHoverText(this.buildFocusHoverText());
         });
-        this.registerDomEvent(this.glyphHit as unknown as HTMLElement, 'pointerleave', () => {
+        this.registerSvgEvent(this.glyphHit, 'pointerleave', () => {
             if (this.isInquiryGuidanceLockout()) return;
             this.clearHoverText();
         });
-        this.registerDomEvent(this.flowRingHit as unknown as HTMLElement, 'pointerenter', () => {
+        this.registerSvgEvent(this.flowRingHit, 'pointerenter', () => {
             if (this.isInquiryGuidanceLockout()) return;
             this.setHoverText(this.buildRingHoverText('flow'));
         });
-        this.registerDomEvent(this.flowRingHit as unknown as HTMLElement, 'pointerleave', () => {
+        this.registerSvgEvent(this.flowRingHit, 'pointerleave', () => {
             if (this.isInquiryGuidanceLockout()) return;
             this.clearHoverText();
         });
-        this.registerDomEvent(this.depthRingHit as unknown as HTMLElement, 'pointerenter', () => {
+        this.registerSvgEvent(this.depthRingHit, 'pointerenter', () => {
             if (this.isInquiryGuidanceLockout()) return;
             this.setHoverText(this.buildRingHoverText('depth'));
         });
-        this.registerDomEvent(this.depthRingHit as unknown as HTMLElement, 'pointerleave', () => {
+        this.registerSvgEvent(this.depthRingHit, 'pointerleave', () => {
             if (this.isInquiryGuidanceLockout()) return;
             this.clearHoverText();
         });
@@ -1363,8 +1375,8 @@ export class InquiryView extends ItemView {
         this.navPrevIcon = this.navPrevButton.querySelector('.ert-inquiry-icon') as SVGUseElement;
         this.navNextButton = this.createIconButton(navGroup, 54, -18, 44, 'chevron-right', 'Next book', 'ert-inquiry-nav-btn');
         this.navNextIcon = this.navNextButton.querySelector('.ert-inquiry-icon') as SVGUseElement;
-        this.registerDomEvent(this.navPrevButton as unknown as HTMLElement, 'click', () => this.shiftFocus(-1));
-        this.registerDomEvent(this.navNextButton as unknown as HTMLElement, 'click', () => this.shiftFocus(1));
+        this.registerSvgEvent(this.navPrevButton, 'click', () => this.shiftFocus(-1));
+        this.registerSvgEvent(this.navNextButton, 'click', () => this.shiftFocus(1));
 
         // Session timestamp label — to the right of nav arrows, same gap (10px).
         // Nav buttons: prev at x=0 (w=44), next at x=54 (w=44) → next ends at x=98. Gap = 10.
@@ -1384,7 +1396,7 @@ export class InquiryView extends ItemView {
     private buildPromptPreviewPanel(parent: SVGGElement): void {
         const panel = createSvgGroup(parent, 'ert-inquiry-preview', 0, PREVIEW_PANEL_Y);
         this.previewGroup = panel;
-        this.registerDomEvent(panel as unknown as HTMLElement, 'click', (event: MouseEvent) => {
+        this.registerSvgEvent(panel, 'click', (event: MouseEvent) => {
             if (this.state.isRunning) {
                 event.stopPropagation();
                 void this.handleRunningPreviewCancelClick();
@@ -3426,8 +3438,8 @@ export class InquiryView extends ItemView {
 
             this.zonePromptElements.set(zone.id, { group: zoneEl, bg, glow, text });
 
-            this.registerDomEvent(zoneEl as unknown as HTMLElement, 'click', () => this.handlePromptClick(zone.id));
-            this.registerDomEvent(zoneEl as unknown as HTMLElement, 'pointerenter', () => {
+            this.registerSvgEvent(zoneEl, 'click', () => this.handlePromptClick(zone.id));
+            this.registerSvgEvent(zoneEl, 'pointerenter', () => {
                 if (this.isInquiryRunDisabled()) return;
                 const prompt = this.getActivePrompt(zone.id);
                 if (prompt) {
@@ -3435,7 +3447,7 @@ export class InquiryView extends ItemView {
                 }
                 this.setHoverText(this.buildZoneHoverText(zone.id));
             });
-            this.registerDomEvent(zoneEl as unknown as HTMLElement, 'pointerleave', () => {
+            this.registerSvgEvent(zoneEl, 'pointerleave', () => {
                 if (this.isInquiryRunDisabled()) return;
                 this.clearHoverText();
                 this.hidePromptPreview();
@@ -3636,7 +3648,7 @@ export class InquiryView extends ItemView {
         createSvgText(findingsGroup, 'ert-inquiry-findings-title', 'Findings', 24, 36);
         this.detailsToggle = this.createIconButton(findingsGroup, width - 88, 14, 32, 'chevron-down', 'Toggle details', 'ert-inquiry-details-toggle');
         this.detailsIcon = this.detailsToggle.querySelector('.ert-inquiry-icon') as SVGUseElement;
-        this.registerDomEvent(this.detailsToggle as unknown as HTMLElement, 'click', () => this.toggleDetails());
+        this.registerSvgEvent(this.detailsToggle, 'click', () => this.toggleDetails());
 
         this.detailsEl = createSvgGroup(findingsGroup, 'ert-inquiry-details ert-hidden', 24, 64);
         this.detailRows = [
@@ -4221,7 +4233,7 @@ export class InquiryView extends ItemView {
             this.ccLabelHit = createSvgElement('rect');
             this.ccLabelHit.classList.add('ert-inquiry-cc-label-hit');
             this.ccLabelGroup.appendChild(this.ccLabelHit);
-            this.registerDomEvent(this.ccLabelGroup as unknown as HTMLElement, 'click', () => {
+            this.registerSvgEvent(this.ccLabelGroup, 'click', () => {
                 this.handleCorpusGlobalToggle();
             });
         }
@@ -4318,7 +4330,7 @@ export class InquiryView extends ItemView {
             group.appendChild(border);
             group.appendChild(icon);
             group.appendChild(lowSubstanceX);
-            this.registerDomEvent(group as unknown as HTMLElement, 'click', (evt) => {
+            this.registerSvgEvent(group, 'click', (evt: MouseEvent) => {
                 if (this.state.isRunning) return;
                 const entryKey = group.getAttribute('data-entry-key');
                 if (!entryKey) return;
@@ -4413,7 +4425,7 @@ export class InquiryView extends ItemView {
             label.setAttribute('text-anchor', 'start');
             label.setAttribute('dominant-baseline', 'middle');
             headerGroup.appendChild(label);
-            this.registerDomEvent(headerGroup as unknown as HTMLElement, 'click', () => {
+            this.registerSvgEvent(headerGroup, 'click', () => {
                 const groupKey = headerGroup.getAttribute('data-group-key') ?? headerGroup.getAttribute('data-class');
                 if (!groupKey) return;
                 this.handleCorpusGroupToggle(groupKey);

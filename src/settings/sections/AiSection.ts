@@ -817,31 +817,23 @@ export function renderAiSection(params: {
         provider: AIProviderId;
         modelId: string;
     }): Promise<{ inquiry: FeatureForecast; gossamer: FeatureForecast }> => {
-        // Prefer the shared estimate snapshot if InquiryView has been opened.
-        const snapshot = plugin.getInquiryEstimateService().getSnapshot();
-        let inquiryLabel: string;
-        let inquiryInputTokens: number;
-        if (snapshot) {
-            const scopeLabel = snapshot.scope === 'saga' ? 'Saga' : 'Book';
-            const countLabel = `${snapshot.corpus.sceneCount} scenes`;
-            inquiryLabel = `${scopeLabel} · ${countLabel}`;
-            inquiryInputTokens = snapshot.estimate.estimatedInputTokens;
-        } else {
-            // Cold-start fallback — InquiryView never opened.
-            const inquiryEstimate = await estimateInquiryTokens({
-                plugin,
-                provider: engine?.provider,
-                modelId: engine?.modelId,
-                questionText: 'Analyze corpus-level flow and depth quality.',
-                vault: app.vault,
-                metadataCache: app.metadataCache,
-                inquirySources: plugin.settings.inquirySources,
-                frontmatterMappings: plugin.settings.frontmatterMappings,
-                scopeContext: { scope: 'book' }
-            });
-            inquiryLabel = `${inquiryEstimate.selectionLabel} (${inquiryEstimate.evidenceLabel}) — approximate`;
-            inquiryInputTokens = inquiryEstimate.estimatedInputTokens;
-        }
+        // Always recompute from vault for Settings so stale Inquiry snapshots
+        // cannot inflate or mismatch the displayed corpus forecast.
+        const inquiryEstimate = await estimateInquiryTokens({
+            plugin,
+            provider: engine?.provider,
+            modelId: engine?.modelId,
+            questionText: 'Analyze corpus-level flow and depth quality.',
+            vault: app.vault,
+            metadataCache: app.metadataCache,
+            inquirySources: plugin.settings.inquirySources,
+            frontmatterMappings: plugin.settings.frontmatterMappings,
+            scopeContext: { scope: 'book' }
+        });
+        const inquiryLabel = inquiryEstimate.sceneCount > 0
+            ? `Book · ${inquiryEstimate.sceneCount} scenes`
+            : `${inquiryEstimate.selectionLabel} (${inquiryEstimate.evidenceLabel}) — approximate`;
+        const inquiryInputTokens = inquiryEstimate.estimatedInputTokens;
 
         const gossamerEstimate = await estimateGossamerTokens({
             plugin,
@@ -1103,8 +1095,6 @@ export function renderAiSection(params: {
         }
 
     };
-
-    void refreshRoutingUi();
 
     // Provider sections
     const anthropicSection = configurationBody.createDiv({
@@ -1844,7 +1834,6 @@ export function renderAiSection(params: {
         cls: 'ert-section-desc',
         text: 'Configure your local model server. The preview card above will update as you fill in these fields.'
     });
-    params.addAiRelatedElement(localQuickConfigSection);
 
     const localQuickBaseUrlSetting = new Settings(localQuickConfigSection)
         .setName('Base URL')
@@ -2032,6 +2021,7 @@ export function renderAiSection(params: {
 
     // Apply provider dimming on first render
     params.refreshProviderDimming();
+    void refreshRoutingUi();
 
     // Set initial visibility state
     params.toggleAiSettingsVisibility(plugin.settings.enableAiSceneAnalysis ?? true);

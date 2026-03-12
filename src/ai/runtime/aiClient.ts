@@ -384,8 +384,8 @@ export class AIClient {
                 citationsEnabled: caps.citationsEnabled,
                 safeInputBudget: effectiveInputCeiling
             });
-        const tokenEstimateInput = countedEstimate.inputTokens;
-        const tokenEstimateMethod = countedEstimate.method;
+        let tokenEstimateInput = countedEstimate.inputTokens;
+        let tokenEstimateMethod = countedEstimate.method;
         const tokenEstimateUncertainty = estimateUncertaintyTokens(tokenEstimateMethod, effectiveInputCeiling);
 
         const cacheKey = buildCacheKey({

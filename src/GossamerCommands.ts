@@ -26,6 +26,7 @@ import { isPathInFolderScope } from './utils/pathScope';
 import { FORECAST_CHARS_PER_TOKEN, FORECAST_PROMPT_OVERHEAD_TOKENS } from './ai/forecast/estimateTokensFromVault';
 import type { AIProviderId } from './ai/types';
 import { buildGossamerEvidenceDocument } from './gossamer/evidence/buildGossamerEvidence';
+import { logCountingForensics } from './ai/diagnostics/countingForensics';
 
 const sanitizeSegment = (value: string | null | undefined) => {
   if (!value) return '';
@@ -815,6 +816,19 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
     modal.setStatus('Building analysis prompt...');
     const prompt = buildUnifiedBeatAnalysisPrompt(evidenceDocument.text, beats, beatSystem);
     const schema = getUnifiedBeatAnalysisJsonSchema();
+    logCountingForensics({
+      path: 'gossamer',
+      phase: 'analysis_run',
+      scope: 'book',
+      filesIncluded: sceneFiles.map(file => file.path).sort((a, b) => a.localeCompare(b)),
+      sceneCount: evidenceDocument.totalScenes,
+      outlineCount: 0,
+      referenceCount: 0,
+      totalEvidenceChars: evidenceDocument.text.length,
+      promptEnvelopeCharsAdded: Math.max(0, prompt.length - evidenceDocument.text.length),
+      tokenMethodUsed: 'heuristic_chars',
+      finalTokenEstimate: estimatedTokens
+    });
 
     // Call unified AI client
     modal.setStatus('Sending manuscript to AI for momentum analysis...');
@@ -1090,6 +1104,19 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
     const evidenceDocument = resolvedEvidence.document;
     // Estimate tokens: evidence chars/4 + prompt envelope overhead.
     const estimatedTokens = Math.ceil(evidenceDocument.text.length / FORECAST_CHARS_PER_TOKEN) + FORECAST_PROMPT_OVERHEAD_TOKENS;
+    logCountingForensics({
+      path: 'gossamer',
+      phase: 'precheck',
+      scope: 'book',
+      filesIncluded: sceneFiles.map(file => file.path).sort((a, b) => a.localeCompare(b)),
+      sceneCount: evidenceDocument.totalScenes,
+      outlineCount: 0,
+      referenceCount: 0,
+      totalEvidenceChars: evidenceDocument.text.length,
+      promptEnvelopeCharsAdded: FORECAST_PROMPT_OVERHEAD_TOKENS * FORECAST_CHARS_PER_TOKEN,
+      tokenMethodUsed: 'heuristic_chars',
+      finalTokenEstimate: estimatedTokens
+    });
 
     const manuscriptInfo: ManuscriptInfo = {
       totalScenes: evidenceDocument.totalScenes,

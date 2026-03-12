@@ -88,6 +88,13 @@ describe('AI settings models table', () => {
         expect(source.includes('params.addAiRelatedElement(inquiryAdvisoryFrame);')).toBe(false);
     });
 
+    it('keeps local quick-config provider-gated instead of globally forced visible', () => {
+        const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
+        expect(source.includes('params.addAiRelatedElement(localQuickConfigSection);')).toBe(false);
+        expect(source.includes("localQuickConfigSection.toggleClass('ert-settings-hidden', !isLocal);")).toBe(true);
+        expect(source.includes("localQuickConfigSection.toggleClass('ert-settings-visible', isLocal);")).toBe(true);
+    });
+
     it('uses medium dropdown sizing for all AI Strategy controls', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
         expect(source.includes('providerDropdown = dropdown;')).toBe(true);

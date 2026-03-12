@@ -56,6 +56,8 @@ After.`;
         expect(result.evidenceLabel).toBe('Bodies');
         expect(result.evidenceChars).toBe(expectedChars);
         expect(result.estimatedInputTokens).toBe(expectedTokens);
+        expect(result.sceneCount).toBe(1);
+        expect(result.outlineCount).toBe(0);
     });
 
     it('counts only Summary field content when summaries mode is active', async () => {
@@ -91,5 +93,7 @@ This very long body should not be counted when summary mode is selected.`;
         expect(result.evidenceLabel).toBe('Summaries');
         expect(result.evidenceChars).toBe(expectedChars);
         expect(result.estimatedInputTokens).toBe(expectedTokens);
+        expect(result.sceneCount).toBe(1);
+        expect(result.outlineCount).toBe(0);
     });
 });
