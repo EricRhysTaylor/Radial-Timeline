@@ -7503,6 +7503,21 @@ export class InquiryView extends ItemView {
         result.tokenEstimateTier = undefined;
     }
 
+    private getFiniteTokenEstimateInput(
+        trace?: InquiryRunTrace | null,
+        result?: InquiryResult | null
+    ): number | null {
+        const traceInput = trace?.tokenEstimate?.inputTokens;
+        if (typeof traceInput === 'number' && Number.isFinite(traceInput)) {
+            return traceInput;
+        }
+        const resultInput = result?.tokenEstimateInput;
+        if (typeof resultInput === 'number' && Number.isFinite(resultInput)) {
+            return resultInput;
+        }
+        return null;
+    }
+
     private startApiSimulation(): void {
         if (this.isInquiryRunDisabled()) return;
         if (this.state.isRunning) {
@@ -9716,11 +9731,10 @@ export class InquiryView extends ItemView {
                 userPrompt: '',
                 evidenceText: '',
                 tokenEstimate: {
-                    inputTokens: 0,
+                    inputTokens: Number.NaN,
                     outputTokens: INQUIRY_MAX_OUTPUT_TOKENS,
-                    totalTokens: INQUIRY_MAX_OUTPUT_TOKENS,
+                    totalTokens: Number.NaN,
                     inputChars: 0,
-                    estimationMethod: 'heuristic_chars',
                     uncertaintyTokens: estimateUncertaintyTokens('heuristic_chars')
                 },
                 outputTokenCap: INQUIRY_MAX_OUTPUT_TOKENS,
@@ -10160,9 +10174,7 @@ export class InquiryView extends ItemView {
         const durationMs = typeof result.roundTripMs === 'number' && Number.isFinite(result.roundTripMs)
             ? result.roundTripMs
             : null;
-        const tokenEstimateInput = typeof trace.tokenEstimate?.inputTokens === 'number'
-            ? trace.tokenEstimate.inputTokens
-            : (typeof result.tokenEstimateInput === 'number' ? result.tokenEstimateInput : null);
+        const tokenEstimateInput = this.getFiniteTokenEstimateInput(trace, result);
         const tokenTier = typeof tokenEstimateInput === 'number'
             ? this.getTokenTier(tokenEstimateInput)
             : (result.tokenEstimateTier || null);
@@ -10290,8 +10302,14 @@ export class InquiryView extends ItemView {
             const reasonLower = reason.toLowerCase();
             const failureReason = resolveFailureReason() ?? '';
             const failureLower = failureReason.toLowerCase();
-            const isCapabilityMismatch = failureLower.includes('capability floor')
-                || failureLower.includes('no model satisfies capability floor');
+            const isPackagingFailure = reasonLower === 'packaging_failed'
+                || trace.failureStage === 'chunk_execution'
+                || trace.failureStage === 'synthesis'
+                || trace.failureStage === 'preflight';
+            const isInvalidStructuredOutput = reasonLower === 'invalid_response'
+                || failureLower.includes('invalid_response')
+                || failureLower.includes('malformed json')
+                || failureLower.includes('structured output');
             const isTruncated = reasonLower === 'truncated'
                 || failureLower.includes('truncated')
                 || failureLower.includes('max tokens')
@@ -10299,41 +10317,26 @@ export class InquiryView extends ItemView {
                 || failureLower.includes('context length')
                 || failureLower.includes('length exceeded');
 
-            const hasContext = manifest?.entries
-                ? manifest.entries.some(entry => INQUIRY_CONTEXT_CLASSES.has(entry.class))
-                : false;
-            const hasFullScenes = manifest?.entries
-                ? manifest.entries.some(entry => entry.class === 'scene' && this.normalizeEvidenceMode(entry.mode) === 'full')
-                : false;
-            const hasFullOutlines = manifest?.entries
-                ? manifest.entries.some(entry => entry.class === 'outline' && this.normalizeEvidenceMode(entry.mode) === 'full')
-                : false;
-
-            if (isCapabilityMismatch) {
-                suggestions.push('Open Settings > AI and change Provider or Thinking Style to a compatible option.');
-                suggestions.push('For Inquiry, prefer Anthropic or Gemini when OpenAI cannot satisfy requirements.');
+            if (isPackagingFailure) {
+                suggestions.push('Run failed during Inquiry packaging/parsing. Open Inquiry Log for exact chunk/synthesis failure details.');
+                suggestions.push('Retry once with the same settings after reviewing the log.');
+            } else if (isInvalidStructuredOutput) {
+                suggestions.push('Run failed because Inquiry did not receive valid structured output.');
+                suggestions.push('Open Inquiry Log for the exact parser failure detail, then retry once.');
             } else if (isTruncated) {
-                if (hasContext) {
-                    suggestions.push('Reduce Context (disable Character / Place / Power).');
-                }
-                if (hasFullScenes || hasFullOutlines) {
-                    suggestions.push('Switch full materials to Summary.');
-                }
-                suggestions.push('Switch to a larger-context model or reduce the corpus.');
+                suggestions.push('Reduce corpus scope and rerun.');
             } else if (reasonLower === 'rate_limit') {
-                suggestions.push('Retry later or switch providers.');
+                suggestions.push('Retry later.');
             } else if (reasonLower === 'auth') {
                 suggestions.push('Verify API key and provider access.');
-            } else if (reasonLower === 'timeout' || reasonLower === 'unavailable') {
-                suggestions.push('Retry or switch providers.');
-            } else if (reasonLower === 'unsupported_param') {
-                suggestions.push('Switch models or disable unsupported parameters.');
-            } else if (reasonLower === 'invalid_response') {
-                suggestions.push('Retry with a smaller corpus or different model.');
+            } else if (reasonLower === 'timeout'
+                || reasonLower === 'unavailable'
+                || reasonLower === 'unsupported_param') {
+                suggestions.push('Retry and review Inquiry Log for provider error details.');
             }
 
             if (!suggestions.length) {
-                suggestions.push('Reduce corpus size or retry.');
+                suggestions.push('Open Inquiry Log for details, then retry.');
             }
             return suggestions;
         };
@@ -10431,9 +10434,7 @@ export class InquiryView extends ItemView {
         const artifactId = result.runId
             ? `artifact-${result.runId}`
             : (inquiryId ? `artifact-${inquiryId}` : `artifact-${Date.now()}`);
-        const tokenEstimateInput = typeof trace.tokenEstimate?.inputTokens === 'number'
-            ? trace.tokenEstimate.inputTokens
-            : (typeof result.tokenEstimateInput === 'number' ? result.tokenEstimateInput : null);
+        const tokenEstimateInput = this.getFiniteTokenEstimateInput(trace, result);
         const tokenTier = typeof tokenEstimateInput === 'number'
             ? this.getTokenTier(tokenEstimateInput)
             : (result.tokenEstimateTier || null);
