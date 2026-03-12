@@ -21,3 +21,13 @@ The primary branch is `master`.
 - CSS classes use `ert-` prefix (ERT design system)
 - Modal sizing uses inline styles (Obsidian pattern), marked with `// SAFE:` comments
 - Event listeners in Modal classes use direct `.addEventListener()` (Modal lifecycle manages cleanup)
+
+## Refactoring
+
+Before any structural refactor, read these engineering docs:
+
+- `docs/engineering/standards/code-doctrine.md` — coding philosophy and refactor standard
+- `docs/engineering/standards/refactor-playbook.md` — extraction methodology and success criteria
+- `docs/engineering/standards/inquiry-critical-path-rules.md` — AI critical path constraints (if touching Inquiry/Gossamer/AI)
+
+Or use `/refactor` slash command which loads them automatically.

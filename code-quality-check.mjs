@@ -329,13 +329,13 @@ function main() {
     console.error('  modalEl.style.width = "660px"; // SAFE: Modal sizing via inline styles (Obsidian pattern)');
     console.error('  data: any // SAFE: any type used for <reason>');
     console.error('  .openFile(file) // SAFE: openFile used for <reason>');
-    console.error('\n📖 See STANDARDS_CODE.md for detailed guidelines and best practices.\n');
+    console.error('\n📖 See docs/engineering/standards/code-standards.md for detailed guidelines and best practices.\n');
     process.exit(1);
   }
 
   if (!quiet) {
     console.log('\x1b[32m✅ Code quality check passed!\x1b[0m');
-    console.log('📖 See STANDARDS_CODE.md for full guidelines.');
+    console.log('📖 See docs/engineering/standards/code-standards.md for full guidelines.');
   }
 }
 

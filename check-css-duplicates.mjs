@@ -143,7 +143,7 @@ try {
     console.log('   - Increase selector specificity: .rt-settings-root .setting-item { }');
     console.log('   - Use data attributes for mode states: [data-mode="active"] .element { }');
     console.log('   - Order rules correctly: base → state → hover (later wins)');
-    console.log('   - See STANDARDS_MODAL_STYLING.md for patterns\n');
+    console.log('   - See docs/engineering/standards/modal-styling.md for patterns\n');
     hasIssues = true;
   }
   

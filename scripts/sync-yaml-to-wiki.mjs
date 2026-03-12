@@ -11,14 +11,14 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const SOURCE_FILE = path.join(__dirname, '../docs/YAML_REFERENCE.md');
+const SOURCE_FILE = path.join(__dirname, '../docs/reference/yaml-reference.md');
 const WIKI_FILE = path.join(__dirname, '../docs/wiki/YAML-Reference.md');
 
 try {
   // Read source file
   if (!fs.existsSync(SOURCE_FILE)) {
     console.error(`❌ Source file not found: ${SOURCE_FILE}`);
-    console.log('💡 Create docs/YAML_REFERENCE.md first');
+    console.log('💡 Create docs/reference/yaml-reference.md first');
     process.exit(1);
   }
 
@@ -33,7 +33,7 @@ try {
   // Add wiki-specific header
   const wikiContent = `# YAML Field Reference
 
-> **Note:** This page is auto-generated from [\`docs/YAML_REFERENCE.md\`](../YAML_REFERENCE.md)
+> **Note:** This page is auto-generated from [\`docs/reference/yaml-reference.md\`](../reference/yaml-reference.md)
 > Last synced: ${new Date().toISOString()}
 
 ---
