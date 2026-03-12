@@ -68,6 +68,20 @@ function buildChunkedSuccessRun(): AIRunResult {
     };
 }
 
+function buildRunResult(overrides?: Partial<AIRunResult>): AIRunResult {
+    return {
+        content: '{"ok":true}',
+        responseData: {},
+        provider: 'openai',
+        modelRequested: TEST_AI.modelId,
+        modelResolved: TEST_AI.modelId,
+        aiStatus: 'success',
+        warnings: [],
+        reason: 'test run',
+        ...overrides
+    };
+}
+
 describe('InquiryRunnerService packaging policy', () => {
     beforeEach(() => {
         vi.mocked(getAIClient).mockReturnValue({} as never);
@@ -109,6 +123,16 @@ describe('InquiryRunnerService packaging policy', () => {
         expect(result.failureStage).toBe('chunk_execution');
         expect(result.tokenUsageKnown).toBe(false);
         expect(runChunkedInquiry).toHaveBeenCalledTimes(1);
+        expect(runChunkedInquiry).toHaveBeenCalledWith(
+            expect.anything(),
+            expect.objectContaining({
+                packagingPrecheck: expect.objectContaining({
+                    inputTokens: 220000,
+                    safeInputTokens: 140000,
+                    onePassFit: 'overflows'
+                })
+            })
+        );
         expect(runInquiryRequest).not.toHaveBeenCalled();
     });
 
@@ -234,5 +258,69 @@ describe('InquiryRunnerService packaging policy', () => {
 
         expect(trace.openAiTransportLane).toBe('responses');
         expect(trace.notes).toContain('OpenAI transport lane: responses.');
+    });
+
+    it('recovers invalid chunk JSON and continues multi-pass execution', async () => {
+        const service = createService();
+        const buildEvidenceChunkPrompts = vi.fn().mockReturnValue({
+            prompts: ['chunk-1', 'chunk-2'],
+            maxChunkTokens: 12000,
+            maxChunkChars: 48000,
+            evidenceChars: 96000,
+            prefixChars: 2000,
+            targetPasses: 2
+        });
+        const runInquiryRequest = vi.fn()
+            .mockResolvedValueOnce(buildRunResult({
+                aiStatus: 'rejected',
+                aiReason: 'invalid_response',
+                content: [
+                    '```json',
+                    '{',
+                    '  "summaryFlow": "Recovered flow summary",',
+                    '  "summaryDepth": "Recovered depth summary",',
+                    '  "verdict": { "flow": 0.62, "depth": 0.58, "impact": "low", "assessmentConfidence": "low" },',
+                    '  "findings": []',
+                    '}',
+                    '```'
+                ].join('\n')
+            }))
+            .mockResolvedValueOnce(buildRunResult({
+                aiStatus: 'success',
+                content: JSON.stringify({
+                    summaryFlow: 'Chunk 2 flow summary',
+                    summaryDepth: 'Chunk 2 depth summary',
+                    verdict: { flow: 0.64, depth: 0.57, impact: 'low', assessmentConfidence: 'low' },
+                    findings: []
+                })
+            }))
+            .mockResolvedValueOnce(buildRunResult({
+                aiStatus: 'success',
+                content: JSON.stringify({
+                    summaryFlow: 'Synthesis flow summary',
+                    summaryDepth: 'Synthesis depth summary',
+                    verdict: { flow: 0.66, depth: 0.61, impact: 'low', assessmentConfidence: 'medium' },
+                    findings: []
+                })
+            }));
+        Object.assign(service, {
+            buildEvidenceChunkPrompts,
+            runInquiryRequest
+        });
+
+        const result = await (service.runChunkedInquiry as (...args: unknown[]) => Promise<Record<string, unknown>>) (
+            {} as never,
+            {
+                systemPrompt: 'system',
+                userPrompt: 'Question\nEvidence:\n## Scene A\nBody',
+                ai: TEST_AI,
+                jsonSchema: { type: 'object' },
+                temperature: 0.2,
+                maxTokens: 4000
+            }
+        );
+
+        expect(result.ok).toBe(true);
+        expect(runInquiryRequest).toHaveBeenCalledTimes(3);
     });
 });

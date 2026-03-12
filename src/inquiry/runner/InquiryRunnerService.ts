@@ -120,6 +120,15 @@ type MultiPassExecutionResult =
     | { ok: true; run: AIRunResult; tokenUsageKnown: boolean }
     | { ok: false; failureStage: 'preflight' | 'chunk_execution' | 'synthesis'; failureReason: string; tokenUsageKnown: boolean };
 
+type ChunkPromptPlan = {
+    prompts: string[];
+    maxChunkTokens: number;
+    maxChunkChars: number;
+    evidenceChars: number;
+    prefixChars: number;
+    targetPasses: number | null;
+};
+
 export class InquiryRunnerService implements InquiryRunner {
     private tokenEstimateCache = new Map<string, InquiryRunTrace['tokenEstimate']>();
 
@@ -1081,7 +1090,12 @@ export class InquiryRunnerService implements InquiryRunner {
                 ai,
                 jsonSchema,
                 temperature,
-                maxTokens
+                maxTokens,
+                packagingPrecheck: {
+                    inputTokens: packagingPrecheck.inputTokens,
+                    safeInputTokens: packagingPrecheck.safeInputTokens,
+                    onePassFit: packagingPrecheck.onePassFit
+                }
             });
             if (multiPass.ok) {
                 return this.toProviderResult(this.withExecutionContext(multiPass.run, {
@@ -1147,7 +1161,12 @@ export class InquiryRunnerService implements InquiryRunner {
                     ai,
                     jsonSchema,
                     temperature,
-                    maxTokens
+                    maxTokens,
+                    packagingPrecheck: {
+                        inputTokens: packagingPrecheck.inputTokens,
+                        safeInputTokens: packagingPrecheck.safeInputTokens,
+                        onePassFit: packagingPrecheck.onePassFit
+                    }
                 });
                 if (multiPass.ok) {
                     run = multiPass.run;
@@ -1409,6 +1428,11 @@ export class InquiryRunnerService implements InquiryRunner {
         failureStage: InquiryFailureStage,
         tokenUsageKnown: boolean
     ): ProviderResult {
+        const stageLabel = failureStage === 'chunk_execution'
+            ? 'chunk execution'
+            : failureStage === 'synthesis'
+                ? 'synthesis'
+                : 'preflight packaging';
         return {
             success: false,
             content: null,
@@ -1420,7 +1444,7 @@ export class InquiryRunnerService implements InquiryRunner {
             aiModelResolved: ai.modelId,
             aiStatus: 'rejected',
             aiReason: 'packaging_failed',
-            error: 'Multi-pass packaging could not be completed. Reduce corpus size, switch some evidence to Summary, or try another model/provider.',
+            error: `The run failed during multi-pass ${stageLabel}. RT did not receive valid structured output for a required pass. This is a packaging/parsing failure in the current Inquiry path. Open Inquiry Log for details.`,
             analysisPackaging,
             executionPassCount: 1,
             packagingTriggerReason: reason,
@@ -1504,10 +1528,19 @@ export class InquiryRunnerService implements InquiryRunner {
             jsonSchema: Record<string, unknown>;
             temperature: number;
             maxTokens: number;
+            packagingPrecheck?: {
+                inputTokens: number;
+                safeInputTokens: number;
+                onePassFit: OnePassFitState;
+            };
         }
     ): Promise<MultiPassExecutionResult> {
-        const chunkPrompts = this.buildEvidenceChunkPrompts(options.userPrompt, 6000);
-        if (!chunkPrompts || chunkPrompts.length <= 1) {
+        const chunkPlan = this.buildEvidenceChunkPrompts(options.userPrompt, {
+            maxChunkTokens: 12000,
+            estimatedInputTokens: options.packagingPrecheck?.inputTokens,
+            safeInputTokens: options.packagingPrecheck?.safeInputTokens
+        });
+        if (!chunkPlan || chunkPlan.prompts.length <= 1) {
             console.warn('[Inquiry] Chunked execution aborted: evidence could not be split into multiple chunks.');
             return {
                 ok: false,
@@ -1517,14 +1550,19 @@ export class InquiryRunnerService implements InquiryRunner {
             };
         }
 
-        console.info(`[Inquiry] Chunked execution: ${chunkPrompts.length} chunks to process.`);
+        console.info(
+            `[Inquiry] Chunked execution: ${chunkPlan.prompts.length} chunks to process `
+            + `(chunk budget ~${Math.round(chunkPlan.maxChunkTokens).toLocaleString()} tokens, `
+            + `evidence chars=${Math.round(chunkPlan.evidenceChars).toLocaleString()}, `
+            + `target passes=${chunkPlan.targetPasses ?? 'n/a'}).`
+        );
         const chunkOutputs: string[] = [];
         let tokenUsageKnown = false;
-        for (let i = 0; i < chunkPrompts.length; i += 1) {
+        for (let i = 0; i < chunkPlan.prompts.length; i += 1) {
             const chunkRun = await this.runInquiryRequest(aiClient, {
                 task: `AnalyzeCorpusChunk${i + 1}`,
                 systemPrompt: options.systemPrompt,
-                userPrompt: chunkPrompts[i],
+                userPrompt: chunkPlan.prompts[i],
                 userQuestion: options.userQuestion,
                 ai: options.ai,
                 jsonSchema: options.jsonSchema,
@@ -1533,10 +1571,23 @@ export class InquiryRunnerService implements InquiryRunner {
             });
             tokenUsageKnown = tokenUsageKnown || !!this.extractUsage(chunkRun.responseData);
             if (chunkRun.aiStatus !== 'success' || !chunkRun.content) {
-                const failureReason = `[Inquiry] Chunk ${i + 1}/${chunkPrompts.length} failed:`
+                const recoveredChunkJson = this.tryRecoverChunkInvalidResponse(chunkRun, i + 1, chunkPlan.prompts.length);
+                if (recoveredChunkJson) {
+                    chunkOutputs.push(recoveredChunkJson);
+                    continue;
+                }
+                const failureReason = `[Inquiry] Chunk ${i + 1}/${chunkPlan.prompts.length} failed:`
                     + ` status=${chunkRun.aiStatus}, reason=${chunkRun.aiReason ?? 'none'}`
-                    + `, error=${chunkRun.error ?? 'none'}`;
+                    + `, error=${chunkRun.error ?? 'none'}`
+                    + `, prompt_chars=${chunkPlan.prompts[i].length}`
+                    + `, response_chars=${chunkRun.content?.length ?? 0}`;
                 console.warn(failureReason);
+                if (this.isChunkDebugEnabled() && i === 0) {
+                    console.info('[Inquiry] Chunk 1 prompt (full):');
+                    console.info(chunkPlan.prompts[i]);
+                    console.info('[Inquiry] Chunk 1 raw response (full):');
+                    console.info(chunkRun.content || '<empty>');
+                }
                 return {
                     ok: false,
                     failureStage: 'chunk_execution',
@@ -1562,7 +1613,7 @@ export class InquiryRunnerService implements InquiryRunner {
             .map((output, index) => `## Chunk ${index + 1} analysis\n${output}`)
             .join('\n\n');
 
-        const synthesisRun = await this.runInquiryRequest(aiClient, {
+        let synthesisRun = await this.runInquiryRequest(aiClient, {
             task: 'SynthesizeChunkAnalyses',
             systemPrompt: options.systemPrompt,
             userPrompt: `${prefix}${synthesisEvidence}`,
@@ -1575,25 +1626,30 @@ export class InquiryRunnerService implements InquiryRunner {
         tokenUsageKnown = tokenUsageKnown || !!this.extractUsage(synthesisRun.responseData);
 
         if (synthesisRun.aiStatus !== 'success' || !synthesisRun.content) {
-            const failureReason = `[Inquiry] Synthesis pass failed after ${chunkOutputs.length} successful chunks:`
-                + ` status=${synthesisRun.aiStatus}, reason=${synthesisRun.aiReason ?? 'none'}`
-                + `, error=${synthesisRun.error ?? 'none'}`;
-            console.warn(failureReason);
-            return {
-                ok: false,
-                failureStage: 'synthesis',
-                failureReason,
-                tokenUsageKnown
-            };
+            const recoveredSynthesisRun = this.tryRecoverSynthesisInvalidResponse(synthesisRun, chunkOutputs.length);
+            if (recoveredSynthesisRun) {
+                synthesisRun = recoveredSynthesisRun;
+            } else {
+                const failureReason = `[Inquiry] Synthesis pass failed after ${chunkOutputs.length} successful chunks:`
+                    + ` status=${synthesisRun.aiStatus}, reason=${synthesisRun.aiReason ?? 'none'}`
+                    + `, error=${synthesisRun.error ?? 'none'}`;
+                console.warn(failureReason);
+                return {
+                    ok: false,
+                    failureStage: 'synthesis',
+                    failureReason,
+                    tokenUsageKnown
+                };
+            }
         }
 
-        const passCount = chunkPrompts.length + 1;
+        const passCount = chunkPlan.prompts.length + 1;
         return {
             ok: true,
             tokenUsageKnown,
             run: this.withExecutionContext({
                 ...synthesisRun,
-                warnings: [...(synthesisRun.warnings || []), `Inquiry chunked execution used ${chunkPrompts.length} chunks before synthesis.`]
+                warnings: [...(synthesisRun.warnings || []), `Inquiry chunked execution used ${chunkPlan.prompts.length} chunks before synthesis.`]
             }, {
                 analysisPackaging: 'automatic',
                 executionPassCount: passCount,
@@ -1602,7 +1658,14 @@ export class InquiryRunnerService implements InquiryRunner {
         };
     }
 
-    private buildEvidenceChunkPrompts(userPrompt: string, maxChunkTokens: number): string[] | null {
+    private buildEvidenceChunkPrompts(
+        userPrompt: string,
+        options: {
+            maxChunkTokens: number;
+            estimatedInputTokens?: number;
+            safeInputTokens?: number;
+        }
+    ): ChunkPromptPlan | null {
         const marker = '\nEvidence:\n';
         const splitAt = userPrompt.indexOf(marker);
         if (splitAt < 0) return null;
@@ -1610,6 +1673,13 @@ export class InquiryRunnerService implements InquiryRunner {
         const evidence = userPrompt.slice(splitAt + marker.length).trim();
         if (!evidence) return null;
 
+        const maxChunkTokens = this.resolveChunkTokenBudget({
+            defaultChunkTokens: options.maxChunkTokens,
+            estimatedInputTokens: options.estimatedInputTokens,
+            safeInputTokens: options.safeInputTokens,
+            prefixChars: prefix.length,
+            evidenceChars: evidence.length
+        });
         const maxChars = Math.max(1200, maxChunkTokens * 4);
         const sections = evidence.split(/\n\n(?=##\s)/g).filter(Boolean);
         if (!sections.length) return null;
@@ -1653,7 +1723,97 @@ export class InquiryRunnerService implements InquiryRunner {
         sections.forEach(pushSection);
         if (current) pushChunk(current);
 
-        return chunks.map(chunk => `${prefix}${chunk}`);
+        const safeInputTokens = Number.isFinite(options.safeInputTokens)
+            ? Math.max(0, Math.floor(options.safeInputTokens as number))
+            : 0;
+        const estimatedInputTokens = Number.isFinite(options.estimatedInputTokens)
+            ? Math.max(0, Math.floor(options.estimatedInputTokens as number))
+            : 0;
+        const targetPasses = safeInputTokens > 0 && estimatedInputTokens > 0
+            ? Math.max(2, Math.ceil(estimatedInputTokens / safeInputTokens))
+            : null;
+
+        return {
+            prompts: chunks.map(chunk => `${prefix}${chunk}`),
+            maxChunkTokens,
+            maxChunkChars: maxChars,
+            evidenceChars: evidence.length,
+            prefixChars: prefix.length,
+            targetPasses
+        };
+    }
+
+    private resolveChunkTokenBudget(params: {
+        defaultChunkTokens: number;
+        estimatedInputTokens?: number;
+        safeInputTokens?: number;
+        prefixChars: number;
+        evidenceChars: number;
+    }): number {
+        const defaultChunkTokens = Math.max(1200, Math.floor(params.defaultChunkTokens));
+        const safeInputTokens = Number.isFinite(params.safeInputTokens)
+            ? Math.max(0, Math.floor(params.safeInputTokens as number))
+            : 0;
+        if (safeInputTokens <= 0) return defaultChunkTokens;
+
+        const evidenceTokens = Math.max(1, estimateTokensFromChars(params.evidenceChars));
+        const prefixTokens = Math.max(1, estimateTokensFromChars(params.prefixChars));
+        const headroomTokens = Math.max(1500, Math.floor(safeInputTokens * 0.15));
+        const safeEvidenceBudget = Math.max(1200, safeInputTokens - prefixTokens - headroomTokens);
+        let targetChunkTokens = Math.max(defaultChunkTokens, safeEvidenceBudget);
+
+        const estimatedInputTokens = Number.isFinite(params.estimatedInputTokens)
+            ? Math.max(0, Math.floor(params.estimatedInputTokens as number))
+            : 0;
+        if (estimatedInputTokens > 0) {
+            const targetPasses = Math.max(2, Math.ceil(estimatedInputTokens / safeInputTokens));
+            const targetPerPassEvidence = Math.max(1200, Math.ceil(evidenceTokens / targetPasses));
+            targetChunkTokens = Math.min(targetChunkTokens, targetPerPassEvidence);
+        }
+
+        return Math.max(1200, Math.min(120000, targetChunkTokens));
+    }
+
+    private tryRecoverChunkInvalidResponse(
+        run: AIRunResult,
+        chunkIndex: number,
+        chunkTotal: number
+    ): string | null {
+        if (!run.content || run.aiReason !== 'invalid_response') return null;
+        try {
+            const recovered = this.parseResponse(run.content);
+            console.warn(`[Inquiry] Chunk ${chunkIndex}/${chunkTotal}: recovered invalid_response via local JSON extraction.`);
+            return JSON.stringify(recovered);
+        } catch {
+            return null;
+        }
+    }
+
+    private tryRecoverSynthesisInvalidResponse(
+        run: AIRunResult,
+        completedChunkCount: number
+    ): AIRunResult | null {
+        if (!run.content || run.aiReason !== 'invalid_response') return null;
+        try {
+            const recovered = this.parseResponse(run.content);
+            console.warn(`[Inquiry] Synthesis: recovered invalid_response via local JSON extraction after ${completedChunkCount} chunks.`);
+            return {
+                ...run,
+                aiStatus: 'success',
+                aiReason: 'recovered_invalid_response',
+                content: JSON.stringify(recovered),
+                warnings: [...(run.warnings || []), 'Synthesis invalid_response recovered via local JSON extraction.']
+            };
+        } catch {
+            return null;
+        }
+    }
+
+    private isChunkDebugEnabled(): boolean {
+        const fromEnv = typeof process !== 'undefined' && process.env?.RT_INQUIRY_CHUNK_DEBUG === '1';
+        const fromGlobal = typeof globalThis !== 'undefined'
+            && (globalThis as { __RT_INQUIRY_CHUNK_DEBUG__?: unknown }).__RT_INQUIRY_CHUNK_DEBUG__ === true;
+        return fromEnv || fromGlobal;
     }
 
     private parseResponse(content: string): RawInquiryResponse {

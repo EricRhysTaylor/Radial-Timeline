@@ -91,7 +91,7 @@ export function mapErrorToUserMessage(error: unknown): string {
         return 'Context too long for the selected model. Reduce corpus size or switch to a model with a larger context window.';
     }
     if (error instanceof MalformedJsonError) {
-        return 'Model returned malformed JSON. Retry, or switch to a different model.';
+        return 'Model returned output that did not satisfy the required JSON structure. Retry and open the Inquiry Log for details.';
     }
     if (error instanceof Error) {
         return error.message;
