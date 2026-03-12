@@ -3568,7 +3568,6 @@ export class InquiryView extends ItemView {
         hit.setAttribute('pointer-events', 'all');
         hit.setAttribute('tabindex', '0');
         hit.setAttribute('role', 'button');
-        hit.setAttribute('aria-label', 'Toggle flow and depth lens');
         iconGroup.appendChild(hit);
         this.modeIconToggleHit = hit;
     }
@@ -9623,6 +9622,11 @@ export class InquiryView extends ItemView {
             {
                 element: this.depthRingHit,
                 text: 'Switch to Depth lens.',
+                placement: 'top'
+            },
+            {
+                element: this.modeIconToggleHit,
+                text: 'Toggle flow and depth lens.',
                 placement: 'top'
             },
             {
