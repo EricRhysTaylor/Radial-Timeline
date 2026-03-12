@@ -22,12 +22,17 @@ The primary branch is `master`.
 - Modal sizing uses inline styles (Obsidian pattern), marked with `// SAFE:` comments
 - Event listeners in Modal classes use direct `.addEventListener()` (Modal lifecycle manages cleanup)
 
-## Refactoring
+## Refactor Guard
 
-Before any structural refactor, read these engineering docs:
+Before performing any architectural refactor the agent must read:
 
-- `docs/engineering/standards/code-doctrine.md` — coding philosophy and refactor standard
-- `docs/engineering/standards/refactor-playbook.md` — extraction methodology and success criteria
-- `docs/engineering/standards/inquiry-critical-path-rules.md` — AI critical path constraints (if touching Inquiry/Gossamer/AI)
+- `docs/engineering/INDEX.md`
+- `docs/engineering/standards/code-doctrine.md`
+- `docs/engineering/standards/inquiry-critical-path-rules.md`
+- `docs/engineering/standards/refactor-playbook.md`
+
+All refactors must follow the RT Engineering Doctrine.
+Refactors must reduce complexity and remove fallback logic
+rather than adding additional abstraction layers.
 
 Or use `/refactor` slash command which loads them automatically.

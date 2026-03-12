@@ -1,8 +1,17 @@
-Before starting any refactoring work, read and internalize the following engineering guidelines:
+Before performing this refactor, read:
 
-1. Read `docs/engineering/standards/code-doctrine.md` — the core coding philosophy (single source of truth, fail clearly, prefer deletion, no defensive branching)
-2. Read `docs/engineering/standards/refactor-playbook.md` — the refactoring methodology (subtract first, extract pure logic, one boundary at a time, reduce code)
-3. If the refactor touches Inquiry, Gossamer, AI Strategy, or AI execution: also read `docs/engineering/standards/inquiry-critical-path-rules.md` — the critical path constraints (two counting systems, snapshot authority, no fabricated capabilities)
+- `docs/engineering/INDEX.md`
+- `docs/engineering/standards/code-doctrine.md`
+- `docs/engineering/standards/inquiry-critical-path-rules.md`
+- `docs/engineering/standards/refactor-playbook.md`
+
+Apply the RT Engineering Doctrine:
+
+- prefer deletion over accommodation
+- remove duplicate computation paths
+- eliminate fallback logic where possible
+- enforce single source of truth
+- maintain deterministic runtime behavior
 
 After reading, apply these rules to the refactoring task described below.
 
