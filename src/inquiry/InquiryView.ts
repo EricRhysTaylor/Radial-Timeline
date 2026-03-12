@@ -56,7 +56,7 @@ import { BUILTIN_MODELS } from '../ai/registry/builtinModels';
 import { selectModel } from '../ai/router/selectModel';
 import { buildDefaultAiSettings, mapAiProviderToLegacyProvider, mapLegacyProviderToAiProvider } from '../ai/settings/aiSettings';
 import { validateAiSettings } from '../ai/settings/validateAiSettings';
-import type { AIRunAdvancedContext, AIProviderId, AiSettingsV1, Capability, ModelInfo, AccessTier } from '../ai/types';
+import type { AIRunAdvancedContext, AIProviderId, AiSettingsV1, Capability, ModelInfo, AccessTier, RTCorpusTokenEstimate } from '../ai/types';
 import type {
     CorpusManifest,
     CorpusManifestEntry,
@@ -102,6 +102,7 @@ import {
     INQUIRY_INPUT_TOKENS_AMBER,
     INQUIRY_INPUT_TOKENS_RED
 } from './services/inquiryReadinessBuilder';
+import { buildRTCorpusEstimate } from './services/buildRTCorpusEstimate';
 import {
     InquiryCorpusService,
     isSynopsisCapableClass as isSynopsisCapableClassPure,
@@ -1618,6 +1619,7 @@ export class InquiryView extends ItemView {
 
         const engine = this.getResolvedEngine();
         const readinessUi = this.buildReadinessUiState();
+        const corpusEstimate = this.getRTCorpusEstimate();
         this.lastReadinessUiState = readinessUi;
         const advisoryContext = this.buildInquiryAdvisoryContext(readinessUi);
         this.lastEngineAdvisoryContext = advisoryContext;
@@ -1670,11 +1672,10 @@ export class InquiryView extends ItemView {
         });
 
         const payloadRow = detailsCard.createDiv({ cls: 'ert-inquiry-engine-detail-row' });
-        payloadRow.createSpan({ cls: 'ert-inquiry-engine-detail-label', text: 'Payload (current)' });
-        const payloadSuffix = readinessUi.estimateMethod === 'heuristic_chars' ? ' est.' : '';
+        payloadRow.createSpan({ cls: 'ert-inquiry-engine-detail-label', text: 'Corpus (current)' });
         payloadRow.createSpan({
             cls: 'ert-inquiry-engine-detail-value',
-            text: engine.blocked ? '—' : `~${this.formatTokenEstimate(readinessUi.estimateInputTokens)}${payloadSuffix}`
+            text: engine.blocked ? '—' : `~${this.formatTokenEstimate(corpusEstimate.estimatedTokens)}`
         });
 
         const safeRow = detailsCard.createDiv({ cls: 'ert-inquiry-engine-detail-row' });
@@ -1771,10 +1772,14 @@ export class InquiryView extends ItemView {
         tier: TokenTier;
     } {
         return buildEnginePayloadSummaryPure({
-            snapshot: this.plugin.getInquiryEstimateService().getSnapshot(),
+            payloadStats: this.getPayloadStats(),
             scope: this.state.scope,
             focusLabel: this.getFocusBookLabel()
         });
+    }
+
+    private getRTCorpusEstimate(): RTCorpusTokenEstimate {
+        return buildRTCorpusEstimate(this.getPayloadStats());
     }
 
     private buildInquiryAdvisoryContext(
@@ -1932,27 +1937,22 @@ export class InquiryView extends ItemView {
                     : 'Exceeds limits';
         this.enginePanelReadinessStatusEl.setText(statusText);
 
-        const inputLabel = this.formatTokenEstimate(readinessUi.estimateInputTokens);
-        const estTag = readinessUi.estimateMethod === 'heuristic_chars' ? ' (est.)' : '';
-        const safeLabel = readinessUi.safeInputBudget > 0
-            ? this.formatTokenEstimate(readinessUi.safeInputBudget)
-            : 'n/a';
+        const corpusEstimate = this.getRTCorpusEstimate();
+        const corpusLabel = this.formatTokenEstimate(corpusEstimate.estimatedTokens);
         const passPlan = this.getCurrentPassPlan(readinessUi);
         if (popoverState === 'ready') {
-            this.enginePanelReadinessMessageEl.setText(`Payload${estTag}: ~${inputLabel}. Expected to run in a single pass.`);
+            this.enginePanelReadinessMessageEl.setText(`Corpus: ~${corpusLabel}. Single pass possible for current engine.`);
         } else if (popoverState === 'multi-pass') {
             const estimateLabel = passPlan.estimatedPassCount ?? passPlan.displayPassCount;
             const recentRunSuffix = passPlan.recentExactPassCount
                 ? ` Recent run used ${passPlan.recentExactPassCount} passes.`
                 : '';
             this.enginePanelReadinessMessageEl.setText(
-                `Payload${estTag}: ~${inputLabel} against safe single-pass budget ~${safeLabel}. `
-                + `This run is expected to require ${estimateLabel} passes. Automatic packaging will split the request.${recentRunSuffix}`
+                `Corpus: ~${corpusLabel}. Multi-pass required for current engine `
+                + `(${estimateLabel} passes expected). Automatic packaging will split the request.${recentRunSuffix}`
             );
         } else if (readinessUi.readiness.cause === 'single_pass_limit') {
-            this.enginePanelReadinessMessageEl.setText(
-                `Payload${estTag}: ~${inputLabel} exceeds single-pass safe limit (~${safeLabel}).`
-            );
+            this.enginePanelReadinessMessageEl.setText(`Corpus: ~${corpusLabel}. Single-pass mode blocks this run for the current engine.`);
         } else {
             this.enginePanelReadinessMessageEl.setText(readinessUi.reason);
         }
@@ -9530,10 +9530,9 @@ export class InquiryView extends ItemView {
     }
 
     private getPreviewTokensValue(): string {
-        const snapshot = this.plugin.getInquiryEstimateService().getSnapshot();
-        if (!snapshot) return 'Tokens · Estimating…';
-        const estTag = snapshot.estimate.estimationMethod === 'heuristic_chars' ? ' est.' : '';
-        return `Tokens · ~${this.formatTokenEstimate(snapshot.estimate.estimatedInputTokens)}${estTag}`;
+        const estimate = this.getRTCorpusEstimate();
+        if (estimate.estimatedTokens <= 0) return 'Tokens · Estimating…';
+        return `Tokens · ~${this.formatTokenEstimate(estimate.estimatedTokens)}`;
     }
 
 

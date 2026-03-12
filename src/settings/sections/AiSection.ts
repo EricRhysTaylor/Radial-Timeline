@@ -810,7 +810,8 @@ export function renderAiSection(params: {
 
     type FeatureForecast = {
         label: string;
-        estimatedInputTokens: number;
+        corpusTokens: number;
+        providerExecutionTokens: number;
     };
 
     const computeVaultForecasts = async (engine?: {
@@ -830,10 +831,11 @@ export function renderAiSection(params: {
             frontmatterMappings: plugin.settings.frontmatterMappings,
             scopeContext: { scope: 'book' }
         });
-        const inquiryLabel = inquiryEstimate.sceneCount > 0
-            ? `Book · ${inquiryEstimate.sceneCount} scenes`
+        const inquiryLabel = inquiryEstimate.corpus.sceneCount > 0
+            ? `Book · ${inquiryEstimate.corpus.sceneCount} scenes`
             : `${inquiryEstimate.selectionLabel} (${inquiryEstimate.evidenceLabel}) — approximate`;
-        const inquiryInputTokens = inquiryEstimate.estimatedInputTokens;
+        const inquiryCorpusTokens = inquiryEstimate.corpus.estimatedTokens;
+        const inquiryProviderTokens = inquiryEstimate.providerExecutionEstimate?.estimatedTokens ?? inquiryCorpusTokens;
 
         const gossamerEstimate = await estimateGossamerTokens({
             plugin,
@@ -841,15 +843,19 @@ export function renderAiSection(params: {
             metadataCache: app.metadataCache,
             frontmatterMappings: plugin.settings.frontmatterMappings
         });
+        const gossamerCorpusTokens = gossamerEstimate.corpus.estimatedTokens;
+        const gossamerProviderTokens = gossamerEstimate.providerExecutionEstimate.estimatedTokens;
 
         return {
             inquiry: {
                 label: inquiryLabel,
-                estimatedInputTokens: inquiryInputTokens,
+                corpusTokens: inquiryCorpusTokens,
+                providerExecutionTokens: inquiryProviderTokens
             },
             gossamer: {
                 label: `Full manuscript (Scene bodies)`,
-                estimatedInputTokens: gossamerEstimate.estimatedInputTokens,
+                corpusTokens: gossamerCorpusTokens,
+                providerExecutionTokens: gossamerProviderTokens
             },
         };
     };
@@ -989,13 +995,13 @@ export function renderAiSection(params: {
             }
             const estimate = prepared.estimate;
             const safeBudgetTokens = Math.max(0, Math.floor(estimate.effectiveInputCeiling));
-            const formatForecastPasses = (estimatedTokens: number, singlePassOnly: boolean): string => {
-                if (estimatedTokens <= 0) return 'No content detected';
-                if (estimatedTokens <= safeBudgetTokens) return 'Single pass expected';
+            const formatForecastPasses = (providerExecutionTokens: number, singlePassOnly: boolean): string => {
+                if (providerExecutionTokens <= 0) return 'No content detected';
+                if (providerExecutionTokens <= safeBudgetTokens) return 'Single pass possible';
                 if (singlePassOnly) return 'Exceeds single-pass limit';
                 if (safeBudgetTokens <= 0) return 'Forecast unavailable';
-                const passes = Math.ceil(estimatedTokens / safeBudgetTokens);
-                return `${passes} passes expected`;
+                const passes = Math.ceil(providerExecutionTokens / safeBudgetTokens);
+                return `Multi-pass required (${passes} passes)`;
             };
             const previewState: ResolvedPreviewRenderState = {
                 provider,
@@ -1014,17 +1020,17 @@ export function renderAiSection(params: {
                 modelId: estimate.model.id
             }).then(forecasts => {
                 capacityInquiryScope.setText(forecasts.inquiry.label);
-                setTokenDisplay(capacityInquiryToken, `~${forecasts.inquiry.estimatedInputTokens.toLocaleString()}`, 'tokens (est.)');
-                capacityInquiryExpected.setText(formatForecastPasses(forecasts.inquiry.estimatedInputTokens, singlePassOnly));
+                setTokenDisplay(capacityInquiryToken, `~${forecasts.inquiry.corpusTokens.toLocaleString()}`, 'tokens');
+                capacityInquiryExpected.setText(formatForecastPasses(forecasts.inquiry.providerExecutionTokens, singlePassOnly));
 
                 capacityGossamerScope.setText(forecasts.gossamer.label);
-                setTokenDisplay(capacityGossamerToken, `~${forecasts.gossamer.estimatedInputTokens.toLocaleString()}`, 'tokens (est.)');
-                capacityGossamerExpected.setText(formatForecastPasses(forecasts.gossamer.estimatedInputTokens, singlePassOnly));
+                setTokenDisplay(capacityGossamerToken, `~${forecasts.gossamer.corpusTokens.toLocaleString()}`, 'tokens');
+                capacityGossamerExpected.setText(formatForecastPasses(forecasts.gossamer.providerExecutionTokens, singlePassOnly));
 
                 // ── Mode-aware status grid chips ──
                 const maxEstimate = Math.max(
-                    forecasts.inquiry.estimatedInputTokens,
-                    forecasts.gossamer.estimatedInputTokens
+                    forecasts.inquiry.providerExecutionTokens,
+                    forecasts.gossamer.providerExecutionTokens
                 );
                 const fits = maxEstimate <= safeBudgetTokens;
                 const nearLimit = safeBudgetTokens > 0 && maxEstimate > safeBudgetTokens * 0.7;

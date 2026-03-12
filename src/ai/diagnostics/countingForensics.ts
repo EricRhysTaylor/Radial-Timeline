@@ -1,4 +1,4 @@
-import type { InputTokenEstimateMethod } from '../types';
+import type { InputTokenEstimateMethod, RTCorpusEstimateMethod } from '../types';
 
 export interface CountingForensicsRecord {
     path: 'inquiry' | 'gossamer';
@@ -10,7 +10,7 @@ export interface CountingForensicsRecord {
     referenceCount: number;
     totalEvidenceChars: number;
     promptEnvelopeCharsAdded: number;
-    tokenMethodUsed: InputTokenEstimateMethod;
+    tokenMethodUsed: InputTokenEstimateMethod | RTCorpusEstimateMethod;
     finalTokenEstimate: number;
 }
 

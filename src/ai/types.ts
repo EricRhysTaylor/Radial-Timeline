@@ -294,6 +294,16 @@ export interface AIRunRequest {
 }
 
 export type InputTokenEstimateMethod = 'heuristic_chars' | 'anthropic_count';
+export type RTCorpusEstimateMethod = 'rt_chars_heuristic';
+
+export interface RTCorpusTokenEstimate {
+    sceneCount: number;
+    outlineCount: number;
+    referenceCount: number;
+    evidenceChars: number;
+    estimatedTokens: number;
+    method: RTCorpusEstimateMethod;
+}
 
 export interface AIRunPreparedEstimate {
     provider: Exclude<AIProviderId, 'none'>;

@@ -9,6 +9,7 @@ import { getSortedSceneFiles } from '../../utils/manuscript';
 import { buildGossamerEvidenceDocument } from '../../gossamer/evidence/buildGossamerEvidence';
 import type { InquiryScope } from '../../inquiry/state';
 import type { TokenEstimateMethod } from '../tokens/inputTokenEstimate';
+import type { RTCorpusTokenEstimate } from '../types';
 import { getAIClient } from '../runtime/aiClient';
 import { mapLegacyProviderToAiProvider } from '../settings/aiSettings';
 import { logCountingForensics } from '../diagnostics/countingForensics';
@@ -25,23 +26,26 @@ type InquiryEvidenceBlock = {
 };
 
 export interface InquiryTokenEstimate {
-    estimatedInputTokens: number;
-    evidenceChars: number;
+    corpus: RTCorpusTokenEstimate;
     blockCount: number;
-    sceneCount: number;
-    outlineCount: number;
-    referenceCount: number;
     evidenceMode: InquiryEvidenceMode;
     evidenceLabel: string;
     selectionLabel: string;
-    estimationMethod: TokenEstimateMethod;
+    providerExecutionEstimate?: {
+        estimatedTokens: number;
+        method: TokenEstimateMethod;
+        promptEnvelopeCharsAdded: number;
+    };
 }
 
 export interface GossamerTokenEstimate {
-    estimatedInputTokens: number;
-    evidenceChars: number;
-    sceneCount: number;
+    corpus: RTCorpusTokenEstimate;
     includedSceneCount: number;
+    providerExecutionEstimate: {
+        estimatedTokens: number;
+        method: TokenEstimateMethod;
+        promptEnvelopeCharsAdded: number;
+    };
 }
 
 const SYNOPSIS_CAPABLE_CLASSES = new Set(['scene', 'outline']);
@@ -84,10 +88,15 @@ const normalizeInquiryClasses = (classes?: InquiryClassConfig[]): InquiryClassCo
         referenceScope: normalizeMode(config.referenceScope, config.className)
     }));
 
-const estimateTokensFromChars = (chars: number, promptOverheadTokens = FORECAST_PROMPT_OVERHEAD_TOKENS): number => {
+const estimateCorpusTokensFromChars = (chars: number): number => {
     if (!Number.isFinite(chars) || chars <= 0) return 0;
-    return Math.ceil(chars / FORECAST_CHARS_PER_TOKEN) + promptOverheadTokens;
+    return Math.ceil(chars / FORECAST_CHARS_PER_TOKEN);
 };
+
+const estimateExecutionTokensFromChars = (
+    chars: number,
+    promptOverheadTokens = FORECAST_PROMPT_OVERHEAD_TOKENS
+): number => estimateCorpusTokensFromChars(chars) + Math.max(0, Math.floor(promptOverheadTokens));
 
 const formatInquiryEvidenceLabel = (mode: InquiryEvidenceMode): string => {
     if (mode === 'summary') return 'Summaries';
@@ -216,16 +225,19 @@ export async function estimateInquiryTokens(params: {
     const referencePaths = new Set<string>();
 
     if (!classScope.allowAll && classScope.allowed.size === 0) {
-        return {
-            estimatedInputTokens: 0,
-            evidenceChars: 0,
-            blockCount: 0,
+        const corpus: RTCorpusTokenEstimate = {
             sceneCount: 0,
             outlineCount: 0,
             referenceCount: 0,
+            evidenceChars: 0,
+            estimatedTokens: 0,
+            method: 'rt_chars_heuristic'
+        };
+        return {
+            corpus,
+            blockCount: 0,
             evidenceMode: 'none',
             evidenceLabel: 'None',
-            estimationMethod: 'heuristic_chars',
             selectionLabel: params.scopeContext?.label
                 ? `${params.scopeContext.label} (${selected.selectionLabel})`
                 : selected.selectionLabel
@@ -299,7 +311,14 @@ export async function estimateInquiryTokens(params: {
                 ? 'summary'
                 : 'full';
     const evidenceChars = blocks.reduce((sum, block) => sum + block.label.length + block.content.length + 6, 0);
-    const heuristicEstimate = estimateTokensFromChars(evidenceChars, params.promptOverheadTokens);
+    const corpusEstimate: RTCorpusTokenEstimate = {
+        sceneCount: scenePaths.size,
+        outlineCount: outlinePaths.size,
+        referenceCount: referencePaths.size,
+        evidenceChars,
+        estimatedTokens: estimateCorpusTokensFromChars(evidenceChars),
+        method: 'rt_chars_heuristic'
+    };
     const evidenceText = blocks.map(block => `## ${block.label}\n${block.content}`).join('\n\n');
     const questionText = params.questionText || 'Analyze the corpus and return findings.';
     const systemPrompt = 'You are an editorial analysis engine.';
@@ -309,9 +328,11 @@ export async function estimateInquiryTokens(params: {
         'Evidence:',
         evidenceText
     ].join('\n');
-    let promptEnvelopeCharsAdded = systemPrompt.length + userPrompt.length;
-    let estimatedInputTokens = heuristicEstimate;
-    let estimationMethod: TokenEstimateMethod = 'heuristic_chars';
+    let providerExecutionEstimate: InquiryTokenEstimate['providerExecutionEstimate'] = {
+        estimatedTokens: estimateExecutionTokensFromChars(evidenceChars, params.promptOverheadTokens),
+        method: 'heuristic_chars',
+        promptEnvelopeCharsAdded: (params.promptOverheadTokens ?? FORECAST_PROMPT_OVERHEAD_TOKENS) * FORECAST_CHARS_PER_TOKEN
+    };
     if (params.plugin && params.provider && params.modelId) {
         try {
             const prepared = await getAIClient(params.plugin).prepareRunEstimate({
@@ -332,14 +353,16 @@ export async function estimateInquiryTokens(params: {
                 }))
             });
             if (prepared.ok) {
-                estimatedInputTokens = prepared.estimate.tokenEstimateInput;
-                estimationMethod = prepared.estimate.tokenEstimateMethod;
-                promptEnvelopeCharsAdded =
-                    (prepared.estimate.systemPrompt?.length ?? 0)
-                    + (prepared.estimate.userPrompt?.length ?? 0);
+                providerExecutionEstimate = {
+                    estimatedTokens: prepared.estimate.tokenEstimateInput,
+                    method: prepared.estimate.tokenEstimateMethod,
+                    promptEnvelopeCharsAdded:
+                        (prepared.estimate.systemPrompt?.length ?? 0)
+                        + (prepared.estimate.userPrompt?.length ?? 0)
+                };
             }
         } catch {
-            // Keep heuristic fallback for forecast mode when preparation fails.
+            // Keep heuristic execution estimate when provider estimate cannot be prepared.
         }
     }
     const scopePrefix = params.scopeContext?.label ? `${params.scopeContext.label} — ` : '';
@@ -354,26 +377,37 @@ export async function estimateInquiryTokens(params: {
         phase: 'settings_forecast',
         scope,
         filesIncluded,
-        sceneCount: scenePaths.size,
-        outlineCount: outlinePaths.size,
-        referenceCount: referencePaths.size,
-        totalEvidenceChars: evidenceChars,
-        promptEnvelopeCharsAdded,
-        tokenMethodUsed: estimationMethod,
-        finalTokenEstimate: estimatedInputTokens
+        sceneCount: corpusEstimate.sceneCount,
+        outlineCount: corpusEstimate.outlineCount,
+        referenceCount: corpusEstimate.referenceCount,
+        totalEvidenceChars: corpusEstimate.evidenceChars,
+        promptEnvelopeCharsAdded: 0,
+        tokenMethodUsed: corpusEstimate.method,
+        finalTokenEstimate: corpusEstimate.estimatedTokens
     });
+    if (providerExecutionEstimate) {
+        logCountingForensics({
+            path: 'inquiry',
+            phase: 'settings_provider_execution',
+            scope,
+            filesIncluded,
+            sceneCount: corpusEstimate.sceneCount,
+            outlineCount: corpusEstimate.outlineCount,
+            referenceCount: corpusEstimate.referenceCount,
+            totalEvidenceChars: corpusEstimate.evidenceChars,
+            promptEnvelopeCharsAdded: providerExecutionEstimate.promptEnvelopeCharsAdded,
+            tokenMethodUsed: providerExecutionEstimate.method,
+            finalTokenEstimate: providerExecutionEstimate.estimatedTokens
+        });
+    }
 
     return {
-        estimatedInputTokens,
-        evidenceChars,
+        corpus: corpusEstimate,
         blockCount: blocks.length,
-        sceneCount: scenePaths.size,
-        outlineCount: outlinePaths.size,
-        referenceCount: referencePaths.size,
         evidenceMode,
         evidenceLabel: formatInquiryEvidenceLabel(evidenceMode),
-        estimationMethod,
-        selectionLabel: `${scopePrefix}${selected.selectionLabel}`
+        selectionLabel: `${scopePrefix}${selected.selectionLabel}`,
+        providerExecutionEstimate
     };
 }
 
@@ -396,25 +430,49 @@ export async function estimateGossamerTokens(params: {
         frontmatterMappings: params.frontmatterMappings
     });
     const evidenceChars = evidence.includedScenes > 0 ? evidence.text.length : 0;
-    const estimatedInputTokens = estimateTokensFromChars(evidenceChars, params.promptOverheadTokens);
+    const corpusEstimate: RTCorpusTokenEstimate = {
+        sceneCount: evidence.totalScenes,
+        outlineCount: 0,
+        referenceCount: 0,
+        evidenceChars,
+        estimatedTokens: estimateCorpusTokensFromChars(evidenceChars),
+        method: 'rt_chars_heuristic'
+    };
+    const providerExecutionEstimate = {
+        estimatedTokens: estimateExecutionTokensFromChars(evidenceChars, params.promptOverheadTokens),
+        method: 'heuristic_chars' as const,
+        promptEnvelopeCharsAdded: (params.promptOverheadTokens ?? FORECAST_PROMPT_OVERHEAD_TOKENS) * FORECAST_CHARS_PER_TOKEN
+    };
     logCountingForensics({
         path: 'gossamer',
         phase: 'settings_forecast',
         scope: 'book',
         filesIncluded: sceneFiles.map(file => file.path).sort((a, b) => a.localeCompare(b)),
-        sceneCount: evidence.totalScenes,
-        outlineCount: 0,
-        referenceCount: 0,
-        totalEvidenceChars: evidenceChars,
-        promptEnvelopeCharsAdded: (params.promptOverheadTokens ?? FORECAST_PROMPT_OVERHEAD_TOKENS) * FORECAST_CHARS_PER_TOKEN,
-        tokenMethodUsed: 'heuristic_chars',
-        finalTokenEstimate: estimatedInputTokens
+        sceneCount: corpusEstimate.sceneCount,
+        outlineCount: corpusEstimate.outlineCount,
+        referenceCount: corpusEstimate.referenceCount,
+        totalEvidenceChars: corpusEstimate.evidenceChars,
+        promptEnvelopeCharsAdded: 0,
+        tokenMethodUsed: corpusEstimate.method,
+        finalTokenEstimate: corpusEstimate.estimatedTokens
+    });
+    logCountingForensics({
+        path: 'gossamer',
+        phase: 'settings_provider_execution',
+        scope: 'book',
+        filesIncluded: sceneFiles.map(file => file.path).sort((a, b) => a.localeCompare(b)),
+        sceneCount: corpusEstimate.sceneCount,
+        outlineCount: corpusEstimate.outlineCount,
+        referenceCount: corpusEstimate.referenceCount,
+        totalEvidenceChars: corpusEstimate.evidenceChars,
+        promptEnvelopeCharsAdded: providerExecutionEstimate.promptEnvelopeCharsAdded,
+        tokenMethodUsed: providerExecutionEstimate.method,
+        finalTokenEstimate: providerExecutionEstimate.estimatedTokens
     });
 
     return {
-        estimatedInputTokens,
-        evidenceChars,
-        sceneCount: evidence.totalScenes,
-        includedSceneCount: evidence.includedScenes
+        corpus: corpusEstimate,
+        includedSceneCount: evidence.includedScenes,
+        providerExecutionEstimate
     };
 }

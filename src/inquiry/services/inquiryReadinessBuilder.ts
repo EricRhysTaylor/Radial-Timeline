@@ -31,6 +31,7 @@ import { estimateUncertaintyTokens } from '../../ai/tokens/inputTokenEstimate';
 import { computeCaps, INPUT_TOKEN_GUARD_FACTOR } from '../../ai/caps/computeCaps';
 import { BUILTIN_MODELS } from '../../ai/registry/builtinModels';
 import { INQUIRY_MAX_OUTPUT_TOKENS } from '../constants';
+import { buildRTCorpusEstimate } from './buildRTCorpusEstimate';
 
 // ── Constants ─────────────────────────────────────────────────────────
 
@@ -54,7 +55,7 @@ export interface BuildReadinessUiStateInput {
 }
 
 export interface BuildEnginePayloadSummaryInput {
-    snapshot: InquiryEstimateSnapshot | null;
+    payloadStats: InquiryPayloadStats | null;
     scope: InquiryScope;
     focusLabel: string;
 }
@@ -106,19 +107,19 @@ export function buildEnginePayloadSummary(input: BuildEnginePayloadSummaryInput)
 } {
     const scopeLabel = input.scope === 'saga' ? 'Saga' : 'Book';
     const contextLabel = `${scopeLabel} ${input.focusLabel}`;
-    if (!input.snapshot) {
+    if (!input.payloadStats) {
         return {
             text: `Payload (${contextLabel}): Estimating…`,
             inputTokens: 0,
             tier: 'normal'
         };
     }
-    const inputLabel = formatTokenEstimate(input.snapshot.estimate.estimatedInputTokens);
-    const estTag = input.snapshot.estimate.estimationMethod === 'heuristic_chars' ? ' est.' : '';
+    const corpusEstimate = buildRTCorpusEstimate(input.payloadStats);
+    const inputLabel = formatTokenEstimate(corpusEstimate.estimatedTokens);
     return {
-        text: `Payload (${contextLabel}): ~${inputLabel}${estTag} in`,
-        inputTokens: input.snapshot.estimate.estimatedInputTokens,
-        tier: getTokenTier(input.snapshot.estimate.estimatedInputTokens)
+        text: `Payload (${contextLabel}): ~${inputLabel} in`,
+        inputTokens: corpusEstimate.estimatedTokens,
+        tier: getTokenTier(corpusEstimate.estimatedTokens)
     };
 }
 

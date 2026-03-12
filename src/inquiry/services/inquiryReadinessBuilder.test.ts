@@ -427,16 +427,16 @@ describe('buildRunScopeLabel', () => {
 // ── buildEnginePayloadSummary ─────────────────────────────────────────
 
 describe('buildEnginePayloadSummary', () => {
-    it('returns estimating text when no snapshot', () => {
-        const result = buildEnginePayloadSummary({ snapshot: null, scope: 'book', focusLabel: 'Book A' });
+    it('returns estimating text when no payload stats', () => {
+        const result = buildEnginePayloadSummary({ payloadStats: null, scope: 'book', focusLabel: 'Book A' });
         expect(result.text).toContain('Estimating');
         expect(result.inputTokens).toBe(0);
         expect(result.tier).toBe('normal');
     });
 
-    it('returns token summary from snapshot', () => {
+    it('returns token summary from payload stats', () => {
         const result = buildEnginePayloadSummary({
-            snapshot: makeSnapshot({ estimatedInputTokens: 50000 }),
+            payloadStats: makePayloadStats({ evidenceChars: 200000 }),
             scope: 'book',
             focusLabel: 'Book A'
         });
@@ -448,7 +448,7 @@ describe('buildEnginePayloadSummary', () => {
 
     it('uses saga label for saga scope', () => {
         const result = buildEnginePayloadSummary({
-            snapshot: makeSnapshot({}),
+            payloadStats: makePayloadStats(),
             scope: 'saga',
             focusLabel: 'My Saga'
         });

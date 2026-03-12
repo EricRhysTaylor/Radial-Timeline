@@ -4,7 +4,6 @@ import { TFile } from 'obsidian';
 import { cleanEvidenceBody } from '../../inquiry/utils/evidenceCleaning';
 import {
     FORECAST_CHARS_PER_TOKEN,
-    FORECAST_PROMPT_OVERHEAD_TOKENS,
     estimateInquiryTokens
 } from './estimateTokensFromVault';
 
@@ -32,7 +31,7 @@ After.`;
         const cleaned = cleanEvidenceBody(raw);
         const label = `scene: ${file.path}`;
         const expectedChars = label.length + cleaned.length + 6;
-        const expectedTokens = Math.ceil(expectedChars / FORECAST_CHARS_PER_TOKEN) + FORECAST_PROMPT_OVERHEAD_TOKENS;
+        const expectedTokens = Math.ceil(expectedChars / FORECAST_CHARS_PER_TOKEN);
 
         const result = await estimateInquiryTokens({
             vault: makeVault({ [file.path]: raw }),
@@ -54,10 +53,11 @@ After.`;
         });
 
         expect(result.evidenceLabel).toBe('Bodies');
-        expect(result.evidenceChars).toBe(expectedChars);
-        expect(result.estimatedInputTokens).toBe(expectedTokens);
-        expect(result.sceneCount).toBe(1);
-        expect(result.outlineCount).toBe(0);
+        expect(result.corpus.evidenceChars).toBe(expectedChars);
+        expect(result.corpus.estimatedTokens).toBe(expectedTokens);
+        expect(result.corpus.sceneCount).toBe(1);
+        expect(result.corpus.outlineCount).toBe(0);
+        expect(result.corpus.method).toBe('rt_chars_heuristic');
     });
 
     it('counts only Summary field content when summaries mode is active', async () => {
@@ -69,7 +69,7 @@ This very long body should not be counted when summary mode is selected.`;
         const summary = 'Summary only evidence.';
         const label = `scene: ${file.path}`;
         const expectedChars = label.length + summary.length + 6;
-        const expectedTokens = Math.ceil(expectedChars / FORECAST_CHARS_PER_TOKEN) + FORECAST_PROMPT_OVERHEAD_TOKENS;
+        const expectedTokens = Math.ceil(expectedChars / FORECAST_CHARS_PER_TOKEN);
 
         const result = await estimateInquiryTokens({
             vault: makeVault({ [file.path]: raw }),
@@ -91,9 +91,10 @@ This very long body should not be counted when summary mode is selected.`;
         });
 
         expect(result.evidenceLabel).toBe('Summaries');
-        expect(result.evidenceChars).toBe(expectedChars);
-        expect(result.estimatedInputTokens).toBe(expectedTokens);
-        expect(result.sceneCount).toBe(1);
-        expect(result.outlineCount).toBe(0);
+        expect(result.corpus.evidenceChars).toBe(expectedChars);
+        expect(result.corpus.estimatedTokens).toBe(expectedTokens);
+        expect(result.corpus.sceneCount).toBe(1);
+        expect(result.corpus.outlineCount).toBe(0);
+        expect(result.corpus.method).toBe('rt_chars_heuristic');
     });
 });

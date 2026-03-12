@@ -797,14 +797,14 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       return;
     }
 
-    // Estimate tokens: evidence chars/4 + prompt envelope overhead.
-    const estimatedTokens = Math.ceil(evidenceDocument.text.length / FORECAST_CHARS_PER_TOKEN) + FORECAST_PROMPT_OVERHEAD_TOKENS;
+    const corpusEstimatedTokens = Math.ceil(evidenceDocument.text.length / FORECAST_CHARS_PER_TOKEN);
+    const providerExecutionTokens = corpusEstimatedTokens + FORECAST_PROMPT_OVERHEAD_TOKENS;
 
     // Update modal with manuscript info
     const manuscriptInfo: ManuscriptInfo = {
       totalScenes: evidenceDocument.totalScenes,
       totalWords: evidenceDocument.totalWords,
-      estimatedTokens: estimatedTokens,
+      estimatedTokens: corpusEstimatedTokens,
       beatCount: beats.length,
       beatSystem: beatSystemDisplayName, // Use display name (may include custom name)
       evidenceMode: evidenceModeLabel,
@@ -825,9 +825,22 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       outlineCount: 0,
       referenceCount: 0,
       totalEvidenceChars: evidenceDocument.text.length,
+      promptEnvelopeCharsAdded: 0,
+      tokenMethodUsed: 'rt_chars_heuristic',
+      finalTokenEstimate: corpusEstimatedTokens
+    });
+    logCountingForensics({
+      path: 'gossamer',
+      phase: 'analysis_run_provider_execution',
+      scope: 'book',
+      filesIncluded: sceneFiles.map(file => file.path).sort((a, b) => a.localeCompare(b)),
+      sceneCount: evidenceDocument.totalScenes,
+      outlineCount: 0,
+      referenceCount: 0,
+      totalEvidenceChars: evidenceDocument.text.length,
       promptEnvelopeCharsAdded: Math.max(0, prompt.length - evidenceDocument.text.length),
       tokenMethodUsed: 'heuristic_chars',
-      finalTokenEstimate: estimatedTokens
+      finalTokenEstimate: providerExecutionTokens
     });
 
     // Call unified AI client
@@ -850,7 +863,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
         reasoningDepth: 'deep',
         jsonStrict: true
       },
-      tokenEstimateInput: estimatedTokens
+      tokenEstimateInput: providerExecutionTokens
     });
     const returnedAt = new Date();
     modal.setAiAdvancedContext(result.advancedContext ?? null);
@@ -1102,8 +1115,8 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
     });
     const evidenceModeLabel = resolvedEvidence.label;
     const evidenceDocument = resolvedEvidence.document;
-    // Estimate tokens: evidence chars/4 + prompt envelope overhead.
-    const estimatedTokens = Math.ceil(evidenceDocument.text.length / FORECAST_CHARS_PER_TOKEN) + FORECAST_PROMPT_OVERHEAD_TOKENS;
+    const corpusEstimatedTokens = Math.ceil(evidenceDocument.text.length / FORECAST_CHARS_PER_TOKEN);
+    const providerExecutionTokens = corpusEstimatedTokens + FORECAST_PROMPT_OVERHEAD_TOKENS;
     logCountingForensics({
       path: 'gossamer',
       phase: 'precheck',
@@ -1113,15 +1126,28 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       outlineCount: 0,
       referenceCount: 0,
       totalEvidenceChars: evidenceDocument.text.length,
+      promptEnvelopeCharsAdded: 0,
+      tokenMethodUsed: 'rt_chars_heuristic',
+      finalTokenEstimate: corpusEstimatedTokens
+    });
+    logCountingForensics({
+      path: 'gossamer',
+      phase: 'precheck_provider_execution',
+      scope: 'book',
+      filesIncluded: sceneFiles.map(file => file.path).sort((a, b) => a.localeCompare(b)),
+      sceneCount: evidenceDocument.totalScenes,
+      outlineCount: 0,
+      referenceCount: 0,
+      totalEvidenceChars: evidenceDocument.text.length,
       promptEnvelopeCharsAdded: FORECAST_PROMPT_OVERHEAD_TOKENS * FORECAST_CHARS_PER_TOKEN,
       tokenMethodUsed: 'heuristic_chars',
-      finalTokenEstimate: estimatedTokens
+      finalTokenEstimate: providerExecutionTokens
     });
 
     const manuscriptInfo: ManuscriptInfo = {
       totalScenes: evidenceDocument.totalScenes,
       totalWords: evidenceDocument.totalWords,
-      estimatedTokens: estimatedTokens,
+      estimatedTokens: corpusEstimatedTokens,
       beatCount: plotBeats.length,
       beatSystem: beatSystemDisplayName, // Use display name (may include custom name)
       evidenceMode: evidenceModeLabel,
