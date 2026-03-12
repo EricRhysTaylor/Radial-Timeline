@@ -221,85 +221,12 @@ export class InquiryRunnerService implements InquiryRunner {
                 trace.executionState = 'dispatched_to_provider';
                 trace.failureStage = 'provider_response_parsing';
                 trace.tokenUsageKnown = trace.tokenUsageKnown ?? !!trace.usage;
-
                 const usage = trace.usage ?? this.extractUsage(response.responseData);
                 if (usage) trace.usage = usage;
-                const retryMaxTokens = this.getParseRetryOutputTokenCap(input.ai.provider, maxTokens);
-                const shouldRetry = this.shouldRetryParseFailure(usage, maxTokens, retryMaxTokens);
-
-                if (shouldRetry) {
-                    trace.notes.push(`Parse retry: output reached cap (${usage?.outputTokens}/${maxTokens}); retrying with cap ${retryMaxTokens}.`);
-                    try {
-                        const retryResponse = await this.callProvider(
-                            systemPrompt,
-                            userPrompt,
-                            input.ai,
-                            jsonSchema,
-                            temperature,
-                            retryMaxTokens,
-                            input.questionText,
-                            evidenceBlocks
-                        );
-                        if (retryResponse.sanitizationNotes?.length) {
-                            trace.sanitizationNotes.push(...retryResponse.sanitizationNotes);
-                        }
-                        if (retryResponse.requestPayload) {
-                            trace.requestPayload = retryResponse.requestPayload;
-                        }
-                        const providerRetryCount = typeof retryResponse.retryCount === 'number' ? retryResponse.retryCount : 0;
-                        const priorRetryCount = typeof trace.retryCount === 'number' ? trace.retryCount : 0;
-                        trace.retryCount = priorRetryCount + 1 + providerRetryCount;
-                        trace.outputTokenCap = retryMaxTokens;
-                        trace.response = {
-                            content: retryResponse.content,
-                            responseData: retryResponse.responseData,
-                            aiStatus: retryResponse.aiStatus,
-                            aiReason: retryResponse.aiReason,
-                            error: retryResponse.error
-                        };
-                        this.applyResponseExecutionReporting(trace, retryResponse);
-                        this.applyOpenAiTransportLaneTraceNote(trace, retryResponse);
-
-                        if (!retryResponse.success || !retryResponse.content || retryResponse.aiStatus !== 'success') {
-                            const status = retryResponse.aiStatus || 'unknown';
-                            const reason = retryResponse.aiReason ? ` (${retryResponse.aiReason})` : '';
-                            trace.notes.push(`Parse retry provider status: ${status}${reason}.`);
-                            if (retryResponse.error) {
-                                trace.notes.push(`Parse retry provider error: ${retryResponse.error}`);
-                            }
-                            const recovered = this.tryRecoverSingleInvalidResponse(input, retryResponse, trace, 'parse retry provider', evidenceDocMeta);
-                            if (recovered) {
-                                return { result: recovered, trace };
-                            }
-                            const fallbackMeta = this.withParseFailureMeta(this.getAiMetaFromResponse(retryResponse), retryResponse.aiStatus ?? 'rejected');
-                            return {
-                                result: this.buildStubResult(input, fallbackMeta, retryResponse.error),
-                                trace
-                            };
-                        }
-
-                        try {
-                            const retryParsed = this.parseResponse(retryResponse.content);
-                            trace.notes.push('Parse retry succeeded.');
-                            return { result: this.buildResult(input, retryParsed, this.getAiMetaFromResponse(retryResponse), retryResponse.citations, evidenceDocMeta), trace };
-                        } catch (retryParseError) {
-                            const retryMessage = retryParseError instanceof Error ? retryParseError.message : String(retryParseError);
-                            trace.notes.push(`Parse retry failed: ${retryMessage}`);
-                            trace.executionState = 'dispatched_to_provider';
-                            trace.failureStage = 'provider_response_parsing';
-                            trace.tokenUsageKnown = trace.tokenUsageKnown ?? !!trace.usage;
-                            const fallbackMeta = this.withParseFailureMeta(this.getAiMetaFromResponse(retryResponse), retryResponse.aiStatus ?? 'rejected');
-                            return {
-                                result: this.buildStubResult(input, fallbackMeta, retryParseError),
-                                trace
-                            };
-                        }
-                    } catch (retryError) {
-                        const retryMessage = retryError instanceof Error ? retryError.message : String(retryError);
-                        trace.notes.push(`Parse retry error: ${retryMessage}`);
-                    }
+                const recovered = this.tryRecoverSingleInvalidResponse(input, response, trace, 'parse', evidenceDocMeta);
+                if (recovered) {
+                    return { result: recovered, trace };
                 }
-
                 const fallbackMeta = this.withParseFailureMeta(this.getAiMetaFromResponse(response), response.aiStatus ?? 'rejected');
                 return {
                     result: this.buildStubResult(input, fallbackMeta, parseError),
@@ -402,91 +329,12 @@ export class InquiryRunnerService implements InquiryRunner {
                 trace.executionState = 'dispatched_to_provider';
                 trace.failureStage = 'provider_response_parsing';
                 trace.tokenUsageKnown = trace.tokenUsageKnown ?? !!trace.usage;
-
                 const usage = trace.usage ?? this.extractUsage(response.responseData);
                 if (usage) trace.usage = usage;
-                const retryMaxTokens = this.getParseRetryOutputTokenCap(input.ai.provider, maxTokens);
-                const shouldRetry = this.shouldRetryParseFailure(usage, maxTokens, retryMaxTokens);
-
-                if (shouldRetry) {
-                    trace.notes.push(`Parse retry: output reached cap (${usage?.outputTokens}/${maxTokens}); retrying with cap ${retryMaxTokens}.`);
-                    try {
-                        const retryResponse = await this.callProvider(
-                            systemPrompt,
-                            userPrompt,
-                            input.ai,
-                            jsonSchema,
-                            temperature,
-                            retryMaxTokens,
-                            input.questions.map(question => question.question).join('\n')
-                        );
-                        if (retryResponse.sanitizationNotes?.length) {
-                            trace.sanitizationNotes.push(...retryResponse.sanitizationNotes);
-                        }
-                        if (retryResponse.requestPayload) {
-                            trace.requestPayload = retryResponse.requestPayload;
-                        }
-                        const providerRetryCount = typeof retryResponse.retryCount === 'number' ? retryResponse.retryCount : 0;
-                        const priorRetryCount = typeof trace.retryCount === 'number' ? trace.retryCount : 0;
-                        trace.retryCount = priorRetryCount + 1 + providerRetryCount;
-                        trace.outputTokenCap = retryMaxTokens;
-                        trace.response = {
-                            content: retryResponse.content,
-                            responseData: retryResponse.responseData,
-                            aiStatus: retryResponse.aiStatus,
-                            aiReason: retryResponse.aiReason,
-                            error: retryResponse.error
-                        };
-                        this.applyResponseExecutionReporting(trace, retryResponse);
-                        this.applyOpenAiTransportLaneTraceNote(trace, retryResponse);
-
-                        if (!retryResponse.success || !retryResponse.content || retryResponse.aiStatus !== 'success') {
-                            const status = retryResponse.aiStatus || 'unknown';
-                            const reason = retryResponse.aiReason ? ` (${retryResponse.aiReason})` : '';
-                            trace.notes.push(`Parse retry provider status: ${status}${reason}.`);
-                            if (retryResponse.error) {
-                                trace.notes.push(`Parse retry provider error: ${retryResponse.error}`);
-                            }
-                            const recovered = this.tryRecoverOmnibusInvalidResponse(input, retryResponse, trace, 'parse retry provider', evidenceDocMeta);
-                            if (recovered) {
-                                return recovered;
-                            }
-                            const fallbackMeta = this.withParseFailureMeta(this.getAiMetaFromResponse(retryResponse), retryResponse.aiStatus ?? 'rejected');
-                            return {
-                                results: this.buildOmnibusStubResults(input, fallbackMeta, retryResponse.error),
-                                trace,
-                                rawResponse: null
-                            };
-                        }
-
-                        try {
-                            const retryParsed = this.parseOmnibusResponse(retryResponse.content);
-                            trace.notes.push('Parse retry succeeded.');
-                            const aiMeta = this.getAiMetaFromResponse(retryResponse);
-                            return {
-                                results: this.buildOmnibusResults(input, retryParsed, aiMeta, trace, retryResponse.citations, evidenceDocMeta),
-                                trace,
-                                rawResponse: retryParsed
-                            };
-                        } catch (retryParseError) {
-                            const retryMessage = retryParseError instanceof Error ? retryParseError.message : String(retryParseError);
-                            trace.notes.push(`Parse retry failed: ${retryMessage}`);
-                            trace.executionState = 'dispatched_to_provider';
-                            trace.failureStage = 'provider_response_parsing';
-                            trace.tokenUsageKnown = trace.tokenUsageKnown ?? !!trace.usage;
-                            const fallbackMeta = this.withParseFailureMeta(this.getAiMetaFromResponse(retryResponse), retryResponse.aiStatus ?? 'rejected');
-                            return {
-                                results: this.buildOmnibusStubResults(input, fallbackMeta, retryParseError),
-                                trace,
-                                rawResponse: null
-                            };
-                        }
-                    } catch (retryError) {
-                        const retryMessage = retryError instanceof Error ? retryError.message : String(retryError);
-                        trace.notes.push(`Parse retry error: ${retryMessage}`);
-                    }
+                const recovered = this.tryRecoverOmnibusInvalidResponse(input, response, trace, 'parse', evidenceDocMeta);
+                if (recovered) {
+                    return recovered;
                 }
-
                 const fallbackMeta = this.withParseFailureMeta(this.getAiMetaFromResponse(response), response.aiStatus ?? 'rejected');
                 return {
                     results: this.buildOmnibusStubResults(input, fallbackMeta, parseError),
@@ -1051,6 +899,17 @@ export class InquiryRunnerService implements InquiryRunner {
             maxTokens,
             evidenceBlocks
         });
+        if (!packagingPrecheck.ok) {
+            const reason = `Unable to prepare an authoritative provider execution estimate. ${packagingPrecheck.reason}`.trim();
+            return this.buildPackagingFailedResult(
+                ai,
+                analysisPackaging,
+                reason,
+                'preflight',
+                false
+            );
+        }
+        const precheck = packagingPrecheck;
 
         /**
          * Inquiry packaging policy (overflow = tokenEstimateInput > effectiveInputCeiling)
@@ -1063,12 +922,12 @@ export class InquiryRunnerService implements InquiryRunner {
          * If required multi-pass fails, return packaging_failed.
          * Do not emit single-pass-limit rejection for automatic/segmented.
          */
-        const onePassFit = packagingPrecheck.onePassFit;
+        const onePassFit = precheck.onePassFit;
         const requiresMultiPass = analysisPackaging === 'segmented'
             || (analysisPackaging === 'automatic' && onePassFit !== 'fits');
 
         if (analysisPackaging === 'singlePassOnly' && onePassFit === 'overflows') {
-            const reason = `Estimated input ${Math.round(packagingPrecheck.inputTokens).toLocaleString()} exceeds safe input budget ${Math.round(packagingPrecheck.safeInputTokens).toLocaleString()} for this Inquiry request.`;
+            const reason = `Estimated input ${Math.round(precheck.inputTokens).toLocaleString()} exceeds safe input budget ${Math.round(precheck.safeInputTokens).toLocaleString()} for this Inquiry request.`;
             return this.buildSinglePassOnlyOverflowResult(ai, reason);
         }
 
@@ -1081,7 +940,7 @@ export class InquiryRunnerService implements InquiryRunner {
             const triggerReason = analysisPackaging === 'segmented'
                 ? 'Segmented mode forces multi-pass segmentation.'
                 : onePassFit === 'overflows'
-                    ? `Estimated input ${Math.round(packagingPrecheck.inputTokens).toLocaleString()} exceeded safe input budget ${Math.round(packagingPrecheck.safeInputTokens).toLocaleString()}.`
+                    ? `Estimated input ${Math.round(precheck.inputTokens).toLocaleString()} exceeded safe input budget ${Math.round(precheck.safeInputTokens).toLocaleString()}.`
                     : 'One-pass fit estimate was unavailable, so automatic mode preferred multi-pass packaging.';
             const multiPass = await this.runChunkedInquiry(aiClient, {
                 systemPrompt,
@@ -1092,9 +951,9 @@ export class InquiryRunnerService implements InquiryRunner {
                 temperature,
                 maxTokens,
                 packagingPrecheck: {
-                    inputTokens: packagingPrecheck.inputTokens,
-                    safeInputTokens: packagingPrecheck.safeInputTokens,
-                    onePassFit: packagingPrecheck.onePassFit
+                    inputTokens: precheck.inputTokens,
+                    safeInputTokens: precheck.safeInputTokens,
+                    onePassFit: precheck.onePassFit
                 }
             });
             if (multiPass.ok) {
@@ -1107,7 +966,7 @@ export class InquiryRunnerService implements InquiryRunner {
             const reason = analysisPackaging === 'segmented'
                 ? 'Segmented mode requires multi-pass packaging, but chunking/synthesis did not complete.'
                 : onePassFit === 'overflows'
-                    ? `Automatic mode routed to multi-pass because estimated input ${Math.round(packagingPrecheck.inputTokens).toLocaleString()} exceeded safe input budget ${Math.round(packagingPrecheck.safeInputTokens).toLocaleString()}, but chunking/synthesis did not complete.`
+                    ? `Automatic mode routed to multi-pass because estimated input ${Math.round(precheck.inputTokens).toLocaleString()} exceeded safe input budget ${Math.round(precheck.safeInputTokens).toLocaleString()}, but chunking/synthesis did not complete.`
                     : 'Automatic mode preferred multi-pass because one-pass fit was unknown, but chunking/synthesis did not complete.';
             const reasonWithStage = `${reason} ${multiPass.failureReason}`.trim();
             return this.buildPackagingFailedResult(
@@ -1129,7 +988,7 @@ export class InquiryRunnerService implements InquiryRunner {
             temperature,
             maxTokens,
             evidenceBlocks,
-            preparedEstimate: packagingPrecheck.preparedEstimate
+            preparedEstimate: precheck.preparedEstimate
         });
         run = this.withExecutionContext(run, {
             analysisPackaging,
@@ -1163,9 +1022,9 @@ export class InquiryRunnerService implements InquiryRunner {
                     temperature,
                     maxTokens,
                     packagingPrecheck: {
-                        inputTokens: packagingPrecheck.inputTokens,
-                        safeInputTokens: packagingPrecheck.safeInputTokens,
-                        onePassFit: packagingPrecheck.onePassFit
+                        inputTokens: precheck.inputTokens,
+                        safeInputTokens: precheck.safeInputTokens,
+                        onePassFit: precheck.onePassFit
                     }
                 });
                 if (multiPass.ok) {
@@ -1322,15 +1181,22 @@ export class InquiryRunnerService implements InquiryRunner {
         temperature: number;
         maxTokens: number;
         evidenceBlocks?: EvidenceBlock[];
-    }): Promise<{
-        inputTokens: number;
-        safeInputTokens: number;
-        onePassFit: OnePassFitState;
-        exceedsSafeBudget: boolean;
-        estimationMethod: TokenEstimateMethod;
-        uncertaintyTokens: number;
-        preparedEstimate: AIRunPreparedEstimate | null;
-    }> {
+    }): Promise<
+        | {
+            ok: true;
+            inputTokens: number;
+            safeInputTokens: number;
+            onePassFit: OnePassFitState;
+            exceedsSafeBudget: boolean;
+            estimationMethod: TokenEstimateMethod;
+            uncertaintyTokens: number;
+            preparedEstimate: AIRunPreparedEstimate | null;
+        }
+        | {
+            ok: false;
+            reason: string;
+        }
+    > {
         try {
             const preparedEstimate = await this.prepareInquiryRunEstimate(options.aiClient, {
                 task: 'InquiryPackagingPrecheck',
@@ -1348,6 +1214,7 @@ export class InquiryRunnerService implements InquiryRunner {
             }
             const exceedsSafeBudget = preparedEstimate.tokenEstimateInput > preparedEstimate.effectiveInputCeiling;
             return {
+                ok: true,
                 inputTokens: preparedEstimate.tokenEstimateInput,
                 safeInputTokens: preparedEstimate.effectiveInputCeiling,
                 onePassFit: exceedsSafeBudget ? 'overflows' : 'fits',
@@ -1356,15 +1223,11 @@ export class InquiryRunnerService implements InquiryRunner {
                 uncertaintyTokens: preparedEstimate.tokenEstimateUncertainty,
                 preparedEstimate
             };
-        } catch {
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
             return {
-                inputTokens: estimateTokensFromChars((options.systemPrompt?.length ?? 0) + (options.userPrompt?.length ?? 0)),
-                safeInputTokens: 0,
-                onePassFit: 'unknown',
-                exceedsSafeBudget: false,
-                estimationMethod: 'heuristic_chars',
-                uncertaintyTokens: 0,
-                preparedEstimate: null
+                ok: false,
+                reason: message
             };
         }
     }
@@ -1779,34 +1642,37 @@ export class InquiryRunnerService implements InquiryRunner {
         chunkIndex: number,
         chunkTotal: number
     ): string | null {
-        if (!run.content || run.aiReason !== 'invalid_response') return null;
-        try {
-            const recovered = this.parseResponse(run.content);
-            console.warn(`[Inquiry] Chunk ${chunkIndex}/${chunkTotal}: recovered invalid_response via local JSON extraction.`);
-            return JSON.stringify(recovered);
-        } catch {
-            return null;
-        }
+        const recovered = this.recoverInvalidResponsePayload({
+            aiReason: run.aiReason,
+            content: run.content,
+            parse: content => this.parseResponse(content),
+            onRecovered: () => {
+                console.warn(`[Inquiry] Chunk ${chunkIndex}/${chunkTotal}: recovered invalid_response via local JSON extraction.`);
+            }
+        });
+        return recovered ? JSON.stringify(recovered) : null;
     }
 
     private tryRecoverSynthesisInvalidResponse(
         run: AIRunResult,
         completedChunkCount: number
     ): AIRunResult | null {
-        if (!run.content || run.aiReason !== 'invalid_response') return null;
-        try {
-            const recovered = this.parseResponse(run.content);
-            console.warn(`[Inquiry] Synthesis: recovered invalid_response via local JSON extraction after ${completedChunkCount} chunks.`);
-            return {
-                ...run,
-                aiStatus: 'success',
-                aiReason: 'recovered_invalid_response',
-                content: JSON.stringify(recovered),
-                warnings: [...(run.warnings || []), 'Synthesis invalid_response recovered via local JSON extraction.']
-            };
-        } catch {
-            return null;
-        }
+        const recovered = this.recoverInvalidResponsePayload({
+            aiReason: run.aiReason,
+            content: run.content,
+            parse: content => this.parseResponse(content),
+            onRecovered: () => {
+                console.warn(`[Inquiry] Synthesis: recovered invalid_response via local JSON extraction after ${completedChunkCount} chunks.`);
+            }
+        });
+        if (!recovered) return null;
+        return {
+            ...run,
+            aiStatus: 'success',
+            aiReason: 'recovered_invalid_response',
+            content: JSON.stringify(recovered),
+            warnings: [...(run.warnings || []), 'Synthesis invalid_response recovered via local JSON extraction.']
+        };
     }
 
     private isChunkDebugEnabled(): boolean {
@@ -1817,21 +1683,19 @@ export class InquiryRunnerService implements InquiryRunner {
     }
 
     private parseResponse(content: string): RawInquiryResponse {
-        const jsonText = this.extractJson(content);
-        if (!jsonText) {
-            throw new Error('Unable to locate JSON in AI response.');
-        }
-        const parsed = JSON.parse(jsonText) as RawInquiryResponse;
-        return parsed;
+        return this.parseJsonFromContent<RawInquiryResponse>(content);
     }
 
     private parseOmnibusResponse(content: string): RawOmnibusResponse {
+        return this.parseJsonFromContent<RawOmnibusResponse>(content);
+    }
+
+    private parseJsonFromContent<T>(content: string): T {
         const jsonText = this.extractJson(content);
         if (!jsonText) {
             throw new Error('Unable to locate JSON in AI response.');
         }
-        const parsed = JSON.parse(jsonText) as RawOmnibusResponse;
-        return parsed;
+        return JSON.parse(jsonText) as T;
     }
 
     private extractJson(content: string): string | null {
@@ -2123,6 +1987,25 @@ export class InquiryRunnerService implements InquiryRunner {
         };
     }
 
+    private recoverInvalidResponsePayload<T>(params: {
+        aiReason?: string;
+        content: string | null;
+        parse: (content: string) => T;
+        onRecovered?: () => void;
+        onFailure?: (message: string) => void;
+    }): T | null {
+        if (!params.content || params.aiReason !== 'invalid_response') return null;
+        try {
+            const recovered = params.parse(params.content);
+            params.onRecovered?.();
+            return recovered;
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            params.onFailure?.(message);
+            return null;
+        }
+    }
+
     private tryRecoverSingleInvalidResponse(
         input: InquiryRunnerInput,
         response: ProviderResult,
@@ -2130,17 +2013,20 @@ export class InquiryRunnerService implements InquiryRunner {
         context: string,
         evidenceDocumentMeta?: EvidenceDocumentMeta[]
     ): InquiryResult | null {
-        if (!response.content || response.aiReason !== 'invalid_response') return null;
-        try {
-            const recovered = this.parseResponse(response.content);
-            trace.notes.push(`${context}: recovered from invalid_response via local JSON extraction.`);
-            const recoveredMeta = this.withRecoveredInvalidResponseMeta(this.getAiMetaFromResponse(response));
-            return this.buildResult(input, recovered, recoveredMeta, response.citations, evidenceDocumentMeta);
-        } catch (error) {
-            const message = error instanceof Error ? error.message : String(error);
-            trace.notes.push(`${context}: invalid_response recovery failed (${message}).`);
-            return null;
-        }
+        const recovered = this.recoverInvalidResponsePayload({
+            aiReason: response.aiReason,
+            content: response.content,
+            parse: content => this.parseResponse(content),
+            onRecovered: () => {
+                trace.notes.push(`${context}: recovered from invalid_response via local JSON extraction.`);
+            },
+            onFailure: message => {
+                trace.notes.push(`${context}: invalid_response recovery failed (${message}).`);
+            }
+        });
+        if (!recovered) return null;
+        const recoveredMeta = this.withRecoveredInvalidResponseMeta(this.getAiMetaFromResponse(response));
+        return this.buildResult(input, recovered, recoveredMeta, response.citations, evidenceDocumentMeta);
     }
 
     private tryRecoverOmnibusInvalidResponse(
@@ -2150,21 +2036,24 @@ export class InquiryRunnerService implements InquiryRunner {
         context: string,
         evidenceDocumentMeta?: EvidenceDocumentMeta[]
     ): { results: InquiryResult[]; trace: InquiryRunTrace; rawResponse: RawOmnibusResponse } | null {
-        if (!response.content || response.aiReason !== 'invalid_response') return null;
-        try {
-            const recovered = this.parseOmnibusResponse(response.content);
-            trace.notes.push(`${context}: recovered omnibus response from invalid_response via local JSON extraction.`);
-            const recoveredMeta = this.withRecoveredInvalidResponseMeta(this.getAiMetaFromResponse(response));
-            return {
-                results: this.buildOmnibusResults(input, recovered, recoveredMeta, trace, response.citations, evidenceDocumentMeta),
-                trace,
-                rawResponse: recovered
-            };
-        } catch (error) {
-            const message = error instanceof Error ? error.message : String(error);
-            trace.notes.push(`${context}: omnibus invalid_response recovery failed (${message}).`);
-            return null;
-        }
+        const recovered = this.recoverInvalidResponsePayload({
+            aiReason: response.aiReason,
+            content: response.content,
+            parse: content => this.parseOmnibusResponse(content),
+            onRecovered: () => {
+                trace.notes.push(`${context}: recovered omnibus response from invalid_response via local JSON extraction.`);
+            },
+            onFailure: message => {
+                trace.notes.push(`${context}: omnibus invalid_response recovery failed (${message}).`);
+            }
+        });
+        if (!recovered) return null;
+        const recoveredMeta = this.withRecoveredInvalidResponseMeta(this.getAiMetaFromResponse(response));
+        return {
+            results: this.buildOmnibusResults(input, recovered, recoveredMeta, trace, response.citations, evidenceDocumentMeta),
+            trace,
+            rawResponse: recovered
+        };
     }
 
     private buildStubSummary(aiStatus?: InquiryAiStatus, aiReason?: string, message?: string): string {
@@ -2467,13 +2356,6 @@ export class InquiryRunnerService implements InquiryRunner {
         return Math.max(512, Math.min(providerCap, INQUIRY_MAX_OUTPUT_TOKENS));
     }
 
-    private getParseRetryOutputTokenCap(provider: InquiryAiProvider, currentCap: number): number {
-        const providerCap = PROVIDER_MAX_OUTPUT_TOKENS[provider] ?? currentCap;
-        const inquiryRetryCap = Math.min(providerCap, INQUIRY_MAX_OUTPUT_TOKENS * 2);
-        const retryTarget = Math.max(currentCap * 2, INQUIRY_MAX_OUTPUT_TOKENS);
-        return Math.max(currentCap, Math.min(inquiryRetryCap, retryTarget));
-    }
-
     private applyResponseExecutionReporting(trace: InquiryRunTrace, response: ProviderResult): void {
         const usage = this.extractUsage(response.responseData);
         if (usage) {
@@ -2518,17 +2400,6 @@ export class InquiryRunnerService implements InquiryRunner {
             return 'blocked_before_send';
         }
         return 'dispatched_to_provider';
-    }
-
-    private shouldRetryParseFailure(
-        usage: InquiryRunTrace['usage'] | undefined,
-        currentCap: number,
-        retryCap: number
-    ): boolean {
-        if (retryCap <= currentCap) return false;
-        const output = usage?.outputTokens;
-        if (typeof output !== 'number') return false;
-        return output >= currentCap;
     }
 
     private extractUsage(responseData: unknown): InquiryRunTrace['usage'] | undefined {

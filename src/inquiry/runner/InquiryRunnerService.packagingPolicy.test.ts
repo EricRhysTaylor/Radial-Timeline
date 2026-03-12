@@ -31,6 +31,7 @@ function buildPrecheck(overrides?: Partial<{
     const inputTokens = overrides?.inputTokens ?? 220000;
     const safeInputTokens = overrides?.safeInputTokens ?? 140000;
     return {
+        ok: true,
         inputTokens,
         safeInputTokens,
         onePassFit,
@@ -240,6 +241,40 @@ describe('InquiryRunnerService packaging policy', () => {
         expect(result.executionPath).toBe('one_pass');
         expect(result.failureStage).toBe('preflight');
         expect(result.tokenUsageKnown).toBe(false);
+        expect(runChunkedInquiry).not.toHaveBeenCalled();
+        expect(runInquiryRequest).not.toHaveBeenCalled();
+    });
+
+    it('returns explicit preflight packaging failure when authoritative precheck is unavailable', async () => {
+        const service = createService();
+        const getAnalysisPackaging = vi.fn().mockReturnValue('automatic');
+        const getPackagingPrecheck = vi.fn().mockResolvedValue({
+            ok: false,
+            reason: 'prepareRunEstimate unavailable'
+        });
+        const runChunkedInquiry = vi.fn();
+        const runInquiryRequest = vi.fn();
+        Object.assign(service, {
+            getAnalysisPackaging,
+            getPackagingPrecheck,
+            runChunkedInquiry,
+            runInquiryRequest
+        });
+
+        const result = await (service.callProvider as (...args: unknown[]) => Promise<Record<string, unknown>>) (
+            'system',
+            'user',
+            TEST_AI,
+            { type: 'object' },
+            0.2,
+            4000,
+            'question'
+        );
+
+        expect(result.aiStatus).toBe('rejected');
+        expect(result.aiReason).toBe('packaging_failed');
+        expect(result.failureStage).toBe('preflight');
+        expect(String(result.error)).toContain('packaging/parsing failure');
         expect(runChunkedInquiry).not.toHaveBeenCalled();
         expect(runInquiryRequest).not.toHaveBeenCalled();
     });

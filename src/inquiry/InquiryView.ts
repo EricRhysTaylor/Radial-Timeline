@@ -6238,11 +6238,7 @@ export class InquiryView extends ItemView {
             result.submittedAt = submittedAt.toISOString();
             result.completedAt = completedAt.toISOString();
             result.roundTripMs = completedAt.getTime() - submittedAt.getTime();
-            const traceTokens = runTrace?.tokenEstimate;
-            const snapshotTokens = this.plugin.getInquiryEstimateService().getSnapshot()?.estimate;
-            const estimatedInputTokens = traceTokens?.inputTokens ?? snapshotTokens?.estimatedInputTokens ?? 0;
-            result.tokenEstimateInput = estimatedInputTokens;
-            result.tokenEstimateTier = this.getTokenTier(estimatedInputTokens);
+            this.applyTokenEstimateFromTrace(result, runTrace);
             result.aiModelNextRunOnly = false; // Legacy field — always false.
             result = this.applyCorpusOverrideSummary(result);
             const rawResult = result;
@@ -6737,9 +6733,6 @@ export class InquiryView extends ItemView {
         submittedAt: Date;
         completedAt: Date;
     }): Promise<{ session: InquirySession; briefPath?: string; normalized: InquiryResult }> {
-        const traceTokens = options.trace?.tokenEstimate;
-        const snapshotTokens = this.plugin.getInquiryEstimateService().getSnapshot()?.estimate;
-        const fallbackInputTokens = traceTokens?.inputTokens ?? snapshotTokens?.estimatedInputTokens ?? 0;
         const timedResult: InquiryResult = {
             ...options.result,
             questionId: options.result.questionId || options.question.id,
@@ -6750,12 +6743,7 @@ export class InquiryView extends ItemView {
             corpusFingerprint: options.manifest.fingerprint
         };
         this.applyCorpusOverrideSummary(timedResult);
-        if (typeof timedResult.tokenEstimateInput !== 'number') {
-            timedResult.tokenEstimateInput = fallbackInputTokens;
-        }
-        if (!timedResult.tokenEstimateTier) {
-            timedResult.tokenEstimateTier = this.getTokenTier(fallbackInputTokens);
-        }
+        this.applyTokenEstimateFromTrace(timedResult, options.trace);
         if (typeof timedResult.aiModelNextRunOnly !== 'boolean') {
             timedResult.aiModelNextRunOnly = false;
         }
@@ -7504,6 +7492,17 @@ export class InquiryView extends ItemView {
         };
     }
 
+    private applyTokenEstimateFromTrace(result: InquiryResult, trace?: InquiryRunTrace | null): void {
+        const inputTokens = trace?.tokenEstimate?.inputTokens;
+        if (typeof inputTokens === 'number' && Number.isFinite(inputTokens)) {
+            result.tokenEstimateInput = inputTokens;
+            result.tokenEstimateTier = this.getTokenTier(inputTokens);
+            return;
+        }
+        result.tokenEstimateInput = undefined;
+        result.tokenEstimateTier = undefined;
+    }
+
     private startApiSimulation(): void {
         if (this.isInquiryRunDisabled()) return;
         if (this.state.isRunning) {
@@ -7575,9 +7574,14 @@ export class InquiryView extends ItemView {
             result.completedAt = completedAt.toISOString();
             result.roundTripMs = completedAt.getTime() - submittedAt.getTime();
             const simSnapshot = this.plugin.getInquiryEstimateService().getSnapshot();
-            const simInputTokens = simSnapshot?.estimate.estimatedInputTokens ?? 0;
-            result.tokenEstimateInput = simInputTokens;
-            result.tokenEstimateTier = this.getTokenTier(simInputTokens);
+            if (typeof simSnapshot?.estimate.estimatedInputTokens === 'number'
+                && Number.isFinite(simSnapshot.estimate.estimatedInputTokens)) {
+                result.tokenEstimateInput = simSnapshot.estimate.estimatedInputTokens;
+                result.tokenEstimateTier = this.getTokenTier(simSnapshot.estimate.estimatedInputTokens);
+            } else {
+                result.tokenEstimateInput = undefined;
+                result.tokenEstimateTier = undefined;
+            }
             result.aiModelNextRunOnly = false;
             result = this.applyCorpusOverrideSummary(result);
             const rawResult = result;
