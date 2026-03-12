@@ -21,7 +21,7 @@ import { getAIClient } from '../../ai/runtime/aiClient';
 import { buildDefaultAiSettings, mapAiProviderToLegacyProvider, mapLegacyProviderToAiProvider } from '../../ai/settings/aiSettings';
 import { validateAiSettings } from '../../ai/settings/validateAiSettings';
 import type { AIRunPreparedEstimate, AIRunResult, AnalysisPackaging, SceneRef } from '../../ai/types';
-import { readSceneId, resolveSceneReferenceId } from '../../utils/sceneIds';
+import { readSceneId } from '../../utils/sceneIds';
 import { buildSceneRefIndex, isStableSceneId, normalizeSceneRef } from '../../ai/references/sceneRefNormalizer';
 import { cleanEvidenceBody } from '../utils/evidenceCleaning';
 import { estimateTokensFromChars, type TokenEstimateMethod } from '../../ai/tokens/inputTokenEstimate';
@@ -480,12 +480,13 @@ export class InquiryRunnerService implements InquiryRunner {
             if (!this.isTFile(file)) return;
             const frontmatter = this.getFrontmatter(file);
             const summary = this.extractSummary(frontmatter);
-            const sceneNumber = this.extractSceneNumber(frontmatter);
+            const sceneNumber = this.extractSceneNumber(frontmatter) ?? this.extractSceneNumberFromText(file.basename);
             const title = this.getSceneTitle(file, frontmatter);
-            const sceneId = resolveSceneReferenceId(
-                entry.sceneId ?? readSceneId(frontmatter) ?? undefined,
-                file.path
-            );
+            const sceneId = this.resolveCanonicalSceneId(entry.sceneId ?? readSceneId(frontmatter) ?? undefined);
+            if (!sceneId) {
+                console.warn(`[Inquiry] Scene "${file.path}" is missing canonical YAML id (scn_<hash>); skipping scene evidence block.`);
+                return;
+            }
             scenes.push({
                 path: file.path,
                 label: '',
@@ -676,6 +677,9 @@ export class InquiryRunnerService implements InquiryRunner {
             'Use depth summary phrasing that emphasizes alignment, implication, and consistency.',
             'If conclusions align, still phrase summaries to match the active lens emphasis.',
             'Use scene ref_id values from evidence labels in parentheses (e.g., scn_a1b2c3d4).',
+            'Canonical scene ids are YAML IDs in the form scn_<hash>.',
+            'Every finding.ref_id must match ^scn_[a-f0-9]{8,10}$ and be copied exactly from evidence labels.',
+            'Never invent scene refs like scn_s38_jump, scn_s44_long_road_up, or title/slug variants.',
             'Evidence headings include "(Summary)" or "(Body)".',
             'Treat "(Summary)" entries as compressed evidence, not full scene prose; avoid claims requiring missing fine-grain details.',
             'Return at most ONE finding per scene reference. If multiple issues exist for the same scene, combine them into a single headline and bullet list.',
@@ -761,6 +765,9 @@ export class InquiryRunnerService implements InquiryRunner {
             'Use depth summary phrasing that emphasizes alignment, implication, and consistency.',
             'If conclusions align, still phrase summaries to match the active lens emphasis.',
             'Use scene ref_id values from evidence labels in parentheses (e.g., scn_a1b2c3d4).',
+            'Canonical scene ids are YAML IDs in the form scn_<hash>.',
+            'Every finding.ref_id must match ^scn_[a-f0-9]{8,10}$ and be copied exactly from evidence labels.',
+            'Never invent scene refs like scn_s38_jump, scn_s44_long_road_up, or title/slug variants.',
             'Evidence headings include "(Summary)" or "(Body)".',
             'Treat "(Summary)" entries as compressed evidence, not full scene prose; avoid claims requiring missing fine-grain details.',
             'Return at most ONE finding per scene reference. If multiple issues exist for the same scene, combine them into a single headline and bullet list.',
@@ -801,7 +808,7 @@ export class InquiryRunnerService implements InquiryRunner {
                     items: {
                         type: 'object',
                         properties: {
-                            ref_id: { type: 'string' },
+                            ref_id: { type: 'string', pattern: '^scn_[a-f0-9]{8,10}$' },
                             ref_label: { type: 'string' },
                             ref_path: { type: 'string' },
                             kind: { type: 'string' },
@@ -852,7 +859,7 @@ export class InquiryRunnerService implements InquiryRunner {
                                 items: {
                                     type: 'object',
                                     properties: {
-                                        ref_id: { type: 'string' },
+                                        ref_id: { type: 'string', pattern: '^scn_[a-f0-9]{8,10}$' },
                                         ref_label: { type: 'string' },
                                         ref_path: { type: 'string' },
                                         kind: { type: 'string' },
@@ -1727,14 +1734,8 @@ export class InquiryRunnerService implements InquiryRunner {
         const assessmentConfidence = this.normalizeAssessmentConfidence(verdict.assessmentConfidence ?? verdict.confidence);
 
         const findings = Array.isArray(parsed.findings) ? parsed.findings : [];
-        const sceneEntries = input.corpus.entries.filter(entry => entry.class === 'scene' && !!entry.sceneId);
-        const sceneRefIndex = buildSceneRefIndex(sceneEntries.map(entry => ({
-            sceneId: entry.sceneId!,
-            path: entry.path,
-            label: entry.path.split('/').pop()
-        })));
-        const fallbackRefId = this.resolveFindingFallbackRefId(input);
-        const mappedFindings = findings.map(finding => this.mapFinding(finding, fallbackRefId, sceneRefIndex));
+        const sceneRefIndex = this.buildCanonicalSceneRefIndex(input);
+        const mappedFindings = findings.map(finding => this.mapFinding(finding, sceneRefIndex));
 
         const summaryFlow = parsed.summaryFlow
             ? String(parsed.summaryFlow)
@@ -1852,11 +1853,10 @@ export class InquiryRunnerService implements InquiryRunner {
 
     private mapFinding(
         raw: RawInquiryFinding,
-        fallbackRef: string,
         sceneRefIndex: ReturnType<typeof buildSceneRefIndex>
     ): InquiryFinding {
         const kind = this.normalizeFindingKind(raw.kind);
-        const normalizedRef = this.normalizeFindingRef(raw, fallbackRef, sceneRefIndex);
+        const normalizedRef = this.normalizeFindingRef(raw, sceneRefIndex);
         const lens = this.normalizeFindingLens(raw.lens);
         const bullets = Array.isArray(raw.bullets)
             ? raw.bullets.map(value => String(value)).filter(Boolean)
@@ -1875,6 +1875,52 @@ export class InquiryRunnerService implements InquiryRunner {
         };
     }
 
+    private buildCanonicalSceneRefIndex(input: InquiryRunnerInput): ReturnType<typeof buildSceneRefIndex> {
+        type SceneRefIndexEntry = Parameters<typeof buildSceneRefIndex>[0][number];
+        const entries: SceneRefIndexEntry[] = [];
+
+        input.corpus.entries
+            .filter(entry => entry.class === 'scene')
+            .forEach(entry => {
+                const sceneId = this.resolveCanonicalSceneId(entry.sceneId);
+                if (!sceneId) return;
+                const file = this.vault.getAbstractFileByPath(entry.path);
+                const filename = entry.path.split('/').pop() || entry.path;
+                const stem = filename.replace(/\.[^.]+$/i, '');
+                let title = stem;
+                let sceneNumber: number | undefined;
+                const aliases = new Set<string>([filename, stem]);
+
+                if (file && this.isTFile(file)) {
+                    const frontmatter = this.getFrontmatter(file);
+                    title = this.getSceneTitle(file, frontmatter) || stem;
+                    sceneNumber = this.extractSceneNumber(frontmatter) ?? this.extractSceneNumberFromText(file.basename);
+                    aliases.add(file.basename);
+                    aliases.add(file.path);
+                } else {
+                    sceneNumber = this.extractSceneNumberFromText(stem);
+                }
+
+                if (title) aliases.add(title);
+                if (sceneNumber !== undefined) {
+                    aliases.add(String(sceneNumber));
+                    aliases.add(`S${sceneNumber}`);
+                    aliases.add(`Scene ${sceneNumber}`);
+                }
+
+                entries.push({
+                    sceneId,
+                    path: entry.path,
+                    label: filename,
+                    sceneNumber,
+                    title,
+                    aliases: Array.from(aliases)
+                });
+            });
+
+        return buildSceneRefIndex(entries);
+    }
+
     private resolveFindingFallbackRefId(input: InquiryRunnerInput): string {
         if (isStableSceneId(input.focusSceneId)) {
             return String(input.focusSceneId).trim().toLowerCase();
@@ -1887,19 +1933,23 @@ export class InquiryRunnerService implements InquiryRunner {
 
     private normalizeFindingRef(
         raw: RawInquiryFinding,
-        fallbackRef: string,
         sceneRefIndex: ReturnType<typeof buildSceneRefIndex>
     ): SceneRef {
         const normalized = normalizeSceneRef({
             ref_id: raw.ref_id ? String(raw.ref_id) : undefined,
             ref_label: raw.ref_label ? String(raw.ref_label) : undefined,
             ref_path: raw.ref_path ? String(raw.ref_path) : undefined
-        }, sceneRefIndex, { fallbackRefId: fallbackRef });
+        }, sceneRefIndex);
 
         if (normalized.warning) {
             console.warn(`[Inquiry] ${normalized.warning}`);
         }
         return normalized.ref;
+    }
+
+    private resolveCanonicalSceneId(value: string | undefined): string | undefined {
+        if (!isStableSceneId(value)) return undefined;
+        return String(value).trim().toLowerCase();
     }
 
     private buildStubResult(
@@ -2158,6 +2208,21 @@ export class InquiryRunnerService implements InquiryRunner {
         const value = frontmatter['Scene Number'];
         if (value === undefined || value === null) return undefined;
         const parsed = Number(typeof value === 'string' ? value.trim() : value);
+        if (!Number.isFinite(parsed)) return undefined;
+        return Math.max(1, Math.floor(parsed));
+    }
+
+    private extractSceneNumberFromText(value: string | undefined): number | undefined {
+        if (!value) return undefined;
+        const text = value.trim();
+        if (!text) return undefined;
+
+        const match = text.match(/^(\d{1,4})(?:\D|$)/)
+            || text.match(/\bscene[\s._-]*(\d{1,4})\b/i)
+            || text.match(/\bs(\d{1,4})\b/i);
+        if (!match) return undefined;
+
+        const parsed = Number(match[1]);
         if (!Number.isFinite(parsed)) return undefined;
         return Math.max(1, Math.floor(parsed));
     }

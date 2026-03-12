@@ -145,6 +145,7 @@ import {
     type CorpusSubstanceTier
 } from './services/corpusCellStatus';
 import { readSceneId } from '../utils/sceneIds';
+import { buildSceneRefIndex, isStableSceneId, normalizeSceneRef } from '../ai/references/sceneRefNormalizer';
 import {
     DEFAULT_CHARS_PER_TOKEN,
     estimateTokensFromChars as estimateTokensFromCharsHeuristic,
@@ -7169,29 +7170,24 @@ export class InquiryView extends ItemView {
     private normalizeResultRefId(refId: string | undefined): string {
         const trimmed = typeof refId === 'string' ? refId.trim() : '';
         if (!trimmed) return '';
-        if (!this.corpus?.scenes?.length) return trimmed;
-
-        const lower = trimmed.toLowerCase();
-        if (/^scn_[a-f0-9]{8,10}$/.test(lower)) {
-            return lower;
+        if (!this.corpus?.scenes?.length) {
+            return isStableSceneId(trimmed) ? trimmed.toLowerCase() : '';
         }
 
-        for (const scene of this.corpus.scenes) {
-            if (scene.sceneId && scene.sceneId.toLowerCase() === lower) {
-                return scene.sceneId.toLowerCase();
-            }
-            if (scene.id.toLowerCase() === lower && scene.sceneId) {
-                return scene.sceneId.toLowerCase();
-            }
-            if (scene.filePath.toLowerCase() === lower && scene.sceneId) {
-                return scene.sceneId.toLowerCase();
-            }
-            if (scene.filePaths?.some(path => path.toLowerCase() === lower) && scene.sceneId) {
-                return scene.sceneId.toLowerCase();
-            }
+        const index = buildSceneRefIndex(this.corpus.scenes
+            .filter(scene => isStableSceneId(scene.sceneId))
+            .map(scene => ({
+                sceneId: String(scene.sceneId).trim().toLowerCase(),
+                path: scene.filePath,
+                label: scene.displayLabel,
+                sceneNumber: scene.sceneNumber,
+                aliases: [scene.id, ...(scene.filePaths || [])]
+            })));
+        const normalized = normalizeSceneRef({ ref_id: trimmed }, index);
+        if (normalized.warning) {
+            console.warn(`[Inquiry] ${normalized.warning}`);
         }
-
-        return trimmed;
+        return normalized.ref.ref_id || '';
     }
 
     private collectNormalizationNotes(raw: InquiryResult, normalized: InquiryResult): string[] {

@@ -30,3 +30,31 @@ Key requirements:
 
 Refactors that increase complexity without removing existing logic
 should be rejected.
+
+---
+
+## Testing Discipline
+
+Agents must run the following before reporting completion of any code change:
+
+1. Type check
+
+```bash
+npx tsc --noEmit
+```
+
+2. Targeted tests
+
+```bash
+npx vitest run <tests related to changed files>
+```
+
+3. Full build
+
+```bash
+npm run build
+```
+
+If any step fails, the agent must fix the issue before declaring the task complete.
+
+Agents must prefer targeted test runs over full test runs unless structural changes were made.
