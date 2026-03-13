@@ -535,8 +535,19 @@
 }
 
 .ert-inquiry-minimap-tokencap-split {
-  /* Appearance inherited from .ert-inquiry-minimap-tokencap-endcap class */
+  fill: var(--ert-inquiry-ai-neutral);
+  opacity: 0.78;
   pointer-events: none;
+}
+
+.ert-inquiry-minimap-tokencap-split.is-over-capacity {
+  fill: var(--ert-inquiry-ai-error);
+  opacity: 1;
+}
+
+.ert-inquiry-minimap-tokencap-split.is-warning-capacity {
+  fill: var(--ert-inquiry-ai-warning);
+  opacity: 1;
 }
 
 .ert-inquiry-svg.is-running .ert-inquiry-minimap-tokencap-bar,
@@ -1462,7 +1473,7 @@
 }
 
 .ert-inquiry-scene-dossier-bg {
-  fill: color-mix(in srgb, var(--background-primary) 88%, rgb(96 69 43 / 0.84));
+  fill: none;
   stroke: color-mix(in srgb, var(--text-normal) 42%, transparent);
   stroke-width: 1.2;
   stroke-dasharray: 6 4;
@@ -1470,21 +1481,20 @@
 }
 
 .ert-inquiry-scene-dossier-header {
-  font-size: 15px;
+  font-size: 19px;
   font-weight: 760;
   letter-spacing: 0.01em;
   fill: color-mix(in srgb, var(--text-normal) 88%, #f6dbc0);
 }
 
 .ert-inquiry-scene-dossier-body {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 560;
-  font-style: italic;
   fill: color-mix(in srgb, var(--text-normal) 85%, #f0d0ad);
 }
 
 .ert-inquiry-scene-dossier-footer {
-  font-size: 11px;
+  font-size: 13px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   fill: color-mix(in srgb, var(--text-muted) 86%, #d7b58e);

@@ -192,14 +192,17 @@ const DEPTH_FINDING_ORDER: InquiryFinding['kind'][] = ['continuity', 'loose_end'
 const SIGMA_CHAR = String.fromCharCode(931);
 const MODE_ICON_VIEWBOX = 2048;
 const MODE_ICON_OFFSET_Y = -330;
-const SCENE_DOSSIER_Y = MODE_ICON_OFFSET_Y - 18;
-const SCENE_DOSSIER_WIDTH = 350;
-const SCENE_DOSSIER_MIN_HEIGHT = 200;
+const SCENE_DOSSIER_Y = -256;
+const SCENE_DOSSIER_WIDTH = VIEWBOX_SIZE / 2;
+const SCENE_DOSSIER_MIN_HEIGHT = 0;
+const SCENE_DOSSIER_SIDE_PADDING = 22;
 const SCENE_DOSSIER_PADDING_Y = 18;
-const SCENE_DOSSIER_HEADER_SIZE = 15;
-const SCENE_DOSSIER_FOOTER_SIZE = 11;
-const SCENE_DOSSIER_LINE_HEIGHT = 18;
-const SCENE_DOSSIER_MAX_BODY_LINES = 3;
+const SCENE_DOSSIER_HEADER_SIZE = 19;
+const SCENE_DOSSIER_HEADER_LINE_HEIGHT = 21;
+const SCENE_DOSSIER_FOOTER_SIZE = 13;
+const SCENE_DOSSIER_FOOTER_LINE_HEIGHT = 15;
+const SCENE_DOSSIER_LINE_HEIGHT = 20;
+const SCENE_DOSSIER_MAX_BODY_LINES = 6;
 const FLOW_ICON_PATHS = [
     'M1873.99,900.01c.23,1.74-2.27.94-3.48.99-14.3.59-28.74-.35-43.05-.04-2.37.05-4.55,1.03-6.92,1.08-124.15,2.86-248.6,8.35-373,4.92-91.61-2.53-181.2-15.53-273.08-17.92-101.98-2.65-204.05,7.25-305.95.95-83.2-5.14-164.18-24.05-247.02-31.98-121.64-11.65-245.9-13.5-368.04-15.96-2.37-.05-4.55-1.04-6.92-1.08-17.31-.34-34.77.75-52.05.04-1.22-.05-3.72.75-3.48-.99,26.49-.25,53.03.28,79.54.03,144.74-1.38,289.81-5.3,433.95,8.97,18.67,1.85,37.34,5.16,56.01,6.99,165.31,16.18,330.85-3.46,495.99,14.01,118.64,12.56,236.15,30.42,355.97,28.03,87.15,0,174.3,2.45,261.54,1.97h-.01Z',
     'M1858.99,840.01c.23,1.74-2.27.94-3.48.99-15.63.64-31.41-.36-47.05-.04-2.37.05-4.55,1.03-6.92,1.08-127.12,2.74-254.28,9.03-381.05,2.97-86.31-4.13-170.32-17.4-256.98-20.02-110.96-3.36-222.13,6.92-333-1-62.18-4.44-123.32-15.98-185.14-22.86-130.81-14.57-267.28-16.86-398.92-19.08-2.36-.04-4.55-1.04-6.92-1.08-20.56-.33-41.57.88-62.05.04-1.22-.05-3.72.75-3.48-.99,27.83-.25,55.7.28,83.54.03,110.53-1,221.67-2.9,331.92,2,82.52,3.67,164.67,14.08,247,17,120.4,4.27,240.84-7.91,361.03,1.97,68.04,5.59,135.16,18.98,203.02,25.98,102.05,10.53,205.5,10.76,307.95,12.05,50.17.63,100.37.51,150.54.97h-.01Z',
@@ -315,7 +318,18 @@ type InquiryBriefModel = {
         path?: string;
         url?: string;
     }>;
-    sceneNotes: Array<{ label: string; note: string; anchorId?: string }>;
+    sceneNotes: Array<{
+        label: string;
+        header: string;
+        anchorId?: string;
+        entries: Array<{
+            headline: string;
+            bullets: string[];
+            impact: string;
+            confidence: string;
+            lens: string;
+        }>;
+    }>;
     pendingActions: string[];
     logTitle?: string | null;
 };
@@ -1368,7 +1382,7 @@ export class InquiryView extends ItemView {
         }
 
         this.buildPromptPreviewPanel(canvasGroup);
-        this.buildSceneDossierLayer(canvasGroup, SCENE_DOSSIER_Y);
+        this.buildSceneDossierLayer(minimapGroup, SCENE_DOSSIER_Y);
 
         this.registerSvgEvent(this.glyphHit, 'pointerenter', () => {
             if (this.isInquiryGuidanceLockout()) return;
@@ -3617,7 +3631,8 @@ export class InquiryView extends ItemView {
         header.setAttribute('text-anchor', 'middle');
 
         const body = createSvgText(group, 'ert-inquiry-scene-dossier-body', '', 0, 0);
-        body.setAttribute('text-anchor', 'middle');
+        body.setAttribute('x', String((-SCENE_DOSSIER_WIDTH / 2) + SCENE_DOSSIER_SIDE_PADDING));
+        body.setAttribute('text-anchor', 'start');
 
         const footer = createSvgText(group, 'ert-inquiry-scene-dossier-footer', '', 0, 0);
         footer.setAttribute('text-anchor', 'middle');
@@ -8441,22 +8456,7 @@ export class InquiryView extends ItemView {
         finding: InquiryFinding
     ): InquirySceneDossier {
         const header = this.buildSceneDossierHeader(item, label, hoverLabel);
-        const headline = this.sanitizeDossierText(finding.headline);
-        const bullets = (finding.bullets || [])
-            .map(entry => this.sanitizeDossierText(entry))
-            .filter(Boolean)
-            .slice(0, 2);
-        const bodyLines: string[] = [];
-        if (headline) {
-            bodyLines.push(this.truncatePreviewValue(headline, 110));
-        }
-        if (bullets.length) {
-            bullets.forEach(entry => {
-                bodyLines.push(this.truncatePreviewValue(`• ${entry}`, 116));
-            });
-        } else if (!headline) {
-            bodyLines.push('Finding text unavailable.');
-        }
+        const bodyLines = this.buildSceneDossierBodyLines(finding);
 
         const footerParts = [
             `Impact ${finding.impact}`,
@@ -8467,10 +8467,30 @@ export class InquiryView extends ItemView {
         }
 
         return {
-            header: this.truncatePreviewValue(header, 96),
+            header,
             bodyLines: bodyLines.slice(0, SCENE_DOSSIER_MAX_BODY_LINES),
-            footer: this.truncatePreviewValue(footerParts.join(' · '), 118)
+            footer: footerParts.join(' · ')
         };
+    }
+
+    private buildSceneDossierBodyLines(finding: InquiryFinding): string[] {
+        const headline = this.sanitizeDossierText(finding.headline);
+        const bullets = (finding.bullets || [])
+            .map(entry => this.sanitizeDossierText(entry))
+            .filter(Boolean)
+            .slice(0, 2);
+        const bodyLines: string[] = [];
+        if (headline) {
+            bodyLines.push(headline);
+        }
+        if (bullets.length) {
+            bullets.forEach(entry => {
+                bodyLines.push(`• ${entry}`);
+            });
+        } else if (!headline) {
+            bodyLines.push('Finding text unavailable.');
+        }
+        return bodyLines.slice(0, SCENE_DOSSIER_MAX_BODY_LINES);
     }
 
     private buildSceneDossierHeader(item: InquiryCorpusItem, label: string, hoverLabel: string): string {
@@ -8513,35 +8533,71 @@ export class InquiryView extends ItemView {
         if (!this.sceneDossierGroup || !this.sceneDossierBg || !this.sceneDossierHeader || !this.sceneDossierBody || !this.sceneDossierFooter) {
             return;
         }
-        const bodyLines = dossier.bodyLines.filter(Boolean).slice(0, SCENE_DOSSIER_MAX_BODY_LINES);
+        const maxTextWidth = SCENE_DOSSIER_WIDTH - (SCENE_DOSSIER_SIDE_PADDING * 2);
         const headerY = SCENE_DOSSIER_PADDING_Y + SCENE_DOSSIER_HEADER_SIZE;
-        const bodyStartY = headerY + 16;
-        this.sceneDossierHeader.textContent = dossier.header;
         this.sceneDossierHeader.setAttribute('y', String(headerY));
+        const headerLines = this.setWrappedSvgText(
+            this.sceneDossierHeader,
+            dossier.header,
+            maxTextWidth,
+            2,
+            SCENE_DOSSIER_HEADER_LINE_HEIGHT
+        );
 
-        clearSvgChildren(this.sceneDossierBody);
-        bodyLines.forEach((line, index) => {
-            const tspan = createSvgElement('tspan');
-            tspan.setAttribute('x', '0');
-            tspan.setAttribute('dy', index === 0 ? String(bodyStartY) : String(SCENE_DOSSIER_LINE_HEIGHT));
-            tspan.textContent = line;
-            this.sceneDossierBody?.appendChild(tspan);
-        });
+        const bodyStartY = headerY + (Math.max(headerLines, 1) * SCENE_DOSSIER_HEADER_LINE_HEIGHT) + 10;
+        const bodyLineCount = this.setSceneDossierBodyText(
+            this.sceneDossierBody,
+            dossier.bodyLines.filter(Boolean),
+            maxTextWidth,
+            SCENE_DOSSIER_MAX_BODY_LINES,
+            bodyStartY
+        );
 
         const hasFooter = !!dossier.footer;
-        const footerY = bodyStartY + (Math.max(bodyLines.length, 1) * SCENE_DOSSIER_LINE_HEIGHT) + 4;
-        this.sceneDossierFooter.textContent = hasFooter ? dossier.footer ?? '' : '';
+        const footerY = bodyStartY + (Math.max(bodyLineCount, 1) * SCENE_DOSSIER_LINE_HEIGHT) + 10;
         this.sceneDossierFooter.classList.toggle('ert-hidden', !hasFooter);
-        this.sceneDossierFooter.setAttribute('y', String(footerY));
+        let footerLines = 0;
+        if (hasFooter) {
+            this.sceneDossierFooter.setAttribute('y', String(footerY));
+            footerLines = this.setWrappedSvgText(
+                this.sceneDossierFooter,
+                dossier.footer ?? '',
+                maxTextWidth,
+                2,
+                SCENE_DOSSIER_FOOTER_LINE_HEIGHT
+            );
+        } else {
+            this.sceneDossierFooter.textContent = '';
+        }
 
         const contentHeight = hasFooter
-            ? footerY + SCENE_DOSSIER_FOOTER_SIZE + SCENE_DOSSIER_PADDING_Y
-            : bodyStartY + (Math.max(bodyLines.length, 1) * SCENE_DOSSIER_LINE_HEIGHT) + SCENE_DOSSIER_PADDING_Y;
+            ? footerY + SCENE_DOSSIER_FOOTER_SIZE + SCENE_DOSSIER_PADDING_Y + (Math.max(footerLines, 1) - 1) * SCENE_DOSSIER_FOOTER_LINE_HEIGHT
+            : bodyStartY + (Math.max(bodyLineCount, 1) * SCENE_DOSSIER_LINE_HEIGHT) + SCENE_DOSSIER_PADDING_Y;
         this.sceneDossierBg.setAttribute('height', String(Math.max(SCENE_DOSSIER_MIN_HEIGHT, contentHeight)));
 
         this.sceneDossierGroup.classList.remove('ert-hidden');
         this.minimapResultPreviewActive = true;
         this.rootSvg?.classList.add('is-scene-dossier-active');
+    }
+
+    private setSceneDossierBodyText(
+        textEl: SVGTextElement,
+        lines: string[],
+        maxWidth: number,
+        maxLines: number,
+        startDy: number
+    ): number {
+        const bodyText = (lines.length ? lines : ['Finding text unavailable.'])
+            .map(line => line.trim())
+            .filter(Boolean)
+            .join(' ');
+        textEl.setAttribute('y', '0');
+        const lineCount = this.setWrappedSvgText(textEl, bodyText, maxWidth, maxLines, SCENE_DOSSIER_LINE_HEIGHT);
+        const firstLine = textEl.firstElementChild;
+        if (firstLine instanceof SVGTSpanElement) {
+            firstLine.setAttribute('dy', String(startDy));
+        }
+        return lineCount;
     }
 
     private hideSceneDossier(): void {
@@ -10228,7 +10284,14 @@ export class InquiryView extends ItemView {
             lines.push('', '## Per-Scene / Per-Moment Notes');
             brief.sceneNotes.forEach(note => {
                 const anchor = note.anchorId ? ` ^${note.anchorId}` : '';
-                lines.push(`- ${note.label}: ${note.note}${anchor}`);
+                lines.push('', `### ${note.header}${anchor}`);
+                note.entries.forEach(entry => {
+                    lines.push(
+                        `- ${entry.headline}`,
+                        ...entry.bullets.map(bullet => `- ${bullet}`),
+                        `Impact: ${entry.impact} · Confidence: ${entry.confidence} · Lens: ${entry.lens}`
+                    );
+                });
             });
         }
 
@@ -10279,21 +10342,40 @@ export class InquiryView extends ItemView {
         return label.replace(/\s*\(.*\)\s*$/, '').trim() || null;
     }
 
-    private buildInquirySceneNotes(result: InquiryResult): Array<{ label: string; note: string; anchorId?: string }> {
+    private buildInquirySceneNotes(result: InquiryResult): Array<{
+        label: string;
+        header: string;
+        anchorId?: string;
+        entries: Array<{
+            headline: string;
+            bullets: string[];
+            impact: string;
+            confidence: string;
+            lens: string;
+        }>;
+    }> {
         if (result.scope !== 'book') return [];
         const items = this.getResultItems(result);
         const orderedFindings = this.getOrderedFindings(result, result.mode);
-        const notes = new Map<string, { note: string; anchorId?: string }>();
+        const notes = new Map<string, {
+            label: string;
+            header: string;
+            anchorId?: string;
+            order: number;
+            entries: Array<{
+                headline: string;
+                bullets: string[];
+                impact: string;
+                confidence: string;
+                lens: string;
+            }>;
+        }>();
 
         orderedFindings.forEach(finding => {
             if (!this.isFindingHit(finding)) return;
             const label = this.resolveFindingChipLabel(finding, result, items)
                 ?? (finding.refId && /^s\d+$/i.test(finding.refId.trim()) ? finding.refId.trim().toUpperCase() : null);
-            if (!label || notes.has(label)) return;
-            const note = (finding.bullets?.find(entry => entry?.trim()) || finding.headline || '')
-                .replace(/\s+/g, ' ')
-                .trim();
-            if (!note) return;
+            if (!label) return;
             const labelLower = label.toLowerCase();
             const match = items.find(item => {
                 if (item.displayLabel.toLowerCase() === labelLower) return true;
@@ -10305,14 +10387,56 @@ export class InquiryView extends ItemView {
                 ? (this.getMinimapItemFilePath(match) || match.id || label)
                 : label;
             const anchorId = anchorSource ? this.getBriefSceneAnchorId(anchorSource) : undefined;
-            notes.set(label, { note, anchorId });
+            const existing = notes.get(label);
+            const headerTitle = match
+                ? this.stripNumericTitlePrefix(this.getMinimapItemTitle(match))
+                : '';
+            const header = headerTitle ? `${label.toUpperCase()} · ${headerTitle}` : label.toUpperCase();
+            const entry = {
+                headline: this.sanitizeDossierText(finding.headline) || 'Finding text unavailable.',
+                bullets: this.buildSceneDossierBodyLines(finding)
+                    .filter(line => line.startsWith('• '))
+                    .map(line => line.replace(/^•\s*/, '')),
+                impact: this.formatBriefLabel(finding.impact),
+                confidence: this.formatBriefLabel(finding.assessmentConfidence),
+                lens: finding.lens === 'both'
+                    ? 'Flow / Depth'
+                    : this.formatBriefLabel(finding.lens || result.mode || 'flow')
+            };
+            if (existing) {
+                existing.entries.push(entry);
+                return;
+            }
+            const order = match
+                ? items.indexOf(match)
+                : this.getSceneNoteSortOrder(label);
+            notes.set(label, {
+                label,
+                header,
+                anchorId,
+                order: order >= 0 ? order : Number.MAX_SAFE_INTEGER,
+                entries: [entry]
+            });
         });
 
-        return Array.from(notes.entries()).map(([label, entry]) => ({
-            label,
-            note: entry.note,
-            anchorId: entry.anchorId
-        }));
+        return Array.from(notes.values())
+            .sort((a, b) => {
+                if (a.order !== b.order) return a.order - b.order;
+                return a.label.localeCompare(b.label, undefined, { numeric: true, sensitivity: 'base' });
+            })
+            .map(entry => ({
+                label: entry.label,
+                header: entry.header,
+                anchorId: entry.anchorId,
+                entries: entry.entries
+            }));
+    }
+
+    private getSceneNoteSortOrder(label: string): number {
+        const match = label.trim().match(/^[A-Za-z](\d+)$/);
+        if (!match) return Number.MAX_SAFE_INTEGER;
+        const parsed = Number(match[1]);
+        return Number.isFinite(parsed) ? parsed : Number.MAX_SAFE_INTEGER;
     }
 
     private getPendingInquiryActions(result: InquiryResult): string[] {
