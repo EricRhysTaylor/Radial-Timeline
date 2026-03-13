@@ -192,13 +192,13 @@ const DEPTH_FINDING_ORDER: InquiryFinding['kind'][] = ['continuity', 'loose_end'
 const SIGMA_CHAR = String.fromCharCode(931);
 const MODE_ICON_VIEWBOX = 2048;
 const MODE_ICON_OFFSET_Y = -330;
-const SCENE_DOSSIER_Y = MODE_ICON_OFFSET_Y - 210;
-const SCENE_DOSSIER_WIDTH = 640;
-const SCENE_DOSSIER_MIN_HEIGHT = 124;
+const SCENE_DOSSIER_Y = MODE_ICON_OFFSET_Y - 18;
+const SCENE_DOSSIER_WIDTH = 350;
+const SCENE_DOSSIER_MIN_HEIGHT = 200;
 const SCENE_DOSSIER_PADDING_Y = 18;
-const SCENE_DOSSIER_HEADER_SIZE = 16;
+const SCENE_DOSSIER_HEADER_SIZE = 15;
 const SCENE_DOSSIER_FOOTER_SIZE = 11;
-const SCENE_DOSSIER_LINE_HEIGHT = 20;
+const SCENE_DOSSIER_LINE_HEIGHT = 18;
 const SCENE_DOSSIER_MAX_BODY_LINES = 3;
 const FLOW_ICON_PATHS = [
     'M1873.99,900.01c.23,1.74-2.27.94-3.48.99-14.3.59-28.74-.35-43.05-.04-2.37.05-4.55,1.03-6.92,1.08-124.15,2.86-248.6,8.35-373,4.92-91.61-2.53-181.2-15.53-273.08-17.92-101.98-2.65-204.05,7.25-305.95.95-83.2-5.14-164.18-24.05-247.02-31.98-121.64-11.65-245.9-13.5-368.04-15.96-2.37-.05-4.55-1.04-6.92-1.08-17.31-.34-34.77.75-52.05.04-1.22-.05-3.72.75-3.48-.99,26.49-.25,53.03.28,79.54.03,144.74-1.38,289.81-5.3,433.95,8.97,18.67,1.85,37.34,5.16,56.01,6.99,165.31,16.18,330.85-3.46,495.99,14.01,118.64,12.56,236.15,30.42,355.97,28.03,87.15,0,174.3,2.45,261.54,1.97h-.01Z',
@@ -1368,7 +1368,7 @@ export class InquiryView extends ItemView {
         }
 
         this.buildPromptPreviewPanel(canvasGroup);
-        this.buildSceneDossierLayer(canvasGroup, MINIMAP_GROUP_Y + SCENE_DOSSIER_Y);
+        this.buildSceneDossierLayer(canvasGroup, SCENE_DOSSIER_Y);
 
         this.registerSvgEvent(this.glyphHit, 'pointerenter', () => {
             if (this.isInquiryGuidanceLockout()) return;
@@ -8748,6 +8748,7 @@ export class InquiryView extends ItemView {
     private updateRunProgress(progress: InquiryRunProgressEvent | null): void {
         this.currentRunProgress = progress;
         if (!this.state.isRunning || this.activeCancelRunModal) return;
+        this.reconcileRunningEstimate(progress);
         const questionText = this.previewLast?.question || this.getCurrentPromptQuestion() || '';
         this.setPreviewRunningNoteText(this.buildRunningStatusNote(questionText));
         this.setPreviewFooterText('');
@@ -8822,6 +8823,20 @@ export class InquiryView extends ItemView {
         const minutes = Math.floor(totalSeconds / 60);
         const seconds = totalSeconds % 60;
         return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    }
+
+    private reconcileRunningEstimate(progress: InquiryRunProgressEvent | null): void {
+        if (!progress || this.currentRunElapsedMs <= 0) return;
+        if (progress.phase === 'finalizing') {
+            this.currentRunEstimatedMaxMs = Math.max(this.currentRunElapsedMs, 1000);
+            return;
+        }
+        const completedPasses = Math.max(0, Math.min(progress.totalPasses, progress.currentPass - 1));
+        if (completedPasses <= 0 || progress.totalPasses <= 0) return;
+        const observedMsPerPass = this.currentRunElapsedMs / completedPasses;
+        const remainingPasses = Math.max(1, progress.totalPasses - completedPasses);
+        const projectedTotalMs = this.currentRunElapsedMs + (observedMsPerPass * remainingPasses);
+        this.currentRunEstimatedMaxMs = Math.max(this.currentRunElapsedMs + 1000, Math.round(projectedTotalMs));
     }
 
     private getRunningBackboneProgressRatio(elapsedMs: number): number {
@@ -10428,6 +10443,7 @@ export class InquiryView extends ItemView {
         contentLogWritten?: boolean
     ): string {
         const title = logTitle ?? this.formatInquiryLogTitle(result);
+        const isSimulated = result.aiReason === 'simulated' || result.aiReason === 'stub';
         const questionLabel = this.findPromptLabelById(result.questionId)
             || this.getQuestionTextById(result.questionId)
             || result.questionId
@@ -10435,12 +10451,16 @@ export class InquiryView extends ItemView {
         const scopeLabel = result.scope === 'saga' ? 'Saga' : 'Book';
         const target = result.focusId || (result.scope === 'saga' ? 'Σ' : 'B0');
         const providerRaw = result.aiProvider ? result.aiProvider.trim() : '';
-        const providerLabel = providerRaw
+        const providerLabel = isSimulated
+            ? 'Simulation'
+            : providerRaw
             ? (['anthropic', 'gemini', 'openai', 'local'].includes(providerRaw)
                 ? this.getInquiryProviderLabel(providerRaw as EngineProvider)
                 : providerRaw)
             : 'Unknown';
-        const modelLabel = this.getBriefModelLabel(result)
+        const modelLabel = isSimulated
+            ? 'No provider call'
+            : this.getBriefModelLabel(result)
             || result.aiModelResolved
             || result.aiModelRequested
             || 'unknown';
@@ -10458,7 +10478,7 @@ export class InquiryView extends ItemView {
 
         let status: AiLogStatus = 'success';
         const degraded = this.isDegradedResult(result);
-        if (result.aiReason === 'stub') {
+        if (isSimulated) {
             status = 'simulated';
         } else if (this.isErrorResult(result)) {
             status = 'error';
@@ -10620,6 +10640,9 @@ export class InquiryView extends ItemView {
 
         const lines: string[] = [];
         lines.push(`# ${title}`, '');
+        if (isSimulated) {
+            lines.push('> Simulated test run. No provider request was sent.', '');
+        }
 
         lines.push('## Run Summary');
         lines.push(`- Scope: ${scopeLabel} · ${target}`);
@@ -10640,8 +10663,8 @@ export class InquiryView extends ItemView {
 
         lines.push('## Tokens');
         lines.push(`- Estimated input: ${formatTokenCount(tokenEstimateInput, true)}`);
-        lines.push(`- Actual usage: ${usageText}`);
-        lines.push(`- Usage visibility: ${usageVisibility}`);
+        lines.push(`- Actual usage: ${isSimulated ? 'simulated run; not applicable' : usageText}`);
+        lines.push(`- Usage visibility: ${isSimulated ? 'simulated' : usageVisibility}`);
         lines.push(`- Tier: ${tokenTier ?? 'unknown'}`);
         const logSnapshot = this.plugin.getInquiryEstimateService().getSnapshot();
         if (logSnapshot) {
@@ -10652,14 +10675,14 @@ export class InquiryView extends ItemView {
         lines.push('');
 
         lines.push('## Execution');
-        lines.push(`- Packaging: ${trace.analysisPackaging === 'singlePassOnly' ? 'Single-pass only' : trace.analysisPackaging === 'segmented' ? 'Segmented' : 'Automatic'}`);
-        lines.push(`- Execution state: ${trace.executionState ?? 'unknown'}`);
-        lines.push(`- Execution path: ${trace.executionPath ?? ((typeof trace.executionPassCount === 'number' && trace.executionPassCount > 1) ? 'multi_pass' : 'one_pass')}`);
-        lines.push(`- Failure stage: ${trace.failureStage ?? (status === 'error' ? 'provider_response_parsing' : 'none')}`);
+        lines.push(`- Packaging: ${isSimulated ? 'Simulation only' : (trace.analysisPackaging === 'singlePassOnly' ? 'Single-pass only' : trace.analysisPackaging === 'segmented' ? 'Segmented' : 'Automatic')}`);
+        lines.push(`- Execution state: ${isSimulated ? 'simulated' : (trace.executionState ?? 'unknown')}`);
+        lines.push(`- Execution path: ${isSimulated ? 'simulated' : (trace.executionPath ?? ((typeof trace.executionPassCount === 'number' && trace.executionPassCount > 1) ? 'multi_pass' : 'one_pass'))}`);
+        lines.push(`- Failure stage: ${isSimulated ? 'none' : (trace.failureStage ?? (status === 'error' ? 'provider_response_parsing' : 'none'))}`);
         if (typeof trace.executionPassCount === 'number' && trace.executionPassCount > 1) {
             lines.push(`- Pass count: ${trace.executionPassCount}`);
         }
-        if (trace.packagingTriggerReason) {
+        if (!isSimulated && trace.packagingTriggerReason) {
             lines.push(`- Packaging trigger: ${trace.packagingTriggerReason}`);
         }
         lines.push('');
@@ -10668,7 +10691,7 @@ export class InquiryView extends ItemView {
         if (status === 'success') {
             lines.push(`- Verdict: Flow ${this.formatMetricDisplay(result.verdict.flow)} · Depth ${this.formatMetricDisplay(result.verdict.depth)} · Impact ${this.formatBriefLabel(result.verdict.impact)} · Confidence ${this.formatBriefLabel(result.verdict.assessmentConfidence)}`);
         } else if (status === 'simulated') {
-            lines.push('- Result: Simulated run (no provider call).');
+            lines.push('- Result: Simulated test run. The corpus was packaged and rendered locally, but no API request was sent.');
         } else {
             lines.push(`- Failure reason: ${resolveFailureReason() ?? 'Unknown failure.'}`);
         }
@@ -10722,7 +10745,8 @@ export class InquiryView extends ItemView {
 
         let status: AiLogStatus = 'success';
         const degraded = this.isDegradedResult(result);
-        if (result.aiReason === 'stub') {
+        const isSimulated = result.aiReason === 'simulated' || result.aiReason === 'stub';
+        if (isSimulated) {
             status = 'simulated';
         } else if (this.isErrorResult(result)) {
             status = 'error';
@@ -10757,18 +10781,18 @@ export class InquiryView extends ItemView {
             `- Mode: ${result.mode || 'unknown'}`,
             `- Question ID: ${result.questionId || 'unknown'}`,
             `- Question zone: ${result.questionZone || 'unknown'}`,
-            `- AI provider: ${result.aiProvider || 'unknown'}`,
-            `- AI model requested: ${result.aiModelRequested || 'unknown'}`,
-            `- AI model resolved: ${result.aiModelResolved || 'unknown'}`,
+            `- AI provider: ${isSimulated ? 'simulation' : (result.aiProvider || 'unknown')}`,
+            `- AI model requested: ${isSimulated ? 'not applicable' : (result.aiModelRequested || 'unknown')}`,
+            `- AI model resolved: ${isSimulated ? 'not applicable' : (result.aiModelResolved || 'unknown')}`,
             `- OpenAI transport lane: ${trace.openAiTransportLane || 'n/a'}`,
             `- AI next-run override: ${typeof result.aiModelNextRunOnly === 'boolean' ? String(result.aiModelNextRunOnly) : 'unknown'}`,
-            `- Packaging: ${trace.analysisPackaging === 'singlePassOnly' ? 'singlePassOnly' : trace.analysisPackaging === 'segmented' ? 'segmented' : 'automatic'}`,
+            `- Packaging: ${isSimulated ? 'simulated' : (trace.analysisPackaging === 'singlePassOnly' ? 'singlePassOnly' : trace.analysisPackaging === 'segmented' ? 'segmented' : 'automatic')}`,
             `- AI status: ${degraded ? 'degraded' : (result.aiStatus || 'unknown')}`,
             `- AI reason: ${result.aiReason || 'none'}`,
-            `- Execution state: ${trace.executionState ?? 'unknown'}`,
-            `- Execution path: ${trace.executionPath ?? ((typeof trace.executionPassCount === 'number' && trace.executionPassCount > 1) ? 'multi_pass' : 'one_pass')}`,
-            `- Failure stage: ${trace.failureStage ?? (status === 'error' ? 'provider_response_parsing' : 'none')}`,
-            `- Token usage visibility: ${tokenUsageVisibility}`,
+            `- Execution state: ${isSimulated ? 'simulated' : (trace.executionState ?? 'unknown')}`,
+            `- Execution path: ${isSimulated ? 'simulated' : (trace.executionPath ?? ((typeof trace.executionPassCount === 'number' && trace.executionPassCount > 1) ? 'multi_pass' : 'one_pass'))}`,
+            `- Failure stage: ${isSimulated ? 'none' : (trace.failureStage ?? (status === 'error' ? 'provider_response_parsing' : 'none'))}`,
+            `- Token usage visibility: ${isSimulated ? 'simulated' : tokenUsageVisibility}`,
             `- Submitted at (raw): ${result.submittedAt || 'unknown'}`,
             `- Returned at (raw): ${result.completedAt || 'unknown'}`,
             `- Round trip ms: ${typeof result.roundTripMs === 'number' ? String(result.roundTripMs) : 'unknown'}`,
@@ -10838,6 +10862,9 @@ export class InquiryView extends ItemView {
         const zoneLabel = this.resolveInquiryBriefZoneLabel(result);
         const lensLabel = this.resolveInquiryBriefLensLabel(result, zoneLabel);
         const parts: string[] = [];
+        if (result.aiReason === 'simulated' || result.aiReason === 'stub') {
+            parts.push('TEST RUN');
+        }
         if (result.scope === 'saga') {
             parts.push('Saga');
         }
@@ -10851,6 +10878,9 @@ export class InquiryView extends ItemView {
         const zoneLabel = this.resolveInquiryBriefZoneLabel(result);
         const lensLabel = this.resolveInquiryBriefLensLabel(result, zoneLabel);
         const parts: string[] = [];
+        if (result.aiReason === 'simulated' || result.aiReason === 'stub') {
+            parts.push('TEST RUN');
+        }
         if (result.scope === 'saga') {
             parts.push('Saga');
         }

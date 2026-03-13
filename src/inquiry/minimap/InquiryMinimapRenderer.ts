@@ -48,6 +48,7 @@ export const MINIMAP_TOKEN_CAP_SPLIT_TICK_HEIGHT = MINIMAP_TOKEN_CAP_ENDCAP_HEIG
 export const MINIMAP_TOKEN_CAP_SPLIT_TICK_WIDTH = 2;
 export const MINIMAP_BACKBONE_ENDCAP_OFFSET_Y = 2;
 
+export const SWEEP_RANDOM_CYCLE_MS = 1800;
 export const MIN_PROCESSING_MS = 5000;
 export const BACKBONE_FADE_OUT_MS = 800;
 
@@ -205,6 +206,7 @@ export class InquiryMinimapRenderer {
     private minimapBackboneGroup?: SVGGElement;
     private minimapBackboneGlow?: SVGRectElement;
     private minimapBackboneShine?: SVGRectElement;
+    private minimapBackboneCachedOverlay?: SVGRectElement;
     private minimapBackboneClip?: SVGClipPathElement;
     private minimapBackboneClipRect?: SVGRectElement;
     private minimapBackboneLayout?: {
@@ -239,6 +241,8 @@ export class InquiryMinimapRenderer {
 
     private minimapSweepTicks: Array<{ rect: SVGRectElement; centerX: number; rowIndex: number }> = [];
     private minimapSweepLayout?: { startX: number; endX: number; bandWidth: number };
+    private sweepRandomCycle = -1;
+    private sweepRandomActive = new Set<number>();
     private minimapBottomOffset = 0;
     private minimapEmptyUpdateId = 0;
     private runningAnimationFrame?: number;
@@ -391,6 +395,14 @@ export class InquiryMinimapRenderer {
             this.minimapBackboneShine = shine;
         }
 
+        let cachedOverlay = this.minimapBackboneCachedOverlay;
+        if (!cachedOverlay) {
+            cachedOverlay = createSvgElement('rect');
+            cachedOverlay.classList.add('ert-inquiry-minimap-backbone-cached', 'ert-hidden');
+            backboneGroup.appendChild(cachedOverlay);
+            this.minimapBackboneCachedOverlay = cachedOverlay;
+        }
+
         let passGroup = this.minimapPassIndicatorGroup;
         if (!passGroup) {
             passGroup = createSvgGroup(this.minimapGroup, 'ert-inquiry-minimap-pass-indicator');
@@ -425,6 +437,13 @@ export class InquiryMinimapRenderer {
         shine.setAttribute('height', String(shineHeight));
         shine.setAttribute('rx', String(Math.round(shineHeight / 2)));
         shine.setAttribute('ry', String(Math.round(shineHeight / 2)));
+        cachedOverlay.setAttribute('x', baselineStart.toFixed(2));
+        cachedOverlay.setAttribute('y', String(glowY - 1));
+        cachedOverlay.setAttribute('width', '0');
+        cachedOverlay.setAttribute('height', String(glowHeight + 2));
+        cachedOverlay.setAttribute('rx', String(Math.round((glowHeight + 2) / 2)));
+        cachedOverlay.setAttribute('ry', String(Math.round((glowHeight + 2) / 2)));
+        cachedOverlay.classList.add('ert-hidden');
 
         if (passGroup) {
             passGroup.setAttribute('transform', `translate(${Math.round(baselineStart + length + 10)} 0)`);
@@ -502,7 +521,30 @@ export class InquiryMinimapRenderer {
     // ── Sweep ────────────────────────────────────────────────────────
 
     updateSweep(_elapsed: number): void {
-        this.minimapSweepTicks.forEach(tick => tick.rect.setAttribute('opacity', '0'));
+        if (!this.minimapSweepLayout || !this.minimapSweepTicks.length) return;
+        const cycleIndex = Math.floor(_elapsed / SWEEP_RANDOM_CYCLE_MS);
+        if (cycleIndex !== this.sweepRandomCycle) {
+            this.sweepRandomCycle = cycleIndex;
+            const total = this.minimapSweepTicks.length;
+            const count = Math.max(1, Math.floor(Math.random() * total) + 1);
+            const indices = Array.from({ length: total }, (_, idx) => idx);
+            for (let i = indices.length - 1; i > 0; i -= 1) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [indices[i], indices[j]] = [indices[j], indices[i]];
+            }
+            this.sweepRandomActive = new Set(indices.slice(0, count));
+        }
+
+        const phase = (_elapsed % SWEEP_RANDOM_CYCLE_MS) / SWEEP_RANDOM_CYCLE_MS;
+        const pulse = Math.sin(Math.PI * phase);
+        const intensity = 0.24 + (pulse * 0.76);
+        this.minimapSweepTicks.forEach((tick, index) => {
+            if (!this.sweepRandomActive.has(index)) {
+                tick.rect.setAttribute('opacity', '0');
+                return;
+            }
+            tick.rect.setAttribute('opacity', intensity.toFixed(2));
+        });
     }
 
     buildSweepLayer(
@@ -591,6 +633,8 @@ export class InquiryMinimapRenderer {
         }
         this.runningAnimationStart = undefined;
         this.minimapSweepTicks.forEach(tick => tick.rect.setAttribute('opacity', '0'));
+        this.sweepRandomCycle = -1;
+        this.sweepRandomActive.clear();
         this.backboneStartColors = undefined;
         this.backboneTargetColors = undefined;
         this.backboneOscillationPhaseOffset = 0;
@@ -694,27 +738,38 @@ export class InquiryMinimapRenderer {
         advanced: AIRunAdvancedContext | null
     ): void {
         if (!this.minimapTokenCapCachedOverlay || !this.minimapLayout) return;
+        this.minimapTokenCapCachedOverlay.classList.add('ert-hidden');
+    }
 
+    private updateBackboneCachedOverlay(
+        progress: InquiryRunProgressEvent | null,
+        advanced: AIRunAdvancedContext | null
+    ): void {
+        if (!this.minimapBackboneCachedOverlay || !this.minimapBackboneLayout) return;
         const cachedRatio = advanced?.cachedStableRatio;
-
-        if (!cachedRatio || cachedRatio <= 0 || advanced?.reuseState !== 'warm') {
-            this.minimapTokenCapCachedOverlay.classList.add('ert-hidden');
+        const cachedTokens = advanced?.cachedStableTokens;
+        const hasRealCacheMetric = typeof cachedRatio === 'number'
+            && Number.isFinite(cachedRatio)
+            && cachedRatio > 0
+            && typeof cachedTokens === 'number'
+            && Number.isFinite(cachedTokens)
+            && cachedTokens > 0
+            && advanced?.reuseState === 'warm'
+            && typeof advanced?.cacheStatus === 'string';
+        if (progress || !hasRealCacheMetric) {
+            this.minimapBackboneCachedOverlay.classList.add('ert-hidden');
+            this.minimapBackboneCachedOverlay.setAttribute('width', '0');
             return;
         }
-
-        const length = this.minimapLayout.length;
-        const barWidth = length * Math.min(Math.max(fillRatio, 0), 1);
-        const cachedWidth = barWidth * Math.min(cachedRatio, 1);
-
-        // Edge case: hide when overlay would be too narrow to see pattern
-        if (cachedWidth < 3) {
-            this.minimapTokenCapCachedOverlay.classList.add('ert-hidden');
+        const overlayWidth = this.minimapBackboneLayout.length * Math.min(cachedRatio, 1);
+        if (overlayWidth < 4) {
+            this.minimapBackboneCachedOverlay.classList.add('ert-hidden');
+            this.minimapBackboneCachedOverlay.setAttribute('width', '0');
             return;
         }
-
-        this.minimapTokenCapCachedOverlay.classList.remove('ert-hidden');
-        this.minimapTokenCapCachedOverlay.setAttribute('x', String(Math.round(this.minimapLayout.startX)));
-        this.minimapTokenCapCachedOverlay.setAttribute('width', cachedWidth.toFixed(2));
+        this.minimapBackboneCachedOverlay.classList.remove('ert-hidden');
+        this.minimapBackboneCachedOverlay.setAttribute('x', this.minimapBackboneLayout.startX.toFixed(2));
+        this.minimapBackboneCachedOverlay.setAttribute('width', overlayWidth.toFixed(2));
     }
 
     private updateExecutionPassSegments(
@@ -793,6 +848,7 @@ export class InquiryMinimapRenderer {
         const overCapacityTone: 'amber' | 'red' = usesAutomaticPackaging ? 'amber' : 'red';
         this.updateTokenCapBar(clamped, isOverCapacity, overCapacityTone, passPlan.displayPassCount, styleSource, advancedContext);
         this.updateExecutionPassSegments(passPlan.displayPassCount, progress, styleSource);
+        this.updateBackboneCachedOverlay(progress, advancedContext);
         this.minimapBaseline.style.stroke = '';
         this.minimapEndCapStart?.style.removeProperty('fill');
         this.minimapEndCapEnd?.style.removeProperty('fill');

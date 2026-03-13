@@ -474,6 +474,13 @@
   filter: none;
 }
 
+.ert-inquiry-minimap-backbone-cached {
+  fill: url(#ert-inquiry-minimap-cached-hatch);
+  opacity: 0.92;
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+
 .ert-inquiry-minimap-backbone.is-pressure-over-budget .ert-inquiry-minimap-backbone-glow {
   animation: none;
 }
@@ -548,7 +555,7 @@
 
 .ert-inquiry-minimap-cached-hatch-stroke {
   stroke: var(--ert-inquiry-ai-success);
-  stroke-width: 1.5;
+  stroke-width: 2;
 }
 
 .ert-inquiry-svg.is-running .ert-inquiry-minimap-tokencap-cached {
@@ -706,7 +713,7 @@
 }
 
 .ert-inquiry-minimap-sweep {
-  display: none;
+  opacity: 0;
   pointer-events: none;
   transition: opacity 160ms ease;
 }
@@ -1456,21 +1463,23 @@
 
 .ert-inquiry-scene-dossier-bg {
   fill: color-mix(in srgb, var(--background-primary) 88%, rgb(96 69 43 / 0.84));
-  stroke: color-mix(in srgb, var(--text-normal) 24%, transparent);
-  stroke-width: 1.1;
+  stroke: color-mix(in srgb, var(--text-normal) 42%, transparent);
+  stroke-width: 1.2;
+  stroke-dasharray: 6 4;
   filter: drop-shadow(0 12px 22px rgb(0 0 0 / 0.45));
 }
 
 .ert-inquiry-scene-dossier-header {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 760;
   letter-spacing: 0.01em;
   fill: color-mix(in srgb, var(--text-normal) 88%, #f6dbc0);
 }
 
 .ert-inquiry-scene-dossier-body {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 560;
+  font-style: italic;
   fill: color-mix(in srgb, var(--text-normal) 85%, #f0d0ad);
 }
 
@@ -1483,7 +1492,7 @@
 
 .ert-inquiry-svg.is-scene-dossier-active.is-mode-flow .ert-inquiry-mode-icon--flow,
 .ert-inquiry-svg.is-scene-dossier-active.is-mode-depth .ert-inquiry-mode-icon--depth {
-  opacity: 0.18;
+  opacity: 0.1;
 }
 
 .ert-inquiry-svg.is-scene-dossier-active .ert-inquiry-ring-track,
