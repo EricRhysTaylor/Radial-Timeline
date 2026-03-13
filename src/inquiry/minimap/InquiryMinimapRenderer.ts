@@ -48,13 +48,7 @@ export const MINIMAP_TOKEN_CAP_SPLIT_TICK_HEIGHT = MINIMAP_TOKEN_CAP_ENDCAP_HEIG
 export const MINIMAP_TOKEN_CAP_SPLIT_TICK_WIDTH = 2;
 export const MINIMAP_BACKBONE_ENDCAP_OFFSET_Y = 2;
 
-export const SWEEP_RANDOM_CYCLE_MS = 2000;
-export const BACKBONE_SWEEP_WIDTH_RATIO = 0.2;
-export const BACKBONE_SWEEP_MIN_WIDTH = 80;
-export const BACKBONE_SWEEP_MAX_WIDTH = 200;
 export const MIN_PROCESSING_MS = 5000;
-export const BACKBONE_SHINE_DURATION_MS = 7200;
-export const BACKBONE_OSCILLATION_MS = 8000;
 export const BACKBONE_FADE_OUT_MS = 800;
 
 const PREVIEW_PANEL_MINIMAP_GAP = 60;
@@ -236,19 +230,15 @@ export class InquiryMinimapRenderer {
 
     private backboneStartColors?: BackboneColors;
     private backboneTargetColors?: BackboneColors;
-    private backboneOscillationColors?: { base: BackboneColors; target: BackboneColors };
     private backboneOscillationPhaseOffset = 0;
     private backboneFadeTimer?: number;
+    private backboneProgressRatio = 0;
+    private runningStyleSource?: Element;
 
     // ── Sweep state ──────────────────────────────────────────────────
 
     private minimapSweepTicks: Array<{ rect: SVGRectElement; centerX: number; rowIndex: number }> = [];
     private minimapSweepLayout?: { startX: number; endX: number; bandWidth: number };
-    private sweepRandomCycle = -1;
-    private sweepRandomActive = new Set<number>();
-
-    // ── Layout / timing ──────────────────────────────────────────────
-
     private minimapBottomOffset = 0;
     private minimapEmptyUpdateId = 0;
     private runningAnimationFrame?: number;
@@ -467,23 +457,9 @@ export class InquiryMinimapRenderer {
         this.applyStopColors(gradientColors, shineColors);
     }
 
-    applyOscillationColors(progress: number): void {
-        if (!this.backboneOscillationColors) return;
-        const { base, target } = this.backboneOscillationColors;
-        const gradientColors = base.gradient.map((color, idx) => {
-            const next = target.gradient[idx] ?? color;
-            return mixRgbColor(color, next, progress);
-        });
-        const shineColors = base.shine.map((color, idx) => {
-            const next = target.shine[idx] ?? color;
-            return mixRgbColor(color, next, progress);
-        });
-        this.applyStopColors(gradientColors, shineColors);
-    }
-
     // ── Fill progress ────────────────────────────────────────────────
 
-    setFillProgress(progress: number, sweepProgress: number): void {
+    setFillProgress(progress: number): void {
         if (!this.minimapBackboneLayout || !this.minimapBackboneGlow || !this.minimapBackboneShine) return;
         const clamped = Math.min(Math.max(progress, 0), 1);
         const length = this.minimapBackboneLayout.length;
@@ -494,64 +470,39 @@ export class InquiryMinimapRenderer {
         this.minimapBackboneGlow.setAttribute('rx', String(Math.round(glowRadius)));
         this.minimapBackboneGlow.setAttribute('ry', String(Math.round(glowRadius)));
 
-        const sweepWidthBase = Math.min(
-            length,
-            BACKBONE_SWEEP_MAX_WIDTH,
-            Math.max(length * BACKBONE_SWEEP_WIDTH_RATIO, BACKBONE_SWEEP_MIN_WIDTH)
-        );
-        const sweepWidth = Math.min(filledWidth, sweepWidthBase);
-        const sweepTravel = filledWidth + sweepWidth;
-        const sweepOffset = (sweepTravel * Math.min(Math.max(sweepProgress, 0), 1)) - sweepWidth;
-        const sweepX = this.minimapBackboneLayout.startX + sweepOffset;
-        const shineRadius = Math.min(this.minimapBackboneLayout.shineHeight / 2, Math.max(0, sweepWidth / 2));
-        this.minimapBackboneShine.setAttribute('x', sweepX.toFixed(2));
-        this.minimapBackboneShine.setAttribute('width', sweepWidth.toFixed(2));
-        this.minimapBackboneShine.setAttribute('rx', String(Math.round(shineRadius)));
-        this.minimapBackboneShine.setAttribute('ry', String(Math.round(shineRadius)));
+        this.minimapBackboneShine.setAttribute('x', this.minimapBackboneLayout.startX.toFixed(2));
+        this.minimapBackboneShine.setAttribute('width', '0');
+        this.minimapBackboneShine.setAttribute('rx', '0');
+        this.minimapBackboneShine.setAttribute('ry', '0');
+    }
+
+    private applyRunningBackboneColor(): void {
+        if (!this.minimapBackboneGlow) return;
+        const styleSource = this.runningStyleSource ?? document.documentElement;
+        const color = getExecutionColorValue(styleSource, '--rt-ai-warning', '#ff9900');
+        this.minimapBackboneGlow.style.fill = color;
+        if (this.minimapBackboneShine) {
+            this.minimapBackboneShine.style.fill = color;
+        }
+    }
+
+    setRunningBackboneProgress(progress: number): void {
+        this.backboneProgressRatio = Math.min(Math.max(progress, 0), 1);
+        this.applyRunningBackboneColor();
+        this.setFillProgress(this.backboneProgressRatio);
     }
 
     // ── Pulse / animation core ───────────────────────────────────────
 
-    updatePulse(elapsed: number): void {
-        const fillProgress = Math.min(Math.max(elapsed / MIN_PROCESSING_MS, 0), 1);
-        const sweepProgress = (elapsed % BACKBONE_SHINE_DURATION_MS) / BACKBONE_SHINE_DURATION_MS;
-        this.setFillProgress(fillProgress, sweepProgress);
-        if (elapsed < MIN_PROCESSING_MS || !this.backboneOscillationColors) {
-            this.applyBackboneColors(fillProgress);
-            return;
-        }
-        const phase = ((elapsed - MIN_PROCESSING_MS) / BACKBONE_OSCILLATION_MS) * Math.PI * 2 + this.backboneOscillationPhaseOffset;
-        const oscillation = (Math.sin(phase) + 1) / 2;
-        this.applyOscillationColors(oscillation);
+    updatePulse(_elapsed: number): void {
+        this.applyRunningBackboneColor();
+        this.setFillProgress(this.backboneProgressRatio);
     }
 
     // ── Sweep ────────────────────────────────────────────────────────
 
-    updateSweep(elapsed: number): void {
-        if (!this.minimapSweepLayout || !this.minimapSweepTicks.length) return;
-        const cycleIndex = Math.floor(elapsed / SWEEP_RANDOM_CYCLE_MS);
-        if (cycleIndex !== this.sweepRandomCycle) {
-            this.sweepRandomCycle = cycleIndex;
-            const total = this.minimapSweepTicks.length;
-            const count = Math.max(1, Math.floor(Math.random() * total) + 1);
-            const indices = Array.from({ length: total }, (_, idx) => idx);
-            for (let i = indices.length - 1; i > 0; i -= 1) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [indices[i], indices[j]] = [indices[j], indices[i]];
-            }
-            this.sweepRandomActive = new Set(indices.slice(0, count));
-        }
-
-        const phase = (elapsed % SWEEP_RANDOM_CYCLE_MS) / SWEEP_RANDOM_CYCLE_MS;
-        const pulse = Math.sin(Math.PI * phase);
-        const intensity = 0.2 + (pulse * 0.8);
-        this.minimapSweepTicks.forEach((tick, index) => {
-            if (!this.sweepRandomActive.has(index)) {
-                tick.rect.setAttribute('opacity', '0');
-                return;
-            }
-            tick.rect.setAttribute('opacity', intensity.toFixed(2));
-        });
+    updateSweep(_elapsed: number): void {
+        this.minimapSweepTicks.forEach(tick => tick.rect.setAttribute('opacity', '0'));
     }
 
     buildSweepLayer(
@@ -596,24 +547,18 @@ export class InquiryMinimapRenderer {
     startRunningAnimations(
         styleSource: Element,
         isPro: boolean,
-        isRunningFn: () => boolean
+        isRunningFn: () => boolean,
+        onFrame?: (elapsedMs: number) => void
     ): void {
         if (this.runningAnimationFrame) return;
         this.runningAnimationStart = performance.now();
+        this.runningStyleSource = styleSource;
+        this.backboneProgressRatio = 0;
         this.cancelFadeOut();
         this.backboneStartColors = getBackboneStartColors(styleSource);
         this.backboneTargetColors = getBackboneTargetColors(isPro);
-        if (this.backboneStartColors && this.backboneTargetColors) {
-            this.backboneOscillationColors = {
-                base: this.backboneStartColors,
-                target: this.backboneTargetColors
-            };
-        } else {
-            this.backboneOscillationColors = undefined;
-        }
         this.backboneOscillationPhaseOffset = Math.PI / 2;
-        this.setFillProgress(0, 0);
-        this.applyBackboneColors(0);
+        this.setRunningBackboneProgress(0);
         if (this.minimapBaseline) {
             this.minimapBaseline.style.stroke = '';
         }
@@ -624,11 +569,12 @@ export class InquiryMinimapRenderer {
                 this.stopRunningAnimations();
                 return;
             }
+            const elapsed = now - (this.runningAnimationStart ?? now);
+            onFrame?.(elapsed);
             if (document.body.classList.contains('rt-modal-open')) {
                 this.runningAnimationFrame = window.requestAnimationFrame(animate);
                 return;
             }
-            const elapsed = now - (this.runningAnimationStart ?? now);
             this.updatePulse(elapsed);
             this.updateSweep(elapsed);
             // SAFE: requestAnimationFrame cleanup is handled in stopRunningAnimations() called from onClose()
@@ -647,8 +593,8 @@ export class InquiryMinimapRenderer {
         this.minimapSweepTicks.forEach(tick => tick.rect.setAttribute('opacity', '0'));
         this.backboneStartColors = undefined;
         this.backboneTargetColors = undefined;
-        this.backboneOscillationColors = undefined;
         this.backboneOscillationPhaseOffset = 0;
+        this.runningStyleSource = undefined;
     }
 
     startFadeOut(): void {
@@ -786,9 +732,9 @@ export class InquiryMinimapRenderer {
         const segmentGap = 4;
         const availableLength = Math.max(0, this.minimapLayout.length - (segmentGap * (totalPassCount - 1)));
         const segmentWidth = Math.max(10, availableLength / totalPassCount);
-        const segmentHeight = 4;
-        const segmentY = -1;
-        const stageColor = getExecutionColorValue(styleSource, '--rt-ai-running', '#7cc8ff');
+        const segmentHeight = MINIMAP_TOKEN_CAP_BAR_HEIGHT;
+        const segmentY = MINIMAP_TOKEN_CAP_Y;
+        const stageColor = getExecutionColorValue(styleSource, '--rt-ai-success', '#36e58d');
         const completedPasses = progress
             ? (progress.phase === 'finalizing'
                 ? totalPassCount
@@ -836,9 +782,11 @@ export class InquiryMinimapRenderer {
 
         const ratio = Math.max(0, readinessUi.readiness.pressureRatio);
         const clamped = Math.min(ratio, 1);
-        this.setFillProgress(0, 0);
-        this.minimapBackboneShine?.setAttribute('width', '0');
-        this.minimapBackboneGlow?.setAttribute('width', '0');
+        if (!progress) {
+            this.setFillProgress(0);
+            this.minimapBackboneShine?.setAttribute('width', '0');
+            this.minimapBackboneGlow?.setAttribute('width', '0');
+        }
 
         const isOverCapacity = ratio >= 1;
         const usesAutomaticPackaging = readinessUi.packaging === 'automatic' && readinessUi.readiness.exceedsBudget;
@@ -923,8 +871,8 @@ export class InquiryMinimapRenderer {
         const provider = advanced?.provider ?? 'none';
 
         this.minimapGroup.setAttribute('data-reuse-state', reuseState);
-        this.minimapReuseBand?.classList.toggle('ert-hidden', reuseState === 'idle');
-        this.minimapReuseDot?.classList.toggle('ert-hidden', reuseState === 'idle');
+        this.minimapReuseBand?.classList.add('ert-hidden');
+        this.minimapReuseDot?.classList.add('ert-hidden');
 
         const fingerprint = corpusFingerprint ?? manifestFingerprint;
         const corpusShort = fingerprint

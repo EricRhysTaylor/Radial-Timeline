@@ -146,6 +146,11 @@ type ChunkPromptPlan = {
     targetPasses: number | null;
 };
 
+type SceneRefLedger = {
+    allowedSceneIds: Set<string>;
+    synthesisBlock: string;
+};
+
 type UsageAccumulator = {
     totalPasses: number;
     passesWithAnyUsage: number;
@@ -1016,6 +1021,7 @@ export class InquiryRunnerService implements InquiryRunner {
                 jsonSchema,
                 temperature,
                 maxTokens,
+                evidenceBlocks,
                 executionOptions,
                 packagingPrecheck: {
                     inputTokens: precheck.inputTokens,
@@ -1100,6 +1106,7 @@ export class InquiryRunnerService implements InquiryRunner {
                     jsonSchema,
                     temperature,
                     maxTokens,
+                    evidenceBlocks,
                     executionOptions,
                     packagingPrecheck: {
                         inputTokens: precheck.inputTokens,
@@ -1486,6 +1493,7 @@ export class InquiryRunnerService implements InquiryRunner {
             jsonSchema: Record<string, unknown>;
             temperature: number;
             maxTokens: number;
+            evidenceBlocks?: EvidenceBlock[];
             executionOptions?: InquiryRunExecutionOptions;
             packagingPrecheck?: {
                 inputTokens: number;
@@ -1519,6 +1527,7 @@ export class InquiryRunnerService implements InquiryRunner {
         const totalPasses = chunkPlan.prompts.length + 1;
         const usageAccumulator = this.createUsageAccumulator(totalPasses);
         const recoveredStages: string[] = [];
+        const sceneRefLedger = this.buildSceneRefLedger(options.evidenceBlocks);
         for (let i = 0; i < chunkPlan.prompts.length; i += 1) {
             this.throwIfAborted(options.executionOptions?.shouldAbort);
             options.executionOptions?.onProgress?.({
@@ -1544,12 +1553,14 @@ export class InquiryRunnerService implements InquiryRunner {
             if (chunkRun.aiStatus !== 'success' || !chunkRun.content) {
                 const recoveredChunkJson = this.tryRecoverChunkInvalidResponse(chunkRun, i + 1, chunkPlan.prompts.length);
                 if (recoveredChunkJson) {
-                    if (this.shouldAbortOnRecoveredInvalidResponse('chunk', i + 1)) {
+                    if (i === 0 || this.shouldAbortOnRecoveredInvalidResponse('chunk', i + 1)) {
                         const usageSummary = this.finalizeUsageAccumulator(usageAccumulator);
                         return {
                             ok: false,
                             failureStage: 'chunk_execution',
-                            failureReason: `[Inquiry] Strict recovery debug abort: chunk ${i + 1}/${chunkPlan.prompts.length} required local JSON extraction.`,
+                            failureReason: i === 0
+                                ? `[Inquiry] Chunk 1 health check failed: pass 1 required local JSON extraction.`
+                                : `[Inquiry] Strict recovery debug abort: chunk ${i + 1}/${chunkPlan.prompts.length} required local JSON extraction.`,
                             tokenUsageKnown: usageSummary.tokenUsageKnown,
                             tokenUsageScope: usageSummary.tokenUsageScope,
                             usage: usageSummary.usage
@@ -1581,6 +1592,20 @@ export class InquiryRunnerService implements InquiryRunner {
                     usage: usageSummary.usage
                 };
             }
+            if (i === 0) {
+                const chunkOneHealth = this.assessChunkRefHealth(chunkRun.content, sceneRefLedger.allowedSceneIds);
+                if (!chunkOneHealth.ok) {
+                    const usageSummary = this.finalizeUsageAccumulator(usageAccumulator);
+                    return {
+                        ok: false,
+                        failureStage: 'chunk_execution',
+                        failureReason: `[Inquiry] Chunk 1 health check failed: ${chunkOneHealth.reason}`,
+                        tokenUsageKnown: usageSummary.tokenUsageKnown,
+                        tokenUsageScope: usageSummary.tokenUsageScope,
+                        usage: usageSummary.usage
+                    };
+                }
+            }
             chunkOutputs.push(chunkRun.content);
         }
 
@@ -1598,8 +1623,13 @@ export class InquiryRunnerService implements InquiryRunner {
             };
         }
         const prefix = options.userPrompt.slice(0, splitAt + marker.length);
-        const synthesisEvidence = chunkOutputs
-            .map((output, index) => `## Chunk ${index + 1} analysis\n${output}`)
+        const synthesisEvidence = [
+            sceneRefLedger.synthesisBlock,
+            chunkOutputs
+                .map((output, index) => `## Pass ${index + 1} result\n${output}`)
+                .join('\n\n')
+        ]
+            .filter(Boolean)
             .join('\n\n');
 
         this.throwIfAborted(options.executionOptions?.shouldAbort);
@@ -1978,6 +2008,62 @@ export class InquiryRunnerService implements InquiryRunner {
             return trimmed.slice(firstBrace, lastBrace + 1);
         }
         return null;
+    }
+
+    private buildSceneRefLedger(evidenceBlocks?: EvidenceBlock[]): SceneRefLedger {
+        const allowedSceneIds = new Set<string>();
+        const ledgerLines: string[] = [];
+        (evidenceBlocks || []).forEach(block => {
+            const meta = block.meta;
+            if (!meta || meta.evidenceClass !== 'scene' || !isStableSceneId(meta.sceneId)) return;
+            const sceneId = String(meta.sceneId).trim().toLowerCase();
+            if (allowedSceneIds.has(sceneId)) return;
+            allowedSceneIds.add(sceneId);
+            const title = (meta.title || '').replace(/\s+/g, ' ').trim() || sceneId;
+            const path = (meta.path || '').trim();
+            ledgerLines.push(path ? `- ${sceneId} | ${title} | ${path}` : `- ${sceneId} | ${title}`);
+        });
+        const synthesisBlock = ledgerLines.length
+            ? [
+                'Allowed scene refs for findings:',
+                'Reuse only these exact ref_id values in the final result.',
+                ...ledgerLines
+            ].join('\n')
+            : '';
+        return { allowedSceneIds, synthesisBlock };
+    }
+
+    private assessChunkRefHealth(
+        content: string,
+        allowedSceneIds: Set<string>
+    ): { ok: true } | { ok: false; reason: string } {
+        let parsed: RawInquiryResponse;
+        try {
+            parsed = this.parseResponse(content);
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            return { ok: false, reason: `pass 1 could not be parsed (${message}).` };
+        }
+
+        const findings = Array.isArray(parsed.findings) ? parsed.findings : [];
+        const invalidRefs = findings
+            .map(finding => String(finding.ref_id || '').trim().toLowerCase())
+            .filter(refId => !!refId && !allowedSceneIds.has(refId));
+
+        if (invalidRefs.length) {
+            return { ok: false, reason: `pass 1 returned scene refs outside the active corpus: ${invalidRefs.join(', ')}.` };
+        }
+
+        const bindableFindings = findings.filter(finding => {
+            const refId = String(finding.ref_id || '').trim().toLowerCase();
+            return !!refId && allowedSceneIds.has(refId);
+        });
+
+        if (findings.length > 0 && bindableFindings.length === 0) {
+            return { ok: false, reason: 'pass 1 returned findings, but none referenced a valid scene in the active corpus.' };
+        }
+
+        return { ok: true };
     }
 
     private buildResult(

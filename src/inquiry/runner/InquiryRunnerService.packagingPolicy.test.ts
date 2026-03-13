@@ -302,7 +302,7 @@ describe('InquiryRunnerService packaging policy', () => {
         expect(trace.notes).toContain('OpenAI transport lane: responses.');
     });
 
-    it('recovers invalid chunk JSON and continues multi-pass execution', async () => {
+    it('recovers later invalid chunk JSON and continues multi-pass execution', async () => {
         const service = createService();
         const buildEvidenceChunkPrompts = vi.fn().mockReturnValue({
             prompts: ['chunk-1', 'chunk-2'],
@@ -313,6 +313,15 @@ describe('InquiryRunnerService packaging policy', () => {
             targetPasses: 2
         });
         const runInquiryRequest = vi.fn()
+            .mockResolvedValueOnce(buildRunResult({
+                aiStatus: 'success',
+                content: JSON.stringify({
+                    summaryFlow: 'Chunk 1 flow summary',
+                    summaryDepth: 'Chunk 1 depth summary',
+                    verdict: { flow: 0.61, depth: 0.55, impact: 'low', assessmentConfidence: 'low' },
+                    findings: []
+                })
+            }))
             .mockResolvedValueOnce(buildRunResult({
                 aiStatus: 'rejected',
                 aiReason: 'invalid_response',
@@ -412,11 +421,141 @@ describe('InquiryRunnerService packaging policy', () => {
 
             expect(result.ok).toBe(false);
             expect(result.failureStage).toBe('chunk_execution');
-            expect(String(result.failureReason)).toContain('Strict recovery debug abort');
+            expect(String(result.failureReason)).toContain('Chunk 1 health check failed');
             expect(runInquiryRequest).toHaveBeenCalledTimes(1);
         } finally {
             delete (globalThis as Record<string, unknown>).__RT_INQUIRY_STRICT_DEBUG__;
         }
+    });
+
+    it('aborts when chunk 1 returns scene refs outside the active corpus', async () => {
+        const service = createService();
+        const buildEvidenceChunkPrompts = vi.fn().mockReturnValue({
+            prompts: ['chunk-1', 'chunk-2'],
+            maxChunkTokens: 12000,
+            maxChunkChars: 48000,
+            evidenceChars: 96000,
+            prefixChars: 2000,
+            targetPasses: 2
+        });
+        const runInquiryRequest = vi.fn().mockResolvedValueOnce(buildRunResult({
+            aiStatus: 'success',
+            content: JSON.stringify({
+                summaryFlow: 'Chunk 1 flow summary',
+                summaryDepth: 'Chunk 1 depth summary',
+                verdict: { flow: 0.62, depth: 0.58, impact: 'low', assessmentConfidence: 'low' },
+                findings: [{
+                    ref_id: 'scn_00000011',
+                    kind: 'continuity',
+                    headline: 'Bad ref',
+                    impact: 'medium',
+                    assessmentConfidence: 'medium'
+                }]
+            })
+        }));
+        Object.assign(service, {
+            buildEvidenceChunkPrompts,
+            runInquiryRequest
+        });
+
+        const result = await (service.runChunkedInquiry as (...args: unknown[]) => Promise<Record<string, unknown>>) (
+            {} as never,
+            {
+                systemPrompt: 'system',
+                userPrompt: 'Question\nEvidence:\n## Scene A\nBody',
+                ai: TEST_AI,
+                jsonSchema: { type: 'object' },
+                temperature: 0.2,
+                maxTokens: 4000,
+                evidenceBlocks: [{
+                    label: 'Scene Diga Detects Pregnancy (S25) (scn_b5e1b85f) (Body)',
+                    content: 'Body',
+                    meta: {
+                        title: 'Diga Detects Pregnancy',
+                        path: 'Book 1/29 Diga Detects Pregnancy.md',
+                        sceneId: 'scn_b5e1b85f',
+                        evidenceClass: 'scene'
+                    }
+                }]
+            }
+        );
+
+        expect(result.ok).toBe(false);
+        expect(result.failureStage).toBe('chunk_execution');
+        expect(String(result.failureReason)).toContain('outside the active corpus');
+        expect(runInquiryRequest).toHaveBeenCalledTimes(1);
+    });
+
+    it('includes a canonical scene ref ledger in the synthesis prompt', async () => {
+        const service = createService();
+        const buildEvidenceChunkPrompts = vi.fn().mockReturnValue({
+            prompts: ['chunk-1', 'chunk-2'],
+            maxChunkTokens: 12000,
+            maxChunkChars: 48000,
+            evidenceChars: 96000,
+            prefixChars: 2000,
+            targetPasses: 2
+        });
+        const runInquiryRequest = vi.fn()
+            .mockResolvedValueOnce(buildRunResult({
+                aiStatus: 'success',
+                content: JSON.stringify({
+                    summaryFlow: 'Chunk 1 flow summary',
+                    summaryDepth: 'Chunk 1 depth summary',
+                    verdict: { flow: 0.61, depth: 0.55, impact: 'low', assessmentConfidence: 'low' },
+                    findings: []
+                })
+            }))
+            .mockResolvedValueOnce(buildRunResult({
+                aiStatus: 'success',
+                content: JSON.stringify({
+                    summaryFlow: 'Chunk 2 flow summary',
+                    summaryDepth: 'Chunk 2 depth summary',
+                    verdict: { flow: 0.64, depth: 0.57, impact: 'low', assessmentConfidence: 'low' },
+                    findings: []
+                })
+            }))
+            .mockResolvedValueOnce(buildRunResult({
+                aiStatus: 'success',
+                content: JSON.stringify({
+                    summaryFlow: 'Synthesis flow summary',
+                    summaryDepth: 'Synthesis depth summary',
+                    verdict: { flow: 0.66, depth: 0.61, impact: 'low', assessmentConfidence: 'medium' },
+                    findings: []
+                })
+            }));
+        Object.assign(service, {
+            buildEvidenceChunkPrompts,
+            runInquiryRequest
+        });
+
+        const result = await (service.runChunkedInquiry as (...args: unknown[]) => Promise<Record<string, unknown>>) (
+            {} as never,
+            {
+                systemPrompt: 'system',
+                userPrompt: 'Question\nEvidence:\n## Scene A\nBody',
+                ai: TEST_AI,
+                jsonSchema: { type: 'object' },
+                temperature: 0.2,
+                maxTokens: 4000,
+                evidenceBlocks: [{
+                    label: 'Scene Diga Detects Pregnancy (S25) (scn_b5e1b85f) (Body)',
+                    content: 'Body',
+                    meta: {
+                        title: 'Diga Detects Pregnancy',
+                        path: 'Book 1/29 Diga Detects Pregnancy.md',
+                        sceneId: 'scn_b5e1b85f',
+                        evidenceClass: 'scene'
+                    }
+                }]
+            }
+        );
+
+        expect(result.ok).toBe(true);
+        const synthesisPrompt = runInquiryRequest.mock.calls[2]?.[1]?.userPrompt;
+        expect(String(synthesisPrompt)).toContain('Allowed scene refs for findings:');
+        expect(String(synthesisPrompt)).toContain('scn_b5e1b85f');
+        expect(String(synthesisPrompt)).toContain('Diga Detects Pregnancy');
     });
 
     it('aggregates full multi-pass usage across chunks and synthesis', async () => {

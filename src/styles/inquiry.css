@@ -462,20 +462,20 @@
 }
 
 .ert-inquiry-minimap-backbone-glow {
-  fill: url(#ert-inquiry-minimap-backbone-grad);
+  fill: var(--ert-inquiry-ai-warning);
   opacity: 1;
   filter: none;
-  mix-blend-mode: screen;
+  mix-blend-mode: normal;
 }
 
 .ert-inquiry-minimap-backbone-shine {
-  fill: url(#ert-inquiry-minimap-backbone-shine);
-  opacity: 0.6;
+  fill: transparent;
+  opacity: 0;
   filter: none;
 }
 
 .ert-inquiry-minimap-backbone.is-pressure-over-budget .ert-inquiry-minimap-backbone-glow {
-  animation: ert-inquiry-pressure-pulse 1.7s ease-in-out infinite;
+  animation: none;
 }
 
 .ert-inquiry-minimap-pass-indicator {
@@ -496,7 +496,7 @@
 
 .ert-inquiry-minimap-tokencap-bar {
   fill: var(--ert-inquiry-ai-neutral);
-  opacity: 0.85;
+  opacity: 0.78;
   pointer-events: none;
   transition: fill 200ms ease;
 }
@@ -535,7 +535,7 @@
 .ert-inquiry-svg.is-running .ert-inquiry-minimap-tokencap-bar,
 .ert-inquiry-svg.is-running .ert-inquiry-minimap-tokencap-endcap,
 .ert-inquiry-svg.is-running .ert-inquiry-minimap-tokencap-split {
-  opacity: 0.3;
+  opacity: 0.46;
 }
 
 /* ── Cached portion overlay (hatched segment on tokencap bar) ── */
@@ -566,6 +566,7 @@
 
 /* ── Reuse band ── */
 .ert-inquiry-minimap-reuse-band {
+  display: none;
   stroke: var(--text-muted);
   stroke-width: 2;
   opacity: 0.3;
@@ -602,6 +603,7 @@
 
 /* ── Reuse dot ── */
 .ert-inquiry-minimap-reuse-dot {
+  display: none;
   fill: var(--text-muted);
   opacity: 0;
   pointer-events: none;
@@ -689,46 +691,22 @@
 
 .ert-inquiry-minimap-stage-segment {
   fill: var(--ert-inquiry-stage-color, var(--text-muted));
-  opacity: 0.18;
-  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--ert-inquiry-stage-color, var(--text-muted)) 35%, transparent));
+  opacity: 0.16;
+  filter: none;
 }
 
 .ert-inquiry-minimap-stage-segment.is-active {
-  opacity: 0.7;
+  opacity: 0.72;
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--ert-inquiry-stage-color, var(--text-muted)) 58%, transparent));
 }
 
 .ert-inquiry-minimap-stage-segment.is-complete {
-  opacity: 0.98;
-  filter: drop-shadow(0 0 9px color-mix(in srgb, var(--ert-inquiry-stage-color, var(--text-muted)) 82%, transparent));
-}
-
-.ert-inquiry-minimap-stage-tick {
-  stroke: color-mix(in srgb, var(--text-muted) 70%, transparent);
-  stroke-width: 1;
-  vector-effect: non-scaling-stroke;
-}
-
-.ert-inquiry-minimap-stage-label {
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  fill: var(--ert-inquiry-stage-color, var(--text-muted));
-  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--ert-inquiry-stage-color, var(--text-muted)) 65%, transparent));
-}
-
-.ert-inquiry-minimap-stage-label.is-active {
   opacity: 1;
-}
-
-.ert-inquiry-minimap-stage-pulse {
-  fill: var(--ert-inquiry-stage-color, var(--text-muted));
-  opacity: 0.9;
-  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--ert-inquiry-stage-color, var(--text-muted)) 70%, transparent));
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--ert-inquiry-stage-color, var(--text-muted)) 76%, transparent));
 }
 
 .ert-inquiry-minimap-sweep {
-  opacity: 0;
+  display: none;
   pointer-events: none;
   transition: opacity 160ms ease;
 }
@@ -1862,6 +1840,16 @@
   font-size: 12px;
   fill: var(--text-muted);
   font-family: var(--font-interface);
+  user-select: none;
+  pointer-events: none;
+}
+
+.ert-inquiry-engine-timer {
+  font-size: 12px;
+  fill: color-mix(in srgb, var(--text-normal) 82%, transparent);
+  font-family: var(--font-interface);
+  font-weight: 700;
+  letter-spacing: 0.08em;
   user-select: none;
   pointer-events: none;
 }

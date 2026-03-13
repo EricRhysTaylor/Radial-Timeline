@@ -1103,6 +1103,7 @@ export class InquiryView extends ItemView {
     private navPrevIcon?: SVGUseElement;
     private navNextIcon?: SVGUseElement;
     private navSessionLabel?: SVGTextElement;
+    private engineTimerLabel?: SVGTextElement;
     private helpToggleButton?: SVGGElement;
     private helpTipsEnabled = false;
     private iconSymbols = new Set<string>();
@@ -1121,6 +1122,8 @@ export class InquiryView extends ItemView {
     private activeInquiryRunToken = 0;
     private cancelledInquiryRunTokens = new Set<number>();
     private currentRunProgress: InquiryRunProgressEvent | null = null;
+    private currentRunElapsedMs = 0;
+    private currentRunEstimatedMaxMs = 0;
 
     constructor(leaf: WorkspaceLeaf, plugin: RadialTimelinePlugin) {
         super(leaf);
@@ -1305,11 +1308,17 @@ export class InquiryView extends ItemView {
         this.registerSvgEvent(this.engineBadgeGroup, 'pointerenter', () => this.showEnginePanel());
         this.registerSvgEvent(this.engineBadgeGroup, 'pointerleave', () => this.scheduleEnginePanelHide());
         this.registerSvgEvent(this.engineBadgeGroup, 'click', () => this.openAiSettings());
+        this.engineTimerLabel = createSvgElement('text') as unknown as SVGTextElement;
+        this.engineTimerLabel.classList.add('ert-inquiry-engine-timer', 'ert-hidden');
+        this.engineTimerLabel.setAttribute('x', String(engineBadgeX + iconSize + 12));
+        this.engineTimerLabel.setAttribute('y', '28');
+        this.engineTimerLabel.setAttribute('dominant-baseline', 'central');
+        this.engineTimerLabel.setAttribute('text-anchor', 'start');
+        hudGroup.appendChild(this.engineTimerLabel);
 
         const minimapGroup = createSvgGroup(canvasGroup, 'ert-inquiry-minimap', 0, MINIMAP_GROUP_Y);
         this.minimap.initElements(minimapGroup, VIEWBOX_SIZE);
         this.renderModeIcons(minimapGroup);
-        this.buildSceneDossierLayer(minimapGroup);
 
         this.glyphAnchor = createSvgGroup(canvasGroup, 'ert-inquiry-focus-area');
         this.glyph = new InquiryGlyph(this.glyphAnchor, {
@@ -1359,6 +1368,7 @@ export class InquiryView extends ItemView {
         }
 
         this.buildPromptPreviewPanel(canvasGroup);
+        this.buildSceneDossierLayer(canvasGroup, MINIMAP_GROUP_Y + SCENE_DOSSIER_Y);
 
         this.registerSvgEvent(this.glyphHit, 'pointerenter', () => {
             if (this.isInquiryGuidanceLockout()) return;
@@ -3589,8 +3599,8 @@ export class InquiryView extends ItemView {
         this.modeIconToggleHit = hit;
     }
 
-    private buildSceneDossierLayer(parent: SVGGElement): void {
-        const group = createSvgGroup(parent, 'ert-inquiry-scene-dossier ert-hidden', 0, SCENE_DOSSIER_Y);
+    private buildSceneDossierLayer(parent: SVGGElement, y: number): void {
+        const group = createSvgGroup(parent, 'ert-inquiry-scene-dossier ert-hidden', 0, y);
         group.setAttribute('pointer-events', 'none');
 
         const bg = createSvgElement('rect');
@@ -5771,6 +5781,10 @@ export class InquiryView extends ItemView {
 
     private updateNavSessionLabel(): void {
         if (!this.navSessionLabel) return;
+        if (this.state.isRunning) {
+            this.navSessionLabel.textContent = this.buildRunningStageLabel(this.currentRunProgress) || 'Waiting for the provider response.';
+            return;
+        }
         const sessionId = this.state.activeSessionId;
         if (!sessionId) {
             this.navSessionLabel.textContent = 'ID: PENDING';
@@ -5821,6 +5835,8 @@ export class InquiryView extends ItemView {
             }
             this.updateMinimapPressureGauge();
         }
+        this.updateRunningHud();
+        this.updateNavSessionLabel();
     }
 
     private resolveGuidanceState(): InquiryGuidanceState {
@@ -6069,12 +6085,14 @@ export class InquiryView extends ItemView {
         this.minimap.startRunningAnimations(
             styleSource,
             isPro,
-            () => this.state.isRunning && this.currentRunProgress?.phase !== 'finalizing'
+            () => this.state.isRunning,
+            (elapsedMs) => this.updateRunningHudFrame(elapsedMs)
         );
     }
 
     private stopRunningAnimations(): void {
         this.minimap.stopRunningAnimations();
+        this.updateRunningHud();
     }
 
     private startBackboneFadeOut(): void {
@@ -6285,6 +6303,8 @@ export class InquiryView extends ItemView {
 
         this.clearActiveResultState();
         this.currentRunProgress = null;
+        this.currentRunElapsedMs = 0;
+        this.currentRunEstimatedMaxMs = this.estimateRunDurationRange(question.question).maxSeconds * 1000;
         this.state.activeQuestionId = question.id;
         this.state.activeZone = question.zone;
         this.lockPromptPreview(question);
@@ -6429,6 +6449,8 @@ export class InquiryView extends ItemView {
                 void this.writeInquiryPendingEdits(session, result);
             }
         } finally {
+            this.currentRunElapsedMs = 0;
+            this.currentRunEstimatedMaxMs = 0;
             this.finishInquiryRunToken(runToken);
         }
     }
@@ -8357,7 +8379,7 @@ export class InquiryView extends ItemView {
             this.setHoverText(this.buildMinimapHoverText(hoverLabel));
             return;
         }
-        const finding = this.buildHitFindingMap(result, this.getResultItems(result)).get(label);
+        const finding = this.resolveFindingForMinimapHover(item, label, hoverLabel, result);
         if (!finding) {
             this.hideSceneDossier();
             this.setHoverText(this.buildMinimapHoverText(hoverLabel));
@@ -8365,6 +8387,42 @@ export class InquiryView extends ItemView {
         }
         this.setHoverText('');
         this.showSceneDossier(this.buildSceneDossierModel(item, label, hoverLabel, finding));
+    }
+
+    private resolveFindingForMinimapHover(
+        item: InquiryCorpusItem,
+        label: string,
+        hoverLabel: string,
+        result: InquiryResult
+    ): InquiryFinding | null {
+        const items = this.getResultItems(result);
+        const hitMap = this.buildHitFindingMap(result, items);
+        const directMatch = hitMap.get(label)
+            || hitMap.get(hoverLabel)
+            || hitMap.get(item.displayLabel);
+        if (directMatch) return directMatch;
+
+        const ordered = this.getOrderedFindings(result, result.mode || this.state.mode);
+        const candidateKeys = new Set<string>([
+            label.toLowerCase(),
+            hoverLabel.toLowerCase(),
+            item.displayLabel.toLowerCase(),
+            item.id.toLowerCase(),
+            ...(item.sceneId ? [item.sceneId.toLowerCase()] : []),
+            ...(item.filePaths ?? []).map(path => path.toLowerCase())
+        ]);
+        for (const finding of ordered) {
+            if (!this.isFindingHit(finding)) continue;
+            const refId = finding.refId?.trim().toLowerCase();
+            if (refId && candidateKeys.has(refId)) {
+                return finding;
+            }
+            const resolvedLabel = this.resolveFindingChipLabel(finding, result, items)?.toLowerCase();
+            if (resolvedLabel && candidateKeys.has(resolvedLabel)) {
+                return finding;
+            }
+        }
+        return null;
     }
 
     private clearResultPreview(): void {
@@ -8692,8 +8750,9 @@ export class InquiryView extends ItemView {
         if (!this.state.isRunning || this.activeCancelRunModal) return;
         const questionText = this.previewLast?.question || this.getCurrentPromptQuestion() || '';
         this.setPreviewRunningNoteText(this.buildRunningStatusNote(questionText));
-        this.setPreviewFooterText(this.buildRunningStageLabel(progress));
+        this.setPreviewFooterText('');
         this.updateMinimapPressureGauge();
+        this.updateRunningHud();
         this.updateRunningState();
     }
 
@@ -8756,6 +8815,45 @@ export class InquiryView extends ItemView {
             `Running now (${evidenceMode}). Rough ETA ${estimateLabel}.`,
             progressLabel
         ].filter(Boolean).join(' ');
+    }
+
+    private formatElapsedRunClock(elapsedMs: number): string {
+        const totalSeconds = Math.max(0, Math.floor(elapsedMs / 1000));
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = totalSeconds % 60;
+        return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    }
+
+    private getRunningBackboneProgressRatio(elapsedMs: number): number {
+        const estimateMaxMs = Math.max(1000, this.currentRunEstimatedMaxMs || 0);
+        const timeRatio = estimateMaxMs > 0 ? Math.min(1, Math.max(0, elapsedMs / estimateMaxMs)) : 0;
+        const progress = this.currentRunProgress;
+        if (!progress) return timeRatio;
+        if (progress.phase === 'finalizing') return 1;
+        const completedPassRatio = progress.totalPasses > 0
+            ? Math.max(0, Math.min(1, (progress.currentPass - 1) / progress.totalPasses))
+            : 0;
+        return Math.max(timeRatio, completedPassRatio);
+    }
+
+    private updateRunningHudFrame(elapsedMs: number): void {
+        if (!this.state.isRunning) return;
+        this.currentRunElapsedMs = elapsedMs;
+        this.updateRunningHud();
+        this.minimap.setRunningBackboneProgress(this.getRunningBackboneProgressRatio(elapsedMs));
+    }
+
+    private updateRunningHud(): void {
+        if (this.engineTimerLabel) {
+            const isRunning = this.state.isRunning;
+            this.engineTimerLabel.classList.toggle('ert-hidden', !isRunning);
+            this.engineTimerLabel.textContent = isRunning
+                ? this.formatElapsedRunClock(this.currentRunElapsedMs)
+                : '';
+        }
+        if (this.state.isRunning && this.navSessionLabel) {
+            this.navSessionLabel.textContent = this.buildRunningStageLabel(this.currentRunProgress) || 'Waiting for the provider response.';
+        }
     }
 
     private describeRunEvidenceMode(): string {
@@ -9240,7 +9338,7 @@ export class InquiryView extends ItemView {
         this.previewGroup.classList.remove('is-results');
         this.previewGroup.classList.remove('is-error');
         this.setPreviewRunningNoteText(this.buildRunningStatusNote(question.question));
-        this.setPreviewFooterText(this.buildRunningStageLabel(this.currentRunProgress));
+        this.setPreviewFooterText('');
         this.resetPreviewRowLabels();
         this.updatePromptPreview(question.zone, this.state.mode, question.question, rows, undefined, { hideEmpty: true });
         this.lastReadinessUiState = this.buildReadinessUiState();
