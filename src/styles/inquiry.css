@@ -1488,8 +1488,8 @@
 }
 
 .ert-inquiry-scene-dossier-body {
-  font-size: 14px;
-  font-weight: 560;
+  font-size: 15px;
+  font-weight: 460;
   fill: color-mix(in srgb, var(--text-normal) 85%, #f0d0ad);
 }
 

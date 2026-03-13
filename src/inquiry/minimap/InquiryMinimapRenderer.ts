@@ -712,6 +712,11 @@ export class InquiryMinimapRenderer {
         const length = this.minimapLayout.length;
         const splitY = MINIMAP_TOKEN_CAP_Y;
         const tickHalfWidth = MINIMAP_TOKEN_CAP_SPLIT_TICK_WIDTH / 2;
+        const splitColor = overCapacityTone === 'amber'
+            ? '#DD9B3B'
+            : overCapacityTone === 'red'
+                ? getExecutionColorValue(styleSource, '--rt-ai-error', '#f44c4c')
+                : getExecutionColorValue(styleSource, '--rt-ai-neutral', '#DD9B3B');
         const stateClass = overCapacityTone === 'amber' ? 'is-warning-capacity'
             : overCapacityTone === 'red' ? 'is-over-capacity'
             : undefined;
@@ -719,9 +724,9 @@ export class InquiryMinimapRenderer {
             const ratio = index / totalPassCount;
             const centerX = baselineStart + (length * ratio);
             const splitTick = createSvgElement('rect');
-            splitTick.classList.add('ert-inquiry-minimap-tokencap-endcap');
             splitTick.classList.add('ert-inquiry-minimap-tokencap-split');
             if (stateClass) splitTick.classList.add(stateClass);
+            splitTick.style.fill = splitColor;
             splitTick.setAttribute('x', (centerX - tickHalfWidth).toFixed(2));
             splitTick.setAttribute('y', String(splitY));
             splitTick.setAttribute('width', String(MINIMAP_TOKEN_CAP_SPLIT_TICK_WIDTH));
