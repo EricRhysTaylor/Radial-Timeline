@@ -34,6 +34,15 @@ type AnthropicPayload = {
     temperature?: number;
     top_p?: number;
     thinking?: { type: 'enabled'; budget_tokens: number };
+    tools?: {
+        name: string;
+        description?: string;
+        input_schema: Record<string, unknown>;
+    }[];
+    tool_choice?: {
+        type: 'tool';
+        name: string;
+    };
 };
 
 type GeminiPayload = {
@@ -136,6 +145,17 @@ export function buildProviderRequestPayload(
         if (typeof callArgs.thinkingBudgetTokens === 'number' && callArgs.thinkingBudgetTokens >= 1024) {
             payload.thinking = { type: 'enabled', budget_tokens: callArgs.thinkingBudgetTokens };
             payload.max_tokens = payload.max_tokens + callArgs.thinkingBudgetTokens;
+        }
+        if (callArgs.jsonSchema) {
+            payload.tools = [{
+                name: 'record_structured_response',
+                description: 'Return the final structured response via this tool input.',
+                input_schema: callArgs.jsonSchema
+            }];
+            payload.tool_choice = {
+                type: 'tool',
+                name: 'record_structured_response'
+            };
         }
         return payload;
     }

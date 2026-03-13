@@ -2,7 +2,7 @@ import type RadialTimelinePlugin from '../../main';
 import { callProvider } from '../../api/providerRouter';
 import type { AIProvider, Capability, GenerateJsonRequest, GenerateTextRequest, ProviderExecutionResult } from '../types';
 
-const CAPS: Capability[] = ['longContext', 'reasoningStrong'];
+const CAPS: Capability[] = ['longContext', 'jsonStrict', 'reasoningStrong'];
 
 export class AnthropicProvider implements AIProvider {
     id = 'anthropic' as const;
@@ -41,6 +41,7 @@ export class AnthropicProvider implements AIProvider {
             temperature: req.temperature,
             top_p: req.topP,
             thinkingBudgetTokens: req.thinkingBudgetTokens,
+            jsonSchema: req.jsonSchema,
             citationsEnabled: req.citationsEnabled,
             evidenceDocuments: req.evidenceDocuments
         });

@@ -47,7 +47,7 @@ const PROVIDER_CAPABILITIES: Record<AiProvider, ProviderCapabilities> = {
         supportsTemperature: true,
         supportsTopP: true,
         supportsResponseFormat: false,
-        supportsJsonSchema: false,
+        supportsJsonSchema: true,
         supportsThinkingConfig: false,
         supportsExtendedThinking: true,
         supportsCitations: true,

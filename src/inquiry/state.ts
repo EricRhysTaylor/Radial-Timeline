@@ -6,7 +6,8 @@ export type InquiryZone = 'setup' | 'pressure' | 'payoff';
 
 export type InquirySeverity = 'low' | 'medium' | 'high';
 export type InquiryConfidence = 'low' | 'medium' | 'high';
-export type InquiryAiStatus = 'success' | 'rejected' | 'unavailable' | 'timeout' | 'auth' | 'rate_limit';
+export type InquiryAiStatus = 'success' | 'degraded' | 'rejected' | 'unavailable' | 'timeout' | 'auth' | 'rate_limit';
+export type InquiryTokenUsageScope = 'full' | 'partial' | 'synthesis_only';
 
 export type InquiryCitation = SourceCitation;
 
@@ -70,6 +71,7 @@ export interface InquiryResult {
     executionPath?: 'one_pass' | 'multi_pass';
     failureStage?: 'preflight' | 'chunk_execution' | 'synthesis' | 'provider_response_parsing';
     tokenUsageKnown?: boolean;
+    tokenUsageScope?: InquiryTokenUsageScope;
     tokenEstimateInput?: number;
     tokenEstimateTier?: 'normal' | 'amber' | 'red';
     submittedAt?: string;

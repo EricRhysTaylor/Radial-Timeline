@@ -10,7 +10,7 @@ import type { TokenEstimateMethod } from '../../ai/tokens/inputTokenEstimate';
 import type { InquiryScope } from '../state';
 import { INQUIRY_REQUIRED_CAPABILITIES, type ResolvedInquiryEngine } from './inquiryModelResolver';
 
-export const INQUIRY_ADVISORY_CONTEXT_VERSION = 1 as const;
+export const INQUIRY_ADVISORY_CONTEXT_VERSION = 2 as const;
 
 export type InquiryAdvisoryReasonCode =
     | 'single_pass_preferred'
@@ -51,6 +51,13 @@ export interface InquiryAdvisoryContext {
         reasonCode: InquiryAdvisoryReasonCode;
         message: string;
         currentEngineBehavior: string;
+        options: Array<{
+            provider: AIProviderId;
+            providerLabel: string;
+            modelId: string;
+            modelAlias: string;
+            modelLabel: string;
+        }>;
     };
 }
 
@@ -174,7 +181,8 @@ function buildIdentity(context: InquiryAdvisoryContext): string {
         context.recommendation.currentEngineBehavior,
         context.recommendation.reasonCode,
         context.recommendation.provider,
-        context.recommendation.modelId
+        context.recommendation.modelId,
+        context.recommendation.options.map(option => `${option.provider}:${option.modelId}`).join(',')
     ].join('|');
 }
 
@@ -251,10 +259,10 @@ function isPrecisionAnalysisQuestion(questionText?: string): boolean {
     return precisionSignals.some(signal => normalized.includes(signal));
 }
 
-function selectPrecisionAlternative(
+function rankPrecisionCandidates(
     alternatives: AdvisoryCandidate[],
     currentCandidate: AdvisoryCandidate
-): AdvisoryCandidate | null {
+): AdvisoryCandidate[] {
     const currentReasoningRank = getReasoningRank(currentCandidate.reasoningSupport);
     const currentStructuredRank = getStructuredRank(currentCandidate.structuredOutputStrength);
     const stronger = alternatives.filter(candidate => {
@@ -263,7 +271,7 @@ function selectPrecisionAlternative(
         return reasoningRank > currentReasoningRank
             || (reasoningRank === currentReasoningRank && structuredRank > currentStructuredRank);
     });
-    if (!stronger.length) return null;
+    if (!stronger.length) return [];
     return [...stronger].sort((left, right) => {
         const reasoningDelta = getReasoningRank(right.reasoningSupport) - getReasoningRank(left.reasoningSupport);
         if (reasoningDelta !== 0) return reasoningDelta;
@@ -276,7 +284,34 @@ function selectPrecisionAlternative(
             return right.safeInputBudget - left.safeInputBudget;
         }
         return left.modelLabel.localeCompare(right.modelLabel);
-    })[0] ?? null;
+    });
+}
+
+function buildRecommendationMessage(
+    reasonCode: InquiryAdvisoryReasonCode,
+    optionCount: number
+): string {
+    const plural = optionCount > 1;
+    if (reasonCode === 'sources_preferred') {
+        return plural ? 'Citation-backed alternatives:' : 'Citation-backed alternative:';
+    }
+    if (reasonCode === 'single_pass_preferred') {
+        return plural ? 'Single-pass options:' : 'Single-pass option:';
+    }
+    if (reasonCode === 'cost_reuse_preferred') {
+        return plural ? 'Cache-aware alternatives:' : 'Cache-aware alternative:';
+    }
+    return plural ? 'Reasoning-first alternatives:' : 'Reasoning-first alternative:';
+}
+
+function toRecommendationOption(candidate: AdvisoryCandidate): InquiryAdvisoryContext['recommendation']['options'][number] {
+    return {
+        provider: candidate.provider,
+        providerLabel: candidate.providerLabel,
+        modelId: candidate.modelId,
+        modelAlias: candidate.modelAlias,
+        modelLabel: candidate.modelLabel
+    };
 }
 
 export function computeInquiryAdvisoryContext(input: ComputeInquiryAdvisoryInput): InquiryAdvisoryContext | null {
@@ -302,53 +337,46 @@ export function computeInquiryAdvisoryContext(input: ComputeInquiryAdvisoryInput
     const currentBehavior = buildCurrentBehaviorLabel(currentPassCount, input.analysisPackaging);
 
     let reasonCode: InquiryAdvisoryReasonCode | null = null;
-    let suggestion: AdvisoryCandidate | null = null;
-    let message = '';
+    let suggestions: AdvisoryCandidate[] = [];
 
     if (currentCandidate.directManuscriptCitationsStatus !== 'available') {
-        const sourceAlternatives = sortedAlternatives.filter(
+        suggestions = sortedAlternatives.filter(
             candidate => candidate.directManuscriptCitationsStatus === 'available'
         );
-        if (sourceAlternatives.length) {
+        if (suggestions.length) {
             reasonCode = 'sources_preferred';
-            suggestion = sourceAlternatives[0];
-            message = 'For manuscript citation-backed findings, consider an engine with direct citation support:';
         }
     }
 
     if (!reasonCode && currentPassCount > 1) {
-        const singlePassAlternatives = sortedAlternatives.filter(candidate => candidate.expectedPassCount === 1);
-        if (singlePassAlternatives.length) {
+        suggestions = sortedAlternatives.filter(candidate => candidate.expectedPassCount === 1);
+        if (suggestions.length) {
             reasonCode = 'single_pass_preferred';
-            suggestion = singlePassAlternatives[0];
-            message = 'If you prefer a single-pass run, consider:';
         }
     }
 
     if (!reasonCode
         && input.corpusFingerprintReused
         && currentCandidate.corpusReuseStatus !== 'available') {
-        const reuseAlternatives = sortedAlternatives.filter(candidate =>
+        suggestions = sortedAlternatives.filter(candidate =>
             candidate.corpusReuseStatus === 'available'
             && candidate.expectedPassCount <= currentPassCount
         );
-        if (reuseAlternatives.length) {
+        if (suggestions.length) {
             reasonCode = 'cost_reuse_preferred';
-            suggestion = reuseAlternatives[0];
-            message = 'For repeated runs on the same corpus, cache-aware engines may reduce cost:';
         }
     }
 
     if (!reasonCode && isPrecisionAnalysisQuestion(input.questionText)) {
-        const precisionSuggestion = selectPrecisionAlternative(sortedAlternatives, currentCandidate);
-        if (precisionSuggestion) {
+        suggestions = rankPrecisionCandidates(sortedAlternatives, currentCandidate);
+        if (suggestions.length) {
             reasonCode = 'precision_analysis_preferred';
-            suggestion = precisionSuggestion;
-            message = 'For deeper reasoning-oriented analysis, consider:';
         }
     }
 
-    if (!reasonCode || !suggestion) return null;
+    const recommendationOptions = suggestions.map(toRecommendationOption);
+    const primarySuggestion = suggestions[0];
+    if (!reasonCode || !primarySuggestion || !recommendationOptions.length) return null;
 
     const advisory: InquiryAdvisoryContext = {
         version: INQUIRY_ADVISORY_CONTEXT_VERSION,
@@ -375,14 +403,15 @@ export function computeInquiryAdvisoryContext(input: ComputeInquiryAdvisoryInput
             },
         },
         recommendation: {
-            provider: suggestion.provider,
-            providerLabel: suggestion.providerLabel,
-            modelId: suggestion.modelId,
-            modelAlias: suggestion.modelAlias,
-            modelLabel: suggestion.modelLabel,
+            provider: primarySuggestion.provider,
+            providerLabel: primarySuggestion.providerLabel,
+            modelId: primarySuggestion.modelId,
+            modelAlias: primarySuggestion.modelAlias,
+            modelLabel: primarySuggestion.modelLabel,
             reasonCode,
-            message,
+            message: buildRecommendationMessage(reasonCode, recommendationOptions.length),
             currentEngineBehavior: currentBehavior,
+            options: recommendationOptions
         },
     };
 

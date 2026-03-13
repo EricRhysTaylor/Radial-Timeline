@@ -102,7 +102,8 @@ export async function callProvider(plugin: RadialTimelinePlugin, args: ProviderC
         callArgs.top_p,
         callArgs.thinkingBudgetTokens,
         callArgs.citationsEnabled,
-        callArgs.evidenceDocuments
+        callArgs.evidenceDocuments,
+        callArgs.jsonSchema
       );
       return { ...buildProviderResult(provider, requestedModelId, resp), requestPayload, citations: resp.citations };
     }

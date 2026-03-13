@@ -29,6 +29,7 @@ import {
     InquiryResult,
     InquiryScope,
     InquirySeverity,
+    InquiryTokenUsageScope,
     InquiryZone
 } from './state';
 import type { InquiryClassConfig, InquiryMaterialMode, InquiryPromptConfig, InquiryPromptSlot, OmnibusProgressState } from '../types/settings';
@@ -62,6 +63,7 @@ import type {
     CorpusManifestEntry,
     EvidenceParticipationRules,
     InquiryOmnibusInput,
+    InquiryRunProgressEvent,
     InquiryRunTrace,
     InquiryRunnerInput
 } from './runner/types';
@@ -170,6 +172,7 @@ const PREVIEW_PANEL_Y = -390;
 const PREVIEW_PANEL_MINIMAP_GAP = 60;
 const PREVIEW_PANEL_PADDING_X = 32;
 const PREVIEW_PANEL_PADDING_Y = 20;
+const PREVIEW_RUNNING_CONTENT_OFFSET_Y = -3;
 const PREVIEW_HERO_LINE_HEIGHT = 30;
 const PREVIEW_HERO_MAX_LINES = 4;
 const PREVIEW_META_GAP = 6;
@@ -263,6 +266,17 @@ const INQUIRY_HELP_CORPUS_TOOLTIP = [
 const INQUIRY_HELP_RESULTS_TOOLTIP = [
     'Review material citations for granular feedback in the minimap.',
     'View the Brief for full details.'
+].join('\n');
+const INQUIRY_HELP_RUNNING_TOOLTIP = [
+    'Inquiry is processing an API run.',
+    'You can switch to another note and keep working while it runs, but leave this Inquiry tab open.',
+    'This button is locked during processing.'
+].join('\n');
+const INQUIRY_HELP_RUNNING_SINGLE_TOOLTIP = [
+    'Inquiry is processing this question now.',
+    'You can switch to another note and keep working while it runs, but leave this Inquiry tab open.',
+    'If you cancel this run, you must start over from the beginning. There is no resume.',
+    'Closing the Inquiry view is not a supported resume path for an in-flight question run.'
 ].join('\n');
 const INQUIRY_HELP_ONBOARDING_TOOLTIP = 'Number buttons reveal the question and payload. Click to process a question with AI. Flow and Depth rings adjust the lens of the response. The minimap reveals contextual citations.';
 const INQUIRY_TOOLTIP_BALANCE_WIDTH = 360;
@@ -449,7 +463,7 @@ class InquiryCancelRunModal extends Modal {
         header.createDiv({ cls: 'ert-modal-title', text: 'Cancel Inquiry Run?' });
         header.createDiv({
             cls: 'ert-modal-subtitle',
-            text: 'The provider call may continue in the background, but this run result will be discarded.'
+            text: 'Cancelling discards this run. The provider call may continue in the background, but Inquiry will ignore the result.'
         });
 
         const panel = contentEl.createDiv({ cls: 'ert-panel ert-panel--glass ert-stack' });
@@ -462,7 +476,7 @@ class InquiryCancelRunModal extends Modal {
         }
         panel.createDiv({
             cls: 'ert-inquiry-cancel-modal-note',
-            text: 'You can open the Inquiry Log if this run later fails.'
+            text: 'You can switch to another note while it runs if you leave this Inquiry tab open. If you cancel, you must start over. There is no resume.'
         });
 
         const actions = contentEl.createDiv({ cls: 'ert-modal-actions' });
@@ -1107,6 +1121,7 @@ export class InquiryView extends ItemView {
     private inquiryRunTokenCounter = 0;
     private activeInquiryRunToken = 0;
     private cancelledInquiryRunTokens = new Set<number>();
+    private currentRunProgress: InquiryRunProgressEvent | null = null;
 
     constructor(leaf: WorkspaceLeaf, plugin: RadialTimelinePlugin) {
         super(leaf);
@@ -1845,11 +1860,13 @@ export class InquiryView extends ItemView {
         card.createDiv({ cls: 'ert-inquiry-engine-advisor-title', text: 'INQUIRY ADVISOR' });
         card.createDiv({
             cls: 'ert-inquiry-engine-advisor-message',
-            text: 'Single-pass option:'
+            text: advisory.recommendation.message
         });
-        card.createDiv({
-            cls: 'ert-inquiry-engine-advisor-suggestion',
-            text: `${advisory.recommendation.providerLabel} · ${advisory.recommendation.modelLabel}`
+        advisory.recommendation.options.forEach(option => {
+            card.createDiv({
+                cls: 'ert-inquiry-engine-advisor-suggestion',
+                text: `${option.providerLabel} · ${option.modelLabel}`
+            });
         });
     }
 
@@ -4056,17 +4073,20 @@ export class InquiryView extends ItemView {
     }
 
     private updateMinimapPressureGauge(): void {
-        if (this.state.isRunning) return;
         const readinessUi = this.buildReadinessUiState();
-        // While the estimate is still loading, skip rendering — avoids a false amber/red flash.
-        if (readinessUi.pending) return;
-        this.lastReadinessUiState = readinessUi;
-        const passPlan = this.getCurrentPassPlan(readinessUi);
+        const effectiveReadinessUi = readinessUi.pending
+            ? (this.lastReadinessUiState ?? readinessUi)
+            : readinessUi;
+        // While the estimate is still loading and there is no prior stable state, skip rendering.
+        if (effectiveReadinessUi.pending) return;
+        this.lastReadinessUiState = effectiveReadinessUi;
+        const basePassPlan = this.getCurrentPassPlan(effectiveReadinessUi);
+        const passPlan = this.getDisplayedPassPlan(basePassPlan);
         const styleSource = this.getStyleSource();
         const isPro = isProfessionalActive(this.plugin);
         const advancedContext = getLastAiAdvancedContext(this.plugin, 'InquiryMode') ?? null;
         this.minimap.updatePressureGauge(
-            readinessUi,
+            effectiveReadinessUi,
             passPlan,
             styleSource,
             isPro,
@@ -4075,6 +4095,30 @@ export class InquiryView extends ItemView {
             (text) => this.balanceTooltipText(text)
         );
         this.updateMinimapReuseStatus();
+    }
+
+    private getDisplayedPassPlan(passPlan: PassPlanResult): PassPlanResult {
+        const progress = this.currentRunProgress;
+        if (!this.state.isRunning || !progress || progress.totalPasses <= 1) {
+            return passPlan;
+        }
+        return {
+            ...passPlan,
+            packagingExpected: true,
+            recentExactPassCount: progress.totalPasses,
+            displayPassCount: progress.totalPasses,
+            packagingTriggerReason: this.describeRunningPassPlan(progress)
+        };
+    }
+
+    private describeRunningPassPlan(progress: InquiryRunProgressEvent): string {
+        if (progress.phase === 'synthesis') {
+            return `Synthesis pass ${progress.currentPass}/${progress.totalPasses} is in progress after ${progress.chunkTotal ?? Math.max(0, progress.totalPasses - 1)} chunk analyses.`;
+        }
+        if (progress.phase === 'chunk' && progress.chunkIndex && progress.chunkTotal) {
+            return `Chunk ${progress.chunkIndex}/${progress.chunkTotal} is in progress (pass ${progress.currentPass}/${progress.totalPasses}).`;
+        }
+        return `Pass ${progress.currentPass}/${progress.totalPasses} is in progress.`;
     }
 
     private updateMinimapReuseStatus(): void {
@@ -5543,8 +5587,12 @@ export class InquiryView extends ItemView {
 
     private isErrorResult(result: InquiryResult | null | undefined): boolean {
         if (!result) return false;
-        if (result.aiStatus && result.aiStatus !== 'success') return true;
+        if (result.aiStatus && result.aiStatus !== 'success' && result.aiStatus !== 'degraded') return true;
         return result.findings.some(finding => finding.kind === 'error');
+    }
+
+    private isDegradedResult(result: InquiryResult | null | undefined): boolean {
+        return !!result && (result.aiStatus === 'degraded' || result.aiReason === 'recovered_invalid_response');
     }
 
     private isErrorState(): boolean {
@@ -5733,6 +5781,7 @@ export class InquiryView extends ItemView {
         }
         if (isRunning) {
             this.startRunningAnimations();
+            this.updateMinimapPressureGauge();
         } else {
             this.stopRunningAnimations();
             if (wasRunning) {
@@ -5914,14 +5963,20 @@ export class InquiryView extends ItemView {
         const corpusAlert = this.corpusWarningActive && this.isCorpusEmpty();
         const isAlert = state === 'not-configured' || state === 'no-scenes' || corpusAlert;
         const isResults = state === 'results';
-        const tooltip = corpusAlert
-            ? INQUIRY_HELP_CORPUS_TOOLTIP
-            : (isAlert
-                ? (state === 'not-configured' ? INQUIRY_HELP_CONFIG_TOOLTIP : INQUIRY_HELP_NO_SCENES_TOOLTIP)
-                : (isResults ? INQUIRY_HELP_RESULTS_TOOLTIP : (hasSessions ? INQUIRY_HELP_TOOLTIP : INQUIRY_HELP_ONBOARDING_TOOLTIP)));
+        const isRunning = state === 'running';
+        const tooltip = isRunning
+            ? (this.activeInquiryRunToken
+                ? INQUIRY_HELP_RUNNING_SINGLE_TOOLTIP
+                : INQUIRY_HELP_RUNNING_TOOLTIP)
+            : (corpusAlert
+                ? INQUIRY_HELP_CORPUS_TOOLTIP
+                : (isAlert
+                    ? (state === 'not-configured' ? INQUIRY_HELP_CONFIG_TOOLTIP : INQUIRY_HELP_NO_SCENES_TOOLTIP)
+                    : (isResults ? INQUIRY_HELP_RESULTS_TOOLTIP : (hasSessions ? INQUIRY_HELP_TOOLTIP : INQUIRY_HELP_ONBOARDING_TOOLTIP))));
         const balancedTooltip = this.balanceTooltipText(tooltip);
 
         this.helpToggleButton.removeAttribute('aria-pressed');
+        this.helpToggleButton.setAttribute('aria-disabled', isRunning ? 'true' : 'false');
         this.helpToggleButton.classList.toggle('is-help-onboarding', !hasSessions && !isAlert && !isResults);
         this.helpToggleButton.classList.toggle('is-help-results', isResults && !corpusAlert);
         this.helpToggleButton.classList.toggle('is-guidance-alert', isAlert);
@@ -5931,6 +5986,9 @@ export class InquiryView extends ItemView {
     private handleGuidanceHelpClick(): void {
         const state = this.resolveGuidanceState();
         this.guidanceState = state;
+        if (state === 'running') {
+            return;
+        }
         if (state === 'not-configured') {
             this.openInquirySettings('sources');
             return;
@@ -6189,6 +6247,7 @@ export class InquiryView extends ItemView {
         }
 
         this.clearActiveResultState();
+        this.currentRunProgress = null;
         this.state.activeQuestionId = question.id;
         this.state.activeZone = question.zone;
         this.lockPromptPreview(question);
@@ -6223,7 +6282,9 @@ export class InquiryView extends ItemView {
             try {
                 // Lens selection is UI-only; do not vary question, evidence, or verdict structure by lens.
                 // Each inquiry produces two compressed answers (flow + depth). Keep this dual-answer model intact.
-                const runOutput = await this.runner.runWithTrace(runnerInput);
+                const runOutput = await this.runner.runWithTrace(runnerInput, {
+                    onProgress: progress => this.updateRunProgress(progress)
+                });
                 result = runOutput.result;
                 runTrace = runOutput.trace;
             } catch (error) {
@@ -7464,10 +7525,21 @@ export class InquiryView extends ItemView {
         if (result.executionPath) executionBits.push(`path=${result.executionPath}`);
         if (result.failureStage) executionBits.push(`stage=${result.failureStage}`);
         if (typeof result.tokenUsageKnown === 'boolean') {
-            executionBits.push(`usage=${result.tokenUsageKnown ? 'known' : 'unknown'}`);
+            executionBits.push(`usage=${this.formatTokenUsageVisibility(result.tokenUsageKnown, result.tokenUsageScope)}`);
         }
         if (!executionBits.length) return reasonText;
         return `${reasonText} [${executionBits.join(', ')}]`;
+    }
+
+    private formatTokenUsageVisibility(
+        known: boolean,
+        scope?: InquiryTokenUsageScope
+    ): string {
+        if (!known) return 'unknown';
+        if (scope === 'full') return 'full multi-pass';
+        if (scope === 'partial') return 'partial multi-pass';
+        if (scope === 'synthesis_only') return 'synthesis-only';
+        return 'known';
     }
 
     private applyExecutionObservabilityFromTrace(
@@ -7483,7 +7555,8 @@ export class InquiryView extends ItemView {
             executionState: trace.executionState,
             executionPath: trace.executionPath,
             failureStage: trace.failureStage,
-            tokenUsageKnown: usageKnown
+            tokenUsageKnown: usageKnown,
+            tokenUsageScope: trace.tokenUsageScope
         };
     }
 
@@ -8562,15 +8635,29 @@ export class InquiryView extends ItemView {
         this.previewRunningNote.classList.toggle('ert-hidden', !note);
     }
 
+    private updateRunProgress(progress: InquiryRunProgressEvent | null): void {
+        this.currentRunProgress = progress;
+        if (!this.state.isRunning) return;
+        const questionText = this.previewLast?.question || this.getCurrentPromptQuestion() || '';
+        this.setPreviewRunningNoteText(this.buildRunningStatusNote(questionText));
+        this.updateMinimapPressureGauge();
+    }
+
     private formatRunDurationEstimate(minSeconds: number, maxSeconds: number): string {
         const min = Math.max(1, Math.round(minSeconds));
         const max = Math.max(min, Math.round(maxSeconds));
         if (max < 60) {
-            return `~${min}-${max}s`;
+            if (min === max) {
+                return `${min} ${min === 1 ? 'second' : 'seconds'}`;
+            }
+            return `${min}-${max} seconds`;
         }
         const minMinutes = Math.max(1, Math.round(min / 60));
         const maxMinutes = Math.max(minMinutes, Math.round(max / 60));
-        return `~${minMinutes}-${maxMinutes}m`;
+        if (minMinutes === maxMinutes) {
+            return `${minMinutes} ${minMinutes === 1 ? 'minute' : 'minutes'}`;
+        }
+        return `${minMinutes}-${maxMinutes} minutes`;
     }
 
     private estimateRunDurationRange(questionText: string): { minSeconds: number; maxSeconds: number } {
@@ -8594,11 +8681,26 @@ export class InquiryView extends ItemView {
         };
     }
 
-    private buildRunningCancelNote(questionText: string): string {
+    private buildRunningProgressLabel(progress: InquiryRunProgressEvent | null): string {
+        if (!progress || progress.totalPasses <= 1) return '';
+        if (progress.phase === 'synthesis') {
+            return `Pass ${progress.currentPass} of ${progress.totalPasses} (synthesis).`;
+        }
+        if (progress.phase === 'chunk' && progress.chunkIndex && progress.chunkTotal) {
+            return `Pass ${progress.currentPass} of ${progress.totalPasses} (chunk ${progress.chunkIndex} of ${progress.chunkTotal}).`;
+        }
+        return `Pass ${progress.currentPass} of ${progress.totalPasses}.`;
+    }
+
+    private buildRunningStatusNote(questionText: string): string {
         const estimate = this.estimateRunDurationRange(questionText);
         const estimateLabel = this.formatRunDurationEstimate(estimate.minSeconds, estimate.maxSeconds);
         const evidenceMode = this.describeRunEvidenceMode();
-        return `Running now (${evidenceMode}). Rough ETA ${estimateLabel}. Click panel to cancel.`;
+        const progressLabel = this.buildRunningProgressLabel(this.currentRunProgress);
+        return [
+            `Running now (${evidenceMode}). Rough ETA ${estimateLabel}.`,
+            progressLabel
+        ].filter(Boolean).join(' ');
     }
 
     private describeRunEvidenceMode(): string {
@@ -8651,6 +8753,8 @@ export class InquiryView extends ItemView {
         const modeLabel = mode === 'flow' ? 'Flow' : 'Depth';
         const heroTargetLines = 3;
         const heroBaseWidth = this.minimap.layoutLength ?? (PREVIEW_PANEL_WIDTH - (PREVIEW_PANEL_PADDING_X * 2));
+        const contentOffsetY = this.state.isRunning ? PREVIEW_RUNNING_CONTENT_OFFSET_Y : 0;
+        this.previewHero.setAttribute('y', String(PREVIEW_PANEL_PADDING_Y + contentOffsetY));
         let heroLines = this.setBalancedHeroText(
             this.previewHero,
             question,
@@ -8673,13 +8777,14 @@ export class InquiryView extends ItemView {
             );
         }
         if (this.previewMeta) {
-            const metaY = PREVIEW_PANEL_PADDING_Y + (heroLines * PREVIEW_HERO_LINE_HEIGHT) + PREVIEW_META_GAP;
+            const metaY = PREVIEW_PANEL_PADDING_Y + contentOffsetY + (heroLines * PREVIEW_HERO_LINE_HEIGHT) + PREVIEW_META_GAP;
             const metaText = metaOverride ?? `${zoneLabel} + ${modeLabel}`.toUpperCase();
             this.previewMeta.textContent = metaText;
             this.previewMeta.setAttribute('y', String(metaY));
         }
 
         const detailStartY = PREVIEW_PANEL_PADDING_Y
+            + contentOffsetY
             + (heroLines * PREVIEW_HERO_LINE_HEIGHT)
             + PREVIEW_META_GAP
             + PREVIEW_META_LINE_HEIGHT
@@ -9065,9 +9170,9 @@ export class InquiryView extends ItemView {
         this.previewGroup.classList.add('is-visible', 'is-locked');
         this.previewGroup.classList.remove('is-results');
         this.previewGroup.classList.remove('is-error');
-        this.setPreviewRunningNoteText(this.buildRunningCancelNote(question.question));
+        this.setPreviewRunningNoteText(this.buildRunningStatusNote(question.question));
         this.resetPreviewRowLabels();
-        this.setPreviewFooterText('Click panel to cancel.');
+        this.setPreviewFooterText('');
         this.updatePromptPreview(question.zone, this.state.mode, question.question, rows, undefined, { hideEmpty: true });
         this.lastReadinessUiState = this.buildReadinessUiState();
         this.updateMinimapPressureGauge();
@@ -9075,6 +9180,7 @@ export class InquiryView extends ItemView {
 
     private unlockPromptPreview(): void {
         this.previewLocked = false;
+        this.currentRunProgress = null;
         if (this.previewHideTimer) {
             window.clearTimeout(this.previewHideTimer);
             this.previewHideTimer = undefined;
@@ -10184,15 +10290,18 @@ export class InquiryView extends ItemView {
             : (result.corpusOverridesActive ? 'On' : 'None');
 
         let status: AiLogStatus = 'success';
+        const degraded = this.isDegradedResult(result);
         if (result.aiReason === 'stub') {
             status = 'simulated';
         } else if (this.isErrorResult(result)) {
             status = 'error';
         }
-        const statusLabel = status === 'success' ? 'Success' : status === 'error' ? 'Failed' : 'Simulated';
+        const statusLabel = degraded
+            ? 'Degraded'
+            : (status === 'success' ? 'Success' : status === 'error' ? 'Failed' : 'Simulated');
         const statusDetail = result.aiReason
             ? ` (${result.aiReason})`
-            : (result.aiStatus && result.aiStatus !== 'success' ? ` (${result.aiStatus})` : '');
+            : (result.aiStatus && result.aiStatus !== 'success' && result.aiStatus !== 'degraded' ? ` (${result.aiStatus})` : '');
 
         const formatTokenCount = (value?: number | null, approximate = false): string => {
             if (typeof value !== 'number' || !Number.isFinite(value)) return 'unknown';
@@ -10212,6 +10321,7 @@ export class InquiryView extends ItemView {
         const usageKnown = typeof trace.tokenUsageKnown === 'boolean'
             ? trace.tokenUsageKnown
             : !!usage;
+        const usageVisibility = this.formatTokenUsageVisibility(usageKnown, trace.tokenUsageScope ?? result.tokenUsageScope);
         const usageText = usage
             ? `input=${formatTokenCount(usage.inputTokens)}, output=${formatTokenCount(usage.outputTokens)}, total=${formatTokenCount(usage.totalTokens)}`
             : 'not available';
@@ -10364,7 +10474,7 @@ export class InquiryView extends ItemView {
         lines.push('## Tokens');
         lines.push(`- Estimated input: ${formatTokenCount(tokenEstimateInput, true)}`);
         lines.push(`- Actual usage: ${usageText}`);
-        lines.push(`- Usage visibility: ${usageKnown ? 'known' : 'unknown'}`);
+        lines.push(`- Usage visibility: ${usageVisibility}`);
         lines.push(`- Tier: ${tokenTier ?? 'unknown'}`);
         const logSnapshot = this.plugin.getInquiryEstimateService().getSnapshot();
         if (logSnapshot) {
@@ -10444,6 +10554,7 @@ export class InquiryView extends ItemView {
             : (result.corpusOverridesActive ? 'on' : 'none');
 
         let status: AiLogStatus = 'success';
+        const degraded = this.isDegradedResult(result);
         if (result.aiReason === 'stub') {
             status = 'simulated';
         } else if (this.isErrorResult(result)) {
@@ -10455,6 +10566,7 @@ export class InquiryView extends ItemView {
         const tokenUsageKnown = typeof trace.tokenUsageKnown === 'boolean'
             ? trace.tokenUsageKnown
             : !!tokenUsage;
+        const tokenUsageVisibility = this.formatTokenUsageVisibility(tokenUsageKnown, trace.tokenUsageScope ?? result.tokenUsageScope);
         const { sanitized: sanitizedPayload, hadRedactions } = sanitizeLogPayload(trace.requestPayload ?? null);
         const redactionNotes = hadRedactions
             ? ['Redacted sensitive credential values from request payload.']
@@ -10484,12 +10596,12 @@ export class InquiryView extends ItemView {
             `- OpenAI transport lane: ${trace.openAiTransportLane || 'n/a'}`,
             `- AI next-run override: ${typeof result.aiModelNextRunOnly === 'boolean' ? String(result.aiModelNextRunOnly) : 'unknown'}`,
             `- Packaging: ${trace.analysisPackaging === 'singlePassOnly' ? 'singlePassOnly' : trace.analysisPackaging === 'segmented' ? 'segmented' : 'automatic'}`,
-            `- AI status: ${result.aiStatus || 'unknown'}`,
+            `- AI status: ${degraded ? 'degraded' : (result.aiStatus || 'unknown')}`,
             `- AI reason: ${result.aiReason || 'none'}`,
             `- Execution state: ${trace.executionState ?? 'unknown'}`,
             `- Execution path: ${trace.executionPath ?? ((typeof trace.executionPassCount === 'number' && trace.executionPassCount > 1) ? 'multi_pass' : 'one_pass')}`,
             `- Failure stage: ${trace.failureStage ?? (status === 'error' ? 'provider_response_parsing' : 'none')}`,
-            `- Token usage visibility: ${tokenUsageKnown ? 'known' : 'unknown'}`,
+            `- Token usage visibility: ${tokenUsageVisibility}`,
             `- Submitted at (raw): ${result.submittedAt || 'unknown'}`,
             `- Returned at (raw): ${result.completedAt || 'unknown'}`,
             `- Round trip ms: ${typeof result.roundTripMs === 'number' ? String(result.roundTripMs) : 'unknown'}`,

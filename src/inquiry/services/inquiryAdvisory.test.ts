@@ -42,9 +42,11 @@ describe('computeInquiryAdvisoryContext', () => {
         expect(advisory).not.toBeNull();
         expect(advisory?.recommendation.reasonCode).toBe('sources_preferred');
         expect(advisory?.recommendation.provider).toBe('anthropic');
+        expect(advisory?.recommendation.options).toHaveLength(1);
+        expect(advisory?.recommendation.message).toBe('Citation-backed alternative:');
     });
 
-    it('returns single-pass recommendation when current engine supports Sources', () => {
+    it('returns all single-pass recommendations when current engine supports Sources', () => {
         const currentModel = getModel('claude-sonnet-4-6');
         const advisory = computeInquiryAdvisoryContext({
             scope: 'book',
@@ -61,6 +63,8 @@ describe('computeInquiryAdvisoryContext', () => {
         expect(advisory).not.toBeNull();
         expect(advisory?.recommendation.reasonCode).toBe('single_pass_preferred');
         expect(advisory?.recommendation.provider).toBe('openai');
+        expect(advisory?.recommendation.message).toBe('Single-pass options:');
+        expect(advisory?.recommendation.options.map(option => option.provider)).toEqual(['openai', 'google']);
     });
 
     it('returns corpus reuse recommendation when fingerprint is reused and current engine lacks reuse', () => {
@@ -81,6 +85,7 @@ describe('computeInquiryAdvisoryContext', () => {
         expect(advisory).not.toBeNull();
         expect(advisory?.recommendation.reasonCode).toBe('cost_reuse_preferred');
         expect(advisory?.recommendation.provider).toBe('google');
+        expect(advisory?.recommendation.options).toHaveLength(1);
     });
 
     it('returns precision recommendation for deep analysis questions when another engine is stronger', () => {
@@ -109,6 +114,7 @@ describe('computeInquiryAdvisoryContext', () => {
         expect(advisory).not.toBeNull();
         expect(advisory?.recommendation.reasonCode).toBe('precision_analysis_preferred');
         expect(advisory?.recommendation.provider).toBe('google');
+        expect(advisory?.recommendation.options).toHaveLength(1);
     });
 
     it('returns null when no meaningful advisory advantage exists', () => {

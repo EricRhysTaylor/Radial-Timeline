@@ -24,6 +24,17 @@ export type AnthropicDocumentBlock = {
 
 export type AnthropicContentBlock = AnthropicTextBlock | AnthropicDocumentBlock;
 
+type AnthropicToolDefinition = {
+  name: string;
+  description?: string;
+  input_schema: Record<string, unknown>;
+};
+
+type AnthropicToolChoice = {
+  type: 'tool';
+  name: string;
+};
+
 export interface BuildAnthropicUserContentInput {
   userPrompt: string;
   citationsEnabled?: boolean;
@@ -39,8 +50,15 @@ interface AnthropicResponseCitation {
   end_char_index?: number;
 }
 
+interface AnthropicToolUseBlock {
+  type: 'tool_use';
+  id?: string;
+  name?: string;
+  input?: unknown;
+}
+
 interface AnthropicSuccessResponse {
-  content: { type: string; text?: string; thinking?: string; citations?: AnthropicResponseCitation[] }[];
+  content: ({ type: string; text?: string; thinking?: string; citations?: AnthropicResponseCitation[] } | AnthropicToolUseBlock)[];
   usage?: { input_tokens: number; output_tokens: number };
 }
 interface AnthropicErrorResponse {
@@ -110,7 +128,8 @@ export async function callAnthropicApi(
   topP?: number,
   thinkingBudgetTokens?: number,
   citationsEnabled?: boolean,
-  evidenceDocuments?: { title: string; content: string }[]
+  evidenceDocuments?: { title: string; content: string }[],
+  jsonSchema?: Record<string, unknown>
 ): Promise<AnthropicApiResponse> {
   warnLegacyAccess('anthropicApi.callAnthropicApi', internalAdapterAccess);
   const apiUrl = 'https://api.anthropic.com/v1/messages';
@@ -135,6 +154,8 @@ export async function callAnthropicApi(
     temperature?: number;
     top_p?: number;
     thinking?: { type: 'enabled'; budget_tokens: number };
+    tools?: AnthropicToolDefinition[];
+    tool_choice?: AnthropicToolChoice;
   } = { model: modelId, messages: [{ role: 'user', content: userContent }], max_tokens: effectiveMaxTokens };
   if (systemPrompt) {
     requestBody.system = [{ type: 'text', text: systemPrompt }];
@@ -148,6 +169,17 @@ export async function callAnthropicApi(
   }
   if (thinkingEnabled) {
     requestBody.thinking = { type: 'enabled', budget_tokens: thinkingBudgetTokens };
+  }
+  if (jsonSchema && Object.keys(jsonSchema).length > 0) {
+    requestBody.tools = [{
+      name: 'record_structured_response',
+      description: 'Return the final structured response via this tool input.',
+      input_schema: jsonSchema
+    }];
+    requestBody.tool_choice = {
+      type: 'tool',
+      name: 'record_structured_response'
+    };
   }
 
   const betaHeaders = ['prompt-caching-2024-07-31'];
@@ -176,6 +208,16 @@ export async function callAnthropicApi(
       return { success: false, content: null, responseData, error: msg };
     }
     const success = responseData as AnthropicSuccessResponse;
+    const toolUseBlock = (success?.content ?? []).find(
+      (block): block is AnthropicToolUseBlock => block.type === 'tool_use'
+    );
+    if (toolUseBlock && toolUseBlock.input !== undefined) {
+      return {
+        success: true,
+        content: JSON.stringify(toolUseBlock.input),
+        responseData
+      };
+    }
     // Skip thinking blocks — concatenate all text content blocks.
     // Handles both single-block (non-citation) and multi-block (citation) responses.
     const textBlocks = (success?.content ?? []).filter(

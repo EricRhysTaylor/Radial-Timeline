@@ -4,7 +4,7 @@ import type RadialTimelinePlugin from '../../main';
 import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { INQUIRY_MAX_OUTPUT_TOKENS, INQUIRY_SCHEMA_VERSION } from '../constants';
 import { PROVIDER_MAX_OUTPUT_TOKENS } from '../../constants/tokenLimits';
-import type { EvidenceDocumentMeta, InquiryAiStatus, InquiryCitation, InquiryConfidence, InquiryFinding, InquiryResult, InquirySeverity } from '../state';
+import type { EvidenceDocumentMeta, InquiryAiStatus, InquiryCitation, InquiryConfidence, InquiryFinding, InquiryResult, InquirySeverity, InquiryTokenUsageScope } from '../state';
 import type {
     CorpusManifestEntry,
     InquiryAiProvider,
@@ -13,6 +13,7 @@ import type {
     InquiryFailureStage,
     InquiryOmnibusInput,
     InquiryOmnibusQuestion,
+    InquiryRunProgressEvent,
     InquiryRunTrace,
     InquiryRunner,
     InquiryRunnerInput
@@ -112,13 +113,28 @@ type ProviderResult = {
     executionPath?: InquiryExecutionPath;
     failureStage?: InquiryFailureStage;
     tokenUsageKnown?: boolean;
+    tokenUsageScope?: InquiryTokenUsageScope;
+    usage?: InquiryRunTrace['usage'];
     aiTransportLane?: 'chat_completions' | 'responses';
     citations?: InquiryCitation[];
 };
 
 type MultiPassExecutionResult =
-    | { ok: true; run: AIRunResult; tokenUsageKnown: boolean }
-    | { ok: false; failureStage: 'preflight' | 'chunk_execution' | 'synthesis'; failureReason: string; tokenUsageKnown: boolean };
+    | {
+        ok: true;
+        run: AIRunResult;
+        tokenUsageKnown: boolean;
+        tokenUsageScope?: InquiryTokenUsageScope;
+        usage?: InquiryRunTrace['usage'];
+    }
+    | {
+        ok: false;
+        failureStage: 'preflight' | 'chunk_execution' | 'synthesis';
+        failureReason: string;
+        tokenUsageKnown: boolean;
+        tokenUsageScope?: InquiryTokenUsageScope;
+        usage?: InquiryRunTrace['usage'];
+    };
 
 type ChunkPromptPlan = {
     prompts: string[];
@@ -127,6 +143,19 @@ type ChunkPromptPlan = {
     evidenceChars: number;
     prefixChars: number;
     targetPasses: number | null;
+};
+
+type UsageAccumulator = {
+    totalPasses: number;
+    passesWithAnyUsage: number;
+    passesWithInput: number;
+    passesWithOutput: number;
+    passesWithTotal: number;
+    synthesisHasUsage: boolean;
+    chunkHasUsage: boolean;
+    inputTokens: number;
+    outputTokens: number;
+    totalTokens: number;
 };
 
 export class InquiryRunnerService implements InquiryRunner {
@@ -145,7 +174,8 @@ export class InquiryRunnerService implements InquiryRunner {
     }
 
     async runWithTrace(
-        input: InquiryRunnerInput
+        input: InquiryRunnerInput,
+        options?: { onProgress?: (event: InquiryRunProgressEvent) => void }
     ): Promise<{ result: InquiryResult; trace: InquiryRunTrace }> {
         const { trace, evidenceBlocks } = await this.buildInitialTrace(input);
         const evidenceDocMeta = evidenceBlocks.map(b => b.meta).filter((m): m is EvidenceDocumentMeta => !!m);
@@ -165,7 +195,8 @@ export class InquiryRunnerService implements InquiryRunner {
                 temperature,
                 maxTokens,
                 input.questionText,
-                evidenceBlocks
+                evidenceBlocks,
+                options?.onProgress
             );
             if (response.sanitizationNotes?.length) {
                 trace.sanitizationNotes.push(...response.sanitizationNotes);
@@ -891,7 +922,8 @@ export class InquiryRunnerService implements InquiryRunner {
         temperature: number,
         maxTokens: number,
         userQuestion?: string,
-        evidenceBlocks?: EvidenceBlock[]
+        evidenceBlocks?: EvidenceBlock[],
+        onProgress?: (event: InquiryRunProgressEvent) => void
     ): Promise<ProviderResult> {
         const aiClient = getAIClient(this.plugin);
         const analysisPackaging = this.getAnalysisPackaging();
@@ -957,6 +989,7 @@ export class InquiryRunnerService implements InquiryRunner {
                 jsonSchema,
                 temperature,
                 maxTokens,
+                onProgress,
                 packagingPrecheck: {
                     inputTokens: precheck.inputTokens,
                     safeInputTokens: precheck.safeInputTokens,
@@ -968,7 +1001,10 @@ export class InquiryRunnerService implements InquiryRunner {
                     analysisPackaging,
                     executionPassCount: multiPass.run.advancedContext?.executionPassCount,
                     packagingTriggerReason: triggerReason
-                }));
+                }), {
+                    usage: multiPass.usage,
+                    tokenUsageScope: multiPass.tokenUsageScope
+                });
             }
             const reason = analysisPackaging === 'segmented'
                 ? 'Segmented mode requires multi-pass packaging, but chunking/synthesis did not complete.'
@@ -981,10 +1017,17 @@ export class InquiryRunnerService implements InquiryRunner {
                 analysisPackaging,
                 reasonWithStage,
                 multiPass.failureStage,
-                multiPass.tokenUsageKnown
+                multiPass.tokenUsageKnown,
+                multiPass.usage,
+                multiPass.tokenUsageScope
             );
         }
 
+        onProgress?.({
+            phase: 'one_pass',
+            currentPass: 1,
+            totalPasses: 1
+        });
         let run = await this.runInquiryRequest(aiClient, {
             task: 'AnalyzeCorpus',
             systemPrompt,
@@ -1028,6 +1071,7 @@ export class InquiryRunnerService implements InquiryRunner {
                     jsonSchema,
                     temperature,
                     maxTokens,
+                    onProgress,
                     packagingPrecheck: {
                         inputTokens: precheck.inputTokens,
                         safeInputTokens: precheck.safeInputTokens,
@@ -1042,7 +1086,9 @@ export class InquiryRunnerService implements InquiryRunner {
                         analysisPackaging,
                         `Single-pass response was truncated, and fallback multi-pass packaging did not complete. ${multiPass.failureReason}`.trim(),
                         multiPass.failureStage,
-                        multiPass.tokenUsageKnown
+                        multiPass.tokenUsageKnown,
+                        multiPass.usage,
+                        multiPass.tokenUsageScope
                     );
                 }
             }
@@ -1296,7 +1342,9 @@ export class InquiryRunnerService implements InquiryRunner {
         analysisPackaging: AnalysisPackaging,
         reason: string,
         failureStage: InquiryFailureStage,
-        tokenUsageKnown: boolean
+        tokenUsageKnown: boolean,
+        usage?: InquiryRunTrace['usage'],
+        tokenUsageScope?: InquiryTokenUsageScope
     ): ProviderResult {
         const stageLabel = failureStage === 'chunk_execution'
             ? 'chunk execution'
@@ -1321,7 +1369,9 @@ export class InquiryRunnerService implements InquiryRunner {
             executionState: 'packaging_failed',
             executionPath: 'multi_pass',
             failureStage,
-            tokenUsageKnown
+            tokenUsageKnown,
+            tokenUsageScope,
+            usage
         };
     }
 
@@ -1345,12 +1395,19 @@ export class InquiryRunnerService implements InquiryRunner {
         };
     }
 
-    private toProviderResult(run: AIRunResult): ProviderResult {
+    private toProviderResult(
+        run: AIRunResult,
+        options?: {
+            usage?: InquiryRunTrace['usage'];
+            tokenUsageScope?: InquiryTokenUsageScope;
+        }
+    ): ProviderResult {
         const legacyProvider = mapAiProviderToLegacyProvider(run.provider);
         const executionPath: InquiryExecutionPath = (run.advancedContext?.executionPassCount ?? 1) > 1
             ? 'multi_pass'
             : 'one_pass';
-        const usageKnown = !!this.extractUsage(run.responseData);
+        const usage = options?.usage ?? this.extractUsage(run.responseData);
+        const usageKnown = !!usage;
         const preflightBlocked = run.aiStatus === 'rejected'
             && run.aiReason === 'truncated'
             && typeof run.reason === 'string'
@@ -1383,6 +1440,8 @@ export class InquiryRunnerService implements InquiryRunner {
             executionPath,
             failureStage,
             tokenUsageKnown: usageKnown,
+            tokenUsageScope: options?.tokenUsageScope,
+            usage,
             aiTransportLane: run.aiTransportLane ?? run.advancedContext?.openAiTransportLane,
             citations: run.citations?.map(c => ({ ...c }))
         };
@@ -1398,6 +1457,7 @@ export class InquiryRunnerService implements InquiryRunner {
             jsonSchema: Record<string, unknown>;
             temperature: number;
             maxTokens: number;
+            onProgress?: (event: InquiryRunProgressEvent) => void;
             packagingPrecheck?: {
                 inputTokens: number;
                 safeInputTokens: number;
@@ -1427,8 +1487,17 @@ export class InquiryRunnerService implements InquiryRunner {
             + `target passes=${chunkPlan.targetPasses ?? 'n/a'}).`
         );
         const chunkOutputs: string[] = [];
-        let tokenUsageKnown = false;
+        const totalPasses = chunkPlan.prompts.length + 1;
+        const usageAccumulator = this.createUsageAccumulator(totalPasses);
+        const recoveredStages: string[] = [];
         for (let i = 0; i < chunkPlan.prompts.length; i += 1) {
+            options.onProgress?.({
+                phase: 'chunk',
+                currentPass: i + 1,
+                totalPasses,
+                chunkIndex: i + 1,
+                chunkTotal: chunkPlan.prompts.length
+            });
             const chunkRun = await this.runInquiryRequest(aiClient, {
                 task: `AnalyzeCorpusChunk${i + 1}`,
                 systemPrompt: options.systemPrompt,
@@ -1439,10 +1508,22 @@ export class InquiryRunnerService implements InquiryRunner {
                 temperature: options.temperature,
                 maxTokens: options.maxTokens
             });
-            tokenUsageKnown = tokenUsageKnown || !!this.extractUsage(chunkRun.responseData);
+            this.recordUsage(usageAccumulator, this.extractUsage(chunkRun.responseData), 'chunk');
             if (chunkRun.aiStatus !== 'success' || !chunkRun.content) {
                 const recoveredChunkJson = this.tryRecoverChunkInvalidResponse(chunkRun, i + 1, chunkPlan.prompts.length);
                 if (recoveredChunkJson) {
+                    if (this.shouldAbortOnRecoveredInvalidResponse('chunk', i + 1)) {
+                        const usageSummary = this.finalizeUsageAccumulator(usageAccumulator);
+                        return {
+                            ok: false,
+                            failureStage: 'chunk_execution',
+                            failureReason: `[Inquiry] Strict recovery debug abort: chunk ${i + 1}/${chunkPlan.prompts.length} required local JSON extraction.`,
+                            tokenUsageKnown: usageSummary.tokenUsageKnown,
+                            tokenUsageScope: usageSummary.tokenUsageScope,
+                            usage: usageSummary.usage
+                        };
+                    }
+                    recoveredStages.push(`chunk ${i + 1}/${chunkPlan.prompts.length}`);
                     chunkOutputs.push(recoveredChunkJson);
                     continue;
                 }
@@ -1458,11 +1539,14 @@ export class InquiryRunnerService implements InquiryRunner {
                     console.info('[Inquiry] Chunk 1 raw response (full):');
                     console.info(chunkRun.content || '<empty>');
                 }
+                const usageSummary = this.finalizeUsageAccumulator(usageAccumulator);
                 return {
                     ok: false,
                     failureStage: 'chunk_execution',
                     failureReason,
-                    tokenUsageKnown
+                    tokenUsageKnown: usageSummary.tokenUsageKnown,
+                    tokenUsageScope: usageSummary.tokenUsageScope,
+                    usage: usageSummary.usage
                 };
             }
             chunkOutputs.push(chunkRun.content);
@@ -1471,11 +1555,14 @@ export class InquiryRunnerService implements InquiryRunner {
         const marker = '\nEvidence:\n';
         const splitAt = options.userPrompt.indexOf(marker);
         if (splitAt < 0) {
+            const usageSummary = this.finalizeUsageAccumulator(usageAccumulator);
             return {
                 ok: false,
                 failureStage: 'preflight',
                 failureReason: 'Evidence marker missing before synthesis stage.',
-                tokenUsageKnown
+                tokenUsageKnown: usageSummary.tokenUsageKnown,
+                tokenUsageScope: usageSummary.tokenUsageScope,
+                usage: usageSummary.usage
             };
         }
         const prefix = options.userPrompt.slice(0, splitAt + marker.length);
@@ -1483,6 +1570,12 @@ export class InquiryRunnerService implements InquiryRunner {
             .map((output, index) => `## Chunk ${index + 1} analysis\n${output}`)
             .join('\n\n');
 
+        options.onProgress?.({
+            phase: 'synthesis',
+            currentPass: totalPasses,
+            totalPasses,
+            chunkTotal: chunkPlan.prompts.length
+        });
         let synthesisRun = await this.runInquiryRequest(aiClient, {
             task: 'SynthesizeChunkAnalyses',
             systemPrompt: options.systemPrompt,
@@ -1493,33 +1586,57 @@ export class InquiryRunnerService implements InquiryRunner {
             temperature: options.temperature,
             maxTokens: options.maxTokens
         });
-        tokenUsageKnown = tokenUsageKnown || !!this.extractUsage(synthesisRun.responseData);
+        this.recordUsage(usageAccumulator, this.extractUsage(synthesisRun.responseData), 'synthesis');
 
         if (synthesisRun.aiStatus !== 'success' || !synthesisRun.content) {
             const recoveredSynthesisRun = this.tryRecoverSynthesisInvalidResponse(synthesisRun, chunkOutputs.length);
             if (recoveredSynthesisRun) {
+                if (this.shouldAbortOnRecoveredInvalidResponse('synthesis')) {
+                    const usageSummary = this.finalizeUsageAccumulator(usageAccumulator);
+                    return {
+                        ok: false,
+                        failureStage: 'synthesis',
+                        failureReason: '[Inquiry] Strict recovery debug abort: synthesis required local JSON extraction.',
+                        tokenUsageKnown: usageSummary.tokenUsageKnown,
+                        tokenUsageScope: usageSummary.tokenUsageScope,
+                        usage: usageSummary.usage
+                    };
+                }
+                recoveredStages.push('synthesis');
                 synthesisRun = recoveredSynthesisRun;
             } else {
                 const failureReason = `[Inquiry] Synthesis pass failed after ${chunkOutputs.length} successful chunks:`
                     + ` status=${synthesisRun.aiStatus}, reason=${synthesisRun.aiReason ?? 'none'}`
                     + `, error=${synthesisRun.error ?? 'none'}`;
                 console.warn(failureReason);
+                const usageSummary = this.finalizeUsageAccumulator(usageAccumulator);
                 return {
                     ok: false,
                     failureStage: 'synthesis',
                     failureReason,
-                    tokenUsageKnown
+                    tokenUsageKnown: usageSummary.tokenUsageKnown,
+                    tokenUsageScope: usageSummary.tokenUsageScope,
+                    usage: usageSummary.usage
                 };
             }
         }
 
-        const passCount = chunkPlan.prompts.length + 1;
+        const passCount = totalPasses;
+        const usageSummary = this.finalizeUsageAccumulator(usageAccumulator);
+        const hadRecoveredStages = recoveredStages.length > 0;
+        const recoveryWarning = hadRecoveredStages
+            ? `Inquiry recovered invalid structured output during ${recoveredStages.join(', ')}. Result marked degraded.`
+            : null;
         return {
             ok: true,
-            tokenUsageKnown,
+            tokenUsageKnown: usageSummary.tokenUsageKnown,
+            tokenUsageScope: usageSummary.tokenUsageScope,
+            usage: usageSummary.usage,
             run: this.withExecutionContext({
                 ...synthesisRun,
+                aiReason: hadRecoveredStages ? 'recovered_invalid_response' : synthesisRun.aiReason,
                 warnings: [...(synthesisRun.warnings || []), `Inquiry chunked execution used ${chunkPlan.prompts.length} chunks before synthesis.`]
+                    .concat(recoveryWarning ? [recoveryWarning] : [])
             }, {
                 analysisPackaging: 'automatic',
                 executionPassCount: passCount,
@@ -1682,11 +1799,113 @@ export class InquiryRunnerService implements InquiryRunner {
         };
     }
 
+    private shouldAbortOnRecoveredInvalidResponse(
+        phase: 'chunk' | 'synthesis',
+        chunkIndex?: number
+    ): boolean {
+        const abortOnAnyRecovery = this.readBooleanDebugFlag('RT_INQUIRY_ABORT_ON_ANY_RECOVERY', '__RT_INQUIRY_ABORT_ON_ANY_RECOVERY__');
+        if (abortOnAnyRecovery) return true;
+        if (phase !== 'chunk' || chunkIndex !== 1) return false;
+        return this.readBooleanDebugFlag('RT_INQUIRY_STRICT_DEBUG', '__RT_INQUIRY_STRICT_DEBUG__')
+            || this.readBooleanDebugFlag('RT_INQUIRY_ABORT_ON_FIRST_RECOVERY', '__RT_INQUIRY_ABORT_ON_FIRST_RECOVERY__');
+    }
+
+    private readBooleanDebugFlag(envKey: string, globalKey: string): boolean {
+        const fromEnv = typeof process !== 'undefined' && process.env?.[envKey] === '1';
+        const fromGlobal = typeof globalThis !== 'undefined'
+            && (globalThis as Record<string, unknown>)[globalKey] === true;
+        return fromEnv || fromGlobal;
+    }
+
     private isChunkDebugEnabled(): boolean {
         const fromEnv = typeof process !== 'undefined' && process.env?.RT_INQUIRY_CHUNK_DEBUG === '1';
         const fromGlobal = typeof globalThis !== 'undefined'
             && (globalThis as { __RT_INQUIRY_CHUNK_DEBUG__?: unknown }).__RT_INQUIRY_CHUNK_DEBUG__ === true;
         return fromEnv || fromGlobal;
+    }
+
+    private createUsageAccumulator(totalPasses: number): UsageAccumulator {
+        return {
+            totalPasses,
+            passesWithAnyUsage: 0,
+            passesWithInput: 0,
+            passesWithOutput: 0,
+            passesWithTotal: 0,
+            synthesisHasUsage: false,
+            chunkHasUsage: false,
+            inputTokens: 0,
+            outputTokens: 0,
+            totalTokens: 0
+        };
+    }
+
+    private recordUsage(
+        accumulator: UsageAccumulator,
+        usage: InquiryRunTrace['usage'] | undefined,
+        phase: 'chunk' | 'synthesis'
+    ): void {
+        if (!usage) return;
+        accumulator.passesWithAnyUsage += 1;
+        if (typeof usage.inputTokens === 'number') {
+            accumulator.passesWithInput += 1;
+            accumulator.inputTokens += usage.inputTokens;
+        }
+        if (typeof usage.outputTokens === 'number') {
+            accumulator.passesWithOutput += 1;
+            accumulator.outputTokens += usage.outputTokens;
+        }
+        if (typeof usage.totalTokens === 'number') {
+            accumulator.passesWithTotal += 1;
+            accumulator.totalTokens += usage.totalTokens;
+        }
+        if (phase === 'synthesis') {
+            accumulator.synthesisHasUsage = true;
+        } else {
+            accumulator.chunkHasUsage = true;
+        }
+    }
+
+    private finalizeUsageAccumulator(accumulator: UsageAccumulator): {
+        tokenUsageKnown: boolean;
+        tokenUsageScope?: InquiryTokenUsageScope;
+        usage?: InquiryRunTrace['usage'];
+    } {
+        if (accumulator.passesWithAnyUsage <= 0) {
+            return { tokenUsageKnown: false };
+        }
+
+        const inputTokens = accumulator.passesWithInput > 0
+            ? accumulator.inputTokens
+            : undefined;
+        const outputTokens = accumulator.passesWithOutput > 0
+            ? accumulator.outputTokens
+            : undefined;
+        const totalTokens = accumulator.passesWithTotal === accumulator.totalPasses
+            ? accumulator.totalTokens
+            : (accumulator.passesWithInput === accumulator.totalPasses && accumulator.passesWithOutput === accumulator.totalPasses
+                ? accumulator.inputTokens + accumulator.outputTokens
+                : undefined);
+        const usage = {
+            inputTokens,
+            outputTokens,
+            totalTokens
+        };
+        const usageScope: InquiryTokenUsageScope = accumulator.passesWithAnyUsage === 1
+            && accumulator.synthesisHasUsage
+            && !accumulator.chunkHasUsage
+            ? 'synthesis_only'
+            : (accumulator.passesWithAnyUsage === accumulator.totalPasses
+                && (
+                    accumulator.passesWithTotal === accumulator.totalPasses
+                    || (accumulator.passesWithInput === accumulator.totalPasses && accumulator.passesWithOutput === accumulator.totalPasses)
+                )
+                ? 'full'
+                : 'partial');
+        return {
+            tokenUsageKnown: true,
+            tokenUsageScope: usageScope,
+            usage
+        };
     }
 
     private parseResponse(content: string): RawInquiryResponse {
@@ -1996,11 +2215,14 @@ export class InquiryRunnerService implements InquiryRunner {
     }
 
     private getAiMetaFromResponse(response: ProviderResult): Pick<InquiryResult, 'aiProvider' | 'aiModelRequested' | 'aiModelResolved' | 'aiStatus' | 'aiReason'> {
+        const aiStatus = response.aiStatus === 'success' && response.aiReason === 'recovered_invalid_response'
+            ? 'degraded'
+            : response.aiStatus;
         return {
             aiProvider: response.aiProvider,
             aiModelRequested: response.aiModelRequested,
             aiModelResolved: response.aiModelResolved,
-            aiStatus: response.aiStatus,
+            aiStatus,
             aiReason: response.aiReason
         };
     }
@@ -2032,7 +2254,7 @@ export class InquiryRunnerService implements InquiryRunner {
     ): Pick<InquiryResult, 'aiProvider' | 'aiModelRequested' | 'aiModelResolved' | 'aiStatus' | 'aiReason'> {
         return {
             ...meta,
-            aiStatus: 'success',
+            aiStatus: 'degraded',
             aiReason: 'recovered_invalid_response'
         };
     }
@@ -2107,6 +2329,9 @@ export class InquiryRunnerService implements InquiryRunner {
     }
 
     private buildStubSummary(aiStatus?: InquiryAiStatus, aiReason?: string, message?: string): string {
+        if (aiStatus === 'degraded') {
+            return 'AI response recovered from invalid structured output.';
+        }
         if (aiStatus === 'rejected' && aiReason === 'unsupported_param') {
             return 'AI request rejected: unsupported parameter.';
         }
@@ -2422,11 +2647,12 @@ export class InquiryRunnerService implements InquiryRunner {
     }
 
     private applyResponseExecutionReporting(trace: InquiryRunTrace, response: ProviderResult): void {
-        const usage = this.extractUsage(response.responseData);
+        const usage = response.usage ?? this.extractUsage(response.responseData);
         if (usage) {
             trace.usage = usage;
         }
         trace.tokenUsageKnown = response.tokenUsageKnown ?? !!usage;
+        trace.tokenUsageScope = response.tokenUsageScope;
 
         const executionState = response.executionState ?? this.inferExecutionState(response);
         trace.executionState = executionState;

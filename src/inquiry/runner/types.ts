@@ -1,4 +1,4 @@
-import type { InquiryAiStatus, InquiryMode, InquiryScope, InquiryZone, InquiryResult } from '../state';
+import type { InquiryAiStatus, InquiryMode, InquiryScope, InquiryTokenUsageScope, InquiryZone, InquiryResult } from '../state';
 import type { InquiryMaterialMode } from '../../types/settings';
 import type { AnalysisPackaging } from '../../ai/types';
 import type { TokenEstimateMethod } from '../../ai/tokens/inputTokenEstimate';
@@ -76,6 +76,14 @@ export interface InquiryOmnibusInput {
     ai: InquiryAiEngineInfo;
 }
 
+export type InquiryRunProgressEvent = {
+    phase: 'one_pass' | 'chunk' | 'synthesis';
+    currentPass: number;
+    totalPasses: number;
+    chunkIndex?: number;
+    chunkTotal?: number;
+};
+
 export interface InquiryRunTrace {
     systemPrompt: string;
     userPrompt: string;
@@ -106,6 +114,7 @@ export interface InquiryRunTrace {
     executionPath?: InquiryExecutionPath;
     failureStage?: InquiryFailureStage;
     tokenUsageKnown?: boolean;
+    tokenUsageScope?: InquiryTokenUsageScope;
     openAiTransportLane?: 'chat_completions' | 'responses';
     usage?: {
         inputTokens?: number;
