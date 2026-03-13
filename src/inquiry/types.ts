@@ -48,6 +48,7 @@ export type InquiryReadinessUiState = {
     pending: boolean;
     readiness: InquiryReadinessResult;
     estimateInputTokens: number;
+    expectedPassCount: number;
     estimateMethod: TokenEstimateMethod;
     estimateUncertaintyTokens: number;
     safeInputBudget: number;

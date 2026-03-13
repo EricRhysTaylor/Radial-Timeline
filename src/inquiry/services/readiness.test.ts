@@ -100,7 +100,7 @@ describe('readiness', () => {
     it('renders marks for multi-pass execution', () => {
         const marks = buildPassIndicator(2);
         expect(marks.visible).toBe(true);
-        expect(marks.marks).toBe('+');
+        expect(marks.marks).toBe('++');
         expect(marks.extraPassCount).toBe(1);
         expect(marks.totalPassCount).toBe(2);
         expect(marks.exactCount).toBe(2);
@@ -119,7 +119,7 @@ describe('readiness', () => {
     it('shows a single expected mark when packaging is predicted but pass count is unknown', () => {
         const marks = buildPassIndicator(undefined, true);
         expect(marks.visible).toBe(true);
-        expect(marks.marks).toBe('+');
+        expect(marks.marks).toBe('++');
         expect(marks.expectedOnly).toBe(true);
         expect(marks.totalPassCount).toBe(2);
         expect(marks.extraPassCount).toBe(1);
@@ -129,7 +129,7 @@ describe('readiness', () => {
     it('uses estimated pass count for predicted packaging markers', () => {
         const marks = buildPassIndicator(undefined, true, 4);
         expect(marks.visible).toBe(true);
-        expect(marks.marks).toBe('+++');
+        expect(marks.marks).toBe('++++');
         expect(marks.expectedOnly).toBe(true);
         expect(marks.totalPassCount).toBe(4);
         expect(marks.extraPassCount).toBe(3);

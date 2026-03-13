@@ -29,7 +29,6 @@ import type { ResolvedInquiryEngine } from './inquiryModelResolver';
 import type { CorpusManifest, EvidenceParticipationRules, InquiryRunnerInput } from '../runner/types';
 import type { InquiryRunnerService } from '../runner/InquiryRunnerService';
 import type { InquiryMode } from '../state';
-import { estimatePassCount } from './inquiryAdvisory';
 import { INQUIRY_CANONICAL_ESTIMATE_QUESTION, INQUIRY_MAX_OUTPUT_TOKENS } from '../constants';
 import { mapAiProviderToLegacyProvider } from '../../ai/settings/aiSettings';
 
@@ -176,7 +175,7 @@ function extractCorpusIds(manifest: CorpusManifest): {
  *   2. Extract corpus ID lists from manifest entries
  *   3. Call runner.buildTrace() with INQUIRY_CANONICAL_ESTIMATE_QUESTION
  *   4. Extract trace.tokenEstimate (inputTokens, effectiveInputCeiling, etc.)
- *   5. Compute expectedPassCount via estimatePassCount()
+ *   5. Compute expectedPassCount via the same chunk planner used by execution
  *   6. Package and return frozen snapshot
  */
 export async function buildInquiryEstimateSnapshot(
@@ -219,7 +218,10 @@ export async function buildInquiryEstimateSnapshot(
     const effectiveInputCeiling = trace.tokenEstimate.effectiveInputCeiling ?? 0;
     const estimationMethod: TokenEstimateMethod = trace.tokenEstimate.estimationMethod ?? 'heuristic_chars';
     const uncertaintyTokens = trace.tokenEstimate.uncertaintyTokens ?? 0;
-    const expectedPassCount = estimatePassCount(estimatedInputTokens, effectiveInputCeiling);
+    const expectedPassCount = params.runner.estimateExecutionPassCountFromPrompt(trace.userPrompt, {
+        estimatedInputTokens,
+        safeInputTokens: effectiveInputCeiling
+    });
 
     const snapshot: InquiryEstimateSnapshot = {
         version: ESTIMATE_SNAPSHOT_VERSION,

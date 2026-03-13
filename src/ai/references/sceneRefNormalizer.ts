@@ -159,12 +159,6 @@ function resolveCandidate(candidate: string, index: SceneRefIndex): SceneRefEntr
     const byLabel = index.byLabel.get(exact);
     if (byLabel) return byLabel;
 
-    const normalizedKey = normalizeLookupKey(candidate);
-    if (normalizedKey) {
-        const normalizedMatches = index.byNormalizedKey.get(normalizedKey);
-        if (normalizedMatches?.length === 1) return normalizedMatches[0];
-    }
-
     const sceneToken = parseSceneNumberToken(candidate);
     if (sceneToken.sceneNumber !== undefined) {
         const byNumber = index.bySceneNumber.get(sceneToken.sceneNumber) || [];
@@ -173,6 +167,13 @@ function resolveCandidate(candidate: string, index: SceneRefIndex): SceneRefEntr
             const slugMatches = byNumber.filter(entry => entryMatchesSlug(entry, sceneToken.slugKey!));
             if (slugMatches.length === 1) return slugMatches[0];
         }
+        return undefined;
+    }
+
+    const normalizedKey = normalizeLookupKey(candidate);
+    if (normalizedKey) {
+        const normalizedMatches = index.byNormalizedKey.get(normalizedKey);
+        if (normalizedMatches?.length === 1) return normalizedMatches[0];
     }
 
     return undefined;

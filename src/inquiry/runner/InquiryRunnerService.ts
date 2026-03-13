@@ -13,6 +13,7 @@ import type {
     InquiryFailureStage,
     InquiryOmnibusInput,
     InquiryOmnibusQuestion,
+    InquiryRunExecutionOptions,
     InquiryRunProgressEvent,
     InquiryRunTrace,
     InquiryRunner,
@@ -175,7 +176,7 @@ export class InquiryRunnerService implements InquiryRunner {
 
     async runWithTrace(
         input: InquiryRunnerInput,
-        options?: { onProgress?: (event: InquiryRunProgressEvent) => void }
+        options?: InquiryRunExecutionOptions
     ): Promise<{ result: InquiryResult; trace: InquiryRunTrace }> {
         const { trace, evidenceBlocks } = await this.buildInitialTrace(input);
         const evidenceDocMeta = evidenceBlocks.map(b => b.meta).filter((m): m is EvidenceDocumentMeta => !!m);
@@ -196,7 +197,7 @@ export class InquiryRunnerService implements InquiryRunner {
                 maxTokens,
                 input.questionText,
                 evidenceBlocks,
-                options?.onProgress
+                options
             );
             if (response.sanitizationNotes?.length) {
                 trace.sanitizationNotes.push(...response.sanitizationNotes);
@@ -225,6 +226,9 @@ export class InquiryRunnerService implements InquiryRunner {
             };
             this.applyResponseExecutionReporting(trace, response);
             this.applyOpenAiTransportLaneTraceNote(trace, response);
+            const finalPassCount = typeof response.executionPassCount === 'number' && response.executionPassCount > 0
+                ? response.executionPassCount
+                : 1;
 
             if (!response.success || !response.content || response.aiStatus !== 'success') {
                 const status = response.aiStatus || 'unknown';
@@ -242,6 +246,13 @@ export class InquiryRunnerService implements InquiryRunner {
                     trace
                 };
             }
+
+            options?.onProgress?.({
+                phase: 'finalizing',
+                currentPass: finalPassCount,
+                totalPasses: finalPassCount,
+                detail: 'Provider response received. Finalizing the result.'
+            });
 
             try {
                 const parsed = this.parseResponse(response.content);
@@ -396,6 +407,22 @@ export class InquiryRunnerService implements InquiryRunner {
     async buildTrace(input: InquiryRunnerInput): Promise<InquiryRunTrace> {
         const { trace } = await this.buildInitialTrace(input);
         return trace;
+    }
+
+    estimateExecutionPassCountFromPrompt(
+        userPrompt: string,
+        options?: {
+            estimatedInputTokens?: number;
+            safeInputTokens?: number;
+        }
+    ): number {
+        const chunkPlan = this.buildEvidenceChunkPrompts(userPrompt, {
+            maxChunkTokens: 12000,
+            estimatedInputTokens: options?.estimatedInputTokens,
+            safeInputTokens: options?.safeInputTokens
+        });
+        if (!chunkPlan || chunkPlan.prompts.length <= 1) return 1;
+        return chunkPlan.prompts.length + 1;
     }
 
     private async buildEvidenceBlocks(input: InquiryRunnerInput): Promise<EvidenceBlock[]> {
@@ -923,7 +950,7 @@ export class InquiryRunnerService implements InquiryRunner {
         maxTokens: number,
         userQuestion?: string,
         evidenceBlocks?: EvidenceBlock[],
-        onProgress?: (event: InquiryRunProgressEvent) => void
+        executionOptions?: InquiryRunExecutionOptions
     ): Promise<ProviderResult> {
         const aiClient = getAIClient(this.plugin);
         const analysisPackaging = this.getAnalysisPackaging();
@@ -989,7 +1016,7 @@ export class InquiryRunnerService implements InquiryRunner {
                 jsonSchema,
                 temperature,
                 maxTokens,
-                onProgress,
+                executionOptions,
                 packagingPrecheck: {
                     inputTokens: precheck.inputTokens,
                     safeInputTokens: precheck.safeInputTokens,
@@ -1023,11 +1050,13 @@ export class InquiryRunnerService implements InquiryRunner {
             );
         }
 
-        onProgress?.({
+        executionOptions?.onProgress?.({
             phase: 'one_pass',
             currentPass: 1,
-            totalPasses: 1
+            totalPasses: 1,
+            detail: 'Waiting for the provider response.'
         });
+        this.throwIfAborted(executionOptions?.shouldAbort);
         let run = await this.runInquiryRequest(aiClient, {
             task: 'AnalyzeCorpus',
             systemPrompt,
@@ -1071,7 +1100,7 @@ export class InquiryRunnerService implements InquiryRunner {
                     jsonSchema,
                     temperature,
                     maxTokens,
-                    onProgress,
+                    executionOptions,
                     packagingPrecheck: {
                         inputTokens: precheck.inputTokens,
                         safeInputTokens: precheck.safeInputTokens,
@@ -1457,7 +1486,7 @@ export class InquiryRunnerService implements InquiryRunner {
             jsonSchema: Record<string, unknown>;
             temperature: number;
             maxTokens: number;
-            onProgress?: (event: InquiryRunProgressEvent) => void;
+            executionOptions?: InquiryRunExecutionOptions;
             packagingPrecheck?: {
                 inputTokens: number;
                 safeInputTokens: number;
@@ -1491,12 +1520,14 @@ export class InquiryRunnerService implements InquiryRunner {
         const usageAccumulator = this.createUsageAccumulator(totalPasses);
         const recoveredStages: string[] = [];
         for (let i = 0; i < chunkPlan.prompts.length; i += 1) {
-            options.onProgress?.({
+            this.throwIfAborted(options.executionOptions?.shouldAbort);
+            options.executionOptions?.onProgress?.({
                 phase: 'chunk',
                 currentPass: i + 1,
                 totalPasses,
                 chunkIndex: i + 1,
-                chunkTotal: chunkPlan.prompts.length
+                chunkTotal: chunkPlan.prompts.length,
+                detail: `Waiting for pass ${i + 1} of ${totalPasses}.`
             });
             const chunkRun = await this.runInquiryRequest(aiClient, {
                 task: `AnalyzeCorpusChunk${i + 1}`,
@@ -1509,6 +1540,7 @@ export class InquiryRunnerService implements InquiryRunner {
                 maxTokens: options.maxTokens
             });
             this.recordUsage(usageAccumulator, this.extractUsage(chunkRun.responseData), 'chunk');
+            this.throwIfAborted(options.executionOptions?.shouldAbort);
             if (chunkRun.aiStatus !== 'success' || !chunkRun.content) {
                 const recoveredChunkJson = this.tryRecoverChunkInvalidResponse(chunkRun, i + 1, chunkPlan.prompts.length);
                 if (recoveredChunkJson) {
@@ -1570,11 +1602,13 @@ export class InquiryRunnerService implements InquiryRunner {
             .map((output, index) => `## Chunk ${index + 1} analysis\n${output}`)
             .join('\n\n');
 
-        options.onProgress?.({
+        this.throwIfAborted(options.executionOptions?.shouldAbort);
+        options.executionOptions?.onProgress?.({
             phase: 'synthesis',
             currentPass: totalPasses,
             totalPasses,
-            chunkTotal: chunkPlan.prompts.length
+            chunkTotal: chunkPlan.prompts.length,
+            detail: `Waiting for pass ${totalPasses} of ${totalPasses}.`
         });
         let synthesisRun = await this.runInquiryRequest(aiClient, {
             task: 'SynthesizeChunkAnalyses',
@@ -1587,6 +1621,7 @@ export class InquiryRunnerService implements InquiryRunner {
             maxTokens: options.maxTokens
         });
         this.recordUsage(usageAccumulator, this.extractUsage(synthesisRun.responseData), 'synthesis');
+        this.throwIfAborted(options.executionOptions?.shouldAbort);
 
         if (synthesisRun.aiStatus !== 'success' || !synthesisRun.content) {
             const recoveredSynthesisRun = this.tryRecoverSynthesisInvalidResponse(synthesisRun, chunkOutputs.length);
@@ -1643,6 +1678,12 @@ export class InquiryRunnerService implements InquiryRunner {
                 packagingTriggerReason: 'Single-pass request exceeded safe limits, so structured packaging and synthesis were used.'
             })
         };
+    }
+
+    private throwIfAborted(shouldAbort?: (() => boolean) | undefined): void {
+        if (shouldAbort?.()) {
+            throw new Error('Inquiry run aborted.');
+        }
     }
 
     private buildEvidenceChunkPrompts(
@@ -1954,6 +1995,7 @@ export class InquiryRunnerService implements InquiryRunner {
 
         const findings = Array.isArray(parsed.findings) ? parsed.findings : [];
         const sceneRefIndex = this.buildCanonicalSceneRefIndex(input);
+        this.assertFindingRefsResolve(findings, sceneRefIndex);
         const mappedFindings = findings.map(finding => this.mapFinding(finding, sceneRefIndex));
 
         const summaryFlow = parsed.summaryFlow
@@ -2166,6 +2208,25 @@ export class InquiryRunnerService implements InquiryRunner {
         return normalized.ref;
     }
 
+    private assertFindingRefsResolve(
+        findings: RawInquiryFinding[],
+        sceneRefIndex: ReturnType<typeof buildSceneRefIndex>
+    ): void {
+        const unresolved = findings
+            .map(finding => {
+                const normalized = normalizeSceneRef({
+                    ref_id: finding.ref_id ? String(finding.ref_id) : undefined,
+                    ref_label: finding.ref_label ? String(finding.ref_label) : undefined,
+                    ref_path: finding.ref_path ? String(finding.ref_path) : undefined
+                }, sceneRefIndex);
+                if (!normalized.unresolved) return null;
+                return finding.ref_id || finding.ref_label || finding.ref_path || '(missing ref)';
+            })
+            .filter((value): value is string => !!value);
+        if (!unresolved.length) return;
+        throw new Error(`AI response referenced scenes outside the active corpus: ${unresolved.join(', ')}`);
+    }
+
     private resolveCanonicalSceneId(value: string | undefined): string | undefined {
         if (!isStableSceneId(value)) return undefined;
         return String(value).trim().toLowerCase();
@@ -2298,7 +2359,13 @@ export class InquiryRunnerService implements InquiryRunner {
         });
         if (!recovered) return null;
         const recoveredMeta = this.withRecoveredInvalidResponseMeta(this.getAiMetaFromResponse(response));
-        return this.buildResult(input, recovered, recoveredMeta, response.citations, evidenceDocumentMeta);
+        try {
+            return this.buildResult(input, recovered, recoveredMeta, response.citations, evidenceDocumentMeta);
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            trace.notes.push(`${context}: recovered payload still failed validation (${message}).`);
+            return null;
+        }
     }
 
     private tryRecoverOmnibusInvalidResponse(
@@ -2321,11 +2388,17 @@ export class InquiryRunnerService implements InquiryRunner {
         });
         if (!recovered) return null;
         const recoveredMeta = this.withRecoveredInvalidResponseMeta(this.getAiMetaFromResponse(response));
-        return {
-            results: this.buildOmnibusResults(input, recovered, recoveredMeta, trace, response.citations, evidenceDocumentMeta),
-            trace,
-            rawResponse: recovered
-        };
+        try {
+            return {
+                results: this.buildOmnibusResults(input, recovered, recoveredMeta, trace, response.citations, evidenceDocumentMeta),
+                trace,
+                rawResponse: recovered
+            };
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            trace.notes.push(`${context}: recovered omnibus payload still failed validation (${message}).`);
+            return null;
+        }
     }
 
     private buildStubSummary(aiStatus?: InquiryAiStatus, aiReason?: string, message?: string): string {

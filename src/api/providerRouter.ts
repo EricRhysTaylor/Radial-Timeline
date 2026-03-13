@@ -81,49 +81,55 @@ export async function callProvider(plugin: RadialTimelinePlugin, args: ProviderC
   const sanitizationNotes = sanitizedParams.map(param => `Removed unsupported parameter: ${param}.`);
 
     const runCall = async (callArgs: ProviderCallArgsBase): Promise<ProviderResult> => {
+        const isAnthropicStructuredJson = provider === 'anthropic'
+          && !!callArgs.jsonSchema
+          && Object.keys(callArgs.jsonSchema).length > 0;
+        const effectiveCallArgs: ProviderCallArgsBase = isAnthropicStructuredJson
+          ? { ...callArgs, thinkingBudgetTokens: undefined }
+          : callArgs;
         const resolvedMaxTokens = typeof callArgs.maxTokens === 'number' ? callArgs.maxTokens : 4000;
-        const openAiMaxTokens = callArgs.maxTokens === null ? null : resolvedMaxTokens;
+        const openAiMaxTokens = effectiveCallArgs.maxTokens === null ? null : resolvedMaxTokens;
         const openAiTransportLane = provider === 'openai'
           ? resolveOpenAiTransportLane(requestedModelId)
           : undefined;
         const requestPayload = provider === 'openai' && openAiTransportLane === 'responses'
-          ? buildOpenAiResponsesRequestPayload(requestedModelId, callArgs)
-          : buildProviderRequestPayload(provider, requestedModelId, callArgs);
+          ? buildOpenAiResponsesRequestPayload(requestedModelId, effectiveCallArgs)
+          : buildProviderRequestPayload(provider, requestedModelId, effectiveCallArgs);
         if (provider === 'anthropic') {
       const apiKey = await getCredential(plugin, 'anthropic');
       const resp: AnthropicApiResponse = await callAnthropicApi(
         apiKey,
         requestedModelId,
-        callArgs.systemPrompt || null,
-        callArgs.userPrompt,
+        effectiveCallArgs.systemPrompt || null,
+        effectiveCallArgs.userPrompt,
         resolvedMaxTokens,
         true,
-        callArgs.temperature,
-        callArgs.top_p,
-        callArgs.thinkingBudgetTokens,
-        callArgs.citationsEnabled,
-        callArgs.evidenceDocuments,
-        callArgs.jsonSchema
+        effectiveCallArgs.temperature,
+        effectiveCallArgs.top_p,
+        effectiveCallArgs.thinkingBudgetTokens,
+        effectiveCallArgs.citationsEnabled,
+        effectiveCallArgs.evidenceDocuments,
+        effectiveCallArgs.jsonSchema
       );
       return { ...buildProviderResult(provider, requestedModelId, resp), requestPayload, citations: resp.citations };
     }
     if (provider === 'gemini') {
       const apiKey = await getCredential(plugin, 'google');
 
-      let effectiveUserPrompt = callArgs.userPrompt;
-      let effectiveSystemPrompt = callArgs.systemPrompt || null;
+      let effectiveUserPrompt = effectiveCallArgs.userPrompt;
+      let effectiveSystemPrompt = effectiveCallArgs.systemPrompt || null;
       let cachedContentName: string | undefined;
       let cacheStatus: 'hit' | 'created' | undefined;
 
-      const delimIndex = callArgs.userPrompt.indexOf(CACHE_BREAK_DELIMITER);
+      const delimIndex = effectiveCallArgs.userPrompt.indexOf(CACHE_BREAK_DELIMITER);
       if (delimIndex > 0) {
-        const stableText = callArgs.userPrompt.slice(0, delimIndex).trimEnd();
-        const volatileText = callArgs.userPrompt
+        const stableText = effectiveCallArgs.userPrompt.slice(0, delimIndex).trimEnd();
+        const volatileText = effectiveCallArgs.userPrompt
             .slice(delimIndex + CACHE_BREAK_DELIMITER.length).trimStart();
         try {
           const cacheResult = await getOrCreateGeminiCache(
               apiKey, requestedModelId, stableText,
-              callArgs.systemPrompt || undefined
+              effectiveCallArgs.systemPrompt || undefined
           );
           if (cacheResult) {
             cachedContentName = cacheResult.cacheName;
@@ -147,11 +153,11 @@ export async function callProvider(plugin: RadialTimelinePlugin, args: ProviderC
         effectiveSystemPrompt,
         effectiveUserPrompt,
         openAiMaxTokens,
-        callArgs.temperature,
-        callArgs.jsonSchema,
-        callArgs.disableThinking,
+        effectiveCallArgs.temperature,
+        effectiveCallArgs.jsonSchema,
+        effectiveCallArgs.disableThinking,
         cachedContentName,
-        callArgs.top_p,
+        effectiveCallArgs.top_p,
         true
       );
       return {
@@ -167,13 +173,13 @@ export async function callProvider(plugin: RadialTimelinePlugin, args: ProviderC
       const resp: OpenAiApiResponse = await callOpenAiApi(
         apiKey,
         requestedModelId,
-        callArgs.systemPrompt || null,
-        callArgs.userPrompt,
+        effectiveCallArgs.systemPrompt || null,
+        effectiveCallArgs.userPrompt,
         openAiMaxTokens,
         baseUrl,
-        callArgs.responseFormat,
-        callArgs.temperature,
-        callArgs.top_p,
+        effectiveCallArgs.responseFormat,
+        effectiveCallArgs.temperature,
+        effectiveCallArgs.top_p,
         true,
         true
       );
@@ -184,12 +190,12 @@ export async function callProvider(plugin: RadialTimelinePlugin, args: ProviderC
       const resp: OpenAiApiResponse = await callOpenAiResponsesApi(
         apiKey,
         requestedModelId,
-        callArgs.systemPrompt || null,
-        callArgs.userPrompt,
+        effectiveCallArgs.systemPrompt || null,
+        effectiveCallArgs.userPrompt,
         openAiMaxTokens,
-        callArgs.responseFormat,
-        callArgs.temperature,
-        callArgs.top_p,
+        effectiveCallArgs.responseFormat,
+        effectiveCallArgs.temperature,
+        effectiveCallArgs.top_p,
         true,
         true
       );
@@ -202,13 +208,13 @@ export async function callProvider(plugin: RadialTimelinePlugin, args: ProviderC
     const resp: OpenAiApiResponse = await callOpenAiApi(
       apiKey,
       requestedModelId,
-      callArgs.systemPrompt || null,
-      callArgs.userPrompt,
+      effectiveCallArgs.systemPrompt || null,
+      effectiveCallArgs.userPrompt,
       openAiMaxTokens,
       undefined,
-      callArgs.responseFormat,
-      callArgs.temperature,
-      callArgs.top_p,
+      effectiveCallArgs.responseFormat,
+      effectiveCallArgs.temperature,
+      effectiveCallArgs.top_p,
       true,
       true
     );

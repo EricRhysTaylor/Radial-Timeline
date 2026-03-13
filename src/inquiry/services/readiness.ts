@@ -117,7 +117,7 @@ export function buildPassIndicator(
     const normalizedPassCount = Number.isFinite(passCount) ? Math.max(0, Math.round(passCount as number)) : 0;
     if (normalizedPassCount > 1) {
         const extraPassCount = normalizedPassCount - 1;
-        const visibleCount = Math.min(5, extraPassCount);
+        const visibleCount = Math.min(5, normalizedPassCount);
         return {
             visible: true,
             marks: '+'.repeat(visibleCount),
@@ -134,7 +134,7 @@ export function buildPassIndicator(
             ? Math.max(2, Math.round(estimatedPassCount as number))
             : 2;
         const extraPassCount = normalizedEstimate - 1;
-        const visibleCount = Math.min(5, extraPassCount);
+        const visibleCount = Math.min(5, normalizedEstimate);
         return {
             visible: true,
             marks: '+'.repeat(Math.max(1, visibleCount)),

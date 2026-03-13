@@ -54,6 +54,12 @@ describe('sceneRefNormalizer', () => {
         expect(normalized.unresolved).toBe(false);
     });
 
+    it('does not remap explicit scene numbers to a different scene by title', () => {
+        const normalized = normalizeSceneRef({ ref_id: 'S25 · Long Road Up' }, index);
+        expect(normalized.ref.ref_id).toBe('');
+        expect(normalized.unresolved).toBe(true);
+    });
+
     it('leaves unresolved refs unbound instead of substituting a fallback scene', () => {
         const normalized = normalizeSceneRef({ ref_id: 'Unknown Scene' }, index);
         expect(normalized.ref.ref_id).toBe('');

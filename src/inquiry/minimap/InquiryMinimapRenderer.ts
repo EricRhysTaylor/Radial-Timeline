@@ -17,6 +17,7 @@
 
 import type { InquiryCorpusItem } from '../services/InquiryCorpusResolver';
 import type { InquiryReadinessUiState, PassPlanResult } from '../types';
+import type { InquiryRunProgressEvent } from '../runner/types';
 import type { InquiryScope } from '../state';
 import type { AIRunAdvancedContext } from '../../ai/types';
 import { createSvgElement, createSvgGroup, createSvgText, clearSvgChildren } from './svgUtils';
@@ -229,6 +230,7 @@ export class InquiryMinimapRenderer {
     private minimapPassIndicatorText?: SVGTextElement;
     private minimapReuseBand?: SVGLineElement;
     private minimapReuseDot?: SVGCircleElement;
+    private minimapStagesGroup?: SVGGElement;
 
     // ── Color / animation state ──────────────────────────────────────
 
@@ -283,6 +285,7 @@ export class InquiryMinimapRenderer {
         this.minimapTokenCapEndCap.classList.add('ert-inquiry-minimap-tokencap-endcap');
         parentGroup.appendChild(this.minimapTokenCapEndCap);
         this.minimapTokenCapSplitGroup = createSvgGroup(parentGroup, 'ert-inquiry-minimap-tokencap-splits');
+        this.minimapStagesGroup = createSvgGroup(parentGroup, 'ert-inquiry-minimap-stages');
 
         this.minimapTokenCapCachedOverlay = createSvgElement('rect');
         this.minimapTokenCapCachedOverlay.classList.add('ert-inquiry-minimap-tokencap-cached');
@@ -768,6 +771,55 @@ export class InquiryMinimapRenderer {
         this.minimapTokenCapCachedOverlay.setAttribute('width', cachedWidth.toFixed(2));
     }
 
+    private updateExecutionPassSegments(
+        totalPassCount: number,
+        progress: InquiryRunProgressEvent | null,
+        styleSource: Element
+    ): void {
+        if (!this.minimapStagesGroup || !this.minimapLayout) return;
+        clearSvgChildren(this.minimapStagesGroup);
+        if (totalPassCount <= 1) {
+            this.minimapStagesGroup.classList.add('ert-hidden');
+            return;
+        }
+
+        const segmentGap = 4;
+        const availableLength = Math.max(0, this.minimapLayout.length - (segmentGap * (totalPassCount - 1)));
+        const segmentWidth = Math.max(10, availableLength / totalPassCount);
+        const segmentHeight = 4;
+        const segmentY = -1;
+        const stageColor = getExecutionColorValue(styleSource, '--rt-ai-running', '#7cc8ff');
+        const completedPasses = progress
+            ? (progress.phase === 'finalizing'
+                ? totalPassCount
+                : Math.max(0, Math.min(totalPassCount, progress.currentPass - 1)))
+            : 0;
+        const activePassIndex = progress && progress.phase !== 'finalizing'
+            ? Math.max(0, Math.min(totalPassCount - 1, progress.currentPass - 1))
+            : -1;
+
+        for (let index = 0; index < totalPassCount; index += 1) {
+            const segment = createSvgElement('rect');
+            segment.classList.add('ert-inquiry-minimap-stage-segment');
+            if (index < completedPasses) {
+                segment.classList.add('is-complete');
+            } else if (index === activePassIndex) {
+                segment.classList.add('is-active');
+            }
+            segment.style.setProperty('--ert-inquiry-stage-color', stageColor);
+            const x = this.minimapLayout.startX + (index * (segmentWidth + segmentGap));
+            segment.setAttribute('x', x.toFixed(2));
+            segment.setAttribute('y', String(segmentY));
+            segment.setAttribute('width', segmentWidth.toFixed(2));
+            segment.setAttribute('height', String(segmentHeight));
+            segment.setAttribute('rx', '2');
+            segment.setAttribute('ry', '2');
+            this.minimapStagesGroup.appendChild(segment);
+        }
+
+        this.minimapStagesGroup.classList.remove('ert-hidden');
+    }
+
     // ── Pressure gauge ───────────────────────────────────────────────
 
     updatePressureGauge(
@@ -776,6 +828,7 @@ export class InquiryMinimapRenderer {
         styleSource: Element,
         isPro: boolean,
         advancedContext: AIRunAdvancedContext | null,
+        progress: InquiryRunProgressEvent | null,
         formatTokenEstimate: (value: number) => string,
         balanceTooltipText: (text: string) => string
     ): void {
@@ -791,6 +844,7 @@ export class InquiryMinimapRenderer {
         const usesAutomaticPackaging = readinessUi.packaging === 'automatic' && readinessUi.readiness.exceedsBudget;
         const overCapacityTone: 'amber' | 'red' = usesAutomaticPackaging ? 'amber' : 'red';
         this.updateTokenCapBar(clamped, isOverCapacity, overCapacityTone, passPlan.displayPassCount, styleSource, advancedContext);
+        this.updateExecutionPassSegments(passPlan.displayPassCount, progress, styleSource);
         this.minimapBaseline.style.stroke = '';
         this.minimapEndCapStart?.style.removeProperty('fill');
         this.minimapEndCapEnd?.style.removeProperty('fill');
@@ -844,8 +898,8 @@ export class InquiryMinimapRenderer {
                         ? 'Large corpus expected to be packaged for stability.'
                         : 'Large corpus packaging completed.');
                 const passText = passIndicator.exactCount
-                    ? `Passes: ${passIndicator.exactCount} total (${passIndicator.extraPassCount ?? 0} extra)`
-                    : `Estimated passes: ${passIndicator.totalPassCount ?? 2} total (${passIndicator.extraPassCount ?? 1} extra)`;
+                    ? `Passes: ${passIndicator.exactCount} total`
+                    : `Estimated passes: ${passIndicator.totalPassCount ?? 2} total`;
                 addTooltipData(
                     this.minimapPassIndicatorGroup,
                     balanceTooltipText(`${passText}\n${reason}`),

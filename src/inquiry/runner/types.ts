@@ -77,12 +77,18 @@ export interface InquiryOmnibusInput {
 }
 
 export type InquiryRunProgressEvent = {
-    phase: 'one_pass' | 'chunk' | 'synthesis';
+    phase: 'one_pass' | 'chunk' | 'synthesis' | 'finalizing';
     currentPass: number;
     totalPasses: number;
     chunkIndex?: number;
     chunkTotal?: number;
+    detail?: string;
 };
+
+export interface InquiryRunExecutionOptions {
+    onProgress?: (event: InquiryRunProgressEvent) => void;
+    shouldAbort?: () => boolean;
+}
 
 export interface InquiryRunTrace {
     systemPrompt: string;

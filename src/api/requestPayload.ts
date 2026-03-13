@@ -122,6 +122,7 @@ export function buildProviderRequestPayload(
 ): OpenAiPayload | AnthropicPayload | GeminiPayload | OpenAiResponsesPayload {
     if (provider === 'anthropic') {
         const resolvedMaxTokens = typeof callArgs.maxTokens === 'number' ? callArgs.maxTokens : 4000;
+        const forceStructuredTool = !!callArgs.jsonSchema && Object.keys(callArgs.jsonSchema).length > 0;
         // Keep Anthropic payload shaping aligned with the runtime adapter.
         const userContent = buildAnthropicUserContent({
             userPrompt: callArgs.userPrompt,
@@ -142,15 +143,18 @@ export function buildProviderRequestPayload(
         if (typeof callArgs.top_p === 'number') {
             payload.top_p = callArgs.top_p;
         }
-        if (typeof callArgs.thinkingBudgetTokens === 'number' && callArgs.thinkingBudgetTokens >= 1024) {
+        if (!forceStructuredTool
+            && typeof callArgs.thinkingBudgetTokens === 'number'
+            && callArgs.thinkingBudgetTokens >= 1024) {
             payload.thinking = { type: 'enabled', budget_tokens: callArgs.thinkingBudgetTokens };
             payload.max_tokens = payload.max_tokens + callArgs.thinkingBudgetTokens;
         }
-        if (callArgs.jsonSchema) {
+        if (forceStructuredTool) {
+            const schema = callArgs.jsonSchema as Record<string, unknown>;
             payload.tools = [{
                 name: 'record_structured_response',
                 description: 'Return the final structured response via this tool input.',
-                input_schema: callArgs.jsonSchema
+                input_schema: schema
             }];
             payload.tool_choice = {
                 type: 'tool',

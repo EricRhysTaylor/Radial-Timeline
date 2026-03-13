@@ -586,7 +586,8 @@
 }
 
 .ert-inquiry-svg.is-running .ert-inquiry-minimap-reuse-band {
-  animation: ert-minimap-reuse-pulse 2s ease-in-out infinite;
+  opacity: 0;
+  animation: none;
 }
 
 @keyframes ert-minimap-reuse-pulse {
@@ -596,7 +597,7 @@
 }
 
 .ert-inquiry-svg.is-running .ert-inquiry-minimap-reuse-dot {
-  opacity: 0.3;
+  opacity: 0;
 }
 
 /* ── Reuse dot ── */
@@ -677,7 +678,7 @@
 }
 
 .ert-inquiry-minimap-stages {
-  opacity: 0;
+  opacity: 0.7;
   pointer-events: none;
   transition: opacity 160ms ease;
 }
@@ -693,7 +694,12 @@
 }
 
 .ert-inquiry-minimap-stage-segment.is-active {
-  opacity: 0.45;
+  opacity: 0.7;
+}
+
+.ert-inquiry-minimap-stage-segment.is-complete {
+  opacity: 0.98;
+  filter: drop-shadow(0 0 9px color-mix(in srgb, var(--ert-inquiry-stage-color, var(--text-muted)) 82%, transparent));
 }
 
 .ert-inquiry-minimap-stage-tick {
@@ -2838,20 +2844,14 @@ body.rt-modal-open .ert-inquiry-svg * {
   margin-bottom: 8px;
 }
 
-.ert-inquiry-cancel-modal-message {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--text-normal);
-  line-height: 1.4;
-}
-
 .ert-inquiry-cancel-modal-estimate {
   font-size: 13px;
   color: var(--text-normal);
   line-height: 1.45;
+  margin-bottom: 6px;
 }
 
-.ert-inquiry-cancel-modal-note {
+.ert-inquiry-cancel-modal-copy {
   font-size: 12px;
   color: var(--text-muted);
   line-height: 1.45;

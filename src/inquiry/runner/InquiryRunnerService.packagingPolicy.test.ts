@@ -509,6 +509,113 @@ describe('InquiryRunnerService packaging policy', () => {
         });
     });
 
+    it('estimates exact pass count from the chunk plan instead of the ratio heuristic', () => {
+        const service = createService();
+        const buildEvidenceChunkPrompts = vi.fn().mockReturnValue({
+            prompts: ['chunk-1', 'chunk-2', 'chunk-3'],
+            maxChunkTokens: 12000,
+            maxChunkChars: 48000,
+            evidenceChars: 160000,
+            prefixChars: 2400,
+            targetPasses: 2
+        });
+        Object.assign(service, { buildEvidenceChunkPrompts });
+
+        const passCount = (service.estimateExecutionPassCountFromPrompt as (...args: unknown[]) => number)(
+            'Question\nEvidence:\n## Scene A\nBody',
+            {
+                estimatedInputTokens: 194600,
+                safeInputTokens: 162000
+            }
+        );
+
+        expect(passCount).toBe(4);
+    });
+
+    it('stops multi-pass orchestration after the current chunk when abort is requested', async () => {
+        const service = createService();
+        const buildEvidenceChunkPrompts = vi.fn().mockReturnValue({
+            prompts: ['chunk-1', 'chunk-2', 'chunk-3'],
+            maxChunkTokens: 12000,
+            maxChunkChars: 48000,
+            evidenceChars: 160000,
+            prefixChars: 2400,
+            targetPasses: 2
+        });
+        let abortRequested = false;
+        const runInquiryRequest = vi.fn().mockImplementation(async () => {
+            abortRequested = true;
+            return buildRunResult();
+        });
+        Object.assign(service, {
+            buildEvidenceChunkPrompts,
+            runInquiryRequest
+        });
+
+        await expect((service.runChunkedInquiry as (...args: unknown[]) => Promise<Record<string, unknown>>) (
+            {} as never,
+            {
+                systemPrompt: 'system',
+                userPrompt: 'Question\nEvidence:\n## Scene A\nBody',
+                ai: TEST_AI,
+                jsonSchema: { type: 'object' },
+                temperature: 0.2,
+                maxTokens: 4000,
+                executionOptions: {
+                    shouldAbort: () => abortRequested
+                }
+            }
+        )).rejects.toThrow('Inquiry run aborted.');
+
+        expect(runInquiryRequest).toHaveBeenCalledTimes(1);
+    });
+
+    it('rejects findings whose scene ids are outside the active corpus', () => {
+        const service = new InquiryRunnerService(
+            { settings: {} } as never,
+            { getAbstractFileByPath: () => null } as never,
+            {} as never
+        ) as unknown as Record<string, unknown>;
+
+        expect(() => (service.buildResult as (...args: unknown[]) => unknown)(
+            {
+                scope: 'book',
+                focusLabel: 'Book B1',
+                mode: 'depth',
+                questionId: 'payoff',
+                questionZone: 'payoff',
+                corpus: {
+                    fingerprint: 'fp-1',
+                    entries: [{
+                        path: 'Book 1/29 Diga Detects Pregnancy.md',
+                        class: 'scene',
+                        sceneId: 'scn_b5e1b85f',
+                        mtime: 1
+                    }]
+                }
+            },
+            {
+                summaryFlow: 'Flow',
+                summaryDepth: 'Depth',
+                verdict: { flow: 0.5, depth: 0.5, impact: 'low', assessmentConfidence: 'low' },
+                findings: [{
+                    ref_id: 'scn_00000011',
+                    kind: 'continuity',
+                    headline: 'Bad ref',
+                    impact: 'medium',
+                    assessmentConfidence: 'medium'
+                }]
+            },
+            {
+                aiProvider: 'anthropic',
+                aiModelRequested: TEST_AI.modelId,
+                aiModelResolved: TEST_AI.modelId,
+                aiStatus: 'success',
+                aiReason: undefined
+            }
+        )).toThrow('outside the active corpus');
+    });
+
     it('emits exact chunk and synthesis progress for multi-pass execution', async () => {
         const service = createService();
         const buildEvidenceChunkPrompts = vi.fn().mockReturnValue({
@@ -538,7 +645,7 @@ describe('InquiryRunnerService packaging policy', () => {
                 jsonSchema: { type: 'object' },
                 temperature: 0.2,
                 maxTokens: 4000,
-                onProgress
+                executionOptions: { onProgress }
             }
         );
 
@@ -548,20 +655,23 @@ describe('InquiryRunnerService packaging policy', () => {
             currentPass: 1,
             totalPasses: 3,
             chunkIndex: 1,
-            chunkTotal: 2
+            chunkTotal: 2,
+            detail: 'Waiting for pass 1 of 3.'
         });
         expect(onProgress).toHaveBeenNthCalledWith(2, {
             phase: 'chunk',
             currentPass: 2,
             totalPasses: 3,
             chunkIndex: 2,
-            chunkTotal: 2
+            chunkTotal: 2,
+            detail: 'Waiting for pass 2 of 3.'
         });
         expect(onProgress).toHaveBeenNthCalledWith(3, {
             phase: 'synthesis',
             currentPass: 3,
             totalPasses: 3,
-            chunkTotal: 2
+            chunkTotal: 2,
+            detail: 'Waiting for pass 3 of 3.'
         });
     });
 });

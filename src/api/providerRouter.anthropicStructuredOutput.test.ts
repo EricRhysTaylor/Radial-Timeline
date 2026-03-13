@@ -43,7 +43,7 @@ describe('providerRouter Anthropic structured output', () => {
         });
     });
 
-    it('passes JSON schema through the Anthropic adapter and request payload', async () => {
+    it('passes JSON schema through the Anthropic adapter and disables thinking when tool use is forced', async () => {
         const jsonSchema = {
             type: 'object',
             properties: {
@@ -57,7 +57,8 @@ describe('providerRouter Anthropic structured output', () => {
             modelId: 'claude-sonnet-4-6',
             userPrompt: 'hello',
             systemPrompt: 'sys',
-            jsonSchema
+            jsonSchema,
+            thinkingBudgetTokens: 4096
         });
 
         expect(mockedCallAnthropicApi).toHaveBeenCalledWith(
@@ -85,5 +86,6 @@ describe('providerRouter Anthropic structured output', () => {
                 input_schema: jsonSchema
             }]
         });
+        expect((result.requestPayload as Record<string, unknown>).thinking).toBeUndefined();
     });
 });

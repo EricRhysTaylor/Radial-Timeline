@@ -143,7 +143,10 @@ export async function callAnthropicApi(
   // Always use content blocks for Anthropic (foundation for caching, citations, extended thinking)
   const userContent = buildAnthropicUserContent({ userPrompt, citationsEnabled, evidenceDocuments });
 
-  const thinkingEnabled = typeof thinkingBudgetTokens === 'number' && thinkingBudgetTokens >= 1024;
+  const forceStructuredTool = !!jsonSchema && Object.keys(jsonSchema).length > 0;
+  const thinkingEnabled = !forceStructuredTool
+    && typeof thinkingBudgetTokens === 'number'
+    && thinkingBudgetTokens >= 1024;
   const effectiveMaxTokens = thinkingEnabled ? maxTokens + thinkingBudgetTokens : maxTokens;
 
   const requestBody: {
@@ -170,7 +173,7 @@ export async function callAnthropicApi(
   if (thinkingEnabled) {
     requestBody.thinking = { type: 'enabled', budget_tokens: thinkingBudgetTokens };
   }
-  if (jsonSchema && Object.keys(jsonSchema).length > 0) {
+  if (forceStructuredTool) {
     requestBody.tools = [{
       name: 'record_structured_response',
       description: 'Return the final structured response via this tool input.',

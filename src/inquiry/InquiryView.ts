@@ -269,14 +269,12 @@ const INQUIRY_HELP_RESULTS_TOOLTIP = [
 ].join('\n');
 const INQUIRY_HELP_RUNNING_TOOLTIP = [
     'Inquiry is processing an API run.',
-    'You can switch to another note and keep working while it runs, but leave this Inquiry tab open.',
-    'This button is locked during processing.'
+    'You can switch to another note and keep working while it runs, but leave this Inquiry tab open.'
 ].join('\n');
 const INQUIRY_HELP_RUNNING_SINGLE_TOOLTIP = [
     'Inquiry is processing this question now.',
     'You can switch to another note and keep working while it runs, but leave this Inquiry tab open.',
-    'If you cancel this run, you must start over from the beginning. There is no resume.',
-    'Closing the Inquiry view is not a supported resume path for an in-flight question run.'
+    'If you cancel this run, you must start over from the beginning. There is no resume.'
 ].join('\n');
 const INQUIRY_HELP_ONBOARDING_TOOLTIP = 'Number buttons reveal the question and payload. Click to process a question with AI. Flow and Depth rings adjust the lens of the response. The minimap reveals contextual citations.';
 const INQUIRY_TOOLTIP_BALANCE_WIDTH = 360;
@@ -440,7 +438,8 @@ class InquiryCancelRunModal extends Modal {
     constructor(
         app: App,
         private estimateLabel: string,
-        private onResolve: (confirmed: boolean) => void
+        private onResolve: (confirmed: boolean) => void,
+        private onClosed?: () => void
     ) {
         super(app);
     }
@@ -463,20 +462,18 @@ class InquiryCancelRunModal extends Modal {
         header.createDiv({ cls: 'ert-modal-title', text: 'Cancel Inquiry Run?' });
         header.createDiv({
             cls: 'ert-modal-subtitle',
-            text: 'Cancelling discards this run. The provider call may continue in the background, but Inquiry will ignore the result.'
+            text: 'Canceling discards this run after the current pass returns.'
         });
 
-        const panel = contentEl.createDiv({ cls: 'ert-panel ert-panel--glass ert-stack' });
-        panel.createDiv({ cls: 'ert-inquiry-cancel-modal-message', text: 'Stop this active run now?' });
         if (this.estimateLabel.trim()) {
-            panel.createDiv({
+            contentEl.createDiv({
                 cls: 'ert-inquiry-cancel-modal-estimate',
-                text: `Rough run time estimate: ${this.estimateLabel}.`
+                text: `ETA: ${this.estimateLabel}.`
             });
         }
-        panel.createDiv({
-            cls: 'ert-inquiry-cancel-modal-note',
-            text: 'You can switch to another note while it runs if you leave this Inquiry tab open. If you cancel, you must start over. There is no resume.'
+        contentEl.createDiv({
+            cls: 'ert-inquiry-cancel-modal-copy',
+            text: 'You can work in another note if this Inquiry tab stays open. Cancel means start over. No resume.'
         });
 
         const actions = contentEl.createDiv({ cls: 'ert-modal-actions' });
@@ -497,6 +494,7 @@ class InquiryCancelRunModal extends Modal {
 
     onClose(): void {
         this.contentEl.empty();
+        this.onClosed?.();
         this.resolveOnce(false);
     }
 
@@ -1024,6 +1022,7 @@ export class InquiryView extends ItemView {
     private _resolvedEngine: ResolvedInquiryEngine | null = null;
     private omnibusAbortRequested = false;
     private activeOmnibusModal?: InquiryOmnibusModal;
+    private activeCancelRunModal?: InquiryCancelRunModal;
     private readonly minimap = new InquiryMinimapRenderer();
     private wasRunning = false;
     private zonePromptElements = new Map<InquiryZone, {
@@ -4091,6 +4090,7 @@ export class InquiryView extends ItemView {
             styleSource,
             isPro,
             advancedContext,
+            this.currentRunProgress,
             (value) => this.formatTokenEstimate(value),
             (text) => this.balanceTooltipText(text)
         );
@@ -4112,13 +4112,10 @@ export class InquiryView extends ItemView {
     }
 
     private describeRunningPassPlan(progress: InquiryRunProgressEvent): string {
-        if (progress.phase === 'synthesis') {
-            return `Synthesis pass ${progress.currentPass}/${progress.totalPasses} is in progress after ${progress.chunkTotal ?? Math.max(0, progress.totalPasses - 1)} chunk analyses.`;
+        if (progress.phase === 'finalizing') {
+            return `Finalizing after pass ${progress.totalPasses} of ${progress.totalPasses}.`;
         }
-        if (progress.phase === 'chunk' && progress.chunkIndex && progress.chunkTotal) {
-            return `Chunk ${progress.chunkIndex}/${progress.chunkTotal} is in progress (pass ${progress.currentPass}/${progress.totalPasses}).`;
-        }
-        return `Pass ${progress.currentPass}/${progress.totalPasses} is in progress.`;
+        return `Pass ${progress.currentPass} of ${progress.totalPasses} is in progress.`;
     }
 
     private updateMinimapReuseStatus(): void {
@@ -5595,6 +5592,41 @@ export class InquiryView extends ItemView {
         return !!result && (result.aiStatus === 'degraded' || result.aiReason === 'recovered_invalid_response');
     }
 
+    private hasBindableInquiryHits(result: InquiryResult): boolean {
+        return this.buildHitFindingMap(result, this.getResultItems(result)).size > 0;
+    }
+
+    private shouldRejectUnboundHitResult(result: InquiryResult): boolean {
+        if (this.isErrorResult(result)) return false;
+        if (result.scope !== 'book') return false;
+        if (!result.findings.some(finding => this.isFindingHit(finding))) return false;
+        return !this.hasBindableInquiryHits(result);
+    }
+
+    private withCitationBindingFailure(result: InquiryResult): InquiryResult {
+        const message = 'Inquiry completed its passes, but no finding could be matched to this corpus. No minimap hits were available.';
+        return {
+            ...result,
+            aiStatus: 'rejected',
+            aiReason: 'citation_binding_failed',
+            summary: message,
+            summaryFlow: message,
+            summaryDepth: message,
+            findings: [{
+                refId: '',
+                kind: 'error',
+                status: 'unclear',
+                impact: 'medium',
+                assessmentConfidence: 'high',
+                headline: 'Inquiry citations could not be matched to this corpus.',
+                bullets: [message],
+                related: [],
+                evidenceType: 'mixed',
+                lens: 'both'
+            }]
+        };
+    }
+
     private isErrorState(): boolean {
         return !this.state.isRunning && this.isErrorResult(this.state.activeResult);
     }
@@ -6034,7 +6066,11 @@ export class InquiryView extends ItemView {
     private startRunningAnimations(): void {
         const styleSource: Element = this.contentEl ?? this.rootSvg ?? document.documentElement;
         const isPro = isProfessionalActive(this.plugin);
-        this.minimap.startRunningAnimations(styleSource, isPro, () => this.state.isRunning);
+        this.minimap.startRunningAnimations(
+            styleSource,
+            isPro,
+            () => this.state.isRunning && this.currentRunProgress?.phase !== 'finalizing'
+        );
     }
 
     private stopRunningAnimations(): void {
@@ -6151,11 +6187,12 @@ export class InquiryView extends ItemView {
             this.activeInquiryRunToken = 0;
         }
         this.state.isRunning = false;
+        this.currentRunProgress = null;
         this.pendingGuardQuestion = undefined;
         this.unlockPromptPreview();
         this.setApiStatus('idle');
         this.refreshUI();
-        this.notifyInteraction('Inquiry cancel requested. This run will be discarded when the provider call returns.');
+        this.notifyInteraction('Inquiry cancel requested. Inquiry will stop after the current pass returns. The active provider request may still complete.');
     }
 
     private async openInquiryErrorLog(): Promise<void> {
@@ -6283,10 +6320,20 @@ export class InquiryView extends ItemView {
                 // Lens selection is UI-only; do not vary question, evidence, or verdict structure by lens.
                 // Each inquiry produces two compressed answers (flow + depth). Keep this dual-answer model intact.
                 const runOutput = await this.runner.runWithTrace(runnerInput, {
-                    onProgress: progress => this.updateRunProgress(progress)
+                    onProgress: progress => this.updateRunProgress(progress),
+                    shouldAbort: () => this.shouldDiscardInquiryRunOutcome(runToken)
                 });
                 result = runOutput.result;
                 runTrace = runOutput.trace;
+                const progressState = this.currentRunProgress as InquiryRunProgressEvent | null;
+                const progressPassCount = progressState?.totalPasses;
+                const finalPassCount = Math.max(1, runOutput.trace.executionPassCount ?? progressPassCount ?? 1);
+                this.updateRunProgress({
+                    phase: 'finalizing',
+                    currentPass: finalPassCount,
+                    totalPasses: finalPassCount,
+                    detail: 'Provider response received. Saving the result.'
+                });
             } catch (error) {
                 result = this.buildErrorFallback(question, focusLabel, manifest.fingerprint, error);
                 const message = error instanceof Error ? error.message : String(error);
@@ -6306,6 +6353,10 @@ export class InquiryView extends ItemView {
             result = this.normalizeLegacyResult(result);
             const normalizationNotes = this.collectNormalizationNotes(rawResult, result);
             result = this.applyExecutionObservabilityFromTrace(result, runTrace);
+            if (this.shouldRejectUnboundHitResult(result)) {
+                runTrace?.notes.push('Inquiry result rejected after execution: no finding could be matched to the active corpus.');
+                result = this.withCitationBindingFailure(result);
+            }
 
             if (!this.isErrorResult(result)) {
                 cacheStatus = 'fresh';
@@ -8572,6 +8623,7 @@ export class InquiryView extends ItemView {
      *   - Preview panel pills (if visible)
      */
     private refreshEstimateDisplays(): void {
+        if (this.activeCancelRunModal) return;
         this.syncEngineBadgePulse();
         this.updateMinimapPressureGauge();
         if (this.enginePanelEl && !this.enginePanelEl.classList.contains('ert-hidden')) {
@@ -8637,10 +8689,12 @@ export class InquiryView extends ItemView {
 
     private updateRunProgress(progress: InquiryRunProgressEvent | null): void {
         this.currentRunProgress = progress;
-        if (!this.state.isRunning) return;
+        if (!this.state.isRunning || this.activeCancelRunModal) return;
         const questionText = this.previewLast?.question || this.getCurrentPromptQuestion() || '';
         this.setPreviewRunningNoteText(this.buildRunningStatusNote(questionText));
+        this.setPreviewFooterText(this.buildRunningStageLabel(progress));
         this.updateMinimapPressureGauge();
+        this.updateRunningState();
     }
 
     private formatRunDurationEstimate(minSeconds: number, maxSeconds: number): string {
@@ -8683,13 +8737,14 @@ export class InquiryView extends ItemView {
 
     private buildRunningProgressLabel(progress: InquiryRunProgressEvent | null): string {
         if (!progress || progress.totalPasses <= 1) return '';
-        if (progress.phase === 'synthesis') {
-            return `Pass ${progress.currentPass} of ${progress.totalPasses} (synthesis).`;
-        }
-        if (progress.phase === 'chunk' && progress.chunkIndex && progress.chunkTotal) {
-            return `Pass ${progress.currentPass} of ${progress.totalPasses} (chunk ${progress.chunkIndex} of ${progress.chunkTotal}).`;
-        }
         return `Pass ${progress.currentPass} of ${progress.totalPasses}.`;
+    }
+
+    private buildRunningStageLabel(progress: InquiryRunProgressEvent | null): string {
+        if (!progress) return '';
+        if (progress.detail?.trim()) return progress.detail.trim();
+        if (progress.phase === 'finalizing') return 'Finalizing the result.';
+        return 'Waiting for the provider response.';
     }
 
     private buildRunningStatusNote(questionText: string): string {
@@ -8717,7 +8772,21 @@ export class InquiryView extends ItemView {
         const estimate = this.estimateRunDurationRange(questionText);
         const estimateLabel = this.formatRunDurationEstimate(estimate.minSeconds, estimate.maxSeconds);
         return await new Promise<boolean>(resolve => {
-            const modal = new InquiryCancelRunModal(this.app, estimateLabel, confirmed => resolve(confirmed));
+            const modal = new InquiryCancelRunModal(
+                this.app,
+                estimateLabel,
+                confirmed => resolve(confirmed),
+                () => {
+                    if (this.activeCancelRunModal === modal) {
+                        this.activeCancelRunModal = undefined;
+                    }
+                    this.refreshEstimateDisplays();
+                    if (this.state.isRunning) {
+                        this.updateRunProgress(this.currentRunProgress);
+                    }
+                }
+            );
+            this.activeCancelRunModal = modal;
             modal.open();
         });
     }
@@ -9171,8 +9240,8 @@ export class InquiryView extends ItemView {
         this.previewGroup.classList.remove('is-results');
         this.previewGroup.classList.remove('is-error');
         this.setPreviewRunningNoteText(this.buildRunningStatusNote(question.question));
+        this.setPreviewFooterText(this.buildRunningStageLabel(this.currentRunProgress));
         this.resetPreviewRowLabels();
-        this.setPreviewFooterText('');
         this.updatePromptPreview(question.zone, this.state.mode, question.question, rows, undefined, { hideEmpty: true });
         this.lastReadinessUiState = this.buildReadinessUiState();
         this.updateMinimapPressureGauge();

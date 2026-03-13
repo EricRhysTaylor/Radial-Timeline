@@ -134,6 +134,9 @@ export function resolveEnginePopoverState(readinessUi: InquiryReadinessUiState):
 // ── Pass count / pass plan ────────────────────────────────────────────
 
 export function estimateStructuredPassCount(readinessUi: InquiryReadinessUiState): number {
+    if (Number.isFinite(readinessUi.expectedPassCount) && readinessUi.expectedPassCount > 0) {
+        return Math.max(1, Math.floor(readinessUi.expectedPassCount));
+    }
     if (readinessUi.safeInputBudget <= 0) return 2;
     const ratio = readinessUi.estimateInputTokens / readinessUi.safeInputBudget;
     if (!Number.isFinite(ratio)) return 2;
@@ -248,6 +251,7 @@ export function buildReadinessUiState(input: BuildReadinessUiStateInput): Inquir
                 estimateUncertaintyTokens: 0
             }),
             estimateInputTokens: 0,
+            expectedPassCount: 1,
             estimateMethod: 'heuristic_chars',
             estimateUncertaintyTokens: 0,
             safeInputBudget: 0,
@@ -277,6 +281,7 @@ export function buildReadinessUiState(input: BuildReadinessUiStateInput): Inquir
                 estimateUncertaintyTokens: 0
             }),
             estimateInputTokens: 0,
+            expectedPassCount: 1,
             estimateMethod: 'heuristic_chars',
             estimateUncertaintyTokens: 0,
             safeInputBudget: 0,
@@ -294,6 +299,9 @@ export function buildReadinessUiState(input: BuildReadinessUiStateInput): Inquir
     }
 
     const estimateInputTokens = snapshot.estimate.estimatedInputTokens;
+    const expectedPassCount = Number.isFinite(snapshot.estimate.expectedPassCount)
+        ? Math.max(1, Math.floor(snapshot.estimate.expectedPassCount))
+        : 1;
     const estimateMethod: TokenEstimateMethod = snapshot.estimate.estimationMethod;
     const effectiveInputCeiling = snapshot.estimate.effectiveInputCeiling;
     let hasEligibleModel = false;
@@ -366,6 +374,7 @@ export function buildReadinessUiState(input: BuildReadinessUiStateInput): Inquir
         pending: false,
         readiness,
         estimateInputTokens,
+        expectedPassCount,
         estimateMethod,
         estimateUncertaintyTokens: estimateUncertaintyBudget,
         safeInputBudget,

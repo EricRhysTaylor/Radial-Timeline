@@ -153,6 +153,7 @@ function makeReadinessUi(overrides?: Partial<InquiryReadinessUiState>): InquiryR
             materiallyExceedsBudget: false
         },
         estimateInputTokens: 50000,
+        expectedPassCount: 1,
         estimateMethod: 'heuristic_chars',
         estimateUncertaintyTokens: 5000,
         safeInputBudget: 180000,
@@ -295,27 +296,33 @@ describe('resolveEnginePopoverState', () => {
 
 describe('estimateStructuredPassCount', () => {
     it('returns 2 when budget is zero', () => {
-        expect(estimateStructuredPassCount(makeReadinessUi({ safeInputBudget: 0 }))).toBe(2);
+        expect(estimateStructuredPassCount(makeReadinessUi({
+            safeInputBudget: 0,
+            expectedPassCount: 0
+        }))).toBe(2);
     });
 
     it('returns 2 when ratio is below 2', () => {
         expect(estimateStructuredPassCount(makeReadinessUi({
             estimateInputTokens: 150000,
-            safeInputBudget: 100000
+            safeInputBudget: 100000,
+            expectedPassCount: 0
         }))).toBe(2);
     });
 
     it('returns 3 for large ratio', () => {
         expect(estimateStructuredPassCount(makeReadinessUi({
             estimateInputTokens: 250000,
-            safeInputBudget: 100000
+            safeInputBudget: 100000,
+            expectedPassCount: 0
         }))).toBe(3);
     });
 
     it('returns 2 for NaN ratio', () => {
         expect(estimateStructuredPassCount(makeReadinessUi({
             estimateInputTokens: NaN,
-            safeInputBudget: 100000
+            safeInputBudget: 100000,
+            expectedPassCount: 0
         }))).toBe(2);
     });
 });
@@ -340,12 +347,13 @@ describe('getCurrentPassPlan', () => {
                 materiallyExceedsBudget: true
             },
             estimateInputTokens: 200000,
+            expectedPassCount: 4,
             safeInputBudget: 100000,
             packaging: 'automatic'
         }), null);
         expect(plan.packagingExpected).toBe(true);
-        expect(plan.estimatedPassCount).toBe(2);
-        expect(plan.displayPassCount).toBe(2);
+        expect(plan.estimatedPassCount).toBe(4);
+        expect(plan.displayPassCount).toBe(4);
     });
 
     it('uses recent exact count when available', () => {
