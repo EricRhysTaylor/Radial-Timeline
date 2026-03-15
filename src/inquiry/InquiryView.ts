@@ -154,6 +154,10 @@ import {
     estimateUncertaintyTokens
 } from '../ai/tokens/inputTokenEstimate';
 import {
+    estimateCorpusCost,
+    formatApproxUsdCost
+} from '../ai/cost/estimateCorpusCost';
+import {
     MAX_RESOLVED_SCAN_ROOTS,
     normalizeScanRootPatterns,
     resolveScanRoots,
@@ -9850,7 +9854,8 @@ export class InquiryView extends ItemView {
             this.getPreviewScenesValue(),
             this.getPreviewOutlinesValue(),
             this.getPreviewModelValue(),
-            this.getPreviewTokensValue()
+            this.getPreviewTokensValue(),
+            this.getPreviewCostValue()
         ];
     }
 
@@ -9891,6 +9896,31 @@ export class InquiryView extends ItemView {
         const estimate = this.getRTCorpusEstimate();
         if (estimate.estimatedTokens <= 0) return 'Tokens · Estimating…';
         return `Tokens · ~${this.formatTokenEstimate(estimate.estimatedTokens)}`;
+    }
+
+    private getPreviewCostValue(): string {
+        const snapshot = this.plugin.getInquiryEstimateService().getSnapshot();
+        const engine = this.getResolvedEngine();
+        if (engine.blocked || !snapshot) {
+            return 'Cost · Estimating…';
+        }
+        try {
+            const cost = estimateCorpusCost(
+                engine.provider,
+                engine.modelId,
+                snapshot.estimate.estimatedInputTokens,
+                snapshot.estimate.maxOutputTokens,
+                snapshot.estimate.expectedPassCount
+            );
+            const freshLabel = formatApproxUsdCost(cost.freshCostUSD);
+            const cachedLabel = formatApproxUsdCost(cost.cachedCostUSD);
+            const corpusWasRun = snapshot.corpus.corpusFingerprint === this.state.corpusFingerprint;
+            return corpusWasRun
+                ? `Cost · ${freshLabel} / ${cachedLabel} cached`
+                : `Cost · ${freshLabel}`;
+        } catch {
+            return 'Cost · Estimate unavailable';
+        }
     }
 
 

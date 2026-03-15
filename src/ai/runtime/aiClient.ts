@@ -387,6 +387,9 @@ export class AIClient {
         let tokenEstimateInput = countedEstimate.inputTokens;
         let tokenEstimateMethod = countedEstimate.method;
         const tokenEstimateUncertainty = estimateUncertaintyTokens(tokenEstimateMethod, effectiveInputCeiling);
+        const expectedPassCount = effectiveInputCeiling > 0
+            ? Math.max(1, Math.ceil(tokenEstimateInput / effectiveInputCeiling))
+            : 1;
 
         const cacheKey = buildCacheKey({
             provider,
@@ -415,6 +418,7 @@ export class AIClient {
                 tokenEstimateInput,
                 tokenEstimateMethod,
                 tokenEstimateUncertainty,
+                expectedPassCount,
                 maxInputTokens: caps.maxInputTokens,
                 maxOutputTokens: caps.maxOutputTokens,
                 effectiveInputCeiling,

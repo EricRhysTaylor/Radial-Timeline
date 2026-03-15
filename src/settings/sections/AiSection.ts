@@ -25,6 +25,11 @@ import {
 import { getSecret, hasSecret, isSecretStorageAvailable, setSecret } from '../../ai/credentials/secretStorage';
 import type { AccessTier, AIProviderId, Capability } from '../../ai/types';
 import { estimateGossamerTokens, estimateInquiryTokens } from '../../ai/forecast/estimateTokensFromVault';
+import {
+    estimateCorpusCost,
+    formatUsdCost
+} from '../../ai/cost/estimateCorpusCost';
+import { INQUIRY_CANONICAL_ESTIMATE_QUESTION } from '../../inquiry/constants';
 
 type Provider = 'anthropic' | 'gemini' | 'openai' | 'local';
 
@@ -180,6 +185,15 @@ export function renderAiSection(params: {
     const quickSetupPreviewSection = aiSettingsGroup.createDiv({
         cls: `${ERT_CLASSES.STACK} ert-ai-preview-section`
     });
+    const costEstimateSection = aiSettingsGroup.createDiv({
+        cls: `${ERT_CLASSES.CARD} ${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK} ert-ai-section-card`
+    });
+    costEstimateSection.createDiv({ cls: 'ert-section-title', text: 'AI Cost Estimate (current corpus)' });
+    costEstimateSection.createDiv({
+        cls: 'ert-section-desc',
+        text: 'Fresh and cached UI estimates derived from the canonical Inquiry execution estimate for the current corpus.'
+    });
+    const costEstimateTable = costEstimateSection.createDiv({ cls: 'ert-ai-models-table' });
 
     const ensureCanonicalAiSettings = () => {
         if (!plugin.settings.aiSettings) {
@@ -814,6 +828,132 @@ export function renderAiSection(params: {
         providerExecutionTokens: number;
     };
 
+    type CostComparisonModel = {
+        provider: AIProviderId;
+        modelId: string;
+        providerLabel: string;
+        modelLabel: string;
+    };
+
+    type CostComparisonRow = {
+        model: CostComparisonModel;
+        freshText: string;
+        cachedText: string;
+        passesText: string;
+    };
+
+    const COST_COMPARISON_MODELS: readonly CostComparisonModel[] = [
+        {
+            provider: 'anthropic',
+            modelId: 'claude-sonnet-4-6',
+            providerLabel: 'Anthropic',
+            modelLabel: 'Claude Sonnet 4.6'
+        },
+        {
+            provider: 'anthropic',
+            modelId: 'claude-sonnet-4-5-20250929',
+            providerLabel: 'Anthropic',
+            modelLabel: 'Claude Sonnet 4.5'
+        },
+        {
+            provider: 'openai',
+            modelId: 'gpt-5.4',
+            providerLabel: 'OpenAI',
+            modelLabel: 'GPT-5.4'
+        },
+        {
+            provider: 'google',
+            modelId: 'gemini-3.1-pro-preview',
+            providerLabel: 'Google',
+            modelLabel: 'Gemini Pro'
+        }
+    ] as const;
+
+    const createCostTableCell = (rowEl: HTMLElement, text: string, extraCls?: string): void => {
+        rowEl.createDiv({
+            cls: ['ert-ai-models-cell', extraCls].filter(Boolean).join(' '),
+            text
+        });
+    };
+
+    const renderCostComparisonRows = (rows: CostComparisonRow[]): void => {
+        costEstimateTable.empty();
+
+        const headerRow = costEstimateTable.createDiv({ cls: 'ert-ai-models-row ert-ai-models-row--header' });
+        ['Provider', 'Model', 'Fresh Run', 'Cached Run', 'Passes'].forEach(text => {
+            createCostTableCell(headerRow, text);
+        });
+
+        rows.forEach(row => {
+            const rowEl = costEstimateTable.createDiv({ cls: 'ert-ai-models-row' });
+            createCostTableCell(rowEl, row.model.providerLabel);
+            createCostTableCell(rowEl, row.model.modelLabel, 'ert-ai-models-cell--model');
+            createCostTableCell(rowEl, row.freshText);
+            createCostTableCell(rowEl, row.cachedText);
+            createCostTableCell(rowEl, row.passesText);
+        });
+    };
+
+    const buildLoadingCostRows = (): CostComparisonRow[] => COST_COMPARISON_MODELS.map(model => ({
+        model,
+        freshText: 'Calculating...',
+        cachedText: 'Calculating...',
+        passesText: 'Calculating...'
+    }));
+
+    let costComparisonRequestId = 0;
+
+    const computeCostComparisonRows = async (): Promise<CostComparisonRow[]> => {
+        return await Promise.all(COST_COMPARISON_MODELS.map(async model => {
+            try {
+                const inquiryEstimate = await estimateInquiryTokens({
+                    plugin,
+                    provider: model.provider,
+                    modelId: model.modelId,
+                    questionText: INQUIRY_CANONICAL_ESTIMATE_QUESTION,
+                    vault: app.vault,
+                    metadataCache: app.metadataCache,
+                    inquirySources: plugin.settings.inquirySources,
+                    frontmatterMappings: plugin.settings.frontmatterMappings,
+                    scopeContext: { scope: 'book' }
+                });
+                const executionEstimate = inquiryEstimate.providerExecutionEstimate;
+                if (!executionEstimate?.expectedPassCount || !executionEstimate.maxOutputTokens) {
+                    throw new Error('Canonical execution estimate unavailable.');
+                }
+                const cost = estimateCorpusCost(
+                    model.provider,
+                    model.modelId,
+                    executionEstimate.estimatedTokens,
+                    executionEstimate.maxOutputTokens,
+                    executionEstimate.expectedPassCount
+                );
+                const passLabel = `${cost.expectedPasses} ${cost.expectedPasses === 1 ? 'pass' : 'passes'}`;
+                return {
+                    model,
+                    freshText: formatUsdCost(cost.freshCostUSD),
+                    cachedText: formatUsdCost(cost.cachedCostUSD),
+                    passesText: passLabel
+                };
+            } catch {
+                return {
+                    model,
+                    freshText: 'Estimate unavailable',
+                    cachedText: 'Estimate unavailable',
+                    passesText: 'Unavailable'
+                };
+            }
+        }));
+    };
+
+    const refreshCostComparisonTable = async (): Promise<void> => {
+        const requestId = ++costComparisonRequestId;
+        renderCostComparisonRows(buildLoadingCostRows());
+        const rows = await computeCostComparisonRows();
+        if (requestId !== costComparisonRequestId) return;
+        renderCostComparisonRows(rows);
+    };
+
     const computeVaultForecasts = async (engine?: {
         provider: AIProviderId;
         modelId: string;
@@ -969,6 +1109,7 @@ export function renderAiSection(params: {
         capacityGossamerToken.setText('Calculating...');
         capacityGossamerScope.setText('Scanning vault…');
         capacityGossamerExpected.setText('Calculating...');
+        void refreshCostComparisonTable();
 
         // Reset status grid chips
         singlePassRow.chipEl.setText('Calculating...');
@@ -2019,6 +2160,7 @@ export function renderAiSection(params: {
     [
         quickSetupSection,
         quickSetupPreviewSection,
+        costEstimateSection,
         roleContextSection,
         largeHandlingFold,
         configurationFold,

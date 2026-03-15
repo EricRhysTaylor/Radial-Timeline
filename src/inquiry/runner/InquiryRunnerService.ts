@@ -2757,7 +2757,8 @@ export class InquiryRunnerService implements InquiryRunner {
             inputChars,
             estimationMethod: prepared?.tokenEstimateMethod ?? 'heuristic_chars',
             uncertaintyTokens: prepared?.tokenEstimateUncertainty ?? 0,
-            effectiveInputCeiling: prepared?.effectiveInputCeiling
+            effectiveInputCeiling: prepared?.effectiveInputCeiling,
+            expectedPassCount: prepared?.expectedPassCount
         };
         const filesIncluded = Array.from(new Set(
             evidenceBlocks

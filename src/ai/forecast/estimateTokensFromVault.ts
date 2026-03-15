@@ -35,6 +35,8 @@ export interface InquiryTokenEstimate {
         estimatedTokens: number;
         method: TokenEstimateMethod;
         promptEnvelopeCharsAdded: number;
+        expectedPassCount?: number;
+        maxOutputTokens?: number;
     };
 }
 
@@ -358,7 +360,9 @@ export async function estimateInquiryTokens(params: {
                     method: prepared.estimate.tokenEstimateMethod,
                     promptEnvelopeCharsAdded:
                         (prepared.estimate.systemPrompt?.length ?? 0)
-                        + (prepared.estimate.userPrompt?.length ?? 0)
+                        + (prepared.estimate.userPrompt?.length ?? 0),
+                    expectedPassCount: prepared.estimate.expectedPassCount,
+                    maxOutputTokens: prepared.estimate.maxOutputTokens
                 };
             }
         } catch {

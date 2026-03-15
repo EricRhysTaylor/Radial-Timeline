@@ -321,6 +321,7 @@ export interface AIRunPreparedEstimate {
     tokenEstimateInput: number;
     tokenEstimateMethod: InputTokenEstimateMethod;
     tokenEstimateUncertainty: number;
+    expectedPassCount: number;
     maxInputTokens: number;
     maxOutputTokens: number;
     effectiveInputCeiling: number;
