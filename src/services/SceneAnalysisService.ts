@@ -7,6 +7,7 @@ import { App, Modal, Notice, ButtonComponent, DropdownComponent } from 'obsidian
 import type RadialTimelinePlugin from '../main';
 import { normalizeBooleanValue } from '../utils/sceneHelpers';
 import { DEFAULT_GEMINI_MODEL_ID } from '../constants/aiDefaults';
+import { getCredential } from '../ai/credentials/credentials';
 
 export class SceneAnalysisService {
     constructor(private plugin: RadialTimelinePlugin) { }
@@ -25,7 +26,7 @@ export class SceneAnalysisService {
                 if (!this.plugin.settings.enableAiSceneAnalysis) return false;
                 if (checking) return true;
                 (async () => {
-                    if (!this.ensureApiKey()) return;
+                    if (!(await this.ensureApiKey())) return;
                     await this.processSynopsisAnalysis();
                 })();
                 return true;
@@ -41,7 +42,7 @@ export class SceneAnalysisService {
                 if (!this.plugin.settings.enableAiSceneAnalysis) return false;
                 if (checking) return true;
                 (async () => {
-                    if (!this.ensureApiKey()) return;
+                    if (!(await this.ensureApiKey())) return;
                     await this.processByManuscriptOrder();
                 })();
                 return true;
@@ -57,7 +58,7 @@ export class SceneAnalysisService {
                 if (!this.plugin.settings.enableAiSceneAnalysis) return false;
                 if (checking) return true;
                 (async () => {
-                    if (!this.ensureApiKey()) return;
+                    if (!(await this.ensureApiKey())) return;
                     const options = await this.getSubplotOptions();
                     new SubplotPickerModal(this.plugin.app, this, options).open();
                 })();
@@ -76,13 +77,9 @@ export class SceneAnalysisService {
         return names.map((name, index) => ({ name, stats: stats[index] }));
     }
 
-    private ensureApiKey(): boolean {
+    private async ensureApiKey(): Promise<boolean> {
         const provider = this.plugin.settings.defaultAiProvider || 'openai';
-        let hasKey = true;
-        if (provider === 'anthropic') hasKey = !!this.plugin.settings.anthropicApiKey?.trim();
-        else if (provider === 'gemini') hasKey = !!this.plugin.settings.geminiApiKey?.trim();
-        else if (provider === 'local') {
-            // For local, we need at least a Base URL and Model ID
+        if (provider === 'local') {
             const hasUrl = !!this.plugin.settings.localBaseUrl?.trim();
             const hasModel = !!this.plugin.settings.localModelId?.trim();
             if (!hasUrl || !hasModel) {
@@ -91,9 +88,8 @@ export class SceneAnalysisService {
             }
             return true;
         }
-        else hasKey = !!this.plugin.settings.openaiApiKey?.trim();
-
-        if (!hasKey) {
+        const key = await getCredential(this.plugin, provider);
+        if (!key) {
             const name = provider[0].toUpperCase() + provider.slice(1);
             new Notice(`${name} API key is not set in settings.`);
             return false;

@@ -335,7 +335,7 @@ export async function callAnthropicTokenCount(
 
 // --- fetch models ---
 interface AnthropicModel { id: string; } // API returns id field
-interface AnthropicModelsResponse { models: AnthropicModel[]; }
+interface AnthropicModelsResponse { data: AnthropicModel[]; }
 
 export async function fetchAnthropicModels(apiKey: string): Promise<AnthropicModel[]> {
   if (!apiKey) throw new Error('Anthropic API key is required to fetch models.');
@@ -349,9 +349,13 @@ export async function fetchAnthropicModels(apiKey: string): Promise<AnthropicMod
     },
     throw: false,
   });
-  const data = response.json as AnthropicModelsResponse;
-  if (response.status >= 400 || !Array.isArray((data as any)?.models)) {
+  if (response.status >= 400) {
     throw new Error(`Error fetching Anthropic models (${response.status})`);
   }
-  return data.models.sort((a, b) => a.id.localeCompare(b.id));
+  const data = response.json as AnthropicModelsResponse;
+  if (!Array.isArray(data?.data)) {
+    // HTTP 200 with valid auth but unexpected body — key is valid
+    return [];
+  }
+  return data.data.sort((a, b) => a.id.localeCompare(b.id));
 } 

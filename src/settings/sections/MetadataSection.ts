@@ -58,7 +58,7 @@ export function renderMetadataSection(params: { app: App; plugin: RadialTimeline
             
             // Text input for User Key
             setting.addText(text => {
-                text.inputEl.addClass('ert-input--md');
+                text.inputEl.addClass('ert-input--lg');
                 text.setPlaceholder('Your Key (e.g. StoryLine)')
                     .setValue(userKey)
                     .onChange(async (_newValue) => {
@@ -152,7 +152,7 @@ export function renderMetadataSection(params: { app: App; plugin: RadialTimeline
 
             // Text input for User Key (starts empty; required to persist)
             setting.addText(text => {
-                text.inputEl.addClass('ert-input--md');
+                text.inputEl.addClass('ert-input--lg');
                 text.setPlaceholder('Your Key (required to save)');
                 text.setValue('');
                 

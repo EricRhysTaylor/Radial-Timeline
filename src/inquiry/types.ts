@@ -14,7 +14,8 @@
 import type { InquiryScope } from './state';
 import type { InquiryReadinessResult } from './services/readiness';
 import type { TokenEstimateMethod } from '../ai/tokens/inputTokenEstimate';
-import type { AIProviderId, AnalysisPackaging, ModelInfo } from '../ai/types';
+import type { AIProviderId, AnalysisPackaging, ModelInfo, RTCorpusTokenEstimate } from '../ai/types';
+import type { CorpusManifestEntry } from './runner/types';
 
 // ── Token tier ────────────────────────────────────────────────────────
 
@@ -40,6 +41,14 @@ export type InquiryPayloadStats = {
     evidenceChars: number;
     resolvedRoots: string[];
     manifestFingerprint: string;
+};
+
+export type InquiryCurrentCorpusContext = {
+    scope: InquiryScope;
+    focusBookId?: string;
+    focusLabel: string;
+    corpus: RTCorpusTokenEstimate;
+    manifestEntries: CorpusManifestEntry[];
 };
 
 // ── Readiness UI state ────────────────────────────────────────────────

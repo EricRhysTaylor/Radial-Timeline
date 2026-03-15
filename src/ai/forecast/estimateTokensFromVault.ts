@@ -266,7 +266,7 @@ const resolveCanonicalFocusLabel = (
     return snapshot.books[0]?.displayLabel ?? 'B0';
 };
 
-const buildCanonicalExecutionEstimate = async (
+export const buildCanonicalExecutionEstimate = async (
     params: CanonicalExecutionEstimateParams
 ): Promise<InquiryTokenEstimate['providerExecutionEstimate']> => {
     const provider = params.provider === 'google'

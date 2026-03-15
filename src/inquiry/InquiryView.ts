@@ -92,6 +92,7 @@ import { computeInquiryAdvisoryContext, type InquiryAdvisoryContext } from './se
 import type { InquiryEstimateSnapshot } from './services/inquiryEstimateSnapshot';
 import type {
     TokenTier,
+    InquiryCurrentCorpusContext,
     InquiryPayloadStats,
     InquiryReadinessUiState,
     InquiryEnginePopoverState,
@@ -100,7 +101,6 @@ import type {
 import {
     buildReadinessUiState as buildReadinessUiStatePure,
     buildRunScopeLabel as buildRunScopeLabelPure,
-    buildEnginePayloadSummary as buildEnginePayloadSummaryPure,
     resolveEnginePopoverState as resolveEnginePopoverStatePure,
     estimateStructuredPassCount as estimateStructuredPassCountPure,
     getCurrentPassPlan as getCurrentPassPlanPure,
@@ -1045,6 +1045,8 @@ export class InquiryView extends ItemView {
     private lastEngineAdvisoryInputKey = '';
     /** Memoized per-refresh-cycle. Invalidated at top of refreshUI(). */
     private _resolvedEngine: ResolvedInquiryEngine | null = null;
+    /** Memoized per-refresh-cycle. Invalidated at top of refreshUI(). */
+    private _currentCorpusContext: InquiryCurrentCorpusContext | null = null;
     private omnibusAbortRequested = false;
     private activeOmnibusModal?: InquiryOmnibusModal;
     private activeCancelRunModal?: InquiryCancelRunModal;
@@ -1722,7 +1724,7 @@ export class InquiryView extends ItemView {
         });
 
         const payloadRow = detailsCard.createDiv({ cls: 'ert-inquiry-engine-detail-row' });
-        payloadRow.createSpan({ cls: 'ert-inquiry-engine-detail-label', text: 'Corpus (current)' });
+        payloadRow.createSpan({ cls: 'ert-inquiry-engine-detail-label', text: 'Current Corpus' });
         payloadRow.createSpan({
             cls: 'ert-inquiry-engine-detail-value',
             text: engine.blocked ? '—' : `~${this.formatTokenEstimate(corpusEstimate.estimatedTokens)}`
@@ -1821,15 +1823,43 @@ export class InquiryView extends ItemView {
         inputTokens: number;
         tier: TokenTier;
     } {
-        return buildEnginePayloadSummaryPure({
-            payloadStats: this.getPayloadStats(),
-            scope: this.state.scope,
-            focusLabel: this.getFocusBookLabel()
-        });
+        const currentCorpus = this.getCurrentCorpusContext();
+        return {
+            text: currentCorpus.corpus.estimatedTokens > 0
+                ? `Current Corpus: ~${this.formatTokenEstimate(currentCorpus.corpus.estimatedTokens)}`
+                : 'Current Corpus: Estimating…',
+            inputTokens: currentCorpus.corpus.estimatedTokens,
+            tier: this.getTokenTier(currentCorpus.corpus.estimatedTokens)
+        };
     }
 
     private getRTCorpusEstimate(): RTCorpusTokenEstimate {
-        return buildRTCorpusEstimate(this.getPayloadStats());
+        return this.getCurrentCorpusContext().corpus;
+    }
+
+    public getCurrentCorpusContext(): InquiryCurrentCorpusContext {
+        if (this._currentCorpusContext) {
+            return this._currentCorpusContext;
+        }
+        const entryList = this.buildCorpusEntryList('current-corpus', {
+            contextRequired: false,
+            includeInactive: false,
+            applyOverrides: true
+        });
+        const fingerprintSource = entryList.entries
+            .map(entry => `${entry.path}:${entry.sceneId ?? ''}:${entry.mtime}:${entry.mode ?? 'none'}`)
+            .sort()
+            .join('|');
+        const manifestFingerprint = this.hashString(`current-corpus|${fingerprintSource}`);
+        const stats = this.buildPayloadStatsFromEntries(entryList.entries, entryList.resolvedRoots, manifestFingerprint, false);
+        this._currentCorpusContext = {
+            scope: this.state.scope,
+            focusBookId: stats.focusBookId,
+            focusLabel: this.getFocusLabel(),
+            corpus: buildRTCorpusEstimate(stats),
+            manifestEntries: entryList.entries.map(entry => ({ ...entry }))
+        };
+        return this._currentCorpusContext;
     }
 
     private buildInquiryAdvisoryContext(
@@ -1993,18 +2023,18 @@ export class InquiryView extends ItemView {
         const corpusLabel = this.formatTokenEstimate(corpusEstimate.estimatedTokens);
         const passPlan = this.getCurrentPassPlan(readinessUi);
         if (popoverState === 'ready') {
-            this.enginePanelReadinessMessageEl.setText(`Corpus: ~${corpusLabel}. Single pass possible for current engine.`);
+            this.enginePanelReadinessMessageEl.setText(`Current Corpus: ~${corpusLabel}. Single pass possible for current engine.`);
         } else if (popoverState === 'multi-pass') {
             const estimateLabel = passPlan.estimatedPassCount ?? passPlan.displayPassCount;
             const recentRunSuffix = passPlan.recentExactPassCount
                 ? ` Recent run used ${passPlan.recentExactPassCount} passes.`
                 : '';
             this.enginePanelReadinessMessageEl.setText(
-                `Corpus: ~${corpusLabel}. Multi-pass required for current engine `
+                `Current Corpus: ~${corpusLabel}. Multi-pass required for current engine `
                 + `(${estimateLabel} passes expected). Automatic packaging will split the request.${recentRunSuffix}`
             );
         } else if (readinessUi.readiness.cause === 'single_pass_limit') {
-            this.enginePanelReadinessMessageEl.setText(`Corpus: ~${corpusLabel}. Single-pass mode blocks this run for the current engine.`);
+            this.enginePanelReadinessMessageEl.setText(`Current Corpus: ~${corpusLabel}. Single-pass mode blocks this run for the current engine.`);
         } else {
             this.enginePanelReadinessMessageEl.setText(readinessUi.reason);
         }
@@ -3742,6 +3772,7 @@ export class InquiryView extends ItemView {
 
     private refreshUI(): void {
         this._resolvedEngine = null; // Invalidate per-refresh-cycle cache.
+        this._currentCorpusContext = null; // Invalidate per-refresh-cycle cache.
         this.refreshCorpus();
         this.guidanceState = this.resolveGuidanceState();
         this.updateScopeToggle();
@@ -9660,11 +9691,20 @@ export class InquiryView extends ItemView {
         const manifest = this.buildCorpusManifest('payload-preview', {
             questionZone: this.previewLast?.zone
         });
+        return this.buildPayloadStatsFromEntries(manifest.entries, manifest.resolvedRoots, manifest.fingerprint, true);
+    }
+
+    private buildPayloadStatsFromEntries(
+        entries: CorpusManifestEntry[],
+        resolvedRoots: string[],
+        manifestFingerprint: string,
+        preservePriorEvidenceChars: boolean
+    ): InquiryPayloadStats {
         const scope = this.state.scope;
         const focusBookId = this.state.focusBookId ?? this.corpus?.books?.[0]?.id;
-        const sceneEntries = manifest.entries.filter(entry => entry.class === 'scene');
-        const outlineEntries = manifest.entries.filter(entry => entry.class === 'outline');
-        const referenceEntries = manifest.entries.filter(entry => entry.class !== 'scene' && entry.class !== 'outline');
+        const sceneEntries = entries.filter(entry => entry.class === 'scene');
+        const outlineEntries = entries.filter(entry => entry.class === 'outline');
+        const referenceEntries = entries.filter(entry => entry.class !== 'scene' && entry.class !== 'outline');
 
         const scopedSceneEntries = scope === 'book'
             ? (focusBookId
@@ -9685,8 +9725,9 @@ export class InquiryView extends ItemView {
         const referenceStats = this.collectReferenceStats(referenceEntries);
 
         const estimatedEvidenceChars = sceneStats.chars + bookOutlineStats.chars + sagaOutlineStats.chars + referenceStats.chars;
-        const priorStats = this.payloadStats
-            && this.payloadStats.manifestFingerprint === manifest.fingerprint
+        const priorStats = preservePriorEvidenceChars
+            && this.payloadStats
+            && this.payloadStats.manifestFingerprint === manifestFingerprint
             && this.payloadStats.scope === scope
             && this.payloadStats.focusBookId === focusBookId
             ? this.payloadStats
@@ -9709,8 +9750,8 @@ export class InquiryView extends ItemView {
             referenceCounts: referenceStats.counts,
             referenceByClass: referenceStats.byClass,
             evidenceChars,
-            resolvedRoots: manifest.resolvedRoots,
-            manifestFingerprint: manifest.fingerprint
+            resolvedRoots,
+            manifestFingerprint
         };
     }
 
@@ -9901,8 +9942,8 @@ export class InquiryView extends ItemView {
 
     private getPreviewTokensValue(): string {
         const estimate = this.getRTCorpusEstimate();
-        if (estimate.estimatedTokens <= 0) return 'Tokens · Estimating…';
-        return `Tokens · ~${this.formatTokenEstimate(estimate.estimatedTokens)}`;
+        if (estimate.estimatedTokens <= 0) return 'Current Corpus · Estimating…';
+        return `Current Corpus · ~${this.formatTokenEstimate(estimate.estimatedTokens)}`;
     }
 
     private getPreviewCostValue(): string {

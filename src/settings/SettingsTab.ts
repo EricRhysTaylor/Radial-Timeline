@@ -858,7 +858,6 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             containerEl: generalStack,
             addAiRelatedElement: (el) => this._aiRelatedElements.push(el)
         });
-        this.renderProCallout(generalSection, 'Manuscript exports via Pandoc', switchToProTab);
 
         const inquirySection = inquiryBody.createDiv({
             cls: ERT_CLASSES.STACK,

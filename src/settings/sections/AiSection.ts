@@ -26,7 +26,7 @@ import {
 } from '../../ai/credentials/credentials';
 import { getSecret, hasSecret, isSecretStorageAvailable, setSecret } from '../../ai/credentials/secretStorage';
 import type { AccessTier, AIProviderId, Capability } from '../../ai/types';
-import { estimateGossamerTokens, estimateInquiryTokens } from '../../ai/forecast/estimateTokensFromVault';
+import { buildCanonicalExecutionEstimate, estimateGossamerTokens } from '../../ai/forecast/estimateTokensFromVault';
 import {
     estimateCorpusCost,
     formatUsdCost
@@ -198,7 +198,7 @@ export function renderAiSection(params: {
     const costEstimateCorpusSummary = costEstimateSection.createDiv({ cls: `${ERT_CLASSES.STACK_TIGHT}` });
     const costEstimateCorpusSize = costEstimateCorpusSummary.createDiv({
         cls: 'ert-section-desc',
-        text: 'Corpus size: Calculating...'
+        text: 'Current Corpus: Calculating...'
     });
     const costEstimateCorpusStructure = costEstimateCorpusSummary.createDiv({
         cls: 'ert-field-note',
@@ -275,7 +275,7 @@ export function renderAiSection(params: {
     };
     const capacitySafeInput = createCapacityCell('Safe input (per pass)');
     const capacityOutput = createCapacityCell('Response (per pass)');
-    const capacityInquiry = createCapacityCell('Inquiry');
+    const capacityInquiry = createCapacityCell('Current Corpus');
     capacityInquiry.labelEl.addClass('ert-ai-capacity-label--forecast');
     const capacityInquiryToken = capacityInquiry.valueEl.createDiv({
         cls: 'ert-ai-capacity-meta',
@@ -283,7 +283,7 @@ export function renderAiSection(params: {
     });
     const capacityInquiryScope = capacityInquiry.valueEl.createDiv({
         cls: 'ert-ai-capacity-meta',
-        text: 'Scanning vault…'
+        text: 'Open Inquiry to load the current corpus'
     });
     const capacityInquiryExpected = capacityInquiry.valueEl.createDiv({
         cls: 'ert-ai-capacity-meta',
@@ -381,7 +381,7 @@ export function renderAiSection(params: {
     });
 
     const apiKeysFold = aiSettingsGroup.createDiv({
-        cls: `${ERT_CLASSES.CARD} ${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK} ert-ai-section-card ert-ai-configuration`
+        cls: `${ERT_CLASSES.STACK} ert-ai-configuration`
     });
     const apiKeysHeader = new Settings(apiKeysFold)
         .setName('API Keys')
@@ -392,10 +392,13 @@ export function renderAiSection(params: {
     const configurationBody = apiKeysFold.createDiv({ cls: [ERT_CLASSES.SECTION_BODY, ERT_CLASSES.STACK] });
 
     const aiConfigFold = aiSettingsGroup.createDiv({
-        cls: `${ERT_CLASSES.CARD} ${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK} ert-ai-section-card`
+        cls: ERT_CLASSES.STACK
     });
-    aiConfigFold.createDiv({ cls: 'ert-section-title', text: 'Configuration' });
-    const aiConfigBody = aiConfigFold.createDiv({ cls: ERT_CLASSES.STACK });
+    const aiConfigHeader = new Settings(aiConfigFold)
+        .setName('Configuration')
+        .setHeading();
+    applyErtHeaderLayout(aiConfigHeader);
+    const aiConfigBody = aiConfigFold.createDiv({ cls: [ERT_CLASSES.SECTION_BODY, ERT_CLASSES.STACK] });
 
     const advancedFold = aiSettingsGroup.createEl('details', { cls: 'ert-ai-fold' }) as HTMLDetailsElement;
     const advancedSummary = advancedFold.createEl('summary', { text: 'Advanced & Diagnostics' });
@@ -845,6 +848,7 @@ export function renderAiSection(params: {
     };
 
     type FeatureForecast = {
+        available: boolean;
         label: string;
         corpusTokens: number;
         providerExecutionTokens: number;
@@ -920,20 +924,41 @@ export function renderAiSection(params: {
         costEstimateCorpusStructure.setText(options.structureText);
     };
 
-    const buildInquiryCostEstimateParams = (model?: {
-        provider?: AIProviderId;
-        modelId?: string;
-    }) => ({
-        plugin,
-        provider: model?.provider,
-        modelId: model?.modelId,
-        questionText: INQUIRY_CANONICAL_ESTIMATE_QUESTION,
-        vault: app.vault,
-        metadataCache: app.metadataCache,
-        inquirySources: plugin.settings.inquirySources,
-        frontmatterMappings: plugin.settings.frontmatterMappings,
-        scopeContext: { scope: 'book' as const }
-    });
+    const getCurrentCorpusContext = () => plugin.getInquiryService().getCurrentCorpusContext();
+
+    const buildCurrentInquiryExecutionEstimate = async (params: {
+        provider: AIProviderId;
+        modelId: string;
+        questionText: string;
+    }) => {
+        const currentCorpus = getCurrentCorpusContext();
+        if (!currentCorpus) {
+            throw new Error('Current Inquiry corpus is unavailable.');
+        }
+        return await buildCanonicalExecutionEstimate({
+            plugin,
+            provider: params.provider,
+            modelId: params.modelId,
+            questionText: params.questionText,
+            scope: currentCorpus.scope,
+            focusBookId: currentCorpus.focusBookId,
+            focusLabel: currentCorpus.focusLabel,
+            manifestEntries: currentCorpus.manifestEntries,
+            vault: app.vault,
+            metadataCache: app.metadataCache,
+            frontmatterMappings: plugin.settings.frontmatterMappings
+        });
+    };
+
+    const formatCurrentCorpusSelectionLabel = (): string => {
+        const currentCorpus = getCurrentCorpusContext();
+        if (!currentCorpus) return 'Open Inquiry to load the current corpus';
+        const scopeLabel = currentCorpus.scope === 'saga' ? 'Saga' : 'Book';
+        if (currentCorpus.corpus.sceneCount > 0) {
+            return `${scopeLabel} · ${currentCorpus.corpus.sceneCount} ${currentCorpus.corpus.sceneCount === 1 ? 'scene' : 'scenes'}`;
+        }
+        return `${scopeLabel} · No active scenes`;
+    };
 
     const renderCostComparisonRows = (rows: CostComparisonRow[]): void => {
         costEstimateTable.empty();
@@ -966,31 +991,30 @@ export function renderAiSection(params: {
         sizeText: string;
         structureText: string;
     }> => {
-        try {
-            const inquiryEstimate = await estimateInquiryTokens(buildInquiryCostEstimateParams());
+        const currentCorpus = getCurrentCorpusContext();
+        if (currentCorpus) {
             return {
-                sizeText: `Corpus size: ${formatCorpusTokenSummary(inquiryEstimate.corpus.estimatedTokens)}`,
+                sizeText: `Current Corpus: ${formatCorpusTokenSummary(currentCorpus.corpus.estimatedTokens)}`,
                 structureText: formatCorpusStructureSummary(
-                    inquiryEstimate.corpus.sceneCount,
-                    inquiryEstimate.corpus.outlineCount
+                    currentCorpus.corpus.sceneCount,
+                    currentCorpus.corpus.outlineCount
                 )
             };
-        } catch {
-            return {
-                sizeText: 'Corpus size: Estimate unavailable',
-                structureText: 'Corpus composition unavailable'
-            };
         }
+        return {
+            sizeText: 'Current Corpus: Unavailable',
+            structureText: 'Open Inquiry to load the current corpus'
+        };
     };
 
     const computeCostComparisonRows = async (): Promise<CostComparisonRow[]> => {
         return await Promise.all(COST_COMPARISON_MODELS.map(async model => {
             try {
-                const inquiryEstimate = await estimateInquiryTokens(buildInquiryCostEstimateParams({
+                const executionEstimate = await buildCurrentInquiryExecutionEstimate({
                     provider: model.provider,
-                    modelId: model.modelId
-                }));
-                const executionEstimate = inquiryEstimate.providerExecutionEstimate;
+                    modelId: model.modelId,
+                    questionText: INQUIRY_CANONICAL_ESTIMATE_QUESTION
+                });
                 if (!executionEstimate?.expectedPassCount || !executionEstimate.maxOutputTokens) {
                     throw new Error('Canonical execution estimate unavailable.');
                 }
@@ -1022,7 +1046,7 @@ export function renderAiSection(params: {
     const refreshCostComparisonTable = async (): Promise<void> => {
         const requestId = ++costComparisonRequestId;
         renderCostEstimateCorpusSummary({
-            sizeText: 'Corpus size: Calculating...',
+            sizeText: 'Current Corpus: Calculating...',
             structureText: 'Scanning corpus...'
         });
         renderCostComparisonRows(buildLoadingCostRows());
@@ -1039,24 +1063,16 @@ export function renderAiSection(params: {
         provider: AIProviderId;
         modelId: string;
     }): Promise<{ inquiry: FeatureForecast; gossamer: FeatureForecast }> => {
-        // Always recompute from vault for Settings so stale Inquiry snapshots
-        // cannot inflate or mismatch the displayed corpus forecast.
-        const inquiryEstimate = await estimateInquiryTokens({
-            plugin,
-            provider: engine?.provider,
-            modelId: engine?.modelId,
-            questionText: 'Analyze corpus-level flow and depth quality.',
-            vault: app.vault,
-            metadataCache: app.metadataCache,
-            inquirySources: plugin.settings.inquirySources,
-            frontmatterMappings: plugin.settings.frontmatterMappings,
-            scopeContext: { scope: 'book' }
-        });
-        const inquiryLabel = inquiryEstimate.corpus.sceneCount > 0
-            ? `Book · ${inquiryEstimate.corpus.sceneCount} scenes`
-            : `${inquiryEstimate.selectionLabel} (${inquiryEstimate.evidenceLabel}) — approximate`;
-        const inquiryCorpusTokens = inquiryEstimate.corpus.estimatedTokens;
-        const inquiryProviderTokens = inquiryEstimate.providerExecutionEstimate?.estimatedTokens ?? inquiryCorpusTokens;
+        const currentCorpus = getCurrentCorpusContext();
+        const inquiryLabel = formatCurrentCorpusSelectionLabel();
+        const inquiryCorpusTokens = currentCorpus?.corpus.estimatedTokens ?? 0;
+        const inquiryProviderTokens = currentCorpus && engine
+            ? (await buildCurrentInquiryExecutionEstimate({
+                provider: engine.provider,
+                modelId: engine.modelId,
+                questionText: 'Analyze corpus-level flow and depth quality.'
+            }))?.estimatedTokens ?? inquiryCorpusTokens
+            : inquiryCorpusTokens;
 
         const gossamerEstimate = await estimateGossamerTokens({
             plugin,
@@ -1069,11 +1085,13 @@ export function renderAiSection(params: {
 
         return {
             inquiry: {
+                available: Boolean(currentCorpus),
                 label: inquiryLabel,
                 corpusTokens: inquiryCorpusTokens,
                 providerExecutionTokens: inquiryProviderTokens
             },
             gossamer: {
+                available: true,
                 label: `Full manuscript (Scene bodies)`,
                 corpusTokens: gossamerCorpusTokens,
                 providerExecutionTokens: gossamerProviderTokens
@@ -1185,7 +1203,7 @@ export function renderAiSection(params: {
         capacitySafeInput.valueEl.setText('Calculating...');
         capacityOutput.valueEl.setText('Calculating...');
         capacityInquiryToken.setText('Calculating...');
-        capacityInquiryScope.setText('Scanning vault…');
+        capacityInquiryScope.setText('Loading current corpus…');
         capacityInquiryExpected.setText('Calculating...');
         capacityGossamerToken.setText('Calculating...');
         capacityGossamerScope.setText('Scanning vault…');
@@ -1242,8 +1260,13 @@ export function renderAiSection(params: {
                 modelId: estimate.model.id
             }).then(forecasts => {
                 capacityInquiryScope.setText(forecasts.inquiry.label);
-                setTokenDisplay(capacityInquiryToken, `~${forecasts.inquiry.corpusTokens.toLocaleString()}`, 'tokens');
-                capacityInquiryExpected.setText(formatForecastPasses(forecasts.inquiry.providerExecutionTokens, singlePassOnly));
+                if (forecasts.inquiry.available) {
+                    setTokenDisplay(capacityInquiryToken, `~${forecasts.inquiry.corpusTokens.toLocaleString()}`, 'tokens');
+                    capacityInquiryExpected.setText(formatForecastPasses(forecasts.inquiry.providerExecutionTokens, singlePassOnly));
+                } else {
+                    capacityInquiryToken.setText('Unavailable');
+                    capacityInquiryExpected.setText('Unavailable');
+                }
 
                 capacityGossamerScope.setText(forecasts.gossamer.label);
                 setTokenDisplay(capacityGossamerToken, `~${forecasts.gossamer.corpusTokens.toLocaleString()}`, 'tokens');
@@ -1315,7 +1338,7 @@ export function renderAiSection(params: {
             capacitySafeInput.valueEl.setText('Unavailable');
             capacityOutput.valueEl.setText('Unavailable');
             capacityInquiryToken.setText('Unavailable');
-            capacityInquiryScope.setText('Unavailable');
+            capacityInquiryScope.setText('Open Inquiry to load the current corpus');
             capacityInquiryExpected.setText('Unavailable');
             capacityGossamerToken.setText('Unavailable');
             capacityGossamerScope.setText('Unavailable');

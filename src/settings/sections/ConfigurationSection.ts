@@ -14,18 +14,14 @@ export function renderConfigurationSection(params: { app: App; plugin: RadialTim
     const { app, plugin, containerEl } = params;
     containerEl.classList.add(ERT_CLASSES.STACK);
 
-    const configurationShell = containerEl.createDiv({
-        cls: `${ERT_CLASSES.CARD} ${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}`
-    });
-
-    const configurationHeading = new Settings(configurationShell)
+    const configurationHeading = new Settings(containerEl)
         .setName(t('settings.configuration.heading'))
         .setHeading();
     addHeadingIcon(configurationHeading, 'pyramid');
     addWikiLink(configurationHeading, 'Settings#configuration');
     applyErtHeaderLayout(configurationHeading);
 
-    const configurationBody = configurationShell.createDiv({ cls: [ERT_CLASSES.SECTION_BODY, ERT_CLASSES.STACK] });
+    const configurationBody = containerEl.createDiv({ cls: [ERT_CLASSES.SECTION_BODY, ERT_CLASSES.STACK] });
 
     const createDenseRow = (
         parent: HTMLElement,

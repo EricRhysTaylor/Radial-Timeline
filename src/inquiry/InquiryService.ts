@@ -2,6 +2,7 @@ import { App, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import { INQUIRY_VIEW_TYPE } from './constants';
 import { InquiryView } from './InquiryView';
+import type { InquiryCurrentCorpusContext } from './types';
 
 export class InquiryService {
     constructor(private app: App, private plugin: RadialTimelinePlugin) {}
@@ -11,6 +12,11 @@ export class InquiryService {
             .getLeavesOfType(INQUIRY_VIEW_TYPE)
             .map(leaf => leaf.view as unknown)
             .filter((view): view is InquiryView => view instanceof InquiryView);
+    }
+
+    getCurrentCorpusContext(): InquiryCurrentCorpusContext | null {
+        const view = this.getInquiryViews()[0];
+        return view?.getCurrentCorpusContext() ?? null;
     }
 
     /** Notify all open Inquiry views that AI settings changed. */

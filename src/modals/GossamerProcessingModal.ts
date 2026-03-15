@@ -8,6 +8,7 @@
  */
 import { App, Modal, ButtonComponent, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
+import { getCredential } from '../ai/credentials/credentials';
 import { getModelDisplayName } from '../utils/modelResolver';
 import { SimulatedProgress } from '../utils/simulatedProgress';
 import type { AIRunAdvancedContext } from '../ai/types';
@@ -150,12 +151,16 @@ export class GossamerProcessingModal extends Modal {
         this.manuscriptInfoEl = infoSection.createDiv({ cls: 'rt-gossamer-proc-manuscript-info' });
         this.manuscriptInfoEl.setText('Gathering manuscript details...');
 
-        // Check if API key is configured
-        // TODO(#SAN-2): Update this check to be provider-agnostic.
-        if (!this.plugin.settings.geminiApiKey && this.plugin.settings.defaultAiProvider === 'gemini') {
-            // Warning section for missing API key
-            const warningEl = card.createDiv({ cls: 'rt-pulse-warning' });
-            warningEl.setText('⚠️ Gemini API key not configured. Please set your API key in Settings → AI → Gemini API key.');
+        // Check if API key is configured for the active provider
+        const activeProvider = this.plugin.settings.defaultAiProvider || 'openai';
+        if (activeProvider !== 'local') {
+            getCredential(this.plugin, activeProvider).then(key => {
+                if (!key) {
+                    const name = activeProvider[0].toUpperCase() + activeProvider.slice(1);
+                    const warningEl = card.createDiv({ cls: 'rt-pulse-warning' });
+                    warningEl.setText(`⚠️ ${name} API key not configured. Please set your API key in Settings → AI.`);
+                }
+            });
         }
 
         // Action buttons
