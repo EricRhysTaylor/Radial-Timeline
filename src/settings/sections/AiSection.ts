@@ -6,6 +6,7 @@ import { fetchOpenAiModels } from '../../api/openaiApi';
 import { fetchGeminiModels } from '../../api/geminiApi';
 import { fetchLocalModels } from '../../api/localAiApi';
 import { AiContextModal } from '../AiContextModal';
+import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import { resolveAiLogFolder } from '../../ai/log';
 import { getSynopsisGenerationWordLimit, getSynopsisHoverLineLimit } from '../../utils/synopsisLimits';
 import { ERT_CLASSES } from '../../ui/classes';
@@ -194,6 +195,15 @@ export function renderAiSection(params: {
         cls: 'ert-section-desc',
         text: 'Fresh and cached UI estimates derived from the canonical Inquiry execution estimate for the current corpus.'
     });
+    const costEstimateCorpusSummary = costEstimateSection.createDiv({ cls: `${ERT_CLASSES.STACK_TIGHT}` });
+    const costEstimateCorpusSize = costEstimateCorpusSummary.createDiv({
+        cls: 'ert-section-desc',
+        text: 'Corpus size: Calculating...'
+    });
+    const costEstimateCorpusStructure = costEstimateCorpusSummary.createDiv({
+        cls: 'ert-field-note',
+        text: 'Scanning corpus...'
+    });
     const costEstimateTable = costEstimateSection.createDiv({ cls: 'ert-ai-models-table' });
 
     const ensureCanonicalAiSettings = () => {
@@ -371,15 +381,20 @@ export function renderAiSection(params: {
     });
 
     const apiKeysFold = aiSettingsGroup.createDiv({
-        cls: `ert-ai-fold ert-ai-configuration ${ERT_CLASSES.STACK}`
+        cls: `${ERT_CLASSES.CARD} ${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK} ert-ai-section-card ert-ai-configuration`
     });
-    apiKeysFold.createDiv({ cls: 'ert-ai-fold-heading', text: 'API Keys' });
-    const configurationBody = apiKeysFold.createDiv({ cls: ERT_CLASSES.STACK });
+    const apiKeysHeader = new Settings(apiKeysFold)
+        .setName('API Keys')
+        .setHeading();
+    addHeadingIcon(apiKeysHeader, 'key');
+    addWikiLink(apiKeysHeader, 'Settings#ai');
+    applyErtHeaderLayout(apiKeysHeader);
+    const configurationBody = apiKeysFold.createDiv({ cls: [ERT_CLASSES.SECTION_BODY, ERT_CLASSES.STACK] });
 
     const aiConfigFold = aiSettingsGroup.createDiv({
-        cls: `ert-ai-fold ${ERT_CLASSES.STACK}`
+        cls: `${ERT_CLASSES.CARD} ${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK} ert-ai-section-card`
     });
-    aiConfigFold.createDiv({ cls: 'ert-ai-fold-heading', text: 'Configuration' });
+    aiConfigFold.createDiv({ cls: 'ert-section-title', text: 'Configuration' });
     const aiConfigBody = aiConfigFold.createDiv({ cls: ERT_CLASSES.STACK });
 
     const advancedFold = aiSettingsGroup.createEl('details', { cls: 'ert-ai-fold' }) as HTMLDetailsElement;
@@ -883,11 +898,48 @@ export function renderAiSection(params: {
         });
     };
 
+    const formatCorpusStructureSummary = (sceneCount: number, outlineCount: number): string => {
+        const parts: string[] = [];
+        if (sceneCount > 0 || outlineCount <= 0) {
+            parts.push(`${sceneCount} ${sceneCount === 1 ? 'scene' : 'scenes'}`);
+        }
+        if (outlineCount > 0) {
+            parts.push(`${outlineCount} ${outlineCount === 1 ? 'outline' : 'outlines'}`);
+        }
+        return parts.length ? parts.join(' + ') : 'No scenes or outlines';
+    };
+
+    const formatCorpusTokenSummary = (tokens: number): string =>
+        tokens > 0 ? `${formatApproxTokens(tokens)} tokens` : '0 tokens';
+
+    const renderCostEstimateCorpusSummary = (options: {
+        sizeText: string;
+        structureText: string;
+    }): void => {
+        costEstimateCorpusSize.setText(options.sizeText);
+        costEstimateCorpusStructure.setText(options.structureText);
+    };
+
+    const buildInquiryCostEstimateParams = (model?: {
+        provider?: AIProviderId;
+        modelId?: string;
+    }) => ({
+        plugin,
+        provider: model?.provider,
+        modelId: model?.modelId,
+        questionText: INQUIRY_CANONICAL_ESTIMATE_QUESTION,
+        vault: app.vault,
+        metadataCache: app.metadataCache,
+        inquirySources: plugin.settings.inquirySources,
+        frontmatterMappings: plugin.settings.frontmatterMappings,
+        scopeContext: { scope: 'book' as const }
+    });
+
     const renderCostComparisonRows = (rows: CostComparisonRow[]): void => {
         costEstimateTable.empty();
 
         const headerRow = costEstimateTable.createDiv({ cls: 'ert-ai-models-row ert-ai-models-row--header' });
-        ['Provider', 'Model', 'Fresh Run', 'Cached Run', 'Passes'].forEach(text => {
+        ['Provider', 'Model', 'Fresh Run', 'Cached Run', 'Expected Passes'].forEach(text => {
             createCostTableCell(headerRow, text);
         });
 
@@ -910,20 +962,34 @@ export function renderAiSection(params: {
 
     let costComparisonRequestId = 0;
 
+    const computeCostEstimateCorpusSummary = async (): Promise<{
+        sizeText: string;
+        structureText: string;
+    }> => {
+        try {
+            const inquiryEstimate = await estimateInquiryTokens(buildInquiryCostEstimateParams());
+            return {
+                sizeText: `Corpus size: ${formatCorpusTokenSummary(inquiryEstimate.corpus.estimatedTokens)}`,
+                structureText: formatCorpusStructureSummary(
+                    inquiryEstimate.corpus.sceneCount,
+                    inquiryEstimate.corpus.outlineCount
+                )
+            };
+        } catch {
+            return {
+                sizeText: 'Corpus size: Estimate unavailable',
+                structureText: 'Corpus composition unavailable'
+            };
+        }
+    };
+
     const computeCostComparisonRows = async (): Promise<CostComparisonRow[]> => {
         return await Promise.all(COST_COMPARISON_MODELS.map(async model => {
             try {
-                const inquiryEstimate = await estimateInquiryTokens({
-                    plugin,
+                const inquiryEstimate = await estimateInquiryTokens(buildInquiryCostEstimateParams({
                     provider: model.provider,
-                    modelId: model.modelId,
-                    questionText: INQUIRY_CANONICAL_ESTIMATE_QUESTION,
-                    vault: app.vault,
-                    metadataCache: app.metadataCache,
-                    inquirySources: plugin.settings.inquirySources,
-                    frontmatterMappings: plugin.settings.frontmatterMappings,
-                    scopeContext: { scope: 'book' }
-                });
+                    modelId: model.modelId
+                }));
                 const executionEstimate = inquiryEstimate.providerExecutionEstimate;
                 if (!executionEstimate?.expectedPassCount || !executionEstimate.maxOutputTokens) {
                     throw new Error('Canonical execution estimate unavailable.');
@@ -955,9 +1021,17 @@ export function renderAiSection(params: {
 
     const refreshCostComparisonTable = async (): Promise<void> => {
         const requestId = ++costComparisonRequestId;
+        renderCostEstimateCorpusSummary({
+            sizeText: 'Corpus size: Calculating...',
+            structureText: 'Scanning corpus...'
+        });
         renderCostComparisonRows(buildLoadingCostRows());
-        const rows = await computeCostComparisonRows();
+        const [corpusSummary, rows] = await Promise.all([
+            computeCostEstimateCorpusSummary(),
+            computeCostComparisonRows()
+        ]);
         if (requestId !== costComparisonRequestId) return;
+        renderCostEstimateCorpusSummary(corpusSummary);
         renderCostComparisonRows(rows);
     };
 

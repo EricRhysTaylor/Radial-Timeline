@@ -37,7 +37,14 @@ import { buildDefaultInquiryPromptConfig, getBuiltInPromptSeed, getCanonicalProm
 import { ensureInquiryArtifactFolder, getMostRecentArtifactFile, resolveInquiryArtifactFolder } from './utils/artifacts';
 import { ensureInquiryContentLogFolder, ensureInquiryLogFolder, resolveInquiryLogFolder } from './utils/logs';
 import { openOrRevealFile, openOrRevealFileAtSubpath } from '../utils/fileUtils';
-import { extractTokenUsage, formatAiLogContent, formatDuration, sanitizeLogPayload, type AiLogStatus } from '../ai/log';
+import {
+    extractTokenUsage,
+    formatAiLogContent,
+    formatDuration,
+    formatUsageCostBreakdownLines,
+    sanitizeLogPayload,
+    type AiLogStatus
+} from '../ai/log';
 import { getCredentialSecretId } from '../ai/credentials/credentials';
 import { redactSensitiveValue } from '../ai/credentials/redactSensitive';
 import { hasSecret, isSecretStorageAvailable } from '../ai/credentials/secretStorage';
@@ -10663,8 +10670,19 @@ export class InquiryView extends ItemView {
             ? trace.tokenUsageKnown
             : !!usage;
         const usageVisibility = this.formatTokenUsageVisibility(usageKnown, trace.tokenUsageScope ?? result.tokenUsageScope);
+        const formatUsageMetric = (value?: number | null): string => {
+            if (typeof value !== 'number' || !Number.isFinite(value)) return 'unavailable';
+            return formatTokenCount(value);
+        };
+        const usageDetailParts = usage
+            ? [
+                typeof usage.rawInputTokens === 'number' ? `raw input=${formatTokenCount(usage.rawInputTokens)}` : null,
+                typeof usage.cacheReadInputTokens === 'number' ? `cache read=${formatTokenCount(usage.cacheReadInputTokens)}` : null,
+                typeof usage.cacheCreationInputTokens === 'number' ? `cache write=${formatTokenCount(usage.cacheCreationInputTokens)}` : null
+            ].filter((value): value is string => !!value)
+            : [];
         const usageText = usage
-            ? `input=${formatTokenCount(usage.inputTokens)}, output=${formatTokenCount(usage.outputTokens)}, total=${formatTokenCount(usage.totalTokens)}`
+            ? `input=${formatUsageMetric(usage.inputTokens)}, output=${formatUsageMetric(usage.outputTokens)}, total=${formatUsageMetric(usage.totalTokens)}`
             : 'not available';
 
         const describeMode = (className: string): string | null => {
@@ -10819,6 +10837,9 @@ export class InquiryView extends ItemView {
         lines.push(`- Estimated input: ${formatTokenCount(tokenEstimateInput, true)}`);
         lines.push(`- Actual usage: ${isSimulated ? 'simulated run; not applicable' : usageText}`);
         lines.push(`- Usage visibility: ${isSimulated ? 'simulated' : usageVisibility}`);
+        if (!isSimulated && usageDetailParts.length) {
+            lines.push(`- Usage detail: ${usageDetailParts.join(', ')}`);
+        }
         lines.push(`- Tier: ${tokenTier ?? 'unknown'}`);
         const logSnapshot = this.plugin.getInquiryEstimateService().getSnapshot();
         if (logSnapshot) {
@@ -10912,6 +10933,13 @@ export class InquiryView extends ItemView {
             ? trace.tokenUsageKnown
             : !!tokenUsage;
         const tokenUsageVisibility = this.formatTokenUsageVisibility(tokenUsageKnown, trace.tokenUsageScope ?? result.tokenUsageScope);
+        const tokenUsageDetailParts = tokenUsage
+            ? [
+                typeof tokenUsage.rawInputTokens === 'number' ? `raw input=${tokenUsage.rawInputTokens}` : null,
+                typeof tokenUsage.cacheReadInputTokens === 'number' ? `cache read=${tokenUsage.cacheReadInputTokens}` : null,
+                typeof tokenUsage.cacheCreationInputTokens === 'number' ? `cache write=${tokenUsage.cacheCreationInputTokens}` : null
+            ].filter((value): value is string => !!value)
+            : [];
         const { sanitized: sanitizedPayload, hadRedactions } = sanitizeLogPayload(trace.requestPayload ?? null);
         const redactionNotes = hadRedactions
             ? ['Redacted sensitive credential values from request payload.']
@@ -10953,6 +10981,9 @@ export class InquiryView extends ItemView {
             `- Token estimate input: ${typeof result.tokenEstimateInput === 'number' ? String(Math.round(result.tokenEstimateInput)) : 'unknown'}`,
             `- Token estimate tier: ${result.tokenEstimateTier || 'unknown'}`
         ];
+        if (tokenUsageDetailParts.length) {
+            contextLines.push(`- Token usage detail: ${tokenUsageDetailParts.join(', ')}`);
+        }
         if (typeof trace.executionPassCount === 'number' && trace.executionPassCount > 1) {
             contextLines.push(`- Execution pass count: ${trace.executionPassCount}`);
         }
@@ -11006,8 +11037,15 @@ export class InquiryView extends ItemView {
                 schemaWarnings
             }
         }, { jsonSpacing: 0, metadataExtras: contextLines });
+        const shouldIncludeCostBreakdown = !isSimulated
+            && (tokenUsageVisibility === 'full multi-pass' || tokenUsageVisibility === 'partial multi-pass');
+        const costBreakdownLines = shouldIncludeCostBreakdown
+            ? formatUsageCostBreakdownLines(aiProvider, aiModelResolved || aiModelRequested, tokenUsage)
+            : [];
 
-        return `${logContent}\n`;
+        return costBreakdownLines.length
+            ? `${logContent}\n${costBreakdownLines.join('\n')}\n`
+            : `${logContent}\n`;
     }
 
     private formatInquiryLogTitle(result: InquiryResult): string {

@@ -26,6 +26,8 @@ export function estimateCorpusCost(
     const outputTokens = Math.max(0, Math.floor(expectedOutputTokens));
     const passes = Math.max(1, Math.floor(expectedPasses));
 
+    // Fresh run models the first request before prefix reuse is available.
+    // Cached run models subsequent requests by discounting the reusable prefix.
     const freshPerPass = (
         (inputTokens / TOKENS_PER_MILLION) * pricing.inputPer1M
         + (outputTokens / TOKENS_PER_MILLION) * pricing.outputPer1M

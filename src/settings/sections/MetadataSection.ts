@@ -1,5 +1,6 @@
 import { App, Setting as Settings, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
+import { ERT_CLASSES } from '../../ui/classes';
 
 const CANONICAL_KEYS = [
     'Class', 'When', 'Subplot', 'Act', 'Duration', 'Character', 'POV', 'Place', 'Synopsis', 
@@ -13,9 +14,10 @@ export function renderMetadataSection(params: { app: App; plugin: RadialTimeline
     const { app, plugin, containerEl } = params;
     const pendingMappings: { id: number; systemKey: string }[] = [];
     let nextPendingId = 1;
+    const remapPanel = containerEl.createDiv({ cls: [ERT_CLASSES.PANEL, 'ert-frontmatter-remap-panel', ERT_CLASSES.STACK] });
 
     // Single toggle that both enables the feature and controls visibility
-    const remapSetting = new Settings(containerEl)
+    const remapSetting = new Settings(remapPanel)
         .setName('Remap frontmatter field keys')
         .setDesc('Map your custom frontmatter keys to Radial Timeline base keys.')
         .addToggle(toggle => {
@@ -29,7 +31,7 @@ export function renderMetadataSection(params: { app: App; plugin: RadialTimeline
         });
     remapSetting.settingEl.addClass('ert-settingRow');
 
-    const mappingContainer = containerEl.createDiv({ cls: 'ert-mapping-body ert-stack' });
+    const mappingContainer = remapPanel.createDiv({ cls: 'ert-mapping-body ert-frontmatter-remap-body ert-stack' });
 
     const mappingListContainer = mappingContainer.createDiv({ cls: 'ert-mapping-list ert-stack' });
 

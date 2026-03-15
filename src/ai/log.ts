@@ -6,15 +6,13 @@ import { normalizePath, Notice, type Vault, TFile, TFolder } from 'obsidian';
 import { resolveInquiryLogFolder } from '../inquiry/utils/logs';
 import { redactSensitiveObject, redactSensitiveValue } from './credentials/redactSensitive';
 import { getModelDisplayName } from '../utils/modelResolver';
+import { getProviderPricing } from './cost/providerPricing';
+import { extractTokenUsage, type TokenUsage } from './usage/providerUsage';
+
+export { extractTokenUsage, type TokenUsage } from './usage/providerUsage';
 
 export type AiLogFeature = 'Inquiry' | 'Pulse' | 'Synopsis' | 'Gossamer';
 export type AiLogStatus = 'success' | 'error' | 'simulated';
-
-export type TokenUsage = {
-    inputTokens?: number;
-    outputTokens?: number;
-    totalTokens?: number;
-};
 
 export type AiLogRequest = {
     systemPrompt?: string | null;
@@ -77,6 +75,96 @@ export type SummaryLogEnvelope = {
     retryAttempts?: number;
 };
 
+export type UsageCostBreakdown = {
+    inputTokens?: number;
+    outputTokens?: number;
+    rawInputTokens?: number;
+    cacheReadInputTokens?: number;
+    cacheCreationInputTokens?: number;
+    inputCostUSD?: number;
+    outputCostUSD?: number;
+    totalCostUSD?: number;
+};
+
+const TOKENS_PER_MILLION = 1_000_000;
+
+function normalizePricingProvider(provider?: string | null): 'anthropic' | 'openai' | 'google' | null {
+    const normalized = (provider || '').trim().toLowerCase();
+    if (normalized === 'anthropic') return 'anthropic';
+    if (normalized === 'openai') return 'openai';
+    if (normalized === 'google' || normalized === 'gemini') return 'google';
+    return null;
+}
+
+export function buildUsageCostBreakdown(
+    provider: string | null | undefined,
+    modelId: string | null | undefined,
+    usage?: TokenUsage | null
+): UsageCostBreakdown | null {
+    if (!usage) return null;
+    const pricingProvider = normalizePricingProvider(provider);
+    if (!pricingProvider || !modelId) return null;
+
+    let pricing;
+    try {
+        pricing = getProviderPricing(pricingProvider, modelId);
+    } catch {
+        return null;
+    }
+
+    const inputCostUSD = typeof usage.inputTokens === 'number'
+        ? (usage.inputTokens / TOKENS_PER_MILLION) * pricing.inputPer1M
+        : undefined;
+    const outputCostUSD = typeof usage.outputTokens === 'number'
+        ? (usage.outputTokens / TOKENS_PER_MILLION) * pricing.outputPer1M
+        : undefined;
+    const totalCostUSD = typeof inputCostUSD === 'number' && typeof outputCostUSD === 'number'
+        ? inputCostUSD + outputCostUSD
+        : undefined;
+
+    return {
+        inputTokens: usage.inputTokens,
+        outputTokens: usage.outputTokens,
+        rawInputTokens: usage.rawInputTokens,
+        cacheReadInputTokens: usage.cacheReadInputTokens,
+        cacheCreationInputTokens: usage.cacheCreationInputTokens,
+        inputCostUSD,
+        outputCostUSD,
+        totalCostUSD
+    };
+}
+
+export function formatUsageCostBreakdownLines(
+    provider: string | null | undefined,
+    modelId: string | null | undefined,
+    usage?: TokenUsage | null
+): string[] {
+    const breakdown = buildUsageCostBreakdown(provider, modelId, usage);
+    if (!breakdown) return [];
+    const formatTokenCount = (value?: number): string => {
+        if (typeof value !== 'number' || !Number.isFinite(value)) return 'unavailable';
+        return Math.round(value).toLocaleString();
+    };
+    const formatCost = (value?: number): string => {
+        if (typeof value !== 'number' || !Number.isFinite(value)) return 'unavailable';
+        return `$${value.toFixed(2)}`;
+    };
+
+    return [
+        '## Cost Breakdown',
+        `Input tokens: ${formatTokenCount(breakdown.inputTokens)}`,
+        `Output tokens: ${formatTokenCount(breakdown.outputTokens)}`,
+        `Cache read: ${formatTokenCount(breakdown.cacheReadInputTokens)}`,
+        `Cache write: ${formatTokenCount(breakdown.cacheCreationInputTokens)}`,
+        '',
+        'Estimated cost:',
+        `Input: ${formatCost(breakdown.inputCostUSD)}`,
+        `Output: ${formatCost(breakdown.outputCostUSD)}`,
+        `Total: ${formatCost(breakdown.totalCostUSD)}`,
+        ''
+    ];
+}
+
 export function sanitizeLogPayload(value: unknown): { sanitized: unknown; hadRedactions: boolean } {
     const sanitized = redactSensitiveObject(value);
     let hadRedactions = false;
@@ -86,42 +174,6 @@ export function sanitizeLogPayload(value: unknown): { sanitized: unknown; hadRed
         hadRedactions = true;
     }
     return { sanitized, hadRedactions };
-}
-
-export function extractTokenUsage(provider: string, responseData: unknown): TokenUsage | null {
-    if (!responseData || typeof responseData !== 'object') return null;
-    const data = responseData as Record<string, unknown>;
-
-    if ((provider === 'openai' || provider === 'local') && data.usage && typeof data.usage === 'object') {
-        const usage = data.usage as Record<string, unknown>;
-        const input = typeof usage.prompt_tokens === 'number'
-            ? usage.prompt_tokens
-            : (typeof usage.input_tokens === 'number' ? usage.input_tokens : undefined);
-        const output = typeof usage.completion_tokens === 'number'
-            ? usage.completion_tokens
-            : (typeof usage.output_tokens === 'number' ? usage.output_tokens : undefined);
-        const total = typeof usage.total_tokens === 'number'
-            ? usage.total_tokens
-            : (input !== undefined && output !== undefined ? input + output : undefined);
-        return { inputTokens: input, outputTokens: output, totalTokens: total };
-    }
-
-    if (provider === 'anthropic' && data.usage && typeof data.usage === 'object') {
-        const usage = data.usage as Record<string, unknown>;
-        const input = typeof usage.input_tokens === 'number' ? usage.input_tokens : undefined;
-        const output = typeof usage.output_tokens === 'number' ? usage.output_tokens : undefined;
-        return { inputTokens: input, outputTokens: output };
-    }
-
-    if (provider === 'gemini' && data.usageMetadata && typeof data.usageMetadata === 'object') {
-        const usage = data.usageMetadata as Record<string, unknown>;
-        const total = typeof usage.totalTokenCount === 'number' ? usage.totalTokenCount : undefined;
-        const input = typeof usage.promptTokenCount === 'number' ? usage.promptTokenCount : undefined;
-        const output = typeof usage.candidatesTokenCount === 'number' ? usage.candidatesTokenCount : undefined;
-        return { inputTokens: input, outputTokens: output, totalTokens: total };
-    }
-
-    return null;
 }
 
 export function formatLogTimestamp(date: Date, options?: { includeSeconds?: boolean }): string {
@@ -168,9 +220,9 @@ export function formatAiLogContent(
         if (!usage || (usage.inputTokens === undefined && usage.outputTokens === undefined && usage.totalTokens === undefined)) {
             return 'not available';
         }
-        const input = usage.inputTokens ?? 'n/a';
-        const output = usage.outputTokens ?? 'n/a';
-        const total = usage.totalTokens ?? 'n/a';
+        const input = usage.inputTokens ?? 'unavailable';
+        const output = usage.outputTokens ?? 'unavailable';
+        const total = usage.totalTokens ?? 'unavailable';
         return `input=${input}, output=${output}, total=${total}`;
     };
     const formatNextRunOnly = (value?: boolean | null) => {
@@ -226,8 +278,6 @@ export function formatAiLogContent(
     };
     const modelRequestedDisplay = formatModel(envelope.metadata.modelRequested);
     const modelResolvedDisplay = formatModel(envelope.metadata.modelResolved);
-
-    lines.push(`# ${envelope.title}`, '');
 
     lines.push('## Run Metadata');
     lines.push(`- Feature: ${envelope.metadata.feature}`);
@@ -320,15 +370,13 @@ export function formatSummaryLogContent(envelope: SummaryLogEnvelope): string {
         if (!usage || (usage.inputTokens === undefined && usage.outputTokens === undefined && usage.totalTokens === undefined)) {
             return 'not available';
         }
-        const input = usage.inputTokens ?? 'n/a';
-        const output = usage.outputTokens ?? 'n/a';
-        const total = usage.totalTokens ?? 'n/a';
+        const input = usage.inputTokens ?? 'unavailable';
+        const output = usage.outputTokens ?? 'unavailable';
+        const total = usage.totalTokens ?? 'unavailable';
         return `input=${input}, output=${output}, total=${total}`;
     };
 
     const formatRetries = (count?: number) => typeof count === 'number' ? String(count) : '0';
-
-    lines.push(`# ${envelope.title}`, '');
 
     lines.push('## Run Summary');
     lines.push(`- Feature: ${envelope.feature}`);

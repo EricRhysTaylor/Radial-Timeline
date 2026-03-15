@@ -14,6 +14,12 @@ const TEST_AI = {
     modelLabel: 'GPT-5.2'
 } as const;
 
+const ANTHROPIC_AI = {
+    provider: 'anthropic',
+    modelId: 'claude-sonnet-4-6',
+    modelLabel: 'Claude Sonnet 4.6'
+} as const;
+
 function createService() {
     return new InquiryRunnerService(
         { settings: {} } as never,
@@ -644,7 +650,112 @@ describe('InquiryRunnerService packaging policy', () => {
         expect(result.usage).toEqual({
             inputTokens: 30,
             outputTokens: 15,
-            totalTokens: undefined
+            totalTokens: 45
+        });
+    });
+
+    it('aggregates full Anthropic multi-pass usage using cache-aware input fields', async () => {
+        const service = createService();
+        const buildEvidenceChunkPrompts = vi.fn().mockReturnValue({
+            prompts: ['chunk-1', 'chunk-2'],
+            maxChunkTokens: 12000,
+            maxChunkChars: 48000,
+            evidenceChars: 96000,
+            prefixChars: 2000,
+            targetPasses: 2
+        });
+        const runInquiryRequest = vi.fn()
+            .mockResolvedValueOnce(buildRunResult({
+                responseData: { usage: { input_tokens: 50, cache_creation_input_tokens: 10000, output_tokens: 20 } }
+            }))
+            .mockResolvedValueOnce(buildRunResult({
+                responseData: { usage: { input_tokens: 40, cache_read_input_tokens: 9000, output_tokens: 10 } }
+            }))
+            .mockResolvedValueOnce(buildRunResult({
+                responseData: { usage: { input_tokens: 30, cache_read_input_tokens: 8000, output_tokens: 15 } }
+            }));
+        Object.assign(service, {
+            buildEvidenceChunkPrompts,
+            runInquiryRequest
+        });
+
+        const result = await (service.runChunkedInquiry as (...args: unknown[]) => Promise<Record<string, unknown>>) (
+            {} as never,
+            {
+                systemPrompt: 'system',
+                userPrompt: 'Question\nEvidence:\n## Scene A\nBody',
+                ai: ANTHROPIC_AI,
+                jsonSchema: { type: 'object' },
+                temperature: 0.2,
+                maxTokens: 4000
+            }
+        );
+
+        expect(result.ok).toBe(true);
+        expect(result.tokenUsageKnown).toBe(true);
+        expect(result.tokenUsageScope).toBe('full');
+        expect(result.usage).toEqual({
+            inputTokens: 27120,
+            outputTokens: 45,
+            totalTokens: 27165,
+            rawInputTokens: 120,
+            cacheReadInputTokens: 17000,
+            cacheCreationInputTokens: 10000
+        });
+        expect(result.usage).not.toEqual({
+            inputTokens: 120,
+            outputTokens: 45,
+            totalTokens: 165
+        });
+    });
+
+    it('labels Anthropic multi-pass usage as partial and hides incomplete input totals', async () => {
+        const service = createService();
+        const buildEvidenceChunkPrompts = vi.fn().mockReturnValue({
+            prompts: ['chunk-1', 'chunk-2'],
+            maxChunkTokens: 12000,
+            maxChunkChars: 48000,
+            evidenceChars: 96000,
+            prefixChars: 2000,
+            targetPasses: 2
+        });
+        const runInquiryRequest = vi.fn()
+            .mockResolvedValueOnce(buildRunResult({
+                responseData: { usage: { input_tokens: 50, cache_creation_input_tokens: 10000, output_tokens: 20 } }
+            }))
+            .mockResolvedValueOnce(buildRunResult({
+                responseData: { usage: { output_tokens: 10 } }
+            }))
+            .mockResolvedValueOnce(buildRunResult({
+                responseData: { usage: { input_tokens: 30, cache_read_input_tokens: 8000, output_tokens: 15 } }
+            }));
+        Object.assign(service, {
+            buildEvidenceChunkPrompts,
+            runInquiryRequest
+        });
+
+        const result = await (service.runChunkedInquiry as (...args: unknown[]) => Promise<Record<string, unknown>>) (
+            {} as never,
+            {
+                systemPrompt: 'system',
+                userPrompt: 'Question\nEvidence:\n## Scene A\nBody',
+                ai: ANTHROPIC_AI,
+                jsonSchema: { type: 'object' },
+                temperature: 0.2,
+                maxTokens: 4000
+            }
+        );
+
+        expect(result.ok).toBe(true);
+        expect(result.tokenUsageKnown).toBe(true);
+        expect(result.tokenUsageScope).toBe('partial');
+        expect(result.usage).toEqual({
+            inputTokens: undefined,
+            outputTokens: 45,
+            totalTokens: undefined,
+            rawInputTokens: undefined,
+            cacheReadInputTokens: undefined,
+            cacheCreationInputTokens: undefined
         });
     });
 

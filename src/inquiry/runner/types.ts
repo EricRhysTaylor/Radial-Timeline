@@ -2,6 +2,7 @@ import type { InquiryAiStatus, InquiryMode, InquiryScope, InquiryTokenUsageScope
 import type { InquiryMaterialMode } from '../../types/settings';
 import type { AnalysisPackaging } from '../../ai/types';
 import type { TokenEstimateMethod } from '../../ai/tokens/inputTokenEstimate';
+import type { TokenUsage } from '../../ai/usage/providerUsage';
 
 export type EvidenceClass = string;
 
@@ -123,11 +124,7 @@ export interface InquiryRunTrace {
     tokenUsageKnown?: boolean;
     tokenUsageScope?: InquiryTokenUsageScope;
     openAiTransportLane?: 'chat_completions' | 'responses';
-    usage?: {
-        inputTokens?: number;
-        outputTokens?: number;
-        totalTokens?: number;
-    };
+    usage?: TokenUsage;
     sanitizationNotes: string[];
     notes: string[];
 }

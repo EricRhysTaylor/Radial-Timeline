@@ -59,7 +59,13 @@ interface AnthropicToolUseBlock {
 
 interface AnthropicSuccessResponse {
   content: ({ type: string; text?: string; thinking?: string; citations?: AnthropicResponseCitation[] } | AnthropicToolUseBlock)[];
-  usage?: { input_tokens: number; output_tokens: number };
+  usage?: {
+    input_tokens?: number;
+    cache_creation_input_tokens?: number;
+    cache_creation?: Record<string, number>;
+    cache_read_input_tokens?: number;
+    output_tokens?: number;
+  };
 }
 interface AnthropicErrorResponse {
   type: string;

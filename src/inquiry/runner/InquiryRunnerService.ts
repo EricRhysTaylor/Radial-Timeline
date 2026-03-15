@@ -23,6 +23,7 @@ import { getAIClient } from '../../ai/runtime/aiClient';
 import { buildDefaultAiSettings, mapAiProviderToLegacyProvider, mapLegacyProviderToAiProvider } from '../../ai/settings/aiSettings';
 import { validateAiSettings } from '../../ai/settings/validateAiSettings';
 import type { AIRunPreparedEstimate, AIRunResult, AnalysisPackaging, SceneRef } from '../../ai/types';
+import { extractTokenUsage } from '../../ai/usage/providerUsage';
 import { readSceneId } from '../../utils/sceneIds';
 import { buildSceneRefIndex, isStableSceneId, normalizeSceneRef } from '../../ai/references/sceneRefNormalizer';
 import { cleanEvidenceBody } from '../utils/evidenceCleaning';
@@ -157,11 +158,15 @@ type UsageAccumulator = {
     passesWithInput: number;
     passesWithOutput: number;
     passesWithTotal: number;
+    passesWithCacheAwareUsage: number;
     synthesisHasUsage: boolean;
     chunkHasUsage: boolean;
     inputTokens: number;
     outputTokens: number;
     totalTokens: number;
+    rawInputTokens: number;
+    cacheReadInputTokens: number;
+    cacheCreationInputTokens: number;
 };
 
 export class InquiryRunnerService implements InquiryRunner {
@@ -268,7 +273,7 @@ export class InquiryRunnerService implements InquiryRunner {
                 trace.executionState = 'dispatched_to_provider';
                 trace.failureStage = 'provider_response_parsing';
                 trace.tokenUsageKnown = trace.tokenUsageKnown ?? !!trace.usage;
-                const usage = trace.usage ?? this.extractUsage(response.responseData);
+                const usage = trace.usage ?? this.extractUsage(response.aiProvider ?? response.provider, response.responseData);
                 if (usage) trace.usage = usage;
                 const recovered = this.tryRecoverSingleInvalidResponse(input, response, trace, 'parse', evidenceDocMeta);
                 if (recovered) {
@@ -376,7 +381,7 @@ export class InquiryRunnerService implements InquiryRunner {
                 trace.executionState = 'dispatched_to_provider';
                 trace.failureStage = 'provider_response_parsing';
                 trace.tokenUsageKnown = trace.tokenUsageKnown ?? !!trace.usage;
-                const usage = trace.usage ?? this.extractUsage(response.responseData);
+                const usage = trace.usage ?? this.extractUsage(response.aiProvider ?? response.provider, response.responseData);
                 if (usage) trace.usage = usage;
                 const recovered = this.tryRecoverOmnibusInvalidResponse(input, response, trace, 'parse', evidenceDocMeta);
                 if (recovered) {
@@ -1442,7 +1447,7 @@ export class InquiryRunnerService implements InquiryRunner {
         const executionPath: InquiryExecutionPath = (run.advancedContext?.executionPassCount ?? 1) > 1
             ? 'multi_pass'
             : 'one_pass';
-        const usage = options?.usage ?? this.extractUsage(run.responseData);
+        const usage = options?.usage ?? this.extractUsage(run.provider, run.responseData);
         const usageKnown = !!usage;
         const preflightBlocked = run.aiStatus === 'rejected'
             && run.aiReason === 'truncated'
@@ -1548,7 +1553,7 @@ export class InquiryRunnerService implements InquiryRunner {
                 temperature: options.temperature,
                 maxTokens: options.maxTokens
             });
-            this.recordUsage(usageAccumulator, this.extractUsage(chunkRun.responseData), 'chunk');
+            this.recordUsage(usageAccumulator, this.extractUsage(options.ai.provider, chunkRun.responseData), 'chunk');
             this.throwIfAborted(options.executionOptions?.shouldAbort);
             if (chunkRun.aiStatus !== 'success' || !chunkRun.content) {
                 const recoveredChunkJson = this.tryRecoverChunkInvalidResponse(chunkRun, i + 1, chunkPlan.prompts.length);
@@ -1650,7 +1655,7 @@ export class InquiryRunnerService implements InquiryRunner {
             temperature: options.temperature,
             maxTokens: options.maxTokens
         });
-        this.recordUsage(usageAccumulator, this.extractUsage(synthesisRun.responseData), 'synthesis');
+        this.recordUsage(usageAccumulator, this.extractUsage(options.ai.provider, synthesisRun.responseData), 'synthesis');
         this.throwIfAborted(options.executionOptions?.shouldAbort);
 
         if (synthesisRun.aiStatus !== 'success' || !synthesisRun.content) {
@@ -1902,11 +1907,15 @@ export class InquiryRunnerService implements InquiryRunner {
             passesWithInput: 0,
             passesWithOutput: 0,
             passesWithTotal: 0,
+            passesWithCacheAwareUsage: 0,
             synthesisHasUsage: false,
             chunkHasUsage: false,
             inputTokens: 0,
             outputTokens: 0,
-            totalTokens: 0
+            totalTokens: 0,
+            rawInputTokens: 0,
+            cacheReadInputTokens: 0,
+            cacheCreationInputTokens: 0
         };
     }
 
@@ -1929,6 +1938,15 @@ export class InquiryRunnerService implements InquiryRunner {
             accumulator.passesWithTotal += 1;
             accumulator.totalTokens += usage.totalTokens;
         }
+        const hasCacheAwareUsage = typeof usage.rawInputTokens === 'number'
+            || typeof usage.cacheReadInputTokens === 'number'
+            || typeof usage.cacheCreationInputTokens === 'number';
+        if (hasCacheAwareUsage) {
+            accumulator.passesWithCacheAwareUsage += 1;
+            accumulator.rawInputTokens += usage.rawInputTokens ?? 0;
+            accumulator.cacheReadInputTokens += usage.cacheReadInputTokens ?? 0;
+            accumulator.cacheCreationInputTokens += usage.cacheCreationInputTokens ?? 0;
+        }
         if (phase === 'synthesis') {
             accumulator.synthesisHasUsage = true;
         } else {
@@ -1945,33 +1963,50 @@ export class InquiryRunnerService implements InquiryRunner {
             return { tokenUsageKnown: false };
         }
 
-        const inputTokens = accumulator.passesWithInput > 0
-            ? accumulator.inputTokens
-            : undefined;
-        const outputTokens = accumulator.passesWithOutput > 0
-            ? accumulator.outputTokens
-            : undefined;
-        const totalTokens = accumulator.passesWithTotal === accumulator.totalPasses
-            ? accumulator.totalTokens
-            : (accumulator.passesWithInput === accumulator.totalPasses && accumulator.passesWithOutput === accumulator.totalPasses
-                ? accumulator.inputTokens + accumulator.outputTokens
-                : undefined);
-        const usage = {
-            inputTokens,
-            outputTokens,
-            totalTokens
-        };
-        const usageScope: InquiryTokenUsageScope = accumulator.passesWithAnyUsage === 1
+        const synthesisOnly = accumulator.passesWithAnyUsage === 1
             && accumulator.synthesisHasUsage
-            && !accumulator.chunkHasUsage
+            && !accumulator.chunkHasUsage;
+        const fullInputKnown = accumulator.passesWithInput === accumulator.totalPasses;
+        const fullOutputKnown = accumulator.passesWithOutput === accumulator.totalPasses;
+        const fullTotalKnown = accumulator.passesWithTotal === accumulator.totalPasses
+            || (fullInputKnown && fullOutputKnown);
+        const fullCacheAwareKnown = accumulator.passesWithCacheAwareUsage === accumulator.totalPasses;
+        const usageScope: InquiryTokenUsageScope = synthesisOnly
             ? 'synthesis_only'
-            : (accumulator.passesWithAnyUsage === accumulator.totalPasses
-                && (
-                    accumulator.passesWithTotal === accumulator.totalPasses
-                    || (accumulator.passesWithInput === accumulator.totalPasses && accumulator.passesWithOutput === accumulator.totalPasses)
-                )
+            : (accumulator.passesWithAnyUsage === accumulator.totalPasses && fullTotalKnown
                 ? 'full'
                 : 'partial');
+        const usage = synthesisOnly
+            ? {
+                inputTokens: accumulator.passesWithInput > 0 ? accumulator.inputTokens : undefined,
+                outputTokens: accumulator.passesWithOutput > 0 ? accumulator.outputTokens : undefined,
+                totalTokens: accumulator.passesWithTotal > 0
+                    ? accumulator.totalTokens
+                    : (accumulator.passesWithInput > 0 && accumulator.passesWithOutput > 0
+                        ? accumulator.inputTokens + accumulator.outputTokens
+                        : undefined),
+                rawInputTokens: accumulator.passesWithCacheAwareUsage > 0
+                    ? accumulator.rawInputTokens
+                    : undefined,
+                cacheReadInputTokens: accumulator.passesWithCacheAwareUsage > 0
+                    ? accumulator.cacheReadInputTokens
+                    : undefined,
+                cacheCreationInputTokens: accumulator.passesWithCacheAwareUsage > 0
+                    ? accumulator.cacheCreationInputTokens
+                    : undefined
+            }
+            : {
+                inputTokens: fullInputKnown ? accumulator.inputTokens : undefined,
+                outputTokens: fullOutputKnown ? accumulator.outputTokens : undefined,
+                totalTokens: fullTotalKnown
+                    ? (accumulator.passesWithTotal === accumulator.totalPasses
+                        ? accumulator.totalTokens
+                        : accumulator.inputTokens + accumulator.outputTokens)
+                    : undefined,
+                rawInputTokens: fullCacheAwareKnown ? accumulator.rawInputTokens : undefined,
+                cacheReadInputTokens: fullCacheAwareKnown ? accumulator.cacheReadInputTokens : undefined,
+                cacheCreationInputTokens: fullCacheAwareKnown ? accumulator.cacheCreationInputTokens : undefined
+            };
         return {
             tokenUsageKnown: true,
             tokenUsageScope: usageScope,
@@ -2807,7 +2842,7 @@ export class InquiryRunnerService implements InquiryRunner {
     }
 
     private applyResponseExecutionReporting(trace: InquiryRunTrace, response: ProviderResult): void {
-        const usage = response.usage ?? this.extractUsage(response.responseData);
+        const usage = response.usage ?? this.extractUsage(response.aiProvider ?? response.provider, response.responseData);
         if (usage) {
             trace.usage = usage;
         }
@@ -2853,23 +2888,7 @@ export class InquiryRunnerService implements InquiryRunner {
         return 'dispatched_to_provider';
     }
 
-    private extractUsage(responseData: unknown): InquiryRunTrace['usage'] | undefined {
-        if (!responseData || typeof responseData !== 'object') return undefined;
-        const data = responseData as Record<string, unknown>;
-        const usage = data.usage;
-        if (!usage || typeof usage !== 'object') return undefined;
-        const usageData = usage as Record<string, unknown>;
-        const promptTokens = usageData.prompt_tokens;
-        const completionTokens = usageData.completion_tokens;
-        const totalTokens = usageData.total_tokens;
-        const inputTokens = usageData.input_tokens;
-        const outputTokens = usageData.output_tokens;
-        const input = typeof inputTokens === 'number' ? inputTokens
-            : (typeof promptTokens === 'number' ? promptTokens : undefined);
-        const output = typeof outputTokens === 'number' ? outputTokens
-            : (typeof completionTokens === 'number' ? completionTokens : undefined);
-        const total = typeof totalTokens === 'number' ? totalTokens : undefined;
-        if (input === undefined && output === undefined && total === undefined) return undefined;
-        return { inputTokens: input, outputTokens: output, totalTokens: total };
+    private extractUsage(provider: string | undefined, responseData: unknown): InquiryRunTrace['usage'] | undefined {
+        return extractTokenUsage(provider, responseData) ?? undefined;
     }
 }

@@ -785,6 +785,23 @@
   --ert-group-gap: 0;
 }
 
+.ert-ui.ert-scope--settings .ert-frontmatter-remap-panel {
+  --ert-panel-bg: color-mix(in srgb, var(--background-secondary) 88%, var(--background-primary) 12%);
+  --ert-panel-border: color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
+  --ert-panel-shadow: none;
+  gap: var(--ert-gap-sm);
+}
+
+.ert-ui.ert-scope--settings .ert-frontmatter-remap-body {
+  margin-top: 0;
+  padding-top: var(--ert-gap-sm);
+  border-top: 1px solid color-mix(in srgb, var(--background-modifier-border) 72%, transparent);
+}
+
+.ert-ui.ert-scope--settings .ert-frontmatter-remap-panel .ert-mapping-list {
+  gap: var(--ert-gap-sm);
+}
+
 .ert-ui ul.ert-stack {
   list-style: none;
   margin: 0;
@@ -3821,7 +3838,7 @@
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--ert-gap-xs) var(--ert-gap-sm);
-  margin-top: 8px;
+  margin-top: 0;
 }
 
 :is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .setting-item .setting-item-control select.ert-setting-dropdown {
