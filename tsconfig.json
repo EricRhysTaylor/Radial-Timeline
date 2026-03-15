@@ -20,7 +20,8 @@
       "ES6",
       "ES7"
     ],
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "skipLibCheck": true
   },
   "include": [
     "src/**/*.ts"

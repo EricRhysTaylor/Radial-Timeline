@@ -5,14 +5,19 @@ import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { normalizeScanRootPatterns, resolveScanRoots, toVaultRoot } from '../../inquiry/utils/scanRoots';
 import { cleanEvidenceBody } from '../../inquiry/utils/evidenceCleaning';
 import { isPathIncludedByInquiryBooks, resolveInquiryBookResolution } from '../../inquiry/services/bookResolution';
+import { InquiryCorpusResolver } from '../../inquiry/services/InquiryCorpusResolver';
+import { hashString } from '../../inquiry/services/InquiryCorpusService';
+import { buildInquiryEstimateTrace } from '../../inquiry/services/inquiryEstimateTrace';
+import { InquiryRunnerService } from '../../inquiry/runner/InquiryRunnerService';
+import type { CorpusManifest, CorpusManifestEntry } from '../../inquiry/runner/types';
+import { INQUIRY_SCHEMA_VERSION } from '../../inquiry/constants';
 import { getSortedSceneFiles } from '../../utils/manuscript';
 import { buildGossamerEvidenceDocument } from '../../gossamer/evidence/buildGossamerEvidence';
 import type { InquiryScope } from '../../inquiry/state';
 import type { TokenEstimateMethod } from '../tokens/inputTokenEstimate';
 import type { RTCorpusTokenEstimate } from '../types';
-import { getAIClient } from '../runtime/aiClient';
-import { mapLegacyProviderToAiProvider } from '../settings/aiSettings';
 import { logCountingForensics } from '../diagnostics/countingForensics';
+import { readSceneId } from '../../utils/sceneIds';
 
 export const FORECAST_CHARS_PER_TOKEN = 4;
 export const FORECAST_PROMPT_OVERHEAD_TOKENS = 250;
@@ -23,6 +28,20 @@ type InquiryEvidenceBlock = {
     mode: 'summary' | 'full';
     label: string;
     content: string;
+};
+
+type CanonicalExecutionEstimateParams = {
+    plugin: RadialTimelinePlugin;
+    provider: 'openai' | 'anthropic' | 'google' | 'ollama' | 'none' | 'gemini' | 'local';
+    modelId: string;
+    questionText: string;
+    scope: InquiryScope;
+    focusBookId?: string;
+    focusLabel: string;
+    manifestEntries: CorpusManifestEntry[];
+    vault: Vault;
+    metadataCache: MetadataCache;
+    frontmatterMappings?: Record<string, string>;
 };
 
 export interface InquiryTokenEstimate {
@@ -198,6 +217,108 @@ const selectInquiryFiles = (
     return { files: allFiles, selectionLabel, resolvedFocusBookId };
 };
 
+const buildCanonicalManifest = (
+    questionId: string,
+    modelId: string,
+    entries: CorpusManifestEntry[]
+): CorpusManifest => {
+    const now = Date.now();
+    const fingerprintSource = entries
+        .map(entry => `${entry.path}:${entry.sceneId ?? ''}:${entry.mtime}:${entry.mode ?? 'none'}`)
+        .sort()
+        .join('|');
+    const fingerprintRaw = `${INQUIRY_SCHEMA_VERSION}|${questionId}|${modelId}|${fingerprintSource}`;
+    const classCounts = entries.reduce<Record<string, number>>((acc, entry) => {
+        acc[entry.class] = (acc[entry.class] || 0) + 1;
+        return acc;
+    }, {});
+
+    return {
+        entries,
+        fingerprint: hashString(fingerprintRaw),
+        generatedAt: now,
+        resolvedRoots: [],
+        allowedClasses: Array.from(new Set(entries.map(entry => entry.class))),
+        synopsisOnly: !entries.some(entry => entry.mode === 'full'),
+        classCounts
+    };
+};
+
+const resolveCanonicalFocusLabel = (
+    vault: Vault,
+    metadataCache: MetadataCache,
+    inquirySources: InquirySourcesSettings | undefined,
+    frontmatterMappings: Record<string, string> | undefined,
+    scope: InquiryScope,
+    focusBookId?: string
+): string => {
+    if (scope === 'saga') return String.fromCharCode(931);
+    const resolver = new InquiryCorpusResolver(vault, metadataCache, frontmatterMappings);
+    const snapshot = resolver.resolve({
+        scope,
+        focusBookId,
+        sources: inquirySources ?? { scanRoots: [], bookInclusion: {}, classes: [], classCounts: {}, resolvedScanRoots: [] }
+    });
+    if (focusBookId) {
+        const match = snapshot.books.find(book => book.id === focusBookId);
+        if (match) return match.displayLabel;
+    }
+    return snapshot.books[0]?.displayLabel ?? 'B0';
+};
+
+const buildCanonicalExecutionEstimate = async (
+    params: CanonicalExecutionEstimateParams
+): Promise<InquiryTokenEstimate['providerExecutionEstimate']> => {
+    const provider = params.provider === 'google'
+        ? 'gemini'
+        : params.provider === 'ollama'
+            ? 'local'
+            : params.provider;
+    if (provider === 'none') {
+        throw new Error('Canonical Inquiry estimate is unavailable for provider none.');
+    }
+    const runner = new InquiryRunnerService(
+        params.plugin,
+        params.vault,
+        params.metadataCache,
+        params.frontmatterMappings
+    );
+    const trace = await buildInquiryEstimateTrace(runner, {
+        scope: params.scope,
+        focusBookId: params.focusBookId,
+        focusLabel: params.focusLabel,
+        mode: 'flow',
+        questionId: 'estimate-snapshot',
+        questionText: params.questionText,
+        questionZone: 'setup',
+        corpus: buildCanonicalManifest('estimate-snapshot', params.modelId, params.manifestEntries),
+        rules: {
+            sagaOutlineScope: 'saga-only',
+            bookOutlineScope: 'book-only',
+            crossScopeUsage: 'conflict-only'
+        },
+        ai: {
+            provider,
+            modelId: params.modelId,
+            modelLabel: params.modelId
+        }
+    });
+    const estimatedTokens = trace.tokenEstimate.inputTokens;
+    const expectedPassCount = trace.tokenEstimate.expectedPassCount
+        ?? runner.estimateExecutionPassCountFromPrompt(trace.userPrompt, {
+            estimatedInputTokens: estimatedTokens,
+            safeInputTokens: trace.tokenEstimate.effectiveInputCeiling
+        });
+
+    return {
+        estimatedTokens,
+        method: trace.tokenEstimate.estimationMethod ?? 'heuristic_chars',
+        promptEnvelopeCharsAdded: (trace.systemPrompt?.length ?? 0) + (trace.userPrompt?.length ?? 0),
+        expectedPassCount,
+        maxOutputTokens: trace.outputTokenCap
+    };
+};
+
 export async function estimateInquiryTokens(params: {
     plugin?: RadialTimelinePlugin;
     provider?: 'openai' | 'anthropic' | 'google' | 'ollama' | 'none' | 'gemini' | 'local';
@@ -222,6 +343,7 @@ export async function estimateInquiryTokens(params: {
         { scope, focusBookId: params.scopeContext?.focusBookId }
     );
     const blocks: InquiryEvidenceBlock[] = [];
+    const manifestEntries: CorpusManifestEntry[] = [];
     const scenePaths = new Set<string>();
     const outlinePaths = new Set<string>();
     const referencePaths = new Set<string>();
@@ -267,6 +389,18 @@ export async function estimateInquiryTokens(params: {
             const mode = resolveInquiryModeForClass(className, config, scope, frontmatter);
             const normalizedMode = normalizeMode(mode, className);
             if (normalizedMode === 'none') continue;
+            const manifestEntryBase: CorpusManifestEntry = {
+                path: file.path,
+                mtime: file.stat?.mtime ?? Date.now(),
+                class: className,
+                mode: normalizedMode
+            };
+            if (className === 'scene') {
+                manifestEntryBase.sceneId = readSceneId(frontmatter);
+            } else if (className === 'outline') {
+                manifestEntryBase.scope = 'book';
+            }
+            manifestEntries.push(manifestEntryBase);
 
             if (normalizedMode === 'summary') {
                 const summary = extractSummary(frontmatter);
@@ -321,52 +455,36 @@ export async function estimateInquiryTokens(params: {
         estimatedTokens: estimateCorpusTokensFromChars(evidenceChars),
         method: 'rt_chars_heuristic'
     };
-    const evidenceText = blocks.map(block => `## ${block.label}\n${block.content}`).join('\n\n');
     const questionText = params.questionText || 'Analyze the corpus and return findings.';
-    const systemPrompt = 'You are an editorial analysis engine.';
-    const userPrompt = [
-        questionText,
-        '',
-        'Evidence:',
-        evidenceText
-    ].join('\n');
     let providerExecutionEstimate: InquiryTokenEstimate['providerExecutionEstimate'] = {
         estimatedTokens: estimateExecutionTokensFromChars(evidenceChars, params.promptOverheadTokens),
         method: 'heuristic_chars',
         promptEnvelopeCharsAdded: (params.promptOverheadTokens ?? FORECAST_PROMPT_OVERHEAD_TOKENS) * FORECAST_CHARS_PER_TOKEN
     };
-    if (params.plugin && params.provider && params.modelId) {
+    if (params.plugin && params.provider && params.modelId && manifestEntries.length > 0) {
         try {
-            const prepared = await getAIClient(params.plugin).prepareRunEstimate({
-                feature: 'InquiryMode',
-                task: 'SettingsForecastInquiry',
-                requiredCapabilities: ['longContext', 'jsonStrict', 'reasoningStrong', 'highOutputCap'],
-                featureModeInstructions: systemPrompt,
-                userInput: userPrompt,
-                promptText: userPrompt,
-                userQuestion: questionText,
-                systemPrompt: null,
-                returnType: 'json',
-                responseSchema: { type: 'object' },
-                providerOverride: mapLegacyProviderToAiProvider(params.provider),
-                evidenceDocuments: blocks.map(block => ({
-                    title: block.label,
-                    content: block.content
-                }))
+            providerExecutionEstimate = await buildCanonicalExecutionEstimate({
+                plugin: params.plugin,
+                provider: params.provider,
+                modelId: params.modelId,
+                questionText,
+                scope,
+                focusBookId: selected.resolvedFocusBookId,
+                focusLabel: resolveCanonicalFocusLabel(
+                    params.vault,
+                    params.metadataCache,
+                    params.inquirySources,
+                    params.frontmatterMappings,
+                    scope,
+                    selected.resolvedFocusBookId
+                ),
+                manifestEntries,
+                vault: params.vault,
+                metadataCache: params.metadataCache,
+                frontmatterMappings: params.frontmatterMappings
             });
-            if (prepared.ok) {
-                providerExecutionEstimate = {
-                    estimatedTokens: prepared.estimate.tokenEstimateInput,
-                    method: prepared.estimate.tokenEstimateMethod,
-                    promptEnvelopeCharsAdded:
-                        (prepared.estimate.systemPrompt?.length ?? 0)
-                        + (prepared.estimate.userPrompt?.length ?? 0),
-                    expectedPassCount: prepared.estimate.expectedPassCount,
-                    maxOutputTokens: prepared.estimate.maxOutputTokens
-                };
-            }
         } catch {
-            // Keep heuristic execution estimate when provider estimate cannot be prepared.
+            // Keep heuristic execution estimate when canonical execution estimate cannot be prepared.
         }
     }
     const scopePrefix = params.scopeContext?.label ? `${params.scopeContext.label} — ` : '';

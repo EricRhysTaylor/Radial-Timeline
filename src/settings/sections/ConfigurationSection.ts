@@ -1,14 +1,16 @@
-import { App, Setting as Settings, Notice } from 'obsidian';
+import { App, Setting as Settings, Notice, normalizePath } from 'obsidian';
+import type { TextComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { clearFontMetricsCaches } from '../../renderer/utils/FontMetricsCache';
 import { t } from '../../i18n';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import { ERT_CLASSES } from '../../ui/classes';
 import { IMPACT_FULL, IMPACT_DOMINANT_SUBPLOT } from '../SettingImpact';
-import { getSynopsisGenerationWordLimit, getSynopsisHoverLineLimit } from '../../utils/synopsisLimits';
+import { DEFAULT_SETTINGS } from '../defaults';
+import { resolveAiLogFolder, countAiLogFiles } from '../../ai/log';
 import { renderMetadataSection } from './MetadataSection';
 
-export function renderConfigurationSection(params: { app: App; plugin: RadialTimelinePlugin; containerEl: HTMLElement; }): void {
+export function renderConfigurationSection(params: { app: App; plugin: RadialTimelinePlugin; containerEl: HTMLElement; attachFolderSuggest?: (text: TextComponent) => void; }): void {
     const { app, plugin, containerEl } = params;
     containerEl.classList.add(ERT_CLASSES.STACK);
 
@@ -51,42 +53,6 @@ export function renderConfigurationSection(params: { app: App; plugin: RadialTim
     renderMetadataSection({ app, plugin, containerEl: remapContainer });
 
     createDenseRow(schemaContainer, {
-        title: t('settings.configuration.synopsisMaxLines.name'),
-        description: t('settings.configuration.synopsisMaxLines.desc'),
-        control: (setting) => {
-            setting.addText(text => {
-                const current = String(getSynopsisGenerationWordLimit(plugin.settings));
-                text.setPlaceholder(t('settings.configuration.synopsisMaxLines.placeholder'));
-                text.setValue(current);
-                text.inputEl.addClass('ert-input--sm');
-
-                plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
-                    if (evt.key === 'Enter') {
-                        evt.preventDefault();
-                        text.inputEl.blur();
-                    }
-                });
-
-                const handleBlur = async () => {
-                    const n = Number(text.getValue().trim());
-                    if (!Number.isFinite(n) || n < 10 || n > 300) {
-                        new Notice(t('settings.configuration.synopsisMaxLines.error'));
-                        text.setValue(String(getSynopsisGenerationWordLimit(plugin.settings)));
-                        return;
-                    }
-                    plugin.settings.synopsisGenerationMaxWords = Math.round(n);
-                    // Keep legacy line-based setting synchronized for compatibility paths.
-                    plugin.settings.synopsisHoverMaxLines = getSynopsisHoverLineLimit(plugin.settings);
-                    await plugin.saveSettings();
-                    plugin.onSettingChanged(IMPACT_FULL); // Tier 3: synopsis content/line limits affect hover SVG layout
-                };
-
-                plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });
-            });
-        }
-    });
-
-    createDenseRow(schemaContainer, {
         title: t('settings.configuration.rippleRename.name'),
         description: t('settings.configuration.rippleRename.desc'),
         control: (setting) => {
@@ -124,19 +90,6 @@ export function renderConfigurationSection(params: { app: App; plugin: RadialTim
     });
 
     // Timeline Display
-    createDenseRow(displayContainer, {
-        title: 'Pulse context',
-        description: 'Include previous and next scenes in triplet analysis.',
-        control: (setting) => {
-            setting.addToggle(toggle => toggle
-                .setValue(plugin.settings.showFullTripletAnalysis ?? true)
-                .onChange(async (value) => {
-                    plugin.settings.showFullTripletAnalysis = value;
-                    await plugin.saveSettings();
-                }));
-        }
-    });
-
     createDenseRow(displayContainer, {
         title: t('settings.configuration.autoExpand.name'),
         description: t('settings.configuration.autoExpand.desc'),
@@ -202,5 +155,126 @@ export function renderConfigurationSection(params: { app: App; plugin: RadialTim
             });
         }
     });
+
+    // Logs
+    const logsContainer = configurationBody.createDiv({ cls: 'ert-config-group' });
+    logsContainer.createDiv({ cls: 'ert-config-group-title', text: 'Logs' });
+
+    const logFolderSetting = createDenseRow(logsContainer, {
+        title: t('settings.configuration.aiOutputFolder.name'),
+        description: t('settings.configuration.aiOutputFolder.desc'),
+        control: (setting) => {
+            setting.addText(text => {
+                const defaultPath = DEFAULT_SETTINGS.aiOutputFolder || 'Radial Timeline/Logs';
+                const fallbackFolder = plugin.settings.aiOutputFolder?.trim() || defaultPath;
+                const illegalChars = /[<>:"|?*]/;
+
+                text.setPlaceholder(t('settings.configuration.aiOutputFolder.placeholder'))
+                    .setValue(fallbackFolder);
+                text.inputEl.addClass('ert-input--full');
+
+                if (params.attachFolderSuggest) {
+                    params.attachFolderSuggest(text);
+                }
+
+                const inputEl = text.inputEl;
+
+                const flashClass = (cls: string) => {
+                    inputEl.addClass(cls);
+                    window.setTimeout(() => inputEl.removeClass(cls), cls === 'ert-setting-input-success' ? 1000 : 2000);
+                };
+
+                const validatePath = async () => {
+                    inputEl.removeClass('ert-setting-input-success');
+                    inputEl.removeClass('ert-setting-input-error');
+
+                    const rawValue = text.getValue();
+                    const trimmed = rawValue.trim() || fallbackFolder;
+
+                    if (illegalChars.test(trimmed)) {
+                        flashClass('ert-setting-input-error');
+                        new Notice('Folder path cannot contain the characters < > : " | ? *');
+                        return;
+                    }
+
+                    const normalized = normalizePath(trimmed);
+
+                    try { await plugin.app.vault.createFolder(normalized); } catch { /* folder may already exist */ }
+
+                    const isValid = await plugin.validateAndRememberPath(normalized);
+                    if (!isValid) {
+                        flashClass('ert-setting-input-error');
+                        return;
+                    }
+
+                    plugin.settings.aiOutputFolder = normalized;
+                    await plugin.saveSettings();
+                    flashClass('ert-setting-input-success');
+                };
+
+                text.onChange(() => {
+                    inputEl.removeClass('ert-setting-input-success');
+                    inputEl.removeClass('ert-setting-input-error');
+                });
+
+                plugin.registerDomEvent(text.inputEl, 'blur', () => { void validatePath(); });
+
+                setting.addExtraButton(button => {
+                    button.setIcon('rotate-ccw');
+                    button.setTooltip(`Reset to ${defaultPath}`);
+                    button.onClick(async () => {
+                        text.setValue(defaultPath);
+                        plugin.settings.aiOutputFolder = normalizePath(defaultPath);
+                        await plugin.saveSettings();
+                        flashClass('ert-setting-input-success');
+                    });
+                });
+            });
+        }
+    });
+    logFolderSetting.settingEl.addClass('ert-setting-full-width-input');
+
+    const outputFolder = resolveAiLogFolder();
+    const formatLogCount = (fileCount: number | null): string => {
+        if (fileCount === null) return 'Counting log files...';
+        return fileCount === 0
+            ? 'No log files yet'
+            : fileCount === 1
+                ? '1 log file'
+                : `${fileCount} log files`;
+    };
+    const getLoggingDesc = (fileCount: number | null): string => {
+        const countText = formatLogCount(fileCount);
+        return `Summary logs (run metadata, token usage, results) are always written for Inquiry, Pulse, and Gossamer. When enabled, also writes Content logs containing full prompts, materials, and API responses\u2014useful for debugging and understanding AI behavior. Recommended while learning the system. Logs are stored in \u201c${outputFolder}\u201d (${countText}).`;
+    };
+
+    const apiLoggingSetting = createDenseRow(logsContainer, {
+        title: 'Enable AI content logs',
+        description: getLoggingDesc(null),
+        control: (setting) => {
+            setting.addToggle(toggle => toggle
+                .setValue(plugin.settings.logApiInteractions)
+                .onChange(async (value) => {
+                    plugin.settings.logApiInteractions = value;
+                    await plugin.saveSettings();
+                }));
+        }
+    });
+
+    const scheduleLogCount = () => {
+        const runCount = () => {
+            const fileCount = countAiLogFiles(plugin);
+            apiLoggingSetting.setDesc(getLoggingDesc(fileCount));
+        };
+        const requestIdleCallback = (window as Window & {
+            requestIdleCallback?: (cb: () => void) => void;
+        }).requestIdleCallback;
+        if (requestIdleCallback) {
+            requestIdleCallback(runCount);
+        } else {
+            window.setTimeout(runCount, 0);
+        }
+    };
+    scheduleLogCount();
 
 }

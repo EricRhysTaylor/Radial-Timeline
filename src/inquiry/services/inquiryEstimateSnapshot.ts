@@ -31,6 +31,7 @@ import type { InquiryRunnerService } from '../runner/InquiryRunnerService';
 import type { InquiryMode } from '../state';
 import { INQUIRY_CANONICAL_ESTIMATE_QUESTION, INQUIRY_MAX_OUTPUT_TOKENS } from '../constants';
 import { mapAiProviderToLegacyProvider } from '../../ai/settings/aiSettings';
+import { buildInquiryEstimateTrace } from './inquiryEstimateTrace';
 
 // ── Version ─────────────────────────────────────────────────────────
 
@@ -212,7 +213,7 @@ export async function buildInquiryEstimateSnapshot(
         }
     };
 
-    const trace = await params.runner.buildTrace(runnerInput);
+    const trace = await buildInquiryEstimateTrace(params.runner, runnerInput);
 
     const estimatedInputTokens = trace.tokenEstimate.inputTokens;
     const effectiveInputCeiling = trace.tokenEstimate.effectiveInputCeiling ?? 0;

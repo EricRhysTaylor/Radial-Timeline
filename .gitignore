@@ -40,3 +40,4 @@ release/
 
 # Generated audit reports (regenerated every build)
 scripts/models/feature-audit.json
+release-ts/

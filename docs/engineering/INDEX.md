@@ -33,6 +33,9 @@ Location: `docs/engineering/standards/`
 - **[modal-styling.md](standards/modal-styling.md)**
   Modal layout standards used across RT.
 
+- **[frontend-design.md](standards/frontend-design.md)**
+  Frontend design aesthetics, UI/UX direction, and visual quality guide.
+
 ---
 
 ## Architecture Plans

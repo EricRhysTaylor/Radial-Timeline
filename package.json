@@ -59,7 +59,7 @@
 		"vitest": "^4.0.16"
 	},
 	"lint-staged": {
-		"*.{js,ts}": [
+		"src/**/*.{js,ts}": [
 			"node code-quality-check.mjs"
 		]
 	}

@@ -7,6 +7,7 @@ import { fetchGeminiModels } from '../../api/geminiApi';
 import { fetchLocalModels } from '../../api/localAiApi';
 import { AiContextModal } from '../AiContextModal';
 import { resolveAiLogFolder } from '../../ai/log';
+import { getSynopsisGenerationWordLimit, getSynopsisHoverLineLimit } from '../../utils/synopsisLimits';
 import { ERT_CLASSES } from '../../ui/classes';
 import { IMPACT_FULL } from '../SettingImpact';
 import { buildDefaultAiSettings, mapAiProviderToLegacyProvider } from '../../ai/settings/aiSettings';
@@ -369,11 +370,17 @@ export function renderAiSection(params: {
         text: 'Active role and context framing used for AI submissions. Applied to Inquiry, Pulse (Triplet Analysis), Gossamer Momentum, Summary Refresh, Runtime AI Estimation.'
     });
 
-    const configurationFold = aiSettingsGroup.createDiv({
+    const apiKeysFold = aiSettingsGroup.createDiv({
         cls: `ert-ai-fold ert-ai-configuration ${ERT_CLASSES.STACK}`
     });
-    configurationFold.createDiv({ cls: 'ert-ai-fold-heading', text: 'Configuration' });
-    const configurationBody = configurationFold.createDiv({ cls: ERT_CLASSES.STACK });
+    apiKeysFold.createDiv({ cls: 'ert-ai-fold-heading', text: 'API Keys' });
+    const configurationBody = apiKeysFold.createDiv({ cls: ERT_CLASSES.STACK });
+
+    const aiConfigFold = aiSettingsGroup.createDiv({
+        cls: `ert-ai-fold ${ERT_CLASSES.STACK}`
+    });
+    aiConfigFold.createDiv({ cls: 'ert-ai-fold-heading', text: 'Configuration' });
+    const aiConfigBody = aiConfigFold.createDiv({ cls: ERT_CLASSES.STACK });
 
     const advancedFold = aiSettingsGroup.createEl('details', { cls: 'ert-ai-fold' }) as HTMLDetailsElement;
     const advancedSummary = advancedFold.createEl('summary', { text: 'Advanced & Diagnostics' });
@@ -2149,21 +2156,94 @@ export function renderAiSection(params: {
         localQuickSecretSetting.settingEl.addClass('ert-setting-full-width-input');
     }
 
+    // ── AI Configuration settings (moved from Core) ───────────────────────
+    const aiConfigCreateRow = (
+        parent: HTMLElement,
+        options: {
+            title: string;
+            description: string;
+            control: (setting: Settings) => void;
+        }
+    ): Settings => {
+        const row = new Settings(parent)
+            .setName(options.title)
+            .setDesc(options.description);
+        row.settingEl.addClass('ert-settingRow');
+        options.control(row);
+        return row;
+    };
+
+    const aiDisplayGroup = aiConfigBody.createDiv({ cls: 'ert-config-group' });
+    aiDisplayGroup.createDiv({ cls: 'ert-config-group-title', text: 'Timeline Display' });
+
+    aiConfigCreateRow(aiDisplayGroup, {
+        title: 'Pulse context',
+        description: 'Include previous and next scenes in triplet analysis.',
+        control: (setting) => {
+            setting.addToggle(toggle => toggle
+                .setValue(plugin.settings.showFullTripletAnalysis ?? true)
+                .onChange(async (value) => {
+                    plugin.settings.showFullTripletAnalysis = value;
+                    await plugin.saveSettings();
+                }));
+        }
+    });
+
+    const aiSchemaGroup = aiConfigBody.createDiv({ cls: 'ert-config-group' });
+    aiSchemaGroup.createDiv({ cls: 'ert-config-group-title', text: 'Generation' });
+
+    aiConfigCreateRow(aiSchemaGroup, {
+        title: 'Synopsis max words',
+        description: 'Maximum words for generated Synopsis. Hover display is synced automatically from this value.',
+        control: (setting) => {
+            setting.addText(text => {
+                const current = String(getSynopsisGenerationWordLimit(plugin.settings));
+                text.setPlaceholder('e.g. 30');
+                text.setValue(current);
+                text.inputEl.addClass('ert-input--sm');
+
+                plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
+                    if (evt.key === 'Enter') {
+                        evt.preventDefault();
+                        text.inputEl.blur();
+                    }
+                });
+
+                const handleBlur = async () => {
+                    const n = Number(text.getValue().trim());
+                    if (!Number.isFinite(n) || n < 10 || n > 300) {
+                        new Notice('Synopsis max words must be between 10 and 300.');
+                        text.setValue(String(getSynopsisGenerationWordLimit(plugin.settings)));
+                        return;
+                    }
+                    plugin.settings.synopsisGenerationMaxWords = Math.round(n);
+                    plugin.settings.synopsisHoverMaxLines = getSynopsisHoverLineLimit(plugin.settings);
+                    await plugin.saveSettings();
+                    plugin.onSettingChanged(IMPACT_FULL);
+                };
+
+                plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });
+            });
+        }
+    });
+
     // Final section order in AI tab:
     // 1) AI Strategy
     // 2) Preview (Active Model) + Local Quick Config (when local selected)
     // 3) Role context
     // 4) Gossamer material
     // 5) Large Manuscript Handling
-    // 6) Configuration
-    // 7) Advanced & Diagnostics
+    // 6) API Keys
+    // 7) Configuration
+    // 8) Advanced & Diagnostics
     [
         quickSetupSection,
         quickSetupPreviewSection,
         costEstimateSection,
         roleContextSection,
         largeHandlingFold,
-        configurationFold,
+        apiKeysFold,
+        aiConfigFold,
         advancedFold
     ].forEach(section => aiSettingsGroup.appendChild(section));
 

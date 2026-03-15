@@ -901,7 +901,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         renderPlanetaryTimeSection({ app: this.app, plugin: this.plugin, containerEl: planetarySection });
 
         const configurationSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'configuration' } });
-        renderConfigurationSection({ app: this.app, plugin: this.plugin, containerEl: configurationSection });
+        renderConfigurationSection({ app: this.app, plugin: this.plugin, containerEl: configurationSection, attachFolderSuggest: (t) => this.attachFolderSuggest(t) });
 
         const colorsWrapper = searchableContent.createDiv();
         renderColorsSection(colorsWrapper, this.plugin);

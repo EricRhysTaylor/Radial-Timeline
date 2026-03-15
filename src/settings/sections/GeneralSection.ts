@@ -3,7 +3,6 @@ import { Setting as ObsidianSetting, normalizePath, Notice, Modal, ButtonCompone
 import type RadialTimelinePlugin from '../../main';
 import { t } from '../../i18n';
 import { DEFAULT_SETTINGS } from '../defaults';
-import { resolveAiLogFolder, countAiLogFiles } from '../../ai/log';
 import { ModalFolderSuggest } from '../FolderSuggest';
 import { DEFAULT_BOOK_TITLE, createBookId, normalizeBookProfile } from '../../utils/books';
 import {
@@ -547,115 +546,5 @@ export function renderGeneralSection(params: {
             });
         });
     });
-
-    // --- AI Output Folder ---
-    const aiSetting = new ObsidianSetting(containerEl)
-        .setName(t('settings.configuration.aiOutputFolder.name'))
-        .setDesc(t('settings.configuration.aiOutputFolder.desc'));
-    aiSetting.addText(text => {
-        const defaultPath = DEFAULT_SETTINGS.aiOutputFolder || 'Radial Timeline/Logs';
-        const fallbackFolder = plugin.settings.aiOutputFolder?.trim() || defaultPath;
-        const illegalChars = /[<>:"|?*]/;
-
-        text.setPlaceholder(t('settings.configuration.aiOutputFolder.placeholder'))
-            .setValue(fallbackFolder);
-        text.inputEl.addClass('ert-input--full');
-
-        const inputEl = text.inputEl;
-
-        const flashClass = (cls: string) => {
-            inputEl.addClass(cls);
-            window.setTimeout(() => inputEl.removeClass(cls), cls === 'ert-setting-input-success' ? 1000 : 2000);
-        };
-
-        const validatePath = async () => {
-            inputEl.removeClass('ert-setting-input-success');
-            inputEl.removeClass('ert-setting-input-error');
-
-            const rawValue = text.getValue();
-            const trimmed = rawValue.trim() || fallbackFolder;
-
-            if (illegalChars.test(trimmed)) {
-                flashClass('ert-setting-input-error');
-                new Notice('Folder path cannot contain the characters < > : " | ? *');
-                return;
-            }
-
-            const normalized = normalizePath(trimmed);
-
-            try { await plugin.app.vault.createFolder(normalized); } catch { /* folder may already exist */ }
-
-            const isValid = await plugin.validateAndRememberPath(normalized);
-            if (!isValid) {
-                flashClass('ert-setting-input-error');
-                return;
-            }
-
-            plugin.settings.aiOutputFolder = normalized;
-            await plugin.saveSettings();
-            flashClass('ert-setting-input-success');
-        };
-
-        text.onChange(() => {
-            inputEl.removeClass('ert-setting-input-success');
-            inputEl.removeClass('ert-setting-input-error');
-        });
-
-        plugin.registerDomEvent(text.inputEl, 'blur', () => { void validatePath(); });
-
-        aiSetting.addExtraButton(button => {
-            button.setIcon('rotate-ccw');
-            button.setTooltip(`Reset to ${defaultPath}`);
-            button.onClick(async () => {
-                text.setValue(defaultPath);
-                plugin.settings.aiOutputFolder = normalizePath(defaultPath);
-                await plugin.saveSettings();
-                flashClass('ert-setting-input-success');
-            });
-        });
-    });
-
-    // --- AI Logs Toggle ---
-    const outputFolder = resolveAiLogFolder();
-    const formatLogCount = (fileCount: number | null): string => {
-        if (fileCount === null) return 'Counting log files...';
-        return fileCount === 0
-            ? 'No log files yet'
-            : fileCount === 1
-                ? '1 log file'
-                : `${fileCount} log files`;
-    };
-    const getLoggingDesc = (fileCount: number | null): string => {
-        const countText = formatLogCount(fileCount);
-        return `Summary logs (run metadata, token usage, results) are always written for Inquiry, Pulse, and Gossamer. When enabled, also writes Content logs containing full prompts, materials, and API responses—useful for debugging and understanding AI behavior. Recommended while learning the system. Logs are stored in "${outputFolder}" (${countText}).`;
-    };
-
-    const apiLoggingSetting = new ObsidianSetting(containerEl)
-        .setName('Enable AI content logs')
-        .setDesc(getLoggingDesc(null))
-        .addToggle(toggle => toggle
-            .setValue(plugin.settings.logApiInteractions)
-            .onChange(async (value) => {
-                plugin.settings.logApiInteractions = value;
-                await plugin.saveSettings();
-            }));
-
-    params.addAiRelatedElement?.(apiLoggingSetting.settingEl);
-
-    const scheduleLogCount = () => {
-        const runCount = () => {
-            const fileCount = countAiLogFiles(plugin);
-            apiLoggingSetting.setDesc(getLoggingDesc(fileCount));
-        };
-        const requestIdleCallback = (window as Window & {
-            requestIdleCallback?: (cb: () => void) => void;
-        }).requestIdleCallback;
-        if (requestIdleCallback) {
-            requestIdleCallback(runCount);
-        } else {
-            window.setTimeout(runCount, 0);
-        }
-    };
-    scheduleLogCount();
 
 }
