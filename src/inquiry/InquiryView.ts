@@ -1700,41 +1700,17 @@ export class InquiryView extends ItemView {
         }
 
         // ── 3. Details card ──
-        const policyLabel = engine.policySource === 'featureOverride'
-            ? 'Inquiry override'
-            : engine.policySource === 'globalPolicy'
-                ? 'Global AI Strategy'
-                : 'Legacy fallback';
-
         const detailsCard = this.enginePanelListEl.createDiv({ cls: 'ert-inquiry-engine-details-card' });
-
-        const sourceRow = detailsCard.createDiv({ cls: 'ert-inquiry-engine-detail-row' });
-        sourceRow.createSpan({ cls: 'ert-inquiry-engine-detail-label', text: 'Source' });
-        sourceRow.createSpan({ cls: 'ert-inquiry-engine-detail-value', text: policyLabel });
 
         const idRow = detailsCard.createDiv({ cls: 'ert-inquiry-engine-detail-row' });
         idRow.createSpan({ cls: 'ert-inquiry-engine-detail-label', text: 'Model ID' });
         idRow.createSpan({ cls: 'ert-inquiry-engine-detail-value', text: engine.blocked ? '—' : engine.modelId });
-
-        const contextRow = detailsCard.createDiv({ cls: 'ert-inquiry-engine-detail-row' });
-        contextRow.createSpan({ cls: 'ert-inquiry-engine-detail-label', text: 'Model context' });
-        contextRow.createSpan({
-            cls: 'ert-inquiry-engine-detail-value',
-            text: engine.blocked ? '—' : this.formatTokenEstimate(engine.contextWindow)
-        });
 
         const payloadRow = detailsCard.createDiv({ cls: 'ert-inquiry-engine-detail-row' });
         payloadRow.createSpan({ cls: 'ert-inquiry-engine-detail-label', text: 'Current Corpus' });
         payloadRow.createSpan({
             cls: 'ert-inquiry-engine-detail-value',
             text: engine.blocked ? '—' : `~${this.formatTokenEstimate(corpusEstimate.estimatedTokens)}`
-        });
-
-        const safeRow = detailsCard.createDiv({ cls: 'ert-inquiry-engine-detail-row' });
-        safeRow.createSpan({ cls: 'ert-inquiry-engine-detail-label', text: 'Safe input (single pass)' });
-        safeRow.createSpan({
-            cls: 'ert-inquiry-engine-detail-value',
-            text: engine.blocked ? '—' : (readinessUi.safeInputBudget > 0 ? `~${this.formatTokenEstimate(readinessUi.safeInputBudget)}` : 'n/a')
         });
 
         // ── 4. Advisor slot ──
@@ -2023,18 +1999,22 @@ export class InquiryView extends ItemView {
         const corpusLabel = this.formatTokenEstimate(corpusEstimate.estimatedTokens);
         const passPlan = this.getCurrentPassPlan(readinessUi);
         if (popoverState === 'ready') {
-            this.enginePanelReadinessMessageEl.setText(`Current Corpus: ~${corpusLabel}. Single pass possible for current engine.`);
+            this.enginePanelReadinessMessageEl.setText(`Current Corpus: ~${corpusLabel}. Expected Passes: 1.`);
         } else if (popoverState === 'multi-pass') {
             const estimateLabel = passPlan.estimatedPassCount ?? passPlan.displayPassCount;
             const recentRunSuffix = passPlan.recentExactPassCount
                 ? ` Recent run used ${passPlan.recentExactPassCount} passes.`
                 : '';
             this.enginePanelReadinessMessageEl.setText(
-                `Current Corpus: ~${corpusLabel}. Multi-pass required for current engine `
-                + `(${estimateLabel} passes expected). Automatic packaging will split the request.${recentRunSuffix}`
+                `Current Corpus: ~${corpusLabel}. Expected Passes: ${estimateLabel}. `
+                + `Automatic packaging will split the request.${recentRunSuffix}`
             );
         } else if (readinessUi.readiness.cause === 'single_pass_limit') {
-            this.enginePanelReadinessMessageEl.setText(`Current Corpus: ~${corpusLabel}. Single-pass mode blocks this run for the current engine.`);
+            const estimateLabel = passPlan.estimatedPassCount ?? passPlan.displayPassCount;
+            this.enginePanelReadinessMessageEl.setText(
+                `Current Corpus: ~${corpusLabel}. Expected Passes: ${estimateLabel}. `
+                + `Single-pass mode blocks this run for the current engine.`
+            );
         } else {
             this.enginePanelReadinessMessageEl.setText(readinessUi.reason);
         }

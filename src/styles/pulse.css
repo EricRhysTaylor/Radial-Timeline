@@ -1288,9 +1288,9 @@
 .rt-pulse-ruler-item.rt-synopsis-pending .rt-pulse-card-icon-bg svg {
   color: var(--text-muted);
   opacity: 0.4;
-  width: 50%;
-  height: 50%;
-  stroke-width: 5.6;
+  width: 64%;
+  height: 64%;
+  stroke-width: 3.2;
 }
 
 /* Synopsis Active - pulsing animation with theme color */
@@ -1320,9 +1320,9 @@
 .rt-pulse-ruler-item.rt-synopsis-complete .rt-pulse-card-icon-bg svg {
   color: #2ecc71;
   opacity: 0.32;
-  width: 50%;
-  height: 50%;
-  stroke-width: 5.6;
+  width: 64%;
+  height: 64%;
+  stroke-width: 3.2;
 }
 
 .rt-pulse-ruler-item.rt-synopsis-complete .rt-pulse-ruler-value,

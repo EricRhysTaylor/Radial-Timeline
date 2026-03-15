@@ -9,8 +9,8 @@ Core workflows are a reference for ongoing use. For first-time setup, see [[Fres
 ### Creating Scenes
 
 *   **Book Designer**: Use [[Book Designer]] to generate a full manuscript scaffold (acts, subplots, optional beat notes).
-*   **Create basic scene note**: Command palette → **Radial Timeline: Create basic scene note** (uses the Base Scene Set).
-*   **Create advanced scene note**: Command palette → **Radial Timeline: Create advanced scene note** (uses the Advanced Scene Set, including any Scene properties editor customizations).
+*   **Create note…**: Command palette → **Radial Timeline: Create note…**.
+*   **Scene options**: In the picker, choose **Scene** and then **Basic scene** or **Advanced scene**. Screenplay and podcast scene types are also available in the same flow.
 
 ### Publication Mode and Tracking Progress (formerly Subplot)
 *   **Scene Status Colors**: In Publication Mode, scenes are color-coded by status: Todo = plaid, Working = pink, Overdue = red, Complete = publish stage color. In Narrative and Chronologue modes, scenes display their subplot color.

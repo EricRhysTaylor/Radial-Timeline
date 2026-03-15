@@ -2196,6 +2196,16 @@
   margin-top: 0;
 }
 
+.rt-synopsis-control-help .rt-synopsis-control-link {
+  color: var(--interactive-accent);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.rt-synopsis-control-help .rt-synopsis-control-link:hover {
+  text-decoration: underline;
+}
+
 .rt-synopsis-control-divider {
   border: none;
   border-top: 1px solid rgba(255, 255, 255, 0.08);

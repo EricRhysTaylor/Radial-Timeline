@@ -259,7 +259,10 @@ export default class RadialTimelinePlugin extends Plugin {
 
         // Migration: Convert old field names to new field names
         await migrateSceneAnalysisFields(this);
-        await migrateSceneFrontmatterIds(this);
+        const sceneIdsMigrated = await migrateSceneFrontmatterIds(this);
+        if (sceneIdsMigrated > 0) {
+            new Notice(`🔑 Scene IDs added to ${sceneIdsMigrated} scene${sceneIdsMigrated === 1 ? '' : 's'}. No action required.`);
+        }
 
         // Load embedded fonts (no external requests per Obsidian guidelines)
         // Embedded font injection removed to avoid inserting <style> tags at runtime.

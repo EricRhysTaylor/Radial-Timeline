@@ -30,9 +30,7 @@ Type "Radial Timeline" to filter the list.
 
 | Command | Description | Documentation |
 | :--- | :--- | :--- |
-| **Create basic scene note** | Creates a new scene note using the **Base Scene Set**. | [[Core Workflows#creating-scenes]] |
-| **Create advanced scene note** | Creates a new scene note using the **Advanced Scene Set** (includes any Scene properties editor customizations). | [[YAML-Frontmatter#advanced-scene-template]] |
-| **Create backdrop note** | Creates a new backdrop file for contextual events that impact the plot. Appears as a dedicated ring in Chronologue mode (see also micro-backdrop rings for lighter-weight context). | [[Chronologue Mode#backdrop-notes]] |
+| **Create note…** | Opens a guided picker for Scene, Manuscript matter, Story world, and Metadata notes, then creates the selected subtype. | [[Core Workflows#creating-scenes]] |
 
 ### Export
 

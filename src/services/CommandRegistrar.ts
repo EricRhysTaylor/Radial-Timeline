@@ -14,6 +14,7 @@ import { PlanetaryTimeModal } from '../modals/PlanetaryTimeModal';
 import { BookDesignerModal } from '../modals/BookDesignerModal';
 import { TimelineRepairModal } from '../modals/TimelineRepairModal';
 import { AuthorProgressModal } from '../modals/AuthorProgressModal';
+import { CreateRtNoteModal, type RtNoteSubtypeId } from '../modals/CreateRtNoteModal';
 import { generateSceneContent } from '../utils/sceneGenerator';
 import { sanitizeSourcePath, buildInitialSceneFilename, buildInitialBackdropFilename } from '../utils/sceneCreation';
 import { getTemplateParts } from '../utils/yamlTemplateNormalize';
@@ -95,66 +96,10 @@ export class CommandRegistrar {
         });
 
         this.plugin.addCommand({
-            id: 'create-basic-scene-note',
-            name: 'Create basic scene note',
-            callback: async () => {
-                await this.createSceneNote('base');
-            }
-        });
-
-        this.plugin.addCommand({
-            id: 'create-advanced-scene-note',
-            name: 'Create advanced scene note',
-            callback: async () => {
-                await this.createSceneNote('advanced');
-            }
-        });
-
-        this.plugin.addCommand({
-            id: 'create-screenplay-scene-note',
-            name: 'Create screenplay scene note',
-            callback: async () => {
-                await this.createSceneNote('screenplay');
-            }
-        });
-
-        this.plugin.addCommand({
-            id: 'create-podcast-scene-note',
-            name: 'Create podcast scene note',
-            callback: async () => {
-                await this.createSceneNote('podcast');
-            }
-        });
-
-        this.plugin.addCommand({
-            id: 'create-frontmatter-note',
-            name: 'Create front matter note',
-            callback: async () => {
-                await this.createMatterNote('Frontmatter');
-            }
-        });
-
-        this.plugin.addCommand({
-            id: 'create-backmatter-note',
-            name: 'Create back matter note',
-            callback: async () => {
-                await this.createMatterNote('Backmatter');
-            }
-        });
-
-        this.plugin.addCommand({
-            id: 'create-bookmeta-note',
-            name: 'Create BookMeta note',
-            callback: async () => {
-                await this.createBookMetaNote();
-            }
-        });
-
-        this.plugin.addCommand({
-            id: 'create-backdrop-note',
-            name: 'Create backdrop note',
-            callback: async () => {
-                await this.createBackdropNote();
+            id: 'create-note',
+            name: 'Create note…',
+            callback: () => {
+                this.openCreateNoteModal();
             }
         });
 
@@ -861,6 +806,41 @@ export class CommandRegistrar {
             return mode;
         }
         return undefined;
+    }
+
+    private openCreateNoteModal(): void {
+        new CreateRtNoteModal(this.app, async (subtypeId) => {
+            await this.createNoteFromSubtype(subtypeId);
+        }).open();
+    }
+
+    private async createNoteFromSubtype(subtypeId: RtNoteSubtypeId): Promise<void> {
+        switch (subtypeId) {
+            case 'basic-scene':
+                await this.createSceneNote('base');
+                return;
+            case 'advanced-scene':
+                await this.createSceneNote('advanced');
+                return;
+            case 'screenplay-scene':
+                await this.createSceneNote('screenplay');
+                return;
+            case 'podcast-scene':
+                await this.createSceneNote('podcast');
+                return;
+            case 'front-matter':
+                await this.createMatterNote('Frontmatter');
+                return;
+            case 'back-matter':
+                await this.createMatterNote('Backmatter');
+                return;
+            case 'backdrop':
+                await this.createBackdropNote();
+                return;
+            case 'bookmeta':
+                await this.createBookMetaNote();
+                return;
+        }
     }
 
     private requiresPro(options: ManuscriptModalResult): boolean {

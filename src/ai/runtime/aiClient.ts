@@ -493,6 +493,7 @@ export class AIClient {
                     maxOutputTokens: estimate.maxOutputTokens,
                     analysisPackaging: estimate.analysisPackaging,
                     executionPassCount: 1,
+                    totalInputTokens: tokenEstimateInput,
                     featureModeInstructions: estimate.featureModeInstructions,
                     finalPrompt: estimate.finalPrompt
                 }
@@ -603,7 +604,7 @@ export class AIClient {
                 ? cachedStableRatio : undefined,
             cachedStableTokens: (provider === 'anthropic' && cacheDelimiterUsed) || optimisticWarm
                 ? cachedStableTokens : undefined,
-            totalInputTokens: cacheDelimiterUsed ? tokenEstimateInput : undefined,
+            totalInputTokens: tokenEstimateInput,
             featureModeInstructions: estimate.featureModeInstructions,
             finalPrompt: estimate.finalPrompt
         };

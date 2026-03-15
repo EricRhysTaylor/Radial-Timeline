@@ -6186,6 +6186,87 @@
   color: var(--text-muted);
 }
 
+.ert-ui.ert-scope--modal.ert-modal--note-creator .ert-note-creator-modal {
+  --ert-panel-shadow: none;
+  --ert-pill-shadow: none;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--note-creator.modal,
+.ert-ui.ert-scope--modal .ert-modal--note-creator.modal {
+  width: min(680px, 92vw);
+}
+
+.ert-ui.ert-scope--modal.ert-modal--note-creator .ert-note-creator-panel {
+  gap: var(--ert-gap-md);
+}
+
+.ert-ui.ert-scope--modal.ert-modal--note-creator .ert-note-creator-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ert-gap-md);
+}
+
+.ert-ui.ert-scope--modal.ert-modal--note-creator .ert-note-creator-option {
+  appearance: none;
+  width: 100%;
+  text-align: left;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding: var(--ert-panel-pad);
+  border-radius: calc(var(--ert-panel-radius) + var(--ert-gap-xs));
+  border: 1px solid var(--ert-panel-border);
+  background: var(--ert-panel-bg);
+  box-shadow: var(--ert-panel-shadow);
+  color: var(--text-normal);
+  cursor: pointer;
+  transition: border-color 140ms ease, transform 140ms ease, background-color 140ms ease;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--note-creator .ert-note-creator-option:hover {
+  border-color: color-mix(in srgb, var(--ert-accent) 34%, var(--ert-panel-border));
+  background: color-mix(in srgb, var(--ert-panel-bg) 88%, var(--ert-accent) 12%);
+  transform: translateY(-1px);
+}
+
+.ert-ui.ert-scope--modal.ert-modal--note-creator .ert-note-creator-option:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--ert-accent) 52%, transparent);
+  outline-offset: 2px;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--note-creator .ert-note-creator-option__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ert-gap-xs);
+  min-width: 0;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--note-creator .ert-note-creator-option__title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+.ert-ui.ert-scope--modal.ert-modal--note-creator .ert-note-creator-option__desc {
+  font-size: 0.92rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.ert-ui.ert-scope--modal.ert-modal--note-creator .ert-note-creator-option__meta {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--text-normal) 58%, transparent);
+}
+
+@media (max-width: 720px) {
+  .ert-ui.ert-scope--modal.ert-modal--note-creator .ert-note-creator-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .ert-ui.ert-scope--modal.ert-modal--template-pack .ert-template-pack-options {
   display: flex;
   flex-direction: column;

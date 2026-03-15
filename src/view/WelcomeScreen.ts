@@ -93,7 +93,7 @@ export function renderWelcomeScreen({ container, plugin, refreshTimeline }: Welc
         .setCta()
         .onClick(() => {
             const commandManager = (plugin.app as unknown as { commands?: { executeCommandById?: (id: string) => void } }).commands;
-            commandManager?.executeCommandById?.('radial-timeline:create-basic-scene-note');
+            commandManager?.executeCommandById?.('radial-timeline:create-note');
         });
     createSceneBtn.buttonEl.classList.add('rt-welcome-primary-btn', 'rt-welcome-action-btn');
     addButtonIcon(createSceneBtn.buttonEl, WELCOME_ICONS.primary);

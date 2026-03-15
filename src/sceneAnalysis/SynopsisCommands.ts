@@ -190,6 +190,55 @@ function resolveSummaryRefreshScope(plugin: RadialTimelinePlugin): {
     };
 }
 
+function isSameCalendarDay(timestamp: string | undefined, now: Date = new Date()): boolean {
+    if (!timestamp) return false;
+    const parsed = new Date(timestamp);
+    if (Number.isNaN(parsed.getTime())) return false;
+    return parsed.getFullYear() === now.getFullYear()
+        && parsed.getMonth() === now.getMonth()
+        && parsed.getDate() === now.getDate();
+}
+
+function wasSummaryUpdatedToday(scene: SceneData, plugin: RadialTimelinePlugin, now: Date = new Date()): boolean {
+    return isSameCalendarDay(plugin.settings.aiUpdateTimestamps?.[scene.file.path]?.summaryUpdated, now);
+}
+
+function wasSynopsisUpdatedToday(scene: SceneData, plugin: RadialTimelinePlugin, now: Date = new Date()): boolean {
+    return isSameCalendarDay(plugin.settings.aiUpdateTimestamps?.[scene.file.path]?.synopsisUpdated, now);
+}
+
+function normalizeErrorMessage(error: unknown): string {
+    if (error instanceof Error) return error.message.trim();
+    return String(error ?? 'Unknown error').trim();
+}
+
+function explainSummaryRefreshFailure(
+    error: unknown,
+    options?: {
+        sceneBody?: string;
+        sceneName?: string;
+        passLabel?: 'summary' | 'synopsis';
+    }
+): string {
+    const raw = normalizeErrorMessage(error).replace(/^Error:\s*/i, '');
+    const normalized = raw.toLowerCase();
+    const passLabel = options?.passLabel ?? 'summary';
+    const sceneWords = options?.sceneBody
+        ? options.sceneBody.trim().split(/\s+/).filter(Boolean).length
+        : 0;
+
+    if (
+        normalized.includes('context too long')
+        || normalized.includes('context window')
+        || normalized.includes('too many tokens')
+    ) {
+        const sceneSize = sceneWords > 0 ? ` Scene text was about ${sceneWords.toLocaleString()} words.` : '';
+        return `The ${passLabel} request exceeded the model budget for this pass.${sceneSize} Summary refresh sends the full scene text, and optional Synopsis sends another full-scene request.`;
+    }
+
+    return raw || `Unknown ${passLabel} failure.`;
+}
+
 export async function calculateSynopsisSceneCount(
     plugin: RadialTimelinePlugin,
     vault: Vault,
@@ -257,7 +306,7 @@ export async function processSynopsisByManuscriptOrder(
         async (mode, weakThreshold, targetWords) => {
             await runSynopsisBatch(plugin, vault, mode, modal, weakThreshold, targetWords);
         },
-        undefined,
+        'radial-timeline:refresh-scene-synopses-ai',
         undefined,
         undefined,
         'synopsis' // Legacy task identifier for Summary refresh mode.
@@ -293,16 +342,31 @@ export async function runSynopsisBatch(
     const target = targetWords ?? plugin.settings.synopsisTargetWords ?? 200;
     const alsoUpdateSynopsis = plugin.settings.alsoUpdateSynopsis ?? false;
     const synopsisMaxWords = getSynopsisGenerationWordLimit(plugin.settings);
+    const isResuming = plugin.settings._isResuming || false;
+    const today = new Date();
+
+    if (isResuming) {
+        plugin.settings._isResuming = false;
+        void plugin.saveSettings();
+    }
 
     // Scene selection targets Summary quality and freshness gates.
     const scenesToProcess = allScenes.filter(scene => {
         const quality = classifySynopsis(scene.frontmatter.Summary, threshold);
         const isFlagged = normalizeBooleanValue(getSummaryUpdateFlag(scene.frontmatter));
-        if (mode === 'synopsis-flagged') return isFlagged;
-        if (mode === 'synopsis-missing-weak') return quality === 'missing' || quality === 'weak' || isSummaryStale(scene, plugin);
-        if (mode === 'synopsis-missing') return quality === 'missing';
-        if (mode === 'synopsis-all') return true;
-        return false;
+        let selected = false;
+        if (mode === 'synopsis-flagged') selected = isFlagged;
+        else if (mode === 'synopsis-missing-weak') selected = quality === 'missing' || quality === 'weak' || isSummaryStale(scene, plugin);
+        else if (mode === 'synopsis-missing') selected = quality === 'missing';
+        else if (mode === 'synopsis-all') selected = true;
+        if (!selected) return false;
+
+        if (!isResuming) return true;
+
+        if (alsoUpdateSynopsis) {
+            return !wasSummaryUpdatedToday(scene, plugin, today) || !wasSynopsisUpdatedToday(scene, plugin, today);
+        }
+        return !wasSummaryUpdatedToday(scene, plugin, today);
     });
 
     if (scenesToProcess.length === 0) {
@@ -332,6 +396,7 @@ export async function runSynopsisBatch(
 
         const sceneName = scene.file.basename;
         const currentSummary = (scene.frontmatter.Summary as string) || '';
+        const alreadySummaryUpdatedToday = wasSummaryUpdatedToday(scene, plugin, today);
 
         // Show current item info (including old summary for preview)
         if (modal.setSynopsisPreview) {
@@ -339,12 +404,6 @@ export async function runSynopsisBatch(
         }
 
         // --- Step 1: Generate Summary (primary artifact) ---
-        const summaryPrompt = buildSummaryPrompt(
-            scene.body,
-            String(scene.sceneNumber || 'N/A'),
-            target
-        );
-
         const runAi = createAiRunner(plugin, vault, callAiProvider);
         if (modal.startSceneAnimation) {
             const words = typeof scene.frontmatter.Words === 'number' ? scene.frontmatter.Words : 500;
@@ -352,81 +411,101 @@ export async function runSynopsisBatch(
         }
 
         try {
-            const result = await runAi(summaryPrompt, null, 'synopsis', sceneName, undefined);
+            let newSummary = currentSummary.trim();
 
-            if (result.result) {
-                // Parse JSON
-                let newSummary = '';
+            if (!isResuming || !alreadySummaryUpdatedToday || !newSummary) {
+                const summaryPrompt = buildSummaryPrompt(
+                    scene.body,
+                    String(scene.sceneNumber || 'N/A'),
+                    target
+                );
+                const result = await runAi(summaryPrompt, null, 'synopsis', sceneName, undefined);
+                modal.setAiAdvancedContext(result.advancedContext ?? null);
+
+                if (!result.result) {
+                    modal.addError(`AI Error: ${sceneName}`);
+                    if (modal.markQueueStatus) modal.markQueueStatus(scene.file.path, 'error');
+                    continue;
+                }
+
                 try {
                     const jsonMatch = result.result.match(/\{[\s\S]*\}/);
                     const jsonStr = jsonMatch ? jsonMatch[0] : result.result;
                     const parsed = JSON.parse(jsonStr);
-                    newSummary = parsed.summary || parsed.synopsis || ''; // Accept either key
+                    newSummary = parsed.summary || parsed.synopsis || '';
                 } catch (e) {
                     console.error('Failed to parse summary JSON', e);
                     modal.addError(`JSON Parse Error: ${sceneName}`);
+                    if (modal.markQueueStatus) modal.markQueueStatus(scene.file.path, 'error');
                     continue;
                 }
 
-                if (newSummary) {
-                    let newSynopsis: string | undefined;
-
-                    // Optional second pass: generate the hover blurb (stored in the legacy Synopsis key).
-                    if (alsoUpdateSynopsis) {
-                        try {
-                            const synopsisPrompt = buildSynopsisPrompt(
-                                scene.body,
-                                String(scene.sceneNumber || 'N/A'),
-                                synopsisMaxWords
-                            );
-
-                            const synopsisResult = await runAi(synopsisPrompt, null, 'synopsis', `${sceneName} (synopsis)`, undefined);
-
-                            if (synopsisResult.result) {
-                                const synJsonMatch = synopsisResult.result.match(/\{[\s\S]*\}/);
-                                const synJsonStr = synJsonMatch ? synJsonMatch[0] : synopsisResult.result;
-                                const synParsed = JSON.parse(synJsonStr);
-                                const parsedSynopsis = synParsed.synopsis || '';
-                                if (parsedSynopsis) {
-                                    newSynopsis = truncateToWordLimit(parsedSynopsis, synopsisMaxWords);
-                                }
-                            }
-                        } catch (synErr) {
-                            // Synopsis generation failure is non-fatal — Summary still succeeds.
-                            console.warn(`Synopsis generation failed for ${sceneName}:`, synErr);
-                            modal.addWarning(`Synopsis generation failed for ${sceneName} (Summary was saved)`);
-                        }
-                    }
-
-                    try {
-                        const persisted = await persistSummaryForScene(plugin, scene.file.path, newSummary, newSynopsis);
-                        processedCount++;
-
-                        // Update preview with final result
-                        if (modal.setSynopsisPreview) {
-                            modal.setSynopsisPreview(currentSummary, persisted.summary);
-                        }
-                        if (modal.updateProgress) {
-                            modal.updateProgress(processedCount, scenesToProcess.length, sceneName);
-                        }
-                        if (modal.markQueueStatus) {
-                            modal.markQueueStatus(scene.file.path, 'success');
-                        }
-                    } catch (saveError) {
-                        const message = saveError instanceof Error ? saveError.message : String(saveError);
-                        modal.addError(`Save error for ${sceneName}: ${message}`);
-                        if (modal.markQueueStatus) modal.markQueueStatus(scene.file.path, 'error');
-                    }
-                } else {
+                if (!newSummary) {
                     modal.addError(`Empty result: ${sceneName}`);
                     if (modal.markQueueStatus) modal.markQueueStatus(scene.file.path, 'error');
+                    continue;
                 }
-            } else {
-                modal.addError(`AI Error: ${sceneName}`);
+            }
+
+            let newSynopsis: string | undefined;
+
+            // Generate the hover blurb from the newly generated Summary, not the full scene text.
+            if (alsoUpdateSynopsis) {
+                try {
+                    const synopsisPrompt = buildSynopsisPrompt(
+                        newSummary,
+                        String(scene.sceneNumber || 'N/A'),
+                        synopsisMaxWords
+                    );
+
+                    const synopsisResult = await runAi(synopsisPrompt, null, 'synopsis', `${sceneName} (synopsis)`, undefined);
+                    modal.setAiAdvancedContext(synopsisResult.advancedContext ?? null);
+
+                    if (synopsisResult.result) {
+                        const synJsonMatch = synopsisResult.result.match(/\{[\s\S]*\}/);
+                        const synJsonStr = synJsonMatch ? synJsonMatch[0] : synopsisResult.result;
+                        const synParsed = JSON.parse(synJsonStr);
+                        const parsedSynopsis = synParsed.synopsis || synParsed.summary || '';
+                        if (parsedSynopsis) {
+                            newSynopsis = truncateToWordLimit(parsedSynopsis, synopsisMaxWords);
+                        }
+                    }
+                } catch (synErr) {
+                    console.warn(`Synopsis generation failed for ${sceneName}:`, synErr);
+                    const reason = explainSummaryRefreshFailure(synErr, {
+                        sceneBody: newSummary,
+                        sceneName,
+                        passLabel: 'synopsis'
+                    });
+                    modal.addWarning(`Synopsis generation failed for ${sceneName}. Summary was saved and processing continued. ${reason}`);
+                }
+            }
+
+            try {
+                const persisted = await persistSummaryForScene(plugin, scene.file.path, newSummary, newSynopsis);
+                processedCount++;
+
+                if (modal.setSynopsisPreview) {
+                    modal.setSynopsisPreview(currentSummary, persisted.summary);
+                }
+                if (modal.updateProgress) {
+                    modal.updateProgress(processedCount, scenesToProcess.length, sceneName);
+                }
+                if (modal.markQueueStatus) {
+                    modal.markQueueStatus(scene.file.path, 'success');
+                }
+            } catch (saveError) {
+                const message = saveError instanceof Error ? saveError.message : String(saveError);
+                modal.addError(`Save error for ${sceneName}: ${message}`);
                 if (modal.markQueueStatus) modal.markQueueStatus(scene.file.path, 'error');
             }
         } catch (err) {
-            modal.addError(`Error processing ${sceneName}: ${err}`);
+            const reason = explainSummaryRefreshFailure(err, {
+                sceneBody: scene.body,
+                sceneName,
+                passLabel: 'summary'
+            });
+            modal.addError(`Summary generation failed for ${sceneName}. Processing continued with remaining scenes. ${reason}`);
             if (modal.markQueueStatus) modal.markQueueStatus(scene.file.path, 'error');
         }
 

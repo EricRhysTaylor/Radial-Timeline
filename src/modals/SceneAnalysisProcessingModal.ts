@@ -132,6 +132,8 @@ export class SceneAnalysisProcessingModal extends Modal {
     private errorMessages: { message: string; hint?: string }[] = [];
     private warningMessages: string[] = [];
     private logAttempts: number = 0;
+    private progressSnapshotText: string = 'Initializing… preparing first scene (0%)';
+    private statusSnapshotText: string = 'Initializing pipeline...';
 
     // Animation state for progress bar estimation
     private animationIntervalId: number | null = null;
@@ -199,6 +201,41 @@ export class SceneAnalysisProcessingModal extends Modal {
             new Notice('Processing continues in background. Use command palette to reopen progress window.');
         }
         super.close();
+    }
+
+    private openSynopsisSettings(): void {
+        if (this.plugin.settingsTab) {
+            this.plugin.settingsTab.setActiveTab('ai');
+        }
+        const setting = (this.app as unknown as {
+            setting?: { open: () => void; openTabById: (id: string) => void };
+        }).setting;
+        if (!setting) {
+            new Notice('Unable to open Radial Timeline settings.');
+            return;
+        }
+
+        setting.open();
+        setting.openTabById('radial-timeline');
+        this.focusSettingsTarget([
+            '[data-ert-role="ai-setting:synopsis-max-words"]',
+            '[data-ert-role="ai-setting:configuration"]'
+        ]);
+    }
+
+    private focusSettingsTarget(selectors: string[], attempt = 0): void {
+        const target = selectors
+            .map(selector => document.querySelector(selector))
+            .find((el): el is HTMLElement => el instanceof HTMLElement);
+        if (target) {
+            target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            target.classList.remove('is-attention-pulse');
+            window.setTimeout(() => target.classList.add('is-attention-pulse'), 24);
+            window.setTimeout(() => target.classList.remove('is-attention-pulse'), 2800);
+            return;
+        }
+        if (attempt >= 8) return;
+        window.setTimeout(() => this.focusSettingsTarget(selectors, attempt + 1), 140);
     }
 
     private ensureModalShell(): void {
@@ -283,7 +320,8 @@ export class SceneAnalysisProcessingModal extends Modal {
         this.queueActiveId = undefined;
         this.totalCount = queue.length;
         if (this.isProcessing && this.progressTextEl && queue.length > 0 && this.processedCount === 0) {
-            this.progressTextEl.setText(`0 / ${queue.length} scenes (0%)`);
+            this.progressSnapshotText = `0 / ${queue.length} scenes (0%)`;
+            this.progressTextEl.setText(this.progressSnapshotText);
         }
         this.renderQueueItems();
     }
@@ -595,10 +633,18 @@ export class SceneAnalysisProcessingModal extends Modal {
                 cls: 'rt-synopsis-control-label',
                 attr: { for: synopsisCheckboxId }
             });
-            synopsisInfo.createDiv({
-                text: `Also replace Synopsis with a concise version generated from scene content. Current length is ${synopsisWordLimit} words and controlled in Settings → Configuration → Synopsis max words.`,
-                cls: 'rt-synopsis-control-help'
+            const synopsisHelp = synopsisInfo.createDiv({ cls: 'rt-synopsis-control-help' });
+            synopsisHelp.appendText(`Also replace Synopsis with a concise version generated from scene content. Current length is ${synopsisWordLimit} words and controlled in `);
+            const synopsisSettingsLink = synopsisHelp.createEl('a', {
+                text: 'Settings → AI → Configuration → Synopsis max words',
+                cls: 'rt-synopsis-control-link',
+                attr: { href: '#' }
             });
+            synopsisSettingsLink.addEventListener('click', (event) => {
+                event.preventDefault();
+                this.openSynopsisSettings();
+            });
+            synopsisHelp.appendText('.');
 
             synopsisCheckbox.addEventListener('change', () => {
                 this.plugin.settings.alsoUpdateSynopsis = synopsisCheckbox.checked;
@@ -840,6 +886,8 @@ export class SceneAnalysisProcessingModal extends Modal {
         this.processedSynopsisResults = new Map();
         this.hasPendingSynopsisResults = false;
         this.logAttempts = 0;
+        this.progressSnapshotText = 'Initializing… preparing first scene (0%)';
+        this.statusSnapshotText = 'Initializing pipeline...';
 
         // Notify plugin that processing has started
         this.plugin.activeBeatsModal = this;
@@ -901,10 +949,10 @@ export class SceneAnalysisProcessingModal extends Modal {
         this.progressBarEl.style.setProperty('--progress-width', '0%');
 
         this.progressTextEl = progressCard.createDiv({ cls: 'rt-pulse-progress-text' });
-        this.progressTextEl.setText('Initializing… preparing first scene (0%)');
+        this.progressTextEl.setText(this.progressSnapshotText);
 
         this.statusTextEl = progressCard.createDiv({ cls: 'rt-pulse-status-text' });
-        this.statusTextEl.setText('Initializing pipeline...');
+        this.statusTextEl.setText(this.statusSnapshotText);
 
         const rulerBlock = progressCard.createDiv({ cls: 'rt-pulse-ruler-block' });
         rulerBlock.createDiv({ cls: 'rt-pulse-ruler-title', text: 'Scene queue' });
@@ -941,6 +989,7 @@ export class SceneAnalysisProcessingModal extends Modal {
             'Are you sure you want to abort processing? Progress will be saved up to the current scene.',
             () => {
                 this.abortController?.abort();
+                this.statusSnapshotText = 'Aborting... Please wait.';
                 this.statusTextEl?.setText('Aborting... Please wait.');
                 this.abortButtonEl?.setDisabled(true);
                 new Notice('Processing aborted by user');
@@ -1146,11 +1195,13 @@ export class SceneAnalysisProcessingModal extends Modal {
         }
 
         if (this.progressTextEl) {
-            this.progressTextEl.setText(`${current} / ${total} scenes (${percentage}%)`);
+            this.progressSnapshotText = `${current} / ${total} scenes (${percentage}%)`;
+            this.progressTextEl.setText(this.progressSnapshotText);
         }
 
         if (this.statusTextEl) {
-            this.statusTextEl.setText(`Processing: ${sceneName}`);
+            this.statusSnapshotText = `Processing: ${sceneName}`;
+            this.statusTextEl.setText(this.statusSnapshotText);
         }
 
         if (this.heroStatusEl && this.taskType !== 'synopsis') {
@@ -1217,7 +1268,8 @@ export class SceneAnalysisProcessingModal extends Modal {
 
         // Update status with estimate
         if (this.statusTextEl) {
-            this.statusTextEl.setText(`Processing: ${sceneName} (~${Math.ceil(estimatedSeconds)}s)`);
+            this.statusSnapshotText = `Processing: ${sceneName} (~${Math.ceil(estimatedSeconds)}s)`;
+            this.statusTextEl.setText(this.statusSnapshotText);
         }
 
         this.animationIntervalId = this.plugin.registerInterval(window.setInterval(() => { // SAFE: setInterval wrapped with plugin.registerInterval for cleanup
@@ -1294,7 +1346,7 @@ export class SceneAnalysisProcessingModal extends Modal {
         if (this.errorListEl.hasClass('rt-hidden')) {
             this.errorListEl.removeClass('rt-hidden');
             const header = this.errorListEl.createDiv({ cls: 'rt-pulse-error-header' });
-            header.setText('Errors encountered:');
+            header.setText(this.isProcessing ? 'Issues encountered (processing continues):' : 'Issues encountered:');
         }
 
         const errorItem = this.errorListEl.createDiv({ cls: 'rt-pulse-error-item' });
@@ -1315,7 +1367,8 @@ export class SceneAnalysisProcessingModal extends Modal {
                 this.heroStatusEl.setText(`Processing ${sceneLabel}`);
             }
             if (this.statusTextEl) {
-                this.statusTextEl.setText(`Processing: ${sceneLabel}`);
+                this.statusSnapshotText = `Processing: ${sceneLabel}`;
+                this.statusTextEl.setText(this.statusSnapshotText);
             }
         }
     }
@@ -1338,6 +1391,9 @@ export class SceneAnalysisProcessingModal extends Modal {
             `Model selection reason: ${redactSensitiveValue(ctx.modelSelectionReason)}`,
             `Availability: ${ctx.availabilityStatus === 'visible' ? 'Visible to your key ✅' : ctx.availabilityStatus === 'not_visible' ? 'Not visible ⚠️' : 'Unknown (snapshot unavailable)'}`,
             `Applied caps: input=${ctx.maxInputTokens}, output=${ctx.maxOutputTokens}`,
+            typeof ctx.totalInputTokens === 'number'
+                ? `Estimated input: ~${Math.round(ctx.totalInputTokens).toLocaleString()} tokens`
+                : '',
             `Packaging: ${ctx.analysisPackaging === 'singlePassOnly' ? 'Single-pass only' : ctx.analysisPackaging === 'segmented' ? 'Segmented' : 'Automatic'}`,
             '',
             'Feature mode instructions:',
@@ -1367,7 +1423,7 @@ export class SceneAnalysisProcessingModal extends Modal {
         if (this.errorListEl.hasClass('rt-hidden')) {
             this.errorListEl.removeClass('rt-hidden');
             const header = this.errorListEl.createDiv({ cls: 'rt-pulse-error-header' });
-            header.setText('Issues encountered:');
+            header.setText(this.isProcessing ? 'Issues encountered (processing continues):' : 'Issues encountered:');
         }
 
         const warningItem = this.errorListEl.createDiv({ cls: 'rt-pulse-error-item rt-pulse-warning-item' });
@@ -1399,7 +1455,8 @@ export class SceneAnalysisProcessingModal extends Modal {
             ? `${successCount} / ${this.totalCount} scenes updated`
             : `${successCount} scene${successCount === 1 ? '' : 's'} updated`;
         if (this.progressTextEl) {
-            this.progressTextEl.setText(progressSummary);
+            this.progressSnapshotText = progressSummary;
+            this.progressTextEl.setText(this.progressSnapshotText);
         }
 
         const statusParts: string[] = [];
@@ -1408,7 +1465,8 @@ export class SceneAnalysisProcessingModal extends Modal {
 
         if (this.statusTextEl) {
             const statusText = statusParts.join(' | ');
-            this.statusTextEl.setText(statusText);
+            this.statusSnapshotText = statusText;
+            this.statusTextEl.setText(this.statusSnapshotText);
             this.statusTextEl.removeClass('rt-error-text', 'rt-warning-text', 'rt-success-text');
             if (statusText) {
                 if (hasErrors && successCount === 0) {
@@ -1581,6 +1639,7 @@ export class SceneAnalysisProcessingModal extends Modal {
         if (!this.abortController) return;
 
         this.abortController.abort();
+        this.statusSnapshotText = 'Processing stopped due to error';
         this.statusTextEl?.setText('Processing stopped due to error');
         this.abortButtonEl?.setDisabled(true);
     }
@@ -1623,6 +1682,10 @@ export class SceneAnalysisProcessingModal extends Modal {
 
         if (normalized.includes('schema') && normalized.includes('json')) {
             return 'The response was not valid JSON. Try switching to a larger or more instruction-following model.';
+        }
+
+        if (normalized.includes('context too long') || normalized.includes('context window') || normalized.includes('too many tokens')) {
+            return 'This pass exceeded the model budget for that request. Summary refresh sends the full scene text, and optional Synopsis adds a second full-scene pass. Processing continues; only this scene/pass failed.';
         }
 
         return null;

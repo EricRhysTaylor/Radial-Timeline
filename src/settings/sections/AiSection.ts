@@ -256,7 +256,7 @@ export function renderAiSection(params: {
     const largeHandlingBody = largeHandlingFold.createDiv({ cls: `${ERT_CLASSES.STACK} ert-ai-large-handling-body` });
     largeHandlingBody.createDiv({
         cls: 'ert-section-desc',
-        text: 'Requests are handled with safe per-pass limits so structure and references stay clear.'
+        text: 'Shows how the current corpus is expected to package for Inquiry and Gossamer.'
     });
 
     const capacitySection = largeHandlingBody.createDiv({ cls: 'ert-ai-capacity-section' });
@@ -273,8 +273,6 @@ export function renderAiSection(params: {
         el.createSpan({ cls: 'ert-ai-token-value', text: numericText });
         el.createSpan({ cls: 'ert-ai-token-unit', text: unitText });
     };
-    const capacitySafeInput = createCapacityCell('Safe input (per pass)');
-    const capacityOutput = createCapacityCell('Response (per pass)');
     const capacityInquiry = createCapacityCell('Current Corpus');
     capacityInquiry.labelEl.addClass('ert-ai-capacity-label--forecast');
     const capacityInquiryToken = capacityInquiry.valueEl.createDiv({
@@ -304,26 +302,6 @@ export function renderAiSection(params: {
         cls: 'ert-ai-capacity-meta',
         text: 'Calculating...'
     });
-
-
-    // ── Status grid: compact 2-column (label + chip) ──
-    const statusGrid = largeHandlingBody.createDiv({ cls: 'ert-ai-status-grid' });
-    const createStatusRow = (label: string): { rowEl: HTMLElement; chipEl: HTMLElement } => {
-        const row = statusGrid.createDiv({ cls: 'ert-ai-status-row' });
-        row.createDiv({ cls: 'ert-ai-status-label', text: label });
-        const chipEl = row.createDiv({ cls: 'ert-ai-status-chip' });
-        return { rowEl: row, chipEl };
-    };
-    const singlePassRow = createStatusRow('Single-Pass');
-    const multiPassRow = createStatusRow('Multi-Pass');
-    const segmentedRow = createStatusRow('Segmented');
-
-    // ── Near-limit indicator ──
-    const nearLimitEl = largeHandlingBody.createDiv({ cls: 'ert-ai-near-limit ert-settings-hidden' });
-    const nearLimitIcon = nearLimitEl.createSpan({ cls: 'ert-ai-near-limit-icon' });
-    setIcon(nearLimitIcon, 'alert-triangle');
-    nearLimitEl.createSpan({ text: 'Near context limit \u2014 segmentation may activate (or costs may rise)' });
-
     // ── Details link → modal ──
     const detailsBtn = largeHandlingBody.createDiv({ cls: 'ert-ai-details-link' });
     detailsBtn.createSpan({ text: 'How analysis passes work \u2192' });
@@ -360,9 +338,9 @@ export function renderAiSection(params: {
         const mode = ensureCanonicalAiSettings().analysisPackaging;
         executionPreferenceNote.setText(
             mode === 'singlePassOnly'
-                ? 'Send the full request as one pass. If it exceeds safe limits, reduce scope or adjust settings.'
+                ? 'Runs only when the current corpus fits one pass. Otherwise reduce scope or switch to Automatic.'
                 : mode === 'segmented'
-                ? 'Always splits into structured segments, even when content fits in a single pass.'
+                ? 'Always splits the run into structured passes, even when one pass would fit.'
                 : ''
         );
         executionPreferenceNote.toggleClass('ert-settings-hidden', mode === 'automatic');
@@ -394,6 +372,7 @@ export function renderAiSection(params: {
     const aiConfigFold = aiSettingsGroup.createDiv({
         cls: ERT_CLASSES.STACK
     });
+    aiConfigFold.setAttr('data-ert-role', 'ai-setting:configuration');
     const aiConfigHeader = new Settings(aiConfigFold)
         .setName('Configuration')
         .setHeading();
@@ -449,7 +428,6 @@ export function renderAiSection(params: {
 
     type PreviewSignalType =
         | 'context'
-        | 'response'
         | 'manuscriptCitations'
         | 'contextCompare';
 
@@ -460,7 +438,6 @@ export function renderAiSection(params: {
 
     const PREVIEW_SIGNAL_PRIORITY: readonly PreviewSignalType[] = [
         'context',
-        'response',
         'manuscriptCitations',
         'contextCompare'
     ] as const;
@@ -475,10 +452,6 @@ export function renderAiSection(params: {
         candidates.push({
             type: 'context',
             text: `Context · ${state.maxInputTokens ? formatApproxTokens(state.maxInputTokens) : 'n/a'}`
-        });
-        candidates.push({
-            type: 'response',
-            text: `Response · ${state.maxOutputTokens ? `${formatApproxTokens(state.maxOutputTokens)} / pass` : 'n/a'}`
         });
 
         if (state.provider === 'anthropic') {
@@ -1200,8 +1173,6 @@ export function renderAiSection(params: {
             localQuickConfigSection.toggleClass('ert-settings-visible', isLocal);
         }
 
-        capacitySafeInput.valueEl.setText('Calculating...');
-        capacityOutput.valueEl.setText('Calculating...');
         capacityInquiryToken.setText('Calculating...');
         capacityInquiryScope.setText('Loading current corpus…');
         capacityInquiryExpected.setText('Calculating...');
@@ -1209,12 +1180,6 @@ export function renderAiSection(params: {
         capacityGossamerScope.setText('Scanning vault…');
         capacityGossamerExpected.setText('Calculating...');
         void refreshCostComparisonTable();
-
-        // Reset status grid chips
-        singlePassRow.chipEl.setText('Calculating...');
-        multiPassRow.chipEl.setText('Calculating...');
-        segmentedRow.chipEl.setText('Calculating...');
-        nearLimitEl.toggleClass('ert-settings-hidden', true);
 
         try {
             const prepared = await getAIClient(plugin).prepareRunEstimate({
@@ -1235,13 +1200,12 @@ export function renderAiSection(params: {
             }
             const estimate = prepared.estimate;
             const safeBudgetTokens = Math.max(0, Math.floor(estimate.effectiveInputCeiling));
-            const formatForecastPasses = (providerExecutionTokens: number, singlePassOnly: boolean): string => {
-                if (providerExecutionTokens <= 0) return 'No content detected';
-                if (providerExecutionTokens <= safeBudgetTokens) return 'Single pass possible';
-                if (singlePassOnly) return 'Exceeds single-pass limit';
-                if (safeBudgetTokens <= 0) return 'Forecast unavailable';
-                const passes = Math.ceil(providerExecutionTokens / safeBudgetTokens);
-                return `Multi-pass required (${passes} passes)`;
+            const formatExpectedPasses = (providerExecutionTokens: number): string => {
+                if (providerExecutionTokens <= 0 || safeBudgetTokens <= 0) return 'Expected Passes · n/a';
+                const passes = providerExecutionTokens <= safeBudgetTokens
+                    ? 1
+                    : Math.max(2, Math.ceil(providerExecutionTokens / safeBudgetTokens));
+                return `Expected Passes · ${passes}`;
             };
             const previewState: ResolvedPreviewRenderState = {
                 provider,
@@ -1251,10 +1215,6 @@ export function renderAiSection(params: {
                 maxOutputTokens: estimate.maxOutputTokens,
             };
             renderResolvedPreview(previewState);
-            setTokenDisplay(capacitySafeInput.valueEl, `~${safeBudgetTokens.toLocaleString()}`, 'tokens (safe window)');
-            setTokenDisplay(capacityOutput.valueEl, `~${estimate.maxOutputTokens.toLocaleString()}`, 'tokens');
-
-            const singlePassOnly = aiSettings.analysisPackaging === 'singlePassOnly';
             void computeVaultForecasts({
                 provider,
                 modelId: estimate.model.id
@@ -1262,7 +1222,7 @@ export function renderAiSection(params: {
                 capacityInquiryScope.setText(forecasts.inquiry.label);
                 if (forecasts.inquiry.available) {
                     setTokenDisplay(capacityInquiryToken, `~${forecasts.inquiry.corpusTokens.toLocaleString()}`, 'tokens');
-                    capacityInquiryExpected.setText(formatForecastPasses(forecasts.inquiry.providerExecutionTokens, singlePassOnly));
+                    capacityInquiryExpected.setText(formatExpectedPasses(forecasts.inquiry.providerExecutionTokens));
                 } else {
                     capacityInquiryToken.setText('Unavailable');
                     capacityInquiryExpected.setText('Unavailable');
@@ -1270,62 +1230,7 @@ export function renderAiSection(params: {
 
                 capacityGossamerScope.setText(forecasts.gossamer.label);
                 setTokenDisplay(capacityGossamerToken, `~${forecasts.gossamer.corpusTokens.toLocaleString()}`, 'tokens');
-                capacityGossamerExpected.setText(formatForecastPasses(forecasts.gossamer.providerExecutionTokens, singlePassOnly));
-
-                // ── Mode-aware status grid chips ──
-                const maxEstimate = Math.max(
-                    forecasts.inquiry.providerExecutionTokens,
-                    forecasts.gossamer.providerExecutionTokens
-                );
-                const fits = maxEstimate <= safeBudgetTokens;
-                const nearLimit = safeBudgetTokens > 0 && maxEstimate > safeBudgetTokens * 0.7;
-                const mode = aiSettings.analysisPackaging;
-
-                const clearChip = (el: HTMLElement): void => {
-                    el.removeClass('ert-ai-chip--success', 'ert-ai-chip--warning', 'ert-ai-chip--muted');
-                };
-
-                // Single-Pass chip
-                clearChip(singlePassRow.chipEl);
-                if (mode === 'segmented') {
-                    singlePassRow.chipEl.setText('Bypassed');
-                    singlePassRow.chipEl.addClass('ert-ai-chip--muted');
-                } else if (fits) {
-                    singlePassRow.chipEl.setText('Fits safely');
-                    singlePassRow.chipEl.addClass('ert-ai-chip--success');
-                } else {
-                    singlePassRow.chipEl.setText('Exceeds safe limit');
-                    singlePassRow.chipEl.addClass('ert-ai-chip--warning');
-                }
-
-                // Multi-Pass chip
-                clearChip(multiPassRow.chipEl);
-                if (mode === 'singlePassOnly') {
-                    multiPassRow.chipEl.setText('Disabled');
-                    multiPassRow.chipEl.addClass('ert-ai-chip--muted');
-                } else if (!fits || mode === 'segmented') {
-                    const passes = safeBudgetTokens > 0
-                        ? Math.ceil(maxEstimate / safeBudgetTokens)
-                        : 0;
-                    multiPassRow.chipEl.setText(passes > 0 ? `${passes} passes` : 'Unavailable');
-                    multiPassRow.chipEl.addClass(passes > 0 ? 'ert-ai-chip--success' : 'ert-ai-chip--warning');
-                } else {
-                    multiPassRow.chipEl.setText('Not needed');
-                    multiPassRow.chipEl.addClass('ert-ai-chip--muted');
-                }
-
-                // Segmented chip
-                clearChip(segmentedRow.chipEl);
-                if (mode === 'segmented') {
-                    segmentedRow.chipEl.setText('Forcing split');
-                    segmentedRow.chipEl.addClass('ert-ai-chip--success');
-                } else {
-                    segmentedRow.chipEl.setText('Available');
-                    segmentedRow.chipEl.addClass('ert-ai-chip--muted');
-                }
-
-                // Near-limit indicator (show whenever >70%, regardless of fit)
-                nearLimitEl.toggleClass('ert-settings-hidden', !nearLimit);
+                capacityGossamerExpected.setText(formatExpectedPasses(forecasts.gossamer.providerExecutionTokens));
             });
         } catch {
             renderResolvedPreview({
@@ -1335,8 +1240,6 @@ export function renderAiSection(params: {
                 maxInputTokens: null,
                 maxOutputTokens: null
             });
-            capacitySafeInput.valueEl.setText('Unavailable');
-            capacityOutput.valueEl.setText('Unavailable');
             capacityInquiryToken.setText('Unavailable');
             capacityInquiryScope.setText('Open Inquiry to load the current corpus');
             capacityInquiryExpected.setText('Unavailable');
@@ -2293,6 +2196,7 @@ export function renderAiSection(params: {
         title: 'Synopsis max words',
         description: 'Maximum words for generated Synopsis. Hover display is synced automatically from this value.',
         control: (setting) => {
+            setting.settingEl.setAttr('data-ert-role', 'ai-setting:synopsis-max-words');
             setting.addText(text => {
                 const current = String(getSynopsisGenerationWordLimit(plugin.settings));
                 text.setPlaceholder('e.g. 30');
