@@ -1,6 +1,6 @@
 import { MetadataCache, TFile, Vault } from 'obsidian';
 import type { InquiryScope } from '../state';
-import type { InquiryClassConfig, InquirySourcesSettings } from '../../types/settings';
+import type { BookProfile, InquiryClassConfig, InquirySourcesSettings } from '../../types/settings';
 import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { getScenePrefixNumber } from '../../utils/text';
 import { MAX_RESOLVED_SCAN_ROOTS, normalizeScanRootPatterns, resolveScanRoots, toVaultRoot } from '../utils/scanRoots';
@@ -32,12 +32,15 @@ export type InquiryCorpusSnapshot = {
     books: InquiryBookItem[];
     scenes: InquirySceneItem[];
     activeBookId?: string;
+    /** True when book scope has at least one resolved book, or when scope is not 'book'. */
+    bookResolved: boolean;
 };
 
 export type InquiryCorpusResolveParams = {
     scope: InquiryScope;
     focusBookId?: string;
     sources: InquirySourcesSettings;
+    bookProfiles?: BookProfile[];
 };
 
 export class InquiryCorpusResolver {
@@ -60,7 +63,8 @@ export class InquiryCorpusResolver {
                 resolvedRoots: [],
                 books: [],
                 scenes: [],
-                activeBookId: undefined
+                activeBookId: undefined,
+                bookResolved: params.scope !== 'book'
             };
         }
 
@@ -77,7 +81,8 @@ export class InquiryCorpusResolver {
             metadataCache: this.metadataCache,
             resolvedVaultRoots,
             frontmatterMappings: this.frontmatterMappings,
-            bookInclusion: sources.bookInclusion
+            bookInclusion: sources.bookInclusion,
+            bookProfiles: params.bookProfiles
         });
 
         const books = this.buildBookItems(bookResolution.includedBooks.map(book => ({
@@ -94,7 +99,8 @@ export class InquiryCorpusResolver {
             resolvedRoots,
             books,
             scenes,
-            activeBookId
+            activeBookId,
+            bookResolved: params.scope !== 'book' || books.length > 0
         };
     }
 

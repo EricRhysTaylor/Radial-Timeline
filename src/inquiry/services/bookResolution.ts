@@ -31,7 +31,7 @@ export interface InquiryResolvedBook {
     id: string;
     rootPath: string;
     bookNumber?: number;
-    detectedBy: 'name' | 'outline' | 'name+outline';
+    detectedBy: 'profile' | 'name' | 'outline' | 'name+outline' | 'profile+name' | 'profile+outline' | 'profile+name+outline';
     isVariant: boolean;
     isNested: boolean;
     nestedUnder?: string;
@@ -78,6 +78,7 @@ export function resolveInquiryBookResolution(params: {
     resolvedVaultRoots: string[];
     frontmatterMappings?: Record<string, string>;
     bookInclusion?: Record<string, unknown>;
+    bookProfiles?: BookProfile[];
 }): InquiryBookResolution {
     const discovered = discoverInquiryBookRoots(params);
     return finalizeInquiryBookResolution(discovered, params.bookInclusion);
@@ -139,11 +140,7 @@ export function finalizeInquiryBookResolution(
             statusLabel = 'Excluded (duplicate/variant)';
         }
 
-        const detectedBy = item.detectedByName && item.detectedByOutline
-            ? 'name+outline'
-            : item.detectedByName
-                ? 'name'
-                : 'outline';
+        const detectedBy = resolveDetectedBy(item);
 
         return {
             id: item.rootPath,
@@ -194,9 +191,17 @@ export function findInquiryBookForPath(path: string, candidates: Pick<InquiryRes
     return match;
 }
 
-export function isPathIncludedByInquiryBooks(path: string, candidates: InquiryResolvedBook[]): boolean {
+export function isPathIncludedByInquiryBooks(
+    path: string,
+    candidates: InquiryResolvedBook[],
+    scope?: 'book' | 'saga'
+): boolean {
     const owner = findInquiryBookForPath(path, candidates);
-    if (!owner) return true;
+    if (!owner) {
+        // Book scope with no candidates = unresolved book. Do not silently include.
+        if (scope === 'book' && candidates.length === 0) return false;
+        return true;
+    }
     const full = candidates.find(candidate => candidate.rootPath === owner.rootPath);
     return !!full?.included;
 }
@@ -218,11 +223,21 @@ export function isDraftVariantPath(path: string): boolean {
     return DRAFT_VARIANT_PATTERNS.some(pattern => pattern.test(leaf));
 }
 
+function resolveDetectedBy(item: DiscoveredInquiryBookRoot): InquiryResolvedBook['detectedBy'] {
+    const parts: string[] = [];
+    if (item.detectedByProfile) parts.push('profile');
+    if (item.detectedByName) parts.push('name');
+    if (item.detectedByOutline) parts.push('outline');
+    // Join parts; type-safe cast since the combination is always valid.
+    return (parts.join('+') || 'name') as InquiryResolvedBook['detectedBy'];
+}
+
 function discoverInquiryBookRoots(params: {
     vault: Vault;
     metadataCache: MetadataCache;
     resolvedVaultRoots: string[];
     frontmatterMappings?: Record<string, string>;
+    bookProfiles?: BookProfile[];
 }): DiscoveredInquiryBookRoot[] {
     const resolvedVaultRoots = Array.from(new Set(
         (params.resolvedVaultRoots || []).map(root => normalizeMaybeRootPath(root))
@@ -233,13 +248,14 @@ function discoverInquiryBookRoots(params: {
     const map = new Map<string, DiscoveredInquiryBookRoot>();
     const outlineBookFolders = collectOutlineBookFolders(params.vault, params.metadataCache, params.frontmatterMappings);
 
-    const addDiscoveredRoot = (rootPath: string, reason: 'name' | 'outline', bookNumber?: number) => {
+    const addDiscoveredRoot = (rootPath: string, reason: 'name' | 'outline' | 'profile', bookNumber?: number) => {
         const normalizedRoot = normalizeMaybeRootPath(rootPath);
         if (!normalizedRoot) return;
         const prior = map.get(normalizedRoot);
         if (prior) {
             prior.detectedByName = prior.detectedByName || reason === 'name';
             prior.detectedByOutline = prior.detectedByOutline || reason === 'outline';
+            prior.detectedByProfile = prior.detectedByProfile || reason === 'profile';
             if (bookNumber !== undefined && prior.bookNumber === undefined) {
                 prior.bookNumber = bookNumber;
             }
@@ -250,10 +266,26 @@ function discoverInquiryBookRoots(params: {
             rootPath: normalizedRoot,
             bookNumber,
             detectedByName: reason === 'name',
-            detectedByOutline: reason === 'outline'
+            detectedByOutline: reason === 'outline',
+            detectedByProfile: reason === 'profile'
         });
     };
 
+    // Priority 1: BookProfile sourceFolder entries from Book Manager.
+    if (params.bookProfiles?.length) {
+        params.bookProfiles.forEach((profile, index) => {
+            const folder = normalizeMaybeRootPath((profile.sourceFolder || '').trim());
+            if (!folder) return;
+            // Only include if folder falls within the configured scan roots.
+            const inRoots = resolvedVaultRoots.some(root =>
+                !root || folder === root || folder.startsWith(`${root}/`)
+            );
+            if (!inRoots) return;
+            addDiscoveredRoot(folder, 'profile', index + 1);
+        });
+    }
+
+    // Priority 2: Legacy Book X folder name detection.
     const hasRootScan = resolvedVaultRoots.some(root => root === '');
     if (hasRootScan) {
         const folders = params.vault.getAllLoadedFiles().filter((file): file is TFolder => file instanceof TFolder);
@@ -271,6 +303,7 @@ function discoverInquiryBookRoots(params: {
         });
     }
 
+    // Priority 3: Legacy outline-based and scan-root name detection.
     resolvedVaultRoots.forEach(root => {
         if (!root) return;
         const candidate = extractBookRootByName(root);

@@ -17,8 +17,11 @@
  */
 
 import { setTooltip, ButtonComponent, ExtraButtonComponent } from 'obsidian';
+import { splitIntoBalancedLinesOptimal } from './text';
 
 export type TooltipPlacement = 'top' | 'bottom' | 'left' | 'right';
+
+const DEFAULT_TOOLTIP_BALANCE_WIDTH = 360;
 
 const TOOLTIP_ATTR = 'data-tooltip';
 const TOOLTIP_PLACEMENT_ATTR = 'data-tooltip-placement';
@@ -92,14 +95,15 @@ export function tooltip(
     text: string,
     placement: TooltipPlacement = 'bottom'
 ): void {
+    const balancedText = balanceTooltipText(text);
     if (isSvgLikeElement(element)) {
         // Use data attributes for SVG delegation (handled by setupTooltipsFromDataAttributes)
-        addTooltipData(element, text, placement);
+        addTooltipData(element, balancedText, placement);
         return;
     }
     if (element instanceof HTMLElement) {
         // Use native Obsidian tooltip for standard HTML UI elements
-        setTooltip(element, text, { placement });
+        setTooltip(element, balancedText, { placement });
     }
 }
 
@@ -111,13 +115,47 @@ export function tooltipForComponent(
     text: string,
     placement: TooltipPlacement = 'bottom'
 ): void {
+    const balancedText = balanceTooltipText(text);
     // Access the underlying button element
     const buttonEl = (component as unknown as { buttonEl?: HTMLElement }).buttonEl;
     if (buttonEl) {
-        setTooltip(buttonEl, text, { placement });
+        setTooltip(buttonEl, balancedText, { placement });
     } else {
-        component.setTooltip(text);
+        component.setTooltip(balancedText);
     }
+}
+
+export function balanceTooltipText(text: string, maxWidth: number = DEFAULT_TOOLTIP_BALANCE_WIDTH): string {
+    if (!text) return text;
+
+    return text
+        .split('\n\n')
+        .map((section) => section
+            .split('\n')
+            .map((line) => balanceTooltipLine(line, maxWidth))
+            .join('\n'))
+        .join('\n\n');
+}
+
+function balanceTooltipLine(line: string, maxWidth: number): string {
+    const leadingWhitespaceMatch = line.match(/^(\s*)(.*)$/);
+    const leadingWhitespace = leadingWhitespaceMatch?.[1] ?? '';
+    const trimmed = (leadingWhitespaceMatch?.[2] ?? '').trim();
+    if (!trimmed) return '';
+
+    const bulletMatch = trimmed.match(/^([-*]\s+)(.+)$/);
+    if (bulletMatch) {
+        const [, prefix, content] = bulletMatch;
+        const balancedLines = splitIntoBalancedLinesOptimal(content, Math.max(200, maxWidth - 24), 1);
+        return balancedLines
+            .map((entry, index) => `${leadingWhitespace}${index === 0 ? prefix : ' '.repeat(prefix.length)}${entry}`)
+            .join('\n');
+    }
+
+    const balancedLines = splitIntoBalancedLinesOptimal(trimmed, maxWidth, 1);
+    return balancedLines
+        .map((entry) => `${leadingWhitespace}${entry}`)
+        .join('\n');
 }
 
 /**

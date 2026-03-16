@@ -1105,7 +1105,8 @@ export function renderInquirySection(params: SectionParams): void {
             metadataCache: plugin.app.metadataCache,
             resolvedVaultRoots,
             frontmatterMappings: plugin.settings.frontmatterMappings,
-            bookInclusion
+            bookInclusion,
+            bookProfiles: plugin.settings.books
         });
         const scan = await scanInquiryClasses(
             resolvedVaultRoots,

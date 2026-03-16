@@ -190,15 +190,15 @@ export function renderAiSection(params: {
     const costEstimateSection = aiSettingsGroup.createDiv({
         cls: `${ERT_CLASSES.CARD} ${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK} ert-ai-section-card`
     });
-    costEstimateSection.createDiv({ cls: 'ert-section-title', text: 'AI Cost Estimate (current corpus)' });
+    costEstimateSection.createDiv({ cls: 'ert-section-title', text: 'AI Cost Estimate' });
     costEstimateSection.createDiv({
         cls: 'ert-section-desc',
-        text: 'Fresh and cached UI estimates derived from the canonical Inquiry execution estimate for the current corpus.'
+        text: 'Cost estimates based on the current Inquiry scope. Includes scenes, outlines, and reference documents according to Inquiry settings.'
     });
     const costEstimateCorpusSummary = costEstimateSection.createDiv({ cls: `${ERT_CLASSES.STACK_TIGHT}` });
     const costEstimateCorpusSize = costEstimateCorpusSummary.createDiv({
         cls: 'ert-section-desc',
-        text: 'Current Corpus: Calculating...'
+        text: 'Inquiry Corpus: Calculating...'
     });
     const costEstimateCorpusStructure = costEstimateCorpusSummary.createDiv({
         cls: 'ert-field-note',
@@ -256,7 +256,7 @@ export function renderAiSection(params: {
     const largeHandlingBody = largeHandlingFold.createDiv({ cls: `${ERT_CLASSES.STACK} ert-ai-large-handling-body` });
     largeHandlingBody.createDiv({
         cls: 'ert-section-desc',
-        text: 'Shows how the current corpus is expected to package for Inquiry and Gossamer.'
+        text: 'Estimated input size for Inquiry and Gossamer analysis requests. These use different content selections.'
     });
 
     const capacitySection = largeHandlingBody.createDiv({ cls: 'ert-ai-capacity-section' });
@@ -273,7 +273,7 @@ export function renderAiSection(params: {
         el.createSpan({ cls: 'ert-ai-token-value', text: numericText });
         el.createSpan({ cls: 'ert-ai-token-unit', text: unitText });
     };
-    const capacityInquiry = createCapacityCell('Current Corpus');
+    const capacityInquiry = createCapacityCell('Inquiry Corpus');
     capacityInquiry.labelEl.addClass('ert-ai-capacity-label--forecast');
     const capacityInquiryToken = capacityInquiry.valueEl.createDiv({
         cls: 'ert-ai-capacity-meta',
@@ -281,14 +281,14 @@ export function renderAiSection(params: {
     });
     const capacityInquiryScope = capacityInquiry.valueEl.createDiv({
         cls: 'ert-ai-capacity-meta',
-        text: 'Open Inquiry to load the current corpus'
+        text: 'Open Inquiry to calculate the Inquiry corpus'
     });
     const capacityInquiryExpected = capacityInquiry.valueEl.createDiv({
         cls: 'ert-ai-capacity-meta',
         text: 'Calculating...'
     });
 
-    const capacityGossamer = createCapacityCell('Gossamer');
+    const capacityGossamer = createCapacityCell('Gossamer Corpus');
     capacityGossamer.labelEl.addClass('ert-ai-capacity-label--forecast');
     const capacityGossamerToken = capacityGossamer.valueEl.createDiv({
         cls: 'ert-ai-capacity-meta',

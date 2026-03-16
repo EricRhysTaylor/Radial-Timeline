@@ -1,6 +1,6 @@
 import type { MetadataCache, TFile, Vault } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
-import type { InquiryClassConfig, InquiryMaterialMode, InquirySourcesSettings } from '../../types/settings';
+import type { BookProfile, InquiryClassConfig, InquiryMaterialMode, InquirySourcesSettings } from '../../types/settings';
 import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { normalizeScanRootPatterns, resolveScanRoots, toVaultRoot } from '../../inquiry/utils/scanRoots';
 import { cleanEvidenceBody } from '../../inquiry/utils/evidenceCleaning';
@@ -163,7 +163,8 @@ const selectInquiryFiles = (
     metadataCache: MetadataCache,
     inquirySources?: InquirySourcesSettings,
     frontmatterMappings?: Record<string, string>,
-    scopeFilter?: { scope: InquiryScope; focusBookId?: string }
+    scopeFilter?: { scope: InquiryScope; focusBookId?: string },
+    bookProfiles?: BookProfile[]
 ): { files: TFile[]; selectionLabel: string; resolvedFocusBookId?: string } => {
     const scanRoots = normalizeScanRootPatterns(inquirySources?.scanRoots);
     if (!scanRoots.length) {
@@ -179,12 +180,13 @@ const selectInquiryFiles = (
         metadataCache,
         resolvedVaultRoots: vaultRoots,
         frontmatterMappings,
-        bookInclusion: inquirySources?.bookInclusion
+        bookInclusion: inquirySources?.bookInclusion,
+        bookProfiles
     });
 
     let allFiles = vault.getMarkdownFiles().filter(file =>
         vaultRoots.some(root => !root || file.path === root || file.path.startsWith(`${root}/`))
-        && isPathIncludedByInquiryBooks(file.path, bookResolution.candidates)
+        && isPathIncludedByInquiryBooks(file.path, bookResolution.candidates, scopeFilter?.scope)
     );
 
     // When scope is 'book', restrict files to a single focused book.
@@ -263,7 +265,7 @@ const resolveCanonicalFocusLabel = (
         const match = snapshot.books.find(book => book.id === focusBookId);
         if (match) return match.displayLabel;
     }
-    return snapshot.books[0]?.displayLabel ?? 'B0';
+    return snapshot.books[0]?.displayLabel ?? '?';
 };
 
 export const buildCanonicalExecutionEstimate = async (
@@ -330,6 +332,7 @@ export async function estimateInquiryTokens(params: {
     frontmatterMappings?: Record<string, string>;
     scopeContext?: { scope?: InquiryScope; focusBookId?: string; label?: string };
     promptOverheadTokens?: number;
+    bookProfiles?: BookProfile[];
 }): Promise<InquiryTokenEstimate> {
     const scope: InquiryScope = params.scopeContext?.scope === 'saga' ? 'saga' : 'book';
     const classes = normalizeInquiryClasses(params.inquirySources?.classes);
@@ -340,7 +343,8 @@ export async function estimateInquiryTokens(params: {
         params.metadataCache,
         params.inquirySources,
         params.frontmatterMappings,
-        { scope, focusBookId: params.scopeContext?.focusBookId }
+        { scope, focusBookId: params.scopeContext?.focusBookId },
+        params.bookProfiles
     );
     const blocks: InquiryEvidenceBlock[] = [];
     const manifestEntries: CorpusManifestEntry[] = [];

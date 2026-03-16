@@ -109,16 +109,12 @@ export class CreateRtNoteModal extends Modal {
         });
 
         const meta = header.createDiv({ cls: 'ert-modal-meta' });
-        meta.createSpan({ cls: 'ert-modal-meta-item', text: activeFamily ? 'Step 2 of 2' : 'Step 1 of 2' });
         if (activeFamily) {
+            meta.createSpan({ cls: 'ert-modal-meta-item', text: 'Step 2 of 2' });
             meta.createSpan({ cls: 'ert-modal-meta-item', text: activeFamily.title });
         }
 
         const panel = contentEl.createDiv({ cls: 'ert-panel ert-panel--glass ert-note-creator-panel ert-stack' });
-        panel.createDiv({
-            cls: 'ert-section-title',
-            text: activeFamily ? 'Choose subtype' : 'Choose note family',
-        });
         panel.createDiv({
             cls: 'ert-section-desc',
             text: activeFamily ? activeFamily.description : 'These groups match the main note categories used across Radial Timeline.',
@@ -140,6 +136,7 @@ export class CreateRtNoteModal extends Modal {
                     this.selectedFamilyId = null;
                     this.render();
                 });
+            actions.createDiv({ cls: 'ert-modal-actions-spacer' });
         }
 
         new ButtonComponent(actions)
@@ -165,6 +162,10 @@ export class CreateRtNoteModal extends Modal {
             });
 
             button.addEventListener('click', () => {
+                if (family.subtypes.length === 1) {
+                    void this.handleSubtypeSelection(family.subtypes[0].id);
+                    return;
+                }
                 this.selectedFamilyId = family.id;
                 this.render();
             });

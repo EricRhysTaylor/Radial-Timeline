@@ -4949,6 +4949,54 @@
   --ert-group-gap: 0;
 }
 
+.ert-ui.ert-scope--settings .ert-scene-settings-stack {
+  gap: var(--ert-gap-md);
+}
+
+.ert-ui.ert-scope--settings .ert-scene-settings-stack > .setting-item {
+  margin-bottom: 0;
+}
+
+.ert-ui.ert-scope--settings .ert-scene-settings-stack > .setting-item .setting-item-control {
+  gap: var(--ert-gap-sm);
+  align-items: center;
+}
+
+.ert-ui.ert-scope--settings .ert-scene-properties-state {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.ert-ui.ert-scope--settings .ert-scene-properties-panel {
+  margin-top: calc(var(--ert-gap-sm) * -1);
+  margin-bottom: var(--ert-gap-sm);
+}
+
+.ert-ui.ert-scope--settings .ert-scene-properties-summary {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+.ert-ui.ert-scope--settings .ert-scene-maintenance-panel {
+  gap: var(--ert-gap-sm);
+}
+
+.ert-ui.ert-scope--settings .ert-scene-maintenance-actions {
+  flex-wrap: wrap;
+}
+
+.ert-ui.ert-scope--settings .ert-scene-maintenance-actions--cleanup {
+  padding-top: var(--ert-gap-xs);
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.ert-ui.ert-scope--settings .ert-scene-maintenance-actions--utility {
+  justify-content: flex-end;
+}
+
 .ert-ui.ert-scope--settings .ert-grid-spacer {
   display: block;
 }
@@ -6186,6 +6234,10 @@
   color: var(--text-muted);
 }
 
+.ert-ui .ert-modal-actions-spacer {
+  flex: 1;
+}
+
 .ert-ui.ert-scope--modal.ert-modal--note-creator .ert-note-creator-modal {
   --ert-panel-shadow: none;
   --ert-pill-shadow: none;
@@ -6220,6 +6272,7 @@
   box-shadow: var(--ert-panel-shadow);
   color: var(--text-normal);
   cursor: pointer;
+  overflow: hidden;
   transition: border-color 140ms ease, transform 140ms ease, background-color 140ms ease;
 }
 
@@ -6248,8 +6301,8 @@
 }
 
 .ert-ui.ert-scope--modal.ert-modal--note-creator .ert-note-creator-option__desc {
-  font-size: 0.92rem;
-  line-height: 1.45;
+  font-size: 0.82rem;
+  line-height: 1.4;
   color: var(--text-muted);
 }
 

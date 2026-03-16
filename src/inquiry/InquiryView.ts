@@ -3782,7 +3782,8 @@ export class InquiryView extends ItemView {
         this.corpus = this.corpusResolver.resolve({
             scope: this.state.scope,
             focusBookId: this.state.focusBookId,
-            sources
+            sources,
+            bookProfiles: this.plugin.settings.books
         });
 
         let shouldPersist = false;
@@ -4912,13 +4913,13 @@ export class InquiryView extends ItemView {
                 const index = books.findIndex(book => book.id === match.id);
                 return {
                     bookId: match.id,
-                    bookLabel: entry.bookLabel || match.displayLabel || 'B0',
+                    bookLabel: entry.bookLabel || match.displayLabel,
                     order: index >= 0 ? index : Number.POSITIVE_INFINITY
                 };
             }
             return {
                 bookId: entry.bookId,
-                bookLabel: entry.bookLabel || 'B0',
+                bookLabel: entry.bookLabel || '?',
                 order: Number.POSITIVE_INFINITY
             };
         }
@@ -4928,7 +4929,7 @@ export class InquiryView extends ItemView {
             const index = books.findIndex(book => book.id === byPath.id);
             return {
                 bookId: byPath.id,
-                bookLabel: byPath.displayLabel || 'B0',
+                bookLabel: byPath.displayLabel,
                 order: index >= 0 ? index : Number.POSITIVE_INFINITY
             };
         }
@@ -4936,7 +4937,7 @@ export class InquiryView extends ItemView {
         const fallback = entry.filePath.split('/').filter(Boolean);
         const folder = fallback.length > 1 ? fallback[0] : 'book';
         const numeric = this.getCorpusCcOrderNumber(folder, 'outline');
-        const fallbackLabel = numeric !== null ? `B${numeric}` : 'B0';
+        const fallbackLabel = numeric !== null ? `B${numeric}` : '?';
         return {
             bookId: folder || entry.filePath,
             bookLabel: fallbackLabel,
@@ -5076,7 +5077,7 @@ export class InquiryView extends ItemView {
             const number = numberMatch ? Number.parseInt(numberMatch[1], 10) : Number.NaN;
             return {
                 id: segments.slice(0, bookSegmentIndex + 1).join('/'),
-                label: Number.isFinite(number) ? `B${number}` : 'B0'
+                label: Number.isFinite(number) ? `B${number}` : '?'
             };
         }
 
@@ -5084,11 +5085,15 @@ export class InquiryView extends ItemView {
         const numeric = this.getCorpusCcOrderNumber(fallbackRoot, 'outline');
         return {
             id: fallbackRoot,
-            label: numeric !== null ? `B${numeric}` : 'B0'
+            label: numeric !== null ? `B${numeric}` : '?'
         };
     }
 
     private getCorpusCcEntries(): CorpusCcEntry[] {
+        // No corpus entries when book scope is unresolved.
+        if (this.state.scope === 'book' && this.corpus && !this.corpus.bookResolved) {
+            return [];
+        }
         const manifest = this.buildCorpusEntryList(this.state.activeQuestionId ?? 'cc-preview', {
             questionZone: this.state.activeZone ?? undefined,
             includeInactive: true,
@@ -5129,7 +5134,7 @@ export class InquiryView extends ItemView {
             const sceneBook = entry.class === 'scene'
                 ? {
                     id: entry.bookId || resolvedSceneBook?.id || '',
-                    label: resolvedSceneBook?.label || 'B0'
+                    label: resolvedSceneBook?.label || '?'
                 }
                 : undefined;
             return {
@@ -5269,7 +5274,8 @@ export class InquiryView extends ItemView {
             metadataCache: this.app.metadataCache,
             resolvedVaultRoots,
             frontmatterMappings: this.plugin.settings.frontmatterMappings,
-            bookInclusion: sources.bookInclusion
+            bookInclusion: sources.bookInclusion,
+            bookProfiles: this.plugin.settings.books
         });
 
         const inRoots = (path: string) => {
@@ -5279,7 +5285,7 @@ export class InquiryView extends ItemView {
         const files = this.app.vault.getMarkdownFiles();
         return files.filter(file => {
             if (!inRoots(file.path)) return false;
-            if (!isPathIncludedByInquiryBooks(file.path, bookResolution.candidates)) return false;
+            if (!isPathIncludedByInquiryBooks(file.path, bookResolution.candidates, this.state.scope)) return false;
             const frontmatter = this.app.metadataCache.getFileCache(file)?.frontmatter as Record<string, unknown> | undefined;
             if (!frontmatter) return false;
             const normalized = normalizeFrontmatterKeys(frontmatter, this.plugin.settings.frontmatterMappings);
@@ -5818,6 +5824,10 @@ export class InquiryView extends ItemView {
 
     private updateNavSessionLabel(): void {
         if (!this.navSessionLabel) return;
+        if (this.state.scope === 'book' && this.corpus && !this.corpus.bookResolved) {
+            this.navSessionLabel.textContent = 'Book scope unresolved. Check Inquiry sources.';
+            return;
+        }
         if (this.state.isRunning) {
             this.navSessionLabel.textContent = this.buildRunningStageLabel(this.currentRunProgress) || 'Waiting for the provider response.';
             return;
@@ -6272,6 +6282,10 @@ export class InquiryView extends ItemView {
         if (this.isInquiryRunDisabled()) return;
         if (this.state.isRunning) {
             this.notifyInteraction('Inquiry running. Please wait.');
+            return;
+        }
+        if (this.state.scope === 'book' && this.corpus && !this.corpus.bookResolved) {
+            this.notifyInteraction('Book scope unresolved. Configure a book in settings before running Inquiry.');
             return;
         }
         this.clearErrorStateForAction();
@@ -6985,7 +6999,7 @@ export class InquiryView extends ItemView {
             .filter((basename): basename is string => typeof basename === 'string' && basename.length > 0)
             .map(basename => basename.replace(/\.md$/, ''))
             .map(name => `- [[${name}]]`);
-        const content = [`# ${title}`, '', ...links, ''].join('\n');
+        const content = [...links, ''].join('\n');
         try {
             const file = await this.app.vault.create(filePath, content);
             return file.path;
@@ -7545,8 +7559,8 @@ export class InquiryView extends ItemView {
     }
 
     private resolveBookOutlinePath(focusBookId?: string): string | null {
-        if (!this.corpus?.books?.length) return null;
-        const resolvedBookId = focusBookId ?? this.corpus.activeBookId ?? this.corpus.books[0]?.id;
+        if (!this.corpus?.bookResolved || !this.corpus.books.length) return null;
+        const resolvedBookId = focusBookId ?? this.corpus.activeBookId;
         if (!resolvedBookId) return null;
         const book = this.corpus.books.find(entry => entry.id === resolvedBookId) ?? this.corpus.books[0];
         if (!book) return null;
@@ -7700,6 +7714,10 @@ export class InquiryView extends ItemView {
         if (this.isInquiryRunDisabled()) return;
         if (this.state.isRunning) {
             this.notifyInteraction('Inquiry running. Please wait.');
+            return;
+        }
+        if (this.state.scope === 'book' && this.corpus && !this.corpus.bookResolved) {
+            this.notifyInteraction('Book scope unresolved. Configure a book in settings before running Inquiry.');
             return;
         }
         this.clearErrorStateForAction();
@@ -7948,7 +7966,8 @@ export class InquiryView extends ItemView {
             metadataCache: this.app.metadataCache,
             resolvedVaultRoots,
             frontmatterMappings: this.plugin.settings.frontmatterMappings,
-            bookInclusion: sources.bookInclusion
+            bookInclusion: sources.bookInclusion,
+            bookProfiles: this.plugin.settings.books
         });
 
         if (!classScope.allowAll && classScope.allowed.size === 0) {
@@ -7962,7 +7981,7 @@ export class InquiryView extends ItemView {
         const files = this.app.vault.getMarkdownFiles();
         files.forEach(file => {
             if (!inRoots(file.path)) return;
-            if (!isPathIncludedByInquiryBooks(file.path, bookResolution.candidates)) return;
+            if (!isPathIncludedByInquiryBooks(file.path, bookResolution.candidates, this.state.scope)) return;
             const cache = this.app.metadataCache.getFileCache(file);
             const frontmatter = cache?.frontmatter as Record<string, unknown> | undefined;
             if (!frontmatter) return;
@@ -8333,22 +8352,24 @@ export class InquiryView extends ItemView {
 
     private getNavigationBookIndex(books: InquiryBookItem[]): number {
         if (!books.length) return 0;
-        const focusBookId = this.state.focusBookId ?? this.corpus?.activeBookId ?? books[0]?.id;
+        const focusBookId = this.state.focusBookId ?? this.corpus?.activeBookId;
         const index = focusBookId ? books.findIndex(book => book.id === focusBookId) : -1;
         return index >= 0 ? index : 0;
     }
 
     private getFocusBookLabel(): string {
+        if (!this.corpus?.bookResolved) return '?';
         const books = this.corpus?.books ?? [];
         if (this.state.focusBookId) {
             const match = books.find(book => book.id === this.state.focusBookId);
             if (match) return match.displayLabel;
         }
-        return books[0]?.displayLabel ?? 'B0';
+        return books[0]?.displayLabel ?? '?';
     }
 
     private getFocusBookTitleForMessages(): string | null {
-        const focusBookId = this.state.focusBookId ?? this.corpus?.activeBookId ?? this.corpus?.books?.[0]?.id;
+        if (!this.corpus?.bookResolved) return null;
+        const focusBookId = this.state.focusBookId ?? this.corpus?.activeBookId;
         return this.getBookTitleForId(focusBookId);
     }
 
@@ -8375,7 +8396,7 @@ export class InquiryView extends ItemView {
     private getFocusId(): string {
         if (this.state.scope === 'saga') return 'saga';
         if (this.state.focusBookId) return this.state.focusBookId;
-        return this.corpus?.books?.[0]?.id ?? 'book';
+        return this.corpus?.activeBookId ?? 'unresolved';
     }
 
     private buildFocusHoverText(): string {
@@ -9108,6 +9129,7 @@ export class InquiryView extends ItemView {
 
     private getResultItems(result: InquiryResult): InquiryCorpusItem[] {
         if (!this.corpus) return [];
+        if (result.scope === 'book' && !this.corpus.bookResolved) return [];
         return result.scope === 'saga' ? this.corpus.books : this.corpus.scenes;
     }
 
@@ -10631,7 +10653,7 @@ export class InquiryView extends ItemView {
             || result.questionId
             || 'Inquiry Question';
         const scopeLabel = result.scope === 'saga' ? 'Saga' : 'Book';
-        const target = result.focusId || (result.scope === 'saga' ? 'Σ' : 'B0');
+        const target = result.focusId || (result.scope === 'saga' ? 'Σ' : '?');
         const providerRaw = result.aiProvider ? result.aiProvider.trim() : '';
         const providerLabel = isSimulated
             ? 'Simulation'
@@ -10832,7 +10854,6 @@ export class InquiryView extends ItemView {
         };
 
         const lines: string[] = [];
-        lines.push(`# ${title}`, '');
         if (isSimulated) {
             lines.push('> Simulated test run. No provider request was sent.', '');
         }
@@ -10916,7 +10937,7 @@ export class InquiryView extends ItemView {
         const zoneLabel = this.resolveInquiryBriefZoneLabel(result);
         const lensLabel = this.resolveInquiryBriefLensLabel(result, zoneLabel);
         const scopeLabel = result.scope === 'saga' ? 'Saga' : 'Book';
-        const target = result.focusId || (result.scope === 'saga' ? 'Σ' : 'B0');
+        const target = result.focusId || (result.scope === 'saga' ? 'Σ' : '?');
         const aiProvider = result.aiProvider || 'unknown';
         const aiModelRequested = result.aiModelRequested || 'unknown';
         const aiModelResolved = result.aiModelResolved || aiModelRequested;
