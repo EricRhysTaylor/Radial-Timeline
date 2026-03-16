@@ -840,6 +840,9 @@ export class CommandRegistrar {
             case 'bookmeta':
                 await this.createBookMetaNote();
                 return;
+            case 'beat':
+                await this.createBeatNote();
+                return;
         }
     }
 
@@ -1082,6 +1085,45 @@ export class CommandRegistrar {
         } catch (error) {
             const msg = (error as any)?.message || String(error);
             new Notice('Failed to create backdrop note: ' + msg);
+        }
+    }
+
+    /**
+     * Create a single beat note with the active beat template.
+     */
+    private async createBeatNote(): Promise<void> {
+        const sourcePath = this.plugin.settings.sourcePath || '';
+        if (!sourcePath) {
+            new Notice('Please set a source path in settings first.');
+            return;
+        }
+
+        try {
+            const sanitizedPath = sanitizeSourcePath(sourcePath);
+            const folder = this.app.vault.getAbstractFileByPath(sanitizedPath);
+            if (!folder) {
+                await this.app.vault.createFolder(sanitizedPath);
+            }
+
+            const template = getTemplateParts('Beat', this.plugin.settings).merged;
+            const content = template
+                .replace(/{{Act}}/g, '1')
+                .replace(/{{Purpose}}/g, '""')
+                .replace(/{{Description}}/g, '""')
+                .replace(/{{BeatModel}}/g, '')
+                .replace(/{{Range}}/g, '');
+            const withReferenceId = ensureReferenceIdTemplateFrontmatter(content, 'Beat');
+
+            const filePath = this.buildCopySafeVaultPath(sanitizedPath, 'Beat.md');
+            const fileContent = `---\n${withReferenceId.frontmatter}\n---\n\n`;
+
+            const newFile = await this.app.vault.create(filePath, fileContent);
+            const leaf = this.app.workspace.getLeaf(true);
+            await leaf.openFile(newFile);
+            new Notice('Created beat note.');
+        } catch (error) {
+            const msg = (error as any)?.message || String(error);
+            new Notice('Failed to create beat note: ' + msg);
         }
     }
 

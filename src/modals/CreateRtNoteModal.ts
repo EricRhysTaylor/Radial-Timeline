@@ -1,6 +1,6 @@
 import { App, ButtonComponent, Modal } from 'obsidian';
 
-export type RtNoteFamilyId = 'scene' | 'manuscript-matter' | 'story-world' | 'metadata';
+export type RtNoteFamilyId = 'scene' | 'manuscript-matter' | 'story-world';
 export type RtNoteSubtypeId =
     | 'basic-scene'
     | 'advanced-scene'
@@ -8,8 +8,9 @@ export type RtNoteSubtypeId =
     | 'podcast-scene'
     | 'front-matter'
     | 'back-matter'
+    | 'bookmeta'
     | 'backdrop'
-    | 'bookmeta';
+    | 'beat';
 
 interface RtNoteSubtypeOption {
     id: RtNoteSubtypeId;
@@ -39,10 +40,11 @@ const RT_NOTE_FAMILIES: RtNoteFamilyOption[] = [
     {
         id: 'manuscript-matter',
         title: 'Manuscript matter',
-        description: 'Add book-end notes that sit outside the main scene sequence.',
+        description: 'Add book-end notes and project-level metadata.',
         subtypes: [
             { id: 'front-matter', title: 'Front matter', description: 'Preface, title page, dedication, or opening matter.' },
             { id: 'back-matter', title: 'Back matter', description: 'Appendix, acknowledgments, notes, or ending matter.' },
+            { id: 'bookmeta', title: 'BookMeta', description: 'Publication and rights metadata for the active book.' },
         ],
     },
     {
@@ -51,14 +53,7 @@ const RT_NOTE_FAMILIES: RtNoteFamilyOption[] = [
         description: 'Create contextual notes that shape time, place, or surrounding events.',
         subtypes: [
             { id: 'backdrop', title: 'Backdrop', description: 'Timeline context note with start and end dates.' },
-        ],
-    },
-    {
-        id: 'metadata',
-        title: 'Metadata',
-        description: 'Create project-level notes that describe the manuscript itself.',
-        subtypes: [
-            { id: 'bookmeta', title: 'BookMeta', description: 'Publication and rights metadata for the active book.' },
+            { id: 'beat', title: 'Beat', description: 'A single story beat note with act and purpose fields.' },
         ],
     },
 ];
@@ -162,10 +157,6 @@ export class CreateRtNoteModal extends Modal {
             });
 
             button.addEventListener('click', () => {
-                if (family.subtypes.length === 1) {
-                    void this.handleSubtypeSelection(family.subtypes[0].id);
-                    return;
-                }
                 this.selectedFamilyId = family.id;
                 this.render();
             });

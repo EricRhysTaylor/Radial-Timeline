@@ -144,28 +144,28 @@ export function renderSceneNormalizerSection(params: {
     let auditResult: YamlAuditResult | null = null;
     let auditScopeSummary = '';
 
-    const heading = new Settings(parentEl)
+    const headerRow = new Settings(parentEl)
         .setName('Scene Note Maintenance')
         .setDesc('Check scene notes for missing core properties, IDs, layout order, and optional advanced properties.');
-    addHeadingIcon(heading, 'shield-check');
-    addWikiLink(heading, 'Settings#yaml-templates');
-    applyErtHeaderLayout(heading);
+    headerRow.settingEl.addClass('ert-scene-properties-row', 'ert-scene-maintenance-row');
+    addHeadingIcon(headerRow, 'shield-check');
+    addWikiLink(headerRow, 'Settings#yaml-templates');
+    applyErtHeaderLayout(headerRow);
 
-    const panel = parentEl.createDiv({ cls: ['ert-panel', 'ert-stack', 'ert-scene-maintenance-panel'] });
-    panel.createDiv({ cls: 'ert-section-title', text: 'Scene Note Maintenance' });
-    panel.createDiv({
-        cls: 'ert-section-desc',
-        text: 'Check scene notes for missing core properties, IDs, layout order, and optional advanced properties.'
-    });
+    let checkBtn: ButtonComponent | undefined;
+    checkBtn = new ButtonComponent(headerRow.controlEl)
+        .setButtonText('Check Scenes')
+        .setCta()
+        .onClick(() => void runCheckScenes());
+    checkBtn.setIcon('shield-check');
 
+    const panel = parentEl.createDiv({ cls: ['ert-panel', 'ert-stack', 'ert-scene-maintenance-panel', 'ert-settings-hidden'] });
     const maintenanceGroup = panel.createDiv({ cls: ['ert-inline-actions', 'ert-scene-maintenance-actions'] });
     const cleanupGroup = panel.createDiv({ cls: ['ert-inline-actions', 'ert-inline-actions--end', 'ert-scene-maintenance-actions', 'ert-scene-maintenance-actions--cleanup'] });
     const utilityGroup = panel.createDiv({ cls: ['ert-inline-actions', 'ert-scene-maintenance-actions', 'ert-scene-maintenance-actions--utility'] });
-
-    const resultsEl = parentEl.createDiv({ cls: 'ert-audit-results-row ert-settings-hidden' });
+    const resultsEl = panel.createDiv({ cls: 'ert-audit-results-row' });
 
     let copyBtn: ButtonComponent | undefined;
-    let checkBtn: ButtonComponent | undefined;
     let addCoreBtn: ButtonComponent | undefined;
     let addAdvancedBtn: ButtonComponent | undefined;
     let addIdsBtn: ButtonComponent | undefined;
@@ -198,7 +198,6 @@ export function renderSceneNormalizerSection(params: {
 
     const renderResults = () => {
         resultsEl.empty();
-        resultsEl.classList.remove('ert-settings-hidden');
         if (!auditResult || !sceneAudit) return;
 
         const summary = auditResult.summary;
@@ -355,18 +354,17 @@ export function renderSceneNormalizerSection(params: {
     };
 
     const runCheckScenes = async () => {
+        panel.classList.remove('ert-settings-hidden');
         const auditScope = collectFilesForAuditWithScope(app, 'Scene', plugin.settings);
         auditScopeSummary = auditScope.scopeSummary;
         if (auditScope.reason) {
             resultsEl.empty();
-            resultsEl.classList.remove('ert-settings-hidden');
             resultsEl.createDiv({ text: auditScope.reason, cls: 'ert-audit-clean' });
             new Notice(auditScope.reason);
             return;
         }
         if (auditScope.files.length === 0) {
             resultsEl.empty();
-            resultsEl.classList.remove('ert-settings-hidden');
             resultsEl.createDiv({ text: 'No scene notes found in the active book scope.', cls: 'ert-audit-clean' });
             return;
         }
@@ -389,11 +387,6 @@ export function renderSceneNormalizerSection(params: {
             const report = formatAuditReport(auditResult, 'Scene');
             navigator.clipboard.writeText(report).then(() => new Notice('Scene status report copied to clipboard.'));
         });
-
-    checkBtn = new ButtonComponent(maintenanceGroup)
-        .setButtonText('Check Scenes')
-        .setCta()
-        .onClick(() => void runCheckScenes());
 
     addCoreBtn = new ButtonComponent(maintenanceGroup)
         .setButtonText('Add Core Properties')

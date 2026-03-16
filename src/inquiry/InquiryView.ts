@@ -1707,7 +1707,7 @@ export class InquiryView extends ItemView {
         idRow.createSpan({ cls: 'ert-inquiry-engine-detail-value', text: engine.blocked ? '—' : engine.modelId });
 
         const payloadRow = detailsCard.createDiv({ cls: 'ert-inquiry-engine-detail-row' });
-        payloadRow.createSpan({ cls: 'ert-inquiry-engine-detail-label', text: 'Current Corpus' });
+        payloadRow.createSpan({ cls: 'ert-inquiry-engine-detail-label', text: 'Inquiry Corpus' });
         payloadRow.createSpan({
             cls: 'ert-inquiry-engine-detail-value',
             text: engine.blocked ? '—' : `~${this.formatTokenEstimate(corpusEstimate.estimatedTokens)}`
@@ -1802,8 +1802,8 @@ export class InquiryView extends ItemView {
         const currentCorpus = this.getCurrentCorpusContext();
         return {
             text: currentCorpus.corpus.estimatedTokens > 0
-                ? `Current Corpus: ~${this.formatTokenEstimate(currentCorpus.corpus.estimatedTokens)}`
-                : 'Current Corpus: Estimating…',
+                ? `Inquiry Corpus: ~${this.formatTokenEstimate(currentCorpus.corpus.estimatedTokens)}`
+                : 'Inquiry Corpus: Estimating…',
             inputTokens: currentCorpus.corpus.estimatedTokens,
             tier: this.getTokenTier(currentCorpus.corpus.estimatedTokens)
         };
@@ -1999,21 +1999,19 @@ export class InquiryView extends ItemView {
         const corpusLabel = this.formatTokenEstimate(corpusEstimate.estimatedTokens);
         const passPlan = this.getCurrentPassPlan(readinessUi);
         if (popoverState === 'ready') {
-            this.enginePanelReadinessMessageEl.setText(`Current Corpus: ~${corpusLabel}. Expected Passes: 1.`);
+            this.enginePanelReadinessMessageEl.setText(`Inquiry Corpus: ~${corpusLabel}. Single pass.`);
         } else if (popoverState === 'multi-pass') {
             const estimateLabel = passPlan.estimatedPassCount ?? passPlan.displayPassCount;
             const recentRunSuffix = passPlan.recentExactPassCount
                 ? ` Recent run used ${passPlan.recentExactPassCount} passes.`
                 : '';
             this.enginePanelReadinessMessageEl.setText(
-                `Current Corpus: ~${corpusLabel}. Expected Passes: ${estimateLabel}. `
-                + `Automatic packaging will split the request.${recentRunSuffix}`
+                `Inquiry Corpus: ~${corpusLabel}. Expected passes: ${estimateLabel} — manuscript exceeds input limit.${recentRunSuffix}`
             );
         } else if (readinessUi.readiness.cause === 'single_pass_limit') {
             const estimateLabel = passPlan.estimatedPassCount ?? passPlan.displayPassCount;
             this.enginePanelReadinessMessageEl.setText(
-                `Current Corpus: ~${corpusLabel}. Expected Passes: ${estimateLabel}. `
-                + `Single-pass mode blocks this run for the current engine.`
+                `Inquiry Corpus: ~${corpusLabel}. Expected passes: ${estimateLabel} — single-pass mode blocks this run.`
             );
         } else {
             this.enginePanelReadinessMessageEl.setText(readinessUi.reason);
@@ -9944,8 +9942,8 @@ export class InquiryView extends ItemView {
 
     private getPreviewTokensValue(): string {
         const estimate = this.getRTCorpusEstimate();
-        if (estimate.estimatedTokens <= 0) return 'Current Corpus · Estimating…';
-        return `Current Corpus · ~${this.formatTokenEstimate(estimate.estimatedTokens)}`;
+        if (estimate.estimatedTokens <= 0) return 'Inquiry Corpus · Estimating…';
+        return `Inquiry Corpus · ~${this.formatTokenEstimate(estimate.estimatedTokens)}`;
     }
 
     private getPreviewCostValue(): string {

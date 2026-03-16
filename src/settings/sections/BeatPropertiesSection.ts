@@ -3077,23 +3077,23 @@ export function renderStoryBeatsSection(params: {
     });
 
     // ═══════════════════════════════════════════════════════════════════════
-    // BACKDROP YAML EDITOR
+    // BACKDROP PROPERTIES EDITOR
     // ═══════════════════════════════════════════════════════════════════════
 
     const backdropYamlSection = (backdropYamlTargetEl ?? yamlStack).createDiv({ cls: ERT_CLASSES.STACK });
 
     const backdropYamlHeading = new Settings(backdropYamlSection)
-        .setName('Backdrop YAML editor')
+        .setName('Backdrop properties editor')
         .setDesc('Customize additional YAML keys for backdrop notes. Enable fields to show in backdrop hover synopsis.');
     const backdropYamlToggleBtn = backdropYamlHeading.controlEl.createEl('button', {
         cls: ERT_CLASSES.ICON_BTN,
-        attr: { type: 'button', 'aria-label': 'Show backdrop YAML editor' }
+        attr: { type: 'button', 'aria-label': 'Show backdrop properties editor' }
     });
     const refreshBackdropYamlToggle = () => {
         const expanded = plugin.settings.enableBackdropYamlEditor ?? false;
         setIcon(backdropYamlToggleBtn, expanded ? 'chevron-down' : 'chevron-right');
-        setTooltip(backdropYamlToggleBtn, expanded ? 'Hide backdrop YAML editor' : 'Show backdrop YAML editor');
-        backdropYamlToggleBtn.setAttribute('aria-label', expanded ? 'Hide backdrop YAML editor' : 'Show backdrop YAML editor');
+        setTooltip(backdropYamlToggleBtn, expanded ? 'Hide backdrop properties editor' : 'Show backdrop properties editor');
+        backdropYamlToggleBtn.setAttribute('aria-label', expanded ? 'Hide backdrop properties editor' : 'Show backdrop properties editor');
     };
     refreshBackdropYamlToggle();
 

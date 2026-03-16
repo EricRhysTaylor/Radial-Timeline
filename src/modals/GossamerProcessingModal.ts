@@ -296,7 +296,7 @@ export class GossamerProcessingModal extends Modal {
 
             createStat('Scenes', info.totalScenes.toLocaleString());
             createStat('Words', info.totalWords.toLocaleString());
-            createStat('Est. Tokens', `~${info.estimatedTokens.toLocaleString()}`);
+            createStat('Corpus Tokens', `~${info.estimatedTokens.toLocaleString()}`);
             createStat('Story Beats', info.beatCount.toString());
             createStat('Evidence', info.evidenceMode || 'Auto (scene bodies first)');
 

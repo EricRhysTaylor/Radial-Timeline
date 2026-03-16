@@ -338,7 +338,7 @@ export function renderAiSection(params: {
         const mode = ensureCanonicalAiSettings().analysisPackaging;
         executionPreferenceNote.setText(
             mode === 'singlePassOnly'
-                ? 'Runs only when the current corpus fits one pass. Otherwise reduce scope or switch to Automatic.'
+                ? 'Runs only when the Inquiry corpus fits one pass. Otherwise reduce scope or switch to Automatic.'
                 : mode === 'segmented'
                 ? 'Always splits the run into structured passes, even when one pass would fit.'
                 : ''
@@ -925,7 +925,7 @@ export function renderAiSection(params: {
 
     const formatCurrentCorpusSelectionLabel = (): string => {
         const currentCorpus = getCurrentCorpusContext();
-        if (!currentCorpus) return 'Open Inquiry to load the current corpus';
+        if (!currentCorpus) return 'Open Inquiry to calculate the Inquiry corpus';
         const scopeLabel = currentCorpus.scope === 'saga' ? 'Saga' : 'Book';
         if (currentCorpus.corpus.sceneCount > 0) {
             return `${scopeLabel} · ${currentCorpus.corpus.sceneCount} ${currentCorpus.corpus.sceneCount === 1 ? 'scene' : 'scenes'}`;
@@ -967,7 +967,7 @@ export function renderAiSection(params: {
         const currentCorpus = getCurrentCorpusContext();
         if (currentCorpus) {
             return {
-                sizeText: `Current Corpus: ${formatCorpusTokenSummary(currentCorpus.corpus.estimatedTokens)}`,
+                sizeText: `Inquiry Corpus: ${formatCorpusTokenSummary(currentCorpus.corpus.estimatedTokens)}`,
                 structureText: formatCorpusStructureSummary(
                     currentCorpus.corpus.sceneCount,
                     currentCorpus.corpus.outlineCount
@@ -975,8 +975,8 @@ export function renderAiSection(params: {
             };
         }
         return {
-            sizeText: 'Current Corpus: Unavailable',
-            structureText: 'Open Inquiry to load the current corpus'
+            sizeText: 'Inquiry Corpus: Unavailable',
+            structureText: 'Open Inquiry to calculate the Inquiry corpus'
         };
     };
 
@@ -1019,7 +1019,7 @@ export function renderAiSection(params: {
     const refreshCostComparisonTable = async (): Promise<void> => {
         const requestId = ++costComparisonRequestId;
         renderCostEstimateCorpusSummary({
-            sizeText: 'Current Corpus: Calculating...',
+            sizeText: 'Inquiry Corpus: Calculating...',
             structureText: 'Scanning corpus...'
         });
         renderCostComparisonRows(buildLoadingCostRows());
@@ -1174,7 +1174,7 @@ export function renderAiSection(params: {
         }
 
         capacityInquiryToken.setText('Calculating...');
-        capacityInquiryScope.setText('Loading current corpus…');
+        capacityInquiryScope.setText('Loading Inquiry corpus…');
         capacityInquiryExpected.setText('Calculating...');
         capacityGossamerToken.setText('Calculating...');
         capacityGossamerScope.setText('Scanning vault…');
@@ -1241,7 +1241,7 @@ export function renderAiSection(params: {
                 maxOutputTokens: null
             });
             capacityInquiryToken.setText('Unavailable');
-            capacityInquiryScope.setText('Open Inquiry to load the current corpus');
+            capacityInquiryScope.setText('Open Inquiry to calculate the Inquiry corpus');
             capacityInquiryExpected.setText('Unavailable');
             capacityGossamerToken.setText('Unavailable');
             capacityGossamerScope.setText('Unavailable');

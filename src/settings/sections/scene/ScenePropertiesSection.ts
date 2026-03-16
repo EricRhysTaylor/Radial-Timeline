@@ -82,25 +82,37 @@ export function renderScenePropertiesSection(params: {
     const coreSetting = new Settings(sectionStack)
         .setName('Core Properties')
         .setDesc('Always included in scene notes. Required by Radial Timeline and maintained automatically.');
+    coreSetting.settingEl.addClass('ert-scene-properties-row', 'ert-scene-properties-row--locked');
+    coreSetting.descEl.createDiv({
+        cls: 'ert-scene-properties-inline-list',
+        text: buildScenePropertyDefinitions(plugin.settings).core.map((definition) => definition.key).join(', ')
+    });
     createBadge(coreSetting.controlEl, 'Always on');
-
-    const corePanel = sectionStack.createDiv({ cls: ['ert-panel', 'ert-scene-properties-panel', 'ert-stack'] });
 
     const advancedSetting = new Settings(sectionStack)
         .setName('Advanced Properties')
         .setDesc('Optional scene metadata. Edit these fields here, reveal them in hover, and choose whether Radial Timeline maintains them in scenes.');
-    const advancedStateEl = advancedSetting.controlEl.createSpan({ cls: 'ert-scene-properties-state' });
+    advancedSetting.settingEl.addClass('ert-scene-properties-row');
+    const advancedStatusEl = advancedSetting.nameEl.createSpan({ cls: 'ert-scene-properties-status' });
+    advancedSetting.nameEl.prepend(advancedStatusEl);
     advancedSetting.addToggle((toggle) => {
         toggle
             .setTooltip('Maintain Advanced Properties in scene notes')
             .setValue(plugin.settings.sceneAdvancedPropertiesEnabled ?? true)
             .onChange(async (value) => {
                 plugin.settings.sceneAdvancedPropertiesEnabled = value;
-                updateAdvancedState();
+                if (!value) {
+                    plugin.settings.enableAdvancedYamlEditor = false;
+                }
+                refreshAdvancedRowState();
+                refreshAdvancedToggle();
                 await plugin.saveSettings();
+                renderAdvancedEditor();
                 renderHoverPreview();
             });
     });
+    const advancedDivider = advancedSetting.controlEl.createSpan({ cls: 'ert-scene-properties-divider' });
+    advancedDivider.setAttribute('aria-hidden', 'true');
 
     const advancedToggleButton = advancedSetting.controlEl.createEl('button', {
         cls: ERT_CLASSES.ICON_BTN,
@@ -161,25 +173,14 @@ export function renderScenePropertiesSection(params: {
         void plugin.saveSettings();
     };
 
-    const renderCorePanel = () => {
-        const definitions = buildScenePropertyDefinitions(plugin.settings);
-        const coreKeys = definitions.core.map((definition) => definition.key);
-
-        corePanel.empty();
-        corePanel.createDiv({ cls: 'ert-section-title', text: 'Core Properties' });
-        corePanel.createDiv({
-            cls: 'ert-section-desc',
-            text: 'These properties define the scene note structure Radial Timeline depends on.'
-        });
-        corePanel.createDiv({
-            cls: 'ert-scene-properties-summary',
-            text: coreKeys.join(', ')
-        });
-    };
-
-    const updateAdvancedState = () => {
+    const refreshAdvancedRowState = () => {
         const maintained = plugin.settings.sceneAdvancedPropertiesEnabled ?? true;
-        advancedStateEl.setText(maintained ? 'Maintained in scenes' : 'Available, not maintained');
+        advancedSetting.settingEl.toggleClass('is-active', maintained);
+        advancedStatusEl.toggleClass('ert-scene-properties-status--active', maintained);
+        setIcon(advancedStatusEl, maintained ? 'check-circle-2' : 'circle');
+        const tooltip = maintained ? 'Advanced Properties are enabled' : 'Advanced Properties are disabled';
+        setTooltip(advancedSetting.settingEl, tooltip);
+        setTooltip(advancedStatusEl, tooltip);
     };
 
     const refreshAdvancedToggle = () => {
@@ -188,7 +189,7 @@ export function renderScenePropertiesSection(params: {
         setTooltip(advancedToggleButton, expanded ? 'Hide Advanced Properties editor' : 'Show Advanced Properties editor');
         advancedToggleButton.setAttribute('aria-label', expanded ? 'Hide Advanced Properties editor' : 'Show Advanced Properties editor');
     };
-    updateAdvancedState();
+    refreshAdvancedRowState();
     refreshAdvancedToggle();
 
     advancedToggleButton.addEventListener('click', async () => {
@@ -599,7 +600,6 @@ export function renderScenePropertiesSection(params: {
         rerender(entries);
     };
 
-    renderCorePanel();
     renderAdvancedEditor();
     renderHoverPreview();
 }

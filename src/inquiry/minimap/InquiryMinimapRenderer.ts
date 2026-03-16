@@ -883,13 +883,13 @@ export class InquiryMinimapRenderer {
 
         const inputLabel = formatTokenEstimate(readinessUi.estimateInputTokens);
         const safeLabel = readinessUi.safeInputBudget > 0 ? formatTokenEstimate(readinessUi.safeInputBudget) : 'n/a';
-        const packagingLabel = readinessUi.packaging === 'singlePassOnly' ? 'Single-pass only' : 'Automatic';
+        const multiPassLabel = readinessUi.packaging === 'singlePassOnly' ? 'Disabled (single-pass only)' : 'Automatic';
         const tooltipLines = [
-            `Context usage: ~${inputLabel} / ~${safeLabel}`,
-            `Packaging: ${packagingLabel}`
+            `Inquiry request: ~${inputLabel} / ~${safeLabel} budget`,
+            `Multi-pass: ${multiPassLabel}`
         ];
         if (readinessUi.packaging === 'automatic' && readinessUi.readiness.exceedsBudget) {
-            tooltipLines.push('Will package into multiple passes');
+            tooltipLines.push('Will split into multiple analysis passes');
         }
         addTooltipData(this.minimapBaseline, balanceTooltipText(tooltipLines.join('\n')), 'top');
 
@@ -904,8 +904,8 @@ export class InquiryMinimapRenderer {
                 this.minimapPassIndicatorText.textContent = passIndicator.marks;
                 const reason = passPlan.packagingTriggerReason
                     || (passIndicator.expectedOnly
-                        ? 'Large corpus expected to be packaged for stability.'
-                        : 'Large corpus packaging completed.');
+                        ? 'Manuscript exceeds model input limit; splitting into passes.'
+                        : 'Multi-pass analysis completed.');
                 const passText = passIndicator.exactCount
                     ? `Passes: ${passIndicator.exactCount} total`
                     : `Estimated passes: ${passIndicator.totalPassCount ?? 2} total`;
