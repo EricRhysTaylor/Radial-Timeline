@@ -174,7 +174,7 @@ export class CreateRtNoteModal extends Modal {
 
     private createOptionButton(container: HTMLElement, title: string, description: string): { button: HTMLButtonElement; optionBody: HTMLDivElement } {
         const button = container.createEl('button', {
-            cls: 'ert-note-creator-option',
+            cls: 'ert-modal-choice ert-note-creator-option',
             attr: { type: 'button' },
         });
         const optionBody = button.createDiv({ cls: 'ert-note-creator-option__body' });

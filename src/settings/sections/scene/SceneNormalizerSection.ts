@@ -1,4 +1,5 @@
-import { App, ButtonComponent, Modal, Notice, TFile, normalizePath, setTooltip, Setting as Settings } from 'obsidian';
+import { App, ButtonComponent, Modal, Notice, TFile, normalizePath, setIcon, setTooltip, Setting as Settings } from 'obsidian';
+import { ERT_CLASSES } from '../../../ui/classes';
 import type RadialTimelinePlugin from '../../../main';
 import { DEFAULT_SETTINGS } from '../../defaults';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../../wikiLink';
@@ -27,6 +28,14 @@ import { formatSafetyIssues } from '../../../utils/yamlSafety';
 import { openOrRevealFile } from '../../../utils/fileUtils';
 
 type DeletePreviewDetail = { fields: string[]; values: Record<string, unknown> };
+
+function createBadge(container: HTMLElement, text: string): HTMLElement {
+    const badge = container.createSpan({
+        cls: ['ert-badgePill', 'ert-badgePill--sm', 'ert-badgePill--neutral']
+    });
+    badge.createSpan({ cls: 'ert-badgePill__text', text });
+    return badge;
+}
 
 function toDisplayAuditResult(sceneAudit: SceneNormalizationAudit): YamlAuditResult {
     const notes: NoteAuditEntry[] = sceneAudit.notes.map((note) => ({
@@ -143,14 +152,47 @@ export function renderSceneNormalizerSection(params: {
     let sceneAudit: SceneNormalizationAudit | null = null;
     let auditResult: YamlAuditResult | null = null;
     let auditScopeSummary = '';
+    const buildMaintenanceDescription = (): string => {
+        return 'Check scene notes for missing core properties, IDs, layout order, and optional advanced properties.';
+    };
+    const buildPolicyExplanation = (): string => {
+        const advancedEnabled = plugin.settings.sceneAdvancedPropertiesEnabled ?? true;
+        return advancedEnabled
+            ? 'Advanced Properties are maintained in scenes.'
+            : 'Advanced Properties are available but not maintained in scenes. Unused Advanced fields will not be removed unless “Remove Advanced Properties” is used.';
+    };
+    const buildPolicyBadge = (): string => (
+        (plugin.settings.sceneAdvancedPropertiesEnabled ?? true) ? 'Advanced Maintained' : 'Advanced Optional'
+    );
+    const buildUnusedFieldsTooltip = (): string => (
+        (plugin.settings.sceneAdvancedPropertiesEnabled ?? true)
+            ? 'Remove fields not defined in the current scene property rules.'
+            : 'Remove unused non-Advanced fields. Advanced fields are preserved.'
+    );
 
     const headerRow = new Settings(parentEl)
-        .setName('Scene Note Maintenance')
-        .setDesc('Check scene notes for missing core properties, IDs, layout order, and optional advanced properties.');
+        .setName('Scene Note Maintenance');
     headerRow.settingEl.addClass('ert-scene-properties-row', 'ert-scene-maintenance-row');
     addHeadingIcon(headerRow, 'shield-check');
     addWikiLink(headerRow, 'Settings#yaml-templates');
     applyErtHeaderLayout(headerRow);
+    const maintenanceDescriptionEl = headerRow.descEl.createDiv({ cls: 'ert-scene-maintenance-desc' });
+    const maintenancePolicyEl = headerRow.descEl.createDiv({ cls: 'ert-scene-maintenance-policy' });
+    const policyBadgeEl = createBadge(headerRow.controlEl, buildPolicyBadge());
+    const refreshMaintenanceCopy = () => {
+        maintenanceDescriptionEl.setText(buildMaintenanceDescription());
+        maintenancePolicyEl.setText(buildPolicyExplanation());
+        policyBadgeEl.querySelector('.ert-badgePill__text')?.replaceChildren(document.createTextNode(buildPolicyBadge()));
+        setTooltip(policyBadgeEl, buildPolicyExplanation());
+        if (removeUnusedBtn) {
+            setTooltip(removeUnusedBtn.buttonEl, buildUnusedFieldsTooltip());
+        }
+        if (auditResult && sceneAudit) {
+            updateButtons();
+            renderResults();
+        }
+    };
+    parentEl.addEventListener('ert:scene-advanced-maintenance-changed', refreshMaintenanceCopy as EventListener);
 
     let checkBtn: ButtonComponent | undefined;
     checkBtn = new ButtonComponent(headerRow.controlEl)
@@ -160,12 +202,15 @@ export function renderSceneNormalizerSection(params: {
     checkBtn.setIcon('shield-check');
 
     const panel = parentEl.createDiv({ cls: ['ert-panel', 'ert-stack', 'ert-scene-maintenance-panel', 'ert-settings-hidden'] });
-    const maintenanceGroup = panel.createDiv({ cls: ['ert-inline-actions', 'ert-scene-maintenance-actions'] });
-    const cleanupGroup = panel.createDiv({ cls: ['ert-inline-actions', 'ert-inline-actions--end', 'ert-scene-maintenance-actions', 'ert-scene-maintenance-actions--cleanup'] });
-    const utilityGroup = panel.createDiv({ cls: ['ert-inline-actions', 'ert-scene-maintenance-actions', 'ert-scene-maintenance-actions--utility'] });
+    const maintenanceSection = panel.createDiv({ cls: ['ert-stack', 'ert-scene-maintenance-section'] });
+    maintenanceSection.createDiv({ cls: 'ert-scene-maintenance-group-label', text: 'Maintenance' });
+    const maintenanceGroup = maintenanceSection.createDiv({ cls: ['ert-inline-actions', 'ert-scene-maintenance-actions'] });
+    const cleanupSection = panel.createDiv({ cls: ['ert-stack', 'ert-scene-maintenance-section', 'ert-scene-maintenance-section--cleanup'] });
+    cleanupSection.createDiv({ cls: 'ert-scene-maintenance-group-label', text: 'Cleanup' });
+    const cleanupGroup = cleanupSection.createDiv({ cls: ['ert-inline-actions', 'ert-inline-actions--end', 'ert-scene-maintenance-actions', 'ert-scene-maintenance-actions--cleanup'] });
     const resultsEl = panel.createDiv({ cls: 'ert-audit-results-row' });
 
-    let copyBtn: ButtonComponent | undefined;
+    let copyBtn: HTMLButtonElement | undefined;
     let addCoreBtn: ButtonComponent | undefined;
     let addAdvancedBtn: ButtonComponent | undefined;
     let addIdsBtn: ButtonComponent | undefined;
@@ -178,10 +223,14 @@ export function renderSceneNormalizerSection(params: {
         if (!button) return;
         button.buttonEl.toggleClass('ert-settings-hidden', !visible);
     };
+    const setIconButtonVisible = (button: HTMLButtonElement | undefined, visible: boolean) => {
+        if (!button) return;
+        button.toggleClass('ert-settings-hidden', !visible);
+    };
 
     const updateButtons = () => {
         const summary = sceneAudit?.summary;
-        setButtonVisible(copyBtn, !!sceneAudit);
+        setIconButtonVisible(copyBtn, !!sceneAudit);
         setButtonVisible(addCoreBtn, !!summary && summary.scenesWithMissingCore > 0);
         setButtonVisible(addAdvancedBtn, !!summary && (plugin.settings.sceneAdvancedPropertiesEnabled ?? true) && summary.scenesWithMissingAdvanced > 0);
         setButtonVisible(addIdsBtn, !!summary && summary.scenesMissingIds > 0);
@@ -201,6 +250,7 @@ export function renderSceneNormalizerSection(params: {
         if (!auditResult || !sceneAudit) return;
 
         const summary = auditResult.summary;
+        const advancedEnabled = plugin.settings.sceneAdvancedPropertiesEnabled ?? true;
         const healthLevel = (summary.notesUnsafe > 0)
             ? 'unsafe'
             : (summary.notesMissingIds > 0 || summary.notesDuplicateIds > 0)
@@ -244,8 +294,8 @@ export function renderSceneNormalizerSection(params: {
             { label: 'Duplicate IDs', kind: 'duplicate', entries: auditResult.notes.filter((note) => !!note.duplicateReferenceId) },
             { label: 'Unsafe', kind: 'unsafe', entries: auditResult.notes.filter((note) => note.safetyResult?.status === 'dangerous') },
             { label: 'Needs review', kind: 'suspicious', entries: auditResult.notes.filter((note) => note.safetyResult?.status === 'suspicious') },
-            { label: 'Missing properties', kind: 'missing', entries: auditResult.notes.filter((note) => note.missingFields.length > 0) },
-            { label: 'Unused fields', kind: 'extra', entries: auditResult.notes.filter((note) => note.extraKeys.length > 0) },
+            { label: advancedEnabled ? 'Missing properties' : 'Missing core properties', kind: 'missing', entries: auditResult.notes.filter((note) => note.missingFields.length > 0) },
+            { label: advancedEnabled ? 'Unused fields' : 'Unused fields (advanced not enforced)', kind: 'extra', entries: auditResult.notes.filter((note) => note.extraKeys.length > 0) },
             { label: 'Layout cleanup', kind: 'drift', entries: auditResult.notes.filter((note) => note.orderDrift) },
             { label: 'Warnings', kind: 'warning', entries: auditResult.notes.filter((note) => note.semanticWarnings.length > 0) },
         ] satisfies Array<{
@@ -380,13 +430,17 @@ export function renderSceneNormalizerSection(params: {
         renderResults();
     };
 
-    copyBtn = new ButtonComponent(utilityGroup)
-        .setButtonText('Copy status report')
-        .onClick(() => {
-            if (!auditResult) return;
-            const report = formatAuditReport(auditResult, 'Scene');
-            navigator.clipboard.writeText(report).then(() => new Notice('Scene status report copied to clipboard.'));
-        });
+    copyBtn = cleanupGroup.createEl('button', {
+        cls: [ERT_CLASSES.ICON_BTN, 'ert-settings-hidden'],
+        attr: { type: 'button', 'aria-label': 'Copy status report to clipboard' }
+    });
+    setIcon(copyBtn, 'clipboard-copy');
+    setTooltip(copyBtn, 'Copy status report to clipboard');
+    copyBtn.addEventListener('click', () => {
+        if (!auditResult) return;
+        const report = formatAuditReport(auditResult, 'Scene');
+        navigator.clipboard.writeText(report).then(() => new Notice('Scene status report copied to clipboard.'));
+    });
 
     addCoreBtn = new ButtonComponent(maintenanceGroup)
         .setButtonText('Add Core Properties')
@@ -518,6 +572,7 @@ export function renderSceneNormalizerSection(params: {
             new Notice(parts.join(', ') || 'No changes made.');
             setTimeout(() => { void runCheckScenes(); }, 750);
         });
+    setTooltip(removeUnusedBtn.buttonEl, buildUnusedFieldsTooltip());
 
     removeAdvancedBtn = new ButtonComponent(cleanupGroup)
         .setButtonText('Remove Advanced Properties')
@@ -574,7 +629,8 @@ export function renderSceneNormalizerSection(params: {
             setTimeout(() => { void runCheckScenes(); }, 750);
         });
 
-    [copyBtn, addCoreBtn, addAdvancedBtn, addIdsBtn, reorderBtn, removeUnusedBtn, removeAdvancedBtn, fixDuplicateBtn].forEach((button) => {
+    [addCoreBtn, addAdvancedBtn, addIdsBtn, reorderBtn, removeUnusedBtn, removeAdvancedBtn, fixDuplicateBtn].forEach((button) => {
         if (button) button.buttonEl.classList.add('ert-settings-hidden');
     });
+    refreshMaintenanceCopy();
 }

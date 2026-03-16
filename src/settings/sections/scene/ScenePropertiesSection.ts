@@ -78,6 +78,12 @@ export function renderScenePropertiesSection(params: {
     applyErtHeaderLayout(sectionHeading);
 
     const sectionStack = parentEl.createDiv({ cls: ['ert-scene-template-editor', 'ert-stack', 'ert-scene-settings-stack'] });
+    const dispatchAdvancedMaintenanceChange = () => {
+        parentEl.dispatchEvent(new CustomEvent('ert:scene-advanced-maintenance-changed', {
+            bubbles: false,
+            detail: { enabled: plugin.settings.sceneAdvancedPropertiesEnabled ?? true }
+        }));
+    };
 
     const coreSetting = new Settings(sectionStack)
         .setName('Core Properties')
@@ -92,16 +98,19 @@ export function renderScenePropertiesSection(params: {
     const advancedSetting = new Settings(sectionStack)
         .setName('Advanced Properties')
         .setDesc('Optional scene metadata. Edit these fields here, reveal them in hover, and choose whether Radial Timeline maintains them in scenes.');
-    advancedSetting.settingEl.addClass('ert-scene-properties-row');
+    advancedSetting.settingEl.addClass('ert-scene-properties-row', 'ert-scene-properties-row--advanced');
     const advancedStatusEl = advancedSetting.nameEl.createSpan({ cls: 'ert-scene-properties-status' });
     advancedSetting.nameEl.prepend(advancedStatusEl);
+    const advancedStateEl = advancedSetting.controlEl.createSpan({ cls: 'ert-scene-properties-state' });
     advancedSetting.addToggle((toggle) => {
         toggle
             .setTooltip('Maintain Advanced Properties in scene notes')
             .setValue(plugin.settings.sceneAdvancedPropertiesEnabled ?? true)
             .onChange(async (value) => {
                 plugin.settings.sceneAdvancedPropertiesEnabled = value;
-                if (!value) {
+                if (value) {
+                    plugin.settings.enableAdvancedYamlEditor = true;
+                } else {
                     plugin.settings.enableAdvancedYamlEditor = false;
                 }
                 refreshAdvancedRowState();
@@ -109,6 +118,7 @@ export function renderScenePropertiesSection(params: {
                 await plugin.saveSettings();
                 renderAdvancedEditor();
                 renderHoverPreview();
+                dispatchAdvancedMaintenanceChange();
             });
     });
     const advancedDivider = advancedSetting.controlEl.createSpan({ cls: 'ert-scene-properties-divider' });
@@ -121,9 +131,9 @@ export function renderScenePropertiesSection(params: {
             'aria-label': 'Show Advanced Properties editor'
         }
     });
-    const advancedPanel = sectionStack.createDiv({ cls: ['ert-panel', 'ert-advanced-template-card', 'ert-scene-properties-panel'] });
+    const advancedPanel = sectionStack.createDiv({ cls: ['ert-panel', 'ert-advanced-template-card', 'ert-scene-properties-panel', 'ert-scene-properties-subordinate'] });
     const hoverPreviewContainer = sectionStack.createDiv({
-        cls: ['ert-previewFrame', 'ert-previewFrame--center', 'ert-previewFrame--flush'],
+        cls: ['ert-previewFrame', 'ert-previewFrame--center', 'ert-previewFrame--flush', 'ert-scene-properties-subordinate'],
         attr: { 'data-preview': 'metadata' }
     });
     const hoverPreviewHeading = hoverPreviewContainer.createDiv({ cls: 'ert-planetary-preview-heading', text: 'Scene Hover Preview' });
@@ -178,6 +188,7 @@ export function renderScenePropertiesSection(params: {
         advancedSetting.settingEl.toggleClass('is-active', maintained);
         advancedStatusEl.toggleClass('ert-scene-properties-status--active', maintained);
         setIcon(advancedStatusEl, maintained ? 'check-circle-2' : 'circle');
+        advancedStateEl.setText(maintained ? 'Maintained in scenes' : 'Available, not maintained');
         const tooltip = maintained ? 'Advanced Properties are enabled' : 'Advanced Properties are disabled';
         setTooltip(advancedSetting.settingEl, tooltip);
         setTooltip(advancedStatusEl, tooltip);
@@ -201,6 +212,11 @@ export function renderScenePropertiesSection(params: {
 
     const renderHoverPreview = () => {
         hoverPreviewBody.empty();
+        const advancedEnabled = plugin.settings.sceneAdvancedPropertiesEnabled ?? true;
+        hoverPreviewContainer.toggleClass('ert-settings-hidden', !advancedEnabled);
+        if (!advancedEnabled) {
+            return;
+        }
         const enabledFields = (plugin.settings.hoverMetadataFields || []).filter(field => field.enabled);
         const currentTemplate = plugin.settings.sceneYamlTemplates?.advanced ?? '';
         const templateObj = safeParseYaml(currentTemplate);
