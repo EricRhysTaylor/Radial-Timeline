@@ -27,6 +27,7 @@ private-patent-docs/
 
 # Exclude macOS Finder (System Explorer) View States
 .DS_Store
+**/.DS_Store
 
 # Backup files
 *.bak*

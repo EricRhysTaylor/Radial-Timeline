@@ -5613,6 +5613,26 @@ export class InquiryView extends ItemView {
 
     private updateFocusGlyph(): void {
         this.glyph?.update({ focusLabel: this.getFocusLabel() });
+        this.glyph?.root.classList.remove('is-expanded');
+        this.updateFocusGlyphTooltip();
+    }
+
+    private updateFocusGlyphTooltip(): void {
+        if (!this.glyphHit) return;
+        this.glyphHit.classList.toggle('is-tooltip-only', this.state.scope === 'book');
+        if (this.state.scope !== 'book') {
+            this.glyphHit.removeAttribute('data-rt-tip');
+            this.glyphHit.removeAttribute('data-rt-tip-placement');
+            return;
+        }
+        const bookTitle = this.getFocusBookTitleForMessages() || this.getFocusBookLabel();
+        const tooltipText = bookTitle?.trim();
+        if (!tooltipText) {
+            this.glyphHit.removeAttribute('data-rt-tip');
+            this.glyphHit.removeAttribute('data-rt-tip-placement');
+            return;
+        }
+        addTooltipData(this.glyphHit, this.balanceTooltipText(tooltipText), 'top');
     }
 
     private updateRings(): void {
@@ -6245,7 +6265,6 @@ export class InquiryView extends ItemView {
             this.refreshUI();
             return;
         }
-        this.glyph?.root.classList.toggle('is-expanded');
     }
 
     private beginInquiryRunToken(): number {

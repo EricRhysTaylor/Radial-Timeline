@@ -176,16 +176,16 @@ export function renderSceneNormalizerSection(params: {
         const advancedEnabled = plugin.settings.sceneAdvancedPropertiesEnabled ?? true;
         return advancedEnabled
             ? {
-                lead: 'Advanced properties are currently maintained in scene notes.',
+                lead: 'Core and Advanced properties are currently maintained in scene notes.',
                 detail: 'Missing advanced fields will be reported and can be added automatically.'
             }
             : {
-                lead: 'Advanced properties are currently disabled.',
-                detail: 'Existing advanced fields will be preserved but not maintained. You may remove them using “Remove Advanced Properties”.'
+                lead: 'Core properties are currently maintained in scene notes.',
+                detail: 'Advanced properties remain optional and can be removed with “Remove Advanced Properties”.'
             };
     };
     const buildPolicyBadge = (): string => (
-        (plugin.settings.sceneAdvancedPropertiesEnabled ?? true) ? 'Advanced Maintained' : 'Advanced Optional'
+        (plugin.settings.sceneAdvancedPropertiesEnabled ?? true) ? 'Core + Advanced' : 'Core Only'
     );
     const buildUnusedFieldsTooltip = (): string => (
         (plugin.settings.sceneAdvancedPropertiesEnabled ?? true)

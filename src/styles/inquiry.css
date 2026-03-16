@@ -1857,7 +1857,7 @@
 
 .ert-inquiry-nav-session-label {
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 200;
   letter-spacing: 0.02em;
   fill: color-mix(in srgb, var(--text-normal) 88%, transparent);
   font-family: var(--font-interface);
@@ -1867,7 +1867,6 @@
 
 .ert-inquiry-nav-session-label.is-welcome {
   font-size: 18px;
-  font-weight: 700;
   letter-spacing: 0.01em;
   fill: var(--text-normal);
 }

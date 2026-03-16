@@ -4965,7 +4965,7 @@
 .ert-ui.ert-scope--settings .ert-scene-properties-row.is-active {
   border-color: color-mix(in srgb, var(--text-success) 50%, transparent);
   background-color: color-mix(in srgb, var(--text-success) 10%, transparent);
-  box-shadow: 0 0 0 calc(var(--ert-gap-xs) / 2) color-mix(in srgb, var(--text-success) 30%, transparent);
+  box-shadow: none;
 }
 
 .ert-ui.ert-scope--settings .ert-scene-properties-row .setting-item-control {
