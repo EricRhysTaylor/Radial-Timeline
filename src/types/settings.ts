@@ -487,6 +487,7 @@ export interface RadialTimelineSettings {
     frontmatterMappings?: Record<string, string>;
     enableCustomMetadataMapping?: boolean;
     enableAdvancedYamlEditor?: boolean;
+    sceneAdvancedPropertiesEnabled?: boolean;
     sceneYamlTemplates?: {
         base: string;
         advanced: string;

@@ -169,6 +169,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     frontmatterMappings: {},
     enableCustomMetadataMapping: false,
     enableAdvancedYamlEditor: false,
+    sceneAdvancedPropertiesEnabled: true,
     enableBeatYamlEditor: false,
     sceneYamlTemplates: {
         base: `Class: Scene

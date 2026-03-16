@@ -50,6 +50,19 @@ import { runYamlDeleteFields, runYamlDeleteEmptyExtraFields, runYamlReorder, pre
 import { type FrontmatterSafetyResult, formatSafetyIssues } from '../../utils/yamlSafety';
 import { isPathInFolderScope } from '../../utils/pathScope';
 import { IMPACT_FULL } from '../SettingImpact';
+import { buildScenePropertyDefinitions } from '../../sceneProperties/scenePropertyAdapter';
+import { resolveSceneExpectedKeys, resolveScenePropertyPolicy } from '../../sceneProperties/scenePropertyPolicy';
+import {
+    analyzeScenes,
+    deleteAdvancedSceneFields,
+    deleteExtraSceneFields,
+    ensureSceneIds,
+    fixDuplicateSceneIds,
+    insertMissingAdvancedFields,
+    insertMissingCoreFields,
+    reorderSceneFields,
+} from '../../sceneProperties/sceneNormalizer';
+import type { SceneNormalizationAudit } from '../../sceneProperties/types';
 
 type FieldEntryValue = string | string[];
 type FieldEntry = { key: string; value: FieldEntryValue; required: boolean };
@@ -93,6 +106,39 @@ const BEAT_SYSTEM_COPY: Record<string, { title: string; description: string; exa
         examples: 'Examples: Podcast Narrative Arc, YouTube Explainer Arc, Historical Narrative, Romance Tropes Ladder, Thriller Escalation Ladder.'
     }
 };
+
+function toDisplayAuditResult(sceneAudit: SceneNormalizationAudit): YamlAuditResult {
+    const notes: NoteAuditEntry[] = sceneAudit.notes.map((note) => ({
+        file: note.file,
+        missingFields: [...note.missingCoreKeys, ...note.missingAdvancedKeys],
+        missingReferenceId: note.missingSceneId,
+        duplicateReferenceId: note.duplicateSceneId,
+        extraKeys: note.extraKeys,
+        orderDrift: note.orderDrift,
+        semanticWarnings: note.semanticWarnings,
+        reason: note.reason,
+        safetyResult: note.safetyResult,
+    }));
+
+    return {
+        notes,
+        unreadFiles: sceneAudit.unreadFiles,
+        summary: {
+            totalNotes: sceneAudit.summary.totalScenes,
+            unreadNotes: sceneAudit.summary.unreadScenes,
+            notesWithMissing: notes.filter((note) => note.missingFields.length > 0).length,
+            notesMissingIds: sceneAudit.summary.scenesMissingIds,
+            notesDuplicateIds: sceneAudit.summary.scenesDuplicateIds,
+            notesWithExtra: sceneAudit.summary.scenesWithExtra,
+            notesWithDrift: sceneAudit.summary.scenesWithDrift,
+            notesWithWarnings: sceneAudit.summary.scenesWithWarnings,
+            clean: sceneAudit.summary.clean,
+            notesUnsafe: sceneAudit.summary.scenesUnsafe,
+            notesSuspicious: sceneAudit.summary.scenesSuspicious,
+        },
+        safetyResults: sceneAudit.safetyResults,
+    };
+}
 
 /** Edit custom system details modal (name + description). */
 class SystemEditModal extends Modal {
