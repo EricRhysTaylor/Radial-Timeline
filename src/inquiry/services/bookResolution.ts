@@ -1,5 +1,6 @@
 import { MetadataCache, TFolder, Vault, normalizePath } from 'obsidian';
 import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
+import type { BookProfile } from '../../types/settings';
 
 const BOOK_FOLDER_REGEX = /^Book\s+(\d+)/i;
 
@@ -23,6 +24,7 @@ export interface DiscoveredInquiryBookRoot {
     bookNumber?: number;
     detectedByName: boolean;
     detectedByOutline: boolean;
+    detectedByProfile: boolean;
 }
 
 export interface InquiryResolvedBook {

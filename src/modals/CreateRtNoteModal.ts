@@ -30,8 +30,8 @@ const RT_NOTE_FAMILIES: RtNoteFamilyOption[] = [
         title: 'Scene',
         description: 'Start a new story scene in prose, screenplay, or podcast format.',
         subtypes: [
-            { id: 'basic-scene', title: 'Basic scene', description: 'Base scene set for straightforward drafting.' },
-            { id: 'advanced-scene', title: 'Advanced scene', description: 'Expanded scene frontmatter with advanced properties.' },
+            { id: 'basic-scene', title: 'Core scene', description: 'Core Scene Properties for straightforward drafting.' },
+            { id: 'advanced-scene', title: 'Scene with Advanced Properties', description: 'Core Scene Properties plus optional advanced scene metadata.' },
             { id: 'screenplay-scene', title: 'Screenplay scene', description: 'Screenplay-oriented scaffold with runtime defaults.' },
             { id: 'podcast-scene', title: 'Podcast scene', description: 'Podcast script scaffold with host and guest defaults.' },
         ],

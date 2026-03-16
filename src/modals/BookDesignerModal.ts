@@ -924,7 +924,7 @@ export class BookDesignerModal extends Modal {
 
         const options: { id: 'base' | 'advanced', label: string }[] = [
             { id: 'base', label: 'Base Scene Set' },
-            { id: 'advanced', label: 'Advanced Scene Set' }
+            { id: 'advanced', label: 'Advanced Scene Properties' }
         ];
 
         options.forEach(opt => {

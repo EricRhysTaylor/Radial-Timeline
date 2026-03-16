@@ -918,7 +918,7 @@ export class CommandRegistrar {
             await leaf.openFile(newFile);
 
             const labelMap: Record<string, string> = {
-                base: 'basic', advanced: 'advanced', screenplay: 'screenplay', podcast: 'podcast'
+                base: 'core', advanced: 'advanced properties', screenplay: 'screenplay', podcast: 'podcast'
             };
             new Notice(`Created ${labelMap[type]} scene note: ${filename}`);
         } catch (error) {

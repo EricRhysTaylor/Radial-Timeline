@@ -3110,7 +3110,7 @@ export function renderStoryBeatsSection(params: {
 
     // Scene YAML Templates Section
     const yamlHeading = new Settings(yamlStack)
-        .setName('Advanced scene YAML sets')
+        .setName('Scene Properties')
         .setHeading();
     addHeadingIcon(yamlHeading, 'form');
     addWikiLink(yamlHeading, 'Settings#yaml-templates');
@@ -3118,21 +3118,36 @@ export function renderStoryBeatsSection(params: {
 
     let onAdvancedToggle: (() => void) | undefined;
 
+    const corePropertiesSetting = new Settings(yamlStack)
+        .setName('Core')
+        .setDesc('Always active. Core Scene Properties are required for scene notes and always maintained by the Scene Normalizer.');
+    const coreSummaryEl = corePropertiesSetting.controlEl.createDiv({ cls: 'ert-setting-inline-copy' });
+
     const advancedYamlSetting = new Settings(yamlStack)
-        .setName('Advanced YAML editor')
-        .setDesc('Set up custom scene YAML keys for the advanced YAML set. Enable fields to reveal in scene hover synopsis. Type any keyword to search for a perfect lucide icon. Reorder fields to match your preferred order.');
+        .setName('Advanced')
+        .setDesc('Optional Scene Properties. Edit advanced scene fields, enable hover synopsis reveals, and choose whether the Scene Normalizer maintains these properties.');
+    advancedYamlSetting.addToggle((toggle) => {
+        toggle
+            .setTooltip('Enable Advanced Scene Properties for normalization')
+            .setValue(plugin.settings.sceneAdvancedPropertiesEnabled ?? true)
+            .onChange(async (value) => {
+                plugin.settings.sceneAdvancedPropertiesEnabled = value;
+                await plugin.saveSettings();
+                renderHoverPreview();
+            });
+    });
     const advancedToggleButton = advancedYamlSetting.controlEl.createEl('button', {
         cls: ERT_CLASSES.ICON_BTN,
         attr: {
             type: 'button',
-            'aria-label': 'Show advanced YAML editor'
+            'aria-label': 'Show Advanced Scene Properties'
         }
     });
     const refreshAdvancedToggle = () => {
         const expanded = plugin.settings.enableAdvancedYamlEditor ?? false;
         setIcon(advancedToggleButton, expanded ? 'chevron-down' : 'chevron-right');
-        setTooltip(advancedToggleButton, expanded ? 'Hide advanced YAML editor' : 'Show advanced YAML editor');
-        advancedToggleButton.setAttribute('aria-label', expanded ? 'Hide advanced YAML editor' : 'Show advanced YAML editor');
+        setTooltip(advancedToggleButton, expanded ? 'Hide Advanced Scene Properties' : 'Show Advanced Scene Properties');
+        advancedToggleButton.setAttribute('aria-label', expanded ? 'Hide Advanced Scene Properties' : 'Show Advanced Scene Properties');
     };
     refreshAdvancedToggle();
     // SAFE: Settings sections are standalone functions without Component lifecycle; Obsidian manages settings tab cleanup
@@ -3145,6 +3160,7 @@ export function renderStoryBeatsSection(params: {
     });
 
     const templateSection = yamlStack.createDiv({ cls: ['ert-scene-template-editor', 'ert-stack'] });
+    const coreSummaryCard = templateSection.createDiv({ cls: ['ert-panel', 'ert-advanced-template-card'] });
 
     const advancedContainer = templateSection.createDiv({ cls: ['ert-panel', 'ert-advanced-template-card'] });
 
@@ -3196,6 +3212,26 @@ export function renderStoryBeatsSection(params: {
 
     // Preview update function (will be set by the preview panel)
     let updateHoverPreview: (() => void) | undefined;
+
+    const renderCoreSceneProperties = () => {
+        const definitions = buildScenePropertyDefinitions(plugin.settings);
+        const coreKeys = definitions.core.map((definition) => definition.key);
+        const summary = `${coreKeys.length} field${coreKeys.length !== 1 ? 's' : ''}`;
+
+        coreSummaryEl.empty();
+        coreSummaryEl.createSpan({ text: summary, cls: 'ert-modal-subtitle' });
+
+        coreSummaryCard.empty();
+        coreSummaryCard.createDiv({ text: 'Core Scene Properties', cls: 'ert-modal-subtitle' });
+        coreSummaryCard.createDiv({
+            text: 'Always present, always normalized, and not editable in this view.',
+            cls: 'ert-setting-item-description',
+        });
+        coreSummaryCard.createDiv({
+            text: coreKeys.join(', '),
+            cls: 'ert-audit-summary',
+        });
+    };
 
     const renderAdvancedTemplateEditor = () => {
         advancedContainer.empty();
@@ -3721,6 +3757,7 @@ export function renderStoryBeatsSection(params: {
     };
 
     renderAdvancedTemplateEditor();
+    renderCoreSceneProperties();
 
     // Scene audit container (created here for DOM order: editor → audit → preview)
     const sceneAuditContainer = yamlStack.createDiv({ cls: ERT_CLASSES.STACK });
@@ -3767,6 +3804,7 @@ export function renderStoryBeatsSection(params: {
     renderHoverPreview();
 
     const refreshVisibility = () => {
+        renderCoreSceneProperties();
         renderAdvancedTemplateEditor();
         renderHoverPreview();
     };
@@ -4250,6 +4288,7 @@ export function renderStoryBeatsSection(params: {
         beatSystemKey?: string
     ): void {
         let auditResult: YamlAuditResult | null = null;
+        let sceneNormalizationResult: SceneNormalizationAudit | null = null;
         let auditScopeSummary = '';
         type FillEmptyPlan = {
             files: TFile[];
@@ -4492,9 +4531,11 @@ export function renderStoryBeatsSection(params: {
 
         // ─── Header row: two-column Setting layout (title+desc left, audit button right) ──
         const auditSetting = new Settings(parentEl)
-            .setName(`Validate ${noteType.toLowerCase()} properties`)
+            .setName(noteType === 'Scene' ? 'Scene Normalizer' : `Validate ${noteType.toLowerCase()} properties`)
             .setDesc(
-                isCustomBeatAudit()
+                noteType === 'Scene'
+                    ? 'Analyze scene notes for missing core properties, optional advanced properties, scene IDs, extra fields, and canonical order.'
+                    : isCustomBeatAudit()
                     ? 'Scan beat notes for schema drift and empty custom-field values.'
                     : `Scan ${noteType.toLowerCase()} notes for schema drift — missing fields, extra keys, and ordering issues.`
             );
@@ -4521,18 +4562,27 @@ export function renderStoryBeatsSection(params: {
         let backfillBtn: HTMLButtonElement | undefined;
         auditSetting.addButton(button => {
             button
-                .setButtonText('Insert missing fields')
-                .setTooltip('Add missing custom fields to existing notes')
+                .setButtonText(noteType === 'Scene' ? 'Insert Missing Core Fields' : 'Insert missing fields')
+                .setTooltip(noteType === 'Scene' ? 'Add missing Core Scene Properties to existing scenes' : 'Add missing custom fields to existing notes')
                 .onClick(() => void handleBackfill());
             backfillBtn = button.buttonEl;
             backfillBtn.classList.add('ert-settings-hidden');
+        });
+        let backfillAdvancedBtn: HTMLButtonElement | undefined;
+        auditSetting.addButton(button => {
+            button
+                .setButtonText('Insert Missing Advanced Fields')
+                .setTooltip('Add missing Advanced Scene Properties to existing scenes')
+                .onClick(() => void handleAdvancedBackfill());
+            backfillAdvancedBtn = button.buttonEl;
+            backfillAdvancedBtn.classList.add('ert-settings-hidden');
         });
         // Insert missing IDs button (hidden until audit finds missing IDs)
         let insertMissingIdsBtn: HTMLButtonElement | undefined;
         auditSetting.addButton(button => {
             button
-                .setButtonText('Insert missing IDs')
-                .setTooltip('Insert missing Reference IDs in this scope')
+                .setButtonText(noteType === 'Scene' ? 'Ensure Scene IDs' : 'Insert missing IDs')
+                .setTooltip(noteType === 'Scene' ? 'Insert missing Scene IDs in this scope' : 'Insert missing Reference IDs in this scope')
                 .onClick(() => void handleInsertMissingIds());
             insertMissingIdsBtn = button.buttonEl;
             insertMissingIdsBtn.classList.add('ert-settings-hidden');
@@ -4540,8 +4590,8 @@ export function renderStoryBeatsSection(params: {
         let fixDuplicateIdsBtn: HTMLButtonElement | undefined;
         auditSetting.addButton(button => {
             button
-                .setButtonText('Fix duplicate IDs')
-                .setTooltip('Reassign duplicate Reference IDs in this scope')
+                .setButtonText(noteType === 'Scene' ? 'Fix Duplicate Scene IDs' : 'Fix duplicate IDs')
+                .setTooltip(noteType === 'Scene' ? 'Reassign duplicate Scene IDs in this scope' : 'Reassign duplicate Reference IDs in this scope')
                 .onClick(() => void handleFixDuplicateIds());
             fixDuplicateIdsBtn = button.buttonEl;
             fixDuplicateIdsBtn.classList.add('ert-settings-hidden');
@@ -4593,8 +4643,8 @@ export function renderStoryBeatsSection(params: {
         let reorderBtn: HTMLButtonElement | undefined;
         auditSetting.addButton(button => {
             button
-                .setButtonText('Reorder fields')
-                .setTooltip('Reorder frontmatter fields to match the canonical template order')
+                .setButtonText(noteType === 'Scene' ? 'Reorder Scene Fields' : 'Reorder fields')
+                .setTooltip(noteType === 'Scene' ? 'Reorder scene frontmatter fields to match the canonical scene layout' : 'Reorder frontmatter fields to match the canonical template order')
                 .onClick(() => void handleReorderFields());
             reorderBtn = button.buttonEl;
             reorderBtn.classList.add('ert-settings-hidden');
@@ -4619,24 +4669,28 @@ export function renderStoryBeatsSection(params: {
             const preCheckScope = collectFilesForAuditWithScope(app, noteType, plugin.settings, activeBeatSystemKey);
             if (preCheckScope.reason) {
                 auditBtn.setDisabled(true);
-                auditBtn.setButtonText('Run audit');
+                auditBtn.setButtonText(noteType === 'Scene' ? 'Analyze Scenes' : 'Run audit');
                 auditBtn.setTooltip(preCheckScope.reason);
             } else if (preCheckScope.files.length === 0) {
                 auditBtn.setDisabled(true);
-                auditBtn.setButtonText('Run audit');
+                auditBtn.setButtonText(noteType === 'Scene' ? 'Analyze Scenes' : 'Run audit');
                 auditBtn.setTooltip(`No ${noteType.toLowerCase()} notes found. Create beat notes first.`);
             } else {
                 auditBtn.setDisabled(false);
-                auditBtn.setButtonText('Run audit');
-                auditBtn.setTooltip(`Scan ${preCheckScope.scopeSummary} for YAML schema drift`);
+                auditBtn.setButtonText(noteType === 'Scene' ? 'Analyze Scenes' : 'Run audit');
+                auditBtn.setTooltip(noteType === 'Scene'
+                    ? `Analyze ${preCheckScope.scopeSummary} for scene normalization issues`
+                    : `Scan ${preCheckScope.scopeSummary} for YAML schema drift`);
             }
             auditPrimaryAction = () => runAudit();
         };
         auditSetting.addButton(button => {
             auditBtn = button;
             button
-                .setButtonText('Run audit')
-                .setTooltip(`Scan all ${noteType.toLowerCase()} notes for YAML schema drift`)
+                .setButtonText(noteType === 'Scene' ? 'Analyze Scenes' : 'Run audit')
+                .setTooltip(noteType === 'Scene'
+                    ? 'Analyze scene normalization status in the active book scope'
+                    : `Scan all ${noteType.toLowerCase()} notes for YAML schema drift`)
                 .onClick(() => auditPrimaryAction?.());
         });
 
@@ -4679,14 +4733,25 @@ export function renderStoryBeatsSection(params: {
                 new Notice(`No ${noteType.toLowerCase()} notes found in scope: ${auditScopeSummary}`);
                 return;
             }
-            auditResult = await runYamlAudit({
-                app,
-                settings: plugin.settings,
-                noteType,
-                files,
-                beatSystemKey: activeBeatSystemKey,
-                includeSafetyScan: true,
-            });
+            if (noteType === 'Scene') {
+                sceneNormalizationResult = await analyzeScenes({
+                    app,
+                    settings: plugin.settings,
+                    files,
+                    includeSafetyScan: true,
+                });
+                auditResult = toDisplayAuditResult(sceneNormalizationResult);
+            } else {
+                sceneNormalizationResult = null;
+                auditResult = await runYamlAudit({
+                    app,
+                    settings: plugin.settings,
+                    noteType,
+                    files,
+                    beatSystemKey: activeBeatSystemKey,
+                    includeSafetyScan: true,
+                });
+            }
 
             console.debug('[YamlAudit] yaml_audit_run', {
                 noteType,
@@ -4706,10 +4771,27 @@ export function renderStoryBeatsSection(params: {
 
             copyBtn?.classList.remove('ert-settings-hidden');
             const allowInsertMissing = !isCustomBeatAudit();
-            if (allowInsertMissing && auditResult.summary.notesWithMissing > 0) {
+            if (noteType === 'Scene') {
+                const sceneSummary = sceneNormalizationResult?.summary;
+                if (sceneSummary && sceneSummary.scenesWithMissingCore > 0) {
+                    backfillBtn?.classList.remove('ert-settings-hidden');
+                } else {
+                    backfillBtn?.classList.add('ert-settings-hidden');
+                }
+
+                const advancedEnabled = plugin.settings.sceneAdvancedPropertiesEnabled ?? true;
+                if (advancedEnabled && sceneSummary && sceneSummary.scenesWithMissingAdvanced > 0) {
+                    backfillAdvancedBtn?.classList.remove('ert-settings-hidden');
+                } else {
+                    backfillAdvancedBtn?.classList.add('ert-settings-hidden');
+                }
+            } else if (allowInsertMissing && auditResult.summary.notesWithMissing > 0) {
                 backfillBtn?.classList.remove('ert-settings-hidden');
             } else {
                 backfillBtn?.classList.add('ert-settings-hidden');
+            }
+            if (noteType !== 'Scene') {
+                backfillAdvancedBtn?.classList.add('ert-settings-hidden');
             }
             if (auditResult.summary.notesMissingIds > 0) {
                 insertMissingIdsBtn?.classList.remove('ert-settings-hidden');
@@ -4826,7 +4908,7 @@ export function renderStoryBeatsSection(params: {
                 : 0;
             const effectiveClean = Math.max(0, s.clean - emptyOnlyCount);
 
-            // Schema health + summary in one line
+            // Normalization status / schema health + summary in one line
             const healthLevel = (s.notesUnsafe > 0)
                 ? 'unsafe'
                 : (s.notesMissingIds > 0 || s.notesDuplicateIds > 0)
@@ -4845,7 +4927,9 @@ export function renderStoryBeatsSection(params: {
             };
             const headerEl = resultsEl.createDiv({ cls: 'ert-audit-result-header' });
             const healthEl = headerEl.createSpan({ cls: `ert-audit-health ert-audit-health--${healthLevel}` });
-            healthEl.textContent = `Schema health: ${healthLabels[healthLevel]}`;
+            healthEl.textContent = noteType === 'Scene'
+                ? `Normalization Status: ${healthLabels[healthLevel]}`
+                : `Schema health: ${healthLabels[healthLevel]}`;
             headerEl.createSpan({ text: ` · Scope: ${auditScopeSummary}`, cls: 'ert-audit-summary' });
 
             if (s.notesMissingIds > 0) {
@@ -5103,6 +5187,56 @@ export function renderStoryBeatsSection(params: {
         // ─── Insert missing IDs action ───────────────────────────────────
         const handleInsertMissingIds = async () => {
             if (!auditResult || auditResult.summary.notesMissingIds === 0) return;
+            if (noteType === 'Scene' && sceneNormalizationResult) {
+                const targetFiles = sceneNormalizationResult.notes
+                    .filter((note) => note.missingSceneId)
+                    .map((note) => note.file);
+                if (targetFiles.length === 0) return;
+
+                const confirmed = await new Promise<boolean>((resolve) => {
+                    const modal = new Modal(app);
+                    modal.titleEl.setText('');
+                    modal.contentEl.empty();
+                    modal.modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal-shell--md');
+                    modal.contentEl.addClass('ert-modal-container', 'ert-stack');
+
+                    const header = modal.contentEl.createDiv({ cls: 'ert-modal-header' });
+                    header.createSpan({ cls: 'ert-modal-badge', text: 'SCENE NORMALIZER' });
+                    header.createDiv({ cls: 'ert-modal-title', text: 'Ensure Scene IDs' });
+                    header.createDiv({
+                        cls: 'ert-modal-subtitle',
+                        text: `Insert Scene IDs into ${targetFiles.length} scene${targetFiles.length !== 1 ? 's' : ''}.`
+                    });
+
+                    const body = modal.contentEl.createDiv({ cls: ['ert-panel', 'ert-panel--glass'] });
+                    body.createDiv({ text: `Scope: ${auditScopeSummary}`, cls: 'ert-modal-subtitle' });
+                    body.createDiv({ text: 'Only scenes missing an ID will be updated. Existing IDs are preserved.' });
+
+                    const footer = modal.contentEl.createDiv({ cls: 'ert-modal-actions' });
+                    new ButtonComponent(footer).setButtonText('Ensure IDs').setCta().onClick(() => { resolve(true); modal.close(); });
+                    new ButtonComponent(footer).setButtonText('Cancel').onClick(() => { resolve(false); modal.close(); });
+
+                    modal.onClose = () => resolve(false);
+                    modal.open();
+                });
+
+                if (!confirmed) return;
+
+                const result = await ensureSceneIds({
+                    app,
+                    settings: plugin.settings,
+                    files: targetFiles,
+                });
+
+                const parts: string[] = [];
+                if (result.updated > 0) parts.push(`Updated ${result.updated} scene${result.updated !== 1 ? 's' : ''}`);
+                if (result.skipped > 0) parts.push(`${result.skipped} already had IDs`);
+                if (result.failed > 0) parts.push(`${result.failed} failed`);
+                new Notice(parts.join(', ') || 'No changes made.');
+
+                setTimeout(() => runAudit(), 750);
+                return;
+            }
 
             const targetFiles = auditResult.notes
                 .filter(n => n.missingReferenceId)
@@ -5164,6 +5298,60 @@ export function renderStoryBeatsSection(params: {
         // ─── Fix duplicate IDs action ────────────────────────────────────
         const handleFixDuplicateIds = async () => {
             if (!auditResult || auditResult.summary.notesDuplicateIds === 0) return;
+            if (noteType === 'Scene' && sceneNormalizationResult) {
+                const duplicateEntries = sceneNormalizationResult.notes.filter((note) => !!note.duplicateSceneId);
+                if (duplicateEntries.length === 0) return;
+                const targetFiles = [...new Set(duplicateEntries.map((note) => note.file))];
+                const duplicateIdCount = new Set(
+                    duplicateEntries
+                        .map((note) => note.duplicateSceneId)
+                        .filter((id): id is string => !!id)
+                ).size;
+
+                const confirmed = await new Promise<boolean>((resolve) => {
+                    const modal = new Modal(app);
+                    modal.titleEl.setText('');
+                    modal.contentEl.empty();
+                    modal.modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal-shell--md');
+                    modal.contentEl.addClass('ert-modal-container', 'ert-stack');
+
+                    const header = modal.contentEl.createDiv({ cls: 'ert-modal-header' });
+                    header.createSpan({ cls: 'ert-modal-badge', text: 'SCENE NORMALIZER' });
+                    header.createDiv({ cls: 'ert-modal-title', text: 'Fix Duplicate Scene IDs' });
+                    header.createDiv({
+                        cls: 'ert-modal-subtitle',
+                        text: `Resolve ${duplicateIdCount} duplicate ID group${duplicateIdCount !== 1 ? 's' : ''} across ${targetFiles.length} scene${targetFiles.length !== 1 ? 's' : ''}.`
+                    });
+
+                    const body = modal.contentEl.createDiv({ cls: ['ert-panel', 'ert-panel--glass'] });
+                    body.createDiv({ text: `Scope: ${auditScopeSummary}`, cls: 'ert-modal-subtitle' });
+                    body.createDiv({ text: 'One scene in each duplicate group keeps the current ID and the others receive new IDs.' });
+
+                    const footer = modal.contentEl.createDiv({ cls: 'ert-modal-actions' });
+                    new ButtonComponent(footer).setButtonText('Fix Duplicate IDs').setCta().onClick(() => { resolve(true); modal.close(); });
+                    new ButtonComponent(footer).setButtonText('Cancel').onClick(() => { resolve(false); modal.close(); });
+
+                    modal.onClose = () => resolve(false);
+                    modal.open();
+                });
+
+                if (!confirmed) return;
+
+                const result = await fixDuplicateSceneIds({
+                    app,
+                    settings: plugin.settings,
+                    files: targetFiles,
+                });
+
+                const parts: string[] = [];
+                if (result.updated > 0) parts.push(`Updated ${result.updated} scene${result.updated !== 1 ? 's' : ''}`);
+                if (result.skipped > 0) parts.push(`${result.skipped} unchanged`);
+                if (result.failed > 0) parts.push(`${result.failed} failed`);
+                new Notice(parts.join(', ') || 'No changes made.');
+
+                setTimeout(() => runAudit(), 750);
+                return;
+            }
 
             const duplicateEntries = auditResult.notes.filter(n => !!n.duplicateReferenceId);
             if (duplicateEntries.length === 0) return;
@@ -5229,6 +5417,70 @@ export function renderStoryBeatsSection(params: {
         // ─── Backfill action ─────────────────────────────────────────────
         const handleBackfill = async () => {
             if (!auditResult || auditResult.summary.notesWithMissing === 0) return;
+            if (noteType === 'Scene' && sceneNormalizationResult) {
+                const definitions = buildScenePropertyDefinitions(plugin.settings);
+                const defaults = Object.fromEntries(
+                    definitions.core.map((definition) => [definition.key, definition.defaultValue])
+                );
+                const targetFiles = sceneNormalizationResult.notes
+                    .filter((note) => note.missingCoreKeys.length > 0)
+                    .map((note) => note.file);
+                const missingKeys = new Set(sceneNormalizationResult.notes.flatMap((note) => note.missingCoreKeys));
+                const fieldsToInsert = Object.fromEntries(
+                    [...missingKeys].map((key) => [key, defaults[key] ?? ''])
+                );
+                if (targetFiles.length === 0 || Object.keys(fieldsToInsert).length === 0) return;
+
+                const confirmed = await new Promise<boolean>((resolve) => {
+                    const modal = new Modal(app);
+                    modal.titleEl.setText('');
+                    modal.contentEl.empty();
+                    modal.modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal-shell--md');
+                    modal.contentEl.addClass('ert-modal-container', 'ert-stack');
+
+                    const header = modal.contentEl.createDiv({ cls: 'ert-modal-header' });
+                    header.createSpan({ cls: 'ert-modal-badge', text: 'SCENE NORMALIZER' });
+                    header.createDiv({ cls: 'ert-modal-title', text: 'Insert Missing Core Fields' });
+                    header.createDiv({
+                        cls: 'ert-modal-subtitle',
+                        text: `Insert Core Scene Properties into ${targetFiles.length} scene${targetFiles.length !== 1 ? 's' : ''}.`
+                    });
+
+                    const body = modal.contentEl.createDiv({ cls: ['ert-panel', 'ert-panel--glass'] });
+                    body.createDiv({ text: `Scope: ${auditScopeSummary}`, cls: 'ert-modal-subtitle' });
+                    body.createDiv({ text: 'Existing values are preserved. Only missing Core Scene Properties are inserted.' });
+                    const fieldListEl = body.createEl('ul');
+                    for (const [key, value] of Object.entries(fieldsToInsert)) {
+                        const valueText = Array.isArray(value) ? value.join(', ') : value;
+                        fieldListEl.createEl('li', { text: valueText ? `${key}: ${valueText}` : `${key}: (empty)` });
+                    }
+
+                    const footer = modal.contentEl.createDiv({ cls: 'ert-modal-actions' });
+                    new ButtonComponent(footer).setButtonText('Insert Core Fields').setCta().onClick(() => { resolve(true); modal.close(); });
+                    new ButtonComponent(footer).setButtonText('Cancel').onClick(() => { resolve(false); modal.close(); });
+
+                    modal.onClose = () => resolve(false);
+                    modal.open();
+                });
+
+                if (!confirmed) return;
+
+                const result = await insertMissingCoreFields({
+                    app,
+                    settings: plugin.settings,
+                    files: targetFiles,
+                    audit: sceneNormalizationResult,
+                });
+
+                const parts: string[] = [];
+                if (result.updated > 0) parts.push(`Updated ${result.updated} scene${result.updated !== 1 ? 's' : ''}`);
+                if (result.skipped > 0) parts.push(`${result.skipped} unchanged`);
+                if (result.failed > 0) parts.push(`${result.failed} failed`);
+                new Notice(parts.join(', ') || 'No changes made.');
+
+                setTimeout(() => runAudit(), 750);
+                return;
+            }
 
             const defaults = getCustomDefaults(noteType, plugin.settings, resolveBeatAuditSystemKey());
             const targetFiles = auditResult.notes
@@ -5314,6 +5566,74 @@ export function renderStoryBeatsSection(params: {
             new Notice(parts.join(', ') || 'No changes made.');
 
             // Wait for Obsidian metadata cache to re-index before refreshing audit
+            setTimeout(() => runAudit(), 750);
+        };
+
+        const handleAdvancedBackfill = async () => {
+            if (noteType !== 'Scene' || !sceneNormalizationResult) return;
+            const advancedEnabled = plugin.settings.sceneAdvancedPropertiesEnabled ?? true;
+            if (!advancedEnabled || sceneNormalizationResult.summary.scenesWithMissingAdvanced === 0) return;
+
+            const definitions = buildScenePropertyDefinitions(plugin.settings);
+            const defaults = Object.fromEntries(
+                definitions.advanced.map((definition) => [definition.key, definition.defaultValue])
+            );
+            const targetFiles = sceneNormalizationResult.notes
+                .filter((note) => note.missingAdvancedKeys.length > 0)
+                .map((note) => note.file);
+            const missingKeys = new Set(sceneNormalizationResult.notes.flatMap((note) => note.missingAdvancedKeys));
+            const fieldsToInsert = Object.fromEntries(
+                [...missingKeys].map((key) => [key, defaults[key] ?? ''])
+            );
+            if (targetFiles.length === 0 || Object.keys(fieldsToInsert).length === 0) return;
+
+            const confirmed = await new Promise<boolean>((resolve) => {
+                const modal = new Modal(app);
+                modal.titleEl.setText('');
+                modal.contentEl.empty();
+                modal.modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal-shell--md');
+                modal.contentEl.addClass('ert-modal-container', 'ert-stack');
+
+                const header = modal.contentEl.createDiv({ cls: 'ert-modal-header' });
+                header.createSpan({ cls: 'ert-modal-badge', text: 'SCENE NORMALIZER' });
+                header.createDiv({ cls: 'ert-modal-title', text: 'Insert Missing Advanced Fields' });
+                header.createDiv({
+                    cls: 'ert-modal-subtitle',
+                    text: `Insert Advanced Scene Properties into ${targetFiles.length} scene${targetFiles.length !== 1 ? 's' : ''}.`
+                });
+
+                const body = modal.contentEl.createDiv({ cls: ['ert-panel', 'ert-panel--glass'] });
+                body.createDiv({ text: `Scope: ${auditScopeSummary}`, cls: 'ert-modal-subtitle' });
+                body.createDiv({ text: 'Advanced Scene Properties are enabled. Existing values are preserved.' });
+                const fieldListEl = body.createEl('ul');
+                for (const [key, value] of Object.entries(fieldsToInsert)) {
+                    const valueText = Array.isArray(value) ? value.join(', ') : value;
+                    fieldListEl.createEl('li', { text: valueText ? `${key}: ${valueText}` : `${key}: (empty)` });
+                }
+
+                const footer = modal.contentEl.createDiv({ cls: 'ert-modal-actions' });
+                new ButtonComponent(footer).setButtonText('Insert Advanced Fields').setCta().onClick(() => { resolve(true); modal.close(); });
+                new ButtonComponent(footer).setButtonText('Cancel').onClick(() => { resolve(false); modal.close(); });
+
+                modal.onClose = () => resolve(false);
+                modal.open();
+            });
+
+            if (!confirmed) return;
+
+            const result = await insertMissingAdvancedFields({
+                app,
+                settings: plugin.settings,
+                files: targetFiles,
+                audit: sceneNormalizationResult,
+            });
+
+            const parts: string[] = [];
+            if (result.updated > 0) parts.push(`Updated ${result.updated} scene${result.updated !== 1 ? 's' : ''}`);
+            if (result.skipped > 0) parts.push(`${result.skipped} unchanged`);
+            if (result.failed > 0) parts.push(`${result.failed} failed`);
+            new Notice(parts.join(', ') || 'No changes made.');
+
             setTimeout(() => runAudit(), 750);
         };
 
@@ -5738,6 +6058,25 @@ export function renderStoryBeatsSection(params: {
                 }
             }
 
+            if (noteType === 'Scene' && sceneNormalizationResult) {
+                const result = await deleteExtraSceneFields({
+                    app,
+                    settings: plugin.settings,
+                    files: targetFiles,
+                    audit: sceneNormalizationResult,
+                });
+
+                const parts: string[] = [];
+                if (result.deleted > 0) parts.push(`Cleaned ${result.deleted} scene${result.deleted !== 1 ? 's' : ''}`);
+                if (deletionSnapshotPath) parts.push(`Snapshot: ${deletionSnapshotPath}`);
+                if (result.safetySkipped > 0) parts.push(`${result.safetySkipped} skipped (unsafe)`);
+                if (result.failed > 0) parts.push(`${result.failed} failed`);
+                new Notice(parts.join(', ') || 'No changes made.');
+
+                setTimeout(() => runAudit(), 750);
+                return;
+            }
+
             let migratedToPurpose = 0;
             let removedDescriptionByMigration = 0;
             if (isBeatDescriptionFlow && descMigrationTargets.length > 0) {
@@ -6017,6 +6356,25 @@ export function renderStoryBeatsSection(params: {
                 }
             }
 
+            if (noteType === 'Scene' && sceneNormalizationResult) {
+                const result = await deleteAdvancedSceneFields({
+                    app,
+                    settings: plugin.settings,
+                    files: targetFiles,
+                    audit: sceneNormalizationResult,
+                });
+
+                const msgParts: string[] = [];
+                if (result.deleted > 0) msgParts.push(`Cleaned ${result.deleted} scene${result.deleted !== 1 ? 's' : ''}`);
+                if (deletionSnapshotPath) msgParts.push(`Snapshot: ${deletionSnapshotPath}`);
+                if (result.safetySkipped > 0) msgParts.push(`${result.safetySkipped} skipped (unsafe)`);
+                if (result.failed > 0) msgParts.push(`${result.failed} failed`);
+                new Notice(msgParts.join(', ') || 'No changes made.');
+
+                setTimeout(() => runAudit(), 750);
+                return;
+            }
+
             const result: DeleteResult = await runYamlDeleteFields({
                 app,
                 files: targetFiles,
@@ -6054,7 +6412,13 @@ export function renderStoryBeatsSection(params: {
             );
             if (notesWithDrift.length === 0) return;
 
-            const canonicalOrder = computeCanonicalOrder(noteType, plugin.settings, activeBeatSystemKey);
+            const canonicalOrder = noteType === 'Scene'
+                ? resolveSceneExpectedKeys(
+                    plugin.settings,
+                    buildScenePropertyDefinitions(plugin.settings),
+                    resolveScenePropertyPolicy(plugin.settings)
+                ).canonicalOrder
+                : computeCanonicalOrder(noteType, plugin.settings, activeBeatSystemKey);
 
             // Build a before/after preview from the first affected file
             const previewNote = notesWithDrift[0];
@@ -6149,12 +6513,19 @@ export function renderStoryBeatsSection(params: {
 
             if (!confirmed) return;
 
-            const result: ReorderResult = await runYamlReorder({
-                app,
-                files: notesWithDrift.map(n => n.file),
-                canonicalOrder,
-                safetyResults: auditResult.safetyResults,
-            });
+            const result: ReorderResult = noteType === 'Scene' && sceneNormalizationResult
+                ? await reorderSceneFields({
+                    app,
+                    settings: plugin.settings,
+                    files: notesWithDrift.map(n => n.file),
+                    audit: sceneNormalizationResult,
+                })
+                : await runYamlReorder({
+                    app,
+                    files: notesWithDrift.map(n => n.file),
+                    canonicalOrder,
+                    safetyResults: auditResult.safetyResults,
+                });
 
             console.debug('[YamlManager] yaml_reorder_execute', {
                 noteType,
@@ -6205,11 +6576,9 @@ export function renderStoryBeatsSection(params: {
 
     // Scene audit panel (container already created above for DOM order: editor → audit → preview)
     const renderSceneAuditVisibility = () => {
-        const visible = plugin.settings.enableAdvancedYamlEditor ?? false;
-        sceneAuditContainer.toggleClass('ert-settings-hidden', !visible);
+        sceneAuditContainer.toggleClass('ert-settings-hidden', false);
     };
     renderSceneAuditVisibility();
-    advancedToggleButton.addEventListener('click', () => { renderSceneAuditVisibility(); });
     renderAuditPanel(sceneAuditContainer, 'Scene');
 
     // Backdrop audit panel (inside backdrop YAML section, after hover preview)
