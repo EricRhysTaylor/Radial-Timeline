@@ -1,142 +1,92 @@
-# Radial Timeline CSS Guidelines
-**Scope:** Settings + Modals UI only (ERT UI)  
-**Out of scope:** SVG renderers (Radial Timeline SVG, Inquiry, APR SVG output), canvas/visualization engines
+# CSS Guidelines
 
----
+Use this document together with `ui-architecture.md`. This page explains current CSS scope boundaries and what the repo actually enforces today.
 
-## Vocabulary
-- **Obsidian Theme**: User theme. Owns tactile surfaces (bevels), base colors, focus rings, native controls.
-- **ERT UI**: Radial Timeline UI system (layout archetypes + components).
-- **Skin**: Scoped accent styling layered over the theme (`ert-skin--social`, `ert-skin--pro`).
-- **Archetype**: Reusable layout/surface pattern (`ert-panel`, `ert-row`, `ert-stack`, typography rows, etc.).
+## Current Scope Contract
 
----
+### Settings root
+Shared settings shell CSS belongs under:
+- `.ert-ui`
+- `.ert-scope--settings`
+- `.ert-settings-root` when the rule is specific to the settings subtree
 
-## Core Principles
-1. **Theme-first**
-   - Prefer Obsidian CSS variables for surfaces, borders, typography, shadows.
-   - Avoid hardcoded colors and custom bevel stacks.
+### Modal root
+Shared modal shell CSS belongs under:
+- `.ert-ui`
+- `.ert-scope--modal`
+- `.ert-modal-shell`
+- `.ert-modal-container`
 
-2. **Scoped by default**
-   - All ERT UI CSS must live under `.ert-ui`.
-   - Skin overrides must live under `.ert-ui .ert-skin--X`.
-
-3. **Tokens, not pixels**
-   - Use ERT tokens (`--ert-*`) for spacing and rhythm.
-   - Avoid literal px except `0`.
-
-4. **No one-off wrappers**
-   - If layout/surface is special, create/extend an **archetype**.
-   - Do not invent bespoke classes for spacing fixes.
-
-5. **Additive styling**
-   - Don't replace theme surfaces; add accents (border/outline/glow).
-   - Preserve theme bevels/shadows, especially for pills/swatches.
-
----
+Do not mix settings-root selectors and modal-root selectors casually. They are separate scopes with different shell expectations.
 
 ## File Ownership
-- `src/styles/rt-ui.css`: ERT UI system + skins + archetypes (primary).
-- `src/styles/settings.css`: Minimal Obsidian wiring only.
-- `src/styles/legacy/*.css`: Temporary legacy selectors only.
+- `src/styles/rt-ui.css`
+  Active shared ERT shell, archetypes, tokens, skins, and current settings/modal contracts.
+- `src/styles/settings.css`
+  Minimal Obsidian wiring and narrow settings glue.
+- `src/styles/modal.css`
+  Legacy/supporting modal selectors still in use, but not the primary source of modal shell architecture.
+- `src/styles/legacy/*.css`
+  Legacy islands and extracted migration selectors.
 
-**Never add** `.rt-*` selectors to `rt-ui.css`.
+## Current Naming Reality
+- **Current**: shared shell work is `ert-*`.
+- **Current**: `rt-ui.css` must not grow new `.rt-*` selectors.
+- **Legacy / tolerated**: `.rt-*` still exists outside `rt-ui.css`, especially in domain islands and legacy files.
 
----
+## Spacing and Layout
+- stacks own spacing
+- row/control archetypes own alignment
+- margins are exceptions, not the default
+- prefer ERT tokens and layout primitives over one-off wrappers
 
-## Selector Rules
-### Required scoping
-✅ `.ert-ui .ert-panel { ... }`  
-✅ `.ert-ui.ert-skin--social .ert-panel { ... }`  
-❌ `.setting-item { ... }`  
-❌ `button { ... }`
+## Current Enforcement
 
-### Specificity
-- Keep selectors shallow.
-- Avoid deep chains (e.g., `.ert-ui .ert-panel .setting-item-control input`).
-- Use variants/skins instead of escalating specificity.
+### Verified by `npm run verify`
+`npm run verify` currently runs:
+1. `npm run build`
+2. `npm run css-drift -- --maintenance`
+3. standards checks
+4. tests
 
----
+### CSS drift checks
+`scripts/css-drift-check.mjs` currently checks:
 
-## Color Rules
-### Hard bans
-- No hex/rgb/rgba in component rules.
-- No gradient literals on components.
-
-### Allowed
-- Raw colors only in **token declarations**.
-- Prefer theme vars and `color-mix()` for subtle tinting.
-
----
-
-## Spacing & Rhythm
-- Use tokens:
-  - `--ert-row-pad`
-  - `--ert-row-gap`
-  - `--ert-group-gap`
-  - `--ert-control-h`
-- Density changes via `ert-density--compact`, not ad-hoc margins.
-
----
-
-## Components: Theme Presence Contract
-### Native controls
-- Theme owns background/border/shadow/focus.
-- ERT may set height/padding/width only.
-
-### Pills / Icon buttons / Chips
-- Inherit theme surfaces.
-- Accents are additive (ring/glow).
-- Never flatten via `background` or `box-shadow` overrides.
-
-### Color swatches
-- Background shows actual color.
-- Border/shadow/focus from theme vars.
-- Accent ring on hover/active only.
-
----
-
-## Skins & Nesting
-- Skins are nestable.
-- Nested skin wins (Pro inside Social stays Pro).
-- Provide explicit nested overrides:
-  - `.ert-ui.ert-skin--social .ert-skin--pro .ert-panel { ... }`
-
----
-
-## Banned Practices
+**Fail**
 - `!important`
-- Unscoped global selectors
-- Raw colors outside tokens
-- Flattening theme bevels
-- New archetypes without documentation
+- unscoped global element selectors
+- unscoped Obsidian selectors like `.setting-item` or `.modal`
+- skin overreach (`.ert-skin--*` changing layout/typography instead of visual treatment)
+- `.rt-*` selectors inside `src/styles/rt-ui.css`
 
----
+**Warn in maintenance/migration modes**
+- raw hex colors outside token lines
+- legacy `.rt-*` selectors outside `rt-ui.css`
+- literal `px` spacing
+- raw `rgba()` shadows
 
-## Migration Rules (rt-* → ert-*)
-1. Bridge: add ERT classes alongside rt-*.
-2. Move CSS to ERT selectors.
-3. Remove rt-* once unused by CSS/JS.
+This is the live behavior today. It is not a theoretical future gate.
 
----
+## Additional Locks
 
-## Review Checklist
-- [ ] Scoped under `.ert-ui`
-- [ ] No `!important`
-- [ ] No raw colors outside tokens
-- [ ] Tokenized spacing
-- [ ] Theme bevel preserved
-- [ ] Skins nest correctly
+### Inquiry lock
+`scripts/check-inquiry-ert-lock.mjs` blocks `ert-inquiry-*` tokens in:
+- `src/settings/**`
+- `src/modals/**`
+- `src/styles/rt-ui.css`
 
----
+### Social lock
+`scripts/check-social-ert-lock.mjs` blocks new `rt-*` backslide in specific Social settings render files, with a very small allowlist.
 
-## Build Gate
-Fail on:
-- `!important`
-- Unscoped `.setting-item` / `.modal`
-- Raw colors outside tokens
-- `.rt-*` selectors in `rt-ui.css`
+## Current vs Target-State Guidance
+- **Current / enforced**: scope under `.ert-ui`, avoid `!important`, do not add `.rt-*` to `rt-ui.css`.
+- **Current / enforced**: settings and modals use separate ERT scope roots.
+- **Target-state guidance**: reduce remaining legacy `.rt-*` islands over time.
+- **Tolerated migration reality**: legacy selectors still exist outside `rt-ui.css`.
 
-Warn on:
-- Literal px spacing
-- Raw rgba shadows
+## Practical Review Checklist
+- Is the selector scoped under the correct ERT root?
+- Is this settings CSS or modal CSS?
+- Is this shared shell work or a legacy/domain island?
+- Could this reuse an existing ERT archetype instead of inventing a wrapper?
+- Does this avoid `!important` and preserve theme-native surfaces?

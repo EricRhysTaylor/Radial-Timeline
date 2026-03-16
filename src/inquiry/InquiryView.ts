@@ -173,6 +173,7 @@ import {
 
 const GLYPH_PLACEHOLDER_FLOW = 0.75;
 const GLYPH_PLACEHOLDER_DEPTH = 0.30;
+const GLYPH_EMPTY_STATE_STUB = 0.125;
 const DEBUG_SVG_OVERLAY = false;
 const VIEWBOX_MIN = -800;
 const VIEWBOX_MAX = 800;
@@ -1001,6 +1002,17 @@ type AiSettingsFocus =
 type EngineFailureGuidance = {
     message: string;
 };
+type InquiryGlyphSeedSource = 'active' | 'session' | 'empty';
+type InquiryGlyphSeed = {
+    source: InquiryGlyphSeedSource;
+    flowValue: number;
+    depthValue: number;
+    flowVisualValue: number;
+    depthVisualValue: number;
+    impact: InquirySeverity;
+    assessmentConfidence: InquiryConfidence;
+    session?: InquirySession;
+};
 export class InquiryView extends ItemView {
     static readonly viewType = INQUIRY_VIEW_TYPE;
 
@@ -1348,12 +1360,15 @@ export class InquiryView extends ItemView {
         this.renderModeIcons(minimapGroup);
 
         this.glyphAnchor = createSvgGroup(canvasGroup, 'ert-inquiry-focus-area');
+        const glyphSeed = this.resolveGlyphSeed();
         this.glyph = new InquiryGlyph(this.glyphAnchor, {
             focusLabel: this.getFocusLabel(),
-            flowValue: GLYPH_PLACEHOLDER_FLOW,
-            depthValue: GLYPH_PLACEHOLDER_DEPTH,
-            impact: 'low',
-            assessmentConfidence: 'low'
+            flowValue: glyphSeed.flowValue,
+            depthValue: glyphSeed.depthValue,
+            flowVisualValue: glyphSeed.flowVisualValue,
+            depthVisualValue: glyphSeed.depthVisualValue,
+            impact: glyphSeed.impact,
+            assessmentConfidence: glyphSeed.assessmentConfidence
         });
 
         this.flowRingHit = this.glyph.flowRingHit;
@@ -5601,21 +5616,20 @@ export class InquiryView extends ItemView {
     }
 
     private updateRings(): void {
+        const glyphSeed = this.resolveGlyphSeed();
         const result = this.state.activeResult;
-        const flowValue = result ? this.normalizeMetricValue(result.verdict.flow) : GLYPH_PLACEHOLDER_FLOW;
-        const depthValue = result ? this.normalizeMetricValue(result.verdict.depth) : GLYPH_PLACEHOLDER_DEPTH;
-        const impact = result ? result.verdict.impact : 'low';
-        const assessmentConfidence = result ? result.verdict.assessmentConfidence : 'low';
         const hasError = this.isErrorResult(result);
         const errorRing = hasError ? this.state.mode : null;
         const ringOverrideColor = this.isInquiryRunDisabled() ? this.getInquiryAlertColor() : undefined;
 
         this.glyph?.update({
             focusLabel: this.getFocusLabel(),
-            flowValue,
-            depthValue,
-            impact,
-            assessmentConfidence,
+            flowValue: glyphSeed.flowValue,
+            depthValue: glyphSeed.depthValue,
+            flowVisualValue: glyphSeed.flowVisualValue,
+            depthVisualValue: glyphSeed.depthVisualValue,
+            impact: glyphSeed.impact,
+            assessmentConfidence: glyphSeed.assessmentConfidence,
             errorRing,
             ringOverrideColor
         });
@@ -5822,6 +5836,7 @@ export class InquiryView extends ItemView {
 
     private updateNavSessionLabel(): void {
         if (!this.navSessionLabel) return;
+        this.navSessionLabel.classList.remove('is-welcome');
         if (this.state.scope === 'book' && this.corpus && !this.corpus.bookResolved) {
             this.navSessionLabel.textContent = 'Book scope unresolved. Check Inquiry sources.';
             return;
@@ -5832,14 +5847,30 @@ export class InquiryView extends ItemView {
         }
         const sessionId = this.state.activeSessionId;
         if (!sessionId) {
-            this.navSessionLabel.textContent = 'ID: PENDING';
+            const glyphSeed = this.resolveGlyphSeed();
+            if (glyphSeed.source === 'session' && glyphSeed.session) {
+                this.navSessionLabel.textContent = this.formatSessionNavLabel(glyphSeed.session);
+                return;
+            }
+            this.navSessionLabel.classList.add('is-welcome');
+            this.navSessionLabel.textContent = 'Welcome to Inquiry View';
             return;
         }
         const session = this.sessionStore.peekSession(sessionId);
         if (!session) {
-            this.navSessionLabel.textContent = 'ID: PENDING';
+            const glyphSeed = this.resolveGlyphSeed();
+            if (glyphSeed.source === 'session' && glyphSeed.session) {
+                this.navSessionLabel.textContent = this.formatSessionNavLabel(glyphSeed.session);
+                return;
+            }
+            this.navSessionLabel.classList.add('is-welcome');
+            this.navSessionLabel.textContent = 'Welcome to Inquiry View';
             return;
         }
+        this.navSessionLabel.textContent = this.formatSessionNavLabel(session);
+    }
+
+    private formatSessionNavLabel(session: InquirySession): string {
         const timestamp = session.createdAt || session.lastAccessed;
         const date = new Date(timestamp);
         const formatted = date.toLocaleString(undefined, {
@@ -5849,8 +5880,7 @@ export class InquiryView extends ItemView {
             minute: '2-digit',
             hour12: true
         });
-        // Compact: "ID: Mar 5, 3:45pm"
-        this.navSessionLabel.textContent = `ID: ${formatted.replace(/\s+(AM|PM)/i, (_, m) => m.toLowerCase())}`;
+        return `ID: ${formatted.replace(/\s+(AM|PM)/i, (_, m) => m.toLowerCase())}`;
     }
 
     private updateRunningState(): void {
@@ -8400,16 +8430,99 @@ export class InquiryView extends ItemView {
     private buildFocusHoverText(): string {
         const label = this.getFocusLabel();
         const scopeLabel = this.state.scope === 'saga' ? 'Saga focus' : 'Book focus';
+        if (this.state.activeResult) {
+            return `${scopeLabel}: ${label}.`;
+        }
+        const glyphSeed = this.resolveGlyphSeed();
+        if (glyphSeed.source === 'session') {
+            return `${scopeLabel}: ${label}. Rings seeded from the latest saved inquiry for this focus.`;
+        }
         return `${scopeLabel}: ${label}. No inquiry run yet.`;
     }
 
     private buildRingHoverText(ring: InquiryMode): string {
-        if (!this.state.activeResult) {
-            return `${ring === 'flow' ? 'Flow' : 'Depth'} verdict unavailable. Run an inquiry.`;
+        const label = ring === 'flow' ? 'Flow' : 'Depth';
+        if (this.state.activeResult) {
+            const verdict = this.state.activeResult.verdict;
+            const score = ring === 'flow' ? verdict.flow : verdict.depth;
+            return `${label} score ${this.formatMetricDisplay(score)}. Impact ${verdict.impact}. Assessment confidence ${verdict.assessmentConfidence}.`;
         }
-        const verdict = this.state.activeResult.verdict;
-        const score = ring === 'flow' ? verdict.flow : verdict.depth;
-        return `${ring === 'flow' ? 'Flow' : 'Depth'} score ${this.formatMetricDisplay(score)}. Impact ${verdict.impact}. Assessment confidence ${verdict.assessmentConfidence}.`;
+        const glyphSeed = this.resolveGlyphSeed();
+        if (glyphSeed.source === 'session') {
+            const score = ring === 'flow' ? glyphSeed.flowValue : glyphSeed.depthValue;
+            return `${label} score ${this.formatMetricDisplay(score)} from the latest saved inquiry for this focus. Run an inquiry to refresh it.`;
+        }
+        return `${label} verdict unavailable. Run an inquiry.`;
+    }
+
+    private resolveGlyphSeed(): InquiryGlyphSeed {
+        const activeResult = this.state.activeResult;
+        if (activeResult) {
+            const flowValue = this.normalizeMetricValue(activeResult.verdict.flow);
+            const depthValue = this.normalizeMetricValue(activeResult.verdict.depth);
+            return {
+                source: 'active',
+                flowValue,
+                depthValue,
+                flowVisualValue: flowValue,
+                depthVisualValue: depthValue,
+                impact: activeResult.verdict.impact,
+                assessmentConfidence: activeResult.verdict.assessmentConfidence
+            };
+        }
+
+        const session = this.getLatestSessionForCurrentFocus();
+        if (session) {
+            const result = this.normalizeLegacyResult(session.result);
+            const flowValue = this.normalizeMetricValue(result.verdict.flow);
+            const depthValue = this.normalizeMetricValue(result.verdict.depth);
+            return {
+                source: 'session',
+                flowValue,
+                depthValue,
+                flowVisualValue: flowValue,
+                depthVisualValue: depthValue,
+                impact: result.verdict.impact,
+                assessmentConfidence: result.verdict.assessmentConfidence,
+                session
+            };
+        }
+
+        return {
+            source: 'empty',
+            flowValue: 0,
+            depthValue: 0,
+            flowVisualValue: GLYPH_EMPTY_STATE_STUB,
+            depthVisualValue: GLYPH_EMPTY_STATE_STUB,
+            impact: 'low',
+            assessmentConfidence: 'low'
+        };
+    }
+
+    private getLatestSessionForCurrentFocus(): InquirySession | undefined {
+        const scope = this.state.scope;
+        const focusId = this.getFocusId();
+        if (scope === 'book' && (!focusId || focusId === 'unresolved')) {
+            return undefined;
+        }
+        return this.sessionStore
+            .getRecentSessions(this.sessionStore.getSessionCount())
+            .find(session => {
+                const sessionScope = session.scope ?? session.result.scope;
+                if (sessionScope !== scope) return false;
+                if (this.isErrorResult(session.result)) return false;
+                if (scope === 'saga') return true;
+                return this.getSessionFocusId(session) === focusId;
+            });
+    }
+
+    private getSessionFocusId(session: InquirySession): string | undefined {
+        if (session.focusBookId?.trim()) {
+            return session.focusBookId;
+        }
+        const [, , ...focusParts] = session.baseKey.split('::');
+        const fallback = focusParts.join('::').trim();
+        return fallback || undefined;
     }
 
     private buildZoneHoverText(zone: InquiryZone): string {

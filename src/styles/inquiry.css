@@ -1856,11 +1856,20 @@
 }
 
 .ert-inquiry-nav-session-label {
-  font-size: 12px;
-  fill: var(--text-muted);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  fill: color-mix(in srgb, var(--text-normal) 88%, transparent);
   font-family: var(--font-interface);
   user-select: none;
   pointer-events: none;
+}
+
+.ert-inquiry-nav-session-label.is-welcome {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  fill: var(--text-normal);
 }
 
 .ert-inquiry-engine-timer {

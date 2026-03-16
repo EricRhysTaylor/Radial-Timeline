@@ -1,79 +1,36 @@
-# Modal UI & Styling Standards ("Gossamer Pulse")
+# Modal Styling
 
-To ensure visual consistency and a premium user experience, all new modals MUST follow the **"Gossamer Pulse"** design system. Do NOT use standard Obsidian styles or create new ad-hoc styles.
+## Status
+This document is **deprecated as a primary source of truth**.
 
-## 1. Modal Shell
-*   **Class:** `rt-pulse-modal-shell` on `modalEl`.
-*   **Inner Class:** `rt-pulse-modal` on `contentEl`.
-*   **Dimensions:** Sized explicitly via inline styles (Obsidian safe pattern) to `width: 760px` / `maxWidth: 92vw` / `maxHeight: 92vh`.
+Read `ui-architecture.md` first for the current modal shell contract.
 
-## 2. Header Structure
-All modals must use the `rt-gossamer-simple-header` layout.
+## Current Modal Contract
+New shared modal shell work should follow:
+- `ert-ui`
+- `ert-scope--modal`
+- `ert-modal-shell` on `modalEl`
+- `ert-modal-container` on `contentEl`
 
-```typescript
-const hero = container.createDiv({ cls: 'rt-gossamer-simple-header' });
+Sizing remains an inline-style exception on `modalEl`:
 
-// Badge (Small Pill)
-hero.createSpan({ cls: 'rt-gossamer-simple-badge', text: 'CATEGORY' });
+```ts
+if (modalEl) {
+  // SAFE: Modal sizing via inline styles (Obsidian pattern)
+  modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell');
+  modalEl.style.width = '720px';
+  modalEl.style.maxWidth = '92vw';
+}
 
-// Title (Large System Font)
-hero.createDiv({ cls: 'rt-gossamer-hero-system', text: 'Modal Title' });
-
-// Subtitle (Muted Description)
-hero.createDiv({ cls: 'rt-gossamer-score-subtitle', text: 'Brief description of what this modal does.' });
-
-// Meta Data (Optional Row of details)
-const meta = hero.createDiv({ cls: 'rt-gossamer-simple-meta' });
-meta.createSpan({ cls: 'rt-pulse-hero-meta-item', text: 'Detail 1' });
+contentEl.addClass('ert-modal-container', 'ert-stack');
 ```
 
-## 3. Cards & Panels
-Content should be grouped into "Glass Cards" rather than sitting on the plain background.
+## Legacy Context
+Older `rt-*` modal patterns such as `rt-pulse-modal-shell`, `rt-pulse-modal`, and `rt-gossamer-*` structures still exist in parts of the codebase.
 
-*   **Container Class:** `rt-glass-card`
-*   **Section Heading:** `rt-sub-card-head`
-*   **Explanatory Note:** `rt-sub-card-note` (muted text)
+Those patterns are:
+- **legacy**
+- **tolerated during migration**
+- **not the current shared modal standard**
 
-```typescript
-const card = container.createDiv({ cls: 'rt-glass-card rt-sub-card' });
-card.createDiv({ cls: 'rt-sub-card-head', text: 'Settings Group' });
-// ... content ...
-```
-
-## 4. Interactive Elements (Pills)
-Use "Pills" for toggle/selection groups instead of dropdowns or radio buttons when possible.
-
-*   **Row Container:** `rt-manuscript-pill-row`
-*   **Pill Item:** `rt-manuscript-pill`
-*   **Active State:** `rt-is-active` class
-
-## 5. Buttons (Actions)
-Action buttons should live at the bottom in a dedicated container.
-
-*   **Container:** `rt-beats-actions rt-manuscript-actions`
-*   **Primary Button:** `.setCta()` (Obsidian API)
-*   **Cancel Button:** Standard button.
-
----
-
-## Example Implementation
-
-Reference `src/modals/ManuscriptOptionsModal.ts` for the gold standard implementation of these patterns.
-
-## Layout & CSS Rules
-
-1. **Structure & Padding**
-   - Keep descriptive text in a single `rt-pulse-info` block right after the hero.
-   - Let CSS `gap` values define spacing. Avoid manual padding tweaks.
-
-2. **Content Discipline**
-   - Ensure the same phrase isn’t repeated in multiple places (hero subtitle vs card body).
-   - Prefer reusable classes: `.rt-pulse-mode-option`, `.rt-pulse-ruler-*`, `.rt-pulse-actions`.
-
-3. **Scroll Behavior**
-   - Never apply fixed pixel heights to scroll areas. Use flex containers with `overflow-y:auto`.
-   - Horizontal trackers belong inside `.rt-pulse-ruler-scroll`.
-
-
-
-
+Do not use this document as justification for adding new pre-ERT modal shells.

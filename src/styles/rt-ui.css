@@ -5031,21 +5031,36 @@
 
 .ert-ui.ert-scope--settings .ert-scene-maintenance-panel {
   gap: var(--ert-gap-sm);
+  padding-top: var(--ert-pad-sm);
+  padding-bottom: var(--ert-pad-sm);
 }
 
 .ert-ui.ert-scope--settings .ert-scene-maintenance-desc {
   color: var(--text-normal);
 }
 
-.ert-ui.ert-scope--settings .ert-scene-maintenance-policy {
-  margin-top: var(--ert-gap-xs);
+.ert-ui.ert-scope--settings .ert-scene-maintenance-policy-block {
+  gap: 2px;
+  padding: var(--ert-gap-sm) var(--ert-pad-sm);
+  border-radius: calc(var(--ert-panel-radius) - 4px);
+  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 85%, transparent);
+  background: color-mix(in srgb, var(--background-secondary) 90%, var(--interactive-accent) 2%);
+}
+
+.ert-ui.ert-scope--settings .ert-scene-maintenance-policy-lead {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+.ert-ui.ert-scope--settings .ert-scene-maintenance-policy-detail {
   font-size: 12px;
-  line-height: 1.5;
+  line-height: 1.45;
   color: var(--text-muted);
 }
 
 .ert-ui.ert-scope--settings .ert-scene-maintenance-section {
-  gap: var(--ert-gap-xs);
+  gap: 6px;
 }
 
 .ert-ui.ert-scope--settings .ert-scene-maintenance-group-label {
@@ -5057,7 +5072,12 @@
 }
 
 .ert-ui.ert-scope--settings .ert-scene-maintenance-section--cleanup {
-  padding-top: var(--ert-gap-xs);
+  padding-top: 6px;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.ert-ui.ert-scope--settings .ert-scene-maintenance-section--results {
+  padding-top: 6px;
   border-top: 1px solid var(--background-modifier-border);
 }
 
@@ -5067,6 +5087,12 @@
 
 .ert-ui.ert-scope--settings .ert-scene-maintenance-actions--cleanup {
   justify-content: flex-end;
+}
+
+.ert-ui.ert-scope--settings .ert-scene-maintenance-helper {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-muted);
 }
 
 .ert-ui.ert-scope--settings .ert-scene-maintenance-actions--utility {
@@ -9032,9 +9058,9 @@
   display: flex;
   flex-direction: column;
   gap: var(--ert-gap-sm);
-  padding: var(--ert-pad-sm) var(--ert-pad-md);
-  margin-top: calc(-1 * var(--ert-gap-xs));
-  border-top: 1px dashed var(--background-modifier-border);
+  padding: 0;
+  margin-top: 0;
+  border-top: 0;
 }
 
 .ert-ui.ert-scope--settings .ert-audit-results-row.ert-settings-hidden {

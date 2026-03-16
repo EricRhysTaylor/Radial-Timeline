@@ -9,11 +9,19 @@ must be performed.
 All AI agents performing refactors must read the doctrine documents
 listed below before modifying runtime code.
 
+For UI work:
+
+1. Read `docs/engineering/standards/ui-architecture.md` first.
+2. Then use `code-standards.md`, `css-guidelines.md`, and `modal-styling.md` as supporting standards and migration context.
+
 ---
 
 ## Core Doctrine
 
 Location: `docs/engineering/standards/`
+
+- **[ui-architecture.md](standards/ui-architecture.md)**
+  Primary source of truth for settings UI, modal UI, and the live ERT architecture. Read this first before touching shared UI shell work.
 
 - **[code-doctrine.md](standards/code-doctrine.md)**
   Core engineering philosophy for the RT codebase.
@@ -25,13 +33,13 @@ Location: `docs/engineering/standards/`
   Step-by-step rules for performing structural refactors safely.
 
 - **[code-standards.md](standards/code-standards.md)**
-  General coding standards.
+  Supporting coding standards. Use after `ui-architecture.md` for UI/settings/modal work.
 
 - **[css-guidelines.md](standards/css-guidelines.md)**
-  Styling and CSS architecture rules.
+  Supporting CSS guidance and enforcement notes. Use after `ui-architecture.md`.
 
 - **[modal-styling.md](standards/modal-styling.md)**
-  Modal layout standards used across RT.
+  Legacy/deprecated modal guidance. Consult only for migration context after `ui-architecture.md`.
 
 - **[frontend-design.md](standards/frontend-design.md)**
   Frontend design aesthetics, UI/UX direction, and visual quality guide.

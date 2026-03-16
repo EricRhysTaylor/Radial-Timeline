@@ -37,6 +37,22 @@ function createBadge(container: HTMLElement, text: string): HTMLElement {
     return badge;
 }
 
+function setButtonDisabled(button: ButtonComponent | undefined, disabled: boolean, reason?: string): void {
+    if (!button) return;
+    button.setDisabled(disabled);
+    if (reason) {
+        setTooltip(button.buttonEl, reason);
+    }
+}
+
+function setIconButtonDisabled(button: HTMLButtonElement | undefined, disabled: boolean, reason?: string): void {
+    if (!button) return;
+    button.disabled = disabled;
+    if (reason) {
+        setTooltip(button, reason);
+    }
+}
+
 function toDisplayAuditResult(sceneAudit: SceneNormalizationAudit): YamlAuditResult {
     const notes: NoteAuditEntry[] = sceneAudit.notes.map((note) => ({
         file: note.file,
@@ -152,14 +168,21 @@ export function renderSceneNormalizerSection(params: {
     let sceneAudit: SceneNormalizationAudit | null = null;
     let auditResult: YamlAuditResult | null = null;
     let auditScopeSummary = '';
+    let hasCheckedScenes = false;
     const buildMaintenanceDescription = (): string => {
         return 'Check scene notes for missing core properties, IDs, layout order, and optional advanced properties.';
     };
-    const buildPolicyExplanation = (): string => {
+    const buildPolicyExplanation = (): { lead: string; detail: string } => {
         const advancedEnabled = plugin.settings.sceneAdvancedPropertiesEnabled ?? true;
         return advancedEnabled
-            ? 'Advanced Properties are maintained in scenes.'
-            : 'Advanced Properties are available but not maintained in scenes. Unused Advanced fields will not be removed unless “Remove Advanced Properties” is used.';
+            ? {
+                lead: 'Advanced properties are currently maintained in scene notes.',
+                detail: 'Missing advanced fields will be reported and can be added automatically.'
+            }
+            : {
+                lead: 'Advanced properties are currently disabled.',
+                detail: 'Existing advanced fields will be preserved but not maintained. You may remove them using “Remove Advanced Properties”.'
+            };
     };
     const buildPolicyBadge = (): string => (
         (plugin.settings.sceneAdvancedPropertiesEnabled ?? true) ? 'Advanced Maintained' : 'Advanced Optional'
@@ -177,20 +200,37 @@ export function renderSceneNormalizerSection(params: {
     addWikiLink(headerRow, 'Settings#yaml-templates');
     applyErtHeaderLayout(headerRow);
     const maintenanceDescriptionEl = headerRow.descEl.createDiv({ cls: 'ert-scene-maintenance-desc' });
-    const maintenancePolicyEl = headerRow.descEl.createDiv({ cls: 'ert-scene-maintenance-policy' });
     const policyBadgeEl = createBadge(headerRow.controlEl, buildPolicyBadge());
+    const panel = parentEl.createDiv({ cls: ['ert-panel', 'ert-stack', 'ert-scene-maintenance-panel', 'ert-settings-hidden'] });
+    const policyBlock = panel.createDiv({ cls: ['ert-panel', 'ert-scene-maintenance-policy-block'] });
+    const policyLeadEl = policyBlock.createDiv({ cls: 'ert-scene-maintenance-policy-lead' });
+    const policyDetailEl = policyBlock.createDiv({ cls: 'ert-scene-maintenance-policy-detail' });
+    const maintenanceSection = panel.createDiv({ cls: ['ert-stack', 'ert-scene-maintenance-section'] });
+    maintenanceSection.createDiv({ cls: 'ert-scene-maintenance-group-label', text: 'Maintenance' });
+    const maintenanceGroup = maintenanceSection.createDiv({ cls: ['ert-inline-actions', 'ert-scene-maintenance-actions'] });
+    const maintenanceHelperEl = maintenanceSection.createDiv({ cls: 'ert-scene-maintenance-helper' });
+    const cleanupSection = panel.createDiv({ cls: ['ert-stack', 'ert-scene-maintenance-section', 'ert-scene-maintenance-section--cleanup'] });
+    cleanupSection.createDiv({ cls: 'ert-scene-maintenance-group-label', text: 'Cleanup' });
+    const cleanupGroup = cleanupSection.createDiv({ cls: ['ert-inline-actions', 'ert-inline-actions--end', 'ert-scene-maintenance-actions', 'ert-scene-maintenance-actions--cleanup'] });
+    const cleanupHelperEl = cleanupSection.createDiv({ cls: 'ert-scene-maintenance-helper' });
+    const resultsSection = panel.createDiv({ cls: ['ert-stack', 'ert-scene-maintenance-section', 'ert-scene-maintenance-section--results', 'ert-settings-hidden'] });
+    resultsSection.createDiv({ cls: 'ert-scene-maintenance-group-label', text: 'Scene Status' });
+    const resultsEl = resultsSection.createDiv({ cls: 'ert-audit-results-row' });
+    const refreshResultsVisibility = () => {
+        resultsSection.toggleClass('ert-settings-hidden', resultsEl.childElementCount === 0);
+    };
     const refreshMaintenanceCopy = () => {
         maintenanceDescriptionEl.setText(buildMaintenanceDescription());
-        maintenancePolicyEl.setText(buildPolicyExplanation());
+        const policy = buildPolicyExplanation();
+        policyLeadEl.setText(policy.lead);
+        policyDetailEl.setText(policy.detail);
         policyBadgeEl.querySelector('.ert-badgePill__text')?.replaceChildren(document.createTextNode(buildPolicyBadge()));
-        setTooltip(policyBadgeEl, buildPolicyExplanation());
+        setTooltip(policyBadgeEl, `${policy.lead} ${policy.detail}`);
         if (removeUnusedBtn) {
             setTooltip(removeUnusedBtn.buttonEl, buildUnusedFieldsTooltip());
         }
-        if (auditResult && sceneAudit) {
-            updateButtons();
-            renderResults();
-        }
+        updateButtons();
+        if (auditResult && sceneAudit) renderResults();
     };
     parentEl.addEventListener('ert:scene-advanced-maintenance-changed', refreshMaintenanceCopy as EventListener);
 
@@ -201,15 +241,6 @@ export function renderSceneNormalizerSection(params: {
         .onClick(() => void runCheckScenes());
     checkBtn.setIcon('shield-check');
 
-    const panel = parentEl.createDiv({ cls: ['ert-panel', 'ert-stack', 'ert-scene-maintenance-panel', 'ert-settings-hidden'] });
-    const maintenanceSection = panel.createDiv({ cls: ['ert-stack', 'ert-scene-maintenance-section'] });
-    maintenanceSection.createDiv({ cls: 'ert-scene-maintenance-group-label', text: 'Maintenance' });
-    const maintenanceGroup = maintenanceSection.createDiv({ cls: ['ert-inline-actions', 'ert-scene-maintenance-actions'] });
-    const cleanupSection = panel.createDiv({ cls: ['ert-stack', 'ert-scene-maintenance-section', 'ert-scene-maintenance-section--cleanup'] });
-    cleanupSection.createDiv({ cls: 'ert-scene-maintenance-group-label', text: 'Cleanup' });
-    const cleanupGroup = cleanupSection.createDiv({ cls: ['ert-inline-actions', 'ert-inline-actions--end', 'ert-scene-maintenance-actions', 'ert-scene-maintenance-actions--cleanup'] });
-    const resultsEl = panel.createDiv({ cls: 'ert-audit-results-row' });
-
     let copyBtn: HTMLButtonElement | undefined;
     let addCoreBtn: ButtonComponent | undefined;
     let addAdvancedBtn: ButtonComponent | undefined;
@@ -219,35 +250,67 @@ export function renderSceneNormalizerSection(params: {
     let removeAdvancedBtn: ButtonComponent | undefined;
     let fixDuplicateBtn: ButtonComponent | undefined;
 
-    const setButtonVisible = (button: ButtonComponent | undefined, visible: boolean) => {
-        if (!button) return;
-        button.buttonEl.toggleClass('ert-settings-hidden', !visible);
-    };
-    const setIconButtonVisible = (button: HTMLButtonElement | undefined, visible: boolean) => {
-        if (!button) return;
-        button.toggleClass('ert-settings-hidden', !visible);
-    };
-
     const updateButtons = () => {
         const summary = sceneAudit?.summary;
-        setIconButtonVisible(copyBtn, !!sceneAudit);
-        setButtonVisible(addCoreBtn, !!summary && summary.scenesWithMissingCore > 0);
-        setButtonVisible(addAdvancedBtn, !!summary && (plugin.settings.sceneAdvancedPropertiesEnabled ?? true) && summary.scenesWithMissingAdvanced > 0);
-        setButtonVisible(addIdsBtn, !!summary && summary.scenesMissingIds > 0);
-        setButtonVisible(reorderBtn, !!summary && summary.scenesWithDrift > 0);
-        setButtonVisible(removeUnusedBtn, !!summary && summary.scenesWithExtra > 0);
+        const advancedEnabled = plugin.settings.sceneAdvancedPropertiesEnabled ?? true;
         const advancedKeys = buildScenePropertyDefinitions(plugin.settings).advanced.map((definition) => definition.key);
         const notesWithAdvanced = sceneAudit?.notes.filter((note) => note.toleratedInactiveAdvancedKeys.length > 0 || note.missingAdvancedKeys.length > 0 || advancedKeys.some((key) => {
             const cache = app.metadataCache.getFileCache(note.file);
             return !!cache?.frontmatter && Object.keys(cache.frontmatter).includes(key);
         })) ?? [];
-        setButtonVisible(removeAdvancedBtn, advancedKeys.length > 0 && notesWithAdvanced.length > 0);
-        setButtonVisible(fixDuplicateBtn, !!summary && summary.scenesDuplicateIds > 0);
+
+        const disabledReasonBase = hasCheckedScenes
+            ? undefined
+            : 'Check Scenes to review what needs maintenance.';
+
+        setIconButtonDisabled(copyBtn, !sceneAudit, sceneAudit ? undefined : 'Check Scenes to generate a status report.');
+        setButtonDisabled(addCoreBtn, !summary || summary.scenesWithMissingCore === 0, disabledReasonBase || 'All scenes already contain core properties.');
+        setButtonDisabled(
+            addAdvancedBtn,
+            !advancedEnabled || !summary || summary.scenesWithMissingAdvanced === 0,
+            !advancedEnabled
+                ? 'Advanced Properties are disabled.'
+                : (disabledReasonBase || 'All maintained advanced properties are already present.')
+        );
+        setButtonDisabled(addIdsBtn, !summary || summary.scenesMissingIds === 0, disabledReasonBase || 'All scenes already have IDs.');
+        setButtonDisabled(reorderBtn, !summary || summary.scenesWithDrift === 0, disabledReasonBase || 'Scene property order already matches the current layout.');
+        setButtonDisabled(removeUnusedBtn, !summary || summary.scenesWithExtra === 0, disabledReasonBase || buildUnusedFieldsTooltip());
+        setButtonDisabled(removeAdvancedBtn, advancedKeys.length === 0 || notesWithAdvanced.length === 0, disabledReasonBase || 'No scenes currently contain advanced properties to remove.');
+        setButtonDisabled(fixDuplicateBtn, !summary || summary.scenesDuplicateIds === 0, disabledReasonBase || 'No duplicate scene IDs were detected.');
+
+        const maintenanceReasons: string[] = [];
+        const cleanupReasons: string[] = [];
+        if (!summary) {
+            maintenanceReasons.push('Run Check Scenes to load scene status and available maintenance actions.');
+            cleanupReasons.push('Cleanup actions unlock after scene status has been checked.');
+        } else {
+            if (summary.scenesWithMissingCore === 0) maintenanceReasons.push('All scenes already contain core properties.');
+            if (!advancedEnabled) {
+                maintenanceReasons.push('Advanced Properties are disabled, so advanced fields are not added automatically.');
+            } else if (summary.scenesWithMissingAdvanced === 0) {
+                maintenanceReasons.push('No advanced properties are currently missing.');
+            }
+            if (summary.scenesMissingIds === 0) maintenanceReasons.push('All scenes already have IDs.');
+            if (summary.scenesWithDrift === 0) maintenanceReasons.push('Scene property order already matches the current layout.');
+
+            if (summary.scenesWithExtra === 0) cleanupReasons.push(advancedEnabled
+                ? 'No unused fields were detected.'
+                : 'No unused non-Advanced fields were detected. Advanced fields are preserved.');
+            if (!(advancedKeys.length > 0 && notesWithAdvanced.length > 0)) cleanupReasons.push('No scenes currently contain removable advanced properties.');
+            if (summary.scenesDuplicateIds === 0) cleanupReasons.push('No duplicate scene IDs were detected.');
+        }
+        maintenanceHelperEl.setText(maintenanceReasons[0] ?? '');
+        cleanupHelperEl.setText(cleanupReasons[0] ?? '');
+        maintenanceHelperEl.toggleClass('ert-settings-hidden', maintenanceReasons.length === 0);
+        cleanupHelperEl.toggleClass('ert-settings-hidden', cleanupReasons.length === 0);
     };
 
     const renderResults = () => {
         resultsEl.empty();
-        if (!auditResult || !sceneAudit) return;
+        if (!auditResult || !sceneAudit) {
+            refreshResultsVisibility();
+            return;
+        }
 
         const summary = auditResult.summary;
         const advancedEnabled = plugin.settings.sceneAdvancedPropertiesEnabled ?? true;
@@ -262,15 +325,25 @@ export function renderSceneNormalizerSection(params: {
                         : 'clean';
         const healthLabels: Record<string, string> = {
             clean: 'Clean',
-            mixed: 'Mixed',
+            mixed: 'Some scenes need attention',
             'needs-attention': 'Needs attention',
             critical: 'Critical issues detected',
             unsafe: 'Unsafe notes detected',
         };
+        const warningsOnly = healthLevel === 'mixed'
+            && summary.notesWithWarnings > 0
+            && summary.notesWithExtra === 0
+            && summary.notesWithDrift === 0
+            && summary.notesMissingIds === 0
+            && summary.notesDuplicateIds === 0
+            && sceneAudit.summary.scenesWithMissingCore === 0
+            && sceneAudit.summary.scenesWithMissingAdvanced === 0
+            && summary.notesSuspicious === 0
+            && summary.notesUnsafe === 0;
 
         const headerEl = resultsEl.createDiv({ cls: 'ert-audit-result-header' });
         const statusEl = headerEl.createSpan({ cls: `ert-audit-health ert-audit-health--${healthLevel}` });
-        statusEl.textContent = `Scene Status: ${healthLabels[healthLevel]}`;
+        statusEl.textContent = `Scene Status: ${warningsOnly ? 'Warnings to review' : healthLabels[healthLevel]}`;
         headerEl.createSpan({ text: ` · Scope: ${auditScopeSummary}`, cls: 'ert-audit-summary' });
 
         if (
@@ -401,21 +474,32 @@ export function renderSceneNormalizerSection(params: {
 
         renderChips();
         renderNoteList();
+        refreshResultsVisibility();
     };
 
     const runCheckScenes = async () => {
         panel.classList.remove('ert-settings-hidden');
+        hasCheckedScenes = true;
+        updateButtons();
         const auditScope = collectFilesForAuditWithScope(app, 'Scene', plugin.settings);
         auditScopeSummary = auditScope.scopeSummary;
         if (auditScope.reason) {
             resultsEl.empty();
             resultsEl.createDiv({ text: auditScope.reason, cls: 'ert-audit-clean' });
+            refreshResultsVisibility();
+            sceneAudit = null;
+            auditResult = null;
+            updateButtons();
             new Notice(auditScope.reason);
             return;
         }
         if (auditScope.files.length === 0) {
             resultsEl.empty();
             resultsEl.createDiv({ text: 'No scene notes found in the active book scope.', cls: 'ert-audit-clean' });
+            refreshResultsVisibility();
+            sceneAudit = null;
+            auditResult = null;
+            updateButtons();
             return;
         }
 
@@ -431,7 +515,7 @@ export function renderSceneNormalizerSection(params: {
     };
 
     copyBtn = cleanupGroup.createEl('button', {
-        cls: [ERT_CLASSES.ICON_BTN, 'ert-settings-hidden'],
+        cls: [ERT_CLASSES.ICON_BTN],
         attr: { type: 'button', 'aria-label': 'Copy status report to clipboard' }
     });
     setIcon(copyBtn, 'clipboard-copy');
@@ -629,8 +713,6 @@ export function renderSceneNormalizerSection(params: {
             setTimeout(() => { void runCheckScenes(); }, 750);
         });
 
-    [addCoreBtn, addAdvancedBtn, addIdsBtn, reorderBtn, removeUnusedBtn, removeAdvancedBtn, fixDuplicateBtn].forEach((button) => {
-        if (button) button.buttonEl.classList.add('ert-settings-hidden');
-    });
     refreshMaintenanceCopy();
+    refreshResultsVisibility();
 }

@@ -5,6 +5,8 @@ export interface InquiryGlyphProps {
     focusLabel: string;
     flowValue: number;  // 0..1 normalized
     depthValue: number; // 0..1 normalized
+    flowVisualValue?: number; // Optional display-only arc position for truthful zero-state stubs
+    depthVisualValue?: number; // Optional display-only arc position for truthful zero-state stubs
     impact: InquirySeverity;
     assessmentConfidence: InquiryConfidence;
     errorRing?: 'flow' | 'depth' | null;
@@ -233,6 +235,7 @@ export class InquiryGlyph {
             this.flowBadgeText,
             this.flowBadgeIcon,
             props.flowValue,
+            props.flowVisualValue ?? props.flowValue,
             FLOW_RADIUS,
             FLOW_STROKE,
             props.impact,
@@ -249,6 +252,7 @@ export class InquiryGlyph {
             this.depthBadgeText,
             this.depthBadgeIcon,
             props.depthValue,
+            props.depthVisualValue ?? props.depthValue,
             DEPTH_RADIUS,
             DEPTH_STROKE,
             props.impact,
@@ -609,6 +613,7 @@ export class InquiryGlyph {
         badgeText: SVGTextElement,
         badgeIcon: SVGUseElement | undefined,
         value: number,
+        visualValue: number,
         radius: number,
         strokeWidth: number,
         impact: InquirySeverity,
@@ -624,27 +629,29 @@ export class InquiryGlyph {
         const showError = errorRing === kind;
         const errorColor = showError ? '#ff4d4d' : undefined;
         const ringColor = overrideColor ?? errorColor;
-        this.updateRingArc(progress, arc, value, radius, strokeWidth, ringColor);
-        this.updateBadge(badgeCircle, badgeText, badgeIcon, value, radius, strokeWidth, showError, ringColor);
+        this.updateRingArc(progress, arc, value, visualValue, radius, strokeWidth, ringColor);
+        this.updateBadge(badgeCircle, badgeText, badgeIcon, value, visualValue, radius, strokeWidth, showError, ringColor);
     }
 
     private updateRingArc(
         progressGroup: SVGGElement,
         arc: SVGPathElement,
         normalized: number,
+        visualNormalized: number,
         radius: number,
         strokeWidth: number,
         overrideColor?: string
     ): void {
         const safeValue = Math.min(Math.max(normalized, 0), 1);
-        if (safeValue <= 0) {
+        const safeVisualValue = Math.min(Math.max(visualNormalized, 0), 1);
+        if (safeVisualValue <= 0) {
             arc.setAttribute('d', '');
             progressGroup.setAttribute('opacity', '0');
             return;
         }
         progressGroup.setAttribute('opacity', '1');
         const startDeg = -90;
-        let sweepDeg = safeValue * 360;
+        let sweepDeg = safeVisualValue * 360;
         if (sweepDeg > 359.999) sweepDeg = 359.999;
         const endDeg = startDeg + sweepDeg;
         const start = this.polarToCartesian(radius, startDeg);
@@ -672,13 +679,15 @@ export class InquiryGlyph {
         badgeText: SVGTextElement,
         badgeIcon: SVGUseElement | undefined,
         normalized: number,
+        visualNormalized: number,
         radius: number,
         strokeWidth: number,
         showErrorIcon: boolean,
         overrideColor?: string
     ): void {
         const safeValue = Math.min(Math.max(normalized, 0), 1);
-        const theta = (-90 + (360 * safeValue)) * (Math.PI / 180);
+        const safeVisualValue = Math.min(Math.max(visualNormalized, 0), 1);
+        const theta = (-90 + (360 * safeVisualValue)) * (Math.PI / 180);
         const x = radius * Math.cos(theta);
         const y = radius * Math.sin(theta);
         const badgeRadius = (strokeWidth / 2) * this.badgeScaleFactor;
