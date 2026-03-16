@@ -9200,7 +9200,7 @@
   margin-top: 8px;
 }
 
-.ert-modal-confirm-type input {
+.ert-modal-confirm-type input:not([type="checkbox"]) {
   margin-top: 4px;
   width: 100%;
   padding: 6px 10px;
@@ -9213,7 +9213,7 @@
   letter-spacing: 0.5px;
 }
 
-.ert-modal-confirm-type input.ert-input-error {
+.ert-modal-confirm-type input:not([type="checkbox"]).ert-input-error {
   border-color: var(--text-error);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--text-error) 25%, transparent);
 }
