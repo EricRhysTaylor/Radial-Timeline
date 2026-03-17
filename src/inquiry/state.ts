@@ -31,7 +31,7 @@ export interface InquiryVerdict {
 
 export interface InquiryFinding {
     refId: string;
-    kind: 'none' | 'loose_end' | 'continuity' | 'escalation' | 'conflict' | 'unclear' | 'error';
+    kind: 'none' | 'loose_end' | 'continuity' | 'escalation' | 'conflict' | 'unclear' | 'error' | 'strength';
     status: 'introduced' | 'escalated' | 'resolved' | 'dropped' | 'unclear';
     impact: InquirySeverity;
     assessmentConfidence: InquiryConfidence;

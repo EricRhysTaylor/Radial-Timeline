@@ -1503,7 +1503,7 @@
 
 .ert-inquiry-scene-dossier-composition {
   transform-box: fill-box;
-  transform-origin: center top;
+  transform-origin: center center;
   transform: scale(0.98);
   transition: transform 220ms cubic-bezier(0.2, 0.72, 0.2, 1);
 }
@@ -1519,30 +1519,29 @@
 }
 
 .ert-inquiry-scene-dossier-bg {
-  fill: color-mix(in srgb, var(--background-primary) 86%, #0d1117);
-  fill-opacity: 0.9;
-  filter: drop-shadow(0 26px 48px rgb(0 0 0 / 0.36));
+  fill: none;
+  stroke: none;
 }
 
 .ert-inquiry-scene-dossier-brace {
   font-family: var(--font-text), Georgia, serif;
   font-weight: 400;
   fill: color-mix(in srgb, var(--text-muted) 72%, #f2dec6);
-  opacity: 0.14;
+  opacity: 0.18;
 }
 
 .ert-inquiry-scene-dossier-header {
   font-family: var(--font-text), Georgia, serif;
-  font-size: 20px;
+  font-size: 60px;
   font-weight: 640;
-  letter-spacing: 0.018em;
+  letter-spacing: 0.012em;
   fill: color-mix(in srgb, var(--text-normal) 88%, #f6dbc0);
 }
 
 .ert-inquiry-scene-dossier-body {
   font-family: var(--font-text), Georgia, serif;
   font-size: 18px;
-  font-weight: 520;
+  font-weight: 380;
   fill: color-mix(in srgb, var(--text-normal) 92%, #f2ddc4);
 }
 

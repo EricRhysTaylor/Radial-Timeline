@@ -188,7 +188,7 @@ export function renderScenePropertiesSection(params: {
         advancedSetting.settingEl.toggleClass('is-active', maintained);
         advancedStatusEl.toggleClass('ert-scene-properties-status--active', maintained);
         setIcon(advancedStatusEl, maintained ? 'check-circle-2' : 'circle');
-        advancedStateEl.setText(maintained ? 'On' : 'Off');
+        advancedStateEl.setText('');
         const tooltip = maintained ? 'Advanced Properties are enabled' : 'Advanced Properties are disabled';
         setTooltip(advancedSetting.settingEl, tooltip);
         setTooltip(advancedStatusEl, tooltip);

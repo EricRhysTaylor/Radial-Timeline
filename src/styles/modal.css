@@ -2155,6 +2155,13 @@
   align-self: center;
 }
 
+.rt-synopsis-control-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
 .rt-synopsis-control-info {
   display: flex;
   flex-direction: column;
@@ -2229,6 +2236,11 @@
 }
 
 @media (max-width: 700px) {
+  .rt-synopsis-control-right {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
   .ert-synopsis-control--three-col {
     grid-template-columns: auto minmax(0, 1fr);
     row-gap: 10px;

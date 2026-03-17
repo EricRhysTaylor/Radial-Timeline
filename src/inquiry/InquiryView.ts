@@ -204,25 +204,24 @@ const DEPTH_FINDING_ORDER: InquiryFinding['kind'][] = ['continuity', 'loose_end'
 const SIGMA_CHAR = String.fromCharCode(931);
 const MODE_ICON_VIEWBOX = 2048;
 const MODE_ICON_OFFSET_Y = -330;
-const SCENE_DOSSIER_Y = -248;
-const SCENE_DOSSIER_WIDTH = 780;
-const SCENE_DOSSIER_MIN_HEIGHT = 232;
-const SCENE_DOSSIER_SIDE_PADDING = 78;
-const SCENE_DOSSIER_PADDING_Y = 28;
-const SCENE_DOSSIER_HEADER_SIZE = 18;
-const SCENE_DOSSIER_HEADER_LINE_HEIGHT = 22;
+const SCENE_DOSSIER_Y = 0;
+const SCENE_DOSSIER_WIDTH = 980;
+const SCENE_DOSSIER_MIN_HEIGHT = 0;
+const SCENE_DOSSIER_SIDE_PADDING = 96;
+const SCENE_DOSSIER_PADDING_Y = 30;
+const SCENE_DOSSIER_HEADER_SIZE = 60;
+const SCENE_DOSSIER_HEADER_LINE_HEIGHT = 64;
 const SCENE_DOSSIER_FOOTER_SIZE = 12;
 const SCENE_DOSSIER_FOOTER_LINE_HEIGHT = 16;
-const SCENE_DOSSIER_LINE_HEIGHT = 28;
+const SCENE_DOSSIER_LINE_HEIGHT = 26;
 const SCENE_DOSSIER_MAX_BODY_LINES = 5;
-const SCENE_DOSSIER_BODY_GAP = 18;
-const SCENE_DOSSIER_FOOTER_GAP = 18;
+const SCENE_DOSSIER_BODY_GAP = 24;
+const SCENE_DOSSIER_FOOTER_GAP = 16;
 const SCENE_DOSSIER_HOVER_DELAY_MS = 150;
 const SCENE_DOSSIER_HIDE_DELAY_MS = 160;
-const SCENE_DOSSIER_FOCUS_RX = 620;
-const SCENE_DOSSIER_FOCUS_RY = 340;
-const SCENE_DOSSIER_BRACE_SIZE = 290;
-const SCENE_DOSSIER_BRACE_INSET = 122;
+const SCENE_DOSSIER_FOCUS_RADIUS = 470;
+const SCENE_DOSSIER_BRACE_SIZE = 580;
+const SCENE_DOSSIER_BRACE_INSET = 148;
 const FLOW_ICON_PATHS = [
     'M1873.99,900.01c.23,1.74-2.27.94-3.48.99-14.3.59-28.74-.35-43.05-.04-2.37.05-4.55,1.03-6.92,1.08-124.15,2.86-248.6,8.35-373,4.92-91.61-2.53-181.2-15.53-273.08-17.92-101.98-2.65-204.05,7.25-305.95.95-83.2-5.14-164.18-24.05-247.02-31.98-121.64-11.65-245.9-13.5-368.04-15.96-2.37-.05-4.55-1.04-6.92-1.08-17.31-.34-34.77.75-52.05.04-1.22-.05-3.72.75-3.48-.99,26.49-.25,53.03.28,79.54.03,144.74-1.38,289.81-5.3,433.95,8.97,18.67,1.85,37.34,5.16,56.01,6.99,165.31,16.18,330.85-3.46,495.99,14.01,118.64,12.56,236.15,30.42,355.97,28.03,87.15,0,174.3,2.45,261.54,1.97h-.01Z',
     'M1858.99,840.01c.23,1.74-2.27.94-3.48.99-15.63.64-31.41-.36-47.05-.04-2.37.05-4.55,1.03-6.92,1.08-127.12,2.74-254.28,9.03-381.05,2.97-86.31-4.13-170.32-17.4-256.98-20.02-110.96-3.36-222.13,6.92-333-1-62.18-4.44-123.32-15.98-185.14-22.86-130.81-14.57-267.28-16.86-398.92-19.08-2.36-.04-4.55-1.04-6.92-1.08-20.56-.33-41.57.88-62.05.04-1.22-.05-3.72.75-3.48-.99,27.83-.25,55.7.28,83.54.03,110.53-1,221.67-2.9,331.92,2,82.52,3.67,164.67,14.08,247,17,120.4,4.27,240.84-7.91,361.03,1.97,68.04,5.59,135.16,18.98,203.02,25.98,102.05,10.53,205.5,10.76,307.95,12.05,50.17.63,100.37.51,150.54.97h-.01Z',
@@ -1098,7 +1097,7 @@ export class InquiryView extends ItemView {
     private hoverTextEl?: SVGTextElement;
     private sceneDossierGroup?: SVGGElement;
     private sceneDossierComposition?: SVGGElement;
-    private sceneDossierFocusGlow?: SVGEllipseElement;
+    private sceneDossierFocusGlow?: SVGCircleElement;
     private sceneDossierBg?: SVGRectElement;
     private sceneDossierBraceLeft?: SVGTextElement;
     private sceneDossierBraceRight?: SVGTextElement;
@@ -3695,12 +3694,11 @@ export class InquiryView extends ItemView {
 
         const composition = createSvgGroup(group, 'ert-inquiry-scene-dossier-composition');
 
-        const focusGlow = createSvgElement('ellipse');
+        const focusGlow = createSvgElement('circle');
         focusGlow.classList.add('ert-inquiry-scene-dossier-focus');
         focusGlow.setAttribute('cx', '0');
-        focusGlow.setAttribute('cy', String(Math.round(SCENE_DOSSIER_MIN_HEIGHT * 0.5)));
-        focusGlow.setAttribute('rx', String(SCENE_DOSSIER_FOCUS_RX));
-        focusGlow.setAttribute('ry', String(SCENE_DOSSIER_FOCUS_RY));
+        focusGlow.setAttribute('cy', '0');
+        focusGlow.setAttribute('r', String(SCENE_DOSSIER_FOCUS_RADIUS));
         composition.appendChild(focusGlow);
 
         const bg = createSvgElement('rect');
@@ -7644,6 +7642,7 @@ export class InquiryView extends ItemView {
             if (!this.isFindingHit(finding)) return;
             if (this.getImpactRank(finding.impact) < minimumRank) return;
             const note = this.formatInquiryActionNote(finding, briefTitle);
+            if (!note) return; // Skip findings that didn't produce an actionable suggestion.
             const refId = finding.refId?.trim();
             const filePath = refId
                 ? (sceneByLabel.get(refId)
@@ -8836,8 +8835,7 @@ export class InquiryView extends ItemView {
         }
         this.cancelSceneDossierHide();
         const maxTextWidth = SCENE_DOSSIER_WIDTH - (SCENE_DOSSIER_SIDE_PADDING * 2);
-        const headerY = SCENE_DOSSIER_PADDING_Y + SCENE_DOSSIER_HEADER_SIZE;
-        this.sceneDossierHeader.setAttribute('y', String(headerY));
+        this.sceneDossierHeader.setAttribute('y', '0');
         const headerLines = this.setWrappedSvgText(
             this.sceneDossierHeader,
             dossier.header,
@@ -8846,7 +8844,7 @@ export class InquiryView extends ItemView {
             SCENE_DOSSIER_HEADER_LINE_HEIGHT
         );
 
-        const bodyStartY = headerY + (Math.max(headerLines, 1) * SCENE_DOSSIER_HEADER_LINE_HEIGHT) + SCENE_DOSSIER_BODY_GAP;
+        const bodyStartY = (Math.max(headerLines, 1) * SCENE_DOSSIER_HEADER_LINE_HEIGHT) + SCENE_DOSSIER_BODY_GAP;
         const bodyLineCount = this.setSceneDossierBodyText(
             this.sceneDossierBody,
             dossier.bodyLines.filter(Boolean),
@@ -8873,15 +8871,56 @@ export class InquiryView extends ItemView {
         }
 
         const contentHeight = hasFooter
-            ? footerY + SCENE_DOSSIER_FOOTER_SIZE + SCENE_DOSSIER_PADDING_Y + (Math.max(footerLines, 1) - 1) * SCENE_DOSSIER_FOOTER_LINE_HEIGHT
-            : bodyStartY + (Math.max(bodyLineCount, 1) * SCENE_DOSSIER_LINE_HEIGHT) + SCENE_DOSSIER_PADDING_Y;
-        this.sceneDossierBg.setAttribute('height', String(Math.max(SCENE_DOSSIER_MIN_HEIGHT, contentHeight)));
+            ? SCENE_DOSSIER_PADDING_Y
+                + (Math.max(headerLines, 1) * SCENE_DOSSIER_HEADER_LINE_HEIGHT)
+                + SCENE_DOSSIER_BODY_GAP
+                + (Math.max(bodyLineCount, 1) * SCENE_DOSSIER_LINE_HEIGHT)
+                + SCENE_DOSSIER_FOOTER_GAP
+                + SCENE_DOSSIER_FOOTER_SIZE
+                + ((Math.max(footerLines, 1) - 1) * SCENE_DOSSIER_FOOTER_LINE_HEIGHT)
+                + SCENE_DOSSIER_PADDING_Y
+            : SCENE_DOSSIER_PADDING_Y
+                + (Math.max(headerLines, 1) * SCENE_DOSSIER_HEADER_LINE_HEIGHT)
+                + SCENE_DOSSIER_BODY_GAP
+                + (Math.max(bodyLineCount, 1) * SCENE_DOSSIER_LINE_HEIGHT)
+                + SCENE_DOSSIER_PADDING_Y;
         const dossierHeight = Math.max(SCENE_DOSSIER_MIN_HEIGHT, contentHeight);
-        const focusCy = Math.round(dossierHeight * 0.56);
-        this.sceneDossierFocusGlow.setAttribute('cy', String(focusCy));
-        this.sceneDossierFocusGlow.setAttribute('rx', String(SCENE_DOSSIER_FOCUS_RX));
-        this.sceneDossierFocusGlow.setAttribute('ry', String(Math.round(SCENE_DOSSIER_FOCUS_RY + (dossierHeight * 0.08))));
-        const braceY = Math.round(bodyStartY + ((Math.max(bodyLineCount, 1) * SCENE_DOSSIER_LINE_HEIGHT) * 0.48));
+        const topY = -Math.round(dossierHeight / 2);
+        const headerY = topY + SCENE_DOSSIER_PADDING_Y + SCENE_DOSSIER_HEADER_SIZE;
+        const centeredBodyStartY = headerY + (Math.max(headerLines, 1) * SCENE_DOSSIER_HEADER_LINE_HEIGHT) + SCENE_DOSSIER_BODY_GAP;
+        const centeredFooterY = centeredBodyStartY + (Math.max(bodyLineCount, 1) * SCENE_DOSSIER_LINE_HEIGHT) + SCENE_DOSSIER_FOOTER_GAP;
+
+        this.sceneDossierBg.setAttribute('y', String(topY));
+        this.sceneDossierBg.setAttribute('height', String(dossierHeight));
+        this.sceneDossierHeader.setAttribute('y', String(headerY));
+        this.setWrappedSvgText(
+            this.sceneDossierHeader,
+            dossier.header,
+            maxTextWidth,
+            2,
+            SCENE_DOSSIER_HEADER_LINE_HEIGHT
+        );
+        this.setSceneDossierBodyText(
+            this.sceneDossierBody,
+            dossier.bodyLines.filter(Boolean),
+            maxTextWidth,
+            SCENE_DOSSIER_MAX_BODY_LINES,
+            centeredBodyStartY
+        );
+        if (hasFooter) {
+            this.sceneDossierFooter.setAttribute('y', String(centeredFooterY));
+            this.setWrappedSvgText(
+                this.sceneDossierFooter,
+                dossier.footer ?? '',
+                maxTextWidth,
+                2,
+                SCENE_DOSSIER_FOOTER_LINE_HEIGHT
+            );
+        }
+
+        this.sceneDossierFocusGlow.setAttribute('cy', '0');
+        this.sceneDossierFocusGlow.setAttribute('r', String(Math.max(SCENE_DOSSIER_FOCUS_RADIUS, Math.round(dossierHeight * 0.84))));
+        const braceY = Math.round(centeredBodyStartY + ((Math.max(bodyLineCount, 1) * SCENE_DOSSIER_LINE_HEIGHT) * 0.48));
         const braceOffsetX = Math.round((SCENE_DOSSIER_WIDTH / 2) - SCENE_DOSSIER_BRACE_INSET);
         this.sceneDossierBraceLeft.setAttribute('x', String(-braceOffsetX));
         this.sceneDossierBraceLeft.setAttribute('y', String(braceY));
@@ -8963,7 +9002,7 @@ export class InquiryView extends ItemView {
     }
 
     private isFindingHit(finding: InquiryFinding): boolean {
-        return finding.kind !== 'none';
+        return finding.kind !== 'none' && finding.kind !== 'strength';
     }
 
     private getImpactRank(impact: InquirySeverity): number {
@@ -11610,15 +11649,19 @@ export class InquiryView extends ItemView {
     private formatInquiryActionNote(
         finding: InquiryFinding,
         briefTitle: string
-    ): string {
+    ): string | null {
         const suggestion = this.buildInquiryActionSuggestion(finding);
+        if (!suggestion) return null;
         const briefLink = this.formatInquiryBriefLink(briefTitle);
         return `${briefLink} — ${suggestion}`;
     }
 
-    private buildInquiryActionSuggestion(finding: InquiryFinding): string {
+    private buildInquiryActionSuggestion(finding: InquiryFinding): string | null {
+        // Non-actionable kinds never produce edit suggestions.
+        if (finding.kind === 'none' || finding.kind === 'strength') return null;
+
         const source = (finding.bullets?.find(entry => entry?.trim()) || finding.headline || '').replace(/\s+/g, ' ').trim();
-        if (!source) return 'Revisit this scene';
+        if (!source) return null;
         const cleaned = source.replace(/[.?!]+$/, '').trim();
         const lowered = cleaned.toLowerCase();
         const imperativeStarts = [
@@ -11661,7 +11704,8 @@ export class InquiryView extends ItemView {
                 return `Revise ${subject}${location}`;
             }
         }
-        return `Consider revising ${cleaned}`;
+        // No actionable pattern detected — skip rather than fabricating a suggestion.
+        return null;
     }
 
     private formatRoundTripDuration(ms: number): string {

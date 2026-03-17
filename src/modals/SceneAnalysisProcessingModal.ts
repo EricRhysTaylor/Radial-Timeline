@@ -12,7 +12,7 @@ import { DEFAULT_GEMINI_MODEL_ID } from '../constants/aiDefaults';
 import { resolveAiLogFolder } from '../ai/log';
 import { getModelDisplayName } from '../utils/modelResolver';
 import type { LlmTimingStats } from '../types/settings';
-import { getSynopsisGenerationWordLimit } from '../utils/synopsisLimits';
+import { getSynopsisGenerationWordLimit, getSynopsisHoverLineLimit } from '../utils/synopsisLimits';
 import type { AIRunAdvancedContext } from '../ai/types';
 import { redactSensitiveValue } from '../ai/credentials/redactSensitive';
 
@@ -201,41 +201,6 @@ export class SceneAnalysisProcessingModal extends Modal {
             new Notice('Processing continues in background. Use command palette to reopen progress window.');
         }
         super.close();
-    }
-
-    private openSynopsisSettings(): void {
-        if (this.plugin.settingsTab) {
-            this.plugin.settingsTab.setActiveTab('ai');
-        }
-        const setting = (this.app as unknown as {
-            setting?: { open: () => void; openTabById: (id: string) => void };
-        }).setting;
-        if (!setting) {
-            new Notice('Unable to open Radial Timeline settings.');
-            return;
-        }
-
-        setting.open();
-        setting.openTabById('radial-timeline');
-        this.focusSettingsTarget([
-            '[data-ert-role="ai-setting:synopsis-max-words"]',
-            '[data-ert-role="ai-setting:configuration"]'
-        ]);
-    }
-
-    private focusSettingsTarget(selectors: string[], attempt = 0): void {
-        const target = selectors
-            .map(selector => document.querySelector(selector))
-            .find((el): el is HTMLElement => el instanceof HTMLElement);
-        if (target) {
-            target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            target.classList.remove('is-attention-pulse');
-            window.setTimeout(() => target.classList.add('is-attention-pulse'), 24);
-            window.setTimeout(() => target.classList.remove('is-attention-pulse'), 2800);
-            return;
-        }
-        if (attempt >= 8) return;
-        window.setTimeout(() => this.focusSettingsTarget(selectors, attempt + 1), 140);
     }
 
     private ensureModalShell(): void {
@@ -619,14 +584,8 @@ export class SceneAnalysisProcessingModal extends Modal {
 
             // Optional write-through to the legacy Synopsis key.
             const synopsisControl = controlsCard.createDiv({ cls: 'rt-synopsis-control rt-synopsis-control--row' });
-            const synopsisWordLimit = getSynopsisGenerationWordLimit(this.plugin.settings);
+            let synopsisWordLimit = getSynopsisGenerationWordLimit(this.plugin.settings);
             const synopsisCheckboxId = `rt-synopsis-update-toggle-${Date.now()}`;
-            const synopsisCheckbox = synopsisControl.createEl('input', {
-                type: 'checkbox',
-                cls: 'ert-synopsis-control-checkbox',
-                attr: { id: synopsisCheckboxId }
-            }) as HTMLInputElement;
-            synopsisCheckbox.checked = this.plugin.settings.alsoUpdateSynopsis ?? false;
             const synopsisInfo = synopsisControl.createDiv({ cls: 'rt-synopsis-control-info' });
             synopsisInfo.createEl('label', {
                 text: 'Also update Synopsis',
@@ -634,21 +593,51 @@ export class SceneAnalysisProcessingModal extends Modal {
                 attr: { for: synopsisCheckboxId }
             });
             const synopsisHelp = synopsisInfo.createDiv({ cls: 'rt-synopsis-control-help' });
-            synopsisHelp.appendText(`Also replace Synopsis with a concise version generated from scene content. Current length is ${synopsisWordLimit} words and controlled in `);
-            const synopsisSettingsLink = synopsisHelp.createEl('a', {
-                text: 'Settings → AI → Configuration → Synopsis max words',
-                cls: 'rt-synopsis-control-link',
-                attr: { href: '#' }
+            const renderSynopsisHelp = () => {
+                synopsisHelp.setText(`Also replace Synopsis with a concise version generated from scene content. Current length is ${synopsisWordLimit} words. Hover display is capped from this value.`);
+            };
+            renderSynopsisHelp();
+
+            const synopsisControls = synopsisControl.createDiv({ cls: 'rt-synopsis-control-right' });
+            const synopsisCheckbox = synopsisControls.createEl('input', {
+                type: 'checkbox',
+                cls: 'ert-synopsis-control-checkbox',
+                attr: { id: synopsisCheckboxId }
+            }) as HTMLInputElement;
+            synopsisCheckbox.checked = this.plugin.settings.alsoUpdateSynopsis ?? false;
+            const synopsisLengthInput = synopsisControls.createEl('input', {
+                type: 'number',
+                cls: 'rt-synopsis-control-input',
+                attr: { min: '10', max: '300', step: '5' }
+            }) as HTMLInputElement;
+            synopsisLengthInput.value = String(synopsisWordLimit);
+
+            const saveSynopsisWordLimit = () => {
+                const val = parseInt(synopsisLengthInput.value, 10);
+                if (!Number.isFinite(val) || val < 10 || val > 300) {
+                    new Notice('Synopsis length must be between 10 and 300 words.');
+                    synopsisLengthInput.value = String(getSynopsisGenerationWordLimit(this.plugin.settings));
+                    return;
+                }
+                synopsisWordLimit = Math.round(val);
+                this.plugin.settings.synopsisGenerationMaxWords = synopsisWordLimit;
+                this.plugin.settings.synopsisHoverMaxLines = getSynopsisHoverLineLimit(this.plugin.settings);
+                void this.plugin.saveSettings();
+                renderSynopsisHelp();
+            };
+
+            synopsisLengthInput.addEventListener('change', saveSynopsisWordLimit);
+            synopsisLengthInput.addEventListener('blur', saveSynopsisWordLimit);
+            synopsisLengthInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    saveSynopsisWordLimit();
+                    synopsisLengthInput.blur();
+                }
             });
-            synopsisSettingsLink.addEventListener('click', (event) => {
-                event.preventDefault();
-                this.openSynopsisSettings();
-            });
-            synopsisHelp.appendText('.');
 
             synopsisCheckbox.addEventListener('change', () => {
                 this.plugin.settings.alsoUpdateSynopsis = synopsisCheckbox.checked;
-                this.plugin.saveSettings();
+                void this.plugin.saveSettings();
             });
         }
 

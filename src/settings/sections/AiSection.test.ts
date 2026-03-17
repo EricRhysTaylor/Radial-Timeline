@@ -33,15 +33,16 @@ describe('AI settings models table', () => {
         expect(source.includes('gossamerEvidenceDropdown')).toBe(false);
         expect(source.includes('GossamerEvidencePreference')).toBe(false);
         expect(source.includes('getGossamerEvidencePreference')).toBe(false);
-        // Forecast label confirms bodies-only
-        expect(source.includes('Full manuscript (Scene bodies)')).toBe(true);
+        // Composition copy confirms bodies-only
+        expect(source.includes('Scenes (${sceneCount.toLocaleString()}) — full text')).toBe(true);
+        expect(source.includes('Outline — not included')).toBe(true);
+        expect(source.includes('References — not included')).toBe(true);
     });
 
     it('renders active model preview with author-facing signals only', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
         expect(source.includes('PREVIEW (ACTIVE MODEL)')).toBe(true);
         expect(source.includes('Context ·')).toBe(true);
-        expect(source.includes('Response ·')).toBe(true);
         expect(source.includes('Manuscript citations')).toBe(true);
         expect(source.includes('Context compare · OpenAI')).toBe(true);
         expect(source.includes('Automatic Packaging')).toBe(false);
@@ -117,7 +118,31 @@ describe('AI settings models table', () => {
         expect(source.includes('Large Manuscript Handling')).toBe(true);
         expect(source.includes('Execution Preference')).toBe(true);
         expect(source.includes('singlePassOnly')).toBe(true);
-        expect(source.includes('ert-ai-status-grid')).toBe(true);
+        expect(source.includes('ert-ai-capacity-grid')).toBe(true);
+    });
+
+    it('renders structured Inquiry and Gossamer request composition strings', () => {
+        const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
+        expect(source.includes("title: 'Corpus'")).toBe(true);
+        expect(source.includes("title: 'Transform'")).toBe(true);
+        expect(source.includes("title: 'Prompt'")).toBe(true);
+        expect(source.includes("title: 'Structured output'")).toBe(true);
+        expect(source.includes("title: 'Execution'")).toBe(true);
+        expect(source.includes('AI role template')).toBe(true);
+        expect(source.includes('Editorial analysis instructions')).toBe(true);
+        expect(source.includes('Scene-linked findings')).toBe(true);
+        expect(source.includes('Multi-pass packaging (if required)')).toBe(true);
+        expect(source.includes('Beat overlay (ordered sequence)')).toBe(true);
+        expect(source.includes('Beat scoring instructions')).toBe(true);
+        expect(source.includes('Per-beat scores')).toBe(true);
+        expect(source.includes('Provider formatting')).toBe(true);
+        expect(source.includes('Full manuscript (Scene bodies)')).toBe(false);
+        expect(source.includes('Book ·')).toBe(false);
+        expect(source.includes('jsonSchema')).toBe(false);
+        expect(source.includes('response_format')).toBe(false);
+        expect(source.includes('tool_choice')).toBe(false);
+        expect(source.includes('providerRouter')).toBe(false);
+        expect(source.includes('document blocks')).toBe(false);
     });
 
     it('renders provider key status states without saved-not-tested phrasing', () => {

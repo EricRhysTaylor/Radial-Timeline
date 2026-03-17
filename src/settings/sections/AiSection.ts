@@ -8,7 +8,6 @@ import { fetchLocalModels } from '../../api/localAiApi';
 import { AiContextModal } from '../AiContextModal';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import { resolveAiLogFolder } from '../../ai/log';
-import { getSynopsisGenerationWordLimit, getSynopsisHoverLineLimit } from '../../utils/synopsisLimits';
 import { ERT_CLASSES } from '../../ui/classes';
 import { IMPACT_FULL } from '../SettingImpact';
 import { buildDefaultAiSettings, mapAiProviderToLegacyProvider } from '../../ai/settings/aiSettings';
@@ -254,13 +253,9 @@ export function renderAiSection(params: {
     const largeHandlingSummary = largeHandlingFold.createEl('summary', { text: 'Large Manuscript Handling & Multi-Pass Analysis (Inquiry & Gossamer)' });
     attachAiCollapseButton(largeHandlingFold, largeHandlingSummary);
     const largeHandlingBody = largeHandlingFold.createDiv({ cls: `${ERT_CLASSES.STACK} ert-ai-large-handling-body` });
-    largeHandlingBody.createDiv({
-        cls: 'ert-section-desc',
-        text: 'Estimated input size for Inquiry and Gossamer analysis requests. These use different content selections.'
-    });
 
     const capacitySection = largeHandlingBody.createDiv({ cls: 'ert-ai-capacity-section' });
-    capacitySection.createDiv({ cls: 'ert-ai-capacity-title', text: 'Context and forecast' });
+    capacitySection.createDiv({ cls: 'ert-ai-capacity-title', text: 'Request composition' });
     const capacityGrid = capacitySection.createDiv({ cls: 'ert-ai-capacity-grid' });
     const createCapacityCell = (label: string): { cellEl: HTMLElement; valueEl: HTMLElement; labelEl: HTMLElement } => {
         const cell = capacityGrid.createDiv({ cls: 'ert-ai-capacity-cell' });
@@ -273,35 +268,128 @@ export function renderAiSection(params: {
         el.createSpan({ cls: 'ert-ai-token-value', text: numericText });
         el.createSpan({ cls: 'ert-ai-token-unit', text: unitText });
     };
-    const capacityInquiry = createCapacityCell('Inquiry Corpus');
+    const renderCapacitySections = (
+        container: HTMLElement,
+        sections: Array<{ title: string; items: string[] }>
+    ): void => {
+        container.empty();
+        sections.forEach(section => {
+            const sectionEl = container.createDiv({ cls: 'ert-ai-capacity-block' });
+            sectionEl.createDiv({ cls: 'ert-ai-capacity-block-title', text: section.title });
+            const listEl = sectionEl.createEl('ul', { cls: 'ert-ai-capacity-list' });
+            section.items.forEach(item => {
+                listEl.createEl('li', { cls: 'ert-ai-capacity-item', text: item });
+            });
+        });
+    };
+    const formatInquiryReferenceLine = (count: number | null): string => {
+        if (count === null) return 'References — unavailable';
+        return count > 0 ? `References (${count})` : 'References — none';
+    };
+    const formatInquiryCount = (count: number | null): string => count === null ? '?' : count.toLocaleString();
+    const buildInquiryCapacitySections = (counts?: {
+        sceneCount: number;
+        outlineCount: number;
+        referenceCount: number;
+    }): Array<{ title: string; items: string[] }> => {
+        const sceneCount = counts?.sceneCount ?? null;
+        const outlineCount = counts?.outlineCount ?? null;
+        const referenceCount = counts?.referenceCount ?? null;
+        return [
+            {
+                title: 'Corpus',
+                items: [
+                    `Scenes (${formatInquiryCount(sceneCount)}) — full text`,
+                    `Outline (${formatInquiryCount(outlineCount)}) — full text`,
+                    formatInquiryReferenceLine(referenceCount)
+                ]
+            },
+            {
+                title: 'Prompt',
+                items: [
+                    'AI role template',
+                    'Editorial analysis instructions'
+                ]
+            },
+            {
+                title: 'Structured output',
+                items: [
+                    'Scene-linked findings',
+                    'Fixed result fields',
+                    'Strict JSON shape'
+                ]
+            },
+            {
+                title: 'Execution',
+                items: [
+                    'Multi-pass packaging (if required)',
+                    'Provider formatting'
+                ]
+            }
+        ];
+    };
+    const buildGossamerCapacitySections = (sceneCount: number): Array<{ title: string; items: string[] }> => [
+        {
+            title: 'Corpus',
+            items: [
+                `Scenes (${sceneCount.toLocaleString()}) — full text`,
+                'Outline — not included',
+                'References — not included'
+            ]
+        },
+        {
+            title: 'Transform',
+            items: ['Beat overlay (ordered sequence)']
+        },
+        {
+            title: 'Prompt',
+            items: [
+                'AI role template',
+                'Beat scoring instructions'
+            ]
+        },
+        {
+            title: 'Structured output',
+            items: [
+                'Per-beat scores',
+                'Fixed result fields',
+                'Strict JSON shape'
+            ]
+        },
+        {
+            title: 'Execution',
+            items: [
+                'Single-pass',
+                'Provider formatting'
+            ]
+        }
+    ];
+
+    const capacityInquiry = createCapacityCell('Inquiry');
     capacityInquiry.labelEl.addClass('ert-ai-capacity-label--forecast');
     const capacityInquiryToken = capacityInquiry.valueEl.createDiv({
         cls: 'ert-ai-capacity-meta',
         text: 'Calculating...'
     });
-    const capacityInquiryScope = capacityInquiry.valueEl.createDiv({
-        cls: 'ert-ai-capacity-meta',
-        text: 'Open Inquiry to calculate the Inquiry corpus'
-    });
     const capacityInquiryExpected = capacityInquiry.valueEl.createDiv({
         cls: 'ert-ai-capacity-meta',
         text: 'Calculating...'
     });
+    const capacityInquirySections = capacityInquiry.valueEl.createDiv({ cls: 'ert-ai-capacity-composition' });
+    renderCapacitySections(capacityInquirySections, buildInquiryCapacitySections());
 
-    const capacityGossamer = createCapacityCell('Gossamer Corpus');
+    const capacityGossamer = createCapacityCell('Gossamer');
     capacityGossamer.labelEl.addClass('ert-ai-capacity-label--forecast');
     const capacityGossamerToken = capacityGossamer.valueEl.createDiv({
         cls: 'ert-ai-capacity-meta',
         text: 'Calculating...'
     });
-    const capacityGossamerScope = capacityGossamer.valueEl.createDiv({
-        cls: 'ert-ai-capacity-meta',
-        text: 'Scanning vault…'
-    });
     const capacityGossamerExpected = capacityGossamer.valueEl.createDiv({
         cls: 'ert-ai-capacity-meta',
         text: 'Calculating...'
     });
+    const capacityGossamerSections = capacityGossamer.valueEl.createDiv({ cls: 'ert-ai-capacity-composition' });
+    renderCapacitySections(capacityGossamerSections, buildGossamerCapacitySections(0));
     // ── Details link → modal ──
     const detailsBtn = largeHandlingBody.createDiv({ cls: 'ert-ai-details-link' });
     detailsBtn.createSpan({ text: 'How analysis passes work \u2192' });
@@ -822,9 +910,11 @@ export function renderAiSection(params: {
 
     type FeatureForecast = {
         available: boolean;
-        label: string;
         corpusTokens: number;
         providerExecutionTokens: number;
+        sceneCount: number;
+        outlineCount: number;
+        referenceCount: number;
     };
 
     type CostComparisonModel = {
@@ -921,16 +1011,6 @@ export function renderAiSection(params: {
             metadataCache: app.metadataCache,
             frontmatterMappings: plugin.settings.frontmatterMappings
         });
-    };
-
-    const formatCurrentCorpusSelectionLabel = (): string => {
-        const currentCorpus = getCurrentCorpusContext();
-        if (!currentCorpus) return 'Open Inquiry to calculate the Inquiry corpus';
-        const scopeLabel = currentCorpus.scope === 'saga' ? 'Saga' : 'Book';
-        if (currentCorpus.corpus.sceneCount > 0) {
-            return `${scopeLabel} · ${currentCorpus.corpus.sceneCount} ${currentCorpus.corpus.sceneCount === 1 ? 'scene' : 'scenes'}`;
-        }
-        return `${scopeLabel} · No active scenes`;
     };
 
     const renderCostComparisonRows = (rows: CostComparisonRow[]): void => {
@@ -1037,7 +1117,6 @@ export function renderAiSection(params: {
         modelId: string;
     }): Promise<{ inquiry: FeatureForecast; gossamer: FeatureForecast }> => {
         const currentCorpus = getCurrentCorpusContext();
-        const inquiryLabel = formatCurrentCorpusSelectionLabel();
         const inquiryCorpusTokens = currentCorpus?.corpus.estimatedTokens ?? 0;
         const inquiryProviderTokens = currentCorpus && engine
             ? (await buildCurrentInquiryExecutionEstimate({
@@ -1059,15 +1138,19 @@ export function renderAiSection(params: {
         return {
             inquiry: {
                 available: Boolean(currentCorpus),
-                label: inquiryLabel,
                 corpusTokens: inquiryCorpusTokens,
-                providerExecutionTokens: inquiryProviderTokens
+                providerExecutionTokens: inquiryProviderTokens,
+                sceneCount: currentCorpus?.corpus.sceneCount ?? 0,
+                outlineCount: currentCorpus?.corpus.outlineCount ?? 0,
+                referenceCount: currentCorpus?.corpus.referenceCount ?? 0
             },
             gossamer: {
                 available: true,
-                label: `Full manuscript (Scene bodies)`,
                 corpusTokens: gossamerCorpusTokens,
-                providerExecutionTokens: gossamerProviderTokens
+                providerExecutionTokens: gossamerProviderTokens,
+                sceneCount: gossamerEstimate.includedSceneCount,
+                outlineCount: gossamerEstimate.corpus.outlineCount,
+                referenceCount: gossamerEstimate.corpus.referenceCount
             },
         };
     };
@@ -1174,11 +1257,11 @@ export function renderAiSection(params: {
         }
 
         capacityInquiryToken.setText('Calculating...');
-        capacityInquiryScope.setText('Loading Inquiry corpus…');
         capacityInquiryExpected.setText('Calculating...');
+        renderCapacitySections(capacityInquirySections, buildInquiryCapacitySections());
         capacityGossamerToken.setText('Calculating...');
-        capacityGossamerScope.setText('Scanning vault…');
         capacityGossamerExpected.setText('Calculating...');
+        renderCapacitySections(capacityGossamerSections, buildGossamerCapacitySections(0));
         void refreshCostComparisonTable();
 
         try {
@@ -1219,18 +1302,23 @@ export function renderAiSection(params: {
                 provider,
                 modelId: estimate.model.id
             }).then(forecasts => {
-                capacityInquiryScope.setText(forecasts.inquiry.label);
                 if (forecasts.inquiry.available) {
                     setTokenDisplay(capacityInquiryToken, `~${forecasts.inquiry.corpusTokens.toLocaleString()}`, 'tokens');
                     capacityInquiryExpected.setText(formatExpectedPasses(forecasts.inquiry.providerExecutionTokens));
+                    renderCapacitySections(capacityInquirySections, buildInquiryCapacitySections({
+                        sceneCount: forecasts.inquiry.sceneCount,
+                        outlineCount: forecasts.inquiry.outlineCount,
+                        referenceCount: forecasts.inquiry.referenceCount
+                    }));
                 } else {
                     capacityInquiryToken.setText('Unavailable');
                     capacityInquiryExpected.setText('Unavailable');
+                    renderCapacitySections(capacityInquirySections, buildInquiryCapacitySections());
                 }
 
-                capacityGossamerScope.setText(forecasts.gossamer.label);
                 setTokenDisplay(capacityGossamerToken, `~${forecasts.gossamer.corpusTokens.toLocaleString()}`, 'tokens');
                 capacityGossamerExpected.setText(formatExpectedPasses(forecasts.gossamer.providerExecutionTokens));
+                renderCapacitySections(capacityGossamerSections, buildGossamerCapacitySections(forecasts.gossamer.sceneCount));
             });
         } catch {
             renderResolvedPreview({
@@ -1241,11 +1329,11 @@ export function renderAiSection(params: {
                 maxOutputTokens: null
             });
             capacityInquiryToken.setText('Unavailable');
-            capacityInquiryScope.setText('Open Inquiry to calculate the Inquiry corpus');
             capacityInquiryExpected.setText('Unavailable');
+            renderCapacitySections(capacityInquirySections, buildInquiryCapacitySections());
             capacityGossamerToken.setText('Unavailable');
-            capacityGossamerScope.setText('Unavailable');
             capacityGossamerExpected.setText('Unavailable');
+            renderCapacitySections(capacityGossamerSections, buildGossamerCapacitySections(0));
         }
 
     };
@@ -2186,45 +2274,6 @@ export function renderAiSection(params: {
                     plugin.settings.showFullTripletAnalysis = value;
                     await plugin.saveSettings();
                 }));
-        }
-    });
-
-    const aiSchemaGroup = aiConfigBody.createDiv({ cls: 'ert-config-group' });
-    aiSchemaGroup.createDiv({ cls: 'ert-config-group-title', text: 'Generation' });
-
-    aiConfigCreateRow(aiSchemaGroup, {
-        title: 'Synopsis max words',
-        description: 'Maximum words for generated Synopsis. Hover display is synced automatically from this value.',
-        control: (setting) => {
-            setting.settingEl.setAttr('data-ert-role', 'ai-setting:synopsis-max-words');
-            setting.addText(text => {
-                const current = String(getSynopsisGenerationWordLimit(plugin.settings));
-                text.setPlaceholder('e.g. 30');
-                text.setValue(current);
-                text.inputEl.addClass('ert-input--sm');
-
-                plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
-                    if (evt.key === 'Enter') {
-                        evt.preventDefault();
-                        text.inputEl.blur();
-                    }
-                });
-
-                const handleBlur = async () => {
-                    const n = Number(text.getValue().trim());
-                    if (!Number.isFinite(n) || n < 10 || n > 300) {
-                        new Notice('Synopsis max words must be between 10 and 300.');
-                        text.setValue(String(getSynopsisGenerationWordLimit(plugin.settings)));
-                        return;
-                    }
-                    plugin.settings.synopsisGenerationMaxWords = Math.round(n);
-                    plugin.settings.synopsisHoverMaxLines = getSynopsisHoverLineLimit(plugin.settings);
-                    await plugin.saveSettings();
-                    plugin.onSettingChanged(IMPACT_FULL);
-                };
-
-                plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });
-            });
         }
     });
 
