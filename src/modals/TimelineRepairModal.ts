@@ -364,7 +364,7 @@ export class TimelineRepairModal extends Modal {
         // Header
         const header = this.contentEl.createDiv({ cls: 'ert-modal-header' });
         header.createSpan({ cls: 'ert-modal-badge', text: 'Timeline Order Wizard' });
-        header.createDiv({ cls: 'ert-modal-title', text: 'Analyzing Timeline...' });
+        header.createDiv({ cls: 'ert-modal-title', text: 'Analyzing timeline...' });
         const statusEl = header.createDiv({ cls: 'ert-modal-subtitle', text: 'Running Level 1: Pattern Sync...' });
 
         // Progress card
@@ -455,7 +455,7 @@ export class TimelineRepairModal extends Modal {
         // Header
         const header = this.contentEl.createDiv({ cls: 'ert-modal-header' });
         header.createSpan({ cls: 'ert-modal-badge', text: 'Timeline Order Wizard' });
-        header.createDiv({ cls: 'ert-modal-title', text: 'Review & Edit' });
+        header.createDiv({ cls: 'ert-modal-title', text: 'Review & edit' });
         header.createDiv({
             cls: 'ert-modal-subtitle',
             text: 'Quick nudge dates with keyboard shortcuts. J/K to navigate, Day+/- to shift.'
@@ -914,4 +914,3 @@ export class TimelineRepairModal extends Modal {
 }
 
 export default TimelineRepairModal;
-

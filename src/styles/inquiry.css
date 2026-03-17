@@ -1472,23 +1472,23 @@
 }
 
 #ert-inquiry-scene-dossier-focus-grad stop:nth-child(1) {
-  stop-color: color-mix(in srgb, var(--interactive-accent) 46%, #fff5e8);
-  stop-opacity: 0.22;
+  stop-color: var(--background-primary);
+  stop-opacity: 0.9;
 }
 
 #ert-inquiry-scene-dossier-focus-grad stop:nth-child(2) {
-  stop-color: color-mix(in srgb, var(--background-primary) 24%, #f7e5d1);
-  stop-opacity: 0.18;
+  stop-color: var(--background-primary);
+  stop-opacity: 0.8;
 }
 
 #ert-inquiry-scene-dossier-focus-grad stop:nth-child(3) {
-  stop-color: color-mix(in srgb, var(--background-primary) 88%, transparent);
-  stop-opacity: 0.52;
+  stop-color: var(--background-primary);
+  stop-opacity: 0.2;
 }
 
 #ert-inquiry-scene-dossier-focus-grad stop:nth-child(4) {
-  stop-color: transparent;
-  stop-opacity: 0;
+  stop-color: var(--background-primary);
+  stop-opacity: 0.2;
 }
 
 .ert-inquiry-scene-dossier {
@@ -1514,8 +1514,15 @@
 
 .ert-inquiry-scene-dossier-focus {
   fill: url(#ert-inquiry-scene-dossier-focus-grad);
-  opacity: 0.95;
+  opacity: 1;
   filter: blur(4px);
+}
+
+.ert-inquiry-scene-dossier-focus-outline {
+  fill: none;
+  stroke: #000;
+  stroke-width: 2;
+  opacity: 1;
 }
 
 .ert-inquiry-scene-dossier-bg {
@@ -1532,9 +1539,9 @@
 
 .ert-inquiry-scene-dossier-header {
   font-family: var(--font-text), Georgia, serif;
-  font-size: 60px;
+  font-size: 56px;
   font-weight: 640;
-  letter-spacing: 0.012em;
+  letter-spacing: -0.028em;
   fill: color-mix(in srgb, var(--text-normal) 88%, #f6dbc0);
 }
 

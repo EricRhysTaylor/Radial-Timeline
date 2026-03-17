@@ -317,7 +317,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
     // Project Path for Social
     const projectPathSetting = new Setting(stylingBody)
-        .setName('Project Path')
+        .setName('Project path')
         .setDesc('Project folder path for this Social target. Leave blank to use the main Source path.');
 
     projectPathSetting.settingEl.addClass('ert-setting-full-width-input');
@@ -1300,14 +1300,14 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     if (!isProActive) {
         const automationCard = contentWrapper.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` });
         const automationHeader = new Setting(automationCard)
-            .setName('Publishing & Automation')
+            .setName('Publishing & automation')
             .setHeading();
         addHeadingIcon(automationHeader, 'rss');
         addWikiLink(automationHeader, 'Settings#social-media-publishing');
         applyErtHeaderLayout(automationHeader);
 
         const frequencySetting = new Setting(automationCard)
-            .setName('Update Frequency')
+            .setName('Update frequency')
             .setDesc('How often to auto-update the live embed file. "Manual" requires clicking the update button in the Author Progress Report modal.')
             .addDropdown(dropdown => dropdown
                 .addOption('manual', 'Manual Only')
@@ -1348,7 +1348,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         if (settings?.updateFrequency === 'manual') {
             const currentDays = settings?.stalenessThresholdDays || 30;
             const stalenessSetting = new Setting(automationCard)
-                .setName('Refresh Alert Threshold')
+                .setName('Refresh alert threshold')
                 .setDesc(`Days before showing a refresh reminder in the timeline view. Currently: ${currentDays} days.`)
                 .addSlider(slider => {
                     slider
@@ -1387,7 +1387,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         }
 
         const embedPathSetting = new Setting(automationCard)
-            .setName('Embed File Path')
+            .setName('Embed file path')
             .setDesc('Location for the live export file. Format follows the APR modal setting.');
 
         embedPathSetting.settingEl.addClass('ert-setting-full-width-input');
@@ -1753,7 +1753,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         });
 
         const attributionSetting = new Setting(attributionCard)
-            .setName('RT Attribution')
+            .setName('RT attribution')
             .setDesc('Show the Radial Timeline attribution mark and link in APR exports.')
             .addToggle(toggle => {
                 toggle.setValue(settings?.aprShowRtAttribution !== false)

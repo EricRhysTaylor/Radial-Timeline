@@ -368,7 +368,7 @@ export function renderCampaignManagerSection({ app, plugin, containerEl, onCampa
     const addRow = addSection.createDiv({ cls: 'ert-campaign-add-row' });
 
     const newCampaignSetting = new Setting(addRow)
-        .setName('New Campaign')
+        .setName('New campaign')
         .setDesc('Create a new campaign that targets a specific platform or audience.')
         .addButton(button => {
             button.setButtonText('Add Campaign');
@@ -376,7 +376,7 @@ export function renderCampaignManagerSection({ app, plugin, containerEl, onCampa
             button.onClick(async () => {
                 const modal = new CampaignNameModal(app, {
                     badgeLabel: 'New',
-                    title: 'New Campaign',
+                    title: 'New campaign',
                     subtitle: 'Give your campaign a name (e.g., "Website Hero Page", "Kickstarter Campaign", "Newsletter")',
                     initialValue: '',
                     actionLabel: 'Create',
@@ -730,7 +730,7 @@ function renderCampaignDetails(
     const details = parentRow.createDiv({ cls: `ert-campaign-details ${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
 
     const freqSetting = new Setting(details)
-        .setName('Update Frequency')
+        .setName('Update frequency')
         .setDesc('How often to auto-update this campaign\'s embed file. "Manual" requires clicking the Publish button.')
         .addDropdown(dropdown => {
             dropdown.selectEl.addClass('ert-input', 'ert-input--fit-selected'); // SAFE: removed unprefixed 'dropdown' class
@@ -788,7 +788,7 @@ function renderCampaignDetails(
     const clampRefreshValue = (value: number) => Math.min(refreshMax, Math.max(refreshMin, Math.round(value)));
 
     const refreshSetting = new Setting(details)
-        .setName('Refresh Alert Threshold')
+        .setName('Refresh alert threshold')
         .setDesc(`Days before showing a refresh reminder in the timeline view. Currently: ${campaign.refreshThresholdDays} days.`);
 
     const updateRefreshDescription = (val: number) => {
@@ -898,7 +898,7 @@ function renderCampaignDetails(
 
     // Book Title Override
     const bookTitleOverrideSetting = new Setting(details)
-        .setName('Book Title Override')
+        .setName('Book title override')
         .setDesc('Optional: Override the display title for this campaign. Leave blank to inherit from Social Configuration.');
 
     bookTitleOverrideSetting.settingEl.addClass('ert-setting-full-width-input');
@@ -929,7 +929,7 @@ function renderCampaignDetails(
 
     // Project Path Override
     const projectPathOverrideSetting = new Setting(details)
-        .setName('Project Path Override')
+        .setName('Project path override')
         .setDesc('Optional: Override the project folder path for this campaign. Leave blank to inherit from Social Configuration.');
 
     projectPathOverrideSetting.settingEl.addClass('ert-setting-full-width-input');
@@ -1038,7 +1038,7 @@ function renderCampaignDetails(
         exportFormat: resolveCampaignExportFormat(campaign)
     });
     const embedPathSetting = new Setting(details)
-        .setName('Embed File Path')
+        .setName('Embed file path')
         .setDesc('Location for the exported campaign file.');
 
     embedPathSetting.settingEl.addClass('ert-setting-full-width-input');
@@ -1107,7 +1107,7 @@ function renderCampaignDetails(
 
     // Size
     const exportSizeSetting = new Setting(details)
-        .setName('Export Size')
+        .setName('Export size')
         .setDesc('Dimensions: Small for widgets, Medium for social/newsletters, Large for website embeds.')
         .addDropdown(drop => {
             drop.selectEl.addClass('ert-input', 'ert-input--lg');
@@ -1176,7 +1176,7 @@ function renderCampaignDetails(
 
         // Combined header with toggle
         const teaserToggleSetting = new Setting(teaserContentContainer)
-            .setName('Teaser Reveal')
+            .setName('Teaser reveal')
             .setDesc('Automatically reveal more detail as your book progresses. Creates anticipation for your audience.')
             .addToggle(toggle => {
                 toggle.setValue(teaserSettings.enabled)

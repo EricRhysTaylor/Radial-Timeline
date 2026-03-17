@@ -239,7 +239,7 @@ class RenameSubplotModal extends Modal {
         // Header (matching PlanetaryTimeModal)
         const header = contentEl.createDiv({ cls: 'ert-modal-header' });
         header.createSpan({ cls: 'ert-modal-badge', text: 'Edit' });
-        header.createDiv({ cls: 'ert-modal-title', text: 'Rename Subplot' });
+        header.createDiv({ cls: 'ert-modal-title', text: 'Rename subplot' });
         header.createDiv({ cls: 'ert-modal-subtitle', text: `Enter a new name for "${this.oldName}"` });
 
         // Input Field (Large template input field style)

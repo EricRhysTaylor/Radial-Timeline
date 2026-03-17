@@ -35,7 +35,7 @@ export class AprPaletteModal extends Modal {
 
         const header = contentEl.createDiv({ cls: 'ert-modal-header' });
         header.createSpan({ cls: 'ert-modal-badge', text: 'Palette' });
-        header.createDiv({ cls: 'ert-modal-title', text: 'Color Palette' });
+        header.createDiv({ cls: 'ert-modal-title', text: 'Color palette' });
 
         const applyPalette = async (palette: AprPalette) => {
             if (!this.plugin.settings.authorProgress) return;

@@ -71,7 +71,7 @@ export function renderScenePropertiesSection(params: {
     const { app, plugin, parentEl } = params;
 
     const sectionHeading = new Settings(parentEl)
-        .setName('Scene Properties')
+        .setName('Scene properties')
         .setHeading();
     addHeadingIcon(sectionHeading, 'form');
     addWikiLink(sectionHeading, 'Settings#yaml-templates');
@@ -86,7 +86,7 @@ export function renderScenePropertiesSection(params: {
     };
 
     const coreSetting = new Settings(sectionStack)
-        .setName('Core Properties')
+        .setName('Core properties')
         .setDesc('Always included in scene notes. Required by Radial Timeline and maintained automatically.');
     coreSetting.settingEl.addClass('ert-scene-properties-row', 'ert-scene-properties-row--locked');
     coreSetting.descEl.createDiv({
@@ -96,7 +96,7 @@ export function renderScenePropertiesSection(params: {
     createBadge(coreSetting.controlEl, 'Always on');
 
     const advancedSetting = new Settings(sectionStack)
-        .setName('Advanced Properties')
+        .setName('Advanced properties')
         .setDesc('Optional scene metadata. Edit these fields here, reveal them in hover, and choose whether Radial Timeline maintains them in scenes.');
     advancedSetting.settingEl.addClass('ert-scene-properties-row', 'ert-scene-properties-row--advanced');
     const advancedStatusEl = advancedSetting.nameEl.createSpan({ cls: 'ert-scene-properties-status' });
@@ -104,7 +104,7 @@ export function renderScenePropertiesSection(params: {
     const advancedStateEl = advancedSetting.controlEl.createSpan({ cls: 'ert-scene-properties-state' });
     advancedSetting.addToggle((toggle) => {
         toggle
-            .setTooltip('Maintain Advanced Properties in scene notes')
+            .setTooltip('Maintain advanced properties in scene notes')
             .setValue(plugin.settings.sceneAdvancedPropertiesEnabled ?? true)
             .onChange(async (value) => {
                 plugin.settings.sceneAdvancedPropertiesEnabled = value;
@@ -128,7 +128,7 @@ export function renderScenePropertiesSection(params: {
         cls: ERT_CLASSES.ICON_BTN,
         attr: {
             type: 'button',
-            'aria-label': 'Show Advanced Properties editor'
+            'aria-label': 'Show advanced properties editor'
         }
     });
     const advancedPanel = sectionStack.createDiv({ cls: ['ert-panel', 'ert-advanced-template-card', 'ert-scene-properties-panel', 'ert-scene-properties-subordinate'] });
@@ -189,7 +189,7 @@ export function renderScenePropertiesSection(params: {
         advancedStatusEl.toggleClass('ert-scene-properties-status--active', maintained);
         setIcon(advancedStatusEl, maintained ? 'check-circle-2' : 'circle');
         advancedStateEl.setText('');
-        const tooltip = maintained ? 'Advanced Properties are enabled' : 'Advanced Properties are disabled';
+        const tooltip = maintained ? 'Advanced properties are enabled' : 'Advanced properties are disabled';
         setTooltip(advancedSetting.settingEl, tooltip);
         setTooltip(advancedStatusEl, tooltip);
     };
@@ -197,8 +197,8 @@ export function renderScenePropertiesSection(params: {
     const refreshAdvancedToggle = () => {
         const expanded = plugin.settings.enableAdvancedYamlEditor ?? false;
         setIcon(advancedToggleButton, expanded ? 'chevron-down' : 'chevron-right');
-        setTooltip(advancedToggleButton, expanded ? 'Hide Advanced Properties editor' : 'Show Advanced Properties editor');
-        advancedToggleButton.setAttribute('aria-label', expanded ? 'Hide Advanced Properties editor' : 'Show Advanced Properties editor');
+        setTooltip(advancedToggleButton, expanded ? 'Hide advanced properties editor' : 'Show advanced properties editor');
+        advancedToggleButton.setAttribute('aria-label', expanded ? 'Hide advanced properties editor' : 'Show advanced properties editor');
     };
     refreshAdvancedRowState();
     refreshAdvancedToggle();
@@ -224,7 +224,7 @@ export function renderScenePropertiesSection(params: {
         if (enabledFields.length === 0) {
             hoverPreviewHeading.setText('Scene Hover Preview (none enabled)');
             hoverPreviewBody.createDiv({
-                text: 'Enable fields in Advanced Properties to preview what scene hover reveals will look like.',
+                text: 'Enable fields in advanced properties to preview what scene hover reveals will look like.',
                 cls: 'ert-hover-preview-empty'
             });
             return;
@@ -563,7 +563,7 @@ export function renderScenePropertiesSection(params: {
 
             const resetBtn = buttonWrap.createEl('button', { cls: ['ert-iconBtn', 'ert-template-reset-btn'] });
             setIcon(resetBtn, 'rotate-ccw');
-            setTooltip(resetBtn, 'Reset Advanced Properties to the default built-in set');
+            setTooltip(resetBtn, 'Reset advanced properties to the default built-in set');
             resetBtn.onclick = async () => {
                 const confirmed = await new Promise<boolean>((resolve) => {
                     const modal = new Modal(app);
@@ -574,9 +574,9 @@ export function renderScenePropertiesSection(params: {
 
                     const header = modal.contentEl.createDiv({ cls: 'ert-modal-header' });
                     header.createSpan({ text: 'SCENE PROPERTIES', cls: 'ert-modal-badge' });
-                    header.createDiv({ text: 'Reset Advanced Properties', cls: 'ert-modal-title' });
+                    header.createDiv({ text: 'Reset advanced properties', cls: 'ert-modal-title' });
                     header.createDiv({
-                        text: 'Resetting will remove renamed and custom advanced properties, clear hover icons, and restore the built-in Advanced Properties.',
+                        text: 'Resetting will remove renamed and custom advanced properties, clear hover icons, and restore the built-in advanced properties.',
                         cls: 'ert-modal-subtitle'
                     });
 

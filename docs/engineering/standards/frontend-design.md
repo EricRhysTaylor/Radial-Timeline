@@ -80,6 +80,25 @@ When designing within this Obsidian plugin:
 - Scope all styles under `.ert-ui`
 - Layer aesthetic choices additively on top of theme surfaces
 
+## UI Copy Casing
+
+Obsidian-facing UI copy should use sentence case nearly everywhere.
+
+Apply sentence case to:
+- settings row titles and section labels
+- command palette command names
+- modal titles
+- button labels and short helper labels when they name an action or surface
+- ribbon labels, tooltips, and other shell-facing UI text
+
+Do not use title case for routine product UI such as `Scene note maintenance` or `Open inquiry`.
+
+Preserve acronyms and proper nouns in their canonical form:
+- `AI`, `API`, `LLM`, `URL`, `YAML`, `PDF`, `RT`, `LaTeX`
+- `Obsidian`, `Inquiry`, `Gossamer`, `Chronologue`
+
+Use title case only when reproducing an external name, a file/template title, or authored content that intentionally requires it.
+
 ---
 
 ## Applicability

@@ -31,8 +31,8 @@ const RT_NOTE_FAMILIES: RtNoteFamilyOption[] = [
         title: 'Scene',
         description: 'Start a new story scene in prose, screenplay, or podcast format.',
         subtypes: [
-            { id: 'basic-scene', title: 'Core scene', description: 'Core Scene Properties for straightforward drafting.' },
-            { id: 'advanced-scene', title: 'Scene with Advanced Properties', description: 'Core Scene Properties plus optional advanced scene metadata.' },
+            { id: 'basic-scene', title: 'Core scene', description: 'Core scene properties for straightforward drafting.' },
+            { id: 'advanced-scene', title: 'Scene with advanced properties', description: 'Core scene properties plus optional advanced scene metadata.' },
             { id: 'screenplay-scene', title: 'Screenplay scene', description: 'Screenplay-oriented scaffold with runtime defaults.' },
             { id: 'podcast-scene', title: 'Podcast scene', description: 'Podcast script scaffold with host and guest defaults.' },
         ],
@@ -95,7 +95,7 @@ export class CreateRtNoteModal extends Modal {
 
         const header = contentEl.createDiv({ cls: 'ert-modal-header' });
         header.createSpan({ cls: 'ert-modal-badge', text: 'Create' });
-        header.createDiv({ cls: 'ert-modal-title', text: 'Create RT Note' });
+        header.createDiv({ cls: 'ert-modal-title', text: 'Create RT note' });
         header.createDiv({
             cls: 'ert-modal-subtitle',
             text: activeFamily

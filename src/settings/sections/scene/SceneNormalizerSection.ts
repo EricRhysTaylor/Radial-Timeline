@@ -181,20 +181,20 @@ export function renderSceneNormalizerSection(params: {
             }
             : {
                 lead: 'Core properties are currently maintained in scene notes.',
-                detail: 'Advanced properties remain optional and can be removed with “Remove Advanced Properties”.'
+                detail: 'Advanced properties remain optional and can be removed with “Remove advanced properties”.'
             };
     };
     const buildPolicyBadge = (): string => (
-        (plugin.settings.sceneAdvancedPropertiesEnabled ?? true) ? 'Core + Advanced' : 'Core Only'
+        (plugin.settings.sceneAdvancedPropertiesEnabled ?? true) ? 'Core + advanced' : 'Core only'
     );
     const buildUnusedFieldsTooltip = (): string => (
         (plugin.settings.sceneAdvancedPropertiesEnabled ?? true)
             ? 'Remove fields not defined in the current scene property rules.'
-            : 'Remove unused non-Advanced fields. Advanced fields are preserved.'
+            : 'Remove unused non-advanced fields. Advanced fields are preserved.'
     );
 
     const headerRow = new Settings(parentEl)
-        .setName('Scene Note Maintenance');
+        .setName('Scene note maintenance');
     headerRow.settingEl.addClass('ert-scene-properties-row', 'ert-scene-maintenance-row');
     addHeadingIcon(headerRow, 'shield-check');
     addWikiLink(headerRow, 'Settings#yaml-templates');
@@ -214,7 +214,7 @@ export function renderSceneNormalizerSection(params: {
     const cleanupGroup = cleanupSection.createDiv({ cls: ['ert-inline-actions', 'ert-inline-actions--end', 'ert-scene-maintenance-actions', 'ert-scene-maintenance-actions--cleanup'] });
     const cleanupHelperEl = cleanupSection.createDiv({ cls: 'ert-scene-maintenance-helper' });
     const resultsSection = panel.createDiv({ cls: ['ert-stack', 'ert-scene-maintenance-section', 'ert-scene-maintenance-section--results', 'ert-settings-hidden'] });
-    resultsSection.createDiv({ cls: 'ert-scene-maintenance-group-label', text: 'Scene Status' });
+    resultsSection.createDiv({ cls: 'ert-scene-maintenance-group-label', text: 'Scene status' });
     const resultsEl = resultsSection.createDiv({ cls: 'ert-audit-results-row' });
     const refreshResultsVisibility = () => {
         resultsSection.toggleClass('ert-settings-hidden', resultsEl.childElementCount === 0);
@@ -269,7 +269,7 @@ export function renderSceneNormalizerSection(params: {
             addAdvancedBtn,
             !advancedEnabled || !summary || summary.scenesWithMissingAdvanced === 0,
             !advancedEnabled
-                ? 'Advanced Properties are disabled.'
+                ? 'Advanced properties are disabled.'
                 : (disabledReasonBase || 'All maintained advanced properties are already present.')
         );
         setButtonDisabled(addIdsBtn, !summary || summary.scenesMissingIds === 0, disabledReasonBase || 'All scenes already have IDs.');
@@ -286,7 +286,7 @@ export function renderSceneNormalizerSection(params: {
         } else {
             if (summary.scenesWithMissingCore === 0) maintenanceReasons.push('All scenes already contain core properties.');
             if (!advancedEnabled) {
-                maintenanceReasons.push('Advanced Properties are disabled, so advanced fields are not added automatically.');
+                maintenanceReasons.push('Advanced properties are disabled, so advanced fields are not added automatically.');
             } else if (summary.scenesWithMissingAdvanced === 0) {
                 maintenanceReasons.push('No advanced properties are currently missing.');
             }
@@ -527,7 +527,7 @@ export function renderSceneNormalizerSection(params: {
     });
 
     addCoreBtn = new ButtonComponent(maintenanceGroup)
-        .setButtonText('Add Core Properties')
+        .setButtonText('Add core properties')
         .onClick(async () => {
             if (!sceneAudit) return;
             const targetFiles = sceneAudit.notes.filter((note) => note.missingCoreKeys.length > 0).map((note) => note.file);
@@ -538,7 +538,7 @@ export function renderSceneNormalizerSection(params: {
         });
 
     addAdvancedBtn = new ButtonComponent(maintenanceGroup)
-        .setButtonText('Add Advanced Properties')
+        .setButtonText('Add advanced properties')
         .onClick(async () => {
             if (!sceneAudit) return;
             const targetFiles = sceneAudit.notes.filter((note) => note.missingAdvancedKeys.length > 0).map((note) => note.file);
@@ -549,7 +549,7 @@ export function renderSceneNormalizerSection(params: {
         });
 
     addIdsBtn = new ButtonComponent(maintenanceGroup)
-        .setButtonText('Add Missing IDs')
+        .setButtonText('Add missing IDs')
         .onClick(async () => {
             if (!sceneAudit) return;
             const result = await ensureSceneIds({
@@ -562,7 +562,7 @@ export function renderSceneNormalizerSection(params: {
         });
 
     reorderBtn = new ButtonComponent(maintenanceGroup)
-        .setButtonText('Reorder Properties')
+        .setButtonText('Reorder properties')
         .onClick(async () => {
             if (!sceneAudit || !auditResult) return;
             const notesWithDrift = sceneAudit.notes.filter((note) => note.orderDrift && note.safetyResult?.status !== 'dangerous');
@@ -583,7 +583,7 @@ export function renderSceneNormalizerSection(params: {
                 modal.contentEl.addClass('ert-modal-container', 'ert-stack');
                 const header = modal.contentEl.createDiv({ cls: 'ert-modal-header' });
                 header.createSpan({ cls: 'ert-modal-badge', text: 'SCENE MAINTENANCE' });
-                header.createDiv({ cls: 'ert-modal-title', text: 'Reorder Properties' });
+                header.createDiv({ cls: 'ert-modal-title', text: 'Reorder properties' });
                 header.createDiv({ cls: 'ert-modal-subtitle', text: `Reorder properties in ${notesWithDrift.length} scene${notesWithDrift.length !== 1 ? 's' : ''} to match the current scene layout.` });
                 const body = modal.contentEl.createDiv({ cls: ['ert-panel', 'ert-panel--glass'] });
                 body.createDiv({ text: `Scope: ${auditScopeSummary}`, cls: 'ert-modal-subtitle' });
@@ -659,7 +659,7 @@ export function renderSceneNormalizerSection(params: {
     setTooltip(removeUnusedBtn.buttonEl, buildUnusedFieldsTooltip());
 
     removeAdvancedBtn = new ButtonComponent(cleanupGroup)
-        .setButtonText('Remove Advanced Properties')
+        .setButtonText('Remove advanced properties')
         .setWarning()
         .onClick(async () => {
             if (!sceneAudit) return;

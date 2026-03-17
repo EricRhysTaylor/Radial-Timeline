@@ -49,7 +49,7 @@ class SaveTemplateModal extends Modal {
 
         const header = contentEl.createDiv({ cls: 'ert-modal-header' });
         header.createSpan({ cls: 'ert-modal-badge', text: 'SCENE SET' });
-        header.createDiv({ cls: 'ert-modal-title', text: 'Save Scene Layout' });
+        header.createDiv({ cls: 'ert-modal-title', text: 'Save scene layout' });
         header.createDiv({ cls: 'ert-modal-subtitle', text: 'Name this layout so you can reuse it later.' });
 
         const form = contentEl.createDiv({ cls: 'rt-glass-card rt-sub-card' });
@@ -924,7 +924,7 @@ export class BookDesignerModal extends Modal {
 
         const options: { id: 'base' | 'advanced', label: string }[] = [
             { id: 'base', label: 'Base Scene Set' },
-            { id: 'advanced', label: 'Advanced Scene Properties' }
+            { id: 'advanced', label: 'Advanced scene properties' }
         ];
 
         options.forEach(opt => {
@@ -971,7 +971,7 @@ export class BookDesignerModal extends Modal {
         // Template load/save
         const templateCard = extraCard.createDiv({ cls: 'rt-manuscript-card-block rt-manuscript-group-block rt-layout-templates-card' });
         const templateSetting = new Setting(templateCard)
-            .setName('Scene Layouts')
+            .setName('Scene layouts')
             .setDesc('Select a saved layout (acts, subplots, assignments, metadata).')
             .addDropdown(drop => {
                 this.templateDropdown = drop.selectEl;

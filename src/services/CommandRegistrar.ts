@@ -74,14 +74,14 @@ export class CommandRegistrar {
         });
         this.plugin.addCommand({
             id: 'open-inquiry-view',
-            name: 'Open Inquiry',
+            name: 'Open inquiry',
             callback: () => {
                 this.plugin.getInquiryService().activateView();
             },
         });
         this.plugin.addCommand({
             id: 'inquiry-omnibus-pass',
-            name: 'Inquiry Omnibus Pass',
+            name: 'Inquiry omnibus pass',
             callback: async () => {
                 await this.plugin.getInquiryService().runOmnibusPass();
             },

@@ -5,7 +5,7 @@ import { resolve } from 'node:path';
 describe('AI settings models table', () => {
     it('renders a single AI model update control in advanced diagnostics', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
-        expect(source.includes("setName('AI Model Updates')")).toBe(true);
+        expect(source.includes("setName('AI model updates')")).toBe(true);
         expect(source.includes("setButtonText('Update AI models')")).toBe(true);
         expect(source.includes('Refresh availability')).toBe(false);
         expect(source.includes('Remote model registry')).toBe(false);
@@ -116,7 +116,7 @@ describe('AI settings models table', () => {
     it('renders Large Manuscript Handling section with execution preference controls', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
         expect(source.includes('Large Manuscript Handling')).toBe(true);
-        expect(source.includes('Execution Preference')).toBe(true);
+        expect(source.includes('Execution preference')).toBe(true);
         expect(source.includes('singlePassOnly')).toBe(true);
         expect(source.includes('ert-ai-capacity-grid')).toBe(true);
     });
@@ -135,7 +135,8 @@ describe('AI settings models table', () => {
         expect(source.includes('Beat overlay (ordered sequence)')).toBe(true);
         expect(source.includes('Beat scoring instructions')).toBe(true);
         expect(source.includes('Per-beat scores')).toBe(true);
-        expect(source.includes('Provider formatting')).toBe(true);
+        expect(source.includes('Provider wrappers')).toBe(true);
+        expect(source.includes('Fixed result fields')).toBe(false);
         expect(source.includes('Full manuscript (Scene bodies)')).toBe(false);
         expect(source.includes('Book ·')).toBe(false);
         expect(source.includes('jsonSchema')).toBe(false);

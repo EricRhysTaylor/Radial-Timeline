@@ -22,7 +22,7 @@ export class AiPassStrategyDetailsModal extends Modal {
 
         // Hero header
         const hero = contentEl.createDiv({ cls: 'ert-modal-header' });
-        hero.createDiv({ cls: 'ert-modal-title', text: 'Analysis Pass Strategies' });
+        hero.createDiv({ cls: 'ert-modal-title', text: 'Analysis pass strategies' });
         hero.createDiv({
             cls: 'ert-modal-subtitle',
             text: 'How manuscript analysis is structured based on size and settings.'

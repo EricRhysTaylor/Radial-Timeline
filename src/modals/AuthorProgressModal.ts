@@ -457,7 +457,7 @@ export class AuthorProgressModal extends Modal {
 
         // === EXPORT SIZE ROW (two-column: label left, buttons right) ===
         const exportRow = container.createDiv({ cls: 'ert-apr-target-row' });
-        exportRow.createSpan({ text: 'Export Size', cls: ERT_CLASSES.LABEL });
+        exportRow.createSpan({ text: 'Export size', cls: ERT_CLASSES.LABEL });
 
         const sizeOptions: Array<{ size: 'thumb' | 'small' | 'medium' | 'large'; dimension: string }> = [
             { size: 'thumb', dimension: '100px' },

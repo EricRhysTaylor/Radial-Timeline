@@ -2178,8 +2178,9 @@
 }
 
 .rt-synopsis-control-input {
-  width: 100px;
-  padding: 8px 12px;
+  width: var(--ert-input-width-3digit);
+  min-width: var(--ert-input-width-3digit);
+  padding: var(--ert-control-pad-y) var(--ert-control-pad-x);
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.05);
@@ -2188,6 +2189,7 @@
   font-family: var(--font-monospace);
   flex-shrink: 0;
   text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
 .rt-synopsis-control-input:focus {

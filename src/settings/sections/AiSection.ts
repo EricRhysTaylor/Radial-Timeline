@@ -315,7 +315,6 @@ export function renderAiSection(params: {
                 title: 'Structured output',
                 items: [
                     'Scene-linked findings',
-                    'Fixed result fields',
                     'Strict JSON shape'
                 ]
             },
@@ -323,7 +322,7 @@ export function renderAiSection(params: {
                 title: 'Execution',
                 items: [
                     'Multi-pass packaging (if required)',
-                    'Provider formatting'
+                    'Provider wrappers'
                 ]
             }
         ];
@@ -352,7 +351,6 @@ export function renderAiSection(params: {
             title: 'Structured output',
             items: [
                 'Per-beat scores',
-                'Fixed result fields',
                 'Strict JSON shape'
             ]
         },
@@ -360,7 +358,7 @@ export function renderAiSection(params: {
             title: 'Execution',
             items: [
                 'Single-pass',
-                'Provider formatting'
+                'Provider wrappers'
             ]
         }
     ];
@@ -400,7 +398,7 @@ export function renderAiSection(params: {
 
     // ── Execution preference dropdown ──
     const executionPreferenceSetting = new Settings(largeHandlingBody)
-        .setName('Execution Preference')
+        .setName('Execution preference')
         .setDesc('Choose how large requests are handled during Inquiry. Automatic is recommended.');
     executionPreferenceSetting.settingEl.setAttr('data-ert-role', 'ai-setting:execution-preference');
     let executionPreferenceDropdown: DropdownComponent | null = null;
@@ -450,7 +448,7 @@ export function renderAiSection(params: {
         cls: `${ERT_CLASSES.STACK} ert-ai-configuration`
     });
     const apiKeysHeader = new Settings(apiKeysFold)
-        .setName('API Keys')
+        .setName('API keys')
         .setHeading();
     addHeadingIcon(apiKeysHeader, 'key');
     addWikiLink(apiKeysHeader, 'Settings#ai');
@@ -740,7 +738,7 @@ export function renderAiSection(params: {
     };
 
     const aiModelUpdatesSetting = new Settings(advancedBody)
-        .setName('AI Model Updates');
+        .setName('AI model updates');
     const formatModelUpdateTimestamp = (timestamp: string): string => {
         const parsed = Date.parse(timestamp);
         if (!Number.isFinite(parsed)) return timestamp;
@@ -1056,7 +1054,7 @@ export function renderAiSection(params: {
         }
         return {
             sizeText: 'Inquiry Corpus: Unavailable',
-            structureText: 'Open Inquiry to calculate the Inquiry corpus'
+            structureText: 'Open inquiry to calculate the Inquiry corpus'
         };
     };
 
@@ -1799,7 +1797,7 @@ export function renderAiSection(params: {
     let localModelText: TextComponent | null = null;
 
     const localBaseUrlSetting = new Settings(localBaseStack)
-        .setName('Local LLM Base URL')
+        .setName('Local LLM base URL')
         .setDesc('The API endpoint. For Ollama, use "http://localhost:11434/v1". For LM Studio, use "http://localhost:1234/v1".')
         .addText(text => {
             text.inputEl.addClass('ert-input--full');
@@ -1833,7 +1831,7 @@ export function renderAiSection(params: {
     localWarningSection.createEl('strong', { text: 'Advisory Note', cls: 'ert-local-llm-advisory-title' });
     const aiLogFolder = resolveAiLogFolder();
     localWarningSection.createSpan({
-        text: `By default, no LLM pulses are written to the scene when local transformer is used. Rather it is stored in an AI log file in the local logs output folder (${aiLogFolder}), as the response does not follow directions and breaks scene hover formatting. You may still write scene hover Fields with local LLM by toggling off the setting "Bypass scene hover Fields writes" below.`
+        text: `By default, no LLM pulses are written to the scene when local transformer is used. Rather it is stored in an AI log file in the local logs output folder (${aiLogFolder}), as the response does not follow directions and breaks scene hover formatting. You may still write scene hover fields with local LLM by toggling off the setting "Bypass scene hover fields writes" below.`
     });
 
     const localExtrasStack = localWrapper.createDiv({ cls: [ERT_CLASSES.STACK, 'ert-ai-local-extras'] });
@@ -1879,7 +1877,7 @@ export function renderAiSection(params: {
                 }
                 const baseUrl = plugin.settings.localBaseUrl?.trim();
                 if (!baseUrl) {
-                    new Notice('Set the Local LLM Base URL first.');
+                    new Notice('Set the local LLM base URL first.');
                     return;
                 }
                 button.setDisabled(true);
@@ -1919,7 +1917,7 @@ export function renderAiSection(params: {
     });
 
     const customInstructionsSetting = new Settings(localExtrasStack)
-        .setName('Custom Instructions')
+        .setName('Custom instructions')
         .setDesc('Additional instructions added to the start of the prompt. Useful for fine-tuning local model behavior.')
         .addTextArea(text => {
             text
@@ -1935,7 +1933,7 @@ export function renderAiSection(params: {
     customInstructionsSetting.settingEl.addClass('ert-setting-full-width-input');
 
     const bypassSetting = new Settings(localExtrasStack)
-        .setName('Bypass scene hover Fields writes')
+        .setName('Bypass scene hover fields writes')
         .setDesc('Default is enabled. Local LLM triplet pulse analysis skips writing to the scene note and saves results in the AI log report instead. Recommended for local models.')
         .addToggle(toggle => toggle
             .setValue(plugin.settings.localSendPulseToAiReport ?? true)
@@ -2177,7 +2175,7 @@ export function renderAiSection(params: {
     });
 
     const localQuickInstructionsSetting = new Settings(localQuickConfigSection)
-        .setName('Custom Instructions')
+        .setName('Custom instructions')
         .setDesc('Additional instructions prepended to the prompt for local model behavior tuning.');
     localQuickInstructionsSetting.addTextArea(text => {
         text

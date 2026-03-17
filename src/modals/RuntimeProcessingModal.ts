@@ -162,7 +162,7 @@ export class RuntimeProcessingModal extends Modal {
         const modeIcon = runtimeInfo.createSpan({ cls: 'ert-modal-badge-icon' });
         setIcon(modeIcon, modeIconName);
         runtimeInfo.createSpan({ text: badgeText });
-        header.createDiv({ cls: 'ert-modal-title', text: 'Runtime Estimation' });
+        header.createDiv({ cls: 'ert-modal-title', text: 'Runtime estimation' });
         header.createDiv({ cls: 'ert-modal-subtitle', text: 'Algorithmic word-count analysis. Calculates runtime from scene text using configured WPM rates and parenthetical timing.' });
 
         // ===== SCOPE SECTION =====
@@ -375,7 +375,7 @@ export class RuntimeProcessingModal extends Modal {
         });
 
         const hint = this.settingsContent.createDiv({ cls: 'ert-runtime-settings-hint' });
-        hint.setText('Configure these values in Settings → Pro → Runtime Estimation');
+        hint.setText('Configure these values in Settings → Pro → Runtime estimation');
     }
 
     private updateScopeVisibility(): void {

@@ -483,7 +483,7 @@ class MatterSampleLaneModal extends Modal {
         const badgeIcon = badge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON });
         setIcon(badgeIcon, 'signature');
         badge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'PRO' });
-        header.createDiv({ cls: 'ert-modal-title', text: 'Generate Template Pack' });
+        header.createDiv({ cls: 'ert-modal-title', text: 'Generate template pack' });
         header.createDiv({
             cls: 'ert-modal-subtitle',
             text: 'Create publishing templates and choose how front/back matter pages should be managed.'
@@ -585,7 +585,7 @@ class MatterSampleLaneModal extends Modal {
 
         const actions = contentEl.createDiv({ cls: 'ert-modal-actions ert-template-pack-actions' });
         const generateButton = new ButtonComponent(actions)
-            .setButtonText('Generate Template Pack');
+            .setButtonText('Generate template pack');
         generateButton.buttonEl.addClass('ert-btn', 'ert-btn--standard-pro');
         generateButton.onClick(() => {
                 this.resolved = true;
@@ -1680,7 +1680,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         });
     } else if (needsKey) {
         const proStatusSetting = new Setting(proStatusPanel)
-            .setName('Pro Subscription')
+            .setName('Pro subscription')
             .setDesc('Pro subscription required')
             .addText(text => {
                 text.setPlaceholder('XXXX-XXXX-XXXX-XXXX');
@@ -1747,7 +1747,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
     // ─────────────────────────────────────────────────────────────────────────
     const pandocPanel = lockPanel(section.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` }));
     const pandocHeading = addProRow(new Setting(pandocPanel))
-        .setName('Export & Publishing')
+        .setName('Export & publishing')
         .setDesc('Assemble your manuscript in Markdown or render a print-ready PDF using Pandoc and LaTeX. Configure templates, layouts, and publishing tools below.')
         .setHeading();
     addHeadingIcon(pandocHeading, 'book-open-text');
@@ -1757,7 +1757,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
     const systemConfigPanel = pandocPanel.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
     systemConfigPanel.style.order = '50';
     const systemConfigHeading = addProRow(new Setting(systemConfigPanel))
-        .setName('System Configuration')
+        .setName('System configuration')
         .setDesc('Configure Pandoc for PDF export.')
         .setHeading();
     addHeadingIcon(systemConfigHeading, 'settings');
@@ -1899,7 +1899,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
     const layoutPanel = pandocPanel.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
     layoutPanel.style.order = '20';
     const layoutHeading = addProRow(new Setting(layoutPanel))
-        .setName('Export Layouts (PDF)')
+        .setName('Export layouts (PDF)')
         .setDesc('Manage built-in and custom LaTeX layouts used for manuscript PDF rendering.')
         .setHeading();
     addHeadingIcon(layoutHeading, 'book-open');
@@ -3118,7 +3118,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
     const publishingSetupPanel = pandocPanel.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
     publishingSetupPanel.style.order = '30';
     const publishingHeading = addProRow(new Setting(publishingSetupPanel))
-        .setName('Publishing Setup')
+        .setName('Publishing setup')
         .setDesc('Set up front and back matter for the active book.')
         .setHeading();
     addHeadingIcon(publishingHeading, 'book-open-text');
@@ -3169,7 +3169,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
             exportReady
                 ? 'Ready for manuscript PDF export.'
                 : pdfFailure === 'pandoc'
-                    ? 'Pandoc not configured. Update System Configuration.'
+                    ? 'Pandoc not configured. Update System configuration.'
                     : 'No valid PDF layout. Install or fix a layout.',
             exportReady ? 'success' : 'error',
             () => {
