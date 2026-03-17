@@ -121,6 +121,10 @@ export interface InquiryRunTrace {
     executionState?: InquiryExecutionState;
     executionPath?: InquiryExecutionPath;
     failureStage?: InquiryFailureStage;
+    cacheReuseState?: 'idle' | 'eligible' | 'warm';
+    cacheStatus?: 'hit' | 'created';
+    cachedStableRatio?: number;
+    cachedStableTokens?: number;
     tokenUsageKnown?: boolean;
     tokenUsageScope?: InquiryTokenUsageScope;
     openAiTransportLane?: 'chat_completions' | 'responses';

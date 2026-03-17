@@ -147,7 +147,6 @@
     "src/modes/definitions/ChronologueMode.ts",
     "src/modes/definitions/GossamerMode.ts",
     "src/modes/definitions/MainPlotMode.ts",
-    "src/modes/index.ts",
     "src/renderer/ChangeDetection.ts",
     "src/renderer/DynamicLayerUpdater.ts",
     "src/renderer/TimelineRenderer.ts",
@@ -288,7 +287,7 @@
     "src/types/settings.ts",
     "src/types/timeline.ts",
     "src/ui/classes.ts",
-    "src/ui/optimized/ProPill.ts",
+    "src/ui/reference/ProPill.reference.ts",
     "src/ui/ui.ts",
     "src/ui/validator.ts",
     "src/utils/acts.ts",
@@ -360,7 +359,6 @@
     "src/view/modes/ChronologueMode.ts",
     "src/view/modes/GossamerMode.ts",
     "src/view/modes/MainPlotMode.ts",
-    "src/view/modes/index.ts"
   ],
   "tokenDefinitions": [
     {

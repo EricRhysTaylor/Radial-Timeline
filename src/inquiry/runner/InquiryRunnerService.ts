@@ -114,6 +114,10 @@ type ProviderResult = {
     executionState?: InquiryExecutionState;
     executionPath?: InquiryExecutionPath;
     failureStage?: InquiryFailureStage;
+    cacheReuseState?: 'idle' | 'eligible' | 'warm';
+    cacheStatus?: 'hit' | 'created';
+    cachedStableRatio?: number;
+    cachedStableTokens?: number;
     tokenUsageKnown?: boolean;
     tokenUsageScope?: InquiryTokenUsageScope;
     usage?: InquiryRunTrace['usage'];
@@ -1480,6 +1484,10 @@ export class InquiryRunnerService implements InquiryRunner {
             executionState,
             executionPath,
             failureStage,
+            cacheReuseState: run.advancedContext?.reuseState,
+            cacheStatus: run.advancedContext?.cacheStatus,
+            cachedStableRatio: run.advancedContext?.cachedStableRatio,
+            cachedStableTokens: run.advancedContext?.cachedStableTokens,
             tokenUsageKnown: usageKnown,
             tokenUsageScope: options?.tokenUsageScope,
             usage,
@@ -2855,6 +2863,10 @@ export class InquiryRunnerService implements InquiryRunner {
             ?? ((typeof response.executionPassCount === 'number' && response.executionPassCount > 1)
                 ? 'multi_pass'
                 : 'one_pass');
+        trace.cacheReuseState = response.cacheReuseState;
+        trace.cacheStatus = response.cacheStatus;
+        trace.cachedStableRatio = response.cachedStableRatio;
+        trace.cachedStableTokens = response.cachedStableTokens;
 
         if (response.failureStage) {
             trace.failureStage = response.failureStage;

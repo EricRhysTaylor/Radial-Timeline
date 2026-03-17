@@ -204,17 +204,25 @@ const DEPTH_FINDING_ORDER: InquiryFinding['kind'][] = ['continuity', 'loose_end'
 const SIGMA_CHAR = String.fromCharCode(931);
 const MODE_ICON_VIEWBOX = 2048;
 const MODE_ICON_OFFSET_Y = -330;
-const SCENE_DOSSIER_Y = -256;
-const SCENE_DOSSIER_WIDTH = (VIEWBOX_SIZE / 2) + 200;
-const SCENE_DOSSIER_MIN_HEIGHT = 0;
-const SCENE_DOSSIER_SIDE_PADDING = 22;
-const SCENE_DOSSIER_PADDING_Y = 18;
-const SCENE_DOSSIER_HEADER_SIZE = 19;
-const SCENE_DOSSIER_HEADER_LINE_HEIGHT = 21;
-const SCENE_DOSSIER_FOOTER_SIZE = 13;
-const SCENE_DOSSIER_FOOTER_LINE_HEIGHT = 15;
-const SCENE_DOSSIER_LINE_HEIGHT = 20;
-const SCENE_DOSSIER_MAX_BODY_LINES = 6;
+const SCENE_DOSSIER_Y = -248;
+const SCENE_DOSSIER_WIDTH = 780;
+const SCENE_DOSSIER_MIN_HEIGHT = 232;
+const SCENE_DOSSIER_SIDE_PADDING = 78;
+const SCENE_DOSSIER_PADDING_Y = 28;
+const SCENE_DOSSIER_HEADER_SIZE = 18;
+const SCENE_DOSSIER_HEADER_LINE_HEIGHT = 22;
+const SCENE_DOSSIER_FOOTER_SIZE = 12;
+const SCENE_DOSSIER_FOOTER_LINE_HEIGHT = 16;
+const SCENE_DOSSIER_LINE_HEIGHT = 28;
+const SCENE_DOSSIER_MAX_BODY_LINES = 5;
+const SCENE_DOSSIER_BODY_GAP = 18;
+const SCENE_DOSSIER_FOOTER_GAP = 18;
+const SCENE_DOSSIER_HOVER_DELAY_MS = 150;
+const SCENE_DOSSIER_HIDE_DELAY_MS = 160;
+const SCENE_DOSSIER_FOCUS_RX = 620;
+const SCENE_DOSSIER_FOCUS_RY = 340;
+const SCENE_DOSSIER_BRACE_SIZE = 290;
+const SCENE_DOSSIER_BRACE_INSET = 122;
 const FLOW_ICON_PATHS = [
     'M1873.99,900.01c.23,1.74-2.27.94-3.48.99-14.3.59-28.74-.35-43.05-.04-2.37.05-4.55,1.03-6.92,1.08-124.15,2.86-248.6,8.35-373,4.92-91.61-2.53-181.2-15.53-273.08-17.92-101.98-2.65-204.05,7.25-305.95.95-83.2-5.14-164.18-24.05-247.02-31.98-121.64-11.65-245.9-13.5-368.04-15.96-2.37-.05-4.55-1.04-6.92-1.08-17.31-.34-34.77.75-52.05.04-1.22-.05-3.72.75-3.48-.99,26.49-.25,53.03.28,79.54.03,144.74-1.38,289.81-5.3,433.95,8.97,18.67,1.85,37.34,5.16,56.01,6.99,165.31,16.18,330.85-3.46,495.99,14.01,118.64,12.56,236.15,30.42,355.97,28.03,87.15,0,174.3,2.45,261.54,1.97h-.01Z',
     'M1858.99,840.01c.23,1.74-2.27.94-3.48.99-15.63.64-31.41-.36-47.05-.04-2.37.05-4.55,1.03-6.92,1.08-127.12,2.74-254.28,9.03-381.05,2.97-86.31-4.13-170.32-17.4-256.98-20.02-110.96-3.36-222.13,6.92-333-1-62.18-4.44-123.32-15.98-185.14-22.86-130.81-14.57-267.28-16.86-398.92-19.08-2.36-.04-4.55-1.04-6.92-1.08-20.56-.33-41.57.88-62.05.04-1.22-.05-3.72.75-3.48-.99,27.83-.25,55.7.28,83.54.03,110.53-1,221.67-2.9,331.92,2,82.52,3.67,164.67,14.08,247,17,120.4,4.27,240.84-7.91,361.03,1.97,68.04,5.59,135.16,18.98,203.02,25.98,102.05,10.53,205.5,10.76,307.95,12.05,50.17.63,100.37.51,150.54.97h-.01Z',
@@ -1089,10 +1097,18 @@ export class InquiryView extends ItemView {
     private artifactPreviewBg?: SVGRectElement;
     private hoverTextEl?: SVGTextElement;
     private sceneDossierGroup?: SVGGElement;
+    private sceneDossierComposition?: SVGGElement;
+    private sceneDossierFocusGlow?: SVGEllipseElement;
     private sceneDossierBg?: SVGRectElement;
+    private sceneDossierBraceLeft?: SVGTextElement;
+    private sceneDossierBraceRight?: SVGTextElement;
     private sceneDossierHeader?: SVGTextElement;
     private sceneDossierBody?: SVGTextElement;
     private sceneDossierFooter?: SVGTextElement;
+    private sceneDossierShowTimer?: number;
+    private sceneDossierHideTimer?: number;
+    private sceneDossierActiveKey?: string;
+    private sceneDossierVisible = false;
     private previewGroup?: SVGGElement;
     private previewHero?: SVGTextElement;
     private previewMeta?: SVGTextElement;
@@ -1230,6 +1246,14 @@ export class InquiryView extends ItemView {
             window.clearTimeout(this.enginePanelHideTimer);
             this.enginePanelHideTimer = undefined;
         }
+        if (this.sceneDossierShowTimer) {
+            window.clearTimeout(this.sceneDossierShowTimer);
+            this.sceneDossierShowTimer = undefined;
+        }
+        if (this.sceneDossierHideTimer) {
+            window.clearTimeout(this.sceneDossierHideTimer);
+            this.sceneDossierHideTimer = undefined;
+        }
         this.contentEl.empty();
     }
 
@@ -1271,6 +1295,7 @@ export class InquiryView extends ItemView {
         this.svgDefs = defs;
         this.buildIconSymbols(defs);
         this.buildZoneGradients(defs);
+        this.buildSceneDossierResources(defs);
         svg.appendChild(defs);
 
         const background = createSvgElement('rect');
@@ -1410,7 +1435,7 @@ export class InquiryView extends ItemView {
         }
 
         this.buildPromptPreviewPanel(canvasGroup);
-        this.buildSceneDossierLayer(minimapGroup, SCENE_DOSSIER_Y);
+        this.buildSceneDossierLayer(svg, SCENE_DOSSIER_Y);
 
         this.registerSvgEvent(this.glyphHit, 'pointerenter', () => {
             if (this.isInquiryGuidanceLockout()) return;
@@ -3593,6 +3618,23 @@ export class InquiryView extends ItemView {
         label.setAttribute('dominant-baseline', 'middle');
     }
 
+    private buildSceneDossierResources(defs: SVGDefsElement): void {
+        if (defs.querySelector('#ert-inquiry-scene-dossier-focus-grad')) return;
+        const gradient = createSvgElement('radialGradient');
+        gradient.setAttribute('id', 'ert-inquiry-scene-dossier-focus-grad');
+        gradient.setAttribute('cx', '50%');
+        gradient.setAttribute('cy', '46%');
+        gradient.setAttribute('fx', '50%');
+        gradient.setAttribute('fy', '42%');
+        gradient.setAttribute('r', '54%');
+        ['0%', '32%', '70%', '100%'].forEach(offset => {
+            const stop = createSvgElement('stop');
+            stop.setAttribute('offset', offset);
+            gradient.appendChild(stop);
+        });
+        defs.appendChild(gradient);
+    }
+
     private renderModeIcons(parent: SVGGElement): void {
         const iconOffsetY = MODE_ICON_OFFSET_Y;
         const iconSize = Math.round(VIEWBOX_SIZE * 0.25 * 0.7);
@@ -3647,9 +3689,19 @@ export class InquiryView extends ItemView {
         this.modeIconToggleHit = hit;
     }
 
-    private buildSceneDossierLayer(parent: SVGGElement, y: number): void {
-        const group = createSvgGroup(parent, 'ert-inquiry-scene-dossier ert-hidden', 0, y);
+    private buildSceneDossierLayer(parent: SVGElement, y: number): void {
+        const group = createSvgGroup(parent, 'ert-inquiry-scene-dossier', 0, y);
         group.setAttribute('pointer-events', 'none');
+
+        const composition = createSvgGroup(group, 'ert-inquiry-scene-dossier-composition');
+
+        const focusGlow = createSvgElement('ellipse');
+        focusGlow.classList.add('ert-inquiry-scene-dossier-focus');
+        focusGlow.setAttribute('cx', '0');
+        focusGlow.setAttribute('cy', String(Math.round(SCENE_DOSSIER_MIN_HEIGHT * 0.5)));
+        focusGlow.setAttribute('rx', String(SCENE_DOSSIER_FOCUS_RX));
+        focusGlow.setAttribute('ry', String(SCENE_DOSSIER_FOCUS_RY));
+        composition.appendChild(focusGlow);
 
         const bg = createSvgElement('rect');
         bg.classList.add('ert-inquiry-scene-dossier-bg');
@@ -3657,22 +3709,33 @@ export class InquiryView extends ItemView {
         bg.setAttribute('y', '0');
         bg.setAttribute('width', String(SCENE_DOSSIER_WIDTH));
         bg.setAttribute('height', String(SCENE_DOSSIER_MIN_HEIGHT));
-        bg.setAttribute('rx', '18');
-        bg.setAttribute('ry', '18');
-        group.appendChild(bg);
+        bg.setAttribute('rx', '34');
+        bg.setAttribute('ry', '34');
+        composition.appendChild(bg);
 
-        const header = createSvgText(group, 'ert-inquiry-scene-dossier-header', '', 0, SCENE_DOSSIER_PADDING_Y + SCENE_DOSSIER_HEADER_SIZE);
+        const braceLeft = createSvgText(composition, 'ert-inquiry-scene-dossier-brace ert-inquiry-scene-dossier-brace--left', '{', 0, 0);
+        braceLeft.setAttribute('text-anchor', 'middle');
+        braceLeft.setAttribute('dominant-baseline', 'middle');
+
+        const braceRight = createSvgText(composition, 'ert-inquiry-scene-dossier-brace ert-inquiry-scene-dossier-brace--right', '}', 0, 0);
+        braceRight.setAttribute('text-anchor', 'middle');
+        braceRight.setAttribute('dominant-baseline', 'middle');
+
+        const header = createSvgText(composition, 'ert-inquiry-scene-dossier-header', '', 0, SCENE_DOSSIER_PADDING_Y + SCENE_DOSSIER_HEADER_SIZE);
         header.setAttribute('text-anchor', 'middle');
 
-        const body = createSvgText(group, 'ert-inquiry-scene-dossier-body', '', 0, 0);
-        body.setAttribute('x', String((-SCENE_DOSSIER_WIDTH / 2) + SCENE_DOSSIER_SIDE_PADDING));
-        body.setAttribute('text-anchor', 'start');
+        const body = createSvgText(composition, 'ert-inquiry-scene-dossier-body', '', 0, 0);
+        body.setAttribute('text-anchor', 'middle');
 
-        const footer = createSvgText(group, 'ert-inquiry-scene-dossier-footer', '', 0, 0);
+        const footer = createSvgText(composition, 'ert-inquiry-scene-dossier-footer', '', 0, 0);
         footer.setAttribute('text-anchor', 'middle');
 
         this.sceneDossierGroup = group;
+        this.sceneDossierComposition = composition;
+        this.sceneDossierFocusGlow = focusGlow;
         this.sceneDossierBg = bg;
+        this.sceneDossierBraceLeft = braceLeft;
+        this.sceneDossierBraceRight = braceRight;
         this.sceneDossierHeader = header;
         this.sceneDossierBody = body;
         this.sceneDossierFooter = footer;
@@ -4090,7 +4153,10 @@ export class InquiryView extends ItemView {
             },
             onTickLeave: () => {
                 this.clearHoverText();
-                this.clearResultPreview();
+                const hadPreview = this.minimapResultPreviewActive;
+                this.hideSceneDossier();
+                if (!hadPreview || this.previewLocked) return;
+                this.hidePromptPreview(true);
             }
         });
 
@@ -8563,7 +8629,7 @@ export class InquiryView extends ItemView {
         const hoverLabel = displayLabel || label;
         const result = this.state.activeResult;
         if (!result || this.isErrorResult(result)) {
-            this.hideSceneDossier();
+            this.hideSceneDossier(true);
             this.setHoverText(this.buildMinimapHoverText(hoverLabel));
             return;
         }
@@ -8574,7 +8640,20 @@ export class InquiryView extends ItemView {
             return;
         }
         this.setHoverText('');
-        this.showSceneDossier(this.buildSceneDossierModel(item, label, hoverLabel, finding));
+        this.queueSceneDossier(
+            this.buildSceneDossierHoverKey(item, label, finding),
+            this.buildSceneDossierModel(item, label, hoverLabel, finding)
+        );
+    }
+
+    private buildSceneDossierHoverKey(item: InquiryCorpusItem, label: string, finding: InquiryFinding): string {
+        return [
+            item.id,
+            item.sceneId ?? '',
+            label,
+            finding.refId ?? '',
+            finding.headline ?? ''
+        ].join('::');
     }
 
     private resolveFindingForMinimapHover(
@@ -8615,7 +8694,7 @@ export class InquiryView extends ItemView {
 
     private clearResultPreview(): void {
         const hadPreview = this.minimapResultPreviewActive;
-        this.hideSceneDossier();
+        this.hideSceneDossier(true);
         if (!hadPreview) return;
         this.minimapResultPreviewActive = false;
         if (this.previewLocked) return;
@@ -8632,11 +8711,11 @@ export class InquiryView extends ItemView {
         const bodyLines = this.buildSceneDossierBodyLines(finding);
 
         const footerParts = [
-            `Impact ${finding.impact}`,
-            `Confidence ${finding.assessmentConfidence}`
+            `Impact ${this.formatBriefLabel(finding.impact)}`,
+            `Confidence ${this.formatBriefLabel(finding.assessmentConfidence)}`
         ];
         if (finding.lens) {
-            footerParts.push(`Lens ${finding.lens}`);
+            footerParts.push(`Lens ${this.formatSceneDossierLensLabel(finding.lens)}`);
         }
 
         return {
@@ -8654,16 +8733,28 @@ export class InquiryView extends ItemView {
             .slice(0, 2);
         const bodyLines: string[] = [];
         if (headline) {
-            bodyLines.push(headline);
+            bodyLines.push(this.normalizeSceneDossierSentence(headline));
         }
         if (bullets.length) {
             bullets.forEach(entry => {
-                bodyLines.push(`• ${entry}`);
+                bodyLines.push(this.normalizeSceneDossierSentence(entry));
             });
         } else if (!headline) {
             bodyLines.push('Finding text unavailable.');
         }
         return bodyLines.slice(0, SCENE_DOSSIER_MAX_BODY_LINES);
+    }
+
+    private normalizeSceneDossierSentence(value: string): string {
+        const trimmed = value.trim();
+        if (!trimmed) return '';
+        if (/[.!?…]$/.test(trimmed)) return trimmed;
+        return `${trimmed}.`;
+    }
+
+    private formatSceneDossierLensLabel(lens?: InquiryFinding['lens']): string {
+        if (lens === 'both') return 'Flow + Depth';
+        return this.formatBriefLabel(lens || this.state.mode);
     }
 
     private buildSceneDossierHeader(item: InquiryCorpusItem, label: string, hoverLabel: string): string {
@@ -8702,10 +8793,48 @@ export class InquiryView extends ItemView {
             .trim();
     }
 
-    private showSceneDossier(dossier: InquirySceneDossier): void {
-        if (!this.sceneDossierGroup || !this.sceneDossierBg || !this.sceneDossierHeader || !this.sceneDossierBody || !this.sceneDossierFooter) {
+    private queueSceneDossier(hoverKey: string, dossier: InquirySceneDossier): void {
+        if (!this.sceneDossierGroup) return;
+        this.cancelSceneDossierHide();
+        this.cancelSceneDossierShow();
+        const showImmediately = this.sceneDossierVisible || this.sceneDossierActiveKey === hoverKey;
+        if (showImmediately) {
+            this.showSceneDossier(dossier, hoverKey);
             return;
         }
+        this.sceneDossierShowTimer = window.setTimeout(() => {
+            this.sceneDossierShowTimer = undefined;
+            this.showSceneDossier(dossier, hoverKey);
+        }, SCENE_DOSSIER_HOVER_DELAY_MS);
+    }
+
+    private cancelSceneDossierShow(): void {
+        if (!this.sceneDossierShowTimer) return;
+        window.clearTimeout(this.sceneDossierShowTimer);
+        this.sceneDossierShowTimer = undefined;
+    }
+
+    private cancelSceneDossierHide(): void {
+        if (!this.sceneDossierHideTimer) return;
+        window.clearTimeout(this.sceneDossierHideTimer);
+        this.sceneDossierHideTimer = undefined;
+    }
+
+    private showSceneDossier(dossier: InquirySceneDossier, hoverKey: string): void {
+        if (
+            !this.sceneDossierGroup
+            || !this.sceneDossierComposition
+            || !this.sceneDossierFocusGlow
+            || !this.sceneDossierBg
+            || !this.sceneDossierBraceLeft
+            || !this.sceneDossierBraceRight
+            || !this.sceneDossierHeader
+            || !this.sceneDossierBody
+            || !this.sceneDossierFooter
+        ) {
+            return;
+        }
+        this.cancelSceneDossierHide();
         const maxTextWidth = SCENE_DOSSIER_WIDTH - (SCENE_DOSSIER_SIDE_PADDING * 2);
         const headerY = SCENE_DOSSIER_PADDING_Y + SCENE_DOSSIER_HEADER_SIZE;
         this.sceneDossierHeader.setAttribute('y', String(headerY));
@@ -8717,7 +8846,7 @@ export class InquiryView extends ItemView {
             SCENE_DOSSIER_HEADER_LINE_HEIGHT
         );
 
-        const bodyStartY = headerY + (Math.max(headerLines, 1) * SCENE_DOSSIER_HEADER_LINE_HEIGHT) + 10;
+        const bodyStartY = headerY + (Math.max(headerLines, 1) * SCENE_DOSSIER_HEADER_LINE_HEIGHT) + SCENE_DOSSIER_BODY_GAP;
         const bodyLineCount = this.setSceneDossierBodyText(
             this.sceneDossierBody,
             dossier.bodyLines.filter(Boolean),
@@ -8727,7 +8856,7 @@ export class InquiryView extends ItemView {
         );
 
         const hasFooter = !!dossier.footer;
-        const footerY = bodyStartY + (Math.max(bodyLineCount, 1) * SCENE_DOSSIER_LINE_HEIGHT) + 10;
+        const footerY = bodyStartY + (Math.max(bodyLineCount, 1) * SCENE_DOSSIER_LINE_HEIGHT) + SCENE_DOSSIER_FOOTER_GAP;
         this.sceneDossierFooter.classList.toggle('ert-hidden', !hasFooter);
         let footerLines = 0;
         if (hasFooter) {
@@ -8747,10 +8876,27 @@ export class InquiryView extends ItemView {
             ? footerY + SCENE_DOSSIER_FOOTER_SIZE + SCENE_DOSSIER_PADDING_Y + (Math.max(footerLines, 1) - 1) * SCENE_DOSSIER_FOOTER_LINE_HEIGHT
             : bodyStartY + (Math.max(bodyLineCount, 1) * SCENE_DOSSIER_LINE_HEIGHT) + SCENE_DOSSIER_PADDING_Y;
         this.sceneDossierBg.setAttribute('height', String(Math.max(SCENE_DOSSIER_MIN_HEIGHT, contentHeight)));
+        const dossierHeight = Math.max(SCENE_DOSSIER_MIN_HEIGHT, contentHeight);
+        const focusCy = Math.round(dossierHeight * 0.56);
+        this.sceneDossierFocusGlow.setAttribute('cy', String(focusCy));
+        this.sceneDossierFocusGlow.setAttribute('rx', String(SCENE_DOSSIER_FOCUS_RX));
+        this.sceneDossierFocusGlow.setAttribute('ry', String(Math.round(SCENE_DOSSIER_FOCUS_RY + (dossierHeight * 0.08))));
+        const braceY = Math.round(bodyStartY + ((Math.max(bodyLineCount, 1) * SCENE_DOSSIER_LINE_HEIGHT) * 0.48));
+        const braceOffsetX = Math.round((SCENE_DOSSIER_WIDTH / 2) - SCENE_DOSSIER_BRACE_INSET);
+        this.sceneDossierBraceLeft.setAttribute('x', String(-braceOffsetX));
+        this.sceneDossierBraceLeft.setAttribute('y', String(braceY));
+        this.sceneDossierBraceRight.setAttribute('x', String(braceOffsetX));
+        this.sceneDossierBraceRight.setAttribute('y', String(braceY));
+        this.sceneDossierBraceLeft.setAttribute('font-size', String(SCENE_DOSSIER_BRACE_SIZE));
+        this.sceneDossierBraceRight.setAttribute('font-size', String(SCENE_DOSSIER_BRACE_SIZE));
 
-        this.sceneDossierGroup.classList.remove('ert-hidden');
+        if (this.rootSvg?.lastChild !== this.sceneDossierGroup) {
+            this.rootSvg?.appendChild(this.sceneDossierGroup);
+        }
+        this.sceneDossierGroup.classList.add('is-visible');
+        this.sceneDossierActiveKey = hoverKey;
+        this.sceneDossierVisible = true;
         this.minimapResultPreviewActive = true;
-        this.rootSvg?.classList.add('is-scene-dossier-active');
     }
 
     private setSceneDossierBodyText(
@@ -8773,10 +8919,30 @@ export class InquiryView extends ItemView {
         return lineCount;
     }
 
-    private hideSceneDossier(): void {
-        this.sceneDossierGroup?.classList.add('ert-hidden');
-        this.rootSvg?.classList.remove('is-scene-dossier-active');
-        this.minimapResultPreviewActive = false;
+    private hideSceneDossier(immediate = false): void {
+        this.cancelSceneDossierShow();
+        if (!this.sceneDossierGroup) {
+            this.minimapResultPreviewActive = false;
+            return;
+        }
+        const hide = () => {
+            this.sceneDossierHideTimer = undefined;
+            this.sceneDossierGroup?.classList.remove('is-visible');
+            this.sceneDossierVisible = false;
+            this.sceneDossierActiveKey = undefined;
+            this.minimapResultPreviewActive = false;
+        };
+        if (immediate) {
+            this.cancelSceneDossierHide();
+            hide();
+            return;
+        }
+        if (!this.sceneDossierVisible) {
+            this.minimapResultPreviewActive = false;
+            return;
+        }
+        this.cancelSceneDossierHide();
+        this.sceneDossierHideTimer = window.setTimeout(hide, SCENE_DOSSIER_HIDE_DELAY_MS);
     }
 
     private buildHitFindingMap(
@@ -10857,6 +11023,15 @@ export class InquiryView extends ItemView {
         const usageText = usage
             ? `input=${formatUsageMetric(usage.inputTokens)}, output=${formatUsageMetric(usage.outputTokens)}, total=${formatUsageMetric(usage.totalTokens)}`
             : 'not available';
+        const cacheReuseLabel = trace.cacheReuseState
+            ? trace.cacheReuseState.replace(/_/g, ' ')
+            : null;
+        const cachePrefixLabel = typeof trace.cachedStableRatio === 'number' && Number.isFinite(trace.cachedStableRatio)
+            ? `${Math.round(trace.cachedStableRatio * 100)}%`
+            : null;
+        const cacheTokensLabel = typeof trace.cachedStableTokens === 'number' && Number.isFinite(trace.cachedStableTokens)
+            ? formatTokenCount(trace.cachedStableTokens)
+            : null;
 
         const describeMode = (className: string): string | null => {
             if (!manifest) return null;
@@ -11026,6 +11201,13 @@ export class InquiryView extends ItemView {
         lines.push(`- Execution state: ${isSimulated ? 'simulated' : (trace.executionState ?? 'unknown')}`);
         lines.push(`- Execution path: ${isSimulated ? 'simulated' : (trace.executionPath ?? ((typeof trace.executionPassCount === 'number' && trace.executionPassCount > 1) ? 'multi_pass' : 'one_pass'))}`);
         lines.push(`- Failure stage: ${isSimulated ? 'none' : (trace.failureStage ?? (status === 'error' ? 'provider_response_parsing' : 'none'))}`);
+        if (!isSimulated && cacheReuseLabel) {
+            const cacheParts = [`- Cache reuse: ${cacheReuseLabel}`];
+            if (trace.cacheStatus) cacheParts.push(`status=${trace.cacheStatus}`);
+            if (cachePrefixLabel) cacheParts.push(`prefix=${cachePrefixLabel}`);
+            if (cacheTokensLabel) cacheParts.push(`tokens=${cacheTokensLabel}`);
+            lines.push(cacheParts.join(' · '));
+        }
         if (typeof trace.executionPassCount === 'number' && trace.executionPassCount > 1) {
             lines.push(`- Pass count: ${trace.executionPassCount}`);
         }
@@ -11112,6 +11294,16 @@ export class InquiryView extends ItemView {
                 typeof tokenUsage.cacheCreationInputTokens === 'number' ? `cache write=${tokenUsage.cacheCreationInputTokens}` : null
             ].filter((value): value is string => !!value)
             : [];
+        const cacheDetailParts = [
+            trace.cacheReuseState ? `reuse=${trace.cacheReuseState}` : null,
+            trace.cacheStatus ? `status=${trace.cacheStatus}` : null,
+            typeof trace.cachedStableRatio === 'number' && Number.isFinite(trace.cachedStableRatio)
+                ? `prefix=${Math.round(trace.cachedStableRatio * 100)}%`
+                : null,
+            typeof trace.cachedStableTokens === 'number' && Number.isFinite(trace.cachedStableTokens)
+                ? `cached stable tokens=${Math.round(trace.cachedStableTokens)}`
+                : null
+        ].filter((value): value is string => !!value);
         const { sanitized: sanitizedPayload, hadRedactions } = sanitizeLogPayload(trace.requestPayload ?? null);
         const redactionNotes = hadRedactions
             ? ['Redacted sensitive credential values from request payload.']
@@ -11155,6 +11347,9 @@ export class InquiryView extends ItemView {
         ];
         if (tokenUsageDetailParts.length) {
             contextLines.push(`- Token usage detail: ${tokenUsageDetailParts.join(', ')}`);
+        }
+        if (cacheDetailParts.length) {
+            contextLines.push(`- Cache detail: ${cacheDetailParts.join(', ')}`);
         }
         if (typeof trace.executionPassCount === 'number' && trace.executionPassCount > 1) {
             contextLines.push(`- Execution pass count: ${trace.executionPassCount}`);

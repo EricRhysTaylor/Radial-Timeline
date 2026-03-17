@@ -743,7 +743,31 @@ export class InquiryMinimapRenderer {
         advanced: AIRunAdvancedContext | null
     ): void {
         if (!this.minimapTokenCapCachedOverlay || !this.minimapLayout) return;
-        this.minimapTokenCapCachedOverlay.classList.add('ert-hidden');
+        const cachedRatio = advanced?.cachedStableRatio;
+        const cachedTokens = advanced?.cachedStableTokens;
+        const hasRealCacheMetric = typeof cachedRatio === 'number'
+            && Number.isFinite(cachedRatio)
+            && cachedRatio > 0
+            && typeof cachedTokens === 'number'
+            && Number.isFinite(cachedTokens)
+            && cachedTokens > 0
+            && advanced?.reuseState === 'warm';
+        if (!hasRealCacheMetric) {
+            this.minimapTokenCapCachedOverlay.classList.add('ert-hidden');
+            this.minimapTokenCapCachedOverlay.setAttribute('width', '0');
+            return;
+        }
+        const overlayWidth = this.minimapLayout.length
+            * Math.min(Math.max(fillRatio, 0), 1)
+            * Math.min(cachedRatio, 1);
+        if (overlayWidth < 4) {
+            this.minimapTokenCapCachedOverlay.classList.add('ert-hidden');
+            this.minimapTokenCapCachedOverlay.setAttribute('width', '0');
+            return;
+        }
+        this.minimapTokenCapCachedOverlay.classList.remove('ert-hidden');
+        this.minimapTokenCapCachedOverlay.setAttribute('x', this.minimapLayout.startX.toFixed(2));
+        this.minimapTokenCapCachedOverlay.setAttribute('width', overlayWidth.toFixed(2));
     }
 
     private updateBackboneCachedOverlay(
@@ -759,8 +783,7 @@ export class InquiryMinimapRenderer {
             && typeof cachedTokens === 'number'
             && Number.isFinite(cachedTokens)
             && cachedTokens > 0
-            && advanced?.reuseState === 'warm'
-            && typeof advanced?.cacheStatus === 'string';
+            && advanced?.reuseState === 'warm';
         if (progress || !hasRealCacheMetric) {
             this.minimapBackboneCachedOverlay.classList.add('ert-hidden');
             this.minimapBackboneCachedOverlay.setAttribute('width', '0');
@@ -941,6 +964,8 @@ export class InquiryMinimapRenderer {
             : '----';
 
         if (this.minimapReuseBand && reuseState !== 'idle') {
+            this.minimapReuseBand.classList.remove('ert-hidden');
+            this.minimapReuseDot?.classList.remove('ert-hidden');
             const providerLabel = provider === 'google' ? 'Gemini'
                 : provider.charAt(0).toUpperCase() + provider.slice(1);
             const stateDetail = reuseState === 'warm'
