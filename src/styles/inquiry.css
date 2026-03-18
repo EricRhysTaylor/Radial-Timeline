@@ -1512,17 +1512,22 @@
   transform: scale(1);
 }
 
+.ert-inquiry-scene-dossier-focus-core {
+  fill: var(--background-primary);
+  opacity: 0.96;
+}
+
 .ert-inquiry-scene-dossier-focus {
   fill: url(#ert-inquiry-scene-dossier-focus-grad);
   opacity: 1;
-  filter: blur(4px);
+  filter: blur(6px);
 }
 
 .ert-inquiry-scene-dossier-focus-outline {
   fill: none;
-  stroke: #000;
+  stroke: #fff;
   stroke-width: 2;
-  opacity: 1;
+  opacity: var(--ert-inquiry-texture-opacity);
 }
 
 .ert-inquiry-scene-dossier-bg {

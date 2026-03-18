@@ -19,6 +19,7 @@ import {
     type FrontmatterSafetyResult,
     scanFrontmatterSafety,
 } from './yamlSafety';
+import { normalizeFrontmatterKeys } from './frontmatter';
 import { buildFrontmatterDocument, extractBodyAfterFrontmatter } from './frontmatterDocument';
 
 // ─── Types ──────────────────────────────────────────────────────────────
@@ -346,10 +347,13 @@ async function reorderSingleFile(
 
     if (!parsed || typeof parsed !== 'object') return false;
 
-    const currentKeys = Object.keys(parsed);
-    const orderedKeys = buildOrderedKeyList(currentKeys, canonicalOrder);
+    const rawFrontmatter = parsed as Record<string, unknown>;
+    const normalizedFrontmatter = normalizeFrontmatterKeys(rawFrontmatter);
+    const currentKeys = Object.keys(rawFrontmatter);
+    const normalizedCurrentKeys = Object.keys(normalizedFrontmatter);
+    const orderedKeys = buildOrderedKeyList(normalizedCurrentKeys, canonicalOrder);
 
-    // Check if order actually changed
+    // Check if order or canonical casing actually changed
     if (arraysEqual(currentKeys, orderedKeys)) {
         return false;
     }
@@ -357,7 +361,7 @@ async function reorderSingleFile(
     // Rebuild frontmatter in the new order
     const reorderedObj: Record<string, unknown> = {};
     for (const key of orderedKeys) {
-        reorderedObj[key] = parsed[key];
+        reorderedObj[key] = normalizedFrontmatter[key];
     }
 
     const newYamlStr = stringifyYaml(reorderedObj);
@@ -473,7 +477,10 @@ export function previewReorder(
 
     const fm = cache.frontmatter as Record<string, unknown>;
     const currentKeys = Object.keys(fm).filter(k => k !== 'position');
-    const orderedKeys = buildOrderedKeyList(currentKeys, canonicalOrder);
+    const normalizedFrontmatter = normalizeFrontmatterKeys(
+        Object.fromEntries(Object.entries(fm).filter(([key]) => key !== 'position'))
+    );
+    const orderedKeys = buildOrderedKeyList(Object.keys(normalizedFrontmatter), canonicalOrder);
 
     if (arraysEqual(currentKeys, orderedKeys)) return null;
     return { before: currentKeys, after: orderedKeys };

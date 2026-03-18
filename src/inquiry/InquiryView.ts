@@ -35,6 +35,7 @@ import {
 import type { InquiryClassConfig, InquiryMaterialMode, InquiryPromptConfig, InquiryPromptSlot, OmnibusProgressState } from '../types/settings';
 import { buildDefaultInquiryPromptConfig, getBuiltInPromptSeed, getCanonicalPromptText, normalizeInquiryPromptConfig } from './prompts';
 import { ensureInquiryArtifactFolder, getMostRecentArtifactFile, resolveInquiryArtifactFolder } from './utils/artifacts';
+import { buildInquiryDossierPresentation } from './utils/inquiryDossierPresentation';
 import { ensureInquiryContentLogFolder, ensureInquiryLogFolder, resolveInquiryLogFolder } from './utils/logs';
 import { openOrRevealFile, openOrRevealFileAtSubpath } from '../utils/fileUtils';
 import {
@@ -362,9 +363,11 @@ type InquiryPreviewRow = {
 };
 
 type InquirySceneDossier = {
-    header: string;
+    title: string;
+    anchorLine: string;
     bodyLines: string[];
-    footer?: string;
+    metaLine?: string;
+    sourceLabel?: string;
 };
 
 type InquiryOmnibusPlan = {
@@ -1098,6 +1101,7 @@ export class InquiryView extends ItemView {
     private hoverTextEl?: SVGTextElement;
     private sceneDossierGroup?: SVGGElement;
     private sceneDossierComposition?: SVGGElement;
+    private sceneDossierFocusCore?: SVGCircleElement;
     private sceneDossierFocusGlow?: SVGCircleElement;
     private sceneDossierFocusOutline?: SVGCircleElement;
     private sceneDossierBg?: SVGRectElement;
@@ -3704,6 +3708,13 @@ export class InquiryView extends ItemView {
 
         const composition = createSvgGroup(group, 'ert-inquiry-scene-dossier-composition');
 
+        const focusCore = createSvgElement('circle');
+        focusCore.classList.add('ert-inquiry-scene-dossier-focus-core');
+        focusCore.setAttribute('cx', '0');
+        focusCore.setAttribute('cy', '0');
+        focusCore.setAttribute('r', String(Math.round(SCENE_DOSSIER_FOCUS_RADIUS * 0.62)));
+        composition.appendChild(focusCore);
+
         const focusGlow = createSvgElement('circle');
         focusGlow.classList.add('ert-inquiry-scene-dossier-focus');
         focusGlow.setAttribute('cx', '0');
@@ -3747,6 +3758,7 @@ export class InquiryView extends ItemView {
 
         this.sceneDossierGroup = group;
         this.sceneDossierComposition = composition;
+        this.sceneDossierFocusCore = focusCore;
         this.sceneDossierFocusGlow = focusGlow;
         this.sceneDossierFocusOutline = focusOutline;
         this.sceneDossierBg = bg;
@@ -8659,7 +8671,7 @@ export class InquiryView extends ItemView {
         this.setHoverText('');
         this.queueSceneDossier(
             this.buildSceneDossierHoverKey(item, label, finding),
-            this.buildSceneDossierModel(item, label, hoverLabel, finding)
+            this.buildSceneDossierModel(item, label, hoverLabel, finding, result)
         );
     }
 
@@ -8722,24 +8734,17 @@ export class InquiryView extends ItemView {
         item: InquiryCorpusItem,
         label: string,
         hoverLabel: string,
-        finding: InquiryFinding
+        finding: InquiryFinding,
+        result: InquiryResult
     ): InquirySceneDossier {
-        const header = this.buildSceneDossierHeader(item, label, hoverLabel);
-        const bodyLines = this.buildSceneDossierBodyLines(finding);
-
-        const footerParts = [
-            `Impact ${this.formatBriefLabel(finding.impact)}`,
-            `Confidence ${this.formatBriefLabel(finding.assessmentConfidence)}`
-        ];
-        if (finding.lens) {
-            footerParts.push(`Lens ${this.formatSceneDossierLensLabel(finding.lens)}`);
-        }
-
-        return {
-            header,
-            bodyLines: bodyLines.slice(0, SCENE_DOSSIER_MAX_BODY_LINES),
-            footer: footerParts.join(' · ')
-        };
+        const fallbackTitle = this.buildSceneDossierHeader(item, label, hoverLabel);
+        return buildInquiryDossierPresentation({
+            finding,
+            sceneNumber: this.parseCorpusLabelNumber(item.displayLabel) ?? this.parseCorpusLabelNumber(label),
+            sceneTitle: this.stripNumericTitlePrefix(this.getMinimapItemTitle(item)),
+            fallbackTitle,
+            runId: result.runId
+        });
     }
 
     private buildSceneDossierBodyLines(finding: InquiryFinding): string[] {
@@ -8767,11 +8772,6 @@ export class InquiryView extends ItemView {
         if (!trimmed) return '';
         if (/[.!?…]$/.test(trimmed)) return trimmed;
         return `${trimmed}.`;
-    }
-
-    private formatSceneDossierLensLabel(lens?: InquiryFinding['lens']): string {
-        if (lens === 'both') return 'Flow + Depth';
-        return this.formatBriefLabel(lens || this.state.mode);
     }
 
     private buildSceneDossierHeader(item: InquiryCorpusItem, label: string, hoverLabel: string): string {
@@ -8841,6 +8841,7 @@ export class InquiryView extends ItemView {
         if (
             !this.sceneDossierGroup
             || !this.sceneDossierComposition
+            || !this.sceneDossierFocusCore
             || !this.sceneDossierFocusGlow
             || !this.sceneDossierFocusOutline
             || !this.sceneDossierBg
@@ -8857,22 +8858,27 @@ export class InquiryView extends ItemView {
         this.sceneDossierHeader.setAttribute('y', '0');
         const headerLines = this.setWrappedSvgText(
             this.sceneDossierHeader,
-            dossier.header,
+            dossier.title,
             maxTextWidth,
             2,
             SCENE_DOSSIER_HEADER_LINE_HEIGHT
         );
 
+        const bodyLines = [
+            dossier.anchorLine,
+            ...dossier.bodyLines.filter(line => line && line !== dossier.anchorLine)
+        ].slice(0, SCENE_DOSSIER_MAX_BODY_LINES);
         const bodyStartY = (Math.max(headerLines, 1) * SCENE_DOSSIER_HEADER_LINE_HEIGHT) + SCENE_DOSSIER_BODY_GAP;
         const bodyLineCount = this.setSceneDossierBodyText(
             this.sceneDossierBody,
-            dossier.bodyLines.filter(Boolean),
+            bodyLines.filter(Boolean),
             maxTextWidth,
             SCENE_DOSSIER_MAX_BODY_LINES,
             bodyStartY
         );
 
-        const hasFooter = !!dossier.footer;
+        const footerText = [dossier.metaLine, dossier.sourceLabel].filter(Boolean).join(' · ');
+        const hasFooter = !!footerText;
         const footerY = bodyStartY + (Math.max(bodyLineCount, 1) * SCENE_DOSSIER_LINE_HEIGHT) + SCENE_DOSSIER_FOOTER_GAP;
         this.sceneDossierFooter.classList.toggle('ert-hidden', !hasFooter);
         let footerLines = 0;
@@ -8880,7 +8886,7 @@ export class InquiryView extends ItemView {
             this.sceneDossierFooter.setAttribute('y', String(footerY));
             footerLines = this.setWrappedSvgText(
                 this.sceneDossierFooter,
-                dossier.footer ?? '',
+                footerText,
                 maxTextWidth,
                 2,
                 SCENE_DOSSIER_FOOTER_LINE_HEIGHT
@@ -8914,14 +8920,14 @@ export class InquiryView extends ItemView {
         this.sceneDossierHeader.setAttribute('y', String(headerY));
         this.setWrappedSvgText(
             this.sceneDossierHeader,
-            dossier.header,
+            dossier.title,
             maxTextWidth,
             2,
             SCENE_DOSSIER_HEADER_LINE_HEIGHT
         );
         this.setSceneDossierBodyText(
             this.sceneDossierBody,
-            dossier.bodyLines.filter(Boolean),
+            bodyLines.filter(Boolean),
             maxTextWidth,
             SCENE_DOSSIER_MAX_BODY_LINES,
             centeredBodyStartY
@@ -8930,15 +8936,18 @@ export class InquiryView extends ItemView {
             this.sceneDossierFooter.setAttribute('y', String(centeredFooterY));
             this.setWrappedSvgText(
                 this.sceneDossierFooter,
-                dossier.footer ?? '',
+                footerText,
                 maxTextWidth,
                 2,
                 SCENE_DOSSIER_FOOTER_LINE_HEIGHT
             );
         }
 
-        this.sceneDossierFocusGlow.setAttribute('cy', String(-SCENE_DOSSIER_Y));
         const focusRadius = Math.max(SCENE_DOSSIER_FOCUS_RADIUS, Math.round(dossierHeight * 0.84));
+        const focusCoreRadius = Math.round(focusRadius * 0.62);
+        this.sceneDossierFocusCore.setAttribute('cy', String(-SCENE_DOSSIER_Y));
+        this.sceneDossierFocusCore.setAttribute('r', String(focusCoreRadius));
+        this.sceneDossierFocusGlow.setAttribute('cy', String(-SCENE_DOSSIER_Y));
         this.sceneDossierFocusGlow.setAttribute('r', String(focusRadius));
         this.sceneDossierFocusOutline.setAttribute('cy', String(-SCENE_DOSSIER_Y));
         this.sceneDossierFocusOutline.setAttribute('r', String(focusRadius));

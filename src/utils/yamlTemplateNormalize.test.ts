@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
-import { computeCanonicalOrder, getBaseKeys, getExcludeKeyPredicate } from './yamlTemplateNormalize';
+import { computeCanonicalOrder, getBaseKeys, getExcludeKeyPredicate, safeParseYaml } from './yamlTemplateNormalize';
 
 describe('yamlTemplateNormalize', () => {
     it('enforces Pulse Update and Summary Update as required base Scene keys', () => {
@@ -34,5 +34,20 @@ describe('yamlTemplateNormalize', () => {
         expect(isExcluded('previousSceneAnalysis')).toBe(false);
         expect(isExcluded('currentSceneAnalysis')).toBe(false);
         expect(isExcluded('nextSceneAnalysis')).toBe(false);
+    });
+
+    it('treats template placeholders as scalar values during YAML parsing', () => {
+        const parsed = safeParseYaml([
+            'Class: Scene',
+            'Act: {{Act}}',
+            'When: {{When}}',
+            'Subplot:',
+            '{{SubplotList}}'
+        ].join('\n'));
+
+        expect(parsed.Class).toBe('Scene');
+        expect(parsed.Act).toBe('{{Act}}');
+        expect(parsed.When).toBe('{{When}}');
+        expect(parsed.Subplot).toBe('');
     });
 });

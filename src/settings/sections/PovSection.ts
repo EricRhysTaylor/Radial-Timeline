@@ -14,6 +14,58 @@ const POV_LABELS: Record<string, string> = {
     '3': '³'
 };
 
+function fitSelectToSelectedLabel(
+    selectEl: HTMLSelectElement,
+    options: {
+        extraPx?: number;
+        minPx?: number;
+        maxPx?: number;
+    } = {}
+): void {
+    const selectedLabel = selectEl.options[selectEl.selectedIndex]?.text ?? '';
+    if (!selectedLabel) return;
+
+    const doc = selectEl.ownerDocument;
+    const view = doc.defaultView;
+    if (!view) return;
+
+    const sample = doc.createElement('span');
+    sample.className = 'ert-metrics-sample';
+    sample.textContent = selectedLabel;
+    doc.body.appendChild(sample);
+
+    const computed = view.getComputedStyle(selectEl);
+    sample.style.fontFamily = computed.fontFamily;
+    sample.style.fontSize = computed.fontSize; // SAFE: inline style used for off-screen measurement element
+    sample.style.fontWeight = computed.fontWeight;
+    sample.style.letterSpacing = computed.letterSpacing;
+
+    const textWidth = Math.ceil(sample.getBoundingClientRect().width);
+    sample.remove();
+
+    const paddingLeft = Number.parseFloat(computed.paddingLeft) || 0;
+    const paddingRight = Number.parseFloat(computed.paddingRight) || 0;
+    const borderLeft = Number.parseFloat(computed.borderLeftWidth) || 0;
+    const borderRight = Number.parseFloat(computed.borderRightWidth) || 0;
+    const extraPx = options.extraPx ?? 16;
+    const minPx = options.minPx ?? 0;
+    const maxPx = options.maxPx ?? Number.POSITIVE_INFINITY;
+    const isBorderBox = computed.boxSizing === 'border-box';
+
+    let rawWidth = textWidth + extraPx;
+    if (isBorderBox) {
+        rawWidth += paddingLeft + paddingRight + borderLeft + borderRight;
+    }
+
+    const nextWidth = Math.min(maxPx, Math.max(minPx, Math.ceil(rawWidth)));
+    const nextWidthPx = `${nextWidth}px`;
+    selectEl.style.width = nextWidthPx; // SAFE: inline style used for dynamic fit-to-content width
+    selectEl.style.minWidth = nextWidthPx;
+    selectEl.style.maxWidth = nextWidthPx;
+    selectEl.style.flex = `0 0 ${nextWidthPx}`;
+    selectEl.style.setProperty('--ert-control-width', nextWidthPx);
+}
+
 export function renderPovSection(params: {
     plugin: RadialTimelinePlugin;
     containerEl: HTMLElement;
@@ -43,26 +95,30 @@ export function renderPovSection(params: {
         plugin.settings.globalPovMode = currentMode;
         void plugin.saveSettings();
     }
-    new ObsidianSetting(containerEl)
+    const globalPovSetting = new ObsidianSetting(containerEl)
         .setName(t('settings.pov.global.name'))
         .setDesc(t('settings.pov.global.desc'))
         .addDropdown(dropdown => {
             (Object.keys(povModeOptions) as GlobalPovMode[]).forEach((key) => {
                 dropdown.addOption(key, povModeOptions[key]);
             });
+            dropdown.selectEl.addClass('ert-input', 'ert-input--fit-selected');
             dropdown.setValue(currentMode);
+            fitSelectToSelectedLabel(dropdown.selectEl, { minPx: 104, maxPx: 220, extraPx: 18 });
             dropdown.onChange(async (value) => {
                 const next = (value as GlobalPovMode) || 'off';
+                fitSelectToSelectedLabel(dropdown.selectEl, { minPx: 104, maxPx: 220, extraPx: 18 });
                 plugin.settings.globalPovMode = next;
                 await plugin.saveSettings();
                 plugin.onSettingChanged(IMPACT_FULL); // Tier 3: POV superscripts baked into SVG synopsis
             });
         });
+    globalPovSetting.settingEl.addClass('ert-settingRow');
 
     const yamlOverridesSetting = new ObsidianSetting(containerEl)
         .setName(t('settings.pov.yamlOverrides.name'))
         .setDesc(t('settings.pov.yamlOverrides.desc'));
-    yamlOverridesSetting.settingEl.addClass(ERT_CLASSES.ELEMENT_BLOCK_SKIP);
+    yamlOverridesSetting.settingEl.addClass(ERT_CLASSES.ELEMENT_BLOCK_SKIP, 'ert-settingRow');
 
     // Preview section
     const previewContainer = containerEl.createDiv({

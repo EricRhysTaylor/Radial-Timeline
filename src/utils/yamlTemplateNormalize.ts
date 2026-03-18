@@ -22,6 +22,18 @@ export type NoteType = 'Scene' | 'Beat' | 'Backdrop';
 
 // ─── Low-level parsers ──────────────────────────────────────────────────
 
+function sanitizeTemplatePlaceholdersForYamlParse(template: string): string {
+    return (template || '')
+        .split('\n')
+        .filter(line => !/^\s*{{[^{}\n]+}}\s*$/.test(line))
+        .map(line => line.replace(/{{[^{}\n]+}}/g, match => JSON.stringify(match)))
+        .join('\n');
+}
+
+function normalizeParsedTemplateScalar(value: unknown): string {
+    return String(value).replace(/^['"]({{[^{}\n]+}})['"]$/, '$1');
+}
+
 /**
  * Extract YAML keys from a template string in the order they appear.
  * Lines must start with `SomeKey:` (allows letters, digits, spaces, underscores,
@@ -47,16 +59,16 @@ export function extractKeysInOrder(template: string): string[] {
  */
 export function safeParseYaml(template: string): Record<string, TemplateEntryValue> {
     try {
-        const parsed = parseYaml(template);
+        const parsed = parseYaml(sanitizeTemplatePlaceholdersForYamlParse(template));
         if (!parsed || typeof parsed !== 'object') return {};
         const entries: Record<string, TemplateEntryValue> = {};
         Object.entries(parsed as Record<string, unknown>).forEach(([key, value]) => {
             if (Array.isArray(value)) {
-                entries[key] = value.map((v) => String(v));
+                entries[key] = value.map((v) => normalizeParsedTemplateScalar(v));
             } else if (value === undefined || value === null) {
                 entries[key] = '';
             } else {
-                entries[key] = String(value);
+                entries[key] = normalizeParsedTemplateScalar(value);
             }
         });
         return entries;

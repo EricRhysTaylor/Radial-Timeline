@@ -3881,12 +3881,12 @@ export function renderStoryBeatsSection(params: {
             deleteExtraBtn.classList.add('ert-settings-hidden');
         });
 
-        // Delete advanced fields button (hidden until advanced template has keys)
+        // Delete custom fields button (hidden until custom template has keys)
         let deleteAdvancedBtn: HTMLButtonElement | undefined;
         auditSetting.addButton(button => {
             button
-                .setButtonText('Delete advanced fields')
-                .setTooltip('Remove advanced template fields from existing notes (base fields are preserved)')
+                .setButtonText('Delete custom fields')
+                .setTooltip('Remove custom template fields from existing notes (base fields are preserved)')
                 .onClick(() => void handleDeleteAdvancedFields());
             deleteAdvancedBtn = button.buttonEl;
             deleteAdvancedBtn.classList.add('ert-settings-hidden');
@@ -4062,7 +4062,7 @@ export function renderStoryBeatsSection(params: {
                 deleteExtraBtn?.classList.add('ert-settings-hidden');
             }
 
-            // Show delete-advanced button when an advanced template exists and
+            // Show delete-custom button when a custom template exists and
             // at least one safe note has any of those advanced keys
             const advancedKeySet = new Set(getCustomKeys(noteType, plugin.settings, activeBeatSystemKey));
             if (advancedKeySet.size > 0) {
@@ -4076,7 +4076,7 @@ export function renderStoryBeatsSection(params: {
                     deleteAdvancedBtn?.classList.remove('ert-settings-hidden');
                     deleteAdvancedBtn?.setAttribute(
                         'aria-label',
-                        `Delete advanced fields from ${notesWithAdvKeys.length} note${notesWithAdvKeys.length !== 1 ? 's' : ''}`
+                        `Delete custom fields from ${notesWithAdvKeys.length} note${notesWithAdvKeys.length !== 1 ? 's' : ''}`
                     );
                 } else {
                     deleteAdvancedBtn?.classList.add('ert-settings-hidden');
@@ -5114,7 +5114,7 @@ export function renderStoryBeatsSection(params: {
             setTimeout(() => runAudit(), 750);
         };
 
-        // ─── Delete advanced fields action ──────────────────────────────
+        // ─── Delete custom fields action ────────────────────────────────
         const handleDeleteAdvancedFields = async () => {
             if (!auditResult) return;
 
@@ -5197,10 +5197,10 @@ export function renderStoryBeatsSection(params: {
 
                 const header = modal.contentEl.createDiv({ cls: 'ert-modal-header' });
                 header.createSpan({ cls: 'ert-modal-badge', text: 'YAML MANAGER' });
-                header.createDiv({ cls: 'ert-modal-title', text: 'Delete advanced fields' });
+                header.createDiv({ cls: 'ert-modal-title', text: 'Delete custom fields' });
                 header.createDiv({
                     cls: 'ert-modal-subtitle',
-                    text: `Remove ${totalFieldCount} advanced field${totalFieldCount !== 1 ? 's' : ''} from ${targetNotes.length} ${noteType.toLowerCase()} note${targetNotes.length !== 1 ? 's' : ''}. Base fields are never touched.`
+                    text: `Remove ${totalFieldCount} custom field${totalFieldCount !== 1 ? 's' : ''} from ${targetNotes.length} ${noteType.toLowerCase()} note${targetNotes.length !== 1 ? 's' : ''}. Base fields are never touched.`
                 });
 
                 if (unsafeSkippedCount > 0) {
@@ -5239,7 +5239,7 @@ export function renderStoryBeatsSection(params: {
                 }
 
                 const fieldListEl = body.createDiv();
-                fieldListEl.createDiv({ text: 'Advanced fields to delete:', cls: 'ert-modal-subtitle' });
+                fieldListEl.createDiv({ text: 'Custom fields to delete:', cls: 'ert-modal-subtitle' });
                 const ul = fieldListEl.createEl('ul');
                 for (const key of deletableAdvKeys) {
                     ul.createEl('li', { text: key });
@@ -5266,7 +5266,7 @@ export function renderStoryBeatsSection(params: {
 
                 const footer = modal.contentEl.createDiv({ cls: 'ert-modal-actions' });
                 const deleteBtn = new ButtonComponent(footer)
-                    .setButtonText('Delete advanced fields')
+                    .setButtonText('Delete custom fields')
                     .setWarning()
                     .onClick(() => {
                         if (hasValuedFields) {
@@ -6021,18 +6021,30 @@ function extractKeysInOrder(template: string): string[] {
     return keys;
 }
 
+function sanitizeTemplatePlaceholdersForYamlParse(template: string): string {
+    return (template || '')
+        .split('\n')
+        .filter(line => !/^\s*{{[^{}\n]+}}\s*$/.test(line))
+        .map(line => line.replace(/{{[^{}\n]+}}/g, match => JSON.stringify(match)))
+        .join('\n');
+}
+
+function normalizeParsedTemplateScalar(value: unknown): string {
+    return String(value).replace(/^['"]({{[^{}\n]+}})['"]$/, '$1');
+}
+
 function safeParseYaml(template: string): Record<string, FieldEntryValue> {
     try {
-        const parsed = parseYaml(template);
+        const parsed = parseYaml(sanitizeTemplatePlaceholdersForYamlParse(template));
         if (!parsed || typeof parsed !== 'object') return {};
         const entries: Record<string, FieldEntryValue> = {};
         Object.entries(parsed as Record<string, unknown>).forEach(([key, value]) => {
             if (Array.isArray(value)) {
-                entries[key] = value.map((v) => String(v));
+                entries[key] = value.map((v) => normalizeParsedTemplateScalar(v));
             } else if (value === undefined || value === null) {
                 entries[key] = '';
             } else {
-                entries[key] = String(value);
+                entries[key] = normalizeParsedTemplateScalar(value);
             }
         });
         return entries;
