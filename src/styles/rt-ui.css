@@ -2491,6 +2491,12 @@
   gap: 2px;
 }
 
+.ert-ui.ert-scope--settings .ert-ai-capacity-divider {
+  list-style: none;
+  border-top: 1px solid var(--background-modifier-border);
+  margin: 0.5rem 0;
+}
+
 .ert-ui.ert-scope--settings .ert-ai-capacity-item {
   font-size: 11px;
   font-weight: 500;

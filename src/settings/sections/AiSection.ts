@@ -24,7 +24,7 @@ import {
     setCredentialSecretId
 } from '../../ai/credentials/credentials';
 import { getSecret, hasSecret, isSecretStorageAvailable, setSecret } from '../../ai/credentials/secretStorage';
-import type { AccessTier, AIProviderId, Capability } from '../../ai/types';
+import type { AccessTier, AIProviderId, Capability, RTCorpusTokenBreakdown } from '../../ai/types';
 import { buildCanonicalExecutionEstimate, estimateGossamerTokens } from '../../ai/forecast/estimateTokensFromVault';
 import {
     estimateCorpusCost,
@@ -33,6 +33,7 @@ import {
 import { INQUIRY_CANONICAL_ESTIMATE_QUESTION } from '../../inquiry/constants';
 
 type Provider = 'anthropic' | 'gemini' | 'openai' | 'local';
+type CapacityItem = string | { text: string; dividerBefore?: boolean };
 
 export function renderAiSection(params: {
     app: App;
@@ -270,7 +271,7 @@ export function renderAiSection(params: {
     };
     const renderCapacitySections = (
         container: HTMLElement,
-        sections: Array<{ title: string; items: string[] }>
+        sections: Array<{ title: string; items: CapacityItem[] }>
     ): void => {
         container.empty();
         sections.forEach(section => {
@@ -278,30 +279,60 @@ export function renderAiSection(params: {
             sectionEl.createDiv({ cls: 'ert-ai-capacity-block-title', text: section.title });
             const listEl = sectionEl.createEl('ul', { cls: 'ert-ai-capacity-list' });
             section.items.forEach(item => {
-                listEl.createEl('li', { cls: 'ert-ai-capacity-item', text: item });
+                const normalized = typeof item === 'string' ? { text: item } : item;
+                if (normalized.dividerBefore) {
+                    listEl.createEl('li', { cls: 'ert-ai-capacity-divider' });
+                }
+                listEl.createEl('li', { cls: 'ert-ai-capacity-item', text: normalized.text });
             });
         });
     };
-    const formatInquiryReferenceLine = (count: number | null): string => {
-        if (count === null) return 'References — unavailable';
-        return count > 0 ? `References (${count})` : 'References — none';
-    };
     const formatInquiryCount = (count: number | null): string => count === null ? '?' : count.toLocaleString();
+    const formatCorpusBreakdownToken = (tokens: number | null): string => (
+        tokens === null
+            ? '~?'
+            : `~${(Math.round((Number.isFinite(tokens) ? tokens : 0) / 100) / 10).toFixed(1).replace(/\.0$/, '')}k`
+    );
+    const buildScenesCapacityLine = (sceneCount: number | null, scenesTokens: number | null): string => (
+        `Scenes (${formatInquiryCount(sceneCount)}) — full text (${formatCorpusBreakdownToken(scenesTokens)})`
+    );
+    const buildOutlineCapacityLine = (outlineCount: number | null, outlineTokens: number | null): string => (
+        outlineCount === null
+            ? `Outline (?) — unavailable (${formatCorpusBreakdownToken(outlineTokens)})`
+            : outlineCount > 0
+                ? `Outline (${formatInquiryCount(outlineCount)}) — full text (${formatCorpusBreakdownToken(outlineTokens)})`
+                : 'Outline — none'
+    );
+    const buildReferenceCapacityLine = (referenceCount: number | null, referenceTokens: number | null): string => (
+        referenceCount === null
+            ? `References (?) — unavailable (${formatCorpusBreakdownToken(referenceTokens)})`
+            : referenceCount > 0
+                ? `References (${formatInquiryCount(referenceCount)}) — included (${formatCorpusBreakdownToken(referenceTokens)})`
+                : 'References — none'
+    );
     const buildInquiryCapacitySections = (counts?: {
         sceneCount: number;
         outlineCount: number;
         referenceCount: number;
-    }): Array<{ title: string; items: string[] }> => {
+        breakdown: RTCorpusTokenBreakdown;
+    }): Array<{ title: string; items: CapacityItem[] }> => {
         const sceneCount = counts?.sceneCount ?? null;
         const outlineCount = counts?.outlineCount ?? null;
         const referenceCount = counts?.referenceCount ?? null;
+        const scenesTokens = counts?.breakdown.scenesTokens ?? null;
+        const outlineTokens = counts?.breakdown.outlineTokens ?? null;
+        const referenceTokens = counts?.breakdown.referenceTokens ?? null;
+        const totalTokens = counts
+            ? counts.breakdown.scenesTokens + counts.breakdown.outlineTokens + counts.breakdown.referenceTokens
+            : null;
         return [
             {
                 title: 'Corpus',
                 items: [
-                    `Scenes (${formatInquiryCount(sceneCount)}) — full text`,
-                    `Outline (${formatInquiryCount(outlineCount)}) — full text`,
-                    formatInquiryReferenceLine(referenceCount)
+                    buildScenesCapacityLine(sceneCount, scenesTokens),
+                    buildOutlineCapacityLine(outlineCount, outlineTokens),
+                    buildReferenceCapacityLine(referenceCount, referenceTokens),
+                    { text: `Total — ${formatCorpusBreakdownToken(totalTokens)}`, dividerBefore: true }
                 ]
             },
             {
@@ -327,7 +358,7 @@ export function renderAiSection(params: {
             }
         ];
     };
-    const buildGossamerCapacitySections = (sceneCount: number): Array<{ title: string; items: string[] }> => [
+    const buildGossamerCapacitySections = (sceneCount: number): Array<{ title: string; items: CapacityItem[] }> => [
         {
             title: 'Corpus',
             items: [
@@ -913,6 +944,7 @@ export function renderAiSection(params: {
         sceneCount: number;
         outlineCount: number;
         referenceCount: number;
+        breakdown: RTCorpusTokenBreakdown;
     };
 
     type CostComparisonModel = {
@@ -975,7 +1007,7 @@ export function renderAiSection(params: {
     };
 
     const formatCorpusTokenSummary = (tokens: number): string =>
-        tokens > 0 ? `${formatApproxTokens(tokens)} tokens` : '0 tokens';
+        `${formatCorpusBreakdownToken(tokens)} tokens`;
 
     const renderCostEstimateCorpusSummary = (options: {
         sizeText: string;
@@ -1140,7 +1172,12 @@ export function renderAiSection(params: {
                 providerExecutionTokens: inquiryProviderTokens,
                 sceneCount: currentCorpus?.corpus.sceneCount ?? 0,
                 outlineCount: currentCorpus?.corpus.outlineCount ?? 0,
-                referenceCount: currentCorpus?.corpus.referenceCount ?? 0
+                referenceCount: currentCorpus?.corpus.referenceCount ?? 0,
+                breakdown: currentCorpus?.corpus.breakdown ?? {
+                    scenesTokens: 0,
+                    outlineTokens: 0,
+                    referenceTokens: 0
+                }
             },
             gossamer: {
                 available: true,
@@ -1148,7 +1185,8 @@ export function renderAiSection(params: {
                 providerExecutionTokens: gossamerProviderTokens,
                 sceneCount: gossamerEstimate.includedSceneCount,
                 outlineCount: gossamerEstimate.corpus.outlineCount,
-                referenceCount: gossamerEstimate.corpus.referenceCount
+                referenceCount: gossamerEstimate.corpus.referenceCount,
+                breakdown: gossamerEstimate.corpus.breakdown
             },
         };
     };
@@ -1301,12 +1339,13 @@ export function renderAiSection(params: {
                 modelId: estimate.model.id
             }).then(forecasts => {
                 if (forecasts.inquiry.available) {
-                    setTokenDisplay(capacityInquiryToken, `~${forecasts.inquiry.corpusTokens.toLocaleString()}`, 'tokens');
+                    setTokenDisplay(capacityInquiryToken, formatCorpusBreakdownToken(forecasts.inquiry.corpusTokens), 'tokens');
                     capacityInquiryExpected.setText(formatExpectedPasses(forecasts.inquiry.providerExecutionTokens));
                     renderCapacitySections(capacityInquirySections, buildInquiryCapacitySections({
                         sceneCount: forecasts.inquiry.sceneCount,
                         outlineCount: forecasts.inquiry.outlineCount,
-                        referenceCount: forecasts.inquiry.referenceCount
+                        referenceCount: forecasts.inquiry.referenceCount,
+                        breakdown: forecasts.inquiry.breakdown
                     }));
                 } else {
                     capacityInquiryToken.setText('Unavailable');
@@ -1314,7 +1353,7 @@ export function renderAiSection(params: {
                     renderCapacitySections(capacityInquirySections, buildInquiryCapacitySections());
                 }
 
-                setTokenDisplay(capacityGossamerToken, `~${forecasts.gossamer.corpusTokens.toLocaleString()}`, 'tokens');
+                setTokenDisplay(capacityGossamerToken, formatCorpusBreakdownToken(forecasts.gossamer.corpusTokens), 'tokens');
                 capacityGossamerExpected.setText(formatExpectedPasses(forecasts.gossamer.providerExecutionTokens));
                 renderCapacitySections(capacityGossamerSections, buildGossamerCapacitySections(forecasts.gossamer.sceneCount));
             });

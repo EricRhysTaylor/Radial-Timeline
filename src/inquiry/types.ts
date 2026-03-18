@@ -30,14 +30,17 @@ export type InquiryPayloadStats = {
     sceneSynopsisUsed: number;
     sceneSynopsisAvailable: number;
     sceneFullTextCount: number;
+    sceneChars?: number;
     bookOutlineCount: number;
     bookOutlineSummaryCount: number;
     bookOutlineFullCount: number;
     sagaOutlineCount: number;
     sagaOutlineSummaryCount: number;
     sagaOutlineFullCount: number;
+    outlineChars?: number;
     referenceCounts: { character: number; place: number; power: number; other: number; total: number };
     referenceByClass: Record<string, number>;
+    referenceChars?: number;
     evidenceChars: number;
     resolvedRoots: string[];
     manifestFingerprint: string;

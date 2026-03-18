@@ -1033,6 +1033,30 @@ type InquiryGlyphSeed = {
 export class InquiryView extends ItemView {
     static readonly viewType = INQUIRY_VIEW_TYPE;
 
+    public readonly perfCounters = {
+        hudTextWrites: 0,
+        hudAttrWrites: 0,
+        progressUpdateCalls: 0,
+        progressDomPatches: 0,
+        sweepAttrWrites: 0,
+        refreshUICalls: 0,
+        refreshCorpusCalls: 0
+    };
+
+    private setTextIfChanged(el: Element | null | undefined, text: string, counterKey?: keyof InquiryView['perfCounters']): void {
+        if (!el || el.textContent === text) return;
+        el.textContent = text;
+        if (counterKey) this.perfCounters[counterKey]++;
+    }
+
+    private toggleClassIfChanged(el: Element | null | undefined, cls: string, force: boolean, counterKey?: keyof InquiryView['perfCounters']): void {
+        if (!el || el.classList.contains(cls) === force) return;
+        el.classList.toggle(cls, force);
+        if (counterKey) this.perfCounters[counterKey]++;
+    }
+
+    private updateRunningClockInterval?: number;
+
     private plugin: RadialTimelinePlugin;
     private state = createDefaultInquiryState();
 
@@ -1063,6 +1087,7 @@ export class InquiryView extends ItemView {
     private enginePanelMetaEl?: HTMLDivElement;
     private enginePanelReadinessEl?: HTMLDivElement;
     private enginePanelReadinessStatusEl?: HTMLDivElement;
+    private enginePanelReadinessCorpusEl?: HTMLDivElement;
     private enginePanelReadinessMessageEl?: HTMLDivElement;
     private enginePanelReadinessActionsEl?: HTMLDivElement;
     private enginePanelReadinessScopeEl?: HTMLDivElement;
@@ -1244,6 +1269,11 @@ export class InquiryView extends ItemView {
     }
 
     async onClose(): Promise<void> {
+        console.log('[InquiryView Performance Counters]', this.perfCounters);
+        if (this.updateRunningClockInterval) {
+            window.clearInterval(this.updateRunningClockInterval);
+            this.updateRunningClockInterval = undefined;
+        }
         if (this.focusPersistTimer) {
             window.clearTimeout(this.focusPersistTimer);
             this.focusPersistTimer = undefined;
@@ -1661,6 +1691,10 @@ export class InquiryView extends ItemView {
             cls: 'ert-inquiry-engine-readiness-status',
             text: 'Ready'
         });
+        this.enginePanelReadinessCorpusEl = this.enginePanelReadinessEl.createDiv({
+            cls: 'ert-inquiry-engine-readiness-message',
+            text: ''
+        });
         this.enginePanelReadinessMessageEl = this.enginePanelReadinessEl.createDiv({
             cls: 'ert-inquiry-engine-readiness-message',
             text: ''
@@ -1725,7 +1759,6 @@ export class InquiryView extends ItemView {
 
         const engine = this.getResolvedEngine();
         const readinessUi = this.buildReadinessUiState();
-        const corpusEstimate = this.getRTCorpusEstimate();
         this.lastReadinessUiState = readinessUi;
         const advisoryContext = this.buildInquiryAdvisoryContext(readinessUi);
         this.lastEngineAdvisoryContext = advisoryContext;
@@ -1753,27 +1786,13 @@ export class InquiryView extends ItemView {
             }
         }
 
-        // ── 3. Details card ──
-        const detailsCard = this.enginePanelListEl.createDiv({ cls: 'ert-inquiry-engine-details-card' });
-
-        const idRow = detailsCard.createDiv({ cls: 'ert-inquiry-engine-detail-row' });
-        idRow.createSpan({ cls: 'ert-inquiry-engine-detail-label', text: 'Model ID' });
-        idRow.createSpan({ cls: 'ert-inquiry-engine-detail-value', text: engine.blocked ? '—' : engine.modelId });
-
-        const payloadRow = detailsCard.createDiv({ cls: 'ert-inquiry-engine-detail-row' });
-        payloadRow.createSpan({ cls: 'ert-inquiry-engine-detail-label', text: 'Inquiry Corpus' });
-        payloadRow.createSpan({
-            cls: 'ert-inquiry-engine-detail-value',
-            text: engine.blocked ? '—' : `~${this.formatTokenEstimate(corpusEstimate.estimatedTokens)}`
-        });
-
-        // ── 4. Advisor slot ──
+        // ── 3. Advisor slot ──
         const advisorSlot = this.enginePanelListEl.createDiv({ cls: 'ert-inquiry-engine-advisor-slot' });
         if (advisoryContext) {
             this.renderEngineAdvisoryCard(advisorSlot, advisoryContext);
         }
 
-        // ── 5. Action row ──
+        // ── 4. Action row ──
         const actionsRow = this.enginePanelListEl.createDiv({ cls: 'ert-inquiry-engine-actions' });
 
         const settingsButton = actionsRow.createEl('button', {
@@ -2024,6 +2043,7 @@ export class InquiryView extends ItemView {
     private renderEngineReadinessStrip(readinessUi: InquiryReadinessUiState): void {
         if (!this.enginePanelReadinessEl
             || !this.enginePanelReadinessStatusEl
+            || !this.enginePanelReadinessCorpusEl
             || !this.enginePanelReadinessMessageEl
             || !this.enginePanelReadinessActionsEl
             || !this.enginePanelReadinessScopeEl) {
@@ -2050,22 +2070,22 @@ export class InquiryView extends ItemView {
         this.enginePanelReadinessStatusEl.setText(statusText);
 
         const corpusEstimate = this.getRTCorpusEstimate();
-        const corpusLabel = this.formatTokenEstimate(corpusEstimate.estimatedTokens);
+        this.enginePanelReadinessCorpusEl.setText(this.buildEngineCorpusSummary(corpusEstimate));
         const passPlan = this.getCurrentPassPlan(readinessUi);
         if (popoverState === 'ready') {
-            this.enginePanelReadinessMessageEl.setText(`Inquiry Corpus: ~${corpusLabel}. Single pass.`);
+            this.enginePanelReadinessMessageEl.setText('Single pass.');
         } else if (popoverState === 'multi-pass') {
             const estimateLabel = passPlan.estimatedPassCount ?? passPlan.displayPassCount;
             const recentRunSuffix = passPlan.recentExactPassCount
                 ? ` Recent run used ${passPlan.recentExactPassCount} passes.`
                 : '';
             this.enginePanelReadinessMessageEl.setText(
-                `Inquiry Corpus: ~${corpusLabel}. Expected passes: ${estimateLabel} — manuscript exceeds input limit.${recentRunSuffix}`
+                `Expected passes: ${estimateLabel} — manuscript exceeds input limit.${recentRunSuffix}`
             );
         } else if (readinessUi.readiness.cause === 'single_pass_limit') {
             const estimateLabel = passPlan.estimatedPassCount ?? passPlan.displayPassCount;
             this.enginePanelReadinessMessageEl.setText(
-                `Inquiry Corpus: ~${corpusLabel}. Expected passes: ${estimateLabel} — single-pass mode blocks this run.`
+                `Expected passes: ${estimateLabel} — single-pass mode blocks this run.`
             );
         } else {
             this.enginePanelReadinessMessageEl.setText(readinessUi.reason);
@@ -2434,7 +2454,7 @@ export class InquiryView extends ItemView {
         this.clearResultPreview();
         this.unlockPromptPreview();
         this.setApiStatus('idle');
-        this.refreshUI();
+        this.refreshUI({ skipCorpus: true });
     }
 
     private handleBriefingResetCorpusClick(): void {
@@ -3875,10 +3895,14 @@ export class InquiryView extends ItemView {
         this.refreshEnginePanel();
     }
 
-    private refreshUI(): void {
+    private refreshUI(options?: { skipCorpus?: boolean }): void {
+        this.perfCounters.refreshUICalls++;
         this._resolvedEngine = null; // Invalidate per-refresh-cycle cache.
         this._currentCorpusContext = null; // Invalidate per-refresh-cycle cache.
-        this.refreshCorpus();
+        if (!options?.skipCorpus) {
+            this.perfCounters.refreshCorpusCalls++;
+            this.refreshCorpus();
+        }
         this.guidanceState = this.resolveGuidanceState();
         this.updateScopeToggle();
         this.updateModeToggle();
@@ -6038,8 +6062,15 @@ export class InquiryView extends ItemView {
         if (isRunning) {
             this.startRunningAnimations();
             this.updateMinimapPressureGauge();
+            if (!this.updateRunningClockInterval) {
+                this.updateRunningClockInterval = window.setInterval(() => this.updateRunningHud(), 1000);
+            }
         } else {
             this.stopRunningAnimations();
+            if (this.updateRunningClockInterval) {
+                window.clearInterval(this.updateRunningClockInterval);
+                this.updateRunningClockInterval = undefined;
+            }
             if (wasRunning) {
                 this.startBackboneFadeOut();
             }
@@ -6418,7 +6449,7 @@ export class InquiryView extends ItemView {
         this.pendingGuardQuestion = undefined;
         this.unlockPromptPreview();
         this.setApiStatus('idle');
-        this.refreshUI();
+        this.refreshUI({ skipCorpus: true });
         this.notifyInteraction('Inquiry cancel requested. Inquiry will stop after the current pass returns. The active provider request may still complete.');
     }
 
@@ -6526,7 +6557,7 @@ export class InquiryView extends ItemView {
         const startTime = Date.now();
         this.state.isRunning = true;
         this.setApiStatus('running');
-        this.refreshUI();
+        this.refreshUI({ skipCorpus: true });
         let result: InquiryResult;
         let runTrace: InquiryRunTrace | null = null;
         new Notice('Inquiry: contacting AI provider.');
@@ -6811,7 +6842,7 @@ export class InquiryView extends ItemView {
 
         this.state.isRunning = true;
         this.setApiStatus('running');
-        this.refreshUI();
+        this.refreshUI({ skipCorpus: true });
 
         const modal = this.activeOmnibusModal;
         if (modal) modal.updateProgress(1, total, '', 'Combined run in progress...', 'Processing all questions in a single pass...');
@@ -6946,7 +6977,7 @@ export class InquiryView extends ItemView {
 
         this.state.isRunning = true;
         this.setApiStatus('running');
-        this.refreshUI();
+        this.refreshUI({ skipCorpus: true });
 
         try {
             for (let qi = 0; qi < questions.length; qi += 1) {
@@ -7446,7 +7477,7 @@ export class InquiryView extends ItemView {
             this.showResultsPreview(normalized);
         }
         this.updateMinimapFocus();
-        this.refreshUI();
+        this.refreshUI({ skipCorpus: true });
     }
 
     private clearActiveResultState(): void {
@@ -7461,7 +7492,7 @@ export class InquiryView extends ItemView {
         this.clearActiveResultState();
         this.unlockPromptPreview();
         this.setApiStatus('idle');
-        this.refreshUI();
+        this.refreshUI({ skipCorpus: true });
     }
 
     private dismissError(): void {
@@ -7469,7 +7500,7 @@ export class InquiryView extends ItemView {
         this.clearActiveResultState();
         this.unlockPromptPreview();
         this.setApiStatus('idle');
-        this.refreshUI();
+        this.refreshUI({ skipCorpus: true });
     }
 
     private normalizeLegacyResult(result: InquiryResult): InquiryResult {
@@ -7939,7 +7970,7 @@ export class InquiryView extends ItemView {
         const submittedAt = new Date();
         this.state.isRunning = true;
         this.setApiStatus('running');
-        this.refreshUI();
+        this.refreshUI({ skipCorpus: true });
         this.apiSimulationTimer = window.setTimeout(async () => {
             this.apiSimulationTimer = undefined;
             const completedAt = new Date();
@@ -9318,11 +9349,12 @@ export class InquiryView extends ItemView {
     private setPreviewRunningNoteText(text: string): void {
         if (!this.previewRunningNote) return;
         const note = text.trim();
-        this.previewRunningNote.textContent = note;
-        this.previewRunningNote.classList.toggle('ert-hidden', !note);
+        this.setTextIfChanged(this.previewRunningNote, note, 'hudTextWrites');
+        this.toggleClassIfChanged(this.previewRunningNote, 'ert-hidden', !note, 'hudAttrWrites');
     }
 
     private updateRunProgress(progress: InquiryRunProgressEvent | null): void {
+        this.perfCounters.progressUpdateCalls++;
         this.currentRunProgress = progress;
         if (!this.state.isRunning || this.activeCancelRunModal) return;
         this.reconcileRunningEstimate(progress);
@@ -9331,6 +9363,7 @@ export class InquiryView extends ItemView {
         this.setPreviewFooterText('');
         this.updateMinimapPressureGauge();
         this.updateRunningHud();
+        this.perfCounters.progressDomPatches++;
         this.updateRunningState();
     }
 
@@ -9431,20 +9464,26 @@ export class InquiryView extends ItemView {
     private updateRunningHudFrame(elapsedMs: number): void {
         if (!this.state.isRunning) return;
         this.currentRunElapsedMs = elapsedMs;
-        this.updateRunningHud();
+        // HUD text updates are now managed by a decoupled setInterval to prevent 60fps layout thrash
         this.minimap.setRunningBackboneProgress(this.getRunningBackboneProgressRatio(elapsedMs));
     }
 
     private updateRunningHud(): void {
         if (this.engineTimerLabel) {
             const isRunning = this.state.isRunning;
-            this.engineTimerLabel.classList.toggle('ert-hidden', !isRunning);
-            this.engineTimerLabel.textContent = isRunning
-                ? this.formatElapsedRunClock(this.currentRunElapsedMs)
-                : '';
+            this.toggleClassIfChanged(this.engineTimerLabel, 'ert-hidden', !isRunning, 'hudAttrWrites');
+            this.setTextIfChanged(
+                this.engineTimerLabel,
+                isRunning ? this.formatElapsedRunClock(this.currentRunElapsedMs) : '',
+                'hudTextWrites'
+            );
         }
         if (this.state.isRunning && this.navSessionLabel) {
-            this.navSessionLabel.textContent = this.buildRunningStageLabel(this.currentRunProgress) || 'Waiting for the provider response.';
+            this.setTextIfChanged(
+                this.navSessionLabel,
+                this.buildRunningStageLabel(this.currentRunProgress) || 'Waiting for the provider response.',
+                'hudTextWrites'
+            );
         }
     }
 
@@ -10221,14 +10260,17 @@ export class InquiryView extends ItemView {
             sceneSynopsisUsed: sceneStats.synopsisUsed,
             sceneSynopsisAvailable: sceneStats.synopsisAvailable,
             sceneFullTextCount: sceneStats.fullCount,
+            sceneChars: sceneStats.chars,
             bookOutlineCount: bookOutlineStats.count,
             bookOutlineSummaryCount: bookOutlineStats.summaryCount,
             bookOutlineFullCount: bookOutlineStats.fullCount,
             sagaOutlineCount: sagaOutlineStats.count,
             sagaOutlineSummaryCount: sagaOutlineStats.summaryCount,
             sagaOutlineFullCount: sagaOutlineStats.fullCount,
+            outlineChars: bookOutlineStats.chars + sagaOutlineStats.chars,
             referenceCounts: referenceStats.counts,
             referenceByClass: referenceStats.byClass,
+            referenceChars: referenceStats.chars,
             evidenceChars,
             resolvedRoots,
             manifestFingerprint
@@ -10466,6 +10508,26 @@ export class InquiryView extends ItemView {
 
     private formatTokenEstimate(value: number): string {
         return formatTokenEstimatePure(value);
+    }
+
+    private formatApproxCorpusTokens(value: number): string {
+        return `~${this.formatTokenEstimate(value)}`;
+    }
+
+    private buildEngineCorpusSummary(estimate: RTCorpusTokenEstimate): string {
+        if (estimate.estimatedTokens <= 0) return 'Corpus · Estimating…';
+        const outlineLabel = estimate.breakdown.outlineTokens > 0
+            ? `Outline ${this.formatApproxCorpusTokens(estimate.breakdown.outlineTokens)}`
+            : 'Outline none';
+        const referenceLabel = estimate.breakdown.referenceTokens > 0
+            ? `References ${this.formatApproxCorpusTokens(estimate.breakdown.referenceTokens)}`
+            : 'References none';
+        return [
+            `Corpus · Total ${this.formatApproxCorpusTokens(estimate.estimatedTokens)}`,
+            `Scenes ${this.formatApproxCorpusTokens(estimate.breakdown.scenesTokens)}`,
+            outlineLabel,
+            referenceLabel
+        ].join(' · ');
     }
 
     private toggleDetails(): void {

@@ -239,10 +239,11 @@ export class InquiryMinimapRenderer {
 
     // ── Sweep state ──────────────────────────────────────────────────
 
-    private minimapSweepTicks: Array<{ rect: SVGRectElement; centerX: number; rowIndex: number }> = [];
+    private minimapSweepTicks: Array<{ rect: SVGRectElement; centerX: number; rowIndex: number; lastOpacity?: string }> = [];
     private minimapSweepLayout?: { startX: number; endX: number; bandWidth: number };
     private sweepRandomCycle = -1;
     private sweepRandomActive = new Set<number>();
+    private lastSweepUpdate = 0;
     private minimapBottomOffset = 0;
     private minimapEmptyUpdateId = 0;
     private runningAnimationFrame?: number;
@@ -522,6 +523,11 @@ export class InquiryMinimapRenderer {
 
     updateSweep(_elapsed: number): void {
         if (!this.minimapSweepLayout || !this.minimapSweepTicks.length) return;
+        
+        // THROTTLE: limit active sweep updates to 10fps to calm the GPU
+        if (_elapsed - this.lastSweepUpdate < 100) return;
+        this.lastSweepUpdate = _elapsed;
+
         const cycleIndex = Math.floor(_elapsed / SWEEP_RANDOM_CYCLE_MS);
         if (cycleIndex !== this.sweepRandomCycle) {
             this.sweepRandomCycle = cycleIndex;
@@ -538,12 +544,19 @@ export class InquiryMinimapRenderer {
         const phase = (_elapsed % SWEEP_RANDOM_CYCLE_MS) / SWEEP_RANDOM_CYCLE_MS;
         const pulse = Math.sin(Math.PI * phase);
         const intensity = 0.24 + (pulse * 0.76);
+        const intensityStr = intensity.toFixed(2);
         this.minimapSweepTicks.forEach((tick, index) => {
             if (!this.sweepRandomActive.has(index)) {
-                tick.rect.setAttribute('opacity', '0');
+                if (tick.lastOpacity !== '0') {
+                    tick.rect.setAttribute('opacity', '0');
+                    tick.lastOpacity = '0';
+                }
                 return;
             }
-            tick.rect.setAttribute('opacity', intensity.toFixed(2));
+            if (tick.lastOpacity !== intensityStr) {
+                tick.rect.setAttribute('opacity', intensityStr);
+                tick.lastOpacity = intensityStr;
+            }
         });
     }
 
@@ -632,9 +645,15 @@ export class InquiryMinimapRenderer {
             this.runningAnimationFrame = undefined;
         }
         this.runningAnimationStart = undefined;
-        this.minimapSweepTicks.forEach(tick => tick.rect.setAttribute('opacity', '0'));
+        this.minimapSweepTicks.forEach(tick => {
+            if (tick.lastOpacity !== '0') {
+                tick.rect.setAttribute('opacity', '0');
+                tick.lastOpacity = '0';
+            }
+        });
         this.sweepRandomCycle = -1;
         this.sweepRandomActive.clear();
+        this.lastSweepUpdate = 0;
         this.backboneStartColors = undefined;
         this.backboneTargetColors = undefined;
         this.backboneOscillationPhaseOffset = 0;

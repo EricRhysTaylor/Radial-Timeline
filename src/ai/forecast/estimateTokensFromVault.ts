@@ -359,7 +359,12 @@ export async function estimateInquiryTokens(params: {
             referenceCount: 0,
             evidenceChars: 0,
             estimatedTokens: 0,
-            method: 'rt_chars_heuristic'
+            method: 'rt_chars_heuristic',
+            breakdown: {
+                scenesTokens: 0,
+                outlineTokens: 0,
+                referenceTokens: 0
+            }
         };
         return {
             corpus,
@@ -451,13 +456,26 @@ export async function estimateInquiryTokens(params: {
                 ? 'summary'
                 : 'full';
     const evidenceChars = blocks.reduce((sum, block) => sum + block.label.length + block.content.length + 6, 0);
+    const sceneChars = blocks
+        .filter(block => block.label.startsWith('scene: '))
+        .reduce((sum, block) => sum + block.label.length + block.content.length + 6, 0);
+    const outlineChars = blocks
+        .filter(block => block.label.startsWith('outline: '))
+        .reduce((sum, block) => sum + block.label.length + block.content.length + 6, 0);
+    const referenceChars = Math.max(0, evidenceChars - sceneChars - outlineChars);
+    const breakdown = {
+        scenesTokens: estimateCorpusTokensFromChars(sceneChars),
+        outlineTokens: estimateCorpusTokensFromChars(outlineChars),
+        referenceTokens: estimateCorpusTokensFromChars(referenceChars)
+    };
     const corpusEstimate: RTCorpusTokenEstimate = {
         sceneCount: scenePaths.size,
         outlineCount: outlinePaths.size,
         referenceCount: referencePaths.size,
         evidenceChars,
-        estimatedTokens: estimateCorpusTokensFromChars(evidenceChars),
-        method: 'rt_chars_heuristic'
+        estimatedTokens: breakdown.scenesTokens + breakdown.outlineTokens + breakdown.referenceTokens,
+        method: 'rt_chars_heuristic',
+        breakdown
     };
     const questionText = params.questionText || 'Analyze the corpus and return findings.';
     let providerExecutionEstimate: InquiryTokenEstimate['providerExecutionEstimate'] = {
@@ -562,7 +580,12 @@ export async function estimateGossamerTokens(params: {
         referenceCount: 0,
         evidenceChars,
         estimatedTokens: estimateCorpusTokensFromChars(evidenceChars),
-        method: 'rt_chars_heuristic'
+        method: 'rt_chars_heuristic',
+        breakdown: {
+            scenesTokens: estimateCorpusTokensFromChars(evidenceChars),
+            outlineTokens: 0,
+            referenceTokens: 0
+        }
     };
     const providerExecutionEstimate = {
         estimatedTokens: estimateExecutionTokensFromChars(evidenceChars, params.promptOverheadTokens),
