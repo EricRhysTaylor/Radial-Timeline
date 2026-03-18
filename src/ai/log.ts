@@ -6,7 +6,11 @@ import { normalizePath, Notice, type Vault, TFile, TFolder } from 'obsidian';
 import { resolveInquiryLogFolder } from '../inquiry/utils/logs';
 import { redactSensitiveObject, redactSensitiveValue } from './credentials/redactSensitive';
 import { getModelDisplayName } from '../utils/modelResolver';
-import { getProviderPricing } from './cost/providerPricing';
+import {
+    type CorpusCostEstimate,
+    estimateCorpusCost,
+    estimateUsageCost
+} from './cost/estimateCorpusCost';
 import { extractTokenUsage, type TokenUsage } from './usage/providerUsage';
 
 export { extractTokenUsage, type TokenUsage } from './usage/providerUsage';
@@ -81,12 +85,15 @@ export type UsageCostBreakdown = {
     rawInputTokens?: number;
     cacheReadInputTokens?: number;
     cacheCreationInputTokens?: number;
+    cacheCreation5mInputTokens?: number;
+    cacheCreation1hInputTokens?: number;
+    rawInputCostUSD?: number;
+    cacheReadCostUSD?: number;
+    cacheCreationCostUSD?: number;
     inputCostUSD?: number;
     outputCostUSD?: number;
     totalCostUSD?: number;
 };
-
-const TOKENS_PER_MILLION = 1_000_000;
 
 function normalizePricingProvider(provider?: string | null): 'anthropic' | 'openai' | 'google' | null {
     const normalized = (provider || '').trim().toLowerCase();
@@ -105,64 +112,83 @@ export function buildUsageCostBreakdown(
     const pricingProvider = normalizePricingProvider(provider);
     if (!pricingProvider || !modelId) return null;
 
-    let pricing;
     try {
-        pricing = getProviderPricing(pricingProvider, modelId);
+        return estimateUsageCost(pricingProvider, modelId, usage);
     } catch {
         return null;
     }
+}
 
-    const inputCostUSD = typeof usage.inputTokens === 'number'
-        ? (usage.inputTokens / TOKENS_PER_MILLION) * pricing.inputPer1M
-        : undefined;
-    const outputCostUSD = typeof usage.outputTokens === 'number'
-        ? (usage.outputTokens / TOKENS_PER_MILLION) * pricing.outputPer1M
-        : undefined;
-    const totalCostUSD = typeof inputCostUSD === 'number' && typeof outputCostUSD === 'number'
-        ? inputCostUSD + outputCostUSD
-        : undefined;
+export interface LogCostEstimateInput {
+    executionInputTokens: number;
+    expectedOutputTokens: number;
+    expectedPasses: number;
+    cacheReuseRatio?: number;
+}
 
-    return {
-        inputTokens: usage.inputTokens,
-        outputTokens: usage.outputTokens,
-        rawInputTokens: usage.rawInputTokens,
-        cacheReadInputTokens: usage.cacheReadInputTokens,
-        cacheCreationInputTokens: usage.cacheCreationInputTokens,
-        inputCostUSD,
-        outputCostUSD,
-        totalCostUSD
-    };
+function formatDeltaPercent(estimated: number, actual: number): string {
+    if (!Number.isFinite(estimated) || !Number.isFinite(actual) || actual === 0) return 'unavailable';
+    const deltaPct = ((estimated - actual) / actual) * 100;
+    return `${deltaPct >= 0 ? '+' : ''}${deltaPct.toFixed(1)}%`;
 }
 
 export function formatUsageCostBreakdownLines(
     provider: string | null | undefined,
     modelId: string | null | undefined,
-    usage?: TokenUsage | null
+    usage?: TokenUsage | null,
+    estimateInput?: LogCostEstimateInput | null
 ): string[] {
     const breakdown = buildUsageCostBreakdown(provider, modelId, usage);
-    if (!breakdown) return [];
+    const pricingProvider = normalizePricingProvider(provider);
+    let estimate: CorpusCostEstimate | null = null;
+    if (pricingProvider && modelId && estimateInput) {
+        try {
+            estimate = estimateCorpusCost(
+                pricingProvider,
+                modelId,
+                estimateInput.executionInputTokens,
+                estimateInput.expectedOutputTokens,
+                estimateInput.expectedPasses,
+                { cacheReuseRatio: estimateInput.cacheReuseRatio }
+            );
+        } catch {
+            estimate = null;
+        }
+    }
+    if (!breakdown && !estimate) return [];
+
     const formatTokenCount = (value?: number): string => {
         if (typeof value !== 'number' || !Number.isFinite(value)) return 'unavailable';
-        return Math.round(value).toLocaleString();
+        return `~${Math.round(value).toLocaleString()} tokens`;
     };
     const formatCost = (value?: number): string => {
         if (typeof value !== 'number' || !Number.isFinite(value)) return 'unavailable';
         return `$${value.toFixed(2)}`;
     };
-
-    return [
+    const lines = [
         '## Cost Breakdown',
-        `Input tokens: ${formatTokenCount(breakdown.inputTokens)}`,
-        `Output tokens: ${formatTokenCount(breakdown.outputTokens)}`,
-        `Cache read: ${formatTokenCount(breakdown.cacheReadInputTokens)}`,
-        `Cache write: ${formatTokenCount(breakdown.cacheCreationInputTokens)}`,
+        `- Raw input: ${formatTokenCount(breakdown?.rawInputTokens)}`,
+        `- Cache read: ${formatTokenCount(breakdown?.cacheReadInputTokens)}`,
+        `- Cache write: ${formatTokenCount(breakdown?.cacheCreationInputTokens)}`,
+        `- Output: ${formatTokenCount(breakdown?.outputTokens)}`,
         '',
-        'Estimated cost:',
-        `Input: ${formatCost(breakdown.inputCostUSD)}`,
-        `Output: ${formatCost(breakdown.outputCostUSD)}`,
-        `Total: ${formatCost(breakdown.totalCostUSD)}`,
-        ''
+        `- Estimated fresh: ${formatCost(estimate?.freshCostUSD)}`,
+        `- Estimated cached: ${formatCost(estimate?.cachedCostUSD)}`,
+        `- Effective cost: ${formatCost(breakdown?.totalCostUSD)}`
     ];
+    if (
+        estimate
+        && typeof breakdown?.totalCostUSD === 'number'
+        && Number.isFinite(breakdown.totalCostUSD)
+    ) {
+        lines.push('');
+        lines.push('## Cost Accuracy');
+        lines.push(`- Estimated: ${formatCost(estimate.effectiveCostUSD)}`);
+        lines.push(`- Actual: ${formatCost(breakdown.totalCostUSD)}`);
+        lines.push(`- Delta: ${formatDeltaPercent(estimate.effectiveCostUSD, breakdown.totalCostUSD)}`);
+    }
+    lines.push('');
+    return lines;
 }
 
 export function sanitizeLogPayload(value: unknown): { sanitized: unknown; hadRedactions: boolean } {

@@ -18,7 +18,34 @@ describe('extractTokenUsage', () => {
             totalTokens: 206696,
             rawInputTokens: 196,
             cacheReadInputTokens: 176000,
-            cacheCreationInputTokens: 12000
+            cacheCreationInputTokens: 12000,
+            cacheCreation5mInputTokens: undefined,
+            cacheCreation1hInputTokens: undefined
+        });
+    });
+
+    it('preserves Anthropic cache creation tokens by ttl when available', () => {
+        const usage = extractTokenUsage('anthropic', {
+            usage: {
+                input_tokens: 196,
+                cache_read_input_tokens: 176000,
+                cache_creation: {
+                    ephemeral_5m_input_tokens: 10000,
+                    ephemeral_1h_input_tokens: 2000
+                },
+                output_tokens: 18500
+            }
+        });
+
+        expect(usage).toEqual({
+            inputTokens: 188196,
+            outputTokens: 18500,
+            totalTokens: 206696,
+            rawInputTokens: 196,
+            cacheReadInputTokens: 176000,
+            cacheCreationInputTokens: 12000,
+            cacheCreation5mInputTokens: 10000,
+            cacheCreation1hInputTokens: 2000
         });
     });
 

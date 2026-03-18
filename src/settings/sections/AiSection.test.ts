@@ -3,10 +3,11 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 describe('AI settings models table', () => {
-    it('renders a single AI model update control in advanced diagnostics', () => {
+    it('does not render a manual AI model update control in advanced diagnostics', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
-        expect(source.includes("setName('AI model updates')")).toBe(true);
-        expect(source.includes("setButtonText('Update AI models')")).toBe(true);
+        expect(source.includes("setName('AI model updates')")).toBe(false);
+        expect(source.includes("setButtonText('Update AI models')")).toBe(false);
+        expect(source.includes('Last updated:')).toBe(false);
         expect(source.includes('Refresh availability')).toBe(false);
         expect(source.includes('Remote model registry')).toBe(false);
         expect(source.includes("text: 'Models'")).toBe(false);

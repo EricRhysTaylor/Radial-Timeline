@@ -2,40 +2,57 @@ import { describe, expect, it } from 'vitest';
 import { estimateCorpusCost } from './estimateCorpusCost';
 
 describe('estimateCorpusCost', () => {
-    it('calculates anthropic sonnet cost', () => {
+    it('models no-cache runs explicitly when cache reuse is zero', () => {
         const result = estimateCorpusCost(
             'anthropic',
             'claude-sonnet-4-6',
-            1_000_000,
-            100_000,
-            1
+            200_000,
+            10_000,
+            1,
+            { cacheReuseRatio: 0 }
         );
 
-        expect(result.freshCostUSD).toBeCloseTo(4.5, 6);
-        expect(result.cachedCostUSD).toBeCloseTo(2.4, 6);
+        expect(result.cacheReuseRatio).toBe(0);
+        expect(result.freshCostUSD).toBeCloseTo(0.75, 6);
+        expect(result.cachedCostUSD).toBeCloseTo(0.75, 6);
+        expect(result.effectiveCostUSD).toBeCloseTo(result.cachedCostUSD, 6);
     });
 
-    it('keeps cached cost below fresh cost', () => {
+    it('models partial cache reuse explicitly', () => {
         const result = estimateCorpusCost(
-            'openai',
-            'gpt-5.4',
-            600_000,
-            40_000,
-            1
+            'anthropic',
+            'claude-sonnet-4-6',
+            200_000,
+            10_000,
+            1,
+            { cacheReuseRatio: 0.5 }
         );
 
+        expect(result.cacheReuseRatio).toBe(0.5);
+        expect(result.freshCostUSD).toBeCloseTo(0.825, 6);
+        expect(result.cachedCostUSD).toBeCloseTo(0.48, 6);
         expect(result.cachedCostUSD).toBeLessThan(result.freshCostUSD);
     });
 
-    it('charges more for multi-pass runs', () => {
-        const singlePass = estimateCorpusCost(
+    it('models full cache reuse without impossible negative values', () => {
+        const result = estimateCorpusCost(
             'anthropic',
             'claude-sonnet-4-6',
-            400_000,
-            20_000,
-            1
+            200_000,
+            10_000,
+            1,
+            { cacheReuseRatio: 1 }
         );
-        const multiPass = estimateCorpusCost(
+
+        expect(result.cacheReuseRatio).toBe(1);
+        expect(result.freshCostUSD).toBeCloseTo(0.9, 6);
+        expect(result.cachedCostUSD).toBeCloseTo(0.21, 6);
+        expect(result.freshCostUSD).toBeGreaterThanOrEqual(0);
+        expect(result.cachedCostUSD).toBeGreaterThanOrEqual(0);
+    });
+
+    it('uses the explicit multi-pass default cache reuse ratio', () => {
+        const result = estimateCorpusCost(
             'anthropic',
             'claude-sonnet-4-6',
             400_000,
@@ -43,8 +60,39 @@ describe('estimateCorpusCost', () => {
             3
         );
 
-        expect(multiPass.freshCostUSD).toBeCloseTo(singlePass.freshCostUSD * 3, 6);
-        expect(multiPass.cachedCostUSD).toBeCloseTo(singlePass.cachedCostUSD * 3, 6);
+        expect(result.cacheReuseRatio).toBe(0.5);
+        expect(result.freshCostUSD).toBeCloseTo(4.95, 6);
+        expect(result.cachedCostUSD).toBeCloseTo(2.88, 6);
+        expect(result.effectiveCostUSD).toBeCloseTo(result.cachedCostUSD, 6);
+    });
+
+    it('keeps output-heavy estimates consistent and non-negative', () => {
+        const result = estimateCorpusCost(
+            'anthropic',
+            'claude-sonnet-4-6',
+            20_000,
+            120_000,
+            1
+        );
+
+        expect(result.cacheReuseRatio).toBe(0.75);
+        expect(result.freshCostUSD).toBeCloseTo(1.87125, 6);
+        expect(result.cachedCostUSD).toBeCloseTo(1.8195, 6);
+        expect(result.cachedCostUSD).toBeLessThan(result.freshCostUSD);
+        expect(result.effectiveCostUSD).toBeCloseTo(result.cachedCostUSD, 6);
+    });
+
+    it('applies Sonnet 4.5 premium long-context pricing above 200k input tokens', () => {
+        const result = estimateCorpusCost(
+            'anthropic',
+            'claude-sonnet-4-5-20250929',
+            250_000,
+            10_000,
+            1
+        );
+
+        expect(result.freshCostUSD).toBeCloseTo(2.00625, 6);
+        expect(result.cachedCostUSD).toBeCloseTo(0.7125, 6);
     });
 
     it('throws when pricing is missing', () => {

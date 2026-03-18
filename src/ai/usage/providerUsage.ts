@@ -5,6 +5,8 @@ export type TokenUsage = {
     rawInputTokens?: number;
     cacheReadInputTokens?: number;
     cacheCreationInputTokens?: number;
+    cacheCreation5mInputTokens?: number;
+    cacheCreation1hInputTokens?: number;
 };
 
 function readUsageNumber(value: unknown): number | undefined {
@@ -27,12 +29,19 @@ function readAnthropicUsage(responseData: Record<string, unknown>): TokenUsage |
     const usageData = usage as Record<string, unknown>;
     const rawInputTokens = readUsageNumber(usageData.input_tokens);
     const cacheReadInputTokens = readUsageNumber(usageData.cache_read_input_tokens);
+    const cacheCreation = usageData.cache_creation && typeof usageData.cache_creation === 'object'
+        ? usageData.cache_creation as Record<string, unknown>
+        : undefined;
+    const cacheCreation5mInputTokens = readUsageNumber(cacheCreation?.ephemeral_5m_input_tokens);
+    const cacheCreation1hInputTokens = readUsageNumber(cacheCreation?.ephemeral_1h_input_tokens);
     const cacheCreationInputTokens = readUsageNumber(usageData.cache_creation_input_tokens)
-        ?? sumUsageNumbers(usageData.cache_creation);
+        ?? sumUsageNumbers(cacheCreation);
     const outputTokens = readUsageNumber(usageData.output_tokens);
     const hasAny = rawInputTokens !== undefined
         || cacheReadInputTokens !== undefined
         || cacheCreationInputTokens !== undefined
+        || cacheCreation5mInputTokens !== undefined
+        || cacheCreation1hInputTokens !== undefined
         || outputTokens !== undefined;
     if (!hasAny) return null;
 
@@ -51,7 +60,9 @@ function readAnthropicUsage(responseData: Record<string, unknown>): TokenUsage |
         totalTokens,
         rawInputTokens,
         cacheReadInputTokens,
-        cacheCreationInputTokens
+        cacheCreationInputTokens,
+        cacheCreation5mInputTokens,
+        cacheCreation1hInputTokens
     };
 }
 

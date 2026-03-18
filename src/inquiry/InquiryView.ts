@@ -209,19 +209,19 @@ const MODE_ICON_OFFSET_Y = -330;
 const SCENE_DOSSIER_Y = -70;
 const SCENE_DOSSIER_WIDTH = 980;
 const SCENE_DOSSIER_MIN_HEIGHT = 0;
-const SCENE_DOSSIER_SIDE_PADDING = 96;
+const SCENE_DOSSIER_SIDE_PADDING = 136;
 const SCENE_DOSSIER_PADDING_Y = 30;
 const SCENE_DOSSIER_HEADER_SIZE = 60;
 const SCENE_DOSSIER_HEADER_LINE_HEIGHT = 64;
-const SCENE_DOSSIER_ANCHOR_LINE_HEIGHT = 24;
+const SCENE_DOSSIER_ANCHOR_LINE_HEIGHT = 20;
 const SCENE_DOSSIER_BODY_PRIMARY_LINE_HEIGHT = 28;
 const SCENE_DOSSIER_BODY_SECONDARY_LINE_HEIGHT = 24;
 const SCENE_DOSSIER_FOOTER_SIZE = 12;
 const SCENE_DOSSIER_FOOTER_LINE_HEIGHT = 16;
 const SCENE_DOSSIER_SOURCE_LINE_HEIGHT = 14;
 const SCENE_DOSSIER_MAX_BODY_LINES = 5;
-const SCENE_DOSSIER_TITLE_ANCHOR_GAP = 8;
-const SCENE_DOSSIER_ANCHOR_BODY_GAP = 10;
+const SCENE_DOSSIER_TITLE_ANCHOR_GAP = 2;
+const SCENE_DOSSIER_ANCHOR_BODY_GAP = 16;
 const SCENE_DOSSIER_BODY_ROW_GAP = 8;
 const SCENE_DOSSIER_FOOTER_GAP = 16;
 const SCENE_DOSSIER_SOURCE_GAP = 8;
@@ -1040,7 +1040,13 @@ export class InquiryView extends ItemView {
         progressDomPatches: 0,
         sweepAttrWrites: 0,
         refreshUICalls: 0,
-        refreshCorpusCalls: 0
+        refreshCorpusCalls: 0,
+        corpusRefreshMs: 0,
+        svgTextWrites: 0,
+        svgNodeCreates: 0,
+        svgNodeReuses: 0,
+        svgClearCalls: 0,
+        svgAttrWrites: 0
     };
 
     private setTextIfChanged(el: Element | null | undefined, text: string, counterKey?: keyof InquiryView['perfCounters']): void {
@@ -3415,37 +3421,57 @@ export class InquiryView extends ItemView {
         this.zonePromptElements.forEach((elements, zone) => {
             const prompt = this.getActivePrompt(zone);
             if (!prompt) {
-                elements.text.textContent = '';
-                elements.bg.setAttribute('width', '0');
-                elements.bg.setAttribute('height', '0');
-                elements.glow.setAttribute('width', '0');
-                elements.glow.setAttribute('height', '0');
-                elements.group.classList.remove('is-active', 'is-processed', 'is-processed-success', 'is-processed-error', 'is-locked');
+                if (elements.text.textContent !== '') {
+                    this.perfCounters.svgTextWrites++;
+                    elements.text.textContent = '';
+                    elements.bg.setAttribute('width', '0');
+                    elements.bg.setAttribute('height', '0');
+                    elements.glow.setAttribute('width', '0');
+                    elements.glow.setAttribute('height', '0');
+                    elements.group.classList.remove('is-active', 'is-processed', 'is-processed-success', 'is-processed-error', 'is-locked');
+                    elements.group.removeAttribute('data-prompt-id');
+                }
                 return;
             }
-            elements.text.textContent = prompt.question;
-            const textLength = elements.text.getComputedTextLength();
-            const width = Math.max(textLength + (paddingX * 2), 180);
-            elements.bg.setAttribute('width', width.toFixed(2));
-            elements.bg.setAttribute('height', String(pillHeight));
-            elements.bg.setAttribute('x', String(-width / 2));
-            elements.bg.setAttribute('y', String(-pillHeight / 2));
-            elements.bg.setAttribute('rx', String(pillHeight / 2));
-            elements.bg.setAttribute('ry', String(pillHeight / 2));
-            elements.glow.setAttribute('width', width.toFixed(2));
-            elements.glow.setAttribute('height', String(pillHeight));
-            elements.glow.setAttribute('x', String(-width / 2));
-            elements.glow.setAttribute('y', String(-pillHeight / 2));
-            elements.glow.setAttribute('rx', String(pillHeight / 2));
-            elements.glow.setAttribute('ry', String(pillHeight / 2));
-            elements.group.classList.toggle('is-active', this.state.selectedPromptIds[zone] === prompt.id);
+
+            if (elements.text.textContent !== prompt.question) {
+                this.perfCounters.svgTextWrites++;
+                elements.text.textContent = prompt.question;
+                const textLength = elements.text.getComputedTextLength();
+                const width = Math.max(textLength + (paddingX * 2), 180);
+                const widthFixed = width.toFixed(2);
+                
+                elements.bg.setAttribute('width', widthFixed);
+                elements.bg.setAttribute('height', String(pillHeight));
+                elements.bg.setAttribute('x', String(-width / 2));
+                elements.bg.setAttribute('y', String(-pillHeight / 2));
+                elements.bg.setAttribute('rx', String(pillHeight / 2));
+                elements.bg.setAttribute('ry', String(pillHeight / 2));
+                
+                elements.glow.setAttribute('width', widthFixed);
+                elements.glow.setAttribute('height', String(pillHeight));
+                elements.glow.setAttribute('x', String(-width / 2));
+                elements.glow.setAttribute('y', String(-pillHeight / 2));
+                elements.glow.setAttribute('rx', String(pillHeight / 2));
+                elements.glow.setAttribute('ry', String(pillHeight / 2));
+            }
+
+            this.toggleClassIfChanged(elements.group, 'is-active', this.state.selectedPromptIds[zone] === prompt.id, 'svgAttrWrites');
             const isProcessed = processed.id === prompt.id;
-            elements.group.classList.toggle('is-processed', isProcessed);
-            elements.group.classList.toggle('is-processed-success', isProcessed && processed.status === 'success');
-            elements.group.classList.toggle('is-processed-error', isProcessed && processed.status === 'error');
-            elements.group.classList.toggle('is-locked', this.state.isRunning && this.state.activeZone === zone);
-            elements.group.setAttribute('data-prompt-id', prompt.id);
-            elements.group.removeAttribute('aria-label');
+            this.toggleClassIfChanged(elements.group, 'is-processed', isProcessed, 'svgAttrWrites');
+            this.toggleClassIfChanged(elements.group, 'is-processed-success', isProcessed && processed.status === 'success', 'svgAttrWrites');
+            this.toggleClassIfChanged(elements.group, 'is-processed-error', isProcessed && processed.status === 'error', 'svgAttrWrites');
+            this.toggleClassIfChanged(elements.group, 'is-locked', this.state.isRunning && this.state.activeZone === zone, 'svgAttrWrites');
+            
+            const currentPromptId = elements.group.getAttribute('data-prompt-id');
+            if (currentPromptId !== prompt.id) {
+                this.perfCounters.svgAttrWrites++;
+                elements.group.setAttribute('data-prompt-id', prompt.id);
+            }
+            if (elements.group.hasAttribute('aria-label')) {
+                this.perfCounters.svgAttrWrites++;
+                elements.group.removeAttribute('aria-label');
+            }
         });
     }
 
@@ -3895,26 +3921,41 @@ export class InquiryView extends ItemView {
         this.refreshEnginePanel();
     }
 
-    private refreshUI(options?: { skipCorpus?: boolean }): void {
+    private refreshUI(options?: { skipCorpus?: boolean, reason?: string }): void {
         this.perfCounters.refreshUICalls++;
+        if (options?.reason) {
+            console.debug(`[InquiryView] refreshUI triggered: ${options.reason} (skipCorpus: ${options.skipCorpus ?? false})`);
+        }
         this._resolvedEngine = null; // Invalidate per-refresh-cycle cache.
         this._currentCorpusContext = null; // Invalidate per-refresh-cycle cache.
         if (!options?.skipCorpus) {
             this.perfCounters.refreshCorpusCalls++;
+            const _start = performance.now();
             this.refreshCorpus();
+            this.perfCounters.corpusRefreshMs += (performance.now() - _start);
         }
+        
+        this.refreshDerivedViewState();
+        this.refreshVisualChrome(options?.reason);
+    }
+
+    private refreshDerivedViewState(): void {
         this.guidanceState = this.resolveGuidanceState();
+        this.renderMinimapTicks();
+        this.updateRings();
+        this.updateFindingsIndicators();
+        this.updateZonePrompts();
+        this.updateFocusGlyph();
+        void this.requestEstimateSnapshot();
+    }
+
+    private refreshVisualChrome(reason?: string): void {
         this.updateScopeToggle();
         this.updateModeToggle();
         this.updateModeClass();
         this.updateActiveZoneStyling();
         this.updateEngineBadge();
-        this.updateZonePrompts();
         this.updateGlyphPromptState();
-        this.renderMinimapTicks();
-        this.updateFocusGlyph();
-        this.updateRings();
-        this.updateFindingsIndicators();
         this.updateFooterStatus();
         this.updateNavigationIcons();
         this.updateNavSessionLabel();
@@ -3922,7 +3963,6 @@ export class InquiryView extends ItemView {
         this.updateBriefingButtonState();
         this.refreshBriefingPanel();
         this.updateGuidance();
-        void this.requestEstimateSnapshot();
     }
 
     private refreshCorpus(): void {
@@ -5995,38 +6035,38 @@ export class InquiryView extends ItemView {
 
     private updateNavSessionLabel(): void {
         if (!this.navSessionLabel) return;
-        this.navSessionLabel.classList.remove('is-welcome');
+        this.toggleClassIfChanged(this.navSessionLabel, 'is-welcome', false, 'hudAttrWrites');
         if (this.state.scope === 'book' && this.corpus && !this.corpus.bookResolved) {
-            this.navSessionLabel.textContent = 'Book scope unresolved. Check Inquiry sources.';
+            this.setTextIfChanged(this.navSessionLabel, 'Book scope unresolved. Check Inquiry sources.', 'hudTextWrites');
             return;
         }
         if (this.state.isRunning) {
-            this.navSessionLabel.textContent = this.buildRunningStageLabel(this.currentRunProgress) || 'Waiting for the provider response.';
+            this.setTextIfChanged(this.navSessionLabel, this.buildRunningStageLabel(this.currentRunProgress) || 'Waiting for the provider response.', 'hudTextWrites');
             return;
         }
         const sessionId = this.state.activeSessionId;
         if (!sessionId) {
             const glyphSeed = this.resolveGlyphSeed();
             if (glyphSeed.source === 'session' && glyphSeed.session) {
-                this.navSessionLabel.textContent = this.formatSessionNavLabel(glyphSeed.session);
+                this.setTextIfChanged(this.navSessionLabel, this.formatSessionNavLabel(glyphSeed.session), 'hudTextWrites');
                 return;
             }
-            this.navSessionLabel.classList.add('is-welcome');
-            this.navSessionLabel.textContent = 'Welcome to Inquiry View';
+            this.toggleClassIfChanged(this.navSessionLabel, 'is-welcome', true, 'hudAttrWrites');
+            this.setTextIfChanged(this.navSessionLabel, 'Welcome to Inquiry View', 'hudTextWrites');
             return;
         }
         const session = this.sessionStore.peekSession(sessionId);
         if (!session) {
             const glyphSeed = this.resolveGlyphSeed();
             if (glyphSeed.source === 'session' && glyphSeed.session) {
-                this.navSessionLabel.textContent = this.formatSessionNavLabel(glyphSeed.session);
+                this.setTextIfChanged(this.navSessionLabel, this.formatSessionNavLabel(glyphSeed.session), 'hudTextWrites');
                 return;
             }
-            this.navSessionLabel.classList.add('is-welcome');
-            this.navSessionLabel.textContent = 'Welcome to Inquiry View';
+            this.toggleClassIfChanged(this.navSessionLabel, 'is-welcome', true, 'hudAttrWrites');
+            this.setTextIfChanged(this.navSessionLabel, 'Welcome to Inquiry View', 'hudTextWrites');
             return;
         }
-        this.navSessionLabel.textContent = this.formatSessionNavLabel(session);
+        this.setTextIfChanged(this.navSessionLabel, this.formatSessionNavLabel(session), 'hudTextWrites');
     }
 
     private formatSessionNavLabel(session: InquirySession): string {
@@ -7481,6 +7521,7 @@ export class InquiryView extends ItemView {
     }
 
     private clearActiveResultState(): void {
+        this.cachedRunningStatusStatic = undefined;
         this.state.activeResult = null;
         this.state.activeSessionId = undefined;
         this.state.corpusFingerprint = undefined;
@@ -7902,6 +7943,36 @@ export class InquiryView extends ItemView {
             return resultInput;
         }
         return null;
+    }
+
+    private buildInquiryLogCostEstimateInput(
+        trace: InquiryRunTrace,
+        result: InquiryResult
+    ): {
+        executionInputTokens: number;
+        expectedOutputTokens: number;
+        expectedPasses: number;
+        cacheReuseRatio?: number;
+    } | null {
+        const executionInputTokens = this.getFiniteTokenEstimateInput(trace, result);
+        if (typeof executionInputTokens !== 'number' || !Number.isFinite(executionInputTokens) || executionInputTokens <= 0) {
+            return null;
+        }
+        const expectedOutputTokens = Number.isFinite(trace.outputTokenCap)
+            ? Math.max(0, Math.floor(trace.outputTokenCap))
+            : 0;
+        const expectedPasses = Number.isFinite(trace.tokenEstimate?.expectedPassCount)
+            ? Math.max(1, Math.floor(trace.tokenEstimate.expectedPassCount as number))
+            : (Number.isFinite(trace.executionPassCount) ? Math.max(1, Math.floor(trace.executionPassCount as number)) : 1);
+        const cacheReuseRatio = typeof trace.cachedStableRatio === 'number' && Number.isFinite(trace.cachedStableRatio)
+            ? Math.min(1, Math.max(0, trace.cachedStableRatio))
+            : undefined;
+        return {
+            executionInputTokens,
+            expectedOutputTokens,
+            expectedPasses,
+            cacheReuseRatio
+        };
     }
 
     private startApiSimulation(): void {
@@ -8909,18 +8980,19 @@ export class InquiryView extends ItemView {
             return;
         }
         this.cancelSceneDossierHide();
-        const maxTextWidth = SCENE_DOSSIER_WIDTH - (SCENE_DOSSIER_SIDE_PADDING * 2);
+        const titleTextWidth = SCENE_DOSSIER_WIDTH - (SCENE_DOSSIER_SIDE_PADDING * 2);
+        const contentTextWidth = Math.max(420, titleTextWidth - 96);
         const titleLines = this.setWrappedSvgText(
             this.sceneDossierHeader,
             dossier.title,
-            maxTextWidth,
+            titleTextWidth,
             2,
             SCENE_DOSSIER_HEADER_LINE_HEIGHT
         );
         const anchorLines = this.setWrappedSvgText(
             this.sceneDossierAnchor,
             dossier.anchorLine || 'Finding',
-            maxTextWidth,
+            contentTextWidth,
             2,
             SCENE_DOSSIER_ANCHOR_LINE_HEIGHT
         );
@@ -8937,7 +9009,7 @@ export class InquiryView extends ItemView {
             ? this.setWrappedSvgText(
                 this.sceneDossierBody,
                 bodyPrimaryText,
-                maxTextWidth,
+                contentTextWidth,
                 2,
                 SCENE_DOSSIER_BODY_PRIMARY_LINE_HEIGHT
             )
@@ -8946,7 +9018,7 @@ export class InquiryView extends ItemView {
             ? this.setWrappedSvgText(
                 this.sceneDossierBodySecondary,
                 bodySecondaryText,
-                maxTextWidth,
+                contentTextWidth,
                 2,
                 SCENE_DOSSIER_BODY_SECONDARY_LINE_HEIGHT
             )
@@ -8959,7 +9031,7 @@ export class InquiryView extends ItemView {
             ? this.setWrappedSvgText(
                 this.sceneDossierFooter,
                 dossier.metaLine ?? '',
-                maxTextWidth,
+                contentTextWidth,
                 2,
                 SCENE_DOSSIER_FOOTER_LINE_HEIGHT
             )
@@ -8968,7 +9040,7 @@ export class InquiryView extends ItemView {
             ? this.setWrappedSvgText(
                 this.sceneDossierSource,
                 dossier.sourceLabel ?? '',
-                maxTextWidth,
+                contentTextWidth,
                 1,
                 SCENE_DOSSIER_SOURCE_LINE_HEIGHT
             )
@@ -9025,7 +9097,7 @@ export class InquiryView extends ItemView {
         this.setPositionedWrappedSvgText(
             this.sceneDossierHeader,
             dossier.title,
-            maxTextWidth,
+            titleTextWidth,
             2,
             SCENE_DOSSIER_HEADER_LINE_HEIGHT,
             titleY
@@ -9033,7 +9105,7 @@ export class InquiryView extends ItemView {
         this.setPositionedWrappedSvgText(
             this.sceneDossierAnchor,
             dossier.anchorLine || 'Finding',
-            maxTextWidth,
+            contentTextWidth,
             2,
             SCENE_DOSSIER_ANCHOR_LINE_HEIGHT,
             anchorY
@@ -9042,7 +9114,7 @@ export class InquiryView extends ItemView {
             this.setPositionedWrappedSvgText(
                 this.sceneDossierBody,
                 bodyPrimaryText,
-                maxTextWidth,
+                contentTextWidth,
                 2,
                 SCENE_DOSSIER_BODY_PRIMARY_LINE_HEIGHT,
                 bodyPrimaryY
@@ -9054,7 +9126,7 @@ export class InquiryView extends ItemView {
             this.setPositionedWrappedSvgText(
                 this.sceneDossierBodySecondary,
                 bodySecondaryText,
-                maxTextWidth,
+                contentTextWidth,
                 2,
                 SCENE_DOSSIER_BODY_SECONDARY_LINE_HEIGHT,
                 bodySecondaryY
@@ -9066,7 +9138,7 @@ export class InquiryView extends ItemView {
             this.setPositionedWrappedSvgText(
                 this.sceneDossierFooter,
                 dossier.metaLine ?? '',
-                maxTextWidth,
+                contentTextWidth,
                 2,
                 SCENE_DOSSIER_FOOTER_LINE_HEIGHT,
                 metaY
@@ -9078,7 +9150,7 @@ export class InquiryView extends ItemView {
             this.setPositionedWrappedSvgText(
                 this.sceneDossierSource,
                 dossier.sourceLabel ?? '',
-                maxTextWidth,
+                contentTextWidth,
                 1,
                 SCENE_DOSSIER_SOURCE_LINE_HEIGHT,
                 sourceY
@@ -9342,7 +9414,7 @@ export class InquiryView extends ItemView {
 
     private setPreviewFooterText(text: string): void {
         if (this.previewFooter) {
-            this.previewFooter.textContent = text;
+            this.setTextIfChanged(this.previewFooter, text, 'hudTextWrites');
         }
     }
 
@@ -9417,13 +9489,21 @@ export class InquiryView extends ItemView {
         return 'Waiting for the provider response.';
     }
 
+    private cachedRunningStatusStatic?: string;
+    private cachedRunningStatusQuestion?: string;
+
     private buildRunningStatusNote(questionText: string): string {
-        const estimate = this.estimateRunDurationRange(questionText);
-        const estimateLabel = this.formatRunDurationEstimate(estimate.minSeconds, estimate.maxSeconds);
-        const evidenceMode = this.describeRunEvidenceMode();
+        if (!this.cachedRunningStatusStatic || this.cachedRunningStatusQuestion !== questionText) {
+            const estimate = this.estimateRunDurationRange(questionText);
+            const estimateLabel = this.formatRunDurationEstimate(estimate.minSeconds, estimate.maxSeconds);
+            const evidenceMode = this.describeRunEvidenceMode();
+            this.cachedRunningStatusStatic = `Running now (${evidenceMode}). Rough ETA ${estimateLabel}.`;
+            this.cachedRunningStatusQuestion = questionText;
+        }
+
         const progressLabel = this.buildRunningProgressLabel(this.currentRunProgress);
         return [
-            `Running now (${evidenceMode}). Rough ETA ${estimateLabel}.`,
+            this.cachedRunningStatusStatic,
             progressLabel
         ].filter(Boolean).join(' ');
     }
@@ -9763,13 +9843,23 @@ export class InquiryView extends ItemView {
         lineHeight: number,
         maxLines = 2
     ): number {
+        const cacheKey = `${text}|${maxWidth}|${lineHeight}`;
+        if (textEl.getAttribute('data-rt-hero-cache') === cacheKey) {
+            return Number(textEl.getAttribute('data-rt-hero-lines')) || 1;
+        }
+        
+        // Wipe existing content for measuring pass
+        this.perfCounters.svgClearCalls++;
         clearSvgChildren(textEl);
+        
         const words = text.split(/\s+/).filter(Boolean);
         if (!words.length) return 0;
         const fullLine = words.join(' ');
         textEl.textContent = fullLine;
         const fullWidth = textEl.getComputedTextLength();
         if (fullWidth <= maxWidth) {
+            textEl.setAttribute('data-rt-hero-cache', cacheKey);
+            textEl.setAttribute('data-rt-hero-lines', '1');
             return 1;
         }
         if (maxLines <= 1) {
@@ -9804,9 +9894,12 @@ export class InquiryView extends ItemView {
             return this.setWrappedSvgText(textEl, text, maxWidth, maxLines, lineHeight);
         }
 
+        // Final layout achieved - attach the fixed lines via tspans
+        this.perfCounters.svgClearCalls++;
         clearSvgChildren(textEl);
         const x = textEl.getAttribute('x') ?? '0';
         const appendTspan = (content: string, isFirst: boolean): SVGTSpanElement => {
+            this.perfCounters.svgNodeCreates++;
             const tspan = createSvgElement('tspan');
             tspan.setAttribute('x', x);
             tspan.setAttribute('dy', isFirst ? '0' : String(lineHeight));
@@ -9815,10 +9908,13 @@ export class InquiryView extends ItemView {
             return tspan;
         };
 
-        const line1 = words.slice(0, bestIndex).join(' ');
-        const line2 = words.slice(bestIndex).join(' ');
-        appendTspan(line1, true);
-        appendTspan(line2, false);
+        const line1Out = words.slice(0, bestIndex).join(' ');
+        const line2Out = words.slice(bestIndex).join(' ');
+        appendTspan(line1Out, true);
+        appendTspan(line2Out, false);
+        
+        textEl.setAttribute('data-rt-hero-cache', cacheKey);
+        textEl.setAttribute('data-rt-hero-lines', '2');
         return 2;
     }
 
@@ -10043,19 +10139,27 @@ export class InquiryView extends ItemView {
     }
 
     private setPreviewPillText(row: InquiryPreviewRow, value: string): void {
+        const cacheKey = `${row.label}|${value}`;
+        if (row.text.getAttribute('data-rt-pill-cache') === cacheKey) return;
+
+        this.perfCounters.svgClearCalls++;
         clearSvgChildren(row.text);
         const labelText = row.label?.trim() ?? '';
         if (labelText) {
+            this.perfCounters.svgNodeCreates++;
             const label = createSvgElement('tspan');
             label.classList.add('ert-inquiry-preview-pill-label');
             label.textContent = value ? `${labelText} ` : labelText;
             row.text.appendChild(label);
         }
-        if (!value) return;
-        const detail = createSvgElement('tspan');
-        detail.classList.add('ert-inquiry-preview-pill-value');
-        detail.textContent = value;
-        row.text.appendChild(detail);
+        if (value) {
+            this.perfCounters.svgNodeCreates++;
+            const detail = createSvgElement('tspan');
+            detail.classList.add('ert-inquiry-preview-pill-value');
+            detail.textContent = value;
+            row.text.appendChild(detail);
+        }
+        row.text.setAttribute('data-rt-pill-cache', cacheKey);
     }
 
     private syncTokensPillState(): void {
@@ -10114,25 +10218,40 @@ export class InquiryView extends ItemView {
         maxLines: number,
         lineHeight: number
     ): number {
-        clearSvgChildren(textEl);
+        const cacheKey = `${text}|${maxWidth}|${maxLines}|${lineHeight}`;
+        if (textEl.getAttribute('data-rt-wrap-cache') === cacheKey) {
+            return Number(textEl.getAttribute('data-rt-wrap-lines')) || 1;
+        }
+
         const words = text.split(/\s+/).filter(Boolean);
         const x = textEl.getAttribute('x') ?? '0';
-        const appendTspan = (content: string, isFirst: boolean): SVGTSpanElement => {
-            const tspan = createSvgElement('tspan');
+        const existingTspans = Array.from(textEl.childNodes).filter(n => n.nodeName === 'tspan') as SVGTSpanElement[];
+        let tspanCount = 0;
+
+        const getNextTspan = (isFirst: boolean): SVGTSpanElement => {
+            let tspan: SVGTSpanElement;
+            if (tspanCount < existingTspans.length) {
+                this.perfCounters.svgNodeReuses++;
+                tspan = existingTspans[tspanCount];
+            } else {
+                this.perfCounters.svgNodeCreates++;
+                tspan = createSvgElement('tspan');
+                textEl.appendChild(tspan);
+            }
             tspan.setAttribute('x', x);
             tspan.setAttribute('dy', isFirst ? '0' : String(lineHeight));
-            tspan.textContent = content;
-            textEl.appendChild(tspan);
+            tspanCount++;
             return tspan;
         };
 
         let line = '';
         let lineIndex = 0;
-        let tspan = appendTspan('', true);
+        let tspan = getNextTspan(true);
         let truncated = false;
 
         for (const word of words) {
             const testLine = line ? `${line} ${word}` : word;
+            this.perfCounters.svgTextWrites++;
             tspan.textContent = testLine;
             if (tspan.getComputedTextLength() > maxWidth && line) {
                 tspan.textContent = line;
@@ -10142,7 +10261,7 @@ export class InquiryView extends ItemView {
                     break;
                 }
                 line = word;
-                tspan = appendTspan(line, false);
+                tspan = getNextTspan(false);
             } else {
                 line = testLine;
             }
@@ -10150,12 +10269,23 @@ export class InquiryView extends ItemView {
 
         if (!truncated) {
             tspan.textContent = line;
-            return Math.max(lineIndex + 1, 1);
+        } else {
+            tspan.textContent = line;
+            this.applyEllipsis(tspan, maxWidth);
         }
 
-        tspan.textContent = line;
-        this.applyEllipsis(tspan, maxWidth);
-        return maxLines;
+        // Clean up unused pooled tspans to prevent ghosting
+        while (textEl.childNodes.length > tspanCount) {
+            if (textEl.lastChild) {
+                this.perfCounters.svgClearCalls++;
+                textEl.removeChild(textEl.lastChild);
+            }
+        }
+
+        const exactLines = Math.max(truncated ? maxLines : lineIndex + 1, 1);
+        textEl.setAttribute('data-rt-wrap-cache', cacheKey);
+        textEl.setAttribute('data-rt-wrap-lines', String(exactLines));
+        return exactLines;
     }
 
     private applyEllipsis(tspan: SVGTSpanElement, maxWidth: number): void {
@@ -11249,6 +11379,9 @@ export class InquiryView extends ItemView {
             ?? (trace.response?.responseData && result.aiProvider
                 ? extractTokenUsage(result.aiProvider, trace.response.responseData)
                 : null);
+        const logCostEstimateInput = !isSimulated
+            ? this.buildInquiryLogCostEstimateInput(trace, result)
+            : null;
         const usageKnown = typeof trace.tokenUsageKnown === 'boolean'
             ? trace.tokenUsageKnown
             : !!usage;
@@ -11460,6 +11593,18 @@ export class InquiryView extends ItemView {
         }
         lines.push('');
 
+        if (!isSimulated) {
+            const costBreakdownLines = formatUsageCostBreakdownLines(
+                result.aiProvider,
+                result.aiModelResolved || result.aiModelRequested,
+                usage,
+                logCostEstimateInput
+            );
+            if (costBreakdownLines.length) {
+                lines.push(...costBreakdownLines);
+            }
+        }
+
         lines.push('## Result');
         if (status === 'success') {
             lines.push(`- Verdict: Flow ${this.formatMetricDisplay(result.verdict.flow)} · Depth ${this.formatMetricDisplay(result.verdict.depth)} · Impact ${this.formatBriefLabel(result.verdict.impact)} · Confidence ${this.formatBriefLabel(result.verdict.assessmentConfidence)}`);
@@ -11527,6 +11672,9 @@ export class InquiryView extends ItemView {
 
         const tokenUsage = trace.usage
             ?? (trace.response?.responseData ? extractTokenUsage(aiProvider, trace.response.responseData) : null);
+        const logCostEstimateInput = !isSimulated
+            ? this.buildInquiryLogCostEstimateInput(trace, result)
+            : null;
         const tokenUsageKnown = typeof trace.tokenUsageKnown === 'boolean'
             ? trace.tokenUsageKnown
             : !!tokenUsage;
@@ -11648,10 +11796,13 @@ export class InquiryView extends ItemView {
                 schemaWarnings
             }
         }, { jsonSpacing: 0, metadataExtras: contextLines });
-        const shouldIncludeCostBreakdown = !isSimulated
-            && (tokenUsageVisibility === 'full multi-pass' || tokenUsageVisibility === 'partial multi-pass');
-        const costBreakdownLines = shouldIncludeCostBreakdown
-            ? formatUsageCostBreakdownLines(aiProvider, aiModelResolved || aiModelRequested, tokenUsage)
+        const costBreakdownLines = !isSimulated
+            ? formatUsageCostBreakdownLines(
+                aiProvider,
+                aiModelResolved || aiModelRequested,
+                tokenUsage,
+                logCostEstimateInput
+            )
             : [];
 
         return costBreakdownLines.length

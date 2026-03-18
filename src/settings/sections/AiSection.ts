@@ -332,7 +332,7 @@ export function renderAiSection(params: {
                     buildScenesCapacityLine(sceneCount, scenesTokens),
                     buildOutlineCapacityLine(outlineCount, outlineTokens),
                     buildReferenceCapacityLine(referenceCount, referenceTokens),
-                    { text: `Total — ${formatCorpusBreakdownToken(totalTokens)}`, dividerBefore: true }
+                    { text: `Total ${formatCorpusBreakdownToken(totalTokens)}`, dividerBefore: true }
                 ]
             },
             {
@@ -358,13 +358,17 @@ export function renderAiSection(params: {
             }
         ];
     };
-    const buildGossamerCapacitySections = (sceneCount: number): Array<{ title: string; items: CapacityItem[] }> => [
+    const buildGossamerCapacitySections = (
+        sceneCount: number,
+        totalTokens: number | null = null
+    ): Array<{ title: string; items: CapacityItem[] }> => [
         {
             title: 'Corpus',
             items: [
                 `Scenes (${sceneCount.toLocaleString()}) — full text`,
                 'Outline — not included',
-                'References — not included'
+                'References — not included',
+                { text: `Total ${formatCorpusBreakdownToken(totalTokens)}`, dividerBefore: true }
             ]
         },
         {
@@ -767,54 +771,6 @@ export function renderAiSection(params: {
             existing.setText(description);
         }
     };
-
-    const aiModelUpdatesSetting = new Settings(advancedBody)
-        .setName('AI model updates');
-    const formatModelUpdateTimestamp = (timestamp: string): string => {
-        const parsed = Date.parse(timestamp);
-        if (!Number.isFinite(parsed)) return timestamp;
-        try {
-            return new Intl.DateTimeFormat(undefined, {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric',
-                hour: 'numeric',
-                minute: '2-digit',
-                second: '2-digit',
-                timeZoneName: 'short'
-            }).format(new Date(parsed));
-        } catch {
-            return new Date(parsed).toLocaleString();
-        }
-    };
-    const updateAiModelUpdatesDescription = (): void => {
-        const lastUpdatedAt = getAIClient(plugin).getLastModelUpdateAt();
-        aiModelUpdatesSetting.setDesc(`Last updated: ${lastUpdatedAt ? formatModelUpdateTimestamp(lastUpdatedAt) : 'Never'}`);
-    };
-    aiModelUpdatesSetting.addButton(button => button
-        .setButtonText('Update AI models')
-        .onClick(async () => {
-            button.setDisabled(true);
-            try {
-                const refreshed = await getAIClient(plugin).updateModelData(true);
-                updateAiModelUpdatesDescription();
-                refreshRoutingUi();
-                const warnings = [refreshed.registry.warning, refreshed.snapshot.warning]
-                    .filter((entry): entry is string => !!entry);
-                if (warnings.length) {
-                    new Notice('AI models updated with partial availability data.');
-                } else {
-                    new Notice('AI models updated.');
-                }
-            } catch (error) {
-                const message = error instanceof Error ? error.message : String(error);
-                new Notice(`AI model update failed: ${message}`);
-            } finally {
-                button.setDisabled(false);
-            }
-        }));
-    updateAiModelUpdatesDescription();
-    params.addAiRelatedElement(aiModelUpdatesSetting.settingEl);
 
     const resolvedPreviewFrame = quickSetupPreviewSection.createDiv({
         cls: [ERT_CLASSES.PREVIEW_FRAME, ERT_CLASSES.STACK, 'ert-previewFrame--center', 'ert-previewFrame--flush', 'ert-ai-resolved-preview'],
@@ -1267,7 +1223,6 @@ export function renderAiSection(params: {
             isSyncingRoutingUi = false;
         }
         updateExecutionPreferenceNote();
-        updateAiModelUpdatesDescription();
 
         providerSetting.settingEl.toggleClass('ert-settings-hidden', false);
         providerSetting.settingEl.toggleClass('ert-settings-visible', true);
@@ -1355,7 +1310,10 @@ export function renderAiSection(params: {
 
                 setTokenDisplay(capacityGossamerToken, formatCorpusBreakdownToken(forecasts.gossamer.corpusTokens), 'tokens');
                 capacityGossamerExpected.setText(formatExpectedPasses(forecasts.gossamer.providerExecutionTokens));
-                renderCapacitySections(capacityGossamerSections, buildGossamerCapacitySections(forecasts.gossamer.sceneCount));
+                renderCapacitySections(
+                    capacityGossamerSections,
+                    buildGossamerCapacitySections(forecasts.gossamer.sceneCount, forecasts.gossamer.corpusTokens)
+                );
             });
         } catch {
             renderResolvedPreview({
