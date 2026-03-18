@@ -213,12 +213,18 @@ const SCENE_DOSSIER_SIDE_PADDING = 96;
 const SCENE_DOSSIER_PADDING_Y = 30;
 const SCENE_DOSSIER_HEADER_SIZE = 60;
 const SCENE_DOSSIER_HEADER_LINE_HEIGHT = 64;
+const SCENE_DOSSIER_ANCHOR_LINE_HEIGHT = 24;
+const SCENE_DOSSIER_BODY_PRIMARY_LINE_HEIGHT = 28;
+const SCENE_DOSSIER_BODY_SECONDARY_LINE_HEIGHT = 24;
 const SCENE_DOSSIER_FOOTER_SIZE = 12;
 const SCENE_DOSSIER_FOOTER_LINE_HEIGHT = 16;
-const SCENE_DOSSIER_LINE_HEIGHT = 26;
+const SCENE_DOSSIER_SOURCE_LINE_HEIGHT = 14;
 const SCENE_DOSSIER_MAX_BODY_LINES = 5;
-const SCENE_DOSSIER_BODY_GAP = 12;
+const SCENE_DOSSIER_TITLE_ANCHOR_GAP = 8;
+const SCENE_DOSSIER_ANCHOR_BODY_GAP = 10;
+const SCENE_DOSSIER_BODY_ROW_GAP = 8;
 const SCENE_DOSSIER_FOOTER_GAP = 16;
+const SCENE_DOSSIER_SOURCE_GAP = 8;
 const SCENE_DOSSIER_HOVER_DELAY_MS = 150;
 const SCENE_DOSSIER_HIDE_DELAY_MS = 160;
 const SCENE_DOSSIER_FOCUS_RADIUS = 470;
@@ -1108,8 +1114,11 @@ export class InquiryView extends ItemView {
     private sceneDossierBraceLeft?: SVGTextElement;
     private sceneDossierBraceRight?: SVGTextElement;
     private sceneDossierHeader?: SVGTextElement;
+    private sceneDossierAnchor?: SVGTextElement;
     private sceneDossierBody?: SVGTextElement;
+    private sceneDossierBodySecondary?: SVGTextElement;
     private sceneDossierFooter?: SVGTextElement;
+    private sceneDossierSource?: SVGTextElement;
     private sceneDossierShowTimer?: number;
     private sceneDossierHideTimer?: number;
     private sceneDossierActiveKey?: string;
@@ -3750,11 +3759,20 @@ export class InquiryView extends ItemView {
         const header = createSvgText(composition, 'ert-inquiry-scene-dossier-header', '', 0, SCENE_DOSSIER_PADDING_Y + SCENE_DOSSIER_HEADER_SIZE);
         header.setAttribute('text-anchor', 'middle');
 
+        const anchor = createSvgText(composition, 'ert-inquiry-scene-dossier-anchor', '', 0, 0);
+        anchor.setAttribute('text-anchor', 'middle');
+
         const body = createSvgText(composition, 'ert-inquiry-scene-dossier-body', '', 0, 0);
         body.setAttribute('text-anchor', 'middle');
 
+        const bodySecondary = createSvgText(composition, 'ert-inquiry-scene-dossier-body ert-inquiry-scene-dossier-body--secondary', '', 0, 0);
+        bodySecondary.setAttribute('text-anchor', 'middle');
+
         const footer = createSvgText(composition, 'ert-inquiry-scene-dossier-footer', '', 0, 0);
         footer.setAttribute('text-anchor', 'middle');
+
+        const source = createSvgText(composition, 'ert-inquiry-scene-dossier-source', '', 0, 0);
+        source.setAttribute('text-anchor', 'middle');
 
         this.sceneDossierGroup = group;
         this.sceneDossierComposition = composition;
@@ -3765,8 +3783,11 @@ export class InquiryView extends ItemView {
         this.sceneDossierBraceLeft = braceLeft;
         this.sceneDossierBraceRight = braceRight;
         this.sceneDossierHeader = header;
+        this.sceneDossierAnchor = anchor;
         this.sceneDossierBody = body;
+        this.sceneDossierBodySecondary = bodySecondary;
         this.sceneDossierFooter = footer;
+        this.sceneDossierSource = source;
     }
 
     private renderWaveHeader(parent: SVGElement): void {
@@ -8848,99 +8869,191 @@ export class InquiryView extends ItemView {
             || !this.sceneDossierBraceLeft
             || !this.sceneDossierBraceRight
             || !this.sceneDossierHeader
+            || !this.sceneDossierAnchor
             || !this.sceneDossierBody
+            || !this.sceneDossierBodySecondary
             || !this.sceneDossierFooter
+            || !this.sceneDossierSource
         ) {
             return;
         }
         this.cancelSceneDossierHide();
         const maxTextWidth = SCENE_DOSSIER_WIDTH - (SCENE_DOSSIER_SIDE_PADDING * 2);
-        this.sceneDossierHeader.setAttribute('y', '0');
-        const headerLines = this.setWrappedSvgText(
+        const titleLines = this.setWrappedSvgText(
             this.sceneDossierHeader,
             dossier.title,
             maxTextWidth,
             2,
             SCENE_DOSSIER_HEADER_LINE_HEIGHT
         );
-
-        const bodyLines = [
-            dossier.anchorLine,
-            ...dossier.bodyLines.filter(line => line && line !== dossier.anchorLine)
-        ].slice(0, SCENE_DOSSIER_MAX_BODY_LINES);
-        const bodyStartY = (Math.max(headerLines, 1) * SCENE_DOSSIER_HEADER_LINE_HEIGHT) + SCENE_DOSSIER_BODY_GAP;
-        const bodyLineCount = this.setSceneDossierBodyText(
-            this.sceneDossierBody,
-            bodyLines.filter(Boolean),
+        const anchorLines = this.setWrappedSvgText(
+            this.sceneDossierAnchor,
+            dossier.anchorLine || 'Finding',
             maxTextWidth,
-            SCENE_DOSSIER_MAX_BODY_LINES,
-            bodyStartY
+            2,
+            SCENE_DOSSIER_ANCHOR_LINE_HEIGHT
         );
-
-        const footerText = [dossier.metaLine, dossier.sourceLabel].filter(Boolean).join(' · ');
-        const hasFooter = !!footerText;
-        const footerY = bodyStartY + (Math.max(bodyLineCount, 1) * SCENE_DOSSIER_LINE_HEIGHT) + SCENE_DOSSIER_FOOTER_GAP;
-        this.sceneDossierFooter.classList.toggle('ert-hidden', !hasFooter);
-        let footerLines = 0;
-        if (hasFooter) {
-            this.sceneDossierFooter.setAttribute('y', String(footerY));
-            footerLines = this.setWrappedSvgText(
+        const bodyLines = dossier.bodyLines
+            .filter(line => line && line !== dossier.anchorLine)
+            .slice(0, 2);
+        const bodyPrimaryText = bodyLines[0] || '';
+        const bodySecondaryText = bodyLines[1] || '';
+        const hasBodyPrimary = !!bodyPrimaryText;
+        const hasBodySecondary = !!bodySecondaryText;
+        this.sceneDossierBody.classList.toggle('ert-hidden', !hasBodyPrimary);
+        this.sceneDossierBodySecondary.classList.toggle('ert-hidden', !hasBodySecondary);
+        const bodyPrimaryLines = hasBodyPrimary
+            ? this.setWrappedSvgText(
+                this.sceneDossierBody,
+                bodyPrimaryText,
+                maxTextWidth,
+                2,
+                SCENE_DOSSIER_BODY_PRIMARY_LINE_HEIGHT
+            )
+            : 0;
+        const bodySecondaryLines = hasBodySecondary
+            ? this.setWrappedSvgText(
+                this.sceneDossierBodySecondary,
+                bodySecondaryText,
+                maxTextWidth,
+                2,
+                SCENE_DOSSIER_BODY_SECONDARY_LINE_HEIGHT
+            )
+            : 0;
+        const hasMeta = !!dossier.metaLine;
+        const hasSource = !!dossier.sourceLabel;
+        this.sceneDossierFooter.classList.toggle('ert-hidden', !hasMeta);
+        this.sceneDossierSource.classList.toggle('ert-hidden', !hasSource);
+        const metaLines = hasMeta
+            ? this.setWrappedSvgText(
                 this.sceneDossierFooter,
-                footerText,
+                dossier.metaLine ?? '',
                 maxTextWidth,
                 2,
                 SCENE_DOSSIER_FOOTER_LINE_HEIGHT
-            );
-        } else {
-            this.sceneDossierFooter.textContent = '';
-        }
+            )
+            : 0;
+        const sourceLines = hasSource
+            ? this.setWrappedSvgText(
+                this.sceneDossierSource,
+                dossier.sourceLabel ?? '',
+                maxTextWidth,
+                1,
+                SCENE_DOSSIER_SOURCE_LINE_HEIGHT
+            )
+            : 0;
 
-        const contentHeight = hasFooter
-            ? SCENE_DOSSIER_PADDING_Y
-                + (Math.max(headerLines, 1) * SCENE_DOSSIER_HEADER_LINE_HEIGHT)
-                + SCENE_DOSSIER_BODY_GAP
-                + (Math.max(bodyLineCount, 1) * SCENE_DOSSIER_LINE_HEIGHT)
-                + SCENE_DOSSIER_FOOTER_GAP
+        let contentHeight = SCENE_DOSSIER_PADDING_Y
+            + (Math.max(titleLines, 1) * SCENE_DOSSIER_HEADER_LINE_HEIGHT)
+            + SCENE_DOSSIER_TITLE_ANCHOR_GAP
+            + (Math.max(anchorLines, 1) * SCENE_DOSSIER_ANCHOR_LINE_HEIGHT);
+        if (hasBodyPrimary) {
+            contentHeight += SCENE_DOSSIER_ANCHOR_BODY_GAP
+                + (Math.max(bodyPrimaryLines, 1) * SCENE_DOSSIER_BODY_PRIMARY_LINE_HEIGHT);
+        }
+        if (hasBodySecondary) {
+            contentHeight += SCENE_DOSSIER_BODY_ROW_GAP
+                + (Math.max(bodySecondaryLines, 1) * SCENE_DOSSIER_BODY_SECONDARY_LINE_HEIGHT);
+        }
+        if (hasMeta) {
+            contentHeight += SCENE_DOSSIER_FOOTER_GAP
                 + SCENE_DOSSIER_FOOTER_SIZE
-                + ((Math.max(footerLines, 1) - 1) * SCENE_DOSSIER_FOOTER_LINE_HEIGHT)
-                + SCENE_DOSSIER_PADDING_Y
-            : SCENE_DOSSIER_PADDING_Y
-                + (Math.max(headerLines, 1) * SCENE_DOSSIER_HEADER_LINE_HEIGHT)
-                + SCENE_DOSSIER_BODY_GAP
-                + (Math.max(bodyLineCount, 1) * SCENE_DOSSIER_LINE_HEIGHT)
-                + SCENE_DOSSIER_PADDING_Y;
+                + ((Math.max(metaLines, 1) - 1) * SCENE_DOSSIER_FOOTER_LINE_HEIGHT);
+        }
+        if (hasSource) {
+            contentHeight += SCENE_DOSSIER_SOURCE_GAP
+                + SCENE_DOSSIER_SOURCE_LINE_HEIGHT
+                + ((Math.max(sourceLines, 1) - 1) * SCENE_DOSSIER_SOURCE_LINE_HEIGHT);
+        }
+        contentHeight += SCENE_DOSSIER_PADDING_Y;
         const dossierHeight = Math.max(SCENE_DOSSIER_MIN_HEIGHT, contentHeight);
         const topY = -Math.round(dossierHeight / 2);
-        const headerY = topY + SCENE_DOSSIER_PADDING_Y + SCENE_DOSSIER_HEADER_SIZE;
-        const centeredBodyStartY = headerY + (Math.max(headerLines, 1) * SCENE_DOSSIER_HEADER_LINE_HEIGHT) + SCENE_DOSSIER_BODY_GAP;
-        const centeredFooterY = centeredBodyStartY + (Math.max(bodyLineCount, 1) * SCENE_DOSSIER_LINE_HEIGHT) + SCENE_DOSSIER_FOOTER_GAP;
+        const titleY = topY + SCENE_DOSSIER_PADDING_Y + SCENE_DOSSIER_HEADER_SIZE;
+        const anchorY = titleY
+            + (Math.max(titleLines, 1) * SCENE_DOSSIER_HEADER_LINE_HEIGHT)
+            + SCENE_DOSSIER_TITLE_ANCHOR_GAP;
+        let nextY = anchorY + (Math.max(anchorLines, 1) * SCENE_DOSSIER_ANCHOR_LINE_HEIGHT);
+        const bodyPrimaryY = nextY + (hasBodyPrimary ? SCENE_DOSSIER_ANCHOR_BODY_GAP : 0);
+        if (hasBodyPrimary) {
+            nextY = bodyPrimaryY + (Math.max(bodyPrimaryLines, 1) * SCENE_DOSSIER_BODY_PRIMARY_LINE_HEIGHT);
+        }
+        const bodySecondaryY = nextY + (hasBodySecondary ? SCENE_DOSSIER_BODY_ROW_GAP : 0);
+        if (hasBodySecondary) {
+            nextY = bodySecondaryY + (Math.max(bodySecondaryLines, 1) * SCENE_DOSSIER_BODY_SECONDARY_LINE_HEIGHT);
+        }
+        const metaY = nextY + (hasMeta ? SCENE_DOSSIER_FOOTER_GAP : 0);
+        if (hasMeta) {
+            nextY = metaY
+                + SCENE_DOSSIER_FOOTER_SIZE
+                + ((Math.max(metaLines, 1) - 1) * SCENE_DOSSIER_FOOTER_LINE_HEIGHT);
+        }
+        const sourceY = nextY + (hasSource ? SCENE_DOSSIER_SOURCE_GAP : 0);
 
         this.sceneDossierBg.setAttribute('y', String(topY));
         this.sceneDossierBg.setAttribute('height', String(dossierHeight));
-        this.sceneDossierHeader.setAttribute('y', String(headerY));
-        this.setWrappedSvgText(
+        this.setPositionedWrappedSvgText(
             this.sceneDossierHeader,
             dossier.title,
             maxTextWidth,
             2,
-            SCENE_DOSSIER_HEADER_LINE_HEIGHT
+            SCENE_DOSSIER_HEADER_LINE_HEIGHT,
+            titleY
         );
-        this.setSceneDossierBodyText(
-            this.sceneDossierBody,
-            bodyLines.filter(Boolean),
+        this.setPositionedWrappedSvgText(
+            this.sceneDossierAnchor,
+            dossier.anchorLine || 'Finding',
             maxTextWidth,
-            SCENE_DOSSIER_MAX_BODY_LINES,
-            centeredBodyStartY
+            2,
+            SCENE_DOSSIER_ANCHOR_LINE_HEIGHT,
+            anchorY
         );
-        if (hasFooter) {
-            this.sceneDossierFooter.setAttribute('y', String(centeredFooterY));
-            this.setWrappedSvgText(
-                this.sceneDossierFooter,
-                footerText,
+        if (hasBodyPrimary) {
+            this.setPositionedWrappedSvgText(
+                this.sceneDossierBody,
+                bodyPrimaryText,
                 maxTextWidth,
                 2,
-                SCENE_DOSSIER_FOOTER_LINE_HEIGHT
+                SCENE_DOSSIER_BODY_PRIMARY_LINE_HEIGHT,
+                bodyPrimaryY
             );
+        } else {
+            clearSvgChildren(this.sceneDossierBody);
+        }
+        if (hasBodySecondary) {
+            this.setPositionedWrappedSvgText(
+                this.sceneDossierBodySecondary,
+                bodySecondaryText,
+                maxTextWidth,
+                2,
+                SCENE_DOSSIER_BODY_SECONDARY_LINE_HEIGHT,
+                bodySecondaryY
+            );
+        } else {
+            clearSvgChildren(this.sceneDossierBodySecondary);
+        }
+        if (hasMeta) {
+            this.setPositionedWrappedSvgText(
+                this.sceneDossierFooter,
+                dossier.metaLine ?? '',
+                maxTextWidth,
+                2,
+                SCENE_DOSSIER_FOOTER_LINE_HEIGHT,
+                metaY
+            );
+        } else {
+            clearSvgChildren(this.sceneDossierFooter);
+        }
+        if (hasSource) {
+            this.setPositionedWrappedSvgText(
+                this.sceneDossierSource,
+                dossier.sourceLabel ?? '',
+                maxTextWidth,
+                1,
+                SCENE_DOSSIER_SOURCE_LINE_HEIGHT,
+                sourceY
+            );
+        } else {
+            clearSvgChildren(this.sceneDossierSource);
         }
 
         const focusRadius = Math.max(SCENE_DOSSIER_FOCUS_RADIUS, Math.round(dossierHeight * 0.84));
@@ -8951,7 +9064,9 @@ export class InquiryView extends ItemView {
         this.sceneDossierFocusGlow.setAttribute('r', String(focusRadius));
         this.sceneDossierFocusOutline.setAttribute('cy', String(-SCENE_DOSSIER_Y));
         this.sceneDossierFocusOutline.setAttribute('r', String(focusRadius));
-        const braceY = Math.round(centeredBodyStartY + ((Math.max(bodyLineCount, 1) * SCENE_DOSSIER_LINE_HEIGHT) * 0.48));
+        const braceY = hasBodyPrimary
+            ? Math.round(bodyPrimaryY + ((Math.max(bodyPrimaryLines, 1) * SCENE_DOSSIER_BODY_PRIMARY_LINE_HEIGHT) * 0.46))
+            : Math.round(anchorY + ((Math.max(anchorLines, 1) * SCENE_DOSSIER_ANCHOR_LINE_HEIGHT) * 0.92));
         const braceOffsetX = Math.round((SCENE_DOSSIER_WIDTH / 2) - SCENE_DOSSIER_BRACE_INSET);
         this.sceneDossierBraceLeft.setAttribute('x', String(-braceOffsetX));
         this.sceneDossierBraceLeft.setAttribute('y', String(braceY));
@@ -8969,19 +9084,16 @@ export class InquiryView extends ItemView {
         this.minimapResultPreviewActive = true;
     }
 
-    private setSceneDossierBodyText(
+    private setPositionedWrappedSvgText(
         textEl: SVGTextElement,
-        lines: string[],
+        text: string,
         maxWidth: number,
         maxLines: number,
+        lineHeight: number,
         startDy: number
     ): number {
-        const bodyText = (lines.length ? lines : ['Finding text unavailable.'])
-            .map(line => line.trim())
-            .filter(Boolean)
-            .join(' ');
         textEl.setAttribute('y', '0');
-        const lineCount = this.setWrappedSvgText(textEl, bodyText, maxWidth, maxLines, SCENE_DOSSIER_LINE_HEIGHT);
+        const lineCount = this.setWrappedSvgText(textEl, text, maxWidth, maxLines, lineHeight);
         const firstLine = textEl.firstElementChild;
         if (firstLine instanceof SVGTSpanElement) {
             firstLine.setAttribute('dy', String(startDy));

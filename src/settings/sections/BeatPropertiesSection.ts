@@ -3795,10 +3795,10 @@ export function renderStoryBeatsSection(params: {
 
         // ─── Header row: two-column Setting layout (title+desc left, audit button right) ──
         const auditSetting = new Settings(parentEl)
-            .setName(`Validate ${noteType.toLowerCase()} properties`)
+            .setName(`Check ${noteType.toLowerCase()} properties`)
             .setDesc(
                 isCustomBeatAudit()
-                    ? 'Scan beat notes for schema drift and empty custom-field values.'
+                    ? 'Check beat notes for missing properties, empty custom-field values, IDs, and property order issues.'
                     : `Check ${noteType.toLowerCase()} notes for missing properties, unused fields, IDs, and property order issues.`
             );
         auditSetting.settingEl.addClass('ert-audit-setting');
