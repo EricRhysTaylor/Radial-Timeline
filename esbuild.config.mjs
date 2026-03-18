@@ -186,6 +186,9 @@ const context = await esbuild.context({
 	},
 	entryPoints: ['src/main.ts'],
 	bundle: true,
+	// Obsidian plugin bundles should not emit runtime console output.
+	// Strip console/debugger calls from the shipped bundle, including bundled deps.
+	drop: ['console', 'debugger'],
 	external: [
 		'obsidian',
 		'electron',

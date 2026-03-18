@@ -307,21 +307,21 @@ export function renderAiSection(params: {
             {
                 title: 'Prompt',
                 items: [
-                    'AI role template',
+                    'AI role template (author-defined)',
                     'Editorial analysis instructions'
                 ]
             },
             {
-                title: 'Structured output',
+                title: 'Output',
                 items: [
                     'Scene-linked findings',
-                    'Strict JSON shape'
+                    'Strict JSON structure'
                 ]
             },
             {
-                title: 'Execution',
+                title: 'Processing',
                 items: [
-                    'Multi-pass packaging (if required)',
+                    'Multi-pass (if required)',
                     'Provider wrappers'
                 ]
             }
@@ -343,19 +343,19 @@ export function renderAiSection(params: {
         {
             title: 'Prompt',
             items: [
-                'AI role template',
+                'AI role template (author-defined)',
                 'Beat scoring instructions'
             ]
         },
         {
-            title: 'Structured output',
+            title: 'Output',
             items: [
                 'Per-beat scores',
-                'Strict JSON shape'
+                'Strict JSON structure'
             ]
         },
         {
-            title: 'Execution',
+            title: 'Processing',
             items: [
                 'Single-pass',
                 'Provider wrappers'

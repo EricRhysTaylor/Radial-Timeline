@@ -3,6 +3,7 @@ import { TFile } from 'obsidian';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
 import {
     analyzeScenes,
+    deleteAdvancedSceneFields,
     ensureSceneIds,
     reorderSceneFields,
 } from './sceneNormalizer';
@@ -144,5 +145,44 @@ describe('sceneNormalizer', () => {
         expect(result.updated).toBe(1);
         expect(await readFile(app, 'Books/BookA/01 A1.md')).toMatch(/ID:\s*scn_[0-9a-f]{8,10}/);
         expect(await readFile(app, 'Books/BookB/01 B1.md')).not.toMatch(/ID:\s*scn_[0-9a-f]{8,10}/);
+    });
+
+    it('blocks advanced-field removal while advanced mode is enabled', async () => {
+        const app = createInMemoryApp({
+            'Books/BookA/01 Advanced.md': advancedSceneDocAfterCore(),
+        });
+        const file = app.vault.getMarkdownFiles()[0];
+
+        await expect(deleteAdvancedSceneFields({
+            app: app as never,
+            settings: buildSettings(true),
+            files: [file],
+        })).rejects.toThrow('Advanced Properties are enabled');
+    });
+
+    it('removes advanced fields only from scoped scenes that actually contain them when advanced mode is disabled', async () => {
+        const app = createInMemoryApp({
+            'Books/BookA/01 Advanced.md': advancedSceneDocAfterCore(),
+            'Books/BookA/02 Core.md': coreSceneDoc('ID: scn_core_two'),
+            'Books/BookA/03 Beat.md': `---\nID: beat_1\nClass: Beat\nAct: 1\nPurpose: Setup\nBeat Model: Save The Cat\nRange: 1-10\n---\nBody`,
+            'Books/BookA/04 Backdrop.md': `---\nID: backdrop_1\nClass: Backdrop\nContext: World\nStart: 2026-01-01\nEnd: 2026-01-02\n---\nBody`,
+        });
+        const settings = buildSettings(false);
+        const audit = await analyzeScenes({
+            app: app as never,
+            settings,
+        });
+
+        const result = await deleteAdvancedSceneFields({
+            app: app as never,
+            settings,
+            audit,
+        });
+
+        expect(result.deleted).toBe(1);
+        expect(await readFile(app, 'Books/BookA/01 Advanced.md')).not.toContain('Place: Somewhere');
+        expect(await readFile(app, 'Books/BookA/02 Core.md')).toContain('ID: scn_core_two');
+        expect(await readFile(app, 'Books/BookA/03 Beat.md')).toContain('Class: Beat');
+        expect(await readFile(app, 'Books/BookA/04 Backdrop.md')).toContain('Class: Backdrop');
     });
 });

@@ -25,6 +25,11 @@ import type {
     SceneNormalizationNote,
     SceneNormalizerContext,
 } from './types';
+import {
+    getAdvancedMode,
+    getScenePropertyState,
+    hasAdvancedFields,
+} from '../scenes/core/scenePropertyState';
 
 function buildReason(note: SceneNormalizationNote): string {
     const reasons: string[] = [];
@@ -76,7 +81,6 @@ export async function analyzeScenes(
     const definitions = buildScenePropertyDefinitions(ctx.settings);
     const policy = resolveScenePropertyPolicy(ctx.settings);
     const expected = resolveSceneExpectedKeys(ctx.settings, definitions, policy);
-    const advancedKeySet = new Set(expected.advancedKeys);
     const rawNotesByPath = new Map(rawAudit.notes.map((note) => [note.file.path, note]));
     const mappings = ctx.settings.enableCustomMetadataMapping ? ctx.settings.frontmatterMappings : undefined;
     const notes: SceneNormalizationNote[] = [];
@@ -92,11 +96,17 @@ export async function analyzeScenes(
             ? normalizeFrontmatterKeys(rawFrontmatter, mappings)
             : rawFrontmatter;
         const noteKeys = Object.keys(normalizedFrontmatter).filter((key) => key !== 'position');
+        const sceneState = getScenePropertyState({
+            frontmatter: normalizedFrontmatter,
+            settings: ctx.settings,
+            definitions,
+            policy,
+        });
         const rawNote = rawNotesByPath.get(file.path);
         const splitMissing = splitSceneMissingKeys(rawNote?.missingFields ?? [], expected, policy);
         const toleratedInactiveAdvancedKeys = policy.advancedEnabled
             ? []
-            : noteKeys.filter((key) => advancedKeySet.has(key));
+            : Object.keys(sceneState.advancedFields);
         const orderDrift = policy.advancedEnabled
             ? (rawNote?.orderDrift ?? false)
             : splitMissing.missingCoreKeys.length === 0
@@ -279,6 +289,9 @@ export async function deleteExtraSceneFields(
 export async function deleteAdvancedSceneFields(
     ctx: SceneNormalizerContext & { audit?: SceneNormalizationAudit }
 ): Promise<DeleteResult> {
+    if (getAdvancedMode(ctx.settings) === 'enabled') {
+        throw new Error('Advanced Properties are enabled. Disable them before removing advanced properties.');
+    }
     const audit = ctx.audit ?? await analyzeScenes(ctx);
     const definitions = buildScenePropertyDefinitions(ctx.settings);
     const advancedKeys = definitions.advanced.map((definition) => definition.key);
@@ -290,9 +303,19 @@ export async function deleteAdvancedSceneFields(
     const fieldsToDelete = advancedKeys.filter(
         (key) => !excludeKey(key) && !RESERVED_OBSIDIAN_KEYS.has(key)
     );
-    const files = audit.notes
-        .filter((note) => note.safetyResult?.status !== 'dangerous')
-        .map((note) => note.file);
+    const files = (await resolveSceneFiles(ctx))
+        .filter((file) => {
+            const note = audit.notes.find((entry) => entry.file.path === file.path);
+            if (note?.safetyResult?.status === 'dangerous') return false;
+            const cache = ctx.app.metadataCache.getFileCache(file);
+            const frontmatter = cache?.frontmatter as Record<string, unknown> | undefined;
+            if (!frontmatter) return false;
+            return hasAdvancedFields({
+                frontmatter,
+                settings: ctx.settings,
+                definitions,
+            });
+        });
 
     return runYamlDeleteFields({
         app: ctx.app,

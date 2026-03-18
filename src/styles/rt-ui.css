@@ -2432,7 +2432,7 @@
 .ert-ui.ert-scope--settings .ert-ai-capacity-cell {
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   border: 1px solid color-mix(in srgb, var(--background-modifier-border) 75%, transparent);
   border-radius: 8px;
   background: color-mix(in srgb, var(--background-primary) 88%, transparent);
@@ -2512,15 +2512,15 @@
   letter-spacing: 0.01em;
   line-height: 1.1;
   font-variant-numeric: tabular-nums;
-  display: block;
+  display: inline;
 }
 
 .ert-ui.ert-scope--settings .ert-ai-token-unit {
   font-size: 11px;
   color: var(--text-muted);
-  margin-bottom: 4px;
   line-height: 1.2;
-  display: block;
+  margin-left: 4px;
+  display: inline;
 }
 
 /* ── Status grid (2-column: label + chip) ─────────────────────────── */

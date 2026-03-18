@@ -26,6 +26,7 @@ import { resolveSceneExpectedKeys, resolveScenePropertyPolicy } from '../../../s
 import { RESERVED_OBSIDIAN_KEYS } from '../../../utils/yamlTemplateNormalize';
 import { formatSafetyIssues } from '../../../utils/yamlSafety';
 import { openOrRevealFile } from '../../../utils/fileUtils';
+import { getAdvancedMode, shouldEnableRemoveAdvanced } from '../../../scenes/core/scenePropertyState';
 
 type DeletePreviewDetail = { fields: string[]; values: Record<string, unknown> };
 
@@ -169,11 +170,12 @@ export function renderSceneNormalizerSection(params: {
     let auditResult: YamlAuditResult | null = null;
     let auditScopeSummary = '';
     let hasCheckedScenes = false;
+    let checkedSceneFiles: TFile[] = [];
     const buildMaintenanceDescription = (): string => {
         return 'Check scene notes for missing core properties, IDs, layout order, and optional advanced properties.';
     };
     const buildPolicyExplanation = (): { lead: string; detail: string } => {
-        const advancedEnabled = plugin.settings.sceneAdvancedPropertiesEnabled ?? true;
+        const advancedEnabled = getAdvancedMode(plugin.settings) === 'enabled';
         return advancedEnabled
             ? {
                 lead: 'Core and Advanced properties are currently maintained in scene notes.',
@@ -185,10 +187,10 @@ export function renderSceneNormalizerSection(params: {
             };
     };
     const buildPolicyBadge = (): string => (
-        (plugin.settings.sceneAdvancedPropertiesEnabled ?? true) ? 'Core + advanced' : 'Core only'
+        getAdvancedMode(plugin.settings) === 'enabled' ? 'Core + advanced' : 'Core only'
     );
     const buildUnusedFieldsTooltip = (): string => (
-        (plugin.settings.sceneAdvancedPropertiesEnabled ?? true)
+        (getAdvancedMode(plugin.settings) === 'enabled')
             ? 'Remove fields not defined in the current scene property rules.'
             : 'Remove unused non-advanced fields. Advanced fields are preserved.'
     );
@@ -252,12 +254,14 @@ export function renderSceneNormalizerSection(params: {
 
     const updateButtons = () => {
         const summary = sceneAudit?.summary;
-        const advancedEnabled = plugin.settings.sceneAdvancedPropertiesEnabled ?? true;
-        const advancedKeys = buildScenePropertyDefinitions(plugin.settings).advanced.map((definition) => definition.key);
-        const notesWithAdvanced = sceneAudit?.notes.filter((note) => note.toleratedInactiveAdvancedKeys.length > 0 || note.missingAdvancedKeys.length > 0 || advancedKeys.some((key) => {
-            const cache = app.metadataCache.getFileCache(note.file);
-            return !!cache?.frontmatter && Object.keys(cache.frontmatter).includes(key);
-        })) ?? [];
+        const advancedMode = getAdvancedMode(plugin.settings);
+        const advancedEnabled = advancedMode === 'enabled';
+        const removableAdvanced = shouldEnableRemoveAdvanced({
+            settings: plugin.settings,
+            scenes: checkedSceneFiles
+                .map((file) => app.metadataCache.getFileCache(file)?.frontmatter as Record<string, unknown> | undefined)
+                .filter((frontmatter): frontmatter is Record<string, unknown> => !!frontmatter),
+        });
 
         const disabledReasonBase = hasCheckedScenes
             ? undefined
@@ -275,7 +279,13 @@ export function renderSceneNormalizerSection(params: {
         setButtonDisabled(addIdsBtn, !summary || summary.scenesMissingIds === 0, disabledReasonBase || 'All scenes already have IDs.');
         setButtonDisabled(reorderBtn, !summary || summary.scenesWithDrift === 0, disabledReasonBase || 'Scene property order already matches the current layout.');
         setButtonDisabled(removeUnusedBtn, !summary || summary.scenesWithExtra === 0, disabledReasonBase || buildUnusedFieldsTooltip());
-        setButtonDisabled(removeAdvancedBtn, advancedKeys.length === 0 || notesWithAdvanced.length === 0, disabledReasonBase || 'No scenes currently contain advanced properties to remove.');
+        setButtonDisabled(
+            removeAdvancedBtn,
+            !removableAdvanced,
+            advancedMode === 'enabled'
+                ? 'Advanced properties are currently maintained, so removal is disabled.'
+                : (disabledReasonBase || 'No scenes currently contain advanced properties to remove.')
+        );
         setButtonDisabled(fixDuplicateBtn, !summary || summary.scenesDuplicateIds === 0, disabledReasonBase || 'No duplicate scene IDs were detected.');
 
         const maintenanceReasons: string[] = [];
@@ -296,7 +306,11 @@ export function renderSceneNormalizerSection(params: {
             if (summary.scenesWithExtra === 0) cleanupReasons.push(advancedEnabled
                 ? 'No unused fields were detected.'
                 : 'No unused non-Advanced fields were detected. Advanced fields are preserved.');
-            if (!(advancedKeys.length > 0 && notesWithAdvanced.length > 0)) cleanupReasons.push('No scenes currently contain removable advanced properties.');
+            if (advancedMode === 'enabled') {
+                cleanupReasons.push('Advanced properties are currently maintained, so removal is disabled.');
+            } else if (!removableAdvanced) {
+                cleanupReasons.push('No scenes currently contain removable advanced properties.');
+            }
             if (summary.scenesDuplicateIds === 0) cleanupReasons.push('No duplicate scene IDs were detected.');
         }
         maintenanceHelperEl.setText(maintenanceReasons[0] ?? '');
@@ -313,7 +327,7 @@ export function renderSceneNormalizerSection(params: {
         }
 
         const summary = auditResult.summary;
-        const advancedEnabled = plugin.settings.sceneAdvancedPropertiesEnabled ?? true;
+        const advancedEnabled = getAdvancedMode(plugin.settings) === 'enabled';
         const healthLevel = (summary.notesUnsafe > 0)
             ? 'unsafe'
             : (summary.notesMissingIds > 0 || summary.notesDuplicateIds > 0)
@@ -482,6 +496,7 @@ export function renderSceneNormalizerSection(params: {
         hasCheckedScenes = true;
         updateButtons();
         const auditScope = collectFilesForAuditWithScope(app, 'Scene', plugin.settings);
+        checkedSceneFiles = auditScope.files;
         auditScopeSummary = auditScope.scopeSummary;
         if (auditScope.reason) {
             resultsEl.empty();
@@ -489,6 +504,7 @@ export function renderSceneNormalizerSection(params: {
             refreshResultsVisibility();
             sceneAudit = null;
             auditResult = null;
+            checkedSceneFiles = [];
             updateButtons();
             new Notice(auditScope.reason);
             return;
@@ -499,6 +515,7 @@ export function renderSceneNormalizerSection(params: {
             refreshResultsVisibility();
             sceneAudit = null;
             auditResult = null;
+            checkedSceneFiles = [];
             updateButtons();
             return;
         }
@@ -663,9 +680,15 @@ export function renderSceneNormalizerSection(params: {
         .setWarning()
         .onClick(async () => {
             if (!sceneAudit) return;
-            const targetFiles = sceneAudit.notes
-                .filter((note) => note.safetyResult?.status !== 'dangerous')
-                .map((note) => note.file);
+            const targetFiles = checkedSceneFiles.filter((file) => {
+                const note = sceneAudit?.notes.find((entry) => entry.file.path === file.path);
+                if (note?.safetyResult?.status === 'dangerous') return false;
+                const frontmatter = app.metadataCache.getFileCache(file)?.frontmatter as Record<string, unknown> | undefined;
+                return !!frontmatter && shouldEnableRemoveAdvanced({
+                    settings: plugin.settings,
+                    scenes: [frontmatter],
+                });
+            });
             if (targetFiles.length === 0) return;
             const advancedKeys = buildScenePropertyDefinitions(plugin.settings).advanced.map((definition) => definition.key);
             const protectedKeys = new Set([
