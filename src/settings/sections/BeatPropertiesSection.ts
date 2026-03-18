@@ -3799,7 +3799,7 @@ export function renderStoryBeatsSection(params: {
             .setDesc(
                 isCustomBeatAudit()
                     ? 'Scan beat notes for schema drift and empty custom-field values.'
-                    : `Scan ${noteType.toLowerCase()} notes for schema drift — missing fields, extra keys, and ordering issues.`
+                    : `Check ${noteType.toLowerCase()} notes for missing properties, unused fields, IDs, and property order issues.`
             );
         auditSetting.settingEl.addClass('ert-audit-setting');
 
@@ -3808,7 +3808,7 @@ export function renderStoryBeatsSection(params: {
         auditSetting.addButton(button => {
             button
                 .setIcon('clipboard-copy')
-                .setTooltip('Copy audit report to clipboard')
+                .setTooltip('Copy status report to clipboard')
                 .onClick(() => {
                     if (!auditResult) return;
                     const report = formatAuditReport(auditResult, noteType);
@@ -3874,8 +3874,8 @@ export function renderStoryBeatsSection(params: {
         let deleteExtraBtn: HTMLButtonElement | undefined;
         auditSetting.addButton(button => {
             button
-                .setButtonText('Delete extra fields')
-                .setTooltip('Remove extra frontmatter fields not defined in the template')
+                .setButtonText('Remove unused fields')
+                .setTooltip('Remove frontmatter fields not defined in the current property rules')
                 .onClick(() => void handleDeleteExtraFields());
             deleteExtraBtn = button.buttonEl;
             deleteExtraBtn.classList.add('ert-settings-hidden');
@@ -3896,8 +3896,8 @@ export function renderStoryBeatsSection(params: {
         let reorderBtn: HTMLButtonElement | undefined;
         auditSetting.addButton(button => {
             button
-                .setButtonText('Reorder fields')
-                .setTooltip('Reorder frontmatter fields to match the canonical template order')
+                .setButtonText('Reorder properties')
+                .setTooltip('Reorder frontmatter properties to match the canonical template order')
                 .onClick(() => void handleReorderFields());
             reorderBtn = button.buttonEl;
             reorderBtn.classList.add('ert-settings-hidden');
@@ -3922,24 +3922,24 @@ export function renderStoryBeatsSection(params: {
             const preCheckScope = collectFilesForAuditWithScope(app, noteType, plugin.settings, activeBeatSystemKey);
             if (preCheckScope.reason) {
                 auditBtn.setDisabled(true);
-                auditBtn.setButtonText('Run audit');
+                auditBtn.setButtonText('Check notes');
                 auditBtn.setTooltip(preCheckScope.reason);
             } else if (preCheckScope.files.length === 0) {
                 auditBtn.setDisabled(true);
-                auditBtn.setButtonText('Run audit');
+                auditBtn.setButtonText('Check notes');
                 auditBtn.setTooltip(`No ${noteType.toLowerCase()} notes found. Create beat notes first.`);
             } else {
                 auditBtn.setDisabled(false);
-                auditBtn.setButtonText('Run audit');
-                auditBtn.setTooltip(`Scan ${preCheckScope.scopeSummary} for YAML schema drift`);
+                auditBtn.setButtonText('Check notes');
+                auditBtn.setTooltip(`Check ${preCheckScope.scopeSummary} for missing properties, unused fields, IDs, and layout issues`);
             }
             auditPrimaryAction = () => runAudit();
         };
         auditSetting.addButton(button => {
             auditBtn = button;
             button
-                .setButtonText('Run audit')
-                .setTooltip(`Scan all ${noteType.toLowerCase()} notes for YAML schema drift`)
+                .setButtonText('Check notes')
+                .setTooltip(`Check all ${noteType.toLowerCase()} notes for missing properties, unused fields, IDs, and layout issues`)
                 .onClick(() => auditPrimaryAction?.());
         });
 
@@ -4056,7 +4056,7 @@ export function renderStoryBeatsSection(params: {
                 deleteExtraBtn?.classList.remove('ert-settings-hidden');
                 deleteExtraBtn?.setAttribute(
                     'aria-label',
-                    `Delete extra fields from ${safeExtraNotes.length} note${safeExtraNotes.length !== 1 ? 's' : ''}`
+                    `Remove unused fields from ${safeExtraNotes.length} note${safeExtraNotes.length !== 1 ? 's' : ''}`
                 );
             } else {
                 deleteExtraBtn?.classList.add('ert-settings-hidden');
@@ -4093,7 +4093,7 @@ export function renderStoryBeatsSection(params: {
                 reorderBtn?.classList.remove('ert-settings-hidden');
                 reorderBtn?.setAttribute(
                     'aria-label',
-                    `Reorder fields in ${safeDriftNotes.length} note${safeDriftNotes.length !== 1 ? 's' : ''}`
+                    `Reorder properties in ${safeDriftNotes.length} note${safeDriftNotes.length !== 1 ? 's' : ''}`
                 );
             } else {
                 reorderBtn?.classList.add('ert-settings-hidden');
@@ -4129,7 +4129,7 @@ export function renderStoryBeatsSection(params: {
                 : 0;
             const effectiveClean = Math.max(0, s.clean - emptyOnlyCount);
 
-            // Normalization status / schema health + summary in one line
+            // Note status summary in one line
             const healthLevel = (s.notesUnsafe > 0)
                 ? 'unsafe'
                 : (s.notesMissingIds > 0 || s.notesDuplicateIds > 0)
@@ -4141,14 +4141,14 @@ export function renderStoryBeatsSection(params: {
                         : 'clean';
             const healthLabels: Record<string, string> = {
                 'clean': 'Clean',
-                'mixed': 'Mixed',
+                'mixed': 'Some notes need cleanup',
                 'needs-attention': 'Needs attention',
                 'critical': 'Critical issues detected',
                 'unsafe': 'Unsafe notes detected',
             };
             const headerEl = resultsEl.createDiv({ cls: 'ert-audit-result-header' });
             const healthEl = headerEl.createSpan({ cls: `ert-audit-health ert-audit-health--${healthLevel}` });
-            healthEl.textContent = `Schema health: ${healthLabels[healthLevel]}`;
+            healthEl.textContent = `Note status: ${healthLabels[healthLevel]}`;
             headerEl.createSpan({ text: ` · Scope: ${auditScopeSummary}`, cls: 'ert-audit-summary' });
 
             if (s.notesMissingIds > 0) {
@@ -4219,7 +4219,7 @@ export function renderStoryBeatsSection(params: {
                 && emptyValueNotes === 0
             ) {
                 resultsEl.createDiv({
-                    text: `All ${s.totalNotes} notes are up to date with this set.`,
+                    text: `All ${s.totalNotes} notes match the current property rules.`,
                     cls: 'ert-audit-clean'
                 });
                 return;
@@ -4242,11 +4242,11 @@ export function renderStoryBeatsSection(params: {
                   entries: auditResult.notes.filter(n => n.safetyResult?.status === 'dangerous') },
                 { label: 'Suspicious', count: s.notesSuspicious, kind: 'suspicious',
                   entries: auditResult.notes.filter(n => n.safetyResult?.status === 'suspicious') },
-                { label: 'Missing fields', count: s.notesWithMissing, kind: 'missing',
+                { label: 'Missing properties', count: s.notesWithMissing, kind: 'missing',
                   entries: auditResult.notes.filter(n => n.missingFields.length > 0) },
-                { label: 'Extra keys', count: s.notesWithExtra, kind: 'extra',
+                { label: 'Unused fields', count: s.notesWithExtra, kind: 'extra',
                   entries: auditResult.notes.filter(n => n.extraKeys.length > 0) },
-                { label: 'Order drift', count: s.notesWithDrift, kind: 'drift',
+                { label: 'Layout cleanup', count: s.notesWithDrift, kind: 'drift',
                   entries: auditResult.notes.filter(n => n.orderDrift) },
                 { label: 'Warnings', count: s.notesWithWarnings, kind: 'warning',
                   entries: auditResult.notes.filter(n => n.semanticWarnings.length > 0) },
@@ -4323,7 +4323,7 @@ export function renderStoryBeatsSection(params: {
                                 : 'safety issue';
                             break;
                         default:
-                            reason = 'order drift';
+                            reason = 'layout cleanup needed';
                     }
                     const reasonShort = reason.length > 40 ? reason.slice(0, 39) + '…' : reason;
                     const pillStyleKind = activeChip.kind === 'duplicate' ? 'critical' : activeChip.kind;
@@ -4357,7 +4357,7 @@ export function renderStoryBeatsSection(params: {
                         } else if (activeChip.kind === 'unsafe' || activeChip.kind === 'suspicious') {
                             new Notice(`Safety: ${reason}`);
                         } else if (entry.missingFields.length > 0) {
-                            new Notice(`Missing fields: ${entry.missingFields.join(', ')}`);
+                            new Notice(`Missing properties: ${entry.missingFields.join(', ')}`);
                         } else if (entry.semanticWarnings.length > 0) {
                             new Notice(`Warnings: ${entry.semanticWarnings.join(' | ')}`);
                         }
@@ -4914,10 +4914,10 @@ export function renderStoryBeatsSection(params: {
 
                 const header = modal.contentEl.createDiv({ cls: 'ert-modal-header' });
                 header.createSpan({ cls: 'ert-modal-badge', text: 'YAML MANAGER' });
-                header.createDiv({ cls: 'ert-modal-title', text: 'Delete extra fields' });
+                header.createDiv({ cls: 'ert-modal-title', text: 'Remove unused fields' });
                 header.createDiv({
                     cls: 'ert-modal-subtitle',
-                    text: `Remove ${totalFieldCount} extra field${totalFieldCount !== 1 ? 's' : ''} from ${notesWithExtra.length} ${noteType.toLowerCase()} note${notesWithExtra.length !== 1 ? 's' : ''}.`
+                    text: `Remove ${totalFieldCount} unused field${totalFieldCount !== 1 ? 's' : ''} from ${notesWithExtra.length} ${noteType.toLowerCase()} note${notesWithExtra.length !== 1 ? 's' : ''}.`
                 });
 
                 if (unsafeSkippedCount > 0) {
@@ -4987,7 +4987,7 @@ export function renderStoryBeatsSection(params: {
 
                 const footer = modal.contentEl.createDiv({ cls: 'ert-modal-actions' });
                 const deleteBtn = new ButtonComponent(footer)
-                    .setButtonText('Delete')
+                    .setButtonText('Remove unused fields')
                     .setWarning()
                     .onClick(() => {
                         if (hasValuedFields) {
@@ -5377,10 +5377,10 @@ export function renderStoryBeatsSection(params: {
 
                 const header = modal.contentEl.createDiv({ cls: 'ert-modal-header' });
                 header.createSpan({ cls: 'ert-modal-badge', text: 'YAML MANAGER' });
-                header.createDiv({ cls: 'ert-modal-title', text: 'Reorder frontmatter fields' });
+                header.createDiv({ cls: 'ert-modal-title', text: 'Reorder properties' });
                 header.createDiv({
                     cls: 'ert-modal-subtitle',
-                    text: `Reorder fields in ${notesWithDrift.length} ${noteType.toLowerCase()} note${notesWithDrift.length !== 1 ? 's' : ''} to match the canonical template order.`
+                    text: `Reorder properties in ${notesWithDrift.length} ${noteType.toLowerCase()} note${notesWithDrift.length !== 1 ? 's' : ''} to match the canonical template order.`
                 });
 
                 if (unsafeSkippedCount > 0) {
