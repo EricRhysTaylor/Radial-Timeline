@@ -1550,8 +1550,8 @@
   fill: color-mix(in srgb, var(--text-normal) 90%, #f6dbc0);
 }
 
-.ert-inquiry-scene-dossier-anchor {
-  font-family: var(--font-monospace), "SFMono-Regular", "IBM Plex Mono", monospace;
+.ert-inquiry-svg text.ert-inquiry-scene-dossier-anchor {
+  font-family: "SF Mono", "Cascadia Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
   font-size: 19px;
   font-style: normal;
   font-weight: 200;
@@ -1568,19 +1568,20 @@
 
 .ert-inquiry-scene-dossier-divider {
   stroke: color-mix(in srgb, var(--text-muted) 66%, #e8c9a6);
-  stroke-width: 1.25;
-  opacity: 0.22;
+  stroke-width: 1.4;
+  opacity: 0.34;
   stroke-linecap: round;
 }
 
-.ert-inquiry-scene-dossier-body--secondary {
+.ert-inquiry-svg text.ert-inquiry-scene-dossier-body--secondary {
+  font-family: "SF Mono", "Cascadia Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
   font-size: 17px;
   font-weight: 200;
   fill: color-mix(in srgb, var(--text-normal) 72%, #d9b489);
   opacity: 0.8;
 }
 
-.ert-inquiry-scene-dossier-footer {
+.ert-inquiry-svg text.ert-inquiry-scene-dossier-footer {
   font-family: var(--font-monospace), "SFMono-Regular", "IBM Plex Mono", monospace;
   font-size: 12px;
   font-weight: 560;
@@ -1590,7 +1591,7 @@
   opacity: 0.85;
 }
 
-.ert-inquiry-scene-dossier-source {
+.ert-inquiry-svg text.ert-inquiry-scene-dossier-source {
   font-family: var(--font-monospace), "SFMono-Regular", "IBM Plex Mono", monospace;
   font-size: 12px;
   font-style: normal;
@@ -1618,6 +1619,10 @@
 
 .ert-inquiry-preview.is-visible {
   opacity: 1;
+}
+
+.ert-inquiry-preview.is-dossier-muted .ert-inquiry-preview-hero {
+  opacity: 0.5;
 }
 
 .ert-inquiry-preview.is-locked text {

@@ -210,14 +210,14 @@ const PREVIEW_FOOTER_HEIGHT = 22;
 const PREVIEW_RESULTS_FOOTER_OFFSET = 30;
 const PREVIEW_SHIMMER_WIDTH = 120;
 const PREVIEW_SHIMMER_OVERHANG = 110;
-const GLYPH_OFFSET_Y = 5;
+const GLYPH_OFFSET_Y = 0;
 const FLOW_FINDING_ORDER: InquiryFinding['kind'][] = ['escalation', 'conflict', 'continuity', 'loose_end', 'unclear', 'error', 'none'];
 const DEPTH_FINDING_ORDER: InquiryFinding['kind'][] = ['continuity', 'loose_end', 'conflict', 'escalation', 'unclear', 'error', 'none'];
 const SIGMA_CHAR = String.fromCharCode(931);
 const MODE_ICON_VIEWBOX = 2048;
 const MODE_ICON_OFFSET_Y = -330;
 // Manual placement knobs for the Inquiry focal stack.
-const SCENE_DOSSIER_CANVAS_Y = -70;
+const SCENE_DOSSIER_CANVAS_Y = -10;
 const SCENE_DOSSIER_TEXT_GROUP_Y = 0;
 const SCENE_DOSSIER_BRACE_Y_OFFSET = 0;
 const SCENE_DOSSIER_WIDTH = 980;
@@ -230,7 +230,7 @@ const SCENE_DOSSIER_PADDING_Y = 30;
 const SCENE_DOSSIER_HEADER_SIZE = 60;
 const SCENE_DOSSIER_HEADER_LINE_HEIGHT = 64;
 const SCENE_DOSSIER_ANCHOR_LINE_HEIGHT = 22;
-const SCENE_DOSSIER_BODY_PRIMARY_LINE_HEIGHT = 29;
+const SCENE_DOSSIER_BODY_PRIMARY_LINE_HEIGHT = 24;
 const SCENE_DOSSIER_BODY_SECONDARY_LINE_HEIGHT = 24;
 const SCENE_DOSSIER_FOOTER_SIZE = 14;
 const SCENE_DOSSIER_FOOTER_LINE_HEIGHT = 18;
@@ -2737,11 +2737,9 @@ export class InquiryView extends ItemView {
                     if (filteredLines.length < lines.length) {
                         hadInquiryLines = true;
                         const nextText = filteredLines.join(newline).trim();
-                        if (nextText) {
-                            frontmatter[targetField] = nextText;
-                        } else {
-                            delete frontmatter[targetField];
-                        }
+                        // Preserve the YAML key even when all inquiry lines are removed.
+                        // Only the inquiry-inserted content is purged; user text and the key itself stay.
+                        frontmatter[targetField] = nextText || '';
                     }
                 });
 
@@ -9285,6 +9283,9 @@ export class InquiryView extends ItemView {
             this.sceneDossierBodyDivider.setAttribute('x2', String(dividerWidth / 2));
             this.sceneDossierBodyDivider.setAttribute('y1', String(dividerY));
             this.sceneDossierBodyDivider.setAttribute('y2', String(dividerY));
+            this.sceneDossierBodyDivider.classList.remove('ert-hidden');
+        } else {
+            this.sceneDossierBodyDivider.classList.add('ert-hidden');
         }
         if (hasMeta) {
             this.setPositionedDossierTextBlock(
@@ -9334,6 +9335,7 @@ export class InquiryView extends ItemView {
             this.rootSvg?.appendChild(this.sceneDossierGroup);
         }
         this.sceneDossierGroup.classList.add('is-visible');
+        this.previewGroup?.classList.add('is-dossier-muted');
         this.sceneDossierActiveKey = hoverKey;
         this.sceneDossierVisible = true;
         this.minimapResultPreviewActive = true;
@@ -9452,7 +9454,7 @@ export class InquiryView extends ItemView {
             tspan.textContent = line;
             if (options?.justify && align === 'start' && index < lines.length - 1 && /\s/.test(line)) {
                 tspan.setAttribute('textLength', String(maxWidth));
-                tspan.setAttribute('lengthAdjust', 'spacingAndGlyphs');
+                tspan.setAttribute('lengthAdjust', 'spacing');
             }
             textEl.appendChild(tspan);
         });
@@ -9469,6 +9471,7 @@ export class InquiryView extends ItemView {
         const hide = () => {
             this.sceneDossierHideTimer = undefined;
             this.sceneDossierGroup?.classList.remove('is-visible');
+            this.previewGroup?.classList.remove('is-dossier-muted');
             this.sceneDossierVisible = false;
             this.sceneDossierActiveKey = undefined;
             this.minimapResultPreviewActive = false;
@@ -10610,6 +10613,13 @@ export class InquiryView extends ItemView {
             return Number(textEl.getAttribute('data-rt-wrap-lines')) || 1;
         }
 
+        Array.from(textEl.childNodes).forEach(node => {
+            if (node.nodeName !== 'tspan') {
+                this.perfCounters.svgClearCalls++;
+                textEl.removeChild(node);
+            }
+        });
+
         const words = text.split(/\s+/).filter(Boolean);
         const x = textEl.getAttribute('x') ?? '0';
         const existingTspans = Array.from(textEl.childNodes).filter(n => n.nodeName === 'tspan') as SVGTSpanElement[];
@@ -10668,6 +10678,13 @@ export class InquiryView extends ItemView {
                 textEl.removeChild(textEl.lastChild);
             }
         }
+
+        Array.from(textEl.childNodes).forEach(node => {
+            if (node.nodeName !== 'tspan') {
+                this.perfCounters.svgClearCalls++;
+                textEl.removeChild(node);
+            }
+        });
 
         const exactLines = Math.max(truncated ? maxLines : lineIndex + 1, 1);
         textEl.setAttribute('data-rt-wrap-cache', cacheKey);
