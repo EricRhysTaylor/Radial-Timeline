@@ -213,12 +213,12 @@ const SCENE_DOSSIER_SIDE_PADDING = 136;
 const SCENE_DOSSIER_PADDING_Y = 30;
 const SCENE_DOSSIER_HEADER_SIZE = 60;
 const SCENE_DOSSIER_HEADER_LINE_HEIGHT = 64;
-const SCENE_DOSSIER_ANCHOR_LINE_HEIGHT = 20;
-const SCENE_DOSSIER_BODY_PRIMARY_LINE_HEIGHT = 28;
-const SCENE_DOSSIER_BODY_SECONDARY_LINE_HEIGHT = 24;
-const SCENE_DOSSIER_FOOTER_SIZE = 12;
-const SCENE_DOSSIER_FOOTER_LINE_HEIGHT = 16;
-const SCENE_DOSSIER_SOURCE_LINE_HEIGHT = 14;
+const SCENE_DOSSIER_ANCHOR_LINE_HEIGHT = 30;
+const SCENE_DOSSIER_BODY_PRIMARY_LINE_HEIGHT = 32;
+const SCENE_DOSSIER_BODY_SECONDARY_LINE_HEIGHT = 26;
+const SCENE_DOSSIER_FOOTER_SIZE = 14;
+const SCENE_DOSSIER_FOOTER_LINE_HEIGHT = 20;
+const SCENE_DOSSIER_SOURCE_LINE_HEIGHT = 18;
 const SCENE_DOSSIER_MAX_BODY_LINES = 5;
 const SCENE_DOSSIER_TITLE_ANCHOR_GAP = 2;
 const SCENE_DOSSIER_ANCHOR_BODY_GAP = 16;
@@ -8982,6 +8982,7 @@ export class InquiryView extends ItemView {
         this.cancelSceneDossierHide();
         const titleTextWidth = SCENE_DOSSIER_WIDTH - (SCENE_DOSSIER_SIDE_PADDING * 2);
         const contentTextWidth = Math.max(420, titleTextWidth - 96);
+        const anchorTextWidth = Math.max(340, contentTextWidth - 96);
         const titleLines = this.setWrappedSvgText(
             this.sceneDossierHeader,
             dossier.title,
@@ -8992,7 +8993,7 @@ export class InquiryView extends ItemView {
         const anchorLines = this.setWrappedSvgText(
             this.sceneDossierAnchor,
             dossier.anchorLine || 'Finding',
-            contentTextWidth,
+            anchorTextWidth,
             2,
             SCENE_DOSSIER_ANCHOR_LINE_HEIGHT
         );
@@ -9105,7 +9106,7 @@ export class InquiryView extends ItemView {
         this.setPositionedWrappedSvgText(
             this.sceneDossierAnchor,
             dossier.anchorLine || 'Finding',
-            contentTextWidth,
+            anchorTextWidth,
             2,
             SCENE_DOSSIER_ANCHOR_LINE_HEIGHT,
             anchorY

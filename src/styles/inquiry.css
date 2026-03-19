@@ -1552,40 +1552,42 @@
 
 .ert-inquiry-scene-dossier-anchor {
   font-family: var(--font-monospace), "SFMono-Regular", "IBM Plex Mono", monospace;
-  font-size: 13px;
-  font-weight: 430;
-  letter-spacing: 0.07em;
-  fill: color-mix(in srgb, var(--text-normal) 78%, #efd9bc);
+  font-size: 24px;
+  font-style: italic;
+  font-weight: 360;
+  letter-spacing: 0.1em;
+  fill: color-mix(in srgb, var(--text-normal) 84%, #f1dcc2);
 }
 
 .ert-inquiry-scene-dossier-body {
-  font-family: var(--font-text), Georgia, serif;
-  font-size: 18px;
-  font-weight: 390;
-  fill: color-mix(in srgb, var(--text-normal) 86%, #ebd3b3);
+  font-family: var(--font-interface), "Avenir Next", "Segoe UI", sans-serif;
+  font-size: 21px;
+  font-weight: 620;
+  fill: color-mix(in srgb, var(--text-normal) 90%, #efd9bd);
 }
 
 .ert-inquiry-scene-dossier-body--secondary {
-  font-size: 16px;
-  font-weight: 350;
-  fill: color-mix(in srgb, var(--text-normal) 74%, #dcb78a);
+  font-size: 17px;
+  font-weight: 430;
+  fill: color-mix(in srgb, var(--text-normal) 72%, #d9b489);
 }
 
 .ert-inquiry-scene-dossier-footer {
   font-family: var(--font-monospace), "SFMono-Regular", "IBM Plex Mono", monospace;
-  font-size: 9px;
-  font-weight: 500;
-  letter-spacing: 0.22em;
+  font-size: 11px;
+  font-weight: 560;
+  letter-spacing: 0.24em;
   text-transform: uppercase;
-  fill: color-mix(in srgb, var(--text-muted) 68%, #cda77f);
+  fill: color-mix(in srgb, var(--text-muted) 72%, #d2ae87);
 }
 
 .ert-inquiry-scene-dossier-source {
-  font-family: var(--font-interface), "Avenir Next", "Segoe UI", sans-serif;
-  font-size: 9px;
-  font-weight: 450;
-  letter-spacing: 0.06em;
-  fill: color-mix(in srgb, var(--text-muted) 48%, #b89269);
+  font-family: var(--font-monospace), "SFMono-Regular", "IBM Plex Mono", monospace;
+  font-size: 11px;
+  font-style: italic;
+  font-weight: 360;
+  letter-spacing: 0.04em;
+  fill: color-mix(in srgb, var(--text-muted) 56%, #bf9b72);
 }
 
 .ert-inquiry-preview {
