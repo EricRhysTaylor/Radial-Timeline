@@ -33,6 +33,14 @@ import { logCountingForensics } from '../../ai/diagnostics/countingForensics';
 export { cleanEvidenceBody } from '../utils/evidenceCleaning';
 
 const BOOK_FOLDER_REGEX = /^Book\s+(\d+)/i;
+const SINGLE_PASS_PLANNING_BUDGET_ERROR =
+    'This request exceeds the single-pass planning budget. Switch Execution Preference to Automatic, or reduce scope.';
+
+function isSinglePassPlanningBudgetError(message: string): boolean {
+    const normalized = message.toLowerCase();
+    return normalized.includes('single-pass planning budget')
+        || normalized.includes('safe limit for a single pass');
+}
 
 type EvidenceBlock = {
     label: string;
@@ -1104,7 +1112,7 @@ export class InquiryRunnerService implements InquiryRunner {
                     ...run,
                     aiStatus: run.aiStatus === 'success' ? 'rejected' : run.aiStatus,
                     aiReason: run.aiReason || 'truncated',
-                    error: run.error || 'This request exceeds the safe limit for a single pass. Switch Execution Preference to Automatic, or reduce scope.',
+                    error: run.error || SINGLE_PASS_PLANNING_BUDGET_ERROR,
                     warnings: [
                         ...(run.warnings || []),
                         'Single-pass only is enabled, so large-manuscript packaging was skipped.'
@@ -1112,7 +1120,7 @@ export class InquiryRunnerService implements InquiryRunner {
                 }, {
                     analysisPackaging,
                     executionPassCount: 1,
-                    packagingTriggerReason: 'Single-pass response exceeded safe limits, but automatic packaging is disabled.'
+                    packagingTriggerReason: 'Single-pass response exceeded the planning budget, but automatic packaging is disabled.'
                 });
             } else {
                 const multiPass = await this.runChunkedInquiry(aiClient, {
@@ -1353,7 +1361,7 @@ export class InquiryRunnerService implements InquiryRunner {
             aiModelResolved: ai.modelId,
             aiStatus: 'rejected',
             aiReason: 'truncated',
-            error: 'This request exceeds the safe limit for a single pass. Switch Execution Preference to Automatic, or reduce scope.',
+            error: SINGLE_PASS_PLANNING_BUDGET_ERROR,
             analysisPackaging: 'singlePassOnly',
             executionPassCount: 1,
             packagingTriggerReason: reason,
@@ -1726,7 +1734,7 @@ export class InquiryRunnerService implements InquiryRunner {
             }, {
                 analysisPackaging: 'automatic',
                 executionPassCount: passCount,
-                packagingTriggerReason: 'Single-pass request exceeded safe limits, so structured packaging and synthesis were used.'
+                packagingTriggerReason: 'Single-pass request exceeded the planning budget, so structured packaging and synthesis were used.'
             })
         };
     }
@@ -2903,7 +2911,7 @@ export class InquiryRunnerService implements InquiryRunner {
         if (response.aiReason === 'packaging_failed') return 'packaging_failed';
         if (response.aiStatus === 'rejected'
             && typeof response.error === 'string'
-            && response.error.toLowerCase().includes('safe limit for a single pass')) {
+            && isSinglePassPlanningBudgetError(response.error)) {
             return 'blocked_before_send';
         }
         return 'dispatched_to_provider';

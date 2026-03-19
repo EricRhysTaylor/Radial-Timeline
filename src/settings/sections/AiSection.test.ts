@@ -35,7 +35,7 @@ describe('AI settings models table', () => {
         expect(source.includes('GossamerEvidencePreference')).toBe(false);
         expect(source.includes('getGossamerEvidencePreference')).toBe(false);
         // Composition copy confirms bodies-only
-        expect(source.includes('Scenes (${sceneCount.toLocaleString()}) — full text')).toBe(true);
+        expect(source.includes('Scenes (${formatInquiryCount(sceneCount)}) — full text')).toBe(true);
         expect(source.includes('Outline — not included')).toBe(true);
         expect(source.includes('References — not included')).toBe(true);
     });
@@ -120,6 +120,7 @@ describe('AI settings models table', () => {
         expect(source.includes('Execution preference')).toBe(true);
         expect(source.includes('singlePassOnly')).toBe(true);
         expect(source.includes('ert-ai-capacity-grid')).toBe(true);
+        expect(source.includes('Expected Structured Passes')).toBe(true);
     });
 
     it('renders structured Inquiry and Gossamer request composition strings', () => {

@@ -365,7 +365,7 @@ export function buildReadinessUiState(input: BuildReadinessUiStateInput): Inquir
     } else if (readiness.cause === 'capability_floor') {
         reason = `${providerLabel} cannot satisfy this Inquiry setup. Update Provider, Thinking Style, or Access level.`;
     } else if (readiness.cause === 'single_pass_limit') {
-        reason = 'Exceeds the single-pass safe limit. Switch to Automatic or choose a larger-context engine.';
+        reason = 'Exceeds the single-pass planning budget. Switch to Automatic or choose a larger-context engine.';
     } else if (readiness.state === 'large') {
         reason = 'Automatic packaging will run multiple structured passes.';
     }

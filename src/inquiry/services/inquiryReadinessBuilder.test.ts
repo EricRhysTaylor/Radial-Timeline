@@ -555,6 +555,15 @@ describe('buildReadinessUiState', () => {
         expect(result.readiness.cause).toBe('packaging_expected');
     });
 
+    it('describes single-pass overflow as a planning-budget constraint', () => {
+        const result = buildReadinessUiState(makeBaseInput({
+            aiSettings: makeAiSettings({ analysisPackaging: 'singlePassOnly' }),
+            snapshot: makeSnapshot({ estimatedInputTokens: 300000, effectiveInputCeiling: 180000 })
+        }));
+        expect(result.readiness.cause).toBe('single_pass_limit');
+        expect(result.reason).toBe('Exceeds the single-pass planning budget. Switch to Automatic or choose a larger-context engine.');
+    });
+
     it('sets canSwitchToSummaries when body evidence exists and summaries fit', () => {
         const result = buildReadinessUiState(makeBaseInput({
             hasAnyBodyEvidence: true,

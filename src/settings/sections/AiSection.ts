@@ -1,4 +1,4 @@
-import { Setting as Settings, Notice, DropdownComponent, setIcon, setTooltip } from 'obsidian';
+import { Setting as Settings, Notice, DropdownComponent, TFile, setIcon, setTooltip } from 'obsidian';
 import type { App, TextComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { fetchAnthropicModels } from '../../api/anthropicApi';
@@ -31,6 +31,10 @@ import {
     formatUsdCost
 } from '../../ai/cost/estimateCorpusCost';
 import { INQUIRY_CANONICAL_ESTIMATE_QUESTION } from '../../inquiry/constants';
+import type { CorpusManifestEntry } from '../../inquiry/runner/types';
+import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
+import { cleanEvidenceBody } from '../../inquiry/utils/evidenceCleaning';
+import { getSortedSceneFiles } from '../../utils/manuscript';
 
 type Provider = 'anthropic' | 'gemini' | 'openai' | 'local';
 type CapacityItem = string | { text: string; dividerBefore?: boolean };
@@ -357,6 +361,71 @@ export function renderAiSection(params: {
                 ]
             }
         ];
+    };
+    const extractSummary = (frontmatter: Record<string, unknown>): string => {
+        const raw = frontmatter['Summary'];
+        if (Array.isArray(raw)) return raw.map(value => String(value)).join('\n').trim();
+        if (typeof raw === 'string') return raw.trim();
+        if (raw === null || raw === undefined) return '';
+        return String(raw).trim();
+    };
+    const toBreakdown = (sceneChars: number, outlineChars: number, referenceChars: number): RTCorpusTokenBreakdown => ({
+        scenesTokens: sceneChars > 0 ? Math.ceil(sceneChars / 4) : 0,
+        outlineTokens: outlineChars > 0 ? Math.ceil(outlineChars / 4) : 0,
+        referenceTokens: referenceChars > 0 ? Math.ceil(referenceChars / 4) : 0
+    });
+    const buildDisplayCorpusEstimateFromManifestEntries = async (entries: CorpusManifestEntry[]) => {
+        let sceneCount = 0;
+        let outlineCount = 0;
+        let referenceCount = 0;
+        let sceneChars = 0;
+        let outlineChars = 0;
+        let referenceChars = 0;
+
+        for (const entry of entries) {
+            if (entry.class === 'scene') {
+                sceneCount += 1;
+            } else if (entry.class === 'outline') {
+                outlineCount += 1;
+            } else {
+                referenceCount += 1;
+            }
+
+            const file = app.vault.getAbstractFileByPath(entry.path);
+            if (!(file instanceof TFile)) continue;
+
+            let chars = 0;
+            if (entry.mode === 'summary') {
+                const cache = app.metadataCache.getFileCache(file);
+                const rawFrontmatter = cache?.frontmatter as Record<string, unknown> | undefined;
+                const frontmatter = rawFrontmatter
+                    ? normalizeFrontmatterKeys(rawFrontmatter, plugin.settings.frontmatterMappings)
+                    : {};
+                chars = extractSummary(frontmatter).length;
+            } else if (entry.mode === 'full') {
+                const raw = await app.vault.read(file);
+                chars = cleanEvidenceBody(raw).length;
+            }
+
+            if (entry.class === 'scene') {
+                sceneChars += chars;
+            } else if (entry.class === 'outline') {
+                outlineChars += chars;
+            } else {
+                referenceChars += chars;
+            }
+        }
+
+        const breakdown = toBreakdown(sceneChars, outlineChars, referenceChars);
+        return {
+            sceneCount,
+            outlineCount,
+            referenceCount,
+            evidenceChars: sceneChars + outlineChars + referenceChars,
+            estimatedTokens: breakdown.scenesTokens + breakdown.outlineTokens + breakdown.referenceTokens,
+            method: 'rt_chars_heuristic' as const,
+            breakdown
+        };
     };
     const buildGossamerCapacitySections = (
         sceneCount: number,
@@ -1013,7 +1082,7 @@ export function renderAiSection(params: {
         costEstimateTable.empty();
 
         const headerRow = costEstimateTable.createDiv({ cls: 'ert-ai-models-row ert-ai-models-row--header' });
-        ['Provider', 'Model', 'Fresh Run', 'Cached Run', 'Expected Passes'].forEach(text => {
+        ['Provider', 'Model', 'Fresh Run', 'Cached Run', 'Expected Structured Passes'].forEach(text => {
             createCostTableCell(headerRow, text);
         });
 
@@ -1113,7 +1182,10 @@ export function renderAiSection(params: {
         modelId: string;
     }): Promise<{ inquiry: FeatureForecast; gossamer: FeatureForecast }> => {
         const currentCorpus = getCurrentCorpusContext();
-        const inquiryCorpusTokens = currentCorpus?.corpus.estimatedTokens ?? 0;
+        const inquiryDisplayCorpus = currentCorpus
+            ? await buildDisplayCorpusEstimateFromManifestEntries(currentCorpus.manifestEntries)
+            : null;
+        const inquiryCorpusTokens = inquiryDisplayCorpus?.estimatedTokens ?? 0;
         const inquiryProviderTokens = currentCorpus && engine
             ? (await buildCurrentInquiryExecutionEstimate({
                 provider: engine.provider,
@@ -1128,7 +1200,16 @@ export function renderAiSection(params: {
             metadataCache: app.metadataCache,
             frontmatterMappings: plugin.settings.frontmatterMappings
         });
-        const gossamerCorpusTokens = gossamerEstimate.corpus.estimatedTokens;
+        const { files: gossamerSceneFiles } = await getSortedSceneFiles(plugin);
+        const gossamerDisplayCorpus = await buildDisplayCorpusEstimateFromManifestEntries(
+            gossamerSceneFiles.map(file => ({
+                path: file.path,
+                mtime: file.stat?.mtime ?? Date.now(),
+                class: 'scene',
+                mode: 'full'
+            }))
+        );
+        const gossamerCorpusTokens = gossamerDisplayCorpus.estimatedTokens;
         const gossamerProviderTokens = gossamerEstimate.providerExecutionEstimate.estimatedTokens;
 
         return {
@@ -1136,10 +1217,10 @@ export function renderAiSection(params: {
                 available: Boolean(currentCorpus),
                 corpusTokens: inquiryCorpusTokens,
                 providerExecutionTokens: inquiryProviderTokens,
-                sceneCount: currentCorpus?.corpus.sceneCount ?? 0,
-                outlineCount: currentCorpus?.corpus.outlineCount ?? 0,
-                referenceCount: currentCorpus?.corpus.referenceCount ?? 0,
-                breakdown: currentCorpus?.corpus.breakdown ?? {
+                sceneCount: inquiryDisplayCorpus?.sceneCount ?? currentCorpus?.corpus.sceneCount ?? 0,
+                outlineCount: inquiryDisplayCorpus?.outlineCount ?? currentCorpus?.corpus.outlineCount ?? 0,
+                referenceCount: inquiryDisplayCorpus?.referenceCount ?? currentCorpus?.corpus.referenceCount ?? 0,
+                breakdown: inquiryDisplayCorpus?.breakdown ?? {
                     scenesTokens: 0,
                     outlineTokens: 0,
                     referenceTokens: 0
@@ -1149,10 +1230,10 @@ export function renderAiSection(params: {
                 available: true,
                 corpusTokens: gossamerCorpusTokens,
                 providerExecutionTokens: gossamerProviderTokens,
-                sceneCount: gossamerEstimate.includedSceneCount,
-                outlineCount: gossamerEstimate.corpus.outlineCount,
-                referenceCount: gossamerEstimate.corpus.referenceCount,
-                breakdown: gossamerEstimate.corpus.breakdown
+                sceneCount: gossamerDisplayCorpus.sceneCount,
+                outlineCount: gossamerDisplayCorpus.outlineCount,
+                referenceCount: gossamerDisplayCorpus.referenceCount,
+                breakdown: gossamerDisplayCorpus.breakdown
             },
         };
     };
@@ -1285,11 +1366,11 @@ export function renderAiSection(params: {
             const estimate = prepared.estimate;
             const safeBudgetTokens = Math.max(0, Math.floor(estimate.effectiveInputCeiling));
             const formatExpectedPasses = (providerExecutionTokens: number): string => {
-                if (providerExecutionTokens <= 0 || safeBudgetTokens <= 0) return 'Expected Passes · n/a';
+                if (providerExecutionTokens <= 0 || safeBudgetTokens <= 0) return 'Expected structured passes · n/a';
                 const passes = providerExecutionTokens <= safeBudgetTokens
                     ? 1
                     : Math.max(2, Math.ceil(providerExecutionTokens / safeBudgetTokens));
-                return `Expected Passes · ${passes}`;
+                return `Expected structured passes · ${passes}`;
             };
             const previewState: ResolvedPreviewRenderState = {
                 provider,

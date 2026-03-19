@@ -31,4 +31,11 @@ describe('InquiryRunnerService packaging integrity', () => {
         expect(source).toMatch(/this\.buildTokenEstimate\([\s\S]*this\.getOmnibusJsonSchema\(\),[\s\S]*input\.questions\.map\(question => question\.question\)\.join\('\\n'\)/);
         expect(source).toMatch(/this\.prepareInquiryRunEstimate\([\s\S]*userQuestion,[\s\S]*ai,/);
     });
+
+    it('uses planning-budget wording for single-pass rejection while preserving legacy detection', () => {
+        const source = readFileSync(resolve(process.cwd(), 'src/inquiry/runner/InquiryRunnerService.ts'), 'utf8');
+        expect(source).toContain('This request exceeds the single-pass planning budget.');
+        expect(source).toContain("normalized.includes('single-pass planning budget')");
+        expect(source).toContain("normalized.includes('safe limit for a single pass')");
+    });
 });

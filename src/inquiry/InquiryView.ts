@@ -214,15 +214,15 @@ const SCENE_DOSSIER_PADDING_Y = 30;
 const SCENE_DOSSIER_HEADER_SIZE = 60;
 const SCENE_DOSSIER_HEADER_LINE_HEIGHT = 64;
 const SCENE_DOSSIER_ANCHOR_LINE_HEIGHT = 30;
-const SCENE_DOSSIER_BODY_PRIMARY_LINE_HEIGHT = 32;
-const SCENE_DOSSIER_BODY_SECONDARY_LINE_HEIGHT = 26;
+const SCENE_DOSSIER_BODY_PRIMARY_LINE_HEIGHT = 27;
+const SCENE_DOSSIER_BODY_SECONDARY_LINE_HEIGHT = 21;
 const SCENE_DOSSIER_FOOTER_SIZE = 14;
 const SCENE_DOSSIER_FOOTER_LINE_HEIGHT = 20;
 const SCENE_DOSSIER_SOURCE_LINE_HEIGHT = 18;
-const SCENE_DOSSIER_MAX_BODY_LINES = 5;
+const SCENE_DOSSIER_UNBOUNDED_WRAP_LINES = Number.MAX_SAFE_INTEGER;
 const SCENE_DOSSIER_TITLE_ANCHOR_GAP = 2;
 const SCENE_DOSSIER_ANCHOR_BODY_GAP = 16;
-const SCENE_DOSSIER_BODY_ROW_GAP = 8;
+const SCENE_DOSSIER_BODY_ROW_GAP = 4;
 const SCENE_DOSSIER_FOOTER_GAP = 16;
 const SCENE_DOSSIER_SOURCE_GAP = 8;
 const SCENE_DOSSIER_HOVER_DELAY_MS = 150;
@@ -2086,12 +2086,12 @@ export class InquiryView extends ItemView {
                 ? ` Recent run used ${passPlan.recentExactPassCount} passes.`
                 : '';
             this.enginePanelReadinessMessageEl.setText(
-                `Expected passes: ${estimateLabel} — manuscript exceeds input limit.${recentRunSuffix}`
+                `Expected structured passes: ${estimateLabel} — manuscript exceeds the per-pass planning budget.${recentRunSuffix}`
             );
         } else if (readinessUi.readiness.cause === 'single_pass_limit') {
             const estimateLabel = passPlan.estimatedPassCount ?? passPlan.displayPassCount;
             this.enginePanelReadinessMessageEl.setText(
-                `Expected passes: ${estimateLabel} — single-pass mode blocks this run.`
+                `Expected structured passes: ${estimateLabel} — single-pass mode blocks this run.`
             );
         } else {
             this.enginePanelReadinessMessageEl.setText(readinessUi.reason);
@@ -8887,7 +8887,7 @@ export class InquiryView extends ItemView {
         } else if (!headline) {
             bodyLines.push('Finding text unavailable.');
         }
-        return bodyLines.slice(0, SCENE_DOSSIER_MAX_BODY_LINES);
+        return bodyLines;
     }
 
     private normalizeSceneDossierSentence(value: string): string {
@@ -8987,14 +8987,14 @@ export class InquiryView extends ItemView {
             this.sceneDossierHeader,
             dossier.title,
             titleTextWidth,
-            2,
+            SCENE_DOSSIER_UNBOUNDED_WRAP_LINES,
             SCENE_DOSSIER_HEADER_LINE_HEIGHT
         );
         const anchorLines = this.setWrappedSvgText(
             this.sceneDossierAnchor,
             dossier.anchorLine || 'Finding',
             anchorTextWidth,
-            2,
+            SCENE_DOSSIER_UNBOUNDED_WRAP_LINES,
             SCENE_DOSSIER_ANCHOR_LINE_HEIGHT
         );
         const bodyLines = dossier.bodyLines
@@ -9011,7 +9011,7 @@ export class InquiryView extends ItemView {
                 this.sceneDossierBody,
                 bodyPrimaryText,
                 contentTextWidth,
-                2,
+                SCENE_DOSSIER_UNBOUNDED_WRAP_LINES,
                 SCENE_DOSSIER_BODY_PRIMARY_LINE_HEIGHT
             )
             : 0;
@@ -9020,7 +9020,7 @@ export class InquiryView extends ItemView {
                 this.sceneDossierBodySecondary,
                 bodySecondaryText,
                 contentTextWidth,
-                2,
+                SCENE_DOSSIER_UNBOUNDED_WRAP_LINES,
                 SCENE_DOSSIER_BODY_SECONDARY_LINE_HEIGHT
             )
             : 0;
@@ -9033,7 +9033,7 @@ export class InquiryView extends ItemView {
                 this.sceneDossierFooter,
                 dossier.metaLine ?? '',
                 contentTextWidth,
-                2,
+                SCENE_DOSSIER_UNBOUNDED_WRAP_LINES,
                 SCENE_DOSSIER_FOOTER_LINE_HEIGHT
             )
             : 0;
@@ -9042,7 +9042,7 @@ export class InquiryView extends ItemView {
                 this.sceneDossierSource,
                 dossier.sourceLabel ?? '',
                 contentTextWidth,
-                1,
+                SCENE_DOSSIER_UNBOUNDED_WRAP_LINES,
                 SCENE_DOSSIER_SOURCE_LINE_HEIGHT
             )
             : 0;
@@ -9099,7 +9099,7 @@ export class InquiryView extends ItemView {
             this.sceneDossierHeader,
             dossier.title,
             titleTextWidth,
-            2,
+            SCENE_DOSSIER_UNBOUNDED_WRAP_LINES,
             SCENE_DOSSIER_HEADER_LINE_HEIGHT,
             titleY
         );
@@ -9107,7 +9107,7 @@ export class InquiryView extends ItemView {
             this.sceneDossierAnchor,
             dossier.anchorLine || 'Finding',
             anchorTextWidth,
-            2,
+            SCENE_DOSSIER_UNBOUNDED_WRAP_LINES,
             SCENE_DOSSIER_ANCHOR_LINE_HEIGHT,
             anchorY
         );
@@ -9116,7 +9116,7 @@ export class InquiryView extends ItemView {
                 this.sceneDossierBody,
                 bodyPrimaryText,
                 contentTextWidth,
-                2,
+                SCENE_DOSSIER_UNBOUNDED_WRAP_LINES,
                 SCENE_DOSSIER_BODY_PRIMARY_LINE_HEIGHT,
                 bodyPrimaryY
             );
@@ -9128,7 +9128,7 @@ export class InquiryView extends ItemView {
                 this.sceneDossierBodySecondary,
                 bodySecondaryText,
                 contentTextWidth,
-                2,
+                SCENE_DOSSIER_UNBOUNDED_WRAP_LINES,
                 SCENE_DOSSIER_BODY_SECONDARY_LINE_HEIGHT,
                 bodySecondaryY
             );
@@ -9140,7 +9140,7 @@ export class InquiryView extends ItemView {
                 this.sceneDossierFooter,
                 dossier.metaLine ?? '',
                 contentTextWidth,
-                2,
+                SCENE_DOSSIER_UNBOUNDED_WRAP_LINES,
                 SCENE_DOSSIER_FOOTER_LINE_HEIGHT,
                 metaY
             );
@@ -9152,7 +9152,7 @@ export class InquiryView extends ItemView {
                 this.sceneDossierSource,
                 dossier.sourceLabel ?? '',
                 contentTextWidth,
-                1,
+                SCENE_DOSSIER_UNBOUNDED_WRAP_LINES,
                 SCENE_DOSSIER_SOURCE_LINE_HEIGHT,
                 sourceY
             );
@@ -11569,8 +11569,8 @@ export class InquiryView extends ItemView {
         const logSnapshot = this.plugin.getInquiryEstimateService().getSnapshot();
         if (logSnapshot) {
             lines.push(`- Pre-run estimate: ${formatTokenCount(logSnapshot.estimate.estimatedInputTokens, true)} (${logSnapshot.estimate.estimationMethod})`);
-            lines.push(`- Safe ceiling: ${formatTokenCount(logSnapshot.estimate.effectiveInputCeiling)}`);
-            lines.push(`- Expected passes: ${logSnapshot.estimate.expectedPassCount}`);
+            lines.push(`- Per-pass planning budget: ${formatTokenCount(logSnapshot.estimate.effectiveInputCeiling)}`);
+            lines.push(`- Expected structured passes: ${logSnapshot.estimate.expectedPassCount}`);
         }
         lines.push('');
 

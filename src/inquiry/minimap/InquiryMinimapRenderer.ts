@@ -946,7 +946,7 @@ export class InquiryMinimapRenderer {
                 this.minimapPassIndicatorText.textContent = passIndicator.marks;
                 const reason = passPlan.packagingTriggerReason
                     || (passIndicator.expectedOnly
-                        ? 'Manuscript exceeds model input limit; splitting into passes.'
+                        ? 'Manuscript exceeds the per-pass planning budget; splitting into structured passes.'
                         : 'Multi-pass analysis completed.');
                 const passText = passIndicator.exactCount
                     ? `Passes: ${passIndicator.exactCount} total`
