@@ -30,6 +30,8 @@ describe('computeCaps', () => {
         expect(tier3.maxOutputTokens).toBeGreaterThan(tier1.maxOutputTokens);
         expect(tier4.requestPerMinute).toBeGreaterThan(tier3.requestPerMinute);
         expect(tier4.safeChunkThreshold).toBeGreaterThanOrEqual(tier3.safeChunkThreshold);
+        expect(tier1.maxInputTokens).toBe(700000);
+        expect(tier4.maxInputTokens).toBe(900000);
     });
 
     it('uses deeper reasoning defaults for inquiry when requested', () => {

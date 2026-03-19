@@ -360,15 +360,22 @@ export function renderAiSection(params: {
     };
     const buildGossamerCapacitySections = (
         sceneCount: number,
-        totalTokens: number | null = null
+        breakdown?: RTCorpusTokenBreakdown
     ): Array<{ title: string; items: CapacityItem[] }> => [
         {
             title: 'Corpus',
             items: [
-                `Scenes (${sceneCount.toLocaleString()}) — full text`,
+                buildScenesCapacityLine(sceneCount, breakdown?.scenesTokens ?? null),
                 'Outline — not included',
                 'References — not included',
-                { text: `Total ${formatCorpusBreakdownToken(totalTokens)}`, dividerBefore: true }
+                {
+                    text: `Total ${formatCorpusBreakdownToken(
+                        breakdown
+                            ? breakdown.scenesTokens + breakdown.outlineTokens + breakdown.referenceTokens
+                            : null
+                    )}`,
+                    dividerBefore: true
+                }
             ]
         },
         {
@@ -566,13 +573,14 @@ export function renderAiSection(params: {
 
     const resolvePreviewSignals = (state: {
         provider: AIProviderId;
+        contextWindow: number | null;
         maxInputTokens: number | null;
         maxOutputTokens: number | null;
     }): string[] => {
         const candidates: PreviewSignal[] = [];
         candidates.push({
             type: 'context',
-            text: `Context · ${state.maxInputTokens ? formatApproxTokens(state.maxInputTokens) : 'n/a'}`
+            text: `Context window · ${state.contextWindow ? formatApproxTokens(state.contextWindow) : 'n/a'}`
         });
 
         if (state.provider === 'anthropic') {
@@ -829,6 +837,7 @@ export function renderAiSection(params: {
         provider: AIProviderId;
         modelLabel: string;
         modelAlias: string;
+        contextWindow: number | null;
         maxInputTokens: number | null;
         maxOutputTokens: number | null;
     }
@@ -885,6 +894,7 @@ export function renderAiSection(params: {
 
         const previewPills = resolvePreviewSignals({
             provider: state.provider,
+            contextWindow: state.contextWindow,
             maxInputTokens: state.maxInputTokens,
             maxOutputTokens: state.maxOutputTokens
         });
@@ -1285,6 +1295,7 @@ export function renderAiSection(params: {
                 provider,
                 modelLabel: estimate.model.label,
                 modelAlias: estimate.model.alias,
+                contextWindow: estimate.model.contextWindow,
                 maxInputTokens: estimate.maxInputTokens,
                 maxOutputTokens: estimate.maxOutputTokens,
             };
@@ -1312,7 +1323,7 @@ export function renderAiSection(params: {
                 capacityGossamerExpected.setText(formatExpectedPasses(forecasts.gossamer.providerExecutionTokens));
                 renderCapacitySections(
                     capacityGossamerSections,
-                    buildGossamerCapacitySections(forecasts.gossamer.sceneCount, forecasts.gossamer.corpusTokens)
+                    buildGossamerCapacitySections(forecasts.gossamer.sceneCount, forecasts.gossamer.breakdown)
                 );
             });
         } catch {
@@ -1320,6 +1331,7 @@ export function renderAiSection(params: {
                 provider,
                 modelLabel: 'No eligible model',
                 modelAlias: providerLabel[provider],
+                contextWindow: null,
                 maxInputTokens: null,
                 maxOutputTokens: null
             });

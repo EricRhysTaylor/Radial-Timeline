@@ -43,7 +43,7 @@ describe('AI settings models table', () => {
     it('renders active model preview with author-facing signals only', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
         expect(source.includes('PREVIEW (ACTIVE MODEL)')).toBe(true);
-        expect(source.includes('Context ·')).toBe(true);
+        expect(source.includes('Context window ·')).toBe(true);
         expect(source.includes('Manuscript citations')).toBe(true);
         expect(source.includes('Context compare · OpenAI')).toBe(true);
         expect(source.includes('Automatic Packaging')).toBe(false);

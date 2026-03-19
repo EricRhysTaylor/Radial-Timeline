@@ -15,7 +15,7 @@ export const BUILTIN_MODELS: ModelInfo[] = [
         tier: 'DEEP',
         capabilities: [...DEEP_CAPS],
         personality: { reasoning: 10, writing: 10, determinism: 9 },
-        contextWindow: 200000,
+        contextWindow: 1000000,
         maxOutput: 16000,
         releasedAt: '2026-02-04',
         status: 'stable'
@@ -29,7 +29,7 @@ export const BUILTIN_MODELS: ModelInfo[] = [
         tier: 'BALANCED',
         capabilities: [...BALANCED_CAPS, 'highOutputCap'],
         personality: { reasoning: 9, writing: 9, determinism: 9 },
-        contextWindow: 200000,
+        contextWindow: 1000000,
         maxOutput: 16000,
         releasedAt: '2026-02-17',
         status: 'stable'

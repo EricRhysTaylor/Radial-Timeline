@@ -36,3 +36,17 @@ describe('BUILTIN_MODELS OpenAI GPT-5.4 metadata', () => {
         expect(byAlias('gpt-5.4-pro-2026-03-05').rollout?.supersedes).toBe('gpt-5.4-pro');
     });
 });
+
+describe('BUILTIN_MODELS Anthropic Claude 4.6 metadata', () => {
+    it('uses 1M context windows for Claude 4.6 variants', () => {
+        const aliases = [
+            'claude-opus-4.6',
+            'claude-sonnet-4.6'
+        ];
+        aliases.forEach(alias => {
+            const model = byAlias(alias);
+            expect(model.contextWindow).toBe(1000000);
+            expect(model.maxOutput).toBe(16000);
+        });
+    });
+});
