@@ -32,7 +32,14 @@ import {
     InquiryTokenUsageScope,
     InquiryZone
 } from './state';
-import type { InquiryClassConfig, InquiryMaterialMode, InquiryPromptConfig, InquiryPromptSlot, OmnibusProgressState } from '../types/settings';
+import type {
+    InquiryClassConfig,
+    InquiryMaterialMode,
+    InquiryPromptConfig,
+    InquiryPromptSlot,
+    InquiryTimingHistoryEntry,
+    OmnibusProgressState
+} from '../types/settings';
 import { buildDefaultInquiryPromptConfig, getBuiltInPromptSeed, getCanonicalPromptText, normalizeInquiryPromptConfig } from './prompts';
 import { ensureInquiryArtifactFolder, getMostRecentArtifactFile, resolveInquiryArtifactFolder } from './utils/artifacts';
 import { buildInquiryDossierPresentation } from './utils/inquiryDossierPresentation';
@@ -189,6 +196,8 @@ const PREVIEW_PANEL_PADDING_Y = 20;
 const PREVIEW_RUNNING_CONTENT_OFFSET_Y = -3;
 const PREVIEW_HERO_LINE_HEIGHT = 30;
 const PREVIEW_HERO_MAX_LINES = 4;
+const PREVIEW_RESULTS_HERO_MAX_WIDTH = 1440;
+const PREVIEW_RESULTS_HERO_MAX_LINES = Number.MAX_SAFE_INTEGER;
 const PREVIEW_META_GAP = 6;
 const PREVIEW_META_LINE_HEIGHT = 22;
 const PREVIEW_DETAIL_GAP = 16;
@@ -214,21 +223,26 @@ const SCENE_DOSSIER_BRACE_Y_OFFSET = 0;
 const SCENE_DOSSIER_WIDTH = 980;
 const SCENE_DOSSIER_MIN_HEIGHT = 0;
 const SCENE_DOSSIER_SIDE_PADDING = 136;
+const SCENE_DOSSIER_TITLE_MAX_WIDTH = 760;
+const SCENE_DOSSIER_TEXT_MAX_WIDTH = 700;
+const SCENE_DOSSIER_ANCHOR_MAX_WIDTH = 620;
 const SCENE_DOSSIER_PADDING_Y = 30;
 const SCENE_DOSSIER_HEADER_SIZE = 60;
 const SCENE_DOSSIER_HEADER_LINE_HEIGHT = 64;
-const SCENE_DOSSIER_ANCHOR_LINE_HEIGHT = 30;
-const SCENE_DOSSIER_BODY_PRIMARY_LINE_HEIGHT = 27;
-const SCENE_DOSSIER_BODY_SECONDARY_LINE_HEIGHT = 21;
+const SCENE_DOSSIER_ANCHOR_LINE_HEIGHT = 22;
+const SCENE_DOSSIER_BODY_PRIMARY_LINE_HEIGHT = 29;
+const SCENE_DOSSIER_BODY_SECONDARY_LINE_HEIGHT = 24;
 const SCENE_DOSSIER_FOOTER_SIZE = 14;
-const SCENE_DOSSIER_FOOTER_LINE_HEIGHT = 20;
+const SCENE_DOSSIER_FOOTER_LINE_HEIGHT = 18;
 const SCENE_DOSSIER_SOURCE_LINE_HEIGHT = 18;
 const SCENE_DOSSIER_UNBOUNDED_WRAP_LINES = Number.MAX_SAFE_INTEGER;
-const SCENE_DOSSIER_TITLE_ANCHOR_GAP = 2;
+const SCENE_DOSSIER_TITLE_ANCHOR_GAP = -4;
 const SCENE_DOSSIER_ANCHOR_BODY_GAP = 16;
-const SCENE_DOSSIER_BODY_ROW_GAP = 4;
+const SCENE_DOSSIER_BODY_ROW_GAP = 18;
 const SCENE_DOSSIER_FOOTER_GAP = 16;
-const SCENE_DOSSIER_SOURCE_GAP = 8;
+const SCENE_DOSSIER_SOURCE_GAP = 14;
+const SCENE_DOSSIER_SECONDARY_DIVIDER_GAP = 10;
+const SCENE_DOSSIER_SECONDARY_DIVIDER_WIDTH_RATIO = 0.3;
 const SCENE_DOSSIER_HOVER_DELAY_MS = 150;
 const SCENE_DOSSIER_HIDE_DELAY_MS = 160;
 const SCENE_DOSSIER_FOCUS_RADIUS = 470;
@@ -1155,6 +1169,7 @@ export class InquiryView extends ItemView {
     private sceneDossierAnchor?: SVGTextElement;
     private sceneDossierBody?: SVGTextElement;
     private sceneDossierBodySecondary?: SVGTextElement;
+    private sceneDossierBodyDivider?: SVGLineElement;
     private sceneDossierFooter?: SVGTextElement;
     private sceneDossierSource?: SVGTextElement;
     private sceneDossierShowTimer?: number;
@@ -1617,6 +1632,7 @@ export class InquiryView extends ItemView {
         this.ensurePreviewShimmerResources(panel);
         if (!this.previewShimmerGroup) {
             const group = createSvgGroup(panel, 'ert-inquiry-preview-shimmer-group');
+            group.setAttribute('display', 'none');
             if (this.previewShimmerMask) {
                 group.setAttribute('mask', `url(#${this.previewShimmerMask.getAttribute('id')})`);
             }
@@ -3938,6 +3954,10 @@ export class InquiryView extends ItemView {
         const bodySecondary = createSvgText(textGroup, 'ert-inquiry-scene-dossier-body ert-inquiry-scene-dossier-body--secondary', '', 0, 0);
         bodySecondary.setAttribute('text-anchor', 'middle');
 
+        const bodyDivider = createSvgElement('line');
+        bodyDivider.classList.add('ert-inquiry-scene-dossier-divider', 'ert-hidden');
+        textGroup.appendChild(bodyDivider);
+
         const footer = createSvgText(textGroup, 'ert-inquiry-scene-dossier-footer', '', 0, 0);
         footer.setAttribute('text-anchor', 'middle');
 
@@ -3956,6 +3976,7 @@ export class InquiryView extends ItemView {
         this.sceneDossierAnchor = anchor;
         this.sceneDossierBody = body;
         this.sceneDossierBodySecondary = bodySecondary;
+        this.sceneDossierBodyDivider = bodyDivider;
         this.sceneDossierFooter = footer;
         this.sceneDossierSource = source;
     }
@@ -6758,6 +6779,7 @@ export class InquiryView extends ItemView {
             result = this.normalizeLegacyResult(result);
             const normalizationNotes = this.collectNormalizationNotes(rawResult, result);
             result = this.applyExecutionObservabilityFromTrace(result, runTrace);
+            void this.recordInquiryTimingSample(result, runTrace);
             if (this.shouldRejectUnboundHitResult(result)) {
                 runTrace?.notes.push('Inquiry result rejected after execution: no finding could be matched to the active corpus.');
                 result = this.withCitationBindingFailure(result);
@@ -7267,6 +7289,7 @@ export class InquiryView extends ItemView {
             timedResult.aiModelNextRunOnly = false;
         }
         const tracedResult = this.applyExecutionObservabilityFromTrace(timedResult, options.trace);
+        void this.recordInquiryTimingSample(tracedResult, options.trace);
 
         const normalized = this.normalizeLegacyResult(tracedResult);
         const normalizationNotes = this.collectNormalizationNotes(tracedResult, normalized);
@@ -9089,29 +9112,35 @@ export class InquiryView extends ItemView {
             || !this.sceneDossierAnchor
             || !this.sceneDossierBody
             || !this.sceneDossierBodySecondary
+            || !this.sceneDossierBodyDivider
             || !this.sceneDossierFooter
             || !this.sceneDossierSource
         ) {
             return;
         }
         this.cancelSceneDossierHide();
-        const titleTextWidth = SCENE_DOSSIER_WIDTH - (SCENE_DOSSIER_SIDE_PADDING * 2);
-        const contentTextWidth = Math.max(420, titleTextWidth - 96);
-        const anchorTextWidth = Math.max(340, contentTextWidth - 96);
-        const titleLines = this.setWrappedSvgText(
+        const titleTextWidth = Math.min(
+            SCENE_DOSSIER_TITLE_MAX_WIDTH,
+            SCENE_DOSSIER_WIDTH - (SCENE_DOSSIER_SIDE_PADDING * 2)
+        );
+        const contentTextWidth = Math.min(
+            SCENE_DOSSIER_TEXT_MAX_WIDTH,
+            SCENE_DOSSIER_WIDTH - (SCENE_DOSSIER_SIDE_PADDING * 2)
+        );
+        const anchorTextWidth = Math.min(
+            SCENE_DOSSIER_ANCHOR_MAX_WIDTH,
+            contentTextWidth
+        );
+        const titleLines = this.computeBalancedSvgLines(
             this.sceneDossierHeader,
             dossier.title,
-            titleTextWidth,
-            SCENE_DOSSIER_UNBOUNDED_WRAP_LINES,
-            SCENE_DOSSIER_HEADER_LINE_HEIGHT
-        );
-        const anchorLines = this.setWrappedSvgText(
+            titleTextWidth
+        ).length || 1;
+        const anchorLines = this.computeBalancedSvgLines(
             this.sceneDossierAnchor,
             dossier.anchorLine || 'Finding',
-            anchorTextWidth,
-            SCENE_DOSSIER_UNBOUNDED_WRAP_LINES,
-            SCENE_DOSSIER_ANCHOR_LINE_HEIGHT
-        );
+            anchorTextWidth
+        ).length || 1;
         const bodyLines = dossier.bodyLines
             .filter(line => line && line !== dossier.anchorLine)
             .slice(0, 2);
@@ -9121,45 +9150,38 @@ export class InquiryView extends ItemView {
         const hasBodySecondary = !!bodySecondaryText;
         this.sceneDossierBody.classList.toggle('ert-hidden', !hasBodyPrimary);
         this.sceneDossierBodySecondary.classList.toggle('ert-hidden', !hasBodySecondary);
+        this.sceneDossierBodyDivider.classList.toggle('ert-hidden', !hasBodySecondary);
         const bodyPrimaryLines = hasBodyPrimary
-            ? this.setWrappedSvgText(
+            ? this.computeBalancedSvgLines(
                 this.sceneDossierBody,
                 bodyPrimaryText,
-                contentTextWidth,
-                SCENE_DOSSIER_UNBOUNDED_WRAP_LINES,
-                SCENE_DOSSIER_BODY_PRIMARY_LINE_HEIGHT
-            )
+                contentTextWidth
+            ).length
             : 0;
         const bodySecondaryLines = hasBodySecondary
-            ? this.setWrappedSvgText(
+            ? this.computeBalancedSvgLines(
                 this.sceneDossierBodySecondary,
                 bodySecondaryText,
-                contentTextWidth,
-                SCENE_DOSSIER_UNBOUNDED_WRAP_LINES,
-                SCENE_DOSSIER_BODY_SECONDARY_LINE_HEIGHT
-            )
+                contentTextWidth
+            ).length
             : 0;
         const hasMeta = !!dossier.metaLine;
         const hasSource = !!dossier.sourceLabel;
         this.sceneDossierFooter.classList.toggle('ert-hidden', !hasMeta);
         this.sceneDossierSource.classList.toggle('ert-hidden', !hasSource);
         const metaLines = hasMeta
-            ? this.setWrappedSvgText(
+            ? this.computeBalancedSvgLines(
                 this.sceneDossierFooter,
                 dossier.metaLine ?? '',
-                contentTextWidth,
-                SCENE_DOSSIER_UNBOUNDED_WRAP_LINES,
-                SCENE_DOSSIER_FOOTER_LINE_HEIGHT
-            )
+                contentTextWidth
+            ).length
             : 0;
         const sourceLines = hasSource
-            ? this.setWrappedSvgText(
+            ? this.computeBalancedSvgLines(
                 this.sceneDossierSource,
                 dossier.sourceLabel ?? '',
-                contentTextWidth,
-                SCENE_DOSSIER_UNBOUNDED_WRAP_LINES,
-                SCENE_DOSSIER_SOURCE_LINE_HEIGHT
-            )
+                contentTextWidth
+            ).length
             : 0;
 
         let contentHeight = SCENE_DOSSIER_PADDING_Y
@@ -9210,66 +9232,80 @@ export class InquiryView extends ItemView {
 
         this.sceneDossierBg.setAttribute('y', String(topY));
         this.sceneDossierBg.setAttribute('height', String(dossierHeight));
-        this.setPositionedWrappedSvgText(
+        this.setPositionedDossierTextBlock(
             this.sceneDossierHeader,
             dossier.title,
             titleTextWidth,
-            SCENE_DOSSIER_UNBOUNDED_WRAP_LINES,
             SCENE_DOSSIER_HEADER_LINE_HEIGHT,
-            titleY
+            titleY,
+            { align: 'center' }
         );
-        this.setPositionedWrappedSvgText(
+        this.setPositionedDossierTextBlock(
             this.sceneDossierAnchor,
             dossier.anchorLine || 'Finding',
             anchorTextWidth,
-            SCENE_DOSSIER_UNBOUNDED_WRAP_LINES,
             SCENE_DOSSIER_ANCHOR_LINE_HEIGHT,
-            anchorY
+            anchorY,
+            { align: 'center' }
         );
         if (hasBodyPrimary) {
-            this.setPositionedWrappedSvgText(
+            this.setPositionedDossierTextBlock(
                 this.sceneDossierBody,
                 bodyPrimaryText,
                 contentTextWidth,
-                SCENE_DOSSIER_UNBOUNDED_WRAP_LINES,
                 SCENE_DOSSIER_BODY_PRIMARY_LINE_HEIGHT,
-                bodyPrimaryY
+                bodyPrimaryY,
+                {
+                    align: 'start',
+                    justify: true
+                }
             );
         } else {
             clearSvgChildren(this.sceneDossierBody);
         }
         if (hasBodySecondary) {
-            this.setPositionedWrappedSvgText(
+            this.setPositionedDossierTextBlock(
                 this.sceneDossierBodySecondary,
                 bodySecondaryText,
                 contentTextWidth,
-                SCENE_DOSSIER_UNBOUNDED_WRAP_LINES,
                 SCENE_DOSSIER_BODY_SECONDARY_LINE_HEIGHT,
-                bodySecondaryY
+                bodySecondaryY,
+                {
+                    align: 'start',
+                    justify: true
+                }
             );
         } else {
             clearSvgChildren(this.sceneDossierBodySecondary);
         }
+        if (hasBodySecondary) {
+            const dividerWidth = Math.round(contentTextWidth * SCENE_DOSSIER_SECONDARY_DIVIDER_WIDTH_RATIO);
+            const dividerY = bodySecondaryY - SCENE_DOSSIER_SECONDARY_DIVIDER_GAP;
+            this.sceneDossierBodyDivider.setAttribute('x1', String(-dividerWidth / 2));
+            this.sceneDossierBodyDivider.setAttribute('x2', String(dividerWidth / 2));
+            this.sceneDossierBodyDivider.setAttribute('y1', String(dividerY));
+            this.sceneDossierBodyDivider.setAttribute('y2', String(dividerY));
+        }
         if (hasMeta) {
-            this.setPositionedWrappedSvgText(
+            this.setPositionedDossierTextBlock(
                 this.sceneDossierFooter,
                 dossier.metaLine ?? '',
                 contentTextWidth,
-                SCENE_DOSSIER_UNBOUNDED_WRAP_LINES,
                 SCENE_DOSSIER_FOOTER_LINE_HEIGHT,
-                metaY
+                metaY,
+                { align: 'center' }
             );
         } else {
             clearSvgChildren(this.sceneDossierFooter);
         }
         if (hasSource) {
-            this.setPositionedWrappedSvgText(
+            this.setPositionedDossierTextBlock(
                 this.sceneDossierSource,
                 dossier.sourceLabel ?? '',
                 contentTextWidth,
-                SCENE_DOSSIER_UNBOUNDED_WRAP_LINES,
                 SCENE_DOSSIER_SOURCE_LINE_HEIGHT,
-                sourceY
+                sourceY,
+                { align: 'center' }
             );
         } else {
             clearSvgChildren(this.sceneDossierSource);
@@ -9318,6 +9354,110 @@ export class InquiryView extends ItemView {
             firstLine.setAttribute('dy', String(startDy));
         }
         return lineCount;
+    }
+
+    private computeBalancedSvgLines(
+        textEl: SVGTextElement,
+        text: string,
+        maxWidth: number
+    ): string[] {
+        const words = text.split(/\s+/).filter(Boolean);
+        if (!words.length) return [];
+
+        const widthCache = new Map<string, number>();
+        const measureWidth = (content: string): number => {
+            const cached = widthCache.get(content);
+            if (cached !== undefined) return cached;
+            this.perfCounters.svgTextWrites++;
+            textEl.textContent = content;
+            const measured = textEl.getComputedTextLength();
+            widthCache.set(content, measured);
+            return measured;
+        };
+
+        const solveMemo = new Map<number, { cost: number; lines: string[] }>();
+        const solve = (startIndex: number): { cost: number; lines: string[] } => {
+            if (startIndex >= words.length) {
+                return { cost: 0, lines: [] };
+            }
+            const cached = solveMemo.get(startIndex);
+            if (cached) return cached;
+
+            let line = '';
+            let best = { cost: Number.POSITIVE_INFINITY, lines: [words.slice(startIndex).join(' ')] };
+
+            for (let endIndex = startIndex; endIndex < words.length; endIndex += 1) {
+                line = line ? `${line} ${words[endIndex]}` : words[endIndex];
+                const width = measureWidth(line);
+                if (width > maxWidth && endIndex > startIndex) break;
+
+                const remaining = solve(endIndex + 1);
+                if (!Number.isFinite(remaining.cost)) continue;
+
+                const isLast = endIndex === words.length - 1;
+                const fillRatio = Math.min(1, width / maxWidth);
+                const slackRatio = Math.max(0, 1 - fillRatio);
+                let linePenalty = isLast ? slackRatio * slackRatio * 0.35 : slackRatio * slackRatio;
+                if (!isLast && fillRatio < 0.52) {
+                    linePenalty += (0.52 - fillRatio) * 1.4;
+                }
+                if (isLast && fillRatio < 0.48 && startIndex > 0) {
+                    linePenalty += (0.48 - fillRatio) * 1.8;
+                }
+
+                const candidateCost = linePenalty + remaining.cost;
+                if (candidateCost < best.cost) {
+                    best = {
+                        cost: candidateCost,
+                        lines: [line, ...remaining.lines]
+                    };
+                }
+            }
+
+            solveMemo.set(startIndex, best);
+            return best;
+        };
+
+        const best = solve(0);
+        textEl.textContent = '';
+        return best.lines.length ? best.lines : [words.join(' ')];
+    }
+
+    private setPositionedDossierTextBlock(
+        textEl: SVGTextElement,
+        text: string,
+        maxWidth: number,
+        lineHeight: number,
+        startDy: number,
+        options?: {
+            align?: 'center' | 'start';
+            justify?: boolean;
+        }
+    ): number {
+        const align = options?.align ?? 'center';
+        const x = align === 'start' ? -maxWidth / 2 : 0;
+        textEl.setAttribute('y', '0');
+        textEl.setAttribute('x', String(x));
+        textEl.setAttribute('text-anchor', align === 'start' ? 'start' : 'middle');
+
+        const lines = this.computeBalancedSvgLines(textEl, text, maxWidth);
+        this.perfCounters.svgClearCalls++;
+        clearSvgChildren(textEl);
+
+        lines.forEach((line, index) => {
+            this.perfCounters.svgNodeCreates++;
+            const tspan = createSvgElement('tspan');
+            tspan.setAttribute('x', String(x));
+            tspan.setAttribute('dy', index === 0 ? String(startDy) : String(lineHeight));
+            tspan.textContent = line;
+            if (options?.justify && align === 'start' && index < lines.length - 1 && /\s/.test(line)) {
+                tspan.setAttribute('textLength', String(maxWidth));
+                tspan.setAttribute('lengthAdjust', 'spacingAndGlyphs');
+            }
+            textEl.appendChild(tspan);
+        });
+
+        return Math.max(lines.length, 1);
     }
 
     private hideSceneDossier(immediate = false): void {
@@ -9410,6 +9550,7 @@ export class InquiryView extends ItemView {
             this.previewHideTimer = undefined;
         }
         this.previewGroup.classList.remove('is-error');
+        this.setPreviewShimmerEnabled(false);
         this.setPreviewRunningNoteText('');
         this.previewLast = { zone, question };
         this.updatePromptPreview(zone, mode, question, undefined, undefined, { hideEmpty: true });
@@ -9505,6 +9646,7 @@ export class InquiryView extends ItemView {
             this.previewHideTimer = undefined;
         }
         const hide = () => {
+            this.setPreviewShimmerEnabled(false);
             this.previewGroup?.classList.remove('is-visible');
         };
         if (immediate) {
@@ -9531,6 +9673,92 @@ export class InquiryView extends ItemView {
     private clearPreviewShimmerText(): void {
         if (!this.previewShimmerGroup) return;
         clearSvgChildren(this.previewShimmerGroup);
+    }
+
+    private setPreviewShimmerEnabled(enabled: boolean): void {
+        if (!this.previewShimmerGroup) return;
+        if (enabled) {
+            this.previewShimmerGroup.removeAttribute('display');
+            return;
+        }
+        this.clearPreviewShimmerText();
+        this.previewShimmerGroup.setAttribute('display', 'none');
+    }
+
+    private getInquiryTimingHistoryKey(provider?: string, model?: string): string | null {
+        const providerKey = provider?.trim().toLowerCase();
+        const modelKey = model?.trim().toLowerCase();
+        if (!providerKey || !modelKey) return null;
+        return `${providerKey}::${modelKey}`;
+    }
+
+    private getInquiryTimingHistoryEntry(provider?: string, model?: string): InquiryTimingHistoryEntry | null {
+        const key = this.getInquiryTimingHistoryKey(provider, model);
+        if (!key) return null;
+        return this.plugin.settings.inquiryTimingHistory?.[key] ?? null;
+    }
+
+    private buildTimingEstimateFromHistory(
+        estimatedInputTokens: number,
+        provider?: string,
+        model?: string
+    ): { minSeconds: number; maxSeconds: number } | null {
+        const entry = this.getInquiryTimingHistoryEntry(provider, model);
+        if (!entry || !Number.isFinite(entry.avgMsPerInputToken) || entry.avgMsPerInputToken <= 0) {
+            return null;
+        }
+        const predictedMs = Math.max(4000, estimatedInputTokens * entry.avgMsPerInputToken);
+        const variance = entry.samples >= 6 ? 0.2 : entry.samples >= 3 ? 0.32 : 0.45;
+        return {
+            minSeconds: Math.max(4, (predictedMs * (1 - variance)) / 1000),
+            maxSeconds: Math.max(6, (predictedMs * (1 + variance)) / 1000)
+        };
+    }
+
+    private async recordInquiryTimingSample(result: InquiryResult, trace: InquiryRunTrace | null | undefined): Promise<void> {
+        if (!result || this.isErrorResult(result) || result.aiReason === 'simulated' || result.aiReason === 'stub') return;
+        const provider = result.aiProvider?.trim();
+        const model = (result.aiModelResolved || result.aiModelRequested || '').trim();
+        const key = this.getInquiryTimingHistoryKey(provider, model);
+        if (!key) return;
+        const durationMs = typeof result.roundTripMs === 'number' && Number.isFinite(result.roundTripMs)
+            ? result.roundTripMs
+            : null;
+        if (!durationMs || durationMs <= 0) return;
+
+        const usage = trace?.usage
+            ?? (trace?.response?.responseData && provider
+                ? extractTokenUsage(provider, trace.response.responseData)
+                : null);
+        const inputTokens = (() => {
+            if (typeof usage?.inputTokens === 'number' && Number.isFinite(usage.inputTokens) && usage.inputTokens > 0) {
+                return usage.inputTokens;
+            }
+            if (typeof result.tokenEstimateInput === 'number' && Number.isFinite(result.tokenEstimateInput) && result.tokenEstimateInput > 0) {
+                return result.tokenEstimateInput;
+            }
+            return null;
+        })();
+        if (!inputTokens) return;
+
+        const history = this.plugin.settings.inquiryTimingHistory ?? {};
+        const previous = history[key];
+        const sampleRate = durationMs / inputTokens;
+        const previousSamples = Math.min(previous?.samples ?? 0, 19);
+        const samples = previousSamples + 1;
+        const avgMsPerInputToken = previous
+            ? (((previous.avgMsPerInputToken * previousSamples) + sampleRate) / Math.max(samples, 1))
+            : sampleRate;
+
+        history[key] = {
+            samples,
+            avgMsPerInputToken,
+            lastDurationMs: durationMs,
+            lastInputTokens: inputTokens,
+            updatedAt: new Date().toISOString()
+        };
+        this.plugin.settings.inquiryTimingHistory = history;
+        await this.plugin.saveSettings();
     }
 
     private setPreviewFooterText(text: string): void {
@@ -9592,9 +9820,23 @@ export class InquiryView extends ItemView {
         const multiPassOverheadMax = Math.max(0, totalPasses - 1) * 9;
         const minSeconds = Math.max(6, (perPassMin * totalPasses) + multiPassOverheadMin);
         const maxSeconds = Math.max(minSeconds + 6, (perPassMax * totalPasses) + multiPassOverheadMax);
+        const timingEstimate = this.buildTimingEstimateFromHistory(
+            estimatedTokens,
+            readinessUi.provider,
+            readinessUi.model?.id
+        );
+        if (!timingEstimate) {
+            return {
+                minSeconds,
+                maxSeconds
+            };
+        }
         return {
-            minSeconds,
-            maxSeconds
+            minSeconds: Math.max(4, Math.min(minSeconds, timingEstimate.minSeconds)),
+            maxSeconds: Math.max(
+                Math.max(minSeconds + 2, timingEstimate.maxSeconds),
+                Math.min(maxSeconds, timingEstimate.maxSeconds * 1.1)
+            )
         };
     }
 
@@ -9750,30 +9992,43 @@ export class InquiryView extends ItemView {
         this.previewGroup.classList.add(`is-zone-${zone}`);
         const zoneLabel = zone === 'setup' ? 'Setup' : zone === 'pressure' ? 'Pressure' : 'Payoff';
         const modeLabel = mode === 'flow' ? 'Flow' : 'Depth';
+        const isResultsPreview = this.previewGroup.classList.contains('is-results');
         const heroTargetLines = 3;
         const heroBaseWidth = this.minimap.layoutLength ?? (PREVIEW_PANEL_WIDTH - (PREVIEW_PANEL_PADDING_X * 2));
         const contentOffsetY = this.state.isRunning ? PREVIEW_RUNNING_CONTENT_OFFSET_Y : 0;
         this.previewHero.setAttribute('y', String(PREVIEW_PANEL_PADDING_Y + contentOffsetY));
-        let heroLines = this.setBalancedHeroText(
-            this.previewHero,
-            question,
-            heroBaseWidth,
-            PREVIEW_HERO_LINE_HEIGHT,
-            PREVIEW_HERO_MAX_LINES
-        );
-        if (heroLines > heroTargetLines) {
-            const stageHeroWidth = Math.min(
-                VIEWBOX_SIZE - (PREVIEW_PANEL_PADDING_X * 2),
-                VIEWBOX_SIZE * 0.9
+        let heroLines = 0;
+        if (isResultsPreview) {
+            const resultsWidth = Math.max(heroBaseWidth, PREVIEW_RESULTS_HERO_MAX_WIDTH);
+            heroLines = this.setWrappedSvgText(
+                this.previewHero,
+                question,
+                resultsWidth,
+                PREVIEW_RESULTS_HERO_MAX_LINES,
+                PREVIEW_HERO_LINE_HEIGHT,
             );
-            const expandedWidth = Math.max(heroBaseWidth, stageHeroWidth);
+        } else {
             heroLines = this.setBalancedHeroText(
                 this.previewHero,
                 question,
-                expandedWidth,
+                heroBaseWidth,
                 PREVIEW_HERO_LINE_HEIGHT,
-                heroTargetLines
+                PREVIEW_HERO_MAX_LINES
             );
+            if (heroLines > heroTargetLines) {
+                const stageHeroWidth = Math.min(
+                    VIEWBOX_SIZE - (PREVIEW_PANEL_PADDING_X * 2),
+                    VIEWBOX_SIZE * 0.9
+                );
+                const expandedWidth = Math.max(heroBaseWidth, stageHeroWidth);
+                heroLines = this.setBalancedHeroText(
+                    this.previewHero,
+                    question,
+                    expandedWidth,
+                    PREVIEW_HERO_LINE_HEIGHT,
+                    heroTargetLines
+                );
+            }
         }
         if (this.previewMeta) {
             const metaY = PREVIEW_PANEL_PADDING_Y + contentOffsetY + (heroLines * PREVIEW_HERO_LINE_HEIGHT) + PREVIEW_META_GAP;
@@ -9802,9 +10057,10 @@ export class InquiryView extends ItemView {
         this.updatePreviewShimmerLayout();
         if (this.previewShimmerGroup) {
             if (this.previewGroup?.classList.contains('is-locked')) {
+                this.setPreviewShimmerEnabled(true);
                 this.updatePreviewShimmerText();
             } else {
-                this.clearPreviewShimmerText();
+                this.setPreviewShimmerEnabled(false);
             }
         }
         this.syncTokensPillState();
@@ -9826,6 +10082,7 @@ export class InquiryView extends ItemView {
         this.previewLocked = true;
         this.previewGroup.classList.add('is-visible', 'is-results');
         this.previewGroup.classList.remove('is-locked', 'is-error');
+        this.setPreviewShimmerEnabled(false);
         this.setPreviewRunningNoteText('');
         const hero = this.buildResultsHeroText(result, mode);
         const meta = this.buildResultsMetaText(result, mode, zone);
@@ -10099,6 +10356,7 @@ export class InquiryView extends ItemView {
 
     private updatePreviewShimmerText(): void {
         if (!this.previewShimmerGroup) return;
+        this.previewShimmerGroup.removeAttribute('display');
         clearSvgChildren(this.previewShimmerGroup);
         const textNodes: SVGTextElement[] = [];
         if (this.previewHero) textNodes.push(this.previewHero);
@@ -10191,6 +10449,7 @@ export class InquiryView extends ItemView {
         this.previewGroup.classList.add('is-visible', 'is-locked');
         this.previewGroup.classList.remove('is-results');
         this.previewGroup.classList.remove('is-error');
+        this.setPreviewShimmerEnabled(true);
         this.setPreviewRunningNoteText(this.buildRunningStatusNote(question.question));
         this.setPreviewFooterText('');
         this.resetPreviewRowLabels();
@@ -10211,7 +10470,7 @@ export class InquiryView extends ItemView {
             this.previewGroup.classList.remove('is-error');
         }
         this.resetPreviewRowLabels();
-        this.clearPreviewShimmerText();
+        this.setPreviewShimmerEnabled(false);
         this.setPreviewRunningNoteText('');
         this.setPreviewFooterText('');
         this.lastReadinessUiState = undefined;

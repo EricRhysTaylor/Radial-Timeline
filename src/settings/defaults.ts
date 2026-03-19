@@ -44,6 +44,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     inquiryCorpusHighlightLowSubstanceComplete: true,
     inquiryActionNotesAutoPopulate: false,
     inquiryActionNotesTargetField: 'Pending Edits',
+    inquiryTimingHistory: {},
     dismissedAlerts: [],
     actCount: 3,
     actLabelsRaw: '',

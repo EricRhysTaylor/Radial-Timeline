@@ -316,6 +316,14 @@ export interface InquirySourcesSettings {
     lastScanAt?: string;
 }
 
+export interface InquiryTimingHistoryEntry {
+    samples: number;
+    avgMsPerInputToken: number;
+    lastDurationMs: number;
+    lastInputTokens: number;
+    updatedAt: string;
+}
+
 export type InquiryPromptZone = 'setup' | 'pressure' | 'payoff';
 
 export interface InquiryPromptSlot {
@@ -408,6 +416,7 @@ export interface RadialTimelineSettings {
     inquiryActionNotesAutoPopulate?: boolean;
     inquiryActionNotesTargetField?: string;
     inquiryOmnibusProgress?: OmnibusProgressState;
+    inquiryTimingHistory?: Record<string, InquiryTimingHistoryEntry>;
     actCount?: number;
     actLabelsRaw?: string;
     publishStageColors: {

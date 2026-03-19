@@ -274,10 +274,10 @@ export function renderAiSection(params: {
         cls: `${ERT_CLASSES.STACK} ert-ai-large-handling`
     });
     largeHandlingSection.setAttr('data-ert-role', 'ai-setting:large-manuscript-handling');
-    largeHandlingSection.createDiv({
-        cls: ERT_CLASSES.SECTION_TITLE,
-        text: 'What gets sent to the AI'
-    });
+    const largeHandlingHeader = new Settings(largeHandlingSection)
+        .setName('What gets sent to the AI')
+        .setHeading();
+    applyErtHeaderLayout(largeHandlingHeader);
     const capacityGrid = largeHandlingSection.createDiv({ cls: 'ert-ai-capacity-grid' });
     const createCapacityCell = (label: string): { cellEl: HTMLElement; valueEl: HTMLElement; labelEl: HTMLElement } => {
         const cell = capacityGrid.createDiv({ cls: 'ert-ai-capacity-cell' });
@@ -1677,7 +1677,7 @@ export function renderAiSection(params: {
     }): void => {
         const providerDesc = document.createDocumentFragment();
         const span = document.createElement('span');
-        span.textContent = `${options.providerName} key setup. `;
+        span.textContent = `Choose a name to store your ${options.providerName} API key in this vault's secret storage. `;
         const link = document.createElement('a');
         link.href = options.docsUrl;
         link.textContent = 'Get key';
@@ -1685,13 +1685,13 @@ export function renderAiSection(params: {
         link.rel = 'noopener';
         providerDesc.appendChild(span);
         providerDesc.appendChild(link);
-        providerDesc.appendChild(document.createTextNode(' Use a short name like "openai-main" so you can reuse it later.'));
+        providerDesc.appendChild(document.createTextNode(' Use a short name like "openai-main" so you can reuse it later. Note: saved Obsidian Secret Keys (distinct from Provider API keys) can only be used across the plugins you have installed in the same vault.'));
 
         const secretIdSetting = new Settings(options.section)
-            .setName(`${options.providerName} saved key name`)
+            .setName(`Vault secret name (${options.providerName})`)
             .setDesc(providerDesc);
         const keyStatusSetting = new Settings(options.section)
-            .setName(`${options.providerName} key status`)
+            .setName(`${options.providerName} API key status`)
             .setDesc('');
         keyStatusSetting.settingEl.addClass('ert-ai-provider-key-status-row');
 
@@ -2499,7 +2499,7 @@ export function renderAiSection(params: {
 
     aiConfigCreateRow(aiDisplayGroup, {
         title: 'Pulse context',
-        description: 'Include previous and next scenes in triplet analysis.',
+        description: 'Include previous and next scenes in triplet analysis hover reveal. (Does not affect the underlying scene properties.)',
         control: (setting) => {
             setting.addToggle(toggle => toggle
                 .setValue(plugin.settings.showFullTripletAnalysis ?? true)

@@ -128,7 +128,7 @@ describe('AI settings models table', () => {
 
     it('renders always-visible AI transparency section with execution preference controls', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
-        expect(source.includes('What gets sent to the AI')).toBe(true);
+        expect(source.includes(".setName('What gets sent to the AI')")).toBe(true);
         expect(source.includes('Request composition')).toBe(false);
         expect(source.includes("createEl('details', { cls: 'ert-ai-fold ert-ai-large-handling' }")).toBe(false);
         expect(source.includes('attachAiCollapseButton(largeHandling')).toBe(false);
@@ -136,6 +136,11 @@ describe('AI settings models table', () => {
         expect(source.includes('singlePassOnly')).toBe(true);
         expect(source.includes('ert-ai-capacity-grid')).toBe(true);
         expect(source.includes('Expected Structured Passes')).toBe(true);
+    });
+
+    it('clarifies that Pulse context only affects hover reveal', () => {
+        const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
+        expect(source.includes('Include previous and next scenes in triplet analysis hover reveal. (Does not affect the underlying scene properties.)')).toBe(true);
     });
 
     it('renders structured Inquiry and Gossamer request composition strings', () => {
