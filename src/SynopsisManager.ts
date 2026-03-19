@@ -76,7 +76,12 @@ export default class SynopsisManager {
     return width;
   }
 
-  private splitTextIntoLinesByWidth(text: string, maxWidth: number, measure: (value: string) => number): string[] {
+  private wrapTextToMeasuredWidth(
+    text: string,
+    maxWidth: number,
+    measure: (value: string) => number,
+    options?: { firstLinePrefix?: string }
+  ): string[] {
     if (!text || typeof text !== 'string') return [''];
     const trimmed = text.trim();
     if (!trimmed) return [''];
@@ -84,10 +89,12 @@ export default class SynopsisManager {
     const words = trimmed.split(/\s+/);
     const lines: string[] = [];
     let current = '';
+    const firstLinePrefix = options?.firstLinePrefix ?? '';
 
     for (const word of words) {
       const next = current ? `${current} ${word}` : word;
-      if (current && measure(next) > maxWidth) {
+      const probe = lines.length === 0 ? `${firstLinePrefix}${next}` : next;
+      if (current && measure(probe) > maxWidth) {
         lines.push(current);
         current = word;
       } else {
@@ -247,7 +254,7 @@ export default class SynopsisManager {
         continue;
       }
 
-      const wrapped = this.splitTextIntoLinesByWidth(raw, maxWidth, value => this.measureTextWidthForWrap(primaryEl, value));
+      const wrapped = this.wrapTextToMeasuredWidth(raw, maxWidth, value => this.measureTextWidthForWrap(primaryEl, value));
       if (wrapped.length === 0) continue;
 
       primaryEl.textContent = wrapped[0];
@@ -267,30 +274,6 @@ export default class SynopsisManager {
     }
 
     return didWrap;
-  }
-
-  private splitTextIntoLinesWithPrefix(text: string, maxWidth: number, prefix: string, measure: (value: string) => number): string[] {
-    if (!text || typeof text !== 'string') return [''];
-    const trimmed = text.trim();
-    if (!trimmed) return [''];
-
-    const words = trimmed.split(/\s+/);
-    const lines: string[] = [];
-    let current = '';
-
-    for (const word of words) {
-      const next = current ? `${current} ${word}` : word;
-      const probe = lines.length === 0 ? `${prefix}${next}` : next;
-      if (current && measure(probe) > maxWidth) {
-        lines.push(current);
-        current = word;
-      } else {
-        current = next;
-      }
-    }
-
-    if (current) lines.push(current);
-    return lines.length > 0 ? lines : [trimmed];
   }
 
   private applyPendingEditsWrap(params: {
@@ -393,7 +376,12 @@ export default class SynopsisManager {
         continue;
       }
 
-      const wrapped = this.splitTextIntoLinesWithPrefix(raw, maxWidth, prefix, value => this.measureTextWidthForWrap(primaryEl, value));
+      const wrapped = this.wrapTextToMeasuredWidth(
+        raw,
+        maxWidth,
+        value => this.measureTextWidthForWrap(primaryEl, value),
+        { firstLinePrefix: prefix }
+      );
       if (wrapped.length === 0) continue;
 
       primaryEl.textContent = `${prefix}${wrapped[0]}`;
@@ -514,7 +502,7 @@ export default class SynopsisManager {
         continue;
       }
 
-      const wrapped = this.splitTextIntoLinesByWidth(raw, maxWidth, value => this.measureTextWidthForWrap(primaryEl, value));
+      const wrapped = this.wrapTextToMeasuredWidth(raw, maxWidth, value => this.measureTextWidthForWrap(primaryEl, value));
       if (wrapped.length <= 1) continue;
 
       primaryEl.textContent = wrapped[0];
@@ -2232,54 +2220,6 @@ export default class SynopsisManager {
     if (!parentElement.hasChildNodes()) {
       throw new Error('Synopsis conversion produced no SVG tspans.');
     }
-  }
-
-  // Add this new method for splitting text into lines
-  private splitTextIntoLines(text: string, maxWidth: number): string[] {
-    // Handle null, undefined, or non-string input
-    if (!text || typeof text !== 'string') {
-
-      return [''];  // Return an array with a single empty string
-    }
-
-    // Trim the text to remove leading/trailing whitespace
-    const trimmedText = text.trim();
-
-    // Check if the trimmed text is empty
-    if (!trimmedText) {
-
-      return [''];  // Return an array with a single empty string for empty content
-    }
-
-    // Simple line splitting based on approximate character count
-    const words = trimmedText.split(/\s+/);
-    const lines: string[] = [];
-    let currentLine = '';
-    const maxCharsPerLine = 50; // Approximately 400px at 16px font size
-
-    for (let i = 0; i < words.length; i++) {
-      const word = words[i];
-      const wordWidth = word.length;
-
-      if (currentLine.length + wordWidth + 1 > maxCharsPerLine && currentLine !== '') {
-        lines.push(currentLine.trim());
-        currentLine = word;
-      } else {
-        currentLine += (currentLine ? ' ' : '') + word;
-      }
-    }
-
-    if (currentLine) {
-      lines.push(currentLine.trim());
-    }
-
-    // If we still end up with no lines, ensure we return something
-    if (lines.length === 0) {
-
-      return [trimmedText]; // Return the trimmed text as a single line
-    }
-
-    return lines;
   }
 
   /**

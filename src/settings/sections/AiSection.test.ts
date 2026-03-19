@@ -28,6 +28,18 @@ describe('AI settings models table', () => {
         expect(source.includes('ert-ai-features-section')).toBe(false);
     });
 
+    it('keeps AI configuration focused on display and summary defaults without an empty advanced fold', () => {
+        const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
+        expect(source.includes("text: 'Advanced & Diagnostics'")).toBe(false);
+        expect(source.includes("text: 'Timeline Display'")).toBe(true);
+        expect(source.includes("text: 'Summary Refresh Defaults'")).toBe(true);
+        expect(source.includes("title: 'Pulse context'")).toBe(true);
+        expect(source.includes("title: 'Synopsis max words'")).toBe(true);
+        expect(source.includes("title: 'Target summary length'")).toBe(true);
+        expect(source.includes("title: 'Treat summary as weak if under'")).toBe(true);
+        expect(source.includes("title: 'Also update Synopsis'")).toBe(true);
+    });
+
     it('locks gossamer to bodies-only with no evidence mode dropdown', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
         // No gossamer evidence mode dropdown exists
@@ -114,9 +126,12 @@ describe('AI settings models table', () => {
         expect(source.includes("addOption('gpt-5.4-pro-2026-03-05'")).toBe(false);
     });
 
-    it('renders Large Manuscript Handling section with execution preference controls', () => {
+    it('renders always-visible AI transparency section with execution preference controls', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
-        expect(source.includes('Large Manuscript Handling')).toBe(true);
+        expect(source.includes('What gets sent to the AI')).toBe(true);
+        expect(source.includes('Request composition')).toBe(false);
+        expect(source.includes("createEl('details', { cls: 'ert-ai-fold ert-ai-large-handling' }")).toBe(false);
+        expect(source.includes('attachAiCollapseButton(largeHandling')).toBe(false);
         expect(source.includes('Execution preference')).toBe(true);
         expect(source.includes('singlePassOnly')).toBe(true);
         expect(source.includes('ert-ai-capacity-grid')).toBe(true);
@@ -132,6 +147,10 @@ describe('AI settings models table', () => {
         expect(source.includes("title: 'Processing'")).toBe(true);
         expect(source.includes('AI role template (author-defined)')).toBe(true);
         expect(source.includes('Editorial analysis instructions')).toBe(true);
+        expect(source.includes('outputContractTokens')).toBe(true);
+        expect(source.includes('localTotalTokens')).toBe(true);
+        expect(source.includes('resolveActiveRoleTemplate')).toBe(true);
+        expect(source.includes('buildOutputRulesText')).toBe(true);
         expect(source.includes('Scene-linked findings')).toBe(true);
         expect(source.includes('Strict JSON structure')).toBe(true);
         expect(source.includes('Multi-pass (if required)')).toBe(true);
@@ -143,7 +162,6 @@ describe('AI settings models table', () => {
         expect(source.includes('Strict JSON shape')).toBe(false);
         expect(source.includes('Full manuscript (Scene bodies)')).toBe(false);
         expect(source.includes('Book ·')).toBe(false);
-        expect(source.includes('jsonSchema')).toBe(false);
         expect(source.includes('response_format')).toBe(false);
         expect(source.includes('tool_choice')).toBe(false);
         expect(source.includes('providerRouter')).toBe(false);

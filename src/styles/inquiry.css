@@ -2800,9 +2800,18 @@ body.rt-modal-open .ert-inquiry-svg * {
   transition: filter 120ms ease, transform 120ms ease;
 }
 
-.ert-inquiry-briefing-save:hover {
+.ert-inquiry-briefing-save:hover:not(:disabled) {
   filter: brightness(1.08);
   transform: translateY(-1px);
+}
+
+.ert-inquiry-briefing-save:disabled {
+  color: var(--text-muted);
+  background: var(--background-modifier-hover);
+  opacity: 0.55;
+  cursor: not-allowed;
+  filter: none;
+  transform: none;
 }
 
 .ert-inquiry-briefing-clear {
@@ -2818,10 +2827,17 @@ body.rt-modal-open .ert-inquiry-svg * {
   transition: border-color 120ms ease, transform 120ms ease, filter 120ms ease;
 }
 
-.ert-inquiry-briefing-clear:hover {
+.ert-inquiry-briefing-clear:hover:not(:disabled) {
   border-color: color-mix(in srgb, var(--interactive-accent) 40%, var(--background-modifier-border));
   filter: brightness(1.05);
   transform: translateY(-1px);
+}
+
+.ert-inquiry-briefing-clear:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: none;
+  transform: none;
 }
 
 .ert-inquiry-briefing-reset {
@@ -2837,7 +2853,7 @@ body.rt-modal-open .ert-inquiry-svg * {
   transition: border-color 120ms ease, color 120ms ease, transform 120ms ease, filter 120ms ease;
 }
 
-.ert-inquiry-briefing-reset:hover {
+.ert-inquiry-briefing-reset:hover:not(:disabled) {
   border-color: color-mix(in srgb, var(--interactive-accent) 35%, var(--background-modifier-border));
   color: var(--text-normal);
   filter: brightness(1.05);
@@ -2847,6 +2863,7 @@ body.rt-modal-open .ert-inquiry-svg * {
 .ert-inquiry-briefing-reset:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  filter: none;
   transform: none;
 }
 
@@ -2863,16 +2880,21 @@ body.rt-modal-open .ert-inquiry-svg * {
   transition: border-color 120ms ease, color 120ms ease, transform 120ms ease, filter 120ms ease;
 }
 
-.ert-inquiry-briefing-purge:hover {
+.ert-inquiry-briefing-purge:hover:not(:disabled) {
   border-color: color-mix(in srgb, var(--rt-ai-error) 65%, var(--background-modifier-border));
   color: var(--text-normal);
   filter: brightness(1.05);
   transform: translateY(-1px);
 }
 
+.ert-inquiry-briefing-purge.is-inert {
+  border-color: transparent;
+}
+
 .ert-inquiry-briefing-purge:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  filter: none;
   transform: none;
 }
 

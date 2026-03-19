@@ -1,7 +1,12 @@
 import { INQUIRY_SCHEMA_VERSION } from './constants';
 
-export function buildInquiryPromptScaffold(evidenceText: string): {
+export const INQUIRY_ROLE_TEMPLATE_GUARDRAIL =
+    "Do not reinterpret or expand the user's question. Answer it directly. The role template provides tonal and contextual framing only.";
+
+export function buildInquiryPromptParts(evidenceText: string): {
     systemPrompt: string;
+    instructionText: string;
+    schemaText: string;
     userPrompt: string;
 } {
     const systemPrompt = [
@@ -13,7 +18,7 @@ export function buildInquiryPromptScaffold(evidenceText: string): {
         'Return JSON only. No prose outside JSON.'
     ].join('\n');
 
-    const schema = [
+    const schemaText = [
         '{',
         `  "schema_version": ${INQUIRY_SCHEMA_VERSION},`,
         '  "summaryFlow": "1-2 sentence flow summary (pacing, momentum, compression, timing, pressure phrasing).",',
@@ -40,7 +45,7 @@ export function buildInquiryPromptScaffold(evidenceText: string): {
         '}'
     ].join('\n');
 
-    const userPrompt = [
+    const instructionText = [
         'Answer the editorial question using the evidence.',
         'Independently assign corpus-level diagnostics (0-100):',
         '- Flow: momentum/causality/pressure progression across the evaluated corpus.',
@@ -63,13 +68,25 @@ export function buildInquiryPromptScaffold(evidenceText: string): {
         'Return at most ONE finding per scene reference. If multiple issues exist for the same scene, combine them into a single headline and bullet list.',
         'Optionally tag findings with lens: flow|depth|both to indicate relevance.',
         'Return JSON only with summaryFlow, summaryDepth, verdict.flow, verdict.depth, impact, assessmentConfidence, and findings.',
-        'Return JSON only using the exact schema below.',
+        'Return JSON only using the exact schema below.'
+    ].join('\n');
+
+    const userPrompt = [
+        instructionText,
         '',
-        schema,
+        schemaText,
         '',
         'Evidence:',
         evidenceText
     ].join('\n');
 
+    return { systemPrompt, instructionText, schemaText, userPrompt };
+}
+
+export function buildInquiryPromptScaffold(evidenceText: string): {
+    systemPrompt: string;
+    userPrompt: string;
+} {
+    const { systemPrompt, userPrompt } = buildInquiryPromptParts(evidenceText);
     return { systemPrompt, userPrompt };
 }

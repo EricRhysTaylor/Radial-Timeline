@@ -24,6 +24,14 @@ export function deriveBookTitleFromSourcePath(sourcePath: string | undefined | n
   return parts[parts.length - 1];
 }
 
+export function shouldSeedBookProfileFromLegacySettings(params: {
+  sourcePath?: string | null;
+  legacyTitle?: string | null;
+}): boolean {
+  return (params.sourcePath || '').trim().length > 0
+    || (params.legacyTitle || '').trim().length > 0;
+}
+
 export function normalizeBookProfile(profile: BookProfile): BookProfile {
   const title = profile.title?.trim() || DEFAULT_BOOK_TITLE;
   const sourceFolder = (profile.sourceFolder || '').trim();

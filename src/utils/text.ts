@@ -190,54 +190,6 @@ export function renderSceneMetadataFragment(
 
   return fragment;
 }
-
-
-
-/**
- * Splits arbitrary text into roughly balanced lines that fit typical SVG label widths.
- * Preserves <tspan> markup by falling back to the original string.
- */
-export function splitIntoBalancedLines(text: string, maxWidth: number, fontScale: number = 1): string[] {
-  if (!text) return [''];
-
-  if (text.includes('<tspan')) {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(`<svg xmlns="http://www.w3.org/2000/svg"><text>${text}</text></svg>`, 'image/svg+xml');
-    if (doc.querySelector('parsererror')) return [text];
-    const textElement = doc.querySelector('text');
-    if (!textElement) return [text];
-    const plainText = textElement.textContent || '';
-    const plainLines = splitPlainTextIntoLines(plainText, maxWidth, fontScale);
-    return plainLines.length <= 1 ? [text] : [text];
-  }
-
-  return splitPlainTextIntoLines(text, maxWidth, fontScale);
-}
-
-function splitPlainTextIntoLines(text: string, maxWidth: number, fontScale: number): string[] {
-  const words = text.split(/\s+/);
-  const lines: string[] = [];
-  let currentLine = '';
-  let currentWidth = 0;
-  const approxCharWidth = 8 * (fontScale || 1);
-  const maxCharsPerLine = Math.max(10, Math.round((maxWidth || 400) / approxCharWidth)) || 50;
-
-  for (const word of words) {
-    const wordWidth = word.length;
-    if (currentWidth + wordWidth > maxCharsPerLine && currentLine !== '') {
-      lines.push(currentLine.trim());
-      currentLine = word;
-      currentWidth = wordWidth;
-    } else {
-      currentLine += (currentLine ? ' ' : '') + word;
-      currentWidth += wordWidth + (currentLine ? 1 : 0);
-    }
-  }
-
-  if (currentLine) lines.push(currentLine.trim());
-  return lines;
-}
-
 /**
  * Splits text into balanced lines where each line has roughly equal length.
  * Avoids orphaned words (1-2 words) on the last line.

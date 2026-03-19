@@ -147,8 +147,7 @@ import {
     getExecutionColorValue,
     getBackboneStartColors,
 } from './minimap/InquiryMinimapRenderer';
-import { addTooltipData, setupTooltipsFromDataAttributes } from '../utils/tooltip';
-import { splitIntoBalancedLinesOptimal } from '../utils/text';
+import { addTooltipData, balanceTooltipText, setupTooltipsFromDataAttributes } from '../utils/tooltip';
 import { classifySynopsis, type SynopsisQuality } from '../sceneAnalysis/synopsisQuality';
 import {
     isLowSubstanceTier,
@@ -312,7 +311,6 @@ const INQUIRY_HELP_RUNNING_SINGLE_TOOLTIP = [
     'If you cancel this run, you must start over from the beginning. There is no resume.'
 ].join('\n');
 const INQUIRY_HELP_ONBOARDING_TOOLTIP = 'Number buttons reveal the question and payload. Click to process a question with AI. Flow and Depth rings adjust the lens of the response. The minimap reveals contextual citations.';
-const INQUIRY_TOOLTIP_BALANCE_WIDTH = 360;
 const GUIDANCE_TEXT_Y = 360;
 const GUIDANCE_LINE_HEIGHT = 18;
 const GUIDANCE_ALERT_LINE_HEIGHT = 26;
@@ -1088,6 +1086,10 @@ export class InquiryView extends ItemView {
     private briefingEmptyEl?: HTMLDivElement;
     private briefingPinned = false;
     private briefingHideTimer?: number;
+    private briefingPurgeAvailabilityKey = '';
+    private briefingPurgeAvailable = false;
+    private briefingPurgeScanPending = false;
+    private briefingPurgeScanToken = 0;
     private engineBadgeGroup?: SVGGElement;
     private enginePanelEl?: HTMLDivElement;
     private enginePanelAllLabelEl?: HTMLDivElement;
@@ -1394,7 +1396,7 @@ export class InquiryView extends ItemView {
         this.scopeToggleButton = this.createIconButton(hudGroup, 0, 0, iconSize, 'columns-2', 'Toggle scope');
         this.scopeToggleIcon = this.scopeToggleButton.querySelector('.ert-inquiry-icon') as SVGUseElement;
         this.scopeToggleButton.querySelector('title')?.remove();
-        addTooltipData(this.scopeToggleButton, this.balanceTooltipText('Toggle scope'), 'left');
+        addTooltipData(this.scopeToggleButton, balanceTooltipText('Toggle scope'), 'left');
         this.registerSvgEvent(this.scopeToggleButton, 'click', () => {
             this.handleScopeChange(this.state.scope === 'book' ? 'saga' : 'book');
         });
@@ -1403,7 +1405,7 @@ export class InquiryView extends ItemView {
         const helpX = artifactX - (iconSize + iconGap);
         const simulateX = helpX - (iconSize + iconGap);
         this.apiSimulationButton = this.createIconButton(hudGroup, simulateX, 0, iconSize, 'activity', 'Simulate API run');
-        addTooltipData(this.apiSimulationButton, this.balanceTooltipText('Simulate API run'), 'left');
+        addTooltipData(this.apiSimulationButton, balanceTooltipText('Simulate API run'), 'left');
         this.registerSvgEvent(this.apiSimulationButton, 'click', () => this.startApiSimulation());
 
         this.helpToggleButton = this.createIconButton(
@@ -1659,7 +1661,7 @@ export class InquiryView extends ItemView {
         });
         addTooltipData(
             this.briefingResetButton,
-            this.balanceTooltipText('Resets live corpus overrides only.'),
+            balanceTooltipText('Resets live corpus overrides only.'),
             'top'
         );
         this.briefingPurgeButton = this.briefingFooterEl.createEl('button', {
@@ -1668,7 +1670,7 @@ export class InquiryView extends ItemView {
         });
         addTooltipData(
             this.briefingPurgeButton,
-            this.balanceTooltipText('Removes Inquiry-generated action items from scene frontmatter. User notes are preserved.'),
+            balanceTooltipText('Removes Inquiry-generated action items from scene frontmatter. User notes are preserved.'),
             'top'
         );
         this.briefingFooterEl.createDiv({
@@ -1690,6 +1692,7 @@ export class InquiryView extends ItemView {
         this.registerDomEvent(panel, 'pointerenter', () => this.cancelBriefingHide());
         this.registerDomEvent(panel, 'pointerleave', () => this.scheduleBriefingHide());
         this.refreshBriefingPanel();
+        void this.refreshBriefingPurgeAvailability();
     }
 
     private buildEnginePanel(): void {
@@ -2178,6 +2181,7 @@ export class InquiryView extends ItemView {
         if (!this.briefingPanelEl) return;
         this.cancelBriefingHide();
         this.refreshBriefingPanel();
+        void this.refreshBriefingPurgeAvailability();
         if (this.artifactButton) this.positionPanelNearButton(this.briefingPanelEl, this.artifactButton, 'right');
         this.briefingPanelEl.classList.remove('ert-hidden');
     }
@@ -2236,14 +2240,9 @@ export class InquiryView extends ItemView {
             });
         }
 
-        const activeSession = this.state.activeSessionId
-            ? this.sessionStore.peekSession(this.state.activeSessionId)
-            : undefined;
-        const activeStatus = activeSession ? this.resolveSessionStatus(activeSession) : null;
-        const canSave = !!activeSession && activeStatus === 'unsaved';
-        this.briefingSaveButton?.classList.toggle('ert-hidden', !canSave);
         this.briefingClearButton?.classList.remove('ert-hidden');
         this.briefingFooterEl.classList.remove('ert-hidden');
+        this.updateBriefingFooterActionStates();
     }
 
     private groupSessionsByRecency(
@@ -2425,8 +2424,107 @@ export class InquiryView extends ItemView {
         this.artifactButton.removeAttribute('data-rt-tip-placement');
     }
 
+    private shouldAutoSaveBriefs(): boolean {
+        return this.plugin.settings.inquiryAutoSave ?? true;
+    }
+
+    private canManuallySaveActiveBrief(): boolean {
+        if (this.shouldAutoSaveBriefs()) return false;
+        const activeSession = this.state.activeSessionId
+            ? this.sessionStore.peekSession(this.state.activeSessionId)
+            : undefined;
+        return !!activeSession && this.resolveSessionStatus(activeSession) === 'unsaved';
+    }
+
+    private getBriefingPurgeAvailabilityKey(): string {
+        const scenes = this.corpus?.scenes ?? [];
+        if (!scenes.length) return '';
+        const sceneKey = scenes.map(scene => scene.filePath || scene.displayLabel).join('\u001f');
+        return [
+            this.state.scope,
+            this.corpus?.activeBookId ?? '',
+            this.resolveInquiryActionNotesFieldLabel(),
+            sceneKey
+        ].join('::');
+    }
+
+    private invalidateBriefingPurgeAvailability(): void {
+        this.briefingPurgeAvailabilityKey = '';
+        this.briefingPurgeAvailable = false;
+        this.briefingPurgeScanPending = false;
+        this.briefingPurgeScanToken++;
+    }
+
+    private updateBriefingFooterActionStates(): void {
+        const blocked = this.isInquiryBlocked();
+        const lockout = this.isInquiryGuidanceLockout();
+        const running = this.state.isRunning;
+        const canSave = this.canManuallySaveActiveBrief();
+        const canPurge = this.briefingPurgeAvailable;
+
+        if (this.briefingSaveButton) {
+            this.briefingSaveButton.disabled = blocked || lockout || running || !canSave;
+        }
+        if (this.briefingClearButton) {
+            this.briefingClearButton.disabled = lockout || running;
+        }
+        if (this.briefingResetButton) {
+            this.briefingResetButton.disabled = lockout || running || !this.hasCorpusOverrides();
+        }
+        if (this.briefingPurgeButton) {
+            this.briefingPurgeButton.disabled = lockout || running || !canPurge;
+            this.briefingPurgeButton.classList.toggle('is-inert', !canPurge);
+        }
+    }
+
+    private async refreshBriefingPurgeAvailability(): Promise<void> {
+        const scanKey = this.getBriefingPurgeAvailabilityKey();
+        if (!scanKey) {
+            this.briefingPurgeAvailabilityKey = '';
+            this.briefingPurgeAvailable = false;
+            this.briefingPurgeScanPending = false;
+            this.updateBriefingFooterActionStates();
+            return;
+        }
+        if (this.briefingPurgeAvailabilityKey === scanKey && !this.briefingPurgeScanPending) {
+            this.updateBriefingFooterActionStates();
+            return;
+        }
+
+        this.briefingPurgeAvailabilityKey = scanKey;
+        this.briefingPurgeAvailable = false;
+        this.briefingPurgeScanPending = true;
+        const scanToken = ++this.briefingPurgeScanToken;
+        this.updateBriefingFooterActionStates();
+
+        const affectedScenes = await this.scanForInquiryActionItems(this.corpus?.scenes ?? []);
+        if (scanToken !== this.briefingPurgeScanToken || this.briefingPurgeAvailabilityKey !== scanKey) {
+            return;
+        }
+
+        this.briefingPurgeScanPending = false;
+        this.briefingPurgeAvailable = affectedScenes.length > 0;
+        this.updateBriefingFooterActionStates();
+    }
+
     private async handleBriefingSaveClick(): Promise<void> {
         if (this.isInquiryBlocked()) return;
+        if (!this.canManuallySaveActiveBrief()) {
+            if (this.shouldAutoSaveBriefs()) {
+                this.notifyInteraction('Auto-save Inquiry briefs is enabled in settings.');
+            } else if (this.state.activeResult) {
+                const activeSession = this.state.activeSessionId
+                    ? this.sessionStore.peekSession(this.state.activeSessionId)
+                    : undefined;
+                const status = activeSession ? this.resolveSessionStatus(activeSession) : null;
+                this.notifyInteraction(status === 'saved'
+                    ? 'Current brief is already saved.'
+                    : 'Current result is not available for manual save.');
+            } else {
+                new Notice('Run an inquiry before saving a brief.');
+            }
+            return;
+        }
         const result = this.state.activeResult;
         if (!result) {
             new Notice('Run an inquiry before saving a brief.');
@@ -2506,6 +2604,14 @@ export class InquiryView extends ItemView {
         const scopeBookLabel = this.getFocusBookTitleForMessages() || this.getFocusBookLabel();
         const scopeLabel = this.state.scope === 'saga' ? 'saga' : `book "${scopeBookLabel}"`;
         const affectedScenes = await this.scanForInquiryActionItems(scenes);
+        this.briefingPurgeAvailabilityKey = this.getBriefingPurgeAvailabilityKey();
+        this.briefingPurgeAvailable = affectedScenes.length > 0;
+        this.briefingPurgeScanPending = false;
+        this.updateBriefingFooterActionStates();
+        if (!affectedScenes.length) {
+            this.notifyInteraction('No Inquiry action items found to purge.');
+            return;
+        }
         const modal = new InquiryPurgeConfirmationModal(
             this.app,
             scenes.length,
@@ -2513,6 +2619,9 @@ export class InquiryView extends ItemView {
             scopeLabel,
             async () => {
                 const result = await this.purgeInquiryActionItems(scenes);
+                this.invalidateBriefingPurgeAvailability();
+                this.refreshBriefingPanel();
+                void this.refreshBriefingPurgeAvailability();
                 if (result.purgedCount > 0) {
                     new Notice(`Purged Inquiry action items from ${result.purgedCount} scene${result.purgedCount !== 1 ? 's' : ''}.`);
                 } else {
@@ -3981,6 +4090,7 @@ export class InquiryView extends ItemView {
     }
 
     private refreshCorpus(): void {
+        this.invalidateBriefingPurgeAvailability();
         this.corpusResolver = new InquiryCorpusResolver(this.app.vault, this.app.metadataCache, this.plugin.settings.frontmatterMappings);
         const sources = this.normalizeInquirySources(this.plugin.settings.inquirySources);
         this.corpus = this.corpusResolver.resolve({
@@ -4072,12 +4182,6 @@ export class InquiryView extends ItemView {
         if (!button) return;
         button.classList.toggle('is-active', isActive);
         button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
-    }
-
-    private balanceTooltipText(text: string): string {
-        if (!text || text.includes('\n')) return text;
-        const lines = splitIntoBalancedLinesOptimal(text, INQUIRY_TOOLTIP_BALANCE_WIDTH, 1);
-        return lines.length > 1 ? lines.join('\n') : text;
     }
 
     private setIconButtonDisabled(button: SVGGElement | undefined, disabled: boolean): void {
@@ -4252,7 +4356,7 @@ export class InquiryView extends ItemView {
         const items = this.getCurrentItems();
         const result = this.minimap.renderTicks(items, this.state.scope, VIEWBOX_SIZE, {
             getItemTitle: (item) => this.getMinimapItemTitle(item),
-            balanceTooltipText: (text) => this.balanceTooltipText(text),
+            balanceTooltipText,
             registerDomEvent: (el, event, handler) => this.registerDomEvent(el, event, handler),
             onTickClick: (item, event) => {
                 this.clearResultPreview();
@@ -4347,7 +4451,7 @@ export class InquiryView extends ItemView {
             advancedContext,
             this.currentRunProgress,
             (value) => this.formatTokenEstimate(value),
-            (text) => this.balanceTooltipText(text)
+            balanceTooltipText
         );
         this.updateMinimapReuseStatus();
     }
@@ -4379,7 +4483,7 @@ export class InquiryView extends ItemView {
             advanced,
             this.state.corpusFingerprint,
             this.payloadStats?.manifestFingerprint,
-            (text) => this.balanceTooltipText(text)
+            balanceTooltipText
         );
     }
 
@@ -4551,7 +4655,7 @@ export class InquiryView extends ItemView {
             this.ccLabelHint.appendChild(this.ccLabelHintIcon);
             addTooltipData(
                 this.ccLabelHint,
-                this.balanceTooltipText('Click notes to adjust scope. Shift-click to open note.'),
+                balanceTooltipText('Click notes to adjust scope. Shift-click to open note.'),
                 'top'
             );
         }
@@ -4564,7 +4668,7 @@ export class InquiryView extends ItemView {
         this.ccLabel.setAttribute('x', String(labelX));
         this.ccLabel.setAttribute('y', '0');
         if (this.ccLabelGroup) {
-            addTooltipData(this.ccLabelGroup, this.balanceTooltipText('Cycle all corpus scopes.'), 'top');
+            addTooltipData(this.ccLabelGroup, balanceTooltipText('Cycle all corpus scopes.'), 'top');
         }
         if (this.ccLabelHint) {
             const labelWidth = this.ccLabel.getComputedTextLength?.() ?? 0;
@@ -5819,7 +5923,7 @@ export class InquiryView extends ItemView {
             this.glyphHit.removeAttribute('data-rt-tip-placement');
             return;
         }
-        addTooltipData(this.glyphHit, this.balanceTooltipText(tooltipText), 'top');
+        addTooltipData(this.glyphHit, balanceTooltipText(tooltipText), 'top');
     }
 
     private updateRings(): void {
@@ -5997,7 +6101,7 @@ export class InquiryView extends ItemView {
             this.state.isRunning,
             this.isErrorResult(result),
             hitMap,
-            (text) => this.balanceTooltipText(text)
+            balanceTooltipText
         );
     }
 
@@ -6037,8 +6141,8 @@ export class InquiryView extends ItemView {
             ? `Next book: ${this.getBookTitleForId(nextBook.id) || nextBook.displayLabel || 'Book'}`
             : 'No next book.';
 
-        addTooltipData(this.navPrevButton, this.balanceTooltipText(prevTooltip), 'top');
-        addTooltipData(this.navNextButton, this.balanceTooltipText(nextTooltip), 'top');
+        addTooltipData(this.navPrevButton, balanceTooltipText(prevTooltip), 'top');
+        addTooltipData(this.navNextButton, balanceTooltipText(nextTooltip), 'top');
     }
 
     private updateNavSessionLabel(): void {
@@ -6201,18 +6305,7 @@ export class InquiryView extends ItemView {
         this.setIconButtonDisabled(this.artifactButton, lockout || running);
         this.setIconButtonDisabled(this.detailsToggle, lockout || running);
 
-        if (this.briefingSaveButton) {
-            this.briefingSaveButton.disabled = blocked || lockout || running;
-        }
-        if (this.briefingClearButton) {
-            this.briefingClearButton.disabled = lockout || running;
-        }
-        if (this.briefingResetButton) {
-            this.briefingResetButton.disabled = lockout || running || !this.hasCorpusOverrides();
-        }
-        if (this.briefingPurgeButton) {
-            this.briefingPurgeButton.disabled = lockout || running;
-        }
+        this.updateBriefingFooterActionStates();
         if (lockout || running) {
             this.hideBriefingPanel(true);
             this.hideEnginePanel();
@@ -6310,7 +6403,7 @@ export class InquiryView extends ItemView {
                 : (isAlert
                     ? (state === 'not-configured' ? INQUIRY_HELP_CONFIG_TOOLTIP : INQUIRY_HELP_NO_SCENES_TOOLTIP)
                     : (isResults ? INQUIRY_HELP_RESULTS_TOOLTIP : (hasSessions ? INQUIRY_HELP_TOOLTIP : INQUIRY_HELP_ONBOARDING_TOOLTIP))));
-        const balancedTooltip = this.balanceTooltipText(tooltip);
+        const balancedTooltip = balanceTooltipText(tooltip);
 
         this.helpToggleButton.removeAttribute('aria-pressed');
         this.helpToggleButton.setAttribute('aria-disabled', isRunning ? 'true' : 'false');
@@ -7731,7 +7824,9 @@ export class InquiryView extends ItemView {
         if (applied && session.key) {
             session.pendingEditsApplied = true;
             this.sessionStore.updateSession(session.key, { pendingEditsApplied: true });
+            this.invalidateBriefingPurgeAvailability();
             this.refreshBriefingPanel();
+            void this.refreshBriefingPurgeAvailability();
         }
         return applied;
     }
@@ -9433,6 +9528,11 @@ export class InquiryView extends ItemView {
         });
     }
 
+    private clearPreviewShimmerText(): void {
+        if (!this.previewShimmerGroup) return;
+        clearSvgChildren(this.previewShimmerGroup);
+    }
+
     private setPreviewFooterText(text: string): void {
         if (this.previewFooter) {
             this.setTextIfChanged(this.previewFooter, text, 'hudTextWrites');
@@ -9701,7 +9801,11 @@ export class InquiryView extends ItemView {
         this.previewPanelHeight = footerY + PREVIEW_FOOTER_HEIGHT;
         this.updatePreviewShimmerLayout();
         if (this.previewShimmerGroup) {
-            this.updatePreviewShimmerText();
+            if (this.previewGroup?.classList.contains('is-locked')) {
+                this.updatePreviewShimmerText();
+            } else {
+                this.clearPreviewShimmerText();
+            }
         }
         this.syncTokensPillState();
         if (this.enginePanelEl && !this.enginePanelEl.classList.contains('ert-hidden')) {
@@ -10107,6 +10211,7 @@ export class InquiryView extends ItemView {
             this.previewGroup.classList.remove('is-error');
         }
         this.resetPreviewRowLabels();
+        this.clearPreviewShimmerText();
         this.setPreviewRunningNoteText('');
         this.setPreviewFooterText('');
         this.lastReadinessUiState = undefined;
@@ -10121,6 +10226,7 @@ export class InquiryView extends ItemView {
             if (options?.hideEmpty && isEmpty) {
                 row.group.classList.add('ert-hidden');
                 clearSvgChildren(row.text);
+                row.text.removeAttribute('data-rt-pill-cache');
                 return;
             }
             row.group.classList.remove('ert-hidden');
@@ -10162,7 +10268,7 @@ export class InquiryView extends ItemView {
 
     private setPreviewPillText(row: InquiryPreviewRow, value: string): void {
         const cacheKey = `${row.label}|${value}`;
-        if (row.text.getAttribute('data-rt-pill-cache') === cacheKey) return;
+        if (row.text.getAttribute('data-rt-pill-cache') === cacheKey && row.text.childNodes.length > 0) return;
 
         this.perfCounters.svgClearCalls++;
         clearSvgChildren(row.text);
@@ -10744,7 +10850,7 @@ export class InquiryView extends ItemView {
         const targets = this.getHelpTooltipTargets();
         targets.forEach(({ element, text, placement }) => {
             if (!element) return;
-            const balancedText = this.balanceTooltipText(text);
+            const balancedText = balanceTooltipText(text);
             if (this.helpTipsEnabled) {
                 addTooltipData(element, balancedText, placement ?? 'bottom');
                 return;

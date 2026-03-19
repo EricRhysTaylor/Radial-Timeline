@@ -4,10 +4,12 @@ import { computeCaps, INPUT_TOKEN_GUARD_FACTOR, type ComputedCaps } from '../cap
 import { mapErrorToUserMessage, mapProviderFailureToError, MalformedJsonError } from '../errors';
 import { compilePrompt } from '../prompts/compilePrompt';
 import { composeEnvelope, CACHE_BREAK_DELIMITER } from '../prompts/composeEnvelope';
+import { buildOutputRulesText } from '../prompts/outputRules';
 import { modelSupportsSystemRole } from '../../api/providerCapabilities';
 import { ModelRegistry } from '../registry/modelRegistry';
 import { findSnapshotModel, loadProviderSnapshot, type ProviderSnapshotLoadResult } from '../registry/providerSnapshot';
 import { selectModel } from '../router/selectModel';
+import { resolveActiveRoleTemplate } from '../roleTemplate';
 import { buildDefaultAiSettings } from '../settings/aiSettings';
 import { validateAiSettings } from '../settings/validateAiSettings';
 import type {
@@ -36,12 +38,6 @@ import { estimateInputTokens, estimateUncertaintyTokens } from '../tokens/inputT
 
 const DEFAULT_REMOTE_REGISTRY_URL = 'https://raw.githubusercontent.com/ericrhystaylor/radial-timeline/main/scripts/models/registry.json';
 const DEFAULT_REMOTE_PROVIDER_SNAPSHOT_URL = 'https://raw.githubusercontent.com/ericrhystaylor/radial-timeline/HEAD/scripts/models/latest-models.json';
-
-type RoleTemplate = {
-    id: string;
-    name: string;
-    prompt: string;
-};
 
 interface PluginWithAiDebug extends RadialTimelinePlugin {
     _aiLastRunAdvancedByFeature?: Record<string, AIRunAdvancedContext>;
@@ -105,24 +101,6 @@ function buildCacheKey(params: {
     return hash(`${params.provider}|${params.modelAlias}|${params.returnType}|${params.feature}|${params.task}|${params.prompt}`);
 }
 
-function getRoleTemplate(plugin: RadialTimelinePlugin, aiSettings: AiSettingsV1): RoleTemplate {
-    const templates = plugin.settings.aiContextTemplates || [];
-    const preferredId = (aiSettings.roleTemplateId || plugin.settings.activeAiContextTemplateId || '').trim();
-    const selected = templates.find(entry => entry.id === preferredId) || templates[0];
-    if (selected) {
-        return {
-            id: selected.id,
-            name: selected.name || selected.id || 'Role Template',
-            prompt: selected.prompt || 'You are an editorial analysis assistant.'
-        };
-    }
-    return {
-        id: 'default',
-        name: 'Default Role Template',
-        prompt: 'You are an editorial analysis assistant.'
-    };
-}
-
 function getProjectContext(plugin: RadialTimelinePlugin, request: AIRunRequest): string {
     if (request.projectContext && request.projectContext.trim().length > 0) {
         return request.projectContext;
@@ -134,16 +112,11 @@ function getProjectContext(plugin: RadialTimelinePlugin, request: AIRunRequest):
 }
 
 function getOutputRules(request: AIRunRequest): string {
-    if (request.outputRules && request.outputRules.trim().length > 0) {
-        return request.outputRules;
-    }
-    if (request.returnType === 'json') {
-        const schemaText = request.responseSchema
-            ? JSON.stringify(request.responseSchema, null, 2)
-            : '{}';
-        return `Return JSON only. Validate against this schema:\n${schemaText}`;
-    }
-    return 'Return plain text only.';
+    return buildOutputRulesText({
+        outputRules: request.outputRules,
+        returnType: request.returnType,
+        responseSchema: request.responseSchema
+    });
 }
 
 function setLastRunAdvanced(plugin: RadialTimelinePlugin, feature: string, context: AIRunAdvancedContext): void {
@@ -316,7 +289,7 @@ export class AIClient {
                 systemPrompt: request.systemPrompt,
                 userPrompt: request.promptText || ''
             };
-        const roleTemplate = getRoleTemplate(this.plugin, aiSettings);
+        const roleTemplate = resolveActiveRoleTemplate(this.plugin, aiSettings);
         const featureModeInstructions = (
             request.featureModeInstructions
             || compiledPrompt.systemPrompt

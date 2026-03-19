@@ -204,20 +204,6 @@ export function renderGeneralSection(params: {
 
     const booksPanel = containerEl.createDiv({ cls: `${ERT_CLASSES.STACK} rt-books-panel` });
 
-    const ensureBooks = async () => {
-        if (!Array.isArray(plugin.settings.books) || plugin.settings.books.length === 0) {
-            const legacySource = plugin.settings.sourcePath || '';
-            const book = normalizeBookProfile({
-                id: createBookId(),
-                title: DEFAULT_BOOK_TITLE,
-                sourceFolder: legacySource
-            });
-            plugin.settings.books = [book];
-            plugin.settings.activeBookId = book.id;
-            await plugin.persistBookSettings();
-        }
-    };
-
     /** Pulse the "+" button green when books need attention (no books, or missing source folder) */
     const updateAddBtnPulse = () => {
         const books = plugin.settings.books || [];
@@ -245,6 +231,22 @@ export function renderGeneralSection(params: {
 
         const books = plugin.settings.books || [];
         const activeId = plugin.settings.activeBookId;
+
+        if (books.length === 0) {
+            const empty = booksPanel.createDiv({ cls: 'ert-bookmeta-preview-empty' });
+            empty.createDiv({ cls: 'ert-bookmeta-preview-empty-title', text: 'No books configured' });
+            empty.createDiv({
+                cls: 'ert-bookmeta-preview-empty-desc',
+                text: 'Add a book profile to restore the blank manager state and set a title or source folder when you need one.'
+            });
+            const actions = empty.createDiv({ cls: 'ert-bookmeta-preview-empty-actions' });
+            new ButtonComponent(actions)
+                .setButtonText('Add book')
+                .setCta()
+                .onClick(() => { void addNewBook(); });
+            updateAddBtnPulse();
+            return;
+        }
 
         books.forEach(book => {
             const isActive = book.id === activeId;
@@ -455,19 +457,14 @@ export function renderGeneralSection(params: {
                 button.setIcon('trash-2');
                 button.setTooltip('Remove profile (files are not deleted)');
                 button.extraSettingsEl.addClass('rt-book-card__trash');
-                if (books.length <= 1) {
-                    button.setDisabled(true);
-                    button.extraSettingsEl.addClass('is-disabled');
-                } else {
-                    button.onClick(async () => {
-                        plugin.settings.books = books.filter(b => b.id !== book.id);
-                        if (book.id === plugin.settings.activeBookId) {
-                            plugin.settings.activeBookId = plugin.settings.books[0]?.id;
-                        }
-                        await plugin.persistBookSettings();
-                        renderBooksManager();
-                    });
-                }
+                button.onClick(async () => {
+                    plugin.settings.books = books.filter(b => b.id !== book.id);
+                    if (book.id === plugin.settings.activeBookId) {
+                        plugin.settings.activeBookId = plugin.settings.books[0]?.id;
+                    }
+                    await plugin.persistBookSettings();
+                    renderBooksManager();
+                });
             });
         });
 
@@ -475,5 +472,5 @@ export function renderGeneralSection(params: {
         updateAddBtnPulse();
     };
 
-    void ensureBooks().then(renderBooksManager);
+    renderBooksManager();
 }

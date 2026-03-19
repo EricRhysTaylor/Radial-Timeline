@@ -72,6 +72,38 @@ export function getUnifiedBeatAnalysisJsonSchema() {
   return UNIFIED_BEAT_ANALYSIS_SCHEMA;
 }
 
+export function buildUnifiedBeatAnalysisPromptParts(
+  manuscriptText: string,
+  beats: UnifiedBeatInfo[],
+  beatSystem: string
+): {
+  transformText: string;
+  instructionText: string;
+  prompt: string;
+} {
+  const beatList = beats
+    .map((b, i) => `${i + 1}. ${b.beatName}`)
+    .join('\n');
+
+  const transformText = `Beat system: ${beatSystem}
+
+Story beats:
+${beatList}`;
+
+  const instructionText = `Score momentum (0-100) for each listed beat based on the actual tension, stakes, and emotional intensity you perceive in the manuscript. Include a brief justification for each score. Respond strictly in the JSON schema that accompanies this prompt.
+
+Manuscript text (table of contents followed by scenes):`;
+
+  return {
+    transformText,
+    instructionText,
+    prompt: `${transformText}
+
+${instructionText}
+${manuscriptText}`
+  };
+}
+
 /**
  * Build unified beat analysis prompt
  * @param manuscriptText - Full manuscript text with table of contents and scene headings
@@ -84,21 +116,5 @@ export function buildUnifiedBeatAnalysisPrompt(
   beats: UnifiedBeatInfo[],
   beatSystem: string
 ): string {
-  // Build beat list - ranges and previous scores intentionally omitted to avoid anchoring bias
-  // AI should assess momentum based purely on manuscript content with fresh eyes each time
-  const beatList = beats
-    .map((b, i) => `${i + 1}. ${b.beatName}`)
-    .join('\n');
-
-  const prompt = `Beat system: ${beatSystem}
-
-Story beats:
-${beatList}
-
-Score momentum (0-100) for each listed beat based on the actual tension, stakes, and emotional intensity you perceive in the manuscript. Include a brief justification for each score. Respond strictly in the JSON schema that accompanies this prompt.
-
-Manuscript text (table of contents followed by scenes):
-${manuscriptText}`;
-
-  return prompt;
+  return buildUnifiedBeatAnalysisPromptParts(manuscriptText, beats, beatSystem).prompt;
 }

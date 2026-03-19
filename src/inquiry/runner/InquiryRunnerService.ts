@@ -29,7 +29,8 @@ import { buildSceneRefIndex, isStableSceneId, normalizeSceneRef } from '../../ai
 import { cleanEvidenceBody } from '../utils/evidenceCleaning';
 import { estimateTokensFromChars, type TokenEstimateMethod } from '../../ai/tokens/inputTokenEstimate';
 import { logCountingForensics } from '../../ai/diagnostics/countingForensics';
-import { buildInquiryPromptScaffold } from '../promptScaffold';
+import { buildInquiryJsonSchema, buildInquiryOmnibusJsonSchema } from '../jsonSchema';
+import { buildInquiryPromptScaffold, INQUIRY_ROLE_TEMPLATE_GUARDRAIL } from '../promptScaffold';
 
 export { cleanEvidenceBody } from '../utils/evidenceCleaning';
 
@@ -779,102 +780,11 @@ export class InquiryRunnerService implements InquiryRunner {
     }
 
     private getJsonSchema(): Record<string, unknown> {
-        return {
-            type: 'object',
-            properties: {
-                schema_version: { type: 'number', const: INQUIRY_SCHEMA_VERSION },
-                summaryFlow: { type: 'string' },
-                summaryDepth: { type: 'string' },
-                verdict: {
-                    type: 'object',
-                    properties: {
-                        flow: { type: 'number' },
-                        depth: { type: 'number' },
-                        impact: { type: 'string' },
-                        assessmentConfidence: { type: 'string' },
-                        severity: { type: 'string' },
-                        confidence: { type: 'string' }
-                    },
-                    required: ['flow', 'depth', 'impact', 'assessmentConfidence']
-                },
-                findings: {
-                    type: 'array',
-                    items: {
-                        type: 'object',
-                        properties: {
-                            ref_id: { type: 'string', pattern: '^scn_[a-f0-9]{8,10}$' },
-                            ref_label: { type: 'string' },
-                            ref_path: { type: 'string' },
-                            kind: { type: 'string' },
-                            lens: { type: 'string' },
-                            headline: { type: 'string' },
-                            bullets: { type: 'array', items: { type: 'string' } },
-                            impact: { type: 'string' },
-                            assessmentConfidence: { type: 'string' },
-                            severity: { type: 'string' },
-                            confidence: { type: 'string' }
-                        },
-                        required: ['ref_id', 'kind', 'headline', 'impact', 'assessmentConfidence']
-                    }
-                }
-            },
-            required: ['schema_version', 'summaryFlow', 'summaryDepth', 'verdict', 'findings']
-        };
+        return buildInquiryJsonSchema();
     }
 
     private getOmnibusJsonSchema(): Record<string, unknown> {
-        return {
-            type: 'object',
-            properties: {
-                schema_version: { type: 'number', const: INQUIRY_SCHEMA_VERSION },
-                results: {
-                    type: 'array',
-                    items: {
-                        type: 'object',
-                        properties: {
-                            question_id: { type: 'string' },
-                            question_zone: { type: 'string' },
-                            summaryFlow: { type: 'string' },
-                            summaryDepth: { type: 'string' },
-                            verdict: {
-                                type: 'object',
-                                properties: {
-                                    flow: { type: 'number' },
-                                    depth: { type: 'number' },
-                                    impact: { type: 'string' },
-                                    assessmentConfidence: { type: 'string' },
-                                    severity: { type: 'string' },
-                                    confidence: { type: 'string' }
-                                },
-                                required: ['flow', 'depth', 'impact', 'assessmentConfidence']
-                            },
-                            findings: {
-                                type: 'array',
-                                items: {
-                                    type: 'object',
-                                    properties: {
-                                        ref_id: { type: 'string', pattern: '^scn_[a-f0-9]{8,10}$' },
-                                        ref_label: { type: 'string' },
-                                        ref_path: { type: 'string' },
-                                        kind: { type: 'string' },
-                                        lens: { type: 'string' },
-                                        headline: { type: 'string' },
-                                        bullets: { type: 'array', items: { type: 'string' } },
-                                        impact: { type: 'string' },
-                                        assessmentConfidence: { type: 'string' },
-                                        severity: { type: 'string' },
-                                        confidence: { type: 'string' }
-                                    },
-                                    required: ['ref_id', 'kind', 'headline', 'impact', 'assessmentConfidence']
-                                }
-                            }
-                        },
-                        required: ['question_id', 'summaryFlow', 'summaryDepth', 'verdict', 'findings']
-                    }
-                }
-            },
-            required: ['schema_version', 'results']
-        };
+        return buildInquiryOmnibusJsonSchema();
     }
 
     private async callProvider(
@@ -1097,7 +1007,7 @@ export class InquiryRunnerService implements InquiryRunner {
             requiredCapabilities: ['longContext', 'jsonStrict', 'reasoningStrong', 'highOutputCap'],
             featureModeInstructions: [
                 options.systemPrompt,
-                'Do not reinterpret or expand the user\u2019s question. Answer it directly. The role template provides tonal and contextual framing only.'
+                INQUIRY_ROLE_TEMPLATE_GUARDRAIL
             ].filter(Boolean).join('\n'),
             userInput: options.userPrompt,
             userQuestion: options.userQuestion,
@@ -1142,7 +1052,7 @@ export class InquiryRunnerService implements InquiryRunner {
             requiredCapabilities: ['longContext', 'jsonStrict', 'reasoningStrong', 'highOutputCap'],
             featureModeInstructions: [
                 options.systemPrompt,
-                'Do not reinterpret or expand the user\u2019s question. Answer it directly. The role template provides tonal and contextual framing only.'
+                INQUIRY_ROLE_TEMPLATE_GUARDRAIL
             ].filter(Boolean).join('\n'),
             userInput: options.userPrompt,
             userQuestion: options.userQuestion,

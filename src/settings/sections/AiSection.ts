@@ -30,21 +30,27 @@ import {
     estimateCorpusCost,
     formatUsdCost
 } from '../../ai/cost/estimateCorpusCost';
+import { buildOutputRulesText } from '../../ai/prompts/outputRules';
+import { buildUnifiedBeatAnalysisPromptParts, getUnifiedBeatAnalysisJsonSchema } from '../../ai/prompts/unifiedBeatAnalysis';
+import { resolveActiveRoleTemplate } from '../../ai/roleTemplate';
 import { INQUIRY_CANONICAL_ESTIMATE_QUESTION } from '../../inquiry/constants';
+import { buildInquiryJsonSchema } from '../../inquiry/jsonSchema';
 import type { CorpusManifestEntry } from '../../inquiry/runner/types';
-import { buildInquiryPromptScaffold } from '../../inquiry/promptScaffold';
+import { buildInquiryPromptParts, INQUIRY_ROLE_TEMPLATE_GUARDRAIL } from '../../inquiry/promptScaffold';
 import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { cleanEvidenceBody } from '../../inquiry/utils/evidenceCleaning';
 import { getSortedSceneFiles } from '../../utils/manuscript';
-import { buildUnifiedBeatAnalysisPrompt } from '../../ai/prompts/unifiedBeatAnalysis';
 import { extractBeatOrder } from '../../utils/gossamer';
 import { resolveSelectedBeatModel } from '../../utils/beatsInputNormalize';
+import { getSynopsisGenerationWordLimit, getSynopsisHoverLineLimit } from '../../utils/synopsisLimits';
 
 type Provider = 'anthropic' | 'gemini' | 'openai' | 'local';
 type CapacityItem = string | { text: string; dividerBefore?: boolean };
-type PromptBreakdown = {
+type LocalRequestBreakdown = {
     roleTemplateTokens: number | null;
     instructionTokens: number | null;
+    outputContractTokens: number | null;
+    transformTokens: number | null;
 };
 
 export function renderAiSection(params: {
@@ -62,17 +68,15 @@ export function renderAiSection(params: {
     const { app, plugin, containerEl } = params;
     containerEl.classList.add(ERT_CLASSES.STACK);
 
-    const getActiveTemplateName = (): string => {
-        const templates = plugin.settings.aiContextTemplates || [];
-        const activeId = plugin.settings.activeAiContextTemplateId;
-        const active = templates.find(t => t.id === activeId);
-        return active?.name || 'Generic Editor';
-    };
-    const getActiveTemplatePrompt = (): string => {
-        const templates = plugin.settings.aiContextTemplates || [];
-        const activeId = plugin.settings.activeAiContextTemplateId;
-        const active = templates.find(t => t.id === activeId);
-        return active?.prompt?.trim() || 'You are an editorial analysis assistant.';
+    const getResolvedRoleTemplate = () => resolveActiveRoleTemplate(
+        plugin,
+        validateAiSettings(plugin.settings.aiSettings ?? buildDefaultAiSettings()).value
+    );
+    const getActiveTemplateName = (): string => getResolvedRoleTemplate().name;
+    const getActiveTemplatePrompt = (): string => getResolvedRoleTemplate().prompt.trim();
+    const sumTokenParts = (...parts: Array<number | null | undefined>): number | null => {
+        if (parts.some(part => part === null || part === undefined || !Number.isFinite(part))) return null;
+        return parts.reduce<number>((sum, part) => sum + (part ?? 0), 0);
     };
 
     const aiHero = containerEl.createDiv({
@@ -266,16 +270,15 @@ export function renderAiSection(params: {
         refreshToggle();
     };
 
-    const largeHandlingFold = aiSettingsGroup.createEl('details', { cls: 'ert-ai-fold ert-ai-large-handling' }) as HTMLDetailsElement;
-    largeHandlingFold.setAttr('open', '');
-    largeHandlingFold.setAttr('data-ert-role', 'ai-setting:large-manuscript-handling');
-    const largeHandlingSummary = largeHandlingFold.createEl('summary', { text: 'Large Manuscript Handling & Multi-Pass Analysis (Inquiry & Gossamer)' });
-    attachAiCollapseButton(largeHandlingFold, largeHandlingSummary);
-    const largeHandlingBody = largeHandlingFold.createDiv({ cls: `${ERT_CLASSES.STACK} ert-ai-large-handling-body` });
-
-    const capacitySection = largeHandlingBody.createDiv({ cls: 'ert-ai-capacity-section' });
-    capacitySection.createDiv({ cls: 'ert-ai-capacity-title', text: 'Request composition' });
-    const capacityGrid = capacitySection.createDiv({ cls: 'ert-ai-capacity-grid' });
+    const largeHandlingSection = aiSettingsGroup.createDiv({
+        cls: `${ERT_CLASSES.STACK} ert-ai-large-handling`
+    });
+    largeHandlingSection.setAttr('data-ert-role', 'ai-setting:large-manuscript-handling');
+    largeHandlingSection.createDiv({
+        cls: ERT_CLASSES.SECTION_TITLE,
+        text: 'What gets sent to the AI'
+    });
+    const capacityGrid = largeHandlingSection.createDiv({ cls: 'ert-ai-capacity-grid' });
     const createCapacityCell = (label: string): { cellEl: HTMLElement; valueEl: HTMLElement; labelEl: HTMLElement } => {
         const cell = capacityGrid.createDiv({ cls: 'ert-ai-capacity-cell' });
         const labelEl = cell.createDiv({ cls: 'ert-ai-capacity-label', text: label });
@@ -319,7 +322,7 @@ export function renderAiSection(params: {
                 ? formatCorpusBreakdownToken(tokens)
                 : `~${tokens.toLocaleString()}`
     );
-    const buildPromptCapacityLine = (label: string, tokens: number | null): string => (
+    const buildTokenCapacityLine = (label: string, tokens: number | null): string => (
         `${label} (${formatPromptToken(tokens)})`
     );
     const buildScenesCapacityLine = (sceneCount: number | null, scenesTokens: number | null): string => (
@@ -344,7 +347,7 @@ export function renderAiSection(params: {
         outlineCount: number;
         referenceCount: number;
         breakdown: RTCorpusTokenBreakdown;
-        promptBreakdown?: PromptBreakdown;
+        localBreakdown?: LocalRequestBreakdown;
     }): Array<{ title: string; items: CapacityItem[] }> => {
         const sceneCount = counts?.sceneCount ?? null;
         const outlineCount = counts?.outlineCount ?? null;
@@ -352,38 +355,45 @@ export function renderAiSection(params: {
         const scenesTokens = counts?.breakdown.scenesTokens ?? null;
         const outlineTokens = counts?.breakdown.outlineTokens ?? null;
         const referenceTokens = counts?.breakdown.referenceTokens ?? null;
-        const totalTokens = counts
+        const corpusTokens = counts
             ? counts.breakdown.scenesTokens + counts.breakdown.outlineTokens + counts.breakdown.referenceTokens
             : null;
+        const totalTokens = sumTokenParts(
+            corpusTokens,
+            counts?.localBreakdown?.roleTemplateTokens,
+            counts?.localBreakdown?.instructionTokens,
+            counts?.localBreakdown?.outputContractTokens,
+            counts?.localBreakdown?.transformTokens
+        );
         return [
             {
                 title: 'Corpus',
                 items: [
                     buildScenesCapacityLine(sceneCount, scenesTokens),
                     buildOutlineCapacityLine(outlineCount, outlineTokens),
-                    buildReferenceCapacityLine(referenceCount, referenceTokens),
-                    { text: `Total ${formatCorpusBreakdownToken(totalTokens)}`, dividerBefore: true }
+                    buildReferenceCapacityLine(referenceCount, referenceTokens)
                 ]
             },
             {
                 title: 'Prompt',
                 items: [
-                    buildPromptCapacityLine('AI role template (author-defined)', counts?.promptBreakdown?.roleTemplateTokens ?? null),
-                    buildPromptCapacityLine('Editorial analysis instructions', counts?.promptBreakdown?.instructionTokens ?? null)
+                    buildTokenCapacityLine('AI role template (author-defined)', counts?.localBreakdown?.roleTemplateTokens ?? null),
+                    buildTokenCapacityLine('Editorial analysis instructions', counts?.localBreakdown?.instructionTokens ?? null)
                 ]
             },
             {
                 title: 'Output',
                 items: [
                     'Scene-linked findings',
-                    'Strict JSON structure'
+                    buildTokenCapacityLine('Strict JSON structure', counts?.localBreakdown?.outputContractTokens ?? null)
                 ]
             },
             {
                 title: 'Processing',
                 items: [
                     'Multi-pass (if required)',
-                    'Provider wrappers'
+                    'Provider wrappers',
+                    { text: `Total ${formatCorpusBreakdownToken(totalTokens)}`, dividerBefore: true }
                 ]
             }
         ];
@@ -456,47 +466,51 @@ export function renderAiSection(params: {
     const buildGossamerCapacitySections = (
         sceneCount: number,
         breakdown?: RTCorpusTokenBreakdown,
-        promptBreakdown?: PromptBreakdown
+        localBreakdown?: LocalRequestBreakdown
     ): Array<{ title: string; items: CapacityItem[] }> => [
         {
             title: 'Corpus',
             items: [
                 buildScenesCapacityLine(sceneCount, breakdown?.scenesTokens ?? null),
                 'Outline — not included',
-                'References — not included',
-                {
-                    text: `Total ${formatCorpusBreakdownToken(
-                        breakdown
-                            ? breakdown.scenesTokens + breakdown.outlineTokens + breakdown.referenceTokens
-                            : null
-                    )}`,
-                    dividerBefore: true
-                }
+                'References — not included'
             ]
         },
         {
             title: 'Transform',
-            items: ['Beat overlay (ordered sequence)']
+            items: [buildTokenCapacityLine('Beat overlay (ordered sequence)', localBreakdown?.transformTokens ?? null)]
         },
         {
             title: 'Prompt',
             items: [
-                buildPromptCapacityLine('AI role template (author-defined)', promptBreakdown?.roleTemplateTokens ?? null),
-                buildPromptCapacityLine('Beat scoring instructions', promptBreakdown?.instructionTokens ?? null)
+                buildTokenCapacityLine('AI role template (author-defined)', localBreakdown?.roleTemplateTokens ?? null),
+                buildTokenCapacityLine('Beat scoring instructions', localBreakdown?.instructionTokens ?? null)
             ]
         },
         {
             title: 'Output',
             items: [
                 'Per-beat scores',
-                'Strict JSON structure'
+                buildTokenCapacityLine('Strict JSON structure', localBreakdown?.outputContractTokens ?? null)
             ]
         },
         {
             title: 'Processing',
             items: [
                 'Single-pass',
-                'Provider wrappers'
+                'Provider wrappers',
+                {
+                    text: `Total ${formatCorpusBreakdownToken(sumTokenParts(
+                        breakdown
+                            ? breakdown.scenesTokens + breakdown.outlineTokens + breakdown.referenceTokens
+                            : null,
+                        localBreakdown?.roleTemplateTokens,
+                        localBreakdown?.instructionTokens,
+                        localBreakdown?.outputContractTokens,
+                        localBreakdown?.transformTokens
+                    ))}`,
+                    dividerBefore: true
+                }
             ]
         }
     ];
@@ -527,7 +541,7 @@ export function renderAiSection(params: {
     const capacityGossamerSections = capacityGossamer.valueEl.createDiv({ cls: 'ert-ai-capacity-composition' });
     renderCapacitySections(capacityGossamerSections, buildGossamerCapacitySections(0));
     // ── Details link → modal ──
-    const detailsBtn = largeHandlingBody.createDiv({ cls: 'ert-ai-details-link' });
+    const detailsBtn = aiSettingsGroup.createDiv({ cls: 'ert-ai-details-link' });
     detailsBtn.createSpan({ text: 'How analysis passes work \u2192' });
     detailsBtn.addEventListener('click', () => {
         const { AiPassStrategyDetailsModal } = require('../../modals/AiPassStrategyDetailsModal');
@@ -535,7 +549,7 @@ export function renderAiSection(params: {
     });
 
     // ── Execution preference dropdown ──
-    const executionPreferenceSetting = new Settings(largeHandlingBody)
+    const executionPreferenceSetting = new Settings(aiSettingsGroup)
         .setName('Execution preference')
         .setDesc('Choose how large requests are handled during Inquiry. Automatic is recommended.');
     executionPreferenceSetting.settingEl.setAttr('data-ert-role', 'ai-setting:execution-preference');
@@ -557,7 +571,7 @@ export function renderAiSection(params: {
             refreshRoutingUi();
         });
     });
-    const executionPreferenceNote = largeHandlingBody.createDiv({ cls: 'ert-field-note' });
+    const executionPreferenceNote = aiSettingsGroup.createDiv({ cls: 'ert-field-note' });
     const updateExecutionPreferenceNote = (): void => {
         const mode = ensureCanonicalAiSettings().analysisPackaging;
         executionPreferenceNote.setText(
@@ -570,8 +584,10 @@ export function renderAiSection(params: {
         executionPreferenceNote.toggleClass('ert-settings-hidden', mode === 'automatic');
     };
     updateExecutionPreferenceNote();
-    params.addAiRelatedElement(largeHandlingFold);
+    params.addAiRelatedElement(largeHandlingSection);
+    params.addAiRelatedElement(detailsBtn);
     params.addAiRelatedElement(executionPreferenceSetting.settingEl);
+    params.addAiRelatedElement(executionPreferenceNote);
 
     const roleContextSection = aiSettingsGroup.createDiv({
         cls: `${ERT_CLASSES.CARD} ${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK} ert-ai-section-card`
@@ -602,15 +618,6 @@ export function renderAiSection(params: {
         .setHeading();
     applyErtHeaderLayout(aiConfigHeader);
     const aiConfigBody = aiConfigFold.createDiv({ cls: [ERT_CLASSES.SECTION_BODY, ERT_CLASSES.STACK] });
-
-    const advancedFold = aiSettingsGroup.createEl('details', { cls: 'ert-ai-fold' }) as HTMLDetailsElement;
-    const advancedSummary = advancedFold.createEl('summary', { text: 'Advanced & Diagnostics' });
-    attachAiCollapseButton(advancedFold, advancedSummary);
-    const advancedBody = advancedFold.createDiv({ cls: ERT_CLASSES.STACK });
-    advancedBody.createDiv({
-        cls: 'ert-section-desc',
-        text: 'Infrastructure and troubleshooting tools. Most authors can ignore this section.'
-    });
 
     const contextTemplateSetting = new Settings(roleContextSection)
         .setName('AI prompt role & context template')
@@ -1003,11 +1010,12 @@ export function renderAiSection(params: {
         available: boolean;
         corpusTokens: number;
         providerExecutionTokens: number;
+        localTotalTokens: number;
         sceneCount: number;
         outlineCount: number;
         referenceCount: number;
         breakdown: RTCorpusTokenBreakdown;
-        promptBreakdown: PromptBreakdown;
+        localBreakdown: LocalRequestBreakdown;
     };
 
     type CostComparisonModel = {
@@ -1211,9 +1219,18 @@ export function renderAiSection(params: {
     }): Promise<{ inquiry: FeatureForecast; gossamer: FeatureForecast }> => {
         const currentCorpus = getCurrentCorpusContext();
         const roleTemplateTokens = estimateTokensFromChars(getActiveTemplatePrompt().length);
-        const inquiryPromptScaffold = buildInquiryPromptScaffold('');
+        const inquiryPromptParts = buildInquiryPromptParts('');
         const inquiryInstructionTokens = estimateTokensFromChars(
-            inquiryPromptScaffold.systemPrompt.length + inquiryPromptScaffold.userPrompt.length
+            inquiryPromptParts.systemPrompt.length
+            + inquiryPromptParts.instructionText.length
+            + INQUIRY_ROLE_TEMPLATE_GUARDRAIL.length
+        );
+        const inquiryOutputContractTokens = estimateTokensFromChars(
+            inquiryPromptParts.schemaText.length
+            + buildOutputRulesText({
+                returnType: 'json',
+                responseSchema: buildInquiryJsonSchema()
+            }).length
         );
         const inquiryCorpusTokens = currentCorpus?.corpus.estimatedTokens ?? 0;
         const inquiryProviderTokens = currentCorpus && engine
@@ -1237,8 +1254,8 @@ export function renderAiSection(params: {
             sceneData as Array<{ itemType?: string; subplot?: string; title?: string; "Beat Model"?: string }>,
             selectedBeatModel
         );
-        const gossamerPromptScaffold = beatOrder.length > 0
-            ? buildUnifiedBeatAnalysisPrompt(
+        const gossamerPromptParts = beatOrder.length > 0
+            ? buildUnifiedBeatAnalysisPromptParts(
                 '',
                 beatOrder.map((beatName, index) => ({
                     beatName,
@@ -1247,8 +1264,15 @@ export function renderAiSection(params: {
                 })),
                 selectedBeatModel || plugin.settings.beatSystem || 'Save The Cat'
             )
-            : '';
-        const gossamerInstructionTokens = estimateTokensFromChars(gossamerPromptScaffold.length);
+            : { transformText: '', instructionText: '', prompt: '' };
+        const gossamerInstructionTokens = estimateTokensFromChars(gossamerPromptParts.instructionText.length);
+        const gossamerTransformTokens = estimateTokensFromChars(gossamerPromptParts.transformText.length);
+        const gossamerOutputContractTokens = estimateTokensFromChars(
+            buildOutputRulesText({
+                returnType: 'json',
+                responseSchema: getUnifiedBeatAnalysisJsonSchema() as unknown as Record<string, unknown>
+            }).length
+        );
         const gossamerDisplayCorpus = await buildDisplayCorpusEstimateFromManifestEntries(
             gossamerSceneFiles.map(file => ({
                 path: file.path,
@@ -1259,12 +1283,31 @@ export function renderAiSection(params: {
         );
         const gossamerCorpusTokens = gossamerDisplayCorpus.estimatedTokens;
         const gossamerProviderTokens = gossamerEstimate.providerExecutionEstimate.estimatedTokens;
+        const inquiryLocalBreakdown: LocalRequestBreakdown = {
+            roleTemplateTokens,
+            instructionTokens: inquiryInstructionTokens,
+            outputContractTokens: inquiryOutputContractTokens,
+            transformTokens: 0
+        };
+        const gossamerLocalBreakdown: LocalRequestBreakdown = {
+            roleTemplateTokens,
+            instructionTokens: gossamerInstructionTokens,
+            outputContractTokens: gossamerOutputContractTokens,
+            transformTokens: gossamerTransformTokens
+        };
 
         return {
             inquiry: {
                 available: Boolean(currentCorpus),
                 corpusTokens: inquiryCorpusTokens,
                 providerExecutionTokens: inquiryProviderTokens,
+                localTotalTokens: sumTokenParts(
+                    inquiryCorpusTokens,
+                    inquiryLocalBreakdown.roleTemplateTokens,
+                    inquiryLocalBreakdown.instructionTokens,
+                    inquiryLocalBreakdown.outputContractTokens,
+                    inquiryLocalBreakdown.transformTokens
+                ) ?? inquiryCorpusTokens,
                 sceneCount: currentCorpus?.corpus.sceneCount ?? 0,
                 outlineCount: currentCorpus?.corpus.outlineCount ?? 0,
                 referenceCount: currentCorpus?.corpus.referenceCount ?? 0,
@@ -1273,23 +1316,24 @@ export function renderAiSection(params: {
                     outlineTokens: 0,
                     referenceTokens: 0
                 },
-                promptBreakdown: {
-                    roleTemplateTokens,
-                    instructionTokens: inquiryInstructionTokens
-                }
+                localBreakdown: inquiryLocalBreakdown
             },
             gossamer: {
                 available: true,
                 corpusTokens: gossamerCorpusTokens,
                 providerExecutionTokens: gossamerProviderTokens,
+                localTotalTokens: sumTokenParts(
+                    gossamerCorpusTokens,
+                    gossamerLocalBreakdown.roleTemplateTokens,
+                    gossamerLocalBreakdown.instructionTokens,
+                    gossamerLocalBreakdown.outputContractTokens,
+                    gossamerLocalBreakdown.transformTokens
+                ) ?? gossamerCorpusTokens,
                 sceneCount: gossamerDisplayCorpus.sceneCount,
                 outlineCount: gossamerDisplayCorpus.outlineCount,
                 referenceCount: gossamerDisplayCorpus.referenceCount,
                 breakdown: gossamerDisplayCorpus.breakdown,
-                promptBreakdown: {
-                    roleTemplateTokens,
-                    instructionTokens: gossamerInstructionTokens
-                }
+                localBreakdown: gossamerLocalBreakdown
             },
         };
     };
@@ -1442,14 +1486,14 @@ export function renderAiSection(params: {
                 modelId: estimate.model.id
             }).then(forecasts => {
                 if (forecasts.inquiry.available) {
-                    setTokenDisplay(capacityInquiryToken, formatCorpusBreakdownToken(forecasts.inquiry.corpusTokens), 'tokens');
+                    setTokenDisplay(capacityInquiryToken, formatCorpusBreakdownToken(forecasts.inquiry.localTotalTokens), 'tokens');
                     capacityInquiryExpected.setText(formatExpectedPasses(forecasts.inquiry.providerExecutionTokens));
                     renderCapacitySections(capacityInquirySections, buildInquiryCapacitySections({
                         sceneCount: forecasts.inquiry.sceneCount,
                         outlineCount: forecasts.inquiry.outlineCount,
                         referenceCount: forecasts.inquiry.referenceCount,
                         breakdown: forecasts.inquiry.breakdown,
-                        promptBreakdown: forecasts.inquiry.promptBreakdown
+                        localBreakdown: forecasts.inquiry.localBreakdown
                     }));
                 } else {
                     capacityInquiryToken.setText('Unavailable');
@@ -1457,14 +1501,14 @@ export function renderAiSection(params: {
                     renderCapacitySections(capacityInquirySections, buildInquiryCapacitySections());
                 }
 
-                setTokenDisplay(capacityGossamerToken, formatCorpusBreakdownToken(forecasts.gossamer.corpusTokens), 'tokens');
+                setTokenDisplay(capacityGossamerToken, formatCorpusBreakdownToken(forecasts.gossamer.localTotalTokens), 'tokens');
                 capacityGossamerExpected.setText(formatExpectedPasses(forecasts.gossamer.providerExecutionTokens));
                 renderCapacitySections(
                     capacityGossamerSections,
                     buildGossamerCapacitySections(
                         forecasts.gossamer.sceneCount,
                         forecasts.gossamer.breakdown,
-                        forecasts.gossamer.promptBreakdown
+                        forecasts.gossamer.localBreakdown
                     )
                 );
             });
@@ -2409,6 +2453,46 @@ export function renderAiSection(params: {
         options.control(row);
         return row;
     };
+    const aiConfigCreateNumberInput = (
+        setting: Settings,
+        options: {
+            value: number;
+            min: number;
+            max: number;
+            step: number;
+            invalidNotice: string;
+            onSave: (value: number) => Promise<void> | void;
+        }
+    ): void => {
+        setting.addText(text => {
+            text.setValue(String(options.value));
+            text.inputEl.type = 'number';
+            text.inputEl.min = String(options.min);
+            text.inputEl.max = String(options.max);
+            text.inputEl.step = String(options.step);
+            text.inputEl.addClass('ert-input--xs');
+
+            plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
+                if (evt.key === 'Enter') {
+                    evt.preventDefault();
+                    text.inputEl.blur();
+                }
+            });
+
+            const handleBlur = async () => {
+                const parsed = parseInt(text.getValue().trim(), 10);
+                if (!Number.isFinite(parsed) || parsed < options.min || parsed > options.max) {
+                    new Notice(options.invalidNotice);
+                    text.setValue(String(options.value));
+                    return;
+                }
+                await options.onSave(Math.round(parsed));
+                text.setValue(String(Math.round(parsed)));
+            };
+
+            plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });
+        });
+    };
 
     const aiDisplayGroup = aiConfigBody.createDiv({ cls: 'ert-config-group' });
     aiDisplayGroup.createDiv({ cls: 'ert-config-group-title', text: 'Timeline Display' });
@@ -2426,24 +2510,96 @@ export function renderAiSection(params: {
         }
     });
 
+    aiConfigCreateRow(aiDisplayGroup, {
+        title: 'Synopsis max words',
+        description: 'Cap for generated Synopsis text shown on hover and other compact timeline surfaces.',
+        control: (setting) => {
+            aiConfigCreateNumberInput(setting, {
+                value: getSynopsisGenerationWordLimit(plugin.settings),
+                min: 10,
+                max: 300,
+                step: 5,
+                invalidNotice: 'Synopsis length must be between 10 and 300 words.',
+                onSave: async (value) => {
+                    plugin.settings.synopsisGenerationMaxWords = value;
+                    plugin.settings.synopsisHoverMaxLines = getSynopsisHoverLineLimit(plugin.settings);
+                    await plugin.saveSettings();
+                }
+            });
+        }
+    });
+
+    const summaryRefreshGroup = aiConfigBody.createDiv({ cls: 'ert-config-group' });
+    summaryRefreshGroup.createDiv({ cls: 'ert-config-group-title', text: 'Summary Refresh Defaults' });
+
+    aiConfigCreateRow(summaryRefreshGroup, {
+        title: 'Target summary length',
+        description: 'Default word count used when opening Summary refresh. You can still change it per run.',
+        control: (setting) => {
+            aiConfigCreateNumberInput(setting, {
+                value: plugin.settings.synopsisTargetWords ?? 200,
+                min: 75,
+                max: 500,
+                step: 25,
+                invalidNotice: 'Target summary length must be between 75 and 500 words.',
+                onSave: async (value) => {
+                    plugin.settings.synopsisTargetWords = value;
+                    await plugin.saveSettings();
+                }
+            });
+        }
+    });
+
+    aiConfigCreateRow(summaryRefreshGroup, {
+        title: 'Treat summary as weak if under',
+        description: 'Default threshold used to decide which scenes are selected for Summary refresh.',
+        control: (setting) => {
+            aiConfigCreateNumberInput(setting, {
+                value: plugin.settings.synopsisWeakThreshold ?? 75,
+                min: 10,
+                max: 300,
+                step: 5,
+                invalidNotice: 'Weak summary threshold must be between 10 and 300 words.',
+                onSave: async (value) => {
+                    plugin.settings.synopsisWeakThreshold = value;
+                    await plugin.saveSettings();
+                }
+            });
+        }
+    });
+
+    aiConfigCreateRow(summaryRefreshGroup, {
+        title: 'Also update Synopsis',
+        description: 'When enabled, Summary refresh also writes Synopsis using the configured Synopsis max words.',
+        control: (setting) => {
+            setting.addToggle(toggle => toggle
+                .setValue(plugin.settings.alsoUpdateSynopsis ?? false)
+                .onChange(async (value) => {
+                    plugin.settings.alsoUpdateSynopsis = value;
+                    await plugin.saveSettings();
+                }));
+        }
+    });
+
     // Final section order in AI tab:
     // 1) AI Strategy
     // 2) Preview (Active Model) + Local Quick Config (when local selected)
     // 3) Role context
-    // 4) Gossamer material
-    // 5) Large Manuscript Handling
+    // 4) AI transparency
+    // 5) Execution preference
     // 6) API Keys
     // 7) Configuration
-    // 8) Advanced & Diagnostics
     [
         quickSetupSection,
         quickSetupPreviewSection,
         costEstimateSection,
         roleContextSection,
-        largeHandlingFold,
+        largeHandlingSection,
+        detailsBtn,
+        executionPreferenceSetting.settingEl,
+        executionPreferenceNote,
         apiKeysFold,
-        aiConfigFold,
-        advancedFold
+        aiConfigFold
     ].forEach(section => aiSettingsGroup.appendChild(section));
 
     // Apply provider dimming on first render

@@ -49,7 +49,7 @@ import { PLOT_SYSTEM_NAMES } from './utils/beatsSystems';
 import { generateBeatGuid } from './utils/beatsInputNormalize';
 import type { BeatSystemConfig } from './types/settings';
 import { isDefaultEmbedPath } from './utils/aprPaths';
-import { DEFAULT_BOOK_TITLE, createBookId, deriveBookTitleFromSourcePath, getActiveBook, normalizeBookProfile } from './utils/books';
+import { DEFAULT_BOOK_TITLE, createBookId, deriveBookTitleFromSourcePath, getActiveBook, normalizeBookProfile, shouldSeedBookProfileFromLegacySettings } from './utils/books';
 import { initVersionCheckService, getVersionCheckService } from './services/VersionCheckService';
 import { registerRuntimeCommands } from './RuntimeCommands';
 import { AuthorProgressService } from './services/AuthorProgressService';
@@ -425,20 +425,28 @@ export default class RadialTimelinePlugin extends Plugin {
         if (!hasBooks) {
             const legacySourcePath = (this.settings.sourcePath || '').trim();
             const legacyTitle = typeof settingsAny.bookTitle === 'string' ? (settingsAny.bookTitle as string).trim() : '';
-            const derivedTitle = this.settings.showSourcePathAsTitle !== false
-                ? deriveBookTitleFromSourcePath(legacySourcePath)
-                : null;
-            const title = legacyTitle || derivedTitle || DEFAULT_BOOK_TITLE;
+            if (shouldSeedBookProfileFromLegacySettings({
+                sourcePath: legacySourcePath,
+                legacyTitle
+            })) {
+                const derivedTitle = this.settings.showSourcePathAsTitle !== false
+                    ? deriveBookTitleFromSourcePath(legacySourcePath)
+                    : null;
+                const title = legacyTitle || derivedTitle || DEFAULT_BOOK_TITLE;
 
-            this.settings.books = [
-                normalizeBookProfile({
-                    id: createBookId(),
-                    title,
-                    sourceFolder: legacySourcePath
-                })
-            ];
-            this.settings.activeBookId = this.settings.books[0].id;
-            booksMigrated = true;
+                this.settings.books = [
+                    normalizeBookProfile({
+                        id: createBookId(),
+                        title,
+                        sourceFolder: legacySourcePath
+                    })
+                ];
+                this.settings.activeBookId = this.settings.books[0].id;
+                booksMigrated = true;
+            } else {
+                this.settings.books = [];
+                this.settings.activeBookId = undefined;
+            }
         } else {
             const normalized = this.settings.books.map(b => normalizeBookProfile(b));
             if (JSON.stringify(normalized) !== JSON.stringify(this.settings.books)) {
@@ -449,7 +457,7 @@ export default class RadialTimelinePlugin extends Plugin {
                 ? this.settings.books.some(b => b.id === this.settings.activeBookId)
                 : false;
             if (!activeExists) {
-                this.settings.activeBookId = this.settings.books[0].id;
+                this.settings.activeBookId = this.settings.books[0]?.id;
                 booksMigrated = true;
             }
         }

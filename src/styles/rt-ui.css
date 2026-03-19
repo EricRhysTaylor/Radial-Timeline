@@ -2402,24 +2402,10 @@
   line-height: 1.55;
 }
 
-.ert-ui.ert-scope--settings .ert-ai-large-handling-body {
+.ert-ui.ert-scope--settings .ert-ai-large-handling {
   gap: var(--ert-gap-sm);
   position: relative;
   overflow: visible;
-}
-
-.ert-ui.ert-scope--settings .ert-ai-capacity-section {
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--background-secondary) 78%, transparent);
-  padding: 10px 12px;
-}
-
-.ert-ui.ert-scope--settings .ert-ai-capacity-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-normal);
-  margin-bottom: 8px;
 }
 
 .ert-ui.ert-scope--settings .ert-ai-capacity-grid {
@@ -2735,14 +2721,6 @@
   color: var(--text-normal);
   margin-bottom: 10px;
 }
-
-.ert-ui.ert-scope--settings .ert-ai-large-handling :is(.setting-item, .setting-item-control) {
-  position: relative;
-  z-index: 3;
-  pointer-events: auto;
-  overflow: visible;
-}
-
 
 @media (max-width: 760px) {
   .ert-ui.ert-scope--settings .ert-ai-steps-row,
@@ -4906,6 +4884,7 @@
 }
 
 .ert-ui.ert-scope--settings .ert-completion-quote-text {
+  display: block;
   font-size: 1.15rem;
   font-style: italic;
   color: var(--text-normal);
@@ -4915,10 +4894,13 @@
 }
 
 .ert-ui.ert-scope--settings .ert-completion-quote-author {
+  display: block;
+  margin-top: calc(var(--ert-gap-xs) * 0.75);
   font-size: 0.9rem;
   color: var(--text-muted);
   font-weight: 500;
   font-style: normal;
+  text-align: center;
 }
 
 .ert-ui.ert-scope--settings .ert-completion-empty-hint {
@@ -4942,12 +4924,17 @@
 }
 
 .ert-ui.ert-scope--settings .ert-completion-encouragement-text {
+  display: block;
   color: var(--text-muted);
 }
 
 .ert-ui.ert-scope--settings .ert-completion-encouragement-author {
+  display: block;
+  margin-top: calc(var(--ert-gap-xs) * 0.5);
   color: var(--text-faint);
   font-size: 0.8rem;
+  font-style: normal;
+  text-align: center;
 }
 
 .ert-ui.ert-scope--settings .ert-completion-preview-warn .ert-completion-encouragement {
