@@ -36,6 +36,7 @@ import type { InquiryClassConfig, InquiryMaterialMode, InquiryPromptConfig, Inqu
 import { buildDefaultInquiryPromptConfig, getBuiltInPromptSeed, getCanonicalPromptText, normalizeInquiryPromptConfig } from './prompts';
 import { ensureInquiryArtifactFolder, getMostRecentArtifactFile, resolveInquiryArtifactFolder } from './utils/artifacts';
 import { buildInquiryDossierPresentation } from './utils/inquiryDossierPresentation';
+import { cleanEvidenceBody } from './utils/evidenceCleaning';
 import { ensureInquiryContentLogFolder, ensureInquiryLogFolder, resolveInquiryLogFolder } from './utils/logs';
 import { openOrRevealFile, openOrRevealFileAtSubpath } from '../utils/fileUtils';
 import {
@@ -91,6 +92,7 @@ import { resolveInquiryEngine, type ResolvedInquiryEngine } from './services/inq
 import { buildInquirySourcesViewModel } from './services/inquirySources';
 import { computeInquiryAdvisoryContext, type InquiryAdvisoryContext } from './services/inquiryAdvisory';
 import type { InquiryEstimateSnapshot } from './services/inquiryEstimateSnapshot';
+import { scopeEntriesToActiveInquiryTarget } from './services/canonicalInquiryCorpus';
 import type {
     TokenTier,
     InquiryCurrentCorpusContext,
@@ -206,7 +208,10 @@ const DEPTH_FINDING_ORDER: InquiryFinding['kind'][] = ['continuity', 'loose_end'
 const SIGMA_CHAR = String.fromCharCode(931);
 const MODE_ICON_VIEWBOX = 2048;
 const MODE_ICON_OFFSET_Y = -330;
-const SCENE_DOSSIER_Y = -70;
+// Manual placement knobs for the Inquiry focal stack.
+const SCENE_DOSSIER_CANVAS_Y = -70;
+const SCENE_DOSSIER_TEXT_GROUP_Y = 0;
+const SCENE_DOSSIER_BRACE_Y_OFFSET = 0;
 const SCENE_DOSSIER_WIDTH = 980;
 const SCENE_DOSSIER_MIN_HEIGHT = 0;
 const SCENE_DOSSIER_SIDE_PADDING = 136;
@@ -1170,6 +1175,9 @@ export class InquiryView extends ItemView {
     private previewShimmerMaskRect?: SVGRectElement;
     private previewPanelHeight = 0;
     private payloadStats?: InquiryPayloadStats;
+    private entryBodyCharCache = new Map<string, { mtime: number; chars: number }>();
+    private entryBodyCharLoads = new Map<string, Promise<void>>();
+    private payloadStatsRefreshTimer?: number;
     private duplicatePulseTimer?: number;
     private rehydratePulseTimer?: number;
     private rehydrateHighlightTimer?: number;
@@ -1485,7 +1493,7 @@ export class InquiryView extends ItemView {
         }
 
         this.buildPromptPreviewPanel(canvasGroup);
-        this.buildSceneDossierLayer(svg, SCENE_DOSSIER_Y);
+        this.buildSceneDossierLayer(svg, SCENE_DOSSIER_CANVAS_Y);
 
         this.registerSvgEvent(this.glyphHit, 'pointerenter', () => {
             if (this.isInquiryGuidanceLockout()) return;
@@ -1995,6 +2003,11 @@ export class InquiryView extends ItemView {
         if (activePrompt?.question?.trim()) return activePrompt.question.trim();
         const fallback = this.getPromptOptions('setup')[0];
         return fallback?.question?.trim() || null;
+    }
+
+    private getCanonicalFocusBookId(): string | undefined {
+        if (this.state.scope !== 'book') return undefined;
+        return this.corpus?.activeBookId ?? this.state.focusBookId ?? this.corpus?.books?.[0]?.id;
     }
 
     private getCanonicalAiSettings(): AiSettingsV1 {
@@ -3802,22 +3815,24 @@ export class InquiryView extends ItemView {
         braceRight.setAttribute('text-anchor', 'middle');
         braceRight.setAttribute('dominant-baseline', 'middle');
 
-        const header = createSvgText(composition, 'ert-inquiry-scene-dossier-header', '', 0, SCENE_DOSSIER_PADDING_Y + SCENE_DOSSIER_HEADER_SIZE);
+        const textGroup = createSvgGroup(composition, 'ert-inquiry-scene-dossier-text', 0, SCENE_DOSSIER_TEXT_GROUP_Y);
+
+        const header = createSvgText(textGroup, 'ert-inquiry-scene-dossier-header', '', 0, SCENE_DOSSIER_PADDING_Y + SCENE_DOSSIER_HEADER_SIZE);
         header.setAttribute('text-anchor', 'middle');
 
-        const anchor = createSvgText(composition, 'ert-inquiry-scene-dossier-anchor', '', 0, 0);
+        const anchor = createSvgText(textGroup, 'ert-inquiry-scene-dossier-anchor', '', 0, 0);
         anchor.setAttribute('text-anchor', 'middle');
 
-        const body = createSvgText(composition, 'ert-inquiry-scene-dossier-body', '', 0, 0);
+        const body = createSvgText(textGroup, 'ert-inquiry-scene-dossier-body', '', 0, 0);
         body.setAttribute('text-anchor', 'middle');
 
-        const bodySecondary = createSvgText(composition, 'ert-inquiry-scene-dossier-body ert-inquiry-scene-dossier-body--secondary', '', 0, 0);
+        const bodySecondary = createSvgText(textGroup, 'ert-inquiry-scene-dossier-body ert-inquiry-scene-dossier-body--secondary', '', 0, 0);
         bodySecondary.setAttribute('text-anchor', 'middle');
 
-        const footer = createSvgText(composition, 'ert-inquiry-scene-dossier-footer', '', 0, 0);
+        const footer = createSvgText(textGroup, 'ert-inquiry-scene-dossier-footer', '', 0, 0);
         footer.setAttribute('text-anchor', 'middle');
 
-        const source = createSvgText(composition, 'ert-inquiry-scene-dossier-source', '', 0, 0);
+        const source = createSvgText(textGroup, 'ert-inquiry-scene-dossier-source', '', 0, 0);
         source.setAttribute('text-anchor', 'middle');
 
         this.sceneDossierGroup = group;
@@ -5291,24 +5306,17 @@ export class InquiryView extends ItemView {
             includeInactive: true,
             applyOverrides: true
         });
-        const scope = this.state.scope;
-        const focusBookId = this.state.focusBookId ?? this.corpus?.books?.[0]?.id;
         const sceneEntries = manifest.entries.filter(entry => entry.class === 'scene');
         const outlineEntries = manifest.entries.filter(entry => entry.class === 'outline');
         const referenceEntries = manifest.entries.filter(entry => entry.class !== 'scene' && entry.class !== 'outline');
-
-        const scopedSceneEntries = scope === 'book' && focusBookId
-            ? sceneEntries.filter(entry => entry.path === focusBookId || entry.path.startsWith(`${focusBookId}/`))
-            : sceneEntries;
         const bookOutlineEntries = outlineEntries
-            .filter(entry => entry.scope !== 'saga')
-            .filter(entry => scope === 'saga' || !focusBookId || entry.path === focusBookId || entry.path.startsWith(`${focusBookId}/`));
-        const sagaOutlineEntries = scope === 'saga'
+            .filter(entry => entry.scope !== 'saga');
+        const sagaOutlineEntries = this.state.scope === 'saga'
             ? outlineEntries.filter(entry => entry.scope === 'saga')
             : [];
 
         const scopedEntries = [
-            ...scopedSceneEntries,
+            ...sceneEntries,
             ...bookOutlineEntries,
             ...sagaOutlineEntries,
             ...referenceEntries
@@ -6683,7 +6691,7 @@ export class InquiryView extends ItemView {
             this.sessionStore.setSession(session);
             const traceForLog = runTrace
                 ?? await this.buildFallbackTrace(runnerInput, 'Trace unavailable; log created without prompt capture.');
-            await this.saveInquiryLog(result, traceForLog, this.filterManifestForLog(manifest, this.state.scope, focusBookId), {
+            await this.saveInquiryLog(result, traceForLog, manifest, {
                 sessionKey: session.key,
                 normalizationNotes
             });
@@ -7190,7 +7198,7 @@ export class InquiryView extends ItemView {
         };
         this.sessionStore.setSession(session);
 
-        const logPath = await this.saveInquiryLog(normalized, options.trace, this.filterManifestForLog(options.manifest, normalized.scope, options.focusBookId), {
+        const logPath = await this.saveInquiryLog(normalized, options.trace, options.manifest, {
             sessionKey: session.key,
             normalizationNotes,
             silent: true
@@ -7511,6 +7519,7 @@ export class InquiryView extends ItemView {
         this.state.corpusFingerprint = normalized.corpusFingerprint;
         this.state.cacheStatus = cacheStatus;
         this.state.isRunning = false;
+        this.hideSceneDossier(true);
         if (this.isErrorResult(normalized)) {
             this.showErrorPreview(normalized);
         } else {
@@ -8078,7 +8087,7 @@ export class InquiryView extends ItemView {
             };
             this.sessionStore.setSession(session);
             const trace = await this.buildFallbackTrace(runnerInput, 'Simulated run: no provider call.');
-            await this.saveInquiryLog(result, trace, this.filterManifestForLog(manifest, this.state.scope, focusBookId), {
+            await this.saveInquiryLog(result, trace, manifest, {
                 sessionKey: session.key,
                 normalizationNotes
             });
@@ -8185,6 +8194,7 @@ export class InquiryView extends ItemView {
             applyOverrides?: boolean;
         }
     ): { entries: CorpusManifestEntry[]; resolvedRoots: string[] } {
+        const focusBookId = this.getCanonicalFocusBookId();
         const rawSources = this.plugin.settings.inquirySources as Record<string, unknown> | undefined;
         if (rawSources && ('sceneFolders' in rawSources || 'bookOutlineFiles' in rawSources || 'sagaOutlineFile' in rawSources)) {
             const legacy = this.buildLegacyCorpusManifest(rawSources, questionId, { modelId: options?.modelId });
@@ -8204,7 +8214,14 @@ export class InquiryView extends ItemView {
             if (!includeInactive) {
                 entries = entries.filter(entry => this.isModeActive(entry.mode));
             }
-            return { entries, resolvedRoots: legacy.resolvedRoots };
+            return {
+                entries: scopeEntriesToActiveInquiryTarget({
+                    entries,
+                    scope: this.state.scope,
+                    focusBookId
+                }),
+                resolvedRoots: legacy.resolvedRoots
+            };
         }
 
         const sources = this.normalizeInquirySources(this.plugin.settings.inquirySources);
@@ -8341,17 +8358,20 @@ export class InquiryView extends ItemView {
             });
         });
 
-        return { entries, resolvedRoots };
+        return {
+            entries: scopeEntriesToActiveInquiryTarget({
+                entries,
+                scope: this.state.scope,
+                focusBookId
+            }),
+            resolvedRoots
+        };
     }
 
     private buildCorpusManifest(
         questionId: string,
         options?: { modelId?: string; questionZone?: InquiryZone; contextRequired?: boolean; applyOverrides?: boolean }
     ): CorpusManifest {
-        const rawSources = this.plugin.settings.inquirySources as Record<string, unknown> | undefined;
-        if (rawSources && ('sceneFolders' in rawSources || 'bookOutlineFiles' in rawSources || 'sagaOutlineFile' in rawSources)) {
-            return this.buildLegacyCorpusManifest(rawSources, questionId, options);
-        }
         const now = Date.now();
         const modelIdOverride = options?.modelId;
         const applyOverrides = options?.applyOverrides ?? true;
@@ -9162,20 +9182,20 @@ export class InquiryView extends ItemView {
 
         const focusRadius = Math.max(SCENE_DOSSIER_FOCUS_RADIUS, Math.round(dossierHeight * 0.84));
         const focusCoreRadius = Math.round(focusRadius * 0.62);
-        this.sceneDossierFocusCore.setAttribute('cy', String(-SCENE_DOSSIER_Y));
+        this.sceneDossierFocusCore.setAttribute('cy', String(-SCENE_DOSSIER_CANVAS_Y));
         this.sceneDossierFocusCore.setAttribute('r', String(focusCoreRadius));
-        this.sceneDossierFocusGlow.setAttribute('cy', String(-SCENE_DOSSIER_Y));
+        this.sceneDossierFocusGlow.setAttribute('cy', String(-SCENE_DOSSIER_CANVAS_Y));
         this.sceneDossierFocusGlow.setAttribute('r', String(focusRadius));
-        this.sceneDossierFocusOutline.setAttribute('cy', String(-SCENE_DOSSIER_Y));
+        this.sceneDossierFocusOutline.setAttribute('cy', String(-SCENE_DOSSIER_CANVAS_Y));
         this.sceneDossierFocusOutline.setAttribute('r', String(focusRadius));
         const braceY = hasBodyPrimary
             ? Math.round(bodyPrimaryY + ((Math.max(bodyPrimaryLines, 1) * SCENE_DOSSIER_BODY_PRIMARY_LINE_HEIGHT) * 0.46))
             : Math.round(anchorY + ((Math.max(anchorLines, 1) * SCENE_DOSSIER_ANCHOR_LINE_HEIGHT) * 0.92));
         const braceOffsetX = Math.round((SCENE_DOSSIER_WIDTH / 2) - SCENE_DOSSIER_BRACE_INSET);
         this.sceneDossierBraceLeft.setAttribute('x', String(-braceOffsetX));
-        this.sceneDossierBraceLeft.setAttribute('y', String(braceY));
+        this.sceneDossierBraceLeft.setAttribute('y', String(braceY + SCENE_DOSSIER_BRACE_Y_OFFSET));
         this.sceneDossierBraceRight.setAttribute('x', String(braceOffsetX));
-        this.sceneDossierBraceRight.setAttribute('y', String(braceY));
+        this.sceneDossierBraceRight.setAttribute('y', String(braceY + SCENE_DOSSIER_BRACE_Y_OFFSET));
         this.sceneDossierBraceLeft.setAttribute('font-size', String(SCENE_DOSSIER_BRACE_SIZE));
         this.sceneDossierBraceRight.setAttribute('font-size', String(SCENE_DOSSIER_BRACE_SIZE));
 
@@ -9692,6 +9712,7 @@ export class InquiryView extends ItemView {
     private showResultsPreview(result: InquiryResult): void {
         if (!this.previewGroup || !this.previewHero) return;
         if (this.isErrorResult(result)) return;
+        this.hideSceneDossier(true);
         if (this.previewHideTimer) {
             window.clearTimeout(this.previewHideTimer);
             this.previewHideTimer = undefined;
@@ -10327,6 +10348,18 @@ export class InquiryView extends ItemView {
         }
     }
 
+    private schedulePayloadStatsRefresh(): void {
+        if (this.payloadStatsRefreshTimer !== undefined) return;
+        this.payloadStatsRefreshTimer = window.setTimeout(() => {
+            this.payloadStatsRefreshTimer = undefined;
+            this.payloadStats = undefined;
+            this._currentCorpusContext = null;
+            this.refreshPayloadStats();
+            this.refreshEstimateDisplays();
+            void this.requestEstimateSnapshot();
+        }, 0);
+    }
+
     private getPayloadStats(): InquiryPayloadStats {
         const focusBookId = this.state.focusBookId ?? this.corpus?.books?.[0]?.id;
         if (!this.payloadStats
@@ -10351,25 +10384,18 @@ export class InquiryView extends ItemView {
         preservePriorEvidenceChars: boolean
     ): InquiryPayloadStats {
         const scope = this.state.scope;
-        const focusBookId = this.state.focusBookId ?? this.corpus?.books?.[0]?.id;
+        const focusBookId = this.getCanonicalFocusBookId();
         const sceneEntries = entries.filter(entry => entry.class === 'scene');
         const outlineEntries = entries.filter(entry => entry.class === 'outline');
         const referenceEntries = entries.filter(entry => entry.class !== 'scene' && entry.class !== 'outline');
 
-        const scopedSceneEntries = scope === 'book'
-            ? (focusBookId
-                ? sceneEntries.filter(entry => entry.path === focusBookId || entry.path.startsWith(`${focusBookId}/`))
-                : sceneEntries)
-            : sceneEntries;
-
         const bookOutlineEntries = outlineEntries
-            .filter(entry => entry.scope !== 'saga')
-            .filter(entry => scope === 'saga' || !focusBookId || entry.path === focusBookId || entry.path.startsWith(`${focusBookId}/`));
+            .filter(entry => entry.scope !== 'saga');
         const sagaOutlineEntries = scope === 'saga'
             ? outlineEntries.filter(entry => entry.scope === 'saga')
             : [];
 
-        const sceneStats = this.collectSceneStats(scopedSceneEntries);
+        const sceneStats = this.collectSceneStats(sceneEntries);
         const bookOutlineStats = this.collectEntryStats(bookOutlineEntries);
         const sagaOutlineStats = this.collectEntryStats(sagaOutlineEntries);
         const referenceStats = this.collectReferenceStats(referenceEntries);
@@ -10432,10 +10458,8 @@ export class InquiryView extends ItemView {
                 return;
             }
             if (mode === 'full') {
-                const size = this.getEntryCharCount(entry.path);
-                if (!size) return;
                 fullCount += 1;
-                chars += size;
+                chars += this.getEntryCharCount(entry.path);
             }
         });
         return {
@@ -10466,10 +10490,8 @@ export class InquiryView extends ItemView {
                 return;
             }
             if (mode === 'full') {
-                const size = this.getEntryCharCount(entry.path);
-                if (!size) return;
                 fullCount += 1;
-                chars += size;
+                chars += this.getEntryCharCount(entry.path);
             }
         });
         return {
@@ -10488,9 +10510,8 @@ export class InquiryView extends ItemView {
         const byClass: Record<string, number> = {};
         let chars = 0;
         entries.forEach(entry => {
-            const size = this.getEntryContentLength(entry);
-            if (!size) return;
-            chars += size;
+            if (!this.hasEntryEvidence(entry)) return;
+            chars += this.getEntryContentLength(entry);
             byClass[entry.class] = (byClass[entry.class] || 0) + 1;
         });
         const character = byClass['character'] ?? 0;
@@ -10504,8 +10525,13 @@ export class InquiryView extends ItemView {
     private getEntryCharCount(path: string): number {
         const file = this.app.vault.getAbstractFileByPath(path);
         if (!file || !this.isTFile(file)) return 0;
-        const size = file.stat.size ?? 0;
-        return size > 0 ? size : 0;
+        const mtime = file.stat.mtime ?? 0;
+        const cached = this.entryBodyCharCache.get(path);
+        if (cached && cached.mtime === mtime) {
+            return cached.chars;
+        }
+        this.ensureEntryBodyCharCount(file, mtime);
+        return 0;
     }
 
     private getEntrySummary(path: string): string {
@@ -10526,6 +10552,39 @@ export class InquiryView extends ItemView {
             return this.getEntryCharCount(entry.path);
         }
         return 0;
+    }
+
+    private hasEntryEvidence(entry: CorpusManifestEntry): boolean {
+        const mode = this.normalizeEvidenceMode(entry.mode);
+        if (mode === 'summary') {
+            return this.getEntrySummary(entry.path).length > 0;
+        }
+        if (mode === 'full') {
+            const file = this.app.vault.getAbstractFileByPath(entry.path);
+            return !!file && this.isTFile(file);
+        }
+        return false;
+    }
+
+    private ensureEntryBodyCharCount(file: TFile, mtime: number): void {
+        if (this.entryBodyCharLoads.has(file.path)) return;
+        const load = (async () => {
+            try {
+                const raw = await this.app.vault.cachedRead(file);
+                const chars = cleanEvidenceBody(raw).length;
+                const currentMtime = file.stat.mtime ?? mtime;
+                const previous = this.entryBodyCharCache.get(file.path);
+                this.entryBodyCharCache.set(file.path, { mtime: currentMtime, chars });
+                if (!previous || previous.mtime !== currentMtime || previous.chars !== chars) {
+                    this.schedulePayloadStatsRefresh();
+                }
+            } catch {
+                this.entryBodyCharCache.delete(file.path);
+            } finally {
+                this.entryBodyCharLoads.delete(file.path);
+            }
+        })();
+        this.entryBodyCharLoads.set(file.path, load);
     }
 
     private getNormalizedFrontmatter(file: TFile): Record<string, unknown> | null {
@@ -11273,41 +11332,6 @@ export class InquiryView extends ItemView {
             const itemLabel = this.resolveManifestEntryLabel(entry);
             return `- ${classLabel} · ${modeLabel} · ${itemLabel} (${entry.path})`;
         });
-    }
-
-    /**
-     * Returns a copy of the manifest filtered to match the entries that
-     * buildEvidenceBlocks actually sends to the AI provider.
-     *
-     * For book scope with a focusBookId:
-     *   - Scenes: only entries whose path is within the focused book
-     *   - Outlines: only non-saga outlines whose path is within the focused book
-     *   - References: included regardless of path
-     *
-     * For saga scope or when focusBookId is absent: returns the manifest unchanged.
-     */
-    private filterManifestForLog(
-        manifest: CorpusManifest | null,
-        scope: InquiryScope,
-        focusBookId?: string
-    ): CorpusManifest | null {
-        if (!manifest || scope !== 'book' || !focusBookId) return manifest;
-
-        const isInFocusBook = (path: string): boolean =>
-            path === focusBookId || path.startsWith(`${focusBookId}/`);
-
-        const entries = manifest.entries.filter(entry => {
-            if (entry.class === 'scene') return isInFocusBook(entry.path);
-            if (entry.class === 'outline') return entry.scope !== 'saga' && isInFocusBook(entry.path);
-            return true;
-        });
-
-        const classCounts = entries.reduce<Record<string, number>>((acc, entry) => {
-            acc[entry.class] = (acc[entry.class] || 0) + 1;
-            return acc;
-        }, {}) as CorpusManifest['classCounts'];
-
-        return { ...manifest, entries, classCounts };
     }
 
     private buildInquiryLogContent(

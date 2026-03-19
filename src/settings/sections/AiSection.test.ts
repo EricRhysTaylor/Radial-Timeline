@@ -148,6 +148,8 @@ describe('AI settings models table', () => {
         expect(source.includes('tool_choice')).toBe(false);
         expect(source.includes('providerRouter')).toBe(false);
         expect(source.includes('document blocks')).toBe(false);
+        expect(source.includes('buildDisplayCorpusEstimateFromManifestEntries(currentCorpus.manifestEntries)')).toBe(false);
+        expect(source.includes('sceneCount: currentCorpus?.corpus.sceneCount ?? 0')).toBe(true);
     });
 
     it('renders provider key status states without saved-not-tested phrasing', () => {

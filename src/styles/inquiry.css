@@ -1747,7 +1747,12 @@
 }
 
 .ert-inquiry-preview-shimmer-group {
+  opacity: 0;
   filter: drop-shadow(0 0 6px rgb(255 255 255 / 0.7)) drop-shadow(0 0 14px rgb(255 255 255 / 0.35));
+}
+
+.ert-inquiry-preview.is-locked .ert-inquiry-preview-shimmer-group {
+  opacity: 1;
 }
 
 .ert-inquiry-preview.is-locked .ert-inquiry-preview-shimmer-group text {

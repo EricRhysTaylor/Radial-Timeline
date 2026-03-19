@@ -4,9 +4,31 @@
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
 
-import { describe, it, expect } from 'vitest';
-import { computeEstimateStateKey } from './inquiryEstimateSnapshot';
+import { describe, it, expect, vi } from 'vitest';
+import { buildInquiryEstimateSnapshot, computeEstimateStateKey } from './inquiryEstimateSnapshot';
 import { estimatePassCount } from './inquiryAdvisory';
+
+vi.mock('./inquiryEstimateTrace', () => ({
+    buildInquiryEstimateTrace: vi.fn(async () => ({
+        systemPrompt: 'system',
+        userPrompt: 'user',
+        evidenceText: 'evidence',
+        tokenEstimate: {
+            inputTokens: 1200,
+            outputTokens: 800,
+            totalTokens: 2000,
+            inputChars: 4800,
+            estimationMethod: 'heuristic_chars',
+            uncertaintyTokens: 0,
+            effectiveInputCeiling: 4000,
+            expectedPassCount: 1
+        },
+        outputTokenCap: 1200,
+        response: null,
+        sanitizationNotes: [],
+        notes: []
+    }))
+}));
 
 // ── computeEstimateStateKey ──────────────────────────────────────────
 
@@ -188,5 +210,62 @@ describe('estimatePassCount', () => {
         // estimatePassCount from inquiryAdvisory.  This test validates
         // the function exists and is exported.
         expect(typeof estimatePassCount).toBe('function');
+    });
+});
+
+describe('buildInquiryEstimateSnapshot', () => {
+    it('derives corpus counts from the canonical manifest instead of a broader payload count', async () => {
+        const manifestEntries = Array.from({ length: 53 }, (_, index) => ({
+            path: `Books/Book 1/Scene ${index + 1}.md`,
+            sceneId: `scn_b1_${index + 1}`,
+            mtime: index + 1,
+            class: 'scene' as const,
+            mode: 'full' as const
+        }));
+
+        const snapshot = await buildInquiryEstimateSnapshot({
+            scope: 'book',
+            focusBookId: 'Books/Book 1',
+            focusSceneId: undefined,
+            focusLabel: 'B1',
+            manifest: {
+                entries: manifestEntries,
+                fingerprint: 'fp-book-1',
+                generatedAt: 1,
+                resolvedRoots: ['Books'],
+                allowedClasses: ['scene'],
+                synopsisOnly: false,
+                classCounts: { scene: 53 }
+            },
+            payloadStats: {
+                sceneCount: 91,
+                outlineCount: 0,
+                referenceCount: 0,
+                evidenceChars: 53_000
+            },
+            runner: {} as never,
+            engine: {
+                provider: 'anthropic',
+                modelId: 'claude-sonnet-4-6',
+                modelLabel: 'Claude Sonnet 4.6',
+                contextWindow: 200_000,
+                blocked: false
+            },
+            overrideSummary: {
+                active: false,
+                classCount: 0,
+                itemCount: 0,
+                total: 0
+            },
+            rules: {
+                sagaOutlineScope: 'saga-only',
+                bookOutlineScope: 'book-only',
+                crossScopeUsage: 'conflict-only'
+            },
+            mode: 'flow'
+        });
+
+        expect(snapshot.corpus.sceneCount).toBe(53);
+        expect(snapshot.corpus.scenes).toHaveLength(53);
     });
 });

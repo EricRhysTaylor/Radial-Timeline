@@ -32,6 +32,7 @@ import type { InquiryMode } from '../state';
 import { INQUIRY_CANONICAL_ESTIMATE_QUESTION, INQUIRY_MAX_OUTPUT_TOKENS } from '../constants';
 import { mapAiProviderToLegacyProvider } from '../../ai/settings/aiSettings';
 import { buildInquiryEstimateTrace } from './inquiryEstimateTrace';
+import { summarizeScopedInquiryEntries } from './canonicalInquiryCorpus';
 
 // ── Version ─────────────────────────────────────────────────────────
 
@@ -146,21 +147,7 @@ function extractCorpusIds(manifest: CorpusManifest): {
     outlines: string[];
     references: string[];
 } {
-    const scenes: string[] = [];
-    const outlines: string[] = [];
-    const references: string[] = [];
-
-    for (const entry of manifest.entries) {
-        if (entry.class === 'scene') {
-            scenes.push(entry.path);
-        } else if (entry.class === 'outline') {
-            outlines.push(entry.path);
-        } else {
-            references.push(entry.path);
-        }
-    }
-
-    return { scenes, outlines, references };
+    return summarizeScopedInquiryEntries(manifest.entries);
 }
 
 // ── Builder ─────────────────────────────────────────────────────────
@@ -244,9 +231,9 @@ export async function buildInquiryEstimateSnapshot(
             scenes: corpusIds.scenes,
             outlines: corpusIds.outlines,
             references: corpusIds.references,
-            sceneCount: params.payloadStats.sceneCount,
-            outlineCount: params.payloadStats.outlineCount,
-            referenceCount: params.payloadStats.referenceCount,
+            sceneCount: corpusIds.scenes.length,
+            outlineCount: corpusIds.outlines.length,
+            referenceCount: corpusIds.references.length,
             evidenceChars: params.payloadStats.evidenceChars,
             corpusFingerprint: params.manifest.fingerprint,
         },

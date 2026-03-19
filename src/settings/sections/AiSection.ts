@@ -32,12 +32,20 @@ import {
 } from '../../ai/cost/estimateCorpusCost';
 import { INQUIRY_CANONICAL_ESTIMATE_QUESTION } from '../../inquiry/constants';
 import type { CorpusManifestEntry } from '../../inquiry/runner/types';
+import { buildInquiryPromptScaffold } from '../../inquiry/promptScaffold';
 import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { cleanEvidenceBody } from '../../inquiry/utils/evidenceCleaning';
 import { getSortedSceneFiles } from '../../utils/manuscript';
+import { buildUnifiedBeatAnalysisPrompt } from '../../ai/prompts/unifiedBeatAnalysis';
+import { extractBeatOrder } from '../../utils/gossamer';
+import { resolveSelectedBeatModel } from '../../utils/beatsInputNormalize';
 
 type Provider = 'anthropic' | 'gemini' | 'openai' | 'local';
 type CapacityItem = string | { text: string; dividerBefore?: boolean };
+type PromptBreakdown = {
+    roleTemplateTokens: number | null;
+    instructionTokens: number | null;
+};
 
 export function renderAiSection(params: {
     app: App;
@@ -59,6 +67,12 @@ export function renderAiSection(params: {
         const activeId = plugin.settings.activeAiContextTemplateId;
         const active = templates.find(t => t.id === activeId);
         return active?.name || 'Generic Editor';
+    };
+    const getActiveTemplatePrompt = (): string => {
+        const templates = plugin.settings.aiContextTemplates || [];
+        const activeId = plugin.settings.activeAiContextTemplateId;
+        const active = templates.find(t => t.id === activeId);
+        return active?.prompt?.trim() || 'You are an editorial analysis assistant.';
     };
 
     const aiHero = containerEl.createDiv({
@@ -297,6 +311,17 @@ export function renderAiSection(params: {
             ? '~?'
             : `~${(Math.round((Number.isFinite(tokens) ? tokens : 0) / 100) / 10).toFixed(1).replace(/\.0$/, '')}k`
     );
+    const estimateTokensFromChars = (chars: number): number => chars > 0 ? Math.ceil(chars / 4) : 0;
+    const formatPromptToken = (tokens: number | null): string => (
+        tokens === null
+            ? '~?'
+            : tokens >= 1000
+                ? formatCorpusBreakdownToken(tokens)
+                : `~${tokens.toLocaleString()}`
+    );
+    const buildPromptCapacityLine = (label: string, tokens: number | null): string => (
+        `${label} (${formatPromptToken(tokens)})`
+    );
     const buildScenesCapacityLine = (sceneCount: number | null, scenesTokens: number | null): string => (
         `Scenes (${formatInquiryCount(sceneCount)}) — full text (${formatCorpusBreakdownToken(scenesTokens)})`
     );
@@ -319,6 +344,7 @@ export function renderAiSection(params: {
         outlineCount: number;
         referenceCount: number;
         breakdown: RTCorpusTokenBreakdown;
+        promptBreakdown?: PromptBreakdown;
     }): Array<{ title: string; items: CapacityItem[] }> => {
         const sceneCount = counts?.sceneCount ?? null;
         const outlineCount = counts?.outlineCount ?? null;
@@ -342,8 +368,8 @@ export function renderAiSection(params: {
             {
                 title: 'Prompt',
                 items: [
-                    'AI role template (author-defined)',
-                    'Editorial analysis instructions'
+                    buildPromptCapacityLine('AI role template (author-defined)', counts?.promptBreakdown?.roleTemplateTokens ?? null),
+                    buildPromptCapacityLine('Editorial analysis instructions', counts?.promptBreakdown?.instructionTokens ?? null)
                 ]
             },
             {
@@ -429,7 +455,8 @@ export function renderAiSection(params: {
     };
     const buildGossamerCapacitySections = (
         sceneCount: number,
-        breakdown?: RTCorpusTokenBreakdown
+        breakdown?: RTCorpusTokenBreakdown,
+        promptBreakdown?: PromptBreakdown
     ): Array<{ title: string; items: CapacityItem[] }> => [
         {
             title: 'Corpus',
@@ -454,8 +481,8 @@ export function renderAiSection(params: {
         {
             title: 'Prompt',
             items: [
-                'AI role template (author-defined)',
-                'Beat scoring instructions'
+                buildPromptCapacityLine('AI role template (author-defined)', promptBreakdown?.roleTemplateTokens ?? null),
+                buildPromptCapacityLine('Beat scoring instructions', promptBreakdown?.instructionTokens ?? null)
             ]
         },
         {
@@ -980,6 +1007,7 @@ export function renderAiSection(params: {
         outlineCount: number;
         referenceCount: number;
         breakdown: RTCorpusTokenBreakdown;
+        promptBreakdown: PromptBreakdown;
     };
 
     type CostComparisonModel = {
@@ -1182,10 +1210,12 @@ export function renderAiSection(params: {
         modelId: string;
     }): Promise<{ inquiry: FeatureForecast; gossamer: FeatureForecast }> => {
         const currentCorpus = getCurrentCorpusContext();
-        const inquiryDisplayCorpus = currentCorpus
-            ? await buildDisplayCorpusEstimateFromManifestEntries(currentCorpus.manifestEntries)
-            : null;
-        const inquiryCorpusTokens = inquiryDisplayCorpus?.estimatedTokens ?? 0;
+        const roleTemplateTokens = estimateTokensFromChars(getActiveTemplatePrompt().length);
+        const inquiryPromptScaffold = buildInquiryPromptScaffold('');
+        const inquiryInstructionTokens = estimateTokensFromChars(
+            inquiryPromptScaffold.systemPrompt.length + inquiryPromptScaffold.userPrompt.length
+        );
+        const inquiryCorpusTokens = currentCorpus?.corpus.estimatedTokens ?? 0;
         const inquiryProviderTokens = currentCorpus && engine
             ? (await buildCurrentInquiryExecutionEstimate({
                 provider: engine.provider,
@@ -1201,6 +1231,24 @@ export function renderAiSection(params: {
             frontmatterMappings: plugin.settings.frontmatterMappings
         });
         const { files: gossamerSceneFiles } = await getSortedSceneFiles(plugin);
+        const sceneData = await plugin.getSceneData();
+        const selectedBeatModel = resolveSelectedBeatModel(plugin.settings.beatSystem, plugin.settings.customBeatSystemName);
+        const beatOrder = extractBeatOrder(
+            sceneData as Array<{ itemType?: string; subplot?: string; title?: string; "Beat Model"?: string }>,
+            selectedBeatModel
+        );
+        const gossamerPromptScaffold = beatOrder.length > 0
+            ? buildUnifiedBeatAnalysisPrompt(
+                '',
+                beatOrder.map((beatName, index) => ({
+                    beatName,
+                    beatNumber: index + 1,
+                    idealRange: '0-100'
+                })),
+                selectedBeatModel || plugin.settings.beatSystem || 'Save The Cat'
+            )
+            : '';
+        const gossamerInstructionTokens = estimateTokensFromChars(gossamerPromptScaffold.length);
         const gossamerDisplayCorpus = await buildDisplayCorpusEstimateFromManifestEntries(
             gossamerSceneFiles.map(file => ({
                 path: file.path,
@@ -1217,13 +1265,17 @@ export function renderAiSection(params: {
                 available: Boolean(currentCorpus),
                 corpusTokens: inquiryCorpusTokens,
                 providerExecutionTokens: inquiryProviderTokens,
-                sceneCount: inquiryDisplayCorpus?.sceneCount ?? currentCorpus?.corpus.sceneCount ?? 0,
-                outlineCount: inquiryDisplayCorpus?.outlineCount ?? currentCorpus?.corpus.outlineCount ?? 0,
-                referenceCount: inquiryDisplayCorpus?.referenceCount ?? currentCorpus?.corpus.referenceCount ?? 0,
-                breakdown: inquiryDisplayCorpus?.breakdown ?? {
+                sceneCount: currentCorpus?.corpus.sceneCount ?? 0,
+                outlineCount: currentCorpus?.corpus.outlineCount ?? 0,
+                referenceCount: currentCorpus?.corpus.referenceCount ?? 0,
+                breakdown: currentCorpus?.corpus.breakdown ?? {
                     scenesTokens: 0,
                     outlineTokens: 0,
                     referenceTokens: 0
+                },
+                promptBreakdown: {
+                    roleTemplateTokens,
+                    instructionTokens: inquiryInstructionTokens
                 }
             },
             gossamer: {
@@ -1233,7 +1285,11 @@ export function renderAiSection(params: {
                 sceneCount: gossamerDisplayCorpus.sceneCount,
                 outlineCount: gossamerDisplayCorpus.outlineCount,
                 referenceCount: gossamerDisplayCorpus.referenceCount,
-                breakdown: gossamerDisplayCorpus.breakdown
+                breakdown: gossamerDisplayCorpus.breakdown,
+                promptBreakdown: {
+                    roleTemplateTokens,
+                    instructionTokens: gossamerInstructionTokens
+                }
             },
         };
     };
@@ -1392,7 +1448,8 @@ export function renderAiSection(params: {
                         sceneCount: forecasts.inquiry.sceneCount,
                         outlineCount: forecasts.inquiry.outlineCount,
                         referenceCount: forecasts.inquiry.referenceCount,
-                        breakdown: forecasts.inquiry.breakdown
+                        breakdown: forecasts.inquiry.breakdown,
+                        promptBreakdown: forecasts.inquiry.promptBreakdown
                     }));
                 } else {
                     capacityInquiryToken.setText('Unavailable');
@@ -1404,7 +1461,11 @@ export function renderAiSection(params: {
                 capacityGossamerExpected.setText(formatExpectedPasses(forecasts.gossamer.providerExecutionTokens));
                 renderCapacitySections(
                     capacityGossamerSections,
-                    buildGossamerCapacitySections(forecasts.gossamer.sceneCount, forecasts.gossamer.breakdown)
+                    buildGossamerCapacitySections(
+                        forecasts.gossamer.sceneCount,
+                        forecasts.gossamer.breakdown,
+                        forecasts.gossamer.promptBreakdown
+                    )
                 );
             });
         } catch {
