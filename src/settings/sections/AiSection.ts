@@ -16,6 +16,7 @@ import { BUILTIN_MODELS } from '../../ai/registry/builtinModels';
 import { compareNewestModels, getPickerModelsForProvider, selectLatestModelByReleaseChannel } from '../../ai/registry/releaseChannels';
 import { selectModel } from '../../ai/router/selectModel';
 import { computeCaps } from '../../ai/caps/computeCaps';
+import { resolveEngineCapabilities } from '../../ai/caps/engineCapabilities';
 import { getAIClient } from '../../ai/runtime/aiClient';
 import {
     getCredential,
@@ -24,7 +25,7 @@ import {
     setCredentialSecretId
 } from '../../ai/credentials/credentials';
 import { getSecret, hasSecret, isSecretStorageAvailable, setSecret } from '../../ai/credentials/secretStorage';
-import type { AccessTier, AIProviderId, Capability, RTCorpusTokenBreakdown } from '../../ai/types';
+import type { AccessTier, AIProviderId, Capability, ModelInfo, RTCorpusTokenBreakdown } from '../../ai/types';
 import { buildCanonicalExecutionEstimate, estimateGossamerTokens } from '../../ai/forecast/estimateTokensFromVault';
 import {
     estimateCorpusCost,
@@ -667,13 +668,10 @@ export function renderAiSection(params: {
         return `~${rounded}k`;
     };
 
-    const OPENAI_CONTEXT_WINDOW = 1_050_000;
-    const GOOGLE_CONTEXT_WINDOW = 1_048_576;
-
     type PreviewSignalType =
-        | 'context'
-        | 'manuscriptCitations'
-        | 'contextCompare';
+        | 'citation'
+        | 'reuse'
+        | 'passBehavior';
 
     interface PreviewSignal {
         type: PreviewSignalType;
@@ -681,35 +679,57 @@ export function renderAiSection(params: {
     }
 
     const PREVIEW_SIGNAL_PRIORITY: readonly PreviewSignalType[] = [
-        'context',
-        'manuscriptCitations',
-        'contextCompare'
+        'citation',
+        'reuse',
+        'passBehavior'
     ] as const;
     const MAX_PREVIEW_SIGNALS = 4;
 
+    const resolvePreviewCitationSignal = (model: ModelInfo): string | null => {
+        const capabilities = resolveEngineCapabilities(model);
+        if (capabilities.directManuscriptCitations.availableInRt) {
+            return 'Citation · Direct manuscript';
+        }
+        if (capabilities.groundedToolAttribution.availableInRt) {
+            return model.provider === 'google'
+                ? 'Citation · Grounded search'
+                : 'Citation · Tool annotations';
+        }
+        return null;
+    };
+
+    const resolvePreviewReuseSignal = (model: ModelInfo): string | null => {
+        const capabilities = resolveEngineCapabilities(model);
+        return capabilities.corpusReuse.availableInRt
+            ? 'Reuse · Provider cache'
+            : 'Reuse · No provider cache';
+    };
+
     const resolvePreviewSignals = (state: {
-        provider: AIProviderId;
-        contextWindow: number | null;
-        maxInputTokens: number | null;
-        maxOutputTokens: number | null;
+        citationLabel: string | null;
+        reuseLabel: string | null;
+        passBehaviorLabel: string | null;
     }): string[] => {
         const candidates: PreviewSignal[] = [];
-        candidates.push({
-            type: 'context',
-            text: `Context window · ${state.contextWindow ? formatApproxTokens(state.contextWindow) : 'n/a'}`
-        });
 
-        if (state.provider === 'anthropic') {
+        if (state.citationLabel) {
             candidates.push({
-                type: 'manuscriptCitations',
-                text: 'Manuscript citations'
+                type: 'citation',
+                text: state.citationLabel
             });
         }
 
-        if (state.provider === 'openai' || state.provider === 'google') {
+        if (state.reuseLabel) {
             candidates.push({
-                type: 'contextCompare',
-                text: `Context compare · OpenAI ${formatApproxTokens(OPENAI_CONTEXT_WINDOW)} > Gemini ${formatApproxTokens(GOOGLE_CONTEXT_WINDOW)}`
+                type: 'reuse',
+                text: state.reuseLabel
+            });
+        }
+
+        if (state.passBehaviorLabel) {
+            candidates.push({
+                type: 'passBehavior',
+                text: state.passBehaviorLabel
             });
         }
 
@@ -951,11 +971,15 @@ export function renderAiSection(params: {
 
     interface ResolvedPreviewRenderState {
         provider: AIProviderId;
+        modelId: string;
         modelLabel: string;
         modelAlias: string;
         contextWindow: number | null;
         maxInputTokens: number | null;
         maxOutputTokens: number | null;
+        citationLabel: string | null;
+        reuseLabel: string | null;
+        passBehaviorLabel: string | null;
     }
 
     const createResolvedPreviewPill = (container: HTMLElement, text: string): void => {
@@ -973,46 +997,19 @@ export function renderAiSection(params: {
         pillTexts.forEach(text => createResolvedPreviewPill(firstRowEl, text));
     };
 
-    const resolveReasoningDepthComparator = (state: ResolvedPreviewRenderState): { label: string; value: string } | null => {
-        if (state.provider !== 'openai') return null;
-        const hasStandard = BUILTIN_MODELS.some(model => model.provider === 'openai' && model.alias === 'gpt-5.4');
-        const hasPro = BUILTIN_MODELS.some(model => model.provider === 'openai' && model.alias === 'gpt-5.4-pro');
-        if (!hasStandard || !hasPro) return null;
-
-        const inPair = state.modelAlias === 'gpt-5.4'
-            || state.modelAlias === 'gpt-5.4-pro'
-            || state.modelAlias === 'gpt-5.4-2026-03-05'
-            || state.modelAlias === 'gpt-5.4-pro-2026-03-05';
-        if (!inPair) return null;
-
-        return {
-            label: 'Reasoning depth',
-            value: 'GPT-5.4 < GPT-5.4 Pro'
-        };
-    };
-
     const renderResolvedPreview = (state: ResolvedPreviewRenderState): void => {
         resolvedPreviewKicker.setText('PREVIEW (ACTIVE MODEL)');
         resolvedPreviewModel.setText(state.modelLabel);
         const providerDetail = `${providerLabel[state.provider]} · ${state.modelLabel}`;
         resolvedPreviewProvider.setText(providerDetail);
-
-        const comparator = resolveReasoningDepthComparator(state);
-        if (comparator) {
-            resolvedPreviewComparatorLabel.setText(comparator.label);
-            resolvedPreviewComparatorValue.setText(comparator.value);
-            resolvedPreviewComparator.toggleClass('ert-settings-hidden', false);
-        } else {
-            resolvedPreviewComparatorLabel.setText('');
-            resolvedPreviewComparatorValue.setText('');
-            resolvedPreviewComparator.toggleClass('ert-settings-hidden', true);
-        }
+        resolvedPreviewComparatorLabel.setText('');
+        resolvedPreviewComparatorValue.setText('');
+        resolvedPreviewComparator.toggleClass('ert-settings-hidden', true);
 
         const previewPills = resolvePreviewSignals({
-            provider: state.provider,
-            contextWindow: state.contextWindow,
-            maxInputTokens: state.maxInputTokens,
-            maxOutputTokens: state.maxOutputTokens
+            citationLabel: state.citationLabel,
+            reuseLabel: state.reuseLabel,
+            passBehaviorLabel: state.passBehaviorLabel
         });
 
         renderResolvedPreviewPills(previewPills);
@@ -1504,12 +1501,37 @@ export function renderAiSection(params: {
             };
             const previewState: ResolvedPreviewRenderState = {
                 provider,
+                modelId: estimate.model.id,
                 modelLabel: estimate.model.label,
                 modelAlias: estimate.model.alias,
                 contextWindow: estimate.model.contextWindow,
                 maxInputTokens: estimate.maxInputTokens,
                 maxOutputTokens: estimate.maxOutputTokens,
+                citationLabel: resolvePreviewCitationSignal(estimate.model),
+                reuseLabel: resolvePreviewReuseSignal(estimate.model),
+                passBehaviorLabel: null
             };
+            const currentCorpus = getCurrentCorpusContext();
+            if (currentCorpus) {
+                try {
+                    const executionEstimate = await buildCurrentInquiryExecutionEstimate({
+                        provider,
+                        modelId: estimate.model.id,
+                        questionText: INQUIRY_CANONICAL_ESTIMATE_QUESTION
+                    });
+                    const safeBudgetTokens = Math.max(0, Math.floor(estimate.effectiveInputCeiling));
+                    if (executionEstimate && executionEstimate.estimatedTokens > 0 && safeBudgetTokens > 0) {
+                        const passes = executionEstimate.estimatedTokens <= safeBudgetTokens
+                            ? 1
+                            : Math.max(2, Math.ceil(executionEstimate.estimatedTokens / safeBudgetTokens));
+                        previewState.passBehaviorLabel = passes === 1
+                            ? 'Context · Single-pass at this corpus'
+                            : `Context · ${passes}-pass likely at this corpus`;
+                    }
+                } catch {
+                    // Leave pass behavior unset when the current corpus estimate is unavailable.
+                }
+            }
             renderResolvedPreview(previewState);
             void computeVaultForecasts({
                 provider,
@@ -1548,11 +1570,15 @@ export function renderAiSection(params: {
         } catch {
             renderResolvedPreview({
                 provider,
+                modelId: '',
                 modelLabel: 'No eligible model',
                 modelAlias: providerLabel[provider],
                 contextWindow: null,
                 maxInputTokens: null,
-                maxOutputTokens: null
+                maxOutputTokens: null,
+                citationLabel: null,
+                reuseLabel: null,
+                passBehaviorLabel: null
             });
             capacityInquiryToken.setText('Unavailable');
             capacityInquiryExpected.setText('Unavailable');
