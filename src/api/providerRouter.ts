@@ -158,6 +158,7 @@ export async function callProvider(plugin: RadialTimelinePlugin, args: ProviderC
         effectiveCallArgs.disableThinking,
         cachedContentName,
         effectiveCallArgs.top_p,
+        effectiveCallArgs.citationsEnabled,
         true
       );
       return {

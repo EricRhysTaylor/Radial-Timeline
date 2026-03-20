@@ -79,7 +79,7 @@ function resolveCitationsEnabled(
     provider: AIProviderId,
     feature: string
 ): boolean {
-    if (provider !== 'anthropic') return false;
+    if (provider !== 'anthropic' && provider !== 'google') return false;
     if (!feature.toLowerCase().includes('inquiry')) return false;
     return true;
 }

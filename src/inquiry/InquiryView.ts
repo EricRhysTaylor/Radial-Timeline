@@ -217,7 +217,7 @@ const SIGMA_CHAR = String.fromCharCode(931);
 const MODE_ICON_VIEWBOX = 2048;
 const MODE_ICON_OFFSET_Y = -330;
 // Manual placement knobs for the Inquiry focal stack.
-const SCENE_DOSSIER_CANVAS_Y = -10;
+const SCENE_DOSSIER_CANVAS_Y = 4;
 const SCENE_DOSSIER_TEXT_GROUP_Y = 0;
 const SCENE_DOSSIER_BRACE_Y_OFFSET = 0;
 const SCENE_DOSSIER_WIDTH = 980;
@@ -238,10 +238,10 @@ const SCENE_DOSSIER_SOURCE_LINE_HEIGHT = 18;
 const SCENE_DOSSIER_UNBOUNDED_WRAP_LINES = Number.MAX_SAFE_INTEGER;
 const SCENE_DOSSIER_TITLE_ANCHOR_GAP = -4;
 const SCENE_DOSSIER_ANCHOR_BODY_GAP = 16;
-const SCENE_DOSSIER_BODY_ROW_GAP = 18;
+const SCENE_DOSSIER_BODY_ROW_GAP = 30;
 const SCENE_DOSSIER_FOOTER_GAP = 16;
-const SCENE_DOSSIER_SOURCE_GAP = 14;
-const SCENE_DOSSIER_SECONDARY_DIVIDER_GAP = 10;
+const SCENE_DOSSIER_SOURCE_GAP = 6;
+const SCENE_DOSSIER_SECONDARY_DIVIDER_GAP = 16;
 const SCENE_DOSSIER_SECONDARY_DIVIDER_WIDTH_RATIO = 0.3;
 const SCENE_DOSSIER_HOVER_DELAY_MS = 150;
 const SCENE_DOSSIER_HIDE_DELAY_MS = 160;
@@ -1165,6 +1165,7 @@ export class InquiryView extends ItemView {
     private sceneDossierBg?: SVGRectElement;
     private sceneDossierBraceLeft?: SVGTextElement;
     private sceneDossierBraceRight?: SVGTextElement;
+    private sceneDossierTextGroup?: SVGGElement;
     private sceneDossierHeader?: SVGTextElement;
     private sceneDossierAnchor?: SVGTextElement;
     private sceneDossierBody?: SVGTextElement;
@@ -3970,6 +3971,7 @@ export class InquiryView extends ItemView {
         this.sceneDossierBg = bg;
         this.sceneDossierBraceLeft = braceLeft;
         this.sceneDossierBraceRight = braceRight;
+        this.sceneDossierTextGroup = textGroup;
         this.sceneDossierHeader = header;
         this.sceneDossierAnchor = anchor;
         this.sceneDossierBody = body;
@@ -9106,6 +9108,7 @@ export class InquiryView extends ItemView {
             || !this.sceneDossierBg
             || !this.sceneDossierBraceLeft
             || !this.sceneDossierBraceRight
+            || !this.sceneDossierTextGroup
             || !this.sceneDossierHeader
             || !this.sceneDossierAnchor
             || !this.sceneDossierBody
@@ -9142,6 +9145,7 @@ export class InquiryView extends ItemView {
         const bodyLines = dossier.bodyLines
             .filter(line => line && line !== dossier.anchorLine)
             .slice(0, 2);
+        this.sceneDossierTextGroup.setAttribute('transform', `translate(0 ${SCENE_DOSSIER_TEXT_GROUP_Y})`);
         const bodyPrimaryText = bodyLines[0] || '';
         const bodySecondaryText = bodyLines[1] || '';
         const hasBodyPrimary = !!bodyPrimaryText;
@@ -9278,7 +9282,12 @@ export class InquiryView extends ItemView {
         }
         if (hasBodySecondary) {
             const dividerWidth = Math.round(contentTextWidth * SCENE_DOSSIER_SECONDARY_DIVIDER_WIDTH_RATIO);
-            const dividerY = bodySecondaryY - SCENE_DOSSIER_SECONDARY_DIVIDER_GAP;
+            const primaryBottomY = hasBodyPrimary
+                ? bodyPrimaryY + (Math.max(bodyPrimaryLines, 1) * SCENE_DOSSIER_BODY_PRIMARY_LINE_HEIGHT)
+                : anchorY + (Math.max(anchorLines, 1) * SCENE_DOSSIER_ANCHOR_LINE_HEIGHT);
+            const dividerY = hasBodyPrimary
+                ? Math.round((primaryBottomY + bodySecondaryY) / 2)
+                : bodySecondaryY - SCENE_DOSSIER_SECONDARY_DIVIDER_GAP;
             this.sceneDossierBodyDivider.setAttribute('x1', String(-dividerWidth / 2));
             this.sceneDossierBodyDivider.setAttribute('x2', String(dividerWidth / 2));
             this.sceneDossierBodyDivider.setAttribute('y1', String(dividerY));
@@ -9320,9 +9329,14 @@ export class InquiryView extends ItemView {
         this.sceneDossierFocusGlow.setAttribute('r', String(focusRadius));
         this.sceneDossierFocusOutline.setAttribute('cy', String(-SCENE_DOSSIER_CANVAS_Y));
         this.sceneDossierFocusOutline.setAttribute('r', String(focusRadius));
-        const braceY = hasBodyPrimary
-            ? Math.round(bodyPrimaryY + ((Math.max(bodyPrimaryLines, 1) * SCENE_DOSSIER_BODY_PRIMARY_LINE_HEIGHT) * 0.46))
-            : Math.round(anchorY + ((Math.max(anchorLines, 1) * SCENE_DOSSIER_ANCHOR_LINE_HEIGHT) * 0.92));
+        const braceY = SCENE_DOSSIER_BRACE_Y_OFFSET;
+        const contentBounds = this.sceneDossierTextGroup.getBBox();
+        const contentCenterY = contentBounds.y + (contentBounds.height / 2);
+        const contentCenterDelta = Math.round((braceY - contentCenterY) * 10) / 10;
+        this.sceneDossierTextGroup.setAttribute(
+            'transform',
+            `translate(0 ${SCENE_DOSSIER_TEXT_GROUP_Y + contentCenterDelta})`
+        );
         const braceOffsetX = Math.round((SCENE_DOSSIER_WIDTH / 2) - SCENE_DOSSIER_BRACE_INSET);
         this.sceneDossierBraceLeft.setAttribute('x', String(-braceOffsetX));
         this.sceneDossierBraceLeft.setAttribute('y', String(braceY + SCENE_DOSSIER_BRACE_Y_OFFSET));

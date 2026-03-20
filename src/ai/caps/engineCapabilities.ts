@@ -42,7 +42,7 @@ const RT_IMPLEMENTATION_STATUS: Record<Exclude<AIProviderId, 'none'>, EngineImpl
     },
     google: {
         directManuscriptCitations: false,
-        groundedToolAttribution: false,
+        groundedToolAttribution: true,
         corpusReuse: true,
         batchAnalysis: false
     },

@@ -23,7 +23,7 @@ describe('resolveEngineCapabilities', () => {
         expect(resolved.sources.status).toBe('available');
         expect(resolved.corpusReuse.status).toBe('available');
         expect(resolved.largeContext.status).toBe('available');
-        expect(resolved.largeContext.contextWindow).toBe(200000);
+        expect(resolved.largeContext.contextWindow).toBe(1000000);
         expect(resolved.batchAnalysis.status).toBe('provider_supported_not_used');
     });
 
@@ -52,12 +52,12 @@ describe('resolveEngineCapabilities', () => {
         expect(resolved.corpusReuse.status).toBe('provider_supported_not_used');
     });
 
-    it('marks Gemini reuse and context available but sources and batch unavailable', () => {
+    it('marks Gemini grounded attribution, reuse, and context available while direct manuscript citations remain unavailable', () => {
         const model = byAlias('gemini-3.1-pro-preview');
         const resolved = resolveEngineCapabilities(model);
 
         expect(resolved.directManuscriptCitations.status).toBe('unavailable');
-        expect(resolved.groundedToolAttribution.status).toBe('provider_supported_not_used');
+        expect(resolved.groundedToolAttribution.status).toBe('available');
         expect(resolved.sources.status).toBe('unavailable');
         expect(resolved.corpusReuse.status).toBe('available');
         expect(resolved.largeContext.status).toBe('available');
@@ -92,7 +92,7 @@ describe('resolveEngineCapabilities', () => {
                 modelId: 'claude-opus-4-6',
                 modelAlias: 'claude-opus-4.6',
                 modelLabel: 'Claude Opus 4.6',
-                contextWindow: 200000,
+                contextWindow: 1000000,
                 directManuscriptCitations: 'available',
                 groundedToolAttribution: 'unavailable',
                 sources: 'available',

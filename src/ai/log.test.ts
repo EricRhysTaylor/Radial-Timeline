@@ -44,6 +44,7 @@ describe('buildUsageCostBreakdown', () => {
         });
 
         expect(lines).toContain('## Cost Breakdown');
+        expect(lines).toContain('- Billed input total: ~185,581 tokens');
         expect(lines).toContain('- Raw input: ~53,581 tokens');
         expect(lines).toContain('- Cache read: ~120,000 tokens');
         expect(lines).toContain('- Cache write: ~12,000 tokens');
@@ -67,6 +68,7 @@ describe('buildUsageCostBreakdown', () => {
         });
 
         expect(lines).toContain('## Cost Breakdown');
+        expect(lines).toContain('- Billed input total: unavailable');
         expect(lines).toContain('- Raw input: unavailable');
         expect(lines).toContain('- Effective cost: unavailable');
         expect(lines).not.toContain('## Cost Accuracy');

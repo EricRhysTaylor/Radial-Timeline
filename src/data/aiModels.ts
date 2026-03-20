@@ -31,7 +31,7 @@ export const CURATED_MODELS: Record<AiProvider, CuratedModel[]> = {
         {
             id: 'gemini-3.1-pro-preview',
             label: 'Gemini 3.1 Pro Preview',
-            guidance: "→ Gemini 3.1 Pro Preview (1,048,576 context). Google grounding attribution is provider-supported, but not yet wired into RT Inquiry output mapping. [FYI](https://ai.google.dev/gemini-api/docs/models)",
+            guidance: "→ Gemini 3.1 Pro Preview (1,048,576 context). Google grounding attribution now flows into RT Inquiry Brief sources when Gemini returns grounding metadata. [FYI](https://ai.google.dev/gemini-api/docs/models)",
         },
     ],
 };

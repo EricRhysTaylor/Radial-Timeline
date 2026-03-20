@@ -1553,7 +1553,7 @@
 .ert-inquiry-svg text.ert-inquiry-scene-dossier-anchor {
   font-family: "SF Mono", "Cascadia Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
   font-size: 19px;
-  font-style: normal;
+  font-style: italic;
   font-weight: 200;
   letter-spacing: 0.02em;
   fill: color-mix(in srgb, var(--text-normal) 84%, #f1dcc2);

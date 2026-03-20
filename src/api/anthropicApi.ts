@@ -80,6 +80,20 @@ export interface AnthropicApiResponse {
                 startCharIndex?: number; endCharIndex?: number }[];
 }
 
+function mapAnthropicResponseCitations(
+  textBlocks: Array<{ type: string; text?: string; citations?: AnthropicResponseCitation[] }>
+): AnthropicApiResponse['citations'] {
+  const responseCitations = textBlocks.flatMap(b => b.citations ?? []);
+  if (!responseCitations.length) return undefined;
+  return responseCitations.map(c => ({
+    citedText: c.cited_text,
+    documentIndex: c.document_index,
+    documentTitle: c.document_title,
+    startCharIndex: c.start_char_index,
+    endCharIndex: c.end_char_index
+  }));
+}
+
 export interface AnthropicTokenCountResponse {
   success: boolean;
   inputTokens: number | null;
@@ -217,6 +231,12 @@ export async function callAnthropicApi(
       return { success: false, content: null, responseData, error: msg };
     }
     const success = responseData as AnthropicSuccessResponse;
+    // Skip thinking blocks — concatenate all text content blocks.
+    // Handles both single-block (non-citation) and multi-block (citation) responses.
+    const textBlocks = (success?.content ?? []).filter(
+      (b: { type: string }) => b.type === 'text'
+    ) as { type: string; text?: string; citations?: AnthropicResponseCitation[] }[];
+    const mappedCitations = mapAnthropicResponseCitations(textBlocks);
     const toolUseBlock = (success?.content ?? []).find(
       (block): block is AnthropicToolUseBlock => block.type === 'tool_use'
     );
@@ -224,25 +244,11 @@ export async function callAnthropicApi(
       return {
         success: true,
         content: JSON.stringify(toolUseBlock.input),
-        responseData
+        responseData,
+        ...(mappedCitations?.length ? { citations: mappedCitations } : {})
       };
     }
-    // Skip thinking blocks — concatenate all text content blocks.
-    // Handles both single-block (non-citation) and multi-block (citation) responses.
-    const textBlocks = (success?.content ?? []).filter(
-      (b: { type: string }) => b.type === 'text'
-    ) as { type: string; text?: string; citations?: AnthropicResponseCitation[] }[];
     const content = textBlocks.map(b => b.text ?? '').join('').trim();
-    const responseCitations = textBlocks.flatMap(b => b.citations ?? []);
-    const mappedCitations = responseCitations.length > 0
-      ? responseCitations.map(c => ({
-          citedText: c.cited_text,
-          documentIndex: c.document_index,
-          documentTitle: c.document_title,
-          startCharIndex: c.start_char_index,
-          endCharIndex: c.end_char_index
-        }))
-      : undefined;
     if (content) return { success: true, content, responseData, citations: mappedCitations };
     return { success: false, content: null, responseData, error: 'Invalid response structure from Anthropic.' };
   } catch (e) {

@@ -88,4 +88,41 @@ describe('providerRouter Anthropic structured output', () => {
         });
         expect((result.requestPayload as Record<string, unknown>).thinking).toBeUndefined();
     });
+
+    it('preserves Anthropic citations on structured tool responses', async () => {
+        mockedCallAnthropicApi.mockResolvedValueOnce({
+            success: true,
+            content: '{"ok":true}',
+            responseData: { model: 'claude-sonnet-4-6' },
+            citations: [{
+                citedText: 'Scene evidence quote',
+                documentIndex: 0,
+                documentTitle: 'S1 · Training',
+                startCharIndex: 12,
+                endCharIndex: 32
+            }]
+        });
+
+        const result = await callProvider(buildPlugin(), {
+            provider: 'anthropic',
+            modelId: 'claude-sonnet-4-6',
+            userPrompt: 'hello',
+            systemPrompt: 'sys',
+            jsonSchema: {
+                type: 'object',
+                properties: {
+                    ok: { type: 'boolean' }
+                },
+                required: ['ok']
+            }
+        });
+
+        expect(result.citations).toEqual([{
+            citedText: 'Scene evidence quote',
+            documentIndex: 0,
+            documentTitle: 'S1 · Training',
+            startCharIndex: 12,
+            endCharIndex: 32
+        }]);
+    });
 });

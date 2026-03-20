@@ -227,6 +227,10 @@ export function renderAiSection(params: {
         text: 'Scanning corpus...'
     });
     const costEstimateTable = costEstimateSection.createDiv({ cls: 'ert-ai-models-table' });
+    costEstimateSection.createDiv({
+        cls: 'ert-ai-cost-footnote',
+        text: '* Fresh Run reflects provider-side billing expectations. Anthropic input usage includes cache accounting, so billed input is not a direct match for "What gets sent to the AI."'
+    });
 
     const ensureCanonicalAiSettings = () => {
         if (!plugin.settings.aiSettings) {
@@ -525,6 +529,10 @@ export function renderAiSection(params: {
         cls: 'ert-ai-capacity-meta',
         text: 'Calculating...'
     });
+    const capacityInquiryProvider = capacityInquiry.valueEl.createDiv({
+        cls: 'ert-ai-capacity-meta',
+        text: 'Calculating...'
+    });
     const capacityInquirySections = capacityInquiry.valueEl.createDiv({ cls: 'ert-ai-capacity-composition' });
     renderCapacitySections(capacityInquirySections, buildInquiryCapacitySections());
 
@@ -535,6 +543,10 @@ export function renderAiSection(params: {
         text: 'Calculating...'
     });
     const capacityGossamerExpected = capacityGossamer.valueEl.createDiv({
+        cls: 'ert-ai-capacity-meta',
+        text: 'Calculating...'
+    });
+    const capacityGossamerProvider = capacityGossamer.valueEl.createDiv({
         cls: 'ert-ai-capacity-meta',
         text: 'Calculating...'
     });
@@ -1118,7 +1130,7 @@ export function renderAiSection(params: {
         costEstimateTable.empty();
 
         const headerRow = costEstimateTable.createDiv({ cls: 'ert-ai-models-row ert-ai-models-row--header' });
-        ['Provider', 'Model', 'Fresh Run', 'Cached Run', 'Expected Structured Passes'].forEach(text => {
+        ['Provider', 'Model', 'Fresh Run*', 'Cached Run', 'Expected Structured Passes'].forEach(text => {
             createCostTableCell(headerRow, text);
         });
 
@@ -1472,6 +1484,10 @@ export function renderAiSection(params: {
                     : Math.max(2, Math.ceil(providerExecutionTokens / safeBudgetTokens));
                 return `Expected structured passes · ${passes}`;
             };
+            const formatProviderInput = (providerExecutionTokens: number): string => {
+                if (providerExecutionTokens <= 0) return 'Estimated provider input · unavailable';
+                return `Estimated provider input · ${formatCorpusBreakdownToken(providerExecutionTokens)}`;
+            };
             const previewState: ResolvedPreviewRenderState = {
                 provider,
                 modelLabel: estimate.model.label,
@@ -1488,6 +1504,7 @@ export function renderAiSection(params: {
                 if (forecasts.inquiry.available) {
                     setTokenDisplay(capacityInquiryToken, formatCorpusBreakdownToken(forecasts.inquiry.localTotalTokens), 'tokens');
                     capacityInquiryExpected.setText(formatExpectedPasses(forecasts.inquiry.providerExecutionTokens));
+                    capacityInquiryProvider.setText(formatProviderInput(forecasts.inquiry.providerExecutionTokens));
                     renderCapacitySections(capacityInquirySections, buildInquiryCapacitySections({
                         sceneCount: forecasts.inquiry.sceneCount,
                         outlineCount: forecasts.inquiry.outlineCount,
@@ -1498,11 +1515,13 @@ export function renderAiSection(params: {
                 } else {
                     capacityInquiryToken.setText('Unavailable');
                     capacityInquiryExpected.setText('Unavailable');
+                    capacityInquiryProvider.setText('Unavailable');
                     renderCapacitySections(capacityInquirySections, buildInquiryCapacitySections());
                 }
 
                 setTokenDisplay(capacityGossamerToken, formatCorpusBreakdownToken(forecasts.gossamer.localTotalTokens), 'tokens');
                 capacityGossamerExpected.setText(formatExpectedPasses(forecasts.gossamer.providerExecutionTokens));
+                capacityGossamerProvider.setText(formatProviderInput(forecasts.gossamer.providerExecutionTokens));
                 renderCapacitySections(
                     capacityGossamerSections,
                     buildGossamerCapacitySections(
@@ -1523,9 +1542,11 @@ export function renderAiSection(params: {
             });
             capacityInquiryToken.setText('Unavailable');
             capacityInquiryExpected.setText('Unavailable');
+            capacityInquiryProvider.setText('Unavailable');
             renderCapacitySections(capacityInquirySections, buildInquiryCapacitySections());
             capacityGossamerToken.setText('Unavailable');
             capacityGossamerExpected.setText('Unavailable');
+            capacityGossamerProvider.setText('Unavailable');
             renderCapacitySections(capacityGossamerSections, buildGossamerCapacitySections(0));
         }
 

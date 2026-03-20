@@ -128,6 +128,7 @@ export function sanitizeProviderArgs(
     const normalizedModelId = normalizeModelId(provider, modelId);
     const temperatureAllowed = capabilities.supportsTemperature &&
         !MODEL_TEMPERATURE_UNSUPPORTED[provider].has(normalizedModelId);
+    const supportsCitationControl = capabilities.supportsCitations || provider === 'gemini';
 
     const sanitized: ProviderCallArgs = {
         userPrompt: args.userPrompt
@@ -157,7 +158,7 @@ export function sanitizeProviderArgs(
     if (capabilities.supportsExtendedThinking && typeof args.thinkingBudgetTokens === 'number') {
         sanitized.thinkingBudgetTokens = args.thinkingBudgetTokens;
     }
-    if (capabilities.supportsCitations && args.citationsEnabled) {
+    if (supportsCitationControl && args.citationsEnabled) {
         sanitized.citationsEnabled = args.citationsEnabled;
     }
     if (capabilities.supportsCitations && args.evidenceDocuments) {

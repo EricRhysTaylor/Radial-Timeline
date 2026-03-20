@@ -167,6 +167,7 @@ export function formatUsageCostBreakdownLines(
     };
     const lines = [
         '## Cost Breakdown',
+        `- Billed input total: ${formatTokenCount(breakdown?.inputTokens)}`,
         `- Raw input: ${formatTokenCount(breakdown?.rawInputTokens)}`,
         `- Cache read: ${formatTokenCount(breakdown?.cacheReadInputTokens)}`,
         `- Cache write: ${formatTokenCount(breakdown?.cacheCreationInputTokens)}`,

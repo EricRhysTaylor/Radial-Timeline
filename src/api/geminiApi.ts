@@ -6,12 +6,42 @@
 // DEPRECATED: Legacy provider adapter; prefer aiClient entrypoints.
 import { requestUrl } from 'obsidian';
 import { warnLegacyAccess } from './legacyAccessGuard';
+import type { SourceCitation } from '../ai/types';
 
 interface GeminiPart { text?: string }
 interface GeminiContent { parts?: GeminiPart[]; role?: string }
-interface GeminiCandidate { 
+interface GeminiSearchTool {
+  google_search: Record<string, never>;
+}
+
+interface GeminiGroundingWebSource {
+  uri?: string;
+  title?: string;
+}
+
+interface GeminiGroundingChunk {
+  web?: GeminiGroundingWebSource;
+  retrievedContext?: GeminiGroundingWebSource;
+}
+
+interface GeminiGroundingSupport {
+  segment?: {
+    text?: string;
+    startIndex?: number;
+    endIndex?: number;
+  };
+  groundingChunkIndices?: number[];
+}
+
+interface GeminiGroundingMetadata {
+  groundingChunks?: GeminiGroundingChunk[];
+  groundingSupports?: GeminiGroundingSupport[];
+}
+
+interface GeminiCandidate {
   content: GeminiContent;
   finishReason?: string;
+  groundingMetadata?: GeminiGroundingMetadata;
 }
 
 interface GeminiGenerateSuccess {
@@ -27,7 +57,85 @@ export interface GeminiApiResponse {
   success: boolean;
   content: string | null;
   responseData: unknown;
+  citations?: SourceCitation[];
   error?: string;
+}
+
+function dedupeGeminiCitations(citations: SourceCitation[]): SourceCitation[] {
+  const seen = new Set<string>();
+  const deduped: SourceCitation[] = [];
+  citations.forEach(citation => {
+    const key = [
+      citation.attributionType,
+      'sourceId' in citation ? citation.sourceId ?? '' : '',
+      'url' in citation ? citation.url ?? '' : '',
+      'sourceLabel' in citation ? citation.sourceLabel : '',
+      citation.citedText ?? '',
+      citation.startCharIndex ?? '',
+      citation.endCharIndex ?? ''
+    ].join('|');
+    if (seen.has(key)) return;
+    seen.add(key);
+    deduped.push(citation);
+  });
+  return deduped;
+}
+
+export function extractGeminiGroundingCitations(responseData: unknown): SourceCitation[] {
+  if (!responseData || typeof responseData !== 'object') return [];
+  const data = responseData as GeminiGenerateSuccess;
+  const citations: SourceCitation[] = [];
+
+  const candidates = Array.isArray(data.candidates) ? data.candidates : [];
+  candidates.forEach(candidate => {
+    const metadata = candidate.groundingMetadata;
+    const chunks = Array.isArray(metadata?.groundingChunks) ? metadata.groundingChunks : [];
+    const supports = Array.isArray(metadata?.groundingSupports) ? metadata.groundingSupports : [];
+
+    const buildCitation = (
+      chunk: GeminiGroundingChunk | undefined,
+      support?: GeminiGroundingSupport
+    ): SourceCitation | null => {
+      const source = chunk?.web ?? chunk?.retrievedContext;
+      const url = typeof source?.uri === 'string' && source.uri.trim() ? source.uri.trim() : undefined;
+      const title = typeof source?.title === 'string' && source.title.trim() ? source.title.trim() : undefined;
+      if (!url && !title) return null;
+      const citedText = typeof support?.segment?.text === 'string' && support.segment.text.trim()
+        ? support.segment.text.trim()
+        : undefined;
+      const startCharIndex = typeof support?.segment?.startIndex === 'number' ? support.segment.startIndex : undefined;
+      const endCharIndex = typeof support?.segment?.endIndex === 'number' ? support.segment.endIndex : undefined;
+      return {
+        attributionType: 'grounded',
+        sourceLabel: title ?? url ?? 'Grounded source',
+        sourceId: url ?? title,
+        url,
+        title,
+        citedText,
+        startCharIndex,
+        endCharIndex
+      };
+    };
+
+    if (supports.length) {
+      supports.forEach(support => {
+        const indices = Array.isArray(support.groundingChunkIndices)
+          ? support.groundingChunkIndices
+          : [];
+        indices.forEach(index => {
+          const citation = buildCitation(chunks[index], support);
+          if (citation) citations.push(citation);
+        });
+      });
+    } else {
+      chunks.forEach(chunk => {
+        const citation = buildCitation(chunk);
+        if (citation) citations.push(citation);
+      });
+    }
+  });
+
+  return dedupeGeminiCitations(citations);
 }
 
 export async function callGeminiApi(
@@ -41,6 +149,7 @@ export async function callGeminiApi(
   disableThinking: boolean = false,  // Disable extended thinking mode (for 2.5-pro models)
   cachedContentName?: string, // Optional: name of cached content resource (e.g. "cachedContents/...")
   topP?: number,
+  citationsEnabled?: boolean,
   internalAdapterAccess?: boolean
 ): Promise<GeminiApiResponse> {
   warnLegacyAccess('geminiApi.callGeminiApi', internalAdapterAccess);
@@ -67,6 +176,7 @@ export async function callGeminiApi(
     };
     systemInstruction?: { parts: { text: string }[] };
     cachedContent?: string;
+    tools?: GeminiSearchTool[];
   };
   const body: GeminiRequest = {
     contents: [
@@ -105,6 +215,9 @@ export async function callGeminiApi(
   if (jsonSchema) {
     body.generationConfig.responseMimeType = 'application/json';
     body.generationConfig.responseSchema = jsonSchema;
+  }
+  if (citationsEnabled) {
+    body.tools = [{ google_search: {} }];
   }
 
   let responseData: unknown;
@@ -160,7 +273,10 @@ export async function callGeminiApi(
     }
     
     const text = candidate?.content?.parts?.map(p => p.text || '').join('').trim();
-    if (text) return { success: true, content: text, responseData };
+    if (text) {
+      const citations = extractGeminiGroundingCitations(responseData);
+      return { success: true, content: text, responseData, ...(citations.length ? { citations } : {}) };
+    }
     
     // Invalid response structure - log minimal debug info
     console.error('[Gemini API] Invalid response structure:', {

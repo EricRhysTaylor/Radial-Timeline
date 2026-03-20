@@ -238,10 +238,9 @@ export function renderSceneNormalizerSection(params: {
 
     let checkBtn: ButtonComponent | undefined;
     checkBtn = new ButtonComponent(headerRow.controlEl)
-        .setButtonText('Check Scenes')
+        .setButtonText('Check notes')
         .setCta()
         .onClick(() => void runCheckScenes());
-    checkBtn.setIcon('shield-check');
 
     let copyBtn: HTMLButtonElement | undefined;
     let addCoreBtn: ButtonComponent | undefined;

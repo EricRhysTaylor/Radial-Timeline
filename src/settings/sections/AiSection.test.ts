@@ -129,6 +129,8 @@ describe('AI settings models table', () => {
     it('renders always-visible AI transparency section with execution preference controls', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
         expect(source.includes(".setName('What gets sent to the AI')")).toBe(true);
+        expect(source.includes('Fresh Run*')).toBe(true);
+        expect(source.includes('* Fresh Run reflects provider-side billing expectations. Anthropic input usage includes cache accounting')).toBe(true);
         expect(source.includes('Request composition')).toBe(false);
         expect(source.includes("createEl('details', { cls: 'ert-ai-fold ert-ai-large-handling' }")).toBe(false);
         expect(source.includes('attachAiCollapseButton(largeHandling')).toBe(false);
@@ -136,6 +138,7 @@ describe('AI settings models table', () => {
         expect(source.includes('singlePassOnly')).toBe(true);
         expect(source.includes('ert-ai-capacity-grid')).toBe(true);
         expect(source.includes('Expected Structured Passes')).toBe(true);
+        expect(source.includes('Estimated provider input')).toBe(true);
     });
 
     it('clarifies that Pulse context only affects hover reveal', () => {
@@ -154,6 +157,7 @@ describe('AI settings models table', () => {
         expect(source.includes('Editorial analysis instructions')).toBe(true);
         expect(source.includes('outputContractTokens')).toBe(true);
         expect(source.includes('localTotalTokens')).toBe(true);
+        expect(source.includes('providerExecutionTokens')).toBe(true);
         expect(source.includes('resolveActiveRoleTemplate')).toBe(true);
         expect(source.includes('buildOutputRulesText')).toBe(true);
         expect(source.includes('Scene-linked findings')).toBe(true);

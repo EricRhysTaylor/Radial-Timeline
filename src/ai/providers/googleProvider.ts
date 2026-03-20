@@ -22,7 +22,8 @@ export class GoogleProvider implements AIProvider {
             userPrompt: req.userPrompt,
             maxTokens: req.maxOutputTokens,
             temperature: req.temperature,
-            top_p: req.topP
+            top_p: req.topP,
+            citationsEnabled: req.citationsEnabled
         });
         return result;
     }
@@ -37,7 +38,8 @@ export class GoogleProvider implements AIProvider {
             maxTokens: req.maxOutputTokens,
             temperature: req.temperature,
             top_p: req.topP,
-            jsonSchema: req.jsonSchema
+            jsonSchema: req.jsonSchema,
+            citationsEnabled: req.citationsEnabled
         });
         return result;
     }
