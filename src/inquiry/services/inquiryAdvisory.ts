@@ -11,6 +11,7 @@ import type { InquiryScope } from '../state';
 import { INQUIRY_REQUIRED_CAPABILITIES, type ResolvedInquiryEngine } from './inquiryModelResolver';
 
 export const INQUIRY_ADVISORY_CONTEXT_VERSION = 2 as const;
+const MIN_COMPELLING_SINGLE_PASS_GAIN = 2;
 
 export type InquiryAdvisoryReasonCode =
     | 'single_pass_preferred'
@@ -348,8 +349,11 @@ export function computeInquiryAdvisoryContext(input: ComputeInquiryAdvisoryInput
         }
     }
 
-    if (!reasonCode && currentPassCount > 1) {
-        suggestions = sortedAlternatives.filter(candidate => candidate.expectedPassCount === 1);
+    if (!reasonCode && currentPassCount > MIN_COMPELLING_SINGLE_PASS_GAIN) {
+        suggestions = sortedAlternatives.filter(candidate =>
+            candidate.expectedPassCount === 1
+            && (currentPassCount - candidate.expectedPassCount) >= MIN_COMPELLING_SINGLE_PASS_GAIN
+        );
         if (suggestions.length) {
             reasonCode = 'single_pass_preferred';
         }

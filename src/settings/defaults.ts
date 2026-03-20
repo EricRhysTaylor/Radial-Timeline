@@ -87,7 +87,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     anthropicApiKey: '', // Default empty string
     anthropicModelId: 'claude-sonnet-4-6', // Default to Sonnet 4.6
     geminiApiKey: '',
-    geminiModelId: DEFAULT_GEMINI_MODEL_ID, // Default to Gemini 3.1 Pro Preview
+    geminiModelId: DEFAULT_GEMINI_MODEL_ID, // Default to Gemini 2.5 Pro
     defaultAiProvider: 'openai',
     openaiModelId: 'gpt-5.4', // Default to GPT-5.4
     enableAiSceneAnalysis: true,

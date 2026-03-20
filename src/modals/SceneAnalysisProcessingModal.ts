@@ -1066,7 +1066,7 @@ export class SceneAnalysisProcessingModal extends Modal {
             if (provider === 'anthropic') {
                 modelId = this.plugin.settings.anthropicModelId || 'claude-sonnet-4-6';
             } else if (provider === 'gemini') {
-                modelId = this.plugin.settings.geminiModelId || 'gemini-3-pro-preview';
+                modelId = this.plugin.settings.geminiModelId || 'gemini-2.5-pro';
             } else if (provider === 'openai') {
                 modelId = this.plugin.settings.openaiModelId || 'gpt-5.4';
             } else if (provider === 'local') {

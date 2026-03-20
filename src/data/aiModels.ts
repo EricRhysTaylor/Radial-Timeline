@@ -29,9 +29,14 @@ export const CURATED_MODELS: Record<AiProvider, CuratedModel[]> = {
     ],
     gemini: [
         {
+            id: 'gemini-2.5-pro',
+            label: 'Gemini 2.5 Pro',
+            guidance: "→ Gemini 2.5 Pro (1,048,576 context). Stable Google lane with Search grounding support; RT now maps grounding metadata into Inquiry Brief sources. [FYI](https://ai.google.dev/gemini-api/docs/models)",
+        },
+        {
             id: 'gemini-3.1-pro-preview',
             label: 'Gemini 3.1 Pro Preview',
-            guidance: "→ Gemini 3.1 Pro Preview (1,048,576 context). Google grounding attribution now flows into RT Inquiry Brief sources when Gemini returns grounding metadata. [FYI](https://ai.google.dev/gemini-api/docs/models)",
+            guidance: "Gemini 3.1 Pro Preview remains the experimental Google lane in RT. Use Gemini 2.5 Pro when grounded citations need to be dependable. [FYI](https://ai.google.dev/gemini-api/docs/models)",
         },
     ],
 };

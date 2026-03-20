@@ -50,3 +50,12 @@ describe('BUILTIN_MODELS Anthropic Claude 4.6 metadata', () => {
         });
     });
 });
+
+describe('BUILTIN_MODELS Google Gemini metadata', () => {
+    it('marks Gemini 2.5 Pro as the stable Google lane and 3.1 Pro Preview as legacy', () => {
+        expect(byAlias('gemini-2.5-pro').status).toBe('stable');
+        expect(byAlias('gemini-3.1-pro-preview').status).toBe('legacy');
+        expect(byAlias('gemini-2.5-pro').contextWindow).toBe(1048576);
+        expect(byAlias('gemini-2.5-pro').maxOutput).toBe(65536);
+    });
+});

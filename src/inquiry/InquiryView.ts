@@ -217,9 +217,10 @@ const SIGMA_CHAR = String.fromCharCode(931);
 const MODE_ICON_VIEWBOX = 2048;
 const MODE_ICON_OFFSET_Y = -330;
 // Manual placement knobs for the Inquiry focal stack.
-const SCENE_DOSSIER_CANVAS_Y = 4;
+const SCENE_DOSSIER_CANVAS_Y = 6;
 const SCENE_DOSSIER_TEXT_GROUP_Y = 0;
-const SCENE_DOSSIER_BRACE_Y_OFFSET = 0;
+const SCENE_DOSSIER_CENTER_Y = 0;
+const SCENE_DOSSIER_BRACE_BASELINE_OFFSET = 22;
 const SCENE_DOSSIER_WIDTH = 980;
 const SCENE_DOSSIER_MIN_HEIGHT = 0;
 const SCENE_DOSSIER_SIDE_PADDING = 136;
@@ -227,11 +228,14 @@ const SCENE_DOSSIER_TITLE_MAX_WIDTH = 760;
 const SCENE_DOSSIER_TEXT_MAX_WIDTH = 700;
 const SCENE_DOSSIER_ANCHOR_MAX_WIDTH = 620;
 const SCENE_DOSSIER_PADDING_Y = 30;
+const SCENE_DOSSIER_HEADER_Y_OFFSET = -47;
 const SCENE_DOSSIER_HEADER_SIZE = 60;
 const SCENE_DOSSIER_HEADER_LINE_HEIGHT = 64;
 const SCENE_DOSSIER_ANCHOR_LINE_HEIGHT = 22;
 const SCENE_DOSSIER_BODY_PRIMARY_LINE_HEIGHT = 24;
 const SCENE_DOSSIER_BODY_SECONDARY_LINE_HEIGHT = 24;
+const SCENE_DOSSIER_FOOTER_Y_OFFSET = -12;
+const SCENE_DOSSIER_SOURCE_Y_OFFSET = -12;
 const SCENE_DOSSIER_FOOTER_SIZE = 14;
 const SCENE_DOSSIER_FOOTER_LINE_HEIGHT = 18;
 const SCENE_DOSSIER_SOURCE_LINE_HEIGHT = 18;
@@ -1166,6 +1170,7 @@ export class InquiryView extends ItemView {
     private sceneDossierBraceLeft?: SVGTextElement;
     private sceneDossierBraceRight?: SVGTextElement;
     private sceneDossierTextGroup?: SVGGElement;
+    private sceneDossierCoreGroup?: SVGGElement;
     private sceneDossierHeader?: SVGTextElement;
     private sceneDossierAnchor?: SVGTextElement;
     private sceneDossierBody?: SVGTextElement;
@@ -1494,10 +1499,12 @@ export class InquiryView extends ItemView {
                 this.handleModeIconToggleClick();
             });
             this.registerSvgEvent(this.modeIconToggleHit, 'pointerenter', () => {
-                if (this.isInquiryGuidanceLockout()) return;
+                if (this.isInquiryGuidanceLockout() || this.state.isRunning) return;
+                this.setModeIconHoverState(true);
                 this.setHoverText(this.buildModeToggleHoverText());
             });
             this.registerSvgEvent(this.modeIconToggleHit, 'pointerleave', () => {
+                this.setModeIconHoverState(false);
                 if (this.isInquiryGuidanceLockout()) return;
                 this.clearHoverText();
             });
@@ -3944,18 +3951,20 @@ export class InquiryView extends ItemView {
         const header = createSvgText(textGroup, 'ert-inquiry-scene-dossier-header', '', 0, SCENE_DOSSIER_PADDING_Y + SCENE_DOSSIER_HEADER_SIZE);
         header.setAttribute('text-anchor', 'middle');
 
-        const anchor = createSvgText(textGroup, 'ert-inquiry-scene-dossier-anchor', '', 0, 0);
+        const coreGroup = createSvgGroup(textGroup, 'ert-inquiry-scene-dossier-core');
+
+        const anchor = createSvgText(coreGroup, 'ert-inquiry-scene-dossier-anchor', '', 0, 0);
         anchor.setAttribute('text-anchor', 'middle');
 
-        const body = createSvgText(textGroup, 'ert-inquiry-scene-dossier-body', '', 0, 0);
+        const body = createSvgText(coreGroup, 'ert-inquiry-scene-dossier-body', '', 0, 0);
         body.setAttribute('text-anchor', 'middle');
 
-        const bodySecondary = createSvgText(textGroup, 'ert-inquiry-scene-dossier-body ert-inquiry-scene-dossier-body--secondary', '', 0, 0);
+        const bodySecondary = createSvgText(coreGroup, 'ert-inquiry-scene-dossier-body ert-inquiry-scene-dossier-body--secondary', '', 0, 0);
         bodySecondary.setAttribute('text-anchor', 'middle');
 
         const bodyDivider = createSvgElement('line');
         bodyDivider.classList.add('ert-inquiry-scene-dossier-divider', 'ert-hidden');
-        textGroup.appendChild(bodyDivider);
+        coreGroup.appendChild(bodyDivider);
 
         const footer = createSvgText(textGroup, 'ert-inquiry-scene-dossier-footer', '', 0, 0);
         footer.setAttribute('text-anchor', 'middle');
@@ -3972,6 +3981,7 @@ export class InquiryView extends ItemView {
         this.sceneDossierBraceLeft = braceLeft;
         this.sceneDossierBraceRight = braceRight;
         this.sceneDossierTextGroup = textGroup;
+        this.sceneDossierCoreGroup = coreGroup;
         this.sceneDossierHeader = header;
         this.sceneDossierAnchor = anchor;
         this.sceneDossierBody = body;
@@ -4165,6 +4175,12 @@ export class InquiryView extends ItemView {
         if (!this.rootSvg) return;
         this.rootSvg.classList.toggle('is-mode-flow', this.state.mode === 'flow');
         this.rootSvg.classList.toggle('is-mode-depth', this.state.mode === 'depth');
+    }
+
+    private setModeIconHoverState(active: boolean): void {
+        if (!this.rootSvg) return;
+        const canHover = !this.isInquiryGuidanceLockout() && !this.state.isRunning;
+        this.rootSvg.classList.toggle('is-mode-icon-hover', active && canHover);
     }
 
     private getZoneColorVar(zone: InquiryZone): string {
@@ -4457,7 +4473,11 @@ export class InquiryView extends ItemView {
             ? (this.lastReadinessUiState ?? readinessUi)
             : readinessUi;
         // While the estimate is still loading and there is no prior stable state, skip rendering.
-        if (effectiveReadinessUi.pending) return;
+        if (effectiveReadinessUi.pending) {
+            this.minimap.resetPressureGauge();
+            this.updateMinimapReuseStatus();
+            return;
+        }
         this.lastReadinessUiState = effectiveReadinessUi;
         const basePassPlan = this.getCurrentPassPlan(effectiveReadinessUi);
         const passPlan = this.getDisplayedPassPlan(basePassPlan);
@@ -6311,6 +6331,9 @@ export class InquiryView extends ItemView {
             this.rootSvg.classList.toggle('is-no-scenes', state === 'no-scenes');
             this.rootSvg.classList.toggle('is-guidance-lockout', lockout);
         }
+        if (lockout || running) {
+            this.setModeIconHoverState(false);
+        }
         this.contentEl.classList.toggle('is-inquiry-blocked', blocked);
         this.contentEl.classList.toggle('is-guidance-lockout', lockout);
 
@@ -7535,7 +7558,7 @@ export class InquiryView extends ItemView {
             return clean(this.plugin.settings.anthropicModelId || 'claude-sonnet-4-6');
         }
         if (provider === 'gemini') {
-            return clean(this.plugin.settings.geminiModelId || 'gemini-3.1-pro-preview');
+            return clean(this.plugin.settings.geminiModelId || 'gemini-2.5-pro');
         }
         if (provider === 'local') {
             return clean(this.plugin.settings.localModelId || 'local-model');
@@ -9109,6 +9132,7 @@ export class InquiryView extends ItemView {
             || !this.sceneDossierBraceLeft
             || !this.sceneDossierBraceRight
             || !this.sceneDossierTextGroup
+            || !this.sceneDossierCoreGroup
             || !this.sceneDossierHeader
             || !this.sceneDossierAnchor
             || !this.sceneDossierBody
@@ -9146,6 +9170,7 @@ export class InquiryView extends ItemView {
             .filter(line => line && line !== dossier.anchorLine)
             .slice(0, 2);
         this.sceneDossierTextGroup.setAttribute('transform', `translate(0 ${SCENE_DOSSIER_TEXT_GROUP_Y})`);
+        this.sceneDossierCoreGroup.setAttribute('transform', 'translate(0 0)');
         const bodyPrimaryText = bodyLines[0] || '';
         const bodySecondaryText = bodyLines[1] || '';
         const hasBodyPrimary = !!bodyPrimaryText;
@@ -9239,7 +9264,7 @@ export class InquiryView extends ItemView {
             dossier.title,
             titleTextWidth,
             SCENE_DOSSIER_HEADER_LINE_HEIGHT,
-            titleY,
+            titleY + SCENE_DOSSIER_HEADER_Y_OFFSET,
             { align: 'center' }
         );
         this.setPositionedDossierTextBlock(
@@ -9282,12 +9307,14 @@ export class InquiryView extends ItemView {
         }
         if (hasBodySecondary) {
             const dividerWidth = Math.round(contentTextWidth * SCENE_DOSSIER_SECONDARY_DIVIDER_WIDTH_RATIO);
-            const primaryBottomY = hasBodyPrimary
-                ? bodyPrimaryY + (Math.max(bodyPrimaryLines, 1) * SCENE_DOSSIER_BODY_PRIMARY_LINE_HEIGHT)
-                : anchorY + (Math.max(anchorLines, 1) * SCENE_DOSSIER_ANCHOR_LINE_HEIGHT);
-            const dividerY = hasBodyPrimary
-                ? Math.round((primaryBottomY + bodySecondaryY) / 2)
-                : bodySecondaryY - SCENE_DOSSIER_SECONDARY_DIVIDER_GAP;
+            const upperTextEl = hasBodyPrimary
+                ? this.sceneDossierBody
+                : this.sceneDossierAnchor;
+            const upperBounds = upperTextEl.getBBox();
+            const secondaryBounds = this.sceneDossierBodySecondary.getBBox();
+            const dividerY = Math.round(
+                ((upperBounds.y + upperBounds.height) + secondaryBounds.y) / 2
+            );
             this.sceneDossierBodyDivider.setAttribute('x1', String(-dividerWidth / 2));
             this.sceneDossierBodyDivider.setAttribute('x2', String(dividerWidth / 2));
             this.sceneDossierBodyDivider.setAttribute('y1', String(dividerY));
@@ -9302,7 +9329,7 @@ export class InquiryView extends ItemView {
                 dossier.metaLine ?? '',
                 contentTextWidth,
                 SCENE_DOSSIER_FOOTER_LINE_HEIGHT,
-                metaY,
+                metaY + SCENE_DOSSIER_FOOTER_Y_OFFSET,
                 { align: 'center' }
             );
         } else {
@@ -9314,7 +9341,7 @@ export class InquiryView extends ItemView {
                 dossier.sourceLabel ?? '',
                 contentTextWidth,
                 SCENE_DOSSIER_SOURCE_LINE_HEIGHT,
-                sourceY,
+                sourceY + SCENE_DOSSIER_SOURCE_Y_OFFSET,
                 { align: 'center' }
             );
         } else {
@@ -9329,19 +9356,18 @@ export class InquiryView extends ItemView {
         this.sceneDossierFocusGlow.setAttribute('r', String(focusRadius));
         this.sceneDossierFocusOutline.setAttribute('cy', String(-SCENE_DOSSIER_CANVAS_Y));
         this.sceneDossierFocusOutline.setAttribute('r', String(focusRadius));
-        const braceY = SCENE_DOSSIER_BRACE_Y_OFFSET;
-        const contentBounds = this.sceneDossierTextGroup.getBBox();
-        const contentCenterY = contentBounds.y + (contentBounds.height / 2);
-        const contentCenterDelta = Math.round((braceY - contentCenterY) * 10) / 10;
-        this.sceneDossierTextGroup.setAttribute(
+        const coreBounds = this.sceneDossierCoreGroup.getBBox();
+        const coreCenterY = coreBounds.y + (coreBounds.height / 2);
+        const coreGroupDelta = Math.round((SCENE_DOSSIER_CENTER_Y - coreCenterY) * 10) / 10;
+        this.sceneDossierCoreGroup.setAttribute(
             'transform',
-            `translate(0 ${SCENE_DOSSIER_TEXT_GROUP_Y + contentCenterDelta})`
+            `translate(0 ${coreGroupDelta})`
         );
         const braceOffsetX = Math.round((SCENE_DOSSIER_WIDTH / 2) - SCENE_DOSSIER_BRACE_INSET);
         this.sceneDossierBraceLeft.setAttribute('x', String(-braceOffsetX));
-        this.sceneDossierBraceLeft.setAttribute('y', String(braceY + SCENE_DOSSIER_BRACE_Y_OFFSET));
+        this.sceneDossierBraceLeft.setAttribute('y', String(SCENE_DOSSIER_CENTER_Y + SCENE_DOSSIER_BRACE_BASELINE_OFFSET));
         this.sceneDossierBraceRight.setAttribute('x', String(braceOffsetX));
-        this.sceneDossierBraceRight.setAttribute('y', String(braceY + SCENE_DOSSIER_BRACE_Y_OFFSET));
+        this.sceneDossierBraceRight.setAttribute('y', String(SCENE_DOSSIER_CENTER_Y + SCENE_DOSSIER_BRACE_BASELINE_OFFSET));
         this.sceneDossierBraceLeft.setAttribute('font-size', String(SCENE_DOSSIER_BRACE_SIZE));
         this.sceneDossierBraceRight.setAttribute('font-size', String(SCENE_DOSSIER_BRACE_SIZE));
 

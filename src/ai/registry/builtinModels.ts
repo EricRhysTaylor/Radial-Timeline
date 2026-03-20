@@ -190,6 +190,20 @@ export const BUILTIN_MODELS: ModelInfo[] = [
     },
     {
         provider: 'google',
+        id: 'gemini-2.5-pro',
+        alias: 'gemini-2.5-pro',
+        label: 'Gemini 2.5 Pro',
+        line: 'gemini-pro',
+        tier: 'DEEP',
+        capabilities: ['longContext', 'jsonStrict', 'reasoningStrong', 'highOutputCap', 'streaming'],
+        personality: { reasoning: 9, writing: 8, determinism: 8 },
+        contextWindow: 1048576,
+        maxOutput: 65536,
+        releasedAt: '2025-06-01',
+        status: 'stable'
+    },
+    {
+        provider: 'google',
         id: 'gemini-3.1-pro-preview',
         alias: 'gemini-3.1-pro-preview',
         label: 'Gemini 3.1 Pro Preview',
@@ -199,7 +213,7 @@ export const BUILTIN_MODELS: ModelInfo[] = [
         personality: { reasoning: 9, writing: 8, determinism: 8 },
         contextWindow: 1048576,
         maxOutput: 65536,
-        status: 'stable'
+        status: 'legacy'
     },
     {
         provider: 'google',

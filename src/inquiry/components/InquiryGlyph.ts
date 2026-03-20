@@ -629,8 +629,20 @@ export class InquiryGlyph {
         const showError = errorRing === kind;
         const errorColor = showError ? '#ff4d4d' : undefined;
         const ringColor = overrideColor ?? errorColor;
+        const resolvedRingColor = ringColor ?? InquiryGlyph.mixColors(
+            ARC_BASE_TINT,
+            ARC_MAX_GREEN,
+            Math.min(Math.max(value, 0), 1)
+        );
         this.updateRingArc(progress, arc, value, visualValue, radius, strokeWidth, ringColor);
         this.updateBadge(badgeCircle, badgeText, badgeIcon, value, visualValue, radius, strokeWidth, showError, ringColor);
+        const ownerSvg = this.root.ownerSVGElement;
+        if (ownerSvg) {
+            ownerSvg.style.setProperty(
+                kind === 'flow' ? '--ert-inquiry-flow-ring-color' : '--ert-inquiry-depth-ring-color',
+                resolvedRingColor
+            );
+        }
     }
 
     private updateRingArc(

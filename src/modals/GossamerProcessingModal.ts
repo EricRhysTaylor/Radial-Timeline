@@ -123,7 +123,7 @@ export class GossamerProcessingModal extends Modal {
     }
 
     private getActiveModelDisplayName(): string {
-        const modelId = this.plugin.settings.geminiModelId || 'gemini-3.1-pro-preview';
+        const modelId = this.plugin.settings.geminiModelId || 'gemini-2.5-pro';
         return getModelDisplayName(modelId);
     }
 

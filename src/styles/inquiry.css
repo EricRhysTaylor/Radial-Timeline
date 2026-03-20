@@ -126,10 +126,14 @@
 }
 
 .ert-inquiry-mode-icon {
+  --ert-inquiry-mode-icon-color: var(--text-normal);
+  color: var(--ert-inquiry-mode-icon-color);
   opacity: 0;
   pointer-events: none;
   cursor: default;
-  transition: opacity 180ms ease;
+  transform-box: fill-box;
+  transform-origin: center center;
+  transition: opacity 180ms ease, color 180ms ease, filter 180ms ease, transform 180ms ease;
 }
 
 .ert-inquiry-mode-icon-hit {
@@ -144,11 +148,25 @@
 }
 
 .ert-inquiry-svg.is-mode-flow .ert-inquiry-mode-icon--flow {
+  --ert-inquiry-mode-icon-color: var(--ert-inquiry-flow-ring-color, var(--text-normal));
   opacity: 0.36;
 }
 
 .ert-inquiry-svg.is-mode-depth .ert-inquiry-mode-icon--depth {
+  --ert-inquiry-mode-icon-color: var(--ert-inquiry-depth-ring-color, var(--text-normal));
   opacity: 0.36;
+}
+
+.ert-inquiry-svg.is-mode-icon-hover:not(.is-guidance-lockout):not(.is-running).is-mode-flow .ert-inquiry-mode-icon--flow {
+  opacity: 0.78;
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--ert-inquiry-flow-ring-color, var(--text-normal)) 72%, transparent));
+  transform: scale(1.03);
+}
+
+.ert-inquiry-svg.is-mode-icon-hover:not(.is-guidance-lockout):not(.is-running).is-mode-depth .ert-inquiry-mode-icon--depth {
+  opacity: 0.78;
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--ert-inquiry-depth-ring-color, var(--text-normal)) 72%, transparent));
+  transform: scale(1.03);
 }
 
 .ert-inquiry-svg.is-guidance-lockout .ert-inquiry-mode-icon {

@@ -660,6 +660,38 @@ export class InquiryMinimapRenderer {
         this.runningStyleSource = undefined;
     }
 
+    resetPressureGauge(): void {
+        this.minimapBackboneGlow?.setAttribute('width', '0');
+        this.minimapBackboneShine?.setAttribute('width', '0');
+        this.minimapBackboneCachedOverlay?.classList.add('ert-hidden');
+        this.minimapBackboneCachedOverlay?.setAttribute('width', '0');
+        this.minimapBackboneGroup?.classList.remove(
+            'is-pressure-normal',
+            'is-pressure-amber',
+            'is-pressure-red',
+            'is-pressure-over-budget'
+        );
+        if (this.minimapTokenCapBar) {
+            this.minimapTokenCapBar.setAttribute('width', '0');
+            this.minimapTokenCapBar.style.removeProperty('fill');
+            this.minimapTokenCapBar.classList.remove('is-warning-capacity', 'is-over-capacity');
+        }
+        this.minimapTokenCapStartCap?.classList.remove('is-warning-capacity', 'is-over-capacity');
+        this.minimapTokenCapEndCap?.classList.remove('is-warning-capacity', 'is-over-capacity');
+        if (this.minimapTokenCapSplitGroup) {
+            clearSvgChildren(this.minimapTokenCapSplitGroup);
+            this.minimapTokenCapSplitGroup.classList.add('ert-hidden');
+        }
+        this.minimapTokenCapCachedOverlay?.classList.add('ert-hidden');
+        this.minimapTokenCapCachedOverlay?.setAttribute('width', '0');
+        if (this.minimapPassIndicatorGroup) {
+            this.minimapPassIndicatorGroup.classList.add('ert-hidden');
+        }
+        this.minimapBaseline?.style.removeProperty('stroke');
+        this.minimapEndCapStart?.style.removeProperty('fill');
+        this.minimapEndCapEnd?.style.removeProperty('fill');
+    }
+
     startFadeOut(): void {
         this.cancelFadeOut();
         if (!this.minimapBackboneGroup) return;

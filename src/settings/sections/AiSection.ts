@@ -13,7 +13,7 @@ import { IMPACT_FULL } from '../SettingImpact';
 import { buildDefaultAiSettings, mapAiProviderToLegacyProvider } from '../../ai/settings/aiSettings';
 import { validateAiSettings } from '../../ai/settings/validateAiSettings';
 import { BUILTIN_MODELS } from '../../ai/registry/builtinModels';
-import { getPickerModelsForProvider, selectLatestModelByReleaseChannel } from '../../ai/registry/releaseChannels';
+import { compareNewestModels, getPickerModelsForProvider, selectLatestModelByReleaseChannel } from '../../ai/registry/releaseChannels';
 import { selectModel } from '../../ai/router/selectModel';
 import { computeCaps } from '../../ai/caps/computeCaps';
 import { getAIClient } from '../../ai/runtime/aiClient';
@@ -30,6 +30,7 @@ import {
     estimateCorpusCost,
     formatUsdCost
 } from '../../ai/cost/estimateCorpusCost';
+import { getProviderPricing } from '../../ai/cost/providerPricing';
 import { buildOutputRulesText } from '../../ai/prompts/outputRules';
 import { buildUnifiedBeatAnalysisPromptParts, getUnifiedBeatAnalysisJsonSchema } from '../../ai/prompts/unifiedBeatAnalysis';
 import { resolveActiveRoleTemplate } from '../../ai/roleTemplate';
@@ -1044,32 +1045,45 @@ export function renderAiSection(params: {
         passesText: string;
     };
 
-    const COST_COMPARISON_MODELS: readonly CostComparisonModel[] = [
-        {
-            provider: 'anthropic',
-            modelId: 'claude-sonnet-4-6',
-            providerLabel: 'Anthropic',
-            modelLabel: 'Claude Sonnet 4.6'
-        },
-        {
-            provider: 'anthropic',
-            modelId: 'claude-sonnet-4-5-20250929',
-            providerLabel: 'Anthropic',
-            modelLabel: 'Claude Sonnet 4.5'
-        },
-        {
-            provider: 'openai',
-            modelId: 'gpt-5.4',
-            providerLabel: 'OpenAI',
-            modelLabel: 'GPT-5.4'
-        },
-        {
-            provider: 'google',
-            modelId: 'gemini-3.1-pro-preview',
-            providerLabel: 'Google',
-            modelLabel: 'Gemini Pro'
+    const COST_PROVIDER_ORDER: ReadonlyArray<Exclude<AIProviderId, 'none' | 'ollama'>> = ['anthropic', 'openai', 'google'];
+    const MODEL_STATUS_ORDER: Record<'stable' | 'legacy' | 'deprecated', number> = {
+        stable: 0,
+        legacy: 1,
+        deprecated: 2
+    };
+    const PROVIDER_LABELS: Record<Exclude<AIProviderId, 'none' | 'ollama'>, string> = {
+        anthropic: 'Anthropic',
+        openai: 'OpenAI',
+        google: 'Google'
+    };
+
+    const supportsCostComparisonModel = (provider: AIProviderId, modelId: string): boolean => {
+        if (provider === 'none' || provider === 'ollama') return false;
+        try {
+            getProviderPricing(provider, modelId);
+            return true;
+        } catch {
+            return false;
         }
-    ] as const;
+    };
+
+    const getCostComparisonModels = (): CostComparisonModel[] => COST_PROVIDER_ORDER.flatMap(provider => {
+        const providerModels = getPickerModelsForProvider(BUILTIN_MODELS, provider)
+            .filter(model => !model.id.endsWith('-latest'))
+            .filter(model => supportsCostComparisonModel(provider, model.id))
+            .sort((left, right) => {
+                const statusDelta = MODEL_STATUS_ORDER[left.status] - MODEL_STATUS_ORDER[right.status];
+                if (statusDelta !== 0) return statusDelta;
+                return compareNewestModels(left, right);
+            });
+
+        return providerModels.map(model => ({
+            provider,
+            modelId: model.id,
+            providerLabel: PROVIDER_LABELS[provider],
+            modelLabel: model.label
+        }));
+    });
 
     const createCostTableCell = (rowEl: HTMLElement, text: string, extraCls?: string): void => {
         rowEl.createDiv({
@@ -1144,7 +1158,7 @@ export function renderAiSection(params: {
         });
     };
 
-    const buildLoadingCostRows = (): CostComparisonRow[] => COST_COMPARISON_MODELS.map(model => ({
+    const buildLoadingCostRows = (): CostComparisonRow[] => getCostComparisonModels().map(model => ({
         model,
         freshText: 'Calculating...',
         cachedText: 'Calculating...',
@@ -1174,7 +1188,7 @@ export function renderAiSection(params: {
     };
 
     const computeCostComparisonRows = async (): Promise<CostComparisonRow[]> => {
-        return await Promise.all(COST_COMPARISON_MODELS.map(async model => {
+        return await Promise.all(getCostComparisonModels().map(async model => {
             try {
                 const executionEstimate = await buildCurrentInquiryExecutionEstimate({
                     provider: model.provider,

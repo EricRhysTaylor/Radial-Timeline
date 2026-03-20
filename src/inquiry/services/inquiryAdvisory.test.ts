@@ -46,7 +46,7 @@ describe('computeInquiryAdvisoryContext', () => {
         expect(advisory?.recommendation.message).toBe('Citation-backed alternative:');
     });
 
-    it('returns all single-pass recommendations when current engine supports Sources', () => {
+    it('returns null when the current engine already has sources and fits in one pass', () => {
         const currentModel = getModel('claude-sonnet-4-6');
         const advisory = computeInquiryAdvisoryContext({
             scope: 'book',
@@ -60,11 +60,7 @@ describe('computeInquiryAdvisoryContext', () => {
             overrideSummary: { active: false, classCount: 0, itemCount: 0, total: 0 },
         });
 
-        expect(advisory).not.toBeNull();
-        expect(advisory?.recommendation.reasonCode).toBe('single_pass_preferred');
-        expect(advisory?.recommendation.provider).toBe('openai');
-        expect(advisory?.recommendation.message).toBe('Single-pass options:');
-        expect(advisory?.recommendation.options.map(option => option.provider)).toEqual(['openai', 'google']);
+        expect(advisory).toBeNull();
     });
 
     it('returns corpus reuse recommendation when fingerprint is reused and current engine lacks reuse', () => {
@@ -115,6 +111,23 @@ describe('computeInquiryAdvisoryContext', () => {
         expect(advisory?.recommendation.reasonCode).toBe('precision_analysis_preferred');
         expect(advisory?.recommendation.provider).toBe('google');
         expect(advisory?.recommendation.options).toHaveLength(1);
+    });
+
+    it('does not suggest a single-pass switch for only a minor pass-count gain', () => {
+        const currentModel = getModel('claude-sonnet-4-5-20250929');
+        const advisory = computeInquiryAdvisoryContext({
+            scope: 'book',
+            focusLabel: 'B1',
+            resolvedEngine: buildResolvedEngine(currentModel, 'Anthropic'),
+            currentModel,
+            models: BUILTIN_MODELS,
+            analysisPackaging: 'automatic',
+            estimatedInputTokens: 220000,
+            corpusFingerprint: 'fp-pass-threshold',
+            overrideSummary: { active: false, classCount: 0, itemCount: 0, total: 0 },
+        });
+
+        expect(advisory).toBeNull();
     });
 
     it('returns null when no meaningful advisory advantage exists', () => {

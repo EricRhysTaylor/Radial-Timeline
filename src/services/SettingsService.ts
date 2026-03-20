@@ -29,7 +29,7 @@ export class SettingsService {
     }
 
     normalizeModelIds(): void {
-        const defaultGeminiModel = DEFAULT_SETTINGS.geminiModelId || 'gemini-3-pro-preview';
+        const defaultGeminiModel = DEFAULT_SETTINGS.geminiModelId || 'gemini-2.5-pro';
         const normalize = (prov: 'anthropic' | 'openai' | 'gemini', id: string | undefined): string => {
             if (!id) return id as unknown as string;
             if (prov === 'anthropic') {
@@ -52,7 +52,6 @@ export class SettingsService {
                     'gemini-creative',
                     'gemini-1.0-pro',
                     'gemini-1.5-pro',
-                    'gemini-2.5-pro',
                     'gemini-2.0-flash-exp',
                     'gemini-2.5-flash',
                     'gemini-2.5-flash-lite',

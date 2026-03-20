@@ -16,7 +16,7 @@
 // These are updated when we get actual model info from API responses
 const LATEST_ALIAS_DISPLAY_NAMES: Record<string, string> = {
     // Gemini
-    'gemini-pro-latest': 'Gemini 3.1 Pro Preview',
+    'gemini-pro-latest': 'Gemini 2.5 Pro',
     'gemini-flash-latest': 'Gemini 2.5 Flash',
     'gemini-flash-lite-latest': 'Gemini Flash Lite',
     

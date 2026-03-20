@@ -48,7 +48,7 @@ function getCurrentModelId(plugin: RadialTimelinePlugin): string {
         return plugin.settings.anthropicModelId || 'claude-sonnet-4-6';
     }
     if (provider === 'gemini') {
-        return plugin.settings.geminiModelId || 'gemini-3-pro-preview';
+        return plugin.settings.geminiModelId || 'gemini-2.5-pro';
     }
     if (provider === 'local') {
         return plugin.settings.localModelId || 'local-model';
