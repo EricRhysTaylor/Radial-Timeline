@@ -14,7 +14,15 @@ export class InquirySessionStore {
         const max = this.resolveConfiguredLimit();
         const stored = plugin.settings.inquirySessionCache as InquirySessionCache | undefined;
         this.cache = stored && Array.isArray(stored.sessions)
-            ? { sessions: stored.sessions, max: stored.max || max }
+            ? {
+                sessions: stored.sessions.map(session => ({
+                    ...session,
+                    targetSceneIds: Array.isArray(session.targetSceneIds)
+                        ? session.targetSceneIds.map(value => String(value).trim()).filter(Boolean)
+                        : []
+                })),
+                max: stored.max || max
+            }
             : { sessions: [], max };
         this.cache.max = max;
         this.prune();
@@ -96,8 +104,11 @@ export class InquirySessionStore {
         }
     }
 
-    buildBaseKey(parts: { questionId: string; scope: string; focusId: string }): string {
-        return `${parts.questionId}::${parts.scope}::${parts.focusId}`;
+    buildBaseKey(parts: { questionId: string; scope: string; focusId: string; targetSceneIds?: string[] }): string {
+        const targetSceneKey = Array.isArray(parts.targetSceneIds) && parts.targetSceneIds.length
+            ? parts.targetSceneIds.map(value => value.trim()).filter(Boolean).sort().join(',')
+            : '';
+        return `${parts.questionId}::${parts.scope}::${parts.focusId}::${targetSceneKey}`;
     }
 
     buildKey(baseKey: string, fingerprint: string): string {

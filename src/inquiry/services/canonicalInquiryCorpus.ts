@@ -13,7 +13,7 @@ const dedupeEntries = (entries: CorpusManifestEntry[]): CorpusManifestEntry[] =>
             entry.scope ?? '',
             entry.path,
             entry.sceneId ?? '',
-            entry.mode ?? 'none'
+            entry.mode
         ].join('\u0000');
         if (seen.has(key)) return;
         seen.add(key);

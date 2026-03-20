@@ -16,11 +16,10 @@
  */
 
 import type { InquiryScope } from '../state';
-import type { InquiryMaterialMode, InquiryClassConfig, InquirySourcesSettings } from '../../types/settings';
+import type { InquiryClassConfig, InquirySourcesSettings, SceneInclusion } from '../../types/settings';
 import type { CorpusManifestEntry } from '../runner/types';
 import {
     buildCorpusSelectionKey,
-    buildLegacyCorpusSelectionKey,
     parseCorpusSelectionKey
 } from './corpusSelectionKeys';
 import { normalizeInquiryBookInclusion } from './bookResolution';
@@ -38,62 +37,62 @@ export function isSynopsisCapableClass(className: string): boolean {
     return SYNOPSIS_CAPABLE_CLASSES.has(className.toLowerCase());
 }
 
-export function getDefaultMaterialMode(className: string): InquiryMaterialMode {
+export function getDefaultMaterialMode(className: string): SceneInclusion {
     if (className === 'scene') return 'summary';
     return 'full';
 }
 
-export function normalizeEvidenceMode(mode?: InquiryMaterialMode): 'none' | 'summary' | 'full' {
+export function normalizeEvidenceMode(mode?: SceneInclusion): SceneInclusion {
     if (mode === 'full') return 'full';
     if (mode === 'summary') return 'summary';
-    return 'none';
+    return 'excluded';
 }
 
-export function isModeActive(mode?: InquiryMaterialMode): boolean {
-    return normalizeEvidenceMode(mode) !== 'none';
+export function isModeActive(mode?: SceneInclusion): boolean {
+    return normalizeEvidenceMode(mode) !== 'excluded';
 }
 
-export function normalizeContributionMode(mode: InquiryMaterialMode, className: string): InquiryMaterialMode {
+export function normalizeContributionMode(mode: SceneInclusion, className: string): SceneInclusion {
     if (mode === 'summary' && !isSynopsisCapableClass(className)) {
         return 'full';
     }
     return mode;
 }
 
-export function normalizeMaterialMode(value: unknown, className: string): InquiryMaterialMode {
-    let normalized: InquiryMaterialMode = 'none';
+export function normalizeMaterialMode(value: unknown, className: string): SceneInclusion {
+    let normalized: SceneInclusion = 'excluded';
     if (typeof value === 'string') {
         const raw = value.trim().toLowerCase();
         if (raw === 'digest') normalized = 'summary';
-        if (raw === 'none' || raw === 'summary' || raw === 'full') {
-            normalized = raw as InquiryMaterialMode;
+        if (raw === 'excluded' || raw === 'summary' || raw === 'full') {
+            normalized = raw as SceneInclusion;
         }
     }
     if (typeof value === 'boolean') {
-        normalized = value ? getDefaultMaterialMode(className) : 'none';
+        normalized = value ? getDefaultMaterialMode(className) : 'excluded';
     }
     return normalizeContributionMode(normalized, className);
 }
 
-export function resolveContributionMode(config: InquiryClassConfig): InquiryMaterialMode {
-    const modes: InquiryMaterialMode[] = [config.bookScope, config.sagaScope, config.referenceScope];
+export function resolveContributionMode(config: InquiryClassConfig): SceneInclusion {
+    const modes: SceneInclusion[] = [config.bookScope, config.sagaScope, config.referenceScope];
     return modes.reduce((best, mode) => {
-        const rank = { none: 0, summary: 1, full: 2 };
+        const rank = { excluded: 0, summary: 1, full: 2 };
         return rank[mode] > rank[best] ? mode : best;
-    }, 'none' as InquiryMaterialMode);
+    }, 'excluded' as SceneInclusion);
 }
 
 export function normalizeClassContribution(config: InquiryClassConfig): InquiryClassConfig {
     const isReference = !isSynopsisCapableClass(config.className);
     const contribution = normalizeContributionMode(resolveContributionMode(config), config.className);
-    const bookActive = !isReference && config.bookScope !== 'none';
-    const sagaActive = !isReference && config.sagaScope !== 'none';
-    const referenceActive = isReference && config.referenceScope !== 'none';
+    const bookActive = !isReference && config.bookScope !== 'excluded';
+    const sagaActive = !isReference && config.sagaScope !== 'excluded';
+    const referenceActive = isReference && config.referenceScope !== 'excluded';
     return {
         ...config,
-        bookScope: isReference ? 'none' : (bookActive ? contribution : 'none'),
-        sagaScope: isReference ? 'none' : (sagaActive ? contribution : 'none'),
-        referenceScope: isReference ? (referenceActive ? contribution : 'none') : 'none'
+        bookScope: isReference ? 'excluded' : (bookActive ? contribution : 'excluded'),
+        sagaScope: isReference ? 'excluded' : (sagaActive ? contribution : 'excluded'),
+        referenceScope: isReference ? (referenceActive ? contribution : 'excluded') : 'excluded'
     };
 }
 
@@ -134,14 +133,14 @@ export function parseCorpusItemKey(entryKey: string): { className: string; scope
     };
 }
 
-export function getCorpusCycleModes(_className: string): InquiryMaterialMode[] {
-    return ['none', 'summary', 'full'];
+export function getCorpusCycleModes(_className: string): SceneInclusion[] {
+    return ['excluded', 'summary', 'full'];
 }
 
-export function getNextCorpusMode(current: InquiryMaterialMode, modes: InquiryMaterialMode[]): InquiryMaterialMode {
+export function getNextCorpusMode(current: SceneInclusion, modes: SceneInclusion[]): SceneInclusion {
     const index = modes.indexOf(current);
-    if (index === -1) return modes[0] ?? 'none';
-    return modes[(index + 1) % modes.length] ?? 'none';
+    if (index === -1) return modes[0] ?? 'excluded';
+    return modes[(index + 1) % modes.length] ?? 'excluded';
 }
 
 export function getClassScopeConfig(raw?: string[]): { allowAll: boolean; allowed: Set<string> } {
@@ -179,9 +178,6 @@ export function getFrontmatterScope(
 
 export function normalizeInquirySources(raw?: InquirySourcesSettings): InquirySourcesSettings {
     if (!raw) {
-        return { scanRoots: [], bookInclusion: {}, classes: [], classCounts: {}, resolvedScanRoots: [] };
-    }
-    if ('sceneFolders' in raw || 'bookOutlineFiles' in raw || 'sagaOutlineFile' in raw) {
         return { scanRoots: [], bookInclusion: {}, classes: [], classCounts: {}, resolvedScanRoots: [] };
     }
     return {
@@ -242,8 +238,8 @@ export interface CorpusOverrideSummary {
 // ── InquiryCorpusService class ────────────────────────────────────────
 
 export class InquiryCorpusService {
-    private corpusClassOverrides = new Map<string, InquiryMaterialMode>();
-    private corpusItemOverrides = new Map<string, InquiryMaterialMode>();
+    private corpusClassOverrides = new Map<string, SceneInclusion>();
+    private corpusItemOverrides = new Map<string, SceneInclusion>();
 
     // ── Override accessors ────────────────────────────────────────────
 
@@ -281,11 +277,11 @@ export class InquiryCorpusService {
         this.corpusItemOverrides.clear();
     }
 
-    getClassOverride(groupKey: string): InquiryMaterialMode | undefined {
+    getClassOverride(groupKey: string): SceneInclusion | undefined {
         return this.corpusClassOverrides.get(groupKey);
     }
 
-    setClassOverride(groupKey: string, mode: InquiryMaterialMode): void {
+    setClassOverride(groupKey: string, mode: SceneInclusion): void {
         this.corpusClassOverrides.set(groupKey, mode);
     }
 
@@ -298,31 +294,15 @@ export class InquiryCorpusService {
         filePath: string,
         scope?: InquiryScope,
         sceneId?: string
-    ): InquiryMaterialMode | undefined {
-        const preferredKey = getCorpusItemKey(className, filePath, scope, sceneId);
-        const preferred = this.corpusItemOverrides.get(preferredKey);
-        if (preferred !== undefined) return preferred;
-
-        if (className !== 'scene' || !sceneId) return undefined;
-
-        const legacyKey = buildLegacyCorpusSelectionKey({
-            className,
-            filePath,
-            scope
-        });
-        const legacyValue = this.corpusItemOverrides.get(legacyKey);
-        if (legacyValue === undefined) return undefined;
-
-        // Migrate legacy key to preferred key
-        this.corpusItemOverrides.set(preferredKey, legacyValue);
-        this.corpusItemOverrides.delete(legacyKey);
-        return legacyValue;
+    ): SceneInclusion | undefined {
+        const key = getCorpusItemKey(className, filePath, scope, sceneId);
+        return this.corpusItemOverrides.get(key);
     }
 
     setItemOverride(
         className: string,
         filePath: string,
-        mode: InquiryMaterialMode,
+        mode: SceneInclusion,
         scope?: InquiryScope,
         sceneId?: string
     ): void {
@@ -351,11 +331,11 @@ export class InquiryCorpusService {
 
     // ── Key-based accessors (for pre-built entryKey strings) ──────────
 
-    getItemOverrideByKey(key: string): InquiryMaterialMode | undefined {
+    getItemOverrideByKey(key: string): SceneInclusion | undefined {
         return this.corpusItemOverrides.get(key);
     }
 
-    setItemOverrideByKey(key: string, mode: InquiryMaterialMode): void {
+    setItemOverrideByKey(key: string, mode: SceneInclusion): void {
         this.corpusItemOverrides.set(key, mode);
     }
 
@@ -384,18 +364,18 @@ export class InquiryCorpusService {
         groupKey: string,
         configMap: Map<string, InquiryClassConfig>,
         scope: InquiryScope,
-        fallbackEntries?: Array<{ className: string; mode: InquiryMaterialMode }>
-    ): InquiryMaterialMode {
+        fallbackEntries?: Array<{ className: string; mode: SceneInclusion }>
+    ): SceneInclusion {
         const baseClass = getCorpusGroupBaseClass(groupKey);
         const config = configMap.get(baseClass);
         if (!config) {
             const fallback = (fallbackEntries || []).find(entry => entry.className === groupKey);
             if (fallback) {
-                return normalizeContributionMode(fallback.mode ?? 'none', baseClass);
+                return normalizeContributionMode(fallback.mode ?? 'excluded', baseClass);
             }
-            return 'none';
+            return 'excluded';
         }
-        if (!config.enabled) return 'none';
+        if (!config.enabled) return 'excluded';
         if (baseClass === 'outline') {
             const scopeMode = groupKey === 'outline-saga' ? config.sagaScope : config.bookScope;
             return normalizeContributionMode(scopeMode, baseClass);
@@ -412,8 +392,8 @@ export class InquiryCorpusService {
         groupKey: string,
         configMap: Map<string, InquiryClassConfig>,
         scope: InquiryScope,
-        fallbackEntries?: Array<{ className: string; mode: InquiryMaterialMode }>
-    ): InquiryMaterialMode {
+        fallbackEntries?: Array<{ className: string; mode: SceneInclusion }>
+    ): SceneInclusion {
         const baseClass = getCorpusGroupBaseClass(groupKey);
         const baseMode = this.getGroupBaseMode(groupKey, configMap, scope, fallbackEntries);
         const override = this.corpusClassOverrides.get(groupKey);
@@ -426,8 +406,8 @@ export class InquiryCorpusService {
         entry: CorpusManifestEntry,
         configMap: Map<string, InquiryClassConfig>,
         scope: InquiryScope,
-        fallbackEntries?: Array<{ className: string; mode: InquiryMaterialMode }>
-    ): InquiryMaterialMode {
+        fallbackEntries?: Array<{ className: string; mode: SceneInclusion }>
+    ): SceneInclusion {
         const groupKey = getCorpusGroupKey(entry.class, entry.scope);
         const baseClass = getCorpusGroupBaseClass(groupKey);
         const baseMode = this.getGroupBaseMode(groupKey, configMap, scope, fallbackEntries);
@@ -437,17 +417,17 @@ export class InquiryCorpusService {
         return normalizeContributionMode(effective, baseClass);
     }
 
-    /** Global mode across all groups (none / summary / full / mixed). */
+    /** Global mode across all groups (excluded / summary / full / mixed). */
     getGlobalMode(
         groupKeys: string[],
         configMap: Map<string, InquiryClassConfig>,
         scope: InquiryScope,
-        fallbackEntries?: Array<{ className: string; mode: InquiryMaterialMode }>
-    ): InquiryMaterialMode | 'mixed' {
-        if (!groupKeys.length) return 'none';
+        fallbackEntries?: Array<{ className: string; mode: SceneInclusion }>
+    ): SceneInclusion | 'mixed' {
+        if (!groupKeys.length) return 'excluded';
         const groupModes = groupKeys.map(key => this.getGroupEffectiveMode(key, configMap, scope, fallbackEntries));
-        const allNone = groupModes.every(mode => mode === 'none');
-        if (allNone) return 'none';
+        const allExcluded = groupModes.every(mode => mode === 'excluded');
+        if (allExcluded) return 'excluded';
         const allFull = groupModes.every(mode => mode === 'full');
         if (allFull) return 'full';
 

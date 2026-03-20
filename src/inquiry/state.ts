@@ -1,7 +1,8 @@
 import type { SourceCitation } from '../ai/types';
 
 export type InquiryScope = 'book' | 'saga';
-export type InquiryMode = 'flow' | 'depth';
+export type InquiryLens = 'flow' | 'depth';
+export type InquirySelectionMode = 'discover' | 'focused';
 export type InquiryZone = 'setup' | 'pressure' | 'payoff';
 
 export type InquirySeverity = 'low' | 'medium' | 'high';
@@ -40,13 +41,14 @@ export interface InquiryFinding {
     related: string[];
     evidenceType: 'scene' | 'outline' | 'mixed';
     lens?: 'flow' | 'depth' | 'both';
+    role?: 'target' | 'context';
 }
 
 export interface InquiryResult {
     runId: string;
     scope: InquiryScope;
     focusId: string;
-    mode: InquiryMode;
+    mode: InquiryLens;
     questionId: string;
     questionZone?: InquiryZone;
     summary: string;
@@ -85,9 +87,9 @@ export interface InquiryResult {
 
 export interface InquiryState {
     scope: InquiryScope;
-    focusSceneId?: string;
+    targetSceneIds: string[];
     focusBookId?: string;
-    mode: InquiryMode;
+    mode: InquiryLens;
     selectedPromptIds: Record<InquiryZone, string>;
     activeQuestionId?: string;
     activeSessionId?: string;
@@ -104,8 +106,7 @@ export interface InquiryState {
 
 export const createDefaultInquiryState = (): InquiryState => ({
     scope: 'book',
-    focusSceneId: '1',
-    focusBookId: '1',
+    targetSceneIds: [],
     mode: 'flow',
     selectedPromptIds: {
         setup: '',

@@ -1,5 +1,13 @@
-import type { InquiryAiStatus, InquiryMode, InquiryScope, InquiryTokenUsageScope, InquiryZone, InquiryResult } from '../state';
-import type { InquiryMaterialMode } from '../../types/settings';
+import type {
+    InquiryAiStatus,
+    InquiryLens,
+    InquiryScope,
+    InquirySelectionMode,
+    InquiryTokenUsageScope,
+    InquiryZone,
+    InquiryResult
+} from '../state';
+import type { SceneInclusion } from '../../types/settings';
 import type { AnalysisPackaging } from '../../ai/types';
 import type { TokenEstimateMethod } from '../../ai/tokens/inputTokenEstimate';
 import type { TokenUsage } from '../../ai/usage/providerUsage';
@@ -30,7 +38,8 @@ export interface CorpusManifestEntry {
     class: EvidenceClass;
     scope?: InquiryScope;
     bookId?: string;
-    mode?: InquiryMaterialMode;
+    mode: SceneInclusion;
+    isTarget: boolean;
 }
 
 export interface CorpusManifest {
@@ -52,10 +61,11 @@ export interface EvidenceParticipationRules {
 export interface InquiryRunnerInput {
     scope: InquiryScope;
     focusLabel: string;
-    focusSceneId?: string;
+    targetSceneIds: string[];
+    selectionMode: InquirySelectionMode;
     focusBookId?: string;
     // UI emphasis only; inquiry computation must always include both flow + depth regardless of lens.
-    mode: InquiryMode;
+    mode: InquiryLens;
     questionId: string;
     questionText: string;
     questionZone: InquiryZone;
@@ -67,10 +77,11 @@ export interface InquiryRunnerInput {
 export interface InquiryOmnibusInput {
     scope: InquiryScope;
     focusLabel: string;
-    focusSceneId?: string;
+    targetSceneIds: string[];
+    selectionMode: InquirySelectionMode;
     focusBookId?: string;
     // UI emphasis only; inquiry computation must always include both flow + depth regardless of lens.
-    mode: InquiryMode;
+    mode: InquiryLens;
     questions: InquiryOmnibusQuestion[];
     corpus: CorpusManifest;
     rules: EvidenceParticipationRules;

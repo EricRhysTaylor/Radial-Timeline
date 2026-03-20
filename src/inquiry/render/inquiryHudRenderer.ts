@@ -24,7 +24,7 @@ import {
     PREVIEW_SHIMMER_WIDTH
 } from '../constants/inquiryLayout';
 import { clearSvgChildren, createSvgElement } from '../minimap/svgUtils';
-import type { InquiryMode, InquiryZone } from '../state';
+import type { InquiryLens, InquiryZone } from '../state';
 import type { InquiryRunProgressEvent } from '../runner/types';
 import type { InquiryPreviewRow } from '../types/inquiryViewTypes';
 
@@ -45,7 +45,7 @@ export type InquiryPreviewRendererRefs = {
 export function renderInquiryPromptPreviewLayout(args: {
     refs: InquiryPreviewRendererRefs;
     zone: InquiryZone;
-    mode: InquiryMode;
+    mode: InquiryLens;
     question: string;
     rows: string[];
     metaOverride?: string;

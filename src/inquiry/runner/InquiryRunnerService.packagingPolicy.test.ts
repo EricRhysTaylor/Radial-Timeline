@@ -369,7 +369,7 @@ describe('InquiryRunnerService packaging policy', () => {
             {} as never,
             {
                 systemPrompt: 'system',
-                userPrompt: 'Question\nEvidence:\n## Scene A\nBody',
+                userPrompt: 'Question\nEvidence:\n## Scene A\nFull',
                 ai: TEST_AI,
                 jsonSchema: { type: 'object' },
                 temperature: 0.2,
@@ -417,7 +417,7 @@ describe('InquiryRunnerService packaging policy', () => {
                 {} as never,
                 {
                     systemPrompt: 'system',
-                    userPrompt: 'Question\nEvidence:\n## Scene A\nBody',
+                    userPrompt: 'Question\nEvidence:\n## Scene A\nFull',
                     ai: TEST_AI,
                     jsonSchema: { type: 'object' },
                     temperature: 0.2,
@@ -468,14 +468,14 @@ describe('InquiryRunnerService packaging policy', () => {
             {} as never,
             {
                 systemPrompt: 'system',
-                userPrompt: 'Question\nEvidence:\n## Scene A\nBody',
+                userPrompt: 'Question\nEvidence:\n## Scene A\nFull',
                 ai: TEST_AI,
                 jsonSchema: { type: 'object' },
                 temperature: 0.2,
                 maxTokens: 4000,
                 evidenceBlocks: [{
-                    label: 'Scene Diga Detects Pregnancy (S25) (scn_b5e1b85f) (Body)',
-                    content: 'Body',
+                    label: 'Scene Diga Detects Pregnancy (S25) (scn_b5e1b85f) (Full)',
+                    content: 'Full',
                     meta: {
                         title: 'Diga Detects Pregnancy',
                         path: 'Book 1/29 Diga Detects Pregnancy.md',
@@ -539,14 +539,14 @@ describe('InquiryRunnerService packaging policy', () => {
             {} as never,
             {
                 systemPrompt: 'system',
-                userPrompt: 'Question\nEvidence:\n## Scene A\nBody',
+                userPrompt: 'Question\nEvidence:\n## Scene A\nFull',
                 ai: TEST_AI,
                 jsonSchema: { type: 'object' },
                 temperature: 0.2,
                 maxTokens: 4000,
                 evidenceBlocks: [{
-                    label: 'Scene Diga Detects Pregnancy (S25) (scn_b5e1b85f) (Body)',
-                    content: 'Body',
+                    label: 'Scene Diga Detects Pregnancy (S25) (scn_b5e1b85f) (Full)',
+                    content: 'Full',
                     meta: {
                         title: 'Diga Detects Pregnancy',
                         path: 'Book 1/29 Diga Detects Pregnancy.md',
@@ -593,7 +593,7 @@ describe('InquiryRunnerService packaging policy', () => {
             {} as never,
             {
                 systemPrompt: 'system',
-                userPrompt: 'Question\nEvidence:\n## Scene A\nBody',
+                userPrompt: 'Question\nEvidence:\n## Scene A\nFull',
                 ai: TEST_AI,
                 jsonSchema: { type: 'object' },
                 temperature: 0.2,
@@ -636,7 +636,7 @@ describe('InquiryRunnerService packaging policy', () => {
             {} as never,
             {
                 systemPrompt: 'system',
-                userPrompt: 'Question\nEvidence:\n## Scene A\nBody',
+                userPrompt: 'Question\nEvidence:\n## Scene A\nFull',
                 ai: TEST_AI,
                 jsonSchema: { type: 'object' },
                 temperature: 0.2,
@@ -683,7 +683,7 @@ describe('InquiryRunnerService packaging policy', () => {
             {} as never,
             {
                 systemPrompt: 'system',
-                userPrompt: 'Question\nEvidence:\n## Scene A\nBody',
+                userPrompt: 'Question\nEvidence:\n## Scene A\nFull',
                 ai: ANTHROPIC_AI,
                 jsonSchema: { type: 'object' },
                 temperature: 0.2,
@@ -738,7 +738,7 @@ describe('InquiryRunnerService packaging policy', () => {
             {} as never,
             {
                 systemPrompt: 'system',
-                userPrompt: 'Question\nEvidence:\n## Scene A\nBody',
+                userPrompt: 'Question\nEvidence:\n## Scene A\nFull',
                 ai: ANTHROPIC_AI,
                 jsonSchema: { type: 'object' },
                 temperature: 0.2,
@@ -772,7 +772,7 @@ describe('InquiryRunnerService packaging policy', () => {
         Object.assign(service, { buildEvidenceChunkPrompts });
 
         const passCount = (service.estimateExecutionPassCountFromPrompt as (...args: unknown[]) => number)(
-            'Question\nEvidence:\n## Scene A\nBody',
+            'Question\nEvidence:\n## Scene A\nFull',
             {
                 estimatedInputTokens: 194600,
                 safeInputTokens: 162000
@@ -806,7 +806,7 @@ describe('InquiryRunnerService packaging policy', () => {
             {} as never,
             {
                 systemPrompt: 'system',
-                userPrompt: 'Question\nEvidence:\n## Scene A\nBody',
+                userPrompt: 'Question\nEvidence:\n## Scene A\nFull',
                 ai: TEST_AI,
                 jsonSchema: { type: 'object' },
                 temperature: 0.2,
@@ -890,7 +890,7 @@ describe('InquiryRunnerService packaging policy', () => {
             {} as never,
             {
                 systemPrompt: 'system',
-                userPrompt: 'Question\nEvidence:\n## Scene A\nBody',
+                userPrompt: 'Question\nEvidence:\n## Scene A\nFull',
                 ai: TEST_AI,
                 jsonSchema: { type: 'object' },
                 temperature: 0.2,

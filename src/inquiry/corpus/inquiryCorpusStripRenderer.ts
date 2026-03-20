@@ -1,4 +1,4 @@
-import type { InquiryMaterialMode } from '../../types/settings';
+import type { SceneInclusion } from '../../types/settings';
 import { addTooltipData, balanceTooltipText } from '../../utils/tooltip';
 import {
     CC_BOTTOM_MARGIN,
@@ -83,11 +83,11 @@ export function renderInquiryCorpusStrip(args: {
     createIconUse: (iconName: string, x: number, y: number, size: number) => SVGUseElement;
     registerSvgEvent: (el: Element | null | undefined, type: string, handler: (event: MouseEvent) => void) => void;
     getScopeLabel: () => string;
-    getModeMeta: (mode: InquiryMaterialMode) => InquiryCorpusStripModeMeta;
+    getModeMeta: (mode: SceneInclusion) => InquiryCorpusStripModeMeta;
     getHeaderLabelVariants: (className: string, count: number, overrideLabel?: string) => string[];
     getHeaderTooltip: (
         className: string,
-        mode: InquiryMaterialMode,
+        mode: SceneInclusion,
         count: number,
         overrideLabel?: string
     ) => string;
@@ -334,15 +334,15 @@ export function renderInquiryCorpusStrip(args: {
         const modeMeta = args.getModeMeta(group.mode);
         header.group.setAttribute('data-group-key', group.key);
         header.group.setAttribute('data-class', group.className);
-        header.group.classList.toggle('is-off', !modeMeta.isActive);
+        header.group.classList.toggle('is-excluded', !modeMeta.isActive);
         header.group.classList.toggle('is-active', modeMeta.isActive);
-        header.group.classList.remove('is-mode-none', 'is-mode-summary', 'is-mode-full');
+        header.group.classList.remove('is-mode-excluded', 'is-mode-summary', 'is-mode-full');
         if (group.mode === 'summary') {
             header.group.classList.add('is-mode-summary');
         } else if (group.mode === 'full') {
             header.group.classList.add('is-mode-full');
         } else {
-            header.group.classList.add('is-mode-none');
+            header.group.classList.add('is-mode-excluded');
         }
 
         const variants = args.getHeaderLabelVariants(group.className, group.count, group.headerLabel);

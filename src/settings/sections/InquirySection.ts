@@ -4,9 +4,9 @@ import { DEFAULT_SETTINGS } from '../defaults';
 import type {
     InquiryClassConfig,
     InquiryCorpusThresholds,
-    InquiryMaterialMode,
     InquiryPromptConfig,
     InquiryPromptSlot,
+    SceneInclusion,
     InquirySourcesPreset,
     InquirySourcesSettings
 } from '../../types/settings';
@@ -165,26 +165,17 @@ const formatSessionProviderModel = (session: InquirySession): string => {
     return model ? `${provider}/${model}` : provider;
 };
 
-type LegacyInquirySourcesSettings = {
-    sceneFolders?: string[];
-    bookOutlineFiles?: string[];
-    sagaOutlineFile?: string;
-    characterFolders?: string[];
-    placeFolders?: string[];
-    powerFolders?: string[];
-};
-
 const REFERENCE_ONLY_CLASSES = new Set(['character', 'place', 'power']);
 const SYNOPSIS_CAPABLE_CLASSES = new Set(['scene', 'outline']);
-const CONTRIBUTION_MODES: InquiryMaterialMode[] = ['none', 'summary', 'full'];
+const CONTRIBUTION_MODES: SceneInclusion[] = ['excluded', 'summary', 'full'];
 const DEFAULT_FULL_CLASSES = new Set(['outline', ...REFERENCE_ONLY_CLASSES]);
-const CONTRIBUTION_LABELS: Record<InquiryMaterialMode, string> = {
-    none: 'Off',
+const CONTRIBUTION_LABELS: Record<SceneInclusion, string> = {
+    excluded: 'Exclude',
     summary: 'Summary',
-    full: 'Body'
+    full: 'Full Scene'
 };
 
-const defaultModeForClass = (className: string): InquiryMaterialMode => {
+const defaultModeForClass = (className: string): SceneInclusion => {
     if (DEFAULT_FULL_CLASSES.has(className)) return 'full';
     if (className === 'scene') return 'summary';
     return 'full';
@@ -193,39 +184,39 @@ const defaultModeForClass = (className: string): InquiryMaterialMode => {
 const isSynopsisCapableClass = (className: string): boolean =>
     SYNOPSIS_CAPABLE_CLASSES.has(className.toLowerCase());
 
-const normalizeContributionMode = (mode: InquiryMaterialMode, className: string): InquiryMaterialMode => {
+const normalizeContributionMode = (mode: SceneInclusion, className: string): SceneInclusion => {
     if (mode === 'summary' && !isSynopsisCapableClass(className)) {
         return 'full';
     }
     return mode;
 };
 
-const getContributionModesForClass = (className: string): InquiryMaterialMode[] =>
-    isSynopsisCapableClass(className) ? ['none', 'summary', 'full'] : ['none', 'full'];
+const getContributionModesForClass = (className: string): SceneInclusion[] =>
+    isSynopsisCapableClass(className) ? ['excluded', 'summary', 'full'] : ['excluded', 'full'];
 
-const normalizeMaterialMode = (value: unknown, className: string): InquiryMaterialMode => {
-    let normalized: InquiryMaterialMode = 'none';
+const normalizeMaterialMode = (value: unknown, className: string): SceneInclusion => {
+    let normalized: SceneInclusion = 'excluded';
     if (typeof value === 'string') {
         const raw = value.trim().toLowerCase();
         if (raw === 'digest') normalized = 'summary';
-        if (CONTRIBUTION_MODES.includes(raw as InquiryMaterialMode)) normalized = raw as InquiryMaterialMode;
+        if (CONTRIBUTION_MODES.includes(raw as SceneInclusion)) normalized = raw as SceneInclusion;
     }
     if (typeof value === 'boolean') {
-        normalized = value ? defaultModeForClass(className) : 'none';
+        normalized = value ? defaultModeForClass(className) : 'excluded';
     }
     return normalizeContributionMode(normalized, className);
 };
 
 const normalizeClassContribution = (config: InquiryClassConfig): InquiryClassConfig => {
     const isReference = !isSynopsisCapableClass(config.className);
-    const bookScope = isReference ? 'none' : normalizeContributionMode(config.bookScope, config.className);
-    const sagaScope = isReference ? 'none' : normalizeContributionMode(config.sagaScope, config.className);
-    const referenceScope = isReference ? normalizeContributionMode(config.referenceScope, config.className) : 'none';
+    const bookScope = isReference ? 'excluded' : normalizeContributionMode(config.bookScope, config.className);
+    const sagaScope = isReference ? 'excluded' : normalizeContributionMode(config.sagaScope, config.className);
+    const referenceScope = isReference ? normalizeContributionMode(config.referenceScope, config.className) : 'excluded';
     return {
         ...config,
-        bookScope: bookScope === 'none' ? 'none' : bookScope,
-        sagaScope: sagaScope === 'none' ? 'none' : sagaScope,
-        referenceScope: referenceScope === 'none' ? 'none' : referenceScope
+        bookScope: bookScope === 'excluded' ? 'excluded' : bookScope,
+        sagaScope: sagaScope === 'excluded' ? 'excluded' : sagaScope,
+        referenceScope: referenceScope === 'excluded' ? 'excluded' : referenceScope
     };
 };
 
@@ -243,11 +234,6 @@ const defaultParticipationForClass = (className: string): { book: boolean; saga:
     return { book: true, saga: false, reference: false };
 };
 
-const isLegacySources = (sources?: InquirySourcesSettings | LegacyInquirySourcesSettings): sources is LegacyInquirySourcesSettings => {
-    if (!sources) return false;
-    return 'sceneFolders' in sources || 'bookOutlineFiles' in sources || 'sagaOutlineFile' in sources;
-};
-
 const defaultClassConfig = (className: string): InquiryClassConfig => {
     const normalized = className.toLowerCase();
     const isScene = normalized === 'scene';
@@ -256,9 +242,9 @@ const defaultClassConfig = (className: string): InquiryClassConfig => {
     return {
         className: normalized,
         enabled: false,
-        bookScope: isReference ? 'none' : (isScene ? 'summary' : (isOutline ? 'full' : defaultModeForClass(normalized))),
-        sagaScope: isReference ? 'none' : (isOutline ? 'full' : 'none'),
-        referenceScope: isReference ? 'full' : 'none'
+        bookScope: isReference ? 'excluded' : (isScene ? 'summary' : (isOutline ? 'full' : defaultModeForClass(normalized))),
+        sagaScope: isReference ? 'excluded' : (isOutline ? 'full' : 'excluded'),
+        referenceScope: isReference ? 'full' : 'excluded'
     };
 };
 
@@ -278,95 +264,9 @@ const mergeClassConfigs = (existing: InquiryClassConfig[], discovered: string[])
     return sorted.map(name => byName.get(name) ?? defaultClassConfig(name));
 };
 
-const migrateLegacySources = (legacy: LegacyInquirySourcesSettings): InquirySourcesSettings => {
-    const roots = new Set<string>();
-    const addRoot = (path: string | undefined) => {
-        if (!path) return;
-        const normalized = normalizePath(path);
-        if (normalized) roots.add(normalized);
-    };
-    const addParent = (path: string | undefined) => {
-        if (!path) return;
-        const normalized = normalizePath(path);
-        if (!normalized) return;
-        const idx = normalized.lastIndexOf('/');
-        if (idx > 0) {
-            roots.add(normalized.slice(0, idx));
-        } else {
-            roots.add('');
-        }
-    };
-    legacy.sceneFolders?.forEach(addRoot);
-    legacy.characterFolders?.forEach(addRoot);
-    legacy.placeFolders?.forEach(addRoot);
-    legacy.powerFolders?.forEach(addRoot);
-    legacy.bookOutlineFiles?.forEach(addParent);
-    addParent(legacy.sagaOutlineFile);
-
-    const classes: InquiryClassConfig[] = [];
-    if (legacy.sceneFolders?.length) {
-        classes.push({
-            className: 'scene',
-            enabled: true,
-            bookScope: 'summary',
-            sagaScope: 'none',
-            referenceScope: 'none'
-        });
-    }
-    if ((legacy.bookOutlineFiles?.length || 0) > 0 || legacy.sagaOutlineFile) {
-        classes.push({
-            className: 'outline',
-            enabled: true,
-            bookScope: (legacy.bookOutlineFiles?.length || 0) > 0 ? 'full' : 'none',
-            sagaScope: legacy.sagaOutlineFile ? 'full' : 'none',
-            referenceScope: 'none'
-        });
-    }
-    if (legacy.characterFolders?.length) {
-        classes.push({
-            className: 'character',
-            enabled: true,
-            bookScope: 'none',
-            sagaScope: 'none',
-            referenceScope: 'full'
-        });
-    }
-    if (legacy.placeFolders?.length) {
-        classes.push({
-            className: 'place',
-            enabled: true,
-            bookScope: 'none',
-            sagaScope: 'none',
-            referenceScope: 'full'
-        });
-    }
-    if (legacy.powerFolders?.length) {
-        classes.push({
-            className: 'power',
-            enabled: true,
-            bookScope: 'none',
-            sagaScope: 'none',
-            referenceScope: 'full'
-        });
-    }
-
-    return {
-        scanRoots: roots.size ? normalizeScanRootPatterns(Array.from(roots)) : [],
-        bookInclusion: {},
-        classScope: [],
-        classes,
-        classCounts: {},
-        resolvedScanRoots: [],
-        lastScanAt: undefined
-    };
-};
-
-const normalizeInquirySources = (raw?: InquirySourcesSettings | LegacyInquirySourcesSettings): InquirySourcesSettings => {
+const normalizeInquirySources = (raw?: InquirySourcesSettings): InquirySourcesSettings => {
     if (!raw) {
         return { scanRoots: [], bookInclusion: {}, classes: [], classCounts: {}, resolvedScanRoots: [] };
-    }
-    if (isLegacySources(raw)) {
-        return migrateLegacySources(raw);
     }
     return {
         preset: raw.preset,
@@ -419,6 +319,7 @@ const validateCorpusThresholds = (next: InquiryCorpusThresholds): string | null 
 
 export function renderInquirySection(params: SectionParams): void {
     const { plugin, containerEl, attachFolderSuggest } = params;
+    containerEl.addClass('ert-inquiry-settings-root');
 
     const createSection = (
         parent: HTMLElement,
@@ -819,10 +720,10 @@ export function renderInquirySection(params: SectionParams): void {
 
             const buildScopeSelect = (
                 cell: HTMLElement,
-                value: InquiryMaterialMode,
+                value: SceneInclusion,
                 disabled: boolean,
-                modes: InquiryMaterialMode[],
-                onChange: (next: InquiryMaterialMode) => void
+                modes: SceneInclusion[],
+                onChange: (next: SceneInclusion) => void
             ) => {
                 const select = cell.createEl('select', { cls: 'ert-input ert-input--sm' });
                 modes.forEach(mode => {
@@ -831,7 +732,7 @@ export function renderInquirySection(params: SectionParams): void {
                 select.value = value;
                 select.disabled = disabled;
                 plugin.registerDomEvent(select, 'change', () => {
-                    onChange(select.value as InquiryMaterialMode);
+                    onChange(select.value as SceneInclusion);
                 });
             };
 
@@ -905,49 +806,49 @@ export function renderInquirySection(params: SectionParams): void {
         classTableWrap.replaceChildren(...Array.from(container.children));
     };
 
-    const resolvePresetContribution = (preset: InquirySourcesPreset, className: string): InquiryMaterialMode => {
+    const resolvePresetContribution = (preset: InquirySourcesPreset, className: string): SceneInclusion => {
         const normalized = className.toLowerCase();
         const isReference = !isSynopsisCapableClass(normalized);
         if (preset === 'default') {
-            let mode: InquiryMaterialMode = 'none';
+            let mode: SceneInclusion = 'excluded';
             if (normalized === 'scene') mode = 'summary';
             if (normalized === 'outline') mode = 'full';
-            if (isReference) mode = 'none';
+            if (isReference) mode = 'excluded';
             return normalizeContributionMode(mode, normalized);
         }
         if (preset === 'light') {
-            let mode: InquiryMaterialMode = 'none';
+            let mode: SceneInclusion = 'excluded';
             if (normalized === 'scene') mode = 'summary';
             if (normalized === 'outline') mode = 'summary';
-            if (isReference) mode = 'none';
+            if (isReference) mode = 'excluded';
             return normalizeContributionMode(mode, normalized);
         }
         if (preset === 'deep') {
-            let mode: InquiryMaterialMode = 'none';
+            let mode: SceneInclusion = 'excluded';
             if (normalized === 'scene') mode = 'full';
             if (normalized === 'outline') mode = 'full';
             if (isReference) mode = 'full';
             return normalizeContributionMode(mode, normalized);
         }
-        return 'none';
+        return 'excluded';
     };
 
     const buildPresetClassConfig = (config: InquiryClassConfig, preset: InquirySourcesPreset): InquiryClassConfig => {
         const contribution = resolvePresetContribution(preset, config.className);
         const normalized = config.className.toLowerCase();
-        const participation = contribution === 'none'
+        const participation = contribution === 'excluded'
             ? { book: false, saga: false, reference: false }
             : defaultParticipationForClass(config.className);
-        const bookContribution: InquiryMaterialMode =
+        const bookContribution: SceneInclusion =
             preset === 'default' && normalized === 'scene' ? 'full' : contribution;
-        const sagaContribution: InquiryMaterialMode =
+        const sagaContribution: SceneInclusion =
             preset === 'default' && normalized === 'scene' ? 'summary' : contribution;
         return normalizeClassContribution({
             ...config,
-            enabled: contribution !== 'none',
-            bookScope: participation.book ? bookContribution : 'none',
-            sagaScope: participation.saga ? sagaContribution : 'none',
-            referenceScope: participation.reference ? contribution : 'none'
+            enabled: contribution !== 'excluded',
+            bookScope: participation.book ? bookContribution : 'excluded',
+            sagaScope: participation.saga ? sagaContribution : 'excluded',
+            referenceScope: participation.reference ? contribution : 'excluded'
         });
     };
 
@@ -1154,9 +1055,9 @@ export function renderInquirySection(params: SectionParams): void {
         const participatingClasses = new Set<string>();
         visibleConfigs.forEach(config => {
             const participates = config.enabled
-                && (config.bookScope !== 'none'
-                    || config.sagaScope !== 'none'
-                    || config.referenceScope !== 'none');
+                && (config.bookScope !== 'excluded'
+                    || config.sagaScope !== 'excluded'
+                    || config.referenceScope !== 'excluded');
             if (!participates) return;
             participatingClasses.add(config.className);
         });
@@ -1385,24 +1286,24 @@ export function renderInquirySection(params: SectionParams): void {
         };
 
         const confirmCanonicalReplacement = (nextLabel: string): Promise<boolean> => {
-            const overwrittenCanonicalSlots = zones
+            const overwrittenSlots = zones
                 .flatMap(zone => getSlotList(zone))
-                .filter(slot => isCanonicalPromptSlot(slot) && getInquiryPromptSlotState(slot) !== 'empty');
-            if (!overwrittenCanonicalSlots.length) return Promise.resolve(true);
+                .filter(slot => getInquiryPromptSlotState(slot) !== 'empty');
+            if (!overwrittenSlots.length) return Promise.resolve(true);
 
-            const customizedCount = overwrittenCanonicalSlots
+            const customizedCount = overwrittenSlots
                 .filter(slot => getInquiryPromptSlotState(slot) === 'customized')
                 .length;
             const subtitle = customizedCount > 0
-                ? `Load the ${nextLabel}. Customized canonical questions will be replaced. Custom questions stay in place.`
-                : `Load the ${nextLabel}. Current canonical questions will be replaced. Custom questions stay in place.`;
+                ? `Load the ${nextLabel}. Existing questions in every zone will be replaced.`
+                : `Load the ${nextLabel}. Current questions in every zone will be replaced.`;
             const warning = customizedCount === 1
                 ? 'This custom question will be replaced and cannot be recovered.'
                 : customizedCount > 1
-                    ? 'Customized canonical questions will be replaced and cannot be recovered.'
+                    ? 'Custom questions will be replaced and cannot be recovered.'
                     : undefined;
             return openReplacementConfirm({
-                title: customizedCount > 0 ? 'Replace customized canonical questions?' : 'Replace canonical questions?',
+                title: customizedCount > 0 ? 'Replace customized questions?' : 'Replace current questions?',
                 subtitle,
                 warning,
                 confirmText: 'Replace questions'
@@ -1600,21 +1501,11 @@ export function renderInquirySection(params: SectionParams): void {
                 questionInput.onChange(async (value) => {
                     await updateSlot(zone, slotIndex, { question: value });
                 });
-
-                const rowFooter = questionCol.createDiv({ cls: 'ert-inquiry-prompt-rowFooter' });
-                const rowMeta = rowFooter.createDiv({ cls: 'ert-inquiry-prompt-rowMeta' });
-                const stateLabel = slotState === 'canonical-loaded'
-                    ? (canonicalQuestion?.tier === 'signature' ? 'Signature' : 'Core')
-                    : slotState === 'customized'
-                        ? 'Customized'
-                        : 'Empty';
-                rowMeta.createSpan({
-                    cls: 'ert-inquiry-prompt-state',
-                    text: stateLabel
-                });
-                if (canonicalQuestion?.tier === 'signature') {
-                    const signatureBadge = rowMeta.createSpan({ cls: ['ert-badgePill', 'ert-badgePill--sm', ERT_CLASSES.BADGE_PILL_PRO] });
-                    signatureBadge.createSpan({ cls: 'ert-badgePill__text', text: 'Pro' });
+                if (slotState === 'customized') {
+                    const customizedIcon = questionMain.createDiv({ cls: 'ert-inquiry-prompt-customizedIcon' });
+                    customizedIcon.toggleClass('is-signature', canonicalQuestion?.tier === 'signature' || isProRow);
+                    setIcon(customizedIcon, 'pencil');
+                    setTooltip(customizedIcon, 'Customized question');
                 }
 
                 plugin.registerDomEvent(dragHandle, 'dragstart', (e) => {
@@ -1780,7 +1671,7 @@ export function renderInquirySection(params: SectionParams): void {
 
             const addLimit = isPro ? proCustomLimit : freeCustomLimit;
             if (customSlots.length < addLimit) {
-                const addRow = listEl.createDiv({ cls: 'ert-reorder-row ert-reorder-row--two-col' });
+                const addRow = listEl.createDiv({ cls: 'ert-reorder-row ert-reorder-row--two-col ert-inquiry-prompt-addRow' });
                 if (isPro && customSlots.length >= freeCustomLimit) {
                     addRow.addClass('ert-reorder-row--pro');
                 }
@@ -1831,30 +1722,34 @@ export function renderInquirySection(params: SectionParams): void {
 
             const librarySetting = new Settings(promptContainer)
                 .setName('Canonical question library')
-                .setDesc('Load the curated Core set or the full Pro Signature set. Loading replaces canonical questions and keeps custom questions intact.');
+                .setDesc(
+                    isPro
+                        ? 'Load the full Pro Signature set. Loading replaces all current questions in every zone.'
+                        : 'Load the curated Core set. Loading replaces all current questions in every zone.'
+                );
             librarySetting.settingEl.addClass(ERT_CLASSES.ROW, ERT_CLASSES.ROW_TIGHT);
             const libraryActions = librarySetting.controlEl.createDiv({ cls: [ERT_CLASSES.INLINE, 'ert-actions', 'ert-preset-controls'] });
 
-            const coreButton = libraryActions.createEl('button', { cls: `${ERT_CLASSES.PILL_BTN} ert-preset-pill` });
-            coreButton.createSpan({ cls: ERT_CLASSES.PILL_BTN_LABEL, text: 'Load Core Questions' });
-            plugin.registerDomEvent(coreButton, 'click', evt => {
-                evt.preventDefault();
-                void loadCanonicalSet('core');
-            });
-
-            const signatureButton = libraryActions.createEl('button', {
-                cls: `${ERT_CLASSES.PILL_BTN} ${ERT_CLASSES.PILL_BTN_PRO} ert-preset-pill`
-            });
-            const signatureIcon = signatureButton.createSpan({ cls: ERT_CLASSES.PILL_BTN_ICON });
-            setIcon(signatureIcon, 'signature');
-            signatureButton.createSpan({ cls: ERT_CLASSES.PILL_BTN_LABEL, text: 'Load Full Pro Signature Set' });
-            signatureButton.disabled = !isPro;
-            setTooltip(signatureButton, isPro ? 'Load all canonical Inquiry questions' : 'Requires Pro');
-            plugin.registerDomEvent(signatureButton, 'click', evt => {
-                evt.preventDefault();
-                if (!isPro) return;
-                void loadCanonicalSet('full-signature');
-            });
+            if (isPro) {
+                const signatureButton = libraryActions.createEl('button', {
+                    cls: `${ERT_CLASSES.PILL_BTN} ${ERT_CLASSES.PILL_BTN_PRO} ert-preset-pill`
+                });
+                const signatureIcon = signatureButton.createSpan({ cls: ERT_CLASSES.PILL_BTN_ICON });
+                setIcon(signatureIcon, 'signature');
+                signatureButton.createSpan({ cls: ERT_CLASSES.PILL_BTN_LABEL, text: 'Load Full Pro Signature Set' });
+                setTooltip(signatureButton, 'Load all canonical Inquiry questions');
+                plugin.registerDomEvent(signatureButton, 'click', evt => {
+                    evt.preventDefault();
+                    void loadCanonicalSet('full-signature');
+                });
+            } else {
+                const coreButton = libraryActions.createEl('button', { cls: `${ERT_CLASSES.PILL_BTN} ert-preset-pill` });
+                coreButton.createSpan({ cls: ERT_CLASSES.PILL_BTN_LABEL, text: 'Load Core Questions' });
+                plugin.registerDomEvent(coreButton, 'click', evt => {
+                    evt.preventDefault();
+                    void loadCanonicalSet('core');
+                });
+            }
 
             const dragStates: Record<InquiryPromptZoneKey, { index: number | null }> = {
                 setup: { index: null as number | null },

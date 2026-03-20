@@ -1,7 +1,7 @@
 import type { InquiryEstimateSnapshot } from '../services/inquiryEstimateSnapshot';
 import type { CorpusManifest, CorpusManifestEntry, InquiryRunTrace } from '../runner/types';
 import type { InquiryResult, InquiryFinding, InquiryZone } from '../state';
-import type { InquiryMaterialMode } from '../../types/settings';
+import type { SceneInclusion } from '../../types/settings';
 import type { TokenTier } from '../types';
 import { extractTokenUsage, formatAiLogContent, formatDuration, formatUsageCostBreakdownLines, sanitizeLogPayload, type AiLogStatus } from '../../ai/log';
 import { buildManifestTocLines, formatBriefLabel, formatManifestClassLabel } from '../utils/inquiryViewText';
@@ -26,7 +26,7 @@ export type InquiryLogBuilderDependencies = {
     isDegradedResult: (result: InquiryResult) => boolean;
     formatMetricDisplay: (value: number) => string;
     resolveManifestEntryLabel: (entry: CorpusManifestEntry) => string;
-    normalizeEvidenceMode: (mode?: InquiryMaterialMode) => 'none' | 'summary' | 'full';
+    normalizeEvidenceMode: (mode?: SceneInclusion) => 'excluded' | 'summary' | 'full';
     normalizeLegacyResult: (result: InquiryResult) => InquiryResult;
     resolveInquiryBriefZoneLabel: (result: InquiryResult) => string;
     resolveInquiryBriefLensLabel: (result: InquiryResult, zoneLabel: string) => string;
@@ -141,10 +141,10 @@ export function buildInquiryLogContent(args: {
             manifest.entries
                 .filter(entry => entry.class === className)
                 .map(entry => deps.normalizeEvidenceMode(entry.mode))
-                .filter(mode => mode !== 'none')
+                .filter(mode => mode !== 'excluded')
         );
         if (modes.size === 1) {
-            return modes.has('summary') ? 'Summary' : 'Body';
+            return modes.has('summary') ? 'Summary' : 'Full Scene';
         }
         if (modes.size > 1) {
             return 'Mixed';

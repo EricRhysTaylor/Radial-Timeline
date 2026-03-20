@@ -32,7 +32,7 @@ export function buildInquiryCorpusCcSlotViewModel(args: {
     thresholds: InquiryCorpusThresholds;
     pageHeight: number;
 }): InquiryCorpusCcSlotViewModel {
-    const mode = args.entry.mode ?? 'none';
+    const mode = args.entry.mode ?? 'excluded';
     const isSynopsis = mode === 'summary';
     const wordCount = isSynopsis ? args.stats.synopsisWords : args.stats.bodyWords;
     const tier = isSynopsis
@@ -79,7 +79,7 @@ export function applyInquiryCorpusCcSlotViewModel(
         'is-tier-sketchy',
         'is-tier-medium',
         'is-tier-substantive',
-        'is-mode-none',
+        'is-mode-excluded',
         'is-mode-summary',
         'is-mode-full',
         'is-status-todo',
@@ -94,7 +94,7 @@ export function applyInquiryCorpusCcSlotViewModel(
     } else if (viewModel.mode === 'full') {
         slot.group.classList.add('is-mode-full');
     } else {
-        slot.group.classList.add('is-mode-none');
+        slot.group.classList.add('is-mode-excluded');
     }
 
     if (viewModel.sceneStatus) {
@@ -183,14 +183,14 @@ function buildInquiryCorpusCcTooltip(args: {
     const tierLabel = getInquiryCorpusTierLabel(args.tier);
     const wordLabel = args.wordCount.toLocaleString();
     const isSynopsisCapable = args.entry.className === 'scene' || args.entry.className.startsWith('outline');
-    if (args.entry.mode === 'none') {
-        conditions.push('Mode: Off');
+    if (args.entry.mode === 'excluded') {
+        conditions.push('Mode: Exclude');
     }
     if (isSynopsisCapable) {
         if (args.entry.mode === 'summary') {
             conditions.push(`Tier: Summary ${tierLabel.toLowerCase()} (${wordLabel} words)`);
         } else if (args.entry.mode === 'full') {
-            conditions.push(`Tier: Body ${tierLabel.toLowerCase()} (${wordLabel} words)`);
+            conditions.push(`Tier: Full Scene ${tierLabel.toLowerCase()} (${wordLabel} words)`);
         } else {
             conditions.push(`Tier: ${tierLabel} (${wordLabel} words)`);
         }

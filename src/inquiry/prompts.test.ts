@@ -46,7 +46,7 @@ describe('Inquiry prompt helpers', () => {
         expect(config.payoff[8]?.canonical?.state).toBe('loaded');
     });
 
-    it('replaces canonical slots while preserving custom questions', () => {
+    it('replaces all slots with the selected canonical loadout', () => {
         const starting: InquiryPromptConfig = {
             setup: [
                 ...buildDefaultInquiryPromptConfig().setup,
@@ -82,8 +82,7 @@ describe('Inquiry prompt helpers', () => {
             'setup-world-logic-preconditions',
             'setup-reader-orientation-risk',
             'setup-load-bearing',
-            'setup-structural-assumptions',
-            'custom-setup-1'
+            'setup-structural-assumptions'
         ]);
         expect(next.pressure.map(slot => slot.id)).toEqual([
             'pressure-core',
@@ -94,9 +93,11 @@ describe('Inquiry prompt helpers', () => {
             'pressure-conflict-density',
             'pressure-scene-function-drift',
             'pressure-tension-leakage',
-            'pressure-irreversible-moves',
-            'custom-pressure-1'
+            'pressure-irreversible-moves'
         ]);
+        expect(next.setup).toHaveLength(9);
+        expect(next.pressure).toHaveLength(9);
+        expect(next.payoff).toHaveLength(9);
     });
 
     it('marks edited canonical slots as customized', () => {

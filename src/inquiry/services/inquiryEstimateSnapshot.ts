@@ -24,11 +24,10 @@
 
 import type { AIProviderId } from '../../ai/types';
 import type { TokenEstimateMethod } from '../../ai/tokens/inputTokenEstimate';
-import type { InquiryScope } from '../state';
+import type { InquiryLens, InquiryScope, InquirySelectionMode } from '../state';
 import type { ResolvedInquiryEngine } from './inquiryModelResolver';
 import type { CorpusManifest, EvidenceParticipationRules, InquiryRunnerInput } from '../runner/types';
 import type { InquiryRunnerService } from '../runner/InquiryRunnerService';
-import type { InquiryMode } from '../state';
 import { INQUIRY_CANONICAL_ESTIMATE_QUESTION, INQUIRY_MAX_OUTPUT_TOKENS } from '../constants';
 import { mapAiProviderToLegacyProvider } from '../../ai/settings/aiSettings';
 import { buildInquiryEstimateTrace } from './inquiryEstimateTrace';
@@ -81,7 +80,7 @@ export interface InquiryEstimateSnapshot {
 export interface EstimateSnapshotParams {
     scope: InquiryScope;
     focusBookId?: string;
-    focusSceneId?: string;
+    targetSceneIds: string[];
     focusLabel: string;
     manifest: CorpusManifest;
     payloadStats: {
@@ -99,7 +98,8 @@ export interface EstimateSnapshotParams {
         total: number;
     };
     rules: EvidenceParticipationRules;
-    mode: InquiryMode;
+    mode: InquiryLens;
+    selectionMode: InquirySelectionMode;
 }
 
 // ── State key ───────────────────────────────────────────────────────
@@ -185,7 +185,8 @@ export async function buildInquiryEstimateSnapshot(
     const runnerInput: InquiryRunnerInput = {
         scope: params.scope,
         focusLabel: params.focusLabel,
-        focusSceneId: params.scope === 'book' ? params.focusSceneId : undefined,
+        targetSceneIds: params.scope === 'book' ? params.targetSceneIds : [],
+        selectionMode: params.selectionMode,
         focusBookId: params.focusBookId,
         mode: params.mode,
         questionId: 'estimate-snapshot',

@@ -674,6 +674,19 @@
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--background-primary) 42%, transparent);
 }
 
+.ert-ui.ert-scope--settings .ert-preset-pill.ert-pillBtn--pro {
+  border-color: color-mix(in srgb, var(--ert-accent) 52%, var(--background-modifier-border));
+  color: color-mix(in srgb, var(--ert-accent) 72%, var(--text-normal));
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--background-primary) 42%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--ert-accent) 18%, transparent);
+}
+
+.ert-ui.ert-scope--settings .ert-preset-pill.ert-pillBtn--pro .ert-pillBtn__icon svg {
+  color: color-mix(in srgb, var(--ert-accent) 82%, var(--text-normal));
+  opacity: 0.92;
+}
+
 .ert-ui.ert-scope--settings .ert-preset-pill.is-active {
   border: 3px solid color-mix(in srgb, var(--interactive-accent) 85%, var(--background-modifier-border));
   color: var(--text-normal);

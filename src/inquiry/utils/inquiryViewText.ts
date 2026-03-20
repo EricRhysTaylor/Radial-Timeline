@@ -1,4 +1,4 @@
-import type { InquiryMaterialMode } from '../../types/settings';
+import type { SceneInclusion } from '../../types/settings';
 import type { CorpusManifestEntry } from '../runner/types';
 import type { InquiryFinding, InquiryResult, InquiryScope } from '../state';
 import type { InquiryBriefModel, InquirySceneDossier } from '../types/inquiryViewTypes';
@@ -134,13 +134,13 @@ export const formatManifestClassLabel = (value: string): string => {
 };
 
 export const formatManifestModeLabel = (
-    mode: InquiryMaterialMode | undefined,
-    normalizeEvidenceMode: (mode?: InquiryMaterialMode) => 'none' | 'summary' | 'full'
+    mode: SceneInclusion | undefined,
+    normalizeEvidenceMode: (mode?: SceneInclusion) => 'excluded' | 'summary' | 'full'
 ): string => {
     const normalized = normalizeEvidenceMode(mode);
     if (normalized === 'summary') return 'Summary';
-    if (normalized === 'full') return 'Body';
-    return 'Off';
+    if (normalized === 'full') return 'Full Scene';
+    return 'Exclude';
 };
 
 export const renderInquiryBrief = (brief: InquiryBriefModel): string => {
@@ -155,9 +155,9 @@ export const renderInquiryBrief = (brief: InquiryBriefModel): string => {
 
     lines.push('', '## High-Level Conclusions', '### Flow', brief.flowSummary, '', '### Depth', brief.depthSummary);
 
-    lines.push('', '## Key Findings (Structural Hits)');
+    lines.push('', '## Key Findings');
     if (!brief.findings.length) {
-        lines.push('No structural hits.');
+        lines.push('No findings.');
     } else {
         brief.findings.forEach(finding => {
             lines.push(
@@ -217,7 +217,7 @@ export const renderInquiryBrief = (brief: InquiryBriefModel): string => {
 
 export const buildManifestTocLines = (options: {
     manifestEntries: CorpusManifestEntry[] | null | undefined;
-    normalizeEvidenceMode: (mode?: InquiryMaterialMode) => 'none' | 'summary' | 'full';
+    normalizeEvidenceMode: (mode?: SceneInclusion) => 'excluded' | 'summary' | 'full';
     resolveManifestEntryLabel: (entry: CorpusManifestEntry) => string;
 }): string[] => {
     const entries = options.manifestEntries;

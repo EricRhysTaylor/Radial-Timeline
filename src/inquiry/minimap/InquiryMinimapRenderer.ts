@@ -1307,19 +1307,19 @@ export class InquiryMinimapRenderer {
         return { tickLayouts, tickWidth };
     }
 
-    // ── Hit states ───────────────────────────────────────────────────
+    // ── Finding states ───────────────────────────────────────────────
 
-    updateHitStates(
+    updateFindingStates(
         isRunning: boolean,
         isError: boolean,
-        hitMap: Map<string, { kind: string }>,
+        findingMap: Map<string, { kind: string }>,
         balanceTooltipText: (text: string) => string
     ): void {
         if (!this.minimapTicks.length) return;
         const severityClasses = ['is-severity-low', 'is-severity-medium', 'is-severity-high'];
         if (isRunning || isError) {
             this.minimapTicks.forEach(tick => {
-                tick.classList.remove('is-hit');
+                tick.classList.remove('is-finding');
                 severityClasses.forEach(cls => tick.classList.remove(cls));
                 const label = tick.getAttribute('data-label') || '';
                 if (label) {
@@ -1332,8 +1332,8 @@ export class InquiryMinimapRenderer {
 
         this.minimapTicks.forEach((tick, idx) => {
             const label = tick.getAttribute('data-label') || `T${idx + 1}`;
-            const finding = hitMap.get(label);
-            tick.classList.toggle('is-hit', !!finding);
+            const finding = findingMap.get(label);
+            tick.classList.toggle('is-finding', !!finding);
             severityClasses.forEach(cls => tick.classList.remove(cls));
             const fullLabel = tick.getAttribute('data-full-label') || label;
             if (finding) {

@@ -206,22 +206,9 @@ export const getPromptSlotQuestion = (slot: InquiryPromptSlot): string => {
 };
 
 export const replaceCanonicalPromptSlots = (
-    raw: InquiryPromptConfig | undefined,
+    _raw: InquiryPromptConfig | undefined,
     loadout: InquiryCanonicalLoadout
-): InquiryPromptConfig => {
-    const normalized = normalizeInquiryPromptConfig(raw);
-    const canonicalConfig = buildInquiryPromptConfigFromLoadout(loadout);
-    const mergeZone = (zone: InquiryZone): InquiryPromptSlot[] => {
-        const customSlots = (normalized[zone] ?? []).filter(slot => !isCanonicalPromptSlot(slot));
-        return [...canonicalConfig[zone], ...customSlots];
-    };
-
-    return {
-        setup: mergeZone('setup'),
-        pressure: mergeZone('pressure'),
-        payoff: mergeZone('payoff')
-    };
-};
+): InquiryPromptConfig => buildInquiryPromptConfigFromLoadout(loadout);
 
 export const normalizeInquiryPromptConfig = (raw?: InquiryPromptConfig): InquiryPromptConfig => {
     const defaults = buildDefaultInquiryPromptConfig();

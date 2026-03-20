@@ -2,7 +2,7 @@ import type { AIRunAdvancedContext } from '../../ai/types';
 import type {
     InquiryCanonicalQuestionTier,
     InquiryClassConfig,
-    InquiryMaterialMode,
+    SceneInclusion,
     InquiryTimingHistoryEntry,
     OmnibusProgressState
 } from '../../types/settings';
@@ -115,7 +115,7 @@ export type CorpusCcEntry = {
     className: string;
     classKey: string;
     scope?: InquiryScope;
-    mode: InquiryMaterialMode;
+    mode: SceneInclusion;
     sortLabel?: string;
 };
 
@@ -124,7 +124,7 @@ export type CorpusCcGroup = {
     className: string;
     items: CorpusCcEntry[];
     count: number;
-    mode: InquiryMaterialMode;
+    mode: SceneInclusion;
     headerLabel?: string;
     headerTooltipLabel?: string;
 };
@@ -240,7 +240,7 @@ export type InquiryBriefRenderContext = {
 };
 
 export type InquiryCorpusModeDependency = {
-    normalizeEvidenceMode: (mode?: InquiryMaterialMode) => 'none' | 'summary' | 'full';
+    normalizeEvidenceMode: (mode?: SceneInclusion) => 'excluded' | 'summary' | 'full';
 };
 
 export type InquiryClassContributionDependency = {

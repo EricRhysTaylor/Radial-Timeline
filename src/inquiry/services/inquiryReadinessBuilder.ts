@@ -179,13 +179,13 @@ export function buildRunScopeLabel(
     focusLabel: string
 ): string {
     const sceneMode = stats.sceneFullTextCount > 0
-        ? 'Bodies'
+        ? 'Full Scenes'
         : stats.sceneSynopsisUsed > 0
             ? 'Summaries'
             : 'No scene evidence';
     const outlineCount = stats.bookOutlineCount + stats.sagaOutlineCount;
     const outlineMode = (stats.bookOutlineFullCount + stats.sagaOutlineFullCount) > 0
-        ? 'Body'
+        ? 'Full'
         : (stats.bookOutlineSummaryCount + stats.sagaOutlineSummaryCount) > 0
             ? 'Summary'
             : '';
@@ -197,7 +197,7 @@ export function buildRunScopeLabel(
     if (scope === 'book') {
         const parts: string[] = [];
         if (outlineCount > 0) {
-            parts.push(`Outline (${outlineMode || 'Off'})`);
+            parts.push(`Outline (${outlineMode || 'Exclude'})`);
         }
         if (stats.sceneTotal > 0) {
             parts.push(sceneMode);

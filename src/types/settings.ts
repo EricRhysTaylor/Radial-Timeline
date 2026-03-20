@@ -293,16 +293,16 @@ export interface AprCampaign {
     teaserReveal?: TeaserRevealSettings;
 }
 
-export type InquiryMaterialMode = 'none' | 'summary' | 'full';
+export type SceneInclusion = 'excluded' | 'summary' | 'full';
 
 export type InquirySourcesPreset = 'default' | 'light' | 'deep';
 
 export interface InquiryClassConfig {
     className: string;
     enabled: boolean;
-    bookScope: InquiryMaterialMode;
-    sagaScope: InquiryMaterialMode;
-    referenceScope: InquiryMaterialMode;
+    bookScope: SceneInclusion;
+    sagaScope: SceneInclusion;
+    referenceScope: SceneInclusion;
 }
 
 export interface InquirySourcesSettings {
@@ -348,9 +348,9 @@ export interface InquiryPromptSlot {
 
 export type InquiryPromptConfig = Record<InquiryPromptZone, InquiryPromptSlot[]>;
 
-export interface InquiryFocusCache {
-    lastFocusBookId?: string;
-    lastFocusSceneByBookId?: Record<string, string>;
+export interface InquiryTargetCache {
+    lastBookId?: string;
+    lastTargetSceneIdsByBookId?: Record<string, string[]>;
 }
 
 export interface InquiryCorpusThresholds {
@@ -381,7 +381,7 @@ export interface InquirySessionCacheRecord {
         stale?: boolean;
         status?: 'saved' | 'unsaved' | 'error' | 'simulated';
         briefPath?: string;
-        focusSceneId?: string;
+        targetSceneIds: string[];
         focusBookId?: string;
         scope?: InquiryScope;
         questionZone?: InquiryPromptZone;
@@ -420,7 +420,7 @@ export interface RadialTimelineSettings {
     inquirySources?: InquirySourcesSettings;
     inquiryPromptConfig?: InquiryPromptConfig;
     inquirySessionCache?: InquirySessionCacheRecord;
-    inquiryFocusCache?: InquiryFocusCache;
+    inquiryTargetCache?: InquiryTargetCache;
     inquiryLastMode?: 'flow' | 'depth';
     inquiryCorpusThresholds?: InquiryCorpusThresholds;
     inquiryCorpusHighlightLowSubstanceComplete?: boolean;

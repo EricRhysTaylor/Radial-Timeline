@@ -12,7 +12,6 @@ export type ParsedCorpusSelectionKey = {
     scope?: InquiryScope;
     sceneId?: string;
     path?: string;
-    isLegacy: boolean;
 };
 
 const TOKEN_SCENE_ID = 'sceneId';
@@ -20,7 +19,7 @@ const TOKEN_PATH = 'path';
 
 export function buildCorpusSelectionKey(input: CorpusSelectionKeyInput): string {
     const className = (input.className || '').trim();
-    const scopeKey = input.scope ?? 'none';
+    const scopeKey = input.scope ?? 'global';
     const sceneId = normalizeText(input.sceneId);
 
     if (className === 'scene' && sceneId) {
@@ -29,13 +28,6 @@ export function buildCorpusSelectionKey(input: CorpusSelectionKeyInput): string 
 
     return `${className}::${scopeKey}::${TOKEN_PATH}::${normalizeText(input.filePath) ?? ''}`;
 }
-
-export function buildLegacyCorpusSelectionKey(input: Omit<CorpusSelectionKeyInput, 'sceneId'>): string {
-    const className = (input.className || '').trim();
-    const scopeKey = input.scope ?? 'none';
-    return `${className}::${scopeKey}::${normalizeText(input.filePath) ?? ''}`;
-}
-
 export function parseCorpusSelectionKey(rawKey: string): ParsedCorpusSelectionKey {
     const parts = rawKey.split('::');
     const className = (parts.shift() ?? '').trim();
@@ -47,8 +39,7 @@ export function parseCorpusSelectionKey(rawKey: string): ParsedCorpusSelectionKe
         return {
             className,
             scope,
-            sceneId,
-            isLegacy: false
+            sceneId
         };
     }
 
@@ -57,17 +48,13 @@ export function parseCorpusSelectionKey(rawKey: string): ParsedCorpusSelectionKe
         return {
             className,
             scope,
-            path,
-            isLegacy: false
+            path
         };
     }
 
-    const legacyPath = normalizeText([token, ...parts].filter(Boolean).join('::'));
     return {
         className,
-        scope,
-        path: legacyPath,
-        isLegacy: true
+        scope
     };
 }
 

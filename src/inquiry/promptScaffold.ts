@@ -1,14 +1,53 @@
 import { INQUIRY_SCHEMA_VERSION } from './constants';
+import type { InquiryLens, InquirySelectionMode } from './state';
 
 export const INQUIRY_ROLE_TEMPLATE_GUARDRAIL =
     "Do not reinterpret or expand the user's question. Answer it directly. The role template provides tonal and contextual framing only.";
 
-export function buildInquiryPromptParts(evidenceText: string): {
+export type InquiryPromptScaffoldInput = {
+    task: string;
+    lens: InquiryLens;
+    selectionMode: InquirySelectionMode;
+    targetSceneIds: string[];
+    corpusManifestLines: string[];
+    evidenceText: string;
+};
+
+function normalizePromptInput(input: string | InquiryPromptScaffoldInput): InquiryPromptScaffoldInput {
+    if (typeof input === 'string') {
+        return {
+            task: '',
+            lens: 'flow',
+            selectionMode: 'discover',
+            targetSceneIds: [],
+            corpusManifestLines: [],
+            evidenceText: input
+        };
+    }
+    return {
+        task: input.task,
+        lens: input.lens,
+        selectionMode: input.selectionMode,
+        targetSceneIds: Array.isArray(input.targetSceneIds) ? input.targetSceneIds : [],
+        corpusManifestLines: Array.isArray(input.corpusManifestLines) ? input.corpusManifestLines : [],
+        evidenceText: input.evidenceText
+    };
+}
+
+export function buildInquiryPromptParts(input: string | InquiryPromptScaffoldInput): {
     systemPrompt: string;
     instructionText: string;
     schemaText: string;
     userPrompt: string;
 } {
+    const normalized = normalizePromptInput(input);
+    const targetSceneLines = normalized.targetSceneIds.length
+        ? normalized.targetSceneIds.map(sceneId => `- ${sceneId}`)
+        : ['- no target scenes selected'];
+    const manifestLines = normalized.corpusManifestLines.length
+        ? normalized.corpusManifestLines.map(line => `- ${line}`)
+        : ['- no corpus entries included'];
+
     const systemPrompt = [
         'You are an editorial analysis engine.',
         'Scores are corpus-level diagnostics, not answer quality.',
@@ -38,6 +77,7 @@ export function buildInquiryPromptParts(evidenceText: string): {
         '      "lens": "flow|depth|both (optional)",',
         '      "headline": "short line",',
         '      "bullets": ["optional", "points"],',
+        '      "role": "target|context (optional)",',
         '      "impact": "low|medium|high",',
         '      "assessmentConfidence": "low|medium|high"',
         '    }',
@@ -59,14 +99,23 @@ export function buildInquiryPromptParts(evidenceText: string): {
         'Canonical scene ids are YAML IDs in the form scn_<hash>.',
         'Every finding.ref_id must match ^scn_[a-f0-9]{8,10}$ and be copied exactly from evidence labels.',
         'Never invent scene refs like scn_s38_jump, scn_s44_long_road_up, or title/slug variants.',
-        'Evidence headings include "(Summary)" or "(Body)".',
+        'Evidence headings include "(Summary)" or "(Full)".',
         'Treat "(Summary)" entries as compressed evidence, not full scene prose; avoid claims requiring missing fine-grain details.',
         'Return findings ONLY for scenes/moments that need revision, clarification, or stronger setup/payoff support.',
         'If a scene is working well, do NOT include it in findings. An empty findings array is valid and preferred over praise.',
         'Do not return praise or strength observations as findings. Findings must identify a deficit, gap, or revision opportunity.',
         'Use kind: "strength" ONLY if a scene is explicitly noteworthy as a structural anchor — never for general praise. Strength findings are informational and will not generate action items.',
         'Return at most ONE finding per scene reference. If multiple issues exist for the same scene, combine them into a single headline and bullet list.',
+        'Use role: "target" for author-selected target scenes and role: "context" for supporting context when helpful.',
         'Optionally tag findings with lens: flow|depth|both to indicate relevance.',
+        ...(normalized.selectionMode === 'focused'
+            ? [
+                'Focused selection mode: treat target scenes as the primary subject of analysis.',
+                'Use the full manuscript as context, not as the main object of critique.',
+                'Include outside scenes only when they are necessary to support a target-scene finding.',
+                'Avoid drifting into broad global critique when the target scenes already answer the task.'
+            ]
+            : []),
         'Return JSON only with summaryFlow, summaryDepth, verdict.flow, verdict.depth, impact, assessmentConfidence, and findings.',
         'Return JSON only using the exact schema below.'
     ].join('\n');
@@ -76,17 +125,32 @@ export function buildInquiryPromptParts(evidenceText: string): {
         '',
         schemaText,
         '',
-        'Evidence:',
-        evidenceText
+        'TASK:',
+        normalized.task || '(not provided)',
+        '',
+        'LENS:',
+        normalized.lens,
+        '',
+        'SELECTION MODE:',
+        normalized.selectionMode,
+        '',
+        'TARGET SCENES:',
+        ...targetSceneLines,
+        '',
+        'CORPUS MANIFEST:',
+        ...manifestLines,
+        '',
+        'EVIDENCE:',
+        normalized.evidenceText
     ].join('\n');
 
     return { systemPrompt, instructionText, schemaText, userPrompt };
 }
 
-export function buildInquiryPromptScaffold(evidenceText: string): {
+export function buildInquiryPromptScaffold(input: string | InquiryPromptScaffoldInput): {
     systemPrompt: string;
     userPrompt: string;
 } {
-    const { systemPrompt, userPrompt } = buildInquiryPromptParts(evidenceText);
+    const { systemPrompt, userPrompt } = buildInquiryPromptParts(input);
     return { systemPrompt, userPrompt };
 }

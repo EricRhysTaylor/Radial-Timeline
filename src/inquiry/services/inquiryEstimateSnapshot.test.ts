@@ -226,7 +226,7 @@ describe('buildInquiryEstimateSnapshot', () => {
         const snapshot = await buildInquiryEstimateSnapshot({
             scope: 'book',
             focusBookId: 'Books/Book 1',
-            focusSceneId: undefined,
+            targetSceneIds: [],
             focusLabel: 'B1',
             manifest: {
                 entries: manifestEntries,
@@ -262,7 +262,8 @@ describe('buildInquiryEstimateSnapshot', () => {
                 bookOutlineScope: 'book-only',
                 crossScopeUsage: 'conflict-only'
             },
-            mode: 'flow'
+            mode: 'flow',
+            selectionMode: 'discover'
         });
 
         expect(snapshot.corpus.sceneCount).toBe(53);

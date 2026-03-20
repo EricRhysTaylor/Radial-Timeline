@@ -128,7 +128,7 @@ export class InquiryCorpusResolver {
         classScope: { allowAll: boolean; allowed: Set<string> }
     ): InquirySceneItem[] {
         const classConfig = classConfigs.find(cfg => cfg.className === 'scene');
-        if (!classConfig || !classConfig.enabled || classConfig.bookScope === 'none') return [];
+        if (!classConfig || !classConfig.enabled || classConfig.bookScope === 'excluded') return [];
         if (!classScope.allowAll && !classScope.allowed.has('scene')) return [];
 
         const inRoots = (path: string): boolean => {

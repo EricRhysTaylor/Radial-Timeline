@@ -1301,7 +1301,8 @@ export function renderAiSection(params: {
                 path: file.path,
                 mtime: file.stat?.mtime ?? Date.now(),
                 class: 'scene',
-                mode: 'full'
+                mode: 'full',
+                isTarget: false
             }))
         );
         const gossamerCorpusTokens = gossamerDisplayCorpus.estimatedTokens;

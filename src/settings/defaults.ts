@@ -30,9 +30,9 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
         resolvedScanRoots: []
     },
     inquiryPromptConfig: buildDefaultInquiryPromptConfig(),
-    inquiryFocusCache: {
-        lastFocusBookId: undefined,
-        lastFocusSceneByBookId: {}
+    inquiryTargetCache: {
+        lastBookId: undefined,
+        lastTargetSceneIdsByBookId: {}
     },
     inquiryLastMode: 'flow',
     inquiryCorpusThresholds: {

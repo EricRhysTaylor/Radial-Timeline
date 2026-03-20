@@ -12,7 +12,7 @@ export interface InquirySession {
     status?: InquirySessionStatus;
     briefPath?: string;
     logPath?: string;
-    focusSceneId?: string;
+    targetSceneIds: string[];
     focusBookId?: string;
     scope?: InquiryScope;
     questionZone?: InquiryZone;

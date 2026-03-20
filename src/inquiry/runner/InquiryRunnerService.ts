@@ -30,7 +30,7 @@ import { cleanEvidenceBody } from '../utils/evidenceCleaning';
 import { estimateTokensFromChars, type TokenEstimateMethod } from '../../ai/tokens/inputTokenEstimate';
 import { logCountingForensics } from '../../ai/diagnostics/countingForensics';
 import { buildInquiryJsonSchema, buildInquiryOmnibusJsonSchema } from '../jsonSchema';
-import { buildInquiryPromptScaffold, INQUIRY_ROLE_TEMPLATE_GUARDRAIL } from '../promptScaffold';
+import { buildInquiryPromptParts, buildInquiryPromptScaffold, INQUIRY_ROLE_TEMPLATE_GUARDRAIL } from '../promptScaffold';
 
 export { cleanEvidenceBody } from '../utils/evidenceCleaning';
 
@@ -69,6 +69,7 @@ type RawInquiryFinding = {
     lens?: string;
     headline?: string;
     bullets?: string[];
+    role?: string;
     impact?: string;
     assessmentConfidence?: string;
     severity?: string;
@@ -474,7 +475,7 @@ export class InquiryRunnerService implements InquiryRunner {
             sceneEntries.map(entry => [entry.path, this.normalizeEntryMode(entry.mode)])
         );
         for (const scene of scenes) {
-            const mode = sceneModeByPath.get(scene.path) ?? 'none';
+            const mode = sceneModeByPath.get(scene.path) ?? 'excluded';
             const sceneLabel = scene.title ? `${scene.title} (${scene.label})` : scene.label;
             const sceneMeta: EvidenceDocumentMeta = { title: scene.title || scene.label, path: scene.path, sceneId: scene.sceneId, evidenceClass: 'scene' };
             if (mode === 'summary') {
@@ -485,7 +486,7 @@ export class InquiryRunnerService implements InquiryRunner {
             if (mode === 'full') {
                 const content = await this.readFileContent(scene.path);
                 if (!content) continue;
-                blocks.push({ label: `Scene ${sceneLabel} (${scene.sceneId}) (Body)`, content, meta: sceneMeta });
+                blocks.push({ label: `Scene ${sceneLabel} (${scene.sceneId}) (Full)`, content, meta: sceneMeta });
             }
         }
 
@@ -577,7 +578,7 @@ export class InquiryRunnerService implements InquiryRunner {
         const blocks: EvidenceBlock[] = [];
         for (const entry of entries) {
             const mode = this.normalizeEntryMode(entry.mode);
-            if (mode === 'none') continue;
+            if (mode === 'excluded') continue;
             const baseLabel = entry.scope === 'book'
                 ? this.buildBookOutlineLabel(entry.path, fallbackLabel)
                 : fallbackLabel;
@@ -590,7 +591,7 @@ export class InquiryRunnerService implements InquiryRunner {
             }
             const content = await this.readFileContent(entry.path);
             if (!content) continue;
-            blocks.push({ label: `${baseLabel} (Body)`, content, meta });
+            blocks.push({ label: `${baseLabel} (Full)`, content, meta });
         }
         return blocks;
     }
@@ -599,7 +600,7 @@ export class InquiryRunnerService implements InquiryRunner {
         const blocks: EvidenceBlock[] = [];
         for (const entry of entries) {
             const mode = this.normalizeEntryMode(entry.mode);
-            if (mode === 'none') continue;
+            if (mode === 'excluded') continue;
             const baseLabel = this.buildReferenceLabel(entry);
             const meta: EvidenceDocumentMeta = { title: baseLabel, path: entry.path, evidenceClass: this.formatClassLabel(entry.class) };
             if (mode === 'summary') {
@@ -610,7 +611,7 @@ export class InquiryRunnerService implements InquiryRunner {
             }
             const content = await this.readFileContent(entry.path);
             if (!content) continue;
-            blocks.push({ label: `${baseLabel} (Body)`, content, meta });
+            blocks.push({ label: `${baseLabel} (Full)`, content, meta });
         }
         return blocks;
     }
@@ -665,14 +666,28 @@ export class InquiryRunnerService implements InquiryRunner {
         return summary ? summary : null;
     }
 
-    private normalizeEntryMode(mode?: CorpusManifestEntry['mode']): 'none' | 'summary' | 'full' {
+    private normalizeEntryMode(mode?: CorpusManifestEntry['mode']): 'excluded' | 'summary' | 'full' {
         if (mode === 'full') return 'full';
         if (mode === 'summary') return 'summary';
-        return 'none';
+        return 'excluded';
     }
 
     private isModeActive(mode?: CorpusManifestEntry['mode']): boolean {
-        return this.normalizeEntryMode(mode) !== 'none';
+        return this.normalizeEntryMode(mode) !== 'excluded';
+    }
+
+    private buildManifestSubjectLabel(entry: CorpusManifestEntry): string {
+        if (entry.sceneId) return entry.sceneId;
+        const filename = entry.path.split('/').pop() || entry.path;
+        return filename.replace(/\.[^.]+$/i, '');
+    }
+
+    private buildCorpusManifestLines(entries: CorpusManifestEntry[]): string[] {
+        return entries.map(entry => {
+            const mode = this.normalizeEntryMode(entry.mode);
+            const isTarget = entry.isTarget === true;
+            return `${this.buildManifestSubjectLabel(entry)} | class=${entry.class} | mode=${mode} | isTarget=${isTarget}`;
+        });
     }
 
     private buildPrompt(
@@ -682,7 +697,14 @@ export class InquiryRunnerService implements InquiryRunner {
         const evidenceText = evidence.map(block => {
             return `## ${block.label}\n${block.content}`;
         }).join('\n\n');
-        const { systemPrompt, userPrompt } = buildInquiryPromptScaffold(evidenceText);
+        const { systemPrompt, userPrompt } = buildInquiryPromptScaffold({
+            task: input.questionText,
+            lens: input.mode,
+            selectionMode: input.selectionMode,
+            targetSceneIds: input.targetSceneIds,
+            corpusManifestLines: this.buildCorpusManifestLines(input.corpus.entries),
+            evidenceText
+        });
 
         return { systemPrompt, userPrompt, evidenceText };
     }
@@ -741,38 +763,40 @@ export class InquiryRunnerService implements InquiryRunner {
             const zoneLabel = question.zone === 'setup' ? 'Setup' : question.zone === 'pressure' ? 'Pressure' : 'Payoff';
             return `${index + 1}) [${question.id}] ${zoneLabel}: ${question.question}`;
         });
+        const { instructionText } = buildInquiryPromptParts({
+            task: questionLines.join('\n'),
+            lens: input.mode,
+            selectionMode: input.selectionMode,
+            targetSceneIds: input.targetSceneIds,
+            corpusManifestLines: this.buildCorpusManifestLines(input.corpus.entries),
+            evidenceText
+        });
 
         const userPrompt = [
-            'Questions:',
-            ...questionLines,
+            instructionText,
             '',
-            'Answer every question using the same evidence.',
-            'Independently assign corpus-level diagnostics (0-100) per question:',
-            '- Flow: momentum/causality/pressure progression across the evaluated corpus.',
-            '- Depth: coherence/implication/structural integrity across the evaluated corpus.',
-            'Scores reflect the corpus, not the quality of your answer.',
-            'Use the same evidence for both lenses; interpretation changes, not evidence.',
-            'Use flow summary phrasing that emphasizes compression, timing, and pressure.',
-            'Use depth summary phrasing that emphasizes alignment, implication, and consistency.',
-            'If conclusions align, still phrase summaries to match the active lens emphasis.',
-            'Use scene ref_id values from evidence labels in parentheses (e.g., scn_a1b2c3d4).',
-            'Canonical scene ids are YAML IDs in the form scn_<hash>.',
-            'Every finding.ref_id must match ^scn_[a-f0-9]{8,10}$ and be copied exactly from evidence labels.',
-            'Never invent scene refs like scn_s38_jump, scn_s44_long_road_up, or title/slug variants.',
-            'Evidence headings include "(Summary)" or "(Body)".',
-            'Treat "(Summary)" entries as compressed evidence, not full scene prose; avoid claims requiring missing fine-grain details.',
-            'Return findings ONLY for scenes/moments that need revision, clarification, or stronger setup/payoff support.',
-            'If a scene is working well, do NOT include it in findings. An empty findings array is valid and preferred over praise.',
-            'Do not return praise or strength observations as findings. Findings must identify a deficit, gap, or revision opportunity.',
-            'Use kind: "strength" ONLY if a scene is explicitly noteworthy as a structural anchor — never for general praise. Strength findings are informational and will not generate action items.',
-            'Return at most ONE finding per scene reference. If multiple issues exist for the same scene, combine them into a single headline and bullet list.',
-            'Optionally tag findings with lens: flow|depth|both to indicate relevance.',
+            'Answer every listed question using the same evidence and return one result per question.',
             'Return JSON only with summaryFlow, summaryDepth, verdict.flow, verdict.depth, impact, assessmentConfidence, and findings for every question.',
             'Return JSON only using the exact schema below.',
             '',
             schema,
             '',
-            'Evidence:',
+            'TASK:',
+            questionLines.join('\n'),
+            '',
+            'LENS:',
+            input.mode,
+            '',
+            'SELECTION MODE:',
+            input.selectionMode,
+            '',
+            'TARGET SCENES:',
+            ...(input.targetSceneIds.length ? input.targetSceneIds.map(sceneId => `- ${sceneId}`) : ['- no target scenes selected']),
+            '',
+            'CORPUS MANIFEST:',
+            ...this.buildCorpusManifestLines(input.corpus.entries).map(line => `- ${line}`),
+            '',
+            'EVIDENCE:',
             evidenceText
         ].join('\n');
 
@@ -2061,7 +2085,8 @@ export class InquiryRunnerService implements InquiryRunner {
         return {
             scope: input.scope,
             focusLabel: input.focusLabel,
-            focusSceneId: input.focusSceneId,
+            targetSceneIds: input.targetSceneIds,
+            selectionMode: input.selectionMode,
             focusBookId: input.focusBookId,
             mode: input.mode,
             questionId: question.id,
@@ -2093,7 +2118,8 @@ export class InquiryRunnerService implements InquiryRunner {
             bullets,
             related: [],
             evidenceType: 'mixed',
-            lens
+            lens,
+            role: this.normalizeFindingRole(raw.role)
         };
     }
 
@@ -2144,8 +2170,9 @@ export class InquiryRunnerService implements InquiryRunner {
     }
 
     private resolveFindingFallbackRefId(input: InquiryRunnerInput): string {
-        if (isStableSceneId(input.focusSceneId)) {
-            return String(input.focusSceneId).trim().toLowerCase();
+        const primaryTargetSceneId = input.targetSceneIds.find(sceneId => isStableSceneId(sceneId));
+        if (primaryTargetSceneId) {
+            return primaryTargetSceneId.trim().toLowerCase();
         }
         const firstSceneId = input.corpus.entries.find(entry => entry.class === 'scene' && isStableSceneId(entry.sceneId))?.sceneId;
         if (firstSceneId) return firstSceneId.toLowerCase();
@@ -2443,6 +2470,14 @@ export class InquiryRunnerService implements InquiryRunner {
         return undefined;
     }
 
+    private normalizeFindingRole(value?: string): InquiryFinding['role'] | undefined {
+        const normalized = value ? value.toLowerCase().trim() : '';
+        if (normalized === 'target' || normalized === 'context') {
+            return normalized as InquiryFinding['role'];
+        }
+        return undefined;
+    }
+
     private getFrontmatter(file: TFile): Record<string, unknown> {
         const cache = this.metadataCache.getFileCache(file);
         const frontmatter = cache?.frontmatter as Record<string, unknown> | undefined;
@@ -2556,7 +2591,8 @@ export class InquiryRunnerService implements InquiryRunner {
             evidenceBlocks = await this.buildEvidenceBlocks({
                 scope: input.scope,
                 focusLabel: input.focusLabel,
-                focusSceneId: input.focusSceneId,
+                targetSceneIds: input.targetSceneIds,
+                selectionMode: input.selectionMode,
                 focusBookId: input.focusBookId,
                 mode: input.mode,
                 questionId: 'omnibus',

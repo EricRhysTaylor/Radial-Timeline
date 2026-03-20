@@ -1,6 +1,6 @@
 import type { MetadataCache, TFile, Vault } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
-import type { BookProfile, InquiryClassConfig, InquiryMaterialMode, InquirySourcesSettings } from '../../types/settings';
+import type { BookProfile, InquiryClassConfig, InquirySourcesSettings, SceneInclusion } from '../../types/settings';
 import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { normalizeScanRootPatterns, resolveScanRoots, toVaultRoot } from '../../inquiry/utils/scanRoots';
 import { cleanEvidenceBody } from '../../inquiry/utils/evidenceCleaning';
@@ -22,7 +22,7 @@ import { readSceneId } from '../../utils/sceneIds';
 export const FORECAST_CHARS_PER_TOKEN = 4;
 export const FORECAST_PROMPT_OVERHEAD_TOKENS = 250;
 
-type InquiryEvidenceMode = 'none' | 'summary' | 'full' | 'mixed';
+type InquiryEvidenceMode = 'excluded' | 'summary' | 'full' | 'mixed';
 
 type InquiryEvidenceBlock = {
     mode: 'summary' | 'full';
@@ -94,10 +94,10 @@ const getClassScopeConfig = (raw?: string[]): { allowAll: boolean; allowed: Set<
     return { allowAll, allowed };
 };
 
-const normalizeMode = (mode?: InquiryMaterialMode, className?: string): InquiryMaterialMode => {
+const normalizeMode = (mode?: SceneInclusion, className?: string): SceneInclusion => {
     if (mode === 'full') return 'full';
     if (mode === 'summary') return SYNOPSIS_CAPABLE_CLASSES.has((className || '').toLowerCase()) ? 'summary' : 'full';
-    return 'none';
+    return 'excluded';
 };
 
 const normalizeInquiryClasses = (classes?: InquiryClassConfig[]): InquiryClassConfig[] =>
@@ -123,7 +123,7 @@ const formatInquiryEvidenceLabel = (mode: InquiryEvidenceMode): string => {
     if (mode === 'summary') return 'Summaries';
     if (mode === 'full') return 'Bodies';
     if (mode === 'mixed') return 'Mixed';
-    return 'None';
+    return 'Exclude';
 };
 
 const resolveInquiryModeForClass = (
@@ -131,7 +131,7 @@ const resolveInquiryModeForClass = (
     config: InquiryClassConfig,
     scope: InquiryScope,
     frontmatter: Record<string, unknown>
-): InquiryMaterialMode => {
+): SceneInclusion => {
     if (className === 'outline') {
         const scopeValue = typeof frontmatter['Scope'] === 'string'
             ? frontmatter['Scope'].trim().toLowerCase()
@@ -226,7 +226,7 @@ const buildCanonicalManifest = (
 ): CorpusManifest => {
     const now = Date.now();
     const fingerprintSource = entries
-        .map(entry => `${entry.path}:${entry.sceneId ?? ''}:${entry.mtime}:${entry.mode ?? 'none'}`)
+        .map(entry => `${entry.path}:${entry.sceneId ?? ''}:${entry.mtime}:${entry.mode}`)
         .sort()
         .join('|');
     const fingerprintRaw = `${INQUIRY_SCHEMA_VERSION}|${questionId}|${modelId}|${fingerprintSource}`;
@@ -289,6 +289,8 @@ export const buildCanonicalExecutionEstimate = async (
         scope: params.scope,
         focusBookId: params.focusBookId,
         focusLabel: params.focusLabel,
+        targetSceneIds: [],
+        selectionMode: 'discover',
         mode: 'flow',
         questionId: 'estimate-snapshot',
         questionText: params.questionText,
@@ -369,8 +371,8 @@ export async function estimateInquiryTokens(params: {
         return {
             corpus,
             blockCount: 0,
-            evidenceMode: 'none',
-            evidenceLabel: 'None',
+            evidenceMode: 'excluded',
+            evidenceLabel: 'Exclude',
             selectionLabel: params.scopeContext?.label
                 ? `${params.scopeContext.label} (${selected.selectionLabel})`
                 : selected.selectionLabel
@@ -397,12 +399,13 @@ export async function estimateInquiryTokens(params: {
 
             const mode = resolveInquiryModeForClass(className, config, scope, frontmatter);
             const normalizedMode = normalizeMode(mode, className);
-            if (normalizedMode === 'none') continue;
+            if (normalizedMode === 'excluded') continue;
             const manifestEntryBase: CorpusManifestEntry = {
                 path: file.path,
                 mtime: file.stat?.mtime ?? Date.now(),
                 class: className,
-                mode: normalizedMode
+                mode: normalizedMode,
+                isTarget: false
             };
             if (className === 'scene') {
                 manifestEntryBase.sceneId = readSceneId(frontmatter);
@@ -449,7 +452,7 @@ export async function estimateInquiryTokens(params: {
 
     const modeSet = new Set(blocks.map(block => block.mode));
     const evidenceMode: InquiryEvidenceMode = modeSet.size === 0
-        ? 'none'
+        ? 'excluded'
         : modeSet.size === 2
             ? 'mixed'
             : modeSet.has('summary')

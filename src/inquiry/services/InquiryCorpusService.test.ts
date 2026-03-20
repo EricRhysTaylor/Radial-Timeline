@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import type { InquiryMaterialMode, InquiryClassConfig } from '../../types/settings';
+import type { SceneInclusion, InquiryClassConfig } from '../../types/settings';
 import type { CorpusManifestEntry } from '../runner/types';
 import {
     InquiryCorpusService,
@@ -36,7 +36,7 @@ function makeClassConfig(overrides: Partial<InquiryClassConfig> & { className: s
         enabled: true,
         bookScope: 'full',
         sagaScope: 'full',
-        referenceScope: 'none',
+        referenceScope: 'excluded',
         ...overrides
     };
 }
@@ -76,8 +76,8 @@ describe('normalizeEvidenceMode', () => {
     });
 
     it('returns none for undefined or none', () => {
-        expect(normalizeEvidenceMode(undefined)).toBe('none');
-        expect(normalizeEvidenceMode('none')).toBe('none');
+        expect(normalizeEvidenceMode(undefined)).toBe('excluded');
+        expect(normalizeEvidenceMode('excluded')).toBe('excluded');
     });
 });
 
@@ -88,7 +88,7 @@ describe('isModeActive', () => {
     });
 
     it('returns false for none and undefined', () => {
-        expect(isModeActive('none')).toBe(false);
+        expect(isModeActive('excluded')).toBe(false);
         expect(isModeActive(undefined)).toBe(false);
     });
 });
@@ -106,7 +106,7 @@ describe('normalizeContributionMode', () => {
 
     it('passes through full and none unchanged', () => {
         expect(normalizeContributionMode('full', 'character')).toBe('full');
-        expect(normalizeContributionMode('none', 'scene')).toBe('none');
+        expect(normalizeContributionMode('excluded', 'scene')).toBe('excluded');
     });
 });
 
@@ -114,7 +114,7 @@ describe('normalizeMaterialMode', () => {
     it('normalizes string values', () => {
         expect(normalizeMaterialMode('full', 'scene')).toBe('full');
         expect(normalizeMaterialMode('summary', 'scene')).toBe('summary');
-        expect(normalizeMaterialMode('none', 'scene')).toBe('none');
+        expect(normalizeMaterialMode('excluded', 'scene')).toBe('excluded');
     });
 
     it('normalizes digest to summary', () => {
@@ -124,20 +124,20 @@ describe('normalizeMaterialMode', () => {
     it('normalizes boolean values', () => {
         expect(normalizeMaterialMode(true, 'scene')).toBe('summary');
         expect(normalizeMaterialMode(true, 'character')).toBe('full');
-        expect(normalizeMaterialMode(false, 'scene')).toBe('none');
+        expect(normalizeMaterialMode(false, 'scene')).toBe('excluded');
     });
 
     it('returns none for unknown values', () => {
-        expect(normalizeMaterialMode(42, 'scene')).toBe('none');
-        expect(normalizeMaterialMode(null, 'scene')).toBe('none');
+        expect(normalizeMaterialMode(42, 'scene')).toBe('excluded');
+        expect(normalizeMaterialMode(null, 'scene')).toBe('excluded');
     });
 });
 
 describe('resolveContributionMode', () => {
     it('returns the highest-ranked mode', () => {
-        expect(resolveContributionMode(makeClassConfig({ className: 'scene', bookScope: 'full', sagaScope: 'none', referenceScope: 'none' }))).toBe('full');
-        expect(resolveContributionMode(makeClassConfig({ className: 'scene', bookScope: 'summary', sagaScope: 'none', referenceScope: 'none' }))).toBe('summary');
-        expect(resolveContributionMode(makeClassConfig({ className: 'scene', bookScope: 'none', sagaScope: 'none', referenceScope: 'none' }))).toBe('none');
+        expect(resolveContributionMode(makeClassConfig({ className: 'scene', bookScope: 'full', sagaScope: 'excluded', referenceScope: 'excluded' }))).toBe('full');
+        expect(resolveContributionMode(makeClassConfig({ className: 'scene', bookScope: 'summary', sagaScope: 'excluded', referenceScope: 'excluded' }))).toBe('summary');
+        expect(resolveContributionMode(makeClassConfig({ className: 'scene', bookScope: 'excluded', sagaScope: 'excluded', referenceScope: 'excluded' }))).toBe('excluded');
     });
 });
 
@@ -149,8 +149,8 @@ describe('normalizeClassContribution', () => {
             sagaScope: 'full',
             referenceScope: 'full'
         }));
-        expect(result.bookScope).toBe('none');
-        expect(result.sagaScope).toBe('none');
+        expect(result.bookScope).toBe('excluded');
+        expect(result.sagaScope).toBe('excluded');
         expect(result.referenceScope).toBe('full');
     });
 
@@ -159,11 +159,11 @@ describe('normalizeClassContribution', () => {
             className: 'scene',
             bookScope: 'full',
             sagaScope: 'summary',
-            referenceScope: 'none'
+            referenceScope: 'excluded'
         }));
         expect(result.bookScope).toBe('full');
         expect(result.sagaScope).toBe('full');
-        expect(result.referenceScope).toBe('none');
+        expect(result.referenceScope).toBe('excluded');
     });
 });
 
@@ -228,22 +228,22 @@ describe('parseCorpusItemKey', () => {
 
 describe('getCorpusCycleModes', () => {
     it('returns none, summary, full', () => {
-        expect(getCorpusCycleModes('scene')).toEqual(['none', 'summary', 'full']);
-        expect(getCorpusCycleModes('character')).toEqual(['none', 'summary', 'full']);
+        expect(getCorpusCycleModes('scene')).toEqual(['excluded', 'summary', 'full']);
+        expect(getCorpusCycleModes('character')).toEqual(['excluded', 'summary', 'full']);
     });
 });
 
 describe('getNextCorpusMode', () => {
-    const modes: InquiryMaterialMode[] = ['none', 'summary', 'full'];
+    const modes: SceneInclusion[] = ['excluded', 'summary', 'full'];
 
     it('cycles through modes', () => {
-        expect(getNextCorpusMode('none', modes)).toBe('summary');
+        expect(getNextCorpusMode('excluded', modes)).toBe('summary');
         expect(getNextCorpusMode('summary', modes)).toBe('full');
-        expect(getNextCorpusMode('full', modes)).toBe('none');
+        expect(getNextCorpusMode('full', modes)).toBe('excluded');
     });
 
     it('returns first mode for unknown current', () => {
-        expect(getNextCorpusMode('unknown' as InquiryMaterialMode, modes)).toBe('none');
+        expect(getNextCorpusMode('unknown' as SceneInclusion, modes)).toBe('excluded');
     });
 });
 
@@ -420,12 +420,12 @@ describe('InquiryCorpusService', () => {
     describe('getGroupBaseMode', () => {
         it('returns none when no config and no fallback', () => {
             const configMap = new Map<string, InquiryClassConfig>();
-            expect(service.getGroupBaseMode('scene', configMap, 'book')).toBe('none');
+            expect(service.getGroupBaseMode('scene', configMap, 'book')).toBe('excluded');
         });
 
         it('returns none for disabled config', () => {
             const configMap = new Map([['scene', makeClassConfig({ className: 'scene', enabled: false })]]);
-            expect(service.getGroupBaseMode('scene', configMap, 'book')).toBe('none');
+            expect(service.getGroupBaseMode('scene', configMap, 'book')).toBe('excluded');
         });
 
         it('returns bookScope for book scope on scene', () => {
@@ -455,7 +455,7 @@ describe('InquiryCorpusService', () => {
 
         it('uses fallback entries when no config', () => {
             const configMap = new Map<string, InquiryClassConfig>();
-            const fallback = [{ className: 'scene', mode: 'summary' as InquiryMaterialMode }];
+            const fallback = [{ className: 'scene', mode: 'summary' as SceneInclusion }];
             expect(service.getGroupBaseMode('scene', configMap, 'book', fallback)).toBe('summary');
         });
     });
@@ -490,7 +490,7 @@ describe('InquiryCorpusService', () => {
         it('prefers item override over class override', () => {
             const configMap = new Map([['scene', makeClassConfig({ className: 'scene', bookScope: 'summary' })]]);
             const entry = makeEntry({ path: '/file.md', class: 'scene' });
-            service.setClassOverride('scene', 'none');
+            service.setClassOverride('scene', 'excluded');
             service.setItemOverride('scene', '/file.md', 'full');
             expect(service.getItemEffectiveMode(entry, configMap, 'book')).toBe('full');
         });
@@ -506,7 +506,7 @@ describe('InquiryCorpusService', () => {
     describe('getGlobalMode', () => {
         it('returns none for empty group keys', () => {
             const configMap = new Map<string, InquiryClassConfig>();
-            expect(service.getGlobalMode([], configMap, 'book')).toBe('none');
+            expect(service.getGlobalMode([], configMap, 'book')).toBe('excluded');
         });
 
         it('returns none when all groups are none', () => {
@@ -514,7 +514,7 @@ describe('InquiryCorpusService', () => {
                 ['scene', makeClassConfig({ className: 'scene', enabled: false })],
                 ['character', makeClassConfig({ className: 'character', enabled: false })]
             ]);
-            expect(service.getGlobalMode(['scene', 'character'], configMap, 'book')).toBe('none');
+            expect(service.getGlobalMode(['scene', 'character'], configMap, 'book')).toBe('excluded');
         });
 
         it('returns full when all groups are full', () => {
