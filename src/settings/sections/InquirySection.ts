@@ -1,4 +1,4 @@
-import { App, Setting as Settings, TFile, TextComponent, TextAreaComponent, normalizePath, Notice, setIcon, setTooltip } from 'obsidian';
+import { App, ButtonComponent, Modal, Setting as Settings, TFile, TextComponent, TextAreaComponent, normalizePath, Notice, setIcon, setTooltip } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { DEFAULT_SETTINGS } from '../defaults';
 import type {
@@ -18,7 +18,15 @@ import { badgePill } from '../../ui/ui';
 import { isProfessionalActive } from './ProfessionalSection';
 import { InquirySessionStore } from '../../inquiry/InquirySessionStore';
 import { DEFAULT_INQUIRY_HISTORY_LIMIT, INQUIRY_HISTORY_LIMIT_OPTIONS } from '../../inquiry/constants';
-import { buildDefaultInquiryPromptConfig, getInquiryZoneDescription, normalizeInquiryPromptConfig } from '../../inquiry/prompts';
+import {
+    buildDefaultInquiryPromptConfig,
+    getCanonicalQuestionForSlot,
+    getInquiryZoneDescription,
+    isCanonicalPromptSlot,
+    normalizeInquiryPromptConfig,
+    replaceCanonicalPromptSlots,
+    syncCanonicalPromptSlot
+} from '../../inquiry/prompts';
 import type { InquirySession } from '../../inquiry/sessionTypes';
 import {
     MAX_RESOLVED_SCAN_ROOTS,
@@ -1155,7 +1163,6 @@ export function renderInquirySection(params: SectionParams): void {
         const proCustomLimit = 8;
         const isPro = isProfessionalActive(plugin);
 
-        const defaultPromptConfig = buildDefaultInquiryPromptConfig();
         let promptConfig: InquiryPromptConfig = normalizeInquiryPromptConfig(plugin.settings.inquiryPromptConfig);
         if (!plugin.settings.inquiryPromptConfig) {
             plugin.settings.inquiryPromptConfig = buildDefaultInquiryPromptConfig();
@@ -1174,17 +1181,12 @@ export function renderInquirySection(params: SectionParams): void {
             label: '',
             question: '',
             enabled: true,
-            builtIn: false
+            builtIn: false,
+            canonical: undefined
         });
 
         const getSlotList = (zone: 'setup' | 'pressure' | 'payoff'): InquiryPromptSlot[] =>
             promptConfig[zone] ?? [];
-
-        const getCanonicalSeed = (zone: 'setup' | 'pressure' | 'payoff'): InquiryPromptSlot | undefined =>
-            defaultPromptConfig[zone][0];
-
-        const getCanonicalId = (zone: 'setup' | 'pressure' | 'payoff'): string | undefined =>
-            getCanonicalSeed(zone)?.id;
 
         const savePromptConfig = async (next: InquiryPromptConfig) => {
             plugin.settings.inquiryPromptConfig = next;
@@ -1203,12 +1205,21 @@ export function renderInquirySection(params: SectionParams): void {
             const nextSlot = { ...current, ...patch };
             nextSlot.label = nextSlot.label ?? '';
             nextSlot.question = nextSlot.question ?? '';
+            if (isCanonicalPromptSlot(current)) {
+                const syncedSlot = syncCanonicalPromptSlot(nextSlot);
+                const nextSlots = [...slots];
+                nextSlots[slotIndex] = syncedSlot;
+                await savePromptConfig({ ...promptConfig, [zone]: nextSlots });
+                return;
+            }
+
             if (current.builtIn) {
                 nextSlot.enabled = true;
                 nextSlot.builtIn = true;
             } else {
                 nextSlot.enabled = !!nextSlot.enabled || nextSlot.question.trim().length > 0;
                 nextSlot.builtIn = false;
+                nextSlot.canonical = undefined;
             }
             const nextSlots = [...slots];
             nextSlots[slotIndex] = nextSlot;
@@ -1221,7 +1232,7 @@ export function renderInquirySection(params: SectionParams): void {
             initial?: Partial<InquiryPromptSlot>
         ) => {
             const slots = getSlotList(zone);
-            const customCount = slots.filter(slot => !slot.builtIn).length;
+            const customCount = slots.filter(slot => !isCanonicalPromptSlot(slot)).length;
             if (customCount >= limit) return;
             const seed = createCustomSlot(zone);
             const nextSlot = { ...seed, ...initial, builtIn: false };
@@ -1238,9 +1249,68 @@ export function renderInquirySection(params: SectionParams): void {
         const removeSlot = async (zone: 'setup' | 'pressure' | 'payoff', slotIndex: number) => {
             const slots = getSlotList(zone);
             const target = slots[slotIndex];
-            if (!target || target.builtIn) return;
+            if (!target || isCanonicalPromptSlot(target)) return;
             const nextSlots = slots.filter((_, idx) => idx !== slotIndex);
             await savePromptConfig({ ...promptConfig, [zone]: nextSlots });
+            render();
+        };
+
+        const hasAnyPromptContent = (): boolean =>
+            (Object.values(promptConfig) as InquiryPromptSlot[][])
+                .flat()
+                .some(slot => (slot.label?.trim().length ?? 0) > 0 || (slot.question?.trim().length ?? 0) > 0);
+
+        const confirmCanonicalReplacement = (nextLabel: string): Promise<boolean> => {
+            if (!hasAnyPromptContent()) return Promise.resolve(true);
+
+            return new Promise(resolve => {
+                const confirmModal = new Modal(plugin.app);
+                const { modalEl, contentEl } = confirmModal;
+                let settled = false;
+                const finish = (result: boolean) => {
+                    if (settled) return;
+                    settled = true;
+                    resolve(result);
+                };
+                confirmModal.titleEl.setText('');
+                contentEl.empty();
+                modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal-shell--md');
+                contentEl.addClass('ert-modal-container', 'ert-stack');
+
+                const header = contentEl.createDiv({ cls: 'ert-modal-header' });
+                header.createSpan({ cls: 'ert-modal-badge', text: 'INQUIRY' });
+                header.createDiv({ cls: 'ert-modal-title', text: 'Replace canonical questions?' });
+                header.createDiv({
+                    cls: 'ert-modal-subtitle',
+                    text: `Load the ${nextLabel}. Current canonical questions will be replaced. Custom questions stay in place.`
+                });
+
+                const footer = contentEl.createDiv({ cls: 'ert-modal-actions' });
+                new ButtonComponent(footer)
+                    .setButtonText('Replace questions')
+                    .setCta()
+                    .onClick(() => {
+                        finish(true);
+                        confirmModal.close();
+                    });
+                new ButtonComponent(footer)
+                    .setButtonText('Cancel')
+                    .onClick(() => {
+                        finish(false);
+                        confirmModal.close();
+                    });
+
+                confirmModal.onClose = () => finish(false);
+                confirmModal.open();
+            });
+        };
+
+        const loadCanonicalSet = async (loadout: 'core' | 'full-signature') => {
+            const nextLabel = loadout === 'core' ? 'Core Questions' : 'Full Signature Set';
+            const confirmed = await confirmCanonicalReplacement(nextLabel);
+            if (!confirmed) return;
+            await savePromptConfig(replaceCanonicalPromptSlots(promptConfig, loadout));
+            new Notice(`${nextLabel} loaded.`);
             render();
         };
 
@@ -1266,8 +1336,6 @@ export function renderInquirySection(params: SectionParams): void {
             customIndexMap: Map<string, number>,
             dragState: { index: number | null }
         ) => {
-            const canonicalId = getCanonicalId(zone);
-            const canonicalSeed = getCanonicalSeed(zone);
             slots.forEach((slot, slotIndex) => {
                 const row = listEl.createDiv({ cls: 'ert-reorder-row ert-reorder-row--two-col' });
                 const customIndex = customIndexMap.has(slot.id) ? customIndexMap.get(slot.id)! : -1;
@@ -1303,17 +1371,17 @@ export function renderInquirySection(params: SectionParams): void {
                     await updateSlot(zone, slotIndex, { question: value });
                 });
 
-                if (slot.builtIn && slot.id === canonicalId) {
+                const canonicalQuestion = getCanonicalQuestionForSlot(slot);
+                if (canonicalQuestion) {
                     const resetButton = questionCol.createEl('button', { cls: ERT_CLASSES.ICON_BTN });
                     setIcon(resetButton, 'rotate-ccw');
-                    setTooltip(resetButton, 'Reset to default question');
+                    setTooltip(resetButton, 'Reset to canonical question');
                     resetButton.onclick = () => {
-                        if (!canonicalSeed) return;
-                        labelInput.setValue(canonicalSeed.label ?? '');
-                        questionInput.setValue(canonicalSeed.question ?? '');
+                        labelInput.setValue(canonicalQuestion.label ?? '');
+                        questionInput.setValue(canonicalQuestion.text ?? '');
                         void updateSlot(zone, slotIndex, {
-                            label: canonicalSeed.label ?? '',
-                            question: canonicalSeed.question ?? '',
+                            label: canonicalQuestion.label ?? '',
+                            question: canonicalQuestion.text ?? '',
                             enabled: true
                         });
                     };
@@ -1422,7 +1490,7 @@ export function renderInquirySection(params: SectionParams): void {
             };
 
             const slots = getSlotList(zone);
-            const customSlots = slots.filter(slot => !slot.builtIn);
+            const customSlots = slots.filter(slot => !isCanonicalPromptSlot(slot));
             const customIndexMap = new Map<string, number>();
             customSlots.forEach((slot, idx) => customIndexMap.set(slot.id, idx));
             renderSlotRows(listEl, zone, slots, customIndexMap, dragState);
@@ -1490,6 +1558,33 @@ export function renderInquirySection(params: SectionParams): void {
 
         const render = () => {
             promptContainer.empty();
+
+            const librarySetting = new Settings(promptContainer)
+                .setName('Canonical question library')
+                .setDesc('Load the curated Core set or the full Signature set. Loading replaces canonical questions and keeps custom questions intact.');
+            librarySetting.settingEl.addClass(ERT_CLASSES.ROW, ERT_CLASSES.ROW_TIGHT);
+            const libraryActions = librarySetting.controlEl.createDiv({ cls: [ERT_CLASSES.INLINE, 'ert-actions', 'ert-preset-controls'] });
+
+            const coreButton = libraryActions.createEl('button', { cls: `${ERT_CLASSES.PILL_BTN} ert-preset-pill` });
+            coreButton.createSpan({ cls: ERT_CLASSES.PILL_BTN_LABEL, text: 'Load Core Questions' });
+            plugin.registerDomEvent(coreButton, 'click', evt => {
+                evt.preventDefault();
+                void loadCanonicalSet('core');
+            });
+
+            const signatureButton = libraryActions.createEl('button', {
+                cls: `${ERT_CLASSES.PILL_BTN} ${ERT_CLASSES.PILL_BTN_PRO} ert-preset-pill`
+            });
+            const signatureIcon = signatureButton.createSpan({ cls: ERT_CLASSES.PILL_BTN_ICON });
+            setIcon(signatureIcon, 'signature');
+            signatureButton.createSpan({ cls: ERT_CLASSES.PILL_BTN_LABEL, text: 'Load Full Signature Set' });
+            signatureButton.disabled = !isPro;
+            setTooltip(signatureButton, isPro ? 'Load all canonical Inquiry questions' : 'Requires Pro');
+            plugin.registerDomEvent(signatureButton, 'click', evt => {
+                evt.preventDefault();
+                if (!isPro) return;
+                void loadCanonicalSet('full-signature');
+            });
 
             const dragStates: Record<'setup' | 'pressure' | 'payoff', { index: number | null }> = {
                 setup: { index: null as number | null },

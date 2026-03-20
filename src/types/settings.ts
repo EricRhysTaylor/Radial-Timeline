@@ -325,6 +325,16 @@ export interface InquiryTimingHistoryEntry {
 }
 
 export type InquiryPromptZone = 'setup' | 'pressure' | 'payoff';
+export type InquiryCanonicalQuestionTier = 'core' | 'signature';
+export type InquiryCanonicalPromptState = 'loaded' | 'customized';
+
+export interface InquiryCanonicalPromptRef {
+    id: string;
+    version: number;
+    tier: InquiryCanonicalQuestionTier;
+    zone: InquiryPromptZone;
+    state?: InquiryCanonicalPromptState;
+}
 
 export interface InquiryPromptSlot {
     id: string;
@@ -333,6 +343,7 @@ export interface InquiryPromptSlot {
     enabled: boolean;
     builtIn?: boolean;
     requiresContext?: boolean;
+    canonical?: InquiryCanonicalPromptRef;
 }
 
 export type InquiryPromptConfig = Record<InquiryPromptZone, InquiryPromptSlot[]>;

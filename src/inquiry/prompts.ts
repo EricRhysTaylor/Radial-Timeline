@@ -1,19 +1,18 @@
 import type { InquiryZone } from './state';
-import type { InquiryPromptConfig, InquiryPromptSlot } from '../types/settings';
+import {
+    ALL_CANONICAL_QUESTIONS,
+    CORE_CANONICAL_QUESTIONS,
+    getCanonicalQuestionById,
+    groupCanonicalQuestionsByZone,
+    type InquiryCanonicalQuestionDefinition
+} from './questions/canonicalQuestions';
+import type {
+    InquiryCanonicalPromptState,
+    InquiryPromptConfig,
+    InquiryPromptSlot
+} from '../types/settings';
 
-type BuiltInPromptSeed = {
-    id: string;
-    label: string;
-    question: string;
-    enabled?: boolean;
-    requiresContext?: boolean;
-};
-
-const CANONICAL_PROMPTS: Record<InquiryZone, string> = {
-    setup: 'What must already be true in the material for the story to move smoothly?',
-    pressure: 'Where does the material shift momentum most right now?',
-    payoff: 'Across the material, where are promises paid off, deferred, dangling, or abandoned?'
-};
+export type InquiryCanonicalLoadout = 'core' | 'full-signature';
 
 const ZONE_DESCRIPTIONS: Record<InquiryZone, string> = {
     setup: [
@@ -35,68 +34,150 @@ const ZONE_DESCRIPTIONS: Record<InquiryZone, string> = {
     ].join(' ')
 };
 
-const BUILT_IN_PROMPTS: Record<InquiryZone, BuiltInPromptSeed[]> = {
-    setup: [{
-        id: 'setup-core',
-        label: 'Setup',
-        question: CANONICAL_PROMPTS.setup,
-        enabled: true
-    }],
-    pressure: [
-        {
-            id: 'pressure-core',
-            label: 'Pressure',
-            question: CANONICAL_PROMPTS.pressure,
-            enabled: true
-        },
-        {
-            id: 'pressure-subtext',
-            label: 'Subtext',
-            question: 'Where does dialogue or description state meaning explicitly instead of letting subtext carry it?',
-            enabled: false
-        }
-    ],
-    payoff: [
-        {
-            id: 'payoff-core',
-            label: 'Payoff',
-            question: CANONICAL_PROMPTS.payoff,
-            enabled: true
-        },
-        {
-            id: 'payoff-loose-ends',
-            label: 'Loose Ends Audit',
-            question: 'What narrative threads are resolved, deferred, dangling, or abandoned?',
-            enabled: false
-        }
-    ]
+const getCanonicalQuestionsForLoadout = (
+    loadout: InquiryCanonicalLoadout
+): readonly InquiryCanonicalQuestionDefinition[] => (loadout === 'core'
+    ? CORE_CANONICAL_QUESTIONS
+    : ALL_CANONICAL_QUESTIONS);
+
+const buildCanonicalPromptState = (
+    slot: Pick<InquiryPromptSlot, 'label' | 'question'>,
+    canonical: InquiryCanonicalQuestionDefinition
+): InquiryCanonicalPromptState => {
+    const label = (slot.label ?? '').trim();
+    const question = (slot.question ?? '').trim();
+    const canonicalLabel = canonical.label.trim();
+    const canonicalQuestion = canonical.text.trim();
+    return label === canonicalLabel && question === canonicalQuestion
+        ? 'loaded'
+        : 'customized';
 };
 
-const BUILT_IN_SEEDS_BY_ID: Record<InquiryZone, Map<string, BuiltInPromptSeed>> = {
-    setup: new Map(BUILT_IN_PROMPTS.setup.map(seed => [seed.id, seed])),
-    pressure: new Map(BUILT_IN_PROMPTS.pressure.map(seed => [seed.id, seed])),
-    payoff: new Map(BUILT_IN_PROMPTS.payoff.map(seed => [seed.id, seed]))
+const buildCanonicalSlot = (
+    canonical: InquiryCanonicalQuestionDefinition,
+    overrides: Partial<InquiryPromptSlot> = {}
+): InquiryPromptSlot => {
+    const label = overrides.label ?? canonical.label;
+    const question = overrides.question ?? canonical.text;
+    return {
+        id: canonical.id,
+        label,
+        question,
+        enabled: overrides.enabled ?? canonical.enabledByDefault ?? true,
+        builtIn: true,
+        requiresContext: overrides.requiresContext ?? false,
+        canonical: {
+            id: canonical.id,
+            version: canonical.version,
+            tier: canonical.tier,
+            zone: canonical.zone,
+            state: buildCanonicalPromptState({ label, question }, canonical)
+        }
+    };
 };
 
-const buildBuiltInSlot = (seed: BuiltInPromptSeed): InquiryPromptSlot => ({
-    id: seed.id,
-    label: seed.label,
-    question: seed.question,
-    enabled: seed.enabled ?? true,
-    builtIn: true,
-    requiresContext: seed.requiresContext
-});
+const buildCustomSlot = (
+    slot: InquiryPromptSlot,
+    zone: InquiryZone,
+    index: number,
+    usedIds: Set<string>
+): InquiryPromptSlot | null => {
+    const label = slot.label ?? '';
+    const question = slot.question ?? '';
+    const hasContent = label.trim().length > 0 || question.trim().length > 0;
+    const rawEnabled = slot.enabled ?? false;
+    if (!hasContent && !rawEnabled) return null;
 
-export const buildDefaultInquiryPromptConfig = (): InquiryPromptConfig => {
-    const buildForZone = (zone: InquiryZone): InquiryPromptSlot[] => {
-        const builtIns = BUILT_IN_PROMPTS[zone].map(seed => buildBuiltInSlot(seed));
-        return [...builtIns];
+    let id = slot.id;
+    if (!id || usedIds.has(id)) {
+        const baseId = `custom-${zone}-${index + 1}`;
+        let candidate = baseId;
+        let suffix = 1;
+        while (usedIds.has(candidate)) {
+            candidate = `${baseId}-${suffix++}`;
+        }
+        id = candidate;
+    }
+
+    usedIds.add(id);
+    return {
+        id,
+        label,
+        question,
+        enabled: rawEnabled || question.trim().length > 0,
+        builtIn: false,
+        requiresContext: slot.requiresContext,
+        canonical: undefined
+    };
+};
+
+export const buildInquiryPromptConfigFromLoadout = (
+    loadout: InquiryCanonicalLoadout = 'core'
+): InquiryPromptConfig => {
+    const grouped = groupCanonicalQuestionsByZone(getCanonicalQuestionsForLoadout(loadout));
+    return {
+        setup: grouped.setup.map(question => buildCanonicalSlot(question)),
+        pressure: grouped.pressure.map(question => buildCanonicalSlot(question)),
+        payoff: grouped.payoff.map(question => buildCanonicalSlot(question))
+    };
+};
+
+export const buildDefaultInquiryPromptConfig = (): InquiryPromptConfig =>
+    buildInquiryPromptConfigFromLoadout('core');
+
+export const getCanonicalQuestionForSlot = (
+    slot?: Pick<InquiryPromptSlot, 'id' | 'builtIn' | 'canonical'>
+): InquiryCanonicalQuestionDefinition | undefined =>
+    getCanonicalQuestionById(slot?.canonical?.id ?? (slot?.builtIn ? slot.id : undefined));
+
+export const isCanonicalPromptSlot = (slot?: InquiryPromptSlot): boolean =>
+    !!getCanonicalQuestionForSlot(slot);
+
+export const syncCanonicalPromptSlot = (slot: InquiryPromptSlot): InquiryPromptSlot => {
+    const canonical = getCanonicalQuestionForSlot(slot);
+    if (!canonical) {
+        return {
+            ...slot,
+            label: slot.label ?? '',
+            question: slot.question ?? '',
+            enabled: !!slot.enabled || (slot.question ?? '').trim().length > 0,
+            builtIn: false,
+            canonical: undefined
+        };
+    }
+
+    return buildCanonicalSlot(canonical, {
+        ...slot,
+        label: slot.label?.trim().length ? slot.label : canonical.label,
+        question: slot.question?.trim().length ? slot.question : canonical.text,
+        enabled: true,
+        builtIn: true
+    });
+};
+
+export const getPromptSlotQuestion = (slot: InquiryPromptSlot): string => {
+    const stored = slot.question ?? '';
+    if (stored.trim().length > 0) {
+        return stored;
+    }
+    return getCanonicalQuestionForSlot(slot)?.text ?? stored;
+};
+
+export const replaceCanonicalPromptSlots = (
+    raw: InquiryPromptConfig | undefined,
+    loadout: InquiryCanonicalLoadout
+): InquiryPromptConfig => {
+    const normalized = normalizeInquiryPromptConfig(raw);
+    const canonicalConfig = buildInquiryPromptConfigFromLoadout(loadout);
+    const mergeZone = (zone: InquiryZone): InquiryPromptSlot[] => {
+        const customSlots = (normalized[zone] ?? []).filter(slot => !isCanonicalPromptSlot(slot));
+        return [...canonicalConfig[zone], ...customSlots];
     };
 
     return {
-        setup: buildForZone('setup'),
-        pressure: buildForZone('pressure'),
-        payoff: buildForZone('payoff')
+        setup: mergeZone('setup'),
+        pressure: mergeZone('pressure'),
+        payoff: mergeZone('payoff')
     };
 };
 
@@ -106,90 +187,37 @@ export const normalizeInquiryPromptConfig = (raw?: InquiryPromptConfig): Inquiry
     const hasLegacy = !!legacy && ('flow' in legacy || 'depth' in legacy);
 
     const normalizeZone = (zone: InquiryZone): InquiryPromptSlot[] => {
-        const canonicalSeed = defaults[zone]?.[0];
-        const canonicalId = canonicalSeed?.id;
-        const builtInSeeds = BUILT_IN_SEEDS_BY_ID[zone];
         const incoming = hasLegacy
             ? (legacy?.flow?.[zone] ?? legacy?.depth?.[zone] ?? [])
             : (raw?.[zone] ?? []);
-        const usedIds = new Set<string>(canonicalId ? [canonicalId] : []);
         const slots: InquiryPromptSlot[] = [];
-        let canonicalIncluded = false;
+        const usedIds = new Set<string>();
+        let hasCanonical = false;
 
         incoming.forEach((slot, index) => {
             if (!slot) return;
-            const builtInSeed = slot.id ? builtInSeeds.get(slot.id) : undefined;
-
-            if (canonicalId && slot.id === canonicalId && canonicalSeed) {
-                canonicalIncluded = true;
-                const questionValue = slot.question?.trim().length
-                    ? slot.question
-                    : canonicalSeed.question;
-                slots.push({
-                    ...canonicalSeed,
-                    ...slot,
-                    id: canonicalId,
-                    label: slot.label ?? canonicalSeed.label ?? '',
-                    question: questionValue,
-                    enabled: true,
-                    builtIn: true
-                });
+            if (isCanonicalPromptSlot(slot)) {
+                const normalizedSlot = syncCanonicalPromptSlot(slot);
+                if (usedIds.has(normalizedSlot.id)) return;
+                usedIds.add(normalizedSlot.id);
+                hasCanonical = true;
+                slots.push(normalizedSlot);
                 return;
             }
 
-            if (builtInSeed) {
-                if (slot.enabled === false) return;
-                if (usedIds.has(builtInSeed.id)) return;
-                const questionValue = slot.question?.trim().length
-                    ? slot.question
-                    : builtInSeed.question;
-                usedIds.add(builtInSeed.id);
-                slots.push({
-                    ...buildBuiltInSlot(builtInSeed),
-                    ...slot,
-                    id: builtInSeed.id,
-                    label: slot.label ?? builtInSeed.label ?? '',
-                    question: questionValue,
-                    enabled: slot.enabled ?? builtInSeed.enabled ?? true,
-                    builtIn: true
-                });
-                return;
+            if (slot.builtIn && slot.enabled === false) return;
+
+            const customSlot = buildCustomSlot(slot, zone, index, usedIds);
+            if (customSlot) {
+                slots.push(customSlot);
             }
-
-            if (slot.builtIn && !slot.enabled) return;
-
-            const label = slot.label ?? '';
-            const question = slot.question ?? '';
-            const hasContent = label.trim().length > 0 || question.trim().length > 0;
-            const rawEnabled = slot.enabled ?? false;
-            if (!hasContent && !rawEnabled) return;
-
-            let id = slot.id;
-            if (!id || usedIds.has(id)) {
-                const baseId = `custom-${zone}-${index + 1}`;
-                let candidate = baseId;
-                let suffix = 1;
-                while (usedIds.has(candidate)) {
-                    candidate = `${baseId}-${suffix++}`;
-                }
-                id = candidate;
-            }
-
-            usedIds.add(id);
-            slots.push({
-                id,
-                label,
-                question,
-                enabled: rawEnabled || question.trim().length > 0,
-                builtIn: false,
-                requiresContext: slot.requiresContext
-            });
         });
 
-        if (!canonicalIncluded && canonicalSeed) {
-            slots.unshift({
-                ...canonicalSeed,
-                enabled: true
+        if (!hasCanonical) {
+            defaults[zone].slice().reverse().forEach(slot => {
+                if (usedIds.has(slot.id)) return;
+                usedIds.add(slot.id);
+                slots.unshift(slot);
             });
         }
 
@@ -202,13 +230,5 @@ export const normalizeInquiryPromptConfig = (raw?: InquiryPromptConfig): Inquiry
         payoff: normalizeZone('payoff')
     };
 };
-
-export const getBuiltInPromptSeed = (zone: InquiryZone, index = 0): BuiltInPromptSeed | undefined =>
-    BUILT_IN_PROMPTS[zone][index];
-
-export const getBuiltInPromptSeedById = (zone: InquiryZone, id?: string): BuiltInPromptSeed | undefined =>
-    id ? BUILT_IN_SEEDS_BY_ID[zone].get(id) : undefined;
-
-export const getCanonicalPromptText = (zone: InquiryZone): string => CANONICAL_PROMPTS[zone];
 
 export const getInquiryZoneDescription = (zone: InquiryZone): string => ZONE_DESCRIPTIONS[zone];

@@ -38,13 +38,30 @@ import type {
     InquiryTimingHistoryEntry,
     OmnibusProgressState
 } from '../types/settings';
-import { buildDefaultInquiryPromptConfig, getBuiltInPromptSeed, getCanonicalPromptText, normalizeInquiryPromptConfig } from './prompts';
+import {
+    buildDefaultInquiryPromptConfig,
+    getPromptSlotQuestion,
+    normalizeInquiryPromptConfig
+} from './prompts';
 import {
     createInquiryBriefingPanel,
     createInquiryDesktopShell,
     createInquiryEnginePanel,
     createInquiryPromptPreviewPanel
 } from './dom/inquiryDomFactory';
+import {
+    bindInquiryBriefingPanelEvents,
+    bindInquiryBriefingSessionItemEvents,
+    bindInquiryDetailsToggleEvent,
+    bindInquiryDesktopShellEvents,
+    bindInquiryEngineActionButtons,
+    bindInquiryEnginePanelEvents,
+    bindInquiryMobileGateEvents,
+    bindInquiryPreviewPanelEvents,
+    bindInquiryZonePodEvents
+} from './interactions/inquiryEventBinder';
+import { buildInquiryBriefingSections } from './briefing/inquiryBriefingGrouping';
+import { renderInquiryBriefingSessionItem } from './briefing/inquiryBriefingRenderer';
 import { ensureInquiryArtifactFolder, getMostRecentArtifactFile, resolveInquiryArtifactFolder } from './utils/artifacts';
 import { buildInquiryDossierPresentation } from './utils/inquiryDossierPresentation';
 import { cleanEvidenceBody } from './utils/evidenceCleaning';
@@ -155,12 +172,6 @@ import {
 } from './minimap/InquiryMinimapRenderer';
 import { addTooltipData, balanceTooltipText, setupTooltipsFromDataAttributes } from '../utils/tooltip';
 import { classifySynopsis, type SynopsisQuality } from '../sceneAnalysis/synopsisQuality';
-import {
-    isLowSubstanceTier,
-    resolveCorpusSceneStatus,
-    type CorpusSceneStatus,
-    type CorpusSubstanceTier
-} from './services/corpusCellStatus';
 import { readSceneId } from '../utils/sceneIds';
 import { buildSceneRefIndex, isStableSceneId, normalizeSceneRef } from '../ai/references/sceneRefNormalizer';
 import {
@@ -178,7 +189,12 @@ import {
     resolveScanRoots,
     toVaultRoot
 } from './utils/scanRoots';
+import { renderInquiryCorpusStrip } from './corpus/inquiryCorpusStripRenderer';
+import { applyInquiryCorpusCcSlotViewModel, buildInquiryCorpusCcSlotViewModel } from './corpus/inquiryCorpusStripSlotRenderer';
 import { createInquirySceneDossierLayer, renderInquirySceneDossier } from './render/inquiryDossierRenderer';
+import { createInquiryEngineActionButtons } from './engine/inquiryEngineDom';
+import { renderInquiryEngineAdvisoryCard, renderInquiryEngineReadinessStrip } from './engine/inquiryEngineRenderer';
+import { buildInquiryEngineCorpusSummary } from './engine/inquiryEngineViewModel';
 import {
     renderInquiryPromptPreviewLayout,
     renderInquiryRunningHud,
@@ -188,7 +204,6 @@ import {
     updateInquiryResultsFooterPosition
 } from './render/inquiryHudRenderer';
 import { buildInquiryContentLogContent, buildInquiryLogContent } from './render/inquiryLogBuilders';
-import { renderInquiryCorpusStrip } from './render/inquiryCorpusStripRenderer';
 import {
     CC_PAGE_BASE_SIZE,
     DEPTH_FINDING_ORDER,
@@ -542,6 +557,17 @@ export class InquiryView extends ItemView {
         this.register(() => element.removeEventListener(event, listener, options));
     }
 
+    private registerBoundDomEvent(
+        element: HTMLElement | undefined,
+        event: string,
+        handler: EventListener,
+        options?: boolean | AddEventListenerOptions
+    ): void {
+        if (!element) return;
+        this.registerDomEvent(element, event, handler, options);
+    }
+
+    // Lifecycle
     getViewType(): string {
         return INQUIRY_VIEW_TYPE;
     }
@@ -598,6 +624,7 @@ export class InquiryView extends ItemView {
         this.contentEl.empty();
     }
 
+    // Shell Composition
     private renderMobileGate(): void {
         const wrapper = this.contentEl.createDiv({ cls: 'ert-inquiry-mobile ert-ui' });
         wrapper.createDiv({ cls: 'ert-inquiry-mobile-title', text: 'Desktop required' });
@@ -610,19 +637,16 @@ export class InquiryView extends ItemView {
         const openFolderBtn = actions.createEl('button', { cls: 'ert-inquiry-mobile-btn', text: 'Open Briefs folder' });
         const openLatestBtn = actions.createEl('button', { cls: 'ert-inquiry-mobile-btn', text: 'View most recent Brief' });
 
-        this.registerDomEvent(openFolderBtn, 'click', () => { void this.openArtifactsFolder(); });
-        this.registerDomEvent(openLatestBtn, 'click', () => { void this.openMostRecentArtifact(); });
+        bindInquiryMobileGateEvents({
+            registerDomEvent: (element, event, handler, options) => this.registerBoundDomEvent(element, event, handler as EventListener, options),
+            openFolderButton: openFolderBtn,
+            openLatestButton: openLatestBtn,
+            onOpenFolder: () => { void this.openArtifactsFolder(); },
+            onOpenLatest: () => { void this.openMostRecentArtifact(); }
+        });
     }
 
     private renderDesktopLayout(): void {
-        this.registerDomEvent(this.contentEl, 'click', (event: MouseEvent) => {
-            if (!this.isErrorState()) return;
-            const target = event.target;
-            if (!(target instanceof Element)) return;
-            const backgroundTarget = target.closest('.ert-inquiry-bg, .ert-inquiry-bg-image');
-            if (!backgroundTarget) return;
-            this.dismissError();
-        }, { capture: true });
         const shell = createInquiryDesktopShell({
             contentEl: this.contentEl,
             populateDefs: defs => {
@@ -650,18 +674,6 @@ export class InquiryView extends ItemView {
         this.navSessionLabel = shell.navSessionLabel;
 
         setupTooltipsFromDataAttributes(this.rootSvg, this.registerDomEvent.bind(this), { rtOnly: true });
-
-        this.registerSvgEvent(this.scopeToggleButton, 'click', () => {
-            this.handleScopeChange(this.state.scope === 'book' ? 'saga' : 'book');
-        });
-        this.registerSvgEvent(this.apiSimulationButton, 'click', () => this.startApiSimulation());
-        this.registerSvgEvent(this.helpToggleButton, 'click', () => this.handleGuidanceHelpClick());
-        this.registerSvgEvent(this.artifactButton, 'pointerenter', () => this.showBriefingPanel());
-        this.registerSvgEvent(this.artifactButton, 'pointerleave', () => this.scheduleBriefingHide());
-        this.registerSvgEvent(this.artifactButton, 'click', () => this.toggleBriefingPanel());
-        this.registerSvgEvent(this.engineBadgeGroup, 'pointerenter', () => this.showEnginePanel());
-        this.registerSvgEvent(this.engineBadgeGroup, 'pointerleave', () => this.scheduleEnginePanelHide());
-        this.registerSvgEvent(this.engineBadgeGroup, 'click', () => this.openAiSettings());
         this.minimap.initElements(shell.minimapGroup, VIEWBOX_SIZE);
         this.renderModeIcons(shell.minimapGroup);
 
@@ -681,72 +693,99 @@ export class InquiryView extends ItemView {
         this.depthRingHit = this.glyph.depthRingHit;
         this.glyphHit = this.glyph.labelHit;
 
-        this.registerSvgEvent(this.glyphHit, 'click', () => {
-            if (this.isInquiryGuidanceLockout()) return;
-            this.handleGlyphClick();
-        });
-        this.registerSvgEvent(this.flowRingHit, 'click', () => {
-            if (this.isInquiryGuidanceLockout()) return;
-            this.handleRingClick('flow');
-        });
-        this.registerSvgEvent(this.depthRingHit, 'click', () => {
-            if (this.isInquiryGuidanceLockout()) return;
-            this.handleRingClick('depth');
-        });
-        if (this.modeIconToggleHit) {
-            this.registerSvgEvent(this.modeIconToggleHit, 'click', () => {
+        this.buildPromptPreviewPanel(shell.canvasGroup);
+        this.buildSceneDossierLayer(this.rootSvg, SCENE_DOSSIER_CANVAS_Y);
+        bindInquiryDesktopShellEvents({
+            registerDomEvent: (element, event, handler, options) => this.registerBoundDomEvent(element, event, handler as EventListener, options),
+            registerSvgEvent: this.registerSvgEvent.bind(this),
+            contentEl: this.contentEl,
+            scopeToggleButton: this.scopeToggleButton,
+            apiSimulationButton: this.apiSimulationButton,
+            helpToggleButton: this.helpToggleButton,
+            artifactButton: this.artifactButton,
+            engineBadgeGroup: this.engineBadgeGroup,
+            glyphHit: this.glyphHit,
+            flowRingHit: this.flowRingHit,
+            depthRingHit: this.depthRingHit,
+            modeIconToggleHit: this.modeIconToggleHit,
+            navPrevButton: this.navPrevButton,
+            navNextButton: this.navNextButton,
+            onBackgroundClick: (event: MouseEvent) => {
+                if (!this.isErrorState()) return;
+                const target = event.target;
+                if (!(target instanceof Element)) return;
+                const backgroundTarget = target.closest('.ert-inquiry-bg, .ert-inquiry-bg-image');
+                if (!backgroundTarget) return;
+                this.dismissError();
+            },
+            onScopeToggle: () => this.handleScopeChange(this.state.scope === 'book' ? 'saga' : 'book'),
+            onApiSimulation: () => this.startApiSimulation(),
+            onHelpToggle: () => this.handleGuidanceHelpClick(),
+            onArtifactEnter: () => this.showBriefingPanel(),
+            onArtifactLeave: () => this.scheduleBriefingHide(),
+            onArtifactClick: () => this.toggleBriefingPanel(),
+            onEngineEnter: () => this.showEnginePanel(),
+            onEngineLeave: () => this.scheduleEnginePanelHide(),
+            onEngineClick: () => this.openAiSettings(),
+            onGlyphClick: () => {
+                if (this.isInquiryGuidanceLockout()) return;
+                this.handleGlyphClick();
+            },
+            onFlowRingClick: () => {
+                if (this.isInquiryGuidanceLockout()) return;
+                this.handleRingClick('flow');
+            },
+            onDepthRingClick: () => {
+                if (this.isInquiryGuidanceLockout()) return;
+                this.handleRingClick('depth');
+            },
+            onModeIconClick: () => {
                 if (this.isInquiryGuidanceLockout()) return;
                 this.handleModeIconToggleClick();
-            });
-            this.registerSvgEvent(this.modeIconToggleHit, 'pointerenter', () => {
+            },
+            onModeIconEnter: () => {
                 if (this.isInquiryGuidanceLockout() || this.state.isRunning) return;
                 this.setModeIconHoverState(true);
                 this.setHoverText(this.buildModeToggleHoverText());
-            });
-            this.registerSvgEvent(this.modeIconToggleHit, 'pointerleave', () => {
+            },
+            onModeIconLeave: () => {
                 this.setModeIconHoverState(false);
                 if (this.isInquiryGuidanceLockout()) return;
                 this.clearHoverText();
-            });
-            this.registerSvgEvent(this.modeIconToggleHit, 'keydown', (event: Event) => {
+            },
+            onModeIconKeydown: (event: KeyboardEvent) => {
                 if (this.isInquiryGuidanceLockout()) return;
-                const keyboardEvent = event as KeyboardEvent;
-                if (keyboardEvent.key !== 'Enter' && keyboardEvent.key !== ' ') return;
-                keyboardEvent.preventDefault();
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                event.preventDefault();
                 this.handleModeIconToggleClick();
-            });
-        }
-
-        this.buildPromptPreviewPanel(shell.canvasGroup);
-        this.buildSceneDossierLayer(this.rootSvg, SCENE_DOSSIER_CANVAS_Y);
-
-        this.registerSvgEvent(this.glyphHit, 'pointerenter', () => {
-            if (this.isInquiryGuidanceLockout()) return;
-            this.setHoverText(this.buildFocusHoverText());
+            },
+            onGlyphEnter: () => {
+                if (this.isInquiryGuidanceLockout()) return;
+                this.setHoverText(this.buildFocusHoverText());
+            },
+            onGlyphLeave: () => {
+                if (this.isInquiryGuidanceLockout()) return;
+                this.clearHoverText();
+            },
+            onFlowRingEnter: () => {
+                if (this.isInquiryGuidanceLockout()) return;
+                this.setHoverText(this.buildRingHoverText('flow'));
+            },
+            onFlowRingLeave: () => {
+                if (this.isInquiryGuidanceLockout()) return;
+                this.clearHoverText();
+            },
+            onDepthRingEnter: () => {
+                if (this.isInquiryGuidanceLockout()) return;
+                this.setHoverText(this.buildRingHoverText('depth'));
+            },
+            onDepthRingLeave: () => {
+                if (this.isInquiryGuidanceLockout()) return;
+                this.clearHoverText();
+            },
+            onNavPrev: () => this.shiftFocus(-1),
+            onNavNext: () => this.shiftFocus(1)
         });
-        this.registerSvgEvent(this.glyphHit, 'pointerleave', () => {
-            if (this.isInquiryGuidanceLockout()) return;
-            this.clearHoverText();
-        });
-        this.registerSvgEvent(this.flowRingHit, 'pointerenter', () => {
-            if (this.isInquiryGuidanceLockout()) return;
-            this.setHoverText(this.buildRingHoverText('flow'));
-        });
-        this.registerSvgEvent(this.flowRingHit, 'pointerleave', () => {
-            if (this.isInquiryGuidanceLockout()) return;
-            this.clearHoverText();
-        });
-        this.registerSvgEvent(this.depthRingHit, 'pointerenter', () => {
-            if (this.isInquiryGuidanceLockout()) return;
-            this.setHoverText(this.buildRingHoverText('depth'));
-        });
-        this.registerSvgEvent(this.depthRingHit, 'pointerleave', () => {
-            if (this.isInquiryGuidanceLockout()) return;
-            this.clearHoverText();
-        });
-
-        this.registerSvgEvent(this.navPrevButton, 'click', () => this.shiftFocus(-1));
-        this.registerSvgEvent(this.navNextButton, 'click', () => this.shiftFocus(1));
 
         this.buildBriefingPanel();
         this.buildEnginePanel();
@@ -773,20 +812,24 @@ export class InquiryView extends ItemView {
         this.previewRowDefaultLabels = refs.previewRowDefaultLabels;
         this.previewShimmerGroup = refs.previewShimmerGroup;
 
-        this.registerSvgEvent(this.previewGroup, 'click', (event: MouseEvent) => {
-            if (this.state.isRunning) {
+        bindInquiryPreviewPanelEvents({
+            registerSvgEvent: this.registerSvgEvent.bind(this),
+            previewGroup: this.previewGroup,
+            onClick: (event: MouseEvent) => {
+                if (this.state.isRunning) {
+                    event.stopPropagation();
+                    void this.handleRunningPreviewCancelClick();
+                    return;
+                }
+                if (this.isErrorState()) {
+                    event.stopPropagation();
+                    void this.openInquiryErrorLog();
+                    return;
+                }
+                if (!this.isResultsState()) return;
                 event.stopPropagation();
-                void this.handleRunningPreviewCancelClick();
-                return;
+                this.dismissResults();
             }
-            if (this.isErrorState()) {
-                event.stopPropagation();
-                void this.openInquiryErrorLog();
-                return;
-            }
-            if (!this.isResultsState()) return;
-            event.stopPropagation();
-            this.dismissResults();
         });
 
         this.updatePromptPreview('setup', this.state.mode, 'Hover a question to preview its payload.', undefined, undefined, { hideEmpty: true });
@@ -805,24 +848,32 @@ export class InquiryView extends ItemView {
         this.briefingResetButton = refs.briefingResetButton;
         this.briefingPurgeButton = refs.briefingPurgeButton;
 
-        this.registerDomEvent(this.briefingSaveButton, 'click', (event: MouseEvent) => {
-            event.stopPropagation();
-            void this.handleBriefingSaveClick();
+        bindInquiryBriefingPanelEvents({
+            registerDomEvent: (element, event, handler, options) => this.registerBoundDomEvent(element, event, handler as EventListener, options),
+            briefingPanelEl: this.briefingPanelEl,
+            briefingSaveButton: this.briefingSaveButton,
+            briefingClearButton: this.briefingClearButton,
+            briefingResetButton: this.briefingResetButton,
+            briefingPurgeButton: this.briefingPurgeButton,
+            onSaveClick: (event: MouseEvent) => {
+                event.stopPropagation();
+                void this.handleBriefingSaveClick();
+            },
+            onClearClick: (event: MouseEvent) => {
+                event.stopPropagation();
+                this.handleBriefingClearClick();
+            },
+            onResetClick: (event: MouseEvent) => {
+                event.stopPropagation();
+                this.handleBriefingResetCorpusClick();
+            },
+            onPurgeClick: (event: MouseEvent) => {
+                event.stopPropagation();
+                void this.handleBriefingPurgeClick();
+            },
+            onPointerEnter: () => this.cancelBriefingHide(),
+            onPointerLeave: () => this.scheduleBriefingHide()
         });
-        this.registerDomEvent(this.briefingClearButton, 'click', (event: MouseEvent) => {
-            event.stopPropagation();
-            this.handleBriefingClearClick();
-        });
-        this.registerDomEvent(this.briefingResetButton, 'click', (event: MouseEvent) => {
-            event.stopPropagation();
-            this.handleBriefingResetCorpusClick();
-        });
-        this.registerDomEvent(this.briefingPurgeButton, 'click', (event: MouseEvent) => {
-            event.stopPropagation();
-            void this.handleBriefingPurgeClick();
-        });
-        this.registerDomEvent(this.briefingPanelEl, 'pointerenter', () => this.cancelBriefingHide());
-        this.registerDomEvent(this.briefingPanelEl, 'pointerleave', () => this.scheduleBriefingHide());
         this.refreshBriefingPanel();
         void this.refreshBriefingPurgeAvailability();
     }
@@ -841,11 +892,16 @@ export class InquiryView extends ItemView {
         this.enginePanelGuardEl = refs.enginePanelGuardEl;
         this.enginePanelGuardNoteEl = refs.enginePanelGuardNoteEl;
         this.enginePanelListEl = refs.enginePanelListEl;
-        this.registerDomEvent(this.enginePanelEl, 'pointerenter', () => this.cancelEnginePanelHide());
-        this.registerDomEvent(this.enginePanelEl, 'pointerleave', () => this.scheduleEnginePanelHide());
+        bindInquiryEnginePanelEvents({
+            registerDomEvent: (element, event, handler, options) => this.registerBoundDomEvent(element, event, handler as EventListener, options),
+            enginePanelEl: this.enginePanelEl,
+            onPointerEnter: () => this.cancelEnginePanelHide(),
+            onPointerLeave: () => this.scheduleEnginePanelHide()
+        });
         this.refreshEnginePanel();
     }
 
+    // Engine Orchestration
     private showEnginePanel(): void {
         if (!this.enginePanelEl) return;
         this.cancelEnginePanelHide();
@@ -899,7 +955,21 @@ export class InquiryView extends ItemView {
         }
 
         // ── 2. Status card (readiness strip) ──
-        this.renderEngineReadinessStrip(readinessUi);
+        renderInquiryEngineReadinessStrip({
+            readinessEl: this.enginePanelReadinessEl,
+            readinessStatusEl: this.enginePanelReadinessStatusEl,
+            readinessCorpusEl: this.enginePanelReadinessCorpusEl,
+            readinessMessageEl: this.enginePanelReadinessMessageEl,
+            readinessActionsEl: this.enginePanelReadinessActionsEl,
+            readinessScopeEl: this.enginePanelReadinessScopeEl,
+            popoverState: this.resolveEnginePopoverState(readinessUi),
+            blocked: !!engine.blocked,
+            corpusSummary: buildInquiryEngineCorpusSummary(this.getRTCorpusEstimate(), this.formatApproxCorpusTokens.bind(this)),
+            passPlan: this.getCurrentPassPlan(readinessUi),
+            readinessCause: readinessUi.readiness.cause,
+            readinessReason: readinessUi.reason,
+            runScopeLabel: this.getEngineRunScopeLabel(readinessUi.runScopeLabel)
+        });
 
         // ── Guard (error/failure guidance) ──
         if (this.enginePanelGuardEl) {
@@ -916,32 +986,25 @@ export class InquiryView extends ItemView {
         // ── 3. Advisor slot ──
         const advisorSlot = this.enginePanelListEl.createDiv({ cls: 'ert-inquiry-engine-advisor-slot' });
         if (advisoryContext) {
-            this.renderEngineAdvisoryCard(advisorSlot, advisoryContext);
+            renderInquiryEngineAdvisoryCard(advisorSlot, advisoryContext);
         }
 
         // ── 4. Action row ──
-        const actionsRow = this.enginePanelListEl.createDiv({ cls: 'ert-inquiry-engine-actions' });
-
-        const settingsButton = actionsRow.createEl('button', {
-            cls: 'ert-inquiry-engine-action-button',
-            text: 'Open AI Settings',
-            attr: { type: 'button' }
-        });
-        this.registerDomEvent(settingsButton, 'click', (event: MouseEvent) => {
-            event.stopPropagation();
-            this.hideEnginePanel();
-            this.openAiSettings(['provider']);
-        });
-
-        const logButton = actionsRow.createEl('button', {
-            cls: 'ert-inquiry-engine-action-button',
-            text: 'Open Inquiry Log',
-            attr: { type: 'button' }
-        });
-        this.registerDomEvent(logButton, 'click', (event: MouseEvent) => {
-            event.stopPropagation();
-            this.hideEnginePanel();
-            void this.openInquiryErrorLog();
+        const { settingsButton, logButton } = createInquiryEngineActionButtons(this.enginePanelListEl);
+        bindInquiryEngineActionButtons({
+            registerDomEvent: (element, event, handler, options) => this.registerBoundDomEvent(element, event, handler as EventListener, options),
+            settingsButton,
+            logButton,
+            onSettingsClick: (event: MouseEvent) => {
+                event.stopPropagation();
+                this.hideEnginePanel();
+                this.openAiSettings(['provider']);
+            },
+            onLogClick: (event: MouseEvent) => {
+                event.stopPropagation();
+                this.hideEnginePanel();
+                void this.openInquiryErrorLog();
+            }
         });
     }
 
@@ -1093,23 +1156,6 @@ export class InquiryView extends ItemView {
         return advisory;
     }
 
-    private renderEngineAdvisoryCard(container: HTMLElement, advisory: InquiryAdvisoryContext): void {
-        container.empty();
-
-        const card = container.createDiv({ cls: 'ert-inquiry-engine-advisor-card' });
-        card.createDiv({ cls: 'ert-inquiry-engine-advisor-title', text: 'INQUIRY ADVISOR' });
-        card.createDiv({
-            cls: 'ert-inquiry-engine-advisor-message',
-            text: advisory.recommendation.message
-        });
-        advisory.recommendation.options.forEach(option => {
-            card.createDiv({
-                cls: 'ert-inquiry-engine-advisor-suggestion',
-                text: `${option.providerLabel} · ${option.modelLabel}`
-            });
-        });
-    }
-
     private getCurrentPromptQuestion(): string | null {
         const activeZone = this.state.activeZone ?? 'setup';
         const activePrompt = this.getActivePrompt(activeZone);
@@ -1172,61 +1218,6 @@ export class InquiryView extends ItemView {
         return getCurrentPassPlanPure(readinessUi, getLastAiAdvancedContext(this.plugin, 'InquiryMode'));
     }
 
-    private renderEngineReadinessStrip(readinessUi: InquiryReadinessUiState): void {
-        if (!this.enginePanelReadinessEl
-            || !this.enginePanelReadinessStatusEl
-            || !this.enginePanelReadinessCorpusEl
-            || !this.enginePanelReadinessMessageEl
-            || !this.enginePanelReadinessActionsEl
-            || !this.enginePanelReadinessScopeEl) {
-            return;
-        }
-
-        const popoverState = this.resolveEnginePopoverState(readinessUi);
-        const stateClass = popoverState === 'ready'
-            ? 'is-ready'
-            : popoverState === 'multi-pass'
-                ? 'is-amber'
-                : 'is-error';
-        this.enginePanelReadinessEl.classList.remove('is-ready', 'is-amber', 'is-error');
-        this.enginePanelReadinessEl.classList.add(stateClass);
-
-        const engine = this.getResolvedEngine();
-        const statusText = engine.blocked
-            ? 'No working model'
-            : popoverState === 'ready'
-                ? 'Ready'
-                : popoverState === 'multi-pass'
-                    ? 'Multi-pass'
-                    : 'Exceeds limits';
-        this.enginePanelReadinessStatusEl.setText(statusText);
-
-        const corpusEstimate = this.getRTCorpusEstimate();
-        this.enginePanelReadinessCorpusEl.setText(this.buildEngineCorpusSummary(corpusEstimate));
-        const passPlan = this.getCurrentPassPlan(readinessUi);
-        if (popoverState === 'ready') {
-            this.enginePanelReadinessMessageEl.setText('Single pass.');
-        } else if (popoverState === 'multi-pass') {
-            const estimateLabel = passPlan.estimatedPassCount ?? passPlan.displayPassCount;
-            const recentRunSuffix = passPlan.recentExactPassCount
-                ? ` Recent run used ${passPlan.recentExactPassCount} passes.`
-                : '';
-            this.enginePanelReadinessMessageEl.setText(
-                `Expected structured passes: ${estimateLabel} — manuscript exceeds the per-pass planning budget.${recentRunSuffix}`
-            );
-        } else if (readinessUi.readiness.cause === 'single_pass_limit') {
-            const estimateLabel = passPlan.estimatedPassCount ?? passPlan.displayPassCount;
-            this.enginePanelReadinessMessageEl.setText(
-                `Expected structured passes: ${estimateLabel} — single-pass mode blocks this run.`
-            );
-        } else {
-            this.enginePanelReadinessMessageEl.setText(readinessUi.reason);
-        }
-        this.enginePanelReadinessScopeEl.setText(this.getEngineRunScopeLabel(readinessUi.runScopeLabel));
-
-        this.enginePanelReadinessActionsEl.empty();
-    }
-
     private getEngineRunScopeLabel(runScopeLabel: string): string {
         if (this.state.scope !== 'book') return runScopeLabel;
         if (/^Run on \d+ scenes \(/.test(runScopeLabel)) return runScopeLabel;
@@ -1287,6 +1278,7 @@ export class InquiryView extends ItemView {
         }
     }
 
+    // Briefing Orchestration
     private showBriefingPanel(): void {
         if (!this.briefingPanelEl) return;
         this.cancelBriefingHide();
@@ -1339,14 +1331,14 @@ export class InquiryView extends ItemView {
             this.briefingEmptyEl.classList.remove('ert-hidden');
         } else {
             this.briefingEmptyEl.classList.add('ert-hidden');
-            const grouped = this.groupSessionsByRecency(sessions);
-            grouped.forEach(group => {
-                if (!group.sessions.length) return;
+            const sections = buildInquiryBriefingSections(sessions);
+            sections.forEach(section => {
+                if (!section.sessions.length) return;
                 const groupEl = this.briefingListEl?.createDiv({ cls: 'ert-inquiry-briefing-group' });
                 if (!groupEl) return;
-                groupEl.createDiv({ cls: 'ert-inquiry-briefing-group-label', text: group.label });
+                groupEl.createDiv({ cls: 'ert-inquiry-briefing-group-label', text: section.label });
                 const groupList = groupEl.createDiv({ cls: 'ert-inquiry-briefing-group-list' });
-                group.sessions.forEach(session => this.renderBriefingSessionItem(groupList, session, blocked));
+                section.sessions.forEach(session => this.renderBriefingSessionItem(groupList, session, blocked));
             });
         }
 
@@ -1355,98 +1347,51 @@ export class InquiryView extends ItemView {
         this.updateBriefingFooterActionStates();
     }
 
-    private groupSessionsByRecency(
-        sessions: InquirySession[]
-    ): Array<{ label: 'Today' | 'Yesterday' | 'Earlier'; sessions: InquirySession[] }> {
-        const now = new Date();
-        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-        const yesterdayStart = todayStart - 86_400_000;
-        const grouped: Array<{ label: 'Today' | 'Yesterday' | 'Earlier'; sessions: InquirySession[] }> = [
-            { label: 'Today', sessions: [] },
-            { label: 'Yesterday', sessions: [] },
-            { label: 'Earlier', sessions: [] }
-        ];
-        sessions.forEach(session => {
-            const ts = session.createdAt || session.lastAccessed;
-            if (ts >= todayStart) {
-                grouped[0].sessions.push(session);
-            } else if (ts >= yesterdayStart) {
-                grouped[1].sessions.push(session);
-            } else {
-                grouped[2].sessions.push(session);
-            }
-        });
-        return grouped;
-    }
-
     private renderBriefingSessionItem(container: HTMLElement, session: InquirySession, blocked: boolean): void {
-        const item = container.createDiv({ cls: 'ert-inquiry-briefing-item' });
         const zoneId = session.questionZone ?? this.findPromptZoneById(session.result.questionId) ?? 'setup';
-        item.classList.add(`is-zone-${zoneId}`);
-        if (session.key === this.rehydrateTargetKey) {
-            item.classList.add('is-rehydrate-target');
-        }
-        if (session.key === this.state.activeSessionId) {
-            item.classList.add('is-active');
-        }
-        const textRow = item.createDiv({ cls: 'ert-inquiry-briefing-row ert-inquiry-briefing-row--text' });
-        const main = textRow.createDiv({ cls: 'ert-inquiry-briefing-main' });
-        main.createDiv({ cls: 'ert-inquiry-briefing-title-row', text: this.resolveSessionQuestionLabel(session) });
         const overrideLabel = this.formatSessionOverrides(session);
         const metaText = `${this.formatSessionScope(session)} · ${this.formatSessionProviderModel(session)} · ${this.formatSessionTime(session)}${overrideLabel ? ` · ${overrideLabel}` : ''}`;
-        main.createDiv({ cls: 'ert-inquiry-briefing-meta', text: metaText });
-
-        const actionRow = item.createDiv({ cls: 'ert-inquiry-briefing-row ert-inquiry-briefing-row--actions' });
         const status = this.resolveSessionStatus(session);
-        const statusEl = actionRow.createDiv({
-            cls: `ert-inquiry-briefing-status ert-inquiry-briefing-status--${status}`,
-            text: status
-        });
-        statusEl.setAttribute('aria-label', `History status: ${status}`);
-
         const pendingEditsApplied = !!session.pendingEditsApplied;
         const autoPopulateEnabled = this.plugin.settings.inquiryActionNotesAutoPopulate ?? false;
-        const actionGroup = actionRow.createDiv({ cls: 'ert-inquiry-briefing-actions' });
         const fieldLabel = this.resolveInquiryActionNotesFieldLabel();
-        const pendingLabel = pendingEditsApplied
-            ? `${fieldLabel} updated`
-            : (autoPopulateEnabled ? `Update ${fieldLabel}` : `Write to ${fieldLabel}`);
-        const updateBtn = actionGroup.createEl('button', {
-            cls: 'ert-inquiry-briefing-update',
-            attr: {
-                'aria-label': pendingLabel
-            }
+        const refs = renderInquiryBriefingSessionItem({
+            container,
+            zoneId,
+            isRehydrateTarget: session.key === this.rehydrateTargetKey,
+            isActive: session.key === this.state.activeSessionId,
+            questionLabel: this.resolveSessionQuestionLabel(session),
+            metaText,
+            status,
+            blocked,
+            pendingEditsApplied,
+            autoPopulateEnabled,
+            fieldLabel,
+            hasBriefPath: !!session.briefPath
         });
-        setIcon(updateBtn, pendingEditsApplied ? 'check' : 'plus');
-        updateBtn.disabled = blocked;
-        this.registerDomEvent(updateBtn, 'click', (event: MouseEvent) => {
-            event.stopPropagation();
-            if (pendingEditsApplied) return;
-            void this.handleBriefingPendingEditsClick(session);
-        });
-        if (pendingEditsApplied) {
-            updateBtn.classList.add('is-applied');
-        }
-
-        if (session.briefPath) {
-            const openBtn = actionGroup.createEl('button', {
-                cls: 'ert-inquiry-briefing-open',
-                attr: { 'aria-label': 'Open saved brief' }
-            });
-            setIcon(openBtn, 'file-text');
-            openBtn.disabled = blocked;
-            this.registerDomEvent(openBtn, 'click', (event: MouseEvent) => {
+        bindInquiryBriefingSessionItemEvents({
+            registerDomEvent: (element, event, handler, options) => this.registerBoundDomEvent(element, event, handler as EventListener, options),
+            item: refs.item,
+            updateButton: refs.updateButton,
+            openButton: refs.openButton,
+            onItemClick: () => {
+                this.activateSession(session);
+                this.briefingPinned = false;
+                this.hideBriefingPanel(true);
+            },
+            onUpdateClick: (event: MouseEvent) => {
+                event.stopPropagation();
+                if (pendingEditsApplied) return;
+                void this.handleBriefingPendingEditsClick(session);
+            },
+            onOpenClick: (event: MouseEvent) => {
                 event.stopPropagation();
                 void this.openBriefFromSession(session);
-            });
-        }
-
-        this.registerDomEvent(item, 'click', () => {
-            this.activateSession(session);
-            this.briefingPinned = false;
-            this.hideBriefingPanel(true);
+            }
         });
     }
+
+    // Session / Briefing Helpers
 
     private resolveSessionStatus(session: InquirySession, options?: { simulated?: boolean }): InquirySessionStatus {
         if (options?.simulated) return 'simulated';
@@ -2592,16 +2537,8 @@ export class InquiryView extends ItemView {
         return normalizeInquiryPromptConfig(this.plugin.settings.inquiryPromptConfig);
     }
 
-    private getQuestionTextForSlot(zone: InquiryZone, slot: InquiryPromptSlot): string {
-        const canonicalId = getBuiltInPromptSeed(zone)?.id;
-        const stored = slot.question ?? '';
-        if (stored.trim().length > 0) {
-            return stored;
-        }
-        if (slot.builtIn && slot.id === canonicalId) {
-            return getCanonicalPromptText(zone);
-        }
-        return stored;
+    private getQuestionTextForSlot(_zone: InquiryZone, slot: InquiryPromptSlot): string {
+        return getPromptSlotQuestion(slot);
     }
 
     private getPromptOptions(zone: InquiryZone): InquiryQuestion[] {
@@ -2756,8 +2693,7 @@ export class InquiryView extends ItemView {
         (['setup', 'pressure', 'payoff'] as InquiryZone[]).forEach(zone => {
             const slots = config[zone] ?? [];
             const available = slots.filter(slot => this.getQuestionTextForSlot(zone, slot).trim().length > 0);
-            const canonicalId = getBuiltInPromptSeed(zone)?.id;
-            const desired = available[0]?.id ?? canonicalId ?? slots[0]?.id ?? zone;
+            const desired = available[0]?.id ?? slots[0]?.id ?? zone;
             if (!desired) return;
             const current = this.state.selectedPromptIds[zone];
             const currentValid = available.some(slot => slot.id === current);
@@ -2835,20 +2771,23 @@ export class InquiryView extends ItemView {
             text.setAttribute('alignment-baseline', 'middle');
 
             this.zonePromptElements.set(zone.id, { group: zoneEl, bg, glow, text });
-
-            this.registerSvgEvent(zoneEl, 'click', () => this.handlePromptClick(zone.id));
-            this.registerSvgEvent(zoneEl, 'pointerenter', () => {
-                if (this.isInquiryRunDisabled()) return;
-                const prompt = this.getActivePrompt(zone.id);
-                if (prompt) {
-                    this.showPromptPreview(zone.id, this.state.mode, prompt.question);
+            bindInquiryZonePodEvents({
+                registerSvgEvent: this.registerSvgEvent.bind(this),
+                zoneEl,
+                onClick: () => this.handlePromptClick(zone.id),
+                onPointerEnter: () => {
+                    if (this.isInquiryRunDisabled()) return;
+                    const prompt = this.getActivePrompt(zone.id);
+                    if (prompt) {
+                        this.showPromptPreview(zone.id, this.state.mode, prompt.question);
+                    }
+                    this.setHoverText(this.buildZoneHoverText(zone.id));
+                },
+                onPointerLeave: () => {
+                    if (this.isInquiryRunDisabled()) return;
+                    this.clearHoverText();
+                    this.hidePromptPreview();
                 }
-                this.setHoverText(this.buildZoneHoverText(zone.id));
-            });
-            this.registerSvgEvent(zoneEl, 'pointerleave', () => {
-                if (this.isInquiryRunDisabled()) return;
-                this.clearHoverText();
-                this.hidePromptPreview();
             });
         });
     }
@@ -3053,7 +2992,11 @@ export class InquiryView extends ItemView {
         createSvgText(findingsGroup, 'ert-inquiry-findings-title', 'Findings', 24, 36);
         this.detailsToggle = this.createIconButton(findingsGroup, width - 88, 14, 32, 'chevron-down', 'Toggle details', 'ert-inquiry-details-toggle');
         this.detailsIcon = this.detailsToggle.querySelector('.ert-inquiry-icon') as SVGUseElement;
-        this.registerSvgEvent(this.detailsToggle, 'click', () => this.toggleDetails());
+        bindInquiryDetailsToggleEvent({
+            registerSvgEvent: this.registerSvgEvent.bind(this),
+            detailsToggle: this.detailsToggle,
+            onClick: () => this.toggleDetails()
+        });
 
         this.detailsEl = createSvgGroup(findingsGroup, 'ert-inquiry-details ert-hidden', 24, 64);
         this.detailRows = [
@@ -3098,17 +3041,23 @@ export class InquiryView extends ItemView {
         if (options?.reason) {
             console.debug(`[InquiryView] refreshUI triggered: ${options.reason} (skipCorpus: ${options.skipCorpus ?? false})`);
         }
-        this._resolvedEngine = null; // Invalidate per-refresh-cycle cache.
-        this._currentCorpusContext = null; // Invalidate per-refresh-cycle cache.
-        if (!options?.skipCorpus) {
-            this.perfCounters.refreshCorpusCalls++;
-            const _start = performance.now();
-            this.refreshCorpus();
-            this.perfCounters.corpusRefreshMs += (performance.now() - _start);
-        }
-        
+        this.invalidateRefreshCycleCaches();
+        this.refreshDataDependencies(options?.skipCorpus);
         this.refreshDerivedViewState();
-        this.refreshVisualChrome(options?.reason);
+        this.refreshVisualChrome();
+    }
+
+    private invalidateRefreshCycleCaches(): void {
+        this._resolvedEngine = null;
+        this._currentCorpusContext = null;
+    }
+
+    private refreshDataDependencies(skipCorpus = false): void {
+        if (skipCorpus) return;
+        this.perfCounters.refreshCorpusCalls++;
+        const start = performance.now();
+        this.refreshCorpus();
+        this.perfCounters.corpusRefreshMs += (performance.now() - start);
     }
 
     private refreshDerivedViewState(): void {
@@ -3121,17 +3070,29 @@ export class InquiryView extends ItemView {
         void this.requestEstimateSnapshot();
     }
 
-    private refreshVisualChrome(reason?: string): void {
+    private refreshVisualChrome(): void {
+        this.refreshPrimaryChrome();
+        this.refreshSessionChrome();
+        this.refreshPanelChrome();
+    }
+
+    private refreshPrimaryChrome(): void {
         this.updateScopeToggle();
         this.updateModeToggle();
         this.updateModeClass();
         this.updateActiveZoneStyling();
         this.updateEngineBadge();
         this.updateGlyphPromptState();
+    }
+
+    private refreshSessionChrome(): void {
         this.updateFooterStatus();
         this.updateNavigationIcons();
         this.updateNavSessionLabel();
         this.updateRunningState();
+    }
+
+    private refreshPanelChrome(): void {
         this.updateBriefingButtonState();
         this.refreshBriefingPanel();
         this.updateGuidance();
@@ -3408,7 +3369,12 @@ export class InquiryView extends ItemView {
 
     private renderMinimapTicks(): void {
         const items = this.getCurrentItems();
-        const result = this.minimap.renderTicks(items, this.state.scope, VIEWBOX_SIZE, {
+        const result = this.minimap.renderTicks(items, this.state.scope, VIEWBOX_SIZE, this.buildMinimapRenderCallbacks());
+        this.applyMinimapRenderOutcome(items, result);
+    }
+
+    private buildMinimapRenderCallbacks(): Parameters<InquiryMinimapRenderer['renderTicks']>[3] {
+        return {
             getItemTitle: (item) => this.getMinimapItemTitle(item),
             balanceTooltipText,
             registerDomEvent: (el, event, handler) => this.registerDomEvent(el, event, handler),
@@ -3444,14 +3410,15 @@ export class InquiryView extends ItemView {
                 if (!hadPreview || this.previewLocked) return;
                 this.hidePromptPreview(true);
             }
-        });
+        };
+    }
 
+    private applyMinimapRenderOutcome(
+        items: InquiryCorpusItem[],
+        result: ReturnType<InquiryMinimapRenderer['renderTicks']>
+    ): void {
         if (!result) {
-            // No items — renderer hid backbone, run post-render updates
-            this.renderCorpusCcStrip();
-            this.updateMinimapFocus();
-            this.updateMinimapPressureGauge();
-            this.updatePreviewPanelPosition();
+            this.refreshMinimapAfterEmptyRender();
             return;
         }
 
@@ -3460,20 +3427,23 @@ export class InquiryView extends ItemView {
         void this.refreshMinimapEmptyStates(items);
         this.renderCorpusCcStrip();
         this.applyMinimapSubsetShading(items);
-        this.updateMinimapFocus();
+        this.minimap.updateFocus();
         this.updateMinimapPressureGauge();
+    }
+
+    private refreshMinimapAfterEmptyRender(): void {
+        this.renderCorpusCcStrip();
+        this.minimap.updateFocus();
+        this.updateMinimapPressureGauge();
+        this.updatePreviewPanelPosition();
     }
 
     private updatePreviewPanelPosition(): void {
         if (!this.previewGroup || !this.minimap.hasGroup) return;
-        const targetY = this.getPreviewPanelTargetY();
+        const targetY = this.minimap.getPreviewPanelTargetY();
         if (!Number.isFinite(targetY)) return;
         this.previewGroup.setAttribute('transform', `translate(0 ${targetY})`);
         this.updateResultsFooterPosition(targetY);
-    }
-
-    private getPreviewPanelTargetY(): number {
-        return this.minimap.getPreviewPanelTargetY();
     }
 
     private applyMinimapSubsetShading(items: InquiryCorpusItem[]): void {
@@ -4299,82 +4269,25 @@ export class InquiryView extends ItemView {
         return this.getFrontmatterScope(frontmatter);
     }
 
+    // Corpus Async Coordination
     private async updateCorpusCcData(entries: CorpusCcEntry[]): Promise<void> {
         const updateId = ++this.ccUpdateId;
         const stats = await Promise.all(entries.map(entry => this.loadCorpusCcStats(entry)));
         if (updateId !== this.ccUpdateId) return;
-        stats.forEach((entryStats, idx) => {
-            this.applyCorpusCcSlot(idx, entries[idx], entryStats);
-        });
-    }
-
-    private applyCorpusCcSlot(
-        index: number,
-        entry: CorpusCcEntry,
-        stats: CorpusCcStats
-    ): void {
-        const slot = this.ccSlots[index];
-        if (!slot) return;
         const thresholds = this.getCorpusThresholds();
-        const mode = entry.mode ?? 'none';
-        const isSynopsis = mode === 'summary';
-        const wordCount = isSynopsis ? stats.synopsisWords : stats.bodyWords;
-        const tier = isSynopsis
-            ? this.getCorpusSynopsisTier(stats.synopsisQuality, wordCount, thresholds)
-            : this.getCorpusTier(wordCount, thresholds);
-        const ratioBase = thresholds.substantiveMin > 0 ? (wordCount / thresholds.substantiveMin) : 0;
-        const ratio = Math.min(Math.max(ratioBase, 0), 1);
         const pageHeight = this.ccLayout?.pageHeight ?? Math.round(CC_PAGE_BASE_SIZE * 1.45);
-        const fillHeight = Math.round(pageHeight * ratio);
-        slot.fill.setAttribute('height', String(fillHeight));
-        slot.fill.setAttribute('y', String(pageHeight - fillHeight));
-
-        const sceneStatus = entry.className === 'scene'
-            ? resolveCorpusSceneStatus({ status: stats.statusRaw, due: stats.due })
-            : undefined;
-        const lowSubstance = entry.className === 'scene' && isLowSubstanceTier(tier);
-
-        slot.group.classList.remove(
-            'is-tier-empty',
-            'is-tier-bare',
-            'is-tier-sketchy',
-            'is-tier-medium',
-            'is-tier-substantive',
-            'is-mode-none',
-            'is-mode-summary',
-            'is-mode-full',
-            'is-status-todo',
-            'is-status-working',
-            'is-status-complete',
-            'is-status-overdue',
-            'is-low-substance'
-        );
-        slot.group.classList.add(`is-tier-${tier}`);
-        if (mode === 'summary') {
-            slot.group.classList.add('is-mode-summary');
-        } else if (mode === 'full') {
-            slot.group.classList.add('is-mode-full');
-        } else {
-            slot.group.classList.add('is-mode-none');
-        }
-
-        if (sceneStatus) {
-            slot.group.classList.add(`is-status-${sceneStatus}`);
-        }
-        if (lowSubstance) {
-            slot.group.classList.add('is-low-substance');
-        }
-
-        const tooltip = this.buildCorpusCcTooltip(entry, stats, thresholds, tier, sceneStatus, lowSubstance, wordCount);
-        addTooltipData(slot.group, tooltip, 'left');
-        slot.group.setAttribute('data-rt-tip-offset-x', '10');
-        if (entry.filePath) {
-            slot.group.classList.add('is-openable');
-            slot.group.setAttribute('data-file-path', entry.filePath);
-        } else {
-            slot.group.classList.remove('is-openable');
-            slot.group.removeAttribute('data-file-path');
-        }
+        stats.forEach((entryStats, idx) => {
+            const slot = this.ccSlots[idx];
+            const entry = entries[idx];
+            if (!slot || !entry) return;
+            const viewModel = buildInquiryCorpusCcSlotViewModel({
+                entry,
+                stats: entryStats,
+                thresholds,
+                pageHeight
+            });
+            applyInquiryCorpusCcSlotViewModel(slot, viewModel);
+        });
     }
 
     private getCorpusThresholds(): { emptyMax: number; sketchyMin: number; mediumMin: number; substantiveMin: number } {
@@ -4391,34 +4304,6 @@ export class InquiryView extends ItemView {
             mediumMin: Number.isFinite(raw.mediumMin) ? raw.mediumMin : defaults.mediumMin,
             substantiveMin: Number.isFinite(raw.substantiveMin) ? raw.substantiveMin : defaults.substantiveMin
         };
-    }
-
-    private getCorpusTier(
-        wordCount: number,
-        thresholds: { emptyMax: number; sketchyMin: number; mediumMin: number; substantiveMin: number }
-    ): CorpusSubstanceTier {
-        if (wordCount < thresholds.emptyMax) return 'empty';
-        if (wordCount < thresholds.sketchyMin) return 'bare';
-        if (wordCount < thresholds.mediumMin) return 'sketchy';
-        if (wordCount < thresholds.substantiveMin) return 'medium';
-        return 'substantive';
-    }
-
-    private getCorpusSynopsisTier(
-        quality: SynopsisQuality,
-        wordCount: number,
-        thresholds: { emptyMax: number; sketchyMin: number; mediumMin: number; substantiveMin: number }
-    ): CorpusSubstanceTier {
-        if (quality === 'missing') return 'empty';
-        if (quality === 'weak') return 'sketchy';
-        return this.getCorpusTier(wordCount, thresholds);
-    }
-
-    private getCorpusTierLabel(tier: CorpusSubstanceTier): string {
-        if (tier === 'empty') return 'Empty';
-        if (tier === 'bare' || tier === 'sketchy') return 'Sketchy';
-        if (tier === 'medium') return 'Medium';
-        return 'Substantive';
     }
 
     private async loadCorpusCcStats(entry: CorpusCcEntry): Promise<CorpusCcStats> {
@@ -4497,68 +4382,6 @@ export class InquiryView extends ItemView {
         };
     }
 
-    private getCorpusCcStatusIcon(status?: CorpusSceneStatus): string {
-        if (status === 'todo') return '☐';
-        if (status === 'working') return '□';
-        if (status === 'complete') return '✓';
-        if (status === 'overdue') return '⚠';
-        return '';
-    }
-
-    private buildCorpusCcTooltip(
-        entry: CorpusCcEntry,
-        stats: CorpusCcStats,
-        thresholds: { emptyMax: number; sketchyMin: number; mediumMin: number; substantiveMin: number },
-        tier: CorpusSubstanceTier,
-        sceneStatus: CorpusSceneStatus | undefined,
-        isLowSubstance: boolean,
-        wordCount: number
-    ): string {
-        const tooltipTitle = stats.title || entry.label;
-        const classInitial = entry.className?.trim().charAt(0).toLowerCase() || '?';
-        const conditions: string[] = [];
-
-        if (sceneStatus) {
-            const statusLabel = sceneStatus === 'overdue'
-                ? 'Overdue'
-                : `${sceneStatus.charAt(0).toUpperCase()}${sceneStatus.slice(1)}`;
-            const statusIcon = this.getCorpusCcStatusIcon(sceneStatus);
-            const statusBorderNote = sceneStatus === 'todo'
-                ? ' (dashed border)'
-                : sceneStatus === 'working'
-                    ? ''
-                    : sceneStatus === 'overdue'
-                        ? ' (solid red border)'
-                        : ' (solid border)';
-            const statusIconText = statusIcon ? ` ${statusIcon}` : '';
-            conditions.push(`Status: ${statusLabel}${statusIconText}${statusBorderNote}`);
-        }
-
-        const tierLabel = this.getCorpusTierLabel(tier);
-        const wordLabel = wordCount.toLocaleString();
-        const isSynopsisCapable = entry.className === 'scene' || entry.className.startsWith('outline');
-        if (entry.mode === 'none') {
-            conditions.push('Mode: Off');
-        }
-        if (isSynopsisCapable) {
-            if (entry.mode === 'summary') {
-                conditions.push(`Tier: Summary ${tierLabel.toLowerCase()} (${wordLabel} words)`);
-            } else if (entry.mode === 'full') {
-                conditions.push(`Tier: Body ${tierLabel.toLowerCase()} (${wordLabel} words)`);
-            } else {
-                conditions.push(`Tier: ${tierLabel} (${wordLabel} words)`);
-            }
-        } else {
-            conditions.push(`Tier: ${tierLabel} (${wordLabel} words)`);
-        }
-
-        if (isLowSubstance) {
-            conditions.push(`Low substance: marked with X (${thresholds.sketchyMin} words target)`);
-        }
-
-        return `${tooltipTitle} [${classInitial}]\n${conditions.map(item => `• ${item}`).join('\n')}`;
-    }
-
     private getDocumentTitle(file: TFile): string {
         const frontmatter = this.app.metadataCache.getFileCache(file)?.frontmatter as Record<string, unknown> | undefined;
         if (frontmatter) {
@@ -4591,10 +4414,6 @@ export class InquiryView extends ItemView {
 
     private isTFile(file: TAbstractFile | null): file is TFile {
         return !!file && file instanceof TFile;
-    }
-
-    private updateMinimapFocus(): void {
-        this.minimap.updateFocus();
     }
 
     private updateFocusGlyph(): void {
@@ -6318,7 +6137,7 @@ export class InquiryView extends ItemView {
         } else {
             this.showResultsPreview(normalized);
         }
-        this.updateMinimapFocus();
+        this.minimap.updateFocus();
         this.refreshUI({ skipCorpus: true });
     }
 
@@ -8210,11 +8029,23 @@ export class InquiryView extends ItemView {
     private updateRunProgress(progress: InquiryRunProgressEvent | null): void {
         this.perfCounters.progressUpdateCalls++;
         this.currentRunProgress = progress;
-        if (!this.state.isRunning || this.activeCancelRunModal) return;
+        if (!this.shouldApplyRunningProgressUpdates()) return;
+        this.applyRunningProgressPreviewState(progress);
+        this.refreshRunningProgressChrome();
+    }
+
+    private shouldApplyRunningProgressUpdates(): boolean {
+        return this.state.isRunning && !this.activeCancelRunModal;
+    }
+
+    private applyRunningProgressPreviewState(progress: InquiryRunProgressEvent | null): void {
         this.reconcileRunningEstimate(progress);
         const questionText = this.previewLast?.question || this.getCurrentPromptQuestion() || '';
         this.setPreviewRunningNoteText(this.buildRunningStatusNote(questionText));
         this.setPreviewFooterText('');
+    }
+
+    private refreshRunningProgressChrome(): void {
         this.updateMinimapPressureGauge();
         this.updateRunningHud();
         this.perfCounters.progressDomPatches++;
@@ -8771,7 +8602,7 @@ export class InquiryView extends ItemView {
     }
 
     private updateResultsFooterPosition(targetY?: number): void {
-        const panelY = targetY ?? this.getPreviewPanelTargetY();
+        const panelY = targetY ?? this.minimap.getPreviewPanelTargetY();
         if (!Number.isFinite(panelY)) return;
         updateInquiryResultsFooterPosition({
             refs: {
@@ -9346,22 +9177,6 @@ export class InquiryView extends ItemView {
 
     private formatApproxCorpusTokens(value: number): string {
         return `~${this.formatTokenEstimate(value)}`;
-    }
-
-    private buildEngineCorpusSummary(estimate: RTCorpusTokenEstimate): string {
-        if (estimate.estimatedTokens <= 0) return 'Corpus · Estimating…';
-        const outlineLabel = estimate.breakdown.outlineTokens > 0
-            ? `Outline ${this.formatApproxCorpusTokens(estimate.breakdown.outlineTokens)}`
-            : 'Outline none';
-        const referenceLabel = estimate.breakdown.referenceTokens > 0
-            ? `References ${this.formatApproxCorpusTokens(estimate.breakdown.referenceTokens)}`
-            : 'References none';
-        return [
-            `Corpus · Total ${this.formatApproxCorpusTokens(estimate.estimatedTokens)}`,
-            `Scenes ${this.formatApproxCorpusTokens(estimate.breakdown.scenesTokens)}`,
-            outlineLabel,
-            referenceLabel
-        ].join(' · ');
     }
 
     private toggleDetails(): void {
