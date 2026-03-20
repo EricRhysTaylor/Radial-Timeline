@@ -39,6 +39,12 @@ import type {
     OmnibusProgressState
 } from '../types/settings';
 import { buildDefaultInquiryPromptConfig, getBuiltInPromptSeed, getCanonicalPromptText, normalizeInquiryPromptConfig } from './prompts';
+import {
+    createInquiryBriefingPanel,
+    createInquiryDesktopShell,
+    createInquiryEnginePanel,
+    createInquiryPromptPreviewPanel
+} from './dom/inquiryDomFactory';
 import { ensureInquiryArtifactFolder, getMostRecentArtifactFile, resolveInquiryArtifactFolder } from './utils/artifacts';
 import { buildInquiryDossierPresentation } from './utils/inquiryDossierPresentation';
 import { cleanEvidenceBody } from './utils/evidenceCleaning';
@@ -46,11 +52,7 @@ import { ensureInquiryContentLogFolder, ensureInquiryLogFolder, resolveInquiryLo
 import { openOrRevealFile, openOrRevealFileAtSubpath } from '../utils/fileUtils';
 import {
     extractTokenUsage,
-    formatAiLogContent,
     formatDuration,
-    formatUsageCostBreakdownLines,
-    sanitizeLogPayload,
-    type AiLogStatus
 } from '../ai/log';
 import { getCredentialSecretId } from '../ai/credentials/credentials';
 import { hasSecret, isSecretStorageAvailable } from '../ai/credentials/secretStorage';
@@ -176,17 +178,19 @@ import {
     resolveScanRoots,
     toVaultRoot
 } from './utils/scanRoots';
+import { createInquirySceneDossierLayer, renderInquirySceneDossier } from './render/inquiryDossierRenderer';
 import {
-    CC_BOTTOM_MARGIN,
-    CC_CELL_ICON_OFFSET,
-    CC_HEADER_ICON_GAP,
-    CC_HEADER_ICON_OFFSET,
-    CC_HEADER_ICON_SIZE,
-    CC_LABEL_HINT_SIZE,
+    renderInquiryPromptPreviewLayout,
+    renderInquiryRunningHud,
+    updateInquiryPreviewClickTargetLayout,
+    updateInquiryPreviewShimmerLayout,
+    updateInquiryPreviewShimmerText,
+    updateInquiryResultsFooterPosition
+} from './render/inquiryHudRenderer';
+import { buildInquiryContentLogContent, buildInquiryLogContent } from './render/inquiryLogBuilders';
+import { renderInquiryCorpusStrip } from './render/inquiryCorpusStripRenderer';
+import {
     CC_PAGE_BASE_SIZE,
-    CC_PAGE_MIN_SIZE,
-    CC_RIGHT_MARGIN,
-    DEBUG_SVG_OVERLAY,
     DEPTH_FINDING_ORDER,
     FLOW_FINDING_ORDER,
     GLYPH_EMPTY_STATE_STUB,
@@ -198,28 +202,10 @@ import {
     GUIDANCE_TEXT_Y,
     MODE_ICON_OFFSET_Y,
     MODE_ICON_VIEWBOX,
-    PREVIEW_DETAIL_GAP,
-    PREVIEW_FOOTER_GAP,
     PREVIEW_FOOTER_HEIGHT,
-    PREVIEW_HERO_LINE_HEIGHT,
-    PREVIEW_HERO_MAX_LINES,
-    PREVIEW_META_GAP,
-    PREVIEW_META_LINE_HEIGHT,
     PREVIEW_PANEL_MINIMAP_GAP,
-    PREVIEW_PANEL_PADDING_X,
-    PREVIEW_PANEL_PADDING_Y,
     PREVIEW_PANEL_WIDTH,
-    PREVIEW_PANEL_Y,
-    PREVIEW_PILL_GAP_X,
-    PREVIEW_PILL_GAP_Y,
     PREVIEW_PILL_HEIGHT,
-    PREVIEW_PILL_PADDING_X,
-    PREVIEW_RESULTS_FOOTER_OFFSET,
-    PREVIEW_RESULTS_HERO_MAX_LINES,
-    PREVIEW_RESULTS_HERO_MAX_WIDTH,
-    PREVIEW_RUNNING_CONTENT_OFFSET_Y,
-    PREVIEW_SHIMMER_OVERHANG,
-    PREVIEW_SHIMMER_WIDTH,
     SCENE_DOSSIER_ANCHOR_BODY_GAP,
     SCENE_DOSSIER_ANCHOR_LINE_HEIGHT,
     SCENE_DOSSIER_ANCHOR_MAX_WIDTH,
@@ -629,7 +615,6 @@ export class InquiryView extends ItemView {
     }
 
     private renderDesktopLayout(): void {
-        this.contentEl.addClass('ert-inquiry-root');
         this.registerDomEvent(this.contentEl, 'click', (event: MouseEvent) => {
             if (!this.isErrorState()) return;
             const target = event.target;
@@ -638,108 +623,49 @@ export class InquiryView extends ItemView {
             if (!backgroundTarget) return;
             this.dismissError();
         }, { capture: true });
-        const svg = createSvgElement('svg');
-        svg.classList.add('ert-ui', 'ert-inquiry-svg');
-        svg.setAttribute('viewBox', `${VIEWBOX_MIN} ${VIEWBOX_MIN} ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}`);
-        svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-        this.rootSvg = svg;
-        this.contentEl.appendChild(svg);
-        setupTooltipsFromDataAttributes(svg, this.registerDomEvent.bind(this), { rtOnly: true });
+        const shell = createInquiryDesktopShell({
+            contentEl: this.contentEl,
+            populateDefs: defs => {
+                this.svgDefs = defs;
+                this.buildIconSymbols(defs);
+                this.buildZoneGradients(defs);
+                this.buildSceneDossierResources(defs);
+            },
+            createIconButton: this.createIconButton.bind(this),
+            getBackgroundHref: () => this.getInquiryAssetHref('radial_texture.png'),
+            buildDebugOverlay: this.buildDebugOverlay.bind(this)
+        });
+        this.rootSvg = shell.rootSvg;
+        this.scopeToggleButton = shell.scopeToggleButton;
+        this.scopeToggleIcon = shell.scopeToggleIcon;
+        this.artifactButton = shell.artifactButton;
+        this.apiSimulationButton = shell.apiSimulationButton;
+        this.helpToggleButton = shell.helpToggleButton;
+        this.engineBadgeGroup = shell.engineBadgeGroup;
+        this.engineTimerLabel = shell.engineTimerLabel;
+        this.navPrevButton = shell.navPrevButton;
+        this.navNextButton = shell.navNextButton;
+        this.navPrevIcon = shell.navPrevIcon;
+        this.navNextIcon = shell.navNextIcon;
+        this.navSessionLabel = shell.navSessionLabel;
 
-        const defs = createSvgElement('defs');
-        this.svgDefs = defs;
-        this.buildIconSymbols(defs);
-        this.buildZoneGradients(defs);
-        this.buildSceneDossierResources(defs);
-        svg.appendChild(defs);
+        setupTooltipsFromDataAttributes(this.rootSvg, this.registerDomEvent.bind(this), { rtOnly: true });
 
-        const background = createSvgElement('rect');
-        background.classList.add('ert-inquiry-bg');
-        background.setAttribute('x', String(VIEWBOX_MIN));
-        background.setAttribute('y', String(VIEWBOX_MIN));
-        background.setAttribute('width', String(VIEWBOX_SIZE));
-        background.setAttribute('height', String(VIEWBOX_SIZE));
-        svg.appendChild(background);
-
-        const bgImage = createSvgElement('image');
-        bgImage.classList.add('ert-inquiry-bg-image');
-        bgImage.setAttribute('x', String(VIEWBOX_MIN));
-        bgImage.setAttribute('y', String(VIEWBOX_MIN));
-        bgImage.setAttribute('width', String(VIEWBOX_SIZE));
-        bgImage.setAttribute('height', String(VIEWBOX_SIZE));
-        bgImage.setAttribute('preserveAspectRatio', 'xMidYMid slice');
-        bgImage.setAttribute('pointer-events', 'none');
-        bgImage.setAttribute('href', this.getInquiryAssetHref('radial_texture.png'));
-        svg.appendChild(bgImage);
-
-        svg.classList.toggle('is-debug', DEBUG_SVG_OVERLAY);
-        if (DEBUG_SVG_OVERLAY) {
-            this.buildDebugOverlay(svg);
-        }
-
-        const hudOffsetX = -760;
-        const hudOffsetY = -740;
-        const hudGroup = createSvgGroup(svg, 'ert-inquiry-hud', hudOffsetX, hudOffsetY);
-        hudGroup.setAttribute('id', 'inq-hud');
-        const canvasGroup = createSvgGroup(svg, 'ert-inquiry-canvas');
-        canvasGroup.setAttribute('id', 'inq-canvas');
-
-        const iconSize = 56;
-        const iconGap = 16;
-        const hudMargin = 40;
-
-        this.scopeToggleButton = this.createIconButton(hudGroup, 0, 0, iconSize, 'columns-2', 'Toggle scope');
-        this.scopeToggleIcon = this.scopeToggleButton.querySelector('.ert-inquiry-icon') as SVGUseElement;
-        this.scopeToggleButton.querySelector('title')?.remove();
-        addTooltipData(this.scopeToggleButton, balanceTooltipText('Toggle scope'), 'left');
         this.registerSvgEvent(this.scopeToggleButton, 'click', () => {
             this.handleScopeChange(this.state.scope === 'book' ? 'saga' : 'book');
         });
-
-        const artifactX = (VIEWBOX_MAX - hudMargin - iconSize) - hudOffsetX;
-        const helpX = artifactX - (iconSize + iconGap);
-        const simulateX = helpX - (iconSize + iconGap);
-        this.apiSimulationButton = this.createIconButton(hudGroup, simulateX, 0, iconSize, 'activity', 'Simulate API run');
-        addTooltipData(this.apiSimulationButton, balanceTooltipText('Simulate API run'), 'left');
         this.registerSvgEvent(this.apiSimulationButton, 'click', () => this.startApiSimulation());
-
-        this.helpToggleButton = this.createIconButton(
-            hudGroup,
-            helpX,
-            0,
-            iconSize,
-            'help-circle',
-            'Inquiry help',
-            'ert-inquiry-help-btn'
-        );
-        this.helpToggleButton.querySelector('title')?.remove();
         this.registerSvgEvent(this.helpToggleButton, 'click', () => this.handleGuidanceHelpClick());
-
-        this.artifactButton = this.createIconButton(hudGroup, artifactX, 0, iconSize, 'aperture', 'Briefing');
-        this.artifactButton.querySelector('title')?.remove();
         this.registerSvgEvent(this.artifactButton, 'pointerenter', () => this.showBriefingPanel());
         this.registerSvgEvent(this.artifactButton, 'pointerleave', () => this.scheduleBriefingHide());
         this.registerSvgEvent(this.artifactButton, 'click', () => this.toggleBriefingPanel());
-
-        const engineBadgeX = iconSize + iconGap;
-        this.engineBadgeGroup = this.createIconButton(hudGroup, engineBadgeX, 0, iconSize, 'cpu', 'AI engine', 'ert-inquiry-engine-btn');
-        this.engineBadgeGroup.querySelector('title')?.remove();
         this.registerSvgEvent(this.engineBadgeGroup, 'pointerenter', () => this.showEnginePanel());
         this.registerSvgEvent(this.engineBadgeGroup, 'pointerleave', () => this.scheduleEnginePanelHide());
         this.registerSvgEvent(this.engineBadgeGroup, 'click', () => this.openAiSettings());
-        this.engineTimerLabel = createSvgElement('text') as unknown as SVGTextElement;
-        this.engineTimerLabel.classList.add('ert-inquiry-engine-timer', 'ert-hidden');
-        this.engineTimerLabel.setAttribute('x', String(engineBadgeX + iconSize + 12));
-        this.engineTimerLabel.setAttribute('y', '28');
-        this.engineTimerLabel.setAttribute('dominant-baseline', 'central');
-        this.engineTimerLabel.setAttribute('text-anchor', 'start');
-        hudGroup.appendChild(this.engineTimerLabel);
+        this.minimap.initElements(shell.minimapGroup, VIEWBOX_SIZE);
+        this.renderModeIcons(shell.minimapGroup);
 
-        const minimapGroup = createSvgGroup(canvasGroup, 'ert-inquiry-minimap', 0, MINIMAP_GROUP_Y);
-        this.minimap.initElements(minimapGroup, VIEWBOX_SIZE);
-        this.renderModeIcons(minimapGroup);
-
-        this.glyphAnchor = createSvgGroup(canvasGroup, 'ert-inquiry-focus-area', 0, GLYPH_OFFSET_Y);
+        this.glyphAnchor = shell.glyphAnchor;
         const glyphSeed = this.resolveGlyphSeed();
         this.glyph = new InquiryGlyph(this.glyphAnchor, {
             focusLabel: this.getFocusLabel(),
@@ -791,8 +717,8 @@ export class InquiryView extends ItemView {
             });
         }
 
-        this.buildPromptPreviewPanel(canvasGroup);
-        this.buildSceneDossierLayer(svg, SCENE_DOSSIER_CANVAS_Y);
+        this.buildPromptPreviewPanel(shell.canvasGroup);
+        this.buildSceneDossierLayer(this.rootSvg, SCENE_DOSSIER_CANVAS_Y);
 
         this.registerSvgEvent(this.glyphHit, 'pointerenter', () => {
             if (this.isInquiryGuidanceLockout()) return;
@@ -819,34 +745,35 @@ export class InquiryView extends ItemView {
             this.clearHoverText();
         });
 
-        const hudFooterY = 1360;
-        const navGroup = createSvgGroup(hudGroup, 'ert-inquiry-nav', 0, hudFooterY);
-        this.navPrevButton = this.createIconButton(navGroup, 0, -18, 44, 'chevron-left', 'Previous book', 'ert-inquiry-nav-btn');
-        this.navPrevIcon = this.navPrevButton.querySelector('.ert-inquiry-icon') as SVGUseElement;
-        this.navNextButton = this.createIconButton(navGroup, 54, -18, 44, 'chevron-right', 'Next book', 'ert-inquiry-nav-btn');
-        this.navNextIcon = this.navNextButton.querySelector('.ert-inquiry-icon') as SVGUseElement;
         this.registerSvgEvent(this.navPrevButton, 'click', () => this.shiftFocus(-1));
         this.registerSvgEvent(this.navNextButton, 'click', () => this.shiftFocus(1));
-
-        // Session timestamp label — to the right of nav arrows, same gap (10px).
-        // Nav buttons: prev at x=0 (w=44), next at x=54 (w=44) → next ends at x=98. Gap = 10.
-        this.navSessionLabel = createSvgElement('text') as unknown as SVGTextElement;
-        this.navSessionLabel.classList.add('ert-inquiry-nav-session-label');
-        this.navSessionLabel.setAttribute('x', '108');
-        this.navSessionLabel.setAttribute('y', '4');  // vertical center of 44px buttons at y=-18
-        this.navSessionLabel.setAttribute('dominant-baseline', 'central');
-        this.navSessionLabel.setAttribute('text-anchor', 'start');
-        this.navSessionLabel.textContent = '';
-        navGroup.appendChild(this.navSessionLabel);
 
         this.buildBriefingPanel();
         this.buildEnginePanel();
     }
 
     private buildPromptPreviewPanel(parent: SVGGElement): void {
-        const panel = createSvgGroup(parent, 'ert-inquiry-preview', 0, PREVIEW_PANEL_Y);
-        this.previewGroup = panel;
-        this.registerSvgEvent(panel, 'click', (event: MouseEvent) => {
+        const refs = createInquiryPromptPreviewPanel({
+            parent,
+            ensurePreviewShimmerResources: (panel) => {
+                this.ensurePreviewShimmerResources(panel);
+                return {
+                    mask: this.previewShimmerMask,
+                    maskRect: this.previewShimmerMaskRect
+                };
+            }
+        });
+        this.previewGroup = refs.previewGroup;
+        this.previewRunningNote = refs.previewRunningNote;
+        this.previewHero = refs.previewHero;
+        this.previewMeta = refs.previewMeta;
+        this.previewFooter = refs.previewFooter;
+        this.previewClickTarget = refs.previewClickTarget;
+        this.previewRows = refs.previewRows;
+        this.previewRowDefaultLabels = refs.previewRowDefaultLabels;
+        this.previewShimmerGroup = refs.previewShimmerGroup;
+
+        this.registerSvgEvent(this.previewGroup, 'click', (event: MouseEvent) => {
             if (this.state.isRunning) {
                 event.stopPropagation();
                 void this.handleRunningPreviewCancelClick();
@@ -862,118 +789,25 @@ export class InquiryView extends ItemView {
             this.dismissResults();
         });
 
-        const clickTarget = createSvgElement('rect');
-        clickTarget.classList.add('ert-inquiry-preview-hitbox');
-        clickTarget.setAttribute('fill', 'transparent');
-        clickTarget.setAttribute('pointer-events', 'all');
-        panel.appendChild(clickTarget);
-        this.previewClickTarget = clickTarget;
-
-        const runningNote = createSvgText(panel, 'ert-inquiry-preview-running-note ert-hidden', '', 0, -24);
-        runningNote.setAttribute('text-anchor', 'middle');
-        runningNote.setAttribute('dominant-baseline', 'hanging');
-        this.previewRunningNote = runningNote;
-
-        const hero = createSvgText(panel, 'ert-inquiry-preview-hero', '', 0, PREVIEW_PANEL_PADDING_Y);
-        hero.setAttribute('text-anchor', 'middle');
-        hero.setAttribute('dominant-baseline', 'hanging');
-        this.previewHero = hero;
-
-        const meta = createSvgText(panel, 'ert-inquiry-preview-meta', '', 0, PREVIEW_PANEL_PADDING_Y);
-        meta.setAttribute('text-anchor', 'middle');
-        meta.setAttribute('dominant-baseline', 'hanging');
-        this.previewMeta = meta;
-
-        const rowLabels = ['', '', '', '', '', ''];
-        this.previewRowDefaultLabels = rowLabels.slice();
-        const tokensRowIndex = 4;
-        this.previewRows = rowLabels.map((label, index) => {
-            const group = createSvgGroup(panel, 'ert-inquiry-preview-pill');
-            if (index === tokensRowIndex) {
-                group.classList.add('is-tokens-slot');
-            }
-            const bg = createSvgElement('rect');
-            bg.classList.add('ert-inquiry-preview-pill-bg');
-            group.appendChild(bg);
-
-            const pillTextY = (PREVIEW_PILL_HEIGHT / 2) + 1;
-            const textEl = createSvgText(group, 'ert-inquiry-preview-pill-text', '', PREVIEW_PILL_PADDING_X, pillTextY);
-            textEl.setAttribute('xml:space', 'preserve');
-            textEl.setAttribute('dominant-baseline', 'middle');
-            textEl.setAttribute('alignment-baseline', 'middle');
-            textEl.setAttribute('text-anchor', 'start');
-
-            return { group, bg, text: textEl, label };
-        });
-
-        const footer = createSvgText(panel, 'ert-inquiry-preview-footer', '', 0, 0);
-        footer.setAttribute('text-anchor', 'middle');
-        footer.setAttribute('dominant-baseline', 'hanging');
-        this.previewFooter = footer;
-
-        this.ensurePreviewShimmerResources(panel);
-        if (!this.previewShimmerGroup) {
-            const group = createSvgGroup(panel, 'ert-inquiry-preview-shimmer-group');
-            group.setAttribute('display', 'none');
-            if (this.previewShimmerMask) {
-                group.setAttribute('mask', `url(#${this.previewShimmerMask.getAttribute('id')})`);
-            }
-            // Use simple alpha blending for "highlight" effect
-            this.previewShimmerGroup = group;
-
-            // Set the travel distance css variable on the mask rect
-            if (this.previewShimmerMaskRect) {
-                const travel = Math.max(0, (PREVIEW_PANEL_WIDTH + (PREVIEW_SHIMMER_OVERHANG * 2)) - PREVIEW_SHIMMER_WIDTH);
-                this.previewShimmerMaskRect.style.setProperty('--ert-inquiry-shimmer-travel', `${travel}px`);
-            }
-        }
-
         this.updatePromptPreview('setup', this.state.mode, 'Hover a question to preview its payload.', undefined, undefined, { hideEmpty: true });
         this.hidePromptPreview(true);
     }
 
     private buildBriefingPanel(): void {
         if (this.briefingPanelEl) return;
-        const panel = this.contentEl.createDiv({ cls: 'ert-inquiry-briefing-panel ert-hidden ert-ui' });
-        this.briefingPanelEl = panel;
-        const header = panel.createDiv({ cls: 'ert-inquiry-briefing-header' });
-        header.createDiv({ cls: 'ert-inquiry-briefing-title', text: 'Recent Inquiry Sessions' });
-        this.briefingListEl = panel.createDiv({ cls: 'ert-inquiry-briefing-list' });
-        this.briefingEmptyEl = panel.createDiv({ cls: 'ert-inquiry-briefing-empty', text: 'No recent inquiries yet.' });
-        this.briefingFooterEl = panel.createDiv({ cls: 'ert-inquiry-briefing-footer' });
-        this.briefingSaveButton = this.briefingFooterEl.createEl('button', {
-            cls: 'ert-inquiry-briefing-save',
-            text: 'Save current brief'
-        });
+        const refs = createInquiryBriefingPanel(this.contentEl);
+        this.briefingPanelEl = refs.briefingPanelEl;
+        this.briefingListEl = refs.briefingListEl;
+        this.briefingEmptyEl = refs.briefingEmptyEl;
+        this.briefingFooterEl = refs.briefingFooterEl;
+        this.briefingSaveButton = refs.briefingSaveButton;
+        this.briefingClearButton = refs.briefingClearButton;
+        this.briefingResetButton = refs.briefingResetButton;
+        this.briefingPurgeButton = refs.briefingPurgeButton;
+
         this.registerDomEvent(this.briefingSaveButton, 'click', (event: MouseEvent) => {
             event.stopPropagation();
             void this.handleBriefingSaveClick();
-        });
-        this.briefingClearButton = this.briefingFooterEl.createEl('button', {
-            cls: 'ert-inquiry-briefing-clear',
-            text: 'Clear recent sessions'
-        });
-        this.briefingResetButton = this.briefingFooterEl.createEl('button', {
-            cls: 'ert-inquiry-briefing-reset',
-            text: 'Reset Overrides to Settings'
-        });
-        addTooltipData(
-            this.briefingResetButton,
-            balanceTooltipText('Resets live corpus overrides only.'),
-            'top'
-        );
-        this.briefingPurgeButton = this.briefingFooterEl.createEl('button', {
-            cls: 'ert-inquiry-briefing-purge',
-            text: 'Purge action items'
-        });
-        addTooltipData(
-            this.briefingPurgeButton,
-            balanceTooltipText('Removes Inquiry-generated action items from scene frontmatter. User notes are preserved.'),
-            'top'
-        );
-        this.briefingFooterEl.createDiv({
-            cls: 'ert-inquiry-briefing-note',
-            text: 'Does not delete briefs.'
         });
         this.registerDomEvent(this.briefingClearButton, 'click', (event: MouseEvent) => {
             event.stopPropagation();
@@ -987,50 +821,28 @@ export class InquiryView extends ItemView {
             event.stopPropagation();
             void this.handleBriefingPurgeClick();
         });
-        this.registerDomEvent(panel, 'pointerenter', () => this.cancelBriefingHide());
-        this.registerDomEvent(panel, 'pointerleave', () => this.scheduleBriefingHide());
+        this.registerDomEvent(this.briefingPanelEl, 'pointerenter', () => this.cancelBriefingHide());
+        this.registerDomEvent(this.briefingPanelEl, 'pointerleave', () => this.scheduleBriefingHide());
         this.refreshBriefingPanel();
         void this.refreshBriefingPurgeAvailability();
     }
 
     private buildEnginePanel(): void {
         if (this.enginePanelEl) return;
-        const panel = this.contentEl.createDiv({ cls: 'ert-inquiry-engine-panel ert-hidden ert-ui' });
-        this.enginePanelEl = panel;
-        const header = panel.createDiv({ cls: 'ert-inquiry-engine-header' });
-        header.createDiv({ cls: 'ert-inquiry-engine-title', text: 'AI Engine' });
-        this.enginePanelMetaEl = header.createDiv({ cls: 'ert-inquiry-engine-meta', text: '' });
-
-        this.enginePanelReadinessEl = panel.createDiv({ cls: 'ert-inquiry-engine-readiness' });
-        this.enginePanelReadinessStatusEl = this.enginePanelReadinessEl.createDiv({
-            cls: 'ert-inquiry-engine-readiness-status',
-            text: 'Ready'
-        });
-        this.enginePanelReadinessCorpusEl = this.enginePanelReadinessEl.createDiv({
-            cls: 'ert-inquiry-engine-readiness-message',
-            text: ''
-        });
-        this.enginePanelReadinessMessageEl = this.enginePanelReadinessEl.createDiv({
-            cls: 'ert-inquiry-engine-readiness-message',
-            text: ''
-        });
-        this.enginePanelReadinessScopeEl = this.enginePanelReadinessEl.createDiv({
-            cls: 'ert-inquiry-engine-readiness-scope',
-            text: ''
-        });
-        this.enginePanelReadinessActionsEl = this.enginePanelReadinessEl.createDiv({
-            cls: 'ert-inquiry-engine-readiness-actions'
-        });
-
-        this.enginePanelGuardEl = panel.createDiv({ cls: 'ert-inquiry-engine-guard ert-hidden' });
-        this.enginePanelGuardNoteEl = this.enginePanelGuardEl.createDiv({
-            cls: 'ert-inquiry-engine-guard-note'
-        });
-        this.enginePanelGuardNoteEl.setText('Adjust settings to continue.');
-
-        this.enginePanelListEl = panel.createDiv({ cls: 'ert-inquiry-engine-list' });
-        this.registerDomEvent(panel, 'pointerenter', () => this.cancelEnginePanelHide());
-        this.registerDomEvent(panel, 'pointerleave', () => this.scheduleEnginePanelHide());
+        const refs = createInquiryEnginePanel(this.contentEl);
+        this.enginePanelEl = refs.enginePanelEl;
+        this.enginePanelMetaEl = refs.enginePanelMetaEl;
+        this.enginePanelReadinessEl = refs.enginePanelReadinessEl;
+        this.enginePanelReadinessStatusEl = refs.enginePanelReadinessStatusEl;
+        this.enginePanelReadinessCorpusEl = refs.enginePanelReadinessCorpusEl;
+        this.enginePanelReadinessMessageEl = refs.enginePanelReadinessMessageEl;
+        this.enginePanelReadinessScopeEl = refs.enginePanelReadinessScopeEl;
+        this.enginePanelReadinessActionsEl = refs.enginePanelReadinessActionsEl;
+        this.enginePanelGuardEl = refs.enginePanelGuardEl;
+        this.enginePanelGuardNoteEl = refs.enginePanelGuardNoteEl;
+        this.enginePanelListEl = refs.enginePanelListEl;
+        this.registerDomEvent(this.enginePanelEl, 'pointerenter', () => this.cancelEnginePanelHide());
+        this.registerDomEvent(this.enginePanelEl, 'pointerleave', () => this.scheduleEnginePanelHide());
         this.refreshEnginePanel();
     }
 
@@ -3176,93 +2988,24 @@ export class InquiryView extends ItemView {
     }
 
     private buildSceneDossierLayer(parent: SVGElement, y: number): void {
-        const group = createSvgGroup(parent, 'ert-inquiry-scene-dossier', 0, y);
-        group.setAttribute('pointer-events', 'none');
-
-        const composition = createSvgGroup(group, 'ert-inquiry-scene-dossier-composition');
-
-        const focusCore = createSvgElement('circle');
-        focusCore.classList.add('ert-inquiry-scene-dossier-focus-core');
-        focusCore.setAttribute('cx', '0');
-        focusCore.setAttribute('cy', '0');
-        focusCore.setAttribute('r', String(Math.round(SCENE_DOSSIER_FOCUS_RADIUS * 0.62)));
-        composition.appendChild(focusCore);
-
-        const focusGlow = createSvgElement('circle');
-        focusGlow.classList.add('ert-inquiry-scene-dossier-focus');
-        focusGlow.setAttribute('cx', '0');
-        focusGlow.setAttribute('cy', '0');
-        focusGlow.setAttribute('r', String(SCENE_DOSSIER_FOCUS_RADIUS));
-        composition.appendChild(focusGlow);
-
-        const focusOutline = createSvgElement('circle');
-        focusOutline.classList.add('ert-inquiry-scene-dossier-focus-outline');
-        focusOutline.setAttribute('cx', '0');
-        focusOutline.setAttribute('cy', '0');
-        focusOutline.setAttribute('r', String(SCENE_DOSSIER_FOCUS_RADIUS));
-        composition.appendChild(focusOutline);
-
-        const bg = createSvgElement('rect');
-        bg.classList.add('ert-inquiry-scene-dossier-bg');
-        bg.setAttribute('x', String(-SCENE_DOSSIER_WIDTH / 2));
-        bg.setAttribute('y', '0');
-        bg.setAttribute('width', String(SCENE_DOSSIER_WIDTH));
-        bg.setAttribute('height', String(SCENE_DOSSIER_MIN_HEIGHT));
-        bg.setAttribute('rx', '34');
-        bg.setAttribute('ry', '34');
-        composition.appendChild(bg);
-
-        const braceLeft = createSvgText(composition, 'ert-inquiry-scene-dossier-brace ert-inquiry-scene-dossier-brace--left', '{', 0, 0);
-        braceLeft.setAttribute('text-anchor', 'middle');
-        braceLeft.setAttribute('dominant-baseline', 'middle');
-
-        const braceRight = createSvgText(composition, 'ert-inquiry-scene-dossier-brace ert-inquiry-scene-dossier-brace--right', '}', 0, 0);
-        braceRight.setAttribute('text-anchor', 'middle');
-        braceRight.setAttribute('dominant-baseline', 'middle');
-
-        const textGroup = createSvgGroup(composition, 'ert-inquiry-scene-dossier-text', 0, SCENE_DOSSIER_TEXT_GROUP_Y);
-
-        const header = createSvgText(textGroup, 'ert-inquiry-scene-dossier-header', '', 0, SCENE_DOSSIER_PADDING_Y + SCENE_DOSSIER_HEADER_SIZE);
-        header.setAttribute('text-anchor', 'middle');
-
-        const coreGroup = createSvgGroup(textGroup, 'ert-inquiry-scene-dossier-core');
-
-        const anchor = createSvgText(coreGroup, 'ert-inquiry-scene-dossier-anchor', '', 0, 0);
-        anchor.setAttribute('text-anchor', 'middle');
-
-        const body = createSvgText(coreGroup, 'ert-inquiry-scene-dossier-body', '', 0, 0);
-        body.setAttribute('text-anchor', 'middle');
-
-        const bodySecondary = createSvgText(coreGroup, 'ert-inquiry-scene-dossier-body ert-inquiry-scene-dossier-body--secondary', '', 0, 0);
-        bodySecondary.setAttribute('text-anchor', 'middle');
-
-        const bodyDivider = createSvgElement('line');
-        bodyDivider.classList.add('ert-inquiry-scene-dossier-divider', 'ert-hidden');
-        coreGroup.appendChild(bodyDivider);
-
-        const footer = createSvgText(textGroup, 'ert-inquiry-scene-dossier-footer', '', 0, 0);
-        footer.setAttribute('text-anchor', 'middle');
-
-        const source = createSvgText(textGroup, 'ert-inquiry-scene-dossier-source', '', 0, 0);
-        source.setAttribute('text-anchor', 'middle');
-
-        this.sceneDossierGroup = group;
-        this.sceneDossierComposition = composition;
-        this.sceneDossierFocusCore = focusCore;
-        this.sceneDossierFocusGlow = focusGlow;
-        this.sceneDossierFocusOutline = focusOutline;
-        this.sceneDossierBg = bg;
-        this.sceneDossierBraceLeft = braceLeft;
-        this.sceneDossierBraceRight = braceRight;
-        this.sceneDossierTextGroup = textGroup;
-        this.sceneDossierCoreGroup = coreGroup;
-        this.sceneDossierHeader = header;
-        this.sceneDossierAnchor = anchor;
-        this.sceneDossierBody = body;
-        this.sceneDossierBodySecondary = bodySecondary;
-        this.sceneDossierBodyDivider = bodyDivider;
-        this.sceneDossierFooter = footer;
-        this.sceneDossierSource = source;
+        const refs = createInquirySceneDossierLayer(parent, y);
+        this.sceneDossierGroup = refs.group;
+        this.sceneDossierComposition = refs.composition;
+        this.sceneDossierFocusCore = refs.focusCore;
+        this.sceneDossierFocusGlow = refs.focusGlow;
+        this.sceneDossierFocusOutline = refs.focusOutline;
+        this.sceneDossierBg = refs.bg;
+        this.sceneDossierBraceLeft = refs.braceLeft;
+        this.sceneDossierBraceRight = refs.braceRight;
+        this.sceneDossierTextGroup = refs.textGroup;
+        this.sceneDossierCoreGroup = refs.coreGroup;
+        this.sceneDossierHeader = refs.header;
+        this.sceneDossierAnchor = refs.anchor;
+        this.sceneDossierBody = refs.body;
+        this.sceneDossierBodySecondary = refs.bodySecondary;
+        this.sceneDossierBodyDivider = refs.bodyDivider;
+        this.sceneDossierFooter = refs.footer;
+        this.sceneDossierSource = refs.source;
     }
 
     private renderWaveHeader(parent: SVGElement): void {
@@ -3815,415 +3558,52 @@ export class InquiryView extends ItemView {
             items.sort((a, b) => this.compareCorpusCcEntries(a, b));
         });
         const classGroups = this.getCorpusCcClassGroups(entriesByClass);
-
-        if (!entries.length && classGroups.length === 0) {
-            if (this.ccGroup) {
-                this.ccGroup.classList.add('ert-hidden');
-            }
-            return;
-        }
-
-        if (!this.ccGroup) {
-            this.ccGroup = createSvgGroup(this.rootSvg, 'ert-inquiry-cc');
-        } else {
-            this.ccGroup.classList.remove('ert-hidden');
-        }
-
-        const bottomLimit = VIEWBOX_MAX - CC_BOTTOM_MARGIN;
-        const maxHeight = Math.round(VIEWBOX_SIZE * (2 / 3));
-        const zoneTop = Math.min(ZONE_LAYOUT.setup.y, ZONE_LAYOUT.pressure.y) - ZONE_SEGMENT_HALF_HEIGHT;
-        const topLimit = Math.max(bottomLimit - maxHeight, Math.round(zoneTop));
-        const zoneLeft = ZONE_LAYOUT.setup.x;
-        const zoneRight = ZONE_LAYOUT.pressure.x;
-        const zoneBuffer = 50;
-
-        const buildLayout = (pageWidth: number) => {
-            const pageHeight = Math.round(pageWidth * 1.45);
-            const gap = pageWidth;
-            const titleY = gap;
-            const docStartY = titleY + gap;
-            const rowStep = pageHeight + gap;
-            const usableHeight = Math.max(0, (bottomLimit - topLimit) - docStartY);
-            const rowsPerColumn = Math.max(1, Math.floor((usableHeight + gap) / rowStep));
-            const columnStep = pageWidth + gap;
-            const anchorRightX = VIEWBOX_MAX - CC_RIGHT_MARGIN - pageWidth;
-            const anchorLeftX = VIEWBOX_MIN + CC_RIGHT_MARGIN;
-            let placeLeft = false;
-            let rightColumnsUsed = 0;
-            let leftColumnsUsed = 0;
-            const placements: Array<{ entry: CorpusCcEntry; x: number; y: number }> = [];
-            const layoutEntries: CorpusCcEntry[] = [];
-            const classLayouts: Array<{
-                group: CorpusCcGroup;
-                centerX: number;
-                width: number;
-            }> = [];
-
-            classGroups.forEach(group => {
-                const columnsNeeded = Math.max(1, Math.ceil(group.items.length / rowsPerColumn));
-                const side = placeLeft ? 'left' : 'right';
-                const startIndex = side === 'right' ? rightColumnsUsed : leftColumnsUsed;
-                const classLeftEdge = side === 'right'
-                    ? anchorRightX - ((startIndex + columnsNeeded - 1) * columnStep)
-                    : anchorLeftX + (startIndex * columnStep);
-                const classRightEdge = side === 'right'
-                    ? anchorRightX - (startIndex * columnStep) + pageWidth
-                    : anchorLeftX + ((startIndex + columnsNeeded - 1) * columnStep) + pageWidth;
-                const classWidth = classRightEdge - classLeftEdge;
-                classLayouts.push({
-                    group,
-                    centerX: Math.round(classLeftEdge + (classWidth / 2)),
-                    width: Math.round(classWidth)
-                });
-
-                let entryIndex = 0;
-                for (let colOffset = 0; colOffset < columnsNeeded; colOffset += 1) {
-                    for (let rowIndex = 0; rowIndex < rowsPerColumn; rowIndex += 1) {
-                        if (entryIndex >= group.items.length) break;
-                        const entry = group.items[entryIndex];
-                        const x = side === 'right'
-                            ? anchorRightX - ((startIndex + colOffset) * columnStep)
-                            : anchorLeftX + ((startIndex + colOffset) * columnStep);
-                        const y = docStartY + (rowIndex * rowStep);
-                        placements.push({ entry, x: Math.round(x), y: Math.round(y) });
-                        layoutEntries.push(entry);
-                        entryIndex += 1;
-                    }
-                }
-
-                if (side === 'right') {
-                    rightColumnsUsed += columnsNeeded;
-                    const leftmostEdge = anchorRightX - ((rightColumnsUsed - 1) * columnStep);
-                    if (!placeLeft && leftmostEdge <= (zoneRight + zoneBuffer)) {
-                        placeLeft = true;
-                    }
-                } else {
-                    leftColumnsUsed += columnsNeeded;
-                }
-            });
-
-            const rightBlockLeft = rightColumnsUsed > 0
-                ? anchorRightX - ((rightColumnsUsed - 1) * columnStep)
-                : anchorRightX;
-            const rightBlockRight = rightColumnsUsed > 0
-                ? anchorRightX + pageWidth
-                : anchorRightX + pageWidth;
-            const rightmostLeftEdge = leftColumnsUsed > 0
-                ? anchorLeftX + ((leftColumnsUsed - 1) * columnStep) + pageWidth
-                : anchorLeftX;
-            const leftmostRightEdge = rightColumnsUsed > 0
-                ? anchorRightX - ((rightColumnsUsed - 1) * columnStep)
-                : anchorRightX;
-            const overlapSetup = rightmostLeftEdge >= zoneLeft || leftmostRightEdge <= zoneLeft;
-
-            return {
-                pageWidth,
-                pageHeight,
-                gap,
-                titleY,
-                docStartY,
-                rowsPerColumn,
-                anchorRightX,
-                placements,
-                layoutEntries,
-                classLayouts,
-                rightBlockLeft,
-                rightBlockRight,
-                overlapSetup
-            };
-        };
-
-        let layout = buildLayout(CC_PAGE_BASE_SIZE);
-        while (layout.overlapSetup && layout.pageWidth > CC_PAGE_MIN_SIZE) {
-            const nextSize = Math.max(CC_PAGE_MIN_SIZE, layout.pageWidth - 1);
-            if (nextSize === layout.pageWidth) break;
-            layout = buildLayout(nextSize);
-        }
-        const showWarning = layout.overlapSetup && layout.pageWidth <= CC_PAGE_MIN_SIZE;
-        this.ccLayout = { pageWidth: layout.pageWidth, pageHeight: layout.pageHeight, gap: layout.gap };
-        this.ccGroup.setAttribute('transform', `translate(0 ${topLimit})`);
-
-        if (!this.ccLabelGroup) {
-            this.ccLabelGroup = createSvgGroup(this.ccGroup, 'ert-inquiry-cc-label-group', 0, 0);
-            this.ccLabelHit = createSvgElement('rect');
-            this.ccLabelHit.classList.add('ert-inquiry-cc-label-hit');
-            this.ccLabelGroup.appendChild(this.ccLabelHit);
-            this.registerSvgEvent(this.ccLabelGroup, 'click', () => {
-                this.handleCorpusGlobalToggle();
-            });
-        }
-        if (!this.ccLabel) {
-            this.ccLabel = createSvgText(this.ccLabelGroup ?? this.ccGroup, 'ert-inquiry-cc-label', 'Corpus', 0, 0);
-            this.ccLabel.setAttribute('text-anchor', 'middle');
-            this.ccLabel.setAttribute('dominant-baseline', 'middle');
-            this.ccLabel.classList.add('is-actionable');
-        }
-        if (!this.ccLabelHint) {
-            this.ccLabelHint = createSvgGroup(this.ccGroup, 'ert-inquiry-cc-hint', 0, 0);
-            this.ccLabelHintIcon = this.createIconUse(
-                'arrow-big-up',
-                -CC_LABEL_HINT_SIZE / 2,
-                -CC_LABEL_HINT_SIZE / 2,
-                CC_LABEL_HINT_SIZE
-            );
-            this.ccLabelHintIcon.classList.add('ert-inquiry-cc-hint-icon');
-            this.ccLabelHint.appendChild(this.ccLabelHintIcon);
-            addTooltipData(
-                this.ccLabelHint,
-                balanceTooltipText('Click notes to adjust scope. Shift-click to open note.'),
-                'top'
-            );
-        }
-        this.ccLabel.textContent = this.getCorpusCcScopeLabel();
-        const labelX = Math.round((layout.rightBlockLeft + layout.rightBlockRight) / 2);
-        const labelYOffset = -5;
-        if (this.ccLabelGroup) {
-            this.ccLabelGroup.setAttribute('transform', `translate(0 ${labelYOffset})`);
-        }
-        this.ccLabel.setAttribute('x', String(labelX));
-        this.ccLabel.setAttribute('y', '0');
-        if (this.ccLabelGroup) {
-            addTooltipData(this.ccLabelGroup, balanceTooltipText('Cycle all corpus scopes.'), 'top');
-        }
-        if (this.ccLabelHint) {
-            const labelWidth = this.ccLabel.getComputedTextLength?.() ?? 0;
-            const hintX = Math.round(labelX + (labelWidth / 2) + 5 + (CC_LABEL_HINT_SIZE / 2));
-            this.ccLabelHint.setAttribute('transform', `translate(${hintX} ${labelYOffset})`);
-            if (this.ccLabelHit) {
-                const hitPaddingX = 6;
-                const hitHeight = 20;
-                const hitStartX = Math.round(labelX - (labelWidth / 2) - hitPaddingX);
-                const hitWidth = Math.max(0, Math.round(labelWidth + (hitPaddingX * 2)));
-                this.ccLabelHit.setAttribute('x', String(hitStartX));
-                this.ccLabelHit.setAttribute('y', String(-Math.round(hitHeight / 2)));
-                this.ccLabelHit.setAttribute('width', String(hitWidth));
-                this.ccLabelHit.setAttribute('height', String(hitHeight));
-            }
-        }
-
-        if (!this.ccEmptyText) {
-            this.ccEmptyText = createSvgText(this.ccGroup, 'ert-inquiry-cc-empty ert-hidden', 'No corpus data', 0, 0);
-            this.ccEmptyText.setAttribute('text-anchor', 'start');
-            this.ccEmptyText.setAttribute('dominant-baseline', 'middle');
-        }
-        this.ccEmptyText.setAttribute('x', String(Math.round(layout.anchorRightX)));
-        this.ccEmptyText.setAttribute('y', String(Math.round(layout.docStartY + (layout.pageHeight / 2))));
-        if (showWarning) {
-            this.ccEmptyText.textContent = 'Corpus too large';
-            this.ccEmptyText.classList.remove('ert-hidden');
-        } else {
-            this.ccEmptyText.classList.add('ert-hidden');
-        }
-
-        const corner = Math.max(2, Math.round(layout.pageWidth * 0.125));
-
-        const totalEntries = entries.length;
-        while (this.ccSlots.length < totalEntries) {
-            const group = createSvgGroup(this.ccGroup, 'ert-inquiry-cc-cell');
-            const base = createSvgElement('rect');
-            base.classList.add('ert-inquiry-cc-cell-base');
-            const fill = createSvgElement('rect');
-            fill.classList.add('ert-inquiry-cc-cell-fill');
-            const border = createSvgElement('rect');
-            border.classList.add('ert-inquiry-cc-cell-border');
-            const lowSubstanceX = createSvgGroup(group, 'ert-inquiry-cc-cell-low-substance-x');
-            const lowSubstanceXPrimary = createSvgElement('line');
-            lowSubstanceXPrimary.classList.add('ert-inquiry-cc-cell-low-substance-x-line');
-            const lowSubstanceXSecondary = createSvgElement('line');
-            lowSubstanceXSecondary.classList.add('ert-inquiry-cc-cell-low-substance-x-line');
-            lowSubstanceX.appendChild(lowSubstanceXPrimary);
-            lowSubstanceX.appendChild(lowSubstanceXSecondary);
-            const icon = createSvgGroup(group, 'ert-inquiry-cc-cell-icon');
-            const iconOuter = createSvgElement('circle');
-            iconOuter.classList.add('ert-inquiry-cc-cell-icon-outer');
-            const iconInner = createSvgElement('circle');
-            iconInner.classList.add('ert-inquiry-cc-cell-icon-inner');
-            icon.appendChild(iconOuter);
-            icon.appendChild(iconInner);
-            group.appendChild(base);
-            group.appendChild(fill);
-            group.appendChild(border);
-            group.appendChild(icon);
-            group.appendChild(lowSubstanceX);
-            this.registerSvgEvent(group, 'click', (evt: MouseEvent) => {
+        const rendered = renderInquiryCorpusStrip({
+            rootSvg: this.rootSvg,
+            refs: {
+                ccGroup: this.ccGroup,
+                ccLabelGroup: this.ccLabelGroup,
+                ccLabelHit: this.ccLabelHit,
+                ccLabel: this.ccLabel,
+                ccLabelHint: this.ccLabelHint,
+                ccLabelHintIcon: this.ccLabelHintIcon,
+                ccEmptyText: this.ccEmptyText,
+                ccClassLabels: this.ccClassLabels,
+                ccSlots: this.ccSlots
+            },
+            entries,
+            classGroups,
+            createIconUse: this.createIconUse.bind(this),
+            registerSvgEvent: this.registerSvgEvent.bind(this),
+            getScopeLabel: this.getCorpusCcScopeLabel.bind(this),
+            getModeMeta: this.getCorpusCcModeMeta.bind(this),
+            getHeaderLabelVariants: this.getCorpusCcHeaderLabelVariants.bind(this),
+            getHeaderTooltip: this.getCorpusCcHeaderTooltip.bind(this),
+            onGlobalToggle: this.handleCorpusGlobalToggle.bind(this),
+            onGroupToggle: this.handleCorpusGroupToggle.bind(this),
+            onItemToggle: this.handleCorpusItemToggle.bind(this),
+            openEntryPath: (filePath: string) => {
                 if (this.state.isRunning) return;
-                const entryKey = group.getAttribute('data-entry-key');
-                if (!entryKey) return;
-                if (evt.shiftKey) {
-                    const filePath = group.getAttribute('data-file-path');
-                    if (!filePath) return;
-                    const file = this.app.vault.getAbstractFileByPath(filePath);
-                    if (file && this.isTFile(file)) {
-                        void openOrRevealFile(this.app, file);
-                    }
-                    return;
+                const file = this.app.vault.getAbstractFileByPath(filePath);
+                if (file && this.isTFile(file)) {
+                    void openOrRevealFile(this.app, file);
                 }
-                this.handleCorpusItemToggle(entryKey);
-            });
-            this.ccSlots.push({
-                group,
-                base,
-                fill,
-                border,
-                lowSubstanceX,
-                lowSubstanceXPrimary,
-                lowSubstanceXSecondary,
-                icon,
-                iconOuter,
-                iconInner
-            });
+            }
+        });
+        this.ccGroup = rendered.ccGroup;
+        this.ccLabelGroup = rendered.ccLabelGroup;
+        this.ccLabelHit = rendered.ccLabelHit;
+        this.ccLabel = rendered.ccLabel;
+        this.ccLabelHint = rendered.ccLabelHint;
+        this.ccLabelHintIcon = rendered.ccLabelHintIcon;
+        this.ccEmptyText = rendered.ccEmptyText;
+        this.ccClassLabels = rendered.ccClassLabels;
+        this.ccSlots = rendered.ccSlots;
+        this.ccEntries = rendered.ccEntries;
+        this.ccLayout = rendered.ccLayout;
+        if (rendered.ccEntries.length) {
+            void this.updateCorpusCcData(rendered.ccEntries);
         }
-
-        this.ccSlots.forEach((slot, idx) => {
-            if (idx >= totalEntries) {
-                slot.group.classList.add('ert-hidden');
-                slot.group.removeAttribute('data-entry-key');
-                return;
-            }
-            const placement = layout.placements[idx];
-            slot.group.classList.remove('ert-hidden');
-            slot.group.setAttribute('data-class', placement.entry.className);
-            slot.group.setAttribute('data-entry-key', placement.entry.entryKey);
-            slot.group.setAttribute('transform', `translate(${placement.x} ${placement.y})`);
-            slot.base.setAttribute('width', String(layout.pageWidth));
-            slot.base.setAttribute('height', String(layout.pageHeight));
-            slot.base.setAttribute('x', '0');
-            slot.base.setAttribute('y', '0');
-            slot.fill.setAttribute('width', String(layout.pageWidth));
-            slot.fill.setAttribute('height', '0');
-            slot.fill.setAttribute('x', '0');
-            slot.fill.setAttribute('y', String(layout.pageHeight));
-            slot.border.setAttribute('width', String(layout.pageWidth));
-            slot.border.setAttribute('height', String(layout.pageHeight));
-            slot.border.setAttribute('x', '0');
-            slot.border.setAttribute('y', '0');
-            slot.border.setAttribute('rx', String(corner));
-            slot.border.setAttribute('ry', String(corner));
-            const xInset = Math.max(2, Math.round(layout.pageWidth * 0.14));
-            const yInset = Math.max(2, Math.round(layout.pageHeight * 0.14));
-            slot.lowSubstanceXPrimary.setAttribute('x1', String(xInset));
-            slot.lowSubstanceXPrimary.setAttribute('y1', String(yInset));
-            slot.lowSubstanceXPrimary.setAttribute('x2', String(layout.pageWidth - xInset));
-            slot.lowSubstanceXPrimary.setAttribute('y2', String(layout.pageHeight - yInset));
-            slot.lowSubstanceXSecondary.setAttribute('x1', String(layout.pageWidth - xInset));
-            slot.lowSubstanceXSecondary.setAttribute('y1', String(yInset));
-            slot.lowSubstanceXSecondary.setAttribute('x2', String(xInset));
-            slot.lowSubstanceXSecondary.setAttribute('y2', String(layout.pageHeight - yInset));
-            const iconCenterX = Math.round(layout.pageWidth / 2);
-            const iconCenterY = Math.round(layout.pageHeight / 2) + CC_CELL_ICON_OFFSET;
-            const maxRadius = Math.max(2, (layout.pageWidth - 2) / 2);
-            const outerRadius = Math.min(maxRadius, Math.max(3, Math.round(layout.pageWidth * 0.25 * 10) / 10));
-            const innerRadius = Math.max(1.2, Math.round(outerRadius * 0.35 * 10) / 10);
-            slot.icon.setAttribute('transform', `translate(${iconCenterX} ${iconCenterY})`);
-            slot.iconOuter.setAttribute('cx', '0');
-            slot.iconOuter.setAttribute('cy', '0');
-            slot.iconOuter.setAttribute('r', String(outerRadius));
-            slot.iconInner.setAttribute('cx', '0');
-            slot.iconInner.setAttribute('cy', '0');
-            slot.iconInner.setAttribute('r', String(innerRadius));
-        });
-
-        const titleTexts = this.ccClassLabels;
-        while (titleTexts.length < layout.classLayouts.length) {
-            const headerGroup = createSvgGroup(this.ccGroup, 'ert-inquiry-cc-class');
-            const hit = createSvgElement('rect');
-            hit.classList.add('ert-inquiry-cc-class-hit');
-            headerGroup.appendChild(hit);
-            const icon = createSvgGroup(headerGroup, 'ert-inquiry-cc-class-icon');
-            const iconOuter = createSvgElement('circle');
-            iconOuter.classList.add('ert-inquiry-cc-class-icon-outer');
-            const iconInner = createSvgElement('circle');
-            iconInner.classList.add('ert-inquiry-cc-class-icon-inner');
-            icon.appendChild(iconOuter);
-            icon.appendChild(iconInner);
-            const label = createSvgText(headerGroup, 'ert-inquiry-cc-class-label', '', 0, 0);
-            label.setAttribute('text-anchor', 'start');
-            label.setAttribute('dominant-baseline', 'middle');
-            headerGroup.appendChild(label);
-            this.registerSvgEvent(headerGroup, 'click', () => {
-                const groupKey = headerGroup.getAttribute('data-group-key') ?? headerGroup.getAttribute('data-class');
-                if (!groupKey) return;
-                this.handleCorpusGroupToggle(groupKey);
-            });
-            titleTexts.push({ group: headerGroup, hit, icon, iconOuter, iconInner, text: label });
-        }
-        layout.classLayouts.forEach((classLayout, idx) => {
-            const header = titleTexts[idx];
-            const { group, centerX, width } = classLayout;
-            const availableWidth = Math.max(4, width - layout.gap);
-            const modeMeta = this.getCorpusCcModeMeta(group.mode);
-            header.group.setAttribute('data-group-key', group.key);
-            header.group.setAttribute('data-class', group.className);
-            header.group.classList.toggle('is-off', !modeMeta.isActive);
-            header.group.classList.toggle('is-active', modeMeta.isActive);
-            header.group.classList.remove('is-mode-none', 'is-mode-summary', 'is-mode-full');
-            if (group.mode === 'summary') {
-                header.group.classList.add('is-mode-summary');
-            } else if (group.mode === 'full') {
-                header.group.classList.add('is-mode-full');
-            } else {
-                header.group.classList.add('is-mode-none');
-            }
-
-            const variants = this.getCorpusCcHeaderLabelVariants(group.className, group.count, group.headerLabel);
-            header.text.textContent = variants[0] ?? '';
-            const iconAllowance = CC_HEADER_ICON_SIZE + CC_HEADER_ICON_GAP;
-            let fallbackVariant = variants[0] ?? '';
-            let fallbackWidth = Number.POSITIVE_INFINITY;
-            let hasFit = false;
-            for (let i = 0; i < variants.length; i += 1) {
-                const variant = variants[i] ?? '';
-                header.text.textContent = variant;
-                const measuredWidth = header.text.getComputedTextLength() + iconAllowance;
-                if (measuredWidth < fallbackWidth) {
-                    fallbackVariant = variant;
-                    fallbackWidth = measuredWidth;
-                }
-                if (measuredWidth <= availableWidth) {
-                    hasFit = true;
-                    break;
-                }
-            }
-            if (!hasFit) {
-                header.text.textContent = fallbackVariant;
-            }
-
-            const textWidth = header.text.getComputedTextLength();
-            const totalWidth = CC_HEADER_ICON_SIZE + CC_HEADER_ICON_GAP + textWidth;
-            const startX = centerX - (totalWidth / 2);
-            const iconCenterX = startX + (CC_HEADER_ICON_SIZE / 2);
-            const iconCenterY = layout.titleY - CC_HEADER_ICON_OFFSET;
-            const outerRadius = Math.max(3, Math.round(CC_HEADER_ICON_SIZE * 0.45 * 10) / 10);
-            const innerRadius = Math.max(1.2, Math.round(outerRadius * 0.35 * 10) / 10);
-            header.icon.setAttribute('transform', `translate(${Math.round(iconCenterX)} ${Math.round(iconCenterY)})`);
-            header.iconOuter.setAttribute('cx', '0');
-            header.iconOuter.setAttribute('cy', '0');
-            header.iconOuter.setAttribute('r', String(outerRadius));
-            header.iconInner.setAttribute('cx', '0');
-            header.iconInner.setAttribute('cy', '0');
-            header.iconInner.setAttribute('r', String(innerRadius));
-            header.text.setAttribute('x', String(Math.round(startX + CC_HEADER_ICON_SIZE + CC_HEADER_ICON_GAP)));
-            header.text.setAttribute('y', String(layout.titleY));
-            const hitPaddingX = 4;
-            const hitHeight = Math.max(CC_HEADER_ICON_SIZE, 12) + 8;
-            header.hit.setAttribute('x', String(Math.round(startX - hitPaddingX)));
-            header.hit.setAttribute('y', String(Math.round(layout.titleY - (hitHeight / 2))));
-            header.hit.setAttribute('width', String(Math.round(totalWidth + (hitPaddingX * 2))));
-            header.hit.setAttribute('height', String(Math.round(hitHeight)));
-            header.group.classList.remove('ert-hidden');
-            addTooltipData(
-                header.group,
-                this.getCorpusCcHeaderTooltip(group.className, group.mode, group.count, group.headerTooltipLabel),
-                'top'
-            );
-        });
-        titleTexts.forEach((header, idx) => {
-            if (idx < layout.classLayouts.length) return;
-            header.group.classList.add('ert-hidden');
-        });
-
-        this.ccEntries = layout.layoutEntries;
-        void this.updateCorpusCcData(layout.layoutEntries);
     }
 
     private getCorpusCcScopeLabel(): string {
@@ -8360,238 +7740,32 @@ export class InquiryView extends ItemView {
             return;
         }
         this.cancelSceneDossierHide();
-        const titleTextWidth = Math.min(
-            SCENE_DOSSIER_TITLE_MAX_WIDTH,
-            SCENE_DOSSIER_WIDTH - (SCENE_DOSSIER_SIDE_PADDING * 2)
-        );
-        const contentTextWidth = Math.min(
-            SCENE_DOSSIER_TEXT_MAX_WIDTH,
-            SCENE_DOSSIER_WIDTH - (SCENE_DOSSIER_SIDE_PADDING * 2)
-        );
-        const anchorTextWidth = Math.min(
-            SCENE_DOSSIER_ANCHOR_MAX_WIDTH,
-            contentTextWidth
-        );
-        const titleLines = this.computeBalancedSvgLines(
-            this.sceneDossierHeader,
-            dossier.title,
-            titleTextWidth
-        ).length || 1;
-        const anchorLines = this.computeBalancedSvgLines(
-            this.sceneDossierAnchor,
-            dossier.anchorLine || 'Finding',
-            anchorTextWidth
-        ).length || 1;
-        const bodyLines = dossier.bodyLines
-            .filter(line => line && line !== dossier.anchorLine)
-            .slice(0, 2);
-        this.sceneDossierTextGroup.setAttribute('transform', `translate(0 ${SCENE_DOSSIER_TEXT_GROUP_Y})`);
-        this.sceneDossierCoreGroup.setAttribute('transform', 'translate(0 0)');
-        const bodyPrimaryText = bodyLines[0] || '';
-        const bodySecondaryText = bodyLines[1] || '';
-        const hasBodyPrimary = !!bodyPrimaryText;
-        const hasBodySecondary = !!bodySecondaryText;
-        this.sceneDossierBody.classList.toggle('ert-hidden', !hasBodyPrimary);
-        this.sceneDossierBodySecondary.classList.toggle('ert-hidden', !hasBodySecondary);
-        this.sceneDossierBodyDivider.classList.toggle('ert-hidden', !hasBodySecondary);
-        const bodyPrimaryLines = hasBodyPrimary
-            ? this.computeBalancedSvgLines(
-                this.sceneDossierBody,
-                bodyPrimaryText,
-                contentTextWidth
-            ).length
-            : 0;
-        const bodySecondaryLines = hasBodySecondary
-            ? this.computeBalancedSvgLines(
-                this.sceneDossierBodySecondary,
-                bodySecondaryText,
-                contentTextWidth
-            ).length
-            : 0;
-        const hasMeta = !!dossier.metaLine;
-        const hasSource = !!dossier.sourceLabel;
-        this.sceneDossierFooter.classList.toggle('ert-hidden', !hasMeta);
-        this.sceneDossierSource.classList.toggle('ert-hidden', !hasSource);
-        const metaLines = hasMeta
-            ? this.computeBalancedSvgLines(
-                this.sceneDossierFooter,
-                dossier.metaLine ?? '',
-                contentTextWidth
-            ).length
-            : 0;
-        const sourceLines = hasSource
-            ? this.computeBalancedSvgLines(
-                this.sceneDossierSource,
-                dossier.sourceLabel ?? '',
-                contentTextWidth
-            ).length
-            : 0;
-
-        let contentHeight = SCENE_DOSSIER_PADDING_Y
-            + (Math.max(titleLines, 1) * SCENE_DOSSIER_HEADER_LINE_HEIGHT)
-            + SCENE_DOSSIER_TITLE_ANCHOR_GAP
-            + (Math.max(anchorLines, 1) * SCENE_DOSSIER_ANCHOR_LINE_HEIGHT);
-        if (hasBodyPrimary) {
-            contentHeight += SCENE_DOSSIER_ANCHOR_BODY_GAP
-                + (Math.max(bodyPrimaryLines, 1) * SCENE_DOSSIER_BODY_PRIMARY_LINE_HEIGHT);
-        }
-        if (hasBodySecondary) {
-            contentHeight += SCENE_DOSSIER_BODY_ROW_GAP
-                + (Math.max(bodySecondaryLines, 1) * SCENE_DOSSIER_BODY_SECONDARY_LINE_HEIGHT);
-        }
-        if (hasMeta) {
-            contentHeight += SCENE_DOSSIER_FOOTER_GAP
-                + SCENE_DOSSIER_FOOTER_SIZE
-                + ((Math.max(metaLines, 1) - 1) * SCENE_DOSSIER_FOOTER_LINE_HEIGHT);
-        }
-        if (hasSource) {
-            contentHeight += SCENE_DOSSIER_SOURCE_GAP
-                + SCENE_DOSSIER_SOURCE_LINE_HEIGHT
-                + ((Math.max(sourceLines, 1) - 1) * SCENE_DOSSIER_SOURCE_LINE_HEIGHT);
-        }
-        contentHeight += SCENE_DOSSIER_PADDING_Y;
-        const dossierHeight = Math.max(SCENE_DOSSIER_MIN_HEIGHT, contentHeight);
-        const topY = -Math.round(dossierHeight / 2);
-        const titleY = topY + SCENE_DOSSIER_PADDING_Y + SCENE_DOSSIER_HEADER_SIZE;
-        const anchorY = titleY
-            + (Math.max(titleLines, 1) * SCENE_DOSSIER_HEADER_LINE_HEIGHT)
-            + SCENE_DOSSIER_TITLE_ANCHOR_GAP;
-        let nextY = anchorY + (Math.max(anchorLines, 1) * SCENE_DOSSIER_ANCHOR_LINE_HEIGHT);
-        const bodyPrimaryY = nextY + (hasBodyPrimary ? SCENE_DOSSIER_ANCHOR_BODY_GAP : 0);
-        if (hasBodyPrimary) {
-            nextY = bodyPrimaryY + (Math.max(bodyPrimaryLines, 1) * SCENE_DOSSIER_BODY_PRIMARY_LINE_HEIGHT);
-        }
-        const bodySecondaryY = nextY + (hasBodySecondary ? SCENE_DOSSIER_BODY_ROW_GAP : 0);
-        if (hasBodySecondary) {
-            nextY = bodySecondaryY + (Math.max(bodySecondaryLines, 1) * SCENE_DOSSIER_BODY_SECONDARY_LINE_HEIGHT);
-        }
-        const metaY = nextY + (hasMeta ? SCENE_DOSSIER_FOOTER_GAP : 0);
-        if (hasMeta) {
-            nextY = metaY
-                + SCENE_DOSSIER_FOOTER_SIZE
-                + ((Math.max(metaLines, 1) - 1) * SCENE_DOSSIER_FOOTER_LINE_HEIGHT);
-        }
-        const sourceY = nextY + (hasSource ? SCENE_DOSSIER_SOURCE_GAP : 0);
-
-        this.sceneDossierBg.setAttribute('y', String(topY));
-        this.sceneDossierBg.setAttribute('height', String(dossierHeight));
-        this.setPositionedDossierTextBlock(
-            this.sceneDossierHeader,
-            dossier.title,
-            titleTextWidth,
-            SCENE_DOSSIER_HEADER_LINE_HEIGHT,
-            titleY + SCENE_DOSSIER_HEADER_Y_OFFSET,
-            { align: 'center' }
-        );
-        this.setPositionedDossierTextBlock(
-            this.sceneDossierAnchor,
-            dossier.anchorLine || 'Finding',
-            anchorTextWidth,
-            SCENE_DOSSIER_ANCHOR_LINE_HEIGHT,
-            anchorY,
-            { align: 'center' }
-        );
-        if (hasBodyPrimary) {
-            this.setPositionedDossierTextBlock(
-                this.sceneDossierBody,
-                bodyPrimaryText,
-                contentTextWidth,
-                SCENE_DOSSIER_BODY_PRIMARY_LINE_HEIGHT,
-                bodyPrimaryY,
-                {
-                    align: 'start',
-                    justify: true
-                }
-            );
-        } else {
-            clearSvgChildren(this.sceneDossierBody);
-        }
-        if (hasBodySecondary) {
-            this.setPositionedDossierTextBlock(
-                this.sceneDossierBodySecondary,
-                bodySecondaryText,
-                contentTextWidth,
-                SCENE_DOSSIER_BODY_SECONDARY_LINE_HEIGHT,
-                bodySecondaryY,
-                {
-                    align: 'start',
-                    justify: true
-                }
-            );
-        } else {
-            clearSvgChildren(this.sceneDossierBodySecondary);
-        }
-        if (hasBodySecondary) {
-            const dividerWidth = Math.round(contentTextWidth * SCENE_DOSSIER_SECONDARY_DIVIDER_WIDTH_RATIO);
-            const upperTextEl = hasBodyPrimary
-                ? this.sceneDossierBody
-                : this.sceneDossierAnchor;
-            const upperBounds = upperTextEl.getBBox();
-            const secondaryBounds = this.sceneDossierBodySecondary.getBBox();
-            const dividerY = Math.round(
-                ((upperBounds.y + upperBounds.height) + secondaryBounds.y) / 2
-            );
-            this.sceneDossierBodyDivider.setAttribute('x1', String(-dividerWidth / 2));
-            this.sceneDossierBodyDivider.setAttribute('x2', String(dividerWidth / 2));
-            this.sceneDossierBodyDivider.setAttribute('y1', String(dividerY));
-            this.sceneDossierBodyDivider.setAttribute('y2', String(dividerY));
-            this.sceneDossierBodyDivider.classList.remove('ert-hidden');
-        } else {
-            this.sceneDossierBodyDivider.classList.add('ert-hidden');
-        }
-        if (hasMeta) {
-            this.setPositionedDossierTextBlock(
-                this.sceneDossierFooter,
-                dossier.metaLine ?? '',
-                contentTextWidth,
-                SCENE_DOSSIER_FOOTER_LINE_HEIGHT,
-                metaY + SCENE_DOSSIER_FOOTER_Y_OFFSET,
-                { align: 'center' }
-            );
-        } else {
-            clearSvgChildren(this.sceneDossierFooter);
-        }
-        if (hasSource) {
-            this.setPositionedDossierTextBlock(
-                this.sceneDossierSource,
-                dossier.sourceLabel ?? '',
-                contentTextWidth,
-                SCENE_DOSSIER_SOURCE_LINE_HEIGHT,
-                sourceY + SCENE_DOSSIER_SOURCE_Y_OFFSET,
-                { align: 'center' }
-            );
-        } else {
-            clearSvgChildren(this.sceneDossierSource);
-        }
-
-        const focusRadius = Math.max(SCENE_DOSSIER_FOCUS_RADIUS, Math.round(dossierHeight * 0.84));
-        const focusCoreRadius = Math.round(focusRadius * 0.62);
-        this.sceneDossierFocusCore.setAttribute('cy', String(-SCENE_DOSSIER_CANVAS_Y));
-        this.sceneDossierFocusCore.setAttribute('r', String(focusCoreRadius));
-        this.sceneDossierFocusGlow.setAttribute('cy', String(-SCENE_DOSSIER_CANVAS_Y));
-        this.sceneDossierFocusGlow.setAttribute('r', String(focusRadius));
-        this.sceneDossierFocusOutline.setAttribute('cy', String(-SCENE_DOSSIER_CANVAS_Y));
-        this.sceneDossierFocusOutline.setAttribute('r', String(focusRadius));
-        const coreBounds = this.sceneDossierCoreGroup.getBBox();
-        const coreCenterY = coreBounds.y + (coreBounds.height / 2);
-        const coreGroupDelta = Math.round((SCENE_DOSSIER_CENTER_Y - coreCenterY) * 10) / 10;
-        this.sceneDossierCoreGroup.setAttribute(
-            'transform',
-            `translate(0 ${coreGroupDelta})`
-        );
-        const braceOffsetX = Math.round((SCENE_DOSSIER_WIDTH / 2) - SCENE_DOSSIER_BRACE_INSET);
-        this.sceneDossierBraceLeft.setAttribute('x', String(-braceOffsetX));
-        this.sceneDossierBraceLeft.setAttribute('y', String(SCENE_DOSSIER_CENTER_Y + SCENE_DOSSIER_BRACE_BASELINE_OFFSET));
-        this.sceneDossierBraceRight.setAttribute('x', String(braceOffsetX));
-        this.sceneDossierBraceRight.setAttribute('y', String(SCENE_DOSSIER_CENTER_Y + SCENE_DOSSIER_BRACE_BASELINE_OFFSET));
-        this.sceneDossierBraceLeft.setAttribute('font-size', String(SCENE_DOSSIER_BRACE_SIZE));
-        this.sceneDossierBraceRight.setAttribute('font-size', String(SCENE_DOSSIER_BRACE_SIZE));
-
-        if (this.rootSvg?.lastChild !== this.sceneDossierGroup) {
-            this.rootSvg?.appendChild(this.sceneDossierGroup);
-        }
-        this.sceneDossierGroup.classList.add('is-visible');
-        this.previewGroup?.classList.add('is-dossier-muted');
+        renderInquirySceneDossier({
+            refs: {
+                group: this.sceneDossierGroup,
+                composition: this.sceneDossierComposition,
+                focusCore: this.sceneDossierFocusCore,
+                focusGlow: this.sceneDossierFocusGlow,
+                focusOutline: this.sceneDossierFocusOutline,
+                bg: this.sceneDossierBg,
+                braceLeft: this.sceneDossierBraceLeft,
+                braceRight: this.sceneDossierBraceRight,
+                textGroup: this.sceneDossierTextGroup,
+                coreGroup: this.sceneDossierCoreGroup,
+                header: this.sceneDossierHeader,
+                anchor: this.sceneDossierAnchor,
+                body: this.sceneDossierBody,
+                bodySecondary: this.sceneDossierBodySecondary,
+                bodyDivider: this.sceneDossierBodyDivider,
+                footer: this.sceneDossierFooter,
+                source: this.sceneDossierSource
+            },
+            dossier,
+            rootSvg: this.rootSvg,
+            previewGroup: this.previewGroup,
+            computeBalancedSvgLines: this.computeBalancedSvgLines.bind(this),
+            setPositionedDossierTextBlock: this.setPositionedDossierTextBlock.bind(this)
+        });
         this.sceneDossierActiveKey = hoverKey;
         this.sceneDossierVisible = true;
         this.minimapResultPreviewActive = true;
@@ -9171,22 +8345,17 @@ export class InquiryView extends ItemView {
     }
 
     private updateRunningHud(): void {
-        if (this.engineTimerLabel) {
-            const isRunning = this.state.isRunning;
-            this.toggleClassIfChanged(this.engineTimerLabel, 'ert-hidden', !isRunning, 'hudAttrWrites');
-            this.setTextIfChanged(
-                this.engineTimerLabel,
-                isRunning ? this.formatElapsedRunClock(this.currentRunElapsedMs) : '',
-                'hudTextWrites'
-            );
-        }
-        if (this.state.isRunning && this.navSessionLabel) {
-            this.setTextIfChanged(
-                this.navSessionLabel,
-                this.buildRunningStageLabel(this.currentRunProgress) || 'Waiting for the provider response.',
-                'hudTextWrites'
-            );
-        }
+        renderInquiryRunningHud({
+            engineTimerLabel: this.engineTimerLabel,
+            navSessionLabel: this.navSessionLabel,
+            isRunning: this.state.isRunning,
+            currentRunElapsedMs: this.currentRunElapsedMs,
+            currentRunProgress: this.currentRunProgress,
+            formatElapsedRunClock: this.formatElapsedRunClock.bind(this),
+            buildRunningStageLabel: this.buildRunningStageLabel.bind(this),
+            setTextIfChanged: (el, text) => this.setTextIfChanged(el, text, 'hudTextWrites'),
+            toggleClassIfChanged: (el, cls, force) => this.toggleClassIfChanged(el, cls, force, 'hudAttrWrites')
+        });
     }
 
     private describeRunEvidenceMode(): string {
@@ -9244,75 +8413,37 @@ export class InquiryView extends ItemView {
         metaOverride?: string,
         layoutOptions?: { hideEmpty?: boolean }
     ): void {
-        if (!this.previewGroup || !this.previewHero) return;
-        ['setup', 'pressure', 'payoff'].forEach(zoneName => {
-            this.previewGroup?.classList.remove(`is-zone-${zoneName}`);
-        });
-        this.previewGroup.classList.add(`is-zone-${zone}`);
-        const zoneLabel = zone === 'setup' ? 'Setup' : zone === 'pressure' ? 'Pressure' : 'Payoff';
-        const modeLabel = mode === 'flow' ? 'Flow' : 'Depth';
-        const isResultsPreview = this.previewGroup.classList.contains('is-results');
-        const heroTargetLines = 3;
-        const heroBaseWidth = this.minimap.layoutLength ?? (PREVIEW_PANEL_WIDTH - (PREVIEW_PANEL_PADDING_X * 2));
-        const contentOffsetY = this.state.isRunning ? PREVIEW_RUNNING_CONTENT_OFFSET_Y : 0;
-        this.previewHero.setAttribute('y', String(PREVIEW_PANEL_PADDING_Y + contentOffsetY));
-        let heroLines = 0;
-        if (isResultsPreview) {
-            const resultsWidth = Math.max(heroBaseWidth, PREVIEW_RESULTS_HERO_MAX_WIDTH);
-            heroLines = this.setWrappedSvgText(
-                this.previewHero,
-                question,
-                resultsWidth,
-                PREVIEW_RESULTS_HERO_MAX_LINES,
-                PREVIEW_HERO_LINE_HEIGHT,
-            );
-        } else {
-            heroLines = this.setBalancedHeroText(
-                this.previewHero,
-                question,
-                heroBaseWidth,
-                PREVIEW_HERO_LINE_HEIGHT,
-                PREVIEW_HERO_MAX_LINES
-            );
-            if (heroLines > heroTargetLines) {
-                const stageHeroWidth = Math.min(
-                    VIEWBOX_SIZE - (PREVIEW_PANEL_PADDING_X * 2),
-                    VIEWBOX_SIZE * 0.9
-                );
-                const expandedWidth = Math.max(heroBaseWidth, stageHeroWidth);
-                heroLines = this.setBalancedHeroText(
-                    this.previewHero,
-                    question,
-                    expandedWidth,
-                    PREVIEW_HERO_LINE_HEIGHT,
-                    heroTargetLines
-                );
+        this.previewPanelHeight = renderInquiryPromptPreviewLayout({
+            refs: {
+                previewGroup: this.previewGroup,
+                previewHero: this.previewHero,
+                previewMeta: this.previewMeta,
+                previewFooter: this.previewFooter,
+                previewClickTarget: this.previewClickTarget,
+                previewRows: this.previewRows,
+                previewRunningNote: this.previewRunningNote,
+                previewShimmerGroup: this.previewShimmerGroup,
+                previewShimmerMask: this.previewShimmerMask,
+                previewShimmerMaskRect: this.previewShimmerMaskRect,
+                previewPanelHeight: this.previewPanelHeight
+            },
+            zone,
+            mode,
+            question,
+            rows: rowsOverride ?? this.getPreviewPayloadRows(),
+            metaOverride,
+            hideEmpty: layoutOptions?.hideEmpty,
+            isRunning: this.state.isRunning,
+            minimapLayoutLength: this.minimap.layoutLength,
+            setBalancedHeroText: this.setBalancedHeroText.bind(this),
+            setWrappedSvgText: this.setWrappedSvgText.bind(this),
+            onSvgClear: () => {
+                this.perfCounters.svgClearCalls++;
+            },
+            onSvgNodeCreate: () => {
+                this.perfCounters.svgNodeCreates++;
             }
-        }
-        if (this.previewMeta) {
-            const metaY = PREVIEW_PANEL_PADDING_Y + contentOffsetY + (heroLines * PREVIEW_HERO_LINE_HEIGHT) + PREVIEW_META_GAP;
-            const metaText = metaOverride ?? `${zoneLabel} + ${modeLabel}`.toUpperCase();
-            this.previewMeta.textContent = metaText;
-            this.previewMeta.setAttribute('y', String(metaY));
-        }
-
-        const detailStartY = PREVIEW_PANEL_PADDING_Y
-            + contentOffsetY
-            + (heroLines * PREVIEW_HERO_LINE_HEIGHT)
-            + PREVIEW_META_GAP
-            + PREVIEW_META_LINE_HEIGHT
-            + PREVIEW_DETAIL_GAP;
-        const rows = rowsOverride ?? this.getPreviewPayloadRows();
-
-        const rowCount = this.layoutPreviewPills(detailStartY, rows, layoutOptions);
-        const rowsBlockHeight = rowCount
-            ? (rowCount * PREVIEW_PILL_HEIGHT) + ((rowCount - 1) * PREVIEW_PILL_GAP_Y)
-            : 0;
-        const footerY = detailStartY + rowsBlockHeight + PREVIEW_FOOTER_GAP;
-        if (this.previewFooter) {
-            this.previewFooter.setAttribute('y', String(footerY));
-        }
-        this.previewPanelHeight = footerY + PREVIEW_FOOTER_HEIGHT;
+        });
         this.updatePreviewShimmerLayout();
         if (this.previewShimmerGroup) {
             if (this.previewGroup?.classList.contains('is-locked')) {
@@ -9614,87 +8745,71 @@ export class InquiryView extends ItemView {
     }
 
     private updatePreviewShimmerText(): void {
-        if (!this.previewShimmerGroup) return;
-        this.previewShimmerGroup.removeAttribute('display');
-        clearSvgChildren(this.previewShimmerGroup);
-        const textNodes: SVGTextElement[] = [];
-        if (this.previewHero) textNodes.push(this.previewHero);
-        textNodes.forEach(node => {
-            const clone = node.cloneNode(true) as SVGTextElement;
-            clone.setAttribute('fill', '#fff');
-            clone.setAttribute('opacity', '1');
-            this.previewShimmerGroup?.appendChild(clone);
+        updateInquiryPreviewShimmerText({
+            previewShimmerGroup: this.previewShimmerGroup,
+            previewHero: this.previewHero
         });
     }
 
     private updatePreviewShimmerLayout(): void {
-        if (!this.previewShimmerMaskRect || !this.previewShimmerGroup) return;
-        const height = Math.max(this.previewPanelHeight, PREVIEW_PILL_HEIGHT * 2);
-        const startX = (-PREVIEW_PANEL_WIDTH / 2) - PREVIEW_SHIMMER_OVERHANG;
-        const maskWidth = PREVIEW_PANEL_WIDTH + (PREVIEW_SHIMMER_OVERHANG * 2);
-
-        // Update the white text overlay group (if it needs layout updates? No, it's just children)
-        // Actually, the group is in the panel, so it inherits panel transform.
-
-        if (this.previewShimmerMask) {
-            this.previewShimmerMask.setAttribute('x', String(startX));
-            this.previewShimmerMask.setAttribute('y', '0');
-            this.previewShimmerMask.setAttribute('width', String(maskWidth));
-            this.previewShimmerMask.setAttribute('height', String(height));
-        }
-
-        // Update the mask rect
-        this.previewShimmerMaskRect.setAttribute('x', String(startX));
-        this.previewShimmerMaskRect.setAttribute('y', '0');
-        this.previewShimmerMaskRect.setAttribute('width', String(PREVIEW_SHIMMER_WIDTH));
-        this.previewShimmerMaskRect.setAttribute('height', String(height));
-
-        // Set the css variable for travel on the MASK RECT
-        this.previewShimmerMaskRect.style.setProperty(
-            '--ert-inquiry-shimmer-travel',
-            `${Math.max(0, maskWidth - PREVIEW_SHIMMER_WIDTH)}px`
-        );
-
-        this.updatePreviewClickTargetLayout();
+        updateInquiryPreviewShimmerLayout({
+            refs: {
+                previewGroup: this.previewGroup,
+                previewHero: this.previewHero,
+                previewMeta: this.previewMeta,
+                previewFooter: this.previewFooter,
+                previewClickTarget: this.previewClickTarget,
+                previewRows: this.previewRows,
+                previewRunningNote: this.previewRunningNote,
+                previewShimmerGroup: this.previewShimmerGroup,
+                previewShimmerMask: this.previewShimmerMask,
+                previewShimmerMaskRect: this.previewShimmerMaskRect,
+                previewPanelHeight: this.previewPanelHeight
+            },
+            isRunning: this.state.isRunning
+        });
     }
 
     private updateResultsFooterPosition(targetY?: number): void {
-        if (!this.previewFooter || !this.previewGroup) return;
-        if (!this.previewGroup.classList.contains('is-results')) return;
         const panelY = targetY ?? this.getPreviewPanelTargetY();
         if (!Number.isFinite(panelY)) return;
-        const backboneBottom = this.minimap.backboneBottomEdge;
-        const footerY = (MINIMAP_GROUP_Y + backboneBottom + PREVIEW_RESULTS_FOOTER_OFFSET) - panelY;
-        this.previewFooter.setAttribute('y', footerY.toFixed(2));
-        this.updatePreviewClickTargetLayout();
+        updateInquiryResultsFooterPosition({
+            refs: {
+                previewGroup: this.previewGroup,
+                previewHero: this.previewHero,
+                previewMeta: this.previewMeta,
+                previewFooter: this.previewFooter,
+                previewClickTarget: this.previewClickTarget,
+                previewRows: this.previewRows,
+                previewRunningNote: this.previewRunningNote,
+                previewShimmerGroup: this.previewShimmerGroup,
+                previewShimmerMask: this.previewShimmerMask,
+                previewShimmerMaskRect: this.previewShimmerMaskRect,
+                previewPanelHeight: this.previewPanelHeight
+            },
+            isRunning: this.state.isRunning,
+            panelY,
+            backboneBottom: this.minimap.backboneBottomEdge
+        });
     }
 
     private updatePreviewClickTargetLayout(): void {
-        if (!this.previewClickTarget) return;
-        const baseHeight = Math.max(this.previewPanelHeight, PREVIEW_PILL_HEIGHT * 2);
-        const startX = -PREVIEW_PANEL_WIDTH / 2;
-        let startY = 0;
-        let height = baseHeight;
-        if (this.state.isRunning && this.previewRunningNote && !this.previewRunningNote.classList.contains('ert-hidden')) {
-            const noteTop = Number(this.previewRunningNote.getAttribute('y') ?? '-24');
-            if (Number.isFinite(noteTop)) {
-                startY = Math.min(startY, noteTop);
-                height = Math.max(height, baseHeight - startY);
-            }
-        }
-        if (this.previewFooter && this.previewGroup?.classList.contains('is-results')) {
-            const footerY = Number(this.previewFooter.getAttribute('y') ?? '0');
-            if (Number.isFinite(footerY)) {
-                const minY = Math.min(0, footerY);
-                const maxY = Math.max(baseHeight, footerY + PREVIEW_FOOTER_HEIGHT);
-                startY = minY;
-                height = maxY - minY;
-            }
-        }
-        this.previewClickTarget.setAttribute('x', String(startX));
-        this.previewClickTarget.setAttribute('y', String(startY));
-        this.previewClickTarget.setAttribute('width', String(PREVIEW_PANEL_WIDTH));
-        this.previewClickTarget.setAttribute('height', String(height));
+        updateInquiryPreviewClickTargetLayout({
+            refs: {
+                previewGroup: this.previewGroup,
+                previewHero: this.previewHero,
+                previewMeta: this.previewMeta,
+                previewFooter: this.previewFooter,
+                previewClickTarget: this.previewClickTarget,
+                previewRows: this.previewRows,
+                previewRunningNote: this.previewRunningNote,
+                previewShimmerGroup: this.previewShimmerGroup,
+                previewShimmerMask: this.previewShimmerMask,
+                previewShimmerMaskRect: this.previewShimmerMaskRect,
+                previewPanelHeight: this.previewPanelHeight
+            },
+            isRunning: this.state.isRunning
+        });
     }
 
     private lockPromptPreview(question: InquiryQuestion): void {
@@ -9736,78 +8851,6 @@ export class InquiryView extends ItemView {
         this.updateMinimapPressureGauge();
     }
 
-    private layoutPreviewPills(startY: number, values: string[], options?: { hideEmpty?: boolean }): number {
-        const items: Array<{ row: InquiryPreviewRow; width: number }> = [];
-        this.previewRows.forEach((row, index) => {
-            const value = values[index] ?? '';
-            const isEmpty = !value.trim();
-            if (options?.hideEmpty && isEmpty) {
-                row.group.classList.add('ert-hidden');
-                clearSvgChildren(row.text);
-                row.text.removeAttribute('data-rt-pill-cache');
-                return;
-            }
-            row.group.classList.remove('ert-hidden');
-            this.setPreviewPillText(row, value);
-            const textWidth = row.text.getComputedTextLength();
-            const width = Math.ceil(textWidth + (PREVIEW_PILL_PADDING_X * 2));
-            row.bg.setAttribute('width', String(width));
-            row.bg.setAttribute('height', String(PREVIEW_PILL_HEIGHT));
-            row.bg.setAttribute('rx', String(PREVIEW_PILL_HEIGHT / 2));
-            row.bg.setAttribute('ry', String(PREVIEW_PILL_HEIGHT / 2));
-            row.bg.setAttribute('x', '0');
-            row.bg.setAttribute('y', '0');
-            items.push({ row, width });
-        });
-
-        if (!items.length) return 0;
-        const maxRowWidth = PREVIEW_PANEL_WIDTH - (PREVIEW_PANEL_PADDING_X * 2);
-        const splitIndex = items.length > 3 ? this.pickPillSplit(items.map(item => item.width), maxRowWidth) : items.length;
-        const rows = [
-            items.slice(0, splitIndex),
-            items.slice(splitIndex)
-        ].filter(row => row.length);
-
-        rows.forEach((row, rowIndex) => {
-            const widths = row.map(item => item.width);
-            const totalWidth = widths.reduce((sum, value) => sum + value, 0);
-            const gap = this.computePillGap();
-            const rowWidth = totalWidth + gap * (row.length - 1);
-            let cursor = -rowWidth / 2;
-            const rowY = startY + (rowIndex * (PREVIEW_PILL_HEIGHT + PREVIEW_PILL_GAP_Y));
-            row.forEach((item, idx) => {
-                item.row.group.setAttribute('transform', `translate(${cursor.toFixed(2)} ${rowY.toFixed(2)})`);
-                cursor += widths[idx] + gap;
-            });
-        });
-
-        return rows.length;
-    }
-
-    private setPreviewPillText(row: InquiryPreviewRow, value: string): void {
-        const cacheKey = `${row.label}|${value}`;
-        if (row.text.getAttribute('data-rt-pill-cache') === cacheKey && row.text.childNodes.length > 0) return;
-
-        this.perfCounters.svgClearCalls++;
-        clearSvgChildren(row.text);
-        const labelText = row.label?.trim() ?? '';
-        if (labelText) {
-            this.perfCounters.svgNodeCreates++;
-            const label = createSvgElement('tspan');
-            label.classList.add('ert-inquiry-preview-pill-label');
-            label.textContent = value ? `${labelText} ` : labelText;
-            row.text.appendChild(label);
-        }
-        if (value) {
-            this.perfCounters.svgNodeCreates++;
-            const detail = createSvgElement('tspan');
-            detail.classList.add('ert-inquiry-preview-pill-value');
-            detail.textContent = value;
-            row.text.appendChild(detail);
-        }
-        row.text.setAttribute('data-rt-pill-cache', cacheKey);
-    }
-
     private syncTokensPillState(): void {
         if (!this.previewRows.length) return;
         this.previewRows.forEach(row => {
@@ -9818,43 +8861,6 @@ export class InquiryView extends ItemView {
         if (this.previewGroup?.classList.contains('is-results')) return;
         const tokensRow = this.previewRows.find(row => row.group.classList.contains('is-tokens-slot'));
         if (!tokensRow) return;
-    }
-
-    private pickPillSplit(widths: number[], maxWidth: number): number {
-        const total = widths.length;
-        let bestIndex = Math.ceil((total + 1) / 2);
-        let bestScore = Number.POSITIVE_INFINITY;
-        const computeRowWidth = (slice: number[]): number => {
-            if (!slice.length) return 0;
-            const rowTotal = slice.reduce((sum, value) => sum + value, 0);
-            const gap = this.computePillGap();
-            return rowTotal + gap * (slice.length - 1);
-        };
-
-        const totalRowWidth = computeRowWidth(widths);
-        const targetRowWidth = totalRowWidth * 0.6;
-
-        for (let i = 1; i < total; i += 1) {
-            const row1Count = i;
-            const row2Count = total - i;
-
-            const row1Width = computeRowWidth(widths.slice(0, i));
-            const row2Width = computeRowWidth(widths.slice(i));
-
-            const overflow = Math.max(0, row1Width - maxWidth) + Math.max(0, row2Width - maxWidth);
-            const orderPenalty = row1Width < row2Width ? 180 : 0;
-            const score = Math.abs(row1Width - targetRowWidth) + (overflow * 8) + orderPenalty;
-            if (score < bestScore) {
-                bestScore = score;
-                bestIndex = i;
-            }
-        }
-
-        return bestIndex;
-    }
-
-    private computePillGap(): number {
-        return PREVIEW_PILL_GAP_X;
     }
 
     private setWrappedSvgText(
@@ -10783,23 +9789,6 @@ export class InquiryView extends ItemView {
             }));
     }
 
-    private formatManifestClassLabel(value: string): string {
-        if (!value) return 'Class';
-        return value
-            .replace(/[_-]+/g, ' ')
-            .trim()
-            .split(/\s+/)
-            .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-            .join(' ');
-    }
-
-    private formatManifestModeLabel(mode?: InquiryMaterialMode): string {
-        const normalized = this.normalizeEvidenceMode(mode);
-        if (normalized === 'summary') return 'Summary';
-        if (normalized === 'full') return 'Body';
-        return 'Off';
-    }
-
     private resolveSceneLogLabel(frontmatter: Record<string, unknown> | null, file: TFile): string {
         const rawSceneNumber = frontmatter ? frontmatter['Scene Number'] : undefined;
         const parsedNumber = Number(typeof rawSceneNumber === 'string' ? rawSceneNumber.trim() : rawSceneNumber);
@@ -10836,319 +9825,36 @@ export class InquiryView extends ItemView {
         logTitle?: string,
         contentLogWritten?: boolean
     ): string {
-        const title = logTitle ?? this.formatInquiryLogTitle(result);
-        const isSimulated = result.aiReason === 'simulated' || result.aiReason === 'stub';
-        const questionLabel = this.findPromptLabelById(result.questionId)
-            || this.getQuestionTextById(result.questionId)
-            || result.questionId
-            || 'Inquiry Question';
-        const scopeLabel = result.scope === 'saga' ? 'Saga' : 'Book';
-        const target = result.focusId || (result.scope === 'saga' ? 'Σ' : '?');
-        const providerRaw = result.aiProvider ? result.aiProvider.trim() : '';
-        const providerLabel = isSimulated
-            ? 'Simulation'
-            : providerRaw
-            ? (['anthropic', 'gemini', 'openai', 'local'].includes(providerRaw)
-                ? this.getInquiryProviderLabel(providerRaw as EngineProvider)
-                : providerRaw)
-            : 'Unknown';
-        const modelLabel = isSimulated
-            ? 'No provider call'
-            : this.getBriefModelLabel(result)
-            || result.aiModelResolved
-            || result.aiModelRequested
-            || 'unknown';
-        const durationMs = typeof result.roundTripMs === 'number' && Number.isFinite(result.roundTripMs)
-            ? result.roundTripMs
-            : null;
-        const tokenEstimateInput = this.getFiniteTokenEstimateInput(trace, result);
-        const tokenTier = typeof tokenEstimateInput === 'number'
-            ? this.getTokenTier(tokenEstimateInput)
-            : (result.tokenEstimateTier || null);
-        const overrideSummary = result.corpusOverridesActive ? result.corpusOverrideSummary : null;
-        const overrideLabel = overrideSummary
-            ? `On (classes: ${overrideSummary.classCount}, items: ${overrideSummary.itemCount})`
-            : (result.corpusOverridesActive ? 'On' : 'None');
-
-        let status: AiLogStatus = 'success';
-        const degraded = this.isDegradedResult(result);
-        if (isSimulated) {
-            status = 'simulated';
-        } else if (this.isErrorResult(result)) {
-            status = 'error';
-        }
-        const statusLabel = degraded
-            ? 'Degraded'
-            : (status === 'success' ? 'Success' : status === 'error' ? 'Failed' : 'Simulated');
-        const statusDetail = result.aiReason
-            ? ` (${result.aiReason})`
-            : (result.aiStatus && result.aiStatus !== 'success' && result.aiStatus !== 'degraded' ? ` (${result.aiStatus})` : '');
-
-        const formatTokenCount = (value?: number | null, approximate = false): string => {
-            if (typeof value !== 'number' || !Number.isFinite(value)) return 'unknown';
-            const prefix = approximate ? '~' : '';
-            if (value >= 1000) {
-                const scaled = value / 1000;
-                const fixed = scaled >= 100 ? scaled.toFixed(0) : scaled.toFixed(1);
-                return `${prefix}${fixed.replace(/\.0$/, '')}k`;
+        return buildInquiryLogContent({
+            result,
+            trace,
+            manifest,
+            logTitle: logTitle ?? this.formatInquiryLogTitle(result),
+            contentLogWritten,
+            deps: {
+                getQuestionLabel: (currentResult) => this.findPromptLabelById(currentResult.questionId)
+                    || this.getQuestionTextById(currentResult.questionId)
+                    || currentResult.questionId
+                    || 'Inquiry Question',
+                getBriefModelLabel: this.getBriefModelLabel.bind(this),
+                getInquiryProviderLabel: this.getInquiryProviderLabel.bind(this),
+                getFiniteTokenEstimateInput: this.getFiniteTokenEstimateInput.bind(this),
+                getTokenTier: this.getTokenTier.bind(this),
+                buildInquiryLogCostEstimateInput: this.buildInquiryLogCostEstimateInput.bind(this),
+                formatTokenUsageVisibility: this.formatTokenUsageVisibility.bind(this),
+                isErrorResult: this.isErrorResult.bind(this),
+                isDegradedResult: this.isDegradedResult.bind(this),
+                formatMetricDisplay: this.formatMetricDisplay.bind(this),
+                resolveManifestEntryLabel: this.resolveManifestEntryLabel.bind(this),
+                normalizeEvidenceMode: this.normalizeEvidenceMode.bind(this),
+                normalizeLegacyResult: this.normalizeLegacyResult.bind(this),
+                resolveInquiryBriefZoneLabel: this.resolveInquiryBriefZoneLabel.bind(this),
+                resolveInquiryBriefLensLabel: this.resolveInquiryBriefLensLabel.bind(this),
+                formatInquiryIdFromResult: this.formatInquiryIdFromResult.bind(this),
+                pluginVersion: this.plugin.manifest.version,
+                estimateSnapshot: this.plugin.getInquiryEstimateService().getSnapshot()
             }
-            return `${prefix}${Math.round(value)}`;
-        };
-
-        const usage = trace.usage
-            ?? (trace.response?.responseData && result.aiProvider
-                ? extractTokenUsage(result.aiProvider, trace.response.responseData)
-                : null);
-        const logCostEstimateInput = !isSimulated
-            ? this.buildInquiryLogCostEstimateInput(trace, result)
-            : null;
-        const usageKnown = typeof trace.tokenUsageKnown === 'boolean'
-            ? trace.tokenUsageKnown
-            : !!usage;
-        const usageVisibility = this.formatTokenUsageVisibility(usageKnown, trace.tokenUsageScope ?? result.tokenUsageScope);
-        const formatUsageMetric = (value?: number | null): string => {
-            if (typeof value !== 'number' || !Number.isFinite(value)) return 'unavailable';
-            return formatTokenCount(value);
-        };
-        const usageDetailParts = usage
-            ? [
-                typeof usage.rawInputTokens === 'number' ? `raw input=${formatTokenCount(usage.rawInputTokens)}` : null,
-                typeof usage.cacheReadInputTokens === 'number' ? `cache read=${formatTokenCount(usage.cacheReadInputTokens)}` : null,
-                typeof usage.cacheCreationInputTokens === 'number' ? `cache write=${formatTokenCount(usage.cacheCreationInputTokens)}` : null
-            ].filter((value): value is string => !!value)
-            : [];
-        const usageText = usage
-            ? `input=${formatUsageMetric(usage.inputTokens)}, output=${formatUsageMetric(usage.outputTokens)}, total=${formatUsageMetric(usage.totalTokens)}`
-            : 'not available';
-        const cacheReuseLabel = trace.cacheReuseState
-            ? trace.cacheReuseState.replace(/_/g, ' ')
-            : null;
-        const cachePrefixLabel = typeof trace.cachedStableRatio === 'number' && Number.isFinite(trace.cachedStableRatio)
-            ? `${Math.round(trace.cachedStableRatio * 100)}%`
-            : null;
-        const cacheTokensLabel = typeof trace.cachedStableTokens === 'number' && Number.isFinite(trace.cachedStableTokens)
-            ? formatTokenCount(trace.cachedStableTokens)
-            : null;
-
-        const describeMode = (className: string): string | null => {
-            if (!manifest) return null;
-            const modes = new Set(
-                manifest.entries
-                    .filter(entry => entry.class === className)
-                    .map(entry => this.normalizeEvidenceMode(entry.mode))
-                    .filter(mode => mode !== 'none')
-            );
-            if (modes.size === 1) {
-                return modes.has('summary') ? 'Summary' : 'Body';
-            }
-            if (modes.size > 1) {
-                return 'Mixed';
-            }
-            return null;
-        };
-
-        const formatClassLabel = (value: string): string => {
-            return this.formatManifestClassLabel(value);
-        };
-
-        const buildCorpusSummary = (): string[] => {
-            const summaryLines: string[] = [];
-            if (!manifest) {
-                summaryLines.push('- Corpus: unavailable');
-                return summaryLines;
-            }
-            const counts = manifest.classCounts || {};
-            const sceneCount = counts.scene ?? 0;
-            const outlineCount = counts.outline ?? 0;
-            const sceneMode = describeMode('scene');
-            const outlineMode = describeMode('outline');
-            summaryLines.push(`- Scenes: ${sceneCount}${sceneMode ? ` × ${sceneMode}` : ''}`);
-            summaryLines.push(`- Outlines: ${outlineCount}${outlineMode ? ` × ${outlineMode}` : ''}`);
-
-            const contextParts: string[] = [];
-            const contextOrder = ['character', 'place', 'power'];
-            contextOrder.forEach(className => {
-                const count = counts[className] ?? 0;
-                if (!count) return;
-                const label = className === 'character'
-                    ? 'Characters'
-                    : className === 'place'
-                        ? 'Places'
-                        : className === 'power'
-                            ? 'Powers'
-                            : formatClassLabel(className);
-                contextParts.push(`${label} ${count}`);
-            });
-            summaryLines.push(`- Context: ${contextParts.length ? contextParts.join(', ') : 'none'}`);
-
-            const handled = new Set(['scene', 'outline', ...contextOrder]);
-            const otherClasses = Object.keys(counts).filter(name => !handled.has(name));
-            if (otherClasses.length) {
-                const otherParts = otherClasses.map(name => `${formatClassLabel(name)} ${counts[name] ?? 0}`);
-                summaryLines.push(`- Other: ${otherParts.join(', ')}`);
-            }
-
-            return summaryLines;
-        };
-
-        const resolveFailureReason = (): string | null => {
-            if (!this.isErrorResult(result)) return null;
-            const errorMessage = trace.response?.error;
-            if (errorMessage && String(errorMessage).trim().length > 0) {
-                return String(errorMessage);
-            }
-            if (trace.notes && trace.notes.length) {
-                return trace.notes[0];
-            }
-            if (result.summary && result.summary.trim().length > 0) {
-                return result.summary;
-            }
-            if (result.aiReason === 'truncated') {
-                return 'Response exceeded maximum output tokens before completion.';
-            }
-            return result.aiReason ? `AI request failed (${result.aiReason}).` : 'Unknown failure.';
-        };
-
-        const buildSuggestedFixes = (): string[] => {
-            if (!this.isErrorResult(result)) return ['None.'];
-            const suggestions: string[] = [];
-            const reason = result.aiReason ?? '';
-            const reasonLower = reason.toLowerCase();
-            const failureReason = resolveFailureReason() ?? '';
-            const failureLower = failureReason.toLowerCase();
-            const isPackagingFailure = reasonLower === 'packaging_failed'
-                || trace.failureStage === 'chunk_execution'
-                || trace.failureStage === 'synthesis'
-                || trace.failureStage === 'preflight';
-            const isInvalidStructuredOutput = reasonLower === 'invalid_response'
-                || failureLower.includes('invalid_response')
-                || failureLower.includes('malformed json')
-                || failureLower.includes('structured output');
-            const isTruncated = reasonLower === 'truncated'
-                || failureLower.includes('truncated')
-                || failureLower.includes('max tokens')
-                || failureLower.includes('token limit')
-                || failureLower.includes('context length')
-                || failureLower.includes('length exceeded');
-
-            if (isPackagingFailure) {
-                suggestions.push('Run failed during Inquiry packaging/parsing. Open Inquiry Log for exact chunk/synthesis failure details.');
-                suggestions.push('Retry once with the same settings after reviewing the log.');
-            } else if (isInvalidStructuredOutput) {
-                suggestions.push('Run failed because Inquiry did not receive valid structured output.');
-                suggestions.push('Open Inquiry Log for the exact parser failure detail, then retry once.');
-            } else if (isTruncated) {
-                suggestions.push('Reduce corpus scope and rerun.');
-            } else if (reasonLower === 'rate_limit') {
-                suggestions.push('Retry later.');
-            } else if (reasonLower === 'auth') {
-                suggestions.push('Verify API key and provider access.');
-            } else if (reasonLower === 'timeout'
-                || reasonLower === 'unavailable'
-                || reasonLower === 'unsupported_param') {
-                suggestions.push('Retry and review Inquiry Log for provider error details.');
-            }
-
-            if (!suggestions.length) {
-                suggestions.push('Open Inquiry Log for details, then retry.');
-            }
-            return suggestions;
-        };
-
-        const lines: string[] = [];
-        if (isSimulated) {
-            lines.push('> Simulated test run. No provider request was sent.', '');
-        }
-
-        lines.push('## Run Summary');
-        lines.push(`- Scope: ${scopeLabel} · ${target}`);
-        lines.push(`- Question: ${questionLabel}`);
-        lines.push(`- Provider / Model: ${providerLabel} · ${modelLabel}`);
-        lines.push(`- Overrides: ${overrideLabel}`);
-        lines.push(`- Status: ${statusLabel}${statusDetail}`);
-        lines.push(`- Duration: ${formatDuration(durationMs)}`);
-        lines.push('');
-
-        lines.push('## Corpus Summary');
-        lines.push(...buildCorpusSummary());
-        lines.push('');
-
-        lines.push('## Corpus TOC');
-        lines.push(...buildManifestTocLines({
-            manifestEntries: manifest?.entries,
-            normalizeEvidenceMode: mode => this.normalizeEvidenceMode(mode),
-            resolveManifestEntryLabel: entry => this.resolveManifestEntryLabel(entry)
-        }));
-        lines.push('');
-
-        lines.push('## Tokens');
-        lines.push(`- Estimated input: ${formatTokenCount(tokenEstimateInput, true)}`);
-        lines.push(`- Actual usage: ${isSimulated ? 'simulated run; not applicable' : usageText}`);
-        lines.push(`- Usage visibility: ${isSimulated ? 'simulated' : usageVisibility}`);
-        if (!isSimulated && usageDetailParts.length) {
-            lines.push(`- Usage detail: ${usageDetailParts.join(', ')}`);
-        }
-        lines.push(`- Tier: ${tokenTier ?? 'unknown'}`);
-        const logSnapshot = this.plugin.getInquiryEstimateService().getSnapshot();
-        if (logSnapshot) {
-            lines.push(`- Pre-run estimate: ${formatTokenCount(logSnapshot.estimate.estimatedInputTokens, true)} (${logSnapshot.estimate.estimationMethod})`);
-            lines.push(`- Per-pass planning budget: ${formatTokenCount(logSnapshot.estimate.effectiveInputCeiling)}`);
-            lines.push(`- Expected structured passes: ${logSnapshot.estimate.expectedPassCount}`);
-        }
-        lines.push('');
-
-        lines.push('## Execution');
-        lines.push(`- Packaging: ${isSimulated ? 'Simulation only' : (trace.analysisPackaging === 'singlePassOnly' ? 'Single-pass only' : trace.analysisPackaging === 'segmented' ? 'Segmented' : 'Automatic')}`);
-        lines.push(`- Execution state: ${isSimulated ? 'simulated' : (trace.executionState ?? 'unknown')}`);
-        lines.push(`- Execution path: ${isSimulated ? 'simulated' : (trace.executionPath ?? ((typeof trace.executionPassCount === 'number' && trace.executionPassCount > 1) ? 'multi_pass' : 'one_pass'))}`);
-        lines.push(`- Failure stage: ${isSimulated ? 'none' : (trace.failureStage ?? (status === 'error' ? 'provider_response_parsing' : 'none'))}`);
-        if (!isSimulated && cacheReuseLabel) {
-            const cacheParts = [`- Cache reuse: ${cacheReuseLabel}`];
-            if (trace.cacheStatus) cacheParts.push(`status=${trace.cacheStatus}`);
-            if (cachePrefixLabel) cacheParts.push(`prefix=${cachePrefixLabel}`);
-            if (cacheTokensLabel) cacheParts.push(`tokens=${cacheTokensLabel}`);
-            lines.push(cacheParts.join(' · '));
-        }
-        if (typeof trace.executionPassCount === 'number' && trace.executionPassCount > 1) {
-            lines.push(`- Pass count: ${trace.executionPassCount}`);
-        }
-        if (!isSimulated && trace.packagingTriggerReason) {
-            lines.push(`- Packaging trigger: ${trace.packagingTriggerReason}`);
-        }
-        lines.push('');
-
-        if (!isSimulated) {
-            const costBreakdownLines = formatUsageCostBreakdownLines(
-                result.aiProvider,
-                result.aiModelResolved || result.aiModelRequested,
-                usage,
-                logCostEstimateInput
-            );
-            if (costBreakdownLines.length) {
-                lines.push(...costBreakdownLines);
-            }
-        }
-
-        lines.push('## Result');
-        if (status === 'success') {
-            lines.push(`- Verdict: Flow ${this.formatMetricDisplay(result.verdict.flow)} · Depth ${this.formatMetricDisplay(result.verdict.depth)} · Impact ${formatBriefLabel(result.verdict.impact)} · Confidence ${formatBriefLabel(result.verdict.assessmentConfidence)}`);
-        } else if (status === 'simulated') {
-            lines.push('- Result: Simulated test run. The corpus was packaged and rendered locally, but no API request was sent.');
-        } else {
-            lines.push(`- Failure reason: ${resolveFailureReason() ?? 'Unknown failure.'}`);
-        }
-        lines.push('');
-
-        lines.push('## Suggested Fixes');
-        buildSuggestedFixes().forEach(fix => {
-            lines.push(`- ${fix}`);
         });
-        lines.push('');
-
-        lines.push(`Content Log: ${contentLogWritten ? 'written' : 'skipped'}`);
-        lines.push('');
-
-        return lines.join('\n');
     }
 
     private buildInquiryContentLogContent(
@@ -11158,184 +9864,36 @@ export class InquiryView extends ItemView {
         logTitle?: string,
         normalizationNotes?: string[]
     ): string {
-        const title = logTitle ?? this.formatInquiryContentLogTitle(result);
-        const zoneLabel = this.resolveInquiryBriefZoneLabel(result);
-        const lensLabel = this.resolveInquiryBriefLensLabel(result, zoneLabel);
-        const scopeLabel = result.scope === 'saga' ? 'Saga' : 'Book';
-        const target = result.focusId || (result.scope === 'saga' ? 'Σ' : '?');
-        const aiProvider = result.aiProvider || 'unknown';
-        const aiModelRequested = result.aiModelRequested || 'unknown';
-        const aiModelResolved = result.aiModelResolved || aiModelRequested;
-        const aiModelNextRunOnly = typeof result.aiModelNextRunOnly === 'boolean' ? result.aiModelNextRunOnly : null;
-        const submittedAt = result.submittedAt ? new Date(result.submittedAt) : null;
-        const completedAt = result.completedAt ? new Date(result.completedAt) : null;
-        const durationMs = typeof result.roundTripMs === 'number' && Number.isFinite(result.roundTripMs)
-            ? result.roundTripMs
-            : null;
-        const inquiryId = this.formatInquiryIdFromResult(result);
-        const artifactId = result.runId
-            ? `artifact-${result.runId}`
-            : (inquiryId ? `artifact-${inquiryId}` : `artifact-${Date.now()}`);
-        const tokenEstimateInput = this.getFiniteTokenEstimateInput(trace, result);
-        const tokenTier = typeof tokenEstimateInput === 'number'
-            ? this.getTokenTier(tokenEstimateInput)
-            : (result.tokenEstimateTier || null);
-        const overrideSummary = result.corpusOverridesActive ? result.corpusOverrideSummary : null;
-        const overrideLabel = overrideSummary
-            ? `on (classes=${overrideSummary.classCount}, items=${overrideSummary.itemCount})`
-            : (result.corpusOverridesActive ? 'on' : 'none');
-
-        let status: AiLogStatus = 'success';
-        const degraded = this.isDegradedResult(result);
-        const isSimulated = result.aiReason === 'simulated' || result.aiReason === 'stub';
-        if (isSimulated) {
-            status = 'simulated';
-        } else if (this.isErrorResult(result)) {
-            status = 'error';
-        }
-
-        const tokenUsage = trace.usage
-            ?? (trace.response?.responseData ? extractTokenUsage(aiProvider, trace.response.responseData) : null);
-        const logCostEstimateInput = !isSimulated
-            ? this.buildInquiryLogCostEstimateInput(trace, result)
-            : null;
-        const tokenUsageKnown = typeof trace.tokenUsageKnown === 'boolean'
-            ? trace.tokenUsageKnown
-            : !!tokenUsage;
-        const tokenUsageVisibility = this.formatTokenUsageVisibility(tokenUsageKnown, trace.tokenUsageScope ?? result.tokenUsageScope);
-        const tokenUsageDetailParts = tokenUsage
-            ? [
-                typeof tokenUsage.rawInputTokens === 'number' ? `raw input=${tokenUsage.rawInputTokens}` : null,
-                typeof tokenUsage.cacheReadInputTokens === 'number' ? `cache read=${tokenUsage.cacheReadInputTokens}` : null,
-                typeof tokenUsage.cacheCreationInputTokens === 'number' ? `cache write=${tokenUsage.cacheCreationInputTokens}` : null
-            ].filter((value): value is string => !!value)
-            : [];
-        const cacheDetailParts = [
-            trace.cacheReuseState ? `reuse=${trace.cacheReuseState}` : null,
-            trace.cacheStatus ? `status=${trace.cacheStatus}` : null,
-            typeof trace.cachedStableRatio === 'number' && Number.isFinite(trace.cachedStableRatio)
-                ? `prefix=${Math.round(trace.cachedStableRatio * 100)}%`
-                : null,
-            typeof trace.cachedStableTokens === 'number' && Number.isFinite(trace.cachedStableTokens)
-                ? `cached stable tokens=${Math.round(trace.cachedStableTokens)}`
-                : null
-        ].filter((value): value is string => !!value);
-        const { sanitized: sanitizedPayload, hadRedactions } = sanitizeLogPayload(trace.requestPayload ?? null);
-        const redactionNotes = hadRedactions
-            ? ['Redacted sensitive credential values from request payload.']
-            : [];
-        const sanitizationSteps = [...(trace.sanitizationNotes || []), ...redactionNotes].filter(Boolean);
-        const schemaWarnings = [
-            ...(trace.notes || []),
-            ...(normalizationNotes || [])
-        ].filter(Boolean);
-
-        const contextLines = [
-            '',
-            '### Inquiry Context',
-            `- Artifact ID: ${artifactId}`,
-            `- Run ID: ${result.runId || 'unknown'}`,
-            `- Plugin version: ${this.plugin.manifest.version}`,
-            `- Corpus fingerprint: ${result.corpusFingerprint || 'unknown'}`,
-            `- Corpus overrides: ${overrideLabel}`,
-            `- Scope: ${result.scope || 'unknown'}`,
-            `- Focus ID: ${result.focusId || 'unknown'}`,
-            `- Mode: ${result.mode || 'unknown'}`,
-            `- Question ID: ${result.questionId || 'unknown'}`,
-            `- Question zone: ${result.questionZone || 'unknown'}`,
-            `- AI provider: ${isSimulated ? 'simulation' : (result.aiProvider || 'unknown')}`,
-            `- AI model requested: ${isSimulated ? 'not applicable' : (result.aiModelRequested || 'unknown')}`,
-            `- AI model resolved: ${isSimulated ? 'not applicable' : (result.aiModelResolved || 'unknown')}`,
-            `- OpenAI transport lane: ${trace.openAiTransportLane || 'n/a'}`,
-            `- AI next-run override: ${typeof result.aiModelNextRunOnly === 'boolean' ? String(result.aiModelNextRunOnly) : 'unknown'}`,
-            `- Packaging: ${isSimulated ? 'simulated' : (trace.analysisPackaging === 'singlePassOnly' ? 'singlePassOnly' : trace.analysisPackaging === 'segmented' ? 'segmented' : 'automatic')}`,
-            `- AI status: ${degraded ? 'degraded' : (result.aiStatus || 'unknown')}`,
-            `- AI reason: ${result.aiReason || 'none'}`,
-            `- Execution state: ${isSimulated ? 'simulated' : (trace.executionState ?? 'unknown')}`,
-            `- Execution path: ${isSimulated ? 'simulated' : (trace.executionPath ?? ((typeof trace.executionPassCount === 'number' && trace.executionPassCount > 1) ? 'multi_pass' : 'one_pass'))}`,
-            `- Failure stage: ${isSimulated ? 'none' : (trace.failureStage ?? (status === 'error' ? 'provider_response_parsing' : 'none'))}`,
-            `- Token usage visibility: ${isSimulated ? 'simulated' : tokenUsageVisibility}`,
-            `- Submitted at (raw): ${result.submittedAt || 'unknown'}`,
-            `- Returned at (raw): ${result.completedAt || 'unknown'}`,
-            `- Round trip ms: ${typeof result.roundTripMs === 'number' ? String(result.roundTripMs) : 'unknown'}`,
-            `- Token estimate input: ${typeof result.tokenEstimateInput === 'number' ? String(Math.round(result.tokenEstimateInput)) : 'unknown'}`,
-            `- Token estimate tier: ${result.tokenEstimateTier || 'unknown'}`
-        ];
-        if (tokenUsageDetailParts.length) {
-            contextLines.push(`- Token usage detail: ${tokenUsageDetailParts.join(', ')}`);
-        }
-        if (cacheDetailParts.length) {
-            contextLines.push(`- Cache detail: ${cacheDetailParts.join(', ')}`);
-        }
-        if (typeof trace.executionPassCount === 'number' && trace.executionPassCount > 1) {
-            contextLines.push(`- Execution pass count: ${trace.executionPassCount}`);
-        }
-        if (trace.packagingTriggerReason) {
-            contextLines.push(`- Packaging trigger reason: ${trace.packagingTriggerReason}`);
-        }
-        if (manifest) {
-            const counts = manifest.classCounts || {};
-            const countList = Object.keys(counts)
-                .map(key => `${key}:${counts[key] ?? 0}`)
-                .sort()
-                .join(', ');
-            if (countList) {
-                contextLines.push(`- Corpus counts: ${countList}`);
+        return buildInquiryContentLogContent({
+            result,
+            trace,
+            manifest,
+            logTitle: logTitle ?? this.formatInquiryContentLogTitle(result),
+            normalizationNotes,
+            deps: {
+                getQuestionLabel: (currentResult) => this.findPromptLabelById(currentResult.questionId)
+                    || this.getQuestionTextById(currentResult.questionId)
+                    || currentResult.questionId
+                    || 'Inquiry Question',
+                getBriefModelLabel: this.getBriefModelLabel.bind(this),
+                getInquiryProviderLabel: this.getInquiryProviderLabel.bind(this),
+                getFiniteTokenEstimateInput: this.getFiniteTokenEstimateInput.bind(this),
+                getTokenTier: this.getTokenTier.bind(this),
+                buildInquiryLogCostEstimateInput: this.buildInquiryLogCostEstimateInput.bind(this),
+                formatTokenUsageVisibility: this.formatTokenUsageVisibility.bind(this),
+                isErrorResult: this.isErrorResult.bind(this),
+                isDegradedResult: this.isDegradedResult.bind(this),
+                formatMetricDisplay: this.formatMetricDisplay.bind(this),
+                resolveManifestEntryLabel: this.resolveManifestEntryLabel.bind(this),
+                normalizeEvidenceMode: this.normalizeEvidenceMode.bind(this),
+                normalizeLegacyResult: this.normalizeLegacyResult.bind(this),
+                resolveInquiryBriefZoneLabel: this.resolveInquiryBriefZoneLabel.bind(this),
+                resolveInquiryBriefLensLabel: this.resolveInquiryBriefLensLabel.bind(this),
+                formatInquiryIdFromResult: this.formatInquiryIdFromResult.bind(this),
+                pluginVersion: this.plugin.manifest.version,
+                estimateSnapshot: this.plugin.getInquiryEstimateService().getSnapshot()
             }
-        }
-        contextLines.push('', '### Corpus TOC');
-        buildManifestTocLines({
-            manifestEntries: manifest?.entries,
-            normalizeEvidenceMode: mode => this.normalizeEvidenceMode(mode),
-            resolveManifestEntryLabel: entry => this.resolveManifestEntryLabel(entry)
-        }).forEach(line => contextLines.push(line));
-
-        const logContent = formatAiLogContent({
-            title,
-            metadata: {
-                feature: 'Inquiry',
-                scopeTarget: `${scopeLabel} · ${target} · ${zoneLabel} · ${lensLabel}`,
-                provider: aiProvider,
-                modelRequested: aiModelRequested,
-                modelResolved: aiModelResolved,
-                modelNextRunOnly: aiModelNextRunOnly,
-                estimatedInputTokens: tokenEstimateInput,
-                tokenTier,
-                submittedAt,
-                returnedAt: completedAt,
-                durationMs,
-                status,
-                tokenUsage
-            },
-            request: {
-                systemPrompt: trace.systemPrompt,
-                userPrompt: trace.userPrompt,
-                evidenceText: trace.evidenceText,
-                requestPayload: sanitizedPayload
-            },
-            response: {
-                rawResponse: trace.response?.responseData ?? null,
-                assistantContent: trace.response?.content ?? '',
-                parsedOutput: this.normalizeLegacyResult(result)
-            },
-            notes: {
-                sanitizationSteps,
-                retryAttempts: trace.retryCount,
-                schemaWarnings
-            }
-        }, { jsonSpacing: 0, metadataExtras: contextLines });
-        const costBreakdownLines = !isSimulated
-            ? formatUsageCostBreakdownLines(
-                aiProvider,
-                aiModelResolved || aiModelRequested,
-                tokenUsage,
-                logCostEstimateInput
-            )
-            : [];
-
-        return costBreakdownLines.length
-            ? `${logContent}\n${costBreakdownLines.join('\n')}\n`
-            : `${logContent}\n`;
+        });
     }
 
     private formatInquiryLogTitle(result: InquiryResult): string {
