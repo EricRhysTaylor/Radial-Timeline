@@ -1269,9 +1269,10 @@ export function renderInquirySection(params: SectionParams): void {
         };
 
         const removeSlot = async (zone: InquiryPromptZoneKey, slotIndex: number) => {
+            if (slotIndex === 0) return;
             const slots = getSlotList(zone);
             const target = slots[slotIndex];
-            if (!target || isCanonicalPromptSlot(target)) return;
+            if (!target) return;
             const nextSlots = slots.filter((_, idx) => idx !== slotIndex);
             await savePromptConfig({ ...promptConfig, [zone]: nextSlots });
             render();
@@ -1507,6 +1508,7 @@ export function renderInquirySection(params: SectionParams): void {
                 const isProRow = customIndex >= freeCustomLimit;
                 const slotState = getInquiryPromptSlotState(slot);
                 const canonicalQuestion = getCanonicalQuestionForSlot(slot);
+                const canRemoveSlot = slotIndex > 0;
                 if (canonicalQuestion) {
                     canonicalRowRefs[zone].set(canonicalQuestion.id, row);
                 }
@@ -1519,7 +1521,7 @@ export function renderInquirySection(params: SectionParams): void {
                 row.toggleClass('ert-inquiry-prompt-row--customized', slotState === 'customized');
                 row.toggleClass('ert-inquiry-prompt-row--signature', canonicalQuestion?.tier === 'signature');
 
-                const labelCol = row.createDiv({ cls: 'ert-reorder-col ert-reorder-col--label' });
+                const labelCol = row.createDiv({ cls: 'ert-reorder-col ert-inquiry-prompt-col ert-inquiry-prompt-col--handle' });
                 const questionCol = row.createDiv({
                     cls: 'ert-reorder-col ert-reorder-col--question ert-inquiry-prompt-col ert-inquiry-prompt-col--question'
                 });
@@ -1529,63 +1531,17 @@ export function renderInquirySection(params: SectionParams): void {
                 setIcon(dragHandle, 'grip-vertical');
                 setTooltip(dragHandle, 'Drag to reorder');
 
-                const labelInput = new TextComponent(labelCol);
+                const topRow = questionCol.createDiv({ cls: 'ert-inquiry-prompt-topRow' });
+                const labelField = topRow.createDiv({ cls: 'ert-inquiry-prompt-labelField' });
+                const labelInput = new TextComponent(labelField);
                 labelInput.setPlaceholder('Label (optional)')
                     .setValue(slot.label ?? '');
-                labelInput.inputEl.addClass('ert-input', 'ert-input--md');
+                labelInput.inputEl.addClass('ert-input', 'ert-input--md', 'ert-inquiry-prompt-labelInput');
                 labelInput.onChange(async (value) => {
                     await updateSlot(zone, slotIndex, { label: value });
                 });
 
-                const questionMain = questionCol.createDiv({ cls: 'ert-inquiry-prompt-main' });
-                const questionInput = new TextComponent(questionMain);
-                questionInput.setPlaceholder('Question text')
-                    .setValue(slot.question ?? '');
-                questionInput.inputEl.addClass('ert-input', 'ert-input--full');
-                questionInput.onChange(async (value) => {
-                    await updateSlot(zone, slotIndex, { question: value });
-                });
-
-                const questionActions = questionMain.createDiv({ cls: ERT_CLASSES.ICON_BTN_GROUP });
-                if (canonicalQuestion) {
-                    const resetButton = questionActions.createEl('button', { cls: ERT_CLASSES.ICON_BTN });
-                    setIcon(resetButton, 'rotate-ccw');
-                    setTooltip(resetButton, 'Reset to canonical question');
-                    resetButton.onclick = () => {
-                        labelInput.setValue(canonicalQuestion.label ?? '');
-                        questionInput.setValue(canonicalQuestion.text ?? '');
-                        void updateSlot(zone, slotIndex, {
-                            label: canonicalQuestion.label ?? '',
-                            question: canonicalQuestion.text ?? '',
-                            enabled: true
-                        });
-                    };
-                } else {
-                    const deleteBtn = questionActions.createEl('button', { cls: ERT_CLASSES.ICON_BTN });
-                    setIcon(deleteBtn, 'trash');
-                    setTooltip(deleteBtn, 'Delete question');
-                    deleteBtn.onclick = () => {
-                        void removeSlot(zone, slotIndex);
-                    };
-                }
-
-                const rowFooter = questionCol.createDiv({ cls: 'ert-inquiry-prompt-rowFooter' });
-                const rowMeta = rowFooter.createDiv({ cls: 'ert-inquiry-prompt-rowMeta' });
-                const stateLabel = slotState === 'canonical-loaded'
-                    ? (canonicalQuestion?.tier === 'signature' ? 'Signature' : 'Core')
-                    : slotState === 'customized'
-                        ? 'Customized'
-                        : 'Empty';
-                rowMeta.createSpan({
-                    cls: 'ert-inquiry-prompt-state',
-                    text: stateLabel
-                });
-                if (canonicalQuestion?.tier === 'signature') {
-                    const signatureBadge = rowMeta.createSpan({ cls: ['ert-badgePill', 'ert-badgePill--sm', ERT_CLASSES.BADGE_PILL_PRO] });
-                    signatureBadge.createSpan({ cls: 'ert-badgePill__text', text: 'Pro' });
-                }
-
-                const pickerWrap = rowFooter.createDiv({ cls: 'ert-inquiry-prompt-canonical-picker' });
+                const pickerWrap = topRow.createDiv({ cls: 'ert-inquiry-prompt-canonical-picker' });
                 const canonicalPicker = new DropdownComponent(pickerWrap);
                 canonicalPicker.selectEl.addClass('ert-input', 'ert-input--md');
                 canonicalPicker.addOption('', 'Replace from library');
@@ -1612,6 +1568,54 @@ export function renderInquirySection(params: SectionParams): void {
                     if (!selectedId) return;
                     void replaceSlotWithCanonical(zone, slotIndex, selectedId);
                 };
+
+                const rowActions = topRow.createDiv({ cls: ERT_CLASSES.ICON_BTN_GROUP });
+                if (canonicalQuestion && slotState === 'customized') {
+                    const resetButton = rowActions.createEl('button', { cls: ERT_CLASSES.ICON_BTN });
+                    setIcon(resetButton, 'rotate-ccw');
+                    setTooltip(resetButton, 'Reset to canonical question');
+                    resetButton.onclick = () => {
+                        labelInput.setValue(canonicalQuestion.label ?? '');
+                        questionInput.setValue(canonicalQuestion.text ?? '');
+                        void updateSlot(zone, slotIndex, {
+                            label: canonicalQuestion.label ?? '',
+                            question: canonicalQuestion.text ?? '',
+                            enabled: true
+                        });
+                    };
+                } else if (canRemoveSlot) {
+                    const deleteBtn = rowActions.createEl('button', { cls: ERT_CLASSES.ICON_BTN });
+                    setIcon(deleteBtn, 'trash');
+                    setTooltip(deleteBtn, 'Delete question');
+                    deleteBtn.onclick = () => {
+                        void removeSlot(zone, slotIndex);
+                    };
+                }
+
+                const questionMain = questionCol.createDiv({ cls: 'ert-inquiry-prompt-questionRow' });
+                const questionInput = new TextComponent(questionMain);
+                questionInput.setPlaceholder('Question text')
+                    .setValue(slot.question ?? '');
+                questionInput.inputEl.addClass('ert-input', 'ert-input--full', 'ert-inquiry-prompt-questionInput');
+                questionInput.onChange(async (value) => {
+                    await updateSlot(zone, slotIndex, { question: value });
+                });
+
+                const rowFooter = questionCol.createDiv({ cls: 'ert-inquiry-prompt-rowFooter' });
+                const rowMeta = rowFooter.createDiv({ cls: 'ert-inquiry-prompt-rowMeta' });
+                const stateLabel = slotState === 'canonical-loaded'
+                    ? (canonicalQuestion?.tier === 'signature' ? 'Signature' : 'Core')
+                    : slotState === 'customized'
+                        ? 'Customized'
+                        : 'Empty';
+                rowMeta.createSpan({
+                    cls: 'ert-inquiry-prompt-state',
+                    text: stateLabel
+                });
+                if (canonicalQuestion?.tier === 'signature') {
+                    const signatureBadge = rowMeta.createSpan({ cls: ['ert-badgePill', 'ert-badgePill--sm', ERT_CLASSES.BADGE_PILL_PRO] });
+                    signatureBadge.createSpan({ cls: 'ert-badgePill__text', text: 'Pro' });
+                }
 
                 plugin.registerDomEvent(dragHandle, 'dragstart', (e) => {
                     dragState.index = slotIndex;
@@ -1741,18 +1745,17 @@ export function renderInquirySection(params: SectionParams): void {
             const insertRow = listEl.createDiv({
                 cls: 'ert-reorder-row ert-reorder-row--two-col ert-inquiry-prompt-insertRow'
             });
-            const insertLabelCol = insertRow.createDiv({ cls: 'ert-reorder-col ert-reorder-col--label' });
+            const insertLabelCol = insertRow.createDiv({ cls: 'ert-reorder-col ert-inquiry-prompt-col ert-inquiry-prompt-col--handle' });
             const insertQuestionCol = insertRow.createDiv({
                 cls: 'ert-reorder-col ert-reorder-col--question ert-inquiry-prompt-col ert-inquiry-prompt-col--question'
             });
             const insertIcon = insertLabelCol.createDiv({ cls: 'ert-drag-handle ert-drag-placeholder ert-inquiry-prompt-insertIcon' });
             setIcon(insertIcon, 'sparkles');
-            insertLabelCol.createDiv({
+            const insertControls = insertQuestionCol.createDiv({ cls: 'ert-inquiry-prompt-topRow ert-inquiry-prompt-insertControls' });
+            insertControls.createDiv({
                 cls: 'ert-inquiry-prompt-insertLabel',
                 text: 'Insert canonical'
             });
-
-            const insertControls = insertQuestionCol.createDiv({ cls: 'ert-inquiry-prompt-insertControls' });
             const insertPicker = new DropdownComponent(insertControls);
             insertPicker.selectEl.addClass('ert-input', 'ert-input--md');
             insertPicker.addOption('', 'Choose a canonical question');
@@ -1782,25 +1785,28 @@ export function renderInquirySection(params: SectionParams): void {
                     addRow.addClass('ert-reorder-row--pro');
                 }
 
-                const labelCol = addRow.createDiv({ cls: 'ert-reorder-col ert-reorder-col--label' });
+                const labelCol = addRow.createDiv({ cls: 'ert-reorder-col ert-inquiry-prompt-col ert-inquiry-prompt-col--handle' });
                 const questionCol = addRow.createDiv({
                     cls: 'ert-reorder-col ert-reorder-col--question ert-inquiry-prompt-col ert-inquiry-prompt-col--question'
                 });
 
                 labelCol.createDiv({ cls: 'ert-drag-handle ert-drag-placeholder' });
 
-                const labelInput = new TextComponent(labelCol);
+                const topRow = questionCol.createDiv({ cls: 'ert-inquiry-prompt-topRow' });
+                const labelField = topRow.createDiv({ cls: 'ert-inquiry-prompt-labelField' });
+                const labelInput = new TextComponent(labelField);
                 labelInput.setPlaceholder('Label (optional)').setValue('');
-                labelInput.inputEl.addClass('ert-input', 'ert-input--md');
+                labelInput.inputEl.addClass('ert-input', 'ert-input--md', 'ert-inquiry-prompt-labelInput');
 
-                const questionMain = questionCol.createDiv({ cls: 'ert-inquiry-prompt-main' });
-                const questionInput = new TextComponent(questionMain);
-                questionInput.setPlaceholder('Question text').setValue('');
-                questionInput.inputEl.addClass('ert-input', 'ert-input--full');
-
-                const addBtn = questionMain.createEl('button', { cls: [ERT_CLASSES.ICON_BTN, 'ert-mod-cta'] });
+                const addActions = topRow.createDiv({ cls: ERT_CLASSES.ICON_BTN_GROUP });
+                const addBtn = addActions.createEl('button', { cls: [ERT_CLASSES.ICON_BTN, 'ert-mod-cta'] });
                 setIcon(addBtn, 'plus');
                 setTooltip(addBtn, 'Add question');
+
+                const questionMain = questionCol.createDiv({ cls: 'ert-inquiry-prompt-questionRow' });
+                const questionInput = new TextComponent(questionMain);
+                questionInput.setPlaceholder('Question text').setValue('');
+                questionInput.inputEl.addClass('ert-input', 'ert-input--full', 'ert-inquiry-prompt-questionInput');
 
                 const commitAdd = () => {
                     void addCustomSlot(zone, addLimit, {

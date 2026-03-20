@@ -3154,17 +3154,18 @@ body.rt-modal-open .ert-inquiry-svg * {
 :is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-prompt-header .setting-item-info {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
-  align-items: start;
+  align-items: center;
   column-gap: var(--ert-gap-md, 14px);
 }
 
 :is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-prompt-header__icon {
-  width: 56px;
-  min-width: 56px;
-  height: 56px;
-  border-radius: 18px;
+  width: 112px;
+  min-width: 112px;
+  height: 112px;
+  border-radius: 28px;
   display: grid;
   place-items: center;
+  align-self: center;
   color: var(--ert-inquiry-zone-stroke);
   background:
     radial-gradient(circle at 30% 30%, color-mix(in srgb, var(--ert-inquiry-zone-color) 18%, transparent), transparent 65%),
@@ -3176,8 +3177,8 @@ body.rt-modal-open .ert-inquiry-svg * {
 }
 
 :is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-prompt-header__icon svg {
-  width: 28px;
-  height: 28px;
+  width: 56px;
+  height: 56px;
   stroke-width: 1.85;
 }
 
@@ -3203,86 +3204,117 @@ body.rt-modal-open .ert-inquiry-svg * {
   align-items: stretch;
 }
 
-:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-inquiry-prompt-main) {
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-prompt-col--handle {
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 4px;
+}
+
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-prompt-topRow {
   display: flex;
   align-items: center;
   gap: var(--ert-gap-sm, 10px);
   width: 100%;
   min-width: 0;
+  flex-wrap: wrap;
 }
 
-:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-inquiry-prompt-main) .ert-input {
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-prompt-topRow .ert-iconBtnGroup {
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-prompt-labelField {
+  flex: 0 1 240px;
+  min-width: 180px;
+}
+
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-prompt-labelField .ert-input {
+  width: 100%;
+}
+
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-prompt-questionRow {
+  width: 100%;
   min-width: 0;
 }
 
-:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-inquiry-prompt-rowFooter) {
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-prompt-questionRow .ert-input {
+  min-width: 0;
+  width: 100%;
+}
+
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-prompt-rowFooter {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: var(--ert-gap-sm, 10px);
   width: 100%;
   flex-wrap: wrap;
 }
 
-:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-inquiry-prompt-rowMeta) {
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-prompt-rowMeta {
   display: inline-flex;
   align-items: center;
   gap: var(--ert-gap-xs, 6px);
   min-height: 26px;
 }
 
-:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-inquiry-prompt-state) {
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-prompt-state {
   font-size: var(--font-ui-smaller, 12px);
   color: var(--text-muted);
   letter-spacing: 0.01em;
   text-transform: uppercase;
 }
 
-:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-inquiry-prompt-row--customized) .ert-inquiry-prompt-state {
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-prompt-row--customized .ert-inquiry-prompt-state {
+  color: var(--text-normal);
+}
+
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-prompt-row--signature.ert-inquiry-prompt-row--customized .ert-inquiry-prompt-state {
   color: color-mix(in srgb, var(--ert-pro-accent-color) 68%, var(--text-normal));
 }
 
-:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-inquiry-prompt-row--signature) {
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-prompt-row--signature {
   border-color: color-mix(in srgb, var(--ert-pro-accent-color) 26%, transparent);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ert-pro-accent-color) 14%, transparent);
 }
 
-:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-inquiry-prompt-row--focusflash) {
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-prompt-row--focusflash {
   animation: ert-inquiry-prompt-focusflash 1.8s ease;
 }
 
-:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-inquiry-prompt-canonical-picker) {
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-prompt-canonical-picker {
   display: inline-flex;
   align-items: center;
   gap: var(--ert-gap-xs, 6px);
   min-width: 0;
+  flex: 1 1 320px;
 }
 
-:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-inquiry-prompt-canonical-picker) select {
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-prompt-canonical-picker select {
   min-width: 210px;
+  flex: 1 1 auto;
 }
 
-:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-inquiry-prompt-insertRow) {
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-prompt-insertRow {
   border-style: dashed;
 }
 
-:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-inquiry-prompt-insertIcon) {
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-prompt-insertIcon {
   color: var(--ert-pro-accent-color);
 }
 
-:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-inquiry-prompt-insertLabel) {
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-prompt-insertLabel {
   font-size: var(--font-ui-small, 13px);
   color: var(--text-muted);
+  flex: 0 0 auto;
 }
 
-:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-inquiry-prompt-insertControls) {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--ert-gap-xs, 6px);
-  min-width: 0;
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-prompt-insertControls {
+  justify-content: flex-start;
 }
 
-:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-inquiry-prompt-insertControls) select {
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-prompt-insertControls select {
   min-width: 240px;
 }
 
@@ -3428,5 +3460,17 @@ body.rt-modal-open .ert-inquiry-svg * {
 @media (max-width: 980px) {
   .ert-inquiry-svg {
     --ert-inquiry-panel-scale: 0.96;
+  }
+
+  :is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-prompt-header__icon {
+    width: 84px;
+    min-width: 84px;
+    height: 84px;
+    border-radius: 24px;
+  }
+
+  :is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-prompt-header__icon svg {
+    width: 42px;
+    height: 42px;
   }
 }
