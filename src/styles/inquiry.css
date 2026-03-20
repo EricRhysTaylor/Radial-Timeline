@@ -2994,6 +2994,20 @@ body.rt-modal-open .ert-inquiry-svg * {
   flex-shrink: 0;
 }
 
+.ert-ui.ert-inquiry-modal-shell--compact.modal,
+.ert-ui .ert-inquiry-modal-shell--compact.modal {
+  width: 520px;
+  max-width: 92vw;
+  max-height: 92vh;
+}
+
+.ert-ui.ert-inquiry-modal-shell--wide.modal,
+.ert-ui .ert-inquiry-modal-shell--wide.modal {
+  width: 720px;
+  max-width: 92vw;
+  max-height: 92vh;
+}
+
 .ert-inquiry-cancel-modal .ert-modal-header {
   margin-bottom: 8px;
 }

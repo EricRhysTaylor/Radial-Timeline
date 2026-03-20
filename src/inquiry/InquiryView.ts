@@ -2,7 +2,6 @@ import {
     App,
     ButtonComponent,
     ItemView,
-    Modal,
     Notice,
     Platform,
     setIcon,
@@ -10,7 +9,6 @@ import {
     TAbstractFile,
     TFile,
     TFolder,
-    ToggleComponent,
     WorkspaceLeaf,
     normalizePath
 } from 'obsidian';
@@ -55,7 +53,6 @@ import {
     type AiLogStatus
 } from '../ai/log';
 import { getCredentialSecretId } from '../ai/credentials/credentials';
-import { redactSensitiveValue } from '../ai/credentials/redactSensitive';
 import { hasSecret, isSecretStorageAvailable } from '../ai/credentials/secretStorage';
 import {
     InquiryGlyph,
@@ -73,7 +70,7 @@ import { BUILTIN_MODELS } from '../ai/registry/builtinModels';
 import { selectModel } from '../ai/router/selectModel';
 import { buildDefaultAiSettings, mapAiProviderToLegacyProvider, mapLegacyProviderToAiProvider } from '../ai/settings/aiSettings';
 import { validateAiSettings } from '../ai/settings/validateAiSettings';
-import type { AIRunAdvancedContext, AIProviderId, AiSettingsV1, Capability, ModelInfo, AccessTier, RTCorpusTokenEstimate } from '../ai/types';
+import type { AIProviderId, AiSettingsV1, ModelInfo, AccessTier, RTCorpusTokenEstimate } from '../ai/types';
 import type {
     CorpusManifest,
     CorpusManifestEntry,
@@ -179,878 +176,155 @@ import {
     resolveScanRoots,
     toVaultRoot
 } from './utils/scanRoots';
-
-const GLYPH_PLACEHOLDER_FLOW = 0.75;
-const GLYPH_PLACEHOLDER_DEPTH = 0.30;
-const GLYPH_EMPTY_STATE_STUB = 0.125;
-const DEBUG_SVG_OVERLAY = false;
-const VIEWBOX_MIN = -800;
-const VIEWBOX_MAX = 800;
-const VIEWBOX_SIZE = 1600;
-const INQUIRY_CONTEXT_CLASSES = new Set(['character', 'place', 'power']);
-const PREVIEW_PANEL_WIDTH = 640;
-const PREVIEW_PANEL_Y = -390;
-const PREVIEW_PANEL_MINIMAP_GAP = 60;
-const PREVIEW_PANEL_PADDING_X = 32;
-const PREVIEW_PANEL_PADDING_Y = 20;
-const PREVIEW_RUNNING_CONTENT_OFFSET_Y = -3;
-const PREVIEW_HERO_LINE_HEIGHT = 30;
-const PREVIEW_HERO_MAX_LINES = 4;
-const PREVIEW_RESULTS_HERO_MAX_WIDTH = 1440;
-const PREVIEW_RESULTS_HERO_MAX_LINES = Number.MAX_SAFE_INTEGER;
-const PREVIEW_META_GAP = 6;
-const PREVIEW_META_LINE_HEIGHT = 22;
-const PREVIEW_DETAIL_GAP = 16;
-const PREVIEW_PILL_HEIGHT = 26;
-const PREVIEW_PILL_PADDING_X = 16;
-const PREVIEW_PILL_GAP_X = 20;
-const PREVIEW_PILL_GAP_Y = 14;
-const PREVIEW_FOOTER_GAP = 12;
-const PREVIEW_FOOTER_HEIGHT = 22;
-const PREVIEW_RESULTS_FOOTER_OFFSET = 30;
-const PREVIEW_SHIMMER_WIDTH = 120;
-const PREVIEW_SHIMMER_OVERHANG = 110;
-const GLYPH_OFFSET_Y = 0;
-const FLOW_FINDING_ORDER: InquiryFinding['kind'][] = ['escalation', 'conflict', 'continuity', 'loose_end', 'unclear', 'error', 'none'];
-const DEPTH_FINDING_ORDER: InquiryFinding['kind'][] = ['continuity', 'loose_end', 'conflict', 'escalation', 'unclear', 'error', 'none'];
-const SIGMA_CHAR = String.fromCharCode(931);
-const MODE_ICON_VIEWBOX = 2048;
-const MODE_ICON_OFFSET_Y = -330;
-// Manual placement knobs for the Inquiry focal stack.
-const SCENE_DOSSIER_CANVAS_Y = 6;
-const SCENE_DOSSIER_TEXT_GROUP_Y = 0;
-const SCENE_DOSSIER_CENTER_Y = 0;
-const SCENE_DOSSIER_BRACE_BASELINE_OFFSET = 22;
-const SCENE_DOSSIER_WIDTH = 980;
-const SCENE_DOSSIER_MIN_HEIGHT = 0;
-const SCENE_DOSSIER_SIDE_PADDING = 136;
-const SCENE_DOSSIER_TITLE_MAX_WIDTH = 760;
-const SCENE_DOSSIER_TEXT_MAX_WIDTH = 700;
-const SCENE_DOSSIER_ANCHOR_MAX_WIDTH = 620;
-const SCENE_DOSSIER_PADDING_Y = 30;
-const SCENE_DOSSIER_HEADER_Y_OFFSET = -47;
-const SCENE_DOSSIER_HEADER_SIZE = 60;
-const SCENE_DOSSIER_HEADER_LINE_HEIGHT = 64;
-const SCENE_DOSSIER_ANCHOR_LINE_HEIGHT = 22;
-const SCENE_DOSSIER_BODY_PRIMARY_LINE_HEIGHT = 24;
-const SCENE_DOSSIER_BODY_SECONDARY_LINE_HEIGHT = 24;
-const SCENE_DOSSIER_FOOTER_Y_OFFSET = -12;
-const SCENE_DOSSIER_SOURCE_Y_OFFSET = -12;
-const SCENE_DOSSIER_FOOTER_SIZE = 14;
-const SCENE_DOSSIER_FOOTER_LINE_HEIGHT = 18;
-const SCENE_DOSSIER_SOURCE_LINE_HEIGHT = 18;
-const SCENE_DOSSIER_UNBOUNDED_WRAP_LINES = Number.MAX_SAFE_INTEGER;
-const SCENE_DOSSIER_TITLE_ANCHOR_GAP = -4;
-const SCENE_DOSSIER_ANCHOR_BODY_GAP = 16;
-const SCENE_DOSSIER_BODY_ROW_GAP = 30;
-const SCENE_DOSSIER_FOOTER_GAP = 16;
-const SCENE_DOSSIER_SOURCE_GAP = 6;
-const SCENE_DOSSIER_SECONDARY_DIVIDER_GAP = 16;
-const SCENE_DOSSIER_SECONDARY_DIVIDER_WIDTH_RATIO = 0.3;
-const SCENE_DOSSIER_HOVER_DELAY_MS = 150;
-const SCENE_DOSSIER_HIDE_DELAY_MS = 160;
-const SCENE_DOSSIER_FOCUS_RADIUS = 470;
-const SCENE_DOSSIER_BRACE_SIZE = 580;
-const SCENE_DOSSIER_BRACE_INSET = 148;
-const FLOW_ICON_PATHS = [
-    'M1873.99,900.01c.23,1.74-2.27.94-3.48.99-14.3.59-28.74-.35-43.05-.04-2.37.05-4.55,1.03-6.92,1.08-124.15,2.86-248.6,8.35-373,4.92-91.61-2.53-181.2-15.53-273.08-17.92-101.98-2.65-204.05,7.25-305.95.95-83.2-5.14-164.18-24.05-247.02-31.98-121.64-11.65-245.9-13.5-368.04-15.96-2.37-.05-4.55-1.04-6.92-1.08-17.31-.34-34.77.75-52.05.04-1.22-.05-3.72.75-3.48-.99,26.49-.25,53.03.28,79.54.03,144.74-1.38,289.81-5.3,433.95,8.97,18.67,1.85,37.34,5.16,56.01,6.99,165.31,16.18,330.85-3.46,495.99,14.01,118.64,12.56,236.15,30.42,355.97,28.03,87.15,0,174.3,2.45,261.54,1.97h-.01Z',
-    'M1858.99,840.01c.23,1.74-2.27.94-3.48.99-15.63.64-31.41-.36-47.05-.04-2.37.05-4.55,1.03-6.92,1.08-127.12,2.74-254.28,9.03-381.05,2.97-86.31-4.13-170.32-17.4-256.98-20.02-110.96-3.36-222.13,6.92-333-1-62.18-4.44-123.32-15.98-185.14-22.86-130.81-14.57-267.28-16.86-398.92-19.08-2.36-.04-4.55-1.04-6.92-1.08-20.56-.33-41.57.88-62.05.04-1.22-.05-3.72.75-3.48-.99,27.83-.25,55.7.28,83.54.03,110.53-1,221.67-2.9,331.92,2,82.52,3.67,164.67,14.08,247,17,120.4,4.27,240.84-7.91,361.03,1.97,68.04,5.59,135.16,18.98,203.02,25.98,102.05,10.53,205.5,10.76,307.95,12.05,50.17.63,100.37.51,150.54.97h-.01Z',
-    'M1842.99,961.01c.23,1.74-2.27.94-3.48.99-25.56,1.05-51.45.11-77.05.96l-79.92,3.08c-11.35.14-22.73-.31-34.08-.08-75.38,1.5-150.52,3.23-225.92,0-70.84-3.04-141.24-10.76-212.08-12.92-110.8-3.38-221.44,7.94-331.95.95-87.75-5.56-170.98-27.28-258.02-35.98-121.12-12.11-248.16-13.39-370.03-15.97-2.37-.05-4.55-1.03-6.92-1.08-16.64-.35-33.43.72-50.05.04-1.22-.05-3.72.75-3.48-.99,21.16-.25,42.37.28,63.54.03,120.89-1.45,244.31-4.94,364.95,1.97,92.31,5.29,182.02,23.64,274.97,26.03,97.61,2.52,194.76-4.98,292.08-1.08,102.89,4.12,204.72,22.93,307.92,28.08,108.68,5.42,217.3,1.72,326.08,4.92,7.47.22,15.65,1.96,23.45,1.05h0Z',
-    'M1892.99,1020.01c.23,1.74-2.27.94-3.48.99-16.61.68-33.41-.29-50.05-.04-2.36.04-4.55,1.04-6.92,1.08-127.73,2.28-255.33,8.29-383,4.92-71.58-1.89-142.68-9.43-214.03-11.97-125.84-4.47-251.12,11.24-377,0-78-6.96-152.8-27.94-231.01-35.99-132.21-13.59-267.3-12.99-400.03-16.97l-19.45-2.03c31.83-.25,63.7.28,95.54.03,135.4-1.07,273.36-5.92,407.82,11.1,42.78,5.42,85.05,13.34,128.15,16.85,139.4,11.34,279.58-5.96,418.98,5.02,46.43,3.66,92.62,10.85,139.01,14.99,108.66,9.68,220.94,10.96,329.95,12.05,55.16.55,110.38-.5,165.54-.03h-.02Z',
-    'M1846.99,1081.01c.23,1.74-2.27.94-3.48.99-16.29.67-32.74-.35-49.05-.04-126.07,2.42-250.52,8.4-376.97,3.05-54.11-2.29-108-7.25-162.03-8.97-147.59-4.7-291.2,17.69-438.82-4.18-44.08-6.53-87.24-17.93-131.31-24.69-118.91-18.24-240.1-17.95-359.79-24.21l-138.05-1.96-3.48-.99c45.84-.3,91.68-.55,137.54-.97,118.46-1.08,241.16-3.52,358.95,8.96,49.25,5.22,97.78,15.79,147.01,20.99,134.9,14.23,269.26-2.37,404,4,115.35,5.45,230.26,23.7,345.95,24.05l269.54,3.97h-.01Z',
-    'M1886.99,1140.01c.23,1.74-2.27.94-3.48.99-18.28.75-36.75-.35-55.05-.04-2.36.04-4.55,1.04-6.92,1.08-124.58,2.26-249.4,6.27-374,2.92-79.23-2.13-157.79-10.68-237-9.92-111.01,1.07-222.29,15.23-333.04,4.95-80.02-7.42-157.13-29.72-237.13-38.87-109.52-12.53-220.11-13.58-329.83-18.17-30.26-1.04-60.82.28-91.05-.96-1.22-.05-3.72.75-3.48-.99,33.41-1.66,66.99-.63,100.54-.97,132.12-1.34,266.81-5.51,397.79,13.13,35.16,5,70.02,12.4,105.29,16.71,163.13,19.92,325.43-6.76,489.87,7.13,25.01,2.11,50.01,5.78,75.01,7.99,124.74,11,249.78,13.86,374.95,15.05,42.5.4,85.05-.39,127.54-.03h-.01Z',
-    'M1827.99,1201.01c.23,1.74-2.27.94-3.48.99-14.29.59-28.74-.28-43.05-.04-115.65,1.92-231.19,6.1-346.92,2-86.12-3.05-168.46-11.59-255-8.92-104.04,3.22-205.73,15.8-310.04,4.95-74.39-7.74-146.25-28.95-221.13-37.87-128.28-15.28-263.63-17.56-392.83-20.17-16.64-.34-33.43.72-50.05.04-1.22-.05-3.72.75-3.48-.99,32.01-2.07,64.38-.68,96.54-.97,143.23-1.26,287.89-5.92,429.79,15.13,72.64,10.78,132.72,21.01,207.21,22.79,120.32,2.88,237.35-12.3,357.95-2.95,126.6,9.81,252.83,24.46,379.97,24.03l154.54,1.97h-.02Z',
-    'M1866.99,1260.01c.23,1.74-2.27.94-3.48.99-14.95.61-30.07-.28-45.05-.04-2.36.04-4.55,1.04-6.92,1.08-130.78,2.42-262.55,7.17-393.05.97-74.88-3.56-146.78-13.43-221.95-10.97-102.42,3.35-199.73,18.19-303.03,9.95-86.01-6.86-168.89-32.27-255.13-41.87-122.3-13.61-249.91-14.58-372.92-17.08-2.37-.05-4.55-1.04-6.92-1.08-14.31-.24-28.76.63-43.05.04-1.22-.05-3.72.75-3.48-.99,15.16-.25,30.37.28,45.54.03,2.62-.04,5.06-1.05,7.91-1.09,130.55-1.8,270.66-5.74,400.04,7.06,71.51,7.08,141.22,24.72,213.02,29.98,60.88,4.46,121.1,1.83,181.95-1.03,82.54-3.88,157.04-9.61,240.04-1.95,42.37,3.91,84.57,10.5,127.01,13.99,95.85,7.88,192.07,8.57,287.95,12.05l151.54-.03h-.02Z',
-    'M1844.99,780.01c.23,1.74-2.27.94-3.48.99-13.96.57-28.07-.3-42.05-.04-141.3,2.57-283.58,13.37-424.95,1.04-43.21-3.77-85.9-11.58-129.01-15.99-177.25-18.1-353.26,10.99-529.98-14.02l-187.5-24.98c22.83,1.11,45.69,1.89,68.54,2.95,110.04,5.09,214.45,8.65,324.92,6,86.75-2.08,173.41-7.14,260.03.05,62.88,5.22,124.66,18.79,187.15,26.85,142.22,18.35,285.65,13.88,428.91,16.09,2.85.04,5.29,1.04,7.91,1.09,13.16.25,26.38-.28,39.54-.03h-.03Z',
-    'M1432.99,1309.01c.23,1.74-2.27.94-3.48.99-5.14.21-10.9.2-16.05.04-95.06-2.94-189.84-5.29-284.95,1.97-64.76,4.95-127.67,14.31-193.05,12.03-95.43-3.32-186.63-31.93-281.08-42.92-123.44-14.36-254.58-17.15-378.83-19.17-15.64-.25-31.43.68-47.05.04-1.22-.05-3.72.75-3.48-.99,8.82-.24,17.71.28,26.54.03,2.37-.07,4.55-1.03,6.92-1.08,128.74-2.8,269.19-5.78,397.03,5.05,70.2,5.95,137.58,23.09,207.02,29.98,53.73,5.33,106.29,4.52,160,2.02,82.26-3.83,161.4-14.61,243.99-7.01,55.59,5.12,110.68,16.34,166.5,19.01h-.03Z'
-];
-const DEPTH_ICON_PATHS = [
-    'M1542.99,768.01l-33.5,3.98c-68.26,5.21-131.24,1.22-196.26-20.72-28.84-9.73-55.65-24.12-83.98-35.02-107.17-41.24-258.3-49.29-366.77-9.27-33,12.18-57.99,33.25-90.23,45.77-78,30.29-162.77,26.47-244.26,14.75l50.55.54c64.38-1.63,129.41-16.59,188.13-42.87,29.78-13.32,54.15-33.78,83.65-46.35,109.08-46.45,276.14-39.65,384.35,7,46.74,20.15,86.91,43.58,136.56,59.44,56.14,17.93,112.73,25.68,171.76,22.74h0Z',
-    'M1548.99,1258.01c.23,1.74-2.27.94-3.48.99-69.13,2.6-146.82,25.16-210.48,51.53-54.36,22.52-102.32,56.03-159.04,72.96-66.66,19.9-145.27,23.69-214.38,16.38-89.21-9.43-166.72-47.7-247.3-83.7-43.71-19.53-85.61-45.34-134.33-50.68,0-1.53,19.36,1.37,21.34,1.67,58.82,8.66,124.42,24.11,179.92,45.08,30.58,11.56,59.18,25.77,90.75,35.25,107.71,32.34,252.39,30.11,355.67-16.32,15.82-7.11,30.9-16.07,46.65-23.35,45.66-21.1,96.39-36.41,146.32-43.68,42.46-6.18,85.52-5.54,128.35-6.13h0Z',
-    'M1525,807.01l-33.64,5.85c-59.83,8.94-119.13,6.87-177.12-10.59-36.68-11.05-70.42-29.77-107.24-40.76-102.49-30.59-258.69-34.56-359.24,3.75-26.88,10.24-49.02,25.93-77.23,34.77-73.91,23.15-151.08,19.65-226.53,6.48,0-1.97,22.34.52,24.47.54,71.35.86,143.61-12.36,209.51-39.57,26.99-11.15,50.04-27.62,77.51-37.49,104.49-37.53,268.91-32.27,372.77,6.27,23.51,8.72,45.6,20.72,68.79,30.21,71.78,29.41,149.9,46.47,227.96,40.54h-.01Z',
-    'M1542,845.01l-40.64,6.85c-65.05,9.89-130.56,11.85-194.57-5.14-28.37-7.53-54.85-19.77-82.79-28.21-97.11-29.34-250.44-32.85-349.19-10.19-46.51,10.67-80.89,34.11-129.63,42.37-69.01,11.7-137.56,5.2-206.2-5.19,0-1.94,21.32.49,23.47.54,64.99,1.63,141.18-8.6,203.31-27.77,41.36-12.77,72.35-34.01,116.22-43.78,92.56-20.6,227.5-17.9,319.43,5.59,42.6,10.89,80.49,31.23,122.58,43.42,70.4,20.39,144.81,27.53,217.99,21.51h.02Z',
-    'M1545.99,921.01l-99.5,12.99-59.95,4.05h-27.09c-66.17-.08-128.62-21.74-193.96-28.04-34.17-3.29-67.81-3.33-102.04-3.96-69.66-1.29-148-2.64-216.48,10.44-18.86,3.6-36.72,10.28-55.64,13.36-40.32,6.55-82.22,5.88-122.84,4.18-45.4-1.9-90.49-7.72-135.5-13.51l83.55-.46c2.37-.07,4.55-.99,6.92-1.08,55.88-2.2,129.16-6.17,182.54-21.46,35.46-10.16,60.74-18.11,98.51-21.49,74.62-6.68,169.24-5.97,243.98,0,68.77,5.5,131.69,28.13,200.15,36.85,57.38,7.31,123.03,10.93,180.91,9.19,5.33-.16,10.86-1.88,16.45-1.04v-.02Z',
-    'M1545.99,960.01l-96.5,10.99c-51.09,4.48-102.73,8.55-153.98,4.99-29.5-2.05-58.6-8.22-88.02-10.98s-58.02-3.2-87.04-3.96c-83.21-2.2-174.34-4.36-256.95,2.97-26.25,2.33-51.81,8.95-78.02,10.98-47.32,3.67-94.78,1.33-141.99-2.99-42.24-3.87-84.37-10.02-126.51-14.5l117.55.54c2.37-.05,4.55-1.02,6.92-1.08,45.46-1.27,92.78-3.04,137.91-9.09,22.37-3,43.27-9.17,65.29-12.71,33.33-5.35,66.22-6.17,99.87-7.13,88.74-2.51,190.32-5.29,277.79,8.13,74.06,11.36,145.6,23.21,221.13,22.87l102.54.97h.01Z',
-    'M1531.99,885.01l-42.5,5.98c-54.81,5.51-108,8.92-162.85,1.87-54.6-7.02-103.93-26.98-158.28-34.72-73.49-10.45-160.83-11.04-234.85-5.13-48.06,3.83-79.89,11.81-124.74,27.26-49.18,16.95-122.48,17.81-174.27,13.72-39.02-3.08-77.67-10.18-116.52-14.49l94.55,1.54c50.88-2.84,102.46-6.36,152.28-17.72,35.37-8.07,64.9-25.13,99.99-33.01,89.69-20.13,229.64-18.4,320.21-1.83,53.06,9.7,100.96,32.13,153.79,43.21,63,13.21,128.93,16.13,193.18,13.32h.01Z',
-    'M1491.99,1300.01l-27.81,5.67c-129.12,27.16-215.5,126.38-346.16,150.84-154.14,28.86-272.45-17.99-403.7-90.35-39.88-21.99-76.66-50.48-121.34-62.67.02-1.14,3.09-.23,4.06-.05,10.21,1.8,22.73,6.13,32.95,9.06,49.85,14.26,99.28,30.33,146.68,51.32,30.48,13.5,59.05,29.27,90.8,40.2,108.1,37.2,242.45,35.24,347.2-11.84,27.3-12.27,52.74-28.57,79.96-41.04,61.8-28.31,129.59-45.07,197.35-51.13h.01Z',
-    'M1474.99,729.01c.23,1.75-2.27.94-3.48.99-18.56.76-40.35-1.74-58.87-4.14-25.42-3.3-52.14-8.92-76.64-16.36-45.8-13.92-85.22-39.62-129.75-56.25-108.69-40.59-255.97-45.9-361.27,7.23-24.9,12.56-45.74,30.6-71.3,42.7-66.42,31.42-145.18,39.19-217.69,30.32,21.52-.58,42.99-.74,64.37-3.64,56.55-7.67,114.22-33.93,162.56-63.44,23.41-14.29,43.61-31.39,68.72-43.28,106.35-50.33,247.32-44.49,355.61-2.89,49.51,19.02,94.34,49.24,142.39,71.61,39.26,18.27,81.73,34.44,125.35,37.15Z',
-    'M1548.99,1034.01l-114.5,13.99c-169.08,17.76-338.98,18.41-508.95,15.96-60.24-.87-119.98-1.72-180.03-5.97-76.53-5.42-152.2-17.74-228.52-24.49l1032.01.51h-.01Z',
-    'M1541.99,1155.01l-3.48.99c-23,.29-46.1,1.88-69.01,4-40.29,3.74-82.92,9.13-122.69,16.31-74.09,13.38-138.89,40.39-215.32,47.68-73.98,7.06-161.33,6.83-234.85-3.14-50.54-6.85-94.53-24.79-143.63-35.37-34.06-7.34-70.38-13.56-104.83-19.17-41.56-6.77-81.94-10.47-124.2-9.81,46.37-4.23,92.92-3.5,139.55-3.54,2.37.06,4.55,1.01,6.92,1.08,27.11.86,53.98,1.83,80.92,5.08,51.8,6.25,99.87,23.5,152.25,29.75,80.25,9.58,178.58,9.46,258.73-1.02,44.84-5.86,87.06-19.55,131.3-26.7,82.4-13.32,165.27-7.78,248.34-6.15h0Z',
-    'M1526,1190.99c-43.1.72-86.83,5.62-129.18,13.32-62.48,11.37-107.11,30.52-165.3,51.7-93.26,33.95-230.2,36.58-327.73,20.69-58.18-9.48-110.04-33.38-166.02-49.98-63.77-18.9-128.86-31.08-195.78-30.23,0-1.08,19.28-.43,21.5-.51,1.91-.07,3.84-.95,5.97-1.03,62.01-2.33,128.63-3.86,189.36,9.72,26.93,6.03,51.3,15.85,77.42,23.58,110.36,32.67,276.44,32.96,386.53-1,22.25-6.86,43.35-15.84,66.02-21.98,64.95-17.6,124-18.84,190.76-17.33,12.71.29,31.1-.33,43,1,1.5.17,3.09.21,3.46,2.03v.02Z',
-    'M1525.99,998.01l-50.64,7.85c-130.47,20.12-261.74,7.25-392.81,6.09-83.34-.74-166.92.46-250.09,3.01-69.12,2.12-131.91,2.2-200.95-4.97-29.97-3.11-59.79-7.88-89.52-12.49l125.55-1.46c2.37-.06,4.55-1.01,6.92-1.08,53.96-1.6,102.53-4.86,156.05-9.95,94.41-8.99,197.79-5.75,292.95-3.96,89.43,1.68,177.74,11.79,267,15l135.54,1.97h0Z',
-    'M1550.99,1075.01c.24,1.74-2.27.94-3.48.99-40.5,1.53-81.63,8.02-122.02,12-30.61,3.02-61.4,4.79-91.99,8.01-43.4,4.57-86.59,11.8-130.01,15.99-83.45,8.05-169.2,7.01-252.95,4.96-78.46-1.92-148.82-13.88-226.05-20.95-61.3-5.61-125.56-10.67-186.95-13.05-2.43-.09-24.55.77-24.55-.46,18.12-1.13,36.35-1.54,54.5-2.51,71.51-3.81,139.12-7.41,211.02-4,39.75,1.89,79.26,5.22,119.03,6.97,75.2,3.31,151.58,2.8,226.92,1,66.87-1.6,133.32-7.22,200.08-8.92,67.51-1.71,139.51-3.37,207.01-1.09,6.29.21,12.88,1.9,19.45,1.06h-.01Z',
-    'M1551.99,1114.01c.23,1.74-2.27.94-3.49.99-28.7,1.17-57.41,3.38-86.01,6.01-50.64,4.65-102.69,10.42-152.69,19.31-45.89,8.16-90.99,20.29-137.44,25.56-70.68,8.02-151.77,8.26-222.92,5.17-53.24-2.32-94.82-10.23-146.27-20.73-38.54-7.87-77.78-13.26-116.83-18.17-54.21-6.82-108.69-12.32-163.37-13.64,0-.98,17.41-.43,19.5-.51,1.91-.07,3.84-.94,5.97-1.03,56.79-2.41,114.18-4.01,171.05-1.97,79.85,2.87,154.28,20.33,235.03,22.97,81.86,2.68,167.54,3.23,248.82-7.1,25.84-3.29,51.37-8.72,77.27-11.73,90.03-10.49,180.85-4.28,271.37-5.11v-.02Z',
-    'M1464.99,1229.01l-38.18,7.3c-72.97,11.22-134.53,47.2-200.84,74.16-98.8,40.16-244.57,42.87-347.39,16.45-36.36-9.34-69.09-24.27-104.06-36.94-31.43-11.39-63.54-21.36-94.77-33.23-27.19-10.33-53.12-24.79-82.76-27.25,0-1.28,23.18,1.27,25.5,1.51,51.08,5.23,105.07,12.63,154.03,27.97,26.92,8.44,52.68,20.15,79.71,28.29,98.26,29.58,239.21,30.92,337.76,2.23,39.72-11.56,75.86-32.19,115.79-43.21,50.47-13.94,103.1-15.27,155.21-17.27h0Z'
-];
-const SIMULATION_DURATION_MS = 20000;
-const BRIEFING_SESSION_LIMIT = 10;
-const DUPLICATE_PULSE_MS = 1200;
-const REHYDRATE_PULSE_MS = 1400;
-const REHYDRATE_HIGHLIGHT_MS = 3500;
-const BRIEFING_HIDE_DELAY_MS = 220;
-const CC_CELL_SIZE = 20;
-const CC_PAGE_BASE_SIZE = Math.round(CC_CELL_SIZE * 0.8);
-const CC_PAGE_MIN_SIZE = Math.max(6, Math.round(CC_CELL_SIZE * 0.33));
-const CC_HEADER_ICON_SIZE = 12;
-const CC_HEADER_ICON_GAP = 4;
-const CC_HEADER_ICON_OFFSET = 1;
-const CC_CELL_ICON_OFFSET = -1;
-const CC_LABEL_HINT_SIZE = 7;
-const INQUIRY_NOTES_MAX = 5;
-const CC_RIGHT_MARGIN = 50;
-const CC_BOTTOM_MARGIN = 50;
-const INQUIRY_GUIDANCE_DOC_URL = 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Inquiry';
-const INQUIRY_HELP_TOOLTIP = 'How Inquiry Works';
-const INQUIRY_HELP_CONFIG_TOOLTIP = [
-    'Inquiry is not configured yet.',
-    'Please configure the Inquiry directories where your scenes, books, and outlines are stored (Settings -> Inquiry).',
-    'Then explicitly check which classes to include for the selected scope.'
-].join('\n');
-const INQUIRY_HELP_NO_SCENES_TOOLTIP = [
-    'No scenes found for the current scope.',
-    'Please configure the Inquiry directories where your scenes, books, and outlines are stored (Settings -> Inquiry).',
-    'Then explicitly check which classes to include for the selected scope.'
-].join('\n');
-const INQUIRY_HELP_CORPUS_TOOLTIP = [
-    'Corpus disabled.',
-    'Enable corpus scopes in the Corpus strip to run Inquiry.'
-].join('\n');
-const INQUIRY_HELP_RESULTS_TOOLTIP = [
-    'Review material citations for granular feedback in the minimap.',
-    'View the Brief for full details.'
-].join('\n');
-const INQUIRY_HELP_RUNNING_TOOLTIP = [
-    'Inquiry is processing an API run.',
-    'You can switch to another note and keep working while it runs, but leave this Inquiry tab open.'
-].join('\n');
-const INQUIRY_HELP_RUNNING_SINGLE_TOOLTIP = [
-    'Inquiry is processing this question now.',
-    'You can switch to another note and keep working while it runs, but leave this Inquiry tab open.',
-    'If you cancel this run, you must start over from the beginning. There is no resume.'
-].join('\n');
-const INQUIRY_HELP_ONBOARDING_TOOLTIP = 'Number buttons reveal the question and payload. Click to process a question with AI. Flow and Depth rings adjust the lens of the response. The minimap reveals contextual citations.';
-const GUIDANCE_TEXT_Y = 360;
-const GUIDANCE_LINE_HEIGHT = 18;
-const GUIDANCE_ALERT_LINE_HEIGHT = 26;
-const INQUIRY_PROMPT_OVERHEAD_CHARS = 900;
-// Token tier thresholds: now exported from inquiryReadinessBuilder.ts
-const INQUIRY_REQUIRED_CAPABILITIES: Capability[] = ['longContext', 'jsonStrict', 'reasoningStrong', 'highOutputCap'];
-
-type InquiryQuestion = {
-    id: string;
-    label: string;
-    question: string;
-    zone: InquiryZone;
-    icon: string;
-};
-
-type InquiryBriefModel = {
-    questionTitle: string;
-    questionText: string;
-    scopeIndicator?: string | null;
-    pills: string[];
-    flowSummary: string;
-    depthSummary: string;
-    findings: Array<{
-        headline: string;
-        clarity: string;
-        impact: string;
-        confidence: string;
-        lens: string;
-        bullets: string[];
-    }>;
-    sources: Array<{
-        title: string;
-        excerpt: string;
-        classLabel: string;
-        path?: string;
-        url?: string;
-    }>;
-    sceneNotes: Array<{
-        label: string;
-        header: string;
-        anchorId?: string;
-        entries: Array<{
-            headline: string;
-            bullets: string[];
-            impact: string;
-            confidence: string;
-            lens: string;
-        }>;
-    }>;
-    pendingActions: string[];
-    logTitle?: string | null;
-};
-
-type InquiryPreviewRow = {
-    group: SVGGElement;
-    bg: SVGRectElement;
-    text: SVGTextElement;
-    label: string;
-};
-
-type InquirySceneDossier = {
-    title: string;
-    anchorLine: string;
-    bodyLines: string[];
-    metaLine?: string;
-    sourceLabel?: string;
-};
-
-type InquiryOmnibusPlan = {
-    scope: InquiryScope;
-    createIndex: boolean;
-    resume?: boolean;
-};
-
-type InquiryPurgePreviewItem = {
-    label: string;
-    path: string;
-    lineCount: number;
-};
-
-class InquiryPurgeConfirmationModal extends Modal {
-    constructor(
-        app: App,
-        private totalScenes: number,
-        private affectedScenes: InquiryPurgePreviewItem[],
-        private scopeLabel: string,
-        private onConfirm: () => Promise<void>
-    ) {
-        super(app);
-    }
-
-    onOpen(): void {
-        const { contentEl, modalEl } = this;
-        contentEl.empty();
-
-        if (modalEl) {
-            modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell');
-            modalEl.style.width = '520px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-            modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-            modalEl.style.maxHeight = '92vh'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-        }
-
-        contentEl.addClass('ert-modal-container', 'ert-stack');
-
-        const header = contentEl.createDiv({ cls: 'ert-modal-header' });
-        header.createSpan({ cls: 'ert-modal-badge', text: 'Inquiry' });
-        header.createDiv({ cls: 'ert-modal-title', text: 'Purge Action Items' });
-        header.createDiv({
-            cls: 'ert-modal-subtitle',
-            text: 'Removes Inquiry-generated action items from scene frontmatter.'
-        });
-
-        const panel = contentEl.createDiv({ cls: 'ert-panel ert-panel--glass ert-stack' });
-
-        const affectedCount = this.affectedScenes.length;
-        if (affectedCount === 0) {
-            panel.createDiv({
-                cls: 'ert-inquiry-purge-message',
-                text: `No Inquiry action items found in ${this.totalScenes} scene${this.totalScenes !== 1 ? 's' : ''} in ${this.scopeLabel}.`
-            });
-        } else {
-            panel.createDiv({
-                cls: 'ert-inquiry-purge-message',
-                text: `Found Inquiry action items in ${affectedCount} of ${this.totalScenes} scene${this.totalScenes !== 1 ? 's' : ''} in ${this.scopeLabel}:`
-            });
-
-            const listContainer = panel.createDiv({ cls: 'ert-inquiry-purge-list-container' });
-            const listEl = listContainer.createEl('ul', { cls: 'ert-inquiry-purge-list' });
-            this.affectedScenes.forEach(item => {
-                const li = listEl.createEl('li', { cls: 'ert-inquiry-purge-list-item' });
-                li.createSpan({ cls: 'ert-inquiry-purge-list-label', text: item.label });
-                li.createSpan({
-                    cls: 'ert-inquiry-purge-list-count',
-                    text: `${item.lineCount} item${item.lineCount !== 1 ? 's' : ''}`
-                });
-            });
-
-            panel.createDiv({
-                cls: 'ert-inquiry-purge-details',
-                text: 'User-written notes in Pending Edits are preserved.'
-            });
-            panel.createDiv({
-                cls: 'ert-inquiry-purge-warning',
-                text: 'This cannot be undone.'
-            });
-        }
-
-        const buttonRow = contentEl.createDiv({ cls: 'ert-modal-actions' });
-        if (affectedCount > 0) {
-            new ButtonComponent(buttonRow)
-                .setButtonText(`Purge ${affectedCount} scene${affectedCount !== 1 ? 's' : ''}`)
-                .setWarning()
-                .onClick(async () => {
-                    this.close();
-                    await this.onConfirm();
-                });
-        }
-        new ButtonComponent(buttonRow)
-            .setButtonText(affectedCount > 0 ? 'Cancel' : 'Close')
-            .onClick(() => this.close());
-    }
-
-    onClose(): void {
-        this.contentEl.empty();
-    }
-}
-
-class InquiryCancelRunModal extends Modal {
-    private didResolve = false;
-
-    constructor(
-        app: App,
-        private estimateLabel: string,
-        private onResolve: (confirmed: boolean) => void,
-        private onClosed?: () => void
-    ) {
-        super(app);
-    }
-
-    onOpen(): void {
-        const { contentEl, modalEl } = this;
-        contentEl.empty();
-
-        if (modalEl) {
-            modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell');
-            modalEl.style.width = '520px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-            modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-            modalEl.style.maxHeight = '92vh'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-        }
-
-        contentEl.addClass('ert-modal-container', 'ert-stack', 'ert-inquiry-cancel-modal');
-
-        const header = contentEl.createDiv({ cls: 'ert-modal-header' });
-        header.createSpan({ cls: 'ert-modal-badge', text: 'Inquiry' });
-        header.createDiv({ cls: 'ert-modal-title', text: 'Cancel Inquiry Run?' });
-        header.createDiv({
-            cls: 'ert-modal-subtitle',
-            text: 'Canceling discards this run after the current pass returns.'
-        });
-
-        if (this.estimateLabel.trim()) {
-            contentEl.createDiv({
-                cls: 'ert-inquiry-cancel-modal-estimate',
-                text: `ETA: ${this.estimateLabel}.`
-            });
-        }
-        contentEl.createDiv({
-            cls: 'ert-inquiry-cancel-modal-copy',
-            text: 'You can work in another note if this Inquiry tab stays open. Cancel means start over. No resume.'
-        });
-
-        const actions = contentEl.createDiv({ cls: 'ert-modal-actions' });
-        new ButtonComponent(actions)
-            .setButtonText('Keep Running')
-            .onClick(() => {
-                this.resolveOnce(false);
-                this.close();
-            });
-        new ButtonComponent(actions)
-            .setButtonText('Cancel Run')
-            .setWarning()
-            .onClick(() => {
-                this.resolveOnce(true);
-                this.close();
-            });
-    }
-
-    onClose(): void {
-        this.contentEl.empty();
-        this.onClosed?.();
-        this.resolveOnce(false);
-    }
-
-    private resolveOnce(confirmed: boolean): void {
-        if (this.didResolve) return;
-        this.didResolve = true;
-        this.onResolve(confirmed);
-    }
-}
-
-type InquiryOmnibusModalOptions = {
-    initialScope: InquiryScope;
-    bookLabel: string;
-    questions: InquiryQuestion[];
-    providerSummary: string;
-    providerLabel: string;
-    logsEnabled: boolean;
-    runDisabledReason?: string | null;
-    priorProgress?: OmnibusProgressState;
-    resumeAvailable?: boolean;
-    resumeUnavailableReason?: string;
-};
-
-class InquiryOmnibusModal extends Modal {
-    private didResolve = false;
-    private selectedScope: InquiryScope;
-    private createIndex = true;
-    private runDisabledReason?: string | null;
-    private isRunning = false;
-    private abortRequested = false;
-    private progressEl?: HTMLDivElement;
-    private progressTextEl?: HTMLDivElement;
-    private progressMicroEl?: HTMLDivElement;
-    private configPanel?: HTMLDivElement;
-    private actionsEl?: HTMLDivElement;
-    private resultEl?: HTMLDivElement;
-    private aiAdvancedPreEl?: HTMLPreElement;
-    private aiAdvancedContext: AIRunAdvancedContext | null = null;
-
-    constructor(
-        app: App,
-        private options: InquiryOmnibusModalOptions,
-        private onResolve: (result: InquiryOmnibusPlan | null) => void
-    ) {
-        super(app);
-        this.selectedScope = options.initialScope;
-        this.runDisabledReason = options.runDisabledReason;
-    }
-
-    onOpen(): void {
-        const { contentEl, modalEl } = this;
-        contentEl.empty();
-
-        if (modalEl) {
-            modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell');
-            modalEl.style.width = '720px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-            modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-            modalEl.style.maxHeight = '92vh'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-        }
-
-        contentEl.addClass('ert-modal-container', 'ert-stack');
-
-        const header = contentEl.createDiv({ cls: 'ert-modal-header' });
-        header.createSpan({ cls: 'ert-modal-badge', text: 'Inquiry' });
-        header.createDiv({ cls: 'ert-modal-title', text: 'Run Omnibus Pass' });
-        header.createDiv({ cls: 'ert-modal-subtitle', text: 'Runs all enabled Inquiry questions for the selected scope.' });
-
-        this.configPanel = contentEl.createDiv({ cls: 'ert-omnibus-config-panel ert-stack' });
-        this.renderConfigPanel();
-
-        this.progressEl = contentEl.createDiv({ cls: 'ert-omnibus-progress-panel ert-stack is-hidden' });
-
-        this.resultEl = contentEl.createDiv({ cls: 'ert-omnibus-result-panel is-hidden' });
-
-        this.actionsEl = contentEl.createDiv({ cls: 'ert-modal-actions' });
-        this.renderConfigActions();
-    }
-
-    private renderConfigPanel(): void {
-        if (!this.configPanel) return;
-        this.configPanel.empty();
-
-        // "How this run works" section
-        const howSection = this.configPanel.createDiv({ cls: 'ert-omnibus-how-section' });
-        howSection.createDiv({ cls: 'ert-omnibus-how-title', text: 'How this run works' });
-        const howList = howSection.createEl('ul', { cls: 'ert-omnibus-how-list' });
-        howList.createEl('li', { text: 'Load corpus once for the selected scope' });
-        howList.createEl('li', { text: 'Run questions sequentially against that shared context' });
-        howList.createEl('li', { text: 'Save results incrementally (Brief + Log per question)' });
-        howList.createEl('li', { text: 'Safe to stop: abort at any time; completed results remain saved' });
-
-        // Prior progress notice (resume info)
-        const prior = this.options.priorProgress;
-        if (prior) {
-            const resumeNote = this.configPanel.createDiv({ cls: 'ert-omnibus-resume-note' });
-            resumeNote.setText(`Last run stopped after question ${prior.completedQuestionIds.length} of ${prior.totalQuestions}.`);
-            if (this.options.resumeUnavailableReason) {
-                const configNote = resumeNote.createDiv({ cls: 'ert-field-note' });
-                configNote.setText(`Resume unavailable: ${this.options.resumeUnavailableReason}`);
-            }
-        }
-
-        const panel = this.configPanel.createDiv({ cls: 'ert-panel ert-panel--glass ert-stack' });
-
-        const summaryGrid = panel.createDiv({ cls: 'ert-apr-status-grid ert-omnibus-summary-grid' });
-        const summaryHeaderRow = summaryGrid.createDiv({ cls: 'ert-apr-status-row ert-apr-status-row--header' });
-        ['Scope', 'Questions', 'Provider', 'Index'].forEach(label => {
-            summaryHeaderRow.createDiv({
-                text: label,
-                cls: 'ert-apr-status-cell ert-apr-status-cell--header'
-            });
-        });
-
-        const summaryRow = summaryGrid.createDiv({ cls: 'ert-apr-status-row ert-apr-status-row--data' });
-        const scopeCell = summaryRow.createDiv({ cls: 'ert-apr-status-cell' });
-        const scopePillRow = scopeCell.createDiv({ cls: 'ert-inline' });
-        const bookPill = scopePillRow.createEl('button', {
-            cls: 'ert-badgePill ert-badgePill--sm ert-omnibus-pill',
-            text: `Book (${this.options.bookLabel})`,
-            type: 'button'
-        });
-        const sagaPill = scopePillRow.createEl('button', {
-            cls: 'ert-badgePill ert-badgePill--sm ert-omnibus-pill',
-            text: `Saga (${SIGMA_CHAR})`,
-            type: 'button'
-        });
-
-        const totalCell = summaryRow.createDiv({ cls: 'ert-apr-status-cell' });
-        totalCell.createSpan({
-            cls: 'ert-badgePill ert-badgePill--sm',
-            text: `${this.options.questions.length} questions`
-        });
-
-        const providerCell = summaryRow.createDiv({ cls: 'ert-apr-status-cell' });
-        const providerPill = providerCell.createSpan({
-            cls: 'ert-badgePill ert-badgePill--sm',
-            text: this.options.providerLabel
-        });
-        setTooltip(providerPill, this.options.providerSummary);
-
-        const indexCell = summaryRow.createDiv({ cls: 'ert-apr-status-cell' });
-        const indexRow = indexCell.createDiv({ cls: 'ert-inline' });
-        const indexToggle = new ToggleComponent(indexRow);
-        indexToggle.setValue(this.createIndex);
-        indexToggle.onChange(value => {
-            this.createIndex = value;
-        });
-        indexRow.createSpan({ text: 'Index note' });
-
-        panel.createDiv({ cls: 'ert-divider' });
-
-        const questionGrid = panel.createDiv({ cls: 'ert-apr-status-grid ert-omnibus-question-grid' });
-        const questionHeaderRow = questionGrid.createDiv({ cls: 'ert-apr-status-row ert-apr-status-row--header' });
-        ['Zone', 'Question', 'Lens', 'Scope', 'Status'].forEach(label => {
-            questionHeaderRow.createDiv({
-                text: label,
-                cls: 'ert-apr-status-cell ert-apr-status-cell--header'
-            });
-        });
-
-        const scopePills: HTMLSpanElement[] = [];
-        const getScopeLabel = (scope: InquiryScope): string =>
-            scope === 'saga' ? `Saga (${SIGMA_CHAR})` : `Book (${this.options.bookLabel})`;
-
-        const updateScopeSelection = (scope: InquiryScope): void => {
-            this.selectedScope = scope;
-            const scopeLabel = getScopeLabel(scope);
-            scopePills.forEach(pill => pill.setText(scopeLabel));
-            bookPill.classList.toggle('is-active', scope === 'book');
-            sagaPill.classList.toggle('is-active', scope === 'saga');
-            bookPill.setAttribute('aria-pressed', scope === 'book' ? 'true' : 'false');
-            sagaPill.setAttribute('aria-pressed', scope === 'saga' ? 'true' : 'false');
-        };
-
-        // SAFE: Modal classes do not have registerDomEvent; Obsidian manages Modal lifecycle
-        bookPill.addEventListener('click', () => updateScopeSelection('book'));
-        sagaPill.addEventListener('click', () => updateScopeSelection('saga')); // SAFE: continued
-        updateScopeSelection(this.selectedScope);
-
-        const lensLabel = 'Flow + Depth';
-        const zoneOrder: InquiryZone[] = ['setup', 'pressure', 'payoff'];
-        zoneOrder.forEach(zone => {
-            const zoneQuestions = this.options.questions.filter(question => question.zone === zone);
-            if (!zoneQuestions.length) return;
-            const zoneLabel = zone === 'setup' ? 'Setup' : zone === 'pressure' ? 'Pressure' : 'Payoff';
-            const groupRow = questionGrid.createDiv({ cls: 'ert-apr-status-row' });
-            groupRow.createDiv({ cls: 'ert-apr-status-cell ert-omnibus-group', text: zoneLabel });
-
-            zoneQuestions.forEach(question => {
-                const dataRow = questionGrid.createDiv({ cls: 'ert-apr-status-row ert-apr-status-row--data' });
-
-                const zoneCell = dataRow.createDiv({ cls: 'ert-apr-status-cell' });
-                zoneCell.createSpan({ cls: 'ert-badgePill ert-badgePill--sm', text: zoneLabel });
-
-                const questionCell = dataRow.createDiv({ cls: 'ert-apr-status-cell ert-omnibus-question-cell' });
-                const questionText = questionCell.createSpan({ cls: 'ert-omnibus-question', text: question.question });
-                setTooltip(questionText, question.question);
-
-                const lensCell = dataRow.createDiv({ cls: 'ert-apr-status-cell' });
-                lensCell.createSpan({ cls: 'ert-badgePill ert-badgePill--sm', text: lensLabel });
-
-                const scopeCell = dataRow.createDiv({ cls: 'ert-apr-status-cell' });
-                const scopePill = scopeCell.createSpan({
-                    cls: 'ert-badgePill ert-badgePill--sm',
-                    text: getScopeLabel(this.selectedScope)
-                });
-                scopePills.push(scopePill);
-
-                const statusCell = dataRow.createDiv({ cls: 'ert-apr-status-cell' });
-                statusCell.createSpan({ cls: 'ert-badgePill ert-badgePill--sm', text: 'Brief + Log' });
-            });
-        });
-
-        if (this.runDisabledReason) {
-            const reason = this.configPanel.createDiv({ cls: 'ert-field-note' });
-            reason.setText(`Run disabled: ${this.runDisabledReason}`);
-        }
-
-        const totalQuestions = this.options.questions.length;
-        const briefLabel = totalQuestions === 1 ? 'Brief' : 'Briefs';
-        const logLabel = totalQuestions === 1 ? 'Log' : 'Logs';
-        const logsDisabledNote = this.options.logsEnabled ? '' : ' Logs are disabled in settings.';
-        const volumeLine = this.configPanel.createDiv({ cls: 'ert-field-note' });
-        volumeLine.setText(`This will generate ${totalQuestions} Inquiry ${briefLabel} and ${totalQuestions} ${logLabel}.${logsDisabledNote}`);
-    }
-
-    private renderConfigActions(): void {
-        if (!this.actionsEl) return;
-        this.actionsEl.empty();
-
-        const prior = this.options.priorProgress;
-        if (prior && this.options.resumeAvailable) {
-            const resumeBtn = new ButtonComponent(this.actionsEl)
-                .setButtonText('Resume Omnibus')
-                .setCta();
-            if (this.runDisabledReason) {
-                resumeBtn.setDisabled(true);
-            }
-            resumeBtn.onClick(() => {
-                if (this.runDisabledReason) return;
-                this.resolveOnce({ scope: this.selectedScope, createIndex: this.createIndex, resume: true });
-                this.switchToRunning();
-            });
-            setTooltip(resumeBtn.buttonEl, 'Resends corpus and runs remaining questions.');
-        }
-
-        const runButton = new ButtonComponent(this.actionsEl)
-            .setButtonText(prior && this.options.resumeAvailable ? 'Restart Omnibus' : 'Run Omnibus')
-            .setCta();
-        if (this.runDisabledReason) {
-            runButton.setDisabled(true);
-        }
-        runButton.onClick(() => {
-            if (this.runDisabledReason) return;
-            this.resolveOnce({ scope: this.selectedScope, createIndex: this.createIndex });
-            this.switchToRunning();
-        });
-
-        new ButtonComponent(this.actionsEl)
-            .setButtonText('Cancel')
-            .onClick(() => {
-                this.resolveOnce(null);
-                this.close();
-            });
-    }
-
-    /** Switch the modal into Running state. */
-    switchToRunning(): void {
-        this.isRunning = true;
-        this.setHidden(this.configPanel, true);
-        if (this.progressEl) {
-            this.setHidden(this.progressEl, false);
-            this.progressEl.empty();
-            this.progressEl.createDiv({ cls: 'ert-omnibus-progress-title', text: 'Running Omnibus Pass...' });
-            this.progressTextEl = this.progressEl.createDiv({ cls: 'ert-omnibus-progress-text' });
-            this.progressTextEl.setText('Preparing...');
-            this.progressMicroEl = this.progressEl.createDiv({ cls: 'ert-omnibus-progress-micro ert-field-note' });
-            const advancedDetails = this.progressEl.createEl('details', { cls: 'ert-ai-advanced-details' });
-            advancedDetails.createEl('summary', { text: 'AI Prompt & Context (Advanced)' });
-            this.aiAdvancedPreEl = advancedDetails.createEl('pre', { cls: 'ert-ai-advanced-pre' });
-            this.renderAiAdvancedContext();
-        }
-        if (this.actionsEl) {
-            this.actionsEl.empty();
-            new ButtonComponent(this.actionsEl)
-                .setButtonText('Abort Run')
-                .onClick(() => {
-                    this.abortRequested = true;
-                    if (this.progressMicroEl) {
-                        this.progressMicroEl.setText('Stopping after current question...');
-                    }
-                });
-        }
-    }
-
-    /** Update progress text from the running loop. */
-    updateProgress(current: number, total: number, zone: string, questionLabel: string, micro?: string): void {
-        if (this.progressTextEl) {
-            this.progressTextEl.setText(`Question ${current} of ${total}`);
-        }
-        if (this.progressMicroEl && !this.abortRequested) {
-            this.progressMicroEl.setText(micro ?? `${zone} \u00B7 ${questionLabel}`);
-        }
-    }
-
-    setAiAdvancedContext(context: AIRunAdvancedContext | null): void {
-        this.aiAdvancedContext = context;
-        this.renderAiAdvancedContext();
-    }
-
-    private renderAiAdvancedContext(): void {
-        if (!this.aiAdvancedPreEl) return;
-        if (!this.aiAdvancedContext) {
-            this.aiAdvancedPreEl.setText('Waiting for first AI request...');
-            return;
-        }
-        const ctx = this.aiAdvancedContext;
-        const lines = [
-            `Role template: ${ctx.roleTemplateName}`,
-            `Resolved model: ${ctx.provider} -> ${ctx.modelAlias} (${ctx.modelLabel})`,
-            `Model selection reason: ${redactSensitiveValue(ctx.modelSelectionReason)}`,
-            `Availability: ${ctx.availabilityStatus === 'visible' ? 'Visible to your key ✅' : ctx.availabilityStatus === 'not_visible' ? 'Not visible ⚠️' : 'Unknown (snapshot unavailable)'}`,
-            `Applied caps: input=${ctx.maxInputTokens}, output=${ctx.maxOutputTokens}`,
-            `Packaging: ${ctx.analysisPackaging === 'singlePassOnly' ? 'Single-pass only' : ctx.analysisPackaging === 'segmented' ? 'Segmented' : 'Automatic'}`,
-            '',
-            'Feature mode instructions:',
-            redactSensitiveValue(ctx.featureModeInstructions || '(none)'),
-            '',
-            'Final composed prompt:',
-            redactSensitiveValue(ctx.finalPrompt || '(none)')
-        ];
-        if (typeof ctx.executionPassCount === 'number' && ctx.executionPassCount > 1) {
-            lines.splice(6, 0, `Pass count: ${ctx.executionPassCount}`);
-        }
-        if (ctx.packagingTriggerReason) {
-            lines.splice(7, 0, `Packaging trigger: ${redactSensitiveValue(ctx.packagingTriggerReason)}`);
-        }
-        this.aiAdvancedPreEl.setText(lines.join('\n'));
-    }
-
-    /** Show completion or abort message and provide a Close button. */
-    showResult(completed: number, total: number, aborted: boolean): void {
-        this.isRunning = false;
-        this.setHidden(this.progressEl, true);
-        if (this.resultEl) {
-            this.setHidden(this.resultEl, false);
-            this.resultEl.empty();
-            const briefLabel = completed === 1 ? 'Brief' : 'Briefs';
-            const logLabel = completed === 1 ? 'Log' : 'Logs';
-            if (aborted) {
-                this.resultEl.createDiv({
-                    cls: 'ert-omnibus-result-text',
-                    text: `Omnibus pass stopped. ${completed} of ${total} completed.`
-                });
-            } else {
-                this.resultEl.createDiv({
-                    cls: 'ert-omnibus-result-text',
-                    text: `Omnibus pass complete. ${completed} Inquiry ${briefLabel} and ${completed} ${logLabel} created.`
-                });
-            }
-        }
-        if (this.actionsEl) {
-            this.actionsEl.empty();
-            new ButtonComponent(this.actionsEl)
-                .setButtonText('Close')
-                .setCta()
-                .onClick(() => this.close());
-        }
-    }
-
-    isAbortRequested(): boolean {
-        return this.abortRequested;
-    }
-
-    onClose(): void {
-        this.resolveOnce(null);
-    }
-
-    private resolveOnce(result: InquiryOmnibusPlan | null): void {
-        if (this.didResolve) return;
-        this.didResolve = true;
-        this.onResolve(result);
-    }
-
-    private setHidden(el: HTMLElement | undefined, hidden: boolean): void {
-        if (!el) return;
-        el.classList.toggle('is-hidden', hidden);
-    }
-}
-
-type CorpusCcEntry = {
-    id: string;
-    entryKey: string;
-    label: string;
-    filePath: string;
-    sceneId?: string;
-    bookId?: string;
-    bookLabel?: string;
-    className: string;
-    classKey: string;
-    scope?: InquiryScope;
-    mode: InquiryMaterialMode;
-    sortLabel?: string;
-};
-
-type CorpusCcGroup = {
-    key: string;
-    className: string;
-    items: CorpusCcEntry[];
-    count: number;
-    mode: InquiryMaterialMode;
-    headerLabel?: string;
-    headerTooltipLabel?: string;
-};
-
-type CorpusCcSlot = {
-    group: SVGGElement;
-    base: SVGRectElement;
-    fill: SVGRectElement;
-    border: SVGRectElement;
-    lowSubstanceX: SVGGElement;
-    lowSubstanceXPrimary: SVGLineElement;
-    lowSubstanceXSecondary: SVGLineElement;
-    icon: SVGGElement;
-    iconOuter: SVGCircleElement;
-    iconInner: SVGCircleElement;
-};
-
-type CorpusCcHeader = {
-    group: SVGGElement;
-    hit: SVGRectElement;
-    icon: SVGGElement;
-    iconOuter: SVGCircleElement;
-    iconInner: SVGCircleElement;
-    text: SVGTextElement;
-};
-
-type CorpusCcStats = {
-    bodyWords: number;
-    synopsisWords: number;
-    synopsisQuality: SynopsisQuality;
-    statusRaw?: string;
-    due?: string;
-    title?: string;
-};
-
-type InquiryWritebackOutcome = 'written' | 'duplicate' | 'skipped';
-type InquiryGuidanceState = 'not-configured' | 'no-scenes' | 'ready' | 'running' | 'results';
-type EngineProvider = 'anthropic' | 'gemini' | 'openai' | 'local';
-type OmnibusProviderChoice = {
-    provider: EngineProvider;
-    modelId: string;
-    modelLabel: string;
-    useOmnibus: boolean;
-    reason?: string;
-};
-type OmnibusProviderPlan = {
-    choice: OmnibusProviderChoice | null;
-    summary: string;
-    label: string;
-    disabledReason?: string;
-};
-type EngineChoice = {
-    provider: EngineProvider;
-    providerLabel: string;
-    modelId: string;
-    modelLabel: string;
-    isActive: boolean;
-    enabled: boolean;
-    disabledReason?: string;
-};
-type AiSettingsFocus =
-    | 'provider'
-    | 'thinking-style'
-    | 'access-level'
-    | 'pinned-model'
-    | 'execution-preference'
-    | 'large-manuscript-handling';
-type EngineFailureGuidance = {
-    message: string;
-};
-type InquiryGlyphSeedSource = 'active' | 'session' | 'empty';
-type InquiryGlyphSeed = {
-    source: InquiryGlyphSeedSource;
-    flowValue: number;
-    depthValue: number;
-    flowVisualValue: number;
-    depthVisualValue: number;
-    impact: InquirySeverity;
-    assessmentConfidence: InquiryConfidence;
-    session?: InquirySession;
-};
+import {
+    CC_BOTTOM_MARGIN,
+    CC_CELL_ICON_OFFSET,
+    CC_HEADER_ICON_GAP,
+    CC_HEADER_ICON_OFFSET,
+    CC_HEADER_ICON_SIZE,
+    CC_LABEL_HINT_SIZE,
+    CC_PAGE_BASE_SIZE,
+    CC_PAGE_MIN_SIZE,
+    CC_RIGHT_MARGIN,
+    DEBUG_SVG_OVERLAY,
+    DEPTH_FINDING_ORDER,
+    FLOW_FINDING_ORDER,
+    GLYPH_EMPTY_STATE_STUB,
+    GLYPH_OFFSET_Y,
+    GLYPH_PLACEHOLDER_DEPTH,
+    GLYPH_PLACEHOLDER_FLOW,
+    GUIDANCE_ALERT_LINE_HEIGHT,
+    GUIDANCE_LINE_HEIGHT,
+    GUIDANCE_TEXT_Y,
+    MODE_ICON_OFFSET_Y,
+    MODE_ICON_VIEWBOX,
+    PREVIEW_DETAIL_GAP,
+    PREVIEW_FOOTER_GAP,
+    PREVIEW_FOOTER_HEIGHT,
+    PREVIEW_HERO_LINE_HEIGHT,
+    PREVIEW_HERO_MAX_LINES,
+    PREVIEW_META_GAP,
+    PREVIEW_META_LINE_HEIGHT,
+    PREVIEW_PANEL_MINIMAP_GAP,
+    PREVIEW_PANEL_PADDING_X,
+    PREVIEW_PANEL_PADDING_Y,
+    PREVIEW_PANEL_WIDTH,
+    PREVIEW_PANEL_Y,
+    PREVIEW_PILL_GAP_X,
+    PREVIEW_PILL_GAP_Y,
+    PREVIEW_PILL_HEIGHT,
+    PREVIEW_PILL_PADDING_X,
+    PREVIEW_RESULTS_FOOTER_OFFSET,
+    PREVIEW_RESULTS_HERO_MAX_LINES,
+    PREVIEW_RESULTS_HERO_MAX_WIDTH,
+    PREVIEW_RUNNING_CONTENT_OFFSET_Y,
+    PREVIEW_SHIMMER_OVERHANG,
+    PREVIEW_SHIMMER_WIDTH,
+    SCENE_DOSSIER_ANCHOR_BODY_GAP,
+    SCENE_DOSSIER_ANCHOR_LINE_HEIGHT,
+    SCENE_DOSSIER_ANCHOR_MAX_WIDTH,
+    SCENE_DOSSIER_BODY_PRIMARY_LINE_HEIGHT,
+    SCENE_DOSSIER_BODY_ROW_GAP,
+    SCENE_DOSSIER_BODY_SECONDARY_LINE_HEIGHT,
+    SCENE_DOSSIER_BRACE_BASELINE_OFFSET,
+    SCENE_DOSSIER_BRACE_INSET,
+    SCENE_DOSSIER_BRACE_SIZE,
+    SCENE_DOSSIER_CANVAS_Y,
+    SCENE_DOSSIER_CENTER_Y,
+    SCENE_DOSSIER_FOCUS_RADIUS,
+    SCENE_DOSSIER_FOOTER_GAP,
+    SCENE_DOSSIER_FOOTER_LINE_HEIGHT,
+    SCENE_DOSSIER_FOOTER_SIZE,
+    SCENE_DOSSIER_FOOTER_Y_OFFSET,
+    SCENE_DOSSIER_HEADER_LINE_HEIGHT,
+    SCENE_DOSSIER_HEADER_SIZE,
+    SCENE_DOSSIER_HEADER_Y_OFFSET,
+    SCENE_DOSSIER_HIDE_DELAY_MS,
+    SCENE_DOSSIER_HOVER_DELAY_MS,
+    SCENE_DOSSIER_MIN_HEIGHT,
+    SCENE_DOSSIER_PADDING_Y,
+    SCENE_DOSSIER_SECONDARY_DIVIDER_WIDTH_RATIO,
+    SCENE_DOSSIER_SIDE_PADDING,
+    SCENE_DOSSIER_SOURCE_GAP,
+    SCENE_DOSSIER_SOURCE_LINE_HEIGHT,
+    SCENE_DOSSIER_SOURCE_Y_OFFSET,
+    SCENE_DOSSIER_TEXT_GROUP_Y,
+    SCENE_DOSSIER_TEXT_MAX_WIDTH,
+    SCENE_DOSSIER_TITLE_ANCHOR_GAP,
+    SCENE_DOSSIER_TITLE_MAX_WIDTH,
+    SCENE_DOSSIER_UNBOUNDED_WRAP_LINES,
+    SCENE_DOSSIER_WIDTH,
+    VIEWBOX_MAX,
+    VIEWBOX_MIN,
+    VIEWBOX_SIZE
+} from './constants/inquiryLayout';
+import {
+    BRIEFING_HIDE_DELAY_MS,
+    BRIEFING_SESSION_LIMIT,
+    DEPTH_ICON_PATHS,
+    DUPLICATE_PULSE_MS,
+    FLOW_ICON_PATHS,
+    INQUIRY_CONTEXT_CLASSES,
+    INQUIRY_GUIDANCE_DOC_URL,
+    INQUIRY_HELP_CONFIG_TOOLTIP,
+    INQUIRY_HELP_CORPUS_TOOLTIP,
+    INQUIRY_HELP_NO_SCENES_TOOLTIP,
+    INQUIRY_HELP_ONBOARDING_TOOLTIP,
+    INQUIRY_HELP_RESULTS_TOOLTIP,
+    INQUIRY_HELP_RUNNING_SINGLE_TOOLTIP,
+    INQUIRY_HELP_RUNNING_TOOLTIP,
+    INQUIRY_HELP_TOOLTIP,
+    INQUIRY_NOTES_MAX,
+    INQUIRY_PROMPT_OVERHEAD_CHARS,
+    INQUIRY_REQUIRED_CAPABILITIES,
+    REHYDRATE_HIGHLIGHT_MS,
+    REHYDRATE_PULSE_MS,
+    SIGMA_CHAR,
+    SIMULATION_DURATION_MS
+} from './constants/inquiryUi';
+import {
+    InquiryCancelRunModal,
+    InquiryOmnibusModal,
+    InquiryPurgeConfirmationModal
+} from './modals/InquiryViewModals';
+import type {
+    AiSettingsFocus,
+    CorpusCcEntry,
+    CorpusCcGroup,
+    CorpusCcHeader,
+    CorpusCcSlot,
+    CorpusCcStats,
+    EngineChoice,
+    EngineFailureGuidance,
+    EngineProvider,
+    InquiryBriefModel,
+    InquiryGlyphSeed,
+    InquiryGuidanceState,
+    InquiryOmnibusPlan,
+    InquiryOmnibusModalOptions,
+    InquiryPurgePreviewItem,
+    InquiryPreviewRow,
+    InquiryQuestion,
+    InquirySceneDossier,
+    InquiryWritebackOutcome,
+    OmnibusProviderChoice,
+    OmnibusProviderPlan
+} from './types/inquiryViewTypes';
+import {
+    buildManifestTocLines,
+    buildSceneDossierBodyLines,
+    buildSceneDossierHeader,
+    formatBriefLabel,
+    formatInquiryBriefLink,
+    getPendingInquiryActions,
+    getSceneNoteSortOrder,
+    normalizeInquiryHeadline,
+    parseCorpusLabelNumber,
+    renderInquiryBrief,
+    resolveInquiryScopeIndicator,
+    sanitizeDossierText,
+    stripNumericTitlePrefix
+} from './utils/inquiryViewText';
 export class InquiryView extends ItemView {
     static readonly viewType = INQUIRY_VIEW_TYPE;
 
@@ -9021,77 +8295,19 @@ export class InquiryView extends ItemView {
         finding: InquiryFinding,
         result: InquiryResult
     ): InquirySceneDossier {
-        const fallbackTitle = this.buildSceneDossierHeader(item, label, hoverLabel);
+        const fallbackTitle = buildSceneDossierHeader({
+            label,
+            itemDisplayLabel: item.displayLabel,
+            itemTitle: this.getMinimapItemTitle(item),
+            hoverLabel
+        });
         return buildInquiryDossierPresentation({
             finding,
-            sceneNumber: this.parseCorpusLabelNumber(item.displayLabel) ?? this.parseCorpusLabelNumber(label),
-            sceneTitle: this.stripNumericTitlePrefix(this.getMinimapItemTitle(item)),
+            sceneNumber: parseCorpusLabelNumber(item.displayLabel) ?? parseCorpusLabelNumber(label),
+            sceneTitle: stripNumericTitlePrefix(this.getMinimapItemTitle(item)),
             fallbackTitle,
             runId: result.runId
         });
-    }
-
-    private buildSceneDossierBodyLines(finding: InquiryFinding): string[] {
-        const headline = this.sanitizeDossierText(finding.headline);
-        const bullets = (finding.bullets || [])
-            .map(entry => this.sanitizeDossierText(entry))
-            .filter(Boolean)
-            .slice(0, 2);
-        const bodyLines: string[] = [];
-        if (headline) {
-            bodyLines.push(this.normalizeSceneDossierSentence(headline));
-        }
-        if (bullets.length) {
-            bullets.forEach(entry => {
-                bodyLines.push(this.normalizeSceneDossierSentence(entry));
-            });
-        } else if (!headline) {
-            bodyLines.push('Finding text unavailable.');
-        }
-        return bodyLines;
-    }
-
-    private normalizeSceneDossierSentence(value: string): string {
-        const trimmed = value.trim();
-        if (!trimmed) return '';
-        if (/[.!?…]$/.test(trimmed)) return trimmed;
-        return `${trimmed}.`;
-    }
-
-    private buildSceneDossierHeader(item: InquiryCorpusItem, label: string, hoverLabel: string): string {
-        const fallbackNumber = this.parseCorpusLabelNumber(label);
-        const labelNumber = this.parseCorpusLabelNumber(item.displayLabel) ?? fallbackNumber;
-        const itemTitle = this.getMinimapItemTitle(item);
-        const cleanTitle = this.stripNumericTitlePrefix(itemTitle);
-        if (labelNumber !== null && cleanTitle) {
-            return `${labelNumber} ${cleanTitle}`;
-        }
-        if (labelNumber !== null) {
-            return item.displayLabel.toUpperCase().startsWith('B') ? `Book ${labelNumber}` : `Scene ${labelNumber}`;
-        }
-        return cleanTitle || hoverLabel || `Scene ${label}`;
-    }
-
-    private parseCorpusLabelNumber(label?: string): number | null {
-        if (!label) return null;
-        const match = label.trim().match(/^[A-Za-z](\d+)$/);
-        if (!match) return null;
-        const parsed = Number(match[1]);
-        return Number.isFinite(parsed) ? parsed : null;
-    }
-
-    private stripNumericTitlePrefix(value: string): string {
-        const cleaned = (value || '').replace(/\s+/g, ' ').trim();
-        if (!cleaned) return '';
-        return cleaned.replace(/^(?:scene\s*)?\d+\s*[-:–—.)]?\s*/i, '').trim();
-    }
-
-    private sanitizeDossierText(value?: string): string {
-        if (!value) return '';
-        return value
-            .replace(/\s+/g, ' ')
-            .replace(/^(?:[SB]\d+|Scene\s+\d+)\s*[:\-–—]\s*/i, '')
-            .trim();
     }
 
     private queueSceneDossier(hoverKey: string, dossier: InquirySceneDossier): void {
@@ -10246,7 +9462,7 @@ export class InquiryView extends ItemView {
             if (impactDelta !== 0) return impactDelta;
             const confidenceDelta = this.getConfidenceRank(b.assessmentConfidence) - this.getConfidenceRank(a.assessmentConfidence);
             if (confidenceDelta !== 0) return confidenceDelta;
-            return this.normalizeInquiryHeadline(a.headline).localeCompare(this.normalizeInquiryHeadline(b.headline));
+            return normalizeInquiryHeadline(a.headline).localeCompare(normalizeInquiryHeadline(b.headline));
         });
     }
 
@@ -11400,7 +10616,7 @@ export class InquiryView extends ItemView {
         logPath?: string
     ): string {
         const brief = this.buildInquiryBriefModel(result, logPath);
-        return this.renderInquiryBrief(brief);
+        return renderInquiryBrief(brief);
     }
 
     private buildInquiryBriefModel(result: InquiryResult, logPath?: string): InquiryBriefModel {
@@ -11409,17 +10625,17 @@ export class InquiryView extends ItemView {
         const questionText = questionTextRaw && questionTextRaw.trim().length > 0
             ? questionTextRaw
             : 'Question text unavailable.';
-        const scopeIndicator = this.resolveInquiryScopeIndicator(result);
+        const scopeIndicator = resolveInquiryScopeIndicator(result);
 
         const pills: string[] = [
             `Flow ${this.formatMetricDisplay(result.verdict.flow)}`,
             `Depth ${this.formatMetricDisplay(result.verdict.depth)}`,
-            `Impact ${this.formatBriefLabel(result.verdict.impact)}`,
-            `Assessment confidence ${this.formatBriefLabel(result.verdict.assessmentConfidence)}`
+            `Impact ${formatBriefLabel(result.verdict.impact)}`,
+            `Assessment confidence ${formatBriefLabel(result.verdict.assessmentConfidence)}`
         ];
 
         if (result.mode) {
-            pills.push(`Mode ${this.formatBriefLabel(result.mode)}`);
+            pills.push(`Mode ${formatBriefLabel(result.mode)}`);
         }
 
         const modelLabel = this.getBriefModelLabel(result);
@@ -11432,13 +10648,13 @@ export class InquiryView extends ItemView {
         const findings = orderedFindings
             .filter(finding => this.isFindingHit(finding))
             .map(finding => ({
-                headline: this.normalizeInquiryHeadline(finding.headline),
-                clarity: this.formatBriefLabel(finding.status || 'unclear'),
-                impact: this.formatBriefLabel(finding.impact),
-                confidence: this.formatBriefLabel(finding.assessmentConfidence),
+                headline: normalizeInquiryHeadline(finding.headline),
+                clarity: formatBriefLabel(finding.status || 'unclear'),
+                impact: formatBriefLabel(finding.impact),
+                confidence: formatBriefLabel(finding.assessmentConfidence),
                 lens: finding.lens === 'both'
                     ? 'Flow / Depth'
-                    : this.formatBriefLabel(finding.lens || result.mode || 'flow'),
+                    : formatBriefLabel(finding.lens || result.mode || 'flow'),
                 bullets: (finding.bullets || []).filter(Boolean).slice(0, 3)
             }));
 
@@ -11452,7 +10668,7 @@ export class InquiryView extends ItemView {
         }));
 
         const sceneNotes = this.buildInquirySceneNotes(result);
-        const pendingActions = this.getPendingInquiryActions(result);
+        const pendingActions = getPendingInquiryActions(result);
         const logTitle = this.resolveInquiryLogLinkTitle(result, logPath);
 
         return {
@@ -11468,103 +10684,6 @@ export class InquiryView extends ItemView {
             pendingActions,
             logTitle
         };
-    }
-
-    private renderInquiryBrief(brief: InquiryBriefModel): string {
-        const lines: string[] = [];
-
-        lines.push('# Question', '', `**${brief.questionTitle}**`, brief.questionText);
-        if (brief.scopeIndicator) {
-            lines.push(`Scope: ${brief.scopeIndicator}`);
-        }
-
-        lines.push('', '## Summary Pills', brief.pills.map(pill => `[${pill}]`).join(' '));
-
-        lines.push('', '## High-Level Conclusions', '### Flow', brief.flowSummary, '', '### Depth', brief.depthSummary);
-
-        lines.push('', '## Key Findings (Structural Hits)');
-        if (!brief.findings.length) {
-            lines.push('No structural hits.');
-        } else {
-            brief.findings.forEach(finding => {
-                lines.push(
-                    '',
-                    `### ${finding.headline}`,
-                    `Clarity: ${finding.clarity} · Impact: ${finding.impact} · Confidence: ${finding.confidence} · Lens: ${finding.lens}`
-                );
-                if (finding.bullets.length) {
-                    finding.bullets.forEach(bullet => {
-                        lines.push(`- ${bullet}`);
-                    });
-                }
-            });
-        }
-
-        if (brief.sources.length) {
-            lines.push('', '## Sources', '');
-            brief.sources.forEach(source => {
-                const excerptPart = source.excerpt ? ` \u2014 *"${source.excerpt}"*` : '';
-                const wikiPath = source.path?.replace(/\.md$/, '');
-                const linkPart = (wikiPath && source.classLabel === 'Scene')
-                    ? ` \u2014 [[${wikiPath}|Open scene]]`
-                    : (source.url ? ` \u2014 [Source](${source.url})` : '');
-                lines.push(`- **${source.title}** (${source.classLabel})${excerptPart}${linkPart}`);
-            });
-        }
-
-        if (brief.sceneNotes.length) {
-            lines.push('', '## Per-Scene / Per-Moment Notes');
-            brief.sceneNotes.forEach(note => {
-                const anchor = note.anchorId ? ` ^${note.anchorId}` : '';
-                lines.push('', `### ${note.header}${anchor}`);
-                note.entries.forEach(entry => {
-                    lines.push(
-                        `- ${entry.headline}`,
-                        ...entry.bullets.map(bullet => `- ${bullet}`),
-                        `Impact: ${entry.impact} · Confidence: ${entry.confidence} · Lens: ${entry.lens}`
-                    );
-                });
-            });
-        }
-
-        if (brief.pendingActions.length) {
-            lines.push('', '## Pending Author Actions');
-            brief.pendingActions.forEach(action => {
-                lines.push(`- ${action}`);
-            });
-        }
-
-        lines.push('', brief.logTitle
-            ? `[[${brief.logTitle}|View full Inquiry Log →]]`
-            : 'View full Inquiry Log →');
-
-        lines.push('');
-        return lines.join('\n');
-    }
-
-    private resolveInquiryScopeIndicator(result: InquiryResult): string | null {
-        const focusId = result.focusId?.trim();
-        if (result.scope === 'saga') {
-            return focusId && focusId.toLowerCase() !== 'saga' ? `Saga ${focusId}` : 'Saga';
-        }
-        if (focusId) {
-            const lowered = focusId.toLowerCase();
-            if (/^s\d+/.test(lowered) || lowered.startsWith('scene')) {
-                return `Scene ${focusId}`;
-            }
-            if (/^c\d+/.test(lowered) || lowered.startsWith('chapter')) {
-                return `Chapter ${focusId}`;
-            }
-            return `Book ${focusId}`;
-        }
-        return null;
-    }
-
-    private formatBriefLabel(value?: string | null): string {
-        if (!value) return 'Unknown';
-        return value
-            .replace(/_/g, ' ')
-            .replace(/\b\w/g, (char) => char.toUpperCase());
     }
 
     private getBriefModelLabel(result: InquiryResult): string | null {
@@ -11621,19 +10740,19 @@ export class InquiryView extends ItemView {
             const anchorId = anchorSource ? this.getBriefSceneAnchorId(anchorSource) : undefined;
             const existing = notes.get(label);
             const headerTitle = match
-                ? this.stripNumericTitlePrefix(this.getMinimapItemTitle(match))
+                ? stripNumericTitlePrefix(this.getMinimapItemTitle(match))
                 : '';
             const header = headerTitle ? `${label.toUpperCase()} · ${headerTitle}` : label.toUpperCase();
             const entry = {
-                headline: this.sanitizeDossierText(finding.headline) || 'Finding text unavailable.',
-                bullets: this.buildSceneDossierBodyLines(finding)
+                headline: sanitizeDossierText(finding.headline) || 'Finding text unavailable.',
+                bullets: buildSceneDossierBodyLines(finding)
                     .filter(line => line.startsWith('• '))
                     .map(line => line.replace(/^•\s*/, '')),
-                impact: this.formatBriefLabel(finding.impact),
-                confidence: this.formatBriefLabel(finding.assessmentConfidence),
+                impact: formatBriefLabel(finding.impact),
+                confidence: formatBriefLabel(finding.assessmentConfidence),
                 lens: finding.lens === 'both'
                     ? 'Flow / Depth'
-                    : this.formatBriefLabel(finding.lens || result.mode || 'flow')
+                    : formatBriefLabel(finding.lens || result.mode || 'flow')
             };
             if (existing) {
                 existing.entries.push(entry);
@@ -11641,7 +10760,7 @@ export class InquiryView extends ItemView {
             }
             const order = match
                 ? items.indexOf(match)
-                : this.getSceneNoteSortOrder(label);
+                : getSceneNoteSortOrder(label);
             notes.set(label, {
                 label,
                 header,
@@ -11662,26 +10781,6 @@ export class InquiryView extends ItemView {
                 anchorId: entry.anchorId,
                 entries: entry.entries
             }));
-    }
-
-    private getSceneNoteSortOrder(label: string): number {
-        const match = label.trim().match(/^[A-Za-z](\d+)$/);
-        if (!match) return Number.MAX_SAFE_INTEGER;
-        const parsed = Number(match[1]);
-        return Number.isFinite(parsed) ? parsed : Number.MAX_SAFE_INTEGER;
-    }
-
-    private getPendingInquiryActions(result: InquiryResult): string[] {
-        const legacy = result as unknown as {
-            pendingActions?: unknown;
-            followUps?: unknown;
-            pendingInputs?: unknown;
-        };
-        const raw = legacy.pendingActions ?? legacy.followUps ?? legacy.pendingInputs;
-        if (!Array.isArray(raw)) return [];
-        return raw
-            .map(item => String(item).replace(/\s+/g, ' ').trim())
-            .filter(Boolean);
     }
 
     private formatManifestClassLabel(value: string): string {
@@ -11728,32 +10827,6 @@ export class InquiryView extends ItemView {
         }
         const fallback = entry.path.split('/').pop();
         return fallback || entry.path;
-    }
-
-    private buildManifestTocLines(manifest: CorpusManifest | null): string[] {
-        if (!manifest?.entries?.length) {
-            return ['- none'];
-        }
-        const dedupedEntries: CorpusManifestEntry[] = [];
-        const seen = new Set<string>();
-        manifest.entries.forEach(entry => {
-            const key = `${entry.class}::${entry.path}::${this.normalizeEvidenceMode(entry.mode)}`;
-            if (seen.has(key)) return;
-            seen.add(key);
-            dedupedEntries.push(entry);
-        });
-
-        dedupedEntries.sort((a, b) => {
-            if (a.class !== b.class) return a.class.localeCompare(b.class);
-            return a.path.localeCompare(b.path, undefined, { numeric: true, sensitivity: 'base' });
-        });
-
-        return dedupedEntries.map(entry => {
-            const classLabel = this.formatManifestClassLabel(entry.class);
-            const modeLabel = this.formatManifestModeLabel(entry.mode);
-            const itemLabel = this.resolveManifestEntryLabel(entry);
-            return `- ${classLabel} · ${modeLabel} · ${itemLabel} (${entry.path})`;
-        });
     }
 
     private buildInquiryLogContent(
@@ -12001,7 +11074,11 @@ export class InquiryView extends ItemView {
         lines.push('');
 
         lines.push('## Corpus TOC');
-        lines.push(...this.buildManifestTocLines(manifest));
+        lines.push(...buildManifestTocLines({
+            manifestEntries: manifest?.entries,
+            normalizeEvidenceMode: mode => this.normalizeEvidenceMode(mode),
+            resolveManifestEntryLabel: entry => this.resolveManifestEntryLabel(entry)
+        }));
         lines.push('');
 
         lines.push('## Tokens');
@@ -12054,7 +11131,7 @@ export class InquiryView extends ItemView {
 
         lines.push('## Result');
         if (status === 'success') {
-            lines.push(`- Verdict: Flow ${this.formatMetricDisplay(result.verdict.flow)} · Depth ${this.formatMetricDisplay(result.verdict.depth)} · Impact ${this.formatBriefLabel(result.verdict.impact)} · Confidence ${this.formatBriefLabel(result.verdict.assessmentConfidence)}`);
+            lines.push(`- Verdict: Flow ${this.formatMetricDisplay(result.verdict.flow)} · Depth ${this.formatMetricDisplay(result.verdict.depth)} · Impact ${formatBriefLabel(result.verdict.impact)} · Confidence ${formatBriefLabel(result.verdict.assessmentConfidence)}`);
         } else if (status === 'simulated') {
             lines.push('- Result: Simulated test run. The corpus was packaged and rendered locally, but no API request was sent.');
         } else {
@@ -12207,7 +11284,11 @@ export class InquiryView extends ItemView {
             }
         }
         contextLines.push('', '### Corpus TOC');
-        this.buildManifestTocLines(manifest).forEach(line => contextLines.push(line));
+        buildManifestTocLines({
+            manifestEntries: manifest?.entries,
+            normalizeEvidenceMode: mode => this.normalizeEvidenceMode(mode),
+            resolveManifestEntryLabel: entry => this.resolveManifestEntryLabel(entry)
+        }).forEach(line => contextLines.push(line));
 
         const logContent = formatAiLogContent({
             title,
@@ -12440,22 +11521,13 @@ export class InquiryView extends ItemView {
         return this.formatInquiryId(timestamp);
     }
 
-    private normalizeInquiryHeadline(headline: string): string {
-        return (headline || 'Finding').replace(/\s+/g, ' ').trim();
-    }
-
-    private formatInquiryBriefLink(briefTitle: string, alias = 'Briefing'): string {
-        if (!alias) return `[[${briefTitle}]]`;
-        return `[[${briefTitle}|${alias}]]`;
-    }
-
     private formatInquiryActionNote(
         finding: InquiryFinding,
         briefTitle: string
     ): string | null {
         const suggestion = this.buildInquiryActionSuggestion(finding);
         if (!suggestion) return null;
-        const briefLink = this.formatInquiryBriefLink(briefTitle);
+        const briefLink = formatInquiryBriefLink(briefTitle);
         return `${briefLink} — ${suggestion}`;
     }
 
