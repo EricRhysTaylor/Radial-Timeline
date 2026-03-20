@@ -40,6 +40,7 @@ import type {
 } from '../types/settings';
 import {
     buildDefaultInquiryPromptConfig,
+    getCanonicalQuestionForSlot,
     getPromptSlotQuestion,
     normalizeInquiryPromptConfig
 } from './prompts';
@@ -2555,7 +2556,8 @@ export class InquiryView extends ItemView {
                 label: entry.slot.label || (zone === 'setup' ? 'Setup' : zone === 'pressure' ? 'Pressure' : 'Payoff'),
                 question: entry.question,
                 zone,
-                icon
+                icon,
+                tier: getCanonicalQuestionForSlot(entry.slot)?.tier
             }));
     }
 
@@ -2647,9 +2649,9 @@ export class InquiryView extends ItemView {
         this.syncSelectedPromptIds();
         const processed = this.getProcessedPromptState();
         const promptsByZone = {
-            setup: this.getPromptOptions('setup').map(prompt => ({ id: prompt.id, question: prompt.question })),
-            pressure: this.getPromptOptions('pressure').map(prompt => ({ id: prompt.id, question: prompt.question })),
-            payoff: this.getPromptOptions('payoff').map(prompt => ({ id: prompt.id, question: prompt.question }))
+            setup: this.getPromptOptions('setup').map(prompt => ({ id: prompt.id, question: prompt.question, tier: prompt.tier })),
+            pressure: this.getPromptOptions('pressure').map(prompt => ({ id: prompt.id, question: prompt.question, tier: prompt.tier })),
+            payoff: this.getPromptOptions('payoff').map(prompt => ({ id: prompt.id, question: prompt.question, tier: prompt.tier }))
         };
         this.glyph.updatePromptState({
             promptsByZone,

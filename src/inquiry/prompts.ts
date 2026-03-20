@@ -13,6 +13,7 @@ import type {
 } from '../types/settings';
 
 export type InquiryCanonicalLoadout = 'core' | 'full-signature';
+export type InquiryPromptSlotState = 'empty' | 'canonical-loaded' | 'customized';
 
 const ZONE_DESCRIPTIONS: Record<InquiryZone, string> = {
     setup: [
@@ -39,6 +40,15 @@ const getCanonicalQuestionsForLoadout = (
 ): readonly InquiryCanonicalQuestionDefinition[] => (loadout === 'core'
     ? CORE_CANONICAL_QUESTIONS
     : ALL_CANONICAL_QUESTIONS);
+
+const getStarterCanonicalQuestions = (): Record<InquiryZone, InquiryCanonicalQuestionDefinition> => {
+    const grouped = groupCanonicalQuestionsByZone(CORE_CANONICAL_QUESTIONS);
+    return {
+        setup: grouped.setup[0]!,
+        pressure: grouped.pressure[0]!,
+        payoff: grouped.payoff[0]!
+    };
+};
 
 const buildCanonicalPromptState = (
     slot: Pick<InquiryPromptSlot, 'label' | 'question'>,
@@ -74,6 +84,19 @@ const buildCanonicalSlot = (
             state: buildCanonicalPromptState({ label, question }, canonical)
         }
     };
+};
+
+export const createCanonicalPromptSlot = (
+    canonical: InquiryCanonicalQuestionDefinition,
+    overrides: Partial<InquiryPromptSlot> = {}
+): InquiryPromptSlot => buildCanonicalSlot(canonical, overrides);
+
+export const createCanonicalPromptSlotById = (
+    canonicalId: string,
+    overrides: Partial<InquiryPromptSlot> = {}
+): InquiryPromptSlot | null => {
+    const canonical = getCanonicalQuestionById(canonicalId);
+    return canonical ? buildCanonicalSlot(canonical, overrides) : null;
 };
 
 const buildCustomSlot = (
@@ -122,8 +145,14 @@ export const buildInquiryPromptConfigFromLoadout = (
     };
 };
 
-export const buildDefaultInquiryPromptConfig = (): InquiryPromptConfig =>
-    buildInquiryPromptConfigFromLoadout('core');
+export const buildDefaultInquiryPromptConfig = (): InquiryPromptConfig => {
+    const starter = getStarterCanonicalQuestions();
+    return {
+        setup: [buildCanonicalSlot(starter.setup)],
+        pressure: [buildCanonicalSlot(starter.pressure)],
+        payoff: [buildCanonicalSlot(starter.payoff)]
+    };
+};
 
 export const getCanonicalQuestionForSlot = (
     slot?: Pick<InquiryPromptSlot, 'id' | 'builtIn' | 'canonical'>
@@ -132,6 +161,19 @@ export const getCanonicalQuestionForSlot = (
 
 export const isCanonicalPromptSlot = (slot?: InquiryPromptSlot): boolean =>
     !!getCanonicalQuestionForSlot(slot);
+
+export const getInquiryPromptSlotState = (slot?: InquiryPromptSlot): InquiryPromptSlotState => {
+    if (!slot) return 'empty';
+    const label = slot.label?.trim() ?? '';
+    const question = getPromptSlotQuestion(slot).trim();
+    if (!label && !question) {
+        return 'empty';
+    }
+    if (isCanonicalPromptSlot(slot) && slot.canonical?.state !== 'customized') {
+        return 'canonical-loaded';
+    }
+    return 'customized';
+};
 
 export const syncCanonicalPromptSlot = (slot: InquiryPromptSlot): InquiryPromptSlot => {
     const canonical = getCanonicalQuestionForSlot(slot);

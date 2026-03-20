@@ -16,4 +16,14 @@ describe('Inquiry sources presets', () => {
         expect(source.includes('const isScanPresetCovered = (presetRoots: string[], selectedRoots: string[]): boolean => {')).toBe(true);
         expect(source.includes('const isActive = explicitlyActive || (hasRoots && isScanPresetCovered(roots, selectedRoots));')).toBe(true);
     });
+
+    it('includes inquiry canonical loader and destructive replacement copy', () => {
+        const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/InquirySection.ts'), 'utf8');
+        expect(source.includes('Load Core Questions')).toBe(true);
+        expect(source.includes('Load Full Pro Signature Set')).toBe(true);
+        expect(source.includes('This custom question will be replaced and cannot be recovered.')).toBe(true);
+        expect(source.includes('Replace from library')).toBe(true);
+        expect(source.includes('Already added — moved to existing question')).toBe(true);
+        expect(source.includes('Already added')).toBe(true);
+    });
 });

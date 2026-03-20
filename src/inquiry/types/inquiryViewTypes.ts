@@ -1,5 +1,6 @@
 import type { AIRunAdvancedContext } from '../../ai/types';
 import type {
+    InquiryCanonicalQuestionTier,
     InquiryClassConfig,
     InquiryMaterialMode,
     InquiryTimingHistoryEntry,
@@ -22,6 +23,7 @@ export type InquiryQuestion = {
     question: string;
     zone: InquiryZone;
     icon: string;
+    tier?: InquiryCanonicalQuestionTier;
 };
 
 export type InquiryBriefModel = {

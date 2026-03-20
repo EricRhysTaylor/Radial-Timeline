@@ -3,24 +3,47 @@ import type { InquiryPromptConfig, InquiryPromptSlot } from '../types/settings';
 import {
     buildDefaultInquiryPromptConfig,
     buildInquiryPromptConfigFromLoadout,
+    getInquiryPromptSlotState,
     replaceCanonicalPromptSlots,
     syncCanonicalPromptSlot
 } from './prompts';
 
 describe('Inquiry prompt helpers', () => {
-    it('builds the default config from the core canonical library', () => {
+    it('builds the default config from the starter canonical set', () => {
         const config = buildDefaultInquiryPromptConfig();
         expect(config.setup.map(slot => slot.id)).toEqual(['setup-core']);
         expect(config.pressure.map(slot => slot.id)).toEqual(['pressure-core']);
         expect(config.payoff.map(slot => slot.id)).toEqual(['payoff-core']);
     });
 
-    it('builds the full signature loadout with three canonical questions per zone', () => {
+    it('builds the full core loadout with four canonical questions per zone', () => {
+        const config = buildInquiryPromptConfigFromLoadout('core');
+        expect(config.setup.map(slot => slot.id)).toEqual([
+            'setup-core',
+            'setup-missing-foundations',
+            'setup-foreshadowing-gaps',
+            'setup-character-readiness'
+        ]);
+        expect(config.pressure.map(slot => slot.id)).toEqual([
+            'pressure-core',
+            'pressure-underwritten-beats',
+            'pressure-over-explanation',
+            'pressure-false-plateaus'
+        ]);
+        expect(config.payoff.map(slot => slot.id)).toEqual([
+            'payoff-core',
+            'payoff-abandoned-threads',
+            'payoff-consequences-audit',
+            'payoff-premature-resolution'
+        ]);
+    });
+
+    it('builds the full signature loadout with nine canonical questions per zone', () => {
         const config = buildInquiryPromptConfigFromLoadout('full-signature');
-        expect(config.setup).toHaveLength(3);
-        expect(config.pressure).toHaveLength(3);
-        expect(config.payoff).toHaveLength(3);
-        expect(config.payoff[2]?.canonical?.state).toBe('loaded');
+        expect(config.setup).toHaveLength(9);
+        expect(config.pressure).toHaveLength(9);
+        expect(config.payoff).toHaveLength(9);
+        expect(config.payoff[8]?.canonical?.state).toBe('loaded');
     });
 
     it('replaces canonical slots while preserving custom questions', () => {
@@ -52,14 +75,26 @@ describe('Inquiry prompt helpers', () => {
 
         expect(next.setup.map(slot => slot.id)).toEqual([
             'setup-core',
-            'setup-dependencies',
-            'setup-promises',
+            'setup-missing-foundations',
+            'setup-foreshadowing-gaps',
+            'setup-character-readiness',
+            'setup-unrealized-thread',
+            'setup-world-logic-preconditions',
+            'setup-reader-orientation-risk',
+            'setup-load-bearing',
+            'setup-structural-assumptions',
             'custom-setup-1'
         ]);
         expect(next.pressure.map(slot => slot.id)).toEqual([
             'pressure-core',
-            'pressure-escalation',
-            'pressure-subtext',
+            'pressure-underwritten-beats',
+            'pressure-over-explanation',
+            'pressure-false-plateaus',
+            'pressure-escalation-consistency',
+            'pressure-conflict-density',
+            'pressure-scene-function-drift',
+            'pressure-tension-leakage',
+            'pressure-irreversible-moves',
             'custom-pressure-1'
         ]);
     });
@@ -73,5 +108,30 @@ describe('Inquiry prompt helpers', () => {
 
         expect(edited.canonical?.id).toBe('setup-core');
         expect(edited.canonical?.state).toBe('customized');
+    });
+
+    it('classifies slot state as empty, canonical-loaded, or customized', () => {
+        const canonicalSlot = buildDefaultInquiryPromptConfig().setup[0] as InquiryPromptSlot;
+        const customizedCanonical = syncCanonicalPromptSlot({
+            ...canonicalSlot,
+            question: `${canonicalSlot.question} Revised.`
+        });
+
+        expect(getInquiryPromptSlotState({
+            id: 'empty-slot',
+            label: '',
+            question: '',
+            enabled: false,
+            builtIn: false
+        })).toBe('empty');
+        expect(getInquiryPromptSlotState(canonicalSlot)).toBe('canonical-loaded');
+        expect(getInquiryPromptSlotState(customizedCanonical)).toBe('customized');
+        expect(getInquiryPromptSlotState({
+            id: 'custom-slot',
+            label: 'Custom',
+            question: 'Where does the scene lose clarity?',
+            enabled: true,
+            builtIn: false
+        })).toBe('customized');
     });
 });

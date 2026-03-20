@@ -9,34 +9,55 @@ import {
 
 describe('canonical Inquiry questions', () => {
     it('exports the curated core, signature, and combined libraries', () => {
-        expect(CORE_CANONICAL_QUESTIONS).toHaveLength(3);
-        expect(SIGNATURE_CANONICAL_QUESTIONS).toHaveLength(6);
-        expect(ALL_CANONICAL_QUESTIONS).toHaveLength(9);
+        expect(CORE_CANONICAL_QUESTIONS).toHaveLength(12);
+        expect(SIGNATURE_CANONICAL_QUESTIONS).toHaveLength(15);
+        expect(ALL_CANONICAL_QUESTIONS).toHaveLength(27);
     });
 
-    it('groups the combined library into three questions per zone', () => {
+    it('groups the combined library into nine questions per zone', () => {
         const grouped = groupCanonicalQuestionsByZone();
         expect(grouped.setup.map(question => question.id)).toEqual([
             'setup-core',
-            'setup-dependencies',
-            'setup-promises'
+            'setup-missing-foundations',
+            'setup-foreshadowing-gaps',
+            'setup-character-readiness',
+            'setup-unrealized-thread',
+            'setup-world-logic-preconditions',
+            'setup-reader-orientation-risk',
+            'setup-load-bearing',
+            'setup-structural-assumptions',
         ]);
         expect(grouped.pressure.map(question => question.id)).toEqual([
             'pressure-core',
-            'pressure-escalation',
-            'pressure-subtext'
+            'pressure-underwritten-beats',
+            'pressure-over-explanation',
+            'pressure-false-plateaus',
+            'pressure-escalation-consistency',
+            'pressure-conflict-density',
+            'pressure-scene-function-drift',
+            'pressure-tension-leakage',
+            'pressure-irreversible-moves'
         ]);
         expect(grouped.payoff.map(question => question.id)).toEqual([
             'payoff-core',
-            'payoff-consequences',
-            'payoff-loose-ends'
+            'payoff-abandoned-threads',
+            'payoff-consequences-audit',
+            'payoff-premature-resolution',
+            'payoff-emotional-payoff-balance',
+            'payoff-thematic-closure',
+            'payoff-ending-load-bearing',
+            'payoff-narrative-debt',
+            'payoff-inevitable-payoff-test'
         ]);
     });
 
     it('filters by tier and zone without losing registry order', () => {
         expect(getCanonicalQuestionsByTierAndZone('signature', 'pressure').map(question => question.id)).toEqual([
-            'pressure-escalation',
-            'pressure-subtext'
+            'pressure-escalation-consistency',
+            'pressure-conflict-density',
+            'pressure-scene-function-drift',
+            'pressure-tension-leakage',
+            'pressure-irreversible-moves'
         ]);
     });
 });

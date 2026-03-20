@@ -1,3 +1,4 @@
+import type { InquiryCanonicalQuestionTier } from '../../types/settings';
 import type { InquiryConfidence, InquirySeverity, InquiryZone } from '../state';
 import { ZONE_LAYOUT } from '../zoneLayout';
 
@@ -16,6 +17,7 @@ export interface InquiryGlyphProps {
 export interface InquiryZonePromptItem {
     id: string;
     question: string;
+    tier?: InquiryCanonicalQuestionTier;
 }
 
 export interface InquiryGlyphPromptState {
@@ -506,6 +508,7 @@ export class InquiryGlyph {
                 const isLocked = !!prompt && lockedPromptId === prompt.id;
                 marker.text.textContent = prompt ? (isError ? 'X' : String(idx + 1)) : '';
                 marker.group.setAttribute('display', prompt ? 'inline' : 'none');
+                marker.group.classList.toggle('is-signature', prompt?.tier === 'signature');
                 marker.group.classList.toggle('is-active', !!prompt && selectedId === prompt.id);
                 marker.group.classList.toggle('is-processed', isProcessed);
                 marker.group.classList.toggle('is-processed-success', isProcessed && processedStatus === 'success');
