@@ -1,8 +1,8 @@
 import type { InquiryScope } from '../state';
 import type { CorpusManifestEntry } from '../runner/types';
 
-const isInFocusedBook = (path: string, focusBookId: string): boolean =>
-    path === focusBookId || path.startsWith(`${focusBookId}/`);
+const isInFocusedBook = (path: string, activeBookId: string): boolean =>
+    path === activeBookId || path.startsWith(`${activeBookId}/`);
 
 const dedupeEntries = (entries: CorpusManifestEntry[]): CorpusManifestEntry[] => {
     const seen = new Set<string>();
@@ -25,18 +25,18 @@ const dedupeEntries = (entries: CorpusManifestEntry[]): CorpusManifestEntry[] =>
 export function scopeEntriesToActiveInquiryTarget(params: {
     entries: CorpusManifestEntry[];
     scope: InquiryScope;
-    focusBookId?: string;
+    activeBookId?: string;
 }): CorpusManifestEntry[] {
     const deduped = dedupeEntries(params.entries);
     if (params.scope !== 'book') return deduped;
-    if (!params.focusBookId) return [];
+    if (!params.activeBookId) return [];
 
     return deduped.filter(entry => {
         if (entry.class === 'scene') {
-            return isInFocusedBook(entry.path, params.focusBookId || '');
+            return isInFocusedBook(entry.path, params.activeBookId || '');
         }
         if (entry.class === 'outline') {
-            return entry.scope !== 'saga' && isInFocusedBook(entry.path, params.focusBookId || '');
+            return entry.scope !== 'saga' && isInFocusedBook(entry.path, params.activeBookId || '');
         }
         return true;
     });

@@ -36,8 +36,8 @@ type CanonicalExecutionEstimateParams = {
     modelId: string;
     questionText: string;
     scope: InquiryScope;
-    focusBookId?: string;
-    focusLabel: string;
+    activeBookId?: string;
+    scopeLabel: string;
     manifestEntries: CorpusManifestEntry[];
     vault: Vault;
     metadataCache: MetadataCache;
@@ -163,7 +163,7 @@ const selectInquiryFiles = (
     metadataCache: MetadataCache,
     inquirySources?: InquirySourcesSettings,
     frontmatterMappings?: Record<string, string>,
-    scopeFilter?: { scope: InquiryScope; focusBookId?: string },
+    scopeFilter?: { scope: InquiryScope; activeBookId?: string },
     bookProfiles?: BookProfile[]
 ): { files: TFile[]; selectionLabel: string; resolvedFocusBookId?: string } => {
     const scanRoots = normalizeScanRootPatterns(inquirySources?.scanRoots);
@@ -201,9 +201,9 @@ const selectInquiryFiles = (
                 if (numA !== numB) return numA - numB;
                 return a.rootPath.localeCompare(b.rootPath);
             });
-        resolvedFocusBookId = scopeFilter.focusBookId
-            && includedBooks.some(book => book.rootPath === scopeFilter.focusBookId)
-            ? scopeFilter.focusBookId
+        resolvedFocusBookId = scopeFilter.activeBookId
+            && includedBooks.some(book => book.rootPath === scopeFilter.activeBookId)
+            ? scopeFilter.activeBookId
             : includedBooks[0]?.rootPath;
 
         if (resolvedFocusBookId) {
@@ -252,17 +252,17 @@ const resolveCanonicalFocusLabel = (
     inquirySources: InquirySourcesSettings | undefined,
     frontmatterMappings: Record<string, string> | undefined,
     scope: InquiryScope,
-    focusBookId?: string
+    activeBookId?: string
 ): string => {
     if (scope === 'saga') return String.fromCharCode(931);
     const resolver = new InquiryCorpusResolver(vault, metadataCache, frontmatterMappings);
     const snapshot = resolver.resolve({
         scope,
-        focusBookId,
+        activeBookId,
         sources: inquirySources ?? { scanRoots: [], bookInclusion: {}, classes: [], classCounts: {}, resolvedScanRoots: [] }
     });
-    if (focusBookId) {
-        const match = snapshot.books.find(book => book.id === focusBookId);
+    if (activeBookId) {
+        const match = snapshot.books.find(book => book.id === activeBookId);
         if (match) return match.displayLabel;
     }
     return snapshot.books[0]?.displayLabel ?? '?';
@@ -287,8 +287,8 @@ export const buildCanonicalExecutionEstimate = async (
     );
     const trace = await buildInquiryEstimateTrace(runner, {
         scope: params.scope,
-        focusBookId: params.focusBookId,
-        focusLabel: params.focusLabel,
+        activeBookId: params.activeBookId,
+        scopeLabel: params.scopeLabel,
         targetSceneIds: [],
         selectionMode: 'discover',
         mode: 'flow',
@@ -332,7 +332,7 @@ export async function estimateInquiryTokens(params: {
     metadataCache: MetadataCache;
     inquirySources?: InquirySourcesSettings;
     frontmatterMappings?: Record<string, string>;
-    scopeContext?: { scope?: InquiryScope; focusBookId?: string; label?: string };
+    scopeContext?: { scope?: InquiryScope; activeBookId?: string; label?: string };
     promptOverheadTokens?: number;
     bookProfiles?: BookProfile[];
 }): Promise<InquiryTokenEstimate> {
@@ -345,7 +345,7 @@ export async function estimateInquiryTokens(params: {
         params.metadataCache,
         params.inquirySources,
         params.frontmatterMappings,
-        { scope, focusBookId: params.scopeContext?.focusBookId },
+        { scope, activeBookId: params.scopeContext?.activeBookId },
         params.bookProfiles
     );
     const blocks: InquiryEvidenceBlock[] = [];
@@ -494,8 +494,8 @@ export async function estimateInquiryTokens(params: {
                 modelId: params.modelId,
                 questionText,
                 scope,
-                focusBookId: selected.resolvedFocusBookId,
-                focusLabel: resolveCanonicalFocusLabel(
+                activeBookId: selected.resolvedFocusBookId,
+                scopeLabel: resolveCanonicalFocusLabel(
                     params.vault,
                     params.metadataCache,
                     params.inquirySources,

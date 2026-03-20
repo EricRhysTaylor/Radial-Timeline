@@ -9,6 +9,7 @@ export type InquirySeverity = 'low' | 'medium' | 'high';
 export type InquiryConfidence = 'low' | 'medium' | 'high';
 export type InquiryAiStatus = 'success' | 'degraded' | 'rejected' | 'unavailable' | 'timeout' | 'auth' | 'rate_limit';
 export type InquiryTokenUsageScope = 'full' | 'partial' | 'synthesis_only';
+export type FindingRole = 'target' | 'context';
 
 export type InquiryCitation = SourceCitation;
 
@@ -41,13 +42,13 @@ export interface InquiryFinding {
     related: string[];
     evidenceType: 'scene' | 'outline' | 'mixed';
     lens?: 'flow' | 'depth' | 'both';
-    role?: 'target' | 'context';
+    role?: FindingRole;
 }
 
 export interface InquiryResult {
     runId: string;
     scope: InquiryScope;
-    focusId: string;
+    scopeLabel: string;
     mode: InquiryLens;
     questionId: string;
     questionZone?: InquiryZone;
@@ -88,7 +89,7 @@ export interface InquiryResult {
 export interface InquiryState {
     scope: InquiryScope;
     targetSceneIds: string[];
-    focusBookId?: string;
+    activeBookId?: string;
     mode: InquiryLens;
     selectedPromptIds: Record<InquiryZone, string>;
     activeQuestionId?: string;

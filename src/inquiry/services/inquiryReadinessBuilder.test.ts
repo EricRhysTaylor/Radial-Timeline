@@ -41,7 +41,7 @@ function makeSnapshot(overrides: Partial<{
         stateKey: 'test-key',
         computedAt: Date.now(),
         scope: 'book',
-        focusBookId: 'book-1',
+        activeBookId: 'book-1',
         resolvedEngine: {
             provider: 'anthropic',
             modelId: 'claude-sonnet-4-20250514',
@@ -104,7 +104,7 @@ function makeAiSettings(overrides?: Partial<AiSettingsV1>): AiSettingsV1 {
 function makePayloadStats(overrides?: Partial<InquiryPayloadStats>): InquiryPayloadStats {
     return {
         scope: 'book',
-        focusBookId: 'book-1',
+        activeBookId: 'book-1',
         sceneTotal: 10,
         sceneSynopsisUsed: 0,
         sceneSynopsisAvailable: 0,
@@ -128,7 +128,7 @@ function makeBaseInput(overrides?: Partial<BuildReadinessUiStateInput>): BuildRe
     return {
         snapshot: makeSnapshot({}),
         scope: 'book',
-        focusLabel: 'Book A',
+        scopeLabel: 'Book A',
         aiSettings: makeAiSettings(),
         resolvedEngine: makeEngine(),
         hasCredential: true,
@@ -436,7 +436,7 @@ describe('buildRunScopeLabel', () => {
 
 describe('buildEnginePayloadSummary', () => {
     it('returns estimating text when no payload stats', () => {
-        const result = buildEnginePayloadSummary({ payloadStats: null, scope: 'book', focusLabel: 'Book A' });
+        const result = buildEnginePayloadSummary({ payloadStats: null, scope: 'book', scopeLabel: 'Book A' });
         expect(result.text).toContain('Estimating');
         expect(result.inputTokens).toBe(0);
         expect(result.tier).toBe('normal');
@@ -446,7 +446,7 @@ describe('buildEnginePayloadSummary', () => {
         const result = buildEnginePayloadSummary({
             payloadStats: makePayloadStats({ evidenceChars: 200000 }),
             scope: 'book',
-            focusLabel: 'Book A'
+            scopeLabel: 'Book A'
         });
         expect(result.text).toContain('50k');
         expect(result.text).toContain('Book');
@@ -458,7 +458,7 @@ describe('buildEnginePayloadSummary', () => {
         const result = buildEnginePayloadSummary({
             payloadStats: makePayloadStats(),
             scope: 'saga',
-            focusLabel: 'My Saga'
+            scopeLabel: 'My Saga'
         });
         expect(result.text).toContain('Saga My Saga');
     });
@@ -470,7 +470,7 @@ describe('buildAdvisoryInputKey', () => {
     it('produces stable key for identical inputs', () => {
         const params = {
             scope: 'book' as const,
-            focusLabel: 'Book A',
+            scopeLabel: 'Book A',
             provider: 'anthropic' as const,
             modelId: 'claude-sonnet-4-20250514',
             packaging: 'automatic' as const,
@@ -487,7 +487,7 @@ describe('buildAdvisoryInputKey', () => {
     it('changes when provider changes', () => {
         const base = {
             scope: 'book' as const,
-            focusLabel: 'Book A',
+            scopeLabel: 'Book A',
             provider: 'anthropic' as const,
             modelId: 'claude-sonnet-4-20250514',
             packaging: 'automatic' as const,
@@ -506,7 +506,7 @@ describe('buildAdvisoryInputKey', () => {
     it('quantizes token estimates to nearest 5000', () => {
         const base = {
             scope: 'book' as const,
-            focusLabel: 'Book A',
+            scopeLabel: 'Book A',
             provider: 'anthropic' as const,
             modelId: 'claude-sonnet-4-20250514',
             packaging: 'automatic' as const,

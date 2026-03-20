@@ -75,6 +75,7 @@ function deriveFallbackBodyLines(headline: string, anchorLine: string): string[]
 
 function buildMetaLine(finding: InquiryFinding): string {
     const parts = [
+        `Role ${formatEnumLabel(finding.role || 'context')}`,
         `Impact ${formatEnumLabel(finding.impact)}`,
         `Confidence ${formatEnumLabel(finding.assessmentConfidence)}`
     ];

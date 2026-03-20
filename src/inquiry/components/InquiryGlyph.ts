@@ -3,7 +3,7 @@ import type { InquiryConfidence, InquirySeverity, InquiryZone } from '../state';
 import { ZONE_LAYOUT } from '../zoneLayout';
 
 export interface InquiryGlyphProps {
-    focusLabel: string;
+    scopeLabel: string;
     flowValue: number;  // 0..1 normalized
     depthValue: number; // 0..1 normalized
     flowVisualValue?: number; // Optional display-only arc position for truthful zero-state stubs
@@ -225,7 +225,7 @@ export class InquiryGlyph {
     }
 
     private applyProps(props: InquiryGlyphProps): void {
-        this.labelText.textContent = props.focusLabel;
+        this.labelText.textContent = props.scopeLabel;
         this.updateLabelFontSize();
 
         const errorRing = props.errorRing ?? null;

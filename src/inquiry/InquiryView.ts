@@ -2,6 +2,7 @@ import {
     App,
     ButtonComponent,
     ItemView,
+    Menu,
     Notice,
     Platform,
     setIcon,
@@ -21,6 +22,7 @@ import {
 } from './constants';
 import {
     createDefaultInquiryState,
+    FindingRole,
     InquiryConfidence,
     InquiryFinding,
     InquiryLens,
@@ -428,6 +430,7 @@ export class InquiryView extends ItemView {
     private flowModeIconEl?: SVGSVGElement;
     private depthModeIconEl?: SVGSVGElement;
     private modeIconToggleHit?: SVGRectElement;
+    private findingsTitleEl?: SVGTextElement;
     private summaryEl?: SVGTextElement;
     private verdictEl?: SVGTextElement;
     private findingsListEl?: SVGGElement;
@@ -682,7 +685,7 @@ export class InquiryView extends ItemView {
         this.glyphAnchor = shell.glyphAnchor;
         const glyphSeed = this.resolveGlyphSeed();
         this.glyph = new InquiryGlyph(this.glyphAnchor, {
-            focusLabel: this.getFocusLabel(),
+            scopeLabel: this.getScopeLabel(),
             flowValue: glyphSeed.flowValue,
             depthValue: glyphSeed.depthValue,
             flowVisualValue: glyphSeed.flowVisualValue,
@@ -763,7 +766,7 @@ export class InquiryView extends ItemView {
             },
             onGlyphEnter: () => {
                 if (this.isInquiryGuidanceLockout()) return;
-                this.setHoverText(this.buildFocusHoverText());
+                this.setHoverText(this.buildScopeHoverText());
             },
             onGlyphLeave: () => {
                 if (this.isInquiryGuidanceLockout()) return;
@@ -1095,8 +1098,8 @@ export class InquiryView extends ItemView {
         const stats = this.buildPayloadStatsFromEntries(entryList.entries, entryList.resolvedRoots, manifestFingerprint, false);
         this._currentCorpusContext = {
             scope: this.state.scope,
-            focusBookId: stats.focusBookId,
-            focusLabel: this.getFocusLabel(),
+            activeBookId: stats.activeBookId,
+            scopeLabel: this.getScopeLabel(),
             corpus: buildRTCorpusEstimate(stats),
             manifestEntries: entryList.entries.map(entry => ({ ...entry }))
         };
@@ -1123,7 +1126,7 @@ export class InquiryView extends ItemView {
         const estimatedInputTokens = snapshot.estimate.estimatedInputTokens;
         const advisoryInputKey = buildAdvisoryInputKey({
             scope: this.state.scope,
-            focusLabel: this.getFocusLabel(),
+            scopeLabel: this.getScopeLabel(),
             provider: engine.provider,
             modelId: engine.modelId,
             packaging: readinessUi.packaging,
@@ -1140,7 +1143,7 @@ export class InquiryView extends ItemView {
 
         const advisory = computeInquiryAdvisoryContext({
             scope: this.state.scope,
-            focusLabel: this.getFocusLabel(),
+            scopeLabel: this.getScopeLabel(),
             resolvedEngine: engine,
             currentModel,
             models: BUILTIN_MODELS,
@@ -1166,9 +1169,9 @@ export class InquiryView extends ItemView {
         return fallback?.question?.trim() || null;
     }
 
-    private getCanonicalFocusBookId(): string | undefined {
+    private getCanonicalActiveBookId(): string | undefined {
         if (this.state.scope !== 'book') return undefined;
-        return this.corpus?.activeBookId ?? this.state.focusBookId ?? this.corpus?.books?.[0]?.id;
+        return this.corpus?.activeBookId ?? this.state.activeBookId ?? this.corpus?.books?.[0]?.id;
     }
 
     private getCanonicalAiSettings(): AiSettingsV1 {
@@ -1192,7 +1195,7 @@ export class InquiryView extends ItemView {
         return buildReadinessUiStatePure({
             snapshot: this.plugin.getInquiryEstimateService().getSnapshot(),
             scope: this.state.scope,
-            focusLabel: this.getFocusLabel(),
+            scopeLabel: this.getScopeLabel(),
             aiSettings,
             resolvedEngine: engine,
             hasCredential: this.getProviderAvailability(engineProvider).enabled,
@@ -1205,7 +1208,7 @@ export class InquiryView extends ItemView {
     }
 
     private buildRunScopeLabel(stats: InquiryPayloadStats, selectedSceneCount: number): string {
-        return buildRunScopeLabelPure(stats, selectedSceneCount, this.state.scope, this.getFocusLabel());
+        return buildRunScopeLabelPure(stats, selectedSceneCount, this.state.scope, this.getScopeLabel());
     }
 
     private resolveEnginePopoverState(readinessUi: InquiryReadinessUiState): InquiryEnginePopoverState {
@@ -1223,7 +1226,7 @@ export class InquiryView extends ItemView {
     private getEngineRunScopeLabel(runScopeLabel: string): string {
         if (this.state.scope !== 'book') return runScopeLabel;
         if (/^Run on \d+ scenes \(/.test(runScopeLabel)) return runScopeLabel;
-        const bookTitle = this.getFocusBookTitleForMessages()?.trim();
+        const bookTitle = this.getActiveBookTitleForMessages()?.trim();
         if (!bookTitle) return runScopeLabel;
         return runScopeLabel.replace(/^Run on Book\s+.+?\s+\(/, `Run on ${bookTitle} (`);
     }
@@ -1455,7 +1458,7 @@ export class InquiryView extends ItemView {
 
     private formatSessionScope(session: InquirySession): string {
         const scopeLabel = session.result.scope === 'saga' ? 'Saga' : 'Book';
-        const focus = session.result.focusId || '';
+        const focus = session.result.scopeLabel || '';
         return `${scopeLabel} ${focus}`.trim();
     }
 
@@ -1658,7 +1661,7 @@ export class InquiryView extends ItemView {
             this.notifyInteraction('No scenes found in current scope.');
             return;
         }
-        const scopeBookLabel = this.getFocusBookTitleForMessages() || this.getFocusBookLabel();
+        const scopeBookLabel = this.getActiveBookTitleForMessages() || this.getActiveBookLabel();
         const scopeLabel = this.state.scope === 'saga' ? 'saga' : `book "${scopeBookLabel}"`;
         const affectedScenes = await this.scanForInquiryActionItems(scenes);
         this.briefingPurgeAvailabilityKey = this.getBriefingPurgeAvailabilityKey();
@@ -1800,12 +1803,12 @@ export class InquiryView extends ItemView {
         this.clearErrorStateForAction();
         if (this.state.isRunning) return;
         this.state.scope = session.scope ?? session.result.scope;
-        this.state.focusBookId = session.focusBookId ?? this.state.focusBookId;
+        this.state.activeBookId = session.activeBookId ?? this.state.activeBookId;
         this.state.targetSceneIds = this.normalizeTargetSceneIds(session.targetSceneIds ?? this.state.targetSceneIds);
         this.applySession({
             result: session.result,
             key: session.key,
-            focusBookId: session.focusBookId,
+            activeBookId: session.activeBookId,
             targetSceneIds: session.targetSceneIds,
             scope: session.scope,
             questionZone: session.questionZone
@@ -1893,7 +1896,7 @@ export class InquiryView extends ItemView {
             );
         }
         if (cache?.lastBookId) {
-            this.state.focusBookId = cache.lastBookId;
+            this.state.activeBookId = cache.lastBookId;
             this.state.targetSceneIds = this.lastTargetSceneIdsByBookId.get(cache.lastBookId) ?? [];
         }
         if (this.targetPersistTimer) {
@@ -1908,7 +1911,7 @@ export class InquiryView extends ItemView {
         }
         this.targetPersistTimer = window.setTimeout(() => {
             const cache = {
-                lastBookId: this.state.focusBookId,
+                lastBookId: this.state.activeBookId,
                 lastTargetSceneIdsByBookId: Object.fromEntries(this.lastTargetSceneIdsByBookId)
             };
             this.plugin.settings.inquiryTargetCache = cache;
@@ -2579,8 +2582,8 @@ export class InquiryView extends ItemView {
         const result = this.state.activeResult;
         if (!result || this.state.isRunning) return { id: null, status: null };
         if (result.scope !== this.state.scope) return { id: null, status: null };
-        const focusLabel = this.getFocusLabel();
-        if (result.focusId && result.focusId !== focusLabel) return { id: null, status: null };
+        const scopeLabel = this.getScopeLabel();
+        if (result.scopeLabel && result.scopeLabel !== scopeLabel) return { id: null, status: null };
         const status = this.isErrorResult(result) ? 'error' : 'success';
         return { id: result.questionId, status };
     }
@@ -2994,7 +2997,7 @@ export class InquiryView extends ItemView {
         bg.setAttribute('ry', '22');
         findingsGroup.appendChild(bg);
 
-        createSvgText(findingsGroup, 'ert-inquiry-findings-title', 'Findings', 24, 36);
+        this.findingsTitleEl = createSvgText(findingsGroup, 'ert-inquiry-findings-title', 'Findings', 24, 36);
         this.detailsToggle = this.createIconButton(findingsGroup, width - 88, 14, 32, 'chevron-down', 'Toggle details', 'ert-inquiry-details-toggle');
         this.detailsIcon = this.detailsToggle.querySelector('.ert-inquiry-icon') as SVGUseElement;
         bindInquiryDetailsToggleEvent({
@@ -3041,6 +3044,11 @@ export class InquiryView extends ItemView {
         this.refreshEnginePanel();
     }
 
+    /** Called externally when Inquiry prompt settings change. */
+    onPromptSettingsChanged(): void {
+        this.refreshUI({ skipCorpus: true, reason: 'prompt settings changed' });
+    }
+
     private refreshUI(options?: { skipCorpus?: boolean, reason?: string }): void {
         this.perfCounters.refreshUICalls++;
         if (options?.reason) {
@@ -3071,7 +3079,7 @@ export class InquiryView extends ItemView {
         this.updateRings();
         this.updateFindingsIndicators();
         this.updateZonePrompts();
-        this.updateFocusGlyph();
+        this.updateScopeGlyph();
         void this.requestEstimateSnapshot();
     }
 
@@ -3100,6 +3108,7 @@ export class InquiryView extends ItemView {
     private refreshPanelChrome(): void {
         this.updateBriefingButtonState();
         this.refreshBriefingPanel();
+        this.updateFindingsPanel();
         this.updateGuidance();
     }
 
@@ -3109,20 +3118,20 @@ export class InquiryView extends ItemView {
         const sources = this.normalizeInquirySources(this.plugin.settings.inquirySources);
         this.corpus = this.corpusResolver.resolve({
             scope: this.state.scope,
-            focusBookId: this.state.focusBookId,
+            activeBookId: this.state.activeBookId,
             sources,
             bookProfiles: this.plugin.settings.books
         });
 
         let shouldPersist = false;
         if (this.corpus.activeBookId) {
-            if (this.state.focusBookId !== this.corpus.activeBookId) {
-                this.state.focusBookId = this.corpus.activeBookId;
+            if (this.state.activeBookId !== this.corpus.activeBookId) {
+                this.state.activeBookId = this.corpus.activeBookId;
                 shouldPersist = true;
             }
         } else {
-            if (this.state.focusBookId) {
-                this.state.focusBookId = undefined;
+            if (this.state.activeBookId) {
+                this.state.activeBookId = undefined;
                 shouldPersist = true;
             }
         }
@@ -3395,10 +3404,10 @@ export class InquiryView extends ItemView {
                 }
                 if (this.state.scope === 'book') {
                     if (event.shiftKey) {
-                        const filePath = this.getMinimapItemFilePath(item);
-                        const targetPath = filePath || item.id;
-                        if (targetPath) {
-                            void this.openSceneFromMinimap(targetPath);
+                        if (item.sceneId) {
+                            this.toggleTargetScene(item.sceneId, { announce: true });
+                        } else {
+                            this.notifyInteraction('Only scene ticks can be targeted.');
                         }
                         return;
                     }
@@ -3406,6 +3415,9 @@ export class InquiryView extends ItemView {
                     return;
                 }
                 this.drillIntoBook(item.id);
+            },
+            onTickContextMenu: (item, event) => {
+                this.handleMinimapTickContextMenu(item, event);
             },
             onTickHover: (item, label, fullLabel) => {
                 if (this.state.isRunning) return;
@@ -3435,13 +3447,13 @@ export class InquiryView extends ItemView {
         void this.refreshMinimapEmptyStates(items);
         this.renderCorpusCcStrip();
         this.applyMinimapSubsetShading(items);
-        this.minimap.updateFocus();
+        this.minimap.updateTargetStates(this.getActiveTargetSceneIds());
         this.updateMinimapPressureGauge();
     }
 
     private refreshMinimapAfterEmptyRender(): void {
         this.renderCorpusCcStrip();
-        this.minimap.updateFocus();
+        this.minimap.updateTargetStates(this.getActiveTargetSceneIds());
         this.updateMinimapPressureGauge();
         this.updatePreviewPanelPosition();
     }
@@ -3560,6 +3572,8 @@ export class InquiryView extends ItemView {
             onGlobalToggle: this.handleCorpusGlobalToggle.bind(this),
             onGroupToggle: this.handleCorpusGroupToggle.bind(this),
             onItemToggle: this.handleCorpusItemToggle.bind(this),
+            onItemShiftAction: this.handleCorpusItemShiftAction.bind(this),
+            onItemContextMenu: this.handleCorpusItemContextMenu.bind(this),
             openEntryPath: (filePath: string) => {
                 if (this.state.isRunning) return;
                 const file = this.app.vault.getAbstractFileByPath(filePath);
@@ -3585,11 +3599,12 @@ export class InquiryView extends ItemView {
     }
 
     private getCorpusCcScopeLabel(): string {
-        const focusLabel = this.getFocusLabel();
+        const scopeLabel = this.getScopeLabel();
+        const targetLabel = this.getTargetSceneStatusLabel();
         if (this.state.scope === 'saga') {
-            return `Corpus · Saga ${focusLabel}`;
+            return `Corpus · Saga ${scopeLabel} · ${targetLabel}`;
         }
-        return `Corpus · Book ${focusLabel}`;
+        return `Corpus · Book ${scopeLabel} · ${targetLabel}`;
     }
 
     private getCorpusGroupBaseClass(className: string): string {
@@ -3774,6 +3789,125 @@ export class InquiryView extends ItemView {
         }
         this.corpusWarningActive = false;
         this.refreshUI();
+    }
+
+    private setCorpusItemInclusion(entryKey: string, mode: SceneInclusion): void {
+        const entry = this.ccEntries.find(candidate => candidate.entryKey === entryKey);
+        if (!entry) return;
+        const sources = this.normalizeInquirySources(this.plugin.settings.inquirySources);
+        const configMap = new Map((sources.classes || []).map(config => [config.className, config]));
+        const groupKey = this.getCorpusGroupKey(entry.classKey, entry.scope);
+        const classMode = this.getCorpusGroupEffectiveMode(groupKey, configMap);
+        const normalizedMode = this.normalizeContributionMode(mode, this.getCorpusGroupBaseClass(groupKey));
+        if (normalizedMode === classMode) {
+            this.corpusService.deleteItemOverrideByKey(entryKey);
+        } else {
+            this.corpusService.setItemOverrideByKey(entryKey, normalizedMode);
+        }
+        this.corpusWarningActive = false;
+        this.refreshUI();
+    }
+
+    private toggleTargetScene(sceneId: string, options?: { announce?: boolean }): void {
+        if (this.state.scope !== 'book') {
+            if (options?.announce) {
+                this.notifyInteraction('Target Scenes are available only in Book scope.');
+            }
+            return;
+        }
+        const normalizedId = String(sceneId || '').trim();
+        if (!normalizedId) return;
+
+        const existing = this.normalizeTargetSceneIds(this.state.targetSceneIds);
+        const isTarget = existing.includes(normalizedId);
+        const next = isTarget
+            ? existing.filter(candidate => candidate !== normalizedId)
+            : [...existing, normalizedId];
+        this.state.targetSceneIds = next;
+
+        const activeBookId = this.corpus?.activeBookId ?? this.state.activeBookId;
+        if (activeBookId) {
+            this.lastTargetSceneIdsByBookId.set(activeBookId, [...next]);
+        }
+
+        this.scheduleTargetPersist();
+        this.refreshUI();
+
+        if (options?.announce) {
+            this.notifyInteraction(isTarget ? 'Removed from Target Scenes.' : 'Added to Target Scenes.');
+        }
+    }
+
+    private handleCorpusItemShiftAction(entryKey: string, filePath: string, event: MouseEvent): void {
+        if (this.state.isRunning) return;
+        event.preventDefault();
+        const entry = this.ccEntries.find(candidate => candidate.entryKey === entryKey);
+        if (!entry) return;
+        if (entry.classKey === 'scene' && entry.sceneId) {
+            this.toggleTargetScene(entry.sceneId, { announce: true });
+            return;
+        }
+        if (filePath) {
+            const file = this.app.vault.getAbstractFileByPath(filePath);
+            if (file && this.isTFile(file)) {
+                void openOrRevealFile(this.app, file);
+            }
+        }
+    }
+
+    private showSceneEntryMenu(options: {
+        entryKey: string;
+        filePath: string;
+        sceneId?: string;
+        isTarget: boolean;
+        event: MouseEvent;
+    }): void {
+        const menu = new Menu();
+        menu.addItem(item => {
+            item.setTitle(options.sceneId ? 'Open Scene' : 'Open Note');
+            item.onClick(() => {
+                const file = this.app.vault.getAbstractFileByPath(options.filePath);
+                if (file && this.isTFile(file)) {
+                    void openOrRevealFile(this.app, file);
+                }
+            });
+        });
+        menu.addSeparator();
+        ([
+            ['excluded', 'Set Inclusion: Exclude'],
+            ['summary', 'Set Inclusion: Summary'],
+            ['full', 'Set Inclusion: Full Scene']
+        ] as const).forEach(([mode, title]) => {
+            menu.addItem(item => {
+                item.setTitle(title);
+                item.onClick(() => this.setCorpusItemInclusion(options.entryKey, mode));
+            });
+        });
+        menu.addSeparator();
+        menu.addItem(item => {
+            const bookOnly = this.state.scope !== 'book';
+            item.setTitle(options.isTarget ? 'Remove from Target Scenes' : 'Add to Target Scenes');
+            if (bookOnly || !options.sceneId) {
+                item.setDisabled(true);
+                return;
+            }
+            item.onClick(() => this.toggleTargetScene(options.sceneId!, { announce: true }));
+        });
+        menu.showAtMouseEvent(options.event);
+    }
+
+    private handleCorpusItemContextMenu(entryKey: string, filePath: string, event: MouseEvent): void {
+        if (this.state.isRunning) return;
+        event.preventDefault();
+        const entry = this.ccEntries.find(candidate => candidate.entryKey === entryKey);
+        if (!entry) return;
+        this.showSceneEntryMenu({
+            entryKey,
+            filePath,
+            sceneId: entry.classKey === 'scene' ? entry.sceneId : undefined,
+            isTarget: entry.isTarget,
+            event
+        });
     }
 
     private handleCorpusGlobalToggle(): void {
@@ -4126,6 +4260,7 @@ export class InquiryView extends ItemView {
                 classKey: entry.class,
                 scope: entry.scope,
                 mode: this.normalizeContributionMode(entry.mode ?? 'excluded', entry.class),
+                isTarget: entry.isTarget,
                 sortLabel: label
             };
         });
@@ -4209,7 +4344,8 @@ export class InquiryView extends ItemView {
                     filePath,
                     className: 'outline',
                     classKey: 'outline',
-                    mode: this.normalizeContributionMode(outlineConfig.bookScope, 'outline')
+                    mode: this.normalizeContributionMode(outlineConfig.bookScope, 'outline'),
+                    isTarget: false
                 };
             }));
         }
@@ -4224,7 +4360,8 @@ export class InquiryView extends ItemView {
                 filePath,
                 className: 'outline',
                 classKey: 'outline',
-                mode: this.normalizeContributionMode(outlineConfig.sagaScope, 'outline')
+                mode: this.normalizeContributionMode(outlineConfig.sagaScope, 'outline'),
+                isTarget: false
             });
         }
 
@@ -4371,7 +4508,8 @@ export class InquiryView extends ItemView {
             filePath,
             className: '',
             classKey: '',
-            mode: 'full'
+            mode: 'full',
+            isTarget: false
         });
     }
 
@@ -4424,13 +4562,13 @@ export class InquiryView extends ItemView {
         return !!file && file instanceof TFile;
     }
 
-    private updateFocusGlyph(): void {
-        this.glyph?.update({ focusLabel: this.getFocusLabel() });
+    private updateScopeGlyph(): void {
+        this.glyph?.update({ scopeLabel: this.getScopeLabel() });
         this.glyph?.root.classList.remove('is-expanded');
-        this.updateFocusGlyphTooltip();
+        this.updateScopeGlyphTooltip();
     }
 
-    private updateFocusGlyphTooltip(): void {
+    private updateScopeGlyphTooltip(): void {
         if (!this.glyphHit) return;
         this.glyphHit.classList.toggle('is-tooltip-only', this.state.scope === 'book');
         if (this.state.scope !== 'book') {
@@ -4438,7 +4576,7 @@ export class InquiryView extends ItemView {
             this.glyphHit.removeAttribute('data-rt-tip-placement');
             return;
         }
-        const bookTitle = this.getFocusBookTitleForMessages() || this.getFocusBookLabel();
+        const bookTitle = this.getActiveBookTitleForMessages() || this.getActiveBookLabel();
         const tooltipText = bookTitle?.trim();
         if (!tooltipText) {
             this.glyphHit.removeAttribute('data-rt-tip');
@@ -4456,7 +4594,7 @@ export class InquiryView extends ItemView {
         const ringOverrideColor = this.isInquiryRunDisabled() ? this.getInquiryAlertColor() : undefined;
 
         this.glyph?.update({
-            focusLabel: this.getFocusLabel(),
+            scopeLabel: this.getScopeLabel(),
             flowValue: glyphSeed.flowValue,
             depthValue: glyphSeed.depthValue,
             flowVisualValue: glyphSeed.flowVisualValue,
@@ -5014,6 +5152,9 @@ export class InquiryView extends ItemView {
         this.clearErrorStateForAction();
         if (!scope || scope === this.state.scope) return;
         this.state.scope = scope;
+        if (scope === 'saga' && this.state.targetSceneIds.length) {
+            this.notifyInteraction('Target Scenes are book-only. They remain saved and become inactive in Saga scope.');
+        }
         if (this.state.activeResult) {
             this.clearActiveResultState();
             this.unlockPromptPreview();
@@ -5151,11 +5292,11 @@ export class InquiryView extends ItemView {
         this.state.activeZone = question.zone;
         this.updateActiveZoneStyling();
 
-        const focusLabel = this.getFocusLabel();
-        const focusId = this.getFocusId();
+        const scopeLabel = this.getScopeLabel();
+        const scopeKey = this.getScopeKey();
         const targetSceneIds = this.getActiveTargetSceneIds();
         const selectionMode = this.getSelectionMode(targetSceneIds);
-        const focusBookId = this.state.scope === 'saga' ? this.state.focusBookId : this.state.focusBookId;
+        const activeBookId = this.state.scope === 'saga' ? this.state.activeBookId : this.state.activeBookId;
 
         const engineSelection = this.resolveEngineSelectionForRun();
         const manifest = this.buildCorpusManifest(question.id, {
@@ -5169,7 +5310,7 @@ export class InquiryView extends ItemView {
         const baseKey = this.sessionStore.buildBaseKey({
             questionId: question.id,
             scope: this.state.scope,
-            focusId,
+            scopeKey,
             targetSceneIds
         });
         const key = this.sessionStore.buildKey(baseKey, manifest.fingerprint);
@@ -5232,10 +5373,10 @@ export class InquiryView extends ItemView {
         const submittedAt = new Date();
         const runnerInput = {
             scope: this.state.scope,
-            focusLabel,
+            scopeLabel,
             targetSceneIds,
             selectionMode,
-            focusBookId: this.state.scope === 'saga' ? this.state.focusBookId : this.state.focusBookId,
+            activeBookId: this.state.scope === 'saga' ? this.state.activeBookId : this.state.activeBookId,
             mode: this.state.mode,
             questionId: question.id,
             questionText: question.question,
@@ -5269,7 +5410,7 @@ export class InquiryView extends ItemView {
                     detail: 'Provider response received. Saving the result.'
                 });
             } catch (error) {
-                result = this.buildErrorFallback(question, focusLabel, manifest.fingerprint, error);
+                result = this.buildErrorFallback(question, scopeLabel, manifest.fingerprint, error);
                 const message = error instanceof Error ? error.message : String(error);
                 runTrace = await this.buildFallbackTrace(runnerInput, `Runner exception: ${message}`);
             }
@@ -5306,7 +5447,7 @@ export class InquiryView extends ItemView {
                 createdAt: Date.now(),
                 lastAccessed: Date.now(),
                 status: this.resolveSessionStatusFromResult(result),
-                focusBookId,
+                activeBookId,
                 targetSceneIds,
                 scope: this.state.scope,
                 questionZone: question.zone
@@ -5350,7 +5491,7 @@ export class InquiryView extends ItemView {
             this.applySession({
                 result,
                 key: session.key,
-                focusBookId: session.focusBookId,
+                activeBookId: session.activeBookId,
                 targetSceneIds: session.targetSceneIds,
                 scope: session.scope,
                 questionZone: session.questionZone
@@ -5398,7 +5539,7 @@ export class InquiryView extends ItemView {
 
         const plan = await this.promptOmnibusPlan({
             initialScope: this.state.scope,
-            bookLabel: this.getFocusBookLabel(),
+            bookLabel: this.getActiveBookLabel(),
             questions,
             providerSummary: providerPlan.summary,
             providerLabel: providerPlan.label,
@@ -5476,11 +5617,11 @@ export class InquiryView extends ItemView {
         totalForProgress?: number
     ): Promise<void> {
         const total = totalForProgress ?? questions.length;
-        const focusLabel = this.getFocusLabel();
-        const focusId = this.getFocusId();
+        const scopeLabel = this.getScopeLabel();
+        const scopeKey = this.getScopeKey();
         const targetSceneIds = this.getActiveTargetSceneIds();
         const selectionMode = this.getSelectionMode(targetSceneIds);
-        const focusBookId = this.state.focusBookId ?? this.corpus?.books?.[0]?.id;
+        const activeBookId = this.state.activeBookId ?? this.corpus?.books?.[0]?.id;
         const contextRequired = this.isContextRequiredForQuestions(questions);
         const manifest = this.buildCorpusManifest('omnibus', {
             modelId: providerChoice.modelId,
@@ -5494,10 +5635,10 @@ export class InquiryView extends ItemView {
 
         const omnibusInput: InquiryOmnibusInput = {
             scope: this.state.scope,
-            focusLabel,
+            scopeLabel,
             targetSceneIds,
             selectionMode,
-            focusBookId,
+            activeBookId,
             mode: this.state.mode,
             questions: questions.map(question => ({
                 id: question.id,
@@ -5551,10 +5692,10 @@ export class InquiryView extends ItemView {
                 });
                 const trace = traceForLogs ? this.cloneTrace(traceForLogs) : await this.buildFallbackTrace({
                     scope: this.state.scope,
-                    focusLabel,
+                    scopeLabel,
                     targetSceneIds,
                     selectionMode,
-                    focusBookId,
+                    activeBookId,
                     mode: this.state.mode,
                     questionId: question.id,
                     questionText: question.question,
@@ -5569,8 +5710,8 @@ export class InquiryView extends ItemView {
                     result,
                     trace,
                     manifest: questionManifest,
-                    focusId,
-                    focusBookId,
+                    scopeKey,
+                    activeBookId,
                     targetSceneIds,
                     submittedAt,
                     completedAt
@@ -5587,7 +5728,7 @@ export class InquiryView extends ItemView {
             new Notice(`Inquiry omnibus failed: ${message}`);
         } finally {
             const indexPath = (createIndex && briefPaths.length > 1)
-                ? await this.saveOmnibusIndexNote(briefPaths, focusLabel)
+                ? await this.saveOmnibusIndexNote(briefPaths, scopeLabel)
                 : undefined;
             const allQuestionIds = this.getOmnibusQuestions().map(q => q.id);
             const isComplete = completedIds.length >= questions.length;
@@ -5610,7 +5751,7 @@ export class InquiryView extends ItemView {
                 this.applySession({
                     result: lastResult,
                     key: lastSession.key,
-                    focusBookId: lastSession.focusBookId,
+                    activeBookId: lastSession.activeBookId,
                     targetSceneIds: lastSession.targetSceneIds,
                     scope: lastSession.scope,
                     questionZone: lastSession.questionZone
@@ -5637,11 +5778,11 @@ export class InquiryView extends ItemView {
         totalForProgress?: number
     ): Promise<void> {
         const total = totalForProgress ?? questions.length;
-        const focusLabel = this.getFocusLabel();
-        const focusId = this.getFocusId();
+        const scopeLabel = this.getScopeLabel();
+        const scopeKey = this.getScopeKey();
         const targetSceneIds = this.getActiveTargetSceneIds();
         const selectionMode = this.getSelectionMode(targetSceneIds);
-        const focusBookId = this.state.focusBookId ?? this.corpus?.books?.[0]?.id;
+        const activeBookId = this.state.activeBookId ?? this.corpus?.books?.[0]?.id;
         const briefPaths: string[] = [];
         const completedIds: string[] = [];
         let lastSession: InquirySession | null = null;
@@ -5678,10 +5819,10 @@ export class InquiryView extends ItemView {
                 }
                 const runnerInput: InquiryRunnerInput = {
                     scope: this.state.scope,
-                    focusLabel,
+                    scopeLabel,
                     targetSceneIds,
                     selectionMode,
-                    focusBookId,
+                    activeBookId,
                     mode: this.state.mode,
                     questionId: question.id,
                     questionText: question.question,
@@ -5705,7 +5846,7 @@ export class InquiryView extends ItemView {
                         modal.setAiAdvancedContext(getLastAiAdvancedContext(this.plugin, 'InquiryMode'));
                     }
                 } catch (error) {
-                    result = this.buildErrorFallback(question, focusLabel, manifest.fingerprint, error);
+                    result = this.buildErrorFallback(question, scopeLabel, manifest.fingerprint, error);
                     const message = error instanceof Error ? error.message : String(error);
                     trace = await this.buildFallbackTrace(runnerInput, `Runner exception: ${message}`);
                 }
@@ -5718,8 +5859,8 @@ export class InquiryView extends ItemView {
                     result,
                     trace,
                     manifest,
-                    focusId,
-                    focusBookId,
+                    scopeKey,
+                    activeBookId,
                     targetSceneIds,
                     submittedAt,
                     completedAt
@@ -5733,7 +5874,7 @@ export class InquiryView extends ItemView {
             }
         } finally {
             const indexPath = (createIndex && briefPaths.length > 1)
-                ? await this.saveOmnibusIndexNote(briefPaths, focusLabel)
+                ? await this.saveOmnibusIndexNote(briefPaths, scopeLabel)
                 : undefined;
             const allQuestionIds = this.getOmnibusQuestions().map(q => q.id);
             const isComplete = !aborted && completedIds.length >= questions.length;
@@ -5756,7 +5897,7 @@ export class InquiryView extends ItemView {
                 this.applySession({
                     result: lastResult,
                     key: lastSession.key,
-                    focusBookId: lastSession.focusBookId,
+                    activeBookId: lastSession.activeBookId,
                     targetSceneIds: lastSession.targetSceneIds,
                     scope: lastSession.scope,
                     questionZone: lastSession.questionZone
@@ -5781,8 +5922,8 @@ export class InquiryView extends ItemView {
         result: InquiryResult;
         trace: InquiryRunTrace;
         manifest: CorpusManifest;
-        focusId: string;
-        focusBookId?: string;
+        scopeKey: string;
+        activeBookId?: string;
         targetSceneIds: string[];
         submittedAt: Date;
         completedAt: Date;
@@ -5809,7 +5950,7 @@ export class InquiryView extends ItemView {
         const baseKey = this.sessionStore.buildBaseKey({
             questionId: normalized.questionId,
             scope: normalized.scope,
-            focusId: options.focusId,
+            scopeKey: options.scopeKey,
             targetSceneIds: options.targetSceneIds
         });
         const key = this.sessionStore.buildKey(baseKey, options.manifest.fingerprint);
@@ -5821,7 +5962,7 @@ export class InquiryView extends ItemView {
             createdAt: Date.now(),
             lastAccessed: Date.now(),
             status: this.resolveSessionStatusFromResult(normalized),
-            focusBookId: options.focusBookId,
+            activeBookId: options.activeBookId,
             targetSceneIds: options.targetSceneIds,
             scope: normalized.scope,
             questionZone: options.question.zone
@@ -5858,12 +5999,12 @@ export class InquiryView extends ItemView {
         };
     }
 
-    private async saveOmnibusIndexNote(briefPaths: string[], focusLabel: string): Promise<string | null> {
+    private async saveOmnibusIndexNote(briefPaths: string[], scopeLabel: string): Promise<string | null> {
         const folder = await ensureInquiryArtifactFolder(this.app, this.plugin.settings);
         if (!folder) return null;
         const timestamp = this.formatInquiryBriefTimestamp(new Date());
-        const scopeLabel = this.state.scope === 'saga' ? 'Saga' : `Book ${focusLabel}`;
-        const title = `Inquiry Omnibus — ${scopeLabel} ${timestamp}`;
+        const scopeTitle = this.state.scope === 'saga' ? 'Saga' : `Book ${scopeLabel}`;
+        const title = `Inquiry Omnibus — ${scopeTitle} ${timestamp}`;
         const filePath = this.getAvailableArtifactPath(folder.path, title);
         const links = briefPaths
             .map(path => path.split('/').pop())
@@ -6119,7 +6260,7 @@ export class InquiryView extends ItemView {
         session: {
             result: InquiryResult;
             key?: string;
-            focusBookId?: string;
+            activeBookId?: string;
             targetSceneIds?: string[];
             scope?: InquiryScope;
             questionZone?: InquiryZone;
@@ -6138,8 +6279,8 @@ export class InquiryView extends ItemView {
                 this.state.selectedPromptIds[resolvedZone] = normalized.questionId;
             }
         }
-        if (session.focusBookId !== undefined) {
-            this.state.focusBookId = session.focusBookId;
+        if (session.activeBookId !== undefined) {
+            this.state.activeBookId = session.activeBookId;
         }
         if (session.targetSceneIds !== undefined) {
             this.state.targetSceneIds = this.normalizeTargetSceneIds(session.targetSceneIds);
@@ -6155,7 +6296,7 @@ export class InquiryView extends ItemView {
         } else {
             this.showResultsPreview(normalized);
         }
-        this.minimap.updateFocus();
+        this.minimap.updateTargetStates(this.getActiveTargetSceneIds());
         this.refreshUI({ skipCorpus: true });
     }
 
@@ -6193,6 +6334,11 @@ export class InquiryView extends ItemView {
         const findings = result.findings.map(finding => {
             const legacy = finding as InquiryFinding & { severity?: InquirySeverity; confidence?: InquiryConfidence };
             const normalizedRefId = this.normalizeResultRefId(legacy.refId);
+            const role: InquiryFinding['role'] = legacy.role === 'target'
+                ? 'target'
+                : legacy.role === 'context'
+                    ? 'context'
+                    : undefined;
             return {
                 refId: normalizedRefId,
                 kind: legacy.kind,
@@ -6203,7 +6349,8 @@ export class InquiryView extends ItemView {
                 bullets: legacy.bullets,
                 related: legacy.related,
                 evidenceType: legacy.evidenceType,
-                lens: legacy.lens
+                lens: legacy.lens,
+                role
             };
         });
         const normalized: InquiryResult = {
@@ -6337,7 +6484,7 @@ export class InquiryView extends ItemView {
         if (!this.corpus) return false;
 
         const briefTitle = this.formatInquiryBriefTitle(normalized);
-        const notesByMaterial = this.buildInquiryActionNotes(normalized, briefTitle, session.focusBookId);
+        const notesByMaterial = this.buildInquiryActionNotes(normalized, briefTitle, session.activeBookId);
         if (!notesByMaterial.size) return false;
 
         const defaultField = DEFAULT_SETTINGS.inquiryActionNotesTargetField || 'Pending Edits';
@@ -6371,7 +6518,7 @@ export class InquiryView extends ItemView {
     private buildInquiryActionNotes(
         result: InquiryResult,
         briefTitle: string,
-        focusBookId?: string
+        activeBookId?: string
     ): Map<string, string[]> {
         const notesByPath = new Map<string, Set<string>>();
         const addNote = (path: string, note: string) => {
@@ -6398,7 +6545,7 @@ export class InquiryView extends ItemView {
             });
         }
 
-        const outlinePath = this.resolveBookOutlinePath(focusBookId);
+        const outlinePath = this.resolveBookOutlinePath(activeBookId);
         const minimumRank = this.getImpactRank('medium');
         const handledScenes = new Set<string>();
 
@@ -6434,9 +6581,9 @@ export class InquiryView extends ItemView {
         return notesByMaterial;
     }
 
-    private resolveBookOutlinePath(focusBookId?: string): string | null {
+    private resolveBookOutlinePath(activeBookId?: string): string | null {
         if (!this.corpus?.bookResolved || !this.corpus.books.length) return null;
-        const resolvedBookId = focusBookId ?? this.corpus.activeBookId;
+        const resolvedBookId = activeBookId ?? this.corpus.activeBookId;
         if (!resolvedBookId) return null;
         const book = this.corpus.books.find(entry => entry.id === resolvedBookId) ?? this.corpus.books[0];
         if (!book) return null;
@@ -6653,24 +6800,24 @@ export class InquiryView extends ItemView {
             this.handleEmptyCorpusRun();
             return;
         }
-        const focusLabel = this.getFocusLabel();
-        const focusId = this.getFocusId();
+        const scopeLabel = this.getScopeLabel();
+        const scopeKey = this.getScopeKey();
         const targetSceneIds = this.getActiveTargetSceneIds();
         const selectionMode = this.getSelectionMode(targetSceneIds);
         const baseKey = this.sessionStore.buildBaseKey({
             questionId: selectedPrompt.id,
             scope: this.state.scope,
-            focusId,
+            scopeKey,
             targetSceneIds
         });
         const key = this.sessionStore.buildKey(baseKey, manifest.fingerprint);
-        const focusBookId = this.state.scope === 'saga' ? this.state.focusBookId : this.state.focusBookId;
+        const activeBookId = this.state.scope === 'saga' ? this.state.activeBookId : this.state.activeBookId;
         const runnerInput = {
             scope: this.state.scope,
-            focusLabel,
+            scopeLabel,
             targetSceneIds,
             selectionMode,
-            focusBookId: this.state.scope === 'saga' ? this.state.focusBookId : this.state.focusBookId,
+            activeBookId: this.state.scope === 'saga' ? this.state.activeBookId : this.state.activeBookId,
             mode: this.state.mode,
             questionId: selectedPrompt.id,
             questionText: selectedPrompt.question,
@@ -6690,7 +6837,7 @@ export class InquiryView extends ItemView {
         this.apiSimulationTimer = window.setTimeout(async () => {
             this.apiSimulationTimer = undefined;
             const completedAt = new Date();
-            let result = this.buildSimulationResult(selectedPrompt, focusLabel, manifest.fingerprint);
+            let result = this.buildSimulationResult(selectedPrompt, scopeLabel, manifest.fingerprint);
             result.submittedAt = submittedAt.toISOString();
             result.completedAt = completedAt.toISOString();
             result.roundTripMs = completedAt.getTime() - submittedAt.getTime();
@@ -6716,7 +6863,7 @@ export class InquiryView extends ItemView {
                 createdAt: Date.now(),
                 lastAccessed: Date.now(),
                 status: 'simulated',
-                focusBookId,
+                activeBookId,
                 targetSceneIds,
                 scope: this.state.scope,
                 questionZone: selectedPrompt.zone
@@ -6730,7 +6877,7 @@ export class InquiryView extends ItemView {
             this.applySession({
                 result,
                 key: session.key,
-                focusBookId: session.focusBookId,
+                activeBookId: session.activeBookId,
                 targetSceneIds: session.targetSceneIds,
                 scope: session.scope,
                 questionZone: session.questionZone
@@ -6749,7 +6896,7 @@ export class InquiryView extends ItemView {
 
     private buildErrorFallback(
         question: InquiryQuestion,
-        focusLabel: string,
+        scopeLabel: string,
         fingerprint: string,
         error: unknown
     ): InquiryResult {
@@ -6757,7 +6904,7 @@ export class InquiryView extends ItemView {
         return {
             runId: `run-${Date.now()}`,
             scope: this.state.scope,
-            focusId: focusLabel,
+            scopeLabel,
             mode: this.state.mode,
             questionId: question.id,
             questionZone: question.zone,
@@ -6773,7 +6920,7 @@ export class InquiryView extends ItemView {
             aiStatus: 'unavailable',
             aiReason: 'exception',
             findings: [{
-                refId: focusLabel,
+                refId: scopeLabel,
                 kind: 'error',
                 status: 'unclear',
                 impact: 'high',
@@ -6788,11 +6935,11 @@ export class InquiryView extends ItemView {
         };
     }
 
-    private buildSimulationResult(question: InquiryQuestion, focusLabel: string, fingerprint: string): InquiryResult {
+    private buildSimulationResult(question: InquiryQuestion, scopeLabel: string, fingerprint: string): InquiryResult {
         return {
             runId: `run-${Date.now()}`,
             scope: this.state.scope,
-            focusId: focusLabel,
+            scopeLabel,
             mode: this.state.mode,
             questionId: question.id,
             questionZone: question.zone,
@@ -6830,7 +6977,7 @@ export class InquiryView extends ItemView {
             applyOverrides?: boolean;
         }
     ): { entries: CorpusManifestEntry[]; resolvedRoots: string[] } {
-        const focusBookId = this.getCanonicalFocusBookId();
+        const activeBookId = this.getCanonicalActiveBookId();
         const sources = this.normalizeInquirySources(this.plugin.settings.inquirySources);
         const entries: CorpusManifestEntry[] = [];
         const now = Date.now();
@@ -6867,6 +7014,7 @@ export class InquiryView extends ItemView {
             return resolvedVaultRoots.some(root => !root || path === root || path.startsWith(`${root}/`));
         };
 
+        const targetSceneIds = new Set(this.getActiveTargetSceneIds());
         const files = this.app.vault.getMarkdownFiles();
         files.forEach(file => {
             if (!inRoots(file.path)) return;
@@ -6957,9 +7105,12 @@ export class InquiryView extends ItemView {
                     mode = itemOverride ?? classOverride ?? mode;
                     mode = this.normalizeContributionMode(mode, className);
                 }
+                const isTarget = !!sceneId && targetSceneIds.has(sceneId);
+                if (isTarget) {
+                    mode = 'full';
+                }
                 if (!includeInactive && !this.isModeActive(mode)) return;
                 const inclusionMode = this.normalizeEvidenceMode(mode);
-                const targetSceneIds = new Set(this.getActiveTargetSceneIds());
 
                 entries.push({
                     path: file.path,
@@ -6967,7 +7118,7 @@ export class InquiryView extends ItemView {
                     mtime: file.stat.mtime ?? now,
                     class: className,
                     mode: inclusionMode,
-                    isTarget: !!sceneId && targetSceneIds.has(sceneId)
+                    isTarget
                 });
             });
         });
@@ -6976,7 +7127,7 @@ export class InquiryView extends ItemView {
             entries: scopeEntriesToActiveInquiryTarget({
                 entries,
                 scope: this.state.scope,
-                focusBookId
+                activeBookId
             }),
             resolvedRoots
         };
@@ -6996,11 +7147,10 @@ export class InquiryView extends ItemView {
             includeInactive: false,
             applyOverrides
         });
-        const targetSceneIds = new Set(this.getActiveTargetSceneIds());
         const entries = entryResult.entries.map(entry => ({
             ...entry,
             mode: entry.mode ?? 'excluded',
-            isTarget: entry.class === 'scene' && !!entry.sceneId && targetSceneIds.has(entry.sceneId)
+            isTarget: entry.class === 'scene' && !!entry.sceneId && entry.isTarget
         }));
         const resolvedRoots = entryResult.resolvedRoots;
 
@@ -7086,7 +7236,7 @@ export class InquiryView extends ItemView {
         const books = this.getNavigationBooks();
         const book = books[index - 1];
         if (!book) return;
-        this.state.focusBookId = book.id;
+        this.state.activeBookId = book.id;
         if (this.state.scope === 'book') {
             this.state.targetSceneIds = this.lastTargetSceneIdsByBookId.get(book.id) ?? [];
         }
@@ -7123,10 +7273,29 @@ export class InquiryView extends ItemView {
         await this.openActiveBrief(anchorId);
     }
 
+    private handleMinimapTickContextMenu(item: InquiryCorpusItem, event: MouseEvent): void {
+        if (this.state.isRunning) return;
+        event.preventDefault();
+        if (this.state.scope !== 'book') {
+            return;
+        }
+        const filePath = this.getMinimapItemFilePath(item);
+        if (!filePath) return;
+        const entryKey = this.getCorpusItemKey('scene', filePath, undefined, item.sceneId);
+        const isTarget = !!item.sceneId && this.getActiveTargetSceneIds().includes(item.sceneId);
+        this.showSceneEntryMenu({
+            entryKey,
+            filePath,
+            sceneId: item.sceneId,
+            isTarget,
+            event
+        });
+    }
+
     private drillIntoBook(bookId: string): void {
         if (!bookId) return;
         const wasScope = this.state.scope;
-        this.state.focusBookId = bookId;
+        this.state.activeBookId = bookId;
         this.scheduleTargetPersist();
         if (wasScope === 'saga') {
             this.handleScopeChange('book');
@@ -7162,45 +7331,45 @@ export class InquiryView extends ItemView {
 
     private getNavigationBookIndex(books: InquiryBookItem[]): number {
         if (!books.length) return 0;
-        const focusBookId = this.state.focusBookId ?? this.corpus?.activeBookId;
-        const index = focusBookId ? books.findIndex(book => book.id === focusBookId) : -1;
+        const activeBookId = this.state.activeBookId ?? this.corpus?.activeBookId;
+        const index = activeBookId ? books.findIndex(book => book.id === activeBookId) : -1;
         return index >= 0 ? index : 0;
     }
 
-    private getFocusBookLabel(): string {
+    private getActiveBookLabel(): string {
         if (!this.corpus?.bookResolved) return '?';
         const books = this.corpus?.books ?? [];
-        if (this.state.focusBookId) {
-            const match = books.find(book => book.id === this.state.focusBookId);
+        if (this.state.activeBookId) {
+            const match = books.find(book => book.id === this.state.activeBookId);
             if (match) return match.displayLabel;
         }
         return books[0]?.displayLabel ?? '?';
     }
 
-    private getFocusBookTitleForMessages(): string | null {
+    private getActiveBookTitleForMessages(): string | null {
         if (!this.corpus?.bookResolved) return null;
-        const focusBookId = this.state.focusBookId ?? this.corpus?.activeBookId;
-        return this.getBookTitleForId(focusBookId);
+        const activeBookId = this.state.activeBookId ?? this.corpus?.activeBookId;
+        return this.getBookTitleForId(activeBookId);
     }
 
     private getBookTitleForId(bookId: string | undefined): string | null {
         if (!bookId) return null;
-        const normalizedFocus = normalizePath(bookId);
-        if (!normalizedFocus) return null;
+        const normalizedBookId = normalizePath(bookId);
+        if (!normalizedBookId) return null;
         const match = (this.plugin.settings.books || []).find(book =>
-            normalizePath((book.sourceFolder || '').trim()) === normalizedFocus
+            normalizePath((book.sourceFolder || '').trim()) === normalizedBookId
         );
         const title = match?.title?.trim();
         return title && title.length > 0 ? title : null;
     }
 
-    private getFocusLabel(): string {
+    private getScopeLabel(): string {
         if (this.guidanceState === 'not-configured') return '?';
         if (this.guidanceState === 'no-scenes') return '?';
         if (this.state.scope === 'saga') {
             return String.fromCharCode(931);
         }
-        return this.getFocusBookLabel();
+        return this.getActiveBookLabel();
     }
 
     private getActiveTargetSceneIds(): string[] {
@@ -7211,23 +7380,42 @@ export class InquiryView extends ItemView {
         return targetSceneIds.length > 0 ? 'focused' : 'discover';
     }
 
-    private getFocusId(): string {
+    private getTargetSceneStatusLabel(): string {
+        const activeTargetCount = this.getActiveTargetSceneIds().length;
+        const storedTargetCount = this.state.targetSceneIds.length;
+        const count = this.state.scope === 'book' ? activeTargetCount : storedTargetCount;
+        if (!count) {
+            return this.state.scope === 'saga'
+                ? 'Discover · Target Scenes available only in Book scope'
+                : 'Discover';
+        }
+        const noun = count === 1 ? 'Target Scene' : 'Target Scenes';
+        if (this.state.scope === 'saga') {
+            return `${count} ${noun} saved · Book-only`;
+        }
+        return `${count} ${noun}`;
+    }
+
+    private getScopeKey(): string {
         if (this.state.scope === 'saga') return 'saga';
-        if (this.state.focusBookId) return this.state.focusBookId;
+        if (this.state.activeBookId) return this.state.activeBookId;
         return this.corpus?.activeBookId ?? 'unresolved';
     }
 
-    private buildFocusHoverText(): string {
-        const label = this.getFocusLabel();
-        const scopeLabel = this.state.scope === 'saga' ? 'Saga focus' : 'Book focus';
+    private buildScopeHoverText(): string {
+        const label = this.getScopeLabel();
+        const scopeLabel = this.state.scope === 'saga' ? 'Saga scope' : 'Book scope';
         if (this.state.activeResult) {
-            return `${scopeLabel}: ${label}.`;
+            const targetNote = this.state.scope === 'saga' && this.state.targetSceneIds.length
+                ? ' Target Scenes are saved for Book scope and inactive here.'
+                : '';
+            return `${scopeLabel}: ${label}. ${this.getTargetSceneStatusLabel()}.${targetNote}`;
         }
         const glyphSeed = this.resolveGlyphSeed();
         if (glyphSeed.source === 'session') {
-            return `${scopeLabel}: ${label}. Rings seeded from the latest saved inquiry for this focus.`;
+            return `${scopeLabel}: ${label}. ${this.getTargetSceneStatusLabel()}. Rings seeded from the latest saved inquiry for this scope.`;
         }
-        return `${scopeLabel}: ${label}. No inquiry run yet.`;
+        return `${scopeLabel}: ${label}. ${this.getTargetSceneStatusLabel()}. No inquiry run yet.`;
     }
 
     private buildRingHoverText(ring: InquiryLens): string {
@@ -7291,8 +7479,8 @@ export class InquiryView extends ItemView {
 
     private getLatestSessionForCurrentFocus(): InquirySession | undefined {
         const scope = this.state.scope;
-        const focusId = this.getFocusId();
-        if (scope === 'book' && (!focusId || focusId === 'unresolved')) {
+        const scopeKey = this.getScopeKey();
+        if (scope === 'book' && (!scopeKey || scopeKey === 'unresolved')) {
             return undefined;
         }
         return this.sessionStore
@@ -7302,13 +7490,13 @@ export class InquiryView extends ItemView {
                 if (sessionScope !== scope) return false;
                 if (this.isErrorResult(session.result)) return false;
                 if (scope === 'saga') return true;
-                return this.getSessionFocusId(session) === focusId;
+                return this.getSessionScopeKey(session) === scopeKey;
             });
     }
 
-    private getSessionFocusId(session: InquirySession): string | undefined {
-        if (session.focusBookId?.trim()) {
-            return session.focusBookId;
+    private getSessionScopeKey(session: InquirySession): string | undefined {
+        if (session.activeBookId?.trim()) {
+            return session.activeBookId;
         }
         const [, , ...focusParts] = session.baseKey.split('::');
         const fallback = focusParts.join('::').trim();
@@ -7760,9 +7948,9 @@ export class InquiryView extends ItemView {
         const service = this.plugin.getInquiryEstimateService();
         const snapshot = await service.requestSnapshot({
             scope: this.state.scope,
-            focusBookId: this.state.focusBookId ?? this.corpus?.books?.[0]?.id,
+            activeBookId: this.state.activeBookId ?? this.corpus?.books?.[0]?.id,
             targetSceneIds,
-            focusLabel: this.getFocusLabel(),
+            scopeLabel: this.getScopeLabel(),
             manifest,
             payloadStats: {
                 sceneCount: stats.sceneTotal,
@@ -8231,9 +8419,9 @@ export class InquiryView extends ItemView {
         const emptyRows = Array(this.previewRows.length || 6).fill('');
         this.resetPreviewRowLabels();
         this.updatePromptPreview(zone, mode, hero, emptyRows, meta, { hideEmpty: true });
-        const scopeLabel = result.scope === 'saga' ? 'Saga' : 'Book';
-        const focusLabel = result.focusId || this.getFocusLabel();
-        this.setPreviewFooterText(`Focus ${scopeLabel} ${focusLabel} · Click to dismiss.`);
+        const scopeTypeLabel = result.scope === 'saga' ? 'Saga' : 'Book';
+        const resultScopeLabel = result.scopeLabel || this.getScopeLabel();
+        this.setPreviewFooterText(`${scopeTypeLabel} ${resultScopeLabel} · Click to dismiss.`);
         this.updateResultsFooterPosition();
     }
 
@@ -8327,6 +8515,7 @@ export class InquiryView extends ItemView {
     private getOrderedFindings(result: InquiryResult, mode: InquiryLens): InquiryFinding[] {
         const findings = result.findings.filter(finding => this.isFindingHit(finding));
         const order = mode === 'flow' ? FLOW_FINDING_ORDER : DEPTH_FINDING_ORDER;
+        const rankForRole = (role: InquiryFinding['role'] | undefined): number => role === 'target' ? 0 : 1;
         const rankForLens = (lens: InquiryFinding['lens'] | undefined): number => {
             if (!lens) return 2;
             if (lens === 'both') return 1;
@@ -8337,6 +8526,8 @@ export class InquiryView extends ItemView {
             return idx >= 0 ? idx : order.length + 1;
         };
         return findings.slice().sort((a, b) => {
+            const roleDelta = rankForRole(a.role) - rankForRole(b.role);
+            if (roleDelta !== 0) return roleDelta;
             const lensDelta = rankForLens(a.lens) - rankForLens(b.lens);
             if (lensDelta !== 0) return lensDelta;
             const kindDelta = rankForKind(a.kind) - rankForKind(b.kind);
@@ -8347,6 +8538,86 @@ export class InquiryView extends ItemView {
             if (confidenceDelta !== 0) return confidenceDelta;
             return normalizeInquiryHeadline(a.headline).localeCompare(normalizeInquiryHeadline(b.headline));
         });
+    }
+
+    private getFindingRole(finding: InquiryFinding): FindingRole {
+        return finding.role === 'target' ? 'target' : 'context';
+    }
+
+    private updateFindingsPanel(): void {
+        if (!this.findingsTitleEl || !this.summaryEl || !this.verdictEl || !this.findingsListEl) return;
+        const findingsListEl = this.findingsListEl;
+        const activeTargetCount = this.getActiveTargetSceneIds().length;
+        const storedTargetCount = this.state.targetSceneIds.length;
+        const focusedCount = this.state.scope === 'book' ? activeTargetCount : storedTargetCount;
+        const targetCountLabel = focusedCount === 1 ? '1 Target Scene' : `${focusedCount} Target Scenes`;
+
+        this.findingsTitleEl.textContent = focusedCount > 0 ? `Findings · ${targetCountLabel}` : 'Findings';
+        clearSvgChildren(this.findingsListEl);
+
+        const result = this.state.activeResult;
+        if (!result) {
+            this.summaryEl.textContent = 'No inquiry run yet.';
+            this.verdictEl.textContent = this.state.scope === 'saga' && storedTargetCount > 0
+                ? `${targetCountLabel} saved for Book scope. Switch to Book to use focused inquiry.`
+                : 'Run an inquiry to see verdicts.';
+            return;
+        }
+
+        const orderedFindings = this.getOrderedFindings(result, result.mode || this.state.mode);
+        const targetFindings = orderedFindings.filter(finding => this.getFindingRole(finding) === 'target');
+        const contextFindings = orderedFindings.filter(finding => this.getFindingRole(finding) === 'context');
+
+        this.summaryEl.textContent = this.getResultSummaryForMode(result, result.mode || this.state.mode);
+        const selectionText = result.findings.some(finding => this.getFindingRole(finding) === 'target')
+            ? `Selection Mode · Focused · ${targetFindings.length} target · ${contextFindings.length} context`
+            : 'Selection Mode · Discover';
+        const scopeNote = this.state.scope === 'saga' && storedTargetCount > 0
+            ? ' · Target Scenes are book-only and inactive in Saga scope.'
+            : '';
+        this.verdictEl.textContent = `${selectionText}${scopeNote}`;
+
+        let cursorY = 0;
+        const renderSection = (title: string, findings: InquiryFinding[]) => {
+            createSvgText(findingsListEl, 'ert-inquiry-finding-section', title, 0, cursorY);
+            cursorY += 18;
+            if (!findings.length) {
+                createSvgText(findingsListEl, 'ert-inquiry-finding-meta', 'None.', 0, cursorY);
+                cursorY += 18;
+                return;
+            }
+            findings.forEach(finding => {
+                const role = this.getFindingRole(finding);
+                const roleLabel = role === 'target' ? '[Target]' : '[Context]';
+                createSvgText(
+                    findingsListEl,
+                    `ert-inquiry-finding-head is-role-${role}`,
+                    `${roleLabel} ${normalizeInquiryHeadline(finding.headline)}`,
+                    0,
+                    cursorY
+                );
+                cursorY += 16;
+                const lensLabel = finding.lens === 'both'
+                    ? 'Flow / Depth'
+                    : formatBriefLabel(finding.lens || result.mode || 'flow');
+                createSvgText(
+                    findingsListEl,
+                    'ert-inquiry-finding-meta',
+                    `Impact ${formatBriefLabel(finding.impact)} · Confidence ${formatBriefLabel(finding.assessmentConfidence)} · Lens ${lensLabel}`,
+                    0,
+                    cursorY
+                );
+                cursorY += 14;
+                (finding.bullets || []).filter(Boolean).slice(0, 2).forEach(bullet => {
+                    createSvgText(findingsListEl, 'ert-inquiry-finding-bullet', `• ${bullet}`, 12, cursorY);
+                    cursorY += 14;
+                });
+                cursorY += 8;
+            });
+        };
+
+        renderSection('Target Findings', targetFindings);
+        renderSection('Context Findings', contextFindings);
     }
 
     private getConfidenceRank(confidence: InquiryConfidence): number {
@@ -8757,10 +9028,10 @@ export class InquiryView extends ItemView {
     }
 
     private getPayloadStats(): InquiryPayloadStats {
-        const focusBookId = this.state.focusBookId ?? this.corpus?.books?.[0]?.id;
+        const activeBookId = this.state.activeBookId ?? this.corpus?.books?.[0]?.id;
         if (!this.payloadStats
             || this.payloadStats.scope !== this.state.scope
-            || this.payloadStats.focusBookId !== focusBookId) {
+            || this.payloadStats.activeBookId !== activeBookId) {
             this.payloadStats = this.buildPayloadStats();
         }
         return this.payloadStats;
@@ -8780,7 +9051,7 @@ export class InquiryView extends ItemView {
         preservePriorEvidenceChars: boolean
     ): InquiryPayloadStats {
         const scope = this.state.scope;
-        const focusBookId = this.getCanonicalFocusBookId();
+        const activeBookId = this.getCanonicalActiveBookId();
         const sceneEntries = entries.filter(entry => entry.class === 'scene');
         const outlineEntries = entries.filter(entry => entry.class === 'outline');
         const referenceEntries = entries.filter(entry => entry.class !== 'scene' && entry.class !== 'outline');
@@ -8801,14 +9072,14 @@ export class InquiryView extends ItemView {
             && this.payloadStats
             && this.payloadStats.manifestFingerprint === manifestFingerprint
             && this.payloadStats.scope === scope
-            && this.payloadStats.focusBookId === focusBookId
+            && this.payloadStats.activeBookId === activeBookId
             ? this.payloadStats
             : undefined;
         const evidenceChars = priorStats?.evidenceChars ?? estimatedEvidenceChars;
 
         return {
             scope,
-            focusBookId,
+            activeBookId,
             sceneTotal: sceneStats.total,
             sceneSynopsisUsed: sceneStats.synopsisUsed,
             sceneSynopsisAvailable: sceneStats.synopsisAvailable,
@@ -9017,7 +9288,7 @@ export class InquiryView extends ItemView {
 
     private getPreviewScopeValue(): string {
         if (this.state.scope === 'saga') return `${SIGMA_CHAR} Saga`;
-        return `Book ${this.getFocusLabel()}`;
+        return `Book ${this.getScopeLabel()}`;
     }
 
     private getPreviewScenesValue(): string {
@@ -9391,6 +9662,7 @@ export class InquiryView extends ItemView {
             .filter(finding => this.isFindingHit(finding))
             .map(finding => ({
                 headline: normalizeInquiryHeadline(finding.headline),
+                role: this.getFindingRole(finding),
                 clarity: formatBriefLabel(finding.status || 'unclear'),
                 impact: formatBriefLabel(finding.impact),
                 confidence: formatBriefLabel(finding.assessmentConfidence),

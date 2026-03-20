@@ -45,7 +45,7 @@ export interface InquiryEstimateSnapshot {
     readonly computedAt: number;
 
     readonly scope: InquiryScope;
-    readonly focusBookId?: string;
+    readonly activeBookId?: string;
 
     readonly resolvedEngine: {
         readonly provider: AIProviderId;
@@ -79,9 +79,9 @@ export interface InquiryEstimateSnapshot {
 
 export interface EstimateSnapshotParams {
     scope: InquiryScope;
-    focusBookId?: string;
+    activeBookId?: string;
     targetSceneIds: string[];
-    focusLabel: string;
+    scopeLabel: string;
     manifest: CorpusManifest;
     payloadStats: {
         sceneCount: number;
@@ -108,7 +108,7 @@ export interface EstimateSnapshotParams {
  * Compute a deterministic cache key for snapshot invalidation.
  *
  * Key components:
- *   scope | focusBookId | corpusFingerprint | provider | modelId | overrideClassCount | overrideItemCount
+ *   scope | activeBookId | corpusFingerprint | provider | modelId | overrideClassCount | overrideItemCount
  *
  * Exclusions (with rationale):
  *   - Question text: Evidence chars (~200k) dwarf question length (~200 chars).
@@ -122,7 +122,7 @@ export interface EstimateSnapshotParams {
  */
 export function computeEstimateStateKey(params: {
     scope: InquiryScope;
-    focusBookId?: string;
+    activeBookId?: string;
     corpusFingerprint: string;
     provider: AIProviderId;
     modelId: string;
@@ -131,7 +131,7 @@ export function computeEstimateStateKey(params: {
 }): string {
     return [
         params.scope,
-        params.focusBookId ?? '',
+        params.activeBookId ?? '',
         params.corpusFingerprint,
         params.provider,
         params.modelId,
@@ -171,7 +171,7 @@ export async function buildInquiryEstimateSnapshot(
 ): Promise<InquiryEstimateSnapshot> {
     const stateKey = computeEstimateStateKey({
         scope: params.scope,
-        focusBookId: params.focusBookId,
+        activeBookId: params.activeBookId,
         corpusFingerprint: params.manifest.fingerprint,
         provider: params.engine.provider,
         modelId: params.engine.modelId,
@@ -184,10 +184,10 @@ export async function buildInquiryEstimateSnapshot(
     // Build a trace using the canonical question to get a precise token estimate.
     const runnerInput: InquiryRunnerInput = {
         scope: params.scope,
-        focusLabel: params.focusLabel,
+        scopeLabel: params.scopeLabel,
         targetSceneIds: params.scope === 'book' ? params.targetSceneIds : [],
         selectionMode: params.selectionMode,
-        focusBookId: params.focusBookId,
+        activeBookId: params.activeBookId,
         mode: params.mode,
         questionId: 'estimate-snapshot',
         questionText: INQUIRY_CANONICAL_ESTIMATE_QUESTION,
@@ -219,7 +219,7 @@ export async function buildInquiryEstimateSnapshot(
         computedAt: Date.now(),
 
         scope: params.scope,
-        focusBookId: params.focusBookId,
+        activeBookId: params.activeBookId,
 
         resolvedEngine: {
             provider: params.engine.provider,

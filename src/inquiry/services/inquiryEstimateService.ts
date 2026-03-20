@@ -54,7 +54,7 @@ export class InquiryEstimateService {
     async requestSnapshot(params: EstimateSnapshotParams): Promise<InquiryEstimateSnapshot | null> {
         const stateKey = computeEstimateStateKey({
             scope: params.scope,
-            focusBookId: params.focusBookId,
+            activeBookId: params.activeBookId,
             corpusFingerprint: params.manifest.fingerprint,
             provider: params.engine.provider,
             modelId: params.engine.modelId,

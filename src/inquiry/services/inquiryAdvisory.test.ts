@@ -29,7 +29,7 @@ describe('computeInquiryAdvisoryContext', () => {
         const currentModel = getModel('gpt-5.1-chat-latest');
         const advisory = computeInquiryAdvisoryContext({
             scope: 'book',
-            focusLabel: 'B1',
+            scopeLabel: 'B1',
             resolvedEngine: buildResolvedEngine(currentModel, 'OpenAI'),
             currentModel,
             models: BUILTIN_MODELS,
@@ -50,7 +50,7 @@ describe('computeInquiryAdvisoryContext', () => {
         const currentModel = getModel('claude-sonnet-4-6');
         const advisory = computeInquiryAdvisoryContext({
             scope: 'book',
-            focusLabel: 'B1',
+            scopeLabel: 'B1',
             resolvedEngine: buildResolvedEngine(currentModel, 'Anthropic'),
             currentModel,
             models: BUILTIN_MODELS,
@@ -67,7 +67,7 @@ describe('computeInquiryAdvisoryContext', () => {
         const currentModel = getModel('llama3');
         const advisory = computeInquiryAdvisoryContext({
             scope: 'book',
-            focusLabel: 'B1',
+            scopeLabel: 'B1',
             resolvedEngine: buildResolvedEngine(currentModel, 'Ollama'),
             currentModel,
             models: [currentModel, getModel('gemini-3.1-pro-preview')],
@@ -95,7 +95,7 @@ describe('computeInquiryAdvisoryContext', () => {
         };
         const advisory = computeInquiryAdvisoryContext({
             scope: 'book',
-            focusLabel: 'B1',
+            scopeLabel: 'B1',
             resolvedEngine: buildResolvedEngine(currentModel, 'OpenAI'),
             currentModel,
             models: [currentModel, getModel('gemini-3.1-pro-preview')],
@@ -117,7 +117,7 @@ describe('computeInquiryAdvisoryContext', () => {
         const currentModel = getModel('claude-sonnet-4-5-20250929');
         const advisory = computeInquiryAdvisoryContext({
             scope: 'book',
-            focusLabel: 'B1',
+            scopeLabel: 'B1',
             resolvedEngine: buildResolvedEngine(currentModel, 'Anthropic'),
             currentModel,
             models: BUILTIN_MODELS,
@@ -134,7 +134,7 @@ describe('computeInquiryAdvisoryContext', () => {
         const currentModel = getModel('claude-sonnet-4-6');
         const advisory = computeInquiryAdvisoryContext({
             scope: 'book',
-            focusLabel: 'B1',
+            scopeLabel: 'B1',
             resolvedEngine: buildResolvedEngine(currentModel, 'Anthropic'),
             currentModel,
             models: BUILTIN_MODELS,
@@ -151,7 +151,7 @@ describe('computeInquiryAdvisoryContext', () => {
         const currentModel = getModel('gpt-5.2-chat-latest');
         const first = computeInquiryAdvisoryContext({
             scope: 'book',
-            focusLabel: 'B1',
+            scopeLabel: 'B1',
             resolvedEngine: buildResolvedEngine(currentModel, 'OpenAI'),
             currentModel,
             models: BUILTIN_MODELS,
@@ -165,7 +165,7 @@ describe('computeInquiryAdvisoryContext', () => {
 
         const second = computeInquiryAdvisoryContext({
             scope: 'book',
-            focusLabel: 'B1',
+            scopeLabel: 'B1',
             resolvedEngine: buildResolvedEngine(currentModel, 'OpenAI'),
             currentModel,
             models: BUILTIN_MODELS,

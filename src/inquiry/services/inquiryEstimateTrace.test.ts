@@ -29,7 +29,7 @@ describe('buildInquiryEstimateTrace', () => {
 
         const input: InquiryRunnerInput = {
             scope: 'book',
-            focusLabel: 'B1',
+            scopeLabel: 'B1',
             questionId: 'estimate-snapshot',
             questionText: 'Analyze corpus-level flow and depth quality.',
             questionZone: 'setup',

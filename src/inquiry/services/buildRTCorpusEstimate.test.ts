@@ -5,7 +5,7 @@ import type { InquiryPayloadStats } from '../types';
 function makeStats(overrides: Partial<InquiryPayloadStats> = {}): InquiryPayloadStats {
     return {
         scope: 'book',
-        focusBookId: 'Book 1',
+        activeBookId: 'Book 1',
         sceneTotal: 53,
         sceneSynopsisUsed: 0,
         sceneSynopsisAvailable: 0,

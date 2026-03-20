@@ -60,10 +60,10 @@ export interface EvidenceParticipationRules {
 
 export interface InquiryRunnerInput {
     scope: InquiryScope;
-    focusLabel: string;
+    scopeLabel: string;
     targetSceneIds: string[];
     selectionMode: InquirySelectionMode;
-    focusBookId?: string;
+    activeBookId?: string;
     // UI emphasis only; inquiry computation must always include both flow + depth regardless of lens.
     mode: InquiryLens;
     questionId: string;
@@ -76,10 +76,10 @@ export interface InquiryRunnerInput {
 
 export interface InquiryOmnibusInput {
     scope: InquiryScope;
-    focusLabel: string;
+    scopeLabel: string;
     targetSceneIds: string[];
     selectionMode: InquirySelectionMode;
-    focusBookId?: string;
+    activeBookId?: string;
     // UI emphasis only; inquiry computation must always include both flow + depth regardless of lens.
     mode: InquiryLens;
     questions: InquiryOmnibusQuestion[];

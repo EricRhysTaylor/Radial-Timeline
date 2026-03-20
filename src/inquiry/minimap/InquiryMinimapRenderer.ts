@@ -589,11 +589,13 @@ export class InquiryMinimapRenderer {
         };
     }
 
-    // ── Focus ────────────────────────────────────────────────────────
+    // ── Target Scenes ────────────────────────────────────────────────
 
-    updateFocus(): void {
+    updateTargetStates(targetSceneIds: string[]): void {
+        const targetSceneIdSet = new Set(targetSceneIds.map(sceneId => sceneId.trim().toLowerCase()).filter(Boolean));
         this.minimapTicks.forEach(tick => {
-            tick.classList.remove('is-active');
+            const sceneId = tick.getAttribute('data-scene-id')?.trim().toLowerCase() || '';
+            tick.classList.toggle('is-target', !!sceneId && targetSceneIdSet.has(sceneId));
         });
     }
 
@@ -1120,6 +1122,7 @@ export class InquiryMinimapRenderer {
             balanceTooltipText: (text: string) => string;
             registerDomEvent: (el: HTMLElement, event: string, handler: (e: Event) => void) => void;
             onTickClick: (item: InquiryCorpusItem, event: MouseEvent) => void;
+            onTickContextMenu: (item: InquiryCorpusItem, event: MouseEvent) => void;
             onTickHover: (item: InquiryCorpusItem, label: string, fullLabel: string) => void;
             onTickLeave: () => void;
         }
@@ -1294,6 +1297,9 @@ export class InquiryMinimapRenderer {
             callbacks.registerDomEvent(tick as unknown as HTMLElement, 'click', (event: Event) => {
                 callbacks.onTickClick(item, event as MouseEvent);
             });
+            callbacks.registerDomEvent(tick as unknown as HTMLElement, 'contextmenu', (event: Event) => {
+                callbacks.onTickContextMenu(item, event as MouseEvent);
+            });
             callbacks.registerDomEvent(tick as unknown as HTMLElement, 'pointerenter', () => {
                 callbacks.onTickHover(item, label, fullLabel);
             });
@@ -1312,7 +1318,7 @@ export class InquiryMinimapRenderer {
     updateFindingStates(
         isRunning: boolean,
         isError: boolean,
-        findingMap: Map<string, { kind: string }>,
+        findingMap: Map<string, { kind: string; role?: 'target' | 'context' }>,
         balanceTooltipText: (text: string) => string
     ): void {
         if (!this.minimapTicks.length) return;
@@ -1320,6 +1326,7 @@ export class InquiryMinimapRenderer {
         if (isRunning || isError) {
             this.minimapTicks.forEach(tick => {
                 tick.classList.remove('is-finding');
+                tick.classList.remove('is-target-finding', 'is-context-finding');
                 severityClasses.forEach(cls => tick.classList.remove(cls));
                 const label = tick.getAttribute('data-label') || '';
                 if (label) {
@@ -1334,6 +1341,8 @@ export class InquiryMinimapRenderer {
             const label = tick.getAttribute('data-label') || `T${idx + 1}`;
             const finding = findingMap.get(label);
             tick.classList.toggle('is-finding', !!finding);
+            tick.classList.toggle('is-target-finding', finding?.role === 'target');
+            tick.classList.toggle('is-context-finding', !!finding && finding.role !== 'target');
             severityClasses.forEach(cls => tick.classList.remove(cls));
             const fullLabel = tick.getAttribute('data-full-label') || label;
             if (finding) {

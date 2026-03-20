@@ -71,19 +71,19 @@ export const buildSceneDossierHeader = (options: {
 };
 
 export const resolveInquiryScopeIndicator = (result: InquiryResult): string | null => {
-    const focusId = result.focusId?.trim();
+    const scopeLabel = result.scopeLabel?.trim();
     if (result.scope === 'saga') {
-        return focusId && focusId.toLowerCase() !== 'saga' ? `Saga ${focusId}` : 'Saga';
+        return scopeLabel && scopeLabel.toLowerCase() !== 'saga' ? `Saga ${scopeLabel}` : 'Saga';
     }
-    if (focusId) {
-        const lowered = focusId.toLowerCase();
+    if (scopeLabel) {
+        const lowered = scopeLabel.toLowerCase();
         if (/^s\d+/.test(lowered) || lowered.startsWith('scene')) {
-            return `Scene ${focusId}`;
+            return `Scene ${scopeLabel}`;
         }
         if (/^c\d+/.test(lowered) || lowered.startsWith('chapter')) {
-            return `Chapter ${focusId}`;
+            return `Chapter ${scopeLabel}`;
         }
-        return `Book ${focusId}`;
+        return `Book ${scopeLabel}`;
     }
     return null;
 };
@@ -155,11 +155,15 @@ export const renderInquiryBrief = (brief: InquiryBriefModel): string => {
 
     lines.push('', '## High-Level Conclusions', '### Flow', brief.flowSummary, '', '### Depth', brief.depthSummary);
 
-    lines.push('', '## Key Findings');
-    if (!brief.findings.length) {
-        lines.push('No findings.');
-    } else {
-        brief.findings.forEach(finding => {
+    const targetFindings = brief.findings.filter(finding => finding.role === 'target');
+    const contextFindings = brief.findings.filter(finding => finding.role === 'context');
+    const renderFindingSection = (title: string, findings: InquiryBriefModel['findings']) => {
+        lines.push('', `## ${title}`);
+        if (!findings.length) {
+            lines.push('None.');
+            return;
+        }
+        findings.forEach(finding => {
             lines.push(
                 '',
                 `### ${finding.headline}`,
@@ -171,7 +175,10 @@ export const renderInquiryBrief = (brief: InquiryBriefModel): string => {
                 });
             }
         });
-    }
+    };
+
+    renderFindingSection('Target Findings', targetFindings);
+    renderFindingSection('Context Findings', contextFindings);
 
     if (brief.sources.length) {
         lines.push('', '## Sources', '');

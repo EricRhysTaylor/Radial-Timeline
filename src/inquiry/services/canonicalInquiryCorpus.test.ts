@@ -42,7 +42,7 @@ describe('scopeEntriesToActiveInquiryTarget', () => {
         const scoped = scopeEntriesToActiveInquiryTarget({
             entries,
             scope: 'book',
-            focusBookId: 'Books/Book 1'
+            activeBookId: 'Books/Book 1'
         });
         const summary = summarizeScopedInquiryEntries(scoped);
 
@@ -55,7 +55,7 @@ describe('scopeEntriesToActiveInquiryTarget', () => {
         const scoped = scopeEntriesToActiveInquiryTarget({
             entries: makeSceneEntries('Books/Book 1', 3),
             scope: 'book',
-            focusBookId: undefined
+            activeBookId: undefined
         });
 
         expect(scoped).toEqual([]);

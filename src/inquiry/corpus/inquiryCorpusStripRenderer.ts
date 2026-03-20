@@ -94,6 +94,8 @@ export function renderInquiryCorpusStrip(args: {
     onGlobalToggle: () => void;
     onGroupToggle: (groupKey: string) => void;
     onItemToggle: (entryKey: string) => void;
+    onItemShiftAction: (entryKey: string, filePath: string, event: MouseEvent) => void;
+    onItemContextMenu: (entryKey: string, filePath: string, event: MouseEvent) => void;
     openEntryPath: (filePath: string) => void;
 }): InquiryCorpusStripRenderResult {
     const refs = args.refs;
@@ -152,7 +154,7 @@ export function renderInquiryCorpusStrip(args: {
         refs.ccLabelHint.appendChild(refs.ccLabelHintIcon);
         addTooltipData(
             refs.ccLabelHint,
-            balanceTooltipText('Click notes to adjust scope. Shift-click to open note.'),
+            balanceTooltipText('Click to change inclusion. Shift-click a scene to toggle Target Scenes. Right-click for the scene menu.'),
             'top'
         );
     }
@@ -227,14 +229,18 @@ export function renderInquiryCorpusStrip(args: {
         args.registerSvgEvent(group, 'click', (event: MouseEvent) => {
             const entryKey = group.getAttribute('data-entry-key');
             if (!entryKey) return;
+            const filePath = group.getAttribute('data-file-path') || '';
             if (event.shiftKey) {
-                const filePath = group.getAttribute('data-file-path');
-                if (filePath) {
-                    args.openEntryPath(filePath);
-                }
+                args.onItemShiftAction(entryKey, filePath, event);
                 return;
             }
             args.onItemToggle(entryKey);
+        });
+        args.registerSvgEvent(group, 'contextmenu', (event: MouseEvent) => {
+            const entryKey = group.getAttribute('data-entry-key');
+            if (!entryKey) return;
+            const filePath = group.getAttribute('data-file-path') || '';
+            args.onItemContextMenu(entryKey, filePath, event);
         });
         refs.ccSlots.push({
             group,
@@ -264,6 +270,7 @@ export function renderInquiryCorpusStrip(args: {
         slot.group.setAttribute('data-entry-key', placement.entry.entryKey);
         slot.group.setAttribute('data-file-path', placement.entry.filePath);
         slot.group.setAttribute('transform', `translate(${placement.x} ${placement.y})`);
+        slot.group.classList.toggle('is-target', placement.entry.isTarget);
         slot.base.setAttribute('width', String(layout.pageWidth));
         slot.base.setAttribute('height', String(layout.pageHeight));
         slot.base.setAttribute('x', '0');

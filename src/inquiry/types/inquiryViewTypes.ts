@@ -8,6 +8,7 @@ import type {
 } from '../../types/settings';
 import type {
     InquiryConfidence,
+    FindingRole,
     InquiryFinding,
     InquiryResult,
     InquiryScope,
@@ -35,6 +36,7 @@ export type InquiryBriefModel = {
     depthSummary: string;
     findings: Array<{
         headline: string;
+        role: FindingRole;
         clarity: string;
         impact: string;
         confidence: string;
@@ -116,6 +118,7 @@ export type CorpusCcEntry = {
     classKey: string;
     scope?: InquiryScope;
     mode: SceneInclusion;
+    isTarget: boolean;
     sortLabel?: string;
 };
 

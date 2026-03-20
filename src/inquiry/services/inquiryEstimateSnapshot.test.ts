@@ -35,7 +35,7 @@ vi.mock('./inquiryEstimateTrace', () => ({
 describe('computeEstimateStateKey', () => {
     const baseParams = {
         scope: 'book' as const,
-        focusBookId: 'book-1',
+        activeBookId: 'book-1',
         corpusFingerprint: 'fp-abc123',
         provider: 'anthropic' as const,
         modelId: 'claude-sonnet-4-20250514',
@@ -62,15 +62,15 @@ describe('computeEstimateStateKey', () => {
         expect(bookKey).not.toBe(sagaKey);
     });
 
-    it('invalidates when focusBookId changes', () => {
+    it('invalidates when activeBookId changes', () => {
         const key1 = computeEstimateStateKey(baseParams);
-        const key2 = computeEstimateStateKey({ ...baseParams, focusBookId: 'book-2' });
+        const key2 = computeEstimateStateKey({ ...baseParams, activeBookId: 'book-2' });
         expect(key1).not.toBe(key2);
     });
 
-    it('invalidates when focusBookId is absent vs present', () => {
+    it('invalidates when activeBookId is absent vs present', () => {
         const withFocus = computeEstimateStateKey(baseParams);
-        const withoutFocus = computeEstimateStateKey({ ...baseParams, focusBookId: undefined });
+        const withoutFocus = computeEstimateStateKey({ ...baseParams, activeBookId: undefined });
         expect(withFocus).not.toBe(withoutFocus);
     });
 
@@ -225,9 +225,9 @@ describe('buildInquiryEstimateSnapshot', () => {
 
         const snapshot = await buildInquiryEstimateSnapshot({
             scope: 'book',
-            focusBookId: 'Books/Book 1',
+            activeBookId: 'Books/Book 1',
             targetSceneIds: [],
-            focusLabel: 'B1',
+            scopeLabel: 'B1',
             manifest: {
                 entries: manifestEntries,
                 fingerprint: 'fp-book-1',

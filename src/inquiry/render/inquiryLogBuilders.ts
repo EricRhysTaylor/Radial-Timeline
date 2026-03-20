@@ -48,7 +48,7 @@ export function buildInquiryLogContent(args: {
     const isSimulated = result.aiReason === 'simulated' || result.aiReason === 'stub';
     const questionLabel = deps.getQuestionLabel(result);
     const scopeLabel = result.scope === 'saga' ? 'Saga' : 'Book';
-    const target = result.focusId || (result.scope === 'saga' ? 'Σ' : '?');
+    const target = result.scopeLabel || (result.scope === 'saga' ? 'Σ' : '?');
     const providerRaw = result.aiProvider ? result.aiProvider.trim() : '';
     const providerLabel = isSimulated
         ? 'Simulation'
@@ -364,7 +364,7 @@ export function buildInquiryContentLogContent(args: {
     const zoneLabel = deps.resolveInquiryBriefZoneLabel(result);
     const lensLabel = deps.resolveInquiryBriefLensLabel(result, zoneLabel);
     const scopeLabel = result.scope === 'saga' ? 'Saga' : 'Book';
-    const target = result.focusId || (result.scope === 'saga' ? 'Σ' : '?');
+    const target = result.scopeLabel || (result.scope === 'saga' ? 'Σ' : '?');
     const aiProvider = result.aiProvider || 'unknown';
     const aiModelRequested = result.aiModelRequested || 'unknown';
     const aiModelResolved = result.aiModelResolved || aiModelRequested;
@@ -441,7 +441,7 @@ export function buildInquiryContentLogContent(args: {
         `- Corpus fingerprint: ${result.corpusFingerprint || 'unknown'}`,
         `- Corpus overrides: ${overrideLabel}`,
         `- Scope: ${result.scope || 'unknown'}`,
-        `- Focus ID: ${result.focusId || 'unknown'}`,
+        `- Scope Label: ${result.scopeLabel || 'unknown'}`,
         `- Mode: ${result.mode || 'unknown'}`,
         `- Question ID: ${result.questionId || 'unknown'}`,
         `- Question zone: ${result.questionZone || 'unknown'}`,

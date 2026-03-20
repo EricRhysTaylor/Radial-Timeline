@@ -7,6 +7,7 @@ vi.mock('../../ai/runtime/aiClient', () => ({
 
 import { getAIClient } from '../../ai/runtime/aiClient';
 import { InquiryRunnerService } from './InquiryRunnerService';
+import { buildSceneRefIndex } from '../../ai/references/sceneRefNormalizer';
 
 const TEST_AI = {
     provider: 'openai',
@@ -306,6 +307,74 @@ describe('InquiryRunnerService packaging policy', () => {
 
         expect(trace.openAiTransportLane).toBe('responses');
         expect(trace.notes).toContain('OpenAI transport lane: responses.');
+    });
+
+    it('preserves scopeLabel and finding roles in built results', () => {
+        const service = createService();
+        const sceneRefIndex = buildSceneRefIndex([{
+            sceneId: 'scn_b5e1b85f',
+            path: 'Books/Book 1/Scene 1.md',
+            label: 'Scene 1.md',
+            sceneNumber: 1,
+            title: 'Scene 1',
+            aliases: ['S1', 'Scene 1']
+        }]);
+
+        Object.assign(service, {
+            buildCanonicalSceneRefIndex: vi.fn(() => sceneRefIndex),
+            assertFindingRefsResolve: vi.fn()
+        });
+
+        const result = (service.buildResult as (...args: unknown[]) => Record<string, unknown>)(
+            {
+                scope: 'book',
+                scopeLabel: 'B1',
+                targetSceneIds: ['scn_b5e1b85f'],
+                selectionMode: 'focused',
+                activeBookId: 'Books/Book 1',
+                mode: 'flow',
+                questionId: 'q-1',
+                questionText: 'Question',
+                questionZone: 'setup',
+                corpus: {
+                    entries: [],
+                    fingerprint: 'fp-1',
+                    generatedAt: 1,
+                    resolvedRoots: [],
+                    allowedClasses: [],
+                    synopsisOnly: false,
+                    classCounts: {}
+                },
+                rules: {
+                    sagaOutlineScope: 'saga-only',
+                    bookOutlineScope: 'book-only',
+                    crossScopeUsage: 'conflict-only'
+                },
+                ai: TEST_AI
+            },
+            {
+                summary: 'Summary',
+                verdict: { flow: 0.7, depth: 0.6, impact: 'medium', assessmentConfidence: 'high' },
+                findings: [{
+                    ref_id: 'scn_b5e1b85f',
+                    kind: 'continuity',
+                    headline: 'Targeted issue',
+                    impact: 'medium',
+                    assessmentConfidence: 'high',
+                    role: 'target'
+                }]
+            },
+            {
+                aiProvider: 'openai',
+                aiModelRequested: TEST_AI.modelId,
+                aiModelResolved: TEST_AI.modelId,
+                aiStatus: 'success',
+                aiReason: 'ok'
+            }
+        );
+
+        expect(result.scopeLabel).toBe('B1');
+        expect(result.findings[0].role).toBe('target');
     });
 
     it('recovers later invalid chunk JSON and continues multi-pass execution', async () => {
@@ -830,7 +899,7 @@ describe('InquiryRunnerService packaging policy', () => {
         expect(() => (service.buildResult as (...args: unknown[]) => unknown)(
             {
                 scope: 'book',
-                focusLabel: 'Book B1',
+                scopeLabel: 'Book B1',
                 mode: 'depth',
                 questionId: 'payoff',
                 questionZone: 'payoff',

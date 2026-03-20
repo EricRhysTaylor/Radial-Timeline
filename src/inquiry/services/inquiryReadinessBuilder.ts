@@ -43,7 +43,7 @@ export const INQUIRY_INPUT_TOKENS_RED = 140000;
 export interface BuildReadinessUiStateInput {
     snapshot: InquiryEstimateSnapshot | null;
     scope: InquiryScope;
-    focusLabel: string;
+    scopeLabel: string;
     aiSettings: AiSettingsV1;
     resolvedEngine: ResolvedInquiryEngine;
     hasCredential: boolean;
@@ -57,12 +57,12 @@ export interface BuildReadinessUiStateInput {
 export interface BuildEnginePayloadSummaryInput {
     payloadStats: InquiryPayloadStats | null;
     scope: InquiryScope;
-    focusLabel: string;
+    scopeLabel: string;
 }
 
 export interface AdvisoryInputKeyParams {
     scope: InquiryScope;
-    focusLabel: string;
+    scopeLabel: string;
     provider: AIProviderId;
     modelId: string;
     packaging: AnalysisPackaging;
@@ -106,7 +106,7 @@ export function buildEnginePayloadSummary(input: BuildEnginePayloadSummaryInput)
     tier: TokenTier;
 } {
     const scopeLabel = input.scope === 'saga' ? 'Saga' : 'Book';
-    const contextLabel = `${scopeLabel} ${input.focusLabel}`;
+    const contextLabel = `${scopeLabel} ${input.scopeLabel}`;
     if (!input.payloadStats) {
         return {
             text: `Payload (${contextLabel}): Estimating…`,
@@ -176,7 +176,7 @@ export function buildRunScopeLabel(
     stats: InquiryPayloadStats,
     selectedSceneCount: number,
     scope: InquiryScope,
-    focusLabel: string
+    scopeLabel: string
 ): string {
     const sceneMode = stats.sceneFullTextCount > 0
         ? 'Full Scenes'
@@ -202,10 +202,10 @@ export function buildRunScopeLabel(
         if (stats.sceneTotal > 0) {
             parts.push(sceneMode);
         }
-        return `Run on Book ${focusLabel} (${parts.join(' + ')}).`;
+        return `Run on Book ${scopeLabel} (${parts.join(' + ')}).`;
     }
 
-    return `Run on Saga ${focusLabel} (${sceneMode}).`;
+    return `Run on Saga ${scopeLabel} (${sceneMode}).`;
 }
 
 // ── Advisory input key ────────────────────────────────────────────────
@@ -213,7 +213,7 @@ export function buildRunScopeLabel(
 export function buildAdvisoryInputKey(params: AdvisoryInputKeyParams): string {
     return [
         params.scope,
-        params.focusLabel,
+        params.scopeLabel,
         params.provider,
         params.modelId,
         params.packaging,
@@ -232,7 +232,7 @@ export function buildAdvisoryInputKey(params: AdvisoryInputKeyParams): string {
 // ── Readiness UI state (main builder) ─────────────────────────────────
 
 export function buildReadinessUiState(input: BuildReadinessUiStateInput): InquiryReadinessUiState {
-    const { snapshot, scope, focusLabel, aiSettings, resolvedEngine, hasCredential, accessTier, payloadStats, selectedSceneOverrideCount } = input;
+    const { snapshot, scope, scopeLabel, aiSettings, resolvedEngine, hasCredential, accessTier, payloadStats, selectedSceneOverrideCount } = input;
     const provider = resolvedEngine.provider === 'none' ? 'openai' as const : resolvedEngine.provider;
     const providerLabel = resolvedEngine.providerLabel;
 
@@ -262,7 +262,7 @@ export function buildReadinessUiState(input: BuildReadinessUiStateInput): Inquir
             provider,
             providerLabel,
             reason: resolvedEngine.blockReason || 'No model satisfies capability floor.',
-            runScopeLabel: buildRunScopeLabel(payloadStats, selectedSceneOverrideCount, scope, focusLabel),
+            runScopeLabel: buildRunScopeLabel(payloadStats, selectedSceneOverrideCount, scope, scopeLabel),
             canSwitchToSummaries: false,
             canUseSelectedScenesOnly: false
         };
@@ -292,7 +292,7 @@ export function buildReadinessUiState(input: BuildReadinessUiStateInput): Inquir
             provider,
             providerLabel,
             reason: 'Estimating…',
-            runScopeLabel: buildRunScopeLabel(payloadStats, selectedSceneOverrideCount, scope, focusLabel),
+            runScopeLabel: buildRunScopeLabel(payloadStats, selectedSceneOverrideCount, scope, scopeLabel),
             canSwitchToSummaries: false,
             canUseSelectedScenesOnly: false
         };
@@ -386,7 +386,7 @@ export function buildReadinessUiState(input: BuildReadinessUiStateInput): Inquir
         providerLabel,
         reason,
         model,
-        runScopeLabel: buildRunScopeLabel(payloadStats, selectedSceneOverrideCount, scope, focusLabel),
+        runScopeLabel: buildRunScopeLabel(payloadStats, selectedSceneOverrideCount, scope, scopeLabel),
         canSwitchToSummaries,
         canUseSelectedScenesOnly
     };

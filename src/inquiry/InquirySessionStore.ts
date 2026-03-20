@@ -104,11 +104,11 @@ export class InquirySessionStore {
         }
     }
 
-    buildBaseKey(parts: { questionId: string; scope: string; focusId: string; targetSceneIds?: string[] }): string {
+    buildBaseKey(parts: { questionId: string; scope: string; scopeKey: string; targetSceneIds?: string[] }): string {
         const targetSceneKey = Array.isArray(parts.targetSceneIds) && parts.targetSceneIds.length
             ? parts.targetSceneIds.map(value => value.trim()).filter(Boolean).sort().join(',')
             : '';
-        return `${parts.questionId}::${parts.scope}::${parts.focusId}::${targetSceneKey}`;
+        return `${parts.questionId}::${parts.scope}::${parts.scopeKey}::${targetSceneKey}`;
     }
 
     buildKey(baseKey: string, fingerprint: string): string {

@@ -38,7 +38,7 @@ export type InquiryCorpusSnapshot = {
 
 export type InquiryCorpusResolveParams = {
     scope: InquiryScope;
-    focusBookId?: string;
+    activeBookId?: string;
     sources: InquirySourcesSettings;
     bookProfiles?: BookProfile[];
 };
@@ -89,7 +89,7 @@ export class InquiryCorpusResolver {
             rootPath: book.rootPath,
             bookNumber: book.bookNumber
         })));
-        const activeBookId = this.getActiveBookId(books, params.focusBookId);
+        const activeBookId = this.getActiveBookId(books, params.activeBookId);
         const scenes = params.scope === 'book' && activeBookId
             ? this.buildSceneItems(activeBookId, resolvedVaultRoots, sources.classes || [], classScope)
             : [];
@@ -178,9 +178,9 @@ export class InquiryCorpusResolver {
         }));
     }
 
-    private getActiveBookId(books: InquiryBookItem[], focusBookId?: string): string | undefined {
+    private getActiveBookId(books: InquiryBookItem[], activeBookId?: string): string | undefined {
         if (!books.length) return undefined;
-        if (focusBookId && books.some(book => book.id === focusBookId)) return focusBookId;
+        if (activeBookId && books.some(book => book.id === activeBookId)) return activeBookId;
         return books[0].id;
     }
 

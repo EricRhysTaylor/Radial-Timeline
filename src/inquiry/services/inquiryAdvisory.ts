@@ -23,7 +23,7 @@ export interface InquiryAdvisoryContext {
     version: typeof INQUIRY_ADVISORY_CONTEXT_VERSION;
     createdAt: string;
     scope: InquiryScope;
-    focusLabel: string;
+    scopeLabel: string;
     resolvedEngine: {
         provider: AIProviderId;
         providerLabel: string;
@@ -71,7 +71,7 @@ export interface InquiryAdvisoryOverrideSummary {
 
 export interface ComputeInquiryAdvisoryInput {
     scope: InquiryScope;
-    focusLabel: string;
+    scopeLabel: string;
     resolvedEngine: ResolvedInquiryEngine;
     currentModel: ModelInfo | null;
     models: ModelInfo[];
@@ -172,7 +172,7 @@ function rankCandidates(candidates: AdvisoryCandidate[]): AdvisoryCandidate[] {
 function buildIdentity(context: InquiryAdvisoryContext): string {
     return [
         context.scope,
-        context.focusLabel,
+        context.scopeLabel,
         context.resolvedEngine.provider,
         context.resolvedEngine.modelId,
         context.corpus.estimatedInputTokens,
@@ -386,7 +386,7 @@ export function computeInquiryAdvisoryContext(input: ComputeInquiryAdvisoryInput
         version: INQUIRY_ADVISORY_CONTEXT_VERSION,
         createdAt: new Date().toISOString(),
         scope: input.scope,
-        focusLabel: input.focusLabel,
+        scopeLabel: input.scopeLabel,
         resolvedEngine: {
             provider: input.resolvedEngine.provider,
             providerLabel: input.resolvedEngine.providerLabel,

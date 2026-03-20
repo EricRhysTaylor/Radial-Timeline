@@ -25,7 +25,7 @@ export type TokenTier = 'normal' | 'amber' | 'red';
 
 export type InquiryPayloadStats = {
     scope: InquiryScope;
-    focusBookId?: string;
+    activeBookId?: string;
     sceneTotal: number;
     sceneSynopsisUsed: number;
     sceneSynopsisAvailable: number;
@@ -48,8 +48,8 @@ export type InquiryPayloadStats = {
 
 export type InquiryCurrentCorpusContext = {
     scope: InquiryScope;
-    focusBookId?: string;
-    focusLabel: string;
+    activeBookId?: string;
+    scopeLabel: string;
     corpus: RTCorpusTokenEstimate;
     manifestEntries: CorpusManifestEntry[];
 };

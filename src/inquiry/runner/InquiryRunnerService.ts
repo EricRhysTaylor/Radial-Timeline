@@ -1996,7 +1996,7 @@ export class InquiryRunnerService implements InquiryRunner {
         return {
             runId: `run-${Date.now()}`,
             scope: input.scope,
-            focusId: input.focusLabel,
+            scopeLabel: input.scopeLabel,
             mode: input.mode,
             questionId: input.questionId,
             questionZone: input.questionZone,
@@ -2084,10 +2084,10 @@ export class InquiryRunnerService implements InquiryRunner {
     ): InquiryRunnerInput {
         return {
             scope: input.scope,
-            focusLabel: input.focusLabel,
+            scopeLabel: input.scopeLabel,
             targetSceneIds: input.targetSceneIds,
             selectionMode: input.selectionMode,
-            focusBookId: input.focusBookId,
+            activeBookId: input.activeBookId,
             mode: input.mode,
             questionId: question.id,
             questionText: question.question,
@@ -2176,8 +2176,8 @@ export class InquiryRunnerService implements InquiryRunner {
         }
         const firstSceneId = input.corpus.entries.find(entry => entry.class === 'scene' && isStableSceneId(entry.sceneId))?.sceneId;
         if (firstSceneId) return firstSceneId.toLowerCase();
-        if (isStableSceneId(input.focusLabel)) return input.focusLabel.trim().toLowerCase();
-        return input.focusLabel;
+        if (isStableSceneId(input.scopeLabel)) return input.scopeLabel.trim().toLowerCase();
+        return input.scopeLabel;
     }
 
     private normalizeFindingRef(
@@ -2233,7 +2233,7 @@ export class InquiryRunnerService implements InquiryRunner {
         return {
             runId: `run-${Date.now()}`,
             scope: input.scope,
-            focusId: input.focusLabel,
+            scopeLabel: input.scopeLabel,
             mode: input.mode,
             questionId: input.questionId,
             questionZone: input.questionZone,
@@ -2590,10 +2590,10 @@ export class InquiryRunnerService implements InquiryRunner {
         try {
             evidenceBlocks = await this.buildEvidenceBlocks({
                 scope: input.scope,
-                focusLabel: input.focusLabel,
+                scopeLabel: input.scopeLabel,
                 targetSceneIds: input.targetSceneIds,
                 selectionMode: input.selectionMode,
-                focusBookId: input.focusBookId,
+                activeBookId: input.activeBookId,
                 mode: input.mode,
                 questionId: 'omnibus',
                 questionText: '',

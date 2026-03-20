@@ -3,8 +3,8 @@ import type RadialTimelinePlugin from '../../main';
 import type { TimelineItem } from '../../types';
 import { parseDurationDetail, formatDurationSelectionLabel, calculateAutoDiscontinuityThreshold } from '../../utils/date';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
-import { ERT_CLASSES } from '../../ui/classes';
 import { IMPACT_FULL } from '../SettingImpact';
+import { ERT_CLASSES } from '../../ui/classes';
 
 interface DurationCapOption {
     key: string;
