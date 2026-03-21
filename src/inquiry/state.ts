@@ -10,6 +10,7 @@ export type InquiryConfidence = 'low' | 'medium' | 'high';
 export type InquiryAiStatus = 'success' | 'degraded' | 'rejected' | 'unavailable' | 'timeout' | 'auth' | 'rate_limit';
 export type InquiryTokenUsageScope = 'full' | 'partial' | 'synthesis_only';
 export type FindingRole = 'target' | 'context';
+export type InquiryRoleValidation = 'ok' | 'missing-target-roles';
 
 export type InquiryCitation = SourceCitation;
 
@@ -51,6 +52,7 @@ export interface InquiryResult {
     scopeLabel: string;
     mode: InquiryLens;
     selectionMode: InquirySelectionMode;
+    roleValidation: InquiryRoleValidation;
     questionId: string;
     questionZone?: InquiryZone;
     summary: string;

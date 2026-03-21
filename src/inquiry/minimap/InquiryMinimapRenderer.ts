@@ -21,7 +21,7 @@ import type { InquiryRunProgressEvent } from '../runner/types';
 import type { InquiryScope } from '../state';
 import type { AIRunAdvancedContext } from '../../ai/types';
 import { createSvgElement, createSvgGroup, createSvgText, clearSvgChildren } from './svgUtils';
-import { addTooltipData } from '../../utils/tooltip';
+import { addTooltipData, balanceTooltipText } from '../../utils/tooltip';
 import { buildPassIndicator } from '../services/readiness';
 import { buildMinimapSubsetResult } from '../services/minimapSubset';
 
@@ -591,11 +591,25 @@ export class InquiryMinimapRenderer {
 
     // ── Target Scenes ────────────────────────────────────────────────
 
-    updateTargetStates(targetSceneIds: string[]): void {
+    updateTargetStates(
+        targetSceneIds: string[],
+        options?: { selectionMode?: 'discover' | 'focused'; roleValidation?: 'ok' | 'missing-target-roles' }
+    ): void {
         const targetSceneIdSet = new Set(targetSceneIds.map(sceneId => sceneId.trim().toLowerCase()).filter(Boolean));
+        const isDegradedFocused = options?.selectionMode === 'focused' && options?.roleValidation === 'missing-target-roles';
         this.minimapTicks.forEach(tick => {
             const sceneId = tick.getAttribute('data-scene-id')?.trim().toLowerCase() || '';
-            tick.classList.toggle('is-target', !!sceneId && targetSceneIdSet.has(sceneId));
+            const isTarget = !!sceneId && targetSceneIdSet.has(sceneId);
+            tick.classList.toggle('is-target', isTarget);
+            tick.classList.toggle('is-target-role-validation-warning', isTarget && isDegradedFocused);
+            if (isTarget) {
+                const targetTooltip = isDegradedFocused
+                    ? 'Incomplete Focused Analysis — Target scenes were selected, but no target-specific findings were returned.'
+                    : 'Target Scene — Included in focused analysis.';
+                tick.setAttribute('data-target-tooltip', balanceTooltipText(targetTooltip));
+            } else {
+                tick.removeAttribute('data-target-tooltip');
+            }
         });
     }
 
@@ -1345,7 +1359,8 @@ export class InquiryMinimapRenderer {
                 const label = tick.getAttribute('data-label') || '';
                 if (label) {
                     const fullLabel = tick.getAttribute('data-full-label') || label;
-                    addTooltipData(tick, balanceTooltipText(fullLabel), 'bottom');
+                    const targetTooltip = tick.getAttribute('data-target-tooltip') || '';
+                    addTooltipData(tick, targetTooltip || balanceTooltipText(fullLabel), 'bottom');
                 }
             });
             return;
@@ -1359,10 +1374,17 @@ export class InquiryMinimapRenderer {
             tick.classList.toggle('is-context-finding', !!finding && finding.role !== 'target');
             severityClasses.forEach(cls => tick.classList.remove(cls));
             const fullLabel = tick.getAttribute('data-full-label') || label;
+            const targetTooltip = tick.getAttribute('data-target-tooltip') || '';
             if (finding) {
-                addTooltipData(tick, '', 'bottom');
+                const findingTooltip = finding?.role === 'target'
+                    ? `${fullLabel}\nCited Target Scene — Returned a target-specific finding.`
+                    : `${fullLabel}\nCited Scene — Returned as supporting context.`;
+                const combinedTooltip = targetTooltip
+                    ? `${targetTooltip}\n${finding.role === 'target' ? 'Target-specific finding returned for this scene.' : 'Contextual finding returned for this scene.'}`
+                    : findingTooltip;
+                addTooltipData(tick, balanceTooltipText(combinedTooltip), 'bottom');
             } else {
-                addTooltipData(tick, balanceTooltipText(fullLabel), 'bottom');
+                addTooltipData(tick, targetTooltip || balanceTooltipText(fullLabel), 'bottom');
             }
         });
     }

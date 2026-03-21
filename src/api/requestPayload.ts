@@ -170,12 +170,17 @@ export function buildProviderRequestPayload(
         let userText = callArgs.userPrompt;
         let cachedContentNote: string | undefined;
         let includeSystem = true;
-        if (delimIndex > 0) {
+        if (delimIndex > 0 && !callArgs.citationsEnabled) {
             const stableText = callArgs.userPrompt.slice(0, delimIndex).trimEnd();
             userText = callArgs.userPrompt
                 .slice(delimIndex + CACHE_BREAK_DELIMITER.length).trimStart();
             cachedContentNote = `[cached: ${stableText.length} chars stable prefix]`;
             includeSystem = false;  // system goes in cache, not in request
+        } else if (delimIndex > 0) {
+            const stableText = callArgs.userPrompt.slice(0, delimIndex).trimEnd();
+            const volatileText = callArgs.userPrompt
+                .slice(delimIndex + CACHE_BREAK_DELIMITER.length).trimStart();
+            userText = `${stableText}\n\n${volatileText}`;
         }
         const payload: GeminiPayload = {
             contents: [{ role: 'user', parts: [{ text: userText }] }],

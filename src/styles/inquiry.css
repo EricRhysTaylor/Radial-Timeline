@@ -675,6 +675,7 @@
 .ert-inquiry-minimap-tick {
   --ert-inquiry-minimap-tick-color: var(--icon-color, var(--text-normal));
   --ert-inquiry-minimap-tick-fill: color-mix(in srgb, var(--ert-inquiry-minimap-tick-color) 18%, var(--background-secondary));
+  --ert-inquiry-minimap-target-letter-color: var(--ert-inquiry-target-color);
   opacity: 1;
   cursor: pointer;
 }
@@ -689,9 +690,8 @@
   filter: saturate(0.35);
 }
 
-.ert-inquiry-minimap-tick.is-target {
-  --ert-inquiry-minimap-tick-color: var(--ert-inquiry-target-color);
-  --ert-inquiry-minimap-tick-fill: color-mix(in srgb, var(--ert-inquiry-target-color) 18%, var(--background-secondary));
+.ert-inquiry-minimap-tick.is-target.is-target-role-validation-warning {
+  --ert-inquiry-minimap-target-letter-color: var(--ert-inquiry-ai-warning);
 }
 
 .ert-inquiry-minimap-tick.is-selection-boundary .ert-inquiry-minimap-tick-border {
@@ -713,9 +713,10 @@
   font-family: '04b03b', 'Monaco', 'Courier New', monospace;
   font-size: 10px;
   letter-spacing: 0;
-  fill: var(--ert-inquiry-minimap-tick-color);
+  fill: var(--ert-inquiry-minimap-target-letter-color);
   opacity: 0.98;
   pointer-events: none;
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--ert-inquiry-minimap-target-letter-color) 42%, transparent));
 }
 
 .ert-inquiry-minimap-tick.is-target .ert-inquiry-minimap-target-letter {
@@ -1046,14 +1047,11 @@
 }
 
 .ert-inquiry-svg.is-results .ert-inquiry-minimap-tick.is-target-finding {
-  --ert-inquiry-minimap-tick-color: var(--ert-inquiry-target-color);
-  --ert-inquiry-minimap-tick-fill: color-mix(in srgb, var(--ert-inquiry-target-color) 18%, var(--background-secondary));
-  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--ert-inquiry-target-color) 70%, transparent));
+  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--ert-inquiry-finding-color) 72%, transparent));
 }
 
 .ert-inquiry-svg.is-results .ert-inquiry-minimap-tick.is-context-finding {
-  --ert-inquiry-minimap-tick-color: var(--ert-inquiry-context-color);
-  --ert-inquiry-minimap-tick-fill: color-mix(in srgb, var(--ert-inquiry-context-color) 18%, var(--background-secondary));
+  filter: drop-shadow(0 0 7px color-mix(in srgb, var(--ert-inquiry-finding-color) 58%, transparent));
 }
 
 .ert-inquiry-svg.is-results .ert-inquiry-minimap-tick.is-active {
@@ -1968,6 +1966,12 @@
 .ert-inquiry-verdict {
   font-size: 12px;
   fill: var(--text-muted);
+}
+
+.ert-inquiry-findings-title.is-role-validation-warning,
+.ert-inquiry-summary.is-role-validation-warning,
+.ert-inquiry-verdict.is-role-validation-warning {
+  fill: var(--ert-inquiry-ai-warning);
 }
 
 .ert-inquiry-findings-list {

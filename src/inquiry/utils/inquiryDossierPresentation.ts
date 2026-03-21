@@ -1,4 +1,4 @@
-import type { InquiryFinding } from '../state';
+import type { InquiryFinding, InquiryRoleValidation, InquirySelectionMode } from '../state';
 
 export type InquiryDossierPresentation = {
     title: string;
@@ -14,6 +14,8 @@ export type InquiryDossierPresentationInput = {
     sceneTitle?: string;
     fallbackTitle?: string;
     runId?: string;
+    selectionMode?: InquirySelectionMode;
+    roleValidation?: InquiryRoleValidation;
 };
 
 const FALLBACK_TITLE = 'Scene';
@@ -36,7 +38,7 @@ export function buildInquiryDossierPresentation(
         ? bulletLines
         : deriveFallbackBodyLines(headline, anchorLine);
 
-    const metaLine = buildMetaLine(input.finding);
+    const metaLine = buildMetaLine(input.finding, input.selectionMode, input.roleValidation);
     const sourceLabel = buildSourceLabel(input.runId);
 
     return {
@@ -73,12 +75,19 @@ function deriveFallbackBodyLines(headline: string, anchorLine: string): string[]
     return [normalizeSentence(bodySource)];
 }
 
-function buildMetaLine(finding: InquiryFinding): string {
+function buildMetaLine(
+    finding: InquiryFinding,
+    selectionMode?: InquirySelectionMode,
+    roleValidation?: InquiryRoleValidation
+): string {
     const parts = [
         `Role ${formatEnumLabel(finding.role || 'context')}`,
         `Impact ${formatEnumLabel(finding.impact)}`,
         `Confidence ${formatEnumLabel(finding.assessmentConfidence)}`
     ];
+    if (selectionMode === 'focused' && roleValidation === 'missing-target-roles') {
+        parts.unshift('Validation Incomplete');
+    }
     if (finding.lens) {
         parts.push(`Lens ${finding.lens === 'both' ? 'Flow + Depth' : formatEnumLabel(finding.lens)}`);
     }

@@ -10,6 +10,7 @@ import type {
     InquiryConfidence,
     FindingRole,
     InquiryFinding,
+    InquiryRoleValidation,
     InquiryResult,
     InquiryScope,
     InquirySeverity,
@@ -31,6 +32,8 @@ export type InquiryBriefModel = {
     questionTitle: string;
     questionText: string;
     scopeIndicator?: string | null;
+    selectionMode: 'discover' | 'focused';
+    roleValidation: InquiryRoleValidation;
     pills: string[];
     flowSummary: string;
     depthSummary: string;

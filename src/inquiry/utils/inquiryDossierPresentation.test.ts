@@ -18,9 +18,12 @@ describe('buildInquiryDossierPresentation', () => {
                 role: 'target'
             },
             sceneNumber: 12,
-            sceneTitle: 'Midpoint'
+            sceneTitle: 'Midpoint',
+            selectionMode: 'focused',
+            roleValidation: 'missing-target-roles'
         });
 
+        expect(dossier.metaLine).toContain('Validation Incomplete');
         expect(dossier.metaLine).toContain('Role Target');
     });
 });

@@ -17,6 +17,13 @@ describe('InquiryView payload accounting', () => {
         expect(source.includes("result.findings.some(finding => this.getFindingRole(finding) === 'target')")).toBe(false);
     });
 
+    it('persists focused role validation separately from selection mode truth', () => {
+        const source = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
+        expect(source.includes("return findings.some(finding => finding.role === 'target') ? 'ok' : 'missing-target-roles';")).toBe(true);
+        expect(source.includes("const roleValidation = this.getResultRoleValidation(result);")).toBe(true);
+        expect(source.includes('Warning: Focused run returned no target-specific findings.')).toBe(true);
+    });
+
     it('matches latest saved inquiry seeds on book scope and normalized target selection', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
         expect(source.includes('const activeTargetKey = this.getTargetSceneKey(this.getActiveTargetSceneIds());')).toBe(true);
@@ -27,5 +34,15 @@ describe('InquiryView payload accounting', () => {
     it('makes saga-scope minimap target authoring explicit instead of silently returning', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
         expect(source.includes("this.notifyInteraction('Target Scenes are available only in Book scope.')")).toBe(true);
+    });
+
+    it('renders degraded focused target markers as amber F states in the minimap source', () => {
+        const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
+        const minimapSource = readFileSync(resolve(process.cwd(), 'src/inquiry/minimap/InquiryMinimapRenderer.ts'), 'utf8');
+        const cssSource = readFileSync(resolve(process.cwd(), 'src/styles/inquiry.css'), 'utf8');
+        expect(viewSource.includes("this.minimap.updateTargetStates(targetSceneIds, { selectionMode, roleValidation });")).toBe(true);
+        expect(minimapSource.includes('is-target-role-validation-warning')).toBe(true);
+        expect(minimapSource.includes('Incomplete Focused Analysis')).toBe(true);
+        expect(cssSource.includes('.ert-inquiry-minimap-tick.is-target.is-target-role-validation-warning')).toBe(true);
     });
 });

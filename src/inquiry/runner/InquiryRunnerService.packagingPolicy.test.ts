@@ -309,7 +309,7 @@ describe('InquiryRunnerService packaging policy', () => {
         expect(trace.notes).toContain('OpenAI transport lane: responses.');
     });
 
-    it('preserves scopeLabel, selectionMode, and finding roles in built results', () => {
+    it('preserves scopeLabel, selectionMode, roleValidation, and finding roles in built results', () => {
         const service = createService();
         const sceneRefIndex = buildSceneRefIndex([{
             sceneId: 'scn_b5e1b85f',
@@ -375,7 +375,76 @@ describe('InquiryRunnerService packaging policy', () => {
 
         expect(result.scopeLabel).toBe('B1');
         expect(result.selectionMode).toBe('focused');
+        expect(result.roleValidation).toBe('ok');
         expect(result.findings[0].role).toBe('target');
+    });
+
+    it('marks focused runs without target-labelled findings as missing-target-roles', () => {
+        const service = createService();
+        const sceneRefIndex = buildSceneRefIndex([{
+            sceneId: 'scn_b5e1b85f',
+            path: 'Books/Book 1/Scene 1.md',
+            label: 'Scene 1.md',
+            sceneNumber: 1,
+            title: 'Scene 1',
+            aliases: ['S1', 'Scene 1']
+        }]);
+
+        Object.assign(service, {
+            buildCanonicalSceneRefIndex: vi.fn(() => sceneRefIndex),
+            assertFindingRefsResolve: vi.fn()
+        });
+
+        const result = (service.buildResult as (...args: unknown[]) => Record<string, unknown>)(
+            {
+                scope: 'book',
+                scopeLabel: 'B1',
+                targetSceneIds: ['scn_b5e1b85f'],
+                selectionMode: 'focused',
+                activeBookId: 'Books/Book 1',
+                mode: 'flow',
+                questionId: 'q-1',
+                questionText: 'Question',
+                questionZone: 'setup',
+                corpus: {
+                    entries: [],
+                    fingerprint: 'fp-1',
+                    generatedAt: 1,
+                    resolvedRoots: [],
+                    allowedClasses: [],
+                    synopsisOnly: false,
+                    classCounts: {}
+                },
+                rules: {
+                    sagaOutlineScope: 'saga-only',
+                    bookOutlineScope: 'book-only',
+                    crossScopeUsage: 'conflict-only'
+                },
+                ai: TEST_AI
+            },
+            {
+                summary: 'Summary',
+                verdict: { flow: 0.7, depth: 0.6, impact: 'medium', assessmentConfidence: 'high' },
+                findings: [{
+                    ref_id: 'scn_b5e1b85f',
+                    kind: 'continuity',
+                    headline: 'Context-only issue',
+                    impact: 'medium',
+                    assessmentConfidence: 'high',
+                    role: 'context'
+                }]
+            },
+            {
+                aiProvider: 'openai',
+                aiModelRequested: TEST_AI.modelId,
+                aiModelResolved: TEST_AI.modelId,
+                aiStatus: 'success',
+                aiReason: 'ok'
+            }
+        );
+
+        expect(result.selectionMode).toBe('focused');
+        expect(result.roleValidation).toBe('missing-target-roles');
     });
 
     it('recovers later invalid chunk JSON and continues multi-pass execution', async () => {

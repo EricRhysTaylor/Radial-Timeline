@@ -9,6 +9,8 @@ describe('inquiryViewText', () => {
             questionTitle: 'Question',
             questionText: 'What is breaking?',
             scopeIndicator: 'Book B1',
+            selectionMode: 'focused',
+            roleValidation: 'ok',
             pills: [],
             flowSummary: 'Flow summary',
             depthSummary: 'Depth summary',
@@ -53,6 +55,7 @@ describe('inquiryViewText', () => {
             scopeLabel: 'B2',
             mode: 'flow',
             selectionMode: 'discover',
+            roleValidation: 'ok',
             questionId: 'q-1',
             summary: 'Summary',
             verdict: {
@@ -65,5 +68,26 @@ describe('inquiryViewText', () => {
         };
 
         expect(resolveInquiryScopeIndicator(result)).toBe('Book B2');
+    });
+
+    it('renders a focused-analysis warning when target roles are missing', () => {
+        const brief: InquiryBriefModel = {
+            questionTitle: 'Question',
+            questionText: 'What is breaking?',
+            scopeIndicator: 'Book B1',
+            selectionMode: 'focused',
+            roleValidation: 'missing-target-roles',
+            pills: [],
+            flowSummary: 'Flow summary',
+            depthSummary: 'Depth summary',
+            findings: [],
+            sources: [],
+            sceneNotes: [],
+            pendingActions: [],
+            logTitle: null
+        };
+
+        const content = renderInquiryBrief(brief);
+        expect(content).toContain('Incomplete Focused Analysis');
     });
 });

@@ -155,6 +155,13 @@ export const renderInquiryBrief = (brief: InquiryBriefModel): string => {
 
     lines.push('', '## High-Level Conclusions', '### Flow', brief.flowSummary, '', '### Depth', brief.depthSummary);
 
+    if (brief.selectionMode === 'focused' && brief.roleValidation === 'missing-target-roles') {
+        lines.push(
+            '',
+            '_Warning: Incomplete Focused Analysis — target scenes were selected, but no target-specific findings were returned._'
+        );
+    }
+
     const targetFindings = brief.findings.filter(finding => finding.role === 'target');
     const contextFindings = brief.findings.filter(finding => finding.role === 'context');
     const renderFindingSection = (title: string, findings: InquiryBriefModel['findings']) => {

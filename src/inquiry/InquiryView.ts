@@ -26,6 +26,7 @@ import {
     InquiryConfidence,
     InquiryFinding,
     InquiryLens,
+    InquiryRoleValidation,
     InquiryResult,
     InquirySelectionMode,
     InquiryScope,
@@ -3447,13 +3448,13 @@ export class InquiryView extends ItemView {
         void this.refreshMinimapEmptyStates(items);
         this.renderCorpusCcStrip();
         this.applyMinimapSubsetShading(items);
-        this.minimap.updateTargetStates(this.getActiveTargetSceneIds());
+        this.updateMinimapTargetStates(this.state.activeResult);
         this.updateMinimapPressureGauge();
     }
 
     private refreshMinimapAfterEmptyRender(): void {
         this.renderCorpusCcStrip();
-        this.minimap.updateTargetStates(this.getActiveTargetSceneIds());
+        this.updateMinimapTargetStates(this.state.activeResult);
         this.updateMinimapPressureGauge();
         this.updatePreviewPanelPosition();
     }
@@ -6312,7 +6313,7 @@ export class InquiryView extends ItemView {
         } else {
             this.showResultsPreview(normalized);
         }
-        this.minimap.updateTargetStates(this.getActiveTargetSceneIds());
+        this.updateMinimapTargetStates(normalized);
         this.refreshUI({ skipCorpus: true });
     }
 
@@ -6374,6 +6375,11 @@ export class InquiryView extends ItemView {
             summaryFlow: result.summaryFlow ?? result.summary,
             summaryDepth: result.summaryDepth ?? result.summary,
             selectionMode: result.selectionMode === 'focused' ? 'focused' : 'discover',
+            roleValidation: this.computeRoleValidation(
+                result.selectionMode === 'focused' ? 'focused' : 'discover',
+                findings,
+                result.roleValidation
+            ),
             verdict: {
                 flow: verdict.flow,
                 depth: verdict.depth,
@@ -6924,6 +6930,7 @@ export class InquiryView extends ItemView {
             scopeLabel,
             mode: this.state.mode,
             selectionMode: this.getSelectionMode(this.getActiveTargetSceneIds()),
+            roleValidation: this.computeRoleValidation(this.getSelectionMode(this.getActiveTargetSceneIds()), []),
             questionId: question.id,
             questionZone: question.zone,
             summary: 'Inquiry failed; fallback result returned.',
@@ -6960,6 +6967,7 @@ export class InquiryView extends ItemView {
             scopeLabel,
             mode: this.state.mode,
             selectionMode: this.getSelectionMode(this.getActiveTargetSceneIds()),
+            roleValidation: this.computeRoleValidation(this.getSelectionMode(this.getActiveTargetSceneIds()), []),
             questionId: question.id,
             questionZone: question.zone,
             summary: 'Simulated inquiry session.',
@@ -7404,6 +7412,27 @@ export class InquiryView extends ItemView {
         return result?.selectionMode === 'focused' ? 'focused' : 'discover';
     }
 
+    private getResultRoleValidation(result: InquiryResult | null | undefined): InquiryRoleValidation {
+        return result?.roleValidation === 'missing-target-roles' ? 'missing-target-roles' : 'ok';
+    }
+
+    private computeRoleValidation(
+        selectionMode: InquirySelectionMode,
+        findings: InquiryFinding[],
+        persisted?: InquiryRoleValidation
+    ): InquiryRoleValidation {
+        if (selectionMode !== 'focused') return 'ok';
+        if (persisted === 'ok' || persisted === 'missing-target-roles') return persisted;
+        return findings.some(finding => finding.role === 'target') ? 'ok' : 'missing-target-roles';
+    }
+
+    private updateMinimapTargetStates(result?: InquiryResult | null): void {
+        const targetSceneIds = this.getActiveTargetSceneIds();
+        const selectionMode = result ? this.getResultSelectionMode(result) : this.getSelectionMode(targetSceneIds);
+        const roleValidation = result ? this.getResultRoleValidation(result) : 'ok';
+        this.minimap.updateTargetStates(targetSceneIds, { selectionMode, roleValidation });
+    }
+
     private getTargetSceneKey(sceneIds: string[] | undefined | null): string {
         if (!Array.isArray(sceneIds) || !sceneIds.length) return '';
         return this.normalizeTargetSceneIds(sceneIds).sort().join(',');
@@ -7650,7 +7679,9 @@ export class InquiryView extends ItemView {
             sceneNumber: parseCorpusLabelNumber(item.displayLabel) ?? parseCorpusLabelNumber(label),
             sceneTitle: stripNumericTitlePrefix(this.getMinimapItemTitle(item)),
             fallbackTitle,
-            runId: result.runId
+            runId: result.runId,
+            selectionMode: result.selectionMode,
+            roleValidation: result.roleValidation
         });
     }
 
@@ -7755,10 +7786,14 @@ export class InquiryView extends ItemView {
     private computeBalancedSvgLines(
         textEl: SVGTextElement,
         text: string,
-        maxWidth: number
+        maxWidth: number,
+        options?: {
+            maxLines?: number;
+        }
     ): string[] {
         const words = text.split(/\s+/).filter(Boolean);
         if (!words.length) return [];
+        const maxLines = Math.max(options?.maxLines ?? words.length, 1);
 
         const widthCache = new Map<string, number>();
         const measureWidth = (content: string): number => {
@@ -7771,12 +7806,16 @@ export class InquiryView extends ItemView {
             return measured;
         };
 
-        const solveMemo = new Map<number, { cost: number; lines: string[] }>();
-        const solve = (startIndex: number): { cost: number; lines: string[] } => {
+        const solveMemo = new Map<string, { cost: number; lines: string[] }>();
+        const solve = (startIndex: number, linesRemaining: number): { cost: number; lines: string[] } => {
             if (startIndex >= words.length) {
                 return { cost: 0, lines: [] };
             }
-            const cached = solveMemo.get(startIndex);
+            if (linesRemaining <= 0) {
+                return { cost: Number.POSITIVE_INFINITY, lines: [] };
+            }
+            const memoKey = `${startIndex}:${linesRemaining}`;
+            const cached = solveMemo.get(memoKey);
             if (cached) return cached;
 
             let line = '';
@@ -7785,20 +7824,26 @@ export class InquiryView extends ItemView {
             for (let endIndex = startIndex; endIndex < words.length; endIndex += 1) {
                 line = line ? `${line} ${words[endIndex]}` : words[endIndex];
                 const width = measureWidth(line);
-                if (width > maxWidth && endIndex > startIndex) break;
+                if (width > maxWidth) {
+                    if (endIndex === startIndex) continue;
+                    break;
+                }
 
-                const remaining = solve(endIndex + 1);
+                const remaining = solve(endIndex + 1, linesRemaining - 1);
                 if (!Number.isFinite(remaining.cost)) continue;
 
                 const isLast = endIndex === words.length - 1;
                 const fillRatio = Math.min(1, width / maxWidth);
                 const slackRatio = Math.max(0, 1 - fillRatio);
-                let linePenalty = isLast ? slackRatio * slackRatio * 0.35 : slackRatio * slackRatio;
+                let linePenalty = slackRatio * slackRatio;
                 if (!isLast && fillRatio < 0.52) {
                     linePenalty += (0.52 - fillRatio) * 1.4;
                 }
-                if (isLast && fillRatio < 0.48 && startIndex > 0) {
-                    linePenalty += (0.48 - fillRatio) * 1.8;
+                if (isLast) {
+                    linePenalty += slackRatio * slackRatio * 0.45;
+                    if (fillRatio < 0.72 && startIndex > 0) {
+                        linePenalty += (0.72 - fillRatio) * 3.6;
+                    }
                 }
 
                 const candidateCost = linePenalty + remaining.cost;
@@ -7810,11 +7855,11 @@ export class InquiryView extends ItemView {
                 }
             }
 
-            solveMemo.set(startIndex, best);
+            solveMemo.set(memoKey, best);
             return best;
         };
 
-        const best = solve(0);
+        const best = solve(0, maxLines);
         textEl.textContent = '';
         return best.lines.length ? best.lines : [words.join(' ')];
     }
@@ -8595,6 +8640,9 @@ export class InquiryView extends ItemView {
             const focusedCount = this.state.scope === 'book' ? activeTargetCount : storedTargetCount;
             const targetCountLabel = focusedCount === 1 ? '1 Target Scene' : `${focusedCount} Target Scenes`;
             this.findingsTitleEl.textContent = focusedCount > 0 ? `Findings · ${targetCountLabel}` : 'Findings';
+            this.findingsTitleEl.classList.remove('is-role-validation-warning');
+            this.summaryEl.classList.remove('is-role-validation-warning');
+            this.verdictEl.classList.remove('is-role-validation-warning');
             this.summaryEl.textContent = 'No inquiry run yet.';
             this.verdictEl.textContent = this.state.scope === 'saga' && storedTargetCount > 0
                 ? `${targetCountLabel} saved for Book scope. Switch to Book to use focused inquiry.`
@@ -8603,12 +8651,16 @@ export class InquiryView extends ItemView {
         }
 
         const selectionMode = this.getResultSelectionMode(result);
+        const roleValidation = this.getResultRoleValidation(result);
         const persistedTargetSceneIds = this.getPersistedResultTargetSceneIds(result);
         const focusedCount = persistedTargetSceneIds.length;
         const targetCountLabel = focusedCount === 1 ? '1 Target Scene' : `${focusedCount} Target Scenes`;
         this.findingsTitleEl.textContent = selectionMode === 'focused'
             ? `Findings · ${targetCountLabel}`
             : 'Findings';
+        this.findingsTitleEl.classList.toggle('is-role-validation-warning', roleValidation === 'missing-target-roles');
+        this.summaryEl.classList.toggle('is-role-validation-warning', roleValidation === 'missing-target-roles');
+        this.verdictEl.classList.toggle('is-role-validation-warning', roleValidation === 'missing-target-roles');
 
         const orderedFindings = this.getOrderedFindings(result, result.mode || this.state.mode);
         const targetFindings = orderedFindings.filter(finding => this.getFindingRole(finding) === 'target');
@@ -8618,10 +8670,13 @@ export class InquiryView extends ItemView {
         const selectionText = selectionMode === 'focused'
             ? `Selection Mode · Focused · ${targetFindings.length} target · ${contextFindings.length} context`
             : 'Selection Mode · Discover';
+        const validationNote = roleValidation === 'missing-target-roles'
+            ? ' · Warning: Focused run returned no target-specific findings.'
+            : '';
         const scopeNote = this.state.scope === 'saga' && this.state.targetSceneIds.length > 0
             ? ' · Target Scenes are book-only and inactive in Saga scope.'
             : '';
-        this.verdictEl.textContent = `${selectionText}${scopeNote}`;
+        this.verdictEl.textContent = `${selectionText}${validationNote}${scopeNote}`;
 
         let cursorY = 0;
         const renderSection = (title: string, findings: InquiryFinding[]) => {
@@ -8971,6 +9026,28 @@ export class InquiryView extends ItemView {
             tspanCount++;
             return tspan;
         };
+
+        const balancedLines = maxLines > 1
+            ? this.computeBalancedSvgLines(textEl, text, maxWidth, { maxLines })
+            : [];
+        if (balancedLines.length > 0 && balancedLines.length <= maxLines) {
+            balancedLines.forEach((lineText, index) => {
+                const nextTspan = getNextTspan(index === 0);
+                nextTspan.textContent = lineText;
+            });
+
+            while (textEl.childNodes.length > tspanCount) {
+                if (textEl.lastChild) {
+                    this.perfCounters.svgClearCalls++;
+                    textEl.removeChild(textEl.lastChild);
+                }
+            }
+
+            const exactLines = Math.max(balancedLines.length, 1);
+            textEl.setAttribute('data-rt-wrap-cache', cacheKey);
+            textEl.setAttribute('data-rt-wrap-lines', String(exactLines));
+            return exactLines;
+        }
 
         let line = '';
         let lineIndex = 0;
@@ -9736,6 +9813,8 @@ export class InquiryView extends ItemView {
             questionTitle,
             questionText,
             scopeIndicator,
+            selectionMode: result.selectionMode,
+            roleValidation: result.roleValidation,
             pills,
             flowSummary,
             depthSummary,

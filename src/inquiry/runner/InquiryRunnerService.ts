@@ -4,7 +4,7 @@ import type RadialTimelinePlugin from '../../main';
 import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { INQUIRY_MAX_OUTPUT_TOKENS, INQUIRY_SCHEMA_VERSION } from '../constants';
 import { PROVIDER_MAX_OUTPUT_TOKENS } from '../../constants/tokenLimits';
-import type { EvidenceDocumentMeta, InquiryAiStatus, InquiryCitation, InquiryConfidence, InquiryFinding, InquiryResult, InquirySeverity, InquiryTokenUsageScope } from '../state';
+import type { EvidenceDocumentMeta, InquiryAiStatus, InquiryCitation, InquiryConfidence, InquiryFinding, InquiryResult, InquiryRoleValidation, InquirySeverity, InquiryTokenUsageScope } from '../state';
 import type {
     CorpusManifestEntry,
     InquiryAiProvider,
@@ -1982,6 +1982,7 @@ export class InquiryRunnerService implements InquiryRunner {
         const sceneRefIndex = this.buildCanonicalSceneRefIndex(input);
         this.assertFindingRefsResolve(findings, sceneRefIndex);
         const mappedFindings = findings.map(finding => this.mapFinding(finding, sceneRefIndex));
+        const roleValidation = this.computeRoleValidation(input.selectionMode, mappedFindings);
 
         const summaryFlow = parsed.summaryFlow
             ? String(parsed.summaryFlow)
@@ -1999,6 +2000,7 @@ export class InquiryRunnerService implements InquiryRunner {
             scopeLabel: input.scopeLabel,
             mode: input.mode,
             selectionMode: input.selectionMode,
+            roleValidation,
             questionId: input.questionId,
             questionZone: input.questionZone,
             summary,
@@ -2231,12 +2233,25 @@ export class InquiryRunnerService implements InquiryRunner {
         const bullets = message ? [`Runner note: ${message}`] : ['Deterministic placeholder result.'];
         const fallbackRefId = this.resolveFindingFallbackRefId(input);
 
+        const findings: InquiryFinding[] = [{
+            refId: fallbackRefId,
+            kind: 'unclear',
+            status: 'unclear',
+            impact: 'low',
+            assessmentConfidence: 'low',
+            headline: 'Inquiry stub result.',
+            bullets,
+            related: [],
+            evidenceType: 'mixed',
+            lens: 'both'
+        }];
         return {
             runId: `run-${Date.now()}`,
             scope: input.scope,
             scopeLabel: input.scopeLabel,
             mode: input.mode,
             selectionMode: input.selectionMode,
+            roleValidation: this.computeRoleValidation(input.selectionMode, findings),
             questionId: input.questionId,
             questionZone: input.questionZone,
             summary,
@@ -2248,18 +2263,7 @@ export class InquiryRunnerService implements InquiryRunner {
                 impact: 'low',
                 assessmentConfidence: 'low'
             },
-            findings: [{
-                refId: fallbackRefId,
-                kind: 'unclear',
-                status: 'unclear',
-                impact: 'low',
-                assessmentConfidence: 'low',
-                headline: 'Inquiry stub result.',
-                bullets,
-                related: [],
-                evidenceType: 'mixed',
-                lens: 'both'
-            }],
+            findings,
             corpusFingerprint: input.corpus.fingerprint,
             ...aiMeta
         };
@@ -2478,6 +2482,14 @@ export class InquiryRunnerService implements InquiryRunner {
             return normalized as InquiryFinding['role'];
         }
         return undefined;
+    }
+
+    private computeRoleValidation(
+        selectionMode: InquiryRunnerInput['selectionMode'],
+        findings: InquiryFinding[]
+    ): InquiryRoleValidation {
+        if (selectionMode !== 'focused') return 'ok';
+        return findings.some(finding => finding.role === 'target') ? 'ok' : 'missing-target-roles';
     }
 
     private getFrontmatter(file: TFile): Record<string, unknown> {

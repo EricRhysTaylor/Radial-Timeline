@@ -121,8 +121,9 @@ export async function callProvider(plugin: RadialTimelinePlugin, args: ProviderC
       let cachedContentName: string | undefined;
       let cacheStatus: 'hit' | 'created' | undefined;
 
+      const canUseGeminiCache = !effectiveCallArgs.citationsEnabled;
       const delimIndex = effectiveCallArgs.userPrompt.indexOf(CACHE_BREAK_DELIMITER);
-      if (delimIndex > 0) {
+      if (canUseGeminiCache && delimIndex > 0) {
         const stableText = effectiveCallArgs.userPrompt.slice(0, delimIndex).trimEnd();
         const volatileText = effectiveCallArgs.userPrompt
             .slice(delimIndex + CACHE_BREAK_DELIMITER.length).trimStart();
@@ -145,6 +146,11 @@ export async function callProvider(plugin: RadialTimelinePlugin, args: ProviderC
           // Fall back: recombine, send uncached
           effectiveUserPrompt = stableText + '\n\n' + volatileText;
         }
+      } else if (delimIndex > 0) {
+        const stableText = effectiveCallArgs.userPrompt.slice(0, delimIndex).trimEnd();
+        const volatileText = effectiveCallArgs.userPrompt
+            .slice(delimIndex + CACHE_BREAK_DELIMITER.length).trimStart();
+        effectiveUserPrompt = stableText + '\n\n' + volatileText;
       }
 
       const resp: GeminiApiResponse = await callGeminiApi(
