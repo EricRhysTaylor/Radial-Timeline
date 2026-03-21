@@ -33,6 +33,10 @@ const LATEST_ALIAS_DISPLAY_NAMES: Record<string, string> = {
 // Runtime cache for resolved model names (updated from API responses)
 const resolvedModelCache: Map<string, { resolvedTo: string; displayName: string; updatedAt: number }> = new Map();
 
+function normalizeModelId(modelId: string): string {
+    return modelId.replace(/^models\//, '').trim();
+}
+
 /**
  * Get a friendly display name for a model ID.
  * For "latest" aliases, shows what they resolve to if known.
@@ -42,6 +46,7 @@ const resolvedModelCache: Map<string, { resolvedTo: string; displayName: string;
  */
 export function getModelDisplayName(modelId: string, options?: { debug?: boolean }): string {
     if (!modelId) return 'Unknown Model';
+    modelId = normalizeModelId(modelId);
     const debug = !!options?.debug;
 
     const snapshotLabel = formatOpenAiSnapshotName(modelId, debug);
@@ -131,6 +136,8 @@ function formatModelName(modelId: string, debug: boolean): string {
  * @param resolvedModelId The actual model it resolved to (e.g., "gemini-3-pro-preview")
  */
 export function cacheResolvedModel(aliasId: string, resolvedModelId: string): void {
+    aliasId = normalizeModelId(aliasId);
+    resolvedModelId = normalizeModelId(resolvedModelId);
     if (!aliasId || !resolvedModelId || aliasId === resolvedModelId) return;
     
     const displayName = `${formatModelName(resolvedModelId, false)} (via ${aliasId.includes('latest') ? 'latest' : 'alias'})`;
@@ -147,7 +154,7 @@ export function cacheResolvedModel(aliasId: string, resolvedModelId: string): vo
  * Returns null if not cached.
  */
 export function getResolvedModelId(aliasId: string): string | null {
-    return resolvedModelCache.get(aliasId)?.resolvedTo ?? null;
+    return resolvedModelCache.get(normalizeModelId(aliasId))?.resolvedTo ?? null;
 }
 
 /**
@@ -155,4 +162,8 @@ export function getResolvedModelId(aliasId: string): string | null {
  */
 export function isLatestAlias(modelId: string): boolean {
     return modelId.includes('latest');
+}
+
+export function clearResolvedModelCache(): void {
+    resolvedModelCache.clear();
 }

@@ -52,12 +52,15 @@ describe('AI settings models table', () => {
         expect(source.includes('References — not included')).toBe(true);
     });
 
-    it('renders active model preview with author-facing signals only', () => {
+    it('renders active model preview with author-facing pill signals only', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
         expect(source.includes('PREVIEW (ACTIVE MODEL)')).toBe(true);
-        expect(source.includes('Context window ·')).toBe(true);
-        expect(source.includes('Manuscript citations')).toBe(true);
-        expect(source.includes('Context compare · OpenAI')).toBe(true);
+        expect(source.includes('resolvePreviewSignals')).toBe(true);
+        expect(source.includes('resolveDisplayModelForLatestAlias')).toBe(true);
+        expect(source.includes('getResolvedModelId')).toBe(true);
+        expect(source.includes('ID pending')).toBe(true);
+        expect(source.includes('Citation or Cache (exclusive)')).toBe(true);
+        expect(source.includes('Context · Single-pass at this corpus')).toBe(true);
         expect(source.includes('Automatic Packaging')).toBe(false);
         expect(source.includes('Manual Selection')).toBe(false);
         expect(source.includes('Availability ·')).toBe(false);
@@ -68,18 +71,18 @@ describe('AI settings models table', () => {
         expect(source.includes('Best for')).toBe(false);
     });
 
-    it('renders a factual reasoning-depth comparator for known same-provider pairs', () => {
+    it('does not carry forward legacy reasoning-depth comparator copy', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
-        expect(source.includes('resolveReasoningDepthComparator')).toBe(true);
-        expect(source.includes('Reasoning depth')).toBe(true);
-        expect(source.includes('GPT-5.4 < GPT-5.4 Pro')).toBe(true);
+        expect(source.includes('resolveReasoningDepthComparator')).toBe(false);
+        expect(source.includes('Reasoning depth')).toBe(false);
+        expect(source.includes('GPT-5.4 < GPT-5.4 Pro')).toBe(false);
     });
 
-    it('keeps preview context comparison factual for OpenAI vs Gemini windows', () => {
+    it('does not carry forward legacy context-window comparison copy', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
-        expect(source.includes('OPENAI_CONTEXT_WINDOW = 1_050_000')).toBe(true);
-        expect(source.includes('GOOGLE_CONTEXT_WINDOW = 1_048_576')).toBe(true);
-        expect(source.includes('Context compare · OpenAI')).toBe(true);
+        expect(source.includes('OPENAI_CONTEXT_WINDOW = 1_050_000')).toBe(false);
+        expect(source.includes('GOOGLE_CONTEXT_WINDOW = 1_048_576')).toBe(false);
+        expect(source.includes('Context compare · OpenAI')).toBe(false);
     });
 
     it('does not render inquiry advisory UI in AI Strategy settings', () => {
@@ -131,6 +134,8 @@ describe('AI settings models table', () => {
         expect(source.includes(".setName('What gets sent to the AI')")).toBe(true);
         expect(source.includes('Fresh Run*')).toBe(true);
         expect(source.includes('* Fresh Run reflects provider-side billing expectations. Anthropic input usage includes cache accounting')).toBe(true);
+        expect(source.includes("rowEl.addClass('ert-ai-models-row--active')")).toBe(true);
+        expect(source.includes('setActiveCostComparisonRow(provider, displayModel.id)')).toBe(true);
         expect(source.includes('Request composition')).toBe(false);
         expect(source.includes("createEl('details', { cls: 'ert-ai-fold ert-ai-large-handling' }")).toBe(false);
         expect(source.includes('attachAiCollapseButton(largeHandling')).toBe(false);

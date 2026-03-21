@@ -69,6 +69,8 @@ const ZONE_SEGMENT_STROKE = '#d6c3ad';
 const ZONE_BASE_ANGLE = Math.PI;
 const ZONE_SEGMENT_AXIS_ROTATION_DEG = 90;
 const ZONE_CONTROL_SCALE = 1.05;
+/** Debounce on zone shrink to prevent jitter when cursor exits near SVG origin */
+const ZONE_SHRINK_DEBOUNCE_MS = 300;
 const DEBUG_INQUIRY_ZONES = false;
 
 export const GLYPH_OUTER_DIAMETER = (FLOW_RADIUS * 2) + FLOW_STROKE;
@@ -98,6 +100,7 @@ export class InquiryGlyph {
     private zoneDots: Array<{ circle: SVGCircleElement; proRing: SVGCircleElement; text: SVGTextElement; hit: SVGCircleElement }> = [];
     private zoneControlGroups = new Map<InquiryZone, SVGGElement>();
     private zoneControlStates = new Map<InquiryZone, { hovered: boolean; locked: boolean }>();
+    private zoneShrinkTimers = new Map<InquiryZone, ReturnType<typeof setTimeout>>();
     private zoneInteractionsEnabled = true;
     private promptState?: InquiryGlyphPromptState;
     private zoneNumberMarkers = new Map<InquiryZone, Array<{
@@ -482,16 +485,28 @@ export class InquiryGlyph {
         // SAFE: InquiryGlyph is a plain class without Component lifecycle; owner view manages cleanup
         entryTarget.addEventListener('pointerenter', () => {
             if (!this.zoneInteractionsEnabled) return;
-            state.hovered = true;
-            this.updateZoneControlScale(state, group);
+            // Cancel any pending shrink — cursor re-entered before debounce elapsed
+            const pending = this.zoneShrinkTimers.get(zone);
+            if (pending) { clearTimeout(pending); this.zoneShrinkTimers.delete(zone); }
+            if (!state.hovered) {
+                state.hovered = true;
+                this.updateZoneControlScale(state, group);
+            }
         });
         // SAFE: InquiryGlyph is a plain class without Component lifecycle
+        // Debounced shrink: prevents jitter when cursor exits near the SVG origin
+        // where the scale transform shifts the zone edge back under the cursor.
         group.addEventListener('pointerout', event => {
             if (!this.zoneInteractionsEnabled) return;
             const related = event.relatedTarget;
             if (related instanceof Node && group.contains(related)) return;
-            state.hovered = false;
-            this.updateZoneControlScale(state, group);
+            const existing = this.zoneShrinkTimers.get(zone);
+            if (existing) clearTimeout(existing);
+            this.zoneShrinkTimers.set(zone, setTimeout(() => {
+                this.zoneShrinkTimers.delete(zone);
+                state.hovered = false;
+                this.updateZoneControlScale(state, group);
+            }, ZONE_SHRINK_DEBOUNCE_MS));
         });
         // SAFE: InquiryGlyph is a plain class without Component lifecycle
         group.addEventListener('click', () => {

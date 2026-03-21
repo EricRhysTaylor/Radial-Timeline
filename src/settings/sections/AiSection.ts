@@ -45,6 +45,7 @@ import { getSortedSceneFiles } from '../../utils/manuscript';
 import { extractBeatOrder } from '../../utils/gossamer';
 import { resolveSelectedBeatModel } from '../../utils/beatsInputNormalize';
 import { getSynopsisGenerationWordLimit, getSynopsisHoverLineLimit } from '../../utils/synopsisLimits';
+import { getResolvedModelId } from '../../utils/modelResolver';
 
 type Provider = 'anthropic' | 'gemini' | 'openai' | 'local';
 type CapacityItem = string | { text: string; dividerBefore?: boolean };
@@ -114,7 +115,7 @@ export function renderAiSection(params: {
     const heroOnState = aiHero.createDiv({ cls: `${ERT_CLASSES.STACK} ert-ai-hero-state-on` });
     heroOnState.createEl('p', {
         cls: `${ERT_CLASSES.SECTION_DESC} ert-hero-subtitle`,
-        text: 'Radial Timeline\u2019s AI phylosophy is about helping the author efficiently and effectively prepare their creative work for human editors and a human audience. AI acts as a rigorous, genre-aware editor - analyzing structure, momentum, and continuity across scenes and materials. Use it to stress-test your manuscript, uncover hidden contradictions, and sharpen narrative identity while your voice remains fully your own.'
+        text: 'Radial Timeline uses AI to help authors prepare their work for editorial review\u2014by beta readers, collaborators, and professional editors. It analyzes structure, momentum, and continuity across scenes, helping the author identify gaps, surface contradictions, and strengthen narrative clarity.'
     });
     const heroOnFeatures = heroOnState.createDiv({
         cls: `${ERT_CLASSES.HERO_FEATURES} ${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}`
@@ -795,6 +796,47 @@ export function renderAiSection(params: {
         ?? BUILTIN_MODELS.find(model => model.provider === provider && model.status === 'stable')?.alias
         ?? BUILTIN_MODELS.find(model => model.provider === provider)?.alias;
 
+    const resolveDisplayModelForLatestAlias = (models: ModelInfo[], selected: ModelInfo): {
+        displayModel: ModelInfo;
+        resolvedModelId: string | null;
+        isPending: boolean;
+    } => {
+        const aliasId = selected.id.includes('latest')
+            ? selected.id
+            : (selected.alias.includes('latest') ? selected.alias : '');
+        if (!aliasId) {
+            return {
+                displayModel: selected,
+                resolvedModelId: selected.id,
+                isPending: false
+            };
+        }
+
+        const cachedResolvedId = getResolvedModelId(aliasId);
+        if (cachedResolvedId) {
+            const cached = models.find(model => model.id === cachedResolvedId || model.alias === cachedResolvedId);
+            if (cached) {
+                return {
+                    displayModel: cached,
+                    resolvedModelId: cached.id,
+                    isPending: false
+                };
+            }
+        }
+
+        const stableCandidates = models
+            .filter(model => model.provider === selected.provider)
+            .filter(model => model.status === 'stable')
+            .filter(model => model.line === selected.line)
+            .filter(model => !model.id.includes('latest') && !model.alias.includes('latest'))
+            .sort(compareNewestModels);
+        return {
+            displayModel: stableCandidates[0] ?? selected,
+            resolvedModelId: null,
+            isPending: true
+        };
+    };
+
     const getAccessTier = (provider: AIProviderId): AccessTier => {
         const aiSettings = ensureCanonicalAiSettings();
         if (provider === 'anthropic') return aiSettings.aiAccessProfile.anthropicTier ?? 1;
@@ -991,6 +1033,7 @@ export function renderAiSection(params: {
         modelId: string;
         modelLabel: string;
         modelAlias: string;
+        idPending: boolean;
         contextWindow: number | null;
         maxInputTokens: number | null;
         maxOutputTokens: number | null;
@@ -1018,12 +1061,11 @@ export function renderAiSection(params: {
     const renderResolvedPreview = (state: ResolvedPreviewRenderState): void => {
         resolvedPreviewKicker.setText('PREVIEW (ACTIVE MODEL)');
         resolvedPreviewModel.setText(state.modelLabel);
-        // Subtitle shows provider + API model ID (technical name) instead of repeating
-        // the display label. Append (Preview) only when the label doesn't already say it.
-        const idLabel = state.modelId || state.modelLabel;
         const labelAlreadySaysPreview = state.modelLabel.toLowerCase().includes('preview');
         const previewSuffix = state.isPreview && !labelAlreadySaysPreview ? ' (Preview)' : '';
-        const providerDetail = `${providerLabel[state.provider]} · ${idLabel}${previewSuffix}`;
+        const providerDetail = state.idPending
+            ? `${providerLabel[state.provider]} · ID pending (${state.modelAlias})`
+            : `${providerLabel[state.provider]} · ${(state.modelId || state.modelLabel)}${previewSuffix}`;
         resolvedPreviewProvider.setText(providerDetail);
         resolvedPreviewComparatorLabel.setText('');
         resolvedPreviewComparatorValue.setText('');
@@ -1064,6 +1106,9 @@ export function renderAiSection(params: {
         cachedText: string;
         passesText: string;
     };
+
+    const getCostComparisonRowKey = (provider: AIProviderId, modelId: string): string =>
+        `${provider}::${modelId}`;
 
     const COST_PROVIDER_ORDER: ReadonlyArray<Exclude<AIProviderId, 'none' | 'ollama'>> = ['anthropic', 'openai', 'google'];
     const MODEL_STATUS_ORDER: Record<ModelStatus, number> = {
@@ -1135,6 +1180,9 @@ export function renderAiSection(params: {
         costEstimateCorpusStructure.setText(options.structureText);
     };
 
+    let activeCostComparisonRowKey: string | null = null;
+    let lastCostComparisonRows: CostComparisonRow[] = [];
+
     const getCurrentCorpusContext = () => plugin.getInquiryService().getCurrentCorpusContext();
 
     const buildCurrentInquiryExecutionEstimate = async (params: {
@@ -1162,6 +1210,7 @@ export function renderAiSection(params: {
     };
 
     const renderCostComparisonRows = (rows: CostComparisonRow[]): void => {
+        lastCostComparisonRows = rows;
         costEstimateTable.empty();
 
         const headerRow = costEstimateTable.createDiv({ cls: 'ert-ai-models-row ert-ai-models-row--header' });
@@ -1171,12 +1220,24 @@ export function renderAiSection(params: {
 
         rows.forEach(row => {
             const rowEl = costEstimateTable.createDiv({ cls: 'ert-ai-models-row' });
+            if (activeCostComparisonRowKey === getCostComparisonRowKey(row.model.provider, row.model.modelId)) {
+                rowEl.addClass('ert-ai-models-row--active');
+            }
             createCostTableCell(rowEl, row.model.providerLabel);
             createCostTableCell(rowEl, row.model.modelLabel, 'ert-ai-models-cell--model');
             createCostTableCell(rowEl, row.freshText);
             createCostTableCell(rowEl, row.cachedText);
             createCostTableCell(rowEl, row.passesText);
         });
+    };
+
+    const setActiveCostComparisonRow = (provider: AIProviderId | null, modelId: string | null): void => {
+        activeCostComparisonRowKey = provider && modelId
+            ? getCostComparisonRowKey(provider, modelId)
+            : null;
+        if (lastCostComparisonRows.length > 0) {
+            renderCostComparisonRows(lastCostComparisonRows);
+        }
     };
 
     const buildLoadingCostRows = (): CostComparisonRow[] => getCostComparisonModels().map(model => ({
@@ -1250,6 +1311,7 @@ export function renderAiSection(params: {
             sizeText: 'Inquiry Corpus: Calculating...',
             structureText: 'Scanning corpus...'
         });
+        setActiveCostComparisonRow(null, null);
         renderCostComparisonRows(buildLoadingCostRows());
         const [corpusSummary, rows] = await Promise.all([
             computeCostEstimateCorpusSummary(),
@@ -1512,6 +1574,9 @@ export function renderAiSection(params: {
                 throw new Error(prepared.result.error || prepared.result.reason || 'Unable to resolve AI capacity.');
             }
             const estimate = prepared.estimate;
+            const registryModels = await getAIClient(plugin).getRegistryModels();
+            const latestResolution = resolveDisplayModelForLatestAlias(registryModels, estimate.model);
+            const displayModel = latestResolution.displayModel;
             const safeBudgetTokens = Math.max(0, Math.floor(estimate.effectiveInputCeiling));
             const formatExpectedPasses = (providerExecutionTokens: number): string => {
                 if (providerExecutionTokens <= 0 || safeBudgetTokens <= 0) return 'Expected structured passes · n/a';
@@ -1526,9 +1591,10 @@ export function renderAiSection(params: {
             };
             const previewState: ResolvedPreviewRenderState = {
                 provider,
-                modelId: estimate.model.id,
-                modelLabel: estimate.model.label,
+                modelId: latestResolution.resolvedModelId ?? '',
+                modelLabel: displayModel.label,
                 modelAlias: estimate.model.alias,
+                idPending: latestResolution.isPending,
                 contextWindow: estimate.model.contextWindow,
                 maxInputTokens: estimate.maxInputTokens,
                 maxOutputTokens: estimate.maxOutputTokens,
@@ -1556,6 +1622,7 @@ export function renderAiSection(params: {
                 }
             }
             renderResolvedPreview(previewState);
+            setActiveCostComparisonRow(provider, displayModel.id);
             void computeVaultForecasts({
                 provider,
                 modelId: estimate.model.id
@@ -1596,6 +1663,7 @@ export function renderAiSection(params: {
                 modelId: '',
                 modelLabel: 'No eligible model',
                 modelAlias: providerLabel[provider],
+                idPending: false,
                 contextWindow: null,
                 maxInputTokens: null,
                 maxOutputTokens: null,
@@ -1604,6 +1672,7 @@ export function renderAiSection(params: {
                 passBehaviorLabel: null,
                 isPreview: false
             });
+            setActiveCostComparisonRow(null, null);
             capacityInquiryToken.setText('Unavailable');
             capacityInquiryExpected.setText('Unavailable');
             capacityInquiryProvider.setText('Unavailable');

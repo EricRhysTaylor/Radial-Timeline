@@ -8,6 +8,7 @@ import { buildOutputRulesText } from '../prompts/outputRules';
 import { modelSupportsSystemRole } from '../../api/providerCapabilities';
 import { ModelRegistry } from '../registry/modelRegistry';
 import { findSnapshotModel, loadProviderSnapshot, type ProviderSnapshotLoadResult } from '../registry/providerSnapshot';
+import { cacheResolvedModel } from '../../utils/modelResolver';
 import { selectModel } from '../router/selectModel';
 import { resolveActiveRoleTemplate } from '../roleTemplate';
 import { buildDefaultAiSettings } from '../settings/aiSettings';
@@ -490,8 +491,13 @@ export class AIClient {
         }
 
         const cacheKey = estimate.cacheKey;
+        const recordResolvedAlias = (requestedModelId?: string | null, resolvedModelId?: string | null): void => {
+            if (!requestedModelId || !resolvedModelId) return;
+            cacheResolvedModel(requestedModelId, resolvedModelId);
+        };
         const cached = this.cache.get<AIRunResult>(cacheKey);
         if (cached) {
+            recordResolvedAlias(cached.modelRequested, cached.modelResolved);
             return {
                 ...cached,
                 warnings: [...cached.warnings, 'Served from in-memory cache.']
@@ -596,6 +602,7 @@ export class AIClient {
             citationsEnabled: caps.citationsEnabled,
             evidenceDocuments: estimate.useDocumentBlocks ? estimate.evidenceDocuments : undefined
         }, request.returnType, caps);
+        recordResolvedAlias(execution.aiModelRequested, execution.aiModelResolved);
 
         if (provider === 'openai' && execution.aiTransportLane) {
             advancedContext.openAiTransportLane = execution.aiTransportLane;
@@ -669,6 +676,7 @@ export class AIClient {
                     }, request.returnType, caps);
 
                     if (retry.aiStatus === 'success' && retry.content) {
+                        recordResolvedAlias(retry.aiModelRequested, retry.aiModelResolved);
                         const retryValidation = validateJsonResponse(retry.content, request.responseSchema, provider);
                         if (retryValidation.ok) {
                             const result: AIRunResult = {
