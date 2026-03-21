@@ -294,6 +294,7 @@ export const buildCanonicalExecutionEstimate = async (
         mode: 'flow',
         questionId: 'estimate-snapshot',
         questionText: params.questionText,
+        questionPromptForm: 'standard',
         questionZone: 'setup',
         corpus: buildCanonicalManifest('estimate-snapshot', params.modelId, params.manifestEntries),
         rules: {

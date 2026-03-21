@@ -1597,10 +1597,10 @@ export function renderInquirySection(params: SectionParams): void {
                     setTooltip(resetButton, 'Reset to canonical question');
                     resetButton.onclick = () => {
                         labelInput.setValue(canonicalQuestion.label ?? '');
-                        questionInput.setValue(canonicalQuestion.text ?? '');
+                        questionInput.setValue(canonicalQuestion.standardPrompt ?? '');
                         void updateSlot(zone, slotIndex, {
                             label: canonicalQuestion.label ?? '',
-                            question: canonicalQuestion.text ?? '',
+                            question: canonicalQuestion.standardPrompt ?? '',
                             enabled: true
                         });
                     };

@@ -27,6 +27,7 @@ export interface InquiryGlyphPromptState {
     processedStatus?: 'success' | 'error' | null;
     lockedPromptId?: string | null;
     onPromptSelect?: (zone: InquiryZone, promptId: string) => void;
+    onPromptContextMenu?: (zone: InquiryZone, promptId: string, event: MouseEvent) => void;
     onPromptHover?: (zone: InquiryZone, promptId: string, promptText: string) => void;
     onPromptHoverEnd?: () => void;
 }
@@ -409,6 +410,13 @@ export class InquiryGlyph {
                     if (!this.zoneInteractionsEnabled) return;
                     if (!marker.promptId) return;
                     this.promptState?.onPromptSelect?.(marker.zone, marker.promptId);
+                });
+                // SAFE: InquiryGlyph is a plain class without Component lifecycle
+                dotGroup.addEventListener('contextmenu', (event: MouseEvent) => {
+                    if (!this.zoneInteractionsEnabled) return;
+                    if (!marker.promptId) return;
+                    event.preventDefault();
+                    this.promptState?.onPromptContextMenu?.(marker.zone, marker.promptId, event);
                 });
                 // SAFE: InquiryGlyph is a plain class without Component lifecycle
                 dotGroup.addEventListener('pointerenter', () => {

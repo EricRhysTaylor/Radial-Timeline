@@ -4,10 +4,11 @@ import { resolve } from 'node:path';
 
 describe('InquiryRunnerService packaging integrity', () => {
     it('uses scene ids for inquiry evidence citation references', () => {
-        const source = readFileSync(resolve(process.cwd(), 'src/inquiry/runner/InquiryRunnerService.ts'), 'utf8');
-        expect(source.includes('"ref_id": "scn_a1b2c3d4"')).toBe(true);
-        expect(source.includes('Use scene ref_id values from evidence labels in parentheses')).toBe(true);
-        expect(source.includes('(${scene.sceneId})')).toBe(true);
+        const runnerSource = readFileSync(resolve(process.cwd(), 'src/inquiry/runner/InquiryRunnerService.ts'), 'utf8');
+        const scaffoldSource = readFileSync(resolve(process.cwd(), 'src/inquiry/promptScaffold.ts'), 'utf8');
+        expect(runnerSource.includes('"ref_id": "scn_a1b2c3d4"')).toBe(true);
+        expect(scaffoldSource.includes('Use scene ref_id values from evidence labels in parentheses')).toBe(true);
+        expect(runnerSource.includes('(${scene.sceneId})')).toBe(true);
     });
 
     it('readFileContent delegates stripping to cleanEvidenceBody', () => {
@@ -28,7 +29,7 @@ describe('InquiryRunnerService packaging integrity', () => {
     it('threads userQuestion into trace token estimates so Anthropic document-block estimates include evidence', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/inquiry/runner/InquiryRunnerService.ts'), 'utf8');
         expect(source).toMatch(/this\.buildTokenEstimate\([\s\S]*this\.getJsonSchema\(\),[\s\S]*input\.questionText/);
-        expect(source).toMatch(/this\.buildTokenEstimate\([\s\S]*this\.getOmnibusJsonSchema\(\),[\s\S]*input\.questions\.map\(question => question\.question\)\.join\('\\n'\)/);
+        expect(source).toMatch(/this\.buildTokenEstimate\([\s\S]*this\.getOmnibusJsonSchema\(\),[\s\S]*input\.questions\.map\(question => question\.questionText\)\.join\('\\n'\)/);
         expect(source).toMatch(/this\.prepareInquiryRunEstimate\([\s\S]*userQuestion,[\s\S]*ai,/);
     });
 

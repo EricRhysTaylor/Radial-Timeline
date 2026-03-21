@@ -22,7 +22,8 @@ import type { SynopsisQuality } from '../../sceneAnalysis/synopsisQuality';
 export type InquiryQuestion = {
     id: string;
     label: string;
-    question: string;
+    standardPrompt: string;
+    focusedPrompt?: string;
     zone: InquiryZone;
     icon: string;
     tier?: InquiryCanonicalQuestionTier;

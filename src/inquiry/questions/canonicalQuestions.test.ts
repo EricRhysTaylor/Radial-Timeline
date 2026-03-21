@@ -60,4 +60,15 @@ describe('canonical Inquiry questions', () => {
             'pressure-irreversible-moves'
         ]);
     });
+
+    it('defines focused variants only for the focused execution subset', () => {
+        expect(ALL_CANONICAL_QUESTIONS.filter(question => question.focusedPrompt).map(question => question.id)).toEqual([
+            'pressure-underwritten-beats',
+            'pressure-escalation-consistency',
+            'pressure-conflict-density',
+            'pressure-scene-function-drift',
+            'payoff-abandoned-threads',
+            'payoff-narrative-debt'
+        ]);
+    });
 });

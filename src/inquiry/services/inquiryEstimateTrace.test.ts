@@ -32,6 +32,7 @@ describe('buildInquiryEstimateTrace', () => {
             scopeLabel: 'B1',
             questionId: 'estimate-snapshot',
             questionText: 'Analyze corpus-level flow and depth quality.',
+            questionPromptForm: 'standard',
             questionZone: 'setup',
             mode: 'flow',
             corpus: {

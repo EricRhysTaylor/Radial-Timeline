@@ -11,6 +11,7 @@ import type { SceneInclusion } from '../../types/settings';
 import type { AnalysisPackaging } from '../../ai/types';
 import type { TokenEstimateMethod } from '../../ai/tokens/inputTokenEstimate';
 import type { TokenUsage } from '../../ai/usage/providerUsage';
+import type { InquiryQuestionPromptForm } from '../questions/resolveQuestionPrompt';
 
 export type EvidenceClass = string;
 
@@ -28,7 +29,8 @@ export interface InquiryAiEngineInfo {
 export interface InquiryOmnibusQuestion {
     id: string;
     zone: InquiryZone;
-    question: string;
+    questionText: string;
+    questionPromptForm: InquiryQuestionPromptForm;
 }
 
 export interface CorpusManifestEntry {
@@ -68,6 +70,7 @@ export interface InquiryRunnerInput {
     mode: InquiryLens;
     questionId: string;
     questionText: string;
+    questionPromptForm: InquiryQuestionPromptForm;
     questionZone: InquiryZone;
     corpus: CorpusManifest;
     rules: EvidenceParticipationRules;

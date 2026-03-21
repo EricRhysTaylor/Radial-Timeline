@@ -6,7 +6,8 @@ export interface InquiryCanonicalQuestionDefinition {
     tier: InquiryCanonicalQuestionTier;
     zone: InquiryPromptZone;
     label: string;
-    text: string;
+    standardPrompt: string;
+    focusedPrompt?: string;
     defaultOrder: number;
     enabledByDefault?: boolean;
 }
@@ -37,7 +38,7 @@ export const CORE_CANONICAL_QUESTIONS: readonly InquiryCanonicalQuestionDefiniti
         tier: 'core',
         zone: 'setup',
         label: 'Setup',
-        text: 'What must already be true in the material for the story to move smoothly?',
+        standardPrompt: 'What must already be true in the material for the story to move smoothly?',
         defaultOrder: 10,
         enabledByDefault: true
     }),
@@ -47,7 +48,7 @@ export const CORE_CANONICAL_QUESTIONS: readonly InquiryCanonicalQuestionDefiniti
         tier: 'core',
         zone: 'setup',
         label: 'Missing Foundations',
-        text: 'What information, relationships, or context does the material assume but never establishes?',
+        standardPrompt: 'What information, relationships, or context does the material assume but never establishes?',
         defaultOrder: 20,
         enabledByDefault: true
     }),
@@ -57,7 +58,7 @@ export const CORE_CANONICAL_QUESTIONS: readonly InquiryCanonicalQuestionDefiniti
         tier: 'core',
         zone: 'setup',
         label: 'Foreshadowing Gaps',
-        text: 'Where does later material rely on setups that are weak, absent, or too subtle?',
+        standardPrompt: 'Where does later material rely on setups that are weak, absent, or too subtle?',
         defaultOrder: 30,
         enabledByDefault: true
     }),
@@ -67,7 +68,7 @@ export const CORE_CANONICAL_QUESTIONS: readonly InquiryCanonicalQuestionDefiniti
         tier: 'core',
         zone: 'setup',
         label: 'Character Readiness',
-        text: 'Which characters need to be more developed earlier for the story to function?',
+        standardPrompt: 'Which characters need to be more developed earlier for the story to function?',
         defaultOrder: 40,
         enabledByDefault: true
     }),
@@ -77,7 +78,7 @@ export const CORE_CANONICAL_QUESTIONS: readonly InquiryCanonicalQuestionDefiniti
         tier: 'core',
         zone: 'pressure',
         label: 'Pressure',
-        text: 'Where does the material shift momentum most right now?',
+        standardPrompt: 'Where does the material shift momentum most right now?',
         defaultOrder: 10,
         enabledByDefault: true
     }),
@@ -87,7 +88,8 @@ export const CORE_CANONICAL_QUESTIONS: readonly InquiryCanonicalQuestionDefiniti
         tier: 'core',
         zone: 'pressure',
         label: 'Underwritten Beats',
-        text: 'Where does the material move too quickly, skipping emotional or causal weight?',
+        standardPrompt: 'Where does the material move too quickly, skipping emotional or causal weight?',
+        focusedPrompt: 'Across these Target Scenes, where do transitions or developments move too quickly, skipping necessary emotional or causal weight between scenes?',
         defaultOrder: 20,
         enabledByDefault: true
     }),
@@ -97,7 +99,7 @@ export const CORE_CANONICAL_QUESTIONS: readonly InquiryCanonicalQuestionDefiniti
         tier: 'core',
         zone: 'pressure',
         label: 'Over-Explanation',
-        text: 'Which parts of the material explain or repeat more than necessary, reducing momentum?',
+        standardPrompt: 'Which parts of the material explain or repeat more than necessary, reducing momentum?',
         defaultOrder: 30,
         enabledByDefault: true
     }),
@@ -107,7 +109,7 @@ export const CORE_CANONICAL_QUESTIONS: readonly InquiryCanonicalQuestionDefiniti
         tier: 'core',
         zone: 'pressure',
         label: 'False Plateaus',
-        text: 'Where does the story appear to pause without adding tension or consequence?',
+        standardPrompt: 'Where does the story appear to pause without adding tension or consequence?',
         defaultOrder: 40,
         enabledByDefault: true
     }),
@@ -117,7 +119,7 @@ export const CORE_CANONICAL_QUESTIONS: readonly InquiryCanonicalQuestionDefiniti
         tier: 'core',
         zone: 'payoff',
         label: 'Payoff',
-        text: 'Across the material, where are promises paid off, deferred, dangling, or abandoned?',
+        standardPrompt: 'Across the material, where are promises paid off, deferred, dangling, or abandoned?',
         defaultOrder: 10,
         enabledByDefault: true
     }),
@@ -127,7 +129,8 @@ export const CORE_CANONICAL_QUESTIONS: readonly InquiryCanonicalQuestionDefiniti
         tier: 'core',
         zone: 'payoff',
         label: 'Abandoned Threads',
-        text: 'Which narrative threads appear introduced but never meaningfully resolved or transformed?',
+        standardPrompt: 'Which narrative threads appear introduced but never meaningfully resolved or transformed?',
+        focusedPrompt: 'In these Target Scenes, which narrative threads appear introduced but are not continued, reinforced, or connected to the broader story?',
         defaultOrder: 20,
         enabledByDefault: true
     }),
@@ -137,7 +140,7 @@ export const CORE_CANONICAL_QUESTIONS: readonly InquiryCanonicalQuestionDefiniti
         tier: 'core',
         zone: 'payoff',
         label: 'Consequences Audit',
-        text: 'Which major actions lack lasting consequences within the material?',
+        standardPrompt: 'Which major actions lack lasting consequences within the material?',
         defaultOrder: 30,
         enabledByDefault: true
     }),
@@ -147,7 +150,7 @@ export const CORE_CANONICAL_QUESTIONS: readonly InquiryCanonicalQuestionDefiniti
         tier: 'core',
         zone: 'payoff',
         label: 'Premature Resolution',
-        text: 'Where are problems resolved too cleanly, reducing long-term impact?',
+        standardPrompt: 'Where are problems resolved too cleanly, reducing long-term impact?',
         defaultOrder: 40,
         enabledByDefault: true
     })
@@ -160,7 +163,7 @@ export const SIGNATURE_CANONICAL_QUESTIONS: readonly InquiryCanonicalQuestionDef
         tier: 'signature',
         zone: 'setup',
         label: 'Unrealized Thread',
-        text: 'Is there a potential plot thread implied by the material that has not been developed or activated?',
+        standardPrompt: 'Is there a potential plot thread implied by the material that has not been developed or activated?',
         defaultOrder: 50,
         enabledByDefault: true
     }),
@@ -170,7 +173,7 @@ export const SIGNATURE_CANONICAL_QUESTIONS: readonly InquiryCanonicalQuestionDef
         tier: 'signature',
         zone: 'setup',
         label: 'World Logic Preconditions',
-        text: 'What rules or constraints of the world must be true for later events to make sense?',
+        standardPrompt: 'What rules or constraints of the world must be true for later events to make sense?',
         defaultOrder: 60,
         enabledByDefault: true
     }),
@@ -180,7 +183,7 @@ export const SIGNATURE_CANONICAL_QUESTIONS: readonly InquiryCanonicalQuestionDef
         tier: 'signature',
         zone: 'setup',
         label: 'Reader Orientation Risk',
-        text: 'Where might first-time readers feel disoriented because the material assumes too much shared context or familiarity?',
+        standardPrompt: 'Where might first-time readers feel disoriented because the material assumes too much shared context or familiarity?',
         defaultOrder: 70,
         enabledByDefault: true
     }),
@@ -190,7 +193,7 @@ export const SIGNATURE_CANONICAL_QUESTIONS: readonly InquiryCanonicalQuestionDef
         tier: 'signature',
         zone: 'setup',
         label: 'Setup Load-Bearing',
-        text: 'Which early material must carry more weight for later events to feel inevitable?',
+        standardPrompt: 'Which early material must carry more weight for later events to feel inevitable?',
         defaultOrder: 80,
         enabledByDefault: true
     }),
@@ -200,7 +203,7 @@ export const SIGNATURE_CANONICAL_QUESTIONS: readonly InquiryCanonicalQuestionDef
         tier: 'signature',
         zone: 'setup',
         label: 'Structural Assumptions',
-        text: 'What narrative assumptions does the material make that may not hold for a first-time reader?',
+        standardPrompt: 'What narrative assumptions does the material make that may not hold for a first-time reader?',
         defaultOrder: 90,
         enabledByDefault: true
     }),
@@ -210,7 +213,8 @@ export const SIGNATURE_CANONICAL_QUESTIONS: readonly InquiryCanonicalQuestionDef
         tier: 'signature',
         zone: 'pressure',
         label: 'Escalation Consistency',
-        text: 'Does pressure escalate logically across the material, or reset in places?',
+        standardPrompt: 'Does pressure escalate logically across the material, or reset in places?',
+        focusedPrompt: 'Across these Target Scenes, does pressure escalate logically from one scene to the next, or does it reset, fragment, or compete across the sequence?',
         defaultOrder: 50,
         enabledByDefault: true
     }),
@@ -220,7 +224,8 @@ export const SIGNATURE_CANONICAL_QUESTIONS: readonly InquiryCanonicalQuestionDef
         tier: 'signature',
         zone: 'pressure',
         label: 'Conflict Density',
-        text: 'Which sections carry too many competing tensions, and which carry too few?',
+        standardPrompt: 'Which sections carry too many competing tensions, and which carry too few?',
+        focusedPrompt: 'Within these Target Scenes, are there too many competing tensions or concepts being introduced at once, and which should be simplified or removed?',
         defaultOrder: 60,
         enabledByDefault: true
     }),
@@ -230,7 +235,8 @@ export const SIGNATURE_CANONICAL_QUESTIONS: readonly InquiryCanonicalQuestionDef
         tier: 'signature',
         zone: 'pressure',
         label: 'Scene Function Drift',
-        text: 'Where do scenes lose clarity about what pressure they are meant to apply?',
+        standardPrompt: 'Where do scenes lose clarity about what pressure they are meant to apply?',
+        focusedPrompt: 'Across these Target Scenes, where do scenes lose clarity about the pressure or purpose they are meant to apply, and how do they fail to function as a coherent sequence?',
         defaultOrder: 70,
         enabledByDefault: true
     }),
@@ -240,7 +246,7 @@ export const SIGNATURE_CANONICAL_QUESTIONS: readonly InquiryCanonicalQuestionDef
         tier: 'signature',
         zone: 'pressure',
         label: 'Tension Leakage',
-        text: 'Where does tension dissipate unintentionally through explanation, reassurance, or delay instead of being sustained or redirected?',
+        standardPrompt: 'Where does tension dissipate unintentionally through explanation, reassurance, or delay instead of being sustained or redirected?',
         defaultOrder: 80,
         enabledByDefault: true
     }),
@@ -250,7 +256,7 @@ export const SIGNATURE_CANONICAL_QUESTIONS: readonly InquiryCanonicalQuestionDef
         tier: 'signature',
         zone: 'pressure',
         label: 'Irreversible Moves',
-        text: 'Where does the material fail to force characters into choices they cannot undo?',
+        standardPrompt: 'Where does the material fail to force characters into choices they cannot undo?',
         defaultOrder: 90,
         enabledByDefault: true
     }),
@@ -260,7 +266,7 @@ export const SIGNATURE_CANONICAL_QUESTIONS: readonly InquiryCanonicalQuestionDef
         tier: 'signature',
         zone: 'payoff',
         label: 'Emotional Payoff Balance',
-        text: 'Which emotional arcs receive strong payoff, and which feel incomplete or muted?',
+        standardPrompt: 'Which emotional arcs receive strong payoff, and which feel incomplete or muted?',
         defaultOrder: 50,
         enabledByDefault: true
     }),
@@ -270,7 +276,7 @@ export const SIGNATURE_CANONICAL_QUESTIONS: readonly InquiryCanonicalQuestionDef
         tier: 'signature',
         zone: 'payoff',
         label: 'Thematic Closure',
-        text: 'Do the story’s themes reach meaningful resolution, or simply stop being discussed?',
+        standardPrompt: 'Do the story’s themes reach meaningful resolution, or simply stop being discussed?',
         defaultOrder: 60,
         enabledByDefault: true
     }),
@@ -280,7 +286,7 @@ export const SIGNATURE_CANONICAL_QUESTIONS: readonly InquiryCanonicalQuestionDef
         tier: 'signature',
         zone: 'payoff',
         label: 'Ending Load-Bearing',
-        text: 'Does the ending carry too much unresolved weight that earlier material should support?',
+        standardPrompt: 'Does the ending carry too much unresolved weight that earlier material should support?',
         defaultOrder: 80,
         enabledByDefault: true
     }),
@@ -290,7 +296,8 @@ export const SIGNATURE_CANONICAL_QUESTIONS: readonly InquiryCanonicalQuestionDef
         tier: 'signature',
         zone: 'payoff',
         label: 'Narrative Debt',
-        text: 'Which promises accumulate across the material without proportional payoff, creating unresolved narrative debt?',
+        standardPrompt: 'Which promises accumulate across the material without proportional payoff, creating unresolved narrative debt?',
+        focusedPrompt: 'Within these Target Scenes, what promises or subplot elements are introduced but not developed or integrated, creating local narrative debt?',
         defaultOrder: 90,
         enabledByDefault: true
     }),
@@ -300,7 +307,7 @@ export const SIGNATURE_CANONICAL_QUESTIONS: readonly InquiryCanonicalQuestionDef
         tier: 'signature',
         zone: 'payoff',
         label: 'Inevitable Payoff Test',
-        text: 'Do major outcomes feel inevitable from prior material, or do they feel introduced?',
+        standardPrompt: 'Do major outcomes feel inevitable from prior material, or do they feel introduced?',
         defaultOrder: 100,
         enabledByDefault: true
     })

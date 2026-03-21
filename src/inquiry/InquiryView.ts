@@ -67,6 +67,12 @@ import {
 } from './interactions/inquiryEventBinder';
 import { buildInquiryBriefingSections } from './briefing/inquiryBriefingGrouping';
 import { renderInquiryBriefingSessionItem } from './briefing/inquiryBriefingRenderer';
+import {
+    buildFocusedCustomPrompt,
+    resolveQuestionPrompt,
+    resolveQuestionPromptForm,
+    type InquiryQuestionPromptForm
+} from './questions/resolveQuestionPrompt';
 import { ensureInquiryArtifactFolder, getMostRecentArtifactFile, resolveInquiryArtifactFolder } from './utils/artifacts';
 import { buildInquiryDossierPresentation } from './utils/inquiryDossierPresentation';
 import { cleanEvidenceBody } from './utils/evidenceCleaning';
@@ -1058,7 +1064,12 @@ export class InquiryView extends ItemView {
     }
 
     private getEngineContextQuestion(): string | null {
-        if (this.pendingGuardQuestion?.question) return this.pendingGuardQuestion.question;
+        if (this.pendingGuardQuestion) {
+            return this.resolveQuestionPromptForRun(
+                this.pendingGuardQuestion,
+                this.getSelectionMode(this.getActiveTargetSceneIds())
+            );
+        }
         const activeQuestion = this.getQuestionTextById(this.state.activeQuestionId);
         return activeQuestion ?? null;
     }
@@ -1165,9 +1176,13 @@ export class InquiryView extends ItemView {
     private getCurrentPromptQuestion(): string | null {
         const activeZone = this.state.activeZone ?? 'setup';
         const activePrompt = this.getActivePrompt(activeZone);
-        if (activePrompt?.question?.trim()) return activePrompt.question.trim();
+        if (activePrompt) {
+            return this.resolveQuestionPromptForRun(activePrompt, this.getSelectionMode(this.getActiveTargetSceneIds())).trim();
+        }
         const fallback = this.getPromptOptions('setup')[0];
-        return fallback?.question?.trim() || null;
+        return fallback
+            ? this.resolveQuestionPromptForRun(fallback, this.getSelectionMode(this.getActiveTargetSceneIds())).trim()
+            : null;
     }
 
     private getCanonicalActiveBookId(): string | undefined {
@@ -2545,23 +2560,58 @@ export class InquiryView extends ItemView {
         return getPromptSlotQuestion(slot);
     }
 
+    private getFocusedPromptForSlot(
+        _zone: InquiryZone,
+        slot: InquiryPromptSlot,
+        standardPrompt: string
+    ): string | undefined {
+        const canonical = getCanonicalQuestionForSlot(slot);
+        if (canonical?.focusedPrompt?.trim().length) {
+            return canonical.focusedPrompt.trim();
+        }
+        if (slot.builtIn && canonical) {
+            return undefined;
+        }
+        const focusedPrompt = buildFocusedCustomPrompt(standardPrompt);
+        return focusedPrompt.trim().length ? focusedPrompt : undefined;
+    }
+
+    private buildInquiryQuestion(zone: InquiryZone, slot: InquiryPromptSlot, icon: string): InquiryQuestion | null {
+        const standardPrompt = this.getQuestionTextForSlot(zone, slot).trim();
+        if (!standardPrompt) return null;
+        return {
+            id: slot.id,
+            label: slot.label || (zone === 'setup' ? 'Setup' : zone === 'pressure' ? 'Pressure' : 'Payoff'),
+            standardPrompt,
+            focusedPrompt: this.getFocusedPromptForSlot(zone, slot, standardPrompt),
+            zone,
+            icon,
+            tier: getCanonicalQuestionForSlot(slot)?.tier
+        };
+    }
+
+    private resolveQuestionPromptForRun(
+        question: InquiryQuestion,
+        selectionMode: InquirySelectionMode,
+        override?: InquiryQuestionPromptForm
+    ): string {
+        return resolveQuestionPrompt(question, selectionMode, override);
+    }
+
+    private resolveQuestionPromptFormForRun(
+        question: InquiryQuestion,
+        selectionMode: InquirySelectionMode,
+        override?: InquiryQuestionPromptForm
+    ): InquiryQuestionPromptForm {
+        return resolveQuestionPromptForm(question, selectionMode, override);
+    }
+
     private getPromptOptions(zone: InquiryZone): InquiryQuestion[] {
         const config = this.getPromptConfig();
         const icon = zone === 'setup' ? 'help-circle' : zone === 'pressure' ? 'activity' : 'check-circle';
         return (config[zone] ?? [])
-            .map(slot => {
-                const question = this.getQuestionTextForSlot(zone, slot);
-                return { slot, question };
-            })
-            .filter(entry => entry.question.trim().length > 0)
-            .map(entry => ({
-                id: entry.slot.id,
-                label: entry.slot.label || (zone === 'setup' ? 'Setup' : zone === 'pressure' ? 'Pressure' : 'Payoff'),
-                question: entry.question,
-                zone,
-                icon,
-                tier: getCanonicalQuestionForSlot(entry.slot)?.tier
-            }));
+            .map(slot => this.buildInquiryQuestion(zone, slot, icon))
+            .filter((question): question is InquiryQuestion => !!question);
     }
 
     private getActivePrompt(zone: InquiryZone): InquiryQuestion | undefined {
@@ -2606,9 +2656,9 @@ export class InquiryView extends ItemView {
                 return;
             }
 
-            if (elements.text.textContent !== prompt.question) {
+            if (elements.text.textContent !== prompt.standardPrompt) {
                 this.perfCounters.svgTextWrites++;
-                elements.text.textContent = prompt.question;
+                elements.text.textContent = prompt.standardPrompt;
                 const textLength = elements.text.getComputedTextLength();
                 const width = Math.max(textLength + (paddingX * 2), 180);
                 const widthFixed = width.toFixed(2);
@@ -2652,9 +2702,9 @@ export class InquiryView extends ItemView {
         this.syncSelectedPromptIds();
         const processed = this.getProcessedPromptState();
         const promptsByZone = {
-            setup: this.getPromptOptions('setup').map(prompt => ({ id: prompt.id, question: prompt.question, tier: prompt.tier })),
-            pressure: this.getPromptOptions('pressure').map(prompt => ({ id: prompt.id, question: prompt.question, tier: prompt.tier })),
-            payoff: this.getPromptOptions('payoff').map(prompt => ({ id: prompt.id, question: prompt.question, tier: prompt.tier }))
+            setup: this.getPromptOptions('setup').map(prompt => ({ id: prompt.id, question: prompt.standardPrompt, tier: prompt.tier })),
+            pressure: this.getPromptOptions('pressure').map(prompt => ({ id: prompt.id, question: prompt.standardPrompt, tier: prompt.tier })),
+            payoff: this.getPromptOptions('payoff').map(prompt => ({ id: prompt.id, question: prompt.standardPrompt, tier: prompt.tier }))
         };
         this.glyph.updatePromptState({
             promptsByZone,
@@ -2682,9 +2732,24 @@ export class InquiryView extends ItemView {
                     this.notifyInteraction('No question configured for this slot.');
                 }
             },
-            onPromptHover: (zone, _promptId, promptText) => {
+            onPromptContextMenu: (zone, promptId, event) => {
+                const prompt = this.getPromptOptions(zone).find(item => item.id === promptId);
+                if (!prompt) {
+                    this.notifyInteraction('No question configured for this slot.');
+                    return;
+                }
+                this.showQuestionRunMenu(prompt, event);
+            },
+            onPromptHover: (zone, promptId, promptText) => {
                 if (this.isInquiryRunDisabled()) return;
-                this.showPromptPreview(zone, this.state.mode, promptText);
+                const prompt = this.getPromptOptions(zone).find(item => item.id === promptId);
+                this.showPromptPreview(
+                    zone,
+                    this.state.mode,
+                    prompt
+                        ? this.resolveQuestionPromptForRun(prompt, this.getSelectionMode(this.getActiveTargetSceneIds()))
+                        : promptText
+                );
             },
             onPromptHoverEnd: () => {
                 if (this.isInquiryRunDisabled()) return;
@@ -2748,6 +2813,29 @@ export class InquiryView extends ItemView {
         void this.handleQuestionClick(nextPrompt);
     }
 
+    private showQuestionRunMenu(question: InquiryQuestion, event: MouseEvent): void {
+        const menu = new Menu();
+        menu.addItem(item => {
+            item.setTitle('Run (Auto)');
+            item.onClick(() => {
+                void this.handleQuestionClick(question);
+            });
+        });
+        menu.addItem(item => {
+            item.setTitle('Run Standard');
+            item.onClick(() => {
+                void this.handleQuestionClick(question, { promptOverride: 'standard' });
+            });
+        });
+        menu.addItem(item => {
+            item.setTitle('Run Focused');
+            item.onClick(() => {
+                void this.handleQuestionClick(question, { promptOverride: 'focused' });
+            });
+        });
+        menu.showAtMouseEvent(event);
+    }
+
     private renderZonePods(parent: SVGGElement): void {
         const rZone = FLOW_RADIUS + FLOW_STROKE + 90;
         const zones: Array<{ id: InquiryZone; angle: number }> = [
@@ -2780,11 +2868,24 @@ export class InquiryView extends ItemView {
                 registerSvgEvent: this.registerSvgEvent.bind(this),
                 zoneEl,
                 onClick: () => this.handlePromptClick(zone.id),
+                onContextMenu: (event) => {
+                    if (this.isInquiryRunDisabled()) return;
+                    const prompt = this.getActivePrompt(zone.id);
+                    if (!prompt) {
+                        this.notifyInteraction('No questions configured for this zone.');
+                        return;
+                    }
+                    this.showQuestionRunMenu(prompt, event);
+                },
                 onPointerEnter: () => {
                     if (this.isInquiryRunDisabled()) return;
                     const prompt = this.getActivePrompt(zone.id);
                     if (prompt) {
-                        this.showPromptPreview(zone.id, this.state.mode, prompt.question);
+                        this.showPromptPreview(
+                            zone.id,
+                            this.state.mode,
+                            this.resolveQuestionPromptForRun(prompt, this.getSelectionMode(this.getActiveTargetSceneIds()))
+                        );
                     }
                     this.setHoverText(this.buildZoneHoverText(zone.id));
                 },
@@ -5281,17 +5382,20 @@ export class InquiryView extends ItemView {
         }
     }
 
-    private async handleQuestionClick(question: InquiryQuestion): Promise<void> {
+    private async handleQuestionClick(
+        question: InquiryQuestion,
+        options?: { promptOverride?: InquiryQuestionPromptForm }
+    ): Promise<void> {
         if (this.isErrorState() && this.state.activeResult?.questionId === question.id) {
             await this.openInquiryErrorLog();
             return;
         }
-        await this.runInquiry(question);
+        await this.runInquiry(question, options);
     }
 
     private async runInquiry(
         question: InquiryQuestion,
-        options?: { bypassTokenGuard?: boolean }
+        options?: { bypassTokenGuard?: boolean; promptOverride?: InquiryQuestionPromptForm }
     ): Promise<void> {
         if (this.isInquiryRunDisabled()) return;
         if (this.state.isRunning) {
@@ -5310,6 +5414,8 @@ export class InquiryView extends ItemView {
         const scopeKey = this.getScopeKey();
         const targetSceneIds = this.getActiveTargetSceneIds();
         const selectionMode = this.getSelectionMode(targetSceneIds);
+        const questionText = this.resolveQuestionPromptForRun(question, selectionMode, options?.promptOverride);
+        const questionPromptForm = this.resolveQuestionPromptFormForRun(question, selectionMode, options?.promptOverride);
         const activeBookId = this.state.scope === 'saga' ? this.state.activeBookId : this.state.activeBookId;
 
         const engineSelection = this.resolveEngineSelectionForRun();
@@ -5323,6 +5429,7 @@ export class InquiryView extends ItemView {
         }
         const baseKey = this.sessionStore.buildBaseKey({
             questionId: question.id,
+            questionPromptForm,
             scope: this.state.scope,
             scopeKey,
             targetSceneIds
@@ -5371,10 +5478,10 @@ export class InquiryView extends ItemView {
         this.clearActiveResultState();
         this.currentRunProgress = null;
         this.currentRunElapsedMs = 0;
-        this.currentRunEstimatedMaxMs = this.estimateRunDurationRange(question.question).maxSeconds * 1000;
+        this.currentRunEstimatedMaxMs = this.estimateRunDurationRange(questionText).maxSeconds * 1000;
         this.state.activeQuestionId = question.id;
         this.state.activeZone = question.zone;
-        this.lockPromptPreview(question);
+        this.lockPromptPreview(question, questionText);
         this.state.cacheStatus = cacheStatus;
 
         const startTime = Date.now();
@@ -5393,7 +5500,8 @@ export class InquiryView extends ItemView {
             activeBookId: this.state.scope === 'saga' ? this.state.activeBookId : this.state.activeBookId,
             mode: this.state.mode,
             questionId: question.id,
-            questionText: question.question,
+            questionText,
+            questionPromptForm,
             questionZone: question.zone,
             corpus: manifest,
             rules: this.getEvidenceRules(),
@@ -5424,7 +5532,7 @@ export class InquiryView extends ItemView {
                     detail: 'Provider response received. Saving the result.'
                 });
             } catch (error) {
-                result = this.buildErrorFallback(question, scopeLabel, manifest.fingerprint, error);
+                result = this.buildErrorFallback(question, questionText, questionPromptForm, scopeLabel, manifest.fingerprint, error);
                 const message = error instanceof Error ? error.message : String(error);
                 runTrace = await this.buildFallbackTrace(runnerInput, `Runner exception: ${message}`);
             }
@@ -5657,7 +5765,8 @@ export class InquiryView extends ItemView {
             questions: questions.map(question => ({
                 id: question.id,
                 zone: question.zone,
-                question: question.question
+                questionText: this.resolveQuestionPromptForRun(question, selectionMode),
+                questionPromptForm: this.resolveQuestionPromptFormForRun(question, selectionMode)
             })),
             corpus: manifest,
             rules: this.getEvidenceRules(),
@@ -5712,7 +5821,8 @@ export class InquiryView extends ItemView {
                     activeBookId,
                     mode: this.state.mode,
                     questionId: question.id,
-                    questionText: question.question,
+                    questionText: this.resolveQuestionPromptForRun(question, selectionMode),
+                    questionPromptForm: this.resolveQuestionPromptFormForRun(question, selectionMode),
                     questionZone: question.zone,
                     corpus: questionManifest,
                     rules: this.getEvidenceRules(),
@@ -5839,7 +5949,8 @@ export class InquiryView extends ItemView {
                     activeBookId,
                     mode: this.state.mode,
                     questionId: question.id,
-                    questionText: question.question,
+                    questionText: this.resolveQuestionPromptForRun(question, selectionMode),
+                    questionPromptForm: this.resolveQuestionPromptFormForRun(question, selectionMode),
                     questionZone: question.zone,
                     corpus: manifest,
                     rules: this.getEvidenceRules(),
@@ -5860,7 +5971,14 @@ export class InquiryView extends ItemView {
                         modal.setAiAdvancedContext(getLastAiAdvancedContext(this.plugin, 'InquiryMode'));
                     }
                 } catch (error) {
-                    result = this.buildErrorFallback(question, scopeLabel, manifest.fingerprint, error);
+                    result = this.buildErrorFallback(
+                        question,
+                        this.resolveQuestionPromptForRun(question, selectionMode),
+                        this.resolveQuestionPromptFormForRun(question, selectionMode),
+                        scopeLabel,
+                        manifest.fingerprint,
+                        error
+                    );
                     const message = error instanceof Error ? error.message : String(error);
                     trace = await this.buildFallbackTrace(runnerInput, `Runner exception: ${message}`);
                 }
@@ -6117,14 +6235,11 @@ export class InquiryView extends ItemView {
             slots.forEach(slot => {
                 if (!slot.enabled) return;
                 if (seen.has(slot.id)) return;
-                const questionText = this.getQuestionTextForSlot(zone, slot);
-                if (!questionText.trim()) return;
+                const question = this.buildInquiryQuestion(zone, slot, icon);
+                if (!question) return;
                 questions.push({
-                    id: slot.id,
-                    label: slot.label || zoneLabel,
-                    question: questionText,
-                    zone,
-                    icon
+                    ...question,
+                    label: question.label || zoneLabel
                 });
                 seen.add(slot.id);
             });
@@ -6377,6 +6492,8 @@ export class InquiryView extends ItemView {
                 findings,
                 result.roleValidation
             ),
+            questionText: result.questionText?.trim() || this.getQuestionTextById(result.questionId) || undefined,
+            questionPromptForm: result.questionPromptForm === 'focused' ? 'focused' : 'standard',
             verdict: {
                 flow: verdict.flow,
                 depth: verdict.depth,
@@ -6802,7 +6919,8 @@ export class InquiryView extends ItemView {
         const fallbackPrompt: InquiryQuestion = {
             id: 'simulation',
             label: 'Simulation',
-            question: 'Simulated inquiry run.',
+            standardPrompt: 'Simulated inquiry run.',
+            focusedPrompt: 'Simulated inquiry run.',
             zone: this.state.activeZone ?? 'setup',
             icon: 'activity'
         };
@@ -6810,7 +6928,11 @@ export class InquiryView extends ItemView {
         this.clearActiveResultState();
         this.state.activeQuestionId = selectedPrompt.id;
         this.state.activeZone = selectedPrompt.zone;
-        this.lockPromptPreview(selectedPrompt);
+        const targetSceneIds = this.getActiveTargetSceneIds();
+        const selectionMode = this.getSelectionMode(targetSceneIds);
+        const questionText = this.resolveQuestionPromptForRun(selectedPrompt, selectionMode);
+        const questionPromptForm = this.resolveQuestionPromptFormForRun(selectedPrompt, selectionMode);
+        this.lockPromptPreview(selectedPrompt, questionText);
 
         const manifest = this.buildCorpusManifest(selectedPrompt.id, {
             questionZone: selectedPrompt.zone
@@ -6822,10 +6944,9 @@ export class InquiryView extends ItemView {
         }
         const scopeLabel = this.getScopeLabel();
         const scopeKey = this.getScopeKey();
-        const targetSceneIds = this.getActiveTargetSceneIds();
-        const selectionMode = this.getSelectionMode(targetSceneIds);
         const baseKey = this.sessionStore.buildBaseKey({
             questionId: selectedPrompt.id,
+            questionPromptForm,
             scope: this.state.scope,
             scopeKey,
             targetSceneIds
@@ -6840,7 +6961,8 @@ export class InquiryView extends ItemView {
             activeBookId: this.state.scope === 'saga' ? this.state.activeBookId : this.state.activeBookId,
             mode: this.state.mode,
             questionId: selectedPrompt.id,
-            questionText: selectedPrompt.question,
+            questionText,
+            questionPromptForm,
             questionZone: selectedPrompt.zone,
             corpus: manifest,
             rules: this.getEvidenceRules(),
@@ -6857,7 +6979,7 @@ export class InquiryView extends ItemView {
         this.apiSimulationTimer = window.setTimeout(async () => {
             this.apiSimulationTimer = undefined;
             const completedAt = new Date();
-            let result = this.buildSimulationResult(selectedPrompt, scopeLabel, manifest.fingerprint);
+            let result = this.buildSimulationResult(selectedPrompt, questionText, questionPromptForm, scopeLabel, manifest.fingerprint);
             result.submittedAt = submittedAt.toISOString();
             result.completedAt = completedAt.toISOString();
             result.roundTripMs = completedAt.getTime() - submittedAt.getTime();
@@ -6916,6 +7038,8 @@ export class InquiryView extends ItemView {
 
     private buildErrorFallback(
         question: InquiryQuestion,
+        questionText: string,
+        questionPromptForm: InquiryQuestionPromptForm,
         scopeLabel: string,
         fingerprint: string,
         error: unknown
@@ -6929,6 +7053,8 @@ export class InquiryView extends ItemView {
             selectionMode: this.getSelectionMode(this.getActiveTargetSceneIds()),
             roleValidation: this.computeRoleValidation(this.getSelectionMode(this.getActiveTargetSceneIds()), []),
             questionId: question.id,
+            questionText,
+            questionPromptForm,
             questionZone: question.zone,
             summary: 'Inquiry failed; fallback result returned.',
             summaryFlow: 'Inquiry failed; fallback result returned.',
@@ -6957,7 +7083,13 @@ export class InquiryView extends ItemView {
         };
     }
 
-    private buildSimulationResult(question: InquiryQuestion, scopeLabel: string, fingerprint: string): InquiryResult {
+    private buildSimulationResult(
+        question: InquiryQuestion,
+        questionText: string,
+        questionPromptForm: InquiryQuestionPromptForm,
+        scopeLabel: string,
+        fingerprint: string
+    ): InquiryResult {
         return {
             runId: `run-${Date.now()}`,
             scope: this.state.scope,
@@ -6966,6 +7098,8 @@ export class InquiryView extends ItemView {
             selectionMode: this.getSelectionMode(this.getActiveTargetSceneIds()),
             roleValidation: this.computeRoleValidation(this.getSelectionMode(this.getActiveTargetSceneIds()), []),
             questionId: question.id,
+            questionText,
+            questionPromptForm,
             questionZone: question.zone,
             summary: 'Simulated inquiry session.',
             summaryFlow: 'Simulated inquiry session.',
@@ -8969,7 +9103,7 @@ export class InquiryView extends ItemView {
         });
     }
 
-    private lockPromptPreview(question: InquiryQuestion): void {
+    private lockPromptPreview(question: InquiryQuestion, questionText: string): void {
         if (!this.previewGroup) return;
         if (this.previewHideTimer) {
             window.clearTimeout(this.previewHideTimer);
@@ -8981,10 +9115,10 @@ export class InquiryView extends ItemView {
         this.previewGroup.classList.remove('is-results');
         this.previewGroup.classList.remove('is-error');
         this.setPreviewShimmerEnabled(true);
-        this.setPreviewRunningNoteText(this.buildRunningStatusNote(question.question));
+        this.setPreviewRunningNoteText(this.buildRunningStatusNote(questionText));
         this.setPreviewFooterText('');
         this.resetPreviewRowLabels();
-        this.updatePromptPreview(question.zone, this.state.mode, question.question, rows, undefined, { hideEmpty: true });
+        this.updatePromptPreview(question.zone, this.state.mode, questionText, rows, undefined, { hideEmpty: true });
         this.lastReadinessUiState = this.buildReadinessUiState();
         this.updateMinimapPressureGauge();
     }
@@ -9790,7 +9924,7 @@ export class InquiryView extends ItemView {
 
     private buildInquiryBriefModel(result: InquiryResult, logPath?: string): InquiryBriefModel {
         const questionTitle = this.findPromptLabelById(result.questionId) || 'Inquiry Question';
-        const questionTextRaw = this.getQuestionTextById(result.questionId);
+        const questionTextRaw = result.questionText?.trim() || this.getQuestionTextById(result.questionId);
         const questionText = questionTextRaw && questionTextRaw.trim().length > 0
             ? questionTextRaw
             : 'Question text unavailable.';

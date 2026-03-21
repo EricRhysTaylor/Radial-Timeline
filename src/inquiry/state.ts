@@ -1,4 +1,5 @@
 import type { SourceCitation } from '../ai/types';
+import type { InquiryQuestionPromptForm } from './questions/resolveQuestionPrompt';
 
 export type InquiryScope = 'book' | 'saga';
 export type InquiryLens = 'flow' | 'depth';
@@ -54,6 +55,8 @@ export interface InquiryResult {
     selectionMode: InquirySelectionMode;
     roleValidation: InquiryRoleValidation;
     questionId: string;
+    questionText?: string;
+    questionPromptForm?: InquiryQuestionPromptForm;
     questionZone?: InquiryZone;
     summary: string;
     summaryFlow?: string;

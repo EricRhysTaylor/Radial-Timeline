@@ -171,10 +171,17 @@ export function bindInquiryZonePodEvents(args: {
     registerSvgEvent: InquirySvgEventRegistrar;
     zoneEl: SVGGElement;
     onClick: () => void;
+    onContextMenu?: (event: MouseEvent) => void;
     onPointerEnter: () => void;
     onPointerLeave: () => void;
 }): void {
     args.registerSvgEvent(args.zoneEl, 'click', () => args.onClick());
+    if (args.onContextMenu) {
+        args.registerSvgEvent(args.zoneEl, 'contextmenu', (event: Event) => {
+            event.preventDefault();
+            args.onContextMenu?.(event as MouseEvent);
+        });
+    }
     args.registerSvgEvent(args.zoneEl, 'pointerenter', () => args.onPointerEnter());
     args.registerSvgEvent(args.zoneEl, 'pointerleave', () => args.onPointerLeave());
 }

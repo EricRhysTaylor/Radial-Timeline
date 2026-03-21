@@ -332,7 +332,7 @@ export class InquiryRunnerService implements InquiryRunner {
                 jsonSchema,
                 temperature,
                 maxTokens,
-                input.questions.map(question => question.question).join('\n'),
+                input.questions.map(question => question.questionText).join('\n'),
                 evidenceBlocks
             );
             if (response.sanitizationNotes?.length) {
@@ -769,7 +769,7 @@ export class InquiryRunnerService implements InquiryRunner {
 
         const questionLines = input.questions.map((question, index) => {
             const zoneLabel = question.zone === 'setup' ? 'Setup' : question.zone === 'pressure' ? 'Pressure' : 'Payoff';
-            return `${index + 1}) [${question.id}] ${zoneLabel}: ${question.question}`;
+            return `${index + 1}) [${question.id}] ${zoneLabel}: ${question.questionText}`;
         });
         const { instructionText } = buildInquiryPromptParts({
             task: questionLines.join('\n'),
@@ -2010,6 +2010,8 @@ export class InquiryRunnerService implements InquiryRunner {
             selectionMode: input.selectionMode,
             roleValidation,
             questionId: input.questionId,
+            questionText: input.questionText,
+            questionPromptForm: input.questionPromptForm,
             questionZone: input.questionZone,
             summary,
             summaryFlow,
@@ -2101,7 +2103,8 @@ export class InquiryRunnerService implements InquiryRunner {
             activeBookId: input.activeBookId,
             mode: input.mode,
             questionId: question.id,
-            questionText: question.question,
+            questionText: question.questionText,
+            questionPromptForm: question.questionPromptForm,
             questionZone: question.zone,
             corpus: input.corpus,
             rules: input.rules,
@@ -2261,6 +2264,8 @@ export class InquiryRunnerService implements InquiryRunner {
             selectionMode: input.selectionMode,
             roleValidation: this.computeRoleValidation(input.selectionMode, findings),
             questionId: input.questionId,
+            questionText: input.questionText,
+            questionPromptForm: input.questionPromptForm,
             questionZone: input.questionZone,
             summary,
             summaryFlow: summary,
@@ -2619,6 +2624,7 @@ export class InquiryRunnerService implements InquiryRunner {
                 mode: input.mode,
                 questionId: 'omnibus',
                 questionText: '',
+                questionPromptForm: 'standard',
                 questionZone: 'setup',
                 corpus: input.corpus,
                 rules: input.rules,
@@ -2640,7 +2646,7 @@ export class InquiryRunnerService implements InquiryRunner {
             input.ai,
             evidenceBlocks,
             this.getOmnibusJsonSchema(),
-            input.questions.map(question => question.question).join('\n')
+            input.questions.map(question => question.questionText).join('\n')
         );
         const trace: InquiryRunTrace = {
             systemPrompt,

@@ -335,6 +335,7 @@ describe('InquiryRunnerService packaging policy', () => {
                 mode: 'flow',
                 questionId: 'q-1',
                 questionText: 'Question',
+                questionPromptForm: 'focused',
                 questionZone: 'setup',
                 corpus: {
                     entries: [],
@@ -376,6 +377,8 @@ describe('InquiryRunnerService packaging policy', () => {
         expect(result.scopeLabel).toBe('B1');
         expect(result.selectionMode).toBe('focused');
         expect(result.roleValidation).toBe('ok');
+        expect(result.questionText).toBe('Question');
+        expect(result.questionPromptForm).toBe('focused');
         expect(result.findings[0].role).toBe('target');
     });
 
@@ -405,6 +408,7 @@ describe('InquiryRunnerService packaging policy', () => {
                 mode: 'flow',
                 questionId: 'q-1',
                 questionText: 'Question',
+                questionPromptForm: 'standard',
                 questionZone: 'setup',
                 corpus: {
                     entries: [],

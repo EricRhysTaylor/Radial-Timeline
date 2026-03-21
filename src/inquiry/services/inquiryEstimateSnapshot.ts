@@ -195,6 +195,7 @@ export async function buildInquiryEstimateSnapshot(
         mode: params.mode,
         questionId: 'estimate-snapshot',
         questionText: INQUIRY_CANONICAL_ESTIMATE_QUESTION,
+        questionPromptForm: 'standard',
         questionZone: 'setup',
         corpus: params.manifest,
         rules: params.rules,

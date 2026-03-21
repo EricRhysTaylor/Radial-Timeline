@@ -75,4 +75,25 @@ describe('InquiryView payload accounting', () => {
         expect(dossierSource.includes('minNonFinalFillRatio: 0.7')).toBe(true);
     });
 
+    it('routes question execution through the dual-form resolver without adding new UI sets', () => {
+        const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
+        expect(viewSource.includes('resolveQuestionPromptForRun(question, selectionMode')).toBe(true);
+        expect(viewSource.includes('resolveQuestionPromptFormForRun(question, selectionMode')).toBe(true);
+        expect(viewSource.includes("item.setTitle('Run (Auto)')")).toBe(true);
+        expect(viewSource.includes("item.setTitle('Run Standard')")).toBe(true);
+        expect(viewSource.includes("item.setTitle('Run Focused')")).toBe(true);
+        expect(viewSource.includes('standardPrompt:')).toBe(true);
+        expect(viewSource.includes('focusedPrompt:')).toBe(true);
+        expect(viewSource.includes('Focus question panel')).toBe(false);
+    });
+
+    it('persists executed prompt truth on results instead of rebuilding it from current config', () => {
+        const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
+        const runnerSource = readFileSync(resolve(process.cwd(), 'src/inquiry/runner/InquiryRunnerService.ts'), 'utf8');
+        expect(viewSource.includes("questionText: result.questionText?.trim() || this.getQuestionTextById(result.questionId) || undefined")).toBe(true);
+        expect(viewSource.includes("const questionTextRaw = result.questionText?.trim() || this.getQuestionTextById(result.questionId)")).toBe(true);
+        expect(runnerSource.includes('questionPromptForm: input.questionPromptForm')).toBe(true);
+        expect(runnerSource.includes('questionText: input.questionText')).toBe(true);
+    });
+
 });

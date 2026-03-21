@@ -57,7 +57,7 @@ const buildCanonicalPromptState = (
     const label = (slot.label ?? '').trim();
     const question = (slot.question ?? '').trim();
     const canonicalLabel = canonical.label.trim();
-    const canonicalQuestion = canonical.text.trim();
+    const canonicalQuestion = canonical.standardPrompt.trim();
     return label === canonicalLabel && question === canonicalQuestion
         ? 'loaded'
         : 'customized';
@@ -68,7 +68,7 @@ const buildCanonicalSlot = (
     overrides: Partial<InquiryPromptSlot> = {}
 ): InquiryPromptSlot => {
     const label = overrides.label ?? canonical.label;
-    const question = overrides.question ?? canonical.text;
+    const question = overrides.question ?? canonical.standardPrompt;
     return {
         id: canonical.id,
         label,
@@ -219,7 +219,7 @@ export const syncCanonicalPromptSlot = (slot: InquiryPromptSlot): InquiryPromptS
     return buildCanonicalSlot(canonical, {
         ...slot,
         label: slot.label?.trim().length ? slot.label : canonical.label,
-        question: slot.question?.trim().length ? slot.question : canonical.text,
+        question: slot.question?.trim().length ? slot.question : canonical.standardPrompt,
         enabled: true,
         builtIn: true
     });
@@ -230,7 +230,7 @@ export const getPromptSlotQuestion = (slot: InquiryPromptSlot): string => {
     if (stored.trim().length > 0) {
         return stored;
     }
-    return getCanonicalQuestionForSlot(slot)?.text ?? stored;
+    return getCanonicalQuestionForSlot(slot)?.standardPrompt ?? stored;
 };
 
 export const replaceCanonicalPromptSlots = (

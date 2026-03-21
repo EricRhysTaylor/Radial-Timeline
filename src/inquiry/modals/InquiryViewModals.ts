@@ -336,8 +336,8 @@ export class InquiryOmnibusModal extends Modal {
                 zoneCell.createSpan({ cls: 'ert-badgePill ert-badgePill--sm', text: zoneLabel });
 
                 const questionCell = dataRow.createDiv({ cls: 'ert-apr-status-cell ert-omnibus-question-cell' });
-                const questionText = questionCell.createSpan({ cls: 'ert-omnibus-question', text: question.question });
-                setTooltip(questionText, question.question);
+                const questionText = questionCell.createSpan({ cls: 'ert-omnibus-question', text: question.standardPrompt });
+                setTooltip(questionText, question.standardPrompt);
 
                 const lensCell = dataRow.createDiv({ cls: 'ert-apr-status-cell' });
                 lensCell.createSpan({ cls: 'ert-badgePill ert-badgePill--sm', text: lensLabel });
