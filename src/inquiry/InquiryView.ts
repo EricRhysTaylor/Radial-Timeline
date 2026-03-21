@@ -3039,6 +3039,7 @@ export class InquiryView extends ItemView {
         this._resolvedEngine = null;
         this.updateEngineBadge();
         this.refreshEnginePanel();
+        this.updateMinimapPressureGauge();
     }
 
     /** Called externally when Inquiry prompt settings change. */
@@ -7786,11 +7787,13 @@ export class InquiryView extends ItemView {
         options?: {
             maxLines?: number;
             preferFrontLoaded?: boolean;
+            minNonFinalFillRatio?: number;
         }
     ): string[] {
         const words = text.split(/\s+/).filter(Boolean);
         if (!words.length) return [];
         const maxLines = Math.max(options?.maxLines ?? words.length, 1);
+        const minNonFinalFillRatio = Math.max(0, Math.min(options?.minNonFinalFillRatio ?? 0, 0.95));
 
         const widthCache = new Map<string, number>();
         const measureWidth = (content: string): number => {
@@ -7835,6 +7838,9 @@ export class InquiryView extends ItemView {
                 let linePenalty = slackRatio * slackRatio;
                 if (!isLast && fillRatio < 0.52) {
                     linePenalty += (0.52 - fillRatio) * 1.4;
+                }
+                if (!isLast && minNonFinalFillRatio > 0 && fillRatio < minNonFinalFillRatio) {
+                    linePenalty += (minNonFinalFillRatio - fillRatio) * 6.5;
                 }
                 if (isLast) {
                     linePenalty += slackRatio * slackRatio * 0.45;
@@ -7889,6 +7895,7 @@ export class InquiryView extends ItemView {
             align?: 'center' | 'start';
             justify?: boolean;
             preferFrontLoaded?: boolean;
+            minNonFinalFillRatio?: number;
         }
     ): number {
         const align = options?.align ?? 'center';
@@ -7898,7 +7905,8 @@ export class InquiryView extends ItemView {
         textEl.setAttribute('text-anchor', align === 'start' ? 'start' : 'middle');
 
         const lines = this.computeBalancedSvgLines(textEl, text, maxWidth, {
-            preferFrontLoaded: options?.preferFrontLoaded
+            preferFrontLoaded: options?.preferFrontLoaded,
+            minNonFinalFillRatio: options?.minNonFinalFillRatio
         });
         this.perfCounters.svgClearCalls++;
         clearSvgChildren(textEl);
@@ -7909,7 +7917,12 @@ export class InquiryView extends ItemView {
             tspan.setAttribute('x', String(x));
             tspan.setAttribute('dy', index === 0 ? String(startDy) : String(lineHeight));
             tspan.textContent = line;
-            if (options?.justify && align === 'start' && index < lines.length - 1 && /\s/.test(line)) {
+            if (
+                options?.justify
+                && align === 'start'
+                && index < lines.length - 1
+                && /\s/.test(line)
+            ) {
                 tspan.setAttribute('textLength', String(maxWidth));
                 tspan.setAttribute('lengthAdjust', 'spacing');
             }

@@ -70,8 +70,10 @@ export function renderInquiryEngineReadinessStrip(args: {
         const recentRunSuffix = args.passPlan.recentExactPassCount
             ? ` Recent run used ${args.passPlan.recentExactPassCount} passes.`
             : '';
+        const reason = args.passPlan.packagingTriggerReason
+            ?? 'Manuscript exceeds the per-pass planning budget.';
         args.readinessMessageEl.setText(
-            `Expected structured passes: ${estimateLabel} — manuscript exceeds the per-pass planning budget.${recentRunSuffix}`
+            `Expected structured passes: ${estimateLabel} — ${reason.replace(/\.$/, '')}.${recentRunSuffix}`
         );
     } else if (args.readinessCause === 'single_pass_limit') {
         const estimateLabel = args.passPlan.estimatedPassCount ?? args.passPlan.displayPassCount;

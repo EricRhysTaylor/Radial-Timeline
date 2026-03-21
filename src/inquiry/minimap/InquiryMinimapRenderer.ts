@@ -682,6 +682,10 @@ export class InquiryMinimapRenderer {
         this.backboneTargetColors = undefined;
         this.backboneOscillationPhaseOffset = 0;
         this.runningStyleSource = undefined;
+        // Clear inline fill set by applyRunningBackboneColor() during the run
+        // so the glow/shine revert to their CSS-defined fill on next render.
+        this.minimapBackboneGlow?.style.removeProperty('fill');
+        this.minimapBackboneShine?.style.removeProperty('fill');
     }
 
     resetPressureGauge(): void {
@@ -764,7 +768,7 @@ export class InquiryMinimapRenderer {
         this.minimapTokenCapStartCap?.classList.remove(inverseStateClass);
         this.minimapTokenCapEndCap?.classList.remove(inverseStateClass);
         this.updateTokenCapPassSplits(
-            isOverCapacity ? Math.max(1, totalPassCount) : 1,
+            totalPassCount,
             isOverCapacity ? overCapacityTone : undefined,
             styleSource
         );

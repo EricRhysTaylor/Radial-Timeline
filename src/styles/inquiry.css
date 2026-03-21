@@ -496,9 +496,8 @@
 
 .ert-inquiry-minimap-backbone-cached {
   fill: url(#ert-inquiry-minimap-cached-hatch);
-  opacity: 0.92;
+  opacity: 1;
   pointer-events: none;
-  mix-blend-mode: screen;
 }
 
 .ert-inquiry-minimap-backbone.is-pressure-over-budget .ert-inquiry-minimap-backbone-glow {
@@ -579,18 +578,18 @@
 /* ── Cached portion overlay (hatched segment on tokencap bar) ── */
 .ert-inquiry-minimap-tokencap-cached {
   fill: url(#ert-inquiry-minimap-cached-hatch);
-  opacity: 0.7;
+  opacity: 0.85;
   pointer-events: none;
   transition: opacity 300ms ease;
 }
 
 .ert-inquiry-minimap-cached-hatch-stroke {
   stroke: var(--ert-inquiry-ai-success);
-  stroke-width: 2;
+  stroke-width: 2.5;
 }
 
 .ert-inquiry-svg.is-running .ert-inquiry-minimap-tokencap-cached {
-  opacity: 0.3;
+  opacity: 0.4;
 }
 
 .ert-inquiry-minimap[data-reuse-state="warm"] .ert-inquiry-minimap-tokencap-cached {
@@ -598,8 +597,8 @@
 }
 
 @keyframes ert-minimap-cached-pulse {
-  0%, 100% { opacity: 0.55; }
-  50% { opacity: 0.85; }
+  0%, 100% { opacity: 0.65; }
+  50% { opacity: 0.95; }
 }
 
 /* ── Reuse band ── */
@@ -753,7 +752,7 @@
 
 .ert-inquiry-minimap-stage-segment {
   fill: var(--ert-inquiry-stage-color, var(--text-muted));
-  opacity: 0.16;
+  opacity: 0.35;
   filter: none;
 }
 

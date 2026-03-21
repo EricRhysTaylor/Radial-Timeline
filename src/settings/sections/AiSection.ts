@@ -1018,8 +1018,12 @@ export function renderAiSection(params: {
     const renderResolvedPreview = (state: ResolvedPreviewRenderState): void => {
         resolvedPreviewKicker.setText('PREVIEW (ACTIVE MODEL)');
         resolvedPreviewModel.setText(state.modelLabel);
-        const previewSuffix = state.isPreview ? ' (Preview)' : '';
-        const providerDetail = `${providerLabel[state.provider]} · ${state.modelLabel}${previewSuffix}`;
+        // Subtitle shows provider + API model ID (technical name) instead of repeating
+        // the display label. Append (Preview) only when the label doesn't already say it.
+        const idLabel = state.modelId || state.modelLabel;
+        const labelAlreadySaysPreview = state.modelLabel.toLowerCase().includes('preview');
+        const previewSuffix = state.isPreview && !labelAlreadySaysPreview ? ' (Preview)' : '';
+        const providerDetail = `${providerLabel[state.provider]} · ${idLabel}${previewSuffix}`;
         resolvedPreviewProvider.setText(providerDetail);
         resolvedPreviewComparatorLabel.setText('');
         resolvedPreviewComparatorValue.setText('');

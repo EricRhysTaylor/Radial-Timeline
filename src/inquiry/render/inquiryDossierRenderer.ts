@@ -150,7 +150,7 @@ export function renderInquirySceneDossier(args: {
         textEl: SVGTextElement,
         text: string,
         maxWidth: number,
-        options?: { maxLines?: number; preferFrontLoaded?: boolean }
+        options?: { maxLines?: number; preferFrontLoaded?: boolean; minNonFinalFillRatio?: number }
     ) => string[];
     setPositionedDossierTextBlock: (
         textEl: SVGTextElement,
@@ -158,7 +158,7 @@ export function renderInquirySceneDossier(args: {
         maxWidth: number,
         lineHeight: number,
         startDy: number,
-        options?: { align?: 'center' | 'start'; justify?: boolean; preferFrontLoaded?: boolean }
+        options?: { align?: 'center' | 'start'; justify?: boolean; preferFrontLoaded?: boolean; minNonFinalFillRatio?: number }
     ) => number;
 }): void {
     const { refs, dossier } = args;
@@ -198,10 +198,14 @@ export function renderInquirySceneDossier(args: {
     refs.bodySecondary.classList.toggle('ert-hidden', !hasBodySecondary);
     refs.bodyDivider.classList.toggle('ert-hidden', !hasBodySecondary);
     const bodyPrimaryLines = hasBodyPrimary
-        ? args.computeBalancedSvgLines(refs.body, bodyPrimaryText, contentTextWidth).length
+        ? args.computeBalancedSvgLines(refs.body, bodyPrimaryText, contentTextWidth, {
+            minNonFinalFillRatio: 0.7
+        }).length
         : 0;
     const bodySecondaryLines = hasBodySecondary
-        ? args.computeBalancedSvgLines(refs.bodySecondary, bodySecondaryText, contentTextWidth).length
+        ? args.computeBalancedSvgLines(refs.bodySecondary, bodySecondaryText, contentTextWidth, {
+            minNonFinalFillRatio: 0.7
+        }).length
         : 0;
     const hasMeta = !!dossier.metaLine;
     const hasSource = !!dossier.sourceLabel;
@@ -285,7 +289,7 @@ export function renderInquirySceneDossier(args: {
             contentTextWidth,
             SCENE_DOSSIER_BODY_PRIMARY_LINE_HEIGHT,
             bodyPrimaryY,
-            { align: 'start', justify: true }
+            { align: 'start', justify: true, minNonFinalFillRatio: 0.7 }
         );
     } else {
         clearSvgChildren(refs.body);
@@ -297,7 +301,7 @@ export function renderInquirySceneDossier(args: {
             contentTextWidth,
             SCENE_DOSSIER_BODY_SECONDARY_LINE_HEIGHT,
             bodySecondaryY,
-            { align: 'start', justify: true }
+            { align: 'start', justify: true, minNonFinalFillRatio: 0.7 }
         );
     } else {
         clearSvgChildren(refs.bodySecondary);

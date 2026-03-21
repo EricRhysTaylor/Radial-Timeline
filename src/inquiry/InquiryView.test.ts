@@ -66,4 +66,13 @@ describe('InquiryView payload accounting', () => {
         expect(corpusSource.includes("slot.targetLetter.setAttribute('y'")).toBe(true);
         expect(cssSource.includes('.ert-inquiry-cc-cell.is-target .ert-inquiry-cc-cell-target-letter')).toBe(true);
     });
+
+    it('uses justify-aware line balancing for dossier body paragraphs', () => {
+        const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
+        const dossierSource = readFileSync(resolve(process.cwd(), 'src/inquiry/render/inquiryDossierRenderer.ts'), 'utf8');
+        expect(viewSource.includes('minNonFinalFillRatio?: number;')).toBe(true);
+        expect(viewSource.includes('(minNonFinalFillRatio - fillRatio) * 6.5')).toBe(true);
+        expect(dossierSource.includes('minNonFinalFillRatio: 0.7')).toBe(true);
+    });
+
 });
