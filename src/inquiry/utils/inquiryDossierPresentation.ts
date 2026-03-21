@@ -1,4 +1,5 @@
 import type { InquiryFinding, InquiryRoleValidation, InquirySelectionMode } from '../state';
+import { stripInquiryReferenceArtifacts } from './inquiryViewText';
 
 export type InquiryDossierPresentation = {
     title: string;
@@ -114,7 +115,7 @@ function sanitizeTitle(value?: string): string {
 }
 
 function sanitizeLine(value?: string): string {
-    return collapseWhitespace(value)
+    return collapseWhitespace(stripInquiryReferenceArtifacts(value))
         .replace(/^[•*-]\s*/, '')
         .replace(/^(?:[SB]\d+|Scene\s+\d+)\s*[:\-–—.)]\s*/i, '')
         .replace(/\s+([,.;:!?…])/g, '$1')

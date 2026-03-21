@@ -17,10 +17,25 @@ export const stripNumericTitlePrefix = (value: string): string => {
     return cleaned.replace(/^(?:scene\s*)?\d+\s*[-:–—.)]?\s*/i, '').trim();
 };
 
-export const sanitizeDossierText = (value?: string): string => {
+export const stripInquiryReferenceArtifacts = (value?: string): string => {
     if (!value) return '';
-    return value
+    return String(value)
+        .replace(/\[\[([^\]|#]+)(?:#[^\]|]+)?(?:\|([^\]]+))?\]\]/g, (_match, target, alias) => {
+            const fallback = String(target || '').split('/').pop() || '';
+            return String(alias || fallback).trim();
+        })
+        .replace(/\[([^\]]+)\]\((?:[^)]+)\)/g, '$1')
+        .replace(/\(\s*#\^[^)]+\)/gi, '')
+        .replace(/\(\s*scn_[a-z0-9]+\s*\)/gi, '')
+        .replace(/\bscn_[a-z0-9]+\b/gi, '')
+        .replace(/\s+\^[-\w]+\b/g, '')
+        .replace(/\s+([,.;:!?…])/g, '$1')
         .replace(/\s+/g, ' ')
+        .trim();
+};
+
+export const sanitizeDossierText = (value?: string): string => {
+    return stripInquiryReferenceArtifacts(value)
         .replace(/^(?:[SB]\d+|Scene\s+\d+)\s*[:\-–—]\s*/i, '')
         .trim();
 };
@@ -116,7 +131,7 @@ export const getPendingInquiryActions = (result: InquiryResult): string[] => {
 };
 
 export const normalizeInquiryHeadline = (headline: string): string =>
-    (headline || 'Finding').replace(/\s+/g, ' ').trim();
+    stripInquiryReferenceArtifacts(headline || 'Finding') || 'Finding';
 
 export const formatInquiryBriefLink = (briefTitle: string, alias = 'Briefing'): string => {
     if (!alias) return `[[${briefTitle}]]`;

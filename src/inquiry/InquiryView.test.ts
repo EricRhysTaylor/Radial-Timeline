@@ -45,4 +45,25 @@ describe('InquiryView payload accounting', () => {
         expect(minimapSource.includes('Incomplete Focused Analysis')).toBe(true);
         expect(cssSource.includes('.ert-inquiry-minimap-tick.is-target.is-target-role-validation-warning')).toBe(true);
     });
+
+    it('suppresses minimap tooltips for cited scenes that open a dossier', () => {
+        const minimapSource = readFileSync(resolve(process.cwd(), 'src/inquiry/minimap/InquiryMinimapRenderer.ts'), 'utf8');
+        expect(minimapSource.includes("addTooltipData(tick, '', 'bottom');")).toBe(true);
+    });
+
+    it('uses a front-loaded balancing bias for dossier anchor text', () => {
+        const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
+        const dossierSource = readFileSync(resolve(process.cwd(), 'src/inquiry/render/inquiryDossierRenderer.ts'), 'utf8');
+        expect(viewSource.includes('preferFrontLoaded?: boolean;')).toBe(true);
+        expect(viewSource.includes('shapePenalty += ((curr - prev) / maxWidth) * 4.2;')).toBe(true);
+        expect(dossierSource.includes('{ preferFrontLoaded: true }')).toBe(true);
+    });
+
+    it('renders the focused-scene F marker above the corpus page icon', () => {
+        const corpusSource = readFileSync(resolve(process.cwd(), 'src/inquiry/corpus/inquiryCorpusStripRenderer.ts'), 'utf8');
+        const cssSource = readFileSync(resolve(process.cwd(), 'src/styles/inquiry.css'), 'utf8');
+        expect(corpusSource.includes("createSvgText(group, 'ert-inquiry-cc-cell-target-letter', 'F'")).toBe(true);
+        expect(corpusSource.includes("slot.targetLetter.setAttribute('y'")).toBe(true);
+        expect(cssSource.includes('.ert-inquiry-cc-cell.is-target .ert-inquiry-cc-cell-target-letter')).toBe(true);
+    });
 });

@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { renderInquiryBrief, resolveInquiryScopeIndicator } from './inquiryViewText';
+import {
+    renderInquiryBrief,
+    resolveInquiryScopeIndicator,
+    sanitizeDossierText,
+    stripInquiryReferenceArtifacts
+} from './inquiryViewText';
 import type { InquiryBriefModel } from '../types/inquiryViewTypes';
 import type { InquiryResult } from '../state';
 
@@ -89,5 +94,12 @@ describe('inquiryViewText', () => {
 
         const content = renderInquiryBrief(brief);
         expect(content).toContain('Incomplete Focused Analysis');
+    });
+
+    it('strips scene ref ids and markdown anchor links from rendered dossier text', () => {
+        expect(stripInquiryReferenceArtifacts('Pressure spike [Jump](#^scene-jump) in (scn_5b3a3162).'))
+            .toBe('Pressure spike Jump in.');
+        expect(sanitizeDossierText('Scene 11: [[Brief#^scene-11|Open brief]] shows scn_da9872d7 clearly.'))
+            .toBe('Open brief shows clearly.');
     });
 });

@@ -329,6 +329,7 @@ import {
     renderInquiryBrief,
     resolveInquiryScopeIndicator,
     sanitizeDossierText,
+    stripInquiryReferenceArtifacts,
     stripNumericTitlePrefix
 } from './utils/inquiryViewText';
 export class InquiryView extends ItemView {
@@ -7789,6 +7790,7 @@ export class InquiryView extends ItemView {
         maxWidth: number,
         options?: {
             maxLines?: number;
+            preferFrontLoaded?: boolean;
         }
     ): string[] {
         const words = text.split(/\s+/).filter(Boolean);
@@ -7846,11 +7848,29 @@ export class InquiryView extends ItemView {
                     }
                 }
 
-                const candidateCost = linePenalty + remaining.cost;
+                const candidateLines = [line, ...remaining.lines];
+                let shapePenalty = 0;
+                if (options?.preferFrontLoaded && candidateLines.length > 1) {
+                    const widths = candidateLines.map(candidateLine => measureWidth(candidateLine));
+                    for (let i = 1; i < widths.length; i += 1) {
+                        const prev = widths[i - 1];
+                        const curr = widths[i];
+                        if (curr > prev) {
+                            shapePenalty += ((curr - prev) / maxWidth) * 4.2;
+                        }
+                    }
+                    const firstWidth = widths[0];
+                    const lastWidth = widths[widths.length - 1];
+                    if (lastWidth > firstWidth) {
+                        shapePenalty += ((lastWidth - firstWidth) / maxWidth) * 5.4;
+                    }
+                }
+
+                const candidateCost = linePenalty + remaining.cost + shapePenalty;
                 if (candidateCost < best.cost) {
                     best = {
                         cost: candidateCost,
-                        lines: [line, ...remaining.lines]
+                        lines: candidateLines
                     };
                 }
             }
@@ -7873,6 +7893,7 @@ export class InquiryView extends ItemView {
         options?: {
             align?: 'center' | 'start';
             justify?: boolean;
+            preferFrontLoaded?: boolean;
         }
     ): number {
         const align = options?.align ?? 'center';
@@ -7881,7 +7902,9 @@ export class InquiryView extends ItemView {
         textEl.setAttribute('x', String(x));
         textEl.setAttribute('text-anchor', align === 'start' ? 'start' : 'middle');
 
-        const lines = this.computeBalancedSvgLines(textEl, text, maxWidth);
+        const lines = this.computeBalancedSvgLines(textEl, text, maxWidth, {
+            preferFrontLoaded: options?.preferFrontLoaded
+        });
         this.perfCounters.svgClearCalls++;
         clearSvgChildren(textEl);
 
@@ -8560,7 +8583,7 @@ export class InquiryView extends ItemView {
     private sanitizeInquirySummary(rawSummary?: string | null): string {
         const fallback = 'Summary unavailable.';
         if (!rawSummary) return fallback;
-        let text = String(rawSummary).replace(/\s+/g, ' ').trim();
+        let text = stripInquiryReferenceArtifacts(rawSummary).replace(/\s+/g, ' ').trim();
         if (!text) return fallback;
         const prefixes: RegExp[] = [
             /^(summary(?: of)?|executive summary)\s*/i,

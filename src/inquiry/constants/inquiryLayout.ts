@@ -82,7 +82,7 @@ export const INQUIRY_SCENE_DOSSIER_LAYOUT = {
     hideDelayMs: 160,
     focusRadius: 470,
     braceSize: 580,
-    braceInset: 108
+    braceInset: 88
 } as const;
 
 export const INQUIRY_CORPUS_CC_LAYOUT = {

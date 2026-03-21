@@ -1376,13 +1376,7 @@ export class InquiryMinimapRenderer {
             const fullLabel = tick.getAttribute('data-full-label') || label;
             const targetTooltip = tick.getAttribute('data-target-tooltip') || '';
             if (finding) {
-                const findingTooltip = finding?.role === 'target'
-                    ? `${fullLabel}\nCited Target Scene — Returned a target-specific finding.`
-                    : `${fullLabel}\nCited Scene — Returned as supporting context.`;
-                const combinedTooltip = targetTooltip
-                    ? `${targetTooltip}\n${finding.role === 'target' ? 'Target-specific finding returned for this scene.' : 'Contextual finding returned for this scene.'}`
-                    : findingTooltip;
-                addTooltipData(tick, balanceTooltipText(combinedTooltip), 'bottom');
+                addTooltipData(tick, '', 'bottom');
             } else {
                 addTooltipData(tick, targetTooltip || balanceTooltipText(fullLabel), 'bottom');
             }

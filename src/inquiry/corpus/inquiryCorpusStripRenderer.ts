@@ -223,10 +223,14 @@ export function renderInquiryCorpusStrip(args: {
         iconInner.classList.add('ert-inquiry-cc-cell-icon-inner');
         icon.appendChild(iconOuter);
         icon.appendChild(iconInner);
+        const targetLetter = createSvgText(group, 'ert-inquiry-cc-cell-target-letter', 'F', 0, 0);
+        targetLetter.setAttribute('text-anchor', 'middle');
+        targetLetter.setAttribute('aria-hidden', 'true');
         group.appendChild(base);
         group.appendChild(fill);
         group.appendChild(border);
         group.appendChild(icon);
+        group.appendChild(targetLetter);
         group.appendChild(lowSubstanceX);
         args.registerSvgEvent(group, 'click', (event: MouseEvent) => {
             const entryKey = group.getAttribute('data-entry-key');
@@ -262,7 +266,8 @@ export function renderInquiryCorpusStrip(args: {
             lowSubstanceXSecondary,
             icon,
             iconOuter,
-            iconInner
+            iconInner,
+            targetLetter
         });
     }
 
@@ -322,6 +327,8 @@ export function renderInquiryCorpusStrip(args: {
         slot.iconInner.setAttribute('cx', '0');
         slot.iconInner.setAttribute('cy', '0');
         slot.iconInner.setAttribute('r', String(innerRadius));
+        slot.targetLetter.setAttribute('x', String(iconCenterX));
+        slot.targetLetter.setAttribute('y', String(Math.round(iconCenterY - outerRadius - 2)));
     });
 
     while (refs.ccClassLabels.length < layout.classLayouts.length) {

@@ -146,6 +146,7 @@ export type CorpusCcSlot = {
     icon: SVGGElement;
     iconOuter: SVGCircleElement;
     iconInner: SVGCircleElement;
+    targetLetter: SVGTextElement;
 };
 
 export type CorpusCcHeader = {

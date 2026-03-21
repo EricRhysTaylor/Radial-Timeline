@@ -954,6 +954,20 @@
   pointer-events: none;
 }
 
+.ert-inquiry-cc-cell-target-letter {
+  display: none;
+  font-family: '04b03b', 'Monaco', 'Courier New', monospace;
+  font-size: 10px;
+  letter-spacing: 0;
+  fill: var(--ert-inquiry-target-color);
+  opacity: 0.98;
+  pointer-events: none;
+}
+
+.ert-inquiry-cc-cell.is-target .ert-inquiry-cc-cell-target-letter {
+  display: block;
+}
+
 .ert-inquiry-cc-cell-icon-outer {
   fill: none;
   stroke: var(--ert-inquiry-cc-cell-icon-color);
@@ -3320,10 +3334,13 @@ body.rt-modal-open .ert-inquiry-svg * {
 }
 
 :is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-settings-root .ert-inquiry-prompt-row.is-dragging {
-  opacity: 0.52;
+  opacity: 0.18;
+  box-shadow: none;
 }
 
 .ert-inquiry-prompt-row--dragPreview {
+  width: var(--ert-inquiry-drag-preview-width, auto);
+  min-height: var(--ert-inquiry-drag-preview-height, auto);
   box-shadow:
     0 16px 36px rgba(0, 0, 0, 0.32),
     0 0 0 1px color-mix(in srgb, var(--background-modifier-border) 90%, transparent);
@@ -3332,6 +3349,21 @@ body.rt-modal-open .ert-inquiry-svg * {
 .ert-inquiry-prompt-row--dragPreview .ert-input,
 .ert-inquiry-prompt-row--dragPreview button,
 .ert-inquiry-prompt-row--dragPreview select {
+  pointer-events: none;
+}
+
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-settings-root .ert-inquiry-prompt-row.is-placeholder {
+  opacity: 0.92;
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--interactive-accent) 28%, var(--background-modifier-border));
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--interactive-accent) 12%, transparent),
+    0 10px 24px rgba(0, 0, 0, 0.14);
+}
+
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-settings-root .ert-inquiry-prompt-row.is-placeholder .ert-input,
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-settings-root .ert-inquiry-prompt-row.is-placeholder button,
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-settings-root .ert-inquiry-prompt-row.is-placeholder select {
   pointer-events: none;
 }
 

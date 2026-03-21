@@ -146,14 +146,19 @@ export function renderInquirySceneDossier(args: {
     dossier: InquirySceneDossier;
     rootSvg?: SVGSVGElement;
     previewGroup?: SVGGElement;
-    computeBalancedSvgLines: (textEl: SVGTextElement, text: string, maxWidth: number) => string[];
+    computeBalancedSvgLines: (
+        textEl: SVGTextElement,
+        text: string,
+        maxWidth: number,
+        options?: { maxLines?: number; preferFrontLoaded?: boolean }
+    ) => string[];
     setPositionedDossierTextBlock: (
         textEl: SVGTextElement,
         text: string,
         maxWidth: number,
         lineHeight: number,
         startDy: number,
-        options?: { align?: 'center' | 'start'; justify?: boolean }
+        options?: { align?: 'center' | 'start'; justify?: boolean; preferFrontLoaded?: boolean }
     ) => number;
 }): void {
     const { refs, dossier } = args;
@@ -177,7 +182,8 @@ export function renderInquirySceneDossier(args: {
     const anchorLines = args.computeBalancedSvgLines(
         refs.anchor,
         dossier.anchorLine || 'Finding',
-        anchorTextWidth
+        anchorTextWidth,
+        { preferFrontLoaded: true }
     ).length || 1;
     const bodyLines = dossier.bodyLines
         .filter(line => line && line !== dossier.anchorLine)
@@ -270,7 +276,7 @@ export function renderInquirySceneDossier(args: {
         anchorTextWidth,
         SCENE_DOSSIER_ANCHOR_LINE_HEIGHT,
         anchorY,
-        { align: 'center' }
+        { align: 'center', preferFrontLoaded: true }
     );
     if (hasBodyPrimary) {
         args.setPositionedDossierTextBlock(

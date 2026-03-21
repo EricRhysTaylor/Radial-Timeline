@@ -1435,7 +1435,7 @@ export function renderInquirySection(params: SectionParams): void {
             if (!event.dataTransfer) return () => undefined;
             const rect = row.getBoundingClientRect();
             const preview = row.cloneNode(true) as HTMLElement;
-            preview.addClass('ert-settings-prompt-row--dragPreview');
+            preview.addClass('ert-inquiry-prompt-row--dragPreview');
             preview.removeClass('is-dragging');
             preview.style.setProperty('--ert-inquiry-drag-preview-width', `${Math.ceil(rect.width)}px`);
             preview.style.setProperty('--ert-inquiry-drag-preview-height', `${Math.ceil(rect.height)}px`);
@@ -1450,12 +1450,62 @@ export function renderInquirySection(params: SectionParams): void {
             };
         };
 
+        const createPromptRowDropPlaceholder = (row: HTMLElement): HTMLElement => {
+            const placeholder = row.cloneNode(true) as HTMLElement;
+            placeholder.addClass('is-placeholder');
+            placeholder.removeClass('is-dragging');
+            placeholder.removeClass('is-dragover');
+            placeholder.removeClass('ert-inquiry-prompt-row--dragPreview');
+            placeholder.setAttribute('aria-hidden', 'true');
+            return placeholder;
+        };
+
+        const clearPromptRowPlaceholder = (
+            dragState: {
+                index: number | null;
+                sourceRow: HTMLElement | null;
+                placeholderEl: HTMLElement | null;
+                clearDragPreview?: () => void;
+            }
+        ) => {
+            dragState.placeholderEl?.remove();
+            dragState.placeholderEl = null;
+            dragState.sourceRow?.removeClass('is-dragging');
+            dragState.sourceRow?.removeClass('is-dragover');
+            dragState.sourceRow = null;
+            dragState.clearDragPreview?.();
+            dragState.clearDragPreview = undefined;
+        };
+
+        const getPromptPlaceholderDropIndex = (
+            listEl: HTMLElement,
+            placeholderEl: HTMLElement,
+            sourceRow: HTMLElement | null
+        ): number => {
+            let index = 0;
+            for (const child of Array.from(listEl.children)) {
+                if (child === placeholderEl) break;
+                if (!(child instanceof HTMLElement)) continue;
+                if (!child.classList.contains('ert-inquiry-prompt-row')) continue;
+                if (child.classList.contains('ert-inquiry-prompt-addRow')) continue;
+                if (child.classList.contains('is-placeholder')) continue;
+                if (child === sourceRow) continue;
+                index += 1;
+            }
+            return index;
+        };
+
         const renderSlotRows = (
             listEl: HTMLElement,
             zone: InquiryPromptZoneKey,
             slots: InquiryPromptSlot[],
             customIndexMap: Map<string, number>,
-            dragState: { index: number | null }
+            dragState: {
+                index: number | null;
+                sourceRow: HTMLElement | null;
+                placeholderEl: HTMLElement | null;
+                clearDragPreview?: () => void;
+            }
         ) => {
             slots.forEach((slot, slotIndex) => {
                 const row = listEl.createDiv({ cls: 'ert-reorder-row ert-reorder-row--two-col' });
@@ -1585,27 +1635,34 @@ export function renderInquirySection(params: SectionParams): void {
 
                 plugin.registerDomEvent(dragHandle, 'dragstart', (e) => {
                     dragState.index = slotIndex;
+                    dragState.sourceRow = row;
                     row.classList.add('is-dragging');
                     e.dataTransfer?.setData('text/plain', slotIndex.toString());
-                    let clearDragPreview: () => void = () => undefined;
+                    dragState.placeholderEl?.remove();
+                    dragState.placeholderEl = createPromptRowDropPlaceholder(row);
+                    row.insertAdjacentElement('afterend', dragState.placeholderEl);
                     if (e.dataTransfer) {
                         e.dataTransfer.effectAllowed = 'move';
-                        clearDragPreview = createPromptRowDragPreview(e, row);
+                        dragState.clearDragPreview = createPromptRowDragPreview(e, row);
                     }
-                    (dragHandle as HTMLElement & { __ertClearDragPreview?: () => void }).__ertClearDragPreview = clearDragPreview;
                 });
 
                 plugin.registerDomEvent(dragHandle, 'dragend', () => {
-                    row.classList.remove('is-dragging');
-                    row.classList.remove('is-dragover');
-                    (dragHandle as HTMLElement & { __ertClearDragPreview?: () => void }).__ertClearDragPreview?.();
-                    delete (dragHandle as HTMLElement & { __ertClearDragPreview?: () => void }).__ertClearDragPreview;
+                    clearPromptRowPlaceholder(dragState);
                     dragState.index = null;
                 });
 
                 plugin.registerDomEvent(row, 'dragover', (e) => {
                     e.preventDefault();
                     row.classList.add('is-dragover');
+                    if (!dragState.placeholderEl || row === dragState.sourceRow) return;
+                    const rect = row.getBoundingClientRect();
+                    const insertAfter = e.clientY > rect.top + (rect.height / 2);
+                    if (insertAfter) {
+                        row.insertAdjacentElement('afterend', dragState.placeholderEl);
+                    } else {
+                        row.insertAdjacentElement('beforebegin', dragState.placeholderEl);
+                    }
                 });
 
                 plugin.registerDomEvent(row, 'dragleave', () => {
@@ -1616,12 +1673,17 @@ export function renderInquirySection(params: SectionParams): void {
                     e.preventDefault();
                     row.classList.remove('is-dragover');
                     const from = dragState.index ?? parseInt(e.dataTransfer?.getData('text/plain') || '-1', 10);
-                    if (Number.isNaN(from) || from < 0 || from === slotIndex) {
+                    const to = dragState.placeholderEl
+                        ? getPromptPlaceholderDropIndex(listEl, dragState.placeholderEl, dragState.sourceRow)
+                        : slotIndex;
+                    if (Number.isNaN(from) || from < 0 || from === to) {
+                        clearPromptRowPlaceholder(dragState);
                         dragState.index = null;
                         return;
                     }
+                    clearPromptRowPlaceholder(dragState);
                     dragState.index = null;
-                    void reorderSlots(zone, from, slotIndex);
+                    void reorderSlots(zone, from, to);
                 });
             });
         };
@@ -1634,7 +1696,12 @@ export function renderInquirySection(params: SectionParams): void {
 
         const renderZoneCard = (
             zone: InquiryPromptZoneKey,
-            dragState: { index: number | null }
+            dragState: {
+                index: number | null;
+                sourceRow: HTMLElement | null;
+                placeholderEl: HTMLElement | null;
+                clearDragPreview?: () => void;
+            }
         ) => {
             const zoneStack = promptContainer.createDiv({ cls: ERT_CLASSES.STACK });
 
@@ -1810,8 +1877,8 @@ export function renderInquirySection(params: SectionParams): void {
                 .setName('Canonical question library')
                 .setDesc(
                     isPro
-                        ? 'Load the full Pro Signature set. Loading replaces all current questions in every zone.'
-                        : 'Load the curated Core set. Loading replaces all current questions in every zone.'
+                        ? 'Frame Inquiry across three zones: Setup, Pressure, and Payoff. Add your own custom questions, install curated questions line by line, or load the full Pro Signature set across all zones at once.'
+                        : 'Frame Inquiry across three zones: Setup, Pressure, and Payoff. Add your own custom questions, install curated questions line by line, or load the curated Core set across all zones at once.'
                 );
             librarySetting.settingEl.addClass(ERT_CLASSES.ROW, ERT_CLASSES.ROW_TIGHT);
             const libraryActions = librarySetting.controlEl.createDiv({ cls: [ERT_CLASSES.INLINE, 'ert-actions', 'ert-preset-controls'] });
@@ -1837,10 +1904,15 @@ export function renderInquirySection(params: SectionParams): void {
                 });
             }
 
-            const dragStates: Record<InquiryPromptZoneKey, { index: number | null }> = {
-                setup: { index: null as number | null },
-                pressure: { index: null as number | null },
-                payoff: { index: null as number | null }
+            const dragStates: Record<InquiryPromptZoneKey, {
+                index: number | null;
+                sourceRow: HTMLElement | null;
+                placeholderEl: HTMLElement | null;
+                clearDragPreview?: () => void;
+            }> = {
+                setup: { index: null, sourceRow: null, placeholderEl: null },
+                pressure: { index: null, sourceRow: null, placeholderEl: null },
+                payoff: { index: null, sourceRow: null, placeholderEl: null }
             };
 
             zones.forEach(zone => {
