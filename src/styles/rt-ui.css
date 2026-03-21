@@ -9489,3 +9489,13 @@
   color: var(--text-accent);
   font-weight: 500;
 }
+
+.ert-ui.ert-scope--settings .ert-settings-prompt-row--dragPreview {
+  width: var(--ert-inquiry-drag-preview-width, auto);
+  height: var(--ert-inquiry-drag-preview-height, auto);
+  position: fixed;
+  top: -10000px;
+  left: -10000px;
+  pointer-events: none;
+  margin: 0;
+}

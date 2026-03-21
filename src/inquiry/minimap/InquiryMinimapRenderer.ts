@@ -599,6 +599,14 @@ export class InquiryMinimapRenderer {
         });
     }
 
+    updateLinkedHoverState(sceneId?: string | null): void {
+        const normalizedSceneId = String(sceneId || '').trim().toLowerCase();
+        this.minimapTicks.forEach(tick => {
+            const tickSceneId = tick.getAttribute('data-scene-id')?.trim().toLowerCase() || '';
+            tick.classList.toggle('is-linked-hover', !!normalizedSceneId && !!tickSceneId && tickSceneId === normalizedSceneId);
+        });
+    }
+
     // ── Animation lifecycle ──────────────────────────────────────────
 
     startRunningAnimations(
@@ -1236,6 +1244,8 @@ export class InquiryMinimapRenderer {
         const markerWidth = Math.max(3, Math.round(tickWidth * 0.18));
         const markerHeight = Math.min(8, Math.max(6, Math.round(tickHeight * 0.35)));
         const markerInsetX = 4;
+        const targetLetterX = Math.round(tickWidth / 2);
+        const targetLetterY = Math.round(tickHeight / 2) + 1;
         const tickLayouts: Array<{ x: number; y: number; width: number; height: number; rowIndex: number }> = [];
 
         for (let i = 0; i < count; i += 1) {
@@ -1281,6 +1291,10 @@ export class InquiryMinimapRenderer {
                 marker.setAttribute('ry', '1');
                 tick.appendChild(marker);
             }
+            const targetLetter = createSvgText(tick, 'ert-inquiry-minimap-target-letter', 'F', targetLetterX, targetLetterY);
+            targetLetter.setAttribute('text-anchor', 'middle');
+            targetLetter.setAttribute('dominant-baseline', 'middle');
+            targetLetter.setAttribute('aria-hidden', 'true');
             const label = item.displayLabel;
             const fullLabel = callbacks.getItemTitle(item) || label;
             tick.setAttribute('data-index', String(i + 1));

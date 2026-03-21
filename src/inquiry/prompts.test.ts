@@ -107,8 +107,9 @@ describe('Inquiry prompt helpers', () => {
             question: `${original.question} Revised.`
         });
 
-        expect(edited.canonical?.id).toBe('setup-core');
-        expect(edited.canonical?.state).toBe('customized');
+        expect(edited.id).toBe('custom-setup-setup-core-converted');
+        expect(edited.builtIn).toBe(false);
+        expect(edited.canonical).toBeUndefined();
     });
 
     it('classifies slot state as empty, canonical-loaded, or customized', () => {

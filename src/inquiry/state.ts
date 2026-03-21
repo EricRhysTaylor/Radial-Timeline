@@ -50,6 +50,7 @@ export interface InquiryResult {
     scope: InquiryScope;
     scopeLabel: string;
     mode: InquiryLens;
+    selectionMode: InquirySelectionMode;
     questionId: string;
     questionZone?: InquiryZone;
     summary: string;

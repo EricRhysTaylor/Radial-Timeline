@@ -725,7 +725,7 @@ export function renderInquirySection(params: SectionParams): void {
                 modes: SceneInclusion[],
                 onChange: (next: SceneInclusion) => void
             ) => {
-                const select = cell.createEl('select', { cls: 'ert-input ert-input--sm' });
+                const select = cell.createEl('select', { cls: 'ert-input ert-input--md' });
                 modes.forEach(mode => {
                     select.createEl('option', { value: mode, text: CONTRIBUTION_LABELS[mode] });
                 });
@@ -1095,7 +1095,7 @@ export function renderInquirySection(params: SectionParams): void {
         };
         const zoneIcons: Record<InquiryPromptZoneKey, string> = {
             setup: 'sprout',
-            pressure: 'zap',
+            pressure: 'gauge',
             payoff: 'target'
         };
 
@@ -1112,9 +1112,10 @@ export function renderInquirySection(params: SectionParams): void {
             promptConfig[zone] ?? [];
 
         const savePromptConfig = async (next: InquiryPromptConfig) => {
-            plugin.settings.inquiryPromptConfig = next;
+            const normalized = normalizeInquiryPromptConfig(next);
+            plugin.settings.inquiryPromptConfig = normalized;
             await plugin.saveSettings();
-            promptConfig = normalizeInquiryPromptConfig(next);
+            promptConfig = normalized;
             plugin.getInquiryService().notifyPromptSettingsChanged();
         };
 
@@ -1193,6 +1194,9 @@ export function renderInquirySection(params: SectionParams): void {
             return questions.sort((left, right) => left.defaultOrder - right.defaultOrder);
         };
 
+        const getZoneSlotCapacity = (zone: InquiryPromptZoneKey): number =>
+            (isPro ? allCanonicalByZone[zone] : coreCanonicalByZone[zone]).length;
+
         const getActiveCanonicalSelectionId = (
             slot: InquiryPromptSlot | undefined
         ): string => {
@@ -1200,6 +1204,15 @@ export function renderInquirySection(params: SectionParams): void {
                 return '';
             }
             return getCanonicalQuestionForSlot(slot)?.id ?? '';
+        };
+
+        const getCanonicalTemplateOrder = (
+            question: InquiryCanonicalQuestionDefinition,
+            zone: InquiryPromptZoneKey
+        ): number => {
+            const ordered = getSelectableCanonicalQuestions(zone);
+            const index = ordered.findIndex(candidate => candidate.id === question.id);
+            return index === -1 ? question.defaultOrder : index + 1;
         };
 
         const findCanonicalSlotIndex = (
@@ -1215,11 +1228,24 @@ export function renderInquirySection(params: SectionParams): void {
             excludeIndex?: number
         ): string => {
             const parts = [question.label];
+            const existingIndex = findCanonicalSlotIndex(zone, question.id, excludeIndex);
             if (question.tier === 'signature') {
                 parts.push('Pro');
             }
-            if (findCanonicalSlotIndex(zone, question.id, excludeIndex) !== -1) {
+            if (existingIndex !== -1) {
+                parts.push(`#${existingIndex + 1}`);
                 parts.push('Already added');
+            }
+            return parts.join(' · ');
+        };
+
+        const getCanonicalInsertOptionLabel = (
+            question: InquiryCanonicalQuestionDefinition,
+            zone: InquiryPromptZoneKey
+        ): string => {
+            const parts = [`${getCanonicalTemplateOrder(question, zone)}. ${question.label}`];
+            if (question.tier === 'signature') {
+                parts.push('Pro');
             }
             return parts.join(' · ');
         };
@@ -1405,6 +1431,25 @@ export function renderInquirySection(params: SectionParams): void {
             render();
         };
 
+        const createPromptRowDragPreview = (event: DragEvent, row: HTMLElement): (() => void) => {
+            if (!event.dataTransfer) return () => undefined;
+            const rect = row.getBoundingClientRect();
+            const preview = row.cloneNode(true) as HTMLElement;
+            preview.addClass('ert-settings-prompt-row--dragPreview');
+            preview.removeClass('is-dragging');
+            preview.style.setProperty('--ert-inquiry-drag-preview-width', `${Math.ceil(rect.width)}px`);
+            preview.style.setProperty('--ert-inquiry-drag-preview-height', `${Math.ceil(rect.height)}px`);
+            document.body.appendChild(preview);
+
+            const offsetX = event.clientX > 0 ? Math.max(24, event.clientX - rect.left) : 28;
+            const offsetY = event.clientY > 0 ? Math.max(20, event.clientY - rect.top) : 28;
+            event.dataTransfer.setDragImage(preview, offsetX, offsetY);
+
+            return () => {
+                window.setTimeout(() => preview.remove(), 0);
+            };
+        };
+
         const renderSlotRows = (
             listEl: HTMLElement,
             zone: InquiryPromptZoneKey,
@@ -1415,9 +1460,9 @@ export function renderInquirySection(params: SectionParams): void {
             slots.forEach((slot, slotIndex) => {
                 const row = listEl.createDiv({ cls: 'ert-reorder-row ert-reorder-row--two-col' });
                 row.addClass('ert-inquiry-prompt-row');
-                const customIndex = customIndexMap.has(slot.id) ? customIndexMap.get(slot.id)! : -1;
-                const isProRow = customIndex >= freeCustomLimit;
                 const slotState = getInquiryPromptSlotState(slot);
+                const customIndex = customIndexMap.has(slot.id) ? customIndexMap.get(slot.id)! : -1;
+                const isProRow = slotState === 'customized' && customIndex >= freeCustomLimit;
                 const canonicalQuestion = getCanonicalQuestionForSlot(slot);
                 const canRemoveSlot = slotIndex > 0;
                 if (canonicalQuestion) {
@@ -1429,6 +1474,7 @@ export function renderInquirySection(params: SectionParams): void {
                         row.addClass('ert-reorder-row--locked');
                     }
                 }
+                row.toggleClass('ert-inquiry-prompt-row--template', slotState === 'canonical-loaded');
                 row.toggleClass('ert-inquiry-prompt-row--customized', slotState === 'customized');
                 row.toggleClass(
                     'ert-inquiry-prompt-row--signature',
@@ -1454,36 +1500,45 @@ export function renderInquirySection(params: SectionParams): void {
                 labelInput.setPlaceholder('Label (optional)')
                     .setValue(slot.label ?? '');
                 labelInput.inputEl.addClass('ert-input', 'ert-input--md', 'ert-inquiry-prompt-labelInput');
-                labelInput.onChange(async (value) => {
-                    await updateSlot(zone, slotIndex, { label: value });
-                });
+                if (slotState === 'canonical-loaded') {
+                    labelInput.inputEl.readOnly = true;
+                    labelInput.inputEl.addClass('is-readonly');
+                    const templateMeta = topRow.createDiv({ cls: 'ert-inquiry-prompt-templateMeta' });
+                    const templateIcon = templateMeta.createDiv({ cls: 'ert-inquiry-prompt-templateMeta__icon' });
+                    setIcon(templateIcon, 'lock');
+                    templateMeta.createSpan({ text: 'Fixed template' });
+                } else {
+                    labelInput.onChange(async (value) => {
+                        await updateSlot(zone, slotIndex, { label: value });
+                    });
 
-                const pickerWrap = topRow.createDiv({ cls: 'ert-inquiry-prompt-canonical-picker' });
-                const canonicalPicker = new DropdownComponent(pickerWrap);
-                canonicalPicker.selectEl.addClass('ert-input', 'ert-input--md');
-                canonicalPicker.addOption('', 'Replace from library');
-                getSelectableCanonicalQuestions(zone, slot).forEach(question => {
-                    canonicalPicker.addOption(question.id, getCanonicalOptionLabel(question, zone, slotIndex));
-                });
-                const activeCanonicalSelectionId = getActiveCanonicalSelectionId(slot);
-                canonicalPicker.setValue(activeCanonicalSelectionId);
-                canonicalPicker.onChange((selectedId) => {
-                    if (!selectedId) return;
-                    const duplicateIndex = findCanonicalSlotIndex(zone, selectedId, slotIndex);
-                    if (duplicateIndex === -1) return;
-                    if (activeCanonicalSelectionId === selectedId) return;
-                    focusCanonicalQuestionRow(zone, selectedId);
+                    const pickerWrap = topRow.createDiv({ cls: 'ert-inquiry-prompt-canonical-picker' });
+                    const canonicalPicker = new DropdownComponent(pickerWrap);
+                    canonicalPicker.selectEl.addClass('ert-input', 'ert-input--md');
+                    canonicalPicker.addOption('', 'Replace with template');
+                    getSelectableCanonicalQuestions(zone, slot).forEach(question => {
+                        canonicalPicker.addOption(question.id, getCanonicalOptionLabel(question, zone, slotIndex));
+                    });
+                    const activeCanonicalSelectionId = getActiveCanonicalSelectionId(slot);
                     canonicalPicker.setValue(activeCanonicalSelectionId);
-                });
+                    canonicalPicker.onChange((selectedId) => {
+                        if (!selectedId) return;
+                        const duplicateIndex = findCanonicalSlotIndex(zone, selectedId, slotIndex);
+                        if (duplicateIndex === -1) return;
+                        if (activeCanonicalSelectionId === selectedId) return;
+                        focusCanonicalQuestionRow(zone, selectedId);
+                        canonicalPicker.setValue(activeCanonicalSelectionId);
+                    });
 
-                const applyCanonicalButton = pickerWrap.createEl('button', { cls: ERT_CLASSES.ICON_BTN });
-                setIcon(applyCanonicalButton, 'sparkles');
-                setTooltip(applyCanonicalButton, 'Apply selected canonical question');
-                applyCanonicalButton.onclick = () => {
-                    const selectedId = canonicalPicker.getValue();
-                    if (!selectedId) return;
-                    void replaceSlotWithCanonical(zone, slotIndex, selectedId);
-                };
+                    const applyCanonicalButton = pickerWrap.createEl('button', { cls: ERT_CLASSES.ICON_BTN });
+                    setIcon(applyCanonicalButton, 'sparkles');
+                    setTooltip(applyCanonicalButton, 'Apply selected canonical question');
+                    applyCanonicalButton.onclick = () => {
+                        const selectedId = canonicalPicker.getValue();
+                        if (!selectedId) return;
+                        void replaceSlotWithCanonical(zone, slotIndex, selectedId);
+                    };
+                }
 
                 const rowActions = topRow.createDiv({ cls: ERT_CLASSES.ICON_BTN_GROUP });
                 if (canonicalQuestion && slotState === 'customized') {
@@ -1513,12 +1568,17 @@ export function renderInquirySection(params: SectionParams): void {
                 questionInput.setPlaceholder('Question text')
                     .setValue(slot.question ?? '');
                 questionInput.inputEl.addClass('ert-input', 'ert-input--full', 'ert-inquiry-prompt-questionInput');
-                questionInput.onChange(async (value) => {
-                    await updateSlot(zone, slotIndex, { question: value });
-                });
+                if (slotState === 'canonical-loaded') {
+                    questionInput.inputEl.readOnly = true;
+                    questionInput.inputEl.addClass('is-readonly');
+                } else {
+                    questionInput.onChange(async (value) => {
+                        await updateSlot(zone, slotIndex, { question: value });
+                    });
+                }
                 if (slotState === 'customized') {
                     const customizedIcon = questionMain.createDiv({ cls: 'ert-inquiry-prompt-customizedIcon' });
-                    customizedIcon.toggleClass('is-signature', isProRow);
+                    customizedIcon.toggleClass('is-signature', canonicalQuestion?.tier === 'signature' || isProRow);
                     setIcon(customizedIcon, 'pencil');
                     setTooltip(customizedIcon, 'Customized question');
                 }
@@ -1527,12 +1587,19 @@ export function renderInquirySection(params: SectionParams): void {
                     dragState.index = slotIndex;
                     row.classList.add('is-dragging');
                     e.dataTransfer?.setData('text/plain', slotIndex.toString());
-                    if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+                    let clearDragPreview: () => void = () => undefined;
+                    if (e.dataTransfer) {
+                        e.dataTransfer.effectAllowed = 'move';
+                        clearDragPreview = createPromptRowDragPreview(e, row);
+                    }
+                    (dragHandle as HTMLElement & { __ertClearDragPreview?: () => void }).__ertClearDragPreview = clearDragPreview;
                 });
 
                 plugin.registerDomEvent(dragHandle, 'dragend', () => {
                     row.classList.remove('is-dragging');
                     row.classList.remove('is-dragover');
+                    (dragHandle as HTMLElement & { __ertClearDragPreview?: () => void }).__ertClearDragPreview?.();
+                    delete (dragHandle as HTMLElement & { __ertClearDragPreview?: () => void }).__ertClearDragPreview;
                     dragState.index = null;
                 });
 
@@ -1623,7 +1690,7 @@ export function renderInquirySection(params: SectionParams): void {
             };
 
             const slots = getSlotList(zone);
-            const customSlots = slots.filter(slot => !isCanonicalPromptSlot(slot));
+            const customSlots = slots.filter(slot => getInquiryPromptSlotState(slot) === 'customized');
             const customIndexMap = new Map<string, number>();
             customSlots.forEach((slot, idx) => customIndexMap.set(slot.id, idx));
             renderSlotRows(listEl, zone, slots, customIndexMap, dragState);
@@ -1648,48 +1715,15 @@ export function renderInquirySection(params: SectionParams): void {
                 });
             }
 
+            const addLimit = isPro ? proCustomLimit : freeCustomLimit;
+            const zoneCapacity = getZoneSlotCapacity(zone);
             const insertableCanonicalQuestions = getSelectableCanonicalQuestions(zone)
                 .filter(question => findCanonicalSlotIndex(zone, question.id) === -1);
-            if (insertableCanonicalQuestions.length > 0) {
-                const insertRow = listEl.createDiv({
-                    cls: 'ert-reorder-row ert-reorder-row--two-col ert-inquiry-prompt-insertRow'
-                });
-                const insertLabelCol = insertRow.createDiv({ cls: 'ert-reorder-col ert-inquiry-prompt-col ert-inquiry-prompt-col--handle' });
-                const insertQuestionCol = insertRow.createDiv({
-                    cls: 'ert-reorder-col ert-reorder-col--question ert-inquiry-prompt-col ert-inquiry-prompt-col--question'
-                });
-                const insertIcon = insertLabelCol.createDiv({ cls: 'ert-drag-handle ert-drag-placeholder ert-inquiry-prompt-insertIcon' });
-                setIcon(insertIcon, 'sparkles');
-                const insertControls = insertQuestionCol.createDiv({ cls: 'ert-inquiry-prompt-topRow ert-inquiry-prompt-insertControls' });
-                insertControls.createDiv({
-                    cls: 'ert-inquiry-prompt-insertLabel',
-                    text: 'Insert canonical'
-                });
-                const insertPicker = new DropdownComponent(insertControls);
-                insertPicker.selectEl.addClass('ert-input', 'ert-input--md');
-                insertPicker.addOption('', 'Choose a canonical question');
-                insertableCanonicalQuestions.forEach(question => {
-                    insertPicker.addOption(question.id, getCanonicalOptionLabel(question, zone));
-                });
-                insertPicker.onChange((selectedId) => {
-                    if (!selectedId) return;
-                    if (findCanonicalSlotIndex(zone, selectedId) === -1) return;
-                    focusCanonicalQuestionRow(zone, selectedId);
-                    insertPicker.setValue('');
-                });
+            const canAddCustom = customSlots.length < addLimit;
+            const canAddCanonical = insertableCanonicalQuestions.length > 0;
+            const hasZoneCapacity = slots.length < zoneCapacity;
 
-                const insertButton = insertControls.createEl('button', { cls: [ERT_CLASSES.ICON_BTN, 'ert-mod-cta'] });
-                setIcon(insertButton, 'plus');
-                setTooltip(insertButton, 'Insert canonical question');
-                insertButton.onclick = () => {
-                    const selectedId = insertPicker.getValue();
-                    if (!selectedId) return;
-                    void insertCanonicalSlot(zone, selectedId);
-                };
-            }
-
-            const addLimit = isPro ? proCustomLimit : freeCustomLimit;
-            if (customSlots.length < addLimit) {
+            if (hasZoneCapacity && (canAddCustom || canAddCanonical)) {
                 const addRow = listEl.createDiv({ cls: 'ert-reorder-row ert-reorder-row--two-col ert-inquiry-prompt-addRow' });
                 if (isPro && customSlots.length >= freeCustomLimit) {
                     addRow.addClass('ert-reorder-row--pro');
@@ -1700,13 +1734,24 @@ export function renderInquirySection(params: SectionParams): void {
                     cls: 'ert-reorder-col ert-reorder-col--question ert-inquiry-prompt-col ert-inquiry-prompt-col--question'
                 });
 
-                labelCol.createDiv({ cls: 'ert-drag-handle ert-drag-placeholder' });
+                const addIcon = labelCol.createDiv({ cls: 'ert-drag-handle ert-drag-placeholder ert-inquiry-prompt-insertIcon' });
+                setIcon(addIcon, 'plus');
 
                 const topRow = questionCol.createDiv({ cls: 'ert-inquiry-prompt-topRow' });
                 const labelField = topRow.createDiv({ cls: 'ert-inquiry-prompt-labelField' });
                 const labelInput = new TextComponent(labelField);
                 labelInput.setPlaceholder('Label (optional)').setValue('');
                 labelInput.inputEl.addClass('ert-input', 'ert-input--md', 'ert-inquiry-prompt-labelInput');
+                labelInput.setDisabled(!canAddCustom);
+
+                const canonicalPickerWrap = topRow.createDiv({ cls: 'ert-inquiry-prompt-canonical-picker' });
+                const canonicalPicker = new DropdownComponent(canonicalPickerWrap);
+                canonicalPicker.selectEl.addClass('ert-input', 'ert-input--md');
+                canonicalPicker.addOption('', canAddCanonical ? 'Or choose a canonical question' : 'No remaining canonical questions');
+                insertableCanonicalQuestions.forEach(question => {
+                    canonicalPicker.addOption(question.id, getCanonicalInsertOptionLabel(question, zone));
+                });
+                canonicalPicker.setDisabled(!canAddCanonical);
 
                 const addActions = topRow.createDiv({ cls: ERT_CLASSES.ICON_BTN_GROUP });
                 const addBtn = addActions.createEl('button', { cls: [ERT_CLASSES.ICON_BTN, 'ert-mod-cta'] });
@@ -1717,8 +1762,27 @@ export function renderInquirySection(params: SectionParams): void {
                 const questionInput = new TextComponent(questionMain);
                 questionInput.setPlaceholder('Question text').setValue('');
                 questionInput.inputEl.addClass('ert-input', 'ert-input--full', 'ert-inquiry-prompt-questionInput');
+                questionInput.setDisabled(!canAddCustom);
+
+                const clearCanonicalSelection = () => {
+                    if (!canonicalPicker.getValue()) return;
+                    canonicalPicker.setValue('');
+                };
+                labelInput.onChange(() => clearCanonicalSelection());
+                questionInput.onChange(() => clearCanonicalSelection());
+                canonicalPicker.onChange((selectedId) => {
+                    if (!selectedId) return;
+                    labelInput.setValue('');
+                    questionInput.setValue('');
+                });
 
                 const commitAdd = () => {
+                    const selectedCanonicalId = canonicalPicker.getValue();
+                    if (selectedCanonicalId) {
+                        void insertCanonicalSlot(zone, selectedCanonicalId);
+                        return;
+                    }
+                    if (!canAddCustom) return;
                     void addCustomSlot(zone, addLimit, {
                         label: labelInput.getValue(),
                         question: questionInput.getValue()
@@ -1732,6 +1796,9 @@ export function renderInquirySection(params: SectionParams): void {
                         commitAdd();
                     }
                 });
+            } else if (!hasZoneCapacity) {
+                const fullNote = listEl.createDiv({ cls: 'ert-inquiry-prompt-zoneFullNote' });
+                fullNote.setText('Delete a question to add a custom or remaining template question.');
             }
         };
 

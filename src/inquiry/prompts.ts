@@ -86,6 +86,26 @@ const buildCanonicalSlot = (
     };
 };
 
+const buildDetachedCustomSlot = (
+    slot: InquiryPromptSlot,
+    canonical: InquiryCanonicalQuestionDefinition
+): InquiryPromptSlot => {
+    const label = slot.label ?? '';
+    const question = slot.question ?? '';
+    const nextId = slot.id && slot.id !== canonical.id
+        ? slot.id
+        : `custom-${canonical.zone}-${canonical.id}-converted`;
+    return {
+        id: nextId,
+        label,
+        question,
+        enabled: !!slot.enabled || question.trim().length > 0,
+        builtIn: false,
+        requiresContext: slot.requiresContext,
+        canonical: undefined
+    };
+};
+
 export const createCanonicalPromptSlot = (
     canonical: InquiryCanonicalQuestionDefinition,
     overrides: Partial<InquiryPromptSlot> = {}
@@ -186,6 +206,14 @@ export const syncCanonicalPromptSlot = (slot: InquiryPromptSlot): InquiryPromptS
             builtIn: false,
             canonical: undefined
         };
+    }
+
+    const canonicalState = buildCanonicalPromptState({
+        label: slot.label ?? '',
+        question: slot.question ?? ''
+    }, canonical);
+    if (canonicalState === 'customized') {
+        return buildDetachedCustomSlot(slot, canonical);
     }
 
     return buildCanonicalSlot(canonical, {

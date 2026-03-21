@@ -52,6 +52,7 @@ describe('inquiryViewText', () => {
             scope: 'book',
             scopeLabel: 'B2',
             mode: 'flow',
+            selectionMode: 'discover',
             questionId: 'q-1',
             summary: 'Summary',
             verdict: {

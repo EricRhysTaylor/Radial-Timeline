@@ -3574,6 +3574,8 @@ export class InquiryView extends ItemView {
             onItemToggle: this.handleCorpusItemToggle.bind(this),
             onItemShiftAction: this.handleCorpusItemShiftAction.bind(this),
             onItemContextMenu: this.handleCorpusItemContextMenu.bind(this),
+            onItemHover: this.handleCorpusItemHover.bind(this),
+            onItemLeave: this.handleCorpusItemLeave.bind(this),
             openEntryPath: (filePath: string) => {
                 if (this.state.isRunning) return;
                 const file = this.app.vault.getAbstractFileByPath(filePath);
@@ -3908,6 +3910,20 @@ export class InquiryView extends ItemView {
             isTarget: entry.isTarget,
             event
         });
+    }
+
+    private handleCorpusItemHover(entryKey: string): void {
+        if (this.state.isRunning) return;
+        const entry = this.ccEntries.find(candidate => candidate.entryKey === entryKey);
+        if (!entry?.sceneId) {
+            this.minimap.updateLinkedHoverState();
+            return;
+        }
+        this.minimap.updateLinkedHoverState(entry.sceneId);
+    }
+
+    private handleCorpusItemLeave(): void {
+        this.minimap.updateLinkedHoverState();
     }
 
     private handleCorpusGlobalToggle(): void {
@@ -6357,6 +6373,7 @@ export class InquiryView extends ItemView {
             ...result,
             summaryFlow: result.summaryFlow ?? result.summary,
             summaryDepth: result.summaryDepth ?? result.summary,
+            selectionMode: result.selectionMode === 'focused' ? 'focused' : 'discover',
             verdict: {
                 flow: verdict.flow,
                 depth: verdict.depth,
@@ -6906,6 +6923,7 @@ export class InquiryView extends ItemView {
             scope: this.state.scope,
             scopeLabel,
             mode: this.state.mode,
+            selectionMode: this.getSelectionMode(this.getActiveTargetSceneIds()),
             questionId: question.id,
             questionZone: question.zone,
             summary: 'Inquiry failed; fallback result returned.',
@@ -6941,6 +6959,7 @@ export class InquiryView extends ItemView {
             scope: this.state.scope,
             scopeLabel,
             mode: this.state.mode,
+            selectionMode: this.getSelectionMode(this.getActiveTargetSceneIds()),
             questionId: question.id,
             questionZone: question.zone,
             summary: 'Simulated inquiry session.',
@@ -7277,6 +7296,7 @@ export class InquiryView extends ItemView {
         if (this.state.isRunning) return;
         event.preventDefault();
         if (this.state.scope !== 'book') {
+            this.notifyInteraction('Target Scenes are available only in Book scope.');
             return;
         }
         const filePath = this.getMinimapItemFilePath(item);
@@ -7380,6 +7400,22 @@ export class InquiryView extends ItemView {
         return targetSceneIds.length > 0 ? 'focused' : 'discover';
     }
 
+    private getResultSelectionMode(result: InquiryResult | null | undefined): InquirySelectionMode {
+        return result?.selectionMode === 'focused' ? 'focused' : 'discover';
+    }
+
+    private getTargetSceneKey(sceneIds: string[] | undefined | null): string {
+        if (!Array.isArray(sceneIds) || !sceneIds.length) return '';
+        return this.normalizeTargetSceneIds(sceneIds).sort().join(',');
+    }
+
+    private getPersistedResultTargetSceneIds(result: InquiryResult | null | undefined): string[] {
+        if (!result || !this.state.activeSessionId) return [];
+        const session = this.sessionStore.peekSession(this.state.activeSessionId);
+        if (!session) return [];
+        return this.normalizeTargetSceneIds(session.targetSceneIds);
+    }
+
     private getTargetSceneStatusLabel(): string {
         const activeTargetCount = this.getActiveTargetSceneIds().length;
         const storedTargetCount = this.state.targetSceneIds.length;
@@ -7413,7 +7449,7 @@ export class InquiryView extends ItemView {
         }
         const glyphSeed = this.resolveGlyphSeed();
         if (glyphSeed.source === 'session') {
-            return `${scopeLabel}: ${label}. ${this.getTargetSceneStatusLabel()}. Rings seeded from the latest saved inquiry for this scope.`;
+            return `${scopeLabel}: ${label}. ${this.getTargetSceneStatusLabel()}. Rings seeded from the latest saved inquiry for this selection.`;
         }
         return `${scopeLabel}: ${label}. ${this.getTargetSceneStatusLabel()}. No inquiry run yet.`;
     }
@@ -7428,7 +7464,7 @@ export class InquiryView extends ItemView {
         const glyphSeed = this.resolveGlyphSeed();
         if (glyphSeed.source === 'session') {
             const score = ring === 'flow' ? glyphSeed.flowValue : glyphSeed.depthValue;
-            return `${label} score ${this.formatMetricDisplay(score)} from the latest saved inquiry for this focus. Run an inquiry to refresh it.`;
+            return `${label} score ${this.formatMetricDisplay(score)} from the latest saved inquiry for this selection. Run an inquiry to refresh it.`;
         }
         return `${label} verdict unavailable. Run an inquiry.`;
     }
@@ -7480,6 +7516,7 @@ export class InquiryView extends ItemView {
     private getLatestSessionForCurrentFocus(): InquirySession | undefined {
         const scope = this.state.scope;
         const scopeKey = this.getScopeKey();
+        const activeTargetKey = this.getTargetSceneKey(this.getActiveTargetSceneIds());
         if (scope === 'book' && (!scopeKey || scopeKey === 'unresolved')) {
             return undefined;
         }
@@ -7490,7 +7527,8 @@ export class InquiryView extends ItemView {
                 if (sessionScope !== scope) return false;
                 if (this.isErrorResult(session.result)) return false;
                 if (scope === 'saga') return true;
-                return this.getSessionScopeKey(session) === scopeKey;
+                if (this.getSessionScopeKey(session) !== scopeKey) return false;
+                return this.getTargetSceneKey(session.targetSceneIds) === activeTargetKey;
             });
     }
 
@@ -8431,10 +8469,11 @@ export class InquiryView extends ItemView {
 
     private buildResultsMetaText(result: InquiryResult, mode: InquiryLens, zone: InquiryZone): string {
         const zoneLabel = zone === 'setup' ? 'Setup' : zone === 'pressure' ? 'Pressure' : 'Payoff';
+        const selectionText = this.getResultSelectionMode(result) === 'focused' ? 'Focused' : 'Discover';
         const flowText = `Flow ${this.formatMetricDisplay(result.verdict.flow)}`;
         const depthText = `Depth ${this.formatMetricDisplay(result.verdict.depth)}`;
         const ordered = mode === 'flow' ? [flowText, depthText] : [depthText, flowText];
-        return `${zoneLabel} · ${ordered.join(' · ')}`.toUpperCase();
+        return `${zoneLabel} · ${selectionText} · ${ordered.join(' · ')}`.toUpperCase();
     }
 
     private getResultItems(result: InquiryResult): InquiryCorpusItem[] {
@@ -8547,16 +8586,15 @@ export class InquiryView extends ItemView {
     private updateFindingsPanel(): void {
         if (!this.findingsTitleEl || !this.summaryEl || !this.verdictEl || !this.findingsListEl) return;
         const findingsListEl = this.findingsListEl;
-        const activeTargetCount = this.getActiveTargetSceneIds().length;
-        const storedTargetCount = this.state.targetSceneIds.length;
-        const focusedCount = this.state.scope === 'book' ? activeTargetCount : storedTargetCount;
-        const targetCountLabel = focusedCount === 1 ? '1 Target Scene' : `${focusedCount} Target Scenes`;
-
-        this.findingsTitleEl.textContent = focusedCount > 0 ? `Findings · ${targetCountLabel}` : 'Findings';
         clearSvgChildren(this.findingsListEl);
 
         const result = this.state.activeResult;
         if (!result) {
+            const activeTargetCount = this.getActiveTargetSceneIds().length;
+            const storedTargetCount = this.state.targetSceneIds.length;
+            const focusedCount = this.state.scope === 'book' ? activeTargetCount : storedTargetCount;
+            const targetCountLabel = focusedCount === 1 ? '1 Target Scene' : `${focusedCount} Target Scenes`;
+            this.findingsTitleEl.textContent = focusedCount > 0 ? `Findings · ${targetCountLabel}` : 'Findings';
             this.summaryEl.textContent = 'No inquiry run yet.';
             this.verdictEl.textContent = this.state.scope === 'saga' && storedTargetCount > 0
                 ? `${targetCountLabel} saved for Book scope. Switch to Book to use focused inquiry.`
@@ -8564,15 +8602,23 @@ export class InquiryView extends ItemView {
             return;
         }
 
+        const selectionMode = this.getResultSelectionMode(result);
+        const persistedTargetSceneIds = this.getPersistedResultTargetSceneIds(result);
+        const focusedCount = persistedTargetSceneIds.length;
+        const targetCountLabel = focusedCount === 1 ? '1 Target Scene' : `${focusedCount} Target Scenes`;
+        this.findingsTitleEl.textContent = selectionMode === 'focused'
+            ? `Findings · ${targetCountLabel}`
+            : 'Findings';
+
         const orderedFindings = this.getOrderedFindings(result, result.mode || this.state.mode);
         const targetFindings = orderedFindings.filter(finding => this.getFindingRole(finding) === 'target');
         const contextFindings = orderedFindings.filter(finding => this.getFindingRole(finding) === 'context');
 
         this.summaryEl.textContent = this.getResultSummaryForMode(result, result.mode || this.state.mode);
-        const selectionText = result.findings.some(finding => this.getFindingRole(finding) === 'target')
+        const selectionText = selectionMode === 'focused'
             ? `Selection Mode · Focused · ${targetFindings.length} target · ${contextFindings.length} context`
             : 'Selection Mode · Discover';
-        const scopeNote = this.state.scope === 'saga' && storedTargetCount > 0
+        const scopeNote = this.state.scope === 'saga' && this.state.targetSceneIds.length > 0
             ? ' · Target Scenes are book-only and inactive in Saga scope.'
             : '';
         this.verdictEl.textContent = `${selectionText}${scopeNote}`;
@@ -9644,7 +9690,8 @@ export class InquiryView extends ItemView {
             `Flow ${this.formatMetricDisplay(result.verdict.flow)}`,
             `Depth ${this.formatMetricDisplay(result.verdict.depth)}`,
             `Impact ${formatBriefLabel(result.verdict.impact)}`,
-            `Assessment confidence ${formatBriefLabel(result.verdict.assessmentConfidence)}`
+            `Assessment confidence ${formatBriefLabel(result.verdict.assessmentConfidence)}`,
+            `Selection ${formatBriefLabel(result.selectionMode)}`
         ];
 
         if (result.mode) {

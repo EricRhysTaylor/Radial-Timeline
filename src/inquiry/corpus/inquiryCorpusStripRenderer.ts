@@ -96,6 +96,8 @@ export function renderInquiryCorpusStrip(args: {
     onItemToggle: (entryKey: string) => void;
     onItemShiftAction: (entryKey: string, filePath: string, event: MouseEvent) => void;
     onItemContextMenu: (entryKey: string, filePath: string, event: MouseEvent) => void;
+    onItemHover: (entryKey: string) => void;
+    onItemLeave: () => void;
     openEntryPath: (filePath: string) => void;
 }): InquiryCorpusStripRenderResult {
     const refs = args.refs;
@@ -242,6 +244,14 @@ export function renderInquiryCorpusStrip(args: {
             const filePath = group.getAttribute('data-file-path') || '';
             args.onItemContextMenu(entryKey, filePath, event);
         });
+        args.registerSvgEvent(group, 'pointerenter', () => {
+            const entryKey = group.getAttribute('data-entry-key');
+            if (!entryKey) return;
+            args.onItemHover(entryKey);
+        });
+        args.registerSvgEvent(group, 'pointerleave', () => {
+            args.onItemLeave();
+        });
         refs.ccSlots.push({
             group,
             base,
@@ -269,6 +279,11 @@ export function renderInquiryCorpusStrip(args: {
         slot.group.setAttribute('data-class', placement.entry.className);
         slot.group.setAttribute('data-entry-key', placement.entry.entryKey);
         slot.group.setAttribute('data-file-path', placement.entry.filePath);
+        if (placement.entry.sceneId) {
+            slot.group.setAttribute('data-scene-id', placement.entry.sceneId);
+        } else {
+            slot.group.removeAttribute('data-scene-id');
+        }
         slot.group.setAttribute('transform', `translate(${placement.x} ${placement.y})`);
         slot.group.classList.toggle('is-target', placement.entry.isTarget);
         slot.base.setAttribute('width', String(layout.pageWidth));

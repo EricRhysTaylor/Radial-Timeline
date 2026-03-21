@@ -180,6 +180,10 @@ function buildInquiryCorpusCcTooltip(args: {
         conditions.push(`Status: ${statusLabel}${statusIconText}${statusBorderNote}`);
     }
 
+    if (args.entry.isTarget) {
+        conditions.push('Target Scene: Active');
+    }
+
     const tierLabel = getInquiryCorpusTierLabel(args.tier);
     const wordLabel = args.wordCount.toLocaleString();
     const isSynopsisCapable = args.entry.className === 'scene' || args.entry.className.startsWith('outline');

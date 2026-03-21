@@ -309,7 +309,7 @@ describe('InquiryRunnerService packaging policy', () => {
         expect(trace.notes).toContain('OpenAI transport lane: responses.');
     });
 
-    it('preserves scopeLabel and finding roles in built results', () => {
+    it('preserves scopeLabel, selectionMode, and finding roles in built results', () => {
         const service = createService();
         const sceneRefIndex = buildSceneRefIndex([{
             sceneId: 'scn_b5e1b85f',
@@ -374,6 +374,7 @@ describe('InquiryRunnerService packaging policy', () => {
         );
 
         expect(result.scopeLabel).toBe('B1');
+        expect(result.selectionMode).toBe('focused');
         expect(result.findings[0].role).toBe('target');
     });
 
