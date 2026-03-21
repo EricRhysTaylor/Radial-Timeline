@@ -3333,7 +3333,7 @@ body.rt-modal-open .ert-inquiry-svg * {
 }
 
 :is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-settings-root .ert-inquiry-prompt-row.is-dragging {
-  opacity: 0.18;
+  opacity: 0.34;
   box-shadow: none;
 }
 
@@ -3351,18 +3351,16 @@ body.rt-modal-open .ert-inquiry-svg * {
   pointer-events: none;
 }
 
-:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-settings-root .ert-inquiry-prompt-row.is-placeholder {
-  opacity: 0.92;
-  border-style: dashed;
-  border-color: color-mix(in srgb, var(--interactive-accent) 28%, var(--background-modifier-border));
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-settings-root .ert-inquiry-prompt-row.is-dragover {
+  border-color: color-mix(in srgb, var(--interactive-accent) 72%, var(--background-modifier-border));
   box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--interactive-accent) 12%, transparent),
-    0 10px 24px rgba(0, 0, 0, 0.14);
+    0 0 0 2px color-mix(in srgb, var(--interactive-accent) 30%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--interactive-accent) 18%, transparent);
 }
 
-:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-settings-root .ert-inquiry-prompt-row.is-placeholder .ert-input,
-:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-settings-root .ert-inquiry-prompt-row.is-placeholder button,
-:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-settings-root .ert-inquiry-prompt-row.is-placeholder select {
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-settings-root .ert-inquiry-prompt-config--dragging .ert-inquiry-prompt-row .ert-input,
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-settings-root .ert-inquiry-prompt-config--dragging .ert-inquiry-prompt-row button,
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-settings-root .ert-inquiry-prompt-config--dragging .ert-inquiry-prompt-row select {
   pointer-events: none;
 }
 

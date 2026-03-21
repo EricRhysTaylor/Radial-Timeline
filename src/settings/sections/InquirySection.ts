@@ -1450,24 +1450,19 @@ export function renderInquirySection(params: SectionParams): void {
             };
         };
 
-        const createPromptRowDropPlaceholder = (row: HTMLElement): HTMLElement => {
-            const placeholder = row.cloneNode(true) as HTMLElement;
-            placeholder.addClass('is-placeholder');
-            placeholder.removeClass('is-dragging');
-            placeholder.removeClass('is-dragover');
-            placeholder.removeClass('ert-inquiry-prompt-row--dragPreview');
-            placeholder.setAttribute('aria-hidden', 'true');
-            return placeholder;
-        };
-
-        const clearPromptRowPlaceholder = (
+        const clearPromptRowDragState = (
             dragState: {
                 index: number | null;
                 sourceRow: HTMLElement | null;
                 placeholderEl: HTMLElement | null;
                 clearDragPreview?: () => void;
-            }
+            },
+            listEl: HTMLElement
         ) => {
+            promptContainer.removeClass('ert-inquiry-prompt-config--dragging');
+            listEl.querySelectorAll('.ert-inquiry-prompt-row.is-dragover').forEach(target => {
+                target.removeClass('is-dragover');
+            });
             dragState.placeholderEl?.remove();
             dragState.placeholderEl = null;
             dragState.sourceRow?.removeClass('is-dragging');
@@ -1475,24 +1470,6 @@ export function renderInquirySection(params: SectionParams): void {
             dragState.sourceRow = null;
             dragState.clearDragPreview?.();
             dragState.clearDragPreview = undefined;
-        };
-
-        const getPromptPlaceholderDropIndex = (
-            listEl: HTMLElement,
-            placeholderEl: HTMLElement,
-            sourceRow: HTMLElement | null
-        ): number => {
-            let index = 0;
-            for (const child of Array.from(listEl.children)) {
-                if (child === placeholderEl) break;
-                if (!(child instanceof HTMLElement)) continue;
-                if (!child.classList.contains('ert-inquiry-prompt-row')) continue;
-                if (child.classList.contains('ert-inquiry-prompt-addRow')) continue;
-                if (child.classList.contains('is-placeholder')) continue;
-                if (child === sourceRow) continue;
-                index += 1;
-            }
-            return index;
         };
 
         const renderSlotRows = (
@@ -1636,11 +1613,9 @@ export function renderInquirySection(params: SectionParams): void {
                 plugin.registerDomEvent(dragHandle, 'dragstart', (e) => {
                     dragState.index = slotIndex;
                     dragState.sourceRow = row;
+                    promptContainer.addClass('ert-inquiry-prompt-config--dragging');
                     row.classList.add('is-dragging');
                     e.dataTransfer?.setData('text/plain', slotIndex.toString());
-                    dragState.placeholderEl?.remove();
-                    dragState.placeholderEl = createPromptRowDropPlaceholder(row);
-                    row.insertAdjacentElement('afterend', dragState.placeholderEl);
                     if (e.dataTransfer) {
                         e.dataTransfer.effectAllowed = 'move';
                         dragState.clearDragPreview = createPromptRowDragPreview(e, row);
@@ -1648,21 +1623,19 @@ export function renderInquirySection(params: SectionParams): void {
                 });
 
                 plugin.registerDomEvent(dragHandle, 'dragend', () => {
-                    clearPromptRowPlaceholder(dragState);
+                    clearPromptRowDragState(dragState, listEl);
                     dragState.index = null;
+                });
+
+                plugin.registerDomEvent(row, 'dragenter', (e) => {
+                    e.preventDefault();
+                    row.classList.add('is-dragover');
                 });
 
                 plugin.registerDomEvent(row, 'dragover', (e) => {
                     e.preventDefault();
+                    if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
                     row.classList.add('is-dragover');
-                    if (!dragState.placeholderEl || row === dragState.sourceRow) return;
-                    const rect = row.getBoundingClientRect();
-                    const insertAfter = e.clientY > rect.top + (rect.height / 2);
-                    if (insertAfter) {
-                        row.insertAdjacentElement('afterend', dragState.placeholderEl);
-                    } else {
-                        row.insertAdjacentElement('beforebegin', dragState.placeholderEl);
-                    }
                 });
 
                 plugin.registerDomEvent(row, 'dragleave', () => {
@@ -1673,17 +1646,14 @@ export function renderInquirySection(params: SectionParams): void {
                     e.preventDefault();
                     row.classList.remove('is-dragover');
                     const from = dragState.index ?? parseInt(e.dataTransfer?.getData('text/plain') || '-1', 10);
-                    const to = dragState.placeholderEl
-                        ? getPromptPlaceholderDropIndex(listEl, dragState.placeholderEl, dragState.sourceRow)
-                        : slotIndex;
-                    if (Number.isNaN(from) || from < 0 || from === to) {
-                        clearPromptRowPlaceholder(dragState);
+                    if (Number.isNaN(from) || from < 0 || from === slotIndex) {
+                        clearPromptRowDragState(dragState, listEl);
                         dragState.index = null;
                         return;
                     }
-                    clearPromptRowPlaceholder(dragState);
+                    clearPromptRowDragState(dragState, listEl);
                     dragState.index = null;
-                    void reorderSlots(zone, from, to);
+                    void reorderSlots(zone, from, slotIndex);
                 });
             });
         };
