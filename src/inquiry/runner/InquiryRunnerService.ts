@@ -439,6 +439,7 @@ export class InquiryRunnerService implements InquiryRunner {
         options?: {
             estimatedInputTokens?: number;
             safeInputTokens?: number;
+            analysisPackaging?: AnalysisPackaging;
         }
     ): number {
         const chunkPlan = this.buildEvidenceChunkPrompts(userPrompt, {
@@ -446,8 +447,15 @@ export class InquiryRunnerService implements InquiryRunner {
             estimatedInputTokens: options?.estimatedInputTokens,
             safeInputTokens: options?.safeInputTokens
         });
-        if (!chunkPlan || chunkPlan.prompts.length <= 1) return 1;
-        return chunkPlan.prompts.length + 1;
+        const chunkCount = chunkPlan ? chunkPlan.prompts.length : 0;
+        // Segmented mode always forces multi-pass. If the chunk planner
+        // produced fewer than 2 chunks (small corpus), the runtime still
+        // uses the multi-pass pipeline (evidence + synthesis = 2 minimum).
+        if (options?.analysisPackaging === 'segmented') {
+            return chunkCount > 1 ? chunkCount + 1 : 2;
+        }
+        if (chunkCount <= 1) return 1;
+        return chunkCount + 1;
     }
 
     private async buildEvidenceBlocks(input: InquiryRunnerInput): Promise<EvidenceBlock[]> {

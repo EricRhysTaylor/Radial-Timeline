@@ -947,8 +947,9 @@ export class InquiryMinimapRenderer {
         }
 
         const isOverCapacity = ratio >= 1;
-        const usesAutomaticPackaging = readinessUi.packaging === 'automatic' && readinessUi.readiness.exceedsBudget;
-        const overCapacityTone: 'amber' | 'red' = usesAutomaticPackaging ? 'amber' : 'red';
+        const usesMultiPassPackaging = readinessUi.packaging === 'segmented'
+            || (readinessUi.packaging === 'automatic' && readinessUi.readiness.exceedsBudget);
+        const overCapacityTone: 'amber' | 'red' = usesMultiPassPackaging ? 'amber' : 'red';
         this.updateTokenCapBar(clamped, isOverCapacity, overCapacityTone, passPlan.displayPassCount, styleSource, advancedContext);
         this.updateExecutionPassSegments(passPlan.displayPassCount, progress, styleSource);
         this.updateBackboneCachedOverlay(progress, advancedContext);
@@ -981,12 +982,17 @@ export class InquiryMinimapRenderer {
 
         const inputLabel = formatTokenEstimate(readinessUi.estimateInputTokens);
         const safeLabel = readinessUi.safeInputBudget > 0 ? formatTokenEstimate(readinessUi.safeInputBudget) : 'n/a';
-        const multiPassLabel = readinessUi.packaging === 'singlePassOnly' ? 'Disabled (single-pass only)' : 'Automatic';
+        const multiPassLabel = readinessUi.packaging === 'singlePassOnly'
+            ? 'Disabled (single-pass only)'
+            : readinessUi.packaging === 'segmented'
+                ? 'Segmented (always multi-pass)'
+                : 'Automatic';
         const tooltipLines = [
             `Inquiry request: ~${inputLabel} / ~${safeLabel} budget`,
             `Multi-pass: ${multiPassLabel}`
         ];
-        if (readinessUi.packaging === 'automatic' && readinessUi.readiness.exceedsBudget) {
+        if (readinessUi.packaging === 'segmented'
+            || (readinessUi.packaging === 'automatic' && readinessUi.readiness.exceedsBudget)) {
             tooltipLines.push('Will split into multiple analysis passes');
         }
         addTooltipData(this.minimapBaseline, balanceTooltipText(tooltipLines.join('\n')), 'top');

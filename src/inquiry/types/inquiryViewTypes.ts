@@ -52,6 +52,8 @@ export type InquiryBriefModel = {
         classLabel: string;
         path?: string;
         url?: string;
+        /** Number of citations referencing this source document. */
+        citationCount?: number;
     }>;
     sceneNotes: Array<{
         label: string;

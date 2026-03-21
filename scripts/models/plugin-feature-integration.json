@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "lastUpdated": "2026-03-11",
+  "lastUpdated": "2026-03-21",
   "integrations": [
     {
       "id": "anthropic-prompt-caching",
@@ -28,7 +28,15 @@
       ],
       "targetRelease": "shipped",
       "owner": "eric",
-      "lastTouched": "2026-03-03"
+      "lastTouched": "2026-03-21",
+      "rtImpact": {
+        "authorTrust": "high",
+        "runtimeReliability": "medium",
+        "costTransparency": "high",
+        "passPrediction": "low",
+        "citationTrust": "low"
+      },
+      "rtRecommendation": "implement now"
     },
     {
       "id": "anthropic-system-content-blocks",
@@ -55,7 +63,15 @@
       ],
       "targetRelease": "shipped",
       "owner": "eric",
-      "lastTouched": "2026-03-03"
+      "lastTouched": "2026-03-03",
+      "rtImpact": {
+        "authorTrust": "low",
+        "runtimeReliability": "high",
+        "costTransparency": "medium",
+        "passPrediction": "low",
+        "citationTrust": "medium"
+      },
+      "rtRecommendation": "implement now"
     },
     {
       "id": "anthropic-temperature-topP",
@@ -86,7 +102,15 @@
       ],
       "targetRelease": "backlog",
       "owner": "tbd",
-      "lastTouched": "2026-03-04"
+      "lastTouched": "2026-03-04",
+      "rtImpact": {
+        "authorTrust": "low",
+        "runtimeReliability": "low",
+        "costTransparency": "low",
+        "passPrediction": "low",
+        "citationTrust": "low"
+      },
+      "rtRecommendation": "defer"
     },
     {
       "id": "anthropic-extended-thinking",
@@ -114,7 +138,15 @@
       ],
       "targetRelease": "shipped",
       "owner": "eric",
-      "lastTouched": "2026-03-04"
+      "lastTouched": "2026-03-04",
+      "rtImpact": {
+        "authorTrust": "medium",
+        "runtimeReliability": "medium",
+        "costTransparency": "low",
+        "passPrediction": "low",
+        "citationTrust": "low"
+      },
+      "rtRecommendation": "implement now"
     },
     {
       "id": "anthropic-token-counting",
@@ -124,7 +156,7 @@
       ],
       "impactAssessment": "medium",
       "implementationStatus": "not_implemented",
-      "implementationNotes": "Current token estimation uses chars/4 heuristic (estimateTokensFromVault.ts). Anthropic's count_tokens endpoint provides exact counts. Would improve the 80% input guard accuracy in aiClient.ts line 350.",
+      "implementationNotes": "Current token estimation uses chars/4 heuristic (estimateTokensFromVault.ts). Anthropic's count_tokens endpoint provides exact counts. Would improve pass prediction accuracy and cache reuse ratio calibration.",
       "sourceFiles": [
         "src/ai/forecast/estimateTokensFromVault.ts",
         "src/ai/runtime/aiClient.ts"
@@ -135,14 +167,22 @@
       "implementationEvidence": [],
       "targetRelease": "backlog",
       "owner": "tbd",
-      "lastTouched": "2026-03-03"
+      "lastTouched": "2026-03-21",
+      "rtImpact": {
+        "authorTrust": "medium",
+        "runtimeReliability": "medium",
+        "costTransparency": "medium",
+        "passPrediction": "high",
+        "citationTrust": "low"
+      },
+      "rtRecommendation": "next"
     },
     {
       "id": "anthropic-citations",
       "relevantPluginFeatures": [
         "inquiry"
       ],
-      "impactAssessment": "medium",
+      "impactAssessment": "high",
       "implementationStatus": "complete",
       "implementationNotes": "Per-scene document blocks with citations enabled, gated to Anthropic Inquiry. Each scene is a separate document block; document_index maps to specific scene, document_title is the scene label, cited_text shows exact passage. Response parsing concatenates all text blocks (correctness fix). Citations thread from callAnthropicApi through providerRouter, aiClient, InquiryRunnerService to InquiryResult.",
       "sourceFiles": [
@@ -159,7 +199,7 @@
       ],
       "blockers": [],
       "addedToRegistry": "2026-03-03",
-      "priority": "p1",
+      "priority": "p0",
       "implementationEvidence": [
         "supportsCitations",
         "citationsEnabled",
@@ -170,28 +210,45 @@
       ],
       "targetRelease": "shipped",
       "owner": "tbd",
-      "lastTouched": "2026-03-04"
+      "lastTouched": "2026-03-21",
+      "rtImpact": {
+        "authorTrust": "high",
+        "runtimeReliability": "medium",
+        "costTransparency": "low",
+        "passPrediction": "low",
+        "citationTrust": "high"
+      },
+      "rtRecommendation": "implement now"
     },
     {
       "id": "anthropic-batch-api",
       "relevantPluginFeatures": [
         "gossamer"
       ],
-      "impactAssessment": "medium",
+      "impactAssessment": "low",
       "implementationStatus": "not_implemented",
-      "implementationNotes": "Gossamer currently runs a single unified API call. Batch API would help if architecture changed to per-beat analysis, or for bulk processing of multiple manuscripts. Provider-reported cost reduction but 24h turnaround.",
+      "implementationNotes": "Gossamer currently runs a single unified API call. Batch API would help if architecture changed to per-beat analysis, or for bulk processing of multiple manuscripts. Provider-reported cost reduction but 24h turnaround. Does not improve cache, passes, or citations for interactive Inquiry.",
       "sourceFiles": [
         "src/GossamerCommands.ts"
       ],
       "blockers": [
-        "Current architecture uses single unified call, not per-beat"
+        "Current architecture uses single unified call, not per-beat",
+        "24h turnaround incompatible with interactive workflow"
       ],
       "addedToRegistry": "2026-03-03",
-      "priority": "p2",
+      "priority": "p3",
       "implementationEvidence": [],
       "targetRelease": "backlog",
       "owner": "tbd",
-      "lastTouched": "2026-03-03"
+      "lastTouched": "2026-03-21",
+      "rtImpact": {
+        "authorTrust": "low",
+        "runtimeReliability": "low",
+        "costTransparency": "low",
+        "passPrediction": "low",
+        "citationTrust": "low"
+      },
+      "rtRecommendation": "ignore"
     },
     {
       "id": "anthropic-streaming",
@@ -214,7 +271,15 @@
       "implementationEvidence": [],
       "targetRelease": "backlog",
       "owner": "tbd",
-      "lastTouched": "2026-03-03"
+      "lastTouched": "2026-03-03",
+      "rtImpact": {
+        "authorTrust": "low",
+        "runtimeReliability": "low",
+        "costTransparency": "low",
+        "passPrediction": "low",
+        "citationTrust": "low"
+      },
+      "rtRecommendation": "defer"
     },
     {
       "id": "anthropic-pdf-support",
@@ -229,7 +294,15 @@
       "implementationEvidence": [],
       "targetRelease": "backlog",
       "owner": "tbd",
-      "lastTouched": "2026-03-03"
+      "lastTouched": "2026-03-03",
+      "rtImpact": {
+        "authorTrust": "low",
+        "runtimeReliability": "low",
+        "costTransparency": "low",
+        "passPrediction": "low",
+        "citationTrust": "low"
+      },
+      "rtRecommendation": "ignore"
     },
     {
       "id": "openai-automatic-prompt-caching",
@@ -240,7 +313,7 @@
       ],
       "impactAssessment": "high",
       "implementationStatus": "complete",
-      "implementationNotes": "System and user messages are now separated for models that support the system role, enabling OpenAI automatic prompt caching for stable prefixes. Concatenation fallback preserved for reasoning models (o1/o1-mini) and local endpoints (baseUrl guard). Active call chain: aiClient \u2192 OpenAIProvider \u2192 callProvider \u2192 callOpenAiApi.",
+      "implementationNotes": "System and user messages are now separated for models that support the system role, enabling OpenAI automatic prompt caching for stable prefixes. Concatenation fallback preserved for reasoning models (o1/o1-mini) and local endpoints (baseUrl guard). Active call chain: aiClient → OpenAIProvider → callProvider → callOpenAiApi.",
       "sourceFiles": [
         "src/api/openaiApi.ts",
         "src/api/requestPayload.ts",
@@ -257,7 +330,15 @@
       ],
       "targetRelease": "shipped",
       "owner": "eric",
-      "lastTouched": "2026-03-04"
+      "lastTouched": "2026-03-04",
+      "rtImpact": {
+        "authorTrust": "medium",
+        "runtimeReliability": "medium",
+        "costTransparency": "high",
+        "passPrediction": "low",
+        "citationTrust": "low"
+      },
+      "rtRecommendation": "implement now"
     },
     {
       "id": "openai-structured-outputs",
@@ -282,7 +363,15 @@
       ],
       "targetRelease": "shipped",
       "owner": "eric",
-      "lastTouched": "2026-03-03"
+      "lastTouched": "2026-03-03",
+      "rtImpact": {
+        "authorTrust": "medium",
+        "runtimeReliability": "high",
+        "costTransparency": "low",
+        "passPrediction": "low",
+        "citationTrust": "low"
+      },
+      "rtRecommendation": "implement now"
     },
     {
       "id": "openai-citations-annotations",
@@ -312,7 +401,15 @@
       ],
       "targetRelease": "shipped",
       "owner": "eric",
-      "lastTouched": "2026-03-11"
+      "lastTouched": "2026-03-11",
+      "rtImpact": {
+        "authorTrust": "medium",
+        "runtimeReliability": "medium",
+        "costTransparency": "low",
+        "passPrediction": "low",
+        "citationTrust": "high"
+      },
+      "rtRecommendation": "implement now"
     },
     {
       "id": "openai-reasoning-model-system-role",
@@ -340,28 +437,45 @@
       ],
       "targetRelease": "shipped",
       "owner": "eric",
-      "lastTouched": "2026-03-04"
+      "lastTouched": "2026-03-04",
+      "rtImpact": {
+        "authorTrust": "low",
+        "runtimeReliability": "high",
+        "costTransparency": "medium",
+        "passPrediction": "low",
+        "citationTrust": "low"
+      },
+      "rtRecommendation": "implement now"
     },
     {
       "id": "openai-batch-api",
       "relevantPluginFeatures": [
         "gossamer"
       ],
-      "impactAssessment": "medium",
+      "impactAssessment": "low",
       "implementationStatus": "not_implemented",
-      "implementationNotes": "Similar to Anthropic batch API. Provider-reported cost reduction for async processing. Same architectural constraint: Gossamer currently uses a single unified call.",
+      "implementationNotes": "Similar to Anthropic batch API. Provider-reported cost reduction for async processing. Same architectural constraint: Gossamer currently uses a single unified call. Does not improve cache, passes, or citations for interactive Inquiry.",
       "sourceFiles": [
         "src/GossamerCommands.ts"
       ],
       "blockers": [
-        "Current architecture uses single unified call, not per-beat"
+        "Current architecture uses single unified call, not per-beat",
+        "24h turnaround incompatible with interactive workflow"
       ],
       "addedToRegistry": "2026-03-03",
-      "priority": "p2",
+      "priority": "p3",
       "implementationEvidence": [],
       "targetRelease": "backlog",
       "owner": "tbd",
-      "lastTouched": "2026-03-03"
+      "lastTouched": "2026-03-21",
+      "rtImpact": {
+        "authorTrust": "low",
+        "runtimeReliability": "low",
+        "costTransparency": "low",
+        "passPrediction": "low",
+        "citationTrust": "low"
+      },
+      "rtRecommendation": "ignore"
     },
     {
       "id": "openai-streaming",
@@ -384,7 +498,15 @@
       "implementationEvidence": [],
       "targetRelease": "backlog",
       "owner": "tbd",
-      "lastTouched": "2026-03-03"
+      "lastTouched": "2026-03-03",
+      "rtImpact": {
+        "authorTrust": "low",
+        "runtimeReliability": "low",
+        "costTransparency": "low",
+        "passPrediction": "low",
+        "citationTrust": "low"
+      },
+      "rtRecommendation": "defer"
     },
     {
       "id": "openai-responses-api",
@@ -404,7 +526,15 @@
       "implementationEvidence": [],
       "targetRelease": "backlog",
       "owner": "tbd",
-      "lastTouched": "2026-03-03"
+      "lastTouched": "2026-03-03",
+      "rtImpact": {
+        "authorTrust": "low",
+        "runtimeReliability": "low",
+        "costTransparency": "low",
+        "passPrediction": "low",
+        "citationTrust": "low"
+      },
+      "rtRecommendation": "defer"
     },
     {
       "id": "gemini-context-caching",
@@ -414,7 +544,7 @@
       ],
       "impactAssessment": "high",
       "implementationStatus": "complete",
-      "implementationNotes": "getOrCreateGeminiCache() in geminiCacheManager.ts creates/reuses cached content resources. providerRouter.ts splits on CACHE_BREAK_DELIMITER, caches stable prefix (including systemInstruction), passes cacheName to callGeminiApi(). In-memory store with SHA-256 fingerprint enables cross-question reuse. systemInstruction suppressed in generate request when cachedContent is set (Gemini restriction).",
+      "implementationNotes": "getOrCreateGeminiCache() in geminiCacheManager.ts creates/reuses cached content resources. providerRouter.ts splits on CACHE_BREAK_DELIMITER, caches stable prefix (including systemInstruction), passes cacheName to callGeminiApi(). In-memory store with SHA-256 fingerprint enables cross-question reuse. systemInstruction suppressed in generate request when cachedContent is set (Gemini restriction). NOTE: Gemini cache pricing not yet reflected in cost estimation model.",
       "sourceFiles": [
         "src/api/geminiApi.ts",
         "src/api/geminiCacheManager.ts",
@@ -432,7 +562,15 @@
       ],
       "targetRelease": "next",
       "owner": "eric",
-      "lastTouched": "2026-03-04"
+      "lastTouched": "2026-03-21",
+      "rtImpact": {
+        "authorTrust": "high",
+        "runtimeReliability": "medium",
+        "costTransparency": "high",
+        "passPrediction": "low",
+        "citationTrust": "low"
+      },
+      "rtRecommendation": "implement now"
     },
     {
       "id": "gemini-1m-context",
@@ -454,7 +592,15 @@
       ],
       "targetRelease": "shipped",
       "owner": "eric",
-      "lastTouched": "2026-03-03"
+      "lastTouched": "2026-03-03",
+      "rtImpact": {
+        "authorTrust": "medium",
+        "runtimeReliability": "high",
+        "costTransparency": "low",
+        "passPrediction": "high",
+        "citationTrust": "low"
+      },
+      "rtRecommendation": "implement now"
     },
     {
       "id": "gemini-structured-outputs",
@@ -478,7 +624,15 @@
       ],
       "targetRelease": "shipped",
       "owner": "eric",
-      "lastTouched": "2026-03-03"
+      "lastTouched": "2026-03-03",
+      "rtImpact": {
+        "authorTrust": "medium",
+        "runtimeReliability": "high",
+        "costTransparency": "low",
+        "passPrediction": "low",
+        "citationTrust": "low"
+      },
+      "rtRecommendation": "implement now"
     },
     {
       "id": "gemini-streaming",
@@ -501,7 +655,15 @@
       "implementationEvidence": [],
       "targetRelease": "backlog",
       "owner": "tbd",
-      "lastTouched": "2026-03-03"
+      "lastTouched": "2026-03-03",
+      "rtImpact": {
+        "authorTrust": "low",
+        "runtimeReliability": "low",
+        "costTransparency": "low",
+        "passPrediction": "low",
+        "citationTrust": "low"
+      },
+      "rtRecommendation": "defer"
     },
     {
       "id": "gemini-grounding",
@@ -516,7 +678,15 @@
       "implementationEvidence": [],
       "targetRelease": "backlog",
       "owner": "tbd",
-      "lastTouched": "2026-03-03"
+      "lastTouched": "2026-03-03",
+      "rtImpact": {
+        "authorTrust": "low",
+        "runtimeReliability": "low",
+        "costTransparency": "low",
+        "passPrediction": "low",
+        "citationTrust": "low"
+      },
+      "rtRecommendation": "ignore"
     }
   ]
 }

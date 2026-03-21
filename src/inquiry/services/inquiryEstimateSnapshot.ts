@@ -22,7 +22,7 @@
  *     because changing rules changes manifest entries → changes fingerprint.
  */
 
-import type { AIProviderId } from '../../ai/types';
+import type { AIProviderId, AnalysisPackaging } from '../../ai/types';
 import type { TokenEstimateMethod } from '../../ai/tokens/inputTokenEstimate';
 import type { InquiryLens, InquiryScope, InquirySelectionMode } from '../state';
 import type { ResolvedInquiryEngine } from './inquiryModelResolver';
@@ -100,6 +100,7 @@ export interface EstimateSnapshotParams {
     rules: EvidenceParticipationRules;
     mode: InquiryLens;
     selectionMode: InquirySelectionMode;
+    analysisPackaging?: AnalysisPackaging;
 }
 
 // ── State key ───────────────────────────────────────────────────────
@@ -128,6 +129,7 @@ export function computeEstimateStateKey(params: {
     modelId: string;
     overrideClassCount: number;
     overrideItemCount: number;
+    analysisPackaging?: AnalysisPackaging;
 }): string {
     return [
         params.scope,
@@ -136,7 +138,8 @@ export function computeEstimateStateKey(params: {
         params.provider,
         params.modelId,
         params.overrideClassCount,
-        params.overrideItemCount
+        params.overrideItemCount,
+        params.analysisPackaging ?? 'automatic'
     ].join('|');
 }
 
@@ -176,7 +179,8 @@ export async function buildInquiryEstimateSnapshot(
         provider: params.engine.provider,
         modelId: params.engine.modelId,
         overrideClassCount: params.overrideSummary.classCount,
-        overrideItemCount: params.overrideSummary.itemCount
+        overrideItemCount: params.overrideSummary.itemCount,
+        analysisPackaging: params.analysisPackaging
     });
 
     const corpusIds = extractCorpusIds(params.manifest);
@@ -209,7 +213,8 @@ export async function buildInquiryEstimateSnapshot(
     const uncertaintyTokens = trace.tokenEstimate.uncertaintyTokens ?? 0;
     const chunkPlanPassCount = params.runner.estimateExecutionPassCountFromPrompt(trace.userPrompt, {
         estimatedInputTokens,
-        safeInputTokens: effectiveInputCeiling
+        safeInputTokens: effectiveInputCeiling,
+        analysisPackaging: params.analysisPackaging
     });
     const expectedPassCount = chunkPlanPassCount
         ?? trace.tokenEstimate.expectedPassCount

@@ -20,7 +20,6 @@ describe('resolveEngineCapabilities', () => {
 
         expect(resolved.directManuscriptCitations.status).toBe('available');
         expect(resolved.groundedToolAttribution.status).toBe('unavailable');
-        expect(resolved.sources.status).toBe('available');
         expect(resolved.corpusReuse.status).toBe('available');
         expect(resolved.largeContext.status).toBe('available');
         expect(resolved.largeContext.contextWindow).toBe(1000000);
@@ -33,7 +32,6 @@ describe('resolveEngineCapabilities', () => {
 
         expect(resolved.directManuscriptCitations.status).toBe('unavailable');
         expect(resolved.groundedToolAttribution.status).toBe('available');
-        expect(resolved.sources.status).toBe('unavailable');
         expect(resolved.corpusReuse.status).toBe('available');
         expect(resolved.largeContext.status).toBe('available');
         expect(resolved.batchAnalysis.status).toBe('provider_supported_not_used');
@@ -58,7 +56,6 @@ describe('resolveEngineCapabilities', () => {
 
         expect(resolved.directManuscriptCitations.status).toBe('unavailable');
         expect(resolved.groundedToolAttribution.status).toBe('available');
-        expect(resolved.sources.status).toBe('unavailable');
         expect(resolved.corpusReuse.status).toBe('available');
         expect(resolved.largeContext.status).toBe('available');
         expect(resolved.largeContext.contextWindow).toBe(1048576);
@@ -71,7 +68,6 @@ describe('resolveEngineCapabilities', () => {
 
         expect(resolved.directManuscriptCitations.status).toBe('unavailable');
         expect(resolved.groundedToolAttribution.status).toBe('unavailable');
-        expect(resolved.sources.status).toBe('unavailable');
         expect(resolved.corpusReuse.status).toBe('unavailable');
         expect(resolved.largeContext.status).toBe('unavailable');
         expect(resolved.batchAnalysis.status).toBe('unavailable');
@@ -95,7 +91,6 @@ describe('resolveEngineCapabilities', () => {
                 contextWindow: 1000000,
                 directManuscriptCitations: 'available',
                 groundedToolAttribution: 'unavailable',
-                sources: 'available',
                 corpusReuse: 'available',
                 largeContext: 'available',
                 batchAnalysis: 'provider_supported_not_used'

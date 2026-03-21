@@ -68,6 +68,31 @@ describe('readiness', () => {
         expect(state.pressureTone).toBe('red');
     });
 
+    it('returns large when segmented mode even if corpus fits in budget', () => {
+        const state = evaluateInquiryReadiness({
+            hasEligibleModel: true,
+            hasCredential: true,
+            analysisPackaging: 'segmented',
+            estimatedInputTokens: 40000,
+            safeInputBudget: 100000
+        });
+        expect(state.state).toBe('large');
+        expect(state.cause).toBe('packaging_expected');
+        expect(state.exceedsBudget).toBe(false);
+    });
+
+    it('returns ready when automatic mode and corpus fits in budget', () => {
+        const state = evaluateInquiryReadiness({
+            hasEligibleModel: true,
+            hasCredential: true,
+            analysisPackaging: 'automatic',
+            estimatedInputTokens: 40000,
+            safeInputBudget: 100000
+        });
+        expect(state.state).toBe('ready');
+        expect(state.cause).toBe('ok');
+    });
+
     it('returns blocked when capability floor is not met', () => {
         const state = evaluateInquiryReadiness({
             hasEligibleModel: false,

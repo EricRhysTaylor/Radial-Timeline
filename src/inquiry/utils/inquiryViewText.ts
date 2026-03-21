@@ -203,14 +203,17 @@ export const renderInquiryBrief = (brief: InquiryBriefModel): string => {
     renderFindingSection('Context Findings', contextFindings);
 
     if (brief.sources.length) {
-        lines.push('', '## Sources', '');
+        const totalCitations = brief.sources.reduce((sum, s) => sum + (s.citationCount ?? 0), 0);
+        const headerSuffix = totalCitations > 0 ? ` (${totalCitations} citations)` : '';
+        lines.push('', `## Sources${headerSuffix}`, '');
         brief.sources.forEach(source => {
+            const countPart = (source.citationCount ?? 0) > 1 ? ` · ${source.citationCount} citations` : '';
             const excerptPart = source.excerpt ? ` — *"${source.excerpt}"*` : '';
             const wikiPath = source.path?.replace(/\.md$/, '');
             const linkPart = (wikiPath && source.classLabel === 'Scene')
                 ? ` — [[${wikiPath}|Open scene]]`
                 : (source.url ? ` — [Source](${source.url})` : '');
-            lines.push(`- **${source.title}** (${source.classLabel})${excerptPart}${linkPart}`);
+            lines.push(`- **${source.title}** (${source.classLabel}${countPart})${excerptPart}${linkPart}`);
         });
     }
 

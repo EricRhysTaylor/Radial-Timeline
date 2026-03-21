@@ -278,6 +278,34 @@ describe('resolveEnginePopoverState', () => {
         }))).toBe('exceeds');
     });
 
+    it('returns multi-pass when large and segmented packaging', () => {
+        expect(resolveEnginePopoverState(makeReadinessUi({
+            readiness: {
+                state: 'large',
+                cause: 'packaging_expected',
+                pressureRatio: 0.3,
+                pressureTone: 'normal',
+                exceedsBudget: false,
+                materiallyExceedsBudget: false
+            },
+            packaging: 'segmented'
+        }))).toBe('multi-pass');
+    });
+
+    it('returns multi-pass for segmented even when corpus fits in one pass (ready state)', () => {
+        expect(resolveEnginePopoverState(makeReadinessUi({
+            readiness: {
+                state: 'ready',
+                cause: undefined,
+                pressureRatio: 0.3,
+                pressureTone: 'normal',
+                exceedsBudget: false,
+                materiallyExceedsBudget: false
+            },
+            packaging: 'segmented'
+        }))).toBe('multi-pass');
+    });
+
     it('returns exceeds when blocked', () => {
         expect(resolveEnginePopoverState(makeReadinessUi({
             readiness: {
@@ -395,6 +423,47 @@ describe('getCurrentPassPlan', () => {
             { executionPassCount: 1 } as any
         );
         expect(plan.recentExactPassCount).toBeNull();
+    });
+
+    it('returns multi-pass plan when segmented even if corpus fits in budget', () => {
+        const plan = getCurrentPassPlan(makeReadinessUi({
+            readiness: {
+                state: 'large',
+                cause: 'packaging_expected',
+                pressureRatio: 0.3,
+                pressureTone: 'normal',
+                exceedsBudget: false,
+                materiallyExceedsBudget: false
+            },
+            estimateInputTokens: 40000,
+            expectedPassCount: 1,
+            safeInputBudget: 180000,
+            packaging: 'segmented'
+        }), null);
+        expect(plan.packagingExpected).toBe(true);
+        expect(plan.estimatedPassCount).toBeGreaterThanOrEqual(2);
+        expect(plan.displayPassCount).toBeGreaterThanOrEqual(2);
+        expect(plan.packagingTriggerReason).toBe('Segmented mode forces multi-pass segmentation.');
+    });
+
+    it('segmented mode with larger corpus uses real pass count (can be > 2)', () => {
+        const plan = getCurrentPassPlan(makeReadinessUi({
+            readiness: {
+                state: 'large',
+                cause: 'packaging_expected',
+                pressureRatio: 2.5,
+                pressureTone: 'red',
+                exceedsBudget: true,
+                materiallyExceedsBudget: true
+            },
+            estimateInputTokens: 500000,
+            expectedPassCount: 4,
+            safeInputBudget: 180000,
+            packaging: 'segmented'
+        }), null);
+        expect(plan.packagingExpected).toBe(true);
+        expect(plan.estimatedPassCount).toBe(4);
+        expect(plan.displayPassCount).toBe(4);
     });
 });
 
@@ -596,5 +665,24 @@ describe('buildReadinessUiState', () => {
     it('includes run scope label', () => {
         const result = buildReadinessUiState(makeBaseInput());
         expect(result.runScopeLabel).toContain('Book A');
+    });
+
+    it('returns large state for segmented mode even when corpus fits in budget', () => {
+        const result = buildReadinessUiState(makeBaseInput({
+            aiSettings: makeAiSettings({ analysisPackaging: 'segmented' }),
+            snapshot: makeSnapshot({ estimatedInputTokens: 40000, effectiveInputCeiling: 180000 })
+        }));
+        expect(result.readiness.state).toBe('large');
+        expect(result.readiness.cause).toBe('packaging_expected');
+        expect(result.reason).toBe('Segmented mode forces structured multi-pass analysis.');
+    });
+
+    it('segmented mode shows automatic reason when exceeding budget', () => {
+        const result = buildReadinessUiState(makeBaseInput({
+            aiSettings: makeAiSettings({ analysisPackaging: 'segmented' }),
+            snapshot: makeSnapshot({ estimatedInputTokens: 300000, effectiveInputCeiling: 180000 })
+        }));
+        expect(result.readiness.state).toBe('large');
+        expect(result.reason).toBe('Segmented mode forces structured multi-pass analysis.');
     });
 });

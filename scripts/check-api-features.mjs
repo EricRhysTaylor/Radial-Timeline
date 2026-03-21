@@ -48,6 +48,8 @@ const ALLOWED_CATEGORY = new Set(['cost-optimization', 'capability', 'quality', 
 const ALLOWED_STATUS = new Set(['not_implemented', 'partial', 'complete', 'not_applicable', 'deferred']);
 const ALLOWED_PRIORITY = new Set(['p0', 'p1', 'p2', 'p3']);
 const ALLOWED_IMPACT = new Set(['high', 'medium', 'low', 'none']);
+const ALLOWED_RT_IMPACT_LEVEL = new Set(['high', 'medium', 'low']);
+const ALLOWED_RT_RECOMMENDATION = new Set(['implement now', 'next', 'defer', 'ignore']);
 
 // ── CLI flags ──────────────────────────────────────────────────────────────────
 
@@ -145,6 +147,19 @@ function validateIntegrations(data, capabilityIds) {
         }
         if (int.impactAssessment && !ALLOWED_IMPACT.has(int.impactAssessment)) {
             errors.push(`${int.id}: invalid impactAssessment '${int.impactAssessment}'`);
+        }
+        // RT-specific impact validation
+        if (int.rtImpact) {
+            for (const axis of ['authorTrust', 'runtimeReliability', 'costTransparency', 'passPrediction', 'citationTrust']) {
+                if (int.rtImpact[axis] && !ALLOWED_RT_IMPACT_LEVEL.has(int.rtImpact[axis])) {
+                    errors.push(`${int.id}: invalid rtImpact.${axis} '${int.rtImpact[axis]}'`);
+                }
+            }
+        } else {
+            warnings.push(`${int.id}: missing rtImpact (required for RT-specific scoring)`);
+        }
+        if (int.rtRecommendation && !ALLOWED_RT_RECOMMENDATION.has(int.rtRecommendation)) {
+            errors.push(`${int.id}: invalid rtRecommendation '${int.rtRecommendation}'`);
         }
     }
     // Orphaned capabilities
@@ -329,28 +344,46 @@ function walkDir(dir, callback) {
     }
 }
 
-// ── Priority scoring ──────────────────────────────────────────────────────────
+// ── RT-specific priority scoring ──────────────────────────────────────────────
+//
+// Score features by their impact on RT's actual product priorities:
+// cache truth, pass prediction, citation trust, and large-corpus reliability.
+// NOT by generic API completeness or feature-count.
 
-const IMPACT_SCORE = { high: 3, medium: 2, low: 1, none: 0 };
-const ROI_SCORE = { cost: 2, quality: 1, latency: 1, capability: 1, 'developer-experience': 0 };
-const MATURITY_SCORE = { ga: 2, preview: 1, beta: 1, experimental: 0, deprecated: 0, removed: 0 };
-const COMPLEXITY_PENALTY = { architectural: 2, high: 1, medium: 0, low: 0 };
+const RT_IMPACT_SCORE = { high: 3, medium: 2, low: 1 };
+const RT_AXIS_WEIGHTS = {
+    authorTrust: 3,          // author-facing trust is the top priority
+    runtimeReliability: 2,   // runtime correctness matters for large corpora
+    costTransparency: 2,     // cache/cost truth is a core pillar
+    passPrediction: 2,       // pass prediction accuracy
+    citationTrust: 2         // citation/evidence visibility
+};
+const COMPLEXITY_PENALTY = { architectural: 3, high: 2, medium: 1, low: 0 };
 
 function computeScore(cap, int) {
-    const impact = IMPACT_SCORE[int.impactAssessment] ?? 0;
-    const roi = ROI_SCORE[cap.roiCategory] ?? 0;
-    const maturity = MATURITY_SCORE[cap.maturity] ?? 0;
+    const rt = int.rtImpact;
+    if (!rt) return 0;
+    let score = 0;
+    for (const [axis, weight] of Object.entries(RT_AXIS_WEIGHTS)) {
+        score += (RT_IMPACT_SCORE[rt[axis]] ?? 0) * weight;
+    }
     const penalty = COMPLEXITY_PENALTY[cap.implementationComplexity] ?? 0;
-    return impact + roi + maturity - penalty;
+    return score - penalty;
 }
 
-function payoffClass(cap) {
-    const category = cap.roiCategory;
-    if (category === 'cost') return 'Cost';
-    if (category === 'quality') return 'Quality';
-    if (category === 'latency') return 'Latency';
-    if (category === 'capability') return 'Capability';
-    return 'DX';
+function rtPillarLabel(int) {
+    const rt = int.rtImpact;
+    if (!rt) return 'Unknown';
+    // Return the highest-impact pillar for this feature
+    const pillars = [
+        ['Cache', rt.costTransparency],
+        ['Passes', rt.passPrediction],
+        ['Citations', rt.citationTrust],
+        ['Trust', rt.authorTrust],
+        ['Reliability', rt.runtimeReliability]
+    ];
+    const best = pillars.sort((a, b) => (RT_IMPACT_SCORE[b[1]] ?? 0) - (RT_IMPACT_SCORE[a[1]] ?? 0))[0];
+    return best[0];
 }
 
 // ── Analytics ──────────────────────────────────────────────────────────────────
@@ -359,27 +392,28 @@ function buildAnalytics(capabilities, integrations) {
     const capMap = new Map(capabilities.map(c => [c.id, c]));
     const intMap = new Map(integrations.map(i => [i.id, i]));
 
-    // Provider summaries
+    // Provider summaries — RT-focused: show what matters, not completeness %
     const providers = ['anthropic', 'openai', 'google'];
     const providerSummaries = {};
     for (const provider of providers) {
         const providerCaps = capabilities.filter(c => c.provider === provider);
+        const providerInts = providerCaps.map(c => intMap.get(c.id)).filter(Boolean);
+        const implemented = providerInts.filter(i => i.implementationStatus === 'complete').length;
         const total = providerCaps.length;
-        const implemented = providerCaps.filter(c => {
-            const int = intMap.get(c.id);
-            return int && int.implementationStatus === 'complete';
-        }).length;
-        const highImpactGaps = providerCaps.filter(c => {
-            const int = intMap.get(c.id);
-            return int && int.impactAssessment === 'high' &&
-                int.implementationStatus !== 'complete';
-        }).length;
-        providerSummaries[provider] = { total, implemented, highImpactGaps };
+        // Count features that matter to RT's big 3 (cache, passes, citations)
+        const rtRelevant = providerInts.filter(i => {
+            const rt = i.rtImpact;
+            if (!rt) return false;
+            return rt.costTransparency === 'high' || rt.passPrediction === 'high' || rt.citationTrust === 'high';
+        });
+        const rtRelevantGaps = rtRelevant.filter(i => i.implementationStatus !== 'complete').length;
+        providerSummaries[provider] = { total, implemented, rtRelevantGaps };
     }
 
-    // All actionable gaps (not complete, not not_applicable, not deferred)
+    // All actionable gaps — scored by RT impact, not generic completeness
     const actionableGaps = integrations
         .filter(i => i.implementationStatus === 'not_implemented' || i.implementationStatus === 'partial')
+        .filter(i => i.rtRecommendation !== 'ignore')
         .map(i => {
             const cap = capMap.get(i.id);
             if (!cap) return null;
@@ -391,10 +425,9 @@ function buildAnalytics(capabilities, integrations) {
                 provider: cap.provider,
                 priority: i.priority,
                 score,
-                payoff: payoffClass(cap),
+                pillar: rtPillarLabel(i),
                 complexity: cap.implementationComplexity,
-                maturity: cap.maturity,
-                roiCategory: cap.roiCategory,
+                rtRecommendation: i.rtRecommendation,
                 relevantPluginFeatures: i.relevantPluginFeatures,
                 implementationNotes: i.implementationNotes,
                 sourceFiles: i.sourceFiles,
@@ -405,44 +438,38 @@ function buildAnalytics(capabilities, integrations) {
         .filter(Boolean)
         .sort((a, b) => b.score - a.score);
 
-    // Top 5 next actions
-    const top5 = actionableGaps.slice(0, 5).map(gap => {
-        // Extract the first actionable sentence from implementation notes
-        const notes = gap.implementationNotes || '';
-        const actionHint = notes.split('.').find(s =>
-            /needs|must|fix|separate|restructure|wire|add|change|replace|implement/i.test(s)
-        )?.trim() || notes.split('.')[0]?.trim() || 'See implementation notes';
-        const primaryFile = gap.sourceFiles?.[0] || 'TBD';
-        return { ...gap, actionHint, primaryFile };
-    });
+    // Top priorities: "implement now" or "next" recommendations, sorted by score
+    const topPriorities = actionableGaps
+        .filter(g => g.rtRecommendation === 'implement now' || g.rtRecommendation === 'next')
+        .slice(0, 5)
+        .map(gap => {
+            const notes = gap.implementationNotes || '';
+            const actionHint = notes.split('.').find(s =>
+                /needs|must|fix|separate|restructure|wire|add|change|replace|implement|improve|calibrat/i.test(s)
+            )?.trim() || notes.split('.')[0]?.trim() || 'See implementation notes';
+            const primaryFile = gap.sourceFiles?.[0] || 'TBD';
+            return { ...gap, actionHint, primaryFile };
+        });
 
-    // High impact gaps
-    const highImpactGaps = actionableGaps.filter(g => {
-        const int = intMap.get(g.id);
-        return int && int.impactAssessment === 'high';
-    });
+    // Deferred: explicitly deferred or ignored
+    const deferred = integrations
+        .filter(i => i.rtRecommendation === 'defer' || i.rtRecommendation === 'ignore')
+        .filter(i => i.implementationStatus !== 'complete' && i.implementationStatus !== 'not_applicable')
+        .map(i => {
+            const cap = capMap.get(i.id);
+            return cap ? { id: i.id, name: cap.name, provider: cap.provider, reason: i.rtRecommendation } : null;
+        })
+        .filter(Boolean);
 
-    // Cost optimization opportunities
-    const costOpportunities = actionableGaps.filter(g => g.roiCategory === 'cost');
-
-    // Beta/preview features not implemented
-    const betaFeatures = actionableGaps.filter(g =>
-        g.maturity === 'beta' || g.maturity === 'preview'
-    );
-
-    // GA features missing implementation (exclude architectural)
-    const gaGaps = actionableGaps.filter(g =>
-        g.maturity === 'ga' && g.complexity !== 'architectural'
-    );
-
-    return { providerSummaries, actionableGaps, top5, highImpactGaps, costOpportunities, betaFeatures, gaGaps };
+    return { providerSummaries, actionableGaps, topPriorities, deferred };
 }
 
 // ── Console output ─────────────────────────────────────────────────────────────
 
 function printReport(analytics, sourceFindings, validationErrors, validationWarnings, evidenceFailures) {
     const now = new Date().toISOString().slice(0, 10);
-    log(`\n${BOLD}[api-features] Provider API Feature Audit (${now})${RESET}\n`);
+    log(`\n${BOLD}[api-features] RT Provider Feature Audit (${now})${RESET}`);
+    log(`${DIM}  Scoring: author trust, runtime reliability, cache/cost, passes, citations${RESET}\n`);
 
     // Validation errors
     if (validationErrors.length > 0) {
@@ -453,7 +480,7 @@ function printReport(analytics, sourceFindings, validationErrors, validationWarn
 
     // Validation warnings (strict mode)
     if (validationWarnings.length > 0 && strictMode) {
-        log(`${YELLOW}  PROVIDER REALITY WARNINGS:${RESET}`);
+        log(`${YELLOW}  WARNINGS:${RESET}`);
         validationWarnings.forEach(w => log(`  ${YELLOW}?${RESET} ${w}`));
         log('');
     }
@@ -465,76 +492,46 @@ function printReport(analytics, sourceFindings, validationErrors, validationWarn
         log('');
     }
 
-    // Provider summaries
+    // Provider summaries — RT-focused, not completeness %
     const providerNames = { anthropic: 'Anthropic', openai: 'OpenAI', google: 'Google' };
     for (const [key, label] of Object.entries(providerNames)) {
         const summary = analytics.providerSummaries[key];
         if (!summary) continue;
-        const pct = summary.total > 0 ? Math.round((summary.implemented / summary.total) * 100) : 0;
-        const gapNote = summary.highImpactGaps > 0
-            ? ` — ${summary.highImpactGaps} high-impact gap${summary.highImpactGaps > 1 ? 's' : ''}`
-            : '';
-        const color = pct >= 80 ? GREEN : pct >= 40 ? YELLOW : RED;
-        log(`  ${label.padEnd(12)} ${color}${summary.implemented}/${summary.total} implemented (${pct}%)${RESET}${gapNote}`);
+        const gapNote = summary.rtRelevantGaps > 0
+            ? `${RED}${summary.rtRelevantGaps} RT-relevant gap${summary.rtRelevantGaps > 1 ? 's' : ''}${RESET}`
+            : `${GREEN}no RT-relevant gaps${RESET}`;
+        log(`  ${label.padEnd(12)} ${summary.implemented}/${summary.total} integrated — ${gapNote}`);
     }
     log('');
 
-    // ── TOP 5 NEXT ACTIONS (decision-ready) ──
-    if (analytics.top5.length > 0) {
-        log(`${WHITE}${BOLD}  TOP 5 NEXT ACTIONS:${RESET}`);
-        analytics.top5.forEach((action, i) => {
+    // ── TOP PRIORITIES ──
+    if (analytics.topPriorities.length > 0) {
+        log(`${WHITE}${BOLD}  TOP PRIORITIES:${RESET}`);
+        analytics.topPriorities.forEach((action, i) => {
             const num = `${i + 1}.`;
-            log(`  ${GREEN}${num}${RESET} ${action.id} ${DIM}(score: ${action.score}, ${action.payoff})${RESET}`);
+            log(`  ${GREEN}${num}${RESET} ${action.id} ${DIM}(${action.pillar}, score: ${action.score})${RESET}`);
             log(`     ${action.actionHint}`);
             log(`     ${DIM}${action.primaryFile}${RESET}`);
+        });
+        log('');
+    } else {
+        log(`  ${GREEN}No actionable RT-relevant gaps remaining.${RESET}\n`);
+    }
+
+    // ── DEFERRED ──
+    if (analytics.deferred.length > 0) {
+        log(`${DIM}  DEFERRED:${RESET}`);
+        analytics.deferred.forEach(d => {
+            log(`  ${DIM}-${RESET} ${d.id} (${d.provider}) — ${d.reason}`);
         });
         log('');
     }
 
     // ── Verbose sections (skipped in --summary mode) ──
     if (!summaryMode) {
-        // High impact gaps
-        if (analytics.highImpactGaps.length > 0) {
-            log(`${RED}  HIGH IMPACT GAPS:${RESET}`);
-            analytics.highImpactGaps.forEach(gap => {
-                const features = gap.relevantPluginFeatures?.join(', ') || '';
-                const prio = gap.priority ? ` [${gap.priority}]` : '';
-                log(`  ${RED}!${RESET} ${gap.id} — ${gap.description.slice(0, 60)}${features ? ` (${features})` : ''}${prio}`);
-            });
-            log('');
-        }
-
-        // Cost optimization opportunities
-        if (analytics.costOpportunities.length > 0) {
-            log(`${YELLOW}  COST OPTIMIZATION OPPORTUNITIES:${RESET}`);
-            analytics.costOpportunities.forEach(op => {
-                log(`  ${YELLOW}$${RESET} ${op.id} — ${op.maturity}, ${op.complexity} complexity`);
-            });
-            log('');
-        }
-
-        // Beta/preview features
-        if (analytics.betaFeatures.length > 0) {
-            log(`${CYAN}  BETA/PREVIEW FEATURES NOT YET IMPLEMENTED:${RESET}`);
-            analytics.betaFeatures.forEach(f => {
-                log(`  ${CYAN}~${RESET} ${f.id} — ${f.maturity}, ${f.complexity} complexity`);
-            });
-            log('');
-        }
-
-        // GA features missing (non-architectural)
-        if (analytics.gaGaps.length > 0) {
-            log(`${DIM}  GA FEATURES MISSING IMPLEMENTATION:${RESET}`);
-            analytics.gaGaps.forEach(g => {
-                const prio = g.priority ? ` [${g.priority}]` : '';
-                log(`  ${DIM}-${RESET} ${g.id} — ${g.maturity || 'ga'}, ${g.complexity} complexity${prio}`);
-            });
-            log('');
-        }
-
         // Source code findings
         if (sourceFindings.length > 0) {
-            log(`${DIM}  SOURCE CODE FINDINGS:${RESET}`);
+            log(`${DIM}  SOURCE FINDINGS:${RESET}`);
             sourceFindings.forEach(f => {
                 log(`  ${DIM}-${RESET} ${f.file}: ${f.finding}`);
             });
@@ -651,15 +648,15 @@ ${evidencePatterns}
 function writeAuditReport(analytics, sourceFindings, validationErrors, validationWarnings, evidenceFailures) {
     const report = {
         generatedAt: new Date().toISOString(),
+        scoringModel: 'rt-impact-v1',
+        scoringAxes: ['authorTrust', 'runtimeReliability', 'costTransparency', 'passPrediction', 'citationTrust'],
         validationErrors,
         validationWarnings,
         evidenceFailures,
         providerSummaries: analytics.providerSummaries,
-        top5: analytics.top5,
-        highImpactGaps: analytics.highImpactGaps,
-        costOpportunities: analytics.costOpportunities,
-        betaFeatures: analytics.betaFeatures,
-        gaGaps: analytics.gaGaps,
+        topPriorities: analytics.topPriorities,
+        deferred: analytics.deferred,
+        allActionableGaps: analytics.actionableGaps,
         sourceFindings
     };
 
@@ -709,7 +706,7 @@ function main() {
     if (doGenerateIssues) {
         const capMap = new Map((capData.capabilities || []).map(c => [c.id, c]));
         const intMap = new Map((intData.integrations || []).map(i => [i.id, i]));
-        generateIssueStubs(analytics.highImpactGaps, capMap, intMap);
+        generateIssueStubs(analytics.topPriorities, capMap, intMap);
     }
 
     // Strict mode: exit with error if violations found

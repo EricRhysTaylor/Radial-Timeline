@@ -70,8 +70,6 @@ export interface EngineCapabilityMatrixRow {
     contextWindow: number;
     directManuscriptCitations: EngineCapabilityStatus;
     groundedToolAttribution: EngineCapabilityStatus;
-    /** @deprecated Backward-compat alias of directManuscriptCitations. */
-    sources: EngineCapabilityStatus;
     corpusReuse: EngineCapabilityStatus;
     largeContext: EngineCapabilityStatus;
     batchAnalysis: EngineCapabilityStatus;
@@ -183,8 +181,6 @@ export function resolveEngineCapabilities(model: ModelInfo): EngineCapabilities 
         modelLabel: model.label,
         directManuscriptCitations: directManuscriptCitationsSignal,
         groundedToolAttribution: groundedToolAttributionSignal,
-        // Backward compat for callers not migrated yet.
-        sources: directManuscriptCitationsSignal,
         corpusReuse: buildSignal(supportsCorpusReuse, corpusReuseAvailableInRt),
         largeContext: {
             ...buildSignal(supportsLargeContext, supportsLargeContext),
@@ -192,7 +188,11 @@ export function resolveEngineCapabilities(model: ModelInfo): EngineCapabilities 
         },
         batchAnalysis: buildSignal(supportsBatch, batchAvailableInRt),
         structuredOutputStrength: resolveStructuredOutputStrength(model),
-        reasoningSupport: resolveReasoningSupport(model)
+        reasoningSupport: resolveReasoningSupport(model),
+        constraints: {
+            cacheVsCitationsExclusive: model.constraints?.cacheVsCitationsExclusive ?? false,
+        },
+        isPreview: model.status === 'preview'
     };
 }
 
@@ -220,7 +220,6 @@ export function buildEngineCapabilityMatrix(models: ModelInfo[]): EngineCapabili
             contextWindow: resolved.largeContext.contextWindow,
             directManuscriptCitations: resolved.directManuscriptCitations.status,
             groundedToolAttribution: resolved.groundedToolAttribution.status,
-            sources: resolved.sources.status,
             corpusReuse: resolved.corpusReuse.status,
             largeContext: resolved.largeContext.status,
             batchAnalysis: resolved.batchAnalysis.status

@@ -15,7 +15,7 @@ export type Capability =
     | 'functionCalling';
 
 export type ModelTier = 'DEEP' | 'BALANCED' | 'FAST' | 'LOCAL';
-export type ModelStatus = 'stable' | 'legacy' | 'deprecated';
+export type ModelStatus = 'stable' | 'preview' | 'legacy' | 'deprecated';
 export type ModelRolloutStatus = 'stable' | 'provisional' | 'deprecated';
 export type ModelReleaseChannel = 'stable' | 'pro' | 'rollback' | 'snapshot' | 'legacy';
 
@@ -61,6 +61,13 @@ export interface ModelInfo {
     line?: string;
     /** Optional rollout metadata used for safe latest-stable promotion and rollback clarity. */
     rollout?: ModelRolloutInfo;
+    /** Model-specific runtime constraints that affect capability combinations. */
+    constraints?: {
+        /** When true, provider cache and citations/grounding cannot be used simultaneously. */
+        cacheVsCitationsExclusive?: boolean;
+        /** Known limitations for diagnostics/logging (not author-facing UI). */
+        knownLimitations?: string[];
+    };
 }
 
 export type EngineCapabilityStatus =
@@ -87,13 +94,17 @@ export interface EngineCapabilities {
     directManuscriptCitations: EngineCapabilitySignal;
     /** Grounded/tool attribution (for example web/file/tool citation metadata). */
     groundedToolAttribution: EngineCapabilitySignal;
-    /** @deprecated Backward-compat alias of directManuscriptCitations. */
-    sources: EngineCapabilitySignal;
     corpusReuse: EngineCapabilitySignal;
     largeContext: EngineContextCapabilitySignal;
     batchAnalysis: EngineCapabilitySignal;
     structuredOutputStrength?: 'strong' | 'basic' | 'limited';
     reasoningSupport?: 'strong' | 'standard' | 'limited';
+    /** Model-level constraints affecting capability combinations. */
+    constraints: {
+        cacheVsCitationsExclusive: boolean;
+    };
+    /** Whether this model is a preview (not production-stable). */
+    isPreview: boolean;
 }
 
 export type ModelPolicy =

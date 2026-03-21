@@ -88,7 +88,8 @@ export function evaluateInquiryReadiness(input: EvaluateInquiryReadinessInput): 
         };
     }
 
-    if (exceedsBudget) {
+    // Segmented mode always forces multi-pass planning, regardless of budget.
+    if (exceedsBudget || input.analysisPackaging === 'segmented') {
         return {
             state: 'large',
             cause: 'packaging_expected',

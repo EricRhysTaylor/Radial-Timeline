@@ -25,7 +25,7 @@ import {
     setCredentialSecretId
 } from '../../ai/credentials/credentials';
 import { getSecret, hasSecret, isSecretStorageAvailable, setSecret } from '../../ai/credentials/secretStorage';
-import type { AccessTier, AIProviderId, Capability, ModelInfo, RTCorpusTokenBreakdown } from '../../ai/types';
+import type { AccessTier, AIProviderId, Capability, ModelInfo, ModelStatus, RTCorpusTokenBreakdown } from '../../ai/types';
 import { buildCanonicalExecutionEstimate, estimateGossamerTokens } from '../../ai/forecast/estimateTokensFromVault';
 import {
     estimateCorpusCost,
@@ -687,6 +687,15 @@ export function renderAiSection(params: {
 
     const resolvePreviewCitationSignal = (model: ModelInfo): string | null => {
         const capabilities = resolveEngineCapabilities(model);
+
+        // When cache and citations are mutually exclusive, show a combined pill
+        // instead of separate independent pills (doctrine: do not lie to the author).
+        if (capabilities.constraints.cacheVsCitationsExclusive
+            && capabilities.corpusReuse.availableInRt
+            && (capabilities.directManuscriptCitations.availableInRt || capabilities.groundedToolAttribution.availableInRt)) {
+            return 'Citation or Cache (exclusive)';
+        }
+
         if (capabilities.directManuscriptCitations.availableInRt) {
             return 'Citation · Direct manuscript';
         }
@@ -700,6 +709,14 @@ export function renderAiSection(params: {
 
     const resolvePreviewReuseSignal = (model: ModelInfo): string | null => {
         const capabilities = resolveEngineCapabilities(model);
+
+        // When the combined exclusive pill is shown, suppress the separate reuse pill.
+        if (capabilities.constraints.cacheVsCitationsExclusive
+            && capabilities.corpusReuse.availableInRt
+            && (capabilities.directManuscriptCitations.availableInRt || capabilities.groundedToolAttribution.availableInRt)) {
+            return null;
+        }
+
         return capabilities.corpusReuse.availableInRt
             ? 'Reuse · Provider cache'
             : 'Reuse · No provider cache';
@@ -980,6 +997,7 @@ export function renderAiSection(params: {
         citationLabel: string | null;
         reuseLabel: string | null;
         passBehaviorLabel: string | null;
+        isPreview: boolean;
     }
 
     const createResolvedPreviewPill = (container: HTMLElement, text: string): void => {
@@ -1000,7 +1018,8 @@ export function renderAiSection(params: {
     const renderResolvedPreview = (state: ResolvedPreviewRenderState): void => {
         resolvedPreviewKicker.setText('PREVIEW (ACTIVE MODEL)');
         resolvedPreviewModel.setText(state.modelLabel);
-        const providerDetail = `${providerLabel[state.provider]} · ${state.modelLabel}`;
+        const previewSuffix = state.isPreview ? ' (Preview)' : '';
+        const providerDetail = `${providerLabel[state.provider]} · ${state.modelLabel}${previewSuffix}`;
         resolvedPreviewProvider.setText(providerDetail);
         resolvedPreviewComparatorLabel.setText('');
         resolvedPreviewComparatorValue.setText('');
@@ -1043,10 +1062,11 @@ export function renderAiSection(params: {
     };
 
     const COST_PROVIDER_ORDER: ReadonlyArray<Exclude<AIProviderId, 'none' | 'ollama'>> = ['anthropic', 'openai', 'google'];
-    const MODEL_STATUS_ORDER: Record<'stable' | 'legacy' | 'deprecated', number> = {
+    const MODEL_STATUS_ORDER: Record<ModelStatus, number> = {
         stable: 0,
-        legacy: 1,
-        deprecated: 2
+        preview: 1,
+        legacy: 2,
+        deprecated: 3
     };
     const PROVIDER_LABELS: Record<Exclude<AIProviderId, 'none' | 'ollama'>, string> = {
         anthropic: 'Anthropic',
@@ -1510,7 +1530,8 @@ export function renderAiSection(params: {
                 maxOutputTokens: estimate.maxOutputTokens,
                 citationLabel: resolvePreviewCitationSignal(estimate.model),
                 reuseLabel: resolvePreviewReuseSignal(estimate.model),
-                passBehaviorLabel: null
+                passBehaviorLabel: null,
+                isPreview: estimate.model.status === 'preview'
             };
             const currentCorpus = getCurrentCorpusContext();
             if (currentCorpus) {
@@ -1520,12 +1541,9 @@ export function renderAiSection(params: {
                         modelId: estimate.model.id,
                         questionText: INQUIRY_CANONICAL_ESTIMATE_QUESTION
                     });
-                    const safeBudgetTokens = Math.max(0, Math.floor(estimate.effectiveInputCeiling));
-                    if (executionEstimate && executionEstimate.estimatedTokens > 0 && safeBudgetTokens > 0) {
-                        const passes = executionEstimate.estimatedTokens <= safeBudgetTokens
-                            ? 1
-                            : Math.max(2, Math.ceil(executionEstimate.estimatedTokens / safeBudgetTokens));
-                        previewState.passBehaviorLabel = passes === 1
+                    if (executionEstimate && executionEstimate.estimatedTokens > 0) {
+                        const passes = executionEstimate.expectedPassCount ?? 1;
+                        previewState.passBehaviorLabel = passes <= 1
                             ? 'Context · Single-pass at this corpus'
                             : `Context · ${passes}-pass likely at this corpus`;
                     }
@@ -1579,7 +1597,8 @@ export function renderAiSection(params: {
                 maxOutputTokens: null,
                 citationLabel: null,
                 reuseLabel: null,
-                passBehaviorLabel: null
+                passBehaviorLabel: null,
+                isPreview: false
             });
             capacityInquiryToken.setText('Unavailable');
             capacityInquiryExpected.setText('Unavailable');

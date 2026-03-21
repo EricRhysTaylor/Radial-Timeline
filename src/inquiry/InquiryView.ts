@@ -8047,6 +8047,7 @@ export class InquiryView extends ItemView {
         this.refreshEstimateDisplays(); // Shows "Estimating…" if snapshot is null
 
         const service = this.plugin.getInquiryEstimateService();
+        const aiSettings = this.getCanonicalAiSettings();
         const snapshot = await service.requestSnapshot({
             scope: this.state.scope,
             activeBookId: this.state.activeBookId ?? this.corpus?.books?.[0]?.id,
@@ -8065,6 +8066,7 @@ export class InquiryView extends ItemView {
             rules: this.getEvidenceRules(),
             mode: this.state.mode,
             selectionMode: this.getSelectionMode(targetSceneIds),
+            analysisPackaging: aiSettings.analysisPackaging,
         });
 
         if (!snapshot) return; // stale or failed
@@ -9820,7 +9822,8 @@ export class InquiryView extends ItemView {
             excerpt: item.excerpt,
             classLabel: item.classLabel,
             path: item.path,
-            url: item.url
+            url: item.url,
+            citationCount: item.citationCount
         }));
 
         const sceneNotes = this.buildInquirySceneNotes(result);

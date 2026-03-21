@@ -126,8 +126,10 @@ export function buildEnginePayloadSummary(input: BuildEnginePayloadSummaryInput)
 // ── Popover state ─────────────────────────────────────────────────────
 
 export function resolveEnginePopoverState(readinessUi: InquiryReadinessUiState): InquiryEnginePopoverState {
+    // Segmented mode always shows multi-pass, even when corpus fits in one pass.
+    if (readinessUi.packaging === 'segmented') return 'multi-pass';
     if (readinessUi.readiness.state === 'ready') return 'ready';
-    if (readinessUi.readiness.state === 'large' && readinessUi.packaging === 'automatic') return 'multi-pass';
+    if (readinessUi.readiness.state === 'large' && readinessUi.packaging !== 'singlePassOnly') return 'multi-pass';
     return 'exceeds';
 }
 
@@ -144,7 +146,8 @@ export function getCurrentPassPlan(
     readinessUi: InquiryReadinessUiState,
     lastAdvancedContext: AIRunAdvancedContext | null
 ): PassPlanResult {
-    const packagingExpected = readinessUi.packaging === 'automatic' && readinessUi.readiness.exceedsBudget;
+    const packagingExpected = readinessUi.packaging === 'segmented'
+        || (readinessUi.packaging === 'automatic' && readinessUi.readiness.exceedsBudget);
     if (!packagingExpected) {
         return {
             packagingExpected: false,
@@ -154,16 +157,21 @@ export function getCurrentPassPlan(
             packagingTriggerReason: null
         };
     }
+    const isSegmented = readinessUi.packaging === 'segmented';
     const recentExactPassCount = typeof lastAdvancedContext?.executionPassCount === 'number' && lastAdvancedContext.executionPassCount > 1
         ? lastAdvancedContext.executionPassCount
         : null;
     const estimatedPassCount = estimateStructuredPassCount(readinessUi);
+    // Segmented mode always requires at least 2 passes even when corpus fits in one.
+    const effectiveEstimate = isSegmented ? Math.max(2, estimatedPassCount) : estimatedPassCount;
     return {
         packagingExpected: true,
-        estimatedPassCount,
+        estimatedPassCount: effectiveEstimate,
         recentExactPassCount,
-        displayPassCount: recentExactPassCount ?? estimatedPassCount,
-        packagingTriggerReason: lastAdvancedContext?.packagingTriggerReason ?? null
+        displayPassCount: recentExactPassCount ?? effectiveEstimate,
+        packagingTriggerReason: isSegmented
+            ? 'Segmented mode forces multi-pass segmentation.'
+            : (lastAdvancedContext?.packagingTriggerReason ?? null)
     };
 }
 
@@ -364,7 +372,9 @@ export function buildReadinessUiState(input: BuildReadinessUiStateInput): Inquir
     } else if (readiness.cause === 'single_pass_limit') {
         reason = 'Exceeds the single-pass planning budget. Switch to Automatic or choose a larger-context engine.';
     } else if (readiness.state === 'large') {
-        reason = 'Automatic packaging will run multiple structured passes.';
+        reason = aiSettings.analysisPackaging === 'segmented'
+            ? 'Segmented mode forces structured multi-pass analysis.'
+            : 'Automatic packaging will run multiple structured passes.';
     }
 
     return {
