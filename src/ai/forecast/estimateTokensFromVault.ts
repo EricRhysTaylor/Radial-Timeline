@@ -308,11 +308,13 @@ export const buildCanonicalExecutionEstimate = async (
         }
     });
     const estimatedTokens = trace.tokenEstimate.inputTokens;
-    const expectedPassCount = trace.tokenEstimate.expectedPassCount
-        ?? runner.estimateExecutionPassCountFromPrompt(trace.userPrompt, {
-            estimatedInputTokens: estimatedTokens,
-            safeInputTokens: trace.tokenEstimate.effectiveInputCeiling
-        });
+    const chunkPlanPassCount = runner.estimateExecutionPassCountFromPrompt(trace.userPrompt, {
+        estimatedInputTokens: estimatedTokens,
+        safeInputTokens: trace.tokenEstimate.effectiveInputCeiling
+    });
+    const expectedPassCount = chunkPlanPassCount
+        ?? trace.tokenEstimate.expectedPassCount
+        ?? 1;
 
     return {
         estimatedTokens,

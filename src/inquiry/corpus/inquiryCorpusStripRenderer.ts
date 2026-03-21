@@ -328,7 +328,7 @@ export function renderInquiryCorpusStrip(args: {
         slot.iconInner.setAttribute('cy', '0');
         slot.iconInner.setAttribute('r', String(innerRadius));
         slot.targetLetter.setAttribute('x', String(iconCenterX));
-        slot.targetLetter.setAttribute('y', String(Math.round(iconCenterY - outerRadius - 2)));
+        slot.targetLetter.setAttribute('y', String(iconCenterY + 1));
     });
 
     while (refs.ccClassLabels.length < layout.classLayouts.length) {

@@ -295,35 +295,34 @@ describe('resolveEnginePopoverState', () => {
 // ── estimateStructuredPassCount ────────────────────────────────────────
 
 describe('estimateStructuredPassCount', () => {
-    it('returns 2 when budget is zero', () => {
+    it('returns 1 when expectedPassCount is zero', () => {
         expect(estimateStructuredPassCount(makeReadinessUi({
-            safeInputBudget: 0,
             expectedPassCount: 0
-        }))).toBe(2);
+        }))).toBe(1);
     });
 
-    it('returns 2 when ratio is below 2', () => {
+    it('returns 1 when expectedPassCount is negative', () => {
         expect(estimateStructuredPassCount(makeReadinessUi({
-            estimateInputTokens: 150000,
-            safeInputBudget: 100000,
-            expectedPassCount: 0
-        }))).toBe(2);
+            expectedPassCount: -1
+        }))).toBe(1);
     });
 
-    it('returns 3 for large ratio', () => {
+    it('passes through expectedPassCount from snapshot', () => {
         expect(estimateStructuredPassCount(makeReadinessUi({
-            estimateInputTokens: 250000,
-            safeInputBudget: 100000,
-            expectedPassCount: 0
+            expectedPassCount: 3
         }))).toBe(3);
     });
 
-    it('returns 2 for NaN ratio', () => {
+    it('floors fractional expectedPassCount', () => {
         expect(estimateStructuredPassCount(makeReadinessUi({
-            estimateInputTokens: NaN,
-            safeInputBudget: 100000,
-            expectedPassCount: 0
+            expectedPassCount: 2.7
         }))).toBe(2);
+    });
+
+    it('returns 1 for NaN expectedPassCount', () => {
+        expect(estimateStructuredPassCount(makeReadinessUi({
+            expectedPassCount: NaN
+        }))).toBe(1);
     });
 });
 

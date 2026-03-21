@@ -243,7 +243,7 @@ describe('buildInquiryEstimateSnapshot', () => {
                 referenceCount: 0,
                 evidenceChars: 53_000
             },
-            runner: {} as never,
+            runner: { estimateExecutionPassCountFromPrompt: () => 1 } as never,
             engine: {
                 provider: 'anthropic',
                 modelId: 'claude-sonnet-4-6',

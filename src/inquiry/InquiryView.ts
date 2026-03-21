@@ -133,7 +133,6 @@ import {
     buildReadinessUiState as buildReadinessUiStatePure,
     buildRunScopeLabel as buildRunScopeLabelPure,
     resolveEnginePopoverState as resolveEnginePopoverStatePure,
-    estimateStructuredPassCount as estimateStructuredPassCountPure,
     getCurrentPassPlan as getCurrentPassPlanPure,
     buildAdvisoryInputKey,
     formatTokenEstimate as formatTokenEstimatePure,
@@ -1215,10 +1214,6 @@ export class InquiryView extends ItemView {
 
     private resolveEnginePopoverState(readinessUi: InquiryReadinessUiState): InquiryEnginePopoverState {
         return resolveEnginePopoverStatePure(readinessUi);
-    }
-
-    private estimateStructuredPassCount(readinessUi: InquiryReadinessUiState): number {
-        return estimateStructuredPassCountPure(readinessUi);
     }
 
     private getCurrentPassPlan(readinessUi: InquiryReadinessUiState): PassPlanResult {

@@ -137,10 +137,7 @@ export function estimateStructuredPassCount(readinessUi: InquiryReadinessUiState
     if (Number.isFinite(readinessUi.expectedPassCount) && readinessUi.expectedPassCount > 0) {
         return Math.max(1, Math.floor(readinessUi.expectedPassCount));
     }
-    if (readinessUi.safeInputBudget <= 0) return 2;
-    const ratio = readinessUi.estimateInputTokens / readinessUi.safeInputBudget;
-    if (!Number.isFinite(ratio)) return 2;
-    return Math.max(2, Math.ceil(Math.max(1, ratio)));
+    return 1;
 }
 
 export function getCurrentPassPlan(

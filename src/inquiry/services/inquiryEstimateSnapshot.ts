@@ -207,11 +207,13 @@ export async function buildInquiryEstimateSnapshot(
     const effectiveInputCeiling = trace.tokenEstimate.effectiveInputCeiling ?? 0;
     const estimationMethod: TokenEstimateMethod = trace.tokenEstimate.estimationMethod ?? 'heuristic_chars';
     const uncertaintyTokens = trace.tokenEstimate.uncertaintyTokens ?? 0;
-    const expectedPassCount = trace.tokenEstimate.expectedPassCount
-        ?? params.runner.estimateExecutionPassCountFromPrompt(trace.userPrompt, {
-            estimatedInputTokens,
-            safeInputTokens: effectiveInputCeiling
-        });
+    const chunkPlanPassCount = params.runner.estimateExecutionPassCountFromPrompt(trace.userPrompt, {
+        estimatedInputTokens,
+        safeInputTokens: effectiveInputCeiling
+    });
+    const expectedPassCount = chunkPlanPassCount
+        ?? trace.tokenEstimate.expectedPassCount
+        ?? 1;
 
     const snapshot: InquiryEstimateSnapshot = {
         version: ESTIMATE_SNAPSHOT_VERSION,
