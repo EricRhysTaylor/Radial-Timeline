@@ -33,6 +33,13 @@ export class InquiryService {
         }
     }
 
+    /** Notify all open Inquiry views that book settings or order changed. */
+    notifyBookSettingsChanged(): void {
+        for (const view of this.getInquiryViews()) {
+            view.onBookSettingsChanged();
+        }
+    }
+
     async activateView(): Promise<void> {
         if (!(this.plugin.settings.enableAiSceneAnalysis ?? true)) {
             new Notice('Inquiry requires AI features to be enabled. Turn on "Enable AI LLM features" in settings.');

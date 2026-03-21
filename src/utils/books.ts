@@ -75,6 +75,24 @@ export function normalizeBookProfile(profile: BookProfile): BookProfile {
   };
 }
 
+export function getSequencedBooks(
+  books: BookProfile[] | undefined
+): Array<{ book: BookProfile; sequenceNumber: number }> {
+  return (books || []).map((book, index) => ({
+    book,
+    sequenceNumber: index + 1
+  }));
+}
+
+export function getBookSequenceNumber(
+  settings: Pick<RadialTimelineSettings, 'books'>,
+  bookId: string | undefined
+): number | undefined {
+  if (!bookId) return undefined;
+  const match = getSequencedBooks(settings.books).find(entry => entry.book.id === bookId);
+  return match?.sequenceNumber;
+}
+
 export function getActiveBook(settings: RadialTimelineSettings): BookProfile | null {
   const books = settings.books || [];
   if (!books.length) return null;

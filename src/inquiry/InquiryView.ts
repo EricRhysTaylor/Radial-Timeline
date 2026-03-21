@@ -3148,6 +3148,11 @@ export class InquiryView extends ItemView {
         this.refreshUI({ skipCorpus: true, reason: 'prompt settings changed' });
     }
 
+    /** Called externally when Book Manager settings or order change. */
+    onBookSettingsChanged(): void {
+        this.refreshUI({ reason: 'book settings changed' });
+    }
+
     private refreshUI(options?: { skipCorpus?: boolean, reason?: string }): void {
         this.perfCounters.refreshUICalls++;
         if (options?.reason) {

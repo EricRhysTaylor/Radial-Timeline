@@ -232,7 +232,27 @@ export function renderAiSection(params: {
     const costEstimateTable = costEstimateSection.createDiv({ cls: 'ert-ai-models-table' });
     costEstimateSection.createDiv({
         cls: 'ert-ai-cost-footnote',
-        text: '* Fresh Run reflects provider-side billing expectations. Anthropic input usage includes cache accounting, so billed input is not a direct match for "What gets sent to the AI."'
+        text: '* Estimates use published provider pricing. Actual charges may differ due to provider-side billing rules and account-level adjustments such as caching, credits, promos, or contract pricing.'
+    });
+    const costEstimateLinks = costEstimateSection.createDiv({ cls: 'ert-ai-cost-links' });
+    costEstimateLinks.createSpan({ text: 'See provider pricing: ' });
+    [
+        { label: 'OpenAI', href: 'https://openai.com/api/pricing/' },
+        { label: 'Anthropic', href: 'https://platform.claude.com/docs/en/about-claude/pricing' },
+        { label: 'Gemini', href: 'https://ai.google.dev/gemini-api/docs/pricing' }
+    ].forEach((link, index, list) => {
+        const anchor = costEstimateLinks.createEl('a', {
+            href: link.href,
+            text: link.label,
+            cls: 'ert-ai-cost-link',
+            attr: {
+                'target': '_blank',
+                'rel': 'noopener'
+            }
+        });
+        if (index < list.length - 1) {
+            anchor.after(document.createTextNode(' · '));
+        }
     });
 
     const ensureCanonicalAiSettings = () => {

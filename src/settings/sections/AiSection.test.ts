@@ -133,7 +133,10 @@ describe('AI settings models table', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
         expect(source.includes(".setName('What gets sent to the AI')")).toBe(true);
         expect(source.includes('Fresh Run*')).toBe(true);
-        expect(source.includes('* Fresh Run reflects provider-side billing expectations. Anthropic input usage includes cache accounting')).toBe(true);
+        expect(source.includes('* Estimates use published provider pricing. Actual charges may differ due to provider-side billing rules and account-level adjustments such as caching, credits, promos, or contract pricing.')).toBe(true);
+        expect(source.includes('https://openai.com/api/pricing/')).toBe(true);
+        expect(source.includes('https://platform.claude.com/docs/en/about-claude/pricing')).toBe(true);
+        expect(source.includes('https://ai.google.dev/gemini-api/docs/pricing')).toBe(true);
         expect(source.includes("rowEl.addClass('ert-ai-models-row--active')")).toBe(true);
         expect(source.includes('setActiveCostComparisonRow(provider, displayModel.id)')).toBe(true);
         expect(source.includes('Request composition')).toBe(false);

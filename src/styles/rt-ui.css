@@ -2625,6 +2625,22 @@
   padding-top: 2px;
 }
 
+.ert-ui.ert-scope--settings .ert-ai-cost-links {
+  font-size: 11px;
+  color: var(--text-muted);
+  opacity: 0.85;
+  padding-top: 2px;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-cost-link {
+  color: var(--text-accent, var(--interactive-accent));
+  text-decoration: none;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-cost-link:hover {
+  text-decoration: underline;
+}
+
 /* ── Strategy modal sections ──────────────────────────────────────── */
 .ert-ui.ert-scope--modal .ert-ai-strategy-section {
   gap: var(--ert-gap-sm);
@@ -9024,11 +9040,18 @@
 
 /* Book card: single-row Setting with bordered card look */
 .rt-book-card.setting-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 12px;
   border: 1px solid var(--background-modifier-border);
   border-radius: var(--radius-m, 8px);
   padding: 8px 12px;
   background: var(--background-primary);
-  transition: border-color 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    opacity 0.15s ease;
 }
 
 /* Override generic .is-inactive muting — book cards must stay interactive */
@@ -9046,6 +9069,33 @@
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.rt-book-card .setting-item-info {
+  min-width: 0;
+}
+
+.rt-book-card .setting-item-control {
+  min-width: 0;
+}
+
+.rt-book-card__drag {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  min-width: 28px;
+  color: var(--text-faint);
+  cursor: grab;
+}
+
+.rt-book-card__drag svg {
+  width: 16px;
+  height: 16px;
+}
+
+.rt-book-card__meta {
+  letter-spacing: 0.02em;
 }
 
 .rt-book-card__status {
@@ -9085,6 +9135,36 @@
 .rt-book-card__trash.is-disabled {
   opacity: 0.3;
   pointer-events: none;
+}
+
+.rt-books-panel--dragging .rt-book-card .setting-item-control,
+.rt-books-panel--dragging .rt-book-card .ert-book-name {
+  pointer-events: none;
+}
+
+.rt-book-card.setting-item.is-dragging {
+  opacity: 0.36;
+  box-shadow: none;
+}
+
+.rt-book-card.setting-item.is-dragover {
+  border-color: color-mix(in srgb, var(--interactive-accent) 72%, var(--background-modifier-border));
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--interactive-accent) 28%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--interactive-accent) 16%, transparent);
+}
+
+.rt-book-card--dragPreview {
+  position: fixed;
+  top: -10000px;
+  left: -10000px;
+  width: var(--rt-book-drag-preview-width, auto);
+  min-height: var(--rt-book-drag-preview-height, auto);
+  margin: 0;
+  pointer-events: none;
+  box-shadow:
+    0 16px 36px rgba(0, 0, 0, 0.32),
+    0 0 0 1px color-mix(in srgb, var(--background-modifier-border) 90%, transparent);
 }
 
 /* Book title: clickable rename link */

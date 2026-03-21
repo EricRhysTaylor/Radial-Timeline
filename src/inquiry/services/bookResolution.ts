@@ -1,6 +1,7 @@
 import { MetadataCache, TFolder, Vault, normalizePath } from 'obsidian';
 import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import type { BookProfile } from '../../types/settings';
+import { getSequencedBooks } from '../../utils/books';
 
 const BOOK_FOLDER_REGEX = /^Book\s+(\d+)/i;
 
@@ -273,7 +274,7 @@ function discoverInquiryBookRoots(params: {
 
     // Priority 1: BookProfile sourceFolder entries from Book Manager.
     if (params.bookProfiles?.length) {
-        params.bookProfiles.forEach((profile, index) => {
+        getSequencedBooks(params.bookProfiles).forEach(({ book: profile, sequenceNumber }) => {
             const folder = normalizeMaybeRootPath((profile.sourceFolder || '').trim());
             if (!folder) return;
             // Only include if folder falls within the configured scan roots.
@@ -281,7 +282,7 @@ function discoverInquiryBookRoots(params: {
                 !root || folder === root || folder.startsWith(`${root}/`)
             );
             if (!inRoots) return;
-            addDiscoveredRoot(folder, 'profile', index + 1);
+            addDiscoveredRoot(folder, 'profile', sequenceNumber);
         });
     }
 

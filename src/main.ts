@@ -208,6 +208,7 @@ export default class RadialTimelinePlugin extends Plugin {
         await this.saveSettings();
         this.refreshTimelineIfNeeded(null);
         this.updateTimelineBookHeaders();
+        this.inquiryService?.notifyBookSettingsChanged();
     }
 
     public async persistBookSettings(): Promise<void> {
@@ -215,6 +216,7 @@ export default class RadialTimelinePlugin extends Plugin {
         await this.saveSettings();
         this.refreshTimelineIfNeeded(null);
         this.updateTimelineBookHeaders();
+        this.inquiryService?.notifyBookSettingsChanged();
     }
 
     /**

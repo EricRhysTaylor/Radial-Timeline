@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
 import type { RadialTimelineSettings } from '../types/settings';
 import { getActiveBookExportContext } from './exportContext';
-import { shouldSeedBookProfileFromLegacySettings } from './books';
+import { getBookSequenceNumber, getSequencedBooks, shouldSeedBookProfileFromLegacySettings } from './books';
 import type RadialTimelinePlugin from '../main';
 
 describe('getActiveBookExportContext', () => {
@@ -70,5 +70,24 @@ describe('shouldSeedBookProfileFromLegacySettings', () => {
       sourcePath: '',
       legacyTitle: 'Legacy Title'
     })).toBe(true);
+  });
+});
+
+describe('book sequencing', () => {
+  it('derives sequence identity from row order, not title text', () => {
+    const books = [
+      { id: 'b1', title: 'Book 1 Shail + Trisan', sourceFolder: 'Books/Shail-Trisan' },
+      { id: 'b2', title: 'Book 9 Prequel - The General', sourceFolder: 'Books/The-General' },
+      { id: 'b3', title: 'Book 2 Saturn & Jupiter', sourceFolder: 'Books/Saturn-Jupiter' }
+    ];
+
+    expect(getSequencedBooks(books).map(entry => `${entry.sequenceNumber}:${entry.book.id}`)).toEqual([
+      '1:b1',
+      '2:b2',
+      '3:b3'
+    ]);
+
+    expect(getBookSequenceNumber({ books }, 'b2')).toBe(2);
+    expect(getBookSequenceNumber({ books }, 'b3')).toBe(3);
   });
 });

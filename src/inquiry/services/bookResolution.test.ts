@@ -57,4 +57,20 @@ describe('bookResolution', () => {
         expect(isPathIncludedByInquiryBooks('Book 1 - Draft 2/01 Scene.md', resolved.candidates)).toBe(false);
         expect(isPathIncludedByInquiryBooks('Character/Alice.md', resolved.candidates)).toBe(true);
     });
+
+    it('sorts included books by sequence number instead of folder/title numbering', () => {
+        const discovered: DiscoveredInquiryBookRoot[] = [
+            { rootPath: 'Books/Book 9 Prequel - The General', detectedByName: false, detectedByOutline: false, detectedByProfile: true, bookNumber: 2 },
+            { rootPath: 'Books/Shail + Trisan', detectedByName: false, detectedByOutline: false, detectedByProfile: true, bookNumber: 1 },
+            { rootPath: 'Books/Book 2 Saturn & Jupiter', detectedByName: false, detectedByOutline: false, detectedByProfile: true, bookNumber: 3 }
+        ];
+
+        const resolved = finalizeInquiryBookResolution(discovered);
+
+        expect(resolved.includedRoots).toEqual([
+            'Books/Shail + Trisan',
+            'Books/Book 9 Prequel - The General',
+            'Books/Book 2 Saturn & Jupiter'
+        ]);
+    });
 });
