@@ -5,8 +5,8 @@
 
 import { App, Setting, setIcon, setTooltip, ButtonComponent, Notice, Modal } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
-import type { AprCampaign, AuthorProgressSettings, TeaserPreset, TeaserRevealLevel } from '../../types/settings';
-import { isFeatureGateEnabled } from '../featureGate';
+import type { AuthorProgressCampaign, AuthorProgressSettings, TeaserPreset, TeaserRevealLevel } from '../../types/settings';
+import { hasProFeatureAccess } from '../featureGate';
 import { getTeaserThresholds, teaserLevelToRevealOptions, TEASER_LEVEL_INFO } from '../../renderer/apr/AprConstants';
 import { createAprSVG } from '../../renderer/apr/AprRenderer';
 import { getAllScenes } from '../../utils/manuscript';
@@ -122,7 +122,7 @@ function getDaysSince(date?: string): number | null {
     return Math.floor((Date.now() - time) / (1000 * 60 * 60 * 24));
 }
 
-function getNextUpdateLabel(campaign: AprCampaign): string {
+function getNextUpdateLabel(campaign: AuthorProgressCampaign): string {
     if (!campaign.isActive) return 'Paused';
     const hasPublished = !!campaign.lastPublishedDate?.trim();
     if (!hasPublished) return 'Unpublished';
@@ -163,16 +163,16 @@ function describeAprSize(size: AprSize): string {
     }
 }
 
-function resolveCampaignExportFormat(campaign: AprCampaign | undefined): AprExportFormat {
+function resolveCampaignExportFormat(campaign: AuthorProgressCampaign | undefined): AprExportFormat {
     if (!campaign) return 'png';
     if (typeof campaign.exportFormat === 'string' && campaign.exportFormat.trim()) {
         return normalizeAprExportFormat(campaign.exportFormat);
     }
-    const path = campaign.embedPath?.toLowerCase() ?? '';
+    const path = campaign.exportPath?.toLowerCase() ?? '';
     return path.endsWith('.svg') ? 'svg' : 'png';
 }
 
-function getScheduleBadge(campaign: AprCampaign): { label: string; cls: string } {
+function getScheduleBadge(campaign: AuthorProgressCampaign): { label: string; cls: string } {
     if (!campaign.isActive) return { label: 'Paused', cls: 'is-paused' };
     const frequency = campaign.updateFrequency ?? 'manual';
     // Only treat known auto frequencies as auto (avoids showing "Auto · Full" or other invalid values)
@@ -188,7 +188,7 @@ function getScheduleBadge(campaign: AprCampaign): { label: string; cls: string }
 
 function resolveCampaignBookTitle(
     settings: AuthorProgressSettings | undefined,
-    campaign: AprCampaign | null,
+    campaign: AuthorProgressCampaign | null,
     sourcePath: string
 ): string | undefined {
     if (!settings) return undefined;
@@ -264,8 +264,8 @@ export function createDefaultCampaign(
         bookTitle?: string;
         aprSize?: AprSize;
     }
-): AprCampaign {
-    const embedPath = buildCampaignEmbedPath({
+): AuthorProgressCampaign {
+    const exportPath = buildCampaignEmbedPath({
         bookTitle: options?.bookTitle,
         campaignName: name,
         updateFrequency: 'manual',
@@ -281,7 +281,7 @@ export function createDefaultCampaign(
         updateFrequency: 'manual',
         refreshThresholdDays: 7,
         lastPublishedDate: undefined,
-        embedPath,
+        exportPath,
         exportFormat: 'png',
         // aprSize defaults to global setting (undefined)
         customTransparent: true,
@@ -298,7 +298,7 @@ export function createDefaultCampaign(
 /**
  * Check if a campaign needs refresh
  */
-export function campaignNeedsRefresh(campaign: AprCampaign): boolean {
+export function campaignNeedsRefresh(campaign: AuthorProgressCampaign): boolean {
     if (!campaign.isActive) return false;
     if (campaign.updateFrequency && campaign.updateFrequency !== 'manual') return false;
     if (!campaign.lastPublishedDate) return false; // Never published - nothing to refresh yet
@@ -314,7 +314,7 @@ export function campaignNeedsRefresh(campaign: AprCampaign): boolean {
  * Render the Campaign Manager section
  */
 export function renderCampaignManagerSection({ app, plugin, containerEl, onCampaignChange }: CampaignManagerProps): void {
-    const isProActive = isFeatureGateEnabled(plugin, 'social');
+    const isProActive = hasProFeatureAccess(plugin);
     const campaigns = plugin.settings.authorProgress?.campaigns || [];
     const expandedCampaigns = new Set<string>();
 
@@ -339,7 +339,7 @@ export function renderCampaignManagerSection({ app, plugin, containerEl, onCampa
 
     // Description
     card.createEl('p', {
-        text: 'Create multiple embed destinations with independent refresh schedules. Perfect for managing Kickstarter, Patreon, newsletter, and website embeds separately.',
+        text: 'Create multiple export destinations with independent refresh schedules. Perfect for managing Kickstarter, Patreon, newsletter, and website exports separately.',
         cls: `${ERT_CLASSES.SECTION_DESC} ert-campaign-desc`
     });
 
@@ -350,7 +350,7 @@ export function renderCampaignManagerSection({ app, plugin, containerEl, onCampa
 
     if (campaigns.length === 0) {
         const emptyState = listContainer.createDiv({ cls: 'ert-campaign-empty-state' });
-        emptyState.createEl('p', { text: 'No campaigns yet. Create your first campaign to track multiple embed destinations.' });
+        emptyState.createEl('p', { text: 'No campaigns yet. Create your first campaign to track multiple export destinations.' });
     } else {
         campaigns.forEach((campaign, index) => {
             renderCampaignRow(listContainer, campaign, index, plugin, () => {
@@ -394,7 +394,7 @@ export function renderCampaignManagerSection({ app, plugin, containerEl, onCampa
         );
         const newCampaign = createDefaultCampaign(name, {
             bookTitle: resolvedBookTitle,
-            aprSize: plugin.settings.authorProgress?.aprSize
+            aprSize: plugin.settings.authorProgress?.defaults.aprSize
         });
                         if (!plugin.settings.authorProgress) return false;
                         if (!plugin.settings.authorProgress.campaigns) {
@@ -452,7 +452,7 @@ export function renderCampaignManagerSection({ app, plugin, containerEl, onCampa
             );
             const newCampaign = createDefaultCampaign(template.name, {
                 bookTitle: resolvedBookTitle,
-                aprSize: plugin.settings.authorProgress?.aprSize
+                aprSize: plugin.settings.authorProgress?.defaults.aprSize
             });
             newCampaign.refreshThresholdDays = template.days;
 
@@ -476,7 +476,7 @@ export function renderCampaignManagerSection({ app, plugin, containerEl, onCampa
 
         if (updatedCampaigns.length === 0) {
             const emptyState = listContainer.createDiv({ cls: 'ert-campaign-empty-state' });
-            emptyState.createEl('p', { text: 'No campaigns yet. Create your first campaign to track multiple embed destinations.' });
+            emptyState.createEl('p', { text: 'No campaigns yet. Create your first campaign to track multiple export destinations.' });
         } else {
             const campaignIds = new Set(updatedCampaigns.map(campaign => campaign.id));
             expandedCampaigns.forEach((id) => {
@@ -516,7 +516,7 @@ export function renderCampaignManagerSection({ app, plugin, containerEl, onCampa
                 );
                 const newCampaign = createDefaultCampaign(template.name, {
                     bookTitle: resolvedBookTitle,
-                    aprSize: plugin.settings.authorProgress?.aprSize
+                    aprSize: plugin.settings.authorProgress?.defaults.aprSize
                 });
                 newCampaign.refreshThresholdDays = template.days;
 
@@ -540,7 +540,7 @@ export function renderCampaignManagerSection({ app, plugin, containerEl, onCampa
  */
 function renderCampaignRow(
     container: HTMLElement,
-    campaign: AprCampaign,
+    campaign: AuthorProgressCampaign,
     index: number,
     plugin: RadialTimelinePlugin,
     onUpdate: () => void,
@@ -614,7 +614,7 @@ function renderCampaignRow(
                     campaignName: campaign.name,
                     updateFrequency: campaign.updateFrequency,
                     aprSize: campaign.aprSize,
-                    fallbackSize: plugin.settings.authorProgress?.aprSize,
+                    fallbackSize: plugin.settings.authorProgress?.defaults.aprSize,
                     teaserEnabled: campaign.teaserReveal?.enabled ?? true,
                     exportFormat: resolveCampaignExportFormat(campaign)
                 });
@@ -623,14 +623,14 @@ function renderCampaignRow(
                     campaignName: newName,
                     updateFrequency: campaign.updateFrequency,
                     aprSize: campaign.aprSize,
-                    fallbackSize: plugin.settings.authorProgress?.aprSize,
+                    fallbackSize: plugin.settings.authorProgress?.defaults.aprSize,
                     teaserEnabled: campaign.teaserReveal?.enabled ?? true,
                     exportFormat: resolveCampaignExportFormat(campaign)
                 });
 
                 plugin.settings.authorProgress.campaigns[index].name = newName;
-                if (plugin.settings.authorProgress.campaigns[index].embedPath === oldDefaultPath) {
-                    plugin.settings.authorProgress.campaigns[index].embedPath = newDefaultPath;
+                if (plugin.settings.authorProgress.campaigns[index].exportPath === oldDefaultPath) {
+                    plugin.settings.authorProgress.campaigns[index].exportPath = newDefaultPath;
                 }
                 await plugin.saveSettings();
                 onUpdate();
@@ -722,7 +722,7 @@ function renderCampaignRow(
  */
 function renderCampaignDetails(
     parentRow: HTMLElement,
-    campaign: AprCampaign,
+    campaign: AuthorProgressCampaign,
     index: number,
     plugin: RadialTimelinePlugin,
     onUpdate: () => void
@@ -743,11 +743,12 @@ function renderCampaignDetails(
                 .onChange(async (val) => {
                     fitSelectToSelectedLabel(dropdown.selectEl, { minPx: 72, extraPx: 16 });
                     if (!plugin.settings.authorProgress?.campaigns) return;
-                    const settings = plugin.settings.authorProgress;
-                    if (!settings.campaigns) return;
-                    const target = settings.campaigns[index];
+                    const authorProgress = plugin.settings.authorProgress;
+                    const settings = authorProgress.defaults;
+                    if (!authorProgress.campaigns) return;
+                    const target = authorProgress.campaigns[index];
                     const resolvedBookTitle = resolveCampaignBookTitle(
-                        settings,
+                        authorProgress,
                         target,
                         plugin.settings.sourcePath
                     );
@@ -761,8 +762,8 @@ function renderCampaignDetails(
                         exportFormat: resolveCampaignExportFormat(target)
                     });
                     target.updateFrequency = val as 'manual' | 'daily' | 'weekly' | 'monthly';
-                    if (settings.autoUpdateEmbedPaths && target.embedPath === oldDefaultPath) {
-                        target.embedPath = buildCampaignEmbedPath({
+                    if (settings.autoUpdateExportPath && target.exportPath === oldDefaultPath) {
+                        target.exportPath = buildCampaignEmbedPath({
                             bookTitle: resolvedBookTitle,
                             campaignName: target.name,
                             updateFrequency: target.updateFrequency,
@@ -905,13 +906,13 @@ function renderCampaignDetails(
 
     bookTitleOverrideSetting.addText(text => {
         text.setPlaceholder('Leave blank to inherit')
-            .setValue(campaign.bookTitle || '');
+            .setValue(campaign.bookTitleOverride || '');
         text.inputEl.addClass('ert-input--lg');
 
         const handleBlur = async () => {
             if (!plugin.settings.authorProgress?.campaigns) return;
             const val = text.getValue().trim();
-            plugin.settings.authorProgress.campaigns[index].bookTitle = val || undefined;
+            plugin.settings.authorProgress.campaigns[index].bookTitleOverride = val || undefined;
             await plugin.saveSettings();
             onUpdate();
         };
@@ -958,7 +959,7 @@ function renderCampaignDetails(
         };
 
         text.setPlaceholder('Leave blank to inherit')
-            .setValue(campaign.projectPath || '');
+            .setValue(campaign.projectPathOverride || '');
         text.inputEl.addClass('ert-input--lg');
 
         text.onChange(() => {
@@ -968,11 +969,11 @@ function renderCampaignDetails(
         new ProjectPathSuggest(plugin.app, text.inputEl, plugin, text, {
             onValidPath: async (normalized) => {
                 if (!plugin.settings.authorProgress?.campaigns) return;
-                plugin.settings.authorProgress.campaigns[index].projectPath = normalized;
+                plugin.settings.authorProgress.campaigns[index].projectPathOverride = normalized;
                 await plugin.saveSettings();
                 onUpdate();
             },
-            getSavedValue: () => plugin.settings.authorProgress?.campaigns?.[index]?.projectPath || '',
+            getSavedValue: () => plugin.settings.authorProgress?.campaigns?.[index]?.projectPathOverride || '',
             successClass,
             errorClass
         });
@@ -984,7 +985,7 @@ function renderCampaignDetails(
             if (!val) {
                 // Empty is allowed - means inherit from Social Configuration
                 if (!plugin.settings.authorProgress?.campaigns) return;
-                plugin.settings.authorProgress.campaigns[index].projectPath = undefined;
+                plugin.settings.authorProgress.campaigns[index].projectPathOverride = undefined;
                 await plugin.saveSettings();
                 flashSuccess();
                 onUpdate();
@@ -996,7 +997,7 @@ function renderCampaignDetails(
 
             if (!isValid) {
                 // Invalid path - revert to last saved value
-                const savedValue = plugin.settings.authorProgress?.campaigns?.[index]?.projectPath || '';
+                const savedValue = plugin.settings.authorProgress?.campaigns?.[index]?.projectPathOverride || '';
                 text.setValue(savedValue);
                 flashError();
                 new Notice(`Invalid project path: "${val}" does not exist or is not a folder. Reverting to saved value.`);
@@ -1006,7 +1007,7 @@ function renderCampaignDetails(
             // Save if valid
             flashSuccess();
             if (!plugin.settings.authorProgress?.campaigns) return;
-            plugin.settings.authorProgress.campaigns[index].projectPath = val;
+            plugin.settings.authorProgress.campaigns[index].projectPathOverride = val;
             await plugin.saveSettings();
             onUpdate();
         };
@@ -1033,17 +1034,17 @@ function renderCampaignDetails(
         campaignName: campaign.name,
         updateFrequency: campaign.updateFrequency,
         aprSize: campaign.aprSize,
-        fallbackSize: plugin.settings.authorProgress?.aprSize,
+        fallbackSize: plugin.settings.authorProgress?.defaults.aprSize,
         teaserEnabled: campaign.teaserReveal?.enabled ?? true,
         exportFormat: resolveCampaignExportFormat(campaign)
     });
-    const embedPathSetting = new Setting(details)
-        .setName('Embed file path')
+    const exportPathSetting = new Setting(details)
+        .setName('Export path')
         .setDesc('Location for the exported campaign file.');
 
-    embedPathSetting.settingEl.addClass('ert-setting-full-width-input');
+    exportPathSetting.settingEl.addClass('ert-setting-full-width-input');
 
-    embedPathSetting.addText(text => {
+    exportPathSetting.addText(text => {
         const successClass = 'ert-input--success';
         const errorClass = 'ert-input--error';
         const clearInputState = () => {
@@ -1063,7 +1064,7 @@ function renderCampaignDetails(
             }, timeout);
         };
         text.setPlaceholder(defaultPath)
-            .setValue(campaign.embedPath);
+            .setValue(campaign.exportPath);
         text.inputEl.addClass('ert-input--full');
 
         // Validate on blur
@@ -1075,7 +1076,7 @@ function renderCampaignDetails(
             const requiredExt = `.${format}`;
             if (val && !val.toLowerCase().endsWith(requiredExt)) {
                 flashError();
-                new Notice(`Embed path must end with ${requiredExt}`);
+                new Notice(`Export path must end with ${requiredExt}`);
                 return;
             }
 
@@ -1084,7 +1085,7 @@ function renderCampaignDetails(
             }
 
             if (!plugin.settings.authorProgress?.campaigns) return;
-            plugin.settings.authorProgress.campaigns[index].embedPath = val || defaultPath;
+            plugin.settings.authorProgress.campaigns[index].exportPath = val || defaultPath;
             await plugin.saveSettings();
         };
 
@@ -1093,12 +1094,12 @@ function renderCampaignDetails(
     });
 
     // Reset button
-    embedPathSetting.addExtraButton(btn => {
+    exportPathSetting.addExtraButton(btn => {
         btn.setIcon('rotate-ccw')
             .setTooltip('Reset to default path')
             .onClick(async () => {
                 if (!plugin.settings.authorProgress?.campaigns) return;
-                plugin.settings.authorProgress.campaigns[index].embedPath = defaultPath;
+                plugin.settings.authorProgress.campaigns[index].exportPath = defaultPath;
                 await plugin.saveSettings();
                 // Re-render to update the text input
                 onUpdate();
@@ -1111,7 +1112,7 @@ function renderCampaignDetails(
         .setDesc('Dimensions: Small for widgets, Medium for social/newsletters, Large for website embeds.')
         .addDropdown(drop => {
             drop.selectEl.addClass('ert-input', 'ert-input--lg');
-            const globalSize = normalizeAprSize(plugin.settings.authorProgress?.aprSize) ?? 'medium';
+            const globalSize = normalizeAprSize(plugin.settings.authorProgress?.defaults.aprSize) ?? 'medium';
             const latestCampaign = plugin.settings.authorProgress?.campaigns?.[index];
             const campaignSize = normalizeAprSize(latestCampaign?.aprSize ?? campaign.aprSize);
             const defaultSizeLabel = describeAprSize(globalSize).replace(/\s*\(([^)]+)\)/, ' $1');
@@ -1123,11 +1124,12 @@ function renderCampaignDetails(
             drop.setValue(campaignSize ?? '');
             drop.onChange(async (val) => {
                 if (!plugin.settings.authorProgress?.campaigns) return;
-                const settings = plugin.settings.authorProgress;
-                if (!settings.campaigns) return;
-                const target = settings.campaigns[index];
+                const authorProgress = plugin.settings.authorProgress;
+                const settings = authorProgress.defaults;
+                if (!authorProgress.campaigns) return;
+                const target = authorProgress.campaigns[index];
                 const resolvedBookTitle = resolveCampaignBookTitle(
-                    settings,
+                    authorProgress,
                     target,
                     plugin.settings.sourcePath
                 );
@@ -1141,8 +1143,8 @@ function renderCampaignDetails(
                     exportFormat: resolveCampaignExportFormat(target)
                 });
                 target.aprSize = val === '' ? undefined : normalizeAprSize(val);
-                if (settings.autoUpdateEmbedPaths && target.embedPath === oldDefaultPath) {
-                    target.embedPath = buildCampaignEmbedPath({
+                if (settings.autoUpdateExportPath && target.exportPath === oldDefaultPath) {
+                    target.exportPath = buildCampaignEmbedPath({
                         bookTitle: resolvedBookTitle,
                         campaignName: target.name,
                         updateFrequency: target.updateFrequency,
@@ -1339,13 +1341,14 @@ function renderCampaignDetails(
 async function renderTeaserStagesPreviews(
     container: HTMLElement,
     plugin: RadialTimelinePlugin,
-    campaign: AprCampaign,
+    campaign: AuthorProgressCampaign,
     campaignIndex: number,
     thresholds: { scenes: number; colors: number; full: number },
     onUpdate: () => void
 ): Promise<void> {
-    const settings = plugin.settings.authorProgress;
-    if (!settings) return;
+    const authorProgress = plugin.settings.authorProgress;
+    const settings = authorProgress?.defaults;
+    if (!authorProgress || !settings) return;
 
     // Get scenes for preview
     const scenes = await getAllScenes(plugin.app, plugin);
@@ -1358,10 +1361,7 @@ async function renderTeaserStagesPreviews(
     }
 
     const publishStageLabel = plugin.calculateCompletionEstimate(scenes)?.stage ?? 'Zero';
-    const revealCampaign = (campaign as any)?.revealCampaign ?? (settings as any)?.revealCampaign;
-    const revealCampaignEnabled = !!revealCampaign?.enabled;
-    const nextRevealAt = revealCampaign?.nextRevealAt ?? revealCampaign?.nextRevealDate ?? revealCampaign?.nextReveal;
-    const showRtAttribution = isFeatureGateEnabled(plugin, 'social')
+    const showRtAttribution = hasProFeatureAccess(plugin)
         ? settings?.aprShowRtAttribution !== false
         : true;
 
@@ -1419,7 +1419,7 @@ async function renderTeaserStagesPreviews(
 
         try {
             const resolvedBookTitle = resolveCampaignBookTitle(
-                settings,
+                authorProgress,
                 campaign,
                 plugin.settings.sourcePath
             ) ?? 'Book';
@@ -1453,8 +1453,7 @@ async function renderTeaserStagesPreviews(
                 spokeColor: settings.aprSpokeColorMode === 'custom' ? settings.aprSpokeColor : undefined,
                 publishStageLabel,
                 showRtAttribution,
-                revealCampaignEnabled,
-                nextRevealAt,
+                teaserRevealEnabled: campaign.teaserReveal?.enabled ?? false,
                 // Typography settings
                 bookTitleFontFamily: settings.aprBookTitleFontFamily,
                 bookTitleFontWeight: settings.aprBookTitleFontWeight,

@@ -6,7 +6,7 @@ import type RadialTimelinePlugin from '../main';
 import { getSceneFilesByOrder, ManuscriptOrder, TocMode } from '../utils/manuscript';
 import { t } from '../i18n';
 import { ExportFormat, ExportType, ManuscriptPreset, OutlinePreset, getAutoPdfEngineSelection, getLayoutsForPreset, resolveTemplatePath, validatePandocLayout, getTemplateFontDiagnostics } from '../utils/exportFormats';
-import { isFeatureGateEnabled } from '../settings/featureGate';
+import { hasProFeatureAccess } from '../settings/featureGate';
 import { getActiveBook, getActiveBookTitle, DEFAULT_BOOK_TITLE } from '../utils/books';
 import { chunkScenesIntoParts } from '../utils/splitOutput';
 import { getDefaultManuscriptCleanupOptions, normalizeManuscriptCleanupOptions } from '../utils/manuscriptSanitize';
@@ -329,7 +329,7 @@ export class ManuscriptOptionsModal extends Modal {
         super(app);
         this.plugin = plugin;
         this.onSubmit = onSubmit;
-        this.isPro = isFeatureGateEnabled(plugin, 'exports');
+        this.isPro = hasProFeatureAccess(plugin);
     }
 
     async onOpen(): Promise<void> {

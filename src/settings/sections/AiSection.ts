@@ -3,8 +3,8 @@ import type { App, TextComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { fetchAnthropicModels } from '../../api/anthropicApi';
 import { fetchOpenAiModels } from '../../api/openaiApi';
-import { fetchGeminiModels } from '../../api/geminiApi';
-import { fetchLocalModels } from '../../api/localAiApi';
+import { fetchGeminiModels as fetchGoogleModels } from '../../api/geminiApi';
+import { fetchLocalModels as fetchOllamaModels } from '../../api/localAiApi';
 import { AiContextModal } from '../AiContextModal';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import { resolveAiLogFolder } from '../../ai/log';
@@ -44,13 +44,13 @@ import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { cleanEvidenceBody } from '../../inquiry/utils/evidenceCleaning';
 import { getSortedSceneFiles } from '../../utils/manuscript';
 import { extractBeatOrder } from '../../utils/gossamer';
-import { resolveSelectedBeatModel } from '../../utils/beatsInputNormalize';
+import { resolveSelectedBeatModelFromSettings } from '../../utils/beatSystemState';
 import { getSynopsisGenerationWordLimit, getSynopsisHoverLineLimit } from '../../utils/synopsisLimits';
 import { getResolvedModelId } from '../../utils/modelResolver';
 
 type Provider = 'anthropic' | 'google' | 'openai' | 'ollama';
 type CapacityItem = string | { text: string; dividerBefore?: boolean };
-type LocalRequestBreakdown = {
+type PromptRequestBreakdown = {
     roleTemplateTokens: number | null;
     instructionTokens: number | null;
     outputContractTokens: number | null;
@@ -67,7 +67,7 @@ export function renderAiSection(params: {
     scheduleKeyValidation: (provider: Provider) => void;
     setProviderSections: (sections: { anthropic?: HTMLElement; google?: HTMLElement; openai?: HTMLElement; ollama?: HTMLElement }) => void;
     setKeyInputRef: (provider: Provider, input: HTMLInputElement | undefined) => void;
-    setLocalConnectionInputs: (refs: { baseInput?: HTMLInputElement; modelInput?: HTMLInputElement }) => void;
+    setOllamaConnectionInputs: (refs: { baseInput?: HTMLInputElement; modelInput?: HTMLInputElement }) => void;
 }): void {
     const { app, plugin, containerEl } = params;
     containerEl.classList.add(ERT_CLASSES.STACK);
@@ -240,7 +240,7 @@ export function renderAiSection(params: {
     [
         { label: 'OpenAI', href: 'https://openai.com/api/pricing/' },
         { label: 'Anthropic', href: 'https://platform.claude.com/docs/en/about-claude/pricing' },
-        { label: 'Gemini', href: 'https://ai.google.dev/gemini-api/docs/pricing' }
+        { label: 'Google', href: 'https://ai.google.dev/' }
     ].forEach((link, index, list) => {
         const anchor = costEstimateLinks.createEl('a', {
             href: link.href,
@@ -410,7 +410,7 @@ export function renderAiSection(params: {
         outlineCount: number;
         referenceCount: number;
         breakdown: RTCorpusTokenBreakdown;
-        localBreakdown?: LocalRequestBreakdown;
+        promptBreakdown?: PromptRequestBreakdown;
     }): Array<{ title: string; items: CapacityItem[] }> => {
         const sceneCount = counts?.sceneCount ?? null;
         const outlineCount = counts?.outlineCount ?? null;
@@ -423,10 +423,10 @@ export function renderAiSection(params: {
             : null;
         const totalTokens = sumTokenParts(
             corpusTokens,
-            counts?.localBreakdown?.roleTemplateTokens,
-            counts?.localBreakdown?.instructionTokens,
-            counts?.localBreakdown?.outputContractTokens,
-            counts?.localBreakdown?.transformTokens
+            counts?.promptBreakdown?.roleTemplateTokens,
+            counts?.promptBreakdown?.instructionTokens,
+            counts?.promptBreakdown?.outputContractTokens,
+            counts?.promptBreakdown?.transformTokens
         );
         return [
             {
@@ -440,15 +440,15 @@ export function renderAiSection(params: {
             {
                 title: 'Prompt',
                 items: [
-                    buildTokenCapacityLine('AI role template (author-defined)', counts?.localBreakdown?.roleTemplateTokens ?? null),
-                    buildTokenCapacityLine('Editorial analysis instructions', counts?.localBreakdown?.instructionTokens ?? null)
+                    buildTokenCapacityLine('AI role template (author-defined)', counts?.promptBreakdown?.roleTemplateTokens ?? null),
+                    buildTokenCapacityLine('Editorial analysis instructions', counts?.promptBreakdown?.instructionTokens ?? null)
                 ]
             },
             {
                 title: 'Output',
                 items: [
                     'Scene-linked findings',
-                    buildTokenCapacityLine('Strict JSON structure', counts?.localBreakdown?.outputContractTokens ?? null)
+                    buildTokenCapacityLine('Strict JSON structure', counts?.promptBreakdown?.outputContractTokens ?? null)
                 ]
             },
             {
@@ -529,7 +529,7 @@ export function renderAiSection(params: {
     const buildGossamerCapacitySections = (
         sceneCount: number,
         breakdown?: RTCorpusTokenBreakdown,
-        localBreakdown?: LocalRequestBreakdown
+        promptBreakdown?: PromptRequestBreakdown
     ): Array<{ title: string; items: CapacityItem[] }> => [
         {
             title: 'Corpus',
@@ -541,20 +541,20 @@ export function renderAiSection(params: {
         },
         {
             title: 'Transform',
-            items: [buildTokenCapacityLine('Beat overlay (ordered sequence)', localBreakdown?.transformTokens ?? null)]
+            items: [buildTokenCapacityLine('Beat overlay (ordered sequence)', promptBreakdown?.transformTokens ?? null)]
         },
         {
             title: 'Prompt',
             items: [
-                buildTokenCapacityLine('AI role template (author-defined)', localBreakdown?.roleTemplateTokens ?? null),
-                buildTokenCapacityLine('Beat scoring instructions', localBreakdown?.instructionTokens ?? null)
+                buildTokenCapacityLine('AI role template (author-defined)', promptBreakdown?.roleTemplateTokens ?? null),
+                buildTokenCapacityLine('Beat scoring instructions', promptBreakdown?.instructionTokens ?? null)
             ]
         },
         {
             title: 'Output',
             items: [
                 'Per-beat scores',
-                buildTokenCapacityLine('Strict JSON structure', localBreakdown?.outputContractTokens ?? null)
+                buildTokenCapacityLine('Strict JSON structure', promptBreakdown?.outputContractTokens ?? null)
             ]
         },
         {
@@ -567,10 +567,10 @@ export function renderAiSection(params: {
                         breakdown
                             ? breakdown.scenesTokens + breakdown.outlineTokens + breakdown.referenceTokens
                             : null,
-                        localBreakdown?.roleTemplateTokens,
-                        localBreakdown?.instructionTokens,
-                        localBreakdown?.outputContractTokens,
-                        localBreakdown?.transformTokens
+                        promptBreakdown?.roleTemplateTokens,
+                        promptBreakdown?.instructionTokens,
+                        promptBreakdown?.outputContractTokens,
+                        promptBreakdown?.transformTokens
                     ))}`,
                     dividerBefore: true
                 }
@@ -913,7 +913,7 @@ export function renderAiSection(params: {
         dropdown.addOption('anthropic', 'Anthropic');
         dropdown.addOption('openai', 'OpenAI');
         dropdown.addOption('google', 'Google');
-        dropdown.addOption('ollama', 'Local');
+        dropdown.addOption('ollama', 'Ollama');
         dropdown.onChange(async value => {
             if (isSyncingRoutingUi) return;
             const aiSettings = ensureCanonicalAiSettings();
@@ -1033,7 +1033,7 @@ export function renderAiSection(params: {
     params.addAiRelatedElement(resolvedPreviewFrame);
 
     // Forward-declared; populated after credential helpers are defined.
-    let localQuickConfigSection: HTMLElement | null = null;
+    let ollamaQuickConfigSectionEl: HTMLElement | null = null;
 
     applyStrategyRowCopyLayout(providerSetting, 'Select the AI service that powers structural analysis and editorial insight.');
     applyStrategyRowCopyLayout(modelOverrideSetting, 'Use Auto for deterministic latest-stable selection, or pin a specific model.');
@@ -1114,12 +1114,12 @@ export function renderAiSection(params: {
         available: boolean;
         corpusTokens: number;
         providerExecutionTokens: number;
-        localTotalTokens: number;
+        totalEstimatedTokens: number;
         sceneCount: number;
         outlineCount: number;
         referenceCount: number;
         breakdown: RTCorpusTokenBreakdown;
-        localBreakdown: LocalRequestBreakdown;
+        promptBreakdown: PromptRequestBreakdown;
     };
 
     type CostComparisonModel = {
@@ -1387,7 +1387,7 @@ export function renderAiSection(params: {
         });
         const { files: gossamerSceneFiles } = await getSortedSceneFiles(plugin);
         const sceneData = await plugin.getSceneData();
-        const selectedBeatModel = resolveSelectedBeatModel(plugin.settings.beatSystem, plugin.settings.customBeatSystemName);
+        const selectedBeatModel = resolveSelectedBeatModelFromSettings(plugin.settings);
         const beatOrder = extractBeatOrder(
             sceneData as Array<{ itemType?: string; subplot?: string; title?: string; "Beat Model"?: string }>,
             selectedBeatModel
@@ -1422,13 +1422,13 @@ export function renderAiSection(params: {
         );
         const gossamerCorpusTokens = gossamerDisplayCorpus.estimatedTokens;
         const gossamerProviderTokens = gossamerEstimate.providerExecutionEstimate.estimatedTokens;
-        const inquiryLocalBreakdown: LocalRequestBreakdown = {
+        const inquiryPromptBreakdown: PromptRequestBreakdown = {
             roleTemplateTokens,
             instructionTokens: inquiryInstructionTokens,
             outputContractTokens: inquiryOutputContractTokens,
             transformTokens: 0
         };
-        const gossamerLocalBreakdown: LocalRequestBreakdown = {
+        const gossamerPromptBreakdown: PromptRequestBreakdown = {
             roleTemplateTokens,
             instructionTokens: gossamerInstructionTokens,
             outputContractTokens: gossamerOutputContractTokens,
@@ -1440,12 +1440,12 @@ export function renderAiSection(params: {
                 available: Boolean(currentCorpus),
                 corpusTokens: inquiryCorpusTokens,
                 providerExecutionTokens: inquiryProviderTokens,
-                localTotalTokens: sumTokenParts(
+                totalEstimatedTokens: sumTokenParts(
                     inquiryCorpusTokens,
-                    inquiryLocalBreakdown.roleTemplateTokens,
-                    inquiryLocalBreakdown.instructionTokens,
-                    inquiryLocalBreakdown.outputContractTokens,
-                    inquiryLocalBreakdown.transformTokens
+                    inquiryPromptBreakdown.roleTemplateTokens,
+                    inquiryPromptBreakdown.instructionTokens,
+                    inquiryPromptBreakdown.outputContractTokens,
+                    inquiryPromptBreakdown.transformTokens
                 ) ?? inquiryCorpusTokens,
                 sceneCount: currentCorpus?.corpus.sceneCount ?? 0,
                 outlineCount: currentCorpus?.corpus.outlineCount ?? 0,
@@ -1455,24 +1455,24 @@ export function renderAiSection(params: {
                     outlineTokens: 0,
                     referenceTokens: 0
                 },
-                localBreakdown: inquiryLocalBreakdown
+                promptBreakdown: inquiryPromptBreakdown
             },
             gossamer: {
                 available: true,
                 corpusTokens: gossamerCorpusTokens,
                 providerExecutionTokens: gossamerProviderTokens,
-                localTotalTokens: sumTokenParts(
+                totalEstimatedTokens: sumTokenParts(
                     gossamerCorpusTokens,
-                    gossamerLocalBreakdown.roleTemplateTokens,
-                    gossamerLocalBreakdown.instructionTokens,
-                    gossamerLocalBreakdown.outputContractTokens,
-                    gossamerLocalBreakdown.transformTokens
+                    gossamerPromptBreakdown.roleTemplateTokens,
+                    gossamerPromptBreakdown.instructionTokens,
+                    gossamerPromptBreakdown.outputContractTokens,
+                    gossamerPromptBreakdown.transformTokens
                 ) ?? gossamerCorpusTokens,
                 sceneCount: gossamerDisplayCorpus.sceneCount,
                 outlineCount: gossamerDisplayCorpus.outlineCount,
                 referenceCount: gossamerDisplayCorpus.referenceCount,
                 breakdown: gossamerDisplayCorpus.breakdown,
-                localBreakdown: gossamerLocalBreakdown
+                promptBreakdown: gossamerPromptBreakdown
             },
         };
     };
@@ -1492,7 +1492,7 @@ export function renderAiSection(params: {
 
         const policy = aiSettings.modelPolicy;
 
-        const isLocal = provider === 'ollama';
+        const isOllama = provider === 'ollama';
 
         isSyncingRoutingUi = true;
         try {
@@ -1500,7 +1500,7 @@ export function renderAiSection(params: {
 
             if (modelOverrideDropdown) {
                 modelOverrideDropdown.selectEl.empty();
-                if (isLocal) {
+                if (isOllama) {
                     modelOverrideDropdown.addOption('—', '—');
                     modelOverrideDropdown.setValue('—');
                     modelOverrideDropdown.selectEl.disabled = true;
@@ -1530,7 +1530,7 @@ export function renderAiSection(params: {
             }
 
             if (accessTierDropdown) {
-                if (isLocal) {
+                if (isOllama) {
                     accessTierDropdown.selectEl.empty();
                     accessTierDropdown.addOption('—', '—');
                     accessTierDropdown.setValue('—');
@@ -1556,13 +1556,13 @@ export function renderAiSection(params: {
 
         providerSetting.settingEl.toggleClass('ert-settings-hidden', false);
         providerSetting.settingEl.toggleClass('ert-settings-visible', true);
-        // Model and Access Tier stay visible but show "—" when local
+        // Model and Access Tier stay visible but show "—" when Ollama is active.
         modelOverrideSetting.settingEl.toggleClass('ert-settings-hidden', false);
         modelOverrideSetting.settingEl.toggleClass('ert-settings-visible', true);
         accessTierSetting.settingEl.toggleClass('ert-settings-hidden', false);
         accessTierSetting.settingEl.toggleClass('ert-settings-visible', true);
 
-        if (!isLocal) {
+        if (!isOllama) {
             const supportsAccessTier = provider === 'anthropic' || provider === 'openai' || provider === 'google';
             if (supportsAccessTier) {
                 accessTierDropdown?.setValue(String(getAccessTier(provider)));
@@ -1571,10 +1571,10 @@ export function renderAiSection(params: {
             }
         }
 
-        // Toggle local quick-config section visibility
-        if (localQuickConfigSection) {
-            localQuickConfigSection.toggleClass('ert-settings-hidden', !isLocal);
-            localQuickConfigSection.toggleClass('ert-settings-visible', isLocal);
+        // Toggle Ollama quick-config section visibility
+        if (ollamaQuickConfigSectionEl) {
+            ollamaQuickConfigSectionEl.toggleClass('ert-settings-hidden', !isOllama);
+            ollamaQuickConfigSectionEl.toggleClass('ert-settings-visible', isOllama);
         }
 
         capacityInquiryToken.setText('Calculating...');
@@ -1657,7 +1657,7 @@ export function renderAiSection(params: {
                 modelId: estimate.model.id
             }).then(forecasts => {
                 if (forecasts.inquiry.available) {
-                    setTokenDisplay(capacityInquiryToken, formatCorpusBreakdownToken(forecasts.inquiry.localTotalTokens), 'tokens');
+                    setTokenDisplay(capacityInquiryToken, formatCorpusBreakdownToken(forecasts.inquiry.totalEstimatedTokens), 'tokens');
                     capacityInquiryExpected.setText(formatExpectedPasses(forecasts.inquiry.providerExecutionTokens));
                     capacityInquiryProvider.setText(formatProviderInput(forecasts.inquiry.providerExecutionTokens));
                     renderCapacitySections(capacityInquirySections, buildInquiryCapacitySections({
@@ -1665,7 +1665,7 @@ export function renderAiSection(params: {
                         outlineCount: forecasts.inquiry.outlineCount,
                         referenceCount: forecasts.inquiry.referenceCount,
                         breakdown: forecasts.inquiry.breakdown,
-                        localBreakdown: forecasts.inquiry.localBreakdown
+                        promptBreakdown: forecasts.inquiry.promptBreakdown
                     }));
                 } else {
                     capacityInquiryToken.setText('Unavailable');
@@ -1674,7 +1674,7 @@ export function renderAiSection(params: {
                     renderCapacitySections(capacityInquirySections, buildInquiryCapacitySections());
                 }
 
-                setTokenDisplay(capacityGossamerToken, formatCorpusBreakdownToken(forecasts.gossamer.localTotalTokens), 'tokens');
+                setTokenDisplay(capacityGossamerToken, formatCorpusBreakdownToken(forecasts.gossamer.totalEstimatedTokens), 'tokens');
                 capacityGossamerExpected.setText(formatExpectedPasses(forecasts.gossamer.providerExecutionTokens));
                 capacityGossamerProvider.setText(formatProviderInput(forecasts.gossamer.providerExecutionTokens));
                 renderCapacitySections(
@@ -1682,7 +1682,7 @@ export function renderAiSection(params: {
                     buildGossamerCapacitySections(
                         forecasts.gossamer.sceneCount,
                         forecasts.gossamer.breakdown,
-                        forecasts.gossamer.localBreakdown
+                        forecasts.gossamer.promptBreakdown
                     )
                 );
             });
@@ -1719,7 +1719,7 @@ export function renderAiSection(params: {
         cls: ['ert-provider-section', 'ert-provider-anthropic', ERT_CLASSES.STACK]
     });
     const googleSection = configurationBody.createDiv({
-        cls: ['ert-provider-section', 'ert-provider-gemini', ERT_CLASSES.STACK]
+        cls: ['ert-provider-section', 'ert-provider-google', ERT_CLASSES.STACK]
     });
     const openaiSection = configurationBody.createDiv({
         cls: ['ert-provider-section', 'ert-provider-openai', ERT_CLASSES.STACK]
@@ -1819,7 +1819,7 @@ export function renderAiSection(params: {
     ): Promise<ProviderKeyValidationResult> => {
         try {
             if (provider === 'anthropic') await fetchAnthropicModels(key);
-            else if (provider === 'google') await fetchGeminiModels(key);
+                else if (provider === 'google') await fetchGoogleModels(key);
             else await fetchOpenAiModels(key);
             return {
                 state: 'ready',
@@ -2097,8 +2097,8 @@ export function renderAiSection(params: {
     renderCredentialSettings({
         section: googleSection,
         provider: 'google',
-        providerName: 'Google Gemini',
-        keyPlaceholder: 'Enter your Gemini API key',
+        providerName: 'Google',
+        keyPlaceholder: 'Enter your Google API key',
         docsUrl: 'https://aistudio.google.com'
     });
     renderCredentialSettings({
@@ -2109,17 +2109,17 @@ export function renderAiSection(params: {
         docsUrl: 'https://platform.openai.com'
     });
 
-    const localWrapper = configurationBody.createDiv({
-        cls: ['ert-provider-section', 'ert-provider-local', ERT_CLASSES.STACK]
+    const ollamaWrapper = configurationBody.createDiv({
+        cls: ['ert-provider-section', 'ert-provider-ollama', ERT_CLASSES.STACK]
     });
-    params.setProviderSections({ anthropic: anthropicSection, google: googleSection, openai: openaiSection, ollama: localWrapper });
-    params.addAiRelatedElement(localWrapper);
+    params.setProviderSections({ anthropic: anthropicSection, google: googleSection, openai: openaiSection, ollama: ollamaWrapper });
+    params.addAiRelatedElement(ollamaWrapper);
 
-    const localBaseStack = localWrapper.createDiv({ cls: ERT_CLASSES.STACK });
-    let localModelText: TextComponent | null = null;
+    const ollamaBaseStack = ollamaWrapper.createDiv({ cls: ERT_CLASSES.STACK });
+    let ollamaModelText: TextComponent | null = null;
 
-    const localBaseUrlSetting = new Settings(localBaseStack)
-        .setName('Local LLM base URL')
+    const ollamaBaseUrlSetting = new Settings(ollamaBaseStack)
+        .setName('Ollama base URL')
         .setDesc('The API endpoint. For Ollama, use "http://localhost:11434/v1". For LM Studio, use "http://localhost:1234/v1".')
         .addText(text => {
             text.inputEl.addClass('ert-input--full');
@@ -2146,26 +2146,26 @@ export function renderAiSection(params: {
                 params.scheduleKeyValidation('ollama');
             };
             plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });
-            params.setLocalConnectionInputs({ baseInput: text.inputEl });
+            params.setOllamaConnectionInputs({ baseInput: text.inputEl });
         });
-    localBaseUrlSetting.settingEl.addClass('ert-setting-full-width-input');
+    ollamaBaseUrlSetting.settingEl.addClass('ert-setting-full-width-input');
 
     // Advisory note as separate section
-    const localWarningSection = localBaseStack.createDiv({ cls: ['ert-local-llm-advisory', ERT_CLASSES.ROW] });
-    localWarningSection.createEl('strong', { text: 'Advisory Note', cls: 'ert-local-llm-advisory-title' });
+    const ollamaWarningSection = ollamaBaseStack.createDiv({ cls: ['ert-ollama-advisory', ERT_CLASSES.ROW] });
+    ollamaWarningSection.createEl('strong', { text: 'Advisory Note', cls: 'ert-ollama-advisory-title' });
     const aiLogFolder = resolveAiLogFolder();
-    localWarningSection.createSpan({
-        text: `By default, no LLM pulses are written to the scene when local transformer is used. Rather it is stored in an AI log file in the local logs output folder (${aiLogFolder}), as the response does not follow directions and breaks scene hover formatting. You may still write scene hover fields with local LLM by toggling off the setting "Bypass scene hover fields writes" below.`
+    ollamaWarningSection.createSpan({
+        text: `By default, no LLM pulses are written to the scene when Ollama is used. Rather it is stored in an AI log file in the Ollama logs output folder (${aiLogFolder}), as the response does not follow directions and breaks scene hover formatting. You may still write scene hover fields with Ollama by toggling off the setting "Bypass scene hover fields writes" below.`
     });
 
-    const localExtrasStack = localWrapper.createDiv({ cls: [ERT_CLASSES.STACK, 'ert-ai-local-extras'] });
+    const ollamaExtrasStack = ollamaWrapper.createDiv({ cls: [ERT_CLASSES.STACK, 'ert-ai-ollama-extras'] });
 
-    const localModelSetting = new Settings(localExtrasStack)
+    const ollamaModelSetting = new Settings(ollamaExtrasStack)
         .setName('Model ID')
-        .setDesc('The exact model name your server expects (e.g., "llama3", "mistral-7b", "local-model").')
+        .setDesc('The exact model name your server expects (e.g., "llama3", "mistral-7b", "ollama-model").')
         .addText(text => {
             text.inputEl.addClass('ert-input--lg');
-            localModelText = text;
+            ollamaModelText = text;
             text
                 .setPlaceholder('llama3')
                 .setValue(getOllamaModelId());
@@ -2185,31 +2185,31 @@ export function renderAiSection(params: {
                 params.scheduleKeyValidation('ollama');
             };
             plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });
-            params.setLocalConnectionInputs({ modelInput: text.inputEl });
+            params.setOllamaConnectionInputs({ modelInput: text.inputEl });
         });
-    localModelSetting.settingEl.addClass(ERT_CLASSES.ROW);
+    ollamaModelSetting.settingEl.addClass(ERT_CLASSES.ROW);
 
-    localModelSetting.addExtraButton(button => {
+    ollamaModelSetting.addExtraButton(button => {
         button
             .setIcon('refresh-ccw')
             .setTooltip('Detect installed models and auto-fill this field')
             .onClick(async () => {
                 const selectedProvider = getSelectedProvider();
                 if (selectedProvider !== 'ollama') {
-                    new Notice('Select "Local / OpenAI Compatible" above to detect models.');
+                    new Notice('Select "Ollama" above to detect models.');
                     return;
                 }
                 const baseUrl = getOllamaBaseUrl();
                 if (!baseUrl) {
-                    new Notice('Set the local LLM base URL first.');
+                    new Notice('Set the Ollama base URL first.');
                     return;
                 }
                 button.setDisabled(true);
                 button.setIcon('loader-2');
                 try {
-                    const models = await fetchLocalModels(baseUrl, await getCredential(plugin, 'ollama'));
+                    const models = await fetchOllamaModels(baseUrl, await getCredential(plugin, 'ollama'));
                     if (!Array.isArray(models) || models.length === 0) {
-                        new Notice('No models reported by the local server.');
+                        new Notice('No models reported by the Ollama server.');
                         return;
                     }
                     const existing = getOllamaModelId();
@@ -2218,8 +2218,8 @@ export function renderAiSection(params: {
                         : models[0];
                     setOllamaModelId(chosen.id);
                     await persistCanonical();
-                    if (localModelText) {
-                        localModelText.setValue(chosen.id);
+                    if (ollamaModelText) {
+                        ollamaModelText.setValue(chosen.id);
                     }
                     params.scheduleKeyValidation('ollama');
                     const otherModels = models.map(m => m.id).filter(id => id !== chosen.id);
@@ -2227,7 +2227,7 @@ export function renderAiSection(params: {
                     new Notice(`Using detected model "${chosen.id}".${suffix}`);
                 } catch (error) {
                     const message = error instanceof Error ? error.message : String(error);
-                    new Notice(`Unable to detect local models: ${message}`);
+                    new Notice(`Unable to detect Ollama models: ${message}`);
                 } finally {
                     button.setDisabled(false);
                     button.setIcon('refresh-ccw');
@@ -2235,13 +2235,14 @@ export function renderAiSection(params: {
             });
     });
 
-    const customInstructionsSetting = new Settings(localExtrasStack)
+    const ollamaLlmInstructions = plugin.settings.localLlmInstructions || '';
+    const ollamaLlmInstructionsSetting = new Settings(ollamaExtrasStack)
         .setName('Custom instructions')
-        .setDesc('Additional instructions added to the start of the prompt. Useful for fine-tuning local model behavior.')
+        .setDesc('Additional instructions added to the start of the prompt. Useful for fine-tuning Ollama model behavior.')
         .addTextArea(text => {
             text
                 .setPlaceholder('e.g. Maintain strict JSON formatting...')
-                .setValue(plugin.settings.localLlmInstructions || '')
+                .setValue(ollamaLlmInstructions)
                 .onChange(async (value) => {
                     plugin.settings.localLlmInstructions = value;
                     await plugin.saveSettings();
@@ -2249,35 +2250,36 @@ export function renderAiSection(params: {
             text.inputEl.rows = 6;
             text.inputEl.addClass('ert-textarea');
         });
-    customInstructionsSetting.settingEl.addClass('ert-setting-full-width-input');
+    ollamaLlmInstructionsSetting.settingEl.addClass('ert-setting-full-width-input');
 
-    const bypassSetting = new Settings(localExtrasStack)
+    const ollamaSendPulseToAiReport = plugin.settings.localSendPulseToAiReport ?? true;
+    const ollamaSendPulseToAiReportSetting = new Settings(ollamaExtrasStack)
         .setName('Bypass scene hover fields writes')
-        .setDesc('Default is enabled. Local LLM triplet pulse analysis skips writing to the scene note and saves results in the AI log report instead. Recommended for local models.')
+        .setDesc('Default is enabled. Ollama LLM triplet pulse analysis skips writing to the scene note and saves results in the AI log report instead. Recommended for Ollama models.')
         .addToggle(toggle => toggle
-            .setValue(plugin.settings.localSendPulseToAiReport ?? true)
+            .setValue(ollamaSendPulseToAiReport)
             .onChange(async (value) => {
                 plugin.settings.localSendPulseToAiReport = value;
                 await plugin.saveSettings();
             }));
-    bypassSetting.settingEl.addClass(ERT_CLASSES.ROW);
+    ollamaSendPulseToAiReportSetting.settingEl.addClass(ERT_CLASSES.ROW);
 
-    const localApiDetails = localExtrasStack.createEl('details', { cls: 'ert-ai-fold ert-ai-legacy-credentials' }) as HTMLDetailsElement;
+    const ollamaApiDetails = ollamaExtrasStack.createEl('details', { cls: 'ert-ai-fold ert-ai-legacy-credentials' }) as HTMLDetailsElement;
     if (!secretStorageAvailable) {
-        localApiDetails.setAttr('open', '');
+        ollamaApiDetails.setAttr('open', '');
     }
-    const localApiSummary = localApiDetails.createEl('summary', { text: 'Advanced: local saved key (optional)' });
-    attachAiCollapseButton(localApiDetails, localApiSummary);
-    const localApiContainer = localApiDetails.createDiv({ cls: ERT_CLASSES.STACK });
+    const ollamaApiSummary = ollamaApiDetails.createEl('summary', { text: 'Advanced: Ollama saved key (optional)' });
+    attachAiCollapseButton(ollamaApiDetails, ollamaApiSummary);
+    const ollamaApiContainer = ollamaApiDetails.createDiv({ cls: ERT_CLASSES.STACK });
 
-    const localSecretIdSetting = new Settings(localApiContainer)
-        .setName('Local saved key name')
-        .setDesc('Optional saved key name if your local gateway requires a key.');
-    const localKeyStatusSetting = new Settings(localApiContainer)
-        .setName('Local key status')
+    const ollamaSecretIdSetting = new Settings(ollamaApiContainer)
+        .setName('Ollama saved key name')
+        .setDesc('Optional saved key name if your Ollama gateway requires a key.');
+    const ollamaKeyStatusSetting = new Settings(ollamaApiContainer)
+        .setName('Ollama key status')
         .setDesc(buildLocalKeyStatusDesc('not_saved'));
     const applyLocalKeyStatus = (status: LocalKeyStatus) => {
-        localKeyStatusSetting.setDesc(buildLocalKeyStatusDesc(status));
+        ollamaKeyStatusSetting.setDesc(buildLocalKeyStatusDesc(status));
     };
     const refreshLocalKeyStatus = async (): Promise<void> => {
         const savedKeyName = getCredentialSecretId(ensureCanonicalAiSettings(), 'ollama');
@@ -2293,7 +2295,7 @@ export function renderAiSection(params: {
         applyLocalKeyStatus('not_saved');
     };
     void refreshLocalKeyStatus();
-    localSecretIdSetting.addText(text => {
+    ollamaSecretIdSetting.addText(text => {
         text.inputEl.addClass('ert-input--full');
         text.setPlaceholder('ollama-main').setValue(getCredentialSecretId(ensureCanonicalAiSettings(), 'ollama'));
         plugin.registerDomEvent(text.inputEl, 'blur', () => {
@@ -2305,16 +2307,16 @@ export function renderAiSection(params: {
             })();
         });
     });
-    localSecretIdSetting.settingEl.addClass('ert-setting-full-width-input');
+    ollamaSecretIdSetting.settingEl.addClass('ert-setting-full-width-input');
 
     if (secretStorageAvailable) {
-        const localSecretSetting = new Settings(localApiContainer)
-            .setName('Local API key')
+        const ollamaSecretSetting = new Settings(ollamaApiContainer)
+            .setName('Ollama API key')
             .setDesc(SAVED_KEY_ENTRY_COPY);
-        localSecretSetting.addText(text => {
+        ollamaSecretSetting.addText(text => {
             text.inputEl.addClass('ert-input--full');
             configureSensitiveInput(text.inputEl);
-            text.setPlaceholder('Optional local API key');
+            text.setPlaceholder('Optional Ollama API key');
             params.setKeyInputRef('ollama', text.inputEl);
 
             plugin.registerDomEvent(text.inputEl, 'keydown', (event: KeyboardEvent) => {
@@ -2339,12 +2341,12 @@ export function renderAiSection(params: {
                     const ai = ensureCanonicalAiSettings();
                     const secretId = getCredentialSecretId(ai, 'ollama');
                     if (!secretId) {
-                        new Notice('Set a local saved key name first.');
+                        new Notice('Set an Ollama saved key name first.');
                         return;
                     }
                     const stored = await setSecret(app, secretId, key);
                     if (!stored) {
-                        new Notice('Unable to save local API key privately.');
+                        new Notice('Unable to save Ollama API key privately.');
                         return;
                     }
                     await refreshLocalKeyStatus();
@@ -2352,35 +2354,36 @@ export function renderAiSection(params: {
                 })();
             });
         });
-        localSecretSetting.settingEl.addClass('ert-setting-full-width-input');
+        ollamaSecretSetting.settingEl.addClass('ert-setting-full-width-input');
     }
 
     if (secretStorageAvailable) {
-        localApiContainer.createDiv({
+        ollamaApiContainer.createDiv({
             cls: 'ert-field-note',
-            text: 'Local API keys are stored only in Obsidian secret storage.'
+            text: 'Ollama API keys are stored only in Obsidian secret storage.'
         });
     } else {
-        localApiContainer.createDiv({
+        ollamaApiContainer.createDiv({
             cls: 'ert-field-note',
-            text: 'Local API keys require Obsidian secret storage. Older plaintext key fields are no longer supported.'
+            text: 'Ollama API keys require Obsidian secret storage. Older plaintext key fields are no longer supported.'
         });
     }
 
-    // ── Local quick-config section (appears below preview card when Local is selected) ──
-    localQuickConfigSection = quickSetupPreviewSection.createDiv({
-        cls: [`${ERT_CLASSES.CARD}`, `${ERT_CLASSES.PANEL}`, `${ERT_CLASSES.STACK}`, 'ert-ai-local-quick-config', 'ert-settings-hidden']
+    // ── Ollama quick-config section (appears below preview card when Ollama is selected) ──
+    const ollamaQuickConfigSection = quickSetupPreviewSection.createDiv({
+        cls: [`${ERT_CLASSES.CARD}`, `${ERT_CLASSES.PANEL}`, `${ERT_CLASSES.STACK}`, 'ert-ai-ollama-quick-config', 'ert-settings-hidden']
     });
-    localQuickConfigSection.createDiv({ cls: 'ert-section-title', text: 'Local LLM Configuration' });
-    localQuickConfigSection.createDiv({
+    ollamaQuickConfigSectionEl = ollamaQuickConfigSection;
+    ollamaQuickConfigSection.createDiv({ cls: 'ert-section-title', text: 'Ollama Configuration' });
+    ollamaQuickConfigSection.createDiv({
         cls: 'ert-section-desc',
-        text: 'Configure your local model server. The preview card above will update as you fill in these fields.'
+        text: 'Configure your Ollama model server. The preview card above will update as you fill in these fields.'
     });
 
-    const localQuickBaseUrlSetting = new Settings(localQuickConfigSection)
+    const ollamaQuickBaseUrlSetting = new Settings(ollamaQuickConfigSection)
         .setName('Base URL')
-        .setDesc('The API endpoint for your local server (e.g., Ollama, LM Studio).');
-    localQuickBaseUrlSetting.addText(text => {
+        .setDesc('The API endpoint for your Ollama server (e.g., Ollama, LM Studio).');
+    ollamaQuickBaseUrlSetting.addText(text => {
         text.inputEl.addClass('ert-input--full');
         text
             .setPlaceholder('http://localhost:11434/v1')
@@ -2404,15 +2407,15 @@ export function renderAiSection(params: {
             })();
         });
     });
-    localQuickBaseUrlSetting.settingEl.addClass('ert-setting-full-width-input');
+    ollamaQuickBaseUrlSetting.settingEl.addClass('ert-setting-full-width-input');
 
-    let localQuickModelText: TextComponent | null = null;
-    const localQuickModelSetting = new Settings(localQuickConfigSection)
+    let ollamaQuickModelText: TextComponent | null = null;
+    const ollamaQuickModelSetting = new Settings(ollamaQuickConfigSection)
         .setName('Model ID')
         .setDesc('The exact model name your server expects (e.g., "llama3", "mistral-7b").');
-    localQuickModelSetting.addText(text => {
+    ollamaQuickModelSetting.addText(text => {
         text.inputEl.addClass('ert-input--lg');
-        localQuickModelText = text;
+        ollamaQuickModelText = text;
         text
             .setPlaceholder('llama3')
             .setValue(getOllamaModelId());
@@ -2431,9 +2434,9 @@ export function renderAiSection(params: {
             })();
         });
     });
-    localQuickModelSetting.settingEl.addClass(ERT_CLASSES.ROW);
+    ollamaQuickModelSetting.settingEl.addClass(ERT_CLASSES.ROW);
 
-    localQuickModelSetting.addExtraButton(button => {
+    ollamaQuickModelSetting.addExtraButton(button => {
         button
             .setIcon('refresh-ccw')
             .setTooltip('Detect installed models and auto-fill')
@@ -2446,9 +2449,9 @@ export function renderAiSection(params: {
                 button.setDisabled(true);
                 button.setIcon('loader-2');
                 try {
-                    const models = await fetchLocalModels(baseUrl, await getCredential(plugin, 'ollama'));
+                    const models = await fetchOllamaModels(baseUrl, await getCredential(plugin, 'ollama'));
                     if (!Array.isArray(models) || models.length === 0) {
-                        new Notice('No models reported by the local server.');
+                        new Notice('No models reported by the Ollama server.');
                         return;
                     }
                     const existing = getOllamaModelId();
@@ -2457,7 +2460,7 @@ export function renderAiSection(params: {
                         : models[0];
                     setOllamaModelId(chosen.id);
                     await persistCanonical();
-                    if (localQuickModelText) localQuickModelText.setValue(chosen.id);
+                    if (ollamaQuickModelText) ollamaQuickModelText.setValue(chosen.id);
                     params.scheduleKeyValidation('ollama');
                     const otherModels = models.map(m => m.id).filter(id => id !== chosen.id);
                     const suffix = otherModels.length ? ` Also found: ${otherModels.join(', ')}.` : '';
@@ -2465,7 +2468,7 @@ export function renderAiSection(params: {
                     void refreshRoutingUi();
                 } catch (error) {
                     const message = error instanceof Error ? error.message : String(error);
-                    new Notice(`Unable to detect local models: ${message}`);
+                    new Notice(`Unable to detect Ollama models: ${message}`);
                 } finally {
                     button.setDisabled(false);
                     button.setIcon('refresh-ccw');
@@ -2473,13 +2476,14 @@ export function renderAiSection(params: {
             });
     });
 
-    const localQuickInstructionsSetting = new Settings(localQuickConfigSection)
+    const ollamaQuickLlmInstructions = plugin.settings.localLlmInstructions || '';
+    const ollamaQuickInstructionsSetting = new Settings(ollamaQuickConfigSection)
         .setName('Custom instructions')
-        .setDesc('Additional instructions prepended to the prompt for local model behavior tuning.');
-    localQuickInstructionsSetting.addTextArea(text => {
+        .setDesc('Additional instructions prepended to the prompt for Ollama model behavior tuning.');
+    ollamaQuickInstructionsSetting.addTextArea(text => {
         text
             .setPlaceholder('e.g. Maintain strict JSON formatting...')
-            .setValue(plugin.settings.localLlmInstructions || '')
+            .setValue(ollamaQuickLlmInstructions)
             .onChange(async (value) => {
                 plugin.settings.localLlmInstructions = value;
                 await plugin.saveSettings();
@@ -2487,19 +2491,19 @@ export function renderAiSection(params: {
         text.inputEl.rows = 4;
         text.inputEl.addClass('ert-textarea');
     });
-    localQuickInstructionsSetting.settingEl.addClass('ert-setting-full-width-input');
+    ollamaQuickInstructionsSetting.settingEl.addClass('ert-setting-full-width-input');
 
-    const localQuickApiKeyDetails = localQuickConfigSection.createEl('details', {
-        cls: 'ert-ai-fold ert-ai-local-quick-key'
+    const ollamaQuickApiKeyDetails = ollamaQuickConfigSection.createEl('details', {
+        cls: 'ert-ai-fold ert-ai-ollama-quick-key'
     }) as HTMLDetailsElement;
-    const localQuickApiKeySummary = localQuickApiKeyDetails.createEl('summary', { text: 'API Key (usually not needed)' });
-    attachAiCollapseButton(localQuickApiKeyDetails, localQuickApiKeySummary);
-    const localQuickApiKeyBody = localQuickApiKeyDetails.createDiv({ cls: ERT_CLASSES.STACK });
+    const ollamaQuickApiKeySummary = ollamaQuickApiKeyDetails.createEl('summary', { text: 'API Key (usually not needed)' });
+    attachAiCollapseButton(ollamaQuickApiKeyDetails, ollamaQuickApiKeySummary);
+    const ollamaQuickApiKeyBody = ollamaQuickApiKeyDetails.createDiv({ cls: ERT_CLASSES.STACK });
 
-    const localQuickSecretIdSetting = new Settings(localQuickApiKeyBody)
-        .setName('Local saved key name')
-        .setDesc('Optional saved key name if your local gateway requires a key.');
-    localQuickSecretIdSetting.addText(text => {
+    const ollamaQuickSecretIdSetting = new Settings(ollamaQuickApiKeyBody)
+        .setName('Ollama saved key name')
+        .setDesc('Optional saved key name if your Ollama gateway requires a key.');
+    ollamaQuickSecretIdSetting.addText(text => {
         text.inputEl.addClass('ert-input--full');
         text.setPlaceholder('ollama-main').setValue(getCredentialSecretId(ensureCanonicalAiSettings(), 'ollama'));
         plugin.registerDomEvent(text.inputEl, 'blur', () => {
@@ -2510,16 +2514,16 @@ export function renderAiSection(params: {
             })();
         });
     });
-    localQuickSecretIdSetting.settingEl.addClass('ert-setting-full-width-input');
+    ollamaQuickSecretIdSetting.settingEl.addClass('ert-setting-full-width-input');
 
     if (secretStorageAvailable) {
-        const localQuickSecretSetting = new Settings(localQuickApiKeyBody)
-            .setName('Local API key')
+        const ollamaQuickSecretSetting = new Settings(ollamaQuickApiKeyBody)
+            .setName('Ollama API key')
             .setDesc(SAVED_KEY_ENTRY_COPY);
-        localQuickSecretSetting.addText(text => {
+        ollamaQuickSecretSetting.addText(text => {
             text.inputEl.addClass('ert-input--full');
             configureSensitiveInput(text.inputEl);
-            text.setPlaceholder('Optional local API key');
+            text.setPlaceholder('Optional Ollama API key');
             plugin.registerDomEvent(text.inputEl, 'keydown', (event: KeyboardEvent) => {
                 if (event.key === 'Enter') { event.preventDefault(); text.inputEl.blur(); }
             });
@@ -2529,14 +2533,14 @@ export function renderAiSection(params: {
                     if (!key) return;
                     const ai = ensureCanonicalAiSettings();
                     const secretId = getCredentialSecretId(ai, 'ollama');
-                    if (!secretId) { new Notice('Set a local saved key name first.'); return; }
+                    if (!secretId) { new Notice('Set an Ollama saved key name first.'); return; }
                     const stored = await setSecret(app, secretId, key);
-                    if (!stored) { new Notice('Unable to save local API key privately.'); return; }
+                    if (!stored) { new Notice('Unable to save Ollama API key privately.'); return; }
                     void params.scheduleKeyValidation('ollama');
                 })();
             });
         });
-        localQuickSecretSetting.settingEl.addClass('ert-setting-full-width-input');
+        ollamaQuickSecretSetting.settingEl.addClass('ert-setting-full-width-input');
     }
 
     // ── AI Configuration settings (moved from Core) ───────────────────────
@@ -2685,7 +2689,7 @@ export function renderAiSection(params: {
 
     // Final section order in AI tab:
     // 1) AI Strategy
-    // 2) Preview (Active Model) + Local Quick Config (when local selected)
+    // 2) Preview (Active Model) + Ollama Quick Config (when Ollama selected)
     // 3) Role context
     // 4) AI transparency
     // 5) Execution preference

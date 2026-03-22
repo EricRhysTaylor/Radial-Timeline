@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { isFeatureGateEnabled } from '../src/settings/featureGate';
+import { hasProFeatureAccess } from '../src/settings/featureGate';
 import { getProEntitlement, isProActive } from '../src/settings/proEntitlement';
 
 describe('Pro contract', () => {
@@ -23,8 +23,7 @@ describe('Pro contract', () => {
             hasProLicenseKey: true
         });
         expect(isProActive(activePlugin)).toBe(true);
-        expect(isFeatureGateEnabled(activePlugin, 'exports')).toBe(true);
-        expect(isFeatureGateEnabled(activePlugin, 'social')).toBe(true);
+        expect(hasProFeatureAccess(activePlugin)).toBe(true);
 
         expect(getProEntitlement(inactivePlugin)).toEqual({
             state: 'inactive',
@@ -32,7 +31,7 @@ describe('Pro contract', () => {
             hasProLicenseKey: false
         });
         expect(isProActive(inactivePlugin)).toBe(false);
-        expect(isFeatureGateEnabled(inactivePlugin, 'runtime')).toBe(false);
+        expect(hasProFeatureAccess(inactivePlugin)).toBe(false);
     });
 
     it('removes dev toggles and early-access baggage', () => {

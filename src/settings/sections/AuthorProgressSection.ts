@@ -2,7 +2,7 @@ import { App, Setting, Notice, setIcon, normalizePath, DropdownComponent, TextCo
 import type RadialTimelinePlugin from '../../main';
 import { AuthorProgressService } from '../../services/AuthorProgressService';
 import { DEFAULT_SETTINGS } from '../defaults';
-import type { AuthorProgressSettings, TeaserRevealLevel } from '../../types/settings';
+import type { AuthorProgressDefaults, AuthorProgressSettings, TeaserRevealLevel } from '../../types/settings';
 import type { TimelineItem } from '../../types';
 import { getAllScenes } from '../../utils/manuscript';
 import { createAprSVG } from '../../renderer/apr/AprRenderer';
@@ -11,7 +11,7 @@ import { getPresetPalettes, generatePaletteFromColor } from '../../utils/aprPale
 import { DEFAULT_BOOK_TITLE } from '../../utils/books';
 import { AprPaletteModal } from '../../modals/AprPaletteModal';
 import { renderCampaignManagerSection } from './CampaignManagerSection';
-import { isFeatureGateEnabled } from '../featureGate';
+import { hasProFeatureAccess } from '../featureGate';
 import { colorSwatch, type ColorSwatchHandle } from '../../ui/ui';
 import { ERT_CLASSES } from '../../ui/classes';
 import { STAGE_ORDER } from '../../utils/constants';
@@ -88,11 +88,12 @@ function inferExportFormatFromPath(path: string | undefined, fallback: AprExport
 }
 
 function resolveDefaultExportFormat(settings?: AuthorProgressSettings): AprExportFormat {
-    if (!settings) return 'png';
-    if (typeof settings.exportFormat === 'string' && settings.exportFormat.trim()) {
-        return normalizeAprExportFormat(settings.exportFormat);
+    const defaults = settings?.defaults;
+    if (!defaults) return 'png';
+    if (typeof defaults.exportFormat === 'string' && defaults.exportFormat.trim()) {
+        return normalizeAprExportFormat(defaults.exportFormat);
     }
-    return inferExportFormatFromPath(settings.dynamicEmbedPath, 'png');
+    return inferExportFormatFromPath(defaults.exportPath, 'png');
 }
 
 export function renderAuthorProgressSection({ app, plugin, containerEl }: AuthorProgressSectionProps): void {
@@ -104,7 +105,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // Check if APR needs refresh
     const aprService = new AuthorProgressService(plugin, app);
     const needsRefresh = aprService.isStale();
-    const isProActive = isFeatureGateEnabled(plugin, 'social');
+    const isProActive = hasProFeatureAccess(plugin);
 
     // ─────────────────────────────────────────────────────────────────────────
     // APR HERO SECTION
@@ -119,7 +120,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const badge = badgeRow.createSpan({ cls: badgeClasses });
     // Left Icon and Text
     setIcon(badge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON }), needsRefresh ? 'alert-triangle' : 'radio');
-    badge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: needsRefresh ? 'Reminder to Refresh' : 'Share · Author Progress Report' });
+    badge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: needsRefresh ? 'Reminder to Refresh' : 'Share · Social' });
 
     // Right Icon (Wiki Link) - Manually constructed for ERT styling
     const wikiLink = badge.createEl('a', {
@@ -185,7 +186,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         { size: 'large', dimension: '450' },
     ] as const;
 
-    const currentSize = plugin.settings.authorProgress?.aprSize || 'medium';
+    const currentSize = plugin.settings.authorProgress?.defaults.aprSize || 'medium';
     const setSizeLabel = (el: HTMLElement, dimension: string, suffix?: string) => {
         el.textContent = '';
         el.append(document.createTextNode(dimension));
@@ -204,18 +205,18 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
         btn.onclick = async () => {
             if (!plugin.settings.authorProgress) return;
-            const settings = plugin.settings.authorProgress;
-            const defaultFormat = resolveDefaultExportFormat(settings);
+            const settings = plugin.settings.authorProgress.defaults;
+            const defaultFormat = resolveDefaultExportFormat(plugin.settings.authorProgress);
             const oldDefaultPath = buildDefaultEmbedPath({
-                bookTitle: settings.bookTitle,
+                bookTitle: settings.bookTitleOverride,
                 updateFrequency: settings.updateFrequency,
                 aprSize: settings.aprSize,
                 exportFormat: defaultFormat
             });
             settings.aprSize = size;
-            if (settings.autoUpdateEmbedPaths && settings.dynamicEmbedPath === oldDefaultPath) {
-                settings.dynamicEmbedPath = buildDefaultEmbedPath({
-                    bookTitle: settings.bookTitle,
+            if (settings.autoUpdateExportPath && settings.exportPath === oldDefaultPath) {
+                settings.exportPath = buildDefaultEmbedPath({
+                    bookTitle: settings.bookTitleOverride,
                     updateFrequency: settings.updateFrequency,
                     aprSize: size,
                     exportFormat: defaultFormat
@@ -281,13 +282,14 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // Load and render preview asynchronously at actual size
     renderHeroPreview(app, plugin, previewContainer, currentSize, teaserPreviewMode);
     refreshPreview = () => {
-        const size = plugin.settings.authorProgress?.aprSize || 'medium';
+        const size = plugin.settings.authorProgress?.defaults.aprSize || 'medium';
         updateTeaserPreviewVisibility(size);
         void renderHeroPreview(app, plugin, previewContainer, size, teaserPreviewMode);
     };
 
     // Meta tags
-    const settings = plugin.settings.authorProgress;
+    const authorProgress = plugin.settings.authorProgress;
+    const settings = authorProgress?.defaults;
     const lastDate = settings?.lastPublishedDate
         ? new Date(settings.lastPublishedDate).toLocaleDateString()
         : 'Never';
@@ -308,7 +310,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const stylingHeader = stylingBlock.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
     const stylingHeading = new Setting(stylingHeader)
         .setName('Configuration')
-        .setDesc('Configure your project settings and APR destination details, including project path and link URL.')
+        .setDesc('Configure your project settings and Social destination details, including project path and link URL.')
         .setHeading();
     addHeadingIcon(stylingHeading, 'settings');
     addWikiLink(stylingHeading, 'Settings#social-media-styling');
@@ -346,7 +348,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         };
 
         text.setPlaceholder('Projects/My Novel')
-            .setValue(settings?.socialProjectPath || '')
+            .setValue(settings?.projectPathOverride || '')
             .onChange(() => {
                 clearInputState();
             });
@@ -361,7 +363,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             if (!val) {
                 // Empty is allowed - means use Source path
                 if (plugin.settings.authorProgress) {
-                    plugin.settings.authorProgress.socialProjectPath = '';
+                    plugin.settings.authorProgress.defaults.projectPathOverride = '';
                     await plugin.saveSettings();
                     refreshPreview();
                     flashSuccess();
@@ -374,7 +376,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
             if (!isValid) {
                 // Invalid path - revert to last saved value
-                const savedValue = plugin.settings.authorProgress?.socialProjectPath || '';
+                const savedValue = plugin.settings.authorProgress?.defaults.projectPathOverride || '';
                 text.setValue(savedValue);
                 flashError();
                 new Notice(`Invalid project path: "${val}" does not exist or is not a folder. Reverting to saved value.`);
@@ -383,7 +385,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
             // Save if valid
             if (plugin.settings.authorProgress) {
-                plugin.settings.authorProgress.socialProjectPath = val;
+                plugin.settings.authorProgress.defaults.projectPathOverride = val;
                 await plugin.saveSettings();
                 refreshPreview();
                 flashSuccess();
@@ -452,7 +454,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
             if (!val) {
                 if (plugin.settings.authorProgress) {
-                    plugin.settings.authorProgress.authorUrl = '';
+                    plugin.settings.authorProgress.defaults.authorUrl = '';
                     await plugin.saveSettings();
                     refreshPreview();
                     flashSuccess();
@@ -466,7 +468,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             }
 
             if (plugin.settings.authorProgress) {
-                plugin.settings.authorProgress.authorUrl = val;
+                plugin.settings.authorProgress.defaults.authorUrl = val;
                 await plugin.saveSettings();
                 refreshPreview();
                 flashSuccess();
@@ -483,14 +485,14 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     });
 
     new Setting(stylingBody)
-        .setName('Auto-update embed paths')
-        .setDesc('When size or schedule changes, update default and campaign embed paths if they still match the default pattern.')
+        .setName('Auto-update export paths')
+        .setDesc('When size or schedule changes, update default and campaign export paths if they still match the default pattern.')
         .addToggle(toggle => {
-            const current = settings?.autoUpdateEmbedPaths ?? true;
+            const current = settings?.autoUpdateExportPath ?? true;
             toggle.setValue(current);
             toggle.onChange(async (val) => {
                 if (!plugin.settings.authorProgress) return;
-                plugin.settings.authorProgress.autoUpdateEmbedPaths = val;
+                plugin.settings.authorProgress.defaults.autoUpdateExportPath = val;
                 await plugin.saveSettings();
             });
         });
@@ -505,7 +507,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const themeHeader = themeBlock.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
     const themeHeading = new Setting(themeHeader)
         .setName('Styling')
-        .setDesc('Adjust colors, fonts and borders for your APR. Configure the background based on the hosted location. Use the theme palette (keys off the Title color) to apply curated colors across Title, Author, % Symbol, and % Number. Manual edits override per row.')
+        .setDesc('Adjust colors, fonts and borders for your Social report. Configure the background based on the hosted location. Use the theme palette (keys off the Title color) to apply curated colors across Title, Author, % Symbol, and % Number. Manual edits override per row.')
         .setHeading();
     addHeadingIcon(themeHeading, 'swatch-book');
     addWikiLink(themeHeading, 'Settings#social-media-theme');
@@ -600,16 +602,16 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         return Number.isFinite(parsed) ? parsed : undefined;
     };
 
-    const setAprSetting = async <K extends keyof AuthorProgressSettings>(key: K, value: AuthorProgressSettings[K] | undefined): Promise<void> => {
+    const setAprSetting = async <K extends keyof AuthorProgressDefaults>(key: K, value: AuthorProgressDefaults[K] | undefined): Promise<void> => {
         if (!plugin.settings.authorProgress) return;
-        plugin.settings.authorProgress[key] = value as AuthorProgressSettings[K];
+        plugin.settings.authorProgress.defaults[key] = value as AuthorProgressDefaults[K];
         await plugin.saveSettings();
         refreshPreview();
     };
 
-    const setAprSettings = async (updates: Partial<AuthorProgressSettings>): Promise<void> => {
+    const setAprSettings = async (updates: Partial<AuthorProgressDefaults>): Promise<void> => {
         if (!plugin.settings.authorProgress) return;
-        Object.assign(plugin.settings.authorProgress, updates);
+        Object.assign(plugin.settings.authorProgress.defaults, updates);
         await plugin.saveSettings();
         refreshPreview();
     };
@@ -764,10 +766,10 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     };
 
     type TypographyControlOptions = {
-        familyKey: keyof AuthorProgressSettings;
-        weightKey: keyof AuthorProgressSettings;
-        italicKey: keyof AuthorProgressSettings;
-        sizeKeys?: (keyof AuthorProgressSettings)[];
+        familyKey: keyof AuthorProgressDefaults;
+        weightKey: keyof AuthorProgressDefaults;
+        italicKey: keyof AuthorProgressDefaults;
+        sizeKeys?: (keyof AuthorProgressDefaults)[];
         sizePlaceholders?: string[];
         showSizeControls?: boolean;
         weightDefault: number;
@@ -786,7 +788,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         };
         primaryAction?: (rowEl: HTMLElement) => void;
         color: {
-            key: keyof AuthorProgressSettings;
+            key: keyof AuthorProgressDefaults;
             value: string;
             fallback: string;
             onAfterChange?: (value: string) => void;
@@ -811,7 +813,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         const currentFont = (settings?.[opts.familyKey] as string | undefined) ?? opts.fontDefault ?? 'Inter';
         const { setValue: setFontValue } = applyFontDropdown(fontDrop, currentFont, async (val) => {
             if (isSyncing()) return;
-            await setAprSetting(opts.familyKey, val as AuthorProgressSettings[typeof opts.familyKey]);
+            await setAprSetting(opts.familyKey, val as AuthorProgressDefaults[typeof opts.familyKey]);
             onUpdateAutoState();
         });
 
@@ -828,7 +830,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             await setAprSettings({
                 [opts.weightKey]: weight,
                 [opts.italicKey]: italic
-            } as Partial<AuthorProgressSettings>);
+            } as Partial<AuthorProgressDefaults>);
             onUpdateAutoState();
         });
 
@@ -850,7 +852,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                     if (isSyncing()) return;
                     const next = val.trim() ? numberFromText(val) : undefined;
                     if (val.trim() && next === undefined) return;
-                    await setAprSetting(key, next as AuthorProgressSettings[typeof key]);
+                    await setAprSetting(key, next as AuthorProgressDefaults[typeof key]);
                     onUpdateAutoState();
                 });
                 sizeInputs.push(input);
@@ -926,7 +928,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             onChange: async (val) => {
                 if (isSyncing) return;
                 const next = val || opts.color.fallback;
-                await setAprSetting(opts.color.key, next as AuthorProgressSettings[typeof opts.color.key]);
+                await setAprSetting(opts.color.key, next as AuthorProgressDefaults[typeof opts.color.key]);
                 colorText?.setValue(next);
                 opts.color.onAfterChange?.(next);
                 updateAutoState();
@@ -941,7 +943,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         colorText.onChange(async (val) => {
             if (isSyncing) return;
             if (!val || !/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(val)) return;
-            await setAprSetting(opts.color.key, val as AuthorProgressSettings[typeof opts.color.key]);
+            await setAprSetting(opts.color.key, val as AuthorProgressDefaults[typeof opts.color.key]);
             colorPicker.setValue(val);
             opts.color.onAfterChange?.(val);
             updateAutoState();
@@ -959,7 +961,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         // SAFE: Settings sections are standalone functions without Component lifecycle; Obsidian manages settings tab cleanup
         autoButton.addEventListener('click', async () => {
             if (!plugin.settings.authorProgress) return;
-            const updates: Partial<AuthorProgressSettings> = {
+            const updates: Partial<AuthorProgressDefaults> = {
                 [opts.color.key]: opts.color.fallback
             };
             if (opts.typography) {
@@ -967,7 +969,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                     [opts.typography.familyKey]: defaultFont,
                     [opts.typography.weightKey]: defaultWeight,
                     [opts.typography.italicKey]: defaultItalic
-                } as Partial<AuthorProgressSettings>);
+                } as Partial<AuthorProgressDefaults>);
                 opts.typography.sizeKeys?.forEach((key) => {
                     updates[key] = undefined;
                 });
@@ -1003,9 +1005,9 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         dataTypo: 'title',
         text: {
             placeholder: DEFAULT_BOOK_TITLE,
-            value: settings?.bookTitle || '',
+            value: settings?.bookTitleOverride || '',
             onChange: async (val) => {
-                await setAprSetting('bookTitle', val as AuthorProgressSettings['bookTitle']);
+                await setAprSetting('bookTitleOverride', val as AuthorProgressDefaults['bookTitleOverride']);
             }
         },
         color: {
@@ -1044,7 +1046,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             placeholder: 'Author Name',
             value: settings?.authorName || '',
             onChange: async (val) => {
-                await setAprSetting('authorName', val as AuthorProgressSettings['authorName']);
+                await setAprSetting('authorName', val as AuthorProgressDefaults['authorName']);
             }
         },
         color: {
@@ -1173,7 +1175,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         toggle.setValue(currentTransparent);
         toggle.onChange(async (val) => {
             if (!plugin.settings.authorProgress) return;
-            plugin.settings.authorProgress.aprCenterTransparent = val;
+            plugin.settings.authorProgress.defaults.aprCenterTransparent = val;
             await plugin.saveSettings();
             updateEmphasis(val);
             refreshPreview();
@@ -1187,7 +1189,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         onChange: async (val) => {
             if (!plugin.settings.authorProgress) return;
             const next = val || '#0d0d0f';
-            plugin.settings.authorProgress.aprBackgroundColor = next;
+            plugin.settings.authorProgress.defaults.aprBackgroundColor = next;
             await plugin.saveSettings();
             bgTextInput?.setValue(next);
             refreshPreview();
@@ -1202,7 +1204,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         text.onChange(async (val) => {
             if (!val) return;
             if (!plugin.settings.authorProgress) return;
-            plugin.settings.authorProgress.aprBackgroundColor = val;
+            plugin.settings.authorProgress.defaults.aprBackgroundColor = val;
             await plugin.saveSettings();
             bgColorPicker?.setValue(val);
             refreshPreview();
@@ -1230,7 +1232,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         onChange: async (val) => {
             if (/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(val)) {
                 if (!plugin.settings.authorProgress) return;
-                plugin.settings.authorProgress.aprSpokeColor = val || fallbackColor;
+                plugin.settings.authorProgress.defaults.aprSpokeColor = val || fallbackColor;
                 await plugin.saveSettings();
                 refreshPreview();
                 spokeColorInputRef?.setValue(val);
@@ -1249,7 +1251,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         if (!val) return;
         if (/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(val)) {
             if (!plugin.settings.authorProgress) return;
-            plugin.settings.authorProgress.aprSpokeColor = val;
+            plugin.settings.authorProgress.defaults.aprSpokeColor = val;
             await plugin.saveSettings();
             refreshPreview();
             spokeColorPickerRef?.setValue(val);
@@ -1266,15 +1268,15 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     spokeModeDropdown.onChange(async (val) => {
         if (!plugin.settings.authorProgress) return;
         const mode = (val as 'dark' | 'light' | 'none' | 'custom') || 'dark';
-        plugin.settings.authorProgress.aprTheme = mode === 'custom' ? 'dark' : (mode as 'dark' | 'light' | 'none');
-        plugin.settings.authorProgress.aprSpokeColorMode = mode;
+        plugin.settings.authorProgress.defaults.aprTheme = mode === 'custom' ? 'dark' : (mode as 'dark' | 'light' | 'none');
+        plugin.settings.authorProgress.defaults.aprSpokeColorMode = mode;
         await plugin.saveSettings();
 
         const isCustom = mode === 'custom';
         spokeColorPickerRef?.setDisabled(!isCustom);
         spokeColorInputRef?.setDisabled(!isCustom);
         if (isCustom && spokeColorInputRef) {
-            const current = plugin.settings.authorProgress.aprSpokeColor || fallbackColor;
+            const current = plugin.settings.authorProgress.defaults.aprSpokeColor || fallbackColor;
             spokeColorInputRef.setValue(current);
             spokeColorPickerRef?.setValue(current);
         } else if (spokeColorInputRef) {
@@ -1308,7 +1310,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
         const frequencySetting = new Setting(automationCard)
             .setName('Update frequency')
-            .setDesc('How often to auto-update the live embed file. "Manual" requires clicking the update button in the Author Progress Report modal.')
+            .setDesc('How often to auto-update the live embed file. "Manual" requires clicking the update button in the Social modal.')
             .addDropdown(dropdown => dropdown
                 .addOption('manual', 'Manual Only')
                 .addOption('daily', 'Daily')
@@ -1317,18 +1319,18 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                 .setValue(settings?.updateFrequency || 'manual')
                 .onChange(async (val) => {
                     if (plugin.settings.authorProgress) {
-                        const current = plugin.settings.authorProgress;
-                        const defaultFormat = resolveDefaultExportFormat(current);
+                        const current = plugin.settings.authorProgress.defaults;
+                        const defaultFormat = resolveDefaultExportFormat(plugin.settings.authorProgress);
                         const oldDefaultPath = buildDefaultEmbedPath({
-                            bookTitle: current.bookTitle,
+                            bookTitle: current.bookTitleOverride,
                             updateFrequency: current.updateFrequency,
                             aprSize: current.aprSize,
                             exportFormat: defaultFormat
                         });
                         current.updateFrequency = val as any;
-                        if (current.autoUpdateEmbedPaths && current.dynamicEmbedPath === oldDefaultPath) {
-                            current.dynamicEmbedPath = buildDefaultEmbedPath({
-                                bookTitle: current.bookTitle,
+                        if (current.autoUpdateExportPath && current.exportPath === oldDefaultPath) {
+                            current.exportPath = buildDefaultEmbedPath({
+                                bookTitle: current.bookTitleOverride,
                                 updateFrequency: current.updateFrequency,
                                 aprSize: current.aprSize,
                                 exportFormat: defaultFormat
@@ -1356,7 +1358,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                         .setValue(currentDays)
                         .onChange(async (val) => {
                             if (plugin.settings.authorProgress) {
-                                plugin.settings.authorProgress.stalenessThresholdDays = val;
+                                plugin.settings.authorProgress.defaults.stalenessThresholdDays = val;
                                 await plugin.saveSettings();
                                 // Update description with new value
                                 const descEl = stalenessSetting.descEl;
@@ -1386,16 +1388,16 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             }
         }
 
-        const embedPathSetting = new Setting(automationCard)
-            .setName('Embed file path')
-            .setDesc('Location for the live export file. Format follows the APR modal setting.');
+        const exportPathSetting = new Setting(automationCard)
+            .setName('Export path')
+            .setDesc('Location for the live export file. Format follows the Social modal setting.');
 
-        embedPathSetting.settingEl.addClass('ert-setting-full-width-input');
+        exportPathSetting.settingEl.addClass('ert-setting-full-width-input');
 
-        embedPathSetting.addText(text => {
-            const defaultFormat = resolveDefaultExportFormat(settings);
+        exportPathSetting.addText(text => {
+            const defaultFormat = resolveDefaultExportFormat(plugin.settings.authorProgress);
             const defaultPath = buildDefaultEmbedPath({
-                bookTitle: settings?.bookTitle,
+                bookTitle: settings?.bookTitleOverride,
                 updateFrequency: settings?.updateFrequency,
                 aprSize: settings?.aprSize,
                 exportFormat: defaultFormat
@@ -1419,7 +1421,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                 }, timeout);
             };
             text.setPlaceholder(defaultPath)
-                .setValue(settings?.dynamicEmbedPath || defaultPath);
+                .setValue(settings?.exportPath || defaultPath);
             text.inputEl.addClass('ert-input--full');
 
             // Validate on blur
@@ -1440,7 +1442,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
                 // Valid - save
                 if (plugin.settings.authorProgress) {
-                    plugin.settings.authorProgress.dynamicEmbedPath = val;
+                    plugin.settings.authorProgress.defaults.exportPath = val;
                     await plugin.saveSettings();
                     flashSuccess();
                 }
@@ -1456,7 +1458,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                 }
             });
 
-            embedPathSetting.addExtraButton(button => {
+            exportPathSetting.addExtraButton(button => {
                 button.setIcon('rotate-ccw');
                 button.setTooltip(`Reset to ${defaultPath}`);
                 button.onClick(async () => {
@@ -1464,7 +1466,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                     if (!plugin.settings.authorProgress) {
                         plugin.settings.authorProgress = { ...DEFAULT_SETTINGS.authorProgress! };
                     }
-                    plugin.settings.authorProgress.dynamicEmbedPath = normalizePath(defaultPath);
+                    plugin.settings.authorProgress.defaults.exportPath = normalizePath(defaultPath);
                     await plugin.saveSettings();
                     flashSuccess();
                 });
@@ -1472,13 +1474,13 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         });
 
         new Setting(automationCard)
-            .setName('Auto-update embed paths')
-            .setDesc('When size or schedule changes, update the default embed path if it still matches the default pattern.')
+            .setName('Auto-update export paths')
+            .setDesc('When size or schedule changes, update the default export path if it still matches the default pattern.')
             .addToggle(toggle => {
-                toggle.setValue(settings?.autoUpdateEmbedPaths ?? true);
+                toggle.setValue(settings?.autoUpdateExportPath ?? true);
                 toggle.onChange(async (val) => {
                     if (!plugin.settings.authorProgress) return;
-                    plugin.settings.authorProgress.autoUpdateEmbedPaths = val;
+                    plugin.settings.authorProgress.defaults.autoUpdateExportPath = val;
                     await plugin.saveSettings();
                 });
             });
@@ -1643,7 +1645,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             modeDropdown.addOption('zero', 'Zero Mode (End scene number created by Author)');
             modeDropdown.addOption('date', 'Date Target Mode');
             modeDropdown.setDisabled(false);
-            const storedMode = (plugin.settings.authorProgress?.aprProgressMode ?? 'zero') as AprProgressMode;
+            const storedMode = (plugin.settings.authorProgress?.defaults.aprProgressMode ?? 'zero') as AprProgressMode;
             const nextMode = modeOverride ?? (storedMode === 'date' ? 'date' : 'zero');
             modeDropdown.setValue(nextMode);
             setGuidanceLines([
@@ -1673,7 +1675,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         if (isUpdatingMode || !isZeroStage) return;
         if (!plugin.settings.authorProgress) return;
         const nextMode = (val === 'date' ? 'date' : 'zero') as AprProgressMode;
-        plugin.settings.authorProgress.aprProgressMode = nextMode;
+        plugin.settings.authorProgress.defaults.aprProgressMode = nextMode;
         await plugin.saveSettings();
         updateModeUI(nextMode);
     });
@@ -1687,8 +1689,8 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         clearDateInputState();
         const raw = dateRangeInput.getValue().trim();
         if (!raw) {
-            plugin.settings.authorProgress.aprProgressDateStart = undefined;
-            plugin.settings.authorProgress.aprProgressDateTarget = undefined;
+            plugin.settings.authorProgress.defaults.aprProgressDateStart = undefined;
+            plugin.settings.authorProgress.defaults.aprProgressDateTarget = undefined;
             await plugin.saveSettings();
             return;
         }
@@ -1697,8 +1699,8 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             flashDateInput(dateInputErrorClass, 2000);
             return;
         }
-        plugin.settings.authorProgress.aprProgressDateStart = parsed.start;
-        plugin.settings.authorProgress.aprProgressDateTarget = parsed.target;
+        plugin.settings.authorProgress.defaults.aprProgressDateStart = parsed.start;
+        plugin.settings.authorProgress.defaults.aprProgressDateTarget = parsed.target;
         await plugin.saveSettings();
         dateRangeInput.setValue(formatDateRange(parsed.start, parsed.target));
         flashDateInput(dateInputSuccessClass, 1000);
@@ -1713,8 +1715,8 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     });
 
     const seedDateRange = () => {
-        const start = plugin.settings.authorProgress?.aprProgressDateStart;
-        const target = plugin.settings.authorProgress?.aprProgressDateTarget;
+        const start = plugin.settings.authorProgress?.defaults.aprProgressDateStart;
+        const target = plugin.settings.authorProgress?.defaults.aprProgressDateTarget;
         dateRangeInput.setValue(formatDateRange(start, target));
     };
 
@@ -1754,12 +1756,12 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
         const attributionSetting = new Setting(attributionCard)
             .setName('RT attribution')
-            .setDesc('Show the Radial Timeline attribution mark and link in APR exports.')
+            .setDesc('Show the Radial Timeline attribution mark and link in Social exports.')
             .addToggle(toggle => {
                 toggle.setValue(settings?.aprShowRtAttribution !== false)
                     .onChange(async (val) => {
                         if (!plugin.settings.authorProgress) return;
-                        plugin.settings.authorProgress.aprShowRtAttribution = val;
+                        plugin.settings.authorProgress.defaults.aprShowRtAttribution = val;
                         await plugin.saveSettings();
                         refreshPreview();
                     });
@@ -1769,8 +1771,8 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 }
 
 /**
- * Render the APR SVG preview in the hero section
- * Uses the dedicated APR renderer at 1:1 actual size
+ * Render the Social SVG preview in the hero section
+ * Uses the dedicated Social renderer at 1:1 actual size
  */
 async function renderHeroPreview(
     app: App,
@@ -1786,7 +1788,7 @@ async function renderHeroPreview(
             container.empty();
             container.createDiv({
                 cls: 'ert-apr-preview-empty',
-                text: 'Create scenes to see a preview of your Author Progress Report.'
+                text: 'Create scenes to see a preview of your Social report.'
             });
             return;
         }
@@ -1795,12 +1797,10 @@ async function renderHeroPreview(
         const service = new AuthorProgressService(plugin, app);
         const progressPercent = service.calculateProgress(scenes);
 
-        const aprSettings = plugin.settings.authorProgress;
+        const authorProgress = plugin.settings.authorProgress;
+        const aprSettings = authorProgress?.defaults;
         const publishStageLabel = plugin.calculateCompletionEstimate(scenes)?.stage ?? 'Zero';
-        const revealCampaign = (aprSettings as any)?.revealCampaign;
-        const revealCampaignEnabled = !!revealCampaign?.enabled;
-        const nextRevealAt = revealCampaign?.nextRevealAt ?? revealCampaign?.nextRevealDate ?? revealCampaign?.nextReveal;
-        const isProActive = isFeatureGateEnabled(plugin, 'social');
+        const isProActive = hasProFeatureAccess(plugin);
         const showRtAttribution = isProActive
             ? aprSettings?.aprShowRtAttribution !== false
             : true;
@@ -1826,7 +1826,7 @@ async function renderHeroPreview(
             if (teaserPreviewMode !== 'auto') {
                 previewLevel = teaserPreviewMode;
             } else {
-                const campaigns = aprSettings?.campaigns ?? [];
+                const campaigns = authorProgress?.campaigns ?? [];
                 const activeCampaign = campaigns.find(c => c.isActive) ?? campaigns[0];
                 const teaserSettings = activeCampaign?.teaserReveal;
                 if (teaserSettings?.enabled) {
@@ -1857,7 +1857,7 @@ async function renderHeroPreview(
         const { svgString, width, height } = createAprSVG(scenes, {
             size: size,
             progressPercent: displayPercent,
-            bookTitle: aprSettings?.bookTitle || DEFAULT_BOOK_TITLE,
+            bookTitle: aprSettings?.bookTitleOverride || DEFAULT_BOOK_TITLE,
             authorName: aprSettings?.authorName || '',
             authorUrl: aprSettings?.authorUrl || '',
             showScenes,
@@ -1883,8 +1883,7 @@ async function renderHeroPreview(
             spokeColor: aprSettings?.aprSpokeColorMode === 'custom' ? aprSettings?.aprSpokeColor : undefined,
             publishStageLabel,
             showRtAttribution,
-            revealCampaignEnabled,
-            nextRevealAt,
+            teaserRevealEnabled: false,
             // Typography settings
             bookTitleFontFamily: aprSettings?.aprBookTitleFontFamily,
             bookTitleFontWeight: aprSettings?.aprBookTitleFontWeight,
@@ -1923,6 +1922,6 @@ async function renderHeroPreview(
             cls: 'ert-apr-preview-error',
             text: 'Failed to render preview.'
         });
-        console.error('APR Settings Preview error:', e);
+        console.error('Social settings preview error:', e);
     }
 }

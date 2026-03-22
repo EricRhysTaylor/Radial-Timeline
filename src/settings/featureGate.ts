@@ -1,11 +1,6 @@
 import type RadialTimelinePlugin from '../main';
 import { isProActive } from './proEntitlement';
 
-export type FeatureGate = 'beats' | 'exports' | 'inquiry' | 'runtime' | 'social';
-
-export function isFeatureGateEnabled(
-    plugin: RadialTimelinePlugin,
-    _featureGate: FeatureGate
-): boolean {
+export function hasProFeatureAccess(plugin: RadialTimelinePlugin): boolean {
     return isProActive(plugin);
 }

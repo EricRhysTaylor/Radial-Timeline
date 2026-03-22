@@ -134,3 +134,15 @@ export function normalizeFrontmatterKeys(fm: Record<string, unknown>, customMapp
 
   return normalized;
 }
+
+/**
+ * Beat-only frontmatter normalization.
+ * Keeps legacy `description` confined to the Beat ingest boundary by mapping
+ * it directly to canonical `Purpose`.
+ */
+export function normalizeBeatFrontmatterKeys(fm: Record<string, unknown>, customMappings?: Record<string, string>): Record<string, unknown> {
+  return normalizeFrontmatterKeys(fm, {
+    ...(customMappings ?? {}),
+    description: 'Purpose'
+  });
+}

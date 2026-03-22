@@ -10,7 +10,12 @@ import type { TimelineItem } from '../types';
 import { filterBeatsBySystem, normalizeBeatName, normalizeGossamerHistory } from '../utils/gossamer';
 import { parseScoresFromClipboard } from '../GossamerCommands';
 import { getPlotSystem } from '../utils/beatsSystems';
-import { normalizeBeatSetNameInput, resolveSelectedBeatModel } from '../utils/beatsInputNormalize';
+import { normalizeBeatSetNameInput } from '../utils/beatsInputNormalize';
+import {
+  getActiveCustomBeatSystemBeats,
+  getActiveCustomBeatSystemName,
+  resolveSelectedBeatModelFromSettings
+} from '../utils/beatSystemState';
 import { isPathInFolderScope } from '../utils/pathScope';
 import { comparePrefixTokens, extractPrefixToken } from '../utils/prefixOrder';
 
@@ -218,7 +223,8 @@ export class GossamerScoreModal extends Modal {
 
     // Use settings as source of truth for beat system
     const settingsSystem = normalizeBeatSetNameInput(this.plugin.settings.beatSystem || '', 'Save The Cat');
-    const beatModelLabel = resolveSelectedBeatModel(settingsSystem, this.plugin.settings.customBeatSystemName) ?? settingsSystem;
+    const selectedBeatModel = resolveSelectedBeatModelFromSettings(this.plugin.settings);
+    const beatModelLabel = selectedBeatModel ?? settingsSystem;
     
     // ... filtering logic ...
 
@@ -238,8 +244,7 @@ export class GossamerScoreModal extends Modal {
     });
     const filteredBeats = filterBeatsBySystem(
       beatsWithModel,
-      settingsSystem,
-      this.plugin.settings.customBeatSystemName
+      selectedBeatModel
     ).map(entry => entry.beat);
 
     // Use filtered beats for entry building
@@ -248,14 +253,15 @@ export class GossamerScoreModal extends Modal {
     let plotSystemTemplate = getPlotSystem(settingsSystem);
     
     // Support Custom Dynamic System Template
-    if (settingsSystem === 'Custom' && this.plugin.settings.customBeatSystemName && this.plugin.settings.customBeatSystemBeats?.length) {
-        const customName = normalizeBeatSetNameInput(this.plugin.settings.customBeatSystemName, 'Custom');
+    const customBeats = getActiveCustomBeatSystemBeats(this.plugin.settings);
+    if (settingsSystem === 'Custom' && customBeats.length > 0) {
+        const customName = getActiveCustomBeatSystemName(this.plugin.settings);
         plotSystemTemplate = {
             name: customName,
             // Persisted beats are objects ({ name, act }); template expects names
-            beats: this.plugin.settings.customBeatSystemBeats.map(b => b.name),
-            beatDetails: this.plugin.settings.customBeatSystemBeats.map(b => ({ name: b.name, description: '', range: '' })),
-            beatCount: this.plugin.settings.customBeatSystemBeats.length
+            beats: customBeats.map(b => b.name),
+            beatDetails: customBeats.map(b => ({ name: b.name, description: '', range: '' })),
+            beatCount: customBeats.length
         };
     }
 

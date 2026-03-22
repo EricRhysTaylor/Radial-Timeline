@@ -1,4 +1,4 @@
-export type AiProvider = 'anthropic' | 'openai' | 'gemini';
+export type AiProvider = 'anthropic' | 'openai' | 'google';
 
 export interface CuratedModel {
     id: string;
@@ -27,16 +27,16 @@ export const CURATED_MODELS: Record<AiProvider, CuratedModel[]> = {
             guidance: "Claude Sonnet 4.6 with the same RT manuscript-citation workflow used by Inquiry. [FYI](https://platform.claude.com/docs/en/build-with-claude/citations)",
         },
     ],
-    gemini: [
+    google: [
         {
             id: 'gemini-2.5-pro',
-            label: 'Gemini 2.5 Pro',
-            guidance: "→ Gemini 2.5 Pro (1,048,576 context). Stable Google lane with Search grounding support; RT now maps grounding metadata into Inquiry Brief sources. [FYI](https://ai.google.dev/gemini-api/docs/models)",
+            label: 'Google 2.5 Pro',
+            guidance: "→ Google 2.5 Pro (1,048,576 context). Stable Google lane with Search grounding support; RT now maps grounding metadata into Inquiry Brief sources. [FYI](https://ai.google.dev/)",
         },
         {
             id: 'gemini-3.1-pro-preview',
-            label: 'Gemini 3.1 Pro Preview',
-            guidance: "Gemini 3.1 Pro Preview remains the experimental Google lane in RT. Use Gemini 2.5 Pro when grounded citations need to be dependable. [FYI](https://ai.google.dev/gemini-api/docs/models)",
+            label: 'Google 3.1 Pro Preview',
+            guidance: "Google 3.1 Pro Preview remains the experimental Google lane in RT. Use Google 2.5 Pro when grounded citations need to be dependable. [FYI](https://ai.google.dev/)",
         },
     ],
 };

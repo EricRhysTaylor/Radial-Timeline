@@ -6,7 +6,7 @@
 
 import { Notice } from 'obsidian';
 import { ModeDefinition, TimelineMode } from '../ModeDefinition';
-import { resolveSelectedBeatModel } from '../../utils/beatsInputNormalize';
+import { resolveSelectedBeatModelFromSettings } from '../../utils/beatSystemState';
 
 /**
  * Gossamer Mode Definition
@@ -60,7 +60,7 @@ export const GOSSAMER_MODE: ModeDefinition = {
         const beatNotes = scenes.filter(s => s.itemType === 'Beat' || s.itemType === 'Plot');
         
         if (beatNotes.length === 0) {
-            const selectedSystem = resolveSelectedBeatModel(plugin.settings.beatSystem, plugin.settings.customBeatSystemName) ?? '';
+            const selectedSystem = resolveSelectedBeatModelFromSettings(plugin.settings) ?? '';
             const systemHint = selectedSystem
                 ? `No "${selectedSystem}" beat notes found in your vault. Create beat notes with "Class: Beat" and "Beat Model: ${selectedSystem}" in frontmatter.`
                 : 'No story beats found. Create notes with frontmatter "Class: Beat".';
@@ -72,7 +72,7 @@ export const GOSSAMER_MODE: ModeDefinition = {
         const { buildAllGossamerRuns } = await import('../../utils/gossamer');
         const { setBaseModeAllScenes, resetRotation } = await import('../../GossamerCommands');
         
-        const selectedBeatModel = resolveSelectedBeatModel(plugin.settings.beatSystem, plugin.settings.customBeatSystemName);
+        const selectedBeatModel = resolveSelectedBeatModelFromSettings(plugin.settings);
         const allRuns = buildAllGossamerRuns(scenes as any, selectedBeatModel);
         
         if (allRuns.current.beats.length === 0) {

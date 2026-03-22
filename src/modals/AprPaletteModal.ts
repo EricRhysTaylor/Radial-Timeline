@@ -6,15 +6,15 @@
 
 import { App, Modal, Setting, ButtonComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
-import type { AuthorProgressSettings } from '../types/settings';
+import type { AuthorProgressDefaults } from '../types/settings';
 import { getPresetPalettes, generatePaletteFromColor, type AprPalette } from '../utils/aprPaletteGenerator';
 
 export class AprPaletteModal extends Modal {
     private plugin: RadialTimelinePlugin;
-    private settings: AuthorProgressSettings;
+    private settings: AuthorProgressDefaults;
     private onApply: (palette: AprPalette) => void;
 
-    constructor(app: App, plugin: RadialTimelinePlugin, settings: AuthorProgressSettings, onApply: (palette: AprPalette) => void) {
+    constructor(app: App, plugin: RadialTimelinePlugin, settings: AuthorProgressDefaults, onApply: (palette: AprPalette) => void) {
         super(app);
         this.plugin = plugin;
         this.settings = settings;
@@ -39,10 +39,11 @@ export class AprPaletteModal extends Modal {
 
         const applyPalette = async (palette: AprPalette) => {
             if (!this.plugin.settings.authorProgress) return;
-            this.plugin.settings.authorProgress.aprBookAuthorColor = palette.bookTitle;
-            this.plugin.settings.authorProgress.aprAuthorColor = palette.authorName;
-            this.plugin.settings.authorProgress.aprPercentNumberColor = palette.percentNumber;
-            this.plugin.settings.authorProgress.aprPercentSymbolColor = palette.percentSymbol;
+            const defaults = this.plugin.settings.authorProgress.defaults;
+            defaults.aprBookAuthorColor = palette.bookTitle;
+            defaults.aprAuthorColor = palette.authorName;
+            defaults.aprPercentNumberColor = palette.percentNumber;
+            defaults.aprPercentSymbolColor = palette.percentSymbol;
             await this.plugin.saveSettings();
             this.onApply(palette);
             this.close();

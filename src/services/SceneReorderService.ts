@@ -23,8 +23,7 @@ export interface RippleRenamePlan {
 }
 
 export interface RippleRenamePlanOptions {
-    beatSystem?: string;
-    customBeatSystemName?: string;
+    beatModel?: string;
 }
 
 export type SceneReorderProgressPhase = 'scan' | 'stage' | 'rename' | 'done';
@@ -180,8 +179,7 @@ function getActiveBeatPaths(items: TimelineItem[], options?: RippleRenamePlanOpt
             path: item.path,
             "Beat Model": typeof item["Beat Model"] === 'string' ? item["Beat Model"] : undefined
         })),
-        options?.beatSystem,
-        options?.customBeatSystemName
+        options?.beatModel
     );
 
     return new Set(filteredBeats.map(beat => beat.path));

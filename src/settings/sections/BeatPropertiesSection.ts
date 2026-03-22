@@ -9,7 +9,7 @@ import { DEFAULT_SETTINGS } from '../defaults';
 
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import type { HoverMetadataField, SavedBeatSystem } from '../../types/settings';
-import { isFeatureGateEnabled } from '../featureGate';
+import { hasProFeatureAccess } from '../featureGate';
 import { IconSuggest } from '../IconSuggest';
 import { clampActNumber, parseActLabels, resolveActLabel } from '../../utils/acts';
 import { ERT_CLASSES, ERT_DATA } from '../../ui/classes';
@@ -20,6 +20,17 @@ import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { isStoryBeat } from '../../utils/sceneHelpers';
 import { openOrRevealFile } from '../../utils/fileUtils';
 import { tooltipForComponent } from '../../utils/tooltip';
+import {
+    DEFAULT_CUSTOM_BEAT_SYSTEM_ID,
+    buildDefaultCustomBeatSystem,
+    ensureActiveCustomBeatSystem,
+    getActiveCustomBeatSystemBeats,
+    getActiveCustomBeatSystemDescription,
+    getActiveCustomBeatSystemId,
+    getActiveCustomBeatSystemName,
+    getCustomBeatConfigKey,
+    replaceSavedBeatSystem,
+} from '../../utils/beatSystemState';
 import {
     hasBeatReadableText,
     generateBeatGuid,
@@ -267,7 +278,7 @@ export function renderStoryBeatsSection(params: {
     backdropYamlTargetEl?: HTMLElement;
 }): void {
     const { app, plugin, containerEl, backdropYamlTargetEl } = params;
-    const proActive = isFeatureGateEnabled(plugin, 'beats');
+    const proActive = hasProFeatureAccess(plugin);
     const canEditBuiltInBeatSystems = (): boolean => proActive;
     const canEditFieldsForSystem = (systemKey: string): boolean =>
         systemKey === 'Custom' ? true : canEditBuiltInBeatSystems();
@@ -362,6 +373,21 @@ export function renderStoryBeatsSection(params: {
             return { name: normalizeBeatNameInput(m[1], ''), act: !Number.isNaN(actNum) ? actNum : 1 };
         }
         return { name: raw, act: 1 };
+    };
+
+    const getActiveCustomSystem = () => ensureActiveCustomBeatSystem(plugin.settings);
+    const getActiveCustomId = () => getActiveCustomBeatSystemId(plugin.settings);
+    const getActiveCustomName = (fallback = 'Custom') => getActiveCustomBeatSystemName(plugin.settings, fallback);
+    const getActiveCustomDescription = () => getActiveCustomBeatSystemDescription(plugin.settings);
+    const getActiveCustomBeats = () => getActiveCustomBeatSystemBeats(plugin.settings);
+    const setActiveCustomName = (name: string) => {
+        getActiveCustomSystem().name = normalizeBeatSetNameInput(name, 'Custom');
+    };
+    const setActiveCustomDescription = (description: string) => {
+        getActiveCustomSystem().description = description;
+    };
+    const setActiveCustomBeats = (beats: BeatDefinition[]) => {
+        getActiveCustomSystem().beats = beats;
     };
 
     type ActRange = { min: number; max: number; sceneNumbers: number[] };
@@ -470,7 +496,7 @@ export function renderStoryBeatsSection(params: {
             const scenes = await plugin.getSceneData({ filterBeatsBySystem: false });
             const beats = (scenes ?? []).filter(scene => scene.itemType === 'Beat' || scene.itemType === 'Plot');
             const expectedModel = selectedSystem === 'Custom'
-                ? normalizeBeatSetNameInput(plugin.settings.customBeatSystemName || '', 'Custom')
+                ? getActiveCustomName('Custom')
                 : selectedSystem;
             const expectedKey = normalizeBeatModel(expectedModel);
             if (!expectedKey) return [];
@@ -503,7 +529,7 @@ export function renderStoryBeatsSection(params: {
 
     const buildExpectedBeatNames = (selectedSystem: string): string[] => {
         if (selectedSystem === 'Custom') {
-            return (plugin.settings.customBeatSystemBeats || [])
+            return getActiveCustomBeats()
                 .map(parseBeatRow)
                 .map(b => b.name)
                 .filter(name => name.length > 0);
@@ -517,7 +543,7 @@ export function renderStoryBeatsSection(params: {
         const bookScope = (plugin.settings.sourcePath || '').trim();
         const files = app.vault.getMarkdownFiles().filter(f => isPathInFolderScope(f.path, bookScope));
         const matches: TimelineItem[] = [];
-        const customName = normalizeBeatSetNameInput(plugin.settings.customBeatSystemName || '', 'Custom');
+        const customName = getActiveCustomName('Custom');
         const expectedModel = selectedSystem === 'Custom' ? customName : selectedSystem;
         const expectedModelKey = normalizeBeatModel(expectedModel);
 
@@ -608,7 +634,7 @@ export function renderStoryBeatsSection(params: {
         const bookScope = (plugin.settings.sourcePath || '').trim();
         const files = app.vault.getMarkdownFiles().filter(f => isPathInFolderScope(f.path, bookScope));
         const expectedModel = selectedSystem === 'Custom'
-            ? normalizeBeatSetNameInput(plugin.settings.customBeatSystemName || '', 'Custom')
+            ? getActiveCustomName('Custom')
             : selectedSystem;
         const expectedModelKey = normalizeBeatModel(expectedModel);
         if (!expectedModelKey) return diagnostics;
@@ -675,7 +701,7 @@ export function renderStoryBeatsSection(params: {
     let _unsubProSetsDirty: (() => void) | null = null;
 
     const getCustomTabLabel = (): string => {
-        const named = normalizeBeatSetNameInput(plugin.settings.customBeatSystemName || '', '');
+        const named = getActiveCustomName('');
         return named.length > 0 ? named : 'Custom';
     };
 
@@ -744,10 +770,10 @@ export function renderStoryBeatsSection(params: {
 
     /** Produce a lightweight hash string from the current custom beat state. */
     const snapshotHash = (): string => {
-        const beats = (plugin.settings.customBeatSystemBeats ?? [])
+        const beats = getActiveCustomBeats()
             .map(b => `${b.name}|${b.act}|${(b as { purpose?: string }).purpose ?? ''}|${(b as { range?: string }).range ?? ''}|${(b as { chapterBreak?: boolean }).chapterBreak ? '1' : '0'}|${(b as { chapterTitle?: string }).chapterTitle ?? ''}`)
             .join(';');
-        const configKey = `custom:${plugin.settings.activeCustomBeatSystemId ?? 'default'}`;
+        const configKey = getCustomBeatConfigKey(getActiveCustomId());
         const cfg = plugin.settings.beatSystemConfigs?.[configKey];
         const yaml = cfg?.beatYamlAdvanced ?? '';
         const hover = (cfg?.beatHoverMetadataFields ?? []).map(f => `${f.key}:${f.icon}:${f.enabled}`).join(';');
@@ -766,12 +792,12 @@ export function renderStoryBeatsSection(params: {
 
     /** Convenience: true when the loaded set has been modified from its baseline. */
     const isSetDirty = (): boolean => {
-        const activeId = plugin.settings.activeCustomBeatSystemId ?? 'default';
+        const activeId = getActiveCustomId();
         return dirtyState.isDirty(activeId, snapshotHash());
     };
 
     const refreshExistingBeatLookup = async (allowFetch: boolean, selectedSystem: string): Promise<Map<string, TimelineItem[]> | null> => {
-        const nextKey = `${selectedSystem}|${normalizeBeatSetNameInput(plugin.settings.customBeatSystemName ?? '', '')}`;
+        const nextKey = `${selectedSystem}|${getActiveCustomName('')}`;
         if (!allowFetch && existingBeatKey === nextKey && existingBeatReady) {
             return existingBeatLookup;
         }
@@ -811,7 +837,7 @@ export function renderStoryBeatsSection(params: {
             const maxActs = getActCount();
             const expectedBeats: BeatRow[] = selectedSystem === 'Custom'
                 ? orderBeatsByAct(
-                    (plugin.settings.customBeatSystemBeats || [])
+                    getActiveCustomBeats()
                         .map(parseBeatRow)
                         .map(b => ({ ...b, act: clampBeatAct(b.act, maxActs) })),
                     maxActs
@@ -991,7 +1017,7 @@ export function renderStoryBeatsSection(params: {
 
     /** Check if current system was loaded from a starter set and hasn't been modified. */
     const isStarterSetActive = (): boolean => {
-        const activeId = plugin.settings.activeCustomBeatSystemId ?? 'default';
+        const activeId = getActiveCustomId();
         return PRO_BEAT_SETS.some(ps => ps.id === activeId);
     };
 
@@ -1002,10 +1028,10 @@ export function renderStoryBeatsSection(params: {
         customConfigContainer.empty();
 
         // ── Custom system header (mirrors built-in template preview header) ──
-        const customSystemName = normalizeBeatSetNameInput(plugin.settings.customBeatSystemName || '', 'Custom beats');
-        const customSystemDesc = plugin.settings.customBeatSystemDescription || '';
+        const customSystemName = getActiveCustomName('Custom beats');
+        const customSystemDesc = getActiveCustomDescription();
         const starterActive = isStarterSetActive();
-        const activeId = plugin.settings.activeCustomBeatSystemId ?? 'default';
+        const activeId = getActiveCustomId();
         const savedSystems: SavedBeatSystem[] = plugin.settings.savedBeatSystems ?? [];
         const savedSetActive = !starterActive && savedSystems.some(s => s.id === activeId);
         const hasSetOrigin = starterActive || savedSetActive; // loaded from any set
@@ -1047,8 +1073,8 @@ export function renderStoryBeatsSection(params: {
                         new Notice('System name must include letters or numbers.');
                         return false;
                     }
-                    plugin.settings.customBeatSystemName = normalizedName;
-                    plugin.settings.customBeatSystemDescription = newDesc;
+                    setActiveCustomName(normalizedName);
+                    setActiveCustomDescription(newDesc);
                     await plugin.saveSettings();
                     existingBeatReady = false;
                     updateTemplateButton(templateSetting, 'Custom');
@@ -1077,8 +1103,8 @@ export function renderStoryBeatsSection(params: {
             cls: 'ert-beat-template-examples',
             text: 'Drag beats to reorder or drop them into another act. Use Beat notes below to create or repair beat files in your vault.'
         });
-        const actSet = new Set((plugin.settings.customBeatSystemBeats ?? []).map(b => b.act));
-        const beatCount = (plugin.settings.customBeatSystemBeats ?? []).length;
+        const actSet = new Set(getActiveCustomBeats().map(b => b.act));
+        const beatCount = getActiveCustomBeats().length;
         if (beatCount > 0) {
             headerRow.createDiv({
                 cls: 'ert-beat-template-meta',
@@ -1195,7 +1221,7 @@ export function renderStoryBeatsSection(params: {
                 new Notice('Beat names must include letters or numbers.');
                 return;
             }
-            plugin.settings.customBeatSystemBeats = orderBeatsByAct(normalized, maxActs);
+            setActiveCustomBeats(orderBeatsByAct(normalized, maxActs));
             await plugin.saveSettings();
             updateTemplateButton(templateSetting, 'Custom');
             renderPreviewContent('Custom');
@@ -1248,7 +1274,7 @@ export function renderStoryBeatsSection(params: {
             listContainer.empty();
             const maxActs = getActCount();
             const actLabels = buildActLabels(maxActs, actRanges);
-            const beats: BeatRow[] = (plugin.settings.customBeatSystemBeats || [])
+            const beats: BeatRow[] = getActiveCustomBeats()
                 .map(parseBeatRow)
                 .map(b => ({ ...b, act: clampBeatAct(b.act, maxActs) }));
             const beatsByAct: BeatRow[][] = Array.from({ length: maxActs }, () => []);
@@ -1706,7 +1732,7 @@ export function renderStoryBeatsSection(params: {
     };
 
     const buildCustomActColumns = (): { columns: ActGridColumn[]; totalBeats: number } => {
-        const beats = (plugin.settings.customBeatSystemBeats || []).map(parseBeatRow).filter(b => hasBeatReadableText(b.name));
+        const beats = getActiveCustomBeats().map(parseBeatRow).filter(b => hasBeatReadableText(b.name));
         const maxActs = getActCount();
         const ordered = orderBeatsByAct(
             beats.map(b => ({ ...b, act: clampBeatAct(b.act, maxActs) })),
@@ -1741,9 +1767,9 @@ export function renderStoryBeatsSection(params: {
             totalBeats = result.totalBeats;
         }
 
-        const customName = normalizeBeatSetNameInput(plugin.settings.customBeatSystemName || '', 'Custom');
+        const customName = getActiveCustomName('Custom');
         templatePreviewTitle.setText(mode === 'builtin' ? copy.title : customName || 'Custom');
-        const customDesc = (plugin.settings.customBeatSystemDescription ?? '').trim();
+        const customDesc = getActiveCustomDescription().trim();
         const hasAuthorDesc = mode === 'custom' && customDesc.length > 0;
         templatePreviewDesc.setText(hasAuthorDesc ? customDesc : copy.description);
         templatePreviewDesc.style.whiteSpace = hasAuthorDesc ? 'pre-line' : ''; // SAFE: preserve author line breaks
@@ -1787,14 +1813,14 @@ export function renderStoryBeatsSection(params: {
     let primaryDesignAction: (() => Promise<void>) = async () => { await createBeatTemplates(); };
     const saveCurrentCustomSet = async (context: 'design' | 'fields' | 'generic' = 'generic'): Promise<void> => {
         if ((plugin.settings.beatSystem || 'Custom') !== 'Custom') return;
-        const activeId = plugin.settings.activeCustomBeatSystemId ?? 'default';
+        const activeId = getActiveCustomId();
 
         // Regular Save never prompts rename/save-as.
         // If active set is a saved Pro set, update that set in place.
         const activeConfig = getBeatConfigForSystem(plugin.settings);
-        const currentName = normalizeBeatSetNameInput(plugin.settings.customBeatSystemName || '', 'Custom');
-        const currentDescription = plugin.settings.customBeatSystemDescription ?? '';
-        const currentBeats = (plugin.settings.customBeatSystemBeats || [])
+        const currentName = getActiveCustomName('Custom');
+        const currentDescription = getActiveCustomDescription();
+        const currentBeats = getActiveCustomBeats()
             .map(b => ({
                 ...b,
                 name: normalizeBeatNameInput(b.name, ''),
@@ -1816,8 +1842,6 @@ export function renderStoryBeatsSection(params: {
                 name: currentName,
                 description: currentDescription,
                 beats: currentBeats,
-                beatYamlAdvanced: activeConfig.beatYamlAdvanced,
-                beatHoverMetadataFields: activeConfig.beatHoverMetadataFields.map(f => ({ ...f })),
             };
             plugin.settings.savedBeatSystems = savedSystems;
             savedCustomSetIds.add(activeId);
@@ -2542,15 +2566,19 @@ export function renderStoryBeatsSection(params: {
         // 2. Activate this set's id so config resolves to custom:<id>
         plugin.settings.activeCustomBeatSystemId = system.id;
         // 3. Write beats/name/description
-        plugin.settings.customBeatSystemName = normalizeBeatSetNameInput(system.name);
-        plugin.settings.customBeatSystemDescription = system.description ?? '';
-        plugin.settings.customBeatSystemBeats = system.beats.map(b => ({
-            ...b,
-            name: normalizeBeatNameInput(b.name),
-            purpose: typeof b.purpose === 'string' ? b.purpose.trim() : undefined,
-        }));
+        replaceSavedBeatSystem(plugin.settings, {
+            id: system.id,
+            name: normalizeBeatSetNameInput(system.name),
+            description: system.description ?? '',
+            beats: system.beats.map(b => ({
+                ...b,
+                name: normalizeBeatNameInput(b.name),
+                purpose: typeof b.purpose === 'string' ? b.purpose.trim() : undefined,
+            })),
+            createdAt: new Date().toISOString(),
+        });
         // 4. Write per-system YAML/hover config into the correct slot
-        const configKey = `custom:${system.id}`;
+        const configKey = getCustomBeatConfigKey(system.id);
         if (!plugin.settings.beatSystemConfigs) plugin.settings.beatSystemConfigs = {};
         plugin.settings.beatSystemConfigs[configKey] = {
             beatYamlAdvanced: system.beatYamlAdvanced ?? '',
@@ -2815,7 +2843,7 @@ export function renderStoryBeatsSection(params: {
 
         // ── Shared: save-as-copy modal + persistence ─────────────────
         const saveSetModal = async (opts: { isCopy: boolean }): Promise<void> => {
-            const currentBeats = (plugin.settings.customBeatSystemBeats || [])
+            const currentBeats = getActiveCustomBeats()
                 .map(b => ({
                     ...b,
                     name: normalizeBeatNameInput(b.name, ''),
@@ -2833,7 +2861,7 @@ export function renderStoryBeatsSection(params: {
                 return;
             }
             const activeConfig = getBeatConfigForSystem(plugin.settings);
-            const currentName = normalizeBeatSetNameInput(plugin.settings.customBeatSystemName || '', 'Custom');
+            const currentName = getActiveCustomName('Custom');
             const defaultName = opts.isCopy ? `${currentName} (Copy)` : currentName;
             const modalTitle = opts.isCopy ? 'Save a copy' : 'Save set';
             const modalSubtitle = opts.isCopy
@@ -2894,17 +2922,15 @@ export function renderStoryBeatsSection(params: {
             const newSystem: SavedBeatSystem = {
                 id: existingIdx >= 0 ? existingSystems[existingIdx].id : `${Date.now()}`,
                 name: saveName,
-                description: plugin.settings.customBeatSystemDescription ?? '',
+                description: getActiveCustomDescription(),
                 beats: currentBeats,
-                beatYamlAdvanced: activeConfig.beatYamlAdvanced,
-                beatHoverMetadataFields: activeConfig.beatHoverMetadataFields.map(f => ({ ...f })),
                 createdAt: new Date().toISOString()
             };
 
             if (!plugin.settings.beatSystemConfigs) plugin.settings.beatSystemConfigs = {};
-            plugin.settings.beatSystemConfigs[`custom:${newSystem.id}`] = {
-                beatYamlAdvanced: newSystem.beatYamlAdvanced ?? '',
-                beatHoverMetadataFields: newSystem.beatHoverMetadataFields?.map(f => ({ ...f })) ?? [],
+            plugin.settings.beatSystemConfigs[getCustomBeatConfigKey(newSystem.id)] = {
+                beatYamlAdvanced: activeConfig.beatYamlAdvanced,
+                beatHoverMetadataFields: activeConfig.beatHoverMetadataFields.map(f => ({ ...f })),
             };
 
             if (existingIdx >= 0) {
@@ -2914,7 +2940,6 @@ export function renderStoryBeatsSection(params: {
             }
             plugin.settings.savedBeatSystems = existingSystems;
             plugin.settings.activeCustomBeatSystemId = newSystem.id;
-            plugin.settings.customBeatSystemName = saveName;
             await plugin.saveSettings();
             // Re-capture baseline so the saved state becomes the new "clean" reference
             captureSetBaseline(newSystem.id);
@@ -2944,8 +2969,8 @@ export function renderStoryBeatsSection(params: {
         const loadSetAction = () => {
             if (!selectedEntry) return;
             const entry = selectedEntry;
-            const currentName = normalizeBeatSetNameInput(plugin.settings.customBeatSystemName || '', 'Custom beats');
-            const currentHasBeats = (plugin.settings.customBeatSystemBeats ?? []).length > 0;
+            const currentName = getActiveCustomName('Custom beats');
+            const currentHasBeats = getActiveCustomBeats().length > 0;
 
             if (isSetDirty()) {
                 // Only confirm if the current set has unsaved modifications
@@ -3010,18 +3035,16 @@ export function renderStoryBeatsSection(params: {
                     const wasActive = plugin.settings.activeCustomBeatSystemId === system.id;
                     plugin.settings.savedBeatSystems = savedSystems.filter(s => s.id !== system.id);
                     if (plugin.settings.beatSystemConfigs) {
-                        delete plugin.settings.beatSystemConfigs[`custom:${system.id}`];
+                        delete plugin.settings.beatSystemConfigs[getCustomBeatConfigKey(system.id)];
                     }
                     savedCustomSetIds.delete(system.id);
                     if (wasActive) {
                         // Reset to a clean blank custom system
-                        plugin.settings.activeCustomBeatSystemId = 'default';
-                        plugin.settings.customBeatSystemName = '';
-                        plugin.settings.customBeatSystemDescription = '';
-                        plugin.settings.customBeatSystemBeats = [];
+                        plugin.settings.activeCustomBeatSystemId = DEFAULT_CUSTOM_BEAT_SYSTEM_ID;
+                        replaceSavedBeatSystem(plugin.settings, buildDefaultCustomBeatSystem());
                         // Ensure default config slot is clean
                         if (!plugin.settings.beatSystemConfigs) plugin.settings.beatSystemConfigs = {};
-                        plugin.settings.beatSystemConfigs['custom:default'] = {
+                        plugin.settings.beatSystemConfigs[getCustomBeatConfigKey(DEFAULT_CUSTOM_BEAT_SYSTEM_ID)] = {
                             beatYamlAdvanced: '',
                             beatHoverMetadataFields: [],
                         };
@@ -5556,8 +5579,8 @@ export function renderStoryBeatsSection(params: {
         };
 
         if (isCustom) {
-            displayName = normalizeBeatSetNameInput(plugin.settings.customBeatSystemName || '', 'Custom');
-            const beats = (plugin.settings.customBeatSystemBeats || []).map((b: unknown) => {
+            displayName = getActiveCustomName('Custom');
+            const beats = getActiveCustomBeats().map((b: unknown) => {
                 if (typeof b === 'string') return normalizeBeatNameInput(b, '');
                 if (typeof b === 'object' && b !== null && (b as { name?: unknown }).name) {
                     return normalizeBeatNameInput(String((b as { name: unknown }).name), '');
@@ -5793,7 +5816,7 @@ export function renderStoryBeatsSection(params: {
 
         const maxActs = getActCount();
         const beats: BeatRow[] = orderBeatsByAct(
-            (plugin.settings.customBeatSystemBeats || [])
+            getActiveCustomBeats()
                 .map(parseBeatRow)
                 .map(b => ({ ...b, act: clampBeatAct(b.act, maxActs) })),
             maxActs
@@ -5815,7 +5838,7 @@ export function renderStoryBeatsSection(params: {
         const existingLookup = buildExistingBeatLookup(existingMatched);
         const missingModelLookup = buildExistingBeatLookup(missingModelCandidates);
         const customModelName = storyStructureName === 'Custom'
-            ? normalizeBeatSetNameInput(plugin.settings.customBeatSystemName || '', 'Custom')
+            ? getActiveCustomName('Custom')
             : storyStructureName;
         const conflicts: string[] = [];
         const duplicates: string[] = [];

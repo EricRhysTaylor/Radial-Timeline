@@ -8,6 +8,7 @@ import {
 import { DragConfirmModal } from '../../modals/DragConfirmModal';
 import { DRAG_DROP_ARC_RADIUS, DRAG_DROP_TICK_OUTER_RADIUS, DRAG_DROP_TICK_LENGTH } from '../../renderer/layout/LayoutConstants';
 import { formatBeatDecimalPrefix, formatIntegerPrefix } from '../../utils/prefixOrder';
+import { resolveSelectedBeatModelFromSettings } from '../../utils/beatSystemState';
 
 export interface OuterRingViewAdapter {
     plugin: { app: App; settings: Record<string, unknown> };
@@ -948,8 +949,7 @@ export class OuterRingDragController {
         try {
             const sceneData = await pluginAny.getSceneData();
             const plan = buildRippleRenamePlan(sceneData, {
-                beatSystem: pluginAny.settings?.beatSystem,
-                customBeatSystemName: pluginAny.settings?.customBeatSystemName
+                beatModel: resolveSelectedBeatModelFromSettings(pluginAny.settings)
             });
             if (plan.needRename === 0) {
                 if (onStatus) onStatus('Ripple rename: already normalized (filenames only; no content edits).');

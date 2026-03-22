@@ -2,7 +2,8 @@
  * Plot System Presets for Gossamer Scoring
  */
 import { normalizeBeatNameInput, normalizeBeatSetNameInput } from './beatsInputNormalize';
-import type { BeatDefinition } from '../types/settings';
+import type { BeatDefinition, RadialTimelineSettings } from '../types/settings';
+import { getActiveCustomBeatSystemBeats, getActiveCustomBeatSystemName } from './beatSystemState';
 
 export interface PlotBeatInfo {
   name: string;
@@ -490,12 +491,13 @@ export const PRO_BEAT_SETS: ProBeatSet[] = [
 ];
 
 /**
- * Shared helper to construct the custom system object from settings.
- * Accepts any object that matches the minimal settings shape needed.
+ * Shared helper to construct the active custom system object from canonical settings.
  */
-export function getCustomSystemFromSettings(settings: { customBeatSystemName?: string; customBeatSystemBeats?: BeatDefinition[] }): PlotSystemPreset {
-    const name = normalizeBeatSetNameInput(settings.customBeatSystemName ?? '', 'Custom');
-    const beatObjs = settings.customBeatSystemBeats || [];
+export function getCustomSystemFromSettings(
+    settings: Pick<RadialTimelineSettings, 'savedBeatSystems' | 'activeCustomBeatSystemId'>
+): PlotSystemPreset {
+    const name = normalizeBeatSetNameInput(getActiveCustomBeatSystemName(settings), 'Custom');
+    const beatObjs = getActiveCustomBeatSystemBeats(settings);
 
     const beats = beatObjs
         .map((b) => normalizeBeatNameInput(b.name, ''))

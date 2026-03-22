@@ -4,6 +4,7 @@
 import { Modal, App, ButtonComponent, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import { normalizeBeatSetNameInput } from '../utils/beatsInputNormalize';
+import { getActiveCustomBeatSystemName } from '../utils/beatSystemState';
 
 export interface CreateBeatSetResult {
   confirmed: boolean;
@@ -21,8 +22,8 @@ export class CreateBeatSetModal extends Modal {
     this.plugin = plugin;
 
     // If it's the dynamic custom system, show the user's custom name
-    if (beatSystem === 'Custom' && this.plugin.settings.customBeatSystemName) {
-        this.beatSystem = normalizeBeatSetNameInput(this.plugin.settings.customBeatSystemName, 'Custom');
+    if (beatSystem === 'Custom') {
+        this.beatSystem = normalizeBeatSetNameInput(getActiveCustomBeatSystemName(this.plugin.settings), 'Custom');
     } else {
         this.beatSystem = normalizeBeatSetNameInput(beatSystem, beatSystem || 'Custom');
     }

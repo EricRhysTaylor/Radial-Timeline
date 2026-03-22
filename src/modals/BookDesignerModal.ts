@@ -6,6 +6,7 @@ import { DEFAULT_SETTINGS } from '../settings/defaults';
 import { getTemplateParts } from '../utils/yamlTemplateNormalize';
 import { parseDuration, parseDurationDetail } from '../utils/date';
 import { getCustomSystemFromSettings } from '../utils/beatsSystems';
+import { getActiveCustomBeatSystemName } from '../utils/beatSystemState';
 import type { BookDesignerTemplate, BookDesignerSceneAssignment } from '../types/settings';
 import { ModalFolderSuggest } from '../settings/FolderSuggest';
 import { ensureSceneTemplateFrontmatter } from '../utils/sceneIds';
@@ -1129,7 +1130,7 @@ export class BookDesignerModal extends Modal {
     private getActiveBeatSetTitle(): string {
         const beatSystem = (this.plugin.settings.beatSystem || 'Custom').trim();
         if (beatSystem === 'Custom') {
-            const customName = (this.plugin.settings.customBeatSystemName || '').replace(/\s+/g, ' ').trim();
+            const customName = getActiveCustomBeatSystemName(this.plugin.settings).replace(/\s+/g, ' ').trim();
             return customName.length > 0 ? customName : 'Custom';
         }
         return beatSystem.length > 0 ? beatSystem : 'Custom';

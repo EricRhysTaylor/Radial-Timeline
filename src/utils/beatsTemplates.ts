@@ -1,9 +1,7 @@
 /*
  * Beat Set Note Creation
  *
- * NOTE: Legacy "template" terminology retained as deprecated aliases
- * at the bottom of this file for backward compatibility.
- * Scheduled for removal after v5.2.
+ * Compatibility aliases here are limited to the export/template boundary.
  */
 import { Vault, TFile, normalizePath } from 'obsidian';
 import { PLOT_SYSTEMS, PLOT_SYSTEM_NAMES, PRO_BEAT_SETS, PlotSystemPreset, PlotBeatInfo } from './beatsSystems';
@@ -12,6 +10,7 @@ import { normalizeBeatSetNameInput, sanitizeBeatFilenameSegment, toBeatModelMatc
 import { mergeTemplateParts } from './templateMerge';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
 import { generateSceneId } from './sceneIds';
+import { getActiveCustomBeatSystemName, getCustomBeatConfigKey } from './beatSystemState';
 
 // ─── Per-system Beat Config Resolvers ────────────────────────────────
 
@@ -35,19 +34,10 @@ export function getBeatConfigForSystem(
   systemKey?: string
 ): BeatSystemConfig {
   const system = (systemKey ?? settings.beatSystem ?? 'Save The Cat').trim();
-  const isCustomScoped = system === 'Custom' || system.startsWith('custom:');
   const key = system === 'Custom'
-    ? `custom:${settings.activeCustomBeatSystemId ?? 'default'}`
+    ? getCustomBeatConfigKey(settings.activeCustomBeatSystemId)
     : system;
-  // Primary: per-system config map
-  if (settings.beatSystemConfigs?.[key]) return settings.beatSystemConfigs[key];
-  // Custom systems must read only from per-set config slots.
-  if (isCustomScoped) return EMPTY_BEAT_CONFIG;
-  // Legacy fallback: global fields (pre-migration vaults)
-  return {
-    beatYamlAdvanced: settings.beatYamlTemplates?.advanced ?? '',
-    beatHoverMetadataFields: settings.beatHoverMetadataFields ?? [],
-  };
+  return settings.beatSystemConfigs?.[key] ?? EMPTY_BEAT_CONFIG;
 }
 
 /**
@@ -60,18 +50,11 @@ export function ensureBeatConfigForSystem(
 ): BeatSystemConfig {
   const system = (systemKey ?? settings.beatSystem ?? 'Save The Cat').trim();
   const key = system === 'Custom'
-    ? `custom:${settings.activeCustomBeatSystemId ?? 'default'}`
+    ? getCustomBeatConfigKey(settings.activeCustomBeatSystemId)
     : system;
   if (!settings.beatSystemConfigs) settings.beatSystemConfigs = {};
   if (!settings.beatSystemConfigs[key]) {
-    if (system === 'Custom' || system.startsWith('custom:')) {
-      settings.beatSystemConfigs[key] = { beatYamlAdvanced: '', beatHoverMetadataFields: [] };
-    } else {
-      settings.beatSystemConfigs[key] = {
-        beatYamlAdvanced: settings.beatYamlTemplates?.advanced ?? '',
-        beatHoverMetadataFields: [...(settings.beatHoverMetadataFields ?? [])],
-      };
-    }
+    settings.beatSystemConfigs[key] = { beatYamlAdvanced: '', beatHoverMetadataFields: [] };
   }
   return settings.beatSystemConfigs[key];
 }
@@ -95,17 +78,7 @@ export function getBeatConfigForItem(
     }
     return EMPTY_BEAT_CONFIG;
   }
-  const isBuiltinModel = PLOT_SYSTEM_NAMES.some(name => normalizeModelKey(name) === normalized);
-
-  if (!configs) {
-    // Custom beat models do not fall back to legacy globals.
-    if (!isBuiltinModel) return EMPTY_BEAT_CONFIG;
-    // Legacy fallback: built-ins only (pre-migration vaults)
-    return {
-      beatYamlAdvanced: settings.beatYamlTemplates?.advanced ?? '',
-      beatHoverMetadataFields: settings.beatHoverMetadataFields ?? [],
-    };
-  }
+  if (!configs) return EMPTY_BEAT_CONFIG;
 
   // 1. Direct built-in match (exact key)
   if (configs[beatModelValue]) return configs[beatModelValue];
@@ -118,10 +91,10 @@ export function getBeatConfigForItem(
   }
 
   // 3. Active custom system (Beat Model stores the custom system name, not the key)
-  const activeCustomKey = `custom:${settings.activeCustomBeatSystemId ?? 'default'}`;
+  const activeCustomKey = getCustomBeatConfigKey(settings.activeCustomBeatSystemId);
   if (configs[activeCustomKey]) {
     // Check if the custom system name matches the Beat Model
-    const customName = normalizeBeatSetNameInput(settings.customBeatSystemName ?? '', 'Custom');
+    const customName = getActiveCustomBeatSystemName(settings);
     if (normalizeModelKey(customName) === normalized) {
       return configs[activeCustomKey];
     }
@@ -143,14 +116,6 @@ export function getBeatConfigForItem(
   if (starter) {
     const starterKey = `custom:${starter.id}`;
     if (configs[starterKey]) return configs[starterKey];
-  }
-
-  // 6. Legacy fallback: built-ins only (custom systems stay slot-scoped)
-  if (isBuiltinModel) {
-    return {
-      beatYamlAdvanced: settings.beatYamlTemplates?.advanced ?? '',
-      beatHoverMetadataFields: settings.beatHoverMetadataFields ?? [],
-    };
   }
 
   return EMPTY_BEAT_CONFIG;
@@ -224,6 +189,17 @@ export function sanitizeBeatAdvancedForWrite(advancedTemplate: string): string {
  * When a template string is provided, uses {{Placeholder}} substitution.
  * When omitted, produces the exact legacy hardcoded output for backward compatibility.
  */
+function applyTemplateCompatibilityAliases(content: string, purpose: string, beatSystem: string, rangeValue: string, act: number): string {
+  // Explicit compatibility-only template boundary.
+  let transformed = content;
+  transformed = transformed.replace(/{{Act}}/g, act.toString());
+  transformed = transformed.replace(/{{Purpose}}/g, purpose);
+  transformed = transformed.replace(/{{Description}}/g, purpose);
+  transformed = transformed.replace(/{{BeatModel}}/g, beatSystem);
+  transformed = transformed.replace(/{{Range}}/g, rangeValue);
+  return transformed;
+}
+
 function generatePlotNoteContent(
   beatInfo: PlotBeatInfo,
   act: number,
@@ -252,14 +228,9 @@ function generatePlotNoteContent(
 
   if (template) {
     // Template-based generation using {{Placeholder}} substitution
-    let content = template;
-    content = content.replace(/{{Act}}/g, act.toString());
-    // Support both placeholder names for backwards compatibility.
-    content = content.replace(/{{Purpose}}/g, purpose);
-    content = content.replace(/{{Description}}/g, purpose);
-    content = content.replace(/{{BeatModel}}/g, beatSystem);
-    content = content.replace(/{{Range}}/g, rangeValue);
-    content = ensureReferenceIdLine(content);
+    const content = ensureReferenceIdLine(
+      applyTemplateCompatibilityAliases(template, purpose, beatSystem, rangeValue, act)
+    );
 
     return `---\n${content}\n---\n` + buildBeatBody(beatInfo);
   }

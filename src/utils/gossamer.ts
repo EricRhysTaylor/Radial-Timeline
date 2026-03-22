@@ -97,16 +97,14 @@ export function detectDominantStage(
  * Handles both built-in systems (Save The Cat, Hero's Journey, Story Grid) and Custom.
  * 
  * @param beats - Array of beat objects with optional "Beat Model" field
- * @param selectedBeatSystem - The beat system to filter by (e.g., "Save The Cat", "Custom")
- * @param customBeatSystemName - Optional custom system name from settings
+ * @param selectedBeatModel - The beat model to filter by (e.g., "Save The Cat", "Podcast Narrative Arc")
  * @returns Filtered array of beats matching the selected system
  */
 export function filterBeatsBySystem<T>(
   beats: T[],
-  selectedBeatSystem?: string,
-  customBeatSystemName?: string
+  selectedBeatModel?: string
 ): T[] {
-  const system = normalizeBeatSetNameInput(selectedBeatSystem ?? '', '');
+  const system = normalizeBeatSetNameInput(selectedBeatModel ?? '', '');
   if (!system) {
     return beats; // No filtering if no system selected
   }
@@ -114,19 +112,12 @@ export function filterBeatsBySystem<T>(
   const selectedKey = toBeatModelMatchKey(system);
 
   if (selectedKey === 'custom') {
-    // If a custom name is defined in settings, we should include beats that match it
-    const customKey = toBeatModelMatchKey(normalizeBeatSetNameInput(customBeatSystemName ?? '', ''));
-
     // Default Custom: exclude beats that belong to built-in systems
     return beats.filter(b => {
       const beatModel = (b as any)["Beat Model"]; // SAFE: dynamic field access for Beat Model filtering
       if (!beatModel || typeof beatModel !== 'string') return false; // Missing Beat Model is invalid for Beat notes
       const modelKey = toBeatModelMatchKey(beatModel);
       if (!modelKey) return false;
-      if (customKey) {
-        // When a named custom set is active, keep scope tight to that set (+legacy generic Custom).
-        return modelKey === customKey || modelKey === 'custom';
-      }
       if (modelKey === 'custom') return true; // Legacy generic custom model
       return !BUILTIN_BEAT_MODEL_KEYS.has(modelKey);
     });

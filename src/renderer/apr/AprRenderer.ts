@@ -61,8 +61,7 @@ export interface AprRenderOptions {
     rtBadgeFontSize?: number;
     publishStageLabel?: string;
     showRtAttribution?: boolean;
-    revealCampaignEnabled?: boolean;
-    nextRevealAt?: number | string | Date;
+    teaserRevealEnabled?: boolean;
     debugLabel?: string;
     portableSvg?: boolean;  // When true, output standalone SVG without CSS vars (Figma/Illustrator safe)
 }
@@ -164,8 +163,7 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
         rtBadgeFontFamily, rtBadgeFontWeight, rtBadgeFontItalic, rtBadgeFontSize,
         publishStageLabel,
         showRtAttribution,
-        revealCampaignEnabled,
-        nextRevealAt,
+        teaserRevealEnabled,
         bookTitle,
         authorName,
         authorUrl,
@@ -225,7 +223,7 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
     const stageBadgeColor = normalizeOptionalColor(stageColorLookup[stageInfo.key])
         ?? normalizeOptionalColor(stageColorMap.Press)
         ?? '#6FB971';
-    const revealCountdownDays = resolveRevealCountdownDays(revealCampaignEnabled, nextRevealAt);
+    const revealCountdownDays = resolveRevealCountdownDays(teaserRevealEnabled);
     const showRtAttributionFinal = (showRtAttribution ?? true) && layout.preset.enableText && !isThumb;
     const structuralBorderColor = isThumb ? stageBadgeColor : structural.border;
     const structuralBorderOpacity = isThumb ? 1 : undefined;
@@ -657,13 +655,8 @@ function normalizeTimestamp(value?: number | string | Date): number | undefined 
     return undefined;
 }
 
-function resolveRevealCountdownDays(enabled?: boolean, nextRevealAt?: number | string | Date): number | undefined {
-    if (!enabled) return undefined;
-    const nextRevealMs = normalizeTimestamp(nextRevealAt);
-    if (!nextRevealMs) return undefined;
-    const diffMs = nextRevealMs - Date.now();
-    if (diffMs <= 0) return undefined;
-    return Math.ceil(diffMs / MS_PER_DAY);
+function resolveRevealCountdownDays(_enabled?: boolean): number | undefined {
+    return undefined;
 }
 
 function resolveStructuralColors(theme: 'dark' | 'light' | 'none', customSpokeColor?: string) {

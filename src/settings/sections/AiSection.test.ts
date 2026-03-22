@@ -121,9 +121,9 @@ describe('AI settings models table', () => {
 
     it('keeps local quick-config provider-gated instead of globally forced visible', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
-        expect(source.includes('params.addAiRelatedElement(localQuickConfigSection);')).toBe(false);
-        expect(source.includes("localQuickConfigSection.toggleClass('ert-settings-hidden', !isLocal);")).toBe(true);
-        expect(source.includes("localQuickConfigSection.toggleClass('ert-settings-visible', isLocal);")).toBe(true);
+        expect(source.includes('params.addAiRelatedElement(ollamaQuickConfigSection);')).toBe(false);
+        expect(source.includes("ollamaQuickConfigSectionEl.toggleClass('ert-settings-hidden', !isOllama);")).toBe(true);
+        expect(source.includes("ollamaQuickConfigSectionEl.toggleClass('ert-settings-visible', isOllama);")).toBe(true);
     });
 
     it('uses medium dropdown sizing for all AI Strategy controls', () => {
@@ -150,7 +150,9 @@ describe('AI settings models table', () => {
         expect(source.includes('* Estimates use published provider pricing. Actual charges may differ due to provider-side billing rules and account-level adjustments such as caching, credits, promos, or contract pricing.')).toBe(true);
         expect(source.includes('https://openai.com/api/pricing/')).toBe(true);
         expect(source.includes('https://platform.claude.com/docs/en/about-claude/pricing')).toBe(true);
-        expect(source.includes('https://ai.google.dev/gemini-api/docs/pricing')).toBe(true);
+        expect(source.includes('https://ai.google.dev/')).toBe(true);
+        expect(source.includes('Google Gemini')).toBe(false);
+        expect(source.includes('Local LLM Configuration')).toBe(false);
         expect(source.includes("rowEl.addClass('ert-ai-models-row--active')")).toBe(true);
         expect(source.includes('setActiveCostComparisonRow(provider, displayModel.id)')).toBe(true);
         expect(source.includes('Request composition')).toBe(false);
@@ -178,7 +180,7 @@ describe('AI settings models table', () => {
         expect(source.includes('AI role template (author-defined)')).toBe(true);
         expect(source.includes('Editorial analysis instructions')).toBe(true);
         expect(source.includes('outputContractTokens')).toBe(true);
-        expect(source.includes('localTotalTokens')).toBe(true);
+        expect(source.includes('totalEstimatedTokens')).toBe(true);
         expect(source.includes('providerExecutionTokens')).toBe(true);
         expect(source.includes('resolveActiveRoleTemplate')).toBe(true);
         expect(source.includes('buildOutputRulesText')).toBe(true);
@@ -210,5 +212,17 @@ describe('AI settings models table', () => {
         expect(source.includes('Replace key...')).toBe(true);
         expect(source.includes('Copy key name')).toBe(true);
         expect(source.includes('Saved (not tested)')).toBe(false);
+    });
+
+    it('uses canonical Ollama naming for the quick config surface', () => {
+        const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
+        expect(source.includes('Ollama Configuration')).toBe(true);
+        expect(source.includes('Ollama model server')).toBe(true);
+        expect(source.includes('Ollama server')).toBe(true);
+        expect(source.includes('Ollama API key')).toBe(true);
+        expect(source.includes('Local LLM Configuration')).toBe(false);
+        expect(source.includes('Local API key')).toBe(false);
+        expect(source.includes('ert-provider-local')).toBe(false);
+        expect(source.includes('ert-provider-gemini')).toBe(false);
     });
 });

@@ -102,14 +102,3 @@ export function generateBeatGuid(): string {
   }
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
-
-export function resolveSelectedBeatModel(
-  selectedBeatSystem?: string,
-  customBeatSystemName?: string
-): string | undefined {
-  const system = normalizeBeatSetNameInput(selectedBeatSystem ?? '', '');
-  if (!system) return undefined;
-  if (toBeatModelMatchKey(system) !== 'custom') return system;
-  const custom = normalizeBeatSetNameInput(customBeatSystemName ?? '', '');
-  return custom || 'Custom';
-}

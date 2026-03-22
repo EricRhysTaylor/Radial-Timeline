@@ -16,7 +16,7 @@ import type { RadialTimelineView } from '../view/TimeLineView';
 import type RadialTimelinePlugin from '../main';
 import { TimelineMode, isTimelineMode } from './ModeDefinition';
 import { getModeDefinition } from './ModeRegistry';
-import { resolveSelectedBeatModel } from '../utils/beatsInputNormalize';
+import { resolveSelectedBeatModelFromSettings } from '../utils/beatSystemState';
 
 /**
  * Mode Manager - Handles all mode transitions and lifecycle
@@ -62,7 +62,7 @@ export class ModeManager {
                 const beatNotes = scenes.filter((s: { itemType?: string }) => s.itemType === 'Beat' || s.itemType === 'Plot');
                 
                 if (beatNotes.length === 0) {
-                    const selectedSystem = resolveSelectedBeatModel(this.plugin.settings.beatSystem, this.plugin.settings.customBeatSystemName) ?? '';
+                    const selectedSystem = resolveSelectedBeatModelFromSettings(this.plugin.settings) ?? '';
                     const systemHint = selectedSystem
                         ? `No "${selectedSystem}" beat notes found. Ensure beat notes have "Class: Beat" and "Beat Model: ${selectedSystem}" in frontmatter.`
                         : 'No story beats found. Create notes with frontmatter "Class: Beat".';

@@ -7,6 +7,9 @@
 import type { RadialTimelineSettings } from '../types';
 import { buildDefaultInquiryPromptConfig } from '../inquiry/prompts';
 import { buildDefaultAiSettings } from '../ai/settings/aiSettings';
+import { DEFAULT_CUSTOM_BEAT_SYSTEM_ID, buildDefaultCustomBeatSystem, getCustomBeatConfigKey } from '../utils/beatSystemState';
+import { PLOT_SYSTEM_NAMES } from '../utils/beatsSystems';
+import { buildDefaultAuthorProgressSettings } from '../authorProgress/authorProgressConfig';
 
 export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     books: [],
@@ -102,8 +105,6 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     readabilityScale: 'normal',
     shouldRestoreTimelineOnLoad: false,
     beatSystem: 'Save The Cat', // Default beat system
-    customBeatSystemName: 'Custom',
-    customBeatSystemBeats: [],
     dominantSubplots: {}, // Default: empty map, will use outermost subplot for scenes in multiple subplots
     globalPovMode: 'off',
     lastSeenReleaseNotesVersion: '',
@@ -152,9 +153,16 @@ Iteration:`
 Act: {{Act}}
 Purpose: {{Purpose}}
 Beat Model: {{BeatModel}}
-Range: {{Range}}`,
-        advanced: ``
+Range: {{Range}}`
     },
+    beatSystemConfigs: Object.fromEntries(
+        [...PLOT_SYSTEM_NAMES, getCustomBeatConfigKey(DEFAULT_CUSTOM_BEAT_SYSTEM_ID)].map((key) => [
+            key,
+            { beatYamlAdvanced: '', beatHoverMetadataFields: [] }
+        ])
+    ),
+    activeCustomBeatSystemId: DEFAULT_CUSTOM_BEAT_SYSTEM_ID,
+    savedBeatSystems: [buildDefaultCustomBeatSystem()],
     bookDesignerTemplates: [],
     manuscriptExportTemplates: [],
     lastUsedManuscriptExportTemplateId: undefined,
@@ -222,63 +230,5 @@ Context:`,
     },
 
     // Author Progress Report (APR)
-    authorProgress: {
-        enabled: false,
-        defaultNoteBehavior: 'preset',
-        defaultPublishTarget: 'folder',
-
-        // Reveal options
-        showSubplots: true,
-        showActs: true,
-        showStatus: true,
-        showProgressPercent: true,
-        aprProgressMode: 'zero',
-        aprProgressDateStart: undefined,
-        aprProgressDateTarget: undefined,
-        aprSize: 'medium',
-        exportFormat: 'png',
-        aprBackgroundColor: '#0d0d0f',
-        aprCenterTransparent: true, // Recommended: transparent shows page background
-        aprBookAuthorColor: '#6FB971', // Press stage default
-        aprAuthorColor: '#6FB971', // Defaults to same as book title
-        aprEngineColor: '#e5e5e5',
-        aprPercentNumberColor: '#6FB971', // Color for center percent number
-        aprPercentSymbolColor: '#6FB971', // Color for center % symbol
-        aprTheme: 'dark',
-        aprSpokeColorMode: 'dark', // Use theme-based spokes by default
-        aprSpokeColor: '#ffffff', // Default custom color (not used unless mode is 'custom')
-        // Typography defaults
-        aprBookTitleFontFamily: 'Inter',
-        aprBookTitleFontWeight: 400,
-        aprBookTitleFontItalic: false,
-        aprBookTitleFontSize: undefined, // Uses preset default
-
-        aprAuthorNameFontFamily: 'Inter',
-        aprAuthorNameFontWeight: 400,
-        aprAuthorNameFontItalic: false,
-        aprAuthorNameFontSize: undefined, // Uses preset default
-
-        aprPercentNumberFontSize1Digit: undefined, // Uses preset default
-        aprPercentNumberFontSize2Digit: undefined, // Uses preset default
-        aprPercentNumberFontSize3Digit: undefined, // Uses preset default
-
-        aprRtBadgeFontFamily: 'Inter',
-        aprRtBadgeFontWeight: 700,
-        aprRtBadgeFontItalic: false,
-        aprRtBadgeFontSize: undefined, // Uses preset default
-        aprShowRtAttribution: true,
-
-        bookTitle: '',
-        authorUrl: '',
-
-        lastPublishedDate: undefined,
-        updateFrequency: 'manual',
-        stalenessThresholdDays: 30,
-        enableReminders: true,
-        dynamicEmbedPath: 'Radial Timeline/Social/book/apr-default-manual-medium.png',
-        autoUpdateEmbedPaths: true,
-
-        // Pro Feature: Campaign Manager (empty by default)
-        campaigns: []
-    },
+    authorProgress: buildDefaultAuthorProgressSettings(),
 };

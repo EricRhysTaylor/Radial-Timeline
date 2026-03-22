@@ -8,7 +8,6 @@ import { renderAuthorProgressSection } from './sections/AuthorProgressSection';
 import { renderInquirySection } from './sections/InquirySection';
 import { fetchAnthropicModels } from '../api/anthropicApi';
 import { fetchOpenAiModels } from '../api/openaiApi';
-import { fetchGeminiModels } from '../api/geminiApi';
 import RadialTimelinePlugin from '../main';
 import { renderColorsSection } from './sections/ColorsSection';
 import { renderReadmeSection } from './sections/ReadmeSection';
@@ -21,7 +20,7 @@ import { renderPlanetaryTimeSection } from './sections/PlanetaryTimeSection';
 import { renderRuntimeSection } from './sections/RuntimeSection';
 import { renderProfessionalSection } from './sections/ProfessionalSection';
 import { isProActive } from './proEntitlement';
-import { validateLocalModelAvailability } from '../api/localAiApi';
+import { validateLocalModelAvailability as validateOllamaModelAvailability } from '../api/localAiApi';
 import { FolderSuggest } from './FolderSuggest';
 import { ERT_CLASSES, ERT_DATA } from '../ui/classes';
 import {
@@ -37,6 +36,7 @@ import {
 import { DEFAULT_SETTINGS } from './defaults';
 import { getCredential } from '../ai/credentials/credentials';
 import type { AIProviderId } from '../ai/types';
+import { fetchGeminiModels as fetchGoogleModels } from '../api/geminiApi';
 
 export class RadialTimelineSettingsTab extends PluginSettingTab {
     plugin: RadialTimelinePlugin;
@@ -46,8 +46,8 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
     private _anthropicKeyInput?: HTMLInputElement;
     private _googleKeyInput?: HTMLInputElement;
     private _openaiKeyInput?: HTMLInputElement;
-    private _localBaseUrlInput?: HTMLInputElement;
-    private _localModelIdInput?: HTMLInputElement;
+    private _ollamaBaseUrlInput?: HTMLInputElement;
+    private _ollamaModelIdInput?: HTMLInputElement;
     private _aiRelatedElements: HTMLElement[] = [];
     private _activeTab: 'pro' | 'inquiry' | 'core' | 'social' | 'ai' = 'core';
     private _searchDebounceTimer?: number;
@@ -169,8 +169,8 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         if (provider === 'ollama') {
             const selectedProvider = this.getSelectedAiProvider();
             if (selectedProvider !== 'ollama') return;
-            const baseInput = this._localBaseUrlInput;
-            const modelInput = this._localModelIdInput;
+            const baseInput = this._ollamaBaseUrlInput;
+            const modelInput = this._ollamaModelIdInput;
             if (!baseInput || !modelInput) return;
             const baseUrl = baseInput.value?.trim();
             const modelId = modelInput.value?.trim();
@@ -182,11 +182,11 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                     el.removeClass('ert-setting-input-success');
                     el.removeClass('ert-setting-input-error');
                 });
-                const localKey = await getCredential(this.plugin, 'ollama');
-                const result = await validateLocalModelAvailability(
+                const ollamaKey = await getCredential(this.plugin, 'ollama');
+                const result = await validateOllamaModelAvailability(
                     baseUrl,
                     modelId,
-                    localKey
+                    ollamaKey
                 );
                 if (result.reachable && result.hasModel) {
                     [baseInput, modelInput].forEach(el => {
@@ -218,7 +218,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
             try {
                 if (provider === 'anthropic') await fetchAnthropicModels(key);
-                else if (provider === 'google') await fetchGeminiModels(key);
+                else if (provider === 'google') await fetchGoogleModels(key);
                 else await fetchOpenAiModels(key);
                 inputEl.addClass('ert-setting-input-success');
                 window.setTimeout(() => inputEl.removeClass('ert-setting-input-success'), 1200);
@@ -694,7 +694,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                 { icon: 'layout-grid', text: 'Unlimited beat systems and Pro Sets' },
                 { icon: 'waves', text: 'Extended Inquiry prompts' },
                 { icon: 'timer', text: 'Runtime estimation and session planning' },
-                { icon: 'radio', text: 'APR campaign management and teaser controls' },
+                { icon: 'radio', text: 'Social campaign management and teaser controls' },
             ]
         });
     }
@@ -819,7 +819,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         });
         renderRuntimeSection({ app: this.app, plugin: this.plugin, containerEl: proStack });
 
-        // Social Tab Content - APR Section
+        // Social Tab Content - Social Section
         renderAuthorProgressSection({ app: this.app, plugin: this.plugin, containerEl: socialContent });
 
         const inquiryStack = inquiryContent.createDiv({ cls: ERT_CLASSES.STACK });
@@ -933,9 +933,9 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                     if (provider === 'google') this._googleKeyInput = input;
                     if (provider === 'openai') this._openaiKeyInput = input;
                 },
-                setLocalConnectionInputs: ({ baseInput, modelInput }) => {
-                    if (baseInput) this._localBaseUrlInput = baseInput;
-                    if (modelInput) this._localModelIdInput = modelInput;
+                setOllamaConnectionInputs: ({ baseInput, modelInput }) => {
+                    if (baseInput) this._ollamaBaseUrlInput = baseInput;
+                    if (modelInput) this._ollamaModelIdInput = modelInput;
                 },
             });
         } catch (error) {

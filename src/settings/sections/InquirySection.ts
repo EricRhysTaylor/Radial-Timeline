@@ -15,7 +15,7 @@ import { openOrRevealFile } from '../../utils/fileUtils';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import { ERT_CLASSES } from '../../ui/classes';
 import { badgePill } from '../../ui/ui';
-import { isFeatureGateEnabled } from '../featureGate';
+import { hasProFeatureAccess } from '../featureGate';
 import { InquirySessionStore } from '../../inquiry/InquirySessionStore';
 import { DEFAULT_INQUIRY_HISTORY_LIMIT, INQUIRY_HISTORY_LIMIT_OPTIONS } from '../../inquiry/constants';
 import {
@@ -1035,7 +1035,7 @@ export function renderInquirySection(params: SectionParams): void {
         const promptContainer = targetEl.createDiv({ cls: ERT_CLASSES.STACK });
         const freeCustomLimit = 3;
         const proCustomLimit = 8;
-        const isPro = isFeatureGateEnabled(plugin, 'inquiry');
+        const isPro = hasProFeatureAccess(plugin);
         const allCanonicalByZone = groupCanonicalQuestionsByZone(ALL_CANONICAL_QUESTIONS);
         const coreCanonicalByZone = groupCanonicalQuestionsByZone(CORE_CANONICAL_QUESTIONS);
         const zones: InquiryZone[] = ['setup', 'pressure', 'payoff'];

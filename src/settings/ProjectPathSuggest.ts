@@ -68,9 +68,9 @@ export class ProjectPathSuggest extends AbstractInputSuggest<TFolder> {
         if (this.options?.onValidPath) {
           await this.options.onValidPath(normalized);
         } else {
-          // Save to authorProgress.socialProjectPath
+          // Save to authorProgress.defaults.projectPathOverride
           if (!this.plugin.settings.authorProgress) return;
-          this.plugin.settings.authorProgress.socialProjectPath = normalized;
+          this.plugin.settings.authorProgress.defaults.projectPathOverride = normalized;
           await this.plugin.saveSettings();
         }
         inputEl.removeClass(errorClass);
@@ -79,7 +79,7 @@ export class ProjectPathSuggest extends AbstractInputSuggest<TFolder> {
       } else {
         // Invalid path - revert to last saved value
         const savedValue = this.options?.getSavedValue?.()
-          ?? this.plugin.settings.authorProgress?.socialProjectPath
+          ?? this.plugin.settings.authorProgress?.defaults.projectPathOverride
           ?? '';
         this.text.setValue(savedValue);
         inputEl.addClass(errorClass);

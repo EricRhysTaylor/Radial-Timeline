@@ -20,7 +20,7 @@ import { sanitizeSourcePath, buildInitialSceneFilename, buildInitialBackdropFile
 import { getTemplateParts } from '../utils/yamlTemplateNormalize';
 import { ensureManuscriptOutputFolder, ensureOutlineOutputFolder } from '../utils/aiOutput';
 import { buildExportFilename, buildPrecursorFilename, buildOutlineExport, getExportFormatExtension, getLayoutById, getTemplateFontDiagnostics, getVaultAbsolutePath, resolveTemplatePath, runPandocOnContent, stemToReadable, validatePandocLayout } from '../utils/exportFormats';
-import { isFeatureGateEnabled } from '../settings/featureGate';
+import { hasProFeatureAccess } from '../settings/featureGate';
 import { getActiveBookExportContext } from '../utils/exportContext';
 import { getActiveBook } from '../utils/books';
 import { normalizeFrontmatterKeys } from '../utils/frontmatter';
@@ -31,6 +31,7 @@ import { parseMatterMetaFromFrontmatter } from '../utils/matterMeta';
 import { ensureBundledLayoutInstalledForExport } from '../utils/pandocBundledLayouts';
 import { getDefaultManuscriptCleanupOptions, normalizeManuscriptCleanupOptions, sanitizeCompiledManuscript } from '../utils/manuscriptSanitize';
 import { getPlotSystem } from '../utils/beatsSystems';
+import { getActiveCustomBeatSystemBeats } from '../utils/beatSystemState';
 
 import { getRuntimeSettings } from '../utils/runtimeEstimator';
 
@@ -190,7 +191,7 @@ export class CommandRegistrar {
     }
 
     private async handleManuscriptExport(result: ManuscriptModalResult): Promise<ManuscriptExportOutcome> {
-        if (this.requiresPro(result) && !isFeatureGateEnabled(this.plugin, 'exports')) {
+        if (this.requiresPro(result) && !hasProFeatureAccess(this.plugin)) {
             new Notice('This export configuration requires Pro.');
             return {};
         }
@@ -756,7 +757,7 @@ export class CommandRegistrar {
     private resolveModernClassicBeatDefinitions(): ModernClassicBeatDefinition[] {
         const selectedSystem = (this.plugin.settings.beatSystem || 'Custom').trim();
         if (selectedSystem === 'Custom') {
-            return (this.plugin.settings.customBeatSystemBeats || [])
+            return getActiveCustomBeatSystemBeats(this.plugin.settings)
                 .map((beat, index) => this.toModernClassicBeatDefinition(beat, index + 1))
                 .filter((beat): beat is ModernClassicBeatDefinition => !!beat);
         }

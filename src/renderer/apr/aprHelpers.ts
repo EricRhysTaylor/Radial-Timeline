@@ -1,4 +1,4 @@
-import type { AuthorProgressSettings, AprCampaign } from '../../types/settings';
+import type { AuthorProgressSettings, AuthorProgressCampaign } from '../../types/settings';
 import type RadialTimelinePlugin from '../../main';
 import { normalizePath, TFolder } from 'obsidian';
 
@@ -7,7 +7,7 @@ import { normalizePath, TFolder } from 'obsidian';
  *
  * Inheritance order:
  * 1. Campaign override (campaign.projectPath)
- * 2. Core Social configuration (socialProjectPath)
+ * 2. Social defaults (projectPathOverride)
  * 3. Fallback to main Source path for backward compatibility
  *
  * @param authorProgress - Core Social settings
@@ -17,17 +17,17 @@ import { normalizePath, TFolder } from 'obsidian';
  */
 export function resolveProjectPath(
     authorProgress: AuthorProgressSettings,
-    campaign: AprCampaign | null,
+    campaign: AuthorProgressCampaign | null,
     sourcePath: string
 ): string {
     // Campaign override takes priority
-    if (campaign?.projectPath && campaign.projectPath.trim()) {
-        return campaign.projectPath.trim();
+    if (campaign?.projectPathOverride && campaign.projectPathOverride.trim()) {
+        return campaign.projectPathOverride.trim();
     }
 
-    // Use Core Social configuration
-    if (authorProgress.socialProjectPath && authorProgress.socialProjectPath.trim()) {
-        return authorProgress.socialProjectPath.trim();
+    // Use Social defaults
+    if (authorProgress.defaults.projectPathOverride && authorProgress.defaults.projectPathOverride.trim()) {
+        return authorProgress.defaults.projectPathOverride.trim();
     }
 
     // Fallback to main Source path for backward compatibility
@@ -38,8 +38,8 @@ export function resolveProjectPath(
  * Resolves the effective book title for a given target (Core Social or Campaign override)
  *
  * Inheritance order:
- * 1. Campaign override (campaign.bookTitle)
- * 2. Core APR title (bookTitle)
+ * 1. Campaign override (campaign.bookTitleOverride)
+ * 2. Author Progress default title (bookTitleOverride)
  * 3. Fallback to derived title from project path folder basename
  *
  * @param authorProgress - Core Social settings
@@ -49,17 +49,17 @@ export function resolveProjectPath(
  */
 export function resolveBookTitle(
     authorProgress: AuthorProgressSettings,
-    campaign: AprCampaign | null,
+    campaign: AuthorProgressCampaign | null,
     projectPath: string
 ): string {
     // Campaign override takes priority
-    if (campaign?.bookTitle && campaign.bookTitle.trim()) {
-        return campaign.bookTitle.trim();
+    if (campaign?.bookTitleOverride && campaign.bookTitleOverride.trim()) {
+        return campaign.bookTitleOverride.trim();
     }
 
-    // Use canonical APR title
-    if (authorProgress.bookTitle && authorProgress.bookTitle.trim()) {
-        return authorProgress.bookTitle.trim();
+    // Use canonical authorProgress title override
+    if (authorProgress.defaults.bookTitleOverride && authorProgress.defaults.bookTitleOverride.trim()) {
+        return authorProgress.defaults.bookTitleOverride.trim();
     }
 
     // Fallback to derived title from folder basename

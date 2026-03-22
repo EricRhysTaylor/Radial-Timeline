@@ -43,9 +43,8 @@ import { validateAiSettings } from './ai/settings/validateAiSettings';
 import { buildDefaultAiSettings } from './ai/settings/aiSettings';
 import { getAIClient } from './ai/runtime/aiClient';
 import { migrateLegacyKeysToSecretStorage, needsLegacyKeyMigration } from './ai/credentials/credentials';
-import { PLOT_SYSTEM_NAMES } from './utils/beatsSystems';
-import { generateBeatGuid } from './utils/beatsInputNormalize';
-import type { BeatSystemConfig } from './types/settings';
+import { migrateAuthorProgressSettings } from './authorProgress/authorProgressConfig';
+import { migrateBeatSettings, stripLegacyBeatSettings } from './migrations/beatSettings';
 import { isDefaultEmbedPath } from './utils/aprPaths';
 import { DEFAULT_BOOK_TITLE, createBookId, deriveBookTitleFromSourcePath, getActiveBook, normalizeBookProfile, shouldSeedBookProfileFromLegacySettings } from './utils/books';
 import { initVersionCheckService, getVersionCheckService } from './services/VersionCheckService';
@@ -398,6 +397,7 @@ export default class RadialTimelinePlugin extends Plugin {
         const loadedSettings = (await this.loadData()) ?? {};
         this.settings = Object.assign({}, DEFAULT_SETTINGS, loadedSettings);
         this.settings.aiSettings = (loadedSettings as Partial<RadialTimelineSettings>).aiSettings;
+        this.settings.authorProgress = migrateAuthorProgressSettings((loadedSettings as Partial<RadialTimelineSettings>).authorProgress);
 
         let booksMigrated = false;
         const settingsAny = this.settings as unknown as Record<string, unknown>;
@@ -502,17 +502,18 @@ export default class RadialTimelinePlugin extends Plugin {
         }
         if (this.settings.authorProgress) {
             const apr = this.settings.authorProgress;
-            if (apr.autoUpdateEmbedPaths === undefined) {
-                apr.autoUpdateEmbedPaths = true;
+            const defaults = apr.defaults;
+            if (defaults.autoUpdateExportPath === undefined) {
+                defaults.autoUpdateExportPath = true;
             }
-            const hasPublished = !!apr.lastPublishedDate?.trim();
+            const hasPublished = !!defaults.lastPublishedDate?.trim();
             const hasCampaigns = (apr.campaigns ?? []).length > 0;
-            const isDefaultPath = isDefaultEmbedPath(apr.dynamicEmbedPath, {
-                bookTitle: apr.bookTitle,
-                updateFrequency: apr.updateFrequency
+            const isDefaultPath = isDefaultEmbedPath(defaults.exportPath, {
+                bookTitle: defaults.bookTitleOverride,
+                updateFrequency: defaults.updateFrequency
             });
-            if (!hasPublished && !hasCampaigns && isDefaultPath && apr.autoUpdateEmbedPaths === false) {
-                apr.autoUpdateEmbedPaths = true;
+            if (!hasPublished && !hasCampaigns && isDefaultPath && defaults.autoUpdateExportPath === false) {
+                defaults.autoUpdateExportPath = true;
             }
         }
         if (this.settings.releaseNotesLastFetched !== undefined) {
@@ -544,101 +545,8 @@ export default class RadialTimelinePlugin extends Plugin {
         }
 
         const actionNotesTargetMigrated = this.settingsService.migrateInquiryActionNotesTargetField();
-
-        // ─── Schema alignment (Scene/Beat/Backdrop ontology) ───────────────
-        let schemaOntologyMigrated = false;
-        const beatBaseTemplate = this.settings.beatYamlTemplates?.base;
-        if (typeof beatBaseTemplate === 'string' && beatBaseTemplate.includes('Description:')) {
-            if (!this.settings.beatYamlTemplates) {
-                this.settings.beatYamlTemplates = { ...DEFAULT_SETTINGS.beatYamlTemplates! };
-            } else {
-                this.settings.beatYamlTemplates.base = beatBaseTemplate.replace(/^Description:/gm, 'Purpose:');
-            }
-            schemaOntologyMigrated = true;
-            console.debug('[SchemaMigration]', {
-                event: 'beat_base_template_description_to_purpose',
-                action: 'updated beat base template to write Purpose',
-            });
-        }
-
-        // ─── Strip When/Definition from all beat templates (base, advanced, per-system configs) ──
-        const stripWhenDefinition = (yaml: string): string =>
-            yaml.split('\n').filter(line => !/^(When|Definition)\s*:/i.test(line.trim())).join('\n');
-
-        if (this.settings.beatYamlTemplates?.base) {
-            const stripped = stripWhenDefinition(this.settings.beatYamlTemplates.base);
-            if (stripped !== this.settings.beatYamlTemplates.base) {
-                this.settings.beatYamlTemplates.base = stripped;
-                schemaOntologyMigrated = true;
-                console.debug('[SchemaMigration]', {
-                    event: 'beat_base_template_stripped',
-                    action: 'removed When/Definition from beat base template',
-                });
-            }
-        }
-        if (this.settings.beatYamlTemplates?.advanced) {
-            const stripped = stripWhenDefinition(this.settings.beatYamlTemplates.advanced);
-            if (stripped !== this.settings.beatYamlTemplates.advanced) {
-                this.settings.beatYamlTemplates.advanced = stripped;
-                schemaOntologyMigrated = true;
-                console.debug('[SchemaMigration]', {
-                    event: 'beat_advanced_template_stripped',
-                    action: 'removed When/Definition from beat advanced template',
-                });
-            }
-        }
-
-        // ─── Migrate legacy beat YAML/hover globals into per-system config map ───
-        let beatConfigMigrated = false;
-        if (!this.settings.beatSystemConfigs) {
-            const legacyAdvancedRaw = this.settings.beatYamlTemplates?.advanced ?? '';
-            const legacyAdvancedBuiltIn = stripWhenDefinition(legacyAdvancedRaw);
-            const legacyHover = this.settings.beatHoverMetadataFields ?? [];
-            // Only create configs if there is something to migrate
-            if (legacyAdvancedRaw.trim() || legacyHover.length > 0) {
-                const seedConfig: BeatSystemConfig = {
-                    beatYamlAdvanced: legacyAdvancedBuiltIn,
-                    beatHoverMetadataFields: legacyHover.map(f => ({ ...f })),
-                };
-                const configs: Record<string, BeatSystemConfig> = {};
-                // Seed all built-in system slots
-                for (const name of PLOT_SYSTEM_NAMES) {
-                    configs[name] = {
-                        beatYamlAdvanced: seedConfig.beatYamlAdvanced,
-                        beatHoverMetadataFields: seedConfig.beatHoverMetadataFields.map(f => ({ ...f })),
-                    };
-                }
-                // Seed custom:default
-                configs['custom:default'] = {
-                    beatYamlAdvanced: legacyAdvancedRaw,
-                    beatHoverMetadataFields: seedConfig.beatHoverMetadataFields.map(f => ({ ...f })),
-                };
-                // Seed any existing saved Pro systems
-                const saved = this.settings.savedBeatSystems ?? [];
-                for (const s of saved) {
-                    configs[`custom:${s.id}`] = {
-                        beatYamlAdvanced: s.beatYamlAdvanced ?? '',
-                        beatHoverMetadataFields: (s.beatHoverMetadataFields ?? []).map(f => ({ ...f })),
-                    };
-                }
-                this.settings.beatSystemConfigs = configs;
-                beatConfigMigrated = true;
-            }
-        }
-
-        // Strip leaked keys from built-in per-system slots only; preserve custom/saved payloads.
-        if (this.settings.beatSystemConfigs) {
-            for (const key of PLOT_SYSTEM_NAMES) {
-                const cfg = this.settings.beatSystemConfigs[key];
-                if (cfg?.beatYamlAdvanced) {
-                    const stripped = stripWhenDefinition(cfg.beatYamlAdvanced);
-                    if (stripped !== cfg.beatYamlAdvanced) {
-                        cfg.beatYamlAdvanced = stripped;
-                        schemaOntologyMigrated = true;
-                    }
-                }
-            }
-        }
+        const beatSettingsMigration = migrateBeatSettings(this.settings);
+        let schemaOntologyMigrated = beatSettingsMigration.schemaNormalized;
 
         // ─── Migrate legacy backdropYamlTemplate → backdropYamlTemplates ────
         let backdropTemplateMigrated = false;
@@ -771,42 +679,7 @@ export default class RadialTimelinePlugin extends Plugin {
             globalLastUsed.novel = legacyLayoutIdMap[globalLastUsed.novel];
             pandocLayoutReferenceMigrated = true;
         }
-        // ─── Beat definition-id migration: assign GUIDs to custom/saved beats lacking ids ───
-        let beatIdMigrated = false;
-        if (Array.isArray(this.settings.customBeatSystemBeats)) {
-            for (const b of this.settings.customBeatSystemBeats) {
-                if (!b.id) {
-                    b.id = `custom:default:${generateBeatGuid()}`;
-                    beatIdMigrated = true;
-                }
-            }
-        }
-        if (Array.isArray(this.settings.savedBeatSystems)) {
-            for (const sys of this.settings.savedBeatSystems) {
-                if (Array.isArray(sys.beats)) {
-                    for (const b of sys.beats) {
-                        if (!b.id) {
-                            b.id = `custom:${sys.id}:${generateBeatGuid()}`;
-                            beatIdMigrated = true;
-                        }
-                    }
-                }
-            }
-        }
-        // Clean deprecated Beat Id placeholder from beat base template.
-        if (this.settings.beatYamlTemplates?.base && /(^|\n)Beat Id\s*:/i.test(this.settings.beatYamlTemplates.base)) {
-            this.settings.beatYamlTemplates.base = this.settings.beatYamlTemplates.base
-                .replace(/^Beat Id\s*:\s*.*$/gim, '')
-                .replace(/\n{3,}/g, '\n\n')
-                .trim();
-            beatIdMigrated = true;
-            console.debug('[SchemaMigration]', {
-                event: 'beat_id_template_removed',
-                action: 'removed deprecated Beat Id placeholder from beat base template',
-            });
-        }
-
-        if (aiSettingsMigrated || actionNotesTargetMigrated || exportFolderMigrated || beatConfigMigrated || backdropTemplateMigrated || pandocLayoutsMigrated || bundledPandocLayoutsRegistered || matterWorkflowMigrated || pandocLayoutReferenceMigrated || manuscriptExportCleanupMigrated || booksMigrated || schemaOntologyMigrated || beatIdMigrated) {
+        if (aiSettingsMigrated || actionNotesTargetMigrated || exportFolderMigrated || beatSettingsMigration.changed || backdropTemplateMigrated || pandocLayoutsMigrated || bundledPandocLayoutsRegistered || matterWorkflowMigrated || pandocLayoutReferenceMigrated || manuscriptExportCleanupMigrated || booksMigrated) {
             await this.saveSettings();
         }
     }
@@ -814,6 +687,7 @@ export default class RadialTimelinePlugin extends Plugin {
     async saveSettings() {
         this.syncLegacySourcePathFromActiveBook();
         stripLegacyAiSettings(this.settings);
+        stripLegacyBeatSettings(this.settings);
         if (__RT_DEV__) {
             try {
                 const serialized = JSON.stringify(this.settings);

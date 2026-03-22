@@ -76,8 +76,6 @@ export interface SavedBeatSystem {
     name: string;
     description?: string;
     beats: BeatDefinition[];
-    beatYamlAdvanced?: string;
-    beatHoverMetadataFields?: HoverMetadataField[];
     createdAt: string;
 }
 
@@ -141,13 +139,12 @@ export type AuthorProgressPublishTarget = 'folder' | 'github_pages' | 'note';
 export type AuthorProgressFrequency = 'manual' | 'daily' | 'weekly' | 'monthly';
 export type AprExportFormat = 'png' | 'svg';
 
-export interface AuthorProgressSettings {
-    enabled: boolean;
-    defaultNoteBehavior: 'preset' | 'custom';
-    defaultPublishTarget: AuthorProgressPublishTarget;
+export interface AuthorProgressDefaults {
+    noteBehavior: 'preset' | 'custom';
+    publishTarget: AuthorProgressPublishTarget;
     customNoteTemplatePath?: string; // Path to custom note template (Pro feature)
 
-    // Reveal Options (checkboxes)
+    // Display defaults
     showSubplots: boolean;  // Show all rings vs single Main Plot ring
     showActs: boolean;      // Show act divisions vs full circle
     showStatus: boolean;    // Show real stage colors vs neutral gray
@@ -190,23 +187,28 @@ export interface AuthorProgressSettings {
     aprShowRtAttribution?: boolean; // Show RT attribution mark (Pro can disable)
 
     // Identity & Branding
-    bookTitle: string;
+    bookTitleOverride?: string;
     authorName?: string;
     authorUrl: string;
 
-    // Social Project Configuration (Core)
-    socialProjectPath?: string;  // Project folder path for Social target
+    // Social project defaults
+    projectPathOverride?: string;
 
-    // Updates & Frequency
+    // Publishing defaults
     lastPublishedDate?: string; // ISO string
     updateFrequency: AuthorProgressFrequency;
     stalenessThresholdDays: number; // For Manual mode
     enableReminders: boolean;
-    dynamicEmbedPath: string;
-    autoUpdateEmbedPaths?: boolean;
+    exportPath: string;
+    autoUpdateExportPath?: boolean;
+}
+
+export interface AuthorProgressSettings {
+    enabled: boolean;
+    defaults: AuthorProgressDefaults;
 
     // Pro Feature: Campaign Manager
-    campaigns?: AprCampaign[];
+    campaigns?: AuthorProgressCampaign[];
 }
 
 /**
@@ -255,10 +257,10 @@ export interface TeaserRevealSettings {
 }
 
 /**
- * APR Campaign - Pro Feature
- * Allows multiple embed destinations with independent refresh schedules
+ * Author Progress campaign - Pro Feature
+ * Allows multiple export destinations with independent refresh schedules
  */
-export interface AprCampaign {
+export interface AuthorProgressCampaign {
     id: string;
     name: string;                    // "Kickstarter", "Newsletter", "Website", etc.
     description?: string;            // Optional notes about this campaign
@@ -270,12 +272,12 @@ export interface AprCampaign {
     lastPublishedDate?: string;      // ISO string - when last updated
 
     // Output
-    embedPath: string;               // Where to save the exported APR file for this campaign
+    exportPath: string;              // Where to save the exported report for this campaign
     exportFormat?: AprExportFormat;  // Campaign export format (PNG recommended, SVG optional for web embeds)
 
-    // Campaign-specific Project Configuration (Pro overrides)
-    projectPath?: string;            // Override project folder path (inherits from socialProjectPath if not set)
-    bookTitle?: string;              // Override display title (inherits from bookTitle if not set)
+    // Campaign-specific Project Configuration (campaign overrides)
+    projectPathOverride?: string;
+    bookTitleOverride?: string;
 
     aprSize?: 'thumb' | 'small' | 'medium' | 'large';
 
@@ -460,9 +462,6 @@ export interface RadialTimelineSettings {
     discontinuityThreshold?: string;
     shouldRestoreTimelineOnLoad?: boolean;
     beatSystem?: string;
-    customBeatSystemName?: string;
-    customBeatSystemDescription?: string;
-    customBeatSystemBeats?: BeatDefinition[];
     dominantSubplots?: Record<string, string>;
     globalPovMode?: GlobalPovMode;
     readabilityScale?: ReadabilityScale;
@@ -512,12 +511,9 @@ export interface RadialTimelineSettings {
     // Per-system beat YAML + hover configs (keyed by system name or custom:<id>)
     beatSystemConfigs?: Record<string, BeatSystemConfig>;
     activeCustomBeatSystemId?: string;  // Which custom system is active (default: 'default')
-    // Legacy beat YAML fields — deprecated, migrated into beatSystemConfigs on load
     beatYamlTemplates?: {
         base: string;
-        advanced: string;
     };
-    beatHoverMetadataFields?: HoverMetadataField[];
     savedBeatSystems?: SavedBeatSystem[];  // Pro: multiple custom beat systems
 
     // Pro access
@@ -554,7 +550,7 @@ export interface RadialTimelineSettings {
         novel?: string;
     };
 
-    // Author Progress Report (APR)
+    // Social / authorProgress settings
     authorProgress?: AuthorProgressSettings;
 
     // Pro experience (visual/hero activation)

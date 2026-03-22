@@ -18,7 +18,7 @@
 import type { InquiryCorpusItem } from '../services/InquiryCorpusResolver';
 import type { InquiryReadinessUiState, PassPlanResult } from '../types';
 import type { InquiryRunProgressEvent } from '../runner/types';
-import type { InquiryScope } from '../state';
+import type { InquiryRoleValidation, InquiryScope, InquirySelectionMode } from '../state';
 import type { AIRunAdvancedContext } from '../../ai/types';
 import { createSvgElement, createSvgGroup, createSvgText, clearSvgChildren } from './svgUtils';
 import { addTooltipData, balanceTooltipText } from '../../utils/tooltip';
@@ -593,7 +593,7 @@ export class InquiryMinimapRenderer {
 
     updateTargetStates(
         targetSceneIds: string[],
-        options?: { selectionMode?: 'discover' | 'focused'; roleValidation?: 'ok' | 'missing-target-roles' }
+        options?: { selectionMode?: InquirySelectionMode; roleValidation?: InquiryRoleValidation }
     ): void {
         const targetSceneIdSet = new Set(targetSceneIds.map(sceneId => sceneId.trim().toLowerCase()).filter(Boolean));
         const isDegradedFocused = options?.selectionMode === 'focused' && options?.roleValidation === 'missing-target-roles';

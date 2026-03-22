@@ -13,7 +13,7 @@
 
 import { App, TFile } from 'obsidian';
 import type { TimelineItem, RadialTimelineSettings, BookMeta, MatterMeta } from '../types';
-import { normalizeFrontmatterKeys } from '../utils/frontmatter';
+import { normalizeBeatFrontmatterKeys, normalizeFrontmatterKeys } from '../utils/frontmatter';
 import { parseWhenField } from '../utils/date';
 import { normalizeBooleanValue, isStoryBeat } from '../utils/sceneHelpers';
 import { stripWikiLinks } from '../utils/text';
@@ -22,6 +22,7 @@ import { clampActNumber, getConfiguredActCount } from '../utils/acts';
 import { isPathInFolderScope } from '../utils/pathScope';
 import { readSceneId } from '../utils/sceneIds';
 import { isMatterClassValue, parseMatterMetaFromFrontmatter } from '../utils/matterMeta';
+import { resolveSelectedBeatModelFromSettings } from '../utils/beatSystemState';
 
 export interface GetSceneDataOptions {
     filterBeatsBySystem?: boolean;
@@ -95,7 +96,7 @@ export class SceneDataService {
         });
 
         const scenes: TimelineItem[] = [];
-        const plotsToProcess: Array<{ file: TFile, metadata: Record<string, unknown>, validActNumber: number }> = [];
+        const plotsToProcess: Array<{ file: TFile, metadata: Record<string, unknown>, beatMetadata: Record<string, unknown>, validActNumber: number }> = [];
         // Reset BookMeta — will be populated if a BookMeta note is found
         this._bookMeta = null;
         // Reset metrics for this run
@@ -370,7 +371,12 @@ export class SceneDataService {
                     const configuredActs = getConfiguredActCount(this.settings);
                     const actNumberRaw = (actValue !== undefined && actValue !== null && actValue !== '') ? Number(actValue) : 1;
                     const validActNumber = clampActNumber(actNumberRaw, configuredActs);
-                    plotsToProcess.push({ file, metadata, validActNumber });
+                    plotsToProcess.push({
+                        file,
+                        metadata,
+                        beatMetadata: rawMetadata ? normalizeBeatFrontmatterKeys(rawMetadata, mappings) : metadata,
+                        validActNumber
+                    });
                 }
             } catch (error) {
                 console.error(`Error processing file ${file.path}:`, error);
@@ -412,55 +418,50 @@ export class SceneDataService {
                 original: p,
                 "Beat Model": p.metadata["Beat Model"]
             }));
-            const filtered = filterBeatsBySystem(beatsWithModel, this.settings.beatSystem, this.settings.customBeatSystemName);
+            const filtered = filterBeatsBySystem(beatsWithModel, resolveSelectedBeatModelFromSettings(this.settings));
             beatsToProcess = filtered.map(f => f.original);
         }
 
-        for (const { file, metadata, validActNumber } of beatsToProcess) {
+        for (const { file, metadata, beatMetadata, validActNumber } of beatsToProcess) {
             // Beats are structural, not temporal — no When field support.
             const dateKey = '';
 
             // Beat Model is required for Beat notes; do not silently infer when missing.
-            const beatModelRaw = typeof metadata["Beat Model"] === 'string'
-                ? String(metadata["Beat Model"]).trim()
+            const beatSource = beatMetadata ?? metadata;
+            const beatModelRaw = typeof beatSource["Beat Model"] === 'string'
+                ? String(beatSource["Beat Model"]).trim()
                 : '';
             const beatModel = beatModelRaw.length > 0 ? beatModelRaw : undefined;
             const missingBeatModel = !beatModel;
-            const purpose = (() => {
-                if (typeof metadata.Purpose === 'string') return metadata.Purpose;
-                if (typeof metadata.Description === 'string') {
-                    this.trackCompatUsage('Beat.Description->Purpose', file.path, 'Using legacy field "Description" for beat Purpose. Consider renaming to "Purpose".');
-                    return metadata.Description;
-                }
-                return undefined;
-            })();
+            const purpose = typeof beatSource.Purpose === 'string'
+                ? beatSource.Purpose
+                : undefined;
 
             // Beats appear only once in the outermost ring - not duplicated per subplot
             filteredScenes.push({
                 date: dateKey,
                 when: undefined,
                 path: file.path,
-                title: metadata.Title as string | undefined ?? file.basename,
+                title: beatSource.Title as string | undefined ?? file.basename,
                 subplot: "Main Plot", // Beats always use Main Plot for outermost ring
                 act: String(validActNumber),
                 actNumber: validActNumber,
-                synopsis: metadata.Synopsis as string | undefined,
+                synopsis: beatSource.Synopsis as string | undefined,
                 Purpose: purpose,
-                Description: metadata.Description as string | undefined,
                 "Beat Model": beatModel,
                 missingBeatModel,
-                Range: metadata.Range as string | undefined,
-                "Suggest Placement": metadata["Suggest Placement"] as string | undefined,
+                Range: beatSource.Range as string | undefined,
+                "Suggest Placement": beatSource["Suggest Placement"] as string | undefined,
                 itemType: "Beat", // Modern standard - renderer should use isBeatNote() helper
                 // Include all Gossamer score fields (Gossamer1-30)
-                Gossamer1: metadata.Gossamer1 as number | undefined,
-                Gossamer2: metadata.Gossamer2 as number | undefined,
-                Gossamer3: metadata.Gossamer3 as number | undefined,
-                Gossamer4: metadata.Gossamer4 as number | undefined,
-                Gossamer5: metadata.Gossamer5 as number | undefined,
-                "Publish Stage": metadata["Publish Stage"] as string | undefined,
+                Gossamer1: beatSource.Gossamer1 as number | undefined,
+                Gossamer2: beatSource.Gossamer2 as number | undefined,
+                Gossamer3: beatSource.Gossamer3 as number | undefined,
+                Gossamer4: beatSource.Gossamer4 as number | undefined,
+                Gossamer5: beatSource.Gossamer5 as number | undefined,
+                "Publish Stage": beatSource["Publish Stage"] as string | undefined,
                 // Raw frontmatter for accessing Gossamer Justification and other dynamic fields
-                rawFrontmatter: metadata
+                rawFrontmatter: beatSource
             });
         }
 

@@ -20,7 +20,7 @@ import {
   sanitizeLogPayload
 } from './ai/log';
 import { ensureGossamerContentLogFolder, resolveGossamerContentLogFolder } from './inquiry/utils/logs';
-import { resolveSelectedBeatModel } from './utils/beatsInputNormalize';
+import { resolveSelectedBeatModelFromSettings } from './utils/beatSystemState';
 import { isPathInFolderScope } from './utils/pathScope';
 import { FORECAST_CHARS_PER_TOKEN, FORECAST_PROMPT_OVERHEAD_TOKENS } from './ai/forecast/estimateTokensFromVault';
 import type { AIProviderId } from './ai/types';
@@ -415,7 +415,7 @@ export async function toggleGossamerMode(plugin: RadialTimelinePlugin): Promise<
     // Check if there are any story beat notes (Beat or legacy Plot)
     const beatNotes = scenes.filter(s => s.itemType === 'Beat' || s.itemType === 'Plot');
     if (beatNotes.length === 0) {
-      const selectedSystem = resolveSelectedBeatModel(plugin.settings.beatSystem, plugin.settings.customBeatSystemName) ?? '';
+      const selectedSystem = resolveSelectedBeatModelFromSettings(plugin.settings) ?? '';
       const systemHint = selectedSystem
         ? `No "${selectedSystem}" beat notes found. Ensure beat notes have "Class: Beat" and "Beat Model: ${selectedSystem}" in frontmatter.`
         : 'No story beats found. Create notes with frontmatter "Class: Beat".';
@@ -424,7 +424,7 @@ export async function toggleGossamerMode(plugin: RadialTimelinePlugin): Promise<
     }
     
     // Use beat system from settings if explicitly set (not empty)
-    const selectedBeatModel = resolveSelectedBeatModel(plugin.settings.beatSystem, plugin.settings.customBeatSystemName);
+    const selectedBeatModel = resolveSelectedBeatModelFromSettings(plugin.settings);
     
     // Build all runs (Gossamer1-30) with min/max band
     const allRuns = buildAllGossamerRuns(scenes as unknown as { itemType?: string; [key: string]: unknown }[], selectedBeatModel);
@@ -729,7 +729,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       // Use centralized filtering helper (single source of truth)
       const { filterBeatsBySystem } = await import('./utils/gossamer');
       if (beatSystem && beatSystem.trim() !== '' && plotBeats.some(p => p["Beat Model"])) {
-        plotBeats = filterBeatsBySystem(plotBeats, beatSystem, plugin.settings.customBeatSystemName);
+        plotBeats = filterBeatsBySystem(plotBeats, beatSystem);
       }
       
       if (plotBeats.length === 0) {
@@ -1103,7 +1103,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
     // Use centralized filtering helper (single source of truth)
     const { filterBeatsBySystem } = await import('./utils/gossamer');
     if (beatSystem && beatSystem.trim() !== '' && plotBeats.some(p => p["Beat Model"])) {
-      plotBeats = filterBeatsBySystem(plotBeats, beatSystem, plugin.settings.customBeatSystemName);
+      plotBeats = filterBeatsBySystem(plotBeats, beatSystem);
     }
     
     // Get sorted scene files (single source of truth)
