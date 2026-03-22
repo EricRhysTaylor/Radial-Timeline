@@ -601,6 +601,13 @@
   50% { opacity: 0.95; }
 }
 
+/* Stub state — honest 4px white indicator when checking cache, no fabricated values */
+.ert-inquiry-minimap-tokencap-cached.is-stub {
+  fill: #ffffff;
+  opacity: 1;
+  animation: none;
+}
+
 /* ── Reuse band ── */
 .ert-inquiry-minimap-reuse-band {
   display: none;

@@ -711,6 +711,7 @@ export class InquiryMinimapRenderer {
             this.minimapTokenCapSplitGroup.classList.add('ert-hidden');
         }
         this.minimapTokenCapCachedOverlay?.classList.add('ert-hidden');
+        this.minimapTokenCapCachedOverlay?.classList.remove('is-stub');
         this.minimapTokenCapCachedOverlay?.setAttribute('width', '0');
         if (this.minimapPassIndicatorGroup) {
             this.minimapPassIndicatorGroup.classList.add('ert-hidden');
@@ -822,6 +823,17 @@ export class InquiryMinimapRenderer {
         advanced: AIRunAdvancedContext | null
     ): void {
         if (!this.minimapTokenCapCachedOverlay || !this.minimapLayout) return;
+        const reuseState = advanced?.reuseState ?? 'idle';
+
+        // Idle — no cache status known. Hide completely.
+        if (reuseState === 'idle') {
+            this.minimapTokenCapCachedOverlay.classList.add('ert-hidden');
+            this.minimapTokenCapCachedOverlay.classList.remove('is-stub');
+            this.minimapTokenCapCachedOverlay.setAttribute('width', '0');
+            return;
+        }
+
+        const CACHE_STUB_PX = 4;
         const cachedRatio = advanced?.cachedStableRatio;
         const cachedTokens = advanced?.cachedStableTokens;
         const hasRealCacheMetric = typeof cachedRatio === 'number'
@@ -829,24 +841,33 @@ export class InquiryMinimapRenderer {
             && cachedRatio > 0
             && typeof cachedTokens === 'number'
             && Number.isFinite(cachedTokens)
-            && cachedTokens > 0
-            && advanced?.reuseState === 'warm';
-        if (!hasRealCacheMetric) {
-            this.minimapTokenCapCachedOverlay.classList.add('ert-hidden');
-            this.minimapTokenCapCachedOverlay.setAttribute('width', '0');
-            return;
+            && cachedTokens > 0;
+
+        if (hasRealCacheMetric) {
+            // Warm or eligible with confirmed cache data — proportional overlay.
+            // Leave a 4px stub at the trailing end to reveal the underlying token cap bar.
+            const barWidth = this.minimapLayout.length * Math.min(Math.max(fillRatio, 0), 1);
+            const rawOverlayWidth = barWidth * Math.min(cachedRatio!, 1);
+            const overlayWidth = Math.max(0, rawOverlayWidth - CACHE_STUB_PX);
+            if (overlayWidth < 1) {
+                // Too small to render meaningfully — show the stub instead.
+                this.minimapTokenCapCachedOverlay.classList.remove('ert-hidden');
+                this.minimapTokenCapCachedOverlay.classList.add('is-stub');
+                this.minimapTokenCapCachedOverlay.setAttribute('x', this.minimapLayout.startX.toFixed(2));
+                this.minimapTokenCapCachedOverlay.setAttribute('width', String(CACHE_STUB_PX));
+                return;
+            }
+            this.minimapTokenCapCachedOverlay.classList.remove('ert-hidden', 'is-stub');
+            this.minimapTokenCapCachedOverlay.setAttribute('x', this.minimapLayout.startX.toFixed(2));
+            this.minimapTokenCapCachedOverlay.setAttribute('width', overlayWidth.toFixed(2));
+        } else {
+            // Eligible but no confirmed data — honest 4px white stub.
+            // Shows the system is checking; no fabricated values.
+            this.minimapTokenCapCachedOverlay.classList.remove('ert-hidden');
+            this.minimapTokenCapCachedOverlay.classList.add('is-stub');
+            this.minimapTokenCapCachedOverlay.setAttribute('x', this.minimapLayout.startX.toFixed(2));
+            this.minimapTokenCapCachedOverlay.setAttribute('width', String(CACHE_STUB_PX));
         }
-        const overlayWidth = this.minimapLayout.length
-            * Math.min(Math.max(fillRatio, 0), 1)
-            * Math.min(cachedRatio, 1);
-        if (overlayWidth < 4) {
-            this.minimapTokenCapCachedOverlay.classList.add('ert-hidden');
-            this.minimapTokenCapCachedOverlay.setAttribute('width', '0');
-            return;
-        }
-        this.minimapTokenCapCachedOverlay.classList.remove('ert-hidden');
-        this.minimapTokenCapCachedOverlay.setAttribute('x', this.minimapLayout.startX.toFixed(2));
-        this.minimapTokenCapCachedOverlay.setAttribute('width', overlayWidth.toFixed(2));
     }
 
     private updateBackboneCachedOverlay(
