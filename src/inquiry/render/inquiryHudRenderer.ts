@@ -98,23 +98,19 @@ export function renderInquiryPromptPreviewLayout(args: {
             PREVIEW_HERO_LINE_HEIGHT
         );
     } else {
+        const hoverHeroWidth = Math.max(heroBaseWidth, PREVIEW_RESULTS_HERO_MAX_WIDTH);
         heroLines = args.setBalancedHeroText(
             refs.previewHero,
             args.question,
-            heroBaseWidth,
+            hoverHeroWidth,
             PREVIEW_HERO_LINE_HEIGHT,
             PREVIEW_HERO_MAX_LINES
         );
         if (heroLines > heroTargetLines) {
-            const stageHeroWidth = Math.min(
-                PREVIEW_PANEL_WIDTH - (PREVIEW_PANEL_PADDING_X * 2),
-                PREVIEW_PANEL_WIDTH * 0.9
-            );
-            const expandedWidth = Math.max(heroBaseWidth, stageHeroWidth);
             heroLines = args.setBalancedHeroText(
                 refs.previewHero,
                 args.question,
-                expandedWidth,
+                hoverHeroWidth,
                 PREVIEW_HERO_LINE_HEIGHT,
                 heroTargetLines
             );

@@ -1458,6 +1458,23 @@
   display: none;
 }
 
+/* Focused-form reticle ticks — small cross marks outside the dot circle */
+.inq-zone-dot-reticle {
+  stroke: var(--ert-inquiry-zone-stroke, var(--text-normal));
+  stroke-width: 1;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 160ms ease;
+}
+
+.inq-zone-dot.is-focused-form .inq-zone-dot-reticle {
+  opacity: 0.85;
+}
+
+.ert-inquiry-svg.is-running .inq-zone-dot-reticle {
+  opacity: 0;
+}
+
 .ert-inquiry-zone-icon .ert-inquiry-icon-btn-bg {
   fill: var(--background-primary);
 }
@@ -1723,13 +1740,19 @@
   transition: opacity 160ms ease;
 }
 
-.ert-inquiry-preview.is-results {
+.ert-inquiry-preview-hitbox {
+  fill: transparent;
+  pointer-events: none;
+}
+
+/* Only enable pointer events when preview is both visible AND showing results.
+   Without is-visible, an invisible results hitbox blocks zone pod buttons. */
+.ert-inquiry-preview.is-visible.is-results {
   pointer-events: auto;
   cursor: pointer;
 }
 
-.ert-inquiry-preview-hitbox {
-  fill: transparent;
+.ert-inquiry-preview.is-visible.is-results .ert-inquiry-preview-hitbox {
   pointer-events: all;
 }
 

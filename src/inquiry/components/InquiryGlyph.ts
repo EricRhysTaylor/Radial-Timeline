@@ -26,6 +26,7 @@ export interface InquiryGlyphPromptState {
     processedPromptId?: string | null;
     processedStatus?: 'success' | 'error' | null;
     lockedPromptId?: string | null;
+    focusedFormIds?: Set<string>;
     onPromptSelect?: (zone: InquiryZone, promptId: string) => void;
     onPromptContextMenu?: (zone: InquiryZone, promptId: string, event: MouseEvent) => void;
     onPromptHover?: (zone: InquiryZone, promptId: string, promptText: string) => void;
@@ -56,6 +57,8 @@ const ZONE_RING_GAP_PX = 10;
 const ZONE_DOT_RADIUS_PX = 14;
 const ZONE_DOT_PRO_RING_RADIUS_PX = 11;
 const ZONE_DOT_TEXT_PX = 16;
+const ZONE_DOT_RETICLE_OFFSET = ZONE_DOT_RADIUS_PX + 3;
+const ZONE_DOT_RETICLE_LEN = 4;
 const ZONE_NUMBER_COUNT = 9;
 const ZONE_NUMBER_SPACING_DEG = 10;
 const ZONE_SEGMENT_VIEWBOX_WIDTH = 159;
@@ -390,6 +393,23 @@ export class InquiryGlyph {
                 dotText.setAttribute('font-size', String(ZONE_DOT_TEXT_PX));
                 dotText.textContent = String(i + 1);
 
+                // Reticle ticks — 4 short lines just outside the circle
+                const reticlePositions: Array<[number, number, number, number]> = [
+                    [0, -ZONE_DOT_RETICLE_OFFSET, 0, -(ZONE_DOT_RETICLE_OFFSET + ZONE_DOT_RETICLE_LEN)], // top
+                    [0, ZONE_DOT_RETICLE_OFFSET, 0, ZONE_DOT_RETICLE_OFFSET + ZONE_DOT_RETICLE_LEN],     // bottom
+                    [-ZONE_DOT_RETICLE_OFFSET, 0, -(ZONE_DOT_RETICLE_OFFSET + ZONE_DOT_RETICLE_LEN), 0], // left
+                    [ZONE_DOT_RETICLE_OFFSET, 0, ZONE_DOT_RETICLE_OFFSET + ZONE_DOT_RETICLE_LEN, 0]      // right
+                ];
+                for (const [x1, y1, x2, y2] of reticlePositions) {
+                    const tick = document.createElementNS(SVG_NS, 'line');
+                    tick.classList.add('inq-zone-dot-reticle');
+                    tick.setAttribute('x1', String(x1));
+                    tick.setAttribute('y1', String(y1));
+                    tick.setAttribute('x2', String(x2));
+                    tick.setAttribute('y2', String(y2));
+                    dotGroup.appendChild(tick);
+                }
+
                 dotGroup.appendChild(dotHit);
                 dotGroup.appendChild(dotCircle);
                 dotGroup.appendChild(dotProRing);
@@ -529,6 +549,8 @@ export class InquiryGlyph {
                 marker.group.classList.toggle('is-processed-success', isProcessed && processedStatus === 'success');
                 marker.group.classList.toggle('is-processed-error', isError);
                 marker.group.classList.toggle('is-locked', isLocked);
+                const isFocusedForm = !!prompt && (this.promptState?.focusedFormIds?.has(prompt.id) ?? false);
+                marker.group.classList.toggle('is-focused-form', isFocusedForm);
                 marker.group.removeAttribute('aria-label');
                 if (prompt) {
                     marker.group.setAttribute('role', 'button');

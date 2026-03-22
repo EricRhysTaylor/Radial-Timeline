@@ -105,7 +105,7 @@ export function applyInquiryCorpusCcSlotViewModel(
     }
 
     addTooltipData(slot.group, viewModel.tooltip, 'left');
-    slot.group.setAttribute('data-rt-tip-offset-x', '10');
+    slot.group.setAttribute('data-rt-tip-offset-x', '-6');
     if (viewModel.filePath) {
         slot.group.classList.add('is-openable');
         slot.group.setAttribute('data-file-path', viewModel.filePath);

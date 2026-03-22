@@ -5,6 +5,7 @@ export type InquiryScope = 'book' | 'saga';
 export type InquiryLens = 'flow' | 'depth';
 export type InquirySelectionMode = 'discover' | 'focused';
 export type InquiryZone = 'setup' | 'pressure' | 'payoff';
+export type InquiryPromptFormOverride = 'auto' | 'standard' | 'focused';
 
 export type InquirySeverity = 'low' | 'medium' | 'high';
 export type InquiryConfidence = 'low' | 'medium' | 'high';
@@ -109,6 +110,7 @@ export interface InquiryState {
     settingsSnapshot?: string;
     isNarrowLayout: boolean;
     reportPreviewOpen?: boolean;
+    promptFormOverrides: Record<string, InquiryPromptFormOverride>;
 }
 
 export const createDefaultInquiryState = (): InquiryState => ({
@@ -125,4 +127,5 @@ export const createDefaultInquiryState = (): InquiryState => ({
     isRunning: false,
     isNarrowLayout: false,
     reportPreviewOpen: false,
+    promptFormOverrides: {},
 });

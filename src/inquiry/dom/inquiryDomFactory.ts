@@ -226,7 +226,7 @@ export function createInquiryPromptPreviewPanel(args: {
     const clickTarget = createSvgElement('rect') as SVGRectElement;
     clickTarget.classList.add('ert-inquiry-preview-hitbox');
     clickTarget.setAttribute('fill', 'transparent');
-    clickTarget.setAttribute('pointer-events', 'all');
+    // pointer-events controlled by CSS — only enabled when preview is visible + results
     panel.appendChild(clickTarget);
 
     const runningNote = createSvgText(panel, 'ert-inquiry-preview-running-note ert-hidden', '', 0, -24);

@@ -28,6 +28,7 @@ import {
     InquiryLens,
     InquiryRoleValidation,
     InquiryResult,
+    InquiryPromptFormOverride,
     InquirySelectionMode,
     InquiryScope,
     InquirySeverity,
@@ -2706,17 +2707,28 @@ export class InquiryView extends ItemView {
         if (!this.glyph) return;
         this.syncSelectedPromptIds();
         const processed = this.getProcessedPromptState();
+        const selectionMode = this.getSelectionMode(this.getActiveTargetSceneIds());
         const promptsByZone = {
             setup: this.getPromptOptions('setup').map(prompt => ({ id: prompt.id, question: prompt.standardPrompt, tier: prompt.tier })),
             pressure: this.getPromptOptions('pressure').map(prompt => ({ id: prompt.id, question: prompt.standardPrompt, tier: prompt.tier })),
             payoff: this.getPromptOptions('payoff').map(prompt => ({ id: prompt.id, question: prompt.standardPrompt, tier: prompt.tier }))
         };
+        const focusedFormIds = new Set<string>();
+        for (const zone of ['setup', 'pressure', 'payoff'] as const) {
+            for (const prompt of this.getPromptOptions(zone)) {
+                const effective = this.getEffectivePromptOverride(prompt.id);
+                if (resolveQuestionPromptForm(prompt, selectionMode, effective) === 'focused') {
+                    focusedFormIds.add(prompt.id);
+                }
+            }
+        }
         this.glyph.updatePromptState({
             promptsByZone,
             selectedPromptIds: this.state.selectedPromptIds,
             processedPromptId: processed.id,
             processedStatus: processed.status,
             lockedPromptId: this.state.isRunning ? this.state.activeQuestionId : null,
+            focusedFormIds,
             onPromptSelect: (zone, promptId) => {
                 if (this.isInquiryRunDisabled()) return;
                 if (this.state.isRunning) {
@@ -2752,7 +2764,7 @@ export class InquiryView extends ItemView {
                     zone,
                     this.state.mode,
                     prompt
-                        ? this.resolveQuestionPromptForRun(prompt, this.getSelectionMode(this.getActiveTargetSceneIds()))
+                        ? this.resolveQuestionPromptForRun(prompt, this.getSelectionMode(this.getActiveTargetSceneIds()), this.getEffectivePromptOverride(promptId))
                         : promptText
                 );
             },
@@ -2820,25 +2832,36 @@ export class InquiryView extends ItemView {
 
     private showQuestionRunMenu(question: InquiryQuestion, event: MouseEvent): void {
         const menu = new Menu();
-        menu.addItem(item => {
-            item.setTitle('Run (Auto)');
-            item.onClick(() => {
-                void this.handleQuestionClick(question);
+        const current = this.state.promptFormOverrides[question.id] ?? 'auto';
+        const options: Array<{ label: string; value: InquiryPromptFormOverride }> = [
+            { label: 'Auto', value: 'auto' },
+            { label: 'Standard', value: 'standard' },
+            { label: 'Focused', value: 'focused' }
+        ];
+        for (const opt of options) {
+            menu.addItem(item => {
+                item.setTitle(opt.value === current ? `${opt.label}  \u2713` : opt.label);
+                item.onClick(() => {
+                    this.setPromptFormOverride(question.id, opt.value);
+                });
             });
-        });
-        menu.addItem(item => {
-            item.setTitle('Run Standard');
-            item.onClick(() => {
-                void this.handleQuestionClick(question, { promptOverride: 'standard' });
-            });
-        });
-        menu.addItem(item => {
-            item.setTitle('Run Focused');
-            item.onClick(() => {
-                void this.handleQuestionClick(question, { promptOverride: 'focused' });
-            });
-        });
+        }
         menu.showAtMouseEvent(event);
+    }
+
+    private setPromptFormOverride(questionId: string, override: InquiryPromptFormOverride): void {
+        if (override === 'auto') {
+            delete this.state.promptFormOverrides[questionId];
+        } else {
+            this.state.promptFormOverrides[questionId] = override;
+        }
+        this.updateGlyphPromptState();
+    }
+
+    private getEffectivePromptOverride(questionId: string): InquiryQuestionPromptForm | undefined {
+        const override = this.state.promptFormOverrides[questionId];
+        if (!override || override === 'auto') return undefined;
+        return override;
     }
 
     private renderZonePods(parent: SVGGElement): void {
@@ -2889,7 +2912,7 @@ export class InquiryView extends ItemView {
                         this.showPromptPreview(
                             zone.id,
                             this.state.mode,
-                            this.resolveQuestionPromptForRun(prompt, this.getSelectionMode(this.getActiveTargetSceneIds()))
+                            this.resolveQuestionPromptForRun(prompt, this.getSelectionMode(this.getActiveTargetSceneIds()), this.getEffectivePromptOverride(prompt.id))
                         );
                     }
                     this.setHoverText(this.buildZoneHoverText(zone.id));
@@ -5407,8 +5430,9 @@ export class InquiryView extends ItemView {
         const scopeKey = this.getScopeKey();
         const targetSceneIds = this.getActiveTargetSceneIds();
         const selectionMode = this.getSelectionMode(targetSceneIds);
-        const questionText = this.resolveQuestionPromptForRun(question, selectionMode, options?.promptOverride);
-        const questionPromptForm = this.resolveQuestionPromptFormForRun(question, selectionMode, options?.promptOverride);
+        const effectiveOverride = options?.promptOverride ?? this.getEffectivePromptOverride(question.id);
+        const questionText = this.resolveQuestionPromptForRun(question, selectionMode, effectiveOverride);
+        const questionPromptForm = this.resolveQuestionPromptFormForRun(question, selectionMode, effectiveOverride);
         const activeBookId = this.state.scope === 'saga' ? this.state.activeBookId : this.state.activeBookId;
 
         const engineSelection = this.resolveEngineSelectionForRun();
@@ -6432,7 +6456,18 @@ export class InquiryView extends ItemView {
 
     private dismissResults(): void {
         if (!this.isResultsState()) return;
+        this.rehydrateTargetKey = undefined;
+        if (this.rehydrateHighlightTimer) {
+            window.clearTimeout(this.rehydrateHighlightTimer);
+            this.rehydrateHighlightTimer = undefined;
+        }
+        if (this.rehydratePulseTimer) {
+            window.clearTimeout(this.rehydratePulseTimer);
+            this.rehydratePulseTimer = undefined;
+        }
+        this.artifactButton?.classList.remove('is-rehydrate-pulse');
         this.clearActiveResultState();
+        this.clearResultPreview();
         this.unlockPromptPreview();
         this.setApiStatus('idle');
         this.refreshUI({ skipCorpus: true });
