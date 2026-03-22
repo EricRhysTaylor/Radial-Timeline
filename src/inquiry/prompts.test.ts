@@ -4,6 +4,7 @@ import {
     buildDefaultInquiryPromptConfig,
     buildInquiryPromptConfigFromLoadout,
     getInquiryPromptSlotState,
+    normalizeInquiryPromptConfig,
     replaceCanonicalPromptSlots,
     syncCanonicalPromptSlot
 } from './prompts';
@@ -135,5 +136,24 @@ describe('Inquiry prompt helpers', () => {
             enabled: true,
             builtIn: false
         })).toBe('customized');
+    });
+
+    it('ignores legacy flow/depth prompt shapes and keeps canonical zones only', () => {
+        const normalized = normalizeInquiryPromptConfig({
+            flow: {
+                setup: [{
+                    id: 'legacy-flow-setup',
+                    label: 'Legacy flow',
+                    question: 'Legacy flow prompt',
+                    enabled: true,
+                    builtIn: false
+                }]
+            }
+        } as any);
+
+        expect(normalized.setup.map(slot => slot.id)).toEqual(['setup-core']);
+        expect(normalized.setup.some(slot => slot.id === 'legacy-flow-setup')).toBe(false);
+        expect(normalized.pressure.map(slot => slot.id)).toEqual(['pressure-core']);
+        expect(normalized.payoff.map(slot => slot.id)).toEqual(['payoff-core']);
     });
 });

@@ -38,6 +38,7 @@ export interface ResolvedInquiryEngine {
     modelAlias: string;
     modelLabel: string;
     providerLabel: string;
+    hasCredential: boolean;
     contextWindow: number;
     maxOutput: number;
     selectionReason: string;
@@ -68,7 +69,13 @@ const PROVIDER_LABELS: Record<AIProviderId, string> = {
     none: 'Disabled'
 };
 
+const CANONICAL_PROVIDERS: AIProviderId[] = ['anthropic', 'openai', 'google', 'ollama', 'none'];
+
 // ── Helpers ────────────────────────────────────────────────────────
+
+function hasValidProvider(provider: unknown): provider is AIProviderId {
+    return typeof provider === 'string' && CANONICAL_PROVIDERS.includes(provider as AIProviderId);
+}
 
 function getValidatedAiSettings(plugin: RadialTimelinePlugin): AiSettingsV1 {
     const validated = validateAiSettings(plugin.settings.aiSettings ?? buildDefaultAiSettings());
@@ -99,6 +106,24 @@ export function resolveInquiryEngine(
     plugin: RadialTimelinePlugin,
     models: ModelInfo[]
 ): ResolvedInquiryEngine {
+    const rawProvider = plugin.settings.aiSettings?.provider;
+    if (rawProvider !== undefined && !hasValidProvider(rawProvider)) {
+        return {
+            provider: 'none',
+            modelId: '',
+            modelAlias: '',
+            modelLabel: 'Invalid AI provider',
+            providerLabel: PROVIDER_LABELS.none,
+            hasCredential: false,
+            contextWindow: 0,
+            maxOutput: 0,
+            selectionReason: 'Canonical AI Strategy contains an invalid provider id.',
+            policySource: 'disabled',
+            blocked: true,
+            blockReason: 'AI settings contain an invalid provider. Re-select a provider in AI settings before using Inquiry.'
+        };
+    }
+
     const aiSettings = getValidatedAiSettings(plugin);
     const featureProfile = aiSettings.featureProfiles?.['InquiryMode'];
 
@@ -126,6 +151,7 @@ export function resolveInquiryEngine(
             modelAlias: '',
             modelLabel: 'AI disabled',
             providerLabel: PROVIDER_LABELS.none,
+            hasCredential: false,
             contextWindow: 0,
             maxOutput: 0,
             selectionReason: 'Canonical AI Strategy is disabled.',
@@ -142,6 +168,32 @@ export function resolveInquiryEngine(
     // ── Model selection ────────────────────────────────────────────
     const accessTier = resolveTier(aiSettings, provider);
     const providerLabel = PROVIDER_LABELS[provider] ?? String(provider);
+    const hasCredential = provider === 'ollama'
+        ? !!aiSettings.connections?.ollamaBaseUrl?.trim()
+        : provider === 'anthropic'
+            ? !!aiSettings.credentials?.anthropicSecretId?.trim()
+            : provider === 'openai'
+                ? !!aiSettings.credentials?.openaiSecretId?.trim()
+                : !!aiSettings.credentials?.googleSecretId?.trim();
+
+    if (!hasCredential) {
+        return {
+            provider,
+            modelId: '',
+            modelAlias: '',
+            modelLabel: 'Provider not configured',
+            providerLabel,
+            hasCredential: false,
+            contextWindow: 0,
+            maxOutput: 0,
+            selectionReason: `${providerLabel} is not configured for Inquiry.`,
+            policySource,
+            blocked: true,
+            blockReason: provider === 'ollama'
+                ? 'Configure an Ollama base URL in AI settings before using Inquiry.'
+                : `Add a saved ${providerLabel} key in AI settings before using Inquiry.`
+        };
+    }
 
     try {
         const selection = selectModel(models, {
@@ -157,6 +209,7 @@ export function resolveInquiryEngine(
             modelAlias: selection.model.alias,
             modelLabel: selection.model.label,
             providerLabel: PROVIDER_LABELS[selection.provider] ?? String(selection.provider),
+            hasCredential: true,
             contextWindow: selection.model.contextWindow,
             maxOutput: selection.model.maxOutput,
             selectionReason: selection.reason,
@@ -171,6 +224,7 @@ export function resolveInquiryEngine(
             modelAlias: '',
             modelLabel: 'No eligible model',
             providerLabel,
+            hasCredential: true,
             contextWindow: 0,
             maxOutput: 0,
             selectionReason: `No model satisfies Inquiry capability floor for ${providerLabel}.`,

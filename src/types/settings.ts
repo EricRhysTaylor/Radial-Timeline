@@ -1,4 +1,4 @@
-import type { InquiryScope } from '../inquiry/state';
+import type { InquiryScope, InquiryZone } from '../inquiry/state';
 import type { AiSettingsV1, AIRoleTemplate } from '../ai/types';
 
 export type AiContextTemplate = AIRoleTemplate;
@@ -319,7 +319,6 @@ export interface InquiryTimingHistoryEntry {
     updatedAt: string;
 }
 
-export type InquiryPromptZone = 'setup' | 'pressure' | 'payoff';
 export type InquiryCanonicalQuestionTier = 'core' | 'signature';
 export type InquiryCanonicalPromptState = 'loaded' | 'customized';
 
@@ -327,7 +326,7 @@ export interface InquiryCanonicalPromptRef {
     id: string;
     version: number;
     tier: InquiryCanonicalQuestionTier;
-    zone: InquiryPromptZone;
+    zone: InquiryZone;
     state?: InquiryCanonicalPromptState;
 }
 
@@ -341,7 +340,7 @@ export interface InquiryPromptSlot {
     canonical?: InquiryCanonicalPromptRef;
 }
 
-export type InquiryPromptConfig = Record<InquiryPromptZone, InquiryPromptSlot[]>;
+export type InquiryPromptConfig = Record<InquiryZone, InquiryPromptSlot[]>;
 
 export interface InquiryTargetCache {
     lastBookId?: string;
@@ -379,7 +378,7 @@ export interface InquirySessionCacheRecord {
         targetSceneIds: string[];
         focusBookId?: string;
         scope?: InquiryScope;
-        questionZone?: InquiryPromptZone;
+        questionZone?: InquiryZone;
         pendingEditsApplied?: boolean;
     }[];
     max: number;

@@ -172,10 +172,9 @@ export type CorpusCcStats = {
 
 export type InquiryWritebackOutcome = 'written' | 'duplicate' | 'skipped';
 export type InquiryGuidanceState = 'not-configured' | 'no-scenes' | 'ready' | 'running' | 'results';
-export type EngineProvider = Exclude<AIProviderId, 'none'>;
 
 export type OmnibusProviderChoice = {
-    provider: EngineProvider;
+    provider: Exclude<AIProviderId, 'none'>;
     modelId: string;
     modelLabel: string;
     useOmnibus: boolean;
@@ -190,7 +189,7 @@ export type OmnibusProviderPlan = {
 };
 
 export type EngineChoice = {
-    provider: EngineProvider;
+    provider: Exclude<AIProviderId, 'none'>;
     providerLabel: string;
     modelId: string;
     modelLabel: string;

@@ -5,7 +5,13 @@ import type { SceneInclusion } from '../../types/settings';
 import type { TokenTier } from '../types';
 import { extractTokenUsage, formatAiLogContent, formatDuration, formatUsageCostBreakdownLines, sanitizeLogPayload, type AiLogStatus } from '../../ai/log';
 import { buildManifestTocLines, formatBriefLabel, formatManifestClassLabel } from '../utils/inquiryViewText';
-import type { EngineProvider } from '../types/inquiryViewTypes';
+
+const PROVIDER_LABELS = {
+    anthropic: 'Anthropic',
+    google: 'Google',
+    openai: 'OpenAI',
+    ollama: 'Ollama'
+} as const;
 
 type InquiryLogCostEstimateInput = {
     executionInputTokens: number;
@@ -17,7 +23,6 @@ type InquiryLogCostEstimateInput = {
 export type InquiryLogBuilderDependencies = {
     getQuestionLabel: (result: InquiryResult) => string;
     getBriefModelLabel: (result: InquiryResult) => string | null;
-    getInquiryProviderLabel: (provider: EngineProvider) => string;
     getFiniteTokenEstimateInput: (trace: InquiryRunTrace, result: InquiryResult) => number | null;
     getTokenTier: (inputTokens: number) => TokenTier;
     buildInquiryLogCostEstimateInput: (trace: InquiryRunTrace, result: InquiryResult) => InquiryLogCostEstimateInput | null;
@@ -54,7 +59,7 @@ export function buildInquiryLogContent(args: {
         ? 'Simulation'
         : providerRaw
             ? (['anthropic', 'google', 'openai', 'ollama'].includes(providerRaw)
-                ? deps.getInquiryProviderLabel(providerRaw as EngineProvider)
+                ? PROVIDER_LABELS[providerRaw as keyof typeof PROVIDER_LABELS]
                 : providerRaw)
             : 'Unknown';
     const modelLabel = isSimulated

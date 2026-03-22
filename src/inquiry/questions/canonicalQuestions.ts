@@ -1,10 +1,11 @@
-import type { InquiryCanonicalQuestionTier, InquiryPromptZone } from '../../types/settings';
+import type { InquiryCanonicalQuestionTier } from '../../types/settings';
+import type { InquiryZone } from '../state';
 
 export interface InquiryCanonicalQuestionDefinition {
     id: string;
     version: number;
     tier: InquiryCanonicalQuestionTier;
-    zone: InquiryPromptZone;
+    zone: InquiryZone;
     label: string;
     standardPrompt: string;
     focusedPrompt?: string;
@@ -12,7 +13,7 @@ export interface InquiryCanonicalQuestionDefinition {
     enabledByDefault?: boolean;
 }
 
-const CANONICAL_QUESTION_ORDER: Record<InquiryPromptZone, number> = {
+const CANONICAL_QUESTION_ORDER: Record<InquiryZone, number> = {
     setup: 0,
     pressure: 1,
     payoff: 2
@@ -324,8 +325,8 @@ export const getCanonicalQuestionsByTier = (
 
 export const groupCanonicalQuestionsByZone = (
     questions: readonly InquiryCanonicalQuestionDefinition[] = ALL_CANONICAL_QUESTIONS
-): Record<InquiryPromptZone, InquiryCanonicalQuestionDefinition[]> => {
-    const grouped: Record<InquiryPromptZone, InquiryCanonicalQuestionDefinition[]> = {
+): Record<InquiryZone, InquiryCanonicalQuestionDefinition[]> => {
+    const grouped: Record<InquiryZone, InquiryCanonicalQuestionDefinition[]> = {
         setup: [],
         pressure: [],
         payoff: []
@@ -343,7 +344,7 @@ export const groupCanonicalQuestionsByZone = (
 
 export const getCanonicalQuestionsByTierAndZone = (
     tier: InquiryCanonicalQuestionTier,
-    zone: InquiryPromptZone
+    zone: InquiryZone
 ): InquiryCanonicalQuestionDefinition[] =>
     getCanonicalQuestionsByTier(tier).filter(question => question.zone === zone);
 

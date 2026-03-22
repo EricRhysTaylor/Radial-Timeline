@@ -14,14 +14,12 @@ import type { TokenUsage } from '../../ai/usage/providerUsage';
 import type { InquiryQuestionPromptForm } from '../questions/resolveQuestionPrompt';
 
 export type EvidenceClass = string;
-
-export type InquiryAiProvider = Exclude<AIProviderId, 'none'>;
 export type InquiryExecutionState = 'blocked_before_send' | 'dispatched_to_provider' | 'packaging_failed';
 export type InquiryExecutionPath = 'one_pass' | 'multi_pass';
 export type InquiryFailureStage = 'preflight' | 'chunk_execution' | 'synthesis' | 'provider_response_parsing';
 
 export interface InquiryAiEngineInfo {
-    provider: InquiryAiProvider;
+    provider: Exclude<AIProviderId, 'none'>;
     modelId: string;
     modelLabel: string;
 }

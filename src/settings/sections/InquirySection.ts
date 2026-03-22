@@ -29,6 +29,7 @@ import {
     replaceCanonicalPromptSlots,
     syncCanonicalPromptSlot
 } from '../../inquiry/prompts';
+import type { InquiryZone } from '../../inquiry/state';
 import {
     ALL_CANONICAL_QUESTIONS,
     CORE_CANONICAL_QUESTIONS,
@@ -45,11 +46,19 @@ import {
 } from '../../inquiry/utils/scanRoots';
 import {
     findInquiryBookForPath,
-    normalizeInquiryBookInclusion,
     resolveBookManagerInquiryBooks,
     type InquiryBookResolution,
     type InquiryResolvedBook
 } from '../../inquiry/services/bookResolution';
+import {
+    getClassScopeConfig,
+    getDefaultMaterialMode,
+    isSynopsisCapableClass,
+    normalizeClassContribution,
+    normalizeContributionMode,
+    normalizeInquirySources,
+    normalizeMaterialMode
+} from '../../inquiry/services/InquiryCorpusService';
 import { resolveInquirySourceRoots } from '../../inquiry/utils/sourceRoots';
 
 interface SectionParams {
@@ -69,13 +78,6 @@ const parseClassScopeInput = (raw: string): string[] => {
         .filter(Boolean);
     if (!lines.length) return [];
     return Array.from(new Set(lines));
-};
-
-const getClassScopeConfig = (raw?: string[]): { allowAll: boolean; allowed: string[] } => {
-    const list = (raw || []).map(entry => entry.trim().toLowerCase()).filter(Boolean);
-    const allowAll = list.includes('/');
-    const allowed = list.filter(entry => entry !== '/');
-    return { allowAll, allowed };
 };
 
 const normalizeClassLabel = (className: string): string =>
@@ -165,9 +167,6 @@ const formatSessionProviderModel = (session: InquirySession): string => {
 };
 
 const REFERENCE_ONLY_CLASSES = new Set(['character', 'place', 'power']);
-const SYNOPSIS_CAPABLE_CLASSES = new Set(['scene', 'outline']);
-const CONTRIBUTION_MODES: SceneInclusion[] = ['excluded', 'summary', 'full'];
-const DEFAULT_FULL_CLASSES = new Set(['outline', ...REFERENCE_ONLY_CLASSES]);
 const CONTRIBUTION_LABELS: Record<SceneInclusion, string> = {
     excluded: 'Exclude',
     summary: 'Summary',
@@ -175,49 +174,11 @@ const CONTRIBUTION_LABELS: Record<SceneInclusion, string> = {
 };
 
 const defaultModeForClass = (className: string): SceneInclusion => {
-    if (DEFAULT_FULL_CLASSES.has(className)) return 'full';
-    if (className === 'scene') return 'summary';
-    return 'full';
-};
-
-const isSynopsisCapableClass = (className: string): boolean =>
-    SYNOPSIS_CAPABLE_CLASSES.has(className.toLowerCase());
-
-const normalizeContributionMode = (mode: SceneInclusion, className: string): SceneInclusion => {
-    if (mode === 'summary' && !isSynopsisCapableClass(className)) {
-        return 'full';
-    }
-    return mode;
+    return getDefaultMaterialMode(className);
 };
 
 const getContributionModesForClass = (className: string): SceneInclusion[] =>
     isSynopsisCapableClass(className) ? ['excluded', 'summary', 'full'] : ['excluded', 'full'];
-
-const normalizeMaterialMode = (value: unknown, className: string): SceneInclusion => {
-    let normalized: SceneInclusion = 'excluded';
-    if (typeof value === 'string') {
-        const raw = value.trim().toLowerCase();
-        if (raw === 'digest') normalized = 'summary';
-        if (CONTRIBUTION_MODES.includes(raw as SceneInclusion)) normalized = raw as SceneInclusion;
-    }
-    if (typeof value === 'boolean') {
-        normalized = value ? defaultModeForClass(className) : 'excluded';
-    }
-    return normalizeContributionMode(normalized, className);
-};
-
-const normalizeClassContribution = (config: InquiryClassConfig): InquiryClassConfig => {
-    const isReference = !isSynopsisCapableClass(config.className);
-    const bookScope = isReference ? 'excluded' : normalizeContributionMode(config.bookScope, config.className);
-    const sagaScope = isReference ? 'excluded' : normalizeContributionMode(config.sagaScope, config.className);
-    const referenceScope = isReference ? normalizeContributionMode(config.referenceScope, config.className) : 'excluded';
-    return {
-        ...config,
-        bookScope: bookScope === 'excluded' ? 'excluded' : bookScope,
-        sagaScope: sagaScope === 'excluded' ? 'excluded' : sagaScope,
-        referenceScope: referenceScope === 'excluded' ? 'excluded' : referenceScope
-    };
-};
 
 const defaultParticipationForClass = (className: string): { book: boolean; saga: boolean; reference: boolean } => {
     const normalized = className.toLowerCase();
@@ -261,32 +222,6 @@ const mergeClassConfigs = (existing: InquiryClassConfig[], discovered: string[])
         return a.localeCompare(b);
     });
     return sorted.map(name => byName.get(name) ?? defaultClassConfig(name));
-};
-
-const normalizeInquirySources = (raw?: InquirySourcesSettings): InquirySourcesSettings => {
-    if (!raw) {
-        return { scanRoots: [], bookInclusion: {}, classes: [], classCounts: {}, resolvedScanRoots: [] };
-    }
-    return {
-        preset: raw.preset,
-        scanRoots: raw.scanRoots && raw.scanRoots.length ? normalizeScanRootPatterns(raw.scanRoots) : [],
-        bookInclusion: normalizeInquiryBookInclusion(raw.bookInclusion),
-        classScope: raw.classScope ? parseClassScopeInput(listToText(raw.classScope)) : [],
-        classes: (raw.classes || []).map(config => normalizeClassContribution({
-            className: config.className.toLowerCase(),
-            enabled: !!config.enabled,
-            bookScope: normalizeMaterialMode(config.bookScope, config.className.toLowerCase()),
-            sagaScope: normalizeMaterialMode(config.sagaScope, config.className.toLowerCase()),
-            referenceScope: normalizeMaterialMode(
-                (config as InquiryClassConfig).referenceScope
-                ?? (!isSynopsisCapableClass(config.className.toLowerCase()) ? true : false),
-                config.className.toLowerCase()
-            )
-        })),
-        classCounts: raw.classCounts || {},
-        resolvedScanRoots: raw.resolvedScanRoots ? normalizeScanRootPatterns(raw.resolvedScanRoots) : [],
-        lastScanAt: raw.lastScanAt
-    };
 };
 
 const normalizeCorpusThresholds = (raw?: InquiryCorpusThresholds): InquiryCorpusThresholds => {
@@ -1103,9 +1038,8 @@ export function renderInquirySection(params: SectionParams): void {
         const isPro = isProfessionalActive(plugin);
         const allCanonicalByZone = groupCanonicalQuestionsByZone(ALL_CANONICAL_QUESTIONS);
         const coreCanonicalByZone = groupCanonicalQuestionsByZone(CORE_CANONICAL_QUESTIONS);
-        const zones = ['setup', 'pressure', 'payoff'] as const;
-        type InquiryPromptZoneKey = typeof zones[number];
-        const canonicalRowRefs: Record<InquiryPromptZoneKey, Map<string, HTMLElement>> = {
+        const zones: InquiryZone[] = ['setup', 'pressure', 'payoff'];
+        const canonicalRowRefs: Record<InquiryZone, Map<string, HTMLElement>> = {
             setup: new Map(),
             pressure: new Map(),
             payoff: new Map()
@@ -1118,18 +1052,18 @@ export function renderInquirySection(params: SectionParams): void {
             void plugin.saveSettings();
         }
 
-        const zoneLabels: Record<InquiryPromptZoneKey, string> = {
+        const zoneLabels: Record<InquiryZone, string> = {
             setup: 'Setup',
             pressure: 'Pressure',
             payoff: 'Payoff'
         };
-        const zoneIcons: Record<InquiryPromptZoneKey, string> = {
+        const zoneIcons: Record<InquiryZone, string> = {
             setup: 'sprout',
             pressure: 'gauge',
             payoff: 'target'
         };
 
-        const createCustomSlot = (zone: InquiryPromptZoneKey): InquiryPromptSlot => ({
+        const createCustomSlot = (zone: InquiryZone): InquiryPromptSlot => ({
             id: `custom-${zone}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
             label: '',
             question: '',
@@ -1138,7 +1072,7 @@ export function renderInquirySection(params: SectionParams): void {
             canonical: undefined
         });
 
-        const getSlotList = (zone: InquiryPromptZoneKey): InquiryPromptSlot[] =>
+        const getSlotList = (zone: InquiryZone): InquiryPromptSlot[] =>
             promptConfig[zone] ?? [];
 
         const savePromptConfig = async (next: InquiryPromptConfig) => {
@@ -1150,7 +1084,7 @@ export function renderInquirySection(params: SectionParams): void {
         };
 
         const updateSlot = async (
-            zone: InquiryPromptZoneKey,
+            zone: InquiryZone,
             slotIndex: number,
             patch: Partial<InquiryPromptSlot>
         ) => {
@@ -1182,7 +1116,7 @@ export function renderInquirySection(params: SectionParams): void {
         };
 
         const addCustomSlot = async (
-            zone: InquiryPromptZoneKey,
+            zone: InquiryZone,
             limit: number,
             initial?: Partial<InquiryPromptSlot>
         ) => {
@@ -1201,7 +1135,7 @@ export function renderInquirySection(params: SectionParams): void {
             render();
         };
 
-        const removeSlot = async (zone: InquiryPromptZoneKey, slotIndex: number) => {
+        const removeSlot = async (zone: InquiryZone, slotIndex: number) => {
             if (slotIndex === 0) return;
             const slots = getSlotList(zone);
             const target = slots[slotIndex];
@@ -1212,7 +1146,7 @@ export function renderInquirySection(params: SectionParams): void {
         };
 
         const getSelectableCanonicalQuestions = (
-            zone: InquiryPromptZoneKey,
+            zone: InquiryZone,
             currentSlot?: InquiryPromptSlot
         ): InquiryCanonicalQuestionDefinition[] => {
             const allowed = isPro ? allCanonicalByZone[zone] : coreCanonicalByZone[zone];
@@ -1224,7 +1158,7 @@ export function renderInquirySection(params: SectionParams): void {
             return questions.sort((left, right) => left.defaultOrder - right.defaultOrder);
         };
 
-        const getZoneSlotCapacity = (zone: InquiryPromptZoneKey): number =>
+        const getZoneSlotCapacity = (zone: InquiryZone): number =>
             (isPro ? allCanonicalByZone[zone] : coreCanonicalByZone[zone]).length;
 
         const getActiveCanonicalSelectionId = (
@@ -1238,7 +1172,7 @@ export function renderInquirySection(params: SectionParams): void {
 
         const getCanonicalTemplateOrder = (
             question: InquiryCanonicalQuestionDefinition,
-            zone: InquiryPromptZoneKey
+            zone: InquiryZone
         ): number => {
             const ordered = getSelectableCanonicalQuestions(zone);
             const index = ordered.findIndex(candidate => candidate.id === question.id);
@@ -1246,7 +1180,7 @@ export function renderInquirySection(params: SectionParams): void {
         };
 
         const findCanonicalSlotIndex = (
-            zone: InquiryPromptZoneKey,
+            zone: InquiryZone,
             canonicalId: string,
             excludeIndex?: number
         ): number => getSlotList(zone).findIndex((slot, idx) =>
@@ -1254,7 +1188,7 @@ export function renderInquirySection(params: SectionParams): void {
 
         const getCanonicalOptionLabel = (
             question: InquiryCanonicalQuestionDefinition,
-            zone: InquiryPromptZoneKey,
+            zone: InquiryZone,
             excludeIndex?: number
         ): string => {
             const parts = [question.label];
@@ -1271,7 +1205,7 @@ export function renderInquirySection(params: SectionParams): void {
 
         const getCanonicalInsertOptionLabel = (
             question: InquiryCanonicalQuestionDefinition,
-            zone: InquiryPromptZoneKey
+            zone: InquiryZone
         ): string => {
             const parts = [`${getCanonicalTemplateOrder(question, zone)}. ${question.label}`];
             if (question.tier === 'signature') {
@@ -1281,7 +1215,7 @@ export function renderInquirySection(params: SectionParams): void {
         };
 
         const focusCanonicalQuestionRow = (
-            zone: InquiryPromptZoneKey,
+            zone: InquiryZone,
             canonicalId: string,
             message = 'Already added — moved to existing question'
         ): boolean => {
@@ -1398,7 +1332,7 @@ export function renderInquirySection(params: SectionParams): void {
         };
 
         const replaceSlotWithCanonical = async (
-            zone: InquiryPromptZoneKey,
+            zone: InquiryZone,
             slotIndex: number,
             canonicalId: string
         ) => {
@@ -1423,7 +1357,7 @@ export function renderInquirySection(params: SectionParams): void {
         };
 
         const insertCanonicalSlot = async (
-            zone: InquiryPromptZoneKey,
+            zone: InquiryZone,
             canonicalId: string
         ) => {
             if (findCanonicalSlotIndex(zone, canonicalId) !== -1) {
@@ -1447,7 +1381,7 @@ export function renderInquirySection(params: SectionParams): void {
         };
 
         const reorderSlots = async (
-            zone: InquiryPromptZoneKey,
+            zone: InquiryZone,
             fromIndex: number,
             toIndex: number
         ) => {
@@ -1504,7 +1438,7 @@ export function renderInquirySection(params: SectionParams): void {
 
         const renderSlotRows = (
             listEl: HTMLElement,
-            zone: InquiryPromptZoneKey,
+            zone: InquiryZone,
             slots: InquiryPromptSlot[],
             customIndexMap: Map<string, number>,
             dragState: {
@@ -1688,14 +1622,14 @@ export function renderInquirySection(params: SectionParams): void {
             });
         };
 
-        const zoneExpanded: Record<InquiryPromptZoneKey, boolean> = {
+        const zoneExpanded: Record<InquiryZone, boolean> = {
             setup: true,
             pressure: true,
             payoff: true
         };
 
         const renderZoneCard = (
-            zone: InquiryPromptZoneKey,
+            zone: InquiryZone,
             dragState: {
                 index: number | null;
                 sourceRow: HTMLElement | null;
@@ -1904,7 +1838,7 @@ export function renderInquirySection(params: SectionParams): void {
                 });
             }
 
-            const dragStates: Record<InquiryPromptZoneKey, {
+            const dragStates: Record<InquiryZone, {
                 index: number | null;
                 sourceRow: HTMLElement | null;
                 placeholderEl: HTMLElement | null;

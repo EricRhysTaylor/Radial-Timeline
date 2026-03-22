@@ -84,8 +84,6 @@ import {
     extractTokenUsage,
     formatDuration,
 } from '../ai/log';
-import { getCredentialSecretId } from '../ai/credentials/credentials';
-import { hasSecret, isSecretStorageAvailable } from '../ai/credentials/secretStorage';
 import {
     InquiryGlyph,
     FLOW_RADIUS,
@@ -107,7 +105,6 @@ import type {
     CorpusManifest,
     CorpusManifestEntry,
     EvidenceParticipationRules,
-    InquiryAiProvider,
     InquiryOmnibusInput,
     InquiryRunProgressEvent,
     InquiryRunTrace,
@@ -305,7 +302,6 @@ import type {
     CorpusCcStats,
     EngineChoice,
     EngineFailureGuidance,
-    EngineProvider,
     InquiryBriefModel,
     InquiryGlyphSeed,
     InquiryGuidanceState,
@@ -524,8 +520,6 @@ export class InquiryView extends ItemView {
     private helpTipsEnabled = false;
     private iconSymbols = new Set<string>();
     private svgDefs?: SVGDefsElement;
-    private providerSecretPresence: Partial<Record<AIProviderId, boolean>> = {};
-    private providerSecretProbePending = new Set<AIProviderId>();
     private lastTargetSceneIdsByBookId = new Map<string, string[]>();
     private corpusResolver: InquiryCorpusResolver;
     private corpus?: InquiryCorpusSnapshot;
@@ -1211,7 +1205,7 @@ export class InquiryView extends ItemView {
             scopeLabel: this.getScopeLabel(),
             aiSettings,
             resolvedEngine: engine,
-            hasCredential: engine.provider !== 'none' && this.getProviderAvailability(provider).enabled,
+            hasCredential: engine.hasCredential,
             accessTier: this.getAccessTierForProvider(provider, aiSettings),
             payloadStats: this.getPayloadStats(),
             selectedSceneOverrideCount: this.getSelectedSceneOverrideEntries().length,
@@ -5509,7 +5503,7 @@ export class InquiryView extends ItemView {
         let runTrace: InquiryRunTrace | null = null;
         new Notice('Inquiry: contacting AI provider.');
         const submittedAt = new Date();
-        const simulationProvider: InquiryAiProvider = engineSelection.provider === 'none'
+        const simulationProvider: Exclude<AIProviderId, 'none'> = engineSelection.provider === 'none'
             ? 'openai'
             : engineSelection.provider;
         const runnerInput: InquiryRunnerInput = {
@@ -6269,50 +6263,29 @@ export class InquiryView extends ItemView {
     }
 
     private buildOmnibusProviderPlan(): OmnibusProviderPlan {
-        const googleAvailability = this.getProviderAvailability('google');
-        if (googleAvailability.enabled) {
-            const modelId = this.getInquiryModelIdForProvider('google');
-            const modelLabel = this.getInquiryModelLabelForProvider('google');
-            return {
-                choice: {
-                    provider: 'google',
-                    modelId,
-                    modelLabel,
-                    useOmnibus: true
-                },
-                summary: `Prefers Google for a combined omnibus run when available. Google is available, so this run will use Google · ${modelLabel}.`,
-                label: 'Google omnibus'
-            };
-        }
-
-        const fallbackProvider: EngineProvider = this.getResolvedEngine().provider === 'none'
-            ? 'openai'
-            : this.getResolvedEngine().provider as EngineProvider;
-        const fallbackAvailability = this.getProviderAvailability(fallbackProvider);
-        const googleReason = googleAvailability.reason || 'Google not configured';
-        if (!fallbackAvailability.enabled) {
-            const providerLabel = this.getInquiryProviderLabel(fallbackProvider);
-            const reason = fallbackAvailability.reason || 'Provider unavailable';
+        const engine = this.getResolvedEngine();
+        if (engine.provider === 'none' || engine.blocked) {
             return {
                 choice: null,
-                summary: `Prefers Google for a combined omnibus run when available. Google is unavailable (${googleReason}); ${providerLabel} is also unavailable (${reason}).`,
+                summary: engine.blockReason || 'Inquiry AI is unavailable.',
                 label: 'Unavailable',
-                disabledReason: `${providerLabel} ${reason}`
+                disabledReason: engine.blockReason || 'Canonical Inquiry engine unavailable'
             };
         }
 
-        const providerLabel = this.getInquiryProviderLabel(fallbackProvider);
-        const modelLabel = this.getInquiryModelLabelForProvider(fallbackProvider);
+        const useOmnibus = engine.provider === 'google';
         return {
             choice: {
-                provider: fallbackProvider,
-                modelId: this.getInquiryModelIdForProvider(fallbackProvider),
-                modelLabel,
-                useOmnibus: false,
-                reason: googleReason
+                provider: engine.provider,
+                modelId: engine.modelId,
+                modelLabel: engine.modelLabel,
+                useOmnibus,
+                reason: useOmnibus ? undefined : 'Combined omnibus is reserved for the canonical Google Inquiry path.'
             },
-            summary: `Prefers Google for a combined omnibus run when available. Google is unavailable (${googleReason}), so this run will execute sequentially with ${providerLabel} · ${modelLabel}.`,
-            label: `Sequential · ${providerLabel}`
+            summary: useOmnibus
+                ? `Using canonical Inquiry engine ${engine.providerLabel} · ${engine.modelLabel} for a combined omnibus run.`
+                : `Using canonical Inquiry engine ${engine.providerLabel} · ${engine.modelLabel}. This provider will execute omnibus sequentially.`,
+            label: useOmnibus ? `${engine.providerLabel} omnibus` : `Sequential · ${engine.providerLabel}`
         };
     }
 
@@ -6323,73 +6296,6 @@ export class InquiryView extends ItemView {
         if (!questions.length) return 'No enabled Inquiry questions found.';
         if (!providerPlan.choice) return providerPlan.disabledReason || 'Provider unavailable';
         return null;
-    }
-
-    private getInquiryProviderLabel(provider: EngineProvider): string {
-        const labels: Record<EngineProvider, string> = {
-            anthropic: 'Anthropic',
-            google: 'Google',
-            openai: 'OpenAI',
-            ollama: 'Ollama'
-        };
-        return labels[provider] || 'OpenAI';
-    }
-
-    private getInquiryModelIdForProvider(provider: EngineProvider): string {
-        const aiSettings = this.getCanonicalAiSettings();
-        const policy = provider === this.getResolvedEngine().provider
-            ? (aiSettings.featureProfiles?.InquiryMode?.modelPolicy ?? aiSettings.modelPolicy)
-            : { type: 'latestStable' as const };
-        const selection = selectModel(BUILTIN_MODELS, {
-            provider,
-            policy,
-            requiredCapabilities: INQUIRY_REQUIRED_CAPABILITIES,
-            accessTier: this.getAccessTierForProvider(provider, aiSettings)
-        });
-        return selection.model.id;
-    }
-
-    private getInquiryModelLabelForProvider(provider: EngineProvider): string {
-        const modelId = this.getInquiryModelIdForProvider(provider);
-        return modelId ? getModelDisplayName(modelId.replace(/^models\//, '')) : 'Unknown model';
-    }
-
-    private probeSecretPresence(provider: AIProviderId, secretId: string): void {
-        if (!secretId.trim()) return;
-        if (this.providerSecretProbePending.has(provider)) return;
-        this.providerSecretProbePending.add(provider);
-        void hasSecret(this.app, secretId)
-            .then(exists => {
-                this.providerSecretPresence[provider] = exists;
-            })
-            .finally(() => {
-                this.providerSecretProbePending.delete(provider);
-                if (this.enginePanelEl && !this.enginePanelEl.classList.contains('ert-hidden')) {
-                    this.refreshEnginePanel();
-                }
-            });
-    }
-
-    private getProviderAvailability(provider: EngineProvider): { enabled: boolean; reason?: string } {
-        if (provider === 'ollama') {
-            const baseUrl = this.getCanonicalAiSettings().connections?.ollamaBaseUrl?.trim();
-            return baseUrl ? { enabled: true } : { enabled: false, reason: 'Ollama URL missing' };
-        }
-        const aiSettings = this.getCanonicalAiSettings();
-        const secretId = getCredentialSecretId(aiSettings, provider);
-        if (!secretId || !isSecretStorageAvailable(this.app)) {
-            return { enabled: false, reason: 'Saved key missing' };
-        }
-
-        const cachedPresence = this.providerSecretPresence[provider];
-        if (cachedPresence === true) {
-            return { enabled: true };
-        }
-        if (cachedPresence === false) {
-            return { enabled: false, reason: 'Saved key not found' };
-        }
-        this.probeSecretPresence(provider, secretId);
-        return { enabled: true };
     }
 
     private applySession(
@@ -6972,7 +6878,7 @@ export class InquiryView extends ItemView {
         const key = this.sessionStore.buildKey(baseKey, manifest.fingerprint);
         const activeBookId = this.state.scope === 'saga' ? this.state.activeBookId : this.state.activeBookId;
         const resolvedEngine = this.getResolvedEngine();
-        const simulationProvider: InquiryAiProvider = resolvedEngine.provider === 'none'
+        const simulationProvider: Exclude<AIProviderId, 'none'> = resolvedEngine.provider === 'none'
             ? 'openai'
             : resolvedEngine.provider;
         const runnerInput: InquiryRunnerInput = {
@@ -10158,7 +10064,6 @@ export class InquiryView extends ItemView {
                     || currentResult.questionId
                     || 'Inquiry Question',
                 getBriefModelLabel: this.getBriefModelLabel.bind(this),
-                getInquiryProviderLabel: this.getInquiryProviderLabel.bind(this),
                 getFiniteTokenEstimateInput: this.getFiniteTokenEstimateInput.bind(this),
                 getTokenTier: this.getTokenTier.bind(this),
                 buildInquiryLogCostEstimateInput: this.buildInquiryLogCostEstimateInput.bind(this),
@@ -10197,7 +10102,6 @@ export class InquiryView extends ItemView {
                     || currentResult.questionId
                     || 'Inquiry Question',
                 getBriefModelLabel: this.getBriefModelLabel.bind(this),
-                getInquiryProviderLabel: this.getInquiryProviderLabel.bind(this),
                 getFiniteTokenEstimateInput: this.getFiniteTokenEstimateInput.bind(this),
                 getTokenTier: this.getTokenTier.bind(this),
                 buildInquiryLogCostEstimateInput: this.buildInquiryLogCostEstimateInput.bind(this),

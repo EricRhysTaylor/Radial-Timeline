@@ -7,7 +7,6 @@ import { PROVIDER_MAX_OUTPUT_TOKENS } from '../../constants/tokenLimits';
 import type { EvidenceDocumentMeta, InquiryAiStatus, InquiryCitation, InquiryConfidence, InquiryFinding, InquiryResult, InquiryRoleValidation, InquirySeverity, InquiryTokenUsageScope } from '../state';
 import type {
     CorpusManifestEntry,
-    InquiryAiProvider,
     InquiryExecutionPath,
     InquiryExecutionState,
     InquiryFailureStage,
@@ -22,7 +21,7 @@ import type {
 import { getAIClient } from '../../ai/runtime/aiClient';
 import { buildDefaultAiSettings } from '../../ai/settings/aiSettings';
 import { validateAiSettings } from '../../ai/settings/validateAiSettings';
-import type { AIRunPreparedEstimate, AIRunResult, AnalysisPackaging, SceneRef } from '../../ai/types';
+import type { AIRunPreparedEstimate, AIRunResult, AIProviderId, AnalysisPackaging, SceneRef } from '../../ai/types';
 import { extractTokenUsage } from '../../ai/usage/providerUsage';
 import { readSceneId } from '../../utils/sceneIds';
 import { buildSceneRefIndex, isStableSceneId, normalizeSceneRef } from '../../ai/references/sceneRefNormalizer';
@@ -109,9 +108,9 @@ type ProviderResult = {
     content: string | null;
     responseData: unknown;
     requestPayload?: unknown;
-    provider: InquiryAiProvider;
+    provider: Exclude<AIProviderId, 'none'>;
     modelId?: string;
-    aiProvider?: InquiryAiProvider;
+    aiProvider?: Exclude<AIProviderId, 'none'>;
     aiModelRequested?: string;
     aiModelResolved?: string;
     aiStatus?: InquiryAiStatus;
@@ -2740,7 +2739,7 @@ export class InquiryRunnerService implements InquiryRunner {
         return tokenEstimate;
     }
 
-    private getOutputTokenCap(provider: InquiryAiProvider): number {
+    private getOutputTokenCap(provider: Exclude<AIProviderId, 'none'>): number {
         const providerCap = PROVIDER_MAX_OUTPUT_TOKENS[provider] ?? INQUIRY_MAX_OUTPUT_TOKENS;
         return Math.max(512, Math.min(providerCap, INQUIRY_MAX_OUTPUT_TOKENS));
     }

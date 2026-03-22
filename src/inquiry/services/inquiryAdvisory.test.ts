@@ -17,6 +17,7 @@ function buildResolvedEngine(model: ModelInfo, providerLabel?: string): Resolved
         modelAlias: model.alias,
         modelLabel: model.label,
         providerLabel: providerLabel ?? model.provider,
+        hasCredential: true,
         contextWindow: model.contextWindow,
         maxOutput: model.maxOutput,
         selectionReason: 'test',

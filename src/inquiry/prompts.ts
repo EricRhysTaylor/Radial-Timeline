@@ -240,13 +240,9 @@ export const replaceCanonicalPromptSlots = (
 
 export const normalizeInquiryPromptConfig = (raw?: InquiryPromptConfig): InquiryPromptConfig => {
     const defaults = buildDefaultInquiryPromptConfig();
-    const legacy = raw as Record<string, Record<InquiryZone, InquiryPromptSlot[]>> | undefined;
-    const hasLegacy = !!legacy && ('flow' in legacy || 'depth' in legacy);
 
     const normalizeZone = (zone: InquiryZone): InquiryPromptSlot[] => {
-        const incoming = hasLegacy
-            ? (legacy?.flow?.[zone] ?? legacy?.depth?.[zone] ?? [])
-            : (raw?.[zone] ?? []);
+        const incoming = raw?.[zone] ?? [];
         const slots: InquiryPromptSlot[] = [];
         const usedIds = new Set<string>();
         let hasCanonical = false;

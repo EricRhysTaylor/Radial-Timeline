@@ -76,6 +76,7 @@ function makeEngine(overrides?: Partial<ResolvedInquiryEngine>): ResolvedInquiry
         modelAlias: 'sonnet',
         modelLabel: 'Claude Sonnet',
         providerLabel: 'Anthropic',
+        hasCredential: true,
         contextWindow: 200000,
         maxOutput: 16384,
         selectionReason: 'test',
