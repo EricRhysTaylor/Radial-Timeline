@@ -8,6 +8,12 @@ describe('release channel curation', () => {
         expect(picker).toEqual(['gpt-5.4', 'gpt-5.4-pro', 'gpt-5.3']);
     });
 
+    it('hides google latest compatibility aliases from the normal picker', () => {
+        const picker = getPickerModelsForProvider(BUILTIN_MODELS, 'google').map(model => model.alias);
+        expect(picker).toEqual(['gemini-2.5-pro', 'gemini-3.1-pro-preview']);
+        expect(picker.includes('gemini-pro-latest')).toBe(false);
+    });
+
     it('hides OpenAI snapshot models from the normal picker', () => {
         const picker = getPickerModelsForProvider(BUILTIN_MODELS, 'openai').map(model => model.alias);
         expect(picker.includes('gpt-5.4-2026-03-05')).toBe(false);
@@ -23,4 +29,3 @@ describe('release channel curation', () => {
         expect(rollback?.alias).toBe('gpt-5.3');
     });
 });
-

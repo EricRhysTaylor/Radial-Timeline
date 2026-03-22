@@ -1028,49 +1028,13 @@ export class InquiryMinimapRenderer {
 
     // ── Reuse status ─────────────────────────────────────────────────
 
-    updateReuseStatus(
-        advanced: AIRunAdvancedContext | null,
-        corpusFingerprint: string | undefined,
-        manifestFingerprint: string | undefined,
-        balanceTooltipText: (text: string) => string
-    ): void {
+    updateReuseStatus(advanced: AIRunAdvancedContext | null): void {
         if (!this.minimapGroup) return;
-
         const reuseState = advanced?.reuseState ?? 'idle';
-        const provider = advanced?.provider ?? 'none';
-
         this.minimapGroup.setAttribute('data-reuse-state', reuseState);
+        // Reuse band removed — cache status now shown as overlay on the token cap bar.
         this.minimapReuseBand?.classList.add('ert-hidden');
         this.minimapReuseDot?.classList.add('ert-hidden');
-
-        const fingerprint = corpusFingerprint ?? manifestFingerprint;
-        const corpusShort = fingerprint
-            ? fingerprint.replace(/^h/, '').slice(0, 4).toUpperCase()
-            : '----';
-
-        if (this.minimapReuseBand && reuseState !== 'idle') {
-            this.minimapReuseBand.classList.remove('ert-hidden');
-            this.minimapReuseDot?.classList.remove('ert-hidden');
-            const providerLabel = provider === 'google' ? 'Gemini'
-                : provider.charAt(0).toUpperCase() + provider.slice(1);
-            const stateDetail = reuseState === 'warm'
-                ? 'Warm (evidence prefix cached)'
-                : 'Eligible (prompt optimized for caching)';
-            const cachedRatio = advanced?.cachedStableRatio;
-            const cachedTokens = advanced?.cachedStableTokens;
-            const ratioDetail = cachedRatio && cachedRatio > 0
-                ? `\nCached: ${Math.round(cachedRatio * 100)}% of input (\u2248${cachedTokens?.toLocaleString() ?? '?'} tokens)`
-                : '';
-            const cacheStatus = advanced?.cacheStatus;
-            const cacheDetail = cacheStatus && provider === 'google'
-                ? `\nCache: ${cacheStatus} \u2022 TTL: 15m`
-                : '';
-            addTooltipData(
-                this.minimapReuseBand,
-                balanceTooltipText(`Reuse: ${stateDetail}\nCorpus ${corpusShort} \u2022 ${providerLabel}${ratioDetail}${cacheDetail}`),
-                'bottom'
-            );
-        }
     }
 
     // ── Preview panel position ───────────────────────────────────────

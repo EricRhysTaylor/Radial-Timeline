@@ -69,10 +69,6 @@ const ZONE_SEGMENT_STROKE = '#d6c3ad';
 const ZONE_BASE_ANGLE = Math.PI;
 const ZONE_SEGMENT_AXIS_ROTATION_DEG = 90;
 const ZONE_CONTROL_SCALE = 1.05;
-/** After the zone shrinks, ignore pointerenter for this long. Prevents the
- *  jitter loop where the scale transform shifts the arc edge back under the
- *  cursor, immediately re-triggering expansion. */
-const ZONE_SHRINK_COOLDOWN_MS = 1500;
 const DEBUG_INQUIRY_ZONES = false;
 
 export const GLYPH_OUTER_DIAMETER = (FLOW_RADIUS * 2) + FLOW_STROKE;
@@ -102,7 +98,6 @@ export class InquiryGlyph {
     private zoneDots: Array<{ circle: SVGCircleElement; proRing: SVGCircleElement; text: SVGTextElement; hit: SVGCircleElement }> = [];
     private zoneControlGroups = new Map<InquiryZone, SVGGElement>();
     private zoneControlStates = new Map<InquiryZone, { hovered: boolean; locked: boolean }>();
-    private zoneCooldownUntil = new Map<InquiryZone, number>();
     private zoneInteractionsEnabled = true;
     private promptState?: InquiryGlyphPromptState;
     private zoneNumberMarkers = new Map<InquiryZone, Array<{
@@ -487,13 +482,8 @@ export class InquiryGlyph {
         // SAFE: InquiryGlyph is a plain class without Component lifecycle; owner view manages cleanup
         entryTarget.addEventListener('pointerenter', () => {
             if (!this.zoneInteractionsEnabled) return;
-            // Skip if in cooldown after a recent shrink — prevents the jitter
-            // loop where the scale transform shifts the arc back under the cursor.
-            if (Date.now() < (this.zoneCooldownUntil.get(zone) ?? 0)) return;
-            if (!state.hovered) {
-                state.hovered = true;
-                this.updateZoneControlScale(state, group);
-            }
+            state.hovered = true;
+            this.updateZoneControlScale(state, group);
         });
         // SAFE: InquiryGlyph is a plain class without Component lifecycle
         group.addEventListener('pointerout', event => {
@@ -502,7 +492,6 @@ export class InquiryGlyph {
             if (related instanceof Node && group.contains(related)) return;
             state.hovered = false;
             this.updateZoneControlScale(state, group);
-            this.zoneCooldownUntil.set(zone, Date.now() + ZONE_SHRINK_COOLDOWN_MS);
         });
         // SAFE: InquiryGlyph is a plain class without Component lifecycle
         group.addEventListener('click', () => {

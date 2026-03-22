@@ -3636,12 +3636,7 @@ export class InquiryView extends ItemView {
 
     private updateMinimapReuseStatus(): void {
         const advanced = getLastAiAdvancedContext(this.plugin, 'InquiryMode') ?? null;
-        this.minimap.updateReuseStatus(
-            advanced,
-            this.state.corpusFingerprint,
-            this.payloadStats?.manifestFingerprint,
-            balanceTooltipText
-        );
+        this.minimap.updateReuseStatus(advanced);
     }
 
     private renderCorpusCcStrip(): void {

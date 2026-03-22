@@ -2,6 +2,10 @@ import type { AIProviderId, ModelInfo, ModelReleaseChannel } from '../types';
 
 const OPENAI_PICKER_CHANNEL_ORDER: ReadonlyArray<ModelReleaseChannel> = ['stable', 'pro', 'rollback'];
 
+function isLatestCompatibilityAlias(model: ModelInfo): boolean {
+    return model.id.includes('-latest') || model.alias.includes('-latest');
+}
+
 function releasedAtRank(model: ModelInfo): number {
     if (!model.releasedAt) return Number.NEGATIVE_INFINITY;
     const parsed = Date.parse(model.releasedAt);
@@ -39,6 +43,12 @@ export function getPickerModelsForProvider(models: ModelInfo[], provider: AIProv
         .filter(model => model.provider === provider)
         .filter(model => model.status !== 'deprecated');
 
+    if (provider === 'google') {
+        return providerModels
+            .filter(model => !isLatestCompatibilityAlias(model))
+            .sort(compareNewestModels);
+    }
+
     if (provider !== 'openai') {
         return providerModels.sort(compareNewestModels);
     }
@@ -64,4 +74,3 @@ export function getPickerModelsForProvider(models: ModelInfo[], provider: AIProv
         .map(channel => newestPerChannel.get(channel))
         .filter((model): model is ModelInfo => !!model);
 }
-
