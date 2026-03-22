@@ -85,6 +85,36 @@ export function resolveInquiryBookResolution(params: {
     return finalizeInquiryBookResolution(discovered, params.bookInclusion);
 }
 
+export function resolveBookManagerInquiryBooks(bookProfiles?: BookProfile[]): InquiryBookResolution {
+    const candidates: InquiryResolvedBook[] = [];
+    getSequencedBooks(bookProfiles).forEach(({ book, sequenceNumber }) => {
+            const rootPath = normalizeMaybeRootPath(book.sourceFolder || '');
+            if (!rootPath) return;
+            candidates.push({
+                id: rootPath,
+                rootPath,
+                bookNumber: sequenceNumber,
+                detectedBy: 'profile' as const,
+                isVariant: false,
+                isNested: false,
+                defaultIncluded: true,
+                included: true,
+                status: 'included' as const,
+                statusLabel: 'Included'
+            });
+        });
+
+    return {
+        candidates,
+        includedBooks: candidates,
+        excludedBooks: [],
+        includedRoots: candidates.map(book => book.rootPath),
+        excludedRoots: [],
+        hasVariantExclusions: false,
+        hasNestedExclusions: false
+    };
+}
+
 export function finalizeInquiryBookResolution(
     discoveredRoots: DiscoveredInquiryBookRoot[],
     rawOverrides?: Record<string, unknown>

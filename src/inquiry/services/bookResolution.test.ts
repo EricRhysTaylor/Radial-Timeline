@@ -3,6 +3,7 @@ import {
     finalizeInquiryBookResolution,
     isDraftVariantPath,
     isPathIncludedByInquiryBooks,
+    resolveBookManagerInquiryBooks,
     type DiscoveredInquiryBookRoot
 } from './bookResolution';
 
@@ -72,5 +73,20 @@ describe('bookResolution', () => {
             'Books/Book 9 Prequel - The General',
             'Books/Book 2 Saturn & Jupiter'
         ]);
+    });
+
+    it('uses Book Manager rows as the authoritative inquiry books', () => {
+        const resolved = resolveBookManagerInquiryBooks([
+            { id: 'book-1', title: 'Shail + Trisan', sourceFolder: 'Books/Shail + Trisan' },
+            { id: 'book-2', title: 'Book 9 Prequel - The General', sourceFolder: 'Books/Book 9 Prequel - The General' },
+            { id: 'book-3', title: 'Missing Folder', sourceFolder: '' }
+        ]);
+
+        expect(resolved.includedRoots).toEqual([
+            'Books/Shail + Trisan',
+            'Books/Book 9 Prequel - The General'
+        ]);
+        expect(resolved.includedBooks.map(book => book.bookNumber)).toEqual([1, 2]);
+        expect(resolved.includedBooks.every(book => book.detectedBy === 'profile')).toBe(true);
     });
 });

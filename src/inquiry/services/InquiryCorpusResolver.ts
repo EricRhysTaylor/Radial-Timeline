@@ -3,9 +3,9 @@ import type { InquiryScope } from '../state';
 import type { BookProfile, InquiryClassConfig, InquirySourcesSettings } from '../../types/settings';
 import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { getScenePrefixNumber } from '../../utils/text';
-import { MAX_RESOLVED_SCAN_ROOTS, normalizeScanRootPatterns, resolveScanRoots, toVaultRoot } from '../utils/scanRoots';
 import { readSceneId } from '../../utils/sceneIds';
-import { resolveInquiryBookResolution } from './bookResolution';
+import { resolveBookManagerInquiryBooks } from './bookResolution';
+import { resolveInquirySourceRoots } from '../utils/sourceRoots';
 
 export type InquiryCorpusItem = {
     id: string;
@@ -68,22 +68,9 @@ export class InquiryCorpusResolver {
             };
         }
 
-        const scanRoots = normalizeScanRootPatterns(sources.scanRoots);
-        const resolvedRoots = scanRoots.length
-            ? (sources.resolvedScanRoots && sources.resolvedScanRoots.length
-                ? sources.resolvedScanRoots
-                : resolveScanRoots(scanRoots, this.vault, MAX_RESOLVED_SCAN_ROOTS).resolvedRoots)
-            : [];
-        const resolvedVaultRoots = resolvedRoots.map(toVaultRoot);
-
-        const bookResolution = resolveInquiryBookResolution({
-            vault: this.vault,
-            metadataCache: this.metadataCache,
-            resolvedVaultRoots,
-            frontmatterMappings: this.frontmatterMappings,
-            bookInclusion: sources.bookInclusion,
-            bookProfiles: params.bookProfiles
-        });
+        const rootResolution = resolveInquirySourceRoots(this.vault, sources, params.bookProfiles);
+        const { resolvedRoots, resolvedVaultRoots } = rootResolution;
+        const bookResolution = resolveBookManagerInquiryBooks(params.bookProfiles);
 
         const books = this.buildBookItems(bookResolution.includedBooks.map(book => ({
             rootPath: book.rootPath,

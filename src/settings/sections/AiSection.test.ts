@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { BUILTIN_MODELS } from '../../ai/registry/builtinModels';
 
 describe('AI settings models table', () => {
     it('does not render a manual AI model update control in advanced diagnostics', () => {
@@ -57,6 +58,7 @@ describe('AI settings models table', () => {
         expect(source.includes('PREVIEW (ACTIVE MODEL)')).toBe(true);
         expect(source.includes('resolvePreviewSignals')).toBe(true);
         expect(source.includes('resolveDisplayModelForLatestAlias')).toBe(true);
+        expect(source.includes('displayModel: selected')).toBe(true);
         expect(source.includes('getResolvedModelId')).toBe(true);
         expect(source.includes('ID pending')).toBe(true);
         expect(source.includes('Citation or Cache (exclusive)')).toBe(true);
@@ -69,6 +71,18 @@ describe('AI settings models table', () => {
         expect(source.includes('not available')).toBe(false);
         expect(source.includes('Grounded/tool attribution')).toBe(false);
         expect(source.includes('Best for')).toBe(false);
+    });
+
+    it('keeps all latest-alias preview labels aligned with the selected alias until a concrete ID is resolved', () => {
+        const latestAliases = BUILTIN_MODELS
+            .filter(model => model.id.includes('latest') || model.alias.includes('latest'))
+            .map(model => model.alias)
+            .sort();
+        expect(latestAliases).toEqual([
+            'gemini-pro-latest',
+            'gpt-5.1-latest',
+            'gpt-5.2-latest'
+        ]);
     });
 
     it('does not carry forward legacy reasoning-depth comparator copy', () => {

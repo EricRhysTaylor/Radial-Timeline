@@ -2,9 +2,8 @@ import type { MetadataCache, TFile, Vault } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import type { BookProfile, InquiryClassConfig, InquirySourcesSettings, SceneInclusion } from '../../types/settings';
 import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
-import { normalizeScanRootPatterns, resolveScanRoots, toVaultRoot } from '../../inquiry/utils/scanRoots';
 import { cleanEvidenceBody } from '../../inquiry/utils/evidenceCleaning';
-import { isPathIncludedByInquiryBooks, resolveInquiryBookResolution } from '../../inquiry/services/bookResolution';
+import { isPathIncludedByInquiryBooks, resolveBookManagerInquiryBooks } from '../../inquiry/services/bookResolution';
 import { InquiryCorpusResolver } from '../../inquiry/services/InquiryCorpusResolver';
 import { hashString } from '../../inquiry/services/InquiryCorpusService';
 import { buildInquiryEstimateTrace } from '../../inquiry/services/inquiryEstimateTrace';
@@ -18,6 +17,7 @@ import type { TokenEstimateMethod } from '../tokens/inputTokenEstimate';
 import type { RTCorpusTokenEstimate } from '../types';
 import { logCountingForensics } from '../diagnostics/countingForensics';
 import { readSceneId } from '../../utils/sceneIds';
+import { resolveInquirySourceRoots } from '../../inquiry/utils/sourceRoots';
 
 export const FORECAST_CHARS_PER_TOKEN = 4;
 export const FORECAST_PROMPT_OVERHEAD_TOKENS = 250;
@@ -166,23 +166,13 @@ const selectInquiryFiles = (
     scopeFilter?: { scope: InquiryScope; activeBookId?: string },
     bookProfiles?: BookProfile[]
 ): { files: TFile[]; selectionLabel: string; resolvedFocusBookId?: string } => {
-    const scanRoots = normalizeScanRootPatterns(inquirySources?.scanRoots);
-    if (!scanRoots.length) {
-        return { files: [], selectionLabel: 'No scan roots configured' };
+    const sources = inquirySources ?? { scanRoots: [], bookInclusion: {}, classes: [], classCounts: {}, resolvedScanRoots: [] };
+    const rootResolution = resolveInquirySourceRoots(vault, sources, bookProfiles);
+    const { supportResolvedRoots, resolvedVaultRoots: vaultRoots } = rootResolution;
+    const bookResolution = resolveBookManagerInquiryBooks(bookProfiles);
+    if (!vaultRoots.length) {
+        return { files: [], selectionLabel: 'No books or supporting roots configured' };
     }
-
-    const resolvedRoots = (inquirySources?.resolvedScanRoots && inquirySources.resolvedScanRoots.length)
-        ? inquirySources.resolvedScanRoots
-        : resolveScanRoots(scanRoots, vault).resolvedRoots;
-    const vaultRoots = resolvedRoots.map(toVaultRoot);
-    const bookResolution = resolveInquiryBookResolution({
-        vault,
-        metadataCache,
-        resolvedVaultRoots: vaultRoots,
-        frontmatterMappings,
-        bookInclusion: inquirySources?.bookInclusion,
-        bookProfiles
-    });
 
     let allFiles = vault.getMarkdownFiles().filter(file =>
         vaultRoots.some(root => !root || file.path === root || file.path.startsWith(`${root}/`))
@@ -213,9 +203,9 @@ const selectInquiryFiles = (
         }
     }
 
-    const selectionLabel = resolvedRoots.length
-        ? `${resolvedRoots.length} scan root${resolvedRoots.length === 1 ? '' : 's'}`
-        : 'No resolved scan roots';
+    const selectionLabel = supportResolvedRoots.length
+        ? `${supportResolvedRoots.length} support root${supportResolvedRoots.length === 1 ? '' : 's'} + Book Manager books`
+        : 'Book Manager books only';
     return { files: allFiles, selectionLabel, resolvedFocusBookId };
 };
 

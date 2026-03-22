@@ -844,14 +844,8 @@ export function renderAiSection(params: {
             }
         }
 
-        const stableCandidates = models
-            .filter(model => model.provider === selected.provider)
-            .filter(model => model.status === 'stable')
-            .filter(model => model.line === selected.line)
-            .filter(model => !model.id.includes('latest') && !model.alias.includes('latest'))
-            .sort(compareNewestModels);
         return {
-            displayModel: stableCandidates[0] ?? selected,
+            displayModel: selected,
             resolvedModelId: null,
             isPending: true
         };

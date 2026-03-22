@@ -659,6 +659,14 @@
   --ert-controlGroup-columns: 74px minmax(160px, 1.1fr) minmax(180px, 1fr);
 }
 
+.ert-ui.ert-scope--settings .ert-controlGroup--inquiry-books {
+  --ert-controlGroup-columns: minmax(74px, max-content) minmax(220px, 1.15fr) minmax(180px, 1fr) minmax(120px, max-content);
+}
+
+.ert-ui.ert-scope--settings .ert-controlGroup--inquiry-supporting-material {
+  --ert-controlGroup-columns: minmax(180px, 1fr) minmax(120px, max-content);
+}
+
 .ert-ui.ert-scope--settings .ert-controlGroup--inquiry-material-rules {
   gap: calc(var(--ert-gap-sm) - 2px);
 }
@@ -761,6 +769,45 @@
 .ert-ui.ert-scope--settings .ert-controlGroup__cell--mono {
   font-family: var(--font-monospace);
   font-variant-numeric: tabular-nums;
+}
+
+.ert-ui.ert-scope--settings .ert-controlGroup__sequenceBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 42px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 88%, transparent);
+  background: color-mix(in srgb, var(--background-primary) 62%, transparent);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ert-ui.ert-scope--settings .ert-controlGroup__status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 88%, transparent);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.ert-ui.ert-scope--settings .ert-controlGroup__status--ready {
+  color: color-mix(in srgb, var(--color-green) 76%, var(--text-normal));
+  background: color-mix(in srgb, var(--color-green) 12%, transparent);
+  border-color: color-mix(in srgb, var(--color-green) 34%, var(--background-modifier-border));
+}
+
+.ert-ui.ert-scope--settings .ert-controlGroup__status--warning {
+  color: color-mix(in srgb, var(--color-orange) 76%, var(--text-normal));
+  background: color-mix(in srgb, var(--color-orange) 12%, transparent);
+  border-color: color-mix(in srgb, var(--color-orange) 34%, var(--background-modifier-border));
 }
 
 .ert-ui.ert-scope--settings .ert-controlGroup__cell--span-2 {

@@ -35,6 +35,7 @@ import {
     InquiryZone
 } from './state';
 import type {
+    InquiryCanonicalQuestionTier,
     InquiryClassConfig,
     InquiryPromptConfig,
     InquiryPromptSlot,
@@ -119,7 +120,7 @@ import { isProfessionalActive } from '../settings/sections/ProfessionalSection';
 import { InquiryCorpusResolver, InquiryCorpusSnapshot, InquiryCorpusItem, InquirySceneItem, InquiryBookItem } from './services/InquiryCorpusResolver';
 import {
     isPathIncludedByInquiryBooks,
-    resolveInquiryBookResolution
+    resolveBookManagerInquiryBooks
 } from './services/bookResolution';
 import { getModelDisplayName } from '../utils/modelResolver';
 import { resolveInquiryEngine, type ResolvedInquiryEngine } from './services/inquiryModelResolver';
@@ -193,12 +194,7 @@ import {
     estimateCorpusCost,
     formatApproxUsdCost
 } from '../ai/cost/estimateCorpusCost';
-import {
-    MAX_RESOLVED_SCAN_ROOTS,
-    normalizeScanRootPatterns,
-    resolveScanRoots,
-    toVaultRoot
-} from './utils/scanRoots';
+import { resolveInquirySourceRoots } from './utils/sourceRoots';
 import { renderInquiryCorpusStrip } from './corpus/inquiryCorpusStripRenderer';
 import { applyInquiryCorpusCcSlotViewModel, buildInquiryCorpusCcSlotViewModel } from './corpus/inquiryCorpusStripSlotRenderer';
 import { createInquirySceneDossierLayer, renderInquirySceneDossier } from './render/inquiryDossierRenderer';
@@ -2576,7 +2572,16 @@ export class InquiryView extends ItemView {
         return focusedPrompt.trim().length ? focusedPrompt : undefined;
     }
 
-    private buildInquiryQuestion(zone: InquiryZone, slot: InquiryPromptSlot, icon: string): InquiryQuestion | null {
+    private resolveSlotTier(slotIndex: number): InquiryCanonicalQuestionTier {
+        return slotIndex >= 4 ? 'signature' : 'core';
+    }
+
+    private buildInquiryQuestion(
+        zone: InquiryZone,
+        slot: InquiryPromptSlot,
+        icon: string,
+        slotIndex: number
+    ): InquiryQuestion | null {
         const standardPrompt = this.getQuestionTextForSlot(zone, slot).trim();
         if (!standardPrompt) return null;
         return {
@@ -2586,7 +2591,7 @@ export class InquiryView extends ItemView {
             focusedPrompt: this.getFocusedPromptForSlot(zone, slot, standardPrompt),
             zone,
             icon,
-            tier: getCanonicalQuestionForSlot(slot)?.tier
+            tier: this.resolveSlotTier(slotIndex)
         };
     }
 
@@ -2610,7 +2615,7 @@ export class InquiryView extends ItemView {
         const config = this.getPromptConfig();
         const icon = zone === 'setup' ? 'help-circle' : zone === 'pressure' ? 'activity' : 'check-circle';
         return (config[zone] ?? [])
-            .map(slot => this.buildInquiryQuestion(zone, slot, icon))
+            .map((slot, slotIndex) => this.buildInquiryQuestion(zone, slot, icon, slotIndex))
             .filter((question): question is InquiryQuestion => !!question);
     }
 
@@ -4496,21 +4501,8 @@ export class InquiryView extends ItemView {
         if (!this.isModeActive(outlineConfig.bookScope) && !this.isModeActive(outlineConfig.sagaScope)) return [];
         if (!classScope.allowAll && !classScope.allowed.has('outline')) return [];
 
-        const scanRoots = normalizeScanRootPatterns(sources.scanRoots);
-        const resolvedRoots = scanRoots.length
-            ? (sources.resolvedScanRoots && sources.resolvedScanRoots.length
-                ? sources.resolvedScanRoots
-                : resolveScanRoots(scanRoots, this.app.vault, MAX_RESOLVED_SCAN_ROOTS).resolvedRoots)
-            : [];
-        const resolvedVaultRoots = resolvedRoots.map(toVaultRoot);
-        const bookResolution = resolveInquiryBookResolution({
-            vault: this.app.vault,
-            metadataCache: this.app.metadataCache,
-            resolvedVaultRoots,
-            frontmatterMappings: this.plugin.settings.frontmatterMappings,
-            bookInclusion: sources.bookInclusion,
-            bookProfiles: this.plugin.settings.books
-        });
+        const { resolvedVaultRoots } = resolveInquirySourceRoots(this.app.vault, sources, this.plugin.settings.books);
+        const bookResolution = resolveBookManagerInquiryBooks(this.plugin.settings.books);
 
         const inRoots = (path: string) => {
             return resolvedVaultRoots.some(root => !root || path === root || path.startsWith(`${root}/`));
@@ -5022,7 +5014,8 @@ export class InquiryView extends ItemView {
 
     private isInquiryConfigured(): boolean {
         const sources = this.normalizeInquirySources(this.plugin.settings.inquirySources);
-        return (sources.scanRoots?.length ?? 0) > 0 && (sources.classScope?.length ?? 0) > 0;
+        const hasBooks = (this.plugin.settings.books || []).some(book => (book.sourceFolder || '').trim().length > 0);
+        return hasBooks && (sources.classScope?.length ?? 0) > 0;
     }
 
     private getInquirySceneCount(): number {
@@ -6237,10 +6230,10 @@ export class InquiryView extends ItemView {
             if (!slots.length) return;
             const zoneLabel = zone === 'setup' ? 'Setup' : zone === 'pressure' ? 'Pressure' : 'Payoff';
             const icon = zone === 'setup' ? 'help-circle' : zone === 'pressure' ? 'activity' : 'check-circle';
-            slots.forEach(slot => {
+            slots.forEach((slot, slotIndex) => {
                 if (!slot.enabled) return;
                 if (seen.has(slot.id)) return;
-                const question = this.buildInquiryQuestion(zone, slot, icon);
+                const question = this.buildInquiryQuestion(zone, slot, icon, slotIndex);
                 if (!question) return;
                 questions.push({
                     ...question,
@@ -7153,21 +7146,9 @@ export class InquiryView extends ItemView {
         const contextRequired = typeof options?.contextRequired === 'boolean'
             ? options.contextRequired
             : this.isContextRequiredForQuestion(questionId, options?.questionZone);
-        const scanRoots = normalizeScanRootPatterns(sources.scanRoots);
-        const resolvedRoots = scanRoots.length
-            ? ((sources.resolvedScanRoots && sources.resolvedScanRoots.length)
-                ? sources.resolvedScanRoots
-                : resolveScanRoots(scanRoots, this.app.vault, MAX_RESOLVED_SCAN_ROOTS).resolvedRoots)
-            : [];
-        const resolvedVaultRoots = resolvedRoots.map(toVaultRoot);
-        const bookResolution = resolveInquiryBookResolution({
-            vault: this.app.vault,
-            metadataCache: this.app.metadataCache,
-            resolvedVaultRoots,
-            frontmatterMappings: this.plugin.settings.frontmatterMappings,
-            bookInclusion: sources.bookInclusion,
-            bookProfiles: this.plugin.settings.books
-        });
+        const rootResolution = resolveInquirySourceRoots(this.app.vault, sources, this.plugin.settings.books);
+        const { resolvedRoots, resolvedVaultRoots } = rootResolution;
+        const bookResolution = resolveBookManagerInquiryBooks(this.plugin.settings.books);
 
         if (!classScope.allowAll && classScope.allowed.size === 0) {
             return { entries, resolvedRoots };
@@ -8917,9 +8898,14 @@ export class InquiryView extends ItemView {
             return Number(textEl.getAttribute('data-rt-hero-lines')) || 1;
         }
         
-        // Wipe existing content for measuring pass
+        // Wipe existing content for measuring pass.
+        // Invalidate the wrapped-text cache since measurement destroys tspans —
+        // without this, a subsequent setWrappedSvgText fallback would hit a stale
+        // cache and return without re-creating the DOM, leaving only the last
+        // measurement string visible (the "ghost fragment" bug).
         this.perfCounters.svgClearCalls++;
         clearSvgChildren(textEl);
+        textEl.removeAttribute('data-rt-wrap-cache');
         
         const words = text.split(/\s+/).filter(Boolean);
         if (!words.length) return 0;
@@ -9170,6 +9156,10 @@ export class InquiryView extends ItemView {
         if (textEl.getAttribute('data-rt-wrap-cache') === cacheKey) {
             return Number(textEl.getAttribute('data-rt-wrap-lines')) || 1;
         }
+
+        // Invalidate sibling cache — setBalancedHeroText may have left a stale
+        // hero-cache attribute from a previous render path.
+        textEl.removeAttribute('data-rt-hero-cache');
 
         Array.from(textEl.childNodes).forEach(node => {
             if (node.nodeName !== 'tspan') {
