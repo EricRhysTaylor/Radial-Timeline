@@ -8,14 +8,14 @@ import type {
     InquiryResult
 } from '../state';
 import type { SceneInclusion } from '../../types/settings';
-import type { AnalysisPackaging } from '../../ai/types';
+import type { AIProviderId, AnalysisPackaging } from '../../ai/types';
 import type { TokenEstimateMethod } from '../../ai/tokens/inputTokenEstimate';
 import type { TokenUsage } from '../../ai/usage/providerUsage';
 import type { InquiryQuestionPromptForm } from '../questions/resolveQuestionPrompt';
 
 export type EvidenceClass = string;
 
-export type InquiryAiProvider = 'openai' | 'anthropic' | 'gemini' | 'local';
+export type InquiryAiProvider = Exclude<AIProviderId, 'none'>;
 export type InquiryExecutionState = 'blocked_before_send' | 'dispatched_to_provider' | 'packaging_failed';
 export type InquiryExecutionPath = 'one_pass' | 'multi_pass';
 export type InquiryFailureStage = 'preflight' | 'chunk_execution' | 'synthesis' | 'provider_response_parsing';

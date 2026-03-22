@@ -1,15 +1,14 @@
 import type RadialTimelinePlugin from '../../main';
 import { buildDefaultAiSettings, type CredentialSecretField, type CredentialSecretProvider } from '../settings/aiSettings';
+import { hasLegacyAiKeys } from '../settings/migrateAiSettings';
 import { validateAiSettings } from '../settings/validateAiSettings';
 import type { AIProviderId, AiSettingsV1 } from '../types';
 import { getSecret, isSecretStorageAvailable, setSecret } from './secretStorage';
 
-export type CredentialProvider = AIProviderId | 'gemini' | 'local';
+export type CredentialProvider = AIProviderId;
 
 function toCanonicalProvider(provider: CredentialProvider): CredentialSecretProvider | null {
     if (provider === 'openai' || provider === 'anthropic' || provider === 'google' || provider === 'ollama') return provider;
-    if (provider === 'gemini') return 'google';
-    if (provider === 'local') return 'ollama';
     return null;
 }
 
@@ -37,7 +36,7 @@ function getAiSettings(plugin: RadialTimelinePlugin): AiSettingsV1 {
 
 function getLegacyValue(plugin: RadialTimelinePlugin, provider: CredentialSecretProvider): string {
     const field = toLegacySettingField(provider);
-    const value = plugin.settings[field];
+    const value = (plugin.settings as unknown as Record<string, unknown>)[field];
     return typeof value === 'string' ? value.trim() : '';
 }
 
@@ -77,8 +76,7 @@ export async function getCredential(
         const secret = await getSecret(plugin.app, secretId);
         if (secret) return secret;
     }
-
-    return getLegacyValue(plugin, canonical);
+    return '';
 }
 
 export interface KeyMigrationResult {
@@ -102,7 +100,7 @@ export async function migrateLegacyKeysToSecretStorage(
     }
 
     const aiSettings = getAiSettings(plugin);
-    const providers: CredentialSecretProvider[] = ['openai', 'anthropic', 'google'];
+    const providers: CredentialSecretProvider[] = ['openai', 'anthropic', 'google', 'ollama'];
     let changed = false;
 
     for (const provider of providers) {
@@ -127,7 +125,7 @@ export async function migrateLegacyKeysToSecretStorage(
             continue;
         }
 
-        plugin.settings[toLegacySettingField(provider)] = '';
+        (plugin.settings as unknown as Record<string, unknown>)[toLegacySettingField(provider)] = '';
         changed = true;
         result.migratedProviders.push(provider);
     }
@@ -147,4 +145,8 @@ export async function migrateLegacyKeysToSecretStorage(
     }
 
     return result;
+}
+
+export function needsLegacyKeyMigration(plugin: RadialTimelinePlugin): boolean {
+    return hasLegacyAiKeys(plugin.settings);
 }

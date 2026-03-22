@@ -29,7 +29,6 @@ import type { ResolvedInquiryEngine } from './inquiryModelResolver';
 import type { CorpusManifest, EvidenceParticipationRules, InquiryRunnerInput } from '../runner/types';
 import type { InquiryRunnerService } from '../runner/InquiryRunnerService';
 import { INQUIRY_CANONICAL_ESTIMATE_QUESTION, INQUIRY_MAX_OUTPUT_TOKENS } from '../constants';
-import { mapAiProviderToLegacyProvider } from '../../ai/settings/aiSettings';
 import { buildInquiryEstimateTrace } from './inquiryEstimateTrace';
 import { summarizeScopedInquiryEntries } from './canonicalInquiryCorpus';
 
@@ -200,7 +199,7 @@ export async function buildInquiryEstimateSnapshot(
         corpus: params.manifest,
         rules: params.rules,
         ai: {
-            provider: mapAiProviderToLegacyProvider(params.engine.provider),
+            provider: params.engine.provider === 'none' ? 'openai' : params.engine.provider,
             modelId: params.engine.modelId,
             modelLabel: params.engine.modelLabel
         }

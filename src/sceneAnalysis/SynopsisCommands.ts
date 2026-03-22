@@ -20,6 +20,7 @@ import { parseSceneTitle, decodeHtmlEntities } from '../utils/text';
 import { normalizeBooleanValue } from '../utils/sceneHelpers';
 import { getSynopsisGenerationWordLimit, truncateToWordLimit } from '../utils/synopsisLimits';
 import { resolveBookScopedFiles } from '../services/NoteScopeResolver';
+import { getCanonicalAiSettings, resolveConfiguredSelection } from '../ai/runtime/runtimeSelection';
 
 /**
  * Check freshness: is the scene's Due/Completed date newer than the last AI update timestamp?
@@ -43,17 +44,9 @@ function isSummaryStale(scene: SceneData, plugin: RadialTimelinePlugin): boolean
 }
 
 function getCurrentModelId(plugin: RadialTimelinePlugin): string {
-    const provider = plugin.settings.defaultAiProvider || 'openai';
-    if (provider === 'anthropic') {
-        return plugin.settings.anthropicModelId || 'claude-sonnet-4-6';
-    }
-    if (provider === 'gemini') {
-        return plugin.settings.geminiModelId || 'gemini-2.5-pro';
-    }
-    if (provider === 'local') {
-        return plugin.settings.localModelId || 'local-model';
-    }
-    return plugin.settings.openaiModelId || 'gpt-5.4';
+    return resolveConfiguredSelection(getCanonicalAiSettings(plugin), {
+        feature: 'SummaryRefresh'
+    })?.model.id || 'gpt-5.4';
 }
 
 function setCaseInsensitiveField(frontmatter: Record<string, unknown>, key: string, value: string): void {

@@ -100,13 +100,14 @@ import { getLastAiAdvancedContext } from '../ai/runtime/aiClient';
 // computeCaps, INPUT_TOKEN_GUARD_FACTOR: now used in inquiryReadinessBuilder.ts
 import { BUILTIN_MODELS } from '../ai/registry/builtinModels';
 import { selectModel } from '../ai/router/selectModel';
-import { buildDefaultAiSettings, mapAiProviderToLegacyProvider, mapLegacyProviderToAiProvider } from '../ai/settings/aiSettings';
+import { buildDefaultAiSettings } from '../ai/settings/aiSettings';
 import { validateAiSettings } from '../ai/settings/validateAiSettings';
 import type { AIProviderId, AiSettingsV1, ModelInfo, AccessTier, RTCorpusTokenEstimate } from '../ai/types';
 import type {
     CorpusManifest,
     CorpusManifestEntry,
     EvidenceParticipationRules,
+    InquiryAiProvider,
     InquiryOmnibusInput,
     InquiryRunProgressEvent,
     InquiryRunTrace,
@@ -1203,7 +1204,6 @@ export class InquiryView extends ItemView {
     private buildReadinessUiState(): InquiryReadinessUiState {
         const engine = this.getResolvedEngine();
         const provider = engine.provider === 'none' ? 'openai' as const : engine.provider;
-        const engineProvider = mapAiProviderToLegacyProvider(provider) as EngineProvider;
         const aiSettings = this.getCanonicalAiSettings();
         return buildReadinessUiStatePure({
             snapshot: this.plugin.getInquiryEstimateService().getSnapshot(),
@@ -1211,7 +1211,7 @@ export class InquiryView extends ItemView {
             scopeLabel: this.getScopeLabel(),
             aiSettings,
             resolvedEngine: engine,
-            hasCredential: this.getProviderAvailability(engineProvider).enabled,
+            hasCredential: engine.provider !== 'none' && this.getProviderAvailability(provider).enabled,
             accessTier: this.getAccessTierForProvider(provider, aiSettings),
             payloadStats: this.getPayloadStats(),
             selectedSceneOverrideCount: this.getSelectedSceneOverrideEntries().length,
@@ -1450,10 +1450,10 @@ export class InquiryView extends ItemView {
             ? 'OpenAI'
             : providerRaw === 'anthropic'
                 ? 'Anthropic'
-                : providerRaw === 'gemini'
-                    ? 'Gemini'
-                    : providerRaw === 'local'
-                        ? 'Local'
+                : providerRaw === 'google'
+                    ? 'Google'
+                    : providerRaw === 'ollama'
+                        ? 'Ollama'
                         : (providerRaw ? providerRaw.charAt(0).toUpperCase() + providerRaw.slice(1) : 'Provider unknown');
         return model ? `${provider}/${model}` : provider;
     }
@@ -5509,7 +5509,10 @@ export class InquiryView extends ItemView {
         let runTrace: InquiryRunTrace | null = null;
         new Notice('Inquiry: contacting AI provider.');
         const submittedAt = new Date();
-        const runnerInput = {
+        const simulationProvider: InquiryAiProvider = engineSelection.provider === 'none'
+            ? 'openai'
+            : engineSelection.provider;
+        const runnerInput: InquiryRunnerInput = {
             scope: this.state.scope,
             scopeLabel,
             targetSceneIds,
@@ -5523,7 +5526,7 @@ export class InquiryView extends ItemView {
             corpus: manifest,
             rules: this.getEvidenceRules(),
             ai: {
-                provider: mapAiProviderToLegacyProvider(engineSelection.provider),
+                provider: simulationProvider,
                 modelId: engineSelection.modelId,
                 modelLabel: engineSelection.modelLabel
             }
@@ -6266,31 +6269,33 @@ export class InquiryView extends ItemView {
     }
 
     private buildOmnibusProviderPlan(): OmnibusProviderPlan {
-        const geminiAvailability = this.getProviderAvailability('gemini');
-        if (geminiAvailability.enabled) {
-            const modelId = this.getInquiryModelIdForProvider('gemini');
-            const modelLabel = this.getInquiryModelLabelForProvider('gemini');
+        const googleAvailability = this.getProviderAvailability('google');
+        if (googleAvailability.enabled) {
+            const modelId = this.getInquiryModelIdForProvider('google');
+            const modelLabel = this.getInquiryModelLabelForProvider('google');
             return {
                 choice: {
-                    provider: 'gemini',
+                    provider: 'google',
                     modelId,
                     modelLabel,
                     useOmnibus: true
                 },
-                summary: `Prefers Gemini for a combined omnibus run when available. Gemini is available, so this run will use Gemini · ${modelLabel}.`,
-                label: 'Gemini omnibus'
+                summary: `Prefers Google for a combined omnibus run when available. Google is available, so this run will use Google · ${modelLabel}.`,
+                label: 'Google omnibus'
             };
         }
 
-        const fallbackProvider = (this.plugin.settings.defaultAiProvider || 'openai') as EngineProvider;
+        const fallbackProvider: EngineProvider = this.getResolvedEngine().provider === 'none'
+            ? 'openai'
+            : this.getResolvedEngine().provider as EngineProvider;
         const fallbackAvailability = this.getProviderAvailability(fallbackProvider);
-        const geminiReason = geminiAvailability.reason || 'Gemini not configured';
+        const googleReason = googleAvailability.reason || 'Google not configured';
         if (!fallbackAvailability.enabled) {
             const providerLabel = this.getInquiryProviderLabel(fallbackProvider);
             const reason = fallbackAvailability.reason || 'Provider unavailable';
             return {
                 choice: null,
-                summary: `Prefers Gemini for a combined omnibus run when available. Gemini is unavailable (${geminiReason}); ${providerLabel} is also unavailable (${reason}).`,
+                summary: `Prefers Google for a combined omnibus run when available. Google is unavailable (${googleReason}); ${providerLabel} is also unavailable (${reason}).`,
                 label: 'Unavailable',
                 disabledReason: `${providerLabel} ${reason}`
             };
@@ -6304,9 +6309,9 @@ export class InquiryView extends ItemView {
                 modelId: this.getInquiryModelIdForProvider(fallbackProvider),
                 modelLabel,
                 useOmnibus: false,
-                reason: geminiReason
+                reason: googleReason
             },
-            summary: `Prefers Gemini for a combined omnibus run when available. Gemini is unavailable (${geminiReason}), so this run will execute sequentially with ${providerLabel} · ${modelLabel}.`,
+            summary: `Prefers Google for a combined omnibus run when available. Google is unavailable (${googleReason}), so this run will execute sequentially with ${providerLabel} · ${modelLabel}.`,
             label: `Sequential · ${providerLabel}`
         };
     }
@@ -6323,37 +6328,30 @@ export class InquiryView extends ItemView {
     private getInquiryProviderLabel(provider: EngineProvider): string {
         const labels: Record<EngineProvider, string> = {
             anthropic: 'Anthropic',
-            gemini: 'Gemini',
+            google: 'Google',
             openai: 'OpenAI',
-            local: 'Local'
+            ollama: 'Ollama'
         };
         return labels[provider] || 'OpenAI';
     }
 
     private getInquiryModelIdForProvider(provider: EngineProvider): string {
-        const clean = (value: string) => value.replace(/^models\//, '').trim();
-        if (provider === 'anthropic') {
-            return clean(this.plugin.settings.anthropicModelId || 'claude-sonnet-4-6');
-        }
-        if (provider === 'gemini') {
-            return clean(this.plugin.settings.geminiModelId || 'gemini-2.5-pro');
-        }
-        if (provider === 'local') {
-            return clean(this.plugin.settings.localModelId || 'local-model');
-        }
-        return clean(this.plugin.settings.openaiModelId || 'gpt-5.4');
+        const aiSettings = this.getCanonicalAiSettings();
+        const policy = provider === this.getResolvedEngine().provider
+            ? (aiSettings.featureProfiles?.InquiryMode?.modelPolicy ?? aiSettings.modelPolicy)
+            : { type: 'latestStable' as const };
+        const selection = selectModel(BUILTIN_MODELS, {
+            provider,
+            policy,
+            requiredCapabilities: INQUIRY_REQUIRED_CAPABILITIES,
+            accessTier: this.getAccessTierForProvider(provider, aiSettings)
+        });
+        return selection.model.id;
     }
 
     private getInquiryModelLabelForProvider(provider: EngineProvider): string {
         const modelId = this.getInquiryModelIdForProvider(provider);
         return modelId ? getModelDisplayName(modelId.replace(/^models\//, '')) : 'Unknown model';
-    }
-
-    private toAiProvider(provider: EngineProvider): AIProviderId {
-        if (provider === 'anthropic') return 'anthropic';
-        if (provider === 'gemini') return 'google';
-        if (provider === 'local') return 'ollama';
-        return 'openai';
     }
 
     private probeSecretPresence(provider: AIProviderId, secretId: string): void {
@@ -6373,32 +6371,24 @@ export class InquiryView extends ItemView {
     }
 
     private getProviderAvailability(provider: EngineProvider): { enabled: boolean; reason?: string } {
-        if (provider === 'local') {
-            const baseUrl = this.plugin.settings.localBaseUrl?.trim();
-            return baseUrl ? { enabled: true } : { enabled: false, reason: 'Local URL missing' };
+        if (provider === 'ollama') {
+            const baseUrl = this.getCanonicalAiSettings().connections?.ollamaBaseUrl?.trim();
+            return baseUrl ? { enabled: true } : { enabled: false, reason: 'Ollama URL missing' };
         }
-        const key = provider === 'anthropic'
-            ? this.plugin.settings.anthropicApiKey
-            : provider === 'gemini'
-                ? this.plugin.settings.geminiApiKey
-                : this.plugin.settings.openaiApiKey;
-        if (key?.trim()) return { enabled: true };
-
-        const aiProvider = this.toAiProvider(provider);
         const aiSettings = this.getCanonicalAiSettings();
-        const secretId = getCredentialSecretId(aiSettings, aiProvider);
+        const secretId = getCredentialSecretId(aiSettings, provider);
         if (!secretId || !isSecretStorageAvailable(this.app)) {
-            return { enabled: false, reason: 'API key missing' };
+            return { enabled: false, reason: 'Saved key missing' };
         }
 
-        const cachedPresence = this.providerSecretPresence[aiProvider];
+        const cachedPresence = this.providerSecretPresence[provider];
         if (cachedPresence === true) {
             return { enabled: true };
         }
         if (cachedPresence === false) {
             return { enabled: false, reason: 'Saved key not found' };
         }
-        this.probeSecretPresence(aiProvider, secretId);
+        this.probeSecretPresence(provider, secretId);
         return { enabled: true };
     }
 
@@ -6981,7 +6971,11 @@ export class InquiryView extends ItemView {
         });
         const key = this.sessionStore.buildKey(baseKey, manifest.fingerprint);
         const activeBookId = this.state.scope === 'saga' ? this.state.activeBookId : this.state.activeBookId;
-        const runnerInput = {
+        const resolvedEngine = this.getResolvedEngine();
+        const simulationProvider: InquiryAiProvider = resolvedEngine.provider === 'none'
+            ? 'openai'
+            : resolvedEngine.provider;
+        const runnerInput: InquiryRunnerInput = {
             scope: this.state.scope,
             scopeLabel,
             targetSceneIds,
@@ -6995,9 +6989,9 @@ export class InquiryView extends ItemView {
             corpus: manifest,
             rules: this.getEvidenceRules(),
             ai: {
-                provider: mapAiProviderToLegacyProvider(this.getResolvedEngine().provider),
-                modelId: this.getResolvedEngine().modelId,
-                modelLabel: this.getResolvedEngine().modelLabel
+                provider: simulationProvider,
+                modelId: resolvedEngine.modelId,
+                modelLabel: resolvedEngine.modelLabel
             }
         };
         const submittedAt = new Date();

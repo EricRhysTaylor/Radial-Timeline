@@ -6,8 +6,8 @@
 import { App, Modal, Notice, ButtonComponent, DropdownComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import { normalizeBooleanValue } from '../utils/sceneHelpers';
-import { DEFAULT_GEMINI_MODEL_ID } from '../constants/aiDefaults';
 import { getCredential } from '../ai/credentials/credentials';
+import { CANONICAL_PROVIDER_LABELS, getCanonicalAiSettings, resolveConfiguredSelection } from '../ai/runtime/runtimeSelection';
 
 export class SceneAnalysisService {
     constructor(private plugin: RadialTimelinePlugin) { }
@@ -78,20 +78,26 @@ export class SceneAnalysisService {
     }
 
     private async ensureApiKey(): Promise<boolean> {
-        const provider = this.plugin.settings.defaultAiProvider || 'openai';
-        if (provider === 'local') {
-            const hasUrl = !!this.plugin.settings.localBaseUrl?.trim();
-            const hasModel = !!this.plugin.settings.localModelId?.trim();
+        const aiSettings = getCanonicalAiSettings(this.plugin);
+        const selection = resolveConfiguredSelection(aiSettings);
+        const provider = selection?.provider ?? aiSettings.provider;
+        if (provider === 'none') {
+            new Notice('AI Strategy is disabled. Choose an AI provider in Settings → AI.');
+            return false;
+        }
+        if (provider === 'ollama') {
+            const hasUrl = !!aiSettings.connections?.ollamaBaseUrl?.trim();
+            const hasModel = !!selection?.model.id?.trim();
             if (!hasUrl || !hasModel) {
-                new Notice('Local AI provider requires Base URL and Model ID.');
+                new Notice('Ollama requires a base URL and model selection.');
                 return false;
             }
             return true;
         }
         const key = await getCredential(this.plugin, provider);
         if (!key) {
-            const name = provider[0].toUpperCase() + provider.slice(1);
-            new Notice(`${name} API key is not set in settings.`);
+            const name = CANONICAL_PROVIDER_LABELS[provider];
+            new Notice(`${name} saved key is not set in settings.`);
             return false;
         }
         return true;
@@ -138,26 +144,14 @@ export class SceneAnalysisService {
     }
 
     getActiveModelName(): string {
-        const provider = this.plugin.settings.defaultAiProvider || 'openai';
-        if (provider === 'anthropic') {
-            const modelId = this.plugin.settings.anthropicModelId || 'claude-sonnet-4-6';
-            // Just show the raw model ID, or maybe minimal formatting
-            return modelId;
-        }
-        if (provider === 'gemini') {
-            const modelId = this.plugin.settings.geminiModelId || DEFAULT_GEMINI_MODEL_ID;
-            return modelId;
-        }
-        if (provider === 'local') {
-            return this.plugin.settings.localModelId || 'local-model';
-        }
-        const modelId = this.plugin.settings.openaiModelId || 'gpt-5.4';
-        return modelId;
+        const aiSettings = getCanonicalAiSettings(this.plugin);
+        return resolveConfiguredSelection(aiSettings)?.model.id || 'AI disabled';
     }
 
     isLocalReportOnlyMode(): boolean {
-        const provider = this.plugin.settings.defaultAiProvider || 'openai';
-        return provider === 'local' && (this.plugin.settings.localSendPulseToAiReport ?? true);
+        const aiSettings = getCanonicalAiSettings(this.plugin);
+        return resolveConfiguredSelection(aiSettings)?.provider === 'ollama'
+            && (this.plugin.settings.localSendPulseToAiReport ?? true);
     }
 
     async processByManuscriptOrder(): Promise<void> {

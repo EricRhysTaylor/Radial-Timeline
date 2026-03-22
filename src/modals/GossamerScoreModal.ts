@@ -4,6 +4,8 @@
 import { Modal, App, ButtonComponent, Notice, TextComponent, TFile } from 'obsidian';
 import { tooltip, tooltipForComponent } from '../utils/tooltip';
 import type RadialTimelinePlugin from '../main';
+import { buildDefaultAiSettings } from '../ai/settings/aiSettings';
+import { validateAiSettings } from '../ai/settings/validateAiSettings';
 import type { TimelineItem } from '../types';
 import { filterBeatsBySystem, normalizeBeatName, normalizeGossamerHistory } from '../utils/gossamer';
 import { parseScoresFromClipboard } from '../GossamerCommands';
@@ -977,8 +979,9 @@ export class GossamerScoreModal extends Modal {
   }
 
   private getActiveAiContextInfo(): { name: string; prompt: string } {
-    const templates = this.plugin.settings.aiContextTemplates || [];
-    const activeId = this.plugin.settings.activeAiContextTemplateId;
+    const aiSettings = validateAiSettings(this.plugin.settings.aiSettings ?? buildDefaultAiSettings()).value;
+    const templates = aiSettings.roleTemplates || [];
+    const activeId = aiSettings.roleTemplateId;
     const active = templates.find(t => t.id === activeId) || templates[0];
     if (active) {
       return { name: active.name, prompt: active.prompt };

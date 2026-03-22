@@ -1,7 +1,6 @@
 import type { AiStatus } from '../api/providerErrors';
 
 export type AIProviderId = 'openai' | 'anthropic' | 'google' | 'ollama' | 'none';
-export type LegacyProviderId = 'openai' | 'anthropic' | 'gemini' | 'local';
 export type AccessTier = 1 | 2 | 3 | 4;
 
 export type Capability =
@@ -152,12 +151,20 @@ export interface AIProviderConnectionSettings {
 
 export type AnalysisPackaging = 'automatic' | 'singlePassOnly' | 'segmented';
 
+export interface AIRoleTemplate {
+    id: string;
+    name: string;
+    prompt: string;
+    isBuiltIn: boolean;
+}
+
 export interface AiSettingsV1 {
     schemaVersion: 1;
     provider: AIProviderId;
     modelPolicy: ModelPolicy;
     analysisPackaging: AnalysisPackaging;
     roleTemplateId?: string;
+    roleTemplates?: AIRoleTemplate[];
     overrides: AIOverrides;
     aiAccessProfile: AIAccessProfile;
     privacy: AIPrivacySettings;
@@ -240,7 +247,7 @@ export interface ProviderExecutionResult {
     requestPayload?: unknown;
     aiStatus: AiStatus;
     aiReason?: string;
-    aiProvider: LegacyProviderId;
+    aiProvider: AIProviderId;
     aiModelRequested: string;
     aiModelResolved: string;
     error?: string;

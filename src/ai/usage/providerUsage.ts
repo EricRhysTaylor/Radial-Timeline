@@ -102,10 +102,10 @@ export function extractTokenUsage(provider: string | null | undefined, responseD
     if (normalizedProvider === 'anthropic') {
         return readAnthropicUsage(data);
     }
-    if (normalizedProvider === 'openai' || normalizedProvider === 'local' || normalizedProvider === 'ollama') {
+    if (normalizedProvider === 'openai' || normalizedProvider === 'ollama') {
         return readOpenAiUsage(data);
     }
-    if (normalizedProvider === 'gemini' || normalizedProvider === 'google') {
+    if (normalizedProvider === 'google') {
         return readGeminiUsage(data);
     }
 

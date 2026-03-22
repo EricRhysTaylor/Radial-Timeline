@@ -16,7 +16,7 @@ export interface InputTokenEstimate {
 
 export interface EstimateInputTokensRequest {
     plugin?: RadialTimelinePlugin;
-    provider?: AIProviderId | 'gemini' | 'local';
+    provider?: AIProviderId;
     modelId?: string;
     systemPrompt?: string | null;
     userPrompt: string;
@@ -32,8 +32,6 @@ const ANTHROPIC_UNCERTAINTY_RATIO = 0.005;
 const ANTHROPIC_UNCERTAINTY_MIN = 256;
 
 function normalizeProvider(provider: EstimateInputTokensRequest['provider']): AIProviderId | 'none' {
-    if (provider === 'gemini') return 'google';
-    if (provider === 'local') return 'ollama';
     if (provider === 'anthropic' || provider === 'openai' || provider === 'google' || provider === 'ollama') {
         return provider;
     }

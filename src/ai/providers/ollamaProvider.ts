@@ -1,5 +1,8 @@
 import type RadialTimelinePlugin from '../../main';
-import { callProvider } from '../../api/providerRouter';
+import { callOpenAiApi } from '../../api/openaiApi';
+import { classifyProviderError } from '../../api/providerErrors';
+import { getCredential } from '../credentials/credentials';
+import { getCanonicalAiSettings } from '../runtime/runtimeSelection';
 import type { AIProvider, Capability, GenerateJsonRequest, GenerateTextRequest, ProviderExecutionResult } from '../types';
 
 const CAPS: Capability[] = ['jsonStrict'];
@@ -14,31 +17,64 @@ export class OllamaProvider implements AIProvider {
     }
 
     async generateText(req: GenerateTextRequest): Promise<ProviderExecutionResult> {
-        const result = await callProvider(this.plugin, {
-            provider: 'local',
-            internalAdapterAccess: true,
-            modelId: req.modelId,
-            systemPrompt: req.systemPrompt ?? null,
-            userPrompt: req.userPrompt,
-            maxTokens: req.maxOutputTokens,
-            temperature: req.temperature,
-            top_p: req.topP
-        });
-        return result;
+        const aiSettings = getCanonicalAiSettings(this.plugin);
+        const apiKey = await getCredential(this.plugin, 'ollama');
+        const result = await callOpenAiApi(
+            apiKey,
+            req.modelId,
+            req.systemPrompt ?? null,
+            req.userPrompt,
+            req.maxOutputTokens,
+            aiSettings.connections?.ollamaBaseUrl,
+            undefined,
+            req.temperature,
+            req.topP,
+            true,
+            true
+        );
+        const classification = classifyProviderError(result);
+        return {
+            success: result.success,
+            content: result.content,
+            responseData: result.responseData,
+            aiStatus: result.success ? 'success' : classification.aiStatus,
+            aiReason: result.success ? undefined : classification.aiReason,
+            aiProvider: 'ollama',
+            aiModelRequested: req.modelId,
+            aiModelResolved: req.modelId,
+            error: result.error,
+            citations: result.citations
+        };
     }
 
     async generateJson(req: GenerateJsonRequest): Promise<ProviderExecutionResult> {
-        const result = await callProvider(this.plugin, {
-            provider: 'local',
-            internalAdapterAccess: true,
-            modelId: req.modelId,
-            systemPrompt: req.systemPrompt ?? null,
-            userPrompt: req.userPrompt,
-            maxTokens: req.maxOutputTokens,
-            temperature: req.temperature,
-            top_p: req.topP,
-            responseFormat: { type: 'json_object' }
-        });
-        return result;
+        const aiSettings = getCanonicalAiSettings(this.plugin);
+        const apiKey = await getCredential(this.plugin, 'ollama');
+        const result = await callOpenAiApi(
+            apiKey,
+            req.modelId,
+            req.systemPrompt ?? null,
+            req.userPrompt,
+            req.maxOutputTokens,
+            aiSettings.connections?.ollamaBaseUrl,
+            { type: 'json_object' },
+            req.temperature,
+            req.topP,
+            true,
+            true
+        );
+        const classification = classifyProviderError(result);
+        return {
+            success: result.success,
+            content: result.content,
+            responseData: result.responseData,
+            aiStatus: result.success ? 'success' : classification.aiStatus,
+            aiReason: result.success ? undefined : classification.aiReason,
+            aiProvider: 'ollama',
+            aiModelRequested: req.modelId,
+            aiModelResolved: req.modelId,
+            error: result.error,
+            citations: result.citations
+        };
     }
 }

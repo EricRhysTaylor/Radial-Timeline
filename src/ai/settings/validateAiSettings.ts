@@ -1,5 +1,5 @@
 import type { AiSettingsV1, AIProviderId } from '../types';
-import { buildDefaultAiSettings } from './aiSettings';
+import { buildDefaultAiSettings, cloneBuiltInRoleTemplates } from './aiSettings';
 import { BUILTIN_MODELS } from '../registry/builtinModels';
 
 export interface AiSettingsValidationResult {
@@ -27,6 +27,30 @@ export function validateAiSettings(input?: AiSettingsV1 | null): AiSettingsValid
         ? input.credentials as Record<string, unknown>
         : {};
 
+    const normalizeRoleTemplates = (): NonNullable<AiSettingsV1['roleTemplates']> => {
+        const defaultsList = cloneBuiltInRoleTemplates();
+        if (!Array.isArray(input?.roleTemplates) || input.roleTemplates.length === 0) {
+            return defaultsList;
+        }
+        const normalized = input.roleTemplates
+            .filter(entry => entry && typeof entry === 'object')
+            .map(entry => {
+                const template = entry as unknown as Record<string, unknown>;
+                const id = typeof template.id === 'string' ? template.id.trim() : '';
+                const name = typeof template.name === 'string' ? template.name.trim() : '';
+                const prompt = typeof template.prompt === 'string' ? template.prompt.trim() : '';
+                if (!id || !prompt) return null;
+                return {
+                    id,
+                    name: name || id,
+                    prompt,
+                    isBuiltIn: !!template.isBuiltIn
+                };
+            })
+            .filter((entry): entry is NonNullable<AiSettingsV1['roleTemplates']>[number] => !!entry);
+        return normalized.length ? normalized : defaultsList;
+    };
+
     const value: AiSettingsV1 = {
         ...defaults,
         ...(input || {}),
@@ -45,6 +69,7 @@ export function validateAiSettings(input?: AiSettingsV1 | null): AiSettingsValid
         featureProfiles: {
             ...(input?.featureProfiles || defaults.featureProfiles || {})
         },
+        roleTemplates: normalizeRoleTemplates(),
         credentials: {
             openaiSecretId: pickSecretId(inputCredentials.openaiSecretId) ?? defaults.credentials?.openaiSecretId,
             anthropicSecretId: pickSecretId(inputCredentials.anthropicSecretId) ?? defaults.credentials?.anthropicSecretId,
@@ -78,6 +103,9 @@ export function validateAiSettings(input?: AiSettingsV1 | null): AiSettingsValid
 
     if (typeof value.roleTemplateId !== 'string' || !value.roleTemplateId.trim()) {
         value.roleTemplateId = defaults.roleTemplateId;
+    }
+    if (!(value.roleTemplates || []).some(template => template.id === value.roleTemplateId)) {
+        value.roleTemplateId = (value.roleTemplates || [])[0]?.id ?? defaults.roleTemplateId;
     }
 
     const sanitizeTier = (tier: unknown): 1 | 2 | 3 | 4 => {

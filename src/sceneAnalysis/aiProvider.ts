@@ -7,10 +7,11 @@
 import { Notice, type Vault } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import { getSceneAnalysisJsonSchema, getSceneAnalysisSystemPrompt } from '../ai/prompts/sceneAnalysis';
+import type { AIProviderId } from '../ai/types';
 import type { AiProviderResponse, ParsedSceneAnalysis } from './types';
 import { parsePulseAnalysisResponse } from './responseParsing';
 import { getAIClient } from '../ai/runtime/aiClient';
-import { mapAiProviderToLegacyProvider, mapLegacyProviderToAiProvider } from '../ai/settings/aiSettings';
+import { getCanonicalAiSettings, resolveConfiguredSelection } from '../ai/runtime/runtimeSelection';
 import {
     extractTokenUsage,
     formatAiLogContent,
@@ -25,7 +26,7 @@ import { ensurePulseContentLogFolder, resolvePulseContentLogFolder } from '../in
 import { normalizePath, TFolder } from 'obsidian';
 
 type PulseLogPayload = {
-    provider: 'openai' | 'anthropic' | 'gemini' | 'local';
+    provider: Exclude<AIProviderId, 'none'>;
     modelRequested?: string;
     modelResolved?: string;
     requestPayload?: unknown;
@@ -204,7 +205,11 @@ export async function callAiProvider(
     sceneName?: string,
     tripletInfo?: { prev: string; current: string; next: string }
 ): Promise<AiProviderResponse> {
-    const provider = (plugin.settings.defaultAiProvider || 'openai') as 'openai' | 'anthropic' | 'gemini' | 'local';
+    const aiSettings = getCanonicalAiSettings(plugin);
+    const selection = resolveConfiguredSelection(aiSettings, {
+        feature: commandContext === 'synopsis' ? 'SummaryRefresh' : 'PulseAnalysis'
+    });
+    const provider = selection?.provider ?? aiSettings.provider;
     const aiClient = getAIClient(plugin);
     let responseDataForLog: unknown;
     let result: string | null = null;
@@ -214,7 +219,7 @@ export async function callAiProvider(
     let systemPrompt = '';
     let modelRequested: string | undefined;
     let modelResolved: string | undefined;
-    const providerOverride = mapLegacyProviderToAiProvider(provider);
+    const providerOverride = provider === 'none' ? undefined : provider;
 
     try {
         let jsonSchema: Record<string, unknown>;
@@ -251,12 +256,12 @@ export async function callAiProvider(
         result = runResult.content;
         modelRequested = runResult.modelRequested;
         modelResolved = runResult.modelResolved;
-        const resolvedLegacyProvider = mapAiProviderToLegacyProvider(runResult.provider) as PulseLogPayload['provider'];
+        const resolvedProvider = runResult.provider as PulseLogPayload['provider'];
 
         if (runResult.aiStatus !== 'success' || !runResult.content) {
             if (commandContext !== 'synopsis') {
                 await writePulseLog(plugin, vault, {
-                    provider: resolvedLegacyProvider,
+                    provider: resolvedProvider,
                     modelRequested,
                     modelResolved,
                     requestPayload: runResult.requestPayload,
@@ -275,7 +280,7 @@ export async function callAiProvider(
                     retryCount: runResult.retryCount
                 });
             }
-            throw new Error(runResult.error || `Error calling ${resolvedLegacyProvider} AI provider.`);
+            throw new Error(runResult.error || `Error calling ${resolvedProvider} AI provider.`);
         }
 
         const parsedForLog = commandContext !== 'synopsis'
@@ -283,7 +288,7 @@ export async function callAiProvider(
             : null;
         if (commandContext !== 'synopsis') {
             await writePulseLog(plugin, vault, {
-                provider: resolvedLegacyProvider,
+                provider: resolvedProvider,
                 modelRequested,
                 modelResolved,
                 requestPayload: runResult.requestPayload,
@@ -319,8 +324,8 @@ export async function callAiProvider(
         if (!submittedAt) submittedAt = new Date();
         if (!returnedAt) returnedAt = new Date();
         const logProvider = runResult
-            ? (mapAiProviderToLegacyProvider(runResult.provider) as PulseLogPayload['provider'])
-            : provider;
+            ? (runResult.provider as PulseLogPayload['provider'])
+            : ((provider === 'none' ? 'openai' : provider) as PulseLogPayload['provider']);
 
         if (commandContext !== 'synopsis') {
             await writePulseLog(plugin, vault, {

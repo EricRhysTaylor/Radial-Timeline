@@ -1,8 +1,8 @@
 import type RadialTimelinePlugin from '../main';
 import type { Vault } from 'obsidian';
-import type { AIRunAdvancedContext } from '../ai/types';
+import type { AIRunAdvancedContext, AIProviderId } from '../ai/types';
 
-export type Provider = 'openai' | 'anthropic' | 'gemini';
+export type Provider = Exclude<AIProviderId, 'none'>;
 
 export type AiRunner = (
   userPrompt: string,
@@ -27,4 +27,3 @@ export function createAiRunner(
 ): AiRunner {
   return (userPrompt, subplotName, commandContext, sceneName, tripletInfo) => callAiProvider(plugin, vault, userPrompt, subplotName, commandContext, sceneName, tripletInfo);
 }
-

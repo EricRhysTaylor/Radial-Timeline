@@ -35,16 +35,16 @@ import {
 } from './refactorAlerts';
 import { DEFAULT_SETTINGS } from './defaults';
 import { getCredential } from '../ai/credentials/credentials';
+import type { AIProviderId } from '../ai/types';
 
 export class RadialTimelineSettingsTab extends PluginSettingTab {
     plugin: RadialTimelinePlugin;
     private readmeComponent: Component | null = null;
-    private _providerSections: { anthropic?: HTMLElement; gemini?: HTMLElement; openai?: HTMLElement; local?: HTMLElement } = {};
-    private _keyValidateTimers: Partial<Record<'anthropic' | 'gemini' | 'openai' | 'local', number>> = {};
+    private _providerSections: { anthropic?: HTMLElement; google?: HTMLElement; openai?: HTMLElement; ollama?: HTMLElement } = {};
+    private _keyValidateTimers: Partial<Record<'anthropic' | 'google' | 'openai' | 'ollama', number>> = {};
     private _anthropicKeyInput?: HTMLInputElement;
-    private _geminiKeyInput?: HTMLInputElement;
+    private _googleKeyInput?: HTMLInputElement;
     private _openaiKeyInput?: HTMLInputElement;
-    private _localKeyInput?: HTMLInputElement;
     private _localBaseUrlInput?: HTMLInputElement;
     private _localModelIdInput?: HTMLInputElement;
     private _aiRelatedElements: HTMLElement[] = [];
@@ -68,10 +68,18 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         new FolderSuggest(this.app, inputEl, this.plugin, text);
     }
 
+    private getSelectedAiProvider(): Exclude<AIProviderId, 'none'> {
+        const provider = this.plugin.settings.aiSettings?.provider;
+        if (provider === 'anthropic' || provider === 'google' || provider === 'openai' || provider === 'ollama') {
+            return provider;
+        }
+        return 'openai';
+    }
+
     private refreshProviderDimming() {
-        const selected = (this.plugin.settings.defaultAiProvider || 'openai') as 'anthropic' | 'gemini' | 'openai' | 'local';
+        const selected = this.getSelectedAiProvider();
         const map = this._providerSections;
-        (['anthropic', 'gemini', 'openai', 'local'] as const).forEach(key => {
+        (['anthropic', 'google', 'openai', 'ollama'] as const).forEach(key => {
             const el = map[key];
             if (!el) return;
             const isSelected = key === selected;
@@ -153,13 +161,13 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         }
     }
 
-    private async scheduleKeyValidation(provider: 'anthropic' | 'gemini' | 'openai' | 'local') {
+    private async scheduleKeyValidation(provider: 'anthropic' | 'google' | 'openai' | 'ollama') {
         const prior = this._keyValidateTimers[provider];
         if (prior) window.clearTimeout(prior);
 
-        if (provider === 'local') {
-            const selectedProvider = (this.plugin.settings.defaultAiProvider || 'openai') as 'anthropic' | 'gemini' | 'openai' | 'local';
-            if (selectedProvider !== 'local') return;
+        if (provider === 'ollama') {
+            const selectedProvider = this.getSelectedAiProvider();
+            if (selectedProvider !== 'ollama') return;
             const baseInput = this._localBaseUrlInput;
             const modelInput = this._localModelIdInput;
             if (!baseInput || !modelInput) return;
@@ -195,14 +203,11 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         }
 
         const inputEl = provider === 'anthropic' ? this._anthropicKeyInput
-            : provider === 'gemini' ? this._geminiKeyInput
+            : provider === 'google' ? this._googleKeyInput
                 : this._openaiKeyInput;
         if (!inputEl) return;
 
-        const key = await getCredential(
-            this.plugin,
-            provider === 'anthropic' ? 'anthropic' : provider === 'gemini' ? 'google' : 'openai'
-        );
+        const key = await getCredential(this.plugin, provider);
         if (!key || key.length < 8) return;
 
         this._keyValidateTimers[provider] = window.setTimeout(async () => {
@@ -212,7 +217,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
             try {
                 if (provider === 'anthropic') await fetchAnthropicModels(key);
-                else if (provider === 'gemini') await fetchGeminiModels(key);
+                else if (provider === 'google') await fetchGeminiModels(key);
                 else await fetchOpenAiModels(key);
                 inputEl.addClass('ert-setting-input-success');
                 window.setTimeout(() => inputEl.removeClass('ert-setting-input-success'), 1200);
@@ -920,13 +925,12 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                 addAiRelatedElement: (el: HTMLElement) => this._aiRelatedElements.push(el),
                 toggleAiSettingsVisibility: (show: boolean) => this.toggleAiSettingsVisibility(show),
                 refreshProviderDimming: () => this.refreshProviderDimming(),
-                scheduleKeyValidation: (p: 'anthropic' | 'gemini' | 'openai' | 'local') => { void this.scheduleKeyValidation(p); },
+                scheduleKeyValidation: (p: 'anthropic' | 'google' | 'openai' | 'ollama') => { void this.scheduleKeyValidation(p); },
                 setProviderSections: (sections) => { this._providerSections = sections; },
                 setKeyInputRef: (provider, input) => {
                     if (provider === 'anthropic') this._anthropicKeyInput = input;
-                    if (provider === 'gemini') this._geminiKeyInput = input;
+                    if (provider === 'google') this._googleKeyInput = input;
                     if (provider === 'openai') this._openaiKeyInput = input;
-                    if (provider === 'local') this._localKeyInput = input;
                 },
                 setLocalConnectionInputs: ({ baseInput, modelInput }) => {
                     if (baseInput) this._localBaseUrlInput = baseInput;

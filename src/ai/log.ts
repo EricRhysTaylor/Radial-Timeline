@@ -99,7 +99,7 @@ function normalizePricingProvider(provider?: string | null): 'anthropic' | 'open
     const normalized = (provider || '').trim().toLowerCase();
     if (normalized === 'anthropic') return 'anthropic';
     if (normalized === 'openai') return 'openai';
-    if (normalized === 'google' || normalized === 'gemini') return 'google';
+    if (normalized === 'google') return 'google';
     return null;
 }
 

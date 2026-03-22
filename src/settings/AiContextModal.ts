@@ -1,6 +1,8 @@
 import { App, Modal, ButtonComponent, DropdownComponent, TextComponent, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import { AiContextTemplate } from '../types/settings';
+import { buildDefaultAiSettings } from '../ai/settings/aiSettings';
+import { validateAiSettings } from '../ai/settings/validateAiSettings';
 
 /**
  * Simple text input modal to replace prompt()
@@ -120,10 +122,12 @@ export class AiContextModal extends Modal {
         super(app);
         this.plugin = plugin;
         this.onSave = onSave;
-        
+        const aiSettings = validateAiSettings(plugin.settings.aiSettings ?? buildDefaultAiSettings()).value;
+        this.plugin.settings.aiSettings = aiSettings;
+
         // Clone templates to allow cancel without saving
-        this.templates = JSON.parse(JSON.stringify(plugin.settings.aiContextTemplates || []));
-        this.currentTemplateId = plugin.settings.activeAiContextTemplateId || 'commercial_genre';
+        this.templates = JSON.parse(JSON.stringify(aiSettings.roleTemplates || []));
+        this.currentTemplateId = aiSettings.roleTemplateId || 'commercial_genre';
     }
 
     onOpen(): void {
@@ -443,9 +447,11 @@ export class AiContextModal extends Modal {
         if (this.isDirty) {
             this.saveChanges();
         }
-        
-        this.plugin.settings.aiContextTemplates = this.templates;
-        this.plugin.settings.activeAiContextTemplateId = this.currentTemplateId;
+
+        const aiSettings = validateAiSettings(this.plugin.settings.aiSettings ?? buildDefaultAiSettings()).value;
+        aiSettings.roleTemplates = JSON.parse(JSON.stringify(this.templates));
+        aiSettings.roleTemplateId = this.currentTemplateId;
+        this.plugin.settings.aiSettings = aiSettings;
         await this.plugin.saveSettings();
         
         const currentTemplate = this.getCurrentTemplate();

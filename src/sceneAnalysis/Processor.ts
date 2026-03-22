@@ -6,6 +6,9 @@
 
 import { Notice, type Vault } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
+import { buildDefaultAiSettings } from '../ai/settings/aiSettings';
+import { getCanonicalAiSettings, resolveConfiguredSelection } from '../ai/runtime/runtimeSelection';
+import { validateAiSettings } from '../ai/settings/validateAiSettings';
 import type { SceneAnalysisProcessingModal, ProcessingMode, SceneQueueItem } from '../modals/SceneAnalysisProcessingModal';
 import { buildTripletsByIndex } from './TripletBuilder';
 import { updateSceneAnalysis, markPulseProcessed } from './FileUpdater';
@@ -156,7 +159,9 @@ export async function processWithModal(
 
     const totalToProcess = queueItems.length;
     let processedCount = 0;
-    const sendPulseToAiReportOnly = plugin.settings.defaultAiProvider === 'local' && (plugin.settings.localSendPulseToAiReport ?? true);
+    const sendPulseToAiReportOnly = resolveConfiguredSelection(getCanonicalAiSettings(plugin), {
+        feature: 'PulseAnalysis'
+    })?.provider === 'ollama' && (plugin.settings.localSendPulseToAiReport ?? true);
 
     for (const { triplet, shouldProcess } of tasks) {
         if (modal.isAborted()) {
@@ -178,7 +183,11 @@ export async function processWithModal(
         }
 
         const contextPrompt = getActiveContextPrompt(plugin);
-        const extraInstructions = plugin.settings.defaultAiProvider === 'local' ? plugin.settings.localLlmInstructions : undefined;
+        const extraInstructions = resolveConfiguredSelection(getCanonicalAiSettings(plugin), {
+            feature: 'PulseAnalysis'
+        })?.provider === 'ollama'
+            ? plugin.settings.localLlmInstructions
+            : undefined;
         const userPrompt = buildSceneAnalysisPrompt(
             prevBody,
             currentBody,
@@ -313,7 +322,9 @@ export async function processBySubplotOrder(
 
         let totalProcessedCount = 0;
         let totalTripletsAcrossSubplots = 0;
-        const sendPulseToAiReportOnly = plugin.settings.defaultAiProvider === 'local' && (plugin.settings.localSendPulseToAiReport ?? true);
+        const sendPulseToAiReportOnly = resolveConfiguredSelection(getCanonicalAiSettings(plugin), {
+            feature: 'PulseAnalysis'
+        })?.provider === 'ollama' && (plugin.settings.localSendPulseToAiReport ?? true);
         subplotNames.forEach(subplotName => {
             const scenes = scenesBySubplot[subplotName];
             scenes.sort(compareScenesByOrder);
@@ -358,7 +369,11 @@ export async function processBySubplotOrder(
                 const nextNum = triplet.next ? String(triplet.next.sceneNumber ?? 'N/A') : 'N/A';
 
                 const contextPrompt = getActiveContextPrompt(plugin);
-                const extraInstructions = plugin.settings.defaultAiProvider === 'local' ? plugin.settings.localLlmInstructions : undefined;
+                const extraInstructions = resolveConfiguredSelection(getCanonicalAiSettings(plugin), {
+                    feature: 'PulseAnalysis'
+                })?.provider === 'ollama'
+                    ? plugin.settings.localLlmInstructions
+                    : undefined;
                 const userPrompt = buildSceneAnalysisPrompt(
                     prevBody,
                     currentBody,
@@ -462,7 +477,9 @@ export async function processSubplotWithModal(
     }
     const total = queueItems.length;
     let processedCount = 0;
-    const sendPulseToAiReportOnly = plugin.settings.defaultAiProvider === 'local' && (plugin.settings.localSendPulseToAiReport ?? true);
+    const sendPulseToAiReportOnly = resolveConfiguredSelection(getCanonicalAiSettings(plugin), {
+        feature: 'PulseAnalysis'
+    })?.provider === 'ollama' && (plugin.settings.localSendPulseToAiReport ?? true);
 
     for (const { triplet, shouldProcess } of subplotTasks) {
         if (modal.isAborted()) {
@@ -492,7 +509,11 @@ export async function processSubplotWithModal(
         }
 
         const contextPrompt = getActiveContextPrompt(plugin);
-        const extraInstructions = plugin.settings.defaultAiProvider === 'local' ? plugin.settings.localLlmInstructions : undefined;
+        const extraInstructions = resolveConfiguredSelection(getCanonicalAiSettings(plugin), {
+            feature: 'PulseAnalysis'
+        })?.provider === 'ollama'
+            ? plugin.settings.localLlmInstructions
+            : undefined;
         const userPrompt = buildSceneAnalysisPrompt(
             prevBody,
             currentBody,
@@ -627,7 +648,9 @@ export async function processEntireSubplotWithModalInternal(
     }
     const total = queueItems.length;
     let processedCount = 0;
-    const sendPulseToAiReportOnly = plugin.settings.defaultAiProvider === 'local' && (plugin.settings.localSendPulseToAiReport ?? true);
+    const sendPulseToAiReportOnly = resolveConfiguredSelection(getCanonicalAiSettings(plugin), {
+        feature: 'PulseAnalysis'
+    })?.provider === 'ollama' && (plugin.settings.localSendPulseToAiReport ?? true);
 
     for (const { triplet, shouldProcess } of subplotTasks) {
         if (modal.isAborted()) {
@@ -657,7 +680,11 @@ export async function processEntireSubplotWithModalInternal(
         }
 
         const contextPrompt = getActiveContextPrompt(plugin);
-        const extraInstructions = plugin.settings.defaultAiProvider === 'local' ? plugin.settings.localLlmInstructions : undefined;
+        const extraInstructions = resolveConfiguredSelection(getCanonicalAiSettings(plugin), {
+            feature: 'PulseAnalysis'
+        })?.provider === 'ollama'
+            ? plugin.settings.localLlmInstructions
+            : undefined;
         const userPrompt = buildSceneAnalysisPrompt(
             prevBody,
             currentBody,
@@ -749,8 +776,9 @@ export async function processEntireSubplotWithModalInternal(
 }
 
 export function getActiveContextPrompt(plugin: RadialTimelinePlugin): string | undefined {
-    const templates = plugin.settings.aiContextTemplates || [];
-    const activeId = plugin.settings.activeAiContextTemplateId;
+    const aiSettings = validateAiSettings(plugin.settings.aiSettings ?? buildDefaultAiSettings()).value;
+    const templates = aiSettings.roleTemplates || [];
+    const activeId = aiSettings.roleTemplateId;
     const active = templates.find(t => t.id === activeId);
     return active?.prompt;
 }

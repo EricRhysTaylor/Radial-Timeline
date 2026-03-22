@@ -13,6 +13,7 @@ import { getModelDisplayName } from '../utils/modelResolver';
 import { SimulatedProgress } from '../utils/simulatedProgress';
 import type { AIRunAdvancedContext } from '../ai/types';
 import { redactSensitiveValue } from '../ai/credentials/redactSensitive';
+import { CANONICAL_PROVIDER_LABELS, getCanonicalAiSettings, resolveConfiguredSelection } from '../ai/runtime/runtimeSelection';
 
 export interface ManuscriptInfo {
     totalScenes: number;
@@ -123,8 +124,9 @@ export class GossamerProcessingModal extends Modal {
     }
 
     private getActiveModelDisplayName(): string {
-        const modelId = this.plugin.settings.geminiModelId || 'gemini-2.5-pro';
-        return getModelDisplayName(modelId);
+        const aiSettings = getCanonicalAiSettings(this.plugin);
+        const selection = resolveConfiguredSelection(aiSettings, { feature: 'Gossamer' });
+        return selection ? getModelDisplayName(selection.model.id) : 'AI disabled';
     }
 
     private showConfirmationView(): void {
@@ -152,13 +154,15 @@ export class GossamerProcessingModal extends Modal {
         this.manuscriptInfoEl.setText('Gathering manuscript details...');
 
         // Check if API key is configured for the active provider
-        const activeProvider = this.plugin.settings.defaultAiProvider || 'openai';
-        if (activeProvider !== 'local') {
+        const aiSettings = getCanonicalAiSettings(this.plugin);
+        const selection = resolveConfiguredSelection(aiSettings, { feature: 'Gossamer' });
+        const activeProvider = selection?.provider ?? aiSettings.provider;
+        if (activeProvider !== 'none' && activeProvider !== 'ollama') {
             getCredential(this.plugin, activeProvider).then(key => {
                 if (!key) {
-                    const name = activeProvider[0].toUpperCase() + activeProvider.slice(1);
+                    const name = CANONICAL_PROVIDER_LABELS[activeProvider];
                     const warningEl = card.createDiv({ cls: 'rt-pulse-warning' });
-                    warningEl.setText(`⚠️ ${name} API key not configured. Please set your API key in Settings → AI.`);
+                    warningEl.setText(`⚠️ ${name} saved key not configured. Please set your key in Settings → AI.`);
                 }
             });
         }
@@ -169,7 +173,6 @@ export class GossamerProcessingModal extends Modal {
         new ButtonComponent(buttonRow)
             .setButtonText('Begin Analysis')
             .setCta()
-            // .setDisabled(!this.plugin.settings.geminiApiKey) // Disable if no API key
             .onClick(async () => {
                 await this.startProcessing();
             });

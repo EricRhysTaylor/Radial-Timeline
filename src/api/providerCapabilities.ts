@@ -1,7 +1,7 @@
 // DEPRECATED: Legacy provider adapter; prefer aiClient entrypoints.
 import type { OpenAiResponseFormat } from './openaiApi';
 
-export type AiProvider = 'openai' | 'anthropic' | 'gemini' | 'local';
+export type AiProvider = 'openai' | 'anthropic' | 'google' | 'ollama';
 
 export interface ProviderCallArgs {
     userPrompt: string;
@@ -55,7 +55,7 @@ const PROVIDER_CAPABILITIES: Record<AiProvider, ProviderCapabilities> = {
         supportsBatchApi: true,
         supportsSystemRole: true
     },
-    gemini: {
+    google: {
         supportsTemperature: true,
         supportsTopP: true,
         supportsResponseFormat: false,
@@ -67,7 +67,7 @@ const PROVIDER_CAPABILITIES: Record<AiProvider, ProviderCapabilities> = {
         supportsBatchApi: false,
         supportsSystemRole: true
     },
-    local: {
+    ollama: {
         supportsTemperature: true,
         supportsTopP: true,
         supportsResponseFormat: true,
@@ -84,20 +84,20 @@ const PROVIDER_CAPABILITIES: Record<AiProvider, ProviderCapabilities> = {
 const MODEL_TEMPERATURE_UNSUPPORTED: Record<AiProvider, Set<string>> = {
     openai: new Set(),
     anthropic: new Set(),
-    gemini: new Set(),
-    local: new Set()
+    google: new Set(),
+    ollama: new Set()
 };
 
 const MODEL_SYSTEM_ROLE_UNSUPPORTED: Record<AiProvider, Set<string>> = {
     openai: new Set(['o1', 'o1-mini', 'o1-preview']),
     anthropic: new Set(),
-    gemini: new Set(),
-    local: new Set()
+    google: new Set(),
+    ollama: new Set()
 };
 
 const normalizeModelId = (provider: AiProvider, modelId?: string): string => {
     if (!modelId) return '';
-    if (provider === 'gemini') {
+    if (provider === 'google') {
         return modelId.trim().replace(/^models\//, '');
     }
     return modelId.trim();
@@ -128,7 +128,7 @@ export function sanitizeProviderArgs(
     const normalizedModelId = normalizeModelId(provider, modelId);
     const temperatureAllowed = capabilities.supportsTemperature &&
         !MODEL_TEMPERATURE_UNSUPPORTED[provider].has(normalizedModelId);
-    const supportsCitationControl = capabilities.supportsCitations || provider === 'gemini';
+    const supportsCitationControl = capabilities.supportsCitations || provider === 'google';
 
     const sanitized: ProviderCallArgs = {
         userPrompt: args.userPrompt

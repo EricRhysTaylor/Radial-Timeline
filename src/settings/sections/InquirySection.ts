@@ -156,10 +156,10 @@ const formatSessionProviderModel = (session: InquirySession): string => {
         ? 'OpenAI'
         : providerRaw === 'anthropic'
             ? 'Anthropic'
-            : providerRaw === 'gemini'
-                ? 'Gemini'
-                : providerRaw === 'local'
-                    ? 'Local'
+            : providerRaw === 'google'
+                ? 'Google'
+                : providerRaw === 'ollama'
+                    ? 'Ollama'
                     : (providerRaw ? providerRaw.charAt(0).toUpperCase() + providerRaw.slice(1) : 'Engine');
     return model ? `${provider}/${model}` : provider;
 };

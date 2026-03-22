@@ -1,12 +1,7 @@
 import type { InquiryScope } from '../inquiry/state';
-import type { AiSettingsV1 } from '../ai/types';
+import type { AiSettingsV1, AIRoleTemplate } from '../ai/types';
 
-export interface AiContextTemplate {
-    id: string;
-    name: string;
-    prompt: string;
-    isBuiltIn: boolean;
-}
+export type AiContextTemplate = AIRoleTemplate;
 
 export interface BookDesignerSceneAssignment {
     sceneNumber: number;
@@ -448,20 +443,9 @@ export interface RadialTimelineSettings {
     };
     showCompletionEstimate?: boolean;
     completionEstimateWindowDays?: number;
-    openaiApiKey?: string;
-    anthropicApiKey?: string;
-    anthropicModelId?: string;
-    geminiApiKey?: string;
-    geminiModelId?: string;
-    defaultAiProvider?: 'openai' | 'anthropic' | 'gemini' | 'local';
-    localBaseUrl?: string;
-    localModelId?: string;
-    localApiKey?: string;
     localLlmInstructions?: string;
     localSendPulseToAiReport?: boolean;
-    openaiModelId?: string;
     aiSettings?: AiSettingsV1;
-    aiCanonicalResetCompleted?: boolean;
     aiRegistryCacheJson?: string;
     aiProviderSnapshotCacheJson?: string;
     enableAiSceneAnalysis: boolean;
@@ -476,8 +460,6 @@ export interface RadialTimelineSettings {
     chronologueDurationCapSelection?: string;
     discontinuityThreshold?: string;
     shouldRestoreTimelineOnLoad?: boolean;
-    aiContextTemplates?: AiContextTemplate[];
-    activeAiContextTemplateId?: string;
     beatSystem?: string;
     customBeatSystemName?: string;
     customBeatSystemDescription?: string;

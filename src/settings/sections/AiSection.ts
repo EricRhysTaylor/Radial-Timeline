@@ -10,7 +10,7 @@ import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import { resolveAiLogFolder } from '../../ai/log';
 import { ERT_CLASSES } from '../../ui/classes';
 import { IMPACT_FULL } from '../SettingImpact';
-import { buildDefaultAiSettings, mapAiProviderToLegacyProvider } from '../../ai/settings/aiSettings';
+import { buildDefaultAiSettings } from '../../ai/settings/aiSettings';
 import { validateAiSettings } from '../../ai/settings/validateAiSettings';
 import { BUILTIN_MODELS } from '../../ai/registry/builtinModels';
 import { compareNewestModels, getPickerModelsForProvider, selectLatestModelByReleaseChannel } from '../../ai/registry/releaseChannels';
@@ -22,6 +22,7 @@ import {
     getCredential,
     getCredentialSecretId,
     migrateLegacyKeysToSecretStorage,
+    needsLegacyKeyMigration,
     setCredentialSecretId
 } from '../../ai/credentials/credentials';
 import { getSecret, hasSecret, isSecretStorageAvailable, setSecret } from '../../ai/credentials/secretStorage';
@@ -47,7 +48,7 @@ import { resolveSelectedBeatModel } from '../../utils/beatsInputNormalize';
 import { getSynopsisGenerationWordLimit, getSynopsisHoverLineLimit } from '../../utils/synopsisLimits';
 import { getResolvedModelId } from '../../utils/modelResolver';
 
-type Provider = 'anthropic' | 'gemini' | 'openai' | 'local';
+type Provider = 'anthropic' | 'google' | 'openai' | 'ollama';
 type CapacityItem = string | { text: string; dividerBefore?: boolean };
 type LocalRequestBreakdown = {
     roleTemplateTokens: number | null;
@@ -64,7 +65,7 @@ export function renderAiSection(params: {
     toggleAiSettingsVisibility: (show: boolean) => void;
     refreshProviderDimming: () => void;
     scheduleKeyValidation: (provider: Provider) => void;
-    setProviderSections: (sections: { anthropic?: HTMLElement; gemini?: HTMLElement; openai?: HTMLElement; local?: HTMLElement }) => void;
+    setProviderSections: (sections: { anthropic?: HTMLElement; google?: HTMLElement; openai?: HTMLElement; ollama?: HTMLElement }) => void;
     setKeyInputRef: (provider: Provider, input: HTMLInputElement | undefined) => void;
     setLocalConnectionInputs: (refs: { baseInput?: HTMLInputElement; modelInput?: HTMLInputElement }) => void;
 }): void {
@@ -262,6 +263,41 @@ export function renderAiSection(params: {
         const validated = validateAiSettings(plugin.settings.aiSettings);
         Object.assign(plugin.settings.aiSettings, validated.value);
         return plugin.settings.aiSettings;
+    };
+
+    const getSelectedProvider = (): Exclude<AIProviderId, 'none'> => {
+        const provider = ensureCanonicalAiSettings().provider;
+        if (provider === 'anthropic' || provider === 'google' || provider === 'openai' || provider === 'ollama') {
+            return provider;
+        }
+        return 'openai';
+    };
+
+    const getOllamaBaseUrl = (): string => (
+        ensureCanonicalAiSettings().connections?.ollamaBaseUrl?.trim() || 'http://localhost:11434/v1'
+    );
+
+    const getOllamaModelId = (): string => {
+        const aiSettings = ensureCanonicalAiSettings();
+        if (aiSettings.modelPolicy.type === 'pinned') {
+            const pinnedAlias = aiSettings.modelPolicy.pinnedAlias;
+            const pinned = BUILTIN_MODELS.find(model =>
+                model.provider === 'ollama' && model.alias === pinnedAlias
+            );
+            if (pinned?.id) return pinned.id;
+        }
+        return BUILTIN_MODELS.find(model => model.provider === 'ollama' && model.status === 'stable')?.id || 'llama3';
+    };
+
+    const setOllamaModelId = (modelId: string): void => {
+        const aiSettings = ensureCanonicalAiSettings();
+        const normalized = modelId.trim();
+        const model = BUILTIN_MODELS.find(entry =>
+            entry.provider === 'ollama' && (entry.id === normalized || entry.alias === normalized)
+        );
+        aiSettings.modelPolicy = model
+            ? { type: 'pinned', pinnedAlias: model.alias }
+            : { type: 'latestStable' };
     };
 
     let isSyncingRoutingUi = false;
@@ -859,29 +895,8 @@ export function renderAiSection(params: {
         return 1;
     };
 
-    const syncLegacyFromCanonical = (): void => {
-        const aiSettings = ensureCanonicalAiSettings();
-        const provider = aiSettings.provider === 'none' ? 'openai' : aiSettings.provider;
-        const legacyProvider = mapAiProviderToLegacyProvider(provider);
-        plugin.settings.defaultAiProvider = legacyProvider;
-
-        const policy = aiSettings.modelPolicy;
-        if (policy.type === 'pinned' && policy.pinnedAlias) {
-            const pinned = BUILTIN_MODELS.find(model => model.alias === policy.pinnedAlias);
-            if (pinned) {
-                if (pinned.provider === 'anthropic') plugin.settings.anthropicModelId = pinned.id;
-                if (pinned.provider === 'openai') plugin.settings.openaiModelId = pinned.id;
-                if (pinned.provider === 'google') plugin.settings.geminiModelId = pinned.id;
-                if (pinned.provider === 'ollama') plugin.settings.localModelId = pinned.id;
-            }
-        }
-
-        plugin.settings.localBaseUrl = aiSettings.connections?.ollamaBaseUrl ?? plugin.settings.localBaseUrl;
-    };
-
     const persistCanonical = async (): Promise<void> => {
         ensureCanonicalAiSettings();
-        syncLegacyFromCanonical();
         await plugin.saveSettings();
         params.refreshProviderDimming();
         plugin.getInquiryService().notifyAiSettingsChanged();
@@ -1703,36 +1718,27 @@ export function renderAiSection(params: {
     const anthropicSection = configurationBody.createDiv({
         cls: ['ert-provider-section', 'ert-provider-anthropic', ERT_CLASSES.STACK]
     });
-    const geminiSection = configurationBody.createDiv({
+    const googleSection = configurationBody.createDiv({
         cls: ['ert-provider-section', 'ert-provider-gemini', ERT_CLASSES.STACK]
     });
     const openaiSection = configurationBody.createDiv({
         cls: ['ert-provider-section', 'ert-provider-openai', ERT_CLASSES.STACK]
     });
-    params.setProviderSections({ anthropic: anthropicSection, gemini: geminiSection, openai: openaiSection });
+    params.setProviderSections({ anthropic: anthropicSection, google: googleSection, openai: openaiSection });
     params.addAiRelatedElement(anthropicSection);
-    params.addAiRelatedElement(geminiSection);
+    params.addAiRelatedElement(googleSection);
     params.addAiRelatedElement(openaiSection);
 
     const secretStorageAvailable = isSecretStorageAvailable(app);
 
-    const hasLegacyKeyMaterial = (): boolean => {
-        return !!(
-            plugin.settings.openaiApiKey?.trim()
-            || plugin.settings.anthropicApiKey?.trim()
-            || plugin.settings.geminiApiKey?.trim()
-            || plugin.settings.localApiKey?.trim()
-        );
-    };
-
     if (!secretStorageAvailable) {
         const warningSetting = new Settings(configurationBody)
             .setName('Secure key saving unavailable')
-            .setDesc('Secure key saving is unavailable in this Obsidian build. Older key fields remain available as fallback.');
+            .setDesc('Secure key saving is unavailable in this Obsidian build. Provider API keys cannot be configured until secret storage is available.');
         params.addAiRelatedElement(warningSetting.settingEl);
     }
 
-    if (secretStorageAvailable && hasLegacyKeyMaterial()) {
+    if (secretStorageAvailable && needsLegacyKeyMigration(plugin)) {
         const migrateKeysSetting = new Settings(configurationBody)
             .setName('Secure my saved keys')
             .setDesc('Moves older provider key fields into private saved keys and clears plaintext values.');
@@ -1838,7 +1844,6 @@ export function renderAiSection(params: {
     const renderCredentialSettings = (options: {
         section: HTMLElement;
         provider: 'openai' | 'anthropic' | 'google';
-        legacyProvider: 'openai' | 'anthropic' | 'gemini';
         providerName: string;
         keyPlaceholder: string;
         docsUrl: string;
@@ -1997,15 +2002,9 @@ export function renderAiSection(params: {
                 setProviderState(validation.state);
                 return;
             }
-
-            const legacyValue = options.legacyProvider === 'gemini'
-                ? plugin.settings.geminiApiKey
-                : options.legacyProvider === 'anthropic'
-                ? plugin.settings.anthropicApiKey
-                : plugin.settings.openaiApiKey;
             replaceRequested = false;
             revealSecretName = false;
-            setProviderState((legacyValue || '').trim() ? 'ready' : 'not_configured');
+            setProviderState('not_configured');
         };
         secretIdSetting.addText(text => {
             const aiSettings = ensureCanonicalAiSettings();
@@ -2037,7 +2036,7 @@ export function renderAiSection(params: {
                 configureSensitiveInput(text.inputEl);
                 text.setPlaceholder(options.keyPlaceholder);
                 secureKeyInput = text.inputEl;
-                params.setKeyInputRef(options.legacyProvider, text.inputEl);
+                params.setKeyInputRef(options.provider, text.inputEl);
 
                 plugin.registerDomEvent(text.inputEl, 'keydown', (event: KeyboardEvent) => {
                     if (event.key === 'Enter') {
@@ -2061,10 +2060,6 @@ export function renderAiSection(params: {
                             new Notice(`Unable to save ${options.providerName} key privately.`);
                             return;
                         }
-                        if (options.legacyProvider === 'gemini') plugin.settings.geminiApiKey = '';
-                        if (options.legacyProvider === 'anthropic') plugin.settings.anthropicApiKey = '';
-                        if (options.legacyProvider === 'openai') plugin.settings.openaiApiKey = '';
-                        await plugin.saveSettings();
                         text.setValue('');
                         setProviderState('checking');
                         const validation = await validateProviderKeyQuick(options.provider, value);
@@ -2085,58 +2080,23 @@ export function renderAiSection(params: {
         void refreshProviderKeyState();
 
         if (!secretStorageAvailable) {
-            const legacyDetails = options.section.createEl('details', {
-                cls: 'ert-ai-fold ert-ai-legacy-credentials'
-            }) as HTMLDetailsElement;
-            legacyDetails.setAttr('open', '');
-            const legacySummary = legacyDetails.createEl('summary', {
-                text: 'Advanced: Older key fields (not recommended)'
+            options.section.createDiv({
+                cls: 'ert-field-note',
+                text: `${options.providerName} requires Obsidian secret storage. Older plaintext key fields are no longer supported.`
             });
-            attachAiCollapseButton(legacyDetails, legacySummary);
-            const legacyHost = legacyDetails.createDiv({ cls: ERT_CLASSES.STACK });
-            const legacySetting = new Settings(legacyHost)
-                .setName(`${options.providerName} older API key`)
-                .setDesc('Used only when secure key saving is unavailable.');
-            legacySetting.addText(text => {
-                text.inputEl.addClass('ert-input--full');
-                configureSensitiveInput(text.inputEl);
-                const legacyValue = options.legacyProvider === 'gemini'
-                    ? plugin.settings.geminiApiKey
-                    : options.legacyProvider === 'anthropic'
-                    ? plugin.settings.anthropicApiKey
-                    : plugin.settings.openaiApiKey;
-                text
-                    .setPlaceholder(options.keyPlaceholder)
-                    .setValue(legacyValue || '');
-                params.setKeyInputRef(options.legacyProvider, text.inputEl);
-                plugin.registerDomEvent(text.inputEl, 'blur', () => {
-                    void (async () => {
-                        const next = text.getValue().trim();
-                        if (options.legacyProvider === 'gemini') plugin.settings.geminiApiKey = next;
-                        if (options.legacyProvider === 'anthropic') plugin.settings.anthropicApiKey = next;
-                        if (options.legacyProvider === 'openai') plugin.settings.openaiApiKey = next;
-                        await plugin.saveSettings();
-                        await refreshProviderKeyState();
-                        void params.scheduleKeyValidation(options.legacyProvider);
-                    })();
-                });
-            });
-            legacySetting.settingEl.addClass('ert-setting-full-width-input');
         }
     };
 
     renderCredentialSettings({
         section: anthropicSection,
         provider: 'anthropic',
-        legacyProvider: 'anthropic',
         providerName: 'Anthropic',
         keyPlaceholder: 'Enter your Anthropic API key',
         docsUrl: 'https://platform.claude.com'
     });
     renderCredentialSettings({
-        section: geminiSection,
+        section: googleSection,
         provider: 'google',
-        legacyProvider: 'gemini',
         providerName: 'Google Gemini',
         keyPlaceholder: 'Enter your Gemini API key',
         docsUrl: 'https://aistudio.google.com'
@@ -2144,7 +2104,6 @@ export function renderAiSection(params: {
     renderCredentialSettings({
         section: openaiSection,
         provider: 'openai',
-        legacyProvider: 'openai',
         providerName: 'OpenAI',
         keyPlaceholder: 'Enter your OpenAI API key',
         docsUrl: 'https://platform.openai.com'
@@ -2153,7 +2112,7 @@ export function renderAiSection(params: {
     const localWrapper = configurationBody.createDiv({
         cls: ['ert-provider-section', 'ert-provider-local', ERT_CLASSES.STACK]
     });
-    params.setProviderSections({ anthropic: anthropicSection, gemini: geminiSection, openai: openaiSection, local: localWrapper } as any);
+    params.setProviderSections({ anthropic: anthropicSection, google: googleSection, openai: openaiSection, ollama: localWrapper });
     params.addAiRelatedElement(localWrapper);
 
     const localBaseStack = localWrapper.createDiv({ cls: ERT_CLASSES.STACK });
@@ -2166,7 +2125,7 @@ export function renderAiSection(params: {
             text.inputEl.addClass('ert-input--full');
             text
                 .setPlaceholder('http://localhost:11434/v1')
-                .setValue(plugin.settings.localBaseUrl || 'http://localhost:11434/v1');
+                .setValue(getOllamaBaseUrl());
             text.onChange(() => {
                 text.inputEl.removeClass('ert-setting-input-success');
                 text.inputEl.removeClass('ert-setting-input-error');
@@ -2178,11 +2137,13 @@ export function renderAiSection(params: {
                 }
             });
             const handleBlur = async () => {
-                plugin.settings.localBaseUrl = text.getValue().trim();
                 const aiSettings = ensureCanonicalAiSettings();
-                aiSettings.connections = { ...(aiSettings.connections || {}), ollamaBaseUrl: plugin.settings.localBaseUrl };
+                aiSettings.connections = {
+                    ...(aiSettings.connections || {}),
+                    ollamaBaseUrl: text.getValue().trim() || 'http://localhost:11434/v1'
+                };
                 await persistCanonical();
-                params.scheduleKeyValidation('local');
+                params.scheduleKeyValidation('ollama');
             };
             plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });
             params.setLocalConnectionInputs({ baseInput: text.inputEl });
@@ -2207,7 +2168,7 @@ export function renderAiSection(params: {
             localModelText = text;
             text
                 .setPlaceholder('llama3')
-                .setValue(plugin.settings.localModelId || 'llama3');
+                .setValue(getOllamaModelId());
             text.onChange(() => {
                 text.inputEl.removeClass('ert-setting-input-success');
                 text.inputEl.removeClass('ert-setting-input-error');
@@ -2219,9 +2180,9 @@ export function renderAiSection(params: {
                 }
             });
             const handleBlur = async () => {
-                plugin.settings.localModelId = text.getValue().trim();
+                setOllamaModelId(text.getValue());
                 await persistCanonical();
-                params.scheduleKeyValidation('local');
+                params.scheduleKeyValidation('ollama');
             };
             plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });
             params.setLocalConnectionInputs({ modelInput: text.inputEl });
@@ -2233,12 +2194,12 @@ export function renderAiSection(params: {
             .setIcon('refresh-ccw')
             .setTooltip('Detect installed models and auto-fill this field')
             .onClick(async () => {
-                const selectedProvider = (plugin.settings.defaultAiProvider || 'openai') as Provider;
-                if (selectedProvider !== 'local') {
+                const selectedProvider = getSelectedProvider();
+                if (selectedProvider !== 'ollama') {
                     new Notice('Select "Local / OpenAI Compatible" above to detect models.');
                     return;
                 }
-                const baseUrl = plugin.settings.localBaseUrl?.trim();
+                const baseUrl = getOllamaBaseUrl();
                 if (!baseUrl) {
                     new Notice('Set the local LLM base URL first.');
                     return;
@@ -2251,21 +2212,16 @@ export function renderAiSection(params: {
                         new Notice('No models reported by the local server.');
                         return;
                     }
-                    const existing = plugin.settings.localModelId?.trim();
+                    const existing = getOllamaModelId();
                     const chosen = existing && models.some(m => m.id === existing)
                         ? models.find(m => m.id === existing)!
                         : models[0];
-                    plugin.settings.localModelId = chosen.id;
-                    const aiSettings = ensureCanonicalAiSettings();
-                    if (aiSettings.modelPolicy.type === 'pinned' && aiSettings.provider === 'ollama') {
-                        const alias = BUILTIN_MODELS.find(model => model.provider === 'ollama' && model.id === chosen.id)?.alias;
-                        if (alias) aiSettings.modelPolicy.pinnedAlias = alias;
-                    }
+                    setOllamaModelId(chosen.id);
                     await persistCanonical();
                     if (localModelText) {
                         localModelText.setValue(chosen.id);
                     }
-                    params.scheduleKeyValidation('local');
+                    params.scheduleKeyValidation('ollama');
                     const otherModels = models.map(m => m.id).filter(id => id !== chosen.id);
                     const suffix = otherModels.length ? ` Also found: ${otherModels.join(', ')}.` : '';
                     new Notice(`Using detected model "${chosen.id}".${suffix}`);
@@ -2334,7 +2290,7 @@ export function renderAiSection(params: {
             applyLocalKeyStatus(exists ? 'saved' : 'not_saved');
             return;
         }
-        applyLocalKeyStatus((plugin.settings.localApiKey || '').trim() ? 'saved' : 'not_saved');
+        applyLocalKeyStatus('not_saved');
     };
     void refreshLocalKeyStatus();
     localSecretIdSetting.addText(text => {
@@ -2359,7 +2315,7 @@ export function renderAiSection(params: {
             text.inputEl.addClass('ert-input--full');
             configureSensitiveInput(text.inputEl);
             text.setPlaceholder('Optional local API key');
-            params.setKeyInputRef('local', text.inputEl);
+            params.setKeyInputRef('ollama', text.inputEl);
 
             plugin.registerDomEvent(text.inputEl, 'keydown', (event: KeyboardEvent) => {
                 if (event.key === 'Enter') {
@@ -2391,10 +2347,8 @@ export function renderAiSection(params: {
                         new Notice('Unable to save local API key privately.');
                         return;
                     }
-                    plugin.settings.localApiKey = '';
-                    await plugin.saveSettings();
                     await refreshLocalKeyStatus();
-                    void params.scheduleKeyValidation('local');
+                    void params.scheduleKeyValidation('ollama');
                 })();
             });
         });
@@ -2404,28 +2358,13 @@ export function renderAiSection(params: {
     if (secretStorageAvailable) {
         localApiContainer.createDiv({
             cls: 'ert-field-note',
-            text: 'Older local key field is disabled while secure key saving is enabled.'
+            text: 'Local API keys are stored only in Obsidian secret storage.'
         });
     } else {
-        const legacyLocalSetting = new Settings(localApiContainer)
-            .setName('Older local API key')
-            .setDesc('Used only when secure key saving is unavailable.');
-        legacyLocalSetting.addText(text => {
-            text.inputEl.addClass('ert-input--full');
-            configureSensitiveInput(text.inputEl);
-            text.setPlaceholder('Optional local API key');
-            text.setValue(plugin.settings.localApiKey || '');
-            params.setKeyInputRef('local', text.inputEl);
-            plugin.registerDomEvent(text.inputEl, 'blur', () => {
-                void (async () => {
-                    plugin.settings.localApiKey = text.getValue().trim();
-                    await plugin.saveSettings();
-                    await refreshLocalKeyStatus();
-                    void params.scheduleKeyValidation('local');
-                })();
-            });
+        localApiContainer.createDiv({
+            cls: 'ert-field-note',
+            text: 'Local API keys require Obsidian secret storage. Older plaintext key fields are no longer supported.'
         });
-        legacyLocalSetting.settingEl.addClass('ert-setting-full-width-input');
     }
 
     // ── Local quick-config section (appears below preview card when Local is selected) ──
@@ -2445,7 +2384,7 @@ export function renderAiSection(params: {
         text.inputEl.addClass('ert-input--full');
         text
             .setPlaceholder('http://localhost:11434/v1')
-            .setValue(plugin.settings.localBaseUrl || 'http://localhost:11434/v1');
+            .setValue(getOllamaBaseUrl());
         text.onChange(() => {
             text.inputEl.removeClass('ert-setting-input-success', 'ert-setting-input-error');
         });
@@ -2454,11 +2393,13 @@ export function renderAiSection(params: {
         });
         plugin.registerDomEvent(text.inputEl, 'blur', () => {
             void (async () => {
-                plugin.settings.localBaseUrl = text.getValue().trim();
                 const aiSettings = ensureCanonicalAiSettings();
-                aiSettings.connections = { ...(aiSettings.connections || {}), ollamaBaseUrl: plugin.settings.localBaseUrl };
+                aiSettings.connections = {
+                    ...(aiSettings.connections || {}),
+                    ollamaBaseUrl: text.getValue().trim() || 'http://localhost:11434/v1'
+                };
                 await persistCanonical();
-                params.scheduleKeyValidation('local');
+                params.scheduleKeyValidation('ollama');
                 void refreshRoutingUi();
             })();
         });
@@ -2474,7 +2415,7 @@ export function renderAiSection(params: {
         localQuickModelText = text;
         text
             .setPlaceholder('llama3')
-            .setValue(plugin.settings.localModelId || 'llama3');
+            .setValue(getOllamaModelId());
         text.onChange(() => {
             text.inputEl.removeClass('ert-setting-input-success', 'ert-setting-input-error');
         });
@@ -2483,9 +2424,9 @@ export function renderAiSection(params: {
         });
         plugin.registerDomEvent(text.inputEl, 'blur', () => {
             void (async () => {
-                plugin.settings.localModelId = text.getValue().trim();
+                setOllamaModelId(text.getValue());
                 await persistCanonical();
-                params.scheduleKeyValidation('local');
+                params.scheduleKeyValidation('ollama');
                 void refreshRoutingUi();
             })();
         });
@@ -2497,7 +2438,7 @@ export function renderAiSection(params: {
             .setIcon('refresh-ccw')
             .setTooltip('Detect installed models and auto-fill')
             .onClick(async () => {
-                const baseUrl = plugin.settings.localBaseUrl?.trim();
+                const baseUrl = getOllamaBaseUrl();
                 if (!baseUrl) {
                     new Notice('Set the Base URL first.');
                     return;
@@ -2510,19 +2451,14 @@ export function renderAiSection(params: {
                         new Notice('No models reported by the local server.');
                         return;
                     }
-                    const existing = plugin.settings.localModelId?.trim();
+                    const existing = getOllamaModelId();
                     const chosen = existing && models.some(m => m.id === existing)
                         ? models.find(m => m.id === existing)!
                         : models[0];
-                    plugin.settings.localModelId = chosen.id;
-                    const aiSettingsInner = ensureCanonicalAiSettings();
-                    if (aiSettingsInner.modelPolicy.type === 'pinned' && aiSettingsInner.provider === 'ollama') {
-                        const alias = BUILTIN_MODELS.find(m => m.provider === 'ollama' && m.id === chosen.id)?.alias;
-                        if (alias) aiSettingsInner.modelPolicy.pinnedAlias = alias;
-                    }
+                    setOllamaModelId(chosen.id);
                     await persistCanonical();
                     if (localQuickModelText) localQuickModelText.setValue(chosen.id);
-                    params.scheduleKeyValidation('local');
+                    params.scheduleKeyValidation('ollama');
                     const otherModels = models.map(m => m.id).filter(id => id !== chosen.id);
                     const suffix = otherModels.length ? ` Also found: ${otherModels.join(', ')}.` : '';
                     new Notice(`Using detected model "${chosen.id}".${suffix}`);
@@ -2596,9 +2532,7 @@ export function renderAiSection(params: {
                     if (!secretId) { new Notice('Set a local saved key name first.'); return; }
                     const stored = await setSecret(app, secretId, key);
                     if (!stored) { new Notice('Unable to save local API key privately.'); return; }
-                    plugin.settings.localApiKey = '';
-                    await plugin.saveSettings();
-                    void params.scheduleKeyValidation('local');
+                    void params.scheduleKeyValidation('ollama');
                 })();
             });
         });

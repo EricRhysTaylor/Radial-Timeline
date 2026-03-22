@@ -18,6 +18,7 @@ import type { RTCorpusTokenEstimate } from '../types';
 import { logCountingForensics } from '../diagnostics/countingForensics';
 import { readSceneId } from '../../utils/sceneIds';
 import { resolveInquirySourceRoots } from '../../inquiry/utils/sourceRoots';
+import type { AIProviderId } from '../types';
 
 export const FORECAST_CHARS_PER_TOKEN = 4;
 export const FORECAST_PROMPT_OVERHEAD_TOKENS = 250;
@@ -32,7 +33,7 @@ type InquiryEvidenceBlock = {
 
 type CanonicalExecutionEstimateParams = {
     plugin: RadialTimelinePlugin;
-    provider: 'openai' | 'anthropic' | 'google' | 'ollama' | 'none' | 'gemini' | 'local';
+    provider: AIProviderId;
     modelId: string;
     questionText: string;
     scope: InquiryScope;
@@ -261,11 +262,7 @@ const resolveCanonicalFocusLabel = (
 export const buildCanonicalExecutionEstimate = async (
     params: CanonicalExecutionEstimateParams
 ): Promise<InquiryTokenEstimate['providerExecutionEstimate']> => {
-    const provider = params.provider === 'google'
-        ? 'gemini'
-        : params.provider === 'ollama'
-            ? 'local'
-            : params.provider;
+    const provider = params.provider;
     if (provider === 'none') {
         throw new Error('Canonical Inquiry estimate is unavailable for provider none.');
     }
@@ -318,7 +315,7 @@ export const buildCanonicalExecutionEstimate = async (
 
 export async function estimateInquiryTokens(params: {
     plugin?: RadialTimelinePlugin;
-    provider?: 'openai' | 'anthropic' | 'google' | 'ollama' | 'none' | 'gemini' | 'local';
+    provider?: AIProviderId;
     modelId?: string;
     questionText?: string;
     vault: Vault;

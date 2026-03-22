@@ -164,8 +164,8 @@ export function buildProviderRequestPayload(
         return payload;
     }
 
-    if (provider === 'gemini') {
-        // Mirror providerRouter: split on delimiter when present
+    if (provider === 'google') {
+        // Split on delimiter when present so stable prefix cache hints stay isolated.
         const delimIndex = callArgs.userPrompt.indexOf(CACHE_BREAK_DELIMITER);
         let userText = callArgs.userPrompt;
         let cachedContentNote: string | undefined;

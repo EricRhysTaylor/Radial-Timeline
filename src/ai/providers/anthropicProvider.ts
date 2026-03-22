@@ -1,5 +1,7 @@
 import type RadialTimelinePlugin from '../../main';
-import { callProvider } from '../../api/providerRouter';
+import { callAnthropicApi } from '../../api/anthropicApi';
+import { classifyProviderError } from '../../api/providerErrors';
+import { getCredential } from '../credentials/credentials';
 import type { AIProvider, Capability, GenerateJsonRequest, GenerateTextRequest, ProviderExecutionResult } from '../types';
 
 const CAPS: Capability[] = ['longContext', 'jsonStrict', 'reasoningStrong'];
@@ -14,37 +16,63 @@ export class AnthropicProvider implements AIProvider {
     }
 
     async generateText(req: GenerateTextRequest): Promise<ProviderExecutionResult> {
-        const result = await callProvider(this.plugin, {
-            provider: 'anthropic',
-            internalAdapterAccess: true,
-            modelId: req.modelId,
-            systemPrompt: req.systemPrompt ?? null,
-            userPrompt: req.userPrompt,
-            maxTokens: req.maxOutputTokens,
-            temperature: req.temperature,
-            top_p: req.topP,
-            thinkingBudgetTokens: req.thinkingBudgetTokens,
-            citationsEnabled: req.citationsEnabled,
-            evidenceDocuments: req.evidenceDocuments
-        });
-        return result;
+        const apiKey = await getCredential(this.plugin, 'anthropic');
+        const result = await callAnthropicApi(
+            apiKey,
+            req.modelId,
+            req.systemPrompt ?? null,
+            req.userPrompt,
+            req.maxOutputTokens,
+            true,
+            req.temperature,
+            req.topP,
+            req.thinkingBudgetTokens,
+            req.citationsEnabled,
+            req.evidenceDocuments
+        );
+        const classification = classifyProviderError(result);
+        return {
+            success: result.success,
+            content: result.content,
+            responseData: result.responseData,
+            aiStatus: result.success ? 'success' : classification.aiStatus,
+            aiReason: result.success ? undefined : classification.aiReason,
+            aiProvider: 'anthropic',
+            aiModelRequested: req.modelId,
+            aiModelResolved: req.modelId,
+            error: result.error,
+            citations: result.citations
+        };
     }
 
     async generateJson(req: GenerateJsonRequest): Promise<ProviderExecutionResult> {
-        const result = await callProvider(this.plugin, {
-            provider: 'anthropic',
-            internalAdapterAccess: true,
-            modelId: req.modelId,
-            systemPrompt: req.systemPrompt ?? null,
-            userPrompt: req.userPrompt,
-            maxTokens: req.maxOutputTokens,
-            temperature: req.temperature,
-            top_p: req.topP,
-            thinkingBudgetTokens: req.thinkingBudgetTokens,
-            jsonSchema: req.jsonSchema,
-            citationsEnabled: req.citationsEnabled,
-            evidenceDocuments: req.evidenceDocuments
-        });
-        return result;
+        const apiKey = await getCredential(this.plugin, 'anthropic');
+        const result = await callAnthropicApi(
+            apiKey,
+            req.modelId,
+            req.systemPrompt ?? null,
+            req.userPrompt,
+            req.maxOutputTokens,
+            true,
+            req.temperature,
+            req.topP,
+            req.thinkingBudgetTokens,
+            req.citationsEnabled,
+            req.evidenceDocuments,
+            req.jsonSchema
+        );
+        const classification = classifyProviderError(result);
+        return {
+            success: result.success,
+            content: result.content,
+            responseData: result.responseData,
+            aiStatus: result.success ? 'success' : classification.aiStatus,
+            aiReason: result.success ? undefined : classification.aiReason,
+            aiProvider: 'anthropic',
+            aiModelRequested: req.modelId,
+            aiModelResolved: req.modelId,
+            error: result.error,
+            citations: result.citations
+        };
     }
 }

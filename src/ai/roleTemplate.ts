@@ -8,11 +8,11 @@ export type ActiveRoleTemplate = {
 };
 
 export function resolveActiveRoleTemplate(
-    plugin: RadialTimelinePlugin,
+    _plugin: RadialTimelinePlugin,
     aiSettings: AiSettingsV1
 ): ActiveRoleTemplate {
-    const templates = plugin.settings.aiContextTemplates || [];
-    const preferredId = (aiSettings.roleTemplateId || plugin.settings.activeAiContextTemplateId || '').trim();
+    const templates = aiSettings.roleTemplates || [];
+    const preferredId = (aiSettings.roleTemplateId || '').trim();
     const selected = templates.find(entry => entry.id === preferredId) || templates[0];
     if (selected) {
         return {

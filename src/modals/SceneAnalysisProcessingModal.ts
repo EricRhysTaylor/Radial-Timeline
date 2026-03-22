@@ -8,13 +8,13 @@
  */
 import { App, Modal, ButtonComponent, Notice, setIcon, TFile } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
-import { DEFAULT_GEMINI_MODEL_ID } from '../constants/aiDefaults';
 import { resolveAiLogFolder } from '../ai/log';
 import { getModelDisplayName } from '../utils/modelResolver';
 import type { LlmTimingStats } from '../types/settings';
 import { getSynopsisGenerationWordLimit, getSynopsisHoverLineLimit } from '../utils/synopsisLimits';
 import type { AIRunAdvancedContext } from '../ai/types';
 import { redactSensitiveValue } from '../ai/credentials/redactSensitive';
+import { getCanonicalAiSettings, resolveConfiguredSelection } from '../ai/runtime/runtimeSelection';
 
 export type ProcessingMode = 'flagged' | 'unprocessed' | 'force-all' | 'synopsis-flagged' | 'synopsis-missing-weak' | 'synopsis-missing' | 'synopsis-all';
 
@@ -1061,17 +1061,10 @@ export class SceneAnalysisProcessingModal extends Modal {
 
         try {
             // Get current model ID for timestamp
-            const provider = this.plugin.settings.defaultAiProvider || 'openai';
-            let modelId = 'Unknown Model';
-            if (provider === 'anthropic') {
-                modelId = this.plugin.settings.anthropicModelId || 'claude-sonnet-4-6';
-            } else if (provider === 'gemini') {
-                modelId = this.plugin.settings.geminiModelId || 'gemini-2.5-pro';
-            } else if (provider === 'openai') {
-                modelId = this.plugin.settings.openaiModelId || 'gpt-5.4';
-            } else if (provider === 'local') {
-                modelId = this.plugin.settings.localModelId || 'local-model';
-            }
+            const aiSettings = getCanonicalAiSettings(this.plugin);
+            const modelId = resolveConfiguredSelection(aiSettings, {
+                feature: this.taskType === 'synopsis' ? 'SummaryRefresh' : 'PulseAnalysis'
+            })?.model.id || 'Unknown Model';
 
             const now = new Date();
             const isoNow = now.toISOString();
@@ -1521,7 +1514,10 @@ export class SceneAnalysisProcessingModal extends Modal {
             logNoteEl.createEl('strong', { text: 'Logs: ' });
 
             // Pulse-specific log message
-            const isLocal = (this.plugin.settings.defaultAiProvider || 'openai') === 'local';
+            const aiSettings = getCanonicalAiSettings(this.plugin);
+            const isLocal = resolveConfiguredSelection(aiSettings, {
+                feature: 'PulseAnalysis'
+            })?.provider === 'ollama';
             const pulsesBypassed = isLocal && (this.plugin.settings.localSendPulseToAiReport ?? true);
             const pulseRouting = pulsesBypassed
                 ? 'Triplet pulse updates bypassed scene yaml and were saved to the AI report.'
@@ -1634,19 +1630,10 @@ export class SceneAnalysisProcessingModal extends Modal {
     }
 
     private getActiveModelDisplayName(): string {
-        const provider = this.plugin.settings.defaultAiProvider || 'openai';
-        let modelId: string;
-
-        if (provider === 'anthropic') {
-            modelId = this.plugin.settings.anthropicModelId || 'claude-sonnet-4-6';
-        } else if (provider === 'gemini') {
-            modelId = this.plugin.settings.geminiModelId || DEFAULT_GEMINI_MODEL_ID;
-        } else if (provider === 'local') {
-            modelId = this.plugin.settings.localModelId || 'local-model';
-        } else {
-            modelId = this.plugin.settings.openaiModelId || 'gpt-5.4';
-        }
-
+        const aiSettings = getCanonicalAiSettings(this.plugin);
+        const modelId = resolveConfiguredSelection(aiSettings, {
+            feature: this.taskType === 'synopsis' ? 'SummaryRefresh' : 'PulseAnalysis'
+        })?.model.id || 'unknown-model';
         return getModelDisplayName(modelId);
     }
 

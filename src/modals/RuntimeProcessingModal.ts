@@ -14,7 +14,7 @@ import { isNonSceneItem } from '../utils/sceneHelpers';
 import { ERT_CLASSES } from '../ui/classes';
 import type { AIRunAdvancedContext } from '../ai/types';
 import { redactSensitiveValue } from '../ai/credentials/redactSensitive';
-import { DEFAULT_GEMINI_MODEL_ID } from '../constants/aiDefaults';
+import { CANONICAL_PROVIDER_LABELS, getCanonicalAiSettings, resolveConfiguredSelection } from '../ai/runtime/runtimeSelection';
 
 export type RuntimeScope = 'current' | 'subplot' | 'all';
 export type RuntimeMode = 'local' | 'ai';
@@ -428,9 +428,8 @@ export class RuntimeProcessingModal extends Modal {
 
     private updateModeDescription(): void {
         if (!this.modeDescEl) return;
-        
-        const provider = this.plugin.settings.defaultAiProvider || 'openai';
-        const providerLabel = this.getProviderLabel(provider);
+
+        const providerLabel = this.getProviderLabel();
         
         let description: string;
         
@@ -448,21 +447,15 @@ export class RuntimeProcessingModal extends Modal {
         this.modeDescEl.setText(description);
     }
 
-    private getProviderLabel(provider: string): string {
-        switch (provider) {
-            case 'openai':
-                return `OpenAI (${this.plugin.settings.openaiModelId || 'gpt-5.4'})`;
-            case 'anthropic':
-                return `Anthropic (${this.plugin.settings.anthropicModelId || 'claude-sonnet-4-6'})`;
-            case 'gemini':
-                return `Google Gemini (${this.plugin.settings.geminiModelId || DEFAULT_GEMINI_MODEL_ID})`;
-            case 'local':
-                const baseUrl = this.plugin.settings.localBaseUrl || 'localhost';
-                const modelId = this.plugin.settings.localModelId || 'local model';
-                return `Local LLM (${modelId} @ ${baseUrl})`;
-            default:
-                return provider;
+    private getProviderLabel(): string {
+        const aiSettings = getCanonicalAiSettings(this.plugin);
+        const selection = resolveConfiguredSelection(aiSettings, { feature: 'RuntimeEstimate' });
+        if (!selection) return 'AI disabled';
+        if (selection.provider === 'ollama') {
+            const baseUrl = aiSettings.connections?.ollamaBaseUrl || 'localhost';
+            return `${CANONICAL_PROVIDER_LABELS.ollama} (${selection.model.id} @ ${baseUrl})`;
         }
+        return `${CANONICAL_PROVIDER_LABELS[selection.provider]} (${selection.model.id})`;
     }
 
     private async loadSubplots(): Promise<void> {

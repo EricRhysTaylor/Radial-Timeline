@@ -1,141 +1,195 @@
 import type { RadialTimelineSettings } from '../../types';
-import type { AIProviderId, AiSettingsV1, ModelInfo } from '../types';
-import { buildDefaultAiSettings, mapLegacyProviderToAiProvider } from './aiSettings';
-import { BUILTIN_MODELS, findBuiltinByProviderModel } from '../registry/builtinModels';
+import type { AIProviderId, AiSettingsV1, AIRoleTemplate } from '../types';
+import {
+    buildDefaultAiSettings,
+    cloneBuiltInRoleTemplates,
+    DEFAULT_CANONICAL_PROVIDER
+} from './aiSettings';
+import { findBuiltinByAlias, findBuiltinByProviderModel } from '../registry/builtinModels';
+import { validateAiSettings } from './validateAiSettings';
 
-interface MigrationResult {
+type LegacyProviderName = 'openai' | 'anthropic' | 'gemini' | 'local';
+
+type LegacyAiSettingsInput = Partial<{
+    openaiApiKey: string;
+    anthropicApiKey: string;
+    anthropicModelId: string;
+    geminiApiKey: string;
+    geminiModelId: string;
+    defaultAiProvider: LegacyProviderName;
+    localBaseUrl: string;
+    localModelId: string;
+    localApiKey: string;
+    openaiModelId: string;
+    aiContextTemplates: AIRoleTemplate[];
+    activeAiContextTemplateId: string;
+    aiCanonicalResetCompleted: boolean;
+}>;
+
+export interface MigrationResult {
     aiSettings: AiSettingsV1;
     changed: boolean;
     warnings: string[];
 }
 
+export const LEGACY_AI_SETTING_FIELDS = [
+    'openaiApiKey',
+    'anthropicApiKey',
+    'anthropicModelId',
+    'geminiApiKey',
+    'geminiModelId',
+    'defaultAiProvider',
+    'localBaseUrl',
+    'localModelId',
+    'localApiKey',
+    'openaiModelId',
+    'aiContextTemplates',
+    'activeAiContextTemplateId',
+    'aiCanonicalResetCompleted'
+] as const;
+
 function cloneDefault(): AiSettingsV1 {
     return JSON.parse(JSON.stringify(buildDefaultAiSettings())) as AiSettingsV1;
 }
 
-function getProviderModelId(settings: RadialTimelineSettings, provider: AIProviderId): string {
-    if (provider === 'anthropic') return (settings.anthropicModelId || '').trim();
-    if (provider === 'google') return (settings.geminiModelId || '').trim();
-    if (provider === 'ollama') return (settings.localModelId || '').trim();
-    if (provider === 'openai') return (settings.openaiModelId || '').trim();
-    return '';
+function readLegacy(settings: RadialTimelineSettings): LegacyAiSettingsInput {
+    return settings as unknown as LegacyAiSettingsInput;
 }
 
-function pickFallbackModel(provider: AIProviderId): ModelInfo | undefined {
-    return BUILTIN_MODELS.find(model => model.provider === provider && model.status === 'stable')
-        ?? BUILTIN_MODELS.find(model => model.provider === provider);
+function mapLegacyProviderName(provider?: string): AIProviderId | null {
+    if (provider === 'openai') return 'openai';
+    if (provider === 'anthropic') return 'anthropic';
+    if (provider === 'gemini') return 'google';
+    if (provider === 'local') return 'ollama';
+    return null;
+}
+
+function getLegacyModelId(legacy: LegacyAiSettingsInput, provider: AIProviderId): string {
+    const raw = provider === 'anthropic'
+        ? legacy.anthropicModelId
+        : provider === 'google'
+            ? legacy.geminiModelId
+            : provider === 'ollama'
+                ? legacy.localModelId
+                : legacy.openaiModelId;
+    if (typeof raw !== 'string') return '';
+    return raw.trim().replace(/^models\//, '');
+}
+
+function resolveLegacyPinnedModel(provider: AIProviderId, legacyModelId: string) {
+    if (!legacyModelId) return undefined;
+    return findBuiltinByProviderModel(provider, legacyModelId)
+        ?? findBuiltinByAlias(legacyModelId);
+}
+
+function normalizeRoleTemplates(rawTemplates: unknown): AIRoleTemplate[] {
+    if (!Array.isArray(rawTemplates) || rawTemplates.length === 0) {
+        return cloneBuiltInRoleTemplates();
+    }
+    const normalized = rawTemplates
+        .filter(entry => entry && typeof entry === 'object')
+        .map(entry => {
+            const template = entry as Record<string, unknown>;
+            const id = typeof template.id === 'string' ? template.id.trim() : '';
+            const prompt = typeof template.prompt === 'string' ? template.prompt.trim() : '';
+            const name = typeof template.name === 'string' ? template.name.trim() : '';
+            if (!id || !prompt) return null;
+            return {
+                id,
+                name: name || id,
+                prompt,
+                isBuiltIn: !!template.isBuiltIn
+            } satisfies AIRoleTemplate;
+        })
+        .filter((entry): entry is AIRoleTemplate => !!entry);
+    return normalized.length ? normalized : cloneBuiltInRoleTemplates();
+}
+
+export function stripLegacyAiSettings(settings: RadialTimelineSettings): void {
+    const target = settings as unknown as Record<string, unknown>;
+    LEGACY_AI_SETTING_FIELDS.forEach(field => {
+        if (field in target) {
+            delete target[field];
+        }
+    });
+}
+
+export function hasLegacyAiKeys(settings: RadialTimelineSettings): boolean {
+    const legacy = readLegacy(settings);
+    return [
+        legacy.openaiApiKey,
+        legacy.anthropicApiKey,
+        legacy.geminiApiKey,
+        legacy.localApiKey
+    ].some(value => typeof value === 'string' && value.trim().length > 0);
 }
 
 export function migrateAiSettings(settings: RadialTimelineSettings): MigrationResult {
-    const warnings: string[] = [];
     const existing = settings.aiSettings;
-    if (existing && existing.schemaVersion === 1) {
-        const migratedPackaging = existing.analysisPackaging
-            ?? ((existing as unknown as { analysisMethod?: string }).analysisMethod === 'singlePassOnly'
-                ? 'singlePassOnly'
-                : 'automatic');
-        const legacyPolicyType = (existing.modelPolicy as { type?: string } | undefined)?.type;
-        const migratedPolicy = legacyPolicyType === 'profile'
-            ? { type: 'latestStable' as const }
-            : existing.modelPolicy;
-        if (existing.analysisPackaging !== migratedPackaging) {
-            const upgraded: AiSettingsV1 = {
-                ...existing,
-                analysisPackaging: migratedPackaging,
-                modelPolicy: migratedPolicy
-            };
-            const legacyCleanup = upgraded as unknown as Record<string, unknown>;
-            if ('analysisMethod' in legacyCleanup) {
-                delete legacyCleanup.analysisMethod;
-            }
-            return {
-                aiSettings: upgraded,
-                changed: true,
-                warnings: Array.isArray(existing.migrationWarnings) ? existing.migrationWarnings : []
-            };
-        }
-        if (legacyPolicyType === 'profile') {
-            const upgraded: AiSettingsV1 = {
-                ...existing,
-                modelPolicy: { type: 'latestStable' }
-            };
-            return {
-                aiSettings: upgraded,
-                changed: true,
-                warnings: Array.isArray(existing.migrationWarnings) ? existing.migrationWarnings : []
-            };
-        }
+    if (existing && typeof existing === 'object' && existing.schemaVersion === 1) {
+        const validated = validateAiSettings(existing);
         return {
-            aiSettings: existing,
-            changed: false,
-            warnings: Array.isArray(existing.migrationWarnings) ? existing.migrationWarnings : []
+            aiSettings: validated.value,
+            changed: JSON.stringify(validated.value) !== JSON.stringify(existing),
+            warnings: validated.warnings
         };
     }
 
+    const legacy = readLegacy(settings);
     const aiSettings = cloneDefault();
-    const mappedProvider = mapLegacyProviderToAiProvider(settings.defaultAiProvider);
-    aiSettings.provider = mappedProvider;
+    const warnings: string[] = [];
 
-    const legacyModelId = getProviderModelId(settings, mappedProvider);
-    const mappedModel = legacyModelId
-        ? findBuiltinByProviderModel(mappedProvider, legacyModelId)
+    const roleTemplates = normalizeRoleTemplates(legacy.aiContextTemplates);
+    aiSettings.roleTemplates = roleTemplates;
+
+    const preferredTemplateId = typeof legacy.activeAiContextTemplateId === 'string'
+        ? legacy.activeAiContextTemplateId.trim()
+        : '';
+    aiSettings.roleTemplateId = roleTemplates.some(template => template.id === preferredTemplateId)
+        ? preferredTemplateId
+        : roleTemplates[0]?.id ?? aiSettings.roleTemplateId;
+
+    const legacyProvider = mapLegacyProviderName(legacy.defaultAiProvider);
+    const legacyModelId = legacyProvider ? getLegacyModelId(legacy, legacyProvider) : '';
+    const mappedModel = legacyProvider && legacyModelId
+        ? resolveLegacyPinnedModel(legacyProvider, legacyModelId)
         : undefined;
 
-    if (mappedModel) {
+    if (legacyProvider && mappedModel && mappedModel.provider === legacyProvider) {
+        aiSettings.provider = legacyProvider;
         aiSettings.modelPolicy = {
             type: 'pinned',
             pinnedAlias: mappedModel.alias
         };
     } else {
-        const fallback = pickFallbackModel(mappedProvider);
-        aiSettings.modelPolicy = fallback
-            ? { type: 'pinned', pinnedAlias: fallback.alias }
-            : { type: 'latestStable' };
-        if (legacyModelId) {
-            warnings.push(`Pinned model "${legacyModelId}" not found for ${mappedProvider}; using nearest compatible model.`);
+        aiSettings.provider = DEFAULT_CANONICAL_PROVIDER;
+        aiSettings.modelPolicy = { ...aiSettings.modelPolicy };
+        if (legacy.defaultAiProvider || legacyModelId) {
+            const legacyDescriptor = [legacy.defaultAiProvider, legacyModelId].filter(Boolean).join(' / ') || 'legacy AI settings';
+            warnings.push(`Legacy AI configuration "${legacyDescriptor}" was not recognized; using canonical default AI strategy.`);
         }
     }
 
-    aiSettings.credentials = {
-        openaiSecretId: aiSettings.credentials?.openaiSecretId,
-        anthropicSecretId: aiSettings.credentials?.anthropicSecretId,
-        googleSecretId: aiSettings.credentials?.googleSecretId,
-        ollamaSecretId: aiSettings.credentials?.ollamaSecretId
-    };
-
-    aiSettings.connections = {
-        ollamaBaseUrl: settings.localBaseUrl || aiSettings.connections?.ollamaBaseUrl || 'http://localhost:11434/v1'
-    };
-
-    aiSettings.overrides = {
-        ...aiSettings.overrides,
-        temperature: undefined,
-        topP: undefined,
-        maxOutputMode: 'auto',
-        reasoningDepth: 'standard',
-        jsonStrict: true
-    };
-    aiSettings.analysisPackaging = 'automatic';
-
-    aiSettings.featureProfiles = {
-        ...(aiSettings.featureProfiles || {}),
-        InquiryMode: {
-            modelPolicy: { type: 'latestStable' },
-            overrides: {
-                maxOutputMode: 'high',
-                reasoningDepth: 'deep',
-                jsonStrict: true
-            }
-        }
-    };
-    aiSettings.roleTemplateId = settings.activeAiContextTemplateId || aiSettings.roleTemplateId || 'commercial_genre';
+    if (typeof legacy.localBaseUrl === 'string' && legacy.localBaseUrl.trim()) {
+        aiSettings.connections = {
+            ...aiSettings.connections,
+            ollamaBaseUrl: legacy.localBaseUrl.trim()
+        };
+    }
 
     aiSettings.migrationWarnings = warnings;
-    aiSettings.upgradedBannerPending = true;
+    aiSettings.upgradedBannerPending = warnings.length > 0;
+
+    const validated = validateAiSettings(aiSettings);
+    const combinedWarnings = [...warnings, ...validated.warnings];
+    if (combinedWarnings.length) {
+        validated.value.migrationWarnings = [...new Set([...(validated.value.migrationWarnings || []), ...combinedWarnings])];
+        validated.value.upgradedBannerPending = true;
+    }
 
     return {
-        aiSettings,
+        aiSettings: validated.value,
         changed: true,
-        warnings
+        warnings: combinedWarnings
     };
 }

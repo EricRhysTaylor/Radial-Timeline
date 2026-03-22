@@ -20,7 +20,7 @@ import type {
     InquiryRunnerInput
 } from './types';
 import { getAIClient } from '../../ai/runtime/aiClient';
-import { buildDefaultAiSettings, mapAiProviderToLegacyProvider, mapLegacyProviderToAiProvider } from '../../ai/settings/aiSettings';
+import { buildDefaultAiSettings } from '../../ai/settings/aiSettings';
 import { validateAiSettings } from '../../ai/settings/validateAiSettings';
 import type { AIRunPreparedEstimate, AIRunResult, AnalysisPackaging, SceneRef } from '../../ai/types';
 import { extractTokenUsage } from '../../ai/usage/providerUsage';
@@ -1047,7 +1047,7 @@ export class InquiryRunnerService implements InquiryRunner {
             systemPrompt: undefined,
             returnType: 'json',
             responseSchema: options.jsonSchema,
-            providerOverride: mapLegacyProviderToAiProvider(options.ai.provider),
+            providerOverride: options.ai.provider,
             overrides: {
                 temperature: options.temperature,
                 maxOutputMode: this.resolveMaxOutputMode(options.maxTokens),
@@ -1092,7 +1092,7 @@ export class InquiryRunnerService implements InquiryRunner {
             systemPrompt: undefined,
             returnType: 'json',
             responseSchema: options.jsonSchema,
-            providerOverride: mapLegacyProviderToAiProvider(options.ai.provider),
+            providerOverride: options.ai.provider,
             overrides: {
                 temperature: options.temperature,
                 maxOutputMode: this.resolveMaxOutputMode(options.maxTokens),
@@ -1311,7 +1311,6 @@ export class InquiryRunnerService implements InquiryRunner {
             tokenUsageScope?: InquiryTokenUsageScope;
         }
     ): ProviderResult {
-        const legacyProvider = mapAiProviderToLegacyProvider(run.provider);
         const executionPath: InquiryExecutionPath = (run.advancedContext?.executionPassCount ?? 1) > 1
             ? 'multi_pass'
             : 'one_pass';
@@ -1332,9 +1331,9 @@ export class InquiryRunnerService implements InquiryRunner {
             content: run.content,
             responseData: run.responseData,
             requestPayload: run.requestPayload,
-            provider: legacyProvider,
+            provider: run.provider === 'none' ? 'openai' : run.provider,
             modelId: run.modelResolved || run.modelRequested,
-            aiProvider: legacyProvider,
+            aiProvider: run.provider === 'none' ? 'openai' : run.provider,
             aiModelRequested: run.modelRequested,
             aiModelResolved: run.modelResolved || run.modelRequested,
             aiStatus: run.aiStatus,

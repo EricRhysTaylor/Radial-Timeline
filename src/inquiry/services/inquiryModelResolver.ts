@@ -23,13 +23,13 @@ import type {
     ModelPolicy
 } from '../../ai/types';
 import { selectModel } from '../../ai/router/selectModel';
-import { buildDefaultAiSettings, mapLegacyProviderToAiProvider } from '../../ai/settings/aiSettings';
+import { buildDefaultAiSettings } from '../../ai/settings/aiSettings';
 import { validateAiSettings } from '../../ai/settings/validateAiSettings';
 
 // ── Types ──────────────────────────────────────────────────────────
 
 /** Explains which settings layer produced the resolved engine. */
-export type PolicySource = 'featureOverride' | 'globalPolicy' | 'legacyFallback';
+export type PolicySource = 'featureOverride' | 'globalPolicy' | 'disabled';
 
 /** One DTO consumed by every Inquiry surface. */
 export interface ResolvedInquiryEngine {
@@ -91,7 +91,7 @@ function resolveTier(aiSettings: AiSettingsV1, provider: AIProviderId): AccessTi
  * Resolution order:
  *   1. Feature-level override  (`featureProfiles.InquiryMode`)
  *   2. Global AI Strategy      (`aiSettings.provider` + `aiSettings.modelPolicy`)
- *   3. Legacy fallback         (legacy `defaultAiProvider` when canonical is `'none'`)
+ *   3. Disabled                (canonical provider remains `'none'`)
  *
  * @returns A deterministic DTO — same settings always produce the same result.
  */
@@ -115,9 +115,24 @@ export function resolveInquiryEngine(
         provider = aiSettings.provider;
         policySource = featureProfile?.modelPolicy ? 'featureOverride' : 'globalPolicy';
     } else {
-        // Canonical provider is 'none' — fall back to legacy settings.
-        provider = mapLegacyProviderToAiProvider(plugin.settings.defaultAiProvider);
-        policySource = 'legacyFallback';
+        provider = 'none';
+        policySource = 'disabled';
+    }
+
+    if (provider === 'none') {
+        return {
+            provider,
+            modelId: '',
+            modelAlias: '',
+            modelLabel: 'AI disabled',
+            providerLabel: PROVIDER_LABELS.none,
+            contextWindow: 0,
+            maxOutput: 0,
+            selectionReason: 'Canonical AI Strategy is disabled.',
+            policySource,
+            blocked: true,
+            blockReason: 'Enable an AI provider in AI settings to use Inquiry.'
+        };
     }
 
     // ── Policy resolution ──────────────────────────────────────────

@@ -53,7 +53,7 @@ export function buildInquiryLogContent(args: {
     const providerLabel = isSimulated
         ? 'Simulation'
         : providerRaw
-            ? (['anthropic', 'gemini', 'openai', 'local'].includes(providerRaw)
+            ? (['anthropic', 'google', 'openai', 'ollama'].includes(providerRaw)
                 ? deps.getInquiryProviderLabel(providerRaw as EngineProvider)
                 : providerRaw)
             : 'Unknown';

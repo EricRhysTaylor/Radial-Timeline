@@ -37,14 +37,12 @@ import { TimelineMetricsService } from './services/TimelineMetricsService';
 import { migrateSceneAnalysisFields } from './migrations/sceneAnalysis';
 import { migrateSceneFrontmatterIds } from './migrations/sceneIds';
 import { SettingsService } from './services/SettingsService';
-import { DEFAULT_GEMINI_MODEL_ID } from './constants/aiDefaults';
 import { DEFAULT_SETTINGS } from './settings/defaults';
-import { migrateAiSettings } from './ai/settings/migrateAiSettings';
+import { migrateAiSettings, stripLegacyAiSettings } from './ai/settings/migrateAiSettings';
 import { validateAiSettings } from './ai/settings/validateAiSettings';
-import { buildDefaultAiSettings, mapAiProviderToLegacyProvider } from './ai/settings/aiSettings';
-import { findBuiltinByAlias } from './ai/registry/builtinModels';
+import { buildDefaultAiSettings } from './ai/settings/aiSettings';
 import { getAIClient } from './ai/runtime/aiClient';
-import { migrateLegacyKeysToSecretStorage } from './ai/credentials/credentials';
+import { migrateLegacyKeysToSecretStorage, needsLegacyKeyMigration } from './ai/credentials/credentials';
 import { PLOT_SYSTEM_NAMES } from './utils/beatsSystems';
 import { generateBeatGuid } from './utils/beatsInputNormalize';
 import type { BeatSystemConfig } from './types/settings';
@@ -73,8 +71,6 @@ const DEV_PLAINTEXT_KEY_PATTERNS: Array<{ label: string; regex: RegExp }> = [
     { label: 'Bearer header token', regex: /\bBearer\s+[A-Za-z0-9._~+\/=-]{8,}/i },
     { label: 'Header-like high-entropy secret', regex: /(authorization|x-api-key|apiKey|token|secret)["']?\s*[:=]\s*["'][A-Za-z0-9+/_=-]{40,}/i }
 ];
-const AI_CANONICAL_RESET_WARNING = 'AI settings were reset to the canonical default setup. Review AI Strategy and choose your preferred provider.';
-
 function detectPlaintextCredentialPattern(serialized: string): string | null {
     for (const pattern of DEV_PLAINTEXT_KEY_PATTERNS) {
         if (pattern.regex.test(serialized)) {
@@ -158,25 +154,6 @@ export default class RadialTimelinePlugin extends Plugin {
     private getFirstTimelineView(): RadialTimelineView | null {
         const list = this.getTimelineViews();
         return list.length > 0 ? list[0] : null;
-    }
-
-    // Settings access helpers
-    private get aiProvider(): 'openai' | 'anthropic' | 'gemini' | 'local' {
-        return this.settings.defaultAiProvider || 'openai';
-    }
-
-    private getApiKey(): string | undefined {
-        const provider = this.aiProvider;
-        if (provider === 'anthropic') return this.settings.anthropicApiKey;
-        if (provider === 'gemini') return this.settings.geminiApiKey;
-        return this.settings.openaiApiKey;
-    }
-
-    private getModelId(): string {
-        const provider = this.aiProvider;
-        if (provider === 'anthropic') return this.settings.anthropicModelId || 'claude-sonnet-4-6';
-        if (provider === 'gemini') return this.settings.geminiModelId || DEFAULT_GEMINI_MODEL_ID;
-        return this.settings.openaiModelId || 'gpt-5.4';
     }
 
     public getActiveBook() {
@@ -418,7 +395,9 @@ export default class RadialTimelinePlugin extends Plugin {
     }
 
     async loadSettings() {
-        this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+        const loadedSettings = (await this.loadData()) ?? {};
+        this.settings = Object.assign({}, DEFAULT_SETTINGS, loadedSettings);
+        this.settings.aiSettings = (loadedSettings as Partial<RadialTimelineSettings>).aiSettings;
 
         let booksMigrated = false;
         const settingsAny = this.settings as unknown as Record<string, unknown>;
@@ -490,22 +469,12 @@ export default class RadialTimelinePlugin extends Plugin {
             }
         }
 
-        // Ensure defaults
-        if (!this.settings.anthropicModelId) this.settings.anthropicModelId = DEFAULT_SETTINGS.anthropicModelId;
-        if (!this.settings.openaiModelId) this.settings.openaiModelId = DEFAULT_SETTINGS.openaiModelId;
-        if (!this.settings.geminiModelId) this.settings.geminiModelId = DEFAULT_SETTINGS.geminiModelId;
-        if (!this.settings.defaultAiProvider || !['openai', 'anthropic', 'gemini', 'local'].includes(this.settings.defaultAiProvider)) {
-            this.settings.defaultAiProvider = DEFAULT_SETTINGS.defaultAiProvider;
-        }
-
         // Canonical AI settings migration/validation.
-        const aiSettingsBefore = JSON.stringify(this.settings.aiSettings ?? null);
         const aiMigration = migrateAiSettings(this.settings);
-        if (aiMigration.changed || !this.settings.aiSettings) {
-            this.settings.aiSettings = aiMigration.aiSettings;
-        }
+        this.settings.aiSettings = aiMigration.aiSettings;
         const aiValidation = validateAiSettings(this.settings.aiSettings);
         this.settings.aiSettings = aiValidation.value;
+        const aiSettingsMigrated = aiMigration.changed || aiValidation.warnings.length > 0;
         if (aiValidation.warnings.length) {
             const prior = new Set(this.settings.aiSettings.migrationWarnings || []);
             aiValidation.warnings.forEach(warning => prior.add(warning));
@@ -513,33 +482,7 @@ export default class RadialTimelinePlugin extends Plugin {
             this.settings.aiSettings.upgradedBannerPending = true;
         }
 
-        if (!this.settings.aiCanonicalResetCompleted) {
-            const previous = this.settings.aiSettings ?? buildDefaultAiSettings();
-            const reset = buildDefaultAiSettings();
-            reset.credentials = {
-                ...reset.credentials,
-                ...(previous.credentials || {})
-            };
-            reset.connections = {
-                ...reset.connections,
-                ollamaBaseUrl: previous.connections?.ollamaBaseUrl || this.settings.localBaseUrl || reset.connections?.ollamaBaseUrl
-            };
-            const priorWarnings = new Set(previous.migrationWarnings || []);
-            priorWarnings.add(AI_CANONICAL_RESET_WARNING);
-            reset.migrationWarnings = Array.from(priorWarnings);
-            reset.upgradedBannerPending = true;
-            this.settings.aiSettings = validateAiSettings(reset).value;
-            this.settings.aiCanonicalResetCompleted = true;
-        }
-
-        const hasLegacyAiKeys = !!(
-            (this.settings.openaiApiKey || '').trim()
-            || (this.settings.anthropicApiKey || '').trim()
-            || (this.settings.geminiApiKey || '').trim()
-            || (this.settings.localApiKey || '').trim()
-        );
-
-        if (hasLegacyAiKeys) {
+        if (needsLegacyKeyMigration(this)) {
             const keyMigration = await migrateLegacyKeysToSecretStorage(this);
             if (keyMigration.warnings.length) {
                 const canonical = this.settings.aiSettings ?? buildDefaultAiSettings();
@@ -549,27 +492,7 @@ export default class RadialTimelinePlugin extends Plugin {
                 this.settings.aiSettings = canonical;
             }
         }
-
-        const aiSettingsAfter = JSON.stringify(this.settings.aiSettings ?? null);
-        const aiSettingsMigrated = aiSettingsBefore !== aiSettingsAfter;
-
-        // Back-compat sync: keep legacy provider/model fields in step while modules migrate to aiClient.
-        if (this.settings.aiSettings) {
-            const canonical = this.settings.aiSettings;
-            this.settings.defaultAiProvider = mapAiProviderToLegacyProvider(canonical.provider);
-
-            if (canonical.modelPolicy.type === 'pinned' && canonical.modelPolicy.pinnedAlias) {
-                const pinned = findBuiltinByAlias(canonical.modelPolicy.pinnedAlias);
-                if (pinned) {
-                    if (pinned.provider === 'anthropic') this.settings.anthropicModelId = pinned.id;
-                    if (pinned.provider === 'openai') this.settings.openaiModelId = pinned.id;
-                    if (pinned.provider === 'google') this.settings.geminiModelId = pinned.id;
-                    if (pinned.provider === 'ollama') this.settings.localModelId = pinned.id;
-                }
-            }
-
-            this.settings.localBaseUrl = canonical.connections?.ollamaBaseUrl ?? this.settings.localBaseUrl;
-        }
+        stripLegacyAiSettings(this.settings);
 
         if (typeof this.settings.lastSeenReleaseNotesVersion !== 'string') {
             this.settings.lastSeenReleaseNotesVersion = DEFAULT_SETTINGS.lastSeenReleaseNotesVersion;
@@ -616,25 +539,11 @@ export default class RadialTimelinePlugin extends Plugin {
             exportFolderMigrated = true;
         }
 
-        const before = JSON.stringify({
-            anthropicModelId: this.settings.anthropicModelId,
-            openaiModelId: this.settings.openaiModelId,
-            geminiModelId: this.settings.geminiModelId,
-        });
-
         if (!this.settingsService) {
             this.settingsService = new SettingsService(this);
         }
 
-        this.settingsService.normalizeModelIds();
-        const templatesMigrated = await this.settingsService.migrateAiContextTemplates();
         const actionNotesTargetMigrated = this.settingsService.migrateInquiryActionNotesTargetField();
-
-        const after = JSON.stringify({
-            anthropicModelId: this.settings.anthropicModelId,
-            openaiModelId: this.settings.openaiModelId,
-            geminiModelId: this.settings.geminiModelId,
-        });
 
         // ─── Schema alignment (Scene/Beat/Backdrop ontology) ───────────────
         let schemaOntologyMigrated = false;
@@ -897,13 +806,14 @@ export default class RadialTimelinePlugin extends Plugin {
             });
         }
 
-        if (before !== after || aiSettingsMigrated || templatesMigrated || actionNotesTargetMigrated || exportFolderMigrated || beatConfigMigrated || backdropTemplateMigrated || pandocLayoutsMigrated || bundledPandocLayoutsRegistered || matterWorkflowMigrated || pandocLayoutReferenceMigrated || manuscriptExportCleanupMigrated || booksMigrated || schemaOntologyMigrated || beatIdMigrated) {
+        if (aiSettingsMigrated || actionNotesTargetMigrated || exportFolderMigrated || beatConfigMigrated || backdropTemplateMigrated || pandocLayoutsMigrated || bundledPandocLayoutsRegistered || matterWorkflowMigrated || pandocLayoutReferenceMigrated || manuscriptExportCleanupMigrated || booksMigrated || schemaOntologyMigrated || beatIdMigrated) {
             await this.saveSettings();
         }
     }
 
     async saveSettings() {
         this.syncLegacySourcePathFromActiveBook();
+        stripLegacyAiSettings(this.settings);
         if (__RT_DEV__) {
             try {
                 const serialized = JSON.stringify(this.settings);

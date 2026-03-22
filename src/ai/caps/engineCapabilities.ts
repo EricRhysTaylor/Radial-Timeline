@@ -75,13 +75,6 @@ export interface EngineCapabilityMatrixRow {
     batchAnalysis: EngineCapabilityStatus;
 }
 
-function toLegacyProvider(provider: AIProviderId): AiProvider | null {
-    if (provider === 'openai' || provider === 'anthropic') return provider;
-    if (provider === 'google') return 'gemini';
-    if (provider === 'ollama') return 'local';
-    return null;
-}
-
 function toStatus(providerSupported: boolean, availableInRt: boolean): EngineCapabilityStatus {
     if (providerSupported && availableInRt) return 'available';
     if (providerSupported && !availableInRt) return 'provider_supported_not_used';
@@ -109,7 +102,7 @@ function resolveImplementationStatus(provider: AIProviderId): EngineImplementati
 }
 
 function providerSupportsGroundedToolAttribution(provider: AiProvider): boolean {
-    return provider === 'openai' || provider === 'gemini';
+    return provider === 'openai' || provider === 'google';
 }
 
 function hasLongContext(model: ModelInfo): boolean {
@@ -141,27 +134,27 @@ function resolveCorpusReuseAvailableInRt(
 }
 
 export function resolveEngineCapabilities(model: ModelInfo): EngineCapabilities {
-    const legacyProvider = toLegacyProvider(model.provider);
+    const provider = model.provider === 'none' ? null : model.provider;
     const implementationStatus = resolveImplementationStatus(model.provider);
 
-    const supportsDirectManuscriptCitations = legacyProvider
-        ? providerSupportsCitations(legacyProvider)
+    const supportsDirectManuscriptCitations = provider
+        ? providerSupportsCitations(provider)
         : false;
     const directManuscriptCitationsAvailableInRt = supportsDirectManuscriptCitations
         && implementationStatus.directManuscriptCitations;
 
-    const supportsGroundedToolAttribution = legacyProvider
-        ? providerSupportsGroundedToolAttribution(legacyProvider)
+    const supportsGroundedToolAttribution = provider
+        ? providerSupportsGroundedToolAttribution(provider)
         : false;
     const groundedToolAttributionAvailableInRt = supportsGroundedToolAttribution
         && implementationStatus.groundedToolAttribution;
 
-    const supportsCorpusReuse = legacyProvider ? providerSupportsCorpusReuse(legacyProvider) : false;
-    const corpusReuseAvailableInRt = legacyProvider
-        ? supportsCorpusReuse && resolveCorpusReuseAvailableInRt(model, legacyProvider, implementationStatus)
+    const supportsCorpusReuse = provider ? providerSupportsCorpusReuse(provider) : false;
+    const corpusReuseAvailableInRt = provider
+        ? supportsCorpusReuse && resolveCorpusReuseAvailableInRt(model, provider, implementationStatus)
         : false;
 
-    const supportsBatch = legacyProvider ? providerSupportsBatchApi(legacyProvider) : false;
+    const supportsBatch = provider ? providerSupportsBatchApi(provider) : false;
     const batchAvailableInRt = supportsBatch && implementationStatus.batchAnalysis;
 
     const supportsLargeContext = hasLongContext(model) && model.contextWindow > 0;

@@ -75,6 +75,15 @@ describe('AI credentials', () => {
         expect(credential).toBe('secure-openai');
     });
 
+    it('credential resolution does not fall back to legacy plaintext settings after cleanup', async () => {
+        const { plugin } = createPlugin({
+            openaiKey: 'legacy-openai'
+        });
+
+        const credential = await getCredential(plugin as any, 'openai');
+        expect(credential).toBe('');
+    });
+
     it('settings serialization contains no raw key material after migration', async () => {
         const { plugin } = createPlugin({
             openaiKey: 'secret-one',

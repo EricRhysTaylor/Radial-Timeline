@@ -36,6 +36,34 @@ describe('migrateAiSettings', () => {
         });
 
         expect(result.warnings.length).toBeGreaterThan(0);
-        expect(result.aiSettings.modelPolicy.type).toBe('pinned');
+        expect(result.aiSettings.provider).toBe('openai');
+        expect(result.aiSettings.modelPolicy.type).toBe('latestStable');
+    });
+
+    it('keeps canonical aiSettings without re-reading legacy fields', () => {
+        const result = migrateAiSettings({
+            ...base,
+            aiSettings: {
+                schemaVersion: 1,
+                provider: 'anthropic',
+                modelPolicy: { type: 'pinned', pinnedAlias: 'claude-sonnet-4.6' },
+                analysisPackaging: 'automatic',
+                roleTemplateId: 'commercial_genre',
+                roleTemplates: [
+                    { id: 'commercial_genre', name: 'Commercial', prompt: 'Prompt', isBuiltIn: true }
+                ],
+                overrides: { maxOutputMode: 'auto', reasoningDepth: 'standard', jsonStrict: true },
+                aiAccessProfile: { anthropicTier: 1, openaiTier: 1, googleTier: 1 },
+                privacy: { allowTelemetry: false, allowRemoteRegistry: false, allowProviderSnapshot: false },
+                featureProfiles: {},
+                credentials: { openaiSecretId: 'a', anthropicSecretId: 'b', googleSecretId: 'c', ollamaSecretId: 'd' },
+                connections: { ollamaBaseUrl: 'http://localhost:11434/v1' }
+            },
+            defaultAiProvider: 'gemini',
+            geminiModelId: 'gemini-pro-latest'
+        } as any);
+
+        expect(result.aiSettings.provider).toBe('anthropic');
+        expect(result.aiSettings.modelPolicy).toEqual({ type: 'pinned', pinnedAlias: 'claude-sonnet-4.6' });
     });
 });

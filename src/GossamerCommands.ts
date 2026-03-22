@@ -10,7 +10,6 @@ import { TimelineMode } from './modes/ModeDefinition';
 import { getSortedSceneFiles } from './utils/manuscript';
 import { buildUnifiedBeatAnalysisPrompt, getUnifiedBeatAnalysisJsonSchema, type UnifiedBeatInfo } from './ai/prompts/unifiedBeatAnalysis';
 import { getAIClient } from './ai/runtime/aiClient';
-import { mapAiProviderToLegacyProvider } from './ai/settings/aiSettings';
 import {
   extractTokenUsage,
   formatAiLogContent,
@@ -90,7 +89,7 @@ async function writeGossamerLog(
   const sanitizationNotes = hadRedactions
     ? ['Redacted sensitive credential values from request payload.']
     : [];
-  const tokenUsage = extractTokenUsage(mapAiProviderToLegacyProvider(payload.provider), payload.responseData);
+  const tokenUsage = extractTokenUsage(payload.provider, payload.responseData);
   const schemaWarnings = payload.schemaWarnings ?? [];
   const durationMs = payload.submittedAt && payload.returnedAt
     ? payload.returnedAt.getTime() - payload.submittedAt.getTime()
@@ -113,7 +112,7 @@ async function writeGossamerLog(
           metadata: {
             feature: 'Gossamer',
             scopeTarget,
-            provider: mapAiProviderToLegacyProvider(payload.provider),
+            provider: payload.provider,
             modelRequested: payload.modelRequested,
             modelResolved: payload.modelResolved ?? payload.modelRequested,
             submittedAt: payload.submittedAt ?? null,
@@ -181,7 +180,7 @@ async function writeGossamerLog(
       title: summaryTitle,
       feature: 'Gossamer',
       scopeTarget,
-      provider: mapAiProviderToLegacyProvider(payload.provider),
+      provider: payload.provider,
       modelRequested: payload.modelRequested,
       modelResolved: payload.modelResolved ?? payload.modelRequested,
       submittedAt: payload.submittedAt ?? null,
