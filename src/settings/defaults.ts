@@ -281,8 +281,4 @@ Context:`,
         // Pro Feature: Campaign Manager (empty by default)
         campaigns: []
     },
-
-    // Pro experience (visual/hero activation)
-    hasSeenProActivation: false,
-    // proExperienceEnabled: false, // Removed invalid property
 };

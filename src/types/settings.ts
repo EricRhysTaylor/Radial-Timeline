@@ -520,11 +520,10 @@ export interface RadialTimelineSettings {
     beatHoverMetadataFields?: HoverMetadataField[];
     savedBeatSystems?: SavedBeatSystem[];  // Pro: multiple custom beat systems
 
-    // Professional License
-    professionalLicenseKey?: string;
-    devProActive?: boolean;  // Core-vs-Pro simulation toggle used during Early Access only
+    // Pro access
+    proLicenseKey?: string;
 
-    // Runtime Estimation Settings (Professional feature)
+    // Runtime Estimation Settings (Pro feature)
     runtimeRateProfiles?: RuntimeRateProfile[];
     defaultRuntimeProfileId?: string;
     runtimeContentType?: RuntimeContentType;
@@ -540,7 +539,7 @@ export interface RadialTimelineSettings {
     // LLM Timing Calibration (for progress bar animation)
     pulseTimingStats?: LlmTimingStats;
 
-    // Export / Pandoc (Professional)
+    // Export / Pandoc (Pro)
     pandocPath?: string;
     pandocFolder?: string;  // Vault path for Pandoc templates and compile scripts
     pandocLayouts?: PandocLayoutTemplate[];
@@ -559,7 +558,6 @@ export interface RadialTimelineSettings {
     authorProgress?: AuthorProgressSettings;
 
     // Pro experience (visual/hero activation)
-    hasSeenProActivation?: boolean;
 
     // Refactor Alerts System
     dismissedAlerts?: string[];

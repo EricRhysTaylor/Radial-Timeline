@@ -15,7 +15,7 @@ import { openOrRevealFile } from '../../utils/fileUtils';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import { ERT_CLASSES } from '../../ui/classes';
 import { badgePill } from '../../ui/ui';
-import { isProfessionalActive } from './ProfessionalSection';
+import { isFeatureGateEnabled } from '../featureGate';
 import { InquirySessionStore } from '../../inquiry/InquirySessionStore';
 import { DEFAULT_INQUIRY_HISTORY_LIMIT, INQUIRY_HISTORY_LIMIT_OPTIONS } from '../../inquiry/constants';
 import {
@@ -1035,7 +1035,7 @@ export function renderInquirySection(params: SectionParams): void {
         const promptContainer = targetEl.createDiv({ cls: ERT_CLASSES.STACK });
         const freeCustomLimit = 3;
         const proCustomLimit = 8;
-        const isPro = isProfessionalActive(plugin);
+        const isPro = isFeatureGateEnabled(plugin, 'inquiry');
         const allCanonicalByZone = groupCanonicalQuestionsByZone(ALL_CANONICAL_QUESTIONS);
         const coreCanonicalByZone = groupCanonicalQuestionsByZone(CORE_CANONICAL_QUESTIONS);
         const zones: InquiryZone[] = ['setup', 'pressure', 'payoff'];
@@ -1372,7 +1372,7 @@ export function renderInquirySection(params: SectionParams): void {
         };
 
         const loadCanonicalSet = async (loadout: 'core' | 'full-signature') => {
-            const nextLabel = loadout === 'core' ? 'Core Questions' : 'Full Pro Signature Set';
+            const nextLabel = loadout === 'core' ? 'Core Questions' : 'Full Pro Set';
             const confirmed = await confirmCanonicalReplacement(nextLabel);
             if (!confirmed) return;
             await savePromptConfig(replaceCanonicalPromptSlots(promptConfig, loadout));
@@ -1811,7 +1811,7 @@ export function renderInquirySection(params: SectionParams): void {
                 .setName('Canonical question library')
                 .setDesc(
                     isPro
-                        ? 'Frame Inquiry across three zones: Setup, Pressure, and Payoff. Add your own custom questions, install curated questions line by line, or load the full Pro Signature set across all zones at once.'
+                        ? 'Frame Inquiry across three zones: Setup, Pressure, and Payoff. Add your own custom questions, install curated questions line by line, or load the full Pro set across all zones at once.'
                         : 'Frame Inquiry across three zones: Setup, Pressure, and Payoff. Add your own custom questions, install curated questions line by line, or load the curated Core set across all zones at once.'
                 );
             librarySetting.settingEl.addClass(ERT_CLASSES.ROW, ERT_CLASSES.ROW_TIGHT);
@@ -1823,7 +1823,7 @@ export function renderInquirySection(params: SectionParams): void {
                 });
                 const signatureIcon = signatureButton.createSpan({ cls: ERT_CLASSES.PILL_BTN_ICON });
                 setIcon(signatureIcon, 'signature');
-                signatureButton.createSpan({ cls: ERT_CLASSES.PILL_BTN_LABEL, text: 'Load Full Pro Signature Set' });
+                signatureButton.createSpan({ cls: ERT_CLASSES.PILL_BTN_LABEL, text: 'Load Full Pro Set' });
                 setTooltip(signatureButton, 'Load all canonical Inquiry questions');
                 plugin.registerDomEvent(signatureButton, 'click', evt => {
                     evt.preventDefault();

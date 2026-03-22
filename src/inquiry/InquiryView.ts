@@ -115,7 +115,7 @@ import type { InquirySession, InquirySessionStatus } from './sessionTypes';
 import { normalizeFrontmatterKeys } from '../utils/frontmatter';
 import type { InquirySourcesSettings } from '../types/settings';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
-import { isProfessionalActive } from '../settings/sections/ProfessionalSection';
+import { isFeatureGateEnabled } from '../settings/featureGate';
 import { InquiryCorpusResolver, InquiryCorpusSnapshot, InquiryCorpusItem, InquirySceneItem, InquiryBookItem } from './services/InquiryCorpusResolver';
 import {
     isPathIncludedByInquiryBooks,
@@ -3615,7 +3615,7 @@ export class InquiryView extends ItemView {
         const basePassPlan = this.getCurrentPassPlan(effectiveReadinessUi);
         const passPlan = this.getDisplayedPassPlan(basePassPlan);
         const styleSource = this.getStyleSource();
-        const isPro = isProfessionalActive(this.plugin);
+        const isPro = isFeatureGateEnabled(this.plugin, 'inquiry');
         const advancedContext = getLastAiAdvancedContext(this.plugin, 'InquiryMode') ?? null;
         this.minimap.updatePressureGauge(
             effectiveReadinessUi,
@@ -5251,7 +5251,7 @@ export class InquiryView extends ItemView {
 
     private startRunningAnimations(): void {
         const styleSource: Element = this.contentEl ?? this.rootSvg ?? document.documentElement;
-        const isPro = isProfessionalActive(this.plugin);
+        const isPro = isFeatureGateEnabled(this.plugin, 'inquiry');
         this.minimap.startRunningAnimations(
             styleSource,
             isPro,

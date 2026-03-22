@@ -14,7 +14,7 @@ import { isNonSceneItem } from './utils/sceneHelpers';
 import { normalizeStatus } from './utils/text';
 import type { TimelineItem } from './types';
 import { getAIClient } from './ai/runtime/aiClient';
-import { isProfessionalActive } from './settings/sections/ProfessionalSection';
+import { isFeatureGateEnabled } from './settings/featureGate';
 import type { AIRunAdvancedContext } from './ai/types';
 
 interface SceneToProcess {
@@ -453,7 +453,7 @@ export function registerRuntimeCommands(plugin: RadialTimelinePlugin): void {
         name: 'Runtime estimator',
         checkCallback: (checking: boolean) => {
             // Only show command when Pro is active
-            const hasPro = isProfessionalActive(plugin);
+            const hasPro = isFeatureGateEnabled(plugin, 'runtime');
             if (!hasPro) {
                 return false;
             }

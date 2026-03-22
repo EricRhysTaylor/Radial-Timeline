@@ -9,7 +9,7 @@ import { DEFAULT_SETTINGS } from '../defaults';
 
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import type { HoverMetadataField, SavedBeatSystem } from '../../types/settings';
-import { isProfessionalActive } from './ProfessionalSection';
+import { isFeatureGateEnabled } from '../featureGate';
 import { IconSuggest } from '../IconSuggest';
 import { clampActNumber, parseActLabels, resolveActLabel } from '../../utils/acts';
 import { ERT_CLASSES, ERT_DATA } from '../../ui/classes';
@@ -267,7 +267,7 @@ export function renderStoryBeatsSection(params: {
     backdropYamlTargetEl?: HTMLElement;
 }): void {
     const { app, plugin, containerEl, backdropYamlTargetEl } = params;
-    const proActive = isProfessionalActive(plugin);
+    const proActive = isFeatureGateEnabled(plugin, 'beats');
     const canEditBuiltInBeatSystems = (): boolean => proActive;
     const canEditFieldsForSystem = (systemKey: string): boolean =>
         systemKey === 'Custom' ? true : canEditBuiltInBeatSystems();

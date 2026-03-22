@@ -19,7 +19,8 @@ import { renderPovSection } from './sections/PovSection';
 import { renderPlanetaryTimeSection } from './sections/PlanetaryTimeSection';
 
 import { renderRuntimeSection } from './sections/RuntimeSection';
-import { renderProfessionalSection, isProfessionalActive } from './sections/ProfessionalSection';
+import { renderProfessionalSection } from './sections/ProfessionalSection';
+import { isProActive } from './proEntitlement';
 import { validateLocalModelAvailability } from '../api/localAiApi';
 import { FolderSuggest } from './FolderSuggest';
 import { ERT_CLASSES, ERT_DATA } from '../ui/classes';
@@ -681,7 +682,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
     private renderProHero(containerEl: HTMLElement): void {
         this.renderSettingsHero(containerEl, {
-            badgeLabel: 'PRO · SIGNATURE',
+            badgeLabel: 'PRO',
             badgeIcon: 'signature',
             badgeVariant: ERT_CLASSES.BADGE_PILL_PRO,
             wikiHref: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#professional',
@@ -795,11 +796,11 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         this.plugin.registerDomEvent(aiTab, 'click', () => { this._activeTab = 'ai'; updateTabState(); });
         updateTabState();
 
-        const isProActive = isProfessionalActive(this.plugin);
-        // Re-render only the Pro tab when toggling Pro or blurring license key (avoids full settings flicker).
+        const proActive = isProActive(this.plugin);
+        // Re-render only the Pro tab when entitlement changes (avoids full settings flicker).
         const refreshProSectionOnly = () => {
             proContent.empty();
-            const isPro = isProfessionalActive(this.plugin);
+            const isPro = isProActive(this.plugin);
             const stack = renderProfessionalSection({
                 app: this.app,
                 plugin: this.plugin,
@@ -813,7 +814,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             app: this.app,
             plugin: this.plugin,
             containerEl: proContent,
-            renderHero: isProActive ? (target) => this.renderProHero(target) : undefined,
+            renderHero: proActive ? (target) => this.renderProHero(target) : undefined,
             onProToggle: refreshProSectionOnly
         });
         renderRuntimeSection({ app: this.app, plugin: this.plugin, containerEl: proStack });

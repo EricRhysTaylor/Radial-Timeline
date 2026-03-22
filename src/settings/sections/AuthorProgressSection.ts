@@ -11,7 +11,7 @@ import { getPresetPalettes, generatePaletteFromColor } from '../../utils/aprPale
 import { DEFAULT_BOOK_TITLE } from '../../utils/books';
 import { AprPaletteModal } from '../../modals/AprPaletteModal';
 import { renderCampaignManagerSection } from './CampaignManagerSection';
-import { isProfessionalActive } from './ProfessionalSection';
+import { isFeatureGateEnabled } from '../featureGate';
 import { colorSwatch, type ColorSwatchHandle } from '../../ui/ui';
 import { ERT_CLASSES } from '../../ui/classes';
 import { STAGE_ORDER } from '../../utils/constants';
@@ -104,7 +104,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // Check if APR needs refresh
     const aprService = new AuthorProgressService(plugin, app);
     const needsRefresh = aprService.isStale();
-    const isProActive = isProfessionalActive(plugin);
+    const isProActive = isFeatureGateEnabled(plugin, 'social');
 
     // ─────────────────────────────────────────────────────────────────────────
     // APR HERO SECTION
@@ -1496,7 +1496,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             'Campaign manager lets you create multiple embeds with Teaser Reveal—progressively show more detail as you write. Get access to Campaign manager and more Pro workflow features including runtime (RT) chronologue mode and Pandoc manuscript export templates.'
         );
         const teaserLink = proTeaser.createEl('a', {
-            text: 'Upgrade to Pro Signature →',
+            text: 'Upgrade to Pro →',
             href: 'https://radialtimeline.com/pro',
             cls: 'ert-apr-pro-teaser-link',
             attr: { target: '_blank', rel: 'noopener' }
@@ -1800,7 +1800,7 @@ async function renderHeroPreview(
         const revealCampaign = (aprSettings as any)?.revealCampaign;
         const revealCampaignEnabled = !!revealCampaign?.enabled;
         const nextRevealAt = revealCampaign?.nextRevealAt ?? revealCampaign?.nextRevealDate ?? revealCampaign?.nextReveal;
-        const isProActive = isProfessionalActive(plugin);
+        const isProActive = isFeatureGateEnabled(plugin, 'social');
         const showRtAttribution = isProActive
             ? aprSettings?.aprShowRtAttribution !== false
             : true;

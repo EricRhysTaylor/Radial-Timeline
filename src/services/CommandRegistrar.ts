@@ -20,7 +20,7 @@ import { sanitizeSourcePath, buildInitialSceneFilename, buildInitialBackdropFile
 import { getTemplateParts } from '../utils/yamlTemplateNormalize';
 import { ensureManuscriptOutputFolder, ensureOutlineOutputFolder } from '../utils/aiOutput';
 import { buildExportFilename, buildPrecursorFilename, buildOutlineExport, getExportFormatExtension, getLayoutById, getTemplateFontDiagnostics, getVaultAbsolutePath, resolveTemplatePath, runPandocOnContent, stemToReadable, validatePandocLayout } from '../utils/exportFormats';
-import { isProfessionalActive } from '../settings/sections/ProfessionalSection';
+import { isFeatureGateEnabled } from '../settings/featureGate';
 import { getActiveBookExportContext } from '../utils/exportContext';
 import { getActiveBook } from '../utils/books';
 import { normalizeFrontmatterKeys } from '../utils/frontmatter';
@@ -190,8 +190,8 @@ export class CommandRegistrar {
     }
 
     private async handleManuscriptExport(result: ManuscriptModalResult): Promise<ManuscriptExportOutcome> {
-        if (this.requiresPro(result) && !isProfessionalActive(this.plugin)) {
-            new Notice('This export configuration requires a Professional license.');
+        if (this.requiresPro(result) && !isFeatureGateEnabled(this.plugin, 'exports')) {
+            new Notice('This export configuration requires Pro.');
             return {};
         }
 

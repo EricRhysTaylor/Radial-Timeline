@@ -6,7 +6,7 @@
 import { App, Setting, setIcon, setTooltip, ButtonComponent, Notice, Modal } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import type { AprCampaign, AuthorProgressSettings, TeaserPreset, TeaserRevealLevel } from '../../types/settings';
-import { isProfessionalActive } from './ProfessionalSection';
+import { isFeatureGateEnabled } from '../featureGate';
 import { getTeaserThresholds, teaserLevelToRevealOptions, TEASER_LEVEL_INFO } from '../../renderer/apr/AprConstants';
 import { createAprSVG } from '../../renderer/apr/AprRenderer';
 import { getAllScenes } from '../../utils/manuscript';
@@ -314,7 +314,7 @@ export function campaignNeedsRefresh(campaign: AprCampaign): boolean {
  * Render the Campaign Manager section
  */
 export function renderCampaignManagerSection({ app, plugin, containerEl, onCampaignChange }: CampaignManagerProps): void {
-    const isProActive = isProfessionalActive(plugin);
+    const isProActive = isFeatureGateEnabled(plugin, 'social');
     const campaigns = plugin.settings.authorProgress?.campaigns || [];
     const expandedCampaigns = new Set<string>();
 
@@ -1361,7 +1361,7 @@ async function renderTeaserStagesPreviews(
     const revealCampaign = (campaign as any)?.revealCampaign ?? (settings as any)?.revealCampaign;
     const revealCampaignEnabled = !!revealCampaign?.enabled;
     const nextRevealAt = revealCampaign?.nextRevealAt ?? revealCampaign?.nextRevealDate ?? revealCampaign?.nextReveal;
-    const showRtAttribution = isProfessionalActive(plugin)
+    const showRtAttribution = isFeatureGateEnabled(plugin, 'social')
         ? settings?.aprShowRtAttribution !== false
         : true;
 

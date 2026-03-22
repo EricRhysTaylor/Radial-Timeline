@@ -10,7 +10,7 @@ import { App, Setting, TextComponent, DropdownComponent, setIcon, Modal, ButtonC
 import type RadialTimelinePlugin from '../../main';
 import type { RuntimeContentType, RuntimeRateProfile } from '../../types';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
-import { isProfessionalActive } from './ProfessionalSection';
+import { isFeatureGateEnabled } from '../featureGate';
 import { ERT_CLASSES } from '../../ui/classes';
 
 interface SectionParams {
@@ -20,7 +20,7 @@ interface SectionParams {
 }
 
 export function renderRuntimeSection({ plugin, containerEl }: SectionParams): void {
-    const hasProfessional = isProfessionalActive(plugin);
+    const hasProfessional = isFeatureGateEnabled(plugin, 'runtime');
     const generateProfileId = () => `rtp-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
     const buildProfileFromLegacy = () => ({
         id: 'default',

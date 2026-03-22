@@ -82,23 +82,49 @@
       ],
       "impactAssessment": "medium",
       "implementationStatus": "complete",
-      "implementationNotes": "callAnthropicApi accepts temperature/topP and includes them in the Messages API request body. providerCapabilities allows temperature/topP for Anthropic. AnthropicProvider forwards req.temperature/req.topP. Feature-specific defaults from computeCaps (Inquiry 0.2, Gossamer 0.45) are now respected.",
+      "implementationNotes": "Canonical Anthropic evidence now lives in the request payload shim, the Anthropic API adapter, providerCapabilities sanitization, the Anthropic provider adapter, and aiClient execution caps. Temperature/top_p should be evidenced through those seams rather than deleted providerRouter forwarding.",
       "sourceFiles": [
         "src/api/anthropicApi.ts",
         "src/api/providerCapabilities.ts",
         "src/ai/providers/anthropicProvider.ts",
-        "src/api/providerRouter.ts",
-        "src/api/requestPayload.ts"
+        "src/api/requestPayload.ts",
+        "src/ai/runtime/aiClient.ts"
       ],
       "blockers": [],
       "addedToRegistry": "2026-03-03",
       "priority": "p1",
       "implementationEvidence": [
-        "requestBody\\.temperature\\s*=",
-        "requestBody\\.top_p\\s*=",
-        "temperature:\\s*req\\.temperature",
-        "top_p:\\s*req\\.topP",
-        "supportsTemperature:\\s*true"
+        {
+          "label": "Anthropic payload builders keep temperature and top_p in canonical request construction",
+          "sourceFiles": [
+            "src/api/anthropicApi.ts",
+            "src/api/requestPayload.ts"
+          ],
+          "allOf": [
+            "requestBody\\.temperature\\s*=",
+            "requestBody\\.top_p\\s*=",
+            "payload\\.temperature\\s*=\\s*callArgs\\.temperature",
+            "payload\\.top_p\\s*=\\s*callArgs\\.top_p"
+          ]
+        },
+        {
+          "label": "Anthropic capability sanitization and runtime execution forward temperature/topP",
+          "sourceFiles": [
+            "src/api/providerCapabilities.ts",
+            "src/ai/providers/anthropicProvider.ts",
+            "src/ai/runtime/aiClient.ts"
+          ],
+          "allOf": [
+            "supportsTemperature:\\s*true",
+            "supportsTopP:\\s*true",
+            "sanitized\\.temperature\\s*=\\s*args\\.temperature",
+            "sanitized\\.top_p\\s*=\\s*args\\.top_p",
+            "req\\.temperature",
+            "req\\.topP",
+            "temperature:\\s*caps\\.temperature",
+            "topP:\\s*estimate\\.topP"
+          ]
+        }
       ],
       "targetRelease": "backlog",
       "owner": "tbd",
@@ -184,10 +210,9 @@
       ],
       "impactAssessment": "high",
       "implementationStatus": "complete",
-      "implementationNotes": "Per-scene document blocks with citations enabled, gated to Anthropic Inquiry. Each scene is a separate document block; document_index maps to specific scene, document_title is the scene label, cited_text shows exact passage. Response parsing concatenates all text blocks (correctness fix). Citations thread from callAnthropicApi through providerRouter, aiClient, InquiryRunnerService to InquiryResult.",
+      "implementationNotes": "Per-scene document blocks with citations enabled, gated to Anthropic Inquiry. Each scene is a separate document block; document_index maps to specific scene, document_title is the scene label, cited_text shows exact passage. Response parsing concatenates all text blocks and canonical providers thread citations directly into aiClient and Inquiry.",
       "sourceFiles": [
         "src/api/anthropicApi.ts",
-        "src/api/providerRouter.ts",
         "src/api/providerCapabilities.ts",
         "src/api/requestPayload.ts",
         "src/ai/caps/computeCaps.ts",
@@ -380,10 +405,11 @@
       ],
       "impactAssessment": "medium",
       "implementationStatus": "complete",
-      "implementationNotes": "OpenAI runtime adapters now parse annotation payloads from both Chat Completions and Responses lanes via extractOpenAiAnnotationCitations(), normalize them into explicit attribution types (tool_file/tool_url/grounded), thread them through providerRouter/aiClient/InquiryRunnerService, and render them truthfully in Inquiry source views. This is attribution support for external/tool sources, not direct manuscript citation parity with Anthropic.",
+      "implementationNotes": "OpenAI runtime adapters parse annotation payloads from both Chat Completions and Responses lanes via extractOpenAiAnnotationCitations(), normalize them into explicit attribution types (tool_file/tool_url/grounded), thread them through the canonical OpenAI provider and aiClient, and render them truthfully in Inquiry source views. This is attribution support for external/tool sources, not direct manuscript citation parity with Anthropic.",
       "sourceFiles": [
         "src/api/openaiApi.ts",
-        "src/api/providerRouter.ts",
+        "src/ai/providers/openaiProvider.ts",
+        "src/ai/runtime/aiClient.ts",
         "src/inquiry/runner/InquiryRunnerService.ts",
         "src/inquiry/services/inquirySources.ts",
         "src/settings/sections/AiSection.ts",
@@ -393,11 +419,40 @@
       "addedToRegistry": "2026-03-11",
       "priority": "p1",
       "implementationEvidence": [
-        "extractOpenAiAnnotationCitations",
-        "if\\s*\\(attributionType\\s*===\\s*'tool_file'\\)",
-        "if\\s*\\(attributionType\\s*===\\s*'tool_url'\\)",
-        "isExternalAttributionCitation",
-        "citations:\\s*resp\\.citations"
+        {
+          "label": "OpenAI annotation extraction normalizes file and URL citations",
+          "sourceFiles": [
+            "src/api/openaiApi.ts"
+          ],
+          "allOf": [
+            "extractOpenAiAnnotationCitations",
+            "buildOpenAiAnnotationCitation",
+            "if\\s*\\(attributionType\\s*===\\s*'tool_file'\\)",
+            "if\\s*\\(attributionType\\s*===\\s*'tool_url'\\)"
+          ]
+        },
+        {
+          "label": "Canonical runtime threads OpenAI citations into provider execution results",
+          "sourceFiles": [
+            "src/ai/providers/openaiProvider.ts",
+            "src/ai/runtime/aiClient.ts"
+          ],
+          "allOf": [
+            "citations:\\s*result\\.citations",
+            "citations:\\s*execution\\.citations"
+          ]
+        },
+        {
+          "label": "Inquiry still recognizes external attribution citations in the rendered pipeline",
+          "sourceFiles": [
+            "src/inquiry/services/inquirySources.ts",
+            "src/settings/sections/AiSection.ts"
+          ],
+          "allOf": [
+            "isExternalAttributionCitation",
+            "Citation · Tool annotations"
+          ]
+        }
       ],
       "targetRelease": "shipped",
       "owner": "eric",
@@ -544,21 +599,41 @@
       ],
       "impactAssessment": "high",
       "implementationStatus": "complete",
-      "implementationNotes": "getOrCreateGeminiCache() in geminiCacheManager.ts creates/reuses cached content resources. providerRouter.ts splits on CACHE_BREAK_DELIMITER, caches stable prefix (including systemInstruction), passes cacheName to callGeminiApi(). In-memory store with SHA-256 fingerprint enables cross-question reuse. systemInstruction suppressed in generate request when cachedContent is set (Gemini restriction). NOTE: Gemini cache pricing not yet reflected in cost estimation model.",
+      "implementationNotes": "Canonical Gemini cache evidence should come from geminiCacheManager, Gemini request payload shaping, geminiApi cachedContent handling, and aiClient reuse-state/peek integration. The old providerRouter seam is gone; if canonical runtime no longer creates caches, this feature should fail as missing rather than as a stale router matcher.",
       "sourceFiles": [
         "src/api/geminiApi.ts",
         "src/api/geminiCacheManager.ts",
-        "src/api/providerRouter.ts",
+        "src/api/requestPayload.ts",
         "src/ai/runtime/aiClient.ts"
       ],
       "blockers": [],
       "addedToRegistry": "2026-03-03",
       "priority": "p0",
       "implementationEvidence": [
-        "getOrCreateGeminiCache",
-        "CACHE_BREAK_DELIMITER",
-        "cachedContent",
-        "systemPrompt\\s*&&\\s*!cachedContentName"
+        {
+          "label": "Gemini cache manager exposes cache creation and peek seams",
+          "sourceFiles": [
+            "src/api/geminiCacheManager.ts",
+            "src/ai/runtime/aiClient.ts"
+          ],
+          "allOf": [
+            "getOrCreateGeminiCache",
+            "peekGeminiCache",
+            "peekGeminiCache\\("
+          ]
+        },
+        {
+          "label": "Gemini request shaping still splits stable prefixes and honors cachedContent restrictions",
+          "sourceFiles": [
+            "src/api/requestPayload.ts",
+            "src/api/geminiApi.ts"
+          ],
+          "allOf": [
+            "CACHE_BREAK_DELIMITER",
+            "cachedContent",
+            "systemPrompt\\s*&&\\s*!cachedContentName"
+          ]
+        }
       ],
       "targetRelease": "next",
       "owner": "eric",

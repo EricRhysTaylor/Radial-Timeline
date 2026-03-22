@@ -20,6 +20,7 @@
 import fs from 'fs';
 import path from 'path';
 import process from 'process';
+import { fileURLToPath } from 'url';
 
 // ── Paths ──────────────────────────────────────────────────────────────────────
 
@@ -173,45 +174,190 @@ function validateIntegrations(data, capabilityIds) {
 
 // ── Implementation evidence verification ──────────────────────────────────────
 
-function verifyEvidence(integrations) {
+const EVIDENCE_FAILURE_LABELS = {
+    feature_missing: 'feature missing',
+    evidence_matcher_stale: 'evidence matcher stale',
+    feature_present_different_seam: 'feature present but now implemented through a different seam'
+};
+
+function normalizeEvidenceRule(rawRule, integration) {
+    if (typeof rawRule === 'string') {
+        return {
+            label: `/${rawRule}/`,
+            sourceFiles: integration.sourceFiles || [],
+            allOf: [rawRule],
+            anyOf: [],
+            minAny: 0
+        };
+    }
+    if (!rawRule || typeof rawRule !== 'object') {
+        return { invalidReason: `invalid evidence rule: ${JSON.stringify(rawRule)}` };
+    }
+    const rule = rawRule;
+    const sourceFiles = Array.isArray(rule.sourceFiles) && rule.sourceFiles.length > 0
+        ? rule.sourceFiles
+        : (integration.sourceFiles || []);
+    const allOf = Array.isArray(rule.allOf) ? rule.allOf : [];
+    const anyOf = Array.isArray(rule.anyOf) ? rule.anyOf : [];
+    const minAny = typeof rule.minAny === 'number'
+        ? rule.minAny
+        : (anyOf.length > 0 ? 1 : 0);
+    return {
+        label: typeof rule.label === 'string' && rule.label.trim()
+            ? rule.label.trim()
+            : `custom evidence rule for ${integration.id}`,
+        sourceFiles,
+        allOf,
+        anyOf,
+        minAny
+    };
+}
+
+function compileEvidenceRegex(pattern) {
+    try {
+        return new RegExp(pattern);
+    } catch {
+        return null;
+    }
+}
+
+function readEvidenceSources(sourceFiles) {
+    return (sourceFiles || []).map(srcFile => {
+        const fullPath = path.resolve(srcFile);
+        const exists = fs.existsSync(fullPath);
+        return {
+            srcFile,
+            exists,
+            content: exists ? fs.readFileSync(fullPath, 'utf8') : null
+        };
+    });
+}
+
+function evaluateEvidencePatternSet(patterns, sources) {
+    const missingPatterns = [];
+    let matchedCount = 0;
+    for (const pattern of patterns) {
+        const regex = compileEvidenceRegex(pattern);
+        if (!regex) {
+            return {
+                ok: false,
+                kind: 'evidence_matcher_stale',
+                reason: `invalid regex pattern: ${pattern}`
+            };
+        }
+        const matched = sources.some(source => typeof source.content === 'string' && regex.test(source.content));
+        if (matched) {
+            matchedCount += 1;
+        } else {
+            missingPatterns.push(pattern);
+        }
+    }
+    return {
+        ok: missingPatterns.length === 0,
+        matchedCount,
+        totalCount: patterns.length,
+        missingPatterns
+    };
+}
+
+function buildEvidenceFailure(id, kind, reason, rule, sourceFiles) {
+    return {
+        id,
+        kind,
+        reason,
+        rule: rule?.label,
+        sourceFiles
+    };
+}
+
+export function verifyEvidence(integrations) {
     const failures = [];
     for (const int of integrations) {
         if (int.implementationStatus !== 'complete') continue;
-        const patterns = int.implementationEvidence;
-        if (!patterns || patterns.length === 0) {
-            failures.push({
-                id: int.id,
-                reason: '"complete" status with no implementationEvidence patterns'
-            });
+        const rawRules = int.implementationEvidence;
+        if (!rawRules || rawRules.length === 0) {
+            failures.push(buildEvidenceFailure(
+                int.id,
+                'evidence_matcher_stale',
+                '"complete" status with no implementationEvidence patterns',
+                null,
+                int.sourceFiles || []
+            ));
             continue;
         }
-        // Check evidence patterns against source files
-        const sources = int.sourceFiles || [];
-        for (const pattern of patterns) {
-            let found = false;
-            for (const srcFile of sources) {
-                const fullPath = path.resolve(srcFile);
-                if (!fs.existsSync(fullPath)) continue;
-                const content = fs.readFileSync(fullPath, 'utf8');
-                try {
-                    if (new RegExp(pattern).test(content)) {
-                        found = true;
-                        break;
-                    }
-                } catch {
-                    failures.push({
-                        id: int.id,
-                        reason: `invalid regex pattern: ${pattern}`
-                    });
-                    found = true; // don't double-report
-                    break;
+        for (const rawRule of rawRules) {
+            const rule = normalizeEvidenceRule(rawRule, int);
+            if (rule.invalidReason) {
+                failures.push(buildEvidenceFailure(
+                    int.id,
+                    'evidence_matcher_stale',
+                    rule.invalidReason,
+                    null,
+                    int.sourceFiles || []
+                ));
+                continue;
+            }
+
+            if (rule.allOf.length === 0 && rule.anyOf.length === 0) {
+                failures.push(buildEvidenceFailure(
+                    int.id,
+                    'evidence_matcher_stale',
+                    `${rule.label}: no allOf/anyOf matchers configured`,
+                    rule,
+                    rule.sourceFiles
+                ));
+                continue;
+            }
+
+            const sources = readEvidenceSources(rule.sourceFiles);
+            const existingSources = sources.filter(source => source.exists && typeof source.content === 'string');
+            if (existingSources.length === 0) {
+                failures.push(buildEvidenceFailure(
+                    int.id,
+                    'feature_present_different_seam',
+                    `${rule.label}: evidence still points at missing source files (${rule.sourceFiles.join(', ')})`,
+                    rule,
+                    rule.sourceFiles
+                ));
+                continue;
+            }
+
+            if (rule.allOf.length > 0) {
+                const allResult = evaluateEvidencePatternSet(rule.allOf, existingSources);
+                if (!allResult.ok) {
+                    failures.push(buildEvidenceFailure(
+                        int.id,
+                        allResult.kind || (allResult.matchedCount > 0 ? 'evidence_matcher_stale' : 'feature_missing'),
+                        allResult.reason
+                            || `${rule.label}: missing required evidence ${allResult.missingPatterns.map(pattern => `/${pattern}/`).join(', ')}`,
+                        rule,
+                        rule.sourceFiles
+                    ));
+                    continue;
                 }
             }
-            if (!found) {
-                failures.push({
-                    id: int.id,
-                    reason: `evidence pattern not found in source: /${pattern}/`
-                });
+
+            if (rule.anyOf.length > 0) {
+                const anyResult = evaluateEvidencePatternSet(rule.anyOf, existingSources);
+                if (!anyResult.ok) {
+                    failures.push(buildEvidenceFailure(
+                        int.id,
+                        anyResult.kind || 'evidence_matcher_stale',
+                        anyResult.reason || `${rule.label}: invalid anyOf matcher`,
+                        rule,
+                        rule.sourceFiles
+                    ));
+                    continue;
+                }
+                if ((anyResult.matchedCount || 0) < rule.minAny) {
+                    failures.push(buildEvidenceFailure(
+                        int.id,
+                        (anyResult.matchedCount || 0) > 0 ? 'evidence_matcher_stale' : 'feature_missing',
+                        `${rule.label}: expected ${rule.minAny} matching seam(s), found ${anyResult.matchedCount || 0}`,
+                        rule,
+                        rule.sourceFiles
+                    ));
+                }
             }
         }
     }
@@ -305,11 +451,11 @@ function scanSources() {
     }
     const cacheManagerSrc = readSourceFile('src/api/geminiCacheManager.ts');
     if (cacheManagerSrc) {
-        const routerSrc = readSourceFile('src/api/providerRouter.ts');
-        const routerWired = !!routerSrc?.includes('getOrCreateGeminiCache');
+        const aiClientSrc = readSourceFile('src/ai/runtime/aiClient.ts');
+        const runtimeWired = !!aiClientSrc?.includes('peekGeminiCache');
         findings.push({
-            file: 'geminiCacheManager.ts',
-            finding: `Cache manager exists, router wires it: ${routerWired}`,
+            file: 'aiClient.ts',
+            finding: `Cache manager exists, canonical runtime wires it: ${runtimeWired}`,
             relatedFeatures: ['gemini-context-caching']
         });
     }
@@ -488,7 +634,10 @@ function printReport(analytics, sourceFindings, validationErrors, validationWarn
     // Evidence failures
     if (evidenceFailures.length > 0) {
         log(`${RED}  EVIDENCE FAILURES:${RESET}`);
-        evidenceFailures.forEach(f => log(`  ${RED}x${RESET} ${f.id}: ${f.reason}`));
+        evidenceFailures.forEach(f => {
+            const kindLabel = EVIDENCE_FAILURE_LABELS[f.kind] || f.kind || 'evidence failure';
+            log(`  ${RED}x${RESET} ${f.id} [${kindLabel}]: ${f.reason}`);
+        });
         log('');
     }
 
@@ -568,7 +717,24 @@ function generateIssueStubs(highImpactGaps, capMap, intMap) {
 
         // Build evidence patterns for DoD
         const evidencePatterns = (int.implementationEvidence || []).length > 0
-            ? int.implementationEvidence.map(p => `- [ ] Evidence pattern matches: \`/${p}/\``).join('\n')
+            ? int.implementationEvidence.map(rule => {
+                if (typeof rule === 'string') {
+                    return `- [ ] Evidence pattern matches: \`/${rule}/\``;
+                }
+                if (!rule || typeof rule !== 'object') {
+                    return `- [ ] Evidence rule updated: \`${JSON.stringify(rule)}\``;
+                }
+                const label = typeof rule.label === 'string' && rule.label.trim()
+                    ? rule.label.trim()
+                    : 'Custom evidence rule';
+                const allOf = Array.isArray(rule.allOf) ? rule.allOf.map(pattern => `\`/${pattern}/\``) : [];
+                const anyOf = Array.isArray(rule.anyOf) ? rule.anyOf.map(pattern => `\`/${pattern}/\``) : [];
+                const joined = [
+                    allOf.length ? `all of ${allOf.join(', ')}` : null,
+                    anyOf.length ? `any of ${anyOf.join(', ')}` : null
+                ].filter(Boolean).join(' + ');
+                return `- [ ] ${label}${joined ? `: ${joined}` : ''}`;
+            }).join('\n')
             : '- [ ] Add implementationEvidence patterns to registry';
 
         // Build required headers DoD items
@@ -667,7 +833,7 @@ function writeAuditReport(analytics, sourceFindings, validationErrors, validatio
 
 // ── Main ───────────────────────────────────────────────────────────────────────
 
-function main() {
+export function main() {
     const capData = loadJson(CAPABILITIES_FILE);
     const intData = loadJson(INTEGRATIONS_FILE);
 
@@ -723,4 +889,9 @@ function main() {
     }
 }
 
-main();
+const isDirectRun = process.argv[1]
+    && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+
+if (isDirectRun) {
+    main();
+}

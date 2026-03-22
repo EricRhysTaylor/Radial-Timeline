@@ -5,7 +5,7 @@ import { createAprSVG } from '../renderer/apr/AprRenderer';
 import { getAllScenes } from '../utils/manuscript';
 import type { AprCampaign, AuthorProgressSettings } from '../types/settings';
 import { getTeaserThresholds, getTeaserRevealLevel, teaserLevelToRevealOptions } from '../renderer/apr/AprConstants';
-import { isProfessionalActive } from '../settings/sections/ProfessionalSection';
+import { isFeatureGateEnabled } from '../settings/featureGate';
 import { isBeatNote, isSceneItem } from '../utils/sceneHelpers';
 import { buildDefaultEmbedPath, normalizeAprExportFormat, type AprExportFormat } from '../utils/aprPaths';
 import { resolveBookTitle, resolveProjectPath } from '../renderer/apr/aprHelpers';
@@ -360,7 +360,7 @@ export class AuthorProgressService {
         const progressPercent = this.calculateProgress(scenesFiltered);
         const publishStageLabel = this.resolvePublishStageLabel(scenesFiltered);
         const { enabled: revealCampaignEnabled, nextRevealAt } = this.resolveRevealCountdown();
-        const showRtAttribution = isProfessionalActive(this.plugin)
+        const showRtAttribution = isFeatureGateEnabled(this.plugin, 'social')
             ? settings.aprShowRtAttribution !== false
             : true;
 
@@ -424,7 +424,7 @@ export class AuthorProgressService {
         if (mode === 'dynamic') {
             // Check if target is 'note' (Pro feature)
             if (settings.defaultPublishTarget === 'note') {
-                if (!isProfessionalActive(this.plugin)) {
+                if (!isFeatureGateEnabled(this.plugin, 'social')) {
                     new Notice('Note publishing is a Pro feature. Upgrade to Pro to use this feature.');
                     return null;
                 }
@@ -558,7 +558,7 @@ export class AuthorProgressService {
     }
 
     private async checkCampaignAutoUpdates(settings: AuthorProgressSettings): Promise<void> {
-        if (!isProfessionalActive(this.plugin)) return;
+        if (!isFeatureGateEnabled(this.plugin, 'social')) return;
         const campaigns = settings.campaigns || [];
         if (campaigns.length === 0) return;
 
@@ -656,7 +656,7 @@ export class AuthorProgressService {
         const progressPercent = this.calculateProgress(scenesFiltered);
         const publishStageLabel = this.resolvePublishStageLabel(scenesFiltered);
         const { enabled: revealCampaignEnabled, nextRevealAt } = this.resolveRevealCountdown(campaign);
-        const showRtAttribution = isProfessionalActive(this.plugin)
+        const showRtAttribution = isFeatureGateEnabled(this.plugin, 'social')
             ? settings.aprShowRtAttribution !== false
             : true;
 

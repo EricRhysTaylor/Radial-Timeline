@@ -4,7 +4,7 @@ import { TimelineItem } from '../types/timeline';
 import { AuthorProgressService } from '../services/AuthorProgressService';
 import type { AprCampaign } from '../types/settings';
 import { getTeaserThresholds, getTeaserRevealLevel, TEASER_LEVEL_INFO } from '../renderer/apr/AprConstants';
-import { isProfessionalActive } from '../settings/sections/ProfessionalSection';
+import { isFeatureGateEnabled } from '../settings/featureGate';
 import { ERT_CLASSES } from '../ui/classes';
 import {
     buildCampaignEmbedPath,
@@ -148,7 +148,7 @@ export class AuthorProgressModal extends Modal {
 
         // Target selection + dynamic sections
         const campaigns = this.plugin.settings.authorProgress?.campaigns || [];
-        const isProActive = isProfessionalActive(this.plugin);
+        const isProActive = isFeatureGateEnabled(this.plugin, 'social');
 
         // Ensure valid target selection
         if (isProActive && campaigns.length > 0) {
@@ -402,7 +402,7 @@ export class AuthorProgressModal extends Modal {
         this.actionsBodyEl.empty();
 
         const campaigns = this.plugin.settings.authorProgress?.campaigns || [];
-        const isProActive = isProfessionalActive(this.plugin);
+        const isProActive = isFeatureGateEnabled(this.plugin, 'social');
         const showProActions = isProActive && this.selectedTargetId !== 'default';
         if (this.actionsSectionEl) {
             this.actionsSectionEl.classList.toggle(ERT_CLASSES.SKIN_PRO, showProActions);
@@ -421,7 +421,7 @@ export class AuthorProgressModal extends Modal {
         this.aprSize = settings.aprSize ?? this.aprSize ?? 'medium';
 
         const campaigns = this.plugin.settings.authorProgress?.campaigns || [];
-        const isProActive = isProfessionalActive(this.plugin);
+        const isProActive = isFeatureGateEnabled(this.plugin, 'social');
 
         // === TARGET ROW (two-column: label left, dropdown right) ===
         if (isProActive && campaigns.length > 0) {
