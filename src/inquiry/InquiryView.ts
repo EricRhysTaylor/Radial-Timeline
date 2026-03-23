@@ -520,6 +520,8 @@ export class InquiryView extends ItemView {
     private helpTipsEnabled = false;
     private iconSymbols = new Set<string>();
     private svgDefs?: SVGDefsElement;
+    private startupFreshMode = false;
+    private freshModeTouchedBookIds = new Set<string>();
     private lastTargetSceneIdsByBookId = new Map<string, string[]>();
     private corpusResolver: InquiryCorpusResolver;
     private corpus?: InquiryCorpusSnapshot;
@@ -590,7 +592,9 @@ export class InquiryView extends ItemView {
             this.renderMobileGate();
             return;
         }
-        this.loadTargetCache();
+        this.startupFreshMode = this.plugin.consumeInquiryFreshLaunchPending();
+        this.freshModeTouchedBookIds.clear();
+        this.loadTargetCache({ adoptPersistedSelection: !this.startupFreshMode });
         this.renderDesktopLayout();
         this.refreshUI();
     }
@@ -1888,7 +1892,8 @@ export class InquiryView extends ItemView {
         return adapter.getResourcePath ? adapter.getResourcePath(assetPath) : assetPath;
     }
 
-    private loadTargetCache(): void {
+    private loadTargetCache(options?: { adoptPersistedSelection?: boolean }): void {
+        const adoptPersistedSelection = options?.adoptPersistedSelection !== false;
         const cache = this.plugin.settings.inquiryTargetCache;
         if (cache?.lastTargetSceneIdsByBookId) {
             this.lastTargetSceneIdsByBookId = new Map(
@@ -1898,9 +1903,11 @@ export class InquiryView extends ItemView {
                 ])
             );
         }
-        if (cache?.lastBookId) {
+        if (adoptPersistedSelection && cache?.lastBookId) {
             this.state.activeBookId = cache.lastBookId;
             this.state.targetSceneIds = this.lastTargetSceneIdsByBookId.get(cache.lastBookId) ?? [];
+        } else if (!adoptPersistedSelection) {
+            this.state.targetSceneIds = [];
         }
         if (this.targetPersistTimer) {
             window.clearTimeout(this.targetPersistTimer);
@@ -3269,10 +3276,13 @@ export class InquiryView extends ItemView {
                 shouldPersist = true;
             }
             if (this.corpus.activeBookId) {
-                const prior = this.lastTargetSceneIdsByBookId.get(this.corpus.activeBookId) ?? [];
-                if (!this.areTargetSceneIdsEqual(prior, nextTargetSceneIds)) {
-                    this.lastTargetSceneIdsByBookId.set(this.corpus.activeBookId, [...nextTargetSceneIds]);
-                    shouldPersist = true;
+                const shouldSyncTargetCache = !this.startupFreshMode || this.freshModeTouchedBookIds.has(this.corpus.activeBookId);
+                if (shouldSyncTargetCache) {
+                    const prior = this.lastTargetSceneIdsByBookId.get(this.corpus.activeBookId) ?? [];
+                    if (!this.areTargetSceneIdsEqual(prior, nextTargetSceneIds)) {
+                        this.lastTargetSceneIdsByBookId.set(this.corpus.activeBookId, [...nextTargetSceneIds]);
+                        shouldPersist = true;
+                    }
                 }
             }
         }
@@ -3427,7 +3437,7 @@ export class InquiryView extends ItemView {
     private resolveTargetSceneIds(bookId: string | undefined, scenes: InquiryCorpusItem[]): string[] {
         if (!bookId || !scenes.length) return [];
         const candidateIds = [
-            ...(this.lastTargetSceneIdsByBookId.get(bookId) ?? []),
+            ...this.getVisibleTargetSceneIdsForBook(bookId),
             ...this.state.targetSceneIds
         ];
         const next = candidateIds.filter(candidate => (
@@ -3951,6 +3961,7 @@ export class InquiryView extends ItemView {
 
         const activeBookId = this.corpus?.activeBookId ?? this.state.activeBookId;
         if (activeBookId) {
+            this.freshModeTouchedBookIds.add(activeBookId);
             this.lastTargetSceneIdsByBookId.set(activeBookId, [...next]);
         }
 
@@ -3981,6 +3992,7 @@ export class InquiryView extends ItemView {
 
         const activeBookId = this.corpus?.activeBookId ?? this.state.activeBookId;
         if (activeBookId) {
+            this.freshModeTouchedBookIds.add(activeBookId);
             this.lastTargetSceneIdsByBookId.set(activeBookId, []);
         }
 
@@ -4995,7 +5007,7 @@ export class InquiryView extends ItemView {
                 return;
             }
             this.toggleClassIfChanged(this.navSessionLabel, 'is-welcome', true, 'hudAttrWrites');
-            this.setTextIfChanged(this.navSessionLabel, 'Welcome to Inquiry View', 'hudTextWrites');
+            this.setTextIfChanged(this.navSessionLabel, this.buildWelcomeNavLabel(), 'hudTextWrites');
             return;
         }
         const session = this.sessionStore.peekSession(sessionId);
@@ -5006,7 +5018,7 @@ export class InquiryView extends ItemView {
                 return;
             }
             this.toggleClassIfChanged(this.navSessionLabel, 'is-welcome', true, 'hudAttrWrites');
-            this.setTextIfChanged(this.navSessionLabel, 'Welcome to Inquiry View', 'hudTextWrites');
+            this.setTextIfChanged(this.navSessionLabel, this.buildWelcomeNavLabel(), 'hudTextWrites');
             return;
         }
         this.setTextIfChanged(this.navSessionLabel, this.formatSessionNavLabel(session), 'hudTextWrites');
@@ -5023,6 +5035,23 @@ export class InquiryView extends ItemView {
             hour12: true
         });
         return `ID: ${formatted.replace(/\s+(AM|PM)/i, (_, m) => m.toLowerCase())}`;
+    }
+
+    private buildWelcomeNavLabel(date: Date = new Date()): string {
+        const weekday = date.toLocaleDateString(undefined, { weekday: 'long' });
+        const month = date.toLocaleDateString(undefined, { month: 'long' });
+        const day = `${date.getDate()}${this.getOrdinalSuffix(date.getDate())}`;
+        return `Welcome to Inquiry. ${weekday} ${month} ${day}.`;
+    }
+
+    private getOrdinalSuffix(day: number): string {
+        const mod100 = day % 100;
+        if (mod100 >= 11 && mod100 <= 13) return 'th';
+        const mod10 = day % 10;
+        if (mod10 === 1) return 'st';
+        if (mod10 === 2) return 'nd';
+        if (mod10 === 3) return 'rd';
+        return 'th';
     }
 
     private updateRunningState(): void {
@@ -6356,6 +6385,7 @@ export class InquiryView extends ItemView {
         },
         cacheStatus: 'fresh' | 'stale' | 'missing'
     ): void {
+        this.exitStartupFreshMode();
         const normalized = this.normalizeLegacyResult(session.result);
         const resolvedZone = session.questionZone ?? this.findPromptZoneById(normalized.questionId);
         this.state.scope = session.scope ?? normalized.scope;
@@ -7359,7 +7389,7 @@ export class InquiryView extends ItemView {
         if (!book) return;
         this.state.activeBookId = book.id;
         if (this.state.scope === 'book') {
-            this.state.targetSceneIds = this.lastTargetSceneIdsByBookId.get(book.id) ?? [];
+            this.state.targetSceneIds = this.getVisibleTargetSceneIdsForBook(book.id);
         }
         this.scheduleTargetPersist();
         this.refreshUI();
@@ -7637,6 +7667,9 @@ export class InquiryView extends ItemView {
     }
 
     private getLatestSessionForCurrentFocus(): InquirySession | undefined {
+        if (this.startupFreshMode) {
+            return undefined;
+        }
         const scope = this.state.scope;
         const scopeKey = this.getScopeKey();
         const activeTargetKey = this.getTargetSceneKey(this.getActiveTargetSceneIds());
@@ -7662,6 +7695,19 @@ export class InquiryView extends ItemView {
         const [, , ...focusParts] = session.baseKey.split('::');
         const fallback = focusParts.join('::').trim();
         return fallback || undefined;
+    }
+
+    private getVisibleTargetSceneIdsForBook(bookId: string | undefined): string[] {
+        if (!bookId) return [];
+        if (this.startupFreshMode && !this.freshModeTouchedBookIds.has(bookId)) {
+            return [];
+        }
+        return this.lastTargetSceneIdsByBookId.get(bookId) ?? [];
+    }
+
+    private exitStartupFreshMode(): void {
+        this.startupFreshMode = false;
+        this.freshModeTouchedBookIds.clear();
     }
 
     private buildZoneHoverText(zone: InquiryZone): string {

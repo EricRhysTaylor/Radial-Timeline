@@ -90,6 +90,7 @@ export interface GetSceneDataOptions {
 
 export default class RadialTimelinePlugin extends Plugin {
     settings: RadialTimelineSettings;
+    public inquiryFreshLaunchPending = true;
 
     // Do not store persistent references to views (per Obsidian guidelines)
 
@@ -350,6 +351,12 @@ export default class RadialTimelinePlugin extends Plugin {
     public getTimelineService(): TimelineService { return this.timelineService; }
     public getInquiryService(): InquiryService { return this.inquiryService; }
     public getInquiryEstimateService(): InquiryEstimateService { return this.inquiryEstimateService; }
+
+    public consumeInquiryFreshLaunchPending(): boolean {
+        const pending = this.inquiryFreshLaunchPending;
+        this.inquiryFreshLaunchPending = false;
+        return pending;
+    }
 
     /** Show or hide the Inquiry ribbon icon and close open Inquiry views when hiding. */
     public setInquiryVisible(visible: boolean): void {

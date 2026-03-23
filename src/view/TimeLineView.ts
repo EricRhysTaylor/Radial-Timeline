@@ -35,6 +35,7 @@ import { resolveSelectedBeatModelFromSettings } from '../utils/beatSystemState';
 // Duplicate of constants defined in main for now. We can consolidate later.
 export const TIMELINE_VIEW_TYPE = "radial-timeline";
 export const TIMELINE_VIEW_DISPLAY_TEXT = "Radial timeline";
+const TIMELINE_REFRESH_DELAY_MS = 10000;
 
 // CONSTANTS: Scene expansion constants
 const HOVER_EXPAND_FACTOR = 1.05; // expansion multiplier when text doesn't fit
@@ -563,11 +564,11 @@ export class RadialTimelineView extends ItemView {
                 // If values are the same, no need to trigger refresh
                 if (previousFrontmatter === currentFrontmatter) return;
                 
-                // Debounce the refresh per settings (default 5s)
+                // Debounce frontmatter-triggered refreshes using the internal timeline delay.
                 if (this.timelineRefreshTimeout) window.clearTimeout(this.timelineRefreshTimeout);
                 this.timelineRefreshTimeout = window.setTimeout(() => {
                     this.refreshTimeline();
-                }, Math.max(0, Number(this.plugin.settings.metadataRefreshDebounceMs ?? 10000)));
+                }, TIMELINE_REFRESH_DELAY_MS);
             })
         );
         

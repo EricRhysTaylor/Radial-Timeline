@@ -4,6 +4,8 @@ import { RadialTimelineView } from '../view/TimeLineView';
 import { ChangeType } from '../renderer/ChangeDetection';
 import type RadialTimelinePlugin from '../main';
 
+const TIMELINE_REFRESH_DELAY_MS = 10000;
+
 /**
  * Render request with priority and change type tracking
  */
@@ -114,8 +116,7 @@ export class TimelineService {
     refreshTimelineIfNeeded(file: TAbstractFile | null | undefined, delayMs?: number): void {
         if (file && (!(file instanceof TFile) || file.extension !== 'md')) return;
 
-        // Use configured debounce delay from settings (default 10000ms)
-        const effectiveDelay = delayMs ?? this.plugin.settings.metadataRefreshDebounceMs ?? 10000;
+        const effectiveDelay = delayMs ?? TIMELINE_REFRESH_DELAY_MS;
 
         // If file is null, it's likely a settings change
         if (!file) {
@@ -161,5 +162,4 @@ export class TimelineService {
         this.app.workspace.revealLeaf(leaf);
     }
 }
-
 

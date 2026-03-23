@@ -132,9 +132,6 @@ export function renderConfigurationSection(params: { app: App; plugin: RadialTim
     const displayContainer = configurationBody.createDiv({ cls: 'ert-config-group' });
     displayContainer.createDiv({ cls: 'ert-config-group-title', text: 'Timeline Display' });
 
-    const performanceContainer = configurationBody.createDiv({ cls: 'ert-config-group' });
-    performanceContainer.createDiv({ cls: 'ert-config-group-title', text: 'Performance' });
-
     // Logs
     createFolderPathRow(logsContainer, {
         title: t('settings.configuration.aiOutputFolder.name'),
@@ -274,40 +271,6 @@ export function renderConfigurationSection(params: { app: App; plugin: RadialTim
                     plugin.onSettingChanged(IMPACT_FULL); // Tier 3: font sizes/spacing change across entire timeline
                 });
                 drop.selectEl.addClass('ert-setting-dropdown');
-            });
-        }
-    });
-
-    // Performance
-    createDenseRow(performanceContainer, {
-        title: t('settings.configuration.debounce.name'),
-        description: t('settings.configuration.debounce.desc'),
-        control: (setting) => {
-            setting.addText(text => {
-                const current = String(plugin.settings.metadataRefreshDebounceMs ?? 10000);
-                text.setPlaceholder(t('settings.configuration.debounce.placeholder'));
-                text.setValue(current);
-                text.inputEl.addClass('ert-input--sm');
-
-                plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
-                    if (evt.key === 'Enter') {
-                        evt.preventDefault();
-                        text.inputEl.blur();
-                    }
-                });
-
-                const handleBlur = async () => {
-                    const n = Number(text.getValue().trim());
-                    if (!Number.isFinite(n) || n < 0) {
-                        new Notice(t('settings.configuration.debounce.error'));
-                        text.setValue(String(plugin.settings.metadataRefreshDebounceMs ?? 10000));
-                        return;
-                    }
-                    plugin.settings.metadataRefreshDebounceMs = n;
-                    await plugin.saveSettings();
-                };
-
-                plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });
             });
         }
     });

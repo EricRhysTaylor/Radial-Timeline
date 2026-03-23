@@ -42,7 +42,7 @@ describe('scene analysis safe write policy', () => {
         expect(writeWarning).toHaveBeenCalledWith(LOCAL_LLM_REVIEW_WARNING);
     });
 
-    it('falls back to the warning marker when a Local LLM write cannot be applied safely', async () => {
+    it('does not mark a review warning when a valid Local LLM result fails at write time', async () => {
         const writeAnalysis = vi.fn(async () => false);
         const writeWarning = vi.fn(async () => true);
 
@@ -53,9 +53,9 @@ describe('scene analysis safe write policy', () => {
             writeWarning
         });
 
-        expect(result).toEqual({ route: 'warning', success: true });
+        expect(result).toEqual({ route: 'write', success: false });
         expect(writeAnalysis).toHaveBeenCalledTimes(1);
-        expect(writeWarning).toHaveBeenCalledWith(LOCAL_LLM_REVIEW_WARNING);
+        expect(writeWarning).not.toHaveBeenCalled();
     });
 
     it('skips warning markers for non-local failures', async () => {

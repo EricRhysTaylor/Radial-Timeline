@@ -51,13 +51,13 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
     private _ollamaBaseUrlInput?: HTMLInputElement;
     private _ollamaModelIdInput?: HTMLInputElement;
     private _aiRelatedElements: HTMLElement[] = [];
-    private _activeTab: 'pro' | 'inquiry' | 'core' | 'social' | 'ai' = 'core';
+    private _activeTab: 'core' | 'social' | 'inquiry' | 'publishing' | 'ai' | 'advanced' = 'core';
     private _searchDebounceTimer?: number;
     private _coreSearchableContent?: HTMLElement;
     private readonly _searchShortAllowList = new Set(['ai', 'ui']);
 
     /** Public method to set active tab before/after opening settings */
-    public setActiveTab(tab: 'pro' | 'inquiry' | 'core' | 'social' | 'ai'): void {
+    public setActiveTab(tab: 'core' | 'social' | 'inquiry' | 'publishing' | 'ai' | 'advanced'): void {
         this._activeTab = tab;
     }
 
@@ -712,6 +712,21 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         });
     }
 
+    private renderPublishingHero(containerEl: HTMLElement): void {
+        this.renderSettingsHero(containerEl, {
+            badgeLabel: 'Publishing',
+            badgeIcon: 'book-open-text',
+            badgeVariant: ERT_CLASSES.BADGE_PILL_PRO,
+            wikiHref: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#professional',
+            title: 'Prepare your manuscript for export and publication.',
+            subtitle: 'This tab is reserved for publishing settings in a later phase.',
+            kicker: 'Planned Focus:',
+            features: [
+                { icon: 'file-output', text: 'Manuscript export and publication workflows will be organized here.' }
+            ]
+        });
+    }
+
     private renderInquiryHero(containerEl: HTMLElement): void {
         this.renderSettingsHero(containerEl, {
             badgeLabel: 'Inquiry · Signals',
@@ -756,15 +771,6 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         this.autoMigrateAdvancedTemplate();
 
         const tabBar = containerEl.createDiv({ cls: 'ert-settings-tab-bar' });
-        const proTab = tabBar.createDiv({ cls: 'ert-settings-tab' });
-        const proIcon = proTab.createSpan({ cls: 'ert-settings-tab-icon' });
-        setIcon(proIcon, 'signature');
-        proTab.createSpan({ text: 'Pro', cls: 'ert-settings-tab-label' });
-        const inquiryTab = tabBar.createDiv({ cls: 'ert-settings-tab' });
-        const inquiryIcon = inquiryTab.createSpan({ cls: 'ert-settings-tab-icon' });
-        setIcon(inquiryIcon, 'waves');
-        inquiryTab.createSpan({ text: 'Inquiry', cls: 'ert-settings-tab-label' });
-
         const coreTab = tabBar.createDiv({ cls: 'ert-settings-tab' });
         const coreIcon = coreTab.createSpan({ cls: 'ert-settings-tab-icon' });
         setIcon(coreIcon, 'settings');
@@ -774,50 +780,68 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const socialIcon = socialTab.createSpan({ cls: 'ert-settings-tab-icon' });
         setIcon(socialIcon, 'radio');
         socialTab.createSpan({ text: 'Social', cls: 'ert-settings-tab-label' });
+        const inquiryTab = tabBar.createDiv({ cls: 'ert-settings-tab' });
+        const inquiryIcon = inquiryTab.createSpan({ cls: 'ert-settings-tab-icon' });
+        setIcon(inquiryIcon, 'waves');
+        inquiryTab.createSpan({ text: 'Inquiry', cls: 'ert-settings-tab-label' });
+        const publishingTab = tabBar.createDiv({ cls: 'ert-settings-tab' });
+        const publishingIcon = publishingTab.createSpan({ cls: 'ert-settings-tab-icon' });
+        setIcon(publishingIcon, 'book-open-text');
+        publishingTab.createSpan({ text: 'Publishing', cls: 'ert-settings-tab-label' });
         const aiTab = tabBar.createDiv({ cls: 'ert-settings-tab' });
         const aiIcon = aiTab.createSpan({ cls: 'ert-settings-tab-icon' });
         setIcon(aiIcon, 'cpu');
         aiTab.createSpan({ text: 'AI', cls: 'ert-settings-tab-label' });
+        const advancedTab = tabBar.createDiv({ cls: 'ert-settings-tab' });
+        const advancedIcon = advancedTab.createSpan({ cls: 'ert-settings-tab-icon' });
+        setIcon(advancedIcon, 'signature');
+        advancedTab.createSpan({ text: 'Advanced', cls: 'ert-settings-tab-label' });
 
-        const proContent = containerEl.createDiv({
-            cls: `ert-settings-tab-content ert-settings-pro-content ${ERT_CLASSES.ROOT} ert-scope--settings ${ERT_CLASSES.SKIN_PRO}`
-        });
-        const inquiryContent = containerEl.createDiv({ cls: 'ert-settings-tab-content ert-settings-inquiry-content ert-scope--settings' });
         const coreContent = containerEl.createDiv({ cls: 'ert-settings-tab-content ert-settings-core-content ert-scope--settings' });
         const socialContent = containerEl.createDiv({
             cls: 'ert-settings-tab-content ert-settings-social-content ert-ui ert-scope--settings ert-skin--social ert-density--compact'
         });
+        const inquiryContent = containerEl.createDiv({ cls: 'ert-settings-tab-content ert-settings-inquiry-content ert-scope--settings' });
+        const publishingContent = containerEl.createDiv({
+            cls: `ert-settings-tab-content ert-settings-publishing-content ${ERT_CLASSES.ROOT} ert-scope--settings ${ERT_CLASSES.SKIN_PRO}`
+        });
         const aiContent = containerEl.createDiv({ cls: 'ert-settings-tab-content ert-settings-ai-content ert-scope--settings' });
+        const advancedContent = containerEl.createDiv({
+            cls: `ert-settings-tab-content ert-settings-pro-content ${ERT_CLASSES.ROOT} ert-scope--settings ${ERT_CLASSES.SKIN_PRO}`
+        });
 
         const updateTabState = () => {
-            proTab.toggleClass('ert-settings-tab-active', this._activeTab === 'pro');
-            inquiryTab.toggleClass('ert-settings-tab-active', this._activeTab === 'inquiry');
             coreTab.toggleClass('ert-settings-tab-active', this._activeTab === 'core');
             socialTab.toggleClass('ert-settings-tab-active', this._activeTab === 'social');
+            inquiryTab.toggleClass('ert-settings-tab-active', this._activeTab === 'inquiry');
+            publishingTab.toggleClass('ert-settings-tab-active', this._activeTab === 'publishing');
             aiTab.toggleClass('ert-settings-tab-active', this._activeTab === 'ai');
-            proContent.toggleClass('ert-hidden', this._activeTab !== 'pro');
-            inquiryContent.toggleClass('ert-hidden', this._activeTab !== 'inquiry');
+            advancedTab.toggleClass('ert-settings-tab-active', this._activeTab === 'advanced');
             coreContent.toggleClass('ert-hidden', this._activeTab !== 'core');
             socialContent.toggleClass('ert-hidden', this._activeTab !== 'social');
+            inquiryContent.toggleClass('ert-hidden', this._activeTab !== 'inquiry');
+            publishingContent.toggleClass('ert-hidden', this._activeTab !== 'publishing');
             aiContent.toggleClass('ert-hidden', this._activeTab !== 'ai');
+            advancedContent.toggleClass('ert-hidden', this._activeTab !== 'advanced');
         };
 
-        this.plugin.registerDomEvent(proTab, 'click', () => { this._activeTab = 'pro'; updateTabState(); });
-        this.plugin.registerDomEvent(inquiryTab, 'click', () => { this._activeTab = 'inquiry'; updateTabState(); });
         this.plugin.registerDomEvent(coreTab, 'click', () => { this._activeTab = 'core'; updateTabState(); });
         this.plugin.registerDomEvent(socialTab, 'click', () => { this._activeTab = 'social'; updateTabState(); });
+        this.plugin.registerDomEvent(inquiryTab, 'click', () => { this._activeTab = 'inquiry'; updateTabState(); });
+        this.plugin.registerDomEvent(publishingTab, 'click', () => { this._activeTab = 'publishing'; updateTabState(); });
         this.plugin.registerDomEvent(aiTab, 'click', () => { this._activeTab = 'ai'; updateTabState(); });
+        this.plugin.registerDomEvent(advancedTab, 'click', () => { this._activeTab = 'advanced'; updateTabState(); });
         updateTabState();
 
         const proActive = isProActive(this.plugin);
         // Re-render only the Pro tab when entitlement changes (avoids full settings flicker).
         const refreshProSectionOnly = () => {
-            proContent.empty();
+            advancedContent.empty();
             const isPro = isProActive(this.plugin);
             const stack = renderProfessionalSection({
                 app: this.app,
                 plugin: this.plugin,
-                containerEl: proContent,
+                containerEl: advancedContent,
                 renderHero: isPro ? (target) => this.renderProHero(target) : undefined,
                 onProToggle: refreshProSectionOnly
             });
@@ -826,11 +850,14 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const proStack = renderProfessionalSection({
             app: this.app,
             plugin: this.plugin,
-            containerEl: proContent,
+            containerEl: advancedContent,
             renderHero: proActive ? (target) => this.renderProHero(target) : undefined,
             onProToggle: refreshProSectionOnly
         });
         renderRuntimeSection({ app: this.app, plugin: this.plugin, containerEl: proStack });
+
+        const publishingStack = publishingContent.createDiv({ cls: ERT_CLASSES.STACK });
+        this.renderPublishingHero(publishingStack);
 
         // Social Tab Content - Social Section
         renderAuthorProgressSection({ app: this.app, plugin: this.plugin, containerEl: socialContent });
@@ -863,7 +890,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const coreBody = coreStack.createDiv();
         const searchableContent = coreBody.createDiv({ cls: 'ert-settings-searchable-content' });
         this._coreSearchableContent = searchableContent;
-        const switchToProTab = () => { this._activeTab = 'pro'; updateTabState(); };
+        const switchToAdvancedTab = () => { this._activeTab = 'advanced'; updateTabState(); };
 
         // Setup Section - Source path settings
         const generalSection = searchableContent.createDiv({
@@ -904,7 +931,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             containerEl: publicationStack,
             onCompletionPreviewRefresh: completionPreviewRefresh
         });
-        this.renderProCallout(publicationSection, 'Runtime estimation for screenplay & audiobook', switchToProTab);
+        this.renderProCallout(publicationSection, 'Runtime estimation for screenplay & audiobook', switchToAdvancedTab);
 
         const chronologueSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'chronologue' } });
         renderChronologueSection({ app: this.app, plugin: this.plugin, containerEl: chronologueSection });

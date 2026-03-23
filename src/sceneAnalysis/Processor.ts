@@ -109,10 +109,26 @@ function buildQueueItem(scene: SceneData): SceneQueueItem {
 async function setLocalReviewWarningIfNeeded(
     plugin: RadialTimelinePlugin,
     vault: Vault,
-    scene: SceneData
+    scene: SceneData,
+    error?: unknown
 ): Promise<void> {
     if (!isLocalLlmPulseProvider(plugin)) return;
+    if (error && !isReviewableLocalOutputError(error)) return;
     await setSceneAnalysisReviewWarning(vault, scene.file, plugin, LOCAL_LLM_REVIEW_WARNING);
+}
+
+function isReviewableLocalOutputError(error: unknown): boolean {
+    const message = (error instanceof Error ? error.message : String(error)).toLowerCase();
+    return [
+        'json',
+        'parse',
+        'schema',
+        'validation',
+        'invalid response',
+        'malformed',
+        'format',
+        'repair'
+    ].some(token => message.includes(token));
 }
 
 function normalizeParsedAnalysisForTriplet(
@@ -302,7 +318,7 @@ export async function processWithModal(
                 modal.addError(`AI processing failed for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
             }
         } catch (sceneError) {
-            await setLocalReviewWarningIfNeeded(plugin, vault, triplet.current);
+            await setLocalReviewWarningIfNeeded(plugin, vault, triplet.current, sceneError);
             markQueueStatus('error');
             const detail = sceneError instanceof Error ? sceneError.message : String(sceneError);
             modal.addError(`Fatal error while processing scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}\n${detail}`);
@@ -437,7 +453,7 @@ export async function processBySubplotOrder(
                         new Notice(`AI processing failed for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`, 6000);
                     }
                 } catch (sceneError) {
-                    await setLocalReviewWarningIfNeeded(plugin, vault, triplet.current);
+                    await setLocalReviewWarningIfNeeded(plugin, vault, triplet.current, sceneError);
                     const detail = sceneError instanceof Error ? sceneError.message : String(sceneError);
                     new Notice(`Fatal error while processing scene ${triplet.current.sceneNumber}: ${detail}`, 8000);
                 }
@@ -603,7 +619,7 @@ export async function processSubplotWithModal(
                 modal.addError(`AI processing failed for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
             }
         } catch (sceneError) {
-            await setLocalReviewWarningIfNeeded(plugin, vault, triplet.current);
+            await setLocalReviewWarningIfNeeded(plugin, vault, triplet.current, sceneError);
             markQueueStatus('error');
             const detail = sceneError instanceof Error ? sceneError.message : String(sceneError);
             modal.addError(`Fatal error while processing scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}\n${detail}`);
@@ -756,7 +772,7 @@ export async function processEntireSubplotWithModalInternal(
                 modal.addError(`AI processing failed for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
             }
         } catch (sceneError) {
-            await setLocalReviewWarningIfNeeded(plugin, vault, triplet.current);
+            await setLocalReviewWarningIfNeeded(plugin, vault, triplet.current, sceneError);
             markQueueStatus('error');
             const detail = sceneError instanceof Error ? sceneError.message : String(sceneError);
             modal.addError(`Fatal error while processing scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}\n${detail}`);

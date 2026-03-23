@@ -16,10 +16,6 @@ export async function applySceneAnalysisSafeWrite(input: {
         if (wrote) {
             return { route: 'write', success: true };
         }
-        if (input.provider === 'ollama') {
-            const warned = await input.writeWarning(LOCAL_LLM_REVIEW_WARNING);
-            return { route: 'warning', success: warned };
-        }
         return { route: 'write', success: false };
     }
 

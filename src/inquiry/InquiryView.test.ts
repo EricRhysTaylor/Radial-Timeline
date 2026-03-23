@@ -106,4 +106,22 @@ describe('InquiryView payload accounting', () => {
         expect(corpusSource.includes('args.onGlobalContextMenu(event)')).toBe(true);
     });
 
+    it('starts Inquiry in a fresh launch mode instead of auto-rehydrating cached state', () => {
+        const mainSource = readFileSync(resolve(process.cwd(), 'src/main.ts'), 'utf8');
+        const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
+        expect(mainSource.includes('public inquiryFreshLaunchPending = true;')).toBe(true);
+        expect(mainSource.includes('public consumeInquiryFreshLaunchPending(): boolean')).toBe(true);
+        expect(viewSource.includes('this.startupFreshMode = this.plugin.consumeInquiryFreshLaunchPending();')).toBe(true);
+        expect(viewSource.includes('this.loadTargetCache({ adoptPersistedSelection: !this.startupFreshMode });')).toBe(true);
+        expect(viewSource.includes('if (this.startupFreshMode) {\n            return undefined;\n        }')).toBe(true);
+    });
+
+    it('uses a dated welcome label and suppresses persisted target focus until the user acts', () => {
+        const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
+        expect(viewSource.includes('Welcome to Inquiry. ${weekday} ${month} ${day}.')).toBe(true);
+        expect(viewSource.includes("this.setTextIfChanged(this.navSessionLabel, this.buildWelcomeNavLabel(), 'hudTextWrites');")).toBe(true);
+        expect(viewSource.includes("this.state.targetSceneIds = this.getVisibleTargetSceneIdsForBook(book.id);")).toBe(true);
+        expect(viewSource.includes('...this.getVisibleTargetSceneIdsForBook(bookId),')).toBe(true);
+    });
+
 });

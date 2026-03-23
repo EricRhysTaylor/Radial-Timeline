@@ -94,7 +94,6 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     synopsisGenerationMaxWords: 30, // Max words for AI-generated Synopsis
     synopsisGenerationMaxLines: 3, // @deprecated Legacy line-based synopsis limiter
     aiUpdateTimestamps: {}, // Internal AI update timestamps (per-scene)
-    metadataRefreshDebounceMs: 10000,
     discontinuityThreshold: undefined, // Default to auto-calculated (3x median gap or 30 days)
     enableSceneTitleAutoExpand: true, // Default: enabled to maintain current behavior
     enableManuscriptRippleRename: false,
