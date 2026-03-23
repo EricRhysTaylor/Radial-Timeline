@@ -250,6 +250,7 @@ export interface TranslationKeys {
             heading: string;
             invalid: string;
             empty: string;
+            disabled: string;
         };
         modal: {
             title: string;
@@ -512,6 +513,7 @@ export const en: TranslationKeys = {
             heading: 'Quick preview (Earth → local)',
             invalid: 'Enter valid values to see a conversion preview.',
             empty: 'Add a profile to start configuring planetary time.',
+            disabled: 'Choose an active profile to preview conversions.',
         },
         modal: {
             title: 'Planetary time converter',

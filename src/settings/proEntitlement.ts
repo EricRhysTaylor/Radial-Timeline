@@ -6,6 +6,7 @@ export interface ProEntitlement {
     state: ProEntitlementState;
     isProActive: boolean;
     hasProLicenseKey: boolean;
+    isProEnabled: boolean;
 }
 
 export function isProLicenseKeyValid(key: string | undefined): boolean {
@@ -15,10 +16,13 @@ export function isProLicenseKeyValid(key: string | undefined): boolean {
 
 export function getProEntitlement(plugin: RadialTimelinePlugin): ProEntitlement {
     const hasProLicenseKey = isProLicenseKeyValid(plugin.settings.proLicenseKey);
+    const isProEnabled = plugin.settings.proAccessEnabled !== false;
+    const isProActive = hasProLicenseKey && isProEnabled;
     return {
-        state: hasProLicenseKey ? 'active' : 'inactive',
-        isProActive: hasProLicenseKey,
-        hasProLicenseKey
+        state: isProActive ? 'active' : 'inactive',
+        isProActive,
+        hasProLicenseKey,
+        isProEnabled
     };
 }
 

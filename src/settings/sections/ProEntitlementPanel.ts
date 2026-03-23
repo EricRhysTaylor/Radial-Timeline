@@ -23,20 +23,38 @@ export function renderProEntitlementPanel({
     const entitlement = getProEntitlement(plugin);
     const panel = containerEl.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK_TIGHT}` });
 
-    if (entitlement.isProActive) {
-        const activeRow = panel.createDiv({ cls: 'ert-pro-status-inline' });
-        const activeBadge = activeRow.createSpan({
-            cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO}`
+    const statusRow = panel.createDiv({ cls: 'ert-pro-status-inline' });
+    const statusBadge = statusRow.createSpan({
+        cls: `${ERT_CLASSES.BADGE_PILL} ${entitlement.isProActive ? ERT_CLASSES.BADGE_PILL_PRO : ERT_CLASSES.BADGE_PILL_NEUTRAL}`
+    });
+    const statusBadgeIcon = statusBadge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON });
+    setIcon(statusBadgeIcon, 'signature');
+    statusBadge.createSpan({
+        cls: ERT_CLASSES.BADGE_PILL_TEXT,
+        text: entitlement.isProActive ? 'PRO ACTIVE' : 'PRO OFF'
+    });
+    statusRow.createSpan({
+        cls: 'ert-pro-status-label',
+        text: entitlement.isProActive
+            ? 'Pro features are unlocked for this vault.'
+            : entitlement.hasProLicenseKey
+                ? 'Pro key saved, but Pro is currently turned off for this vault.'
+                : 'Enter a Pro key and turn Pro on to unlock Pro features.'
+    });
+
+    const enabledSetting = new Setting(panel)
+        .setName('Enable Pro')
+        .setDesc('Turn Pro features on or off for testing without removing the saved key.')
+        .addToggle(toggle => {
+            toggle
+                .setValue(entitlement.isProEnabled)
+                .onChange(async (value) => {
+                    plugin.settings.proAccessEnabled = value;
+                    await plugin.saveSettings();
+                    onEntitlementChanged?.();
+                });
         });
-        const activeBadgeIcon = activeBadge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON });
-        setIcon(activeBadgeIcon, 'signature');
-        activeBadge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'PRO ACTIVE' });
-        activeRow.createSpan({
-            cls: 'ert-pro-status-label',
-            text: 'Pro features are unlocked for this vault.'
-        });
-        return panel;
-    }
+    enabledSetting.settingEl.addClass('ert-settingRow');
 
     const keySetting = new Setting(panel)
         .setName('Pro access key')

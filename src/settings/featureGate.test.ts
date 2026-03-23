@@ -5,13 +5,21 @@ describe('hasProFeatureAccess', () => {
     it('uses Pro entitlement as the single feature access source', () => {
         expect(hasProFeatureAccess({
             settings: {
-                proLicenseKey: '1234567890abcdef'
+                proLicenseKey: '1234567890abcdef',
+                proAccessEnabled: true
             }
         } as any)).toBe(true);
 
         expect(hasProFeatureAccess({
             settings: {
                 proLicenseKey: ''
+            }
+        } as any)).toBe(false);
+
+        expect(hasProFeatureAccess({
+            settings: {
+                proLicenseKey: '1234567890abcdef',
+                proAccessEnabled: false
             }
         } as any)).toBe(false);
     });

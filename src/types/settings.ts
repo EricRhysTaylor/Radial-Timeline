@@ -518,6 +518,7 @@ export interface RadialTimelineSettings {
 
     // Pro access
     proLicenseKey?: string;
+    proAccessEnabled?: boolean;
 
     // Runtime Estimation Settings (Pro feature)
     runtimeRateProfiles?: RuntimeRateProfile[];

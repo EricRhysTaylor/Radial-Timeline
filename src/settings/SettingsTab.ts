@@ -662,6 +662,28 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         });
     }
 
+    private renderCoreQuickLinks(containerEl: HTMLElement, links: Array<{ label: string; icon: string; target: HTMLElement | null }>): void {
+        const row = containerEl.createDiv({ cls: ERT_CLASSES.INLINE });
+        const label = row.createSpan({
+            cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_NEUTRAL} ${ERT_CLASSES.BADGE_PILL_SM}`
+        });
+        label.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'Quick Links' });
+
+        links.forEach(({ label: text, icon, target }) => {
+            if (!target) return;
+            const button = row.createEl('button', {
+                cls: `${ERT_CLASSES.PILL_BTN} ${ERT_CLASSES.PILL_BTN_STANDARD}`,
+                attr: { type: 'button', 'aria-label': `Jump to ${text}` }
+            });
+            const iconEl = button.createSpan({ cls: ERT_CLASSES.PILL_BTN_ICON });
+            setIcon(iconEl, icon);
+            button.createSpan({ cls: ERT_CLASSES.PILL_BTN_LABEL, text });
+            this.plugin.registerDomEvent(button, 'click', () => {
+                target.scrollIntoView({ block: 'start' });
+            });
+        });
+    }
+
     display(): void {
         const { containerEl } = this;
         containerEl.empty();
@@ -768,13 +790,8 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const inquiryBody = inquiryStack.createDiv({ cls: 'ert-settings-searchable-content' });
 
         const coreStack = coreContent.createDiv({ cls: ERT_CLASSES.STACK });
-        this.renderCoreHero(coreStack);
         const forceExpandCompletionPreview = this._forceExpandCoreCompletionPreview;
         this._forceExpandCoreCompletionPreview = false;
-
-        // Refactor alerts (shown at top when migrations are needed)
-        const alertsRow = coreStack.createDiv();
-        this.renderRefactorAlerts(alertsRow);
 
         const completionRow = coreStack.createDiv();
         const completionPreviewRefresh = renderCompletionEstimatePreview({
@@ -785,9 +802,11 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             forceExpanded: forceExpandCompletionPreview
         });
 
+        this.renderCoreHero(coreStack);
+
         const coreBody = coreStack.createDiv();
         const searchableContent = coreBody.createDiv({ cls: 'ert-settings-searchable-content' });
-        // Setup Section - Source path settings
+
         const generalSection = searchableContent.createDiv({
             attr: { [ERT_DATA.SECTION]: 'general' }
         });
@@ -800,26 +819,10 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             addAiRelatedElement: (el) => this._aiRelatedElements.push(el)
         });
 
-        const inquirySection = inquiryBody.createDiv({
-            cls: ERT_CLASSES.STACK,
-            attr: { [ERT_DATA.SECTION]: 'inquiry' }
-        });
-        renderInquirySection({
-            app: this.app,
-            plugin: this.plugin,
-            containerEl: inquirySection,
-            attachFolderSuggest: (t) => this.attachFolderSuggest(t)
-        });
+        const progressSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'progress' } });
+        const progressStack = progressSection.createDiv({ cls: ERT_CLASSES.STACK });
 
-
-
-        const povSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'pov' } });
-        renderPovSection({ plugin: this.plugin, containerEl: povSection });
-
-        const beatsWrapper = searchableContent.createDiv();
-        const backdropYamlTarget = createDiv();
-
-        const publicationSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'publication' } });
+        const publicationSection = progressStack.createDiv({ attr: { [ERT_DATA.SECTION]: 'publication' } });
         const publicationStack = publicationSection.createDiv({ cls: ERT_CLASSES.STACK });
         renderPublicationSection({
             plugin: this.plugin,
@@ -833,26 +836,60 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         });
         renderRuntimeSection({ app: this.app, plugin: this.plugin, containerEl: runtimeSection });
 
+        const beatsWrapper = searchableContent.createDiv();
+        const backdropYamlTarget = createDiv();
+        renderBeatPropertiesSection({ app: this.app, plugin: this.plugin, containerEl: beatsWrapper, backdropYamlTargetEl: backdropYamlTarget });
+        const beatsStorySection = beatsWrapper.querySelector<HTMLElement>(`[${ERT_DATA.SECTION}="beats-story"]`);
+        const beatsActsSection = beatsWrapper.querySelector<HTMLElement>(`[${ERT_DATA.SECTION}="beats-acts"]`);
+        const beatsYamlSection = beatsWrapper.querySelector<HTMLElement>(`[${ERT_DATA.SECTION}="beats-yaml"]`);
+        if (beatsStorySection) beatsWrapper.appendChild(beatsStorySection);
+        if (beatsActsSection) beatsWrapper.appendChild(beatsActsSection);
+        if (beatsYamlSection) beatsWrapper.appendChild(beatsYamlSection);
+
         const chronologueSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'chronologue' } });
         renderChronologueSection({ app: this.app, plugin: this.plugin, containerEl: chronologueSection });
+
+        const povSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'pov' } });
+        renderPovSection({ plugin: this.plugin, containerEl: povSection });
+
+        const planetarySection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'planetary' } });
+        renderPlanetaryTimeSection({ app: this.app, plugin: this.plugin, containerEl: planetarySection });
 
         const backdropSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'backdrop' } });
         renderBackdropSection({ app: this.app, plugin: this.plugin, containerEl: backdropSection });
         backdropSection.appendChild(backdropYamlTarget);
 
-        renderBeatPropertiesSection({ app: this.app, plugin: this.plugin, containerEl: beatsWrapper, backdropYamlTargetEl: backdropYamlTarget });
-
-        const planetarySection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'planetary' } });
-        renderPlanetaryTimeSection({ app: this.app, plugin: this.plugin, containerEl: planetarySection });
-
         const colorsWrapper = searchableContent.createDiv();
         renderColorsSection(colorsWrapper, this.plugin);
 
-        const releaseNotesSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'release-notes' } });
-        void renderReleaseNotesSection({ plugin: this.plugin, containerEl: releaseNotesSection });
-
         const readmeSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'readme' } });
         renderReadmeSection({ app: this.app, containerEl: readmeSection, setComponentRef: (c: Component | null) => { this.readmeComponent = c; } });
+
+        this.renderCoreQuickLinks(coreStack, [
+            { label: 'Books', icon: 'library-big', target: generalSection },
+            { label: 'Progress', icon: 'bar-chart-3', target: progressSection },
+            { label: 'Story beats', icon: 'activity', target: beatsStorySection },
+            { label: 'Chronology', icon: 'orbit', target: chronologueSection },
+            { label: 'Backdrop', icon: 'layers-3', target: backdropSection }
+        ]);
+
+        // Refactor alerts (shown at top when migrations are needed)
+        const alertsRow = coreStack.createDiv();
+        this.renderRefactorAlerts(alertsRow);
+
+        const inquirySection = inquiryBody.createDiv({
+            cls: ERT_CLASSES.STACK,
+            attr: { [ERT_DATA.SECTION]: 'inquiry' }
+        });
+        renderInquirySection({
+            app: this.app,
+            plugin: this.plugin,
+            containerEl: inquirySection,
+            attachFolderSuggest: (t) => this.attachFolderSuggest(t)
+        });
+
+        const releaseNotesSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'release-notes' } });
+        void renderReleaseNotesSection({ plugin: this.plugin, containerEl: releaseNotesSection });
 
         const aiSection = aiContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'ai' } });
         try {

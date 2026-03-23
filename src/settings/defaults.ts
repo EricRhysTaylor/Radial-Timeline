@@ -118,6 +118,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     planetarySectionExpanded: true,
     planetaryProfiles: [],
     activePlanetaryProfileId: '',
+    proAccessEnabled: true,
     frontmatterMappings: {},
     enableCustomMetadataMapping: false,
     enableAdvancedYamlEditor: false,

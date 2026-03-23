@@ -49,6 +49,9 @@ import { resolveSelectedBeatModelFromSettings } from '../../utils/beatSystemStat
 import { getSynopsisGenerationWordLimit, getSynopsisHoverLineLimit } from '../../utils/synopsisLimits';
 import { getResolvedModelId } from '../../utils/modelResolver';
 import { getLocalLlmSettings, LOCAL_LLM_BACKEND_LABELS, resolveLocalLlmModelInfo } from '../../ai/localLlm/settings';
+import { inferLocalLlmCapability } from '../../ai/localLlm/capabilityInference';
+import type { LocalLlmCapabilityAssessment, LocalLlmFeatureSupport } from '../../ai/localLlm/capabilityInference';
+import type { LocalLlmModelEntry } from '../../ai/localLlm/transport';
 import type { LocalLlmBackendId } from '../../ai/types';
 
 type Provider = 'anthropic' | 'google' | 'openai' | 'ollama';
@@ -342,6 +345,32 @@ export function renderAiSection(params: {
 
         return options;
     };
+    const formatLocalCapabilitySymbol = (support: LocalLlmFeatureSupport): string => {
+        if (support === 'yes') return '✓';
+        if (support === 'partial') return '~';
+        return '✗';
+    };
+    const formatLocalCapabilitySupportLabel = (
+        feature: 'summary' | 'pulses' | 'gossamer' | 'inquiry',
+        support: LocalLlmFeatureSupport
+    ): string => {
+        if (feature === 'inquiry') {
+            if (support === 'yes') return 'Eligible';
+            if (support === 'partial') return 'Possibly eligible';
+            return 'Not eligible';
+        }
+        if (support === 'yes') return 'Supported';
+        if (support === 'partial') return 'Limited';
+        return 'Not supported';
+    };
+    const buildLocalCapabilityTooltip = (assessment: LocalLlmCapabilityAssessment): string => [
+        `${assessment.tierName} — ${assessment.tierSummary}`,
+        `Summary — ${formatLocalCapabilitySymbol(assessment.featureSupport.summary)} ${formatLocalCapabilitySupportLabel('summary', assessment.featureSupport.summary)}`,
+        `Pulses — ${formatLocalCapabilitySymbol(assessment.featureSupport.pulses)} ${formatLocalCapabilitySupportLabel('pulses', assessment.featureSupport.pulses)}`,
+        `Gossamer — ${formatLocalCapabilitySymbol(assessment.featureSupport.gossamer)} ${formatLocalCapabilitySupportLabel('gossamer', assessment.featureSupport.gossamer)}`,
+        `Inquiry — ${formatLocalCapabilitySymbol(assessment.featureSupport.inquiry)} ${formatLocalCapabilitySupportLabel('inquiry', assessment.featureSupport.inquiry)}`,
+        assessment.explanation
+    ].join('\n');
     const setLocalLlmConfigurationMode = (mode: LocalLlmConfigurationMode): void => {
         const aiSettings = ensureCanonicalAiSettings();
         aiSettings.localLlm = {
@@ -1000,6 +1029,7 @@ export function renderAiSection(params: {
             const aiSettings = ensureCanonicalAiSettings();
             if (aiSettings.provider === 'ollama') {
                 setOllamaModelId(value);
+                if (localLlmModelText) localLlmModelText.setValue(value);
                 clearLocalLlmValidationState();
                 await persistCanonical();
                 params.scheduleKeyValidation('ollama');
@@ -1702,7 +1732,7 @@ export function renderAiSection(params: {
         apiKeysFold.toggleClass('ert-settings-hidden', isOllama);
         apiKeysFold.toggleClass('ert-settings-visible', !isOllama);
 
-        const showLocalLlmOverrideDetails = isOllama && shouldRevealLocalLlmOverrideSettings();
+        const showLocalLlmStatusDetails = isOllama;
         const showLocalLlmConfigDetails = isOllama && (
             getLocalLlmConfigurationMode() === 'custom'
             || shouldRevealLocalLlmTransportSettings()
@@ -1714,9 +1744,11 @@ export function renderAiSection(params: {
             localLlmConfigSectionEl.toggleClass('ert-settings-visible', showLocalLlmConfigDetails);
         }
         if (localLlmStatusSectionEl) {
-            localLlmStatusSectionEl.toggleClass('ert-settings-hidden', !showLocalLlmOverrideDetails);
-            localLlmStatusSectionEl.toggleClass('ert-settings-visible', showLocalLlmOverrideDetails);
+            localLlmStatusSectionEl.toggleClass('ert-settings-hidden', !showLocalLlmStatusDetails);
+            localLlmStatusSectionEl.toggleClass('ert-settings-visible', showLocalLlmStatusDetails);
         }
+        largeHandlingSection.toggleClass('ert-settings-hidden', isOllama);
+        largeHandlingSection.toggleClass('ert-settings-visible', !isOllama);
 
         capacityInquiryToken.setText('Calculating...');
         capacityInquiryExpected.setText('Calculating...');
@@ -2237,7 +2269,7 @@ export function renderAiSection(params: {
 
     const aiLogFolder = resolveAiLogFolder();
     let localLlmModelText: TextComponent | null = null;
-    let localLlmLoadedModels: Array<{ id: string }> = [];
+    let localLlmLoadedModels: LocalLlmModelEntry[] = [];
     let localLlmModelLoadError: string | null = null;
     let localLlmLastLoadedAt: string | null = null;
     let localLlmModelLoadPending = false;
@@ -2274,6 +2306,36 @@ export function renderAiSection(params: {
         if (!localLlmValidationReport) return false;
         return !localLlmValidationReport.reachable.ok;
     };
+    const shouldRevealLocalLlmTroubleshootingActions = (): boolean => {
+        if (getLocalLlmConfigurationMode() === 'custom') return true;
+        if (localLlmModelLoadPending || localLlmValidationPending) return true;
+        if (localLlmModelLoadError || localLlmValidationError) return true;
+        if (!localLlmLoadedModels.length) return true;
+        if (hasLocalLlmSelectedModelMismatch()) return true;
+        if (!localLlmValidationReport) return false;
+        return !localLlmValidationReport.reachable.ok
+            || !localLlmValidationReport.modelAvailable.ok
+            || !localLlmValidationReport.basicCompletion.ok
+            || !localLlmValidationReport.structuredJson.ok
+            || !localLlmValidationReport.repairPath.ok;
+    };
+    const getLocalCapabilityAssessment = (
+        modelId: string,
+        liveEntry?: Partial<LocalLlmModelEntry> | null
+    ): LocalLlmCapabilityAssessment => {
+        const canonical = BUILTIN_MODELS.find(model =>
+            model.provider === 'ollama' && (model.id === modelId || model.alias === modelId)
+        );
+        const diagnostics = localLlmValidationReport?.modelId === modelId
+            ? localLlmValidationReport
+            : null;
+        return inferLocalLlmCapability({
+            modelId,
+            contextWindow: liveEntry?.contextWindow ?? canonical?.contextWindow ?? null,
+            maxOutput: liveEntry?.maxOutput ?? canonical?.maxOutput ?? null,
+            diagnostics
+        });
+    };
 
     const localLlmConfigSection = quickSetupPreviewSection.createDiv({
         cls: [`${ERT_CLASSES.CARD}`, `${ERT_CLASSES.PANEL}`, `${ERT_CLASSES.STACK}`, 'ert-ai-local-llm-config', 'ert-settings-hidden']
@@ -2292,11 +2354,21 @@ export function renderAiSection(params: {
     localLlmStatusSection.createDiv({ cls: 'ert-section-title', text: 'Local LLM Status / Validation' });
     localLlmStatusSection.createDiv({
         cls: 'ert-section-desc',
-        text: 'Auto-configuration diagnostics for the current Local LLM setup. This stays hidden while the standard path is healthy.'
+        text: 'Auto-configuration diagnostics for the current Local LLM setup. This stays visible so you can confirm connection, validation, and capability.'
     });
     const localLlmStatusSummary = localLlmStatusSection.createDiv({ cls: `${ERT_CLASSES.STACK_TIGHT} ert-ai-local-llm-status-summary` });
     const localLlmStatusChecks = localLlmStatusSection.createDiv({ cls: `${ERT_CLASSES.STACK_TIGHT} ert-ai-local-llm-status-checks` });
     const localLlmStatusTimestamp = localLlmStatusSection.createDiv({ cls: 'ert-field-note' });
+    const localLlmTroubleshootingDetails = localLlmStatusSection.createEl('details', {
+        cls: 'ert-ai-local-llm-troubleshooting ert-settings-hidden'
+    });
+    const localLlmTroubleshootingSummary = localLlmTroubleshootingDetails.createEl('summary', {
+        text: 'Troubleshooting'
+    });
+    localLlmTroubleshootingSummary.addClass('ert-ai-collapsible-summary');
+    const localLlmTroubleshootingBody = localLlmTroubleshootingDetails.createDiv({
+        cls: `${ERT_CLASSES.STACK_TIGHT} ert-ai-local-llm-troubleshooting-body`
+    });
 
     function clearLocalLlmModelLoadState(): void {
         localLlmLoadedModels = [];
@@ -2424,6 +2496,7 @@ export function renderAiSection(params: {
 
     const localLlmModelsSummary = localLlmConfigSection.createDiv({ cls: 'ert-field-note' });
     const localLlmModelsList = localLlmConfigSection.createDiv({ cls: `${ERT_CLASSES.INLINE} ert-ai-local-llm-model-list` });
+    const localLlmModelsLegend = localLlmConfigSection.createDiv({ cls: 'ert-field-note ert-ai-local-llm-model-legend' });
 
     const formatLocalTimestamp = (iso: string | null): string | null => {
         if (!iso) return null;
@@ -2468,18 +2541,22 @@ export function renderAiSection(params: {
         localLlmModelsSummary.setText(
             `Available local models: ${localLlmLoadedModels.length}. ${selectedExists ? 'Selected model found.' : 'Selected model missing from the loaded list.'}${loadStamp ? ` Last loaded ${loadStamp}.` : ''}`
         );
+        localLlmModelsLegend.setText('Red — Not usable · Orange — Limited · Green — Strong · Blue — Inquiry-eligible');
 
         localLlmLoadedModels.forEach(model => {
             const pill = localLlmModelsList.createSpan({
-                cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_SM} ert-ai-resolved-preview-pill`
+                cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_SM} ert-ai-resolved-preview-pill ert-ai-local-model-pill`
             });
+            const capability = getLocalCapabilityAssessment(model.id, model);
+            pill.addClass(`ert-ai-local-model-pill--tier${capability.tier}`);
             if (model.id === selectedModelId) {
                 pill.addClass(ERT_CLASSES.IS_ACTIVE);
             }
             pill.setText(model.id);
             pill.setAttribute('role', 'button');
             pill.setAttribute('tabindex', '0');
-            pill.setAttribute('aria-label', `Use local model ${model.id}`);
+            pill.setAttribute('aria-label', `Use local model ${model.id}. ${capability.tierName} ${capability.tierSummary}.`);
+            setTooltip(pill, buildLocalCapabilityTooltip(capability), { placement: 'top' });
             const applyModel = async (): Promise<void> => {
                 setOllamaModelId(model.id);
                 if (localLlmModelText) localLlmModelText.setValue(model.id);
@@ -2505,18 +2582,24 @@ export function renderAiSection(params: {
         const localLlm = getLocalLlmSettings(ensureCanonicalAiSettings());
         const selectedModelId = localLlm.defaultModelId.trim();
         const selectedExists = localLlmLoadedModels.some(model => model.id === selectedModelId);
+        const selectedCapability = getLocalCapabilityAssessment(selectedModelId, localLlmLoadedModels.find(model => model.id === selectedModelId) ?? null);
 
         localLlmStatusSummary.empty();
         localLlmStatusChecks.empty();
 
         const summaryLines: string[] = [];
         if (!localLlm.enabled) summaryLines.push('Status: Local LLM disabled');
-        else if (localLlmValidationPending) summaryLines.push('Status: Validating Local LLM');
-        else if (localLlmModelLoadPending) summaryLines.push('Status: Checking backend');
+        else if (localLlmValidationPending) summaryLines.push('Status: Validating');
+        else if (localLlmModelLoadPending) summaryLines.push('Status: Connecting');
         else if (localLlmValidationError) summaryLines.push('Status: Validation failed');
-        else if (localLlmValidationReport?.reachable.ok) summaryLines.push('Status: Connected');
-        else if (localLlmValidationReport && !localLlmValidationReport.reachable.ok) summaryLines.push('Status: Backend unreachable');
-        else if (localLlmLoadedModels.length > 0) summaryLines.push('Status: Models loaded');
+        else if (localLlmValidationReport?.reachable.ok
+            && localLlmValidationReport.modelAvailable.ok
+            && localLlmValidationReport.basicCompletion.ok
+            && localLlmValidationReport.structuredJson.ok) {
+            summaryLines.push('Status: Validated');
+        } else if (localLlmValidationReport?.reachable.ok) summaryLines.push('Status: Connected');
+        else if (localLlmValidationReport && !localLlmValidationReport.reachable.ok) summaryLines.push('Status: Not connected');
+        else if (localLlmLoadedModels.length > 0) summaryLines.push('Status: Connected');
         else summaryLines.push('Status: Not checked yet');
 
         summaryLines.push(`Backend: ${LOCAL_LLM_BACKEND_LABELS[localLlm.backend]}`);
@@ -2537,17 +2620,19 @@ export function renderAiSection(params: {
                 ? `Selected model: ${selectedExists ? `${selectedModelId} found` : `${selectedModelId} missing`}`
                 : 'Selected model: not set'
         );
+        summaryLines.push(`Capability tier: ${selectedCapability.tierName} — ${selectedCapability.tierSummary}${selectedCapability.confidence === 'heuristic' ? ' (heuristic)' : ''}`);
+        summaryLines.push('Capability reflects likely fit for Radial Timeline tasks, not a guarantee for every corpus.');
 
         summaryLines.forEach(line => {
             localLlmStatusSummary.createDiv({ cls: 'ert-field-note', text: line });
         });
 
         const checks: Array<[string, { ok: boolean; message: string } | null]> = [
-            ['Backend reachability', localLlmValidationReport?.reachable ?? null],
-            ['Selected model', localLlmValidationReport?.modelAvailable ?? null],
-            ['Basic completion', localLlmValidationReport?.basicCompletion ?? null],
-            ['Structured JSON', localLlmValidationReport?.structuredJson ?? null],
-            ['Repair path', localLlmValidationReport?.repairPath ?? null]
+            ['Connection', localLlmValidationReport?.reachable ?? null],
+            ['Model availability', localLlmValidationReport?.modelAvailable ?? null],
+            ['Basic validation', localLlmValidationReport?.basicCompletion ?? null],
+            ['Structured validation', localLlmValidationReport?.structuredJson ?? null],
+            ['Repair validation', localLlmValidationReport?.repairPath ?? null]
         ];
         checks.forEach(([label, check]) => {
             const line = localLlmStatusChecks.createDiv({ cls: 'ert-field-note' });
@@ -2573,6 +2658,12 @@ export function renderAiSection(params: {
                 ? 'Last checked: validating...'
                 : (stamp ? `Last checked: ${stamp}` : 'Last checked: not yet validated')
         );
+        const showTroubleshooting = shouldRevealLocalLlmTroubleshootingActions();
+        localLlmTroubleshootingDetails.classList.toggle('ert-settings-hidden', !showTroubleshooting);
+        localLlmTroubleshootingDetails.classList.toggle('ert-settings-visible', showTroubleshooting);
+        if (!showTroubleshooting) {
+            localLlmTroubleshootingDetails.open = false;
+        }
     };
 
     async function loadLocalLlmModels(options: { quiet?: boolean } = {}): Promise<void> {
@@ -2655,9 +2746,9 @@ export function renderAiSection(params: {
             });
     });
 
-    const localLlmActionsSetting = new Settings(localLlmStatusSection)
-        .setName('Validation actions')
-        .setDesc('Auto-checks run when Local LLM is selected or reconfigured. Use these actions to retry model loading or validation on demand.');
+    const localLlmActionsSetting = new Settings(localLlmTroubleshootingBody)
+        .setName('Retry checks')
+        .setDesc('Use these actions when the Local LLM connection, model list, or validation path needs another pass.');
     localLlmActionsSetting.addButton(button => button
         .setButtonText('Load Models')
         .onClick(() => {

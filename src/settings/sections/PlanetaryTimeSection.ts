@@ -1,4 +1,4 @@
-import { App, Setting as Settings, TextComponent, DropdownComponent, setIcon, setTooltip } from 'obsidian';
+import { App, Modal, Notice, Setting as Settings, TextComponent, DropdownComponent, ButtonComponent, setIcon, setTooltip } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import type { PlanetaryProfile } from '../../types';
 import { convertFromEarth, parseCommaNames, validatePlanetaryProfile } from '../../utils/planetaryTime';
@@ -40,7 +40,69 @@ const MARS_PROFILE = (): PlanetaryProfile => ({
     weekdayNames: ['Solis', 'Lunae', 'Martis', 'Mercurii', 'Jovis', 'Veneris', 'Saturni'],
 });
 
-export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParams): void {
+class PlanetaryProfileNameModal extends Modal {
+    private readonly initialValue: string;
+    private readonly onSubmit: (value: string) => Promise<void>;
+
+    constructor(app: App, initialValue: string, onSubmit: (value: string) => Promise<void>) {
+        super(app);
+        this.initialValue = initialValue;
+        this.onSubmit = onSubmit;
+    }
+
+    onOpen(): void {
+        const { contentEl, modalEl } = this;
+        contentEl.empty();
+
+        if (modalEl) {
+            modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal-shell--sm');
+        }
+
+        contentEl.addClass('ert-modal-container', 'ert-stack');
+        contentEl.createDiv({ cls: 'ert-modal-title', text: 'Rename profile' });
+        contentEl.createDiv({ cls: 'ert-modal-subtitle', text: 'Choose the label shown in the active profile selector and preview.' });
+
+        const inputWrap = contentEl.createDiv({ cls: 'ert-search-input-container' });
+        const inputEl = inputWrap.createEl('input', {
+            type: 'text',
+            value: this.initialValue,
+            cls: 'ert-input ert-input--full'
+        });
+        inputEl.setAttr('placeholder', 'Planet name');
+
+        const actions = contentEl.createDiv({ cls: 'ert-modal-actions' });
+        const save = async () => {
+            const value = inputEl.value.trim();
+            if (!value) {
+                new Notice('Please enter a profile name.');
+                return;
+            }
+            await this.onSubmit(value);
+            this.close();
+        };
+
+        new ButtonComponent(actions).setButtonText('Rename').setCta().onClick(() => { void save(); });
+        new ButtonComponent(actions).setButtonText('Cancel').onClick(() => this.close());
+
+        window.setTimeout(() => {
+            inputEl.focus();
+            inputEl.select();
+        }, 50);
+
+        inputEl.addEventListener('keydown', (evt: KeyboardEvent) => {
+            if (evt.key === 'Enter') {
+                evt.preventDefault();
+                void save();
+            }
+        });
+    }
+
+    onClose(): void {
+        this.contentEl.empty();
+    }
+}
+
+export function renderPlanetaryTimeSection({ app, plugin, containerEl }: SectionParams): void {
     containerEl.classList.add(ERT_CLASSES.STACK);
     const profiles = plugin.settings.planetaryProfiles || [];
     if (!plugin.settings.planetaryProfiles) {
@@ -175,6 +237,22 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
             });
         });
         selectorSetting.addExtraButton(btn => {
+            btn.setIcon('pencil');
+            btn.setTooltip('Rename profile');
+            btn.setDisabled(!activeProfileId);
+            btn.onClick(() => {
+                const profile = getActiveProfile();
+                if (!profile) return;
+                new PlanetaryProfileNameModal(app, profile.label || '', async (value) => {
+                    profile.label = value;
+                    await saveProfile(profile);
+                    renderSelector();
+                    renderFields();
+                    renderPreview();
+                }).open();
+            });
+        });
+        selectorSetting.addExtraButton(btn => {
             btn.setIcon('trash');
             const deleteDisabled = profiles.length === 0 || !activeProfileId;
             btn.setTooltip(t('planetary.actions.delete'));
@@ -244,7 +322,6 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
         const profile = getActiveProfile();
         const hasProfile = !!profile;
         fieldsContainer.classList.toggle('ert-settings-hidden', !hasProfile);
-        previewContainer.classList.toggle('ert-settings-hidden', !hasProfile);
         if (!hasProfile) return;
 
         const addNumberField = (label: string, key: keyof PlanetaryProfile, hint?: string) => {
@@ -291,7 +368,6 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
             });
         };
 
-        addTextField(t('planetary.fields.profileName'), 'label', undefined, renderSelector);
         addNumberField(t('planetary.fields.hoursPerDay'), 'hoursPerDay', 'Length of a local day in Earth hours (Earth = 24).');
         addNumberField(t('planetary.fields.daysPerWeek'), 'daysPerWeek', 'Local days in a week (Earth = 7).');
         addNumberField(t('planetary.fields.daysPerYear'), 'daysPerYear', 'Local days in a year (Earth = 365).');
@@ -339,13 +415,16 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
         previewContainer.empty();
         const profile = getActiveProfile();
         const hasProfile = !!profile;
-        previewContainer.classList.toggle('ert-settings-hidden', !hasProfile);
         fieldsContainer.classList.toggle('ert-settings-hidden', !hasProfile);
-        if (!hasProfile) return;
-        const result = convertFromEarth(new Date(), profile);
         const header = previewContainer.createDiv({ cls: ['ert-planetary-preview-heading', 'ert-previewFrame__title'] });
-        header.setText(`Quick preview (Earth → ${profile.label || 'local'})`);
         const body = previewContainer.createDiv({ cls: 'ert-planetary-preview-body' });
+        if (!hasProfile) {
+            header.setText(t('planetary.preview.heading'));
+            body.setText(t('planetary.preview.disabled'));
+            return;
+        }
+        const result = convertFromEarth(new Date(), profile);
+        header.setText(`Quick preview (Earth → ${profile.label || 'local'})`);
         if (!result) {
             body.setText(t('planetary.preview.invalid'));
             return;

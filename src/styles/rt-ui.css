@@ -2410,6 +2410,44 @@
   letter-spacing: 0.01em;
 }
 
+.ert-ui.ert-scope--settings .ert-ai-local-model-pill {
+  transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease, box-shadow 120ms ease;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-local-model-pill.ert-ai-local-model-pill--tier0 {
+  border-color: color-mix(in srgb, var(--text-error) 75%, transparent);
+  background: color-mix(in srgb, var(--text-error) 14%, transparent);
+  color: color-mix(in srgb, var(--text-error) 68%, var(--text-normal));
+}
+
+.ert-ui.ert-scope--settings .ert-ai-local-model-pill.ert-ai-local-model-pill--tier1 {
+  border-color: color-mix(in srgb, var(--color-orange) 72%, transparent);
+  background: color-mix(in srgb, var(--color-orange) 14%, transparent);
+  color: color-mix(in srgb, var(--color-orange) 70%, var(--text-normal));
+}
+
+.ert-ui.ert-scope--settings .ert-ai-local-model-pill.ert-ai-local-model-pill--tier2 {
+  border-color: color-mix(in srgb, var(--color-yellow) 70%, transparent);
+  background: color-mix(in srgb, var(--color-yellow) 12%, transparent);
+  color: color-mix(in srgb, var(--color-yellow) 65%, var(--text-normal));
+}
+
+.ert-ui.ert-scope--settings .ert-ai-local-model-pill.ert-ai-local-model-pill--tier3 {
+  border-color: color-mix(in srgb, var(--color-green) 74%, transparent);
+  background: color-mix(in srgb, var(--color-green) 12%, transparent);
+  color: color-mix(in srgb, var(--color-green) 66%, var(--text-normal));
+}
+
+.ert-ui.ert-scope--settings .ert-ai-local-model-pill.ert-ai-local-model-pill--tier4 {
+  border-color: color-mix(in srgb, var(--color-cyan) 78%, transparent);
+  background: color-mix(in srgb, var(--color-cyan) 12%, transparent);
+  color: color-mix(in srgb, var(--color-cyan) 68%, var(--text-normal));
+}
+
+.ert-ui.ert-scope--settings .ert-ai-local-model-pill.is-active {
+  box-shadow: 0 0 0 1px color-mix(in srgb, currentColor 22%, transparent);
+}
+
 .ert-ui.ert-scope--settings .ert-ai-local-llm-warning-label .setting-item-name {
   color: var(--text-error);
 }

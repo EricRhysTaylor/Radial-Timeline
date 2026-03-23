@@ -979,6 +979,7 @@ export class InquiryView extends ItemView {
             readinessMessageEl: this.enginePanelReadinessMessageEl,
             readinessActionsEl: this.enginePanelReadinessActionsEl,
             readinessScopeEl: this.enginePanelReadinessScopeEl,
+            providerLabel: engine.provider === 'ollama' ? 'Local LLM' : engine.providerLabel,
             popoverState: this.resolveEnginePopoverState(readinessUi),
             blocked: !!engine.blocked,
             corpusSummary: buildInquiryEngineCorpusSummary(this.getRTCorpusEstimate(), this.formatApproxCorpusTokens.bind(this)),

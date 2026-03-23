@@ -28,6 +28,7 @@ export function renderInquiryEngineReadinessStrip(args: {
     readinessMessageEl?: HTMLDivElement;
     readinessActionsEl?: HTMLDivElement;
     readinessScopeEl?: HTMLDivElement;
+    providerLabel: string;
     popoverState: InquiryEnginePopoverState;
     blocked: boolean;
     corpusSummary: string;
@@ -53,8 +54,9 @@ export function renderInquiryEngineReadinessStrip(args: {
     args.readinessEl.classList.remove('is-ready', 'is-amber', 'is-error');
     args.readinessEl.classList.add(stateClass);
 
+    const isLocalLlm = args.providerLabel === 'Ollama' || args.providerLabel === 'Local LLM';
     const statusText = args.blocked
-        ? 'No working model'
+        ? 'No eligible model for Inquiry'
         : args.popoverState === 'ready'
             ? 'Ready'
             : args.popoverState === 'multi-pass'
@@ -63,8 +65,13 @@ export function renderInquiryEngineReadinessStrip(args: {
     args.readinessStatusEl.setText(statusText);
     args.readinessCorpusEl.setText(args.corpusSummary);
 
-    if (args.popoverState === 'ready') {
+    if (args.blocked && isLocalLlm) {
+        args.readinessCorpusEl.setText('Local LLM is connected');
+        args.readinessMessageEl.setText('Selected model passes basic validation');
+        args.readinessScopeEl.setText('This model does not meet Inquiry requirements for the current corpus');
+    } else if (args.popoverState === 'ready') {
         args.readinessMessageEl.setText('Single pass.');
+        args.readinessScopeEl.setText(args.runScopeLabel);
     } else if (args.popoverState === 'multi-pass') {
         const estimateLabel = args.passPlan.estimatedPassCount ?? args.passPlan.displayPassCount;
         const recentRunSuffix = args.passPlan.recentExactPassCount
@@ -75,15 +82,16 @@ export function renderInquiryEngineReadinessStrip(args: {
         args.readinessMessageEl.setText(
             `Expected structured passes: ${estimateLabel} — ${reason.replace(/\.$/, '')}.${recentRunSuffix}`
         );
+        args.readinessScopeEl.setText(args.runScopeLabel);
     } else if (args.readinessCause === 'single_pass_limit') {
         const estimateLabel = args.passPlan.estimatedPassCount ?? args.passPlan.displayPassCount;
         args.readinessMessageEl.setText(
             `Expected structured passes: ${estimateLabel} — single-pass mode blocks this run.`
         );
+        args.readinessScopeEl.setText(args.runScopeLabel);
     } else {
         args.readinessMessageEl.setText(args.readinessReason);
+        args.readinessScopeEl.setText(args.runScopeLabel);
     }
-
-    args.readinessScopeEl.setText(args.runScopeLabel);
     args.readinessActionsEl.empty();
 }

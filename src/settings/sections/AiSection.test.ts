@@ -119,12 +119,13 @@ describe('AI settings models table', () => {
         expect(source.includes('params.addAiRelatedElement(inquiryAdvisoryFrame);')).toBe(false);
     });
 
-    it('keeps Local LLM configuration and status provider-gated instead of globally forced visible', () => {
+    it('keeps Local LLM configuration conditional while Local status stays visible for the Local provider', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
-        expect(source.includes('const showLocalLlmOverrideDetails = isOllama && shouldRevealLocalLlmOverrideSettings();')).toBe(true);
+        expect(source.includes('const showLocalLlmStatusDetails = isOllama;')).toBe(true);
         expect(source.includes('const showLocalLlmConfigDetails = isOllama && (')).toBe(true);
         expect(source.includes("localLlmConfigSectionEl.toggleClass('ert-settings-hidden', !showLocalLlmConfigDetails);")).toBe(true);
-        expect(source.includes("localLlmStatusSectionEl.toggleClass('ert-settings-hidden', !showLocalLlmOverrideDetails);")).toBe(true);
+        expect(source.includes("localLlmStatusSectionEl.toggleClass('ert-settings-hidden', !showLocalLlmStatusDetails);")).toBe(true);
+        expect(source.includes("largeHandlingSection.toggleClass('ert-settings-hidden', isOllama);")).toBe(true);
     });
 
     it('uses medium dropdown sizing for all AI Strategy controls', () => {
@@ -144,7 +145,7 @@ describe('AI settings models table', () => {
         expect(source.includes("addOption('gpt-5.4-pro-2026-03-05'")).toBe(false);
     });
 
-    it('renders always-visible AI transparency section with execution preference controls', () => {
+    it('renders cloud transparency sections while hiding them for the Local provider path', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
         expect(source.includes(".setName('What gets sent to the AI')")).toBe(true);
         expect(source.includes('Fresh Run*')).toBe(true);
@@ -170,6 +171,7 @@ describe('AI settings models table', () => {
         expect(source.includes('ert-ai-capacity-grid')).toBe(true);
         expect(source.includes('Expected Structured Passes')).toBe(true);
         expect(source.includes('Estimated provider input')).toBe(true);
+        expect(source.includes("largeHandlingSection.toggleClass('ert-settings-hidden', isOllama);")).toBe(true);
     });
 
     it('clarifies that Pulse context only affects hover reveal', () => {
@@ -244,15 +246,27 @@ describe('AI settings models table', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
         expect(source.includes('Load Models')).toBe(true);
         expect(source.includes('Validate Local LLM')).toBe(true);
+        expect(source.includes('Troubleshooting')).toBe(true);
+        expect(source.includes('Retry checks')).toBe(true);
+        expect(source.includes('shouldRevealLocalLlmTroubleshootingActions')).toBe(true);
         expect(source.includes('Available local models:')).toBe(true);
+        expect(source.includes('Red — Not usable · Orange — Limited · Green — Strong · Blue — Inquiry-eligible')).toBe(true);
         expect(source.includes('getLocalStrategyModelOptions')).toBe(true);
+        expect(source.includes('Capability tier:')).toBe(true);
+        expect(source.includes('Capability reflects likely fit for Radial Timeline tasks, not a guarantee for every corpus.')).toBe(true);
+        expect(source.includes('Auto-configuration diagnostics for the current Local LLM setup. This stays visible so you can confirm connection, validation, and capability.')).toBe(true);
+        expect(source.includes('Summary —')).toBe(true);
+        expect(source.includes('Inquiry —')).toBe(true);
+        expect(source.includes('buildLocalCapabilityTooltip')).toBe(true);
+        expect(source.includes('ert-ai-local-model-pill--tier')).toBe(true);
+        expect(source.includes('if (localLlmModelText) localLlmModelText.setValue(value);')).toBe(true);
         expect(source.includes('Checking backend and loading available local models...')).toBe(true);
         expect(source.includes('Selected model missing from the loaded list.')).toBe(true);
-        expect(source.includes("['Backend reachability', localLlmValidationReport?.reachable ?? null]")).toBe(true);
-        expect(source.includes("['Selected model', localLlmValidationReport?.modelAvailable ?? null]")).toBe(true);
-        expect(source.includes("['Basic completion', localLlmValidationReport?.basicCompletion ?? null]")).toBe(true);
-        expect(source.includes("['Structured JSON', localLlmValidationReport?.structuredJson ?? null]")).toBe(true);
-        expect(source.includes("['Repair path', localLlmValidationReport?.repairPath ?? null]")).toBe(true);
+        expect(source.includes("['Connection', localLlmValidationReport?.reachable ?? null]")).toBe(true);
+        expect(source.includes("['Model availability', localLlmValidationReport?.modelAvailable ?? null]")).toBe(true);
+        expect(source.includes("['Basic validation', localLlmValidationReport?.basicCompletion ?? null]")).toBe(true);
+        expect(source.includes("['Structured validation', localLlmValidationReport?.structuredJson ?? null]")).toBe(true);
+        expect(source.includes("['Repair validation', localLlmValidationReport?.repairPath ?? null]")).toBe(true);
         expect(source.includes('Last checked:')).toBe(true);
         expect(source.includes("const statusLabel = localLlmValidationPending")).toBe(true);
         expect(source.includes("'Checking...'")).toBe(true);
