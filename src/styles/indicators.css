@@ -128,31 +128,6 @@
   /* Brighter red on hover */
 }
 
-/* "NEW RELEASE" text animation when update available */
-.rt-has-update .rt-version-number {
-  animation: rt-new-release-pulse 2s ease-in-out infinite;
-}
-
-.rt-has-update:hover .rt-version-number {
-  animation: none;
-}
-
-.rt-has-update:hover .rt-version-action {
-  animation: rt-new-release-pulse 2s ease-in-out infinite;
-}
-
-@keyframes rt-new-release-pulse {
-
-  0%,
-  100% {
-    opacity: 1;
-  }
-
-  50% {
-    opacity: 0.6;
-  }
-}
-
 /* Bug icon (shown when no update available) */
 .rt-version-bug-icon {
   fill: none;
@@ -176,7 +151,6 @@
   opacity: 1;
   transition: opacity 0.3s ease, stroke 0.2s ease, filter 0.2s ease;
   cursor: pointer;
-  animation: rt-version-pulse 2s ease-in-out infinite;
 }
 
 /* Alert icon color matches severity */
@@ -220,35 +194,6 @@
   filter: drop-shadow(0 0 5px #f59e0b);
 }
 
-/* "SETTINGS ALERT" text animation */
-.rt-has-settings-alert .rt-version-number {
-  animation: rt-settings-alert-pulse 2s ease-in-out infinite;
-}
-
-.rt-has-settings-alert:hover .rt-version-number {
-  animation: none;
-}
-
-.rt-has-settings-alert:hover .rt-version-action {
-  animation: rt-settings-alert-pulse 2s ease-in-out infinite;
-}
-
-@keyframes rt-settings-alert-pulse {
-  0%, 100% { opacity: 0.7; }
-  50% { opacity: 1; }
-}
-
-@keyframes rt-version-pulse {
-
-  0%,
-  100% {
-    opacity: 0.6;
-  }
-
-  50% {
-    opacity: 1;
-  }
-}
 /* Progress Ring Base (thin gray track underneath) */
 .radial-timeline-container .progress-ring-base {
   fill: none;
@@ -470,43 +415,16 @@
   fill: var(--text-error, #ef4444);
   opacity: 1;
   transition: opacity 0.2s ease, fill 0.2s ease;
-  animation: rt-apr-text-pulse 2s ease-in-out infinite;
-}
-
-/* Text stops pulsing and shows action text on hover */
-.rt-apr-indicator:hover .rt-apr-indicator-text {
-  opacity: 1;
-  fill: var(--text-error, #ef4444);
-  animation: none;
 }
 
 /* Alert icon - pulsing like update indicator */
 .rt-apr-alert-icon {
   color: var(--text-error, #ef4444);
   stroke: var(--text-error, #ef4444);
-  animation: rt-apr-icon-pulse 2s ease-in-out infinite;
 }
 
 .rt-apr-indicator:hover .rt-apr-alert-icon {
   filter: drop-shadow(0 0 5px var(--text-error, #ef4444));
-}
-
-@keyframes rt-apr-text-pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
-}
-
-@keyframes rt-apr-icon-pulse {
-  0%, 100% {
-    opacity: 0.6;
-  }
-  50% {
-    opacity: 1;
-  }
 }
 
 /* =============================================================================
@@ -533,39 +451,8 @@
   /* Fill color is set inline from the milestone type */
   opacity: 1;
   transition: opacity 0.2s ease, fill 0.2s ease;
-  animation: rt-milestone-text-pulse 2s ease-in-out infinite;
-}
-
-/* Stop pulsing on hover */
-.rt-milestone-indicator:hover .rt-milestone-indicator-text {
-  opacity: 1;
-  animation: none;
-}
-
-/* Icon pulse animation - opacity-based like APR, no scale/dot */
-.rt-milestone-icon {
-  animation: rt-milestone-icon-pulse 2s ease-in-out infinite;
 }
 
 .rt-milestone-indicator:hover .rt-milestone-icon {
-  animation: none;
   filter: drop-shadow(0 0 5px currentColor);
-}
-
-@keyframes rt-milestone-text-pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
-}
-
-@keyframes rt-milestone-icon-pulse {
-  0%, 100% {
-    opacity: 0.6;
-  }
-  50% {
-    opacity: 1;
-  }
 }

@@ -365,7 +365,6 @@
 .ert-inquiry-icon-btn.is-briefing-pulse .ert-inquiry-icon-btn-bg {
   fill: color-mix(in srgb, var(--ert-inquiry-active-zone-color) 18%, var(--background-secondary));
   stroke: color-mix(in srgb, var(--ert-inquiry-active-zone-color) 65%, var(--background-modifier-border));
-  animation: ert-inquiry-briefing-pulse 2.4s ease-in-out infinite;
 }
 
 .ert-inquiry-icon-btn.is-rehydrate-pulse {
@@ -577,12 +576,7 @@
 }
 
 .ert-inquiry-minimap[data-reuse-state="warm"] .ert-inquiry-minimap-tokencap-cached {
-  animation: ert-minimap-cached-pulse 2.5s ease-in-out infinite;
-}
-
-@keyframes ert-minimap-cached-pulse {
-  0%, 100% { opacity: 0.65; }
-  50% { opacity: 0.95; }
+  opacity: 0.85;
 }
 
 /* Stub state — honest 4px white indicator when checking cache, no fabricated values */
@@ -619,12 +613,6 @@
 .ert-inquiry-svg.is-running .ert-inquiry-minimap-reuse-band {
   opacity: 0;
   animation: none;
-}
-
-@keyframes ert-minimap-reuse-pulse {
-  0%   { filter: drop-shadow(0 0 0 transparent); }
-  50%  { filter: drop-shadow(0 0 8px color-mix(in srgb, var(--text-accent) 45%, transparent)); }
-  100% { filter: drop-shadow(0 0 0 transparent); }
 }
 
 .ert-inquiry-svg.is-running .ert-inquiry-minimap-reuse-dot {
@@ -2414,7 +2402,6 @@ body.rt-modal-open .ert-inquiry-svg {
 .ert-inquiry-engine-guard.is-error-guidance {
   border-color: var(--rt-ai-error-border);
   background: color-mix(in srgb, var(--rt-ai-error) 12%, var(--background-secondary));
-  animation: ert-inquiry-engine-guard-error-pulse 1.7s ease-in-out infinite;
 }
 
 .ert-inquiry-engine-guard-note {
@@ -3161,35 +3148,7 @@ body.rt-modal-open .ert-inquiry-svg {
 
 
 .ert-inquiry-svg.is-error .ert-inquiry-glyph {
-  animation: ert-inquiry-pulse 1.6s ease-in-out infinite;
-}
-
-@keyframes ert-inquiry-pulse {
-  0% {
-    filter: drop-shadow(0 0 2px color-mix(in srgb, var(--ert-inquiry-ai-error) 60%, transparent));
-  }
-
-  50% {
-    filter: drop-shadow(0 0 10px color-mix(in srgb, var(--ert-inquiry-ai-error) 35%, transparent));
-  }
-
-  100% {
-    filter: drop-shadow(0 0 2px color-mix(in srgb, var(--ert-inquiry-ai-error) 60%, transparent));
-  }
-}
-
-@keyframes ert-inquiry-briefing-pulse {
-  0% {
-    filter: drop-shadow(0 0 2px color-mix(in srgb, var(--ert-inquiry-active-zone-color) 35%, transparent));
-  }
-
-  50% {
-    filter: drop-shadow(0 0 10px color-mix(in srgb, var(--ert-inquiry-active-zone-color) 25%, transparent));
-  }
-
-  100% {
-    filter: drop-shadow(0 0 2px color-mix(in srgb, var(--ert-inquiry-active-zone-color) 35%, transparent));
-  }
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--ert-inquiry-ai-error) 35%, transparent));
 }
 
 @keyframes ert-inquiry-rehydrate-pulse {
@@ -3539,137 +3498,6 @@ body.rt-modal-open .ert-inquiry-svg {
   color: var(--text-normal);
   font-size: var(--font-ui-small, 13px);
 }
-
-
-
-@keyframes ert-inquiry-help-pulse {
-  0% {
-    filter: drop-shadow(0 0 0 color-mix(in srgb, var(--ert-inquiry-help-onboarding) 40%, transparent));
-  }
-
-  50% {
-    filter: drop-shadow(0 0 10px color-mix(in srgb, var(--ert-inquiry-help-onboarding) 45%, transparent));
-  }
-
-  100% {
-    filter: drop-shadow(0 0 0 color-mix(in srgb, var(--ert-inquiry-help-onboarding) 40%, transparent));
-  }
-}
-
-@keyframes ert-inquiry-help-icon {
-  0% {
-    opacity: 0.78;
-  }
-
-  50% {
-    opacity: 1;
-  }
-
-  100% {
-    opacity: 0.78;
-  }
-}
-
-@keyframes ert-inquiry-help-results-pulse {
-  0% {
-    filter: drop-shadow(0 0 0 color-mix(in srgb, var(--ert-inquiry-active-zone-color) 40%, transparent));
-  }
-
-  50% {
-    filter: drop-shadow(0 0 10px color-mix(in srgb, var(--ert-inquiry-active-zone-color) 45%, transparent));
-  }
-
-  100% {
-    filter: drop-shadow(0 0 0 color-mix(in srgb, var(--ert-inquiry-active-zone-color) 40%, transparent));
-  }
-}
-
-@keyframes ert-inquiry-help-results-icon {
-  0% {
-    opacity: 0.78;
-  }
-
-  50% {
-    opacity: 1;
-  }
-
-  100% {
-    opacity: 0.78;
-  }
-}
-
-@keyframes ert-inquiry-guidance-pulse {
-  0% {
-    filter: drop-shadow(0 0 0 color-mix(in srgb, var(--ert-inquiry-alert) 40%, transparent));
-  }
-
-  50% {
-    filter: drop-shadow(0 0 10px color-mix(in srgb, var(--ert-inquiry-alert) 50%, transparent));
-  }
-
-  100% {
-    filter: drop-shadow(0 0 0 color-mix(in srgb, var(--ert-inquiry-alert) 40%, transparent));
-  }
-}
-
-@keyframes ert-inquiry-guidance-icon {
-  0% {
-    opacity: 0.75;
-  }
-
-  50% {
-    opacity: 1;
-  }
-
-  100% {
-    opacity: 0.75;
-  }
-}
-
-@keyframes ert-inquiry-engine-pulse {
-  0% {
-    filter: drop-shadow(0 0 0 color-mix(in srgb, var(--ert-inquiry-engine-pulse) 40%, transparent));
-  }
-
-  50% {
-    filter: drop-shadow(0 0 10px color-mix(in srgb, var(--ert-inquiry-engine-pulse) 55%, transparent));
-  }
-
-  100% {
-    filter: drop-shadow(0 0 0 color-mix(in srgb, var(--ert-inquiry-engine-pulse) 40%, transparent));
-  }
-}
-
-@keyframes ert-inquiry-engine-guard-error-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--rt-ai-error) 28%, transparent); }
-  50% { box-shadow: 0 0 0 7px color-mix(in srgb, var(--rt-ai-error) 8%, transparent); }
-}
-
-@keyframes ert-inquiry-engine-icon {
-  0% {
-    opacity: 0.78;
-  }
-
-  50% {
-    opacity: 1;
-  }
-
-  100% {
-    opacity: 0.78;
-  }
-}
-
-@keyframes ert-inquiry-pressure-pulse {
-  0%, 100% {
-    opacity: 0.85;
-    filter: drop-shadow(0 0 0 color-mix(in srgb, var(--rt-ai-error) 32%, transparent));
-  }
-  50% {
-    opacity: 1;
-    filter: drop-shadow(0 0 8px color-mix(in srgb, var(--rt-ai-error) 55%, transparent));
-  }
-}
-
 @media (max-width: 980px) {
   .ert-inquiry-svg {
     --ert-inquiry-panel-scale: 0.96;
