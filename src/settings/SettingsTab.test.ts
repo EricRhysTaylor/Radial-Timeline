@@ -12,10 +12,11 @@ describe('AI settings tab vocabulary', () => {
         expect(source.includes('_localModelIdInput')).toBe(false);
     });
 
-    it('keeps Google and Ollama as the active UI provider labels', () => {
+    it('keeps canonical internal refs for Local LLM validation inputs without old local provider fields', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/SettingsTab.ts'), 'utf8');
         expect(source.includes('google?: HTMLElement')).toBe(true);
         expect(source.includes('ollama?: HTMLElement')).toBe(true);
-        expect(source.includes('Local LLM')).toBe(false);
+        expect(source.includes('_localBaseUrlInput')).toBe(false);
+        expect(source.includes('_localModelIdInput')).toBe(false);
     });
 });

@@ -119,11 +119,12 @@ describe('AI settings models table', () => {
         expect(source.includes('params.addAiRelatedElement(inquiryAdvisoryFrame);')).toBe(false);
     });
 
-    it('keeps local quick-config provider-gated instead of globally forced visible', () => {
+    it('keeps Local LLM configuration and status provider-gated instead of globally forced visible', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
-        expect(source.includes('params.addAiRelatedElement(ollamaQuickConfigSection);')).toBe(false);
-        expect(source.includes("ollamaQuickConfigSectionEl.toggleClass('ert-settings-hidden', !isOllama);")).toBe(true);
-        expect(source.includes("ollamaQuickConfigSectionEl.toggleClass('ert-settings-visible', isOllama);")).toBe(true);
+        expect(source.includes("localLlmConfigSectionEl.toggleClass('ert-settings-hidden', !isOllama);")).toBe(true);
+        expect(source.includes("localLlmConfigSectionEl.toggleClass('ert-settings-visible', isOllama);")).toBe(true);
+        expect(source.includes("localLlmStatusSectionEl.toggleClass('ert-settings-hidden', !isOllama);")).toBe(true);
+        expect(source.includes("localLlmStatusSectionEl.toggleClass('ert-settings-visible', isOllama);")).toBe(true);
     });
 
     it('uses medium dropdown sizing for all AI Strategy controls', () => {
@@ -147,14 +148,18 @@ describe('AI settings models table', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
         expect(source.includes(".setName('What gets sent to the AI')")).toBe(true);
         expect(source.includes('Fresh Run*')).toBe(true);
-        expect(source.includes('* Estimates use published provider pricing. Actual charges may differ due to provider-side billing rules and account-level adjustments such as caching, credits, promos, or contract pricing.')).toBe(true);
+        expect(source.includes('* Cloud-provider rows use published provider pricing. Actual charges may differ due to provider-side billing rules and account-level adjustments such as caching, credits, promos, or contract pricing.')).toBe(true);
+        expect(source.includes('Local processing runs on your machine. No API charges. Performance and output depend on your hardware and model.')).toBe(true);
         expect(source.includes('https://openai.com/api/pricing/')).toBe(true);
         expect(source.includes('https://platform.claude.com/docs/en/about-claude/pricing')).toBe(true);
         expect(source.includes('https://ai.google.dev/')).toBe(true);
         expect(source.includes('Google Gemini')).toBe(false);
         expect(source.includes('Local LLM Configuration')).toBe(true);
+        expect(source.includes('Local LLM Status / Validation')).toBe(true);
         expect(source.includes("rowEl.addClass('ert-ai-models-row--active')")).toBe(true);
         expect(source.includes('setActiveCostComparisonRow(provider, displayModel.id)')).toBe(true);
+        expect(source.includes("freshText: 'Local compute'")).toBe(true);
+        expect(source.includes("cachedText: 'Local compute'")).toBe(true);
         expect(source.includes('Request composition')).toBe(false);
         expect(source.includes("createEl('details', { cls: 'ert-ai-fold ert-ai-large-handling' }")).toBe(false);
         expect(source.includes('attachAiCollapseButton(largeHandling')).toBe(false);
@@ -214,14 +219,32 @@ describe('AI settings models table', () => {
         expect(source.includes('Saved (not tested)')).toBe(false);
     });
 
-    it('uses canonical Ollama naming for the quick config surface', () => {
+    it('uses Local LLM as the provider label and keeps backend names inside the Local LLM section only', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
+        expect(source.includes("dropdown.addOption('ollama', 'Local LLM');")).toBe(true);
+        expect(source.includes(".addOption('ollama', 'Ollama')")).toBe(true);
         expect(source.includes('Local LLM Configuration')).toBe(true);
         expect(source.includes('Local LLM backend')).toBe(true);
-        expect(source.includes('Local LLM base URL')).toBe(true);
-        expect(source.includes('Ollama API key')).toBe(true);
+        expect(source.includes("providerLabel: 'Local LLM'")).toBe(true);
+        expect(source.includes('Ollama API key')).toBe(false);
+        expect(source.includes('Advanced: Ollama saved key (optional)')).toBe(false);
+        expect(source.includes('Ollama saved key name')).toBe(false);
+        expect(source.includes('Ollama key status')).toBe(false);
         expect(source.includes('Local API key')).toBe(false);
         expect(source.includes('ert-provider-local')).toBe(false);
         expect(source.includes('ert-provider-gemini')).toBe(false);
+    });
+
+    it('shows Local LLM model loading and persistent validation messaging in the primary flow', () => {
+        const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
+        expect(source.includes('Load Models')).toBe(true);
+        expect(source.includes('Validate Local LLM')).toBe(true);
+        expect(source.includes('Available local models:')).toBe(true);
+        expect(source.includes('Selected model missing from the loaded list.')).toBe(true);
+        expect(source.includes("['Backend reachability', localLlmValidationReport?.reachable ?? null]")).toBe(true);
+        expect(source.includes("['Basic completion', localLlmValidationReport?.basicCompletion ?? null]")).toBe(true);
+        expect(source.includes("['Structured JSON', localLlmValidationReport?.structuredJson ?? null]")).toBe(true);
+        expect(source.includes("['Repair path', localLlmValidationReport?.repairPath ?? null]")).toBe(true);
+        expect(source.includes('Last checked:')).toBe(true);
     });
 });

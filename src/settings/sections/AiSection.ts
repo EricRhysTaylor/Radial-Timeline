@@ -17,6 +17,7 @@ import { selectModel } from '../../ai/router/selectModel';
 import { computeCaps } from '../../ai/caps/computeCaps';
 import { resolveEngineCapabilities } from '../../ai/caps/engineCapabilities';
 import { getAIClient } from '../../ai/runtime/aiClient';
+import { getLocalLlmClient } from '../../ai/localLlm/client';
 import {
     getCredential,
     getCredentialSecretId,
@@ -24,8 +25,9 @@ import {
     needsLegacyKeyMigration,
     setCredentialSecretId
 } from '../../ai/credentials/credentials';
-import { getSecret, hasSecret, isSecretStorageAvailable, setSecret } from '../../ai/credentials/secretStorage';
+import { hasSecret, isSecretStorageAvailable, setSecret } from '../../ai/credentials/secretStorage';
 import type { AccessTier, AIProviderId, Capability, ModelInfo, ModelStatus, RTCorpusTokenBreakdown } from '../../ai/types';
+import type { LocalLlmDiagnosticsReport } from '../../ai/localLlm/diagnostics';
 import { buildCanonicalExecutionEstimate, estimateGossamerTokens } from '../../ai/forecast/estimateTokensFromVault';
 import {
     estimateCorpusCost,
@@ -46,8 +48,7 @@ import { extractBeatOrder } from '../../utils/gossamer';
 import { resolveSelectedBeatModelFromSettings } from '../../utils/beatSystemState';
 import { getSynopsisGenerationWordLimit, getSynopsisHoverLineLimit } from '../../utils/synopsisLimits';
 import { getResolvedModelId } from '../../utils/modelResolver';
-import { getLocalLlmBackend } from '../../ai/localLlm/backends';
-import { getLocalLlmSettings } from '../../ai/localLlm/settings';
+import { getLocalLlmSettings, LOCAL_LLM_BACKEND_LABELS, resolveLocalLlmModelInfo } from '../../ai/localLlm/settings';
 import type { LocalLlmBackendId } from '../../ai/types';
 
 type Provider = 'anthropic' | 'google' | 'openai' | 'ollama';
@@ -235,7 +236,11 @@ export function renderAiSection(params: {
     const costEstimateTable = costEstimateSection.createDiv({ cls: 'ert-ai-models-table' });
     costEstimateSection.createDiv({
         cls: 'ert-ai-cost-footnote',
-        text: '* Estimates use published provider pricing. Actual charges may differ due to provider-side billing rules and account-level adjustments such as caching, credits, promos, or contract pricing.'
+        text: '* Cloud-provider rows use published provider pricing. Actual charges may differ due to provider-side billing rules and account-level adjustments such as caching, credits, promos, or contract pricing.'
+    });
+    costEstimateSection.createDiv({
+        cls: 'ert-ai-cost-footnote',
+        text: 'Local processing runs on your machine. No API charges. Performance and output depend on your hardware and model.'
     });
     const costEstimateLinks = costEstimateSection.createDiv({ cls: 'ert-ai-cost-links' });
     costEstimateLinks.createSpan({ text: 'See provider pricing: ' });
@@ -719,7 +724,7 @@ export function renderAiSection(params: {
         anthropic: 'Anthropic',
         openai: 'OpenAI',
         google: 'Google',
-        ollama: 'Ollama',
+        ollama: 'Local LLM',
         none: 'Disabled'
     };
 
@@ -914,7 +919,7 @@ export function renderAiSection(params: {
 
     const providerSetting = new Settings(quickSetupGrid)
         .setName('Provider')
-        .setDesc('Select the AI service that powers structural analysis and editorial insight.');
+        .setDesc('Select the AI service or Local LLM runtime that powers structural analysis and editorial insight.');
     providerSetting.settingEl.setAttr('data-ert-role', 'ai-setting:provider');
     let providerDropdown: DropdownComponent | null = null;
     providerSetting.addDropdown(dropdown => {
@@ -923,7 +928,7 @@ export function renderAiSection(params: {
         dropdown.addOption('anthropic', 'Anthropic');
         dropdown.addOption('openai', 'OpenAI');
         dropdown.addOption('google', 'Google');
-        dropdown.addOption('ollama', 'Ollama');
+        dropdown.addOption('ollama', 'Local LLM');
         dropdown.onChange(async value => {
             if (isSyncingRoutingUi) return;
             const aiSettings = ensureCanonicalAiSettings();
@@ -967,6 +972,8 @@ export function renderAiSection(params: {
 
     // Do not rewrite this copy as generic: it reflects limits specifically granted to the author/user by their provider.
     const ACCESS_TIER_COPY = 'Increase available context headroom if your provider has granted you a higher Tier.';
+    const LOCAL_MODEL_STRATEGY_COPY = 'Select models in the Local LLM Configuration section below.';
+    const LOCAL_ACCESS_TIER_COPY = 'Cloud access tiers do not apply to Local LLM.';
 
     const accessTierSetting = new Settings(quickSetupGrid)
         .setName('Access')
@@ -1043,9 +1050,10 @@ export function renderAiSection(params: {
     params.addAiRelatedElement(resolvedPreviewFrame);
 
     // Forward-declared; populated after credential helpers are defined.
-    let ollamaQuickConfigSectionEl: HTMLElement | null = null;
+    let localLlmConfigSectionEl: HTMLElement | null = null;
+    let localLlmStatusSectionEl: HTMLElement | null = null;
 
-    applyStrategyRowCopyLayout(providerSetting, 'Select the AI service that powers structural analysis and editorial insight.');
+    applyStrategyRowCopyLayout(providerSetting, 'Select the AI service or Local LLM runtime that powers structural analysis and editorial insight.');
     applyStrategyRowCopyLayout(modelOverrideSetting, 'Use Auto for deterministic latest-stable selection, or pin a specific model.');
     applyStrategyRowCopyLayout(accessTierSetting, ACCESS_TIER_COPY);
 
@@ -1172,23 +1180,33 @@ export function renderAiSection(params: {
         }
     };
 
-    const getCostComparisonModels = (): CostComparisonModel[] => COST_PROVIDER_ORDER.flatMap(provider => {
-        const providerModels = getPickerModelsForProvider(BUILTIN_MODELS, provider)
-            .filter(model => !model.id.endsWith('-latest'))
-            .filter(model => supportsCostComparisonModel(provider, model.id))
-            .sort((left, right) => {
-                const statusDelta = MODEL_STATUS_ORDER[left.status] - MODEL_STATUS_ORDER[right.status];
-                if (statusDelta !== 0) return statusDelta;
-                return compareNewestModels(left, right);
-            });
+    const getCostComparisonModels = (): CostComparisonModel[] => {
+        const cloudModels: CostComparisonModel[] = COST_PROVIDER_ORDER.flatMap(provider => {
+            const providerModels = getPickerModelsForProvider(BUILTIN_MODELS, provider)
+                .filter(model => !model.id.endsWith('-latest'))
+                .filter(model => supportsCostComparisonModel(provider, model.id))
+                .sort((left, right) => {
+                    const statusDelta = MODEL_STATUS_ORDER[left.status] - MODEL_STATUS_ORDER[right.status];
+                    if (statusDelta !== 0) return statusDelta;
+                    return compareNewestModels(left, right);
+                });
 
-        return providerModels.map(model => ({
-            provider,
-            modelId: model.id,
-            providerLabel: PROVIDER_LABELS[provider],
-            modelLabel: model.label
-        }));
-    });
+            return providerModels.map(model => ({
+                provider,
+                modelId: model.id,
+                providerLabel: PROVIDER_LABELS[provider],
+                modelLabel: model.label
+            }));
+        });
+
+        const localModel = resolveLocalLlmModelInfo(ensureCanonicalAiSettings());
+        return cloudModels.concat({
+            provider: 'ollama',
+            modelId: localModel.id,
+            providerLabel: 'Local LLM',
+            modelLabel: localModel.label
+        });
+    };
 
     const createCostTableCell = (rowEl: HTMLElement, text: string, extraCls?: string): void => {
         rowEl.createDiv({
@@ -1318,6 +1336,15 @@ export function renderAiSection(params: {
                 });
                 if (!executionEstimate?.expectedPassCount || !executionEstimate.maxOutputTokens) {
                     throw new Error('Canonical execution estimate unavailable.');
+                }
+                if (model.provider === 'ollama') {
+                    const passLabel = `${executionEstimate.expectedPassCount} ${executionEstimate.expectedPassCount === 1 ? 'pass' : 'passes'}`;
+                    return {
+                        model,
+                        freshText: 'Local compute',
+                        cachedText: 'Local compute',
+                        passesText: passLabel
+                    };
                 }
                 const cost = estimateCorpusCost(
                     model.provider,
@@ -1574,11 +1601,20 @@ export function renderAiSection(params: {
 
         providerSetting.settingEl.toggleClass('ert-settings-hidden', false);
         providerSetting.settingEl.toggleClass('ert-settings-visible', true);
-        // Model and Access Tier stay visible but show "—" when Ollama is active.
+        // Model and Access Tier stay visible but show "—" when Local LLM is active.
         modelOverrideSetting.settingEl.toggleClass('ert-settings-hidden', false);
         modelOverrideSetting.settingEl.toggleClass('ert-settings-visible', true);
         accessTierSetting.settingEl.toggleClass('ert-settings-hidden', false);
         accessTierSetting.settingEl.toggleClass('ert-settings-visible', true);
+
+        const modelStrategyDesc = modelOverrideSetting.settingEl.querySelector('.ert-ai-strategy-row__desc');
+        if (modelStrategyDesc instanceof HTMLElement) {
+            modelStrategyDesc.textContent = isOllama ? LOCAL_MODEL_STRATEGY_COPY : 'Use Auto for deterministic latest-stable selection, or pin a specific model.';
+        }
+        const accessTierDesc = accessTierSetting.settingEl.querySelector('.ert-ai-strategy-row__desc');
+        if (accessTierDesc instanceof HTMLElement) {
+            accessTierDesc.textContent = isOllama ? LOCAL_ACCESS_TIER_COPY : ACCESS_TIER_COPY;
+        }
 
         if (!isOllama) {
             const supportsAccessTier = provider === 'anthropic' || provider === 'openai' || provider === 'google';
@@ -1589,10 +1625,16 @@ export function renderAiSection(params: {
             }
         }
 
-        // Toggle Ollama quick-config section visibility
-        if (ollamaQuickConfigSectionEl) {
-            ollamaQuickConfigSectionEl.toggleClass('ert-settings-hidden', !isOllama);
-            ollamaQuickConfigSectionEl.toggleClass('ert-settings-visible', isOllama);
+        apiKeysFold.toggleClass('ert-settings-hidden', isOllama);
+        apiKeysFold.toggleClass('ert-settings-visible', !isOllama);
+
+        if (localLlmConfigSectionEl) {
+            localLlmConfigSectionEl.toggleClass('ert-settings-hidden', !isOllama);
+            localLlmConfigSectionEl.toggleClass('ert-settings-visible', isOllama);
+        }
+        if (localLlmStatusSectionEl) {
+            localLlmStatusSectionEl.toggleClass('ert-settings-hidden', !isOllama);
+            localLlmStatusSectionEl.toggleClass('ert-settings-visible', isOllama);
         }
 
         capacityInquiryToken.setText('Calculating...');
@@ -1785,28 +1827,11 @@ export function renderAiSection(params: {
         params.addAiRelatedElement(migrateKeysSetting.settingEl);
     }
 
-    type LocalKeyStatus = 'saved' | 'not_saved';
     type ProviderKeyUiState = 'ready' | 'not_configured' | 'rejected' | 'network_blocked' | 'checking';
     const configureSensitiveInput = (inputEl: HTMLInputElement): void => {
         inputEl.type = 'password';
         inputEl.autocomplete = 'new-password';
         inputEl.spellcheck = false;
-    };
-    const buildLocalKeyStatusDesc = (status: LocalKeyStatus): DocumentFragment => {
-        const desc = document.createDocumentFragment();
-        const row = document.createElement('span');
-        row.className = `ert-ai-key-status is-${status}`;
-        const icon = row.createSpan({ cls: 'ert-ai-key-status__icon' });
-        const text = row.createSpan({ cls: 'ert-ai-key-status__text' });
-        if (status === 'saved') {
-            setIcon(icon, 'check-circle-2');
-            text.setText('Saved');
-        } else {
-            setIcon(icon, 'alert-triangle');
-            text.setText('Not saved');
-        }
-        desc.appendChild(row);
-        return desc;
     };
     const extractStatusCodeFromError = (message: string): number | null => {
         const wrapped = message.match(/\((\d{1,3})\)/);
@@ -2127,18 +2152,43 @@ export function renderAiSection(params: {
         docsUrl: 'https://platform.openai.com'
     });
 
-    const ollamaWrapper = configurationBody.createDiv({
-        cls: ['ert-provider-section', 'ert-provider-ollama', ERT_CLASSES.STACK]
+    params.setProviderSections({ anthropic: anthropicSection, google: googleSection, openai: openaiSection });
+
+    const aiLogFolder = resolveAiLogFolder();
+    let localLlmModelText: TextComponent | null = null;
+    let localLlmLoadedModels: Array<{ id: string }> = [];
+    let localLlmModelLoadError: string | null = null;
+    let localLlmLastLoadedAt: string | null = null;
+    let localLlmValidationReport: LocalLlmDiagnosticsReport | null = null;
+    let localLlmValidationError: string | null = null;
+    let localLlmLastValidatedAt: string | null = null;
+
+    const localLlmConfigSection = quickSetupPreviewSection.createDiv({
+        cls: [`${ERT_CLASSES.CARD}`, `${ERT_CLASSES.PANEL}`, `${ERT_CLASSES.STACK}`, 'ert-ai-local-llm-config', 'ert-settings-hidden']
     });
-    params.setProviderSections({ anthropic: anthropicSection, google: googleSection, openai: openaiSection, ollama: ollamaWrapper });
-    params.addAiRelatedElement(ollamaWrapper);
+    localLlmConfigSectionEl = localLlmConfigSection;
+    localLlmConfigSection.createDiv({ cls: 'ert-section-title', text: 'Local LLM Configuration' });
+    localLlmConfigSection.createDiv({
+        cls: 'ert-section-desc',
+        text: 'Configure the Local LLM runtime family here. The active model preview above updates as you change these fields.'
+    });
 
-    const ollamaBaseStack = ollamaWrapper.createDiv({ cls: ERT_CLASSES.STACK });
-    let ollamaModelText: TextComponent | null = null;
+    const localLlmStatusSection = quickSetupPreviewSection.createDiv({
+        cls: [`${ERT_CLASSES.CARD}`, `${ERT_CLASSES.PANEL}`, `${ERT_CLASSES.STACK}`, 'ert-ai-local-llm-status', 'ert-settings-hidden']
+    });
+    localLlmStatusSectionEl = localLlmStatusSection;
+    localLlmStatusSection.createDiv({ cls: 'ert-section-title', text: 'Local LLM Status / Validation' });
+    localLlmStatusSection.createDiv({
+        cls: 'ert-section-desc',
+        text: 'Persistent checks for the current Local LLM setup. Use this to confirm model loading, structured JSON, and repair behavior before running Pulse or Inquiry.'
+    });
+    const localLlmStatusSummary = localLlmStatusSection.createDiv({ cls: `${ERT_CLASSES.STACK_TIGHT} ert-ai-local-llm-status-summary` });
+    const localLlmStatusChecks = localLlmStatusSection.createDiv({ cls: `${ERT_CLASSES.STACK_TIGHT} ert-ai-local-llm-status-checks` });
+    const localLlmStatusTimestamp = localLlmStatusSection.createDiv({ cls: 'ert-field-note' });
 
-    const ollamaBackendSetting = new Settings(ollamaBaseStack)
+    const localLlmBackendSetting = new Settings(localLlmConfigSection)
         .setName('Local LLM backend')
-        .setDesc('Choose the backend behind the Local LLM runtime family. Backend-specific transport details stay below this canonical seam.')
+        .setDesc('Choose the backend behind the Local LLM runtime family. Backend-specific transport stays below this canonical seam.')
         .addDropdown(dropdown => {
             dropdown
                 .addOption('ollama', 'Ollama')
@@ -2151,15 +2201,18 @@ export function renderAiSection(params: {
                         ...getLocalLlmSettings(aiSettings),
                         backend: value as LocalLlmBackendId
                     };
+                    localLlmValidationReport = null;
+                    localLlmValidationError = null;
                     await persistCanonical();
                     params.scheduleKeyValidation('ollama');
+                    renderLocalLlmStatus();
                 });
         });
-    ollamaBackendSetting.settingEl.addClass(ERT_CLASSES.ROW);
+    localLlmBackendSetting.settingEl.addClass(ERT_CLASSES.ROW);
 
-    const ollamaBaseUrlSetting = new Settings(ollamaBaseStack)
-        .setName('Local LLM base URL')
-        .setDesc('The API endpoint for the selected Local LLM backend. For Ollama use "http://localhost:11434/v1". For LM Studio use "http://localhost:1234/v1".')
+    const localLlmBaseUrlSetting = new Settings(localLlmConfigSection)
+        .setName('Base URL')
+        .setDesc('The API endpoint for the selected Local LLM backend. For example: Ollama "http://localhost:11434/v1" or LM Studio "http://localhost:1234/v1".')
         .addText(text => {
             text.inputEl.addClass('ert-input--full');
             text
@@ -2175,36 +2228,36 @@ export function renderAiSection(params: {
                     text.inputEl.blur();
                 }
             });
-            const handleBlur = async () => {
-                const aiSettings = ensureCanonicalAiSettings();
-                aiSettings.localLlm = {
-                    ...getLocalLlmSettings(aiSettings),
-                    baseUrl: text.getValue().trim() || 'http://localhost:11434/v1'
-                };
-                await persistCanonical();
-                params.scheduleKeyValidation('ollama');
-            };
-            plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });
+            plugin.registerDomEvent(text.inputEl, 'blur', () => {
+                void (async () => {
+                    const aiSettings = ensureCanonicalAiSettings();
+                    aiSettings.localLlm = {
+                        ...getLocalLlmSettings(aiSettings),
+                        baseUrl: text.getValue().trim() || 'http://localhost:11434/v1'
+                    };
+                    localLlmValidationReport = null;
+                    localLlmValidationError = null;
+                    await persistCanonical();
+                    params.scheduleKeyValidation('ollama');
+                    renderLocalLlmStatus();
+                })();
+            });
             params.setOllamaConnectionInputs({ baseInput: text.inputEl });
         });
-    ollamaBaseUrlSetting.settingEl.addClass('ert-setting-full-width-input');
+    localLlmBaseUrlSetting.settingEl.addClass('ert-setting-full-width-input');
 
-    // Advisory note as separate section
-    const ollamaWarningSection = ollamaBaseStack.createDiv({ cls: ['ert-ollama-advisory', ERT_CLASSES.ROW] });
-    ollamaWarningSection.createEl('strong', { text: 'Advisory Note', cls: 'ert-ollama-advisory-title' });
-    const aiLogFolder = resolveAiLogFolder();
-    ollamaWarningSection.createSpan({
+    const localLlmAdvisory = localLlmConfigSection.createDiv({ cls: ['ert-ollama-advisory', ERT_CLASSES.ROW] });
+    localLlmAdvisory.createEl('strong', { text: 'Advisory Note', cls: 'ert-ollama-advisory-title' });
+    localLlmAdvisory.createSpan({
         text: `By default, Local LLM pulse results are stored in the AI log folder (${aiLogFolder}) instead of writing directly to scene hover fields. That protects scene formatting when a local backend returns unstable structure.`
     });
 
-    const ollamaExtrasStack = ollamaWrapper.createDiv({ cls: [ERT_CLASSES.STACK, 'ert-ai-ollama-extras'] });
-
-    const ollamaModelSetting = new Settings(ollamaExtrasStack)
-        .setName('Model ID')
-        .setDesc('The exact model name your server expects (e.g., "llama3", "mistral-7b", "ollama-model").')
+    const localLlmModelSetting = new Settings(localLlmConfigSection)
+        .setName('Selected model')
+        .setDesc('Use the exact model ID expected by your backend, or load models and pick from the available list below.')
         .addText(text => {
             text.inputEl.addClass('ert-input--lg');
-            ollamaModelText = text;
+            localLlmModelText = text;
             text
                 .setPlaceholder('llama3')
                 .setValue(getOllamaModelId());
@@ -2218,61 +2271,190 @@ export function renderAiSection(params: {
                     text.inputEl.blur();
                 }
             });
-            const handleBlur = async () => {
-                setOllamaModelId(text.getValue());
-                await persistCanonical();
-                params.scheduleKeyValidation('ollama');
-            };
-            plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });
+            plugin.registerDomEvent(text.inputEl, 'blur', () => {
+                void (async () => {
+                    setOllamaModelId(text.getValue());
+                    localLlmValidationReport = null;
+                    localLlmValidationError = null;
+                    await persistCanonical();
+                    params.scheduleKeyValidation('ollama');
+                    renderLocalLlmModelList();
+                    renderLocalLlmStatus();
+                    void refreshRoutingUi();
+                })();
+            });
             params.setOllamaConnectionInputs({ modelInput: text.inputEl });
         });
-    ollamaModelSetting.settingEl.addClass(ERT_CLASSES.ROW);
+    localLlmModelSetting.settingEl.addClass(ERT_CLASSES.ROW);
 
-    ollamaModelSetting.addExtraButton(button => {
+    const localLlmModelsSummary = localLlmConfigSection.createDiv({ cls: 'ert-field-note' });
+    const localLlmModelsList = localLlmConfigSection.createDiv({ cls: `${ERT_CLASSES.INLINE} ert-ai-local-llm-model-list` });
+
+    const formatLocalTimestamp = (iso: string | null): string | null => {
+        if (!iso) return null;
+        const parsed = new Date(iso);
+        if (Number.isNaN(parsed.getTime())) return null;
+        return parsed.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    };
+
+    const renderLocalLlmModelList = (): void => {
+        const selectedModelId = getOllamaModelId().trim();
+        const selectedExists = localLlmLoadedModels.some(model => model.id === selectedModelId);
+
+        localLlmModelsList.empty();
+        if (localLlmModelLoadError) {
+            localLlmModelsSummary.setText(`Model list unavailable: ${localLlmModelLoadError}`);
+            return;
+        }
+
+        if (!localLlmLoadedModels.length) {
+            localLlmModelsSummary.setText('No models loaded yet. Click Load Models to query the selected backend.');
+            return;
+        }
+
+        const loadStamp = formatLocalTimestamp(localLlmLastLoadedAt);
+        localLlmModelsSummary.setText(
+            `Available local models: ${localLlmLoadedModels.length}. ${selectedExists ? 'Selected model found.' : 'Selected model missing from the loaded list.'}${loadStamp ? ` Last loaded ${loadStamp}.` : ''}`
+        );
+
+        localLlmLoadedModels.forEach(model => {
+            const pill = localLlmModelsList.createSpan({
+                cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_SM} ert-ai-resolved-preview-pill`
+            });
+            if (model.id === selectedModelId) {
+                pill.addClass(ERT_CLASSES.IS_ACTIVE);
+            }
+            pill.setText(model.id);
+            pill.setAttribute('role', 'button');
+            pill.setAttribute('tabindex', '0');
+            pill.setAttribute('aria-label', `Use local model ${model.id}`);
+            const applyModel = async (): Promise<void> => {
+                setOllamaModelId(model.id);
+                if (localLlmModelText) localLlmModelText.setValue(model.id);
+                await persistCanonical();
+                params.scheduleKeyValidation('ollama');
+                renderLocalLlmModelList();
+                renderLocalLlmStatus();
+                void refreshRoutingUi();
+            };
+            plugin.registerDomEvent(pill, 'click', () => { void applyModel(); });
+            plugin.registerDomEvent(pill, 'keydown', (event: KeyboardEvent) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    void applyModel();
+                }
+            });
+        });
+    };
+
+    const renderLocalLlmStatus = (): void => {
+        const localLlm = getLocalLlmSettings(ensureCanonicalAiSettings());
+        const selectedModelId = localLlm.defaultModelId.trim();
+        const selectedExists = localLlmLoadedModels.some(model => model.id === selectedModelId);
+
+        localLlmStatusSummary.empty();
+        localLlmStatusChecks.empty();
+
+        const summaryLines: string[] = [];
+        if (!localLlm.enabled) summaryLines.push('Status: Local LLM disabled');
+        else if (localLlmValidationError) summaryLines.push('Status: Validation failed');
+        else if (localLlmValidationReport?.reachable.ok) summaryLines.push('Status: Connected');
+        else if (localLlmValidationReport && !localLlmValidationReport.reachable.ok) summaryLines.push('Status: Backend unreachable');
+        else if (localLlmLoadedModels.length > 0) summaryLines.push('Status: Models loaded');
+        else summaryLines.push('Status: Not checked yet');
+
+        summaryLines.push(`Backend: ${LOCAL_LLM_BACKEND_LABELS[localLlm.backend]}`);
+        summaryLines.push(`Base URL: ${localLlm.baseUrl || 'Not set'}`);
+        summaryLines.push(
+            localLlmModelLoadError
+                ? 'Models loaded: unavailable'
+                : `Models loaded: ${localLlmLoadedModels.length > 0 ? String(localLlmLoadedModels.length) : 'not loaded'}`
+        );
+        summaryLines.push(
+            selectedModelId
+                ? `Selected model: ${selectedExists ? `${selectedModelId} found` : `${selectedModelId} missing`}`
+                : 'Selected model: not set'
+        );
+
+        summaryLines.forEach(line => {
+            localLlmStatusSummary.createDiv({ cls: 'ert-field-note', text: line });
+        });
+
+        const checks: Array<[string, { ok: boolean; message: string } | null]> = [
+            ['Backend reachability', localLlmValidationReport?.reachable ?? null],
+            ['Basic completion', localLlmValidationReport?.basicCompletion ?? null],
+            ['Structured JSON', localLlmValidationReport?.structuredJson ?? null],
+            ['Repair path', localLlmValidationReport?.repairPath ?? null]
+        ];
+        checks.forEach(([label, check]) => {
+            const line = localLlmStatusChecks.createDiv({ cls: 'ert-field-note' });
+            line.setText(`${label}: ${check ? (check.ok ? 'Passed' : 'Failed') : 'Not checked'}`);
+            if (check?.message) {
+                line.createSpan({ text: ` — ${check.message}` });
+            }
+        });
+
+        if (localLlmValidationError) {
+            localLlmStatusChecks.createDiv({
+                cls: 'ert-field-note',
+                text: `Validation error: ${localLlmValidationError}`
+            });
+        }
+
+        const stamp = formatLocalTimestamp(localLlmLastValidatedAt);
+        localLlmStatusTimestamp.setText(stamp ? `Last checked: ${stamp}` : 'Last checked: not yet validated');
+    };
+
+    const loadLocalLlmModels = async (options: { quiet?: boolean } = {}): Promise<void> => {
+        try {
+            const models = await getLocalLlmClient(plugin).listModels();
+            localLlmLoadedModels = [...models].sort((left, right) => left.id.localeCompare(right.id));
+            localLlmModelLoadError = null;
+            localLlmLastLoadedAt = new Date().toISOString();
+            renderLocalLlmModelList();
+            renderLocalLlmStatus();
+            if (!options.quiet) {
+                new Notice(localLlmLoadedModels.length
+                    ? `Loaded ${localLlmLoadedModels.length} local model${localLlmLoadedModels.length === 1 ? '' : 's'}.`
+                    : 'No models reported by the Local LLM backend.');
+            }
+        } catch (error) {
+            localLlmLoadedModels = [];
+            localLlmModelLoadError = error instanceof Error ? error.message : String(error);
+            renderLocalLlmModelList();
+            renderLocalLlmStatus();
+            if (!options.quiet) {
+                new Notice(`Unable to load local models: ${localLlmModelLoadError}`);
+            }
+        }
+    };
+
+    const validateLocalLlm = async (): Promise<void> => {
+        await loadLocalLlmModels({ quiet: true });
+        try {
+            localLlmValidationReport = await getLocalLlmClient(plugin).runDiagnostics();
+            localLlmValidationError = null;
+            localLlmLastValidatedAt = new Date().toISOString();
+            renderLocalLlmStatus();
+            new Notice('Local LLM validation complete.');
+        } catch (error) {
+            localLlmValidationReport = null;
+            localLlmValidationError = error instanceof Error ? error.message : String(error);
+            localLlmLastValidatedAt = new Date().toISOString();
+            renderLocalLlmStatus();
+            new Notice(`Local LLM validation failed: ${localLlmValidationError}`);
+        }
+    };
+
+    localLlmModelSetting.addExtraButton(button => {
         button
             .setIcon('refresh-ccw')
-            .setTooltip('Detect installed models and auto-fill this field')
+            .setTooltip('Load models from the selected Local LLM backend')
             .onClick(async () => {
-                const selectedProvider = getSelectedProvider();
-                if (selectedProvider !== 'ollama') {
-                    new Notice('Select "Ollama" above to detect models.');
-                    return;
-                }
-                const baseUrl = getOllamaBaseUrl();
-                if (!baseUrl) {
-                    new Notice('Set the Local LLM base URL first.');
-                    return;
-                }
                 button.setDisabled(true);
                 button.setIcon('loader-2');
                 try {
-                    const aiSettings = ensureCanonicalAiSettings();
-                    const localLlm = getLocalLlmSettings(aiSettings);
-                    const models = await getLocalLlmBackend(localLlm.backend).listModels({
-                        baseUrl,
-                        timeoutMs: localLlm.timeoutMs,
-                        apiKey: await getCredential(plugin, 'ollama')
-                    });
-                    if (!Array.isArray(models) || models.length === 0) {
-                        new Notice('No models reported by the Local LLM backend.');
-                        return;
-                    }
-                    const existing = getOllamaModelId();
-                    const chosen = existing && models.some(m => m.id === existing)
-                        ? models.find(m => m.id === existing)!
-                        : models[0];
-                    setOllamaModelId(chosen.id);
-                    await persistCanonical();
-                    if (ollamaModelText) {
-                        ollamaModelText.setValue(chosen.id);
-                    }
-                    params.scheduleKeyValidation('ollama');
-                    const otherModels = models.map(m => m.id).filter(id => id !== chosen.id);
-                    const suffix = otherModels.length ? ` Also found: ${otherModels.join(', ')}.` : '';
-                    new Notice(`Using detected model "${chosen.id}".${suffix}`);
-                } catch (error) {
-                    const message = error instanceof Error ? error.message : String(error);
-                    new Notice(`Unable to detect Local LLM models: ${message}`);
+                    await loadLocalLlmModels();
                 } finally {
                     button.setDisabled(false);
                     button.setIcon('refresh-ccw');
@@ -2280,331 +2462,60 @@ export function renderAiSection(params: {
             });
     });
 
-    const ollamaLlmInstructions = getLocalLlmSettings(ensureCanonicalAiSettings()).instructions || '';
-    const ollamaLlmInstructionsSetting = new Settings(ollamaExtrasStack)
+    const localLlmInstructionsSetting = new Settings(localLlmConfigSection)
         .setName('Custom instructions')
-        .setDesc('Additional instructions added before the canonical Local LLM prompt scaffold. Useful for backend-specific formatting or reliability guidance.')
+        .setDesc('Additional instructions prepended to the canonical Local LLM prompt scaffold. Use this for backend-specific reliability guidance.')
         .addTextArea(text => {
             text
                 .setPlaceholder('e.g. Maintain strict JSON formatting...')
-                .setValue(ollamaLlmInstructions)
+                .setValue(getLocalLlmSettings(ensureCanonicalAiSettings()).instructions || '')
                 .onChange(async (value) => {
                     const aiSettings = ensureCanonicalAiSettings();
                     aiSettings.localLlm = {
                         ...getLocalLlmSettings(aiSettings),
                         instructions: value
                     };
-                    await plugin.saveSettings();
+                    await persistCanonical();
                 });
-            text.inputEl.rows = 6;
+            text.inputEl.rows = 4;
             text.inputEl.addClass('ert-textarea');
         });
-    ollamaLlmInstructionsSetting.settingEl.addClass('ert-setting-full-width-input');
+    localLlmInstructionsSetting.settingEl.addClass('ert-setting-full-width-input');
 
-    const ollamaSendPulseToAiReport = getLocalLlmSettings(ensureCanonicalAiSettings()).sendPulseToAiReport;
-    const ollamaSendPulseToAiReportSetting = new Settings(ollamaExtrasStack)
-        .setName('Bypass scene hover fields writes')
-        .setDesc('When enabled, Local LLM triplet pulse analysis skips scene note writes and saves results in the AI report instead. Recommended for smaller or less deterministic local models.')
+    const localLlmSendPulseToAiReportSetting = new Settings(localLlmConfigSection)
+        .setName('Bypass scene hover writes')
+        .setDesc('When enabled, Local LLM triplet pulse analysis skips scene note writes and saves results in the AI report instead.')
         .addToggle(toggle => toggle
-            .setValue(ollamaSendPulseToAiReport)
+            .setValue(getLocalLlmSettings(ensureCanonicalAiSettings()).sendPulseToAiReport)
             .onChange(async (value) => {
                 const aiSettings = ensureCanonicalAiSettings();
                 aiSettings.localLlm = {
                     ...getLocalLlmSettings(aiSettings),
                     sendPulseToAiReport: value
                 };
-                await plugin.saveSettings();
+                await persistCanonical();
             }));
-    ollamaSendPulseToAiReportSetting.settingEl.addClass(ERT_CLASSES.ROW);
+    localLlmSendPulseToAiReportSetting.settingEl.addClass(ERT_CLASSES.ROW);
 
-    const ollamaApiDetails = ollamaExtrasStack.createEl('details', { cls: 'ert-ai-fold ert-ai-legacy-credentials' }) as HTMLDetailsElement;
-    if (!secretStorageAvailable) {
-        ollamaApiDetails.setAttr('open', '');
-    }
-    const ollamaApiSummary = ollamaApiDetails.createEl('summary', { text: 'Advanced: Ollama saved key (optional)' });
-    attachAiCollapseButton(ollamaApiDetails, ollamaApiSummary);
-    const ollamaApiContainer = ollamaApiDetails.createDiv({ cls: ERT_CLASSES.STACK });
+    const localLlmActionsSetting = new Settings(localLlmStatusSection)
+        .setName('Validation actions')
+        .setDesc('Load models first, then run validation for the current backend, model, and structured-output lane.');
+    localLlmActionsSetting.addButton(button => button
+        .setButtonText('Load Models')
+        .onClick(() => {
+            button.setDisabled(true);
+            void loadLocalLlmModels().finally(() => button.setDisabled(false));
+        }));
+    localLlmActionsSetting.addButton(button => button
+        .setButtonText('Validate Local LLM')
+        .setCta()
+        .onClick(() => {
+            button.setDisabled(true);
+            void validateLocalLlm().finally(() => button.setDisabled(false));
+        }));
 
-    const ollamaSecretIdSetting = new Settings(ollamaApiContainer)
-        .setName('Ollama saved key name')
-        .setDesc('Optional saved key name if your Ollama gateway requires a key.');
-    const ollamaKeyStatusSetting = new Settings(ollamaApiContainer)
-        .setName('Ollama key status')
-        .setDesc(buildLocalKeyStatusDesc('not_saved'));
-    const applyLocalKeyStatus = (status: LocalKeyStatus) => {
-        ollamaKeyStatusSetting.setDesc(buildLocalKeyStatusDesc(status));
-    };
-    const refreshLocalKeyStatus = async (): Promise<void> => {
-        const savedKeyName = getCredentialSecretId(ensureCanonicalAiSettings(), 'ollama');
-        if (secretStorageAvailable) {
-            if (!savedKeyName) {
-                applyLocalKeyStatus('not_saved');
-                return;
-            }
-            const exists = await hasSecret(app, savedKeyName);
-            applyLocalKeyStatus(exists ? 'saved' : 'not_saved');
-            return;
-        }
-        applyLocalKeyStatus('not_saved');
-    };
-    void refreshLocalKeyStatus();
-    ollamaSecretIdSetting.addText(text => {
-        text.inputEl.addClass('ert-input--full');
-        text.setPlaceholder('ollama-main').setValue(getCredentialSecretId(ensureCanonicalAiSettings(), 'ollama'));
-        plugin.registerDomEvent(text.inputEl, 'blur', () => {
-            void (async () => {
-                const ai = ensureCanonicalAiSettings();
-                setCredentialSecretId(ai, 'ollama', text.getValue().trim());
-                await persistCanonical();
-                await refreshLocalKeyStatus();
-            })();
-        });
-    });
-    ollamaSecretIdSetting.settingEl.addClass('ert-setting-full-width-input');
-
-    if (secretStorageAvailable) {
-        const ollamaSecretSetting = new Settings(ollamaApiContainer)
-            .setName('Ollama API key')
-            .setDesc(SAVED_KEY_ENTRY_COPY);
-        ollamaSecretSetting.addText(text => {
-            text.inputEl.addClass('ert-input--full');
-            configureSensitiveInput(text.inputEl);
-            text.setPlaceholder('Optional Ollama API key');
-            params.setKeyInputRef('ollama', text.inputEl);
-
-            plugin.registerDomEvent(text.inputEl, 'keydown', (event: KeyboardEvent) => {
-                if (event.key === 'Enter') {
-                    event.preventDefault();
-                    text.inputEl.blur();
-                }
-            });
-
-            void (async () => {
-                const ai = ensureCanonicalAiSettings();
-                const currentSecret = await getSecret(app, getCredentialSecretId(ai, 'ollama'));
-                if (currentSecret) {
-                    text.setValue(currentSecret);
-                }
-            })();
-
-            plugin.registerDomEvent(text.inputEl, 'blur', () => {
-                void (async () => {
-                    const key = text.getValue().trim();
-                    if (!key) return;
-                    const ai = ensureCanonicalAiSettings();
-                    const secretId = getCredentialSecretId(ai, 'ollama');
-                    if (!secretId) {
-                        new Notice('Set an Ollama saved key name first.');
-                        return;
-                    }
-                    const stored = await setSecret(app, secretId, key);
-                    if (!stored) {
-                        new Notice('Unable to save Ollama API key privately.');
-                        return;
-                    }
-                    await refreshLocalKeyStatus();
-                    void params.scheduleKeyValidation('ollama');
-                })();
-            });
-        });
-        ollamaSecretSetting.settingEl.addClass('ert-setting-full-width-input');
-    }
-
-    if (secretStorageAvailable) {
-        ollamaApiContainer.createDiv({
-            cls: 'ert-field-note',
-            text: 'Ollama API keys are stored only in Obsidian secret storage.'
-        });
-    } else {
-        ollamaApiContainer.createDiv({
-            cls: 'ert-field-note',
-            text: 'Ollama API keys require Obsidian secret storage. Older plaintext key fields are no longer supported.'
-        });
-    }
-
-    // ── Ollama quick-config section (appears below preview card when Ollama is selected) ──
-    const ollamaQuickConfigSection = quickSetupPreviewSection.createDiv({
-        cls: [`${ERT_CLASSES.CARD}`, `${ERT_CLASSES.PANEL}`, `${ERT_CLASSES.STACK}`, 'ert-ai-ollama-quick-config', 'ert-settings-hidden']
-    });
-    ollamaQuickConfigSectionEl = ollamaQuickConfigSection;
-    ollamaQuickConfigSection.createDiv({ cls: 'ert-section-title', text: 'Local LLM Configuration' });
-    ollamaQuickConfigSection.createDiv({
-        cls: 'ert-section-desc',
-        text: 'Configure your Local LLM backend. The preview card above will update as you fill in these fields.'
-    });
-
-    const ollamaQuickBaseUrlSetting = new Settings(ollamaQuickConfigSection)
-        .setName('Base URL')
-        .setDesc('The API endpoint for your Local LLM backend (for example Ollama, LM Studio, or another OpenAI-compatible server).');
-    ollamaQuickBaseUrlSetting.addText(text => {
-        text.inputEl.addClass('ert-input--full');
-        text
-            .setPlaceholder('http://localhost:11434/v1')
-            .setValue(getOllamaBaseUrl());
-        text.onChange(() => {
-            text.inputEl.removeClass('ert-setting-input-success', 'ert-setting-input-error');
-        });
-        plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
-            if (evt.key === 'Enter') { evt.preventDefault(); text.inputEl.blur(); }
-        });
-        plugin.registerDomEvent(text.inputEl, 'blur', () => {
-            void (async () => {
-                const aiSettings = ensureCanonicalAiSettings();
-                aiSettings.localLlm = {
-                    ...getLocalLlmSettings(aiSettings),
-                    baseUrl: text.getValue().trim() || 'http://localhost:11434/v1'
-                };
-                await persistCanonical();
-                params.scheduleKeyValidation('ollama');
-                void refreshRoutingUi();
-            })();
-        });
-    });
-    ollamaQuickBaseUrlSetting.settingEl.addClass('ert-setting-full-width-input');
-
-    let ollamaQuickModelText: TextComponent | null = null;
-    const ollamaQuickModelSetting = new Settings(ollamaQuickConfigSection)
-        .setName('Model ID')
-        .setDesc('The exact model name your server expects (e.g., "llama3", "mistral-7b").');
-    ollamaQuickModelSetting.addText(text => {
-        text.inputEl.addClass('ert-input--lg');
-        ollamaQuickModelText = text;
-        text
-            .setPlaceholder('llama3')
-            .setValue(getOllamaModelId());
-        text.onChange(() => {
-            text.inputEl.removeClass('ert-setting-input-success', 'ert-setting-input-error');
-        });
-        plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
-            if (evt.key === 'Enter') { evt.preventDefault(); text.inputEl.blur(); }
-        });
-        plugin.registerDomEvent(text.inputEl, 'blur', () => {
-            void (async () => {
-                setOllamaModelId(text.getValue());
-                await persistCanonical();
-                params.scheduleKeyValidation('ollama');
-                void refreshRoutingUi();
-            })();
-        });
-    });
-    ollamaQuickModelSetting.settingEl.addClass(ERT_CLASSES.ROW);
-
-    ollamaQuickModelSetting.addExtraButton(button => {
-        button
-            .setIcon('refresh-ccw')
-            .setTooltip('Detect installed models and auto-fill')
-            .onClick(async () => {
-                const baseUrl = getOllamaBaseUrl();
-                if (!baseUrl) {
-                    new Notice('Set the Base URL first.');
-                    return;
-                }
-                button.setDisabled(true);
-                button.setIcon('loader-2');
-                try {
-                    const aiSettings = ensureCanonicalAiSettings();
-                    const localLlm = getLocalLlmSettings(aiSettings);
-                    const models = await getLocalLlmBackend(localLlm.backend).listModels({
-                        baseUrl,
-                        timeoutMs: localLlm.timeoutMs,
-                        apiKey: await getCredential(plugin, 'ollama')
-                    });
-                    if (!Array.isArray(models) || models.length === 0) {
-                        new Notice('No models reported by the Local LLM backend.');
-                        return;
-                    }
-                    const existing = getOllamaModelId();
-                    const chosen = existing && models.some(m => m.id === existing)
-                        ? models.find(m => m.id === existing)!
-                        : models[0];
-                    setOllamaModelId(chosen.id);
-                    await persistCanonical();
-                    if (ollamaQuickModelText) ollamaQuickModelText.setValue(chosen.id);
-                    params.scheduleKeyValidation('ollama');
-                    const otherModels = models.map(m => m.id).filter(id => id !== chosen.id);
-                    const suffix = otherModels.length ? ` Also found: ${otherModels.join(', ')}.` : '';
-                    new Notice(`Using detected model "${chosen.id}".${suffix}`);
-                    void refreshRoutingUi();
-                } catch (error) {
-                    const message = error instanceof Error ? error.message : String(error);
-                    new Notice(`Unable to detect Local LLM models: ${message}`);
-                } finally {
-                    button.setDisabled(false);
-                    button.setIcon('refresh-ccw');
-                }
-            });
-    });
-
-    const ollamaQuickLlmInstructions = getLocalLlmSettings(ensureCanonicalAiSettings()).instructions || '';
-    const ollamaQuickInstructionsSetting = new Settings(ollamaQuickConfigSection)
-        .setName('Custom instructions')
-        .setDesc('Additional instructions prepended to the canonical Local LLM prompt scaffold.');
-    ollamaQuickInstructionsSetting.addTextArea(text => {
-        text
-            .setPlaceholder('e.g. Maintain strict JSON formatting...')
-            .setValue(ollamaQuickLlmInstructions)
-            .onChange(async (value) => {
-                const aiSettings = ensureCanonicalAiSettings();
-                aiSettings.localLlm = {
-                    ...getLocalLlmSettings(aiSettings),
-                    instructions: value
-                };
-                await plugin.saveSettings();
-            });
-        text.inputEl.rows = 4;
-        text.inputEl.addClass('ert-textarea');
-    });
-    ollamaQuickInstructionsSetting.settingEl.addClass('ert-setting-full-width-input');
-
-    const ollamaQuickApiKeyDetails = ollamaQuickConfigSection.createEl('details', {
-        cls: 'ert-ai-fold ert-ai-ollama-quick-key'
-    }) as HTMLDetailsElement;
-    const ollamaQuickApiKeySummary = ollamaQuickApiKeyDetails.createEl('summary', { text: 'API Key (usually not needed)' });
-    attachAiCollapseButton(ollamaQuickApiKeyDetails, ollamaQuickApiKeySummary);
-    const ollamaQuickApiKeyBody = ollamaQuickApiKeyDetails.createDiv({ cls: ERT_CLASSES.STACK });
-
-    const ollamaQuickSecretIdSetting = new Settings(ollamaQuickApiKeyBody)
-        .setName('Ollama saved key name')
-        .setDesc('Optional saved key name if your Ollama gateway requires a key.');
-    ollamaQuickSecretIdSetting.addText(text => {
-        text.inputEl.addClass('ert-input--full');
-        text.setPlaceholder('ollama-main').setValue(getCredentialSecretId(ensureCanonicalAiSettings(), 'ollama'));
-        plugin.registerDomEvent(text.inputEl, 'blur', () => {
-            void (async () => {
-                const ai = ensureCanonicalAiSettings();
-                setCredentialSecretId(ai, 'ollama', text.getValue().trim());
-                await persistCanonical();
-            })();
-        });
-    });
-    ollamaQuickSecretIdSetting.settingEl.addClass('ert-setting-full-width-input');
-
-    if (secretStorageAvailable) {
-        const ollamaQuickSecretSetting = new Settings(ollamaQuickApiKeyBody)
-            .setName('Ollama API key')
-            .setDesc(SAVED_KEY_ENTRY_COPY);
-        ollamaQuickSecretSetting.addText(text => {
-            text.inputEl.addClass('ert-input--full');
-            configureSensitiveInput(text.inputEl);
-            text.setPlaceholder('Optional Ollama API key');
-            plugin.registerDomEvent(text.inputEl, 'keydown', (event: KeyboardEvent) => {
-                if (event.key === 'Enter') { event.preventDefault(); text.inputEl.blur(); }
-            });
-            plugin.registerDomEvent(text.inputEl, 'blur', () => {
-                void (async () => {
-                    const key = text.getValue().trim();
-                    if (!key) return;
-                    const ai = ensureCanonicalAiSettings();
-                    const secretId = getCredentialSecretId(ai, 'ollama');
-                    if (!secretId) { new Notice('Set an Ollama saved key name first.'); return; }
-                    const stored = await setSecret(app, secretId, key);
-                    if (!stored) { new Notice('Unable to save Ollama API key privately.'); return; }
-                    void params.scheduleKeyValidation('ollama');
-                })();
-            });
-        });
-        ollamaQuickSecretSetting.settingEl.addClass('ert-setting-full-width-input');
-    }
+    renderLocalLlmModelList();
+    renderLocalLlmStatus();
 
     // ── AI Configuration settings (moved from Core) ───────────────────────
     const aiConfigCreateRow = (
@@ -2752,12 +2663,15 @@ export function renderAiSection(params: {
 
     // Final section order in AI tab:
     // 1) AI Strategy
-    // 2) Preview (Active Model) + Ollama Quick Config (when Ollama selected)
-    // 3) Role context
-    // 4) AI transparency
-    // 5) Execution preference
-    // 6) API Keys
-    // 7) Configuration
+    // 2) Preview (Active Model)
+    // 3) Local LLM Configuration
+    // 4) Local LLM Status / Validation
+    // 5) AI Cost Estimate
+    // 6) Role context
+    // 7) AI transparency
+    // 8) Execution preference
+    // 9) API Keys
+    // 10) Configuration
     [
         quickSetupSection,
         quickSetupPreviewSection,
