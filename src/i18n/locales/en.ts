@@ -303,7 +303,7 @@ export const en: TranslationKeys = {
                 objective: 'Objective — camera-eye narrator (Narrator°)',
             },
             preview: {
-                heading: 'POV Examples',
+                heading: 'Scene override examples',
                 examples: {
                     sceneFirst: 'Scene YAML: POV: first | Character: [Alice]',
                     sceneThird: 'Scene YAML: POV: third | Character: [Bob]',

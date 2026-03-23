@@ -307,11 +307,6 @@
 .ert-inquiry-icon-btn.is-guidance-alert .ert-inquiry-icon-btn-bg {
   fill: color-mix(in srgb, var(--ert-inquiry-alert) 18%, var(--background-secondary));
   stroke: color-mix(in srgb, var(--ert-inquiry-alert) 70%, var(--background-modifier-border));
-  animation: ert-inquiry-guidance-pulse 2.4s ease-in-out infinite;
-}
-
-.ert-inquiry-icon-btn.is-guidance-alert .ert-inquiry-icon {
-  animation: ert-inquiry-guidance-icon 2.4s ease-in-out infinite;
 }
 
 .ert-inquiry-icon-btn.is-engine-pulse-amber {
@@ -343,11 +338,6 @@
 .ert-inquiry-icon-btn.is-help-onboarding .ert-inquiry-icon-btn-bg {
   fill: color-mix(in srgb, var(--ert-inquiry-help-onboarding) 18%, var(--background-secondary));
   stroke: color-mix(in srgb, var(--ert-inquiry-help-onboarding) 70%, var(--background-modifier-border));
-  animation: ert-inquiry-help-pulse 2.4s ease-in-out infinite;
-}
-
-.ert-inquiry-icon-btn.is-help-onboarding .ert-inquiry-icon {
-  animation: ert-inquiry-help-icon 2.4s ease-in-out infinite;
 }
 
 .ert-inquiry-icon-btn.is-help-results {
@@ -357,11 +347,6 @@
 .ert-inquiry-icon-btn.is-help-results .ert-inquiry-icon-btn-bg {
   fill: color-mix(in srgb, var(--ert-inquiry-active-zone-color) 18%, var(--background-secondary));
   stroke: color-mix(in srgb, var(--ert-inquiry-active-zone-color) 70%, var(--background-modifier-border));
-  animation: ert-inquiry-help-results-pulse 2.4s ease-in-out infinite;
-}
-
-.ert-inquiry-icon-btn.is-help-results .ert-inquiry-icon {
-  animation: ert-inquiry-help-results-icon 2.4s ease-in-out infinite;
 }
 
 .ert-inquiry-icon-btn.is-briefing-saved,
@@ -2206,10 +2191,6 @@ body.rt-modal-open .ert-inquiry-root,
 body.rt-modal-open .ert-inquiry-svg {
   transform: translateZ(0);
   backface-visibility: hidden;
-}
-
-body.rt-modal-open .ert-inquiry-svg * {
-  animation-play-state: paused;
 }
 
 .ert-inquiry-root.is-inquiry-blocked .ert-inquiry-briefing-item,

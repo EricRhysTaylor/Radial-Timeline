@@ -53,9 +53,6 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
     private _aiRelatedElements: HTMLElement[] = [];
     private _activeTab: 'core' | 'social' | 'inquiry' | 'publishing' | 'ai' | 'advanced' = 'core';
     private _forceExpandCoreCompletionPreview = false;
-    private _searchDebounceTimer?: number;
-    private _coreSearchableContent?: HTMLElement;
-    private readonly _searchShortAllowList = new Set(['ai', 'ui']);
 
     /** Public method to set active tab before/after opening settings */
     public setActiveTab(tab: 'core' | 'social' | 'inquiry' | 'publishing' | 'ai' | 'advanced'): void {
@@ -494,90 +491,6 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         infoEl.createSpan({ text: alert.description, cls: 'ert-notification-history__description' });
     }
 
-    private renderSearchBox(containerEl: HTMLElement): HTMLInputElement {
-        const searchContainer = containerEl.createDiv({ cls: 'ert-settings-search-container' });
-        const searchIconEl = searchContainer.createSpan({ cls: 'ert-settings-search-icon' });
-        setIcon(searchIconEl, 'search');
-        const searchInput = searchContainer.createEl('input', {
-            cls: 'ert-settings-search-input',
-            attr: { type: 'text', placeholder: 'Search settings...', spellcheck: 'false' }
-        });
-        const clearBtn = searchContainer.createSpan({ cls: 'ert-settings-search-clear ert-hidden' });
-        setIcon(clearBtn, 'x');
-        clearBtn.setAttribute('aria-label', 'Clear search');
-        this.plugin.registerDomEvent(searchInput, 'input', () => {
-            const query = searchInput.value.trim();
-            clearBtn.toggleClass('ert-hidden', query.length === 0);
-            if (this._searchDebounceTimer) window.clearTimeout(this._searchDebounceTimer);
-            this._searchDebounceTimer = window.setTimeout(() => this.filterSettings(query), 150);
-        });
-        this.plugin.registerDomEvent(clearBtn, 'click', () => {
-            searchInput.value = '';
-            clearBtn.addClass('ert-hidden');
-            this.filterSettings('');
-            searchInput.focus();
-        });
-        this.plugin.registerDomEvent(searchInput, 'keydown', (evt: KeyboardEvent) => {
-            if (evt.key === 'Escape') {
-                searchInput.value = '';
-                clearBtn.addClass('ert-hidden');
-                this.filterSettings('');
-            }
-        });
-        return searchInput;
-    }
-
-    private filterSettings(query: string): void {
-        if (!this._coreSearchableContent) return;
-        const queryTerms = this.getSearchTerms(query, 3, this._searchShortAllowList);
-        const allSectionContainers = this._coreSearchableContent.querySelectorAll('[data-ert-section]');
-
-        // If no query, show all sections
-        if (queryTerms.length === 0) {
-            allSectionContainers.forEach(el => (el as HTMLElement).classList.remove('ert-search-section-hidden'));
-            this.updateNonSettingBlocks(false);
-            return;
-        }
-
-        // Filter entire sections based on header match
-        allSectionContainers.forEach(sectionEl => {
-            const section = sectionEl as HTMLElement;
-            const searchText = ` ${section.dataset.rtSearchText || ''} `;
-            const matches = queryTerms.every(term => this.matchesSearchTerm(searchText, term));
-            section.classList.toggle('ert-search-section-hidden', !matches);
-        });
-
-        this.updateNonSettingBlocks(true);
-    }
-
-    private updateNonSettingBlocks(active: boolean): void {
-        // Since we now hide entire sections, non-setting blocks within sections
-        // are automatically hidden/shown with their parent section.
-        // This function is now a no-op but kept for compatibility.
-        return;
-    }
-
-    private getSearchTerms(text: string, minLength = 1, allowList: Set<string> = new Set()): string[] {
-        const matches = text.toLowerCase().match(/[a-z0-9]+/g);
-        if (!matches) return [];
-        const filtered = matches.filter(term => term.length >= minLength || allowList.has(term));
-        return Array.from(new Set(filtered));
-    }
-
-    private matchesSearchTerm(searchText: string, term: string): boolean {
-        const variants = [term];
-        if (term.length >= 3) {
-            variants.push(term.endsWith('s') ? term.slice(0, -1) : `${term}s`);
-        }
-        return variants.some(variant => {
-            const exactMatch = searchText.includes(` ${variant} `);
-            const prefixMatch = searchText.includes(`${variant} `);
-            const suffixMatch = searchText.includes(` ${variant}`);
-            const substringMatch = searchText.includes(variant);
-            return exactMatch || prefixMatch || suffixMatch || substringMatch;
-        });
-    }
-
     private renderProCallout(containerEl: HTMLElement, text: string, switchToProTab: () => void): void {
         const callout = containerEl.createDiv({ cls: 'ert-pro-callout' });
         const badge = callout.createSpan({ cls: 'ert-pro-callout-badge' });
@@ -586,23 +499,6 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         callout.createSpan({ cls: 'ert-pro-callout-text', text });
         callout.createSpan({ cls: 'ert-pro-callout-arrow', text: '→' });
         this.plugin.registerDomEvent(callout, 'click', () => { switchToProTab(); });
-    }
-
-    private addSearchMetadataToSettings(containerEl: HTMLElement): void {
-        // Use only the header at the start of each section (first .ert-header in the stack)
-        const sectionContainers = containerEl.querySelectorAll('[data-ert-section]');
-        sectionContainers.forEach(sectionEl => {
-            const section = sectionEl as HTMLElement;
-            const firstHeader = section.querySelector('.ert-header');
-            const titleEl = firstHeader?.querySelector('.ert-section-title');
-            const titleText = titleEl?.textContent || '';
-            if (titleText) {
-                const terms = this.getSearchTerms(titleText, 1);
-                if (terms.length > 0) {
-                    section.dataset.rtSearchText = terms.join(' ');
-                }
-            }
-        });
     }
 
     private applyElementBlockLayout(containerEl: HTMLElement): void {
@@ -772,9 +668,9 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const inquiryIcon = inquiryTab.createSpan({ cls: 'ert-settings-tab-icon' });
         setIcon(inquiryIcon, 'waves');
         inquiryTab.createSpan({ text: 'Inquiry', cls: 'ert-settings-tab-label' });
-        const publishingTab = tabBar.createDiv({ cls: 'ert-settings-tab' });
+        const publishingTab = tabBar.createDiv({ cls: 'ert-settings-tab ert-settings-tab-publishing' });
         const publishingIcon = publishingTab.createSpan({ cls: 'ert-settings-tab-icon' });
-        setIcon(publishingIcon, 'book-open-text');
+        setIcon(publishingIcon, 'signature');
         publishingTab.createSpan({ text: 'Publishing', cls: 'ert-settings-tab-label' });
         const aiTab = tabBar.createDiv({ cls: 'ert-settings-tab' });
         const aiIcon = aiTab.createSpan({ cls: 'ert-settings-tab-icon' });
@@ -782,7 +678,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         aiTab.createSpan({ text: 'AI', cls: 'ert-settings-tab-label' });
         const advancedTab = tabBar.createDiv({ cls: 'ert-settings-tab' });
         const advancedIcon = advancedTab.createSpan({ cls: 'ert-settings-tab-icon' });
-        setIcon(advancedIcon, 'signature');
+        setIcon(advancedIcon, 'pyramid');
         advancedTab.createSpan({ text: 'Advanced', cls: 'ert-settings-tab-label' });
 
         const coreContent = containerEl.createDiv({ cls: 'ert-settings-tab-content ert-settings-core-content ert-scope--settings' });
@@ -794,9 +690,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             cls: `ert-settings-tab-content ert-settings-publishing-content ${ERT_CLASSES.ROOT} ert-scope--settings ${ERT_CLASSES.SKIN_PRO}`
         });
         const aiContent = containerEl.createDiv({ cls: 'ert-settings-tab-content ert-settings-ai-content ert-scope--settings' });
-        const advancedContent = containerEl.createDiv({
-            cls: `ert-settings-tab-content ert-settings-pro-content ${ERT_CLASSES.ROOT} ert-scope--settings ${ERT_CLASSES.SKIN_PRO}`
-        });
+        const advancedContent = containerEl.createDiv({ cls: 'ert-settings-tab-content ert-settings-advanced-content ert-scope--settings' });
 
         const updateTabState = () => {
             coreTab.toggleClass('ert-settings-tab-active', this._activeTab === 'core');
@@ -824,12 +718,6 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const publishingStack = publishingContent.createDiv({ cls: ERT_CLASSES.STACK });
         this.renderPublishingHero(publishingStack);
         const refreshProDependentSections = () => this.display();
-        renderProEntitlementPanel({
-            app: this.app,
-            plugin: this.plugin,
-            containerEl: publishingStack,
-            onEntitlementChanged: refreshProDependentSections
-        });
         const publishingPanels = publishingStack.createDiv({ cls: ERT_CLASSES.STACK });
         renderProFeaturePanels({
             app: this.app,
@@ -838,11 +726,20 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         });
 
         const advancedStack = advancedContent.createDiv({ cls: ERT_CLASSES.STACK });
+        const advancedIntro = advancedStack.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.SKIN_PRO}` });
+        this.renderProHero(advancedIntro);
         renderProEntitlementPanel({
             app: this.app,
             plugin: this.plugin,
-            containerEl: advancedStack,
+            containerEl: advancedIntro,
             onEntitlementChanged: refreshProDependentSections
+        });
+        const advancedConfigurationSection = advancedStack.createDiv({ attr: { [ERT_DATA.SECTION]: 'configuration' } });
+        renderConfigurationSection({
+            app: this.app,
+            plugin: this.plugin,
+            containerEl: advancedConfigurationSection,
+            attachFolderSuggest: (t) => this.attachFolderSuggest(t)
         });
 
         // Social Tab Content - Social Section
@@ -870,12 +767,8 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             forceExpanded: forceExpandCompletionPreview
         });
 
-        const searchRow = coreStack.createDiv();
-        this.renderSearchBox(searchRow);
-
         const coreBody = coreStack.createDiv();
         const searchableContent = coreBody.createDiv({ cls: 'ert-settings-searchable-content' });
-        this._coreSearchableContent = searchableContent;
         // Setup Section - Source path settings
         const generalSection = searchableContent.createDiv({
             attr: { [ERT_DATA.SECTION]: 'general' }
@@ -916,7 +809,10 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             onCompletionPreviewRefresh: completionPreviewRefresh
         });
 
-        const runtimeSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'runtime' } });
+        const runtimeSection = searchableContent.createDiv({
+            cls: `${ERT_CLASSES.ROOT} ${ERT_CLASSES.SKIN_PRO}`,
+            attr: { [ERT_DATA.SECTION]: 'runtime' }
+        });
         renderRuntimeSection({ app: this.app, plugin: this.plugin, containerEl: runtimeSection });
 
         const chronologueSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'chronologue' } });
@@ -930,9 +826,6 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
         const planetarySection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'planetary' } });
         renderPlanetaryTimeSection({ app: this.app, plugin: this.plugin, containerEl: planetarySection });
-
-        const configurationSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'configuration' } });
-        renderConfigurationSection({ app: this.app, plugin: this.plugin, containerEl: configurationSection, attachFolderSuggest: (t) => this.attachFolderSuggest(t) });
 
         const colorsWrapper = searchableContent.createDiv();
         renderColorsSection(colorsWrapper, this.plugin);
@@ -975,7 +868,6 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         }
 
         this.applyElementBlockLayout(containerEl);
-        this.addSearchMetadataToSettings(searchableContent);
     }
 
     hide() {

@@ -86,6 +86,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     showCompletionEstimate: true, // Default: show the estimate tick
     completionEstimateWindowDays: 30, // Rolling window (days) for completion estimate pace
     coreCompletionPreviewExpanded: true,
+    povPreviewExpanded: true,
     enableAiSceneAnalysis: true,
     showFullTripletAnalysis: true,
     enableZeroDraftMode: false,

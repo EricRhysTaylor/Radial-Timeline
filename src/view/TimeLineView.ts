@@ -51,6 +51,8 @@ export class RadialTimelineView extends ItemView {
     // Frontmatter values to track to reduce unnecessary SVG View refreshes
     private lastFrontmatterValues: Record<string, unknown> = {};
     private timelineRefreshTimeout: number | null = null;
+    private beatLabelAdjustTimeout: number | null = null;
+    private beatLabelAdjustRaf: number | null = null;
     
     // Change detection snapshot for optimizing renders
     private lastSnapshot: TimelineSnapshot | null = null;
@@ -225,6 +227,34 @@ export class RadialTimelineView extends ItemView {
         if (tabTitle) tabTitle.textContent = titleText;
     }
 
+    private scheduleBeatLabelAdjustment(delayMs = 0): void {
+        if (this.beatLabelAdjustTimeout !== null) {
+            window.clearTimeout(this.beatLabelAdjustTimeout);
+            this.beatLabelAdjustTimeout = null;
+        }
+        if (this.beatLabelAdjustRaf !== null) {
+            window.cancelAnimationFrame(this.beatLabelAdjustRaf);
+            this.beatLabelAdjustRaf = null;
+        }
+
+        const run = () => {
+            this.beatLabelAdjustTimeout = null;
+            const timelineContainer = this.containerEl.querySelector('.radial-timeline-container') as HTMLElement | null;
+            if (!timelineContainer) return;
+            this.beatLabelAdjustRaf = window.requestAnimationFrame(() => {
+                this.beatLabelAdjustRaf = null;
+                this.rendererService?.adjustBeatLabelsAfterRender(timelineContainer);
+            });
+        };
+
+        if (delayMs > 0) {
+            this.beatLabelAdjustTimeout = window.setTimeout(run, delayMs);
+            return;
+        }
+
+        run();
+    }
+
     public syncBookHeader(): void {
         this.ensureBookSwitcher();
         this.updateViewTitle();
@@ -364,8 +394,7 @@ export class RadialTimelineView extends ItemView {
         if (hasChanged) {
             const container = this.containerEl.children[1] as HTMLElement;
             // Try selective update first
-            const updated = this.rendererService?.updateOpenClasses(container, this.openScenePaths);
-            if (!updated) this.refreshTimeline();
+            this.rendererService?.updateOpenClasses(container, this.openScenePaths);
         }
     }
 
@@ -531,6 +560,10 @@ export class RadialTimelineView extends ItemView {
         // Note: Workspace events (file-open, layout-change, active-leaf-change, quick-preview)
         // are handled by FileTrackingService at the plugin level to avoid duplicate handlers.
         // The service calls refreshTimeline() on all views when open files change.
+        this.registerEvent(this.app.workspace.on('active-leaf-change', () => {
+            if (this.app.workspace.getActiveViewOfType(RadialTimelineView) !== this) return;
+            this.scheduleBeatLabelAdjustment(50);
+        }));
 
         // Frontmatter values to track changes only to YAML frontmatter with debounce every 5 seconds.
         this.registerEvent(
@@ -607,6 +640,14 @@ export class RadialTimelineView extends ItemView {
         // Clean up chronologue shift mode buttons (keyboard listeners auto-cleanup via view.register())
         if ((this as any)._chronologueShiftCleanup) {
             (this as any)._chronologueShiftCleanup();
+        }
+        if (this.beatLabelAdjustTimeout !== null) {
+            window.clearTimeout(this.beatLabelAdjustTimeout);
+            this.beatLabelAdjustTimeout = null;
+        }
+        if (this.beatLabelAdjustRaf !== null) {
+            window.cancelAnimationFrame(this.beatLabelAdjustRaf);
+            this.beatLabelAdjustRaf = null;
         }
         // Note: ModeToggleController keyboard listeners are cleaned up automatically via view.register()
     }
@@ -746,25 +787,6 @@ export class RadialTimelineView extends ItemView {
                     });
                 }
 
-                // Adjust story beat labels after render
-                const adjustLabels = () => this.rendererService?.adjustBeatLabelsAfterRender(timelineContainer);
-                const rafId1 = requestAnimationFrame(adjustLabels);
-                
-                // Re-adjust when the timeline view becomes active (workspace active-leaf-change)
-                const leafChangeHandler = () => {
-                    // Check if this timeline view is now the active leaf
-                    if (this.app.workspace.getActiveViewOfType(RadialTimelineView) === this) {
-                        // Small delay to ensure layout is settled
-                        const timeoutId = window.setTimeout(() => {
-                            const rafId2 = requestAnimationFrame(adjustLabels);
-                            this.register(() => cancelAnimationFrame(rafId2));
-                        }, 50);
-                        this.register(() => window.clearTimeout(timeoutId));
-                    }
-                };
-                this.register(() => cancelAnimationFrame(rafId1));
-                this.registerEvent(this.app.workspace.on('active-leaf-change', leafChangeHandler));
-                
                 // Performance optimization: Use batch operations where possible
                 const allSynopses = Array.from(svgElement.querySelectorAll(".rt-scene-info"));
                 const sceneGroups = Array.from(svgElement.querySelectorAll(".rt-scene-group"));
@@ -880,6 +902,7 @@ export class RadialTimelineView extends ItemView {
                 
             // Add the fragment to the container
             container.appendChild(fragment);
+            this.scheduleBeatLabelAdjustment();
             
             // Attach Obsidian bubble tooltips to grid headers and buttons
             // Must be done after fragment is in DOM for getBoundingClientRect to work

@@ -130,6 +130,7 @@ describe('validateAiSettings', () => {
             modelPolicy: { type: 'latestStable' },
             localLlm: {
                 enabled: true,
+                configurationMode: 'invalid-mode' as any,
                 backend: 'unknown-backend' as any,
                 baseUrl: '   ',
                 defaultModelId: '',
@@ -143,6 +144,7 @@ describe('validateAiSettings', () => {
         } as unknown as AiSettingsV1);
 
         expect(result.value.localLlm.backend).toBe('ollama');
+        expect(result.value.localLlm.configurationMode).toBe('auto');
         expect(result.value.localLlm.baseUrl).toBe('http://localhost:11434/v1');
         expect(result.value.localLlm.defaultModelId).toBeTruthy();
         expect(result.value.localLlm.timeoutMs).toBeLessThanOrEqual(120000);

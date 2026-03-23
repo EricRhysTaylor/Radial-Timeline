@@ -7,7 +7,7 @@ export class FileTrackingService {
 
     constructor(private plugin: RadialTimelinePlugin) {}
 
-    updateOpenFilesTracking(): void {
+    updateOpenFilesTracking(): boolean {
         const previousOpenFiles = new Set(this.plugin.openScenePaths);
         const openFilePaths = new Set<string>();
         const openFilesList: string[] = [];
@@ -58,10 +58,11 @@ export class FileTrackingService {
             }
         }
 
-        if (!hasChanged) return;
+        if (!hasChanged) return false;
 
         this.plugin.openScenePaths = openFilePaths;
         this.plugin.getTimelineViews().forEach(v => v.refreshTimeline());
+        return true;
     }
 
     registerWorkspaceListeners(): void {
@@ -76,15 +77,19 @@ export class FileTrackingService {
             if (this.isModalOpen() || this.isSettingsTabOpen()) {
                 window.setTimeout(() => {
                     if (!this.isModalOpen() && !this.isSettingsTabOpen()) {
-                        this.updateOpenFilesTracking();
-                        this.plugin.refreshTimelineIfNeeded(null);
+                        const refreshedForOpenFiles = this.updateOpenFilesTracking();
+                        if (!refreshedForOpenFiles) {
+                            this.plugin.refreshTimelineIfNeeded(null);
+                        }
                     }
                 }, 200);
                 return;
             }
 
-            this.updateOpenFilesTracking();
-            this.plugin.refreshTimelineIfNeeded(null);
+            const refreshedForOpenFiles = this.updateOpenFilesTracking();
+            if (!refreshedForOpenFiles) {
+                this.plugin.refreshTimelineIfNeeded(null);
+            }
         }));
 
         this.plugin.registerEvent(this.plugin.app.vault.on('delete', (file) => this.plugin.refreshTimelineIfNeeded(file)));

@@ -220,7 +220,7 @@ export function renderCompletionEstimatePreview(params: {
         }
 
         const toggleButton = summaryRow.createEl('button', {
-            cls: 'ert-clickable-icon clickable-icon ert-completion-summary-toggle',
+            cls: 'ert-iconBtn ert-completion-summary-toggle',
             attr: {
                 type: 'button',
                 'aria-label': isExpanded ? 'Collapse progress preview' : 'Expand progress preview',
@@ -267,9 +267,10 @@ export function renderCompletionEstimatePreview(params: {
             const cachedScenes = getCachedScenes();
             const scenes = cachedScenes ?? (allowFetch ? await getAllScenes(app, plugin) : null);
             if (!scenes) {
+                const loadingMessage = 'Please load Radial Timeline view for progress estimates...';
                 renderSummaryRow({
                     title: 'Completion Estimate',
-                    subtitle: 'Loading preview...'
+                    subtitle: loadingMessage
                 });
                 if (!isExpanded) {
                     previewContainer.addClass('ert-completion-preview-collapsed');
@@ -279,7 +280,7 @@ export function renderCompletionEstimatePreview(params: {
                 const heading = previewContainer.createDiv({ cls: 'ert-planetary-preview-heading' });
                 heading.setText('Completion Estimate');
                 const body = previewContainer.createDiv({ cls: 'ert-planetary-preview-body ert-completion-preview-body' });
-                body.createDiv({ cls: 'ert-completion-no-data', text: 'Loading preview...' });
+                body.createDiv({ cls: 'ert-completion-no-data', text: loadingMessage });
                 schedulePreviewFetch();
                 return;
             }

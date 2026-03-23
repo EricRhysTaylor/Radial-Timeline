@@ -1,4 +1,4 @@
-import type { AiSettingsV1, AIProviderId, LocalLlmBackendId, LocalLlmJsonMode } from '../types';
+import type { AiSettingsV1, AIProviderId, LocalLlmBackendId, LocalLlmConfigurationMode, LocalLlmJsonMode } from '../types';
 import { buildDefaultAiSettings, cloneBuiltInRoleTemplates } from './aiSettings';
 import { BUILTIN_MODELS } from '../registry/builtinModels';
 
@@ -9,6 +9,7 @@ export interface AiSettingsValidationResult {
 
 const VALID_PROVIDERS: AIProviderId[] = ['openai', 'anthropic', 'google', 'ollama', 'none'];
 const VALID_LOCAL_LLM_BACKENDS: LocalLlmBackendId[] = ['ollama', 'lmStudio', 'openaiCompatible'];
+const VALID_LOCAL_LLM_CONFIGURATION_MODES: LocalLlmConfigurationMode[] = ['auto', 'custom'];
 const VALID_LOCAL_LLM_JSON_MODES: LocalLlmJsonMode[] = ['response_format', 'prompt_only'];
 
 function hasAlias(alias?: string): boolean {
@@ -110,6 +111,10 @@ export function validateAiSettings(input?: AiSettingsV1 | null): AiSettingsValid
     if (!VALID_LOCAL_LLM_BACKENDS.includes(value.localLlm.backend)) {
         warnings.push(`Unknown Local LLM backend "${String(value.localLlm.backend)}"; using default backend.`);
         value.localLlm.backend = defaults.localLlm.backend;
+    }
+
+    if (!VALID_LOCAL_LLM_CONFIGURATION_MODES.includes(value.localLlm.configurationMode)) {
+        value.localLlm.configurationMode = defaults.localLlm.configurationMode;
     }
 
     if (typeof value.localLlm.baseUrl !== 'string' || !value.localLlm.baseUrl.trim()) {

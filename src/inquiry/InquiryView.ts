@@ -331,6 +331,9 @@ import {
     stripInquiryReferenceArtifacts,
     stripNumericTitlePrefix
 } from './utils/inquiryViewText';
+
+const INQUIRY_PAYLOAD_STATS_REFRESH_DEBOUNCE_MS = 150;
+
 export class InquiryView extends ItemView {
     static readonly viewType = INQUIRY_VIEW_TYPE;
 
@@ -628,6 +631,10 @@ export class InquiryView extends ItemView {
         if (this.sceneDossierHideTimer) {
             window.clearTimeout(this.sceneDossierHideTimer);
             this.sceneDossierHideTimer = undefined;
+        }
+        if (this.payloadStatsRefreshTimer !== undefined) {
+            window.clearTimeout(this.payloadStatsRefreshTimer);
+            this.payloadStatsRefreshTimer = undefined;
         }
         this.contentEl.empty();
     }
@@ -9356,15 +9363,21 @@ export class InquiryView extends ItemView {
     }
 
     private schedulePayloadStatsRefresh(): void {
-        if (this.payloadStatsRefreshTimer !== undefined) return;
+        if (this.payloadStatsRefreshTimer !== undefined) {
+            window.clearTimeout(this.payloadStatsRefreshTimer);
+        }
         this.payloadStatsRefreshTimer = window.setTimeout(() => {
             this.payloadStatsRefreshTimer = undefined;
+            if (this.entryBodyCharLoads.size > 0) {
+                this.schedulePayloadStatsRefresh();
+                return;
+            }
             this.payloadStats = undefined;
             this._currentCorpusContext = null;
             this.refreshPayloadStats();
             this.refreshEstimateDisplays();
             void this.requestEstimateSnapshot();
-        }, 0);
+        }, INQUIRY_PAYLOAD_STATS_REFRESH_DEBOUNCE_MS);
     }
 
     private getPayloadStats(): InquiryPayloadStats {

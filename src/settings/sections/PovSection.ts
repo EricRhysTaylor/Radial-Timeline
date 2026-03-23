@@ -131,7 +131,7 @@ export function renderPovSection(params: {
         text: t('settings.pov.preview.heading')
     });
     const previewBody = previewContainer.createDiv({ cls: 'ert-pov-preview-body' });
-    let previewExpanded = true;
+    let previewExpanded = plugin.settings.povPreviewExpanded ?? true;
     const refreshPreviewToggle = () => {
         previewContainer.toggleClass('ert-settings-hidden', !previewExpanded);
     };
@@ -154,8 +154,10 @@ export function renderPovSection(params: {
     // SAFE: Settings sections are standalone functions without Component lifecycle; Obsidian manages settings tab cleanup
     previewToggle.addEventListener('click', () => {
         previewExpanded = !previewExpanded;
+        plugin.settings.povPreviewExpanded = previewExpanded;
         refreshPreviewToggle();
         refreshPreviewButton();
+        void plugin.saveSettings();
     });
 
     const buildPreviewEntries = (

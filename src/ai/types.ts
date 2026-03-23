@@ -153,9 +153,11 @@ export type AnalysisPackaging = 'automatic' | 'singlePassOnly' | 'segmented';
 
 export type LocalLlmBackendId = 'ollama' | 'lmStudio' | 'openaiCompatible';
 export type LocalLlmJsonMode = 'response_format' | 'prompt_only';
+export type LocalLlmConfigurationMode = 'auto' | 'custom';
 
 export interface LocalLlmSettings {
     enabled: boolean;
+    configurationMode: LocalLlmConfigurationMode;
     backend: LocalLlmBackendId;
     baseUrl: string;
     defaultModelId: string;

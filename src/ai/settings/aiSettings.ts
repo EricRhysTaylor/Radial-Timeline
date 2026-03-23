@@ -21,6 +21,7 @@ export type CredentialSecretProvider = 'openai' | 'anthropic' | 'google' | 'olla
 export const DEFAULT_MODEL_POLICY: ModelPolicy = { type: 'latestStable' };
 export const DEFAULT_LOCAL_LLM_SETTINGS: LocalLlmSettings = {
     enabled: true,
+    configurationMode: 'auto',
     backend: 'ollama',
     baseUrl: 'http://localhost:11434/v1',
     defaultModelId: 'llama3',

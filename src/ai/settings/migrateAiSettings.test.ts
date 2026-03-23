@@ -57,6 +57,7 @@ describe('migrateAiSettings', () => {
                 privacy: { allowTelemetry: false, allowRemoteRegistry: false, allowProviderSnapshot: false },
                 localLlm: {
                     enabled: true,
+                    configurationMode: 'auto',
                     backend: 'ollama',
                     baseUrl: 'http://localhost:11434/v1',
                     defaultModelId: 'llama3',

@@ -121,10 +121,10 @@ describe('AI settings models table', () => {
 
     it('keeps Local LLM configuration and status provider-gated instead of globally forced visible', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
-        expect(source.includes("localLlmConfigSectionEl.toggleClass('ert-settings-hidden', !isOllama);")).toBe(true);
-        expect(source.includes("localLlmConfigSectionEl.toggleClass('ert-settings-visible', isOllama);")).toBe(true);
-        expect(source.includes("localLlmStatusSectionEl.toggleClass('ert-settings-hidden', !isOllama);")).toBe(true);
-        expect(source.includes("localLlmStatusSectionEl.toggleClass('ert-settings-visible', isOllama);")).toBe(true);
+        expect(source.includes('const showLocalLlmOverrideDetails = isOllama && shouldRevealLocalLlmOverrideSettings();')).toBe(true);
+        expect(source.includes('const showLocalLlmConfigDetails = isOllama && (')).toBe(true);
+        expect(source.includes("localLlmConfigSectionEl.toggleClass('ert-settings-hidden', !showLocalLlmConfigDetails);")).toBe(true);
+        expect(source.includes("localLlmStatusSectionEl.toggleClass('ert-settings-hidden', !showLocalLlmOverrideDetails);")).toBe(true);
     });
 
     it('uses medium dropdown sizing for all AI Strategy controls', () => {
@@ -274,6 +274,16 @@ describe('AI settings models table', () => {
         expect(source.includes('setOllamaModelId(value);')).toBe(true);
         expect(source.includes('Manual model ID (fallback)')).toBe(true);
         expect(source.includes('The AI Strategy model dropdown above is now the primary local model selector.')).toBe(true);
+    });
+
+    it('repurposes the third Local LLM strategy card into Auto vs Custom setup mode', () => {
+        const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
+        expect(source.includes("accessTierDropdown.addOption('auto', 'Auto');")).toBe(true);
+        expect(source.includes("accessTierDropdown.addOption('custom', 'Custom');")).toBe(true);
+        expect(source.includes("accessTierName.textContent = isOllama ? 'Setup' : 'Access';")).toBe(true);
+        expect(source.includes('Use Auto for standard Local LLM setup. Switch to Custom only when you need to override backend or transport settings.')).toBe(true);
+        expect(source.includes('shouldRevealLocalLlmOverrideSettings')).toBe(true);
+        expect(source.includes('shouldRevealLocalLlmTransportSettings')).toBe(true);
     });
 
     it('removes the local write bypass toggle from the AI settings UI', () => {

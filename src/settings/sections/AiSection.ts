@@ -26,7 +26,7 @@ import {
     setCredentialSecretId
 } from '../../ai/credentials/credentials';
 import { hasSecret, isSecretStorageAvailable, setSecret } from '../../ai/credentials/secretStorage';
-import type { AccessTier, AIProviderId, Capability, LocalLlmSettings, ModelInfo, ModelStatus, RTCorpusTokenBreakdown } from '../../ai/types';
+import type { AccessTier, AIProviderId, Capability, LocalLlmConfigurationMode, LocalLlmSettings, ModelInfo, ModelStatus, RTCorpusTokenBreakdown } from '../../ai/types';
 import type { LocalLlmDiagnosticsReport } from '../../ai/localLlm/diagnostics';
 import { buildCanonicalExecutionEstimate, estimateGossamerTokens } from '../../ai/forecast/estimateTokensFromVault';
 import {
@@ -310,6 +310,7 @@ export function renderAiSection(params: {
     };
 
     const getLocalLlmBackendId = (): LocalLlmBackendId => getLocalLlmSettings(ensureCanonicalAiSettings()).backend;
+    const getLocalLlmConfigurationMode = (): LocalLlmConfigurationMode => getLocalLlmSettings(ensureCanonicalAiSettings()).configurationMode;
     const getLocalLlmUiTimeoutMs = (): number => (
         Math.max(4000, Math.min(getLocalLlmSettings(ensureCanonicalAiSettings()).timeoutMs, 10000))
     );
@@ -340,6 +341,13 @@ export function renderAiSection(params: {
         }
 
         return options;
+    };
+    const setLocalLlmConfigurationMode = (mode: LocalLlmConfigurationMode): void => {
+        const aiSettings = ensureCanonicalAiSettings();
+        aiSettings.localLlm = {
+            ...getLocalLlmSettings(aiSettings),
+            configurationMode: mode
+        };
     };
 
     let isSyncingRoutingUi = false;
@@ -1015,7 +1023,7 @@ export function renderAiSection(params: {
     // Do not rewrite this copy as generic: it reflects limits specifically granted to the author/user by their provider.
     const ACCESS_TIER_COPY = 'Increase available context headroom if your provider has granted you a higher Tier.';
     const LOCAL_MODEL_STRATEGY_COPY = 'Select the active local model here. If discovery fails, use the manual fallback in Local LLM Configuration below.';
-    const LOCAL_ACCESS_TIER_COPY = 'Cloud access tiers do not apply to Local LLM.';
+    const LOCAL_OVERRIDE_COPY = 'Use Auto for standard Local LLM setup. Switch to Custom only when you need to override backend or transport settings.';
 
     const accessTierSetting = new Settings(quickSetupGrid)
         .setName('Access')
@@ -1033,6 +1041,14 @@ export function renderAiSection(params: {
             if (isSyncingRoutingUi) return;
             const aiSettings = ensureCanonicalAiSettings();
             const provider = aiSettings.provider === 'none' ? 'openai' : aiSettings.provider;
+            if (provider === 'ollama') {
+                setLocalLlmConfigurationMode(value === 'custom' ? 'custom' : 'auto');
+                await persistCanonical();
+                renderLocalLlmModelList();
+                renderLocalLlmStatus();
+                refreshRoutingUi();
+                return;
+            }
             const numTier = Number(value) as AccessTier;
             if (provider === 'anthropic') aiSettings.aiAccessProfile.anthropicTier = numTier;
             else if (provider === 'openai') aiSettings.aiAccessProfile.openaiTier = numTier;
@@ -1623,9 +1639,10 @@ export function renderAiSection(params: {
             if (accessTierDropdown) {
                 if (isOllama) {
                     accessTierDropdown.selectEl.empty();
-                    accessTierDropdown.addOption('—', '—');
-                    accessTierDropdown.setValue('—');
-                    accessTierDropdown.selectEl.disabled = true;
+                    accessTierDropdown.addOption('auto', 'Auto');
+                    accessTierDropdown.addOption('custom', 'Custom');
+                    accessTierDropdown.selectEl.disabled = false;
+                    setDropdownValueSafe(accessTierDropdown, getLocalLlmConfigurationMode(), 'auto');
                 } else {
                     accessTierDropdown.selectEl.disabled = false;
                     // Restore tier options if they were replaced by "—"
@@ -1659,7 +1676,11 @@ export function renderAiSection(params: {
         }
         const accessTierDesc = accessTierSetting.settingEl.querySelector('.ert-ai-strategy-row__desc');
         if (accessTierDesc instanceof HTMLElement) {
-            accessTierDesc.textContent = isOllama ? LOCAL_ACCESS_TIER_COPY : ACCESS_TIER_COPY;
+            accessTierDesc.textContent = isOllama ? LOCAL_OVERRIDE_COPY : ACCESS_TIER_COPY;
+        }
+        const accessTierName = accessTierSetting.settingEl.querySelector('.setting-item-name');
+        if (accessTierName instanceof HTMLElement) {
+            accessTierName.textContent = isOllama ? 'Setup' : 'Access';
         }
 
         if (!isOllama) {
@@ -1674,13 +1695,20 @@ export function renderAiSection(params: {
         apiKeysFold.toggleClass('ert-settings-hidden', isOllama);
         apiKeysFold.toggleClass('ert-settings-visible', !isOllama);
 
+        const showLocalLlmOverrideDetails = isOllama && shouldRevealLocalLlmOverrideSettings();
+        const showLocalLlmConfigDetails = isOllama && (
+            getLocalLlmConfigurationMode() === 'custom'
+            || shouldRevealLocalLlmTransportSettings()
+            || hasLocalLlmSelectedModelMismatch()
+        );
+
         if (localLlmConfigSectionEl) {
-            localLlmConfigSectionEl.toggleClass('ert-settings-hidden', !isOllama);
-            localLlmConfigSectionEl.toggleClass('ert-settings-visible', isOllama);
+            localLlmConfigSectionEl.toggleClass('ert-settings-hidden', !showLocalLlmConfigDetails);
+            localLlmConfigSectionEl.toggleClass('ert-settings-visible', showLocalLlmConfigDetails);
         }
         if (localLlmStatusSectionEl) {
-            localLlmStatusSectionEl.toggleClass('ert-settings-hidden', !isOllama);
-            localLlmStatusSectionEl.toggleClass('ert-settings-visible', isOllama);
+            localLlmStatusSectionEl.toggleClass('ert-settings-hidden', !showLocalLlmOverrideDetails);
+            localLlmStatusSectionEl.toggleClass('ert-settings-visible', showLocalLlmOverrideDetails);
         }
 
         capacityInquiryToken.setText('Calculating...');
@@ -2214,6 +2242,32 @@ export function renderAiSection(params: {
     let localLlmValidationPromise: Promise<void> | null = null;
     let localLlmAutoValidationTimer: ReturnType<typeof globalThis.setTimeout> | null = null;
 
+    const hasLocalLlmSelectedModelMismatch = (): boolean => {
+        const selectedModelId = getOllamaModelId().trim();
+        if (!selectedModelId || !localLlmLoadedModels.length) return false;
+        return !localLlmLoadedModels.some(model => model.id === selectedModelId);
+    };
+
+    const hasLocalLlmValidationFailure = (): boolean => {
+        if (localLlmModelLoadError || localLlmValidationError) return true;
+        if (!localLlmValidationReport) return false;
+        return !localLlmValidationReport.reachable.ok
+            || !localLlmValidationReport.modelAvailable.ok
+            || !localLlmValidationReport.basicCompletion.ok
+            || !localLlmValidationReport.structuredJson.ok
+            || !localLlmValidationReport.repairPath.ok;
+    };
+
+    const shouldRevealLocalLlmOverrideSettings = (): boolean =>
+        getLocalLlmConfigurationMode() === 'custom' || hasLocalLlmValidationFailure() || hasLocalLlmSelectedModelMismatch();
+
+    const shouldRevealLocalLlmTransportSettings = (): boolean => {
+        if (getLocalLlmConfigurationMode() === 'custom') return true;
+        if (localLlmModelLoadError || localLlmValidationError) return true;
+        if (!localLlmValidationReport) return false;
+        return !localLlmValidationReport.reachable.ok;
+    };
+
     const localLlmConfigSection = quickSetupPreviewSection.createDiv({
         cls: [`${ERT_CLASSES.CARD}`, `${ERT_CLASSES.PANEL}`, `${ERT_CLASSES.STACK}`, 'ert-ai-local-llm-config', 'ert-settings-hidden']
     });
@@ -2221,7 +2275,7 @@ export function renderAiSection(params: {
     localLlmConfigSection.createDiv({ cls: 'ert-section-title', text: 'Local LLM Configuration' });
     localLlmConfigSection.createDiv({
         cls: 'ert-section-desc',
-        text: 'Configure the Local LLM runtime family here. The active model preview above updates as you change these fields.'
+        text: 'Override the auto-detected Local LLM setup only when the standard path fails or you need a deliberate custom transport.'
     });
 
     const localLlmStatusSection = quickSetupPreviewSection.createDiv({
@@ -2231,7 +2285,7 @@ export function renderAiSection(params: {
     localLlmStatusSection.createDiv({ cls: 'ert-section-title', text: 'Local LLM Status / Validation' });
     localLlmStatusSection.createDiv({
         cls: 'ert-section-desc',
-        text: 'Persistent checks for the current Local LLM setup. Use this to confirm model loading, structured JSON, and repair behavior before running Pulse or Inquiry.'
+        text: 'Auto-configuration diagnostics for the current Local LLM setup. This stays hidden while the standard path is healthy.'
     });
     const localLlmStatusSummary = localLlmStatusSection.createDiv({ cls: `${ERT_CLASSES.STACK_TIGHT} ert-ai-local-llm-status-summary` });
     const localLlmStatusChecks = localLlmStatusSection.createDiv({ cls: `${ERT_CLASSES.STACK_TIGHT} ert-ai-local-llm-status-checks` });
@@ -2374,7 +2428,15 @@ export function renderAiSection(params: {
     const renderLocalLlmModelList = (): void => {
         const selectedModelId = getOllamaModelId().trim();
         const selectedExists = localLlmLoadedModels.some(model => model.id === selectedModelId);
-        const showManualModelFallback = !!localLlmModelLoadError || (!!localLlmLastLoadedAt && !selectedExists);
+        const showTransportSettings = shouldRevealLocalLlmTransportSettings();
+        const showManualModelFallback = getLocalLlmConfigurationMode() === 'custom'
+            || !!localLlmModelLoadError
+            || (!!localLlmLastLoadedAt && !selectedExists);
+
+        localLlmBackendSetting.settingEl.toggleClass('ert-settings-hidden', !showTransportSettings);
+        localLlmBackendSetting.settingEl.toggleClass('ert-settings-visible', showTransportSettings);
+        localLlmBaseUrlSetting.settingEl.toggleClass('ert-settings-hidden', !showTransportSettings);
+        localLlmBaseUrlSetting.settingEl.toggleClass('ert-settings-visible', showTransportSettings);
 
         localLlmModelSetting.settingEl.toggleClass('ert-settings-hidden', !showManualModelFallback);
         localLlmModelSetting.settingEl.toggleClass('ert-settings-visible', showManualModelFallback);
