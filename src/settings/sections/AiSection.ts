@@ -2356,9 +2356,14 @@ export function renderAiSection(params: {
         cls: 'ert-section-desc',
         text: 'Auto-configuration diagnostics for the current Local LLM setup. This stays visible so you can confirm connection, validation, and capability.'
     });
-    const localLlmStatusSummary = localLlmStatusSection.createDiv({ cls: `${ERT_CLASSES.STACK_TIGHT} ert-ai-local-llm-status-summary` });
-    const localLlmStatusChecks = localLlmStatusSection.createDiv({ cls: `${ERT_CLASSES.STACK_TIGHT} ert-ai-local-llm-status-checks` });
-    const localLlmStatusTimestamp = localLlmStatusSection.createDiv({ cls: 'ert-field-note' });
+    const localLlmStatusGrid = localLlmStatusSection.createDiv({ cls: 'ert-ai-local-llm-status-grid' });
+    const localLlmStatusConnection = localLlmStatusGrid.createDiv({ cls: `${ERT_CLASSES.STACK_TIGHT} ert-ai-local-llm-status-column` });
+    const localLlmStatusModel = localLlmStatusGrid.createDiv({ cls: `${ERT_CLASSES.STACK_TIGHT} ert-ai-local-llm-status-column` });
+    const localLlmStatusChecks = localLlmStatusGrid.createDiv({ cls: `${ERT_CLASSES.STACK_TIGHT} ert-ai-local-llm-status-column` });
+    const localLlmModelsSummary = localLlmStatusSection.createDiv({ cls: 'ert-field-note ert-ai-local-llm-model-summary' });
+    const localLlmModelsList = localLlmStatusSection.createDiv({ cls: `${ERT_CLASSES.INLINE} ert-ai-local-llm-model-list` });
+    const localLlmModelsLegend = localLlmStatusSection.createDiv({ cls: 'ert-field-note ert-ai-local-llm-model-legend' });
+    const localLlmStatusTimestamp = localLlmStatusSection.createDiv({ cls: 'ert-field-note ert-ai-local-llm-status-timestamp' });
     const localLlmTroubleshootingDetails = localLlmStatusSection.createEl('details', {
         cls: 'ert-ai-local-llm-troubleshooting ert-settings-hidden'
     });
@@ -2494,10 +2499,6 @@ export function renderAiSection(params: {
         });
     localLlmModelSetting.settingEl.addClass(ERT_CLASSES.ROW);
 
-    const localLlmModelsSummary = localLlmConfigSection.createDiv({ cls: 'ert-field-note' });
-    const localLlmModelsList = localLlmConfigSection.createDiv({ cls: `${ERT_CLASSES.INLINE} ert-ai-local-llm-model-list` });
-    const localLlmModelsLegend = localLlmConfigSection.createDiv({ cls: 'ert-field-note ert-ai-local-llm-model-legend' });
-
     const formatLocalTimestamp = (iso: string | null): string | null => {
         if (!iso) return null;
         const parsed = new Date(iso);
@@ -2524,16 +2525,19 @@ export function renderAiSection(params: {
         localLlmModelsList.empty();
         if (localLlmModelLoadPending) {
             localLlmModelsSummary.setText('Checking backend and loading available local models...');
+            localLlmModelsLegend.empty();
             return;
         }
 
         if (localLlmModelLoadError) {
             localLlmModelsSummary.setText(`Model list unavailable: ${localLlmModelLoadError}`);
+            localLlmModelsLegend.empty();
             return;
         }
 
         if (!localLlmLoadedModels.length) {
             localLlmModelsSummary.setText('No models loaded yet. Click Load Models to query the selected backend.');
+            localLlmModelsLegend.empty();
             return;
         }
 
@@ -2541,7 +2545,14 @@ export function renderAiSection(params: {
         localLlmModelsSummary.setText(
             `Available local models: ${localLlmLoadedModels.length}. ${selectedExists ? 'Selected model found.' : 'Selected model missing from the loaded list.'}${loadStamp ? ` Last loaded ${loadStamp}.` : ''}`
         );
-        localLlmModelsLegend.setText('Red — Not usable · Orange — Limited · Green — Strong · Blue — Inquiry-eligible');
+        localLlmModelsLegend.empty();
+        localLlmModelsLegend.createSpan({ cls: 'ert-ai-local-llm-legend-chip ert-ai-local-llm-legend-chip--tier0', text: 'Not usable' });
+        localLlmModelsLegend.createSpan({ text: ' · ' });
+        localLlmModelsLegend.createSpan({ cls: 'ert-ai-local-llm-legend-chip ert-ai-local-llm-legend-chip--tier1', text: 'Limited' });
+        localLlmModelsLegend.createSpan({ text: ' · ' });
+        localLlmModelsLegend.createSpan({ cls: 'ert-ai-local-llm-legend-chip ert-ai-local-llm-legend-chip--tier3', text: 'Strong' });
+        localLlmModelsLegend.createSpan({ text: ' · ' });
+        localLlmModelsLegend.createSpan({ cls: 'ert-ai-local-llm-legend-chip ert-ai-local-llm-legend-chip--tier4', text: 'Inquiry-eligible' });
 
         localLlmLoadedModels.forEach(model => {
             const pill = localLlmModelsList.createSpan({
@@ -2584,48 +2595,60 @@ export function renderAiSection(params: {
         const selectedExists = localLlmLoadedModels.some(model => model.id === selectedModelId);
         const selectedCapability = getLocalCapabilityAssessment(selectedModelId, localLlmLoadedModels.find(model => model.id === selectedModelId) ?? null);
 
-        localLlmStatusSummary.empty();
+        localLlmStatusConnection.empty();
+        localLlmStatusModel.empty();
         localLlmStatusChecks.empty();
 
-        const summaryLines: string[] = [];
-        if (!localLlm.enabled) summaryLines.push('Status: Local LLM disabled');
-        else if (localLlmValidationPending) summaryLines.push('Status: Validating');
-        else if (localLlmModelLoadPending) summaryLines.push('Status: Connecting');
-        else if (localLlmValidationError) summaryLines.push('Status: Validation failed');
-        else if (localLlmValidationReport?.reachable.ok
+        const statusValue = !localLlm.enabled
+            ? 'Local LLM disabled'
+            : localLlmValidationPending
+                ? 'Validating'
+                : localLlmModelLoadPending
+                    ? 'Connecting'
+                    : localLlmValidationError
+                        ? 'Validation failed'
+                        : (localLlmValidationReport?.reachable.ok
             && localLlmValidationReport.modelAvailable.ok
             && localLlmValidationReport.basicCompletion.ok
-            && localLlmValidationReport.structuredJson.ok) {
-            summaryLines.push('Status: Validated');
-        } else if (localLlmValidationReport?.reachable.ok) summaryLines.push('Status: Connected');
-        else if (localLlmValidationReport && !localLlmValidationReport.reachable.ok) summaryLines.push('Status: Not connected');
-        else if (localLlmLoadedModels.length > 0) summaryLines.push('Status: Connected');
-        else summaryLines.push('Status: Not checked yet');
+            && localLlmValidationReport.structuredJson.ok)
+                            ? 'Validated'
+                            : localLlmValidationReport?.reachable.ok
+                                ? 'Connected'
+                                : (localLlmValidationReport && !localLlmValidationReport.reachable.ok)
+                                    ? 'Not connected'
+                                    : localLlmLoadedModels.length > 0
+                                        ? 'Connected'
+                                        : 'Not checked yet';
 
-        summaryLines.push(`Backend: ${LOCAL_LLM_BACKEND_LABELS[localLlm.backend]}`);
-        summaryLines.push(`Base URL: ${localLlm.baseUrl || 'Not set'}`);
-        summaryLines.push(
-            localLlmModelLoadPending
-                ? 'Models loaded: checking backend'
-                :
-            localLlmModelLoadError
-                ? 'Models loaded: unavailable'
-                : `Models loaded: ${localLlmLoadedModels.length > 0 ? String(localLlmLoadedModels.length) : 'not loaded'}`
-        );
-        summaryLines.push(
-            localLlmModelLoadPending
-                ? 'Selected model: checking availability'
-                :
-            selectedModelId
-                ? `Selected model: ${selectedExists ? `${selectedModelId} found` : `${selectedModelId} missing`}`
-                : 'Selected model: not set'
-        );
-        summaryLines.push(`Capability tier: ${selectedCapability.tierName} — ${selectedCapability.tierSummary}${selectedCapability.confidence === 'heuristic' ? ' (heuristic)' : ''}`);
-        summaryLines.push('Capability reflects likely fit for Radial Timeline tasks, not a guarantee for every corpus.');
+        const connectionItems: Array<[string, string]> = [
+            ['Status', statusValue],
+            ['Backend', LOCAL_LLM_BACKEND_LABELS[localLlm.backend]],
+            ['Base URL', localLlm.baseUrl || 'Not set'],
+            ['Last checked', localLlmValidationPending ? 'Validating...' : (formatLocalTimestamp(localLlmLastValidatedAt) || 'Not yet validated')]
+        ];
+        const modelItems: Array<[string, string]> = [
+            ['Models loaded', localLlmModelLoadPending
+                ? 'Checking backend'
+                : localLlmModelLoadError
+                    ? 'Unavailable'
+                    : (localLlmLoadedModels.length > 0 ? String(localLlmLoadedModels.length) : 'Not loaded')],
+            ['Selected model', localLlmModelLoadPending
+                ? 'Checking availability'
+                : selectedModelId
+                    ? (selectedExists ? `${selectedModelId} found` : `${selectedModelId} missing`)
+                    : 'Not set'],
+            ['Capability tier', `${selectedCapability.tierName} — ${selectedCapability.tierSummary}${selectedCapability.confidence === 'heuristic' ? ' (heuristic)' : ''}`],
+            ['Capability', 'Likely fit for Radial Timeline tasks, not a guarantee for every corpus.']
+        ];
 
-        summaryLines.forEach(line => {
-            localLlmStatusSummary.createDiv({ cls: 'ert-field-note', text: line });
-        });
+        const appendStatusItem = (container: HTMLElement, label: string, value: string): void => {
+            const item = container.createDiv({ cls: 'ert-ai-local-llm-status-item' });
+            item.createDiv({ cls: 'ert-ai-local-llm-status-label', text: label });
+            item.createDiv({ cls: 'ert-ai-local-llm-status-value', text: value });
+        };
+
+        connectionItems.forEach(([label, value]) => appendStatusItem(localLlmStatusConnection, label, value));
+        modelItems.forEach(([label, value]) => appendStatusItem(localLlmStatusModel, label, value));
 
         const checks: Array<[string, { ok: boolean; message: string } | null]> = [
             ['Connection', localLlmValidationReport?.reachable ?? null],
@@ -2635,29 +2658,17 @@ export function renderAiSection(params: {
             ['Repair validation', localLlmValidationReport?.repairPath ?? null]
         ];
         checks.forEach(([label, check]) => {
-            const line = localLlmStatusChecks.createDiv({ cls: 'ert-field-note' });
             const statusLabel = localLlmValidationPending
                 ? 'Checking...'
                 : (check ? (check.ok ? 'Passed' : 'Failed') : 'Not checked');
-            line.setText(`${label}: ${statusLabel}`);
-            if (check?.message) {
-                line.createSpan({ text: ` — ${check.message}` });
-            }
+            const value = check?.message ? `${statusLabel} — ${check.message}` : statusLabel;
+            appendStatusItem(localLlmStatusChecks, label, value);
         });
 
         if (localLlmValidationError) {
-            localLlmStatusChecks.createDiv({
-                cls: 'ert-field-note',
-                text: `Validation error: ${localLlmValidationError}`
-            });
+            appendStatusItem(localLlmStatusChecks, 'Validation error', localLlmValidationError);
         }
-
-        const stamp = formatLocalTimestamp(localLlmLastValidatedAt);
-        localLlmStatusTimestamp.setText(
-            localLlmValidationPending
-                ? 'Last checked: validating...'
-                : (stamp ? `Last checked: ${stamp}` : 'Last checked: not yet validated')
-        );
+        localLlmStatusTimestamp.empty();
         const showTroubleshooting = shouldRevealLocalLlmTroubleshootingActions();
         localLlmTroubleshootingDetails.classList.toggle('ert-settings-hidden', !showTroubleshooting);
         localLlmTroubleshootingDetails.classList.toggle('ert-settings-visible', showTroubleshooting);

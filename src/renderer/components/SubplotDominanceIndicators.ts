@@ -3,6 +3,7 @@ import { formatNumber, escapeXml } from '../../utils/svg';
 
 export interface SubplotDominanceState {
     hasSharedOverlap: boolean;
+    hasExpressedSharedScenes: boolean;
     hasHiddenSharedScenes: boolean;
 }
 
@@ -89,6 +90,7 @@ export function computeSubplotDominanceStates(params: {
     masterSubplotOrder.forEach(subplot => {
         subplotDominanceStates.set(subplot, {
             hasSharedOverlap: false,
+            hasExpressedSharedScenes: false,
             hasHiddenSharedScenes: false
         });
     });
@@ -118,10 +120,13 @@ export function computeSubplotDominanceStates(params: {
         uniqueSubplots.forEach(subplotName => {
             const existing = subplotDominanceStates.get(subplotName) || {
                 hasSharedOverlap: false,
+                hasExpressedSharedScenes: false,
                 hasHiddenSharedScenes: false
             };
             existing.hasSharedOverlap = true;
-            if (subplotName !== dominantSubplot) {
+            if (subplotName === dominantSubplot) {
+                existing.hasExpressedSharedScenes = true;
+            } else {
                 existing.hasHiddenSharedScenes = true;
             }
             subplotDominanceStates.set(subplotName, existing);
@@ -163,7 +168,8 @@ export function renderSubplotDominanceIndicators(params: {
 
         const ring = totalRings - offset - 1;
         const innerR = ringStartRadii[ring];
-        if (innerR === undefined) return;
+        const ringWidth = ringWidths[ring];
+        if (innerR === undefined || ringWidth === undefined) return;
 
         const iconRadius = Math.round(innerR + RADIAL_INSET);
         const iconX = Math.round(iconRadius * radialX);
@@ -171,7 +177,7 @@ export function renderSubplotDominanceIndicators(params: {
         
         // Right triangle: vertical left side, horizontal bottom, 45° diagonal (page corner)
         const path = `M 0 0 L 0 ${TRIANGLE_SIZE} L ${TRIANGLE_SIZE} ${TRIANGLE_SIZE} Z`;
-        const cssClass = state.hasHiddenSharedScenes ? 'is-hidden' : 'is-shown';
+        const cssClass = state.hasExpressedSharedScenes ? 'is-shown' : 'is-hidden';
         const subplotColor = subplotColorFor(subplotName);
         
         // Calculate final position

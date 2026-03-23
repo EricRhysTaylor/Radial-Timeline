@@ -250,10 +250,13 @@ describe('AI settings models table', () => {
         expect(source.includes('Retry checks')).toBe(true);
         expect(source.includes('shouldRevealLocalLlmTroubleshootingActions')).toBe(true);
         expect(source.includes('Available local models:')).toBe(true);
-        expect(source.includes('Red — Not usable · Orange — Limited · Green — Strong · Blue — Inquiry-eligible')).toBe(true);
+        expect(source.includes("localLlmModelsLegend.createSpan({ cls: 'ert-ai-local-llm-legend-chip ert-ai-local-llm-legend-chip--tier0', text: 'Not usable' });")).toBe(true);
+        expect(source.includes("localLlmModelsLegend.createSpan({ cls: 'ert-ai-local-llm-legend-chip ert-ai-local-llm-legend-chip--tier1', text: 'Limited' });")).toBe(true);
+        expect(source.includes("localLlmModelsLegend.createSpan({ cls: 'ert-ai-local-llm-legend-chip ert-ai-local-llm-legend-chip--tier3', text: 'Strong' });")).toBe(true);
+        expect(source.includes("localLlmModelsLegend.createSpan({ cls: 'ert-ai-local-llm-legend-chip ert-ai-local-llm-legend-chip--tier4', text: 'Inquiry-eligible' });")).toBe(true);
         expect(source.includes('getLocalStrategyModelOptions')).toBe(true);
-        expect(source.includes('Capability tier:')).toBe(true);
-        expect(source.includes('Capability reflects likely fit for Radial Timeline tasks, not a guarantee for every corpus.')).toBe(true);
+        expect(source.includes("['Capability tier', `${selectedCapability.tierName} — ${selectedCapability.tierSummary}${selectedCapability.confidence === 'heuristic' ? ' (heuristic)' : ''}`],")).toBe(true);
+        expect(source.includes("['Capability', 'Likely fit for Radial Timeline tasks, not a guarantee for every corpus.']")).toBe(true);
         expect(source.includes('Auto-configuration diagnostics for the current Local LLM setup. This stays visible so you can confirm connection, validation, and capability.')).toBe(true);
         expect(source.includes('Summary —')).toBe(true);
         expect(source.includes('Inquiry —')).toBe(true);
@@ -267,8 +270,10 @@ describe('AI settings models table', () => {
         expect(source.includes("['Basic validation', localLlmValidationReport?.basicCompletion ?? null]")).toBe(true);
         expect(source.includes("['Structured validation', localLlmValidationReport?.structuredJson ?? null]")).toBe(true);
         expect(source.includes("['Repair validation', localLlmValidationReport?.repairPath ?? null]")).toBe(true);
-        expect(source.includes('Last checked:')).toBe(true);
-        expect(source.includes("const statusLabel = localLlmValidationPending")).toBe(true);
+        expect(source.includes("const localLlmStatusGrid = localLlmStatusSection.createDiv({ cls: 'ert-ai-local-llm-status-grid' });")).toBe(true);
+        expect(source.includes("const appendStatusItem = (container: HTMLElement, label: string, value: string): void => {")).toBe(true);
+        expect(source.includes("['Last checked', localLlmValidationPending ? 'Validating...' : (formatLocalTimestamp(localLlmLastValidatedAt) || 'Not yet validated')]")).toBe(true);
+        expect(source.includes("['Capability', 'Likely fit for Radial Timeline tasks, not a guarantee for every corpus.']")).toBe(true);
         expect(source.includes("'Checking...'")).toBe(true);
     });
 

@@ -790,6 +790,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const inquiryBody = inquiryStack.createDiv({ cls: 'ert-settings-searchable-content' });
 
         const coreStack = coreContent.createDiv({ cls: ERT_CLASSES.STACK });
+        this.renderCoreHero(coreStack);
         const forceExpandCompletionPreview = this._forceExpandCoreCompletionPreview;
         this._forceExpandCoreCompletionPreview = false;
 
@@ -801,8 +802,6 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             frameClass: 'ert-previewFrame--flush',
             forceExpanded: forceExpandCompletionPreview
         });
-
-        this.renderCoreHero(coreStack);
 
         const coreBody = coreStack.createDiv();
         const searchableContent = coreBody.createDiv({ cls: 'ert-settings-searchable-content' });

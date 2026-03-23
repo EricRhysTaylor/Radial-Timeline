@@ -2448,6 +2448,78 @@
   box-shadow: 0 0 0 1px color-mix(in srgb, currentColor 22%, transparent);
 }
 
+.ert-ui.ert-scope--settings .ert-ai-local-llm-status-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  width: 100%;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-local-llm-status-column {
+  min-width: 0;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-local-llm-status-item {
+  display: grid;
+  gap: 2px;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-local-llm-status-label {
+  color: var(--text-faint);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-local-llm-status-value {
+  color: var(--text-normal);
+  font-size: 13px;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-local-llm-model-summary,
+.ert-ui.ert-scope--settings .ert-ai-local-llm-status-timestamp {
+  margin-top: 2px;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-local-llm-model-list {
+  justify-content: flex-start;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-local-llm-model-legend {
+  margin-top: -2px;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-local-llm-legend-chip--tier0 {
+  color: color-mix(in srgb, var(--text-error) 68%, var(--text-normal));
+}
+
+.ert-ui.ert-scope--settings .ert-ai-local-llm-legend-chip--tier1 {
+  color: color-mix(in srgb, var(--color-orange) 70%, var(--text-normal));
+}
+
+.ert-ui.ert-scope--settings .ert-ai-local-llm-legend-chip--tier3 {
+  color: color-mix(in srgb, var(--color-green) 66%, var(--text-normal));
+}
+
+.ert-ui.ert-scope--settings .ert-ai-local-llm-legend-chip--tier4 {
+  color: color-mix(in srgb, var(--color-cyan) 68%, var(--text-normal));
+}
+
+@media (max-width: 980px) {
+  .ert-ui.ert-scope--settings .ert-ai-local-llm-status-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 680px) {
+  .ert-ui.ert-scope--settings .ert-ai-local-llm-status-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .ert-ui.ert-scope--settings .ert-ai-local-llm-warning-label .setting-item-name {
   color: var(--text-error);
 }

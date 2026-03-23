@@ -227,7 +227,7 @@ export function renderCompletionEstimatePreview(params: {
                 'aria-expanded': String(isExpanded)
             }
         });
-        setIcon(toggleButton, isExpanded ? 'chevron-up' : 'chevron-down');
+        setIcon(toggleButton, isExpanded ? 'chevron-down' : 'chevron-right');
         setTooltip(toggleButton, isExpanded ? 'Collapse progress preview' : 'Expand progress preview');
         toggleButton.addEventListener('click', () => {
             isExpanded = !isExpanded;

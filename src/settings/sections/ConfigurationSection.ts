@@ -5,7 +5,7 @@ import { clearFontMetricsCaches } from '../../renderer/utils/FontMetricsCache';
 import { t } from '../../i18n';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import { ERT_CLASSES } from '../../ui/classes';
-import { IMPACT_FULL, IMPACT_DOMINANT_SUBPLOT } from '../SettingImpact';
+import { IMPACT_FULL } from '../SettingImpact';
 import { DEFAULT_SETTINGS } from '../defaults';
 import { resolveAiLogFolder, countAiLogFiles } from '../../ai/log';
 import { renderMetadataSection } from './MetadataSection';
@@ -214,30 +214,6 @@ export function renderConfigurationSection(params: { app: App; plugin: RadialTim
                 .onChange(async (value) => {
                     plugin.settings.enableManuscriptRippleRename = value;
                     await plugin.saveSettings();
-                }));
-        }
-    });
-
-    createDenseRow(schemaContainer, {
-        title: t('settings.configuration.resetSubplotColors.name'),
-        description: t('settings.configuration.resetSubplotColors.desc'),
-        control: (setting) => {
-            setting.addButton(button => button
-                .setButtonText(t('settings.configuration.resetSubplotColors.button'))
-                .setWarning()
-                .onClick(async () => {
-                    const count = Object.keys(plugin.settings.dominantSubplots || {}).length;
-                    plugin.settings.dominantSubplots = {};
-                    await plugin.saveSettings();
-
-                    // Tier 2: selective DOM update for scene colors only
-                    plugin.onSettingChanged(IMPACT_DOMINANT_SUBPLOT);
-
-                    if (count > 0) {
-                        new Notice(t('settings.configuration.resetSubplotColors.clearedNotice', { count: String(count) }));
-                    } else {
-                        new Notice(t('settings.configuration.resetSubplotColors.nothingToReset'));
-                    }
                 }));
         }
     });

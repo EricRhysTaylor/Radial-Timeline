@@ -43,11 +43,29 @@ const MARS_PROFILE = (): PlanetaryProfile => ({
 class PlanetaryProfileNameModal extends Modal {
     private readonly initialValue: string;
     private readonly onSubmit: (value: string) => Promise<void>;
+    private readonly titleText: string;
+    private readonly subtitleText: string;
+    private readonly submitText: string;
+    private readonly placeholderText: string;
 
-    constructor(app: App, initialValue: string, onSubmit: (value: string) => Promise<void>) {
+    constructor(
+        app: App,
+        initialValue: string,
+        onSubmit: (value: string) => Promise<void>,
+        options?: {
+            titleText?: string;
+            subtitleText?: string;
+            submitText?: string;
+            placeholderText?: string;
+        }
+    ) {
         super(app);
         this.initialValue = initialValue;
         this.onSubmit = onSubmit;
+        this.titleText = options?.titleText ?? 'Rename profile';
+        this.subtitleText = options?.subtitleText ?? 'Choose the label shown in the active profile selector and preview.';
+        this.submitText = options?.submitText ?? 'Rename';
+        this.placeholderText = options?.placeholderText ?? 'Planet name';
     }
 
     onOpen(): void {
@@ -59,8 +77,8 @@ class PlanetaryProfileNameModal extends Modal {
         }
 
         contentEl.addClass('ert-modal-container', 'ert-stack');
-        contentEl.createDiv({ cls: 'ert-modal-title', text: 'Rename profile' });
-        contentEl.createDiv({ cls: 'ert-modal-subtitle', text: 'Choose the label shown in the active profile selector and preview.' });
+        contentEl.createDiv({ cls: 'ert-modal-title', text: this.titleText });
+        contentEl.createDiv({ cls: 'ert-modal-subtitle', text: this.subtitleText });
 
         const inputWrap = contentEl.createDiv({ cls: 'ert-search-input-container' });
         const inputEl = inputWrap.createEl('input', {
@@ -68,7 +86,7 @@ class PlanetaryProfileNameModal extends Modal {
             value: this.initialValue,
             cls: 'ert-input ert-input--full'
         });
-        inputEl.setAttr('placeholder', 'Planet name');
+        inputEl.setAttr('placeholder', this.placeholderText);
 
         const actions = contentEl.createDiv({ cls: 'ert-modal-actions' });
         const save = async () => {
@@ -81,7 +99,7 @@ class PlanetaryProfileNameModal extends Modal {
             this.close();
         };
 
-        new ButtonComponent(actions).setButtonText('Rename').setCta().onClick(() => { void save(); });
+        new ButtonComponent(actions).setButtonText(this.submitText).setCta().onClick(() => { void save(); });
         new ButtonComponent(actions).setButtonText('Cancel').onClick(() => this.close());
 
         window.setTimeout(() => {
@@ -224,16 +242,24 @@ export function renderPlanetaryTimeSection({ app, plugin, containerEl }: Section
         selectorSetting.addExtraButton(btn => {
             btn.setIcon('plus');
             btn.setTooltip(t('planetary.actions.add'));
-            btn.onClick(async () => {
-                const profile = DEFAULT_PROFILE();
-                profiles.push(profile);
-                activeProfileId = profile.id;
-                plugin.settings.activePlanetaryProfileId = activeProfileId;
-                await plugin.saveSettings();
-                renderSelector();
-                renderFields();
-                renderPreview();
-                updateActiveIcon();
+            btn.onClick(() => {
+                new PlanetaryProfileNameModal(app, '', async (value) => {
+                    const profile = DEFAULT_PROFILE();
+                    profile.label = value;
+                    profiles.push(profile);
+                    activeProfileId = profile.id;
+                    plugin.settings.activePlanetaryProfileId = activeProfileId;
+                    await plugin.saveSettings();
+                    renderSelector();
+                    renderFields();
+                    renderPreview();
+                    updateActiveIcon();
+                }, {
+                    titleText: 'Create a new planet',
+                    subtitleText: 'Choose the label shown in the active profile selector and preview.',
+                    submitText: 'Create',
+                    placeholderText: 'Planet name'
+                }).open();
             });
         });
         selectorSetting.addExtraButton(btn => {

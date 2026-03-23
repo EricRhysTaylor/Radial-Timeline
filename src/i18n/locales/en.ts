@@ -113,13 +113,6 @@ export interface TranslationKeys {
                 placeholder: string;
                 error: string;
             };
-            resetSubplotColors: {
-                name: string;
-                desc: string;
-                button: string;
-                clearedNotice: string;
-                nothingToReset: string;
-            };
         };
         ai: {
             heading: string;
@@ -365,13 +358,6 @@ export const en: TranslationKeys = {
                 desc: 'Delay before refreshing the timeline after YAML frontmatter changes. Increase if your vault is large and updates feel too frequent.',
                 placeholder: 'e.g., 10000',
                 error: 'Please enter a non-negative number.',
-            },
-            resetSubplotColors: {
-                name: 'Reset subplot color dominance',
-                desc: 'Clear all saved subplot color dominance preferences for scenes that appear in multiple subplots. This resets to the default ordering (outermost to innermost rings based on subplot scene population).',
-                button: 'Reset to default',
-                clearedNotice: 'Cleared saved colors for {{count}} multi-subplot scene(s).',
-                nothingToReset: 'No subplot dominance preferences to reset.',
             },
         },
         ai: {
