@@ -5,13 +5,16 @@ import { getLocalLlmBackend } from './backends';
 import { runLocalLlmDiagnostics } from './diagnostics';
 import { getCanonicalLocalLlmSettings, LOCAL_LLM_BACKEND_LABELS } from './settings';
 import { runStructuredJsonPipeline } from './structuredJson';
-import type { GenerateJsonRequest, GenerateTextRequest, ProviderExecutionResult } from '../types';
+import type { GenerateJsonRequest, GenerateTextRequest, LocalLlmSettings, ProviderExecutionResult } from '../types';
 
 export class LocalLlmClient {
     constructor(private plugin: RadialTimelinePlugin) {}
 
-    private async buildTransport() {
-        const localLlm = getCanonicalLocalLlmSettings(this.plugin);
+    private async buildTransport(overrides?: Partial<LocalLlmSettings>) {
+        const localLlm = {
+            ...getCanonicalLocalLlmSettings(this.plugin),
+            ...(overrides || {})
+        };
         const apiKey = await getCredential(this.plugin, 'ollama');
         return {
             localLlm,
@@ -24,13 +27,13 @@ export class LocalLlmClient {
         };
     }
 
-    async listModels() {
-        const { backend, transport } = await this.buildTransport();
+    async listModels(overrides?: Partial<LocalLlmSettings>) {
+        const { backend, transport } = await this.buildTransport(overrides);
         return backend.listModels(transport);
     }
 
-    async runDiagnostics() {
-        return runLocalLlmDiagnostics(this.plugin);
+    async runDiagnostics(overrides?: Partial<LocalLlmSettings>) {
+        return runLocalLlmDiagnostics(this.plugin, overrides);
     }
 
     async generateText(req: GenerateTextRequest): Promise<ProviderExecutionResult> {
@@ -103,9 +106,19 @@ export class LocalLlmClient {
         });
         return {
             success: false,
-            content: null,
+            content: structured.content,
             responseData: structured.responseData,
             requestPayload: structured.requestPayload,
+            diagnostics: {
+                structuredJson: {
+                    stage: structured.stage,
+                    repairCount: structured.repairCount,
+                    validationError: structured.error,
+                    initialContent: structured.initialContent,
+                    latestContent: structured.content,
+                    repairedContent: structured.repairedContent ?? null
+                }
+            },
             aiStatus: classification.aiStatus,
             aiReason: classification.aiReason ?? 'invalid_response',
             aiProvider: 'ollama',

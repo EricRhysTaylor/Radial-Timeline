@@ -159,8 +159,6 @@ export interface LocalLlmSettings {
     backend: LocalLlmBackendId;
     baseUrl: string;
     defaultModelId: string;
-    instructions: string;
-    sendPulseToAiReport: boolean;
     timeoutMs: number;
     maxRetries: number;
     jsonMode: LocalLlmJsonMode;
@@ -261,6 +259,7 @@ export interface ProviderExecutionResult {
     content: string | null;
     responseData: unknown;
     requestPayload?: unknown;
+    diagnostics?: unknown;
     aiStatus: AiStatus;
     aiReason?: string;
     aiProvider: AIProviderId;
@@ -441,6 +440,7 @@ export interface AIRunResult {
     error?: string;
     retryCount?: number;
     sanitizationNotes?: string[];
+    diagnostics?: unknown;
     advancedContext?: AIRunAdvancedContext;
     /** Normalized source attribution from provider responses. */
     citations?: SourceCitation[];

@@ -658,6 +658,7 @@ export class AIClient {
                 error: mapErrorToUserMessage(mappedError),
                 retryCount: execution.retryCount,
                 sanitizationNotes: execution.sanitizationNotes,
+                diagnostics: execution.diagnostics,
                 advancedContext,
                 citations: execution.citations
             };
@@ -697,6 +698,7 @@ export class AIClient {
                                 aiTransportLane: retry.aiTransportLane,
                                 retryCount: (retry.retryCount ?? 0) + 1,
                                 sanitizationNotes: retry.sanitizationNotes,
+                                diagnostics: retry.diagnostics,
                                 advancedContext,
                                 citations: retry.citations
                             };
@@ -724,6 +726,7 @@ export class AIClient {
                     error: mapErrorToUserMessage(parseError),
                     retryCount: execution.retryCount,
                     sanitizationNotes: execution.sanitizationNotes,
+                    diagnostics: execution.diagnostics,
                     advancedContext,
                     citations: execution.citations
                 };
@@ -745,6 +748,7 @@ export class AIClient {
             aiTransportLane: execution.aiTransportLane,
             retryCount: execution.retryCount,
             sanitizationNotes: execution.sanitizationNotes,
+            diagnostics: execution.diagnostics,
             advancedContext,
             citations: execution.citations
         };

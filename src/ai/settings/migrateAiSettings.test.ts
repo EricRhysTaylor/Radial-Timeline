@@ -60,8 +60,6 @@ describe('migrateAiSettings', () => {
                     backend: 'ollama',
                     baseUrl: 'http://localhost:11434/v1',
                     defaultModelId: 'llama3',
-                    instructions: '',
-                    sendPulseToAiReport: true,
                     timeoutMs: 45000,
                     maxRetries: 1,
                     jsonMode: 'response_format'
@@ -83,15 +81,11 @@ describe('migrateAiSettings', () => {
             ...base,
             defaultAiProvider: 'local',
             localModelId: 'mistral-local',
-            localBaseUrl: 'http://localhost:1234/v1',
-            localLlmInstructions: 'Return strict JSON.',
-            localSendPulseToAiReport: false
+            localBaseUrl: 'http://localhost:1234/v1'
         } as any);
 
         expect(result.aiSettings.provider).toBe('openai');
         expect(result.aiSettings.localLlm.baseUrl).toBe('http://localhost:1234/v1');
         expect(result.aiSettings.localLlm.defaultModelId).toBe('mistral-local');
-        expect(result.aiSettings.localLlm.instructions).toBe('Return strict JSON.');
-        expect(result.aiSettings.localLlm.sendPulseToAiReport).toBe(false);
     });
 });

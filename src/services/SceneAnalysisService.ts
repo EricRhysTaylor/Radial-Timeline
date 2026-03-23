@@ -154,10 +154,9 @@ export class SceneAnalysisService {
         return resolveConfiguredSelection(aiSettings)?.model.id || 'AI disabled';
     }
 
-    isLocalReportOnlyMode(): boolean {
+    isLocalLlmMode(): boolean {
         const aiSettings = getCanonicalAiSettings(this.plugin);
-        return resolveConfiguredSelection(aiSettings)?.provider === 'ollama'
-            && getLocalLlmSettings(aiSettings).sendPulseToAiReport;
+        return resolveConfiguredSelection(aiSettings)?.provider === 'ollama';
     }
 
     async processByManuscriptOrder(): Promise<void> {
@@ -307,10 +306,9 @@ class SubplotPickerModal extends Modal {
         const summaryLine = `${stats.flagged} flagged • ${stats.processable} processable • ${stats.total} total`;
         this.statsEl.createDiv({ cls: 'rt-subplot-picker-stats-line', text: summaryLine });
 
-        // Check if local LLM is bypassing YAML pulse write
-        const isLocalReportOnly = this.service.isLocalReportOnlyMode();
-        const infoText = isLocalReportOnly
-            ? 'Local LLM mode: Results logged to AI report only (YAML pulse fields not updated).'
+        const isLocalLlm = this.service.isLocalLlmMode();
+        const infoText = isLocalLlm
+            ? 'Local LLM mode: Valid results update scene hover fields automatically. Invalid results are logged and marked for review.'
             : 'Flagged scenes with processable metadata are sent to the AI along with the manuscript content.';
         this.statsEl.createDiv({
             cls: 'rt-subplot-picker-summary',

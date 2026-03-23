@@ -79,9 +79,10 @@ describe('InquiryView payload accounting', () => {
         const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
         expect(viewSource.includes('resolveQuestionPromptForRun(question, selectionMode')).toBe(true);
         expect(viewSource.includes('resolveQuestionPromptFormForRun(question, selectionMode')).toBe(true);
-        expect(viewSource.includes("item.setTitle('Run (Auto)')")).toBe(true);
-        expect(viewSource.includes("item.setTitle('Run Standard')")).toBe(true);
-        expect(viewSource.includes("item.setTitle('Run Focused')")).toBe(true);
+        expect(viewSource.includes("{ label: 'Auto', value: 'auto' }")).toBe(true);
+        expect(viewSource.includes("{ label: 'Standard', value: 'standard' }")).toBe(true);
+        expect(viewSource.includes("{ label: 'Focused', value: 'focused' }")).toBe(true);
+        expect(viewSource.includes('this.setPromptFormOverride(question.id, opt.value)')).toBe(true);
         expect(viewSource.includes('standardPrompt:')).toBe(true);
         expect(viewSource.includes('focusedPrompt:')).toBe(true);
         expect(viewSource.includes('Focus question panel')).toBe(false);
@@ -94,6 +95,15 @@ describe('InquiryView payload accounting', () => {
         expect(viewSource.includes("const questionTextRaw = result.questionText?.trim() || this.getQuestionTextById(result.questionId)")).toBe(true);
         expect(runnerSource.includes('questionPromptForm: input.questionPromptForm')).toBe(true);
         expect(runnerSource.includes('questionText: input.questionText')).toBe(true);
+    });
+
+    it('offers a corpus-level cancel all targeting action in the global corpus context menu', () => {
+        const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
+        const corpusSource = readFileSync(resolve(process.cwd(), 'src/inquiry/corpus/inquiryCorpusStripRenderer.ts'), 'utf8');
+        expect(viewSource.includes("item.setTitle('Cancel all targeting')")).toBe(true);
+        expect(viewSource.includes("this.notifyInteraction('Cleared all Target Scenes.')")).toBe(true);
+        expect(corpusSource.includes('onGlobalContextMenu')).toBe(true);
+        expect(corpusSource.includes('args.onGlobalContextMenu(event)')).toBe(true);
     });
 
 });

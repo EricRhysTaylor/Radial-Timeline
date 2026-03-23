@@ -22,7 +22,9 @@ export interface SceneData {
  */
 export interface AiProviderResponse {
     result: string | null;
+    parsedAnalysis?: ParsedSceneAnalysis | null;
     modelIdUsed: string | null;
+    providerUsed?: Exclude<'openai' | 'anthropic' | 'google' | 'ollama', 'none'> | null;
     advancedContext?: AIRunAdvancedContext;
 }
 

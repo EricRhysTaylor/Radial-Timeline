@@ -706,3 +706,16 @@
 .rt-hover-metadata-text {
   fill: var(--rt-legacy-gray);
 }
+
+.rt-hover-metadata-line.is-pulse-review-warning {
+  color: var(--text-warning);
+}
+
+.rt-hover-metadata-line.is-pulse-review-warning .rt-hover-metadata-icon-g {
+  stroke: var(--text-warning);
+}
+
+.rt-hover-metadata-line.is-pulse-review-warning .rt-hover-metadata-text {
+  fill: var(--text-warning);
+  font-weight: 600;
+}

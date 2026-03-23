@@ -2420,6 +2420,10 @@
   letter-spacing: 0.01em;
 }
 
+.ert-ui.ert-scope--settings .ert-ai-local-llm-warning-label .setting-item-name {
+  color: var(--text-error);
+}
+
 .ert-ui.ert-scope--settings .ert-ai-resolved-preview-details {
   width: min(860px, 100%);
   text-align: left;

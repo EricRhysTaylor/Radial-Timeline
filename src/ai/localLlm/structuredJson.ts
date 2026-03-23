@@ -26,6 +26,9 @@ export interface StructuredJsonSuccess {
 export interface StructuredJsonFailure {
     ok: false;
     error: string;
+    content: string | null;
+    initialContent: string | null;
+    repairedContent?: string | null;
     responseData: unknown;
     requestPayload?: unknown;
     stage: 'initial' | 'repair';
@@ -125,6 +128,8 @@ export async function runStructuredJsonPipeline(input: {
         return {
             ok: false,
             error: initial.error,
+            content: initial.content,
+            initialContent: initial.content,
             responseData: initial.responseData,
             requestPayload: initial.requestPayload,
             stage: 'initial',
@@ -146,6 +151,8 @@ export async function runStructuredJsonPipeline(input: {
     let latestResponseData = initial.responseData;
     let latestRequestPayload = initial.requestPayload;
     let latestError = validated.error;
+    let latestContent = initial.content;
+    let repairedContent: string | null = null;
     const attempts = Math.max(0, input.maxRetries);
     for (let repairCount = 1; repairCount <= attempts; repairCount += 1) {
         const repair = await input.runner.run({
@@ -155,6 +162,8 @@ export async function runStructuredJsonPipeline(input: {
         });
         latestResponseData = repair.responseData;
         latestRequestPayload = repair.requestPayload;
+        latestContent = repair.content;
+        repairedContent = repair.content;
         if (repair.error) {
             latestError = repair.error;
             continue;
@@ -175,6 +184,9 @@ export async function runStructuredJsonPipeline(input: {
     return {
         ok: false,
         error: latestError,
+        content: latestContent,
+        initialContent: initial.content,
+        repairedContent,
         responseData: latestResponseData,
         requestPayload: latestRequestPayload,
         stage: 'repair',

@@ -3691,6 +3691,7 @@ export class InquiryView extends ItemView {
             getHeaderLabelVariants: this.getCorpusCcHeaderLabelVariants.bind(this),
             getHeaderTooltip: this.getCorpusCcHeaderTooltip.bind(this),
             onGlobalToggle: this.handleCorpusGlobalToggle.bind(this),
+            onGlobalContextMenu: this.handleCorpusGlobalContextMenu.bind(this),
             onGroupToggle: this.handleCorpusGroupToggle.bind(this),
             onItemToggle: this.handleCorpusItemToggle.bind(this),
             onItemShiftAction: this.handleCorpusItemShiftAction.bind(this),
@@ -3961,6 +3962,36 @@ export class InquiryView extends ItemView {
         }
     }
 
+    private clearAllTargetScenes(options?: { announce?: boolean }): void {
+        if (this.state.scope !== 'book') {
+            if (options?.announce) {
+                this.notifyInteraction('Target Scenes are available only in Book scope.');
+            }
+            return;
+        }
+
+        if (!this.state.targetSceneIds.length) {
+            if (options?.announce) {
+                this.notifyInteraction('No Target Scenes to clear.');
+            }
+            return;
+        }
+
+        this.state.targetSceneIds = [];
+
+        const activeBookId = this.corpus?.activeBookId ?? this.state.activeBookId;
+        if (activeBookId) {
+            this.lastTargetSceneIdsByBookId.set(activeBookId, []);
+        }
+
+        this.scheduleTargetPersist();
+        this.refreshUI();
+
+        if (options?.announce) {
+            this.notifyInteraction('Cleared all Target Scenes.');
+        }
+    }
+
     private handleCorpusItemShiftAction(entryKey: string, filePath: string, event: MouseEvent): void {
         if (this.state.isRunning) return;
         event.preventDefault();
@@ -4045,6 +4076,22 @@ export class InquiryView extends ItemView {
 
     private handleCorpusItemLeave(): void {
         this.minimap.updateLinkedHoverState();
+    }
+
+    private handleCorpusGlobalContextMenu(event: MouseEvent): void {
+        if (this.state.isRunning) return;
+        event.preventDefault();
+
+        const menu = new Menu();
+        menu.addItem(item => {
+            item.setTitle('Cancel all targeting');
+            if (this.state.scope !== 'book' || this.getActiveTargetSceneIds().length === 0) {
+                item.setDisabled(true);
+                return;
+            }
+            item.onClick(() => this.clearAllTargetScenes({ announce: true }));
+        });
+        menu.showAtMouseEvent(event);
     }
 
     private handleCorpusGlobalToggle(): void {

@@ -3,6 +3,19 @@ import type RadialTimelinePlugin from '../main';
 
 export type ParsedSceneAnalysis = { 'previousSceneAnalysis': string; 'currentSceneAnalysis': string; 'nextSceneAnalysis': string };
 
+export const PULSE_REVIEW_WARNING_FIELD = 'Pulse Review Warning';
+const PULSE_REVIEW_WARNING_KEYS = [
+  PULSE_REVIEW_WARNING_FIELD,
+  'PulseReviewWarning',
+  'pulsereviewwarning'
+];
+
+function clearPulseReviewWarning(fmObj: Record<string, unknown>): void {
+  PULSE_REVIEW_WARNING_KEYS.forEach(key => {
+    delete fmObj[key];
+  });
+}
+
 export async function updateSceneAnalysis(
   vault: Vault,
   file: TFile,
@@ -22,6 +35,7 @@ export async function updateSceneAnalysis(
       delete fmObj['previousSceneAnalysis'];
       delete fmObj['currentSceneAnalysis'];
       delete fmObj['nextSceneAnalysis'];
+      clearPulseReviewWarning(fmObj);
 
       // Use single-field pattern: replace flag with timestamp (cleaner than two fields)
       const now = new Date();
@@ -79,6 +93,7 @@ export async function markPulseProcessed(
   try {
     await plugin.app.fileManager.processFrontMatter(file, (fm) => {
       const fmObj = fm as Record<string, unknown>;
+      clearPulseReviewWarning(fmObj);
 
       // Use single-field pattern: replace flag with timestamp
       const now = new Date();
@@ -121,6 +136,25 @@ export async function markPulseProcessed(
     return true;
   } catch (e) {
     console.error('[markPulseProcessed] Error updating pulse flag:', e);
+    return false;
+  }
+}
+
+export async function setSceneAnalysisReviewWarning(
+  vault: Vault,
+  file: TFile,
+  plugin: RadialTimelinePlugin,
+  warning: string
+): Promise<boolean> {
+  try {
+    await plugin.app.fileManager.processFrontMatter(file, (fm) => {
+      const fmObj = fm as Record<string, unknown>;
+      clearPulseReviewWarning(fmObj);
+      fmObj[PULSE_REVIEW_WARNING_FIELD] = warning;
+    });
+    return true;
+  } catch (e) {
+    console.error('[setSceneAnalysisReviewWarning] Error updating warning marker:', e);
     return false;
   }
 }

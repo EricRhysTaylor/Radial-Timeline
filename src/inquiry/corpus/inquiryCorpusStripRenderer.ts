@@ -92,6 +92,7 @@ export function renderInquiryCorpusStrip(args: {
         overrideLabel?: string
     ) => string;
     onGlobalToggle: () => void;
+    onGlobalContextMenu: (event: MouseEvent) => void;
     onGroupToggle: (groupKey: string) => void;
     onItemToggle: (entryKey: string) => void;
     onItemShiftAction: (entryKey: string, filePath: string, event: MouseEvent) => void;
@@ -134,6 +135,9 @@ export function renderInquiryCorpusStrip(args: {
         refs.ccLabelGroup.appendChild(refs.ccLabelHit);
         args.registerSvgEvent(refs.ccLabelGroup, 'click', () => {
             args.onGlobalToggle();
+        });
+        args.registerSvgEvent(refs.ccLabelGroup, 'contextmenu', (event: MouseEvent) => {
+            args.onGlobalContextMenu(event);
         });
     }
 

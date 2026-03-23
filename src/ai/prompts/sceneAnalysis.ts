@@ -97,7 +97,6 @@ export function buildSceneAnalysisPrompt(
   currentNum: string,
   nextNum: string,
   contextPrompt?: string,
-  extraInstructions?: string,
   sceneRefs?: {
     prevRefId?: string;
     currentRefId: string;
@@ -108,10 +107,6 @@ export function buildSceneAnalysisPrompt(
   let contextPrefix = contextPrompt?.trim() 
     ? `${contextPrompt.trim()}\n\n`
     : 'You are a developmental editor for fiction.\n\n';
-
-  if (extraInstructions?.trim()) {
-    contextPrefix = `${extraInstructions.trim()}\n\n${contextPrefix}`;
-  }
 
   const isPrevAvailable = !!prevBody;
   const isNextAvailable = !!nextBody;

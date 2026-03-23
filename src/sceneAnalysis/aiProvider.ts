@@ -44,6 +44,7 @@ type PulseLogPayload = {
     returnedAt?: Date | null;
     retryCount?: number;
     normalizationWarnings?: string[];
+    diagnostics?: unknown;
 };
 
 const sanitizeSegment = (value: string | null | undefined) => {
@@ -126,7 +127,12 @@ async function writePulseLog(
                         requestPayload: sanitizedPayload
                     },
                     response: {
-                        rawResponse: payload.responseData ?? null,
+                        rawResponse: payload.diagnostics
+                            ? {
+                                responseData: payload.responseData ?? null,
+                                diagnostics: payload.diagnostics
+                            }
+                            : (payload.responseData ?? null),
                         assistantContent: payload.rawTextResult ?? '',
                         parsedOutput: payload.parsed ?? null
                     },
@@ -277,7 +283,9 @@ export async function callAiProvider(
                     tripletInfo,
                     submittedAt,
                     returnedAt,
-                    retryCount: runResult.retryCount
+                    retryCount: runResult.retryCount,
+                    diagnostics: runResult.diagnostics,
+                    normalizationWarnings: runResult.error ? [runResult.error] : undefined
                 });
             }
             throw new Error(runResult.error || `Error calling ${resolvedProvider} AI provider.`);
@@ -285,6 +293,9 @@ export async function callAiProvider(
 
         const parsedForLog = commandContext !== 'synopsis'
             ? parsePulseAnalysisResponse(runResult.content, plugin)
+            : null;
+        const parseFailure = commandContext !== 'synopsis' && !parsedForLog
+            ? ((plugin as any).lastAnalysisError?.trim() || 'Pulse analysis response failed validation.')
             : null;
         if (commandContext !== 'synopsis') {
             await writePulseLog(plugin, vault, {
@@ -294,7 +305,7 @@ export async function callAiProvider(
                 requestPayload: runResult.requestPayload,
                 responseData: responseDataForLog,
                 parsed: parsedForLog,
-                status: 'success',
+                status: parseFailure ? 'error' : 'success',
                 systemPrompt,
                 userPrompt,
                 rawTextResult: runResult.content,
@@ -304,13 +315,20 @@ export async function callAiProvider(
                 tripletInfo,
                 submittedAt,
                 returnedAt,
-                retryCount: runResult.retryCount
+                retryCount: runResult.retryCount,
+                diagnostics: runResult.diagnostics,
+                normalizationWarnings: parseFailure ? [parseFailure] : undefined
             });
+        }
+        if (parseFailure) {
+            throw new Error(parseFailure);
         }
 
         return {
             result: runResult.content,
+            parsedAnalysis: parsedForLog,
             modelIdUsed: runResult.modelResolved || runResult.modelRequested,
+            providerUsed: resolvedProvider,
             advancedContext: runResult.advancedContext
         };
     } catch (error) {
@@ -345,7 +363,8 @@ export async function callAiProvider(
                 tripletInfo,
                 submittedAt,
                 returnedAt,
-                retryCount: runResult?.retryCount
+                retryCount: runResult?.retryCount,
+                diagnostics: runResult?.diagnostics
             });
         }
 

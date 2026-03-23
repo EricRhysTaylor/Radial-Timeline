@@ -128,11 +128,6 @@ export function validateAiSettings(input?: AiSettingsV1 | null): AiSettingsValid
         value.localLlm.defaultModelId = value.localLlm.defaultModelId.trim();
     }
 
-    if (typeof value.localLlm.instructions !== 'string') {
-        value.localLlm.instructions = defaults.localLlm.instructions;
-    }
-
-    value.localLlm.sendPulseToAiReport = value.localLlm.sendPulseToAiReport !== false;
     value.localLlm.enabled = value.localLlm.enabled !== false;
 
     if (typeof value.localLlm.timeoutMs !== 'number' || !Number.isFinite(value.localLlm.timeoutMs)) {

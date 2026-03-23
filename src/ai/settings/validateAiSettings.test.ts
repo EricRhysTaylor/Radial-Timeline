@@ -133,8 +133,6 @@ describe('validateAiSettings', () => {
                 backend: 'unknown-backend' as any,
                 baseUrl: '   ',
                 defaultModelId: '',
-                instructions: 42 as any,
-                sendPulseToAiReport: undefined as any,
                 timeoutMs: 999999,
                 maxRetries: -2,
                 jsonMode: 'bad-mode' as any
@@ -147,8 +145,6 @@ describe('validateAiSettings', () => {
         expect(result.value.localLlm.backend).toBe('ollama');
         expect(result.value.localLlm.baseUrl).toBe('http://localhost:11434/v1');
         expect(result.value.localLlm.defaultModelId).toBeTruthy();
-        expect(result.value.localLlm.instructions).toBe('');
-        expect(result.value.localLlm.sendPulseToAiReport).toBe(true);
         expect(result.value.localLlm.timeoutMs).toBeLessThanOrEqual(120000);
         expect(result.value.localLlm.maxRetries).toBe(0);
         expect(result.value.localLlm.jsonMode).toBe('response_format');

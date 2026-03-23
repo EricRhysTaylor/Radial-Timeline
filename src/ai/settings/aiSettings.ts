@@ -24,8 +24,6 @@ export const DEFAULT_LOCAL_LLM_SETTINGS: LocalLlmSettings = {
     backend: 'ollama',
     baseUrl: 'http://localhost:11434/v1',
     defaultModelId: 'llama3',
-    instructions: '',
-    sendPulseToAiReport: true,
     timeoutMs: 45000,
     maxRetries: 1,
     jsonMode: 'response_format'

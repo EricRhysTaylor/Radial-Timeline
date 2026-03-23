@@ -26,7 +26,7 @@ import {
     setCredentialSecretId
 } from '../../ai/credentials/credentials';
 import { hasSecret, isSecretStorageAvailable, setSecret } from '../../ai/credentials/secretStorage';
-import type { AccessTier, AIProviderId, Capability, ModelInfo, ModelStatus, RTCorpusTokenBreakdown } from '../../ai/types';
+import type { AccessTier, AIProviderId, Capability, LocalLlmSettings, ModelInfo, ModelStatus, RTCorpusTokenBreakdown } from '../../ai/types';
 import type { LocalLlmDiagnosticsReport } from '../../ai/localLlm/diagnostics';
 import { buildCanonicalExecutionEstimate, estimateGossamerTokens } from '../../ai/forecast/estimateTokensFromVault';
 import {
@@ -234,22 +234,15 @@ export function renderAiSection(params: {
         text: 'Scanning corpus...'
     });
     const costEstimateTable = costEstimateSection.createDiv({ cls: 'ert-ai-models-table' });
-    costEstimateSection.createDiv({
-        cls: 'ert-ai-cost-footnote',
-        text: '* Cloud-provider rows use published provider pricing. Actual charges may differ due to provider-side billing rules and account-level adjustments such as caching, credits, promos, or contract pricing.'
-    });
-    costEstimateSection.createDiv({
-        cls: 'ert-ai-cost-footnote',
-        text: 'Local processing runs on your machine. No API charges. Performance and output depend on your hardware and model.'
-    });
-    const costEstimateLinks = costEstimateSection.createDiv({ cls: 'ert-ai-cost-links' });
-    costEstimateLinks.createSpan({ text: 'See provider pricing: ' });
+    const costEstimateFootnote = costEstimateSection.createDiv({ cls: 'ert-ai-cost-footnote' });
+    costEstimateFootnote.appendText('* Cloud-provider rows use published provider pricing. Actual charges may differ due to provider-side billing rules and account-level adjustments such as caching, credits, promos, or contract pricing. ');
+    costEstimateFootnote.createSpan({ text: 'See provider pricing: ' });
     [
         { label: 'OpenAI', href: 'https://openai.com/api/pricing/' },
         { label: 'Anthropic', href: 'https://platform.claude.com/docs/en/about-claude/pricing' },
         { label: 'Google', href: 'https://ai.google.dev/' }
     ].forEach((link, index, list) => {
-        const anchor = costEstimateLinks.createEl('a', {
+        const anchor = costEstimateFootnote.createEl('a', {
             href: link.href,
             text: link.label,
             cls: 'ert-ai-cost-link',
@@ -262,6 +255,9 @@ export function renderAiSection(params: {
             anchor.after(document.createTextNode(' · '));
         }
     });
+    costEstimateFootnote.appendText('. ');
+    costEstimateFootnote.createEl('strong', { text: 'LOCAL PROCESSING' });
+    costEstimateFootnote.appendText(' runs on your machine. No API charges. Performance and output depend on your hardware and model.');
 
     const ensureCanonicalAiSettings = () => {
         if (!plugin.settings.aiSettings) {
@@ -314,6 +310,12 @@ export function renderAiSection(params: {
     };
 
     const getLocalLlmBackendId = (): LocalLlmBackendId => getLocalLlmSettings(ensureCanonicalAiSettings()).backend;
+    const getLocalLlmUiTimeoutMs = (): number => (
+        Math.max(4000, Math.min(getLocalLlmSettings(ensureCanonicalAiSettings()).timeoutMs, 10000))
+    );
+    const getLocalLlmUiOverrides = (): Partial<LocalLlmSettings> => ({
+        timeoutMs: getLocalLlmUiTimeoutMs()
+    });
 
     let isSyncingRoutingUi = false;
 
@@ -944,6 +946,10 @@ export function renderAiSection(params: {
 
             await persistCanonical();
             refreshRoutingUi();
+            if (nextProvider === 'ollama') {
+                markLocalLlmConfigurationDirty();
+                queueLocalLlmAutoValidation();
+            }
         });
     });
     params.addAiRelatedElement(providerSetting.settingEl);
@@ -2159,9 +2165,14 @@ export function renderAiSection(params: {
     let localLlmLoadedModels: Array<{ id: string }> = [];
     let localLlmModelLoadError: string | null = null;
     let localLlmLastLoadedAt: string | null = null;
+    let localLlmModelLoadPending = false;
+    let localLlmModelLoadPromise: Promise<void> | null = null;
     let localLlmValidationReport: LocalLlmDiagnosticsReport | null = null;
     let localLlmValidationError: string | null = null;
     let localLlmLastValidatedAt: string | null = null;
+    let localLlmValidationPending = false;
+    let localLlmValidationPromise: Promise<void> | null = null;
+    let localLlmAutoValidationTimer: ReturnType<typeof globalThis.setTimeout> | null = null;
 
     const localLlmConfigSection = quickSetupPreviewSection.createDiv({
         cls: [`${ERT_CLASSES.CARD}`, `${ERT_CLASSES.PANEL}`, `${ERT_CLASSES.STACK}`, 'ert-ai-local-llm-config', 'ert-settings-hidden']
@@ -2186,6 +2197,38 @@ export function renderAiSection(params: {
     const localLlmStatusChecks = localLlmStatusSection.createDiv({ cls: `${ERT_CLASSES.STACK_TIGHT} ert-ai-local-llm-status-checks` });
     const localLlmStatusTimestamp = localLlmStatusSection.createDiv({ cls: 'ert-field-note' });
 
+    function clearLocalLlmModelLoadState(): void {
+        localLlmLoadedModels = [];
+        localLlmModelLoadError = null;
+        localLlmLastLoadedAt = null;
+    }
+
+    function clearLocalLlmValidationState(): void {
+        localLlmValidationReport = null;
+        localLlmValidationError = null;
+        localLlmLastValidatedAt = null;
+    }
+
+    function markLocalLlmConfigurationDirty(): void {
+        clearLocalLlmModelLoadState();
+        clearLocalLlmValidationState();
+        renderLocalLlmModelList();
+        renderLocalLlmStatus();
+    }
+
+    function queueLocalLlmAutoValidation(): void {
+        const aiSettings = ensureCanonicalAiSettings();
+        if (aiSettings.provider !== 'ollama' || !getLocalLlmSettings(aiSettings).enabled) return;
+        if (localLlmAutoValidationTimer !== null) {
+            globalThis.clearTimeout(localLlmAutoValidationTimer);
+        }
+        localLlmAutoValidationTimer = globalThis.setTimeout(() => {
+            localLlmAutoValidationTimer = null;
+            if (ensureCanonicalAiSettings().provider !== 'ollama') return;
+            void validateLocalLlm({ quiet: true });
+        }, 150);
+    }
+
     const localLlmBackendSetting = new Settings(localLlmConfigSection)
         .setName('Local LLM backend')
         .setDesc('Choose the backend behind the Local LLM runtime family. Backend-specific transport stays below this canonical seam.')
@@ -2201,11 +2244,10 @@ export function renderAiSection(params: {
                         ...getLocalLlmSettings(aiSettings),
                         backend: value as LocalLlmBackendId
                     };
-                    localLlmValidationReport = null;
-                    localLlmValidationError = null;
+                    markLocalLlmConfigurationDirty();
                     await persistCanonical();
                     params.scheduleKeyValidation('ollama');
-                    renderLocalLlmStatus();
+                    queueLocalLlmAutoValidation();
                 });
         });
     localLlmBackendSetting.settingEl.addClass(ERT_CLASSES.ROW);
@@ -2235,26 +2277,19 @@ export function renderAiSection(params: {
                         ...getLocalLlmSettings(aiSettings),
                         baseUrl: text.getValue().trim() || 'http://localhost:11434/v1'
                     };
-                    localLlmValidationReport = null;
-                    localLlmValidationError = null;
+                    markLocalLlmConfigurationDirty();
                     await persistCanonical();
                     params.scheduleKeyValidation('ollama');
-                    renderLocalLlmStatus();
+                    queueLocalLlmAutoValidation();
                 })();
             });
             params.setOllamaConnectionInputs({ baseInput: text.inputEl });
         });
     localLlmBaseUrlSetting.settingEl.addClass('ert-setting-full-width-input');
 
-    const localLlmAdvisory = localLlmConfigSection.createDiv({ cls: ['ert-ollama-advisory', ERT_CLASSES.ROW] });
-    localLlmAdvisory.createEl('strong', { text: 'Advisory Note', cls: 'ert-ollama-advisory-title' });
-    localLlmAdvisory.createSpan({
-        text: `By default, Local LLM pulse results are stored in the AI log folder (${aiLogFolder}) instead of writing directly to scene hover fields. That protects scene formatting when a local backend returns unstable structure.`
-    });
-
     const localLlmModelSetting = new Settings(localLlmConfigSection)
         .setName('Selected model')
-        .setDesc('Use the exact model ID expected by your backend, or load models and pick from the available list below.')
+        .setDesc('Use the exact model ID expected by your backend. Available models stay empty until the backend responds, then you can pick from the loaded list below.')
         .addText(text => {
             text.inputEl.addClass('ert-input--lg');
             localLlmModelText = text;
@@ -2274,12 +2309,10 @@ export function renderAiSection(params: {
             plugin.registerDomEvent(text.inputEl, 'blur', () => {
                 void (async () => {
                     setOllamaModelId(text.getValue());
-                    localLlmValidationReport = null;
-                    localLlmValidationError = null;
+                    markLocalLlmConfigurationDirty();
                     await persistCanonical();
                     params.scheduleKeyValidation('ollama');
-                    renderLocalLlmModelList();
-                    renderLocalLlmStatus();
+                    queueLocalLlmAutoValidation();
                     void refreshRoutingUi();
                 })();
             });
@@ -2302,6 +2335,11 @@ export function renderAiSection(params: {
         const selectedExists = localLlmLoadedModels.some(model => model.id === selectedModelId);
 
         localLlmModelsList.empty();
+        if (localLlmModelLoadPending) {
+            localLlmModelsSummary.setText('Checking backend and loading available local models...');
+            return;
+        }
+
         if (localLlmModelLoadError) {
             localLlmModelsSummary.setText(`Model list unavailable: ${localLlmModelLoadError}`);
             return;
@@ -2331,10 +2369,12 @@ export function renderAiSection(params: {
             const applyModel = async (): Promise<void> => {
                 setOllamaModelId(model.id);
                 if (localLlmModelText) localLlmModelText.setValue(model.id);
+                clearLocalLlmValidationState();
                 await persistCanonical();
                 params.scheduleKeyValidation('ollama');
                 renderLocalLlmModelList();
                 renderLocalLlmStatus();
+                queueLocalLlmAutoValidation();
                 void refreshRoutingUi();
             };
             plugin.registerDomEvent(pill, 'click', () => { void applyModel(); });
@@ -2357,6 +2397,8 @@ export function renderAiSection(params: {
 
         const summaryLines: string[] = [];
         if (!localLlm.enabled) summaryLines.push('Status: Local LLM disabled');
+        else if (localLlmValidationPending) summaryLines.push('Status: Validating Local LLM');
+        else if (localLlmModelLoadPending) summaryLines.push('Status: Checking backend');
         else if (localLlmValidationError) summaryLines.push('Status: Validation failed');
         else if (localLlmValidationReport?.reachable.ok) summaryLines.push('Status: Connected');
         else if (localLlmValidationReport && !localLlmValidationReport.reachable.ok) summaryLines.push('Status: Backend unreachable');
@@ -2366,11 +2408,17 @@ export function renderAiSection(params: {
         summaryLines.push(`Backend: ${LOCAL_LLM_BACKEND_LABELS[localLlm.backend]}`);
         summaryLines.push(`Base URL: ${localLlm.baseUrl || 'Not set'}`);
         summaryLines.push(
+            localLlmModelLoadPending
+                ? 'Models loaded: checking backend'
+                :
             localLlmModelLoadError
                 ? 'Models loaded: unavailable'
                 : `Models loaded: ${localLlmLoadedModels.length > 0 ? String(localLlmLoadedModels.length) : 'not loaded'}`
         );
         summaryLines.push(
+            localLlmModelLoadPending
+                ? 'Selected model: checking availability'
+                :
             selectedModelId
                 ? `Selected model: ${selectedExists ? `${selectedModelId} found` : `${selectedModelId} missing`}`
                 : 'Selected model: not set'
@@ -2382,13 +2430,17 @@ export function renderAiSection(params: {
 
         const checks: Array<[string, { ok: boolean; message: string } | null]> = [
             ['Backend reachability', localLlmValidationReport?.reachable ?? null],
+            ['Selected model', localLlmValidationReport?.modelAvailable ?? null],
             ['Basic completion', localLlmValidationReport?.basicCompletion ?? null],
             ['Structured JSON', localLlmValidationReport?.structuredJson ?? null],
             ['Repair path', localLlmValidationReport?.repairPath ?? null]
         ];
         checks.forEach(([label, check]) => {
             const line = localLlmStatusChecks.createDiv({ cls: 'ert-field-note' });
-            line.setText(`${label}: ${check ? (check.ok ? 'Passed' : 'Failed') : 'Not checked'}`);
+            const statusLabel = localLlmValidationPending
+                ? 'Checking...'
+                : (check ? (check.ok ? 'Passed' : 'Failed') : 'Not checked');
+            line.setText(`${label}: ${statusLabel}`);
             if (check?.message) {
                 line.createSpan({ text: ` — ${check.message}` });
             }
@@ -2402,49 +2454,75 @@ export function renderAiSection(params: {
         }
 
         const stamp = formatLocalTimestamp(localLlmLastValidatedAt);
-        localLlmStatusTimestamp.setText(stamp ? `Last checked: ${stamp}` : 'Last checked: not yet validated');
+        localLlmStatusTimestamp.setText(
+            localLlmValidationPending
+                ? 'Last checked: validating...'
+                : (stamp ? `Last checked: ${stamp}` : 'Last checked: not yet validated')
+        );
     };
 
-    const loadLocalLlmModels = async (options: { quiet?: boolean } = {}): Promise<void> => {
-        try {
-            const models = await getLocalLlmClient(plugin).listModels();
-            localLlmLoadedModels = [...models].sort((left, right) => left.id.localeCompare(right.id));
-            localLlmModelLoadError = null;
-            localLlmLastLoadedAt = new Date().toISOString();
-            renderLocalLlmModelList();
-            renderLocalLlmStatus();
-            if (!options.quiet) {
-                new Notice(localLlmLoadedModels.length
-                    ? `Loaded ${localLlmLoadedModels.length} local model${localLlmLoadedModels.length === 1 ? '' : 's'}.`
-                    : 'No models reported by the Local LLM backend.');
+    async function loadLocalLlmModels(options: { quiet?: boolean } = {}): Promise<void> {
+        if (localLlmModelLoadPromise) return localLlmModelLoadPromise;
+        localLlmModelLoadPending = true;
+        localLlmModelLoadError = null;
+        renderLocalLlmModelList();
+        renderLocalLlmStatus();
+        localLlmModelLoadPromise = (async () => {
+            try {
+                const models = await getLocalLlmClient(plugin).listModels(getLocalLlmUiOverrides());
+                localLlmLoadedModels = [...models].sort((left, right) => left.id.localeCompare(right.id));
+                localLlmModelLoadError = null;
+                localLlmLastLoadedAt = new Date().toISOString();
+                if (!options.quiet) {
+                    new Notice(localLlmLoadedModels.length
+                        ? `Loaded ${localLlmLoadedModels.length} local model${localLlmLoadedModels.length === 1 ? '' : 's'}.`
+                        : 'No models reported by the Local LLM backend.');
+                }
+            } catch (error) {
+                localLlmLoadedModels = [];
+                localLlmModelLoadError = error instanceof Error ? error.message : String(error);
+                if (!options.quiet) {
+                    new Notice(`Unable to load local models: ${localLlmModelLoadError}`);
+                }
+            } finally {
+                localLlmModelLoadPending = false;
+                localLlmModelLoadPromise = null;
+                renderLocalLlmModelList();
+                renderLocalLlmStatus();
             }
-        } catch (error) {
-            localLlmLoadedModels = [];
-            localLlmModelLoadError = error instanceof Error ? error.message : String(error);
-            renderLocalLlmModelList();
-            renderLocalLlmStatus();
-            if (!options.quiet) {
-                new Notice(`Unable to load local models: ${localLlmModelLoadError}`);
-            }
-        }
-    };
+        })();
+        return localLlmModelLoadPromise;
+    }
 
-    const validateLocalLlm = async (): Promise<void> => {
-        await loadLocalLlmModels({ quiet: true });
-        try {
-            localLlmValidationReport = await getLocalLlmClient(plugin).runDiagnostics();
-            localLlmValidationError = null;
-            localLlmLastValidatedAt = new Date().toISOString();
-            renderLocalLlmStatus();
-            new Notice('Local LLM validation complete.');
-        } catch (error) {
-            localLlmValidationReport = null;
-            localLlmValidationError = error instanceof Error ? error.message : String(error);
-            localLlmLastValidatedAt = new Date().toISOString();
-            renderLocalLlmStatus();
-            new Notice(`Local LLM validation failed: ${localLlmValidationError}`);
-        }
-    };
+    async function validateLocalLlm(options: { quiet?: boolean } = {}): Promise<void> {
+        if (localLlmValidationPromise) return localLlmValidationPromise;
+        localLlmValidationPending = true;
+        localLlmValidationError = null;
+        renderLocalLlmStatus();
+        localLlmValidationPromise = (async () => {
+            await loadLocalLlmModels({ quiet: true });
+            try {
+                localLlmValidationReport = await getLocalLlmClient(plugin).runDiagnostics(getLocalLlmUiOverrides());
+                localLlmValidationError = null;
+                localLlmLastValidatedAt = new Date().toISOString();
+                if (!options.quiet) {
+                    new Notice('Local LLM validation complete.');
+                }
+            } catch (error) {
+                localLlmValidationReport = null;
+                localLlmValidationError = error instanceof Error ? error.message : String(error);
+                localLlmLastValidatedAt = new Date().toISOString();
+                if (!options.quiet) {
+                    new Notice(`Local LLM validation failed: ${localLlmValidationError}`);
+                }
+            } finally {
+                localLlmValidationPending = false;
+                localLlmValidationPromise = null;
+                renderLocalLlmStatus();
+            }
+        })();
+        return localLlmValidationPromise;
+    }
 
     localLlmModelSetting.addExtraButton(button => {
         button
@@ -2462,44 +2540,9 @@ export function renderAiSection(params: {
             });
     });
 
-    const localLlmInstructionsSetting = new Settings(localLlmConfigSection)
-        .setName('Custom instructions')
-        .setDesc('Additional instructions prepended to the canonical Local LLM prompt scaffold. Use this for backend-specific reliability guidance.')
-        .addTextArea(text => {
-            text
-                .setPlaceholder('e.g. Maintain strict JSON formatting...')
-                .setValue(getLocalLlmSettings(ensureCanonicalAiSettings()).instructions || '')
-                .onChange(async (value) => {
-                    const aiSettings = ensureCanonicalAiSettings();
-                    aiSettings.localLlm = {
-                        ...getLocalLlmSettings(aiSettings),
-                        instructions: value
-                    };
-                    await persistCanonical();
-                });
-            text.inputEl.rows = 4;
-            text.inputEl.addClass('ert-textarea');
-        });
-    localLlmInstructionsSetting.settingEl.addClass('ert-setting-full-width-input');
-
-    const localLlmSendPulseToAiReportSetting = new Settings(localLlmConfigSection)
-        .setName('Bypass scene hover writes')
-        .setDesc('When enabled, Local LLM triplet pulse analysis skips scene note writes and saves results in the AI report instead.')
-        .addToggle(toggle => toggle
-            .setValue(getLocalLlmSettings(ensureCanonicalAiSettings()).sendPulseToAiReport)
-            .onChange(async (value) => {
-                const aiSettings = ensureCanonicalAiSettings();
-                aiSettings.localLlm = {
-                    ...getLocalLlmSettings(aiSettings),
-                    sendPulseToAiReport: value
-                };
-                await persistCanonical();
-            }));
-    localLlmSendPulseToAiReportSetting.settingEl.addClass(ERT_CLASSES.ROW);
-
     const localLlmActionsSetting = new Settings(localLlmStatusSection)
         .setName('Validation actions')
-        .setDesc('Load models first, then run validation for the current backend, model, and structured-output lane.');
+        .setDesc('Auto-checks run when Local LLM is selected or reconfigured. Use these actions to retry model loading or validation on demand.');
     localLlmActionsSetting.addButton(button => button
         .setButtonText('Load Models')
         .onClick(() => {
@@ -2687,7 +2730,11 @@ export function renderAiSection(params: {
 
     // Apply provider dimming on first render
     params.refreshProviderDimming();
-    void refreshRoutingUi();
+    void refreshRoutingUi().then(() => {
+        if (ensureCanonicalAiSettings().provider === 'ollama') {
+            queueLocalLlmAutoValidation();
+        }
+    });
 
     // Set initial visibility state
     params.toggleAiSettingsVisibility(plugin.settings.enableAiSceneAnalysis ?? true);

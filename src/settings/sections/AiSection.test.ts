@@ -149,7 +149,9 @@ describe('AI settings models table', () => {
         expect(source.includes(".setName('What gets sent to the AI')")).toBe(true);
         expect(source.includes('Fresh Run*')).toBe(true);
         expect(source.includes('* Cloud-provider rows use published provider pricing. Actual charges may differ due to provider-side billing rules and account-level adjustments such as caching, credits, promos, or contract pricing.')).toBe(true);
-        expect(source.includes('Local processing runs on your machine. No API charges. Performance and output depend on your hardware and model.')).toBe(true);
+        expect(source.includes("createSpan({ text: 'See provider pricing: ' })")).toBe(true);
+        expect(source.includes("createEl('strong', { text: 'LOCAL PROCESSING' })")).toBe(true);
+        expect(source.includes("appendText(' runs on your machine. No API charges. Performance and output depend on your hardware and model.')")).toBe(true);
         expect(source.includes('https://openai.com/api/pricing/')).toBe(true);
         expect(source.includes('https://platform.claude.com/docs/en/about-claude/pricing')).toBe(true);
         expect(source.includes('https://ai.google.dev/')).toBe(true);
@@ -233,6 +235,9 @@ describe('AI settings models table', () => {
         expect(source.includes('Local API key')).toBe(false);
         expect(source.includes('ert-provider-local')).toBe(false);
         expect(source.includes('ert-provider-gemini')).toBe(false);
+        expect(source.includes('Advisory Note')).toBe(false);
+        expect(source.includes('ert-ollama-advisory')).toBe(false);
+        expect(source.includes('Custom instructions')).toBe(false);
     });
 
     it('shows Local LLM model loading and persistent validation messaging in the primary flow', () => {
@@ -240,11 +245,30 @@ describe('AI settings models table', () => {
         expect(source.includes('Load Models')).toBe(true);
         expect(source.includes('Validate Local LLM')).toBe(true);
         expect(source.includes('Available local models:')).toBe(true);
+        expect(source.includes('Checking backend and loading available local models...')).toBe(true);
         expect(source.includes('Selected model missing from the loaded list.')).toBe(true);
         expect(source.includes("['Backend reachability', localLlmValidationReport?.reachable ?? null]")).toBe(true);
+        expect(source.includes("['Selected model', localLlmValidationReport?.modelAvailable ?? null]")).toBe(true);
         expect(source.includes("['Basic completion', localLlmValidationReport?.basicCompletion ?? null]")).toBe(true);
         expect(source.includes("['Structured JSON', localLlmValidationReport?.structuredJson ?? null]")).toBe(true);
         expect(source.includes("['Repair path', localLlmValidationReport?.repairPath ?? null]")).toBe(true);
         expect(source.includes('Last checked:')).toBe(true);
+        expect(source.includes("const statusLabel = localLlmValidationPending")).toBe(true);
+        expect(source.includes("'Checking...'")).toBe(true);
+    });
+
+    it('auto-runs guarded Local LLM checks when Local LLM is selected or reconfigured', () => {
+        const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
+        expect(source.includes('queueLocalLlmAutoValidation();')).toBe(true);
+        expect(source.includes('markLocalLlmConfigurationDirty();')).toBe(true);
+        expect(source.includes('getLocalLlmUiOverrides()')).toBe(true);
+        expect(source.includes('Math.max(4000, Math.min(getLocalLlmSettings(ensureCanonicalAiSettings()).timeoutMs, 10000))')).toBe(true);
+    });
+
+    it('removes the local write bypass toggle from the AI settings UI', () => {
+        const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
+        expect(source.includes(".setName('Bypass scene hover writes')")).toBe(false);
+        expect(source.includes('sendPulseToAiReport')).toBe(false);
+        expect(source.includes("'ert-ai-local-llm-warning-label'")).toBe(false);
     });
 });

@@ -1078,6 +1078,15 @@ export default class SynopsisManager {
       const synopsisBottomY = synopsisEndIndex * lineHeight;
       // Call addSpacer with height 0, and store the returned start position
       let currentMetadataY = addSpacer(synopsisBottomY, 0);
+      const readFrontmatterFieldValue = (fm: Record<string, unknown> | undefined, key: string): unknown => {
+        if (!fm) return undefined;
+        if (Object.prototype.hasOwnProperty.call(fm, key)) return fm[key];
+        const target = key.toLowerCase().replace(/[\s_-]/g, '');
+        for (const [fmKey, value] of Object.entries(fm)) {
+          if (fmKey.toLowerCase().replace(/[\s_-]/g, '') === target) return value;
+        }
+        return undefined;
+      };
 
       const showTripletNeighbors = this.plugin.settings.showFullTripletAnalysis ?? true;
 
@@ -1117,6 +1126,50 @@ export default class SynopsisManager {
         }
       }
 
+      const pulseReviewWarningRaw = readFrontmatterFieldValue(
+        scene.rawFrontmatter as Record<string, unknown> | undefined,
+        'Pulse Review Warning'
+      );
+      const pulseReviewWarning = typeof pulseReviewWarningRaw === 'string'
+        ? pulseReviewWarningRaw.trim()
+        : '';
+      if (this.plugin.settings.enableAiSceneAnalysis && pulseReviewWarning) {
+        const y = currentMetadataY;
+        const lineGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        lineGroup.setAttribute("class", "rt-hover-metadata-line is-pulse-review-warning");
+        lineGroup.setAttribute("data-hover-key", "Pulse Review Warning");
+
+        const iconSize = 18 * fontScale;
+        const iconGap = 6 * fontScale;
+        const iconSvg = getIcon('alert-triangle');
+        const hasIcon = !!iconSvg;
+        const textX = hasIcon ? (iconSize + iconGap) : 0;
+
+        if (iconSvg) {
+          const iconG = document.createElementNS("http://www.w3.org/2000/svg", "g");
+          iconG.setAttribute("class", "rt-hover-metadata-icon-g");
+          iconG.setAttribute("stroke", "currentColor");
+          iconG.setAttribute("stroke-linecap", "round");
+          iconG.setAttribute("stroke-linejoin", "round");
+          iconG.setAttribute("fill", "none");
+          const scale = iconSize / 24;
+          const iconY = y - (iconSize * 0.70);
+          iconG.setAttribute("transform", `translate(0, ${iconY}) scale(${scale})`);
+          const paths = iconSvg.querySelectorAll('path, circle, line, polyline, rect, polygon, ellipse');
+          paths.forEach((node) => iconG.appendChild(node.cloneNode(true)));
+          lineGroup.appendChild(iconG);
+        }
+
+        const textEl = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        textEl.setAttribute("class", "rt-hover-metadata-text");
+        textEl.setAttribute("x", String(textX));
+        textEl.setAttribute("y", String(y));
+        textEl.textContent = pulseReviewWarning;
+        lineGroup.appendChild(textEl);
+        synopsisTextGroup.appendChild(lineGroup);
+        currentMetadataY = addSpacer(currentMetadataY + metadataLineHeight, 0);
+      }
+
       // --- Custom Hover Metadata Fields ---
       const isBeatItem = scene.itemType === 'Beat' || scene.itemType === 'Plot';
       const isBackdropItem = scene.itemType === 'Backdrop';
@@ -1127,15 +1180,6 @@ export default class SynopsisManager {
         if (typeof normalized === 'string' && normalized.trim().length > 0) return normalized;
         return undefined;
       })();
-      const readFrontmatterFieldValue = (fm: Record<string, unknown> | undefined, key: string): unknown => {
-        if (!fm) return undefined;
-        if (Object.prototype.hasOwnProperty.call(fm, key)) return fm[key];
-        const target = key.toLowerCase().replace(/[\s_-]/g, '');
-        for (const [fmKey, value] of Object.entries(fm)) {
-          if (fmKey.toLowerCase().replace(/[\s_-]/g, '') === target) return value;
-        }
-        return undefined;
-      };
       const hoverFieldSource = isBeatItem
         ? getBeatConfigForItem(this.plugin.settings, beatModelForHover).beatHoverMetadataFields
         : isBackdropItem

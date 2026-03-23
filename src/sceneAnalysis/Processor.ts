@@ -11,8 +11,8 @@ import { getCanonicalAiSettings, resolveConfiguredSelection } from '../ai/runtim
 import { validateAiSettings } from '../ai/settings/validateAiSettings';
 import type { SceneAnalysisProcessingModal, ProcessingMode, SceneQueueItem } from '../modals/SceneAnalysisProcessingModal';
 import { buildTripletsByIndex } from './TripletBuilder';
-import { updateSceneAnalysis, markPulseProcessed } from './FileUpdater';
-import { createAiRunner } from './RequestRunner';
+import { setSceneAnalysisReviewWarning, updateSceneAnalysis } from './FileUpdater';
+import { createAiRunner, type Provider } from './RequestRunner';
 import {
     getAllSceneData,
     compareScenesByOrder,
@@ -23,28 +23,17 @@ import {
 } from './data';
 import { normalizeBooleanValue } from '../utils/sceneHelpers';
 import { buildSceneAnalysisPrompt } from '../ai/prompts/sceneAnalysis';
-import { parsePulseAnalysisResponse } from './responseParsing';
 import { callAiProvider } from './aiProvider';
-import type { SceneData } from './types';
+import type { ParsedSceneAnalysis, SceneData } from './types';
 import { parseSceneTitle, decodeHtmlEntities } from '../utils/text';
 import { parseRuntimeField } from '../utils/runtimeEstimator';
 import { buildPulseTriplet } from '../ai/evidence/pulseTriplet';
 import { readSceneId, resolveSceneReferenceId } from '../utils/sceneIds';
-import { getLocalLlmSettings } from '../ai/localLlm/settings';
+import { applySceneAnalysisSafeWrite, LOCAL_LLM_REVIEW_WARNING } from './safeWritePolicy';
 
-function isLocalReportOnlyMode(plugin: RadialTimelinePlugin): boolean {
+function isLocalLlmPulseProvider(plugin: RadialTimelinePlugin): boolean {
     const aiSettings = getCanonicalAiSettings(plugin);
-    return resolveConfiguredSelection(aiSettings, { feature: 'PulseAnalysis' })?.provider === 'ollama'
-        && getLocalLlmSettings(aiSettings).sendPulseToAiReport;
-}
-
-function getLocalLlmInstructions(plugin: RadialTimelinePlugin): string | undefined {
-    const aiSettings = getCanonicalAiSettings(plugin);
-    if (resolveConfiguredSelection(aiSettings, { feature: 'PulseAnalysis' })?.provider !== 'ollama') {
-        return undefined;
-    }
-    const instructions = getLocalLlmSettings(aiSettings).instructions.trim();
-    return instructions || undefined;
+    return resolveConfiguredSelection(aiSettings, { feature: 'PulseAnalysis' })?.provider === 'ollama';
 }
 
 export interface TripletMetric {
@@ -117,6 +106,48 @@ function buildQueueItem(scene: SceneData): SceneQueueItem {
     };
 }
 
+async function setLocalReviewWarningIfNeeded(
+    plugin: RadialTimelinePlugin,
+    vault: Vault,
+    scene: SceneData
+): Promise<void> {
+    if (!isLocalLlmPulseProvider(plugin)) return;
+    await setSceneAnalysisReviewWarning(vault, scene.file, plugin, LOCAL_LLM_REVIEW_WARNING);
+}
+
+function normalizeParsedAnalysisForTriplet(
+    parsedAnalysis: ParsedSceneAnalysis | null | undefined,
+    triplet: SceneTriplet
+): ParsedSceneAnalysis | null {
+    if (!parsedAnalysis) return null;
+    const normalized: ParsedSceneAnalysis = { ...parsedAnalysis };
+    if (!triplet.prev) normalized.previousSceneAnalysis = '';
+    if (!triplet.next) normalized.nextSceneAnalysis = '';
+    return normalized;
+}
+
+async function applyTripletAnalysisResult(input: {
+    plugin: RadialTimelinePlugin;
+    vault: Vault;
+    triplet: SceneTriplet;
+    parsedAnalysis: ParsedSceneAnalysis | null;
+    provider: Provider | null | undefined;
+    modelIdUsed: string | null;
+}): Promise<{ route: 'write' | 'warning' | 'skip'; success: boolean }> {
+    return applySceneAnalysisSafeWrite({
+        provider: input.provider,
+        parsedAnalysis: input.parsedAnalysis,
+        writeAnalysis: (analysis) =>
+            updateSceneAnalysis(input.vault, input.triplet.current.file, analysis, input.plugin, input.modelIdUsed),
+        writeWarning: (warning) =>
+            setSceneAnalysisReviewWarning(input.vault, input.triplet.current.file, input.plugin, warning)
+    });
+}
+
+function getLocalReviewErrorMessage(scene: SceneData): string {
+    return `Local LLM result needs review for scene ${scene.sceneNumber}: ${scene.file.path}. See logs.`;
+}
+
 export async function processWithModal(
     plugin: RadialTimelinePlugin,
     vault: Vault,
@@ -175,7 +206,6 @@ export async function processWithModal(
 
     const totalToProcess = queueItems.length;
     let processedCount = 0;
-    const sendPulseToAiReportOnly = isLocalReportOnlyMode(plugin);
 
     for (const { triplet, shouldProcess } of tasks) {
         if (modal.isAborted()) {
@@ -197,7 +227,6 @@ export async function processWithModal(
         }
 
         const contextPrompt = getActiveContextPrompt(plugin);
-        const extraInstructions = getLocalLlmInstructions(plugin);
         const userPrompt = buildSceneAnalysisPrompt(
             prevBody,
             currentBody,
@@ -206,7 +235,6 @@ export async function processWithModal(
             currentNum,
             nextNum,
             contextPrompt,
-            extraInstructions,
             buildTripletSceneRefs(triplet)
         );
 
@@ -246,45 +274,35 @@ export async function processWithModal(
             }
 
             if (aiResult.result) {
-                const parsedAnalysis = parsePulseAnalysisResponse(aiResult.result, plugin);
-                if (parsedAnalysis) {
-                    if (!triplet.prev) parsedAnalysis['previousSceneAnalysis'] = '';
-                    if (!triplet.next) parsedAnalysis['nextSceneAnalysis'] = '';
+                const parsedAnalysis = normalizeParsedAnalysisForTriplet(aiResult.parsedAnalysis, triplet);
+                const safeWrite = await applyTripletAnalysisResult({
+                    plugin,
+                    vault,
+                    triplet,
+                    parsedAnalysis,
+                    provider: aiResult.providerUsed,
+                    modelIdUsed: aiResult.modelIdUsed
+                });
 
-                    if (sendPulseToAiReportOnly) {
-                        const flagCleared = await markPulseProcessed(vault, triplet.current.file, plugin, aiResult.modelIdUsed);
-                        if (flagCleared) {
-                            processedCount++;
-                            modal.updateProgress(processedCount, totalToProcess, triplet.current.file.basename);
-                            markQueueStatus('success', parsedAnalysis.sceneGrade);
-                        } else {
-                            markQueueStatus('error');
-                            modal.addError(`Failed to update pulse flag for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
-                        }
-                        continue;
-                    }
-
-                    const success = await updateSceneAnalysis(vault, triplet.current.file, parsedAnalysis, plugin, aiResult.modelIdUsed);
-                    if (success) {
-                        processedCount++;
-                        modal.updateProgress(processedCount, totalToProcess, triplet.current.file.basename);
-                        markQueueStatus('success', parsedAnalysis.sceneGrade);
-                        await plugin.saveSettings();
-                    } else {
-                        markQueueStatus('error');
-                        modal.addError(`Failed to update file for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
-                    }
+                if (safeWrite.success) {
+                    processedCount++;
+                    modal.updateProgress(processedCount, totalToProcess, triplet.current.file.basename);
+                    markQueueStatus('success', parsedAnalysis?.sceneGrade);
+                    await plugin.saveSettings();
                 } else {
                     markQueueStatus('error');
-                    const detail = (plugin as any).lastAnalysisError;
-                    const reason = detail ? ` (${detail})` : '';
-                    modal.addError(`Failed to parse AI response for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}${reason}`);
+                    if (safeWrite.route === 'warning') {
+                        modal.addError(getLocalReviewErrorMessage(triplet.current));
+                    } else {
+                        modal.addError(`Failed to update file for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
+                    }
                 }
             } else {
                 markQueueStatus('error');
                 modal.addError(`AI processing failed for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
             }
         } catch (sceneError) {
+            await setLocalReviewWarningIfNeeded(plugin, vault, triplet.current);
             markQueueStatus('error');
             const detail = sceneError instanceof Error ? sceneError.message : String(sceneError);
             modal.addError(`Fatal error while processing scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}\n${detail}`);
@@ -332,7 +350,6 @@ export async function processBySubplotOrder(
 
         let totalProcessedCount = 0;
         let totalTripletsAcrossSubplots = 0;
-        const sendPulseToAiReportOnly = isLocalReportOnlyMode(plugin);
         subplotNames.forEach(subplotName => {
             const scenes = scenesBySubplot[subplotName];
             scenes.sort(compareScenesByOrder);
@@ -377,7 +394,6 @@ export async function processBySubplotOrder(
                 const nextNum = triplet.next ? String(triplet.next.sceneNumber ?? 'N/A') : 'N/A';
 
                 const contextPrompt = getActiveContextPrompt(plugin);
-                const extraInstructions = getLocalLlmInstructions(plugin);
                 const userPrompt = buildSceneAnalysisPrompt(
                     prevBody,
                     currentBody,
@@ -386,34 +402,44 @@ export async function processBySubplotOrder(
                     currentNum,
                     nextNum,
                     contextPrompt,
-                    extraInstructions,
                     buildTripletSceneRefs(triplet)
                 );
 
                 const sceneNameForLog = triplet.current.file.basename;
                 const tripletForLog = buildPulseTriplet(prevNum, currentNum, nextNum).scenes;
                 const runAi = createAiRunner(plugin, vault, callAiProvider);
-                const aiResult = await runAi(userPrompt, subplotName, 'processBySubplotOrder', sceneNameForLog, {
-                    prev: tripletForLog.previous,
-                    current: tripletForLog.current,
-                    next: tripletForLog.next
-                });
 
-                if (aiResult.result) {
-                    const parsedAnalysis = parsePulseAnalysisResponse(aiResult.result, plugin);
-                    if (parsedAnalysis) {
-                        if (!triplet.prev) parsedAnalysis['previousSceneAnalysis'] = '';
-                        if (!triplet.next) parsedAnalysis['nextSceneAnalysis'] = '';
+                try {
+                    const aiResult = await runAi(userPrompt, subplotName, 'processBySubplotOrder', sceneNameForLog, {
+                        prev: tripletForLog.previous,
+                        current: tripletForLog.current,
+                        next: tripletForLog.next
+                    });
 
-                        if (!sendPulseToAiReportOnly) {
-                            const updated = await updateSceneAnalysis(vault, triplet.current.file, parsedAnalysis, plugin, aiResult.modelIdUsed);
-                            if (updated) {
-                                await plugin.saveSettings();
-                            }
-                    } else {
-                        await markPulseProcessed(vault, triplet.current.file, plugin, aiResult.modelIdUsed);
+                    if (aiResult.result) {
+                        const parsedAnalysis = normalizeParsedAnalysisForTriplet(aiResult.parsedAnalysis, triplet);
+                        const safeWrite = await applyTripletAnalysisResult({
+                            plugin,
+                            vault,
+                            triplet,
+                            parsedAnalysis,
+                            provider: aiResult.providerUsed,
+                            modelIdUsed: aiResult.modelIdUsed
+                        });
+                        if (safeWrite.success) {
+                            await plugin.saveSettings();
+                        } else if (safeWrite.route !== 'skip') {
+                            new Notice(getLocalReviewErrorMessage(triplet.current), 6000);
+                        } else {
+                            new Notice(`Failed to update file for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`, 6000);
                         }
+                    } else {
+                        new Notice(`AI processing failed for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`, 6000);
                     }
+                } catch (sceneError) {
+                    await setLocalReviewWarningIfNeeded(plugin, vault, triplet.current);
+                    const detail = sceneError instanceof Error ? sceneError.message : String(sceneError);
+                    new Notice(`Fatal error while processing scene ${triplet.current.sceneNumber}: ${detail}`, 8000);
                 }
 
                 totalProcessedCount++;
@@ -481,7 +507,6 @@ export async function processSubplotWithModal(
     }
     const total = queueItems.length;
     let processedCount = 0;
-    const sendPulseToAiReportOnly = isLocalReportOnlyMode(plugin);
 
     for (const { triplet, shouldProcess } of subplotTasks) {
         if (modal.isAborted()) {
@@ -511,7 +536,6 @@ export async function processSubplotWithModal(
         }
 
         const contextPrompt = getActiveContextPrompt(plugin);
-        const extraInstructions = getLocalLlmInstructions(plugin);
         const userPrompt = buildSceneAnalysisPrompt(
             prevBody,
             currentBody,
@@ -520,7 +544,6 @@ export async function processSubplotWithModal(
             currentNum,
             nextNum,
             contextPrompt,
-            extraInstructions,
             buildTripletSceneRefs(triplet)
         );
 
@@ -553,43 +576,34 @@ export async function processSubplotWithModal(
             }
 
             if (aiResult.result) {
-                const parsedAnalysis = parsePulseAnalysisResponse(aiResult.result, plugin);
-                if (parsedAnalysis) {
-                    if (!triplet.prev) parsedAnalysis['previousSceneAnalysis'] = '';
-                    if (!triplet.next) parsedAnalysis['nextSceneAnalysis'] = '';
+                const parsedAnalysis = normalizeParsedAnalysisForTriplet(aiResult.parsedAnalysis, triplet);
+                const safeWrite = await applyTripletAnalysisResult({
+                    plugin,
+                    vault,
+                    triplet,
+                    parsedAnalysis,
+                    provider: aiResult.providerUsed,
+                    modelIdUsed: aiResult.modelIdUsed
+                });
 
-                    if (sendPulseToAiReportOnly) {
-                        const flagCleared = await markPulseProcessed(vault, triplet.current.file, plugin, aiResult.modelIdUsed);
-                        if (flagCleared) {
-                            processedCount++;
-                            modal.updateProgress(processedCount, total, sceneName);
-                            markQueueStatus('success', parsedAnalysis.sceneGrade);
-                        } else {
-                            markQueueStatus('error');
-                            modal.addError(`Failed to update pulse flag for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
-                        }
-                    } else {
-                        const success = await updateSceneAnalysis(vault, triplet.current.file, parsedAnalysis, plugin, aiResult.modelIdUsed);
-                        if (success) {
-                            processedCount++;
-                            modal.updateProgress(processedCount, total, sceneName);
-                            markQueueStatus('success', parsedAnalysis.sceneGrade);
-                        } else {
-                            markQueueStatus('error');
-                            modal.addError(`Failed to update file for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
-                        }
-                    }
+                if (safeWrite.success) {
+                    processedCount++;
+                    modal.updateProgress(processedCount, total, sceneName);
+                    markQueueStatus('success', parsedAnalysis?.sceneGrade);
                 } else {
                     markQueueStatus('error');
-                    const detail = (plugin as any).lastAnalysisError;
-                    const reason = detail ? ` (${detail})` : '';
-                    modal.addError(`Failed to parse AI response for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}${reason}`);
+                    if (safeWrite.route === 'warning') {
+                        modal.addError(getLocalReviewErrorMessage(triplet.current));
+                    } else {
+                        modal.addError(`Failed to update file for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
+                    }
                 }
             } else {
                 markQueueStatus('error');
                 modal.addError(`AI processing failed for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
             }
         } catch (sceneError) {
+            await setLocalReviewWarningIfNeeded(plugin, vault, triplet.current);
             markQueueStatus('error');
             const detail = sceneError instanceof Error ? sceneError.message : String(sceneError);
             modal.addError(`Fatal error while processing scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}\n${detail}`);
@@ -646,7 +660,6 @@ export async function processEntireSubplotWithModalInternal(
     }
     const total = queueItems.length;
     let processedCount = 0;
-    const sendPulseToAiReportOnly = isLocalReportOnlyMode(plugin);
 
     for (const { triplet, shouldProcess } of subplotTasks) {
         if (modal.isAborted()) {
@@ -676,7 +689,6 @@ export async function processEntireSubplotWithModalInternal(
         }
 
         const contextPrompt = getActiveContextPrompt(plugin);
-        const extraInstructions = getLocalLlmInstructions(plugin);
         const userPrompt = buildSceneAnalysisPrompt(
             prevBody,
             currentBody,
@@ -685,7 +697,6 @@ export async function processEntireSubplotWithModalInternal(
             currentNum,
             nextNum,
             contextPrompt,
-            extraInstructions,
             buildTripletSceneRefs(triplet)
         );
 
@@ -718,43 +729,34 @@ export async function processEntireSubplotWithModalInternal(
             }
 
             if (aiResult.result) {
-                const parsedAnalysis = parsePulseAnalysisResponse(aiResult.result, plugin);
-                if (parsedAnalysis) {
-                    if (!triplet.prev) parsedAnalysis['previousSceneAnalysis'] = '';
-                    if (!triplet.next) parsedAnalysis['nextSceneAnalysis'] = '';
+                const parsedAnalysis = normalizeParsedAnalysisForTriplet(aiResult.parsedAnalysis, triplet);
+                const safeWrite = await applyTripletAnalysisResult({
+                    plugin,
+                    vault,
+                    triplet,
+                    parsedAnalysis,
+                    provider: aiResult.providerUsed,
+                    modelIdUsed: aiResult.modelIdUsed
+                });
 
-                    if (sendPulseToAiReportOnly) {
-                        const flagCleared = await markPulseProcessed(vault, triplet.current.file, plugin, aiResult.modelIdUsed);
-                        if (flagCleared) {
-                            processedCount++;
-                            modal.updateProgress(processedCount, total, sceneName);
-                            markQueueStatus('success', parsedAnalysis.sceneGrade);
-                        } else {
-                            markQueueStatus('error');
-                            modal.addError(`Failed to update pulse flag for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
-                        }
-                    } else {
-                        const success = await updateSceneAnalysis(vault, triplet.current.file, parsedAnalysis, plugin, aiResult.modelIdUsed);
-                        if (success) {
-                            processedCount++;
-                            modal.updateProgress(processedCount, total, sceneName);
-                            markQueueStatus('success', parsedAnalysis.sceneGrade);
-                        } else {
-                            markQueueStatus('error');
-                            modal.addError(`Failed to update file for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
-                        }
-                    }
+                if (safeWrite.success) {
+                    processedCount++;
+                    modal.updateProgress(processedCount, total, sceneName);
+                    markQueueStatus('success', parsedAnalysis?.sceneGrade);
                 } else {
                     markQueueStatus('error');
-                    const detail = (plugin as any).lastAnalysisError;
-                    const reason = detail ? ` (${detail})` : '';
-                    modal.addError(`Failed to parse AI response for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}${reason}`);
+                    if (safeWrite.route === 'warning') {
+                        modal.addError(getLocalReviewErrorMessage(triplet.current));
+                    } else {
+                        modal.addError(`Failed to update file for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
+                    }
                 }
             } else {
                 markQueueStatus('error');
                 modal.addError(`AI processing failed for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
             }
         } catch (sceneError) {
+            await setLocalReviewWarningIfNeeded(plugin, vault, triplet.current);
             markQueueStatus('error');
             const detail = sceneError instanceof Error ? sceneError.message : String(sceneError);
             modal.addError(`Fatal error while processing scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}\n${detail}`);

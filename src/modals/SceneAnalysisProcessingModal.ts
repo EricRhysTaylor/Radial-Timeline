@@ -1519,9 +1519,8 @@ export class SceneAnalysisProcessingModal extends Modal {
             const isLocal = resolveConfiguredSelection(aiSettings, {
                 feature: 'PulseAnalysis'
             })?.provider === 'ollama';
-            const pulsesBypassed = isLocal && getLocalLlmSettings(aiSettings).sendPulseToAiReport;
-            const pulseRouting = pulsesBypassed
-                ? 'Triplet pulse updates bypassed scene yaml and were saved to the AI report.'
+            const pulseRouting = isLocal
+                ? 'Valid Local LLM pulse updates were written to scene yaml. Invalid results were logged and marked for review.'
                 : 'Triplet pulse updates were written to scene yaml.';
             if (this.logAttempts > 0) {
                 const aiFolder = resolveAiLogFolder();
