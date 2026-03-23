@@ -405,6 +405,22 @@ export default class RadialTimelinePlugin extends Plugin {
         this.settings = Object.assign({}, DEFAULT_SETTINGS, loadedSettings);
         this.settings.aiSettings = (loadedSettings as Partial<RadialTimelineSettings>).aiSettings;
         this.settings.authorProgress = migrateAuthorProgressSettings((loadedSettings as Partial<RadialTimelineSettings>).authorProgress);
+        let planetarySelectionMigrated = false;
+        const planetaryProfiles = Array.isArray(this.settings.planetaryProfiles) ? this.settings.planetaryProfiles : [];
+        this.settings.planetaryProfiles = planetaryProfiles;
+
+        if (typeof this.settings.activePlanetaryProfileId !== 'string') {
+            this.settings.activePlanetaryProfileId = '';
+            planetarySelectionMigrated = true;
+        }
+
+        if (
+            this.settings.activePlanetaryProfileId
+            && !planetaryProfiles.some(profile => profile.id === this.settings.activePlanetaryProfileId)
+        ) {
+            this.settings.activePlanetaryProfileId = '';
+            planetarySelectionMigrated = true;
+        }
 
         let booksMigrated = false;
         const settingsAny = this.settings as unknown as Record<string, unknown>;
@@ -686,7 +702,7 @@ export default class RadialTimelinePlugin extends Plugin {
             globalLastUsed.novel = legacyLayoutIdMap[globalLastUsed.novel];
             pandocLayoutReferenceMigrated = true;
         }
-        if (aiSettingsMigrated || actionNotesTargetMigrated || exportFolderMigrated || beatSettingsMigration.changed || backdropTemplateMigrated || pandocLayoutsMigrated || bundledPandocLayoutsRegistered || matterWorkflowMigrated || pandocLayoutReferenceMigrated || manuscriptExportCleanupMigrated || booksMigrated) {
+        if (aiSettingsMigrated || actionNotesTargetMigrated || exportFolderMigrated || beatSettingsMigration.changed || backdropTemplateMigrated || pandocLayoutsMigrated || bundledPandocLayoutsRegistered || matterWorkflowMigrated || pandocLayoutReferenceMigrated || manuscriptExportCleanupMigrated || booksMigrated || planetarySelectionMigrated) {
             await this.saveSettings();
         }
     }

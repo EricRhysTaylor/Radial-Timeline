@@ -55,24 +55,42 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
     addWikiLink(planetaryHeading, 'Settings#planetary-time');
     applyErtHeaderLayout(planetaryHeading);
 
-    // Feature toggle
+    let sectionExpanded = plugin.settings.planetarySectionExpanded ?? true;
+
     const visibilityTargets: HTMLElement[] = [];
 
-    new Settings(containerEl)
+    const visibilitySetting = new Settings(containerEl)
         .setName(t('planetary.enable.name'))
         .setDesc('Keep Earth as the planning source, use the profile label to match your planet or setting calendar. Set epoch offset to align Year 1 to a story milestone, and combine with the backdrop notes for complete context. Viewable in scene hover metadata and a compehensive parallel timeline in the Chronologue mode ALT sub-mode.')
-        .addToggle(toggle => {
-            toggle.setValue(!!plugin.settings.enablePlanetaryTime);
-            toggle.onChange(async (value) => {
-                plugin.settings.enablePlanetaryTime = value;
-                applyVisibility(value);
-                await plugin.saveSettings();
-            });
-        });
+    visibilitySetting.settingEl.addClass('ert-settingRow');
+
+    const visibilityToggle = visibilitySetting.controlEl.createEl('button', {
+        cls: ERT_CLASSES.ICON_BTN,
+        attr: {
+            type: 'button',
+            'aria-label': sectionExpanded ? 'Hide planetary calendar details' : 'Show planetary calendar details',
+            'aria-expanded': sectionExpanded ? 'true' : 'false'
+        }
+    });
+
+    const refreshVisibilityButton = () => {
+        setIcon(visibilityToggle, sectionExpanded ? 'chevron-down' : 'chevron-right');
+        setTooltip(visibilityToggle, sectionExpanded ? 'Hide planetary calendar details' : 'Show planetary calendar details');
+        visibilityToggle.setAttribute('aria-label', sectionExpanded ? 'Hide planetary calendar details' : 'Show planetary calendar details');
+        visibilityToggle.setAttribute('aria-expanded', sectionExpanded ? 'true' : 'false');
+    };
 
     // Wrap all dependent controls so we can hide them together
     const bodyEl = containerEl.createDiv({ cls: ['ert-planetary-body', ERT_CLASSES.STACK] });
     visibilityTargets.push(bodyEl);
+    refreshVisibilityButton();
+    visibilityToggle.addEventListener('click', () => {
+        sectionExpanded = !sectionExpanded;
+        plugin.settings.planetarySectionExpanded = sectionExpanded;
+        applyVisibility(sectionExpanded);
+        refreshVisibilityButton();
+        void plugin.saveSettings();
+    });
 
     // Active profile selector + buttons
     let activeProfileId = plugin.settings.activePlanetaryProfileId ?? '';
@@ -111,10 +129,7 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
         selectorSetting.setDesc(t('planetary.active.desc'));
         selectorSetting.addDropdown(dropdown => {
             selector = dropdown;
-            // Add empty placeholder option when nothing selected
-            if (profiles.length === 0 || !activeProfileId) {
-                dropdown.addOption('', '— Make a selection —');
-            }
+            dropdown.addOption('', t('planetary.active.disabled'));
             // Add Mars template option
             const hasMars = profiles.some(p => p.id === MARS_TEMPLATE_ID);
             if (!hasMars) {
@@ -161,8 +176,9 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
         });
         selectorSetting.addExtraButton(btn => {
             btn.setIcon('trash');
+            const deleteDisabled = profiles.length === 0 || !activeProfileId;
             btn.setTooltip(t('planetary.actions.delete'));
-            btn.setDisabled(profiles.length === 0);
+            btn.setDisabled(deleteDisabled);
             btn.onClick(async () => {
                 if (!activeProfileId) return;
                 const index = profiles.findIndex(p => p.id === activeProfileId);
@@ -346,5 +362,5 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
 
     renderFields();
     renderPreview();
-    applyVisibility(!!plugin.settings.enablePlanetaryTime);
+    applyVisibility(sectionExpanded);
 }

@@ -40,7 +40,7 @@ function buildCustomLocalModelInfo(modelId: string): ModelInfo {
         ...fallback,
         id: normalizedId,
         alias: `ollama-${normalizedId.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'local-model'}`,
-        label: `Local LLM: ${normalizedId}`
+        label: normalizedId
     };
 }
 

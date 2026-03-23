@@ -481,6 +481,7 @@ export interface RadialTimelineSettings {
     cachedReleaseNotes?: EmbeddedReleaseNotesBundle | null;
     releaseNotesLastFetched?: string;
     enablePlanetaryTime?: boolean;
+    planetarySectionExpanded?: boolean;
     planetaryProfiles?: PlanetaryProfile[];
     activePlanetaryProfileId?: string
     frontmatterMappings?: Record<string, string>;

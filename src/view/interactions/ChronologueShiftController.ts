@@ -198,7 +198,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
     // Check if Planetary Time is enabled and active profile is valid
     const activeProfile = getActivePlanetaryProfile(view.plugin.settings);
     const isProfileValid = activeProfile ? validatePlanetaryProfile(activeProfile).ok : false;
-    const shouldShowAlt = view.plugin.settings.enablePlanetaryTime && isProfileValid;
+    const shouldShowAlt = isProfileValid;
 
     if (shouldShowAlt) {
         altButton = createAltButton();

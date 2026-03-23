@@ -234,7 +234,7 @@ export interface TranslationKeys {
     planetary: {
         heading: string;
         enable: { name: string; desc: string; };
-        active: { name: string; desc: string; };
+        active: { name: string; desc: string; disabled: string; };
         actions: { add: string; delete: string; };
         fields: {
             profileName: string;
@@ -291,7 +291,7 @@ export const en: TranslationKeys = {
                 desc: 'Choose a default mode to apply. Scene level POV will override this global setting.',
             },
             yamlOverrides: {
-                name: 'Scene level YAML overrides',
+                name: 'Scene override examples',
                 desc: 'In scene frontmatter, you can use `POV:` first, second, third, omni, objective, or a number such as two, four, count, or all to designate more than one character is carrying the scene POV. Count values mark the first N names in `Character:` and use the Global POV mode to choose the marker.',
             },
             modes: {
@@ -303,7 +303,7 @@ export const en: TranslationKeys = {
                 objective: 'Objective — camera-eye narrator (Narrator°)',
             },
             preview: {
-                heading: 'Scene override examples',
+                heading: 'POV EXAMPLES',
                 examples: {
                     sceneFirst: 'Scene YAML: POV: first | Character: [Alice]',
                     sceneThird: 'Scene YAML: POV: third | Character: [Bob]',
@@ -492,6 +492,7 @@ export const en: TranslationKeys = {
         active: {
             name: 'Active profile',
             desc: 'Pick which planet or setting profile is used for conversions.',
+            disabled: '— Disabled —',
         },
         actions: {
             add: 'Add profile',
@@ -519,7 +520,7 @@ export const en: TranslationKeys = {
             datetimeDesc: 'Pick a local date and time to convert.',
             now: 'Now',
             convert: 'Convert',
-            noProfile: 'Add a planetary profile in Settings first.',
+            noProfile: 'Select an active planetary profile in Settings first.',
             disabled: 'Enable planetary conversions in settings to use this tool.',
             invalid: 'Enter a valid ISO datetime.',
         },

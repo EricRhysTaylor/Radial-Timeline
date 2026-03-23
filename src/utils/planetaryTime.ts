@@ -20,12 +20,11 @@ export interface PlanetaryConversionResult {
 const EARTH_DAY_MS = 24 * 60 * 60 * 1000;
 
 export function getActivePlanetaryProfile(settings: RadialTimelineSettings): PlanetaryProfile | null {
-    if (!settings.enablePlanetaryTime) return null;
     const profiles = settings.planetaryProfiles || [];
     if (!profiles.length) return null;
-    const activeId = settings.activePlanetaryProfileId || profiles[0]?.id;
-    const profile = profiles.find(p => p.id === activeId) || profiles[0];
-    return profile || null;
+    const activeId = settings.activePlanetaryProfileId;
+    if (!activeId) return null;
+    return profiles.find(p => p.id === activeId) || null;
 }
 
 export function validatePlanetaryProfile(profile: PlanetaryProfile): { ok: boolean; errors: string[] } {

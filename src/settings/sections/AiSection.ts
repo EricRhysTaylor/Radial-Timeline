@@ -1165,12 +1165,19 @@ export function renderAiSection(params: {
 
     const renderResolvedPreview = (state: ResolvedPreviewRenderState): void => {
         resolvedPreviewKicker.setText('PREVIEW (ACTIVE MODEL)');
-        resolvedPreviewModel.setText(state.modelLabel);
+        const previewModelLabel = state.provider === 'ollama'
+            ? state.modelLabel.replace(/^Local LLM:\s*/i, '').trim() || state.modelLabel
+            : state.modelLabel;
+        resolvedPreviewModel.setText(previewModelLabel);
         const labelAlreadySaysPreview = state.modelLabel.toLowerCase().includes('preview');
         const previewSuffix = state.isPreview && !labelAlreadySaysPreview ? ' (Preview)' : '';
-        const providerDetail = state.idPending
-            ? `${providerLabel[state.provider]} · ID pending (${state.modelAlias})`
-            : `${providerLabel[state.provider]} · ${(state.modelId || state.modelLabel)}${previewSuffix}`;
+        const providerDetail = state.provider === 'ollama'
+            ? (state.idPending
+                ? `ID pending (${state.modelAlias})`
+                : `${state.modelId || previewModelLabel}${previewSuffix}`)
+            : (state.idPending
+                ? `${providerLabel[state.provider]} · ID pending (${state.modelAlias})`
+                : `${providerLabel[state.provider]} · ${(state.modelId || state.modelLabel)}${previewSuffix}`);
         resolvedPreviewProvider.setText(providerDetail);
         resolvedPreviewComparatorLabel.setText('');
         resolvedPreviewComparatorValue.setText('');
@@ -1379,8 +1386,8 @@ export function renderAiSection(params: {
             };
         }
         return {
-            sizeText: 'Inquiry Corpus: Unavailable',
-            structureText: 'Open inquiry to calculate the Inquiry corpus'
+            sizeText: 'Inquiry corpus stats will be available once you run Inquiry View.',
+            structureText: 'Run Inquiry View to calculate scene, outline, and token totals.'
         };
     };
 

@@ -20,7 +20,7 @@ export class PlanetaryTimeModal extends Modal {
         super(app);
         this.plugin = plugin;
         this.profiles = plugin.settings.planetaryProfiles || [];
-        this.activeId = plugin.settings.activePlanetaryProfileId || this.profiles[0]?.id;
+        this.activeId = plugin.settings.activePlanetaryProfileId || '';
         const now = new Date();
         this.localDateValue = this.formatDateInput(now);
         this.localTimeValue = this.formatTimeInput(now);
@@ -44,11 +44,6 @@ export class PlanetaryTimeModal extends Modal {
         header.createDiv({ cls: 'ert-modal-title', text: t('planetary.modal.title') });
         header.createDiv({ cls: 'ert-modal-subtitle', text: t('planetary.modal.datetimeDesc') });
 
-        if (!this.plugin.settings.enablePlanetaryTime) {
-            contentEl.createDiv({ text: t('planetary.modal.disabled') });
-            return;
-        }
-
         if (!this.profiles.length) {
             contentEl.createDiv({ text: t('planetary.modal.noProfile') });
             return;
@@ -59,8 +54,9 @@ export class PlanetaryTimeModal extends Modal {
             .setDesc(t('planetary.active.desc'));
         profileSetting.addDropdown(drop => {
             this.profileDropdown = drop;
+            drop.addOption('', t('planetary.active.disabled'));
             this.profiles.forEach(p => drop.addOption(p.id, p.label || 'Unnamed'));
-            drop.setValue(this.activeId || this.profiles[0].id);
+            drop.setValue(this.activeId || '');
             drop.onChange(async (value) => {
                 this.activeId = value;
                 this.plugin.settings.activePlanetaryProfileId = value;
@@ -163,8 +159,9 @@ export class PlanetaryTimeModal extends Modal {
 
     private getActiveProfile(): PlanetaryProfile | null {
         if (!this.profiles.length) return null;
+        if (!this.activeId) return null;
         const match = this.profiles.find(p => p.id === this.activeId);
-        return match || this.profiles[0];
+        return match || null;
     }
 
     private formatDateInput(d: Date): string {

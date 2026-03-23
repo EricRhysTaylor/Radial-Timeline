@@ -611,6 +611,23 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         });
     }
 
+    private renderAdvancedHero(containerEl: HTMLElement): void {
+        this.renderSettingsHero(containerEl, {
+            badgeLabel: 'Advanced',
+            badgeIcon: 'pyramid',
+            badgeVariant: ERT_CLASSES.BADGE_PILL_NEUTRAL,
+            wikiHref: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#configuration',
+            title: 'Advanced settings and system controls.',
+            subtitle: 'This tab now holds configuration-first controls that support the rest of the plugin without crowding your day-to-day writing setup.',
+            kicker: 'Currently here:',
+            features: [
+                { icon: 'folder-cog', text: 'Logs, output folders, and generated file locations' },
+                { icon: 'waypoints', text: 'Metadata remapping and manuscript behavior controls' },
+                { icon: 'settings-2', text: 'Room for deeper system settings as Advanced grows' },
+            ]
+        });
+    }
+
     private renderInquiryHero(containerEl: HTMLElement): void {
         this.renderSettingsHero(containerEl, {
             badgeLabel: 'Inquiry · Signals',
@@ -726,12 +743,13 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         });
 
         const advancedStack = advancedContent.createDiv({ cls: ERT_CLASSES.STACK });
-        const advancedIntro = advancedStack.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.SKIN_PRO}` });
-        this.renderProHero(advancedIntro);
+        const advancedIntro = advancedStack.createDiv({ cls: ERT_CLASSES.STACK });
+        this.renderAdvancedHero(advancedIntro);
+        const advancedEntitlement = advancedStack.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.SKIN_PRO}` });
         renderProEntitlementPanel({
             app: this.app,
             plugin: this.plugin,
-            containerEl: advancedIntro,
+            containerEl: advancedEntitlement,
             onEntitlementChanged: refreshProDependentSections
         });
         const advancedConfigurationSection = advancedStack.createDiv({ attr: { [ERT_DATA.SECTION]: 'configuration' } });

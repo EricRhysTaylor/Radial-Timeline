@@ -323,12 +323,11 @@
 .ert-inquiry-icon-btn.is-engine-pulse-red .ert-inquiry-icon-btn-bg {
   fill: color-mix(in srgb, var(--ert-inquiry-engine-pulse) 18%, var(--background-secondary));
   stroke: color-mix(in srgb, var(--ert-inquiry-engine-pulse) 70%, var(--background-modifier-border));
-  animation: ert-inquiry-engine-pulse 2.2s ease-in-out infinite;
 }
 
 .ert-inquiry-icon-btn.is-engine-pulse-amber .ert-inquiry-icon,
 .ert-inquiry-icon-btn.is-engine-pulse-red .ert-inquiry-icon {
-  animation: ert-inquiry-engine-icon 2.2s ease-in-out infinite;
+  opacity: 1;
 }
 
 .ert-inquiry-icon-btn.is-help-onboarding {

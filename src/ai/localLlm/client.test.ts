@@ -58,7 +58,7 @@ describe('LocalLlmClient live model selection', () => {
                 provider: 'ollama',
                 id: 'mistral-nemo',
                 alias: 'ollama-mistral-nemo',
-                label: 'Local LLM: mistral-nemo',
+                label: 'mistral-nemo',
                 tier: 'LOCAL',
                 capabilities: ['jsonStrict'],
                 personality: { reasoning: 5, writing: 5, determinism: 4 },

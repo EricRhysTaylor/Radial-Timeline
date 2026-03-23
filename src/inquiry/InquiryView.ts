@@ -485,6 +485,7 @@ export class InquiryView extends ItemView {
     private entryBodyCharCache = new Map<string, { mtime: number; chars: number }>();
     private entryBodyCharLoads = new Map<string, Promise<void>>();
     private payloadStatsRefreshTimer?: number;
+    private payloadStatsRefreshDirty = false;
     private duplicatePulseTimer?: number;
     private rehydratePulseTimer?: number;
     private rehydrateHighlightTimer?: number;
@@ -636,6 +637,7 @@ export class InquiryView extends ItemView {
             window.clearTimeout(this.payloadStatsRefreshTimer);
             this.payloadStatsRefreshTimer = undefined;
         }
+        this.payloadStatsRefreshDirty = false;
         this.contentEl.empty();
     }
 
@@ -9368,10 +9370,8 @@ export class InquiryView extends ItemView {
         }
         this.payloadStatsRefreshTimer = window.setTimeout(() => {
             this.payloadStatsRefreshTimer = undefined;
-            if (this.entryBodyCharLoads.size > 0) {
-                this.schedulePayloadStatsRefresh();
-                return;
-            }
+            if (!this.payloadStatsRefreshDirty) return;
+            this.payloadStatsRefreshDirty = false;
             this.payloadStats = undefined;
             this._currentCorpusContext = null;
             this.refreshPayloadStats();
@@ -9596,12 +9596,15 @@ export class InquiryView extends ItemView {
                 const previous = this.entryBodyCharCache.get(file.path);
                 this.entryBodyCharCache.set(file.path, { mtime: currentMtime, chars });
                 if (!previous || previous.mtime !== currentMtime || previous.chars !== chars) {
-                    this.schedulePayloadStatsRefresh();
+                    this.payloadStatsRefreshDirty = true;
                 }
             } catch {
                 this.entryBodyCharCache.delete(file.path);
             } finally {
                 this.entryBodyCharLoads.delete(file.path);
+                if (this.payloadStatsRefreshDirty && this.entryBodyCharLoads.size === 0) {
+                    this.schedulePayloadStatsRefresh();
+                }
             }
         })();
         this.entryBodyCharLoads.set(file.path, load);
