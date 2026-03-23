@@ -151,6 +151,21 @@ export interface AIProviderConnectionSettings {
 
 export type AnalysisPackaging = 'automatic' | 'singlePassOnly' | 'segmented';
 
+export type LocalLlmBackendId = 'ollama' | 'lmStudio' | 'openaiCompatible';
+export type LocalLlmJsonMode = 'response_format' | 'prompt_only';
+
+export interface LocalLlmSettings {
+    enabled: boolean;
+    backend: LocalLlmBackendId;
+    baseUrl: string;
+    defaultModelId: string;
+    instructions: string;
+    sendPulseToAiReport: boolean;
+    timeoutMs: number;
+    maxRetries: number;
+    jsonMode: LocalLlmJsonMode;
+}
+
 export interface AIRoleTemplate {
     id: string;
     name: string;
@@ -163,6 +178,7 @@ export interface AiSettingsV1 {
     provider: AIProviderId;
     modelPolicy: ModelPolicy;
     analysisPackaging: AnalysisPackaging;
+    localLlm: LocalLlmSettings;
     roleTemplateId?: string;
     roleTemplates?: AIRoleTemplate[];
     overrides: AIOverrides;
@@ -312,7 +328,15 @@ export interface AIRunRequest {
 }
 
 export type InputTokenEstimateMethod = 'heuristic_chars' | 'anthropic_count';
+export type TokenCountSource = 'provider_count' | 'estimate';
 export type RTCorpusEstimateMethod = 'rt_chars_heuristic';
+
+export interface TokenCountResult {
+    provider: Exclude<AIProviderId, 'none'>;
+    modelId: string;
+    inputTokens: number;
+    source: TokenCountSource;
+}
 
 export interface RTCorpusTokenBreakdown {
     scenesTokens: number;

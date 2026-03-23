@@ -2,6 +2,7 @@ import type {
     AIProviderId,
     AiSettingsV1,
     AIRoleTemplate,
+    LocalLlmSettings,
     ModelPolicy
 } from '../types';
 
@@ -18,6 +19,17 @@ export type CredentialSecretField = keyof typeof DEFAULT_CREDENTIAL_SECRET_IDS;
 export type CredentialSecretProvider = 'openai' | 'anthropic' | 'google' | 'ollama';
 
 export const DEFAULT_MODEL_POLICY: ModelPolicy = { type: 'latestStable' };
+export const DEFAULT_LOCAL_LLM_SETTINGS: LocalLlmSettings = {
+    enabled: true,
+    backend: 'ollama',
+    baseUrl: 'http://localhost:11434/v1',
+    defaultModelId: 'llama3',
+    instructions: '',
+    sendPulseToAiReport: true,
+    timeoutMs: 45000,
+    maxRetries: 1,
+    jsonMode: 'response_format'
+};
 export const BUILTIN_ROLE_TEMPLATES: AIRoleTemplate[] = [
     {
         id: 'commercial_genre',
@@ -61,12 +73,17 @@ export function cloneBuiltInRoleTemplates(): AIRoleTemplate[] {
     return BUILTIN_ROLE_TEMPLATES.map(template => ({ ...template }));
 }
 
+export function cloneDefaultLocalLlmSettings(): LocalLlmSettings {
+    return { ...DEFAULT_LOCAL_LLM_SETTINGS };
+}
+
 export function buildDefaultAiSettings(): AiSettingsV1 {
     return {
         schemaVersion: AI_SETTINGS_SCHEMA_VERSION,
         provider: DEFAULT_CANONICAL_PROVIDER,
         modelPolicy: { ...DEFAULT_MODEL_POLICY },
         analysisPackaging: 'automatic',
+        localLlm: cloneDefaultLocalLlmSettings(),
         roleTemplateId: 'commercial_genre',
         roleTemplates: cloneBuiltInRoleTemplates(),
         overrides: {
@@ -88,9 +105,7 @@ export function buildDefaultAiSettings(): AiSettingsV1 {
         credentials: {
             ...DEFAULT_CREDENTIAL_SECRET_IDS
         },
-        connections: {
-            ollamaBaseUrl: 'http://localhost:11434/v1'
-        },
+        connections: {},
         migrationWarnings: [],
         upgradedBannerPending: false
     };

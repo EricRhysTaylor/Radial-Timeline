@@ -7,7 +7,7 @@ describe('AI settings tab vocabulary', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/SettingsTab.ts'), 'utf8');
         expect(source.includes('_ollamaBaseUrlInput')).toBe(true);
         expect(source.includes('_ollamaModelIdInput')).toBe(true);
-        expect(source.includes('validateOllamaModelAvailability')).toBe(true);
+        expect(source.includes('getLocalLlmBackend')).toBe(true);
         expect(source.includes('_localBaseUrlInput')).toBe(false);
         expect(source.includes('_localModelIdInput')).toBe(false);
     });

@@ -24,6 +24,7 @@ import type { InquiryEstimateSnapshot } from './inquiryEstimateSnapshot';
 import type { InquiryPayloadStats, InquiryReadinessUiState } from '../types';
 import type { ResolvedInquiryEngine } from './inquiryModelResolver';
 import type { AiSettingsV1 } from '../../ai/types';
+import type { TokenEstimateMethod } from '../../ai/tokens/inputTokenEstimate';
 
 // ── Fixtures ──────────────────────────────────────────────────────────
 
@@ -63,7 +64,7 @@ function makeSnapshot(overrides: Partial<{
             effectiveInputCeiling: overrides.effectiveInputCeiling ?? 180000,
             maxOutputTokens: overrides.maxOutputTokens ?? 16384,
             expectedPassCount: overrides.expectedPassCount ?? 1,
-            estimationMethod: (overrides.estimationMethod ?? 'heuristic_chars') as 'heuristic_chars',
+            estimationMethod: (overrides.estimationMethod ?? 'heuristic_chars') as TokenEstimateMethod,
             uncertaintyTokens: overrides.uncertaintyTokens ?? 5000
         }
     };
@@ -473,13 +474,13 @@ describe('getCurrentPassPlan', () => {
 describe('buildRunScopeLabel', () => {
     it('shows scene selection when subset selected', () => {
         const label = buildRunScopeLabel(makePayloadStats(), 3, 'book', 'Book A');
-        expect(label).toBe('Run on 3 scenes (Bodies).');
+        expect(label).toBe('Run on 3 scenes (Full Scenes).');
     });
 
     it('shows full book with bodies', () => {
         const label = buildRunScopeLabel(makePayloadStats(), 0, 'book', 'Book A');
         expect(label).toContain('Book A');
-        expect(label).toContain('Bodies');
+        expect(label).toContain('Full Scenes');
     });
 
     it('shows summaries when only summaries used', () => {
@@ -608,6 +609,19 @@ describe('buildReadinessUiState', () => {
         expect(result.pending).toBe(false);
         expect(result.readiness.state).toBe('ready');
         expect(result.hasEligibleModel).toBe(true);
+    });
+
+    it('preserves provider-counted estimate metadata from the snapshot', () => {
+        const result = buildReadinessUiState(makeBaseInput({
+            snapshot: makeSnapshot({
+                estimatedInputTokens: 64000,
+                estimationMethod: 'anthropic_count',
+                uncertaintyTokens: 256
+            })
+        }));
+        expect(result.estimateInputTokens).toBe(64000);
+        expect(result.estimateMethod).toBe('anthropic_count');
+        expect(result.estimateUncertaintyTokens).toBe(256);
     });
 
     it('returns blocked state when credential missing', () => {

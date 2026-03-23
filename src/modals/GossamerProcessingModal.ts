@@ -12,6 +12,7 @@ import { getCredential } from '../ai/credentials/credentials';
 import { getModelDisplayName } from '../utils/modelResolver';
 import { SimulatedProgress } from '../utils/simulatedProgress';
 import type { AIRunAdvancedContext } from '../ai/types';
+import { describeTokenEstimateMethod } from '../ai/tokens/inputTokenEstimate';
 import { redactSensitiveValue } from '../ai/credentials/redactSensitive';
 import { CANONICAL_PROVIDER_LABELS, getCanonicalAiSettings, resolveConfiguredSelection } from '../ai/runtime/runtimeSelection';
 
@@ -261,6 +262,7 @@ export class GossamerProcessingModal extends Modal {
             `Model selection reason: ${redactSensitiveValue(ctx.modelSelectionReason)}`,
             `Availability: ${ctx.availabilityStatus === 'visible' ? 'Visible to your key ✅' : ctx.availabilityStatus === 'not_visible' ? 'Not visible ⚠️' : 'Unknown (snapshot unavailable)'}`,
             `Applied caps: input=${ctx.maxInputTokens}, output=${ctx.maxOutputTokens}`,
+            `Token estimate: ${typeof ctx.totalInputTokens === 'number' && Number.isFinite(ctx.totalInputTokens) ? `${Math.max(0, Math.floor(ctx.totalInputTokens)).toLocaleString()} via ${describeTokenEstimateMethod(ctx.tokenEstimateMethod ?? 'heuristic_chars')}` : 'unavailable'}`,
             `Packaging: ${ctx.analysisPackaging === 'singlePassOnly' ? 'Single-pass only' : ctx.analysisPackaging === 'segmented' ? 'Segmented' : 'Automatic'}`,
             `Evidence: ${this.manuscriptInfo?.evidenceMode || 'Auto (scene bodies first)'}`,
             '',

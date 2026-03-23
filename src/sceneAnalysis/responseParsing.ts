@@ -82,7 +82,7 @@ function validateSceneAnalysisPayload(payload: SceneAnalysisJsonResponse): void 
             if (!LINK_GRADE_VALUES.has(item.grade)) {
                 // Last ditch effort: if it's not a valid grade, default to '?'
                 item.grade = '?'; 
-                // We could throw here, but for local LLMs it's better to be forgiving
+                // Keep parsing resilient when a provider drifts slightly from the requested grading contract.
                 // throw new Error(`${label} item #${index + 1} must use "+", "-", or "?".`);
             }
             normalizeSceneRef(item, label, index);

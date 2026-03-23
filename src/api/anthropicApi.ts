@@ -7,6 +7,7 @@
 import { requestUrl } from 'obsidian';
 import { warnLegacyAccess } from './legacyAccessGuard';
 import { CACHE_BREAK_DELIMITER } from '../ai/prompts/composeEnvelope';
+import type { EvidenceDocument, TokenCountResult } from '../ai/types';
 
 export type AnthropicTextBlock = {
   type: 'text';
@@ -71,6 +72,11 @@ interface AnthropicErrorResponse {
   type: string;
   error: { type: string; message: string };
 }
+
+interface AnthropicTokenCountSuccessResponse {
+  input_tokens?: number;
+  total_tokens?: number;
+}
 export interface AnthropicApiResponse {
   success: boolean;
   content: string | null;
@@ -94,12 +100,31 @@ function mapAnthropicResponseCitations(
   }));
 }
 
-export interface AnthropicTokenCountResponse {
-  success: boolean;
-  inputTokens: number | null;
-  responseData: unknown;
-  error?: string;
+interface BuildAnthropicMessageRequestInput {
+  mode: 'generate' | 'count';
+  modelId: string;
+  systemPrompt: string | null;
+  userPrompt: string;
+  maxTokens?: number;
+  temperature?: number;
+  topP?: number;
+  thinkingBudgetTokens?: number;
+  citationsEnabled?: boolean;
+  evidenceDocuments?: EvidenceDocument[];
+  jsonSchema?: Record<string, unknown>;
 }
+
+type AnthropicMessageRequestBody = {
+  model: string;
+  messages: { role: string; content: AnthropicContentBlock[] }[];
+  system?: AnthropicTextBlock[];
+  max_tokens?: number;
+  temperature?: number;
+  top_p?: number;
+  thinking?: { type: 'enabled'; budget_tokens: number };
+  tools?: AnthropicToolDefinition[];
+  tool_choice?: AnthropicToolChoice;
+};
 
 export function buildAnthropicUserContent(input: BuildAnthropicUserContentInput): AnthropicContentBlock[] {
   const delimIndex = input.userPrompt.indexOf(CACHE_BREAK_DELIMITER);
@@ -137,6 +162,92 @@ export function buildAnthropicUserContent(input: BuildAnthropicUserContentInput)
     { type: 'text', text: volatileText },
   ];
 }
+
+function buildAnthropicMessageRequestBody(
+  input: BuildAnthropicMessageRequestInput
+): AnthropicMessageRequestBody {
+  const userContent = buildAnthropicUserContent({
+    userPrompt: input.userPrompt,
+    citationsEnabled: input.citationsEnabled,
+    evidenceDocuments: input.evidenceDocuments
+  });
+
+  const requestBody: AnthropicMessageRequestBody = {
+    model: input.modelId,
+    messages: [{ role: 'user', content: userContent }]
+  };
+
+  if (input.systemPrompt) {
+    requestBody.system = [{ type: 'text', text: input.systemPrompt }];
+  }
+
+  if (input.mode === 'count') {
+    return requestBody;
+  }
+
+  const forceStructuredTool = !!input.jsonSchema && Object.keys(input.jsonSchema).length > 0;
+  const thinkingBudget = typeof input.thinkingBudgetTokens === 'number'
+    ? input.thinkingBudgetTokens
+    : 0;
+  const thinkingEnabled = !forceStructuredTool
+    && thinkingBudget >= 1024;
+  const baseMaxTokens = typeof input.maxTokens === 'number' ? input.maxTokens : 4000;
+
+  requestBody.max_tokens = thinkingEnabled
+    ? baseMaxTokens + thinkingBudget
+    : baseMaxTokens;
+
+  // When thinking is enabled, Anthropic requires temperature=1 (omit to let API default).
+  if (!thinkingEnabled && typeof input.temperature === 'number') {
+    requestBody.temperature = input.temperature;
+  }
+  if (typeof input.topP === 'number') {
+    requestBody.top_p = input.topP;
+  }
+  if (thinkingEnabled) {
+    requestBody.thinking = { type: 'enabled', budget_tokens: thinkingBudget };
+  }
+  if (forceStructuredTool) {
+    requestBody.tools = [{
+      name: 'record_structured_response',
+      description: 'Return the final structured response via this tool input.',
+      input_schema: input.jsonSchema as Record<string, unknown>
+    }];
+    requestBody.tool_choice = {
+      type: 'tool',
+      name: 'record_structured_response'
+    };
+  }
+
+  return requestBody;
+}
+
+function buildAnthropicBetaHeader(input: { thinkingEnabled: boolean }): string {
+  const betaHeaders = ['prompt-caching-2024-07-31'];
+  if (input.thinkingEnabled) {
+    betaHeaders.push('output-128k-2025-02-19');
+  }
+  return betaHeaders.join(',');
+}
+
+export function normalizeAnthropicTokenCountResponse(
+  responseData: unknown,
+  modelId: string
+): TokenCountResult | null {
+  const data = responseData as AnthropicTokenCountSuccessResponse;
+  const inputTokens = typeof data?.input_tokens === 'number'
+    ? data.input_tokens
+    : (typeof data?.total_tokens === 'number' ? data.total_tokens : undefined);
+  if (typeof inputTokens !== 'number' || !Number.isFinite(inputTokens)) {
+    return null;
+  }
+  return {
+    provider: 'anthropic',
+    modelId,
+    inputTokens: Math.max(0, Math.floor(inputTokens)),
+    source: 'provider_count'
+  };
+}
 export async function callAnthropicApi(
   apiKey: string,
   modelId: string,
@@ -159,56 +270,22 @@ export async function callAnthropicApi(
   }
   if (!modelId) {
     return { success: false, content: null, responseData: { type: 'error', error: { type: 'plugin_config_error', message: 'Anthropic model ID not configured.' } }, error: 'Anthropic model ID not configured.' };  }
-
-  // Always use content blocks for Anthropic (foundation for caching, citations, extended thinking)
-  const userContent = buildAnthropicUserContent({ userPrompt, citationsEnabled, evidenceDocuments });
-
-  const forceStructuredTool = !!jsonSchema && Object.keys(jsonSchema).length > 0;
-  const thinkingEnabled = !forceStructuredTool
+  const thinkingEnabled = !jsonSchema
     && typeof thinkingBudgetTokens === 'number'
     && thinkingBudgetTokens >= 1024;
-  const effectiveMaxTokens = thinkingEnabled ? maxTokens + thinkingBudgetTokens : maxTokens;
-
-  const requestBody: {
-    model: string;
-    messages: { role: string; content: AnthropicContentBlock[] }[];
-    max_tokens: number;
-    system?: AnthropicTextBlock[];
-    temperature?: number;
-    top_p?: number;
-    thinking?: { type: 'enabled'; budget_tokens: number };
-    tools?: AnthropicToolDefinition[];
-    tool_choice?: AnthropicToolChoice;
-  } = { model: modelId, messages: [{ role: 'user', content: userContent }], max_tokens: effectiveMaxTokens };
-  if (systemPrompt) {
-    requestBody.system = [{ type: 'text', text: systemPrompt }];
-  }
-  // When thinking is enabled, Anthropic requires temperature=1 (omit to let API default).
-  if (!thinkingEnabled && typeof temperature === 'number') {
-    requestBody.temperature = temperature;
-  }
-  if (typeof topP === 'number') {
-    requestBody.top_p = topP;
-  }
-  if (thinkingEnabled) {
-    requestBody.thinking = { type: 'enabled', budget_tokens: thinkingBudgetTokens };
-  }
-  if (forceStructuredTool) {
-    requestBody.tools = [{
-      name: 'record_structured_response',
-      description: 'Return the final structured response via this tool input.',
-      input_schema: jsonSchema
-    }];
-    requestBody.tool_choice = {
-      type: 'tool',
-      name: 'record_structured_response'
-    };
-  }
-
-  const betaHeaders = ['prompt-caching-2024-07-31'];
-  if (thinkingEnabled) {
-    betaHeaders.push('output-128k-2025-02-19');
-  }
+  const requestBody = buildAnthropicMessageRequestBody({
+    mode: 'generate',
+    modelId,
+    systemPrompt,
+    userPrompt,
+    maxTokens,
+    temperature,
+    topP,
+    thinkingBudgetTokens,
+    citationsEnabled,
+    evidenceDocuments,
+    jsonSchema
+  });
 
   let responseData: unknown;
   try {
@@ -217,7 +294,7 @@ export async function callAnthropicApi(
       method: 'POST',
       headers: {
         'anthropic-version': apiVersion,
-        'anthropic-beta': betaHeaders.join(','),
+        'anthropic-beta': buildAnthropicBetaHeader({ thinkingEnabled }),
         'x-api-key': apiKey,
         'Content-Type': 'application/json',
       },
@@ -258,46 +335,32 @@ export async function callAnthropicApi(
   }
 }
 
-export async function callAnthropicTokenCount(
+export async function countAnthropicTokens(
   apiKey: string,
   modelId: string,
   systemPrompt: string | null,
   userPrompt: string,
   citationsEnabled?: boolean,
-  evidenceDocuments?: { title: string; content: string }[]
-): Promise<AnthropicTokenCountResponse> {
+  evidenceDocuments?: EvidenceDocument[]
+): Promise<TokenCountResult> {
   const apiUrl = 'https://api.anthropic.com/v1/messages/count_tokens';
   const apiVersion = '2023-06-01';
 
   if (!apiKey) {
-    return {
-      success: false,
-      inputTokens: null,
-      responseData: { type: 'error', error: { type: 'plugin_config_error', message: 'Anthropic API key not configured.' } },
-      error: 'Anthropic API key not configured.'
-    };
+    throw new Error('Anthropic API key not configured.');
   }
   if (!modelId) {
-    return {
-      success: false,
-      inputTokens: null,
-      responseData: { type: 'error', error: { type: 'plugin_config_error', message: 'Anthropic model ID not configured.' } },
-      error: 'Anthropic model ID not configured.'
-    };
+    throw new Error('Anthropic model ID not configured.');
   }
 
-  const userContent = buildAnthropicUserContent({ userPrompt, citationsEnabled, evidenceDocuments });
-  const requestBody: {
-    model: string;
-    messages: { role: string; content: AnthropicContentBlock[] }[];
-    system?: AnthropicTextBlock[];
-  } = {
-    model: modelId,
-    messages: [{ role: 'user', content: userContent }]
-  };
-  if (systemPrompt) {
-    requestBody.system = [{ type: 'text', text: systemPrompt }];
-  }
+  const requestBody = buildAnthropicMessageRequestBody({
+    mode: 'count',
+    modelId,
+    systemPrompt,
+    userPrompt,
+    citationsEnabled,
+    evidenceDocuments
+  });
 
   let responseData: unknown;
   try {
@@ -306,7 +369,7 @@ export async function callAnthropicTokenCount(
       method: 'POST',
       headers: {
         'anthropic-version': apiVersion,
-        'anthropic-beta': 'prompt-caching-2024-07-31',
+        'anthropic-beta': buildAnthropicBetaHeader({ thinkingEnabled: false }),
         'x-api-key': apiKey,
         'Content-Type': 'application/json',
       },
@@ -317,25 +380,13 @@ export async function callAnthropicTokenCount(
     if (response.status >= 400) {
       const err = responseData as AnthropicErrorResponse;
       const msg = err?.error?.message ?? response.text ?? `Anthropic token count error (${response.status})`;
-      return { success: false, inputTokens: null, responseData, error: msg };
+      throw new Error(msg);
     }
-    const data = responseData as Record<string, unknown>;
-    const inputTokens = typeof data.input_tokens === 'number'
-      ? data.input_tokens
-      : (typeof data.total_tokens === 'number' ? data.total_tokens : undefined);
-    if (typeof inputTokens === 'number' && Number.isFinite(inputTokens)) {
-      return { success: true, inputTokens: Math.max(0, Math.floor(inputTokens)), responseData };
-    }
-    return {
-      success: false,
-      inputTokens: null,
-      responseData,
-      error: 'Invalid token count response from Anthropic.'
-    };
+    const normalized = normalizeAnthropicTokenCountResponse(responseData, modelId);
+    if (normalized) return normalized;
+    throw new Error('Invalid token count response from Anthropic.');
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    responseData = { type: 'error', error: { type: 'network_or_execution_error', message: msg } };
-    return { success: false, inputTokens: null, responseData, error: msg };
+    throw (e instanceof Error ? e : new Error(String(e)));
   }
 }
 

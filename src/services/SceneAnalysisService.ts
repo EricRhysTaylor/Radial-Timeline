@@ -8,6 +8,7 @@ import type RadialTimelinePlugin from '../main';
 import { normalizeBooleanValue } from '../utils/sceneHelpers';
 import { getCredential } from '../ai/credentials/credentials';
 import { CANONICAL_PROVIDER_LABELS, getCanonicalAiSettings, resolveConfiguredSelection } from '../ai/runtime/runtimeSelection';
+import { getLocalLlmSettings } from '../ai/localLlm/settings';
 
 export class SceneAnalysisService {
     constructor(private plugin: RadialTimelinePlugin) { }
@@ -86,10 +87,15 @@ export class SceneAnalysisService {
             return false;
         }
         if (provider === 'ollama') {
-            const hasUrl = !!aiSettings.connections?.ollamaBaseUrl?.trim();
-            const hasModel = !!selection?.model.id?.trim();
+            const localLlm = getLocalLlmSettings(aiSettings);
+            const hasUrl = !!localLlm.baseUrl?.trim();
+            const hasModel = !!localLlm.defaultModelId?.trim();
+            if (!localLlm.enabled) {
+                new Notice('Local LLM is disabled. Enable it in Settings → AI.');
+                return false;
+            }
             if (!hasUrl || !hasModel) {
-                new Notice('Ollama requires a base URL and model selection.');
+                new Notice('Local LLM requires a base URL and model selection.');
                 return false;
             }
             return true;
@@ -151,7 +157,7 @@ export class SceneAnalysisService {
     isLocalReportOnlyMode(): boolean {
         const aiSettings = getCanonicalAiSettings(this.plugin);
         return resolveConfiguredSelection(aiSettings)?.provider === 'ollama'
-            && (this.plugin.settings.localSendPulseToAiReport ?? true);
+            && getLocalLlmSettings(aiSettings).sendPulseToAiReport;
     }
 
     async processByManuscriptOrder(): Promise<void> {

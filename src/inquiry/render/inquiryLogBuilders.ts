@@ -4,6 +4,7 @@ import type { InquiryResult, InquiryFinding, InquiryZone } from '../state';
 import type { SceneInclusion } from '../../types/settings';
 import type { TokenTier } from '../types';
 import { extractTokenUsage, formatAiLogContent, formatDuration, formatUsageCostBreakdownLines, sanitizeLogPayload, type AiLogStatus } from '../../ai/log';
+import { describeTokenEstimateMethod } from '../../ai/tokens/inputTokenEstimate';
 import { buildManifestTocLines, formatBriefLabel, formatManifestClassLabel } from '../utils/inquiryViewText';
 
 const PROVIDER_LABELS = {
@@ -296,7 +297,7 @@ export function buildInquiryLogContent(args: {
     }
     lines.push(`- Tier: ${tokenTier ?? 'unknown'}`);
     if (deps.estimateSnapshot) {
-        lines.push(`- Pre-run estimate: ${formatTokenCount(deps.estimateSnapshot.estimate.estimatedInputTokens, true)} (${deps.estimateSnapshot.estimate.estimationMethod})`);
+        lines.push(`- Pre-run estimate: ${formatTokenCount(deps.estimateSnapshot.estimate.estimatedInputTokens, true)} (${describeTokenEstimateMethod(deps.estimateSnapshot.estimate.estimationMethod)})`);
         lines.push(`- Per-pass planning budget: ${formatTokenCount(deps.estimateSnapshot.estimate.effectiveInputCeiling)}`);
         lines.push(`- Expected structured passes: ${deps.estimateSnapshot.estimate.expectedPassCount}`);
     }

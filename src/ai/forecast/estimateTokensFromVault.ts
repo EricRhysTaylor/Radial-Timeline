@@ -19,6 +19,8 @@ import { logCountingForensics } from '../diagnostics/countingForensics';
 import { readSceneId } from '../../utils/sceneIds';
 import { resolveInquirySourceRoots } from '../../inquiry/utils/sourceRoots';
 import type { AIProviderId } from '../types';
+import { getAIClient } from '../runtime/aiClient';
+import { buildUnifiedBeatAnalysisPrompt, type UnifiedBeatInfo, getUnifiedBeatAnalysisJsonSchema } from '../prompts/unifiedBeatAnalysis';
 
 export const FORECAST_CHARS_PER_TOKEN = 4;
 export const FORECAST_PROMPT_OVERHEAD_TOKENS = 250;
@@ -43,6 +45,13 @@ type CanonicalExecutionEstimateParams = {
     vault: Vault;
     metadataCache: MetadataCache;
     frontmatterMappings?: Record<string, string>;
+};
+
+type CanonicalGossamerExecutionEstimateParams = {
+    plugin: RadialTimelinePlugin;
+    provider: AIProviderId;
+    modelId: string;
+    promptText: string;
 };
 
 export interface InquiryTokenEstimate {
@@ -313,6 +322,42 @@ export const buildCanonicalExecutionEstimate = async (
     };
 };
 
+export const buildCanonicalGossamerExecutionEstimate = async (
+    params: CanonicalGossamerExecutionEstimateParams
+): Promise<GossamerTokenEstimate['providerExecutionEstimate']> => {
+    const provider = params.provider;
+    if (provider === 'none') {
+        throw new Error('Canonical Gossamer estimate is unavailable for provider none.');
+    }
+
+    const prepared = await getAIClient(params.plugin).prepareRunEstimate({
+        feature: 'Gossamer',
+        task: 'BeatMomentumAnalysis',
+        requiredCapabilities: ['jsonStrict', 'longContext', 'reasoningStrong', 'highOutputCap'],
+        featureModeInstructions: 'Evaluate narrative momentum at each beat using only the submitted manuscript and beat list. Avoid anchoring to prior scores.',
+        userInput: params.promptText,
+        returnType: 'json',
+        responseSchema: getUnifiedBeatAnalysisJsonSchema() as unknown as Record<string, unknown>,
+        providerOverride: provider,
+        overrides: {
+            temperature: 0.7,
+            maxOutputMode: 'high',
+            reasoningDepth: 'deep',
+            jsonStrict: true
+        }
+    });
+
+    if (!prepared.ok) {
+        throw new Error(prepared.result.error || prepared.result.reason || 'Unable to prepare canonical Gossamer estimate.');
+    }
+
+    return {
+        estimatedTokens: prepared.estimate.tokenEstimateInput,
+        method: prepared.estimate.tokenEstimateMethod,
+        promptEnvelopeCharsAdded: (prepared.estimate.systemPrompt?.length ?? 0) + (prepared.estimate.userPrompt?.length ?? 0)
+    };
+};
+
 export async function estimateInquiryTokens(params: {
     plugin?: RadialTimelinePlugin;
     provider?: AIProviderId;
@@ -558,6 +603,10 @@ export async function estimateGossamerTokens(params: {
     metadataCache: MetadataCache;
     frontmatterMappings?: Record<string, string>;
     promptOverheadTokens?: number;
+    provider?: AIProviderId;
+    modelId?: string;
+    beatSystem?: string;
+    beats?: UnifiedBeatInfo[];
 }): Promise<GossamerTokenEstimate> {
     const { files: sceneFiles } = await getSortedSceneFiles(params.plugin);
     const evidence = await buildGossamerEvidenceDocument({
@@ -580,11 +629,23 @@ export async function estimateGossamerTokens(params: {
             referenceTokens: 0
         }
     };
-    const providerExecutionEstimate = {
+    let providerExecutionEstimate: GossamerTokenEstimate['providerExecutionEstimate'] = {
         estimatedTokens: estimateExecutionTokensFromChars(evidenceChars, params.promptOverheadTokens),
         method: 'heuristic_chars' as const,
         promptEnvelopeCharsAdded: (params.promptOverheadTokens ?? FORECAST_PROMPT_OVERHEAD_TOKENS) * FORECAST_CHARS_PER_TOKEN
     };
+    if (params.provider && params.modelId && params.beatSystem && (params.beats?.length ?? 0) > 0 && evidenceChars > 0) {
+        try {
+            providerExecutionEstimate = await buildCanonicalGossamerExecutionEstimate({
+                plugin: params.plugin,
+                provider: params.provider,
+                modelId: params.modelId,
+                promptText: buildUnifiedBeatAnalysisPrompt(evidence.text, params.beats ?? [], params.beatSystem)
+            });
+        } catch {
+            // Keep heuristic execution estimate when canonical execution estimate cannot be prepared.
+        }
+    }
     logCountingForensics({
         path: 'gossamer',
         phase: 'settings_forecast',

@@ -1,7 +1,13 @@
 import type RadialTimelinePlugin from '../../main';
 import { getCredential } from '../credentials/credentials';
-import type { AIProviderId, EvidenceDocument, InputTokenEstimateMethod } from '../types';
-import { callAnthropicTokenCount } from '../../api/anthropicApi';
+import type {
+    AIProviderId,
+    EvidenceDocument,
+    InputTokenEstimateMethod,
+    TokenCountResult,
+    TokenCountSource
+} from '../types';
+import { countAnthropicTokens } from '../../api/anthropicApi';
 
 export const DEFAULT_CHARS_PER_TOKEN = 4;
 
@@ -38,6 +44,16 @@ function normalizeProvider(provider: EstimateInputTokensRequest['provider']): AI
     return 'none';
 }
 
+export function tokenEstimateSourceFromMethod(method: TokenEstimateMethod): TokenCountSource {
+    return method === 'anthropic_count' ? 'provider_count' : 'estimate';
+}
+
+export function describeTokenEstimateMethod(method: TokenEstimateMethod): string {
+    return tokenEstimateSourceFromMethod(method) === 'provider_count'
+        ? 'Anthropic provider count'
+        : 'Heuristic estimate';
+}
+
 export function estimateTokensFromChars(chars: number, charsPerToken = DEFAULT_CHARS_PER_TOKEN): number {
     if (!Number.isFinite(chars) || chars <= 0) return 0;
     const safeCharsPerToken = Number.isFinite(charsPerToken) && charsPerToken > 0
@@ -56,6 +72,20 @@ export function estimateUncertaintyTokens(method: TokenEstimateMethod, safeInput
         return Math.max(ANTHROPIC_UNCERTAINTY_MIN, Math.floor(budget * ANTHROPIC_UNCERTAINTY_RATIO));
     }
     return Math.max(HEURISTIC_UNCERTAINTY_MIN, Math.floor(budget * HEURISTIC_UNCERTAINTY_RATIO));
+}
+
+function toCountedEstimate(
+    result: TokenCountResult,
+    safeInputBudget?: number
+): InputTokenEstimate {
+    return {
+        inputTokens: Math.max(0, Math.floor(result.inputTokens)),
+        method: result.source === 'provider_count' ? 'anthropic_count' : 'heuristic_chars',
+        uncertaintyTokens: estimateUncertaintyTokens(
+            result.source === 'provider_count' ? 'anthropic_count' : 'heuristic_chars',
+            safeInputBudget
+        )
+    };
 }
 
 export async function estimateInputTokens(request: EstimateInputTokensRequest): Promise<InputTokenEstimate> {
@@ -85,7 +115,7 @@ export async function estimateInputTokens(request: EstimateInputTokensRequest): 
             return fallback('Anthropic API key unavailable for token counting.');
         }
 
-        const counted = await callAnthropicTokenCount(
+        const counted = await countAnthropicTokens(
             apiKey,
             request.modelId,
             request.systemPrompt ?? null,
@@ -93,17 +123,7 @@ export async function estimateInputTokens(request: EstimateInputTokensRequest): 
             request.citationsEnabled,
             request.evidenceDocuments
         );
-
-        if (!counted.success || typeof counted.inputTokens !== 'number' || !Number.isFinite(counted.inputTokens)) {
-            return fallback(counted.error || 'Anthropic token counting failed.');
-        }
-
-        const inputTokens = Math.max(0, Math.floor(counted.inputTokens));
-        return {
-            inputTokens,
-            method: 'anthropic_count',
-            uncertaintyTokens: estimateUncertaintyTokens('anthropic_count', request.safeInputBudget)
-        };
+        return toCountedEstimate(counted, request.safeInputBudget);
     } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         return fallback(message);

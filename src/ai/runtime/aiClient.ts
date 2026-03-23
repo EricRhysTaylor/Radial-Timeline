@@ -13,6 +13,7 @@ import { selectModel } from '../router/selectModel';
 import { resolveActiveRoleTemplate } from '../roleTemplate';
 import { buildDefaultAiSettings } from '../settings/aiSettings';
 import { validateAiSettings } from '../settings/validateAiSettings';
+import { resolveLocalLlmSelection } from '../localLlm/settings';
 import type {
     AIProvider,
     AIProviderId,
@@ -324,14 +325,16 @@ export class AIClient {
             : estimateTokens(envelope.finalPrompt) + ((evidenceDocuments || []).reduce((sum, doc) => (
                 sum + estimateTokens(doc.title || '') + estimateTokens(doc.content || '')
             ), 0));
-        const initialSelection = selectModel(this.registry.getAll(), {
-            provider,
-            policy,
-            requiredCapabilities,
-            accessTier: resolveTier(aiSettings, provider),
-            contextTokensNeeded: heuristicEstimate,
-            outputTokensNeeded: 0
-        });
+        const initialSelection = provider === 'ollama'
+            ? resolveLocalLlmSelection(aiSettings)
+            : selectModel(this.registry.getAll(), {
+                provider,
+                policy,
+                requiredCapabilities,
+                accessTier: resolveTier(aiSettings, provider),
+                contextTokensNeeded: heuristicEstimate,
+                outputTokensNeeded: 0
+            });
 
         const overrides = mergeOverrides(aiSettings.overrides, request);
         const caps = computeCaps({

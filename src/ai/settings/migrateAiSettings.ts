@@ -20,6 +20,8 @@ type LegacyAiSettingsInput = Partial<{
     localBaseUrl: string;
     localModelId: string;
     localApiKey: string;
+    localLlmInstructions: string;
+    localSendPulseToAiReport: boolean;
     openaiModelId: string;
     aiContextTemplates: AIRoleTemplate[];
     activeAiContextTemplateId: string;
@@ -42,6 +44,8 @@ export const LEGACY_AI_SETTING_FIELDS = [
     'localBaseUrl',
     'localModelId',
     'localApiKey',
+    'localLlmInstructions',
+    'localSendPulseToAiReport',
     'openaiModelId',
     'aiContextTemplates',
     'activeAiContextTemplateId',
@@ -125,9 +129,24 @@ export function hasLegacyAiKeys(settings: RadialTimelineSettings): boolean {
 }
 
 export function migrateAiSettings(settings: RadialTimelineSettings): MigrationResult {
+    const legacy = readLegacy(settings);
     const existing = settings.aiSettings;
     if (existing && typeof existing === 'object' && existing.schemaVersion === 1) {
-        const validated = validateAiSettings(existing);
+        const mergedExisting = {
+            ...existing,
+            localLlm: {
+                ...((existing.localLlm && typeof existing.localLlm === 'object') ? existing.localLlm : {}),
+                instructions: typeof legacy.localLlmInstructions === 'string'
+                    && (!(existing.localLlm && typeof existing.localLlm === 'object') || typeof existing.localLlm.instructions !== 'string')
+                    ? legacy.localLlmInstructions
+                    : existing.localLlm?.instructions,
+                sendPulseToAiReport: typeof legacy.localSendPulseToAiReport === 'boolean'
+                    && (!(existing.localLlm && typeof existing.localLlm === 'object') || typeof existing.localLlm.sendPulseToAiReport !== 'boolean')
+                    ? legacy.localSendPulseToAiReport
+                    : existing.localLlm?.sendPulseToAiReport
+            }
+        } as AiSettingsV1;
+        const validated = validateAiSettings(mergedExisting);
         return {
             aiSettings: validated.value,
             changed: JSON.stringify(validated.value) !== JSON.stringify(existing),
@@ -135,7 +154,6 @@ export function migrateAiSettings(settings: RadialTimelineSettings): MigrationRe
         };
     }
 
-    const legacy = readLegacy(settings);
     const aiSettings = cloneDefault();
     const warnings: string[] = [];
 
@@ -171,10 +189,19 @@ export function migrateAiSettings(settings: RadialTimelineSettings): MigrationRe
     }
 
     if (typeof legacy.localBaseUrl === 'string' && legacy.localBaseUrl.trim()) {
-        aiSettings.connections = {
-            ...aiSettings.connections,
-            ollamaBaseUrl: legacy.localBaseUrl.trim()
-        };
+        aiSettings.localLlm.baseUrl = legacy.localBaseUrl.trim();
+    }
+
+    if (typeof legacy.localModelId === 'string' && legacy.localModelId.trim()) {
+        aiSettings.localLlm.defaultModelId = legacy.localModelId.trim();
+    }
+
+    if (typeof legacy.localLlmInstructions === 'string' && legacy.localLlmInstructions.trim()) {
+        aiSettings.localLlm.instructions = legacy.localLlmInstructions;
+    }
+
+    if (typeof legacy.localSendPulseToAiReport === 'boolean') {
+        aiSettings.localLlm.sendPulseToAiReport = legacy.localSendPulseToAiReport;
     }
 
     aiSettings.migrationWarnings = warnings;

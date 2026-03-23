@@ -4,7 +4,6 @@ import type RadialTimelinePlugin from '../../main';
 import { fetchAnthropicModels } from '../../api/anthropicApi';
 import { fetchOpenAiModels } from '../../api/openaiApi';
 import { fetchGeminiModels as fetchGoogleModels } from '../../api/geminiApi';
-import { fetchLocalModels as fetchOllamaModels } from '../../api/localAiApi';
 import { AiContextModal } from '../AiContextModal';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import { resolveAiLogFolder } from '../../ai/log';
@@ -47,6 +46,9 @@ import { extractBeatOrder } from '../../utils/gossamer';
 import { resolveSelectedBeatModelFromSettings } from '../../utils/beatSystemState';
 import { getSynopsisGenerationWordLimit, getSynopsisHoverLineLimit } from '../../utils/synopsisLimits';
 import { getResolvedModelId } from '../../utils/modelResolver';
+import { getLocalLlmBackend } from '../../ai/localLlm/backends';
+import { getLocalLlmSettings } from '../../ai/localLlm/settings';
+import type { LocalLlmBackendId } from '../../ai/types';
 
 type Provider = 'anthropic' | 'google' | 'openai' | 'ollama';
 type CapacityItem = string | { text: string; dividerBefore?: boolean };
@@ -274,11 +276,13 @@ export function renderAiSection(params: {
     };
 
     const getOllamaBaseUrl = (): string => (
-        ensureCanonicalAiSettings().connections?.ollamaBaseUrl?.trim() || 'http://localhost:11434/v1'
+        getLocalLlmSettings(ensureCanonicalAiSettings()).baseUrl.trim() || 'http://localhost:11434/v1'
     );
 
     const getOllamaModelId = (): string => {
         const aiSettings = ensureCanonicalAiSettings();
+        const configured = getLocalLlmSettings(aiSettings).defaultModelId.trim();
+        if (configured) return configured;
         if (aiSettings.modelPolicy.type === 'pinned') {
             const pinnedAlias = aiSettings.modelPolicy.pinnedAlias;
             const pinned = BUILTIN_MODELS.find(model =>
@@ -292,6 +296,10 @@ export function renderAiSection(params: {
     const setOllamaModelId = (modelId: string): void => {
         const aiSettings = ensureCanonicalAiSettings();
         const normalized = modelId.trim();
+        aiSettings.localLlm = {
+            ...getLocalLlmSettings(aiSettings),
+            defaultModelId: normalized || getLocalLlmSettings(aiSettings).defaultModelId
+        };
         const model = BUILTIN_MODELS.find(entry =>
             entry.provider === 'ollama' && (entry.id === normalized || entry.alias === normalized)
         );
@@ -299,6 +307,8 @@ export function renderAiSection(params: {
             ? { type: 'pinned', pinnedAlias: model.alias }
             : { type: 'latestStable' };
     };
+
+    const getLocalLlmBackendId = (): LocalLlmBackendId => getLocalLlmSettings(ensureCanonicalAiSettings()).backend;
 
     let isSyncingRoutingUi = false;
 
@@ -1379,19 +1389,27 @@ export function renderAiSection(params: {
             }))?.estimatedTokens ?? inquiryCorpusTokens
             : inquiryCorpusTokens;
 
-        const gossamerEstimate = await estimateGossamerTokens({
-            plugin,
-            vault: app.vault,
-            metadataCache: app.metadataCache,
-            frontmatterMappings: plugin.settings.frontmatterMappings
-        });
-        const { files: gossamerSceneFiles } = await getSortedSceneFiles(plugin);
         const sceneData = await plugin.getSceneData();
         const selectedBeatModel = resolveSelectedBeatModelFromSettings(plugin.settings);
         const beatOrder = extractBeatOrder(
             sceneData as Array<{ itemType?: string; subplot?: string; title?: string; "Beat Model"?: string }>,
             selectedBeatModel
         );
+        const gossamerEstimate = await estimateGossamerTokens({
+            plugin,
+            vault: app.vault,
+            metadataCache: app.metadataCache,
+            frontmatterMappings: plugin.settings.frontmatterMappings,
+            provider: engine?.provider,
+            modelId: engine?.modelId,
+            beatSystem: selectedBeatModel || plugin.settings.beatSystem || 'Save The Cat',
+            beats: beatOrder.map((beatName, index) => ({
+                beatName,
+                beatNumber: index + 1,
+                idealRange: '0-100'
+            }))
+        });
+        const { files: gossamerSceneFiles } = await getSortedSceneFiles(plugin);
         const gossamerPromptParts = beatOrder.length > 0
             ? buildUnifiedBeatAnalysisPromptParts(
                 '',
@@ -2118,9 +2136,30 @@ export function renderAiSection(params: {
     const ollamaBaseStack = ollamaWrapper.createDiv({ cls: ERT_CLASSES.STACK });
     let ollamaModelText: TextComponent | null = null;
 
+    const ollamaBackendSetting = new Settings(ollamaBaseStack)
+        .setName('Local LLM backend')
+        .setDesc('Choose the backend behind the Local LLM runtime family. Backend-specific transport details stay below this canonical seam.')
+        .addDropdown(dropdown => {
+            dropdown
+                .addOption('ollama', 'Ollama')
+                .addOption('lmStudio', 'LM Studio')
+                .addOption('openaiCompatible', 'OpenAI-Compatible')
+                .setValue(getLocalLlmBackendId())
+                .onChange(async (value) => {
+                    const aiSettings = ensureCanonicalAiSettings();
+                    aiSettings.localLlm = {
+                        ...getLocalLlmSettings(aiSettings),
+                        backend: value as LocalLlmBackendId
+                    };
+                    await persistCanonical();
+                    params.scheduleKeyValidation('ollama');
+                });
+        });
+    ollamaBackendSetting.settingEl.addClass(ERT_CLASSES.ROW);
+
     const ollamaBaseUrlSetting = new Settings(ollamaBaseStack)
-        .setName('Ollama base URL')
-        .setDesc('The API endpoint. For Ollama, use "http://localhost:11434/v1". For LM Studio, use "http://localhost:1234/v1".')
+        .setName('Local LLM base URL')
+        .setDesc('The API endpoint for the selected Local LLM backend. For Ollama use "http://localhost:11434/v1". For LM Studio use "http://localhost:1234/v1".')
         .addText(text => {
             text.inputEl.addClass('ert-input--full');
             text
@@ -2138,9 +2177,9 @@ export function renderAiSection(params: {
             });
             const handleBlur = async () => {
                 const aiSettings = ensureCanonicalAiSettings();
-                aiSettings.connections = {
-                    ...(aiSettings.connections || {}),
-                    ollamaBaseUrl: text.getValue().trim() || 'http://localhost:11434/v1'
+                aiSettings.localLlm = {
+                    ...getLocalLlmSettings(aiSettings),
+                    baseUrl: text.getValue().trim() || 'http://localhost:11434/v1'
                 };
                 await persistCanonical();
                 params.scheduleKeyValidation('ollama');
@@ -2155,7 +2194,7 @@ export function renderAiSection(params: {
     ollamaWarningSection.createEl('strong', { text: 'Advisory Note', cls: 'ert-ollama-advisory-title' });
     const aiLogFolder = resolveAiLogFolder();
     ollamaWarningSection.createSpan({
-        text: `By default, no LLM pulses are written to the scene when Ollama is used. Rather it is stored in an AI log file in the Ollama logs output folder (${aiLogFolder}), as the response does not follow directions and breaks scene hover formatting. You may still write scene hover fields with Ollama by toggling off the setting "Bypass scene hover fields writes" below.`
+        text: `By default, Local LLM pulse results are stored in the AI log folder (${aiLogFolder}) instead of writing directly to scene hover fields. That protects scene formatting when a local backend returns unstable structure.`
     });
 
     const ollamaExtrasStack = ollamaWrapper.createDiv({ cls: [ERT_CLASSES.STACK, 'ert-ai-ollama-extras'] });
@@ -2201,15 +2240,21 @@ export function renderAiSection(params: {
                 }
                 const baseUrl = getOllamaBaseUrl();
                 if (!baseUrl) {
-                    new Notice('Set the Ollama base URL first.');
+                    new Notice('Set the Local LLM base URL first.');
                     return;
                 }
                 button.setDisabled(true);
                 button.setIcon('loader-2');
                 try {
-                    const models = await fetchOllamaModels(baseUrl, await getCredential(plugin, 'ollama'));
+                    const aiSettings = ensureCanonicalAiSettings();
+                    const localLlm = getLocalLlmSettings(aiSettings);
+                    const models = await getLocalLlmBackend(localLlm.backend).listModels({
+                        baseUrl,
+                        timeoutMs: localLlm.timeoutMs,
+                        apiKey: await getCredential(plugin, 'ollama')
+                    });
                     if (!Array.isArray(models) || models.length === 0) {
-                        new Notice('No models reported by the Ollama server.');
+                        new Notice('No models reported by the Local LLM backend.');
                         return;
                     }
                     const existing = getOllamaModelId();
@@ -2227,7 +2272,7 @@ export function renderAiSection(params: {
                     new Notice(`Using detected model "${chosen.id}".${suffix}`);
                 } catch (error) {
                     const message = error instanceof Error ? error.message : String(error);
-                    new Notice(`Unable to detect Ollama models: ${message}`);
+                    new Notice(`Unable to detect Local LLM models: ${message}`);
                 } finally {
                     button.setDisabled(false);
                     button.setIcon('refresh-ccw');
@@ -2235,16 +2280,20 @@ export function renderAiSection(params: {
             });
     });
 
-    const ollamaLlmInstructions = plugin.settings.localLlmInstructions || '';
+    const ollamaLlmInstructions = getLocalLlmSettings(ensureCanonicalAiSettings()).instructions || '';
     const ollamaLlmInstructionsSetting = new Settings(ollamaExtrasStack)
         .setName('Custom instructions')
-        .setDesc('Additional instructions added to the start of the prompt. Useful for fine-tuning Ollama model behavior.')
+        .setDesc('Additional instructions added before the canonical Local LLM prompt scaffold. Useful for backend-specific formatting or reliability guidance.')
         .addTextArea(text => {
             text
                 .setPlaceholder('e.g. Maintain strict JSON formatting...')
                 .setValue(ollamaLlmInstructions)
                 .onChange(async (value) => {
-                    plugin.settings.localLlmInstructions = value;
+                    const aiSettings = ensureCanonicalAiSettings();
+                    aiSettings.localLlm = {
+                        ...getLocalLlmSettings(aiSettings),
+                        instructions: value
+                    };
                     await plugin.saveSettings();
                 });
             text.inputEl.rows = 6;
@@ -2252,14 +2301,18 @@ export function renderAiSection(params: {
         });
     ollamaLlmInstructionsSetting.settingEl.addClass('ert-setting-full-width-input');
 
-    const ollamaSendPulseToAiReport = plugin.settings.localSendPulseToAiReport ?? true;
+    const ollamaSendPulseToAiReport = getLocalLlmSettings(ensureCanonicalAiSettings()).sendPulseToAiReport;
     const ollamaSendPulseToAiReportSetting = new Settings(ollamaExtrasStack)
         .setName('Bypass scene hover fields writes')
-        .setDesc('Default is enabled. Ollama LLM triplet pulse analysis skips writing to the scene note and saves results in the AI log report instead. Recommended for Ollama models.')
+        .setDesc('When enabled, Local LLM triplet pulse analysis skips scene note writes and saves results in the AI report instead. Recommended for smaller or less deterministic local models.')
         .addToggle(toggle => toggle
             .setValue(ollamaSendPulseToAiReport)
             .onChange(async (value) => {
-                plugin.settings.localSendPulseToAiReport = value;
+                const aiSettings = ensureCanonicalAiSettings();
+                aiSettings.localLlm = {
+                    ...getLocalLlmSettings(aiSettings),
+                    sendPulseToAiReport: value
+                };
                 await plugin.saveSettings();
             }));
     ollamaSendPulseToAiReportSetting.settingEl.addClass(ERT_CLASSES.ROW);
@@ -2374,15 +2427,15 @@ export function renderAiSection(params: {
         cls: [`${ERT_CLASSES.CARD}`, `${ERT_CLASSES.PANEL}`, `${ERT_CLASSES.STACK}`, 'ert-ai-ollama-quick-config', 'ert-settings-hidden']
     });
     ollamaQuickConfigSectionEl = ollamaQuickConfigSection;
-    ollamaQuickConfigSection.createDiv({ cls: 'ert-section-title', text: 'Ollama Configuration' });
+    ollamaQuickConfigSection.createDiv({ cls: 'ert-section-title', text: 'Local LLM Configuration' });
     ollamaQuickConfigSection.createDiv({
         cls: 'ert-section-desc',
-        text: 'Configure your Ollama model server. The preview card above will update as you fill in these fields.'
+        text: 'Configure your Local LLM backend. The preview card above will update as you fill in these fields.'
     });
 
     const ollamaQuickBaseUrlSetting = new Settings(ollamaQuickConfigSection)
         .setName('Base URL')
-        .setDesc('The API endpoint for your Ollama server (e.g., Ollama, LM Studio).');
+        .setDesc('The API endpoint for your Local LLM backend (for example Ollama, LM Studio, or another OpenAI-compatible server).');
     ollamaQuickBaseUrlSetting.addText(text => {
         text.inputEl.addClass('ert-input--full');
         text
@@ -2397,9 +2450,9 @@ export function renderAiSection(params: {
         plugin.registerDomEvent(text.inputEl, 'blur', () => {
             void (async () => {
                 const aiSettings = ensureCanonicalAiSettings();
-                aiSettings.connections = {
-                    ...(aiSettings.connections || {}),
-                    ollamaBaseUrl: text.getValue().trim() || 'http://localhost:11434/v1'
+                aiSettings.localLlm = {
+                    ...getLocalLlmSettings(aiSettings),
+                    baseUrl: text.getValue().trim() || 'http://localhost:11434/v1'
                 };
                 await persistCanonical();
                 params.scheduleKeyValidation('ollama');
@@ -2449,9 +2502,15 @@ export function renderAiSection(params: {
                 button.setDisabled(true);
                 button.setIcon('loader-2');
                 try {
-                    const models = await fetchOllamaModels(baseUrl, await getCredential(plugin, 'ollama'));
+                    const aiSettings = ensureCanonicalAiSettings();
+                    const localLlm = getLocalLlmSettings(aiSettings);
+                    const models = await getLocalLlmBackend(localLlm.backend).listModels({
+                        baseUrl,
+                        timeoutMs: localLlm.timeoutMs,
+                        apiKey: await getCredential(plugin, 'ollama')
+                    });
                     if (!Array.isArray(models) || models.length === 0) {
-                        new Notice('No models reported by the Ollama server.');
+                        new Notice('No models reported by the Local LLM backend.');
                         return;
                     }
                     const existing = getOllamaModelId();
@@ -2468,7 +2527,7 @@ export function renderAiSection(params: {
                     void refreshRoutingUi();
                 } catch (error) {
                     const message = error instanceof Error ? error.message : String(error);
-                    new Notice(`Unable to detect Ollama models: ${message}`);
+                    new Notice(`Unable to detect Local LLM models: ${message}`);
                 } finally {
                     button.setDisabled(false);
                     button.setIcon('refresh-ccw');
@@ -2476,16 +2535,20 @@ export function renderAiSection(params: {
             });
     });
 
-    const ollamaQuickLlmInstructions = plugin.settings.localLlmInstructions || '';
+    const ollamaQuickLlmInstructions = getLocalLlmSettings(ensureCanonicalAiSettings()).instructions || '';
     const ollamaQuickInstructionsSetting = new Settings(ollamaQuickConfigSection)
         .setName('Custom instructions')
-        .setDesc('Additional instructions prepended to the prompt for Ollama model behavior tuning.');
+        .setDesc('Additional instructions prepended to the canonical Local LLM prompt scaffold.');
     ollamaQuickInstructionsSetting.addTextArea(text => {
         text
             .setPlaceholder('e.g. Maintain strict JSON formatting...')
             .setValue(ollamaQuickLlmInstructions)
             .onChange(async (value) => {
-                plugin.settings.localLlmInstructions = value;
+                const aiSettings = ensureCanonicalAiSettings();
+                aiSettings.localLlm = {
+                    ...getLocalLlmSettings(aiSettings),
+                    instructions: value
+                };
                 await plugin.saveSettings();
             });
         text.inputEl.rows = 4;

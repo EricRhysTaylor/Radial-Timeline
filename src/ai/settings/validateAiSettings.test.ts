@@ -122,4 +122,35 @@ describe('validateAiSettings', () => {
 
         expect(result.value.modelPolicy.type).toBe('latestPro');
     });
+
+    it('normalizes canonical localLlm settings', () => {
+        const result = validateAiSettings({
+            schemaVersion: 1,
+            provider: 'ollama',
+            modelPolicy: { type: 'latestStable' },
+            localLlm: {
+                enabled: true,
+                backend: 'unknown-backend' as any,
+                baseUrl: '   ',
+                defaultModelId: '',
+                instructions: 42 as any,
+                sendPulseToAiReport: undefined as any,
+                timeoutMs: 999999,
+                maxRetries: -2,
+                jsonMode: 'bad-mode' as any
+            },
+            overrides: {},
+            aiAccessProfile: {},
+            privacy: { allowTelemetry: false, allowRemoteRegistry: false, allowProviderSnapshot: false }
+        } as unknown as AiSettingsV1);
+
+        expect(result.value.localLlm.backend).toBe('ollama');
+        expect(result.value.localLlm.baseUrl).toBe('http://localhost:11434/v1');
+        expect(result.value.localLlm.defaultModelId).toBeTruthy();
+        expect(result.value.localLlm.instructions).toBe('');
+        expect(result.value.localLlm.sendPulseToAiReport).toBe(true);
+        expect(result.value.localLlm.timeoutMs).toBeLessThanOrEqual(120000);
+        expect(result.value.localLlm.maxRetries).toBe(0);
+        expect(result.value.localLlm.jsonMode).toBe('response_format');
+    });
 });

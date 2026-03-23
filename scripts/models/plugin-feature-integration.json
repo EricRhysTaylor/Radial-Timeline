@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "lastUpdated": "2026-03-21",
+  "lastUpdated": "2026-03-22",
   "integrations": [
     {
       "id": "anthropic-prompt-caching",
@@ -181,19 +181,65 @@
         "inquiry"
       ],
       "impactAssessment": "medium",
-      "implementationStatus": "not_implemented",
-      "implementationNotes": "Current token estimation uses chars/4 heuristic (estimateTokensFromVault.ts). Anthropic's count_tokens endpoint provides exact counts. Would improve pass prediction accuracy and cache reuse ratio calibration.",
+      "implementationStatus": "complete",
+      "implementationNotes": "Anthropic count_tokens now normalizes to the canonical TokenCountResult at the provider seam. estimateInputTokens uses it as the authoritative Anthropic counting path with explicit heuristic fallback, aiClient threads anthropic_count through prepared estimates, and Inquiry forecast/snapshot/log surfaces consume that method without provider-specific logic in the view layer.",
       "sourceFiles": [
+        "src/api/anthropicApi.ts",
+        "src/ai/types.ts",
+        "src/ai/tokens/inputTokenEstimate.ts",
+        "src/ai/runtime/aiClient.ts",
         "src/ai/forecast/estimateTokensFromVault.ts",
-        "src/ai/runtime/aiClient.ts"
+        "src/inquiry/services/inquiryEstimateSnapshot.ts",
+        "src/inquiry/render/inquiryLogBuilders.ts"
       ],
       "blockers": [],
       "addedToRegistry": "2026-03-03",
       "priority": "p1",
-      "implementationEvidence": [],
-      "targetRelease": "backlog",
-      "owner": "tbd",
-      "lastTouched": "2026-03-21",
+      "implementationEvidence": [
+        {
+          "label": "Anthropic API seam exposes canonical provider-side token counts",
+          "sourceFiles": [
+            "src/api/anthropicApi.ts",
+            "src/ai/types.ts"
+          ],
+          "allOf": [
+            "countAnthropicTokens",
+            "/v1/messages/count_tokens",
+            "normalizeAnthropicTokenCountResponse",
+            "source\\s*:\\s*'provider_count'",
+            "export interface TokenCountResult"
+          ]
+        },
+        {
+          "label": "Canonical runtime estimation prefers Anthropic provider counts and keeps heuristic fallback explicit",
+          "sourceFiles": [
+            "src/ai/tokens/inputTokenEstimate.ts",
+            "src/ai/runtime/aiClient.ts"
+          ],
+          "allOf": [
+            "countAnthropicTokens",
+            "result\\.source === 'provider_count' \\? 'anthropic_count'",
+            "return fallback\\(",
+            "tokenEstimateMethod:\\s*estimate\\.tokenEstimateMethod"
+          ]
+        },
+        {
+          "label": "Inquiry forecast and debug surfaces carry the counted-token method through planning",
+          "sourceFiles": [
+            "src/ai/forecast/estimateTokensFromVault.ts",
+            "src/inquiry/services/inquiryEstimateSnapshot.ts",
+            "src/inquiry/render/inquiryLogBuilders.ts"
+          ],
+          "allOf": [
+            "trace\\.tokenEstimate\\.estimationMethod",
+            "method:\\s*trace\\.tokenEstimate\\.estimationMethod",
+            "describeTokenEstimateMethod"
+          ]
+        }
+      ],
+      "targetRelease": "shipped",
+      "owner": "eric",
+      "lastTouched": "2026-03-22",
       "rtImpact": {
         "authorTrust": "medium",
         "runtimeReliability": "medium",
@@ -201,7 +247,7 @@
         "passPrediction": "high",
         "citationTrust": "low"
       },
-      "rtRecommendation": "next"
+      "rtRecommendation": "implement now"
     },
     {
       "id": "anthropic-citations",

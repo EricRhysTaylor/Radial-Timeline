@@ -55,9 +55,20 @@ describe('migrateAiSettings', () => {
                 overrides: { maxOutputMode: 'auto', reasoningDepth: 'standard', jsonStrict: true },
                 aiAccessProfile: { anthropicTier: 1, openaiTier: 1, googleTier: 1 },
                 privacy: { allowTelemetry: false, allowRemoteRegistry: false, allowProviderSnapshot: false },
+                localLlm: {
+                    enabled: true,
+                    backend: 'ollama',
+                    baseUrl: 'http://localhost:11434/v1',
+                    defaultModelId: 'llama3',
+                    instructions: '',
+                    sendPulseToAiReport: true,
+                    timeoutMs: 45000,
+                    maxRetries: 1,
+                    jsonMode: 'response_format'
+                },
                 featureProfiles: {},
                 credentials: { openaiSecretId: 'a', anthropicSecretId: 'b', googleSecretId: 'c', ollamaSecretId: 'd' },
-                connections: { ollamaBaseUrl: 'http://localhost:11434/v1' }
+                connections: {}
             },
             defaultAiProvider: 'gemini',
             geminiModelId: 'gemini-pro-latest'
@@ -65,5 +76,22 @@ describe('migrateAiSettings', () => {
 
         expect(result.aiSettings.provider).toBe('anthropic');
         expect(result.aiSettings.modelPolicy).toEqual({ type: 'pinned', pinnedAlias: 'claude-sonnet-4.6' });
+    });
+
+    it('migrates legacy local settings into canonical localLlm', () => {
+        const result = migrateAiSettings({
+            ...base,
+            defaultAiProvider: 'local',
+            localModelId: 'mistral-local',
+            localBaseUrl: 'http://localhost:1234/v1',
+            localLlmInstructions: 'Return strict JSON.',
+            localSendPulseToAiReport: false
+        } as any);
+
+        expect(result.aiSettings.provider).toBe('openai');
+        expect(result.aiSettings.localLlm.baseUrl).toBe('http://localhost:1234/v1');
+        expect(result.aiSettings.localLlm.defaultModelId).toBe('mistral-local');
+        expect(result.aiSettings.localLlm.instructions).toBe('Return strict JSON.');
+        expect(result.aiSettings.localLlm.sendPulseToAiReport).toBe(false);
     });
 });

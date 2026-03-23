@@ -372,8 +372,7 @@ Return JSON only: {"runtimeSeconds": number, "reasoning": "brief explanation"}`;
                 maxOutputMode: 'auto',
                 reasoningDepth: 'standard',
                 jsonStrict: true
-            },
-            tokenEstimateInput: Math.ceil((systemPrompt.length + userPrompt.length) / 4)
+            }
         });
 
         if (run.aiStatus !== 'success' || !run.content) {

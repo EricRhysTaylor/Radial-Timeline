@@ -4,6 +4,7 @@ import { BUILTIN_MODELS } from '../registry/builtinModels';
 import { buildDefaultAiSettings } from '../settings/aiSettings';
 import { validateAiSettings } from '../settings/validateAiSettings';
 import type { AccessTier, AIProviderId, AiSettingsV1, Capability, ModelSelectionResult } from '../types';
+import { resolveLocalLlmSelection } from '../localLlm/settings';
 
 export const CANONICAL_PROVIDER_LABELS: Record<AIProviderId, string> = {
     openai: 'OpenAI',
@@ -44,6 +45,7 @@ export function resolveConfiguredSelection(
 ): ModelSelectionResult | null {
     const provider = resolveConfiguredProvider(aiSettings, options?.feature);
     if (provider === 'none') return null;
+    if (provider === 'ollama') return resolveLocalLlmSelection(aiSettings);
     const featureProfile = options?.feature ? aiSettings.featureProfiles?.[options.feature] : undefined;
     return selectModel(BUILTIN_MODELS, {
         provider,

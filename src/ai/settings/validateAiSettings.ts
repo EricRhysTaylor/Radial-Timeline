@@ -1,4 +1,4 @@
-import type { AiSettingsV1, AIProviderId } from '../types';
+import type { AiSettingsV1, AIProviderId, LocalLlmBackendId, LocalLlmJsonMode } from '../types';
 import { buildDefaultAiSettings, cloneBuiltInRoleTemplates } from './aiSettings';
 import { BUILTIN_MODELS } from '../registry/builtinModels';
 
@@ -8,6 +8,8 @@ export interface AiSettingsValidationResult {
 }
 
 const VALID_PROVIDERS: AIProviderId[] = ['openai', 'anthropic', 'google', 'ollama', 'none'];
+const VALID_LOCAL_LLM_BACKENDS: LocalLlmBackendId[] = ['ollama', 'lmStudio', 'openaiCompatible'];
+const VALID_LOCAL_LLM_JSON_MODES: LocalLlmJsonMode[] = ['response_format', 'prompt_only'];
 
 function hasAlias(alias?: string): boolean {
     if (!alias) return false;
@@ -70,6 +72,10 @@ export function validateAiSettings(input?: AiSettingsV1 | null): AiSettingsValid
             ...(input?.featureProfiles || defaults.featureProfiles || {})
         },
         roleTemplates: normalizeRoleTemplates(),
+        localLlm: {
+            ...defaults.localLlm,
+            ...(((input?.localLlm && typeof input.localLlm === 'object') ? input.localLlm : {}) || {})
+        },
         credentials: {
             openaiSecretId: pickSecretId(inputCredentials.openaiSecretId) ?? defaults.credentials?.openaiSecretId,
             anthropicSecretId: pickSecretId(inputCredentials.anthropicSecretId) ?? defaults.credentials?.anthropicSecretId,
@@ -99,6 +105,50 @@ export function validateAiSettings(input?: AiSettingsV1 | null): AiSettingsValid
     if (!VALID_PROVIDERS.includes(value.provider)) {
         warnings.push(`Unknown provider "${String(value.provider)}"; using default provider.`);
         value.provider = defaults.provider;
+    }
+
+    if (!VALID_LOCAL_LLM_BACKENDS.includes(value.localLlm.backend)) {
+        warnings.push(`Unknown Local LLM backend "${String(value.localLlm.backend)}"; using default backend.`);
+        value.localLlm.backend = defaults.localLlm.backend;
+    }
+
+    if (typeof value.localLlm.baseUrl !== 'string' || !value.localLlm.baseUrl.trim()) {
+        value.localLlm.baseUrl = defaults.localLlm.baseUrl;
+    } else {
+        value.localLlm.baseUrl = value.localLlm.baseUrl.trim();
+    }
+
+    if (typeof value.localLlm.defaultModelId !== 'string' || !value.localLlm.defaultModelId.trim()) {
+        const pinnedAlias = value.modelPolicy.type === 'pinned' ? value.modelPolicy.pinnedAlias?.trim() : '';
+        const pinnedModel = pinnedAlias
+            ? BUILTIN_MODELS.find(model => model.provider === 'ollama' && model.alias === pinnedAlias)
+            : undefined;
+        value.localLlm.defaultModelId = pinnedModel?.id ?? defaults.localLlm.defaultModelId;
+    } else {
+        value.localLlm.defaultModelId = value.localLlm.defaultModelId.trim();
+    }
+
+    if (typeof value.localLlm.instructions !== 'string') {
+        value.localLlm.instructions = defaults.localLlm.instructions;
+    }
+
+    value.localLlm.sendPulseToAiReport = value.localLlm.sendPulseToAiReport !== false;
+    value.localLlm.enabled = value.localLlm.enabled !== false;
+
+    if (typeof value.localLlm.timeoutMs !== 'number' || !Number.isFinite(value.localLlm.timeoutMs)) {
+        value.localLlm.timeoutMs = defaults.localLlm.timeoutMs;
+    } else {
+        value.localLlm.timeoutMs = Math.max(1000, Math.min(120000, Math.floor(value.localLlm.timeoutMs)));
+    }
+
+    if (typeof value.localLlm.maxRetries !== 'number' || !Number.isFinite(value.localLlm.maxRetries)) {
+        value.localLlm.maxRetries = defaults.localLlm.maxRetries;
+    } else {
+        value.localLlm.maxRetries = Math.max(0, Math.min(3, Math.floor(value.localLlm.maxRetries)));
+    }
+
+    if (!VALID_LOCAL_LLM_JSON_MODES.includes(value.localLlm.jsonMode)) {
+        value.localLlm.jsonMode = defaults.localLlm.jsonMode;
     }
 
     if (typeof value.roleTemplateId !== 'string' || !value.roleTemplateId.trim()) {
@@ -142,6 +192,21 @@ export function validateAiSettings(input?: AiSettingsV1 | null): AiSettingsValid
     value.privacy.allowTelemetry = !!value.privacy.allowTelemetry;
     value.privacy.allowRemoteRegistry = !!value.privacy.allowRemoteRegistry;
     value.privacy.allowProviderSnapshot = !!value.privacy.allowProviderSnapshot;
+
+    if (
+        value.provider === 'ollama'
+        && value.modelPolicy.type === 'pinned'
+        && 'pinnedAlias' in value.modelPolicy
+        && value.modelPolicy.pinnedAlias
+    ) {
+        const pinnedAlias = value.modelPolicy.pinnedAlias;
+        const pinnedModel = BUILTIN_MODELS.find(model =>
+            model.provider === 'ollama' && model.alias === pinnedAlias
+        );
+        if (pinnedModel?.id) {
+            value.localLlm.defaultModelId = pinnedModel.id;
+        }
+    }
 
     if (typeof value.overrides.temperature === 'number') {
         value.overrides.temperature = Math.max(0, Math.min(2, value.overrides.temperature));

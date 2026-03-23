@@ -30,6 +30,22 @@ import { parseSceneTitle, decodeHtmlEntities } from '../utils/text';
 import { parseRuntimeField } from '../utils/runtimeEstimator';
 import { buildPulseTriplet } from '../ai/evidence/pulseTriplet';
 import { readSceneId, resolveSceneReferenceId } from '../utils/sceneIds';
+import { getLocalLlmSettings } from '../ai/localLlm/settings';
+
+function isLocalReportOnlyMode(plugin: RadialTimelinePlugin): boolean {
+    const aiSettings = getCanonicalAiSettings(plugin);
+    return resolveConfiguredSelection(aiSettings, { feature: 'PulseAnalysis' })?.provider === 'ollama'
+        && getLocalLlmSettings(aiSettings).sendPulseToAiReport;
+}
+
+function getLocalLlmInstructions(plugin: RadialTimelinePlugin): string | undefined {
+    const aiSettings = getCanonicalAiSettings(plugin);
+    if (resolveConfiguredSelection(aiSettings, { feature: 'PulseAnalysis' })?.provider !== 'ollama') {
+        return undefined;
+    }
+    const instructions = getLocalLlmSettings(aiSettings).instructions.trim();
+    return instructions || undefined;
+}
 
 export interface TripletMetric {
     value: number;
@@ -159,9 +175,7 @@ export async function processWithModal(
 
     const totalToProcess = queueItems.length;
     let processedCount = 0;
-    const sendPulseToAiReportOnly = resolveConfiguredSelection(getCanonicalAiSettings(plugin), {
-        feature: 'PulseAnalysis'
-    })?.provider === 'ollama' && (plugin.settings.localSendPulseToAiReport ?? true);
+    const sendPulseToAiReportOnly = isLocalReportOnlyMode(plugin);
 
     for (const { triplet, shouldProcess } of tasks) {
         if (modal.isAborted()) {
@@ -183,11 +197,7 @@ export async function processWithModal(
         }
 
         const contextPrompt = getActiveContextPrompt(plugin);
-        const extraInstructions = resolveConfiguredSelection(getCanonicalAiSettings(plugin), {
-            feature: 'PulseAnalysis'
-        })?.provider === 'ollama'
-            ? plugin.settings.localLlmInstructions
-            : undefined;
+        const extraInstructions = getLocalLlmInstructions(plugin);
         const userPrompt = buildSceneAnalysisPrompt(
             prevBody,
             currentBody,
@@ -322,9 +332,7 @@ export async function processBySubplotOrder(
 
         let totalProcessedCount = 0;
         let totalTripletsAcrossSubplots = 0;
-        const sendPulseToAiReportOnly = resolveConfiguredSelection(getCanonicalAiSettings(plugin), {
-            feature: 'PulseAnalysis'
-        })?.provider === 'ollama' && (plugin.settings.localSendPulseToAiReport ?? true);
+        const sendPulseToAiReportOnly = isLocalReportOnlyMode(plugin);
         subplotNames.forEach(subplotName => {
             const scenes = scenesBySubplot[subplotName];
             scenes.sort(compareScenesByOrder);
@@ -369,11 +377,7 @@ export async function processBySubplotOrder(
                 const nextNum = triplet.next ? String(triplet.next.sceneNumber ?? 'N/A') : 'N/A';
 
                 const contextPrompt = getActiveContextPrompt(plugin);
-                const extraInstructions = resolveConfiguredSelection(getCanonicalAiSettings(plugin), {
-                    feature: 'PulseAnalysis'
-                })?.provider === 'ollama'
-                    ? plugin.settings.localLlmInstructions
-                    : undefined;
+                const extraInstructions = getLocalLlmInstructions(plugin);
                 const userPrompt = buildSceneAnalysisPrompt(
                     prevBody,
                     currentBody,
@@ -477,9 +481,7 @@ export async function processSubplotWithModal(
     }
     const total = queueItems.length;
     let processedCount = 0;
-    const sendPulseToAiReportOnly = resolveConfiguredSelection(getCanonicalAiSettings(plugin), {
-        feature: 'PulseAnalysis'
-    })?.provider === 'ollama' && (plugin.settings.localSendPulseToAiReport ?? true);
+    const sendPulseToAiReportOnly = isLocalReportOnlyMode(plugin);
 
     for (const { triplet, shouldProcess } of subplotTasks) {
         if (modal.isAborted()) {
@@ -509,11 +511,7 @@ export async function processSubplotWithModal(
         }
 
         const contextPrompt = getActiveContextPrompt(plugin);
-        const extraInstructions = resolveConfiguredSelection(getCanonicalAiSettings(plugin), {
-            feature: 'PulseAnalysis'
-        })?.provider === 'ollama'
-            ? plugin.settings.localLlmInstructions
-            : undefined;
+        const extraInstructions = getLocalLlmInstructions(plugin);
         const userPrompt = buildSceneAnalysisPrompt(
             prevBody,
             currentBody,
@@ -648,9 +646,7 @@ export async function processEntireSubplotWithModalInternal(
     }
     const total = queueItems.length;
     let processedCount = 0;
-    const sendPulseToAiReportOnly = resolveConfiguredSelection(getCanonicalAiSettings(plugin), {
-        feature: 'PulseAnalysis'
-    })?.provider === 'ollama' && (plugin.settings.localSendPulseToAiReport ?? true);
+    const sendPulseToAiReportOnly = isLocalReportOnlyMode(plugin);
 
     for (const { triplet, shouldProcess } of subplotTasks) {
         if (modal.isAborted()) {
@@ -680,11 +676,7 @@ export async function processEntireSubplotWithModalInternal(
         }
 
         const contextPrompt = getActiveContextPrompt(plugin);
-        const extraInstructions = resolveConfiguredSelection(getCanonicalAiSettings(plugin), {
-            feature: 'PulseAnalysis'
-        })?.provider === 'ollama'
-            ? plugin.settings.localLlmInstructions
-            : undefined;
+        const extraInstructions = getLocalLlmInstructions(plugin);
         const userPrompt = buildSceneAnalysisPrompt(
             prevBody,
             currentBody,

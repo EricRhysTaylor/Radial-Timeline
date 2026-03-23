@@ -23,7 +23,7 @@ import { ensureGossamerContentLogFolder, resolveGossamerContentLogFolder } from 
 import { resolveSelectedBeatModelFromSettings } from './utils/beatSystemState';
 import { isPathInFolderScope } from './utils/pathScope';
 import { FORECAST_CHARS_PER_TOKEN, FORECAST_PROMPT_OVERHEAD_TOKENS } from './ai/forecast/estimateTokensFromVault';
-import type { AIProviderId } from './ai/types';
+import type { AIRunRequest, AIProviderId } from './ai/types';
 import { buildGossamerEvidenceDocument } from './gossamer/evidence/buildGossamerEvidence';
 import { logCountingForensics } from './ai/diagnostics/countingForensics';
 
@@ -797,7 +797,6 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
     }
 
     const corpusEstimatedTokens = Math.ceil(evidenceDocument.text.length / FORECAST_CHARS_PER_TOKEN);
-    const providerExecutionTokens = corpusEstimatedTokens + FORECAST_PROMPT_OVERHEAD_TOKENS;
 
     // Update modal with manuscript info
     const manuscriptInfo: ManuscriptInfo = {
@@ -815,6 +814,32 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
     modal.setStatus('Building analysis prompt...');
     const prompt = buildUnifiedBeatAnalysisPrompt(evidenceDocument.text, beats, beatSystem);
     const schema = getUnifiedBeatAnalysisJsonSchema();
+    const aiClient = getAIClient(plugin);
+    const runRequest: AIRunRequest = {
+      feature: 'Gossamer',
+      task: 'BeatMomentumAnalysis',
+      requiredCapabilities: ['jsonStrict', 'longContext', 'reasoningStrong', 'highOutputCap'],
+      featureModeInstructions: 'Evaluate narrative momentum at each beat using only the submitted manuscript and beat list. Avoid anchoring to prior scores.',
+      userInput: prompt,
+      returnType: 'json',
+      responseSchema: schema as unknown as Record<string, unknown>,
+      overrides: {
+        temperature: 0.7,
+        maxOutputMode: 'high',
+        reasoningDepth: 'deep',
+        jsonStrict: true
+      }
+    };
+    const prepared = await aiClient.prepareRunEstimate(runRequest);
+    const providerExecutionTokens = prepared.ok
+      ? prepared.estimate.tokenEstimateInput
+      : corpusEstimatedTokens + FORECAST_PROMPT_OVERHEAD_TOKENS;
+    const providerExecutionMethod = prepared.ok
+      ? prepared.estimate.tokenEstimateMethod
+      : 'heuristic_chars';
+    const promptEnvelopeCharsAdded = prepared.ok
+      ? Math.max(0, (prepared.estimate.systemPrompt?.length ?? 0) + (prepared.estimate.userPrompt?.length ?? 0))
+      : Math.max(0, prompt.length - evidenceDocument.text.length);
     logCountingForensics({
       path: 'gossamer',
       phase: 'analysis_run',
@@ -837,32 +862,19 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       outlineCount: 0,
       referenceCount: 0,
       totalEvidenceChars: evidenceDocument.text.length,
-      promptEnvelopeCharsAdded: Math.max(0, prompt.length - evidenceDocument.text.length),
-      tokenMethodUsed: 'heuristic_chars',
+      promptEnvelopeCharsAdded,
+      tokenMethodUsed: providerExecutionMethod,
       finalTokenEstimate: providerExecutionTokens
     });
 
     // Call unified AI client
     modal.setStatus('Sending manuscript to AI for momentum analysis...');
     modal.apiCallStarted();
-    const aiClient = getAIClient(plugin);
 
     const submittedAt = new Date();
     const result = await aiClient.run({
-      feature: 'Gossamer',
-      task: 'BeatMomentumAnalysis',
-      requiredCapabilities: ['jsonStrict', 'longContext', 'reasoningStrong', 'highOutputCap'],
-      featureModeInstructions: 'Evaluate narrative momentum at each beat using only the submitted manuscript and beat list. Avoid anchoring to prior scores.',
-      userInput: prompt,
-      returnType: 'json',
-      responseSchema: schema as unknown as Record<string, unknown>,
-      overrides: {
-        temperature: 0.7,
-        maxOutputMode: 'high',
-        reasoningDepth: 'deep',
-        jsonStrict: true
-      },
-      tokenEstimateInput: providerExecutionTokens
+      ...runRequest,
+      ...(prepared.ok ? { preparedEstimate: prepared.estimate } : {})
     });
     const returnedAt = new Date();
     modal.setAiAdvancedContext(result.advancedContext ?? null);

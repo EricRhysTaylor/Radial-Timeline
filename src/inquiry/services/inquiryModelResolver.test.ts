@@ -30,9 +30,9 @@ describe('resolveInquiryEngine', () => {
                 aiSettings: {
                     ...buildDefaultAiSettings(),
                     provider: 'ollama',
-                    connections: {
-                        ...buildDefaultAiSettings().connections,
-                        ollamaBaseUrl: ''
+                    localLlm: {
+                        ...buildDefaultAiSettings().localLlm,
+                        enabled: false
                     }
                 }
             }
@@ -43,7 +43,7 @@ describe('resolveInquiryEngine', () => {
         expect(resolved.provider).toBe('ollama');
         expect(resolved.hasCredential).toBe(false);
         expect(resolved.blocked).toBe(true);
-        expect(resolved.blockReason).toContain('Ollama base URL');
+        expect(resolved.blockReason).toContain('Local LLM');
     });
 
     it('fails closed when canonical AI settings contain an invalid provider id', () => {

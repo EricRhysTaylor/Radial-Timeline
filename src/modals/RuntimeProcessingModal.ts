@@ -15,6 +15,7 @@ import { ERT_CLASSES } from '../ui/classes';
 import type { AIRunAdvancedContext } from '../ai/types';
 import { redactSensitiveValue } from '../ai/credentials/redactSensitive';
 import { CANONICAL_PROVIDER_LABELS, getCanonicalAiSettings, resolveConfiguredSelection } from '../ai/runtime/runtimeSelection';
+import { getLocalLlmSettings } from '../ai/localLlm/settings';
 
 export type RuntimeScope = 'current' | 'subplot' | 'all';
 export type RuntimeMode = 'local' | 'ai';
@@ -452,7 +453,7 @@ export class RuntimeProcessingModal extends Modal {
         const selection = resolveConfiguredSelection(aiSettings, { feature: 'RuntimeEstimate' });
         if (!selection) return 'AI disabled';
         if (selection.provider === 'ollama') {
-            const baseUrl = aiSettings.connections?.ollamaBaseUrl || 'localhost';
+            const baseUrl = getLocalLlmSettings(aiSettings).baseUrl || 'localhost';
             return `${CANONICAL_PROVIDER_LABELS.ollama} (${selection.model.id} @ ${baseUrl})`;
         }
         return `${CANONICAL_PROVIDER_LABELS[selection.provider]} (${selection.model.id})`;

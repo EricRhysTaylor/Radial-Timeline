@@ -152,7 +152,7 @@ describe('AI settings models table', () => {
         expect(source.includes('https://platform.claude.com/docs/en/about-claude/pricing')).toBe(true);
         expect(source.includes('https://ai.google.dev/')).toBe(true);
         expect(source.includes('Google Gemini')).toBe(false);
-        expect(source.includes('Local LLM Configuration')).toBe(false);
+        expect(source.includes('Local LLM Configuration')).toBe(true);
         expect(source.includes("rowEl.addClass('ert-ai-models-row--active')")).toBe(true);
         expect(source.includes('setActiveCostComparisonRow(provider, displayModel.id)')).toBe(true);
         expect(source.includes('Request composition')).toBe(false);
@@ -216,11 +216,10 @@ describe('AI settings models table', () => {
 
     it('uses canonical Ollama naming for the quick config surface', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
-        expect(source.includes('Ollama Configuration')).toBe(true);
-        expect(source.includes('Ollama model server')).toBe(true);
-        expect(source.includes('Ollama server')).toBe(true);
+        expect(source.includes('Local LLM Configuration')).toBe(true);
+        expect(source.includes('Local LLM backend')).toBe(true);
+        expect(source.includes('Local LLM base URL')).toBe(true);
         expect(source.includes('Ollama API key')).toBe(true);
-        expect(source.includes('Local LLM Configuration')).toBe(false);
         expect(source.includes('Local API key')).toBe(false);
         expect(source.includes('ert-provider-local')).toBe(false);
         expect(source.includes('ert-provider-gemini')).toBe(false);

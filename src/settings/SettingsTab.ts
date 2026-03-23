@@ -20,7 +20,6 @@ import { renderPlanetaryTimeSection } from './sections/PlanetaryTimeSection';
 import { renderRuntimeSection } from './sections/RuntimeSection';
 import { renderProfessionalSection } from './sections/ProfessionalSection';
 import { isProActive } from './proEntitlement';
-import { validateLocalModelAvailability as validateOllamaModelAvailability } from '../api/localAiApi';
 import { FolderSuggest } from './FolderSuggest';
 import { ERT_CLASSES, ERT_DATA } from '../ui/classes';
 import {
@@ -37,6 +36,9 @@ import { DEFAULT_SETTINGS } from './defaults';
 import { getCredential } from '../ai/credentials/credentials';
 import type { AIProviderId } from '../ai/types';
 import { fetchGeminiModels as fetchGoogleModels } from '../api/geminiApi';
+import { getCanonicalAiSettings } from '../ai/runtime/runtimeSelection';
+import { getLocalLlmBackend } from '../ai/localLlm/backends';
+import { getLocalLlmSettings } from '../ai/localLlm/settings';
 
 export class RadialTimelineSettingsTab extends PluginSettingTab {
     plugin: RadialTimelinePlugin;
@@ -182,13 +184,24 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                     el.removeClass('ert-setting-input-success');
                     el.removeClass('ert-setting-input-error');
                 });
-                const ollamaKey = await getCredential(this.plugin, 'ollama');
-                const result = await validateOllamaModelAvailability(
-                    baseUrl,
-                    modelId,
-                    ollamaKey
-                );
-                if (result.reachable && result.hasModel) {
+                const aiSettings = getCanonicalAiSettings(this.plugin);
+                const localLlm = getLocalLlmSettings(aiSettings);
+                const backend = getLocalLlmBackend(localLlm.backend);
+                const apiKey = await getCredential(this.plugin, 'ollama');
+                let reachable = false;
+                let hasModel = false;
+                try {
+                    const models = await backend.listModels({
+                        baseUrl,
+                        timeoutMs: localLlm.timeoutMs,
+                        apiKey
+                    });
+                    reachable = true;
+                    hasModel = models.some(model => model.id === modelId);
+                } catch {
+                    reachable = false;
+                }
+                if (reachable && hasModel) {
                     [baseInput, modelInput].forEach(el => {
                         el.addClass('ert-setting-input-success');
                         window.setTimeout(() => el.removeClass('ert-setting-input-success'), 1200);

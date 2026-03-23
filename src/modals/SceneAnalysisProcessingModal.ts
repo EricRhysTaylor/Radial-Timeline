@@ -15,6 +15,7 @@ import { getSynopsisGenerationWordLimit, getSynopsisHoverLineLimit } from '../ut
 import type { AIRunAdvancedContext } from '../ai/types';
 import { redactSensitiveValue } from '../ai/credentials/redactSensitive';
 import { getCanonicalAiSettings, resolveConfiguredSelection } from '../ai/runtime/runtimeSelection';
+import { getLocalLlmSettings, LOCAL_LLM_BACKEND_LABELS } from '../ai/localLlm/settings';
 
 export type ProcessingMode = 'flagged' | 'unprocessed' | 'force-all' | 'synopsis-flagged' | 'synopsis-missing-weak' | 'synopsis-missing' | 'synopsis-all';
 
@@ -1518,7 +1519,7 @@ export class SceneAnalysisProcessingModal extends Modal {
             const isLocal = resolveConfiguredSelection(aiSettings, {
                 feature: 'PulseAnalysis'
             })?.provider === 'ollama';
-            const pulsesBypassed = isLocal && (this.plugin.settings.localSendPulseToAiReport ?? true);
+            const pulsesBypassed = isLocal && getLocalLlmSettings(aiSettings).sendPulseToAiReport;
             const pulseRouting = pulsesBypassed
                 ? 'Triplet pulse updates bypassed scene yaml and were saved to the AI report.'
                 : 'Triplet pulse updates were written to scene yaml.';
@@ -1645,11 +1646,12 @@ export class SceneAnalysisProcessingModal extends Modal {
         }
 
         if (normalized.includes('model') && normalized.includes('not found')) {
-            return 'Verify that the model is downloaded locally (use `ollama list`) and update the Local Model ID in settings to match exactly.';
+            return 'Verify that the selected Local LLM model is available on the configured backend and update the Local LLM model ID in settings to match exactly.';
         }
 
         if (normalized.includes('ollama server not responding') || normalized.includes('could not find ollama')) {
-            return 'Launch Ollama (`ollama serve`) and confirm the Local Base URL points to the running server.';
+            const backend = LOCAL_LLM_BACKEND_LABELS[getLocalLlmSettings(getCanonicalAiSettings(this.plugin)).backend];
+            return `Launch the ${backend} server and confirm the Local LLM base URL points to the running endpoint.`;
         }
 
         if (normalized.includes('connection refused') || normalized.includes('timed out')) {

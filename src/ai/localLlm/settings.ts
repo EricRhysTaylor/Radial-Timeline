@@ -1,0 +1,67 @@
+import type RadialTimelinePlugin from '../../main';
+import type { AiSettingsV1, LocalLlmBackendId, LocalLlmSettings, ModelInfo, ModelSelectionResult } from '../types';
+import { buildDefaultAiSettings, cloneDefaultLocalLlmSettings } from '../settings/aiSettings';
+import { validateAiSettings } from '../settings/validateAiSettings';
+import { BUILTIN_MODELS } from '../registry/builtinModels';
+
+export const LOCAL_LLM_BACKEND_LABELS: Record<LocalLlmBackendId, string> = {
+    ollama: 'Ollama',
+    lmStudio: 'LM Studio',
+    openaiCompatible: 'OpenAI-Compatible'
+};
+
+export function getCanonicalLocalLlmSettings(plugin: RadialTimelinePlugin): LocalLlmSettings {
+    const validated = validateAiSettings(plugin.settings.aiSettings ?? buildDefaultAiSettings());
+    plugin.settings.aiSettings = validated.value;
+    return validated.value.localLlm;
+}
+
+export function getLocalLlmSettings(aiSettings: AiSettingsV1): LocalLlmSettings {
+    return validateAiSettings(aiSettings).value.localLlm;
+}
+
+function buildCustomLocalModelInfo(modelId: string): ModelInfo {
+    const fallback = BUILTIN_MODELS.find(model => model.provider === 'ollama' && model.id === 'local-model')
+        ?? BUILTIN_MODELS.find(model => model.provider === 'ollama')
+        ?? {
+            provider: 'ollama' as const,
+            id: 'local-model',
+            alias: 'ollama-local-model',
+            label: 'Local Model',
+            tier: 'LOCAL' as const,
+            capabilities: ['jsonStrict'],
+            personality: { reasoning: 5, writing: 5, determinism: 4 },
+            contextWindow: 32000,
+            maxOutput: 4000,
+            status: 'legacy' as const
+        };
+    const normalizedId = modelId.trim() || cloneDefaultLocalLlmSettings().defaultModelId;
+    return {
+        ...fallback,
+        id: normalizedId,
+        alias: `ollama-${normalizedId.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'local-model'}`,
+        label: `Local LLM: ${normalizedId}`
+    };
+}
+
+export function resolveLocalLlmModelInfo(aiSettings: AiSettingsV1): ModelInfo {
+    const localLlm = getLocalLlmSettings(aiSettings);
+    const target = localLlm.defaultModelId.trim() || cloneDefaultLocalLlmSettings().defaultModelId;
+    const matched = BUILTIN_MODELS.find(model =>
+        model.provider === 'ollama' && (model.id === target || model.alias === target)
+    );
+    return matched ?? buildCustomLocalModelInfo(target);
+}
+
+export function resolveLocalLlmSelection(aiSettings: AiSettingsV1): ModelSelectionResult {
+    const localLlm = getLocalLlmSettings(aiSettings);
+    const model = resolveLocalLlmModelInfo(aiSettings);
+    return {
+        provider: 'ollama',
+        model,
+        warnings: model.id === localLlm.defaultModelId.trim()
+            ? []
+            : [`Using canonical Local LLM model "${localLlm.defaultModelId.trim()}".`],
+        reason: `Local LLM backend ${LOCAL_LLM_BACKEND_LABELS[localLlm.backend]} resolved from canonical localLlm settings.`
+    };
+}

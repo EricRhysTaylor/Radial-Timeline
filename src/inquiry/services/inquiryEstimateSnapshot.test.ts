@@ -7,6 +7,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { buildInquiryEstimateSnapshot, computeEstimateStateKey } from './inquiryEstimateSnapshot';
 import { estimatePassCount } from './inquiryAdvisory';
+import { buildInquiryEstimateTrace } from './inquiryEstimateTrace';
 
 vi.mock('./inquiryEstimateTrace', () => ({
     buildInquiryEstimateTrace: vi.fn(async () => ({
@@ -280,5 +281,75 @@ describe('buildInquiryEstimateSnapshot', () => {
 
         expect(snapshot.corpus.sceneCount).toBe(53);
         expect(snapshot.corpus.scenes).toHaveLength(53);
+    });
+
+    it('preserves provider-counted estimation metadata from the canonical trace', async () => {
+        vi.mocked(buildInquiryEstimateTrace).mockResolvedValueOnce({
+            systemPrompt: 'system',
+            userPrompt: 'user',
+            evidenceText: 'evidence',
+            tokenEstimate: {
+                inputTokens: 18432,
+                outputTokens: 800,
+                totalTokens: 19232,
+                inputChars: 0,
+                estimationMethod: 'anthropic_count',
+                uncertaintyTokens: 256,
+                effectiveInputCeiling: 90000,
+                expectedPassCount: 2
+            },
+            outputTokenCap: 1200,
+            response: null,
+            sanitizationNotes: [],
+            notes: []
+        });
+
+        const snapshot = await buildInquiryEstimateSnapshot({
+            scope: 'book',
+            activeBookId: 'book-1',
+            targetSceneIds: [],
+            scopeLabel: 'B1',
+            manifest: {
+                entries: [],
+                fingerprint: 'fp-book-1',
+                generatedAt: 1,
+                resolvedRoots: [],
+                allowedClasses: [],
+                synopsisOnly: false,
+                classCounts: {}
+            },
+            payloadStats: {
+                sceneCount: 0,
+                outlineCount: 0,
+                referenceCount: 0,
+                evidenceChars: 0
+            },
+            runner: { estimateExecutionPassCountFromPrompt: () => 2 } as never,
+            engine: {
+                provider: 'anthropic',
+                modelId: 'claude-sonnet-4-6',
+                modelLabel: 'Claude Sonnet',
+                contextWindow: 200000
+            } as never,
+            overrideSummary: {
+                active: false,
+                classCount: 0,
+                itemCount: 0,
+                total: 0
+            },
+            rules: {
+                sagaOutlineScope: 'saga-only',
+                bookOutlineScope: 'book-only',
+                crossScopeUsage: 'conflict-only'
+            },
+            mode: 'flow',
+            selectionMode: 'discover',
+            analysisPackaging: 'automatic'
+        });
+
+        expect(snapshot.estimate.estimatedInputTokens).toBe(18432);
+        expect(snapshot.estimate.estimationMethod).toBe('anthropic_count');
+        expect(snapshot.estimate.uncertaintyTokens).toBe(256);
+        expect(snapshot.estimate.expectedPassCount).toBe(2);
     });
 });

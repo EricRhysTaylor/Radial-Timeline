@@ -25,6 +25,7 @@ import type {
 import { selectModel } from '../../ai/router/selectModel';
 import { buildDefaultAiSettings } from '../../ai/settings/aiSettings';
 import { validateAiSettings } from '../../ai/settings/validateAiSettings';
+import { getLocalLlmSettings } from '../../ai/localLlm/settings';
 
 // ── Types ──────────────────────────────────────────────────────────
 
@@ -169,7 +170,7 @@ export function resolveInquiryEngine(
     const accessTier = resolveTier(aiSettings, provider);
     const providerLabel = PROVIDER_LABELS[provider] ?? String(provider);
     const hasCredential = provider === 'ollama'
-        ? !!aiSettings.connections?.ollamaBaseUrl?.trim()
+        ? !!getLocalLlmSettings(aiSettings).baseUrl?.trim() && getLocalLlmSettings(aiSettings).enabled
         : provider === 'anthropic'
             ? !!aiSettings.credentials?.anthropicSecretId?.trim()
             : provider === 'openai'
@@ -190,7 +191,7 @@ export function resolveInquiryEngine(
             policySource,
             blocked: true,
             blockReason: provider === 'ollama'
-                ? 'Configure an Ollama base URL in AI settings before using Inquiry.'
+                ? 'Configure and enable Local LLM in AI settings before using Inquiry.'
                 : `Add a saved ${providerLabel} key in AI settings before using Inquiry.`
         };
     }

@@ -110,7 +110,6 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     lastSeenReleaseNotesVersion: '',
     cachedReleaseNotes: null,
     releaseNotesLastFetched: undefined,
-    localSendPulseToAiReport: true,
     aiSettings: buildDefaultAiSettings(),
     aiRegistryCacheJson: '',
     aiProviderSnapshotCacheJson: '',

@@ -18,7 +18,9 @@ function loadIntegrations(): IntegrationEntry[] {
 describe('check-api-features evidence verification', () => {
     it('accepts canonical Anthropic temperature/top_p and OpenAI citations seams', () => {
         const integrations = loadIntegrations().filter(entry =>
-            entry.id === 'anthropic-temperature-topP' || entry.id === 'openai-citations-annotations'
+            entry.id === 'anthropic-temperature-topP'
+            || entry.id === 'anthropic-token-counting'
+            || entry.id === 'openai-citations-annotations'
         );
 
         const failures = verifyEvidence(integrations);
