@@ -316,6 +316,31 @@ export function renderAiSection(params: {
     const getLocalLlmUiOverrides = (): Partial<LocalLlmSettings> => ({
         timeoutMs: getLocalLlmUiTimeoutMs()
     });
+    const getLocalStrategyModelOptions = (): Array<{ value: string; label: string }> => {
+        const selectedModelId = getOllamaModelId().trim();
+        const values = new Set<string>();
+        const options: Array<{ value: string; label: string }> = [];
+
+        localLlmLoadedModels.forEach(model => {
+            const normalizedId = model.id.trim();
+            if (!normalizedId || values.has(normalizedId)) return;
+            values.add(normalizedId);
+            options.push({ value: normalizedId, label: normalizedId });
+        });
+
+        if (selectedModelId && !values.has(selectedModelId)) {
+            options.unshift({
+                value: selectedModelId,
+                label: localLlmLoadedModels.length ? `${selectedModelId} (configured)` : selectedModelId
+            });
+        }
+
+        if (!options.length) {
+            options.push({ value: selectedModelId || 'local-model', label: selectedModelId || 'Local model' });
+        }
+
+        return options;
+    };
 
     let isSyncingRoutingUi = false;
 
@@ -965,6 +990,17 @@ export function renderAiSection(params: {
         dropdown.onChange(async value => {
             if (isSyncingRoutingUi) return;
             const aiSettings = ensureCanonicalAiSettings();
+            if (aiSettings.provider === 'ollama') {
+                setOllamaModelId(value);
+                clearLocalLlmValidationState();
+                await persistCanonical();
+                params.scheduleKeyValidation('ollama');
+                renderLocalLlmModelList();
+                renderLocalLlmStatus();
+                queueLocalLlmAutoValidation();
+                refreshRoutingUi();
+                return;
+            }
             if (value === 'auto') {
                 aiSettings.modelPolicy = { type: 'latestStable' };
             } else {
@@ -978,7 +1014,7 @@ export function renderAiSection(params: {
 
     // Do not rewrite this copy as generic: it reflects limits specifically granted to the author/user by their provider.
     const ACCESS_TIER_COPY = 'Increase available context headroom if your provider has granted you a higher Tier.';
-    const LOCAL_MODEL_STRATEGY_COPY = 'Select models in the Local LLM Configuration section below.';
+    const LOCAL_MODEL_STRATEGY_COPY = 'Select the active local model here. If discovery fails, use the manual fallback in Local LLM Configuration below.';
     const LOCAL_ACCESS_TIER_COPY = 'Cloud access tiers do not apply to Local LLM.';
 
     const accessTierSetting = new Settings(quickSetupGrid)
@@ -1552,9 +1588,13 @@ export function renderAiSection(params: {
             if (modelOverrideDropdown) {
                 modelOverrideDropdown.selectEl.empty();
                 if (isOllama) {
-                    modelOverrideDropdown.addOption('—', '—');
-                    modelOverrideDropdown.setValue('—');
-                    modelOverrideDropdown.selectEl.disabled = true;
+                    modelOverrideDropdown.selectEl.disabled = false;
+                    const localModelOptions = getLocalStrategyModelOptions();
+                    localModelOptions.forEach(option => {
+                        modelOverrideDropdown?.addOption(option.value, option.label);
+                    });
+                    const fallbackLocalModel = localModelOptions[0]?.value;
+                    setDropdownValueSafe(modelOverrideDropdown, getOllamaModelId().trim(), fallbackLocalModel);
                 } else {
                     modelOverrideDropdown.selectEl.disabled = false;
                     modelOverrideDropdown.addOption('auto', 'Auto');
@@ -2248,6 +2288,7 @@ export function renderAiSection(params: {
                     await persistCanonical();
                     params.scheduleKeyValidation('ollama');
                     queueLocalLlmAutoValidation();
+                    void refreshRoutingUi();
                 });
         });
     localLlmBackendSetting.settingEl.addClass(ERT_CLASSES.ROW);
@@ -2288,8 +2329,8 @@ export function renderAiSection(params: {
     localLlmBaseUrlSetting.settingEl.addClass('ert-setting-full-width-input');
 
     const localLlmModelSetting = new Settings(localLlmConfigSection)
-        .setName('Selected model')
-        .setDesc('Use the exact model ID expected by your backend. Available models stay empty until the backend responds, then you can pick from the loaded list below.')
+        .setName('Manual model ID (fallback)')
+        .setDesc('Only use this if automatic model discovery cannot find the model you want. The AI Strategy model dropdown above is now the primary local model selector.')
         .addText(text => {
             text.inputEl.addClass('ert-input--lg');
             localLlmModelText = text;
@@ -2333,6 +2374,10 @@ export function renderAiSection(params: {
     const renderLocalLlmModelList = (): void => {
         const selectedModelId = getOllamaModelId().trim();
         const selectedExists = localLlmLoadedModels.some(model => model.id === selectedModelId);
+        const showManualModelFallback = !!localLlmModelLoadError || (!!localLlmLastLoadedAt && !selectedExists);
+
+        localLlmModelSetting.settingEl.toggleClass('ert-settings-hidden', !showManualModelFallback);
+        localLlmModelSetting.settingEl.toggleClass('ert-settings-visible', showManualModelFallback);
 
         localLlmModelsList.empty();
         if (localLlmModelLoadPending) {
@@ -2489,6 +2534,7 @@ export function renderAiSection(params: {
                 localLlmModelLoadPromise = null;
                 renderLocalLlmModelList();
                 renderLocalLlmStatus();
+                void refreshRoutingUi();
             }
         })();
         return localLlmModelLoadPromise;

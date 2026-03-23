@@ -245,6 +245,7 @@ describe('AI settings models table', () => {
         expect(source.includes('Load Models')).toBe(true);
         expect(source.includes('Validate Local LLM')).toBe(true);
         expect(source.includes('Available local models:')).toBe(true);
+        expect(source.includes('getLocalStrategyModelOptions')).toBe(true);
         expect(source.includes('Checking backend and loading available local models...')).toBe(true);
         expect(source.includes('Selected model missing from the loaded list.')).toBe(true);
         expect(source.includes("['Backend reachability', localLlmValidationReport?.reachable ?? null]")).toBe(true);
@@ -263,6 +264,16 @@ describe('AI settings models table', () => {
         expect(source.includes('markLocalLlmConfigurationDirty();')).toBe(true);
         expect(source.includes('getLocalLlmUiOverrides()')).toBe(true);
         expect(source.includes('Math.max(4000, Math.min(getLocalLlmSettings(ensureCanonicalAiSettings()).timeoutMs, 10000))')).toBe(true);
+    });
+
+    it('uses the AI Strategy model dropdown as the active Local LLM model selector', () => {
+        const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
+        expect(source.includes("modelOverrideDropdown.addOption('—', '—');")).toBe(false);
+        expect(source.includes("modelOverrideDropdown.setValue('—');")).toBe(false);
+        expect(source.includes("modelOverrideDropdown.selectEl.disabled = true;")).toBe(false);
+        expect(source.includes('setOllamaModelId(value);')).toBe(true);
+        expect(source.includes('Manual model ID (fallback)')).toBe(true);
+        expect(source.includes('The AI Strategy model dropdown above is now the primary local model selector.')).toBe(true);
     });
 
     it('removes the local write bypass toggle from the AI settings UI', () => {

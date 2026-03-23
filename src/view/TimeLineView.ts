@@ -734,6 +734,7 @@ export class RadialTimelineView extends ItemView {
                     this.registerDomEvent(milestoneIndicator as unknown as HTMLElement, 'click', () => {
                         // Open settings and switch to Core tab (where the progress preview lives)
                         if (this.plugin.settingsTab) {
+                            this.plugin.settingsTab.forceExpandCoreCompletionPreview();
                             this.plugin.settingsTab.setActiveTab('core');
                         }
                         // SAFE: any type used for accessing Obsidian's internal settings API

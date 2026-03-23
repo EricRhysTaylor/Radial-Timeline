@@ -52,6 +52,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
     private _ollamaModelIdInput?: HTMLInputElement;
     private _aiRelatedElements: HTMLElement[] = [];
     private _activeTab: 'core' | 'social' | 'inquiry' | 'publishing' | 'ai' | 'advanced' = 'core';
+    private _forceExpandCoreCompletionPreview = false;
     private _searchDebounceTimer?: number;
     private _coreSearchableContent?: HTMLElement;
     private readonly _searchShortAllowList = new Set(['ai', 'ui']);
@@ -59,6 +60,10 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
     /** Public method to set active tab before/after opening settings */
     public setActiveTab(tab: 'core' | 'social' | 'inquiry' | 'publishing' | 'ai' | 'advanced'): void {
         this._activeTab = tab;
+    }
+
+    public forceExpandCoreCompletionPreview(): void {
+        this._forceExpandCoreCompletionPreview = true;
     }
 
     constructor(app: App, plugin: RadialTimelinePlugin) {
@@ -279,23 +284,6 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                 try { textInput.inputEl.focus(); } catch { }
             });
         });
-    }
-
-    private renderBackupSafetySection(containerEl: HTMLElement): void {
-        containerEl.addClass(ERT_CLASSES.PANEL, ERT_CLASSES.STACK, 'ert-backup-callout');
-
-        const heading = containerEl.createDiv({ cls: 'ert-backup-callout__heading' });
-        const iconWrapper = heading.createDiv({ cls: 'ert-backup-callout__icon' });
-        setIcon(iconWrapper, 'archive-restore');
-        heading.createSpan({ text: 'Backup & Sync', cls: 'ert-backup-callout__title' });
-
-        const description = containerEl.createDiv({ cls: 'ert-backup-callout__description' });
-        description.createSpan({ text: 'Back up your Obsidian vault regularly to protect against data loss. Learn more at ' });
-        description.createEl('a', { text: 'Obsidian Backup Guide', href: 'https://help.obsidian.md/backup' });
-        description.createSpan({ text: '. Sync does not protect against all forms of data loss. Sync options include ' });
-        description.createEl('a', { text: 'Obsidian Sync', href: 'https://obsidian.md/sync' });
-        description.createSpan({ text: ' or ' });
-        description.createEl('a', { text: 'Obsidian Git', href: 'https://obsidian.md/plugins?id=obsidian-git' });
     }
 
     /**
@@ -866,20 +854,20 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
         const coreStack = coreContent.createDiv({ cls: ERT_CLASSES.STACK });
         this.renderCoreHero(coreStack);
+        const forceExpandCompletionPreview = this._forceExpandCoreCompletionPreview;
+        this._forceExpandCoreCompletionPreview = false;
 
         // Refactor alerts (shown at top when migrations are needed)
         const alertsRow = coreStack.createDiv();
         this.renderRefactorAlerts(alertsRow);
-
-        const backupRow = coreStack.createDiv();
-        this.renderBackupSafetySection(backupRow);
 
         const completionRow = coreStack.createDiv();
         const completionPreviewRefresh = renderCompletionEstimatePreview({
             app: this.app,
             plugin: this.plugin,
             containerEl: completionRow,
-            frameClass: 'ert-previewFrame--flush'
+            frameClass: 'ert-previewFrame--flush',
+            forceExpanded: forceExpandCompletionPreview
         });
 
         const searchRow = coreStack.createDiv();

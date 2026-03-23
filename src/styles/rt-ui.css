@@ -4475,6 +4475,48 @@
   width: 100%;
 }
 
+.ert-ui.ert-scope--settings .ert-previewFrame[data-preview="completion"] .ert-completion-summary-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ert-gap-sm);
+}
+
+.ert-ui.ert-scope--settings .ert-previewFrame[data-preview="completion"] .ert-completion-summary {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.95rem;
+  font-style: italic;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 0.625rem var(--ert-pad-md);
+  background: color-mix(in srgb, var(--background-secondary) 90%, transparent);
+  border-radius: var(--ert-gap-sm);
+  line-height: 1.5;
+}
+
+.ert-ui.ert-scope--settings .ert-previewFrame[data-preview="completion"] .ert-completion-summary-text {
+  display: block;
+  color: var(--text-muted);
+}
+
+.ert-ui.ert-scope--settings .ert-previewFrame[data-preview="completion"] .ert-completion-summary-author {
+  display: block;
+  margin-top: calc(var(--ert-gap-xs) * 0.5);
+  color: var(--text-faint);
+  font-size: 0.8rem;
+  font-style: normal;
+  text-align: center;
+}
+
+.ert-ui.ert-scope--settings .ert-previewFrame[data-preview="completion"] .ert-completion-summary-toggle {
+  flex: 0 0 auto;
+  margin-top: 0.125rem;
+}
+
+.ert-ui.ert-scope--settings .ert-previewFrame[data-preview="completion"].ert-completion-preview-collapsed .ert-completion-summary {
+  margin-bottom: 0;
+}
+
 .ert-ui.ert-scope--settings .ert-completion-stage-Zero {
   border-color: color-mix(in srgb, var(--rt-color-zero) 40%, transparent);
   background: color-mix(in srgb, var(--rt-color-zero) 8%, transparent);
@@ -5031,12 +5073,39 @@
   background: color-mix(in srgb, var(--rt-completion-warn) 6%, transparent);
 }
 
+.ert-ui.ert-scope--settings .ert-completion-preview-warn .ert-completion-summary {
+  background: color-mix(in srgb, var(--rt-completion-warn) 6%, transparent);
+}
+
 .ert-ui.ert-scope--settings .ert-completion-preview-late .ert-completion-encouragement {
+  background: color-mix(in srgb, var(--rt-completion-late) 6%, transparent);
+}
+
+.ert-ui.ert-scope--settings .ert-completion-preview-late .ert-completion-summary {
   background: color-mix(in srgb, var(--rt-completion-late) 6%, transparent);
 }
 
 .ert-ui.ert-scope--settings .ert-completion-preview-stalled .ert-completion-encouragement {
   background: color-mix(in srgb, var(--rt-completion-stalled) 8%, transparent);
+}
+
+.ert-ui.ert-scope--settings .ert-completion-preview-stalled .ert-completion-summary {
+  background: color-mix(in srgb, var(--rt-completion-stalled) 8%, transparent);
+}
+
+.ert-ui.ert-scope--settings .ert-completion-preview-warn .ert-completion-summary-text,
+.ert-ui.ert-scope--settings .ert-completion-preview-warn .ert-completion-summary-author {
+  color: var(--rt-completion-warn);
+}
+
+.ert-ui.ert-scope--settings .ert-completion-preview-late .ert-completion-summary-text,
+.ert-ui.ert-scope--settings .ert-completion-preview-late .ert-completion-summary-author {
+  color: var(--rt-completion-late);
+}
+
+.ert-ui.ert-scope--settings .ert-completion-preview-stalled .ert-completion-summary-text,
+.ert-ui.ert-scope--settings .ert-completion-preview-stalled .ert-completion-summary-author {
+  color: var(--rt-completion-stalled);
 }
 
 /* Stage target tick icons and overdue rows */

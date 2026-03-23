@@ -157,6 +157,7 @@ export function renderCompletionEstimatePreview(params: {
     plugin: RadialTimelinePlugin;
     containerEl: HTMLElement;
     frameClass?: string;
+    forceExpanded?: boolean;
 }): () => void {
     const { app, plugin, containerEl, frameClass } = params;
 
@@ -167,6 +168,7 @@ export function renderCompletionEstimatePreview(params: {
         cls: previewClasses,
         attr: { 'data-preview': 'completion' }
     });
+    let isExpanded = params.forceExpanded ? true : plugin.settings.coreCompletionPreviewExpanded !== false;
 
     // Quotes for different states
     const startingQuotes: Quote[] = [
@@ -190,6 +192,49 @@ export function renderCompletionEstimatePreview(params: {
     function getRandomQuote(quotes: Quote[]): Quote {
         return quotes[Math.floor(Math.random() * quotes.length)];
     }
+
+    const saveExpandedState = (next: boolean) => {
+        plugin.settings.coreCompletionPreviewExpanded = next;
+        void plugin.saveSettings();
+    };
+
+    const renderSummaryRow = (summary: {
+        title: string;
+        subtitle?: string;
+        quote?: Quote;
+    }) => {
+        const summaryRow = previewContainer.createDiv({ cls: 'ert-completion-summary-row' });
+        const summaryBody = summaryRow.createDiv({ cls: 'ert-completion-summary' });
+        if (summary.quote) {
+            renderQuoteBlock(
+                summaryBody,
+                summary.quote,
+                'ert-completion-summary-text',
+                'ert-completion-summary-author'
+            );
+        } else {
+            summaryBody.createDiv({ cls: 'ert-completion-summary-text', text: summary.title });
+            if (summary.subtitle) {
+                summaryBody.createDiv({ cls: 'ert-completion-summary-author', text: summary.subtitle });
+            }
+        }
+
+        const toggleButton = summaryRow.createEl('button', {
+            cls: 'ert-clickable-icon clickable-icon ert-completion-summary-toggle',
+            attr: {
+                type: 'button',
+                'aria-label': isExpanded ? 'Collapse progress preview' : 'Expand progress preview',
+                'aria-expanded': String(isExpanded)
+            }
+        });
+        setIcon(toggleButton, isExpanded ? 'chevron-up' : 'chevron-down');
+        setTooltip(toggleButton, isExpanded ? 'Collapse progress preview' : 'Expand progress preview');
+        toggleButton.addEventListener('click', () => {
+            isExpanded = !isExpanded;
+            saveExpandedState(isExpanded);
+            void renderCompletionPreview(true);
+        });
+    };
 
     const getCachedScenes = () => {
         if (!Array.isArray(plugin.lastSceneData)) return null;
@@ -216,12 +261,20 @@ export function renderCompletionEstimatePreview(params: {
 
     async function renderCompletionPreview(allowFetch: boolean): Promise<void> {
         previewContainer.empty();
-        previewContainer.removeClass('ert-completion-preview-empty');
+        previewContainer.removeClass('ert-completion-preview-empty', 'ert-completion-preview-collapsed');
 
         try {
             const cachedScenes = getCachedScenes();
             const scenes = cachedScenes ?? (allowFetch ? await getAllScenes(app, plugin) : null);
             if (!scenes) {
+                renderSummaryRow({
+                    title: 'Completion Estimate',
+                    subtitle: 'Loading preview...'
+                });
+                if (!isExpanded) {
+                    previewContainer.addClass('ert-completion-preview-collapsed');
+                    return;
+                }
                 previewContainer.addClass('ert-completion-preview-empty');
                 const heading = previewContainer.createDiv({ cls: 'ert-planetary-preview-heading' });
                 heading.setText('Completion Estimate');
@@ -231,16 +284,20 @@ export function renderCompletionEstimatePreview(params: {
                 return;
             }
             if (scenes.length === 0) {
+                const quote = getRandomQuote(startingQuotes);
+                renderSummaryRow({
+                    title: quote.text,
+                    subtitle: quote.author,
+                    quote
+                });
+                if (!isExpanded) {
+                    previewContainer.addClass('ert-completion-preview-collapsed', 'ert-completion-preview-empty');
+                    return;
+                }
                 previewContainer.addClass('ert-completion-preview-empty');
                 const heading = previewContainer.createDiv({ cls: 'ert-planetary-preview-heading' });
                 heading.setText('Completion Estimate');
                 const body = previewContainer.createDiv({ cls: 'ert-planetary-preview-body ert-completion-preview-body' });
-
-                // Inspiring quote for empty state
-                const quote = getRandomQuote(startingQuotes);
-
-                const quoteEl = body.createDiv({ cls: 'ert-completion-empty-quote' });
-                renderQuoteBlock(quoteEl, quote, 'ert-completion-quote-text', 'ert-completion-quote-author');
                 body.createDiv({ cls: 'ert-completion-empty-hint', text: 'Create scenes to see progress calculations.' });
                 return;
             }
@@ -257,6 +314,14 @@ export function renderCompletionEstimatePreview(params: {
                 const milestone = plugin.milestonesService.detectMilestone(scenes);
 
                 if (!milestone || !milestone.type.includes('complete')) {
+                    renderSummaryRow({
+                        title: 'Completion Estimate',
+                        subtitle: 'Complete some scenes to see progress calculations.'
+                    });
+                    if (!isExpanded) {
+                        previewContainer.addClass('ert-completion-preview-collapsed');
+                        return;
+                    }
                     // Not actually complete - show a simple "no estimate available" message
                     const heading = previewContainer.createDiv({ cls: 'ert-planetary-preview-heading' });
                     heading.setText('Completion Estimate');
@@ -267,6 +332,14 @@ export function renderCompletionEstimatePreview(params: {
 
                 // Show hero card based on milestone type (single source of truth)
                 if (milestone.type === 'stage-press-complete' || milestone.type === 'book-complete') {
+                    renderSummaryRow({
+                        title: 'Book Complete',
+                        subtitle: 'Your manuscript is finished.'
+                    });
+                    if (!isExpanded) {
+                        previewContainer.addClass('ert-completion-preview-collapsed');
+                        return;
+                    }
                     // Final gold celebration once Press stage is fully complete.
                     previewContainer.addClass('ert-completion-preview-book-complete');
 
@@ -293,6 +366,14 @@ export function renderCompletionEstimatePreview(params: {
                     completeContent.createDiv({ cls: 'ert-completion-complete-title', text: celebration.title });
                     completeContent.createDiv({ cls: 'ert-completion-complete-subtitle', text: celebration.subtitle });
                 } else if (milestone.type === 'stage-zero-complete') {
+                    renderSummaryRow({
+                        title: 'Zero Draft Complete',
+                        subtitle: 'The first full draft exists.'
+                    });
+                    if (!isExpanded) {
+                        previewContainer.addClass('ert-completion-preview-collapsed');
+                        return;
+                    }
                     // Zero draft complete - first major milestone! Sprout icon
                     previewContainer.addClass('ert-completion-preview-zero-complete');
 
@@ -319,6 +400,14 @@ export function renderCompletionEstimatePreview(params: {
                     completeContent.createDiv({ cls: 'ert-completion-complete-title', text: celebration.title });
                     completeContent.createDiv({ cls: 'ert-completion-complete-subtitle', text: celebration.subtitle });
                 } else if (milestone.type === 'stage-author-complete') {
+                    renderSummaryRow({
+                        title: 'Author Stage Complete',
+                        subtitle: 'Your author revision stage is complete.'
+                    });
+                    if (!isExpanded) {
+                        previewContainer.addClass('ert-completion-preview-collapsed');
+                        return;
+                    }
                     // Author stage complete - the sapling grows! Tree-pine icon
                     previewContainer.addClass('ert-completion-preview-author-complete');
 
@@ -345,6 +434,14 @@ export function renderCompletionEstimatePreview(params: {
                     completeContent.createDiv({ cls: 'ert-completion-complete-title', text: celebration.title });
                     completeContent.createDiv({ cls: 'ert-completion-complete-subtitle', text: celebration.subtitle });
                 } else if (milestone.type === 'stage-house-complete') {
+                    renderSummaryRow({
+                        title: 'House Stage Complete',
+                        subtitle: 'Editorial revision is complete.'
+                    });
+                    if (!isExpanded) {
+                        previewContainer.addClass('ert-completion-preview-collapsed');
+                        return;
+                    }
                     // House stage complete - the forest grows! Trees icon
                     previewContainer.addClass('ert-completion-preview-house-complete');
 
@@ -384,16 +481,22 @@ export function renderCompletionEstimatePreview(params: {
                 previewContainer.addClass(`ert-completion-preview-${estimate.staleness}`);
             }
 
-            // Encouragement quote when progress is slowing
-            if (estimate.staleness !== 'fresh') {
-                const quote = getRandomQuote(perseveranceQuotes);
-                const encouragementEl = previewContainer.createDiv({ cls: 'ert-completion-encouragement' });
-                renderQuoteBlock(
-                    encouragementEl,
-                    quote,
-                    'ert-completion-encouragement-text',
-                    'ert-completion-encouragement-author',
-                );
+            const summaryQuote = estimate.staleness !== 'fresh' ? getRandomQuote(perseveranceQuotes) : undefined;
+            renderSummaryRow(
+                summaryQuote
+                    ? {
+                        title: summaryQuote.text,
+                        subtitle: summaryQuote.author,
+                        quote: summaryQuote
+                    }
+                    : {
+                        title: `Completion Estimate • ${estimate.stage} Stage`,
+                        subtitle: `${estimate.total - estimate.remaining}/${estimate.total} scenes complete`
+                    }
+            );
+            if (!isExpanded) {
+                previewContainer.addClass('ert-completion-preview-collapsed');
+                return;
             }
 
             const heading = previewContainer.createDiv({ cls: 'ert-planetary-preview-heading' });

@@ -444,6 +444,7 @@ export interface RadialTimelineSettings {
     };
     showCompletionEstimate?: boolean;
     completionEstimateWindowDays?: number;
+    coreCompletionPreviewExpanded?: boolean;
     aiSettings?: AiSettingsV1;
     aiRegistryCacheJson?: string;
     aiProviderSnapshotCacheJson?: string;

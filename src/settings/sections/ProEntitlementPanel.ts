@@ -1,4 +1,4 @@
-import { Setting, setIcon } from 'obsidian';
+import { Notice, Setting, setIcon } from 'obsidian';
 import type { App } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { ERT_CLASSES } from '../../ui/classes';
@@ -10,6 +10,9 @@ interface ProEntitlementPanelParams {
     containerEl: HTMLElement;
     onEntitlementChanged?: () => void;
 }
+
+const TEMPORARY_BETA_KEY = '1234567890abcdef';
+const TEMPORARY_BETA_KEY_EXPIRY = 'December 31, 2026';
 
 export function renderProEntitlementPanel({
     app: _app,
@@ -37,7 +40,7 @@ export function renderProEntitlementPanel({
 
     const keySetting = new Setting(panel)
         .setName('Pro access key')
-        .setDesc('Enter your Pro access key to unlock Pro features. Temporary beta key: 1234567890abcdef (expires December 31, 2026).')
+        .setDesc(`Enter your Pro access key to unlock Pro features. Temporary beta key: ${TEMPORARY_BETA_KEY} (expires ${TEMPORARY_BETA_KEY_EXPIRY}).`)
         .addText(text => {
             text.setPlaceholder('XXXX-XXXX-XXXX-XXXX');
             text.setValue(plugin.settings.proLicenseKey || '');
@@ -66,6 +69,17 @@ export function renderProEntitlementPanel({
                 plugin.settings.proLicenseKey = value || undefined;
                 await plugin.saveSettings();
                 onEntitlementChanged?.();
+            });
+        })
+        .addButton(button => {
+            button.setButtonText('Copy beta key');
+            button.onClick(async () => {
+                try {
+                    await navigator.clipboard.writeText(TEMPORARY_BETA_KEY);
+                    new Notice('Temporary beta key copied to clipboard.');
+                } catch {
+                    new Notice(`Could not copy automatically. Use ${TEMPORARY_BETA_KEY}.`);
+                }
             });
         });
 
