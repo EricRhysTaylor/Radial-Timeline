@@ -135,11 +135,14 @@ export function buildPassIndicator(
             ? Math.max(2, Math.round(estimatedPassCount as number))
             : 2;
         const extraPassCount = normalizedEstimate - 1;
-        const visibleCount = Math.min(5, normalizedEstimate);
+        // Predicted packaging is not an exact observed pass count. Keep the
+        // glyph to a single marker so it reads as "multi-pass expected"
+        // instead of implying a confirmed number of passes.
+        const visibleCount = 1;
         return {
             visible: true,
-            marks: '+'.repeat(Math.max(1, visibleCount)),
-            visibleCount: Math.max(1, visibleCount),
+            marks: '+',
+            visibleCount,
             totalPassCount: normalizedEstimate,
             extraPassCount,
             exactCount: null,

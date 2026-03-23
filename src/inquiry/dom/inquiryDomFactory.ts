@@ -310,7 +310,7 @@ export function createInquiryBriefingPanel(contentEl: HTMLElement): InquiryBrief
     });
     const briefingResetButton = briefingFooterEl.createEl('button', {
         cls: 'ert-inquiry-briefing-reset',
-        text: 'Reset Overrides to Settings'
+        text: 'Reset corpus to default'
     });
     addTooltipData(
         briefingResetButton,

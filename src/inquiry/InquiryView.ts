@@ -1527,13 +1527,15 @@ export class InquiryView extends ItemView {
         const lockout = this.isInquiryGuidanceLockout();
         const running = this.state.isRunning;
         const canSave = this.canManuallySaveActiveBrief();
+        const canClear = this.sessionStore.getSessionCount() > 0;
         const canPurge = this.briefingPurgeAvailable;
 
         if (this.briefingSaveButton) {
             this.briefingSaveButton.disabled = blocked || lockout || running || !canSave;
         }
         if (this.briefingClearButton) {
-            this.briefingClearButton.disabled = lockout || running;
+            this.briefingClearButton.disabled = lockout || running || !canClear;
+            this.briefingClearButton.classList.toggle('is-inert', !canClear);
         }
         if (this.briefingResetButton) {
             this.briefingResetButton.disabled = lockout || running || !this.hasCorpusOverrides();
@@ -1624,21 +1626,8 @@ export class InquiryView extends ItemView {
             return;
         }
         this.sessionStore.clearSessions();
-        this.rehydrateTargetKey = undefined;
-        if (this.rehydrateHighlightTimer) {
-            window.clearTimeout(this.rehydrateHighlightTimer);
-            this.rehydrateHighlightTimer = undefined;
-        }
-        if (this.rehydratePulseTimer) {
-            window.clearTimeout(this.rehydratePulseTimer);
-            this.rehydratePulseTimer = undefined;
-        }
-        this.artifactButton?.classList.remove('is-rehydrate-pulse');
-        this.clearActiveResultState();
-        this.clearResultPreview();
-        this.unlockPromptPreview();
-        this.setApiStatus('idle');
-        this.refreshUI({ skipCorpus: true });
+        this.resetInquiryToFreshBaseState({ clearPersistedTargets: true });
+        this.refreshUI({ reason: 'recent sessions cleared' });
     }
 
     private handleBriefingResetCorpusClick(): void {
@@ -6427,8 +6416,7 @@ export class InquiryView extends ItemView {
         this.state.cacheStatus = undefined;
     }
 
-    private dismissResults(): void {
-        if (!this.isResultsState()) return;
+    private clearRehydrateState(): void {
         this.rehydrateTargetKey = undefined;
         if (this.rehydrateHighlightTimer) {
             window.clearTimeout(this.rehydrateHighlightTimer);
@@ -6439,6 +6427,50 @@ export class InquiryView extends ItemView {
             this.rehydratePulseTimer = undefined;
         }
         this.artifactButton?.classList.remove('is-rehydrate-pulse');
+    }
+
+    private clearPersistedTargetCache(): void {
+        this.lastTargetSceneIdsByBookId = new Map();
+        if (this.targetPersistTimer) {
+            window.clearTimeout(this.targetPersistTimer);
+            this.targetPersistTimer = undefined;
+        }
+        this.plugin.settings.inquiryTargetCache = {
+            lastBookId: undefined,
+            lastTargetSceneIdsByBookId: {}
+        };
+        void this.plugin.saveSettings();
+    }
+
+    private resetInquiryToFreshBaseState(options?: { clearPersistedTargets?: boolean }): void {
+        const defaults = createDefaultInquiryState();
+        const lastMode = this.plugin.settings.inquiryLastMode;
+        this.state.scope = defaults.scope;
+        this.state.targetSceneIds = [];
+        this.state.activeBookId = undefined;
+        this.state.mode = lastMode === 'flow' || lastMode === 'depth' ? lastMode : defaults.mode;
+        this.state.selectedPromptIds = this.buildDefaultSelectedPromptIds();
+        this.state.activeQuestionId = undefined;
+        this.state.activeZone = defaults.activeZone;
+        this.state.isRunning = false;
+        this.state.lastError = undefined;
+        this.state.reportPreviewOpen = defaults.reportPreviewOpen;
+        this.state.promptFormOverrides = {};
+        this.clearRehydrateState();
+        this.clearActiveResultState();
+        this.clearResultPreview();
+        this.unlockPromptPreview();
+        this.setApiStatus('idle');
+        this.startupFreshMode = true;
+        this.freshModeTouchedBookIds.clear();
+        if (options?.clearPersistedTargets) {
+            this.clearPersistedTargetCache();
+        }
+    }
+
+    private dismissResults(): void {
+        if (!this.isResultsState()) return;
+        this.clearRehydrateState();
         this.clearActiveResultState();
         this.clearResultPreview();
         this.unlockPromptPreview();

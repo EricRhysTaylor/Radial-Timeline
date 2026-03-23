@@ -18,8 +18,8 @@ import { renderPovSection } from './sections/PovSection';
 import { renderPlanetaryTimeSection } from './sections/PlanetaryTimeSection';
 
 import { renderRuntimeSection } from './sections/RuntimeSection';
-import { renderProfessionalSection } from './sections/ProfessionalSection';
-import { isProActive } from './proEntitlement';
+import { renderProEntitlementPanel } from './sections/ProEntitlementPanel';
+import { renderProFeaturePanels } from './sections/ProFeaturePanels';
 import { FolderSuggest } from './FolderSuggest';
 import { ERT_CLASSES, ERT_DATA } from '../ui/classes';
 import {
@@ -719,10 +719,10 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             badgeVariant: ERT_CLASSES.BADGE_PILL_PRO,
             wikiHref: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#professional',
             title: 'Prepare your manuscript for export and publication.',
-            subtitle: 'This tab is reserved for publishing settings in a later phase.',
-            kicker: 'Planned Focus:',
+            subtitle: 'Configure export, layout, and publication tools without mixing them into your core writing setup.',
+            kicker: 'Publishing Focus:',
             features: [
-                { icon: 'file-output', text: 'Manuscript export and publication workflows will be organized here.' }
+                { icon: 'file-output', text: 'Manuscript export, PDF layouts, and publishing setup live here.' }
             ]
         });
     }
@@ -756,7 +756,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             features: [
                 { icon: 'layout-grid', text: 'Story structure — manage scenes, beats, templates, and advanced fields.' },
                 { icon: 'orbit', text: 'Chronologue & time — align chronologue, backdrop, and planetary clocks' },
-                { icon: 'book-open-text', text: 'Publishing setup — set stage due dates, configure manuscript formats, and work with PANDOC.' },
+                { icon: 'timer', text: 'Runtime estimation — calibrate pacing profiles and estimate reading or listening time.' },
             ]
         });
     }
@@ -833,31 +833,29 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         this.plugin.registerDomEvent(advancedTab, 'click', () => { this._activeTab = 'advanced'; updateTabState(); });
         updateTabState();
 
-        const proActive = isProActive(this.plugin);
-        // Re-render only the Pro tab when entitlement changes (avoids full settings flicker).
-        const refreshProSectionOnly = () => {
-            advancedContent.empty();
-            const isPro = isProActive(this.plugin);
-            const stack = renderProfessionalSection({
-                app: this.app,
-                plugin: this.plugin,
-                containerEl: advancedContent,
-                renderHero: isPro ? (target) => this.renderProHero(target) : undefined,
-                onProToggle: refreshProSectionOnly
-            });
-            renderRuntimeSection({ app: this.app, plugin: this.plugin, containerEl: stack });
-        };
-        const proStack = renderProfessionalSection({
-            app: this.app,
-            plugin: this.plugin,
-            containerEl: advancedContent,
-            renderHero: proActive ? (target) => this.renderProHero(target) : undefined,
-            onProToggle: refreshProSectionOnly
-        });
-        renderRuntimeSection({ app: this.app, plugin: this.plugin, containerEl: proStack });
-
         const publishingStack = publishingContent.createDiv({ cls: ERT_CLASSES.STACK });
         this.renderPublishingHero(publishingStack);
+        const refreshProDependentSections = () => this.display();
+        renderProEntitlementPanel({
+            app: this.app,
+            plugin: this.plugin,
+            containerEl: publishingStack,
+            onEntitlementChanged: refreshProDependentSections
+        });
+        const publishingPanels = publishingStack.createDiv({ cls: ERT_CLASSES.STACK });
+        renderProFeaturePanels({
+            app: this.app,
+            plugin: this.plugin,
+            containerEl: publishingPanels
+        });
+
+        const advancedStack = advancedContent.createDiv({ cls: ERT_CLASSES.STACK });
+        renderProEntitlementPanel({
+            app: this.app,
+            plugin: this.plugin,
+            containerEl: advancedStack,
+            onEntitlementChanged: refreshProDependentSections
+        });
 
         // Social Tab Content - Social Section
         renderAuthorProgressSection({ app: this.app, plugin: this.plugin, containerEl: socialContent });
@@ -890,8 +888,6 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const coreBody = coreStack.createDiv();
         const searchableContent = coreBody.createDiv({ cls: 'ert-settings-searchable-content' });
         this._coreSearchableContent = searchableContent;
-        const switchToAdvancedTab = () => { this._activeTab = 'advanced'; updateTabState(); };
-
         // Setup Section - Source path settings
         const generalSection = searchableContent.createDiv({
             attr: { [ERT_DATA.SECTION]: 'general' }
@@ -931,7 +927,9 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             containerEl: publicationStack,
             onCompletionPreviewRefresh: completionPreviewRefresh
         });
-        this.renderProCallout(publicationSection, 'Runtime estimation for screenplay & audiobook', switchToAdvancedTab);
+
+        const runtimeSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'runtime' } });
+        renderRuntimeSection({ app: this.app, plugin: this.plugin, containerEl: runtimeSection });
 
         const chronologueSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'chronologue' } });
         renderChronologueSection({ app: this.app, plugin: this.plugin, containerEl: chronologueSection });

@@ -758,7 +758,10 @@ export class InquiryMinimapRenderer {
             ? getExecutionColorValue(styleSource, '--rt-ai-warning', '#ff9900')
             : getExecutionColorValue(styleSource, '--rt-ai-error', '#f44c4c');
         const neutralColor = getExecutionColorValue(styleSource, '--rt-ai-neutral', '#ffffff');
-        this.minimapTokenCapBar.style.fill = isOverCapacity ? overCapacityColor : neutralColor;
+        const tokenCapColor = isOverCapacity ? overCapacityColor : neutralColor;
+        this.minimapTokenCapBar.style.fill = tokenCapColor;
+        this.minimapTokenCapStartCap?.style.setProperty('fill', tokenCapColor);
+        this.minimapTokenCapEndCap?.style.setProperty('fill', tokenCapColor);
 
         const endcapStateClass = overCapacityTone === 'amber' ? 'is-warning-capacity' : 'is-over-capacity';
         const inverseStateClass = overCapacityTone === 'amber' ? 'is-over-capacity' : 'is-warning-capacity';

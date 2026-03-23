@@ -9,6 +9,8 @@ export interface LocalLlmTransportRequest {
 export interface LocalLlmModelEntry {
     id: string;
     object?: string;
+    contextWindow?: number;
+    maxOutput?: number;
 }
 
 export interface LocalLlmCompletionResponse {
@@ -37,6 +39,8 @@ type OpenAiCompatibleChoice = {
     };
 };
 
+type JsonRecord = Record<string, unknown>;
+
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
     return new Promise((resolve, reject) => {
         const timer = globalThis.setTimeout(() => reject(new Error(message)), timeoutMs);
@@ -57,6 +61,138 @@ function normalizeBaseUrl(baseUrl: string, path: string): string {
     const trimmed = baseUrl.trim().replace(/\/+$/, '');
     if (trimmed.endsWith(path)) return trimmed;
     return `${trimmed}${path}`;
+}
+
+function normalizeOllamaApiUrl(baseUrl: string, path: string): string {
+    const trimmed = baseUrl.trim().replace(/\/+$/, '');
+    const withoutV1 = trimmed.endsWith('/v1') ? trimmed.slice(0, -3) : trimmed;
+    return `${withoutV1}${path}`;
+}
+
+function asRecord(value: unknown): JsonRecord | null {
+    return value && typeof value === 'object' && !Array.isArray(value)
+        ? value as JsonRecord
+        : null;
+}
+
+function readFiniteNumber(value: unknown): number | null {
+    if (typeof value === 'number' && Number.isFinite(value) && value > 0) return value;
+    if (typeof value === 'string') {
+        const parsed = Number(value.trim());
+        if (Number.isFinite(parsed) && parsed > 0) return parsed;
+    }
+    return null;
+}
+
+function getValueAtPath(record: JsonRecord, path: string[]): unknown {
+    let current: unknown = record;
+    for (const segment of path) {
+        const next = asRecord(current);
+        if (!next) return undefined;
+        current = next[segment];
+    }
+    return current;
+}
+
+function findNumericValueByKey(
+    value: unknown,
+    matcher: (key: string) => boolean,
+    maxDepth = 4
+): number | null {
+    if (maxDepth < 0) return null;
+    const record = asRecord(value);
+    if (!record) return null;
+    for (const [key, child] of Object.entries(record)) {
+        if (matcher(key)) {
+            const direct = readFiniteNumber(child);
+            if (direct !== null) return direct;
+        }
+        const nested = findNumericValueByKey(child, matcher, maxDepth - 1);
+        if (nested !== null) return nested;
+    }
+    return null;
+}
+
+function extractContextWindow(record: JsonRecord): number | null {
+    const directPaths = [
+        ['contextWindow'],
+        ['context_window'],
+        ['context_length'],
+        ['max_context_length'],
+        ['maxContextLength'],
+        ['num_ctx'],
+        ['n_ctx'],
+        ['metadata', 'contextWindow'],
+        ['metadata', 'context_window'],
+        ['metadata', 'context_length'],
+        ['metadata', 'max_context_length'],
+        ['limits', 'contextWindow'],
+        ['limits', 'context_window'],
+        ['limits', 'context_length']
+    ];
+    for (const path of directPaths) {
+        const value = readFiniteNumber(getValueAtPath(record, path));
+        if (value !== null) return value;
+    }
+    return findNumericValueByKey(record, key => (
+        key === 'contextWindow'
+        || key === 'context_window'
+        || key === 'context_length'
+        || key === 'max_context_length'
+        || key === 'maxContextLength'
+        || key === 'num_ctx'
+        || key === 'n_ctx'
+        || key.endsWith('.context_length')
+        || key.endsWith('.context_window')
+    ));
+}
+
+function extractMaxOutput(record: JsonRecord): number | null {
+    const directPaths = [
+        ['maxOutput'],
+        ['max_output'],
+        ['max_completion_tokens'],
+        ['maxCompletionTokens'],
+        ['max_tokens'],
+        ['maxTokens'],
+        ['num_predict'],
+        ['metadata', 'maxOutput'],
+        ['metadata', 'max_output'],
+        ['metadata', 'max_completion_tokens'],
+        ['limits', 'maxOutput'],
+        ['limits', 'max_output'],
+        ['limits', 'max_tokens']
+    ];
+    for (const path of directPaths) {
+        const value = readFiniteNumber(getValueAtPath(record, path));
+        if (value !== null) return value;
+    }
+    return findNumericValueByKey(record, key => (
+        key === 'maxOutput'
+        || key === 'max_output'
+        || key === 'max_completion_tokens'
+        || key === 'maxCompletionTokens'
+        || key === 'max_tokens'
+        || key === 'maxTokens'
+        || key === 'num_predict'
+        || key.endsWith('.max_output')
+        || key.endsWith('.max_tokens')
+    ));
+}
+
+function normalizeLocalLlmModelEntry(value: unknown): LocalLlmModelEntry | null {
+    const record = asRecord(value);
+    if (!record) return null;
+    const id = typeof record.id === 'string' && record.id.trim()
+        ? record.id.trim()
+        : null;
+    if (!id) return null;
+    return {
+        id,
+        object: typeof record.object === 'string' ? record.object : undefined,
+        contextWindow: extractContextWindow(record) ?? undefined,
+        maxOutput: extractMaxOutput(record) ?? undefined
+    };
 }
 
 function extractString(value: unknown): string | null {
@@ -104,14 +240,38 @@ export async function fetchOpenAiCompatibleLocalModels(
         headers: buildHeaders(request.apiKey),
         throw: false
     }), request.timeoutMs, 'Local LLM model list request timed out.');
-    const responseData = response.json as { data?: LocalLlmModelEntry[]; error?: { message?: string } };
+    const responseData = response.json as { data?: unknown[]; error?: { message?: string } };
     if (response.status >= 400) {
         throw new Error(responseData?.error?.message || `HTTP ${response.status}`);
     }
     if (!Array.isArray(responseData?.data)) {
         throw new Error('Local LLM backend returned an unexpected model list response.');
     }
-    return responseData.data;
+    return responseData.data
+        .map(entry => normalizeLocalLlmModelEntry(entry))
+        .filter((entry): entry is LocalLlmModelEntry => !!entry);
+}
+
+export async function fetchOllamaModelDetails(
+    request: LocalLlmTransportRequest,
+    modelId: string
+): Promise<Partial<LocalLlmModelEntry>> {
+    const response = await withTimeout(requestUrl({
+        url: normalizeOllamaApiUrl(request.baseUrl, '/api/show'),
+        method: 'POST',
+        headers: buildHeaders(request.apiKey),
+        body: JSON.stringify({ name: modelId }),
+        throw: false
+    }), request.timeoutMs, 'Ollama model details request timed out.');
+    const responseData = response.json as JsonRecord & { error?: { message?: string } };
+    if (response.status >= 400) {
+        throw new Error(asRecord(responseData?.error)?.message as string || `HTTP ${response.status}`);
+    }
+    const modelInfo = asRecord(responseData.model_info) ?? responseData;
+    return {
+        contextWindow: extractContextWindow(modelInfo) ?? undefined,
+        maxOutput: extractMaxOutput(modelInfo) ?? undefined
+    };
 }
 
 export async function callOpenAiCompatibleLocalCompletion(input: {

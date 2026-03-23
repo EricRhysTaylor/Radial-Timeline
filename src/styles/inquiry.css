@@ -3009,6 +3009,10 @@ body.rt-modal-open .ert-inquiry-svg * {
   transform: translateY(-1px);
 }
 
+.ert-inquiry-briefing-clear.is-inert {
+  border-color: transparent;
+}
+
 .ert-inquiry-briefing-clear:disabled {
   opacity: 0.5;
   cursor: not-allowed;

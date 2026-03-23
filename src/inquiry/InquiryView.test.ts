@@ -124,4 +124,25 @@ describe('InquiryView payload accounting', () => {
         expect(viewSource.includes('...this.getVisibleTargetSceneIdsForBook(bookId),')).toBe(true);
     });
 
+    it('uses a single plus for predicted multi-pass and shares token-cap fill with endcaps', () => {
+        const readinessSource = readFileSync(resolve(process.cwd(), 'src/inquiry/services/readiness.ts'), 'utf8');
+        const minimapSource = readFileSync(resolve(process.cwd(), 'src/inquiry/minimap/InquiryMinimapRenderer.ts'), 'utf8');
+        expect(readinessSource.includes("marks: '+'")).toBe(true);
+        expect(readinessSource.includes('const visibleCount = 1;')).toBe(true);
+        expect(minimapSource.includes("this.minimapTokenCapStartCap?.style.setProperty('fill', tokenCapColor);")).toBe(true);
+        expect(minimapSource.includes("this.minimapTokenCapEndCap?.style.setProperty('fill', tokenCapColor);")).toBe(true);
+    });
+
+    it('turns clear recent sessions into a full Inquiry reset and mutes the button once empty', () => {
+        const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
+        const cssSource = readFileSync(resolve(process.cwd(), 'src/styles/inquiry.css'), 'utf8');
+        expect(viewSource.includes('const canClear = this.sessionStore.getSessionCount() > 0;')).toBe(true);
+        expect(viewSource.includes("this.briefingClearButton.classList.toggle('is-inert', !canClear);")).toBe(true);
+        expect(viewSource.includes('this.resetInquiryToFreshBaseState({ clearPersistedTargets: true });')).toBe(true);
+        expect(viewSource.includes("this.refreshUI({ reason: 'recent sessions cleared' });")).toBe(true);
+        expect(viewSource.includes('this.plugin.settings.inquiryTargetCache = {\n            lastBookId: undefined,\n            lastTargetSceneIdsByBookId: {}\n        };')).toBe(true);
+        expect(viewSource.includes('this.startupFreshMode = true;')).toBe(true);
+        expect(cssSource.includes('.ert-inquiry-briefing-clear.is-inert')).toBe(true);
+    });
+
 });

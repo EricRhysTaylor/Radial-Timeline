@@ -37,7 +37,7 @@ export function renderProEntitlementPanel({
 
     const keySetting = new Setting(panel)
         .setName('Pro access key')
-        .setDesc('Enter your Pro access key to unlock Pro features.')
+        .setDesc('Enter your Pro access key to unlock Pro features. Temporary beta key: 1234567890abcdef (expires December 31, 2026).')
         .addText(text => {
             text.setPlaceholder('XXXX-XXXX-XXXX-XXXX');
             text.setValue(plugin.settings.proLicenseKey || '');

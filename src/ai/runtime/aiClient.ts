@@ -13,7 +13,7 @@ import { selectModel } from '../router/selectModel';
 import { resolveActiveRoleTemplate } from '../roleTemplate';
 import { buildDefaultAiSettings } from '../settings/aiSettings';
 import { validateAiSettings } from '../settings/validateAiSettings';
-import { resolveLocalLlmSelection } from '../localLlm/settings';
+import { getLocalLlmClient } from '../localLlm/client';
 import type {
     AIProvider,
     AIProviderId,
@@ -326,7 +326,7 @@ export class AIClient {
                 sum + estimateTokens(doc.title || '') + estimateTokens(doc.content || '')
             ), 0));
         const initialSelection = provider === 'ollama'
-            ? resolveLocalLlmSelection(aiSettings)
+            ? await getLocalLlmClient(this.plugin).resolveSelectionFromLiveData()
             : selectModel(this.registry.getAll(), {
                 provider,
                 policy,
