@@ -83,7 +83,7 @@ describe('assembleManuscript scene heading formatting', () => {
         expect(assembled.text).not.toContain('## 3 Arrival');
     });
 
-    it('injects Modern Classic part/chapter/scene markers and suppresses scene headings', async () => {
+    it('injects shared Chapter field headings before scene content and suppresses scene headings in Modern Classic mode', async () => {
         const scene1 = makeFile('Scenes/1 Opening.md', '1 Opening');
         const scene2 = makeFile('Scenes/2 Midpoint.md', '2 Midpoint');
         const scene3 = makeFile('Scenes/3 Turn.md', '3 Turn');
@@ -105,14 +105,30 @@ describe('assembleManuscript scene heading formatting', () => {
             {
                 sceneHeadingMode: 'scene-number-title',
                 sceneHeadingRenderMode: 'markdown-h2',
+                chapterMarkersByScenePath: {
+                    [scene1.path]: [{
+                        sourcePath: 'Beats/1 Opening Image.md',
+                        sourceType: 'Beat',
+                        title: 'Boy with a Skull',
+                        resolvedScenePath: scene1.path,
+                        resolvedTimelinePosition: 1,
+                    }],
+                    [scene3.path]: [{
+                        sourcePath: 'Backdrop/2 Turn.md',
+                        sourceType: 'Backdrop',
+                        title: 'Everything of Possibility.',
+                        resolvedScenePath: scene3.path,
+                        resolvedTimelinePosition: 3,
+                    }]
+                },
                 modernClassicStructure: {
                     enabled: true,
                     actEpigraphs: ['The beginning of all things.', 'A turn into possibility.'],
                     actEpigraphAttributions: ['Anonymous', 'The Narrator'],
                     beatDefinitions: [
-                        { name: 'Opening Image', actIndex: 1, chapterBreak: true, chapterTitle: 'Boy {with a} \\Skull' },
-                        { name: 'Midpoint', actIndex: 1, chapterBreak: false },
-                        { name: 'Break into 3', actIndex: 2, chapterBreak: true, chapterTitle: 'Everything of Possibility.' }
+                        { name: 'Opening Image', actIndex: 1 },
+                        { name: 'Midpoint', actIndex: 1 },
+                        { name: 'Break into 3', actIndex: 2 }
                     ]
                 }
             }

@@ -17,6 +17,12 @@ describe('yamlTemplateNormalize', () => {
         expect(keys).toContain('Summary Update');
     });
 
+    it('treats Chapter as a base field for Scene, Beat, and Backdrop templates', () => {
+        expect(getBaseKeys('Scene', DEFAULT_SETTINGS)).toContain('Chapter');
+        expect(getBaseKeys('Beat', DEFAULT_SETTINGS)).toContain('Chapter');
+        expect(getBaseKeys('Backdrop', DEFAULT_SETTINGS)).toContain('Chapter');
+    });
+
     it('does not exclude deprecated Pulse Last Updated fields from Scene extra-key audits', () => {
         const isExcluded = getExcludeKeyPredicate('Scene');
         expect(isExcluded('Pulse Last Updated')).toBe(false);

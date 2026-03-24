@@ -247,12 +247,12 @@ describe('AI settings models table', () => {
         expect(source.includes('Load Servers')).toBe(true);
         expect(source.includes('Load Models')).toBe(true);
         expect(source.includes('Validate Local LLM')).toBe(true);
-        expect(source.includes('Troubleshooting')).toBe(true);
-        expect(source.includes('Retry checks')).toBe(true);
+        expect(source.includes('Troubleshooting')).toBe(false);
+        expect(source.includes('Local setup actions')).toBe(true);
         expect(source.includes('detectLocalLlmServers')).toBe(true);
         expect(source.includes("const localLlmServerSetting = new Settings(localLlmStatusSection)")).toBe(true);
         expect(source.includes("setName('Local server')")).toBe(true);
-        expect(source.includes('shouldRevealLocalLlmTroubleshootingActions')).toBe(true);
+        expect(source.includes('shouldRevealLocalLlmActionRow')).toBe(true);
         expect(source.includes("model${localLlmLoadedModels.length === 1 ? '' : 's'} loaded.")).toBe(true);
         expect(source.includes("localLlmModelsLegend.createSpan({ cls: 'ert-ai-local-llm-legend-chip ert-ai-local-llm-legend-chip--tier0', text: 'Not usable' });")).toBe(true);
         expect(source.includes("localLlmModelsLegend.createSpan({ cls: 'ert-ai-local-llm-legend-chip ert-ai-local-llm-legend-chip--tier1', text: 'Limited' });")).toBe(true);
@@ -270,19 +270,26 @@ describe('AI settings models table', () => {
         expect(source.includes('ert-ai-local-model-pill--tier')).toBe(true);
         expect(source.includes("pill.createSpan({ cls: 'ert-ai-local-model-pill-active', text: 'Active' });")).toBe(true);
         expect(source.includes('if (localLlmModelText) localLlmModelText.setValue(value);')).toBe(true);
-        expect(source.includes('Checking backend and loading available local models...')).toBe(true);
+        expect(source.includes('Checking the local server and loading available models...')).toBe(true);
         expect(source.includes('Selected model missing from the loaded list.')).toBe(true);
         expect(source.includes('No healthy local servers were detected automatically.')).toBe(true);
+        expect(source.includes('No Local Server Detected')).toBe(true);
+        expect(source.includes('Checking Local Server...')).toBe(true);
+        expect(source.includes('No local server detected')).toBe(true);
+        expect(source.includes('No local models are loaded yet. This list will appear when a healthy local server responds.')).toBe(true);
         expect(source.includes("['Connection', localLlmValidationReport?.reachable ?? null]")).toBe(true);
         expect(source.includes("['Model availability', localLlmValidationReport?.modelAvailable ?? null]")).toBe(true);
         expect(source.includes("['Basic validation', localLlmValidationReport?.basicCompletion ?? null]")).toBe(true);
         expect(source.includes("['Structured validation', localLlmValidationReport?.structuredJson ?? null]")).toBe(true);
         expect(source.includes("['Repair validation', localLlmValidationReport?.repairPath ?? null]")).toBe(true);
         expect(source.includes("const localLlmStatusGrid = localLlmStatusSection.createDiv({ cls: 'ert-ai-local-llm-status-grid' });")).toBe(true);
+        expect(source.includes('const buildLocalStatusValue = (): string => {')).toBe(true);
+        expect(source.includes('const buildLocalCheckValue = (')).toBe(true);
+        expect(source.includes('const formatLocalLlmUiError = (message: string | null | undefined): string => {')).toBe(true);
         expect(source.includes("const appendStatusItem = (container: HTMLElement, label: string, value: string): void => {")).toBe(true);
         expect(source.includes("['Last checked', localLlmValidationPending ? 'Validating...' : (formatLocalTimestamp(localLlmLastValidatedAt) || 'Not yet validated')]")).toBe(true);
-        expect(source.includes("? 'Connected & validated'")).toBe(true);
-        expect(source.includes("'Checking...'")).toBe(true);
+        expect(source.includes("'Connected & validated'")).toBe(true);
+        expect(source.includes("'Waiting for a local server.'")).toBe(true);
     });
 
     it('auto-runs guarded Local LLM checks when Local LLM is selected or reconfigured', () => {

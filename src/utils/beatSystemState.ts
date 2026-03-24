@@ -13,8 +13,6 @@ function normalizeBeatDefinition(beat: BeatDefinition): BeatDefinition {
         purpose: typeof beat.purpose === 'string' ? beat.purpose.trim() || undefined : undefined,
         range: typeof beat.range === 'string' ? beat.range.trim() || undefined : undefined,
         id: typeof beat.id === 'string' && beat.id.trim().length > 0 ? beat.id.trim() : undefined,
-        chapterBreak: beat.chapterBreak === true,
-        chapterTitle: typeof beat.chapterTitle === 'string' ? beat.chapterTitle.trim() || undefined : undefined,
     };
 }
 

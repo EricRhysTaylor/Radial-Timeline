@@ -87,6 +87,7 @@ export interface TimelineItem {
     Description?: string;
     /** Backdrop world-layer context. Preferred key: Context. */
     Context?: string;
+    Chapter?: string;
     "Beat Model"?: string;
     /** Beat note is missing required Beat Model frontmatter value. */
     missingBeatModel?: boolean;

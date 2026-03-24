@@ -84,7 +84,7 @@ Ends here ^scene-end`;
         expect(sanitized).not.toContain('^scene-end');
     });
 
-    it('preserves Pandoc raw LaTeX blocks used by Modern Classic structure markers', () => {
+    it('preserves Pandoc raw LaTeX blocks used by Modern Classic part and scene markers', () => {
         const input = `Visible prose.
 \`\`\`{=latex}
 \\rtPart{I}
@@ -92,10 +92,6 @@ Ends here ^scene-end`;
 
 \`\`\`{=latex}
 \\rtEpigraph{A quote}{Author}
-\`\`\`
-
-\`\`\`{=latex}
-\\rtChapter{1}{Chapter Title}
 \`\`\`
 
 \`\`\`{=latex}
@@ -111,7 +107,6 @@ Ends here ^scene-end`;
 
         expect(sanitized).toContain('\\rtPart{I}');
         expect(sanitized).toContain('\\rtEpigraph{A quote}{Author}');
-        expect(sanitized).toContain('\\rtChapter{1}{Chapter Title}');
         expect(sanitized).toContain('\\rtSceneSep');
     });
 });

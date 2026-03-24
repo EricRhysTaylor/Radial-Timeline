@@ -34,6 +34,32 @@ function normalizeParsedTemplateScalar(value: unknown): string {
     return String(value).replace(/^['"]({{[^{}\n]+}})['"]$/, '$1');
 }
 
+function stripChapterFieldFromAdvanced(yaml: string): string {
+    const lines = (yaml || '').split('\n');
+    const result: string[] = [];
+    let skipUntilNextField = false;
+
+    for (const line of lines) {
+        const fieldMatch = line.match(/^([A-Za-z][A-Za-z0-9 _'-]*):/);
+        if (fieldMatch) {
+            const fieldName = fieldMatch[1].trim();
+            if (fieldName === 'Chapter') {
+                skipUntilNextField = true;
+                continue;
+            }
+            skipUntilNextField = false;
+            result.push(line);
+            continue;
+        }
+
+        if (!skipUntilNextField) {
+            result.push(line);
+        }
+    }
+
+    return result.join('\n').trim();
+}
+
 /**
  * Extract YAML keys from a template string in the order they appear.
  * Lines must start with `SomeKey:` (allows letters, digits, spaces, underscores,
@@ -127,8 +153,10 @@ export function getTemplateParts(
         case 'Scene': {
             const base = settings.sceneYamlTemplates?.base
                 ?? DEFAULT_SETTINGS.sceneYamlTemplates!.base;
-            const advanced = settings.sceneYamlTemplates?.advanced
-                ?? DEFAULT_SETTINGS.sceneYamlTemplates!.advanced;
+            const advanced = stripChapterFieldFromAdvanced(
+                settings.sceneYamlTemplates?.advanced
+                ?? DEFAULT_SETTINGS.sceneYamlTemplates!.advanced
+            );
             const merged = advanced.trim()
                 ? mergeTemplateParts(base, advanced)
                 : base;
@@ -143,7 +171,7 @@ export function getTemplateParts(
                 .replace(/\n{3,}/g, '\n\n')
                 .trim();
             const config = getBeatConfigForSystem(settings, beatSystemKey);
-            const advanced = sanitizeBeatAdvancedForWrite(config.beatYamlAdvanced);
+            const advanced = stripChapterFieldFromAdvanced(sanitizeBeatAdvancedForWrite(config.beatYamlAdvanced));
             const merged = advanced.trim()
                 ? mergeTemplateParts(base, advanced)
                 : base;
@@ -156,7 +184,7 @@ export function getTemplateParts(
                 ?? 'Class: Backdrop\nWhen:\nEnd:\nContext:';
             const advancedRaw = templates?.advanced ?? '';
             // Filter legacy Synopsis key from advanced writes.
-            const advanced = filterDeprecatedBackdropKeys(advancedRaw);
+            const advanced = stripChapterFieldFromAdvanced(filterDeprecatedBackdropKeys(advancedRaw));
             const merged = advanced.trim()
                 ? mergeTemplateParts(base, advanced)
                 : base;

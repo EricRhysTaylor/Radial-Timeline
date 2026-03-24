@@ -168,8 +168,6 @@ export interface BeatDefinition {
     purpose?: string;
     id?: string;
     range?: string;
-    chapterBreak?: boolean;
-    chapterTitle?: string;
 }
 
 export interface SavedBeatSystem {
@@ -497,7 +495,7 @@ export interface PandocLayoutTemplate {
     bundled?: boolean;         // true for RT-generated sample templates
     origin?: ProfileOrigin;    // provenance for newly imported templates
     draft?: boolean;           // staged import that should not be treated as activated yet
-    usesModernClassicStructure?: boolean; // emit rtPart/rtChapter/rtSceneSep markers in PDF compilation
+    usesModernClassicStructure?: boolean; // emit rtPart/rtSceneSep markers and chapter headings in PDF compilation
     hasEpigraphs?: boolean;
     hasSceneOpenerHeadingOptions?: boolean;
 }

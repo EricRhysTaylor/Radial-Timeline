@@ -8,6 +8,7 @@ import { getScenePrefixNumber } from './text';
 import { getActiveBookExportContext } from './exportContext';
 import { normalizeMatterBodyMode, parseMatterMetaFromFrontmatter, type MatterBodyMode } from './matterMeta';
 import { normalizeFrontmatterKeys } from './frontmatter';
+import { groupTimelineChapterMarkersByScenePath, resolveTimelineChapterMarkers, type TimelineChapterMarker } from './timelineChapters';
 
 export interface SceneContent {
   title: string;
@@ -37,6 +38,7 @@ export interface ManuscriptSceneSelection {
   runtimes: (number | null)[];
   wordCounts: (number | null)[];
   matterMetaByPath?: Map<string, MatterMeta>;
+  chapterMarkersByScenePath?: Record<string, TimelineChapterMarker[]>;
 }
 
 export type TocMode = 'markdown' | 'plain' | 'none';
@@ -47,8 +49,6 @@ export interface ModernClassicBeatDefinition {
   name: string;
   actIndex: number;
   id?: string;
-  chapterBreak?: boolean;
-  chapterTitle?: string;
 }
 
 export interface ModernClassicStructureOptions {
@@ -63,6 +63,7 @@ export interface AssembleManuscriptOptions {
   sceneHeadingRenderMode?: SceneHeadingRenderMode;
   modernClassicStructure?: ModernClassicStructureOptions;
   suppressMatterPageChrome?: boolean;
+  chapterMarkersByScenePath?: Record<string, TimelineChapterMarker[]>;
 }
 
 type EffectiveBodyMode = 'latex' | 'plain';
@@ -339,7 +340,7 @@ export async function getSceneFilesByOrder(
   const allScenes = await plugin.getSceneData({ sourcePath: exportContext.sourceFolder });
 
   const uniquePaths = new Set<string>();
-  const uniqueScenes = allScenes.filter((scene: TimelineItem) => {
+  const uniqueTimelineItems = allScenes.filter((scene: TimelineItem) => {
     // Filter by subplot if specified (matter notes bypass subplot filter)
     const isMatter = scene.itemType === 'Frontmatter' || scene.itemType === 'Backmatter';
     if (!isMatter && subplotFilter && subplotFilter !== 'All Subplots') {
@@ -348,6 +349,8 @@ export async function getSceneFilesByOrder(
     }
 
     const isAllowedType = scene.itemType === 'Scene'
+      || scene.itemType === 'Beat'
+      || scene.itemType === 'Backdrop'
       || (includeMatter && isMatter);
 
     if (isAllowedType && scene.path && !uniquePaths.has(scene.path)) {
@@ -362,7 +365,7 @@ export async function getSceneFilesByOrder(
   let sortOrder: string;
 
   if (order === 'chronological' || order === 'reverse-chronological') {
-    sortedScenes = sortScenesChronologically(uniqueScenes);
+    sortedScenes = sortScenesChronologically(uniqueTimelineItems);
     if (order === 'reverse-chronological') {
       sortedScenes = sortedScenes.slice().reverse();
       sortOrder = 'Reverse chronological (by When date/time)';
@@ -370,7 +373,7 @@ export async function getSceneFilesByOrder(
       sortOrder = 'Chronological (by When date/time)';
     }
   } else {
-    sortedScenes = sortScenes(uniqueScenes, false, false);
+    sortedScenes = sortScenes(uniqueTimelineItems, false, false);
     if (order === 'reverse-narrative') {
       sortedScenes = sortedScenes.slice().reverse();
       sortOrder = 'Reverse narrative (by scene title/number)';
@@ -415,7 +418,7 @@ export async function getSceneFilesByOrder(
   };
 
   const orderedItems = (() => {
-    if (!includeMatter) return sortedScenes;
+    if (!includeMatter) return sortedScenes.filter(s => s.itemType === 'Scene' || !s.itemType);
 
     const frontMatter = sortedScenes
       .filter(s => isMatterItem(s) && resolveMatterSideFromClass(s) === 'front')
@@ -428,10 +431,18 @@ export async function getSceneFilesByOrder(
       if (includeMatter && looksLikeMatterByPrefix((s.title || '').trim())) {
         warnMatterLikeWithoutClass(s);
       }
-      return true;
+      return s.itemType === 'Scene' || !s.itemType;
     });
     return [...frontMatter, ...sceneItems, ...backMatter];
   })();
+
+  const chapterMarkersByScenePath = groupTimelineChapterMarkersByScenePath(
+    resolveTimelineChapterMarkers(
+      sortedScenes.filter((item) =>
+        item.itemType === 'Scene' || !item.itemType || item.itemType === 'Beat' || item.itemType === 'Backdrop'
+      )
+    )
+  );
 
   const synopses: (string | null)[] = [];
   const runtimes: (number | null)[] = [];
@@ -502,7 +513,8 @@ export async function getSceneFilesByOrder(
     synopses,
     runtimes,
     wordCounts,
-    matterMetaByPath
+    matterMetaByPath,
+    chapterMarkersByScenePath
   };
 }
 
@@ -587,6 +599,13 @@ function toRomanNumeral(value: number): string {
 function sanitizeModernClassicMacroArg(value: string): string {
   return value
     .replace(/[\\{}]/g, '')
+    .replace(/\r?\n/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function normalizeChapterHeadingText(value: string): string {
+  return value
     .replace(/\r?\n/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
@@ -771,6 +790,7 @@ export async function assembleManuscript(
   const sceneHeadingMode = options?.sceneHeadingMode || 'scene-number-title';
   const sceneHeadingRenderMode = options?.sceneHeadingRenderMode || 'markdown-h2';
   const suppressMatterPageChrome = options?.suppressMatterPageChrome === true;
+  const chapterMarkersByScenePath = options?.chapterMarkersByScenePath ?? {};
   const matterDiagnostics: Array<{
     filePath: string;
     side: 'front' | 'back';
@@ -866,10 +886,10 @@ export async function assembleManuscript(
           const beatDef = resolveModernClassicBeatDefinition(modernClassicState, beatRef);
           let emittedStructureOpener = false;
 
-          // RT terminology → LaTeX structure mapping:
-          //   Acts (from settings Act count) → \rtPart{Roman} — dedicated Part page
-          //   Beats (with chapterBreak flag)  → \rtChapter{n}{Title} — chapter opener
-          //   Scenes (scene notes)            → \rtSceneSep — inline scene separator
+          // RT terminology → structure mapping:
+          //   Acts (from settings Act count)   → \rtPart{Roman} — dedicated Part page
+          //   Chapters (from Chapter fields)   → \rtChapter{n}{Title} — chapter opener
+          //   Scenes (scene notes)             → \rtSceneSep — inline scene separator
           const nextActIndex = beatDef?.actIndex;
           if (typeof nextActIndex === 'number' && nextActIndex > 0 && nextActIndex !== modernClassicState.currentActIndex) {
             // Act boundary → emit Part page (with optional epigraph)
@@ -886,12 +906,14 @@ export async function assembleManuscript(
             }
           }
 
-          const startsChapter = beatDef?.chapterBreak === true;
-          if (startsChapter) {
-            // Beat with chapterBreak → emit Chapter opener page
-            modernClassicState.chapterIndex += 1;
-            const chapterTitle = sanitizeModernClassicMacroArg(beatDef?.chapterTitle || '');
-            textParts.push(buildRawLatexBlock(`\\rtChapter{${modernClassicState.chapterIndex}}{${chapterTitle}}`));
+          const chapterMarkers = file.path ? (chapterMarkersByScenePath[file.path] || []) : [];
+          if (chapterMarkers.length > 0) {
+            for (const marker of chapterMarkers) {
+              const chapterTitle = sanitizeModernClassicMacroArg(marker.title);
+              if (!chapterTitle) continue;
+              modernClassicState.chapterIndex += 1;
+              textParts.push(buildRawLatexBlock(`\\rtChapter{${modernClassicState.chapterIndex}}{${chapterTitle}}`));
+            }
             emittedStructureOpener = true;
           } else if (modernClassicState.emittedSceneCount > 0 && !emittedStructureOpener) {
             // Scene boundary → emit inline scene separator
@@ -903,6 +925,13 @@ export async function assembleManuscript(
           textParts.push(`${bodyText}\n\n`);
           modernClassicState.emittedSceneCount += 1;
         } else {
+          const chapterMarkers = file.path ? (chapterMarkersByScenePath[file.path] || []) : [];
+          for (const marker of chapterMarkers) {
+            const chapterTitle = normalizeChapterHeadingText(marker.title);
+            if (!chapterTitle) continue;
+            textParts.push(`# ${chapterTitle}\n\n`);
+          }
+
           const heading = resolveSceneHeading(title, sceneHeadingMode, i + 1);
 
           scenes.push({ title: heading, bodyText, wordCount });

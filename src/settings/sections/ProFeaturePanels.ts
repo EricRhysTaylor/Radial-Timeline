@@ -15,7 +15,7 @@ import * as path from 'path'; // SAFE: Node path for absolute-path detection in 
 import { generateSceneContent } from '../../utils/sceneGenerator';
 import { DEFAULT_SETTINGS } from '../defaults';
 import { validatePandocLayout, slugifyToFileStem } from '../../utils/exportFormats';
-import type { BookLayoutOptions, BookMeta, BookProfile, ManuscriptSceneHeadingMode, PandocLayoutTemplate, PublishingValidationSnapshot, TemplateProfile, ValidationIssue } from '../../types';
+import type { BookLayoutOptions, BookMeta, BookProfile, ManuscriptSceneHeadingMode, PandocLayoutTemplate, PublishingValidationSnapshot, TemplateProfile, ValidationIssue, ValidationSummary } from '../../types';
 import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { ImportTemplateModal, type ImportedTemplateCommit } from '../../modals/ImportTemplateModal';
 import { getActiveBookExportContext } from '../../utils/exportContext';
@@ -952,6 +952,16 @@ interface PdfLayoutSummary {
     topMessage?: string;
 }
 
+interface PublishingProgressContext {
+    activeBookMetaStatus: ActiveBookMetaStatus;
+    validationSnapshot: PublishingValidationSnapshot;
+    bookMetaSummary: ValidationSummary;
+    matterSummary: ValidationSummary;
+    layoutSummary: PdfLayoutSummary;
+    matterCount: number;
+    pandocPathValid: boolean;
+}
+
 function getActiveBookMatterSummary(plugin: RadialTimelinePlugin): ActiveBookMatterSummary {
     const sourceFolder = getActiveBookExportContext(plugin).sourceFolder.trim();
     if (!sourceFolder) {
@@ -1015,7 +1025,7 @@ function getPdfLayoutSummary(plugin: RadialTimelinePlugin): PdfLayoutSummary {
             scope: 'profile',
             level: 'error',
             code: 'pdf_layout_missing',
-            message: 'No manuscript PDF layouts are configured.',
+            message: 'No PDF styles are configured.',
         });
     }
     const summary = plugin.getPublishingValidationService().summarize(relevantIssues);
@@ -1040,6 +1050,30 @@ function getPublishingValidationSnapshot(plugin: RadialTimelinePlugin): Publishi
         exportType: 'manuscript',
         outputFormat: 'pdf'
     });
+}
+
+function getPublishingProgressContext(plugin: RadialTimelinePlugin): PublishingProgressContext {
+    const activeBookMetaStatus = getActiveBookMetaStatus(plugin);
+    const validationSnapshot = getPublishingValidationSnapshot(plugin);
+    const activeBookMetaIssues = [...validationSnapshot.activeBookMetaIssues];
+    if (!activeBookMetaStatus.found || !activeBookMetaStatus.bookMeta) {
+        activeBookMetaIssues.push({
+            scope: 'book-meta',
+            level: 'error',
+            code: 'book_meta_missing',
+            message: 'Book Details not found for active book.'
+        });
+    }
+
+    return {
+        activeBookMetaStatus,
+        validationSnapshot,
+        bookMetaSummary: plugin.getPublishingValidationService().summarize(activeBookMetaIssues),
+        matterSummary: plugin.getPublishingValidationService().summarize(validationSnapshot.matterIssues),
+        layoutSummary: getPdfLayoutSummary(plugin),
+        matterCount: getActiveBookMatterSummary(plugin).totalCount,
+        pandocPathValid: isConfiguredPandocPathValid(plugin)
+    };
 }
 
 function getIssueLabelFromCodes(issues: ValidationIssue[], fallback = 'Ready'): string {
@@ -1897,8 +1931,8 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
     });
     layoutPanel.style.order = '20';
     const layoutHeading = addProRow(new Setting(layoutPanel))
-        .setName('Export layouts (PDF)')
-        .setDesc('Manage built-in and custom LaTeX layouts used for manuscript PDF rendering.')
+        .setName('PDF Style')
+        .setDesc('Choose the style used for exported PDFs. Built-in and custom styles are listed below.')
         .setHeading();
     addHeadingIcon(layoutHeading, 'book-open');
     applyErtHeaderLayout(layoutHeading);
@@ -1938,7 +1972,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                 return 'Centered running header with book title and bottom-centered page numbers. One-inch margins, 1.5 line spacing, serif body text, and minimal ornamentation.';
             }
             if (variant === 'modernClassic') {
-                return 'Acts can open with optional epigraphs and Roman numeral PART pages. Chapters use Arabic numerals with optional titles. Centered headers pair page number with author (even) or title with page number (odd). Scene breaks use lower-case Roman numerals with a short rule.';
+                return 'Acts can open with optional epigraphs and Roman numeral PART pages. Chapter headings come from the shared Chapter field on scene, beat, or backdrop notes. Centered headers pair page number with author (even) or title with page number (odd). Scene breaks use lower-case Roman numerals with a short rule.';
             }
             if (variant === 'signature') {
                 return 'Page numbers are header-only: the left-page header pairs page number with author, and the right-page header pairs title with page number. Scene opener pages use generous vertical spacing and suppress headers and folios. Refined serif body typography.';
@@ -1996,12 +2030,10 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
     };
 
     // ── Layout Visual: Feature Data ───────────────────────────────────────
-    // RT terminology → LaTeX template structure:
-    //   Parts  = Acts (determined by Act count in settings; emit \rtPart{I})
-    //   Chapters = Beats (beat definitions with chapterBreak; emit \rtChapter{1}{Title})
-    //   Scenes = Scene notes (the primary content unit; scene separators via \rtSceneSep)
-    // RT supports scenes as the base content unit. "Chapters" in templates are
-    // beat-driven openers, not standalone content divisions.
+    // RT terminology → export structure:
+    //   Parts    = Acts (determined by Act count in settings; emit \rtPart{I})
+    //   Chapters = Timeline notes with a Chapter field (rendered as chapter openers/headings)
+    //   Scenes   = Scene notes (the primary content unit; scene separators via \rtSceneSep)
     const getLayoutFeatures = (variant: FictionLayoutVariant): LayoutFeatureRow[] => {
         switch (variant) {
             case 'classic':
@@ -2019,7 +2051,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                     { label: 'Font', value: 'Latin Modern (serif)' },
                     { label: 'Spacing', value: '1.18×' },
                     { label: 'Parts', value: 'Act opener — Roman numeral with optional epigraph' },
-                    { label: 'Chapters', value: 'Beat opener — Arabic numeral + optional title' },
+                    { label: 'Chapters', value: 'Shared Chapter field on scene, beat, or backdrop notes' },
                     { label: 'Scenes', value: 'Lowercase Roman numeral (i. ii.) with short rule' },
                 ];
             case 'signature':
@@ -2040,7 +2072,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                     { label: 'Font', value: 'Sorts Mill Goudy body, sans headers' },
                     { label: 'Spacing', value: '1.5 lines' },
                     { label: 'Scenes', value: 'Opener page — centered, bold, suppresses headers' },
-                    { label: 'Chapters', value: 'Beat opener — same style as scene opener' },
+                    { label: 'Chapters', value: 'Shared Chapter field on scene, beat, or backdrop notes' },
                 ];
             default:
                 return [];
@@ -2051,8 +2083,8 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
     // Pictograms represent the physical PDF page layout for each template.
     // Scene separators appear inline within body text (not on dedicated pages).
     // "Special" spreads show dedicated opener pages:
-    //   PART   = Act opener page (RT Acts → LaTeX \rtPart)
-    //   CHAPTER = Beat-driven chapter opener (RT Beats → LaTeX \rtChapter)
+    //   PART    = Act opener page (RT Acts → LaTeX \rtPart)
+    //   CHAPTER = Chapter heading from the shared Chapter field
     //   SCENE # / #+TITLE / TITLE = Scene heading modes (Signature only)
     const BODY_LINES = 14;
 
@@ -2060,7 +2092,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
         /** Primary row: scene separator page (optional) + body spread — always right-aligned */
         scene: PictogramSpread | null;
         body: PictogramSpread;
-        /** Special row: Part (Act), Chapter (Beat), or Scene heading mode variants */
+        /** Special row: Part, Chapter, or Scene heading mode variants */
         special: PictogramSpread[];
     };
 
@@ -3134,12 +3166,18 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
         attr: { [ERT_DATA.SECTION]: 'export-check' }
     });
     const statusGrid = statusShell.createDiv({ cls: 'ert-publishing-status-grid' });
+    const getStatusTone = (statusLabel: string): 'success' | 'warning' | 'error' | 'neutral' => {
+        if (statusLabel === 'Ready') return 'success';
+        if (statusLabel === 'In progress') return 'neutral';
+        if (statusLabel === 'Attention needed') return 'error';
+        return 'warning';
+    };
     const buildStatusColumn = (
         iconName: string,
         title: string,
         value: string,
         desc: string,
-        tone: 'success' | 'warning' | 'error',
+        tone: 'success' | 'warning' | 'error' | 'neutral',
         onClick?: () => void
     ): void => {
         const col = statusGrid.createDiv({ cls: `ert-publishing-status-col is-${tone}` });
@@ -3163,85 +3201,57 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
     const renderPublishingStatusCard = () => {
         statusGrid.empty();
 
-        const activeBookMetaStatus = getActiveBookMetaStatus(plugin);
-        const layoutSummary = getPdfLayoutSummary(plugin);
-        const validationSnapshot = getPublishingValidationSnapshot(plugin);
-        const activeBookMetaIssues = [...validationSnapshot.activeBookMetaIssues];
-        if (!activeBookMetaStatus.found || !activeBookMetaStatus.bookMeta) {
-            activeBookMetaIssues.push({
-                scope: 'book-meta',
-                level: 'error',
-                code: 'book_meta_missing',
-                message: 'Book Details not found for active book.'
-            });
-        }
-        const bookMetaSummary = plugin.getPublishingValidationService().summarize(activeBookMetaIssues);
-        const matterSummary = plugin.getPublishingValidationService().summarize(validationSnapshot.matterIssues);
-        const pandocPathValid = isConfiguredPandocPathValid(plugin);
-        const exportReady = pandocPathValid && layoutSummary.validCount > 0 && layoutSummary.state !== 'blocked';
+        const progress = getPublishingProgressContext(plugin);
+        const stages = buildPublishingProgressStages({
+            hasBookMeta: !!progress.activeBookMetaStatus.bookMeta,
+            bookMetaSummary: progress.bookMetaSummary,
+            matterSummary: progress.matterSummary,
+            matterCount: progress.matterCount,
+            layoutSummary: progress.layoutSummary,
+            pandocPathValid: progress.pandocPathValid
+        });
 
-        buildStatusColumn(
-            'file-output',
-            'PDF Export',
-            exportReady ? 'Ready' : 'Blocked',
-            exportReady
-                ? 'Ready for manuscript PDF export.'
-                : !pandocPathValid
-                    ? 'Pandoc not configured. Update System configuration.'
-                    : layoutSummary.totalCount === 0
-                        ? 'No manuscript PDF layouts are configured.'
-                        : layoutSummary.topMessage || 'One or more PDF layouts need attention.',
-            exportReady ? 'success' : layoutSummary.state === 'warning' ? 'warning' : 'error',
-            () => {
-                if (exportReady) return;
-                if (!pandocPathValid) {
-                    systemConfigPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    return;
+        const stageMeta: Record<PublishingStageId, { icon: string; onClick: () => void }> = {
+            'book-details': {
+                icon: 'file-text',
+                onClick: () => {
+                    bookMetaPreviewPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }
-                layoutPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-        );
-
-        const layoutTone: 'success' | 'warning' | 'error' = layoutSummary.validCount === 0
-            ? 'error'
-            : layoutSummary.state === 'warning' || layoutSummary.validCount < layoutSummary.totalCount
-                ? 'warning'
-                : 'success';
-        buildStatusColumn(
-            'book-open',
-            'Layouts',
-            `${layoutSummary.validCount} valid (${layoutSummary.totalCount} total)`,
-            layoutSummary.totalCount === 0
-                ? 'No manuscript PDF layouts configured.'
-                : layoutSummary.topMessage || (layoutTone === 'warning'
-                    ? 'Some manuscript layouts need attention.'
-                    : 'Manuscript PDF layouts are ready.'),
-            layoutTone,
-            () => {
-                layoutPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-        );
-
-        const matterLabel = !activeBookMetaStatus.found
-            ? 'Needs metadata'
-            : getIssueLabelFromCodes(validationSnapshot.matterIssues, matterSummary.state === 'ready' ? 'Ready' : 'Uses page content');
-        const matterTone: 'success' | 'warning' | 'error' = matterLabel === 'Ready'
-            ? 'success'
-            : matterLabel === 'Needs metadata' ? 'error' : 'warning';
-        buildStatusColumn(
-            'library',
-            'Book Pages',
-            matterLabel,
-            bookMetaSummary.state === 'blocked'
-                ? bookMetaSummary.topMessage || 'Book Details is missing required fields.'
-                : matterSummary.topMessage || (activeBookMetaStatus.found ? 'Book Details found' : 'Book Details not found'),
-            matterTone,
-            () => {
-                if (matterTone !== 'success') {
-                    void runPublishingSetup();
+            },
+            'book-pages': {
+                icon: 'library',
+                onClick: () => {
+                    publishingSetupPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            },
+            'pdf-style': {
+                icon: 'layout-grid',
+                onClick: () => {
+                    layoutPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            },
+            'export-check': {
+                icon: 'check-circle-2',
+                onClick: () => {
+                    if (!progress.pandocPathValid) {
+                        systemConfigPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        return;
+                    }
+                    statusShell.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }
             }
-        );
+        };
+
+        stages.forEach((stage) => {
+            buildStatusColumn(
+                stageMeta[stage.id].icon,
+                stage.title,
+                stage.statusLabel,
+                stage.detail,
+                getStatusTone(stage.statusLabel),
+                stageMeta[stage.id].onClick
+            );
+        });
 
         refreshPublishingProgressRow();
     };
@@ -3258,30 +3268,14 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
 
     const renderPublishingProgressRow = () => {
         setupProgressGrid.empty();
-
-        const activeBookMetaStatus = getActiveBookMetaStatus(plugin);
-        const validationSnapshot = getPublishingValidationSnapshot(plugin);
-        const activeBookMetaIssues = [...validationSnapshot.activeBookMetaIssues];
-        if (!activeBookMetaStatus.found || !activeBookMetaStatus.bookMeta) {
-            activeBookMetaIssues.push({
-                scope: 'book-meta',
-                level: 'error',
-                code: 'book_meta_missing',
-                message: 'Book Details not found for active book.'
-            });
-        }
-        const bookMetaSummary = plugin.getPublishingValidationService().summarize(activeBookMetaIssues);
-        const matterSummary = plugin.getPublishingValidationService().summarize(validationSnapshot.matterIssues);
-        const layoutSummary = getPdfLayoutSummary(plugin);
-        const matterCount = getActiveBookMatterSummary(plugin).totalCount;
-        const pandocPathValid = isConfiguredPandocPathValid(plugin);
+        const progress = getPublishingProgressContext(plugin);
         const stages = buildPublishingProgressStages({
-            hasBookMeta: !!activeBookMetaStatus.bookMeta,
-            bookMetaSummary,
-            matterSummary,
-            matterCount,
-            layoutSummary,
-            pandocPathValid
+            hasBookMeta: !!progress.activeBookMetaStatus.bookMeta,
+            bookMetaSummary: progress.bookMetaSummary,
+            matterSummary: progress.matterSummary,
+            matterCount: progress.matterCount,
+            layoutSummary: progress.layoutSummary,
+            pandocPathValid: progress.pandocPathValid
         });
 
         const targetByStage: Record<PublishingStageId, HTMLElement | null> = {

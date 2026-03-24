@@ -23,6 +23,7 @@ import { isPathInFolderScope } from '../utils/pathScope';
 import { readSceneId } from '../utils/sceneIds';
 import { isMatterClassValue, parseMatterMetaFromFrontmatter } from '../utils/matterMeta';
 import { resolveSelectedBeatModelFromSettings } from '../utils/beatSystemState';
+import { readSharedChapterTitle } from '../utils/timelineChapters';
 
 export interface GetSceneDataOptions {
     filterBeatsBySystem?: boolean;
@@ -212,6 +213,7 @@ export class SceneDataService {
                         const runtimeProfile = runtimeProfileRaw !== undefined && runtimeProfileRaw !== null
                             ? String(runtimeProfileRaw).trim()
                             : undefined;
+                        const chapterTitle = readSharedChapterTitle(metadata);
 
                         scenes.push({
                             date: isoDate,
@@ -245,6 +247,7 @@ export class SceneDataService {
                                 return undefined;
                             })(),
                             Duration: duration,
+                            Chapter: chapterTitle,
                             Runtime: metadata.Runtime !== undefined && metadata.Runtime !== null
                                 ? String(metadata.Runtime)
                                 : undefined,
@@ -286,6 +289,7 @@ export class SceneDataService {
                     const contextValue = typeof metadata.Context === 'string'
                         ? metadata.Context
                         : undefined;
+                    const chapterTitle = readSharedChapterTitle(metadata);
                     const legacySynopsisValue = typeof metadata.Synopsis === 'string'
                         ? metadata.Synopsis
                         : undefined;
@@ -301,6 +305,7 @@ export class SceneDataService {
                         title: file.basename, // Use filename as title, as requested
                         synopsis: backdropContext, // Backdrop hover context
                         Context: backdropContext,
+                        Chapter: chapterTitle,
                         Duration: duration,
                         End: metadata.End as string | undefined,
                         itemType: "Backdrop",
@@ -436,6 +441,7 @@ export class SceneDataService {
             const purpose = typeof beatSource.Purpose === 'string'
                 ? beatSource.Purpose
                 : undefined;
+            const chapterTitle = readSharedChapterTitle(beatSource);
 
             // Beats appear only once in the outermost ring - not duplicated per subplot
             filteredScenes.push({
@@ -448,6 +454,7 @@ export class SceneDataService {
                 actNumber: validActNumber,
                 synopsis: beatSource.Synopsis as string | undefined,
                 Purpose: purpose,
+                Chapter: chapterTitle,
                 "Beat Model": beatModel,
                 missingBeatModel,
                 Range: beatSource.Range as string | undefined,

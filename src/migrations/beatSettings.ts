@@ -59,7 +59,7 @@ function stripDeprecatedAdvancedBeatFields(yaml: string): string {
         const fieldMatch = line.match(/^([A-Za-z][A-Za-z0-9 _'-]*):/);
         if (fieldMatch) {
             const fieldName = fieldMatch[1].trim();
-            if (fieldName === 'Description') {
+            if (fieldName === 'Description' || fieldName === 'Chapter') {
                 skipUntilNextField = true;
                 continue;
             }
@@ -89,8 +89,6 @@ function normalizeBeatDefinitionId(beat: BeatDefinition, customBeatSystemId: str
         id: typeof beat.id === 'string' && beat.id.trim().length > 0
             ? beat.id.trim()
             : `custom:${customBeatSystemId}:${generateBeatGuid()}`,
-        chapterBreak: beat.chapterBreak === true,
-        chapterTitle: typeof beat.chapterTitle === 'string' ? beat.chapterTitle.trim() || undefined : undefined,
     };
 }
 

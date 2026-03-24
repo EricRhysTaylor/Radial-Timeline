@@ -12,8 +12,6 @@ export interface PlotBeatInfo {
   range?: string;     // Formerly momentumRange: ideal momentum/score band (0-100)
   act?: number;       // Explicit act assignment (1, 2, 3)
   id?: string;        // Stable internal beat-definition id (e.g. "save-the-cat:midpoint")
-  chapterBreak?: boolean;
-  chapterTitle?: string;
 }
 
 /** Lowercase slug: spaces/special → hyphens, collapse, trim. */
@@ -511,8 +509,6 @@ export function getCustomSystemFromSettings(
             range: typeof b.range === 'string' ? b.range.trim() : '',
             act: b.act,
             id: b.id,
-            chapterBreak: b.chapterBreak === true,
-            chapterTitle: typeof b.chapterTitle === 'string' ? b.chapterTitle.trim() : undefined
         }));
 
     return {

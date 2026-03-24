@@ -1559,7 +1559,7 @@ export class ManuscriptOptionsModal extends Modal {
             return;
         }
         if (key.includes('modern classic') || key.includes('modern-classic') || key.includes('modern_classic')) {
-            desc.setText('Acts can open with optional epigraphs and Roman numeral PART pages. Chapters use Roman numerals with optional titles. Page numbers live in the headers: the left-page header pairs page number with author, and the right-page header pairs title with page number. Scene breaks use lower-case Roman numerals with a short rule.');
+            desc.setText('Acts can open with optional epigraphs and Roman numeral PART pages. Chapter headings come from the shared Chapter field on scene, beat, or backdrop notes. Page numbers live in the headers: the left-page header pairs page number with author, and the right-page header pairs title with page number. Scene breaks use lower-case Roman numerals with a short rule.');
             return;
         }
         if (key.includes('contemporary literary') || key.includes('contemporary')) {

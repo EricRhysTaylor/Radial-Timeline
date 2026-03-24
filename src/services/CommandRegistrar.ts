@@ -228,6 +228,7 @@ export class CommandRegistrar {
                 runtimes: scenes.runtimes,
                 wordCounts: scenes.wordCounts,
                 matterMetaByPath: scenes.matterMetaByPath,
+                chapterMarkersByScenePath: scenes.chapterMarkersByScenePath,
                 sortOrder: scenes.sortOrder
             };
 
@@ -245,6 +246,7 @@ export class CommandRegistrar {
                     runtimes: indices.map(i => selection.runtimes[i]),
                     wordCounts: indices.map(i => selection.wordCounts[i]),
                     matterMetaByPath: selection.matterMetaByPath,
+                    chapterMarkersByScenePath: selection.chapterMarkersByScenePath,
                     sortOrder: selection.sortOrder
                 };
             }
@@ -367,6 +369,7 @@ export class CommandRegistrar {
                         bookMetaResolution.bookMeta,
                         filteredSelection.matterMetaByPath,
                         {
+                            chapterMarkersByScenePath: filteredSelection.chapterMarkersByScenePath,
                             sceneHeadingRenderMode: 'markdown-h2'
                         }
                     );
@@ -471,6 +474,7 @@ export class CommandRegistrar {
                     bookMetaResolution.bookMeta,
                     filteredSelection.matterMetaByPath,
                     {
+                        chapterMarkersByScenePath: filteredSelection.chapterMarkersByScenePath,
                         sceneHeadingMode: layoutSceneHeadingMode,
                         sceneHeadingRenderMode,
                         suppressMatterPageChrome: true,
@@ -676,6 +680,7 @@ export class CommandRegistrar {
             runtimes: clamped.map(index => selection.runtimes[index]),
             wordCounts: clamped.map(index => selection.wordCounts[index]),
             matterMetaByPath: selection.matterMetaByPath,
+            chapterMarkersByScenePath: selection.chapterMarkersByScenePath,
             sortOrder: selection.sortOrder
         };
     }
@@ -807,13 +812,10 @@ export class CommandRegistrar {
     ): ModernClassicBeatDefinition | null {
         const name = typeof beat.name === 'string' ? beat.name.trim() : '';
         if (!name) return null;
-        const chapterTitle = typeof beat.chapterTitle === 'string' ? beat.chapterTitle.trim() : '';
         return {
             name,
             id: typeof beat.id === 'string' && beat.id.trim().length > 0 ? beat.id.trim() : undefined,
             actIndex: this.resolveModernClassicActIndex(beat.act, fallbackActIndex),
-            chapterBreak: beat.chapterBreak === true,
-            chapterTitle: chapterTitle || undefined
         };
     }
 
@@ -834,8 +836,6 @@ export class CommandRegistrar {
                     name: detail.name,
                     id: detail.id,
                     act: this.resolveModernClassicActIndex(detail.act, 1),
-                    chapterBreak: detail.chapterBreak === true,
-                    chapterTitle: typeof detail.chapterTitle === 'string' ? detail.chapterTitle : undefined
                 };
                 return this.toModernClassicBeatDefinition(beat, index + 1);
             })

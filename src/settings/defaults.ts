@@ -129,6 +129,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
 Act: {{Act}}
 When: {{When}}
 Duration: 1 hour
+Chapter:
 Synopsis:
 Summary:
 Pending Edits:
@@ -155,7 +156,8 @@ Iteration:`
 Act: {{Act}}
 Purpose: {{Purpose}}
 Beat Model: {{BeatModel}}
-Range: {{Range}}`
+Range: {{Range}}
+Chapter:`
     },
     beatSystemConfigs: Object.fromEntries(
         [...PLOT_SYSTEM_NAMES, getCustomBeatConfigKey(DEFAULT_CUSTOM_BEAT_SYSTEM_ID)].map((key) => [
@@ -179,7 +181,8 @@ Context: Static world context that shapes the story.`,
         base: `Class: Backdrop
 When: {{When}}
 End: {{End}}
-Context:`,
+Context:
+Chapter:`,
         advanced: ``
     },
     enableBackdropYamlEditor: false,

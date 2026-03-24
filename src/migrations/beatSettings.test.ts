@@ -11,7 +11,7 @@ describe('migrateBeatSettings', () => {
             activeCustomBeatSystemId: undefined,
             beatYamlTemplates: {
                 base: 'Class: Beat\nDescription: {{Description}}\nBeat Id: {{BeatId}}\nWhen:\nPurpose:',
-                advanced: 'Description:\nLegacy Field:\nWhen:'
+                advanced: 'Description:\nChapter:\nLegacy Field:\nWhen:'
             },
             beatHoverMetadataFields: [
                 { key: 'Legacy Hover', label: 'Legacy Hover', icon: 'book', enabled: true }

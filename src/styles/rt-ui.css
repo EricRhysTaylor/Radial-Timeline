@@ -5570,40 +5570,6 @@
   border-radius: calc(var(--ert-control-radius) + (var(--ert-gap-xs) / 2));
 }
 
-.ert-ui.ert-scope--settings .ert-beat-chapter-btn.is-active {
-  color: var(--interactive-accent);
-}
-
-.ert-ui.ert-scope--settings .ert-beat-chapter-subrow {
-  display: grid;
-  box-sizing: border-box;
-  grid-template-columns: auto 1fr auto auto auto auto auto auto;
-  align-items: start;
-  gap: var(--ert-gap-md);
-  margin-top: calc(var(--ert-gap-xs) * -1);
-  padding: 0 calc(var(--ert-gap-sm) + (var(--ert-gap-xs) / 2)) var(--ert-gap-sm) var(--ert-gap-md);
-  background: color-mix(in srgb, var(--background-secondary) 84%, var(--background-primary));
-  border: 1px dashed color-mix(in srgb, var(--background-modifier-border) 75%, transparent);
-  border-top: 0;
-  border-radius: 0 0 calc(var(--ert-control-radius) + (var(--ert-gap-xs) / 2)) calc(var(--ert-control-radius) + (var(--ert-gap-xs) / 2));
-}
-
-.ert-ui.ert-scope--settings .ert-beat-chapter-subrow-spacer {
-  min-height: 1px;
-}
-
-.ert-ui.ert-scope--settings .ert-beat-chapter-field {
-  grid-column: 4 / -1;
-  min-width: 0;
-  display: grid;
-  gap: calc(var(--ert-gap-xs) / 2);
-}
-
-.ert-ui.ert-scope--settings .ert-beat-chapter-label {
-  font-size: 0.8em;
-  color: var(--text-muted);
-}
-
 .ert-ui.ert-scope--settings .ert-beat-range-input {
   width: 80px;
   text-align: center;
@@ -8519,7 +8485,7 @@
 
 .ert-ui.ert-scope--settings .ert-publishing-status-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0;
 }
 
@@ -8601,6 +8567,14 @@
 
 .ert-ui.ert-scope--settings .ert-publishing-status-col.is-warning {
   background: color-mix(in srgb, var(--text-warning, #f5a97a) 6%, transparent);
+}
+
+.ert-ui.ert-scope--settings .ert-publishing-status-col.is-neutral .ert-publishing-status-col-icon {
+  color: var(--interactive-accent);
+}
+
+.ert-ui.ert-scope--settings .ert-publishing-status-col.is-neutral {
+  background: color-mix(in srgb, var(--interactive-accent) 6%, transparent);
 }
 
 .ert-ui.ert-scope--settings .ert-publishing-status-col.is-error .ert-publishing-status-col-icon {
@@ -9231,7 +9205,7 @@
   background: color-mix(in srgb, var(--background-secondary) 38%, transparent);
   box-shadow: none;
   color: var(--text-muted);
-  gap: 4px;
+  gap: 2px;
   border-radius: 8px;
   transition: none;
 }
@@ -9246,7 +9220,7 @@
 
 .ert-ui.ert-scope--settings .ert-coreQuickLinks__pill .ert-pillBtn__icon {
   order: 2;
-  margin-left: 1px;
+  margin-left: 0;
   position: relative;
   top: 2px;
 }

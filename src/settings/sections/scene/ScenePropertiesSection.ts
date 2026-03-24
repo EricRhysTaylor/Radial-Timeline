@@ -12,10 +12,18 @@ import {
     type FieldEntryValue,
 } from '../../../utils/yamlTemplateNormalize';
 import { buildScenePropertyDefinitions } from '../../../sceneProperties/scenePropertyAdapter';
+import { SHARED_CHAPTER_FIELD_KEY } from '../../../utils/timelineChapters';
 
 type FieldEntry = { key: string; value: FieldEntryValue; required: boolean };
 
 const DEFAULT_HOVER_ICON = 'align-vertical-space-around';
+
+function ensureSharedChapterEntry(entries: FieldEntry[]): FieldEntry[] {
+    if (entries.some((entry) => entry.key === SHARED_CHAPTER_FIELD_KEY)) {
+        return entries;
+    }
+    return [{ key: SHARED_CHAPTER_FIELD_KEY, value: '', required: false }, ...entries];
+}
 
 function mergeOrders(primary: string[], secondary: string[]): string[] {
     const seen = new Set<string>();
@@ -271,11 +279,11 @@ export function renderScenePropertiesSection(params: {
             extractKeysInOrder(defaultTemplate).filter((key) => !requiredOrder.includes(key))
         );
 
-        const entries: FieldEntry[] = optionalOrder.map((key) => ({
+        const entries = ensureSharedChapterEntry(optionalOrder.map((key) => ({
             key,
             value: currentObj[key] ?? defaultObj[key] ?? '',
             required: false,
-        }));
+        })));
 
         let workingEntries = entries;
         let dragIndex: number | null = null;
