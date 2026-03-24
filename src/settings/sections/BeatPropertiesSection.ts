@@ -3,7 +3,7 @@ import type RadialTimelinePlugin from '../../main';
 import type { TimelineItem } from '../../types';
 import { CreateBeatSetModal } from '../../modals/CreateBeatsTemplatesModal';
 import { getPlotSystem, getCustomSystemFromSettings, STARTER_BEAT_SETS } from '../../utils/beatsSystems';
-import { createBeatNotesFromSet, getBeatConfigForSystem, ensureBeatConfigForSystem, spreadBeatsAcrossScenes } from '../../utils/beatsTemplates';
+import { buildBeatDecimalPrefixes, createBeatNotesFromSet, getBeatConfigForSystem, ensureBeatConfigForSystem } from '../../utils/beatsTemplates';
 import { getBeatSystemStructuralStatus } from '../../storyBeats/beatSystemStatus';
 import type { BeatSystemConfig, BeatDefinition } from '../../types/settings';
 import type { BeatStructuralBeatStatus, BeatSystemStructuralStatus } from '../../storyBeats/types';
@@ -38,7 +38,6 @@ import {
     normalizeBeatFieldValueInput,
     normalizeBeatNameInput,
     normalizeBeatSetNameInput,
-    sanitizeBeatFilenameSegment,
     toBeatMatchKey,
 } from '../../utils/beatsInputNormalize';
 import {
@@ -91,21 +90,38 @@ const SCENE_AI_SCHEMA_KEYS = [
     'currentSceneAnalysis',
     'nextSceneAnalysis'
 ] as const;
-const BEAT_SYSTEM_COPY: Record<string, { title: string; description: string; examples?: string }> = {
+const BEAT_SYSTEM_COPY: Record<string, {
+    title: string;
+    description: string;
+    examples?: string;
+    sourceLink?: { label: string; href: string };
+}> = {
     'Save The Cat': {
         title: 'Save the Cat',
-        description: 'Commercial fiction, screenplays, and genre stories. Emphasizes clear emotional beats and audience engagement.',
-        examples: 'Examples: The Hunger Games, The Martian, The Fault in Our Stars.'
+        description: 'Emphasizes clear emotional beats and audience engagement.\n\nUse it when you want clean turning points, visible reversals, and a strong sense of audience-facing momentum from setup through finale.\n\nBest for: commercial fiction, screenplays, high-concept genre\nMomentum profile: setup -> midpoint turn -> closing payoff',
+        examples: 'Examples: The Hunger Games, The Martian, The Fault in Our Stars.',
+        sourceLink: {
+            label: "Jessica Brody's Save the Cat books",
+            href: 'https://www.jessicabrody.com/save-the-cat-for-novels/'
+        }
     },
     'Hero\'s Journey': {
         title: 'Hero\'s Journey',
-        description: 'Mythic, adventure, and transformation stories. Focuses on the protagonist\'s arc through trials and self-discovery.',
-        examples: 'Examples: The Odyssey, The Hobbit, Harry Potter and the Sorcerer\'s Stone.'
+        description: 'Mythic, adventure, and transformation stories. Focuses on the protagonist\'s arc through trials and self-discovery.\n\nUse it when the story is driven by departure, initiation, return, and inner transformation as much as external plot movement.\n\nBest for: fantasy, adventure, quest stories, coming-of-age\nMomentum profile: call -> trials -> return with transformation',
+        examples: 'Examples: The Odyssey, The Hobbit, Harry Potter and the Sorcerer\'s Stone.',
+        sourceLink: {
+            label: "Joseph Campbell and the Hero's Journey",
+            href: 'https://www.jcf.org/learn/joseph-campbell-heros-journey'
+        }
     },
     'Story Grid': {
         title: 'Story Grid',
-        description: 'Scene-driven structure built around the 5 Commandments: Inciting Incident, Progressive Complications, Crisis, Climax, Resolution.',
-        examples: 'Examples: The Silence of the Lambs, Pride and Prejudice.'
+        description: 'Scene-driven structure built around the 5 Commandments: Inciting Incident, Progressive Complications, Crisis, Climax, Resolution.\n\nUse it when you want to diagnose scene-level causality, pressure, and payoff across the manuscript rather than rely only on macro turning points.\n\nBest for: revision, scene diagnosis, causality-focused drafting\nMomentum profile: complication -> crisis -> climax -> resolution',
+        examples: 'Examples: The Silence of the Lambs, Pride and Prejudice.',
+        sourceLink: {
+            label: 'Story Grid by Shawn Coyne',
+            href: 'https://storygrid.com/'
+        }
     },
     'Custom': {
         title: 'Custom system',
@@ -332,12 +348,6 @@ export function renderStoryBeatsSection(params: {
         return m ? m[1].trim() : name.trim();
     };
 
-    const buildBeatFilename = (beatNumber: number, name: string): string => {
-        const displayName = stripActPrefix(name);
-        const safeBeatName = sanitizeBeatFilenameSegment(displayName);
-        return `${beatNumber} ${safeBeatName}`.trim();
-    };
-
     const parseBeatRow = (item: unknown): BeatRow => {
         if (typeof item === 'object' && item !== null && (item as { name?: unknown }).name) {
             const obj = item as {
@@ -441,36 +451,13 @@ export function renderStoryBeatsSection(params: {
         return ranges;
     };
 
-    const buildBeatNumbers = (beats: BeatRow[], maxActs: number, ranges: Map<number, ActRange>): number[] => {
-        if (!ranges || ranges.size === 0) {
-            return beats.map((_, idx) => idx + 1);
-        }
-        // Group beats by act
-        const beatsByAct = new Map<number, number[]>(); // act -> original indices
-        beats.forEach((beatLine, index) => {
-            const actNum = clampBeatAct(beatLine.act, maxActs);
-            const list = beatsByAct.get(actNum) ?? [];
-            list.push(index);
-            beatsByAct.set(actNum, list);
+    const buildBeatDisplayPrefixes = (beats: BeatRow[], maxActs: number, ranges: Map<number, ActRange>): string[] => {
+        const beatActs = beats.map((beatLine) => clampBeatAct(beatLine.act, maxActs));
+        const actSceneNumbers = new Map<number, number[]>();
+        ranges.forEach((range, actNumber) => {
+            actSceneNumbers.set(actNumber, range.sceneNumbers);
         });
-
-        const result = new Array<number>(beats.length);
-
-        beatsByAct.forEach((indices, actNum) => {
-            const range = ranges.get(actNum);
-            const sceneNums = range?.sceneNumbers ?? [];
-            const spread = spreadBeatsAcrossScenes(indices.length, sceneNums);
-            indices.forEach((originalIdx, i) => {
-                result[originalIdx] = spread[i];
-            });
-        });
-
-        // Fill any undefined (shouldn't happen, but safety fallback)
-        result.forEach((val, idx) => {
-            if (val === undefined) result[idx] = idx + 1;
-        });
-
-        return result;
+        return buildBeatDecimalPrefixes(beatActs, actSceneNumbers);
     };
 
     const orderBeatsByAct = (beats: BeatRow[], maxActs: number): BeatRow[] => {
@@ -517,6 +504,13 @@ export function renderStoryBeatsSection(params: {
             };
         }
         return getStructuralHealthState('Custom');
+    };
+
+    const getBeatSystemTabStatus = (systemName: string): StructuralHealthState => {
+        if (systemName === 'Custom') {
+            return getCustomTabStatus();
+        }
+        return getStructuralHealthState(systemName);
     };
 
     /** Produce a lightweight hash string from the current custom beat state. */
@@ -620,18 +614,23 @@ export function renderStoryBeatsSection(params: {
                 tooltip: 'No beats defined for this system yet.'
             };
         }
+        if (summary.matchedCount === 0) {
+            const collisionTooltip = summary.wrongModelBeatCount > 0
+                ? 'No beat notes are attributed to this system. Matching titles belong to other Beat Models.'
+                : summary.missingModelNoteCount > 0
+                    ? 'No beat notes are attributed to this system yet. Matching titles are missing Beat Model.'
+                    : 'This system is not yet deployed in the manuscript.';
+            return {
+                icon: 'circle-dashed',
+                statusClass: '',
+                tooltip: collisionTooltip,
+            };
+        }
         if (summary.duplicateCount > 0) {
             return {
                 icon: 'alert-circle',
                 statusClass: 'ert-beat-health-icon--critical',
                 tooltip: `${summary.duplicateCount} duplicate beat note${summary.duplicateCount !== 1 ? 's' : ''} found. Manually delete duplicate notes to resolve.`
-            };
-        }
-        if (summary.misalignedCount > 0) {
-            return {
-                icon: 'alert-triangle',
-                statusClass: 'ert-beat-health-icon--warning',
-                tooltip: `${summary.misalignedCount} beat note${summary.misalignedCount !== 1 ? 's' : ''} need repair.`
             };
         }
         if (summary.missingModelNoteCount > 0) {
@@ -726,7 +725,7 @@ export function renderStoryBeatsSection(params: {
         const structuralStatus = getBeatStructuralStatus(system);
         const summary = structuralStatus.summary;
         if (summary.expectedCount === 0) return null;
-        if (summary.presentCount === 0) {
+        if (summary.matchedCount === 0) {
             return {
                 text: 'Inactive in manuscript',
                 tone: 'muted',
@@ -734,9 +733,6 @@ export function renderStoryBeatsSection(params: {
             };
         }
         const issueLabels: string[] = [];
-        if (structuralStatus.beats.some((beat) => hasPreviewTemplateActMismatch(beat))) {
-            issueLabels.push('Divergent act placement');
-        }
         issueLabels.push(...getPreviewIssueSummaryLabel(getPreviewIssueEntries(structuralStatus)));
         if (issueLabels.length > 0) {
             return {
@@ -759,6 +755,7 @@ export function renderStoryBeatsSection(params: {
         totalBeats: number;
         totalActs: number;
         hasAuthorDesc: boolean;
+        sourceLink?: { label: string; href: string };
     } => {
         const { mode } = deriveBeatSystemMode(system);
         const copy = getBeatSystemCopy(system);
@@ -775,7 +772,23 @@ export function renderStoryBeatsSection(params: {
             totalBeats: overview.totalBeats,
             totalActs: overview.columns.length,
             hasAuthorDesc,
+            sourceLink: hasAuthorDesc ? undefined : copy.sourceLink,
         };
+    };
+
+    const splitOverviewParagraphs = (value: string): string[] => {
+        return value
+            .split(/\n\s*\n/g)
+            .map((paragraph) => paragraph.trim())
+            .filter((paragraph) => paragraph.length > 0);
+    };
+
+    const renderOverviewTextBlocks = (container: HTMLElement, cls: string, value: string): void => {
+        splitOverviewParagraphs(value).forEach((paragraph) => {
+            const block = container.createDiv({ cls });
+            block.setText(paragraph);
+            block.style.whiteSpace = 'pre-line';
+        });
     };
 
     new Settings(actsStack)
@@ -1104,7 +1117,7 @@ export function renderStoryBeatsSection(params: {
                 runningIndex += list.length;
             });
             const orderedBeats = beatsByAct.flat();
-            const beatNumbers = buildBeatNumbers(orderedBeats, maxActs, actRanges);
+            const beatNumbers = buildBeatDisplayPrefixes(orderedBeats, maxActs, actRanges);
             const structuralStatus = getBeatStructuralStatus(plugin.settings.beatSystem || 'Custom');
             const titleMap = new Map<string, number[]>();
             orderedBeats.forEach((beatLine, idx) => {
@@ -1173,8 +1186,8 @@ export function renderStoryBeatsSection(params: {
                     row.createDiv({ cls: 'ert-grid-spacer' });
 
                     // Index
-                    const beatNumber = beatNumbers[index] ?? (index + 1);
-                    row.createDiv({ text: `${beatNumber}.`, cls: 'ert-beat-index' });
+                    const beatNumber = beatNumbers[index] ?? `0.${String(index + 1).padStart(2, '0')}`;
+                    row.createDiv({ text: `${beatNumber}`, cls: 'ert-beat-index' });
 
                     // Parse "Name [Act]"
                     let name = beatLine.name;
@@ -1554,7 +1567,7 @@ export function renderStoryBeatsSection(params: {
         const beatStatusByKey = new Map<string, BeatStructuralBeatStatus>(
             (structuralStatus?.beats ?? []).map((beat) => [beat.expected.key, beat])
         );
-        const isActiveInManuscript = !!structuralStatus && structuralStatus.summary.presentCount > 0;
+        const isActiveInManuscript = !!structuralStatus && structuralStatus.summary.matchedCount > 0;
         if (isActiveInManuscript) {
             const maxActs = getActCount();
             const actLabels = parseActLabels(plugin.settings, maxActs);
@@ -1835,10 +1848,24 @@ export function renderStoryBeatsSection(params: {
         tierBannerEl.empty();
         const overview = getSystemOverviewState(system);
         tierBannerEl.createDiv({ cls: 'ert-beat-template-title', text: overview.title });
-        const descEl = tierBannerEl.createDiv({ cls: 'ert-beat-template-desc', text: overview.description });
-        descEl.style.whiteSpace = overview.hasAuthorDesc ? 'pre-line' : '';
-        const examplesEl = tierBannerEl.createDiv({ cls: 'ert-beat-template-examples', text: overview.examples });
-        examplesEl.toggleClass('ert-settings-hidden', !overview.examples || overview.hasAuthorDesc);
+        if (overview.sourceLink) {
+            const sourceRow = tierBannerEl.createDiv({ cls: 'ert-beat-template-source' });
+            const sourceLink = sourceRow.createEl('a', {
+                cls: 'ert-beat-template-source-link',
+                href: overview.sourceLink.href,
+                attr: {
+                    target: '_blank',
+                    rel: 'noopener'
+                }
+            });
+            sourceLink.createSpan({ text: overview.sourceLink.label });
+            const sourceIcon = sourceLink.createSpan({ cls: 'ert-beat-template-source-link-icon' });
+            setIcon(sourceIcon, 'external-link');
+        }
+        renderOverviewTextBlocks(tierBannerEl, 'ert-beat-template-desc', overview.description);
+        if (!overview.hasAuthorDesc && overview.examples) {
+            renderOverviewTextBlocks(tierBannerEl, 'ert-beat-template-examples', overview.examples);
+        }
         const metaEl = tierBannerEl.createDiv({
             cls: 'ert-beat-template-meta',
             text: overview.totalBeats > 0 ? `${overview.totalBeats} beats · ${overview.totalActs} acts` : ''
@@ -1867,6 +1894,7 @@ export function renderStoryBeatsSection(params: {
             const isActive = option.systemName === activeSystem;
             const isCustomTab = option.systemName === 'Custom';
             const tabLabel = isCustomTab ? getCustomTabLabel() : option.label;
+            const status = getBeatSystemTabStatus(option.systemName);
             const btn = beatSystemTabs.createEl('button', {
                 cls: `ert-mini-tab${isCustomTab ? ' ert-mini-tab--custom' : ''}${isActive ? ` ${ERT_CLASSES.IS_ACTIVE}` : ''}`,
                 attr: {
@@ -1876,13 +1904,10 @@ export function renderStoryBeatsSection(params: {
                     'aria-controls': 'ert-beat-system-panel'
                 }
             });
-            // Custom tab gets a live status icon + active set name.
-            if (isCustomTab) {
-                const status = getCustomTabStatus();
-                const iconClass = `ert-mini-tab-icon ert-beat-health-icon${status.statusClass ? ` ${status.statusClass}` : ''}`;
-                const iconEl = btn.createSpan({ cls: iconClass });
-                setIcon(iconEl, status.icon);
-            }
+            const iconClass = `ert-mini-tab-icon ert-beat-health-icon${status.statusClass ? ` ${status.statusClass}` : ''}`;
+            const iconEl = btn.createSpan({ cls: iconClass });
+            setIcon(iconEl, status.icon);
+            setTooltip(iconEl, status.tooltip);
             btn.appendText(tabLabel);
 
             btn.addEventListener('click', async () => { // SAFE: direct addEventListener; Settings lifecycle manages cleanup
@@ -2475,6 +2500,28 @@ export function renderStoryBeatsSection(params: {
         // Track currently selected entry for the preview card
         let selectedEntry: LoadableEntry | null = allLoadable.get(activeId) ?? null;
 
+        const getDeleteSetRiskSummary = (systemId: string) => {
+            const config = plugin.settings.beatSystemConfigs?.[getCustomBeatConfigKey(systemId)];
+            const system = savedSystems.find((entry) => entry.id === systemId);
+            const beatCount = system?.beats.length ?? 0;
+            const hasDescription = !!system?.description?.trim();
+            const advancedKeys = extractKeysInOrder(config?.beatYamlAdvanced ?? '').filter((key) => !beatBaseKeys.includes(key));
+            const hoverFieldCount = config?.beatHoverMetadataFields?.length ?? 0;
+            const risks: string[] = [];
+            if (beatCount > 0) risks.push(`${beatCount} stored beat definition${beatCount !== 1 ? 's' : ''}`);
+            if (hasDescription) risks.push('saved description text');
+            if (advancedKeys.length > 0) risks.push(`${advancedKeys.length} custom field definition${advancedKeys.length !== 1 ? 's' : ''}`);
+            if (hoverFieldCount > 0) risks.push(`${hoverFieldCount} hover metadata field${hoverFieldCount !== 1 ? 's' : ''}`);
+            return {
+                beatCount,
+                hasDescription,
+                advancedKeyCount: advancedKeys.length,
+                hoverFieldCount,
+                hasStoredContent: risks.length > 0,
+                risks,
+            };
+        };
+
         // ── Dropdown ─────────────────────────────────────────────────
         let dropdownRef: { setValue: (v: string) => void } | null = null;
         const previousSelectionId = selectedEntry?.id ?? '';
@@ -2807,17 +2854,64 @@ export function renderStoryBeatsSection(params: {
                 if (!selectedEntry || selectedEntry.builtIn) return;
                 const system = savedSystems.find(s => s.id === selectedEntry!.id);
                 if (!system) return;
+                const risk = getDeleteSetRiskSummary(system.id);
+                const deletePhrase = 'DELETE SET';
                 const confirmModal = new Modal(app);
+                const { modalEl, contentEl } = confirmModal;
                 confirmModal.titleEl.setText('');
-                confirmModal.contentEl.empty();
-                confirmModal.modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal-shell--md');
-                confirmModal.contentEl.addClass('ert-modal-container', 'ert-stack');
-                const header = confirmModal.contentEl.createDiv({ cls: 'ert-modal-header' });
+                contentEl.empty();
+                modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal-shell--md');
+                contentEl.addClass('ert-modal-container', 'ert-stack');
+                const header = contentEl.createDiv({ cls: 'ert-modal-header' });
                 header.createSpan({ cls: 'ert-modal-badge', text: 'BEAT SYSTEM' });
                 header.createDiv({ cls: 'ert-modal-title', text: 'Delete set' });
-                header.createDiv({ cls: 'ert-modal-subtitle', text: `Delete "${system.name}"? This cannot be undone.` });
-                const footer = confirmModal.contentEl.createDiv({ cls: 'ert-modal-actions' });
-                new ButtonComponent(footer).setButtonText('Delete').setWarning().onClick(async () => {
+                header.createDiv({
+                    cls: 'ert-modal-subtitle',
+                    text: `Delete "${system.name}"? This removes the saved beat-set definition from settings. Existing beat notes in the vault are not deleted.`
+                });
+
+                if (plugin.settings.activeCustomBeatSystemId === system.id) {
+                    const banner = contentEl.createDiv({ cls: 'ert-audit-safety-banner ert-audit-safety-banner--warning' });
+                    banner.createSpan({ text: 'This set is currently loaded in Custom. Deleting it will reset Custom to a blank set.' });
+                }
+
+                const body = contentEl.createDiv({ cls: ['ert-panel', 'ert-panel--glass'] });
+                body.createDiv({ text: `Scope: saved set "${system.name}"`, cls: 'ert-modal-subtitle' });
+                body.createDiv({ text: `${system.beats.length} beat${system.beats.length !== 1 ? 's' : ''} in this set.` });
+
+                if (risk.hasStoredContent) {
+                    const warningEl = body.createDiv({ cls: 'ert-audit-safety-banner ert-audit-safety-banner--warning' });
+                    warningEl.createDiv({
+                        text: 'This set contains stored content that will be permanently removed from settings:'
+                    });
+                    const riskList = warningEl.createEl('ul');
+                    risk.risks.forEach((item) => {
+                        riskList.createEl('li', { text: item });
+                    });
+                }
+
+                let confirmInput: HTMLInputElement | undefined;
+                let acknowledgeInput: HTMLInputElement | undefined;
+                if (risk.hasStoredContent) {
+                    const confirmEl = body.createDiv({ cls: 'ert-modal-confirm-type' });
+                    confirmEl.createDiv({ text: `Type ${deletePhrase} to confirm:`, cls: 'ert-modal-subtitle' });
+                    confirmInput = confirmEl.createEl('input', { type: 'text', attr: { placeholder: deletePhrase } });
+                    const acknowledgeEl = body.createDiv({ cls: 'ert-modal-confirm-type' });
+                    const acknowledgeLabel = acknowledgeEl.createEl('label');
+                    acknowledgeInput = acknowledgeLabel.createEl('input', { type: 'checkbox' });
+                    acknowledgeLabel.appendText(' I understand this permanently removes the saved set configuration, but does not delete manuscript beat notes.');
+                }
+
+                const footer = contentEl.createDiv({ cls: 'ert-modal-actions' });
+                const confirmDeleteBtn = new ButtonComponent(footer).setButtonText('Delete set').setWarning().onClick(async () => {
+                    if (risk.hasStoredContent) {
+                        if (confirmInput?.value.trim() !== deletePhrase) {
+                            confirmInput?.classList.add('ert-input-error');
+                            confirmInput?.focus();
+                            return;
+                        }
+                        if (!acknowledgeInput?.checked) return;
+                    }
                     const wasActive = plugin.settings.activeCustomBeatSystemId === system.id;
                     plugin.settings.savedBeatSystems = savedSystems.filter(s => s.id !== system.id);
                     if (plugin.settings.beatSystemConfigs) {
@@ -2851,6 +2945,17 @@ export function renderStoryBeatsSection(params: {
                     renderStageSwitcher();
                     updateStageVisibility();
                 });
+                if (risk.hasStoredContent) {
+                    confirmDeleteBtn.setDisabled(true);
+                    const updateDeleteState = () => {
+                        const confirmedPhrase = confirmInput?.value.trim() === deletePhrase;
+                        const acknowledged = !!acknowledgeInput?.checked;
+                        confirmDeleteBtn.setDisabled(!(confirmedPhrase && acknowledged));
+                        confirmInput?.classList.remove('ert-input-error');
+                    };
+                    confirmInput?.addEventListener('input', updateDeleteState);
+                    acknowledgeInput?.addEventListener('change', updateDeleteState);
+                }
                 new ButtonComponent(footer).setButtonText('Cancel').onClick(() => confirmModal.close());
                 confirmModal.open();
             });

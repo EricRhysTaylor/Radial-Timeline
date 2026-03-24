@@ -21,7 +21,8 @@ describe('publishingProgress', () => {
         expect(stages[0].statusLabel).toBe('Needs setup');
         expect(stages[1].statusLabel).toBe('Needs setup');
         expect(stages[2].statusLabel).toBe('Needs setup');
-        expect(stages[3].statusLabel).toBe('Attention needed');
+        expect(stages[3].statusLabel).toBe('Blocked');
+        expect(stages[3].statusKey).toBe('blocked');
     });
 
     it('marks the setup row ready when publishing inputs are complete', () => {
@@ -35,6 +36,7 @@ describe('publishingProgress', () => {
         });
 
         expect(stages.every(stage => stage.statusLabel === 'Ready')).toBe(true);
+        expect(stages.every(stage => stage.statusKey === 'ready')).toBe(true);
         expect(stages[0].actionLabel).toBe('Open details');
         expect(stages[1].actionLabel).toBe('Review pages');
         expect(stages[2].actionLabel).toBe('Review styles');

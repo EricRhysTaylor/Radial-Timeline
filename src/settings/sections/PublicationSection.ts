@@ -266,14 +266,18 @@ export function renderCompletionEstimatePreview(params: {
         try {
             const cachedScenes = getCachedScenes();
             const scenes = cachedScenes ?? (allowFetch ? await getAllScenes(app, plugin) : null);
+            if (!cachedScenes && Array.isArray(scenes)) {
+                plugin.lastSceneData = scenes;
+            }
             if (!scenes) {
-                const loadingMessage = 'Please load Radial Timeline view for progress estimates...';
+                const loadingMessage = 'Loading progress estimates...';
                 renderSummaryRow({
                     title: 'Completion Estimate',
                     subtitle: loadingMessage
                 });
                 if (!isExpanded) {
                     previewContainer.addClass('ert-completion-preview-collapsed');
+                    schedulePreviewFetch();
                     return;
                 }
                 previewContainer.addClass('ert-completion-preview-empty');

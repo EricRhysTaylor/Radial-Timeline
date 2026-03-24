@@ -46,6 +46,10 @@ export class CommandRegistrar {
         this.registerCommands();
     }
 
+    public openManuscriptExportModal(): void {
+        new ManuscriptOptionsModal(this.app, this.plugin, this.handleManuscriptExport.bind(this)).open();
+    }
+
     /** Hide or show the Inquiry ribbon icon based on AI enabled state. */
     setInquiryRibbonVisible(visible: boolean): void {
         if (this.inquiryRibbonIcon) {
@@ -133,7 +137,7 @@ export class CommandRegistrar {
             id: 'manuscript-export',
             name: 'Manuscript export',
             callback: () => {
-                new ManuscriptOptionsModal(this.app, this.plugin, this.handleManuscriptExport.bind(this)).open();
+                this.openManuscriptExportModal();
             }
         });
 

@@ -2926,10 +2926,14 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
     const includeScriptExamples = false;
     let setupInFlight = false;
     let setupButtonComponent: ButtonComponent | null = null;
+    let exportOptionsButtonComponent: ButtonComponent | null = null;
     const setSetupButtonState = (busy: boolean) => {
         if (!setupButtonComponent) return;
         setupButtonComponent.setDisabled(busy);
         setupButtonComponent.setButtonText(busy ? STARTER_PUBLISHING_SETUP_BUSY : STARTER_PUBLISHING_SETUP_BUTTON);
+        if (exportOptionsButtonComponent) {
+            exportOptionsButtonComponent.setDisabled(busy);
+        }
     };
     const runPublishingSetup = async () => {
         if (setupInFlight) return;
@@ -3102,21 +3106,15 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
     addHeadingIcon(publishingHeading, 'book-open-text');
     applyErtHeaderLayout(publishingHeading);
 
-    const getStatusTone = (statusLabel: string): 'success' | 'warning' | 'error' | 'neutral' => {
-        if (statusLabel === 'Ready') return 'success';
-        if (statusLabel === 'In progress') return 'neutral';
-        if (statusLabel === 'Attention needed') return 'error';
-        return 'warning';
-    };
     const buildStatusColumn = (
         iconName: string,
         title: string,
         value: string,
         desc: string,
-        tone: 'success' | 'warning' | 'error' | 'neutral',
+        statusKey: 'needs-setup' | 'attention' | 'blocked' | 'ready',
         onClick?: () => void
     ): void => {
-        const col = statusGrid.createDiv({ cls: `ert-publishing-status-col is-${tone}` });
+        const col = statusGrid.createDiv({ cls: `ert-publishing-status-col ert-publishing-status-col--${statusKey}` });
         if (onClick) {
             col.setAttr('role', 'button');
             col.setAttr('tabindex', '0');
@@ -3127,21 +3125,52 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                 onClick();
             });
         }
+        const glyph = col.createDiv({ cls: 'ert-publishing-status-col-glyph' });
+        glyph.setAttr('aria-hidden', 'true');
+        setIcon(glyph, iconName);
+
         const header = col.createDiv({ cls: 'ert-publishing-status-col-header' });
-        const icon = header.createSpan({ cls: 'ert-publishing-status-col-icon' });
-        setIcon(icon, iconName);
         header.createSpan({ cls: 'ert-publishing-status-col-title', text: title });
         col.createDiv({ cls: 'ert-publishing-status-col-value', text: value });
         col.createDiv({ cls: 'ert-publishing-status-col-desc', text: desc });
     };
 
-    setupButtonComponent = new ButtonComponent(setupActionRow);
-    setupButtonComponent
-        .setButtonText(STARTER_PUBLISHING_SETUP_BUTTON)
-        .onClick(() => {
-            void runPublishingSetup();
-        });
-    setupButtonComponent.buttonEl.addClass('ert-pillBtn', 'ert-pillBtn--pro');
+    const renderPublishingStripActions = (stages: ReturnType<typeof buildPublishingProgressStages>) => {
+        setupActionRow.empty();
+        setupButtonComponent = null;
+        exportOptionsButtonComponent = null;
+
+        const exportStage = stages.find(stage => stage.id === 'export-check');
+        const showExportButton = !!exportStage && exportStage.statusKey !== 'needs-setup';
+        const exportPrimary = exportStage?.statusKey === 'ready';
+
+        if (showExportButton) {
+            exportOptionsButtonComponent = new ButtonComponent(setupActionRow)
+                .setButtonText('Open export options')
+                .onClick(() => {
+                    plugin.openManuscriptExportModal();
+                });
+            if (exportPrimary) {
+                exportOptionsButtonComponent.setCta();
+                exportOptionsButtonComponent.buttonEl.addClass('ert-pillBtn--pro');
+            }
+            exportOptionsButtonComponent.buttonEl.addClass('ert-pillBtn');
+        }
+
+        setupButtonComponent = new ButtonComponent(setupActionRow)
+            .setButtonText(STARTER_PUBLISHING_SETUP_BUTTON)
+            .onClick(() => {
+                void runPublishingSetup();
+            });
+        if (!showExportButton || !exportPrimary) {
+            setupButtonComponent.setCta();
+        }
+        setupButtonComponent.buttonEl.addClass('ert-pillBtn', 'ert-pillBtn--pro');
+
+        if (setupInFlight) {
+            setSetupButtonState(true);
+        }
+    };
 
     const renderPublishingStatusCard = () => {
         statusGrid.empty();
@@ -3174,12 +3203,14 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                 stage.title,
                 stage.statusLabel,
                 stage.detail,
-                getStatusTone(stage.statusLabel),
+                stage.statusKey,
                 () => {
                     targetByStage[stage.id]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }
             );
         });
+
+        renderPublishingStripActions(stages);
     };
     refreshPublishingStatusCard = renderPublishingStatusCard;
 

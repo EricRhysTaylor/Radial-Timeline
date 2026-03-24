@@ -184,7 +184,7 @@ export function getBeatSystemStructuralStatus(params: {
             syncedCount: 0,
             statusLabel: expectedBeats.length === 0
                 ? 'Structure status: No beats defined'
-                : 'Structure status: ✖ No beats present'
+                : 'Structure status: Inactive in manuscript'
         },
         matches: {
             activeByBeatKey: new Map(),
@@ -378,9 +378,11 @@ export function getBeatSystemStructuralStatus(params: {
         nonBeatClassBeatCount,
         missingCreateableCount,
         syncedCount,
-        statusLabel: issueCount === 0
-            ? 'Structure status: ✔ Complete'
-            : `Structure status: ⚠ ${issueCount} issue${issueCount !== 1 ? 's' : ''} • ${presentCount} / ${expectedBeats.length} beats present`,
+        statusLabel: matchedCount === 0
+            ? 'Structure status: Inactive in manuscript'
+            : issueCount === 0
+                ? 'Structure status: ✔ Complete'
+                : `Structure status: ⚠ ${issueCount} issue${issueCount !== 1 ? 's' : ''} • ${matchedCount} / ${expectedBeats.length} beats matched`,
     };
 
     return {

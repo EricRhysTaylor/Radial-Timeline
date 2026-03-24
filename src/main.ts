@@ -395,6 +395,7 @@ export default class RadialTimelinePlugin extends Plugin {
     public getInquiryService(): InquiryService { return this.inquiryService; }
     public getInquiryEstimateService(): InquiryEstimateService { return this.inquiryEstimateService; }
     public getPublishingValidationService(): PublishingValidationService { return this.publishingValidationService; }
+    public openManuscriptExportModal(): void { this.commandRegistrar.openManuscriptExportModal(); }
 
     public consumeInquiryFreshLaunchPending(): boolean {
         const pending = this.inquiryFreshLaunchPending;

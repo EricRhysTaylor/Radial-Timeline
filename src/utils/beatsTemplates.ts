@@ -11,6 +11,7 @@ import { mergeTemplateParts } from './templateMerge';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
 import { generateSceneId } from './sceneIds';
 import { getActiveCustomBeatSystemName, getCustomBeatConfigKey } from './beatSystemState';
+import { formatBeatDecimalPrefix } from './prefixOrder';
 
 // ─── Per-system Beat Config Resolvers ────────────────────────────────
 
@@ -298,6 +299,57 @@ export function spreadBeatsAcrossScenes(
   return result;
 }
 
+export function buildBeatDecimalPrefixes(
+  beatActs: number[],
+  actSceneNumbers?: Map<number, number[]>
+): string[] {
+  const beatsByAct = new Map<number, number[]>();
+  beatActs.forEach((act, index) => {
+    const list = beatsByAct.get(act) ?? [];
+    list.push(index);
+    beatsByAct.set(act, list);
+  });
+
+  const beatPrefixByIndex = new Array<string>(beatActs.length);
+  const minorByMajor = new Map<number, number>();
+  let fallbackMinor = 1;
+
+  const nextMinorForMajor = (major: number): number => {
+    const next = (minorByMajor.get(major) ?? 0) + 1;
+    minorByMajor.set(major, next);
+    return next;
+  };
+
+  const sortedActs = [...beatsByAct.keys()].sort((a, b) => a - b);
+  sortedActs.forEach((actNum) => {
+    const indices = beatsByAct.get(actNum) ?? [];
+    const sceneNums = actSceneNumbers?.get(actNum) ?? [];
+    if (sceneNums.length > 0) {
+      const spread = spreadBeatsAcrossScenes(indices.length, sceneNums);
+      indices.forEach((beatIdx, i) => {
+        const major = spread[i];
+        const minor = nextMinorForMajor(major);
+        beatPrefixByIndex[beatIdx] = formatBeatDecimalPrefix(String(major), minor, 2);
+      });
+      return;
+    }
+
+    indices.forEach((beatIdx) => {
+      beatPrefixByIndex[beatIdx] = formatBeatDecimalPrefix('0', fallbackMinor, 2);
+      fallbackMinor += 1;
+    });
+  });
+
+  beatPrefixByIndex.forEach((value, index) => {
+    if (value === undefined) {
+      beatPrefixByIndex[index] = formatBeatDecimalPrefix('0', fallbackMinor, 2);
+      fallbackMinor += 1;
+    }
+  });
+
+  return beatPrefixByIndex;
+}
+
 /**
  * Create beat set notes for a given beat system.
  */
@@ -353,64 +405,18 @@ export async function createBeatNotesFromSet(
     }
   }
 
+  const actSceneNumbers = options?.actSceneNumbers;
   // Pre-compute beat filename prefixes per act using scene-aligned spread.
   // Scenes own integer slots; beats use decimal minors (e.g., 7.01, 7.02).
-  const actSceneNumbers = options?.actSceneNumbers;
-  const beatsByAct = new Map<number, number[]>(); // act -> beat indices
-  for (let i = 0; i < beatSystem.beats.length; i++) {
-    const beatInfo = beatSystem.beatDetails[i];
-    const act = beatInfo.act ? beatInfo.act : getBeatAct(i, beatSystem.beats.length);
-    const list = beatsByAct.get(act) ?? [];
-    list.push(i);
-    beatsByAct.set(act, list);
-  }
-
-  const beatPrefixByIndex = new Array<string>(beatSystem.beats.length);
-  const minorByMajor = new Map<number, number>();
-  let fallbackMinor = 1;
-
-  const nextMinorForMajor = (major: number): number => {
-    const next = (minorByMajor.get(major) ?? 0) + 1;
-    minorByMajor.set(major, next);
-    return next;
-  };
-
-  const formatBeatPrefix = (major: number, minor: number): string =>
-    `${major}.${String(minor).padStart(2, '0')}`;
-
-  const sortedActs = [...beatsByAct.keys()].sort((a, b) => a - b);
-  sortedActs.forEach((actNum) => {
-    const indices = beatsByAct.get(actNum) ?? [];
-    const sceneNums = actSceneNumbers?.get(actNum) ?? [];
-    if (sceneNums.length > 0) {
-      const spread = spreadBeatsAcrossScenes(indices.length, sceneNums);
-      indices.forEach((beatIdx, i) => {
-        const major = spread[i];
-        const minor = nextMinorForMajor(major);
-        beatPrefixByIndex[beatIdx] = formatBeatPrefix(major, minor);
-      });
-      return;
-    }
-
-    // No scene range for this act: keep beats in non-scene space (0.xx).
-    indices.forEach((beatIdx) => {
-      beatPrefixByIndex[beatIdx] = formatBeatPrefix(0, fallbackMinor);
-      fallbackMinor += 1;
-    });
-  });
-  // Final safety fallback for any undefined index.
-  beatPrefixByIndex.forEach((val, idx) => {
-    if (val === undefined) {
-      beatPrefixByIndex[idx] = formatBeatPrefix(0, fallbackMinor);
-      fallbackMinor += 1;
-    }
-  });
+  const beatActs = beatSystem.beatDetails.map((beatInfo, index) => (
+    beatInfo.act ? beatInfo.act : getBeatAct(index, beatSystem.beats.length)
+  ));
+  const beatPrefixByIndex = buildBeatDecimalPrefixes(beatActs, actSceneNumbers);
 
   for (let i = 0; i < beatSystem.beats.length; i++) {
     const beatName = beatSystem.beats[i];
     const beatInfo = beatSystem.beatDetails[i];
-    // Use explicit act if available, otherwise calculate
-    const act = beatInfo.act ? beatInfo.act : getBeatAct(i, beatSystem.beats.length);
+    const act = beatActs[i];
     const beatNumber = beatPrefixByIndex[i];
     
     // Use canonical title without "Act X:" prefix for filename

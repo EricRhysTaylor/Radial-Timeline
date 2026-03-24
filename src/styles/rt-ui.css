@@ -3259,10 +3259,40 @@
   font-weight: 600;
 }
 
+.ert-ui.ert-scope--settings .ert-beat-template-source {
+  margin-top: 4px;
+}
+
+.ert-ui.ert-scope--settings .ert-beat-template-source-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-accent);
+  font-size: 12px;
+  text-decoration: none;
+}
+
+.ert-ui.ert-scope--settings .ert-beat-template-source-link:hover {
+  text-decoration: underline;
+}
+
+.ert-ui.ert-scope--settings .ert-beat-template-source-link svg {
+  width: 12px;
+  height: 12px;
+}
+
 .ert-ui.ert-scope--settings .ert-beat-template-desc {
   color: var(--text-muted);
   font-size: 13px;
   line-height: 1.4;
+}
+
+.ert-ui.ert-scope--settings .ert-beat-template-source + .ert-beat-template-desc {
+  margin-top: 10px;
+}
+
+.ert-ui.ert-scope--settings .ert-beat-template-desc + .ert-beat-template-desc {
+  margin-top: 10px;
 }
 
 /* ── Unsaved changes dropdown warning ────────────────────────────── */
@@ -3460,6 +3490,11 @@
   color: var(--text-faint);
   font-size: 12px;
   line-height: 1.35;
+}
+
+.ert-ui.ert-scope--settings .ert-beat-template-desc + .ert-beat-template-examples,
+.ert-ui.ert-scope--settings .ert-beat-template-examples + .ert-beat-template-examples {
+  margin-top: 10px;
 }
 
 .ert-ui.ert-scope--settings .ert-beat-template-meta {
@@ -8497,14 +8532,19 @@
 }
 
 .ert-ui.ert-scope--settings .ert-publishing-status-col {
+  --ert-stage-accent: color-mix(in srgb, var(--text-muted) 55%, var(--background-modifier-border));
   border: none;
   border-radius: 0;
-  padding: var(--ert-pad-sm);
-  background: transparent;
+  padding: calc(var(--ert-pad-sm) + 2px);
+  background: color-mix(in srgb, var(--ert-stage-accent) 4%, transparent);
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 10px;
   min-width: 0;
+  min-height: 176px;
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
 }
 
 .ert-ui.ert-scope--settings .ert-publishing-status-col + .ert-publishing-status-col {
@@ -8516,79 +8556,95 @@
 }
 
 .ert-ui.ert-scope--settings .ert-publishing-status-col[role="button"]:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--interactive-accent) 48%, transparent);
+  outline: 2px solid color-mix(in srgb, var(--ert-stage-accent) 42%, transparent);
   outline-offset: 1px;
 }
 
+.ert-ui.ert-scope--settings .ert-publishing-status-col-glyph {
+  position: absolute;
+  top: 12px;
+  left: 14px;
+  width: 100px;
+  height: 100px;
+  color: var(--ert-stage-accent);
+  opacity: 0.09;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.ert-ui.ert-scope--settings .ert-publishing-status-col-glyph svg {
+  width: 100%;
+  height: 100%;
+  stroke-width: 2.15;
+}
+
 .ert-ui.ert-scope--settings .ert-publishing-status-col-header {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--ert-gap-xs);
+  display: flex;
+  align-items: flex-start;
   min-width: 0;
+  position: relative;
+  z-index: 1;
 }
 
 .ert-ui.ert-scope--settings .ert-publishing-status-col-title {
-  font-size: 0.88rem;
-  font-weight: 600;
+  font-size: 1.04rem;
+  font-weight: 700;
   color: var(--text-muted);
-}
-
-.ert-ui.ert-scope--settings .ert-publishing-status-col-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 16px;
-  height: 16px;
 }
 
 .ert-ui.ert-scope--settings .ert-publishing-status-col-value {
-  font-size: 1rem;
+  font-size: 1.38rem;
   font-weight: 700;
   color: var(--text-normal);
+  line-height: 1.1;
+  position: relative;
+  z-index: 1;
 }
 
 .ert-ui.ert-scope--settings .ert-publishing-status-col-desc {
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   color: var(--text-muted);
-  line-height: 1.35;
+  line-height: 1.38;
+  max-width: 18ch;
+  position: relative;
+  z-index: 1;
 }
 
-.ert-ui.ert-scope--settings .ert-publishing-status-col.is-success .ert-publishing-status-col-icon {
-  color: var(--text-success);
+.ert-ui.ert-scope--settings .ert-publishing-status-col--needs-setup {
+  --ert-stage-accent: color-mix(in srgb, var(--text-muted) 68%, var(--background-modifier-border));
+  background: color-mix(in srgb, var(--background-secondary) 84%, var(--ert-stage-accent) 5%);
 }
 
-.ert-ui.ert-scope--settings .ert-publishing-status-col.is-success {
-  background: color-mix(in srgb, var(--text-success) 6%, transparent);
+.ert-ui.ert-scope--settings .ert-publishing-status-col--attention {
+  --ert-stage-accent: color-mix(in srgb, var(--text-warning, var(--color-orange, #f5a97a)) 88%, var(--text-normal));
+  background: color-mix(in srgb, var(--ert-stage-accent) 7%, var(--background-secondary) 88%);
 }
 
-.ert-ui.ert-scope--settings .ert-publishing-status-col.is-warning .ert-publishing-status-col-icon {
-  color: var(--text-warning, var(--color-orange, #f5a97a));
+.ert-ui.ert-scope--settings .ert-publishing-status-col--blocked {
+  --ert-stage-accent: color-mix(in srgb, var(--text-error) 92%, var(--text-normal));
+  background: color-mix(in srgb, var(--ert-stage-accent) 8%, var(--background-secondary) 88%);
 }
 
-.ert-ui.ert-scope--settings .ert-publishing-status-col.is-warning {
-  background: color-mix(in srgb, var(--text-warning, #f5a97a) 6%, transparent);
+.ert-ui.ert-scope--settings .ert-publishing-status-col--ready {
+  --ert-stage-accent: color-mix(in srgb, var(--text-success) 92%, var(--text-normal));
+  background: color-mix(in srgb, var(--ert-stage-accent) 7%, var(--background-secondary) 88%);
 }
 
-.ert-ui.ert-scope--settings .ert-publishing-status-col.is-neutral .ert-publishing-status-col-icon {
-  color: var(--interactive-accent);
-}
-
-.ert-ui.ert-scope--settings .ert-publishing-status-col.is-neutral {
-  background: color-mix(in srgb, var(--interactive-accent) 6%, transparent);
-}
-
-.ert-ui.ert-scope--settings .ert-publishing-status-col.is-error .ert-publishing-status-col-icon {
-  color: var(--text-error);
-}
-
-.ert-ui.ert-scope--settings .ert-publishing-status-col.is-error {
-  background: color-mix(in srgb, var(--text-error) 7%, transparent);
+.ert-ui.ert-scope--settings .ert-publishing-status-col::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-top: 1px solid color-mix(in srgb, var(--ert-stage-accent) 28%, transparent);
+  pointer-events: none;
+  z-index: 0;
 }
 
 .ert-ui.ert-scope--settings .ert-publishing-status-action {
   display: flex;
   justify-content: flex-end;
   align-items: center;
+  gap: var(--ert-gap-sm);
+  flex-wrap: wrap;
   padding: var(--ert-pad-sm);
   border-top: 1px solid color-mix(in srgb, var(--background-modifier-border) 90%, transparent);
 }
