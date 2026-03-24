@@ -662,21 +662,18 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         });
     }
 
-    private renderCoreQuickLinks(containerEl: HTMLElement, links: Array<{ label: string; icon: string; target: HTMLElement | null }>): void {
-        const row = containerEl.createDiv({ cls: ERT_CLASSES.INLINE });
-        const label = row.createSpan({
-            cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_NEUTRAL} ${ERT_CLASSES.BADGE_PILL_SM}`
-        });
-        label.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'Quick Links' });
+    private renderCoreQuickLinks(containerEl: HTMLElement, links: Array<{ label: string; target: HTMLElement | null }>): void {
+        const row = containerEl.createDiv({ cls: `${ERT_CLASSES.INLINE} ert-coreQuickLinks` });
+        row.createSpan({ cls: 'ert-coreQuickLinks__label', text: 'Quick Links' });
 
-        links.forEach(({ label: text, icon, target }) => {
+        links.forEach(({ label: text, target }) => {
             if (!target) return;
             const button = row.createEl('button', {
-                cls: `${ERT_CLASSES.PILL_BTN} ${ERT_CLASSES.PILL_BTN_STANDARD}`,
+                cls: `${ERT_CLASSES.PILL_BTN} ${ERT_CLASSES.PILL_BTN_STANDARD} ert-coreQuickLinks__pill`,
                 attr: { type: 'button', 'aria-label': `Jump to ${text}` }
             });
             const iconEl = button.createSpan({ cls: ERT_CLASSES.PILL_BTN_ICON });
-            setIcon(iconEl, icon);
+            setIcon(iconEl, 'corner-right-down');
             button.createSpan({ cls: ERT_CLASSES.PILL_BTN_LABEL, text });
             this.plugin.registerDomEvent(button, 'click', () => {
                 target.scrollIntoView({ block: 'start' });
@@ -873,11 +870,11 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         renderReadmeSection({ app: this.app, containerEl: readmeSection, setComponentRef: (c: Component | null) => { this.readmeComponent = c; } });
 
         this.renderCoreQuickLinks(quickLinksRow, [
-            { label: 'Books', icon: 'library-big', target: generalSection },
-            { label: 'Progress', icon: 'bar-chart-3', target: progressSection },
-            { label: 'Story beats', icon: 'activity', target: beatsStorySection },
-            { label: 'Chronology', icon: 'orbit', target: chronologueSection },
-            { label: 'Backdrop', icon: 'layers-3', target: backdropSection }
+            { label: 'Books', target: generalSection },
+            { label: 'Progress', target: progressSection },
+            { label: 'Story beats', target: beatsStorySection },
+            { label: 'Chronology', target: chronologueSection },
+            { label: 'Backdrop', target: backdropSection }
         ]);
 
         // Refactor alerts (shown at top when migrations are needed)

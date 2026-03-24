@@ -4,7 +4,9 @@ import type { TimelineItem } from '../../types';
 import { CreateBeatSetModal } from '../../modals/CreateBeatsTemplatesModal';
 import { getPlotSystem, getCustomSystemFromSettings, PRO_BEAT_SETS } from '../../utils/beatsSystems';
 import { createBeatNotesFromSet, getBeatConfigForSystem, ensureBeatConfigForSystem, spreadBeatsAcrossScenes } from '../../utils/beatsTemplates';
+import { getBeatSystemStructuralStatus } from '../../storyBeats/beatSystemStatus';
 import type { BeatSystemConfig, BeatDefinition } from '../../types/settings';
+import type { BeatStructuralBeatStatus, BeatSystemStructuralStatus } from '../../storyBeats/types';
 import { DEFAULT_SETTINGS } from '../defaults';
 
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
@@ -15,9 +17,7 @@ import { clampActNumber, parseActLabels, resolveActLabel } from '../../utils/act
 import { ERT_CLASSES, ERT_DATA } from '../../ui/classes';
 import { getActiveMigrations, REFACTOR_ALERTS, areAlertMigrationsComplete, dismissAlert, type FieldMigration } from '../refactorAlerts';
 import { getScenePrefixNumber } from '../../utils/text';
-import { filterBeatsBySystem } from '../../utils/gossamer';
 import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
-import { isStoryBeat } from '../../utils/sceneHelpers';
 import { openOrRevealFile } from '../../utils/fileUtils';
 import { tooltipForComponent } from '../../utils/tooltip';
 import {
@@ -41,7 +41,6 @@ import {
     normalizeBeatSetNameInput,
     sanitizeBeatFilenameSegment,
     toBeatMatchKey,
-    toBeatModelMatchKey,
 } from '../../utils/beatsInputNormalize';
 import {
     type NoteType,
@@ -60,7 +59,6 @@ import { runBackdropSynopsisToContextMigration, runBeatDescriptionToPurposeMigra
 import { runReferenceIdBackfill, runReferenceIdDuplicateRepair } from '../../utils/referenceIdBackfill';
 import { runYamlDeleteFields, runYamlDeleteEmptyExtraFields, runYamlReorder, previewDeleteFields, previewReorder, type DeleteResult, type ReorderResult } from '../../utils/yamlManager';
 import { type FrontmatterSafetyResult, formatSafetyIssues } from '../../utils/yamlSafety';
-import { isPathInFolderScope } from '../../utils/pathScope';
 import { IMPACT_FULL } from '../SettingImpact';
 import { renderScenePropertiesSection } from './scene/ScenePropertiesSection';
 import { renderSceneNormalizerSection } from './scene/SceneNormalizerSection';
@@ -487,211 +485,19 @@ export function renderStoryBeatsSection(params: {
         return beatsByAct.flat();
     };
 
-    const normalizeBeatModel = (value: unknown): string =>
-        toBeatModelMatchKey(String(value ?? ''));
-
-    const collectExistingBeatNotes = async (allowFetch: boolean, selectedSystem: string): Promise<TimelineItem[] | null> => {
-        if (!allowFetch) return null;
-        try {
-            const scenes = await plugin.getSceneData({ filterBeatsBySystem: false });
-            const beats = (scenes ?? []).filter(scene => scene.itemType === 'Beat' || scene.itemType === 'Plot');
-            const expectedModel = selectedSystem === 'Custom'
-                ? getActiveCustomName('Custom')
-                : selectedSystem;
-            const expectedKey = normalizeBeatModel(expectedModel);
-            if (!expectedKey) return [];
-            return beats.filter(beat => normalizeBeatModel((beat as any)['Beat Model']) === expectedKey);
-        } catch {
-            return [];
-        }
-    };
-
-    const getBeatBasename = (beat: TimelineItem): string => {
-        if (typeof beat.path === 'string') {
-            const filename = beat.path.split('/').pop() ?? '';
-            return filename.replace(/\.[^/.]+$/, '');
-        }
-        return typeof beat.title === 'string' ? beat.title : '';
-    };
-
-    const buildExistingBeatLookup = (beats: TimelineItem[]): Map<string, TimelineItem[]> => {
-        const lookup = new Map<string, TimelineItem[]>();
-        beats.forEach(beat => {
-            const key = normalizeBeatTitle(getBeatBasename(beat));
-            if (key) {
-                const list = lookup.get(key) ?? [];
-                list.push(beat);
-                lookup.set(key, list);
-            }
-        });
-        return lookup;
-    };
-
-    const buildExpectedBeatNames = (selectedSystem: string): string[] => {
-        if (selectedSystem === 'Custom') {
-            return getActiveCustomBeats()
-                .map(parseBeatRow)
-                .map(b => b.name)
-                .filter(name => name.length > 0);
-        }
-        const system = getPlotSystem(selectedSystem);
-        return system?.beats ?? [];
-    };
-
-    const collectBeatNotesByTemplateNames = (expectedKeys: Set<string>, selectedSystem: string): TimelineItem[] => {
-        if (expectedKeys.size === 0) return [];
-        const bookScope = (plugin.settings.sourcePath || '').trim();
-        const files = app.vault.getMarkdownFiles().filter(f => isPathInFolderScope(f.path, bookScope));
-        const matches: TimelineItem[] = [];
-        const customName = getActiveCustomName('Custom');
-        const expectedModel = selectedSystem === 'Custom' ? customName : selectedSystem;
-        const expectedModelKey = normalizeBeatModel(expectedModel);
-
-        files.forEach(file => {
-            const key = normalizeBeatTitle(file.basename);
-            if (!expectedKeys.has(key)) return;
-
-            const cache = app.metadataCache.getFileCache(file);
-            const fm = (cache?.frontmatter ?? {}) as Record<string, unknown>;
-            const normalized = normalizeFrontmatterKeys(fm, plugin.settings.frontmatterMappings);
-            const classValue = normalized['Class'];
-            if (classValue && !isStoryBeat(classValue)) return;
-            const beatModelValue = typeof normalized['Beat Model'] === 'string'
-                ? (normalized['Beat Model'] as string)
-                : '';
-            if (!expectedModelKey || normalizeBeatModel(beatModelValue) !== expectedModelKey) return;
-
-            const actValue = normalized['Act'];
-            const actNumberRaw = actValue !== undefined && actValue !== null && actValue !== '' ? Number(actValue) : undefined;
-            const actNumber = Number.isFinite(actNumberRaw) ? actNumberRaw : undefined;
-
-            matches.push({
-                title: (normalized['Title'] as string | undefined) ?? file.basename,
-                path: file.path,
-                date: '',
-                actNumber,
-                act: actNumber ? String(actNumber) : undefined,
-                itemType: 'Beat',
-                rawFrontmatter: normalized
-            });
-        });
-
-        return matches;
-    };
-
-    const collectBeatNotesMissingModelByExpectedNames = (expectedKeys: Set<string>): TimelineItem[] => {
-        if (expectedKeys.size === 0) return [];
-        const bookScope = (plugin.settings.sourcePath || '').trim();
-        const files = app.vault.getMarkdownFiles().filter(f => isPathInFolderScope(f.path, bookScope));
-        const matches: TimelineItem[] = [];
-
-        files.forEach(file => {
-            const key = normalizeBeatTitle(file.basename);
-            if (!expectedKeys.has(key)) return;
-
-            const cache = app.metadataCache.getFileCache(file);
-            const fm = (cache?.frontmatter ?? {}) as Record<string, unknown>;
-            const normalized = normalizeFrontmatterKeys(fm, plugin.settings.frontmatterMappings);
-            const classValue = normalized['Class'];
-            if (!classValue || !isStoryBeat(classValue)) return;
-
-            const beatModelValue = typeof normalized['Beat Model'] === 'string'
-                ? (normalized['Beat Model'] as string).trim()
-                : '';
-            if (beatModelValue.length > 0) return;
-
-            const actValue = normalized['Act'];
-            const actNumberRaw = actValue !== undefined && actValue !== null && actValue !== '' ? Number(actValue) : undefined;
-            const actNumber = Number.isFinite(actNumberRaw) ? actNumberRaw : undefined;
-
-            matches.push({
-                title: (normalized['Title'] as string | undefined) ?? file.basename,
-                path: file.path,
-                date: '',
-                actNumber,
-                act: actNumber ? String(actNumber) : undefined,
-                itemType: 'Beat',
-                missingBeatModel: true,
-                rawFrontmatter: normalized
-            });
-        });
-
-        return matches;
-    };
-
     type BeatMissingDiagnostic = {
         name: string;
         reason: string;
     };
 
-    const collectBeatNoteDiagnosticsByExpectedNames = (
-        expectedKeys: Set<string>,
-        selectedSystem: string
-    ): Map<string, { missingModel: number; wrongModels: Set<string>; nonBeatClass: number }> => {
-        const diagnostics = new Map<string, { missingModel: number; wrongModels: Set<string>; nonBeatClass: number }>();
-        if (expectedKeys.size === 0) return diagnostics;
-
-        const bookScope = (plugin.settings.sourcePath || '').trim();
-        const files = app.vault.getMarkdownFiles().filter(f => isPathInFolderScope(f.path, bookScope));
-        const expectedModel = selectedSystem === 'Custom'
-            ? getActiveCustomName('Custom')
-            : selectedSystem;
-        const expectedModelKey = normalizeBeatModel(expectedModel);
-        if (!expectedModelKey) return diagnostics;
-
-        const getOrCreate = (key: string) => {
-            const existing = diagnostics.get(key);
-            if (existing) return existing;
-            const next = { missingModel: 0, wrongModels: new Set<string>(), nonBeatClass: 0 };
-            diagnostics.set(key, next);
-            return next;
-        };
-
-        files.forEach((file) => {
-            const key = normalizeBeatTitle(file.basename);
-            if (!expectedKeys.has(key)) return;
-
-            const cache = app.metadataCache.getFileCache(file);
-            const fm = (cache?.frontmatter ?? {}) as Record<string, unknown>;
-            const normalized = normalizeFrontmatterKeys(fm, plugin.settings.frontmatterMappings);
-            const classValue = normalized['Class'];
-            const bucket = getOrCreate(key);
-
-            if (classValue && !isStoryBeat(classValue)) {
-                bucket.nonBeatClass += 1;
-                return;
-            }
-
-            const beatModelValue = typeof normalized['Beat Model'] === 'string'
-                ? (normalized['Beat Model'] as string).trim()
-                : '';
-
-            if (beatModelValue.length === 0) {
-                bucket.missingModel += 1;
-                return;
-            }
-
-            if (normalizeBeatModel(beatModelValue) !== expectedModelKey) {
-                bucket.wrongModels.add(beatModelValue);
-            }
-        });
-
-        return diagnostics;
+    type StructuralHealthState = {
+        icon: string;
+        statusClass: string;
+        tooltip: string;
     };
 
-    let existingBeatLookup = new Map<string, TimelineItem[]>();
-    let existingBeatCount = 0;
-    let existingBeatMatchedCount = 0;
-    let existingBeatExpectedCount = 0;
-    let existingBeatDuplicateCount = 0;
-    let existingBeatMisalignedCount = 0;
-    let existingBeatSyncedCount = 0;
-    let existingBeatNewCount = 0;
-    let existingBeatMissingModelCount = 0;
-    let existingBeatMissingDiagnostics: BeatMissingDiagnostic[] = [];
-    let existingBeatStatsSystem = '';
-    let existingBeatKey = '';
-    let existingBeatReady = false;
+    let beatStructuralStatus: BeatSystemStructuralStatus | null = null;
+    let beatStructuralStatusKey = '';
     let refreshCustomBeatList: (() => void) | null = null;
     let refreshCustomBeats: ((allowFetch: boolean) => void) | null = null;
     let refreshHealthIcon: (() => void) | null = null;
@@ -713,59 +519,7 @@ export function renderStoryBeatsSection(params: {
                 tooltip: 'Custom set has unsaved changes.'
             };
         }
-        if (!existingBeatReady || existingBeatStatsSystem !== 'Custom') {
-            return {
-                icon: 'circle-dashed',
-                statusClass: '',
-                tooltip: 'Custom beat note status not yet checked.'
-            };
-        }
-        const hasDups = existingBeatDuplicateCount > 0;
-        const hasMisaligned = existingBeatMisalignedCount > 0;
-        const hasMissing = existingBeatNewCount > 0;
-        const hasMissingModel = existingBeatMissingModelCount > 0;
-        const allGood = existingBeatSyncedCount === existingBeatExpectedCount
-            && !hasMisaligned && !hasDups && !hasMissingModel;
-        if (hasDups) {
-            return {
-                icon: 'alert-circle',
-                statusClass: 'ert-beat-health-icon--critical',
-                tooltip: `${existingBeatDuplicateCount} duplicate beat note${existingBeatDuplicateCount !== 1 ? 's' : ''} found. Manually delete duplicate notes to resolve.`
-            };
-        }
-        if (hasMisaligned) {
-            return {
-                icon: 'alert-triangle',
-                statusClass: 'ert-beat-health-icon--warning',
-                tooltip: `${existingBeatMisalignedCount} beat note${existingBeatMisalignedCount !== 1 ? 's' : ''} need repair.`
-            };
-        }
-        if (hasMissingModel) {
-            return {
-                icon: 'alert-triangle',
-                statusClass: 'ert-beat-health-icon--warning',
-                tooltip: `Missing Beat Model (${existingBeatMissingModelCount}) found.`
-            };
-        }
-        if (hasMissing) {
-            return {
-                icon: 'alert-triangle',
-                statusClass: 'ert-beat-health-icon--warning',
-                tooltip: `${existingBeatNewCount} beat note${existingBeatNewCount !== 1 ? 's' : ''} not yet created.`
-            };
-        }
-        if (allGood) {
-            return {
-                icon: 'check-circle',
-                statusClass: 'ert-beat-health-icon--success',
-                tooltip: 'All beat notes are up to date.'
-            };
-        }
-        return {
-            icon: 'circle-dashed',
-            statusClass: '',
-            tooltip: 'Custom beat note status not yet checked.'
-        };
+        return getStructuralHealthState('Custom');
     };
 
     /** Produce a lightweight hash string from the current custom beat state. */
@@ -796,134 +550,119 @@ export function renderStoryBeatsSection(params: {
         return dirtyState.isDirty(activeId, snapshotHash());
     };
 
-    const refreshExistingBeatLookup = async (allowFetch: boolean, selectedSystem: string): Promise<Map<string, TimelineItem[]> | null> => {
-        const nextKey = `${selectedSystem}|${getActiveCustomName('')}`;
-        if (!allowFetch && existingBeatKey === nextKey && existingBeatReady) {
-            return existingBeatLookup;
+    const getStructuralLookupKey = (selectedSystem: string): string => {
+        const sourcePath = normalizePath((plugin.settings.sourcePath || '').trim());
+        const actCount = String(getActCount());
+        if (selectedSystem !== 'Custom') return `${selectedSystem}|${sourcePath}|${actCount}`;
+        const fingerprint = getActiveCustomBeats()
+            .map((beat) => {
+                const row = parseBeatRow(beat);
+                return `${normalizeBeatTitle(row.name)}:${row.act}`;
+            })
+            .join(';');
+        return `custom:${getActiveCustomId()}|${getActiveCustomName('')}|${fingerprint}|${sourcePath}|${actCount}`;
+    };
+
+    const invalidateBeatStructuralStatus = () => {
+        beatStructuralStatus = null;
+        beatStructuralStatusKey = '';
+    };
+
+    const computeBeatStructuralStatus = (selectedSystem: string): BeatSystemStructuralStatus =>
+        getBeatSystemStructuralStatus({
+            app,
+            settings: plugin.settings,
+            selectedSystem,
+        });
+
+    const getBeatStructuralStatus = (
+        selectedSystem: string,
+        options?: { refresh?: boolean }
+    ): BeatSystemStructuralStatus => {
+        const nextKey = getStructuralLookupKey(selectedSystem);
+        if (!options?.refresh && beatStructuralStatus && beatStructuralStatusKey === nextKey) {
+            return beatStructuralStatus;
         }
-        const [beats, ranges] = await Promise.all([
-            collectExistingBeatNotes(allowFetch, selectedSystem),
-            collectActRanges(allowFetch)
-        ]);
-        if (beats === null) return null;
-        const resolvedRanges = ranges ?? new Map<number, ActRange>();
-        const expectedNames = buildExpectedBeatNames(selectedSystem);
-        const expectedKeys = new Set(expectedNames.map(name => normalizeBeatTitle(name)).filter(k => k.length > 0));
-        const missingModelCandidates = collectBeatNotesMissingModelByExpectedNames(expectedKeys);
-        const missingModelLookup = buildExistingBeatLookup(missingModelCandidates);
-        const buildCounts = (lookup: Map<string, TimelineItem[]>, total: number) => {
-            existingBeatLookup = lookup;
-            existingBeatCount = total;
-            existingBeatStatsSystem = selectedSystem;
-            existingBeatExpectedCount = expectedNames.length;
-            existingBeatMissingDiagnostics = [];
+        beatStructuralStatus = computeBeatStructuralStatus(selectedSystem);
+        beatStructuralStatusKey = nextKey;
+        return beatStructuralStatus;
+    };
 
-            // Match by normalized title key
-            let matched = 0;
-            let duplicates = 0;
-            const matchedKeys = new Set<string>();
-            for (const key of expectedKeys) {
-                if (lookup.has(key)) {
-                    matched++;
-                    matchedKeys.add(key);
-                    if ((lookup.get(key)?.length ?? 0) > 1) duplicates++;
-                }
-            }
-            existingBeatMatchedCount = matched;
-            existingBeatDuplicateCount = duplicates;
-            existingBeatMissingModelCount = missingModelCandidates.length;
+    const getBeatStatusByKey = (
+        structuralStatus: BeatSystemStructuralStatus,
+        beatKey: string
+    ): BeatStructuralBeatStatus | null =>
+        structuralStatus.beats.find((beat) => beat.expected.key === beatKey) ?? null;
 
-            // Compute misaligned count: beats matched by name but wrong Act.
-            const maxActs = getActCount();
-            const expectedBeats: BeatRow[] = selectedSystem === 'Custom'
-                ? orderBeatsByAct(
-                    getActiveCustomBeats()
-                        .map(parseBeatRow)
-                        .map(b => ({ ...b, act: clampBeatAct(b.act, maxActs) })),
-                    maxActs
-                )
-                : (() => {
-                    // Built-in templates: derive act from beatDetails[].act or infer from position
-                    const system = getPlotSystem(selectedSystem);
-                    const details = system?.beatDetails ?? [];
-                    const total = expectedNames.length;
-                    return expectedNames.map((name, idx) => {
-                        const detailAct = (details[idx] as { act?: number } | undefined)?.act;
-                        const act = typeof detailAct === 'number' && Number.isFinite(detailAct)
-                            ? detailAct
-                            : inferActForIndex(idx, total);
-                        return { name, act };
-                    });
-                })();
-            // Misaligned = matched by name but wrong Act. Prefix numbers are NOT audited (see Beat-Audit-Heal spec).
-            let misaligned = 0;
-            expectedBeats.forEach((beat) => {
-                const key = normalizeBeatTitle(beat.name);
-                if (!key || !lookup.has(key)) return;
-                const matches = lookup.get(key) ?? [];
-                const actNumber = clampBeatAct(beat.act, maxActs);
-                let hasAligned = false;
-                matches.forEach(existing => {
-                    const existingActRaw = typeof existing.actNumber === 'number' ? existing.actNumber : Number(existing.act ?? actNumber);
-                    const existingAct = Number.isFinite(existingActRaw) ? existingActRaw : actNumber;
-                    if (existingAct === actNumber) hasAligned = true;
-                });
-                if (!hasAligned) misaligned++;
-            });
-            existingBeatMisalignedCount = misaligned;
-            existingBeatSyncedCount = Math.max(0, existingBeatMatchedCount - existingBeatMisalignedCount - existingBeatDuplicateCount);
-            const missingModelMatchedCount = Array.from(expectedKeys).filter(key => missingModelLookup.has(key)).length;
-            existingBeatNewCount = Math.max(0, existingBeatExpectedCount - existingBeatMatchedCount - missingModelMatchedCount);
-
-            const diagnosticsByKey = collectBeatNoteDiagnosticsByExpectedNames(expectedKeys, selectedSystem);
-            const expectedNameByKey = new Map<string, string>();
-            expectedNames.forEach((name) => {
-                const key = normalizeBeatTitle(name);
-                if (key && !expectedNameByKey.has(key)) expectedNameByKey.set(key, name);
+    const buildMissingBeatDiagnostics = (
+        structuralStatus: BeatSystemStructuralStatus
+    ): BeatMissingDiagnostic[] =>
+        structuralStatus.beats
+            .filter((beat) => {
+                const activeMatches = structuralStatus.matches.activeByBeatKey.get(beat.expected.key) ?? [];
+                const hasMissingModel = beat.issues.some((issue) => issue.code === 'missing_model');
+                return activeMatches.length === 0 && !hasMissingModel;
+            })
+            .map((beat) => {
+                const reason = beat.issues.find((issue) => issue.code === 'wrong_model')?.message
+                    ?? beat.issues.find((issue) => issue.code === 'non_beat_class')?.message
+                    ?? 'No matching title note.';
+                return {
+                    name: beat.expected.name,
+                    reason,
+                };
             });
 
-            const missingDiagnostics: BeatMissingDiagnostic[] = [];
-            for (const [key, name] of expectedNameByKey.entries()) {
-                if (matchedKeys.has(key) || missingModelLookup.has(key)) continue;
-                const bucket = diagnosticsByKey.get(key);
-                let reason = 'No matching title note.';
-                if (bucket && bucket.wrongModels.size > 0) {
-                    const models = [...bucket.wrongModels].slice(0, 3);
-                    const suffix = bucket.wrongModels.size > 3 ? ` (+${bucket.wrongModels.size - 3} more)` : '';
-                    reason = `Matching title found, but Beat Model differs (${models.join(', ')}${suffix}).`;
-                } else if (bucket && bucket.nonBeatClass > 0) {
-                    reason = 'Matching title found, but Class is not Beat/Plot.';
-                }
-                missingDiagnostics.push({ name, reason });
-            }
-            existingBeatMissingDiagnostics = missingDiagnostics;
+    const getStructuralHealthState = (selectedSystem: string): StructuralHealthState => {
+        const structuralStatus = getBeatStructuralStatus(selectedSystem);
+        const summary = structuralStatus.summary;
+        if (summary.expectedCount === 0) {
+            return {
+                icon: 'circle-dashed',
+                statusClass: '',
+                tooltip: 'No beats defined for this system yet.'
+            };
+        }
+        if (summary.duplicateCount > 0) {
+            return {
+                icon: 'alert-circle',
+                statusClass: 'ert-beat-health-icon--critical',
+                tooltip: `${summary.duplicateCount} duplicate beat note${summary.duplicateCount !== 1 ? 's' : ''} found. Manually delete duplicate notes to resolve.`
+            };
+        }
+        if (summary.misalignedCount > 0) {
+            return {
+                icon: 'alert-triangle',
+                statusClass: 'ert-beat-health-icon--warning',
+                tooltip: `${summary.misalignedCount} beat note${summary.misalignedCount !== 1 ? 's' : ''} need repair.`
+            };
+        }
+        if (summary.missingModelNoteCount > 0) {
+            return {
+                icon: 'alert-triangle',
+                statusClass: 'ert-beat-health-icon--warning',
+                tooltip: `Missing Beat Model (${summary.missingModelNoteCount}) found.`
+            };
+        }
+        if (summary.missingCreateableCount > 0) {
+            return {
+                icon: 'alert-triangle',
+                statusClass: 'ert-beat-health-icon--warning',
+                tooltip: `${summary.missingCreateableCount} beat note${summary.missingCreateableCount !== 1 ? 's' : ''} not yet created.`
+            };
+        }
+        if (summary.syncedCount === summary.expectedCount) {
+            return {
+                icon: 'check-circle',
+                statusClass: 'ert-beat-health-icon--success',
+                tooltip: 'All beat notes are up to date.'
+            };
+        }
+        return {
+            icon: 'circle-dashed',
+            statusClass: '',
+            tooltip: 'Beat note status not yet checked.'
         };
-
-        const initialLookup = buildExistingBeatLookup(beats);
-        buildCounts(initialLookup, beats.length);
-
-        if (existingBeatMatchedCount === 0 && expectedKeys.size > 0) {
-            const fallbackBeats = await collectExistingBeatNotes(allowFetch, '');
-            if (fallbackBeats && fallbackBeats.length > 0) {
-                const fallbackLookup = buildExistingBeatLookup(fallbackBeats);
-                const fallbackMatched = Array.from(expectedKeys).filter(key => fallbackLookup.has(key)).length;
-                if (fallbackMatched > 0) {
-                    buildCounts(fallbackLookup, fallbackBeats.length);
-                    existingBeatKey = nextKey;
-                    existingBeatReady = true;
-                    return existingBeatLookup;
-                }
-            }
-
-            const nameMatchedBeats = collectBeatNotesByTemplateNames(expectedKeys, selectedSystem);
-            if (nameMatchedBeats.length > 0) {
-                const nameMatchedLookup = buildExistingBeatLookup(nameMatchedBeats);
-                buildCounts(nameMatchedLookup, nameMatchedBeats.length);
-            }
-        }
-        existingBeatKey = nextKey;
-        existingBeatReady = true;
-        return existingBeatLookup;
     };
 
     new Settings(actsStack)
@@ -1010,6 +749,7 @@ export function renderStoryBeatsSection(params: {
     const templatePreviewDesc = templatePreviewContainer.createDiv({ cls: 'ert-beat-template-desc' });
     const templatePreviewExamples = templatePreviewContainer.createDiv({ cls: 'ert-beat-template-examples' });
     const templatePreviewMeta = templatePreviewContainer.createDiv({ cls: 'ert-beat-template-meta' });
+    const templatePreviewStatus = templatePreviewContainer.createDiv({ cls: 'ert-beat-template-meta' });
     const templateActGrid = templatePreviewContainer.createDiv({ cls: 'ert-beat-act-grid' });
 
     // --- Custom System Configuration (Dynamic Visibility) ---
@@ -1076,7 +816,7 @@ export function renderStoryBeatsSection(params: {
                     setActiveCustomName(normalizedName);
                     setActiveCustomDescription(newDesc);
                     await plugin.saveSettings();
-                    existingBeatReady = false;
+                    invalidateBeatStructuralStatus();
                     updateTemplateButton(templateSetting, 'Custom');
                     renderCustomConfig();
                     renderPreviewContent('Custom');
@@ -1113,47 +853,12 @@ export function renderStoryBeatsSection(params: {
         }
 
         // Update health icon from current beat-note audit counters.
-        // Called immediately (from cached state) and again after async lookup.
+        // Called immediately and refreshed after structural mutations.
         const updateHealthIcon = () => {
-            if (!existingBeatReady || existingBeatStatsSystem !== 'Custom') {
-                // No audit run yet — neutral
-                healthIcon.className = 'ert-beat-health-icon';
-                setIcon(healthIcon, 'circle-dashed');
-                setTooltip(healthIcon, 'Beat note status not yet checked.');
-                return;
-            }
-            const hasDups = existingBeatDuplicateCount > 0;
-            const hasMisaligned = existingBeatMisalignedCount > 0;
-            const hasMissing = existingBeatNewCount > 0;
-            const hasMissingModel = existingBeatMissingModelCount > 0;
-            const allGood = existingBeatSyncedCount === existingBeatExpectedCount
-                && !hasMisaligned && !hasDups && !hasMissingModel;
-
-            if (hasDups) {
-                healthIcon.className = 'ert-beat-health-icon ert-beat-health-icon--critical';
-                setIcon(healthIcon, 'alert-circle');
-                setTooltip(healthIcon, `${existingBeatDuplicateCount} duplicate beat note${existingBeatDuplicateCount !== 1 ? 's' : ''} found. Manually delete duplicate notes to resolve.`);
-            } else if (hasMisaligned) {
-                healthIcon.className = 'ert-beat-health-icon ert-beat-health-icon--warning';
-                setIcon(healthIcon, 'alert-triangle');
-                setTooltip(healthIcon, `${existingBeatMisalignedCount} beat note${existingBeatMisalignedCount !== 1 ? 's' : ''} have wrong Act. Use Repair to update frontmatter.`);
-            } else if (hasMissingModel) {
-                healthIcon.className = 'ert-beat-health-icon ert-beat-health-icon--warning';
-                setIcon(healthIcon, 'alert-triangle');
-                setTooltip(healthIcon, `Missing Beat Model (${existingBeatMissingModelCount}) found.`);
-            } else if (hasMissing) {
-                healthIcon.className = 'ert-beat-health-icon ert-beat-health-icon--warning';
-                setIcon(healthIcon, 'alert-triangle');
-                setTooltip(healthIcon, `${existingBeatNewCount} beat note${existingBeatNewCount !== 1 ? 's' : ''} not yet created.`);
-            } else if (allGood) {
-                healthIcon.className = 'ert-beat-health-icon ert-beat-health-icon--success';
-                setIcon(healthIcon, 'check-circle');
-                setTooltip(healthIcon, 'All beat notes are up to date.');
-            } else {
-                healthIcon.className = 'ert-beat-health-icon';
-                setIcon(healthIcon, 'circle-dashed');
-                setTooltip(healthIcon, 'Beat note status not yet checked.');
-            }
+            const state = getStructuralHealthState('Custom');
+            healthIcon.className = `ert-beat-health-icon${state.statusClass ? ` ${state.statusClass}` : ''}`;
+            setIcon(healthIcon, state.icon);
+            setTooltip(healthIcon, state.tooltip);
         };
         updateHealthIcon();
 
@@ -1222,6 +927,7 @@ export function renderStoryBeatsSection(params: {
                 return;
             }
             setActiveCustomBeats(orderBeatsByAct(normalized, maxActs));
+            invalidateBeatStructuralStatus();
             await plugin.saveSettings();
             updateTemplateButton(templateSetting, 'Custom');
             renderPreviewContent('Custom');
@@ -1251,16 +957,13 @@ export function renderStoryBeatsSection(params: {
             }
             refreshBusy = true;
             const system = plugin.settings.beatSystem || 'Custom';
-            const [ranges, existing] = await Promise.all([
-                collectActRanges(allowFetch),
-                refreshExistingBeatLookup(allowFetch, system)
+            const [ranges] = await Promise.all([
+                collectActRanges(allowFetch)
             ]);
             if (ranges) {
                 actRanges = ranges;
             }
-            if (existing) {
-                existingBeatLookup = existing;
-            }
+            getBeatStructuralStatus(system, { refresh: allowFetch });
             renderList();
             updateTemplateButton(templateSetting, system);
             refreshBusy = false;
@@ -1290,6 +993,7 @@ export function renderStoryBeatsSection(params: {
             });
             const orderedBeats = beatsByAct.flat();
             const beatNumbers = buildBeatNumbers(orderedBeats, maxActs, actRanges);
+            const structuralStatus = getBeatStructuralStatus(plugin.settings.beatSystem || 'Custom');
             const titleMap = new Map<string, number[]>();
             orderedBeats.forEach((beatLine, idx) => {
                 const key = normalizeBeatTitle(beatLine.name);
@@ -1380,8 +1084,9 @@ export function renderStoryBeatsSection(params: {
                     }
 
                     // Check for existing files
-                    if (dupKey && existingBeatLookup.has(dupKey)) {
-                        const matches = existingBeatLookup.get(dupKey) ?? [];
+                    const beatStatus = dupKey ? getBeatStatusByKey(structuralStatus, dupKey) : null;
+                    const matches = dupKey ? (structuralStatus.matches.activeByBeatKey.get(dupKey) ?? []) : [];
+                    if (dupKey && matches.length > 0) {
                         if (matches.length > 1) {
                             rowState = 'duplicate';
                             rowNotices.push('Multiple beat notes match this title. Manually delete duplicate beat notes to resolve.');
@@ -1389,7 +1094,7 @@ export function renderStoryBeatsSection(params: {
                             const match = matches[0];
                             const existingActRaw = typeof match.actNumber === 'number'
                                 ? match.actNumber
-                                : Number(match.act ?? actNumber);
+                                : Number(actNumber);
                             const existingAct = Number.isFinite(existingActRaw) ? existingActRaw : actNumber;
                             const actAligned = existingAct === actNumber;
 
@@ -1401,6 +1106,13 @@ export function renderStoryBeatsSection(params: {
                                 rowNotices.push(`Wrong Act: file has Act ${existingAct}, expected Act ${actNumber}. Use Repair to fix.`);
                             }
                         }
+                    }
+                    if (beatStatus && matches.length === 0) {
+                        const structuralNotice = beatStatus.issues
+                            .filter((issue) => issue.code !== 'missing')
+                            .map((issue) => issue.message)
+                            .join(' • ');
+                        if (structuralNotice) rowNotices.push(structuralNotice);
                     }
 
                     if (rowState !== 'new') {
@@ -1644,7 +1356,8 @@ export function renderStoryBeatsSection(params: {
     }
     // --------------------------------------------------------
 
-    type ActGridColumn = { label: string; beats: string[]; rank: number; isNumericAct: boolean };
+    type ActGridBeat = { name: string; key: string };
+    type ActGridColumn = { label: string; beats: ActGridBeat[]; rank: number; isNumericAct: boolean };
 
     const getBeatSystemCopy = (system: string) => {
         return BEAT_SYSTEM_COPY[system] ?? {
@@ -1682,7 +1395,7 @@ export function renderStoryBeatsSection(params: {
                 if (!grouped.has(key)) {
                     grouped.set(key, { label: `Act ${actNum}`, beats: [], rank: actNum, isNumericAct: true });
                 }
-                grouped.get(key)!.beats.push(cleanedBeat);
+                grouped.get(key)!.beats.push({ name: cleanedBeat, key: normalizeBeatTitle(beatName) });
                 return;
             }
 
@@ -1695,13 +1408,13 @@ export function renderStoryBeatsSection(params: {
                     if (!grouped.has(key)) {
                         grouped.set(key, { label: `Act ${actNum}`, beats: [], rank: actNum, isNumericAct: true });
                     }
-                    grouped.get(key)!.beats.push(cleanedBeat);
+                    grouped.get(key)!.beats.push({ name: cleanedBeat, key: normalizeBeatTitle(beatName) });
                 } else {
                     const key = `label:${trimmed.toLowerCase()}`;
                     if (!grouped.has(key)) {
                         grouped.set(key, { label: trimmed, beats: [], rank: Number.MAX_SAFE_INTEGER - 1, isNumericAct: false });
                     }
-                    grouped.get(key)!.beats.push(cleanedBeat);
+                    grouped.get(key)!.beats.push({ name: cleanedBeat, key: normalizeBeatTitle(beatName) });
                 }
                 return;
             }
@@ -1712,7 +1425,7 @@ export function renderStoryBeatsSection(params: {
                 if (!grouped.has(key)) {
                     grouped.set(key, { label: `Act ${inferred}`, beats: [], rank: inferred, isNumericAct: true });
                 }
-                grouped.get(key)!.beats.push(cleanedBeat);
+                grouped.get(key)!.beats.push({ name: cleanedBeat, key: normalizeBeatTitle(beatName) });
                 return;
             }
 
@@ -1725,7 +1438,12 @@ export function renderStoryBeatsSection(params: {
         });
 
         if (other.length > 0) {
-            columns.push({ label: 'Other', beats: other, rank: Number.MAX_SAFE_INTEGER, isNumericAct: false });
+            columns.push({
+                label: 'Other',
+                beats: other.map((beat) => ({ name: beat, key: normalizeBeatTitle(beat) })),
+                rank: Number.MAX_SAFE_INTEGER,
+                isNumericAct: false
+            });
         }
 
         return { columns, totalBeats: total };
@@ -1745,13 +1463,16 @@ export function renderStoryBeatsSection(params: {
             if (!grouped.has(key)) {
                 grouped.set(key, { label: `Act ${actNum}`, beats: [], rank: actNum, isNumericAct: true });
             }
-            grouped.get(key)!.beats.push(stripActPrefix(beatLine.name));
+            grouped.get(key)!.beats.push({
+                name: stripActPrefix(beatLine.name),
+                key: normalizeBeatTitle(beatLine.name)
+            });
         });
         const columns = Array.from(grouped.values()).sort((a, b) => a.rank - b.rank);
         return { columns, totalBeats: ordered.length };
     };
 
-    const renderPreviewContent = (system: string) => {
+    const renderPreviewContent = (system: string, _options?: { skipStatusRefresh?: boolean }) => {
         const { mode } = deriveBeatSystemMode(system);
         const copy = getBeatSystemCopy(system);
         let columns: ActGridColumn[];
@@ -1777,6 +1498,16 @@ export function renderStoryBeatsSection(params: {
         templatePreviewExamples.toggleClass('ert-settings-hidden', !copy.examples || hasAuthorDesc);
         templatePreviewMeta.setText(totalBeats > 0 ? `${totalBeats} beats · ${columns.length} acts` : '');
         templatePreviewMeta.toggleClass('ert-settings-hidden', totalBeats === 0);
+        const structuralStatus = totalBeats > 0 ? getBeatStructuralStatus(system) : null;
+        const beatStatusByKey = new Map<string, BeatStructuralBeatStatus>(
+            (structuralStatus?.beats ?? []).map((beat) => [beat.expected.key, beat])
+        );
+        templatePreviewStatus.setText(
+            totalBeats > 0
+                ? (structuralStatus?.summary.statusLabel ?? 'Structure status: Checking…')
+                : ''
+        );
+        templatePreviewStatus.toggleClass('ert-settings-hidden', totalBeats === 0);
 
         templateActGrid.empty();
         if (columns.length === 0) {
@@ -1791,12 +1522,29 @@ export function renderStoryBeatsSection(params: {
         columns.forEach((column) => {
             const colEl = templateActGrid.createDiv({ cls: 'ert-beat-act-column' });
             const count = column.beats.length;
-            const headerText = column.isNumericAct ? `${column.label} (${count})` : `${column.label}${count > 0 ? ` (${count})` : ''}`;
+            const columnIssueCount = column.beats.reduce((totalIssues, beat) => {
+                const status = beatStatusByKey.get(beat.key) ?? null;
+                if (!status || status.kind === 'complete') return totalIssues;
+                return totalIssues + 1;
+            }, 0);
+            const columnStatusText = columnIssueCount === 0
+                ? '✔ Complete'
+                : `⚠ ${columnIssueCount} issue${columnIssueCount !== 1 ? 's' : ''}`;
+            const headerText = column.isNumericAct
+                ? `${column.label} (${count}) — ${columnStatusText}`
+                : `${column.label}${count > 0 ? ` (${count})` : ''} — ${columnStatusText}`;
             colEl.createDiv({ cls: 'ert-beat-act-header', text: headerText });
             const listEl = colEl.createDiv({ cls: 'ert-beat-act-list' });
             column.beats.forEach((beat) => {
                 runningBeatIdx++;
-                listEl.createDiv({ cls: 'ert-beat-act-item', text: `${runningBeatIdx}. ${beat}` });
+                const status = beatStatusByKey.get(beat.key) ?? null;
+                const statusText = !status
+                    ? '…'
+                    : status.label;
+                const row = listEl.createDiv({ cls: 'ert-beat-act-item', text: `${runningBeatIdx}. ${beat.name} — ${statusText}` });
+                if (status && status.kind !== 'complete') {
+                    setTooltip(row, status.issues.map((issue) => issue.message).join(' • '));
+                }
             });
         });
     };
@@ -2046,7 +1794,7 @@ export function renderStoryBeatsSection(params: {
                 plugin.settings.beatSystem = option.systemName;
                 await plugin.saveSettings();
                 plugin.onSettingChanged(IMPACT_FULL); // Tier 3: beat system change rebuilds timeline beats
-                existingBeatReady = false;
+                invalidateBeatStructuralStatus();
                 updateTemplateButton(templateSetting, option.systemName);
                 updateBeatSystemCard(option.systemName);
                 renderBeatSystemTabs();
@@ -2611,7 +2359,7 @@ export function renderStoryBeatsSection(params: {
         // 7. Targeted UI refresh — update only the affected sections instead of
         //    a full renderStoryBeatsSection() call. This avoids the callback-null
         //    window and preserves subscriptions that are still valid.
-        existingBeatReady = false;
+        invalidateBeatStructuralStatus();
         renderCustomConfig();           // Design tab (beat list, header, health)
         renderBeatYamlEditor();         // Fields tab (YAML fields for new system)
         updateBeatHoverPreview?.();     // Fields tab (hover preview)
@@ -3055,7 +2803,7 @@ export function renderStoryBeatsSection(params: {
                     confirmModal.close();
                     new Notice(`Deleted set "${system.name}".`);
                     // Reset audit state since beats were cleared
-                    existingBeatReady = false;
+                    invalidateBeatStructuralStatus();
                     // Refresh all affected UI
                     renderCustomConfig();
                     renderPreviewContent('Custom');
@@ -3576,6 +3324,7 @@ export function renderStoryBeatsSection(params: {
         beatSystemKey?: string
     ): void {
         let auditResult: YamlAuditResult | null = null;
+        let structuralStatus: BeatSystemStructuralStatus | null = null;
         let auditScopeSummary = '';
         type FillEmptyPlan = {
             files: TFile[];
@@ -4005,6 +3754,9 @@ export function renderStoryBeatsSection(params: {
                 new Notice(`No ${noteType.toLowerCase()} notes found in scope: ${auditScopeSummary}`);
                 return;
             }
+            structuralStatus = noteType === 'Beat'
+                ? getBeatStructuralStatus(plugin.settings.beatSystem || 'Custom', { refresh: true })
+                : null;
             auditResult = await runYamlAudit({
                 app,
                 settings: plugin.settings,
@@ -4173,6 +3925,12 @@ export function renderStoryBeatsSection(params: {
             const healthEl = headerEl.createSpan({ cls: `ert-audit-health ert-audit-health--${healthLevel}` });
             healthEl.textContent = `Note status: ${healthLabels[healthLevel]}`;
             headerEl.createSpan({ text: ` · Scope: ${auditScopeSummary}`, cls: 'ert-audit-summary' });
+            if (noteType === 'Beat' && structuralStatus) {
+                resultsEl.createDiv({
+                    text: structuralStatus.summary.statusLabel,
+                    cls: 'ert-audit-summary'
+                });
+            }
 
             if (s.notesMissingIds > 0) {
                 resultsEl.createDiv({
@@ -5540,16 +5298,20 @@ export function renderStoryBeatsSection(params: {
     renderAuditPanel(backdropAuditContainer, 'Backdrop');
 
     const buildMissingBeatInlineSummary = (): string => {
-        if (existingBeatMissingDiagnostics.length === 0) return '';
-        const detail = existingBeatMissingDiagnostics
+        const structuralStatus = getBeatStructuralStatus(plugin.settings.beatSystem || 'Custom');
+        const missingDiagnostics = buildMissingBeatDiagnostics(structuralStatus);
+        if (missingDiagnostics.length === 0) return '';
+        const detail = missingDiagnostics
             .map((entry) => `${entry.name} (${entry.reason})`)
             .join(' · ');
         return `Missing details: ${detail}`;
     };
 
     const buildMissingBeatTooltip = (): string | null => {
-        if (existingBeatMissingDiagnostics.length === 0) return null;
-        const lines = existingBeatMissingDiagnostics.map((entry) => `- ${entry.name}\n  ${entry.reason}`);
+        const structuralStatus = getBeatStructuralStatus(plugin.settings.beatSystem || 'Custom');
+        const missingDiagnostics = buildMissingBeatDiagnostics(structuralStatus);
+        if (missingDiagnostics.length === 0) return null;
+        const lines = missingDiagnostics.map((entry) => `- ${entry.name}\n  ${entry.reason}`);
         return `Why these beats are marked missing:\n${lines.join('\n')}`;
     };
 
@@ -5656,12 +5418,12 @@ export function renderStoryBeatsSection(params: {
         if (!hasBeats) return;
 
         void (async () => {
-            const lookup = await refreshExistingBeatLookup(true, selectedSystem);
-            if (!lookup) return;
+            const structuralStatus = getBeatStructuralStatus(selectedSystem, { refresh: true });
             const activeSystem = plugin.settings.beatSystem || 'Custom';
             if (selectedSystem !== activeSystem) return;
 
-            const newBeats = existingBeatNewCount;
+            const summary = structuralStatus.summary;
+            const newBeats = summary.missingCreateableCount;
             const hasNew = newBeats > 0;
             const missingInlineSummary = buildMissingBeatInlineSummary();
             const missingTooltip = buildMissingBeatTooltip();
@@ -5672,8 +5434,8 @@ export function renderStoryBeatsSection(params: {
             // — alignment, numbering, and duplicates are not surfaced because
             // no repair tooling is provided for these read-only definitions.
             if (isTemplateMode) {
-                const foundCount = existingBeatMatchedCount;
-                const expectedCount = existingBeatExpectedCount;
+                const foundCount = summary.matchedCount;
+                const expectedCount = summary.expectedCount;
 
                 if (foundCount === 0) {
                     // No beat notes found yet
@@ -5712,21 +5474,21 @@ export function renderStoryBeatsSection(params: {
             }
 
             // ── Custom mode: full health analysis ────────────────────────
-            const synced = existingBeatSyncedCount;
-            const misaligned = existingBeatMisalignedCount;
-            const duplicates = existingBeatDuplicateCount;
-            const missingModel = existingBeatMissingModelCount;
-            const allSynced = synced === existingBeatExpectedCount && misaligned === 0 && duplicates === 0 && missingModel === 0;
+            const synced = summary.syncedCount;
+            const misaligned = summary.misalignedCount;
+            const duplicates = summary.duplicateCount;
+            const missingModel = summary.missingModelNoteCount;
+            const allSynced = synced === summary.expectedCount && misaligned === 0 && duplicates === 0 && missingModel === 0;
             const hasMisaligned = misaligned > 0;
             const hasDuplicates = duplicates > 0;
             const hasMissingModel = missingModel > 0;
 
-            if (existingBeatMatchedCount === 0 && !hasMissingModel) {
+            if (summary.matchedCount === 0 && !hasMissingModel) {
                 // Scenario A: Fresh — no existing files
                 setting.setDesc(baseDesc);
                 setPrimaryDesignButton(
                     'Create beat notes',
-                    `Create ${existingBeatExpectedCount} beat note files`,
+                    `Create ${summary.expectedCount} beat note files`,
                     false,
                     async () => { await createBeatTemplates(); }
                 );
@@ -5744,7 +5506,7 @@ export function renderStoryBeatsSection(params: {
 
             if (allSynced) {
                 // Scenario B: All synced — nothing to do
-                statusDesc = `All ${existingBeatExpectedCount} beat notes are synced.`;
+                statusDesc = `All ${summary.expectedCount} beat notes are synced.`;
                 if (createTemplatesButton) {
                     setPrimaryDesignButton(
                         createTemplatesButton.buttonEl.textContent || 'Create beat notes',
@@ -5826,17 +5588,12 @@ export function renderStoryBeatsSection(params: {
             return;
         }
 
-        const expectedKeys = new Set(beats.map(b => normalizeBeatTitle(b.name)).filter(k => k.length > 0));
-        const existing = await collectExistingBeatNotes(true, storyStructureName);
-        const existingMatched = existing ?? [];
-        const missingModelCandidates = collectBeatNotesMissingModelByExpectedNames(expectedKeys);
-        if (existingMatched.length === 0 && missingModelCandidates.length === 0) {
+        const structuralStatus = getBeatStructuralStatus(storyStructureName, { refresh: true });
+        if (structuralStatus.summary.matchedCount === 0 && structuralStatus.summary.missingModelNoteCount === 0) {
             new Notice('No existing beat notes found to merge.');
             return;
         }
 
-        const existingLookup = buildExistingBeatLookup(existingMatched);
-        const missingModelLookup = buildExistingBeatLookup(missingModelCandidates);
         const customModelName = storyStructureName === 'Custom'
             ? getActiveCustomName('Custom')
             : storyStructureName;
@@ -5863,11 +5620,10 @@ export function renderStoryBeatsSection(params: {
                 return;
             }
 
-            let matches: TimelineItem[] | undefined;
+            let matches = structuralStatus.matches.activeByBeatKey.get(key);
             let needsBeatModelFix = false;
-            matches = existingLookup.get(key);
             if (!matches || matches.length === 0) {
-                const missingMatches = missingModelLookup.get(key);
+                const missingMatches = structuralStatus.matches.missingModelByBeatKey.get(key);
                 if (!missingMatches || missingMatches.length === 0) return;
                 matches = missingMatches;
                 needsBeatModelFix = true;
@@ -5921,7 +5677,7 @@ export function renderStoryBeatsSection(params: {
             }
         }
 
-        existingBeatReady = false;
+        invalidateBeatStructuralStatus();
         // Wait for Obsidian metadata cache to re-index after renames
         await new Promise<void>(resolve => {
             const timeout = window.setTimeout(resolve, 1500);
@@ -5931,10 +5687,10 @@ export function renderStoryBeatsSection(params: {
                 resolve();
             });
         });
+        getBeatStructuralStatus(storyStructureName, { refresh: true });
         updateTemplateButton(templateSetting, storyStructureName);
-        void refreshExistingBeatLookup(true, storyStructureName).then(() => {
-            refreshCustomBeatList?.();
-        });
+        refreshCustomBeatList?.();
+        renderPreviewContent(storyStructureName, { skipStatusRefresh: true });
 
         const updatedCount = updates.length;
         const modelFixedCount = updates.filter(update => update.needsBeatModelFix).length;
@@ -5999,7 +5755,7 @@ export function renderStoryBeatsSection(params: {
             } else {
                 new Notice(`✓ Successfully created ${created} Beat set notes!`);
             }
-            existingBeatReady = false;
+            invalidateBeatStructuralStatus();
             // Wait until metadata cache is ready for all newly created beat files.
             // This prevents partial row-state updates (e.g., 2/3 rows recognized).
             const waitForCreatedBeatCaches = async (paths: string[], timeoutMs = 5000): Promise<void> => {
@@ -6020,10 +5776,10 @@ export function renderStoryBeatsSection(params: {
                 }
             };
             await waitForCreatedBeatCaches(createdPaths);
+            getBeatStructuralStatus(storyStructureName, { refresh: true });
             updateTemplateButton(templateSetting, storyStructureName);
-            void refreshExistingBeatLookup(true, storyStructureName).then(() => {
-                refreshCustomBeatList?.();
-            });
+            refreshCustomBeatList?.();
+            renderPreviewContent(storyStructureName, { skipStatusRefresh: true });
         } catch (error) {
             console.error('[Beat Templates] Failed:', error);
             new Notice(`Failed to create story beat sets: ${error}`);

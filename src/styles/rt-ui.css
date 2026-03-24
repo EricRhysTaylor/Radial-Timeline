@@ -8948,6 +8948,51 @@
   line-height: 1;
 }
 
+.ert-ui.ert-scope--settings .ert-coreQuickLinks {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.ert-ui.ert-scope--settings .ert-coreQuickLinks__label {
+  margin-right: 2px;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.ert-ui.ert-scope--settings .ert-coreQuickLinks__pill {
+  padding: 5px 11px;
+  min-height: 28px;
+  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 92%, transparent);
+  background: color-mix(in srgb, var(--background-secondary) 38%, transparent);
+  box-shadow: none;
+  color: var(--text-muted);
+  gap: 6px;
+  transition: none;
+}
+
+.ert-ui.ert-scope--settings .ert-coreQuickLinks__pill:hover:not(:disabled),
+.ert-ui.ert-scope--settings .ert-coreQuickLinks__pill:focus-visible {
+  border-color: color-mix(in srgb, var(--interactive-accent) 34%, var(--background-modifier-border));
+  background: color-mix(in srgb, var(--interactive-accent) 8%, var(--background-secondary));
+  color: var(--text-normal);
+  box-shadow: none;
+}
+
+.ert-ui.ert-scope--settings .ert-coreQuickLinks__pill .ert-pillBtn__icon svg {
+  width: 12px;
+  height: 12px;
+  opacity: 0.62;
+}
+
+.ert-ui.ert-scope--settings .ert-coreQuickLinks__pill .ert-pillBtn__label {
+  line-height: 1;
+}
+
 .ert-ui.ert-scope--settings select.ert-typography-select.ert-typography-select--warning {
   border-color: var(--ert-color-error);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--ert-color-error) 35%, transparent);
