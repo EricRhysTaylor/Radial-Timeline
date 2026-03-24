@@ -1742,7 +1742,7 @@ export function renderStoryBeatsSection(params: {
         }
     };
 
-    const updateTierBanner = (system: string) => {
+    function updateTierBanner(system: string): void {
         tierBannerEl.empty();
         const { mode } = deriveBeatSystemMode(system);
         tierBannerEl.createDiv({
@@ -1761,7 +1761,7 @@ export function renderStoryBeatsSection(params: {
         if (builtinLocked) {
             tierBannerEl.createDiv({ cls: 'ert-beat-tier-cta', text: 'Upgrade to Pro to edit beats and fields.' });
         }
-    };
+    }
 
     const updateBeatSystemCard = (system: string, options?: { resetStage?: boolean }) => {
         const { mode } = deriveBeatSystemMode(system);
