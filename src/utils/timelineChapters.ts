@@ -1,5 +1,5 @@
 import type { TimelineItem } from '../types';
-import { isSceneItem } from './sceneHelpers';
+import { isBeatNote, isMatterNote, isSceneItem, sortScenes } from './sceneHelpers';
 
 export const SHARED_CHAPTER_FIELD_KEY = 'Chapter';
 export const SHARED_CHAPTER_FIELD_SOURCE_LABEL = 'shared Chapter field on scene, beat, or backdrop notes';
@@ -123,4 +123,34 @@ export function collapseTimelineChapterMarkersByResolvedBoundary(
         const boundaryKey = `${marker.resolvedScenePath}::${marker.resolvedTimelinePosition}`;
         return lastMarkerByBoundary.get(boundaryKey) === marker;
     });
+}
+
+export function buildTimelineChapterResolverItems(items: TimelineItem[]): TimelineItem[] {
+    const orderedItems: TimelineItem[] = [];
+    const uniqueScenes = new Map<string, TimelineItem>();
+    const seenNonSceneKeys = new Set<string>();
+
+    items.forEach((item) => {
+        if (isMatterNote(item) || item.itemType === 'BookMeta') return;
+
+        if (item.itemType === 'Backdrop' || isBeatNote(item)) {
+            const key = item.path || `${item.itemType || 'Item'}::${item.title || ''}`;
+            if (seenNonSceneKeys.has(key)) return;
+            seenNonSceneKeys.add(key);
+            orderedItems.push(item);
+            return;
+        }
+
+        if (!isSceneItem(item)) return;
+        const sceneKey = item.path || `${item.title || ''}::${String(item.when || '')}`;
+        if (!uniqueScenes.has(sceneKey)) {
+            uniqueScenes.set(sceneKey, item);
+        }
+    });
+
+    uniqueScenes.forEach((scene) => {
+        orderedItems.push(scene);
+    });
+
+    return sortScenes(orderedItems, false, false);
 }

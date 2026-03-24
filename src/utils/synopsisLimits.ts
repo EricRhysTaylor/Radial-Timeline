@@ -4,6 +4,7 @@ export type SynopsisLimitSettings = {
 };
 
 export const DEFAULT_SYNOPSIS_MAX_WORDS = 30;
+export const SYNOPSIS_HOVER_EXTRA_WORDS = 20;
 
 export function getSynopsisGenerationWordLimit(settings: SynopsisLimitSettings): number {
     const raw = settings.synopsisGenerationMaxWords
@@ -13,9 +14,15 @@ export function getSynopsisGenerationWordLimit(settings: SynopsisLimitSettings):
     return Math.max(10, Math.min(300, Math.round(parsed)));
 }
 
-export function getSynopsisHoverLineLimit(settings: SynopsisLimitSettings): number {
-    // Keep hover compact while scaling with configured synopsis cap.
+export function getSynopsisHoverWordLimit(settings: SynopsisLimitSettings): number {
     const words = getSynopsisGenerationWordLimit(settings);
+    return Math.min(300, words + SYNOPSIS_HOVER_EXTRA_WORDS);
+}
+
+export function getSynopsisHoverLineLimit(settings: SynopsisLimitSettings): number {
+    // Hover gets modest extra headroom; vertical clipping still happens later
+    // when the synopsis actually runs out of usable space on the radial layout.
+    const words = getSynopsisHoverWordLimit(settings);
     return Math.max(3, Math.min(12, Math.ceil(words / 8) + 1));
 }
 

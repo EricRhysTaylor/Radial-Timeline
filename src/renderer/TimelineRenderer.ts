@@ -26,7 +26,6 @@ import {
     buildSquareClasses,
     buildTextClasses,
     extractPosition,
-    sortScenes,
     isBeatNote,
     type PluginRendererFacade
 } from '../utils/sceneHelpers';
@@ -73,7 +72,7 @@ import { renderCenterGrid } from './components/Grid';
 import { renderNarrativeChapterMarkers, type OuterRingChapterBoundaryGeometry } from './components/ChapterMarkers';
 import { renderMonthLabelDefs } from './components/Months';
 import { renderSubplotLabels } from './components/SubplotLabels';
-import { renderSubplotDominanceIndicators, computeSubplotDominanceStates, resolveDominantScene, type SubplotDominanceState } from './components/SubplotDominanceIndicators';
+import { renderSubplotDominanceIndicators } from './components/SubplotDominanceIndicators';
 import { renderDefs } from './components/Defs';
 import { renderEstimatedDateElements } from './components/Progress';
 import { sceneArcPath, renderVoidCellPath } from './components/SceneArcs';
@@ -102,7 +101,11 @@ import { getReadabilityMultiplier, getReadabilityScale } from '../utils/readabil
 import { getVersionCheckService } from '../services/VersionCheckService';
 import { hasActiveAlerts } from '../settings/refactorAlerts';
 import { getConfiguredActCount, parseActLabels } from '../utils/acts';
-import { collapseTimelineChapterMarkersByResolvedBoundary, resolveTimelineChapterMarkers } from '../utils/timelineChapters';
+import {
+    buildTimelineChapterResolverItems,
+    collapseTimelineChapterMarkersByResolvedBoundary,
+    resolveTimelineChapterMarkers
+} from '../utils/timelineChapters';
 
 
 // STATUS_COLORS and SceneNumberInfo now imported from constants
@@ -127,50 +130,6 @@ function computeSceneTitleInset(fontScale: number): number {
     if (!Number.isFinite(fontScale) || fontScale <= 1) return SCENE_TITLE_INSET;
     const extraInset = (fontScale - 1) * 18;
     return SCENE_TITLE_INSET + extraInset;
-}
-
-function buildNarrativeChapterResolverItems(params: {
-    scenes: TimelineItem[];
-    masterSubplotOrder: string[];
-    dominantSubplots?: Record<string, string>;
-}): TimelineItem[] {
-    const { scenes, masterSubplotOrder, dominantSubplots } = params;
-    const orderedItems: TimelineItem[] = [];
-    const uniqueSceneCandidates = new Map<string, TimelineItem[]>();
-    const seenNonSceneKeys = new Set<string>();
-
-    scenes.forEach((item) => {
-        if (item.itemType === 'Frontmatter' || item.itemType === 'Backmatter' || item.itemType === 'BookMeta') {
-            return;
-        }
-
-        if (item.itemType === 'Backdrop' || isBeatNote(item)) {
-            const key = item.path || `${item.itemType || 'Item'}::${item.title || ''}`;
-            if (seenNonSceneKeys.has(key)) return;
-            seenNonSceneKeys.add(key);
-            orderedItems.push(item);
-            return;
-        }
-
-        const sceneKey = item.path || `${item.title || ''}::${String(item.when || '')}`;
-        if (!uniqueSceneCandidates.has(sceneKey)) {
-            uniqueSceneCandidates.set(sceneKey, []);
-        }
-        uniqueSceneCandidates.get(sceneKey)!.push(item);
-    });
-
-    uniqueSceneCandidates.forEach((candidateScenes, sceneKey) => {
-        const scenePath = candidateScenes[0]?.path;
-        const resolution = resolveDominantScene({
-            scenePath,
-            candidateScenes,
-            masterSubplotOrder,
-            dominantSubplots
-        });
-        orderedItems.push(resolution.scene);
-    });
-
-    return sortScenes(orderedItems, false, false);
 }
 
 /**
@@ -718,11 +677,7 @@ export function createTimelineSVG(
     svg += renderNumberSquares(numberSquareContext);
 
     if (showChapterMarkers && ringRenderContext.outerRingChapterBoundaryGeometry) {
-        const chapterResolverItems = buildNarrativeChapterResolverItems({
-            scenes,
-            masterSubplotOrder,
-            dominantSubplots: plugin.settings.dominantSubplots
-        });
+        const chapterResolverItems = buildTimelineChapterResolverItems(scenes);
         const chapterMarkers = collapseTimelineChapterMarkersByResolvedBoundary(
             resolveTimelineChapterMarkers(chapterResolverItems)
         );

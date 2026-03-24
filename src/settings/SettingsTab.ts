@@ -527,8 +527,8 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             wikiHref: string;
             title: string;
             subtitle: string;
-            kicker: string;
-            features: { icon: string; text: string; targetSection?: string }[];
+            kicker?: string;
+            features?: { icon: string; text: string; targetSection?: string }[];
         }
     ): void {
         const hero = containerEl.createDiv({
@@ -564,30 +564,33 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             cls: `${ERT_CLASSES.SECTION_DESC} ert-hero-subtitle`,
             text: options.subtitle
         });
-        const featuresSection = hero.createDiv({
-            cls: `${ERT_CLASSES.HERO_FEATURES} ${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}`
-        });
-        featuresSection.createEl('h5', { text: options.kicker, cls: 'ert-kicker' });
-        const featuresList = featuresSection.createEl('ul', { cls: ERT_CLASSES.STACK });
-        options.features.forEach(feature => {
-            const li = featuresList.createEl('li', {
-                cls: `${ERT_CLASSES.INLINE} ert-feature-item${feature.targetSection ? ' ert-feature-item--link' : ''}`
+        const features = options.features || [];
+        if (features.length > 0 && options.kicker) {
+            const featuresSection = hero.createDiv({
+                cls: `${ERT_CLASSES.HERO_FEATURES} ${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}`
             });
-            const iconSpan = li.createSpan({ cls: 'ert-feature-icon' });
-            setIcon(iconSpan, feature.icon);
-            li.createSpan({ text: feature.text });
-            if (feature.targetSection) {
-                li.setAttr('role', 'button');
-                li.setAttr('tabindex', '0');
-                li.setAttr('aria-label', `Jump to ${feature.text}`);
-                this.plugin.registerDomEvent(li, 'click', () => this.scrollToSettingsSection(feature.targetSection!));
-                this.plugin.registerDomEvent(li, 'keydown', (evt: KeyboardEvent) => {
-                    if (evt.key !== 'Enter' && evt.key !== ' ') return;
-                    evt.preventDefault();
-                    this.scrollToSettingsSection(feature.targetSection!);
+            featuresSection.createEl('h5', { text: options.kicker, cls: 'ert-kicker' });
+            const featuresList = featuresSection.createEl('ul', { cls: ERT_CLASSES.STACK });
+            features.forEach(feature => {
+                const li = featuresList.createEl('li', {
+                    cls: `${ERT_CLASSES.INLINE} ert-feature-item${feature.targetSection ? ' ert-feature-item--link' : ''}`
                 });
-            }
-        });
+                const iconSpan = li.createSpan({ cls: 'ert-feature-icon' });
+                setIcon(iconSpan, feature.icon);
+                li.createSpan({ text: feature.text });
+                if (feature.targetSection) {
+                    li.setAttr('role', 'button');
+                    li.setAttr('tabindex', '0');
+                    li.setAttr('aria-label', `Jump to ${feature.text}`);
+                    this.plugin.registerDomEvent(li, 'click', () => this.scrollToSettingsSection(feature.targetSection!));
+                    this.plugin.registerDomEvent(li, 'keydown', (evt: KeyboardEvent) => {
+                        if (evt.key !== 'Enter' && evt.key !== ' ') return;
+                        evt.preventDefault();
+                        this.scrollToSettingsSection(feature.targetSection!);
+                    });
+                }
+            });
+        }
     }
 
     private scrollToSettingsSection(sectionKey: string): void {
@@ -622,14 +625,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             badgeVariant: ERT_CLASSES.BADGE_PILL_PRO,
             wikiHref: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#professional',
             title: 'Set up your book for export.',
-            subtitle: 'Start with details, add pages, choose a PDF style, then check export readiness.',
-            kicker: 'Setup steps',
-            features: [
-                { icon: 'book-open-text', text: 'Book Details: add the title and author first.', targetSection: 'book-details' },
-                { icon: 'library', text: 'Book Pages: choose the pages that belong in the book.', targetSection: 'book-pages' },
-                { icon: 'layout-grid', text: 'PDF Style: pick the look for exported PDFs.', targetSection: 'pdf-style' },
-                { icon: 'check-circle-2', text: 'Export Check: review readiness before exporting.', targetSection: 'export-check' }
-            ]
+            subtitle: 'Start with details, add pages, choose a PDF style, then check export readiness.'
         });
     }
 

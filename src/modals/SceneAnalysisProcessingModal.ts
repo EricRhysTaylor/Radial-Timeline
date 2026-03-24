@@ -595,7 +595,7 @@ export class SceneAnalysisProcessingModal extends Modal {
             });
             const synopsisHelp = synopsisInfo.createDiv({ cls: 'rt-synopsis-control-help' });
             const renderSynopsisHelp = () => {
-                synopsisHelp.setText(`Also replace Synopsis with a concise version generated from scene content. Current length is ${synopsisWordLimit} words. Hover display is capped from this value.`);
+                synopsisHelp.setText(`Also replace Synopsis with a concise version generated from scene content. Current stored length target is ${synopsisWordLimit} words. Hover may use a little more when space allows.`);
             };
             renderSynopsisHelp();
 

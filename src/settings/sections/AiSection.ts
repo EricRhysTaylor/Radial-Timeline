@@ -3138,7 +3138,7 @@ export function renderAiSection(params: {
 
     aiConfigCreateRow(aiDisplayGroup, {
         title: 'Synopsis max words',
-        description: 'Cap for generated Synopsis text shown on hover and other compact timeline surfaces.',
+        description: 'Base cap for generated Synopsis text. Hover can use a little more when space allows, but this remains the stored Synopsis target.',
         control: (setting) => {
             aiConfigCreateNumberInput(setting, {
                 value: getSynopsisGenerationWordLimit(plugin.settings),

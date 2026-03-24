@@ -9,6 +9,11 @@ import { IMPACT_FULL } from '../SettingImpact';
 import { DEFAULT_SETTINGS } from '../defaults';
 import { resolveAiLogFolder, countAiLogFiles } from '../../ai/log';
 import { renderMetadataSection } from './MetadataSection';
+import {
+    buildTimelineChapterResolverItems,
+    collapseTimelineChapterMarkersByResolvedBoundary,
+    resolveTimelineChapterMarkers
+} from '../../utils/timelineChapters';
 
 export function renderConfigurationSection(params: { app: App; plugin: RadialTimelinePlugin; containerEl: HTMLElement; attachFolderSuggest?: (text: TextComponent) => void; }): void {
     const { app, plugin, containerEl } = params;
@@ -123,14 +128,14 @@ export function renderConfigurationSection(params: { app: App; plugin: RadialTim
         return folderSetting;
     };
 
-    const logsContainer = configurationBody.createDiv({ cls: 'ert-config-group' });
-    logsContainer.createDiv({ cls: 'ert-config-group-title', text: 'Logs' });
+    const displayContainer = configurationBody.createDiv({ cls: 'ert-config-group' });
+    displayContainer.createDiv({ cls: 'ert-config-group-title', text: 'Timeline Display' });
 
     const schemaContainer = configurationBody.createDiv({ cls: 'ert-config-group' });
     schemaContainer.createDiv({ cls: 'ert-config-group-title', text: 'Schema & Manuscript' });
 
-    const displayContainer = configurationBody.createDiv({ cls: 'ert-config-group' });
-    displayContainer.createDiv({ cls: 'ert-config-group-title', text: 'Timeline Display' });
+    const logsContainer = configurationBody.createDiv({ cls: 'ert-config-group' });
+    logsContainer.createDiv({ cls: 'ert-config-group-title', text: 'Logs' });
 
     // Logs
     createFolderPathRow(logsContainer, {
@@ -219,6 +224,11 @@ export function renderConfigurationSection(params: { app: App; plugin: RadialTim
     });
 
     // Timeline Display
+    const buildChapterMarkerDescription = (status?: string): string => {
+        const base = t('settings.configuration.chapterMarkers.desc');
+        return status ? `${base} ${status}` : base;
+    };
+
     createDenseRow(displayContainer, {
         title: t('settings.configuration.autoExpand.name'),
         description: t('settings.configuration.autoExpand.desc'),
@@ -232,9 +242,9 @@ export function renderConfigurationSection(params: { app: App; plugin: RadialTim
         }
     });
 
-    createDenseRow(displayContainer, {
+    const chapterMarkerSetting = createDenseRow(displayContainer, {
         title: t('settings.configuration.chapterMarkers.name'),
-        description: t('settings.configuration.chapterMarkers.desc'),
+        description: buildChapterMarkerDescription(),
         control: (setting) => {
             setting.addToggle(toggle => toggle
                 .setValue(plugin.settings.showChapterMarkers ?? false)
@@ -264,5 +274,22 @@ export function renderConfigurationSection(params: { app: App; plugin: RadialTim
             });
         }
     });
+
+    const refreshChapterMarkerStatus = async () => {
+        try {
+            const chapterResolverItems = buildTimelineChapterResolverItems(await plugin.getSceneData());
+            const chapterCount = collapseTimelineChapterMarkersByResolvedBoundary(
+                resolveTimelineChapterMarkers(chapterResolverItems)
+            ).length;
+            chapterMarkerSetting.setDesc(buildChapterMarkerDescription(
+                chapterCount > 0
+                    ? `${chapterCount} active chapter marker${chapterCount === 1 ? '' : 's'} in the current active book.`
+                    : 'No active chapter markers.'
+            ));
+        } catch {
+            chapterMarkerSetting.setDesc(buildChapterMarkerDescription('No active chapter markers.'));
+        }
+    };
+    void refreshChapterMarkerStatus();
 
 }

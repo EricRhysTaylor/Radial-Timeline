@@ -3,7 +3,7 @@ import { isBeatNote, type PluginRendererFacade } from '../../utils/sceneHelpers'
 import { splitIntoBalancedLinesOptimal } from '../../utils/text';
 import { resolveScenePov } from '../../utils/pov';
 import { getReadabilityMultiplier } from '../../utils/readability';
-import { getSynopsisGenerationWordLimit, getSynopsisHoverLineLimit, truncateToWordLimit } from '../../utils/synopsisLimits';
+import { getSynopsisGenerationWordLimit, getSynopsisHoverLineLimit, getSynopsisHoverWordLimit, truncateToWordLimit } from '../../utils/synopsisLimits';
 
 /**
  * Split text into balanced lines and truncate to a maximum line count.
@@ -19,6 +19,30 @@ function splitAndTruncateLines(text: string, maxTextWidth: number, fontScale: nu
     return truncated;
 }
 
+function countWords(text: string | undefined): number {
+    const normalized = String(text ?? '').replace(/\s+/g, ' ').trim();
+    if (!normalized) return 0;
+    return normalized.split(' ').length;
+}
+
+function resolveHoverSynopsisText(scene: TimelineItem, synopsisWordLimit: number, hoverWordLimit: number): string | undefined {
+    const synopsis = typeof scene.synopsis === 'string' ? scene.synopsis.trim() : '';
+    if (!synopsis) return undefined;
+
+    const synopsisWords = countWords(synopsis);
+    const synopsisLooksClipped = synopsis.endsWith('...');
+    const synopsisAtCap = synopsisWords >= Math.max(10, synopsisWordLimit - 2);
+
+    // Hover should only use Synopsis, but it can show a little more than the
+    // stored-generation target when the existing Synopsis already exceeds that
+    // target or was hand-written beyond the AI cap.
+    if (synopsisLooksClipped && synopsisAtCap) {
+        return truncateToWordLimit(synopsis, hoverWordLimit);
+    }
+
+    return truncateToWordLimit(synopsis, hoverWordLimit);
+}
+
 export function buildSynopsisElement(
     plugin: PluginRendererFacade,
     scene: TimelineItem,
@@ -28,7 +52,8 @@ export function buildSynopsisElement(
     subplotIndexResolver?: (name: string) => number
 ): SVGGElement {
     const fontScale = getReadabilityMultiplier(plugin.settings as any);
-    const maxWords = getSynopsisGenerationWordLimit(plugin.settings as any);
+    const synopsisWordLimit = getSynopsisGenerationWordLimit(plugin.settings as any);
+    const hoverWordLimit = getSynopsisHoverWordLimit(plugin.settings as any);
     const maxLines = getSynopsisHoverLineLimit(plugin.settings as any);
 
     // For Backdrop items, only show Title and world context text
@@ -36,13 +61,13 @@ export function buildSynopsisElement(
         const lines = [scene.title || 'Untitled'];
         const backdropContext = scene.Context ?? scene.synopsis ?? scene.Description;
         if (backdropContext) {
-            lines.push(...splitAndTruncateLines(truncateToWordLimit(backdropContext, maxWords), maxTextWidth, fontScale, maxLines));
+            lines.push(...splitAndTruncateLines(truncateToWordLimit(backdropContext, hoverWordLimit), maxTextWidth, fontScale, maxLines));
         }
         return plugin.synopsisManager.generateElement(scene, lines, sceneId, subplotIndexResolver);
     }
 
     const beatPurpose = scene.Purpose ?? scene.Description;
-    const cappedSynopsis = scene.synopsis ? truncateToWordLimit(scene.synopsis, maxWords) : undefined;
+    const cappedSynopsis = resolveHoverSynopsisText(scene, synopsisWordLimit, hoverWordLimit);
     const contentLines = [
         scene.title || '',
         ...(isBeatNote(scene) && beatPurpose

@@ -106,81 +106,107 @@ export default class SynopsisManager {
     return lines.length > 0 ? lines : [trimmed];
   }
 
-  private getPulseLineData(textEl: SVGTextElement): {
-    titleText: string;
-    commentText: string;
-    titleClass: string;
-    commentClass: string;
-    commentPrefix: string;
+  private getWrappedListData(textEl: SVGTextElement): {
+    kind: 'subplot' | 'character';
+    items: Array<{ text: string; color: string; povLabel?: string }>;
   } | null {
-    if (textEl.getAttribute('data-pulse-line') !== 'true') {
+    const kindAttr = textEl.getAttribute('data-list-wrap-kind');
+    const itemsAttr = textEl.getAttribute('data-list-wrap-items');
+    if (!kindAttr || !itemsAttr) return null;
+    if (kindAttr !== 'subplot' && kindAttr !== 'character') return null;
+
+    try {
+      const parsed = JSON.parse(itemsAttr);
+      if (!Array.isArray(parsed)) return null;
+      const items = parsed
+        .filter((item): item is { text: string; color: string; povLabel?: string } =>
+          !!item && typeof item.text === 'string' && typeof item.color === 'string'
+        )
+        .map(item => ({
+          text: item.text,
+          color: item.color,
+          povLabel: typeof item.povLabel === 'string' && item.povLabel.trim() ? item.povLabel.trim() : undefined
+        }));
+      if (items.length === 0) return null;
+      return { kind: kindAttr, items };
+    } catch {
       return null;
     }
-
-    return {
-      titleText: textEl.getAttribute('data-pulse-title') ?? '',
-      commentText: textEl.getAttribute('data-pulse-comment') ?? '',
-      titleClass: textEl.getAttribute('data-pulse-title-class') ?? 'pulse-text-neutral',
-      commentClass: textEl.getAttribute('data-pulse-comment-class') ?? 'pulse-text',
-      commentPrefix: textEl.getAttribute('data-pulse-comment-prefix') ?? ''
-    };
   }
 
-  private setPulseLineContent(
+  private setWrappedListLineContent(
     textEl: SVGTextElement,
-    titleText: string,
-    commentText: string,
-    titleClass: string,
-    commentClass: string,
-    commentPrefix: string
+    kind: 'subplot' | 'character',
+    items: Array<{ text: string; color: string; povLabel?: string }>
   ): void {
     while (textEl.firstChild) {
       textEl.removeChild(textEl.firstChild);
     }
 
-    if (titleText) {
-      const titleSpan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
-      titleSpan.setAttribute('class', titleClass);
-      titleSpan.textContent = titleText;
-      textEl.appendChild(titleSpan);
-    }
+    items.forEach((item, index) => {
+      if (kind === 'subplot') {
+        const tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+        tspan.setAttribute('data-item-type', 'subplot');
+        tspan.style.setProperty('--rt-dynamic-color', item.color);
+        tspan.textContent = item.text;
+        textEl.appendChild(tspan);
+      } else {
+        let baselineRaised = false;
+        const tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+        tspan.setAttribute('data-item-type', 'character');
+        tspan.style.setProperty('--rt-dynamic-color', item.color);
+        if (item.povLabel) {
+          tspan.classList.add('rt-pov-character');
+        }
+        tspan.textContent = item.text;
+        textEl.appendChild(tspan);
 
-    if (commentText) {
-      const commentSpan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
-      commentSpan.setAttribute('class', commentClass);
-      commentSpan.textContent = `${commentPrefix}${commentText}`;
-      textEl.appendChild(commentSpan);
-    }
+        if (item.povLabel) {
+          const povTspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+          povTspan.setAttribute('class', 'rt-pov-marker');
+          povTspan.setAttribute('dy', '-8px');
+          povTspan.style.setProperty('--rt-dynamic-color', item.color);
+          povTspan.textContent = item.povLabel;
+          textEl.appendChild(povTspan);
+          baselineRaised = true;
+        }
+
+        if (index < items.length - 1) {
+          const comma = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+          comma.setAttribute('fill', 'var(--text-muted)');
+          if (baselineRaised) {
+            comma.setAttribute('dy', '8px');
+          }
+          comma.textContent = ', ';
+          textEl.appendChild(comma);
+        } else if (baselineRaised) {
+          const resetTspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+          resetTspan.setAttribute('dy', '8px');
+          resetTspan.textContent = '';
+          textEl.appendChild(resetTspan);
+        }
+      }
+
+      if (kind === 'subplot' && index < items.length - 1) {
+        const comma = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+        comma.setAttribute('fill', 'var(--text-muted)');
+        comma.textContent = ', ';
+        textEl.appendChild(comma);
+      }
+    });
   }
 
-  private restorePulseLineContent(textEl: SVGTextElement): void {
-    const pulseData = this.getPulseLineData(textEl);
-    if (!pulseData) return;
-
-    this.setPulseLineContent(
-      textEl,
-      pulseData.titleText,
-      pulseData.commentText,
-      pulseData.titleClass,
-      pulseData.commentClass,
-      pulseData.commentPrefix
-    );
-  }
-
-  private measurePulseLineWidth(
+  private measureWrappedListWidth(
     textEl: SVGTextElement,
-    titleText: string,
-    commentText: string,
-    titleClass: string,
-    commentClass: string,
-    commentPrefix: string
+    kind: 'subplot' | 'character',
+    items: Array<{ text: string; color: string; povLabel?: string }>
   ): number {
     const existingChildren = document.createDocumentFragment();
     while (textEl.firstChild) {
       existingChildren.appendChild(textEl.firstChild);
     }
 
-    this.setPulseLineContent(textEl, titleText, commentText, titleClass, commentClass, commentPrefix);
+    this.setWrappedListLineContent(textEl, kind, items);
     const width = this.measureTextWidth(textEl);
 
     while (textEl.firstChild) {
@@ -191,102 +217,31 @@ export default class SynopsisManager {
     return width;
   }
 
-  private wrapPulseLine(
+  private wrapWrappedListItems(
     textEl: SVGTextElement,
-    maxWidth: number,
-    pulseData: {
-      titleText: string;
-      commentText: string;
-      titleClass: string;
-      commentClass: string;
-      commentPrefix: string;
-    }
-  ): Array<{ titleText: string; commentText: string; commentPrefix: string }> {
-    const { titleText, commentText, titleClass, commentClass } = pulseData;
-    const commentPrefix = pulseData.commentPrefix || (commentText ? ' / ' : '');
+    kind: 'subplot' | 'character',
+    items: Array<{ text: string; color: string; povLabel?: string }>,
+    maxWidth: number
+  ): Array<Array<{ text: string; color: string; povLabel?: string }>> {
+    const lines: Array<Array<{ text: string; color: string; povLabel?: string }>> = [];
+    let current: Array<{ text: string; color: string; povLabel?: string }> = [];
 
-    if (!commentText) {
-      return this.wrapTextToMeasuredWidth(
-        titleText,
-        maxWidth,
-        value => this.measurePulseLineWidth(textEl, value, '', titleClass, commentClass, '')
-      ).map(line => ({
-        titleText: line,
-        commentText: '',
-        commentPrefix: ''
-      }));
+    items.forEach(item => {
+      const candidate = [...current, item];
+      const candidateWidth = this.measureWrappedListWidth(textEl, kind, candidate);
+      if (current.length > 0 && candidateWidth > maxWidth) {
+        lines.push(current);
+        current = [item];
+      } else {
+        current = candidate;
+      }
+    });
+
+    if (current.length > 0) {
+      lines.push(current);
     }
 
-    const firstCommentWord = commentText.trim().split(/\s+/)[0] ?? '';
-    const titlePrefixWidth = this.measurePulseLineWidth(
-      textEl,
-      titleText,
-      firstCommentWord,
-      titleClass,
-      commentClass,
-      commentPrefix
-    );
-
-    if (titlePrefixWidth > maxWidth) {
-      const wrappedTitleLines = this.wrapTextToMeasuredWidth(
-        titleText,
-        maxWidth,
-        value => this.measurePulseLineWidth(textEl, value, '', titleClass, commentClass, '')
-      );
-      const wrappedCommentLines = this.wrapTextToMeasuredWidth(
-        commentText,
-        maxWidth,
-        value => this.measurePulseLineWidth(textEl, '', value, titleClass, commentClass, ''),
-        { firstLinePrefix: commentPrefix.trimStart() }
-      );
-
-      const wrappedLines = wrappedTitleLines.map(line => ({
-        titleText: line,
-        commentText: '',
-        commentPrefix: ''
-      }));
-
-      wrappedCommentLines.forEach((line, index) => {
-        wrappedLines.push({
-          titleText: '',
-          commentText: line,
-          commentPrefix: index === 0 ? commentPrefix.trimStart() : ''
-        });
-      });
-
-      return wrappedLines;
-    }
-
-    const wrappedCommentLines = this.wrapTextToMeasuredWidth(
-      commentText,
-      maxWidth,
-      value => this.measurePulseLineWidth(textEl, titleText, value, titleClass, commentClass, commentPrefix),
-      { firstLinePrefix: commentPrefix }
-    );
-
-    if (wrappedCommentLines.length === 0) {
-      return [{
-        titleText,
-        commentText: '',
-        commentPrefix: ''
-      }];
-    }
-
-    const wrappedLines: Array<{ titleText: string; commentText: string; commentPrefix: string }> = [{
-      titleText,
-      commentText: wrappedCommentLines[0],
-      commentPrefix
-    }];
-
-    for (let i = 1; i < wrappedCommentLines.length; i++) {
-      wrappedLines.push({
-        titleText: '',
-        commentText: wrappedCommentLines[i],
-        commentPrefix: ''
-      });
-    }
-
-    return wrappedLines;
+    return lines;
   }
 
   private resetAdvancedYamlWrap(synopsis: Element): void {
@@ -337,12 +292,16 @@ export default class SynopsisManager {
     });
   }
 
-  private resetPulseWrap(synopsis: Element): void {
-    const wrapped = Array.from(synopsis.querySelectorAll('[data-pulse-wrap="true"]')) as SVGTextElement[];
+  private resetWrappedListLines(synopsis: Element): void {
+    const wrapped = Array.from(synopsis.querySelectorAll('[data-list-wrap="true"]')) as SVGTextElement[];
     wrapped.forEach(el => el.remove());
 
-    const lines = Array.from(synopsis.querySelectorAll('[data-pulse-line="true"]')) as SVGTextElement[];
-    lines.forEach(line => this.restorePulseLineContent(line));
+    const lines = Array.from(synopsis.querySelectorAll('[data-list-wrap-kind]')) as SVGTextElement[];
+    lines.forEach(line => {
+      const listData = this.getWrappedListData(line);
+      if (!listData) return;
+      this.setWrappedListLineContent(line, listData.kind, listData.items);
+    });
   }
 
   private applyMainSynopsisWrap(params: {
@@ -593,137 +552,6 @@ export default class SynopsisManager {
     return didWrap;
   }
 
-  private applyPulseWrap(params: {
-    textRows: SVGTextElement[][];
-    baseY: number;
-    radius: number;
-    isRightAligned: boolean;
-    isTopHalf: boolean;
-    fontScale: number;
-    pulseLineHeight: number;
-    lineInnerRadius: number;
-  }): boolean {
-    const {
-      textRows,
-      baseY,
-      radius,
-      isRightAligned,
-      isTopHalf,
-      fontScale,
-      pulseLineHeight,
-      lineInnerRadius
-    } = params;
-
-    let didWrap = false;
-    let yOffset = 0;
-    const titleLineHeight = 32 * fontScale;
-    const synopsisLineHeight = 22 * fontScale;
-    const scorePreGap = 46 * fontScale;
-    const defaultMaxWidth = MAX_TEXT_WIDTH * fontScale;
-
-    for (let rowIndex = 0; rowIndex < textRows.length; rowIndex++) {
-      const rowElements = textRows[rowIndex];
-      const primaryEl = rowElements[0];
-      if (!primaryEl || primaryEl.getAttribute('data-pulse-wrap') === 'true') continue;
-
-      if (rowIndex > 0) {
-        const currentEl = rowElements[0];
-        const isGossamerLine = currentEl.classList.contains('rt-gossamer-score-line');
-        const isBeatsText = currentEl.classList.contains('pulse-text');
-        const prevEl = textRows[rowIndex - 1][0];
-        const isPrevLineSynopsis = prevEl.classList.contains('rt-title-text-secondary');
-        const isPrevLineBeats = prevEl.classList.contains('pulse-text');
-
-        if (rowIndex === 1) {
-          yOffset += titleLineHeight;
-        } else if (isGossamerLine && isPrevLineSynopsis) {
-          yOffset += scorePreGap;
-        } else if (isBeatsText || isPrevLineBeats) {
-          yOffset += pulseLineHeight;
-        } else {
-          yOffset += synopsisLineHeight;
-        }
-      }
-
-      const pulseData = this.getPulseLineData(primaryEl);
-      if (!pulseData) continue;
-
-      const anchorY = baseY + yOffset;
-      const radiusDiff = radius * radius - anchorY * anchorY;
-      if (radiusDiff <= 0) continue;
-
-      const circleX = Math.sqrt(radiusDiff);
-      const direction = isRightAligned ? 1 : -1;
-
-      let inset = 0;
-      if (isTopHalf) {
-        const style = window.getComputedStyle(primaryEl);
-        const fontSize = parseFloat(style.fontSize) || 16;
-        const ratio = rowIndex <= 1 ? 0.5 : SynopsisManager.TEXT_HEIGHT_INSET_RATIO;
-        inset = fontSize * ratio;
-      }
-
-      const anchorAbsoluteX = (circleX - inset) * direction;
-      const rightEdge = anchorAbsoluteX - SYNOPSIS_INSET;
-
-      let maxWidth = defaultMaxWidth;
-      let boundaryX = 0;
-      if (lineInnerRadius > 0 && Math.abs(anchorY) < lineInnerRadius) {
-        const innerDiff = lineInnerRadius * lineInnerRadius - anchorY * anchorY;
-        if (innerDiff > 0) {
-          boundaryX = Math.sqrt(innerDiff);
-        }
-      }
-      if (isRightAligned) {
-        maxWidth = rightEdge - boundaryX;
-      } else {
-        const leftEdge = anchorAbsoluteX + SYNOPSIS_INSET;
-        const leftBoundary = boundaryX > 0 ? -boundaryX : 0;
-        maxWidth = leftBoundary - leftEdge;
-      }
-
-      maxWidth += SynopsisManager.WRAP_OVERFLOW_TOLERANCE * fontScale;
-
-      if (!Number.isFinite(maxWidth) || maxWidth <= 0) {
-        continue;
-      }
-
-      const wrapped = this.wrapPulseLine(primaryEl, maxWidth, pulseData);
-      if (wrapped.length <= 1) continue;
-
-      this.setPulseLineContent(
-        primaryEl,
-        wrapped[0].titleText,
-        wrapped[0].commentText,
-        pulseData.titleClass,
-        pulseData.commentClass,
-        wrapped[0].commentPrefix
-      );
-
-      const insertParent = primaryEl.parentNode;
-      let insertBefore = primaryEl.nextSibling;
-      for (let i = 1; i < wrapped.length; i++) {
-        const cont = primaryEl.cloneNode(false) as SVGTextElement;
-        cont.setAttribute('data-pulse-wrap', 'true');
-        cont.setAttribute('data-pulse-line', 'true');
-        this.setPulseLineContent(
-          cont,
-          wrapped[i].titleText,
-          wrapped[i].commentText,
-          pulseData.titleClass,
-          pulseData.commentClass,
-          wrapped[i].commentPrefix
-        );
-        insertParent?.insertBefore(cont, insertBefore);
-        insertBefore = cont.nextSibling;
-      }
-
-      didWrap = true;
-    }
-
-    return didWrap;
-  }
-
   private applyAdvancedYamlWrap(params: {
     textRows: SVGTextElement[][];
     baseY: number;
@@ -835,6 +663,121 @@ export default class SynopsisManager {
         cont.textContent = wrapped[i];
         lineGroup?.appendChild(cont);
       }
+      didWrap = true;
+    }
+
+    return didWrap;
+  }
+
+  private applyWrappedListLineWrap(params: {
+    textRows: SVGTextElement[][];
+    baseY: number;
+    radius: number;
+    isRightAligned: boolean;
+    isTopHalf: boolean;
+    fontScale: number;
+    pulseLineHeight: number;
+    lineInnerRadius: number;
+  }): boolean {
+    const {
+      textRows,
+      baseY,
+      radius,
+      isRightAligned,
+      isTopHalf,
+      fontScale,
+      pulseLineHeight,
+      lineInnerRadius
+    } = params;
+
+    let didWrap = false;
+    let yOffset = 0;
+    const titleLineHeight = 32 * fontScale;
+    const synopsisLineHeight = 22 * fontScale;
+    const scorePreGap = 46 * fontScale;
+    const defaultMaxWidth = MAX_TEXT_WIDTH * fontScale;
+
+    for (let rowIndex = 0; rowIndex < textRows.length; rowIndex++) {
+      const rowElements = textRows[rowIndex];
+      const primaryEl = rowElements[0];
+      if (!primaryEl || primaryEl.getAttribute('data-list-wrap') === 'true') continue;
+
+      if (rowIndex > 0) {
+        const currentEl = rowElements[0];
+        const isGossamerLine = currentEl.classList.contains('rt-gossamer-score-line');
+        const isBeatsText = currentEl.classList.contains('pulse-text');
+        const prevEl = textRows[rowIndex - 1][0];
+        const isPrevLineSynopsis = prevEl.classList.contains('rt-title-text-secondary');
+        const isPrevLineBeats = prevEl.classList.contains('pulse-text');
+
+        if (rowIndex === 1) {
+          yOffset += titleLineHeight;
+        } else if (isGossamerLine && isPrevLineSynopsis) {
+          yOffset += scorePreGap;
+        } else if (isBeatsText || isPrevLineBeats) {
+          yOffset += pulseLineHeight;
+        } else {
+          yOffset += synopsisLineHeight;
+        }
+      }
+
+      const listData = this.getWrappedListData(primaryEl);
+      if (!listData) continue;
+
+      const anchorY = baseY + yOffset;
+      const radiusDiff = radius * radius - anchorY * anchorY;
+      if (radiusDiff <= 0) continue;
+
+      const circleX = Math.sqrt(radiusDiff);
+      const direction = isRightAligned ? 1 : -1;
+
+      let inset = 0;
+      if (isTopHalf) {
+        const style = window.getComputedStyle(primaryEl);
+        const fontSize = parseFloat(style.fontSize) || 16;
+        const ratio = rowIndex <= 1 ? 0.5 : SynopsisManager.TEXT_HEIGHT_INSET_RATIO;
+        inset = fontSize * ratio;
+      }
+
+      const anchorAbsoluteX = (circleX - inset) * direction;
+      const rightEdge = anchorAbsoluteX - SYNOPSIS_INSET;
+
+      let maxWidth = defaultMaxWidth;
+      let boundaryX = 0;
+      if (lineInnerRadius > 0 && Math.abs(anchorY) < lineInnerRadius) {
+        const innerDiff = lineInnerRadius * lineInnerRadius - anchorY * anchorY;
+        if (innerDiff > 0) {
+          boundaryX = Math.sqrt(innerDiff);
+        }
+      }
+      if (isRightAligned) {
+        maxWidth = rightEdge - boundaryX;
+      } else {
+        const leftEdge = anchorAbsoluteX + SYNOPSIS_INSET;
+        const leftBoundary = boundaryX > 0 ? -boundaryX : 0;
+        maxWidth = leftBoundary - leftEdge;
+      }
+
+      maxWidth += SynopsisManager.WRAP_OVERFLOW_TOLERANCE * fontScale;
+
+      if (!Number.isFinite(maxWidth) || maxWidth <= 0) {
+        continue;
+      }
+
+      const wrappedLines = this.wrapWrappedListItems(primaryEl, listData.kind, listData.items, maxWidth);
+      if (wrappedLines.length <= 1) continue;
+
+      this.setWrappedListLineContent(primaryEl, listData.kind, wrappedLines[0]);
+      const insertParent = primaryEl.parentNode;
+      let insertBefore = primaryEl.nextSibling;
+      for (let i = 1; i < wrappedLines.length; i++) {
+        const cont = primaryEl.cloneNode(false) as SVGTextElement;
+        cont.setAttribute('data-list-wrap', 'true');
+        this.setWrappedListLineContent(cont, listData.kind, wrappedLines[i]);
+        insertParent?.insertBefore(cont, insertBefore);
+        insertBefore = cont.nextSibling;
+      }
+
       didWrap = true;
     }
 
@@ -1637,6 +1580,13 @@ export default class SynopsisManager {
           subplotTextElement.setAttribute("x", "0");
           // Use the calculated subplotStartY
           subplotTextElement.setAttribute("y", String(subplotStartY));
+          subplotTextElement.setAttribute('data-list-wrap-kind', 'subplot');
+          subplotTextElement.setAttribute('data-list-wrap-items', JSON.stringify(
+            subplots.map((subplot: string) => ({
+              text: subplot.trim(),
+              color: getSubplotColor(subplot.trim(), sceneId)
+            }))
+          ));
 
           // Format each subplot with its own color
           subplots.forEach((subplot: string, j: number) => {
@@ -1672,6 +1622,23 @@ export default class SynopsisManager {
           characterTextElement.setAttribute("class", "rt-info-text rt-metadata-text");
           characterTextElement.setAttribute("x", "0");
           characterTextElement.setAttribute("y", String(characterY));
+          characterTextElement.setAttribute('data-list-wrap-kind', 'character');
+          characterTextElement.setAttribute('data-list-wrap-items', JSON.stringify(
+            characterList.map((character: string) => {
+              const trimmedChar = character.trim();
+              const markerMatch = trimmedChar.match(/>pov(?:=([^<]+))<$/i);
+              const povLabel = markerMatch ? (markerMatch[1]?.trim() || 'POV') : undefined;
+              const cleanedText = markerMatch
+                ? trimmedChar.replace(/\s*>pov(?:=[^<]+)?<\s*/i, '').trim()
+                : trimmedChar;
+              const color = povLabel ? CHARACTER_COLOR_POV : CHARACTER_COLOR_DEFAULT;
+              return {
+                text: cleanedText,
+                color,
+                povLabel
+              };
+            }).filter(item => item.text.length > 0)
+          ));
 
           // Format each character with its own color
           characterList.forEach((character: string, j: number) => {
@@ -1915,8 +1882,8 @@ export default class SynopsisManager {
     const shouldRewrap = prevWrapMode !== wrapMode;
 
     if (shouldRewrap) {
+      this.resetWrappedListLines(synopsis);
       this.resetAdvancedYamlWrap(synopsis);
-      this.resetPulseWrap(synopsis);
       this.resetPendingEditsWrap(synopsis);
       this.resetMainSynopsisWrap(synopsis);
     }
@@ -2021,24 +1988,10 @@ export default class SynopsisManager {
         didWrap = true;
       }
 
-      const pulseWrapped = this.applyPulseWrap({
-        textRows,
-        baseY,
-        radius,
-        isRightAligned,
-        isTopHalf,
-        fontScale,
-        pulseLineHeight,
-        lineInnerRadius
-      });
-      if (pulseWrapped) {
-        textElements = Array.from(synopsis.querySelectorAll('text')) as SVGTextElement[];
-        if (textElements.length === 0) return;
-        applyTextAnchors(textElements);
-        textRows = buildTextRows(textElements);
-        didWrap = true;
-      }
-
+      // Pulse triplet rows intentionally skip inner-radius wrapping.
+      // It was tried and produced visibly worse hover output than letting the
+      // pulse lines run long, so only synopsis/pending/advanced metadata use
+      // the donut-hole width constraint.
       const advancedWrapped = this.applyAdvancedYamlWrap({
         textRows,
         baseY,
@@ -2050,6 +2003,24 @@ export default class SynopsisManager {
         lineInnerRadius
       });
       if (advancedWrapped) {
+        textElements = Array.from(synopsis.querySelectorAll('text')) as SVGTextElement[];
+        if (textElements.length === 0) return;
+        applyTextAnchors(textElements);
+        textRows = buildTextRows(textElements);
+        didWrap = true;
+      }
+
+      const listWrapped = this.applyWrappedListLineWrap({
+        textRows,
+        baseY,
+        radius,
+        isRightAligned,
+        isTopHalf,
+        fontScale,
+        pulseLineHeight,
+        lineInnerRadius
+      });
+      if (listWrapped) {
         textElements = Array.from(synopsis.querySelectorAll('text')) as SVGTextElement[];
         if (textElements.length === 0) return;
         applyTextAnchors(textElements);
@@ -2847,12 +2818,6 @@ export default class SynopsisManager {
         lineText.setAttribute("x", "0");
         lineText.setAttribute("y", String(currentY));
         lineText.setAttribute("text-anchor", "start");
-        lineText.setAttribute('data-pulse-line', 'true');
-        lineText.setAttribute('data-pulse-title', titlePart ?? '');
-        lineText.setAttribute('data-pulse-comment', commentPart ?? '');
-        lineText.setAttribute('data-pulse-title-class', titleClass);
-        lineText.setAttribute('data-pulse-comment-class', commentClass);
-        lineText.setAttribute('data-pulse-comment-prefix', titlePart && commentPart ? ' / ' : '');
 
         if (titlePart !== null) {
           const tt = document.createElementNS("http://www.w3.org/2000/svg", "tspan");

@@ -1716,17 +1716,15 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
         return panel;
     };
     let refreshPublishingStatusCard: () => void = () => {};
-    let refreshPublishingProgressRow: () => void = () => {};
 
     // ─────────────────────────────────────────────────────────────────────────
     // PANDOC & EXPORT SETTINGS
     // ─────────────────────────────────────────────────────────────────────────
     const publishingStagesPanel = lockPanel(section.createDiv({ cls: `${ERT_CLASSES.STACK}` }));
     publishingStagesPanel.style.order = '5';
-    const setupProgressShell = publishingStagesPanel.createDiv({
-        cls: 'ert-publishing-setup-shell'
-    });
-    const setupProgressGrid = setupProgressShell.createDiv({ cls: 'ert-publishing-setup-grid' });
+    const statusShell = publishingStagesPanel.createDiv({ cls: 'ert-publishing-status-shell' });
+    const statusGrid = statusShell.createDiv({ cls: 'ert-publishing-status-grid' });
+    const setupActionRow = statusShell.createDiv({ cls: 'ert-publishing-status-action' });
 
     const pandocPanel = lockPanel(section.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` }));
     pandocPanel.style.order = '10';
@@ -1738,7 +1736,10 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
     addWikiLink(pandocHeading, 'Settings#professional');
     applyErtHeaderLayout(pandocHeading);
 
-    const systemConfigPanel = pandocPanel.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
+    const systemConfigPanel = pandocPanel.createDiv({
+        cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}`,
+        attr: { [ERT_DATA.SECTION]: 'export-check' }
+    });
     systemConfigPanel.style.order = '50';
     const systemConfigHeading = addProRow(new Setting(systemConfigPanel))
         .setName('System configuration')
@@ -3101,11 +3102,6 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
     addHeadingIcon(publishingHeading, 'book-open-text');
     applyErtHeaderLayout(publishingHeading);
 
-    const statusShell = publishingSetupPanel.createDiv({
-        cls: 'ert-publishing-status-shell',
-        attr: { [ERT_DATA.SECTION]: 'export-check' }
-    });
-    const statusGrid = statusShell.createDiv({ cls: 'ert-publishing-status-grid' });
     const getStatusTone = (statusLabel: string): 'success' | 'warning' | 'error' | 'neutral' => {
         if (statusLabel === 'Ready') return 'success';
         if (statusLabel === 'In progress') return 'neutral';
@@ -3138,66 +3134,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
         col.createDiv({ cls: 'ert-publishing-status-col-value', text: value });
         col.createDiv({ cls: 'ert-publishing-status-col-desc', text: desc });
     };
-    const renderPublishingStatusCard = () => {
-        statusGrid.empty();
 
-        const progress = getPublishingProgressContext(plugin);
-        const stages = buildPublishingProgressStages({
-            hasBookMeta: !!progress.activeBookMetaStatus.bookMeta,
-            bookMetaSummary: progress.bookMetaSummary,
-            matterSummary: progress.matterSummary,
-            matterCount: progress.matterCount,
-            layoutSummary: progress.layoutSummary,
-            pandocPathValid: progress.pandocPathValid
-        });
-
-        const stageMeta: Record<PublishingStageId, { icon: string; onClick: () => void }> = {
-            'book-details': {
-                icon: 'file-text',
-                onClick: () => {
-                    bookMetaPreviewPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
-            },
-            'book-pages': {
-                icon: 'library',
-                onClick: () => {
-                    publishingSetupPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
-            },
-            'pdf-style': {
-                icon: 'layout-grid',
-                onClick: () => {
-                    layoutPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
-            },
-            'export-check': {
-                icon: 'check-circle-2',
-                onClick: () => {
-                    if (!progress.pandocPathValid) {
-                        systemConfigPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        return;
-                    }
-                    statusShell.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
-            }
-        };
-
-        stages.forEach((stage) => {
-            buildStatusColumn(
-                stageMeta[stage.id].icon,
-                stage.title,
-                stage.statusLabel,
-                stage.detail,
-                getStatusTone(stage.statusLabel),
-                stageMeta[stage.id].onClick
-            );
-        });
-
-        refreshPublishingProgressRow();
-    };
-    refreshPublishingStatusCard = renderPublishingStatusCard;
-
-    const setupActionRow = statusShell.createDiv({ cls: 'ert-publishing-status-action' });
     setupButtonComponent = new ButtonComponent(setupActionRow);
     setupButtonComponent
         .setButtonText(STARTER_PUBLISHING_SETUP_BUTTON)
@@ -3206,8 +3143,8 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
         });
     setupButtonComponent.buttonEl.addClass('ert-pillBtn', 'ert-pillBtn--pro');
 
-    const renderPublishingProgressRow = () => {
-        setupProgressGrid.empty();
+    const renderPublishingStatusCard = () => {
+        statusGrid.empty();
         const progress = getPublishingProgressContext(plugin);
         const stages = buildPublishingProgressStages({
             hasBookMeta: !!progress.activeBookMetaStatus.bookMeta,
@@ -3222,7 +3159,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             'book-details': bookMetaPreviewPanel,
             'book-pages': publishingSetupPanel,
             'pdf-style': layoutPanel,
-            'export-check': statusShell
+            'export-check': systemConfigPanel
         };
         const iconByStage: Record<PublishingStageId, string> = {
             'book-details': 'file-text',
@@ -3231,40 +3168,20 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             'export-check': 'check-circle-2'
         };
 
-        stages.forEach((stage, index) => {
-            const target = targetByStage[stage.id];
-            const card = setupProgressGrid.createEl('button', {
-                cls: `ert-publishing-setup-card is-${stage.tone}`,
-                attr: {
-                    type: 'button',
-                    'data-step': String(index + 1),
-                    'data-stage': stage.id,
-                    title: stage.detail,
-                    'aria-label': `${stage.title}. ${stage.statusLabel}. ${stage.actionLabel}.`
+        stages.forEach((stage) => {
+            buildStatusColumn(
+                iconByStage[stage.id],
+                stage.title,
+                stage.statusLabel,
+                stage.detail,
+                getStatusTone(stage.statusLabel),
+                () => {
+                    targetByStage[stage.id]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }
-            });
-            card.addEventListener('click', () => {
-                target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            });
-
-            const number = card.createDiv({ cls: 'ert-publishing-setup-card-step', text: String(index + 1) });
-            number.setAttr('aria-hidden', 'true');
-
-            const icon = card.createDiv({ cls: 'ert-publishing-setup-card-icon' });
-            setIcon(icon, iconByStage[stage.id]);
-
-            const content = card.createDiv({ cls: 'ert-publishing-setup-card-content' });
-            content.createDiv({ cls: 'ert-publishing-setup-card-title', text: stage.title });
-            content.createDiv({ cls: 'ert-publishing-setup-card-desc', text: stage.description });
-
-            const footer = content.createDiv({ cls: 'ert-publishing-setup-card-footer' });
-            footer.createSpan({ cls: `ert-chip ert-publishing-setup-chip is-${stage.tone}`, text: stage.statusLabel });
-            const action = footer.createDiv({ cls: 'ert-publishing-setup-card-action' });
-            action.createSpan({ text: stage.actionLabel });
-            const actionIcon = action.createSpan({ cls: 'ert-publishing-setup-card-action-icon' });
-            setIcon(actionIcon, 'chevron-right');
+            );
         });
     };
+    refreshPublishingStatusCard = renderPublishingStatusCard;
 
     matterPreviewFrame = publishingSetupPanel.createDiv({ cls: `${ERT_CLASSES.PREVIEW_FRAME} ert-previewFrame--flush` });
     const matterPreviewHeader = matterPreviewFrame.createDiv({ cls: 'ert-previewFrame__header' });
@@ -3287,10 +3204,9 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                 });
                 const actions = empty.createDiv({ cls: 'ert-matter-preview-empty-actions' });
                 new ButtonComponent(actions)
-                    .setButtonText('Create starter publishing setup')
-                    .setCta()
+                    .setButtonText('Jump to Publishing Setup')
                     .onClick(() => {
-                        void runPublishingSetup();
+                        publishingStagesPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
                     });
                 new ButtonComponent(actions)
                     .setButtonText('Jump to Book Details')
@@ -3381,7 +3297,6 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
     };
     void renderMatterPreview();
 
-    refreshPublishingProgressRow = renderPublishingProgressRow;
     renderPublishingStatusCard();
 
     // ── System Configuration: Repair tools (only when mismatches exist) ────
