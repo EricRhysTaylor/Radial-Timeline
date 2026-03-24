@@ -620,7 +620,7 @@ export interface RadialTimelineSettings {
     beatYamlTemplates?: {
         base: string;
     };
-    savedBeatSystems?: SavedBeatSystem[];  // Pro: multiple custom beat systems
+    savedBeatSystems?: SavedBeatSystem[];
 
     // Pro access
     proLicenseKey?: string;

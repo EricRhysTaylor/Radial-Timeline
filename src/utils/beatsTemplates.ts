@@ -4,7 +4,7 @@
  * Compatibility aliases here are limited to the export/template boundary.
  */
 import { Vault, TFile, normalizePath } from 'obsidian';
-import { PLOT_SYSTEMS, PLOT_SYSTEM_NAMES, PRO_BEAT_SETS, PlotSystemPreset, PlotBeatInfo } from './beatsSystems';
+import { PLOT_SYSTEMS, PLOT_SYSTEM_NAMES, STARTER_BEAT_SETS, PlotSystemPreset, PlotBeatInfo } from './beatsSystems';
 import type { BeatSystemConfig, RadialTimelineSettings } from '../types/settings';
 import { normalizeBeatSetNameInput, sanitizeBeatFilenameSegment, toBeatModelMatchKey } from './beatsInputNormalize';
 import { mergeTemplateParts } from './templateMerge';
@@ -110,7 +110,7 @@ export function getBeatConfigForItem(
   }
 
   // 5. Starter custom systems by name (maps to custom:<starter-id>)
-  const starter = PRO_BEAT_SETS.find(
+  const starter = STARTER_BEAT_SETS.find(
     s => normalizeModelKey(s.name) === normalized
   );
   if (starter) {

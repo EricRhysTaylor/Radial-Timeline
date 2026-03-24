@@ -414,6 +414,19 @@
   padding: 2px 0;
 }
 
+.ert-ui.ert-scope--settings .ert-feature-item--link {
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.ert-ui.ert-scope--settings .ert-feature-item--link:hover,
+.ert-ui.ert-scope--settings .ert-feature-item--link:focus-visible {
+  background: color-mix(in srgb, var(--interactive-accent) 8%, transparent);
+  color: var(--text-normal);
+  outline: none;
+}
+
 .ert-ui.ert-scope--settings .ert-feature-icon {
   display: inline-flex;
   align-items: center;
@@ -3461,6 +3474,18 @@
   gap: 6px;
 }
 
+.ert-ui.ert-scope--settings .ert-beat-template-issues {
+  display: grid;
+  gap: 2px;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.ert-ui.ert-scope--settings .ert-beat-template-issue {
+  color: var(--text-muted);
+}
+
 .ert-ui.ert-scope--settings .ert-preview-status-line--success {
   color: var(--text-success);
 }
@@ -3541,7 +3566,21 @@
   color: var(--text-normal);
 }
 
+.ert-ui.ert-scope--settings .ert-beat-act-template-hint {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 4px;
+  color: var(--text-faint);
+}
+
+.ert-ui.ert-scope--settings .ert-beat-act-template-hint svg {
+  width: 12px;
+  height: 12px;
+}
+
 .ert-ui.ert-scope--settings .ert-beat-act-empty {
+  grid-column: 1 / -1;
   color: var(--text-muted);
   font-size: 12px;
 }
@@ -8732,6 +8771,164 @@
   line-height: 1.35;
 }
 
+.ert-ui.ert-scope--settings .ert-publishing-setup-shell {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--background-secondary) 80%, transparent);
+  padding: var(--ert-gap-xs);
+  overflow: hidden;
+}
+
+.ert-ui.ert-scope--settings .ert-publishing-setup-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--ert-gap-xs);
+}
+
+.ert-ui.ert-scope--settings .ert-publishing-setup-card {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--background-primary) 84%, var(--background-secondary) 16%);
+  color: var(--text-normal);
+  padding: 12px 12px 11px;
+  min-height: 152px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ert-gap-xs);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  isolation: isolate;
+  transition:
+    transform 0.15s ease,
+    border-color 0.15s ease,
+    background 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.ert-ui.ert-scope--settings .ert-publishing-setup-card:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--interactive-accent) 22%, var(--background-modifier-border));
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--shadow-s1, #000) 16%, transparent);
+}
+
+.ert-ui.ert-scope--settings .ert-publishing-setup-card:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--interactive-accent) 42%, transparent);
+  outline-offset: 2px;
+}
+
+.ert-ui.ert-scope--settings .ert-publishing-setup-card-step {
+  position: absolute;
+  top: 8px;
+  right: 11px;
+  font-size: 3.4rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.06em;
+  color: var(--text-normal);
+  opacity: 0.06;
+  pointer-events: none;
+  user-select: none;
+  z-index: 0;
+}
+
+.ert-ui.ert-scope--settings .ert-publishing-setup-card-icon,
+.ert-ui.ert-scope--settings .ert-publishing-setup-card-content {
+  position: relative;
+  z-index: 1;
+}
+
+.ert-ui.ert-scope--settings .ert-publishing-setup-card-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  color: var(--text-muted);
+}
+
+.ert-ui.ert-scope--settings .ert-publishing-setup-card-title {
+  font-size: 0.96rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--text-normal);
+}
+
+.ert-ui.ert-scope--settings .ert-publishing-setup-card-desc {
+  font-size: 0.84rem;
+  line-height: 1.35;
+  color: var(--text-muted);
+  min-height: 2.7em;
+}
+
+.ert-ui.ert-scope--settings .ert-publishing-setup-card-footer {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ert-gap-xs);
+  min-width: 0;
+}
+
+.ert-ui.ert-scope--settings .ert-publishing-setup-card-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ert-ui.ert-scope--settings .ert-publishing-setup-card-action-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 12px;
+  color: inherit;
+}
+
+.ert-ui.ert-scope--settings .ert-publishing-setup-chip.is-success {
+  --ert-chip-bg: color-mix(in srgb, var(--text-success) 12%, var(--background-secondary) 80%);
+}
+
+.ert-ui.ert-scope--settings .ert-publishing-setup-chip.is-warning {
+  --ert-chip-bg: color-mix(in srgb, var(--text-warning) 12%, var(--background-secondary) 80%);
+}
+
+.ert-ui.ert-scope--settings .ert-publishing-setup-chip.is-neutral {
+  --ert-chip-bg: color-mix(in srgb, var(--interactive-accent) 10%, var(--background-secondary) 80%);
+}
+
+.ert-ui.ert-scope--settings .ert-publishing-setup-card.is-success {
+  background: color-mix(in srgb, var(--text-success) 6%, var(--background-secondary) 88%);
+}
+
+.ert-ui.ert-scope--settings .ert-publishing-setup-card.is-success .ert-publishing-setup-card-icon {
+  color: var(--text-success);
+}
+
+.ert-ui.ert-scope--settings .ert-publishing-setup-card.is-warning {
+  background: color-mix(in srgb, var(--text-warning) 6%, var(--background-secondary) 88%);
+}
+
+.ert-ui.ert-scope--settings .ert-publishing-setup-card.is-warning .ert-publishing-setup-card-icon {
+  color: var(--text-warning);
+}
+
+.ert-ui.ert-scope--settings .ert-publishing-setup-card.is-neutral {
+  background: color-mix(in srgb, var(--interactive-accent) 5%, var(--background-secondary) 89%);
+}
+
+.ert-ui.ert-scope--settings .ert-publishing-setup-card.is-neutral .ert-publishing-setup-card-icon {
+  color: var(--interactive-accent);
+}
+
 .ert-ui.ert-scope--settings .ert-publishing-status-row {
   display: grid;
   grid-template-columns: 18px minmax(0, 1fr);
@@ -9049,7 +9246,9 @@
 
 .ert-ui.ert-scope--settings .ert-coreQuickLinks__pill .ert-pillBtn__icon {
   order: 2;
-  margin-left: 3px;
+  margin-left: 1px;
+  position: relative;
+  top: 2px;
 }
 
 .ert-ui.ert-scope--settings .ert-coreQuickLinks__pill .ert-pillBtn__label {

@@ -528,7 +528,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             title: string;
             subtitle: string;
             kicker: string;
-            features: { icon: string; text: string }[];
+            features: { icon: string; text: string; targetSection?: string }[];
         }
     ): void {
         const hero = containerEl.createDiv({
@@ -570,11 +570,30 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         featuresSection.createEl('h5', { text: options.kicker, cls: 'ert-kicker' });
         const featuresList = featuresSection.createEl('ul', { cls: ERT_CLASSES.STACK });
         options.features.forEach(feature => {
-            const li = featuresList.createEl('li', { cls: `${ERT_CLASSES.INLINE} ert-feature-item` });
+            const li = featuresList.createEl('li', {
+                cls: `${ERT_CLASSES.INLINE} ert-feature-item${feature.targetSection ? ' ert-feature-item--link' : ''}`
+            });
             const iconSpan = li.createSpan({ cls: 'ert-feature-icon' });
             setIcon(iconSpan, feature.icon);
             li.createSpan({ text: feature.text });
+            if (feature.targetSection) {
+                li.setAttr('role', 'button');
+                li.setAttr('tabindex', '0');
+                li.setAttr('aria-label', `Jump to ${feature.text}`);
+                this.plugin.registerDomEvent(li, 'click', () => this.scrollToSettingsSection(feature.targetSection!));
+                this.plugin.registerDomEvent(li, 'keydown', (evt: KeyboardEvent) => {
+                    if (evt.key !== 'Enter' && evt.key !== ' ') return;
+                    evt.preventDefault();
+                    this.scrollToSettingsSection(feature.targetSection!);
+                });
+            }
         });
+    }
+
+    private scrollToSettingsSection(sectionKey: string): void {
+        const target = this.containerEl.querySelector<HTMLElement>(`[${ERT_DATA.SECTION}="${sectionKey}"]`);
+        if (!target) return;
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     private renderProHero(containerEl: HTMLElement): void {
@@ -588,7 +607,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             kicker: 'Pro unlocks:',
             features: [
                 { icon: 'file-output', text: 'Advanced exports — PDF, Outline, and structured data formats' },
-                { icon: 'layout-grid', text: 'Unlimited beat systems and Pro Sets' },
+                { icon: 'layout-grid', text: 'Publishing workflows, runtime planning, and advanced campaign tools' },
                 { icon: 'waves', text: 'Extended Inquiry prompts' },
                 { icon: 'timer', text: 'Runtime estimation and session planning' },
                 { icon: 'radio', text: 'Social campaign management and teaser controls' },
@@ -602,11 +621,14 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             badgeIcon: 'book-open-text',
             badgeVariant: ERT_CLASSES.BADGE_PILL_PRO,
             wikiHref: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#professional',
-            title: 'Prepare your manuscript for export and publication.',
-            subtitle: 'Configure export, layout, and publication tools without mixing them into your core writing setup.',
-            kicker: 'Publishing Focus:',
+            title: 'Set up your book for export.',
+            subtitle: 'Start with details, add pages, choose a PDF style, then check export readiness.',
+            kicker: 'Setup steps',
             features: [
-                { icon: 'file-output', text: 'Manuscript export, PDF layouts, and publishing setup live here.' }
+                { icon: 'book-open-text', text: 'Book Details: add the title and author first.', targetSection: 'book-details' },
+                { icon: 'library', text: 'Book Pages: choose the pages that belong in the book.', targetSection: 'book-pages' },
+                { icon: 'layout-grid', text: 'PDF Style: pick the look for exported PDFs.', targetSection: 'pdf-style' },
+                { icon: 'check-circle-2', text: 'Export Check: review readiness before exporting.', targetSection: 'export-check' }
             ]
         });
     }

@@ -18,7 +18,7 @@ import {
 import type { RadialTimelineSettings } from '../types/settings';
 import { normalizeFrontmatterKeys } from './frontmatter';
 import { normalizeBeatSetNameInput, toBeatModelMatchKey } from './beatsInputNormalize';
-import { PRO_BEAT_SETS } from './beatsSystems';
+import { STARTER_BEAT_SETS } from './beatsSystems';
 import { findSavedBeatSystem, getActiveCustomBeatSystemId, getActiveCustomBeatSystemName } from './beatSystemState';
 import {
     type FrontmatterSafetyResult,
@@ -506,7 +506,7 @@ export function collectFilesForAuditWithScope(
             const customId = beatSystemKey.slice('custom:'.length);
             // Resolve name from saved sets, starter sets, or active custom set.
             const saved = findSavedBeatSystem(settings, customId);
-            const starter = PRO_BEAT_SETS.find(s => s.id === customId);
+            const starter = STARTER_BEAT_SETS.find(s => s.id === customId);
             const activeId = getActiveCustomBeatSystemId(settings);
             const activeName = activeId === customId ? getActiveCustomBeatSystemName(settings) : undefined;
             beatModelFilter = normalizeBeatSetNameInput(

@@ -2,7 +2,7 @@ import { App, Notice, Setting as Settings, parseYaml, setIcon, setTooltip, Modal
 import type RadialTimelinePlugin from '../../main';
 import type { TimelineItem } from '../../types';
 import { CreateBeatSetModal } from '../../modals/CreateBeatsTemplatesModal';
-import { getPlotSystem, getCustomSystemFromSettings, PRO_BEAT_SETS } from '../../utils/beatsSystems';
+import { getPlotSystem, getCustomSystemFromSettings, STARTER_BEAT_SETS } from '../../utils/beatsSystems';
 import { createBeatNotesFromSet, getBeatConfigForSystem, ensureBeatConfigForSystem, spreadBeatsAcrossScenes } from '../../utils/beatsTemplates';
 import { getBeatSystemStructuralStatus } from '../../storyBeats/beatSystemStatus';
 import type { BeatSystemConfig, BeatDefinition } from '../../types/settings';
@@ -11,7 +11,6 @@ import { DEFAULT_SETTINGS } from '../defaults';
 
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import type { HoverMetadataField, SavedBeatSystem } from '../../types/settings';
-import { hasProFeatureAccess } from '../featureGate';
 import { IconSuggest } from '../IconSuggest';
 import { clampActNumber, parseActLabels, resolveActLabel } from '../../utils/acts';
 import { ERT_CLASSES, ERT_DATA } from '../../ui/classes';
@@ -216,7 +215,7 @@ type CustomStage = InnerStage;
  * Reactive dirty-state store for loaded beat sets (starter or saved).
  *
  * Why reactive? The beats UI has multiple independent render zones (Design
- * header, Pro Sets panel) that must stay in sync when the dirty flag changes.
+ * header and Sets panel) that must stay in sync when the dirty flag changes.
  * A centralized notify() eliminates the fragile callback-threading pattern
  * where each zone held a closure over stale DOM elements.
  *
@@ -276,11 +275,6 @@ export function renderStoryBeatsSection(params: {
     backdropYamlTargetEl?: HTMLElement;
 }): void {
     const { app, plugin, containerEl, backdropYamlTargetEl } = params;
-    const proActive = hasProFeatureAccess(plugin);
-    const canEditBuiltInBeatSystems = (): boolean => proActive;
-    const canEditFieldsForSystem = (systemKey: string): boolean =>
-        systemKey === 'Custom' ? true : canEditBuiltInBeatSystems();
-    const canManageCustomSets = (): boolean => proActive;
     _unsubTopBeatTabsDirty?.();
     _unsubTopBeatTabsDirty = null;
     _unsubBeatAuditDirty?.();
@@ -504,7 +498,7 @@ export function renderStoryBeatsSection(params: {
     let customBeatsObserver: IntersectionObserver | null = null;
     // Unsubscribe hooks for dirtyState subscriptions — called before re-render to prevent stale listeners
     let _unsubDesignDirty: (() => void) | null = null;
-    let _unsubProSetsDirty: (() => void) | null = null;
+    let _unsubSetsDirty: (() => void) | null = null;
 
     const getCustomTabLabel = (): string => {
         const named = getActiveCustomName('');
@@ -673,18 +667,70 @@ export function renderStoryBeatsSection(params: {
         icon: 'check' | 'circle-alert' | null;
     };
 
-    const getEditingCapabilityLabel = (system: string): string => {
-        const { mode } = deriveBeatSystemMode(system);
-        if (mode === 'builtin') {
-            return canEditBuiltInBeatSystems()
-                ? 'Editable with Pro'
-                : 'Read-only in Core';
+    type PreviewIssueKind = 'missing' | 'incomplete';
+
+    type PreviewIssueEntry = {
+        beat: BeatStructuralBeatStatus;
+        kind: PreviewIssueKind;
+    };
+
+    const getEditingCapabilityLabel = (): string => 'Editable';
+
+    const getPreviewIssueKind = (status: BeatStructuralBeatStatus | null): PreviewIssueKind | null => {
+        if (!status) return null;
+        if (status.kind === 'missing') return 'missing';
+        const hasNonPlacementIssue = status.issues.some((issue) => issue.code !== 'act_mismatch');
+        return hasNonPlacementIssue ? 'incomplete' : null;
+    };
+
+    const getPreviewIssueEntries = (
+        structuralStatus: BeatSystemStructuralStatus | null
+    ): PreviewIssueEntry[] =>
+        (structuralStatus?.beats ?? [])
+            .map((beat) => {
+                const kind = getPreviewIssueKind(beat);
+                return kind ? { beat, kind } : null;
+            })
+            .filter((entry): entry is PreviewIssueEntry => !!entry)
+            .sort((a, b) => a.beat.expected.ordinal - b.beat.expected.ordinal);
+
+    const getPreviewIssueSummaryLabel = (issues: PreviewIssueEntry[]): string[] => {
+        const hasMissing = issues.some((entry) => entry.kind === 'missing');
+        const hasIncomplete = issues.some((entry) => entry.kind === 'incomplete');
+        const labels: string[] = [];
+        if (hasMissing) labels.push('Missing');
+        if (hasIncomplete) labels.push('Incomplete');
+        return labels;
+    };
+
+    const getPreviewPlacementActNumber = (
+        status: BeatStructuralBeatStatus,
+        maxActs: number
+    ): number => {
+        const actualAct = status.matchedNotes.find((note) => Number.isFinite(note.actNumber))?.actNumber;
+        if (Number.isFinite(actualAct)) {
+            return clampActNumber(Number(actualAct), maxActs);
         }
-        return 'Editable in Core';
+        return clampActNumber(status.expected.actNumber, maxActs);
+    };
+
+    const hasPreviewTemplateActMismatch = (status: BeatStructuralBeatStatus | null): boolean => {
+        if (!status || !status.present) return false;
+        const actualAct = status.matchedNotes.find((note) => Number.isFinite(note.actNumber))?.actNumber;
+        if (!Number.isFinite(actualAct)) return false;
+        return clampActNumber(Number(actualAct), getActCount()) !== status.expected.actNumber;
     };
 
     const getManuscriptAdvisoryState = (system: string): ManuscriptAdvisoryState => {
-        const summary = getBeatStructuralStatus(system).summary;
+        const structuralStatus = getBeatStructuralStatus(system);
+        const summary = structuralStatus.summary;
+        if (system === 'Custom' && summary.expectedCount === 0) {
+            return {
+                text: 'No beats defined yet — switch to Design to add beats',
+                tone: 'muted',
+                icon: null,
+            };
+        }
         if (summary.presentCount === 0) {
             return {
                 text: 'Template view — no beats in manuscript',
@@ -692,15 +738,18 @@ export function renderStoryBeatsSection(params: {
                 icon: null,
             };
         }
-        if (summary.issueCount > 0) {
+        const issueLabels = getPreviewIssueSummaryLabel(getPreviewIssueEntries(structuralStatus));
+        if (issueLabels.length > 0) {
             return {
-                text: `Active in manuscript — ${summary.issueCount} structural issue${summary.issueCount !== 1 ? 's' : ''}`,
+                text: issueLabels.length === 1
+                    ? `Active in manuscript — ${issueLabels[0]} beats`
+                    : `Active in manuscript — ${issueLabels.join(' • ')}`,
                 tone: 'warning',
                 icon: 'circle-alert',
             };
         }
         return {
-            text: `Active in manuscript — ${summary.presentCount} beat${summary.presentCount !== 1 ? 's' : ''} detected`,
+            text: 'Active in manuscript — Structure complete',
             tone: 'success',
             icon: 'check',
         };
@@ -772,7 +821,7 @@ export function renderStoryBeatsSection(params: {
         cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK} ert-beat-system-card`,
         attr: { id: 'ert-beat-system-panel', role: 'tabpanel' }
     });
-    // Tier banner (always visible; shows built-in vs custom, Core vs Pro)
+    // Tier banner (always visible; shows system type and manuscript state)
     const tierBannerEl = beatSystemCard.createDiv({ cls: 'ert-beat-tier-banner ert-stack--tight' });
 
     // ── Inner stage switcher (Preview | Design | Fields | Sets) ───────
@@ -791,6 +840,7 @@ export function renderStoryBeatsSection(params: {
     const templatePreviewExamples = templatePreviewContainer.createDiv({ cls: 'ert-beat-template-examples' });
     const templatePreviewMeta = templatePreviewContainer.createDiv({ cls: 'ert-beat-template-meta' });
     const templatePreviewStatus = templatePreviewContainer.createDiv({ cls: 'ert-beat-template-meta' });
+    const templatePreviewIssues = templatePreviewContainer.createDiv({ cls: 'ert-beat-template-issues ert-settings-hidden' });
     const templateActGrid = templatePreviewContainer.createDiv({ cls: 'ert-beat-act-grid' });
 
     // --- Custom System Configuration (Dynamic Visibility) ---
@@ -799,7 +849,7 @@ export function renderStoryBeatsSection(params: {
     /** Check if current system was loaded from a starter set and hasn't been modified. */
     const isStarterSetActive = (): boolean => {
         const activeId = getActiveCustomId();
-        return PRO_BEAT_SETS.some(ps => ps.id === activeId);
+        return STARTER_BEAT_SETS.some(ps => ps.id === activeId);
     };
 
     const renderCustomConfig = () => {
@@ -1525,7 +1575,9 @@ export function renderStoryBeatsSection(params: {
             const iconEl = statusEl.createSpan({ cls: 'ert-preview-status-icon' });
             setIcon(iconEl, state.icon);
         }
-        statusEl.createSpan({ text: state.text });
+        if (state.text.length > 0) {
+            statusEl.createSpan({ text: state.text });
+        }
         return statusEl;
     };
 
@@ -1535,13 +1587,14 @@ export function renderStoryBeatsSection(params: {
         if (!status) {
             return { text: 'Checking…', tone: 'muted', icon: null };
         }
-        if (status.kind === 'complete') {
-            return { text: 'Present', tone: 'success', icon: 'check' };
-        }
-        if (status.kind === 'missing') {
+        const issueKind = getPreviewIssueKind(status);
+        if (issueKind === 'missing') {
             return { text: 'Missing', tone: 'warning', icon: 'circle-alert' };
         }
-        return { text: 'Incomplete', tone: 'warning', icon: 'circle-alert' };
+        if (issueKind === 'incomplete') {
+            return { text: 'Incomplete', tone: 'warning', icon: 'circle-alert' };
+        }
+        return { text: '', tone: 'success', icon: 'check' };
     };
 
     const renderPreviewContent = (system: string, _options?: { skipStatusRefresh?: boolean }) => {
@@ -1568,26 +1621,72 @@ export function renderStoryBeatsSection(params: {
         templatePreviewDesc.style.whiteSpace = hasAuthorDesc ? 'pre-line' : ''; // SAFE: preserve author line breaks
         templatePreviewExamples.setText(copy.examples ?? '');
         templatePreviewExamples.toggleClass('ert-settings-hidden', !copy.examples || hasAuthorDesc);
-        templatePreviewMeta.setText(totalBeats > 0 ? `${totalBeats} beats · ${columns.length} acts` : '');
-        templatePreviewMeta.toggleClass('ert-settings-hidden', totalBeats === 0);
         const structuralStatus = totalBeats > 0 ? getBeatStructuralStatus(system) : null;
         const beatStatusByKey = new Map<string, BeatStructuralBeatStatus>(
             (structuralStatus?.beats ?? []).map((beat) => [beat.expected.key, beat])
         );
+        if (structuralStatus && structuralStatus.summary.presentCount > 0) {
+            const maxActs = getActCount();
+            const actLabels = parseActLabels(plugin.settings, maxActs);
+            const grouped = new Map<number, ActGridColumn>();
+            (structuralStatus.beats ?? []).forEach((beat) => {
+                const actNumber = getPreviewPlacementActNumber(beat, maxActs);
+                if (!grouped.has(actNumber)) {
+                    grouped.set(actNumber, {
+                        label: resolveActLabel(actNumber - 1, actLabels),
+                        beats: [],
+                        rank: actNumber,
+                        isNumericAct: true,
+                    });
+                }
+                grouped.get(actNumber)!.beats.push({
+                    name: stripActPrefix(beat.expected.name),
+                    key: beat.expected.key,
+                });
+            });
+            columns = Array.from(grouped.values())
+                .sort((a, b) => a.rank - b.rank)
+                .map((column) => ({
+                    ...column,
+                    beats: [...column.beats].sort((a, b) => {
+                        const left = beatStatusByKey.get(a.key)?.expected.ordinal ?? 0;
+                        const right = beatStatusByKey.get(b.key)?.expected.ordinal ?? 0;
+                        return left - right;
+                    }),
+                }));
+        }
+        templatePreviewMeta.setText(totalBeats > 0 ? `${totalBeats} beats · ${columns.length} acts` : '');
+        templatePreviewMeta.toggleClass('ert-settings-hidden', totalBeats === 0);
         templatePreviewStatus.empty();
         templatePreviewStatus.className = 'ert-beat-template-meta ert-preview-status-line';
+        templatePreviewIssues.empty();
         if (totalBeats > 0) {
             const manuscriptState = getManuscriptAdvisoryState(system);
             templatePreviewStatus.addClass(`ert-preview-status-line--${manuscriptState.tone}`);
             appendPreviewStatus(templatePreviewStatus, manuscriptState);
+            const previewIssues = getPreviewIssueEntries(structuralStatus);
+            if (previewIssues.length > 0) {
+                previewIssues.forEach((entry) => {
+                    templatePreviewIssues.createDiv({
+                        cls: 'ert-beat-template-issue',
+                        text: `- ${entry.beat.expected.name} — ${entry.kind}`
+                    });
+                });
+                templatePreviewIssues.removeClass('ert-settings-hidden');
+            } else {
+                templatePreviewIssues.addClass('ert-settings-hidden');
+            }
         }
         templatePreviewStatus.toggleClass('ert-settings-hidden', totalBeats === 0);
+        if (totalBeats === 0) {
+            templatePreviewIssues.addClass('ert-settings-hidden');
+        }
 
         templateActGrid.empty();
         if (columns.length === 0) {
             templateActGrid.createDiv({
                 cls: 'ert-beat-act-empty',
-                text: mode === 'custom' ? 'No beats yet. Switch to Design to add beats.' : 'No beats found for this set.'
+                text: mode === 'custom' ? 'No beats yet. Go to Design to add them.' : 'No beats found for this set.'
             });
             return;
         }
@@ -1598,7 +1697,7 @@ export function renderStoryBeatsSection(params: {
             const count = column.beats.length;
             const columnIssueCount = column.beats.reduce((totalIssues, beat) => {
                 const status = beatStatusByKey.get(beat.key) ?? null;
-                if (!status || status.kind === 'complete') return totalIssues;
+                if (!status || !getPreviewIssueKind(status)) return totalIssues;
                 return totalIssues + 1;
             }, 0);
             const header = colEl.createDiv({ cls: 'ert-beat-act-header' });
@@ -1616,14 +1715,16 @@ export function renderStoryBeatsSection(params: {
             );
             const listEl = colEl.createDiv({ cls: 'ert-beat-act-list' });
             column.beats.forEach((beat) => {
-                runningBeatIdx++;
                 const status = beatStatusByKey.get(beat.key) ?? null;
                 const state = getBeatPreviewState(status);
                 const row = listEl.createDiv({ cls: `ert-beat-act-item ert-beat-act-item--${state.tone}` });
-                row.createSpan({ text: `${runningBeatIdx}. ${beat.name} — ` });
+                const ordinal = status?.expected.ordinal ?? (++runningBeatIdx);
+                row.createSpan({ text: `${ordinal}. ${beat.name} — ` });
                 appendPreviewStatus(row, state, 'ert-preview-status--compact');
-                if (status && status.kind !== 'complete') {
-                    setTooltip(row, status.issues.map((issue) => issue.message).join(' • '));
+                if (hasPreviewTemplateActMismatch(status)) {
+                    const hintEl = row.createSpan({ cls: 'ert-beat-act-template-hint' });
+                    setIcon(hintEl, 'circle-alert');
+                    setTooltip(hintEl, `Template suggests ${status?.expected.actLabel ?? `Act ${status?.expected.actNumber ?? 1}`}`);
                 }
             });
         });
@@ -1644,7 +1745,7 @@ export function renderStoryBeatsSection(params: {
         const activeId = getActiveCustomId();
 
         // Regular Save never prompts rename/save-as.
-        // If active set is a saved Pro set, update that set in place.
+        // If active set is a saved set, update that set in place.
         const activeConfig = getBeatConfigForSystem(plugin.settings);
         const currentName = getActiveCustomName('Custom');
         const currentDescription = getActiveCustomDescription();
@@ -1712,7 +1813,7 @@ export function renderStoryBeatsSection(params: {
     // Stage 3: Fields (YAML editor, hover metadata, schema audit)
     const fieldsContainer = beatSystemCard.createDiv({ cls: ERT_CLASSES.STACK });
     // Stage 4: Sets (saved/starter beat systems — Custom only)
-    const proTemplatesContainer = beatSystemCard.createDiv({ cls: ERT_CLASSES.STACK });
+    const setsContainer = beatSystemCard.createDiv({ cls: ERT_CLASSES.STACK });
 
     // ── Stage switcher rendering + visibility ───────────────────────────
     const renderStageSwitcher = () => {
@@ -1796,7 +1897,7 @@ export function renderStoryBeatsSection(params: {
         fieldsContainer.toggleClass('ert-settings-hidden', _currentInnerStage !== 'fields');
 
         // Sets: saved/starter beat systems (Custom only)
-        proTemplatesContainer.toggleClass('ert-settings-hidden', !isCustom || _currentInnerStage !== 'sets');
+        setsContainer.toggleClass('ert-settings-hidden', !isCustom || _currentInnerStage !== 'sets');
 
         if (_currentInnerStage === 'design') {
             refreshCustomBeats?.(true);
@@ -1805,30 +1906,11 @@ export function renderStoryBeatsSection(params: {
 
     function updateTierBanner(system: string): void {
         tierBannerEl.empty();
-        const { mode } = deriveBeatSystemMode(system);
-        const typeLine = tierBannerEl.createDiv({ cls: 'ert-beat-tier-line' });
-        typeLine.createSpan({ text: `Type: ${mode === 'builtin' ? 'Built-in beat set' : 'Custom beat set'}` });
-        if (mode === 'custom' && proActive) {
-            const managementPill = typeLine.createSpan({
-                cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO} ${ERT_CLASSES.BADGE_PILL_SM}`
-            });
-            setIcon(managementPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON }), 'signature');
-            managementPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'Pro' });
-            typeLine.createSpan({ cls: 'ert-beat-tier-note', text: 'saved/starter set management' });
-        }
-        const builtinLocked = mode === 'builtin' && !canEditBuiltInBeatSystems();
-        tierBannerEl.createDiv({
-            cls: 'ert-beat-tier-line ert-beat-tier-status',
-            text: `Editing: ${getEditingCapabilityLabel(system)}`
-        });
         const manuscript = getManuscriptAdvisoryState(system);
         tierBannerEl.createDiv({
             cls: 'ert-beat-tier-line ert-beat-tier-status',
-            text: `Manuscript: ${manuscript.text}`
+            text: manuscript.text
         });
-        if (builtinLocked) {
-            tierBannerEl.createDiv({ cls: 'ert-beat-tier-cta', text: 'Upgrade to Pro to edit beats and fields.' });
-        }
     }
 
     const updateBeatSystemCard = (system: string, options?: { resetStage?: boolean }) => {
@@ -1867,8 +1949,6 @@ export function renderStoryBeatsSection(params: {
                 const iconClass = `ert-mini-tab-icon ert-beat-health-icon${status.statusClass ? ` ${status.statusClass}` : ''}`;
                 const iconEl = btn.createSpan({ cls: iconClass });
                 setIcon(iconEl, status.icon);
-                setTooltip(iconEl, status.tooltip);
-                setTooltip(btn, `Custom set: ${tabLabel}. ${status.tooltip}`);
             }
             btn.appendText(tabLabel);
 
@@ -1885,11 +1965,11 @@ export function renderStoryBeatsSection(params: {
         });
     }
 
-    // ─── BEAT YAML EDITOR (Core) — always visible in Fields stage ──────
+    // ─── BEAT YAML EDITOR — always visible in Fields stage ─────────────
     const beatYamlSection = fieldsContainer.createDiv({ cls: ERT_CLASSES.STACK });
     const beatYamlSetting = new Settings(beatYamlSection)
         .setName('Beat fields')
-        .setDesc('Customize additional properties for custom beat notes. Enable fields to show in beat hover info. Use the audit below to check conformity across existing beat notes.');
+        .setDesc('Customize additional properties for beat notes. Enable fields to show in beat hover info. Use the audit below to check conformity across existing beat notes.');
     // Force editor enabled so Fields content is always visible
     plugin.settings.enableBeatYamlEditor = true;
 
@@ -1913,7 +1993,6 @@ export function renderStoryBeatsSection(params: {
     };
 
     const setBeatHoverMetadata = (key: string, icon: string, enabled: boolean) => {
-        if (!canEditFieldsForSystem(getActiveSystemKey())) return;
         const config = ensureConfigForCurrentSystem();
         const existing = config.beatHoverMetadataFields.find(f => f.key === key);
         if (existing) {
@@ -1928,7 +2007,6 @@ export function renderStoryBeatsSection(params: {
     };
 
     const removeBeatHoverMetadata = (key: string) => {
-        if (!canEditFieldsForSystem(getActiveSystemKey())) return;
         const config = ensureConfigForCurrentSystem();
         config.beatHoverMetadataFields = config.beatHoverMetadataFields.filter(f => f.key !== key);
         refreshBeatHoverInViews();
@@ -1937,7 +2015,6 @@ export function renderStoryBeatsSection(params: {
     };
 
     const renameBeatHoverMetadataKey = (oldKey: string, newKey: string) => {
-        if (!canEditFieldsForSystem(getActiveSystemKey())) return;
         const config = ensureConfigForCurrentSystem();
         const existing = config.beatHoverMetadataFields.find(f => f.key === oldKey);
         if (existing) {
@@ -1958,7 +2035,6 @@ export function renderStoryBeatsSection(params: {
     const renderBeatYamlEditor = () => {
         beatYamlContainer.empty();
 
-        const fieldsReadOnly = !canEditFieldsForSystem(getActiveSystemKey());
         const currentBeatAdvanced = getConfigForCurrentSystem().beatYamlAdvanced;
         const beatAdvancedObj = safeParseYaml(currentBeatAdvanced);
 
@@ -1975,7 +2051,6 @@ export function renderStoryBeatsSection(params: {
         let beatDragIndex: number | null = null;
 
         const saveBeatEntries = (nextEntries: FieldEntry[]) => {
-            if (!canEditFieldsForSystem(getActiveSystemKey())) return;
             beatWorkingEntries = nextEntries;
             const yaml = buildYamlFromEntries(nextEntries);
             const config = ensureConfigForCurrentSystem();
@@ -1989,7 +2064,6 @@ export function renderStoryBeatsSection(params: {
             const data = next ?? beatWorkingEntries;
             beatWorkingEntries = data;
             beatYamlContainer.empty();
-            beatYamlContainer.toggleClass('ert-beat-fields-readonly', fieldsReadOnly);
 
             // Read-only base fields (collapsed summary)
             const baseCard = beatYamlContainer.createDiv({ cls: 'ert-template-base-summary' });
@@ -2015,9 +2089,9 @@ export function renderStoryBeatsSection(params: {
 
                 // Drag handle
                 const dragHandle = row.createDiv({ cls: 'ert-drag-handle' });
-                dragHandle.draggable = !fieldsReadOnly;
+                dragHandle.draggable = true;
                 setIcon(dragHandle, 'grip-vertical');
-                setTooltip(dragHandle, fieldsReadOnly ? 'Requires Pro' : 'Drag to reorder');
+                setTooltip(dragHandle, 'Drag to reorder');
 
                 row.createDiv({ cls: 'ert-grid-spacer' });
 
@@ -2031,8 +2105,7 @@ export function renderStoryBeatsSection(params: {
                     attr: { placeholder: 'Icon name...' }
                 });
                 iconInput.value = currentIcon;
-                iconInput.disabled = fieldsReadOnly;
-                setTooltip(iconInput, fieldsReadOnly ? 'Requires Pro' : 'Lucide icon name for hover synopsis');
+                setTooltip(iconInput, 'Lucide icon name for hover synopsis');
 
                 // Hover checkbox
                 const checkboxWrapper = row.createDiv({ cls: 'ert-hover-checkbox-wrapper' });
@@ -2041,20 +2114,17 @@ export function renderStoryBeatsSection(params: {
                     cls: 'ert-hover-checkbox'
                 });
                 checkbox.checked = currentEnabled;
-                checkbox.disabled = fieldsReadOnly;
-                setTooltip(checkbox, fieldsReadOnly ? 'Requires Pro' : 'Show in beat hover synopsis');
+                setTooltip(checkbox, 'Show in beat hover synopsis');
 
-                if (!fieldsReadOnly) {
-                    new IconSuggest(app, iconInput, (selectedIcon) => {
-                        iconInput.value = selectedIcon;
-                        iconPreview.empty();
-                        setIcon(iconPreview, selectedIcon);
-                        setBeatHoverMetadata(entry.key, selectedIcon, checkbox.checked);
-                        updateBeatHoverPreview?.();
-                    });
-                }
+                new IconSuggest(app, iconInput, (selectedIcon) => {
+                    iconInput.value = selectedIcon;
+                    iconPreview.empty();
+                    setIcon(iconPreview, selectedIcon);
+                    setBeatHoverMetadata(entry.key, selectedIcon, checkbox.checked);
+                    updateBeatHoverPreview?.();
+                });
 
-                if (!fieldsReadOnly) iconInput.oninput = () => {
+                iconInput.oninput = () => {
                     const iconName = iconInput.value.trim();
                     if (iconName && getIconIds().includes(iconName)) {
                         iconPreview.empty();
@@ -2064,7 +2134,7 @@ export function renderStoryBeatsSection(params: {
                     }
                 };
 
-                if (!fieldsReadOnly) checkbox.onchange = () => {
+                checkbox.onchange = () => {
                     const iconName = iconInput.value.trim() || DEFAULT_HOVER_ICON;
                     setBeatHoverMetadata(entry.key, iconName, checkbox.checked);
                     updateBeatHoverPreview?.();
@@ -2074,8 +2144,7 @@ export function renderStoryBeatsSection(params: {
                 const keyInput = row.createEl('input', { type: 'text', cls: 'ert-input ert-input--md' });
                 keyInput.value = entry.key;
                 keyInput.placeholder = 'Key';
-                keyInput.disabled = fieldsReadOnly;
-                if (!fieldsReadOnly) keyInput.onchange = () => {
+                keyInput.onchange = () => {
                     const newKey = normalizeBeatFieldKeyInput(keyInput.value);
                     if (!newKey || !hasBeatReadableText(newKey)) {
                         keyInput.value = entry.key;
@@ -2109,11 +2178,10 @@ export function renderStoryBeatsSection(params: {
                 // Value input
                 const value = entry.value;
                 const valInput = row.createEl('input', { type: 'text', cls: 'ert-input ert-input--md' });
-                valInput.disabled = fieldsReadOnly;
                 if (Array.isArray(value)) {
                     valInput.value = value.join(', ');
                     valInput.placeholder = 'Comma-separated values';
-                    if (!fieldsReadOnly) valInput.onchange = () => {
+                    valInput.onchange = () => {
                         valInput.value = normalizeBeatFieldListValueInput(valInput.value).join(', ');
                         const nextList = [...list];
                         nextList[idx] = { ...entry, value: normalizeBeatFieldListValueInput(valInput.value) };
@@ -2123,7 +2191,7 @@ export function renderStoryBeatsSection(params: {
                 } else {
                     valInput.value = typeof value === 'string' ? value : '';
                     valInput.placeholder = 'Default value (optional)';
-                    if (!fieldsReadOnly) valInput.onchange = () => {
+                    valInput.onchange = () => {
                         valInput.value = normalizeBeatFieldValueInput(valInput.value);
                         const nextList = [...list];
                         nextList[idx] = { ...entry, value: normalizeBeatFieldValueInput(valInput.value) };
@@ -2135,9 +2203,8 @@ export function renderStoryBeatsSection(params: {
                 // Delete button (matches scene: ert-iconBtn + trash icon)
                 const delBtn = row.createEl('button', { cls: 'ert-iconBtn', attr: { type: 'button', 'aria-label': 'Remove field' } });
                 setIcon(delBtn, 'trash');
-                setTooltip(delBtn, fieldsReadOnly ? 'Requires Pro' : 'Remove field');
-                delBtn.disabled = fieldsReadOnly;
-                if (!fieldsReadOnly) delBtn.onclick = () => {
+                setTooltip(delBtn, 'Remove field');
+                delBtn.onclick = () => {
                     removeBeatHoverMetadata(entry.key);
                     const nextList = list.filter((_, i) => i !== idx);
                     saveBeatEntries(nextList);
@@ -2146,19 +2213,18 @@ export function renderStoryBeatsSection(params: {
                 };
 
                 // Drag events (matches scene: is-dragging / ert-template-dragover + plugin.registerDomEvent)
-                if (!fieldsReadOnly) {
-                    plugin.registerDomEvent(dragHandle, 'dragstart', (e) => {
-                        beatDragIndex = idx;
-                        row.addClass('is-dragging');
-                        e.dataTransfer?.setData('text/plain', String(idx));
-                    });
-                    plugin.registerDomEvent(dragHandle, 'dragend', () => {
-                        beatDragIndex = null;
-                        row.removeClass('is-dragging');
-                    });
-                    plugin.registerDomEvent(row, 'dragover', (e) => { e.preventDefault(); row.addClass('ert-template-dragover'); });
-                    plugin.registerDomEvent(row, 'dragleave', () => { row.removeClass('ert-template-dragover'); });
-                    plugin.registerDomEvent(row, 'drop', (e) => {
+                plugin.registerDomEvent(dragHandle, 'dragstart', (e) => {
+                    beatDragIndex = idx;
+                    row.addClass('is-dragging');
+                    e.dataTransfer?.setData('text/plain', String(idx));
+                });
+                plugin.registerDomEvent(dragHandle, 'dragend', () => {
+                    beatDragIndex = null;
+                    row.removeClass('is-dragging');
+                });
+                plugin.registerDomEvent(row, 'dragover', (e) => { e.preventDefault(); row.addClass('ert-template-dragover'); });
+                plugin.registerDomEvent(row, 'dragleave', () => { row.removeClass('ert-template-dragover'); });
+                plugin.registerDomEvent(row, 'drop', (e) => {
                     e.preventDefault();
                     row.removeClass('ert-template-dragover');
                     if (beatDragIndex === null || beatDragIndex === idx) return;
@@ -2169,13 +2235,10 @@ export function renderStoryBeatsSection(params: {
                     rerenderBeatYaml(nextList);
                     updateBeatHoverPreview?.();
                 });
-                }
             };
 
             data.forEach((entry, idx) => renderBeatEntryRow(entry, idx, data));
 
-            // Add new field row — only when editable
-            if (!fieldsReadOnly) {
             const addRow = listEl.createDiv({ cls: ['ert-yaml-row', 'ert-yaml-row--add', 'ert-yaml-row--add-beat'] });
 
             // 1. Icon input with preview for new entry
@@ -2227,7 +2290,6 @@ export function renderStoryBeatsSection(params: {
             setTooltip(addBtn, 'Add custom beat property');
 
             const doAddBeatField = () => {
-                if (!canEditFieldsForSystem(getActiveSystemKey())) return;
                 const newKey = normalizeBeatFieldKeyInput(addKeyInput.value);
                 if (!newKey || !hasBeatReadableText(newKey)) {
                     new Notice('Field key must include letters or numbers.');
@@ -2304,7 +2366,6 @@ export function renderStoryBeatsSection(params: {
 
                 if (!confirmed) return;
 
-                if (!canEditFieldsForSystem(getActiveSystemKey())) return;
                 const resetConfig = ensureConfigForCurrentSystem();
                 resetConfig.beatYamlAdvanced = '';
                 resetConfig.beatHoverMetadataFields = [];
@@ -2314,14 +2375,13 @@ export function renderStoryBeatsSection(params: {
                 dirtyState.notify();
             };
         };
-            }
 
         rerenderBeatYaml(beatEntries);
     };
 
     renderBeatYamlEditor();
 
-    // ─── BEAT HOVER METADATA PREVIEW (Core) ───────────────────────────
+    // ─── BEAT HOVER METADATA PREVIEW ──────────────────────────────────
     const beatHoverPreviewContainer = beatYamlSection.createDiv({
         cls: ['ert-previewFrame', 'ert-previewFrame--center', 'ert-previewFrame--flush'],
         attr: { 'data-preview': 'beat-metadata' }
@@ -2363,26 +2423,18 @@ export function renderStoryBeatsSection(params: {
     renderBeatHoverPreview();
 
     // ─── SAVED BEAT SYSTEMS (Sets tab) ────
-    // Pro saved systems: lives in PRO Sets stage (stage 3).
-    // Normal panel styling; Pro pill on heading communicates premium status.
-    const savedCard = proTemplatesContainer.createDiv({
+    const savedCard = setsContainer.createDiv({
         cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK} ert-saved-beat-systems`
     });
-    if (!proActive) savedCard.addClass('ert-pro-locked');
 
-    // Card header — ert-skin--pro scoped to header only so the Pro pill
-    // picks up its gradient without painting the whole card purple.
-    const savedHeaderRow = savedCard.createDiv({ cls: `${ERT_CLASSES.PANEL_HEADER} ${ERT_CLASSES.SKIN_PRO}` });
+    const savedHeaderRow = savedCard.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
     const savedTitleArea = savedHeaderRow.createDiv({ cls: 'ert-control' });
     const savedTitleRow = savedTitleArea.createEl('h4', { cls: `${ERT_CLASSES.SECTION_TITLE} ${ERT_CLASSES.INLINE}` });
-    const savedProPill = savedTitleRow.createSpan({ cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO}` });
-    setIcon(savedProPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON }), 'signature');
-    savedProPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'PRO' });
-    savedTitleRow.createSpan({ text: ' Beat system sets' });
+    savedTitleRow.createSpan({ text: 'Beat system sets' });
 
     savedCard.createEl('p', {
         cls: ERT_CLASSES.SECTION_DESC,
-        text: 'Starter sets are curated starting points. Saved sets are your own versions you can edit and delete. Core: one custom set. Pro: unlimited custom sets and five bonus starter sets.'
+        text: 'Starter sets are curated starting points. Saved sets are your own versions you can edit and delete.'
     });
 
     const savedControlsContainer = savedCard.createDiv({ cls: ERT_CLASSES.STACK });
@@ -2463,20 +2515,16 @@ export function renderStoryBeatsSection(params: {
     };
 
     const renderSavedBeatSystems = () => {
-        // Unsubscribe previous Pro Sets dirty listener before clearing DOM
-        _unsubProSetsDirty?.();
-        _unsubProSetsDirty = null;
+        // Unsubscribe previous Sets dirty listener before clearing DOM
+        _unsubSetsDirty?.();
+        _unsubSetsDirty = null;
         savedControlsContainer.empty();
-
-        if (!proActive) {
-            savedControlsContainer.createDiv({ cls: 'ert-pro-locked-hint', text: 'Core includes 1 custom beat system.' });
-        }
 
         const savedSystems: SavedBeatSystem[] = plugin.settings.savedBeatSystems ?? [];
         const activeId = plugin.settings.activeCustomBeatSystemId ?? 'default';
         const unsaved = isSetDirty();
 
-        // Build unified lookup of all loadable systems (built-in Pro + user-saved)
+        // Build unified lookup of all loadable systems (starter + user-saved)
         const allLoadable = new Map<string, LoadableEntry>();
         allLoadable.set('default', {
             id: 'default',
@@ -2488,7 +2536,7 @@ export function renderStoryBeatsSection(params: {
             builtIn: true,
             isDefault: true
         });
-        PRO_BEAT_SETS.forEach(ps => allLoadable.set(ps.id, { ...ps, builtIn: true }));
+        STARTER_BEAT_SETS.forEach(ps => allLoadable.set(ps.id, { ...ps, builtIn: true }));
         savedSystems.forEach(s => allLoadable.set(s.id, { ...s, builtIn: false }));
 
         // Track currently selected entry for the preview card
@@ -2507,9 +2555,9 @@ export function renderStoryBeatsSection(params: {
                 // Always-first reset option
                 drop.addOption('default', '↺ Blank custom (reset)');
 
-                // Built-in Pro sets first
-                if (PRO_BEAT_SETS.length > 0) {
-                    PRO_BEAT_SETS.forEach(ps => {
+                // Starter sets first
+                if (STARTER_BEAT_SETS.length > 0) {
+                    STARTER_BEAT_SETS.forEach(ps => {
                         drop.addOption(ps.id, `★ ${ps.name}`);
                     });
                 }
@@ -2563,17 +2611,17 @@ export function renderStoryBeatsSection(params: {
 
         // ── Set-dirty notice (works for both starter and saved sets) ──
         const dirtyNoticeEl = savedControlsContainer.createDiv({ cls: 'ert-starter-dirty-notice ert-settings-hidden' });
-        dirtyNoticeEl.dataset.dirtyTarget = 'proNotice';
+        dirtyNoticeEl.dataset.dirtyTarget = 'setsNotice';
 
         // ── Preview card ─────────────────────────────────────────────
         const previewEl = savedControlsContainer.createDiv({ cls: 'ert-set-preview ert-settings-hidden' });
-        previewEl.dataset.dirtyTarget = 'proPreview';
+        previewEl.dataset.dirtyTarget = 'setsPreview';
 
-        // Subscribe to dirtyState for Pro Sets dirty notice.
+        // Subscribe to dirtyState for Sets dirty notice.
         // Cleaned up at the top of renderSavedBeatSystems() before DOM is cleared.
-        const updateProSetsDirtyNotice = () => {
-            const notice = savedControlsContainer.querySelector<HTMLElement>('[data-dirty-target="proNotice"]');
-            const preview = savedControlsContainer.querySelector<HTMLElement>('[data-dirty-target="proPreview"]');
+        const updateSetsDirtyNotice = () => {
+            const notice = savedControlsContainer.querySelector<HTMLElement>('[data-dirty-target="setsNotice"]');
+            const preview = savedControlsContainer.querySelector<HTMLElement>('[data-dirty-target="setsPreview"]');
             if (!notice) return; // container was emptied — subscription will be cleaned up
             const dirty = isSetDirty();
             const isStarter = isStarterSetActive();
@@ -2608,8 +2656,8 @@ export function renderStoryBeatsSection(params: {
             // Preview card dirty accent
             if (preview) preview.classList.toggle('ert-set-preview--dirty', dirty);
         };
-        _unsubProSetsDirty = dirtyState.subscribe(updateProSetsDirtyNotice);
-        updateProSetsDirtyNotice();
+        _unsubSetsDirty = dirtyState.subscribe(updateSetsDirtyNotice);
+        updateSetsDirtyNotice();
 
         const renderPreviewCard = () => {
             previewEl.empty();
@@ -2622,7 +2670,7 @@ export function renderStoryBeatsSection(params: {
             const titleRow = previewEl.createDiv({ cls: 'ert-set-preview-header' });
             titleRow.createSpan({ text: selectedEntry.name, cls: 'ert-set-preview-title' });
             const tag = titleRow.createSpan({
-                text: selectedEntry.isDefault ? 'Core default' : (selectedEntry.builtIn ? 'Starter' : 'Saved'),
+                text: selectedEntry.isDefault ? 'Default' : (selectedEntry.builtIn ? 'Starter' : 'Saved'),
                 cls: `ert-set-preview-tag ${selectedEntry.builtIn ? 'ert-set-preview-tag--starter' : 'ert-set-preview-tag--saved'}`
             });
             if (selectedEntry.isDefault) {
@@ -2784,12 +2832,12 @@ export function renderStoryBeatsSection(params: {
                 renderPreviewContent('Custom'); // Preview reflects new set's beats/description
                 renderBeatYamlEditor();         // Fields reflect new system's YAML
                 updateBeatHoverPreview?.();     // Hover preview reflects new config
-                renderSavedBeatSystems();       // Pro Sets dropdown updated
+                renderSavedBeatSystems();       // Sets dropdown updated
                 renderStageSwitcher();          // Stage buttons reflect Design active
                 updateStageVisibility();        // Show Design stage
             } else {
                 // Non-copy save: re-render Design header (clears dirty indicators)
-                // + Pro Sets panel (updates dropdown/preview)
+                // + Sets panel (updates dropdown/preview)
                 renderCustomConfig();
                 renderPreviewContent('Custom'); // Preview reflects saved state
                 renderSavedBeatSystems();
@@ -3449,6 +3497,11 @@ export function renderStoryBeatsSection(params: {
             if (isSetDirty()) return false;
             return true;
         };
+        const isBeatAuditWriteReady = (): boolean => {
+            if (noteType !== 'Beat') return true;
+            if (plugin.settings.beatSystem !== 'Custom') return true;
+            return isCustomBeatSetOfficial();
+        };
         const getScopedBookFiles = (files: TFile[]): { sourcePath: string; files: TFile[] } => {
             const sourcePath = normalizePath((plugin.settings.sourcePath || '').trim());
             if (!sourcePath) return { sourcePath: '', files: [] };
@@ -3469,7 +3522,7 @@ export function renderStoryBeatsSection(params: {
             return value.trim().length > 0;
         };
         const buildFillEmptyPlan = (files: TFile[], activeBeatSystemKey?: string): FillEmptyPlan | null => {
-            if (!isCustomBeatSetOfficial()) return null;
+            if (!isBeatAuditWriteReady()) return null;
 
             const { sourcePath, files: scopedFiles } = getScopedBookFiles(files);
             if (!sourcePath || scopedFiles.length === 0) return null;
@@ -3866,8 +3919,7 @@ export function renderStoryBeatsSection(params: {
             });
 
             copyBtn?.classList.remove('ert-settings-hidden');
-            const allowInsertMissing = !isCustomBeatAudit();
-            if (allowInsertMissing && auditResult.summary.notesWithMissing > 0) {
+            if (auditResult.summary.notesWithMissing > 0) {
                 backfillBtn?.classList.remove('ert-settings-hidden');
             } else {
                 backfillBtn?.classList.add('ert-settings-hidden');
@@ -4485,16 +4537,12 @@ export function renderStoryBeatsSection(params: {
         };
 
         const handleFillEmptyValues = async () => {
-            if (!isCustomBeatAudit()) {
-                new Notice('Fill empty values is available for Custom beat systems only.');
-                return;
-            }
-            if (!isCustomBeatSetOfficial()) {
+            if (!isBeatAuditWriteReady()) {
                 new Notice('Save the active custom set before filling empty values.');
                 return;
             }
             if (!fillEmptyPlan) {
-                new Notice('No empty custom beat fields with defaults found in the active book folder.');
+                new Notice('No empty beat fields with defaults found in the active book folder.');
                 return;
             }
 
@@ -5399,7 +5447,6 @@ export function renderStoryBeatsSection(params: {
     function updateTemplateButton(setting: Settings, selectedSystem: string): void {
         const isCustom = selectedSystem === 'Custom';
         const isTemplateMode = !isCustom;
-        const builtinLocked = isTemplateMode && !canEditBuiltInBeatSystems();
         const isDirtyCustom = isCustom && isSetDirty();
         let displayName = selectedSystem;
         let baseDesc = '';
@@ -5452,21 +5499,6 @@ export function renderStoryBeatsSection(params: {
 
         updateTierBanner(selectedSystem);
 
-        if (builtinLocked) {
-            setPrimaryDesignButton(
-                'Create missing beat notes',
-                'Upgrade to Pro to edit beats and fields.',
-                true,
-                async () => { /* no-op: disabled */ }
-            );
-            if (repairBeatNotesButton) {
-                repairBeatNotesButton.setDisabled(true);
-                repairBeatNotesButton.buttonEl.addClass('ert-hidden');
-            }
-            setting.setDesc(`${baseDesc} Upgrade to Pro to create and repair beat notes.`);
-            return;
-        }
-
         // Reset action affordances before async lookup to avoid stale "Repair" UI.
         if (isDirtyCustom) {
             setPrimaryDesignButton(
@@ -5512,10 +5544,9 @@ export function renderStoryBeatsSection(params: {
             const missingTooltip = buildMissingBeatTooltip(structuralStatus);
 
             // ── Template mode (built-in systems): simplified status ──────
-            // Built-in systems (Save The Cat, StoryGrid, Hero's Journey) only
-            // offer "create". Once beats exist the author owns their placement
-            // — alignment, numbering, and duplicates are not surfaced because
-            // no repair tooling is provided for these read-only definitions.
+            // Built-in systems currently expose create/status on this path.
+            // Repair remains focused on the active Custom system until
+            // editable built-in beat definitions are migrated off static presets.
             if (isTemplateMode) {
                 const foundCount = summary.matchedCount;
                 const expectedCount = summary.expectedCount;

@@ -32,7 +32,7 @@ const CONSTRAINED_MATTER_ROLES = new Set(['title-page', 'copyright', 'about-auth
 const FALLBACK_ONLY_MATTER_ROLES = new Set(['title-page', 'dedication', 'epigraph', 'acknowledgments', 'about-author']);
 
 export interface MatterReadinessDescriptor {
-    label: 'Ready' | 'Missing metadata' | 'Fallback rendering' | 'Unsupported semantic role' | 'Needs repair';
+    label: 'Ready' | 'Needs metadata' | 'Uses page content' | 'Not supported by this layout' | 'Needs repair';
     detail: string;
     tone: 'success' | 'warning' | 'error';
 }
@@ -50,26 +50,26 @@ export function describeMatterReadiness(params: {
 
     if (issueCodes.has('matter_book_meta_missing') || issueCodes.has('book_meta_required_missing')) {
         return {
-            label: 'Missing metadata',
+            label: 'Needs metadata',
             detail: usesBookMeta
-                ? 'This matter expects BookMeta data that is not currently available.'
-                : 'Required publishing metadata is missing for this matter.',
+                ? 'This page expects Book Details data that is not currently available.'
+                : 'This page needs publishing metadata before it can be filled in automatically.',
             tone: 'error',
         };
     }
     if (issueCodes.has('matter_role_unsupported')) {
         return {
-            label: 'Unsupported semantic role',
-            detail: 'The selected template does not declare this matter role as semantic support.',
+            label: 'Not supported by this layout',
+            detail: 'This page type is not supported by the selected layout.',
             tone: 'warning',
         };
     }
     if (issueCodes.has('matter_semantic_fallback')) {
         return {
-            label: 'Fallback rendering',
+            label: 'Uses page content',
             detail: role
-                ? `Role "${role}" still renders through the generic body path today.`
-                : 'This matter renders through the generic body path today.',
+                ? 'This page is template-managed and uses page content.'
+                : 'This page is template-managed and uses page content.',
             tone: 'warning',
         };
     }
@@ -83,30 +83,28 @@ export function describeMatterReadiness(params: {
     const fallbackOnlyRoles = new Set(['title-page', 'dedication', 'epigraph', 'acknowledgments', 'about-author']);
     if (role && fallbackOnlyRoles.has(role)) {
         return {
-            label: 'Fallback rendering',
-            detail: `Role "${role}" currently renders through the generic body path today.`,
+            label: 'Uses page content',
+            detail: 'This page is template-managed and uses page content.',
             tone: 'warning',
         };
     }
     if (usesBookMeta && !bookMetaAvailable) {
         return {
-            label: 'Missing metadata',
-            detail: 'This matter is configured to read from BookMeta, but no BookMeta note is currently available.',
+            label: 'Needs metadata',
+            detail: 'This page is configured to use Book Details, but no Book Details note is currently available.',
             tone: 'error',
         };
     }
     if (role === 'copyright' && usesBookMeta && bookMetaAvailable) {
         return {
             label: 'Ready',
-            detail: 'Semantic copyright rendering is available for this note.',
+            detail: 'Template-managed and ready to export.',
             tone: 'success',
         };
     }
     return {
-        label: role ? 'Fallback rendering' : 'Fallback rendering',
-        detail: role
-            ? `Role "${role}" currently renders through the generic body path today.`
-            : 'This matter note uses generic body rendering.',
+        label: 'Uses page content',
+        detail: 'This page is template-managed and uses page content.',
         tone: 'warning',
     };
 }
@@ -142,6 +140,176 @@ export function summarizeValidationIssues(issues: ValidationIssue[]): Validation
         warningCount,
         topMessage: issues[0]?.message,
     };
+}
+
+export interface BookDetailChecklistItem {
+    key: 'title' | 'author' | 'copyright-holder' | 'rights-year' | 'isbn' | 'publisher';
+    label: string;
+    state: 'Complete' | 'Needs setup' | 'Needs metadata';
+    detail: string;
+    tone: 'success' | 'warning' | 'error';
+    value?: string;
+}
+
+export interface BookPageChecklistItem {
+    key: 'title-page' | 'copyright' | 'dedication' | 'epigraph' | 'acknowledgments' | 'about-author';
+    label: string;
+    state: 'Template-managed' | 'Uses page content' | 'Needs setup' | 'Needs metadata' | 'Not supported by this layout';
+    detail: string;
+    tone: 'success' | 'warning' | 'error';
+}
+
+export function buildBookDetailsChecklist(bookMeta: BookMeta | null): BookDetailChecklistItem[] {
+    const normalized = {
+        title: (bookMeta?.title || '').trim(),
+        author: (bookMeta?.author || '').trim(),
+        copyrightHolder: (bookMeta?.rights?.copyright_holder || '').trim(),
+        rightsYear: bookMeta?.rights?.year,
+        isbn: (bookMeta?.identifiers?.isbn_paperback || '').trim(),
+        publisher: (bookMeta?.publisher?.name || '').trim(),
+    };
+
+    return [
+        {
+            key: 'title',
+            label: 'Title',
+            state: normalized.title ? 'Complete' : 'Needs setup',
+            detail: normalized.title ? 'Used on the title page and in export metadata.' : 'Create Book Details to add the book title.',
+            tone: normalized.title ? 'success' : 'error',
+            value: normalized.title || undefined,
+        },
+        {
+            key: 'author',
+            label: 'Author',
+            state: normalized.author ? 'Complete' : 'Needs setup',
+            detail: normalized.author ? 'Shown on the title page and in export metadata.' : 'Create Book Details to add the author name.',
+            tone: normalized.author ? 'success' : 'error',
+            value: normalized.author || undefined,
+        },
+        {
+            key: 'copyright-holder',
+            label: 'Copyright holder',
+            state: normalized.copyrightHolder ? 'Complete' : 'Needs setup',
+            detail: normalized.copyrightHolder ? 'Used on the copyright page.' : 'Add the copyright holder for the copyright page.',
+            tone: normalized.copyrightHolder ? 'success' : 'warning',
+            value: normalized.copyrightHolder || undefined,
+        },
+        {
+            key: 'rights-year',
+            label: 'Rights year',
+            state: normalized.rightsYear ? 'Complete' : 'Needs setup',
+            detail: normalized.rightsYear ? 'Used on the copyright page.' : 'Add the rights year for the copyright page.',
+            tone: normalized.rightsYear ? 'success' : 'warning',
+            value: normalized.rightsYear ? String(normalized.rightsYear) : undefined,
+        },
+        {
+            key: 'isbn',
+            label: 'ISBN',
+            state: normalized.isbn ? 'Complete' : 'Needs setup',
+            detail: normalized.isbn ? 'Included in export metadata when present.' : 'Optional, but useful for print-ready exports.',
+            tone: normalized.isbn ? 'success' : 'warning',
+            value: normalized.isbn || undefined,
+        },
+        {
+            key: 'publisher',
+            label: 'Publisher',
+            state: normalized.publisher ? 'Complete' : 'Needs setup',
+            detail: normalized.publisher ? 'Shown in the publishing details.' : 'Optional, but useful for published editions.',
+            tone: normalized.publisher ? 'success' : 'warning',
+            value: normalized.publisher || undefined,
+        },
+    ];
+}
+
+export function buildBookPagesChecklist(params: {
+    bookMetaAvailable: boolean;
+    items: Array<{ role?: string; usesBookMeta?: boolean }>;
+    issueCodes?: Array<{ field?: string; code: string; level: ValidationIssue['level'] }>;
+}): BookPageChecklistItem[] {
+    const itemByRole = new Map<string, { role?: string; usesBookMeta?: boolean }>();
+    for (const item of params.items || []) {
+        const role = (item.role || '').trim().toLowerCase();
+        if (role && !itemByRole.has(role)) {
+            itemByRole.set(role, item);
+        }
+    }
+
+    const issues = params.issueCodes || [];
+    const getIssueCodes = (role: string): Set<string> => new Set(
+        issues
+            .filter(issue => (issue.field || '').trim().toLowerCase() === role)
+            .map(issue => issue.code)
+    );
+
+    const pageOrder: BookPageChecklistItem['key'][] = [
+        'title-page',
+        'copyright',
+        'dedication',
+        'epigraph',
+        'acknowledgments',
+        'about-author',
+    ];
+
+    return pageOrder.map((key) => {
+        const roleItem = itemByRole.get(key);
+        const codes = getIssueCodes(key);
+        const friendlyName = key === 'about-author'
+            ? 'About the author'
+            : key.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        const required = key === 'title-page' || key === 'copyright';
+
+        if (codes.has('matter_role_unsupported')) {
+            return {
+                key,
+                label: friendlyName,
+                state: 'Not supported by this layout',
+                detail: 'This page type is not supported by the selected layout.',
+                tone: 'warning',
+            };
+        }
+
+        if (!roleItem) {
+            return {
+                key,
+                label: friendlyName,
+                state: 'Needs setup',
+                detail: required
+                    ? 'Start here to make the book ready for export.'
+                    : 'Add this page if the book needs it.',
+                tone: required ? 'error' : 'warning',
+            };
+        }
+
+        if (key === 'copyright' && roleItem.usesBookMeta && !params.bookMetaAvailable) {
+            return {
+                key,
+                label: friendlyName,
+                state: 'Needs metadata',
+                detail: 'Create Book Details to unlock the copyright page.',
+                tone: 'error',
+            };
+        }
+
+        if (key === 'copyright' && roleItem.usesBookMeta && params.bookMetaAvailable) {
+            return {
+                key,
+                label: friendlyName,
+                state: 'Template-managed',
+                detail: 'This page pulls from Book Details.',
+                tone: 'success',
+            };
+        }
+
+        return {
+            key,
+            label: friendlyName,
+            state: 'Uses page content',
+            detail: roleItem.usesBookMeta
+                ? 'This page uses Book Details where available.'
+                : 'This page uses the page body as written.',
+            tone: 'warning',
+        };
+    });
 }
 
 function parseBookMetaFromFrontmatter(frontmatter: Record<string, unknown>, sourcePath: string): BookMeta {
@@ -332,20 +500,20 @@ export class PublishingValidationService {
             }
 
             if (parsedMeta.usesBookMeta && !bookMetaResolution.bookMeta) {
-                pushIssue(snapshot.matterIssues, 'matter', 'warning', 'matter_book_meta_missing', `Matter note "${file.path}" expects BookMeta, but no BookMeta note was found.`, {
+                pushIssue(snapshot.matterIssues, 'matter', 'warning', 'matter_book_meta_missing', `Matter note "${file.path}" expects Book Details, but no Book Details note was found.`, {
                     actionable: true,
                     field: role || file.path,
                 });
             }
 
             if (role && FALLBACK_ONLY_MATTER_ROLES.has(role) && parsedMeta.usesBookMeta) {
-                pushIssue(snapshot.matterIssues, 'matter', 'info', 'matter_semantic_fallback', `Matter role "${role}" currently falls back to generic body rendering.`, {
+                pushIssue(snapshot.matterIssues, 'matter', 'info', 'matter_semantic_fallback', `This page uses page content instead of layout-managed output.`, {
                     field: role,
                 });
             }
 
             if (role && selectedProfile && selectedProfile.supportedMatterRoles.length > 0 && !selectedProfile.supportedMatterRoles.includes(role)) {
-                pushIssue(snapshot.matterIssues, 'matter', 'warning', 'matter_role_unsupported', `Matter role "${role}" is outside the selected profile's declared role set.`, {
+                pushIssue(snapshot.matterIssues, 'matter', 'warning', 'matter_role_unsupported', `This page type is not supported by the selected layout.`, {
                     field: role,
                 });
             }
@@ -528,7 +696,7 @@ export class PublishingValidationService {
         if (candidates.length > 1) {
             return {
                 bookMeta: selected.meta,
-                warning: `Multiple BookMeta notes found. Using: ${selected.path}`,
+                warning: `Multiple Book Details notes found. Using: ${selected.path}`,
             };
         }
 

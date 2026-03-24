@@ -322,11 +322,11 @@ export function getPlotSystem(name: string): PlotSystemPreset | null {
   return PLOT_SYSTEMS[name] || null;
 }
 
-// ─── Built-in Pro Beat Sets ──────────────────────────────────────────
-// Pre-built beat systems available to Pro users in the Pro Sets tab.
+// ─── Starter Beat Sets ────────────────────────────────────────────────
+// Pre-built beat systems available in the Sets tab.
 // Each includes beats, custom YAML fields, and hover metadata.
 
-export interface ProBeatSet {
+export interface StarterBeatSet {
   id: string;
   name: string;
   description: string;
@@ -335,7 +335,7 @@ export interface ProBeatSet {
   beatHoverMetadataFields: { key: string; label: string; icon: string; enabled: boolean }[];
 }
 
-export const PRO_BEAT_SETS: ProBeatSet[] = [
+export const STARTER_BEAT_SETS: StarterBeatSet[] = [
   {
     id: 'starter:podcast_narrative',
     name: 'Podcast Narrative Arc',
