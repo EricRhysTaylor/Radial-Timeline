@@ -4,6 +4,7 @@ import type RadialTimelinePlugin from '../main';
 import type {
     BookMeta,
     BookProfile,
+    BookPublishingPreferences,
     OutputIntent,
     PandocLayoutTemplate,
     PublishingValidationSnapshot,
@@ -30,6 +31,85 @@ interface PublishingValidationContext {
 const CONSTRAINED_MATTER_ROLES = new Set(['title-page', 'copyright', 'about-author']);
 const FALLBACK_ONLY_MATTER_ROLES = new Set(['title-page', 'dedication', 'epigraph', 'acknowledgments', 'about-author']);
 
+export interface MatterReadinessDescriptor {
+    label: 'Ready' | 'Missing metadata' | 'Fallback rendering' | 'Unsupported semantic role' | 'Needs repair';
+    detail: string;
+    tone: 'success' | 'warning' | 'error';
+}
+
+export function describeMatterReadiness(params: {
+    role?: string;
+    usesBookMeta?: boolean;
+    bookMetaAvailable?: boolean;
+    issueCodes?: string[];
+}): MatterReadinessDescriptor {
+    const role = (params.role || '').trim().toLowerCase();
+    const issueCodes = new Set((params.issueCodes || []).map(code => code.toLowerCase()));
+    const usesBookMeta = params.usesBookMeta === true;
+    const bookMetaAvailable = params.bookMetaAvailable === true;
+
+    if (issueCodes.has('matter_book_meta_missing') || issueCodes.has('book_meta_required_missing')) {
+        return {
+            label: 'Missing metadata',
+            detail: usesBookMeta
+                ? 'This matter expects BookMeta data that is not currently available.'
+                : 'Required publishing metadata is missing for this matter.',
+            tone: 'error',
+        };
+    }
+    if (issueCodes.has('matter_role_unsupported')) {
+        return {
+            label: 'Unsupported semantic role',
+            detail: 'The selected template does not declare this matter role as semantic support.',
+            tone: 'warning',
+        };
+    }
+    if (issueCodes.has('matter_semantic_fallback')) {
+        return {
+            label: 'Fallback rendering',
+            detail: role
+                ? `Role "${role}" still renders through the generic body path today.`
+                : 'This matter renders through the generic body path today.',
+            tone: 'warning',
+        };
+    }
+    if (issueCodes.has('matter_role_duplicate') || issueCodes.has('matter_repair_needed')) {
+        return {
+            label: 'Needs repair',
+            detail: 'Multiple notes or repairable metadata issues were detected for this matter role.',
+            tone: 'warning',
+        };
+    }
+    const fallbackOnlyRoles = new Set(['title-page', 'dedication', 'epigraph', 'acknowledgments', 'about-author']);
+    if (role && fallbackOnlyRoles.has(role)) {
+        return {
+            label: 'Fallback rendering',
+            detail: `Role "${role}" currently renders through the generic body path today.`,
+            tone: 'warning',
+        };
+    }
+    if (usesBookMeta && !bookMetaAvailable) {
+        return {
+            label: 'Missing metadata',
+            detail: 'This matter is configured to read from BookMeta, but no BookMeta note is currently available.',
+            tone: 'error',
+        };
+    }
+    if (role === 'copyright' && usesBookMeta && bookMetaAvailable) {
+        return {
+            label: 'Ready',
+            detail: 'Semantic copyright rendering is available for this note.',
+            tone: 'success',
+        };
+    }
+    return {
+        label: role ? 'Fallback rendering' : 'Fallback rendering',
+        detail: role
+            ? `Role "${role}" currently renders through the generic body path today.`
+            : 'This matter note uses generic body rendering.',
+        tone: 'warning',
+    };
+}
 function pushIssue(
     target: ValidationIssue[],
     scope: ValidationScope,
@@ -51,6 +131,17 @@ function getIssueState(issues: ValidationIssue[]): ValidationSummary['state'] {
     if (issues.some(issue => issue.level === 'error')) return 'blocked';
     if (issues.some(issue => issue.level === 'warning')) return 'warning';
     return 'ready';
+}
+
+export function summarizeValidationIssues(issues: ValidationIssue[]): ValidationSummary {
+    const errorCount = issues.filter(issue => issue.level === 'error').length;
+    const warningCount = issues.filter(issue => issue.level === 'warning').length;
+    return {
+        state: getIssueState(issues),
+        errorCount,
+        warningCount,
+        topMessage: issues[0]?.message,
+    };
 }
 
 function parseBookMetaFromFrontmatter(frontmatter: Record<string, unknown>, sourcePath: string): BookMeta {
@@ -102,14 +193,7 @@ export class PublishingValidationService {
     constructor(private readonly plugin: RadialTimelinePlugin) {}
 
     summarize(issues: ValidationIssue[]): ValidationSummary {
-        const errorCount = issues.filter(issue => issue.level === 'error').length;
-        const warningCount = issues.filter(issue => issue.level === 'warning').length;
-        return {
-            state: getIssueState(issues),
-            errorCount,
-            warningCount,
-            topMessage: issues[0]?.message,
-        };
+        return summarizeValidationIssues(issues);
     }
 
     collect(bookId?: string, context: PublishingValidationContext = {}): PublishingValidationSnapshot {
@@ -193,6 +277,9 @@ export class PublishingValidationService {
 
             if (!outputIntentAllowed) {
                 pushIssue(issues, 'profile', 'error', 'profile_output_intent_invalid', 'Template profile declares an incompatible output intent.');
+            }
+            if (profile.status === 'draft') {
+                pushIssue(issues, 'profile', 'warning', 'profile_status_draft', 'Template profile is saved as a draft and has not been activated yet.');
             }
             if (profile.status === 'invalid') {
                 pushIssue(issues, 'profile', 'error', 'profile_status_invalid', 'Template profile is not ready for export.');
@@ -329,11 +416,40 @@ export class PublishingValidationService {
         book: BookProfile | null,
         context: PublishingValidationContext
     ): TemplateProfile | undefined {
-        const selectedLayoutId = context.selectedLayoutId
-            || (context.manuscriptPreset && book?.lastUsedPandocLayoutByPreset?.[context.manuscriptPreset])
-            || undefined;
+        const selectedLayoutId = context.selectedLayoutId || undefined;
         if (selectedLayoutId) {
-            return profiles.find(profile => profile.legacyLayoutId === selectedLayoutId);
+            return profiles.find(profile => profile.legacyLayoutId === selectedLayoutId || profile.id === selectedLayoutId);
+        }
+
+        const preferences = this.resolveBookPublishingPreferences(book?.id);
+        const preferredTemplateId = context.manuscriptPreset
+            ? preferences?.preferredTemplateProfileIdByContext?.[context.manuscriptPreset]
+            : undefined;
+        if (preferredTemplateId) {
+            const preferredProfile = profiles.find(profile => profile.id === preferredTemplateId || profile.legacyLayoutId === preferredTemplateId);
+            if (preferredProfile) return preferredProfile;
+        }
+
+        const exportProfiles = Array.isArray(this.plugin.settings.exportProfiles) ? this.plugin.settings.exportProfiles : [];
+        const prioritizedExportProfileId = preferences?.lastUsedExportProfileId
+            || this.plugin.settings.lastUsedExportProfileId
+            || preferences?.defaultExportProfileId
+            || undefined;
+        if (prioritizedExportProfileId) {
+            const exportProfile = exportProfiles.find(profile => profile.id === prioritizedExportProfileId);
+            const templateProfileId = exportProfile?.templateProfileId;
+            if (templateProfileId) {
+                const byExportProfile = profiles.find(profile => profile.id === templateProfileId || profile.legacyLayoutId === templateProfileId);
+                if (byExportProfile) return byExportProfile;
+            }
+        }
+
+        const legacySelectedLayoutId = context.manuscriptPreset
+            ? book?.lastUsedPandocLayoutByPreset?.[context.manuscriptPreset]
+            : undefined;
+        if (legacySelectedLayoutId) {
+            const legacyProfile = profiles.find(profile => profile.legacyLayoutId === legacySelectedLayoutId || profile.id === legacySelectedLayoutId);
+            if (legacyProfile) return legacyProfile;
         }
 
         if (context.manuscriptPreset) {
@@ -342,6 +458,14 @@ export class PublishingValidationService {
         }
 
         return profiles[0];
+    }
+
+    private resolveBookPublishingPreferences(bookId?: string): BookPublishingPreferences | null {
+        if (!bookId) return null;
+        const preferences = Array.isArray(this.plugin.settings.bookPublishingPreferences)
+            ? this.plugin.settings.bookPublishingPreferences
+            : [];
+        return preferences.find(entry => entry.bookId === bookId) || null;
     }
 
     private isOutputIntentAllowed(outputIntent: OutputIntent, usageContext: string): boolean {

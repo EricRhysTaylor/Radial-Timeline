@@ -665,23 +665,45 @@ export function renderStoryBeatsSection(params: {
         };
     };
 
-    const getEditingCapabilityLabel = (system: string): 'Core' | 'Pro' | 'Read-only' => {
-        const { mode } = deriveBeatSystemMode(system);
-        if (mode === 'builtin') {
-            return canEditBuiltInBeatSystems() ? 'Pro' : 'Read-only';
-        }
-        return 'Core';
+    type PreviewStatusTone = 'success' | 'warning' | 'muted';
+
+    type ManuscriptAdvisoryState = {
+        text: string;
+        tone: PreviewStatusTone;
+        icon: 'check' | 'circle-alert' | null;
     };
 
-    const getManuscriptAdvisoryLabel = (system: string): string => {
+    const getEditingCapabilityLabel = (system: string): string => {
+        const { mode } = deriveBeatSystemMode(system);
+        if (mode === 'builtin') {
+            return canEditBuiltInBeatSystems()
+                ? 'Editable with Pro'
+                : 'Read-only in Core';
+        }
+        return 'Editable in Core';
+    };
+
+    const getManuscriptAdvisoryState = (system: string): ManuscriptAdvisoryState => {
         const summary = getBeatStructuralStatus(system).summary;
         if (summary.presentCount === 0) {
-            return 'Template view — no beats in manuscript';
+            return {
+                text: 'Template view — no beats in manuscript',
+                tone: 'muted',
+                icon: null,
+            };
         }
         if (summary.issueCount > 0) {
-            return `Active in manuscript — ${summary.issueCount} structural issue${summary.issueCount !== 1 ? 's' : ''}`;
+            return {
+                text: `Active in manuscript — ${summary.issueCount} structural issue${summary.issueCount !== 1 ? 's' : ''}`,
+                tone: 'warning',
+                icon: 'circle-alert',
+            };
         }
-        return `Active in manuscript — ${summary.presentCount} beat${summary.presentCount !== 1 ? 's' : ''} detected`;
+        return {
+            text: `Active in manuscript — ${summary.presentCount} beat${summary.presentCount !== 1 ? 's' : ''} detected`,
+            tone: 'success',
+            icon: 'check',
+        };
     };
 
     new Settings(actsStack)
@@ -1491,6 +1513,37 @@ export function renderStoryBeatsSection(params: {
         return { columns, totalBeats: ordered.length };
     };
 
+    const appendPreviewStatus = (
+        parent: HTMLElement,
+        state: { text: string; tone: PreviewStatusTone; icon: 'check' | 'circle-alert' | null },
+        extraClass?: string
+    ) => {
+        const statusEl = parent.createSpan({
+            cls: `ert-preview-status ert-preview-status--${state.tone}${extraClass ? ` ${extraClass}` : ''}`
+        });
+        if (state.icon) {
+            const iconEl = statusEl.createSpan({ cls: 'ert-preview-status-icon' });
+            setIcon(iconEl, state.icon);
+        }
+        statusEl.createSpan({ text: state.text });
+        return statusEl;
+    };
+
+    const getBeatPreviewState = (
+        status: BeatStructuralBeatStatus | null
+    ): { text: string; tone: PreviewStatusTone; icon: 'check' | 'circle-alert' | null } => {
+        if (!status) {
+            return { text: 'Checking…', tone: 'muted', icon: null };
+        }
+        if (status.kind === 'complete') {
+            return { text: 'Present', tone: 'success', icon: 'check' };
+        }
+        if (status.kind === 'missing') {
+            return { text: 'Missing', tone: 'warning', icon: 'circle-alert' };
+        }
+        return { text: 'Incomplete', tone: 'warning', icon: 'circle-alert' };
+    };
+
     const renderPreviewContent = (system: string, _options?: { skipStatusRefresh?: boolean }) => {
         const { mode } = deriveBeatSystemMode(system);
         const copy = getBeatSystemCopy(system);
@@ -1521,11 +1574,13 @@ export function renderStoryBeatsSection(params: {
         const beatStatusByKey = new Map<string, BeatStructuralBeatStatus>(
             (structuralStatus?.beats ?? []).map((beat) => [beat.expected.key, beat])
         );
-        templatePreviewStatus.setText(
-            totalBeats > 0
-                ? (structuralStatus?.summary.statusLabel ?? 'Structure status: Checking…')
-                : ''
-        );
+        templatePreviewStatus.empty();
+        templatePreviewStatus.className = 'ert-beat-template-meta ert-preview-status-line';
+        if (totalBeats > 0) {
+            const manuscriptState = getManuscriptAdvisoryState(system);
+            templatePreviewStatus.addClass(`ert-preview-status-line--${manuscriptState.tone}`);
+            appendPreviewStatus(templatePreviewStatus, manuscriptState);
+        }
         templatePreviewStatus.toggleClass('ert-settings-hidden', totalBeats === 0);
 
         templateActGrid.empty();
@@ -1546,21 +1601,27 @@ export function renderStoryBeatsSection(params: {
                 if (!status || status.kind === 'complete') return totalIssues;
                 return totalIssues + 1;
             }, 0);
-            const columnStatusText = columnIssueCount === 0
-                ? '✔ Complete'
-                : `⚠ ${columnIssueCount} issue${columnIssueCount !== 1 ? 's' : ''}`;
-            const headerText = column.isNumericAct
-                ? `${column.label} (${count}) — ${columnStatusText}`
-                : `${column.label}${count > 0 ? ` (${count})` : ''} — ${columnStatusText}`;
-            colEl.createDiv({ cls: 'ert-beat-act-header', text: headerText });
+            const header = colEl.createDiv({ cls: 'ert-beat-act-header' });
+            header.createSpan({
+                text: column.isNumericAct
+                    ? `${column.label} (${count}) — `
+                    : `${column.label}${count > 0 ? ` (${count})` : ''} — `
+            });
+            appendPreviewStatus(
+                header,
+                columnIssueCount === 0
+                    ? { text: 'Complete', tone: 'success', icon: 'check' }
+                    : { text: `${columnIssueCount} issue${columnIssueCount !== 1 ? 's' : ''}`, tone: 'warning', icon: 'circle-alert' },
+                'ert-preview-status--compact'
+            );
             const listEl = colEl.createDiv({ cls: 'ert-beat-act-list' });
             column.beats.forEach((beat) => {
                 runningBeatIdx++;
                 const status = beatStatusByKey.get(beat.key) ?? null;
-                const statusText = !status
-                    ? '…'
-                    : status.label;
-                const row = listEl.createDiv({ cls: 'ert-beat-act-item', text: `${runningBeatIdx}. ${beat.name} — ${statusText}` });
+                const state = getBeatPreviewState(status);
+                const row = listEl.createDiv({ cls: `ert-beat-act-item ert-beat-act-item--${state.tone}` });
+                row.createSpan({ text: `${runningBeatIdx}. ${beat.name} — ` });
+                appendPreviewStatus(row, state, 'ert-preview-status--compact');
                 if (status && status.kind !== 'complete') {
                     setTooltip(row, status.issues.map((issue) => issue.message).join(' • '));
                 }
@@ -1745,18 +1806,25 @@ export function renderStoryBeatsSection(params: {
     function updateTierBanner(system: string): void {
         tierBannerEl.empty();
         const { mode } = deriveBeatSystemMode(system);
-        tierBannerEl.createDiv({
-            cls: 'ert-beat-tier-line',
-            text: `Type: ${mode === 'builtin' ? 'Built-in beat set' : 'Custom beat set'}`
-        });
+        const typeLine = tierBannerEl.createDiv({ cls: 'ert-beat-tier-line' });
+        typeLine.createSpan({ text: `Type: ${mode === 'builtin' ? 'Built-in beat set' : 'Custom beat set'}` });
+        if (mode === 'custom' && proActive) {
+            const managementPill = typeLine.createSpan({
+                cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO} ${ERT_CLASSES.BADGE_PILL_SM}`
+            });
+            setIcon(managementPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON }), 'signature');
+            managementPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'Pro' });
+            typeLine.createSpan({ cls: 'ert-beat-tier-note', text: 'saved/starter set management' });
+        }
         const builtinLocked = mode === 'builtin' && !canEditBuiltInBeatSystems();
         tierBannerEl.createDiv({
             cls: 'ert-beat-tier-line ert-beat-tier-status',
             text: `Editing: ${getEditingCapabilityLabel(system)}`
         });
+        const manuscript = getManuscriptAdvisoryState(system);
         tierBannerEl.createDiv({
             cls: 'ert-beat-tier-line ert-beat-tier-status',
-            text: getManuscriptAdvisoryLabel(system)
+            text: `Manuscript: ${manuscript.text}`
         });
         if (builtinLocked) {
             tierBannerEl.createDiv({ cls: 'ert-beat-tier-cta', text: 'Upgrade to Pro to edit beats and fields.' });

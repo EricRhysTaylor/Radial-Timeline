@@ -15,14 +15,17 @@ import * as path from 'path'; // SAFE: Node path for absolute-path detection in 
 import { generateSceneContent } from '../../utils/sceneGenerator';
 import { DEFAULT_SETTINGS } from '../defaults';
 import { validatePandocLayout, slugifyToFileStem } from '../../utils/exportFormats';
-import type { BookLayoutOptions, BookMeta, BookProfile, ManuscriptSceneHeadingMode, PandocLayoutTemplate } from '../../types';
+import type { BookLayoutOptions, BookMeta, BookProfile, ManuscriptSceneHeadingMode, PandocLayoutTemplate, PublishingValidationSnapshot, TemplateProfile, ValidationIssue } from '../../types';
 import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
+import { ImportTemplateModal, type ImportedTemplateCommit } from '../../modals/ImportTemplateModal';
 import { getActiveBookExportContext } from '../../utils/exportContext';
 import { getActiveBook } from '../../utils/books';
 import { isPathInFolderScope } from '../../utils/pathScope';
 import { normalizeMatterClassValue } from '../../utils/matterMeta';
 import { extractBodyText, getSceneFilesByOrder } from '../../utils/manuscript';
 import { isProActive } from '../proEntitlement';
+import { describeMatterReadiness } from '../../services/PublishingValidationService';
+import { adaptPandocLayoutsToPublishingModel } from '../../utils/publishingModel';
 import {
     ensureBundledPandocLayoutsRegistered,
     getBundledPandocLayouts,
@@ -934,6 +937,10 @@ interface ActiveBookMatterSummary {
 interface PdfLayoutSummary {
     validCount: number;
     totalCount: number;
+    state: 'ready' | 'warning' | 'blocked';
+    errorCount: number;
+    warningCount: number;
+    topMessage?: string;
 }
 
 function getActiveBookMatterSummary(plugin: RadialTimelinePlugin): ActiveBookMatterSummary {
@@ -985,21 +992,63 @@ function isConfiguredPandocPathValid(plugin: RadialTimelinePlugin): boolean {
 }
 
 function getPdfLayoutSummary(plugin: RadialTimelinePlugin): PdfLayoutSummary {
-    const fictionLayouts = (plugin.settings.pandocLayouts || [])
+    const layouts = (plugin.settings.pandocLayouts || [])
         .filter(layout => layout.preset === 'novel');
-    const validCount = fictionLayouts
-        .filter(layout => validatePandocLayout(plugin, layout).valid)
-        .length;
+    const validation = getPublishingValidationSnapshot(plugin);
+    const relevantIssues: ValidationIssue[] = [];
+    layouts.forEach(layout => {
+        relevantIssues.push(...(validation.assetIssues[`${layout.id}::asset`] || []));
+        relevantIssues.push(...(validation.profileIssues[layout.id] || []));
+    });
+    relevantIssues.push(...validation.preflightIssues);
+    if (layouts.length === 0) {
+        relevantIssues.push({
+            scope: 'profile',
+            level: 'error',
+            code: 'pdf_layout_missing',
+            message: 'No manuscript PDF layouts are configured.',
+        });
+    }
+    const summary = plugin.getPublishingValidationService().summarize(relevantIssues);
+    const validCount = layouts.filter(layout => {
+        const assetIssues = validation.assetIssues[`${layout.id}::asset`] || [];
+        const profileIssues = validation.profileIssues[layout.id] || [];
+        return !assetIssues.some(issue => issue.level === 'error') && !profileIssues.some(issue => issue.level === 'error');
+    }).length;
     return {
         validCount,
-        totalCount: fictionLayouts.length
+        totalCount: layouts.length,
+        state: summary.state,
+        errorCount: summary.errorCount,
+        warningCount: summary.warningCount,
+        topMessage: summary.topMessage
     };
+}
+
+function getPublishingValidationSnapshot(plugin: RadialTimelinePlugin): PublishingValidationSnapshot {
+    const activeBook = getActiveBook(plugin.settings);
+    return plugin.getPublishingValidationService().collect(activeBook?.id, {
+        exportType: 'manuscript',
+        outputFormat: 'pdf'
+    });
+}
+
+function getIssueLabelFromCodes(issues: ValidationIssue[], fallback = 'Ready'): string {
+    const codes = new Set(issues.map(issue => issue.code));
+    if (codes.has('matter_book_meta_missing') || codes.has('book_meta_required_missing')) return 'Missing metadata';
+    if (codes.has('matter_role_duplicate')) return 'Needs repair';
+    if (codes.has('matter_role_unsupported')) return 'Unsupported semantic role';
+    if (codes.has('matter_semantic_fallback')) return 'Fallback rendering';
+    if (issues.some(issue => issue.level === 'error')) return 'Needs repair';
+    if (issues.length > 0) return 'Fallback rendering';
+    return fallback;
 }
 
 interface MatterPreviewItem {
     file: TFile;
     side: 'front' | 'back';
     role?: string;
+    usesBookMeta?: boolean;
     modeLabel: string;
     modeTone: 'plain' | 'latex' | 'auto';
 }
@@ -1054,6 +1103,7 @@ async function getMatterPreviewSummary(plugin: RadialTimelinePlugin): Promise<Ma
             file,
             side,
             role,
+            usesBookMeta: matterMeta.usesBookMeta === true,
             modeLabel,
             modeTone
         };
@@ -1799,6 +1849,8 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
     const normalizeVersionLabels = (label: string): string =>
         label.replace(/\bv(?:ersion)?\s*\d+(?:\.\d+)?\b/gi, '').replace(/\s{2,}/g, ' ').trim();
 
+    let layoutProfilesById = new Map<string, TemplateProfile>();
+
     type FictionLayoutVariant = 'classic' | 'modernClassic' | 'signature' | 'contemporary' | 'generic';
     const getFictionVariant = (layout: PandocLayoutTemplate): FictionLayoutVariant => {
         const source = `${layout.id} ${layout.name} ${layout.path}`.toLowerCase();
@@ -1845,6 +1897,9 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
         return 'Custom PDF layout.';
     };
     const buildLayoutDescription = (layout: PandocLayoutTemplate): string => {
+        const profile = layoutProfilesById.get(layout.id);
+        if (profile?.summary) return profile.summary;
+        if (profile?.description) return profile.description;
         const customDescription = typeof layout.description === 'string' ? layout.description.trim() : '';
         if (customDescription.length > 0) return customDescription;
         return buildDefaultLayoutDescription(layout);
@@ -2261,6 +2316,14 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
         hasSceneOpenerHeadingOptions: boolean;
     };
     const getLayoutSpecialCapabilities = (layout: PandocLayoutTemplate): LayoutSpecialCapabilities => {
+        const profile = layoutProfilesById.get(layout.id);
+        if (profile) {
+            const capabilityKeys = new Set(profile.capabilities.map(capability => capability.key));
+            const usesModernClassicStructure = capabilityKeys.has('modernClassicStructure');
+            const hasEpigraphs = capabilityKeys.has('actEpigraphs') || usesModernClassicStructure;
+            const hasSceneOpenerHeadingOptions = capabilityKeys.has('sceneHeadingMode');
+            return { usesModernClassicStructure, hasEpigraphs, hasSceneOpenerHeadingOptions };
+        }
         const usesModernClassicStructure = layout.usesModernClassicStructure === true;
         const hasEpigraphs = layout.hasEpigraphs === true || usesModernClassicStructure;
         const variant = getFictionVariant(layout);
@@ -2448,6 +2511,8 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
         layoutRowsContainer.empty();
 
         const layouts = getVisibleLayouts();
+        const publishingModel = adaptPandocLayoutsToPublishingModel(layouts);
+        layoutProfilesById = new Map(publishingModel.profiles.map(profile => [profile.legacyLayoutId, profile]));
         if (expandedSpecialLayoutId && !layouts.some(layout => layout.id === expandedSpecialLayoutId)) {
             expandedSpecialLayoutId = null;
         }
@@ -2754,90 +2819,33 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
 
     renderLayoutRows();
 
-    // ── Add Layout inline form ───────────────────────────────────────────────
-    let addFormVisible = false;
-    const addFormContainer = layoutPanel.createDiv({ cls: 'ert-layout-add-form ert-hidden' });
-
-    let newName = '';
-    let newPreset: 'novel' | 'screenplay' | 'podcast' = 'novel';
-    let newPath = '';
-
-    const addFormSetting = addProRow(new Setting(addFormContainer))
-        .setName('New layout');
-    addFormSetting.settingEl.addClass('ert-layout-add-form-setting');
-
-    addFormSetting.addText(text => {
-        text.setPlaceholder('Layout name');
-        text.inputEl.addClass('ert-input--md');
-        text.onChange(v => { newName = v; });
-    });
-    addFormSetting.addDropdown(dd => {
-        dd.addOption('novel', 'Novel');
-        if (SHOW_SCREENPLAY_LAYOUT_CATEGORY) {
-            dd.addOption('screenplay', 'Screenplay');
+    const commitImportedTemplate = async (commit: ImportedTemplateCommit): Promise<void> => {
+        const existing = plugin.settings.pandocLayouts || [];
+        const nextLayout = {
+            ...commit.layout,
+            draft: commit.draft,
+            origin: 'imported' as const,
+        };
+        const currentIndex = existing.findIndex(layout => layout.id === nextLayout.id);
+        if (currentIndex >= 0) {
+            existing[currentIndex] = nextLayout;
+        } else {
+            existing.push(nextLayout);
         }
-        if (SHOW_PODCAST_LAYOUT_CATEGORY) {
-            dd.addOption('podcast', 'Podcast');
-        }
-        dd.onChange(v => { newPreset = v as typeof newPreset; });
-    });
-    addFormSetting.addText(text => {
-        text.setPlaceholder('template.tex or path/to/template.tex');
-        text.inputEl.addClass('ert-input--lg');
-        text.onChange(v => { newPath = v; });
-        attachTemplatePathSuggest(plugin, text, (path) => {
-            newPath = path;
-        });
-    });
-    const addFormHint = addFormContainer.createDiv({
-        cls: ERT_CLASSES.SECTION_DESC,
-        text: 'Tip: autocomplete finds .tex files in your vault. Files from your Pandoc folder are saved as filename-only references.'
-    });
-    addFormHint.addClass('ert-layout-add-form-hint');
-    addFormSetting.addExtraButton(btn => {
-        btn.setIcon('checkmark');
-        btn.setTooltip('Confirm');
-        btn.onClick(async () => {
-            const trimName = newName.trim();
-            if (!trimName) { new Notice('Layout name is required.'); return; }
-            const id = `${slugifyToFileStem(trimName).toLowerCase()}-${newPreset}`;
-            const existing = (plugin.settings.pandocLayouts || []);
-            if (existing.some(l => l.id === id)) {
-                new Notice('A layout with this name and preset already exists.');
-                return;
-            }
-            existing.push({
-                id,
-                name: trimName,
-                preset: newPreset,
-                path: compactTemplatePathForStorage(plugin, newPath),
-                bundled: false
-            });
-            plugin.settings.pandocLayouts = existing;
-            await plugin.saveSettings();
-            // Reset form
-            newName = ''; newPreset = 'novel'; newPath = '';
-            addFormContainer.addClass('ert-hidden');
-            addFormVisible = false;
-            renderLayoutRows();
-            refreshPublishingStatusCard();
-        });
-    });
-    addFormSetting.addExtraButton(btn => {
-        btn.setIcon('cross');
-        btn.setTooltip('Cancel');
-        btn.onClick(() => {
-            addFormContainer.addClass('ert-hidden');
-            addFormVisible = false;
-        });
-    });
+        plugin.settings.pandocLayouts = existing;
+        await plugin.saveSettings();
+        new Notice(commit.activate
+            ? `Activated template '${nextLayout.name}'.`
+            : `Saved draft template '${nextLayout.name}'.`);
+        renderLayoutRows();
+        refreshPublishingStatusCard();
+    };
 
     const layoutManageSetting = addProRow(new Setting(layoutPanel));
     layoutManageSetting.addButton(button => {
-        button.setButtonText('Add Layout');
+        button.setButtonText('Import Template');
         button.onClick(() => {
-            addFormVisible = !addFormVisible;
-            addFormContainer.toggleClass('ert-hidden', !addFormVisible);
+            new ImportTemplateModal(app, plugin, commitImportedTemplate).open();
         });
     });
     layoutManageSetting.addButton(button => {
@@ -3047,11 +3055,21 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
         statusGrid.empty();
 
         const activeBookMetaStatus = getActiveBookMetaStatus(plugin);
-        const activeBookMatter = getActiveBookMatterSummary(plugin);
         const layoutSummary = getPdfLayoutSummary(plugin);
+        const validationSnapshot = getPublishingValidationSnapshot(plugin);
+        const activeBookMetaIssues = [...validationSnapshot.activeBookMetaIssues];
+        if (!activeBookMetaStatus.found || !activeBookMetaStatus.bookMeta) {
+            activeBookMetaIssues.push({
+                scope: 'book-meta',
+                level: 'error',
+                code: 'book_meta_missing',
+                message: 'BookMeta not found for active book.'
+            });
+        }
+        const bookMetaSummary = plugin.getPublishingValidationService().summarize(activeBookMetaIssues);
+        const matterSummary = plugin.getPublishingValidationService().summarize(validationSnapshot.matterIssues);
         const pandocPathValid = isConfiguredPandocPathValid(plugin);
-        const exportReady = pandocPathValid && layoutSummary.validCount > 0;
-        const pdfFailure = !pandocPathValid ? 'pandoc' : layoutSummary.validCount === 0 ? 'layout' : null;
+        const exportReady = pandocPathValid && layoutSummary.validCount > 0 && layoutSummary.state !== 'blocked';
 
         buildStatusColumn(
             'file-output',
@@ -3059,10 +3077,12 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             exportReady ? 'Ready' : 'Blocked',
             exportReady
                 ? 'Ready for manuscript PDF export.'
-                : pdfFailure === 'pandoc'
+                : !pandocPathValid
                     ? 'Pandoc not configured. Update System configuration.'
-                    : 'No valid PDF layout. Install or fix a layout.',
-            exportReady ? 'success' : 'error',
+                    : layoutSummary.totalCount === 0
+                        ? 'No manuscript PDF layouts are configured.'
+                        : layoutSummary.topMessage || 'One or more PDF layouts need attention.',
+            exportReady ? 'success' : layoutSummary.state === 'warning' ? 'warning' : 'error',
             () => {
                 if (exportReady) return;
                 if (!pandocPathValid) {
@@ -3075,7 +3095,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
 
         const layoutTone: 'success' | 'warning' | 'error' = layoutSummary.validCount === 0
             ? 'error'
-            : layoutSummary.validCount < layoutSummary.totalCount
+            : layoutSummary.state === 'warning' || layoutSummary.validCount < layoutSummary.totalCount
                 ? 'warning'
                 : 'success';
         buildStatusColumn(
@@ -3084,24 +3104,31 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             `${layoutSummary.validCount} valid (${layoutSummary.totalCount} total)`,
             layoutSummary.totalCount === 0
                 ? 'No manuscript PDF layouts configured.'
-                : layoutTone === 'warning'
+                : layoutSummary.topMessage || (layoutTone === 'warning'
                     ? 'Some manuscript layouts need attention.'
-                    : 'Manuscript PDF layouts are ready.',
+                    : 'Manuscript PDF layouts are ready.'),
             layoutTone,
             () => {
                 layoutPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
         );
 
-        const matterTone: 'success' | 'warning' = activeBookMetaStatus.found && activeBookMatter.totalCount > 0 ? 'success' : 'warning';
+        const matterLabel = !activeBookMetaStatus.found
+            ? 'Missing metadata'
+            : getIssueLabelFromCodes(validationSnapshot.matterIssues, matterSummary.state === 'ready' ? 'Ready' : 'Fallback rendering');
+        const matterTone: 'success' | 'warning' | 'error' = matterLabel === 'Ready'
+            ? 'success'
+            : matterLabel === 'Missing metadata' ? 'error' : 'warning';
         buildStatusColumn(
             'library',
             'Matter',
-            `Front: ${activeBookMatter.frontCount} / Back: ${activeBookMatter.backCount}`,
-            activeBookMetaStatus.found ? 'BookMeta found' : 'BookMeta not found',
+            matterLabel,
+            bookMetaSummary.state === 'blocked'
+                ? bookMetaSummary.topMessage || 'BookMeta is missing required metadata.'
+                : matterSummary.topMessage || (activeBookMetaStatus.found ? 'BookMeta found' : 'BookMeta not found'),
             matterTone,
             () => {
-                if (matterTone === 'warning') {
+                if (matterTone !== 'success') {
                     void runPublishingSetup();
                 }
             }
@@ -3127,6 +3154,9 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
     const renderMatterPreview = async () => {
         matterPreviewBody.empty();
         try {
+            const activeBookMetaStatus = getActiveBookMetaStatus(plugin);
+            const validationSnapshot = getPublishingValidationSnapshot(plugin);
+            const bookMetaAvailable = !!activeBookMetaStatus.bookMeta;
             const preview = await getMatterPreviewSummary(plugin);
             if (preview.front.length === 0 && preview.back.length === 0) {
                 const empty = matterPreviewBody.createDiv({ cls: 'ert-matter-preview-empty' });
@@ -3137,14 +3167,53 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                     .setCta()
                     .onClick(() => {
                         void runPublishingSetup();
-                    });
+                });
                 return;
             }
+
+            const allItems = [...preview.front, ...preview.back];
+            const descriptors = allItems.map(item => {
+                const issueCodes = validationSnapshot.matterIssues
+                    .filter(issue => issue.field === item.role || issue.field === item.file.path)
+                    .map(issue => issue.code);
+                return {
+                    item,
+                    descriptor: describeMatterReadiness({
+                        role: item.role,
+                        usesBookMeta: item.usesBookMeta,
+                        bookMetaAvailable,
+                        issueCodes
+                    })
+                };
+            });
+            const overallDescriptor = descriptors.reduce((winner, entry) => {
+                const rank: Record<'Ready' | 'Fallback rendering' | 'Unsupported semantic role' | 'Needs repair' | 'Missing metadata', number> = {
+                    Ready: 0,
+                    'Fallback rendering': 1,
+                    'Unsupported semantic role': 2,
+                    'Needs repair': 3,
+                    'Missing metadata': 4
+                };
+                return rank[entry.descriptor.label] > rank[winner.label] ? entry.descriptor : winner;
+            }, descriptors[0].descriptor);
+            const statusRow = matterPreviewBody.createDiv({ cls: `ert-bookmeta-status is-${overallDescriptor.tone === 'error' ? 'missing' : overallDescriptor.tone === 'warning' ? 'warning' : 'found'}` });
+            const statusIcon = statusRow.createSpan({ cls: 'ert-bookmeta-status-icon' });
+            setIcon(statusIcon, overallDescriptor.tone === 'error' ? 'alert-circle' : overallDescriptor.tone === 'warning' ? 'alert-triangle' : 'check-circle-2');
+            statusRow.createSpan({ text: `${overallDescriptor.label}: ${overallDescriptor.detail}` });
 
             const list = matterPreviewBody.createDiv({ cls: 'ert-matter-preview-list' });
             let rowIndex = 0;
             const renderMatterRows = (items: MatterPreviewItem[]) => {
                 items.forEach(item => {
+                    const issueCodes = validationSnapshot.matterIssues
+                        .filter(issue => issue.field === item.role || issue.field === item.file.path)
+                        .map(issue => issue.code);
+                    const readiness = describeMatterReadiness({
+                        role: item.role,
+                        usesBookMeta: item.usesBookMeta,
+                        bookMetaAvailable,
+                        issueCodes
+                    });
                     const row = list.createDiv({ cls: 'ert-matter-preview-row' });
                     row.toggleClass('is-alt', rowIndex % 2 === 1);
                     rowIndex += 1;
@@ -3160,6 +3229,8 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
 
                     const badges = row.createDiv({ cls: 'ert-matter-preview-badges' });
                     badges.createSpan({ cls: `ert-matter-preview-badge ert-matter-preview-badge--${item.modeTone}`, text: item.modeLabel });
+                    const readinessBadge = badges.createSpan({ cls: 'ert-matter-preview-badge ert-matter-preview-badge--state', text: readiness.label });
+                    readinessBadge.setAttr('title', readiness.detail);
                     const role = (item.role || '').trim();
                     if (role && role.toLowerCase() !== 'other') {
                         badges.createSpan({

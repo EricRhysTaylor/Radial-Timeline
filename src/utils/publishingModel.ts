@@ -40,6 +40,7 @@ function getTemplateSource(layout: PandocLayoutTemplate): TemplateSource {
 }
 
 function getProfileOrigin(layout: PandocLayoutTemplate): ProfileOrigin {
+    if (layout.origin) return layout.origin;
     return layout.bundled ? 'built-in' : 'legacy-custom';
 }
 
@@ -118,6 +119,7 @@ function getSupportedMatterRoles(layout: PandocLayoutTemplate): string[] {
 
 function deriveProfileStatus(layout: PandocLayoutTemplate): TemplateProfile['status'] {
     const trimmedPath = layout.path?.trim() || '';
+    if (layout.draft) return 'draft';
     if (!trimmedPath) return 'invalid';
     return 'ready';
 }

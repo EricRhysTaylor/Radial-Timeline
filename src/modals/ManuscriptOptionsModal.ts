@@ -5,13 +5,30 @@ import { App, ButtonComponent, DropdownComponent, Modal, Notice, Platform, setIc
 import type RadialTimelinePlugin from '../main';
 import { getSceneFilesByOrder, ManuscriptOrder, TocMode } from '../utils/manuscript';
 import { t } from '../i18n';
-import { ExportFormat, ExportType, ManuscriptPreset, OutlinePreset, getAutoPdfEngineSelection, getLayoutsForPreset, resolveTemplatePath, validatePandocLayout, getTemplateFontDiagnostics } from '../utils/exportFormats';
+import { ExportFormat, ExportType, ManuscriptPreset, OutlinePreset, getAutoPdfEngineSelection, resolveTemplatePath, validatePandocLayout, getTemplateFontDiagnostics } from '../utils/exportFormats';
 import { hasProFeatureAccess } from '../settings/featureGate';
 import { getActiveBook, getActiveBookTitle, DEFAULT_BOOK_TITLE } from '../utils/books';
 import { chunkScenesIntoParts } from '../utils/splitOutput';
 import { getDefaultManuscriptCleanupOptions, normalizeManuscriptCleanupOptions } from '../utils/manuscriptSanitize';
 import { categorizeExportError } from '../utils/exportErrors';
-import type { ManuscriptExportCleanupOptions, ManuscriptExportTemplate, PublishingValidationSnapshot } from '../types';
+import {
+    adaptPandocLayoutsToPublishingModel,
+    getModalExportProfileSummary,
+    buildLegacyTemplateFromModalExportProfile,
+    buildPersistedExportProfileFromModalExportProfile,
+    buildModalExportProfile,
+    buildModalExportProfileFromLegacyTemplate,
+    buildTransientModalExportProfile,
+    type ModalExportProfile,
+} from '../utils/exportProfileModel';
+import type {
+    BookPublishingPreferences,
+    ExportProfile,
+    ManuscriptExportCleanupOptions,
+    ManuscriptExportTemplate,
+    PublishingValidationSnapshot,
+    TemplateProfile,
+} from '../types';
 
 export interface ManuscriptModalResult {
     order: ManuscriptOrder;
@@ -28,6 +45,8 @@ export interface ManuscriptModalResult {
     includeMatter?: boolean;
     saveMarkdownArtifact?: boolean;
     exportCleanup?: ManuscriptExportCleanupOptions;
+    exportProfileId?: string;
+    exportProfileTemplateId?: string;
     selectedLayoutId?: string;
     splitMode?: 'single' | 'parts';
     splitParts?: number;
@@ -240,7 +259,15 @@ export class ManuscriptOptionsModal extends Modal {
     private exportTemplateDropdown?: HTMLSelectElement;
     private saveTemplateButton?: ButtonComponent;
     private deleteTemplateButton?: ButtonComponent;
-    private activeExportTemplateId: string | null = null;
+    private templateSummaryEl?: HTMLElement;
+    private selectedExportProfileId: string | null = null;
+    private defaultExportProfileId: string | null = null;
+    private lastUsedExportProfileId: string | null = null;
+    private exportProfiles: ModalExportProfile[] = [];
+    private templateProfiles: TemplateProfile[] = [];
+    private selectedExportProfile?: ModalExportProfile;
+    private defaultExportProfile?: ModalExportProfile;
+    private lastUsedExportProfile?: ModalExportProfile;
     private validationSnapshot: PublishingValidationSnapshot | null = null;
 
     private activeHandle: DragHandle = null;
@@ -304,7 +331,6 @@ export class ManuscriptOptionsModal extends Modal {
     }
 
     private sanitizeStateForMode(mode: ReturnType<ManuscriptOptionsModal['getUiMode']>): void {
-        this.manuscriptPreset = this.normalizeManuscriptPreset(this.manuscriptPreset);
         if (mode.isOutline) {
             this.outputFormat = 'markdown';
             this.includeMatter = false;
@@ -337,7 +363,7 @@ export class ManuscriptOptionsModal extends Modal {
     async onOpen(): Promise<void> {
         const { contentEl, modalEl } = this;
         contentEl.empty();
-        this.activeExportTemplateId = null;
+        this.refreshExportProfileState();
 
         // Apply generic modal shell + modal-specific class
         if (modalEl) {
@@ -450,8 +476,7 @@ export class ManuscriptOptionsModal extends Modal {
             .addOption('podcast', t('manuscriptModal.presetPodcast'))
             .setValue(this.manuscriptPreset)
             .onChange((value) => {
-                const preset = value as ManuscriptPreset;
-                this.manuscriptPreset = this.normalizeManuscriptPreset(preset);
+                this.manuscriptPreset = value as ManuscriptPreset;
                 this.syncExportUi();
                 this.updateManuscriptPresetDescription();
             });
@@ -697,13 +722,18 @@ export class ManuscriptOptionsModal extends Modal {
         // H) EXPORT TEMPLATES
         this.templateCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card rt-layout-templates-card' });
         this.createSectionHeading(this.templateCard, 'Saved export presets', 'bookmark');
+        this.templateSummaryEl = this.templateCard.createDiv({ cls: 'rt-sub-card-note' });
         const templateSetting = new DropdownComponent(this.templateCard.createDiv({ cls: 'rt-manuscript-input-container' }));
         templateSetting.selectEl.addClass('ert-input', 'ert-input--lg');
         this.exportTemplateDropdown = templateSetting.selectEl;
         templateSetting.onChange((value) => {
             if (!value) {
-                this.activeExportTemplateId = null;
+                this.selectedExportProfileId = null;
+                this.selectedExportProfile = this.defaultExportProfile;
+                this.selectedLayoutId = this.resolveLayoutIdForProfile(this.selectedExportProfile);
+                this.syncExportUi();
                 this.updateTemplateActionButtonState();
+                this.updateExportProfileSummary();
                 return;
             }
             void this.applyTemplateById(value);
@@ -766,6 +796,70 @@ export class ManuscriptOptionsModal extends Modal {
         items.forEach(item => this.heroMetaEl?.createSpan({ cls: 'ert-modal-meta-item', text: item }));
     }
 
+    private refreshExportProfileState(): void {
+        this.templateProfiles = adaptPandocLayoutsToPublishingModel(this.plugin.settings.pandocLayouts).profiles;
+        const storedProfiles = this.getStoredExportProfiles();
+        this.exportProfiles = storedProfiles.length > 0
+            ? storedProfiles.map(profile => buildModalExportProfile(profile, this.templateProfiles))
+            : this.getLegacyTemplateList().map(template => buildModalExportProfileFromLegacyTemplate(template, this.templateProfiles));
+
+        const transientDefault = buildTransientModalExportProfile({
+            name: 'Current settings',
+            usageContext: this.manuscriptPreset,
+            exportType: this.exportType,
+            outputFormat: this.outputFormat,
+            order: this.order,
+            subplot: this.subplot,
+            outlinePreset: this.outlinePreset,
+            tocMode: this.tocMode,
+            includeMatter: this.includeMatterUserChoice,
+            includeSynopsis: this.includeSynopsisUserChoice,
+            updateWordCounts: this.updateWordCounts,
+            saveMarkdownArtifact: this.saveMarkdownArtifact,
+            cleanup: this.getActiveCleanupOptions(),
+            splitMode: this.splitMode,
+            splitParts: this.splitParts,
+            selectedLayoutId: this.selectedLayoutId,
+            templateProfiles: this.templateProfiles,
+        });
+        this.defaultExportProfile = transientDefault;
+        this.defaultExportProfileId = transientDefault.id;
+
+        const activePreferences = this.getActiveBookPublishingPreferences();
+        const lastUsedId = activePreferences?.lastUsedExportProfileId
+            || this.plugin.settings.lastUsedExportProfileId
+            || this.plugin.settings.lastUsedManuscriptExportTemplateId
+            || null;
+        this.lastUsedExportProfileId = lastUsedId;
+        this.lastUsedExportProfile = lastUsedId ? this.exportProfiles.find(profile => profile.id === lastUsedId) : undefined;
+
+        this.selectedExportProfileId = this.lastUsedExportProfile?.id
+            || activePreferences?.defaultExportProfileId
+            || this.defaultExportProfile?.id
+            || this.exportProfiles[0]?.id
+            || null;
+        this.selectedExportProfile = this.findExportProfileById(this.selectedExportProfileId) || this.defaultExportProfile;
+        this.selectedLayoutId = this.resolveLayoutIdForProfile(this.selectedExportProfile);
+        this.updateExportProfileSummary();
+    }
+
+    private updateExportProfileSummary(): void {
+        if (!this.templateSummaryEl) return;
+        this.templateSummaryEl.setText(getModalExportProfileSummary(this.selectedExportProfile, this.templateProfiles));
+    }
+
+    private findExportProfileById(id: string | null | undefined): ModalExportProfile | undefined {
+        const normalized = (id || '').trim();
+        if (!normalized) return undefined;
+        return this.exportProfiles.find(profile => profile.id === normalized)
+            || (this.defaultExportProfile?.id === normalized ? this.defaultExportProfile : undefined);
+    }
+
+    private resolveLayoutIdForProfile(profile: ModalExportProfile | undefined): string | undefined {
+        if (!profile) return undefined;
+        return profile.templateProfileId || profile.selectedLayoutId;
+    }
+
     private openPublishingSettings(): void {
         this.close();
         this.plugin.settingsTab?.setActiveTab('publishing');
@@ -777,45 +871,77 @@ export class ManuscriptOptionsModal extends Modal {
 
     private refreshValidationSnapshot(): void {
         const activeBook = getActiveBook(this.plugin.settings);
+        const selectedProfile = this.selectedExportProfile || this.defaultExportProfile;
         this.validationSnapshot = this.plugin.getPublishingValidationService().collect(activeBook?.id, {
             exportType: this.exportType,
             outputFormat: this.exportType === 'outline' ? 'markdown' : this.outputFormat,
             manuscriptPreset: this.manuscriptPreset,
-            selectedLayoutId: this.selectedLayoutId,
+            selectedLayoutId: this.resolveLayoutIdForProfile(selectedProfile),
         });
     }
 
-    private normalizeManuscriptPreset(preset: ManuscriptPreset | undefined, warn = false): ManuscriptPreset {
-        if (preset === 'novel' || preset === 'screenplay' || preset === 'podcast') {
-            return preset;
-        }
-        if (warn && preset) {
-            const value = String(preset);
-            if (warn) {
-                new Notice(`Saved preset "${value}" is no longer recognized. Falling back to Novel manuscript.`);
-            }
-        }
-        return 'novel';
+    private getTemplateList(): ModalExportProfile[] {
+        return Array.isArray(this.exportProfiles) ? this.exportProfiles : [];
     }
 
-    private getTemplateList(): ManuscriptExportTemplate[] {
+    private getStoredExportProfiles(): ExportProfile[] {
+        const profiles = this.plugin.settings.exportProfiles;
+        return Array.isArray(profiles) ? profiles : [];
+    }
+
+    private getLegacyTemplateList(): ManuscriptExportTemplate[] {
         const templates = this.plugin.settings.manuscriptExportTemplates;
         return Array.isArray(templates) ? templates : [];
     }
 
-    private async persistTemplateList(list: ManuscriptExportTemplate[]): Promise<void> {
-        this.plugin.settings.manuscriptExportTemplates = list;
+    private getActiveBookPublishingPreferences(): BookPublishingPreferences | null {
+        const activeBook = getActiveBook(this.plugin.settings);
+        if (!activeBook) return null;
+        const preferences = this.plugin.settings.bookPublishingPreferences;
+        if (!Array.isArray(preferences)) return null;
+        return preferences.find(entry => entry.bookId === activeBook.id) || null;
+    }
+
+    private async persistTemplateList(list: ModalExportProfile[]): Promise<void> {
+        const storedProfiles = list.map(profile => buildPersistedExportProfileFromModalExportProfile(profile));
+        this.plugin.settings.exportProfiles = storedProfiles;
+        this.plugin.settings.manuscriptExportTemplates = list.map(profile => buildLegacyTemplateFromModalExportProfile(profile, {
+            order: profile.order,
+            subplot: profile.subplot,
+            selectedLayoutId: profile.selectedLayoutId,
+            createdAt: profile.createdAt,
+        }));
         await this.plugin.saveSettings();
     }
 
     private getCurrentTemplateSelection(): string | null {
-        const value = this.exportTemplateDropdown?.value || '';
+        const value = this.selectedExportProfileId || this.exportTemplateDropdown?.value || '';
         const trimmed = value.trim();
         return trimmed.length > 0 ? trimmed : null;
     }
 
     private async rememberLastUsedTemplate(templateId: string | null): Promise<void> {
+        this.plugin.settings.lastUsedExportProfileId = templateId || undefined;
         this.plugin.settings.lastUsedManuscriptExportTemplateId = templateId || undefined;
+        const activeBook = getActiveBook(this.plugin.settings);
+        if (activeBook) {
+            const preferences = Array.isArray(this.plugin.settings.bookPublishingPreferences)
+                ? [...this.plugin.settings.bookPublishingPreferences]
+                : [];
+            const index = preferences.findIndex(entry => entry.bookId === activeBook.id);
+            if (index >= 0) {
+                preferences[index] = {
+                    ...preferences[index],
+                    lastUsedExportProfileId: templateId || undefined,
+                };
+            } else if (templateId) {
+                preferences.push({
+                    bookId: activeBook.id,
+                    lastUsedExportProfileId: templateId,
+                });
+            }
+            this.plugin.settings.bookPublishingPreferences = preferences;
+        }
         await this.plugin.saveSettings();
     }
 
@@ -828,26 +954,28 @@ export class ManuscriptOptionsModal extends Modal {
         placeholder.value = '';
         placeholder.text = 'Create new preset';
         placeholder.disabled = false;
-        placeholder.selected = !this.activeExportTemplateId;
+        placeholder.selected = !this.selectedExportProfileId;
         this.exportTemplateDropdown.appendChild(placeholder);
 
         templates.forEach(template => {
             const option = document.createElement('option');
             option.value = template.id;
             option.text = template.name;
-            if (this.activeExportTemplateId && this.activeExportTemplateId === template.id) {
+            if (this.selectedExportProfileId && this.selectedExportProfileId === template.id) {
                 option.selected = true;
                 placeholder.selected = false;
             }
             this.exportTemplateDropdown?.appendChild(option);
         });
 
-        const hasActiveTemplate = !!this.activeExportTemplateId
-            && templates.some(template => template.id === this.activeExportTemplateId);
-        this.exportTemplateDropdown.value = hasActiveTemplate ? this.activeExportTemplateId! : '';
+        const hasActiveTemplate = !!this.selectedExportProfileId
+            && templates.some(template => template.id === this.selectedExportProfileId);
+        this.exportTemplateDropdown.value = hasActiveTemplate ? this.selectedExportProfileId! : '';
         this.exportTemplateDropdown.disabled = false;
         if (!hasActiveTemplate) {
-            this.activeExportTemplateId = null;
+            this.selectedExportProfileId = null;
+            this.selectedExportProfile = this.defaultExportProfile;
+            this.selectedLayoutId = this.resolveLayoutIdForProfile(this.selectedExportProfile);
         }
         this.updateTemplateActionButtonState();
     }
@@ -895,90 +1023,81 @@ export class ManuscriptOptionsModal extends Modal {
         this.cleanupBlockIdsToggle?.setValue(options.stripBlockIds);
     }
 
-    private createTemplateSnapshot(name: string, existingId?: string): ManuscriptExportTemplate {
+    private createTemplateSnapshot(name: string, existingId?: string): ModalExportProfile {
         const mode = this.getUiMode();
+        const selectedLayoutId = this.resolveLayoutIdForProfile(this.selectedExportProfile);
         return {
             id: existingId ?? `${Date.now()}`,
             name,
-            createdAt: new Date().toISOString(),
-            exportType: this.exportType,
-            manuscriptPreset: this.manuscriptPreset,
-            outlinePreset: this.outlinePreset,
+            templateProfileId: selectedLayoutId || '',
+            usageContext: this.exportType === 'outline' ? this.manuscriptPreset : this.manuscriptPreset,
             outputFormat: mode.isOutline ? 'markdown' : this.outputFormat,
+            exportType: this.exportType,
+            outlinePreset: this.outlinePreset,
             tocMode: mode.showToc ? this.tocMode : 'none',
-            order: this.order,
-            subplot: this.subplot,
-            updateWordCounts: mode.showWordCount ? this.updateWordCounts : false,
-            includeSynopsis: mode.isOutline ? this.includeSynopsisUserChoice : false,
             includeMatter: mode.showIncludeMatter ? this.includeMatterUserChoice : false,
+            includeSynopsis: mode.isOutline ? this.includeSynopsisUserChoice : false,
+            updateWordCounts: mode.showWordCount ? this.updateWordCounts : false,
             saveMarkdownArtifact: mode.showSavePrecompile ? this.saveMarkdownArtifact : false,
-            exportCleanup: mode.isManuscript
+            cleanup: mode.isManuscript
                 ? this.getActiveCleanupOptions()
                 : getDefaultManuscriptCleanupOptions('markdown'),
             splitMode: mode.showSplit ? this.splitMode : 'single',
             splitParts: mode.showSplit && this.splitMode === 'parts' ? this.splitParts : 1,
-            selectedLayoutId: mode.isPdfManuscript ? this.selectedLayoutId : undefined
+            selectionPolicy: mode.isPdfManuscript ? 'full-book' : 'manual-range',
+            order: this.order,
+            subplot: this.subplot,
+            selectedLayoutId: mode.isPdfManuscript ? selectedLayoutId : undefined,
+            createdAt: new Date().toISOString(),
         };
     }
 
-    private createComparableTemplatePayload(template: ManuscriptExportTemplate): {
-        exportType: ExportType;
-        manuscriptPreset: ManuscriptPreset;
-        outlinePreset: OutlinePreset;
-        outputFormat: ExportFormat;
-        tocMode: TocMode;
-        order: ManuscriptOrder;
-        subplot: string;
-        updateWordCounts: boolean;
-        includeSynopsis: boolean;
-        includeMatter: boolean;
-        saveMarkdownArtifact: boolean;
-        exportCleanup: ManuscriptExportCleanupOptions;
-        splitMode: 'single' | 'parts';
-        splitParts: number;
-        selectedLayoutId?: string;
-    } {
+    private createComparableTemplatePayload(template: ModalExportProfile): ModalExportProfile {
         return {
-            exportType: template.exportType,
-            manuscriptPreset: template.manuscriptPreset,
-            outlinePreset: template.outlinePreset,
-            outputFormat: template.outputFormat,
-            tocMode: template.tocMode,
             order: template.order,
             subplot: template.subplot,
-            updateWordCounts: template.updateWordCounts,
-            includeSynopsis: template.includeSynopsis,
+            cleanup: this.getNormalizedCleanupOptions(template.cleanup, template.outputFormat),
+            selectionPolicy: template.selectionPolicy,
+            createdAt: template.createdAt,
+            id: template.id,
+            name: template.name,
+            templateProfileId: template.templateProfileId,
+            usageContext: template.usageContext,
+            outputFormat: template.outputFormat,
+            exportType: template.exportType,
+            outlinePreset: template.outlinePreset,
+            tocMode: template.tocMode,
             includeMatter: template.includeMatter,
+            includeSynopsis: template.includeSynopsis,
+            updateWordCounts: template.updateWordCounts,
             saveMarkdownArtifact: template.saveMarkdownArtifact,
-            exportCleanup: this.getNormalizedCleanupOptions(template.exportCleanup, template.outputFormat),
             splitMode: template.splitMode,
             splitParts: template.splitParts,
             selectedLayoutId: template.selectedLayoutId
         };
     }
 
-    private createComparablePayloadFromCurrent(template: ManuscriptExportTemplate): ReturnType<ManuscriptOptionsModal['createComparableTemplatePayload']> {
+    private createComparablePayloadFromCurrent(template: ModalExportProfile): ReturnType<ManuscriptOptionsModal['createComparableTemplatePayload']> {
         const current = this.createTemplateSnapshot(template.name, template.id);
         return this.createComparableTemplatePayload(current);
     }
 
-    private createComparablePayloadFromSavedTemplate(template: ManuscriptExportTemplate): ReturnType<ManuscriptOptionsModal['createComparableTemplatePayload']> {
+    private createComparablePayloadFromSavedTemplate(template: ModalExportProfile): ReturnType<ManuscriptOptionsModal['createComparableTemplatePayload']> {
         const isOutline = template.exportType === 'outline';
         const outputFormat: ExportFormat = isOutline ? 'markdown' : template.outputFormat;
         const isPdfManuscript = !isOutline && outputFormat === 'pdf';
         const normalizedCleanup = isOutline
             ? getDefaultManuscriptCleanupOptions('markdown')
-            : this.getNormalizedCleanupOptions(template.exportCleanup, outputFormat);
-        const normalized: ManuscriptExportTemplate = {
+            : this.getNormalizedCleanupOptions(template.cleanup, outputFormat);
+        const normalized: ModalExportProfile = {
             ...template,
-            manuscriptPreset: template.manuscriptPreset,
+            cleanup: normalizedCleanup,
             outputFormat,
             tocMode: !isOutline && outputFormat === 'markdown' ? template.tocMode : 'none',
             updateWordCounts: !isOutline ? !!template.updateWordCounts : false,
             includeSynopsis: isOutline ? !!template.includeSynopsis : false,
             includeMatter: !isOutline ? !!template.includeMatter : false,
             saveMarkdownArtifact: isPdfManuscript ? !!template.saveMarkdownArtifact : false,
-            exportCleanup: normalizedCleanup,
             splitMode: !isOutline && template.splitMode === 'parts' ? 'parts' : 'single',
             splitParts: !isOutline && template.splitMode === 'parts'
                 ? this.clampSplitParts(template.splitParts ?? 1)
@@ -988,7 +1107,7 @@ export class ManuscriptOptionsModal extends Modal {
         return this.createComparableTemplatePayload(normalized);
     }
 
-    private hasSelectedTemplateChanges(template: ManuscriptExportTemplate): boolean {
+    private hasSelectedTemplateChanges(template: ModalExportProfile): boolean {
         const currentPayload = this.createComparablePayloadFromCurrent(template);
         const savedPayload = this.createComparablePayloadFromSavedTemplate(template);
         return JSON.stringify(currentPayload) !== JSON.stringify(savedPayload);
@@ -1020,9 +1139,11 @@ export class ManuscriptOptionsModal extends Modal {
         const current = this.getTemplateList().filter(item => item.id !== template.id);
         current.unshift(template);
         await this.persistTemplateList(current);
-        this.activeExportTemplateId = template.id;
+        this.selectedExportProfileId = template.id;
+        this.selectedExportProfile = template;
         await this.rememberLastUsedTemplate(template.id);
         this.refreshTemplateDropdown();
+        this.updateExportProfileSummary();
         new Notice(`Preset "${template.name}" ${existingId ? 'updated' : 'saved'}.`);
     }
 
@@ -1047,13 +1168,15 @@ export class ManuscriptOptionsModal extends Modal {
     private async deleteTemplate(templateId: string): Promise<void> {
         const filtered = this.getTemplateList().filter(item => item.id !== templateId);
         await this.persistTemplateList(filtered);
-        if (this.activeExportTemplateId === templateId) {
-            this.activeExportTemplateId = null;
+        if (this.selectedExportProfileId === templateId) {
+            this.selectedExportProfileId = null;
+            this.selectedExportProfile = this.defaultExportProfile;
         }
         if (this.plugin.settings.lastUsedManuscriptExportTemplateId === templateId) {
             await this.rememberLastUsedTemplate(null);
         }
         this.refreshTemplateDropdown();
+        this.updateExportProfileSummary();
         new Notice('Preset deleted.');
     }
 
@@ -1067,17 +1190,16 @@ export class ManuscriptOptionsModal extends Modal {
     }
 
     private async applyTemplate(
-        template: ManuscriptExportTemplate,
-        options?: { showNotice?: boolean; persistLastUsed?: boolean }
+        template: ModalExportProfile,
+        options?: { showNotice?: boolean }
     ): Promise<void> {
         const showNotice = options?.showNotice ?? true;
-        const persistLastUsed = options?.persistLastUsed ?? true;
 
         this.exportType = template.exportType;
-        this.manuscriptPreset = this.normalizeManuscriptPreset(template.manuscriptPreset, showNotice);
-        this.outlinePreset = template.outlinePreset;
+        this.manuscriptPreset = template.usageContext;
+        this.outlinePreset = template.outlinePreset || 'beat-sheet';
         this.outputFormat = template.outputFormat;
-        this.tocMode = template.tocMode;
+        this.tocMode = template.tocMode || 'none';
         this.order = template.order;
         this.subplot = template.subplot || 'All Subplots';
         this.updateWordCounts = !!template.updateWordCounts;
@@ -1086,7 +1208,7 @@ export class ManuscriptOptionsModal extends Modal {
         this.includeMatter = this.includeMatterUserChoice;
         this.hasTouchedMatterToggle = true;
         this.saveMarkdownArtifact = !!template.saveMarkdownArtifact;
-        const templateCleanup = this.getNormalizedCleanupOptions(template.exportCleanup, template.outputFormat);
+        const templateCleanup = this.getNormalizedCleanupOptions(template.cleanup, template.outputFormat);
         if (this.getCleanupFormatForState(template.outputFormat) === 'pdf') {
             this.pdfCleanupOptions = templateCleanup;
         } else {
@@ -1094,8 +1216,9 @@ export class ManuscriptOptionsModal extends Modal {
         }
         this.splitMode = template.splitMode === 'parts' ? 'parts' : 'single';
         this.splitParts = this.clampSplitParts(template.splitParts ?? this.splitParts);
-        this.selectedLayoutId = template.selectedLayoutId;
-        this.activeExportTemplateId = template.id;
+        this.selectedLayoutId = this.resolveLayoutIdForProfile(template);
+        this.selectedExportProfileId = template.id;
+        this.selectedExportProfile = { ...template };
 
         this.manuscriptPresetDropdown?.setValue(this.manuscriptPreset);
         this.outlinePresetDropdown?.setValue(this.outlinePreset);
@@ -1110,28 +1233,28 @@ export class ManuscriptOptionsModal extends Modal {
         this.syncExportUi();
         await this.loadScenesForOrder();
         this.refreshTemplateDropdown();
+        this.updateExportProfileSummary();
 
-        if (persistLastUsed) {
-            await this.rememberLastUsedTemplate(template.id);
-        }
         if (showNotice) {
             new Notice(`Applied preset "${template.name}".`);
         }
     }
 
     private async restoreLastUsedTemplate(): Promise<void> {
-        const lastUsed = this.plugin.settings.lastUsedManuscriptExportTemplateId;
+        const lastUsed = this.lastUsedExportProfileId || this.plugin.settings.lastUsedManuscriptExportTemplateId;
         if (!lastUsed) {
             this.refreshTemplateDropdown();
+            this.updateExportProfileSummary();
             return;
         }
         const template = this.getTemplateList().find(item => item.id === lastUsed);
         if (!template) {
-            await this.rememberLastUsedTemplate(null);
+            this.lastUsedExportProfileId = null;
             this.refreshTemplateDropdown();
+            this.updateExportProfileSummary();
             return;
         }
-        await this.applyTemplate(template, { showNotice: false, persistLastUsed: false });
+        await this.applyTemplate(template, { showNotice: false });
     }
 
     // Interaction helpers ----------------------------------------------------
@@ -1343,6 +1466,7 @@ export class ManuscriptOptionsModal extends Modal {
         this.updateSplitUi();
         this.updateActionButtonLabel();
         this.updateTemplateActionButtonState();
+        this.updateExportProfileSummary();
     }
 
     /**
@@ -1362,9 +1486,8 @@ export class ManuscriptOptionsModal extends Modal {
             return;
         }
 
-        const layouts = getLayoutsForPreset(this.plugin, this.manuscriptPreset);
-        const activeBook = getActiveBook(this.plugin.settings);
-        const lastUsed = (activeBook?.lastUsedPandocLayoutByPreset || {})[this.manuscriptPreset];
+        const layouts = this.templateProfiles.filter(profile => profile.usageContexts.includes(this.manuscriptPreset));
+        const activeProfileId = this.resolveLayoutIdForProfile(this.selectedExportProfile);
         let selectedLayoutName: string | undefined;
 
         if (layouts.length === 0) {
@@ -1387,7 +1510,7 @@ export class ManuscriptOptionsModal extends Modal {
                 cls: 'rt-sub-card-note',
                 text: layouts[0].name
             });
-            this.selectedLayoutId = layouts[0].id;
+            this.selectedLayoutId = activeProfileId || layouts[0].id;
             selectedLayoutName = layouts[0].name;
         } else {
             // Multiple layouts — dropdown
@@ -1397,20 +1520,22 @@ export class ManuscriptOptionsModal extends Modal {
             for (const l of layouts) {
                 dd.addOption(l.id, l.name);
             }
-            // Default: last-used or first
-            const hasTemplateSelection = this.selectedLayoutId && layouts.some(l => l.id === this.selectedLayoutId);
+            const hasTemplateSelection = activeProfileId && layouts.some(l => l.id === activeProfileId);
             const defaultId = hasTemplateSelection
-                ? this.selectedLayoutId!
-                : lastUsed && layouts.some(l => l.id === lastUsed)
-                    ? lastUsed
-                    : layouts[0].id;
+                ? activeProfileId!
+                : layouts[0].id;
             dd.setValue(defaultId);
             this.selectedLayoutId = defaultId;
             selectedLayoutName = layouts.find(l => l.id === defaultId)?.name;
             dd.onChange((val) => {
                 this.selectedLayoutId = val;
+                if (this.selectedExportProfile) {
+                    this.selectedExportProfile = { ...this.selectedExportProfile, templateProfileId: val, selectedLayoutId: val };
+                    this.selectedExportProfileId = this.selectedExportProfile.id;
+                }
                 const selected = layouts.find(l => l.id === val);
                 this.renderLayoutDescription(selected?.name);
+                this.updateExportProfileSummary();
                 this.updateTemplateWarning();
                 this.updateTemplateActionButtonState();
             });
@@ -1475,20 +1600,23 @@ export class ManuscriptOptionsModal extends Modal {
         }
         this.templateWarningEl.removeClass('ert-manuscript-preset-status--hidden');
 
-        // ── Layout-aware validation ──────────────────────────────────
-        const layouts = getLayoutsForPreset(this.plugin, this.manuscriptPreset);
+        // ── Profile-aware validation ──────────────────────────────────
+        const layouts = this.templateProfiles.filter(profile => profile.usageContexts.includes(this.manuscriptPreset));
 
         if (layouts.length === 0) {
             // No layouts for this preset — the layout picker already shows the empty state
             return;
         }
 
-        // Find the selected layout
-        const selectedLayout = this.selectedLayoutId
-            ? layouts.find(l => l.id === this.selectedLayoutId)
+        const selectedProfile = this.selectedExportProfile?.templateProfileId
+            ? layouts.find(profile => profile.id === this.selectedExportProfile?.templateProfileId)
             : layouts[0];
 
-        if (!selectedLayout) return;
+        const selectedLayout = selectedProfile
+            ? this.plugin.settings.pandocLayouts?.find(layout => layout.id === selectedProfile.legacyLayoutId)
+            : undefined;
+
+        if (!selectedProfile || !selectedLayout) return;
 
         const validation = validatePandocLayout(this.plugin, selectedLayout);
 
@@ -2160,8 +2288,10 @@ Sarah stood at the window, watching the world wake up.`;
         this.refreshValidationSnapshot();
 
         try {
-            if (this.activeExportTemplateId) {
-                await this.rememberLastUsedTemplate(this.activeExportTemplateId);
+            const selectedProfile = this.selectedExportProfile || this.defaultExportProfile || this.getTemplateList()[0];
+            const selectedLayoutId = this.resolveLayoutIdForProfile(selectedProfile);
+            if (selectedProfile?.id && selectedProfile.id !== this.defaultExportProfile?.id) {
+                await this.rememberLastUsedTemplate(selectedProfile.id);
             }
             const outcome = await this.onSubmit({
                 order: submissionOrder,
@@ -2178,7 +2308,9 @@ Sarah stood at the window, watching the world wake up.`;
                 includeMatter,
                 saveMarkdownArtifact: mode.showSavePrecompile ? this.saveMarkdownArtifact : false,
                 exportCleanup: mode.isManuscript ? this.getActiveCleanupOptions() : undefined,
-                selectedLayoutId: mode.isPdfManuscript ? this.selectedLayoutId : undefined,
+                exportProfileId: selectedProfile?.id,
+                exportProfileTemplateId: selectedLayoutId,
+                selectedLayoutId: mode.isPdfManuscript ? selectedLayoutId : undefined,
                 splitMode: mode.showSplit ? this.splitMode : 'single',
                 splitParts: mode.showSplit && this.isSplitEnabled() ? this.splitParts : 1
             });

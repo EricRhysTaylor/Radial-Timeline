@@ -3057,12 +3057,19 @@
   padding-bottom: var(--ert-pad-sm, 6px);
 }
 .ert-ui.ert-scope--settings .ert-beat-tier-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
   font-size: 11px;
   line-height: 1.4;
   color: var(--text-muted);
 }
 .ert-ui.ert-scope--settings .ert-beat-tier-status {
   font-weight: 500;
+}
+.ert-ui.ert-scope--settings .ert-beat-tier-note {
+  color: var(--text-faint);
 }
 .ert-ui.ert-scope--settings .ert-beat-tier-cta {
   font-size: 11px;
@@ -3448,6 +3455,53 @@
   font-weight: 500;
 }
 
+.ert-ui.ert-scope--settings .ert-preview-status-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ert-ui.ert-scope--settings .ert-preview-status-line--success {
+  color: var(--text-success);
+}
+
+.ert-ui.ert-scope--settings .ert-preview-status-line--warning {
+  color: color-mix(in srgb, var(--color-yellow) 78%, var(--text-normal) 22%);
+}
+
+.ert-ui.ert-scope--settings .ert-preview-status-line--muted {
+  color: var(--text-muted);
+}
+
+.ert-ui.ert-scope--settings .ert-preview-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ert-ui.ert-scope--settings .ert-preview-status-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ert-ui.ert-scope--settings .ert-preview-status-icon svg {
+  width: 13px;
+  height: 13px;
+}
+
+.ert-ui.ert-scope--settings .ert-preview-status--success {
+  color: var(--text-success);
+}
+
+.ert-ui.ert-scope--settings .ert-preview-status--warning {
+  color: color-mix(in srgb, var(--color-yellow) 78%, var(--text-normal) 22%);
+}
+
+.ert-ui.ert-scope--settings .ert-preview-status--muted {
+  color: var(--text-muted);
+}
+
 .ert-ui.ert-scope--settings .ert-beat-act-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -3477,6 +3531,14 @@
   color: var(--text-muted);
   font-size: 12px;
   line-height: 1.35;
+}
+
+.ert-ui.ert-scope--settings .ert-beat-act-item--success {
+  color: var(--text-normal);
+}
+
+.ert-ui.ert-scope--settings .ert-beat-act-item--warning {
+  color: var(--text-normal);
 }
 
 .ert-ui.ert-scope--settings .ert-beat-act-empty {
@@ -8987,6 +9049,7 @@
 
 .ert-ui.ert-scope--settings .ert-coreQuickLinks__pill .ert-pillBtn__icon {
   order: 2;
+  margin-left: 3px;
 }
 
 .ert-ui.ert-scope--settings .ert-coreQuickLinks__pill .ert-pillBtn__label {

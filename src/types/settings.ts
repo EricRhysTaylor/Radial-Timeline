@@ -121,8 +121,11 @@ export interface ExportProfile {
     usageContext: UsageContext;
     outputFormat: 'pdf' | 'markdown' | 'csv' | 'json';
     exportType: 'manuscript' | 'outline';
+    manuscriptPreset?: 'novel' | 'screenplay' | 'podcast';
     outlinePreset?: 'beat-sheet' | 'episode-rundown' | 'shooting-schedule' | 'index-cards-csv' | 'index-cards-json';
     tocMode?: 'markdown' | 'plain' | 'none';
+    order?: 'narrative' | 'chronological' | 'reverse-narrative' | 'reverse-chronological';
+    subplot?: string;
     includeMatter: boolean;
     includeSynopsis: boolean;
     updateWordCounts: boolean;
@@ -492,6 +495,8 @@ export interface PandocLayoutTemplate {
     path: string;              // vault-relative or absolute path to .tex file
     description?: string;      // optional user-editable description shown in Pro settings
     bundled?: boolean;         // true for RT-generated sample templates
+    origin?: ProfileOrigin;    // provenance for newly imported templates
+    draft?: boolean;           // staged import that should not be treated as activated yet
     usesModernClassicStructure?: boolean; // emit rtPart/rtChapter/rtSceneSep markers in PDF compilation
     hasEpigraphs?: boolean;
     hasSceneOpenerHeadingOptions?: boolean;
@@ -591,8 +596,11 @@ export interface RadialTimelineSettings {
         advanced: string;
     };
     bookDesignerTemplates?: BookDesignerTemplate[];
+    exportProfiles?: ExportProfile[];
+    bookPublishingPreferences?: BookPublishingPreferences[];
     manuscriptExportTemplates?: ManuscriptExportTemplate[];
     lastUsedManuscriptExportTemplateId?: string;
+    lastUsedExportProfileId?: string;
     /** @deprecated Use backdropYamlTemplates instead. Kept for migration. */
     backdropYamlTemplate?: string;
     backdropYamlTemplates?: {

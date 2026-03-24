@@ -540,6 +540,31 @@ export class CommandRegistrar {
                 }
                 activeBook.lastUsedPandocLayoutByPreset[result.manuscriptPreset || 'novel'] = layout.id;
             }
+            if (result.exportProfileId) {
+                this.plugin.settings.lastUsedExportProfileId = result.exportProfileId;
+                this.plugin.settings.lastUsedManuscriptExportTemplateId = result.exportProfileId;
+                if (activeBook) {
+                    const preferences = Array.isArray(this.plugin.settings.bookPublishingPreferences)
+                        ? [...this.plugin.settings.bookPublishingPreferences]
+                        : [];
+                    const index = preferences.findIndex(entry => entry.bookId === activeBook.id);
+                    if (index >= 0) {
+                        preferences[index] = {
+                            ...preferences[index],
+                            lastUsedExportProfileId: result.exportProfileId,
+                        };
+                    } else {
+                        preferences.push({
+                            bookId: activeBook.id,
+                            lastUsedExportProfileId: result.exportProfileId,
+                            preferredTemplateProfileIdByContext: result.manuscriptPreset && result.exportProfileTemplateId
+                                ? { [result.manuscriptPreset]: result.exportProfileTemplateId }
+                                : undefined,
+                        });
+                    }
+                    this.plugin.settings.bookPublishingPreferences = preferences;
+                }
+            }
             await this.plugin.saveSettings();
 
             if (isSplitRun) {

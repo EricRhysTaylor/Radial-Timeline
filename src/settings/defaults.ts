@@ -166,8 +166,11 @@ Range: {{Range}}`
     activeCustomBeatSystemId: DEFAULT_CUSTOM_BEAT_SYSTEM_ID,
     savedBeatSystems: [buildDefaultCustomBeatSystem()],
     bookDesignerTemplates: [],
+    exportProfiles: [],
+    bookPublishingPreferences: [],
     manuscriptExportTemplates: [],
     lastUsedManuscriptExportTemplateId: undefined,
+    lastUsedExportProfileId: undefined,
     backdropYamlTemplate: `Class: Backdrop                   # Backdrop events appear below the outer ring in Chronologue Mode
 When: {{When}}                       # Start Date/Time (YYYY-MM-DD HH:MM)
 End: {{End}}                         # End Date/Time (YYYY-MM-DD HH:MM)
