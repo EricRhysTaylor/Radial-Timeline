@@ -8952,6 +8952,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: center;
   gap: 8px;
 }
 
@@ -8965,13 +8966,14 @@
 }
 
 .ert-ui.ert-scope--settings .ert-coreQuickLinks__pill {
-  padding: 5px 11px;
-  min-height: 28px;
-  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 92%, transparent);
+  padding: 3px 8px;
+  min-height: 24px;
+  border: 1px dotted color-mix(in srgb, var(--background-modifier-border) 96%, transparent);
   background: color-mix(in srgb, var(--background-secondary) 38%, transparent);
   box-shadow: none;
   color: var(--text-muted);
-  gap: 6px;
+  gap: 4px;
+  border-radius: 8px;
   transition: none;
 }
 
@@ -8983,14 +8985,19 @@
   box-shadow: none;
 }
 
+.ert-ui.ert-scope--settings .ert-coreQuickLinks__pill .ert-pillBtn__icon {
+  order: 2;
+}
+
+.ert-ui.ert-scope--settings .ert-coreQuickLinks__pill .ert-pillBtn__label {
+  order: 1;
+  line-height: 1;
+}
+
 .ert-ui.ert-scope--settings .ert-coreQuickLinks__pill .ert-pillBtn__icon svg {
   width: 12px;
   height: 12px;
   opacity: 0.62;
-}
-
-.ert-ui.ert-scope--settings .ert-coreQuickLinks__pill .ert-pillBtn__label {
-  line-height: 1;
 }
 
 .ert-ui.ert-scope--settings select.ert-typography-select.ert-typography-select--warning {

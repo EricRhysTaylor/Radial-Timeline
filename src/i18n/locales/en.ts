@@ -174,6 +174,10 @@ export interface TranslationKeys {
         manuscriptPresetHeading: string;
         presetNovel: string;
         presetNovelDesc: string;
+        presetScreenplay: string;
+        presetScreenplayDesc: string;
+        presetPodcast: string;
+        presetPodcastDesc: string;
         outlineBeatSheetDesc: string;
         outlineEpisodeRundownDesc: string;
         outlineShootingScheduleDesc: string;
@@ -420,6 +424,10 @@ export const en: TranslationKeys = {
         manuscriptPresetHeading: 'Manuscript preset',
         presetNovel: 'Novel manuscript',
         presetNovelDesc: 'A formatted document of your scenes in reading order.',
+        presetScreenplay: 'Screenplay',
+        presetScreenplayDesc: 'A script-oriented export that preserves screenplay-specific layout selection.',
+        presetPodcast: 'Podcast script',
+        presetPodcastDesc: 'An audio-production script export that preserves podcast layout selection.',
         outlineBeatSheetDesc: 'Save-the-Cat style beat list from scene metadata.',
         outlineEpisodeRundownDesc: 'Ordered scene rundown with timing-oriented structure.',
         outlineShootingScheduleDesc: 'Production-oriented scene table with location and schedule context.',

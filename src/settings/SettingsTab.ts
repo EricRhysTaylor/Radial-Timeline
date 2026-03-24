@@ -672,9 +672,9 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                 cls: `${ERT_CLASSES.PILL_BTN} ${ERT_CLASSES.PILL_BTN_STANDARD} ert-coreQuickLinks__pill`,
                 attr: { type: 'button', 'aria-label': `Jump to ${text}` }
             });
+            button.createSpan({ cls: ERT_CLASSES.PILL_BTN_LABEL, text });
             const iconEl = button.createSpan({ cls: ERT_CLASSES.PILL_BTN_ICON });
             setIcon(iconEl, 'corner-right-down');
-            button.createSpan({ cls: ERT_CLASSES.PILL_BTN_LABEL, text });
             this.plugin.registerDomEvent(button, 'click', () => {
                 target.scrollIntoView({ block: 'start' });
             });

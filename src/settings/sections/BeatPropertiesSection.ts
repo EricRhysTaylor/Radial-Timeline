@@ -665,6 +665,25 @@ export function renderStoryBeatsSection(params: {
         };
     };
 
+    const getEditingCapabilityLabel = (system: string): 'Core' | 'Pro' | 'Read-only' => {
+        const { mode } = deriveBeatSystemMode(system);
+        if (mode === 'builtin') {
+            return canEditBuiltInBeatSystems() ? 'Pro' : 'Read-only';
+        }
+        return 'Core';
+    };
+
+    const getManuscriptAdvisoryLabel = (system: string): string => {
+        const summary = getBeatStructuralStatus(system).summary;
+        if (summary.presentCount === 0) {
+            return 'Template view — no beats in manuscript';
+        }
+        if (summary.issueCount > 0) {
+            return `Active in manuscript — ${summary.issueCount} structural issue${summary.issueCount !== 1 ? 's' : ''}`;
+        }
+        return `Active in manuscript — ${summary.presentCount} beat${summary.presentCount !== 1 ? 's' : ''} detected`;
+    };
+
     new Settings(actsStack)
         .setName('Act count')
         .setDesc('Applies to Narrative, Publication, and Gossamer modes. Scene and Beat properties. (Minimum 3)')
@@ -1726,23 +1745,19 @@ export function renderStoryBeatsSection(params: {
     const updateTierBanner = (system: string) => {
         tierBannerEl.empty();
         const { mode } = deriveBeatSystemMode(system);
-        tierBannerEl.createDiv({ cls: 'ert-beat-tier-line', text: mode === 'builtin' ? 'Built-in beat set' : 'Custom beat set' });
+        tierBannerEl.createDiv({
+            cls: 'ert-beat-tier-line',
+            text: `Type: ${mode === 'builtin' ? 'Built-in beat set' : 'Custom beat set'}`
+        });
         const builtinLocked = mode === 'builtin' && !canEditBuiltInBeatSystems();
-        const statusLine = tierBannerEl.createDiv({ cls: 'ert-beat-tier-line ert-beat-tier-status' });
-
-        if (builtinLocked) {
-            statusLine.setText('Status: Read-only (Core)');
-        } else if (mode === 'custom' && proActive) {
-            statusLine.setText('Status: Editable ');
-            statusLine.addClass(ERT_CLASSES.SKIN_PRO);
-            const proPill = statusLine.createSpan({
-                cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO} ${ERT_CLASSES.BADGE_PILL_SM}`
-            });
-            setIcon(proPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON }), 'signature');
-            proPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'Pro' });
-        } else {
-            statusLine.setText('Status: Editable (Core)');
-        }
+        tierBannerEl.createDiv({
+            cls: 'ert-beat-tier-line ert-beat-tier-status',
+            text: `Editing: ${getEditingCapabilityLabel(system)}`
+        });
+        tierBannerEl.createDiv({
+            cls: 'ert-beat-tier-line ert-beat-tier-status',
+            text: getManuscriptAdvisoryLabel(system)
+        });
         if (builtinLocked) {
             tierBannerEl.createDiv({ cls: 'ert-beat-tier-cta', text: 'Upgrade to Pro to edit beats and fields.' });
         }
@@ -5297,23 +5312,21 @@ export function renderStoryBeatsSection(params: {
     backdropYamlToggleBtn.addEventListener('click', () => { renderBackdropAuditVisibility(); });
     renderAuditPanel(backdropAuditContainer, 'Backdrop');
 
-    const buildMissingBeatInlineSummary = (): string => {
-        const structuralStatus = getBeatStructuralStatus(plugin.settings.beatSystem || 'Custom');
+    function buildMissingBeatInlineSummary(structuralStatus: BeatSystemStructuralStatus): string {
         const missingDiagnostics = buildMissingBeatDiagnostics(structuralStatus);
         if (missingDiagnostics.length === 0) return '';
         const detail = missingDiagnostics
             .map((entry) => `${entry.name} (${entry.reason})`)
             .join(' · ');
         return `Missing details: ${detail}`;
-    };
+    }
 
-    const buildMissingBeatTooltip = (): string | null => {
-        const structuralStatus = getBeatStructuralStatus(plugin.settings.beatSystem || 'Custom');
+    function buildMissingBeatTooltip(structuralStatus: BeatSystemStructuralStatus): string | null {
         const missingDiagnostics = buildMissingBeatDiagnostics(structuralStatus);
         if (missingDiagnostics.length === 0) return null;
         const lines = missingDiagnostics.map((entry) => `- ${entry.name}\n  ${entry.reason}`);
         return `Why these beats are marked missing:\n${lines.join('\n')}`;
-    };
+    }
 
     function updateTemplateButton(setting: Settings, selectedSystem: string): void {
         const isCustom = selectedSystem === 'Custom';
@@ -5368,6 +5381,8 @@ export function renderStoryBeatsSection(params: {
             setting.setDesc(baseDesc);
             setting.settingEl.style.opacity = '1';
         }
+
+        updateTierBanner(selectedSystem);
 
         if (builtinLocked) {
             setPrimaryDesignButton(
@@ -5425,8 +5440,8 @@ export function renderStoryBeatsSection(params: {
             const summary = structuralStatus.summary;
             const newBeats = summary.missingCreateableCount;
             const hasNew = newBeats > 0;
-            const missingInlineSummary = buildMissingBeatInlineSummary();
-            const missingTooltip = buildMissingBeatTooltip();
+            const missingInlineSummary = buildMissingBeatInlineSummary(structuralStatus);
+            const missingTooltip = buildMissingBeatTooltip(structuralStatus);
 
             // ── Template mode (built-in systems): simplified status ──────
             // Built-in systems (Save The Cat, StoryGrid, Hero's Journey) only

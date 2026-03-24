@@ -5,7 +5,7 @@
 
 import { App, Notice, TFile } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
-import type { BeatDefinition, BookLayoutOptions, BookMeta, ManuscriptExportCleanupOptions, MatterMeta } from '../types';
+import type { BeatDefinition, BookLayoutOptions, BookMeta, ManuscriptExportCleanupOptions, MatterMeta, PublishingValidationSnapshot } from '../types';
 import { assembleManuscript, getSceneFilesByOrder, ManuscriptSceneSelection, type ManuscriptSceneHeadingMode, type ModernClassicBeatDefinition, updateSceneWordCounts } from '../utils/manuscript';
 import { openGossamerScoreEntry, runGossamerAiAnalysis } from '../GossamerCommands';
 import { ManageSubplotsModal } from '../modals/ManageSubplotsModal';
@@ -32,6 +32,7 @@ import { ensureBundledLayoutInstalledForExport } from '../utils/pandocBundledLay
 import { getDefaultManuscriptCleanupOptions, normalizeManuscriptCleanupOptions, sanitizeCompiledManuscript } from '../utils/manuscriptSanitize';
 import { getPlotSystem } from '../utils/beatsSystems';
 import { getActiveCustomBeatSystemBeats } from '../utils/beatSystemState';
+import { ExportFailure, categorizeExportError } from '../utils/exportErrors';
 
 import { getRuntimeSettings } from '../utils/runtimeEstimator';
 
@@ -261,6 +262,17 @@ export class CommandRegistrar {
             if (requestedParts > slicedSelection.files.length) {
                 new Notice(`Not enough scenes selected to split into ${requestedParts} parts.`);
                 return {};
+            }
+
+            const preflightSnapshot = this.plugin.getPublishingValidationService().collect(this.plugin.settings.activeBookId, {
+                exportType: result.exportType,
+                outputFormat: result.outputFormat,
+                manuscriptPreset: result.manuscriptPreset,
+                selectedLayoutId: result.selectedLayoutId,
+            });
+            const preflightFailure = this.buildPreflightExportFailure(preflightSnapshot);
+            if (preflightFailure) {
+                throw preflightFailure;
             }
 
             const partRanges = requestedParts > 1
@@ -545,12 +557,38 @@ export class CommandRegistrar {
                 messages: statusMessages
             };
         } catch (error) {
-            const msg = (error as any)?.message || String(error);
-            new Notice('Export failed: ' + msg);
+            const failure = categorizeExportError(error);
+            new Notice(failure.message);
             console.error(error);
-            throw error;
+            throw failure;
         }
         return {};
+    }
+
+    private buildPreflightExportFailure(snapshot: PublishingValidationSnapshot): ExportFailure | null {
+        const blocking = snapshot.preflightIssues.find(issue => issue.level === 'error')
+            || snapshot.activeBookMetaIssues.find(issue => issue.level === 'error');
+        if (!blocking) return null;
+
+        const detailLines = [
+            ...snapshot.preflightIssues.map(issue => `Preflight: ${issue.message}`),
+            ...snapshot.activeBookMetaIssues.map(issue => `BookMeta: ${issue.message}`),
+        ];
+
+        let category: ConstructorParameters<typeof ExportFailure>[0]['category'] = 'pandoc_compile_failure';
+        if (blocking.code.includes('pandoc') || blocking.code.includes('engine')) {
+            category = 'missing_dependency';
+        } else if (blocking.code.includes('layout') || blocking.code.includes('template') || blocking.code.includes('profile')) {
+            category = 'invalid_template';
+        } else if (blocking.scope === 'book-meta') {
+            category = 'missing_metadata';
+        }
+
+        return new ExportFailure({
+            category,
+            message: blocking.message,
+            detail: detailLines.join('\n') || blocking.detail,
+        });
     }
 
     private sliceSelection(

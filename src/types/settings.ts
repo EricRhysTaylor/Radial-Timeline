@@ -26,6 +26,12 @@ export interface BookDesignerTemplate {
 }
 
 export type ManuscriptSceneHeadingMode = 'scene-number' | 'scene-number-title' | 'title-only';
+export type UsageContext = 'novel' | 'screenplay' | 'podcast';
+export type OutputIntent = 'print-book' | 'submission-manuscript' | 'screenplay-pdf' | 'podcast-script' | 'epub' | 'web';
+export type TemplateSource = 'bundled' | 'vault' | 'imported';
+export type ValidationLevel = 'info' | 'warning' | 'error';
+export type ProfileOrigin = 'built-in' | 'duplicated' | 'imported' | 'legacy-custom';
+export type HealthState = 'ready' | 'warning' | 'blocked';
 
 export interface ManuscriptExportCleanupOptions {
     stripComments: boolean;
@@ -54,6 +60,98 @@ export interface ManuscriptExportTemplate {
     splitMode: 'single' | 'parts';
     splitParts: number;
     selectedLayoutId?: string;
+}
+
+export interface ValidationIssue {
+    code: string;
+    level: ValidationLevel;
+    message: string;
+    detail?: string;
+    scope: 'asset' | 'profile' | 'book-meta' | 'matter' | 'export';
+    field?: string;
+    actionable?: boolean;
+}
+
+export interface ValidationSummary {
+    state: HealthState;
+    errorCount: number;
+    warningCount: number;
+    topMessage?: string;
+}
+
+export interface TemplateAsset {
+    id: string;
+    source: TemplateSource;
+    engine: 'pandoc-latex';
+    path: string;
+    bundled?: boolean;
+    checksum?: string;
+    installed: boolean;
+}
+
+export interface TemplateCapability {
+    key: 'sceneHeadingMode' | 'actEpigraphs' | 'modernClassicStructure' | 'semanticMatter';
+    label: string;
+}
+
+export interface TemplateProfile {
+    id: string;
+    assetId: string;
+    legacyLayoutId: string;
+    origin: ProfileOrigin;
+    name: string;
+    description: string;
+    usageContexts: UsageContext[];
+    outputIntent: OutputIntent;
+    styleKey: string;
+    summary: string;
+    guidance?: string;
+    previewMode: 'static' | 'generated';
+    capabilities: TemplateCapability[];
+    requiredBookMetaFields: string[];
+    recommendedBookMetaFields: string[];
+    supportedMatterRoles: string[];
+    status: 'ready' | 'draft' | 'invalid';
+}
+
+export interface ExportProfile {
+    id: string;
+    name: string;
+    templateProfileId: string;
+    usageContext: UsageContext;
+    outputFormat: 'pdf' | 'markdown' | 'csv' | 'json';
+    exportType: 'manuscript' | 'outline';
+    outlinePreset?: 'beat-sheet' | 'episode-rundown' | 'shooting-schedule' | 'index-cards-csv' | 'index-cards-json';
+    tocMode?: 'markdown' | 'plain' | 'none';
+    includeMatter: boolean;
+    includeSynopsis: boolean;
+    updateWordCounts: boolean;
+    saveMarkdownArtifact: boolean;
+    cleanup: ManuscriptExportCleanupOptions;
+    splitMode: 'single' | 'parts';
+    splitParts: number;
+    selectionPolicy: 'full-book' | 'manual-range';
+}
+
+export interface BookPublishingPreferences {
+    bookId: string;
+    defaultExportProfileId?: string;
+    lastUsedExportProfileId?: string;
+    preferredTemplateProfileIdByContext?: Partial<Record<UsageContext, string>>;
+    profileOverrides?: Record<string, {
+        sceneHeadingMode?: ManuscriptSceneHeadingMode;
+        actEpigraphs?: string[];
+        actEpigraphAttributions?: string[];
+    }>;
+}
+
+export interface PublishingValidationSnapshot {
+    assetIssues: Record<string, ValidationIssue[]>;
+    profileIssues: Record<string, ValidationIssue[]>;
+    exportProfileIssues: Record<string, ValidationIssue[]>;
+    activeBookMetaIssues: ValidationIssue[];
+    matterIssues: ValidationIssue[];
+    preflightIssues: ValidationIssue[];
 }
 
 export interface BeatSystemConfig {

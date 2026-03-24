@@ -50,6 +50,7 @@ import { DEFAULT_BOOK_TITLE, createBookId, deriveBookTitleFromSourcePath, getAct
 import { initVersionCheckService, getVersionCheckService } from './services/VersionCheckService';
 import { registerRuntimeCommands } from './RuntimeCommands';
 import { AuthorProgressService } from './services/AuthorProgressService';
+import { PublishingValidationService } from './services/PublishingValidationService';
 import { ensureBundledPandocLayoutsRegistered } from './utils/pandocBundledLayouts';
 import { normalizeManuscriptCleanupOptions } from './utils/manuscriptSanitize';
 
@@ -126,6 +127,7 @@ export default class RadialTimelinePlugin extends Plugin {
     private themeService!: ThemeService;
     private timelineMetricsService!: TimelineMetricsService;
     private settingsService!: SettingsService;
+    private publishingValidationService!: PublishingValidationService;
     public milestonesService!: import('./services/MilestonesService').MilestonesService;
     public lastSceneData?: TimelineItem[];
     
@@ -272,6 +274,7 @@ export default class RadialTimelinePlugin extends Plugin {
         this.beatsProcessingService = new BeatsProcessingService(this.statusBarService);
         this.themeService = new ThemeService(this);
         this.timelineMetricsService = new TimelineMetricsService(this);
+        this.publishingValidationService = new PublishingValidationService(this);
         
         // Milestones Service (single source of truth for stage completion milestones)
         // Separate from TimelineMetricsService (estimation/tick tracking)
@@ -351,6 +354,7 @@ export default class RadialTimelinePlugin extends Plugin {
     public getTimelineService(): TimelineService { return this.timelineService; }
     public getInquiryService(): InquiryService { return this.inquiryService; }
     public getInquiryEstimateService(): InquiryEstimateService { return this.inquiryEstimateService; }
+    public getPublishingValidationService(): PublishingValidationService { return this.publishingValidationService; }
 
     public consumeInquiryFreshLaunchPending(): boolean {
         const pending = this.inquiryFreshLaunchPending;

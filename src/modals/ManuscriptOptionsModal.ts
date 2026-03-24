@@ -10,7 +10,8 @@ import { hasProFeatureAccess } from '../settings/featureGate';
 import { getActiveBook, getActiveBookTitle, DEFAULT_BOOK_TITLE } from '../utils/books';
 import { chunkScenesIntoParts } from '../utils/splitOutput';
 import { getDefaultManuscriptCleanupOptions, normalizeManuscriptCleanupOptions } from '../utils/manuscriptSanitize';
-import type { ManuscriptExportCleanupOptions, ManuscriptExportTemplate } from '../types';
+import { categorizeExportError } from '../utils/exportErrors';
+import type { ManuscriptExportCleanupOptions, ManuscriptExportTemplate, PublishingValidationSnapshot } from '../types';
 
 export interface ManuscriptModalResult {
     order: ManuscriptOrder;
@@ -240,6 +241,7 @@ export class ManuscriptOptionsModal extends Modal {
     private saveTemplateButton?: ButtonComponent;
     private deleteTemplateButton?: ButtonComponent;
     private activeExportTemplateId: string | null = null;
+    private validationSnapshot: PublishingValidationSnapshot | null = null;
 
     private activeHandle: DragHandle = null;
     private detachEvents?: () => void;
@@ -406,11 +408,7 @@ export class ManuscriptOptionsModal extends Modal {
         });
         this.managePdfLayoutsLinkEl.addEventListener('click', (e) => {
             e.preventDefault();
-            this.close();
-            // @ts-ignore - Obsidian API
-            this.app.setting.open();
-            // @ts-ignore - Obsidian API
-            this.app.setting.openTabById('radial-timeline');
+            this.openPublishingSettings();
         });
         this.heroMetaEl = hero.createDiv({ cls: 'ert-modal-meta' });
         this.renderHeroMeta([t('manuscriptModal.heroLoading')]);
@@ -448,6 +446,8 @@ export class ManuscriptOptionsModal extends Modal {
         const presetRow = presetCol.createDiv({ cls: 'rt-manuscript-input-container' });
         this.manuscriptPresetDropdown = new DropdownComponent(presetRow)
             .addOption('novel', t('manuscriptModal.presetNovel'))
+            .addOption('screenplay', t('manuscriptModal.presetScreenplay'))
+            .addOption('podcast', t('manuscriptModal.presetPodcast'))
             .setValue(this.manuscriptPreset)
             .onChange((value) => {
                 const preset = value as ManuscriptPreset;
@@ -766,12 +766,34 @@ export class ManuscriptOptionsModal extends Modal {
         items.forEach(item => this.heroMetaEl?.createSpan({ cls: 'ert-modal-meta-item', text: item }));
     }
 
+    private openPublishingSettings(): void {
+        this.close();
+        this.plugin.settingsTab?.setActiveTab('publishing');
+        // @ts-ignore - Obsidian API
+        this.app.setting.open();
+        // @ts-ignore - Obsidian API
+        this.app.setting.openTabById('radial-timeline');
+    }
+
+    private refreshValidationSnapshot(): void {
+        const activeBook = getActiveBook(this.plugin.settings);
+        this.validationSnapshot = this.plugin.getPublishingValidationService().collect(activeBook?.id, {
+            exportType: this.exportType,
+            outputFormat: this.exportType === 'outline' ? 'markdown' : this.outputFormat,
+            manuscriptPreset: this.manuscriptPreset,
+            selectedLayoutId: this.selectedLayoutId,
+        });
+    }
+
     private normalizeManuscriptPreset(preset: ManuscriptPreset | undefined, warn = false): ManuscriptPreset {
-        if (preset === 'screenplay' || preset === 'podcast') {
+        if (preset === 'novel' || preset === 'screenplay' || preset === 'podcast') {
+            return preset;
+        }
+        if (warn && preset) {
+            const value = String(preset);
             if (warn) {
-                new Notice('Saved preset used a legacy layout profile. Falling back to Novel manuscript.');
+                new Notice(`Saved preset "${value}" is no longer recognized. Falling back to Novel manuscript.`);
             }
-            return 'novel';
         }
         return 'novel';
     }
@@ -880,7 +902,7 @@ export class ManuscriptOptionsModal extends Modal {
             name,
             createdAt: new Date().toISOString(),
             exportType: this.exportType,
-            manuscriptPreset: 'novel',
+            manuscriptPreset: this.manuscriptPreset,
             outlinePreset: this.outlinePreset,
             outputFormat: mode.isOutline ? 'markdown' : this.outputFormat,
             tocMode: mode.showToc ? this.tocMode : 'none',
@@ -918,7 +940,7 @@ export class ManuscriptOptionsModal extends Modal {
     } {
         return {
             exportType: template.exportType,
-            manuscriptPreset: this.normalizeManuscriptPreset(template.manuscriptPreset),
+            manuscriptPreset: template.manuscriptPreset,
             outlinePreset: template.outlinePreset,
             outputFormat: template.outputFormat,
             tocMode: template.tocMode,
@@ -949,7 +971,7 @@ export class ManuscriptOptionsModal extends Modal {
             : this.getNormalizedCleanupOptions(template.exportCleanup, outputFormat);
         const normalized: ManuscriptExportTemplate = {
             ...template,
-            manuscriptPreset: this.normalizeManuscriptPreset(template.manuscriptPreset),
+            manuscriptPreset: template.manuscriptPreset,
             outputFormat,
             tocMode: !isOutline && outputFormat === 'markdown' ? template.tocMode : 'none',
             updateWordCounts: !isOutline ? !!template.updateWordCounts : false,
@@ -1314,6 +1336,7 @@ export class ManuscriptOptionsModal extends Modal {
 
         this.syncOutputFormatPills();
         this.updateLayoutPicker();
+        this.refreshValidationSnapshot();
         this.updateTemplateWarning();
         this.updateCleanupToggleState();
         this.updateOrderPillsState();
@@ -1354,11 +1377,7 @@ export class ManuscriptOptionsModal extends Modal {
             });
             link.addEventListener('click', (e) => { // SAFE: direct addEventListener; Modal lifecycle manages cleanup
                 e.preventDefault();
-                this.close();
-                // @ts-ignore - Obsidian API
-                this.app.setting.open();
-                // @ts-ignore - Obsidian API
-                this.app.setting.openTabById('radial-timeline');
+                this.openPublishingSettings();
             });
             this.selectedLayoutId = undefined;
             selectedLayoutName = undefined;
@@ -1543,7 +1562,12 @@ export class ManuscriptOptionsModal extends Modal {
      */
     private updateManuscriptPresetDescription(): void {
         if (!this.manuscriptPresetDescEl) return;
-        this.manuscriptPresetDescEl.textContent = t('manuscriptModal.presetNovelDesc');
+        const descriptions: Record<ManuscriptPreset, string> = {
+            novel: t('manuscriptModal.presetNovelDesc'),
+            screenplay: t('manuscriptModal.presetScreenplayDesc'),
+            podcast: t('manuscriptModal.presetPodcastDesc'),
+        };
+        this.manuscriptPresetDescEl.textContent = descriptions[this.manuscriptPreset] || descriptions.novel;
     }
 
     /**
@@ -1810,6 +1834,22 @@ Sarah stood at the window, watching the world wake up.`;
             });
         }
         this.outputStatusEl.toggleClass('rt-hidden', savedPaths.length === 0 && renderedPaths.length === 0 && !(outcome.messages && outcome.messages.length > 0));
+    }
+
+    private showExportFailure(error: unknown): void {
+        if (!this.outputStatusEl) return;
+        const failure = categorizeExportError(error);
+        this.outputStatusEl.empty();
+        this.outputStatusEl.removeClass('rt-hidden');
+        this.outputStatusEl.createDiv({ text: failure.message });
+        if (failure.detail) {
+            const detailsEl = this.outputStatusEl.createEl('details', { cls: 'rt-sub-card-note' });
+            detailsEl.createEl('summary', { text: 'Details' });
+            detailsEl.createEl('pre', {
+                cls: 'rt-manuscript-preview-sample',
+                text: failure.detail,
+            });
+        }
     }
 
     private async openVaultPath(vaultPath: string): Promise<void> {
@@ -2117,6 +2157,7 @@ Sarah stood at the window, watching the world wake up.`;
         this.cancelButton?.buttonEl.removeClass('rt-hidden');
         this.actionButton?.setDisabled(true);
         this.updateActionButtonLabel();
+        this.refreshValidationSnapshot();
 
         try {
             if (this.activeExportTemplateId) {
@@ -2129,7 +2170,7 @@ Sarah stood at the window, watching the world wake up.`;
                 rangeEnd: submissionRangeEnd,
                 subplot: submissionSubplot,
                 exportType: this.exportType,
-                manuscriptPreset: 'novel',
+                manuscriptPreset: this.exportType === 'manuscript' ? this.manuscriptPreset : undefined,
                 outlinePreset: this.outlinePreset,
                 outputFormat: mode.isOutline ? 'markdown' : this.outputFormat,
                 updateWordCounts: mode.showWordCount ? this.updateWordCounts : false,
@@ -2163,7 +2204,9 @@ Sarah stood at the window, watching the world wake up.`;
             this.updateActionButtonLabel();
         } catch (err) {
             console.error(err);
-            new Notice(t('manuscriptModal.loadError'));
+            const failure = categorizeExportError(err);
+            new Notice(failure.message);
+            this.showExportFailure(failure);
             this.exportCompleted = false;
             this.updateActionButtonDisabledState();
             this.updateActionButtonLabel();
