@@ -794,6 +794,14 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const forceExpandCompletionPreview = this._forceExpandCoreCompletionPreview;
         this._forceExpandCoreCompletionPreview = false;
 
+        let beatsStorySection: HTMLElement | null = null;
+        let backdropSection: HTMLElement | null = null;
+        let chronologueSection: HTMLElement | null = null;
+        let generalSection: HTMLElement | null = null;
+        let progressSection: HTMLElement | null = null;
+
+        const quickLinksRow = coreStack.createDiv();
+
         const completionRow = coreStack.createDiv();
         const completionPreviewRefresh = renderCompletionEstimatePreview({
             app: this.app,
@@ -806,7 +814,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const coreBody = coreStack.createDiv();
         const searchableContent = coreBody.createDiv({ cls: 'ert-settings-searchable-content' });
 
-        const generalSection = searchableContent.createDiv({
+        generalSection = searchableContent.createDiv({
             attr: { [ERT_DATA.SECTION]: 'general' }
         });
         const generalStack = generalSection.createDiv({ cls: ERT_CLASSES.STACK });
@@ -818,7 +826,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             addAiRelatedElement: (el) => this._aiRelatedElements.push(el)
         });
 
-        const progressSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'progress' } });
+        progressSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'progress' } });
         const progressStack = progressSection.createDiv({ cls: ERT_CLASSES.STACK });
 
         const publicationSection = progressStack.createDiv({ attr: { [ERT_DATA.SECTION]: 'publication' } });
@@ -838,14 +846,14 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const beatsWrapper = searchableContent.createDiv();
         const backdropYamlTarget = createDiv();
         renderBeatPropertiesSection({ app: this.app, plugin: this.plugin, containerEl: beatsWrapper, backdropYamlTargetEl: backdropYamlTarget });
-        const beatsStorySection = beatsWrapper.querySelector<HTMLElement>(`[${ERT_DATA.SECTION}="beats-story"]`);
+        beatsStorySection = beatsWrapper.querySelector<HTMLElement>(`[${ERT_DATA.SECTION}="beats-story"]`);
         const beatsActsSection = beatsWrapper.querySelector<HTMLElement>(`[${ERT_DATA.SECTION}="beats-acts"]`);
         const beatsYamlSection = beatsWrapper.querySelector<HTMLElement>(`[${ERT_DATA.SECTION}="beats-yaml"]`);
         if (beatsStorySection) beatsWrapper.appendChild(beatsStorySection);
         if (beatsActsSection) beatsWrapper.appendChild(beatsActsSection);
         if (beatsYamlSection) beatsWrapper.appendChild(beatsYamlSection);
 
-        const chronologueSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'chronologue' } });
+        chronologueSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'chronologue' } });
         renderChronologueSection({ app: this.app, plugin: this.plugin, containerEl: chronologueSection });
 
         const povSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'pov' } });
@@ -854,7 +862,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const planetarySection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'planetary' } });
         renderPlanetaryTimeSection({ app: this.app, plugin: this.plugin, containerEl: planetarySection });
 
-        const backdropSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'backdrop' } });
+        backdropSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'backdrop' } });
         renderBackdropSection({ app: this.app, plugin: this.plugin, containerEl: backdropSection });
         backdropSection.appendChild(backdropYamlTarget);
 
@@ -864,7 +872,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const readmeSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'readme' } });
         renderReadmeSection({ app: this.app, containerEl: readmeSection, setComponentRef: (c: Component | null) => { this.readmeComponent = c; } });
 
-        this.renderCoreQuickLinks(coreStack, [
+        this.renderCoreQuickLinks(quickLinksRow, [
             { label: 'Books', icon: 'library-big', target: generalSection },
             { label: 'Progress', icon: 'bar-chart-3', target: progressSection },
             { label: 'Story beats', icon: 'activity', target: beatsStorySection },

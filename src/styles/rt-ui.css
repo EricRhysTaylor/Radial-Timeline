@@ -2411,6 +2411,9 @@
 }
 
 .ert-ui.ert-scope--settings .ert-ai-local-model-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease, box-shadow 120ms ease;
 }
 
@@ -2445,7 +2448,26 @@
 }
 
 .ert-ui.ert-scope--settings .ert-ai-local-model-pill.is-active {
-  box-shadow: 0 0 0 1px color-mix(in srgb, currentColor 22%, transparent);
+  border-width: 2px;
+  background: color-mix(in srgb, currentColor 18%, var(--background-primary));
+  box-shadow: 0 0 0 1px color-mix(in srgb, currentColor 28%, transparent);
+}
+
+.ert-ui.ert-scope--settings .ert-ai-local-model-pill-label {
+  display: inline-flex;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-local-model-pill-active {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--background-primary);
+  background: color-mix(in srgb, currentColor 88%, white 12%);
 }
 
 .ert-ui.ert-scope--settings .ert-ai-local-llm-status-grid {
@@ -2490,6 +2512,7 @@
 
 .ert-ui.ert-scope--settings .ert-ai-local-llm-model-legend {
   margin-top: -2px;
+  line-height: 1.35;
 }
 
 .ert-ui.ert-scope--settings .ert-ai-local-llm-legend-chip--tier0 {

@@ -10,6 +10,22 @@ export const LOCAL_LLM_BACKEND_LABELS: Record<LocalLlmBackendId, string> = {
     openaiCompatible: 'OpenAI-Compatible'
 };
 
+export function normalizeLocalLlmServerBaseUrl(baseUrl: string): string {
+    return baseUrl.trim().replace(/\/+$/, '');
+}
+
+export function buildLocalLlmServerKey(backend: LocalLlmBackendId, baseUrl: string): string {
+    return `${backend}|${normalizeLocalLlmServerBaseUrl(baseUrl)}`;
+}
+
+export function buildLocalLlmModelIdentity(
+    backend: LocalLlmBackendId,
+    baseUrl: string,
+    modelId: string
+): string {
+    return `${buildLocalLlmServerKey(backend, baseUrl)}::${modelId.trim()}`;
+}
+
 export function getCanonicalLocalLlmSettings(plugin: RadialTimelinePlugin): LocalLlmSettings {
     const validated = validateAiSettings(plugin.settings.aiSettings ?? buildDefaultAiSettings());
     plugin.settings.aiSettings = validated.value;

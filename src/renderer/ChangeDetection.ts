@@ -290,7 +290,6 @@ export function detectChanges(
         ChangeType.OPEN_FILES, 
         ChangeType.SEARCH, 
         ChangeType.TIME,
-        ChangeType.DOMINANT_SUBPLOT,  // DOM update for scene colors
         ChangeType.SYNOPSIS,          // DOM update for synopsis text
         ChangeType.GOSSAMER
     ];

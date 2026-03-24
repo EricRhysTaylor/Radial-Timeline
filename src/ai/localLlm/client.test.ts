@@ -30,6 +30,7 @@ vi.mock('./settings', () => ({
         lmStudio: 'LM Studio',
         openaiCompatible: 'OpenAI-Compatible'
     },
+    buildLocalLlmModelIdentity: (backend: string, baseUrl: string, modelId: string) => `${backend}|${baseUrl}::${modelId}`,
     getCanonicalLocalLlmSettings,
     resolveLocalLlmSelection
 }));

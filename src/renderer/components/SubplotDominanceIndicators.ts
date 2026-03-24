@@ -3,7 +3,6 @@ import { formatNumber, escapeXml } from '../../utils/svg';
 
 export interface SubplotDominanceState {
     hasSharedOverlap: boolean;
-    hasExpressedSharedScenes: boolean;
     hasHiddenSharedScenes: boolean;
 }
 
@@ -90,7 +89,6 @@ export function computeSubplotDominanceStates(params: {
     masterSubplotOrder.forEach(subplot => {
         subplotDominanceStates.set(subplot, {
             hasSharedOverlap: false,
-            hasExpressedSharedScenes: false,
             hasHiddenSharedScenes: false
         });
     });
@@ -120,13 +118,10 @@ export function computeSubplotDominanceStates(params: {
         uniqueSubplots.forEach(subplotName => {
             const existing = subplotDominanceStates.get(subplotName) || {
                 hasSharedOverlap: false,
-                hasExpressedSharedScenes: false,
                 hasHiddenSharedScenes: false
             };
             existing.hasSharedOverlap = true;
-            if (subplotName === dominantSubplot) {
-                existing.hasExpressedSharedScenes = true;
-            } else {
+            if (subplotName !== dominantSubplot) {
                 existing.hasHiddenSharedScenes = true;
             }
             subplotDominanceStates.set(subplotName, existing);
@@ -177,7 +172,7 @@ export function renderSubplotDominanceIndicators(params: {
         
         // Right triangle: vertical left side, horizontal bottom, 45° diagonal (page corner)
         const path = `M 0 0 L 0 ${TRIANGLE_SIZE} L ${TRIANGLE_SIZE} ${TRIANGLE_SIZE} Z`;
-        const cssClass = state.hasExpressedSharedScenes ? 'is-shown' : 'is-hidden';
+        const cssClass = state.hasHiddenSharedScenes ? 'is-hidden' : 'is-shown';
         const subplotColor = subplotColorFor(subplotName);
         
         // Calculate final position

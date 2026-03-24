@@ -4,6 +4,7 @@ import { getCredential } from '../credentials/credentials';
 import { getLocalLlmBackend } from './backends';
 import { runLocalLlmDiagnostics } from './diagnostics';
 import {
+    buildLocalLlmModelIdentity,
     getCanonicalLocalLlmSettings,
     LOCAL_LLM_BACKEND_LABELS,
     resolveLocalLlmSelection
@@ -73,7 +74,7 @@ export class LocalLlmClient {
         const baseSelection = resolveLocalLlmSelection(aiSettings);
         const { localLlm, backend, transport } = await this.buildTransport(overrides);
         const modelId = localLlm.defaultModelId.trim() || baseSelection.model.id;
-        const cacheKey = `${backend.id}|${transport.baseUrl}|${modelId}`;
+        const cacheKey = buildLocalLlmModelIdentity(backend.id, transport.baseUrl, modelId);
         const cached = this.liveSelectionCache.get(cacheKey);
         if (cached && cached.expiresAt > Date.now()) {
             return cached.selection;

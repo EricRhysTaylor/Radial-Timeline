@@ -48,7 +48,14 @@ import { extractBeatOrder } from '../../utils/gossamer';
 import { resolveSelectedBeatModelFromSettings } from '../../utils/beatSystemState';
 import { getSynopsisGenerationWordLimit, getSynopsisHoverLineLimit } from '../../utils/synopsisLimits';
 import { getResolvedModelId } from '../../utils/modelResolver';
-import { getLocalLlmSettings, LOCAL_LLM_BACKEND_LABELS, resolveLocalLlmModelInfo } from '../../ai/localLlm/settings';
+import {
+    buildLocalLlmModelIdentity,
+    buildLocalLlmServerKey,
+    getLocalLlmSettings,
+    LOCAL_LLM_BACKEND_LABELS,
+    normalizeLocalLlmServerBaseUrl,
+    resolveLocalLlmModelInfo
+} from '../../ai/localLlm/settings';
 import { inferLocalLlmCapability } from '../../ai/localLlm/capabilityInference';
 import type { LocalLlmCapabilityAssessment, LocalLlmFeatureSupport } from '../../ai/localLlm/capabilityInference';
 import type { LocalLlmModelEntry } from '../../ai/localLlm/transport';
@@ -61,6 +68,14 @@ type PromptRequestBreakdown = {
     instructionTokens: number | null;
     outputContractTokens: number | null;
     transformTokens: number | null;
+};
+type DetectedLocalServer = {
+    serverKey: string;
+    label: string;
+    backend: LocalLlmBackendId;
+    baseUrl: string;
+    models: LocalLlmModelEntry[];
+    detectedAt: string;
 };
 
 export function renderAiSection(params: {
@@ -282,6 +297,16 @@ export function renderAiSection(params: {
     const getOllamaBaseUrl = (): string => (
         getLocalLlmSettings(ensureCanonicalAiSettings()).baseUrl.trim() || 'http://localhost:11434/v1'
     );
+    const buildLocalServerOptionLabel = (backend: LocalLlmBackendId, baseUrl: string): string => {
+        const normalizedUrl = normalizeLocalLlmServerBaseUrl(baseUrl);
+        try {
+            const parsed = new URL(normalizedUrl);
+            return `${LOCAL_LLM_BACKEND_LABELS[backend]} · ${parsed.host}`;
+        } catch {
+            return `${LOCAL_LLM_BACKEND_LABELS[backend]} · ${normalizedUrl}`;
+        }
+    };
+    const getConfiguredLocalServerKey = (): string => buildLocalLlmServerKey(getLocalLlmBackendId(), getOllamaBaseUrl());
 
     const getOllamaModelId = (): string => {
         const aiSettings = ensureCanonicalAiSettings();
@@ -310,6 +335,14 @@ export function renderAiSection(params: {
         aiSettings.modelPolicy = model
             ? { type: 'pinned', pinnedAlias: model.alias }
             : { type: 'latestStable' };
+    };
+    const setLocalServerSelection = (backend: LocalLlmBackendId, baseUrl: string): void => {
+        const aiSettings = ensureCanonicalAiSettings();
+        aiSettings.localLlm = {
+            ...getLocalLlmSettings(aiSettings),
+            backend,
+            baseUrl: normalizeLocalLlmServerBaseUrl(baseUrl)
+        };
     };
 
     const getLocalLlmBackendId = (): LocalLlmBackendId => getLocalLlmSettings(ensureCanonicalAiSettings()).backend;
@@ -371,6 +404,22 @@ export function renderAiSection(params: {
         `Inquiry — ${formatLocalCapabilitySymbol(assessment.featureSupport.inquiry)} ${formatLocalCapabilitySupportLabel('inquiry', assessment.featureSupport.inquiry)}`,
         assessment.explanation
     ].join('\n');
+    const buildLocalFeatureSummary = (assessment: LocalLlmCapabilityAssessment): string => {
+        const parts: string[] = [];
+        if (assessment.featureSupport.summary === 'yes') parts.push('Summary');
+        else if (assessment.featureSupport.summary === 'partial') parts.push('Summary (limited)');
+
+        if (assessment.featureSupport.pulses === 'yes') parts.push('Pulses');
+        else if (assessment.featureSupport.pulses === 'partial') parts.push('Pulses (limited)');
+
+        if (assessment.featureSupport.gossamer === 'yes') parts.push('Gossamer');
+        else if (assessment.featureSupport.gossamer === 'partial') parts.push('Gossamer (limited)');
+
+        if (assessment.featureSupport.inquiry === 'yes') parts.push('Inquiry eligible');
+        else if (assessment.featureSupport.inquiry === 'partial') parts.push('Inquiry (possibly eligible)');
+
+        return parts.join(' · ') || 'Summary not supported';
+    };
     const setLocalLlmConfigurationMode = (mode: LocalLlmConfigurationMode): void => {
         const aiSettings = ensureCanonicalAiSettings();
         aiSettings.localLlm = {
@@ -1417,7 +1466,7 @@ export function renderAiSection(params: {
         }
         return {
             sizeText: 'Inquiry corpus stats will be available once you run Inquiry View.',
-            structureText: 'Run Inquiry View to calculate scene, outline, and token totals.'
+            structureText: ''
         };
     };
 
@@ -2269,7 +2318,12 @@ export function renderAiSection(params: {
 
     const aiLogFolder = resolveAiLogFolder();
     let localLlmModelText: TextComponent | null = null;
+    let localLlmServerDropdown: DropdownComponent | null = null;
     let localLlmLoadedModels: LocalLlmModelEntry[] = [];
+    let localLlmDetectedServers: DetectedLocalServer[] = [];
+    let localLlmServerDetectionError: string | null = null;
+    let localLlmServerDetectionPending = false;
+    let localLlmServerDetectionPromise: Promise<void> | null = null;
     let localLlmModelLoadError: string | null = null;
     let localLlmLastLoadedAt: string | null = null;
     let localLlmModelLoadPending = false;
@@ -2281,10 +2335,35 @@ export function renderAiSection(params: {
     let localLlmValidationPromise: Promise<void> | null = null;
     let localLlmAutoValidationTimer: ReturnType<typeof globalThis.setTimeout> | null = null;
 
+    const getDetectedLocalServerCandidates = (): Array<{ backend: LocalLlmBackendId; baseUrl: string; label: string }> => {
+        const configured = getLocalLlmSettings(ensureCanonicalAiSettings());
+        const candidates: Array<{ backend: LocalLlmBackendId; baseUrl: string; label: string }> = [
+            { backend: 'ollama', baseUrl: 'http://localhost:11434/v1', label: buildLocalServerOptionLabel('ollama', 'http://localhost:11434/v1') },
+            { backend: 'lmStudio', baseUrl: 'http://localhost:1234/v1', label: buildLocalServerOptionLabel('lmStudio', 'http://localhost:1234/v1') }
+        ];
+        if (configured.baseUrl.trim()) {
+            candidates.push({
+                backend: configured.backend,
+                baseUrl: configured.baseUrl.trim(),
+                label: buildLocalServerOptionLabel(configured.backend, configured.baseUrl)
+            });
+        }
+        const seen = new Set<string>();
+        return candidates.filter(candidate => {
+            const serverKey = buildLocalLlmServerKey(candidate.backend, candidate.baseUrl);
+            if (seen.has(serverKey)) return false;
+            seen.add(serverKey);
+            return true;
+        });
+    };
+    const getDetectedLocalServerByKey = (serverKey: string): DetectedLocalServer | null =>
+        localLlmDetectedServers.find(server => server.serverKey === serverKey) ?? null;
+
     const hasLocalLlmSelectedModelMismatch = (): boolean => {
         const selectedModelId = getOllamaModelId().trim();
         if (!selectedModelId || !localLlmLoadedModels.length) return false;
-        return !localLlmLoadedModels.some(model => model.id === selectedModelId);
+        const selectedModelKey = buildLocalLlmModelIdentity(getLocalLlmBackendId(), getOllamaBaseUrl(), selectedModelId);
+        return !localLlmLoadedModels.some(model => buildLocalLlmModelIdentity(getLocalLlmBackendId(), getOllamaBaseUrl(), model.id) === selectedModelKey);
     };
 
     const hasLocalLlmValidationFailure = (): boolean => {
@@ -2302,12 +2381,15 @@ export function renderAiSection(params: {
 
     const shouldRevealLocalLlmTransportSettings = (): boolean => {
         if (getLocalLlmConfigurationMode() === 'custom') return true;
+        if (!localLlmServerDetectionPending && !localLlmDetectedServers.length) return true;
         if (localLlmModelLoadError || localLlmValidationError) return true;
         if (!localLlmValidationReport) return false;
         return !localLlmValidationReport.reachable.ok;
     };
     const shouldRevealLocalLlmTroubleshootingActions = (): boolean => {
         if (getLocalLlmConfigurationMode() === 'custom') return true;
+        if (localLlmServerDetectionPending || localLlmServerDetectionError) return true;
+        if (!localLlmDetectedServers.length) return true;
         if (localLlmModelLoadPending || localLlmValidationPending) return true;
         if (localLlmModelLoadError || localLlmValidationError) return true;
         if (!localLlmLoadedModels.length) return true;
@@ -2356,6 +2438,28 @@ export function renderAiSection(params: {
         cls: 'ert-section-desc',
         text: 'Auto-configuration diagnostics for the current Local LLM setup. This stays visible so you can confirm connection, validation, and capability.'
     });
+    const localLlmServerSetting = new Settings(localLlmStatusSection)
+        .setName('Local server')
+        .setDesc('Choose between detected local runtimes when more than one healthy server is available.')
+        .addDropdown(dropdown => {
+            localLlmServerDropdown = dropdown;
+            dropdown.onChange((value) => {
+                const server = getDetectedLocalServerByKey(value);
+                if (!server) return;
+                void (async () => {
+                    setLocalServerSelection(server.backend, server.baseUrl);
+                    localLlmLoadedModels = [...server.models].sort((left, right) => left.id.localeCompare(right.id));
+                    localLlmLastLoadedAt = server.detectedAt;
+                    clearLocalLlmValidationState();
+                    await persistCanonical();
+                    renderLocalLlmModelList();
+                    renderLocalLlmStatus();
+                    queueLocalLlmAutoValidation();
+                    void refreshRoutingUi();
+                })();
+            });
+        });
+    localLlmServerSetting.settingEl.addClass(ERT_CLASSES.ROW, 'ert-settings-hidden');
     const localLlmStatusGrid = localLlmStatusSection.createDiv({ cls: 'ert-ai-local-llm-status-grid' });
     const localLlmStatusConnection = localLlmStatusGrid.createDiv({ cls: `${ERT_CLASSES.STACK_TIGHT} ert-ai-local-llm-status-column` });
     const localLlmStatusModel = localLlmStatusGrid.createDiv({ cls: `${ERT_CLASSES.STACK_TIGHT} ert-ai-local-llm-status-column` });
@@ -2381,6 +2485,11 @@ export function renderAiSection(params: {
         localLlmLastLoadedAt = null;
     }
 
+    function clearLocalLlmDetectedServerState(): void {
+        localLlmDetectedServers = [];
+        localLlmServerDetectionError = null;
+    }
+
     function clearLocalLlmValidationState(): void {
         localLlmValidationReport = null;
         localLlmValidationError = null;
@@ -2388,10 +2497,81 @@ export function renderAiSection(params: {
     }
 
     function markLocalLlmConfigurationDirty(): void {
+        clearLocalLlmDetectedServerState();
         clearLocalLlmModelLoadState();
         clearLocalLlmValidationState();
         renderLocalLlmModelList();
         renderLocalLlmStatus();
+    }
+
+    async function detectLocalLlmServers(options: { quiet?: boolean } = {}): Promise<void> {
+        if (localLlmServerDetectionPromise) return localLlmServerDetectionPromise;
+        localLlmServerDetectionPending = true;
+        localLlmServerDetectionError = null;
+        renderLocalLlmModelList();
+        renderLocalLlmStatus();
+        localLlmServerDetectionPromise = (async () => {
+            const candidates = getDetectedLocalServerCandidates();
+            const settled = await Promise.allSettled(candidates.map(async candidate => {
+                const models = await getLocalLlmClient(plugin).listModels({
+                    backend: candidate.backend,
+                    baseUrl: candidate.baseUrl,
+                    timeoutMs: getLocalLlmUiTimeoutMs()
+                });
+                if (!models.length) {
+                    throw new Error('No models reported by this local server.');
+                }
+                return {
+                    serverKey: buildLocalLlmServerKey(candidate.backend, candidate.baseUrl),
+                    label: candidate.label,
+                    backend: candidate.backend,
+                    baseUrl: normalizeLocalLlmServerBaseUrl(candidate.baseUrl),
+                    models: [...models].sort((left, right) => left.id.localeCompare(right.id)),
+                    detectedAt: new Date().toISOString()
+                } satisfies DetectedLocalServer;
+            }));
+            localLlmDetectedServers = settled
+                .flatMap(result => result.status === 'fulfilled' ? [result.value] : []);
+            localLlmServerDetectionError = localLlmDetectedServers.length
+                ? null
+                : 'No healthy local servers were detected automatically.';
+
+            if (getLocalLlmConfigurationMode() === 'auto') {
+                const configuredServerKey = getConfiguredLocalServerKey();
+                const selectedServer = localLlmDetectedServers.length === 1
+                    ? localLlmDetectedServers[0]
+                    : (getDetectedLocalServerByKey(configuredServerKey) ?? localLlmDetectedServers[0] ?? null);
+                if (selectedServer) {
+                    const current = getLocalLlmSettings(ensureCanonicalAiSettings());
+                    const serverChanged = current.backend !== selectedServer.backend
+                        || buildLocalLlmServerKey(current.backend, current.baseUrl) !== selectedServer.serverKey;
+                    localLlmLoadedModels = [...selectedServer.models];
+                    localLlmModelLoadError = null;
+                    localLlmLastLoadedAt = selectedServer.detectedAt;
+                    if (serverChanged) {
+                        setLocalServerSelection(selectedServer.backend, selectedServer.baseUrl);
+                        await persistCanonical();
+                    }
+                } else {
+                    clearLocalLlmModelLoadState();
+                }
+            }
+
+            if (!options.quiet) {
+                new Notice(
+                    localLlmDetectedServers.length
+                        ? `Detected ${localLlmDetectedServers.length} healthy local server${localLlmDetectedServers.length === 1 ? '' : 's'}.`
+                        : 'No healthy local servers detected automatically.'
+                );
+            }
+        })().finally(() => {
+            localLlmServerDetectionPending = false;
+            localLlmServerDetectionPromise = null;
+            renderLocalLlmModelList();
+            renderLocalLlmStatus();
+            void refreshRoutingUi();
+        });
+        return localLlmServerDetectionPromise;
     }
 
     function queueLocalLlmAutoValidation(): void {
@@ -2403,13 +2583,13 @@ export function renderAiSection(params: {
         localLlmAutoValidationTimer = globalThis.setTimeout(() => {
             localLlmAutoValidationTimer = null;
             if (ensureCanonicalAiSettings().provider !== 'ollama') return;
-            void validateLocalLlm({ quiet: true });
+            void detectLocalLlmServers({ quiet: true }).then(() => validateLocalLlm({ quiet: true }));
         }, 150);
     }
 
     const localLlmBackendSetting = new Settings(localLlmConfigSection)
-        .setName('Local LLM backend')
-        .setDesc('Choose the backend behind the Local LLM runtime family. Backend-specific transport stays below this canonical seam.')
+        .setName('Local server')
+        .setDesc('Choose the local server/runtime behind the Local LLM path. Server-specific transport stays below this seam.')
         .addDropdown(dropdown => {
             dropdown
                 .addOption('ollama', 'Ollama')
@@ -2433,7 +2613,7 @@ export function renderAiSection(params: {
 
     const localLlmBaseUrlSetting = new Settings(localLlmConfigSection)
         .setName('Base URL')
-        .setDesc('The API endpoint for the selected Local LLM backend. For example: Ollama "http://localhost:11434/v1" or LM Studio "http://localhost:1234/v1".')
+        .setDesc('The API endpoint for the selected Local server. For example: Ollama "http://localhost:11434/v1" or LM Studio "http://localhost:1234/v1".')
         .addText(text => {
             text.inputEl.addClass('ert-input--full');
             text
@@ -2508,7 +2688,10 @@ export function renderAiSection(params: {
 
     const renderLocalLlmModelList = (): void => {
         const selectedModelId = getOllamaModelId().trim();
-        const selectedExists = localLlmLoadedModels.some(model => model.id === selectedModelId);
+        const selectedModelKey = buildLocalLlmModelIdentity(getLocalLlmBackendId(), getOllamaBaseUrl(), selectedModelId);
+        const selectedExists = localLlmLoadedModels.some(model =>
+            buildLocalLlmModelIdentity(getLocalLlmBackendId(), getOllamaBaseUrl(), model.id) === selectedModelKey
+        );
         const showTransportSettings = shouldRevealLocalLlmTransportSettings();
         const showManualModelFallback = getLocalLlmConfigurationMode() === 'custom'
             || !!localLlmModelLoadError
@@ -2523,36 +2706,38 @@ export function renderAiSection(params: {
         localLlmModelSetting.settingEl.toggleClass('ert-settings-visible', showManualModelFallback);
 
         localLlmModelsList.empty();
+        localLlmModelsLegend.empty();
         if (localLlmModelLoadPending) {
             localLlmModelsSummary.setText('Checking backend and loading available local models...');
-            localLlmModelsLegend.empty();
             return;
         }
 
         if (localLlmModelLoadError) {
             localLlmModelsSummary.setText(`Model list unavailable: ${localLlmModelLoadError}`);
-            localLlmModelsLegend.empty();
             return;
         }
 
         if (!localLlmLoadedModels.length) {
-            localLlmModelsSummary.setText('No models loaded yet. Click Load Models to query the selected backend.');
-            localLlmModelsLegend.empty();
+            localLlmModelsSummary.setText(
+                getLocalLlmConfigurationMode() === 'auto'
+                    ? 'No models loaded yet. Automatic server detection will populate this list when a healthy local server is found.'
+                    : 'No models loaded yet. Use Troubleshooting to query the selected local server.'
+            );
             return;
         }
 
         const loadStamp = formatLocalTimestamp(localLlmLastLoadedAt);
+        const activeServerLabel = buildLocalServerOptionLabel(getLocalLlmBackendId(), getOllamaBaseUrl());
         localLlmModelsSummary.setText(
-            `Available local models: ${localLlmLoadedModels.length}. ${selectedExists ? 'Selected model found.' : 'Selected model missing from the loaded list.'}${loadStamp ? ` Last loaded ${loadStamp}.` : ''}`
+            `${activeServerLabel}: ${localLlmLoadedModels.length} model${localLlmLoadedModels.length === 1 ? '' : 's'} loaded. ${selectedExists ? 'Selected model found.' : 'Selected model missing from the loaded list.'}${loadStamp ? ` Last loaded ${loadStamp}.` : ''}`
         );
-        localLlmModelsLegend.empty();
         localLlmModelsLegend.createSpan({ cls: 'ert-ai-local-llm-legend-chip ert-ai-local-llm-legend-chip--tier0', text: 'Not usable' });
         localLlmModelsLegend.createSpan({ text: ' · ' });
         localLlmModelsLegend.createSpan({ cls: 'ert-ai-local-llm-legend-chip ert-ai-local-llm-legend-chip--tier1', text: 'Limited' });
         localLlmModelsLegend.createSpan({ text: ' · ' });
         localLlmModelsLegend.createSpan({ cls: 'ert-ai-local-llm-legend-chip ert-ai-local-llm-legend-chip--tier3', text: 'Strong' });
         localLlmModelsLegend.createSpan({ text: ' · ' });
-        localLlmModelsLegend.createSpan({ cls: 'ert-ai-local-llm-legend-chip ert-ai-local-llm-legend-chip--tier4', text: 'Inquiry-eligible' });
+        localLlmModelsLegend.createSpan({ cls: 'ert-ai-local-llm-legend-chip ert-ai-local-llm-legend-chip--tier4', text: 'Inquiry eligible' });
 
         localLlmLoadedModels.forEach(model => {
             const pill = localLlmModelsList.createSpan({
@@ -2560,10 +2745,14 @@ export function renderAiSection(params: {
             });
             const capability = getLocalCapabilityAssessment(model.id, model);
             pill.addClass(`ert-ai-local-model-pill--tier${capability.tier}`);
-            if (model.id === selectedModelId) {
+            const isActiveModel = model.id === selectedModelId;
+            if (isActiveModel) {
                 pill.addClass(ERT_CLASSES.IS_ACTIVE);
             }
-            pill.setText(model.id);
+            pill.createSpan({ cls: 'ert-ai-local-model-pill-label', text: model.id });
+            if (isActiveModel) {
+                pill.createSpan({ cls: 'ert-ai-local-model-pill-active', text: 'Active' });
+            }
             pill.setAttribute('role', 'button');
             pill.setAttribute('tabindex', '0');
             pill.setAttribute('aria-label', `Use local model ${model.id}. ${capability.tierName} ${capability.tierSummary}.`);
@@ -2592,15 +2781,32 @@ export function renderAiSection(params: {
     const renderLocalLlmStatus = (): void => {
         const localLlm = getLocalLlmSettings(ensureCanonicalAiSettings());
         const selectedModelId = localLlm.defaultModelId.trim();
-        const selectedExists = localLlmLoadedModels.some(model => model.id === selectedModelId);
+        const selectedExists = localLlmLoadedModels.some(model =>
+            buildLocalLlmModelIdentity(localLlm.backend, localLlm.baseUrl, model.id)
+                === buildLocalLlmModelIdentity(localLlm.backend, localLlm.baseUrl, selectedModelId)
+        );
         const selectedCapability = getLocalCapabilityAssessment(selectedModelId, localLlmLoadedModels.find(model => model.id === selectedModelId) ?? null);
+        const multipleDetectedServers = getLocalLlmConfigurationMode() === 'auto' && localLlmDetectedServers.length > 1;
 
         localLlmStatusConnection.empty();
         localLlmStatusModel.empty();
         localLlmStatusChecks.empty();
+        if (localLlmServerDropdown) {
+            localLlmServerDropdown.selectEl.empty();
+            localLlmDetectedServers.forEach(server => {
+                localLlmServerDropdown?.addOption(server.serverKey, server.label);
+            });
+            if (localLlmDetectedServers.length) {
+                localLlmServerDropdown.setValue(getConfiguredLocalServerKey());
+            }
+        }
+        localLlmServerSetting.settingEl.toggleClass('ert-settings-hidden', !multipleDetectedServers);
+        localLlmServerSetting.settingEl.toggleClass('ert-settings-visible', multipleDetectedServers);
 
         const statusValue = !localLlm.enabled
             ? 'Local LLM disabled'
+            : localLlmServerDetectionPending
+                ? 'Detecting local servers'
             : localLlmValidationPending
                 ? 'Validating'
                 : localLlmModelLoadPending
@@ -2611,7 +2817,7 @@ export function renderAiSection(params: {
             && localLlmValidationReport.modelAvailable.ok
             && localLlmValidationReport.basicCompletion.ok
             && localLlmValidationReport.structuredJson.ok)
-                            ? 'Validated'
+                            ? 'Connected & validated'
                             : localLlmValidationReport?.reachable.ok
                                 ? 'Connected'
                                 : (localLlmValidationReport && !localLlmValidationReport.reachable.ok)
@@ -2622,7 +2828,9 @@ export function renderAiSection(params: {
 
         const connectionItems: Array<[string, string]> = [
             ['Status', statusValue],
-            ['Backend', LOCAL_LLM_BACKEND_LABELS[localLlm.backend]],
+            ['Local server', localLlmDetectedServers.length
+                ? buildLocalServerOptionLabel(localLlm.backend, localLlm.baseUrl)
+                : (getLocalLlmConfigurationMode() === 'auto' ? 'No healthy local server detected' : buildLocalServerOptionLabel(localLlm.backend, localLlm.baseUrl))],
             ['Base URL', localLlm.baseUrl || 'Not set'],
             ['Last checked', localLlmValidationPending ? 'Validating...' : (formatLocalTimestamp(localLlmLastValidatedAt) || 'Not yet validated')]
         ];
@@ -2637,8 +2845,9 @@ export function renderAiSection(params: {
                 : selectedModelId
                     ? (selectedExists ? `${selectedModelId} found` : `${selectedModelId} missing`)
                     : 'Not set'],
-            ['Capability tier', `${selectedCapability.tierName} — ${selectedCapability.tierSummary}${selectedCapability.confidence === 'heuristic' ? ' (heuristic)' : ''}`],
-            ['Capability', 'Likely fit for Radial Timeline tasks, not a guarantee for every corpus.']
+            ['Capability', `${selectedCapability.tierSummary} (${selectedCapability.tierName})${selectedCapability.confidence === 'heuristic' ? ' (heuristic)' : ''}`],
+            ['Supports', buildLocalFeatureSummary(selectedCapability)],
+            ['Confidence', 'Likely fit for Radial Timeline tasks. Final results still depend on corpus size and complexity.']
         ];
 
         const appendStatusItem = (container: HTMLElement, label: string, value: string): void => {
@@ -2668,6 +2877,9 @@ export function renderAiSection(params: {
         if (localLlmValidationError) {
             appendStatusItem(localLlmStatusChecks, 'Validation error', localLlmValidationError);
         }
+        if (localLlmServerDetectionError) {
+            appendStatusItem(localLlmStatusChecks, 'Server detection', localLlmServerDetectionError);
+        }
         localLlmStatusTimestamp.empty();
         const showTroubleshooting = shouldRevealLocalLlmTroubleshootingActions();
         localLlmTroubleshootingDetails.classList.toggle('ert-settings-hidden', !showTroubleshooting);
@@ -2685,6 +2897,16 @@ export function renderAiSection(params: {
         renderLocalLlmStatus();
         localLlmModelLoadPromise = (async () => {
             try {
+                const detectedServer = getDetectedLocalServerByKey(getConfiguredLocalServerKey());
+                if (detectedServer) {
+                    localLlmLoadedModels = [...detectedServer.models];
+                    localLlmModelLoadError = null;
+                    localLlmLastLoadedAt = detectedServer.detectedAt;
+                    if (!options.quiet) {
+                        new Notice(`Loaded ${localLlmLoadedModels.length} local model${localLlmLoadedModels.length === 1 ? '' : 's'} from ${detectedServer.label}.`);
+                    }
+                    return;
+                }
                 const models = await getLocalLlmClient(plugin).listModels(getLocalLlmUiOverrides());
                 localLlmLoadedModels = [...models].sort((left, right) => left.id.localeCompare(right.id));
                 localLlmModelLoadError = null;
@@ -2717,6 +2939,7 @@ export function renderAiSection(params: {
         localLlmValidationError = null;
         renderLocalLlmStatus();
         localLlmValidationPromise = (async () => {
+            await detectLocalLlmServers({ quiet: true });
             await loadLocalLlmModels({ quiet: true });
             try {
                 localLlmValidationReport = await getLocalLlmClient(plugin).runDiagnostics(getLocalLlmUiOverrides());
@@ -2744,7 +2967,7 @@ export function renderAiSection(params: {
     localLlmModelSetting.addExtraButton(button => {
         button
             .setIcon('refresh-ccw')
-            .setTooltip('Load models from the selected Local LLM backend')
+            .setTooltip('Load models from the selected local server')
             .onClick(async () => {
                 button.setDisabled(true);
                 button.setIcon('loader-2');
@@ -2759,7 +2982,13 @@ export function renderAiSection(params: {
 
     const localLlmActionsSetting = new Settings(localLlmTroubleshootingBody)
         .setName('Retry checks')
-        .setDesc('Use these actions when the Local LLM connection, model list, or validation path needs another pass.');
+        .setDesc('Use these actions when local server detection, model loading, or validation needs another pass.');
+    localLlmActionsSetting.addButton(button => button
+        .setButtonText('Load Servers')
+        .onClick(() => {
+            button.setDisabled(true);
+            void detectLocalLlmServers().finally(() => button.setDisabled(false));
+        }));
     localLlmActionsSetting.addButton(button => button
         .setButtonText('Load Models')
         .onClick(() => {
