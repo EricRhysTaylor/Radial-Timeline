@@ -8747,16 +8747,16 @@
 
 .ert-ui.ert-scope--settings .ert-publishing-setup-shell {
   border: 1px solid var(--background-modifier-border);
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--background-secondary) 80%, transparent);
-  padding: var(--ert-gap-xs);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--background-secondary) 82%, transparent);
+  padding: var(--ert-gap-sm);
   overflow: hidden;
 }
 
 .ert-ui.ert-scope--settings .ert-publishing-setup-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: var(--ert-gap-xs);
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: var(--ert-gap-sm);
 }
 
 .ert-ui.ert-scope--settings .ert-publishing-setup-card {
@@ -8766,8 +8766,8 @@
   border-radius: 12px;
   background: color-mix(in srgb, var(--background-primary) 84%, var(--background-secondary) 16%);
   color: var(--text-normal);
-  padding: 12px 12px 11px;
-  min-height: 152px;
+  padding: 16px 16px 15px;
+  min-height: 176px;
   position: relative;
   overflow: hidden;
   display: flex;
@@ -8797,9 +8797,9 @@
 
 .ert-ui.ert-scope--settings .ert-publishing-setup-card-step {
   position: absolute;
-  top: 8px;
-  right: 11px;
-  font-size: 3.4rem;
+  top: 7px;
+  right: 10px;
+  font-size: 4rem;
   font-weight: 800;
   line-height: 1;
   letter-spacing: -0.06em;
@@ -8820,23 +8820,23 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   color: var(--text-muted);
 }
 
 .ert-ui.ert-scope--settings .ert-publishing-setup-card-title {
-  font-size: 0.96rem;
+  font-size: 1rem;
   font-weight: 700;
   line-height: 1.2;
   color: var(--text-normal);
 }
 
 .ert-ui.ert-scope--settings .ert-publishing-setup-card-desc {
-  font-size: 0.84rem;
-  line-height: 1.35;
+  font-size: 0.88rem;
+  line-height: 1.42;
   color: var(--text-muted);
-  min-height: 2.7em;
+  min-height: 3em;
 }
 
 .ert-ui.ert-scope--settings .ert-publishing-setup-card-footer {
@@ -9068,6 +9068,37 @@
 
 .ert-ui.ert-scope--settings :is(.ert-bookmeta-primary-value, .ert-bookmeta-detail-value).ert-bookmeta-preview-value--empty {
   color: var(--text-faint);
+}
+
+.ert-ui.ert-scope--settings :is(.ert-bookmeta-primary-value, .ert-bookmeta-detail-value).ert-bookmeta-preview-value--empty.ert-bookmeta-preview-value--required {
+  color: var(--text-warning, var(--color-orange, #f5a97a));
+}
+
+.ert-ui.ert-scope--settings :is(.ert-bookmeta-primary-value, .ert-bookmeta-detail-value).ert-bookmeta-preview-value--empty.ert-bookmeta-preview-value--optional {
+  color: var(--text-muted);
+}
+
+.ert-ui.ert-scope--settings :is(.ert-bookmeta-primary-value, .ert-bookmeta-detail-value).ert-bookmeta-preview-value--missing {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  text-align: inherit;
+}
+
+.ert-ui.ert-scope--settings :is(.ert-bookmeta-primary-value, .ert-bookmeta-detail-value).ert-bookmeta-preview-value--clickable {
+  cursor: pointer;
+  transition: color var(--duration-fast, 120ms) ease, text-decoration-color var(--duration-fast, 120ms) ease;
+}
+
+.ert-ui.ert-scope--settings :is(.ert-bookmeta-primary-value, .ert-bookmeta-detail-value).ert-bookmeta-preview-value--clickable:hover,
+.ert-ui.ert-scope--settings :is(.ert-bookmeta-primary-value, .ert-bookmeta-detail-value).ert-bookmeta-preview-value--clickable:focus-visible {
+  text-decoration-line: underline;
+  text-decoration-style: dashed;
+  text-underline-offset: 3px;
+  text-decoration-color: color-mix(in srgb, currentColor 72%, transparent);
 }
 
 .ert-ui.ert-scope--settings .ert-bookmeta-detail-label {

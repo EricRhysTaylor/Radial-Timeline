@@ -106,6 +106,189 @@ export default class SynopsisManager {
     return lines.length > 0 ? lines : [trimmed];
   }
 
+  private getPulseLineData(textEl: SVGTextElement): {
+    titleText: string;
+    commentText: string;
+    titleClass: string;
+    commentClass: string;
+    commentPrefix: string;
+  } | null {
+    if (textEl.getAttribute('data-pulse-line') !== 'true') {
+      return null;
+    }
+
+    return {
+      titleText: textEl.getAttribute('data-pulse-title') ?? '',
+      commentText: textEl.getAttribute('data-pulse-comment') ?? '',
+      titleClass: textEl.getAttribute('data-pulse-title-class') ?? 'pulse-text-neutral',
+      commentClass: textEl.getAttribute('data-pulse-comment-class') ?? 'pulse-text',
+      commentPrefix: textEl.getAttribute('data-pulse-comment-prefix') ?? ''
+    };
+  }
+
+  private setPulseLineContent(
+    textEl: SVGTextElement,
+    titleText: string,
+    commentText: string,
+    titleClass: string,
+    commentClass: string,
+    commentPrefix: string
+  ): void {
+    while (textEl.firstChild) {
+      textEl.removeChild(textEl.firstChild);
+    }
+
+    if (titleText) {
+      const titleSpan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+      titleSpan.setAttribute('class', titleClass);
+      titleSpan.textContent = titleText;
+      textEl.appendChild(titleSpan);
+    }
+
+    if (commentText) {
+      const commentSpan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+      commentSpan.setAttribute('class', commentClass);
+      commentSpan.textContent = `${commentPrefix}${commentText}`;
+      textEl.appendChild(commentSpan);
+    }
+  }
+
+  private restorePulseLineContent(textEl: SVGTextElement): void {
+    const pulseData = this.getPulseLineData(textEl);
+    if (!pulseData) return;
+
+    this.setPulseLineContent(
+      textEl,
+      pulseData.titleText,
+      pulseData.commentText,
+      pulseData.titleClass,
+      pulseData.commentClass,
+      pulseData.commentPrefix
+    );
+  }
+
+  private measurePulseLineWidth(
+    textEl: SVGTextElement,
+    titleText: string,
+    commentText: string,
+    titleClass: string,
+    commentClass: string,
+    commentPrefix: string
+  ): number {
+    const existingChildren = document.createDocumentFragment();
+    while (textEl.firstChild) {
+      existingChildren.appendChild(textEl.firstChild);
+    }
+
+    this.setPulseLineContent(textEl, titleText, commentText, titleClass, commentClass, commentPrefix);
+    const width = this.measureTextWidth(textEl);
+
+    while (textEl.firstChild) {
+      textEl.removeChild(textEl.firstChild);
+    }
+    textEl.appendChild(existingChildren);
+
+    return width;
+  }
+
+  private wrapPulseLine(
+    textEl: SVGTextElement,
+    maxWidth: number,
+    pulseData: {
+      titleText: string;
+      commentText: string;
+      titleClass: string;
+      commentClass: string;
+      commentPrefix: string;
+    }
+  ): Array<{ titleText: string; commentText: string; commentPrefix: string }> {
+    const { titleText, commentText, titleClass, commentClass } = pulseData;
+    const commentPrefix = pulseData.commentPrefix || (commentText ? ' / ' : '');
+
+    if (!commentText) {
+      return this.wrapTextToMeasuredWidth(
+        titleText,
+        maxWidth,
+        value => this.measurePulseLineWidth(textEl, value, '', titleClass, commentClass, '')
+      ).map(line => ({
+        titleText: line,
+        commentText: '',
+        commentPrefix: ''
+      }));
+    }
+
+    const firstCommentWord = commentText.trim().split(/\s+/)[0] ?? '';
+    const titlePrefixWidth = this.measurePulseLineWidth(
+      textEl,
+      titleText,
+      firstCommentWord,
+      titleClass,
+      commentClass,
+      commentPrefix
+    );
+
+    if (titlePrefixWidth > maxWidth) {
+      const wrappedTitleLines = this.wrapTextToMeasuredWidth(
+        titleText,
+        maxWidth,
+        value => this.measurePulseLineWidth(textEl, value, '', titleClass, commentClass, '')
+      );
+      const wrappedCommentLines = this.wrapTextToMeasuredWidth(
+        commentText,
+        maxWidth,
+        value => this.measurePulseLineWidth(textEl, '', value, titleClass, commentClass, ''),
+        { firstLinePrefix: commentPrefix.trimStart() }
+      );
+
+      const wrappedLines = wrappedTitleLines.map(line => ({
+        titleText: line,
+        commentText: '',
+        commentPrefix: ''
+      }));
+
+      wrappedCommentLines.forEach((line, index) => {
+        wrappedLines.push({
+          titleText: '',
+          commentText: line,
+          commentPrefix: index === 0 ? commentPrefix.trimStart() : ''
+        });
+      });
+
+      return wrappedLines;
+    }
+
+    const wrappedCommentLines = this.wrapTextToMeasuredWidth(
+      commentText,
+      maxWidth,
+      value => this.measurePulseLineWidth(textEl, titleText, value, titleClass, commentClass, commentPrefix),
+      { firstLinePrefix: commentPrefix }
+    );
+
+    if (wrappedCommentLines.length === 0) {
+      return [{
+        titleText,
+        commentText: '',
+        commentPrefix: ''
+      }];
+    }
+
+    const wrappedLines: Array<{ titleText: string; commentText: string; commentPrefix: string }> = [{
+      titleText,
+      commentText: wrappedCommentLines[0],
+      commentPrefix
+    }];
+
+    for (let i = 1; i < wrappedCommentLines.length; i++) {
+      wrappedLines.push({
+        titleText: '',
+        commentText: wrappedCommentLines[i],
+        commentPrefix: ''
+      });
+    }
+
+    return wrappedLines;
+  }
+
   private resetAdvancedYamlWrap(synopsis: Element): void {
     const lineGroups = Array.from(synopsis.querySelectorAll('.rt-hover-metadata-line')) as SVGGElement[];
     lineGroups.forEach(group => {
@@ -152,6 +335,14 @@ export default class SynopsisManager {
         line.textContent = `${prefix}${raw}`;
       }
     });
+  }
+
+  private resetPulseWrap(synopsis: Element): void {
+    const wrapped = Array.from(synopsis.querySelectorAll('[data-pulse-wrap="true"]')) as SVGTextElement[];
+    wrapped.forEach(el => el.remove());
+
+    const lines = Array.from(synopsis.querySelectorAll('[data-pulse-line="true"]')) as SVGTextElement[];
+    lines.forEach(line => this.restorePulseLineContent(line));
   }
 
   private applyMainSynopsisWrap(params: {
@@ -397,6 +588,137 @@ export default class SynopsisManager {
       }
 
       if (wrapped.length > 1) didWrap = true;
+    }
+
+    return didWrap;
+  }
+
+  private applyPulseWrap(params: {
+    textRows: SVGTextElement[][];
+    baseY: number;
+    radius: number;
+    isRightAligned: boolean;
+    isTopHalf: boolean;
+    fontScale: number;
+    pulseLineHeight: number;
+    lineInnerRadius: number;
+  }): boolean {
+    const {
+      textRows,
+      baseY,
+      radius,
+      isRightAligned,
+      isTopHalf,
+      fontScale,
+      pulseLineHeight,
+      lineInnerRadius
+    } = params;
+
+    let didWrap = false;
+    let yOffset = 0;
+    const titleLineHeight = 32 * fontScale;
+    const synopsisLineHeight = 22 * fontScale;
+    const scorePreGap = 46 * fontScale;
+    const defaultMaxWidth = MAX_TEXT_WIDTH * fontScale;
+
+    for (let rowIndex = 0; rowIndex < textRows.length; rowIndex++) {
+      const rowElements = textRows[rowIndex];
+      const primaryEl = rowElements[0];
+      if (!primaryEl || primaryEl.getAttribute('data-pulse-wrap') === 'true') continue;
+
+      if (rowIndex > 0) {
+        const currentEl = rowElements[0];
+        const isGossamerLine = currentEl.classList.contains('rt-gossamer-score-line');
+        const isBeatsText = currentEl.classList.contains('pulse-text');
+        const prevEl = textRows[rowIndex - 1][0];
+        const isPrevLineSynopsis = prevEl.classList.contains('rt-title-text-secondary');
+        const isPrevLineBeats = prevEl.classList.contains('pulse-text');
+
+        if (rowIndex === 1) {
+          yOffset += titleLineHeight;
+        } else if (isGossamerLine && isPrevLineSynopsis) {
+          yOffset += scorePreGap;
+        } else if (isBeatsText || isPrevLineBeats) {
+          yOffset += pulseLineHeight;
+        } else {
+          yOffset += synopsisLineHeight;
+        }
+      }
+
+      const pulseData = this.getPulseLineData(primaryEl);
+      if (!pulseData) continue;
+
+      const anchorY = baseY + yOffset;
+      const radiusDiff = radius * radius - anchorY * anchorY;
+      if (radiusDiff <= 0) continue;
+
+      const circleX = Math.sqrt(radiusDiff);
+      const direction = isRightAligned ? 1 : -1;
+
+      let inset = 0;
+      if (isTopHalf) {
+        const style = window.getComputedStyle(primaryEl);
+        const fontSize = parseFloat(style.fontSize) || 16;
+        const ratio = rowIndex <= 1 ? 0.5 : SynopsisManager.TEXT_HEIGHT_INSET_RATIO;
+        inset = fontSize * ratio;
+      }
+
+      const anchorAbsoluteX = (circleX - inset) * direction;
+      const rightEdge = anchorAbsoluteX - SYNOPSIS_INSET;
+
+      let maxWidth = defaultMaxWidth;
+      let boundaryX = 0;
+      if (lineInnerRadius > 0 && Math.abs(anchorY) < lineInnerRadius) {
+        const innerDiff = lineInnerRadius * lineInnerRadius - anchorY * anchorY;
+        if (innerDiff > 0) {
+          boundaryX = Math.sqrt(innerDiff);
+        }
+      }
+      if (isRightAligned) {
+        maxWidth = rightEdge - boundaryX;
+      } else {
+        const leftEdge = anchorAbsoluteX + SYNOPSIS_INSET;
+        const leftBoundary = boundaryX > 0 ? -boundaryX : 0;
+        maxWidth = leftBoundary - leftEdge;
+      }
+
+      maxWidth += SynopsisManager.WRAP_OVERFLOW_TOLERANCE * fontScale;
+
+      if (!Number.isFinite(maxWidth) || maxWidth <= 0) {
+        continue;
+      }
+
+      const wrapped = this.wrapPulseLine(primaryEl, maxWidth, pulseData);
+      if (wrapped.length <= 1) continue;
+
+      this.setPulseLineContent(
+        primaryEl,
+        wrapped[0].titleText,
+        wrapped[0].commentText,
+        pulseData.titleClass,
+        pulseData.commentClass,
+        wrapped[0].commentPrefix
+      );
+
+      const insertParent = primaryEl.parentNode;
+      let insertBefore = primaryEl.nextSibling;
+      for (let i = 1; i < wrapped.length; i++) {
+        const cont = primaryEl.cloneNode(false) as SVGTextElement;
+        cont.setAttribute('data-pulse-wrap', 'true');
+        cont.setAttribute('data-pulse-line', 'true');
+        this.setPulseLineContent(
+          cont,
+          wrapped[i].titleText,
+          wrapped[i].commentText,
+          pulseData.titleClass,
+          pulseData.commentClass,
+          wrapped[i].commentPrefix
+        );
+        insertParent?.insertBefore(cont, insertBefore);
+        insertBefore = cont.nextSibling;
+      }
+
+      didWrap = true;
     }
 
     return didWrap;
@@ -1594,6 +1916,7 @@ export default class SynopsisManager {
 
     if (shouldRewrap) {
       this.resetAdvancedYamlWrap(synopsis);
+      this.resetPulseWrap(synopsis);
       this.resetPendingEditsWrap(synopsis);
       this.resetMainSynopsisWrap(synopsis);
     }
@@ -1691,6 +2014,24 @@ export default class SynopsisManager {
         lineInnerRadius
       });
       if (pendingWrapped) {
+        textElements = Array.from(synopsis.querySelectorAll('text')) as SVGTextElement[];
+        if (textElements.length === 0) return;
+        applyTextAnchors(textElements);
+        textRows = buildTextRows(textElements);
+        didWrap = true;
+      }
+
+      const pulseWrapped = this.applyPulseWrap({
+        textRows,
+        baseY,
+        radius,
+        isRightAligned,
+        isTopHalf,
+        fontScale,
+        pulseLineHeight,
+        lineInnerRadius
+      });
+      if (pulseWrapped) {
         textElements = Array.from(synopsis.querySelectorAll('text')) as SVGTextElement[];
         if (textElements.length === 0) return;
         applyTextAnchors(textElements);
@@ -2506,6 +2847,12 @@ export default class SynopsisManager {
         lineText.setAttribute("x", "0");
         lineText.setAttribute("y", String(currentY));
         lineText.setAttribute("text-anchor", "start");
+        lineText.setAttribute('data-pulse-line', 'true');
+        lineText.setAttribute('data-pulse-title', titlePart ?? '');
+        lineText.setAttribute('data-pulse-comment', commentPart ?? '');
+        lineText.setAttribute('data-pulse-title-class', titleClass);
+        lineText.setAttribute('data-pulse-comment-class', commentClass);
+        lineText.setAttribute('data-pulse-comment-prefix', titlePart && commentPart ? ' / ' : '');
 
         if (titlePart !== null) {
           const tt = document.createElementNS("http://www.w3.org/2000/svg", "tspan");

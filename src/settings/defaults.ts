@@ -98,6 +98,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     aiUpdateTimestamps: {}, // Internal AI update timestamps (per-scene)
     discontinuityThreshold: undefined, // Default to auto-calculated (3x median gap or 30 days)
     enableSceneTitleAutoExpand: true, // Default: enabled to maintain current behavior
+    showChapterMarkers: false,
     enableManuscriptRippleRename: false,
     synopsisHoverMaxLines: 5, // @deprecated Legacy fallback; hover lines now derive from synopsis word limit
     enableHoverDebugLogging: false,

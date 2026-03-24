@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { TimelineItem } from '../types';
-import { groupTimelineChapterMarkersByScenePath, readSharedChapterTitle, resolveTimelineChapterMarkers } from './timelineChapters';
+import {
+    collapseTimelineChapterMarkersByResolvedBoundary,
+    groupTimelineChapterMarkersByScenePath,
+    readSharedChapterTitle,
+    resolveTimelineChapterMarkers
+} from './timelineChapters';
 
 function makeItem(
     itemType: TimelineItem['itemType'],
@@ -70,6 +75,25 @@ describe('timelineChapters', () => {
         expect(grouped['Scenes/1.md']?.map((marker) => marker.title)).toEqual([
             'Before Dawn',
             'The City Wakes',
+        ]);
+    });
+
+    it('collapses chapter markers to the final resolved boundary marker for visualization', () => {
+        const markers = resolveTimelineChapterMarkers([
+            makeItem('Beat', 'Beats/1.md', '1 Beat', 'Before Dawn'),
+            makeItem('Backdrop', 'Backdrop/1.md', '1.5 Front', 'Storm Warning'),
+            makeItem('Scene', 'Scenes/1.md', '2 Scene', 'The City Wakes'),
+            makeItem('Scene', 'Scenes/2.md', '3 Scene'),
+        ]);
+
+        expect(collapseTimelineChapterMarkersByResolvedBoundary(markers)).toEqual([
+            {
+                sourcePath: 'Scenes/1.md',
+                sourceType: 'Scene',
+                title: 'The City Wakes',
+                resolvedScenePath: 'Scenes/1.md',
+                resolvedTimelinePosition: 1,
+            },
         ]);
     });
 });

@@ -6,6 +6,7 @@ import type RadialTimelinePlugin from '../main';
 import { getSceneFilesByOrder, ManuscriptOrder, TocMode } from '../utils/manuscript';
 import { t } from '../i18n';
 import { ExportFormat, ExportType, ManuscriptPreset, OutlinePreset, getAutoPdfEngineSelection, resolveTemplatePath, validatePandocLayout, getTemplateFontDiagnostics } from '../utils/exportFormats';
+import { SHARED_CHAPTER_FIELD_PUBLICATION_COPY } from '../utils/timelineChapters';
 import { hasProFeatureAccess } from '../settings/featureGate';
 import { getActiveBook, getActiveBookTitle, DEFAULT_BOOK_TITLE } from '../utils/books';
 import { chunkScenesIntoParts } from '../utils/splitOutput';
@@ -1559,7 +1560,7 @@ export class ManuscriptOptionsModal extends Modal {
             return;
         }
         if (key.includes('modern classic') || key.includes('modern-classic') || key.includes('modern_classic')) {
-            desc.setText('Acts can open with optional epigraphs and Roman numeral PART pages. Chapter headings come from the shared Chapter field on scene, beat, or backdrop notes. Page numbers live in the headers: the left-page header pairs page number with author, and the right-page header pairs title with page number. Scene breaks use lower-case Roman numerals with a short rule.');
+            desc.setText(`Acts can open with optional epigraphs and Roman numeral PART pages. ${SHARED_CHAPTER_FIELD_PUBLICATION_COPY} Page numbers live in the headers: the left-page header pairs page number with author, and the right-page header pairs title with page number. Scene breaks use lower-case Roman numerals with a short rule.`);
             return;
         }
         if (key.includes('contemporary literary') || key.includes('contemporary')) {

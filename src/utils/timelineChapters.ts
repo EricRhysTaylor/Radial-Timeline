@@ -2,6 +2,9 @@ import type { TimelineItem } from '../types';
 import { isSceneItem } from './sceneHelpers';
 
 export const SHARED_CHAPTER_FIELD_KEY = 'Chapter';
+export const SHARED_CHAPTER_FIELD_SOURCE_LABEL = 'shared Chapter field on scene, beat, or backdrop notes';
+export const SHARED_CHAPTER_FIELD_SOURCE_LABEL_TITLE = 'Shared Chapter field on scene, beat, or backdrop notes';
+export const SHARED_CHAPTER_FIELD_PUBLICATION_COPY = `Chapter headings come from the ${SHARED_CHAPTER_FIELD_SOURCE_LABEL}.`;
 
 export interface TimelineChapterMarker {
     sourcePath?: string;
@@ -104,4 +107,20 @@ export function groupTimelineChapterMarkersByScenePath(
         acc[marker.resolvedScenePath].push(marker);
         return acc;
     }, {});
+}
+
+export function collapseTimelineChapterMarkersByResolvedBoundary(
+    markers: TimelineChapterMarker[]
+): TimelineChapterMarker[] {
+    const lastMarkerByBoundary = new Map<string, TimelineChapterMarker>();
+
+    markers.forEach((marker) => {
+        const boundaryKey = `${marker.resolvedScenePath}::${marker.resolvedTimelinePosition}`;
+        lastMarkerByBoundary.set(boundaryKey, marker);
+    });
+
+    return markers.filter((marker) => {
+        const boundaryKey = `${marker.resolvedScenePath}::${marker.resolvedTimelinePosition}`;
+        return lastMarkerByBoundary.get(boundaryKey) === marker;
+    });
 }

@@ -70,6 +70,7 @@ import { startPerfSegment } from './utils/Performance';
 import { getFillForScene } from './utils/SceneFill';
 import { estimatePixelsFromTitle } from './utils/LabelMetrics';
 import { renderCenterGrid } from './components/Grid';
+import { renderNarrativeChapterMarkers, type OuterRingChapterBoundaryGeometry } from './components/ChapterMarkers';
 import { renderMonthLabelDefs } from './components/Months';
 import { renderSubplotLabels } from './components/SubplotLabels';
 import { renderSubplotDominanceIndicators, computeSubplotDominanceStates, resolveDominantScene, type SubplotDominanceState } from './components/SubplotDominanceIndicators';
@@ -101,6 +102,7 @@ import { getReadabilityMultiplier, getReadabilityScale } from '../utils/readabil
 import { getVersionCheckService } from '../services/VersionCheckService';
 import { hasActiveAlerts } from '../settings/refactorAlerts';
 import { getConfiguredActCount, parseActLabels } from '../utils/acts';
+import { collapseTimelineChapterMarkersByResolvedBoundary, resolveTimelineChapterMarkers } from '../utils/timelineChapters';
 
 
 // STATUS_COLORS and SceneNumberInfo now imported from constants
@@ -125,6 +127,50 @@ function computeSceneTitleInset(fontScale: number): number {
     if (!Number.isFinite(fontScale) || fontScale <= 1) return SCENE_TITLE_INSET;
     const extraInset = (fontScale - 1) * 18;
     return SCENE_TITLE_INSET + extraInset;
+}
+
+function buildNarrativeChapterResolverItems(params: {
+    scenes: TimelineItem[];
+    masterSubplotOrder: string[];
+    dominantSubplots?: Record<string, string>;
+}): TimelineItem[] {
+    const { scenes, masterSubplotOrder, dominantSubplots } = params;
+    const orderedItems: TimelineItem[] = [];
+    const uniqueSceneCandidates = new Map<string, TimelineItem[]>();
+    const seenNonSceneKeys = new Set<string>();
+
+    scenes.forEach((item) => {
+        if (item.itemType === 'Frontmatter' || item.itemType === 'Backmatter' || item.itemType === 'BookMeta') {
+            return;
+        }
+
+        if (item.itemType === 'Backdrop' || isBeatNote(item)) {
+            const key = item.path || `${item.itemType || 'Item'}::${item.title || ''}`;
+            if (seenNonSceneKeys.has(key)) return;
+            seenNonSceneKeys.add(key);
+            orderedItems.push(item);
+            return;
+        }
+
+        const sceneKey = item.path || `${item.title || ''}::${String(item.when || '')}`;
+        if (!uniqueSceneCandidates.has(sceneKey)) {
+            uniqueSceneCandidates.set(sceneKey, []);
+        }
+        uniqueSceneCandidates.get(sceneKey)!.push(item);
+    });
+
+    uniqueSceneCandidates.forEach((candidateScenes, sceneKey) => {
+        const scenePath = candidateScenes[0]?.path;
+        const resolution = resolveDominantScene({
+            scenePath,
+            candidateScenes,
+            masterSubplotOrder,
+            dominantSubplots
+        });
+        orderedItems.push(resolution.scene);
+    });
+
+    return sortScenes(orderedItems, false, false);
 }
 
 /**
@@ -225,6 +271,7 @@ export function createTimelineSVG(
     const NUM_RINGS = masterSubplotOrder.length;
     const currentMode = (plugin.settings as any).currentMode || 'narrative';
     const shouldApplyNumberSquareColors = currentMode !== 'gossamer';
+    const isNarrativeMode = currentMode === 'narrative';
 
     const resolveSubplotColorIndex = (subplotName: string): number => {
         const key = subplotName && subplotName.trim().length > 0 ? subplotName : 'Main Plot';
@@ -255,6 +302,7 @@ export function createTimelineSVG(
     const isPublicationMode = currentMode === 'publication';
     const sortByWhen = isChronologueMode ? true : ((plugin.settings as any).sortByWhenDate ?? false);
     const forceChronological = isChronologueMode;
+    const showChapterMarkers = isNarrativeMode && !sortByWhen && ((plugin.settings as any).showChapterMarkers ?? false);
     const chronologueSceneEntries: ChronologueSceneEntry[] | undefined = isChronologueMode
         ? collectChronologueSceneEntries(scenes)
         : undefined;
@@ -525,6 +573,7 @@ export function createTimelineSVG(
         synopsesElements,
         sceneGrades,
         manuscriptOrderPositions,
+        outerRingChapterBoundaryGeometry: showChapterMarkers ? new Map<string, OuterRingChapterBoundaryGeometry>() : undefined,
         numActs,
         maxStageColor // Pass for Gossamer mode beat strokes
     };
@@ -667,6 +716,21 @@ export function createTimelineSVG(
     };
 
     svg += renderNumberSquares(numberSquareContext);
+
+    if (showChapterMarkers && ringRenderContext.outerRingChapterBoundaryGeometry) {
+        const chapterResolverItems = buildNarrativeChapterResolverItems({
+            scenes,
+            masterSubplotOrder,
+            dominantSubplots: plugin.settings.dominantSubplots
+        });
+        const chapterMarkers = collapseTimelineChapterMarkersByResolvedBoundary(
+            resolveTimelineChapterMarkers(chapterResolverItems)
+        );
+        svg += renderNarrativeChapterMarkers({
+            markers: chapterMarkers,
+            boundaryGeometryByScenePath: ringRenderContext.outerRingChapterBoundaryGeometry
+        });
+    }
 
     // Close rotatable container
     svg += `</g>`;

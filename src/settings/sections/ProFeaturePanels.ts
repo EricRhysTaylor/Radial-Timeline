@@ -25,8 +25,10 @@ import { normalizeMatterClassValue } from '../../utils/matterMeta';
 import { extractBodyText, getSceneFilesByOrder } from '../../utils/manuscript';
 import { isProActive } from '../proEntitlement';
 import {
-    buildBookDetailsChecklist,
-    buildBookPagesChecklist,
+    SHARED_CHAPTER_FIELD_PUBLICATION_COPY,
+    SHARED_CHAPTER_FIELD_SOURCE_LABEL_TITLE
+} from '../../utils/timelineChapters';
+import {
     describeMatterReadiness
 } from '../../services/PublishingValidationService';
 import { adaptPandocLayoutsToPublishingModel } from '../../utils/publishingModel';
@@ -1076,47 +1078,6 @@ function getPublishingProgressContext(plugin: RadialTimelinePlugin): PublishingP
     };
 }
 
-function getIssueLabelFromCodes(issues: ValidationIssue[], fallback = 'Ready'): string {
-    const codes = new Set(issues.map(issue => issue.code));
-    if (codes.has('matter_book_meta_missing') || codes.has('book_meta_required_missing')) return 'Needs metadata';
-    if (codes.has('matter_role_duplicate')) return 'Needs repair';
-    if (codes.has('matter_role_unsupported')) return 'Not supported by this layout';
-    if (codes.has('matter_semantic_fallback')) return 'Uses page content';
-    if (issues.some(issue => issue.level === 'error')) return 'Needs repair';
-    if (issues.length > 0) return 'Uses page content';
-    return fallback;
-}
-
-function renderGuidanceChecklist(
-    parent: HTMLElement,
-    heading: string,
-    items: GuidanceChecklistItem[],
-    emptyStateText?: string
-): void {
-    const checklist = parent.createDiv({ cls: 'ert-bookmeta-checklist' });
-    const header = checklist.createDiv({ cls: 'ert-bookmeta-checklist-header' });
-    header.createDiv({ cls: 'ert-bookmeta-checklist-title', text: heading });
-    if (emptyStateText) {
-        header.createDiv({ cls: 'ert-bookmeta-checklist-desc', text: emptyStateText });
-    }
-
-    items.forEach((item) => {
-        const toneClass = item.tone === 'success'
-            ? 'found'
-            : item.tone === 'error'
-                ? 'missing'
-                : 'warning';
-        const row = checklist.createDiv({ cls: `ert-bookmeta-status is-${toneClass}` });
-        const icon = row.createSpan({ cls: 'ert-bookmeta-status-icon' });
-        setIcon(icon, item.tone === 'success' ? 'check-circle-2' : item.tone === 'error' ? 'alert-circle' : 'alert-triangle');
-        row.createSpan({ text: `${item.label}: ${item.state}` });
-        row.createDiv({
-            cls: 'ert-bookmeta-preview-empty-desc',
-            text: item.value || item.detail
-        });
-    });
-}
-
 interface MatterPreviewItem {
     file: TFile;
     side: 'front' | 'back';
@@ -1129,14 +1090,6 @@ interface MatterPreviewItem {
 interface MatterPreviewSummary {
     front: MatterPreviewItem[];
     back: MatterPreviewItem[];
-}
-
-interface GuidanceChecklistItem {
-    label: string;
-    state: string;
-    detail: string;
-    tone: 'success' | 'warning' | 'error';
-    value?: string;
 }
 
 function detectAutoMatterBodyMode(bodyText: string): 'latex' | 'plain' {
@@ -1768,7 +1721,15 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
     // ─────────────────────────────────────────────────────────────────────────
     // PANDOC & EXPORT SETTINGS
     // ─────────────────────────────────────────────────────────────────────────
+    const publishingStagesPanel = lockPanel(section.createDiv({ cls: `${ERT_CLASSES.STACK}` }));
+    publishingStagesPanel.style.order = '5';
+    const setupProgressShell = publishingStagesPanel.createDiv({
+        cls: 'ert-publishing-setup-shell'
+    });
+    const setupProgressGrid = setupProgressShell.createDiv({ cls: 'ert-publishing-setup-grid' });
+
     const pandocPanel = lockPanel(section.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` }));
+    pandocPanel.style.order = '10';
     const pandocHeading = addProRow(new Setting(pandocPanel))
         .setName('Export & publishing')
         .setDesc('Assemble your manuscript in Markdown or render a print-ready PDF using Pandoc and LaTeX. Configure templates, layouts, and publishing tools below.')
@@ -1776,12 +1737,6 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
     addHeadingIcon(pandocHeading, 'book-open-text');
     addWikiLink(pandocHeading, 'Settings#professional');
     applyErtHeaderLayout(pandocHeading);
-
-    const setupProgressShell = pandocPanel.createDiv({
-        cls: 'ert-publishing-setup-shell'
-    });
-    setupProgressShell.style.order = '5';
-    const setupProgressGrid = setupProgressShell.createDiv({ cls: 'ert-publishing-setup-grid' });
 
     const systemConfigPanel = pandocPanel.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
     systemConfigPanel.style.order = '50';
@@ -1929,7 +1884,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
         cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}`,
         attr: { [ERT_DATA.SECTION]: 'pdf-style' }
     });
-    layoutPanel.style.order = '20';
+    layoutPanel.style.order = '30';
     const layoutHeading = addProRow(new Setting(layoutPanel))
         .setName('PDF Style')
         .setDesc('Choose the style used for exported PDFs. Built-in and custom styles are listed below.')
@@ -1972,7 +1927,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                 return 'Centered running header with book title and bottom-centered page numbers. One-inch margins, 1.5 line spacing, serif body text, and minimal ornamentation.';
             }
             if (variant === 'modernClassic') {
-                return 'Acts can open with optional epigraphs and Roman numeral PART pages. Chapter headings come from the shared Chapter field on scene, beat, or backdrop notes. Centered headers pair page number with author (even) or title with page number (odd). Scene breaks use lower-case Roman numerals with a short rule.';
+                return `Acts can open with optional epigraphs and Roman numeral PART pages. ${SHARED_CHAPTER_FIELD_PUBLICATION_COPY} Centered headers pair page number with author (even) or title with page number (odd). Scene breaks use lower-case Roman numerals with a short rule.`;
             }
             if (variant === 'signature') {
                 return 'Page numbers are header-only: the left-page header pairs page number with author, and the right-page header pairs title with page number. Scene opener pages use generous vertical spacing and suppress headers and folios. Refined serif body typography.';
@@ -2051,7 +2006,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                     { label: 'Font', value: 'Latin Modern (serif)' },
                     { label: 'Spacing', value: '1.18×' },
                     { label: 'Parts', value: 'Act opener — Roman numeral with optional epigraph' },
-                    { label: 'Chapters', value: 'Shared Chapter field on scene, beat, or backdrop notes' },
+                    { label: 'Chapters', value: SHARED_CHAPTER_FIELD_SOURCE_LABEL_TITLE },
                     { label: 'Scenes', value: 'Lowercase Roman numeral (i. ii.) with short rule' },
                 ];
             case 'signature':
@@ -2072,7 +2027,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                     { label: 'Font', value: 'Sorts Mill Goudy body, sans headers' },
                     { label: 'Spacing', value: '1.5 lines' },
                     { label: 'Scenes', value: 'Opener page — centered, bold, suppresses headers' },
-                    { label: 'Chapters', value: 'Shared Chapter field on scene, beat, or backdrop notes' },
+                    { label: 'Chapters', value: SHARED_CHAPTER_FIELD_SOURCE_LABEL_TITLE },
                 ];
             default:
                 return [];
@@ -3019,120 +2974,90 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
     const renderBookMetaPreview = () => {
         previewBody.empty();
         const activeBookMetaStatus = getActiveBookMetaStatus(plugin);
-        const validationSnapshot = getPublishingValidationSnapshot(plugin);
-        const checklistItems = buildBookDetailsChecklist(activeBookMetaStatus.bookMeta || null);
-        const hasBookMeta = !!activeBookMetaStatus.bookMeta;
-        const nextActionText = !hasBookMeta
-            ? 'Start here: create Book Details, then review Book Pages below.'
-            : validationSnapshot.activeBookMetaIssues.some(issue => issue.level === 'error')
-                ? 'Next: fill in the missing details below.'
-                : 'Next: review Book Pages below.';
-
-        if (!hasBookMeta) {
-            const empty = previewBody.createDiv({ cls: 'ert-bookmeta-preview-empty' });
-            empty.createDiv({ cls: 'ert-bookmeta-preview-empty-title', text: 'Create Book Details' });
-            if (activeBookMetaStatus.sourceFolder) {
-                empty.createDiv({ cls: 'ert-bookmeta-preview-empty-desc', text: `Expected in: ${activeBookMetaStatus.sourceFolder}` });
+        const meta = activeBookMetaStatus.bookMeta ?? null;
+        const sourcePath = (meta?.sourcePath || activeBookMetaStatus.path || '').trim();
+        const hasSourcePath = sourcePath.length > 0;
+        const openOrCreateBookMetaNote = async () => {
+            if (hasSourcePath) {
+                void plugin.app.workspace.openLinkText(sourcePath, '', false);
+                return;
             }
-            empty.createDiv({
-                cls: 'ert-bookmeta-preview-empty-desc',
-                text: 'Add the title, author, and publishing details for this book first.'
-            });
-            const nextRow = empty.createDiv({ cls: 'ert-bookmeta-status is-missing' });
-            const nextIcon = nextRow.createSpan({ cls: 'ert-bookmeta-status-icon' });
-            setIcon(nextIcon, 'sparkles');
-            nextRow.createSpan({ text: 'Next step: Create Book Details' });
-            nextRow.createDiv({ cls: 'ert-bookmeta-preview-empty-desc', text: nextActionText });
-            renderGuidanceChecklist(
-                empty,
-                'Book Details checklist',
-                checklistItems.map(item => ({
-                    label: item.label,
-                    state: item.state,
-                    detail: item.detail,
-                    tone: item.tone,
-                    value: item.value
-                })),
-                'Everything starts here. Fill these in once and reuse them across exports.'
-            );
-            const actions = empty.createDiv({ cls: 'ert-bookmeta-preview-empty-actions' });
-            new ButtonComponent(actions)
-                .setButtonText('Create Book Details')
-                .setCta()
-                .onClick(async () => {
-                    const created = await createBookMetaOnly(plugin);
-                    if (created.created) {
-                        new Notice(`Created Book Details note: ${created.path}`);
-                    } else {
-                        new Notice(created.reason || 'Book Details note was not created.');
-                    }
-                    rerender();
+            const created = await createBookMetaOnly(plugin);
+            if (created.created && created.path) {
+                void plugin.app.workspace.openLinkText(created.path, '', false);
+            } else {
+                new Notice(created.reason || 'Book Details note was not created.');
+            }
+            rerender();
+        };
+
+        const normalizeValue = (value?: string | number | null): string | null => {
+            if (value === undefined || value === null) return null;
+            const normalized = String(value).trim();
+            return normalized.length > 0 ? normalized : null;
+        };
+
+        const renderBookMetaValue = (
+            target: HTMLElement,
+            label: string,
+            value: string | number | null | undefined,
+            placeholder: string,
+            required: boolean,
+            className: 'ert-bookmeta-primary-value' | 'ert-bookmeta-detail-value'
+        ) => {
+            const normalized = normalizeValue(value);
+            const missing = !normalized;
+            const valueEl = missing
+                ? target.createEl('button', {
+                    cls: `${className} ert-bookmeta-preview-value--empty ert-bookmeta-preview-value--missing ert-bookmeta-preview-value--clickable`,
+                    text: placeholder,
+                    attr: { type: 'button', title: `Open Book Details to add ${label.toLowerCase()}` }
+                })
+                : target.createDiv({ cls: className, text: normalized });
+
+            if (missing) {
+                valueEl.classList.toggle('ert-bookmeta-preview-value--required', required);
+                valueEl.classList.toggle('ert-bookmeta-preview-value--optional', !required);
+                valueEl.addEventListener('click', (evt) => {
+                    evt.preventDefault();
+                    void openOrCreateBookMetaNote();
                 });
-            new ButtonComponent(actions)
-                .setButtonText('Jump to Book Pages')
-                .onClick(() => {
-                    matterPreviewFrame?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                });
-            return;
-        }
+            }
+            return valueEl;
+        };
 
-        if (activeBookMetaStatus.warning) {
-            const warningRow = previewBody.createDiv({ cls: 'ert-bookmeta-status is-warning' });
-            const warningIcon = warningRow.createSpan({ cls: 'ert-bookmeta-status-icon' });
-            setIcon(warningIcon, 'alert-circle');
-            warningRow.createSpan({ text: activeBookMetaStatus.warning });
-        }
-
-        const normalizeValue = (value?: string | number | null): string =>
-            value === undefined || value === null || String(value).trim().length === 0
-                ? 'Not set'
-                : String(value);
-
-        const meta = activeBookMetaStatus.bookMeta!;
         const titleCard = previewBody.createDiv({ cls: 'ert-bookmeta-title-card' });
         titleCard.createDiv({ cls: 'ert-planetary-preview-heading', text: 'Book Details' });
 
         const primary = previewBody.createDiv({ cls: 'ert-bookmeta-primary' });
-        const addPrimaryField = (label: string, value?: string | number | null) => {
+        const addPrimaryField = (label: string, value: string | number | null | undefined, placeholder: string) => {
             const field = primary.createDiv({ cls: 'ert-bookmeta-primary-field' });
-            const normalized = normalizeValue(value);
-            const valueEl = field.createDiv({ cls: 'ert-bookmeta-primary-value', text: normalized });
-            valueEl.toggleClass('ert-bookmeta-preview-value--empty', normalized === 'Not set');
+            renderBookMetaValue(field, label, value, placeholder, true, 'ert-bookmeta-primary-value');
             field.createDiv({ cls: 'ert-bookmeta-primary-label', text: label });
         };
-        addPrimaryField('Title', meta.title);
-        addPrimaryField('Author', meta.author);
+        addPrimaryField('Title', meta?.title, 'Add title');
+        addPrimaryField('Author', meta?.author, 'Add author');
 
         const details = previewBody.createDiv({ cls: 'ert-bookmeta-detail-grid' });
         const leftCol = details.createDiv({ cls: 'ert-bookmeta-detail-col ert-bookmeta-detail-col--left' });
         const rightCol = details.createDiv({ cls: 'ert-bookmeta-detail-col ert-bookmeta-detail-col--right' });
-        const addDetailField = (target: HTMLElement, label: string, value?: string | number | null) => {
+        const addDetailField = (
+            target: HTMLElement,
+            label: string,
+            value: string | number | null | undefined,
+            placeholder: string,
+            required: boolean
+        ) => {
             const field = target.createDiv({ cls: 'ert-bookmeta-detail-field' });
-            const normalized = normalizeValue(value);
-            const valueEl = field.createDiv({ cls: 'ert-bookmeta-detail-value', text: normalized });
-            valueEl.toggleClass('ert-bookmeta-preview-value--empty', normalized === 'Not set');
+            renderBookMetaValue(field, label, value, placeholder, required, 'ert-bookmeta-detail-value');
             field.createDiv({ cls: 'ert-bookmeta-detail-label', text: label });
         };
-        addDetailField(leftCol, 'Copyright holder', meta.rights?.copyright_holder);
-        addDetailField(leftCol, 'ISBN', meta.identifiers?.isbn_paperback);
-        addDetailField(rightCol, 'Rights year', meta.rights?.year);
-        addDetailField(rightCol, 'Publisher', meta.publisher?.name);
+        addDetailField(leftCol, 'Copyright holder', meta?.rights?.copyright_holder, 'Add copyright', true);
+        addDetailField(leftCol, 'ISBN', meta?.identifiers?.isbn_paperback, 'Add ISBN (optional)', false);
+        addDetailField(rightCol, 'Rights year', meta?.rights?.year, 'Add year', true);
+        addDetailField(rightCol, 'Publisher', meta?.publisher?.name, 'Add publisher', false);
 
-        renderGuidanceChecklist(
-            previewBody,
-            'Book Details checklist',
-            checklistItems.map(item => ({
-                label: item.label,
-                state: item.state,
-                detail: item.detail,
-                tone: item.tone,
-                value: item.value || undefined
-            })),
-            nextActionText
-        );
-
-        const sourcePath = (meta.sourcePath || activeBookMetaStatus.path || '').trim();
-        if (sourcePath.length > 0) {
+        if (hasSourcePath) {
             const sourceRow = previewBody.createDiv({ cls: 'ert-bookmeta-source-row' });
             sourceRow.createSpan({ cls: 'ert-bookmeta-source-label', text: 'Source' });
             const sourceLink = sourceRow.createEl('a', {
@@ -3145,6 +3070,21 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                 void plugin.app.workspace.openLinkText(sourcePath, '', false);
             });
         }
+
+        if (!meta) {
+            const actions = previewBody.createDiv({ cls: 'ert-bookmeta-preview-empty-actions' });
+            new ButtonComponent(actions)
+                .setButtonText('Create Book Details')
+                .setCta()
+                .onClick(async () => {
+                    await openOrCreateBookMetaNote();
+                });
+            new ButtonComponent(actions)
+                .setButtonText('Jump to Book Pages')
+                .onClick(() => {
+                    matterPreviewFrame?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+        }
     };
     renderBookMetaPreview();
 
@@ -3153,10 +3093,10 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
         cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}`,
         attr: { [ERT_DATA.SECTION]: 'book-pages' }
     });
-    publishingSetupPanel.style.order = '30';
+    publishingSetupPanel.style.order = '20';
     const publishingHeading = addProRow(new Setting(publishingSetupPanel))
-        .setName('Book Details and Pages')
-        .setDesc('Create the book details note first, then review the page setup below.')
+        .setName('Book Pages')
+        .setDesc('Review the pages that frame the manuscript and the content that appears before and after it.')
         .setHeading();
     addHeadingIcon(publishingHeading, 'book-open-text');
     applyErtHeaderLayout(publishingHeading);
@@ -3328,7 +3268,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
 
     matterPreviewFrame = publishingSetupPanel.createDiv({ cls: `${ERT_CLASSES.PREVIEW_FRAME} ert-previewFrame--flush` });
     const matterPreviewHeader = matterPreviewFrame.createDiv({ cls: 'ert-previewFrame__header' });
-    matterPreviewHeader.createDiv({ cls: 'ert-planetary-preview-heading ert-previewFrame__title', text: 'Preview (Book Pages)' });
+    matterPreviewHeader.createDiv({ cls: 'ert-planetary-preview-heading ert-previewFrame__title', text: 'Book Pages preview' });
     const matterPreviewBody = matterPreviewFrame.createDiv({ cls: 'ert-matter-preview-body' });
     const formatRoleLabel = (role: string): string => role.replace(/[_-]+/g, ' ').trim();
     const renderMatterPreview = async () => {
@@ -3338,31 +3278,6 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             const validationSnapshot = getPublishingValidationSnapshot(plugin);
             const bookMetaAvailable = !!activeBookMetaStatus.bookMeta;
             const preview = await getMatterPreviewSummary(plugin);
-            const pageChecklist = buildBookPagesChecklist({
-                bookMetaAvailable,
-                items: [...preview.front, ...preview.back].map(item => ({
-                    role: item.role,
-                    usesBookMeta: item.usesBookMeta,
-                })),
-                issueCodes: validationSnapshot.matterIssues.map(issue => ({
-                    field: issue.field,
-                    code: issue.code,
-                    level: issue.level,
-                })),
-            });
-            renderGuidanceChecklist(
-                matterPreviewBody,
-                'Book Pages checklist',
-                pageChecklist.map(item => ({
-                    label: item.label,
-                    state: item.state,
-                    detail: item.detail,
-                    tone: item.tone,
-                })),
-                bookMetaAvailable
-                    ? 'Use this checklist to confirm which pages are ready and which still need setup.'
-                    : 'Create Book Details first to unlock page setup guidance.'
-            );
             if (preview.front.length === 0 && preview.back.length === 0) {
                 const empty = matterPreviewBody.createDiv({ cls: 'ert-matter-preview-empty' });
                 empty.createDiv({ cls: 'ert-matter-preview-empty-title', text: 'No Book Pages found yet' });
@@ -3401,12 +3316,13 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                 };
             });
             const overallDescriptor = descriptors.reduce((winner, entry) => {
-                const rank: Record<'Ready' | 'Uses page content' | 'Not supported by this layout' | 'Needs repair' | 'Needs metadata', number> = {
+                const rank: Record<string, number> = {
                     Ready: 0,
-                    'Uses page content': 1,
-                    'Not supported by this layout': 2,
-                    'Needs repair': 3,
-                    'Needs metadata': 4
+                    'Custom page': 1,
+                    'Uses page content': 2,
+                    'Excluded by layout': 3,
+                    'Needs repair': 4,
+                    'Needs metadata': 5
                 };
                 return rank[entry.descriptor.label] > rank[winner.label] ? entry.descriptor : winner;
             }, descriptors[0].descriptor);

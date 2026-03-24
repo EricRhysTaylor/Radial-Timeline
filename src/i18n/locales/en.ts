@@ -97,6 +97,10 @@ export interface TranslationKeys {
                 name: string;
                 desc: string;
             };
+            chapterMarkers: {
+                name: string;
+                desc: string;
+            };
             readability: {
                 name: string;
                 desc: string;
@@ -346,6 +350,10 @@ export const en: TranslationKeys = {
             autoExpand: {
                 name: 'Auto-expand clipped scene titles',
                 desc: 'When hovering over a scene, automatically expand it if the title text is clipped. Disable this if you prefer to quickly slide through scenes and read titles from the synopsis instead.',
+            },
+            chapterMarkers: {
+                name: 'Show chapter markers',
+                desc: 'Display chapter boundaries as small double ticks on the Narrative all-scenes ring.',
             },
             readability: {
                 name: 'Readability size',

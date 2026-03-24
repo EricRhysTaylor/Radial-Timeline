@@ -27,6 +27,7 @@ import { appendSynopsisElementForScene } from '../utils/SynopsisBuilder';
 import { resolveDominantScene } from '../components/SubplotDominanceIndicators';
 import type { StageColorMap } from '../utils/Gossamer';
 import { getReadabilityMultiplier } from '../../utils/readability';
+import type { OuterRingChapterBoundaryGeometry } from '../components/ChapterMarkers';
 
 export interface RingRenderContext {
     plugin: PluginRendererFacade;
@@ -45,6 +46,7 @@ export interface RingRenderContext {
     synopsesElements: SVGGElement[];
     sceneGrades: Map<string, string>;
     manuscriptOrderPositions?: Map<string, { startAngle: number; endAngle: number }>;
+    outerRingChapterBoundaryGeometry?: Map<string, OuterRingChapterBoundaryGeometry>;
     numActs: number;
     maxStageColor?: string; // For Gossamer mode: uses latest sweep stage color
 }
@@ -67,6 +69,7 @@ export function renderRings(ctx: RingRenderContext): string {
         synopsesElements,
         sceneGrades,
         manuscriptOrderPositions,
+        outerRingChapterBoundaryGeometry,
         numActs
     } = ctx;
 
@@ -238,6 +241,13 @@ export function renderRings(ctx: RingRenderContext): string {
                     const arcPathStr = sceneArcPath(innerR, effectiveOuterR, sceneStartAngle, sceneEndAngle);
                     const sceneUniqueKey = scene.path || `${scene.title || ''}::${scene.number ?? ''}::${scene.when ?? ''}`;
                     const sceneId = makeSceneId(act, ring, idx, true, true, sceneUniqueKey);
+
+                    if (!isBeatNote(scene) && scene.path) {
+                        outerRingChapterBoundaryGeometry?.set(scene.path, {
+                            startAngle: sceneStartAngle,
+                            outerR: effectiveOuterR
+                        });
+                    }
 
                     appendSynopsisElementForScene({
                         plugin,

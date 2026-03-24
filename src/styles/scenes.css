@@ -22,6 +22,28 @@
   /* heavier for readability */
 }
 
+.radial-timeline-container .rt-chapter-marker-line {
+  fill: none;
+  stroke: color-mix(in srgb, var(--text-muted) 74%, transparent);
+  stroke-linecap: round;
+  opacity: 0.78;
+  pointer-events: none;
+  vector-effect: non-scaling-stroke;
+}
+
+.radial-timeline-container .rt-chapter-marker-hit {
+  fill: none;
+  stroke: transparent;
+  pointer-events: stroke;
+  vector-effect: non-scaling-stroke;
+}
+
+.radial-timeline-container .rt-chapter-marker:hover .rt-chapter-marker-line,
+.radial-timeline-container .rt-chapter-marker:focus-within .rt-chapter-marker-line {
+  stroke: color-mix(in srgb, var(--text-normal) 68%, transparent);
+  opacity: 0.98;
+}
+
 /* Rotation toggle base styles (timeline only; no animations) */
 .radial-timeline-svg #rotation-toggle use {
   color: inherit;

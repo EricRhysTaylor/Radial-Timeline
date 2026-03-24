@@ -32,7 +32,7 @@ const CONSTRAINED_MATTER_ROLES = new Set(['title-page', 'copyright', 'about-auth
 const FALLBACK_ONLY_MATTER_ROLES = new Set(['title-page', 'dedication', 'epigraph', 'acknowledgments', 'about-author']);
 
 export interface MatterReadinessDescriptor {
-    label: 'Ready' | 'Needs metadata' | 'Uses page content' | 'Not supported by this layout' | 'Needs repair';
+    label: 'Ready' | 'Needs metadata' | 'Uses page content' | 'Custom page' | 'Excluded by layout' | 'Needs repair';
     detail: string;
     tone: 'success' | 'warning' | 'error';
 }
@@ -59,18 +59,16 @@ export function describeMatterReadiness(params: {
     }
     if (issueCodes.has('matter_role_unsupported')) {
         return {
-            label: 'Not supported by this layout',
-            detail: 'This page type is not supported by the selected layout.',
+            label: 'Excluded by layout',
+            detail: 'This page is not styled by the selected PDF style.',
             tone: 'warning',
         };
     }
     if (issueCodes.has('matter_semantic_fallback')) {
         return {
             label: 'Uses page content',
-            detail: role
-                ? 'This page is template-managed and uses page content.'
-                : 'This page is template-managed and uses page content.',
-            tone: 'warning',
+            detail: 'This page uses the content written in the note.',
+            tone: 'success',
         };
     }
     if (issueCodes.has('matter_role_duplicate') || issueCodes.has('matter_repair_needed')) {
@@ -80,12 +78,19 @@ export function describeMatterReadiness(params: {
             tone: 'warning',
         };
     }
+    if (role === 'other') {
+        return {
+            label: 'Custom page',
+            detail: 'This page uses the content written in the note.',
+            tone: 'success',
+        };
+    }
     const fallbackOnlyRoles = new Set(['title-page', 'dedication', 'epigraph', 'acknowledgments', 'about-author']);
     if (role && fallbackOnlyRoles.has(role)) {
         return {
             label: 'Uses page content',
-            detail: 'This page is template-managed and uses page content.',
-            tone: 'warning',
+            detail: 'This page uses the content written in the note.',
+            tone: 'success',
         };
     }
     if (usesBookMeta && !bookMetaAvailable) {
@@ -98,14 +103,14 @@ export function describeMatterReadiness(params: {
     if (role === 'copyright' && usesBookMeta && bookMetaAvailable) {
         return {
             label: 'Ready',
-            detail: 'Template-managed and ready to export.',
+            detail: 'Ready for export.',
             tone: 'success',
         };
     }
     return {
         label: 'Uses page content',
-        detail: 'This page is template-managed and uses page content.',
-        tone: 'warning',
+        detail: 'This page uses the content written in the note.',
+        tone: 'success',
     };
 }
 function pushIssue(
@@ -145,7 +150,7 @@ export function summarizeValidationIssues(issues: ValidationIssue[]): Validation
 export interface BookDetailChecklistItem {
     key: 'title' | 'author' | 'copyright-holder' | 'rights-year' | 'isbn' | 'publisher';
     label: string;
-    state: 'Complete' | 'Needs setup' | 'Needs metadata';
+    state: 'Ready' | 'Needs setup' | 'Needs metadata';
     detail: string;
     tone: 'success' | 'warning' | 'error';
     value?: string;
@@ -154,7 +159,7 @@ export interface BookDetailChecklistItem {
 export interface BookPageChecklistItem {
     key: 'title-page' | 'copyright' | 'dedication' | 'epigraph' | 'acknowledgments' | 'about-author';
     label: string;
-    state: 'Template-managed' | 'Uses page content' | 'Needs setup' | 'Needs metadata' | 'Not supported by this layout';
+    state: 'Ready' | 'Uses page content' | 'Custom page' | 'Needs setup' | 'Needs metadata' | 'Excluded by layout';
     detail: string;
     tone: 'success' | 'warning' | 'error';
 }
@@ -173,7 +178,7 @@ export function buildBookDetailsChecklist(bookMeta: BookMeta | null): BookDetail
         {
             key: 'title',
             label: 'Title',
-            state: normalized.title ? 'Complete' : 'Needs setup',
+            state: normalized.title ? 'Ready' : 'Needs setup',
             detail: normalized.title ? 'Used on the title page and in export metadata.' : 'Create Book Details to add the book title.',
             tone: normalized.title ? 'success' : 'error',
             value: normalized.title || undefined,
@@ -181,7 +186,7 @@ export function buildBookDetailsChecklist(bookMeta: BookMeta | null): BookDetail
         {
             key: 'author',
             label: 'Author',
-            state: normalized.author ? 'Complete' : 'Needs setup',
+            state: normalized.author ? 'Ready' : 'Needs setup',
             detail: normalized.author ? 'Shown on the title page and in export metadata.' : 'Create Book Details to add the author name.',
             tone: normalized.author ? 'success' : 'error',
             value: normalized.author || undefined,
@@ -189,7 +194,7 @@ export function buildBookDetailsChecklist(bookMeta: BookMeta | null): BookDetail
         {
             key: 'copyright-holder',
             label: 'Copyright holder',
-            state: normalized.copyrightHolder ? 'Complete' : 'Needs setup',
+            state: normalized.copyrightHolder ? 'Ready' : 'Needs setup',
             detail: normalized.copyrightHolder ? 'Used on the copyright page.' : 'Add the copyright holder for the copyright page.',
             tone: normalized.copyrightHolder ? 'success' : 'warning',
             value: normalized.copyrightHolder || undefined,
@@ -197,7 +202,7 @@ export function buildBookDetailsChecklist(bookMeta: BookMeta | null): BookDetail
         {
             key: 'rights-year',
             label: 'Rights year',
-            state: normalized.rightsYear ? 'Complete' : 'Needs setup',
+            state: normalized.rightsYear ? 'Ready' : 'Needs setup',
             detail: normalized.rightsYear ? 'Used on the copyright page.' : 'Add the rights year for the copyright page.',
             tone: normalized.rightsYear ? 'success' : 'warning',
             value: normalized.rightsYear ? String(normalized.rightsYear) : undefined,
@@ -205,7 +210,7 @@ export function buildBookDetailsChecklist(bookMeta: BookMeta | null): BookDetail
         {
             key: 'isbn',
             label: 'ISBN',
-            state: normalized.isbn ? 'Complete' : 'Needs setup',
+            state: normalized.isbn ? 'Ready' : 'Needs setup',
             detail: normalized.isbn ? 'Included in export metadata when present.' : 'Optional, but useful for print-ready exports.',
             tone: normalized.isbn ? 'success' : 'warning',
             value: normalized.isbn || undefined,
@@ -213,7 +218,7 @@ export function buildBookDetailsChecklist(bookMeta: BookMeta | null): BookDetail
         {
             key: 'publisher',
             label: 'Publisher',
-            state: normalized.publisher ? 'Complete' : 'Needs setup',
+            state: normalized.publisher ? 'Ready' : 'Needs setup',
             detail: normalized.publisher ? 'Shown in the publishing details.' : 'Optional, but useful for published editions.',
             tone: normalized.publisher ? 'success' : 'warning',
             value: normalized.publisher || undefined,
@@ -262,8 +267,8 @@ export function buildBookPagesChecklist(params: {
             return {
                 key,
                 label: friendlyName,
-                state: 'Not supported by this layout',
-                detail: 'This page type is not supported by the selected layout.',
+                state: 'Excluded by layout',
+                detail: 'This page is not styled by the selected PDF style.',
                 tone: 'warning',
             };
         }
@@ -294,8 +299,18 @@ export function buildBookPagesChecklist(params: {
             return {
                 key,
                 label: friendlyName,
-                state: 'Template-managed',
-                detail: 'This page pulls from Book Details.',
+                state: 'Ready',
+                detail: 'Ready for export. Pulls from Book Details.',
+                tone: 'success',
+            };
+        }
+
+        if ((roleItem.role || '').trim().toLowerCase() === 'other') {
+            return {
+                key,
+                label: friendlyName,
+                state: 'Custom page',
+                detail: 'This page uses the content written in the note.',
                 tone: 'success',
             };
         }
@@ -306,8 +321,8 @@ export function buildBookPagesChecklist(params: {
             state: 'Uses page content',
             detail: roleItem.usesBookMeta
                 ? 'This page uses Book Details where available.'
-                : 'This page uses the page body as written.',
-            tone: 'warning',
+                : 'This page uses the content written in the note.',
+            tone: 'success',
         };
     });
 }
@@ -507,13 +522,19 @@ export class PublishingValidationService {
             }
 
             if (role && FALLBACK_ONLY_MATTER_ROLES.has(role) && parsedMeta.usesBookMeta) {
-                pushIssue(snapshot.matterIssues, 'matter', 'info', 'matter_semantic_fallback', `This page uses page content instead of layout-managed output.`, {
+                pushIssue(snapshot.matterIssues, 'matter', 'info', 'matter_semantic_fallback', `This page uses the content written in the note.`, {
                     field: role,
                 });
             }
 
-            if (role && selectedProfile && selectedProfile.supportedMatterRoles.length > 0 && !selectedProfile.supportedMatterRoles.includes(role)) {
-                pushIssue(snapshot.matterIssues, 'matter', 'warning', 'matter_role_unsupported', `This page type is not supported by the selected layout.`, {
+            if (
+                role &&
+                role !== 'other' &&
+                selectedProfile &&
+                selectedProfile.supportedMatterRoles.length > 0 &&
+                !selectedProfile.supportedMatterRoles.includes(role)
+            ) {
+                pushIssue(snapshot.matterIssues, 'matter', 'warning', 'matter_role_unsupported', `This page is excluded by the selected layout.`, {
                     field: role,
                 });
             }
