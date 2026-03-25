@@ -687,7 +687,7 @@ function getInteractionMode(view: unknown): 'allscenes' | 'mainplot' | 'gossamer
  */
 export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promise<void> {
   // Get beat system from settings (used by both pre-check and processing)
-  const settingsBeatSystem = resolveSelectedBeatModelFromSettings(plugin.settings) || plugin.settings.beatSystem || 'Save The Cat';
+  const settingsBeatSystem = resolveSelectedBeatModelFromSettings(plugin.settings) || 'Save The Cat';
   const recognizedSystems = ['Save The Cat', 'Hero\'s Journey', 'Story Grid'];
 
   // Resolve the display name from the active beat model first.

@@ -23,6 +23,7 @@ import {
     DEFAULT_CUSTOM_BEAT_SYSTEM_ID,
     getCustomBeatConfigKey,
     replaceSavedBeatSystem,
+    resolveSelectedBeatModelFromSettings,
 } from '../../utils/beatSystemState';
 import {
     hasBeatReadableText,
@@ -6207,7 +6208,7 @@ export function renderStoryBeatsSection(params: {
 
     async function createBeatTemplates(): Promise<void> {
         const activeTab = getActiveBeatWorkspaceTab();
-        const storyStructureName = activeTab?.name ?? plugin.settings.beatSystem ?? 'Custom';
+        const storyStructureName = activeTab?.name ?? resolveSelectedBeatModelFromSettings(plugin.settings) ?? 'Custom';
 
         let storyStructure = getPlotSystem(storyStructureName);
         if (!storyStructure && activeTab) {

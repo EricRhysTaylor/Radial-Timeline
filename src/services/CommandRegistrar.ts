@@ -849,7 +849,7 @@ export class CommandRegistrar {
                 .filter((beat): beat is ModernClassicBeatDefinition => !!beat);
         }
 
-        const selectedSystem = (resolveSelectedBeatModelFromSettings(this.plugin.settings) || this.plugin.settings.beatSystem || 'Custom').trim();
+        const selectedSystem = (resolveSelectedBeatModelFromSettings(this.plugin.settings) || 'Custom').trim();
 
         const builtin = getPlotSystem(selectedSystem);
         if (!builtin) return [];

@@ -1583,7 +1583,7 @@ export function renderAiSection(params: {
             frontmatterMappings: plugin.settings.frontmatterMappings,
             provider: engine?.provider,
             modelId: engine?.modelId,
-            beatSystem: selectedBeatModel || plugin.settings.beatSystem || 'Save The Cat',
+            beatSystem: selectedBeatModel || 'Save The Cat',
             beats: beatOrder.map((beatName, index) => ({
                 beatName,
                 beatNumber: index + 1,
@@ -1599,7 +1599,7 @@ export function renderAiSection(params: {
                     beatNumber: index + 1,
                     idealRange: '0-100'
                 })),
-                selectedBeatModel || plugin.settings.beatSystem || 'Save The Cat'
+                selectedBeatModel || 'Save The Cat'
             )
             : { transformText: '', instructionText: '', prompt: '' };
         const gossamerInstructionTokens = estimateTokensFromChars(gossamerPromptParts.instructionText.length);

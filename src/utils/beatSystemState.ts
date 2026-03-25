@@ -32,10 +32,6 @@ export function getCustomBeatConfigKey(customBeatSystemId: string | undefined): 
     return `custom:${normalizedId}`;
 }
 
-export function getActiveCustomBeatSystemId(settings: Pick<RadialTimelineSettings, 'activeCustomBeatSystemId'>): string {
-    return (settings.activeCustomBeatSystemId ?? '').trim() || DEFAULT_CUSTOM_BEAT_SYSTEM_ID;
-}
-
 export function getSavedBeatSystems(settings: Pick<RadialTimelineSettings, 'savedBeatSystems'>): SavedBeatSystem[] {
     return Array.isArray(settings.savedBeatSystems) ? settings.savedBeatSystems : [];
 }
@@ -47,54 +43,6 @@ export function findSavedBeatSystem(
     const targetId = (customBeatSystemId ?? '').trim();
     if (!targetId) return undefined;
     return getSavedBeatSystems(settings).find((system) => system.id === targetId);
-}
-
-export function ensureActiveCustomBeatSystem(settings: Pick<RadialTimelineSettings, 'savedBeatSystems' | 'activeCustomBeatSystemId'>): SavedBeatSystem {
-    if (!Array.isArray(settings.savedBeatSystems)) {
-        settings.savedBeatSystems = [];
-    }
-    const activeId = getActiveCustomBeatSystemId(settings);
-    settings.activeCustomBeatSystemId = activeId;
-    const existing = settings.savedBeatSystems.find((system) => system.id === activeId);
-    if (existing) return existing;
-
-    const fallback = activeId === DEFAULT_CUSTOM_BEAT_SYSTEM_ID
-        ? buildDefaultCustomBeatSystem()
-        : {
-            id: activeId,
-            name: DEFAULT_CUSTOM_BEAT_SYSTEM_NAME,
-            description: '',
-            beats: [],
-            createdAt: new Date().toISOString(),
-        };
-    settings.savedBeatSystems.unshift(fallback);
-    return fallback;
-}
-
-export function getActiveCustomBeatSystem(
-    settings: Pick<RadialTimelineSettings, 'savedBeatSystems' | 'activeCustomBeatSystemId'>
-): SavedBeatSystem | undefined {
-    return findSavedBeatSystem(settings, getActiveCustomBeatSystemId(settings));
-}
-
-export function getActiveCustomBeatSystemName(
-    settings: Pick<RadialTimelineSettings, 'savedBeatSystems' | 'activeCustomBeatSystemId'>,
-    fallback = DEFAULT_CUSTOM_BEAT_SYSTEM_NAME
-): string {
-    const activeSystem = getActiveCustomBeatSystem(settings);
-    return normalizeBeatSetNameInput(activeSystem?.name ?? '', fallback);
-}
-
-export function getActiveCustomBeatSystemDescription(
-    settings: Pick<RadialTimelineSettings, 'savedBeatSystems' | 'activeCustomBeatSystemId'>
-): string {
-    return getActiveCustomBeatSystem(settings)?.description ?? '';
-}
-
-export function getActiveCustomBeatSystemBeats(
-    settings: Pick<RadialTimelineSettings, 'savedBeatSystems' | 'activeCustomBeatSystemId'>
-): BeatDefinition[] {
-    return getActiveCustomBeatSystem(settings)?.beats ?? [];
 }
 
 export function replaceSavedBeatSystem(
@@ -130,7 +78,7 @@ export function removeSavedBeatSystem(
 }
 
 export function resolveSelectedBeatModelFromSettings(
-    settings: Pick<RadialTimelineSettings, 'books' | 'activeBookId' | 'beatSystem' | 'savedBeatSystems' | 'activeCustomBeatSystemId'>
+    settings: Pick<RadialTimelineSettings, 'books' | 'activeBookId' | 'beatSystem'>
 ): string | undefined {
     const activeBook = getActiveBook(settings as RadialTimelineSettings);
     const workspace = activeBook?.beatWorkspace as BeatWorkspaceState | undefined;

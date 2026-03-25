@@ -1130,7 +1130,7 @@ export class BookDesignerModal extends Modal {
 
     private getActiveBeatSetTitle(): string {
         const activeTab = getActiveLoadedBeatTab(this.plugin.settings);
-        const beatSystem = (activeTab?.name || resolveSelectedBeatModelFromSettings(this.plugin.settings) || this.plugin.settings.beatSystem || 'Custom').trim();
+        const beatSystem = (activeTab?.name || resolveSelectedBeatModelFromSettings(this.plugin.settings) || 'Custom').trim();
         return beatSystem.length > 0 ? beatSystem : 'Custom';
     }
 
@@ -1570,7 +1570,7 @@ export class BookDesignerModal extends Modal {
                 beatsSkippedDuplicate = true;
             } else {
                 const activeTab = getActiveLoadedBeatTab(this.plugin.settings);
-                const beatSystem = activeTab?.name || resolveSelectedBeatModelFromSettings(this.plugin.settings) || this.plugin.settings.beatSystem || 'Custom';
+                const beatSystem = activeTab?.name || resolveSelectedBeatModelFromSettings(this.plugin.settings) || 'Custom';
                 const beatTemplate = getTemplateParts('Beat', this.plugin.settings).merged;
 
                 const activeWorkspaceSystem = getCustomSystemFromSettings(this.plugin.settings);

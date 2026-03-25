@@ -5,8 +5,6 @@ import { PLOT_SYSTEM_NAMES } from '../utils/beatsSystems';
 import {
     DEFAULT_CUSTOM_BEAT_SYSTEM_ID,
     buildDefaultCustomBeatSystem,
-    ensureActiveCustomBeatSystem,
-    getActiveCustomBeatSystemId,
     getCustomBeatConfigKey,
     replaceSavedBeatSystem,
 } from '../utils/beatSystemState';
@@ -41,6 +39,34 @@ export interface BeatSettingsMigrationResult {
 
 function cloneHoverFields(fields: HoverMetadataField[] | undefined): HoverMetadataField[] {
     return (fields ?? []).map((field) => ({ ...field }));
+}
+
+function getLegacyActiveCustomBeatSystemId(settings: Pick<RadialTimelineSettings, 'activeCustomBeatSystemId'>): string {
+    return (settings.activeCustomBeatSystemId ?? '').trim() || DEFAULT_CUSTOM_BEAT_SYSTEM_ID;
+}
+
+function ensureLegacyActiveCustomBeatSystem(
+    settings: Pick<RadialTimelineSettings, 'savedBeatSystems' | 'activeCustomBeatSystemId'>
+): SavedBeatSystem {
+    if (!Array.isArray(settings.savedBeatSystems)) {
+        settings.savedBeatSystems = [];
+    }
+    const activeId = getLegacyActiveCustomBeatSystemId(settings);
+    settings.activeCustomBeatSystemId = activeId;
+    const existing = settings.savedBeatSystems.find((system) => system.id === activeId);
+    if (existing) return existing;
+
+    const fallback = activeId === DEFAULT_CUSTOM_BEAT_SYSTEM_ID
+        ? buildDefaultCustomBeatSystem()
+        : {
+            id: activeId,
+            name: 'Custom',
+            description: '',
+            beats: [],
+            createdAt: new Date().toISOString(),
+        };
+    settings.savedBeatSystems.unshift(fallback);
+    return fallback;
 }
 
 function stripWhenDefinition(yaml: string): string {
@@ -181,7 +207,7 @@ export function migrateBeatSettings(settings: LegacyBeatSettings): BeatSettingsM
         || legacyCustomDescription.trim().length > 0
         || legacyCustomBeats.length > 0;
 
-    const activeCustomBeatSystemId = getActiveCustomBeatSystemId(settings);
+    const activeCustomBeatSystemId = getLegacyActiveCustomBeatSystemId(settings);
     settings.activeCustomBeatSystemId = activeCustomBeatSystemId;
     if (hasLegacyCustomState && activeCustomBeatSystemId === DEFAULT_CUSTOM_BEAT_SYSTEM_ID) {
         replaceSavedBeatSystem(settings, {
@@ -193,7 +219,7 @@ export function migrateBeatSettings(settings: LegacyBeatSettings): BeatSettingsM
         customStateMigrated = true;
     }
 
-    const activeCustomSystem = ensureActiveCustomBeatSystem(settings);
+    const activeCustomSystem = ensureLegacyActiveCustomBeatSystem(settings);
     if (!activeCustomSystem.createdAt) {
         activeCustomSystem.createdAt = new Date().toISOString();
         customStateMigrated = true;
