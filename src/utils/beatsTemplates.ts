@@ -254,8 +254,8 @@ function generatePlotNoteContent(
   const frontmatter = [
     '---',
     `ID: ${generateSceneId()}`,
-    `Beat Model: ${beatSystem}`,
     'Class: Beat',
+    `Beat Model: ${beatSystem}`,
     `Act: ${act}`,
     `Purpose: ${purpose}`,
     rangeValue ? `Range: ${rangeValue}` : 'Range:',

@@ -1,3 +1,4 @@
+import type { App } from 'obsidian';
 import type {
     BeatDefinition,
     BeatLibraryItem,
@@ -10,18 +11,17 @@ import type {
 } from '../types/settings';
 import { getActiveBook } from '../utils/books';
 import {
-    buildDefaultCustomBeatSystem,
     DEFAULT_CUSTOM_BEAT_SYSTEM_ID,
-    getActiveCustomBeatSystem,
-    getActiveCustomBeatSystemDescription,
     getActiveCustomBeatSystemId,
-    getActiveCustomBeatSystemName,
     getCustomBeatConfigKey,
     getSavedBeatSystems,
     replaceSavedBeatSystem,
 } from '../utils/beatSystemState';
 import { normalizeBeatNameInput, normalizeBeatSetNameInput, toBeatModelMatchKey } from '../utils/beatsInputNormalize';
-import { cloneBeatLibraryItem, getBeatLibraryItemBySource, getBuiltinBeatLibraryItems, getSavedBeatLibraryItems, getStarterBeatLibraryItems, isStarterBeatSetId, isWorkspaceBeatSystemId } from './libraryState';
+import { cloneBeatLibraryItem, getBeatLibraryItemBySource, getBuiltinBeatLibraryItems, getSavedBeatLibraryItems, getStarterBeatLibraryItems } from './libraryState';
+import { resolveBookScopedFiles } from '../services/NoteScopeResolver';
+import { normalizeFrontmatterKeys } from '../utils/frontmatter';
+import { isStoryBeat } from '../utils/sceneHelpers';
 
 export const WORKSPACE_TAB_ID_PREFIX = 'beat-tab:';
 export const WORKSPACE_CUSTOM_ID_PREFIX = 'workspace:';
@@ -81,6 +81,16 @@ function createLoadedTabFromLibraryItem(item: BeatLibraryItem): LoadedBeatTab {
     };
 }
 
+function buildLoadedTabIdentityKey(tab: Pick<LoadedBeatTab, 'sourceKind' | 'sourceId' | 'name'>): string {
+    if (tab.sourceKind === 'blank') return 'blank';
+    if (tab.sourceId) return `${tab.sourceKind}:${tab.sourceId}`;
+    return `name:${toBeatModelMatchKey(tab.name)}`;
+}
+
+function buildDetectedBeatTabId(modelName: string): string {
+    return `${WORKSPACE_TAB_ID_PREFIX}detected:${toBeatModelMatchKey(modelName)}`;
+}
+
 function getActiveBookProfile(settings: RadialTimelineSettings): BookProfile | null {
     return getActiveBook(settings);
 }
@@ -106,72 +116,10 @@ function normalizeWorkspace(workspace: BeatWorkspaceState | undefined): BeatWork
     return { loadedTabIds, tabsById, activeTabId };
 }
 
-function getLibraryItemByLegacySelection(settings: RadialTimelineSettings): BeatLibraryItem {
-    const selectedSystem = normalizeBeatSetNameInput(settings.beatSystem ?? '', 'Save The Cat');
-    if (toBeatModelMatchKey(selectedSystem) !== 'custom') {
-        return getBuiltinBeatLibraryItems(settings).find((item) => item.name === selectedSystem) ?? getBuiltinBeatLibraryItems(settings)[0];
-    }
-
-    const activeCustomId = getActiveCustomBeatSystemId(settings);
-    if (activeCustomId === DEFAULT_CUSTOM_BEAT_SYSTEM_ID) {
-        return {
-            id: DEFAULT_CUSTOM_BEAT_SYSTEM_ID,
-            kind: 'blank',
-            name: getActiveCustomBeatSystemName(settings, 'Custom'),
-            description: getActiveCustomBeatSystemDescription(settings),
-            beats: (getActiveCustomBeatSystem(settings)?.beats ?? []).map(cloneBeatDefinition),
-            config: cloneBeatConfig(settings.beatSystemConfigs?.[getCustomBeatConfigKey(activeCustomId)]),
-        };
-    }
-    if (isStarterBeatSetId(activeCustomId)) {
-        return getBeatLibraryItemBySource(settings, 'starter', activeCustomId)
-            ?? {
-                id: activeCustomId,
-                kind: 'starter',
-                name: getActiveCustomBeatSystemName(settings, 'Custom'),
-                description: getActiveCustomBeatSystemDescription(settings),
-                beats: (getActiveCustomBeatSystem(settings)?.beats ?? []).map(cloneBeatDefinition),
-                config: cloneBeatConfig(settings.beatSystemConfigs?.[getCustomBeatConfigKey(activeCustomId)]),
-            };
-    }
-    if (isWorkspaceBeatSystemId(activeCustomId)) {
-        return {
-            id: activeCustomId,
-            kind: 'blank',
-            name: getActiveCustomBeatSystemName(settings, 'Custom'),
-            description: getActiveCustomBeatSystemDescription(settings),
-            beats: (getActiveCustomBeatSystem(settings)?.beats ?? []).map(cloneBeatDefinition),
-            config: cloneBeatConfig(settings.beatSystemConfigs?.[getCustomBeatConfigKey(activeCustomId)]),
-        };
-    }
-    return getBeatLibraryItemBySource(settings, 'saved', activeCustomId)
-        ?? {
-            id: activeCustomId,
-            kind: 'saved',
-            name: getActiveCustomBeatSystemName(settings, 'Custom'),
-            description: getActiveCustomBeatSystemDescription(settings),
-            beats: (getActiveCustomBeatSystem(settings)?.beats ?? []).map(cloneBeatDefinition),
-            config: cloneBeatConfig(settings.beatSystemConfigs?.[getCustomBeatConfigKey(activeCustomId)]),
-            linkedSavedSystemId: activeCustomId,
-        };
-}
-
-function buildCompatibilityWorkspace(settings: RadialTimelineSettings): BeatWorkspaceState {
-    const item = getLibraryItemByLegacySelection(settings);
-    const tab = createLoadedTabFromLibraryItem(item);
-    return {
-        loadedTabIds: [tab.tabId],
-        tabsById: { [tab.tabId]: tab },
-        activeTabId: tab.tabId,
-    };
-}
-
 function getWorkspace(settings: RadialTimelineSettings): BeatWorkspaceState {
     const activeBook = getActiveBookProfile(settings);
     if (!activeBook?.beatWorkspace || activeBook.beatWorkspace.loadedTabIds.length === 0) {
-        const compatibility = buildCompatibilityWorkspace(settings);
-        writeWorkspace(settings, compatibility);
-        return compatibility;
+        return { loadedTabIds: [], tabsById: {}, activeTabId: undefined };
     }
     const normalized = normalizeWorkspace(activeBook.beatWorkspace);
     activeBook.beatWorkspace = normalized;
@@ -182,6 +130,51 @@ function setWorkspace(settings: RadialTimelineSettings, workspace: BeatWorkspace
     const normalized = normalizeWorkspace(workspace);
     writeWorkspace(settings, normalized);
     return normalized;
+}
+
+function mergeDetectedTabsIntoWorkspace(
+    settings: RadialTimelineSettings,
+    workspace: BeatWorkspaceState,
+    detectedTabs: LoadedBeatTab[]
+): { workspace: BeatWorkspaceState; changed: boolean } {
+    if (detectedTabs.length === 0) {
+        return { workspace, changed: false };
+    }
+
+    const nextLoadedTabIds = [...workspace.loadedTabIds];
+    const nextTabsById = { ...workspace.tabsById };
+    let changed = false;
+
+    for (const detectedTab of detectedTabs) {
+        const exists = nextLoadedTabIds.some((tabId) => {
+            const tab = nextTabsById[tabId];
+            if (!tab) return false;
+            return buildLoadedTabIdentityKey(tab) === buildLoadedTabIdentityKey(detectedTab)
+                || toBeatModelMatchKey(tab.name) === toBeatModelMatchKey(detectedTab.name);
+        });
+        if (exists) continue;
+        nextLoadedTabIds.push(detectedTab.tabId);
+        nextTabsById[detectedTab.tabId] = cloneLoadedTab(detectedTab);
+        changed = true;
+    }
+
+    const nextActiveTabId = workspace.activeTabId ?? nextLoadedTabIds[0];
+    if (nextActiveTabId !== workspace.activeTabId) {
+        changed = true;
+    }
+
+    if (!changed) {
+        return { workspace, changed: false };
+    }
+
+    return {
+        workspace: setWorkspace(settings, {
+            loadedTabIds: nextLoadedTabIds,
+            tabsById: nextTabsById,
+            activeTabId: nextActiveTabId,
+        }),
+        changed: true,
+    };
 }
 
 function getSourceLibraryItem(settings: RadialTimelineSettings, tab: LoadedBeatTab): BeatLibraryItem | undefined {
@@ -221,12 +214,125 @@ export function ensureBeatWorkspaceState(settings: RadialTimelineSettings): Beat
     return getWorkspace(settings);
 }
 
+export function ensureMaterializedBeatWorkspaceState(app: App, settings: RadialTimelineSettings): BeatWorkspaceState {
+    const workspace = getWorkspace(settings);
+    const detectedTabs = collectManuscriptDetectedTabs(app, settings);
+    const { workspace: nextWorkspace, changed } = mergeDetectedTabsIntoWorkspace(settings, workspace, detectedTabs);
+    if (changed) {
+        const activeTabId = nextWorkspace.activeTabId ?? nextWorkspace.loadedTabIds[0];
+        const activeTab = activeTabId ? nextWorkspace.tabsById[activeTabId] : undefined;
+        if (activeTab) {
+            hydrateLegacyStateFromTab(settings, activeTab);
+        }
+    }
+    return nextWorkspace;
+}
+
 export function getLoadedBeatTabs(settings: RadialTimelineSettings): LoadedBeatTab[] {
     const workspace = getWorkspace(settings);
     return workspace.loadedTabIds
         .map((tabId) => workspace.tabsById[tabId])
         .filter((tab): tab is LoadedBeatTab => !!tab)
         .map(cloneLoadedTab);
+}
+
+function collectManuscriptDetectedTabs(app: App, settings: RadialTimelineSettings): LoadedBeatTab[] {
+    const beatScope = resolveBookScopedFiles({ app, settings, noteType: 'Beat' });
+    if (!beatScope.files.length) return [];
+    const mappings = settings.enableCustomMetadataMapping ? settings.frontmatterMappings : undefined;
+    const libraryItems = [
+        ...getBuiltinBeatLibraryItems(settings),
+        ...getStarterBeatLibraryItems(settings),
+        ...getSavedBeatLibraryItems(settings),
+    ];
+    const manuscriptGroups = new Map<string, {
+        modelName: string;
+        beats: Map<string, BeatDefinition>;
+    }>();
+
+    for (const file of beatScope.files) {
+        const cache = app.metadataCache.getFileCache(file);
+        const raw = (cache?.frontmatter ?? {}) as Record<string, unknown>;
+        const frontmatter = mappings ? normalizeFrontmatterKeys(raw, mappings) : raw;
+        const classValue = typeof frontmatter.Class === 'string' ? frontmatter.Class.trim() : '';
+        if (classValue.length > 0 && !isStoryBeat(classValue)) continue;
+
+        const modelName = normalizeBeatSetNameInput(typeof frontmatter['Beat Model'] === 'string' ? frontmatter['Beat Model'] : '', '');
+        if (!modelName) continue;
+        const modelKey = toBeatModelMatchKey(modelName);
+        if (!modelKey) continue;
+        const group = manuscriptGroups.get(modelKey) ?? {
+            modelName,
+            beats: new Map<string, BeatDefinition>(),
+        };
+
+        const title = normalizeBeatNameInput(
+            typeof frontmatter.Title === 'string' && frontmatter.Title.trim().length > 0 ? frontmatter.Title : file.basename,
+            file.basename
+        );
+        const id = typeof frontmatter.ID === 'string' && frontmatter.ID.trim().length > 0 ? frontmatter.ID.trim() : undefined;
+        const actRaw = Number(frontmatter.Act);
+        const act = Number.isFinite(actRaw) ? Math.max(1, Math.round(actRaw)) : 1;
+        const dedupeKey = id || `${toBeatModelMatchKey(title)}:${act}`;
+        if (!group.beats.has(dedupeKey)) {
+            group.beats.set(dedupeKey, {
+                name: title,
+                act,
+                id,
+                purpose: typeof frontmatter.Purpose === 'string' ? frontmatter.Purpose.trim() || undefined : undefined,
+                range: typeof frontmatter.Range === 'string' ? frontmatter.Range.trim() || undefined : undefined,
+            });
+        }
+        manuscriptGroups.set(modelKey, group);
+    }
+
+    return [...manuscriptGroups.values()].map((group) => {
+        const matchedLibraryItem = libraryItems.find((item) => toBeatModelMatchKey(item.name) === toBeatModelMatchKey(group.modelName));
+        if (matchedLibraryItem) {
+            return createLoadedTabFromLibraryItem(matchedLibraryItem);
+        }
+        return {
+            tabId: buildDetectedBeatTabId(group.modelName),
+            sourceKind: 'detected',
+            sourceId: `detected:${toBeatModelMatchKey(group.modelName)}`,
+            name: group.modelName,
+            description: 'No matching system definition found.',
+            beats: [...group.beats.values()].sort((left, right) => {
+                if (left.act !== right.act) return left.act - right.act;
+                return left.name.localeCompare(right.name);
+            }).map(cloneBeatDefinition),
+            config: cloneBeatConfig(settings.beatSystemConfigs?.[group.modelName]),
+            dirty: false,
+        };
+    });
+}
+
+export function getMaterializedBeatTabs(app: App, settings: RadialTimelineSettings): LoadedBeatTab[] {
+    const loadedTabs = getLoadedBeatTabs(settings);
+    const detectedTabs = collectManuscriptDetectedTabs(app, settings);
+    if (loadedTabs.length === 0 && detectedTabs.length > 0) {
+        return detectedTabs;
+    }
+    const merged: LoadedBeatTab[] = [];
+    const seen = new Set<string>();
+
+    for (const tab of loadedTabs) {
+        const identityKey = buildLoadedTabIdentityKey(tab);
+        merged.push(tab);
+        seen.add(identityKey);
+        seen.add(`name:${toBeatModelMatchKey(tab.name)}`);
+    }
+
+    for (const tab of detectedTabs) {
+        const identityKey = buildLoadedTabIdentityKey(tab);
+        const nameKey = `name:${toBeatModelMatchKey(tab.name)}`;
+        if (seen.has(identityKey) || seen.has(nameKey)) continue;
+        merged.push(tab);
+        seen.add(identityKey);
+        seen.add(nameKey);
+    }
+
+    return merged;
 }
 
 export function getActiveLoadedBeatTab(settings: RadialTimelineSettings): LoadedBeatTab | undefined {
@@ -337,6 +443,31 @@ export function loadBeatTabFromLibraryItem(settings: RadialTimelineSettings, ite
         activeTabId: tab.tabId,
     });
     const activeTab = nextWorkspace.tabsById[tab.tabId];
+    hydrateLegacyStateFromTab(settings, activeTab);
+    return cloneLoadedTab(activeTab);
+}
+
+export function materializeBeatTab(settings: RadialTimelineSettings, tab: LoadedBeatTab): LoadedBeatTab {
+    const existing = getLoadedBeatTabs(settings).find((entry) => {
+        return buildLoadedTabIdentityKey(entry) === buildLoadedTabIdentityKey(tab)
+            || toBeatModelMatchKey(entry.name) === toBeatModelMatchKey(tab.name);
+    });
+    if (existing) {
+        activateLoadedBeatTab(settings, existing.tabId);
+        return existing;
+    }
+    const workspace = commitHydratedTabToWorkspace(settings, getWorkspace(settings));
+    const nextTab = cloneLoadedTab(tab);
+    const nextWorkspace = setWorkspace(settings, {
+        ...workspace,
+        loadedTabIds: [...workspace.loadedTabIds, nextTab.tabId],
+        tabsById: {
+            ...workspace.tabsById,
+            [nextTab.tabId]: nextTab,
+        },
+        activeTabId: nextTab.tabId,
+    });
+    const activeTab = nextWorkspace.tabsById[nextTab.tabId];
     hydrateLegacyStateFromTab(settings, activeTab);
     return cloneLoadedTab(activeTab);
 }

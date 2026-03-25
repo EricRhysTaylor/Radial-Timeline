@@ -156,7 +156,7 @@ function slugifyToFileStem(title: string): string {
     const tabId = typeof tab?.tabId === 'string' ? tab.tabId.trim() : '';
     if (!tabId) return null;
     const sourceKind = tab?.sourceKind;
-    if (sourceKind !== 'builtin' && sourceKind !== 'starter' && sourceKind !== 'saved' && sourceKind !== 'blank') {
+    if (sourceKind !== 'builtin' && sourceKind !== 'starter' && sourceKind !== 'saved' && sourceKind !== 'blank' && sourceKind !== 'detected') {
       return null;
     }
     const name = typeof tab?.name === 'string' ? tab.name.trim() : '';

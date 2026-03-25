@@ -3134,11 +3134,13 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
 
             const normalized = normalizeValue(value);
             const missing = !normalized;
-            const valueEl = target.createEl('button', {
+            const valueEl = target.createDiv({
                 cls: `${className} ert-bookmeta-preview-value--clickable${missing ? ' ert-bookmeta-preview-value--empty ert-bookmeta-preview-value--missing' : ''}`,
                 text: normalized || placeholder,
                 attr: {
-                    type: 'button',
+                    role: 'button',
+                    tabindex: '0',
+                    'aria-label': `${normalized ? 'Edit' : 'Add'} ${label.toLowerCase()}`,
                     title: `${normalized ? 'Edit' : 'Add'} ${label.toLowerCase()}`
                 }
             });
@@ -3146,6 +3148,11 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             valueEl.classList.toggle('ert-bookmeta-preview-value--required', missing && required);
             valueEl.classList.toggle('ert-bookmeta-preview-value--optional', missing && !required);
             valueEl.addEventListener('click', (evt) => {
+                evt.preventDefault();
+                void beginBookMetaFieldEdit(field, normalized || value);
+            });
+            valueEl.addEventListener('keydown', (evt: KeyboardEvent) => {
+                if (evt.key !== 'Enter' && evt.key !== ' ') return;
                 evt.preventDefault();
                 void beginBookMetaFieldEdit(field, normalized || value);
             });

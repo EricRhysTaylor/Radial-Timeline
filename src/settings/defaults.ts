@@ -153,8 +153,9 @@ Shift:
 Iteration:`
     },
     beatYamlTemplates: {
-        base: `Beat Model: {{BeatModel}}
+        base: `ID:
 Class: Beat
+Beat Model: {{BeatModel}}
 Act: {{Act}}
 Purpose: {{Purpose}}
 Range: {{Range}}

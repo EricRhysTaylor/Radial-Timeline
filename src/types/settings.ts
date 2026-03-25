@@ -178,7 +178,7 @@ export interface SavedBeatSystem {
     createdAt: string;
 }
 
-export type BeatSourceKind = 'builtin' | 'starter' | 'saved' | 'blank';
+export type BeatSourceKind = 'builtin' | 'starter' | 'saved' | 'blank' | 'detected';
 
 export interface BeatLibraryItem {
     id: string;

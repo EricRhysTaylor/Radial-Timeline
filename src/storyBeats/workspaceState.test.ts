@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { TFolder } from 'obsidian';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
 import type { RadialTimelineSettings, SavedBeatSystem } from '../types/settings';
 import { getBeatLibraryItems } from './libraryState';
-import { activateLoadedBeatTab, ensureBeatWorkspaceState, getActiveLoadedBeatTab, getLoadedBeatTabs, loadBeatTabFromLibraryItem } from './workspaceState';
+import { activateLoadedBeatTab, ensureBeatWorkspaceState, ensureMaterializedBeatWorkspaceState, getActiveLoadedBeatTab, getLoadedBeatTabs, getMaterializedBeatTabs, loadBeatTabFromLibraryItem } from './workspaceState';
 import { resolveSelectedBeatModelFromSettings } from '../utils/beatSystemState';
 
 function buildSettings(): RadialTimelineSettings {
@@ -19,42 +20,62 @@ function buildSettings(): RadialTimelineSettings {
     };
 }
 
-describe('beat workspace compatibility adapter', () => {
-    it('seeds a loaded builtin tab from legacy selection', () => {
+function buildBeatApp(frontmatters: Array<Record<string, unknown>>) {
+    const files = frontmatters.map((frontmatter, index) => ({
+        path: `Books/One/${index + 1}.md`,
+        basename: typeof frontmatter.Title === 'string' ? String(frontmatter.Title) : `Beat ${index + 1}`,
+    }));
+    const folder = Object.assign(Object.create(TFolder.prototype), {
+        path: 'Books/One',
+        children: [],
+    });
+    return {
+        vault: {
+            getMarkdownFiles: () => files,
+            getAbstractFileByPath: (path: string) => path === 'Books/One' ? folder : null,
+        },
+        metadataCache: {
+            getFileCache: (file: typeof files[number]) => ({
+                frontmatter: frontmatters[files.findIndex((entry) => entry.path === file.path)],
+            }),
+        },
+    } as any;
+}
+
+describe('beat workspace initialization', () => {
+    it('does not auto-seed fixed tabs from legacy selection alone', () => {
         const settings = buildSettings();
         settings.beatSystem = 'Save The Cat';
 
         const workspace = ensureBeatWorkspaceState(settings);
         const loadedTabs = getLoadedBeatTabs(settings);
 
-        expect(workspace.activeTabId).toBeTruthy();
-        expect(loadedTabs).toHaveLength(1);
-        expect(loadedTabs[0].sourceKind).toBe('builtin');
-        expect(loadedTabs[0].name).toBe('Save The Cat');
+        expect(workspace.activeTabId).toBeUndefined();
+        expect(loadedTabs).toHaveLength(0);
         expect(resolveSelectedBeatModelFromSettings(settings)).toBe('Save The Cat');
     });
 
-    it('seeds a loaded saved tab from legacy custom selection', () => {
+    it('materializes detected manuscript systems into the persisted workspace', () => {
         const settings = buildSettings();
-        const savedSystem: SavedBeatSystem = {
-            id: 'saved-1',
-            name: 'Investigation Arc',
-            description: 'Saved arc',
-            beats: [
-                { id: 'investigation:hook', name: 'Hook', act: 1 },
-            ],
-            createdAt: new Date().toISOString(),
-        };
-        settings.beatSystem = 'Custom';
-        settings.activeCustomBeatSystemId = savedSystem.id;
-        settings.savedBeatSystems = [...(settings.savedBeatSystems ?? []), savedSystem];
+        const app = buildBeatApp([
+            {
+                ID: 'story-grid:inciting-incident',
+                Class: 'Beat',
+                'Beat Model': 'Story Grid',
+                Title: 'Inciting Incident',
+                Act: 1,
+            },
+        ]);
 
+        const workspace = ensureMaterializedBeatWorkspaceState(app, settings);
         const loadedTabs = getLoadedBeatTabs(settings);
 
+        expect(workspace.activeTabId).toBeTruthy();
         expect(loadedTabs).toHaveLength(1);
-        expect(loadedTabs[0].sourceKind).toBe('saved');
-        expect(loadedTabs[0].name).toBe('Investigation Arc');
-        expect(resolveSelectedBeatModelFromSettings(settings)).toBe('Investigation Arc');
+        expect(loadedTabs[0].sourceKind).toBe('builtin');
+        expect(loadedTabs[0].name).toBe('Story Grid');
+        expect(getActiveLoadedBeatTab(settings)?.tabId).toBe(loadedTabs[0].tabId);
+        expect(resolveSelectedBeatModelFromSettings(settings)).toBe('Story Grid');
     });
 });
 
@@ -106,5 +127,67 @@ describe('beat workspace loading', () => {
 
         expect(getActiveLoadedBeatTab(settings)?.tabId).toBe(builtinTab.tabId);
         expect(resolveSelectedBeatModelFromSettings(settings)).toBe('Story Grid');
+    });
+});
+
+describe('manuscript-detected beat tabs', () => {
+    it('materializes recognized manuscript systems as canonical tabs', () => {
+        const settings = buildSettings();
+        const app = buildBeatApp([
+            {
+                ID: 'story-grid:inciting-incident',
+                Class: 'Beat',
+                'Beat Model': 'Story Grid',
+                Title: 'Inciting Incident',
+                Act: 1,
+            },
+        ]);
+
+        const tabs = getMaterializedBeatTabs(app, settings);
+
+        expect(tabs.map((tab) => tab.name)).toContain('Story Grid');
+        expect(tabs.every((tab) => tab.name !== 'Save The Cat')).toBe(true);
+        expect(tabs.find((tab) => tab.name === 'Story Grid')?.sourceKind).toBe('builtin');
+    });
+
+    it('materializes unknown manuscript systems as detected generic tabs', () => {
+        const settings = buildSettings();
+        const app = buildBeatApp([
+            {
+                ID: 'beat-1',
+                Class: 'Beat',
+                'Beat Model': 'Historical Spiral',
+                Title: 'Archive Shock',
+                Act: 2,
+                Purpose: 'The thesis turns.',
+            },
+        ]);
+
+        const tabs = getMaterializedBeatTabs(app, settings);
+        const detectedTab = tabs.find((tab) => tab.name === 'Historical Spiral');
+
+        expect(detectedTab).toBeTruthy();
+        expect(detectedTab?.sourceKind).toBe('detected');
+        expect(detectedTab?.description).toBe('No matching system definition found.');
+        expect(detectedTab?.beats).toHaveLength(1);
+        expect(detectedTab?.beats[0].name).toBe('Archive Shock');
+    });
+
+    it('activates the first detected manuscript tab when bootstrapped into workspace', () => {
+        const settings = buildSettings();
+        const app = buildBeatApp([
+            {
+                ID: 'beat-1',
+                Class: 'Beat',
+                'Beat Model': 'Historical Spiral',
+                Title: 'Archive Shock',
+                Act: 2,
+            },
+        ]);
+
+        ensureMaterializedBeatWorkspaceState(app, settings);
+
+        expect(getActiveLoadedBeatTab(settings)?.name).toBe('Historical Spiral');
+        expect(resolveSelectedBeatModelFromSettings(settings)).toBe('Historical Spiral');
     });
 });
