@@ -33,6 +33,7 @@ import { getDefaultManuscriptCleanupOptions, normalizeManuscriptCleanupOptions, 
 import { getPlotSystem } from '../utils/beatsSystems';
 import { getActiveLoadedBeatTab } from '../storyBeats/workspaceState';
 import { ExportFailure, categorizeExportError } from '../utils/exportErrors';
+import { resolveSelectedBeatModelFromSettings } from '../utils/beatSystemState';
 
 import { getRuntimeSettings } from '../utils/runtimeEstimator';
 
@@ -237,7 +238,24 @@ export class CommandRegistrar {
             };
 
             let filteredSelection = selection;
-            if (effectiveSubplot && effectiveSubplot !== 'All Subplots') {
+            if (result.scenePathFilter && result.scenePathFilter.length > 0) {
+                const pathSet = new Set(result.scenePathFilter);
+                const indices = selection.files.map((f, i) => pathSet.has(f.path) ? i : -1).filter(i => i !== -1);
+                filteredSelection = {
+                    files: indices.map(i => selection.files[i]),
+                    titles: indices.map(i => selection.titles[i]),
+                    whenDates: indices.map(i => selection.whenDates[i]),
+                    acts: indices.map(i => selection.acts[i]),
+                    sceneNumbers: indices.map(i => selection.sceneNumbers[i]),
+                    subplots: indices.map(i => selection.subplots[i]),
+                    synopses: indices.map(i => selection.synopses[i]),
+                    runtimes: indices.map(i => selection.runtimes[i]),
+                    wordCounts: indices.map(i => selection.wordCounts[i]),
+                    matterMetaByPath: selection.matterMetaByPath,
+                    chapterMarkersByScenePath: selection.chapterMarkersByScenePath,
+                    sortOrder: selection.sortOrder
+                };
+            } else if (effectiveSubplot && effectiveSubplot !== 'All Subplots') {
                 const indices = selection.subplots.map((s, i) => s === effectiveSubplot ? i : -1).filter(i => i !== -1);
                 filteredSelection = {
                     files: indices.map(i => selection.files[i]),
@@ -831,7 +849,7 @@ export class CommandRegistrar {
                 .filter((beat): beat is ModernClassicBeatDefinition => !!beat);
         }
 
-        const selectedSystem = (this.plugin.settings.beatSystem || 'Custom').trim();
+        const selectedSystem = (resolveSelectedBeatModelFromSettings(this.plugin.settings) || this.plugin.settings.beatSystem || 'Custom').trim();
 
         const builtin = getPlotSystem(selectedSystem);
         if (!builtin) return [];

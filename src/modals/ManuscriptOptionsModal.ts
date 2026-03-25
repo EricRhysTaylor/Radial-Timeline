@@ -31,12 +31,15 @@ import type {
     TemplateProfile,
 } from '../types';
 
+const OPEN_SCENES_FILTER = '__open_scenes__';
+
 export interface ManuscriptModalResult {
     order: ManuscriptOrder;
     tocMode: TocMode;
     rangeStart?: number;
     rangeEnd?: number;
     subplot?: string;
+    scenePathFilter?: string[];
     exportType: ExportType;
     manuscriptPreset?: ManuscriptPreset;
     outlinePreset?: OutlinePreset;
@@ -182,11 +185,13 @@ export class ManuscriptOptionsModal extends Modal {
     private splitParts: number = 3;
 
     private sceneTitles: string[] = [];
+    private scenePaths: string[] = [];
     private sceneWhenDates: (string | null)[] = [];
     private sceneNumbers: number[] = [];
     private totalScenes = 0;
     private rangeStart = 1;
     private rangeEnd = 1;
+    private openScenePathsSnapshot: Set<string> = new Set();
 
     private trackEl?: HTMLElement;
     private startHandleEl?: HTMLElement;
@@ -364,6 +369,7 @@ export class ManuscriptOptionsModal extends Modal {
     async onOpen(): Promise<void> {
         const { contentEl, modalEl } = this;
         contentEl.empty();
+        this.openScenePathsSnapshot = new Set(this.plugin.openScenePaths);
         this.refreshExportProfileState();
 
         // Apply generic modal shell + modal-specific class
@@ -573,7 +579,7 @@ export class ManuscriptOptionsModal extends Modal {
         this.createSectionHeading(this.scopeCard, 'Scope', 'filter');
 
         this.filterCard = this.scopeCard.createDiv({ cls: 'ert-manuscript-scope-row' });
-        this.filterCard.createSpan({ cls: 'rt-manuscript-toggle-label', text: 'Subplot filter' });
+        this.filterCard.createSpan({ cls: 'rt-manuscript-toggle-label', text: 'Scene filter' });
         const filterContainer = this.filterCard.createDiv({ cls: 'rt-manuscript-input-container ert-manuscript-scope-input' });
         this.subplotDropdown = new DropdownComponent(filterContainer)
             .addOption('All Subplots', 'All Subplots')
@@ -1814,6 +1820,14 @@ Sarah stood at the window, watching the world wake up.`;
         return this.sceneTitles.slice(startIndex, endIndexExclusive);
     }
 
+    private getSelectedScenePaths(): string[] {
+        if (this.totalScenes === 0 || this.scenePaths.length === 0) return [];
+        const startIndex = Math.max(0, this.rangeStart - 1);
+        const endIndexExclusive = Math.min(this.rangeEnd, this.scenePaths.length);
+        if (endIndexExclusive <= startIndex) return [];
+        return this.scenePaths.slice(startIndex, endIndexExclusive);
+    }
+
     private isSplitEnabled(): boolean {
         return this.splitMode === 'parts';
     }
@@ -1849,6 +1863,7 @@ Sarah stood at the window, watching the world wake up.`;
         }
         if (this.splitPartsInputEl) {
             this.splitPartsInputEl.disabled = !canSplit;
+            this.splitPartsInputEl.value = String(this.splitParts);
         }
 
         const partsEnabled = this.splitMode === 'parts';
@@ -2112,21 +2127,43 @@ Sarah stood at the window, watching the world wake up.`;
 
             this.subplotDropdown.selectEl.textContent = '';
             this.subplotDropdown.addOption('All Subplots', 'All Subplots');
+            const openCount = this.openScenePathsSnapshot.size;
+            if (openCount > 0) {
+                this.subplotDropdown.addOption(OPEN_SCENES_FILTER, `Open Scenes (${openCount})`);
+            }
             sortedSubplots.forEach(sub => {
                 this.subplotDropdown?.addOption(sub, sub);
             });
-            this.subplotDropdown.setValue('All Subplots');
+            this.subplotDropdown.setValue(this.subplot === OPEN_SCENES_FILTER ? OPEN_SCENES_FILTER : 'All Subplots');
         } catch (e) {
             console.error('Failed to load subplots', e);
         }
+    }
+
+    private isOpenScenesMode(): boolean {
+        return this.subplot === OPEN_SCENES_FILTER;
     }
 
     private async loadScenesForOrder(): Promise<void> {
         try {
             const isPdfManuscript = this.isPdfManuscriptExport();
             const effectiveOrder: ManuscriptOrder = isPdfManuscript ? 'narrative' : this.order;
-            const effectiveSubplot = isPdfManuscript || this.subplot === 'All Subplots' ? undefined : this.subplot;
-            const { titles, whenDates, sceneNumbers } = await getSceneFilesByOrder(this.app, this.plugin, effectiveOrder, effectiveSubplot);
+            const isOpenScenes = this.isOpenScenesMode();
+            const effectiveSubplot = isPdfManuscript || this.subplot === 'All Subplots' || isOpenScenes ? undefined : this.subplot;
+            const result = await getSceneFilesByOrder(this.app, this.plugin, effectiveOrder, effectiveSubplot);
+            let { titles, whenDates, sceneNumbers } = result;
+            const paths = result.files.map(f => f.path);
+
+            if (isOpenScenes) {
+                const indices = paths.map((p, i) => this.openScenePathsSnapshot.has(p) ? i : -1).filter(i => i !== -1);
+                titles = indices.map(i => titles[i]);
+                whenDates = indices.map(i => whenDates[i]);
+                sceneNumbers = indices.map(i => sceneNumbers[i]);
+                this.scenePaths = indices.map(i => paths[i]);
+            } else {
+                this.scenePaths = paths;
+            }
+
             this.sceneTitles = titles;
             this.sceneWhenDates = whenDates;
             this.sceneNumbers = sceneNumbers;
@@ -2215,6 +2252,23 @@ Sarah stood at the window, watching the world wake up.`;
         this.rangeCardContainer.empty();
         if (this.totalScenes === 0) return;
 
+        if (this.isOpenScenesMode()) {
+            this.rangeCardContainer.classList.add('rt-manuscript-scene-chips');
+            this.rangeCardContainer.classList.remove('rt-manuscript-range-cards');
+            for (let i = 0; i < this.totalScenes; i++) {
+                const inRange = (i + 1) >= this.rangeStart && (i + 1) <= this.rangeEnd;
+                const chip = this.rangeCardContainer.createDiv({ cls: 'rt-manuscript-scene-chip' });
+                chip.toggleClass('rt-is-muted', !inRange);
+                const num = this.sceneNumbers[i] || (i + 1);
+                chip.createDiv({ cls: 'rt-manuscript-scene-chip-num', text: `Scene ${num}` });
+                chip.createDiv({ cls: 'rt-manuscript-scene-chip-title', text: this.sceneTitles[i] || '—' });
+            }
+            return;
+        }
+
+        this.rangeCardContainer.classList.remove('rt-manuscript-scene-chips');
+        this.rangeCardContainer.classList.add('rt-manuscript-range-cards');
+
         // Get actual scene numbers for range display
         const startSceneNum = this.getSceneNumberAt(this.rangeStart);
         const endSceneNum = this.getSceneNumberAt(this.rangeEnd);
@@ -2265,11 +2319,15 @@ Sarah stood at the window, watching the world wake up.`;
         const submissionOrder: ManuscriptOrder = lockSceneSelection ? 'narrative' : this.order;
         const submissionRangeStart = lockSceneSelection ? undefined : this.rangeStart;
         const submissionRangeEnd = lockSceneSelection ? undefined : this.rangeEnd;
-        const submissionSubplot = lockSceneSelection
+        const isOpenScenes = this.isOpenScenesMode();
+        const submissionSubplot = lockSceneSelection || isOpenScenes
             ? undefined
             : this.subplot === 'All Subplots'
                 ? undefined
                 : this.subplot;
+        const submissionScenePathFilter = !lockSceneSelection && isOpenScenes
+            ? this.getSelectedScenePaths()
+            : undefined;
 
         this.outputStatusEl?.addClass('rt-hidden');
         this.exportCompleted = false;
@@ -2292,6 +2350,7 @@ Sarah stood at the window, watching the world wake up.`;
                 rangeStart: submissionRangeStart,
                 rangeEnd: submissionRangeEnd,
                 subplot: submissionSubplot,
+                scenePathFilter: submissionScenePathFilter,
                 exportType: this.exportType,
                 manuscriptPreset: this.exportType === 'manuscript' ? this.manuscriptPreset : undefined,
                 outlinePreset: this.outlinePreset,

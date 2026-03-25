@@ -3033,7 +3033,7 @@
   z-index: 3;
 }
 
-/* Custom tab active — tinted accent background */
+/* Accent-tinted active workspace tab */
 .ert-ui.ert-scope--settings button.ert-mini-tab:not(.ert-pillBtn):not(.ert-iconBtn):not(.ert-swatch).ert-mini-tab--custom.is-active {
   background: color-mix(in srgb, var(--background-primary) 92%, var(--ert-accent) 8%);
   border-color: color-mix(in srgb, var(--ert-accent) 30%, var(--background-modifier-border));
@@ -3062,7 +3062,7 @@
   --ert-panel-border: color-mix(in srgb, var(--ert-accent) 25%, var(--background-modifier-border));
 }
 
-/* ── Tier banner (built-in vs custom, Core vs Pro status) ──────────── */
+/* Legacy tier banner styles retained for older settings chrome */
 .ert-ui.ert-scope--settings .ert-beat-tier-banner {
   display: flex;
   flex-direction: column;
@@ -3089,13 +3089,13 @@
   color: var(--interactive-accent);
 }
 
-/* Beat Fields read-only (Core built-in) */
+/* Beat Fields read-only treatment */
 .ert-ui.ert-scope--settings .ert-beat-fields-readonly .ert-drag-handle {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-/* ── Custom tab icon (lucide, 14px, inherits color) ────────────────── */
+/* ── Workspace tab icon (lucide, 14px, inherits color) ─────────────── */
 .ert-ui.ert-scope--settings .ert-mini-tab-icon {
   display: inline-flex;
   align-items: center;

@@ -417,13 +417,14 @@ export class SceneDataService {
         // Process plot/beat items
         // Filter by Beat Model if requested (use centralized helper - single source of truth)
         let beatsToProcess = plotsToProcess;
-        if (filterBeats && this.settings.beatSystem) {
+        const selectedBeatModel = resolveSelectedBeatModelFromSettings(this.settings);
+        if (filterBeats && selectedBeatModel) {
             // Map to objects with "Beat Model" field for filtering
             const beatsWithModel = beatsToProcess.map(p => ({
                 original: p,
                 "Beat Model": p.metadata["Beat Model"]
             }));
-            const filtered = filterBeatsBySystem(beatsWithModel, resolveSelectedBeatModelFromSettings(this.settings));
+            const filtered = filterBeatsBySystem(beatsWithModel, selectedBeatModel);
             beatsToProcess = filtered.map(f => f.original);
         }
 

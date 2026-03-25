@@ -220,9 +220,8 @@ export class GossamerScoreModal extends Modal {
 
     contentEl.addClass('ert-modal-container', 'ert-stack', 'rt-gossamer-score-modal');
 
-    // Use settings as source of truth for beat system
-    const settingsSystem = normalizeBeatSetNameInput(this.plugin.settings.beatSystem || '', 'Save The Cat');
     const selectedBeatModel = resolveSelectedBeatModelFromSettings(this.plugin.settings);
+    const settingsSystem = normalizeBeatSetNameInput((selectedBeatModel ?? this.plugin.settings.beatSystem ?? ''), 'Save The Cat');
     const beatModelLabel = selectedBeatModel ?? settingsSystem;
     
     // ... filtering logic ...
@@ -590,7 +589,7 @@ export class GossamerScoreModal extends Modal {
   private async copyTemplateForAI(): Promise<void> {
     try {
       // Get beat system name for context
-      const settingsSystem = this.plugin.settings.beatSystem || 'Save The Cat';
+      const settingsSystem = resolveSelectedBeatModelFromSettings(this.plugin.settings) || this.plugin.settings.beatSystem || 'Save The Cat';
 
       const { name: contextTemplateName, prompt: contextPrompt } = this.getActiveAiContextInfo();
 

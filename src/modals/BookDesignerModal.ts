@@ -5,11 +5,12 @@ import { generateSceneContent, SceneCreationData } from '../utils/sceneGenerator
 import { DEFAULT_SETTINGS } from '../settings/defaults';
 import { getTemplateParts } from '../utils/yamlTemplateNormalize';
 import { parseDuration, parseDurationDetail } from '../utils/date';
-import { getCustomSystemFromSettings } from '../utils/beatsSystems';
+import { getCustomSystemFromSettings, getPlotSystem } from '../utils/beatsSystems';
 import type { BookDesignerTemplate, BookDesignerSceneAssignment } from '../types/settings';
 import { ModalFolderSuggest } from '../settings/FolderSuggest';
 import { ensureSceneTemplateFrontmatter } from '../utils/sceneIds';
 import { getActiveLoadedBeatTab } from '../storyBeats/workspaceState';
+import { resolveSelectedBeatModelFromSettings } from '../utils/beatSystemState';
 
 const DEFAULT_SUBPLOTS = "Main Plot\nSubplot A\nSubplot B";
 const DEFAULT_CHARACTERS = "Hero\nAntagonist";
@@ -1129,7 +1130,7 @@ export class BookDesignerModal extends Modal {
 
     private getActiveBeatSetTitle(): string {
         const activeTab = getActiveLoadedBeatTab(this.plugin.settings);
-        const beatSystem = (activeTab?.name || this.plugin.settings.beatSystem || 'Custom').trim();
+        const beatSystem = (activeTab?.name || resolveSelectedBeatModelFromSettings(this.plugin.settings) || this.plugin.settings.beatSystem || 'Custom').trim();
         return beatSystem.length > 0 ? beatSystem : 'Custom';
     }
 
@@ -1568,21 +1569,17 @@ export class BookDesignerModal extends Modal {
                 new Notice(`Beat notes already exist in this folder (${existingBeatFiles.length} found). Use the beat manager in settings to repair or resync.`);
                 beatsSkippedDuplicate = true;
             } else {
-                const beatSystem = this.plugin.settings.beatSystem || 'Custom';
+                const activeTab = getActiveLoadedBeatTab(this.plugin.settings);
+                const beatSystem = activeTab?.name || resolveSelectedBeatModelFromSettings(this.plugin.settings) || this.plugin.settings.beatSystem || 'Custom';
                 const beatTemplate = getTemplateParts('Beat', this.plugin.settings).merged;
 
-                // Handle Custom Dynamic System
-                if (beatSystem === 'Custom') {
-                    const customSystem = getCustomSystemFromSettings(this.plugin.settings);
-                    if (customSystem.beats.length > 0) {
-                        try {
-                            const result = await createBeatNotesFromSet(vault, 'Custom', targetFolder, customSystem, { beatTemplate, actSceneNumbers });
-                            beatsCreated = result.created;
-                        } catch (e) {
-                            new Notice(`Error creating custom beats: ${e}`);
-                        }
-                    } else {
-                        // No custom beats defined, skip
+                const activeWorkspaceSystem = getCustomSystemFromSettings(this.plugin.settings);
+                if (activeWorkspaceSystem.beats.length > 0 && !getPlotSystem(beatSystem)) {
+                    try {
+                        const result = await createBeatNotesFromSet(vault, beatSystem, targetFolder, activeWorkspaceSystem, { beatTemplate, actSceneNumbers });
+                        beatsCreated = result.created;
+                    } catch (e) {
+                        new Notice(`Error creating beats: ${e}`);
                     }
                 } else {
                     try {

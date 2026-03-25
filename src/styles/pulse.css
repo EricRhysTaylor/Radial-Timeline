@@ -655,6 +655,44 @@
   letter-spacing: -0.01em;
 }
 
+.rt-manuscript-scene-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.rt-manuscript-scene-chip {
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 0 1 calc(25% - 6px);
+  max-width: calc(25% - 6px);
+}
+
+.rt-manuscript-scene-chip.rt-is-muted {
+  opacity: 0.4;
+}
+
+.rt-manuscript-scene-chip-num {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.rt-manuscript-scene-chip-title {
+  font-size: 0.75rem;
+  color: var(--text-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .rt-manuscript-range-track-wrap {
   position: relative;
   padding: 6px 2px 2px 2px;

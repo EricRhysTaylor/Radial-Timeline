@@ -16,6 +16,7 @@ import {
   getActiveLoadedBeatTab,
   getLoadedBeatTabConfigKey,
 } from '../storyBeats/workspaceState';
+import { resolveSelectedBeatModelFromSettings } from './beatSystemState';
 
 // ─── Per-system Beat Config Resolvers ────────────────────────────────
 
@@ -42,7 +43,7 @@ export function getBeatConfigForSystem(
   if (activeTab && (!systemKey || normalizeModelKey(systemKey) === normalizeModelKey(activeTab.name))) {
     return activeTab.config;
   }
-  const system = (systemKey ?? settings.beatSystem ?? 'Save The Cat').trim();
+  const system = (systemKey ?? resolveSelectedBeatModelFromSettings(settings) ?? settings.beatSystem ?? 'Save The Cat').trim();
   const key = system;
   return settings.beatSystemConfigs?.[key] ?? EMPTY_BEAT_CONFIG;
 }

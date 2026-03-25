@@ -687,17 +687,15 @@ function getInteractionMode(view: unknown): 'allscenes' | 'mainplot' | 'gossamer
  */
 export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promise<void> {
   // Get beat system from settings (used by both pre-check and processing)
-  const settingsBeatSystem = plugin.settings.beatSystem || 'Save The Cat';
-  
-  // If Custom is selected, try to get the custom name from the first beat note's Beat Model field
+  const settingsBeatSystem = resolveSelectedBeatModelFromSettings(plugin.settings) || plugin.settings.beatSystem || 'Save The Cat';
+  const recognizedSystems = ['Save The Cat', 'Hero\'s Journey', 'Story Grid'];
+
+  // Resolve the display name from the active beat model first.
   let beatSystemDisplayName = settingsBeatSystem;
-  if (settingsBeatSystem === 'Custom') {
-    // Get beat notes to check for custom name
+  if (!recognizedSystems.includes(settingsBeatSystem)) {
     const scenes = await plugin.getSceneData({ filterBeatsBySystem: false });
     const allBeats = scenes.filter(s => (s.itemType === 'Beat' || s.itemType === 'Plot'));
-    
-    // Find first beat without a recognized system
-    const recognizedSystems = ['Save The Cat', 'Hero\'s Journey', 'Story Grid'];
+
     for (const beat of allBeats) {
       if (!beat.path) continue;
       const file = plugin.app.vault.getAbstractFileByPath(beat.path);

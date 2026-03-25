@@ -210,19 +210,16 @@ class SystemEditModal extends Modal {
 
 // ── Module-level UI state (survives re-renders within the same plugin session) ──
 
-/** Inner tab selection. Shared by built-ins and Custom. Default: preview. */
-type InnerStage = 'preview' | 'design' | 'fields' | 'sets';
+/** Inner tab selection. Shared by loaded system tabs and the library surface. */
+type InnerStage = 'preview' | 'design' | 'fields' | 'library';
 let _currentInnerStage: InnerStage = 'preview';
-const isBeatLibraryMode = (): boolean => _currentInnerStage === 'sets';
-
-/** @deprecated Use InnerStage. Kept for backward compatibility in string literals. */
-type CustomStage = InnerStage;
+const isBeatLibraryMode = (): boolean => _currentInnerStage === 'library';
 
 /**
  * Reactive dirty-state store for loaded beat sets (starter or saved).
  *
  * Why reactive? The beats UI has multiple independent render zones (Design
- * header and Sets panel) that must stay in sync when the dirty flag changes.
+ * header and library panel) that must stay in sync when the dirty flag changes.
  * A centralized notify() eliminates the fragile callback-threading pattern
  * where each zone held a closure over stale DOM elements.
  *
@@ -2017,7 +2014,7 @@ export function renderStoryBeatsSection(params: {
         setIcon(addIcon, 'plus');
         addBtn.appendText('Add system');
         addBtn.addEventListener('click', () => {
-            _currentInnerStage = 'sets';
+            _currentInnerStage = 'library';
             renderStageSwitcher();
             updateStageVisibility();
         });
@@ -3343,7 +3340,7 @@ export function renderStoryBeatsSection(params: {
                 updateStageVisibility();        // Show Design stage
             } else {
                 // Non-copy save: re-render Design header (clears dirty indicators)
-                // + Sets panel (updates dropdown/preview)
+                // + library panel
                 renderCustomConfig();
                 renderPreviewContent(getActiveBeatWorkspaceName('Custom')); // Preview reflects saved state
                 renderSavedBeatSystems();
@@ -6073,7 +6070,7 @@ export function renderStoryBeatsSection(params: {
 
             // Refresh the health icon in the Design header
             refreshHealthIcon?.();
-            // Keep top-level Custom tab status icon/label in sync.
+            // Keep top-level workspace tab status icon/label in sync.
             renderBeatSystemTabs();
         })();
     }

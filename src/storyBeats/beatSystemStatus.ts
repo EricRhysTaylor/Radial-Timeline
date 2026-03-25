@@ -22,6 +22,7 @@ import type {
     BeatSystemStatusScope,
 } from './types';
 import { getActiveLoadedBeatTab } from './workspaceState';
+import { resolveSelectedBeatModelFromSettings } from '../utils/beatSystemState';
 
 function normalizeBeatTitle(value: string): string {
     return toBeatMatchKey(value);
@@ -174,7 +175,10 @@ export function getBeatSystemStructuralStatus(params: {
             }
         : undefined;
     const systemOverride = loadedTabOverride ?? params.customSystemOverride;
-    const selectedSystem = params.selectedSystem ?? (systemOverride?.name ?? settings.beatSystem ?? 'Custom');
+    const selectedSystem = params.selectedSystem
+        ?? systemOverride?.name
+        ?? resolveSelectedBeatModelFromSettings(settings)
+        ?? 'Custom';
     const selectedSystemKey = buildSelectedSystemKey(selectedSystem, systemOverride);
     const selectedSystemLabel = buildSelectedSystemLabel(selectedSystem, systemOverride);
     const expectedBeats = buildExpectedBeats(settings, selectedSystem, systemOverride);
