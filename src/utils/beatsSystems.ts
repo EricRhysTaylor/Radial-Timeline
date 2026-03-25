@@ -3,7 +3,7 @@
  */
 import { normalizeBeatNameInput, normalizeBeatSetNameInput } from './beatsInputNormalize';
 import type { BeatDefinition, RadialTimelineSettings } from '../types/settings';
-import { getActiveCustomBeatSystemBeats, getActiveCustomBeatSystemName } from './beatSystemState';
+import { getActiveLoadedBeatTab } from '../storyBeats/workspaceState';
 
 export interface PlotBeatInfo {
   name: string;
@@ -492,10 +492,11 @@ export const STARTER_BEAT_SETS: StarterBeatSet[] = [
  * Shared helper to construct the active custom system object from canonical settings.
  */
 export function getCustomSystemFromSettings(
-    settings: Pick<RadialTimelineSettings, 'savedBeatSystems' | 'activeCustomBeatSystemId'>
+    settings: RadialTimelineSettings
 ): PlotSystemPreset {
-    const name = normalizeBeatSetNameInput(getActiveCustomBeatSystemName(settings), 'Custom');
-    const beatObjs = getActiveCustomBeatSystemBeats(settings);
+    const activeTab = getActiveLoadedBeatTab(settings);
+    const name = normalizeBeatSetNameInput(activeTab?.name ?? '', 'Custom');
+    const beatObjs = activeTab?.beats ?? [];
 
     const beats = beatObjs
         .map((b) => normalizeBeatNameInput(b.name, ''))

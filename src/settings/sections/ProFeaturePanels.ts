@@ -2991,6 +2991,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
     let activeBookMetaEditField: EditableBookMetaFieldKey | null = null;
     let activeBookMetaDraft = '';
     let activeBookMetaEditSourcePath: string | null = null;
+    let activeBookMetaPreviewOverride: BookMeta | null = null;
     let activeBookMetaEditBusy = false;
     const bookMetaPreviewPanel = pandocPanel.createDiv({
         cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}`,
@@ -3002,7 +3003,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
     const renderBookMetaPreview = () => {
         previewBody.empty();
         const activeBookMetaStatus = getActiveBookMetaStatus(plugin);
-        const meta = activeBookMetaStatus.bookMeta ?? null;
+        const meta = activeBookMetaPreviewOverride ?? activeBookMetaStatus.bookMeta ?? null;
         const sourcePath = (activeBookMetaEditSourcePath || meta?.sourcePath || activeBookMetaStatus.path || '').trim();
         const hasSourcePath = sourcePath.length > 0;
         const openOrCreateBookMetaNote = async () => {
@@ -3048,6 +3049,60 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             renderBookMetaPreview();
         };
 
+        const applyBookMetaEditToPreview = (
+            currentMeta: BookMeta | null,
+            field: EditableBookMetaFieldKey,
+            normalizedValue: string | number | null,
+            nextSourcePath: string
+        ): BookMeta => {
+            const nextMeta: BookMeta = {
+                ...(currentMeta || {}),
+                sourcePath: nextSourcePath,
+            };
+
+            if (field === 'title') {
+                if (typeof normalizedValue === 'string') nextMeta.title = normalizedValue;
+                else delete nextMeta.title;
+                return nextMeta;
+            }
+
+            if (field === 'author') {
+                if (typeof normalizedValue === 'string') nextMeta.author = normalizedValue;
+                else delete nextMeta.author;
+                return nextMeta;
+            }
+
+            if (field === 'copyright-holder') {
+                const rights = { ...(nextMeta.rights || {}) };
+                if (typeof normalizedValue === 'string') rights.copyright_holder = normalizedValue;
+                else delete rights.copyright_holder;
+                nextMeta.rights = Object.keys(rights).length > 0 ? rights : undefined;
+                return nextMeta;
+            }
+
+            if (field === 'rights-year') {
+                const rights = { ...(nextMeta.rights || {}) };
+                if (typeof normalizedValue === 'number') rights.year = normalizedValue;
+                else delete rights.year;
+                nextMeta.rights = Object.keys(rights).length > 0 ? rights : undefined;
+                return nextMeta;
+            }
+
+            if (field === 'isbn') {
+                const identifiers = { ...(nextMeta.identifiers || {}) };
+                if (typeof normalizedValue === 'string') identifiers.isbn_paperback = normalizedValue;
+                else delete identifiers.isbn_paperback;
+                nextMeta.identifiers = Object.keys(identifiers).length > 0 ? identifiers : undefined;
+                return nextMeta;
+            }
+
+            const publisher = { ...(nextMeta.publisher || {}) };
+            if (typeof normalizedValue === 'string') publisher.name = normalizedValue;
+            else delete publisher.name;
+            nextMeta.publisher = Object.keys(publisher).length > 0 ? publisher : undefined;
+            return nextMeta;
+        };
+
         const saveBookMetaFieldEdit = async (
             field: EditableBookMetaFieldKey,
             mode: 'enter' | 'blur'
@@ -3078,6 +3133,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             activeBookMetaEditField = null;
             activeBookMetaDraft = '';
             activeBookMetaEditSourcePath = file.path;
+            activeBookMetaPreviewOverride = applyBookMetaEditToPreview(meta, field, result.normalizedValue, file.path);
             rerender();
         };
 
@@ -3117,6 +3173,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                     if (evt.key === 'Enter') {
                         evt.preventDefault();
                         handled = true;
+                        activeBookMetaDraft = input.value;
                         void saveBookMetaFieldEdit(field, 'enter');
                     } else if (evt.key === 'Escape') {
                         evt.preventDefault();
@@ -3127,6 +3184,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                 input.addEventListener('blur', () => {
                     if (handled) return;
                     handled = true;
+                    activeBookMetaDraft = input.value;
                     void saveBookMetaFieldEdit(field, 'blur');
                 });
                 return input;
@@ -3208,11 +3266,10 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
 
         if (hasSourcePath) {
             const previewActions = previewBody.createDiv({ cls: 'ert-bookmeta-preview-actions' });
-            new ButtonComponent(previewActions)
-                .setButtonText('Open Book Details note')
-                .onClick(() => {
-                    void plugin.app.workspace.openLinkText(sourcePath, '', false);
-                });
+            const infoIcon = previewActions.createSpan({ cls: 'ert-bookmeta-preview-actions-icon' });
+            infoIcon.setAttr('aria-hidden', 'true');
+            setIcon(infoIcon, 'info');
+            previewActions.createSpan({ cls: 'ert-bookmeta-preview-actions-text', text: 'Click any field to edit.' });
             const sourceRow = previewBody.createDiv({ cls: 'ert-bookmeta-source-row' });
             sourceRow.createSpan({ cls: 'ert-bookmeta-source-label', text: 'Source' });
             const sourceLink = sourceRow.createEl('a', {

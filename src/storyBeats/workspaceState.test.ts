@@ -104,7 +104,7 @@ describe('beat workspace loading', () => {
 
         const loaded = loadBeatTabFromLibraryItem(settings, starterItem!);
 
-        expect(settings.beatSystem).toBe('Custom');
+        expect(settings.beatSystem).toBe(loaded.name);
         expect(getActiveLoadedBeatTab(settings)?.tabId).toBe(loaded.tabId);
         expect(resolveSelectedBeatModelFromSettings(settings)).toBe(loaded.name);
     });

@@ -12,10 +12,7 @@ import type {
 import { getActiveBook } from '../utils/books';
 import {
     DEFAULT_CUSTOM_BEAT_SYSTEM_ID,
-    getActiveCustomBeatSystemId,
     getCustomBeatConfigKey,
-    getSavedBeatSystems,
-    replaceSavedBeatSystem,
 } from '../utils/beatSystemState';
 import { normalizeBeatNameInput, normalizeBeatSetNameInput, toBeatModelMatchKey } from '../utils/beatsInputNormalize';
 import { cloneBeatLibraryItem, getBeatLibraryItemBySource, getBuiltinBeatLibraryItems, getSavedBeatLibraryItems, getStarterBeatLibraryItems } from './libraryState';
@@ -59,6 +56,17 @@ function getWorkspaceCustomSystemId(tab: LoadedBeatTab): string {
     if (tab.sourceKind === 'starter' && tab.sourceId) return tab.sourceId;
     if (tab.sourceKind === 'blank') return DEFAULT_CUSTOM_BEAT_SYSTEM_ID;
     return `${WORKSPACE_CUSTOM_ID_PREFIX}${tab.tabId}`;
+}
+
+export function getLoadedBeatTabWorkspaceSystemId(tab: LoadedBeatTab): string {
+    return getWorkspaceCustomSystemId(tab);
+}
+
+export function getLoadedBeatTabConfigKey(tab: LoadedBeatTab): string {
+    if (tab.sourceKind === 'builtin') {
+        return normalizeBeatSetNameInput(tab.name, tab.name);
+    }
+    return getCustomBeatConfigKey(getWorkspaceCustomSystemId(tab));
 }
 
 function buildWorkspaceTabId(item: BeatLibraryItem): string {
@@ -130,6 +138,14 @@ function setWorkspace(settings: RadialTimelineSettings, workspace: BeatWorkspace
     const normalized = normalizeWorkspace(workspace);
     writeWorkspace(settings, normalized);
     return normalized;
+}
+
+function mirrorLegacyBeatModelSelection(settings: RadialTimelineSettings, workspace: BeatWorkspaceState): void {
+    const activeTabId = workspace.activeTabId ?? workspace.loadedTabIds[0];
+    const activeTab = activeTabId ? workspace.tabsById[activeTabId] : undefined;
+    if (activeTab?.name) {
+        settings.beatSystem = normalizeBeatSetNameInput(activeTab.name, settings.beatSystem ?? activeTab.name);
+    }
 }
 
 function mergeDetectedTabsIntoWorkspace(
@@ -219,11 +235,7 @@ export function ensureMaterializedBeatWorkspaceState(app: App, settings: RadialT
     const detectedTabs = collectManuscriptDetectedTabs(app, settings);
     const { workspace: nextWorkspace, changed } = mergeDetectedTabsIntoWorkspace(settings, workspace, detectedTabs);
     if (changed) {
-        const activeTabId = nextWorkspace.activeTabId ?? nextWorkspace.loadedTabIds[0];
-        const activeTab = activeTabId ? nextWorkspace.tabsById[activeTabId] : undefined;
-        if (activeTab) {
-            hydrateLegacyStateFromTab(settings, activeTab);
-        }
+        mirrorLegacyBeatModelSelection(settings, nextWorkspace);
     }
     return nextWorkspace;
 }
@@ -356,72 +368,17 @@ export function isBeatLibraryItemLoaded(
     });
 }
 
-function commitHydratedTabToWorkspace(settings: RadialTimelineSettings, workspace: BeatWorkspaceState): BeatWorkspaceState {
-    const activeTabId = workspace.activeTabId;
-    if (!activeTabId) return workspace;
-    const tab = workspace.tabsById[activeTabId];
-    if (!tab) return workspace;
-
-    const customSystemId = getWorkspaceCustomSystemId(tab);
-    const liveSystem = getSavedBeatSystems(settings).find((system) => system.id === customSystemId);
-    const config = settings.beatSystemConfigs?.[getCustomBeatConfigKey(customSystemId)];
-    const nextTab: LoadedBeatTab = {
-        ...tab,
-        name: normalizeBeatSetNameInput(liveSystem?.name ?? tab.name, tab.name),
-        description: liveSystem?.description ?? tab.description ?? '',
-        beats: (liveSystem?.beats ?? tab.beats).map(cloneBeatDefinition),
-        config: cloneBeatConfig(config ?? tab.config),
-    };
-    nextTab.dirty = computeTabDirty(settings, nextTab);
-
-    return setWorkspace(settings, {
-        ...workspace,
-        tabsById: {
-            ...workspace.tabsById,
-            [activeTabId]: nextTab,
-        },
-    });
-}
-
-export function commitActiveBeatTabToWorkspace(settings: RadialTimelineSettings): LoadedBeatTab | undefined {
-    const workspace = commitHydratedTabToWorkspace(settings, getWorkspace(settings));
-    const activeTabId = workspace.activeTabId;
-    const activeTab = activeTabId ? workspace.tabsById[activeTabId] : undefined;
-    return activeTab ? cloneLoadedTab(activeTab) : undefined;
-}
-
-function hydrateLegacyStateFromTab(settings: RadialTimelineSettings, tab: LoadedBeatTab): void {
-    const customSystemId = getWorkspaceCustomSystemId(tab);
-    replaceSavedBeatSystem(settings, {
-        id: customSystemId,
-        name: normalizeBeatSetNameInput(tab.name, 'Custom'),
-        description: tab.description ?? '',
-        beats: tab.beats.map(cloneBeatDefinition),
-        createdAt: new Date().toISOString(),
-    });
-    if (!settings.beatSystemConfigs) settings.beatSystemConfigs = {};
-    settings.beatSystemConfigs[getCustomBeatConfigKey(customSystemId)] = cloneBeatConfig(tab.config);
-    settings.activeCustomBeatSystemId = customSystemId;
-    settings.beatSystem = 'Custom';
-}
-
-export function syncActiveBeatTabToLegacyWorkspace(settings: RadialTimelineSettings): void {
-    const activeTab = getActiveLoadedBeatTab(settings);
-    if (!activeTab) return;
-    hydrateLegacyStateFromTab(settings, activeTab);
-}
-
 export function activateLoadedBeatTab(settings: RadialTimelineSettings, tabId: string): LoadedBeatTab | undefined {
-    const committedWorkspace = commitHydratedTabToWorkspace(settings, getWorkspace(settings));
-    const nextTab = committedWorkspace.tabsById[tabId];
+    const workspace = getWorkspace(settings);
+    const nextTab = workspace.tabsById[tabId];
     if (!nextTab) return undefined;
     const nextWorkspace = setWorkspace(settings, {
-        ...committedWorkspace,
+        ...workspace,
         activeTabId: tabId,
     });
     const activeTab = nextWorkspace.tabsById[tabId];
     if (!activeTab) return undefined;
-    hydrateLegacyStateFromTab(settings, activeTab);
+    mirrorLegacyBeatModelSelection(settings, nextWorkspace);
     return cloneLoadedTab(activeTab);
 }
 
@@ -431,7 +388,7 @@ export function loadBeatTabFromLibraryItem(settings: RadialTimelineSettings, ite
         activateLoadedBeatTab(settings, existing.tabId);
         return existing;
     }
-    const workspace = commitHydratedTabToWorkspace(settings, getWorkspace(settings));
+    const workspace = getWorkspace(settings);
     const tab = createLoadedTabFromLibraryItem(item);
     const nextWorkspace = setWorkspace(settings, {
         ...workspace,
@@ -443,7 +400,7 @@ export function loadBeatTabFromLibraryItem(settings: RadialTimelineSettings, ite
         activeTabId: tab.tabId,
     });
     const activeTab = nextWorkspace.tabsById[tab.tabId];
-    hydrateLegacyStateFromTab(settings, activeTab);
+    mirrorLegacyBeatModelSelection(settings, nextWorkspace);
     return cloneLoadedTab(activeTab);
 }
 
@@ -456,7 +413,7 @@ export function materializeBeatTab(settings: RadialTimelineSettings, tab: Loaded
         activateLoadedBeatTab(settings, existing.tabId);
         return existing;
     }
-    const workspace = commitHydratedTabToWorkspace(settings, getWorkspace(settings));
+    const workspace = getWorkspace(settings);
     const nextTab = cloneLoadedTab(tab);
     const nextWorkspace = setWorkspace(settings, {
         ...workspace,
@@ -468,7 +425,7 @@ export function materializeBeatTab(settings: RadialTimelineSettings, tab: Loaded
         activeTabId: nextTab.tabId,
     });
     const activeTab = nextWorkspace.tabsById[nextTab.tabId];
-    hydrateLegacyStateFromTab(settings, activeTab);
+    mirrorLegacyBeatModelSelection(settings, nextWorkspace);
     return cloneLoadedTab(activeTab);
 }
 
@@ -490,42 +447,37 @@ export function updateLoadedBeatTab(
         },
     });
     if (nextWorkspace.activeTabId === tabId) {
-        hydrateLegacyStateFromTab(settings, updated);
+        mirrorLegacyBeatModelSelection(settings, nextWorkspace);
     }
     return cloneLoadedTab(updated);
 }
 
 export function unloadBeatTab(settings: RadialTimelineSettings, tabId: string): string | undefined {
-    const workspace = commitHydratedTabToWorkspace(settings, getWorkspace(settings));
+    const workspace = getWorkspace(settings);
     if (!workspace.tabsById[tabId]) return workspace.activeTabId;
     const nextIds = workspace.loadedTabIds.filter((id) => id !== tabId);
     const nextTabs = { ...workspace.tabsById };
     delete nextTabs[tabId];
     const nextActiveTabId = workspace.activeTabId === tabId ? nextIds[0] : workspace.activeTabId;
-    setWorkspace(settings, {
+    const nextWorkspace = setWorkspace(settings, {
         loadedTabIds: nextIds,
         tabsById: nextTabs,
         activeTabId: nextActiveTabId,
     });
-    if (nextActiveTabId) {
-        const nextActive = nextTabs[nextActiveTabId];
-        if (nextActive) hydrateLegacyStateFromTab(settings, nextActive);
-    }
+    mirrorLegacyBeatModelSelection(settings, nextWorkspace);
     return nextActiveTabId;
-}
-
-export function getActiveBeatModelFromWorkspace(settings: RadialTimelineSettings): string | undefined {
-    return getActiveLoadedBeatTab(settings)?.name?.trim() || undefined;
-}
-
-export function getActiveBeatWorkspaceConfig(settings: RadialTimelineSettings): BeatSystemConfig | undefined {
-    return getActiveLoadedBeatTab(settings)?.config;
 }
 
 export function getActiveBeatWorkspaceKind(settings: RadialTimelineSettings): BeatSourceKind | undefined {
     return getActiveLoadedBeatTab(settings)?.sourceKind;
 }
 
-export function getActiveBeatWorkspaceLabel(settings: RadialTimelineSettings): string | undefined {
-    return getActiveLoadedBeatTab(settings)?.name;
+export function getActiveBeatWorkspaceSystemId(settings: RadialTimelineSettings): string | undefined {
+    const activeTab = getActiveLoadedBeatTab(settings);
+    return activeTab ? getWorkspaceCustomSystemId(activeTab) : undefined;
+}
+
+export function getActiveBeatWorkspaceConfigKey(settings: RadialTimelineSettings): string | undefined {
+    const activeTab = getActiveLoadedBeatTab(settings);
+    return activeTab ? getLoadedBeatTabConfigKey(activeTab) : undefined;
 }

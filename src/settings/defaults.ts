@@ -167,6 +167,7 @@ Chapter:`
             { beatYamlAdvanced: '', beatHoverMetadataFields: [] }
         ])
     ),
+    // Legacy fixed-Custom workspace marker kept only for migration.
     activeCustomBeatSystemId: DEFAULT_CUSTOM_BEAT_SYSTEM_ID,
     savedBeatSystems: [buildDefaultCustomBeatSystem()],
     bookDesignerTemplates: [],

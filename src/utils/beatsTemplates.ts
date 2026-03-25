@@ -10,9 +10,12 @@ import { normalizeBeatSetNameInput, sanitizeBeatFilenameSegment, toBeatModelMatc
 import { mergeTemplateParts } from './templateMerge';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
 import { generateSceneId } from './sceneIds';
-import { getActiveCustomBeatSystemName, getCustomBeatConfigKey } from './beatSystemState';
 import { formatBeatDecimalPrefix } from './prefixOrder';
-import { getActiveBeatWorkspaceConfig, getActiveLoadedBeatTab } from '../storyBeats/workspaceState';
+import {
+  getActiveBeatWorkspaceConfigKey,
+  getActiveLoadedBeatTab,
+  getLoadedBeatTabConfigKey,
+} from '../storyBeats/workspaceState';
 
 // ─── Per-system Beat Config Resolvers ────────────────────────────────
 
@@ -36,37 +39,12 @@ export function getBeatConfigForSystem(
   systemKey?: string
 ): BeatSystemConfig {
   const activeTab = getActiveLoadedBeatTab(settings);
-  if (!systemKey && activeTab) {
+  if (activeTab && (!systemKey || normalizeModelKey(systemKey) === normalizeModelKey(activeTab.name))) {
     return activeTab.config;
   }
   const system = (systemKey ?? settings.beatSystem ?? 'Save The Cat').trim();
-  const key = system === 'Custom'
-    ? getCustomBeatConfigKey(settings.activeCustomBeatSystemId)
-    : system;
+  const key = system;
   return settings.beatSystemConfigs?.[key] ?? EMPTY_BEAT_CONFIG;
-}
-
-/**
- * Ensure a BeatSystemConfig slot exists for the given system; create if missing.
- * Used by the Fields editor when persisting edits.
- */
-export function ensureBeatConfigForSystem(
-  settings: RadialTimelineSettings,
-  systemKey?: string
-): BeatSystemConfig {
-  if (!systemKey) {
-    const activeConfig = getActiveBeatWorkspaceConfig(settings);
-    if (activeConfig) return activeConfig;
-  }
-  const system = (systemKey ?? settings.beatSystem ?? 'Save The Cat').trim();
-  const key = system === 'Custom'
-    ? getCustomBeatConfigKey(settings.activeCustomBeatSystemId)
-    : system;
-  if (!settings.beatSystemConfigs) settings.beatSystemConfigs = {};
-  if (!settings.beatSystemConfigs[key]) {
-    settings.beatSystemConfigs[key] = { beatYamlAdvanced: '', beatHoverMetadataFields: [] };
-  }
-  return settings.beatSystemConfigs[key];
 }
 
 /**
@@ -106,13 +84,9 @@ export function getBeatConfigForItem(
   }
 
   // 3. Active custom system (Beat Model stores the custom system name, not the key)
-  const activeCustomKey = getCustomBeatConfigKey(settings.activeCustomBeatSystemId);
-  if (configs[activeCustomKey]) {
-    // Check if the custom system name matches the Beat Model
-    const customName = getActiveCustomBeatSystemName(settings);
-    if (normalizeModelKey(customName) === normalized) {
-      return configs[activeCustomKey];
-    }
+  const activeWorkspaceKey = getActiveBeatWorkspaceConfigKey(settings);
+  if (activeWorkspaceKey && configs[activeWorkspaceKey] && activeTab && normalizeModelKey(activeTab.name) === normalized) {
+    return configs[activeWorkspaceKey];
   }
 
   // 4. Search all saved custom systems by name match

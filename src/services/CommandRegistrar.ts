@@ -31,7 +31,7 @@ import { parseMatterMetaFromFrontmatter } from '../utils/matterMeta';
 import { ensureBundledLayoutInstalledForExport } from '../utils/pandocBundledLayouts';
 import { getDefaultManuscriptCleanupOptions, normalizeManuscriptCleanupOptions, sanitizeCompiledManuscript } from '../utils/manuscriptSanitize';
 import { getPlotSystem } from '../utils/beatsSystems';
-import { getActiveCustomBeatSystemBeats } from '../utils/beatSystemState';
+import { getActiveLoadedBeatTab } from '../storyBeats/workspaceState';
 import { ExportFailure, categorizeExportError } from '../utils/exportErrors';
 
 import { getRuntimeSettings } from '../utils/runtimeEstimator';
@@ -824,12 +824,14 @@ export class CommandRegistrar {
     }
 
     private resolveModernClassicBeatDefinitions(): ModernClassicBeatDefinition[] {
-        const selectedSystem = (this.plugin.settings.beatSystem || 'Custom').trim();
-        if (selectedSystem === 'Custom') {
-            return getActiveCustomBeatSystemBeats(this.plugin.settings)
+        const activeTab = getActiveLoadedBeatTab(this.plugin.settings);
+        if (activeTab) {
+            return activeTab.beats
                 .map((beat, index) => this.toModernClassicBeatDefinition(beat, index + 1))
                 .filter((beat): beat is ModernClassicBeatDefinition => !!beat);
         }
+
+        const selectedSystem = (this.plugin.settings.beatSystem || 'Custom').trim();
 
         const builtin = getPlotSystem(selectedSystem);
         if (!builtin) return [];

@@ -9053,15 +9053,31 @@
 }
 
 .ert-ui.ert-scope--settings .ert-bookmeta-preview-actions {
-  display: flex;
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
+  gap: 6px;
   width: 100%;
   margin-top: 2px;
+  color: var(--text-muted);
+  font-size: 0.78rem;
 }
 
-.ert-ui.ert-scope--settings .ert-bookmeta-preview-actions .mod-cta,
-.ert-ui.ert-scope--settings .ert-bookmeta-preview-actions .clickable-icon,
-.ert-ui.ert-scope--settings .ert-bookmeta-preview-actions button {
+.ert-ui.ert-scope--settings .ert-bookmeta-preview-actions-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  color: color-mix(in srgb, var(--interactive-accent) 50%, var(--text-muted));
+}
+
+.ert-ui.ert-scope--settings .ert-bookmeta-preview-actions-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.ert-ui.ert-scope--settings .ert-bookmeta-preview-actions-text {
   white-space: nowrap;
 }
 

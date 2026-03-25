@@ -139,9 +139,5 @@ export function resolveSelectedBeatModelFromSettings(
         if (activeTabName) return activeTabName;
     }
     const selectedSystem = normalizeBeatSetNameInput(settings.beatSystem ?? '', '');
-    if (!selectedSystem) return undefined;
-    if (toBeatModelMatchKey(selectedSystem) !== 'custom') {
-        return selectedSystem;
-    }
-    return getActiveCustomBeatSystemName(settings);
+    return selectedSystem || undefined;
 }

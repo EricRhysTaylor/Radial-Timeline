@@ -4,11 +4,6 @@ import { normalizeFrontmatterKeys } from '../utils/frontmatter';
 import { parseActLabels, resolveActLabel } from '../utils/acts';
 import { getPlotSystem } from '../utils/beatsSystems';
 import {
-    getActiveCustomBeatSystemBeats,
-    getActiveCustomBeatSystemId,
-    getActiveCustomBeatSystemName,
-} from '../utils/beatSystemState';
-import {
     normalizeBeatNameInput,
     normalizeBeatSetNameInput,
     toBeatMatchKey,
@@ -52,29 +47,23 @@ type BeatSystemOverride = {
 };
 
 function buildSelectedSystemKey(
-    settings: RadialTimelineSettings,
     selectedSystem: string,
     systemOverride?: BeatSystemOverride
 ): string {
     if (systemOverride) {
         return `workspace:${systemOverride.id ?? normalizeBeatSetNameInput(systemOverride.name, 'custom')}`;
     }
-    return selectedSystem === 'Custom'
-        ? `custom:${getActiveCustomBeatSystemId(settings)}`
-        : selectedSystem;
+    return normalizeBeatSetNameInput(selectedSystem, selectedSystem);
 }
 
 function buildSelectedSystemLabel(
-    settings: RadialTimelineSettings,
     selectedSystem: string,
     systemOverride?: BeatSystemOverride
 ): string {
     if (systemOverride) {
         return normalizeBeatSetNameInput(systemOverride.name, 'Custom');
     }
-    return selectedSystem === 'Custom'
-        ? normalizeBeatSetNameInput(getActiveCustomBeatSystemName(settings, 'Custom'), 'Custom')
-        : normalizeBeatSetNameInput(selectedSystem, selectedSystem);
+    return normalizeBeatSetNameInput(selectedSystem, selectedSystem);
 }
 
 function buildExpectedBeats(
@@ -85,8 +74,8 @@ function buildExpectedBeats(
     const actCount = Math.max(3, settings.actCount ?? 3);
     const actLabels = parseActLabels(settings, actCount);
 
-    if (systemOverride || selectedSystem === 'Custom') {
-        const beats = (systemOverride?.beats ?? getActiveCustomBeatSystemBeats(settings))
+    if (systemOverride) {
+        const beats = systemOverride.beats
             .map((beat) => ({
                 name: normalizeBeatNameInput(beat.name, ''),
                 act: clampBeatAct(typeof beat.act === 'number' ? beat.act : 1, actCount),
@@ -185,9 +174,9 @@ export function getBeatSystemStructuralStatus(params: {
             }
         : undefined;
     const systemOverride = loadedTabOverride ?? params.customSystemOverride;
-    const selectedSystem = params.selectedSystem ?? (systemOverride ? 'Custom' : (settings.beatSystem ?? 'Custom'));
-    const selectedSystemKey = buildSelectedSystemKey(settings, selectedSystem, systemOverride);
-    const selectedSystemLabel = buildSelectedSystemLabel(settings, selectedSystem, systemOverride);
+    const selectedSystem = params.selectedSystem ?? (systemOverride?.name ?? settings.beatSystem ?? 'Custom');
+    const selectedSystemKey = buildSelectedSystemKey(selectedSystem, systemOverride);
+    const selectedSystemLabel = buildSelectedSystemLabel(selectedSystem, systemOverride);
     const expectedBeats = buildExpectedBeats(settings, selectedSystem, systemOverride);
     const expectedKeySet = new Set(expectedBeats.map((beat) => beat.key).filter(Boolean));
     const markdownScope = resolveBookScopedMarkdownFiles(app, settings);

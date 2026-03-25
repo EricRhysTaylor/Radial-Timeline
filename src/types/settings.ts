@@ -646,7 +646,8 @@ export interface RadialTimelineSettings {
     enableBeatYamlEditor?: boolean;
     // Per-system beat YAML + hover configs (keyed by system name or custom:<id>)
     beatSystemConfigs?: Record<string, BeatSystemConfig>;
-    activeCustomBeatSystemId?: string;  // Which custom system is active (default: 'default')
+    /** @deprecated Legacy fixed-Custom workspace marker kept only for migration. */
+    activeCustomBeatSystemId?: string;
     beatYamlTemplates?: {
         base: string;
     };

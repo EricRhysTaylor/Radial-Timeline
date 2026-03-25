@@ -19,13 +19,14 @@ import type { RadialTimelineSettings } from '../types/settings';
 import { normalizeFrontmatterKeys } from './frontmatter';
 import { normalizeBeatSetNameInput, toBeatModelMatchKey } from './beatsInputNormalize';
 import { STARTER_BEAT_SETS } from './beatsSystems';
-import { findSavedBeatSystem, getActiveCustomBeatSystemId, getActiveCustomBeatSystemName } from './beatSystemState';
+import { findSavedBeatSystem } from './beatSystemState';
 import {
     type FrontmatterSafetyResult,
     scanFrontmatterSafety,
 } from './yamlSafety';
 import { explainScope, resolveBookScopedFiles } from '../services/NoteScopeResolver';
 import { readReferenceId } from './sceneIds';
+import { getActiveLoadedBeatTab, getLoadedBeatTabWorkspaceSystemId } from '../storyBeats/workspaceState';
 
 // ─── Types ──────────────────────────────────────────────────────────────
 
@@ -504,11 +505,13 @@ export function collectFilesForAuditWithScope(
     if (beatSystemKey && noteType === 'Beat') {
         if (beatSystemKey.startsWith('custom:')) {
             const customId = beatSystemKey.slice('custom:'.length);
-            // Resolve name from saved sets, starter sets, or active custom set.
+            // Resolve name from saved sets, starter sets, or the active loaded workspace tab.
             const saved = findSavedBeatSystem(settings, customId);
             const starter = STARTER_BEAT_SETS.find(s => s.id === customId);
-            const activeId = getActiveCustomBeatSystemId(settings);
-            const activeName = activeId === customId ? getActiveCustomBeatSystemName(settings) : undefined;
+            const activeTab = getActiveLoadedBeatTab(settings);
+            const activeName = activeTab && getLoadedBeatTabWorkspaceSystemId(activeTab) === customId
+                ? activeTab.name
+                : undefined;
             beatModelFilter = normalizeBeatSetNameInput(
                 saved?.name ?? starter?.name ?? activeName ?? '',
                 'Custom'

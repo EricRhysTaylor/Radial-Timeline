@@ -12,12 +12,11 @@ import { parseScoresFromClipboard } from '../GossamerCommands';
 import { getPlotSystem } from '../utils/beatsSystems';
 import { normalizeBeatSetNameInput } from '../utils/beatsInputNormalize';
 import {
-  getActiveCustomBeatSystemBeats,
-  getActiveCustomBeatSystemName,
   resolveSelectedBeatModelFromSettings
 } from '../utils/beatSystemState';
 import { isPathInFolderScope } from '../utils/pathScope';
 import { comparePrefixTokens, extractPrefixToken } from '../utils/prefixOrder';
+import { getActiveLoadedBeatTab } from '../storyBeats/workspaceState';
 
 interface ScoreHistoryItem {
   index: number;
@@ -252,16 +251,15 @@ export class GossamerScoreModal extends Modal {
 
     let plotSystemTemplate = getPlotSystem(settingsSystem);
     
-    // Support Custom Dynamic System Template
-    const customBeats = getActiveCustomBeatSystemBeats(this.plugin.settings);
-    if (settingsSystem === 'Custom' && customBeats.length > 0) {
-        const customName = getActiveCustomBeatSystemName(this.plugin.settings);
+    // Support active workspace systems that do not map to canonical presets.
+    const activeTab = getActiveLoadedBeatTab(this.plugin.settings);
+    if (!plotSystemTemplate && activeTab?.beats.length) {
+        const customName = activeTab.name;
         plotSystemTemplate = {
             name: customName,
-            // Persisted beats are objects ({ name, act }); template expects names
-            beats: customBeats.map(b => b.name),
-            beatDetails: customBeats.map(b => ({ name: b.name, description: '', range: '' })),
-            beatCount: customBeats.length
+            beats: activeTab.beats.map(b => b.name),
+            beatDetails: activeTab.beats.map(b => ({ name: b.name, description: '', range: '' })),
+            beatCount: activeTab.beats.length
         };
     }
 

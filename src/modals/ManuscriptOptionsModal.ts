@@ -192,7 +192,7 @@ export class ManuscriptOptionsModal extends Modal {
     private startHandleEl?: HTMLElement;
     private endHandleEl?: HTMLElement;
     private rangeFillEl?: HTMLElement;
-    private heroMetaEl?: HTMLElement;
+    private badgeEl?: HTMLElement;
     private rangeStatusEl?: HTMLElement;
     private rangeDecimalWarningEl?: HTMLElement;
     private rangeCardContainer?: HTMLElement;
@@ -402,19 +402,18 @@ export class ManuscriptOptionsModal extends Modal {
 
     private renderSkeleton(container: HTMLElement): void {
         const hero = container.createDiv({ cls: 'ert-modal-header' });
-        hero.createSpan({ cls: 'ert-modal-badge', text: 'EXPORT' });
+        const bookTitle = getActiveBookTitle(this.plugin.settings, DEFAULT_BOOK_TITLE);
+        this.badgeEl = hero.createSpan({ cls: 'ert-modal-badge', text: `EXPORT — ${bookTitle}` });
 
         hero.createDiv({
             cls: 'ert-modal-title',
-            text: t('manuscriptModal.title')
+            text: 'Export configuration'
         });
         hero.createDiv({
             cls: 'ert-modal-subtitle',
             text: t('manuscriptModal.description')
         });
-        const bookTitle = getActiveBookTitle(this.plugin.settings, DEFAULT_BOOK_TITLE);
         const bookContextRow = hero.createDiv({ cls: 'ert-modal-meta' });
-        bookContextRow.createSpan({ cls: 'ert-modal-meta-item', text: `Exporting: ${bookTitle}` });
         const manageBooksLink = bookContextRow.createEl('a', {
             cls: 'ert-modal-meta-item',
             text: 'Manage books\u2026',
@@ -428,7 +427,7 @@ export class ManuscriptOptionsModal extends Modal {
             // @ts-ignore - Obsidian API
             this.app.setting.openTabById('radial-timeline');
         });
-        this.managePdfLayoutsLinkEl = hero.createEl('a', {
+        this.managePdfLayoutsLinkEl = bookContextRow.createEl('a', {
             cls: 'ert-modal-meta-item rt-hidden',
             text: 'Manage PDF layouts…',
             attr: { href: '#' }
@@ -437,8 +436,6 @@ export class ManuscriptOptionsModal extends Modal {
             e.preventDefault();
             this.openPublishingSettings();
         });
-        this.heroMetaEl = hero.createDiv({ cls: 'ert-modal-meta' });
-        this.renderHeroMeta([t('manuscriptModal.heroLoading')]);
 
         // A) OUTPUT
         const outputCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card' });
@@ -791,10 +788,11 @@ export class ManuscriptOptionsModal extends Modal {
         this.syncExportUi();
     }
 
-    private renderHeroMeta(items: string[]): void {
-        if (!this.heroMetaEl) return;
-        this.heroMetaEl.empty();
-        items.forEach(item => this.heroMetaEl?.createSpan({ cls: 'ert-modal-meta-item', text: item }));
+    private updateBadgeSceneCount(): void {
+        if (!this.badgeEl) return;
+        const bookTitle = getActiveBookTitle(this.plugin.settings, DEFAULT_BOOK_TITLE);
+        const count = this.getSelectedSceneCount();
+        this.badgeEl.setText(`EXPORT — ${bookTitle}, ${count} scenes selected`);
     }
 
     private refreshExportProfileState(): void {
@@ -2137,13 +2135,7 @@ Sarah stood at the window, watching the world wake up.`;
             this.rangeEnd = Math.max(1, this.totalScenes);
             this.hasWhenDates = whenDates.some((value) => !!value);
 
-            const meta = [`${this.totalScenes} scenes selected`];
-            if (!isPdfManuscript && this.subplot !== 'All Subplots') {
-                meta.push(`Filtered by: ${this.subplot}`);
-            } else {
-                meta.push(t('manuscriptModal.heroNarrativeMeta'));
-            }
-            this.renderHeroMeta(meta);
+            this.updateBadgeSceneCount();
 
             this.loadingEl?.remove();
             this.updateRangeUI();
@@ -2153,7 +2145,6 @@ Sarah stood at the window, watching the world wake up.`;
         } catch (err) {
             console.error(err);
             this.loadingEl?.setText(t('manuscriptModal.loadError'));
-            this.renderHeroMeta([t('manuscriptModal.loadError')]);
         }
     }
 
@@ -2186,6 +2177,7 @@ Sarah stood at the window, watching the world wake up.`;
     private syncRangeAvailability(): void {
         const count = this.getSelectedSceneCount();
         this.rangeStatusEl?.setText(`${count} scenes selected`);
+        this.updateBadgeSceneCount();
         const hasDecimalScenes = this.getSelectedSceneTitles().some((title) => /^\d+\.\d+\s+/.test((title || '').trim()));
         if (this.rangeDecimalWarningEl) {
             this.rangeDecimalWarningEl.toggleClass('rt-hidden', !hasDecimalScenes);
