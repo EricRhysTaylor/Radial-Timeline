@@ -3130,6 +3130,9 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
         setIcon(glyph, iconName);
 
         const header = col.createDiv({ cls: 'ert-publishing-status-col-header' });
+        const icon = header.createSpan({ cls: 'ert-publishing-status-col-icon' });
+        icon.setAttr('aria-hidden', 'true');
+        setIcon(icon, iconName);
         header.createSpan({ cls: 'ert-publishing-status-col-title', text: title });
         col.createDiv({ cls: 'ert-publishing-status-col-value', text: value });
         col.createDiv({ cls: 'ert-publishing-status-col-desc', text: desc });
@@ -3146,7 +3149,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
 
         if (showExportButton) {
             exportOptionsButtonComponent = new ButtonComponent(setupActionRow)
-                .setButtonText('Open export options')
+                .setButtonText('Open manuscript exports')
                 .onClick(() => {
                     plugin.openManuscriptExportModal();
                 });

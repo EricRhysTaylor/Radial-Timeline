@@ -8539,9 +8539,9 @@
   background: color-mix(in srgb, var(--ert-stage-accent) 4%, transparent);
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
-  min-height: 176px;
+  min-height: 168px;
   position: relative;
   overflow: hidden;
   isolation: isolate;
@@ -8562,12 +8562,12 @@
 
 .ert-ui.ert-scope--settings .ert-publishing-status-col-glyph {
   position: absolute;
-  top: 12px;
-  left: 14px;
-  width: 100px;
-  height: 100px;
+  top: 6px;
+  left: 8px;
+  width: 120px;
+  height: 120px;
   color: var(--ert-stage-accent);
-  opacity: 0.09;
+  opacity: 0.1;
   pointer-events: none;
   z-index: 0;
 }
@@ -8580,16 +8580,28 @@
 
 .ert-ui.ert-scope--settings .ert-publishing-status-col-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
+  gap: var(--ert-gap-xs);
   min-width: 0;
   position: relative;
   z-index: 1;
+}
+
+.ert-ui.ert-scope--settings .ert-publishing-status-col-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  color: var(--ert-stage-accent);
+  flex: 0 0 auto;
 }
 
 .ert-ui.ert-scope--settings .ert-publishing-status-col-title {
   font-size: 1.04rem;
   font-weight: 700;
   color: var(--text-muted);
+  line-height: 1.1;
 }
 
 .ert-ui.ert-scope--settings .ert-publishing-status-col-value {

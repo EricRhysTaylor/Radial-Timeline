@@ -395,6 +395,44 @@ export function renderStoryBeatsSection(params: {
         getActiveCustomSystem().beats = beats;
     };
 
+    const openCustomSystemDetailsModal = (
+        systemId: string,
+        options?: { refreshSets?: boolean }
+    ) => {
+        const targetSystem = (plugin.settings.savedBeatSystems ?? []).find((system) => system.id === systemId);
+        if (!targetSystem) return;
+        const isActiveSystem = getActiveCustomId() === systemId;
+        new SystemEditModal(app, targetSystem.name, targetSystem.description ?? '', async (newName, newDesc) => {
+            const normalizedName = normalizeBeatSetNameInput(newName, '');
+            if (!normalizedName || !hasBeatReadableText(normalizedName)) {
+                new Notice('System name must include letters or numbers.');
+                return false;
+            }
+
+            replaceSavedBeatSystem(plugin.settings, {
+                ...targetSystem,
+                name: normalizedName,
+                description: newDesc,
+            });
+            await plugin.saveSettings();
+
+            if (isActiveSystem) {
+                invalidateBeatStructuralStatus();
+                updateTemplateButton(templateSetting, 'Custom');
+                renderCustomConfig();
+                renderPreviewContent('Custom');
+                renderBeatYamlEditor();
+                updateBeatHoverPreview?.();
+                renderBeatSystemTabs();
+            }
+
+            if (options?.refreshSets) {
+                renderSavedBeatSystems();
+            }
+            return true;
+        }).open();
+    };
+
     type ActRange = { min: number; max: number; sceneNumbers: number[] };
 
     const formatRangeValue = (value: number): string => {
@@ -933,23 +971,7 @@ export function renderStoryBeatsSection(params: {
             nameLink.setAttr('role', 'button');
             nameLink.setAttr('tabindex', '0');
             nameLink.setAttr('aria-label', `Edit "${customSystemName}"`);
-            const openSystemEdit = () => {
-                new SystemEditModal(app, customSystemName, customSystemDesc, async (newName, newDesc) => {
-                    const normalizedName = normalizeBeatSetNameInput(newName, '');
-                    if (!normalizedName || !hasBeatReadableText(normalizedName)) {
-                        new Notice('System name must include letters or numbers.');
-                        return false;
-                    }
-                    setActiveCustomName(normalizedName);
-                    setActiveCustomDescription(newDesc);
-                    await plugin.saveSettings();
-                    invalidateBeatStructuralStatus();
-                    updateTemplateButton(templateSetting, 'Custom');
-                    renderCustomConfig();
-                    renderPreviewContent('Custom');
-                    return true;
-                }).open();
-            };
+            const openSystemEdit = () => openCustomSystemDetailsModal(activeId);
             nameLink.addEventListener('click', (e) => { e.stopPropagation(); openSystemEdit(); }); // SAFE: direct addEventListener; Settings lifecycle manages cleanup
             nameLink.addEventListener('keydown', (e: KeyboardEvent) => { // SAFE: direct addEventListener; Settings lifecycle manages cleanup
                 if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openSystemEdit(); }
@@ -1985,13 +2007,15 @@ export function renderStoryBeatsSection(params: {
     let updateBeatHoverPreview: (() => void) | undefined;
     let refreshFillEmptyPlanAfterDefaultsChange: (() => void) | undefined;
 
-    const beatBaseTemplate = DEFAULT_SETTINGS.beatYamlTemplates!.base;
-    const beatBaseKeys = extractKeysInOrder(beatBaseTemplate);
     // Keys that are blocked from new beat writes (legacy or inapplicable).
     const beatDisallowedNewWriteKeys = new Set(['Description']);
 
     const renderBeatYamlEditor = () => {
         beatYamlContainer.empty();
+        const activeBeatSystemKey = getActiveSystemKey();
+        const beatCustomKeys = new Set(getCustomKeys('Beat', plugin.settings, activeBeatSystemKey));
+        const beatBaseKeys = computeCanonicalOrder('Beat', plugin.settings, activeBeatSystemKey)
+            .filter((key) => !beatCustomKeys.has(key));
 
         const currentBeatAdvanced = getConfigForCurrentSystem().beatYamlAdvanced;
         const beatAdvancedObj = safeParseYaml(currentBeatAdvanced);
@@ -2472,6 +2496,30 @@ export function renderStoryBeatsSection(params: {
         isDefault?: boolean;
     };
 
+    type BeatSetDeleteMode = 'system_and_notes' | 'system_only' | 'notes_only';
+
+    const trashBeatNoteFiles = async (files: TFile[]): Promise<{
+        trashed: number;
+        failed: number;
+        errors: string[];
+    }> => {
+        let trashed = 0;
+        let failed = 0;
+        const errors: string[] = [];
+
+        for (const file of files) {
+            try {
+                await app.vault.trash(file, false);
+                trashed += 1;
+            } catch (error) {
+                failed += 1;
+                errors.push(`${file.path}: ${error instanceof Error ? error.message : String(error)}`);
+            }
+        }
+
+        return { trashed, failed, errors };
+    };
+
     const renderSavedBeatSystems = () => {
         // Unsubscribe previous Sets dirty listener before clearing DOM
         _unsubSetsDirty?.();
@@ -2500,12 +2548,27 @@ export function renderStoryBeatsSection(params: {
         // Track currently selected entry for the preview card
         let selectedEntry: LoadableEntry | null = allLoadable.get(activeId) ?? null;
 
+        const getSelectedEntryDeploymentStatus = (entry: LoadableEntry | null): BeatSystemStructuralStatus | null => {
+            if (!entry || entry.isDefault) return null;
+            return getBeatSystemStructuralStatus({
+                app,
+                settings: plugin.settings,
+                selectedSystem: 'Custom',
+                customSystemOverride: {
+                    id: entry.id,
+                    name: entry.name,
+                    beats: entry.beats,
+                },
+            });
+        };
+
         const getDeleteSetRiskSummary = (systemId: string) => {
             const config = plugin.settings.beatSystemConfigs?.[getCustomBeatConfigKey(systemId)];
             const system = savedSystems.find((entry) => entry.id === systemId);
             const beatCount = system?.beats.length ?? 0;
             const hasDescription = !!system?.description?.trim();
-            const advancedKeys = extractKeysInOrder(config?.beatYamlAdvanced ?? '').filter((key) => !beatBaseKeys.includes(key));
+            const baseKeys = getBaseKeys('Beat', plugin.settings);
+            const advancedKeys = extractKeysInOrder(config?.beatYamlAdvanced ?? '').filter((key) => !baseKeys.includes(key));
             const hoverFieldCount = config?.beatHoverMetadataFields?.length ?? 0;
             const risks: string[] = [];
             if (beatCount > 0) risks.push(`${beatCount} stored beat definition${beatCount !== 1 ? 's' : ''}`);
@@ -2520,6 +2583,325 @@ export function renderStoryBeatsSection(params: {
                 hasStoredContent: risks.length > 0,
                 risks,
             };
+        };
+
+        const getSelectedEntryBeatNoteFiles = (entry: LoadableEntry | null): TFile[] => {
+            const structuralStatus = getSelectedEntryDeploymentStatus(entry);
+            if (!structuralStatus) return [];
+            const filesByPath = new Map<string, TFile>();
+
+            for (const matches of structuralStatus.matches.activeByBeatKey.values()) {
+                for (const match of matches) {
+                    if (match.file instanceof TFile) {
+                        filesByPath.set(match.file.path, match.file);
+                    }
+                }
+            }
+
+            return [...filesByPath.values()].sort((a, b) => a.path.localeCompare(b.path));
+        };
+
+        const getDeleteButtonState = (entry: LoadableEntry | null) => {
+            if (!entry || entry.isDefault) {
+                return {
+                    hidden: true,
+                    disabled: true,
+                    text: 'Delete set',
+                    tooltip: 'Select a set',
+                };
+            }
+
+            if (entry.builtIn) {
+                const deployedCount = getSelectedEntryBeatNoteFiles(entry).length;
+                return {
+                    hidden: false,
+                    disabled: deployedCount === 0,
+                    text: 'Reset to default',
+                    tooltip: deployedCount > 0
+                        ? 'Remove deployed beat notes for this starter set'
+                        : 'No deployed beat notes for this set in the active book.',
+                };
+            }
+
+            return {
+                hidden: false,
+                disabled: false,
+                text: 'Delete set',
+                tooltip: 'Delete or reset this saved set',
+            };
+        };
+
+        const resetActiveCustomToBlank = () => {
+            plugin.settings.activeCustomBeatSystemId = DEFAULT_CUSTOM_BEAT_SYSTEM_ID;
+            replaceSavedBeatSystem(plugin.settings, buildDefaultCustomBeatSystem());
+            if (!plugin.settings.beatSystemConfigs) plugin.settings.beatSystemConfigs = {};
+            plugin.settings.beatSystemConfigs[getCustomBeatConfigKey(DEFAULT_CUSTOM_BEAT_SYSTEM_ID)] = {
+                beatYamlAdvanced: '',
+                beatHoverMetadataFields: [],
+            };
+            clearSetBaseline();
+        };
+
+        const removeSavedSetDefinition = (systemId: string) => {
+            plugin.settings.savedBeatSystems = savedSystems.filter(s => s.id !== systemId);
+            if (plugin.settings.beatSystemConfigs) {
+                delete plugin.settings.beatSystemConfigs[getCustomBeatConfigKey(systemId)];
+            }
+            savedCustomSetIds.delete(systemId);
+        };
+
+        const openBuiltInResetModal = async (entry: LoadableEntry) => {
+            const noteFiles = getSelectedEntryBeatNoteFiles(entry);
+            if (noteFiles.length === 0) {
+                new Notice(`No deployed beat notes found for "${entry.name}".`);
+                return;
+            }
+
+            const confirmed = await new Promise<boolean>((resolve) => {
+                const modal = new Modal(app);
+                modal.titleEl.setText('');
+                modal.contentEl.empty();
+                modal.modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal-shell--md');
+                modal.contentEl.addClass('ert-modal-container', 'ert-stack');
+
+                const header = modal.contentEl.createDiv({ cls: 'ert-modal-header' });
+                header.createSpan({ cls: 'ert-modal-badge', text: 'BEAT SET' });
+                header.createDiv({ cls: 'ert-modal-title', text: 'Reset to default' });
+                header.createDiv({
+                    cls: 'ert-modal-subtitle',
+                    text: `Built-in sets cannot be deleted. Reset "${entry.name}" by deleting its deployed beat notes.`
+                });
+
+                const body = modal.contentEl.createDiv({ cls: ['ert-panel', 'ert-panel--glass'] });
+                body.createDiv({ cls: 'ert-modal-subtitle', text: `Scope: ${noteFiles.length} beat note${noteFiles.length !== 1 ? 's' : ''}` });
+                body.createDiv({ text: 'Delete beat notes only' });
+                body.createDiv({ text: 'Moves related beat notes to trash and keeps the starter set definition.' });
+
+                const confirmEl = body.createDiv({ cls: 'ert-modal-confirm-type' });
+                confirmEl.createDiv({ text: 'Type DELETE to confirm:', cls: 'ert-modal-subtitle' });
+                const confirmInput = confirmEl.createEl('input', { type: 'text', attr: { placeholder: 'DELETE' } });
+
+                const footer = modal.contentEl.createDiv({ cls: 'ert-modal-actions' });
+                const actionBtn = new ButtonComponent(footer)
+                    .setButtonText('Reset to default')
+                    .setWarning()
+                    .setDisabled(true)
+                    .onClick(() => {
+                        if (confirmInput.value.trim() !== 'DELETE') {
+                            confirmInput.classList.add('ert-input-error');
+                            confirmInput.focus();
+                            return;
+                        }
+                        resolve(true);
+                        modal.close();
+                    });
+                confirmInput.addEventListener('input', () => {
+                    actionBtn.setDisabled(confirmInput.value.trim() !== 'DELETE');
+                    confirmInput.classList.remove('ert-input-error');
+                });
+                new ButtonComponent(footer).setButtonText('Cancel').onClick(() => {
+                    resolve(false);
+                    modal.close();
+                });
+                modal.onClose = () => resolve(false);
+                modal.open();
+            });
+
+            if (!confirmed) return;
+
+            const result = await trashBeatNoteFiles(noteFiles);
+            if (result.failed > 0) {
+                console.error('[Beat Sets] Failed to trash beat notes:', result.errors);
+            }
+            invalidateBeatStructuralStatus();
+            renderCustomConfig();
+            renderPreviewContent('Custom');
+            renderBeatYamlEditor();
+            updateBeatHoverPreview?.();
+            renderSavedBeatSystems();
+            renderStageSwitcher();
+            updateStageVisibility();
+            const parts = [`Moved ${result.trashed} beat note${result.trashed !== 1 ? 's' : ''} to trash.`];
+            if (result.failed > 0) parts.push(`${result.failed} failed`);
+            new Notice(parts.join(' '));
+        };
+
+        const openSavedSetDeleteModal = async (system: SavedBeatSystem, entry: LoadableEntry) => {
+            const risk = getDeleteSetRiskSummary(system.id);
+            const noteFiles = getSelectedEntryBeatNoteFiles(entry);
+            const noteCount = noteFiles.length;
+            const wasActive = plugin.settings.activeCustomBeatSystemId === system.id;
+            let selectedMode: BeatSetDeleteMode = noteCount > 0 ? 'system_and_notes' : 'system_only';
+
+            const confirmed = await new Promise<BeatSetDeleteMode | null>((resolve) => {
+                const modal = new Modal(app);
+                modal.titleEl.setText('');
+                modal.contentEl.empty();
+                modal.modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal-shell--md');
+                modal.contentEl.addClass('ert-modal-container', 'ert-stack');
+
+                const header = modal.contentEl.createDiv({ cls: 'ert-modal-header' });
+                header.createSpan({ cls: 'ert-modal-badge', text: 'BEAT SYSTEM' });
+                header.createDiv({ cls: 'ert-modal-title', text: 'Delete set' });
+                header.createDiv({
+                    cls: 'ert-modal-subtitle',
+                    text: `Choose what to remove for "${system.name}".`
+                });
+
+                if (wasActive) {
+                    const banner = modal.contentEl.createDiv({ cls: 'ert-audit-safety-banner ert-audit-safety-banner--warning' });
+                    banner.createSpan({ text: 'Removing the system resets Custom to a blank set.' });
+                }
+
+                const body = modal.contentEl.createDiv({ cls: ['ert-panel', 'ert-panel--glass'] });
+                body.createDiv({ cls: 'ert-modal-subtitle', text: `Scope: ${risk.beatCount} stored beat${risk.beatCount !== 1 ? 's' : ''} • ${noteCount} deployed note${noteCount !== 1 ? 's' : ''}` });
+
+                const optionsEl = body.createDiv({ cls: 'ert-stack' });
+                type DeleteOptionMeta = { mode: BeatSetDeleteMode; title: string; desc: string; disabled?: boolean };
+                const optionDefs: DeleteOptionMeta[] = [
+                    {
+                        mode: 'system_and_notes',
+                        title: 'Delete system and all beat notes',
+                        desc: 'Removes the custom set definition, related beat notes, and associated YAML fields.',
+                        disabled: noteCount === 0,
+                    },
+                    {
+                        mode: 'system_only',
+                        title: 'Delete custom set system only (keep notes)',
+                        desc: 'Removes the set definition and associated YAML fields, but leaves beat notes in the vault.',
+                    },
+                    {
+                        mode: 'notes_only',
+                        title: 'Delete beat notes only',
+                        desc: 'Moves related beat notes to trash and keeps the custom set definition.',
+                        disabled: noteCount === 0,
+                    },
+                ];
+
+                const actionBtnState = () => {
+                    const chosen = optionDefs.find((option) => option.mode === selectedMode);
+                    return chosen?.disabled ? null : selectedMode;
+                };
+
+                optionDefs.forEach((option, index) => {
+                    const label = optionsEl.createEl('label', { cls: ['ert-panel', 'ert-panel--glass'] });
+                    const input = label.createEl('input', { type: 'radio', attr: { name: `beat-set-delete-${system.id}` } });
+                    input.checked = option.mode === selectedMode;
+                    input.disabled = !!option.disabled;
+                    if (option.disabled && selectedMode === option.mode) {
+                        selectedMode = 'system_only';
+                    }
+                    input.addEventListener('change', () => {
+                        if (!input.disabled) {
+                            selectedMode = option.mode;
+                            updateActionState();
+                        }
+                    });
+                    const textWrap = label.createDiv({ cls: 'ert-stack' });
+                    textWrap.createDiv({ text: option.title, cls: 'ert-modal-subtitle' });
+                    textWrap.createDiv({ text: option.desc });
+                    if (option.disabled) {
+                        textWrap.createDiv({ text: 'Unavailable: no deployed beat notes found.', cls: 'ert-modal-subtitle' });
+                    }
+                    if (index === 0) {
+                        label.addClass('ert-modal-choice-default');
+                    }
+                });
+
+                if (risk.hasStoredContent) {
+                    const warningEl = body.createDiv({ cls: 'ert-audit-safety-banner ert-audit-safety-banner--warning' });
+                    warningEl.createDiv({ text: 'Stored system content:' });
+                    const riskList = warningEl.createEl('ul');
+                    risk.risks.forEach((item) => riskList.createEl('li', { text: item }));
+                }
+
+                if (noteCount > 0) {
+                    const warningEl = body.createDiv({ cls: 'ert-audit-safety-banner ert-audit-safety-banner--warning' });
+                    warningEl.createDiv({ text: `${noteCount} deployed beat note${noteCount !== 1 ? 's' : ''} can be moved to trash.` });
+                }
+
+                const confirmEl = body.createDiv({ cls: 'ert-modal-confirm-type' });
+                confirmEl.createDiv({ text: 'Type DELETE to confirm:', cls: 'ert-modal-subtitle' });
+                const confirmInput = confirmEl.createEl('input', { type: 'text', attr: { placeholder: 'DELETE' } });
+
+                const footer = modal.contentEl.createDiv({ cls: 'ert-modal-actions' });
+                const confirmDeleteBtn = new ButtonComponent(footer)
+                    .setButtonText('Delete')
+                    .setWarning()
+                    .setDisabled(true)
+                    .onClick(() => {
+                        if (confirmInput.value.trim() !== 'DELETE') {
+                            confirmInput.classList.add('ert-input-error');
+                            confirmInput.focus();
+                            return;
+                        }
+                        const mode = actionBtnState();
+                        if (!mode) return;
+                        resolve(mode);
+                        modal.close();
+                    });
+
+                const updateActionState = () => {
+                    const mode = actionBtnState();
+                    confirmDeleteBtn.setDisabled(confirmInput.value.trim() !== 'DELETE' || !mode);
+                    confirmInput.classList.remove('ert-input-error');
+                };
+
+                confirmInput.addEventListener('input', updateActionState);
+                updateActionState();
+
+                new ButtonComponent(footer).setButtonText('Cancel').onClick(() => {
+                    resolve(null);
+                    modal.close();
+                });
+                modal.onClose = () => resolve(null);
+                modal.open();
+            });
+
+            if (!confirmed) return;
+
+            let trashedCount = 0;
+            let trashFailed = 0;
+            const trashErrors: string[] = [];
+
+            if (confirmed === 'system_and_notes' || confirmed === 'notes_only') {
+                const result = await trashBeatNoteFiles(noteFiles);
+                trashedCount = result.trashed;
+                trashFailed = result.failed;
+                trashErrors.push(...result.errors);
+            }
+
+            if (confirmed === 'system_and_notes' || confirmed === 'system_only') {
+                removeSavedSetDefinition(system.id);
+                if (wasActive) {
+                    resetActiveCustomToBlank();
+                }
+            }
+
+            await plugin.saveSettings();
+            invalidateBeatStructuralStatus();
+            renderCustomConfig();
+            renderPreviewContent('Custom');
+            renderBeatYamlEditor();
+            updateBeatHoverPreview?.();
+            renderSavedBeatSystems();
+            renderStageSwitcher();
+            updateStageVisibility();
+
+            if (trashErrors.length > 0) {
+                console.error('[Beat Sets] Failed to trash beat notes:', trashErrors);
+            }
+
+            const noticeParts: string[] = [];
+            if (confirmed === 'system_and_notes') {
+                noticeParts.push(`Deleted set "${system.name}" and moved ${trashedCount} beat note${trashedCount !== 1 ? 's' : ''} to trash.`);
+            } else if (confirmed === 'system_only') {
+                noticeParts.push(`Deleted set "${system.name}".`);
+            } else {
+                noticeParts.push(`Moved ${trashedCount} beat note${trashedCount !== 1 ? 's' : ''} to trash for "${system.name}".`);
+            }
+            if (trashFailed > 0) noticeParts.push(`${trashFailed} failed.`);
+            new Notice(noticeParts.join(' '));
         };
 
         // ── Dropdown ─────────────────────────────────────────────────
@@ -2799,6 +3181,7 @@ export function renderStoryBeatsSection(params: {
         };
         // Load set CTA
         let loadBtn: ButtonComponent;
+        let editBtn: ButtonComponent;
         const loadSetAction = () => {
             if (!selectedEntry) return;
             const entry = selectedEntry;
@@ -2834,6 +3217,13 @@ export function renderStoryBeatsSection(params: {
             .setDisabled(!selectedEntry)
             .onClick(loadSetAction);
 
+        editBtn = new ButtonComponent(actionsRow)
+            .setButtonText('Edit details')
+            .onClick(() => {
+                if (!selectedEntry || selectedEntry.builtIn) return;
+                void openCustomSystemDetailsModal(selectedEntry.id, { refreshSets: true });
+            });
+
         // Save a copy (starter) / Save set (user-owned)
         let saveBtn: ButtonComponent;
         saveBtn = new ButtonComponent(actionsRow)
@@ -2851,123 +3241,38 @@ export function renderStoryBeatsSection(params: {
         deleteBtn = new ButtonComponent(actionsRow)
             .setButtonText('Delete set')
             .onClick(async () => {
-                if (!selectedEntry || selectedEntry.builtIn) return;
-                const system = savedSystems.find(s => s.id === selectedEntry!.id);
+                if (!selectedEntry || selectedEntry.isDefault) return;
+                const entry = selectedEntry;
+                if (entry.builtIn) {
+                    await openBuiltInResetModal(entry);
+                    return;
+                }
+                const system = savedSystems.find(s => s.id === entry.id);
                 if (!system) return;
-                const risk = getDeleteSetRiskSummary(system.id);
-                const deletePhrase = 'DELETE SET';
-                const confirmModal = new Modal(app);
-                const { modalEl, contentEl } = confirmModal;
-                confirmModal.titleEl.setText('');
-                contentEl.empty();
-                modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal-shell--md');
-                contentEl.addClass('ert-modal-container', 'ert-stack');
-                const header = contentEl.createDiv({ cls: 'ert-modal-header' });
-                header.createSpan({ cls: 'ert-modal-badge', text: 'BEAT SYSTEM' });
-                header.createDiv({ cls: 'ert-modal-title', text: 'Delete set' });
-                header.createDiv({
-                    cls: 'ert-modal-subtitle',
-                    text: `Delete "${system.name}"? This removes the saved beat-set definition from settings. Existing beat notes in the vault are not deleted.`
-                });
-
-                if (plugin.settings.activeCustomBeatSystemId === system.id) {
-                    const banner = contentEl.createDiv({ cls: 'ert-audit-safety-banner ert-audit-safety-banner--warning' });
-                    banner.createSpan({ text: 'This set is currently loaded in Custom. Deleting it will reset Custom to a blank set.' });
-                }
-
-                const body = contentEl.createDiv({ cls: ['ert-panel', 'ert-panel--glass'] });
-                body.createDiv({ text: `Scope: saved set "${system.name}"`, cls: 'ert-modal-subtitle' });
-                body.createDiv({ text: `${system.beats.length} beat${system.beats.length !== 1 ? 's' : ''} in this set.` });
-
-                if (risk.hasStoredContent) {
-                    const warningEl = body.createDiv({ cls: 'ert-audit-safety-banner ert-audit-safety-banner--warning' });
-                    warningEl.createDiv({
-                        text: 'This set contains stored content that will be permanently removed from settings:'
-                    });
-                    const riskList = warningEl.createEl('ul');
-                    risk.risks.forEach((item) => {
-                        riskList.createEl('li', { text: item });
-                    });
-                }
-
-                let confirmInput: HTMLInputElement | undefined;
-                let acknowledgeInput: HTMLInputElement | undefined;
-                if (risk.hasStoredContent) {
-                    const confirmEl = body.createDiv({ cls: 'ert-modal-confirm-type' });
-                    confirmEl.createDiv({ text: `Type ${deletePhrase} to confirm:`, cls: 'ert-modal-subtitle' });
-                    confirmInput = confirmEl.createEl('input', { type: 'text', attr: { placeholder: deletePhrase } });
-                    const acknowledgeEl = body.createDiv({ cls: 'ert-modal-confirm-type' });
-                    const acknowledgeLabel = acknowledgeEl.createEl('label');
-                    acknowledgeInput = acknowledgeLabel.createEl('input', { type: 'checkbox' });
-                    acknowledgeLabel.appendText(' I understand this permanently removes the saved set configuration, but does not delete manuscript beat notes.');
-                }
-
-                const footer = contentEl.createDiv({ cls: 'ert-modal-actions' });
-                const confirmDeleteBtn = new ButtonComponent(footer).setButtonText('Delete set').setWarning().onClick(async () => {
-                    if (risk.hasStoredContent) {
-                        if (confirmInput?.value.trim() !== deletePhrase) {
-                            confirmInput?.classList.add('ert-input-error');
-                            confirmInput?.focus();
-                            return;
-                        }
-                        if (!acknowledgeInput?.checked) return;
-                    }
-                    const wasActive = plugin.settings.activeCustomBeatSystemId === system.id;
-                    plugin.settings.savedBeatSystems = savedSystems.filter(s => s.id !== system.id);
-                    if (plugin.settings.beatSystemConfigs) {
-                        delete plugin.settings.beatSystemConfigs[getCustomBeatConfigKey(system.id)];
-                    }
-                    savedCustomSetIds.delete(system.id);
-                    if (wasActive) {
-                        // Reset to a clean blank custom system
-                        plugin.settings.activeCustomBeatSystemId = DEFAULT_CUSTOM_BEAT_SYSTEM_ID;
-                        replaceSavedBeatSystem(plugin.settings, buildDefaultCustomBeatSystem());
-                        // Ensure default config slot is clean
-                        if (!plugin.settings.beatSystemConfigs) plugin.settings.beatSystemConfigs = {};
-                        plugin.settings.beatSystemConfigs[getCustomBeatConfigKey(DEFAULT_CUSTOM_BEAT_SYSTEM_ID)] = {
-                            beatYamlAdvanced: '',
-                            beatHoverMetadataFields: [],
-                        };
-                        // Clear dirty baseline — the set no longer exists
-                        clearSetBaseline();
-                    }
-                    await plugin.saveSettings();
-                    confirmModal.close();
-                    new Notice(`Deleted set "${system.name}".`);
-                    // Reset audit state since beats were cleared
-                    invalidateBeatStructuralStatus();
-                    // Refresh all affected UI
-                    renderCustomConfig();
-                    renderPreviewContent('Custom');
-                    renderBeatYamlEditor();
-                    updateBeatHoverPreview?.();
-                    renderSavedBeatSystems();
-                    renderStageSwitcher();
-                    updateStageVisibility();
-                });
-                if (risk.hasStoredContent) {
-                    confirmDeleteBtn.setDisabled(true);
-                    const updateDeleteState = () => {
-                        const confirmedPhrase = confirmInput?.value.trim() === deletePhrase;
-                        const acknowledged = !!acknowledgeInput?.checked;
-                        confirmDeleteBtn.setDisabled(!(confirmedPhrase && acknowledged));
-                        confirmInput?.classList.remove('ert-input-error');
-                    };
-                    confirmInput?.addEventListener('input', updateDeleteState);
-                    acknowledgeInput?.addEventListener('change', updateDeleteState);
-                }
-                new ButtonComponent(footer).setButtonText('Cancel').onClick(() => confirmModal.close());
-                confirmModal.open();
+                await openSavedSetDeleteModal(system, entry);
             });
 
         const updateActionButtons = () => {
-            loadBtn.setDisabled(!selectedEntry);
+            const deploymentStatus = getSelectedEntryDeploymentStatus(selectedEntry);
+            const isDeployedSelection = !!deploymentStatus && deploymentStatus.summary.matchedCount > 0;
+            loadBtn.setButtonText(isDeployedSelection ? 'Deployed' : 'Load set');
+            loadBtn.setDisabled(!selectedEntry || isDeployedSelection);
+            loadBtn.buttonEl.setAttribute(
+                'title',
+                isDeployedSelection
+                    ? 'This set already has attributed beat notes in the active book.'
+                    : 'Load this set into Custom'
+            );
             // Save button adapts label based on what's active
             const starterNow = isStarterSetActive();
             saveBtn.setButtonText(starterNow ? 'Save a copy' : 'Save set');
-            // Hide delete for starter sets, show for saved
             const isStarter = selectedEntry?.builtIn ?? true;
-            deleteBtn.buttonEl.toggleClass('ert-settings-hidden', isStarter || !selectedEntry);
+            editBtn.buttonEl.toggleClass('ert-settings-hidden', isStarter || !selectedEntry);
+            const deleteState = getDeleteButtonState(selectedEntry);
+            deleteBtn.setButtonText(deleteState.text);
+            deleteBtn.setDisabled(deleteState.disabled);
+            deleteBtn.buttonEl.toggleClass('ert-settings-hidden', deleteState.hidden);
+            deleteBtn.buttonEl.setAttribute('title', deleteState.tooltip);
         };
         updateActionButtons();
     };

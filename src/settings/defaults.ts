@@ -153,10 +153,10 @@ Shift:
 Iteration:`
     },
     beatYamlTemplates: {
-        base: `Class: Beat
+        base: `Beat Model: {{BeatModel}}
+Class: Beat
 Act: {{Act}}
 Purpose: {{Purpose}}
-Beat Model: {{BeatModel}}
 Range: {{Range}}
 Chapter:`
     },

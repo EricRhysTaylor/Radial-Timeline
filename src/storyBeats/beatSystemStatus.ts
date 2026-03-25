@@ -15,7 +15,7 @@ import {
     toBeatModelMatchKey,
 } from '../utils/beatsInputNormalize';
 import { isStoryBeat } from '../utils/sceneHelpers';
-import type { RadialTimelineSettings } from '../types/settings';
+import type { BeatDefinition, RadialTimelineSettings } from '../types/settings';
 import type {
     BeatExpectedBeat,
     BeatMatchedNote,
@@ -44,24 +44,42 @@ function clampBeatAct(act: number, maxActs: number): number {
     return Math.min(Math.max(1, n), maxActs);
 }
 
-function buildSelectedSystemKey(settings: RadialTimelineSettings, selectedSystem: string): string {
+type CustomSystemOverride = {
+    id?: string;
+    name: string;
+    beats: BeatDefinition[];
+};
+
+function buildSelectedSystemKey(
+    settings: RadialTimelineSettings,
+    selectedSystem: string,
+    customSystemOverride?: CustomSystemOverride
+): string {
     return selectedSystem === 'Custom'
-        ? `custom:${getActiveCustomBeatSystemId(settings)}`
+        ? `custom:${customSystemOverride?.id ?? getActiveCustomBeatSystemId(settings)}`
         : selectedSystem;
 }
 
-function buildSelectedSystemLabel(settings: RadialTimelineSettings, selectedSystem: string): string {
+function buildSelectedSystemLabel(
+    settings: RadialTimelineSettings,
+    selectedSystem: string,
+    customSystemOverride?: CustomSystemOverride
+): string {
     return selectedSystem === 'Custom'
-        ? getActiveCustomBeatSystemName(settings, 'Custom')
+        ? normalizeBeatSetNameInput(customSystemOverride?.name ?? getActiveCustomBeatSystemName(settings, 'Custom'), 'Custom')
         : normalizeBeatSetNameInput(selectedSystem, selectedSystem);
 }
 
-function buildExpectedBeats(settings: RadialTimelineSettings, selectedSystem: string): BeatExpectedBeat[] {
+function buildExpectedBeats(
+    settings: RadialTimelineSettings,
+    selectedSystem: string,
+    customSystemOverride?: CustomSystemOverride
+): BeatExpectedBeat[] {
     const actCount = Math.max(3, settings.actCount ?? 3);
     const actLabels = parseActLabels(settings, actCount);
 
     if (selectedSystem === 'Custom') {
-        const beats = getActiveCustomBeatSystemBeats(settings)
+        const beats = (customSystemOverride?.beats ?? getActiveCustomBeatSystemBeats(settings))
             .map((beat) => ({
                 name: normalizeBeatNameInput(beat.name, ''),
                 act: clampBeatAct(typeof beat.act === 'number' ? beat.act : 1, actCount),
@@ -139,12 +157,13 @@ export function getBeatSystemStructuralStatus(params: {
     app: App;
     settings: RadialTimelineSettings;
     selectedSystem?: string;
+    customSystemOverride?: CustomSystemOverride;
 }): BeatSystemStructuralStatus {
     const { app, settings } = params;
     const selectedSystem = params.selectedSystem ?? settings.beatSystem ?? 'Custom';
-    const selectedSystemKey = buildSelectedSystemKey(settings, selectedSystem);
-    const selectedSystemLabel = buildSelectedSystemLabel(settings, selectedSystem);
-    const expectedBeats = buildExpectedBeats(settings, selectedSystem);
+    const selectedSystemKey = buildSelectedSystemKey(settings, selectedSystem, params.customSystemOverride);
+    const selectedSystemLabel = buildSelectedSystemLabel(settings, selectedSystem, params.customSystemOverride);
+    const expectedBeats = buildExpectedBeats(settings, selectedSystem, params.customSystemOverride);
     const expectedKeySet = new Set(expectedBeats.map((beat) => beat.key).filter(Boolean));
     const markdownScope = resolveBookScopedMarkdownFiles(app, settings);
     const beatScope = resolveBookScopedFiles({ app, settings, noteType: 'Beat' });
