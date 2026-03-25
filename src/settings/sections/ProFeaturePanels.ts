@@ -23,6 +23,7 @@ import { getActiveBook } from '../../utils/books';
 import { isPathInFolderScope } from '../../utils/pathScope';
 import { normalizeMatterClassValue } from '../../utils/matterMeta';
 import { extractBodyText, getSceneFilesByOrder } from '../../utils/manuscript';
+import { updateBookMetaField, type EditableBookMetaFieldKey } from '../../utils/bookMetaEditing';
 import { isProActive } from '../proEntitlement';
 import {
     SHARED_CHAPTER_FIELD_PUBLICATION_COPY,
@@ -2551,6 +2552,21 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
         });
     };
 
+    const getVisibleBundledLayouts = (): PandocLayoutTemplate[] => {
+        return getBundledPandocLayouts().filter(layout => {
+            if (layout.preset === 'novel') return true;
+            if (layout.preset === 'screenplay') return SHOW_SCREENPLAY_LAYOUT_CATEGORY;
+            if (layout.preset === 'podcast') return SHOW_PODCAST_LAYOUT_CATEGORY;
+            return false;
+        });
+    };
+
+    const getVisibleBundledInstallSummary = (): { total: number; installed: number } => {
+        const bundledLayouts = getVisibleBundledLayouts();
+        const installed = bundledLayouts.filter(layout => isBundledPandocLayoutInstalled(plugin, layout)).length;
+        return { total: bundledLayouts.length, installed };
+    };
+
     /** Render category groups with layout rows. */
     const renderLayoutRows = () => {
         layoutRowsContainer.empty();
@@ -2887,6 +2903,12 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
     };
 
     const layoutManageSetting = addProRow(new Setting(layoutPanel));
+    let installAllButtonEl: HTMLButtonElement | null = null;
+    const refreshInstallAllButtonState = (): void => {
+        if (!installAllButtonEl) return;
+        const { installed } = getVisibleBundledInstallSummary();
+        installAllButtonEl.toggleClass('ert-layout-install-all-button--muted', installed > 0);
+    };
     layoutManageSetting.addButton(button => {
         button.setButtonText('Import Template');
         button.onClick(() => {
@@ -2895,15 +2917,11 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
     });
     layoutManageSetting.addButton(button => {
         button.setButtonText('Install all');
+        installAllButtonEl = button.buttonEl;
+        installAllButtonEl.addClass('ert-layout-install-all-button');
+        refreshInstallAllButtonState();
         button.onClick(async () => {
-            const bundledIds = getBundledPandocLayouts()
-                .filter(layout => {
-                    if (layout.preset === 'novel') return true;
-                    if (layout.preset === 'screenplay') return SHOW_SCREENPLAY_LAYOUT_CATEGORY;
-                    if (layout.preset === 'podcast') return SHOW_PODCAST_LAYOUT_CATEGORY;
-                    return false;
-                })
-                .map(layout => layout.id);
+            const bundledIds = getVisibleBundledLayouts().map(layout => layout.id);
             const result = await installBundledPandocLayouts(plugin, bundledIds);
             if (result.installed.length > 0) {
                 new Notice(`Installed ${result.installed.length} bundled layout template(s) in ${getConfiguredPandocFolder(plugin)}/.`);
@@ -2914,6 +2932,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             }
             renderLayoutRows();
             refreshPublishingStatusCard();
+            refreshInstallAllButtonState();
         });
     });
 
@@ -2969,6 +2988,10 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
     };
 
     let matterPreviewFrame: HTMLElement | null = null;
+    let activeBookMetaEditField: EditableBookMetaFieldKey | null = null;
+    let activeBookMetaDraft = '';
+    let activeBookMetaEditSourcePath: string | null = null;
+    let activeBookMetaEditBusy = false;
     const bookMetaPreviewPanel = pandocPanel.createDiv({
         cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}`,
         attr: { [ERT_DATA.SECTION]: 'book-details' }
@@ -2980,7 +3003,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
         previewBody.empty();
         const activeBookMetaStatus = getActiveBookMetaStatus(plugin);
         const meta = activeBookMetaStatus.bookMeta ?? null;
-        const sourcePath = (meta?.sourcePath || activeBookMetaStatus.path || '').trim();
+        const sourcePath = (activeBookMetaEditSourcePath || meta?.sourcePath || activeBookMetaStatus.path || '').trim();
         const hasSourcePath = sourcePath.length > 0;
         const openOrCreateBookMetaNote = async () => {
             if (hasSourcePath) {
@@ -2996,6 +3019,68 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             rerender();
         };
 
+        const ensureBookMetaNoteForEditing = async (): Promise<string | null> => {
+            if (hasSourcePath) return sourcePath;
+            const created = await createBookMetaOnly(plugin);
+            if (created.path) {
+                activeBookMetaEditSourcePath = created.path;
+                return created.path;
+            }
+            new Notice(created.reason || 'Book Details note was not created.');
+            return null;
+        };
+
+        const beginBookMetaFieldEdit = async (
+            field: EditableBookMetaFieldKey,
+            currentValue: string | number | null | undefined
+        ) => {
+            if (activeBookMetaEditBusy) return;
+            const editPath = await ensureBookMetaNoteForEditing();
+            if (!editPath) return;
+            activeBookMetaEditField = field;
+            activeBookMetaDraft = currentValue === undefined || currentValue === null ? '' : String(currentValue);
+            renderBookMetaPreview();
+        };
+
+        const cancelBookMetaFieldEdit = () => {
+            activeBookMetaEditField = null;
+            activeBookMetaDraft = '';
+            renderBookMetaPreview();
+        };
+
+        const saveBookMetaFieldEdit = async (
+            field: EditableBookMetaFieldKey,
+            mode: 'enter' | 'blur'
+        ) => {
+            if (activeBookMetaEditBusy) return;
+            const editPath = sourcePath || activeBookMetaEditSourcePath || '';
+            const file = plugin.app.vault.getAbstractFileByPath(editPath);
+            if (!(file instanceof TFile)) {
+                new Notice('Book Details note could not be found.');
+                cancelBookMetaFieldEdit();
+                return;
+            }
+
+            activeBookMetaEditBusy = true;
+            const result = await updateBookMetaField(plugin.app, file, field, activeBookMetaDraft);
+            activeBookMetaEditBusy = false;
+
+            if (!result.ok) {
+                new Notice(result.error || 'Book Details could not be updated.');
+                if (mode === 'enter') {
+                    renderBookMetaPreview();
+                    return;
+                }
+                cancelBookMetaFieldEdit();
+                return;
+            }
+
+            activeBookMetaEditField = null;
+            activeBookMetaDraft = '';
+            activeBookMetaEditSourcePath = file.path;
+            rerender();
+        };
+
         const normalizeValue = (value?: string | number | null): string | null => {
             if (value === undefined || value === null) return null;
             const normalized = String(value).trim();
@@ -3004,30 +3089,66 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
 
         const renderBookMetaValue = (
             target: HTMLElement,
+            field: EditableBookMetaFieldKey,
             label: string,
             value: string | number | null | undefined,
             placeholder: string,
             required: boolean,
             className: 'ert-bookmeta-primary-value' | 'ert-bookmeta-detail-value'
         ) => {
+            if (activeBookMetaEditField === field) {
+                const input = target.createEl('input', {
+                    cls: `${className} ert-bookmeta-inline-input ${className === 'ert-bookmeta-primary-value' ? 'ert-bookmeta-inline-input--primary' : 'ert-bookmeta-inline-input--detail'}`,
+                    attr: {
+                        type: 'text',
+                        'aria-label': label,
+                    }
+                });
+                input.value = activeBookMetaDraft;
+                window.setTimeout(() => {
+                    input.focus();
+                    input.select();
+                }, 0);
+                let handled = false;
+                input.addEventListener('input', () => {
+                    activeBookMetaDraft = input.value;
+                });
+                input.addEventListener('keydown', (evt) => {
+                    if (evt.key === 'Enter') {
+                        evt.preventDefault();
+                        handled = true;
+                        void saveBookMetaFieldEdit(field, 'enter');
+                    } else if (evt.key === 'Escape') {
+                        evt.preventDefault();
+                        handled = true;
+                        cancelBookMetaFieldEdit();
+                    }
+                });
+                input.addEventListener('blur', () => {
+                    if (handled) return;
+                    handled = true;
+                    void saveBookMetaFieldEdit(field, 'blur');
+                });
+                return input;
+            }
+
             const normalized = normalizeValue(value);
             const missing = !normalized;
-            const valueEl = missing
-                ? target.createEl('button', {
-                    cls: `${className} ert-bookmeta-preview-value--empty ert-bookmeta-preview-value--missing ert-bookmeta-preview-value--clickable`,
-                    text: placeholder,
-                    attr: { type: 'button', title: `Open Book Details to add ${label.toLowerCase()}` }
-                })
-                : target.createDiv({ cls: className, text: normalized });
+            const valueEl = target.createEl('button', {
+                cls: `${className} ert-bookmeta-preview-value--clickable${missing ? ' ert-bookmeta-preview-value--empty ert-bookmeta-preview-value--missing' : ''}`,
+                text: normalized || placeholder,
+                attr: {
+                    type: 'button',
+                    title: `${normalized ? 'Edit' : 'Add'} ${label.toLowerCase()}`
+                }
+            });
 
-            if (missing) {
-                valueEl.classList.toggle('ert-bookmeta-preview-value--required', required);
-                valueEl.classList.toggle('ert-bookmeta-preview-value--optional', !required);
-                valueEl.addEventListener('click', (evt) => {
-                    evt.preventDefault();
-                    void openOrCreateBookMetaNote();
-                });
-            }
+            valueEl.classList.toggle('ert-bookmeta-preview-value--required', missing && required);
+            valueEl.classList.toggle('ert-bookmeta-preview-value--optional', missing && !required);
+            valueEl.addEventListener('click', (evt) => {
+                evt.preventDefault();
+                void beginBookMetaFieldEdit(field, normalized || value);
+            });
             return valueEl;
         };
 
@@ -3037,7 +3158,15 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
         const primary = previewBody.createDiv({ cls: 'ert-bookmeta-primary' });
         const addPrimaryField = (label: string, value: string | number | null | undefined, placeholder: string) => {
             const field = primary.createDiv({ cls: 'ert-bookmeta-primary-field' });
-            renderBookMetaValue(field, label, value, placeholder, true, 'ert-bookmeta-primary-value');
+            renderBookMetaValue(
+                field,
+                label === 'Title' ? 'title' : 'author',
+                label,
+                value,
+                placeholder,
+                true,
+                'ert-bookmeta-primary-value'
+            );
             field.createDiv({ cls: 'ert-bookmeta-primary-label', text: label });
         };
         addPrimaryField('Title', meta?.title, 'Add title');
@@ -3054,7 +3183,15 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             required: boolean
         ) => {
             const field = target.createDiv({ cls: 'ert-bookmeta-detail-field' });
-            renderBookMetaValue(field, label, value, placeholder, required, 'ert-bookmeta-detail-value');
+            const fieldKey: EditableBookMetaFieldKey =
+                label === 'Copyright holder'
+                    ? 'copyright-holder'
+                    : label === 'ISBN'
+                        ? 'isbn'
+                        : label === 'Rights year'
+                            ? 'rights-year'
+                            : 'publisher';
+            renderBookMetaValue(field, fieldKey, label, value, placeholder, required, 'ert-bookmeta-detail-value');
             field.createDiv({ cls: 'ert-bookmeta-detail-label', text: label });
         };
         addDetailField(leftCol, 'Copyright holder', meta?.rights?.copyright_holder, 'Add copyright', true);
@@ -3063,6 +3200,12 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
         addDetailField(rightCol, 'Publisher', meta?.publisher?.name, 'Add publisher', false);
 
         if (hasSourcePath) {
+            const previewActions = previewBody.createDiv({ cls: 'ert-bookmeta-preview-actions' });
+            new ButtonComponent(previewActions)
+                .setButtonText('Open Book Details note')
+                .onClick(() => {
+                    void plugin.app.workspace.openLinkText(sourcePath, '', false);
+                });
             const sourceRow = previewBody.createDiv({ cls: 'ert-bookmeta-source-row' });
             sourceRow.createSpan({ cls: 'ert-bookmeta-source-label', text: 'Source' });
             const sourceLink = sourceRow.createEl('a', {
@@ -3149,7 +3292,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
 
         if (showExportButton) {
             exportOptionsButtonComponent = new ButtonComponent(setupActionRow)
-                .setButtonText('Open manuscript exports')
+                .setButtonText('Export now')
                 .onClick(() => {
                     plugin.openManuscriptExportModal();
                 });
@@ -3158,6 +3301,13 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                 exportOptionsButtonComponent.buttonEl.addClass('ert-pillBtn--pro');
             }
             exportOptionsButtonComponent.buttonEl.addClass('ert-pillBtn');
+            exportOptionsButtonComponent.buttonEl.empty();
+            exportOptionsButtonComponent.buttonEl.createSpan({
+                cls: ERT_CLASSES.PILL_BTN_LABEL,
+                text: 'Export now'
+            });
+            const exportIcon = exportOptionsButtonComponent.buttonEl.createSpan({ cls: ERT_CLASSES.PILL_BTN_ICON });
+            setIcon(exportIcon, 'arrow-right');
         }
 
         setupButtonComponent = new ButtonComponent(setupActionRow)

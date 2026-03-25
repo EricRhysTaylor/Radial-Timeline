@@ -8976,6 +8976,47 @@
   overflow-wrap: anywhere;
 }
 
+.ert-ui.ert-scope--settings .ert-bookmeta-inline-input {
+  width: 100%;
+  min-width: 0;
+  appearance: none;
+  border: 1px solid color-mix(in srgb, var(--interactive-accent) 22%, var(--background-modifier-border));
+  background: color-mix(in srgb, var(--background-primary) 74%, transparent);
+  color: var(--text-normal);
+  border-radius: 10px;
+  padding: 4px 8px;
+  box-shadow: none;
+  transition:
+    border-color var(--duration-fast, 120ms) ease,
+    background-color var(--duration-fast, 120ms) ease,
+    box-shadow var(--duration-fast, 120ms) ease;
+}
+
+.ert-ui.ert-scope--settings .ert-bookmeta-inline-input:hover {
+  border-color: color-mix(in srgb, var(--interactive-accent) 34%, var(--background-modifier-border));
+}
+
+.ert-ui.ert-scope--settings .ert-bookmeta-inline-input:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--interactive-accent) 58%, transparent);
+  background: color-mix(in srgb, var(--background-primary) 86%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--interactive-accent) 22%, transparent);
+}
+
+.ert-ui.ert-scope--settings .ert-bookmeta-inline-input--primary {
+  font-size: 1.45rem;
+  font-weight: 700;
+  line-height: 1.15;
+  text-align: center;
+}
+
+.ert-ui.ert-scope--settings .ert-bookmeta-inline-input--detail {
+  font-size: 1.06rem;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: inherit;
+}
+
 .ert-ui.ert-scope--settings :is(.ert-bookmeta-primary-value, .ert-bookmeta-detail-value).ert-bookmeta-preview-value--empty {
   color: var(--text-faint);
 }
@@ -9000,6 +9041,7 @@
 
 .ert-ui.ert-scope--settings :is(.ert-bookmeta-primary-value, .ert-bookmeta-detail-value).ert-bookmeta-preview-value--clickable {
   cursor: pointer;
+  display: inline-block;
   transition: color var(--duration-fast, 120ms) ease, text-decoration-color var(--duration-fast, 120ms) ease;
 }
 
@@ -9016,6 +9058,19 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--text-muted);
+}
+
+.ert-ui.ert-scope--settings .ert-bookmeta-preview-actions {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin-top: 2px;
+}
+
+.ert-ui.ert-scope--settings .ert-bookmeta-preview-actions .mod-cta,
+.ert-ui.ert-scope--settings .ert-bookmeta-preview-actions .clickable-icon,
+.ert-ui.ert-scope--settings .ert-bookmeta-preview-actions button {
+  white-space: nowrap;
 }
 
 .ert-ui.ert-scope--settings .ert-bookmeta-source-row {
@@ -9042,6 +9097,14 @@
   text-underline-offset: 3px;
   text-decoration-color: color-mix(in srgb, var(--text-muted) 70%, transparent);
   overflow-wrap: anywhere;
+}
+
+.ert-ui.ert-scope--settings .ert-layout-install-all-button--muted {
+  opacity: 0.7;
+}
+
+.ert-ui.ert-scope--settings .ert-layout-install-all-button--muted:hover:not(:disabled) {
+  opacity: 0.82;
 }
 
 .ert-ui.ert-scope--settings .ert-bookmeta-source-link:hover {

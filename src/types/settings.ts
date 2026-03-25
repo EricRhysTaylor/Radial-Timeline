@@ -178,6 +178,36 @@ export interface SavedBeatSystem {
     createdAt: string;
 }
 
+export type BeatSourceKind = 'builtin' | 'starter' | 'saved' | 'blank';
+
+export interface BeatLibraryItem {
+    id: string;
+    kind: BeatSourceKind;
+    name: string;
+    description?: string;
+    beats: BeatDefinition[];
+    config: BeatSystemConfig;
+    linkedSavedSystemId?: string;
+}
+
+export interface LoadedBeatTab {
+    tabId: string;
+    sourceKind: BeatSourceKind;
+    sourceId?: string;
+    name: string;
+    description?: string;
+    beats: BeatDefinition[];
+    config: BeatSystemConfig;
+    linkedSavedSystemId?: string;
+    dirty: boolean;
+}
+
+export interface BeatWorkspaceState {
+    loadedTabIds: string[];
+    tabsById: Record<string, LoadedBeatTab>;
+    activeTabId?: string;
+}
+
 export type GlobalPovMode = 'off' | 'first' | 'second' | 'third' | 'omni' | 'objective';
 export type ReadabilityScale = 'normal' | 'large';
 export type RuntimeContentType = 'novel' | 'screenplay' | 'audiobook';
@@ -226,6 +256,7 @@ export interface BookProfile {
     fileStem?: string;
     lastUsedPandocLayoutByPreset?: Partial<Record<'novel' | 'screenplay' | 'podcast', string>>;
     layoutOptions?: Record<string, BookLayoutOptions>;
+    beatWorkspace?: BeatWorkspaceState;
 }
 
 export interface BookLayoutOptions {

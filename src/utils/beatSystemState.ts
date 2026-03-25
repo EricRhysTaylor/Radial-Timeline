@@ -1,5 +1,6 @@
-import type { BeatDefinition, RadialTimelineSettings, SavedBeatSystem } from '../types/settings';
+import type { BeatDefinition, BeatWorkspaceState, RadialTimelineSettings, SavedBeatSystem } from '../types/settings';
 import { normalizeBeatNameInput, normalizeBeatSetNameInput, toBeatModelMatchKey } from './beatsInputNormalize';
+import { getActiveBook } from './books';
 
 export const DEFAULT_CUSTOM_BEAT_SYSTEM_ID = 'default';
 export const DEFAULT_CUSTOM_BEAT_SYSTEM_NAME = 'Custom';
@@ -129,8 +130,14 @@ export function removeSavedBeatSystem(
 }
 
 export function resolveSelectedBeatModelFromSettings(
-    settings: Pick<RadialTimelineSettings, 'beatSystem' | 'savedBeatSystems' | 'activeCustomBeatSystemId'>
+    settings: Pick<RadialTimelineSettings, 'books' | 'activeBookId' | 'beatSystem' | 'savedBeatSystems' | 'activeCustomBeatSystemId'>
 ): string | undefined {
+    const activeBook = getActiveBook(settings as RadialTimelineSettings);
+    const workspace = activeBook?.beatWorkspace as BeatWorkspaceState | undefined;
+    if (workspace?.activeTabId && workspace.tabsById?.[workspace.activeTabId]) {
+        const activeTabName = normalizeBeatSetNameInput(workspace.tabsById[workspace.activeTabId].name, '');
+        if (activeTabName) return activeTabName;
+    }
     const selectedSystem = normalizeBeatSetNameInput(settings.beatSystem ?? '', '');
     if (!selectedSystem) return undefined;
     if (toBeatModelMatchKey(selectedSystem) !== 'custom') {

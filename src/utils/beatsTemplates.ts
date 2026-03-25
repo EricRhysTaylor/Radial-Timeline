@@ -12,6 +12,7 @@ import { DEFAULT_SETTINGS } from '../settings/defaults';
 import { generateSceneId } from './sceneIds';
 import { getActiveCustomBeatSystemName, getCustomBeatConfigKey } from './beatSystemState';
 import { formatBeatDecimalPrefix } from './prefixOrder';
+import { getActiveBeatWorkspaceConfig, getActiveLoadedBeatTab } from '../storyBeats/workspaceState';
 
 // ─── Per-system Beat Config Resolvers ────────────────────────────────
 
@@ -34,6 +35,10 @@ export function getBeatConfigForSystem(
   settings: RadialTimelineSettings,
   systemKey?: string
 ): BeatSystemConfig {
+  const activeTab = getActiveLoadedBeatTab(settings);
+  if (!systemKey && activeTab) {
+    return activeTab.config;
+  }
   const system = (systemKey ?? settings.beatSystem ?? 'Save The Cat').trim();
   const key = system === 'Custom'
     ? getCustomBeatConfigKey(settings.activeCustomBeatSystemId)
@@ -49,6 +54,10 @@ export function ensureBeatConfigForSystem(
   settings: RadialTimelineSettings,
   systemKey?: string
 ): BeatSystemConfig {
+  if (!systemKey) {
+    const activeConfig = getActiveBeatWorkspaceConfig(settings);
+    if (activeConfig) return activeConfig;
+  }
   const system = (systemKey ?? settings.beatSystem ?? 'Save The Cat').trim();
   const key = system === 'Custom'
     ? getCustomBeatConfigKey(settings.activeCustomBeatSystemId)
@@ -80,6 +89,11 @@ export function getBeatConfigForItem(
     return EMPTY_BEAT_CONFIG;
   }
   if (!configs) return EMPTY_BEAT_CONFIG;
+
+  const activeTab = getActiveLoadedBeatTab(settings);
+  if (activeTab && normalizeModelKey(activeTab.name) === normalized) {
+    return activeTab.config;
+  }
 
   // 1. Direct built-in match (exact key)
   if (configs[beatModelValue]) return configs[beatModelValue];

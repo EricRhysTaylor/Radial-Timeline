@@ -5,7 +5,7 @@ import { CreateBeatSetModal } from '../../modals/CreateBeatsTemplatesModal';
 import { getPlotSystem, getCustomSystemFromSettings, STARTER_BEAT_SETS } from '../../utils/beatsSystems';
 import { buildBeatDecimalPrefixes, createBeatNotesFromSet, getBeatConfigForSystem, ensureBeatConfigForSystem } from '../../utils/beatsTemplates';
 import { getBeatSystemStructuralStatus } from '../../storyBeats/beatSystemStatus';
-import type { BeatSystemConfig, BeatDefinition } from '../../types/settings';
+import type { BeatLibraryItem, BeatSystemConfig, BeatDefinition, LoadedBeatTab } from '../../types/settings';
 import type { BeatStructuralBeatStatus, BeatSystemStructuralStatus } from '../../storyBeats/types';
 import { DEFAULT_SETTINGS } from '../defaults';
 
@@ -61,6 +61,18 @@ import { SHARED_CHAPTER_FIELD_KEY } from '../../utils/timelineChapters';
 import { IMPACT_FULL } from '../SettingImpact';
 import { renderScenePropertiesSection } from './scene/ScenePropertiesSection';
 import { renderSceneNormalizerSection } from './scene/SceneNormalizerSection';
+import { BLANK_LIBRARY_ITEM_ID, getBeatLibraryItems } from '../../storyBeats/libraryState';
+import {
+    activateLoadedBeatTab,
+    commitActiveBeatTabToWorkspace,
+    ensureBeatWorkspaceState,
+    getActiveLoadedBeatTab,
+    getActiveLoadedBeatTabId,
+    getLoadedBeatTabs,
+    isBeatLibraryItemLoaded,
+    loadBeatTabFromLibraryItem,
+    unloadBeatTab,
+} from '../../storyBeats/workspaceState';
 
 type FieldEntryValue = string | string[];
 type FieldEntry = { key: string; value: FieldEntryValue; required: boolean };
@@ -305,6 +317,7 @@ export function renderStoryBeatsSection(params: {
     _unsubBeatAuditDirty?.();
     _unsubBeatAuditDirty = null;
     containerEl.empty();
+    ensureBeatWorkspaceState(plugin.settings);
     const actsSection = containerEl.createDiv({ cls: ERT_CLASSES.STACK, attr: { [ERT_DATA.SECTION]: 'beats-acts' } });
     const actsStack = actsSection.createDiv({ cls: ERT_CLASSES.STACK });
     const beatsSection = containerEl.createDiv({ cls: ERT_CLASSES.STACK, attr: { [ERT_DATA.SECTION]: 'beats-story' } });
@@ -385,14 +398,27 @@ export function renderStoryBeatsSection(params: {
     const getActiveCustomName = (fallback = 'Custom') => getActiveCustomBeatSystemName(plugin.settings, fallback);
     const getActiveCustomDescription = () => getActiveCustomBeatSystemDescription(plugin.settings);
     const getActiveCustomBeats = () => getActiveCustomBeatSystemBeats(plugin.settings);
+    const getLoadedBeatWorkspaceTabs = () => getLoadedBeatTabs(plugin.settings);
+    const getActiveBeatWorkspaceTab = () => getActiveLoadedBeatTab(plugin.settings);
+    const getActiveBeatWorkspaceTabId = () => getActiveLoadedBeatTabId(plugin.settings);
+    const getActiveBeatWorkspaceName = (fallback = 'Custom') => getActiveBeatWorkspaceTab()?.name?.trim() || fallback;
+    const getActiveBeatWorkspaceDescription = () => getActiveBeatWorkspaceTab()?.description ?? '';
+    const getActiveBeatWorkspaceBeats = () => getActiveBeatWorkspaceTab()?.beats ?? [];
+    const getActiveBeatWorkspaceKind = () => getActiveBeatWorkspaceTab()?.sourceKind ?? 'blank';
+    const syncActiveWorkspaceTabState = () => {
+        commitActiveBeatTabToWorkspace(plugin.settings);
+    };
     const setActiveCustomName = (name: string) => {
         getActiveCustomSystem().name = normalizeBeatSetNameInput(name, 'Custom');
+        syncActiveWorkspaceTabState();
     };
     const setActiveCustomDescription = (description: string) => {
         getActiveCustomSystem().description = description;
+        syncActiveWorkspaceTabState();
     };
     const setActiveCustomBeats = (beats: BeatDefinition[]) => {
         getActiveCustomSystem().beats = beats;
+        syncActiveWorkspaceTabState();
     };
 
     const openCustomSystemDetailsModal = (
@@ -417,10 +443,11 @@ export function renderStoryBeatsSection(params: {
             await plugin.saveSettings();
 
             if (isActiveSystem) {
+                syncActiveWorkspaceTabState();
                 invalidateBeatStructuralStatus();
-                updateTemplateButton(templateSetting, 'Custom');
+                updateTemplateButton(templateSetting, getActiveBeatWorkspaceName('Custom'));
                 renderCustomConfig();
-                renderPreviewContent('Custom');
+                renderPreviewContent(getActiveBeatWorkspaceName('Custom'));
                 renderBeatYamlEditor();
                 updateBeatHoverPreview?.();
                 renderBeatSystemTabs();
@@ -528,27 +555,16 @@ export function renderStoryBeatsSection(params: {
     let _unsubDesignDirty: (() => void) | null = null;
     let _unsubSetsDirty: (() => void) | null = null;
 
-    const getCustomTabLabel = (): string => {
-        const named = getActiveCustomName('');
-        return named.length > 0 ? named : 'Custom';
-    };
-
-    const getCustomTabStatus = (): { icon: string; statusClass: string; tooltip: string } => {
-        if (isSetDirty()) {
+    const getBeatSystemTabStatus = (tab: LoadedBeatTab): StructuralHealthState => {
+        const isActiveTab = getActiveBeatWorkspaceTabId() === tab.tabId;
+        if ((isActiveTab && isSetDirty()) || (!isActiveTab && tab.dirty)) {
             return {
                 icon: 'circle-alert',
                 statusClass: 'ert-beat-health-icon--modified',
-                tooltip: 'Custom set has unsaved changes.'
+                tooltip: 'Loaded system has unsaved changes.'
             };
         }
-        return getStructuralHealthState('Custom');
-    };
-
-    const getBeatSystemTabStatus = (systemName: string): StructuralHealthState => {
-        if (systemName === 'Custom') {
-            return getCustomTabStatus();
-        }
-        return getStructuralHealthState(systemName);
+        return getStructuralHealthState(tab.name, tab);
     };
 
     /** Produce a lightweight hash string from the current custom beat state. */
@@ -579,9 +595,18 @@ export function renderStoryBeatsSection(params: {
         return dirtyState.isDirty(activeId, snapshotHash());
     };
 
-    const getStructuralLookupKey = (selectedSystem: string): string => {
+    const getStructuralLookupKey = (selectedSystem: string, loadedTab?: LoadedBeatTab | null): string => {
         const sourcePath = normalizePath((plugin.settings.sourcePath || '').trim());
         const actCount = String(getActCount());
+        if (loadedTab) {
+            const fingerprint = loadedTab.beats
+                .map((beat) => {
+                    const row = parseBeatRow(beat);
+                    return `${normalizeBeatTitle(row.name)}:${row.act}`;
+                })
+                .join(';');
+            return `${loadedTab.tabId}|${loadedTab.name}|${fingerprint}|${sourcePath}|${actCount}`;
+        }
         if (selectedSystem !== 'Custom') return `${selectedSystem}|${sourcePath}|${actCount}`;
         const fingerprint = getActiveCustomBeats()
             .map((beat) => {
@@ -597,22 +622,23 @@ export function renderStoryBeatsSection(params: {
         beatStructuralStatusKey = '';
     };
 
-    const computeBeatStructuralStatus = (selectedSystem: string): BeatSystemStructuralStatus =>
+    const computeBeatStructuralStatus = (selectedSystem: string, loadedTab?: LoadedBeatTab | null): BeatSystemStructuralStatus =>
         getBeatSystemStructuralStatus({
             app,
             settings: plugin.settings,
             selectedSystem,
+            ...(loadedTab ? { loadedTab } : {}),
         });
 
     const getBeatStructuralStatus = (
         selectedSystem: string,
-        options?: { refresh?: boolean }
+        options?: { refresh?: boolean; loadedTab?: LoadedBeatTab | null }
     ): BeatSystemStructuralStatus => {
-        const nextKey = getStructuralLookupKey(selectedSystem);
+        const nextKey = getStructuralLookupKey(selectedSystem, options?.loadedTab ?? null);
         if (!options?.refresh && beatStructuralStatus && beatStructuralStatusKey === nextKey) {
             return beatStructuralStatus;
         }
-        beatStructuralStatus = computeBeatStructuralStatus(selectedSystem);
+        beatStructuralStatus = computeBeatStructuralStatus(selectedSystem, options?.loadedTab ?? null);
         beatStructuralStatusKey = nextKey;
         return beatStructuralStatus;
     };
@@ -642,8 +668,8 @@ export function renderStoryBeatsSection(params: {
                 };
             });
 
-    const getStructuralHealthState = (selectedSystem: string): StructuralHealthState => {
-        const structuralStatus = getBeatStructuralStatus(selectedSystem);
+    const getStructuralHealthState = (selectedSystem: string, loadedTab?: LoadedBeatTab | null): StructuralHealthState => {
+        const structuralStatus = getBeatStructuralStatus(selectedSystem, { loadedTab: loadedTab ?? null });
         const summary = structuralStatus.summary;
         if (summary.expectedCount === 0) {
             return {
@@ -759,8 +785,8 @@ export function renderStoryBeatsSection(params: {
         return clampActNumber(Number(actualAct), getActCount()) !== status.expected.actNumber;
     };
 
-    const getManuscriptAdvisoryState = (system: string): ManuscriptAdvisoryState | null => {
-        const structuralStatus = getBeatStructuralStatus(system);
+    const getManuscriptAdvisoryState = (system: string, loadedTab?: LoadedBeatTab | null): ManuscriptAdvisoryState | null => {
+        const structuralStatus = getBeatStructuralStatus(system, { loadedTab: loadedTab ?? null });
         const summary = structuralStatus.summary;
         if (summary.expectedCount === 0) return null;
         if (summary.matchedCount === 0) {
@@ -786,7 +812,7 @@ export function renderStoryBeatsSection(params: {
         };
     };
 
-    const getSystemOverviewState = (system: string): {
+    const getSystemOverviewState = (system: string, loadedTab?: LoadedBeatTab | null): {
         title: string;
         description: string;
         examples: string;
@@ -795,16 +821,19 @@ export function renderStoryBeatsSection(params: {
         hasAuthorDesc: boolean;
         sourceLink?: { label: string; href: string };
     } => {
+        const activeTab = loadedTab ?? getActiveBeatWorkspaceTab();
         const { mode } = deriveBeatSystemMode(system);
         const copy = getBeatSystemCopy(system);
-        const customName = getActiveCustomName('Custom');
-        const customDesc = getActiveCustomDescription().trim();
-        const hasAuthorDesc = mode === 'custom' && customDesc.length > 0;
-        const overview = mode === 'builtin'
-            ? buildTemplateActColumns(system)
-            : buildCustomActColumns();
+        const customName = activeTab?.name?.trim() || getActiveCustomName('Custom');
+        const customDesc = (activeTab?.description ?? getActiveCustomDescription()).trim();
+        const hasAuthorDesc = mode !== 'builtin' && customDesc.length > 0;
+        const overview = activeTab
+            ? buildLoadedTabActColumns(activeTab)
+            : mode === 'builtin'
+                ? buildTemplateActColumns(system)
+                : buildCustomActColumns();
         return {
-            title: mode === 'builtin' ? copy.title : customName || 'Custom',
+            title: activeTab?.name || (mode === 'builtin' ? copy.title : customName || 'Custom'),
             description: hasAuthorDesc ? customDesc : copy.description,
             examples: copy.examples ?? '',
             totalBeats: overview.totalBeats,
@@ -889,7 +918,6 @@ export function renderStoryBeatsSection(params: {
         cls: 'ert-mini-tabs',
         attr: { role: 'tablist' }
     });
-    const beatSystemOptions = [...BEAT_PRESETS, CUSTOM_SYSTEM_OPTION];
 
     const beatSystemCard = beatSystemWrapper.createDiv({
         cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK} ert-beat-system-card`,
@@ -935,11 +963,13 @@ export function renderStoryBeatsSection(params: {
         // ── Custom system header (mirrors built-in template preview header) ──
         const customSystemName = getActiveCustomName('Custom beats');
         const customSystemDesc = getActiveCustomDescription();
-        const starterActive = isStarterSetActive();
+        const activeSourceKind = getActiveBeatWorkspaceKind();
+        const starterActive = activeSourceKind === 'starter';
+        const builtinActive = activeSourceKind === 'builtin';
         const activeId = getActiveCustomId();
         const savedSystems: SavedBeatSystem[] = plugin.settings.savedBeatSystems ?? [];
-        const savedSetActive = !starterActive && savedSystems.some(s => s.id === activeId);
-        const hasSetOrigin = starterActive || savedSetActive; // loaded from any set
+        const savedSetActive = activeSourceKind === 'saved' && savedSystems.some(s => s.id === activeId);
+        const hasSetOrigin = starterActive || savedSetActive || builtinActive; // loaded from any set
 
         // Ensure baseline exists for whichever custom set is active (starter, saved, or default).
         if (!dirtyState.baselineId || dirtyState.baselineId !== activeId) {
@@ -957,11 +987,13 @@ export function renderStoryBeatsSection(params: {
         // Reference for dirty-state refresh
         let originTagEl: HTMLElement | null = null;
 
-        if (starterActive) {
-            // Starter set: plain text title, not clickable/renameable
+        if (starterActive || builtinActive) {
             titleEl.createSpan({ text: customSystemName, cls: 'ert-book-name' });
-            originTagEl = titleEl.createSpan({ text: 'Starter set', cls: 'ert-set-origin-tag ert-set-origin-tag--starter' });
-            setTooltip(originTagEl, 'Save a copy to edit.');
+            originTagEl = titleEl.createSpan({
+                text: builtinActive ? 'Built-in set' : 'Starter set',
+                cls: 'ert-set-origin-tag ert-set-origin-tag--starter'
+            });
+            setTooltip(originTagEl, builtinActive ? 'Save a copy to turn this into a saved set.' : 'Save a copy to edit.');
         } else {
             // User system: clickable to edit details
             const nameLink = titleEl.createSpan({
@@ -1041,11 +1073,15 @@ export function renderStoryBeatsSection(params: {
                 }
                 // Origin tag: orange "Modified" when dirty, clean label when not
                 if (oTag) {
-                    const cleanLabel = starterActive ? 'Starter set' : 'Saved set';
-                    const cleanTip = starterActive ? 'Save a copy to edit.' : 'Last saved version is current.';
+                    const cleanLabel = builtinActive ? 'Built-in set' : (starterActive ? 'Starter set' : 'Saved set');
+                    const cleanTip = builtinActive
+                        ? 'Save a copy to turn this into a saved set.'
+                        : (starterActive ? 'Save a copy to edit.' : 'Last saved version is current.');
                     const dirtyTip = starterActive
                         ? 'Starter set has been changed. Save a copy to keep your version.'
-                        : 'Changes have been made since last save.';
+                        : builtinActive
+                            ? 'Built-in set has been changed. Save a copy to keep your version.'
+                            : 'Changes have been made since last save.';
                     oTag.setText(dirty ? 'Modified' : cleanLabel);
                     oTag.classList.toggle('ert-set-origin-tag--modified', dirty);
                     oTag.classList.toggle('ert-set-origin-tag--starter', !dirty && starterActive);
@@ -1076,8 +1112,8 @@ export function renderStoryBeatsSection(params: {
             setActiveCustomBeats(orderBeatsByAct(normalized, maxActs));
             invalidateBeatStructuralStatus();
             await plugin.saveSettings();
-            updateTemplateButton(templateSetting, 'Custom');
-            renderPreviewContent('Custom');
+            updateTemplateButton(templateSetting, getActiveBeatWorkspaceName('Custom'));
+            renderPreviewContent(getActiveBeatWorkspaceName('Custom'));
             // Re-render stage switcher after beat list changes
             renderStageSwitcher();
             dirtyState.notify();
@@ -1103,16 +1139,16 @@ export function renderStoryBeatsSection(params: {
                 return;
             }
             refreshBusy = true;
-            const system = plugin.settings.beatSystem || 'Custom';
+            const system = getActiveBeatWorkspaceName(plugin.settings.beatSystem || 'Custom');
             const [ranges] = await Promise.all([
                 collectActRanges(allowFetch)
             ]);
             if (ranges) {
                 actRanges = ranges;
             }
-            getBeatStructuralStatus(system, { refresh: allowFetch });
+            getBeatStructuralStatus(system, { refresh: allowFetch, loadedTab: getActiveBeatWorkspaceTab() ?? null });
             renderList();
-            updateTemplateButton(templateSetting, system);
+            updateTemplateButton(templateSetting, getActiveBeatWorkspaceName(system));
             refreshBusy = false;
             if (refreshQueued) {
                 refreshQueued = false;
@@ -1140,7 +1176,9 @@ export function renderStoryBeatsSection(params: {
             });
             const orderedBeats = beatsByAct.flat();
             const beatNumbers = buildBeatDisplayPrefixes(orderedBeats, maxActs, actRanges);
-            const structuralStatus = getBeatStructuralStatus(plugin.settings.beatSystem || 'Custom');
+            const structuralStatus = getBeatStructuralStatus(getActiveBeatWorkspaceName(plugin.settings.beatSystem || 'Custom'), {
+                loadedTab: getActiveBeatWorkspaceTab() ?? null,
+            });
             const titleMap = new Map<string, number[]>();
             orderedBeats.forEach((beatLine, idx) => {
                 const key = normalizeBeatTitle(beatLine.name);
@@ -1536,6 +1574,30 @@ export function renderStoryBeatsSection(params: {
         return { columns, totalBeats: ordered.length };
     };
 
+    const buildLoadedTabActColumns = (loadedTab: LoadedBeatTab | null | undefined): { columns: ActGridColumn[]; totalBeats: number } => {
+        if (!loadedTab) return buildCustomActColumns();
+        const beats = loadedTab.beats.map(parseBeatRow).filter((beat) => hasBeatReadableText(beat.name));
+        const maxActs = getActCount();
+        const ordered = orderBeatsByAct(
+            beats.map((beat) => ({ ...beat, act: clampBeatAct(beat.act, maxActs) })),
+            maxActs
+        );
+        const grouped = new Map<string, ActGridColumn>();
+        ordered.forEach((beatLine) => {
+            const actNum = clampBeatAct(beatLine.act, maxActs);
+            const key = `act:${actNum}`;
+            if (!grouped.has(key)) {
+                grouped.set(key, { label: `Act ${actNum}`, beats: [], rank: actNum, isNumericAct: true });
+            }
+            grouped.get(key)!.beats.push({
+                name: stripActPrefix(beatLine.name),
+                key: normalizeBeatTitle(beatLine.name)
+            });
+        });
+        const columns = Array.from(grouped.values()).sort((a, b) => a.rank - b.rank);
+        return { columns, totalBeats: ordered.length };
+    };
+
     const appendPreviewStatus = (
         parent: HTMLElement,
         state: { text: string; tone: PreviewStatusTone; icon: 'check' | 'circle-alert' | null },
@@ -1570,12 +1632,17 @@ export function renderStoryBeatsSection(params: {
         return { text: '', tone: 'success', icon: 'check' };
     };
 
-    const renderPreviewContent = (system: string, _options?: { skipStatusRefresh?: boolean }) => {
+    const renderPreviewContent = (system: string, _options?: { skipStatusRefresh?: boolean }, loadedTab?: LoadedBeatTab | null) => {
+        const activeTab = loadedTab ?? getActiveBeatWorkspaceTab();
         const { mode } = deriveBeatSystemMode(system);
         let columns: ActGridColumn[];
         let totalBeats: number;
 
-        if (mode === 'builtin') {
+        if (activeTab) {
+            const result = buildLoadedTabActColumns(activeTab);
+            columns = result.columns;
+            totalBeats = result.totalBeats;
+        } else if (mode === 'builtin') {
             const result = buildTemplateActColumns(system);
             columns = result.columns;
             totalBeats = result.totalBeats;
@@ -1585,7 +1652,7 @@ export function renderStoryBeatsSection(params: {
             totalBeats = result.totalBeats;
         }
 
-        const structuralStatus = totalBeats > 0 ? getBeatStructuralStatus(system) : null;
+        const structuralStatus = totalBeats > 0 ? getBeatStructuralStatus(system, { loadedTab: activeTab ?? null }) : null;
         const beatStatusByKey = new Map<string, BeatStructuralBeatStatus>(
             (structuralStatus?.beats ?? []).map((beat) => [beat.expected.key, beat])
         );
@@ -1624,7 +1691,7 @@ export function renderStoryBeatsSection(params: {
         templatePreviewStatus.className = 'ert-beat-template-meta ert-preview-status-line';
         templatePreviewIssues.empty();
         templatePreviewIssues.addClass('ert-settings-hidden');
-        const manuscriptState = getManuscriptAdvisoryState(system);
+        const manuscriptState = getManuscriptAdvisoryState(system, activeTab ?? null);
         if (manuscriptState) {
             templatePreviewStatus.addClass(`ert-preview-status-line--${manuscriptState.tone}`);
             appendPreviewStatus(templatePreviewStatus, manuscriptState);
@@ -1641,7 +1708,7 @@ export function renderStoryBeatsSection(params: {
         if (columns.length === 0) {
             templateActGrid.createDiv({
                 cls: 'ert-beat-act-empty',
-                text: mode === 'custom' ? 'No beats yet. Go to Design to add them.' : 'No beats found for this set.'
+                text: (activeTab?.sourceKind ?? mode) === 'builtin' ? 'No beats found for this set.' : 'No beats yet. Go to Design to add them.'
             });
             return;
         }
@@ -1742,8 +1809,8 @@ export function renderStoryBeatsSection(params: {
         captureSetBaseline(activeId);
         dirtyState.notify();
         renderBeatSystemTabs();
-        renderPreviewContent(plugin.settings.beatSystem || 'Custom');
-        updateTemplateButton(templateSetting, plugin.settings.beatSystem || 'Custom');
+        renderPreviewContent(getActiveBeatWorkspaceName(plugin.settings.beatSystem || 'Custom'));
+        updateTemplateButton(templateSetting, getActiveBeatWorkspaceName(plugin.settings.beatSystem || 'Custom'));
         refreshBeatAuditPrimaryAction?.();
         if (context === 'fields') {
             new Notice('Set saved. You can run the audit now.');
@@ -1770,7 +1837,7 @@ export function renderStoryBeatsSection(params: {
                 });
         });
 
-    updateTemplateButton(templateSetting, plugin.settings.beatSystem || 'Custom');
+    updateTemplateButton(templateSetting, getActiveBeatWorkspaceName(plugin.settings.beatSystem || 'Custom'));
 
     // Stage 3: Fields (YAML editor, hover metadata, schema audit)
     const fieldsContainer = beatSystemCard.createDiv({ cls: ERT_CLASSES.STACK });
@@ -1780,9 +1847,7 @@ export function renderStoryBeatsSection(params: {
     // ── Stage switcher rendering + visibility ───────────────────────────
     const renderStageSwitcher = () => {
         stageSwitcher.empty();
-        const system = plugin.settings.beatSystem || 'Custom';
-        const { mode } = deriveBeatSystemMode(system);
-        const isCustom = mode === 'custom';
+        const hasActiveTab = !!getActiveBeatWorkspaceTab();
 
         // Helper: create a numbered stage button
         const makeStageBtn = (
@@ -1814,29 +1879,26 @@ export function renderStoryBeatsSection(params: {
         };
 
         // Stage 1: Preview (acts + beats overview)
-        makeStageBtn('preview', 1, 'Preview');
+        makeStageBtn('preview', 1, 'Preview', !hasActiveTab);
 
         // Stage 2: Design (beat list editor + beat notes in vault)
-        makeStageBtn('design', 2, 'Design');
+        makeStageBtn('design', 2, 'Design', !hasActiveTab);
 
         // Stage 3: Fields (YAML editor, hover metadata, schema audit)
-        makeStageBtn('fields', 3, 'Fields');
+        makeStageBtn('fields', 3, 'Fields', !hasActiveTab);
 
-        // Stage 4: Sets (Custom only; saved/starter beat systems)
-        if (isCustom) {
-            const setsBtn = stageSwitcher.createEl('button', {
-                cls: `ert-stage-btn${_currentInnerStage === 'sets' ? ' is-active' : ''}`,
-                attr: { type: 'button', role: 'tab', 'aria-selected': _currentInnerStage === 'sets' ? 'true' : 'false' }
-            });
-            setsBtn.createSpan({ cls: 'ert-stage-btn-step', text: '4.' });
-            setsBtn.appendText(' Sets');
-            setsBtn.addEventListener('click', () => {
-                if (_currentInnerStage === 'sets') return;
-                _currentInnerStage = 'sets';
-                renderStageSwitcher();
-                updateStageVisibility();
-            });
-        }
+        const setsBtn = stageSwitcher.createEl('button', {
+            cls: `ert-stage-btn${_currentInnerStage === 'sets' ? ' is-active' : ''}`,
+            attr: { type: 'button', role: 'tab', 'aria-selected': _currentInnerStage === 'sets' ? 'true' : 'false' }
+        });
+        setsBtn.createSpan({ cls: 'ert-stage-btn-step', text: '4.' });
+        setsBtn.appendText(' Sets');
+        setsBtn.addEventListener('click', () => {
+            if (_currentInnerStage === 'sets') return;
+            _currentInnerStage = 'sets';
+            renderStageSwitcher();
+            updateStageVisibility();
+        });
     };
 
     /**
@@ -1844,31 +1906,28 @@ export function renderStoryBeatsSection(params: {
      * Preview/Design/Fields visible for all systems; Sets only for Custom.
      */
     const updateStageVisibility = () => {
-        const system = plugin.settings.beatSystem || 'Custom';
-        const { mode } = deriveBeatSystemMode(system);
-        const isCustom = mode === 'custom';
+        const hasActiveTab = !!getActiveBeatWorkspaceTab();
 
         // Preview: acts + beats overview (templatePreviewContainer for both; custom uses same structure)
-        templatePreviewContainer.toggleClass('ert-settings-hidden', _currentInnerStage !== 'preview');
+        templatePreviewContainer.toggleClass('ert-settings-hidden', !hasActiveTab || _currentInnerStage !== 'preview');
 
-        // Design: beat list editor (Custom only) + beat notes in vault (all)
-        customConfigContainer.toggleClass('ert-settings-hidden', !isCustom || _currentInnerStage !== 'design');
-        designActionsContainer.toggleClass('ert-settings-hidden', _currentInnerStage !== 'design');
+        customConfigContainer.toggleClass('ert-settings-hidden', !hasActiveTab || _currentInnerStage !== 'design');
+        designActionsContainer.toggleClass('ert-settings-hidden', !hasActiveTab || _currentInnerStage !== 'design');
 
         // Fields: YAML editor, hover metadata, schema audit
-        fieldsContainer.toggleClass('ert-settings-hidden', _currentInnerStage !== 'fields');
+        fieldsContainer.toggleClass('ert-settings-hidden', !hasActiveTab || _currentInnerStage !== 'fields');
 
-        // Sets: saved/starter beat systems (Custom only)
-        setsContainer.toggleClass('ert-settings-hidden', !isCustom || _currentInnerStage !== 'sets');
+        setsContainer.toggleClass('ert-settings-hidden', _currentInnerStage !== 'sets');
 
-        if (_currentInnerStage === 'design') {
+        if (hasActiveTab && _currentInnerStage === 'design') {
             refreshCustomBeats?.(true);
         }
     };
 
     function updateTierBanner(system: string): void {
         tierBannerEl.empty();
-        const overview = getSystemOverviewState(system);
+        const activeTab = getActiveBeatWorkspaceTab();
+        const overview = getSystemOverviewState(system, activeTab ?? null);
         tierBannerEl.createDiv({ cls: 'ert-beat-template-title', text: overview.title });
         if (overview.sourceLink) {
             const sourceRow = tierBannerEl.createDiv({ cls: 'ert-beat-template-source' });
@@ -1896,10 +1955,10 @@ export function renderStoryBeatsSection(params: {
     }
 
     const updateBeatSystemCard = (system: string, options?: { resetStage?: boolean }) => {
-        const { mode } = deriveBeatSystemMode(system);
-        beatSystemCard.toggleClass('ert-beat-system-card--custom', mode === 'custom');
+        const activeTab = getActiveBeatWorkspaceTab();
+        beatSystemCard.toggleClass('ert-beat-system-card--custom', (activeTab?.sourceKind ?? 'blank') !== 'builtin');
         updateTierBanner(system);
-        renderPreviewContent(system);
+        renderPreviewContent(system, undefined, activeTab ?? null);
         renderBeatYamlEditor();
         updateBeatHoverPreview?.();
         if (options?.resetStage !== false) {
@@ -1911,14 +1970,13 @@ export function renderStoryBeatsSection(params: {
 
     function renderBeatSystemTabs(): void {
         beatSystemTabs.empty();
-        const activeSystem = plugin.settings.beatSystem || 'Custom';
-        beatSystemOptions.forEach((option) => {
-            const isActive = option.systemName === activeSystem;
-            const isCustomTab = option.systemName === 'Custom';
-            const tabLabel = isCustomTab ? getCustomTabLabel() : option.label;
-            const status = getBeatSystemTabStatus(option.systemName);
+        const loadedTabs = getLoadedBeatWorkspaceTabs();
+        const activeTabId = getActiveBeatWorkspaceTabId();
+        loadedTabs.forEach((tab) => {
+            const isActive = tab.tabId === activeTabId;
+            const status = getBeatSystemTabStatus(tab);
             const btn = beatSystemTabs.createEl('button', {
-                cls: `ert-mini-tab${isCustomTab ? ' ert-mini-tab--custom' : ''}${isActive ? ` ${ERT_CLASSES.IS_ACTIVE}` : ''}`,
+                cls: `ert-mini-tab${tab.sourceKind !== 'builtin' ? ' ert-mini-tab--custom' : ''}${isActive ? ` ${ERT_CLASSES.IS_ACTIVE}` : ''}`,
                 attr: {
                     type: 'button',
                     role: 'tab',
@@ -1930,18 +1988,35 @@ export function renderStoryBeatsSection(params: {
             const iconEl = btn.createSpan({ cls: iconClass });
             setIcon(iconEl, status.icon);
             setTooltip(iconEl, status.tooltip);
-            btn.appendText(tabLabel);
+            btn.appendText(tab.name);
 
             btn.addEventListener('click', async () => { // SAFE: direct addEventListener; Settings lifecycle manages cleanup
                 if (isActive) return;
-                plugin.settings.beatSystem = option.systemName;
+                activateLoadedBeatTab(plugin.settings, tab.tabId);
                 await plugin.saveSettings();
                 plugin.onSettingChanged(IMPACT_FULL); // Tier 3: beat system change rebuilds timeline beats
                 invalidateBeatStructuralStatus();
-                updateTemplateButton(templateSetting, option.systemName);
-                updateBeatSystemCard(option.systemName);
+                updateTemplateButton(templateSetting, getActiveBeatWorkspaceName('Custom'));
+                updateBeatSystemCard(tab.name);
                 renderBeatSystemTabs();
             });
+        });
+
+        const addBtn = beatSystemTabs.createEl('button', {
+            cls: 'ert-mini-tab ert-mini-tab--custom',
+            attr: {
+                type: 'button',
+                role: 'button',
+                'aria-label': 'Add system'
+            }
+        });
+        const addIcon = addBtn.createSpan({ cls: 'ert-mini-tab-icon ert-beat-health-icon' });
+        setIcon(addIcon, 'plus');
+        addBtn.appendText('Add system');
+        addBtn.addEventListener('click', () => {
+            _currentInnerStage = 'sets';
+            renderStageSwitcher();
+            updateStageVisibility();
         });
     }
 
@@ -1956,7 +2031,7 @@ export function renderStoryBeatsSection(params: {
     const beatYamlContainer = beatYamlSection.createDiv({ cls: ['ert-panel', 'ert-advanced-template-card'] });
 
     // ─── Beat-fields config helpers (all systems: built-in + custom) ────
-    const getActiveSystemKey = (): string => plugin.settings.beatSystem || 'Save The Cat';
+    const getActiveSystemKey = (): string => getActiveBeatWorkspaceName(plugin.settings.beatSystem || 'Save The Cat');
     const getConfigForCurrentSystem = (): BeatSystemConfig =>
         getBeatConfigForSystem(plugin.settings, getActiveSystemKey());
     const ensureConfigForCurrentSystem = (): BeatSystemConfig =>
@@ -2416,7 +2491,7 @@ export function renderStoryBeatsSection(params: {
 
     savedCard.createEl('p', {
         cls: ERT_CLASSES.SECTION_DESC,
-        text: 'Starter sets are curated starting points. Saved sets are your own versions you can edit and delete.'
+        text: 'Built-ins and starter sets are library sources. Saved sets are your own versions you can edit and delete.'
     });
 
     const savedControlsContainer = savedCard.createDiv({ cls: ERT_CLASSES.STACK });
@@ -2424,74 +2499,25 @@ export function renderStoryBeatsSection(params: {
     // hasUnsavedChanges() was removed — unified into isSetDirty() via dirtyState store.
     // Both dirty indicators (dropdown warning + dirty notice) now use the same baseline.
 
-    /** Apply a saved or built-in system as the active system and refresh UI. */
-    const applyLoadedSystem = (system: { id: string; name: string; description?: string; beats: BeatDefinition[]; beatYamlAdvanced?: string; beatHoverMetadataFields?: { key: string; label: string; icon: string; enabled: boolean }[] }) => {
-        // 1. Guarantee we're on the Custom system (config resolution depends on this)
-        plugin.settings.beatSystem = 'Custom';
-        // 2. Activate this set's id so config resolves to custom:<id>
-        plugin.settings.activeCustomBeatSystemId = system.id;
-        // 3. Write beats/name/description
-        replaceSavedBeatSystem(plugin.settings, {
-            id: system.id,
-            name: normalizeBeatSetNameInput(system.name),
-            description: system.description ?? '',
-            beats: system.beats.map(b => ({
-                ...b,
-                name: normalizeBeatNameInput(b.name),
-                purpose: typeof b.purpose === 'string' ? b.purpose.trim() : undefined,
-            })),
-            createdAt: new Date().toISOString(),
-        });
-        // 4. Write per-system YAML/hover config into the correct slot
-        const configKey = getCustomBeatConfigKey(system.id);
-        if (!plugin.settings.beatSystemConfigs) plugin.settings.beatSystemConfigs = {};
-        plugin.settings.beatSystemConfigs[configKey] = {
-            beatYamlAdvanced: system.beatYamlAdvanced ?? '',
-            beatHoverMetadataFields: system.beatHoverMetadataFields
-                ? system.beatHoverMetadataFields.map(f => ({ ...f }))
-                : [],
-        };
-
-        // 5. Capture baseline for any loaded set (starter or saved) so we detect modifications
-        captureSetBaseline(system.id);
-
-        // DEV: prove config activation is correct
-        if (process.env.NODE_ENV !== 'production') {
-            const slot = plugin.settings.beatSystemConfigs[configKey];
-            console.debug('[loadSet]', {
-                activeCustomBeatSystemId: system.id,
-                configSlotExists: !!slot,
-                yamlLength: slot?.beatYamlAdvanced?.length ?? 0,
-                hoverFieldCount: slot?.beatHoverMetadataFields?.length ?? 0,
-            });
-        }
-
-        // 6. Switch to Design stage so the user sees the loaded beats immediately
+    /** Load a library item into the workspace and activate its tab. */
+    const applyLoadedSystem = (entry: BeatLibraryItem) => {
+        const loadedTab = loadBeatTabFromLibraryItem(plugin.settings, entry);
+        captureSetBaseline(getActiveCustomId());
         _currentInnerStage = 'design';
         void plugin.saveSettings().then(() => {
-            plugin.onSettingChanged(IMPACT_FULL); // Tier 3: loaded set changes timeline beats
+            plugin.onSettingChanged(IMPACT_FULL);
         });
-        new Notice(`Loaded "${system.name}" into Custom.`);
-
-        // 7. Targeted UI refresh — update only the affected sections instead of
-        //    a full renderStoryBeatsSection() call. This avoids the callback-null
-        //    window and preserves subscriptions that are still valid.
+        new Notice(`Loaded "${loadedTab.name}".`);
         invalidateBeatStructuralStatus();
-        renderCustomConfig();           // Design tab (beat list, header, health)
-        renderBeatYamlEditor();         // Fields tab (YAML fields for new system)
-        updateBeatHoverPreview?.();     // Fields tab (hover preview)
-        renderSavedBeatSystems();       // Sets tab (dropdown, preview, dirty)
-        updateBeatSystemCard('Custom', { resetStage: false }); // Keep Design visible
-        renderBeatSystemTabs();         // Ensure Custom tab is visually active
+        renderCustomConfig();
+        renderBeatYamlEditor();
+        updateBeatHoverPreview?.();
+        renderSavedBeatSystems();
+        updateBeatSystemCard(loadedTab.name, { resetStage: false });
+        renderBeatSystemTabs();
     };
 
-    type LoadableEntry = {
-        id: string;
-        name: string;
-        description?: string;
-        beats: { name: string; act: number }[];
-        beatYamlAdvanced?: string;
-        beatHoverMetadataFields?: { key: string; label: string; icon: string; enabled: boolean }[];
+    type LoadableEntry = BeatLibraryItem & {
         builtIn: boolean;
         isDefault?: boolean;
     };
@@ -2527,39 +2553,44 @@ export function renderStoryBeatsSection(params: {
         savedControlsContainer.empty();
 
         const savedSystems: SavedBeatSystem[] = plugin.settings.savedBeatSystems ?? [];
-        const activeId = plugin.settings.activeCustomBeatSystemId ?? 'default';
+        const activeTab = getActiveBeatWorkspaceTab();
         const unsaved = isSetDirty();
 
         // Build unified lookup of all loadable systems (starter + user-saved)
         const allLoadable = new Map<string, LoadableEntry>();
-        allLoadable.set('default', {
-            id: 'default',
-            name: 'Custom',
-            description: '',
-            beats: [],
-            beatYamlAdvanced: '',
-            beatHoverMetadataFields: [],
-            builtIn: true,
-            isDefault: true
+        getBeatLibraryItems(plugin.settings).forEach((item) => {
+            allLoadable.set(item.id, {
+                ...item,
+                builtIn: item.kind === 'builtin' || item.kind === 'starter',
+                isDefault: item.kind === 'blank',
+            });
         });
-        STARTER_BEAT_SETS.forEach(ps => allLoadable.set(ps.id, { ...ps, builtIn: true }));
-        savedSystems.forEach(s => allLoadable.set(s.id, { ...s, builtIn: false }));
 
         // Track currently selected entry for the preview card
-        let selectedEntry: LoadableEntry | null = allLoadable.get(activeId) ?? null;
+        let selectedEntry: LoadableEntry | null = activeTab
+            ? [...allLoadable.values()].find((entry) => {
+                if (activeTab.sourceKind === 'blank') return entry.kind === 'blank';
+                return entry.kind === activeTab.sourceKind && entry.id === activeTab.sourceId;
+            }) ?? null
+            : null;
 
         const getSelectedEntryDeploymentStatus = (entry: LoadableEntry | null): BeatSystemStructuralStatus | null => {
             if (!entry || entry.isDefault) return null;
             return getBeatSystemStructuralStatus({
                 app,
                 settings: plugin.settings,
-                selectedSystem: 'Custom',
-                customSystemOverride: {
-                    id: entry.id,
+                loadedTab: {
+                    tabId: `preview:${entry.kind}:${entry.id}`,
+                    sourceKind: entry.kind,
+                    sourceId: entry.id,
                     name: entry.name,
+                    description: entry.description,
                     beats: entry.beats,
+                    config: entry.config,
+                    linkedSavedSystemId: entry.linkedSavedSystemId,
+                    dirty: false,
                 },
-            });
+            } as const);
         };
 
         const getDeleteSetRiskSummary = (systemId: string) => {
@@ -2632,13 +2663,14 @@ export function renderStoryBeatsSection(params: {
         };
 
         const resetActiveCustomToBlank = () => {
-            plugin.settings.activeCustomBeatSystemId = DEFAULT_CUSTOM_BEAT_SYSTEM_ID;
-            replaceSavedBeatSystem(plugin.settings, buildDefaultCustomBeatSystem());
-            if (!plugin.settings.beatSystemConfigs) plugin.settings.beatSystemConfigs = {};
-            plugin.settings.beatSystemConfigs[getCustomBeatConfigKey(DEFAULT_CUSTOM_BEAT_SYSTEM_ID)] = {
-                beatYamlAdvanced: '',
-                beatHoverMetadataFields: [],
-            };
+            loadBeatTabFromLibraryItem(plugin.settings, {
+                id: BLANK_LIBRARY_ITEM_ID,
+                kind: 'blank',
+                name: 'Blank custom',
+                description: '',
+                beats: [],
+                config: { beatYamlAdvanced: '', beatHoverMetadataFields: [] },
+            });
             clearSetBaseline();
         };
 
@@ -2715,7 +2747,7 @@ export function renderStoryBeatsSection(params: {
             }
             invalidateBeatStructuralStatus();
             renderCustomConfig();
-            renderPreviewContent('Custom');
+            renderPreviewContent(getActiveBeatWorkspaceName('Custom'));
             renderBeatYamlEditor();
             updateBeatHoverPreview?.();
             renderSavedBeatSystems();
@@ -2730,7 +2762,8 @@ export function renderStoryBeatsSection(params: {
             const risk = getDeleteSetRiskSummary(system.id);
             const noteFiles = getSelectedEntryBeatNoteFiles(entry);
             const noteCount = noteFiles.length;
-            const wasActive = plugin.settings.activeCustomBeatSystemId === system.id;
+            const wasActive = getActiveBeatWorkspaceTab()?.linkedSavedSystemId === system.id
+                || (getActiveBeatWorkspaceTab()?.sourceKind === 'saved' && getActiveBeatWorkspaceTab()?.sourceId === system.id);
             let selectedMode: BeatSetDeleteMode = noteCount > 0 ? 'system_and_notes' : 'system_only';
 
             const confirmed = await new Promise<BeatSetDeleteMode | null>((resolve) => {
@@ -2874,14 +2907,19 @@ export function renderStoryBeatsSection(params: {
             if (confirmed === 'system_and_notes' || confirmed === 'system_only') {
                 removeSavedSetDefinition(system.id);
                 if (wasActive) {
-                    resetActiveCustomToBlank();
+                    const activeTabId = getActiveBeatWorkspaceTabId();
+                    if (activeTabId) {
+                        unloadBeatTab(plugin.settings, activeTabId);
+                    } else {
+                        resetActiveCustomToBlank();
+                    }
                 }
             }
 
             await plugin.saveSettings();
             invalidateBeatStructuralStatus();
             renderCustomConfig();
-            renderPreviewContent('Custom');
+            renderPreviewContent(getActiveBeatWorkspaceName('Custom'));
             renderBeatYamlEditor();
             updateBeatHoverPreview?.();
             renderSavedBeatSystems();
@@ -2915,19 +2953,20 @@ export function renderStoryBeatsSection(params: {
                 drop.addOption('', hasAny ? 'Select a set...' : '—');
 
                 // Always-first reset option
-                drop.addOption('default', '↺ Blank custom (reset)');
+                drop.addOption(BLANK_LIBRARY_ITEM_ID, '↺ Blank custom (reset)');
 
                 // Starter sets first
-                if (STARTER_BEAT_SETS.length > 0) {
-                    STARTER_BEAT_SETS.forEach(ps => {
-                        drop.addOption(ps.id, `★ ${ps.name}`);
+                [...allLoadable.values()]
+                    .filter((entry) => entry.kind === 'builtin' || entry.kind === 'starter')
+                    .forEach((entry) => {
+                        drop.addOption(entry.id, `★ ${entry.name}`);
                     });
-                }
 
-                // User-saved systems
-                savedSystems.forEach(s => {
-                    drop.addOption(s.id, s.name);
-                });
+                [...allLoadable.values()]
+                    .filter((entry) => entry.kind === 'saved')
+                    .forEach((entry) => {
+                        drop.addOption(entry.id, entry.name);
+                    });
 
                 // Auto-select the currently active system if it exists
                 if (selectedEntry) {
@@ -2986,15 +3025,16 @@ export function renderStoryBeatsSection(params: {
             const preview = savedControlsContainer.querySelector<HTMLElement>('[data-dirty-target="setsPreview"]');
             if (!notice) return; // container was emptied — subscription will be cleaned up
             const dirty = isSetDirty();
-            const isStarter = isStarterSetActive();
+            const activeKind = getActiveBeatWorkspaceKind();
+            const isCopyOnlySource = activeKind === 'starter' || activeKind === 'builtin';
             // Dirty notice
             notice.empty();
             if (dirty) {
                 notice.removeClass('ert-settings-hidden');
                 const iconEl = notice.createSpan({ cls: 'ert-starter-dirty-icon' });
                 setIcon(iconEl, 'alert-triangle');
-                if (isStarter) {
-                    notice.appendText('Modified — Starter set changed. ');
+                if (isCopyOnlySource) {
+                    notice.appendText('Modified — Library source changed. ');
                     const copyLink = notice.createEl('button', {
                         cls: 'ert-starter-dirty-link',
                         text: 'Save a copy',
@@ -3031,8 +3071,15 @@ export function renderStoryBeatsSection(params: {
 
             const titleRow = previewEl.createDiv({ cls: 'ert-set-preview-header' });
             titleRow.createSpan({ text: selectedEntry.name, cls: 'ert-set-preview-title' });
+            const previewTagText = selectedEntry.isDefault
+                ? 'Default'
+                : selectedEntry.kind === 'builtin'
+                    ? 'Built-in'
+                    : selectedEntry.kind === 'starter'
+                        ? 'Starter'
+                        : 'Saved';
             const tag = titleRow.createSpan({
-                text: selectedEntry.isDefault ? 'Default' : (selectedEntry.builtIn ? 'Starter' : 'Saved'),
+                text: previewTagText,
                 cls: `ert-set-preview-tag ${selectedEntry.builtIn ? 'ert-set-preview-tag--starter' : 'ert-set-preview-tag--saved'}`
             });
             if (selectedEntry.isDefault) {
@@ -3165,7 +3212,7 @@ export function renderStoryBeatsSection(params: {
             if (opts.isCopy) {
                 _currentInnerStage = 'design';
                 renderCustomConfig();           // Design header shows new name/origin
-                renderPreviewContent('Custom'); // Preview reflects new set's beats/description
+                renderPreviewContent(getActiveBeatWorkspaceName('Custom')); // Preview reflects new set's beats/description
                 renderBeatYamlEditor();         // Fields reflect new system's YAML
                 updateBeatHoverPreview?.();     // Hover preview reflects new config
                 renderSavedBeatSystems();       // Sets dropdown updated
@@ -3175,13 +3222,17 @@ export function renderStoryBeatsSection(params: {
                 // Non-copy save: re-render Design header (clears dirty indicators)
                 // + Sets panel (updates dropdown/preview)
                 renderCustomConfig();
-                renderPreviewContent('Custom'); // Preview reflects saved state
+                renderPreviewContent(getActiveBeatWorkspaceName('Custom')); // Preview reflects saved state
                 renderSavedBeatSystems();
             }
         };
         // Load set CTA
         let loadBtn: ButtonComponent;
         let editBtn: ButtonComponent;
+        const shouldSaveAsCopy = (): boolean => {
+            const activeKind = getActiveBeatWorkspaceKind();
+            return activeKind === 'builtin' || activeKind === 'starter';
+        };
         const loadSetAction = () => {
             if (!selectedEntry) return;
             const entry = selectedEntry;
@@ -3227,13 +3278,17 @@ export function renderStoryBeatsSection(params: {
         // Save a copy (starter) / Save set (user-owned)
         let saveBtn: ButtonComponent;
         saveBtn = new ButtonComponent(actionsRow)
-            .setButtonText(isStarterSetActive() ? 'Save a copy' : 'Save set')
+            .setButtonText(shouldSaveAsCopy() ? 'Save a copy' : 'Save set')
             .onClick(() => {
-                if (isStarterSetActive()) {
+                if (shouldSaveAsCopy()) {
                     void saveSetModal({ isCopy: true });
                     return;
                 }
-                void saveCurrentCustomSet('generic');
+                if (getActiveBeatWorkspaceKind() === 'saved') {
+                    void saveCurrentCustomSet('generic');
+                    return;
+                }
+                void saveSetModal({ isCopy: false });
             });
 
         // Delete set — hidden when starter set is selected
@@ -3261,11 +3316,10 @@ export function renderStoryBeatsSection(params: {
                 'title',
                 isDeployedSelection
                     ? 'This set already has attributed beat notes in the active book.'
-                    : 'Load this set into Custom'
+                    : 'Load this set as a workspace tab'
             );
             // Save button adapts label based on what's active
-            const starterNow = isStarterSetActive();
-            saveBtn.setButtonText(starterNow ? 'Save a copy' : 'Save set');
+            saveBtn.setButtonText(shouldSaveAsCopy() ? 'Save a copy' : 'Save set');
             const isStarter = selectedEntry?.builtIn ?? true;
             editBtn.buttonEl.toggleClass('ert-settings-hidden', isStarter || !selectedEntry);
             const deleteState = getDeleteButtonState(selectedEntry);
@@ -3278,7 +3332,7 @@ export function renderStoryBeatsSection(params: {
     };
 
     renderSavedBeatSystems();
-    updateBeatSystemCard(plugin.settings.beatSystem || 'Custom');
+    updateBeatSystemCard(getActiveBeatWorkspaceName(plugin.settings.beatSystem || 'Custom'));
     renderBeatSystemTabs();
     _unsubTopBeatTabsDirty = dirtyState.subscribe(() => {
         renderBeatSystemTabs();
@@ -5762,10 +5816,12 @@ export function renderStoryBeatsSection(params: {
     }
 
     function updateTemplateButton(setting: Settings, selectedSystem: string): void {
-        const isCustom = selectedSystem === 'Custom';
-        const isTemplateMode = !isCustom;
+        const activeTab = getActiveBeatWorkspaceTab();
+        const isWorkspaceDriven = !!activeTab;
+        const isCustom = isWorkspaceDriven || selectedSystem === 'Custom';
+        const isTemplateMode = false;
         const isDirtyCustom = isCustom && isSetDirty();
-        let displayName = selectedSystem;
+        let displayName = activeTab?.name ?? selectedSystem;
         let baseDesc = '';
         let hasBeats = true;
         const setPrimaryDesignButton = (
@@ -5786,7 +5842,7 @@ export function renderStoryBeatsSection(params: {
         };
 
         if (isCustom) {
-            displayName = getActiveCustomName('Custom');
+            displayName = activeTab?.name ?? getActiveCustomName('Custom');
             const beats = getActiveCustomBeats().map((b: unknown) => {
                 if (typeof b === 'string') return normalizeBeatNameInput(b, '');
                 if (typeof b === 'object' && b !== null && (b as { name?: unknown }).name) {
@@ -5850,8 +5906,8 @@ export function renderStoryBeatsSection(params: {
         if (!hasBeats) return;
 
         void (async () => {
-            const structuralStatus = getBeatStructuralStatus(selectedSystem, { refresh: true });
-            const activeSystem = plugin.settings.beatSystem || 'Custom';
+            const structuralStatus = getBeatStructuralStatus(selectedSystem, { refresh: true, loadedTab: activeTab ?? null });
+            const activeSystem = getActiveBeatWorkspaceName(plugin.settings.beatSystem || 'Custom');
             if (selectedSystem !== activeSystem) return;
 
             const summary = structuralStatus.summary;

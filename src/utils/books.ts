@@ -1,9 +1,7 @@
 /*
  * Book profile helpers
  */
-import type { RadialTimelineSettings } from '../types/settings';
-import type { BookProfile } from '../types/settings';
-import type { ManuscriptSceneHeadingMode } from '../types/settings';
+import type { BeatDefinition, BeatSystemConfig, BeatWorkspaceState, BookProfile, LoadedBeatTab, ManuscriptSceneHeadingMode, RadialTimelineSettings } from '../types/settings';
 
 export const DEFAULT_BOOK_TITLE = 'Untitled Manuscript';
 
@@ -71,7 +69,8 @@ export function normalizeBookProfile(profile: BookProfile): BookProfile {
     sourceFolder,
     fileStem: fileStem && fileStem.length > 0 ? fileStem : undefined,
     ...(profile.lastUsedPandocLayoutByPreset ? { lastUsedPandocLayoutByPreset: { ...profile.lastUsedPandocLayoutByPreset } } : {}),
-    ...(Object.keys(normalizedLayoutOptions).length > 0 ? { layoutOptions: normalizedLayoutOptions } : {})
+    ...(Object.keys(normalizedLayoutOptions).length > 0 ? { layoutOptions: normalizedLayoutOptions } : {}),
+    ...(normalizeBeatWorkspace(profile.beatWorkspace) ? { beatWorkspace: normalizeBeatWorkspace(profile.beatWorkspace) } : {})
   };
 }
 
@@ -131,3 +130,70 @@ function slugifyToFileStem(title: string): string {
     .replace(/^-|-$/g, '')
     || 'Manuscript';
 }
+  const normalizeBeatDefinition = (beat: BeatDefinition): BeatDefinition => {
+    const name = typeof beat?.name === 'string' ? beat.name.trim() : '';
+    return {
+      ...beat,
+      name,
+      act: typeof beat?.act === 'number' && Number.isFinite(beat.act) ? beat.act : 1,
+      purpose: typeof beat?.purpose === 'string' ? beat.purpose.trim() || undefined : undefined,
+      id: typeof beat?.id === 'string' ? beat.id.trim() || undefined : undefined,
+      range: typeof beat?.range === 'string' ? beat.range.trim() || undefined : undefined,
+    };
+  };
+  const normalizeBeatConfig = (config: BeatSystemConfig | undefined): BeatSystemConfig => ({
+    beatYamlAdvanced: typeof config?.beatYamlAdvanced === 'string' ? config.beatYamlAdvanced : '',
+    beatHoverMetadataFields: Array.isArray(config?.beatHoverMetadataFields)
+      ? config.beatHoverMetadataFields.map((field) => ({
+          key: typeof field?.key === 'string' ? field.key.trim() : '',
+          label: typeof field?.label === 'string' ? field.label : '',
+          icon: typeof field?.icon === 'string' ? field.icon : '',
+          enabled: !!field?.enabled,
+        })).filter((field) => field.key.length > 0)
+      : [],
+  });
+  const normalizeLoadedBeatTab = (tab: LoadedBeatTab | undefined): LoadedBeatTab | null => {
+    const tabId = typeof tab?.tabId === 'string' ? tab.tabId.trim() : '';
+    if (!tabId) return null;
+    const sourceKind = tab?.sourceKind;
+    if (sourceKind !== 'builtin' && sourceKind !== 'starter' && sourceKind !== 'saved' && sourceKind !== 'blank') {
+      return null;
+    }
+    const name = typeof tab?.name === 'string' ? tab.name.trim() : '';
+    return {
+      tabId,
+      sourceKind,
+      sourceId: typeof tab?.sourceId === 'string' && tab.sourceId.trim().length > 0 ? tab.sourceId.trim() : undefined,
+      name: name || 'Untitled beat system',
+      description: typeof tab?.description === 'string' ? tab.description : '',
+      beats: Array.isArray(tab?.beats) ? tab.beats.map(normalizeBeatDefinition).filter((beat) => beat.name.length > 0) : [],
+      config: normalizeBeatConfig(tab?.config),
+      linkedSavedSystemId: typeof tab?.linkedSavedSystemId === 'string' && tab.linkedSavedSystemId.trim().length > 0
+        ? tab.linkedSavedSystemId.trim()
+        : undefined,
+      dirty: !!tab?.dirty,
+    };
+  };
+  const normalizeBeatWorkspace = (workspace: BeatWorkspaceState | undefined): BeatWorkspaceState | undefined => {
+    if (!workspace || typeof workspace !== 'object') return undefined;
+    const tabsById: Record<string, LoadedBeatTab> = {};
+    for (const [tabId, tab] of Object.entries(workspace.tabsById || {})) {
+      const normalized = normalizeLoadedBeatTab({ ...tab, tabId });
+      if (!normalized) continue;
+      tabsById[normalized.tabId] = normalized;
+    }
+    const loadedTabIds = Array.isArray(workspace.loadedTabIds)
+      ? workspace.loadedTabIds
+          .map((tabId) => (typeof tabId === 'string' ? tabId.trim() : ''))
+          .filter((tabId) => tabId.length > 0 && !!tabsById[tabId])
+      : [];
+    const activeTabId = typeof workspace.activeTabId === 'string' && workspace.activeTabId.trim().length > 0
+      ? workspace.activeTabId.trim()
+      : undefined;
+    if (!loadedTabIds.length && !activeTabId) return undefined;
+    return {
+      loadedTabIds,
+      tabsById,
+      ...(activeTabId && tabsById[activeTabId] ? { activeTabId } : {}),
+    };
+  };
