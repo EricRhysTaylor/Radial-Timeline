@@ -3317,6 +3317,10 @@
   display: flex;
   flex-direction: column;
   gap: 0;
+  padding: 16px 18px;
+  border-radius: var(--radius-m);
+  background: color-mix(in srgb, var(--background-secondary) 78%, var(--background-modifier-form-field) 22%);
+  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 72%, transparent);
 }
 .ert-ui.ert-scope--settings .ert-set-selector-row {
   display: flex;
@@ -3523,6 +3527,11 @@
 
 .ert-ui.ert-scope--settings .ert-beat-template-meta {
   color: var(--text-faint);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.ert-ui.ert-scope--settings .ert-beat-template-status {
   font-size: 12px;
   font-weight: 500;
 }
@@ -5620,7 +5629,7 @@
 .ert-ui.ert-scope--settings .ert-custom-beat-row {
   display: grid;
   box-sizing: border-box;
-  grid-template-columns: auto 1fr auto auto auto auto auto auto;
+  grid-template-columns: auto auto auto auto minmax(0, 1fr) auto auto auto;
   align-items: center;
   gap: var(--ert-gap-md);
   padding: calc(var(--ert-gap-sm) + (var(--ert-gap-xs) / 2)) calc(var(--ert-gap-sm) + (var(--ert-gap-xs) / 2)) calc(var(--ert-gap-sm) + (var(--ert-gap-xs) / 2)) var(--ert-gap-md);
@@ -5652,8 +5661,37 @@
   justify-self: start;
 }
 
-.ert-ui.ert-scope--settings .ert-beat-index {
+.ert-ui.ert-scope--settings .ert-beat-row-info {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--ert-gap-md) + var(--ert-gap-sm));
+  height: calc(var(--ert-gap-md) + var(--ert-gap-sm));
+  color: var(--text-muted);
+}
+
+.ert-ui.ert-scope--settings .ert-beat-row-info--notice {
+  color: color-mix(in srgb, var(--color-yellow) 78%, var(--text-normal) 22%);
+}
+
+.ert-ui.ert-scope--settings .ert-beat-row-info--empty {
+  opacity: 0;
+}
+
+.ert-ui.ert-scope--settings .ert-beat-ordinal {
   min-width: 24px;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-align: right;
+}
+
+.ert-ui.ert-scope--settings .ert-beat-ordinal--empty {
+  opacity: 0;
+}
+
+.ert-ui.ert-scope--settings .ert-beat-index {
+  min-width: 44px;
+  text-align: right;
 }
 
 .ert-ui.ert-scope--settings .ert-custom-beat-add-row {
@@ -6690,6 +6728,14 @@
   font-size: 0.75rem;
   font-weight: 500;
   color: var(--text-muted);
+  transition: background var(--ert-transition), border-color var(--ert-transition), color var(--ert-transition);
+  cursor: pointer;
+}
+
+.ert-ui .ert-modal-meta-item:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: var(--text-normal);
 }
 
 .ert-ui .ert-modal-actions {
@@ -6742,50 +6788,70 @@
 }
 
 .ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-step {
+  --ert-import-step-accent: color-mix(in srgb, var(--text-faint) 70%, var(--text-normal) 30%);
+  position: relative;
   display: flex;
-  align-items: center;
-  gap: 10px;
+  align-items: flex-start;
   min-width: 0;
-  padding: 12px 14px;
-  border-radius: 14px;
-  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 78%, transparent);
-  background: color-mix(in srgb, var(--background-secondary) 26%, transparent);
-  color: var(--text-muted);
+  min-height: 96px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 72%, transparent);
+  background:
+    radial-gradient(circle at 18% 18%, color-mix(in srgb, var(--ert-import-step-accent) 20%, transparent), transparent 58%),
+    linear-gradient(180deg, color-mix(in srgb, var(--background-secondary) 28%, transparent), color-mix(in srgb, var(--background-primary) 24%, transparent));
+  color: color-mix(in srgb, var(--text-muted) 88%, var(--text-normal) 12%);
+  overflow: hidden;
 }
 
 .ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-step.is-active {
+  --ert-import-step-accent: var(--interactive-accent);
   border-color: color-mix(in srgb, var(--interactive-accent) 42%, var(--background-modifier-border));
-  background: color-mix(in srgb, var(--background-secondary) 48%, var(--interactive-accent) 9%);
+  background:
+    radial-gradient(circle at 18% 18%, color-mix(in srgb, var(--interactive-accent) 26%, transparent), transparent 58%),
+    linear-gradient(180deg, color-mix(in srgb, var(--background-secondary) 34%, transparent), color-mix(in srgb, var(--background-primary) 20%, transparent));
   color: var(--text-normal);
 }
 
 .ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-step.is-complete {
-  border-color: color-mix(in srgb, var(--text-success) 28%, var(--background-modifier-border));
+  --ert-import-step-accent: var(--text-success);
+  border-color: color-mix(in srgb, var(--text-success) 34%, var(--background-modifier-border));
+  background:
+    radial-gradient(circle at 18% 18%, color-mix(in srgb, var(--text-success) 24%, transparent), transparent 58%),
+    linear-gradient(180deg, color-mix(in srgb, var(--background-secondary) 32%, transparent), color-mix(in srgb, var(--background-primary) 20%, transparent));
+  color: color-mix(in srgb, var(--text-normal) 92%, var(--text-success) 8%);
 }
 
-.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-step-index {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  width: 22px;
-  height: 22px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--background-primary) 68%, transparent);
-  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 80%, transparent);
-  font-size: 0.74rem;
-  font-weight: 700;
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-step-bg {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  width: 74px;
+  height: 74px;
+  color: color-mix(in srgb, var(--ert-import-step-accent) 90%, transparent);
+  opacity: 0.1;
+  pointer-events: none;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-step-bg svg {
+  width: 100%;
+  height: 100%;
+  stroke-width: 1.8;
 }
 
 .ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-step-text {
+  position: relative;
+  z-index: 1;
   min-width: 0;
+  align-self: center;
 }
 
 .ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-step-label {
   min-width: 0;
-  font-size: 0.82rem;
-  font-weight: 600;
+  font-size: 1.08rem;
+  font-weight: 800;
   letter-spacing: 0.02em;
+  color: inherit;
 }
 
 .ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-panel {
@@ -6871,26 +6937,70 @@
   gap: 10px;
 }
 
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-detected-meta {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px 16px;
+  align-items: center;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-detected-line {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-normal);
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-detected-line--confidence {
+  text-align: right;
+}
+
 .ert-ui.ert-scope--modal.ert-modal--import-template .ert-card .ert-field-note {
   line-height: 1.35;
 }
 
-.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-traits {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-traitGrid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
 }
 
-.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-trait {
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-traitTile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 112px;
+  padding: 14px 10px;
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 74%, transparent);
+  background:
+    radial-gradient(circle at 50% 18%, color-mix(in srgb, var(--interactive-accent) 16%, transparent), transparent 56%),
+    linear-gradient(180deg, color-mix(in srgb, var(--background-secondary) 28%, transparent), color-mix(in srgb, var(--background-primary) 22%, transparent));
+  text-align: center;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-traitIcon {
   display: inline-flex;
   align-items: center;
-  padding: 4px 9px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--background-secondary) 56%, transparent);
-  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 82%, transparent);
-  color: var(--text-muted);
-  font-size: 0.76rem;
-  line-height: 1.2;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  color: color-mix(in srgb, var(--interactive-accent) 74%, var(--text-normal));
+  opacity: 0.95;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-traitIcon svg {
+  width: 30px;
+  height: 30px;
+  stroke-width: 1.8;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-traitLabel {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--text-normal);
 }
 
 .ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-mock-wrap {
@@ -7004,6 +7114,18 @@
 @media (max-width: 720px) {
   .ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-steps {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-detected-meta {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-detected-line--confidence {
+    text-align: left;
+  }
+
+  .ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-traitGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 

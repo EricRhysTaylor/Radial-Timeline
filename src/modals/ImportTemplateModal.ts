@@ -315,9 +315,10 @@ export class ImportTemplateModal extends Modal {
         steps.forEach((label, index) => {
             const stateClass = this.step === index + 1 ? ' is-active' : this.step > index + 1 ? ' is-complete' : '';
             const item = rail.createDiv({ cls: `ert-import-template-step${stateClass}` });
-            item.createDiv({ cls: 'ert-import-template-step-index', text: `${index + 1}` });
+            const bg = item.createDiv({ cls: 'ert-import-template-step-bg' });
+            setIcon(bg, this.getStepRailIcon(index + 1));
             const text = item.createDiv({ cls: 'ert-import-template-step-text' });
-            text.createDiv({ cls: 'ert-import-template-step-label', text: label });
+            text.createDiv({ cls: 'ert-import-template-step-label', text: `${index + 1} ${label}` });
             if (this.step === index + 1) {
                 item.setAttr('aria-current', 'step');
             }
@@ -519,14 +520,24 @@ export class ImportTemplateModal extends Modal {
         if (!candidate) return;
 
         const card = panel.createDiv({ cls: 'ert-card ert-import-template-detected-card ert-stack ert-stack--tight' });
-        card.createDiv({ cls: 'ert-card__header', text: 'Detected layout' });
-        card.createDiv({ cls: 'ert-field-note', text: `Likely: ${this.getLikelyLayoutLabel(candidate.detectedTemplate.styleHint)}` });
-        card.createDiv({ cls: 'ert-field-note', text: `Confidence: ${this.formatConfidence(candidate.detectedTemplate.confidence)}` });
+        const meta = card.createDiv({ cls: 'ert-import-template-detected-meta' });
+        meta.createDiv({
+            cls: 'ert-import-template-detected-line',
+            text: `Detected layout: ${this.getLikelyLayoutShortLabel(candidate.detectedTemplate.styleHint)}`,
+        });
+        meta.createDiv({
+            cls: 'ert-import-template-detected-line ert-import-template-detected-line--confidence',
+            text: `Confidence: ${this.formatConfidence(candidate.detectedTemplate.confidence)}`,
+        });
 
         if (candidate.detectedTemplate.traits.length > 0) {
-            const traits = card.createDiv({ cls: 'ert-import-template-traits' });
+            const traits = card.createDiv({ cls: 'ert-import-template-traitGrid' });
             candidate.detectedTemplate.traits.slice(0, 4).forEach(trait => {
-                traits.createSpan({ cls: 'ert-import-template-trait', text: trait });
+                const visual = this.describeTraitVisual(trait);
+                const item = traits.createDiv({ cls: 'ert-import-template-traitTile' });
+                const iconWrap = item.createDiv({ cls: 'ert-import-template-traitIcon' });
+                setIcon(iconWrap, visual.icon);
+                item.createDiv({ cls: 'ert-import-template-traitLabel', text: visual.label });
             });
         }
     }
@@ -574,6 +585,21 @@ export class ImportTemplateModal extends Modal {
         }
     }
 
+    private getLikelyLayoutShortLabel(styleHint: DetectedTemplateStyleHint): string {
+        switch (styleHint) {
+            case 'chaptered':
+                return 'Chaptered';
+            case 'book':
+                return 'Book';
+            case 'literary':
+                return 'Literary';
+            case 'manuscript':
+                return 'Manuscript';
+            default:
+                return 'Custom';
+        }
+    }
+
     private getStyleHintLabel(styleHint: DetectedTemplateStyleHint): string {
         switch (styleHint) {
             case 'chaptered':
@@ -589,6 +615,29 @@ export class ImportTemplateModal extends Modal {
         }
     }
 
+    private describeTraitVisual(trait: string): { icon: string; label: string } {
+        const normalized = trait.toLowerCase();
+        if (normalized.includes('header')) {
+            return { icon: 'panel-top', label: 'Header' };
+        }
+        if (normalized.includes('chapter') || normalized.includes('page structure') || normalized.includes('part')) {
+            return { icon: 'book-open', label: 'Structure' };
+        }
+        if (normalized.includes('typography') || normalized.includes('font')) {
+            return { icon: 'type', label: 'Type' };
+        }
+        if (normalized.includes('metadata') || normalized.includes('front-page')) {
+            return { icon: 'badge-info', label: 'Metadata' };
+        }
+        if (normalized.includes('spacing')) {
+            return { icon: 'move-horizontal', label: 'Spacing' };
+        }
+        if (normalized.includes('dialogue') || normalized.includes('scene')) {
+            return { icon: 'message-square', label: 'Dialogue' };
+        }
+        return { icon: 'file-text', label: 'Custom' };
+    }
+
     private formatConfidence(confidence: DetectedTemplateConfidence): string {
         return confidence.charAt(0).toUpperCase() + confidence.slice(1);
     }
@@ -601,6 +650,21 @@ export class ImportTemplateModal extends Modal {
                 return 'Podcast';
             default:
                 return 'Novel';
+        }
+    }
+
+    private getStepRailIcon(step: number): string {
+        switch (step) {
+            case 1:
+                return 'file-text';
+            case 2:
+                return 'check-circle';
+            case 3:
+                return 'sliders-horizontal';
+            case 4:
+                return 'save';
+            default:
+                return 'circle';
         }
     }
 

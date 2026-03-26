@@ -959,7 +959,6 @@ export function renderStoryBeatsSection(params: {
 
         // ── Custom system header (mirrors built-in template preview header) ──
         const customSystemName = getActiveCustomName('Custom beats');
-        const customSystemDesc = getActiveCustomDescription();
         const activeSourceKind = getActiveBeatWorkspaceKind();
         const starterActive = activeSourceKind === 'starter';
         const builtinActive = activeSourceKind === 'builtin';
@@ -972,6 +971,14 @@ export function renderStoryBeatsSection(params: {
         if (!dirtyState.baselineId || dirtyState.baselineId !== getActiveDirtyKey()) {
             captureSetBaseline(getActiveDirtyKey());
         }
+
+        const getCurrentDesignContext = () => {
+            const activeTab = getActiveBeatWorkspaceTab();
+            return {
+                loadedTab: activeTab ?? null,
+                systemName: activeTab?.name?.trim() || customSystemName,
+            };
+        };
 
         const headerRow = customConfigContainer.createDiv({ cls: ['ert-beat-template-preview', ERT_CLASSES.STACK] });
         const titleEl = headerRow.createDiv({ cls: 'ert-beat-template-title' });
@@ -1029,11 +1036,31 @@ export function renderStoryBeatsSection(params: {
                 text: `${beatCount} beats · ${actSet.size} act${actSet.size !== 1 ? 's' : ''}`
             });
         }
+        const designContext = getCurrentDesignContext();
+        const designManuscriptState = getManuscriptAdvisoryState(designContext.systemName, designContext.loadedTab);
+        if (designManuscriptState) {
+            const statusLine = headerRow.createDiv({
+                cls: `ert-preview-status-line ert-preview-status-line--${designManuscriptState.tone} ert-beat-template-status`
+            });
+            appendPreviewStatus(statusLine, designManuscriptState);
+            const structuralStatus = getBeatStructuralStatus(designContext.systemName, { loadedTab: designContext.loadedTab });
+            if (structuralStatus.summary.misalignedCount > 0) {
+                const placementLine = headerRow.createDiv({
+                    cls: 'ert-preview-status-line ert-preview-status-line--muted ert-beat-template-status'
+                });
+                appendPreviewStatus(placementLine, {
+                    text: `${structuralStatus.summary.misalignedCount} beat${structuralStatus.summary.misalignedCount !== 1 ? 's are' : ' is'} placed in a different act in the manuscript.`,
+                    tone: 'muted',
+                    icon: 'circle-alert',
+                });
+            }
+        }
 
         // Update health icon from current beat-note audit counters.
         // Called immediately and refreshed after structural mutations.
         const updateHealthIcon = () => {
-            const state = getStructuralHealthState('Custom');
+            const { systemName, loadedTab } = getCurrentDesignContext();
+            const state = getStructuralHealthState(systemName, loadedTab);
             healthIcon.className = `ert-beat-health-icon${state.statusClass ? ` ${state.statusClass}` : ''}`;
             setIcon(healthIcon, state.icon);
             setTooltip(healthIcon, state.tooltip);
@@ -1160,10 +1187,37 @@ export function renderStoryBeatsSection(params: {
             const beats: BeatRow[] = getActiveCustomBeats()
                 .map(parseBeatRow)
                 .map(b => ({ ...b, act: clampBeatAct(b.act, maxActs) }));
-            const beatsByAct: BeatRow[][] = Array.from({ length: maxActs }, () => []);
-            beats.forEach(beat => {
-                const actIdx = clampBeatAct(beat.act, maxActs) - 1;
-                beatsByAct[actIdx].push(beat);
+            const designContext = getCurrentDesignContext();
+            const structuralStatus = getBeatStructuralStatus(designContext.systemName, {
+                loadedTab: designContext.loadedTab,
+            });
+            const isActiveInManuscript = structuralStatus.summary.matchedCount > 0;
+            type DisplayBeatEntry = {
+                beat: BeatRow;
+                displayAct: number;
+                status: BeatStructuralBeatStatus | null;
+                displayOrdinal: number;
+            };
+            const beatsByAct: DisplayBeatEntry[][] = Array.from({ length: maxActs }, () => []);
+            beats.forEach((beat, index) => {
+                const key = normalizeBeatTitle(beat.name);
+                const status = key ? getBeatStatusByKey(structuralStatus, key) : null;
+                const displayAct = isActiveInManuscript && status
+                    ? getPreviewPlacementActNumber(status, maxActs)
+                    : clampBeatAct(beat.act, maxActs);
+                beatsByAct[displayAct - 1].push({
+                    beat,
+                    displayAct,
+                    status,
+                    displayOrdinal: status?.expected.ordinal ?? (index + 1),
+                });
+            });
+            beatsByAct.forEach((actBeatEntries) => {
+                actBeatEntries.sort((a, b) => {
+                    if (a.displayOrdinal !== b.displayOrdinal) return a.displayOrdinal - b.displayOrdinal;
+                    if (a.beat.act !== b.beat.act) return a.beat.act - b.beat.act;
+                    return a.beat.name.localeCompare(b.beat.name);
+                });
             });
             const actStartIndex: number[] = [];
             let runningIndex = 0;
@@ -1171,14 +1225,12 @@ export function renderStoryBeatsSection(params: {
                 actStartIndex[idx] = runningIndex;
                 runningIndex += list.length;
             });
-            const orderedBeats = beatsByAct.flat();
+            const orderedEntries = beatsByAct.flat();
+            const orderedBeats = orderedEntries.map((entry) => entry.beat);
             const beatNumbers = buildBeatDisplayPrefixes(orderedBeats, maxActs, actRanges);
-            const structuralStatus = getBeatStructuralStatus(getActiveBeatWorkspaceName('Custom'), {
-                loadedTab: getActiveBeatWorkspaceTab() ?? null,
-            });
             const titleMap = new Map<string, number[]>();
-            orderedBeats.forEach((beatLine, idx) => {
-                const key = normalizeBeatTitle(beatLine.name);
+            orderedEntries.forEach((entry, idx) => {
+                const key = normalizeBeatTitle(entry.beat.name);
                 if (!key) return;
                 const list = titleMap.get(key) ?? [];
                 list.push(idx);
@@ -1200,10 +1252,11 @@ export function renderStoryBeatsSection(params: {
                 if (actBeats.length === 0) {
                     const placeholder = listContainer.createDiv({ cls: ['ert-custom-beat-row', 'ert-custom-beat-placeholder'] });
                     placeholder.createDiv({ cls: ['ert-drag-handle', 'ert-drag-placeholder'] });
-                    placeholder.createDiv({ cls: 'ert-grid-spacer' });
+                    placeholder.createDiv({ cls: 'ert-beat-row-info ert-beat-row-info--empty' });
+                    placeholder.createDiv({ cls: 'ert-beat-ordinal ert-beat-ordinal--empty', text: '' });
                     placeholder.createDiv({ cls: 'ert-beat-index ert-beat-add-index', text: '' });
                     const placeholderText = placeholder.createDiv({ cls: 'ert-custom-beat-placeholder-text', text: `Drop beat into ${actLabels[actIdx]}` });
-                    placeholderText.style.gridColumn = '4 / -1';
+                    placeholderText.style.gridColumn = '5 / -1';
 
                     plugin.registerDomEvent(placeholder, 'dragover', (e) => {
                         e.preventDefault();
@@ -1228,9 +1281,10 @@ export function renderStoryBeatsSection(params: {
                     continue;
                 }
 
-                actBeats.forEach((beatLine) => {
+                actBeats.forEach((entry) => {
                     const index = globalIndex;
                     globalIndex += 1;
+                    const beatLine = entry.beat;
                     const row = listContainer.createDiv({ cls: 'ert-custom-beat-row' });
                     row.draggable = true;
 
@@ -1239,8 +1293,10 @@ export function renderStoryBeatsSection(params: {
                     setIcon(handle, 'grip-vertical');
                     setTooltip(handle, 'Drag to reorder beat');
 
-                    // Spacer (pushes rest to the right, matches YAML row structure)
-                    row.createDiv({ cls: 'ert-grid-spacer' });
+                    const rowInfo = row.createDiv({ cls: 'ert-beat-row-info' });
+
+                    const expectedOrdinal = entry.status?.expected.ordinal ?? (index + 1);
+                    row.createDiv({ text: `${expectedOrdinal}.`, cls: 'ert-beat-ordinal' });
 
                     // Index
                     const beatNumber = beatNumbers[index] ?? `0.${String(index + 1).padStart(2, '0')}`;
@@ -1276,16 +1332,17 @@ export function renderStoryBeatsSection(params: {
                             const match = matches[0];
                             const existingActRaw = typeof match.actNumber === 'number'
                                 ? match.actNumber
-                                : Number(actNumber);
-                            const existingAct = Number.isFinite(existingActRaw) ? existingActRaw : actNumber;
-                            const actAligned = existingAct === actNumber;
+                                : Number(act);
+                            const existingAct = Number.isFinite(existingActRaw) ? existingActRaw : Number(act);
+                            const expectedAct = clampBeatAct(parseInt(act, 10) || 1, maxActs);
+                            const actAligned = existingAct === expectedAct;
 
                             if (actAligned) {
                                 rowState = 'synced';
                                 rowNotices.push('Beat note aligned (Act matches). Prefix numbers are cosmetic.');
                             } else {
                                 rowState = 'misaligned';
-                                rowNotices.push(`Wrong Act: file has Act ${existingAct}, expected Act ${actNumber}. Use Repair to fix.`);
+                                rowNotices.push(`Placed in Act ${existingAct} in the manuscript. Template suggests ${actLabels[expectedAct - 1]}.`);
                             }
                         }
                     }
@@ -1301,7 +1358,11 @@ export function renderStoryBeatsSection(params: {
                         row.addClass(`ert-custom-beat-row--${rowState}`);
                     }
                     if (rowNotices.length > 0) {
-                        setTooltip(nameInput, rowNotices.join(' '));
+                        setIcon(rowInfo, 'info');
+                        rowInfo.addClass('ert-beat-row-info--notice');
+                        setTooltip(rowInfo, rowNotices.join(' '));
+                    } else {
+                        rowInfo.addClass('ert-beat-row-info--empty');
                     }
                     plugin.registerDomEvent(nameInput, 'change', () => {
                         const newName = normalizeBeatNameInput(nameInput.value, '');
@@ -1390,7 +1451,8 @@ export function renderStoryBeatsSection(params: {
             const addRow = listContainer.createDiv({ cls: 'ert-custom-beat-row ert-custom-beat-add-row' });
 
             addRow.createDiv({ cls: ['ert-drag-handle', 'ert-drag-placeholder'] });
-            addRow.createDiv({ cls: 'ert-grid-spacer' });
+            addRow.createDiv({ cls: 'ert-beat-row-info ert-beat-row-info--empty' });
+            addRow.createDiv({ cls: 'ert-beat-ordinal ert-beat-ordinal--empty', text: '' });
             addRow.createDiv({ cls: 'ert-beat-index ert-beat-add-index', text: '' });
 
             const addNameInput = addRow.createEl('input', { type: 'text', cls: 'ert-beat-name-input ert-input', placeholder: 'New beat' });
@@ -4145,6 +4207,57 @@ export function renderStoryBeatsSection(params: {
             updateAuditPrimaryAction();
         };
 
+        const getAuditScopeDisplay = (): string => {
+            if (noteType === 'Beat' && structuralStatus?.scope.bookTitle) {
+                return structuralStatus.scope.bookTitle;
+            }
+            return auditScopeSummary.replace(/^\d+\s+\w+\s+in\s+/i, '');
+        };
+
+        const buildStructureStatusLines = (): string[] => {
+            if (noteType !== 'Beat' || !structuralStatus) return [];
+            const summary = structuralStatus.summary;
+            if (summary.expectedCount === 0) {
+                return ['Structure: No beats are defined for this system yet.'];
+            }
+            if (summary.matchedCount === 0) {
+                if (summary.wrongModelBeatCount > 0) {
+                    return ['Structure: Matching beat titles exist, but they belong to a different Beat Model.'];
+                }
+                if (summary.missingModelNoteCount > 0) {
+                    return ['Structure: Matching beat titles exist, but some notes are missing Beat Model.'];
+                }
+                return ['Structure: This system is not active in the manuscript yet.'];
+            }
+
+            const lines: string[] = [];
+            const topLevelIssues = getPreviewIssueEntries(structuralStatus);
+            const topLevelLabels = getPreviewIssueSummaryLabel(topLevelIssues);
+            if (topLevelLabels.length > 0) {
+                const labelText = topLevelLabels.join(' • ');
+                if (topLevelLabels.length === 1 && topLevelLabels[0] === 'Incomplete') {
+                    lines.push(`Structure: ${summary.issueCount} beat${summary.issueCount !== 1 ? 's are' : ' is'} incomplete.`);
+                } else if (topLevelLabels.length === 1 && topLevelLabels[0] === 'Missing') {
+                    lines.push(`Structure: ${summary.missingCount} beat${summary.missingCount !== 1 ? 's are' : ' is'} missing from the manuscript.`);
+                } else {
+                    lines.push(`Structure: ${labelText}.`);
+                }
+            } else {
+                lines.push('Structure: Aligned to the current beat template.');
+            }
+
+            if (summary.misalignedCount > 0) {
+                lines.push(`${summary.misalignedCount} beat${summary.misalignedCount !== 1 ? 's are' : ' is'} placed in a different act than the template. Order remains intact.`);
+            }
+            if (summary.missingModelNoteCount > 0) {
+                lines.push(`${summary.missingModelNoteCount} matching note${summary.missingModelNoteCount !== 1 ? 's are' : ' is'} missing Beat Model.`);
+            }
+            if (summary.duplicateCount > 0) {
+                lines.push(`${summary.duplicateCount} duplicate beat note${summary.duplicateCount !== 1 ? 's were' : ' was'} found.`);
+            }
+            return lines;
+        };
+
         // ─── Render results ──────────────────────────────────────────────
         const renderResults = () => {
             resultsEl.empty();
@@ -4191,10 +4304,10 @@ export function renderStoryBeatsSection(params: {
             const headerEl = resultsEl.createDiv({ cls: 'ert-audit-result-header' });
             const healthEl = headerEl.createSpan({ cls: `ert-audit-health ert-audit-health--${healthLevel}` });
             healthEl.textContent = `Note status: ${healthLabels[healthLevel]}`;
-            headerEl.createSpan({ text: ` · Scope: ${auditScopeSummary}`, cls: 'ert-audit-summary' });
-            if (noteType === 'Beat' && structuralStatus) {
+            headerEl.createSpan({ text: ` · Scope: ${getAuditScopeDisplay()}`, cls: 'ert-audit-summary' });
+            for (const line of buildStructureStatusLines()) {
                 resultsEl.createDiv({
-                    text: structuralStatus.summary.statusLabel,
+                    text: line,
                     cls: 'ert-audit-summary'
                 });
             }
@@ -4267,7 +4380,7 @@ export function renderStoryBeatsSection(params: {
                 && emptyValueNotes === 0
             ) {
                 resultsEl.createDiv({
-                    text: `All ${s.totalNotes} notes match the current property rules.`,
+                    text: 'All notes match the current property rules.',
                     cls: 'ert-audit-clean'
                 });
                 return;
