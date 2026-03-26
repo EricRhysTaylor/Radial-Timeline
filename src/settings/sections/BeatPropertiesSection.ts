@@ -951,6 +951,24 @@ export function renderStoryBeatsSection(params: {
         return STARTER_BEAT_SETS.some(ps => ps.id === activeId);
     };
 
+    const appendPreviewStatus = (
+        parent: HTMLElement,
+        state: { text: string; tone: PreviewStatusTone; icon: 'check' | 'circle-alert' | null },
+        extraClass?: string
+    ) => {
+        const statusEl = parent.createSpan({
+            cls: `ert-preview-status ert-preview-status--${state.tone}${extraClass ? ` ${extraClass}` : ''}`
+        });
+        if (state.icon) {
+            const iconEl = statusEl.createSpan({ cls: 'ert-preview-status-icon' });
+            setIcon(iconEl, state.icon);
+        }
+        if (state.text.length > 0) {
+            statusEl.createSpan({ text: state.text });
+        }
+        return statusEl;
+    };
+
     const renderCustomConfig = () => {
         // Unsubscribe previous Design dirty listener before clearing DOM
         _unsubDesignDirty?.();
@@ -1657,23 +1675,6 @@ export function renderStoryBeatsSection(params: {
         return { columns, totalBeats: ordered.length };
     };
 
-    const appendPreviewStatus = (
-        parent: HTMLElement,
-        state: { text: string; tone: PreviewStatusTone; icon: 'check' | 'circle-alert' | null },
-        extraClass?: string
-    ) => {
-        const statusEl = parent.createSpan({
-            cls: `ert-preview-status ert-preview-status--${state.tone}${extraClass ? ` ${extraClass}` : ''}`
-        });
-        if (state.icon) {
-            const iconEl = statusEl.createSpan({ cls: 'ert-preview-status-icon' });
-            setIcon(iconEl, state.icon);
-        }
-        if (state.text.length > 0) {
-            statusEl.createSpan({ text: state.text });
-        }
-        return statusEl;
-    };
 
     const getBeatPreviewState = (
         status: BeatStructuralBeatStatus | null
