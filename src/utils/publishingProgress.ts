@@ -1,6 +1,6 @@
 import type { ValidationSummary } from '../types';
 
-export type PublishingStageStatus = 'Ready' | 'Needs setup' | 'Attention needed' | 'Blocked';
+export type PublishingStageStatus = 'Ready' | 'Needs setup' | 'Needs attention' | 'Blocked';
 export type PublishingStageStatusKey = 'needs-setup' | 'attention' | 'blocked' | 'ready';
 export type PublishingStageId = 'book-details' | 'book-pages' | 'pdf-style' | 'export-check';
 
@@ -36,7 +36,7 @@ export interface PublishingProgressInputs {
 function getStatusKey(statusLabel: PublishingStageStatus): PublishingStageStatusKey {
     if (statusLabel === 'Ready') return 'ready';
     if (statusLabel === 'Blocked') return 'blocked';
-    if (statusLabel === 'Attention needed') return 'attention';
+    if (statusLabel === 'Needs attention') return 'attention';
     return 'needs-setup';
 }
 
@@ -46,7 +46,7 @@ export function buildPublishingProgressStages(inputs: PublishingProgressInputs):
         : inputs.bookMetaSummary.state === 'blocked'
             ? 'Blocked'
             : inputs.bookMetaSummary.state === 'warning'
-                ? 'Attention needed'
+                ? 'Needs attention'
                 : 'Ready';
 
     const bookPagesStatus: PublishingStageStatus = inputs.matterCount === 0
@@ -54,7 +54,7 @@ export function buildPublishingProgressStages(inputs: PublishingProgressInputs):
         : inputs.matterSummary.state === 'blocked'
             ? 'Blocked'
             : inputs.matterSummary.state === 'warning'
-                ? 'Attention needed'
+                ? 'Needs attention'
                 : 'Ready';
 
     const pdfStyleStatus: PublishingStageStatus = inputs.layoutSummary.totalCount === 0
@@ -62,7 +62,7 @@ export function buildPublishingProgressStages(inputs: PublishingProgressInputs):
         : inputs.layoutSummary.validCount === 0 || inputs.layoutSummary.state === 'blocked'
             ? 'Blocked'
             : inputs.layoutSummary.state === 'warning' || inputs.layoutSummary.validCount < inputs.layoutSummary.totalCount
-                ? 'Attention needed'
+                ? 'Needs attention'
                 : 'Ready';
 
     const exportCheckReady = inputs.pandocPathValid
@@ -81,35 +81,35 @@ export function buildPublishingProgressStages(inputs: PublishingProgressInputs):
                 ? 'Needs setup'
                 : inputs.bookMetaSummary.state === 'blocked' || inputs.matterSummary.state === 'blocked' || inputs.layoutSummary.state === 'blocked'
                     ? 'Blocked'
-                    : 'Attention needed';
+                    : 'Needs attention';
 
     return [
         {
             id: 'book-details',
             title: 'Book Details',
-            description: 'Create or review the file that holds the book’s title, author, and publishing info.',
+            description: 'Title, author, and publishing info.',
             statusLabel: bookDetailsStatus,
             statusKey: getStatusKey(bookDetailsStatus),
             detail: !inputs.hasBookMeta
-                ? 'Create the book details file first.'
-                : inputs.bookMetaSummary.topMessage || 'Your publishing details are in place.',
+                ? 'Create Book Details first.'
+                : inputs.bookMetaSummary.topMessage || 'Your details are in place.',
             actionLabel: !inputs.hasBookMeta ? 'Create details' : 'Open details',
         },
         {
             id: 'book-pages',
             title: 'Book Pages',
-            description: 'Set up the pages that appear before and after your manuscript.',
+            description: 'Pages before and after the manuscript.',
             statusLabel: bookPagesStatus,
             statusKey: getStatusKey(bookPagesStatus),
             detail: inputs.matterCount === 0
-                ? 'Add the pages that frame the manuscript and support the export.'
-                : inputs.matterSummary.topMessage || 'Your book pages are ready to review.',
+                ? 'Add the pages around the manuscript.'
+                : inputs.matterSummary.topMessage || 'Your book pages are ready.',
             actionLabel: inputs.matterCount === 0 ? 'Set up pages' : 'Review pages',
         },
         {
             id: 'pdf-style',
             title: 'PDF Style',
-            description: 'Choose the layout that shapes your exported PDF.',
+            description: 'Choose the layout for your PDF.',
             statusLabel: pdfStyleStatus,
             statusKey: getStatusKey(pdfStyleStatus),
             detail: inputs.layoutSummary.totalCount === 0
@@ -120,14 +120,14 @@ export function buildPublishingProgressStages(inputs: PublishingProgressInputs):
         {
             id: 'export-check',
             title: 'Export Check',
-            description: 'Confirm everything is ready before you export.',
+            description: 'Make sure export is ready.',
             statusLabel: exportCheckStatus,
             statusKey: getStatusKey(exportCheckStatus),
             detail: exportCheckReady
-                ? 'You’re ready to export.'
+                ? 'Open manuscript exports.'
                 : !inputs.pandocPathValid
-                    ? 'Set up your export tools before starting the export.'
-                    : inputs.bookMetaSummary.topMessage || inputs.matterSummary.topMessage || inputs.layoutSummary.topMessage || 'Finish the remaining setup steps before exporting.',
+                    ? 'Set up your export tools first.'
+                    : inputs.bookMetaSummary.topMessage || inputs.matterSummary.topMessage || inputs.layoutSummary.topMessage || 'Finish the remaining setup steps.',
             actionLabel: exportCheckReady ? 'Review export' : 'Check export',
         },
     ];

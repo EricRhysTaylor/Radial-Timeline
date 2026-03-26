@@ -3308,7 +3308,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
     publishingSetupPanel.style.order = '20';
     const publishingHeading = addProRow(new Setting(publishingSetupPanel))
         .setName('Book Pages')
-        .setDesc('Review the pages that frame the manuscript and the content that appears before and after it.')
+        .setDesc('Review the pages before and after the manuscript.')
         .setHeading();
     addHeadingIcon(publishingHeading, 'book-open-text');
     applyErtHeaderLayout(publishingHeading);
@@ -3448,7 +3448,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                 empty.createDiv({ cls: 'ert-matter-preview-empty-title', text: 'No Book Pages found yet' });
                 empty.createDiv({
                     cls: 'ert-matter-preview-empty-desc',
-                    text: 'Create Book Details first, then add title page and front matter as needed.'
+                    text: 'Create Book Details first, then add the pages you need.'
                 });
                 const actions = empty.createDiv({ cls: 'ert-matter-preview-empty-actions' });
                 new ButtonComponent(actions)

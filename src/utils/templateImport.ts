@@ -15,11 +15,14 @@ import { DEFAULT_SETTINGS } from '../settings/defaults';
 import { getAutoPdfEngineSelection, resolveTemplatePath, validatePandocLayout } from './exportFormats';
 import { adaptPandocLayoutToTemplateAsset, adaptPandocLayoutToTemplateProfile } from './publishingModel';
 import { summarizeValidationIssues } from '../services/PublishingValidationService';
+import type { DetectedTemplateProfile } from '../publishing/templateDetection';
+import { detectTemplateProfile } from '../publishing/templateDetection';
 
 export interface ImportedTemplateCandidate {
     layout: PandocLayoutTemplate;
     asset: TemplateAsset;
     profile: TemplateProfile;
+    detectedTemplate: DetectedTemplateProfile;
     issues: ValidationIssue[];
     summary: ValidationSummary;
     semanticNote: string;
@@ -189,11 +192,13 @@ export async function buildImportedTemplateCandidate(
     const asset = adaptPandocLayoutToTemplateAsset(layout);
     const profile = adaptPandocLayoutToTemplateProfile(layout);
     const summary = summarizeValidationIssues(issues);
+    const detectedTemplate = detectTemplateProfile(content);
 
     return {
         layout,
         asset,
         profile,
+        detectedTemplate,
         issues,
         summary,
         semanticNote: buildSemanticNote(inferredPreset),

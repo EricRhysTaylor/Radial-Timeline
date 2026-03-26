@@ -78,14 +78,14 @@ export function removeSavedBeatSystem(
 }
 
 export function resolveSelectedBeatModelFromSettings(
-    settings: Pick<RadialTimelineSettings, 'books' | 'activeBookId' | 'beatSystem'>
+    settings: Pick<RadialTimelineSettings, 'books' | 'activeBookId'>
 ): string | undefined {
     const activeBook = getActiveBook(settings as RadialTimelineSettings);
     const workspace = activeBook?.beatWorkspace as BeatWorkspaceState | undefined;
-    if (workspace?.activeTabId && workspace.tabsById?.[workspace.activeTabId]) {
-        const activeTabName = normalizeBeatSetNameInput(workspace.tabsById[workspace.activeTabId].name, '');
+    const activeTabId = workspace?.activeTabId ?? workspace?.loadedTabIds?.[0];
+    if (activeTabId && workspace?.tabsById?.[activeTabId]) {
+        const activeTabName = normalizeBeatSetNameInput(workspace.tabsById[activeTabId].name, '');
         if (activeTabName) return activeTabName;
     }
-    const selectedSystem = normalizeBeatSetNameInput(settings.beatSystem ?? '', '');
-    return selectedSystem || undefined;
+    return undefined;
 }

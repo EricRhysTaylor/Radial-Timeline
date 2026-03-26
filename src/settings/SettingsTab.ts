@@ -625,13 +625,13 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             badgeVariant: ERT_CLASSES.BADGE_PILL_PRO,
             wikiHref: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#professional',
             title: 'Set up your book for export.',
-            subtitle: 'Add your book details, review your pages, choose a PDF style or create a custom style, and confirm everything is ready to export.',
+            subtitle: 'Add your book details, review your pages, choose a PDF style, and check export readiness.',
             kicker: 'PUBLISHING STEPS',
             features: [
                 { icon: 'file-text', text: 'Book Details — Define title, author, and publishing info', targetSection: 'book-details' },
-                { icon: 'book-open-text', text: 'Book Pages — Add front and back matter like title page, dedication, and epigraph', targetSection: 'book-pages' },
-                { icon: 'layout-grid', text: 'PDF Style — Choose a layout that shapes your manuscript', targetSection: 'pdf-style' },
-                { icon: 'check-circle-2', text: 'Export Check — Confirm everything is ready and generate your PDF', targetSection: 'export-check' }
+                { icon: 'book-open-text', text: 'Book Pages — Add title page, dedication, epigraph, and more', targetSection: 'book-pages' },
+                { icon: 'layout-grid', text: 'PDF Style — Choose the layout for your manuscript', targetSection: 'pdf-style' },
+                { icon: 'check-circle-2', text: 'Export Check — Make sure everything is ready', targetSection: 'export-check' }
             ]
         });
     }

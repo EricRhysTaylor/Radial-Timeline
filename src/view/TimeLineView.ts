@@ -315,51 +315,29 @@ export class RadialTimelineView extends ItemView {
         const previousOpenFiles = new Set(this.openScenePaths);
         
         this.openScenePaths = new Set<string>();
-        
-        // Get all open leaves
+
+        // Collect the paths of all open markdown files (including deferred/unactivated tabs)
         const leaves = this.app.workspace.getLeavesOfType('markdown');
-        const openFilesList: string[] = []; // Add proper type
-        
-        // Collect the paths of all open markdown files
         leaves.forEach(leaf => {
-            // Check if the view is a MarkdownView with a file
             const view = leaf.view;
             if (view instanceof MarkdownView && view.file) {
                 this.openScenePaths.add(view.file.path);
-                openFilesList.push(view.file.path);
+            } else {
+                // Deferred/unactivated tab — read path from view state
+                try {
+                    const state = leaf.getViewState();
+                    const filePath = (state?.state as Record<string, unknown>)?.file;
+                    if (typeof filePath === 'string' && filePath.length > 0) {
+                        this.openScenePaths.add(filePath);
+                    }
+                } catch { /* ignore */ }
             }
         });
-        
+
         // Also check if there's an active file not in a leaf
         const activeFile = this.app.workspace.getActiveFile();
-        if (activeFile && !openFilesList.includes(activeFile.path)) {
+        if (activeFile && !this.openScenePaths.has(activeFile.path)) {
             this.openScenePaths.add(activeFile.path);
-            openFilesList.push(activeFile.path);
-        }
-        
-        // Get all open tabs from the workspace layout
-        try {
-            // @ts-ignore - Use the workspace layout accessor which may not be fully typed
-            const layout = this.app.workspace.getLayout();
-            if (layout && (layout as Record<string, unknown>).leaves) {
-                const leafIds = Object.keys((layout as Record<string, unknown>).leaves as Record<string, unknown>);
-                
-                // Try to find any additional file paths from the layout
-                leafIds.forEach(id => {
-                    // @ts-ignore - Access the layout structure which may not be fully typed
-                    const leafs = (layout as Record<string, any>).leaves as Record<string, any>;
-                    const leafData = leafs[id];
-                    if (leafData && leafData.type === 'markdown' && leafData.state && leafData.state.file) {
-                        const filePath = leafData.state.file;
-                        if (!openFilesList.includes(filePath)) {
-                            this.openScenePaths.add(filePath);
-                            openFilesList.push(filePath);
-                        }
-                    }
-                });
-            }
-        } catch (e) {
-            console.error("Error accessing workspace layout:", e);
         }
         
         

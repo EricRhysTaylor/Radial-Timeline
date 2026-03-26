@@ -1,10 +1,12 @@
-import { App, ButtonComponent, DropdownComponent, Modal, SuggestModal, TFile } from 'obsidian';
+import { App, ButtonComponent, DropdownComponent, Modal, SuggestModal, TFile, setIcon } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import type { ImportedTemplateCandidate } from '../utils/templateImport';
 import { buildImportedTemplateCandidate, buildImportedTemplateId, compactTemplatePathForStorage } from '../utils/templateImport';
 import type { PandocLayoutTemplate, UsageContext } from '../types';
+import type { DetectedTemplateConfidence, DetectedTemplateMockPreviewKind, DetectedTemplateStyleHint } from '../publishing/templateDetection';
 
 type CommitMode = 'draft' | 'activate';
+type ImportTemplateStep = 1 | 2 | 3 | 4;
 
 export interface ImportedTemplateCommit {
     layout: PandocLayoutTemplate;
@@ -41,25 +43,21 @@ class TemplateFileSuggestModal extends SuggestModal<TFile> {
 }
 
 export class ImportTemplateModal extends Modal {
-    private step: 1 | 2 | 3 | 4 | 5 | 6 = 1;
+    private step: ImportTemplateStep = 1;
     private sourcePath = '';
     private usageContext: UsageContext = 'novel';
     private usageContextTouched = false;
-    private advancedEdit = false;
-    private advancedName = '';
-    private advancedNameTouched = false;
+    private templateName = '';
+    private templateNameTouched = false;
+    private templateDescription = '';
+    private templateDescriptionTouched = false;
     private advancedPath = '';
     private advancedPathTouched = false;
-    private advancedDescription = '';
-    private advancedDescriptionTouched = false;
     private candidate: ImportedTemplateCandidate | null = null;
     private candidateLoading = false;
     private commitInFlight = false;
     private readonly onCommit: (commit: ImportedTemplateCommit) => Promise<void> | void;
 
-    private advancedNameInputEl?: HTMLInputElement;
-    private advancedPathInputEl?: HTMLInputElement;
-    private advancedDescriptionInputEl?: HTMLTextAreaElement;
     private usageDropdown?: DropdownComponent;
     private activateButton?: ButtonComponent;
     private draftButton?: ButtonComponent;
@@ -74,13 +72,12 @@ export class ImportTemplateModal extends Modal {
         this.sourcePath = '';
         this.usageContext = 'novel';
         this.usageContextTouched = false;
-        this.advancedEdit = false;
-        this.advancedName = '';
-        this.advancedNameTouched = false;
+        this.templateName = '';
+        this.templateNameTouched = false;
+        this.templateDescription = '';
+        this.templateDescriptionTouched = false;
         this.advancedPath = '';
         this.advancedPathTouched = false;
-        this.advancedDescription = '';
-        this.advancedDescriptionTouched = false;
         this.candidate = null;
         this.candidateLoading = false;
         this.commitInFlight = false;
@@ -89,7 +86,7 @@ export class ImportTemplateModal extends Modal {
         titleEl.setText('');
 
         if (modalEl) {
-            modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal-shell--md');
+            modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal-shell--md', 'ert-modal--import-template');
         }
         contentEl.addClass('ert-modal-container', 'ert-stack');
         void this.refreshCandidate();
@@ -100,19 +97,17 @@ export class ImportTemplateModal extends Modal {
     }
 
     private getCandidatePath(): string {
-        const advancedPath = this.advancedEdit ? this.advancedPath.trim() : '';
+        const advancedPath = this.advancedPath.trim();
         return advancedPath || this.sourcePath.trim();
     }
 
     private getCandidateName(): string | undefined {
-        if (!this.advancedEdit) return undefined;
-        const value = this.advancedName.trim();
+        const value = this.templateName.trim();
         return value.length > 0 ? value : undefined;
     }
 
     private getCandidateDescription(): string | undefined {
-        if (!this.advancedEdit) return undefined;
-        const value = this.advancedDescription.trim();
+        const value = this.templateDescription.trim();
         return value.length > 0 ? value : undefined;
     }
 
@@ -143,13 +138,13 @@ export class ImportTemplateModal extends Modal {
             if (!this.usageContextTouched) {
                 this.usageContext = candidate.layout.preset;
             }
-            if (this.advancedEdit && !this.advancedNameTouched) {
-                this.advancedName = candidate.layout.name;
+            if (!this.templateNameTouched) {
+                this.templateName = candidate.layout.name;
             }
-            if (this.advancedEdit && !this.advancedDescriptionTouched) {
-                this.advancedDescription = candidate.layout.description || '';
+            if (!this.templateDescriptionTouched) {
+                this.templateDescription = candidate.layout.description || '';
             }
-            if (this.advancedEdit && !this.advancedPathTouched) {
+            if (!this.advancedPathTouched) {
                 this.advancedPath = compactTemplatePathForStorage(this.plugin, sourcePath);
             }
 
@@ -164,10 +159,10 @@ export class ImportTemplateModal extends Modal {
     }
 
     private async chooseFile(): Promise<void> {
-        new TemplateFileSuggestModal(this.app, (path) => {
-            this.sourcePath = path;
-            if (this.advancedEdit && !this.advancedPathTouched) {
-                this.advancedPath = compactTemplatePathForStorage(this.plugin, path);
+        new TemplateFileSuggestModal(this.app, (selectedPath) => {
+            this.sourcePath = selectedPath;
+            if (!this.advancedPathTouched) {
+                this.advancedPath = compactTemplatePathForStorage(this.plugin, selectedPath);
             }
             void this.refreshCandidate();
         }).open();
@@ -215,36 +210,47 @@ export class ImportTemplateModal extends Modal {
         header.createDiv({ cls: 'ert-modal-title', text: 'Import template' });
         header.createDiv({
             cls: 'ert-modal-subtitle',
-            text: 'Choose a .tex file, validate it, classify the publishing style, and only then decide whether to save a draft or activate it.',
+            text: 'Choose a .tex file and bring it into Publishing in four quick steps.',
         });
 
         const meta = header.createDiv({ cls: 'ert-modal-meta' });
-        meta.createSpan({ cls: 'ert-modal-meta-item', text: `Step ${this.step} of 6` });
+        meta.createSpan({ cls: 'ert-modal-meta-item', text: `Step ${this.step} of 4` });
         meta.createSpan({
             cls: 'ert-modal-meta-item',
             text: this.candidateLoading
-                ? 'Validating...'
+                ? 'Checking...'
                 : this.candidate?.summary.state === 'blocked'
                     ? 'Blocked'
                     : this.candidate?.summary.state === 'warning'
-                        ? 'Warnings'
-                        : 'Ready',
+                        ? 'Needs attention'
+                        : this.candidate
+                            ? 'Ready'
+                            : 'Choose a file',
         });
 
         this.renderStepRail(contentEl);
 
-        const panel = contentEl.createDiv({ cls: 'ert-panel ert-panel--glass ert-stack' });
-
+        const panel = contentEl.createDiv({ cls: 'ert-panel ert-panel--glass ert-stack ert-import-template-panel' });
         if (this.candidateLoading) {
-            panel.createDiv({ cls: 'ert-section-desc', text: 'Validating template...' });
+            this.renderStepHero(panel, {
+                icon: 'loader-circle',
+                title: 'Checking template',
+                description: 'Reviewing the file and gathering a quick profile.',
+            });
         } else {
             switch (this.step) {
-                case 1: this.renderChooseFileStep(panel); break;
-                case 2: this.renderValidationStep(panel); break;
-                case 3: this.renderClassificationStep(panel); break;
-                case 4: this.renderCapabilitiesStep(panel); break;
-                case 5: this.renderPreviewStep(panel); break;
-                case 6: this.renderFinalizeStep(panel); break;
+                case 1:
+                    this.renderChooseFileStep(panel);
+                    break;
+                case 2:
+                    this.renderCheckStep(panel);
+                    break;
+                case 3:
+                    this.renderSetupStep(panel);
+                    break;
+                case 4:
+                    this.renderSaveStep(panel);
+                    break;
             }
         }
 
@@ -254,31 +260,41 @@ export class ImportTemplateModal extends Modal {
             .setDisabled(this.step === 1 || this.commitInFlight)
             .onClick(() => {
                 if (this.step > 1) {
-                    this.step -= 1;
+                    this.step = (this.step - 1) as ImportTemplateStep;
                     this.render();
                 }
             });
-        new ButtonComponent(actions)
-            .setButtonText(this.step === 6 ? 'Finish later' : 'Next')
-            .setDisabled(this.commitInFlight)
-            .onClick(() => {
-                if (this.step < 6) {
-                    this.step += 1;
-                    this.render();
-                } else {
-                    this.close();
-                }
-            });
+
+        if (this.step < 4) {
+            new ButtonComponent(actions)
+                .setButtonText('Next')
+                .setDisabled(this.commitInFlight || !this.canAdvanceToNextStep())
+                .onClick(() => {
+                    if (this.step < 4) {
+                        this.step = (this.step + 1) as ImportTemplateStep;
+                        this.render();
+                    }
+                });
+        }
+
         actions.createDiv({ cls: 'ert-modal-actions-spacer' });
-        this.draftButton = new ButtonComponent(actions)
-            .setButtonText('Save draft')
-            .setDisabled(this.commitInFlight || !this.candidate)
-            .onClick(() => void this.commit('draft'));
-        this.activateButton = new ButtonComponent(actions)
-            .setButtonText('Activate')
-            .setCta()
-            .setDisabled(this.commitInFlight || !this.candidate || !this.candidate.canActivate)
-            .onClick(() => void this.commit('activate'));
+
+        if (this.step === 4) {
+            this.draftButton = new ButtonComponent(actions)
+                .setButtonText('Save template')
+                .setDisabled(this.commitInFlight || !this.candidate)
+                .onClick(() => void this.commit('draft'));
+
+            this.activateButton = new ButtonComponent(actions)
+                .setButtonText('Save and activate')
+                .setCta()
+                .setDisabled(this.commitInFlight || !this.candidate || !this.candidate.canActivate)
+                .onClick(() => void this.commit('activate'));
+        } else {
+            this.draftButton = undefined;
+            this.activateButton = undefined;
+        }
+
         new ButtonComponent(actions)
             .setButtonText('Cancel')
             .setDisabled(this.commitInFlight)
@@ -287,83 +303,129 @@ export class ImportTemplateModal extends Modal {
         this.updateActionButtons();
     }
 
+    private canAdvanceToNextStep(): boolean {
+        if (this.step === 1) return Boolean(this.getCandidatePath());
+        if (this.step === 2 || this.step === 3) return Boolean(this.candidate);
+        return true;
+    }
+
     private renderStepRail(container: HTMLElement): void {
-        const rail = container.createDiv({ cls: 'ert-modal-meta' });
-        const steps = [
-            'Choose file',
-            'Validate',
-            'Classify',
-            'Capabilities',
-            'Preview',
-            'Activate',
-        ];
+        const rail = container.createDiv({ cls: 'ert-import-template-steps' });
+        const steps = ['Choose', 'Check', 'Set up', 'Save'];
         steps.forEach((label, index) => {
-            const item = rail.createSpan({
-                cls: `ert-modal-meta-item${this.step === index + 1 ? ' is-active' : ''}`,
-                text: label,
-            });
+            const stateClass = this.step === index + 1 ? ' is-active' : this.step > index + 1 ? ' is-complete' : '';
+            const item = rail.createDiv({ cls: `ert-import-template-step${stateClass}` });
+            item.createDiv({ cls: 'ert-import-template-step-index', text: `${index + 1}` });
+            const text = item.createDiv({ cls: 'ert-import-template-step-text' });
+            text.createDiv({ cls: 'ert-import-template-step-label', text: label });
             if (this.step === index + 1) {
                 item.setAttr('aria-current', 'step');
             }
         });
     }
 
+    private renderStepHero(
+        panel: HTMLElement,
+        options: {
+            icon?: string;
+            previewKind?: DetectedTemplateMockPreviewKind;
+            title: string;
+            description: string;
+        }
+    ): void {
+        const hero = panel.createDiv({ cls: 'ert-import-template-stepHero' });
+        const visual = hero.createDiv({ cls: 'ert-import-template-stepHero-visual' });
+
+        if (options.previewKind) {
+            this.renderMockPreview(visual, options.previewKind);
+        } else if (options.icon) {
+            const iconWrap = visual.createDiv({ cls: 'ert-import-template-stepHero-icon' });
+            setIcon(iconWrap, options.icon);
+        }
+
+        hero.createDiv({ cls: 'ert-import-template-stepHero-title', text: options.title });
+        hero.createDiv({ cls: 'ert-import-template-stepHero-desc', text: options.description });
+    }
+
     private renderChooseFileStep(panel: HTMLElement): void {
-        panel.createDiv({ cls: 'ert-section-desc', text: 'Select a `.tex` file from the vault or a path you can validate against the current Pandoc folder.' });
-        const row = panel.createDiv({ cls: 'ert-gridForm ert-gridForm--2' });
+        this.renderStepHero(panel, {
+            icon: 'file-text',
+            title: 'Choose template',
+            description: 'Pick the .tex file you want to bring into Publishing.',
+        });
 
-        const pathCell = row.createDiv({ cls: 'ert-gridForm__cell' });
-        pathCell.createDiv({ cls: 'ert-label', text: 'Selected file' });
-        const pathValue = pathCell.createDiv({ cls: 'ert-field-note' });
-        pathValue.setText(this.getCandidatePath() || 'No file selected yet.');
+        const card = panel.createDiv({ cls: 'ert-card ert-stack ert-stack--tight' });
+        card.createDiv({ cls: 'ert-label', text: 'Selected file' });
+        card.createDiv({
+            cls: `ert-field-note ert-import-template-selectedPath${this.getCandidatePath() ? '' : ' is-empty'}`,
+            text: this.getCandidatePath() || 'No file selected yet.',
+        });
 
-        const chooseCell = row.createDiv({ cls: 'ert-gridForm__cell' });
-        const chooseButton = new ButtonComponent(chooseCell)
+        const actions = card.createDiv({ cls: 'ert-import-template-inlineActions' });
+        const chooseButton = new ButtonComponent(actions)
             .setButtonText('Choose file')
             .setCta()
             .onClick(() => { void this.chooseFile(); });
         chooseButton.buttonEl.addClass('ert-pillBtn', 'ert-pillBtn--standard');
-
-        const helper = panel.createDiv({ cls: 'ert-field-note' });
-        helper.setText('Use the guided picker to keep the import path honest. Advanced edit is available later for raw path/name overrides.');
     }
 
-    private renderValidationStep(panel: HTMLElement): void {
+    private renderCheckStep(panel: HTMLElement): void {
         const status = this.candidate?.summary.state || 'ready';
-        panel.createDiv({ cls: 'ert-section-desc', text: status === 'blocked'
-            ? 'The template has blocking issues. Save it as a draft or go back and fix the source file.'
-            : status === 'warning'
-                ? 'The template is usable, but some warnings need acknowledgement.'
-                : 'The template validated cleanly.' });
+        this.renderStepHero(panel, {
+            icon: status === 'blocked' ? 'octagon-alert' : status === 'warning' ? 'triangle-alert' : 'badge-check',
+            title: 'Check template',
+            description: 'Review the check results and the inferred layout.',
+        });
 
-        const summary = panel.createDiv({ cls: 'ert-card ert-card--hero' });
-        summary.createDiv({ cls: 'ert-card__header', text: 'Validation' });
-        summary.createDiv({
+        const card = panel.createDiv({ cls: 'ert-card ert-stack ert-stack--tight' });
+        card.createDiv({
+            cls: 'ert-card__header',
+            text: status === 'blocked'
+                ? 'Blocked'
+                : status === 'warning'
+                    ? 'Needs attention'
+                    : 'Ready',
+        });
+        card.createDiv({
             cls: 'ert-field-note',
             text: this.candidate
-                ? `${this.candidate.summary.errorCount} error(s) · ${this.candidate.summary.warningCount} warning(s)`
-                : 'No candidate yet.',
+                ? this.getCheckStatusMessage(this.candidate)
+                : 'Choose a template file first.',
         });
 
-        const issues = this.candidate?.issues || [];
-        if (issues.length === 0) {
-            summary.createDiv({ cls: 'ert-field-note', text: 'No blocking issues detected.' });
-            return;
+        if ((this.candidate?.issues.length || 0) > 0) {
+            const list = card.createDiv({ cls: 'ert-stack ert-stack--tight' });
+            this.candidate?.issues.slice(0, 4).forEach(issue => {
+                list.createDiv({
+                    cls: 'ert-field-note',
+                    text: this.formatIssueMessage(issue.message),
+                });
+            });
         }
 
-        const list = summary.createDiv({ cls: 'ert-stack ert-stack--tight' });
-        issues.forEach(issue => {
-            const row = list.createDiv({ cls: 'ert-field-note' });
-            row.setText(`${issue.level.toUpperCase()}: ${issue.message}`);
-            if (issue.detail) {
-                row.createDiv({ text: issue.detail });
-            }
-        });
+        this.renderDetectedLayoutCard(panel);
     }
 
-    private renderClassificationStep(panel: HTMLElement): void {
-        panel.createDiv({ cls: 'ert-section-desc', text: 'Classify the template by intended usage. This does not change the export engine, only the author-facing profile.' });
+    private renderSetupStep(panel: HTMLElement): void {
+        this.renderStepHero(panel, {
+            previewKind: this.candidate?.detectedTemplate.mockPreviewKind || 'generic',
+            title: 'Set up template',
+            description: 'Name the template and choose where you want to use it.',
+        });
+
         const grid = panel.createDiv({ cls: 'ert-gridForm ert-gridForm--2' });
+
+        const nameCell = grid.createDiv({ cls: 'ert-gridForm__cell' });
+        nameCell.createDiv({ cls: 'ert-label', text: 'Name' });
+        const nameInput = nameCell.createEl('input', {
+            cls: 'ert-input ert-input--full',
+            attr: { type: 'text', value: this.templateName },
+        });
+        nameInput.addEventListener('input', () => {
+            this.templateNameTouched = true;
+            this.templateName = nameInput.value;
+            void this.refreshCandidate();
+        });
 
         const usageCell = grid.createDiv({ cls: 'ert-gridForm__cell' });
         usageCell.createDiv({ cls: 'ert-label', text: 'Usage context' });
@@ -378,146 +440,191 @@ export class ImportTemplateModal extends Modal {
             void this.refreshCandidate();
         });
 
-        const styleCell = grid.createDiv({ cls: 'ert-gridForm__cell' });
-        styleCell.createDiv({ cls: 'ert-label', text: 'Style' });
-        styleCell.createDiv({
-            cls: 'ert-field-note',
-            text: this.candidate?.profile.styleKey || 'Style will be inferred from the file and the selected usage context.',
-        });
-        styleCell.createDiv({
-            cls: 'ert-field-note',
-            text: this.candidate?.profile.summary || 'No preview yet.',
-        });
-
-        const advancedToggle = panel.createEl('button', {
-            cls: 'ert-modal-choice',
-            attr: { type: 'button' },
-        });
-        advancedToggle.createDiv({ cls: 'ert-note-creator-option__title', text: this.advancedEdit ? 'Hide advanced edit' : 'Advanced edit' });
-        advancedToggle.createDiv({ cls: 'ert-note-creator-option__desc', text: 'Reveal raw path/name overrides and draft metadata.' });
-        advancedToggle.addEventListener('click', () => {
-            this.advancedEdit = !this.advancedEdit;
-            this.render();
-        });
-
-        if (this.advancedEdit) {
-            this.renderAdvancedEdit(panel);
-        }
-    }
-
-    private renderAdvancedEdit(panel: HTMLElement): void {
-        const advanced = panel.createDiv({ cls: 'ert-card' });
-        advanced.createDiv({ cls: 'ert-card__header', text: 'Advanced edit' });
-        advanced.createDiv({ cls: 'ert-field-note', text: 'Raw path/name editing stays here so the guided flow remains safe by default.' });
-
-        const grid = advanced.createDiv({ cls: 'ert-gridForm ert-gridForm--2' });
-        const nameCell = grid.createDiv({ cls: 'ert-gridForm__cell' });
-        nameCell.createDiv({ cls: 'ert-label', text: 'Name' });
-        this.advancedNameInputEl = nameCell.createEl('input', {
-            cls: 'ert-input ert-input--full',
-            attr: { type: 'text', value: this.advancedName },
-        });
-        this.advancedNameInputEl.addEventListener('input', () => {
-            this.advancedNameTouched = true;
-            this.advancedName = this.advancedNameInputEl?.value || '';
-            void this.refreshCandidate();
-        });
-
-        const pathCell = grid.createDiv({ cls: 'ert-gridForm__cell' });
-        pathCell.createDiv({ cls: 'ert-label', text: 'Path' });
-        this.advancedPathInputEl = pathCell.createEl('input', {
-            cls: 'ert-input ert-input--full',
-            attr: { type: 'text', value: this.advancedPath || this.sourcePath },
-        });
-        this.advancedPathInputEl.addEventListener('input', () => {
-            this.advancedPathTouched = true;
-            this.advancedPath = this.advancedPathInputEl?.value || '';
-            void this.refreshCandidate();
-        });
-
-        const descCell = advanced.createDiv({ cls: 'ert-gridForm__cell' });
-        descCell.createDiv({ cls: 'ert-label', text: 'Description' });
-        this.advancedDescriptionInputEl = descCell.createEl('textarea', {
+        const descriptionCell = panel.createDiv({ cls: 'ert-gridForm__cell' });
+        descriptionCell.createDiv({ cls: 'ert-label', text: 'Description' });
+        const descriptionInput = descriptionCell.createEl('textarea', {
             cls: 'ert-textarea ert-textarea--compact',
             attr: { rows: '3' },
         });
-        this.advancedDescriptionInputEl.value = this.advancedDescription || '';
-        this.advancedDescriptionInputEl.addEventListener('input', () => {
-            this.advancedDescriptionTouched = true;
-            this.advancedDescription = this.advancedDescriptionInputEl?.value || '';
+        descriptionInput.value = this.templateDescription;
+        descriptionInput.addEventListener('input', () => {
+            this.templateDescriptionTouched = true;
+            this.templateDescription = descriptionInput.value;
             void this.refreshCandidate();
         });
-    }
 
-    private renderCapabilitiesStep(panel: HTMLElement): void {
-        panel.createDiv({ cls: 'ert-section-desc', text: 'Capabilities are inferred from the template and describe what the current runtime can safely promise.' });
-        const candidate = this.candidate;
-        const profile = candidate?.profile;
-        if (!candidate || !profile) {
-            panel.createDiv({ cls: 'ert-field-note', text: 'No candidate selected yet.' });
-            return;
+        if (this.candidate) {
+            const note = panel.createDiv({ cls: 'ert-field-note' });
+            note.setText(`Likely: ${this.getStyleHintLabel(this.candidate.detectedTemplate.styleHint)}`);
         }
 
-        const chips = panel.createDiv({ cls: 'ert-modal-meta' });
-        profile.capabilities.forEach(capability => {
-            chips.createSpan({ cls: 'ert-modal-meta-item', text: capability.label });
+        const advanced = panel.createEl('details', { cls: 'ert-import-template-advanced' });
+        const summary = advanced.createEl('summary', {
+            cls: 'ert-import-template-advanced-summary',
+            text: 'Advanced edit',
+        });
+        summary.setAttr('role', 'button');
+
+        const advancedCard = advanced.createDiv({ cls: 'ert-card ert-import-template-advanced-card ert-stack ert-stack--tight' });
+        advancedCard.createDiv({ cls: 'ert-label', text: 'Path override' });
+        const pathInput = advancedCard.createEl('input', {
+            cls: 'ert-input ert-input--full',
+            attr: { type: 'text', value: this.advancedPath || this.sourcePath },
+        });
+        pathInput.addEventListener('input', () => {
+            this.advancedPathTouched = true;
+            this.advancedPath = pathInput.value;
+            void this.refreshCandidate();
+        });
+        advancedCard.createDiv({
+            cls: 'ert-field-note',
+            text: 'Use this only if you need to store the template at a different path.',
+        });
+    }
+
+    private renderSaveStep(panel: HTMLElement): void {
+        this.renderStepHero(panel, {
+            previewKind: this.candidate?.detectedTemplate.mockPreviewKind || 'generic',
+            title: 'Save template',
+            description: 'Review the summary and decide whether to activate it now.',
         });
 
-        panel.createDiv({ cls: 'ert-field-note', text: candidate.semanticNote });
-        panel.createDiv({ cls: 'ert-field-note', text: 'No extra warnings beyond the current validation result.' });
-    }
-
-    private renderPreviewStep(panel: HTMLElement): void {
-        panel.createDiv({ cls: 'ert-section-desc', text: 'Preview the metadata that will be stored before you commit the template.' });
-        const candidate = this.candidate;
-        const profile = candidate?.profile;
-        if (!candidate || !profile) {
-            panel.createDiv({ cls: 'ert-field-note', text: 'No candidate selected yet.' });
-            return;
-        }
-
-        const card = panel.createDiv({ cls: 'ert-card ert-card--hero' });
-        card.createDiv({ cls: 'ert-card__header', text: profile.name });
-        card.createDiv({ cls: 'ert-field-note', text: profile.summary });
-        card.createDiv({ cls: 'ert-field-note', text: `Usage: ${profile.usageContexts.join(', ')} · Style: ${profile.styleKey}` });
-        card.createDiv({ cls: 'ert-field-note', text: candidate.semanticNote });
-
-        if (candidate.previewLines.length > 0) {
-            const preview = card.createEl('pre', { cls: 'ert-manuscript-preview-sample' });
-            preview.textContent = candidate.previewLines.join('\n');
-        }
-
-        if (this.advancedEdit) {
-            this.renderAdvancedEdit(panel);
-        }
-    }
-
-    private renderFinalizeStep(panel: HTMLElement): void {
-        panel.createDiv({ cls: 'ert-section-desc', text: 'Save a draft to keep the import staged, or activate it once validation is clean.' });
-        const candidate = this.candidate;
-        const profile = candidate?.profile;
-        if (!candidate || !profile) {
-            panel.createDiv({ cls: 'ert-field-note', text: 'No candidate selected yet.' });
-            return;
-        }
-
-        const summary = panel.createDiv({ cls: 'ert-card' });
+        const summary = panel.createDiv({ cls: 'ert-card ert-stack ert-stack--tight' });
         summary.createDiv({ cls: 'ert-card__header', text: 'Final summary' });
-        summary.createDiv({ cls: 'ert-field-note', text: `${profile.name} · ${profile.usageContexts.join(', ')}` });
-        summary.createDiv({ cls: 'ert-field-note', text: candidate.semanticNote });
         summary.createDiv({
             cls: 'ert-field-note',
-            text: candidate.canActivate
-                ? 'The template can be activated.'
-                : 'The template has blocking issues. Save it as a draft or fix the source file first.',
+            text: this.candidate?.profile.name || this.templateName || 'Template',
+        });
+        summary.createDiv({
+            cls: 'ert-field-note',
+            text: `Usage context: ${this.formatUsageContext(this.usageContext)}`,
+        });
+        summary.createDiv({
+            cls: 'ert-field-note',
+            text: this.candidate?.canActivate
+                ? 'Ready to save and activate.'
+                : 'You can save this template now and activate it after fixing the issues.',
         });
 
-        if (candidate.issues.length > 0) {
-            const issueList = summary.createDiv({ cls: 'ert-stack ert-stack--tight' });
-            candidate.issues.forEach(issue => {
-                issueList.createDiv({ cls: 'ert-field-note', text: `${issue.level.toUpperCase()}: ${issue.message}` });
+        if ((this.candidate?.issues.length || 0) > 0) {
+            const list = summary.createDiv({ cls: 'ert-stack ert-stack--tight' });
+            this.candidate?.issues.slice(0, 3).forEach(issue => {
+                list.createDiv({ cls: 'ert-field-note', text: this.formatIssueMessage(issue.message) });
             });
         }
+    }
+
+    private renderDetectedLayoutCard(panel: HTMLElement): void {
+        const candidate = this.candidate;
+        if (!candidate) return;
+
+        const card = panel.createDiv({ cls: 'ert-card ert-import-template-detected-card ert-stack ert-stack--tight' });
+        card.createDiv({ cls: 'ert-card__header', text: 'Detected layout' });
+        card.createDiv({ cls: 'ert-field-note', text: `Likely: ${this.getLikelyLayoutLabel(candidate.detectedTemplate.styleHint)}` });
+        card.createDiv({ cls: 'ert-field-note', text: `Confidence: ${this.formatConfidence(candidate.detectedTemplate.confidence)}` });
+
+        if (candidate.detectedTemplate.traits.length > 0) {
+            const traits = card.createDiv({ cls: 'ert-import-template-traits' });
+            candidate.detectedTemplate.traits.slice(0, 4).forEach(trait => {
+                traits.createSpan({ cls: 'ert-import-template-trait', text: trait });
+            });
+        }
+    }
+
+    private renderMockPreview(container: HTMLElement, kind: DetectedTemplateMockPreviewKind): void {
+        const wrap = container.createDiv({ cls: 'ert-import-template-mock-wrap' });
+        wrap.createDiv({ cls: 'ert-import-template-mock-label', text: 'Approximate preview' });
+
+        const mock = wrap.createDiv({ cls: `ert-import-template-mock ert-import-template-mock--${kind}` });
+        const page = mock.createDiv({ cls: 'ert-import-template-mock-page' });
+        if (kind === 'book' || kind === 'chaptered') {
+            page.createDiv({ cls: 'ert-import-template-mock-header-line' });
+        }
+
+        const kicker = page.createDiv({ cls: 'ert-import-template-mock-kicker' });
+        kicker.setText(kind === 'chaptered' ? 'Chapter opener' : kind === 'literary' ? 'Literary layout' : kind === 'manuscript' ? 'Submission format' : kind === 'book' ? 'Book layout' : 'Custom layout');
+
+        page.createDiv({
+            cls: `ert-import-template-mock-title ert-import-template-mock-title--${kind}`,
+            text: kind === 'chaptered' ? 'Chapter One' : kind === 'literary' ? 'Winter Light' : kind === 'manuscript' ? 'Manuscript Page' : kind === 'book' ? 'Book Page' : 'Template Preview',
+        });
+
+        if (kind === 'literary') {
+            page.createDiv({ cls: 'ert-import-template-mock-subtitle', text: 'A quiet opening line' });
+        }
+
+        const lines = page.createDiv({ cls: 'ert-import-template-mock-lines' });
+        ['',' is-mid','',' is-short','',''].forEach((suffix) => {
+            lines.createDiv({ cls: `ert-import-template-mock-line${suffix}`.trim() });
+        });
+    }
+
+    private getLikelyLayoutLabel(styleHint: DetectedTemplateStyleHint): string {
+        switch (styleHint) {
+            case 'chaptered':
+                return 'Chaptered book layout';
+            case 'book':
+                return 'Book layout';
+            case 'literary':
+                return 'Literary book layout';
+            case 'manuscript':
+                return 'Submission manuscript';
+            default:
+                return 'Custom / unknown layout';
+        }
+    }
+
+    private getStyleHintLabel(styleHint: DetectedTemplateStyleHint): string {
+        switch (styleHint) {
+            case 'chaptered':
+                return 'Chaptered book';
+            case 'book':
+                return 'Book layout';
+            case 'literary':
+                return 'Literary layout';
+            case 'manuscript':
+                return 'Submission manuscript';
+            default:
+                return 'Custom layout';
+        }
+    }
+
+    private formatConfidence(confidence: DetectedTemplateConfidence): string {
+        return confidence.charAt(0).toUpperCase() + confidence.slice(1);
+    }
+
+    private formatUsageContext(context: UsageContext): string {
+        switch (context) {
+            case 'screenplay':
+                return 'Screenplay';
+            case 'podcast':
+                return 'Podcast';
+            default:
+                return 'Novel';
+        }
+    }
+
+    private getCheckStatusMessage(candidate: ImportedTemplateCandidate): string {
+        if (candidate.summary.state === 'blocked') {
+            return 'This template needs fixes before it can be activated.';
+        }
+        if (candidate.summary.state === 'warning') {
+            return 'This template can be saved now, but it needs a quick review.';
+        }
+        return 'This template looks ready to use.';
+    }
+
+    private formatIssueMessage(message: string): string {
+        if (/\$body\$/i.test(message)) {
+            return 'The template is missing the main manuscript placeholder.';
+        }
+        if (/fontspec|xelatex|lualatex/i.test(message)) {
+            return 'This template expects a Unicode PDF engine.';
+        }
+        if (/\.tex/i.test(message) && /import/i.test(message)) {
+            return 'Choose a valid .tex template file.';
+        }
+        return message;
     }
 
     private updateActionButtons(): void {

@@ -140,14 +140,6 @@ function setWorkspace(settings: RadialTimelineSettings, workspace: BeatWorkspace
     return normalized;
 }
 
-function mirrorLegacyBeatModelSelection(settings: RadialTimelineSettings, workspace: BeatWorkspaceState): void {
-    const activeTabId = workspace.activeTabId ?? workspace.loadedTabIds[0];
-    const activeTab = activeTabId ? workspace.tabsById[activeTabId] : undefined;
-    if (activeTab?.name) {
-        settings.beatSystem = normalizeBeatSetNameInput(activeTab.name, settings.beatSystem ?? activeTab.name);
-    }
-}
-
 function mergeDetectedTabsIntoWorkspace(
     settings: RadialTimelineSettings,
     workspace: BeatWorkspaceState,
@@ -233,10 +225,7 @@ export function ensureBeatWorkspaceState(settings: RadialTimelineSettings): Beat
 export function ensureMaterializedBeatWorkspaceState(app: App, settings: RadialTimelineSettings): BeatWorkspaceState {
     const workspace = getWorkspace(settings);
     const detectedTabs = collectManuscriptDetectedTabs(app, settings);
-    const { workspace: nextWorkspace, changed } = mergeDetectedTabsIntoWorkspace(settings, workspace, detectedTabs);
-    if (changed) {
-        mirrorLegacyBeatModelSelection(settings, nextWorkspace);
-    }
+    const { workspace: nextWorkspace } = mergeDetectedTabsIntoWorkspace(settings, workspace, detectedTabs);
     return nextWorkspace;
 }
 
@@ -378,7 +367,6 @@ export function activateLoadedBeatTab(settings: RadialTimelineSettings, tabId: s
     });
     const activeTab = nextWorkspace.tabsById[tabId];
     if (!activeTab) return undefined;
-    mirrorLegacyBeatModelSelection(settings, nextWorkspace);
     return cloneLoadedTab(activeTab);
 }
 
@@ -400,7 +388,6 @@ export function loadBeatTabFromLibraryItem(settings: RadialTimelineSettings, ite
         activeTabId: tab.tabId,
     });
     const activeTab = nextWorkspace.tabsById[tab.tabId];
-    mirrorLegacyBeatModelSelection(settings, nextWorkspace);
     return cloneLoadedTab(activeTab);
 }
 
@@ -425,7 +412,6 @@ export function materializeBeatTab(settings: RadialTimelineSettings, tab: Loaded
         activeTabId: nextTab.tabId,
     });
     const activeTab = nextWorkspace.tabsById[nextTab.tabId];
-    mirrorLegacyBeatModelSelection(settings, nextWorkspace);
     return cloneLoadedTab(activeTab);
 }
 
@@ -446,9 +432,6 @@ export function updateLoadedBeatTab(
             [tabId]: updated,
         },
     });
-    if (nextWorkspace.activeTabId === tabId) {
-        mirrorLegacyBeatModelSelection(settings, nextWorkspace);
-    }
     return cloneLoadedTab(updated);
 }
 
@@ -464,7 +447,6 @@ export function unloadBeatTab(settings: RadialTimelineSettings, tabId: string): 
         tabsById: nextTabs,
         activeTabId: nextActiveTabId,
     });
-    mirrorLegacyBeatModelSelection(settings, nextWorkspace);
     return nextActiveTabId;
 }
 

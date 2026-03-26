@@ -3313,6 +3313,17 @@
   background: var(--background-modifier-form-field);
   border: 1px solid var(--background-modifier-border);
 }
+.ert-ui.ert-scope--settings .ert-set-selector-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.ert-ui.ert-scope--settings .ert-set-selector-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
 .ert-ui.ert-scope--settings .ert-set-preview-header {
   display: flex;
   align-items: center;
@@ -3379,6 +3390,19 @@
   color: var(--text-faint);
   font-size: 11px;
   font-weight: 500;
+}
+.ert-ui.ert-scope--settings .ert-set-preview-status {
+  margin-top: 8px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 500;
+}
+.ert-ui.ert-scope--settings .ert-set-library-actions > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.2;
+  min-height: 32px;
 }
 
 /* ── Starter-dirty notice (PRO Sets) ────────────────────────────── */
@@ -6510,6 +6534,12 @@
   max-width: 92vw;
 }
 
+.ert-ui.ert-modal--import-template.modal,
+.ert-ui .ert-modal--import-template.modal {
+  width: 640px;
+  max-width: 94vw;
+}
+
 .ert-ui .ert-modal-container {
   position: relative;
   isolation: isolate;
@@ -6699,6 +6729,282 @@
 
 .ert-ui.ert-scope--modal button:not(.ert-pillBtn):not(.ert-iconBtn):not(.ert-swatch):not(.ert-modal-choice):disabled {
   cursor: not-allowed;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-modal-container {
+  padding: 24px 30px 22px;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 78%, transparent);
+  background: color-mix(in srgb, var(--background-secondary) 26%, transparent);
+  color: var(--text-muted);
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-step.is-active {
+  border-color: color-mix(in srgb, var(--interactive-accent) 42%, var(--background-modifier-border));
+  background: color-mix(in srgb, var(--background-secondary) 48%, var(--interactive-accent) 9%);
+  color: var(--text-normal);
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-step.is-complete {
+  border-color: color-mix(in srgb, var(--text-success) 28%, var(--background-modifier-border));
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-step-index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--background-primary) 68%, transparent);
+  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 80%, transparent);
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-step-text {
+  min-width: 0;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-step-label {
+  min-width: 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-panel {
+  gap: 18px;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-stepHero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-stepHero-visual {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-stepHero-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 18px;
+  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 78%, transparent);
+  background: color-mix(in srgb, var(--background-secondary) 30%, transparent);
+  color: color-mix(in srgb, var(--interactive-accent) 70%, var(--text-normal));
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-stepHero-icon svg {
+  width: 34px;
+  height: 34px;
+  stroke-width: 1.8;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-stepHero-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-normal);
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-stepHero-desc {
+  max-width: 44ch;
+  font-size: 0.9rem;
+  line-height: 1.35;
+  color: var(--text-muted);
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-selectedPath.is-empty {
+  color: var(--text-faint);
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-inlineActions {
+  display: flex;
+  justify-content: center;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-advanced {
+  border-top: 1px solid color-mix(in srgb, var(--background-modifier-border) 84%, transparent);
+  padding-top: 12px;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-advanced-summary {
+  cursor: pointer;
+  list-style: none;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-advanced-summary::-webkit-details-marker {
+  display: none;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-advanced-card {
+  margin-top: 10px;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-detected-card {
+  gap: 10px;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-card .ert-field-note {
+  line-height: 1.35;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-traits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-trait {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--background-secondary) 56%, transparent);
+  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 82%, transparent);
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  line-height: 1.2;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-mock-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-mock-label {
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-mock {
+  display: flex;
+  justify-content: center;
+  padding: 8px;
+  width: 100%;
+  max-width: 248px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 78%, transparent);
+  background: color-mix(in srgb, var(--background-secondary) 24%, transparent);
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-mock-page {
+  width: 176px;
+  min-height: 208px;
+  padding: 14px 14px 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--background-primary) 84%, transparent);
+  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 76%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-mock-header-line {
+  width: 72%;
+  height: 2px;
+  margin: 0 auto 18px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-faint) 36%, transparent);
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-mock-kicker {
+  margin-bottom: 6px;
+  text-align: center;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-mock-title {
+  text-align: center;
+  color: var(--text-normal);
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-mock-title--chaptered,
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-mock-title--literary {
+  font-size: 1.2rem;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-mock-title--manuscript,
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-mock-title--generic {
+  font-size: 0.9rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-mock-subtitle {
+  text-align: center;
+  font-size: 0.82rem;
+  font-style: italic;
+  color: var(--text-muted);
+  margin-top: -6px;
+  margin-bottom: 12px;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-mock-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-mock-line {
+  height: 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-faint) 18%, transparent);
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-mock-line.is-short {
+  width: 56%;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-mock-line.is-mid {
+  width: 78%;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-mock--literary .ert-import-template-mock-page,
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-mock--chaptered .ert-import-template-mock-page {
+  background: color-mix(in srgb, var(--background-primary) 88%, transparent);
+}
+
+@media (max-width: 720px) {
+  .ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .ert-ui.ert-scope--modal.ert-modal--template-pack .ert-modal-container {
@@ -8529,6 +8835,7 @@
   border-radius: 14px;
   background: color-mix(in srgb, var(--background-secondary) 82%, transparent);
   overflow: hidden;
+  margin-top: 2px;
 }
 
 .ert-ui.ert-scope--settings .ert-publishing-status-col {
@@ -8539,9 +8846,9 @@
   background: color-mix(in srgb, var(--ert-stage-accent) 4%, transparent);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 7px;
   min-width: 0;
-  min-height: 168px;
+  min-height: 164px;
   position: relative;
   overflow: hidden;
   isolation: isolate;
@@ -8602,6 +8909,7 @@
   font-weight: 700;
   color: var(--text-muted);
   line-height: 1.1;
+  white-space: nowrap;
 }
 
 .ert-ui.ert-scope--settings .ert-publishing-status-col-value {
@@ -8617,7 +8925,7 @@
   font-size: 0.9rem;
   color: var(--text-muted);
   line-height: 1.38;
-  max-width: 18ch;
+  max-width: 17ch;
   position: relative;
   z-index: 1;
 }
@@ -8659,6 +8967,7 @@
   flex-wrap: wrap;
   padding: var(--ert-pad-sm);
   border-top: 1px solid color-mix(in srgb, var(--background-modifier-border) 90%, transparent);
+  min-height: 76px;
 }
 
 .ert-ui.ert-scope--settings .ert-bookmeta-preview-body {

@@ -8,7 +8,7 @@ import { t } from '../i18n';
 import { ExportFormat, ExportType, ManuscriptPreset, OutlinePreset, getAutoPdfEngineSelection, resolveTemplatePath, validatePandocLayout, getTemplateFontDiagnostics } from '../utils/exportFormats';
 import { SHARED_CHAPTER_FIELD_PUBLICATION_COPY } from '../utils/timelineChapters';
 import { hasProFeatureAccess } from '../settings/featureGate';
-import { getActiveBook, getActiveBookTitle, DEFAULT_BOOK_TITLE } from '../utils/books';
+import { getActiveBook, getActiveBookTitle, getActiveBookSourceFolder, DEFAULT_BOOK_TITLE } from '../utils/books';
 import { chunkScenesIntoParts } from '../utils/splitOutput';
 import { getDefaultManuscriptCleanupOptions, normalizeManuscriptCleanupOptions } from '../utils/manuscriptSanitize';
 import { categorizeExportError } from '../utils/exportErrors';
@@ -204,6 +204,7 @@ export class ManuscriptOptionsModal extends Modal {
     private loadingEl?: HTMLElement;
     private actionButton?: ButtonComponent;
     private openFolderButton?: ButtonComponent;
+    private openFileButton?: ButtonComponent;
     private markdownArtifactToggle?: ToggleComponent;
     private subplotDropdown?: DropdownComponent;
     private chronoHelperEl?: HTMLElement;
@@ -369,7 +370,12 @@ export class ManuscriptOptionsModal extends Modal {
     async onOpen(): Promise<void> {
         const { contentEl, modalEl } = this;
         contentEl.empty();
-        this.openScenePathsSnapshot = new Set(this.plugin.openScenePaths);
+        const sourceFolder = getActiveBookSourceFolder(this.plugin.settings);
+        this.openScenePathsSnapshot = new Set(
+            [...this.plugin.openScenePaths].filter(p =>
+                p.endsWith('.md') && sourceFolder.length > 0 && p.startsWith(sourceFolder + '/')
+            )
+        );
         this.refreshExportProfileState();
 
         // Apply generic modal shell + modal-specific class
@@ -785,6 +791,11 @@ export class ManuscriptOptionsModal extends Modal {
             .onClick(() => this.openOutcomeFolder());
         this.openFolderButton.buttonEl.addClass('rt-hidden');
 
+        this.openFileButton = new ButtonComponent(actions)
+            .setButtonText('Open file')
+            .onClick(() => this.openOutcomeFile());
+        this.openFileButton.buttonEl.addClass('rt-hidden');
+
         this.cancelButton = new ButtonComponent(actions)
             .setButtonText(t('manuscriptModal.actionCancel'))
             .onClick(() => this.close());
@@ -908,6 +919,7 @@ export class ManuscriptOptionsModal extends Modal {
     }
 
     private async persistTemplateList(list: ModalExportProfile[]): Promise<void> {
+        this.exportProfiles = list;
         const storedProfiles = list.map(profile => buildPersistedExportProfileFromModalExportProfile(profile));
         this.plugin.settings.exportProfiles = storedProfiles;
         this.plugin.settings.manuscriptExportTemplates = list.map(profile => buildLegacyTemplateFromModalExportProfile(profile, {
@@ -2046,6 +2058,28 @@ Sarah stood at the window, watching the world wake up.`;
         }
     }
 
+    private getOutcomeFilePath(): string | null {
+        return this.lastOutcome?.renderedPath
+            || this.lastOutcome?.savedPath
+            || this.lastOutcome?.renderedPaths?.[0]
+            || this.lastOutcome?.savedPaths?.[0]
+            || null;
+    }
+
+    private openOutcomeFile(): void {
+        const filePath = this.getOutcomeFilePath();
+        if (!filePath) {
+            new Notice('No output file to open yet.');
+            return;
+        }
+        const file = this.app.vault.getAbstractFileByPath(filePath);
+        if (!file || !(file instanceof TFile)) {
+            new Notice(`File not found: ${filePath}`);
+            return;
+        }
+        void this.app.workspace.openLinkText(filePath, '', false);
+    }
+
     private registerPointerEvents(): void {
         if (!this.trackEl || !this.startHandleEl || !this.endHandleEl) return;
 
@@ -2333,6 +2367,7 @@ Sarah stood at the window, watching the world wake up.`;
         this.exportCompleted = false;
         this.lastOutcome = null;
         this.openFolderButton?.buttonEl.addClass('rt-hidden');
+        this.openFileButton?.buttonEl.addClass('rt-hidden');
         this.cancelButton?.buttonEl.removeClass('rt-hidden');
         this.actionButton?.setDisabled(true);
         this.updateActionButtonLabel();
@@ -2384,6 +2419,7 @@ Sarah stood at the window, watching the world wake up.`;
             this.showOutputStatus(outcome);
             this.actionButton?.setDisabled(false);
             this.openFolderButton?.buttonEl.toggleClass('rt-hidden', !this.getOutcomeFolderPath());
+            this.openFileButton?.buttonEl.toggleClass('rt-hidden', !this.getOutcomeFilePath());
             this.cancelButton?.buttonEl.addClass('rt-hidden');
             this.updateActionButtonLabel();
         } catch (err) {

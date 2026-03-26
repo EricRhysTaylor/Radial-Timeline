@@ -43,16 +43,15 @@ function buildBeatApp(frontmatters: Array<Record<string, unknown>>) {
 }
 
 describe('beat workspace initialization', () => {
-    it('does not auto-seed fixed tabs from legacy selection alone', () => {
+    it('does not auto-seed tabs when no workspace or manuscript systems exist', () => {
         const settings = buildSettings();
-        settings.beatSystem = 'Save The Cat';
 
         const workspace = ensureBeatWorkspaceState(settings);
         const loadedTabs = getLoadedBeatTabs(settings);
 
         expect(workspace.activeTabId).toBeUndefined();
         expect(loadedTabs).toHaveLength(0);
-        expect(resolveSelectedBeatModelFromSettings(settings)).toBe('Save The Cat');
+        expect(resolveSelectedBeatModelFromSettings(settings)).toBeUndefined();
     });
 
     it('materializes detected manuscript systems into the persisted workspace', () => {
@@ -82,7 +81,6 @@ describe('beat workspace initialization', () => {
 describe('beat workspace loading', () => {
     it('prevents duplicate loads for the same library item', () => {
         const settings = buildSettings();
-        settings.beatSystem = 'Save The Cat';
 
         const starterItem = getBeatLibraryItems(settings).find((item) => item.kind === 'starter');
         expect(starterItem).toBeTruthy();
@@ -97,21 +95,18 @@ describe('beat workspace loading', () => {
 
     it('uses the active loaded tab as the beat-model selector', () => {
         const settings = buildSettings();
-        settings.beatSystem = 'Save The Cat';
 
         const starterItem = getBeatLibraryItems(settings).find((item) => item.kind === 'starter');
         expect(starterItem).toBeTruthy();
 
         const loaded = loadBeatTabFromLibraryItem(settings, starterItem!);
 
-        expect(settings.beatSystem).toBe(loaded.name);
         expect(getActiveLoadedBeatTab(settings)?.tabId).toBe(loaded.tabId);
         expect(resolveSelectedBeatModelFromSettings(settings)).toBe(loaded.name);
     });
 
     it('can reactivate a previously loaded tab without fixed-tab state', () => {
         const settings = buildSettings();
-        settings.beatSystem = 'Save The Cat';
 
         const builtinItem = getBeatLibraryItems(settings).find((item) => item.kind === 'builtin' && item.name === 'Story Grid');
         const starterItem = getBeatLibraryItems(settings).find((item) => item.kind === 'starter');

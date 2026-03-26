@@ -41,5 +41,6 @@ describe('publishingProgress', () => {
         expect(stages[1].actionLabel).toBe('Review pages');
         expect(stages[2].actionLabel).toBe('Review styles');
         expect(stages[3].actionLabel).toBe('Review export');
+        expect(stages[3].detail).toBe('Open manuscript exports.');
     });
 });

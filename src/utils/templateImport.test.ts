@@ -68,6 +68,7 @@ describe('templateImport helper', () => {
         expect(candidate.profile.id).toBe(candidate.layout.id);
         expect(candidate.profile.usageContexts).toEqual(['screenplay']);
         expect(candidate.profile.outputIntent).toBe('screenplay-pdf');
+        expect(candidate.detectedTemplate.usageContext).toBe('screenplay');
         expect(candidate.canActivate).toBe(true);
     });
 

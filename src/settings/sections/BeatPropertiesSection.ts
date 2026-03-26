@@ -63,6 +63,7 @@ import {
     ensureMaterializedBeatWorkspaceState,
     getActiveLoadedBeatTab,
     getActiveLoadedBeatTabId,
+    getLoadedBeatTabWorkspaceSystemId,
     getLoadedBeatTabs,
     getMaterializedBeatTabs,
     isBeatLibraryItemLoaded,
@@ -548,6 +549,8 @@ export function renderStoryBeatsSection(params: {
 
     const getBeatSystemTabStatus = (tab: LoadedBeatTab): StructuralHealthState => {
         const isActiveTab = getActiveBeatWorkspaceTabId() === tab.tabId;
+        const activeWorkspaceTab = isActiveTab ? getActiveBeatWorkspaceTab() : null;
+        const statusTab = activeWorkspaceTab ?? tab;
         if ((isActiveTab && isSetDirty()) || (!isActiveTab && tab.dirty)) {
             return {
                 icon: 'circle-alert',
@@ -555,7 +558,7 @@ export function renderStoryBeatsSection(params: {
                 tooltip: 'Loaded system has unsaved changes.'
             };
         }
-        return getStructuralHealthState(tab.name, tab);
+        return getStructuralHealthState(statusTab.name, statusTab);
     };
 
     /** Produce a lightweight hash string from the current custom beat state. */
@@ -665,6 +668,7 @@ export function renderStoryBeatsSection(params: {
     const getStructuralHealthState = (selectedSystem: string, loadedTab?: LoadedBeatTab | null): StructuralHealthState => {
         const structuralStatus = getBeatStructuralStatus(selectedSystem, { loadedTab: loadedTab ?? null });
         const summary = structuralStatus.summary;
+        const previewIssues = getPreviewIssueEntries(structuralStatus);
         if (summary.expectedCount === 0) {
             return {
                 icon: 'circle-dashed',
@@ -705,17 +709,17 @@ export function renderStoryBeatsSection(params: {
                 tooltip: `${summary.missingCreateableCount} beat note${summary.missingCreateableCount !== 1 ? 's' : ''} not yet created.`
             };
         }
-        if (summary.syncedCount === summary.expectedCount) {
+        if (previewIssues.length === 0) {
             return {
                 icon: 'check-circle',
                 statusClass: 'ert-beat-health-icon--success',
-                tooltip: 'All beat notes are up to date.'
+                tooltip: 'System is active in the manuscript and structurally aligned.'
             };
         }
         return {
-            icon: 'circle-dashed',
-            statusClass: '',
-            tooltip: 'Beat note status not yet checked.'
+            icon: 'alert-triangle',
+            statusClass: 'ert-beat-health-icon--warning',
+            tooltip: `System is active in the manuscript but has ${previewIssues.length} structural issue${previewIssues.length !== 1 ? 's' : ''}.`
         };
     };
 
@@ -1767,6 +1771,7 @@ export function renderStoryBeatsSection(params: {
     let createTemplatesButton: ButtonComponent | undefined;
     let repairBeatNotesButton: ButtonComponent | undefined;
     let refreshBeatAuditPrimaryAction: (() => void) | null = null;
+    let resetBeatAuditPanel: (() => void) | null = null;
     let primaryDesignAction: (() => Promise<void>) = async () => { await createBeatTemplates(); };
     const saveCurrentCustomSet = async (context: 'design' | 'fields' | 'generic' = 'generic'): Promise<void> => {
         const activeWorkspaceTab = getActiveBeatWorkspaceTab();
@@ -1953,6 +1958,7 @@ export function renderStoryBeatsSection(params: {
         beatSystemCard.toggleClass('ert-beat-system-card--custom', (activeTab?.sourceKind ?? 'blank') !== 'builtin');
         updateTierBanner(system);
         renderPreviewContent(system, undefined, activeTab ?? null);
+        renderCustomConfig();
         renderBeatYamlEditor();
         updateBeatHoverPreview?.();
         if (options?.resetStage !== false) {
@@ -1996,6 +2002,7 @@ export function renderStoryBeatsSection(params: {
                 await plugin.saveSettings();
                 plugin.onSettingChanged(IMPACT_FULL); // Tier 3: beat system change rebuilds timeline beats
                 invalidateBeatStructuralStatus();
+                resetBeatAuditPanel?.();
                 updateTemplateButton(templateSetting, getActiveBeatWorkspaceName('Custom'));
                 updateBeatSystemCard(tab.name);
                 renderBeatSystemTabs();
@@ -2016,6 +2023,7 @@ export function renderStoryBeatsSection(params: {
         addBtn.appendText('Add system');
         addBtn.addEventListener('click', () => {
             _currentInnerStage = 'library';
+            renderBeatSystemTabs();
             renderStageSwitcher();
             updateStageVisibility();
         });
@@ -2521,6 +2529,7 @@ export function renderStoryBeatsSection(params: {
     });
 
     const savedControlsContainer = savedCard.createDiv({ cls: ERT_CLASSES.STACK });
+    let selectedLibraryEntryId: string | null = null;
 
     // hasUnsavedChanges() was removed — unified into isSetDirty() via dirtyState store.
     // Both dirty indicators (dropdown warning + dirty notice) now use the same baseline.
@@ -2547,8 +2556,6 @@ export function renderStoryBeatsSection(params: {
         builtIn: boolean;
         isDefault?: boolean;
     };
-
-    type BeatSetDeleteMode = 'system_and_notes' | 'system_only' | 'notes_only';
 
     const trashBeatNoteFiles = async (files: TFile[]): Promise<{
         trashed: number;
@@ -2686,7 +2693,7 @@ export function renderStoryBeatsSection(params: {
                 header.createDiv({ cls: 'ert-modal-title', text: 'Reset to default' });
                 header.createDiv({
                     cls: 'ert-modal-subtitle',
-                    text: `Built-in sets cannot be deleted. Reset "${entry.name}" by deleting its deployed beat notes.`
+                    text: `Library source definitions stay intact. Reset "${entry.name}" by deleting its deployed beat notes.`
                 });
 
                 const body = modal.contentEl.createDiv({ cls: ['ert-panel', 'ert-panel--glass'] });
@@ -2743,190 +2750,6 @@ export function renderStoryBeatsSection(params: {
             new Notice(parts.join(' '));
         };
 
-        const openSavedSetDeleteModal = async (system: SavedBeatSystem, entry: LoadableEntry) => {
-            const risk = getDeleteSetRiskSummary(system.id);
-            const noteFiles = getSelectedEntryBeatNoteFiles(entry);
-            const noteCount = noteFiles.length;
-            const wasActive = getActiveBeatWorkspaceTab()?.linkedSavedSystemId === system.id
-                || (getActiveBeatWorkspaceTab()?.sourceKind === 'saved' && getActiveBeatWorkspaceTab()?.sourceId === system.id);
-            let selectedMode: BeatSetDeleteMode = noteCount > 0 ? 'system_and_notes' : 'system_only';
-
-            const confirmed = await new Promise<BeatSetDeleteMode | null>((resolve) => {
-                const modal = new Modal(app);
-                modal.titleEl.setText('');
-                modal.contentEl.empty();
-                modal.modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal-shell--md');
-                modal.contentEl.addClass('ert-modal-container', 'ert-stack');
-
-                const header = modal.contentEl.createDiv({ cls: 'ert-modal-header' });
-                header.createSpan({ cls: 'ert-modal-badge', text: 'BEAT SYSTEM' });
-                header.createDiv({ cls: 'ert-modal-title', text: 'Delete set' });
-                header.createDiv({
-                    cls: 'ert-modal-subtitle',
-                    text: `Choose what to remove for "${system.name}".`
-                });
-
-                if (wasActive) {
-                    const banner = modal.contentEl.createDiv({ cls: 'ert-audit-safety-banner ert-audit-safety-banner--warning' });
-                    banner.createSpan({ text: 'Removing the system resets Custom to a blank set.' });
-                }
-
-                const body = modal.contentEl.createDiv({ cls: ['ert-panel', 'ert-panel--glass'] });
-                body.createDiv({ cls: 'ert-modal-subtitle', text: `Scope: ${risk.beatCount} stored beat${risk.beatCount !== 1 ? 's' : ''} • ${noteCount} deployed note${noteCount !== 1 ? 's' : ''}` });
-
-                const optionsEl = body.createDiv({ cls: 'ert-stack' });
-                type DeleteOptionMeta = { mode: BeatSetDeleteMode; title: string; desc: string; disabled?: boolean };
-                const optionDefs: DeleteOptionMeta[] = [
-                    {
-                        mode: 'system_and_notes',
-                        title: 'Delete system and all beat notes',
-                        desc: 'Removes the custom set definition, related beat notes, and associated YAML fields.',
-                        disabled: noteCount === 0,
-                    },
-                    {
-                        mode: 'system_only',
-                        title: 'Delete custom set system only (keep notes)',
-                        desc: 'Removes the set definition and associated YAML fields, but leaves beat notes in the vault.',
-                    },
-                    {
-                        mode: 'notes_only',
-                        title: 'Delete beat notes only',
-                        desc: 'Moves related beat notes to trash and keeps the custom set definition.',
-                        disabled: noteCount === 0,
-                    },
-                ];
-
-                const actionBtnState = () => {
-                    const chosen = optionDefs.find((option) => option.mode === selectedMode);
-                    return chosen?.disabled ? null : selectedMode;
-                };
-
-                optionDefs.forEach((option, index) => {
-                    const label = optionsEl.createEl('label', { cls: ['ert-panel', 'ert-panel--glass'] });
-                    const input = label.createEl('input', { type: 'radio', attr: { name: `beat-set-delete-${system.id}` } });
-                    input.checked = option.mode === selectedMode;
-                    input.disabled = !!option.disabled;
-                    if (option.disabled && selectedMode === option.mode) {
-                        selectedMode = 'system_only';
-                    }
-                    input.addEventListener('change', () => {
-                        if (!input.disabled) {
-                            selectedMode = option.mode;
-                            updateActionState();
-                        }
-                    });
-                    const textWrap = label.createDiv({ cls: 'ert-stack' });
-                    textWrap.createDiv({ text: option.title, cls: 'ert-modal-subtitle' });
-                    textWrap.createDiv({ text: option.desc });
-                    if (option.disabled) {
-                        textWrap.createDiv({ text: 'Unavailable: no deployed beat notes found.', cls: 'ert-modal-subtitle' });
-                    }
-                    if (index === 0) {
-                        label.addClass('ert-modal-choice-default');
-                    }
-                });
-
-                if (risk.hasStoredContent) {
-                    const warningEl = body.createDiv({ cls: 'ert-audit-safety-banner ert-audit-safety-banner--warning' });
-                    warningEl.createDiv({ text: 'Stored system content:' });
-                    const riskList = warningEl.createEl('ul');
-                    risk.risks.forEach((item) => riskList.createEl('li', { text: item }));
-                }
-
-                if (noteCount > 0) {
-                    const warningEl = body.createDiv({ cls: 'ert-audit-safety-banner ert-audit-safety-banner--warning' });
-                    warningEl.createDiv({ text: `${noteCount} deployed beat note${noteCount !== 1 ? 's' : ''} can be moved to trash.` });
-                }
-
-                const confirmEl = body.createDiv({ cls: 'ert-modal-confirm-type' });
-                confirmEl.createDiv({ text: 'Type DELETE to confirm:', cls: 'ert-modal-subtitle' });
-                const confirmInput = confirmEl.createEl('input', { type: 'text', attr: { placeholder: 'DELETE' } });
-
-                const footer = modal.contentEl.createDiv({ cls: 'ert-modal-actions' });
-                const confirmDeleteBtn = new ButtonComponent(footer)
-                    .setButtonText('Delete')
-                    .setWarning()
-                    .setDisabled(true)
-                    .onClick(() => {
-                        if (confirmInput.value.trim() !== 'DELETE') {
-                            confirmInput.classList.add('ert-input-error');
-                            confirmInput.focus();
-                            return;
-                        }
-                        const mode = actionBtnState();
-                        if (!mode) return;
-                        resolve(mode);
-                        modal.close();
-                    });
-
-                const updateActionState = () => {
-                    const mode = actionBtnState();
-                    confirmDeleteBtn.setDisabled(confirmInput.value.trim() !== 'DELETE' || !mode);
-                    confirmInput.classList.remove('ert-input-error');
-                };
-
-                confirmInput.addEventListener('input', updateActionState);
-                updateActionState();
-
-                new ButtonComponent(footer).setButtonText('Cancel').onClick(() => {
-                    resolve(null);
-                    modal.close();
-                });
-                modal.onClose = () => resolve(null);
-                modal.open();
-            });
-
-            if (!confirmed) return;
-
-            let trashedCount = 0;
-            let trashFailed = 0;
-            const trashErrors: string[] = [];
-
-            if (confirmed === 'system_and_notes' || confirmed === 'notes_only') {
-                const result = await trashBeatNoteFiles(noteFiles);
-                trashedCount = result.trashed;
-                trashFailed = result.failed;
-                trashErrors.push(...result.errors);
-            }
-
-            if (confirmed === 'system_and_notes' || confirmed === 'system_only') {
-                removeSavedSetDefinition(system.id);
-                if (wasActive) {
-                    const activeTabId = getActiveBeatWorkspaceTabId();
-                    if (activeTabId) {
-                        unloadBeatTab(plugin.settings, activeTabId);
-                    } else {
-                        resetActiveCustomToBlank();
-                    }
-                }
-            }
-
-            await plugin.saveSettings();
-            invalidateBeatStructuralStatus();
-            renderCustomConfig();
-            renderPreviewContent(getActiveBeatWorkspaceName('Custom'));
-            renderBeatYamlEditor();
-            updateBeatHoverPreview?.();
-            renderSavedBeatSystems();
-            renderStageSwitcher();
-            updateStageVisibility();
-
-            if (trashErrors.length > 0) {
-                console.error('[Beat Sets] Failed to trash beat notes:', trashErrors);
-            }
-
-            const noticeParts: string[] = [];
-            if (confirmed === 'system_and_notes') {
-                noticeParts.push(`Deleted set "${system.name}" and moved ${trashedCount} beat note${trashedCount !== 1 ? 's' : ''} to trash.`);
-            } else if (confirmed === 'system_only') {
-                noticeParts.push(`Deleted set "${system.name}".`);
-            } else {
-                noticeParts.push(`Moved ${trashedCount} beat note${trashedCount !== 1 ? 's' : ''} to trash for "${system.name}".`);
-            }
-            if (trashFailed > 0) noticeParts.push(`${trashFailed} failed.`);
-            new Notice(noticeParts.join(' '));
-        };
-
         const getEntryFromLoadedTab = (tab: LoadedBeatTab | null | undefined): LoadableEntry | null => {
             if (!tab) return null;
             if (tab.sourceKind === 'blank') {
@@ -2958,260 +2781,154 @@ export function renderStoryBeatsSection(params: {
             applyLoadedSystem(entry);
         };
 
-        const librarySections = savedControlsContainer.createDiv({ cls: ERT_CLASSES.STACK });
+        const orderedEntries: LoadableEntry[] = [
+            ...[...allLoadable.values()].filter((entry) => entry.kind === 'builtin'),
+            ...[...allLoadable.values()].filter((entry) => entry.kind === 'starter'),
+            ...[...allLoadable.values()].filter((entry) => entry.kind === 'saved'),
+            ...[...allLoadable.values()].filter((entry) => entry.kind === 'blank'),
+        ];
 
-        const renderSection = (
-            title: string,
-            description: string,
-            items: LoadableEntry[],
-            options?: { allowOpenExisting?: boolean }
-        ) => {
+        const buildPreviewLoadedTab = (entry: LoadableEntry): LoadedBeatTab => ({
+            tabId: `preview:${entry.kind}:${entry.id}`,
+            sourceKind: entry.kind,
+            sourceId: entry.id,
+            name: entry.name,
+            description: entry.description ?? '',
+            beats: entry.beats.map((beat) => ({ ...beat })),
+            config: entry.config,
+            linkedSavedSystemId: entry.linkedSavedSystemId,
+            dirty: false,
+        });
+
+        const getDefaultSelectedEntryId = (): string => {
+            const activeEntry = getEntryFromLoadedTab(getActiveBeatWorkspaceTab());
+            return activeEntry?.id ?? orderedEntries[0]?.id ?? BLANK_LIBRARY_ITEM_ID;
+        };
+
+        if (!selectedLibraryEntryId || !allLoadable.has(selectedLibraryEntryId)) {
+            selectedLibraryEntryId = getDefaultSelectedEntryId();
+        }
+
+        const selectedEntry = allLoadable.get(selectedLibraryEntryId) ?? orderedEntries[0] ?? null;
+        if (!selectedEntry) return;
+
+        const selectorCard = savedControlsContainer.createDiv({ cls: 'ert-set-preview ert-set-selector-card' });
+        const selectorRow = selectorCard.createDiv({ cls: 'ert-set-selector-row' });
+        selectorRow.createSpan({ text: 'Select a set', cls: 'ert-set-preview-title' });
+        const selectEl = selectorRow.createEl('select', {
+            cls: 'ert-input ert-input--lg',
+            attr: { 'aria-label': 'Select a beat system set' }
+        }) as HTMLSelectElement;
+
+        const appendOptionGroup = (label: string, items: LoadableEntry[]) => {
             if (items.length === 0) return;
-            const section = librarySections.createDiv({ cls: ERT_CLASSES.STACK });
-            section.createEl('h5', { cls: ERT_CLASSES.SECTION_TITLE, text: title });
-            section.createEl('p', { cls: ERT_CLASSES.SECTION_DESC, text: description });
-
+            const group = selectEl.createEl('optgroup', { attr: { label } });
             items.forEach((entry) => {
-                const card = section.createDiv({ cls: 'ert-set-preview' });
-                const titleRow = card.createDiv({ cls: 'ert-set-preview-header' });
-                titleRow.createSpan({ text: entry.name, cls: 'ert-set-preview-title' });
-                const tagText = entry.isDefault
-                    ? 'Blank'
-                    : entry.kind === 'builtin'
-                        ? 'Built-in'
-                        : entry.kind === 'starter'
-                            ? 'Starter'
-                            : 'Saved';
-                const tag = titleRow.createSpan({
-                    text: tagText,
-                    cls: `ert-set-preview-tag ${entry.builtIn ? 'ert-set-preview-tag--starter' : 'ert-set-preview-tag--saved'}`
+                group.createEl('option', {
+                    value: entry.id,
+                    text: entry.name,
                 });
-                if (entry.isDefault) {
-                    setIcon(tag, 'square-pen');
-                } else if (entry.builtIn) {
-                    setIcon(tag, 'star');
-                }
-
-                const descText = entry.description || (entry.isDefault ? 'Create an empty working system and define beats in Design.' : '');
-                if (descText) {
-                    card.createDiv({ cls: 'ert-set-preview-desc', text: descText });
-                }
-
-                const actSet = new Set(entry.beats.map((beat) => beat.act));
-                card.createDiv({
-                    cls: 'ert-set-preview-meta',
-                    text: `${entry.beats.length} beats · ${actSet.size} act${actSet.size !== 1 ? 's' : ''}`
-                });
-
-                const actions = card.createDiv({ cls: 'ert-inline-actions ert-inline-actions--end' });
-                const loaded = isBeatLibraryItemLoaded(plugin.settings, entry);
-                const actionBtn = new ButtonComponent(actions)
-                    .setButtonText(loaded && options?.allowOpenExisting !== false ? 'Open tab' : (entry.isDefault ? 'Create blank system' : 'Load system'))
-                    .setCta()
-                    .onClick(() => {
-                        void (loaded && options?.allowOpenExisting !== false
-                            ? focusLoadedWorkspaceTab(loaded.tabId)
-                            : loadOrFocusEntry(entry));
-                    });
-                if (loaded && options?.allowOpenExisting === false) {
-                    actionBtn.setButtonText('Loaded');
-                    actionBtn.setDisabled(true);
-                }
             });
         };
 
-        const detectedTabs = getLoadedBeatWorkspaceTabs().filter((tab) => {
-            const status = getBeatSystemStructuralStatus({ app, settings: plugin.settings, loadedTab: tab });
-            return status.summary.matchedCount > 0;
+        appendOptionGroup('Built-in systems', orderedEntries.filter((entry) => entry.kind === 'builtin'));
+        appendOptionGroup('Starter sets', orderedEntries.filter((entry) => entry.kind === 'starter'));
+        appendOptionGroup('Saved systems', orderedEntries.filter((entry) => entry.kind === 'saved'));
+        appendOptionGroup('Blank system', orderedEntries.filter((entry) => entry.kind === 'blank'));
+        selectEl.value = selectedEntry.id;
+        selectEl.addEventListener('change', () => {
+            selectedLibraryEntryId = selectEl.value;
+            renderSavedBeatSystems();
         });
 
-        if (detectedTabs.length > 0) {
-            const section = librarySections.createDiv({ cls: ERT_CLASSES.STACK });
-            section.createEl('h5', { cls: ERT_CLASSES.SECTION_TITLE, text: 'Detected in this book' });
-            section.createEl('p', { cls: ERT_CLASSES.SECTION_DESC, text: 'These systems already have beat notes in the active manuscript.' });
-            detectedTabs.forEach((tab) => {
-                const card = section.createDiv({ cls: 'ert-set-preview' });
-                const titleRow = card.createDiv({ cls: 'ert-set-preview-header' });
-                titleRow.createSpan({ text: tab.name, cls: 'ert-set-preview-title' });
-                const tag = titleRow.createSpan({
-                    text: tab.sourceKind === 'detected' ? 'Unrecognized' : 'Detected',
-                    cls: `ert-set-preview-tag ${tab.sourceKind === 'detected' ? 'ert-set-preview-tag--saved' : 'ert-set-preview-tag--starter'}`
-                });
-                setIcon(tag, tab.sourceKind === 'detected' ? 'circle-alert' : 'check');
-                if (tab.description) {
-                    card.createDiv({ cls: 'ert-set-preview-desc', text: tab.description });
+        const previewCard = savedControlsContainer.createDiv({ cls: 'ert-set-preview' });
+        const previewTitleRow = previewCard.createDiv({ cls: 'ert-set-preview-header' });
+        previewTitleRow.createSpan({ text: selectedEntry.name, cls: 'ert-set-preview-title' });
+        const previewTag = previewTitleRow.createSpan({
+            text: selectedEntry.isDefault
+                ? 'Blank system'
+                : selectedEntry.kind === 'builtin'
+                    ? 'Built-in system'
+                    : selectedEntry.kind === 'starter'
+                        ? 'Starter set'
+                        : 'Saved system',
+            cls: `ert-set-preview-tag ${(selectedEntry.kind === 'builtin' || selectedEntry.kind === 'starter') ? 'ert-set-preview-tag--starter' : 'ert-set-preview-tag--saved'}`
+        });
+        if (selectedEntry.isDefault) {
+            setIcon(previewTag, 'square-pen');
+        } else if (selectedEntry.kind === 'builtin' || selectedEntry.kind === 'starter') {
+            setIcon(previewTag, 'star');
+        }
+
+        const overview = getSystemOverviewState(selectedEntry.name, buildPreviewLoadedTab(selectedEntry));
+        if (overview.sourceLink) {
+            const sourceRow = previewCard.createDiv({ cls: 'ert-beat-template-source' });
+            const sourceLink = sourceRow.createEl('a', {
+                cls: 'ert-beat-template-source-link',
+                href: overview.sourceLink.href,
+                attr: {
+                    target: '_blank',
+                    rel: 'noopener'
                 }
-                const actSet = new Set(tab.beats.map((beat) => beat.act));
-                card.createDiv({
-                    cls: 'ert-set-preview-meta',
-                    text: `${tab.beats.length} beats · ${actSet.size} act${actSet.size !== 1 ? 's' : ''}`
-                });
-                const actions = card.createDiv({ cls: 'ert-inline-actions ert-inline-actions--end' });
-                new ButtonComponent(actions)
-                    .setButtonText('Open tab')
-                    .setCta()
-                    .onClick(() => { void focusLoadedWorkspaceTab(tab.tabId); });
+            });
+            sourceLink.createSpan({ text: overview.sourceLink.label });
+            const sourceIcon = sourceLink.createSpan({ cls: 'ert-beat-template-source-link-icon' });
+            setIcon(sourceIcon, 'external-link');
+        }
+        renderOverviewTextBlocks(previewCard, 'ert-set-preview-desc', overview.description);
+        if (!overview.hasAuthorDesc && overview.examples) {
+            renderOverviewTextBlocks(previewCard, 'ert-set-preview-desc', overview.examples);
+        }
+        previewCard.createDiv({
+            cls: 'ert-set-preview-meta',
+            text: `${overview.totalBeats} beats · ${overview.totalActs} acts`
+        });
+
+        const selectedLoadedTab = isBeatLibraryItemLoaded(plugin.settings, selectedEntry);
+        const activeWorkspaceTab = getActiveBeatWorkspaceTab();
+        const selectedIsActive = !!selectedLoadedTab && !!activeWorkspaceTab && selectedLoadedTab.tabId === activeWorkspaceTab.tabId;
+        const statusHints: string[] = [];
+        if (selectedLoadedTab) statusHints.push('Loaded in workspace');
+        if (selectedIsActive) statusHints.push('Active in timeline');
+        if (statusHints.length > 0) {
+            previewCard.createDiv({
+                cls: 'ert-set-preview-status',
+                text: statusHints.join(' · ')
             });
         }
 
-        renderSection(
-            'Built-in systems',
-            'Canonical story-structure systems you can load as working tabs.',
-            [...allLoadable.values()].filter((entry) => entry.kind === 'builtin')
-        );
-        renderSection(
-            'Starter sets',
-            'Curated reusable templates you can load, adapt, and save as your own.',
-            [...allLoadable.values()].filter((entry) => entry.kind === 'starter')
-        );
-        renderSection(
-            'Saved systems',
-            'Your reusable custom systems.',
-            [...allLoadable.values()].filter((entry) => entry.kind === 'saved')
-        );
-        renderSection(
-            'Create blank system',
-            'Start from an empty working tab and define the structure yourself.',
-            [...allLoadable.values()].filter((entry) => entry.kind === 'blank'),
-            { allowOpenExisting: true }
-        );
-
-        const dirtyNoticeEl = savedControlsContainer.createDiv({ cls: 'ert-starter-dirty-notice ert-settings-hidden' });
-        dirtyNoticeEl.dataset.dirtyTarget = 'setsNotice';
-        const managementCard = savedControlsContainer.createDiv({ cls: 'ert-set-preview' });
-        managementCard.dataset.dirtyTarget = 'setsPreview';
-        managementCard.createDiv({ cls: 'ert-set-preview-title', text: 'Current working system' });
-
-        const renderManagementCard = () => {
-            const activeWorkspaceTab = getActiveBeatWorkspaceTab();
-            const activeEntry = getEntryFromLoadedTab(activeWorkspaceTab);
-            managementCard.empty();
-            managementCard.createDiv({ cls: 'ert-set-preview-title', text: 'Current working system' });
-
-            if (!activeWorkspaceTab) {
-                managementCard.createDiv({ cls: 'ert-set-preview-desc', text: 'Load a system from the library above to start editing.' });
-                return;
-            }
-
-            const header = managementCard.createDiv({ cls: 'ert-set-preview-header' });
-            header.createSpan({ text: activeWorkspaceTab.name, cls: 'ert-set-preview-title' });
-            const sourceLabel = activeWorkspaceTab.sourceKind === 'builtin'
-                ? 'Built-in'
-                : activeWorkspaceTab.sourceKind === 'starter'
-                    ? 'Starter'
-                    : activeWorkspaceTab.sourceKind === 'saved'
-                        ? 'Saved'
-                        : activeWorkspaceTab.sourceKind === 'detected'
-                            ? 'Detected'
-                            : 'Blank';
-            const tag = header.createSpan({
-                text: sourceLabel,
-                cls: `ert-set-preview-tag ${(activeWorkspaceTab.sourceKind === 'builtin' || activeWorkspaceTab.sourceKind === 'starter') ? 'ert-set-preview-tag--starter' : 'ert-set-preview-tag--saved'}`
-            });
-            if (activeWorkspaceTab.sourceKind === 'builtin' || activeWorkspaceTab.sourceKind === 'starter') {
-                setIcon(tag, 'star');
-            } else if (activeWorkspaceTab.sourceKind === 'detected') {
-                setIcon(tag, 'circle-alert');
-            }
-
-            if (activeWorkspaceTab.description) {
-                managementCard.createDiv({ cls: 'ert-set-preview-desc', text: activeWorkspaceTab.description });
-            }
-            const activeActSet = new Set(activeWorkspaceTab.beats.map((beat) => beat.act));
-            managementCard.createDiv({
-                cls: 'ert-set-preview-meta',
-                text: `${activeWorkspaceTab.beats.length} beats · ${activeActSet.size} act${activeActSet.size !== 1 ? 's' : ''}`
+        const actionsRow = savedControlsContainer.createDiv({ cls: 'ert-inline-actions ert-inline-actions--end ert-set-library-actions' });
+        new ButtonComponent(actionsRow)
+            .setButtonText(
+                selectedEntry.isDefault
+                    ? 'Create blank system'
+                    : selectedLoadedTab
+                        ? 'Focus tab'
+                        : 'Open tab'
+            )
+            .setCta()
+            .onClick(() => {
+                void (selectedLoadedTab
+                    ? focusLoadedWorkspaceTab(selectedLoadedTab.tabId)
+                    : loadOrFocusEntry(selectedEntry));
             });
 
-            const actionsRow = managementCard.createDiv({ cls: 'ert-inline-actions ert-inline-actions--end' });
+        const canSaveCopy = !!activeWorkspaceTab && activeWorkspaceTab.beats.length > 0;
+        new ButtonComponent(actionsRow)
+            .setButtonText('Save as copy')
+            .setDisabled(!canSaveCopy)
+            .onClick(() => { void saveSetModal({ isCopy: true }); });
 
-            const shouldSaveAsCopy = (): boolean => {
-                const activeKind = getActiveBeatWorkspaceKind();
-                return activeKind === 'builtin' || activeKind === 'starter';
-            };
-
-            new ButtonComponent(actionsRow)
-                .setButtonText(shouldSaveAsCopy() ? 'Save a copy' : 'Save set')
-                .onClick(() => {
-                    if (shouldSaveAsCopy()) {
-                        void saveSetModal({ isCopy: true });
-                        return;
-                    }
-                    if (getActiveBeatWorkspaceKind() === 'saved') {
-                        void saveCurrentCustomSet('generic');
-                        return;
-                    }
-                    void saveSetModal({ isCopy: false });
-                });
-
-            if (activeWorkspaceTab.sourceKind === 'saved' && activeWorkspaceTab.sourceId) {
-                new ButtonComponent(actionsRow)
-                    .setButtonText('Edit details')
-                    .onClick(() => {
-                        void openCustomSystemDetailsModal(activeWorkspaceTab.sourceId!, { refreshSets: true });
-                    });
-            }
-
-            if (activeEntry && !activeEntry.isDefault) {
-                if (activeEntry.builtIn) {
-                    const deployedCount = getSelectedEntryBeatNoteFiles(activeEntry).length;
-                    new ButtonComponent(actionsRow)
-                        .setButtonText('Reset to default')
-                        .setDisabled(deployedCount === 0)
-                        .onClick(() => { void openBuiltInResetModal(activeEntry); });
-                } else if (activeWorkspaceTab.sourceKind === 'saved') {
-                    const activeSystem = savedSystems.find((system) => system.id === activeEntry.id);
-                    if (activeSystem) {
-                        new ButtonComponent(actionsRow)
-                            .setButtonText('Delete set')
-                            .onClick(() => { void openSavedSetDeleteModal(activeSystem, activeEntry); });
-                    }
+        const activeEntry = getEntryFromLoadedTab(activeWorkspaceTab);
+        const canResetCurrent = !!activeEntry && !!activeEntry.builtIn && !activeEntry.isDefault && getSelectedEntryBeatNoteFiles(activeEntry).length > 0;
+        new ButtonComponent(actionsRow)
+            .setButtonText('Reset to default')
+            .setDisabled(!canResetCurrent)
+            .onClick(() => {
+                if (activeEntry) {
+                    void openBuiltInResetModal(activeEntry);
                 }
-            }
-        };
-
-        const updateSetsDirtyNotice = () => {
-            const notice = savedControlsContainer.querySelector<HTMLElement>('[data-dirty-target="setsNotice"]');
-            const preview = savedControlsContainer.querySelector<HTMLElement>('[data-dirty-target="setsPreview"]');
-            if (!notice) return;
-            const dirty = isSetDirty();
-            const activeKind = getActiveBeatWorkspaceKind();
-            const isCopyOnlySource = activeKind === 'starter' || activeKind === 'builtin';
-            notice.empty();
-            if (dirty) {
-                notice.removeClass('ert-settings-hidden');
-                const iconEl = notice.createSpan({ cls: 'ert-starter-dirty-icon' });
-                setIcon(iconEl, 'alert-triangle');
-                if (isCopyOnlySource) {
-                    notice.appendText('Modified — Library source changed. ');
-                    const copyLink = notice.createEl('button', {
-                        cls: 'ert-starter-dirty-link',
-                        text: 'Save a copy',
-                        attr: { type: 'button' }
-                    });
-                    copyLink.appendText(' to keep your version.');
-                    copyLink.addEventListener('click', () => { void saveSetModal({ isCopy: true }); });
-                } else {
-                    notice.appendText('Modified — Working system has unsaved changes. ');
-                    const saveLink = notice.createEl('button', {
-                        cls: 'ert-starter-dirty-link',
-                        text: 'Save set',
-                        attr: { type: 'button' }
-                    });
-                    saveLink.appendText(' to update.');
-                    saveLink.addEventListener('click', () => { void saveCurrentCustomSet('generic'); });
-                }
-            } else {
-                notice.addClass('ert-settings-hidden');
-            }
-            if (preview) preview.classList.toggle('ert-set-preview--dirty', dirty);
-        };
-
-        _unsubSetsDirty = dirtyState.subscribe(() => {
-            updateSetsDirtyNotice();
-            renderManagementCard();
-        });
-        updateSetsDirtyNotice();
+            });
 
         // ── Shared: save-as-copy modal + persistence ─────────────────
         const saveSetModal = async (opts: { isCopy: boolean }): Promise<void> => {
@@ -3347,7 +3064,6 @@ export function renderStoryBeatsSection(params: {
                 renderSavedBeatSystems();
             }
         };
-        renderManagementCard();
     };
 
     renderSavedBeatSystems();
@@ -3872,7 +3588,7 @@ export function renderStoryBeatsSection(params: {
             if (!activeTab) return beatSystemKey;
             return activeTab.sourceKind === 'builtin'
                 ? activeTab.name
-                : `custom:${getActiveCustomId()}`;
+                : `custom:${getLoadedBeatTabWorkspaceSystemId(activeTab)}`;
         };
         const isCustomBeatAudit = (): boolean => {
             const activeBeatSystemKey = resolveBeatAuditSystemKey();
@@ -4252,6 +3968,30 @@ export function renderStoryBeatsSection(params: {
 
         // ─── Results row: appears below header after audit runs ──────────
         const resultsEl = parentEl.createDiv({ cls: 'ert-audit-results-row ert-settings-hidden' });
+
+        const clearAuditState = () => {
+            auditResult = null;
+            structuralStatus = null;
+            auditScopeSummary = '';
+            fillEmptyPlan = null;
+            deprecatedMigrationPlan = null;
+            resultsEl.empty();
+            resultsEl.classList.add('ert-settings-hidden');
+            copyBtn?.classList.add('ert-settings-hidden');
+            backfillBtn?.classList.add('ert-settings-hidden');
+            insertMissingIdsBtn?.classList.add('ert-settings-hidden');
+            fixDuplicateIdsBtn?.classList.add('ert-settings-hidden');
+            fillEmptyBtn?.classList.add('ert-settings-hidden');
+            migrateDeprecatedBtn?.classList.add('ert-settings-hidden');
+            deleteExtraBtn?.classList.add('ert-settings-hidden');
+            deleteAdvancedBtn?.classList.add('ert-settings-hidden');
+            reorderBtn?.classList.add('ert-settings-hidden');
+            updateAuditPrimaryAction();
+        };
+
+        if (noteType === 'Beat') {
+            resetBeatAuditPanel = clearAuditState;
+        }
 
         const runAudit = async () => {
             const activeBeatSystemKey = resolveBeatAuditSystemKey();
@@ -5807,7 +5547,10 @@ export function renderStoryBeatsSection(params: {
         'Beat',
         isActiveWorkspaceBuiltin()
             ? getActiveBeatWorkspaceName('Save The Cat')
-            : `custom:${getActiveCustomId()}`
+            : (() => {
+                const activeTab = getActiveBeatWorkspaceTab();
+                return activeTab ? `custom:${getLoadedBeatTabWorkspaceSystemId(activeTab)}` : undefined;
+            })()
     );
 
     // Backdrop audit panel (inside backdrop YAML section, after hover preview)

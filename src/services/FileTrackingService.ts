@@ -10,42 +10,27 @@ export class FileTrackingService {
     updateOpenFilesTracking(): boolean {
         const previousOpenFiles = new Set(this.plugin.openScenePaths);
         const openFilePaths = new Set<string>();
-        const openFilesList: string[] = [];
 
         const leaves = this.plugin.app.workspace.getLeavesOfType('markdown');
         leaves.forEach(leaf => {
             const view = leaf.view;
             if (view instanceof MarkdownView && view.file) {
                 openFilePaths.add(view.file.path);
-                openFilesList.push(view.file.path);
+            } else {
+                // Deferred/unactivated tab — read path from view state
+                try {
+                    const state = leaf.getViewState();
+                    const filePath = (state?.state as Record<string, unknown>)?.file;
+                    if (typeof filePath === 'string' && filePath.length > 0) {
+                        openFilePaths.add(filePath);
+                    }
+                } catch { /* ignore */ }
             }
         });
 
         const activeFile = this.plugin.app.workspace.getActiveFile();
-        if (activeFile && !openFilesList.includes(activeFile.path)) {
+        if (activeFile && !openFilePaths.has(activeFile.path)) {
             openFilePaths.add(activeFile.path);
-            openFilesList.push(activeFile.path);
-        }
-
-        try {
-            // @ts-ignore - access workspace layout internals
-            const layout = this.plugin.app.workspace.getLayout();
-            if (layout && layout.leaves) {
-                const leafIds = Object.keys(layout.leaves as Record<string, unknown>);
-                leafIds.forEach(id => {
-                    // @ts-ignore - layout leaf typing
-                    const leafData = layout.leaves[id];
-                    if (leafData && leafData.type === 'markdown' && leafData.state && leafData.state.file) {
-                        const filePath = leafData.state.file;
-                        if (!openFilesList.includes(filePath)) {
-                            openFilePaths.add(filePath);
-                            openFilesList.push(filePath);
-                        }
-                    }
-                });
-            }
-        } catch (error) {
-            console.error('[Radial Timeline] Error accessing workspace layout:', error);
         }
 
         let hasChanged = previousOpenFiles.size !== openFilePaths.size;
