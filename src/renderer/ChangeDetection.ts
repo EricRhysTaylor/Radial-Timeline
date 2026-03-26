@@ -116,7 +116,7 @@ export function createSnapshot(
                 stringifyPovForHash(s.pov),
                 // Range field (rendered in Gossamer mode)
                 s.Range || '',
-                (s.Character || []).length,
+                (s.Character || []).join(','),
                 s.place || '',
                 // AI Pulse Analysis grade affects number square color
                 s.currentSceneAnalysis || ''
