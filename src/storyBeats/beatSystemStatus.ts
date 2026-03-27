@@ -308,6 +308,10 @@ export function getBeatSystemStructuralStatus(params: {
         const hasDuplicate = activeMatches.length > 1;
         const hasWrongModel = (diagnostics?.wrongModels.size ?? 0) > 0;
         const hasNonBeatClass = (diagnostics?.nonBeatClass ?? 0) > 0;
+        const hasActiveMatch = activeMatches.length > 0;
+        const hasUnresolvedMissingModel = !hasActiveMatch && missingModelMatches.length > 0;
+        const hasUnresolvedWrongModel = !hasActiveMatch && hasWrongModel;
+        const hasUnresolvedNonBeatClass = !hasActiveMatch && hasNonBeatClass;
 
         if (hasDuplicate) {
             issues.push(buildIssue('duplicate', 'Duplicate beat notes'));
@@ -315,25 +319,25 @@ export function getBeatSystemStructuralStatus(params: {
         if (activeMatches.length > 0 && !hasAligned) {
             issues.push(buildIssue('act_mismatch', 'Act mismatch'));
         }
-        if (missingModelMatches.length > 0) {
+        if (hasUnresolvedMissingModel) {
             issues.push(buildIssue('missing_model', 'Beat Model missing'));
         }
-        if (hasWrongModel) {
+        if (hasUnresolvedWrongModel) {
             const models = [...(diagnostics?.wrongModels ?? [])].slice(0, 3);
             const suffix = (diagnostics?.wrongModels.size ?? 0) > 3
                 ? ` (+${(diagnostics?.wrongModels.size ?? 0) - 3} more)`
                 : '';
             issues.push(buildIssue('wrong_model', `Beat Model differs (${models.join(', ')}${suffix})`));
         }
-        if (hasNonBeatClass) {
+        if (hasUnresolvedNonBeatClass) {
             issues.push(buildIssue('non_beat_class', 'Class is not Beat/Plot'));
         }
 
-        const present = activeMatches.length > 0
-            || missingModelMatches.length > 0
-            || hasWrongModel
-            || hasNonBeatClass;
-        const kind: BeatStructuralBeatStatus['kind'] = activeMatches.length > 0 && hasAligned && !hasDuplicate
+        const present = hasActiveMatch
+            || hasUnresolvedMissingModel
+            || hasUnresolvedWrongModel
+            || hasUnresolvedNonBeatClass;
+        const kind: BeatStructuralBeatStatus['kind'] = hasActiveMatch && hasAligned && !hasDuplicate
             ? 'complete'
             : present
                 ? 'issue'

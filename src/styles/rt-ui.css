@@ -6805,21 +6805,21 @@
 }
 
 .ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-step.is-active {
-  --ert-import-step-accent: var(--interactive-accent);
-  border-color: color-mix(in srgb, var(--interactive-accent) 42%, var(--background-modifier-border));
+  --ert-import-step-accent: var(--text-success);
+  border-color: color-mix(in srgb, var(--text-success) 38%, var(--background-modifier-border));
   background:
-    radial-gradient(circle at 18% 18%, color-mix(in srgb, var(--interactive-accent) 26%, transparent), transparent 58%),
+    radial-gradient(circle at 18% 18%, color-mix(in srgb, var(--text-success) 26%, transparent), transparent 58%),
     linear-gradient(180deg, color-mix(in srgb, var(--background-secondary) 34%, transparent), color-mix(in srgb, var(--background-primary) 20%, transparent));
-  color: var(--text-normal);
+  color: color-mix(in srgb, var(--text-normal) 94%, var(--text-success) 6%);
 }
 
 .ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-step.is-complete {
   --ert-import-step-accent: var(--text-success);
-  border-color: color-mix(in srgb, var(--text-success) 34%, var(--background-modifier-border));
+  border-color: color-mix(in srgb, var(--text-success) 24%, var(--background-modifier-border));
   background:
-    radial-gradient(circle at 18% 18%, color-mix(in srgb, var(--text-success) 24%, transparent), transparent 58%),
-    linear-gradient(180deg, color-mix(in srgb, var(--background-secondary) 32%, transparent), color-mix(in srgb, var(--background-primary) 20%, transparent));
-  color: color-mix(in srgb, var(--text-normal) 92%, var(--text-success) 8%);
+    radial-gradient(circle at 18% 18%, color-mix(in srgb, var(--text-success) 14%, transparent), transparent 58%),
+    linear-gradient(180deg, color-mix(in srgb, var(--background-secondary) 30%, transparent), color-mix(in srgb, var(--background-primary) 22%, transparent));
+  color: color-mix(in srgb, var(--text-normal) 96%, var(--text-success) 4%);
 }
 
 .ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-step-bg {
@@ -6855,14 +6855,96 @@
 }
 
 .ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-panel {
-  gap: 18px;
+  gap: 14px;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-picker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 24px 24px 22px;
+  border-radius: 24px;
+  border: 1px solid color-mix(in srgb, var(--text-success) 34%, var(--background-modifier-border));
+  background:
+    radial-gradient(circle at 50% 18%, color-mix(in srgb, var(--text-success) 18%, transparent), transparent 56%),
+    linear-gradient(180deg, color-mix(in srgb, var(--background-secondary) 30%, transparent), color-mix(in srgb, var(--background-primary) 22%, transparent));
+  text-align: center;
+  color: var(--text-normal);
+  transition: color 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-picker:not(:disabled):hover,
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-picker:not(:disabled):focus-visible {
+  border-color: color-mix(in srgb, var(--text-success) 48%, var(--background-modifier-border));
+  background:
+    radial-gradient(circle at 50% 18%, color-mix(in srgb, var(--text-success) 24%, transparent), transparent 58%),
+    linear-gradient(180deg, color-mix(in srgb, var(--background-secondary) 34%, transparent), color-mix(in srgb, var(--background-primary) 20%, transparent));
+  color: color-mix(in srgb, var(--text-normal) 94%, var(--text-success) 6%);
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-picker.is-dragover {
+  border-color: color-mix(in srgb, var(--text-success) 60%, var(--background-modifier-border));
+  background:
+    radial-gradient(circle at 50% 18%, color-mix(in srgb, var(--text-success) 28%, transparent), transparent 58%),
+    linear-gradient(180deg, color-mix(in srgb, var(--background-secondary) 38%, transparent), color-mix(in srgb, var(--background-primary) 18%, transparent));
+  color: color-mix(in srgb, var(--text-normal) 88%, var(--text-success) 12%);
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-picker-visual {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-picker-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 132px;
+  height: 132px;
+  border-radius: 30px;
+  background: color-mix(in srgb, var(--background-primary) 52%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text-success) 24%, var(--background-modifier-border));
+  color: color-mix(in srgb, var(--text-success) 82%, var(--text-normal));
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-picker-icon svg {
+  width: 72px;
+  height: 72px;
+  stroke-width: 1.7;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-picker-title {
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1.05;
+  color: var(--text-normal);
+  letter-spacing: -0.02em;
+  word-break: break-word;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-picker-desc {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--text-success) 66%, var(--text-normal));
+  letter-spacing: 0.02em;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-picker-meta {
+  max-width: 100%;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+  word-break: break-word;
 }
 
 .ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-stepHero {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   text-align: center;
 }
 
@@ -6903,6 +6985,16 @@
   color: var(--text-muted);
 }
 
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-descriptionCell {
+  width: 100%;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-descriptionInput {
+  width: 100%;
+  min-height: 92px;
+  resize: vertical;
+}
+
 .ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-selectedPath.is-empty {
   color: var(--text-faint);
 }
@@ -6910,6 +7002,20 @@
 .ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-inlineActions {
   display: flex;
   justify-content: center;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-nextBtn {
+  background:
+    radial-gradient(circle at 24% 24%, color-mix(in srgb, var(--text-success) 18%, transparent), transparent 54%),
+    linear-gradient(180deg, color-mix(in srgb, var(--background-secondary) 34%, transparent), color-mix(in srgb, var(--background-primary) 18%, transparent));
+  border-color: color-mix(in srgb, var(--text-success) 40%, var(--background-modifier-border));
+  color: color-mix(in srgb, var(--text-normal) 96%, var(--text-success) 4%);
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-nextBtn:not(:disabled):hover,
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-nextBtn:not(:disabled):focus-visible {
+  border-color: color-mix(in srgb, var(--text-success) 54%, var(--background-modifier-border));
+  color: color-mix(in srgb, var(--text-normal) 88%, var(--text-success) 12%);
 }
 
 .ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-advanced {
@@ -10121,18 +10227,28 @@
 
 /* --- Audit setting row: wraps buttons below name/desc when too many --- */
 :is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .setting-item.ert-audit-setting {
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  gap: var(--ert-gap-md);
 }
 
 :is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .setting-item.ert-audit-setting > .setting-item-info {
-  flex: 1 1 100%;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 :is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .setting-item.ert-audit-setting > .setting-item-control {
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   flex-wrap: wrap;
-  justify-content: flex-start;
+  justify-content: flex-end;
   gap: 6px;
+  align-self: flex-start;
+}
+
+.ert-ui.ert-scope--settings .ert-audit-setting-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ert-gap-sm);
 }
 
 /* --- Results row (appears below the Setting header after audit runs) --- */
@@ -10141,8 +10257,9 @@
   flex-direction: column;
   gap: var(--ert-gap-sm);
   padding: 0;
-  margin-top: 0;
+  margin-top: var(--ert-gap-xs);
   border-top: 0;
+  min-width: 0;
 }
 
 .ert-ui.ert-scope--settings .ert-audit-results-row.ert-settings-hidden {

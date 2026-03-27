@@ -16,6 +16,7 @@ import { clampActNumber, parseActLabels, resolveActLabel } from '../../utils/act
 import { ERT_CLASSES, ERT_DATA } from '../../ui/classes';
 import { getActiveMigrations, REFACTOR_ALERTS, areAlertMigrationsComplete, dismissAlert, type FieldMigration } from '../refactorAlerts';
 import { getScenePrefixNumber } from '../../utils/text';
+import { extractPrefixToken } from '../../utils/prefixOrder';
 import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { openOrRevealFile } from '../../utils/fileUtils';
 import { tooltipForComponent } from '../../utils/tooltip';
@@ -695,11 +696,11 @@ export function renderStoryBeatsSection(params: {
                 tooltip: `${summary.duplicateCount} duplicate beat note${summary.duplicateCount !== 1 ? 's' : ''} found. Manually delete duplicate notes to resolve.`
             };
         }
-        if (summary.missingModelNoteCount > 0) {
+        if (summary.missingModelBeatCount > 0) {
             return {
                 icon: 'alert-triangle',
                 statusClass: 'ert-beat-health-icon--warning',
-                tooltip: `Missing Beat Model (${summary.missingModelNoteCount}) found.`
+                tooltip: `${summary.missingModelBeatCount} beat${summary.missingModelBeatCount !== 1 ? 's are' : ' is'} missing Beat Model.`
             };
         }
         if (summary.missingCreateableCount > 0) {
@@ -1306,6 +1307,12 @@ export function renderStoryBeatsSection(params: {
                     const index = globalIndex;
                     globalIndex += 1;
                     const beatLine = entry.beat;
+                    const dupKey = normalizeBeatTitle(beatLine.name);
+                    const beatStatus = dupKey ? getBeatStatusByKey(structuralStatus, dupKey) : null;
+                    const activeMatches = dupKey ? (structuralStatus.matches.activeByBeatKey.get(dupKey) ?? []) : [];
+                    const matchedPrefix = activeMatches
+                        .map((match) => extractPrefixToken(match.basename))
+                        .find((token): token is string => !!token);
                     const row = listContainer.createDiv({ cls: 'ert-custom-beat-row' });
                     row.draggable = true;
 
@@ -1320,7 +1327,9 @@ export function renderStoryBeatsSection(params: {
                     row.createDiv({ text: `${expectedOrdinal}.`, cls: 'ert-beat-ordinal' });
 
                     // Index
-                    const beatNumber = beatNumbers[index] ?? `0.${String(index + 1).padStart(2, '0')}`;
+                    const beatNumber = matchedPrefix
+                        ?? beatNumbers[index]
+                        ?? `0.${String(index + 1).padStart(2, '0')}`;
                     row.createDiv({ text: `${beatNumber}`, cls: 'ert-beat-index' });
 
                     // Parse "Name [Act]"
@@ -1332,7 +1341,6 @@ export function renderStoryBeatsSection(params: {
                     nameInput.value = name;
                     nameInput.placeholder = 'Beat name';
                     // Determine row state (mutually exclusive: new | synced | misaligned | duplicate)
-                    const dupKey = normalizeBeatTitle(name);
                     let rowState: 'new' | 'synced' | 'misaligned' | 'duplicate' = 'new';
                     const rowNotices: string[] = [];
 
@@ -1343,14 +1351,12 @@ export function renderStoryBeatsSection(params: {
                     }
 
                     // Check for existing files
-                    const beatStatus = dupKey ? getBeatStatusByKey(structuralStatus, dupKey) : null;
-                    const matches = dupKey ? (structuralStatus.matches.activeByBeatKey.get(dupKey) ?? []) : [];
-                    if (dupKey && matches.length > 0) {
-                        if (matches.length > 1) {
+                    if (dupKey && activeMatches.length > 0) {
+                        if (activeMatches.length > 1) {
                             rowState = 'duplicate';
                             rowNotices.push('Multiple beat notes match this title. Manually delete duplicate beat notes to resolve.');
                         } else if (rowState !== 'duplicate') {
-                            const match = matches[0];
+                            const match = activeMatches[0];
                             const existingActRaw = typeof match.actNumber === 'number'
                                 ? match.actNumber
                                 : Number(act);
@@ -1366,7 +1372,7 @@ export function renderStoryBeatsSection(params: {
                             }
                         }
                     }
-                    if (beatStatus && matches.length === 0) {
+                    if (beatStatus && activeMatches.length === 0) {
                         const structuralNotice = beatStatus.issues
                             .filter((issue) => issue.code !== 'missing')
                             .map((issue) => issue.message)
@@ -3883,6 +3889,7 @@ export function renderStoryBeatsSection(params: {
                     : `Check ${noteType.toLowerCase()} notes for missing properties, unused fields, IDs, and property order issues.`
             );
         auditSetting.settingEl.addClass('ert-audit-setting');
+        auditSetting.infoEl.addClass('ert-audit-setting-info');
 
         // Copy button (hidden until audit runs)
         let copyBtn: HTMLButtonElement | undefined;
@@ -4031,8 +4038,8 @@ export function renderStoryBeatsSection(params: {
             _unsubBeatAuditDirty = dirtyState.subscribe(updateAuditPrimaryAction);
         }
 
-        // ─── Results row: appears below header after audit runs ──────────
-        const resultsEl = parentEl.createDiv({ cls: 'ert-audit-results-row ert-settings-hidden' });
+        // ─── Results row: appears inside the Setting info column after audit runs ──────────
+        const resultsEl = auditSetting.infoEl.createDiv({ cls: 'ert-audit-results-row ert-settings-hidden' });
 
         const clearAuditState = () => {
             auditResult = null;
@@ -5707,6 +5714,7 @@ export function renderStoryBeatsSection(params: {
         let displayName = activeTab?.name ?? selectedSystem;
         let baseDesc = '';
         let hasBeats = true;
+        let primaryButtonDisabled = false;
         const setPrimaryDesignButton = (
             text: string,
             tooltip: string,
@@ -5714,6 +5722,7 @@ export function renderStoryBeatsSection(params: {
             action: () => Promise<void>
         ) => {
             primaryDesignAction = action;
+            primaryButtonDisabled = disabled;
             if (!createTemplatesButton) return;
             createTemplatesButton.setButtonText(text);
             tooltipForComponent(createTemplatesButton, tooltip, 'bottom');
@@ -5722,6 +5731,12 @@ export function renderStoryBeatsSection(params: {
                 'ert-save-changes-btn--attention',
                 text === 'Save changes' && !disabled
             );
+        };
+        const syncDesignRowMutedState = () => {
+            const hasVisibleRepair = !!repairBeatNotesButton
+                && !repairBeatNotesButton.buttonEl.hasClass('ert-hidden')
+                && !repairBeatNotesButton.buttonEl.disabled;
+            setting.settingEl.style.opacity = primaryButtonDisabled && !hasVisibleRepair ? '0.68' : '1';
         };
 
         if (isCustom) {
@@ -5739,7 +5754,6 @@ export function renderStoryBeatsSection(params: {
                 setting.setName(`Beat notes in your vault for ${displayName}`);
                 baseDesc = `Create ${beats.length} beat note files for your custom system.`;
                 setting.setDesc(baseDesc);
-                setting.settingEl.style.opacity = '1';
             } else {
                 setting.setName('Beat notes');
                 baseDesc = 'Add at least one beat above to create beat notes.';
@@ -5750,7 +5764,6 @@ export function renderStoryBeatsSection(params: {
             setting.setName(`Beat notes in your vault for ${selectedSystem}`);
             baseDesc = `Create ${selectedSystem} beat note files in your vault matching this system's structure.`;
             setting.setDesc(baseDesc);
-            setting.settingEl.style.opacity = '1';
         }
 
         updateTierBanner(selectedSystem);
@@ -5782,6 +5795,7 @@ export function renderStoryBeatsSection(params: {
             repairBeatNotesButton.setDisabled(true);
             repairBeatNotesButton.buttonEl.addClass('ert-hidden');
         }
+        syncDesignRowMutedState();
         if (isDirtyCustom) {
             setting.setDesc(`${baseDesc} Save changes before creating or repairing beat notes.`);
             return;
@@ -5855,7 +5869,6 @@ export function renderStoryBeatsSection(params: {
 
             if (summary.matchedCount === 0 && !hasMissingModel) {
                 // Scenario A: Fresh — no existing files
-                setting.settingEl.style.opacity = '1';
                 setting.setDesc(baseDesc);
                 setPrimaryDesignButton(
                     'Create beat notes',
@@ -5863,6 +5876,7 @@ export function renderStoryBeatsSection(params: {
                     false,
                     async () => { await createBeatTemplates(); }
                 );
+                syncDesignRowMutedState();
                 return;
             }
 
@@ -5877,7 +5891,6 @@ export function renderStoryBeatsSection(params: {
 
             if (allSynced) {
                 // Scenario B: All synced — nothing to do
-                setting.settingEl.style.opacity = '0.68';
                 statusDesc = `All ${summary.expectedCount} beat notes are synced.`;
                 if (createTemplatesButton) {
                     setPrimaryDesignButton(
@@ -5889,7 +5902,6 @@ export function renderStoryBeatsSection(params: {
                 }
             } else if (hasNew) {
                 // Scenario D: Has new beats to create
-                setting.settingEl.style.opacity = '1';
                 if (missingInlineSummary) {
                     statusDesc += ` ${missingInlineSummary}`;
                 }
@@ -5905,7 +5917,6 @@ export function renderStoryBeatsSection(params: {
                 }
             } else {
                 // Scenario C: All matched, some misaligned — no new beats
-                setting.settingEl.style.opacity = '1';
                 if (createTemplatesButton) {
                     setPrimaryDesignButton(
                         createTemplatesButton.buttonEl.textContent || 'Create beat notes',
@@ -5935,6 +5946,7 @@ export function renderStoryBeatsSection(params: {
             }
 
             setting.setDesc(`${baseDesc} ${statusDesc}`);
+            syncDesignRowMutedState();
 
             // Refresh the health icon in the Design header
             refreshHealthIcon?.();
@@ -6064,6 +6076,7 @@ export function renderStoryBeatsSection(params: {
         updateTemplateButton(templateSetting, storyStructureName);
         refreshCustomBeatList?.();
         renderPreviewContent(storyStructureName, { skipStatusRefresh: true });
+        renderBeatSystemTabs();
 
         const updatedCount = updates.length;
         const modelFixedCount = updates.filter(update => update.needsBeatModelFix).length;
@@ -6161,6 +6174,7 @@ export function renderStoryBeatsSection(params: {
             updateTemplateButton(templateSetting, storyStructureName);
             refreshCustomBeatList?.();
             renderPreviewContent(storyStructureName, { skipStatusRefresh: true });
+            renderBeatSystemTabs();
         } catch (error) {
             console.error('[Beat Templates] Failed:', error);
             new Notice(`Failed to create story beat sets: ${error}`);

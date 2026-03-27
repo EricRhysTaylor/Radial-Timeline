@@ -8,7 +8,7 @@
  */
 import { parseYaml } from 'obsidian';
 import type { RadialTimelineSettings } from '../types/settings';
-import { getBeatConfigForSystem, sanitizeBeatAdvancedForWrite } from './beatsTemplates';
+import { getBeatConfigForSystem, normalizeBeatBaseTemplateOrder, sanitizeBeatAdvancedForWrite } from './beatsTemplates';
 import { mergeTemplateParts } from './templateMerge';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
 
@@ -165,7 +165,7 @@ export function getTemplateParts(
         case 'Beat': {
             const configuredBase = settings.beatYamlTemplates?.base
                 ?? DEFAULT_SETTINGS.beatYamlTemplates!.base;
-            const base = configuredBase
+            const base = normalizeBeatBaseTemplateOrder(configuredBase)
                 .replace(/^Beat Id\s*:\s*.*$/gim, '')
                 .replace(/^Description:/gm, 'Purpose:')
                 .replace(/\n{3,}/g, '\n\n')

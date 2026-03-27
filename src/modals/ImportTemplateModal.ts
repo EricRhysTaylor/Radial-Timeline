@@ -1,4 +1,4 @@
-import { App, ButtonComponent, DropdownComponent, Modal, SuggestModal, TFile, setIcon } from 'obsidian';
+import { App, ButtonComponent, DropdownComponent, Modal, Notice, SuggestModal, TFile, setIcon } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import type { ImportedTemplateCandidate } from '../utils/templateImport';
 import { buildImportedTemplateCandidate, buildImportedTemplateId, compactTemplatePathForStorage } from '../utils/templateImport';
@@ -51,8 +51,6 @@ export class ImportTemplateModal extends Modal {
     private templateNameTouched = false;
     private templateDescription = '';
     private templateDescriptionTouched = false;
-    private advancedPath = '';
-    private advancedPathTouched = false;
     private candidate: ImportedTemplateCandidate | null = null;
     private candidateLoading = false;
     private commitInFlight = false;
@@ -76,8 +74,6 @@ export class ImportTemplateModal extends Modal {
         this.templateNameTouched = false;
         this.templateDescription = '';
         this.templateDescriptionTouched = false;
-        this.advancedPath = '';
-        this.advancedPathTouched = false;
         this.candidate = null;
         this.candidateLoading = false;
         this.commitInFlight = false;
@@ -97,8 +93,7 @@ export class ImportTemplateModal extends Modal {
     }
 
     private getCandidatePath(): string {
-        const advancedPath = this.advancedPath.trim();
-        return advancedPath || this.sourcePath.trim();
+        return this.sourcePath.trim();
     }
 
     private getCandidateName(): string | undefined {
@@ -144,10 +139,6 @@ export class ImportTemplateModal extends Modal {
             if (!this.templateDescriptionTouched) {
                 this.templateDescription = candidate.layout.description || '';
             }
-            if (!this.advancedPathTouched) {
-                this.advancedPath = compactTemplatePathForStorage(this.plugin, sourcePath);
-            }
-
             this.candidate = candidate;
         } catch (error) {
             this.candidate = null;
@@ -161,11 +152,27 @@ export class ImportTemplateModal extends Modal {
     private async chooseFile(): Promise<void> {
         new TemplateFileSuggestModal(this.app, (selectedPath) => {
             this.sourcePath = selectedPath;
-            if (!this.advancedPathTouched) {
-                this.advancedPath = compactTemplatePathForStorage(this.plugin, selectedPath);
-            }
             void this.refreshCandidate();
         }).open();
+    }
+
+    private async handleDroppedTemplate(files: FileList | null): Promise<void> {
+        const dropped = files?.[0];
+        if (!dropped) return;
+
+        const filePath = (dropped as File & { path?: string }).path?.trim() || '';
+        const fileName = dropped.name || filePath.split(/[\\/]/).pop() || '';
+        if (!/\.(tex|ltx|latex)$/i.test(fileName)) {
+            new Notice('Drop a .tex template file to import.');
+            return;
+        }
+        if (!filePath) {
+            new Notice('Could not read the dropped file path.');
+            return;
+        }
+
+        this.sourcePath = filePath;
+        await this.refreshCandidate();
     }
 
     private async commit(mode: CommitMode): Promise<void> {
@@ -182,7 +189,10 @@ export class ImportTemplateModal extends Modal {
         const finalLayout: PandocLayoutTemplate = {
             ...this.candidate.layout,
             id,
-            path: this.candidate.layout.path.trim(),
+            name: this.templateName.trim() || this.candidate.layout.name,
+            preset: this.usageContext,
+            description: this.templateDescription.trim() || this.candidate.layout.description,
+            path: compactTemplatePathForStorage(this.plugin, this.getCandidatePath()) || this.candidate.layout.path.trim(),
             draft: mode === 'draft',
             origin: 'imported',
         };
@@ -215,18 +225,6 @@ export class ImportTemplateModal extends Modal {
 
         const meta = header.createDiv({ cls: 'ert-modal-meta' });
         meta.createSpan({ cls: 'ert-modal-meta-item', text: `Step ${this.step} of 4` });
-        meta.createSpan({
-            cls: 'ert-modal-meta-item',
-            text: this.candidateLoading
-                ? 'Checking...'
-                : this.candidate?.summary.state === 'blocked'
-                    ? 'Blocked'
-                    : this.candidate?.summary.state === 'warning'
-                        ? 'Needs attention'
-                        : this.candidate
-                            ? 'Ready'
-                            : 'Choose a file',
-        });
 
         this.renderStepRail(contentEl);
 
@@ -266,7 +264,7 @@ export class ImportTemplateModal extends Modal {
             });
 
         if (this.step < 4) {
-            new ButtonComponent(actions)
+            const nextButton = new ButtonComponent(actions)
                 .setButtonText('Next')
                 .setDisabled(this.commitInFlight || !this.canAdvanceToNextStep())
                 .onClick(() => {
@@ -275,6 +273,7 @@ export class ImportTemplateModal extends Modal {
                         this.render();
                     }
                 });
+            nextButton.buttonEl.addClass('ert-import-template-nextBtn');
         }
 
         actions.createDiv({ cls: 'ert-modal-actions-spacer' });
@@ -314,7 +313,7 @@ export class ImportTemplateModal extends Modal {
         const steps = ['Choose', 'Check', 'Set up', 'Save'];
         steps.forEach((label, index) => {
             const stateClass = this.step === index + 1 ? ' is-active' : this.step > index + 1 ? ' is-complete' : '';
-            const item = rail.createDiv({ cls: `ert-import-template-step${stateClass}` });
+            const item = rail.createDiv({ cls: `ert-import-template-step ert-import-template-step--${index + 1}${stateClass}` });
             const bg = item.createDiv({ cls: 'ert-import-template-step-bg' });
             setIcon(bg, this.getStepRailIcon(index + 1));
             const text = item.createDiv({ cls: 'ert-import-template-step-text' });
@@ -349,25 +348,50 @@ export class ImportTemplateModal extends Modal {
     }
 
     private renderChooseFileStep(panel: HTMLElement): void {
-        this.renderStepHero(panel, {
-            icon: 'file-text',
-            title: 'Choose template',
-            description: 'Pick the .tex file you want to bring into Publishing.',
+        const picker = panel.createEl('button', {
+            cls: 'ert-import-template-picker',
+            attr: { type: 'button' },
+        });
+        picker.addEventListener('click', () => { void this.chooseFile(); });
+        picker.addEventListener('dragenter', (event) => {
+            event.preventDefault();
+            picker.addClass('is-dragover');
+        });
+        picker.addEventListener('dragover', (event) => {
+            event.preventDefault();
+            picker.addClass('is-dragover');
+        });
+        picker.addEventListener('dragleave', (event) => {
+            const related = event.relatedTarget;
+            if (!(related instanceof Node) || !picker.contains(related)) {
+                picker.removeClass('is-dragover');
+            }
+        });
+        picker.addEventListener('drop', (event) => {
+            event.preventDefault();
+            picker.removeClass('is-dragover');
+            void this.handleDroppedTemplate(event.dataTransfer?.files || null);
         });
 
-        const card = panel.createDiv({ cls: 'ert-card ert-stack ert-stack--tight' });
-        card.createDiv({ cls: 'ert-label', text: 'Selected file' });
-        card.createDiv({
-            cls: `ert-field-note ert-import-template-selectedPath${this.getCandidatePath() ? '' : ' is-empty'}`,
-            text: this.getCandidatePath() || 'No file selected yet.',
+        const visual = picker.createDiv({ cls: 'ert-import-template-picker-visual' });
+        const iconWrap = visual.createDiv({ cls: 'ert-import-template-picker-icon' });
+        setIcon(iconWrap, 'scroll-text');
+
+        picker.createDiv({
+            cls: 'ert-import-template-picker-title',
+            text: this.getSelectedTemplateTitle(),
+        });
+        picker.createDiv({
+            cls: 'ert-import-template-picker-desc',
+            text: this.getCandidatePath() ? 'LaTeX template' : 'Choose a LaTeX template',
         });
 
-        const actions = card.createDiv({ cls: 'ert-import-template-inlineActions' });
-        const chooseButton = new ButtonComponent(actions)
-            .setButtonText('Choose file')
-            .setCta()
-            .onClick(() => { void this.chooseFile(); });
-        chooseButton.buttonEl.addClass('ert-pillBtn', 'ert-pillBtn--standard');
+        if (this.getCandidatePath()) {
+            picker.createDiv({
+                cls: 'ert-import-template-picker-meta',
+                text: this.getCandidatePath(),
+            });
+        }
     }
 
     private renderCheckStep(panel: HTMLElement): void {
@@ -425,7 +449,6 @@ export class ImportTemplateModal extends Modal {
         nameInput.addEventListener('input', () => {
             this.templateNameTouched = true;
             this.templateName = nameInput.value;
-            void this.refreshCandidate();
         });
 
         const usageCell = grid.createDiv({ cls: 'ert-gridForm__cell' });
@@ -438,48 +461,18 @@ export class ImportTemplateModal extends Modal {
         this.usageDropdown.onChange((value) => {
             this.usageContextTouched = true;
             this.usageContext = value as UsageContext;
-            void this.refreshCandidate();
         });
 
-        const descriptionCell = panel.createDiv({ cls: 'ert-gridForm__cell' });
+        const descriptionCell = panel.createDiv({ cls: 'ert-import-template-descriptionCell' });
         descriptionCell.createDiv({ cls: 'ert-label', text: 'Description' });
         const descriptionInput = descriptionCell.createEl('textarea', {
-            cls: 'ert-textarea ert-textarea--compact',
-            attr: { rows: '3' },
+            cls: 'ert-textarea ert-textarea--compact ert-import-template-descriptionInput',
+            attr: { rows: '2' },
         });
         descriptionInput.value = this.templateDescription;
         descriptionInput.addEventListener('input', () => {
             this.templateDescriptionTouched = true;
             this.templateDescription = descriptionInput.value;
-            void this.refreshCandidate();
-        });
-
-        if (this.candidate) {
-            const note = panel.createDiv({ cls: 'ert-field-note' });
-            note.setText(`Likely: ${this.getStyleHintLabel(this.candidate.detectedTemplate.styleHint)}`);
-        }
-
-        const advanced = panel.createEl('details', { cls: 'ert-import-template-advanced' });
-        const summary = advanced.createEl('summary', {
-            cls: 'ert-import-template-advanced-summary',
-            text: 'Advanced edit',
-        });
-        summary.setAttr('role', 'button');
-
-        const advancedCard = advanced.createDiv({ cls: 'ert-card ert-import-template-advanced-card ert-stack ert-stack--tight' });
-        advancedCard.createDiv({ cls: 'ert-label', text: 'Path override' });
-        const pathInput = advancedCard.createEl('input', {
-            cls: 'ert-input ert-input--full',
-            attr: { type: 'text', value: this.advancedPath || this.sourcePath },
-        });
-        pathInput.addEventListener('input', () => {
-            this.advancedPathTouched = true;
-            this.advancedPath = pathInput.value;
-            void this.refreshCandidate();
-        });
-        advancedCard.createDiv({
-            cls: 'ert-field-note',
-            text: 'Use this only if you need to store the template at a different path.',
         });
     }
 
@@ -600,21 +593,6 @@ export class ImportTemplateModal extends Modal {
         }
     }
 
-    private getStyleHintLabel(styleHint: DetectedTemplateStyleHint): string {
-        switch (styleHint) {
-            case 'chaptered':
-                return 'Chaptered book';
-            case 'book':
-                return 'Book layout';
-            case 'literary':
-                return 'Literary layout';
-            case 'manuscript':
-                return 'Submission manuscript';
-            default:
-                return 'Custom layout';
-        }
-    }
-
     private describeTraitVisual(trait: string): { icon: string; label: string } {
         const normalized = trait.toLowerCase();
         if (normalized.includes('header')) {
@@ -656,7 +634,7 @@ export class ImportTemplateModal extends Modal {
     private getStepRailIcon(step: number): string {
         switch (step) {
             case 1:
-                return 'file-text';
+                return 'scroll-text';
             case 2:
                 return 'check-circle';
             case 3:
@@ -666,6 +644,13 @@ export class ImportTemplateModal extends Modal {
             default:
                 return 'circle';
         }
+    }
+
+    private getSelectedTemplateTitle(): string {
+        const targetPath = this.getCandidatePath().trim();
+        if (!targetPath) return 'Choose template';
+        const segments = targetPath.split(/[\\/]/).filter(Boolean);
+        return segments.length > 0 ? segments[segments.length - 1] : targetPath;
     }
 
     private getCheckStatusMessage(candidate: ImportedTemplateCandidate): string {

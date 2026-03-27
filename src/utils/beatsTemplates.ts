@@ -30,6 +30,23 @@ function normalizeModelKey(s: string): string {
   return toBeatModelMatchKey(s);
 }
 
+export function normalizeBeatBaseTemplateOrder(template: string): string {
+  const lines = (template || '').split('\n');
+  const beatModelIndex = lines.findIndex((line) => /^Beat Model\s*:/i.test(line.trim()));
+  if (beatModelIndex === -1) return template;
+
+  const [beatModelLine] = lines.splice(beatModelIndex, 1);
+  const classIndex = lines.findIndex((line) => /^Class\s*:/i.test(line.trim()));
+  const idIndex = lines.findIndex((line) => /^ID\s*:/i.test(line.trim()));
+  const insertIndex = classIndex >= 0
+    ? classIndex + 1
+    : idIndex >= 0
+      ? idIndex + 1
+      : 0;
+  lines.splice(insertIndex, 0, beatModelLine);
+  return lines.join('\n');
+}
+
 /**
  * Resolve the BeatSystemConfig for the currently active system in settings.
  * Used by: settings UI editor, note generation (getMergedBeatYaml).
@@ -142,7 +159,9 @@ function buildBeatBody(beatInfo: PlotBeatInfo): string {
 export function getMergedBeatYaml(settings: RadialTimelineSettings): string {
   const configuredBase = settings.beatYamlTemplates?.base
     ?? DEFAULT_SETTINGS.beatYamlTemplates!.base;
-  const base = configuredBase.replace(/^Description:/gm, 'Purpose:');
+  const base = normalizeBeatBaseTemplateOrder(
+    configuredBase.replace(/^Description:/gm, 'Purpose:')
+  );
   const config = getBeatConfigForSystem(settings);
   const advanced = sanitizeBeatAdvancedForWrite(config.beatYamlAdvanced);
   return advanced.trim()
