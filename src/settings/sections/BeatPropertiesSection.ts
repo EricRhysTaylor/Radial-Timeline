@@ -2054,19 +2054,18 @@ export function renderStoryBeatsSection(params: {
         updateStageVisibility();
     };
 
-    const deleteCurrentSetBeatNotes = async (): Promise<void> => {
-        const activeTab = getActiveBeatWorkspaceTab();
-        if (!activeTab) {
+    const deleteCurrentSetBeatNotes = async (targetTab: LoadedBeatTab): Promise<void> => {
+        if (!targetTab) {
             new Notice('No active beat system selected.');
             return;
         }
 
-        const noteFiles = getBeatNoteFilesForLoadedTab(activeTab);
+        const noteFiles = getBeatNoteFilesForLoadedTab(targetTab);
         const confirmed = await openDeleteBeatNotesModal({
-            title: activeTab.name,
+            title: targetTab.name,
             noteFiles,
             actionLabel: 'Delete beat notes',
-            systemTag: activeTab.sourceKind === 'builtin' ? 'BUILT-IN SET' : 'BEAT SET',
+            systemTag: targetTab.name,
         });
 
         if (!confirmed) return;
@@ -2075,20 +2074,30 @@ export function renderStoryBeatsSection(params: {
         if (result.failed > 0) {
             console.error('[Beat Sets] Failed to trash beat notes:', result.errors);
         }
+        const nextActiveTabId = unloadBeatTab(plugin.settings, targetTab.tabId);
+        if (!nextActiveTabId) {
+            _currentInnerStage = 'library';
+        }
+        await plugin.saveSettings();
         invalidateBeatStructuralStatus();
         resetBeatAuditPanel?.();
         renderCustomConfig();
-        renderPreviewContent(activeTab.name);
+        const nextActiveTab = getActiveBeatWorkspaceTab();
+        if (nextActiveTab) {
+            renderPreviewContent(nextActiveTab.name);
+            updateTemplateButton(templateSetting, nextActiveTab.name);
+            updateBeatSystemCard(nextActiveTab.name, { resetStage: false });
+        }
         renderBeatYamlEditor();
         updateBeatHoverPreview?.();
         renderSavedBeatSystems();
-        updateTemplateButton(templateSetting, activeTab.name);
         renderBeatSystemTabs();
         renderStageSwitcher();
         updateStageVisibility();
         plugin.onSettingChanged(IMPACT_FULL);
         const parts = [`Moved ${result.trashed} beat note${result.trashed !== 1 ? 's' : ''} to trash.`];
         if (result.failed > 0) parts.push(`${result.failed} failed`);
+        parts.push(`"${targetTab.name}" closed.`);
         new Notice(parts.join(' '));
     };
 
@@ -2113,7 +2122,15 @@ export function renderStoryBeatsSection(params: {
             const iconEl = btn.createSpan({ cls: iconClass });
             setIcon(iconEl, status.icon);
             setTooltip(iconEl, status.tooltip);
-            btn.appendText(tab.name);
+            btn.createSpan({ cls: 'ert-mini-tab-label', text: tab.name });
+            const closeEl = btn.createSpan({ cls: 'ert-mini-tab-close', attr: { role: 'button', 'aria-label': `Delete beat notes for ${tab.name}` } });
+            setIcon(closeEl, 'circle-x');
+            setTooltip(closeEl, `Delete all beat notes for "${tab.name}" and close this tab.`);
+            closeEl.addEventListener('click', (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                void deleteCurrentSetBeatNotes(tab);
+            });
 
             btn.addEventListener('click', async () => { // SAFE: direct addEventListener; Settings lifecycle manages cleanup
                 if (isActive) return;
@@ -2131,25 +2148,6 @@ export function renderStoryBeatsSection(params: {
                 updateBeatSystemCard(tab.name);
                 renderBeatSystemTabs();
             });
-        });
-
-        const activeTab = getActiveBeatWorkspaceTab();
-        const deleteBtn = beatSystemTabs.createEl('button', {
-            cls: 'ert-mini-tab ert-mini-tab--icon-only ert-mini-tab--danger',
-            attr: {
-                type: 'button',
-                'aria-label': 'Delete all beat notes for current set',
-                ...(libraryMode || !activeTab ? { disabled: 'true' } : {})
-            }
-        });
-        const deleteIcon = deleteBtn.createSpan({ cls: 'ert-mini-tab-icon ert-beat-health-icon' });
-        setIcon(deleteIcon, 'circle-x');
-        setTooltip(deleteBtn, activeTab
-            ? `Delete all beat notes for "${activeTab.name}".`
-            : 'Select a system tab to delete its beat notes.');
-        deleteBtn.addEventListener('click', () => {
-            if (libraryMode || !activeTab) return;
-            void deleteCurrentSetBeatNotes();
         });
 
         const addBtn = beatSystemTabs.createEl('button', {
@@ -2805,11 +2803,11 @@ export function renderStoryBeatsSection(params: {
             modal.contentEl.addClass('ert-modal-container', 'ert-stack');
 
             const header = modal.contentEl.createDiv({ cls: 'ert-modal-header' });
-            header.createSpan({ cls: 'ert-modal-badge', text: systemTag ?? 'BEAT SET' });
+            header.createSpan({ cls: 'ert-modal-badge', text: systemTag ?? title });
             header.createDiv({ cls: 'ert-modal-title', text: actionLabel });
             header.createDiv({
                 cls: 'ert-modal-subtitle',
-                text: `Delete all beat notes for "${title}" from the active manuscript. This moves the notes to trash and keeps the system definition intact.`
+                text: 'This moves the beat notes to trash and keeps the set definition available in Add system.'
             });
 
             const body = modal.contentEl.createDiv({ cls: ['ert-panel', 'ert-panel--glass'] });
@@ -2817,25 +2815,15 @@ export function renderStoryBeatsSection(params: {
                 cls: 'ert-modal-subtitle',
                 text: `Scope: ${noteFiles.length} beat note${noteFiles.length !== 1 ? 's' : ''}`
             });
-            body.createDiv({ text: 'Delete beat notes only' });
-            body.createDiv({ text: 'The system or set definition is not deleted. Beat note files are moved to trash.' });
-
             if (customContent.notesWithTemplateCustomContent > 0 || customContent.notesWithExtraCustomContent > 0) {
                 const warn = body.createDiv({ cls: 'ert-purge-warning' });
-                if (customContent.notesWithTemplateCustomContent > 0) {
-                    const suffix = customContent.templateCustomKeys.length > 0
-                        ? ` (${customContent.templateCustomKeys.join(', ')})`
-                        : '';
-                    warn.createDiv({
-                        text: `${customContent.notesWithTemplateCustomContent} note${customContent.notesWithTemplateCustomContent !== 1 ? 's contain' : ' contains'} template custom properties with values${suffix}.`
-                    });
-                }
                 if (customContent.notesWithExtraCustomContent > 0) {
-                    const suffix = customContent.extraCustomKeys.length > 0
-                        ? ` (${customContent.extraCustomKeys.join(', ')})`
-                        : '';
                     warn.createDiv({
-                        text: `${customContent.notesWithExtraCustomContent} note${customContent.notesWithExtraCustomContent !== 1 ? 's contain' : ' contains'} non-template custom properties with values${suffix}.`
+                        text: 'Any custom properties with values will be lost, including all data entry in non-template fields.'
+                    });
+                } else {
+                    warn.createDiv({
+                        text: 'Any custom properties with values will be lost, including all data entry.'
                     });
                 }
             }

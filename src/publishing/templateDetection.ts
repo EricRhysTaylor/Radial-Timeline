@@ -11,16 +11,13 @@ export interface DetectedTemplateProfile {
     mockPreviewKind: DetectedTemplateMockPreviewKind;
 }
 
-function includesAny(source: string, patterns: RegExp[]): boolean {
-    return patterns.some((pattern) => pattern.test(source));
-}
-
 export function detectTemplateProfile(texContent: string): DetectedTemplateProfile {
     const source = texContent || '';
-    const normalized = source.toLowerCase();
 
     const hasBookClass = /\\documentclass(?:\[[^\]]*\])?\{book\}/i.test(source);
     const hasArticleClass = /\\documentclass(?:\[[^\]]*\])?\{article\}/i.test(source);
+    const hasMemoirClass = /\\documentclass(?:\[[^\]]*\])?\{memoir\}/i.test(source);
+    const hasKomaClass = /\\documentclass(?:\[[^\]]*\])?\{scrbook\}|\\documentclass(?:\[[^\]]*\])?\{scrreprt\}/i.test(source);
     const hasChapter = /\\chapter\b/i.test(source);
     const hasPart = /\\part\b/i.test(source);
     const hasSection = /\\section\b/i.test(source);
@@ -29,8 +26,14 @@ export function detectTemplateProfile(texContent: string): DetectedTemplateProfi
     const hasGeometry = /\\usepackage(?:\[[^\]]*\])?\{geometry\}|\\geometry\b/i.test(source);
     const hasFontspec = /\\usepackage(?:\[[^\]]*\])?\{fontspec\}|\\setmainfont|\\newfontface/i.test(source);
     const hasSetspace = /\\usepackage(?:\[[^\]]*\])?\{setspace\}|\\onehalfspacing|\\doublespacing|\\setstretch\b/i.test(source);
+    const hasMicrotype = /\\usepackage(?:\[[^\]]*\])?\{microtype\}|\\microtypesetup\b/i.test(source);
+    const hasParskip = /\\usepackage(?:\[[^\]]*\])?\{parskip\}|\\parskip\b|\\parindent\b/i.test(source);
+    const hasTwosideLayout = /\btwoside\b|\bopenright\b|\bopenany\b/i.test(source);
     const hasHeaderFooterCommands = /\\pagestyle|\\thispagestyle|\\headrulewidth|\\footrulewidth/i.test(source);
     const hasTitlePageSignals = /\$if\(title\)\$|\$title\$|\\maketitle|titlepage/i.test(source);
+    const hasTocSignals = /\\tableofcontents\b|\$if\(toc\)\$|\$toc-title\$/i.test(source);
+    const hasSceneBreakSignals = /\\scenebreak\b|\\scenebreak\b|\\asterism\b|\\rtSceneSep\b/i.test(source);
+    const hasDropCapSignals = /\\lettrine\b|\\dropcap\b/i.test(source);
     const screenplaySignals = [
         /\bint\.\b/i,
         /\bext\.\b/i,
@@ -41,6 +44,10 @@ export function detectTemplateProfile(texContent: string): DetectedTemplateProfi
     ].filter((pattern) => pattern.test(source)).length;
 
     const traits: string[] = [];
+    const addTrait = (trait: string, confidenceBoost = 0) => {
+        if (!traits.includes(trait)) traits.push(trait);
+        confidenceScore += confidenceBoost;
+    };
     let usageContext: DetectedTemplateUsageContext = 'unknown';
     let styleHint: DetectedTemplateStyleHint = 'custom';
     let mockPreviewKind: DetectedTemplateMockPreviewKind = 'generic';
@@ -48,9 +55,10 @@ export function detectTemplateProfile(texContent: string): DetectedTemplateProfi
 
     if (screenplaySignals >= 2) {
         usageContext = 'screenplay';
-        traits.push('Scene headings detected', 'Dialogue-first formatting');
+        addTrait('Scene headings detected');
+        addTrait('Dialogue-first formatting');
         confidenceScore += screenplaySignals >= 3 ? 3 : 2;
-    } else if (hasBookClass || hasChapter || hasPart || hasSection) {
+    } else if (hasBookClass || hasMemoirClass || hasKomaClass || hasChapter || hasPart || hasSection) {
         usageContext = 'novel';
         confidenceScore += 1;
     }
@@ -58,49 +66,71 @@ export function detectTemplateProfile(texContent: string): DetectedTemplateProfi
     if (hasChapter) {
         styleHint = 'chaptered';
         mockPreviewKind = 'chaptered';
-        traits.push('Chapter-based structure');
-        confidenceScore += 2;
+        addTrait('Chapter-based structure', 2);
         if (hasPart) {
-            traits.push('Part breaks detected');
-            confidenceScore += 1;
+            addTrait('Part breaks detected', 1);
         }
-    } else if (hasBookClass && (hasFancyhdr || hasHeaderFooterCommands)) {
+    } else if ((hasBookClass || hasMemoirClass || hasKomaClass) && (hasFancyhdr || hasHeaderFooterCommands)) {
         styleHint = 'book';
         mockPreviewKind = 'book';
-        traits.push('Running headers detected');
-        confidenceScore += 2;
-    } else if (hasTitlesec || (hasFontspec && hasFancyhdr)) {
+        addTrait('Running headers detected', 2);
+    } else if (hasTitlesec || (hasFontspec && (hasFancyhdr || hasHeaderFooterCommands)) || hasMicrotype || hasDropCapSignals) {
         styleHint = 'literary';
         mockPreviewKind = 'literary';
-        traits.push('Refined chapter styling');
-        confidenceScore += 2;
+        addTrait('Refined heading styles', 2);
     } else if ((hasArticleClass || !hasBookClass) && hasGeometry && hasSetspace && !hasChapter && !hasFancyhdr) {
         styleHint = 'manuscript';
         mockPreviewKind = 'manuscript';
-        traits.push('Minimal manuscript formatting');
-        confidenceScore += 2;
+        addTrait('Minimal manuscript formatting', 2);
     }
 
-    if (hasBookClass) {
-        traits.push('Book-style page structure');
-        confidenceScore += 1;
+    if (hasBookClass || hasMemoirClass || hasKomaClass) {
+        addTrait('Book-style page structure', 1);
+    }
+    if (hasFancyhdr || hasHeaderFooterCommands) {
+        addTrait('Running headers detected');
     }
     if (hasFontspec) {
-        traits.push('Book-style typography');
-        confidenceScore += 1;
+        addTrait('OpenType fonts configured', 1);
+    }
+    if (hasMicrotype) {
+        addTrait('Fine typography adjustments');
     }
     if (hasGeometry && styleHint === 'manuscript') {
-        traits.push('Wide page spacing');
+        addTrait('Wide page spacing');
+    } else if (hasGeometry) {
+        addTrait('Custom margins detected');
+    }
+    if (hasSetspace) {
+        addTrait('Adjusted line spacing');
+    }
+    if (hasTwosideLayout) {
+        addTrait('Two-sided print layout');
+    }
+    if (hasParskip) {
+        addTrait('Paragraph spacing tuned');
     }
     if (hasTitlePageSignals) {
-        traits.push('Front-page metadata detected');
-        confidenceScore += 1;
+        addTrait('Front-page metadata detected', 1);
+    }
+    if (hasTocSignals) {
+        addTrait('Contents page support');
+    }
+    if (hasSceneBreakSignals) {
+        addTrait('Scene break styling');
+    }
+    if (hasSection && !hasChapter) {
+        addTrait('Section-based structure');
+    }
+    if (hasDropCapSignals) {
+        addTrait('Decorative opening styling');
     }
 
     if (styleHint === 'custom' && traits.length === 0) {
-        traits.push('No strong structure detected', 'Custom formatting');
+        addTrait('No strong structure detected');
+        addTrait('Custom formatting');
     } else if (styleHint === 'custom') {
-        traits.push('Custom formatting');
+        addTrait('Custom formatting');
     }
 
     if (usageContext === 'screenplay' && styleHint === 'custom') {

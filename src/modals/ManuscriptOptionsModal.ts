@@ -324,7 +324,7 @@ export class ManuscriptOptionsModal extends Modal {
             showToc: isMarkdownManuscript,
             showPublishing: isManuscript,
             showWordCount: isManuscript,
-            showIncludeMatter: isManuscript,
+            showIncludeMatter: isPdfManuscript,
             showExportCleanup: isManuscript,
             showSavePrecompile: isPdfManuscript,
             showSplit: isManuscript,
@@ -349,7 +349,7 @@ export class ManuscriptOptionsModal extends Modal {
             if (mode.isPdfManuscript && !this.hasTouchedMatterToggle) {
                 this.includeMatterUserChoice = false;
             }
-            this.includeMatter = this.includeMatterUserChoice;
+            this.includeMatter = mode.isPdfManuscript ? this.includeMatterUserChoice : false;
             if (!mode.isPdfManuscript) {
                 this.selectedLayoutId = undefined;
             }
@@ -2079,6 +2079,7 @@ Sarah stood at the window, watching the world wake up.`;
             return;
         }
         void this.app.workspace.openLinkText(filePath, '', false);
+        this.close();
     }
 
     private registerPointerEvents(): void {

@@ -346,9 +346,14 @@ export class ImportTemplateModal extends Modal {
             previewKind?: DetectedTemplateMockPreviewKind;
             title: string;
             description: string;
+            tone?: 'ready' | 'attention' | 'blocked';
+            statusLabel?: string;
+            notes?: string[];
         }
     ): void {
-        const hero = panel.createDiv({ cls: 'ert-import-template-stepHero' });
+        const hero = panel.createDiv({
+            cls: `ert-import-template-stepHero${options.tone ? ` ert-import-template-stepHero--${options.tone}` : ''}`,
+        });
         const visual = hero.createDiv({ cls: 'ert-import-template-stepHero-visual' });
 
         if (options.previewKind) {
@@ -360,6 +365,15 @@ export class ImportTemplateModal extends Modal {
 
         hero.createDiv({ cls: 'ert-import-template-stepHero-title', text: options.title });
         hero.createDiv({ cls: 'ert-import-template-stepHero-desc', text: options.description });
+        if (options.statusLabel) {
+            hero.createDiv({ cls: 'ert-import-template-stepHero-status', text: options.statusLabel });
+        }
+        if (options.notes && options.notes.length > 0) {
+            const notes = hero.createDiv({ cls: 'ert-import-template-stepHero-notes' });
+            options.notes.forEach((note) => {
+                notes.createDiv({ cls: 'ert-import-template-stepHero-note', text: note });
+            });
+        }
     }
 
     private renderChooseFileStep(panel: HTMLElement): void {
@@ -420,34 +434,17 @@ export class ImportTemplateModal extends Modal {
         this.renderStepHero(panel, {
             icon: status === 'blocked' ? 'octagon-alert' : status === 'warning' ? 'triangle-alert' : 'badge-check',
             title: 'Check template',
-            description: 'Review the check results and the inferred layout.',
-        });
-
-        const card = panel.createDiv({ cls: 'ert-card ert-stack ert-stack--tight' });
-        card.createDiv({
-            cls: 'ert-card__header',
-            text: status === 'blocked'
+            description: this.candidate
+                ? this.getCheckStatusMessage(this.candidate)
+                : 'Choose a template file first.',
+            tone: status === 'blocked' ? 'blocked' : status === 'warning' ? 'attention' : 'ready',
+            statusLabel: status === 'blocked'
                 ? 'Blocked'
                 : status === 'warning'
                     ? 'Needs attention'
                     : 'Ready',
+            notes: (this.candidate?.issues || []).slice(0, 4).map(issue => this.formatIssueMessage(issue.message)),
         });
-        card.createDiv({
-            cls: 'ert-field-note',
-            text: this.candidate
-                ? this.getCheckStatusMessage(this.candidate)
-                : 'Choose a template file first.',
-        });
-
-        if ((this.candidate?.issues.length || 0) > 0) {
-            const list = card.createDiv({ cls: 'ert-stack ert-stack--tight' });
-            this.candidate?.issues.slice(0, 4).forEach(issue => {
-                list.createDiv({
-                    cls: 'ert-field-note',
-                    text: this.formatIssueMessage(issue.message),
-                });
-            });
-        }
 
         this.renderDetectedLayoutCard(panel);
     }
@@ -498,33 +495,52 @@ export class ImportTemplateModal extends Modal {
     }
 
     private renderSaveStep(panel: HTMLElement): void {
-        this.renderStepHero(panel, {
-            previewKind: this.candidate?.detectedTemplate.mockPreviewKind || 'generic',
-            title: 'Save template',
-            description: 'Review the summary and decide whether to activate it now.',
-        });
-
-        const summary = panel.createDiv({ cls: 'ert-card ert-stack ert-stack--tight' });
+        const candidate = this.candidate;
+        const summary = panel.createDiv({ cls: 'ert-card ert-import-template-summary ert-stack ert-stack--tight' });
         summary.createDiv({ cls: 'ert-card__header', text: 'Final summary' });
-        summary.createDiv({
-            cls: 'ert-field-note',
-            text: this.candidate?.profile.name || this.templateName || 'Template',
-        });
-        summary.createDiv({
-            cls: 'ert-field-note',
-            text: `Usage context: ${this.formatUsageContext(this.usageContext)}`,
-        });
-        summary.createDiv({
-            cls: 'ert-field-note',
-            text: this.candidate?.canActivate
-                ? 'Ready to save and activate.'
-                : 'You can save this template now and activate it after fixing the issues.',
+
+        const top = summary.createDiv({ cls: 'ert-import-template-summary-top' });
+        const details = top.createDiv({ cls: 'ert-import-template-summary-details' });
+        const preview = top.createDiv({ cls: 'ert-import-template-summary-preview' });
+
+        this.renderMockPreview(preview, candidate?.detectedTemplate.mockPreviewKind || 'generic', {
+            compact: true,
+            showLabel: false,
         });
 
-        if ((this.candidate?.issues.length || 0) > 0) {
-            const list = summary.createDiv({ cls: 'ert-stack ert-stack--tight' });
-            this.candidate?.issues.slice(0, 3).forEach(issue => {
-                list.createDiv({ cls: 'ert-field-note', text: this.formatIssueMessage(issue.message) });
+        const rows = [
+            { label: 'Name', value: candidate?.profile.name || this.templateName || 'Template' },
+            { label: 'Usage', value: this.formatUsageContext(this.usageContext) },
+            { label: 'File', value: this.getCandidatePath() || candidate?.layout.path || 'No file selected' },
+            { label: 'Description', value: this.templateDescription.trim() || candidate?.layout.description || 'No description added' },
+            { label: 'Detected layout', value: candidate ? this.getLikelyLayoutLabel(candidate.detectedTemplate.styleHint) : 'Custom / unknown layout' },
+            { label: 'Confidence', value: candidate ? this.formatConfidence(candidate.detectedTemplate.confidence) : 'Low' },
+        ];
+        rows.forEach((row) => {
+            const item = details.createDiv({ cls: 'ert-import-template-summary-row' });
+            item.createDiv({ cls: 'ert-import-template-summary-label', text: row.label });
+            item.createDiv({ cls: 'ert-import-template-summary-value', text: row.value });
+        });
+
+        if ((candidate?.detectedTemplate.traits.length || 0) > 0) {
+            const traitSection = summary.createDiv({ cls: 'ert-import-template-summary-traits' });
+            traitSection.createDiv({ cls: 'ert-import-template-summary-subtitle', text: 'Detected formatting' });
+            const traits = traitSection.createDiv({ cls: 'ert-import-template-traitGrid ert-import-template-traitGrid--summary' });
+            candidate?.detectedTemplate.traits.slice(0, 5).forEach(trait => {
+                const visual = this.describeTraitVisual(trait);
+                const item = traits.createDiv({ cls: 'ert-import-template-traitTile ert-import-template-traitTile--summary' });
+                const iconWrap = item.createDiv({ cls: 'ert-import-template-traitIcon ert-import-template-traitIcon--summary' });
+                setIcon(iconWrap, visual.icon);
+                item.createDiv({ cls: 'ert-import-template-traitLabel', text: visual.label });
+                item.createDiv({ cls: 'ert-import-template-summary-traitText', text: trait });
+            });
+        }
+
+        if ((candidate?.issues.length || 0) > 0) {
+            const issueSection = summary.createDiv({ cls: 'ert-import-template-summary-issues' });
+            issueSection.createDiv({ cls: 'ert-import-template-summary-subtitle', text: 'Open items' });
+            candidate?.issues.slice(0, 3).forEach(issue => {
+                issueSection.createDiv({ cls: 'ert-field-note', text: this.formatIssueMessage(issue.message) });
             });
         }
     }
@@ -556,11 +572,20 @@ export class ImportTemplateModal extends Modal {
         }
     }
 
-    private renderMockPreview(container: HTMLElement, kind: DetectedTemplateMockPreviewKind): void {
+    private renderMockPreview(
+        container: HTMLElement,
+        kind: DetectedTemplateMockPreviewKind,
+        options: { compact?: boolean; showLabel?: boolean } = {},
+    ): void {
         const wrap = container.createDiv({ cls: 'ert-import-template-mock-wrap' });
-        wrap.createDiv({ cls: 'ert-import-template-mock-label', text: 'Approximate preview' });
+        if (options.compact) {
+            wrap.addClass('is-compact');
+        }
+        if (options.showLabel !== false) {
+            wrap.createDiv({ cls: 'ert-import-template-mock-label', text: 'Approximate preview' });
+        }
 
-        const mock = wrap.createDiv({ cls: `ert-import-template-mock ert-import-template-mock--${kind}` });
+        const mock = wrap.createDiv({ cls: `ert-import-template-mock ert-import-template-mock--${kind}${options.compact ? ' is-compact' : ''}` });
         const page = mock.createDiv({ cls: 'ert-import-template-mock-page' });
         if (kind === 'book' || kind === 'chaptered') {
             page.createDiv({ cls: 'ert-import-template-mock-header-line' });
@@ -625,11 +650,23 @@ export class ImportTemplateModal extends Modal {
         if (normalized.includes('typography') || normalized.includes('font')) {
             return { icon: 'type', label: 'Type' };
         }
+        if (normalized.includes('margin') || normalized.includes('print layout')) {
+            return { icon: 'scan-line', label: 'Layout' };
+        }
         if (normalized.includes('metadata') || normalized.includes('front-page')) {
             return { icon: 'badge-info', label: 'Metadata' };
         }
+        if (normalized.includes('contents')) {
+            return { icon: 'list', label: 'Contents' };
+        }
         if (normalized.includes('spacing')) {
             return { icon: 'move-horizontal', label: 'Spacing' };
+        }
+        if (normalized.includes('scene break')) {
+            return { icon: 'separator-horizontal', label: 'Breaks' };
+        }
+        if (normalized.includes('heading')) {
+            return { icon: 'heading', label: 'Headings' };
         }
         if (normalized.includes('dialogue') || normalized.includes('scene')) {
             return { icon: 'message-square', label: 'Dialogue' };

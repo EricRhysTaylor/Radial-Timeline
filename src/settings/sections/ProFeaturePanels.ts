@@ -1725,7 +1725,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
     publishingStagesPanel.style.order = '5';
     const statusShell = publishingStagesPanel.createDiv({ cls: 'ert-publishing-status-shell' });
     const statusGrid = statusShell.createDiv({ cls: 'ert-publishing-status-grid' });
-    const setupActionRow = statusShell.createDiv({ cls: 'ert-publishing-status-action' });
+    const setupActionRow = publishingStagesPanel.createDiv({ cls: 'ert-publishing-status-action' });
 
     const pandocPanel = lockPanel(section.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` }));
     pandocPanel.style.order = '10';
@@ -2859,6 +2859,9 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
 
             if (!isBundled) {
                 s.addExtraButton(btn => {
+                    if (isImported) {
+                        btn.extraSettingsEl.addClass('ert-layout-imported-trash');
+                    }
                     btn.setIcon('trash');
                     btn.setTooltip('Remove layout');
                     btn.onClick(async () => {

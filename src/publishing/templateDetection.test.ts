@@ -16,6 +16,7 @@ describe('detectTemplateProfile', () => {
         expect(detected.mockPreviewKind).toBe('chaptered');
         expect(detected.confidence).toBe('high');
         expect(detected.traits).toContain('Chapter-based structure');
+        expect(detected.traits).toContain('Running headers detected');
     });
 
     it('detects a simple manuscript template', () => {
@@ -31,6 +32,22 @@ describe('detectTemplateProfile', () => {
         expect(detected.mockPreviewKind).toBe('manuscript');
         expect(detected.confidence === 'medium' || detected.confidence === 'high').toBe(true);
         expect(detected.traits).toContain('Minimal manuscript formatting');
+    });
+
+    it('surfaces richer formatting traits when extra layout signals are present', () => {
+        const detected = detectTemplateProfile([
+            '\\documentclass[twoside,openright]{book}',
+            '\\usepackage{fontspec}',
+            '\\usepackage{microtype}',
+            '\\usepackage{geometry}',
+            '\\usepackage{parskip}',
+            '\\tableofcontents',
+            '$body$',
+        ].join('\n'));
+
+        expect(detected.traits).toContain('OpenType fonts configured');
+        expect(detected.traits).toContain('Book-style page structure');
+        expect(detected.traits.some((trait) => trait.includes('margins') || trait.includes('spacing') || trait.includes('print layout'))).toBe(true);
     });
 
     it('falls back to custom unknown when there are no strong signals', () => {
