@@ -2078,7 +2078,7 @@ Sarah stood at the window, watching the world wake up.`;
             new Notice(`File not found: ${filePath}`);
             return;
         }
-        void this.app.workspace.openLinkText(filePath, '', false);
+        void this.app.workspace.openLinkText(filePath, '', 'tab');
         this.close();
     }
 
