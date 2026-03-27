@@ -1040,38 +1040,41 @@ export function renderStoryBeatsSection(params: {
         // ── Design guidance (keep concise; long boilerplate lives in Preview stage) ──
         headerRow.createDiv({
             cls: 'ert-beat-template-desc',
-            text: 'Create beats from the row at the bottom: enter a beat name, optional range, choose an act, then click + (or press Enter).'
-        });
-        headerRow.createDiv({
-            cls: 'ert-beat-template-examples',
-            text: 'Drag beats to reorder or drop them into another act. Use Beat notes below to create or repair beat files in your vault.'
+            text: 'Create beats from the row at the bottom: enter a beat name, optional range, choose an act, then click + (or press Enter). Drag beats to reorder or drop them into another act. Use Beat notes below to create or repair beat files in your vault.'
         });
         const actSet = new Set(getActiveCustomBeats().map(b => b.act));
         const beatCount = getActiveCustomBeats().length;
-        if (beatCount > 0) {
-            headerRow.createDiv({
-                cls: 'ert-beat-template-meta',
-                text: `${beatCount} beats · ${actSet.size} act${actSet.size !== 1 ? 's' : ''}`
-            });
-        }
+        const countSummary = beatCount > 0
+            ? `${beatCount} beats · ${actSet.size} act${actSet.size !== 1 ? 's' : ''}`
+            : '';
         const designContext = getCurrentDesignContext();
         const designManuscriptState = getManuscriptAdvisoryState(designContext.systemName, designContext.loadedTab);
         if (designManuscriptState) {
             const statusLine = headerRow.createDiv({
                 cls: `ert-preview-status-line ert-preview-status-line--${designManuscriptState.tone} ert-beat-template-status`
             });
-            appendPreviewStatus(statusLine, designManuscriptState);
+            appendPreviewStatus(statusLine, {
+                ...designManuscriptState,
+                text: countSummary.length > 0
+                    ? `${countSummary} — ${designManuscriptState.text}`
+                    : designManuscriptState.text,
+            });
             const structuralStatus = getBeatStructuralStatus(designContext.systemName, { loadedTab: designContext.loadedTab });
             if (structuralStatus.summary.misalignedCount > 0) {
                 const placementLine = headerRow.createDiv({
-                    cls: 'ert-preview-status-line ert-preview-status-line--muted ert-beat-template-status'
+                    cls: 'ert-preview-status-line ert-preview-status-line--warning ert-beat-template-status'
                 });
                 appendPreviewStatus(placementLine, {
                     text: `${structuralStatus.summary.misalignedCount} beat${structuralStatus.summary.misalignedCount !== 1 ? 's are' : ' is'} placed in a different act in the manuscript.`,
-                    tone: 'muted',
+                    tone: 'warning',
                     icon: 'circle-alert',
                 });
             }
+        } else if (countSummary.length > 0) {
+            headerRow.createDiv({
+                cls: 'ert-beat-template-meta',
+                text: countSummary,
+            });
         }
 
         // Update health icon from current beat-note audit counters.
@@ -1357,7 +1360,6 @@ export function renderStoryBeatsSection(params: {
 
                             if (actAligned) {
                                 rowState = 'synced';
-                                rowNotices.push('Beat note aligned (Act matches). Prefix numbers are cosmetic.');
                             } else {
                                 rowState = 'misaligned';
                                 rowNotices.push(`Placed in Act ${existingAct} in the manuscript. Template suggests ${actLabels[expectedAct - 1]}.`);
@@ -4285,7 +4287,7 @@ export function renderStoryBeatsSection(params: {
                 : 0;
             const effectiveClean = Math.max(0, s.clean - emptyOnlyCount);
 
-            // Note status summary in one line
+            // Properties summary line
             const healthLevel = (s.notesUnsafe > 0)
                 ? 'unsafe'
                 : (s.notesMissingIds > 0 || s.notesDuplicateIds > 0)
@@ -4297,15 +4299,23 @@ export function renderStoryBeatsSection(params: {
                         : 'clean';
             const healthLabels: Record<string, string> = {
                 'clean': 'Clean',
-                'mixed': 'Some notes need cleanup',
-                'needs-attention': 'Needs attention',
-                'critical': 'Critical issues detected',
+                'mixed': 'Some cleanup needed',
+                'needs-attention': 'Missing required properties',
+                'critical': 'Critical property issues',
                 'unsafe': 'Unsafe notes detected',
             };
             const headerEl = resultsEl.createDiv({ cls: 'ert-audit-result-header' });
-            const healthEl = headerEl.createSpan({ cls: `ert-audit-health ert-audit-health--${healthLevel}` });
-            healthEl.textContent = `Note status: ${healthLabels[healthLevel]}`;
-            headerEl.createSpan({ text: ` · Scope: ${getAuditScopeDisplay()}`, cls: 'ert-audit-summary' });
+            headerEl.createSpan({ text: `Scope: ${getAuditScopeDisplay()}`, cls: 'ert-audit-summary' });
+
+            const propertiesLine = resultsEl.createDiv({
+                cls: healthLevel === 'clean'
+                    ? 'ert-audit-clean'
+                    : `ert-audit-health ert-audit-health--${healthLevel}`
+            });
+            propertiesLine.textContent = healthLevel === 'clean'
+                ? 'Note properties: Clean — all notes match the current property rules.'
+                : `Note properties: ${healthLabels[healthLevel]}.`;
+
             for (const line of buildStructureStatusLines()) {
                 resultsEl.createDiv({
                     text: line,
@@ -4380,10 +4390,6 @@ export function renderStoryBeatsSection(params: {
                 && s.notesDuplicateIds === 0
                 && emptyValueNotes === 0
             ) {
-                resultsEl.createDiv({
-                    text: 'All notes match the current property rules.',
-                    cls: 'ert-audit-clean'
-                });
                 return;
             }
 
@@ -5849,6 +5855,7 @@ export function renderStoryBeatsSection(params: {
 
             if (summary.matchedCount === 0 && !hasMissingModel) {
                 // Scenario A: Fresh — no existing files
+                setting.settingEl.style.opacity = '1';
                 setting.setDesc(baseDesc);
                 setPrimaryDesignButton(
                     'Create beat notes',
@@ -5870,6 +5877,7 @@ export function renderStoryBeatsSection(params: {
 
             if (allSynced) {
                 // Scenario B: All synced — nothing to do
+                setting.settingEl.style.opacity = '0.68';
                 statusDesc = `All ${summary.expectedCount} beat notes are synced.`;
                 if (createTemplatesButton) {
                     setPrimaryDesignButton(
@@ -5881,6 +5889,7 @@ export function renderStoryBeatsSection(params: {
                 }
             } else if (hasNew) {
                 // Scenario D: Has new beats to create
+                setting.settingEl.style.opacity = '1';
                 if (missingInlineSummary) {
                     statusDesc += ` ${missingInlineSummary}`;
                 }
@@ -5896,6 +5905,7 @@ export function renderStoryBeatsSection(params: {
                 }
             } else {
                 // Scenario C: All matched, some misaligned — no new beats
+                setting.settingEl.style.opacity = '1';
                 if (createTemplatesButton) {
                     setPrimaryDesignButton(
                         createTemplatesButton.buttonEl.textContent || 'Create beat notes',

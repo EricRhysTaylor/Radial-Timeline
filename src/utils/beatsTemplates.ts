@@ -241,6 +241,46 @@ function generatePlotNoteContent(
   return frontmatter + buildBeatBody(beatInfo);
 }
 
+function extractBeatModelFromFrontmatter(content: string): string | null {
+  const match = content.match(/^Beat Model\s*:\s*(.+)$/m);
+  if (!match) return null;
+  const value = match[1]?.trim() ?? '';
+  return value.length > 0 ? value : null;
+}
+
+async function findAvailableBeatNotePath(
+  vault: Vault,
+  targetFolder: string,
+  initialPrefix: string,
+  safeBeatName: string,
+  beatModelName: string
+): Promise<{ path: string | null; skippedExisting: boolean }> {
+  const match = initialPrefix.match(/^(.+)\.(\d+)$/);
+  const majorPrefix = match?.[1] ?? initialPrefix;
+  let minorIndex = match ? Number.parseInt(match[2], 10) || 1 : 1;
+
+  for (let attempts = 0; attempts < 200; attempts++) {
+    const candidatePrefix = formatBeatDecimalPrefix(majorPrefix, minorIndex, 2);
+    const filename = `${candidatePrefix} ${safeBeatName}.md`;
+    const filePath = targetFolder ? `${targetFolder}/${filename}` : filename;
+    const normalizedPath = normalizePath(filePath);
+    const existingFile = vault.getAbstractFileByPath(normalizedPath);
+    if (!existingFile) {
+      return { path: normalizedPath, skippedExisting: false };
+    }
+    if (existingFile instanceof TFile) {
+      const content = await vault.cachedRead(existingFile);
+      const existingBeatModel = extractBeatModelFromFrontmatter(content);
+      if (existingBeatModel && normalizeModelKey(existingBeatModel) === normalizeModelKey(beatModelName)) {
+        return { path: null, skippedExisting: true };
+      }
+    }
+    minorIndex += 1;
+  }
+
+  throw new Error(`Could not find an available filename for beat "${safeBeatName}" after 200 attempts.`);
+}
+
 /**
  * Determine Act number based on beat position
  * Roughly: first third = Act 1, middle third = Act 2, final third = Act 3
@@ -411,16 +451,19 @@ export async function createBeatNotesFromSet(
     // Use canonical title without "Act X:" prefix for filename
     const displayName = stripActPrefix(beatName);
     const safeBeatName = sanitizeBeatFilenameSegment(displayName);
-    const filename = `${beatNumber} ${safeBeatName}.md`;
-    const filePath = targetFolder ? `${targetFolder}/${filename}` : filename;
-    const normalizedPath = normalizePath(filePath);
-
-    // Check if file already exists
-    const existingFile = vault.getAbstractFileByPath(normalizedPath);
-    if (existingFile) {
+    const resolvedPath = await findAvailableBeatNotePath(
+      vault,
+      targetFolder,
+      beatNumber,
+      safeBeatName,
+      beatModelName
+    );
+    if (resolvedPath.skippedExisting || !resolvedPath.path) {
       skipped++;
       continue;
     }
+    const normalizedPath = resolvedPath.path;
+    const filename = normalizedPath.split('/').pop() ?? `${beatNumber} ${safeBeatName}.md`;
 
     // Generate full note content with frontmatter and body
     const content = generatePlotNoteContent(beatInfo, act, beatModelName, options?.beatTemplate);
