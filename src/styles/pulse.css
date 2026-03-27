@@ -379,6 +379,11 @@
   gap: 12px;
 }
 
+.rt-manuscript-toggle-row.rt-hidden,
+.rt-sub-card-note.rt-hidden {
+  display: none;
+}
+
 .rt-manuscript-toggle-label {
   font-size: 0.9rem;
   color: var(--text-normal);

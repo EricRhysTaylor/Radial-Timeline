@@ -691,7 +691,7 @@ export class ManuscriptOptionsModal extends Modal {
             });
         this.artifactHelperEl = exportControlsCard.createDiv({
             cls: 'rt-sub-card-note',
-            text: 'Saves both pre-sanitize (__compiled__) and Pandoc-ready (__sanitized__) Markdown files.'
+            text: 'Saves compiled and sanitized Markdown artifacts alongside the PDF.'
         });
 
         this.exportCleanupCard = publishingBody.createDiv({ cls: 'ert-manuscript-rule-block ert-manuscript-rule-block--cleanup' });
