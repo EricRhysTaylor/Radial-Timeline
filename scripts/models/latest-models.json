@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-03-26T01:41:20.411Z",
+  "generatedAt": "2026-03-27T14:06:54.492Z",
   "summary": {
-    "openai": 125,
+    "openai": 122,
     "anthropic": 9,
-    "google": 47
+    "google": 48
   },
   "models": [
     {
@@ -140,17 +140,6 @@
     },
     {
       "provider": "openai",
-      "id": "gpt-4-0125-preview",
-      "raw": {
-        "id": "gpt-4-0125-preview",
-        "object": "model",
-        "created": 1706037612,
-        "owned_by": "system"
-      },
-      "createdAt": "2024-01-23T19:20:12.000Z"
-    },
-    {
-      "provider": "openai",
       "id": "gpt-4-0613",
       "raw": {
         "id": "gpt-4-0613",
@@ -159,17 +148,6 @@
         "owned_by": "openai"
       },
       "createdAt": "2023-06-12T16:54:56.000Z"
-    },
-    {
-      "provider": "openai",
-      "id": "gpt-4-1106-preview",
-      "raw": {
-        "id": "gpt-4-1106-preview",
-        "object": "model",
-        "created": 1698957206,
-        "owned_by": "system"
-      },
-      "createdAt": "2023-11-02T20:33:26.000Z"
     },
     {
       "provider": "openai",
@@ -192,17 +170,6 @@
         "owned_by": "system"
       },
       "createdAt": "2024-04-08T18:41:17.000Z"
-    },
-    {
-      "provider": "openai",
-      "id": "gpt-4-turbo-preview",
-      "raw": {
-        "id": "gpt-4-turbo-preview",
-        "object": "model",
-        "created": 1706037777,
-        "owned_by": "system"
-      },
-      "createdAt": "2024-01-23T19:22:57.000Z"
     },
     {
       "provider": "openai",
@@ -2571,6 +2538,28 @@
       },
       "label": "Gemini 3.1 Flash Lite Preview",
       "inputTokenLimit": 1048576,
+      "outputTokenLimit": 65536
+    },
+    {
+      "provider": "google",
+      "id": "gemini-3.1-flash-live-preview",
+      "raw": {
+        "name": "models/gemini-3.1-flash-live-preview",
+        "version": "3.1-flash-live-03-2026",
+        "displayName": "Gemini 3.1 Flash Live Preview",
+        "description": "Gemini 3.1 Flash Live Preview",
+        "inputTokenLimit": 131072,
+        "outputTokenLimit": 65536,
+        "supportedGenerationMethods": [
+          "bidiGenerateContent"
+        ],
+        "temperature": 1,
+        "topP": 0.95,
+        "topK": 64,
+        "maxTemperature": 2
+      },
+      "label": "Gemini 3.1 Flash Live Preview",
+      "inputTokenLimit": 131072,
       "outputTokenLimit": 65536
     },
     {

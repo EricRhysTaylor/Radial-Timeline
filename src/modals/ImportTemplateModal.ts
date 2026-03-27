@@ -54,6 +54,7 @@ export class ImportTemplateModal extends Modal {
     private candidate: ImportedTemplateCandidate | null = null;
     private candidateLoading = false;
     private commitInFlight = false;
+    private candidateRequestToken = 0;
     private readonly onCommit: (commit: ImportedTemplateCommit) => Promise<void> | void;
 
     private usageDropdown?: DropdownComponent;
@@ -77,6 +78,7 @@ export class ImportTemplateModal extends Modal {
         this.candidate = null;
         this.candidateLoading = false;
         this.commitInFlight = false;
+        this.candidateRequestToken += 1;
         const { contentEl, modalEl, titleEl } = this;
         contentEl.empty();
         titleEl.setText('');
@@ -89,6 +91,7 @@ export class ImportTemplateModal extends Modal {
     }
 
     onClose(): void {
+        this.candidateRequestToken += 1;
         this.contentEl.empty();
     }
 
@@ -112,8 +115,10 @@ export class ImportTemplateModal extends Modal {
 
     private async refreshCandidate(): Promise<void> {
         const sourcePath = this.getCandidatePath();
+        const requestToken = ++this.candidateRequestToken;
         if (!sourcePath) {
             this.candidate = null;
+            this.candidateLoading = false;
             this.render();
             return;
         }
@@ -129,6 +134,7 @@ export class ImportTemplateModal extends Modal {
                 description: this.getCandidateDescription(),
                 origin: 'imported',
             });
+            if (requestToken !== this.candidateRequestToken) return;
 
             if (!this.usageContextTouched) {
                 this.usageContext = candidate.layout.preset;
@@ -141,9 +147,11 @@ export class ImportTemplateModal extends Modal {
             }
             this.candidate = candidate;
         } catch (error) {
+            if (requestToken !== this.candidateRequestToken) return;
             this.candidate = null;
             console.error(error);
         } finally {
+            if (requestToken !== this.candidateRequestToken) return;
             this.candidateLoading = false;
             this.render();
         }
@@ -274,6 +282,9 @@ export class ImportTemplateModal extends Modal {
                     }
                 });
             nextButton.buttonEl.addClass('ert-import-template-nextBtn');
+            if (this.canAdvanceToNextStep()) {
+                nextButton.buttonEl.addClass('is-ready');
+            }
         }
 
         actions.createDiv({ cls: 'ert-modal-actions-spacer' });
@@ -312,13 +323,17 @@ export class ImportTemplateModal extends Modal {
         const rail = container.createDiv({ cls: 'ert-import-template-steps' });
         const steps = ['Choose', 'Check', 'Set up', 'Save'];
         steps.forEach((label, index) => {
-            const stateClass = this.step === index + 1 ? ' is-active' : this.step > index + 1 ? ' is-complete' : '';
+            const stepNumber = (index + 1) as ImportTemplateStep;
+            const isCurrent = this.step === stepNumber;
+            const isComplete = this.step > stepNumber;
+            const isReady = stepNumber === 1 ? Boolean(this.getCandidatePath()) : isCurrent || isComplete;
+            const stateClass = `${isCurrent ? ' is-active' : ''}${isComplete ? ' is-complete' : ''}${isReady ? ' is-ready' : ''}`;
             const item = rail.createDiv({ cls: `ert-import-template-step ert-import-template-step--${index + 1}${stateClass}` });
             const bg = item.createDiv({ cls: 'ert-import-template-step-bg' });
             setIcon(bg, this.getStepRailIcon(index + 1));
             const text = item.createDiv({ cls: 'ert-import-template-step-text' });
             text.createDiv({ cls: 'ert-import-template-step-label', text: `${index + 1} ${label}` });
-            if (this.step === index + 1) {
+            if (isCurrent) {
                 item.setAttr('aria-current', 'step');
             }
         });
@@ -348,11 +363,17 @@ export class ImportTemplateModal extends Modal {
     }
 
     private renderChooseFileStep(panel: HTMLElement): void {
-        const picker = panel.createEl('button', {
-            cls: 'ert-import-template-picker',
-            attr: { type: 'button' },
+        const picker = panel.createDiv({
+            cls: `ert-import-template-picker${this.getCandidatePath() ? ' is-selected' : ''}`,
         });
+        picker.setAttr('role', 'button');
+        picker.setAttr('tabindex', '0');
         picker.addEventListener('click', () => { void this.chooseFile(); });
+        picker.addEventListener('keydown', (event) => {
+            if (event.key !== 'Enter' && event.key !== ' ') return;
+            event.preventDefault();
+            void this.chooseFile();
+        });
         picker.addEventListener('dragenter', (event) => {
             event.preventDefault();
             picker.addClass('is-dragover');

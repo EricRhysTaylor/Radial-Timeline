@@ -175,8 +175,8 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     let teaserPreviewMode: TeaserPreviewMode = 'auto';
     let refreshPreview = () => {};
     let teaserSelectWrap: HTMLDivElement | null = null;
-    const updateTeaserPreviewVisibility = (size: 'thumb' | 'small' | 'medium' | 'large') => {
-        teaserSelectWrap?.toggleClass('ert-hidden', size === 'thumb');
+    const updateTeaserPreviewVisibility = (_size: 'thumb' | 'small' | 'medium' | 'large') => {
+        // Dropdown always visible — Ring mode is valid at all sizes including thumb
     };
 
     const sizeButtons = [

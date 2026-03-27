@@ -79,6 +79,13 @@ export interface ValidationSummary {
     topMessage?: string;
 }
 
+export interface ImportedTemplateDetectionSummary {
+    styleHint: 'manuscript' | 'book' | 'literary' | 'chaptered' | 'custom';
+    mockPreviewKind: 'manuscript' | 'book' | 'literary' | 'chaptered' | 'generic';
+    traits: string[];
+    confidence: 'low' | 'medium' | 'high';
+}
+
 export interface TemplateAsset {
     id: string;
     source: TemplateSource;
@@ -526,6 +533,7 @@ export interface PandocLayoutTemplate {
     bundled?: boolean;         // true for RT-generated sample templates
     origin?: ProfileOrigin;    // provenance for newly imported templates
     draft?: boolean;           // staged import that should not be treated as activated yet
+    importDetection?: ImportedTemplateDetectionSummary; // inferred layout summary captured during guided import
     usesModernClassicStructure?: boolean; // emit rtPart/rtSceneSep markers and chapter headings in PDF compilation
     hasEpigraphs?: boolean;
     hasSceneOpenerHeadingOptions?: boolean;

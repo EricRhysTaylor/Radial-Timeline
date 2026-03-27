@@ -77,6 +77,12 @@ import {
 type FieldEntryValue = string | string[];
 type FieldEntry = { key: string; value: FieldEntryValue; required: boolean };
 type BeatRow = BeatDefinition;
+type BeatNoteCustomContentSummary = {
+    notesWithTemplateCustomContent: number;
+    notesWithExtraCustomContent: number;
+    templateCustomKeys: string[];
+    extraCustomKeys: string[];
+};
 
 const DEFAULT_HOVER_ICON = 'align-vertical-space-around';
 
@@ -85,6 +91,13 @@ function ensureSharedChapterFieldEntries(entries: FieldEntry[]): FieldEntry[] {
         return entries;
     }
     return [{ key: SHARED_CHAPTER_FIELD_KEY, value: '', required: false }, ...entries];
+}
+
+function isMeaningfulFrontmatterValue(value: unknown): boolean {
+    if (value === undefined || value === null) return false;
+    if (typeof value === 'string') return value.trim().length > 0;
+    if (Array.isArray(value)) return value.some((entry) => isMeaningfulFrontmatterValue(entry));
+    return true;
 }
 
 const SCENE_AI_SCHEMA_KEYS = [
@@ -1361,7 +1374,9 @@ export function renderStoryBeatsSection(params: {
                                 ? match.actNumber
                                 : Number(act);
                             const existingAct = Number.isFinite(existingActRaw) ? existingActRaw : Number(act);
-                            const expectedAct = clampBeatAct(parseInt(act, 10) || 1, maxActs);
+                            const expectedAct = beatStatus?.expected.actNumber
+                                ? clampBeatAct(beatStatus.expected.actNumber, maxActs)
+                                : clampBeatAct(beatLine.act, maxActs);
                             const actAligned = existingAct === expectedAct;
 
                             if (actAligned) {
@@ -2039,6 +2054,44 @@ export function renderStoryBeatsSection(params: {
         updateStageVisibility();
     };
 
+    const deleteCurrentSetBeatNotes = async (): Promise<void> => {
+        const activeTab = getActiveBeatWorkspaceTab();
+        if (!activeTab) {
+            new Notice('No active beat system selected.');
+            return;
+        }
+
+        const noteFiles = getBeatNoteFilesForLoadedTab(activeTab);
+        const confirmed = await openDeleteBeatNotesModal({
+            title: activeTab.name,
+            noteFiles,
+            actionLabel: 'Delete beat notes',
+            systemTag: activeTab.sourceKind === 'builtin' ? 'BUILT-IN SET' : 'BEAT SET',
+        });
+
+        if (!confirmed) return;
+
+        const result = await trashBeatNoteFiles(noteFiles);
+        if (result.failed > 0) {
+            console.error('[Beat Sets] Failed to trash beat notes:', result.errors);
+        }
+        invalidateBeatStructuralStatus();
+        resetBeatAuditPanel?.();
+        renderCustomConfig();
+        renderPreviewContent(activeTab.name);
+        renderBeatYamlEditor();
+        updateBeatHoverPreview?.();
+        renderSavedBeatSystems();
+        updateTemplateButton(templateSetting, activeTab.name);
+        renderBeatSystemTabs();
+        renderStageSwitcher();
+        updateStageVisibility();
+        plugin.onSettingChanged(IMPACT_FULL);
+        const parts = [`Moved ${result.trashed} beat note${result.trashed !== 1 ? 's' : ''} to trash.`];
+        if (result.failed > 0) parts.push(`${result.failed} failed`);
+        new Notice(parts.join(' '));
+    };
+
     function renderBeatSystemTabs(): void {
         beatSystemTabs.empty();
         const loadedTabs = getLoadedBeatWorkspaceTabs();
@@ -2078,6 +2131,25 @@ export function renderStoryBeatsSection(params: {
                 updateBeatSystemCard(tab.name);
                 renderBeatSystemTabs();
             });
+        });
+
+        const activeTab = getActiveBeatWorkspaceTab();
+        const deleteBtn = beatSystemTabs.createEl('button', {
+            cls: 'ert-mini-tab ert-mini-tab--icon-only ert-mini-tab--danger',
+            attr: {
+                type: 'button',
+                'aria-label': 'Delete all beat notes for current set',
+                ...(libraryMode || !activeTab ? { disabled: 'true' } : {})
+            }
+        });
+        const deleteIcon = deleteBtn.createSpan({ cls: 'ert-mini-tab-icon ert-beat-health-icon' });
+        setIcon(deleteIcon, 'circle-x');
+        setTooltip(deleteBtn, activeTab
+            ? `Delete all beat notes for "${activeTab.name}".`
+            : 'Select a system tab to delete its beat notes.');
+        deleteBtn.addEventListener('click', () => {
+            if (libraryMode || !activeTab) return;
+            void deleteCurrentSetBeatNotes();
         });
 
         const addBtn = beatSystemTabs.createEl('button', {
@@ -2650,6 +2722,155 @@ export function renderStoryBeatsSection(params: {
         return { trashed, failed, errors };
     };
 
+    const getBeatNoteFilesForLoadedTab = (loadedTab: LoadedBeatTab | null | undefined): TFile[] => {
+        if (!loadedTab) return [];
+        const structuralStatus = getBeatSystemStructuralStatus({
+            app,
+            settings: plugin.settings,
+            loadedTab,
+        });
+        const filesByPath = new Map<string, TFile>();
+
+        for (const matches of structuralStatus.matches.activeByBeatKey.values()) {
+            for (const match of matches) {
+                if (match.file instanceof TFile) {
+                    filesByPath.set(match.file.path, match.file);
+                }
+            }
+        }
+
+        return [...filesByPath.values()].sort((a, b) => a.path.localeCompare(b.path));
+    };
+
+    const getBeatNoteCustomContentSummary = (files: TFile[]): BeatNoteCustomContentSummary => {
+        const mappings = plugin.settings.enableCustomMetadataMapping ? plugin.settings.frontmatterMappings : undefined;
+        const baseKeys = new Set(getBaseKeys('Beat', plugin.settings));
+        const templateCustomKeys = new Set(getCustomKeys('Beat', plugin.settings));
+        const templateKeySamples = new Set<string>();
+        const extraKeySamples = new Set<string>();
+        let notesWithTemplateCustomContent = 0;
+        let notesWithExtraCustomContent = 0;
+
+        files.forEach((file) => {
+            const cache = app.metadataCache.getFileCache(file);
+            const raw = (cache?.frontmatter ?? {}) as Record<string, unknown>;
+            const frontmatter = mappings ? normalizeFrontmatterKeys(raw, mappings) : raw;
+            let noteHasTemplateCustomContent = false;
+            let noteHasExtraCustomContent = false;
+
+            Object.entries(frontmatter).forEach(([key, value]) => {
+                if (RESERVED_OBSIDIAN_KEYS.has(key) || baseKeys.has(key) || !isMeaningfulFrontmatterValue(value)) {
+                    return;
+                }
+                if (templateCustomKeys.has(key)) {
+                    noteHasTemplateCustomContent = true;
+                    if (templateKeySamples.size < 5) templateKeySamples.add(key);
+                    return;
+                }
+                noteHasExtraCustomContent = true;
+                if (extraKeySamples.size < 5) extraKeySamples.add(key);
+            });
+
+            if (noteHasTemplateCustomContent) notesWithTemplateCustomContent += 1;
+            if (noteHasExtraCustomContent) notesWithExtraCustomContent += 1;
+        });
+
+        return {
+            notesWithTemplateCustomContent,
+            notesWithExtraCustomContent,
+            templateCustomKeys: [...templateKeySamples],
+            extraCustomKeys: [...extraKeySamples],
+        };
+    };
+
+    const openDeleteBeatNotesModal = async (options: {
+        title: string;
+        noteFiles: TFile[];
+        actionLabel: string;
+        systemTag?: string;
+    }): Promise<boolean> => {
+        const { title, noteFiles, actionLabel, systemTag } = options;
+        if (noteFiles.length === 0) {
+            new Notice(`No deployed beat notes found for "${title}".`);
+            return false;
+        }
+
+        const customContent = getBeatNoteCustomContentSummary(noteFiles);
+
+        return new Promise<boolean>((resolve) => {
+            const modal = new Modal(app);
+            modal.titleEl.setText('');
+            modal.contentEl.empty();
+            modal.modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal-shell--md');
+            modal.contentEl.addClass('ert-modal-container', 'ert-stack');
+
+            const header = modal.contentEl.createDiv({ cls: 'ert-modal-header' });
+            header.createSpan({ cls: 'ert-modal-badge', text: systemTag ?? 'BEAT SET' });
+            header.createDiv({ cls: 'ert-modal-title', text: actionLabel });
+            header.createDiv({
+                cls: 'ert-modal-subtitle',
+                text: `Delete all beat notes for "${title}" from the active manuscript. This moves the notes to trash and keeps the system definition intact.`
+            });
+
+            const body = modal.contentEl.createDiv({ cls: ['ert-panel', 'ert-panel--glass'] });
+            body.createDiv({
+                cls: 'ert-modal-subtitle',
+                text: `Scope: ${noteFiles.length} beat note${noteFiles.length !== 1 ? 's' : ''}`
+            });
+            body.createDiv({ text: 'Delete beat notes only' });
+            body.createDiv({ text: 'The system or set definition is not deleted. Beat note files are moved to trash.' });
+
+            if (customContent.notesWithTemplateCustomContent > 0 || customContent.notesWithExtraCustomContent > 0) {
+                const warn = body.createDiv({ cls: 'ert-purge-warning' });
+                if (customContent.notesWithTemplateCustomContent > 0) {
+                    const suffix = customContent.templateCustomKeys.length > 0
+                        ? ` (${customContent.templateCustomKeys.join(', ')})`
+                        : '';
+                    warn.createDiv({
+                        text: `${customContent.notesWithTemplateCustomContent} note${customContent.notesWithTemplateCustomContent !== 1 ? 's contain' : ' contains'} template custom properties with values${suffix}.`
+                    });
+                }
+                if (customContent.notesWithExtraCustomContent > 0) {
+                    const suffix = customContent.extraCustomKeys.length > 0
+                        ? ` (${customContent.extraCustomKeys.join(', ')})`
+                        : '';
+                    warn.createDiv({
+                        text: `${customContent.notesWithExtraCustomContent} note${customContent.notesWithExtraCustomContent !== 1 ? 's contain' : ' contains'} non-template custom properties with values${suffix}.`
+                    });
+                }
+            }
+
+            const confirmEl = body.createDiv({ cls: 'ert-modal-confirm-type' });
+            confirmEl.createDiv({ text: 'Type DELETE to confirm:', cls: 'ert-modal-subtitle' });
+            const confirmInput = confirmEl.createEl('input', { type: 'text', attr: { placeholder: 'DELETE' } });
+
+            const footer = modal.contentEl.createDiv({ cls: 'ert-modal-actions' });
+            const actionBtn = new ButtonComponent(footer)
+                .setButtonText(actionLabel)
+                .setWarning()
+                .setDisabled(true)
+                .onClick(() => {
+                    if (confirmInput.value.trim() !== 'DELETE') {
+                        confirmInput.classList.add('ert-input-error');
+                        confirmInput.focus();
+                        return;
+                    }
+                    resolve(true);
+                    modal.close();
+                });
+            confirmInput.addEventListener('input', () => {
+                actionBtn.setDisabled(confirmInput.value.trim() !== 'DELETE');
+                confirmInput.classList.remove('ert-input-error');
+            });
+            new ButtonComponent(footer).setButtonText('Cancel').onClick(() => {
+                resolve(false);
+                modal.close();
+            });
+            modal.onClose = () => resolve(false);
+            modal.open();
+        });
+    };
+
     const renderSavedBeatSystems = () => {
         // Unsubscribe previous Sets dirty listener before clearing DOM
         _unsubSetsDirty?.();
@@ -2747,59 +2968,11 @@ export function renderStoryBeatsSection(params: {
 
         const openBuiltInResetModal = async (entry: LoadableEntry) => {
             const noteFiles = getSelectedEntryBeatNoteFiles(entry);
-            if (noteFiles.length === 0) {
-                new Notice(`No deployed beat notes found for "${entry.name}".`);
-                return;
-            }
-
-            const confirmed = await new Promise<boolean>((resolve) => {
-                const modal = new Modal(app);
-                modal.titleEl.setText('');
-                modal.contentEl.empty();
-                modal.modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal-shell--md');
-                modal.contentEl.addClass('ert-modal-container', 'ert-stack');
-
-                const header = modal.contentEl.createDiv({ cls: 'ert-modal-header' });
-                header.createSpan({ cls: 'ert-modal-badge', text: 'BEAT SET' });
-                header.createDiv({ cls: 'ert-modal-title', text: 'Reset to default' });
-                header.createDiv({
-                    cls: 'ert-modal-subtitle',
-                    text: `Library source definitions stay intact. Reset "${entry.name}" by deleting its deployed beat notes.`
-                });
-
-                const body = modal.contentEl.createDiv({ cls: ['ert-panel', 'ert-panel--glass'] });
-                body.createDiv({ cls: 'ert-modal-subtitle', text: `Scope: ${noteFiles.length} beat note${noteFiles.length !== 1 ? 's' : ''}` });
-                body.createDiv({ text: 'Delete beat notes only' });
-                body.createDiv({ text: 'Moves related beat notes to trash and keeps the starter set definition.' });
-
-                const confirmEl = body.createDiv({ cls: 'ert-modal-confirm-type' });
-                confirmEl.createDiv({ text: 'Type DELETE to confirm:', cls: 'ert-modal-subtitle' });
-                const confirmInput = confirmEl.createEl('input', { type: 'text', attr: { placeholder: 'DELETE' } });
-
-                const footer = modal.contentEl.createDiv({ cls: 'ert-modal-actions' });
-                const actionBtn = new ButtonComponent(footer)
-                    .setButtonText('Reset to default')
-                    .setWarning()
-                    .setDisabled(true)
-                    .onClick(() => {
-                        if (confirmInput.value.trim() !== 'DELETE') {
-                            confirmInput.classList.add('ert-input-error');
-                            confirmInput.focus();
-                            return;
-                        }
-                        resolve(true);
-                        modal.close();
-                    });
-                confirmInput.addEventListener('input', () => {
-                    actionBtn.setDisabled(confirmInput.value.trim() !== 'DELETE');
-                    confirmInput.classList.remove('ert-input-error');
-                });
-                new ButtonComponent(footer).setButtonText('Cancel').onClick(() => {
-                    resolve(false);
-                    modal.close();
-                });
-                modal.onClose = () => resolve(false);
-                modal.open();
+            const confirmed = await openDeleteBeatNotesModal({
+                title: entry.name,
+                noteFiles,
+                actionLabel: 'Reset to default',
+                systemTag: 'BEAT SET',
             });
 
             if (!confirmed) return;

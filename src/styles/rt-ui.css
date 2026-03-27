@@ -3045,6 +3045,26 @@
   margin-left: -1px;
 }
 
+.ert-ui.ert-scope--settings button.ert-mini-tab.ert-mini-tab--icon-only:not(.ert-pillBtn):not(.ert-iconBtn):not(.ert-swatch) {
+  padding-inline: calc(var(--ert-gap-sm) + 2px);
+  min-width: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ert-ui.ert-scope--settings button.ert-mini-tab.ert-mini-tab--icon-only:not(.ert-pillBtn):not(.ert-iconBtn):not(.ert-swatch) .ert-mini-tab-icon {
+  margin-right: 0;
+}
+
+.ert-ui.ert-scope--settings button.ert-mini-tab.ert-mini-tab--danger:not(.ert-pillBtn):not(.ert-iconBtn):not(.ert-swatch) {
+  color: color-mix(in srgb, var(--color-red) 58%, var(--text-muted) 42%);
+}
+
+.ert-ui.ert-scope--settings button.ert-mini-tab.ert-mini-tab--danger:not(.ert-pillBtn):not(.ert-iconBtn):not(.ert-swatch):hover:not(:disabled) {
+  color: color-mix(in srgb, var(--color-red) 75%, var(--text-normal) 25%);
+}
+
 /* Panel directly beneath tabs — square off top-left so first tab sits flush */
 .ert-ui.ert-scope--settings .ert-mini-tabs + .ert-beat-system-card {
   border-top-left-radius: 0;
@@ -6805,7 +6825,18 @@
 }
 
 .ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-step.is-active {
+  border-color: color-mix(in srgb, var(--background-modifier-border) 84%, transparent);
+  background:
+    radial-gradient(circle at 18% 18%, color-mix(in srgb, var(--ert-import-step-accent) 20%, transparent), transparent 58%),
+    linear-gradient(180deg, color-mix(in srgb, var(--background-secondary) 30%, transparent), color-mix(in srgb, var(--background-primary) 22%, transparent));
+  color: color-mix(in srgb, var(--text-normal) 92%, var(--text-muted) 8%);
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-step.is-ready {
   --ert-import-step-accent: var(--text-success);
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-step.is-active.is-ready {
   border-color: color-mix(in srgb, var(--text-success) 38%, var(--background-modifier-border));
   background:
     radial-gradient(circle at 18% 18%, color-mix(in srgb, var(--text-success) 26%, transparent), transparent 58%),
@@ -6859,29 +6890,54 @@
 }
 
 .ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-picker {
+  appearance: none;
+  -webkit-appearance: none;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 12px;
   width: 100%;
+  min-height: 264px;
   padding: 24px 24px 22px;
   border-radius: 24px;
-  border: 1px solid color-mix(in srgb, var(--text-success) 34%, var(--background-modifier-border));
+  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 84%, transparent);
   background:
-    radial-gradient(circle at 50% 18%, color-mix(in srgb, var(--text-success) 18%, transparent), transparent 56%),
+    radial-gradient(circle at 50% 18%, color-mix(in srgb, var(--text-faint) 12%, transparent), transparent 56%),
     linear-gradient(180deg, color-mix(in srgb, var(--background-secondary) 30%, transparent), color-mix(in srgb, var(--background-primary) 22%, transparent));
   text-align: center;
-  color: var(--text-normal);
-  transition: color 160ms ease, border-color 160ms ease, background 160ms ease;
+  color: color-mix(in srgb, var(--text-normal) 92%, var(--text-muted) 8%);
+  box-shadow: none;
+  cursor: pointer;
+  overflow: hidden;
+  transition: color 160ms ease, border-color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-picker.is-selected {
+  border-color: color-mix(in srgb, var(--text-success) 46%, var(--background-modifier-border));
+  background:
+    radial-gradient(circle at 50% 18%, color-mix(in srgb, var(--text-success) 24%, transparent), transparent 56%),
+    linear-gradient(180deg, color-mix(in srgb, var(--background-secondary) 34%, transparent), color-mix(in srgb, var(--background-primary) 20%, transparent));
+  color: color-mix(in srgb, var(--text-normal) 94%, var(--text-success) 6%);
 }
 
 .ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-picker:not(:disabled):hover,
 .ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-picker:not(:disabled):focus-visible {
-  border-color: color-mix(in srgb, var(--text-success) 48%, var(--background-modifier-border));
+  border-color: color-mix(in srgb, var(--text-success) 30%, var(--background-modifier-border));
   background:
-    radial-gradient(circle at 50% 18%, color-mix(in srgb, var(--text-success) 24%, transparent), transparent 58%),
+    radial-gradient(circle at 50% 18%, color-mix(in srgb, var(--text-success) 16%, transparent), transparent 58%),
     linear-gradient(180deg, color-mix(in srgb, var(--background-secondary) 34%, transparent), color-mix(in srgb, var(--background-primary) 20%, transparent));
-  color: color-mix(in srgb, var(--text-normal) 94%, var(--text-success) 6%);
+  color: color-mix(in srgb, var(--text-normal) 90%, var(--text-success) 10%);
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-picker.is-selected:not(:disabled):hover,
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-picker.is-selected:not(:disabled):focus-visible {
+  border-color: color-mix(in srgb, var(--text-success) 56%, var(--background-modifier-border));
+  background:
+    radial-gradient(circle at 50% 18%, color-mix(in srgb, var(--text-success) 28%, transparent), transparent 58%),
+    linear-gradient(180deg, color-mix(in srgb, var(--background-secondary) 38%, transparent), color-mix(in srgb, var(--background-primary) 18%, transparent));
+  color: color-mix(in srgb, var(--text-normal) 88%, var(--text-success) 12%);
 }
 
 .ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-picker.is-dragover {
@@ -6905,8 +6961,13 @@
   width: 132px;
   height: 132px;
   border-radius: 30px;
-  background: color-mix(in srgb, var(--background-primary) 52%, transparent);
-  border: 1px solid color-mix(in srgb, var(--text-success) 24%, var(--background-modifier-border));
+  background: color-mix(in srgb, var(--background-primary) 44%, transparent);
+  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 82%, transparent);
+  color: color-mix(in srgb, var(--text-muted) 72%, var(--text-normal));
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-picker.is-selected .ert-import-template-picker-icon {
+  border: 1px solid color-mix(in srgb, var(--text-success) 34%, var(--background-modifier-border));
   color: color-mix(in srgb, var(--text-success) 82%, var(--text-normal));
 }
 
@@ -6928,8 +6989,12 @@
 .ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-picker-desc {
   font-size: 0.98rem;
   font-weight: 700;
-  color: color-mix(in srgb, var(--text-success) 66%, var(--text-normal));
+  color: color-mix(in srgb, var(--text-muted) 76%, var(--text-normal));
   letter-spacing: 0.02em;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-picker.is-selected .ert-import-template-picker-desc {
+  color: color-mix(in srgb, var(--text-success) 66%, var(--text-normal));
 }
 
 .ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-picker-meta {
@@ -7006,14 +7071,21 @@
 
 .ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-nextBtn {
   background:
+    linear-gradient(180deg, color-mix(in srgb, var(--background-secondary) 26%, transparent), color-mix(in srgb, var(--background-primary) 18%, transparent));
+  border-color: color-mix(in srgb, var(--background-modifier-border) 88%, transparent);
+  color: var(--text-normal);
+}
+
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-nextBtn.is-ready {
+  background:
     radial-gradient(circle at 24% 24%, color-mix(in srgb, var(--text-success) 18%, transparent), transparent 54%),
     linear-gradient(180deg, color-mix(in srgb, var(--background-secondary) 34%, transparent), color-mix(in srgb, var(--background-primary) 18%, transparent));
   border-color: color-mix(in srgb, var(--text-success) 40%, var(--background-modifier-border));
   color: color-mix(in srgb, var(--text-normal) 96%, var(--text-success) 4%);
 }
 
-.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-nextBtn:not(:disabled):hover,
-.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-nextBtn:not(:disabled):focus-visible {
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-nextBtn.is-ready:not(:disabled):hover,
+.ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-nextBtn.is-ready:not(:disabled):focus-visible {
   border-color: color-mix(in srgb, var(--text-success) 54%, var(--background-modifier-border));
   color: color-mix(in srgb, var(--text-normal) 88%, var(--text-success) 12%);
 }
@@ -8622,6 +8694,149 @@
   white-space: normal;
 }
 
+.ert-ui.ert-scope--settings .ert-layout-imported {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--ert-gap-md);
+  align-items: start;
+}
+
+.ert-ui.ert-scope--settings .ert-layout-imported-copy {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.ert-ui.ert-scope--settings .ert-layout-imported-row {
+  display: grid;
+  grid-template-columns: 104px minmax(0, 1fr);
+  gap: var(--ert-gap-sm);
+  align-items: start;
+}
+
+.ert-ui.ert-scope--settings .ert-layout-imported-label {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.03em;
+  line-height: 1.25;
+}
+
+.ert-ui.ert-scope--settings .ert-layout-imported-value {
+  font-size: 0.94rem;
+  line-height: 1.45;
+  color: var(--text-normal);
+}
+
+.ert-ui.ert-scope--settings .ert-layout-imported-description {
+  font-size: 0.94rem;
+  line-height: 1.45;
+  color: var(--text-normal);
+}
+
+.ert-ui.ert-scope--settings .ert-layout-imported-preview {
+  justify-self: end;
+  min-width: 156px;
+}
+
+.ert-ui.ert-scope--settings .ert-layout-imported-preview .ert-import-template-mock-page {
+  width: 138px;
+  min-height: 172px;
+  padding: 12px 12px 10px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--background-primary) 84%, transparent);
+  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 76%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.ert-ui.ert-scope--settings .ert-layout-imported-preview .ert-import-template-mock-header-line {
+  width: 72%;
+  height: 2px;
+  margin: 0 auto 14px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-faint) 36%, transparent);
+}
+
+.ert-ui.ert-scope--settings .ert-layout-imported-preview .ert-import-template-mock-kicker {
+  margin-bottom: 6px;
+  text-align: center;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.ert-ui.ert-scope--settings .ert-layout-imported-preview .ert-import-template-mock-title {
+  text-align: center;
+  color: var(--text-normal);
+  font-size: 0.96rem;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.ert-ui.ert-scope--settings .ert-layout-imported-preview .ert-import-template-mock-title--chaptered,
+.ert-ui.ert-scope--settings .ert-layout-imported-preview .ert-import-template-mock-title--literary {
+  font-size: 1.08rem;
+}
+
+.ert-ui.ert-scope--settings .ert-layout-imported-preview .ert-import-template-mock-title--manuscript,
+.ert-ui.ert-scope--settings .ert-layout-imported-preview .ert-import-template-mock-title--generic {
+  font-size: 0.84rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.ert-ui.ert-scope--settings .ert-layout-imported-preview .ert-import-template-mock-subtitle {
+  text-align: center;
+  font-size: 0.74rem;
+  font-style: italic;
+  color: var(--text-muted);
+  margin-top: -4px;
+  margin-bottom: 10px;
+}
+
+.ert-ui.ert-scope--settings .ert-layout-imported-preview .ert-import-template-mock-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ert-ui.ert-scope--settings .ert-layout-imported-preview .ert-import-template-mock-line {
+  height: 5px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-faint) 18%, transparent);
+}
+
+.ert-ui.ert-scope--settings .ert-layout-imported-preview .ert-import-template-mock-line.is-short {
+  width: 56%;
+}
+
+.ert-ui.ert-scope--settings .ert-layout-imported-preview .ert-import-template-mock-line.is-mid {
+  width: 78%;
+}
+
+.ert-ui.ert-scope--settings .ert-layout-imported-preview .ert-import-template-mock--literary .ert-import-template-mock-page,
+.ert-ui.ert-scope--settings .ert-layout-imported-preview .ert-import-template-mock-page--literary,
+.ert-ui.ert-scope--settings .ert-layout-imported-preview .ert-import-template-mock-page--chaptered {
+  background: color-mix(in srgb, var(--background-primary) 88%, transparent);
+}
+
+@media (max-width: 980px) {
+  .ert-ui.ert-scope--settings .ert-layout-imported {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ert-ui.ert-scope--settings .ert-layout-imported-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+
+  .ert-ui.ert-scope--settings .ert-layout-imported-preview {
+    justify-self: start;
+  }
+}
+
 .ert-ui.ert-scope--settings .ert-layout-description-editor {
   display: grid;
   gap: 4px;
@@ -9052,6 +9267,11 @@
   padding-top: 2px;
 }
 
+.ert-ui.ert-scope--settings .ert-layout-row-desc:has(.ert-layout-imported) {
+  line-height: normal;
+  padding-top: 2px;
+}
+
 .ert-ui.ert-scope--settings .ert-publishing-status-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -9193,9 +9413,8 @@
   align-items: center;
   gap: var(--ert-gap-sm);
   flex-wrap: wrap;
-  padding: var(--ert-pad-sm);
-  border-top: 1px solid color-mix(in srgb, var(--background-modifier-border) 90%, transparent);
-  min-height: 76px;
+  padding: 8px var(--ert-pad-sm) var(--ert-pad-sm);
+  min-height: 0;
 }
 
 .ert-ui.ert-scope--settings .ert-bookmeta-preview-body {

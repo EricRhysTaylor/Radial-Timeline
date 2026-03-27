@@ -434,6 +434,7 @@ export class ManuscriptOptionsModal extends Modal {
         manageBooksLink.addEventListener('click', (e) => {
             e.preventDefault();
             this.close();
+            this.plugin.settingsTab?.revealSettingsSection('core', 'general');
             // @ts-ignore - Obsidian API
             this.app.setting.open();
             // @ts-ignore - Obsidian API
@@ -876,9 +877,9 @@ export class ManuscriptOptionsModal extends Modal {
         return profile.templateProfileId || profile.selectedLayoutId;
     }
 
-    private openPublishingSettings(): void {
+    private openPublishingSettings(sectionKey: string = 'pdf-style'): void {
         this.close();
-        this.plugin.settingsTab?.setActiveTab('publishing');
+        this.plugin.settingsTab?.revealSettingsSection('publishing', sectionKey);
         // @ts-ignore - Obsidian API
         this.app.setting.open();
         // @ts-ignore - Obsidian API

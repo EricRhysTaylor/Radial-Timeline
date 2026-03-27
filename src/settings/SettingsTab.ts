@@ -59,6 +59,15 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         this._activeTab = tab;
     }
 
+    public revealSettingsSection(
+        tab: 'core' | 'social' | 'inquiry' | 'publishing' | 'ai' | 'advanced',
+        sectionKey: string
+    ): void {
+        this._activeTab = tab;
+        window.setTimeout(() => this.scrollToSettingsSection(sectionKey), 0);
+        window.setTimeout(() => this.scrollToSettingsSection(sectionKey), 180);
+    }
+
     public forceExpandCoreCompletionPreview(): void {
         this._forceExpandCoreCompletionPreview = true;
     }
