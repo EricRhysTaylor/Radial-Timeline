@@ -2095,7 +2095,9 @@ export function renderStoryBeatsSection(params: {
         renderStageSwitcher();
         updateStageVisibility();
         plugin.onSettingChanged(IMPACT_FULL);
-        const parts = [`Moved ${result.trashed} beat note${result.trashed !== 1 ? 's' : ''} to trash.`];
+        const parts = result.trashed > 0
+            ? [`Moved ${result.trashed} beat note${result.trashed !== 1 ? 's' : ''} to trash.`]
+            : ['No deployed beat notes remained.'];
         if (result.failed > 0) parts.push(`${result.failed} failed`);
         parts.push(`"${targetTab.name}" closed.`);
         new Notice(parts.join(' '));
@@ -2788,11 +2790,6 @@ export function renderStoryBeatsSection(params: {
         systemTag?: string;
     }): Promise<boolean> => {
         const { title, noteFiles, actionLabel, systemTag } = options;
-        if (noteFiles.length === 0) {
-            new Notice(`No deployed beat notes found for "${title}".`);
-            return false;
-        }
-
         const customContent = getBeatNoteCustomContentSummary(noteFiles);
 
         return new Promise<boolean>((resolve) => {
@@ -2807,13 +2804,17 @@ export function renderStoryBeatsSection(params: {
             header.createDiv({ cls: 'ert-modal-title', text: actionLabel });
             header.createDiv({
                 cls: 'ert-modal-subtitle',
-                text: 'This moves the beat notes to trash and keeps the set definition available in Add system.'
+                text: noteFiles.length > 0
+                    ? 'This moves the beat notes to trash and keeps the set definition available in Add system.'
+                    : 'No deployed beat notes remain. This removes the tab from the workspace and keeps the set definition available in Add system.'
             });
 
             const body = modal.contentEl.createDiv({ cls: ['ert-panel', 'ert-panel--glass'] });
             body.createDiv({
                 cls: 'ert-modal-subtitle',
-                text: `Scope: ${noteFiles.length} beat note${noteFiles.length !== 1 ? 's' : ''}`
+                text: noteFiles.length > 0
+                    ? `Scope: ${noteFiles.length} beat note${noteFiles.length !== 1 ? 's' : ''}`
+                    : 'Scope: no deployed beat notes remain'
             });
             if (customContent.notesWithTemplateCustomContent > 0 || customContent.notesWithExtraCustomContent > 0) {
                 const warn = body.createDiv({ cls: 'ert-purge-warning' });
