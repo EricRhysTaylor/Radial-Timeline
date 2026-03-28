@@ -562,7 +562,7 @@ export class ImportTemplateModal extends Modal {
 
         if (candidate.detectedTemplate.traits.length > 0) {
             const traits = card.createDiv({ cls: 'ert-import-template-traitGrid' });
-            candidate.detectedTemplate.traits.slice(0, 4).forEach(trait => {
+            candidate.detectedTemplate.traits.slice(0, 5).forEach(trait => {
                 const visual = this.describeTraitVisual(trait);
                 const item = traits.createDiv({ cls: 'ert-import-template-traitTile' });
                 const iconWrap = item.createDiv({ cls: 'ert-import-template-traitIcon' });

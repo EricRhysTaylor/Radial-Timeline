@@ -2860,7 +2860,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             if (!isBundled) {
                 s.addExtraButton(btn => {
                     if (isImported) {
-                        btn.extraSettingsEl.addClass('ert-layout-imported-trash');
+                        btn.extraSettingsEl.addClass('ert-iconBtn', 'ert-layout-imported-trash');
                     }
                     btn.setIcon('trash');
                     btn.setTooltip('Remove layout');
