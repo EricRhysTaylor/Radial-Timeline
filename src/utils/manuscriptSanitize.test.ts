@@ -59,6 +59,44 @@ Visible %%editor note%% and <!-- html note -->.
         expect(sanitized).not.toContain('Class: Scene');
     });
 
+    it('always strips Editorialist revision batches from manuscript output', () => {
+        const input = `Scene text before.
+
+Return only this fenced block. No extra text.
+
+\`\`\`editorialist-review
+Template: Editorialist advanced
+TemplateYear: 2026
+SupportedOperations: Edit, Move, Cut, Condense
+Reviewer: GPT-5.4
+ReviewerType: ai-editor
+Provider: OpenAI
+Model: GPT-5.4
+
+=== EDIT ===
+SceneId: scn_xxxxxxxx
+Original: ...
+Revised: ...
+Why: ...
+\`\`\`
+
+Scene text after.`;
+
+        const sanitized = sanitizeCompiledManuscript(input, {
+            stripComments: false,
+            stripLinks: false,
+            stripCallouts: false,
+            stripBlockIds: false
+        });
+
+        expect(sanitized).toContain('Scene text before.');
+        expect(sanitized).toContain('Scene text after.');
+        expect(sanitized).not.toContain('Return only this fenced block. No extra text.');
+        expect(sanitized).not.toContain('```editorialist-review');
+        expect(sanitized).not.toContain('Template: Editorialist advanced');
+        expect(sanitized).not.toContain('=== EDIT ===');
+    });
+
     it('strips comments, links, callouts, and block ids when enabled', () => {
         const input = `Visible %%hidden%% and <!-- html hidden -->.
 [Doc link](https://example.com) with [[Folder/My Note|Alias]].

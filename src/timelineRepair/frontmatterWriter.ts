@@ -9,7 +9,6 @@
 
 import type { App, TFile } from 'obsidian';
 import type {
-    RepairSceneEntry,
     SessionDiffModel,
     FrontmatterUpdate,
     FrontmatterWriteResult,
@@ -345,4 +344,3 @@ export async function clearAllProvenanceFields(
     
     return cleared;
 }
-

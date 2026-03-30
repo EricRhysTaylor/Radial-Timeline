@@ -18,6 +18,8 @@ const PDF_CLEANUP_DEFAULTS: ManuscriptExportCleanupOptions = {
 
 const YAML_KEY_PATTERN = /^\s*[A-Za-z0-9_"'.-]+\s*:/;
 const CODE_FENCE_PATTERN = /^\s*(```|~~~)/;
+const EDITORIALIST_REVIEW_FENCE_PATTERN = /^\s*(```|~~~)\s*editorialist-review\b.*$/i;
+const EDITORIALIST_REVIEW_WRAPPER_LINE = /^Return only this fenced block\. No extra text\.\s*$/i;
 
 function normalizeLineEndings(text: string): string {
     return text.replace(/\r\n?/g, '\n');
@@ -73,6 +75,44 @@ function stripComments(content: string): string {
     return content
         .replace(/%%[\s\S]*?%%/g, '')
         .replace(/<!--[\s\S]*?-->/g, '');
+}
+
+function stripEditorialistReviewBlocks(content: string): string {
+    const lines = content.split('\n');
+    const output: string[] = [];
+
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const fenceMatch = line.match(EDITORIALIST_REVIEW_FENCE_PATTERN);
+        if (!fenceMatch) {
+            output.push(line);
+            continue;
+        }
+
+        if (output.length > 0 && output[output.length - 1].trim() === '') {
+            const wrapperIndex = output.length - 2;
+            if (wrapperIndex >= 0 && EDITORIALIST_REVIEW_WRAPPER_LINE.test(output[wrapperIndex])) {
+                output.pop();
+                output.pop();
+            }
+        } else if (output.length > 0 && EDITORIALIST_REVIEW_WRAPPER_LINE.test(output[output.length - 1])) {
+            output.pop();
+        }
+
+        const fence = fenceMatch[1];
+        const closingFencePattern = new RegExp(`^\\s*${fence}\\s*$`);
+
+        i += 1;
+        while (i < lines.length && !closingFencePattern.test(lines[i])) {
+            i += 1;
+        }
+
+        while (i + 1 < lines.length && lines[i + 1].trim() === '') {
+            i += 1;
+        }
+    }
+
+    return output.join('\n');
 }
 
 function extractWikilinkLabel(inner: string): string {
@@ -150,6 +190,7 @@ export function sanitizeCompiledManuscript(
 ): string {
     let cleaned = normalizeLineEndings(text);
     cleaned = stripYamlFrontmatterBlocks(cleaned);
+    cleaned = stripEditorialistReviewBlocks(cleaned);
 
     if (opts.stripComments) cleaned = stripComments(cleaned);
     if (opts.stripLinks) cleaned = stripLinks(cleaned);
@@ -158,4 +199,3 @@ export function sanitizeCompiledManuscript(
 
     return cleaned.trim();
 }
-

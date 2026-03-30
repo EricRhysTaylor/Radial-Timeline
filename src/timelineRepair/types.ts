@@ -14,7 +14,7 @@ import type { TimelineItem } from '../types';
 // ============================================================================
 
 /**
- * Built-in pattern presets for Level 1 Pattern Sync.
+ * Built-in pattern presets for the deterministic pattern scaffold.
  * Each preset defines how When dates are assigned sequentially.
  */
 export type PatternPresetId = 'daily' | 'twoBeatDay' | 'fourBeatDay' | 'weekly';
@@ -29,17 +29,17 @@ export const PATTERN_PRESETS: PatternPreset[] = [
     {
         id: 'daily',
         label: 'Daily',
-        description: '+1 day per scene, same time'
+        description: '+1 day per scene'
     },
     {
         id: 'twoBeatDay',
         label: 'Two-beat day',
-        description: 'Morning → Evening → next Morning'
+        description: 'morning -> evening -> next day'
     },
     {
         id: 'fourBeatDay',
         label: 'Four-beat day',
-        description: 'Morning → Afternoon → Evening → Night → next Morning'
+        description: 'morning -> afternoon -> evening -> night -> next day'
     },
     {
         id: 'weekly',
@@ -92,11 +92,11 @@ export type WhenConfidence = 'high' | 'med' | 'low';
 export type DurationSource = 'inferred' | 'ai' | 'original';
 
 // ============================================================================
-// Keyword Cue Types (Level 2)
+// Keyword Cue Types
 // ============================================================================
 
 /**
- * Categories of temporal cues detected by Level 2 keyword sweep.
+ * Categories of temporal cues detected by the keyword sweep.
  */
 export type TemporalCueCategory = 
     | 'absolute'      // Explicit date/time: "March 15, 2085"
@@ -109,22 +109,6 @@ export interface TemporalCue {
     match: string;           // The matched text
     value?: string | number; // Parsed value (date string, day offset, etc.)
     confidence: WhenConfidence;
-}
-
-// ============================================================================
-// AI Response Types (Level 3)
-// ============================================================================
-
-/**
- * Structured response from AI temporal parsing.
- */
-export interface AiTemporalResponse {
-    whenSuggestion: string;          // ISO date string or relative description
-    confidence: WhenConfidence;
-    evidenceQuotes: string[];        // Supporting text from scene
-    durationSuggestion?: number;     // Duration in milliseconds
-    durationOngoing?: boolean;       // Scene spans ongoing time
-    rationale?: string;              // AI's reasoning
 }
 
 // ============================================================================
@@ -155,8 +139,6 @@ export interface RepairSceneEntry {
     source: WhenSource;
     confidence: WhenConfidence;
     cues?: TemporalCue[];        // L2 keyword matches
-    aiEvidence?: string[];       // L3 quote evidence
-    aiRationale?: string;        // L3 reasoning
     
     // Flags
     needsReview: boolean;
@@ -233,16 +215,8 @@ export interface RepairPipelineConfig {
     // Pattern configuration
     patternPreset: PatternPresetId;
     
-    // Analysis levels to run
-    runLevel1: boolean;  // Pattern Sync (always true)
-    runLevel2: boolean;  // Keyword Sweep
-    runLevel3: boolean;  // AI Temporal Parse
-    
-    // Level 3 options
-    aiConfidenceThreshold: WhenConfidence;  // Auto-apply if AI confidence >= this
-    
-    // Duration options
-    inferDuration: boolean;
+    // Deterministic cue refinement
+    useTextCues: boolean;
     
     // Scope
     subplotFilter?: string;  // Only process scenes in this subplot
@@ -255,11 +229,7 @@ export interface RepairPipelineConfig {
 export const DEFAULT_PIPELINE_CONFIG: Omit<RepairPipelineConfig, 'anchorWhen'> = {
     anchorSceneIndex: 0,
     patternPreset: 'twoBeatDay',
-    runLevel1: true,
-    runLevel2: true,
-    runLevel3: false,
-    aiConfidenceThreshold: 'med',
-    inferDuration: false
+    useTextCues: true
 };
 
 // ============================================================================
@@ -279,10 +249,9 @@ export interface RepairPipelineResult {
     scenesWithBackwardTime: number;
     scenesWithLargeGaps: number;
     
-    // Level-specific stats
-    level1Applied: number;
-    level2Refined: number;
-    level3Refined: number;
+    // Pass-specific stats
+    patternApplied: number;
+    cueRefined: number;
 }
 
 // ============================================================================
@@ -302,9 +271,7 @@ export interface ModalState {
     
     // Review phase filters
     filterNeedsReview: boolean;
-    filterAiDerived: boolean;
     filterKeywordDerived: boolean;
-    filterPatternOnly: boolean;
     
     // Selection state
     selectedIndices: Set<number>;
@@ -338,4 +305,3 @@ export interface FrontmatterWriteResult {
     failed: number;
     errors: Array<{ file: TFile; error: string }>;
 }
-

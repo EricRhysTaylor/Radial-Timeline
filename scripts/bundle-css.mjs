@@ -36,7 +36,8 @@ const files = [
     'book-designer.css',
     'settings.css',
     'drag.css',
-    'timeline-repair.css'
+    'timeline-repair.css',
+    'timeline-audit.css'
 ];
 
 async function bundle(options = {}) {

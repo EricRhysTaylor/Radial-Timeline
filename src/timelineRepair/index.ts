@@ -9,7 +9,7 @@
 // Types
 export * from './types';
 
-// Level 1: Pattern Sync
+// Pattern Sync
 export {
     runPatternSync,
     applyTimeBucket,
@@ -22,18 +22,12 @@ export {
     type PatternSyncInput
 } from './patternSync';
 
-// Level 2: Keyword Sweep
+// Keyword Sweep
 export {
     runKeywordSweep,
     parseAmPmTime,
     type KeywordSweepOptions
 } from './keywordSweep';
-
-// Level 3: AI Temporal Parse
-export {
-    runAiTemporalParse,
-    type AiTemporalParseOptions
-} from './aiTemporalParse';
 
 // Pipeline
 export {
@@ -79,4 +73,3 @@ export {
     clearAllProvenanceFields,
     type WriteOptions
 } from './frontmatterWriter';
-

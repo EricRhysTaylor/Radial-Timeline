@@ -4,7 +4,7 @@
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  *
  * Timeline Repair Wizard - Pipeline Orchestrator
- * Coordinates Level 1 → Level 2 → Level 3 analysis.
+ * Coordinates deterministic scaffold assignment and optional text-cue refinement.
  */
 
 import type { TFile, Vault } from 'obsidian';
@@ -17,7 +17,6 @@ import type {
 } from './types';
 import { runPatternSync, type PatternSyncInput } from './patternSync';
 import { runKeywordSweep } from './keywordSweep';
-import { runAiTemporalParse } from './aiTemporalParse';
 
 // ============================================================================
 // Pipeline Execution
@@ -25,10 +24,7 @@ import { runAiTemporalParse } from './aiTemporalParse';
 
 export interface PipelineCallbacks {
     /** Called when pipeline phase changes */
-    onPhaseChange?: (phase: 'level1' | 'level2' | 'level3' | 'complete') => void;
-    
-    /** Called for Level 3 AI progress */
-    onAiProgress?: (current: number, total: number, sceneName: string) => void;
+    onPhaseChange?: (phase: 'pattern' | 'cues' | 'complete') => void;
     
     /** Abort signal for cancellation */
     abortSignal?: AbortSignal;
@@ -38,9 +34,8 @@ export interface PipelineCallbacks {
  * Run the complete repair pipeline.
  * 
  * Flow:
- * 1. Level 1: Pattern Sync - deterministic baseline
- * 2. Level 2: Keyword Sweep - heuristic refinement (if enabled)
- * 3. Level 3: AI Parse - intelligent inference (if enabled)
+ * 1. Pattern Sync - deterministic baseline
+ * 2. Keyword Sweep - simple text-cue refinement (if enabled)
  * 
  * @param scenes - Scenes in manuscript order
  * @param files - Corresponding TFile references
@@ -83,9 +78,9 @@ export async function runRepairPipeline(
     }
     
     // ========================================================================
-    // Level 1: Pattern Sync
+    // Pattern scaffold
     // ========================================================================
-    callbacks.onPhaseChange?.('level1');
+    callbacks.onPhaseChange?.('pattern');
     
     let entries = runPatternSync(inputs, {
         anchorWhen: config.anchorWhen,
@@ -93,18 +88,18 @@ export async function runRepairPipeline(
         patternPreset: config.patternPreset
     });
     
-    const level1Count = entries.length;
+    const patternCount = entries.length;
     
     // Check for abort
     if (callbacks.abortSignal?.aborted) {
-        return buildResult(entries, level1Count, 0, 0);
+        return buildResult(entries, patternCount, 0);
     }
     
     // ========================================================================
-    // Level 2: Keyword Sweep
+    // Simple text cues
     // ========================================================================
-    if (config.runLevel2) {
-        callbacks.onPhaseChange?.('level2');
+    if (config.useTextCues) {
+        callbacks.onPhaseChange?.('cues');
         
         entries = await runKeywordSweep(
             entries,
@@ -113,41 +108,16 @@ export async function runRepairPipeline(
         );
     }
     
-    const level2Count = entries.filter(e => e.source === 'keyword').length;
+    const cueCount = entries.filter(e => e.source === 'keyword').length;
     
     // Check for abort
     if (callbacks.abortSignal?.aborted) {
-        return buildResult(entries, level1Count, level2Count, 0);
-    }
-    
-    // ========================================================================
-    // Level 3: AI Temporal Parse
-    // ========================================================================
-    let level3Count = 0;
-    
-    if (config.runLevel3) {
-        callbacks.onPhaseChange?.('level3');
-        
-        const entriesBefore = entries.filter(e => e.source === 'ai').length;
-        
-        entries = await runAiTemporalParse(
-            entries,
-            plugin,
-            (entry) => getSceneBodyText(vault, entry),
-            {
-                autoApplyThreshold: config.aiConfidenceThreshold,
-                inferDuration: config.inferDuration,
-                onProgress: callbacks.onAiProgress,
-                abortSignal: callbacks.abortSignal
-            }
-        );
-        
-        level3Count = entries.filter(e => e.source === 'ai').length - entriesBefore;
+        return buildResult(entries, patternCount, cueCount);
     }
     
     callbacks.onPhaseChange?.('complete');
     
-    return buildResult(entries, level1Count, level2Count, level3Count);
+    return buildResult(entries, patternCount, cueCount);
 }
 
 /**
@@ -174,9 +144,8 @@ async function getSceneBodyText(vault: Vault, entry: RepairSceneEntry): Promise<
  */
 function buildResult(
     entries: RepairSceneEntry[],
-    level1Applied: number,
-    level2Refined: number,
-    level3Refined: number
+    patternApplied: number,
+    cueRefined: number
 ): RepairPipelineResult {
     return {
         entries,
@@ -185,9 +154,8 @@ function buildResult(
         scenesNeedingReview: entries.filter(e => e.needsReview).length,
         scenesWithBackwardTime: entries.filter(e => e.hasBackwardTime).length,
         scenesWithLargeGaps: entries.filter(e => e.hasLargeGap).length,
-        level1Applied,
-        level2Refined,
-        level3Refined
+        patternApplied,
+        cueRefined
     };
 }
 
@@ -202,9 +170,8 @@ function createEmptyResult(): RepairPipelineResult {
         scenesNeedingReview: 0,
         scenesWithBackwardTime: 0,
         scenesWithLargeGaps: 0,
-        level1Applied: 0,
-        level2Refined: 0,
-        level3Refined: 0
+        patternApplied: 0,
+        cueRefined: 0
     };
 }
 
@@ -281,4 +248,3 @@ export function getUniqueActs(scenes: TimelineItem[]): number[] {
     }
     return Array.from(acts).sort((a, b) => a - b);
 }
-

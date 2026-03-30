@@ -1,0 +1,1091 @@
+/*
+ * Radial Timeline (tm) Plugin for Obsidian
+ * Copyright (c) 2025 Eric Rhys Taylor
+ * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
+ *
+ * Timeline Auditor - Audit Pipeline
+ */
+
+import type { Vault } from 'obsidian';
+import type RadialTimelinePlugin from '../main';
+import { getAllSceneData, compareScenesByOrder } from '../sceneAnalysis/data';
+import { getAIClient } from '../ai/runtime/aiClient';
+import { parseWhenField } from '../utils/date';
+import { readSceneId } from '../utils/sceneIds';
+import { buildChronologyEntries, buildChronologyPositionMap } from './chronology';
+import type {
+    TimelineAuditAiResponse,
+    TimelineAuditCallbacks,
+    TimelineAuditCue,
+    TimelineAuditDetectionSource,
+    TimelineAuditEvidence,
+    TimelineAuditEvidenceSource,
+    TimelineAuditEvidenceTier,
+    TimelineAuditFinding,
+    TimelineAuditIssue,
+    TimelineAuditIssueType,
+    TimelineAuditPipelineConfig,
+    TimelineAuditResult,
+    TimelineAuditSceneInput,
+    TimelineAuditStatus,
+    TimelineAuditSuggestion,
+    TimelineAuditTimeBucket,
+    TimelineAuditWrittenPosition
+} from './types';
+
+interface WorkingFinding extends TimelineAuditFinding {
+    cues: TimelineAuditCue[];
+    notes: string[];
+    detectionSources: Set<TimelineAuditDetectionSource>;
+}
+
+const DEFAULT_CONFIG: TimelineAuditPipelineConfig = {
+    runDeterministicPass: true,
+    runContinuityPass: true,
+    runAiInference: false,
+    bodyExcerptChars: 2600,
+    chronologyWindow: 2
+};
+
+const TIME_BUCKET_HOURS: Record<TimelineAuditTimeBucket, number> = {
+    morning: 8,
+    afternoon: 13,
+    evening: 19,
+    night: 23
+};
+
+const CONTRADICTION_ISSUES = new Set<TimelineAuditIssueType>([
+    'time_of_day_conflict',
+    'relative_order_conflict',
+    'impossible_sequence',
+    'summary_body_disagree'
+]);
+
+type PatternDef = {
+    pattern: RegExp;
+    cue: Omit<TimelineAuditCue, 'source' | 'snippet' | 'normalizedText' | 'label'> & { label: string };
+};
+
+const TIME_OF_DAY_PATTERNS: PatternDef[] = [
+    { pattern: /\b(?:at\s+)?dawn\b/i, cue: { kind: 'time_of_day', label: 'dawn', bucket: 'morning', tier: 'direct' } },
+    { pattern: /\b(?:next|that|this|the|early)\s+morning\b/i, cue: { kind: 'time_of_day', label: 'morning', bucket: 'morning', tier: 'direct' } },
+    { pattern: /\b(?:that|this|the|late)\s+afternoon\b/i, cue: { kind: 'time_of_day', label: 'afternoon', bucket: 'afternoon', tier: 'direct' } },
+    { pattern: /\b(?:that|this|the|late)\s+evening\b/i, cue: { kind: 'time_of_day', label: 'evening', bucket: 'evening', tier: 'direct' } },
+    { pattern: /\b(?:that|this)\s+night\b/i, cue: { kind: 'time_of_day', label: 'that night', bucket: 'night', tier: 'ambiguous' } },
+    { pattern: /\blater\s+that\s+night\b/i, cue: { kind: 'time_of_day', label: 'later that night', bucket: 'night', tier: 'strong_inference' } },
+    { pattern: /\bmidnight\b/i, cue: { kind: 'time_of_day', label: 'midnight', bucket: 'night', tier: 'direct' } },
+    { pattern: /\bnoon\b/i, cue: { kind: 'time_of_day', label: 'noon', bucket: 'afternoon', tier: 'direct' } },
+    { pattern: /\bmorning\b/i, cue: { kind: 'time_of_day', label: 'morning', bucket: 'morning', tier: 'direct' } },
+    { pattern: /\bafternoon\b/i, cue: { kind: 'time_of_day', label: 'afternoon', bucket: 'afternoon', tier: 'direct' } },
+    { pattern: /\bevening\b/i, cue: { kind: 'time_of_day', label: 'evening', bucket: 'evening', tier: 'direct' } },
+    { pattern: /\bnight\b/i, cue: { kind: 'time_of_day', label: 'night', bucket: 'night', tier: 'direct' } },
+    { pattern: /\blater\b/i, cue: { kind: 'time_of_day', label: 'later', tier: 'ambiguous' } }
+];
+
+const RELATIVE_PATTERNS: PatternDef[] = [
+    { pattern: /\b(?:the\s+)?next\s+morning\b/i, cue: { kind: 'relative_offset', label: 'next morning', bucket: 'morning', dayOffset: 1, tier: 'direct' } },
+    { pattern: /\b(?:the\s+)?following\s+morning\b/i, cue: { kind: 'relative_offset', label: 'following morning', bucket: 'morning', dayOffset: 1, tier: 'direct' } },
+    { pattern: /\blater\s+that\s+night\b/i, cue: { kind: 'relative_offset', label: 'later that night', bucket: 'night', dayOffset: 0, tier: 'strong_inference' } },
+    { pattern: /\b(?:the\s+)?next\s+day\b/i, cue: { kind: 'relative_offset', label: 'next day', dayOffset: 1, tier: 'direct' } },
+    { pattern: /\b(?:the\s+)?following\s+week\b/i, cue: { kind: 'relative_offset', label: 'following week', dayOffset: 7, tier: 'direct' } },
+    { pattern: /\b(?:the\s+)?next\s+week\b/i, cue: { kind: 'relative_offset', label: 'next week', dayOffset: 7, tier: 'direct' } },
+    { pattern: /\bthree\s+days?\s+later\b/i, cue: { kind: 'relative_offset', label: 'three days later', dayOffset: 3, tier: 'direct' } },
+    { pattern: /\btwo\s+days?\s+later\b/i, cue: { kind: 'relative_offset', label: 'two days later', dayOffset: 2, tier: 'direct' } },
+    { pattern: /\ba\s+few\s+days\s+later\b/i, cue: { kind: 'relative_offset', label: 'a few days later', dayOffset: 3, tier: 'ambiguous' } },
+    { pattern: /\b(\d+)\s+days?\s+later\b/i, cue: { kind: 'relative_offset', label: 'days later', tier: 'direct' } },
+    { pattern: /\bimmediately\s+after\b/i, cue: { kind: 'continuity', label: 'immediately after', minuteOffset: 5, tier: 'direct' } },
+    { pattern: /\bmoments?\s+later\b/i, cue: { kind: 'continuity', label: 'moments later', minuteOffset: 10, tier: 'direct' } },
+    { pattern: /\ban?\s+hour\s+later\b/i, cue: { kind: 'continuity', label: 'an hour later', minuteOffset: 60, tier: 'direct' } }
+];
+
+const ABSOLUTE_DATE_PATTERNS: Array<{ pattern: RegExp; extract: (match: RegExpMatchArray) => string | null; label: string }> = [
+    {
+        pattern: /\b(\d{4})-(\d{1,2})-(\d{1,2})\b/,
+        extract: (m) => `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`,
+        label: 'explicit date'
+    },
+    {
+        pattern: /\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4})\b/i,
+        extract: (m) => `${m[3]}-${monthNameToIndex(m[1])}-${m[2].padStart(2, '0')}`,
+        label: 'explicit date'
+    }
+];
+
+function monthNameToIndex(name: string): string {
+    const index = [
+        'january',
+        'february',
+        'march',
+        'april',
+        'may',
+        'june',
+        'july',
+        'august',
+        'september',
+        'october',
+        'november',
+        'december'
+    ].indexOf(name.toLowerCase());
+    return String(index + 1).padStart(2, '0');
+}
+
+function excerpt(text: string, maxChars: number): string {
+    const trimmed = text.trim();
+    if (trimmed.length <= maxChars) return trimmed;
+    return `${trimmed.slice(0, maxChars).trim()}…`;
+}
+
+function normalizeText(value: unknown): string {
+    if (Array.isArray(value)) return value.map((entry) => String(entry)).join('\n').trim();
+    if (typeof value === 'string') return value.trim();
+    return '';
+}
+
+function toRawWhen(value: unknown): string | null {
+    if (typeof value === 'string' && value.trim().length > 0) return value.trim();
+    if (value instanceof Date && !Number.isNaN(value.getTime())) {
+        const year = value.getFullYear();
+        const month = String(value.getMonth() + 1).padStart(2, '0');
+        const day = String(value.getDate()).padStart(2, '0');
+        const hour = String(value.getHours()).padStart(2, '0');
+        const minute = String(value.getMinutes()).padStart(2, '0');
+        return `${year}-${month}-${day} ${hour}:${minute}`;
+    }
+    return null;
+}
+
+function parseSceneWhen(rawWhen: string | null): Date | null {
+    if (!rawWhen) return null;
+    return parseWhenField(rawWhen);
+}
+
+function getBucketForWhen(date: Date): TimelineAuditTimeBucket {
+    const hour = date.getHours();
+    if (hour < 12) return 'morning';
+    if (hour < 17) return 'afternoon';
+    if (hour < 22) return 'evening';
+    return 'night';
+}
+
+function adjustDateToBucket(date: Date, bucket: TimelineAuditTimeBucket): Date {
+    const adjusted = new Date(date);
+    adjusted.setHours(TIME_BUCKET_HOURS[bucket], 0, 0, 0);
+    return adjusted;
+}
+
+function formatWhen(date: Date | null): string {
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) return 'Missing';
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hour = String(date.getHours()).padStart(2, '0');
+    const minute = String(date.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day} ${hour}:${minute}`;
+}
+
+function formatGap(ms: number): string {
+    const minutes = Math.round(ms / 60000);
+    if (minutes < 60) return `${minutes}m`;
+    const hours = Math.round(minutes / 60);
+    if (hours < 48) return `${hours}h`;
+    const days = Math.round(hours / 24);
+    return `${days}d`;
+}
+
+function roundDays(ms: number): number {
+    return Math.round(ms / (24 * 60 * 60 * 1000));
+}
+
+function hasSignalCue(cues: TimelineAuditCue[], predicate: (cue: TimelineAuditCue) => boolean): boolean {
+    return cues.some(predicate);
+}
+
+function strongestCue(cues: TimelineAuditCue[]): TimelineAuditCue | null {
+    if (cues.length === 0) return null;
+    const order: Record<TimelineAuditEvidenceTier, number> = { direct: 0, strong_inference: 1, ambiguous: 2 };
+    return cues.slice().sort((a, b) => {
+        const aScore = order[a.tier] ?? 99;
+        const bScore = order[b.tier] ?? 99;
+        if (aScore !== bScore) return aScore - bScore;
+        if (a.kind === b.kind) return 0;
+        if (a.kind === 'absolute_date') return -1;
+        if (b.kind === 'absolute_date') return 1;
+        return 0;
+    })[0];
+}
+
+function cueToEvidence(cue: TimelineAuditCue, detectionSource: TimelineAuditDetectionSource): TimelineAuditEvidence {
+    return {
+        source: cue.source,
+        detectionSource,
+        tier: cue.tier,
+        label: cue.label,
+        snippet: cue.snippet
+    };
+}
+
+function addIssue(
+    finding: WorkingFinding,
+    type: TimelineAuditIssueType,
+    detectionSource: TimelineAuditDetectionSource,
+    tier: TimelineAuditEvidenceTier,
+    summary: string
+): void {
+    if (finding.issues.some((issue) => issue.type === type && issue.summary === summary)) return;
+
+    const severity: TimelineAuditIssue['severity'] = CONTRADICTION_ISSUES.has(type) && tier !== 'ambiguous'
+        ? 'contradiction'
+        : 'warning';
+
+    finding.issues.push({
+        type,
+        severity,
+        tier,
+        detectionSource,
+        summary
+    });
+    finding.detectionSources.add(detectionSource);
+    finding.notes.push(summary);
+}
+
+function addEvidence(
+    finding: WorkingFinding,
+    evidence: TimelineAuditEvidence
+): void {
+    if (finding.evidence.some((item) => item.source === evidence.source && item.snippet === evidence.snippet && item.label === evidence.label)) {
+        return;
+    }
+    finding.evidence.push(evidence);
+    finding.detectionSources.add(evidence.detectionSource);
+}
+
+function setSuggestion(
+    finding: WorkingFinding,
+    suggestion: TimelineAuditSuggestion
+): void {
+    if (finding.suggestedWhen && finding.safeApplyEligible) return;
+    finding.suggestedWhen = suggestion.when;
+    finding.suggestedConfidence = suggestion.confidence;
+    finding.suggestedProvenance = suggestion.provenance;
+    finding.safeApplyEligible = suggestion.safeApply;
+    finding.aiSuggested = suggestion.source === 'ai';
+    finding.notes.push(suggestion.reason);
+    finding.detectionSources.add(suggestion.source);
+}
+
+function createWorkingFinding(
+    input: TimelineAuditSceneInput,
+    chronologyPositionMap: Map<string, number>
+): WorkingFinding {
+    const issues: TimelineAuditIssue[] = [];
+    const notes: string[] = [];
+
+    if (input.whenParseIssue === 'missing_when') {
+        issues.push({
+            type: 'missing_when',
+            severity: 'warning',
+            tier: 'direct',
+            detectionSource: 'deterministic',
+            summary: 'Scene is missing a YAML When value.'
+        });
+        notes.push('Missing When prevents stable chronology placement.');
+    } else if (input.whenParseIssue === 'invalid_when') {
+        issues.push({
+            type: 'invalid_when',
+            severity: 'warning',
+            tier: 'direct',
+            detectionSource: 'deterministic',
+            summary: 'Scene has an invalid YAML When value.'
+        });
+        notes.push('Invalid When prevents reliable chronology placement.');
+    }
+
+    return {
+        file: input.file,
+        sceneId: input.sceneId,
+        title: input.title,
+        path: input.path,
+        manuscriptOrderIndex: input.manuscriptOrderIndex,
+        currentWhenRaw: input.rawWhen,
+        currentWhen: input.parsedWhen,
+        whenValid: input.whenValid,
+        whenParseIssue: input.whenParseIssue,
+        currentWhenSource: input.whenSource,
+        currentWhenConfidence: input.whenConfidence,
+        expectedChronologyPosition: chronologyPositionMap.get(input.path) ?? null,
+        inferredWrittenTimelinePosition: null,
+        status: 'aligned',
+        issues,
+        evidence: [],
+        rationale: '',
+        suggestedWhen: null,
+        suggestedConfidence: null,
+        suggestedProvenance: null,
+        allowedActions: ['keep'],
+        reviewAction: 'keep',
+        unresolved: issues.length > 0,
+        aiSuggested: false,
+        safeApplyEligible: false,
+        cues: [],
+        notes,
+        detectionSources: new Set(issues.length > 0 ? ['deterministic'] : [])
+    };
+}
+
+function extractCues(text: string, source: TimelineAuditEvidenceSource): TimelineAuditCue[] {
+    const cues: TimelineAuditCue[] = [];
+    if (!text.trim()) return cues;
+
+    for (const def of TIME_OF_DAY_PATTERNS) {
+        const match = text.match(def.pattern);
+        if (!match) continue;
+        cues.push({
+            ...def.cue,
+            source,
+            snippet: match[0],
+            normalizedText: match[0].toLowerCase()
+        });
+    }
+
+    for (const def of RELATIVE_PATTERNS) {
+        const match = text.match(def.pattern);
+        if (!match) continue;
+        const cue: TimelineAuditCue = {
+            ...def.cue,
+            source,
+            snippet: match[0],
+            normalizedText: match[0].toLowerCase()
+        };
+        if (cue.label === 'days later' && match[1]) {
+            cue.dayOffset = Number.parseInt(match[1], 10);
+            cue.label = `${cue.dayOffset} days later`;
+        }
+        cues.push(cue);
+    }
+
+    for (const def of ABSOLUTE_DATE_PATTERNS) {
+        const match = text.match(def.pattern);
+        if (!match) continue;
+        const raw = def.extract(match);
+        if (!raw) continue;
+        const absoluteWhen = parseWhenField(raw);
+        if (!absoluteWhen) continue;
+        cues.push({
+            kind: 'absolute_date',
+            label: def.label,
+            source,
+            tier: 'direct',
+            absoluteWhen,
+            snippet: match[0],
+            normalizedText: raw
+        });
+    }
+
+    return cues;
+}
+
+function compareSummaryAndBodyCues(
+    finding: WorkingFinding,
+    summaryCues: TimelineAuditCue[],
+    bodyCues: TimelineAuditCue[]
+): void {
+    const summaryPrimary = strongestCue(summaryCues.filter((cue) => cue.kind !== 'continuity'));
+    const bodyPrimary = strongestCue(bodyCues.filter((cue) => cue.kind !== 'continuity'));
+    if (!summaryPrimary || !bodyPrimary) return;
+
+    const bucketMismatch = summaryPrimary.bucket && bodyPrimary.bucket && summaryPrimary.bucket !== bodyPrimary.bucket;
+    const absoluteMismatch = summaryPrimary.absoluteWhen && bodyPrimary.absoluteWhen
+        && summaryPrimary.absoluteWhen.getTime() !== bodyPrimary.absoluteWhen.getTime();
+
+    if (!bucketMismatch && !absoluteMismatch) return;
+
+    addIssue(
+        finding,
+        'summary_body_disagree',
+        'deterministic',
+        summaryPrimary.tier === 'direct' && bodyPrimary.tier === 'direct' ? 'direct' : 'strong_inference',
+        'Summary and body imply different timeline signals.'
+    );
+    addEvidence(finding, cueToEvidence(summaryPrimary, 'deterministic'));
+    addEvidence(finding, cueToEvidence(bodyPrimary, 'deterministic'));
+}
+
+function compareWhenAgainstCue(
+    finding: WorkingFinding,
+    cue: TimelineAuditCue
+): void {
+    if (!finding.currentWhen) return;
+
+    if (cue.kind === 'absolute_date' && cue.absoluteWhen) {
+        const sameDate = cue.absoluteWhen.getFullYear() === finding.currentWhen.getFullYear()
+            && cue.absoluteWhen.getMonth() === finding.currentWhen.getMonth()
+            && cue.absoluteWhen.getDate() === finding.currentWhen.getDate();
+        if (!sameDate) {
+            addIssue(
+                finding,
+                'relative_order_conflict',
+                'deterministic',
+                cue.tier,
+                `Body evidence points to ${formatWhen(cue.absoluteWhen)}, but YAML says ${formatWhen(finding.currentWhen)}.`
+            );
+            addEvidence(finding, cueToEvidence(cue, 'deterministic'));
+            setSuggestion(finding, {
+                when: cue.absoluteWhen,
+                confidence: 'high',
+                provenance: 'keyword',
+                reason: 'Direct date evidence suggests a different calendar day.',
+                source: 'deterministic',
+                safeApply: true
+            });
+        }
+        return;
+    }
+
+    if (cue.kind === 'time_of_day' && cue.bucket) {
+        const yamlBucket = getBucketForWhen(finding.currentWhen);
+        if (yamlBucket !== cue.bucket) {
+            addIssue(
+                finding,
+                cue.tier === 'ambiguous' ? 'ambiguous_time_signal' : 'time_of_day_conflict',
+                'deterministic',
+                cue.tier,
+                `Text implies ${cue.bucket}, but YAML When is ${yamlBucket}.`
+            );
+            addEvidence(finding, cueToEvidence(cue, 'deterministic'));
+            if (cue.tier !== 'ambiguous') {
+                setSuggestion(finding, {
+                    when: adjustDateToBucket(finding.currentWhen, cue.bucket),
+                    confidence: cue.tier === 'direct' ? 'high' : 'med',
+                    provenance: 'keyword',
+                    reason: `Direct ${cue.source} time-of-day evidence suggests ${cue.bucket}.`,
+                    source: 'deterministic',
+                    safeApply: cue.tier === 'direct'
+                });
+            }
+        }
+    }
+}
+
+function detectInsufficientEvidence(
+    finding: WorkingFinding,
+    input: TimelineAuditSceneInput
+): void {
+    const hasAnyText = Boolean(input.summary || input.synopsis || input.bodyExcerpt);
+    if (!hasAnyText) {
+        addIssue(
+            finding,
+            'insufficient_evidence',
+            'deterministic',
+            'ambiguous',
+            'No usable scene text was available for timeline auditing.'
+        );
+        return;
+    }
+
+    if (finding.whenParseIssue && finding.cues.length === 0) {
+        addIssue(
+            finding,
+            'insufficient_evidence',
+            'deterministic',
+            'ambiguous',
+            'No clear temporal evidence was found to replace the missing or invalid When.'
+        );
+    }
+}
+
+function detectDeterministicFindings(inputs: TimelineAuditSceneInput[], findingMap: Map<string, WorkingFinding>): void {
+    for (const input of inputs) {
+        const finding = findingMap.get(input.path);
+        if (!finding) continue;
+
+        const summaryCues = extractCues(input.summary, 'summary');
+        const synopsisCues = extractCues(input.synopsis, 'synopsis');
+        const bodyCues = extractCues(input.bodyExcerpt, 'body');
+        finding.cues.push(...summaryCues, ...synopsisCues, ...bodyCues);
+
+        compareSummaryAndBodyCues(finding, summaryCues, bodyCues);
+
+        const strongestDirectCue = strongestCue(finding.cues.filter((cue) => cue.tier !== 'ambiguous'));
+        if (strongestDirectCue) {
+            compareWhenAgainstCue(finding, strongestDirectCue);
+            addEvidence(finding, cueToEvidence(strongestDirectCue, 'deterministic'));
+        } else {
+            const ambiguousCue = strongestCue(finding.cues);
+            if (ambiguousCue) {
+                addIssue(
+                    finding,
+                    'ambiguous_time_signal',
+                    'deterministic',
+                    ambiguousCue.tier,
+                    `Temporal evidence is suggestive but not decisive: ${ambiguousCue.label}.`
+                );
+                addEvidence(finding, cueToEvidence(ambiguousCue, 'deterministic'));
+            }
+        }
+
+        detectInsufficientEvidence(finding, input);
+    }
+}
+
+function findingHasLargeJumpCue(finding: WorkingFinding): boolean {
+    return hasSignalCue(
+        finding.cues,
+        (cue) =>
+            cue.kind === 'absolute_date'
+            || (cue.kind === 'relative_offset' && typeof cue.dayOffset === 'number' && cue.dayOffset >= 2)
+    );
+}
+
+function continuityIssueSummary(currentTitle: string, previousTitle: string, deltaMs: number): string {
+    return `${currentTitle} lands ${formatGap(deltaMs)} after ${previousTitle} in chronology.`;
+}
+
+function applyRelativeCueAgainstAnchor(
+    finding: WorkingFinding,
+    currentInput: TimelineAuditSceneInput,
+    cue: TimelineAuditCue,
+    anchorInput: TimelineAuditSceneInput,
+    anchorLabel: string
+): void {
+    if (!currentInput.parsedWhen || !anchorInput.parsedWhen) return;
+
+    const deltaMs = currentInput.parsedWhen.getTime() - anchorInput.parsedWhen.getTime();
+
+    if (cue.dayOffset !== undefined) {
+        const deltaDays = roundDays(deltaMs);
+        const expectedDays = cue.dayOffset;
+        const mismatch = Math.abs(deltaDays - expectedDays) > (cue.tier === 'ambiguous' ? 2 : 0);
+        if (!mismatch) return;
+
+        const issueType: TimelineAuditIssueType = cue.tier === 'direct' && expectedDays <= 1 && deltaDays >= 3
+            ? 'impossible_sequence'
+            : 'relative_order_conflict';
+
+        addIssue(
+            finding,
+            issueType,
+            'continuity',
+            cue.tier,
+            `${cue.label} conflicts with the ${anchorLabel.toLowerCase()} gap from ${anchorInput.title}.`
+        );
+        addEvidence(finding, {
+            source: 'neighbor',
+            detectionSource: 'continuity',
+            tier: cue.tier,
+            label: anchorLabel,
+            snippet: continuityIssueSummary(currentInput.title, anchorInput.title, deltaMs)
+        });
+
+        if (cue.bucket) {
+            const suggested = new Date(anchorInput.parsedWhen);
+            suggested.setDate(suggested.getDate() + expectedDays);
+            suggested.setHours(TIME_BUCKET_HOURS[cue.bucket], 0, 0, 0);
+            setSuggestion(finding, {
+                when: suggested,
+                confidence: cue.tier === 'direct' ? 'high' : 'med',
+                provenance: 'keyword',
+                reason: `Relative cue "${cue.label}" is anchored against ${anchorInput.title}.`,
+                source: 'continuity',
+                safeApply: cue.tier === 'direct'
+            });
+        }
+
+        finding.inferredWrittenTimelinePosition = {
+            label: `After ${anchorInput.title} by about ${cue.label}`,
+            basis: cue.tier === 'direct' ? 'explicit' : 'inferred'
+        };
+        return;
+    }
+
+    if (cue.minuteOffset !== undefined) {
+        const mismatch = deltaMs > 12 * 60 * 60 * 1000;
+        if (!mismatch) return;
+        addIssue(
+            finding,
+            'impossible_sequence',
+            'continuity',
+            cue.tier,
+            `${cue.label} conflicts with the ${anchorLabel.toLowerCase()} gap from ${anchorInput.title}.`
+        );
+        addEvidence(finding, {
+            source: 'neighbor',
+            detectionSource: 'continuity',
+            tier: cue.tier,
+            label: anchorLabel,
+            snippet: continuityIssueSummary(currentInput.title, anchorInput.title, deltaMs)
+        });
+    }
+}
+
+function pickRelativeContinuityCue(cues: TimelineAuditCue[]): TimelineAuditCue | null {
+    const relevant = cues.filter((cue) => cue.kind === 'relative_offset' || cue.kind === 'continuity');
+    if (relevant.length === 0) return null;
+    return relevant.find((cue) => cue.tier === 'direct' && (cue.dayOffset !== undefined || cue.minuteOffset !== undefined))
+        ?? relevant.find((cue) => cue.dayOffset !== undefined || cue.minuteOffset !== undefined)
+        ?? strongestCue(relevant);
+}
+
+function detectContinuityFindings(inputs: TimelineAuditSceneInput[], findingMap: Map<string, WorkingFinding>, windowSize: number): void {
+    const chronologyEntries = buildChronologyEntries(inputs);
+    if (chronologyEntries.length < 2) return;
+
+    const gaps = chronologyEntries
+        .slice(1)
+        .map((entry, index) => entry.input.parsedWhen!.getTime() - chronologyEntries[index].input.parsedWhen!.getTime())
+        .filter((gap) => gap > 0);
+    const sortedGaps = gaps.slice().sort((a, b) => a - b);
+    const baselineGap = sortedGaps[0] ?? 24 * 60 * 60 * 1000;
+    const largeGapThreshold = Math.max(baselineGap * 4, 48 * 60 * 60 * 1000);
+
+    for (let index = 0; index < chronologyEntries.length; index += 1) {
+        const currentEntry = chronologyEntries[index];
+        const currentFinding = findingMap.get(currentEntry.input.path);
+        if (!currentFinding || !currentEntry.input.parsedWhen) continue;
+        const currentRelativeCue = pickRelativeContinuityCue(currentFinding.cues);
+
+        const previousEntry = chronologyEntries[index - 1];
+        if (previousEntry?.input.parsedWhen) {
+            const deltaMs = currentEntry.input.parsedWhen.getTime() - previousEntry.input.parsedWhen.getTime();
+
+            if (currentRelativeCue?.dayOffset !== undefined) {
+                const deltaDays = roundDays(deltaMs);
+                const expectedDays = currentRelativeCue.dayOffset;
+                const mismatch = Math.abs(deltaDays - expectedDays) > (currentRelativeCue.tier === 'ambiguous' ? 2 : 0);
+                if (mismatch) {
+                    const issueType: TimelineAuditIssueType = currentRelativeCue.tier === 'direct' && expectedDays <= 1 && deltaDays >= 3
+                        ? 'impossible_sequence'
+                        : 'relative_order_conflict';
+                    addIssue(
+                        currentFinding,
+                        issueType,
+                        'continuity',
+                        currentRelativeCue.tier,
+                        `${currentRelativeCue.label} conflicts with the current chronological gap from ${previousEntry.input.title}.`
+                    );
+                    addEvidence(currentFinding, {
+                        source: 'neighbor',
+                        detectionSource: 'continuity',
+                        tier: currentRelativeCue.tier,
+                        label: 'Neighbor chronology',
+                        snippet: continuityIssueSummary(currentEntry.input.title, previousEntry.input.title, deltaMs)
+                    });
+
+                    if (currentFinding.currentWhen && currentRelativeCue.bucket && expectedDays >= 0) {
+                        const suggested = new Date(previousEntry.input.parsedWhen);
+                        suggested.setDate(suggested.getDate() + expectedDays);
+                        suggested.setHours(TIME_BUCKET_HOURS[currentRelativeCue.bucket], 0, 0, 0);
+                        setSuggestion(currentFinding, {
+                            when: suggested,
+                            confidence: currentRelativeCue.tier === 'direct' ? 'high' : 'med',
+                            provenance: 'keyword',
+                            reason: `Relative cue "${currentRelativeCue.label}" is anchored against the previous chronological scene.`,
+                            source: 'continuity',
+                            safeApply: currentRelativeCue.tier === 'direct'
+                        });
+                    }
+                    currentFinding.inferredWrittenTimelinePosition = {
+                        label: `After ${previousEntry.input.title} by about ${currentRelativeCue.label}`,
+                        basis: currentRelativeCue.tier === 'direct' ? 'explicit' : 'inferred'
+                    };
+                }
+            } else if (currentRelativeCue?.minuteOffset !== undefined) {
+                const mismatch = deltaMs > 12 * 60 * 60 * 1000;
+                if (mismatch) {
+                    addIssue(
+                        currentFinding,
+                        'impossible_sequence',
+                        'continuity',
+                        currentRelativeCue.tier,
+                        `${currentRelativeCue.label} conflicts with the much larger chronology gap from ${previousEntry.input.title}.`
+                    );
+                    addEvidence(currentFinding, {
+                        source: 'neighbor',
+                        detectionSource: 'continuity',
+                        tier: currentRelativeCue.tier,
+                        label: 'Neighbor chronology',
+                        snippet: continuityIssueSummary(currentEntry.input.title, previousEntry.input.title, deltaMs)
+                    });
+                }
+            } else if (deltaMs > largeGapThreshold) {
+                const previousFinding = findingMap.get(previousEntry.input.path);
+                const hasJustification = findingHasLargeJumpCue(currentFinding) || (previousFinding ? findingHasLargeJumpCue(previousFinding) : false);
+                if (!hasJustification) {
+                    addIssue(
+                        currentFinding,
+                        'continuity_conflict',
+                        'continuity',
+                        'strong_inference',
+                        `Large chronology jump from ${previousEntry.input.title} is not clearly justified in nearby text.`
+                    );
+                    addEvidence(currentFinding, {
+                        source: 'neighbor',
+                        detectionSource: 'continuity',
+                        tier: 'strong_inference',
+                        label: 'Neighbor chronology',
+                        snippet: continuityIssueSummary(currentEntry.input.title, previousEntry.input.title, deltaMs)
+                    });
+                }
+            }
+        }
+
+        const previousNarrative = currentEntry.input.manuscriptOrderIndex > 0
+            ? inputs[currentEntry.input.manuscriptOrderIndex - 1]
+            : null;
+        if (
+            currentRelativeCue
+            && previousNarrative
+            && previousNarrative.path !== previousEntry?.input.path
+            && previousNarrative.parsedWhen instanceof Date
+        ) {
+            applyRelativeCueAgainstAnchor(
+                currentFinding,
+                currentEntry.input,
+                currentRelativeCue,
+                previousNarrative,
+                'Narrative neighbor'
+            );
+        }
+
+        const windowStart = Math.max(0, index - windowSize);
+        const windowEnd = Math.min(chronologyEntries.length, index + windowSize + 1);
+        const localTitles = chronologyEntries
+            .slice(windowStart, windowEnd)
+            .filter((entry) => entry.input.path !== currentEntry.input.path)
+            .map((entry) => entry.input.title);
+        if (localTitles.length > 0 && currentFinding.inferredWrittenTimelinePosition === null && currentFinding.cues.length > 0) {
+            const cue = strongestCue(currentFinding.cues.filter((item) => item.kind === 'relative_offset' || item.kind === 'continuity'));
+            if (cue) {
+                currentFinding.inferredWrittenTimelinePosition = {
+                    label: `${cue.label} relative to nearby chronology (${localTitles[0]})`,
+                    basis: cue.tier === 'direct' ? 'explicit' : 'inferred'
+                };
+            }
+        }
+    }
+}
+
+function buildAiPrompt(
+    input: TimelineAuditSceneInput,
+    previous: TimelineAuditSceneInput | null,
+    next: TimelineAuditSceneInput | null
+): string {
+    const previousWhen = previous?.parsedWhen ? formatWhen(previous.parsedWhen) : 'N/A';
+    const nextWhen = next?.parsedWhen ? formatWhen(next.parsedWhen) : 'N/A';
+
+    return `You are auditing a fiction scene timeline. Determine whether the manuscript evidence disagrees with the YAML When value.
+
+Current scene: ${input.title}
+Current YAML When: ${input.rawWhen ?? 'Missing'}
+Previous chronological neighbor: ${previous?.title ?? 'N/A'} (${previousWhen})
+Next chronological neighbor: ${next?.title ?? 'N/A'} (${nextWhen})
+
+Summary:
+${input.summary || 'N/A'}
+
+Synopsis:
+${input.synopsis || 'N/A'}
+
+Body excerpt:
+${input.bodyExcerpt || 'N/A'}
+
+Return JSON only with:
+{
+  "rationale": string,
+  "evidenceQuotes": string[],
+  "issueType": "time_of_day_conflict" | "relative_order_conflict" | "continuity_conflict" | "ambiguous_time_signal" | "insufficient_evidence" | null,
+  "evidenceTier": "direct" | "strong_inference" | "ambiguous",
+  "writtenTimelinePosition": string | null,
+  "suggestedWhen": string | null,
+  "confidence": "high" | "med" | "low"
+}`;
+}
+
+export function parseAuditAiResponse(content: string): TimelineAuditAiResponse | null {
+    try {
+        let json = content.trim();
+        const fenced = json.match(/```(?:json)?\s*([\s\S]*?)```/);
+        if (fenced) {
+            json = fenced[1].trim();
+        }
+        const parsed = JSON.parse(json) as TimelineAuditAiResponse;
+        if (!parsed || typeof parsed.rationale !== 'string') return null;
+        return parsed;
+    } catch {
+        return null;
+    }
+}
+
+async function runAiInference(
+    plugin: RadialTimelinePlugin,
+    inputs: TimelineAuditSceneInput[],
+    findingMap: Map<string, WorkingFinding>,
+    callbacks: TimelineAuditCallbacks
+): Promise<void> {
+    const chronologyEntries = buildChronologyEntries(inputs);
+    const aiCandidates = chronologyEntries
+        .filter((entry) => {
+            const finding = findingMap.get(entry.input.path);
+            return finding && finding.unresolved && !finding.safeApplyEligible;
+        })
+        .map((entry) => entry.input);
+
+    if (aiCandidates.length === 0) return;
+
+    const aiClient = getAIClient(plugin);
+
+    for (let index = 0; index < aiCandidates.length; index += 1) {
+        if (callbacks.abortSignal?.aborted) break;
+        const input = aiCandidates[index];
+        const chronologyIndex = chronologyEntries.findIndex((entry) => entry.input.path === input.path);
+        const previous = chronologyIndex > 0 ? chronologyEntries[chronologyIndex - 1].input : null;
+        const next = chronologyIndex >= 0 && chronologyIndex < chronologyEntries.length - 1 ? chronologyEntries[chronologyIndex + 1].input : null;
+        const finding = findingMap.get(input.path);
+        if (!finding) continue;
+
+        callbacks.onAiProgress?.(index + 1, aiCandidates.length, input.title);
+
+        try {
+            const run = await aiClient.run({
+                feature: 'TimelineAuditAI',
+                task: 'TimelineDiagnosis',
+                requiredCapabilities: ['jsonStrict', 'reasoningStrong'],
+                featureModeInstructions: 'Audit fiction-scene chronology conservatively. Prefer uncertainty over overclaiming.',
+                userInput: buildAiPrompt(input, previous, next),
+                returnType: 'json',
+                responseSchema: {
+                    type: 'object',
+                    properties: {
+                        rationale: { type: 'string' },
+                        evidenceQuotes: { type: 'array', items: { type: 'string' } },
+                        issueType: { type: 'string' },
+                        evidenceTier: { type: 'string' },
+                        writtenTimelinePosition: { type: 'string' },
+                        suggestedWhen: { type: 'string' },
+                        confidence: { type: 'string' }
+                    },
+                    required: ['rationale', 'evidenceQuotes']
+                },
+                overrides: {
+                    temperature: 0.2,
+                    jsonStrict: true,
+                    maxOutputMode: 'auto',
+                    reasoningDepth: 'standard'
+                }
+            });
+
+            if (run.aiStatus !== 'success' || !run.content) continue;
+
+            const parsed = parseAuditAiResponse(run.content);
+            if (!parsed) continue;
+
+            finding.notes.push(parsed.rationale);
+            finding.detectionSources.add('ai');
+
+            for (const quote of parsed.evidenceQuotes ?? []) {
+                addEvidence(finding, {
+                    source: 'ai',
+                    detectionSource: 'ai',
+                    tier: parsed.evidenceTier ?? 'ambiguous',
+                    label: 'AI evidence',
+                    snippet: quote
+                });
+            }
+
+            if (parsed.issueType) {
+                addIssue(
+                    finding,
+                    parsed.issueType,
+                    'ai',
+                    parsed.evidenceTier ?? 'ambiguous',
+                    parsed.rationale
+                );
+            }
+
+            if (parsed.writtenTimelinePosition) {
+                finding.inferredWrittenTimelinePosition = {
+                    label: parsed.writtenTimelinePosition,
+                    basis: parsed.evidenceTier === 'direct' ? 'explicit' : 'inferred'
+                };
+            }
+
+            if (parsed.suggestedWhen) {
+                const suggestedWhen = parseWhenField(parsed.suggestedWhen);
+                if (suggestedWhen) {
+                    setSuggestion(finding, {
+                        when: suggestedWhen,
+                        confidence: parsed.confidence ?? 'low',
+                        provenance: 'ai',
+                        reason: parsed.rationale,
+                        source: 'ai',
+                        safeApply: false
+                    });
+                }
+            }
+        } catch {
+            // Silent per-scene AI failures keep the deterministic audit usable.
+        }
+    }
+}
+
+function finalizeFinding(finding: WorkingFinding): TimelineAuditFinding {
+    const { cues: _cues, notes, detectionSources: _detectionSources, ...baseFinding } = finding;
+    let status: TimelineAuditStatus = 'aligned';
+    if (finding.issues.some((issue) => issue.severity === 'contradiction')) {
+        status = 'contradiction';
+    } else if (finding.issues.length > 0) {
+        status = 'warning';
+    }
+
+    const hasDirectOrAnchoredEvidence = finding.issues.some((issue) =>
+        issue.detectionSource !== 'ai' && (issue.tier === 'direct' || issue.tier === 'strong_inference')
+    );
+
+    const safeApplyEligible = Boolean(
+        finding.suggestedWhen
+        && finding.suggestedConfidence === 'high'
+        && finding.suggestedProvenance
+        && hasDirectOrAnchoredEvidence
+        && !finding.aiSuggested
+    ) || finding.safeApplyEligible;
+
+    const allowedActions: TimelineAuditFinding['allowedActions'] = safeApplyEligible
+        ? ['apply', 'keep', 'mark_review']
+        : status === 'aligned'
+            ? ['keep']
+            : ['keep', 'mark_review'];
+
+    const unresolved = status !== 'aligned';
+
+    return {
+        ...baseFinding,
+        status,
+        rationale: notes.filter(Boolean).join(' '),
+        allowedActions,
+        reviewAction: 'keep',
+        unresolved,
+        safeApplyEligible
+    };
+}
+
+export function sortAuditFindingsForDisplay(a: TimelineAuditFinding, b: TimelineAuditFinding): number {
+    const severityOrder: Record<TimelineAuditStatus, number> = {
+        contradiction: 0,
+        warning: 1,
+        aligned: 2
+    };
+    const severityDelta = severityOrder[a.status] - severityOrder[b.status];
+    if (severityDelta !== 0) return severityDelta;
+
+    const aHasPosition = a.expectedChronologyPosition !== null;
+    const bHasPosition = b.expectedChronologyPosition !== null;
+    if (aHasPosition && bHasPosition) {
+        return (a.expectedChronologyPosition ?? 0) - (b.expectedChronologyPosition ?? 0);
+    }
+    if (aHasPosition && !bHasPosition) return -1;
+    if (!aHasPosition && bHasPosition) return 1;
+    return a.manuscriptOrderIndex - b.manuscriptOrderIndex;
+}
+
+export async function buildTimelineAuditSceneInputs(
+    plugin: RadialTimelinePlugin,
+    vault: Vault = plugin.app.vault,
+    excerptChars = DEFAULT_CONFIG.bodyExcerptChars ?? 2600
+): Promise<TimelineAuditSceneInput[]> {
+    const sceneData = await getAllSceneData(plugin, vault);
+    sceneData.sort(compareScenesByOrder);
+
+    return sceneData.map((scene, manuscriptOrderIndex) => {
+        const rawWhen = toRawWhen(scene.frontmatter.When);
+        const parsedWhen = parseSceneWhen(rawWhen);
+        const whenParseIssue = rawWhen === null
+            ? 'missing_when'
+            : parsedWhen === null
+                ? 'invalid_when'
+                : null;
+
+        return {
+            file: scene.file,
+            sceneId: readSceneId(scene.frontmatter) || scene.file.path,
+            title: scene.file.basename,
+            path: scene.file.path,
+            manuscriptOrderIndex,
+            rawWhen,
+            parsedWhen,
+            whenValid: parsedWhen instanceof Date,
+            whenParseIssue,
+            whenSource: typeof scene.frontmatter.WhenSource === 'string' ? scene.frontmatter.WhenSource as TimelineAuditSceneInput['whenSource'] : undefined,
+            whenConfidence: typeof scene.frontmatter.WhenConfidence === 'string' ? scene.frontmatter.WhenConfidence as TimelineAuditSceneInput['whenConfidence'] : undefined,
+            summary: normalizeText(scene.frontmatter.Summary),
+            synopsis: normalizeText(scene.frontmatter.Synopsis),
+            bodyExcerpt: excerpt(scene.body, excerptChars)
+        };
+    });
+}
+
+export async function runTimelineAuditFromInputs(
+    inputs: TimelineAuditSceneInput[],
+    config: TimelineAuditPipelineConfig,
+    plugin?: RadialTimelinePlugin,
+    callbacks: TimelineAuditCallbacks = {}
+): Promise<TimelineAuditResult> {
+    const mergedConfig = { ...DEFAULT_CONFIG, ...config };
+    const chronologyPositionMap = buildChronologyPositionMap(inputs);
+    const workingFindings = new Map<string, WorkingFinding>();
+
+    for (const input of inputs) {
+        workingFindings.set(input.path, createWorkingFinding(input, chronologyPositionMap));
+    }
+
+    if (mergedConfig.runDeterministicPass) {
+        callbacks.onStageChange?.('deterministic');
+        detectDeterministicFindings(inputs, workingFindings);
+    }
+
+    if (callbacks.abortSignal?.aborted) {
+        return buildAuditResult(Array.from(workingFindings.values()).map(finalizeFinding));
+    }
+
+    if (mergedConfig.runContinuityPass) {
+        callbacks.onStageChange?.('continuity');
+        detectContinuityFindings(inputs, workingFindings, mergedConfig.chronologyWindow ?? 2);
+    }
+
+    if (callbacks.abortSignal?.aborted) {
+        return buildAuditResult(Array.from(workingFindings.values()).map(finalizeFinding));
+    }
+
+    if (mergedConfig.runAiInference && plugin) {
+        callbacks.onStageChange?.('ai');
+        await runAiInference(plugin, inputs, workingFindings, callbacks);
+    }
+
+    callbacks.onStageChange?.('complete');
+    return buildAuditResult(Array.from(workingFindings.values()).map(finalizeFinding));
+}
+
+function buildAuditResult(findings: TimelineAuditFinding[]): TimelineAuditResult {
+    const sorted = findings.slice().sort(sortAuditFindingsForDisplay);
+    const stats = {
+        totalScenes: sorted.length,
+        aligned: sorted.filter((finding) => finding.status === 'aligned').length,
+        warnings: sorted.filter((finding) => finding.status === 'warning').length,
+        contradictions: sorted.filter((finding) => finding.status === 'contradiction').length,
+        missingWhen: sorted.filter((finding) => finding.whenParseIssue === 'missing_when').length
+    };
+
+    return {
+        findings: sorted,
+        stats,
+        appliedSuggestionCount: sorted.filter((finding) => finding.reviewAction === 'apply').length,
+        unresolvedCount: sorted.filter((finding) => finding.unresolved).length
+    };
+}
+
+export async function runAuditPipeline(
+    plugin: RadialTimelinePlugin,
+    config: TimelineAuditPipelineConfig,
+    callbacks: TimelineAuditCallbacks = {}
+): Promise<TimelineAuditResult> {
+    const inputs = await buildTimelineAuditSceneInputs(plugin, plugin.app.vault, config.bodyExcerptChars);
+    return runTimelineAuditFromInputs(inputs, config, plugin, callbacks);
+}

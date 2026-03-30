@@ -13,6 +13,7 @@ import { ManuscriptOptionsModal, ManuscriptModalResult, type ManuscriptExportOut
 import { PlanetaryTimeModal } from '../modals/PlanetaryTimeModal';
 import { BookDesignerModal } from '../modals/BookDesignerModal';
 import { TimelineRepairModal } from '../modals/TimelineRepairModal';
+import { TimelineAuditModal } from '../modals/TimelineAuditModal';
 import { AuthorProgressModal } from '../modals/AuthorProgressModal';
 import { CreateRtNoteModal, type RtNoteSubtypeId } from '../modals/CreateRtNoteModal';
 import { generateSceneContent } from '../utils/sceneGenerator';
@@ -131,6 +132,14 @@ export class CommandRegistrar {
             name: 'Timeline order',
             callback: () => {
                 new TimelineRepairModal(this.app, this.plugin).open();
+            }
+        });
+
+        this.plugin.addCommand({
+            id: 'timeline-audit',
+            name: 'Timeline audit',
+            callback: () => {
+                new TimelineAuditModal(this.app, this.plugin).open();
             }
         });
 

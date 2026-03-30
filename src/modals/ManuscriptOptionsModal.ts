@@ -268,6 +268,7 @@ export class ManuscriptOptionsModal extends Modal {
     private saveTemplateButton?: ButtonComponent;
     private deleteTemplateButton?: ButtonComponent;
     private templateSummaryEl?: HTMLElement;
+    private templateHintEl?: HTMLElement;
     private selectedExportProfileId: string | null = null;
     private defaultExportProfileId: string | null = null;
     private lastUsedExportProfileId: string | null = null;
@@ -736,7 +737,7 @@ export class ManuscriptOptionsModal extends Modal {
         // H) EXPORT TEMPLATES
         this.templateCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card rt-layout-templates-card' });
         this.createSectionHeading(this.templateCard, 'Saved export presets', 'bookmark');
-        this.templateSummaryEl = this.templateCard.createDiv({ cls: 'rt-sub-card-note' });
+        this.templateSummaryEl = this.templateCard.createDiv({ cls: 'rt-sub-card-note ert-export-preset-summary' });
         const templateSetting = new DropdownComponent(this.templateCard.createDiv({ cls: 'rt-manuscript-input-container' }));
         templateSetting.selectEl.addClass('ert-input', 'ert-input--lg');
         this.exportTemplateDropdown = templateSetting.selectEl;
@@ -752,10 +753,7 @@ export class ManuscriptOptionsModal extends Modal {
             }
             void this.applyTemplateById(value);
         });
-        this.templateCard.createDiv({
-            cls: 'rt-sub-card-note',
-            text: 'Save current export configuration and quickly reload it next time.'
-        });
+        this.templateHintEl = this.templateCard.createDiv({ cls: 'rt-sub-card-note ert-export-preset-hint' });
         const templateActions = this.templateCard.createDiv({ cls: 'rt-template-actions' });
         this.saveTemplateButton = new ButtonComponent(templateActions)
             .setButtonText('Create preset')
@@ -865,7 +863,57 @@ export class ManuscriptOptionsModal extends Modal {
 
     private updateExportProfileSummary(): void {
         if (!this.templateSummaryEl) return;
-        this.templateSummaryEl.setText(getModalExportProfileSummary(this.selectedExportProfile, this.templateProfiles));
+        this.templateSummaryEl.empty();
+
+        const { selectedTemplate, isCreateMode, hasChanges } = this.getSelectedTemplateState();
+        const summaryProfile = selectedTemplate
+            ? this.createTemplateSnapshot(selectedTemplate.name, selectedTemplate.id)
+            : this.createTemplateSnapshot('Current settings');
+        const summaryText = getModalExportProfileSummary(summaryProfile, this.templateProfiles);
+
+        this.templateSummaryEl.createSpan({
+            cls: 'ert-export-preset-summary-text',
+            text: summaryText
+        });
+
+        const badge = this.templateSummaryEl.createSpan({
+            cls: `ert-badgePill ert-badgePill--sm ${isCreateMode ? 'ert-badgePill--muted' : hasChanges ? 'ert-badgePill--warning' : 'ert-badgePill--success'}`
+        });
+        badge.createSpan({
+            cls: 'ert-badgePill__text',
+            text: isCreateMode ? 'Draft' : hasChanges ? 'Modified' : 'Saved'
+        });
+
+        if (this.templateHintEl) {
+            this.templateHintEl.setText(
+                isCreateMode
+                    ? 'Current settings are not saved as a preset yet.'
+                    : hasChanges
+                        ? 'Current settings differ from this preset. Update preset to save changes.'
+                        : 'Preset matches current settings.'
+            );
+            this.templateHintEl.toggleClass('ert-export-preset-hint--warning', hasChanges);
+            this.templateHintEl.toggleClass('ert-export-preset-hint--muted', !hasChanges);
+        }
+
+        this.exportTemplateDropdown?.toggleClass('ert-input--warning', hasChanges);
+    }
+
+    private getSelectedTemplateState(): {
+        selectedTemplate?: ModalExportProfile;
+        isCreateMode: boolean;
+        hasChanges: boolean;
+    } {
+        const selectedId = this.getCurrentTemplateSelection();
+        const selectedTemplate = selectedId
+            ? this.getTemplateList().find(item => item.id === selectedId)
+            : undefined;
+        const isCreateMode = !selectedTemplate;
+        return {
+            selectedTemplate,
+            isCreateMode,
+            hasChanges: selectedTemplate ? this.hasSelectedTemplateChanges(selectedTemplate) : false
+        };
     }
 
     private findExportProfileById(id: string | null | undefined): ModalExportProfile | undefined {
@@ -1135,24 +1183,20 @@ export class ManuscriptOptionsModal extends Modal {
     }
 
     private updateTemplateActionButtonState(): void {
-        const selectedId = this.getCurrentTemplateSelection();
-        const selectedTemplate = selectedId
-            ? this.getTemplateList().find(item => item.id === selectedId)
-            : undefined;
-        const isCreateMode = !selectedTemplate;
+        const { selectedTemplate, isCreateMode, hasChanges } = this.getSelectedTemplateState();
 
         if (this.saveTemplateButton) {
             if (isCreateMode) {
                 this.saveTemplateButton.setButtonText('Create preset');
                 this.saveTemplateButton.setDisabled(false);
             } else {
-                const hasChanges = this.hasSelectedTemplateChanges(selectedTemplate);
                 this.saveTemplateButton.setButtonText(hasChanges ? 'Update preset' : 'Preset up to date');
                 this.saveTemplateButton.setDisabled(!hasChanges);
             }
         }
 
         this.deleteTemplateButton?.setDisabled(!selectedTemplate);
+        this.updateExportProfileSummary();
     }
 
     private async saveTemplate(name: string, existingId?: string): Promise<void> {

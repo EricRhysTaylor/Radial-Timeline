@@ -3,7 +3,7 @@
  * Copyright (c) 2025 Eric Rhys Taylor
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  *
- * Timeline Repair Wizard - Level 1: Pattern Sync
+ * Timeline Repair Wizard - Pattern Sync
  * Deterministic baseline timeline assignment based on manuscript order.
  */
 
@@ -138,11 +138,11 @@ export interface PatternSyncInput {
 }
 
 /**
- * Level 1: Pattern Sync
+ * Pattern Sync
  * 
  * Assigns When dates to scenes sequentially based on manuscript order
  * using a deterministic pattern. This creates a clean temporal baseline
- * that can be refined by Level 2 (keywords) and Level 3 (AI).
+ * that can be optionally refined by simple text cues.
  * 
  * Guarantees:
  * - Extremely fast (no text parsing, no API calls)
@@ -348,4 +348,3 @@ export function formatTimeForDisplay(date: Date): string {
     }
     return `${hour12}:${String(minute).padStart(2, '0')}${ampm}`;
 }
-

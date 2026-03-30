@@ -3,7 +3,7 @@
  * Copyright (c) 2025 Eric Rhys Taylor
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  *
- * Timeline Repair Wizard - Level 2: Keyword/Regex Sweep
+ * Timeline Repair Wizard - Keyword/Regex Sweep
  * Heuristic refinement using explicit temporal language in scene text.
  */
 
@@ -177,19 +177,19 @@ const DEFAULT_OPTIONS: KeywordSweepOptions = {
 };
 
 /**
- * Level 2: Keyword/Regex Sweep
+ * Keyword/Regex Sweep
  * 
- * Refines Level 1 pattern-based dates using explicit temporal language
- * found in scene text. This is a heuristic layer - no AI, just regex.
+ * Refines pattern-based dates using explicit temporal language
+ * found in scene text. This is a lightweight deterministic layer.
  * 
  * Resolution priority:
  * 1. Absolute date mentions → exact When
  * 2. Day jump cues → advance date from previous
  * 3. Time-of-day mentions → adjust time bucket
  * 4. Continuity markers → small offset from previous
- * 5. No cues found → keep Level 1 result
+ * 5. No cues found → keep the pattern result
  * 
- * @param entries - RepairSceneEntry array from Level 1
+ * @param entries - RepairSceneEntry array from the pattern scaffold
  * @param getSceneText - Function to retrieve scene body text
  * @param options - Sweep configuration
  * @returns Modified entries with keyword refinements
@@ -222,7 +222,7 @@ export async function runKeywordSweep(
         const cues = extractTemporalCues(text);
         
         if (cues.length === 0) {
-            // No cues found, keep Level 1 result
+            // No cues found, keep the pattern result
             continue;
         }
         
@@ -460,4 +460,3 @@ export function parseAmPmTime(text: string): number | null {
     
     return hour;
 }
-
