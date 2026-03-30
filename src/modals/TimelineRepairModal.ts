@@ -155,11 +155,12 @@ export class TimelineRepairModal extends Modal {
             cls: 'ert-modal-subtitle',
             text: 'Quickly scaffold When dates from manuscript order so Chronologue becomes usable.'
         });
-        header.createDiv({
+        const descriptionBlock = header.createDiv({ cls: 'rt-timeline-repair-description-block' });
+        descriptionBlock.createDiv({
             cls: 'rt-timeline-repair-helper-line',
             text: 'Uses pattern spacing and simple text cues. For deeper timeline analysis, use Timeline Audit.'
         });
-        header.createDiv({
+        descriptionBlock.createDiv({
             cls: 'rt-timeline-repair-helper-line rt-timeline-repair-helper-line--muted',
             text: 'This applies a new timeline scaffold within the selected scope and updates conflicting When values.'
         });
@@ -270,8 +271,8 @@ export class TimelineRepairModal extends Modal {
             option.toggleClass('rt-is-active', radio.checked);
 
             const optionText = option.createDiv({ cls: 'rt-timeline-repair-pattern-text' });
-            optionText.createSpan({ text: preset.label, cls: 'rt-timeline-repair-pattern-label' });
-            optionText.createSpan({ text: preset.description, cls: 'rt-timeline-repair-pattern-desc' });
+            optionText.createDiv({ text: preset.label, cls: 'rt-timeline-repair-pattern-label' });
+            optionText.createDiv({ text: preset.description, cls: 'rt-timeline-repair-pattern-desc' });
 
             radio.addEventListener('change', () => {
                 if (!radio.checked) return;
@@ -296,7 +297,7 @@ export class TimelineRepairModal extends Modal {
         const baseText = baseRow.createDiv({ cls: 'rt-timeline-repair-level-text' });
         baseText.createDiv({ cls: 'rt-timeline-repair-level-title', text: 'Base scaffold' });
         baseText.createDiv({ cls: 'rt-timeline-repair-level-desc', text: 'Assigns When values in manuscript order using the selected pattern.' });
-        baseRow.createSpan({ cls: 'rt-timeline-repair-inline-note', text: 'Always on' });
+        baseRow.createSpan({ cls: 'rt-timeline-repair-status-pill', text: 'Always on' });
 
         this.createLevelToggle(
             optionsSection,
