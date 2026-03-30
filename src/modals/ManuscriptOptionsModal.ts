@@ -212,6 +212,7 @@ export class ManuscriptOptionsModal extends Modal {
     private orderPills: { el: HTMLElement, order: ManuscriptOrder }[] = [];
     private exportTypePills: { el: HTMLElement, type: ExportType }[] = [];
     private outputFormatPills: { el: HTMLElement, format: ExportFormat }[] = [];
+    private tocActionsEl?: HTMLElement;
     private formatPillRowEl?: HTMLElement;
     private formatStaticEl?: HTMLElement;
     private managePdfLayoutsLinkEl?: HTMLElement;
@@ -460,7 +461,6 @@ export class ManuscriptOptionsModal extends Modal {
         const exportRow = exportTypeCol.createDiv({ cls: 'rt-manuscript-pill-row ert-manuscript-pill-row--single' });
         this.createExportTypePill(exportRow, t('manuscriptModal.exportTypeManuscript'), 'manuscript');
         this.createExportTypePill(exportRow, t('manuscriptModal.exportTypeOutline'), 'outline', !this.isPro, true);
-        this.documentTypeDescEl = exportTypeCol.createDiv({ cls: 'rt-sub-card-note' });
 
         const formatCol = outputGrid.createDiv({ cls: 'ert-manuscript-output-col' });
         formatCol.createSpan({ cls: 'rt-manuscript-toggle-label', text: 'Output format' });
@@ -468,6 +468,7 @@ export class ManuscriptOptionsModal extends Modal {
         this.createOutputFormatPill(this.formatPillRowEl, t('manuscriptModal.formatMarkdown'), 'markdown', false, 'both');
         this.createOutputFormatPill(this.formatPillRowEl, t('manuscriptModal.formatPdf'), 'pdf', !this.isPro, 'manuscript', true);
         this.formatStaticEl = formatCol.createDiv({ cls: 'rt-sub-card-note rt-hidden', text: 'Format: Markdown' });
+        this.documentTypeDescEl = outputGrid.createDiv({ cls: 'rt-sub-card-note ert-manuscript-output-desc' });
 
         // B) PRESETS
         this.manuscriptOptionsCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card' });
@@ -636,6 +637,7 @@ export class ManuscriptOptionsModal extends Modal {
         this.tocCard = this.manuscriptRulesCard.createDiv({ cls: 'ert-manuscript-rule-block' });
         this.tocCard.createDiv({ cls: 'rt-manuscript-toggle-label', text: t('manuscriptModal.tocHeading') });
         const tocActions = this.tocCard.createDiv({ cls: 'rt-manuscript-pill-row' });
+        this.tocActionsEl = tocActions;
         this.createPill(tocActions, t('manuscriptModal.tocMarkdown'), this.tocMode === 'markdown', () => {
             this.tocMode = 'markdown';
             this.updatePills(tocActions, 0);
@@ -652,6 +654,7 @@ export class ManuscriptOptionsModal extends Modal {
             cls: 'rt-sub-card-note',
             text: t('manuscriptModal.tocNote')
         });
+        this.syncTocPills();
 
         // G) PDF EXPORT CONTROLS
         this.publishingCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card' });
@@ -1299,6 +1302,16 @@ export class ManuscriptOptionsModal extends Modal {
         });
     }
 
+    private syncTocPills(): void {
+        if (!this.tocActionsEl) return;
+        const activeIndex = this.tocMode === 'markdown'
+            ? 0
+            : this.tocMode === 'plain'
+                ? 1
+                : 2;
+        this.updatePills(this.tocActionsEl, activeIndex);
+    }
+
     private createOrderPill(parent: HTMLElement, label: string, order: ManuscriptOrder): void {
         const pill = parent.createDiv({ cls: 'rt-manuscript-pill' });
         pill.createSpan({ text: label });
@@ -1436,10 +1449,6 @@ export class ManuscriptOptionsModal extends Modal {
         this.managePdfLayoutsLinkEl?.toggleClass('rt-hidden', !mode.showManagePdfLayouts);
         this.chronoHelperEl?.toggleClass('rt-hidden', !mode.chronoMessage);
 
-        if (!mode.showToc) {
-            this.tocMode = 'none';
-        }
-
         if (this.documentTypeDescEl) {
             this.documentTypeDescEl.setText(mode.isManuscript
                 ? 'A formatted document of your scenes in reading order.'
@@ -1479,6 +1488,7 @@ export class ManuscriptOptionsModal extends Modal {
         this.updateLayoutPicker();
         this.refreshValidationSnapshot();
         this.updateTemplateWarning();
+        this.syncTocPills();
         this.updateCleanupToggleState();
         this.updateOrderPillsState();
         this.updateSplitUi();

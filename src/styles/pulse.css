@@ -260,6 +260,11 @@
   gap: 8px;
 }
 
+.ert-manuscript-output-desc {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
 .ert-manuscript-output-row {
   display: flex;
   align-items: center;
