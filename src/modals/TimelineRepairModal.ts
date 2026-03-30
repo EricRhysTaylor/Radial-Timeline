@@ -260,29 +260,24 @@ export class TimelineRepairModal extends Modal {
         let selectedPattern: PatternPresetId = 'twoBeatDay';
 
         for (const preset of PATTERN_PRESETS) {
-            const option = patternRow.createEl('button', {
-                cls: 'rt-timeline-repair-pattern-option',
-                attr: { type: 'button' }
+            const option = patternRow.createEl('label', { cls: 'rt-timeline-repair-pattern-option' });
+            const radio = option.createEl('input', {
+                type: 'radio',
+                cls: 'rt-timeline-repair-pattern-radio',
+                attr: { name: 'rt-timeline-repair-pattern' }
             });
-            if (preset.id === selectedPattern) {
-                option.addClass('rt-is-active');
-                option.setAttribute('aria-pressed', 'true');
-            } else {
-                option.setAttribute('aria-pressed', 'false');
-            }
+            radio.checked = preset.id === selectedPattern;
+            option.toggleClass('rt-is-active', radio.checked);
 
-            option.createSpan({ cls: 'rt-timeline-repair-pattern-marker' });
             const optionText = option.createDiv({ cls: 'rt-timeline-repair-pattern-text' });
             optionText.createSpan({ text: preset.label, cls: 'rt-timeline-repair-pattern-label' });
             optionText.createSpan({ text: preset.description, cls: 'rt-timeline-repair-pattern-desc' });
 
-            option.addEventListener('click', () => {
+            radio.addEventListener('change', () => {
+                if (!radio.checked) return;
                 patternRow.querySelectorAll('.rt-timeline-repair-pattern-option').forEach(p => {
-                    p.removeClass('rt-is-active');
-                    p.setAttribute('aria-pressed', 'false');
+                    p.toggleClass('rt-is-active', p === option);
                 });
-                option.addClass('rt-is-active');
-                option.setAttribute('aria-pressed', 'true');
                 selectedPattern = preset.id;
             });
         }

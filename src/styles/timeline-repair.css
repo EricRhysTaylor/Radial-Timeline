@@ -20,13 +20,13 @@
 }
 
 .rt-timeline-repair-helper-line {
-    font-size: var(--font-ui-small);
-    line-height: 1.35;
+    font-size: inherit;
+    line-height: 1.4;
     color: var(--text-muted);
 }
 
 .rt-timeline-repair-helper-line--muted {
-    font-size: var(--font-ui-smaller);
+    font-size: inherit;
 }
 
 /* ============================================================================
@@ -86,6 +86,8 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
+    box-shadow: none;
+    backdrop-filter: none;
 }
 
 .rt-timeline-repair-setup-grid {
@@ -168,50 +170,34 @@
     align-items: start;
     gap: 8px;
     width: 100%;
-    padding: 8px 10px;
-    border: 1px solid var(--background-modifier-border);
-    border-radius: 10px;
-    background: rgba(255, 255, 255, 0.02);
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
     color: var(--text-normal);
     text-align: left;
     cursor: pointer;
-    transition: border-color 0.15s ease, background-color 0.15s ease, transform 0.15s ease;
-}
-
-.rt-timeline-repair-pattern-option:hover {
-    border-color: var(--interactive-accent);
-    background: rgba(255, 255, 255, 0.05);
+    transition: color 0.15s ease;
 }
 
 .rt-timeline-repair-pattern-option.rt-is-active {
-    border-color: var(--interactive-accent);
-    background: color-mix(in srgb, var(--interactive-accent) 12%, rgba(255, 255, 255, 0.03));
+    color: var(--text-normal);
 }
 
-.rt-timeline-repair-pattern-option:focus {
-    outline: 2px solid var(--interactive-accent);
-    outline-offset: 2px;
+.rt-timeline-repair-pattern-option:focus-within .rt-timeline-repair-pattern-label {
+    color: var(--interactive-accent);
 }
 
-.rt-timeline-repair-pattern-marker {
-    width: 12px;
-    height: 12px;
-    border-radius: 999px;
-    border: 1.5px solid var(--text-muted);
-    margin-top: 2px;
-    background: transparent;
-}
-
-.rt-timeline-repair-pattern-option.rt-is-active .rt-timeline-repair-pattern-marker {
-    border-color: var(--interactive-accent);
-    background: color-mix(in srgb, var(--interactive-accent) 78%, transparent);
-    box-shadow: inset 0 0 0 3px var(--background-primary);
+.rt-timeline-repair-pattern-radio {
+    margin: 3px 0 0;
+    accent-color: var(--interactive-accent);
 }
 
 .rt-timeline-repair-pattern-text {
     display: flex;
-    flex-direction: column;
-    gap: 1px;
+    flex-wrap: wrap;
+    gap: 4px;
 }
 
 .rt-timeline-repair-pattern-label {
@@ -222,7 +208,12 @@
 .rt-timeline-repair-pattern-desc {
     font-size: var(--font-ui-smaller);
     color: var(--text-muted);
-    line-height: 1.35;
+    line-height: 1.25;
+}
+
+.rt-timeline-repair-pattern-desc::before {
+    content: "\2014";
+    margin-right: 4px;
 }
 
 /* Options */
