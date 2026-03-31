@@ -3,6 +3,7 @@ import type RadialTimelinePlugin from '../main';
 import { AiContextTemplate } from '../types/settings';
 import { buildDefaultAiSettings } from '../ai/settings/aiSettings';
 import { validateAiSettings } from '../ai/settings/validateAiSettings';
+import { scheduleFocusAfterPaint } from '../utils/domFocus';
 
 /**
  * Simple text input modal to replace prompt()
@@ -45,11 +46,9 @@ class TextInputModal extends Modal {
             cls: 'ert-input ert-input--full'
         });
 
-        // Focus and select all
-        window.setTimeout(() => {
-            this.inputEl?.focus();
-            this.inputEl?.select();
-        }, 10);
+        if (this.inputEl) {
+            scheduleFocusAfterPaint(this.inputEl, { selectText: true });
+        }
 
         // Handle Enter key - using arrow function to maintain 'this' context
         const handleKeydown = (e: KeyboardEvent) => {

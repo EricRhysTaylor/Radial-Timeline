@@ -5,6 +5,7 @@ import { convertFromEarth, parseCommaNames, validatePlanetaryProfile } from '../
 import { t } from '../../i18n';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import { ERT_CLASSES } from '../../ui/classes';
+import { scheduleFocusAfterPaint } from '../../utils/domFocus';
 
 interface SectionParams {
     app: App;
@@ -102,10 +103,7 @@ class PlanetaryProfileNameModal extends Modal {
         new ButtonComponent(actions).setButtonText(this.submitText).setCta().onClick(() => { void save(); });
         new ButtonComponent(actions).setButtonText('Cancel').onClick(() => this.close());
 
-        window.setTimeout(() => {
-            inputEl.focus();
-            inputEl.select();
-        }, 50);
+        scheduleFocusAfterPaint(inputEl, { selectText: true });
 
         inputEl.addEventListener('keydown', (evt: KeyboardEvent) => {
             if (evt.key === 'Enter') {

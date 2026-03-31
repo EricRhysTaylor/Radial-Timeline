@@ -4,6 +4,7 @@ import type { ImportedTemplateCandidate } from '../utils/templateImport';
 import { buildImportedTemplateCandidate, buildImportedTemplateId, compactTemplatePathForStorage } from '../utils/templateImport';
 import type { PandocLayoutTemplate, UsageContext } from '../types';
 import type { DetectedTemplateConfidence, DetectedTemplateMockPreviewKind, DetectedTemplateStyleHint } from '../publishing/templateDetection';
+import { scheduleFocusAfterPaint } from '../utils/domFocus';
 
 type CommitMode = 'draft' | 'activate';
 type ImportTemplateStep = 1 | 2 | 3 | 4;
@@ -21,6 +22,14 @@ class TemplateFileSuggestModal extends SuggestModal<TFile> {
     constructor(app: App, onChooseFile: (path: string) => void) {
         super(app);
         this.onChooseFile = onChooseFile;
+    }
+
+    onOpen(): void {
+        super.onOpen();
+        this.modalEl.addClass('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal-shell--md', 'ert-modal--template-pack');
+        this.contentEl.addClass('ert-modal-container', 'ert-search-modal', 'ert-stack', 'ert-template-search-modal');
+        this.resultContainerEl.addClass('ert-template-search-results');
+        scheduleFocusAfterPaint(this.inputEl, { selectText: true });
     }
 
     getSuggestions(query: string): TFile[] {
@@ -60,6 +69,10 @@ export class ImportTemplateModal extends Modal {
     private usageDropdown?: DropdownComponent;
     private activateButton?: ButtonComponent;
     private draftButton?: ButtonComponent;
+    private stepMetaEl: HTMLSpanElement | null = null;
+    private railEl: HTMLDivElement | null = null;
+    private panelEl: HTMLDivElement | null = null;
+    private actionsEl: HTMLDivElement | null = null;
 
     constructor(app: App, private readonly plugin: RadialTimelinePlugin, onCommit: (commit: ImportedTemplateCommit) => Promise<void> | void) {
         super(app);
@@ -87,12 +100,28 @@ export class ImportTemplateModal extends Modal {
             modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal-shell--md', 'ert-modal--import-template');
         }
         contentEl.addClass('ert-modal-container', 'ert-stack');
+        const header = contentEl.createDiv({ cls: 'ert-modal-header' });
+        header.createSpan({ cls: 'ert-modal-badge', text: 'IMPORT' });
+        header.createDiv({ cls: 'ert-modal-title', text: 'Import template' });
+        header.createDiv({
+            cls: 'ert-modal-subtitle',
+            text: 'Choose a .tex file and bring it into Publishing in four quick steps.',
+        });
+        const meta = header.createDiv({ cls: 'ert-modal-meta' });
+        this.stepMetaEl = meta.createSpan({ cls: 'ert-modal-meta-item' });
+        this.railEl = contentEl.createDiv({ cls: 'ert-import-template-steps' });
+        this.panelEl = contentEl.createDiv({ cls: 'ert-panel ert-panel--glass ert-stack ert-import-template-panel' });
+        this.actionsEl = contentEl.createDiv({ cls: 'ert-modal-actions' });
         void this.refreshCandidate();
     }
 
     onClose(): void {
         this.candidateRequestToken += 1;
         this.contentEl.empty();
+        this.stepMetaEl = null;
+        this.railEl = null;
+        this.panelEl = null;
+        this.actionsEl = null;
     }
 
     private getCandidatePath(): string {
@@ -220,23 +249,15 @@ export class ImportTemplateModal extends Modal {
     }
 
     private render(): void {
-        const { contentEl } = this;
-        contentEl.empty();
+        if (!this.stepMetaEl || !this.railEl || !this.panelEl || !this.actionsEl) return;
+        this.stepMetaEl.setText(`Step ${this.step} of 4`);
+        this.railEl.empty();
+        this.panelEl.empty();
+        this.actionsEl.empty();
 
-        const header = contentEl.createDiv({ cls: 'ert-modal-header' });
-        header.createSpan({ cls: 'ert-modal-badge', text: 'IMPORT' });
-        header.createDiv({ cls: 'ert-modal-title', text: 'Import template' });
-        header.createDiv({
-            cls: 'ert-modal-subtitle',
-            text: 'Choose a .tex file and bring it into Publishing in four quick steps.',
-        });
+        this.renderStepRail(this.railEl);
 
-        const meta = header.createDiv({ cls: 'ert-modal-meta' });
-        meta.createSpan({ cls: 'ert-modal-meta-item', text: `Step ${this.step} of 4` });
-
-        this.renderStepRail(contentEl);
-
-        const panel = contentEl.createDiv({ cls: 'ert-panel ert-panel--glass ert-stack ert-import-template-panel' });
+        const panel = this.panelEl;
         if (this.candidateLoading) {
             this.renderStepHero(panel, {
                 icon: 'loader-circle',
@@ -260,7 +281,7 @@ export class ImportTemplateModal extends Modal {
             }
         }
 
-        const actions = contentEl.createDiv({ cls: 'ert-modal-actions' });
+        const actions = this.actionsEl;
         new ButtonComponent(actions)
             .setButtonText('Back')
             .setDisabled(this.step === 1 || this.commitInFlight)
@@ -320,7 +341,7 @@ export class ImportTemplateModal extends Modal {
     }
 
     private renderStepRail(container: HTMLElement): void {
-        const rail = container.createDiv({ cls: 'ert-import-template-steps' });
+        const rail = container;
         const steps = ['Choose', 'Check', 'Set up', 'Save'];
         steps.forEach((label, index) => {
             const stepNumber = (index + 1) as ImportTemplateStep;

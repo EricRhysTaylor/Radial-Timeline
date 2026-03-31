@@ -14,6 +14,7 @@ import {
     suggestNextDraftLabel
 } from '../../utils/draftBook';
 import { ERT_CLASSES } from '../../ui/classes';
+import { scheduleFocusAfterPaint } from '../../utils/domFocus';
 import { addHeadingIcon, applyErtHeaderLayout } from '../wikiLink';
 
 // ── Rename modal (mirrors CampaignNameModal pattern) ────────────────────
@@ -51,7 +52,7 @@ class BookRenameModal extends Modal {
         });
         inputEl.setAttr('placeholder', DEFAULT_BOOK_TITLE);
 
-        window.setTimeout(() => inputEl.focus(), 50);
+        scheduleFocusAfterPaint(inputEl, { selectText: true });
 
         const buttonRow = contentEl.createDiv({ cls: 'ert-modal-actions' });
         const save = async () => {

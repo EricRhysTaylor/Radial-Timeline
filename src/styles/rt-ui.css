@@ -6596,7 +6596,7 @@
 .ert-ui.ert-modal-shell.modal,
 .ert-ui .ert-modal-shell.modal {
   --ert-modal-bg: color-mix(in srgb, var(--background-primary) 50%, transparent);
-  --ert-modal-blur: blur(28px) saturate(1.18);
+  --ert-modal-blur: blur(32px) saturate(1.24);
   background: var(--ert-modal-bg);
   border: 1px solid var(--ert-modal-border);
   border-radius: calc(var(--ert-panel-radius) + var(--ert-gap-sm));
@@ -6913,6 +6913,8 @@
 
 .ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-panel {
   gap: 14px;
+  min-height: 420px;
+  justify-content: flex-start;
 }
 
 .ert-ui.ert-scope--modal.ert-modal--import-template .ert-import-template-picker {
@@ -7658,6 +7660,7 @@
 
 .ert-ui.ert-scope--modal.ert-modal--note-creator .ert-note-creator-panel {
   gap: var(--ert-gap-md);
+  min-height: 320px;
 }
 
 .ert-ui.ert-scope--modal.ert-modal--note-creator .ert-note-creator-grid {
@@ -7858,6 +7861,18 @@
 .ert-ui.ert-scope--modal .ert-search-modal {
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  min-height: 360px;
+  overflow: hidden;
+}
+
+.ert-ui.ert-scope--modal .ert-template-search-results {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+  contain: paint;
 }
 
 .ert-ui .ert-search-input-container {

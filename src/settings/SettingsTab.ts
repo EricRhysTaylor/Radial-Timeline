@@ -53,6 +53,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
     private _aiRelatedElements: HTMLElement[] = [];
     private _activeTab: 'core' | 'social' | 'inquiry' | 'publishing' | 'ai' | 'advanced' = 'core';
     private _forceExpandCoreCompletionPreview = false;
+    private _pendingSectionRevealTimer: number | null = null;
 
     /** Public method to set active tab before/after opening settings */
     public setActiveTab(tab: 'core' | 'social' | 'inquiry' | 'publishing' | 'ai' | 'advanced'): void {
@@ -64,8 +65,20 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         sectionKey: string
     ): void {
         this._activeTab = tab;
-        window.setTimeout(() => this.scrollToSettingsSection(sectionKey), 0);
-        window.setTimeout(() => this.scrollToSettingsSection(sectionKey), 180);
+        if (this._pendingSectionRevealTimer !== null) {
+            window.clearTimeout(this._pendingSectionRevealTimer);
+            this._pendingSectionRevealTimer = null;
+        }
+
+        window.requestAnimationFrame(() => {
+            const visibleAfterInitialPass = this.scrollToSettingsSection(sectionKey);
+            if (visibleAfterInitialPass) return;
+
+            this._pendingSectionRevealTimer = window.setTimeout(() => {
+                this._pendingSectionRevealTimer = null;
+                this.scrollToSettingsSection(sectionKey, { force: true });
+            }, 180);
+        });
     }
 
     public forceExpandCoreCompletionPreview(): void {
@@ -602,10 +615,26 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         }
     }
 
-    private scrollToSettingsSection(sectionKey: string): void {
+    private findSettingsScrollHost(target: HTMLElement): HTMLElement | null {
+        const host = target.closest<HTMLElement>('.vertical-tab-content, .ert-settings-tab-content');
+        return host instanceof HTMLElement ? host : null;
+    }
+
+    private isSectionVisibleWithinHost(target: HTMLElement, host: HTMLElement): boolean {
+        const hostRect = host.getBoundingClientRect();
+        const targetRect = target.getBoundingClientRect();
+        return targetRect.top >= hostRect.top + 8 && targetRect.bottom <= hostRect.bottom - 8;
+    }
+
+    private scrollToSettingsSection(sectionKey: string, options: { force?: boolean } = {}): boolean {
         const target = this.containerEl.querySelector<HTMLElement>(`[${ERT_DATA.SECTION}="${sectionKey}"]`);
-        if (!target) return;
+        if (!target) return false;
+        const host = this.findSettingsScrollHost(target);
+        if (!options.force && host && this.isSectionVisibleWithinHost(target, host)) {
+            return true;
+        }
         target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return true;
     }
 
     private renderProHero(containerEl: HTMLElement): void {

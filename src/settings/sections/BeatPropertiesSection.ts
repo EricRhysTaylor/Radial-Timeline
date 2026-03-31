@@ -48,6 +48,7 @@ import {
     getExcludeKeyPredicate,
     RESERVED_OBSIDIAN_KEYS,
 } from '../../utils/yamlTemplateNormalize';
+import { scheduleFocusAfterPaint } from '../../utils/domFocus';
 import { runYamlAudit, collectFilesForAudit, collectFilesForAuditWithScope, formatAuditReport, type YamlAuditResult, type NoteAuditEntry } from '../../utils/yamlAudit';
 import { runBackdropSynopsisToContextMigration, runBeatDescriptionToPurposeMigration, runYamlBackfill, runYamlFillEmptyValues, type BackfillResult } from '../../utils/yamlBackfill';
 import { runReferenceIdBackfill, runReferenceIdDuplicateRepair } from '../../utils/referenceIdBackfill';
@@ -200,7 +201,7 @@ class SystemEditModal extends Modal {
         descInput.setAttr('rows', '4');
         descInput.setAttr('aria-labelledby', 'sys-desc-label');
 
-        window.setTimeout(() => nameInput.focus(), 50);
+        scheduleFocusAfterPaint(nameInput, { selectText: true });
 
         const buttonRow = contentEl.createDiv({ cls: 'ert-modal-actions' });
         const save = async () => {
@@ -3228,7 +3229,7 @@ export function renderStoryBeatsSection(params: {
                     }
                 });
                 modal.open();
-                setTimeout(() => nameInput.focus(), 50);
+                scheduleFocusAfterPaint(nameInput, { selectText: true });
             });
 
             if (!saveName) return;

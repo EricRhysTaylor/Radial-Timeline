@@ -21,6 +21,7 @@ import { resolveBookTitle, resolveProjectPath, validateAndRememberProjectPath } 
 import { ERT_CLASSES } from '../../ui/classes';
 import { ProjectPathSuggest } from '../ProjectPathSuggest';
 import { fitSelectToSelectedLabel } from '../selectSizing';
+import { scheduleFocusAfterPaint } from '../../utils/domFocus';
 
 export interface CampaignManagerProps {
     app: App;
@@ -71,7 +72,7 @@ class CampaignNameModal extends Modal {
         });
         inputEl.setAttr('placeholder', 'Campaign name');
 
-        window.setTimeout(() => inputEl.focus(), 50);
+        scheduleFocusAfterPaint(inputEl, { selectText: true });
 
         const buttonRow = contentEl.createDiv({ cls: 'ert-modal-actions' });
         const save = async () => {

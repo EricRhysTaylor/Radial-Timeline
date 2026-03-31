@@ -1,4 +1,5 @@
 import { App, ButtonComponent, Modal } from 'obsidian';
+import { scheduleFocusAfterPaint } from '../utils/domFocus';
 
 export type RtNoteFamilyId = 'scene' | 'manuscript-matter' | 'story-world';
 export type RtNoteSubtypeId =
@@ -65,6 +66,11 @@ const findFamily = (familyId: RtNoteFamilyId | null): RtNoteFamilyOption | null 
 
 export class CreateRtNoteModal extends Modal {
     private selectedFamilyId: RtNoteFamilyId | null = null;
+    private headerSubtitleEl: HTMLDivElement | null = null;
+    private headerMetaEl: HTMLDivElement | null = null;
+    private panelDescEl: HTMLDivElement | null = null;
+    private gridEl: HTMLDivElement | null = null;
+    private actionsEl: HTMLDivElement | null = null;
 
     constructor(app: App, private readonly onSelectSubtype: (subtypeId: RtNoteSubtypeId) => Promise<void> | void) {
         super(app);
@@ -79,50 +85,58 @@ export class CreateRtNoteModal extends Modal {
         }
 
         contentEl.addClass('ert-modal-container', 'ert-stack', 'ert-note-creator-modal');
+        const header = contentEl.createDiv({ cls: 'ert-modal-header' });
+        header.createSpan({ cls: 'ert-modal-badge', text: 'Create' });
+        header.createDiv({ cls: 'ert-modal-title', text: 'Create RT note' });
+        this.headerSubtitleEl = header.createDiv({ cls: 'ert-modal-subtitle' });
+        this.headerMetaEl = header.createDiv({ cls: 'ert-modal-meta' });
+
+        const panel = contentEl.createDiv({ cls: 'ert-panel ert-panel--glass ert-note-creator-panel ert-stack' });
+        this.panelDescEl = panel.createDiv({ cls: 'ert-section-desc' });
+        this.gridEl = panel.createDiv({ cls: 'ert-note-creator-grid' });
+
+        this.actionsEl = contentEl.createDiv({ cls: 'ert-modal-actions' });
         this.render();
     }
 
     onClose(): void {
         this.contentEl.empty();
         this.selectedFamilyId = null;
+        this.headerSubtitleEl = null;
+        this.headerMetaEl = null;
+        this.panelDescEl = null;
+        this.gridEl = null;
+        this.actionsEl = null;
     }
 
     private render(): void {
-        const { contentEl } = this;
         const activeFamily = findFamily(this.selectedFamilyId);
+        if (!this.headerSubtitleEl || !this.headerMetaEl || !this.panelDescEl || !this.gridEl || !this.actionsEl) return;
 
-        contentEl.empty();
-
-        const header = contentEl.createDiv({ cls: 'ert-modal-header' });
-        header.createSpan({ cls: 'ert-modal-badge', text: 'Create' });
-        header.createDiv({ cls: 'ert-modal-title', text: 'Create RT note' });
-        header.createDiv({
-            cls: 'ert-modal-subtitle',
-            text: activeFamily
+        this.headerSubtitleEl.setText(
+            activeFamily
                 ? 'Choose the exact note type you want to create.'
-                : 'Pick a note family first, then choose the specific note type.',
-        });
-
-        const meta = header.createDiv({ cls: 'ert-modal-meta' });
+                : 'Pick a note family first, then choose the specific note type.'
+        );
+        this.headerMetaEl.empty();
         if (activeFamily) {
-            meta.createSpan({ cls: 'ert-modal-meta-item', text: 'Step 2 of 2' });
-            meta.createSpan({ cls: 'ert-modal-meta-item', text: activeFamily.title });
+            this.headerMetaEl.createSpan({ cls: 'ert-modal-meta-item', text: 'Step 2 of 2' });
+            this.headerMetaEl.createSpan({ cls: 'ert-modal-meta-item', text: activeFamily.title });
         }
 
-        const panel = contentEl.createDiv({ cls: 'ert-panel ert-panel--glass ert-note-creator-panel ert-stack' });
-        panel.createDiv({
-            cls: 'ert-section-desc',
-            text: activeFamily ? activeFamily.description : 'These groups match the main note categories used across Radial Timeline.',
-        });
-
-        const grid = panel.createDiv({ cls: 'ert-note-creator-grid' });
+        this.panelDescEl.setText(
+            activeFamily ? activeFamily.description : 'These groups match the main note categories used across Radial Timeline.'
+        );
+        const grid = this.gridEl;
+        grid.empty();
         if (activeFamily) {
             this.renderSubtypeOptions(grid, activeFamily.subtypes);
         } else {
             this.renderFamilyOptions(grid, RT_NOTE_FAMILIES);
         }
 
-        const actions = contentEl.createDiv({ cls: 'ert-modal-actions' });
+        const actions = this.actionsEl;
+        actions.empty();
 
         if (activeFamily) {
             new ButtonComponent(actions)
@@ -138,9 +152,10 @@ export class CreateRtNoteModal extends Modal {
             .setButtonText('Cancel')
             .onClick(() => this.close());
 
-        window.requestAnimationFrame(() => {
-            contentEl.querySelector<HTMLButtonElement>('.ert-note-creator-option')?.focus();
-        });
+        const firstOption = grid.querySelector<HTMLButtonElement>('.ert-note-creator-option');
+        if (firstOption) {
+            scheduleFocusAfterPaint(firstOption);
+        }
     }
 
     private async handleSubtypeSelection(subtypeId: RtNoteSubtypeId): Promise<void> {

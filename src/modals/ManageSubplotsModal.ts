@@ -8,6 +8,7 @@
 import { App, Modal, ButtonComponent, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import { SubplotManagementService, SubplotStats } from '../services/SubplotManagementService';
+import { scheduleFocusAfterPaint } from '../utils/domFocus';
 
 // SVGs
 const ERASER_ICON = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-eraser-icon lucide-eraser"><path d="M21 21H8a2 2 0 0 1-1.42-.587l-3.994-3.999a2 2 0 0 1 0-2.828l10-10a2 2 0 0 1 2.829 0l5.999 6a2 2 0 0 1 0 2.828L12.834 21"/><path d="m5.082 11.09 8.828 8.828"/></svg>`;
@@ -254,8 +255,7 @@ class RenameSubplotModal extends Modal {
             cls: 'rt-input-full' 
         });
 
-        // Focus input
-        window.setTimeout(() => inputEl.focus(), 50);
+        scheduleFocusAfterPaint(inputEl, { selectText: true });
 
         // Actions
         const buttonRow = contentEl.createDiv({ cls: 'ert-modal-actions' });
