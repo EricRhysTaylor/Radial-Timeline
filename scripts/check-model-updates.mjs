@@ -13,6 +13,7 @@ const MODELS_FILE = path.resolve('scripts/models/latest-models.json');
 const LATEST_TRACKING_FILE = path.resolve('scripts/models/latest-aliases.json');
 const UPDATE_SCRIPT = 'node scripts/update-ai-models.mjs'; 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+const quiet = process.argv.includes('--quiet');
 
 // ANSI colors
 const YELLOW = '\x1b[33m';
@@ -226,7 +227,9 @@ function main() {
         }
     }
 
-    console.log('[check-model-updates] Checking for new AI models...');
+    if (!quiet) {
+        console.log('[check-model-updates] Checking for new AI models...');
+    }
     
     try {
         // Run the update script
@@ -252,10 +255,14 @@ function main() {
             added.forEach(id => console.log(`- ${id}`));
             console.log(`${YELLOW}Run 'npm run update-models' manually if needed, and update src/data/aiModels.ts.${RESET}\n`);
         } else {
-            console.log('[check-model-updates] No new models detected.');
+            if (!quiet) {
+                console.log('[check-model-updates] No new models detected.');
+            }
         }
     } else {
-        console.log('[check-model-updates] Initial model list generated.');
+        if (!quiet) {
+            console.log('[check-model-updates] Initial model list generated.');
+        }
     }
 
     // Track "latest" alias changes
@@ -290,25 +297,27 @@ function main() {
     }
     
     // Log current "latest" alias status
-    console.log(`\n${GREEN}Current "latest" alias mappings:${RESET}`);
-    for (const alias of Object.keys(newTracking.openai)) {
-        const info = newTracking.openai[alias];
-        console.log(`  OpenAI ${alias} → ${info.likelyResolves}`);
-    }
-    for (const alias of Object.keys(newTracking.gemini)) {
-        const info = newTracking.gemini[alias];
-        console.log(`  Gemini ${alias} → ${info.likelyResolves} (${info.displayName})`);
-    }
-    if (newTracking.anthropic.newestModel) {
-        const info = newTracking.anthropic.newestModel;
-        console.log(`  Anthropic newest → ${info.id} (${info.displayName})`);
-    }
-    
-    // Log token limits from API
-    if (Object.keys(newTracking.tokenLimits).length > 0) {
-        console.log(`\n${GREEN}Output token limits (from Gemini API):${RESET}`);
-        for (const [model, limit] of Object.entries(newTracking.tokenLimits)) {
-            console.log(`  ${model}: ${limit.toLocaleString()} tokens`);
+    if (!quiet) {
+        console.log(`\n${GREEN}Current "latest" alias mappings:${RESET}`);
+        for (const alias of Object.keys(newTracking.openai)) {
+            const info = newTracking.openai[alias];
+            console.log(`  OpenAI ${alias} → ${info.likelyResolves}`);
+        }
+        for (const alias of Object.keys(newTracking.gemini)) {
+            const info = newTracking.gemini[alias];
+            console.log(`  Gemini ${alias} → ${info.likelyResolves} (${info.displayName})`);
+        }
+        if (newTracking.anthropic.newestModel) {
+            const info = newTracking.anthropic.newestModel;
+            console.log(`  Anthropic newest → ${info.id} (${info.displayName})`);
+        }
+        
+        // Log token limits from API
+        if (Object.keys(newTracking.tokenLimits).length > 0) {
+            console.log(`\n${GREEN}Output token limits (from Gemini API):${RESET}`);
+            for (const [model, limit] of Object.entries(newTracking.tokenLimits)) {
+                console.log(`  ${model}: ${limit.toLocaleString()} tokens`);
+            }
         }
     }
     

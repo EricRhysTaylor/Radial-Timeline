@@ -10,17 +10,19 @@ function getBranch() {
 }
 
 const mode = (process.argv[2] || '').toLowerCase();
+const quiet = process.argv.includes('--quiet');
 const branch = getBranch();
 
-console.log(`[info] Current git branch: ${branch}`);
+if (!quiet) {
+  console.log(`[info] Current git branch: ${branch}`);
+}
 
 if (mode === 'release' && branch !== 'master') {
   console.log(`[warn] You are about to run a release while on '${branch}'. Releases must be cut from 'master'.`);
   console.log(`[hint] Run: git switch master && git pull`);
 }
 
-if (mode === 'backup') {
+if (mode === 'backup' && !quiet) {
   console.log(`[note] Backup will commit to 'master'.`);
 }
-
 

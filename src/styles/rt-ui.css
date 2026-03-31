@@ -7641,6 +7641,18 @@
   outline-offset: 2px;
 }
 
+.ert-ui.ert-modal-shell:not(.is-ui-settled) .ert-modal-choice,
+.ert-ui.ert-modal-shell:not(.is-ui-settled) .ert-import-template-picker,
+.ert-ui.ert-modal-shell:not(.is-ui-settled) .ert-import-template-step,
+.ert-ui.ert-modal-shell:not(.is-ui-settled) .suggestion-item,
+.ert-ui .ert-modal-shell:not(.is-ui-settled) .ert-modal-choice,
+.ert-ui .ert-modal-shell:not(.is-ui-settled) .ert-import-template-picker,
+.ert-ui .ert-modal-shell:not(.is-ui-settled) .ert-import-template-step,
+.ert-ui .ert-modal-shell:not(.is-ui-settled) .suggestion-item {
+  transition: none;
+  animation: none;
+}
+
 .ert-ui.ert-scope--modal.ert-modal--note-creator .ert-note-creator-modal {
   --ert-panel-shadow: none;
   --ert-pill-shadow: none;
@@ -7870,9 +7882,40 @@
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
+  padding: 6px 4px 4px;
   scrollbar-gutter: stable;
   overscroll-behavior: contain;
+  overflow-anchor: none;
   contain: paint;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--template-pack .ert-template-search-results .suggestion-item,
+.ert-ui.ert-scope--modal .ert-modal--template-pack .ert-template-search-results .suggestion-item {
+  margin: 0 0 var(--ert-gap-xs);
+  padding: 0;
+  border: 0;
+  border-radius: calc(var(--ert-panel-radius) + var(--ert-gap-xs));
+  background: transparent;
+  contain: paint;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--template-pack .ert-template-search-results .suggestion-item:last-child,
+.ert-ui.ert-scope--modal .ert-modal--template-pack .ert-template-search-results .suggestion-item:last-child {
+  margin-bottom: 0;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--template-pack .ert-template-search-results .suggestion-item .ert-modal-choice,
+.ert-ui.ert-scope--modal .ert-modal--template-pack .ert-template-search-results .suggestion-item .ert-modal-choice {
+  min-height: calc(var(--ert-control-height) + (var(--ert-gap-md) * 2));
+}
+
+.ert-ui.ert-scope--modal.ert-modal--template-pack .ert-template-search-results .suggestion-item:hover .ert-modal-choice,
+.ert-ui.ert-scope--modal.ert-modal--template-pack .ert-template-search-results .suggestion-item.is-selected .ert-modal-choice,
+.ert-ui.ert-scope--modal .ert-modal--template-pack .ert-template-search-results .suggestion-item:hover .ert-modal-choice,
+.ert-ui.ert-scope--modal .ert-modal--template-pack .ert-template-search-results .suggestion-item.is-selected .ert-modal-choice {
+  border-color: color-mix(in srgb, var(--ert-accent) 42%, var(--ert-panel-border));
+  background: color-mix(in srgb, var(--ert-panel-bg) 84%, var(--ert-accent) 16%);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ert-accent) 18%, transparent);
 }
 
 .ert-ui .ert-search-input-container {

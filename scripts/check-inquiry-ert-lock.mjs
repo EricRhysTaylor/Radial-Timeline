@@ -11,6 +11,7 @@ const ALLOWED_PREFIXES = ["data-ert-inquiry-"];
 const stringPattern = /`([^`]+)`|"([^"]+)"|'([^']+)'/g;
 
 const violations = [];
+const quiet = process.argv.includes('--quiet');
 
 const extractTokens = (raw) => {
   const cleaned = raw.replace(/\$\{[^}]+\}/g, " ");
@@ -87,4 +88,6 @@ if (violations.length > 0) {
   process.exit(1);
 }
 
-console.log("✅ Inquiry ERT lock passed (no ert-inquiry-* tokens in settings/modals TS or rt-ui.css).");
+if (!quiet) {
+  console.log("✅ Inquiry ERT lock passed (no ert-inquiry-* tokens in settings/modals TS or rt-ui.css).");
+}

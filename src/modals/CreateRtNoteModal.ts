@@ -1,5 +1,6 @@
 import { App, ButtonComponent, Modal } from 'obsidian';
 import { scheduleFocusAfterPaint } from '../utils/domFocus';
+import { scheduleClassAfterPaint } from '../utils/domClassEffects';
 
 export type RtNoteFamilyId = 'scene' | 'manuscript-matter' | 'story-world';
 export type RtNoteSubtypeId =
@@ -71,6 +72,10 @@ export class CreateRtNoteModal extends Modal {
     private panelDescEl: HTMLDivElement | null = null;
     private gridEl: HTMLDivElement | null = null;
     private actionsEl: HTMLDivElement | null = null;
+    private backButton: ButtonComponent | null = null;
+    private backSpacerEl: HTMLDivElement | null = null;
+    private familyButtonEls = new Map<RtNoteFamilyId, HTMLButtonElement>();
+    private subtypeButtonEls = new Map<RtNoteSubtypeId, HTMLButtonElement>();
 
     constructor(app: App, private readonly onSelectSubtype: (subtypeId: RtNoteSubtypeId) => Promise<void> | void) {
         super(app);
@@ -82,6 +87,8 @@ export class CreateRtNoteModal extends Modal {
 
         if (modalEl) {
             modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal-shell--md', 'ert-modal--note-creator');
+            modalEl.classList.remove('is-ui-settled');
+            scheduleClassAfterPaint(modalEl, 'is-ui-settled');
         }
 
         contentEl.addClass('ert-modal-container', 'ert-stack', 'ert-note-creator-modal');
@@ -96,6 +103,16 @@ export class CreateRtNoteModal extends Modal {
         this.gridEl = panel.createDiv({ cls: 'ert-note-creator-grid' });
 
         this.actionsEl = contentEl.createDiv({ cls: 'ert-modal-actions' });
+        this.backButton = new ButtonComponent(this.actionsEl)
+            .setButtonText('Back')
+            .onClick(() => {
+                this.selectedFamilyId = null;
+                this.render();
+            });
+        this.backSpacerEl = this.actionsEl.createDiv({ cls: 'ert-modal-actions-spacer' });
+        new ButtonComponent(this.actionsEl)
+            .setButtonText('Cancel')
+            .onClick(() => this.close());
         this.render();
     }
 
@@ -107,6 +124,10 @@ export class CreateRtNoteModal extends Modal {
         this.panelDescEl = null;
         this.gridEl = null;
         this.actionsEl = null;
+        this.backButton = null;
+        this.backSpacerEl = null;
+        this.familyButtonEls.clear();
+        this.subtypeButtonEls.clear();
     }
 
     private render(): void {
@@ -128,29 +149,17 @@ export class CreateRtNoteModal extends Modal {
             activeFamily ? activeFamily.description : 'These groups match the main note categories used across Radial Timeline.'
         );
         const grid = this.gridEl;
-        grid.empty();
-        if (activeFamily) {
-            this.renderSubtypeOptions(grid, activeFamily.subtypes);
-        } else {
-            this.renderFamilyOptions(grid, RT_NOTE_FAMILIES);
+        const nextButtons = activeFamily
+            ? activeFamily.subtypes.map((subtype) => this.getSubtypeButton(subtype))
+            : RT_NOTE_FAMILIES.map((family) => this.getFamilyButton(family));
+        grid.replaceChildren(...nextButtons);
+
+        if (this.backButton?.buttonEl) {
+            this.backButton.buttonEl.hidden = !activeFamily;
         }
-
-        const actions = this.actionsEl;
-        actions.empty();
-
-        if (activeFamily) {
-            new ButtonComponent(actions)
-                .setButtonText('Back')
-                .onClick(() => {
-                    this.selectedFamilyId = null;
-                    this.render();
-                });
-            actions.createDiv({ cls: 'ert-modal-actions-spacer' });
+        if (this.backSpacerEl) {
+            this.backSpacerEl.hidden = !activeFamily;
         }
-
-        new ButtonComponent(actions)
-            .setButtonText('Cancel')
-            .onClick(() => this.close());
 
         const firstOption = grid.querySelector<HTMLButtonElement>('.ert-note-creator-option');
         if (firstOption) {
@@ -163,35 +172,39 @@ export class CreateRtNoteModal extends Modal {
         await this.onSelectSubtype(subtypeId);
     }
 
-    private renderFamilyOptions(container: HTMLElement, families: RtNoteFamilyOption[]): void {
-        families.forEach((family) => {
-            const { button, optionBody } = this.createOptionButton(container, family.title, family.description);
-            optionBody.createDiv({
-                cls: 'ert-note-creator-option__meta',
-                text: `${family.subtypes.length} type${family.subtypes.length === 1 ? '' : 's'}`,
-            });
+    private getFamilyButton(family: RtNoteFamilyOption): HTMLButtonElement {
+        const existing = this.familyButtonEls.get(family.id);
+        if (existing) return existing;
 
-            button.addEventListener('click', () => {
-                this.selectedFamilyId = family.id;
-                this.render();
-            });
+        const { button, optionBody } = this.createOptionButton(family.title, family.description);
+        optionBody.createDiv({
+            cls: 'ert-note-creator-option__meta',
+            text: `${family.subtypes.length} type${family.subtypes.length === 1 ? '' : 's'}`,
         });
+        button.addEventListener('click', () => {
+            this.selectedFamilyId = family.id;
+            this.render();
+        });
+        this.familyButtonEls.set(family.id, button);
+        return button;
     }
 
-    private renderSubtypeOptions(container: HTMLElement, subtypes: RtNoteSubtypeOption[]): void {
-        subtypes.forEach((subtype) => {
-            const { button } = this.createOptionButton(container, subtype.title, subtype.description);
-            button.addEventListener('click', () => {
-                void this.handleSubtypeSelection(subtype.id);
-            });
+    private getSubtypeButton(subtype: RtNoteSubtypeOption): HTMLButtonElement {
+        const existing = this.subtypeButtonEls.get(subtype.id);
+        if (existing) return existing;
+
+        const { button } = this.createOptionButton(subtype.title, subtype.description);
+        button.addEventListener('click', () => {
+            void this.handleSubtypeSelection(subtype.id);
         });
+        this.subtypeButtonEls.set(subtype.id, button);
+        return button;
     }
 
-    private createOptionButton(container: HTMLElement, title: string, description: string): { button: HTMLButtonElement; optionBody: HTMLDivElement } {
-        const button = container.createEl('button', {
-            cls: 'ert-modal-choice ert-note-creator-option',
-            attr: { type: 'button' },
-        });
+    private createOptionButton(title: string, description: string): { button: HTMLButtonElement; optionBody: HTMLDivElement } {
+        const button = document.createElement('button');
+        button.className = 'ert-modal-choice ert-note-creator-option';
+        button.type = 'button';
         const optionBody = button.createDiv({ cls: 'ert-note-creator-option__body' });
         optionBody.createDiv({
             cls: 'ert-note-creator-option__title',

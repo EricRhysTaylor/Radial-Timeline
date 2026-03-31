@@ -1875,9 +1875,10 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             plugin.settings.pandocFolder = defaultPandocFolder;
             await plugin.saveSettings();
             if (pandocFolderInputEl) {
-                pandocFolderInputEl.removeClass('ert-input--flash-success', 'ert-input--flash-error');
-                pandocFolderInputEl.addClass('ert-input--flash-success');
-                setTimeout(() => pandocFolderInputEl?.removeClass('ert-input--flash-success'), 1700);
+                replayTransientClass(pandocFolderInputEl, 'ert-input--flash-success', {
+                    removeClasses: ['ert-input--flash-success', 'ert-input--flash-error'],
+                    durationMs: 1700
+                });
             }
         });
     });

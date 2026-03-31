@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 import { execSync } from 'node:child_process';
 
+const quiet = process.argv.includes('--quiet');
+
 function run(cmd) {
   return execSync(cmd, { stdio: 'pipe' }).toString().trim();
 }
@@ -16,7 +18,9 @@ try {
 
   // Use current branch for backups
   const branch = safeRun('git rev-parse --abbrev-ref HEAD') || 'master';
-  console.log(`[backup] backing up branch: ${branch}`);
+  if (!quiet) {
+    console.log(`[backup] backing up branch: ${branch}`);
+  }
 
   // Stage all changes (including new/deleted files)
   safeRun('git add -A');
@@ -34,7 +38,7 @@ try {
   const dateStr = `${iso.getFullYear()}-${pad(iso.getMonth() + 1)}-${pad(iso.getDate())} ${pad(iso.getHours())}:${pad(iso.getMinutes())}`;
 
   const files = run('git diff --cached --name-only').split('\n').filter(Boolean);
-  if (files.length) {
+  if (!quiet && files.length) {
     const previewLimit = 20;
     const preview = files.slice(0, previewLimit).join(', ');
     const extraCount = files.length > previewLimit ? `, … (+${files.length - previewLimit} more)` : '';
@@ -66,11 +70,11 @@ try {
     deletions = del ? Number(del[1]) : 0;
   }
 
-  if (insertions || deletions) {
+  if (!quiet && (insertions || deletions)) {
     console.log(`[backup] Diff summary: +${insertions}/-${deletions}`);
-  } else if (!files.length) {
+  } else if (!quiet && !files.length) {
     console.log('[backup] Diff summary: no tracked changes (unexpected)');
-  } else {
+  } else if (!quiet) {
     console.log('[backup] Diff summary: no line-level changes detected');
   }
 
@@ -128,5 +132,4 @@ try {
   console.error('[backup] Failed:', err?.message || err);
   process.exit(1);
 }
-
 

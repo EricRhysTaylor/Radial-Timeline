@@ -20,6 +20,7 @@ const addClassPattern = /\.(?:addClass|classList\.add)\(([^)]*)\)/g;
 const stringPattern = /`([^`]+)`|"([^"]+)"|'([^']+)'/g;
 
 const violations = [];
+const quiet = process.argv.includes('--quiet');
 
 const isAllowed = (token) => {
   if (ALLOWED_CLASSES.has(token)) return true;
@@ -77,4 +78,6 @@ if (violations.length > 0) {
   process.exit(1);
 }
 
-console.log("✅ Social ERT lock passed (no rt-* classes in Social render files).");
+if (!quiet) {
+  console.log("✅ Social ERT lock passed (no rt-* classes in Social render files).");
+}

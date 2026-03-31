@@ -5,6 +5,7 @@ import { buildImportedTemplateCandidate, buildImportedTemplateId, compactTemplat
 import type { PandocLayoutTemplate, UsageContext } from '../types';
 import type { DetectedTemplateConfidence, DetectedTemplateMockPreviewKind, DetectedTemplateStyleHint } from '../publishing/templateDetection';
 import { scheduleFocusAfterPaint } from '../utils/domFocus';
+import { scheduleClassAfterPaint } from '../utils/domClassEffects';
 
 type CommitMode = 'draft' | 'activate';
 type ImportTemplateStep = 1 | 2 | 3 | 4;
@@ -18,17 +19,23 @@ export interface ImportedTemplateCommit {
 
 class TemplateFileSuggestModal extends SuggestModal<TFile> {
     private readonly onChooseFile: (path: string) => void;
+    private readonly itemCache = new WeakMap<HTMLElement, { row: HTMLDivElement; title: HTMLDivElement; desc: HTMLDivElement }>();
 
     constructor(app: App, onChooseFile: (path: string) => void) {
         super(app);
         this.onChooseFile = onChooseFile;
+        this.limit = 40;
+        this.emptyStateText = 'No LaTeX templates found.';
     }
 
     onOpen(): void {
         super.onOpen();
         this.modalEl.addClass('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal-shell--md', 'ert-modal--template-pack');
+        this.modalEl.removeClass('is-ui-settled');
+        scheduleClassAfterPaint(this.modalEl, 'is-ui-settled');
         this.contentEl.addClass('ert-modal-container', 'ert-search-modal', 'ert-stack', 'ert-template-search-modal');
         this.resultContainerEl.addClass('ert-template-search-results');
+        this.setPlaceholder('Search LaTeX templates');
         scheduleFocusAfterPaint(this.inputEl, { selectText: true });
     }
 
@@ -41,9 +48,17 @@ class TemplateFileSuggestModal extends SuggestModal<TFile> {
     }
 
     renderSuggestion(file: TFile, el: HTMLElement): void {
-        const row = el.createDiv({ cls: 'ert-modal-choice' });
-        row.createDiv({ cls: 'ert-note-creator-option__title', text: file.basename });
-        row.createDiv({ cls: 'ert-note-creator-option__desc', text: file.path });
+        let cached = this.itemCache.get(el);
+        if (!cached) {
+            const row = el.createDiv({ cls: 'ert-modal-choice' });
+            const title = row.createDiv({ cls: 'ert-note-creator-option__title' });
+            const desc = row.createDiv({ cls: 'ert-note-creator-option__desc' });
+            cached = { row, title, desc };
+            this.itemCache.set(el, cached);
+        }
+
+        cached.title.setText(file.basename);
+        cached.desc.setText(file.path);
     }
 
     onChooseSuggestion(file: TFile): void {
@@ -69,6 +84,10 @@ export class ImportTemplateModal extends Modal {
     private usageDropdown?: DropdownComponent;
     private activateButton?: ButtonComponent;
     private draftButton?: ButtonComponent;
+    private nextButton: ButtonComponent | null = null;
+    private backButton: ButtonComponent | null = null;
+    private cancelButton: ButtonComponent | null = null;
+    private stepItemEls: HTMLDivElement[] = [];
     private stepMetaEl: HTMLSpanElement | null = null;
     private railEl: HTMLDivElement | null = null;
     private panelEl: HTMLDivElement | null = null;
@@ -98,6 +117,8 @@ export class ImportTemplateModal extends Modal {
 
         if (modalEl) {
             modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal-shell--md', 'ert-modal--import-template');
+            modalEl.classList.remove('is-ui-settled');
+            scheduleClassAfterPaint(modalEl, 'is-ui-settled');
         }
         contentEl.addClass('ert-modal-container', 'ert-stack');
         const header = contentEl.createDiv({ cls: 'ert-modal-header' });
@@ -112,12 +133,18 @@ export class ImportTemplateModal extends Modal {
         this.railEl = contentEl.createDiv({ cls: 'ert-import-template-steps' });
         this.panelEl = contentEl.createDiv({ cls: 'ert-panel ert-panel--glass ert-stack ert-import-template-panel' });
         this.actionsEl = contentEl.createDiv({ cls: 'ert-modal-actions' });
+        this.createStepRail();
+        this.createActionButtons();
         void this.refreshCandidate();
     }
 
     onClose(): void {
         this.candidateRequestToken += 1;
         this.contentEl.empty();
+        this.nextButton = null;
+        this.backButton = null;
+        this.cancelButton = null;
+        this.stepItemEls = [];
         this.stepMetaEl = null;
         this.railEl = null;
         this.panelEl = null;
@@ -251,11 +278,8 @@ export class ImportTemplateModal extends Modal {
     private render(): void {
         if (!this.stepMetaEl || !this.railEl || !this.panelEl || !this.actionsEl) return;
         this.stepMetaEl.setText(`Step ${this.step} of 4`);
-        this.railEl.empty();
         this.panelEl.empty();
-        this.actionsEl.empty();
-
-        this.renderStepRail(this.railEl);
+        this.updateStepRail();
 
         const panel = this.panelEl;
         if (this.candidateLoading) {
@@ -281,56 +305,7 @@ export class ImportTemplateModal extends Modal {
             }
         }
 
-        const actions = this.actionsEl;
-        new ButtonComponent(actions)
-            .setButtonText('Back')
-            .setDisabled(this.step === 1 || this.commitInFlight)
-            .onClick(() => {
-                if (this.step > 1) {
-                    this.step = (this.step - 1) as ImportTemplateStep;
-                    this.render();
-                }
-            });
-
-        if (this.step < 4) {
-            const nextButton = new ButtonComponent(actions)
-                .setButtonText('Next')
-                .setDisabled(this.commitInFlight || !this.canAdvanceToNextStep())
-                .onClick(() => {
-                    if (this.step < 4) {
-                        this.step = (this.step + 1) as ImportTemplateStep;
-                        this.render();
-                    }
-                });
-            nextButton.buttonEl.addClass('ert-import-template-nextBtn');
-            if (this.canAdvanceToNextStep()) {
-                nextButton.buttonEl.addClass('is-ready');
-            }
-        }
-
-        actions.createDiv({ cls: 'ert-modal-actions-spacer' });
-
-        if (this.step === 4) {
-            this.draftButton = new ButtonComponent(actions)
-                .setButtonText('Save template')
-                .setDisabled(this.commitInFlight || !this.candidate)
-                .onClick(() => void this.commit('draft'));
-
-            this.activateButton = new ButtonComponent(actions)
-                .setButtonText('Save and activate')
-                .setCta()
-                .setDisabled(this.commitInFlight || !this.candidate || !this.candidate.canActivate)
-                .onClick(() => void this.commit('activate'));
-        } else {
-            this.draftButton = undefined;
-            this.activateButton = undefined;
-        }
-
-        new ButtonComponent(actions)
-            .setButtonText('Cancel')
-            .setDisabled(this.commitInFlight)
-            .onClick(() => this.close());
-
+        this.updateActionButtonsVisibility();
         this.updateActionButtons();
     }
 
@@ -340,24 +315,75 @@ export class ImportTemplateModal extends Modal {
         return true;
     }
 
-    private renderStepRail(container: HTMLElement): void {
-        const rail = container;
+    private createStepRail(): void {
+        if (!this.railEl) return;
         const steps = ['Choose', 'Check', 'Set up', 'Save'];
-        steps.forEach((label, index) => {
-            const stepNumber = (index + 1) as ImportTemplateStep;
-            const isCurrent = this.step === stepNumber;
-            const isComplete = this.step > stepNumber;
-            const isReady = stepNumber === 1 ? Boolean(this.getCandidatePath()) : isCurrent || isComplete;
-            const stateClass = `${isCurrent ? ' is-active' : ''}${isComplete ? ' is-complete' : ''}${isReady ? ' is-ready' : ''}`;
-            const item = rail.createDiv({ cls: `ert-import-template-step ert-import-template-step--${index + 1}${stateClass}` });
+        this.stepItemEls = steps.map((label, index) => {
+            const item = this.railEl!.createDiv({ cls: `ert-import-template-step ert-import-template-step--${index + 1}` });
             const bg = item.createDiv({ cls: 'ert-import-template-step-bg' });
             setIcon(bg, this.getStepRailIcon(index + 1));
             const text = item.createDiv({ cls: 'ert-import-template-step-text' });
             text.createDiv({ cls: 'ert-import-template-step-label', text: `${index + 1} ${label}` });
+            return item;
+        });
+        this.updateStepRail();
+    }
+
+    private updateStepRail(): void {
+        this.stepItemEls.forEach((item, index) => {
+            const stepNumber = (index + 1) as ImportTemplateStep;
+            const isCurrent = this.step === stepNumber;
+            const isComplete = this.step > stepNumber;
+            const isReady = stepNumber === 1 ? Boolean(this.getCandidatePath()) : isCurrent || isComplete;
+            item.classList.toggle('is-active', isCurrent);
+            item.classList.toggle('is-complete', isComplete);
+            item.classList.toggle('is-ready', isReady);
             if (isCurrent) {
                 item.setAttr('aria-current', 'step');
+            } else {
+                item.removeAttribute('aria-current');
             }
         });
+    }
+
+    private createActionButtons(): void {
+        if (!this.actionsEl) return;
+        this.backButton = new ButtonComponent(this.actionsEl)
+            .setButtonText('Back')
+            .onClick(() => {
+                if (this.step > 1) {
+                    this.step = (this.step - 1) as ImportTemplateStep;
+                    this.render();
+                }
+            });
+        this.nextButton = new ButtonComponent(this.actionsEl)
+            .setButtonText('Next')
+            .onClick(() => {
+                if (this.step < 4) {
+                    this.step = (this.step + 1) as ImportTemplateStep;
+                    this.render();
+                }
+            });
+        this.nextButton.buttonEl.addClass('ert-import-template-nextBtn');
+        this.actionsEl.createDiv({ cls: 'ert-modal-actions-spacer' });
+        this.draftButton = new ButtonComponent(this.actionsEl)
+            .setButtonText('Save template')
+            .onClick(() => void this.commit('draft'));
+        this.activateButton = new ButtonComponent(this.actionsEl)
+            .setButtonText('Save and activate')
+            .setCta()
+            .onClick(() => void this.commit('activate'));
+        this.cancelButton = new ButtonComponent(this.actionsEl)
+            .setButtonText('Cancel')
+            .onClick(() => this.close());
+    }
+
+    private updateActionButtonsVisibility(): void {
+        if (!this.backButton?.buttonEl || !this.nextButton?.buttonEl || !this.draftButton?.buttonEl || !this.activateButton?.buttonEl) return;
+        this.backButton.buttonEl.hidden = this.step === 1;
+        this.nextButton.buttonEl.hidden = this.step === 4;
+        this.draftButton.buttonEl.hidden = this.step !== 4;
+        this.activateButton.buttonEl.hidden = this.step !== 4;
     }
 
     private renderStepHero(
@@ -756,6 +782,10 @@ export class ImportTemplateModal extends Modal {
     }
 
     private updateActionButtons(): void {
+        this.backButton?.setDisabled(this.step === 1 || this.commitInFlight);
+        this.nextButton?.setDisabled(this.commitInFlight || !this.canAdvanceToNextStep());
+        this.nextButton?.buttonEl.classList.toggle('is-ready', this.step < 4 && this.canAdvanceToNextStep());
+        this.cancelButton?.setDisabled(this.commitInFlight);
         this.activateButton?.setDisabled(this.commitInFlight || !this.candidate || !this.candidate.canActivate);
         this.draftButton?.setDisabled(this.commitInFlight || !this.candidate);
     }
