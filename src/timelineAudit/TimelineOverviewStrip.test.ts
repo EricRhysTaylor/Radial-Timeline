@@ -130,6 +130,25 @@ describe('timeline overview strip helpers', () => {
         )).toBe('impossible');
     });
 
+    it('uses human-readable issue summaries for overview tooltips', () => {
+        const [entry] = buildTimelineOverviewEntries([
+            makeFinding({
+                path: 'Story/Conflict.md',
+                manuscriptOrderIndex: 0,
+                expectedChronologyPosition: 1,
+                status: 'contradiction',
+                issues: [
+                    makeIssue('time_of_day_conflict', 'contradiction'),
+                    makeIssue('relative_order_conflict', 'contradiction')
+                ]
+            })
+        ]);
+
+        expect(entry.issueSummary).toBe(
+            'The scene text points to a different time of day than YAML. The scene text places this scene earlier or later than its current chronology slot.'
+        );
+    });
+
     it('preserves the filtered input set for overview rendering', () => {
         const filtered = [
             makeFinding({

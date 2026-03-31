@@ -217,10 +217,6 @@ export interface RepairPipelineConfig {
     
     // Deterministic cue refinement
     useTextCues: boolean;
-    
-    // Scope
-    subplotFilter?: string;  // Only process scenes in this subplot
-    actFilter?: number;      // Only process scenes in this act
 }
 
 /**

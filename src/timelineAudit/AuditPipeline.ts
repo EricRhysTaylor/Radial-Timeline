@@ -8,11 +8,10 @@
 
 import type { Vault } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
-import { getAllSceneData, compareScenesByOrder } from '../sceneAnalysis/data';
 import { getAIClient } from '../ai/runtime/aiClient';
 import { parseWhenField } from '../utils/date';
-import { readSceneId } from '../utils/sceneIds';
 import { buildChronologyEntries, buildChronologyPositionMap } from './chronology';
+import { loadScopedSceneNotes } from '../timeline/sharedSceneNotes';
 import type {
     TimelineAuditAiResponse,
     TimelineAuditCallbacks,
@@ -133,30 +132,6 @@ function excerpt(text: string, maxChars: number): string {
     const trimmed = text.trim();
     if (trimmed.length <= maxChars) return trimmed;
     return `${trimmed.slice(0, maxChars).trim()}…`;
-}
-
-function normalizeText(value: unknown): string {
-    if (Array.isArray(value)) return value.map((entry) => String(entry)).join('\n').trim();
-    if (typeof value === 'string') return value.trim();
-    return '';
-}
-
-function toRawWhen(value: unknown): string | null {
-    if (typeof value === 'string' && value.trim().length > 0) return value.trim();
-    if (value instanceof Date && !Number.isNaN(value.getTime())) {
-        const year = value.getFullYear();
-        const month = String(value.getMonth() + 1).padStart(2, '0');
-        const day = String(value.getDate()).padStart(2, '0');
-        const hour = String(value.getHours()).padStart(2, '0');
-        const minute = String(value.getMinutes()).padStart(2, '0');
-        return `${year}-${month}-${day} ${hour}:${minute}`;
-    }
-    return null;
-}
-
-function parseSceneWhen(rawWhen: string | null): Date | null {
-    if (!rawWhen) return null;
-    return parseWhenField(rawWhen);
 }
 
 function getBucketForWhen(date: Date): TimelineAuditTimeBucket {
@@ -991,32 +966,22 @@ export async function buildTimelineAuditSceneInputs(
     vault: Vault = plugin.app.vault,
     excerptChars = DEFAULT_CONFIG.bodyExcerptChars ?? 2600
 ): Promise<TimelineAuditSceneInput[]> {
-    const sceneData = await getAllSceneData(plugin, vault);
-    sceneData.sort(compareScenesByOrder);
-
-    return sceneData.map((scene, manuscriptOrderIndex) => {
-        const rawWhen = toRawWhen(scene.frontmatter.When);
-        const parsedWhen = parseSceneWhen(rawWhen);
-        const whenParseIssue = rawWhen === null
-            ? 'missing_when'
-            : parsedWhen === null
-                ? 'invalid_when'
-                : null;
-
+    const sceneNotes = await loadScopedSceneNotes(plugin, vault);
+    return sceneNotes.map((scene) => {
         return {
             file: scene.file,
-            sceneId: readSceneId(scene.frontmatter) || scene.file.path,
-            title: scene.file.basename,
-            path: scene.file.path,
-            manuscriptOrderIndex,
-            rawWhen,
-            parsedWhen,
-            whenValid: parsedWhen instanceof Date,
-            whenParseIssue,
+            sceneId: scene.sceneId,
+            title: scene.title,
+            path: scene.path,
+            manuscriptOrderIndex: scene.manuscriptOrderIndex,
+            rawWhen: scene.rawWhen,
+            parsedWhen: scene.parsedWhen,
+            whenValid: scene.parsedWhen instanceof Date,
+            whenParseIssue: scene.whenParseIssue,
             whenSource: typeof scene.frontmatter.WhenSource === 'string' ? scene.frontmatter.WhenSource as TimelineAuditSceneInput['whenSource'] : undefined,
             whenConfidence: typeof scene.frontmatter.WhenConfidence === 'string' ? scene.frontmatter.WhenConfidence as TimelineAuditSceneInput['whenConfidence'] : undefined,
-            summary: normalizeText(scene.frontmatter.Summary),
-            synopsis: normalizeText(scene.frontmatter.Synopsis),
+            summary: scene.summary,
+            synopsis: scene.synopsis,
             bodyExcerpt: excerpt(scene.body, excerptChars)
         };
     });

@@ -7,7 +7,7 @@
  * Two-phase modal: configuration wizard + review/edit UI for rapid human correction.
  */
 
-import { App, Modal, ButtonComponent, DropdownComponent, Notice, setIcon, ToggleComponent } from 'obsidian';
+import { App, Modal, ButtonComponent, Notice, setIcon, ToggleComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import type { TFile } from 'obsidian';
 import type { TimelineItem } from '../types';
@@ -24,7 +24,8 @@ import {
     TIME_BUCKET_LABELS,
     getEffectiveWhen
 } from '../timelineRepair/types';
-import { runRepairPipeline, getUniqueSubplots, getUniqueActs } from '../timelineRepair/RepairPipeline';
+import { runRepairPipeline } from '../timelineRepair/RepairPipeline';
+import { buildSharedSceneNoteFileMap, loadScopedSceneNotes, mapSharedSceneNotesToTimelineItems } from '../timeline/sharedSceneNotes';
 import {
     createSession,
     shiftSceneDays,
@@ -41,6 +42,7 @@ import {
 } from '../timelineRepair/sessionDiff';
 import { formatWhenForDisplay, detectTimeBucket } from '../timelineRepair/patternSync';
 import { writeSessionChanges, getChangeSummary } from '../timelineRepair/frontmatterWriter';
+import { buildScaffoldPreview } from '../timelineRepair/scaffoldPreview';
 import { parseWhenField } from '../utils/date';
 
 // ============================================================================
@@ -98,6 +100,22 @@ export class TimelineRepairModal extends Modal {
         return fallback;
     }
 
+    private parseAnchorWhenFromInputs(dateValue: string, timeValue: string, fallback: Date): Date {
+        const [year, month, day] = dateValue.split('-').map(Number);
+        const hasValidDate = Number.isFinite(year) && Number.isFinite(month) && Number.isFinite(day);
+        const [hour, minute] = timeValue.trim() ? timeValue.split(':').map(Number) : [0, 0];
+        const safeHour = Number.isFinite(hour) ? hour : 0;
+        const safeMinute = Number.isFinite(minute) ? minute : 0;
+
+        if (!hasValidDate) {
+            const fallbackDate = new Date(fallback);
+            fallbackDate.setHours(safeHour, safeMinute, 0, 0);
+            return fallbackDate;
+        }
+
+        return new Date(year, month - 1, day, safeHour, safeMinute, 0, 0);
+    }
+
     async onOpen(): Promise<void> {
         const { contentEl, modalEl, titleEl } = this;
         titleEl.setText('');
@@ -126,17 +144,9 @@ export class TimelineRepairModal extends Modal {
     }
 
     private async loadSceneData(): Promise<void> {
-        this.scenes = await this.plugin.getSceneData();
-
-        // Build file map
-        for (const scene of this.scenes) {
-            if (scene.path) {
-                const file = this.app.vault.getFileByPath(scene.path);
-                if (file) {
-                    this.files.set(scene.path, file);
-                }
-            }
-        }
+        const sceneNotes = await loadScopedSceneNotes(this.plugin);
+        this.scenes = mapSharedSceneNotesToTimelineItems(sceneNotes);
+        this.files = buildSharedSceneNoteFileMap(sceneNotes);
     }
 
     // ========================================================================
@@ -153,16 +163,7 @@ export class TimelineRepairModal extends Modal {
         header.createDiv({ cls: 'ert-modal-title', text: 'Timeline order normalizer' });
         header.createDiv({
             cls: 'ert-modal-subtitle',
-            text: 'Quickly scaffold When dates from manuscript order so Chronologue becomes usable.'
-        });
-        const descriptionBlock = header.createDiv({ cls: 'rt-timeline-repair-description-block' });
-        descriptionBlock.createDiv({
-            cls: 'rt-timeline-repair-helper-line',
-            text: 'Uses pattern spacing and simple text cues. For deeper timeline analysis, use Timeline Audit.'
-        });
-        descriptionBlock.createDiv({
-            cls: 'rt-timeline-repair-helper-line rt-timeline-repair-helper-line--muted',
-            text: 'This applies a new timeline scaffold within the selected scope and updates conflicting When values.'
+            text: 'Quickly scaffold When dates from manuscript order so Chronologue becomes usable. Uses pattern spacing and simple text cues. For deeper timeline analysis, use Timeline Audit. Scaffolds When values across the active book in manuscript order and updates conflicting values.'
         });
 
         // Scene count summary
@@ -173,11 +174,6 @@ export class TimelineRepairModal extends Modal {
         this.createStatItem(summaryRow, 'Total Scenes', String(this.scenes.length));
         this.createStatItem(summaryRow, 'With When', String(scenesWithWhen));
         this.createStatItem(summaryRow, 'Missing When', String(scenesWithoutWhen));
-
-        const subplots = getUniqueSubplots(this.scenes);
-        const acts = getUniqueActs(this.scenes);
-        let subplotFilter: string | undefined;
-        let actFilter: number | undefined;
 
         // Setup configuration
         const setupCard = this.contentEl.createDiv({ cls: 'rt-glass-card rt-timeline-repair-setup-card' });
@@ -190,7 +186,7 @@ export class TimelineRepairModal extends Modal {
             .createEl('h5', { text: 'Anchor', cls: 'rt-timeline-repair-block-title' });
         anchorSection.createDiv({
             cls: 'rt-timeline-repair-section-desc',
-            text: 'Choose the start point for scene 1.'
+            text: 'Set the starting When for scene 1.'
         });
 
         const anchorRow = anchorSection.createDiv({ cls: 'rt-timeline-repair-anchor-row' });
@@ -215,38 +211,36 @@ export class TimelineRepairModal extends Modal {
         });
         timeInput.value = `${String(defaultAnchorWhen.getHours()).padStart(2, '0')}:${String(defaultAnchorWhen.getMinutes()).padStart(2, '0')}`;
 
-        if (subplots.length > 1 || acts.length > 1) {
-            const scopeSection = leftCol.createDiv({ cls: 'rt-timeline-repair-config-block' });
-            const scopeHeader = scopeSection.createDiv({ cls: 'rt-timeline-repair-block-header' });
-            scopeHeader.createEl('h5', { text: 'Scope', cls: 'rt-timeline-repair-block-title' });
-            scopeHeader.createSpan({ text: 'Optional', cls: 'rt-timeline-repair-inline-note' });
+        let selectedPattern: PatternPresetId = 'twoBeatDay';
 
-            const scopeRow = scopeSection.createDiv({ cls: 'rt-timeline-repair-scope-row' });
+        const previewSection = leftCol.createDiv({ cls: 'rt-timeline-repair-config-block rt-timeline-repair-preview-section' });
+        previewSection.createDiv({ cls: 'rt-timeline-repair-block-header' })
+            .createEl('h5', { text: 'Scaffold preview', cls: 'rt-timeline-repair-block-title' });
+        const previewPanel = previewSection.createDiv({ cls: 'rt-timeline-repair-preview-panel' });
+        const previewStart = previewPanel.createDiv({ cls: 'rt-timeline-repair-preview-start' });
+        const previewStrip = previewPanel.createDiv({ cls: 'rt-timeline-repair-preview-strip' });
+        const previewHelper = previewSection.createDiv({ cls: 'rt-timeline-repair-preview-helper' });
 
-            if (subplots.length > 1) {
-                const subplotContainer = scopeRow.createDiv({ cls: 'rt-timeline-repair-input-group' });
-                subplotContainer.createEl('label', { text: 'Subplot', cls: 'rt-timeline-repair-label' });
-                const subplotDropdown = new DropdownComponent(subplotContainer);
-                subplotDropdown.selectEl.addClass('ert-input', 'ert-input--full');
-                subplotDropdown.addOption('', 'All subplots');
-                for (const sub of subplots) {
-                    subplotDropdown.addOption(sub, sub);
+        const updateScaffoldPreview = (): void => {
+            const anchorWhen = this.parseAnchorWhenFromInputs(dateInput.value, timeInput.value, defaultAnchorWhen);
+            const preview = buildScaffoldPreview(selectedPattern, anchorWhen, this.scenes.length);
+            previewStart.textContent = preview.startLabel;
+            previewHelper.textContent = preview.helperLabel;
+            previewStrip.empty();
+
+            preview.steps.forEach((step, index) => {
+                const stepEl = previewStrip.createDiv({ cls: 'rt-timeline-repair-preview-step' });
+                stepEl.createDiv({ cls: 'rt-timeline-repair-preview-scene', text: step.sceneLabel });
+                stepEl.createDiv({ cls: 'rt-timeline-repair-preview-label', text: step.spacingLabel });
+
+                if (index < preview.steps.length - 1) {
+                    previewStrip.createSpan({ cls: 'rt-timeline-repair-preview-arrow', text: '→' });
                 }
-                subplotDropdown.onChange(val => { subplotFilter = val || undefined; });
-            }
+            });
+        };
 
-            if (acts.length > 1) {
-                const actContainer = scopeRow.createDiv({ cls: 'rt-timeline-repair-input-group' });
-                actContainer.createEl('label', { text: 'Act', cls: 'rt-timeline-repair-label' });
-                const actDropdown = new DropdownComponent(actContainer);
-                actDropdown.selectEl.addClass('ert-input', 'ert-input--full');
-                actDropdown.addOption('', 'All acts');
-                for (const act of acts) {
-                    actDropdown.addOption(String(act), `Act ${act}`);
-                }
-                actDropdown.onChange(val => { actFilter = val ? parseInt(val, 10) : undefined; });
-            }
-        }
+        dateInput.addEventListener('input', updateScaffoldPreview);
+        timeInput.addEventListener('input', updateScaffoldPreview);
 
         // Pattern selection
         const patternSection = rightCol.createDiv({ cls: 'rt-timeline-repair-config-block' });
@@ -258,7 +252,6 @@ export class TimelineRepairModal extends Modal {
         });
 
         const patternRow = patternSection.createDiv({ cls: 'rt-timeline-repair-pattern-grid' });
-        let selectedPattern: PatternPresetId = 'twoBeatDay';
 
         for (const preset of PATTERN_PRESETS) {
             const option = patternRow.createEl('label', { cls: 'rt-timeline-repair-pattern-option' });
@@ -280,8 +273,11 @@ export class TimelineRepairModal extends Modal {
                     p.toggleClass('rt-is-active', p === option);
                 });
                 selectedPattern = preset.id;
+                updateScaffoldPreview();
             });
         }
+
+        updateScaffoldPreview();
 
         const optionsSection = rightCol.createDiv({ cls: 'rt-timeline-repair-config-block' });
         optionsSection.createDiv({ cls: 'rt-timeline-repair-block-header' })
@@ -296,7 +292,7 @@ export class TimelineRepairModal extends Modal {
         const baseRow = optionsSection.createDiv({ cls: 'rt-timeline-repair-option-row rt-is-static' });
         const baseText = baseRow.createDiv({ cls: 'rt-timeline-repair-level-text' });
         baseText.createDiv({ cls: 'rt-timeline-repair-level-title', text: 'Base scaffold' });
-        baseText.createDiv({ cls: 'rt-timeline-repair-level-desc', text: 'Assigns When values in manuscript order using the selected pattern.' });
+        baseText.createDiv({ cls: 'rt-timeline-repair-level-desc', text: 'Assigns When values across the active book using the selected pattern.' });
         baseRow.createSpan({ cls: 'rt-timeline-repair-status-pill', text: 'Always on' });
 
         this.createLevelToggle(
@@ -315,18 +311,13 @@ export class TimelineRepairModal extends Modal {
             .setButtonText('Preview Scaffold')
             .setCta()
             .onClick(async () => {
-                // Parse anchor date
-                const [year, month, day] = dateInput.value.split('-').map(Number);
-                const [hour, minute] = timeInput.value.split(':').map(Number);
-                const anchorWhen = new Date(year, month - 1, day, hour, minute, 0, 0);
+                const anchorWhen = this.parseAnchorWhenFromInputs(dateInput.value, timeInput.value, defaultAnchorWhen);
 
                 this.config = {
                     anchorWhen,
                     anchorSceneIndex: 0,
                     patternPreset: selectedPattern,
-                    useTextCues,
-                    subplotFilter,
-                    actFilter
+                    useTextCues
                 };
 
                 await this.runAnalysis();

@@ -10,6 +10,7 @@
 import type { TFile, Vault } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import type { TimelineItem } from '../types';
+import { buildSharedSceneNoteFileMap, loadScopedSceneNotes, mapSharedSceneNotesToTimelineItems } from '../timeline/sharedSceneNotes';
 import type {
     RepairPipelineConfig,
     RepairPipelineResult,
@@ -52,7 +53,7 @@ export async function runRepairPipeline(
     callbacks: PipelineCallbacks = {}
 ): Promise<RepairPipelineResult> {
     const vault = plugin.app.vault;
-    
+
     // Build input for pattern sync
     const inputs: PatternSyncInput[] = [];
     for (let i = 0; i < scenes.length; i++) {
@@ -61,10 +62,6 @@ export async function runRepairPipeline(
         
         // Skip scenes without files
         if (!file) continue;
-        
-        // Apply scope filters
-        if (config.subplotFilter && scene.subplot !== config.subplotFilter) continue;
-        if (config.actFilter !== undefined && scene.actNumber !== config.actFilter) continue;
         
         inputs.push({
             scene,
@@ -186,65 +183,9 @@ function createEmptyResult(): RepairPipelineResult {
 export async function collectScenesForRepair(
     plugin: RadialTimelinePlugin
 ): Promise<{ scenes: TimelineItem[]; files: Map<string, TFile> }> {
-    // Get scenes in manuscript order
-    const scenes = await plugin.getSceneData();
-    
-    // Build file map
-    const files = new Map<string, TFile>();
-    for (const scene of scenes) {
-        if (scene.path) {
-            const tfile = plugin.app.vault.getFileByPath(scene.path);
-            if (tfile) {
-                files.set(scene.path, tfile);
-            }
-        }
-    }
-    
-    return { scenes, files };
-}
-
-/**
- * Filter scenes by subplot.
- */
-export function filterBySubplot(
-    scenes: TimelineItem[],
-    subplot: string
-): TimelineItem[] {
-    return scenes.filter(s => s.subplot === subplot);
-}
-
-/**
- * Filter scenes by act.
- */
-export function filterByAct(
-    scenes: TimelineItem[],
-    actNumber: number
-): TimelineItem[] {
-    return scenes.filter(s => s.actNumber === actNumber);
-}
-
-/**
- * Get unique subplots from scenes.
- */
-export function getUniqueSubplots(scenes: TimelineItem[]): string[] {
-    const subplots = new Set<string>();
-    for (const scene of scenes) {
-        if (scene.subplot) {
-            subplots.add(scene.subplot);
-        }
-    }
-    return Array.from(subplots).sort();
-}
-
-/**
- * Get unique acts from scenes.
- */
-export function getUniqueActs(scenes: TimelineItem[]): number[] {
-    const acts = new Set<number>();
-    for (const scene of scenes) {
-        if (scene.actNumber !== undefined) {
-            acts.add(scene.actNumber);
-        }
-    }
-    return Array.from(acts).sort((a, b) => a - b);
+    const sceneNotes = await loadScopedSceneNotes(plugin);
+    return {
+        scenes: mapSharedSceneNotesToTimelineItems(sceneNotes),
+        files: buildSharedSceneNoteFileMap(sceneNotes)
+    };
 }

@@ -33,10 +33,6 @@ export {
 export {
     runRepairPipeline,
     collectScenesForRepair,
-    filterBySubplot,
-    filterByAct,
-    getUniqueSubplots,
-    getUniqueActs,
     type PipelineCallbacks
 } from './RepairPipeline';
 

@@ -11,6 +11,22 @@ import type RadialTimelinePlugin from '../main';
 import { applyAuditFindings } from '../timelineAudit/apply';
 import { runAuditPipeline } from '../timelineAudit/AuditPipeline';
 import { buildTimelineOverviewEntries, scrollFindingCardIntoView } from '../timelineAudit/TimelineOverviewStrip';
+import {
+    describeAuditIssue,
+    getAuditDisplayTitle,
+    formatAuditIssueLabel,
+    formatAuditStatusLabel,
+    getAuditFindingBadgeLabels,
+    getAuditFindingPreviewSnippet,
+    getInitialExpandedFindingPath
+} from '../timelineAudit/presentation';
+import {
+    TIMELINE_AUDIT_AI_STATE_EVENT,
+    buildTimelineAuditAiScopeKey,
+    createTimelineAuditAiJobState,
+    resolveTimelineAuditDisplayResult,
+    type TimelineAuditAiJobState
+} from '../services/TimelineAuditAiService';
 import type { TimelineAuditFinding, TimelineAuditPipelineConfig, TimelineAuditResult } from '../timelineAudit/types';
 
 type FindingFilter =
@@ -28,9 +44,12 @@ export class TimelineAuditModal extends Modal {
     private result: TimelineAuditResult | null = null;
     private running = false;
     private runContinuityPass = true;
-    private runAiInference = false;
     private filter: FindingFilter = 'all';
     private abortController: AbortController | null = null;
+    private unsubscribeAiState: (() => void) | null = null;
+    private aiState: TimelineAuditAiJobState = createTimelineAuditAiJobState();
+    private expandedFindingPath: string | null = null;
+    private hasAutoExpandedCurrentResult = false;
     private readonly findingCardEls = new Map<string, HTMLElement>();
 
     constructor(app: App, plugin: RadialTimelinePlugin) {
@@ -50,24 +69,55 @@ export class TimelineAuditModal extends Modal {
         }
 
         contentEl.addClass('ert-modal-container', 'ert-stack', 'rt-timeline-audit-modal');
+        this.aiState = this.plugin.getTimelineAuditAiService().getState(this.getAiScopeKey());
+        this.unsubscribeAiState = this.plugin.subscribe<TimelineAuditAiJobState>(
+            TIMELINE_AUDIT_AI_STATE_EVENT,
+            () => {
+                const previousStatus = this.aiState.status;
+                this.aiState = this.plugin.getTimelineAuditAiService().getState(this.getAiScopeKey());
+                if (this.aiState.status === 'completed' && previousStatus !== 'completed') {
+                    this.expandedFindingPath = null;
+                    this.hasAutoExpandedCurrentResult = false;
+                }
+                if (!this.running) {
+                    this.render();
+                }
+            }
+        );
+
         await this.runAudit();
     }
 
     onClose(): void {
         this.abortController?.abort();
+        this.unsubscribeAiState?.();
+        this.unsubscribeAiState = null;
     }
 
     private getConfig(): TimelineAuditPipelineConfig {
         return {
             runDeterministicPass: true,
             runContinuityPass: this.runContinuityPass,
-            runAiInference: this.runAiInference,
+            runAiInference: false,
             chronologyWindow: 2,
             bodyExcerptChars: 2600
         };
     }
 
-    private async runAudit(): Promise<void> {
+    private getAiScopeKey(): string {
+        return buildTimelineAuditAiScopeKey(this.plugin, this.runContinuityPass);
+    }
+
+    private getDisplayedResult(): TimelineAuditResult | null {
+        return resolveTimelineAuditDisplayResult(this.result, this.aiState, this.getAiScopeKey());
+    }
+
+    private async runAudit(options: { invalidateAi?: boolean } = {}): Promise<void> {
+        if (options.invalidateAi) {
+            this.plugin.getTimelineAuditAiService().invalidate(this.getAiScopeKey());
+        }
+
+        this.aiState = this.plugin.getTimelineAuditAiService().getState(this.getAiScopeKey());
         this.running = true;
         this.abortController?.abort();
         this.abortController = new AbortController();
@@ -83,7 +133,52 @@ export class TimelineAuditModal extends Modal {
             }
         } finally {
             this.running = false;
+            this.expandedFindingPath = null;
+            this.hasAutoExpandedCurrentResult = false;
+            this.aiState = this.plugin.getTimelineAuditAiService().getState(this.getAiScopeKey());
             this.render();
+        }
+    }
+
+    private startAiAudit(): void {
+        const scopeKey = this.getAiScopeKey();
+        void this.plugin.getTimelineAuditAiService().start(scopeKey, {
+            runContinuityPass: this.runContinuityPass,
+            chronologyWindow: 2,
+            bodyExcerptChars: 2600
+        });
+        this.aiState = this.plugin.getTimelineAuditAiService().getState(scopeKey);
+        this.render();
+    }
+
+    private syncExpandedFinding(findings: TimelineAuditFinding[]): void {
+        const expandedStillVisible = this.expandedFindingPath
+            ? findings.some((finding) => finding.path === this.expandedFindingPath)
+            : false;
+
+        if (!expandedStillVisible) {
+            this.expandedFindingPath = null;
+        }
+
+        if (!this.hasAutoExpandedCurrentResult) {
+            this.expandedFindingPath = getInitialExpandedFindingPath(findings);
+            this.hasAutoExpandedCurrentResult = true;
+        }
+    }
+
+    private toggleFindingExpansion(path: string): void {
+        this.expandedFindingPath = this.expandedFindingPath === path ? null : path;
+        this.render();
+    }
+
+    private expandFinding(path: string, scroll = false): void {
+        this.expandedFindingPath = path;
+        this.render();
+
+        if (scroll) {
+            window.requestAnimationFrame(() => {
+                scrollFindingCardIntoView(this.findingCardEls, path);
+            });
         }
     }
 
@@ -96,15 +191,22 @@ export class TimelineAuditModal extends Modal {
         header.createDiv({ cls: 'ert-modal-title', text: 'Evidence-based timeline diagnosis' });
         header.createDiv({
             cls: 'ert-modal-subtitle',
-            text: 'Diagnose where manuscript evidence and YAML chronology disagree. Conservative by default.'
+            text: 'Timeline Audit checks each scene\'s YAML When value, summary, synopsis, and body text, then compares nearby scenes in chronology order. It looks for missing or invalid When values, time-of-day mismatches, suspicious jumps, and places where the written sequence appears to disagree with chronology. Direct text evidence counts more than inference, and AI remains optional. Use it to see where the timeline breaks before deciding what to change.'
         });
+
+        if (this.aiState.status === 'completed') {
+            header.createDiv({
+                cls: 'rt-timeline-audit-ai-header-badge',
+                text: 'AI-enhanced'
+            });
+        }
 
         if (this.running) {
             const loadingCard = contentEl.createDiv({ cls: 'ert-panel ert-panel--glass rt-timeline-audit-loading' });
-            loadingCard.createDiv({ cls: 'rt-timeline-audit-loading-title', text: 'Running timeline audit…' });
+            loadingCard.createDiv({ cls: 'rt-timeline-audit-loading-title', text: 'Running instant audit…' });
             loadingCard.createDiv({
                 cls: 'rt-timeline-audit-loading-copy',
-                text: 'Deterministic checks run first, continuity checks run next, and AI stays off unless you enable it.'
+                text: 'Deterministic checks run first and continuity checks run next. AI audit only runs when you explicitly start it.'
             });
 
             const actionRow = contentEl.createDiv({ cls: 'ert-modal-actions' });
@@ -119,11 +221,15 @@ export class TimelineAuditModal extends Modal {
             return;
         }
 
-        if (!this.result) {
+        const displayedResult = this.getDisplayedResult();
+        if (!displayedResult) {
             const emptyCard = contentEl.createDiv({ cls: 'ert-panel ert-panel--glass rt-timeline-audit-loading' });
             emptyCard.createDiv({ text: 'No audit results available.' });
             return;
         }
+
+        const findings = this.getFilteredFindings();
+        this.syncExpandedFinding(findings);
 
         const book = this.plugin.getActiveBook();
         const statsCard = contentEl.createDiv({ cls: 'ert-panel ert-panel--glass rt-timeline-audit-stats' });
@@ -134,28 +240,18 @@ export class TimelineAuditModal extends Modal {
         });
         scopeRow.createSpan({
             cls: 'rt-timeline-audit-scope-path',
-            text: book?.sourceFolder?.trim() || this.plugin.settings.sourcePath || 'Entire vault'
+            text: `Active scope: ${book?.sourceFolder?.trim() || this.plugin.settings.sourcePath || 'Entire vault'}`
         });
 
         const statsGrid = statsCard.createDiv({ cls: 'rt-timeline-audit-stats-grid' });
-        this.createStat(statsGrid, 'Total scenes', String(this.result.stats.totalScenes));
-        this.createStat(statsGrid, 'Aligned', String(this.result.stats.aligned));
-        this.createStat(statsGrid, 'Warnings', String(this.result.stats.warnings));
-        this.createStat(statsGrid, 'Contradictions', String(this.result.stats.contradictions));
-        this.createStat(statsGrid, 'Missing When', String(this.result.stats.missingWhen));
+        this.createStat(statsGrid, 'Total scenes', String(displayedResult.stats.totalScenes));
+        this.createStat(statsGrid, 'Aligned', String(displayedResult.stats.aligned));
+        this.createStat(statsGrid, 'Warnings', String(displayedResult.stats.warnings));
+        this.createStat(statsGrid, 'Contradictions', String(displayedResult.stats.contradictions));
+        this.createStat(statsGrid, 'Missing When', String(displayedResult.stats.missingWhen));
 
-        const findings = this.getFilteredFindings();
         this.renderTimelineOverview(contentEl, findings);
-
-        const controlsCard = contentEl.createDiv({ cls: 'ert-panel ert-panel--glass rt-timeline-audit-controls' });
-        controlsCard.createDiv({ cls: 'rt-timeline-audit-controls-title', text: 'Audit controls' });
-        const controlsRow = controlsCard.createDiv({ cls: 'rt-timeline-audit-toggle-row' });
-        this.createToggle(controlsRow, 'Continuity pass', this.runContinuityPass, (value) => {
-            this.runContinuityPass = value;
-        });
-        this.createToggle(controlsRow, 'AI inference', this.runAiInference, (value) => {
-            this.runAiInference = value;
-        });
+        this.renderAuditActions(contentEl);
 
         const filterRow = contentEl.createDiv({ cls: 'rt-timeline-audit-filter-row' });
         this.createFilterPill(filterRow, 'All', 'all');
@@ -174,19 +270,19 @@ export class TimelineAuditModal extends Modal {
             emptyState.createDiv({ text: 'No findings match the current filter.' });
         } else {
             for (const finding of findings) {
-                this.renderFindingCard(findingsList, finding);
+                this.renderFindingListItem(findingsList, finding);
             }
         }
 
         const actionRow = contentEl.createDiv({ cls: 'ert-modal-actions' });
         new ButtonComponent(actionRow)
-            .setButtonText('Refresh audit')
+            .setButtonText('Re-run audit')
             .onClick(() => {
-                void this.runAudit();
+                void this.runAudit({ invalidateAi: true });
             });
 
         new ButtonComponent(actionRow)
-            .setButtonText('Apply review decisions')
+            .setButtonText('Apply accepted changes')
             .setCta()
             .onClick(() => {
                 void this.applyDecisions();
@@ -195,6 +291,139 @@ export class TimelineAuditModal extends Modal {
         new ButtonComponent(actionRow)
             .setButtonText('Close')
             .onClick(() => this.close());
+    }
+
+    private renderAuditActions(container: HTMLElement): void {
+        const actionsSection = container.createDiv({ cls: 'rt-timeline-audit-controls' });
+        actionsSection.createDiv({ cls: 'rt-timeline-audit-controls-title', text: 'Audit actions' });
+
+        const cards = actionsSection.createDiv({ cls: 'rt-timeline-audit-actions-grid' });
+
+        const instantCard = cards.createDiv({ cls: 'ert-panel ert-panel--glass rt-timeline-audit-action-card' });
+        instantCard.createDiv({ cls: 'rt-timeline-audit-action-card-title', text: 'Instant audit' });
+        instantCard.createDiv({
+            cls: 'rt-timeline-audit-action-card-copy',
+            text: 'Runs automatically when this window opens. Checks chronology, summary/body disagreement, and nearby scene continuity.'
+        });
+        instantCard.createDiv({
+            cls: 'rt-timeline-audit-action-card-status',
+            text: 'Already run for the current view.'
+        });
+
+        const controlsRow = instantCard.createDiv({ cls: 'rt-timeline-audit-toggle-row' });
+        this.createToggle(controlsRow, 'Continuity pass', this.runContinuityPass, (value) => {
+            this.runContinuityPass = value;
+            this.aiState = this.plugin.getTimelineAuditAiService().getState(this.getAiScopeKey());
+            this.render();
+        });
+        instantCard.createDiv({
+            cls: 'rt-timeline-audit-actions-copy',
+            text: 'Checks neighboring scenes for suspicious jumps or impossible order.'
+        });
+
+        const aiCard = cards.createDiv({ cls: 'ert-panel ert-panel--glass rt-timeline-audit-action-card' });
+        const aiHeader = aiCard.createDiv({ cls: 'rt-timeline-audit-ai-card-header' });
+        aiHeader.createDiv({ cls: 'rt-timeline-audit-action-card-title', text: 'AI audit' });
+        if (this.aiState.status === 'completed') {
+            aiHeader.createDiv({ cls: 'rt-timeline-audit-ai-header-badge', text: 'AI-enhanced' });
+        }
+        aiCard.createDiv({
+            cls: 'rt-timeline-audit-action-card-copy',
+            text: 'Uses AI to read scene evidence more deeply and surface subtler timeline inconsistencies. Runs in the background and can be revisited later.'
+        });
+
+        const statusCol = aiCard.createDiv({ cls: 'rt-timeline-audit-ai-status' });
+        statusCol.createDiv({
+            cls: 'rt-timeline-audit-ai-status-title',
+            text: this.getAiStatusLabel()
+        });
+
+        const meta = this.getAiStatusMeta();
+        if (meta) {
+            statusCol.createDiv({
+                cls: 'rt-timeline-audit-ai-status-meta',
+                text: meta
+            });
+        }
+
+        if (this.aiState.status === 'running') {
+            const progressWrap = aiCard.createDiv({ cls: 'rt-timeline-audit-ai-progress' });
+            const progressBar = progressWrap.createDiv({ cls: 'rt-timeline-audit-ai-progress-bar' });
+            const hasProgress = this.aiState.progressTotal > 0 && this.aiState.progressCurrent > 0;
+            const progressWidth = hasProgress
+                ? `${Math.max(8, Math.round((this.aiState.progressCurrent / this.aiState.progressTotal) * 100))}%`
+                : '22%';
+            progressBar.style.width = progressWidth; // SAFE: inline style used for lightweight AI progress width in modal UI
+            if (!hasProgress) {
+                progressBar.addClass('rt-is-indeterminate');
+            }
+        }
+
+        const aiRow = aiCard.createDiv({ cls: 'rt-timeline-audit-ai-action-row' });
+        const aiButton = new ButtonComponent(aiRow);
+        aiButton.setButtonText(this.getAiActionLabel());
+        if (this.aiState.status === 'running') {
+            aiButton.setDisabled(true);
+        } else {
+            aiButton.setCta();
+            aiButton.onClick(() => this.startAiAudit());
+        }
+    }
+
+    private getAiActionLabel(): string {
+        switch (this.aiState.status) {
+            case 'running':
+                return 'Running AI audit…';
+            case 'completed':
+                return 'Re-run AI Audit';
+            default:
+                return 'Start AI Audit';
+        }
+    }
+
+    private getAiStatusLabel(): string {
+        switch (this.aiState.status) {
+            case 'running':
+                return 'AI audit in progress';
+            case 'completed':
+                return 'AI audit complete';
+            case 'failed':
+                return 'AI audit failed';
+            case 'not_started':
+            default:
+                return 'AI audit not started';
+        }
+    }
+
+    private getAiStatusMeta(): string {
+        if (this.aiState.status === 'running') {
+            if (this.aiState.progressTotal > 0) {
+                const scene = this.aiState.currentSceneName ? ` · ${this.aiState.currentSceneName}` : '';
+                return `${this.aiState.progressCurrent}/${this.aiState.progressTotal}${scene}`;
+            }
+            return this.aiState.message || 'AI audit is running in the background.';
+        }
+
+        if (this.aiState.status === 'completed' && this.aiState.completedAt) {
+            return `AI audit run ${this.formatRelativeAge(this.aiState.completedAt)}`;
+        }
+
+        if (this.aiState.status === 'failed') {
+            return this.aiState.error || 'Try starting the AI audit again.';
+        }
+
+        return 'Instant audit is done. Start AI Audit to look for subtler timeline problems.';
+    }
+
+    private formatRelativeAge(timestamp: number): string {
+        const deltaMs = Math.max(0, Date.now() - timestamp);
+        const minutes = Math.floor(deltaMs / 60000);
+        if (minutes < 1) return 'just now';
+        if (minutes < 60) return `${minutes}m ago`;
+        const hours = Math.floor(minutes / 60);
+        if (hours < 24) return `${hours}h ago`;
+        const days = Math.floor(hours / 24);
+        return `${days}d ago`;
     }
 
     private createStat(container: HTMLElement, label: string, value: string): void {
@@ -242,23 +471,28 @@ export class TimelineAuditModal extends Modal {
 
         const strip = overviewCard.createDiv({ cls: 'rt-timeline-audit-overview-strip' });
         for (const entry of buildTimelineOverviewEntries(findings)) {
+            const sceneLabel = `Scene ${entry.finding.manuscriptOrderIndex + 1}`;
+            const sceneTitle = getAuditDisplayTitle(entry.finding.title);
             const block = strip.createEl('button', {
                 cls: `rt-timeline-audit-overview-block rt-timeline-audit-overview-block--${entry.severity}`,
                 text: `S${entry.finding.manuscriptOrderIndex + 1}`
             });
+            if (entry.finding.path === this.expandedFindingPath) {
+                block.addClass('rt-is-active');
+            }
             block.type = 'button';
-            block.title = `${entry.finding.title}\n${entry.issueSummary}`;
-            block.setAttr('aria-label', `${entry.finding.title}: ${entry.issueSummary}`);
+            block.setAttr('aria-label', `${sceneLabel}, ${sceneTitle}. ${entry.issueSummary}`);
             block.addEventListener('click', () => {
-                scrollFindingCardIntoView(this.findingCardEls, entry.finding.path);
+                this.expandFinding(entry.finding.path, true);
             });
         }
     }
 
     private getFilteredFindings(): TimelineAuditFinding[] {
-        if (!this.result) return [];
+        const result = this.getDisplayedResult();
+        if (!result) return [];
 
-        return this.result.findings.filter((finding) => {
+        return result.findings.filter((finding) => {
             switch (this.filter) {
                 case 'contradictions':
                     return finding.status === 'contradiction';
@@ -283,27 +517,88 @@ export class TimelineAuditModal extends Modal {
         });
     }
 
-    private renderFindingCard(container: HTMLElement, finding: TimelineAuditFinding): void {
-        const card = container.createDiv({ cls: 'ert-panel ert-panel--glass rt-timeline-audit-card' });
+    private renderFindingListItem(container: HTMLElement, finding: TimelineAuditFinding): void {
+        const shell = container.createDiv({ cls: 'rt-timeline-audit-finding-shell' });
+        shell.addClass(`rt-timeline-audit-finding-shell--${finding.status}`);
+        if (finding.path === this.expandedFindingPath) {
+            shell.addClass('rt-is-expanded');
+        }
+        shell.tabIndex = -1;
+        this.findingCardEls.set(finding.path, shell);
+
+        const row = shell.createEl('button', {
+            cls: `rt-timeline-audit-row rt-timeline-audit-row--${finding.status}`,
+            attr: { type: 'button' }
+        });
+        if (finding.path === this.expandedFindingPath) {
+            row.addClass('rt-is-expanded');
+        }
+        row.addEventListener('click', () => this.toggleFindingExpansion(finding.path));
+
+        const left = row.createDiv({ cls: 'rt-timeline-audit-row-left' });
+        const titleRow = left.createDiv({ cls: 'rt-timeline-audit-row-title-row' });
+        titleRow.createSpan({
+            cls: 'rt-timeline-audit-row-index',
+            text: `#${finding.manuscriptOrderIndex + 1}`
+        });
+        titleRow.createSpan({
+            cls: 'rt-timeline-audit-row-title',
+            text: getAuditDisplayTitle(finding.title)
+        });
+
+        const preview = getAuditFindingPreviewSnippet(finding);
+        if (preview) {
+            left.createDiv({
+                cls: 'rt-timeline-audit-row-snippet',
+                text: preview
+            });
+        }
+
+        const middle = row.createDiv({ cls: 'rt-timeline-audit-row-middle' });
+        for (const label of getAuditFindingBadgeLabels(finding)) {
+            middle.createSpan({
+                cls: 'rt-timeline-audit-row-issue',
+                text: label
+            });
+        }
+
+        const right = row.createDiv({ cls: 'rt-timeline-audit-row-right' });
+        right.createSpan({
+            cls: `rt-timeline-audit-row-status rt-timeline-audit-row-status--${finding.status}`,
+            text: formatAuditStatusLabel(finding.status)
+        });
+        right.createSpan({
+            cls: 'rt-timeline-audit-row-chevron',
+            text: finding.path === this.expandedFindingPath ? '▾' : '▸'
+        });
+
+        if (finding.path === this.expandedFindingPath) {
+            const detailWrap = shell.createDiv({ cls: 'rt-timeline-audit-detail-wrap' });
+            this.renderFindingDetail(detailWrap, finding);
+        }
+    }
+
+    private renderFindingDetail(container: HTMLElement, finding: TimelineAuditFinding): void {
+        const card = container.createDiv({ cls: 'rt-timeline-audit-card' });
         card.addClass(`rt-timeline-audit-card--${finding.status}`);
-        card.tabIndex = -1;
-        this.findingCardEls.set(finding.path, card);
 
         const titleRow = card.createDiv({ cls: 'rt-timeline-audit-card-title-row' });
         titleRow.createDiv({
             cls: 'rt-timeline-audit-card-title',
-            text: `#${finding.manuscriptOrderIndex + 1} ${finding.title}`
+            text: `#${finding.manuscriptOrderIndex + 1} ${getAuditDisplayTitle(finding.title)}`
         });
         titleRow.createDiv({
             cls: 'rt-timeline-audit-card-status',
-            text: finding.status
+            text: formatAuditStatusLabel(finding.status)
         });
 
         const issueRow = card.createDiv({ cls: 'rt-timeline-audit-badge-row' });
-        for (const issue of finding.issues) {
+        for (const issue of finding.issues.filter((candidate, index, issues) =>
+            issues.findIndex((entry) => entry.type === candidate.type) === index
+        )) {
             issueRow.createSpan({
                 cls: `rt-timeline-audit-badge rt-timeline-audit-badge--${issue.severity}`,
-                text: issue.type
+                text: formatAuditIssueLabel(issue.type)
             });
         }
 
@@ -321,16 +616,14 @@ export class TimelineAuditModal extends Modal {
 
         const qaGrid = card.createDiv({ cls: 'rt-timeline-audit-qa-grid' });
         this.createQuestionBlock(qaGrid, 'What YAML currently says', [
-            `When: ${this.describeCurrentWhen(finding)}`,
-            `Chronology position: ${finding.expectedChronologyPosition ?? 'Not placed'}`
+            this.describeCurrentWhen(finding),
+            `Chronology position: ${finding.expectedChronologyPosition ?? 'Not placed because YAML does not place it safely.'}`
         ]);
         this.createQuestionBlock(qaGrid, 'What the manuscript implies', [
             finding.inferredWrittenTimelinePosition?.label ?? 'No reliable alternate timeline position inferred.',
             finding.suggestedWhen ? `Suggested When: ${this.formatWhen(finding.suggestedWhen)}` : 'No safe replacement When suggested.'
         ]);
-        this.createQuestionBlock(qaGrid, 'Why this was flagged', [
-            finding.rationale || 'No rationale recorded.'
-        ]);
+        this.createQuestionBlock(qaGrid, 'Why this was flagged', this.getFlagExplanationLines(finding));
         this.createQuestionBlock(qaGrid, 'What the author can do', [
             finding.safeApplyEligible
                 ? 'Apply the suggested When, keep YAML as-is, or mark for review.'
@@ -345,7 +638,7 @@ export class TimelineAuditModal extends Modal {
                 const evidenceItem = evidenceList.createDiv({ cls: 'rt-timeline-audit-evidence-item' });
                 evidenceItem.createSpan({
                     cls: 'rt-timeline-audit-evidence-label',
-                    text: `${this.formatEvidenceSource(evidence.source)} · ${evidence.tier}`
+                    text: `${this.formatEvidenceSource(evidence.source)} · ${this.formatEvidenceTier(evidence.tier)}`
                 });
                 evidenceItem.createSpan({
                     cls: 'rt-timeline-audit-evidence-snippet',
@@ -398,10 +691,23 @@ export class TimelineAuditModal extends Modal {
         }
     }
 
+    private getFlagExplanationLines(finding: TimelineAuditFinding): string[] {
+        const issueLines = finding.issues
+            .filter((issue, index, issues) => issues.findIndex((candidate) => candidate.type === issue.type) === index)
+            .slice(0, 2)
+            .map((issue) => describeAuditIssue(issue.type));
+
+        if (finding.rationale) {
+            issueLines.push(finding.rationale);
+        }
+
+        return issueLines.length > 0 ? issueLines : ['No rationale recorded.'];
+    }
+
     private describeCurrentWhen(finding: TimelineAuditFinding): string {
-        if (finding.whenParseIssue === 'missing_when') return 'Missing';
-        if (finding.whenParseIssue === 'invalid_when') return `Invalid (${finding.currentWhenRaw ?? 'unknown'})`;
-        return this.formatWhen(finding.currentWhen);
+        if (finding.whenParseIssue === 'missing_when') return 'YAML When: missing from frontmatter.';
+        if (finding.whenParseIssue === 'invalid_when') return `YAML When: invalid in frontmatter (${finding.currentWhenRaw ?? 'unknown'}).`;
+        return `YAML When: ${this.formatWhen(finding.currentWhen)}.`;
     }
 
     private formatWhen(value: Date | null): string {
@@ -425,6 +731,15 @@ export class TimelineAuditModal extends Modal {
         }
     }
 
+    private formatEvidenceTier(tier: string): string {
+        switch (tier) {
+            case 'direct': return 'Direct text';
+            case 'strong_inference': return 'Strong inference';
+            case 'ambiguous': return 'Ambiguous cue';
+            default: return tier;
+        }
+    }
+
     private formatDetectionSource(source: string): string {
         switch (source) {
             case 'deterministic': return 'Deterministic';
@@ -435,12 +750,13 @@ export class TimelineAuditModal extends Modal {
     }
 
     private async applyDecisions(): Promise<void> {
-        if (!this.result) return;
+        const result = this.getDisplayedResult();
+        if (!result) return;
 
         try {
-            const result = await applyAuditFindings(this.app, this.result.findings);
-            if (result.failed > 0) {
-                new Notice(`Applied timeline audit decisions with ${result.failed} failure(s).`);
+            const applyResult = await applyAuditFindings(this.app, result.findings);
+            if (applyResult.failed > 0) {
+                new Notice(`Applied timeline audit decisions with ${applyResult.failed} failure(s).`);
             } else {
                 new Notice('Applied timeline audit decisions.');
             }

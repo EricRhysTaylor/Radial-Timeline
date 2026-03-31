@@ -9,6 +9,7 @@ import { runKeywordSweep } from './keywordSweep';
 import { runRepairPipeline } from './RepairPipeline';
 import { createSession } from './sessionDiff';
 import { writeSessionChanges } from './frontmatterWriter';
+import { buildScaffoldPreview } from './scaffoldPreview';
 
 function makeFile(path: string): TFile {
     return new TFile(path);
@@ -151,7 +152,7 @@ describe('timeline repair normalizer', () => {
         expect(toIsoLocal(refined[2].proposedWhen)).toBe('2026-01-14 08:00');
     });
 
-    it('respects scope filters and only applies simple text cues when enabled', async () => {
+    it('scaffolds the whole book and only applies simple text cues when enabled', async () => {
         const scenes = [
             makeScene('Book/01.md', { actNumber: 1, subplot: 'A', synopsis: 'Opening scene.' }),
             makeScene('Book/02.md', { actNumber: 1, subplot: 'A', synopsis: 'This happens after dawn, though not stated directly.' }),
@@ -168,27 +169,76 @@ describe('timeline repair normalizer', () => {
             anchorWhen: new Date(2026, 0, 10, 8, 0, 0, 0),
             anchorSceneIndex: 0,
             patternPreset: 'daily' as const,
-            useTextCues: false,
-            subplotFilter: 'A',
-            actFilter: 1
+            useTextCues: false
         };
 
         const withoutCues = await runRepairPipeline(scenes, files, plugin, configBase);
 
-        expect(withoutCues.entries).toHaveLength(2);
-        expect(withoutCues.entries.map(entry => entry.source)).toEqual(['pattern', 'pattern']);
+        expect(withoutCues.entries).toHaveLength(3);
+        expect(withoutCues.entries.map(entry => entry.source)).toEqual(['pattern', 'pattern', 'pattern']);
         expect(withoutCues.cueRefined).toBe(0);
         expect(toIsoLocal(withoutCues.entries[1].proposedWhen)).toBe('2026-01-11 08:00');
+        expect(toIsoLocal(withoutCues.entries[2].proposedWhen)).toBe('2026-01-12 08:00');
 
         const withCues = await runRepairPipeline(scenes, files, plugin, {
             ...configBase,
             useTextCues: true
         });
 
-        expect(withCues.entries).toHaveLength(2);
+        expect(withCues.entries).toHaveLength(3);
         expect(withCues.entries[1].source).toBe('keyword');
         expect(toIsoLocal(withCues.entries[1].proposedWhen)).toBe('2026-01-11 08:00');
         expect(withCues.cueRefined).toBe(1);
+        expect(withCues.entries[2].source).toBe('pattern');
+    });
+
+    it('builds compact preview labels for each pattern and reflects anchor changes', () => {
+        const daily = buildScaffoldPreview('daily', new Date(2026, 11, 27, 0, 0, 0, 0), 82);
+        expect(daily.startLabel).toBe('Start: Dec 27, 2026 · 12:00 AM');
+        expect(daily.helperLabel).toBe('Scaffolds 82 scenes in manuscript order.');
+        expect(daily.steps.map(step => step.spacingLabel)).toEqual([
+            'Day 1',
+            'Day 2',
+            'Day 3',
+            'Day 4',
+            'Day 5'
+        ]);
+
+        const twoBeatMorning = buildScaffoldPreview('twoBeatDay', new Date(2026, 0, 10, 8, 0, 0, 0), 5);
+        expect(twoBeatMorning.steps.map(step => step.spacingLabel)).toEqual([
+            'Morning',
+            'Evening',
+            'Next morning',
+            'Evening',
+            'Next morning'
+        ]);
+
+        const twoBeatEvening = buildScaffoldPreview('twoBeatDay', new Date(2026, 0, 10, 19, 0, 0, 0), 5);
+        expect(twoBeatEvening.startLabel).toBe('Start: Jan 10, 2026 · 7:00 PM');
+        expect(twoBeatEvening.steps.map(step => step.spacingLabel)).toEqual([
+            'Evening',
+            'Next morning',
+            'Evening',
+            'Next morning',
+            'Evening'
+        ]);
+
+        const fourBeat = buildScaffoldPreview('fourBeatDay', new Date(2026, 0, 10, 13, 0, 0, 0), 5);
+        expect(fourBeat.steps.map(step => step.spacingLabel)).toEqual([
+            'Afternoon',
+            'Evening',
+            'Night',
+            'Next morning',
+            'Afternoon'
+        ]);
+
+        const weekly = buildScaffoldPreview('weekly', new Date(2026, 0, 10, 8, 0, 0, 0), 4);
+        expect(weekly.steps.map(step => step.spacingLabel)).toEqual([
+            'Week 1',
+            'Week 2',
+            'Week 3',
+            'Week 4'
+        ]);
     });
 
     it('writes YAML only for changed scenes and leaves Chronologue materially more usable after apply', async () => {

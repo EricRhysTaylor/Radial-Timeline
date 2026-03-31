@@ -53,6 +53,7 @@ import { initVersionCheckService, getVersionCheckService } from './services/Vers
 import { registerRuntimeCommands } from './RuntimeCommands';
 import { AuthorProgressService } from './services/AuthorProgressService';
 import { PublishingValidationService } from './services/PublishingValidationService';
+import { TimelineAuditAiService } from './services/TimelineAuditAiService';
 import { ensureBundledPandocLayoutsRegistered } from './utils/pandocBundledLayouts';
 import { normalizeManuscriptCleanupOptions } from './utils/manuscriptSanitize';
 
@@ -130,6 +131,7 @@ export default class RadialTimelinePlugin extends Plugin {
     private timelineMetricsService!: TimelineMetricsService;
     private settingsService!: SettingsService;
     private publishingValidationService!: PublishingValidationService;
+    private timelineAuditAiService!: TimelineAuditAiService;
     public milestonesService!: import('./services/MilestonesService').MilestonesService;
     public lastSceneData?: TimelineItem[];
     
@@ -315,6 +317,7 @@ export default class RadialTimelinePlugin extends Plugin {
         this.themeService = new ThemeService(this);
         this.timelineMetricsService = new TimelineMetricsService(this);
         this.publishingValidationService = new PublishingValidationService(this);
+        this.timelineAuditAiService = new TimelineAuditAiService(this);
         
         // Milestones Service (single source of truth for stage completion milestones)
         // Separate from TimelineMetricsService (estimation/tick tracking)
@@ -871,6 +874,18 @@ export default class RadialTimelinePlugin extends Plugin {
 
     public dispatch<T>(type: string, detail: T): void {
         this.eventBus.dispatchEvent(new CustomEvent(type, { detail }));
+    }
+
+    public subscribe<T>(type: string, listener: (detail: T) => void): () => void {
+        const wrapped: EventListener = (event) => {
+            listener((event as CustomEvent<T>).detail);
+        };
+        this.eventBus.addEventListener(type, wrapped);
+        return () => this.eventBus.removeEventListener(type, wrapped);
+    }
+
+    public getTimelineAuditAiService(): TimelineAuditAiService {
+        return this.timelineAuditAiService;
     }
 
 } // End of RadialTimelinePlugin class

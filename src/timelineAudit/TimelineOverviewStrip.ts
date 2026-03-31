@@ -7,6 +7,7 @@
  */
 
 import type { TimelineAuditFinding } from './types';
+import { describeAuditIssue } from './presentation';
 
 export type TimelineOverviewSeverity = 'clean' | 'missing_when' | 'warning' | 'contradiction' | 'impossible';
 
@@ -58,11 +59,11 @@ export function sortFindingsForTimelineOverview(a: TimelineAuditFinding, b: Time
 }
 
 export function summarizeTimelineOverviewIssues(finding: TimelineAuditFinding): string {
-    const issues = Array.from(new Set(finding.issues.map((issue) => issue.type)));
+    const issues = Array.from(new Set(finding.issues.map((issue) => describeAuditIssue(issue.type))));
     if (issues.length === 0) return 'No issues';
 
-    const head = issues.slice(0, 3).join(', ');
-    const remainder = issues.length - 3;
+    const head = issues.slice(0, 2).join(' ');
+    const remainder = issues.length - 2;
     return remainder > 0 ? `${head} +${remainder} more` : head;
 }
 
