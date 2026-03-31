@@ -12,6 +12,7 @@ import type { RuntimeContentType, RuntimeRateProfile } from '../../types';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import { hasProFeatureAccess } from '../featureGate';
 import { ERT_CLASSES } from '../../ui/classes';
+import { fitSelectToSelectedLabel } from '../selectSizing';
 
 interface SectionParams {
     app: App;
@@ -141,65 +142,6 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
         input.classList.remove(type === 'success' ? errorClass : successClass);
         input.classList.add(type === 'success' ? successClass : errorClass);
         window.setTimeout(() => input.classList.remove(type === 'success' ? successClass : errorClass), type === 'success' ? 900 : 1200);
-    };
-
-    const fitSelectToSelectedLabel = (
-        selectEl: HTMLSelectElement,
-        options: {
-            extraPx?: number;
-            minPx?: number;
-            maxPx?: number;
-        } = {}
-    ): void => {
-        const selectedLabel = selectEl.options[selectEl.selectedIndex]?.text ?? '';
-        if (!selectedLabel) return;
-
-        const doc = selectEl.ownerDocument;
-        const view = doc.defaultView;
-        if (!view) return;
-
-        const sample = doc.createElement('span');
-        sample.className = 'ert-metrics-sample';
-        sample.textContent = selectedLabel;
-        doc.body.appendChild(sample);
-
-        const computed = view.getComputedStyle(selectEl);
-        sample.style.fontFamily = computed.fontFamily;
-        sample.style.fontSize = computed.fontSize; // SAFE: inline style used for off-screen measurement element
-        sample.style.fontWeight = computed.fontWeight;
-        sample.style.letterSpacing = computed.letterSpacing;
-
-        const textWidth = Math.ceil(sample.getBoundingClientRect().width);
-        sample.remove();
-
-        const paddingLeft = Number.parseFloat(computed.paddingLeft) || 0;
-        const paddingRight = Number.parseFloat(computed.paddingRight) || 0;
-        const borderLeft = Number.parseFloat(computed.borderLeftWidth) || 0;
-        const borderRight = Number.parseFloat(computed.borderRightWidth) || 0;
-        const extraPx = options.extraPx ?? 16;
-        const minPx = options.minPx ?? 0;
-        const maxPx = options.maxPx ?? Number.POSITIVE_INFINITY;
-        const isBorderBox = computed.boxSizing === 'border-box';
-
-        let rawWidth = textWidth + extraPx;
-        if (isBorderBox) {
-            rawWidth += paddingLeft + paddingRight + borderLeft + borderRight;
-        }
-
-        const nextWidth = Math.min(
-            maxPx,
-            Math.max(
-                minPx,
-                Math.ceil(rawWidth)
-            )
-        );
-        const nextWidthPx = `${nextWidth}px`;
-
-        selectEl.style.width = nextWidthPx; // SAFE: inline style used for dynamic fit-to-content width
-        selectEl.style.minWidth = nextWidthPx;
-        selectEl.style.maxWidth = nextWidthPx;
-        selectEl.style.flex = `0 0 ${nextWidthPx}`;
-        selectEl.style.setProperty('--ert-control-width', nextWidthPx);
     };
 
     const renderConditionalContent = () => {

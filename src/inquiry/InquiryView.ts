@@ -35,6 +35,7 @@ import {
     InquiryTokenUsageScope,
     InquiryZone
 } from './state';
+import { replayTransientClass } from '../utils/domClassEffects';
 import type {
     InquiryCanonicalQuestionTier,
     InquiryClassConfig,
@@ -1050,12 +1051,7 @@ export class InquiryView extends ItemView {
         if (shouldScroll) {
             el.scrollIntoView({ block: 'center' });
         }
-        el.classList.remove('is-attention-pulse');
-        void el.offsetWidth;
-        el.classList.add('is-attention-pulse');
-        window.setTimeout(() => {
-            el.classList.remove('is-attention-pulse');
-        }, 2600);
+        replayTransientClass(el, 'is-attention-pulse', { durationMs: 2600 });
     }
 
     private getEngineFailureGuidance(): EngineFailureGuidance | null {

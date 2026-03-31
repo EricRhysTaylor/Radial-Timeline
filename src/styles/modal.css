@@ -240,11 +240,15 @@
   border-radius: 24px;
   background: linear-gradient(145deg, rgba(16, 16, 21, 0.95), rgba(36, 28, 24, 0.92));
   border: 1px solid rgba(255, 255, 255, 0.05);
-  box-shadow: 0 40px 90px rgba(0, 0, 0, 0.55);
+  box-shadow: 0 24px 56px rgba(0, 0, 0, 0.42);
   overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
   max-height: calc(92vh - 40px);
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+  contain: paint;
 }
 
 .rt-pulse-modal.rt-gossamer-score-modal {
@@ -255,8 +259,8 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at 15% 10%, rgba(255, 255, 255, 0.12), transparent 55%),
-    radial-gradient(circle at 85% 5%, rgba(247, 176, 92, 0.15), transparent 45%);
+  background: radial-gradient(circle at 15% 10%, rgba(255, 255, 255, 0.08), transparent 52%),
+    radial-gradient(circle at 85% 5%, rgba(247, 176, 92, 0.1), transparent 42%);
   pointer-events: none;
 }
 
@@ -311,17 +315,29 @@
 
 .rt-manuscript-modal {
   overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+  contain: paint;
 }
 
 .rt-gossamer-processing-modal {
   overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+  contain: paint;
 }
 
 .rt-book-designer-modal .rt-card-stack {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
   padding-right: 6px;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+  contain: paint;
 }
 
 /* Planetary Time Modal */

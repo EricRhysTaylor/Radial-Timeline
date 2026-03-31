@@ -60,6 +60,7 @@ import {
     normalizeMaterialMode
 } from '../../inquiry/services/InquiryCorpusService';
 import { resolveInquirySourceRoots } from '../../inquiry/utils/sourceRoots';
+import { replayTransientClass } from '../../utils/domClassEffects';
 
 interface SectionParams {
     app: App;
@@ -1222,9 +1223,7 @@ export function renderInquirySection(params: SectionParams): void {
             const row = canonicalRowRefs[zone].get(canonicalId);
             if (!row) return false;
             row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            row.classList.remove('ert-inquiry-prompt-row--focusflash');
-            window.setTimeout(() => row.classList.add('ert-inquiry-prompt-row--focusflash'), 0);
-            window.setTimeout(() => row.classList.remove('ert-inquiry-prompt-row--focusflash'), 1800);
+            replayTransientClass(row, 'ert-inquiry-prompt-row--focusflash', { durationMs: 1800 });
             new Notice(message);
             return true;
         };

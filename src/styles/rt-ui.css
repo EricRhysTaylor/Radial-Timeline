@@ -720,6 +720,9 @@
   max-height: var(--ert-controlGroup-max-height, 220px);
   overflow-y: auto;
   padding-right: 6px;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+  contain: paint;
 }
 
 .ert-ui.ert-scope--settings .ert-controlGroup__row {
@@ -6593,7 +6596,7 @@
 .ert-ui.ert-modal-shell.modal,
 .ert-ui .ert-modal-shell.modal {
   --ert-modal-bg: color-mix(in srgb, var(--background-primary) 50%, transparent);
-  --ert-modal-blur: blur(48px) saturate(1.4);
+  --ert-modal-blur: blur(28px) saturate(1.18);
   background: var(--ert-modal-bg);
   border: 1px solid var(--ert-modal-border);
   border-radius: calc(var(--ert-panel-radius) + var(--ert-gap-sm));
@@ -7972,6 +7975,9 @@
   max-height: min(560px, 55vh);
   overflow-y: auto;
   padding-right: var(--ert-gap-sm);
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+  contain: paint;
 }
 
 .ert-ui.ert-scope--modal .ert-release-notes-body::-webkit-scrollbar {

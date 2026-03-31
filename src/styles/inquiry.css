@@ -2202,12 +2202,13 @@ body.rt-modal-open .ert-inquiry-svg {
   border: 1px solid var(--background-modifier-border);
   border-radius: 16px;
   padding: 12px;
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.16);
   z-index: 3;
   pointer-events: auto;
   opacity: 1;
   transform: translateY(0);
   transition: opacity 140ms ease, transform 140ms ease;
+  will-change: transform, opacity;
 }
 
 .ert-inquiry-briefing-panel.ert-hidden {
@@ -2225,7 +2226,7 @@ body.rt-modal-open .ert-inquiry-svg {
   border: 1px solid var(--background-modifier-border);
   border-radius: 16px;
   padding: 16px;
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.16);
   z-index: 3;
   pointer-events: auto;
   opacity: 1;
@@ -2234,6 +2235,7 @@ body.rt-modal-open .ert-inquiry-svg {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  will-change: transform, opacity;
 }
 
 .ert-inquiry-engine-panel.ert-hidden {
@@ -3073,6 +3075,9 @@ body.rt-modal-open .ert-inquiry-svg {
   background: rgba(0, 0, 0, 0.15);
   border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.06);
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+  contain: paint;
 }
 
 .ert-inquiry-purge-list {

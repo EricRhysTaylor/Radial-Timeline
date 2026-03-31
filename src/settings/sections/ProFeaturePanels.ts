@@ -40,6 +40,7 @@ import {
     installBundledPandocLayouts,
     isBundledPandocLayoutInstalled
 } from '../../utils/pandocBundledLayouts';
+import { replayTransientClass } from '../../utils/domClassEffects';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // SYSTEM PATH SCANNING
@@ -1836,14 +1837,14 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
         plugin.settings.pandocFolder = normalized;
         await plugin.saveSettings();
 
-        pandocFolderInputEl.removeClass('ert-input--flash-success', 'ert-input--flash-error');
-        void pandocFolderInputEl.offsetWidth;
         const folder = plugin.app.vault.getAbstractFileByPath(normalized);
         const cls = (folder && folder instanceof TFolder)
             ? 'ert-input--flash-success'
             : 'ert-input--flash-error';
-        pandocFolderInputEl.addClass(cls);
-        setTimeout(() => { pandocFolderInputEl?.removeClass(cls); }, 1700);
+        replayTransientClass(pandocFolderInputEl, cls, {
+            removeClasses: ['ert-input--flash-success', 'ert-input--flash-error'],
+            durationMs: 1700
+        });
     };
 
     const pandocFolderSetting = addProRow(new Setting(systemConfigPanel))
@@ -2468,13 +2469,13 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
 
     /** Flash-validate a layout path input using the centralized helper. */
     const flashValidateLayoutPath = (inputEl: HTMLInputElement, layout: PandocLayoutTemplate) => {
-        inputEl.removeClass('ert-input--flash-success', 'ert-input--flash-error');
-        void inputEl.offsetWidth; // force reflow
         if (!layout.path.trim()) return;
         const result = validatePandocLayout(plugin, layout);
         const cls = result.valid ? 'ert-input--flash-success' : 'ert-input--flash-error';
-        inputEl.addClass(cls);
-        setTimeout(() => inputEl.removeClass(cls), 1700);
+        replayTransientClass(inputEl, cls, {
+            removeClasses: ['ert-input--flash-success', 'ert-input--flash-error'],
+            durationMs: 1700
+        });
     };
 
     const layoutRowsContainer = layoutPanel.createDiv({ cls: 'ert-layout-rows' });

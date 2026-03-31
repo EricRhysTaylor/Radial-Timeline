@@ -11,6 +11,7 @@ import { ModalFolderSuggest } from '../settings/FolderSuggest';
 import { ensureSceneTemplateFrontmatter } from '../utils/sceneIds';
 import { getActiveLoadedBeatTab } from '../storyBeats/workspaceState';
 import { resolveSelectedBeatModelFromSettings } from '../utils/beatSystemState';
+import { replayTransientClass } from '../utils/domClassEffects';
 
 const DEFAULT_SUBPLOTS = "Main Plot\nSubplot A\nSubplot B";
 const DEFAULT_CHARACTERS = "Hero\nAntagonist";
@@ -673,17 +674,13 @@ export class BookDesignerModal extends Modal {
                 // Use blur to validate
                 text.inputEl.addEventListener('blur', () => {
                     const raw = text.getValue().trim();
-                    // Clear previous animation classes to allow re-triggering
-                    text.inputEl.removeClass('rt-input-flash-success');
-                    text.inputEl.removeClass('rt-input-flash-error');
-
-                    // Force a reflow to restart animation if class is re-added immediately (though we clear above)
-                    void text.inputEl.offsetWidth;
-
                     if (!raw) {
                         this.timeIncrement = '0';
                         text.setValue('0');
-                        text.inputEl.addClass('rt-input-flash-success');
+                        replayTransientClass(text.inputEl, 'rt-input-flash-success', {
+                            removeClasses: ['rt-input-flash-error'],
+                            durationMs: 1700
+                        });
                         return;
                     }
 
@@ -692,11 +689,17 @@ export class BookDesignerModal extends Modal {
 
                     if (valid || isZero) {
                         this.timeIncrement = raw;
-                        text.inputEl.addClass('rt-input-flash-success');
+                        replayTransientClass(text.inputEl, 'rt-input-flash-success', {
+                            removeClasses: ['rt-input-flash-error'],
+                            durationMs: 1700
+                        });
                     } else {
                         new Notice(`Invalid duration: "${raw}". Reverting to ${this.timeIncrement}.`);
                         text.setValue(this.timeIncrement);
-                        text.inputEl.addClass('rt-input-flash-error');
+                        replayTransientClass(text.inputEl, 'rt-input-flash-error', {
+                            removeClasses: ['rt-input-flash-success'],
+                            durationMs: 1700
+                        });
                     }
                 });
             });
@@ -749,10 +752,9 @@ export class BookDesignerModal extends Modal {
                         this.targetRangeMax = this.scenesToGenerate;
                         if (this.targetRangeInput) {
                             this.targetRangeInput.setValue(this.targetRangeMax.toString());
-                            // Flash the target input red to indicate auto-correction
-                            this.targetRangeInput.inputEl.removeClass('rt-input-flash-error');
-                            void this.targetRangeInput.inputEl.offsetWidth; // reflow to restart animation
-                            this.targetRangeInput.inputEl.addClass('rt-input-flash-error');
+                            replayTransientClass(this.targetRangeInput.inputEl, 'rt-input-flash-error', {
+                                durationMs: 1700
+                            });
                         }
                         if (lengthSettingRef) this.updateTargetDesc(lengthSettingRef);
                         this.schedulePreviewUpdate();
@@ -794,10 +796,9 @@ export class BookDesignerModal extends Modal {
                     if (this.targetRangeMax < this.scenesToGenerate) {
                         this.targetRangeMax = this.scenesToGenerate;
                         text.setValue(this.targetRangeMax.toString());
-                        // Flash the input red to indicate auto-correction
-                        text.inputEl.removeClass('rt-input-flash-error');
-                        void text.inputEl.offsetWidth;
-                        text.inputEl.addClass('rt-input-flash-error');
+                        replayTransientClass(text.inputEl, 'rt-input-flash-error', {
+                            durationMs: 1700
+                        });
                     }
                     if (lengthSettingRef) this.updateTargetDesc(lengthSettingRef);
                     this.schedulePreviewUpdate();
