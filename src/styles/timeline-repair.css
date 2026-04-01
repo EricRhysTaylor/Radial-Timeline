@@ -440,7 +440,7 @@
 .rt-timeline-repair-scene-list {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 4px;
     max-height: 360px;
     overflow-y: auto;
     padding: 4px 0;
@@ -452,12 +452,20 @@
     color: var(--text-muted);
 }
 
+/* Helper context line */
+.rt-timeline-repair-helper-context {
+    font-size: var(--font-ui-smaller);
+    color: var(--text-faint);
+    font-style: italic;
+    margin-top: 2px;
+}
+
 /* Scene card */
 .rt-timeline-repair-scene-card {
     display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 8px 12px;
     background: var(--background-secondary);
     border: 1px solid var(--background-modifier-border);
     border-radius: var(--radius-m);
@@ -488,15 +496,20 @@
 
 .rt-timeline-repair-checkbox {
     flex-shrink: 0;
+    margin-top: 3px;
 }
 
-/* Scene info */
-.rt-timeline-repair-scene-info {
+/* Two-line card content */
+.rt-timeline-repair-card-content {
     flex: 1;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
 }
 
-.rt-timeline-repair-scene-title-row {
+/* Line 1: identity + signal */
+.rt-timeline-repair-line1 {
     display: flex;
     align-items: center;
     gap: 6px;
@@ -516,32 +529,17 @@
     white-space: nowrap;
 }
 
-/* Source badge */
-.rt-timeline-repair-source-badge {
-    padding: 1px 6px;
+/* Cue chips (blue) */
+.rt-timeline-repair-cue-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 0 6px;
     border-radius: var(--radius-s);
     font-size: var(--font-ui-smaller);
-    font-family: var(--font-monospace);
-}
-
-.rt-timeline-repair-source-badge.rt-source-pattern {
-    background: var(--background-modifier-border);
-    color: var(--text-muted);
-}
-
-.rt-timeline-repair-source-badge.rt-source-keyword {
-    background: color-mix(in srgb, var(--color-blue) 20%, transparent);
+    background: color-mix(in srgb, var(--color-blue) 18%, transparent);
     color: var(--color-blue);
-}
-
-.rt-timeline-repair-source-badge.rt-source-ai {
-    background: color-mix(in srgb, var(--color-purple) 20%, transparent);
-    color: var(--color-purple);
-}
-
-.rt-timeline-repair-source-badge.rt-source-manual {
-    background: color-mix(in srgb, var(--color-green) 20%, transparent);
-    color: var(--color-green);
+    white-space: nowrap;
+    line-height: 1.5;
 }
 
 /* Warning badges */
@@ -563,32 +561,85 @@
     color: var(--text-warning);
 }
 
-/* When column */
-.rt-timeline-repair-when-col {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 2px;
-    min-width: 128px;
+/* Compliance chip */
+.rt-timeline-repair-compliance-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 0 6px;
+    border-radius: 999px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    line-height: 1.6;
+    margin-left: auto;
 }
 
-.rt-timeline-repair-when-date {
+.rt-timeline-repair-compliance-chip.rt-compliance-pattern {
+    background: var(--background-modifier-border);
+    color: var(--text-faint);
+}
+
+.rt-timeline-repair-compliance-chip.rt-compliance-cue-adjusted {
+    background: color-mix(in srgb, var(--color-blue) 15%, transparent);
+    color: var(--color-blue);
+}
+
+.rt-timeline-repair-compliance-chip.rt-compliance-needs-review {
+    background: color-mix(in srgb, var(--text-warning) 15%, transparent);
+    color: var(--text-warning);
+}
+
+/* Line 2: timeline + actions */
+.rt-timeline-repair-line2 {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+/* When area (left of line 2) */
+.rt-timeline-repair-when-area {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+}
+
+/* Proposed When (primary) */
+.rt-timeline-repair-proposed-when {
+    display: flex;
+    align-items: baseline;
+    gap: 0;
+}
+
+.rt-timeline-repair-proposed-date {
     font-family: var(--font-monospace);
     font-size: var(--font-ui-small);
+    font-weight: var(--font-medium);
+    color: var(--text-normal);
 }
 
-.rt-timeline-repair-when-bucket {
+.rt-timeline-repair-proposed-bucket {
     font-size: var(--font-ui-smaller);
     color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
 }
 
-/* Controls */
+/* Original When comparison (secondary) */
+.rt-timeline-repair-original-when {
+    font-family: var(--font-monospace);
+    font-size: 0.7rem;
+    color: var(--text-faint);
+    opacity: 0.7;
+}
+
+/* Controls (right of line 2) */
 .rt-timeline-repair-controls {
     display: flex;
-    flex-direction: column;
+    align-items: center;
     gap: 6px;
+    flex-shrink: 0;
 }
 
 .rt-timeline-repair-day-controls {

@@ -12,7 +12,7 @@ import { writeSessionChanges } from './frontmatterWriter';
 import { buildScaffoldPreview } from './scaffoldPreview';
 
 function makeFile(path: string): TFile {
-    return new TFile(path);
+    return new (TFile as any)(path) as TFile;
 }
 
 function makeScene(

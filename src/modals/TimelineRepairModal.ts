@@ -458,6 +458,12 @@ export class TimelineRepairModal extends Modal {
             text: 'Adjust the scaffold before writing YAML. J/K to navigate, [ and ] to shift days.'
         });
 
+        // Helper context line
+        header.createDiv({
+            cls: 'rt-timeline-repair-helper-context',
+            text: 'Showing proposed scaffold dates before writing YAML'
+        });
+
         // Summary bar
         this.summaryBarEl = this.contentEl.createDiv({ cls: 'rt-timeline-repair-summary-bar' });
         this.updateSummaryBar();
@@ -624,6 +630,7 @@ export class TimelineRepairModal extends Modal {
         const idx = entry.manuscriptIndex;
         const effectiveWhen = getEffectiveWhen(entry);
         const isSelected = this.selectedIndices.has(idx);
+        const currentBucket = detectTimeBucket(effectiveWhen);
 
         const card = this.sceneListEl.createDiv({ cls: 'rt-timeline-repair-scene-card' });
         if (isSelected) card.addClass('rt-is-selected');
@@ -643,59 +650,83 @@ export class TimelineRepairModal extends Modal {
             this.updateSummaryBar();
         });
 
-        // Scene info
-        const infoCol = card.createDiv({ cls: 'rt-timeline-repair-scene-info' });
+        // Two-line content area
+        const contentArea = card.createDiv({ cls: 'rt-timeline-repair-card-content' });
 
-        const titleRow = infoCol.createDiv({ cls: 'rt-timeline-repair-scene-title-row' });
-        titleRow.createSpan({
+        // LINE 1: identity + signal
+        const line1 = contentArea.createDiv({ cls: 'rt-timeline-repair-line1' });
+
+        line1.createSpan({
             text: `#${idx + 1}`,
             cls: 'rt-timeline-repair-scene-number'
         });
-        titleRow.createSpan({
+        line1.createSpan({
             text: entry.scene.title || 'Untitled',
             cls: 'rt-timeline-repair-scene-title'
         });
 
-        // Source badge
-        const sourceBadge = titleRow.createSpan({ cls: 'rt-timeline-repair-source-badge' });
-        sourceBadge.addClass(`rt-source-${entry.source}`);
-
-        let sourceText: string = entry.source;
+        // Cue chips (blue keyword badges)
         if (entry.source === 'keyword' && entry.cues?.length) {
-            sourceText = `text cue · "${entry.cues[0].match}"`;
+            for (const cue of entry.cues) {
+                const cueChip = line1.createSpan({ cls: 'rt-timeline-repair-cue-chip' });
+                cueChip.setText(`"${cue.match}"`);
+            }
         }
-        sourceBadge.setText(sourceText);
 
         // Warning badges
         if (entry.hasBackwardTime) {
-            const warningBadge = titleRow.createSpan({ cls: 'rt-timeline-repair-warning-badge' });
+            const warningBadge = line1.createSpan({ cls: 'rt-timeline-repair-warning-badge' });
             setIcon(warningBadge, 'alert-triangle');
             warningBadge.setAttribute('aria-label', 'Backward time');
         }
         if (entry.hasLargeGap) {
-            const gapBadge = titleRow.createSpan({ cls: 'rt-timeline-repair-gap-badge' });
+            const gapBadge = line1.createSpan({ cls: 'rt-timeline-repair-gap-badge' });
             setIcon(gapBadge, 'clock');
             gapBadge.setAttribute('aria-label', 'Large time gap');
         }
 
-        // When display
-        const whenCol = card.createDiv({ cls: 'rt-timeline-repair-when-col' });
-        whenCol.createDiv({
-            cls: 'rt-timeline-repair-when-date',
-            text: formatWhenForDisplay(effectiveWhen)
+        // Pattern compliance chip
+        const complianceLabel = this.getComplianceLabel(entry);
+        const complianceChip = line1.createSpan({
+            cls: 'rt-timeline-repair-compliance-chip'
+        });
+        complianceChip.addClass(`rt-compliance-${complianceLabel.replace(/\s+/g, '-')}`);
+        complianceChip.setText(complianceLabel);
+
+        // LINE 2: timeline + actions
+        const line2 = contentArea.createDiv({ cls: 'rt-timeline-repair-line2' });
+
+        // Left: proposed + comparison
+        const whenArea = line2.createDiv({ cls: 'rt-timeline-repair-when-area' });
+
+        // Proposed When (primary, prominent)
+        const proposedLine = whenArea.createDiv({ cls: 'rt-timeline-repair-proposed-when' });
+        proposedLine.createSpan({
+            text: formatWhenForDisplay(effectiveWhen),
+            cls: 'rt-timeline-repair-proposed-date'
+        });
+        proposedLine.createSpan({
+            text: ` · ${TIME_BUCKET_LABELS[currentBucket]}`,
+            cls: 'rt-timeline-repair-proposed-bucket'
         });
 
-        const currentBucket = detectTimeBucket(effectiveWhen);
-        whenCol.createDiv({
-            cls: 'rt-timeline-repair-when-bucket',
-            text: TIME_BUCKET_LABELS[currentBucket]
-        });
+        // Current When comparison (secondary, smaller) — only if different
+        if (entry.originalWhen) {
+            const originalDisplay = formatWhenForDisplay(entry.originalWhen);
+            const proposedDisplay = formatWhenForDisplay(effectiveWhen);
+            const originalBucket = detectTimeBucket(entry.originalWhen);
 
-        // Quick nudge controls
-        const controlsCol = card.createDiv({ cls: 'rt-timeline-repair-controls' });
+            if (originalDisplay !== proposedDisplay || originalBucket !== currentBucket) {
+                const comparisonLine = whenArea.createDiv({ cls: 'rt-timeline-repair-original-when' });
+                comparisonLine.setText(`was ${originalDisplay} · ${TIME_BUCKET_LABELS[originalBucket]}`);
+            }
+        }
+
+        // Right: controls
+        const controlsArea = line2.createDiv({ cls: 'rt-timeline-repair-controls' });
 
         // Day controls
-        const dayRow = controlsCol.createDiv({ cls: 'rt-timeline-repair-day-controls' });
+        const dayRow = controlsArea.createDiv({ cls: 'rt-timeline-repair-day-controls' });
 
         const dayMinusBtn = dayRow.createEl('button', { cls: 'rt-timeline-repair-nudge-btn', text: '−1d' });
         dayMinusBtn.addEventListener('click', (e) => {
@@ -710,7 +741,7 @@ export class TimelineRepairModal extends Modal {
         });
 
         // Time bucket pills
-        const bucketRow = controlsCol.createDiv({ cls: 'rt-timeline-repair-bucket-controls' });
+        const bucketRow = controlsArea.createDiv({ cls: 'rt-timeline-repair-bucket-controls' });
 
         const buckets: TimeBucket[] = ['morning', 'afternoon', 'evening', 'night'];
         for (const bucket of buckets) {
@@ -729,6 +760,18 @@ export class TimelineRepairModal extends Modal {
                 this.handleTimeBucketChange(idx, TIME_BUCKET_HOURS[bucket]);
             });
         }
+    }
+
+    /**
+     * Derive pattern compliance label for a scene entry.
+     * - "pattern": source is 'pattern' or 'original', no flags
+     * - "cue-adjusted": source is 'keyword' or 'ai'
+     * - "needs review": needsReview flag is set
+     */
+    private getComplianceLabel(entry: RepairSceneEntry): string {
+        if (entry.needsReview) return 'needs review';
+        if (entry.source === 'keyword' || entry.source === 'ai') return 'cue-adjusted';
+        return 'pattern';
     }
 
     private handleDayShift(sceneIndex: number, days: number): void {
