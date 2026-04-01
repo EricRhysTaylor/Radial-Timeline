@@ -1499,7 +1499,7 @@ export const en: TranslationKeys = {
         review: {
             badge: 'Quick Scaffold',
             title: 'Review scaffolded dates',
-            subtitle: 'Adjust the scaffold before writing YAML. J/K to navigate, [ and ] to shift days.',
+            subtitle: 'Adjust the scaffold before writing YAML. Review each proposed When value, use the filters to focus attention, and nudge days or swap time buckets where the scaffold misses intent. Ripple Mode shifts downstream scenes to preserve spacing; turn it off to edit a scene independently. J/K navigates the list, and [ and ] shift days.',
             filterNeedsReview: 'Needs Review',
             filterTextCues: 'Text cues',
             rippleMode: 'Ripple Mode',

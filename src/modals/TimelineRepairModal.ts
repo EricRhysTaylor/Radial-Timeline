@@ -150,6 +150,11 @@ export class TimelineRepairModal extends Modal {
         this.files = buildSharedSceneNoteFileMap(sceneNotes);
     }
 
+    private buildConfigBadgeText(): string {
+        const scenesWithWhen = this.scenes.filter(s => s.when instanceof Date).length;
+        return `${t('timelineRepairModal.config.badge')}: ${this.scenes.length} scenes • ${scenesWithWhen} When dates`;
+    }
+
     // ========================================================================
     // Configuration Phase
     // ========================================================================
@@ -160,21 +165,12 @@ export class TimelineRepairModal extends Modal {
 
         // Header
         const header = this.contentEl.createDiv({ cls: 'ert-modal-header' });
-        header.createSpan({ cls: 'ert-modal-badge', text: t('timelineRepairModal.config.badge') });
+        header.createSpan({ cls: 'ert-modal-badge', text: this.buildConfigBadgeText() });
         header.createDiv({ cls: 'ert-modal-title', text: t('timelineRepairModal.config.title') });
         header.createDiv({
             cls: 'ert-modal-subtitle',
             text: t('timelineRepairModal.config.subtitle')
         });
-
-        // Scene count summary
-        const scenesWithWhen = this.scenes.filter(s => s.when instanceof Date).length;
-        const scenesWithoutWhen = this.scenes.length - scenesWithWhen;
-
-        const summaryRow = this.contentEl.createDiv({ cls: 'rt-timeline-repair-summary-row rt-timeline-repair-stats-strip' });
-        this.createStatItem(summaryRow, t('timelineRepairModal.config.statTotalScenes'), String(this.scenes.length));
-        this.createStatItem(summaryRow, t('timelineRepairModal.config.statWithWhen'), String(scenesWithWhen));
-        this.createStatItem(summaryRow, t('timelineRepairModal.config.statMissingWhen'), String(scenesWithoutWhen));
 
         // Setup configuration
         const setupCard = this.contentEl.createDiv({ cls: 'rt-glass-card rt-timeline-repair-setup-card' });
@@ -329,12 +325,6 @@ export class TimelineRepairModal extends Modal {
             .onClick(() => this.close());
     }
 
-    private createStatItem(container: HTMLElement, label: string, value: string): void {
-        const item = container.createDiv({ cls: 'rt-timeline-repair-stat-item' });
-        item.createDiv({ cls: 'rt-timeline-repair-stat-value', text: value });
-        item.createDiv({ cls: 'rt-timeline-repair-stat-label', text: label });
-    }
-
     private createLevelToggle(
         container: HTMLElement,
         title: string,
@@ -455,8 +445,7 @@ export class TimelineRepairModal extends Modal {
 
         // Badge row: Quick Scaffold + status counts
         const badgeRow = header.createDiv({ cls: 'rt-timeline-repair-badge-row' });
-        badgeRow.createSpan({ cls: 'ert-modal-badge', text: t('timelineRepairModal.review.badge') });
-        this.summaryBarEl = badgeRow.createSpan({ cls: 'rt-timeline-repair-header-status' });
+        this.summaryBarEl = badgeRow.createSpan({ cls: 'ert-modal-badge rt-timeline-repair-review-badge' });
         this.updateSummaryBar();
 
         header.createDiv({ cls: 'ert-modal-title', text: t('timelineRepairModal.review.title') });
@@ -486,8 +475,9 @@ export class TimelineRepairModal extends Modal {
 
         const rippleHelp = rippleContainer.createSpan({ cls: 'rt-timeline-repair-ripple-help' });
         setIcon(rippleHelp, 'help-circle');
+        rippleHelp.setAttribute('title', t('timelineRepairModal.review.rippleModeHelp'));
         rippleHelp.setAttribute('aria-label',
-            t('timelineRepairModal.review.rippleModeHelp')
+            t('timelineRepairModal.review.rippleModeHelp').replace(/\n+/g, ' ')
         );
 
         const rippleToggle = new ToggleComponent(rippleContainer);
@@ -550,18 +540,16 @@ export class TimelineRepairModal extends Modal {
     private updateSummaryBar(): void {
         if (!this.summaryBarEl || !this.session) return;
 
-        this.summaryBarEl.empty();
-
         const changedCount = getChangedCount(this.session);
         const reviewCount = getNeedsReviewCount(this.session);
-
-        const parts: string[] = [t('timelineRepairModal.review.summaryChanged', { count: changedCount })];
-        if (reviewCount > 0) parts.push(t('timelineRepairModal.review.summaryNeedReview', { count: reviewCount }));
-        if (this.selectedIndices.size > 0) parts.push(t('timelineRepairModal.review.summarySelected', { count: this.selectedIndices.size }));
-
-        this.summaryBarEl.setText(parts.join(' · '));
-
-        // Add warning color if reviews needed
+        const parts: string[] = [
+            t('timelineRepairModal.review.badge').toUpperCase(),
+            t('timelineRepairModal.review.summaryChanged', { count: changedCount }).toUpperCase()
+        ];
+        if (reviewCount > 0) {
+            parts.push(t('timelineRepairModal.review.summaryNeedReview', { count: reviewCount }).toUpperCase());
+        }
+        this.summaryBarEl.setText(parts.join(' • '));
         this.summaryBarEl.toggleClass('rt-has-warnings', reviewCount > 0);
     }
 
