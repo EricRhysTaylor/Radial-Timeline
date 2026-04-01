@@ -92,8 +92,8 @@ const TIME_PATTERNS: Array<{
     // Night indicators
     { pattern: /\b(?:that|this|the|late)\s+night\b/i, bucket: 'night', confidence: 'high' },
     { pattern: /\bat\s+midnight\b/i, bucket: 'night', confidence: 'high' },
-    { pattern: /\bafter\s+dark\b/i, bucket: 'night', confidence: 'med' },
-    { pattern: /\bin\s+the\s+dark\b/i, bucket: 'night', confidence: 'low' }
+    { pattern: /\bafter\s+dark\b/i, bucket: 'night', confidence: 'med' }
+    // Removed weak: "in the dark" — too ambiguous, not reliably temporal
 ];
 
 /**
@@ -115,7 +115,7 @@ const DAY_JUMP_PATTERNS: Array<{
     { pattern: /\btwo\s+days?\s+later\b/i, dayOffset: 2, confidence: 'high' },
     { pattern: /\bthree\s+days?\s+later\b/i, dayOffset: 3, confidence: 'high' },
     { pattern: /\ba\s+few\s+days\s+later\b/i, dayOffset: 3, confidence: 'med' },
-    { pattern: /\bseveral\s+days\s+later\b/i, dayOffset: 5, confidence: 'low' },
+    // Removed weak: "several days later" — too imprecise for reliable offset
     
     // Weeks
     { pattern: /\b(\d+)\s+weeks?\s+later\b/i, dayOffset: (m) => parseInt(m[1], 10) * 7, confidence: 'high' },
@@ -123,7 +123,7 @@ const DAY_JUMP_PATTERNS: Array<{
     { pattern: /\bthe\s+next\s+week\b/i, dayOffset: 7, confidence: 'med' },
     { pattern: /\bthe\s+following\s+week\b/i, dayOffset: 7, confidence: 'med' },
     { pattern: /\btwo\s+weeks\s+later\b/i, dayOffset: 14, confidence: 'high' },
-    { pattern: /\ba\s+few\s+weeks\s+later\b/i, dayOffset: 21, confidence: 'low' },
+    // Removed weak: "a few weeks later" — too imprecise for reliable offset
     
     // Months
     { pattern: /\b(\d+)\s+months?\s+later\b/i, dayOffset: (m) => parseInt(m[1], 10) * 30, confidence: 'med' },
@@ -154,9 +154,8 @@ const CONTINUITY_PATTERNS: Array<{
     { pattern: /\bhalf\s+an?\s+hour\s+later\b/i, minuteOffset: 30, confidence: 'high' },
     { pattern: /\ban?\s+hour\s+later\b/i, minuteOffset: 60, confidence: 'high' },
     { pattern: /\b(\d+)\s+hours?\s+later\b/i, minuteOffset: 60, confidence: 'high' },
-    { pattern: /\bstill\b/i, minuteOffset: 0, confidence: 'low' },
-    { pattern: /\bmeanwhile\b/i, minuteOffset: 0, confidence: 'low' },
     { pattern: /\bat\s+the\s+same\s+time\b/i, minuteOffset: 0, confidence: 'med' }
+    // Removed weak/ambiguous: "still", "meanwhile" — too vague, no temporal direction
 ];
 
 // ============================================================================

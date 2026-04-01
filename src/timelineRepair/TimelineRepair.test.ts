@@ -192,6 +192,25 @@ describe('timeline repair normalizer', () => {
         expect(withCues.entries[2].source).toBe('pattern');
     });
 
+    it('does not treat weak cues like "still" or "meanwhile" as temporal signals', async () => {
+        const entries = runPatternSync([
+            { scene: makeScene('Book/01.md', { synopsis: 'Arrival.' }), file: makeFile('Book/01.md'), manuscriptIndex: 0 },
+            { scene: makeScene('Book/02.md', { synopsis: 'She was still there.' }), file: makeFile('Book/02.md'), manuscriptIndex: 1 },
+            { scene: makeScene('Book/03.md', { synopsis: 'Meanwhile, elsewhere.' }), file: makeFile('Book/03.md'), manuscriptIndex: 2 }
+        ], {
+            anchorWhen: new Date(2026, 0, 10, 8, 0, 0, 0),
+            patternPreset: 'daily'
+        });
+
+        const refined = await runKeywordSweep(entries, async () => '', { includeSynopsis: true });
+
+        // Weak cues should NOT change source from pattern
+        expect(refined.map(entry => entry.source)).toEqual(['pattern', 'pattern', 'pattern']);
+        // No cue chips should be generated
+        expect(refined[1].cues).toBeUndefined();
+        expect(refined[2].cues).toBeUndefined();
+    });
+
     it('builds compact preview labels for each pattern and reflects anchor changes', () => {
         const daily = buildScaffoldPreview('daily', new Date(2026, 11, 27, 0, 0, 0, 0), 82);
         expect(daily.startLabel).toBe('Start: Dec 27, 2026 · 12:00 AM');

@@ -377,28 +377,7 @@
  * Review Phase
  * ============================================================================ */
 
-.rt-timeline-repair-summary-bar {
-    display: flex;
-    gap: 10px;
-    padding: 6px 10px;
-    background: var(--background-secondary);
-    border-radius: var(--radius-s);
-    font-size: var(--font-ui-small);
-    flex-wrap: wrap;
-}
-
-.rt-timeline-repair-summary-stat {
-    color: var(--text-muted);
-}
-
-.rt-timeline-repair-summary-warning {
-    color: var(--text-warning);
-}
-
-.rt-timeline-repair-ripple-on {
-    color: var(--interactive-accent);
-    font-weight: var(--font-semibold);
-}
+/* Summary bar removed — status now in header badge row */
 
 /* Filter row */
 .rt-timeline-repair-filter-row {
@@ -436,6 +415,20 @@
     color: var(--text-muted);
 }
 
+.rt-timeline-repair-ripple-help {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    color: var(--text-faint);
+    cursor: help;
+}
+
+.rt-timeline-repair-ripple-help:hover {
+    color: var(--text-muted);
+}
+
 /* Scene list */
 .rt-timeline-repair-scene-list {
     display: flex;
@@ -452,12 +445,22 @@
     color: var(--text-muted);
 }
 
-/* Helper context line */
-.rt-timeline-repair-helper-context {
+/* Badge row: pill + inline status */
+.rt-timeline-repair-badge-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.rt-timeline-repair-header-status {
     font-size: var(--font-ui-smaller);
-    color: var(--text-faint);
-    font-style: italic;
-    margin-top: 2px;
+    color: var(--text-muted);
+    letter-spacing: 0.02em;
+}
+
+.rt-timeline-repair-header-status.rt-has-warnings {
+    color: var(--text-warning);
 }
 
 /* Scene card */
@@ -465,7 +468,7 @@
     display: flex;
     align-items: flex-start;
     gap: 8px;
-    padding: 8px 12px;
+    padding: 6px 10px;
     background: var(--background-secondary);
     border: 1px solid var(--background-modifier-border);
     border-radius: var(--radius-m);
@@ -505,7 +508,7 @@
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 3px;
+    gap: 2px;
 }
 
 /* Line 1: identity + signal */
@@ -529,7 +532,7 @@
     white-space: nowrap;
 }
 
-/* Cue chips (blue) */
+/* Cue chips (blue, linked to note) */
 .rt-timeline-repair-cue-chip {
     display: inline-flex;
     align-items: center;
@@ -540,6 +543,15 @@
     color: var(--color-blue);
     white-space: nowrap;
     line-height: 1.5;
+    text-decoration: underline;
+    text-decoration-style: dashed;
+    text-underline-offset: 2px;
+    cursor: pointer;
+}
+
+.rt-timeline-repair-cue-chip:hover {
+    background: color-mix(in srgb, var(--color-blue) 28%, transparent);
+    text-decoration-style: solid;
 }
 
 /* Warning badges */

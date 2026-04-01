@@ -70,7 +70,6 @@ const TIME_OF_DAY_PATTERNS: PatternDef[] = [
     { pattern: /\b(?:next|that|this|the|early)\s+morning\b/i, cue: { kind: 'time_of_day', label: 'morning', bucket: 'morning', tier: 'direct' } },
     { pattern: /\b(?:that|this|the|late)\s+afternoon\b/i, cue: { kind: 'time_of_day', label: 'afternoon', bucket: 'afternoon', tier: 'direct' } },
     { pattern: /\b(?:that|this|the|late)\s+evening\b/i, cue: { kind: 'time_of_day', label: 'evening', bucket: 'evening', tier: 'direct' } },
-    { pattern: /\b(?:that|this)\s+night\b/i, cue: { kind: 'time_of_day', label: 'that night', bucket: 'night', tier: 'ambiguous' } },
     { pattern: /\blater\s+that\s+night\b/i, cue: { kind: 'time_of_day', label: 'later that night', bucket: 'night', tier: 'strong_inference' } },
     { pattern: /\bmidnight\b/i, cue: { kind: 'time_of_day', label: 'midnight', bucket: 'night', tier: 'direct' } },
     { pattern: /\bnoon\b/i, cue: { kind: 'time_of_day', label: 'noon', bucket: 'afternoon', tier: 'direct' } },
@@ -78,7 +77,7 @@ const TIME_OF_DAY_PATTERNS: PatternDef[] = [
     { pattern: /\bafternoon\b/i, cue: { kind: 'time_of_day', label: 'afternoon', bucket: 'afternoon', tier: 'direct' } },
     { pattern: /\bevening\b/i, cue: { kind: 'time_of_day', label: 'evening', bucket: 'evening', tier: 'direct' } },
     { pattern: /\bnight\b/i, cue: { kind: 'time_of_day', label: 'night', bucket: 'night', tier: 'direct' } },
-    { pattern: /\blater\b/i, cue: { kind: 'time_of_day', label: 'later', tier: 'ambiguous' } }
+    // Removed weak: bare "later" — too ambiguous without temporal context
 ];
 
 const RELATIVE_PATTERNS: PatternDef[] = [
@@ -90,7 +89,7 @@ const RELATIVE_PATTERNS: PatternDef[] = [
     { pattern: /\b(?:the\s+)?next\s+week\b/i, cue: { kind: 'relative_offset', label: 'next week', dayOffset: 7, tier: 'direct' } },
     { pattern: /\bthree\s+days?\s+later\b/i, cue: { kind: 'relative_offset', label: 'three days later', dayOffset: 3, tier: 'direct' } },
     { pattern: /\btwo\s+days?\s+later\b/i, cue: { kind: 'relative_offset', label: 'two days later', dayOffset: 2, tier: 'direct' } },
-    { pattern: /\ba\s+few\s+days\s+later\b/i, cue: { kind: 'relative_offset', label: 'a few days later', dayOffset: 3, tier: 'ambiguous' } },
+    // Removed weak: "a few days later" — ambiguous offset, unreliable for audit evidence
     { pattern: /\b(\d+)\s+days?\s+later\b/i, cue: { kind: 'relative_offset', label: 'days later', tier: 'direct' } },
     { pattern: /\bimmediately\s+after\b/i, cue: { kind: 'continuity', label: 'immediately after', minuteOffset: 5, tier: 'direct' } },
     { pattern: /\bmoments?\s+later\b/i, cue: { kind: 'continuity', label: 'moments later', minuteOffset: 10, tier: 'direct' } },

@@ -451,22 +451,18 @@ export class TimelineRepairModal extends Modal {
 
         // Header
         const header = this.contentEl.createDiv({ cls: 'ert-modal-header' });
-        header.createSpan({ cls: 'ert-modal-badge', text: 'Quick Scaffold' });
+
+        // Badge row: Quick Scaffold + status counts
+        const badgeRow = header.createDiv({ cls: 'rt-timeline-repair-badge-row' });
+        badgeRow.createSpan({ cls: 'ert-modal-badge', text: 'Quick Scaffold' });
+        this.summaryBarEl = badgeRow.createSpan({ cls: 'rt-timeline-repair-header-status' });
+        this.updateSummaryBar();
+
         header.createDiv({ cls: 'ert-modal-title', text: 'Review scaffolded dates' });
         header.createDiv({
             cls: 'ert-modal-subtitle',
             text: 'Adjust the scaffold before writing YAML. J/K to navigate, [ and ] to shift days.'
         });
-
-        // Helper context line
-        header.createDiv({
-            cls: 'rt-timeline-repair-helper-context',
-            text: 'Showing proposed scaffold dates before writing YAML'
-        });
-
-        // Summary bar
-        this.summaryBarEl = this.contentEl.createDiv({ cls: 'rt-timeline-repair-summary-bar' });
-        this.updateSummaryBar();
 
         // Filter toggles
         const filterRow = this.contentEl.createDiv({ cls: 'rt-timeline-repair-filter-row' });
@@ -486,6 +482,13 @@ export class TimelineRepairModal extends Modal {
         // Ripple mode toggle
         const rippleContainer = filterRow.createDiv({ cls: 'rt-timeline-repair-ripple-toggle' });
         rippleContainer.createSpan({ text: 'Ripple Mode' });
+
+        const rippleHelp = rippleContainer.createSpan({ cls: 'rt-timeline-repair-ripple-help' });
+        setIcon(rippleHelp, 'help-circle');
+        rippleHelp.setAttribute('aria-label',
+            'Ripple Mode\nAdjusting a scene shifts all subsequent scenes to preserve spacing.\nTurn off to adjust scenes independently.'
+        );
+
         const rippleToggle = new ToggleComponent(rippleContainer);
         rippleToggle.setValue(this.session.rippleEnabled);
         rippleToggle.onChange(() => {
@@ -551,31 +554,14 @@ export class TimelineRepairModal extends Modal {
         const changedCount = getChangedCount(this.session);
         const reviewCount = getNeedsReviewCount(this.session);
 
-        this.summaryBarEl.createSpan({
-            text: `${changedCount} changed`,
-            cls: 'rt-timeline-repair-summary-stat'
-        });
+        const parts: string[] = [`${changedCount} changed`];
+        if (reviewCount > 0) parts.push(`${reviewCount} need review`);
+        if (this.selectedIndices.size > 0) parts.push(`${this.selectedIndices.size} selected`);
 
-        if (reviewCount > 0) {
-            this.summaryBarEl.createSpan({
-                text: `${reviewCount} need review`,
-                cls: 'rt-timeline-repair-summary-stat rt-timeline-repair-summary-warning'
-            });
-        }
+        this.summaryBarEl.setText(parts.join(' · '));
 
-        if (this.session.rippleEnabled) {
-            this.summaryBarEl.createSpan({
-                text: 'Ripple ON',
-                cls: 'rt-timeline-repair-summary-stat rt-timeline-repair-ripple-on'
-            });
-        }
-
-        if (this.selectedIndices.size > 0) {
-            this.summaryBarEl.createSpan({
-                text: `${this.selectedIndices.size} selected`,
-                cls: 'rt-timeline-repair-summary-stat'
-            });
-        }
+        // Add warning color if reviews needed
+        this.summaryBarEl.toggleClass('rt-has-warnings', reviewCount > 0);
     }
 
     private createFilterPill(
@@ -665,11 +651,35 @@ export class TimelineRepairModal extends Modal {
             cls: 'rt-timeline-repair-scene-title'
         });
 
-        // Cue chips (blue keyword badges)
+        // Cue chips (blue keyword badges, linked to note origin)
         if (entry.source === 'keyword' && entry.cues?.length) {
             for (const cue of entry.cues) {
-                const cueChip = line1.createSpan({ cls: 'rt-timeline-repair-cue-chip' });
+                const cueChip = line1.createEl('a', { cls: 'rt-timeline-repair-cue-chip' });
                 cueChip.setText(`"${cue.match}"`);
+                cueChip.setAttribute('aria-label', `Open note and search for "${cue.match}"`);
+                cueChip.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    const leaf = this.app.workspace.getLeaf(false);
+                    leaf.openFile(entry.file).then(() => {
+                        // Attempt to highlight the cue text in the editor
+                        const view = leaf.view;
+                        if (view && 'editor' in view) {
+                            const editor = (view as any).editor;
+                            if (editor) {
+                                const content = editor.getValue();
+                                const idx = content.indexOf(cue.match);
+                                if (idx >= 0) {
+                                    const from = editor.offsetToPos(idx);
+                                    const to = editor.offsetToPos(idx + cue.match.length);
+                                    editor.setSelection(from, to);
+                                    editor.scrollIntoView({ from, to }, true);
+                                }
+                            }
+                        }
+                    });
+                    this.close();
+                });
             }
         }
 
