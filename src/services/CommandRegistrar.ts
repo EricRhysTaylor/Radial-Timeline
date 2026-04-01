@@ -35,8 +35,8 @@ import { getPlotSystem } from '../utils/beatsSystems';
 import { getActiveLoadedBeatTab } from '../storyBeats/workspaceState';
 import { ExportFailure, categorizeExportError } from '../utils/exportErrors';
 import { resolveSelectedBeatModelFromSettings } from '../utils/beatSystemState';
-
 import { getRuntimeSettings } from '../utils/runtimeEstimator';
+import { t } from '../i18n';
 
 export class CommandRegistrar {
     private inquiryRibbonIcon: HTMLElement | null = null;
@@ -60,10 +60,10 @@ export class CommandRegistrar {
     }
 
     private registerRibbon(): void {
-        this.plugin.addRibbonIcon('shell', 'Radial timeline', () => {
+        this.plugin.addRibbonIcon('shell', t('commands.openTimeline'), () => {
             this.plugin.getTimelineService().activateView();
         });
-        this.inquiryRibbonIcon = this.plugin.addRibbonIcon('waves', 'Inquiry', () => {
+        this.inquiryRibbonIcon = this.plugin.addRibbonIcon('waves', t('commands.openInquiry'), () => {
             this.plugin.getInquiryService().activateView();
         });
         // Hide Inquiry ribbon if AI is disabled on load
@@ -75,21 +75,21 @@ export class CommandRegistrar {
     private registerCommands(): void {
         this.plugin.addCommand({
             id: 'open-radial-timeline-view',
-            name: 'Open',
+            name: t('commands.openTimeline'),
             callback: () => {
                 this.plugin.getTimelineService().activateView();
             },
         });
         this.plugin.addCommand({
             id: 'open-inquiry-view',
-            name: 'Open inquiry',
+            name: t('commands.openInquiry'),
             callback: () => {
                 this.plugin.getInquiryService().activateView();
             },
         });
         this.plugin.addCommand({
             id: 'inquiry-omnibus-pass',
-            name: 'Inquiry omnibus pass',
+            name: t('commands.inquiryOmnibusPass'),
             callback: async () => {
                 await this.plugin.getInquiryService().runOmnibusPass();
             },
@@ -97,7 +97,7 @@ export class CommandRegistrar {
 
         this.plugin.addCommand({
             id: 'search-timeline',
-            name: 'Search timeline',
+            name: t('commands.searchTimeline'),
             callback: () => {
                 this.plugin.openSearchPrompt();
             }
@@ -105,7 +105,7 @@ export class CommandRegistrar {
 
         this.plugin.addCommand({
             id: 'create-note',
-            name: 'Create note…',
+            name: t('commands.createNote'),
             callback: () => {
                 this.openCreateNoteModal();
             }
@@ -113,7 +113,7 @@ export class CommandRegistrar {
 
         this.plugin.addCommand({
             id: 'manage-subplots',
-            name: 'Manage subplots',
+            name: t('commands.manageSubplots'),
             callback: () => {
                 new ManageSubplotsModal(this.app, this.plugin).open();
             }
@@ -121,7 +121,7 @@ export class CommandRegistrar {
 
         this.plugin.addCommand({
             id: 'book-designer',
-            name: 'Book designer',
+            name: t('commands.bookDesigner'),
             callback: () => {
                 new BookDesignerModal(this.app, this.plugin).open();
             }
@@ -129,7 +129,7 @@ export class CommandRegistrar {
 
         this.plugin.addCommand({
             id: 'timeline-order',
-            name: 'Timeline order',
+            name: t('commands.timelineOrder'),
             callback: () => {
                 new TimelineRepairModal(this.app, this.plugin).open();
             }
@@ -137,7 +137,7 @@ export class CommandRegistrar {
 
         this.plugin.addCommand({
             id: 'timeline-audit',
-            name: 'Timeline audit',
+            name: t('commands.timelineAudit'),
             callback: () => {
                 new TimelineAuditModal(this.app, this.plugin).open();
             }
@@ -145,7 +145,7 @@ export class CommandRegistrar {
 
         this.plugin.addCommand({
             id: 'manuscript-export',
-            name: 'Manuscript export',
+            name: t('commands.manuscriptExport'),
             callback: () => {
                 this.openManuscriptExportModal();
             }
@@ -153,7 +153,7 @@ export class CommandRegistrar {
 
         this.plugin.addCommand({
             id: 'planetary-time-settings',
-            name: 'Planetary time calculator',
+            name: t('commands.planetaryTimeCalculator'),
             callback: () => {
                 new PlanetaryTimeModal(this.app, this.plugin).open();
             }
@@ -161,7 +161,7 @@ export class CommandRegistrar {
 
         this.plugin.addCommand({
             id: 'gossamer-score-manager',
-            name: 'Gossamer score manager',
+            name: t('commands.gossamerScoreManager'),
             callback: () => {
                 openGossamerScoreEntry(this.plugin);
             }
@@ -169,7 +169,7 @@ export class CommandRegistrar {
 
         this.plugin.addCommand({
             id: 'gossamer-analysis',
-            name: 'Gossamer analysis',
+            name: t('commands.gossamerAnalysis'),
             callback: () => {
                 runGossamerAiAnalysis(this.plugin);
             }
@@ -178,7 +178,7 @@ export class CommandRegistrar {
         // APR Command (Sentence case per Obsidian guidelines)
         this.plugin.addCommand({
             id: 'author-progress-report',
-            name: 'Author progress report',
+            name: t('commands.authorProgressReport'),
             callback: () => {
                 new AuthorProgressModal(this.app, this.plugin).open();
             }

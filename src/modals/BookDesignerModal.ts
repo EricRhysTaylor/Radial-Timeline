@@ -2,7 +2,6 @@ import { App, Modal, Setting, Notice, normalizePath, ButtonComponent, TextAreaCo
 import type RadialTimelinePlugin from '../main';
 import { createBeatNotesFromSet } from '../utils/beatsTemplates';
 import { generateSceneContent, SceneCreationData } from '../utils/sceneGenerator';
-import { DEFAULT_SETTINGS } from '../settings/defaults';
 import { getTemplateParts } from '../utils/yamlTemplateNormalize';
 import { parseDuration, parseDurationDetail } from '../utils/date';
 import { getCustomSystemFromSettings, getPlotSystem } from '../utils/beatsSystems';
@@ -10,8 +9,14 @@ import type { BookDesignerTemplate, BookDesignerSceneAssignment } from '../types
 import { ModalFolderSuggest } from '../settings/FolderSuggest';
 import { ensureSceneTemplateFrontmatter } from '../utils/sceneIds';
 import { getActiveLoadedBeatTab } from '../storyBeats/workspaceState';
-import { resolveSelectedBeatModelFromSettings } from '../utils/beatSystemState';
+import { getCustomBeatConfigKey, replaceSavedBeatSystem, resolveSelectedBeatModelFromSettings } from '../utils/beatSystemState';
 import { replayTransientClass } from '../utils/domClassEffects';
+import {
+    NONLINEAR_DEMO_ACT_COUNT,
+    NONLINEAR_DEMO_DEFAULT_START_DATE,
+    buildNonlinearDemoProjectPlan,
+    isValidIsoDateOnly,
+} from '../utils/bookDesignerDemoProject';
 
 const DEFAULT_SUBPLOTS = "Main Plot\nSubplot A\nSubplot B";
 const DEFAULT_CHARACTERS = "Hero\nAntagonist";
@@ -144,6 +149,81 @@ class DeleteTemplateModal extends Modal {
         footer.querySelectorAll('button').forEach(btn => {
             btn.style.cursor = 'pointer';
         });
+    }
+}
+
+class GenerateDemoProjectModal extends Modal {
+    private startDateInput!: TextComponent;
+    private readonly onGenerate: (startDate: string) => void;
+
+    constructor(app: App, onGenerate: (startDate: string) => void) {
+        super(app);
+        this.onGenerate = onGenerate;
+    }
+
+    onOpen(): void {
+        const { contentEl, modalEl, titleEl } = this;
+        contentEl.empty();
+        titleEl.setText('');
+
+        if (modalEl) {
+            modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal-shell--md');
+        }
+
+        contentEl.addClass('ert-modal-container', 'ert-stack');
+        contentEl.addClass('rt-template-dialog');
+
+        const header = contentEl.createDiv({ cls: 'ert-modal-header' });
+        header.createSpan({ cls: 'ert-modal-badge', text: 'DEMO' });
+        header.createDiv({ cls: 'ert-modal-title', text: 'Generate nonlinear demo project' });
+        header.createDiv({ cls: 'ert-modal-subtitle', text: 'Creates a 20-scene, 5-act example with beats, threads, and chronologue timing.' });
+
+        const form = contentEl.createDiv({ cls: 'rt-glass-card rt-sub-card' });
+        const dateSetting = new Setting(form)
+            .setName('Start date')
+            .setDesc('Used for the chronologue cadence. Format: YYYY-MM-DD.')
+            .addText(text => {
+                this.startDateInput = text;
+                text.inputEl.addClass('rt-input-sm');
+                text.setPlaceholder(NONLINEAR_DEMO_DEFAULT_START_DATE);
+                text.setValue(NONLINEAR_DEMO_DEFAULT_START_DATE);
+                text.inputEl.addEventListener('keydown', (evt) => {
+                    if (evt.key === 'Enter') {
+                        evt.preventDefault();
+                        this.handleGenerate();
+                    }
+                });
+            });
+        dateSetting.settingEl.addClass('rt-manuscript-group-setting');
+
+        form.createDiv({
+            cls: 'rt-sub-card-note',
+            text: 'This will also ensure the workspace is configured for five acts so the demo renders correctly.'
+        });
+
+        const footer = contentEl.createDiv({ cls: 'ert-modal-actions' });
+        new ButtonComponent(footer)
+            .setButtonText('Generate Demo Project')
+            .setCta()
+            .onClick(() => this.handleGenerate());
+
+        new ButtonComponent(footer)
+            .setButtonText('Cancel')
+            .onClick(() => this.close());
+
+        footer.querySelectorAll('button').forEach(btn => {
+            btn.style.cursor = 'pointer';
+        });
+    }
+
+    private handleGenerate(): void {
+        const raw = this.startDateInput.getValue().trim() || NONLINEAR_DEMO_DEFAULT_START_DATE;
+        if (!isValidIsoDateOnly(raw)) {
+            new Notice('Use a valid start date in YYYY-MM-DD format.');
+            return;
+        }
+        this.onGenerate(raw);
+        this.close();
     }
 }
 
@@ -1006,6 +1086,20 @@ export class BookDesignerModal extends Modal {
                 new Notice('Layout reset to defaults with auto distribution.');
             });
 
+        new ButtonComponent(templateActions)
+            .setButtonText('Demo Project')
+            .onClick(() => {
+                new GenerateDemoProjectModal(this.app, (startDate) => {
+                    this.close();
+                    void this.generateNonlinearDemoProject(startDate);
+                }).open();
+            });
+
+        templateCard.createDiv({
+            cls: 'rt-sub-card-note',
+            text: 'Includes scenes, acts, threads, beats, and chronologue timing.'
+        });
+
         this.deleteTemplateBtn = new ButtonComponent(templateActions)
             .setButtonText('Delete layout')
             .setDisabled(true)
@@ -1382,6 +1476,145 @@ export class BookDesignerModal extends Modal {
         if (a > Math.PI) a -= twoPi;
         if (a < -Math.PI) a += twoPi;
         return Math.abs(a);
+    }
+
+    private sanitizeDemoFilenameSegment(value: string): string {
+        return value.replace(/[/\\:*?"<>|]+/g, '').replace(/\s+/g, ' ').trim();
+    }
+
+    private buildSceneBody(sceneNumber: number): string {
+        const label = String(sceneNumber).padStart(2, '0');
+        return [
+            `# Scene ${label}`,
+            '',
+            'Goal:',
+            'Conflict:',
+            'Outcome:',
+            ''
+        ].join('\n');
+    }
+
+    private renderDemoSceneContent(templateString: string, scene: ReturnType<typeof buildNonlinearDemoProjectPlan>['scenes'][number]): string {
+        const yamlEscapeDoubleQuoted = (value: string) => value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+        const yamlInlineArray = (values: string[]) => `[${values.map(v => `"${yamlEscapeDoubleQuoted(v)}"`).join(', ')}]`;
+        const data: SceneCreationData = {
+            act: scene.act,
+            when: scene.when,
+            sceneNumber: scene.sceneNumber,
+            subplots: [scene.subplot],
+            character: scene.characters.length === 1 ? scene.characters[0] : yamlInlineArray(scene.characters),
+            place: 'Unknown',
+            characterList: scene.characters,
+            placeList: ['Unknown'],
+        };
+
+        const frontmatter = generateSceneContent(templateString, data)
+            .replace(/^Duration\s*:\s*.*$/m, `Duration: ${scene.durationMinutes} min`)
+            .replace(/^Due\s*:\s*.*$/m, `Due: ${scene.when}`);
+        const withSceneId = ensureSceneTemplateFrontmatter(frontmatter);
+        return `---\n${withSceneId.frontmatter}\n---\n\n${this.buildSceneBody(scene.sceneNumber)}`;
+    }
+
+    private async createVaultFileIfMissing(filePath: string, content: string): Promise<boolean> {
+        const vault = this.plugin.app.vault;
+        if (vault.getAbstractFileByPath(filePath)) {
+            return false;
+        }
+        await vault.create(filePath, content);
+        return true;
+    }
+
+    private async ensureDemoBeatSystemSettings(system: ReturnType<typeof buildNonlinearDemoProjectPlan>['illustrationBeatSystem']): Promise<void> {
+        replaceSavedBeatSystem(this.plugin.settings, system);
+        const configKey = getCustomBeatConfigKey(system.id);
+        this.plugin.settings.beatSystemConfigs = {
+            ...(this.plugin.settings.beatSystemConfigs ?? {}),
+            [configKey]: this.plugin.settings.beatSystemConfigs?.[configKey] ?? {
+                beatYamlAdvanced: '',
+                beatHoverMetadataFields: [],
+            },
+        };
+        if ((this.plugin.settings.actCount ?? 3) < NONLINEAR_DEMO_ACT_COUNT) {
+            this.plugin.settings.actCount = NONLINEAR_DEMO_ACT_COUNT;
+        }
+        await this.plugin.saveSettings();
+    }
+
+    private async generateNonlinearDemoProject(startDate: string): Promise<void> {
+        const vault = this.plugin.app.vault;
+        const targetFolder = this.targetPath ? normalizePath(this.targetPath.trim()) : '';
+
+        if (targetFolder && !vault.getAbstractFileByPath(targetFolder)) {
+            try {
+                await vault.createFolder(targetFolder);
+            } catch (error) {
+                new Notice(`Error creating folder: ${error}`);
+                return;
+            }
+        }
+
+        const plan = buildNonlinearDemoProjectPlan(startDate);
+        const sceneTemplate = getTemplateParts('Scene', this.plugin.settings).merged;
+
+        let createdScenes = 0;
+        let skippedScenes = 0;
+        let createdNotes = 0;
+        let skippedNotes = 0;
+
+        for (const scene of plan.scenes) {
+            const filename = `${scene.sceneNumber} ${this.sanitizeDemoFilenameSegment(scene.title)}.md`;
+            const filePath = targetFolder ? `${targetFolder}/${filename}` : filename;
+            try {
+                const created = await this.createVaultFileIfMissing(filePath, this.renderDemoSceneContent(sceneTemplate, scene));
+                if (created) createdScenes += 1;
+                else skippedScenes += 1;
+            } catch (error) {
+                console.error(`Failed to create nonlinear demo scene: ${filePath}`, error);
+            }
+        }
+
+        const instructionPath = targetFolder
+            ? `${targetFolder}/${plan.instructionNote.filename}`
+            : plan.instructionNote.filename;
+        try {
+            const created = await this.createVaultFileIfMissing(instructionPath, plan.instructionNote.content);
+            if (created) createdNotes += 1;
+            else skippedNotes += 1;
+        } catch (error) {
+            console.error(`Failed to create nonlinear demo note: ${instructionPath}`, error);
+        }
+
+        await this.ensureDemoBeatSystemSettings(plan.illustrationBeatSystem);
+
+        const builtinBeatTemplate = getTemplateParts('Beat', this.plugin.settings, plan.builtinBeatSystemName).merged;
+        const builtinBeatResult = await createBeatNotesFromSet(
+            vault,
+            plan.builtinBeatSystemName,
+            targetFolder,
+            undefined,
+            {
+                beatTemplate: builtinBeatTemplate,
+                explicitSceneNumbers: plan.builtinBeatAnchors.map((beat) => beat.sceneNumber),
+            }
+        );
+
+        const illustrationBeatTemplate = getTemplateParts('Beat', this.plugin.settings, getCustomBeatConfigKey(plan.illustrationBeatSystem.id)).merged;
+        const illustrationBeatResult = await createBeatNotesFromSet(
+            vault,
+            'Custom',
+            targetFolder,
+            plan.illustrationPlotSystem,
+            {
+                beatTemplate: illustrationBeatTemplate,
+                explicitSceneNumbers: plan.illustrationBeatAnchors.map((beat) => beat.sceneNumber),
+            }
+        );
+
+        const skippedSummary = skippedScenes > 0 || skippedNotes > 0
+            ? ` Skipped ${skippedScenes} existing scenes and ${skippedNotes} existing notes.`
+            : '';
+        const beatCreated = builtinBeatResult.created + illustrationBeatResult.created;
+        new Notice(`Demo project ready: ${createdScenes} scenes, ${createdNotes} notes, ${beatCreated} beat notes.${skippedSummary}`);
     }
 
     async generateBook(): Promise<void> {

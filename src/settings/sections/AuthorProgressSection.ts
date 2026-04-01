@@ -16,6 +16,7 @@ import { colorSwatch, type ColorSwatchHandle } from '../../ui/ui';
 import { ERT_CLASSES } from '../../ui/classes';
 import { STAGE_ORDER } from '../../utils/constants';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
+import { t } from '../../i18n';
 import { buildDefaultEmbedPath, normalizeAprExportFormat, type AprExportFormat } from '../../utils/aprPaths';
 import { ProjectPathSuggest } from '../ProjectPathSuggest';
 import { validateAndRememberProjectPath } from '../../renderer/apr/aprHelpers';
@@ -68,14 +69,14 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const badge = badgeRow.createSpan({ cls: badgeClasses });
     // Left Icon and Text
     setIcon(badge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON }), needsRefresh ? 'alert-triangle' : 'radio');
-    badge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: needsRefresh ? 'Reminder to Refresh' : 'Share · Social' });
+    badge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: needsRefresh ? t('settings.authorProgress.hero.badgeRefresh') : t('settings.authorProgress.hero.badgeDefault') });
 
     // Right Icon (Wiki Link) - Manually constructed for ERT styling
     const wikiLink = badge.createEl('a', {
         href: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#social-media',
         cls: 'ert-badgePill__rightIcon',
         attr: {
-            'aria-label': 'Read more in the Wiki',
+            'aria-label': t('settings.authorProgress.hero.wikiAriaLabel'),
             'target': '_blank',
             'rel': 'noopener'
         }
@@ -85,25 +86,25 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // Big headline
     hero.createEl('h3', {
         cls: `${ERT_CLASSES.SECTION_TITLE} ert-hero-title`,
-        text: 'Promote your latest work across social media.'
+        text: t('settings.authorProgress.hero.title')
     });
 
     // Description paragraph
     hero.createEl('p', {
         cls: `${ERT_CLASSES.SECTION_DESC} ert-hero-subtitle ert-apr-hero-subtitle`,
-        text: 'Generate vibrant, spoiler-safe progress graphics for social media and crowdfunding. Perfect for Kickstarter updates, Patreon posts, or sharing your writing journey with fans.'
+        text: t('settings.authorProgress.hero.desc')
     });
 
     // Features section
     const featuresSection = hero.createDiv({
         cls: `${ERT_CLASSES.HERO_FEATURES} ${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}`
     });
-    featuresSection.createEl('h5', { text: 'Key Benefits:', cls: 'ert-kicker' });
+    featuresSection.createEl('h5', { text: t('settings.authorProgress.hero.keyBenefitsHeading'), cls: 'ert-kicker' });
     const featuresList = featuresSection.createEl('ul', { cls: ERT_CLASSES.STACK });
     [
-        { icon: 'eye-off', text: 'Spoiler-Safe — Scene titles and content are not part of the graphic build process.' },
-        { icon: 'share-2', text: 'Shareable — Export as static snapshot or live-updating embed' },
-        { icon: 'trending-up', text: 'Stage-Weighted Progress — Tracks advancement through Zero → Author → House → Press' },
+        { icon: 'eye-off', text: t('settings.authorProgress.hero.featureSpoilerSafe') },
+        { icon: 'share-2', text: t('settings.authorProgress.hero.featureShareable') },
+        { icon: 'trending-up', text: t('settings.authorProgress.hero.featureStageWeighted') },
     ].forEach(feature => {
         const li = featuresList.createEl('li', { cls: `${ERT_CLASSES.INLINE} ert-feature-item` });
         const iconSpan = li.createSpan({ cls: 'ert-feature-icon' });
@@ -118,7 +119,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
     // Size selector row
     const sizeSelectorRow = previewCard.createDiv({ cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_COMPACT}` });
-    sizeSelectorRow.createSpan({ text: 'Preview Size:', cls: ERT_CLASSES.LABEL });
+    sizeSelectorRow.createSpan({ text: t('settings.authorProgress.preview.sizeLabel'), cls: ERT_CLASSES.LABEL });
     const sizeSelectorControls = sizeSelectorRow.createDiv({ cls: ERT_CLASSES.INLINE });
     let teaserPreviewMode: TeaserPreviewMode = 'auto';
     let refreshPreview = () => {};
@@ -182,7 +183,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
             // Update dimension label
             if (dimLabel) {
-                setSizeLabel(dimLabel, dimension, 'Actual size preview');
+                setSizeLabel(dimLabel, dimension, t('settings.authorProgress.preview.actualSizePreview'));
             }
 
             // Re-render preview at new size
@@ -195,11 +196,11 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         teaserSelectWrap = sizeSelectorControls.createDiv({ cls: ERT_CLASSES.SKIN_PRO });
         const teaserSelect = teaserSelectWrap.createEl('select', { cls: 'dropdown ert-input ert-input--fit-selected' });
         const teaserOptions: { value: TeaserPreviewMode; label: string }[] = [
-            { value: 'auto', label: 'Auto (Current Stage)' },
-            { value: 'bar', label: 'Ring' },
-            { value: 'scenes', label: 'Scenes' },
-            { value: 'colors', label: 'Color' },
-            { value: 'full', label: 'Complete' },
+            { value: 'auto', label: t('settings.authorProgress.preview.teaserAuto') },
+            { value: 'bar', label: t('settings.authorProgress.preview.teaserRing') },
+            { value: 'scenes', label: t('settings.authorProgress.preview.teaserScenes') },
+            { value: 'colors', label: t('settings.authorProgress.preview.teaserColor') },
+            { value: 'full', label: t('settings.authorProgress.preview.teaserComplete') },
         ];
         teaserOptions.forEach(opt => {
             teaserSelect.createEl('option', { value: opt.value, text: opt.label });
@@ -218,14 +219,14 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const sizeMetaRow = previewCard.createDiv({ cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_TIGHT} ert-row--stack ert-apr-size-meta` });
     const currentDim = sizeButtons.find(s => s.size === currentSize)?.dimension || '300';
     dimLabel = sizeMetaRow.createEl('em', { cls: ERT_CLASSES.ROW_DESC });
-    setSizeLabel(dimLabel, currentDim, 'Actual size preview');
+    setSizeLabel(dimLabel, currentDim, t('settings.authorProgress.preview.actualSizePreview'));
 
     // 1:1 preview
     const previewSection = previewCard.createDiv({ cls: 'ert-apr-preview' });
 
     // SVG Preview container - shows at 1:1 actual size
     const previewContainer = previewSection.createDiv({ cls: `ert-apr-preview-frame ert-apr-preview--actual ${ERT_CLASSES.PREVIEW_FRAME} ert-previewFrame--flush` });
-    previewContainer.createDiv({ cls: `ert-apr-preview-loading ${ERT_CLASSES.PREVIEW_INNER}`, text: 'Loading preview...' });
+    previewContainer.createDiv({ cls: `ert-apr-preview-loading ${ERT_CLASSES.PREVIEW_INNER}`, text: t('settings.authorProgress.preview.loading') });
 
     // Load and render preview asynchronously at actual size
     renderHeroPreview(app, plugin, previewContainer, currentSize, teaserPreviewMode);
@@ -240,12 +241,12 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const settings = authorProgress?.defaults;
     const lastDate = settings?.lastPublishedDate
         ? new Date(settings.lastPublishedDate).toLocaleDateString()
-        : 'Never';
+        : t('settings.authorProgress.preview.lastUpdateNever');
 
     const meta = previewCard.createDiv({ cls: ERT_CLASSES.INLINE });
     meta.createSpan({ text: `Last update: ${lastDate}`, cls: `${ERT_CLASSES.CHIP} ${ERT_CLASSES.FIELD_NOTE}` });
-    meta.createSpan({ text: 'Kickstarter ready', cls: ERT_CLASSES.CHIP });
-    meta.createSpan({ text: 'Patreon friendly', cls: ERT_CLASSES.CHIP });
+    meta.createSpan({ text: t('settings.authorProgress.preview.kickstarterReady'), cls: ERT_CLASSES.CHIP });
+    meta.createSpan({ text: t('settings.authorProgress.preview.patreonFriendly'), cls: ERT_CLASSES.CHIP });
 
     // ─────────────────────────────────────────────────────────────────────────
     // CONFIGURATION SECTION
@@ -257,8 +258,8 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const stylingBlock = stylingCard.createDiv({ cls: ERT_CLASSES.STACK });
     const stylingHeader = stylingBlock.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
     const stylingHeading = new Setting(stylingHeader)
-        .setName('Configuration')
-        .setDesc('Configure your project settings and Social destination details, including project path and link URL.')
+        .setName(t('settings.authorProgress.configuration.name'))
+        .setDesc(t('settings.authorProgress.configuration.desc'))
         .setHeading();
     addHeadingIcon(stylingHeading, 'settings');
     addWikiLink(stylingHeading, 'Settings#social-media-styling');
@@ -267,8 +268,8 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
     // Project Path for Social
     const projectPathSetting = new Setting(stylingBody)
-        .setName('Project path')
-        .setDesc('Project folder path for this Social target. Leave blank to use the main Source path.');
+        .setName(t('settings.authorProgress.configuration.projectPath.name'))
+        .setDesc(t('settings.authorProgress.configuration.projectPath.desc'));
 
     projectPathSetting.settingEl.addClass('ert-setting-full-width-input');
 
@@ -295,7 +296,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             }, timeout);
         };
 
-        text.setPlaceholder('Projects/My Novel')
+        text.setPlaceholder(t('settings.authorProgress.configuration.projectPath.placeholder'))
             .setValue(settings?.projectPathOverride || '')
             .onChange(() => {
                 clearInputState();
@@ -357,8 +358,8 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
     // Link URL
     const linkUrlSetting = new Setting(stylingBody)
-        .setName('Link URL')
-        .setDesc('Where the graphic should link to (e.g. your website, Kickstarter, or shop).');
+        .setName(t('settings.authorProgress.configuration.linkUrl.name'))
+        .setDesc(t('settings.authorProgress.configuration.linkUrl.desc'));
 
     linkUrlSetting.settingEl.addClass('ert-setting-full-width-input');
 
@@ -390,7 +391,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             }
         };
 
-        text.setPlaceholder('https://your-site.com')
+        text.setPlaceholder(t('settings.authorProgress.configuration.linkUrl.placeholder'))
             .setValue(settings?.authorUrl || '')
             .onChange(() => {
                 clearInputState();
@@ -433,8 +434,8 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     });
 
     new Setting(stylingBody)
-        .setName('Auto-update export paths')
-        .setDesc('When size or schedule changes, update default and campaign export paths if they still match the default pattern.')
+        .setName(t('settings.authorProgress.configuration.autoUpdateExportPaths.name'))
+        .setDesc(t('settings.authorProgress.configuration.autoUpdateExportPaths.desc'))
         .addToggle(toggle => {
             const current = settings?.autoUpdateExportPath ?? true;
             toggle.setValue(current);
@@ -454,8 +455,8 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const themeBlock = themeCard.createDiv({ cls: ERT_CLASSES.STACK });
     const themeHeader = themeBlock.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
     const themeHeading = new Setting(themeHeader)
-        .setName('Styling')
-        .setDesc('Adjust colors, fonts and borders for your Social report. Configure the background based on the hosted location. Use the theme palette (keys off the Title color) to apply curated colors across Title, Author, % Symbol, and % Number. Manual edits override per row.')
+        .setName(t('settings.authorProgress.styling.name'))
+        .setDesc(t('settings.authorProgress.styling.desc'))
         .setHeading();
     addHeadingIcon(themeHeading, 'swatch-book');
     addWikiLink(themeHeading, 'Settings#social-media-theme');
@@ -477,7 +478,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     themeButton.type = 'button';
     const themeIcon = themeButton.createSpan({ cls: 'ert-pillBtn__icon' });
     setIcon(themeIcon, 'swatch-book');
-    themeButton.createSpan({ cls: 'ert-pillBtn__label', text: 'Choose Palette' });
+    themeButton.createSpan({ cls: 'ert-pillBtn__label', text: t('settings.authorProgress.styling.choosePaletteButton') });
     // SAFE: Settings sections are standalone functions without Component lifecycle; Obsidian manages settings tab cleanup
     themeButton.addEventListener('click', () => {
         const modal = new AprPaletteModal(
@@ -505,33 +506,33 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
     // Curated font list
     const FONT_OPTIONS = [
-        { value: 'default', label: 'Default' },
-        { value: 'Inter', label: 'Inter' },
-        { value: 'system-ui', label: 'System UI' },
-        { value: 'Exo', label: 'Exo' },
-        { value: 'Roboto', label: 'Roboto' },
-        { value: 'Montserrat', label: 'Montserrat' },
-        { value: 'Open Sans', label: 'Open Sans' },
-        { value: 'Dancing Script', label: 'Dancing Script' },
-        { value: 'Caveat', label: 'Caveat' }
+        { value: 'default', label: t('settings.authorProgress.styling.fontDefault') },
+        { value: 'Inter', label: t('settings.authorProgress.styling.fontInter') },
+        { value: 'system-ui', label: t('settings.authorProgress.styling.fontSystemUI') },
+        { value: 'Exo', label: t('settings.authorProgress.styling.fontExo') },
+        { value: 'Roboto', label: t('settings.authorProgress.styling.fontRoboto') },
+        { value: 'Montserrat', label: t('settings.authorProgress.styling.fontMontserrat') },
+        { value: 'Open Sans', label: t('settings.authorProgress.styling.fontOpenSans') },
+        { value: 'Dancing Script', label: t('settings.authorProgress.styling.fontDancingScript') },
+        { value: 'Caveat', label: t('settings.authorProgress.styling.fontCaveat') }
     ];
 
     // Weight options with italic variants
     const WEIGHT_OPTIONS = [
-        { value: '300', label: 'Light (300)' },
-        { value: '300-italic', label: 'Light Italic' },
-        { value: '400', label: 'Normal (400)' },
-        { value: '400-italic', label: 'Normal Italic' },
-        { value: '500', label: 'Medium (500)' },
-        { value: '500-italic', label: 'Medium Italic' },
-        { value: '600', label: 'Semi-Bold (600)' },
-        { value: '600-italic', label: 'Semi-Bold Italic' },
-        { value: '700', label: 'Bold (700)' },
-        { value: '700-italic', label: 'Bold Italic' },
-        { value: '800', label: 'Extra-Bold (800)' },
-        { value: '800-italic', label: 'Extra-Bold Italic' },
-        { value: '900', label: 'Black (900)' },
-        { value: '900-italic', label: 'Black Italic' }
+        { value: '300', label: t('settings.authorProgress.styling.weightLight') },
+        { value: '300-italic', label: t('settings.authorProgress.styling.weightLightItalic') },
+        { value: '400', label: t('settings.authorProgress.styling.weightNormal') },
+        { value: '400-italic', label: t('settings.authorProgress.styling.weightNormalItalic') },
+        { value: '500', label: t('settings.authorProgress.styling.weightMedium') },
+        { value: '500-italic', label: t('settings.authorProgress.styling.weightMediumItalic') },
+        { value: '600', label: t('settings.authorProgress.styling.weightSemiBold') },
+        { value: '600-italic', label: t('settings.authorProgress.styling.weightSemiBoldItalic') },
+        { value: '700', label: t('settings.authorProgress.styling.weightBold') },
+        { value: '700-italic', label: t('settings.authorProgress.styling.weightBoldItalic') },
+        { value: '800', label: t('settings.authorProgress.styling.weightExtraBold') },
+        { value: '800-italic', label: t('settings.authorProgress.styling.weightExtraBoldItalic') },
+        { value: '900', label: t('settings.authorProgress.styling.weightBlack') },
+        { value: '900-italic', label: t('settings.authorProgress.styling.weightBlackItalic') }
     ];
 
     const parseWeightValue = (val: string): { weight: number; italic: boolean } => {
@@ -638,7 +639,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             if (!hasOption) {
                 drop.addOption(normalized, `Custom: ${normalized}`);
             }
-            drop.addOption(customValue, 'Custom...');
+            drop.addOption(customValue, t('settings.authorProgress.styling.customFontModal.customOption'));
             drop.setValue(normalized);
             updateWarningState(currentFont);
             isUpdating = false;
@@ -647,16 +648,16 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         const openCustomModal = (): void => {
             const modal = new Modal(app);
             modal.modalEl.addClass('ert-typography-modal');
-            modal.titleEl.setText('Custom font');
+            modal.titleEl.setText(t('settings.authorProgress.styling.customFontModal.title'));
             modal.onClose = () => {
                 updateOptions(currentFont);
             };
 
             const body = modal.contentEl.createDiv({ cls: 'ert-typography-modal__body' });
-            body.createEl('p', { text: 'Enter a font family available on your system.', cls: 'ert-typography-modal__hint' });
+            body.createEl('p', { text: t('settings.authorProgress.styling.customFontModal.hint'), cls: 'ert-typography-modal__hint' });
 
             const input = new TextComponent(body);
-            input.setPlaceholder('e.g., EB Garamond');
+            input.setPlaceholder(t('settings.authorProgress.styling.customFontModal.placeholder'));
             input.inputEl.addClass('ert-typography-modal__input');
 
             const normalized = currentFont === 'Inter' ? 'default' : currentFont;
@@ -666,13 +667,13 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
             const actions = modal.contentEl.createDiv({ cls: 'ert-typography-modal__actions' });
             new ButtonComponent(actions)
-                .setButtonText('Cancel')
+                .setButtonText(t('settings.authorProgress.styling.customFontModal.cancel'))
                 .onClick(() => {
                     modal.close();
                 });
 
             new ButtonComponent(actions)
-                .setButtonText('Save')
+                .setButtonText(t('settings.authorProgress.styling.customFontModal.save'))
                 .setCta()
                 .onClick(async () => {
                     const value = input.getValue().trim();
@@ -793,7 +794,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             const sizeGroup = rowEl.createDiv({ cls: 'ert-typography-size-group' });
             opts.sizeKeys.forEach((key, index) => {
                 const input = new TextComponent(sizeGroup);
-                input.setPlaceholder(opts.sizePlaceholders?.[index] ?? 'Auto');
+                input.setPlaceholder(opts.sizePlaceholders?.[index] ?? t('settings.authorProgress.styling.autoButton'));
                 const currentValue = settings?.[key] as number | undefined;
                 input.setValue(currentValue !== undefined ? String(currentValue) : '');
                 input.onChange(async (val) => {
@@ -899,7 +900,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
         opts.primaryAction?.(rowSecondary);
 
-        autoButton = rowSecondary.createEl('button', { text: 'Auto', cls: 'ert-chip ert-typography-auto' });
+        autoButton = rowSecondary.createEl('button', { text: t('settings.authorProgress.styling.autoButton'), cls: 'ert-chip ert-typography-auto' });
         autoButton.type = 'button';
 
         const typographyRefs = (opts.typography && rowPrimary)
@@ -948,8 +949,8 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // ELEMENT BLOCKS (Title, Author, % Symbol, % Number, Stage Badge / RT Mark)
     // ─────────────────────────────────────────────────────────────────────────
     addElementBlock(themeBody, {
-        label: 'Title',
-        desc: 'Outer ring book title text. This color is used for the palette seed color.',
+        label: t('settings.authorProgress.styling.title.label'),
+        desc: t('settings.authorProgress.styling.title.desc'),
         dataTypo: 'title',
         text: {
             placeholder: DEFAULT_BOOK_TITLE,
@@ -987,11 +988,11 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const currentAuthorColor = settings?.aprAuthorColor || authorColorFallback;
 
     addElementBlock(themeBody, {
-        label: 'Author',
-        desc: 'Outer ring author name text.',
+        label: t('settings.authorProgress.styling.author.label'),
+        desc: t('settings.authorProgress.styling.author.desc'),
         dataTypo: 'author',
         text: {
-            placeholder: 'Author Name',
+            placeholder: t('settings.authorProgress.styling.author.placeholder'),
             value: settings?.authorName || '',
             onChange: async (val) => {
                 await setAprSetting('authorName', val as AuthorProgressDefaults['authorName']);
@@ -1026,8 +1027,8 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const currentPercentSymbolColor = settings?.aprPercentSymbolColor || percentSymbolColorFallback;
 
     addElementBlock(themeBody, {
-        label: '% Symbol',
-        desc: 'Center percent symbol.',
+        label: t('settings.authorProgress.styling.percentSymbol.label'),
+        desc: t('settings.authorProgress.styling.percentSymbol.desc'),
         dataTypo: 'percent-symbol',
         color: {
             key: 'aprPercentSymbolColor',
@@ -1049,8 +1050,8 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const currentPercentNumberColor = settings?.aprPercentNumberColor || percentNumberColorFallback;
 
     addElementBlock(themeBody, {
-        label: '% Number',
-        desc: 'Center progress number.',
+        label: t('settings.authorProgress.styling.percentNumber.label'),
+        desc: t('settings.authorProgress.styling.percentNumber.desc'),
         dataTypo: 'percent-number',
         color: {
             key: 'aprPercentNumberColor',
@@ -1072,8 +1073,8 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const currentRtBadgeColor = settings?.aprEngineColor || rtBadgeColorFallback;
 
     addElementBlock(themeBody, {
-        label: 'Stage badge / RT mark',
-        desc: 'Typography for the publish stage badge and the RT attribution mark.',
+        label: t('settings.authorProgress.styling.stageBadge.label'),
+        desc: t('settings.authorProgress.styling.stageBadge.desc'),
         dataTypo: 'ert-badgePill',
         color: {
             key: 'aprEngineColor',
@@ -1095,13 +1096,13 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // TRANSPARENT MODE, BACKGROUND COLOR, SPOKES AND BORDERS (styled like Theme rows)
     // ─────────────────────────────────────────────────────────────────────────
     const transparencySetting = new Setting(themeBody)
-        .setName('Transparent mode')
-        .setDesc('No background fill — adapts to any page or app. Ideal for websites, blogs, and platforms that preserve SVG transparency.');
+        .setName(t('settings.authorProgress.styling.transparentMode.name'))
+        .setDesc(t('settings.authorProgress.styling.transparentMode.desc'));
     transparencySetting.settingEl.addClass('ert-elementBlock', 'ert-settingRow');
 
     const bgSetting = new Setting(themeBody)
-        .setName('Background color')
-        .setDesc('Bakes in a solid background. Use when transparency isn\'t reliable: email newsletters, Kickstarter, PDF exports, or platforms that rasterize SVGs.');
+        .setName(t('settings.authorProgress.styling.backgroundColor.name'))
+        .setDesc(t('settings.authorProgress.styling.backgroundColor.desc'));
     bgSetting.settingEl.addClass('ert-elementBlock', 'ert-settingRow');
 
     let bgColorPicker: ColorSwatchHandle | null = null;
@@ -1162,8 +1163,8 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     updateEmphasis(currentTransparent);
 
     const spokeColorSetting = new Setting(themeBody)
-        .setName('Spokes and borders')
-        .setDesc('Choose contrasting color or none. Controls all structural elements including scene borders and act division spokes.');
+        .setName(t('settings.authorProgress.styling.spokesAndBorders.name'))
+        .setDesc(t('settings.authorProgress.styling.spokesAndBorders.desc'));
     spokeColorSetting.settingEl.addClass('ert-elementBlock', 'ert-settingRow');
     spokeColorSetting.controlEl.addClass(ERT_CLASSES.INLINE);
 
@@ -1207,10 +1208,10 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     });
 
     const spokeModeDropdown = new DropdownComponent(spokeControlRow);
-    spokeModeDropdown.addOption('dark', 'Light Strokes');
-    spokeModeDropdown.addOption('light', 'Dark Strokes');
-    spokeModeDropdown.addOption('none', 'No Strokes');
-    spokeModeDropdown.addOption('custom', 'Custom Color');
+    spokeModeDropdown.addOption('dark', t('settings.authorProgress.styling.strokeLightStrokes'));
+    spokeModeDropdown.addOption('light', t('settings.authorProgress.styling.strokeDarkStrokes'));
+    spokeModeDropdown.addOption('none', t('settings.authorProgress.styling.strokeNoStrokes'));
+    spokeModeDropdown.addOption('custom', t('settings.authorProgress.styling.strokeCustomColor'));
     const currentValue = currentSpokeMode !== 'dark' ? currentSpokeMode : (currentTheme !== 'dark' ? currentTheme : 'dark');
     spokeModeDropdown.setValue(currentValue);
     spokeModeDropdown.onChange(async (val) => {
@@ -1250,20 +1251,20 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     if (!isProActive) {
         const automationCard = contentWrapper.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` });
         const automationHeader = new Setting(automationCard)
-            .setName('Publishing & automation')
+            .setName(t('settings.authorProgress.publishing.name'))
             .setHeading();
         addHeadingIcon(automationHeader, 'rss');
         addWikiLink(automationHeader, 'Settings#social-media-publishing');
         applyErtHeaderLayout(automationHeader);
 
         const frequencySetting = new Setting(automationCard)
-            .setName('Update frequency')
-            .setDesc('How often to auto-update the live embed file. "Manual" requires clicking the update button in the Social modal.')
+            .setName(t('settings.authorProgress.publishing.updateFrequency.name'))
+            .setDesc(t('settings.authorProgress.publishing.updateFrequency.desc'))
             .addDropdown(dropdown => dropdown
-                .addOption('manual', 'Manual Only')
-                .addOption('daily', 'Daily')
-                .addOption('weekly', 'Weekly')
-                .addOption('monthly', 'Monthly')
+                .addOption('manual', t('settings.authorProgress.publishing.frequencyManual'))
+                .addOption('daily', t('settings.authorProgress.publishing.frequencyDaily'))
+                .addOption('weekly', t('settings.authorProgress.publishing.frequencyWeekly'))
+                .addOption('monthly', t('settings.authorProgress.publishing.frequencyMonthly'))
                 .setValue(settings?.updateFrequency || 'manual')
                 .onChange(async (val) => {
                     if (plugin.settings.authorProgress) {
@@ -1298,7 +1299,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         if (settings?.updateFrequency === 'manual') {
             const currentDays = settings?.stalenessThresholdDays || 30;
             const stalenessSetting = new Setting(automationCard)
-                .setName('Refresh alert threshold')
+                .setName(t('settings.authorProgress.publishing.refreshAlertThreshold.name'))
                 .setDesc(`Days before showing a refresh reminder in the timeline view. Currently: ${currentDays} days.`)
                 .addSlider(slider => {
                     slider
@@ -1337,8 +1338,8 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         }
 
         const exportPathSetting = new Setting(automationCard)
-            .setName('Export path')
-            .setDesc('Location for the live export file. Format follows the Social modal setting.');
+            .setName(t('settings.authorProgress.publishing.exportPath.name'))
+            .setDesc(t('settings.authorProgress.publishing.exportPath.desc'));
 
         exportPathSetting.settingEl.addClass('ert-setting-full-width-input');
 
@@ -1422,8 +1423,8 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         });
 
         new Setting(automationCard)
-            .setName('Auto-update export paths')
-            .setDesc('When size or schedule changes, update the default export path if it still matches the default pattern.')
+            .setName(t('settings.authorProgress.publishing.autoUpdateExportPaths.name'))
+            .setDesc(t('settings.authorProgress.publishing.autoUpdateExportPaths.desc'))
             .addToggle(toggle => {
                 toggle.setValue(settings?.autoUpdateExportPath ?? true);
                 toggle.onChange(async (val) => {
@@ -1439,14 +1440,14 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         const teaserIcon = headerRow.createSpan({ cls: 'ert-apr-pro-teaser-icon' });
         setIcon(teaserIcon, 'signature');
         const teaserHeading = headerRow.createDiv({ cls: 'ert-apr-pro-teaser-heading' });
-        teaserHeading.createEl('strong', { text: 'Want more?' });
-        const teaserLabel = headerRow.createDiv({ cls: 'ert-apr-pro-teaser-header-label', text: 'Enhance your workflow' });
+        teaserHeading.createEl('strong', { text: t('settings.authorProgress.publishing.proTeaser.wantMore') });
+        const teaserLabel = headerRow.createDiv({ cls: 'ert-apr-pro-teaser-header-label', text: t('settings.authorProgress.publishing.proTeaser.enhanceWorkflow') });
         const teaserDescription = proTeaser.createDiv({ cls: 'ert-apr-pro-teaser-description' });
         teaserDescription.setText(
-            'Campaign manager lets you create multiple embeds with Teaser Reveal—progressively show more detail as you write. Get access to Campaign manager and more Pro workflow features including runtime (RT) chronologue mode and Pandoc manuscript export templates.'
+            t('settings.authorProgress.publishing.proTeaser.desc')
         );
         const teaserLink = proTeaser.createEl('a', {
-            text: 'Upgrade to Pro →',
+            text: t('settings.authorProgress.publishing.proTeaser.upgradeLink'),
             href: 'https://radialtimeline.com/pro',
             cls: 'ert-apr-pro-teaser-link',
             attr: { target: '_blank', rel: 'noopener' }
@@ -1461,8 +1462,8 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const progressModeBlock = progressModeCard.createDiv({ cls: ERT_CLASSES.STACK });
     const progressModeHeader = progressModeBlock.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
     const progressModeHeading = new Setting(progressModeHeader)
-        .setName('Publish stage detection & progress mode')
-        .setDesc('Detects your current publish stage. In new projects, select between a target manuscript length (recommended) or date range.')
+        .setName(t('settings.authorProgress.progressMode.name'))
+        .setDesc(t('settings.authorProgress.progressMode.desc'))
         .setHeading();
     addHeadingIcon(progressModeHeading, 'activity');
     addWikiLink(progressModeHeading, 'Settings#social-media');
@@ -1476,7 +1477,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const stageCell = progressModeGrid.createDiv({ cls: ERT_CLASSES.GRID_FORM_CELL });
     const stageBadgeRow = stageCell.createDiv({ cls: ERT_CLASSES.INLINE });
     stageBadgeRow.style.alignSelf = 'flex-start';
-    const stageBadge = stageBadgeRow.createSpan({ cls: ERT_CLASSES.CHIP, text: 'DETECTING…' });
+    const stageBadge = stageBadgeRow.createSpan({ cls: ERT_CLASSES.CHIP, text: t('settings.authorProgress.progressMode.detecting') });
     const stageNote = stageCell.createDiv({ cls: ERT_CLASSES.FIELD_NOTE });
 
     progressModeGrid.createDiv({ cls: 'ert-divider--vertical' });
@@ -1489,11 +1490,11 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const dateRangeWrap = modeCell.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
     dateRangeWrap.addClass('ert-hidden');
     const dateRangeInput = new TextComponent(dateRangeWrap);
-    dateRangeInput.setPlaceholder('YYYY-MM-DD to YYYY-MM-DD');
+    dateRangeInput.setPlaceholder(t('settings.authorProgress.progressMode.dateRangePlaceholder'));
     dateRangeInput.inputEl.addClass('ert-input--full');
     dateRangeWrap.createDiv({
         cls: ERT_CLASSES.FIELD_NOTE,
-        text: 'Format: YYYY-MM-DD to YYYY-MM-DD.'
+        text: t('settings.authorProgress.progressMode.dateRangeFormat')
     });
 
     const normalizeStage = (raw: unknown): (typeof STAGE_ORDER)[number] => {
@@ -1521,10 +1522,10 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             return {
                 stage: 'Zero',
                 total,
-                note: total === 0 ? 'No scenes found yet; assuming Zero stage.' : 'No progress estimate available yet.'
+                note: total === 0 ? t('settings.authorProgress.progressMode.noScenesFound') : t('settings.authorProgress.progressMode.noProgressEstimate')
             };
         }
-        return { stage, total, note: 'Based on the progress estimate (active publish stage).' };
+        return { stage, total, note: t('settings.authorProgress.progressMode.basedOnEstimate') };
     };
 
     const applyStageBadgeTone = (stage: (typeof STAGE_ORDER)[number]) => {
@@ -1549,16 +1550,16 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const parseDateRange = (value: string): { start?: string; target?: string; error?: string } => {
         const matches = value.match(/\d{4}-\d{2}-\d{2}/g);
         if (!matches || matches.length < 2) {
-            return { error: 'Enter both start and target dates (YYYY-MM-DD).' };
+            return { error: t('settings.authorProgress.progressMode.errorEnterBothDates') };
         }
         const [start, target] = matches;
         const startTime = parseIsoDate(start);
         const targetTime = parseIsoDate(target);
         if (!startTime || !targetTime) {
-            return { error: 'Use YYYY-MM-DD for both dates.' };
+            return { error: t('settings.authorProgress.progressMode.errorUseDateFormat') };
         }
         if (startTime > targetTime) {
-            return { error: 'Start date must be before target date.' };
+            return { error: t('settings.authorProgress.progressMode.errorStartBeforeTarget') };
         }
         return { start, target };
     };
@@ -1590,22 +1591,22 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         isUpdatingMode = true;
         modeDropdown.selectEl.options.length = 0;
         if (isZeroStage) {
-            modeDropdown.addOption('zero', 'Zero Mode (End scene number created by Author)');
-            modeDropdown.addOption('date', 'Date Target Mode');
+            modeDropdown.addOption('zero', t('settings.authorProgress.progressMode.zeroMode'));
+            modeDropdown.addOption('date', t('settings.authorProgress.progressMode.dateTargetMode'));
             modeDropdown.setDisabled(false);
             const storedMode = (plugin.settings.authorProgress?.defaults.aprProgressMode ?? 'zero') as AprProgressMode;
             const nextMode = modeOverride ?? (storedMode === 'date' ? 'date' : 'zero');
             modeDropdown.setValue(nextMode);
             setGuidanceLines([
-                'Zero Mode (recommended): create a placeholder final scene note with a high prefix number (e.g., "60 The End") to set intended total scene count.',
-                'Date Mode: choose a start date and target completion date.'
+                t('settings.authorProgress.progressMode.guidanceZero'),
+                t('settings.authorProgress.progressMode.guidanceDate')
             ]);
             dateRangeWrap.toggleClass('ert-hidden', nextMode !== 'date');
         } else {
-            modeDropdown.addOption('stage', 'Publish-stage progress (auto)');
+            modeDropdown.addOption('stage', t('settings.authorProgress.progressMode.publishStageAuto'));
             modeDropdown.setValue('stage');
             modeDropdown.setDisabled(true);
-            setGuidanceLines(['Using publish-stage progress.']);
+            setGuidanceLines([t('settings.authorProgress.progressMode.guidancePublishStage')]);
             dateRangeWrap.addClass('ert-hidden');
         }
         isUpdatingMode = false;
@@ -1675,7 +1676,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             updateStageUI(result.stage, result.total, result.note);
             seedDateRange();
         } catch {
-            updateStageUI('Zero', 0, 'No scenes found yet; assuming Zero stage.');
+            updateStageUI('Zero', 0, t('settings.authorProgress.progressMode.noScenesFound'));
             seedDateRange();
         }
     };
@@ -1703,8 +1704,8 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         });
 
         const attributionSetting = new Setting(attributionCard)
-            .setName('RT attribution')
-            .setDesc('Show the Radial Timeline attribution mark and link in Social exports.')
+            .setName(t('settings.authorProgress.attribution.name'))
+            .setDesc(t('settings.authorProgress.attribution.desc'))
             .addToggle(toggle => {
                 toggle.setValue(settings?.aprShowRtAttribution !== false)
                     .onChange(async (val) => {
@@ -1736,7 +1737,7 @@ async function renderHeroPreview(
             container.empty();
             container.createDiv({
                 cls: 'ert-apr-preview-empty',
-                text: 'Create scenes to see a preview of your Social report.'
+                text: t('settings.authorProgress.preview.emptyState')
             });
             return;
         }
@@ -1868,7 +1869,7 @@ async function renderHeroPreview(
         container.empty();
         container.createDiv({
             cls: 'ert-apr-preview-error',
-            text: 'Failed to render preview.'
+            text: t('settings.authorProgress.preview.renderError')
         });
         console.error('Social settings preview error:', e);
     }

@@ -349,8 +349,23 @@ export function spreadBeatsAcrossScenes(
 
 export function buildBeatDecimalPrefixes(
   beatActs: number[],
-  actSceneNumbers?: Map<number, number[]>
+  actSceneNumbers?: Map<number, number[]>,
+  explicitSceneNumbers?: number[]
 ): string[] {
+  if (Array.isArray(explicitSceneNumbers) && explicitSceneNumbers.length === beatActs.length) {
+    const beatPrefixByIndex = new Array<string>(beatActs.length);
+    const minorByMajor = new Map<number, number>();
+
+    explicitSceneNumbers.forEach((sceneNumber, index) => {
+      const major = Math.max(0, Math.round(sceneNumber));
+      const nextMinor = (minorByMajor.get(major) ?? 0) + 1;
+      minorByMajor.set(major, nextMinor);
+      beatPrefixByIndex[index] = formatBeatDecimalPrefix(String(major), nextMinor, 2);
+    });
+
+    return beatPrefixByIndex;
+  }
+
   const beatsByAct = new Map<number, number[]>();
   beatActs.forEach((act, index) => {
     const list = beatsByAct.get(act) ?? [];
@@ -406,7 +421,7 @@ export async function createBeatNotesFromSet(
   beatSystemName: string,
   sourcePath: string,
   customSystem?: PlotSystemPreset,
-  options?: { actSceneNumbers?: Map<number, number[]>; beatTemplate?: string }
+  options?: { actSceneNumbers?: Map<number, number[]>; beatTemplate?: string; explicitSceneNumbers?: number[] }
 ): Promise<{ created: number; skipped: number; errors: string[]; createdPaths: string[] }> {
   let beatSystem = PLOT_SYSTEMS[beatSystemName];
   
@@ -459,7 +474,7 @@ export async function createBeatNotesFromSet(
   const beatActs = beatSystem.beatDetails.map((beatInfo, index) => (
     beatInfo.act ? beatInfo.act : getBeatAct(index, beatSystem.beats.length)
   ));
-  const beatPrefixByIndex = buildBeatDecimalPrefixes(beatActs, actSceneNumbers);
+  const beatPrefixByIndex = buildBeatDecimalPrefixes(beatActs, actSceneNumbers, options?.explicitSceneNumbers);
 
   for (let i = 0; i < beatSystem.beats.length; i++) {
     const beatName = beatSystem.beats[i];

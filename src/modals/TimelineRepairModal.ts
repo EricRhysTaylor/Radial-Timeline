@@ -11,6 +11,7 @@ import { App, Modal, ButtonComponent, Notice, setIcon, ToggleComponent } from 'o
 import type RadialTimelinePlugin from '../main';
 import type { TFile } from 'obsidian';
 import type { TimelineItem } from '../types';
+import { t } from '../i18n';
 import {
     type RepairPipelineConfig,
     type RepairPipelineResult,
@@ -159,11 +160,11 @@ export class TimelineRepairModal extends Modal {
 
         // Header
         const header = this.contentEl.createDiv({ cls: 'ert-modal-header' });
-        header.createSpan({ cls: 'ert-modal-badge', text: 'Quick Scaffold' });
-        header.createDiv({ cls: 'ert-modal-title', text: 'Timeline order normalizer' });
+        header.createSpan({ cls: 'ert-modal-badge', text: t('timelineRepairModal.config.badge') });
+        header.createDiv({ cls: 'ert-modal-title', text: t('timelineRepairModal.config.title') });
         header.createDiv({
             cls: 'ert-modal-subtitle',
-            text: 'Quickly scaffold When dates from narrative order so Chronologue becomes usable. Uses pattern spacing and simple text cues. For deeper timeline analysis, use Timeline Audit. Scaffolds When values across the active book in narrative order and updates conflicting values.'
+            text: t('timelineRepairModal.config.subtitle')
         });
 
         // Scene count summary
@@ -171,9 +172,9 @@ export class TimelineRepairModal extends Modal {
         const scenesWithoutWhen = this.scenes.length - scenesWithWhen;
 
         const summaryRow = this.contentEl.createDiv({ cls: 'rt-timeline-repair-summary-row rt-timeline-repair-stats-strip' });
-        this.createStatItem(summaryRow, 'Total Scenes', String(this.scenes.length));
-        this.createStatItem(summaryRow, 'With When', String(scenesWithWhen));
-        this.createStatItem(summaryRow, 'Missing When', String(scenesWithoutWhen));
+        this.createStatItem(summaryRow, t('timelineRepairModal.config.statTotalScenes'), String(this.scenes.length));
+        this.createStatItem(summaryRow, t('timelineRepairModal.config.statWithWhen'), String(scenesWithWhen));
+        this.createStatItem(summaryRow, t('timelineRepairModal.config.statMissingWhen'), String(scenesWithoutWhen));
 
         // Setup configuration
         const setupCard = this.contentEl.createDiv({ cls: 'rt-glass-card rt-timeline-repair-setup-card' });
@@ -183,17 +184,17 @@ export class TimelineRepairModal extends Modal {
 
         const anchorSection = leftCol.createDiv({ cls: 'rt-timeline-repair-config-block' });
         anchorSection.createDiv({ cls: 'rt-timeline-repair-block-header' })
-            .createEl('h5', { text: 'Anchor', cls: 'rt-timeline-repair-block-title' });
+            .createEl('h5', { text: t('timelineRepairModal.anchor.name'), cls: 'rt-timeline-repair-block-title' });
         anchorSection.createDiv({
             cls: 'rt-timeline-repair-section-desc',
-            text: 'Set the starting When for scene 1.'
+            text: t('timelineRepairModal.anchor.desc')
         });
 
         const anchorRow = anchorSection.createDiv({ cls: 'rt-timeline-repair-anchor-row' });
 
         // Date input
         const dateInputContainer = anchorRow.createDiv({ cls: 'rt-timeline-repair-input-group' });
-        dateInputContainer.createEl('label', { text: 'Date', cls: 'rt-timeline-repair-label' });
+        dateInputContainer.createEl('label', { text: t('timelineRepairModal.anchor.dateLabel'), cls: 'rt-timeline-repair-label' });
         const dateInput = dateInputContainer.createEl('input', {
             type: 'date',
             cls: 'rt-timeline-repair-date-input ert-input ert-input--full'
@@ -204,7 +205,7 @@ export class TimelineRepairModal extends Modal {
 
         // Time input
         const timeInputContainer = anchorRow.createDiv({ cls: 'rt-timeline-repair-input-group' });
-        timeInputContainer.createEl('label', { text: 'Time', cls: 'rt-timeline-repair-label' });
+        timeInputContainer.createEl('label', { text: t('timelineRepairModal.anchor.timeLabel'), cls: 'rt-timeline-repair-label' });
         const timeInput = timeInputContainer.createEl('input', {
             type: 'time',
             cls: 'rt-timeline-repair-time-input ert-input ert-input--full'
@@ -215,7 +216,7 @@ export class TimelineRepairModal extends Modal {
 
         const previewSection = leftCol.createDiv({ cls: 'rt-timeline-repair-config-block rt-timeline-repair-preview-section' });
         previewSection.createDiv({ cls: 'rt-timeline-repair-block-header' })
-            .createEl('h5', { text: 'Scaffold preview', cls: 'rt-timeline-repair-block-title' });
+            .createEl('h5', { text: t('timelineRepairModal.preview.name'), cls: 'rt-timeline-repair-block-title' });
         const previewPanel = previewSection.createDiv({ cls: 'rt-timeline-repair-preview-panel' });
         const previewStart = previewPanel.createDiv({ cls: 'rt-timeline-repair-preview-start' });
         const previewStrip = previewPanel.createDiv({ cls: 'rt-timeline-repair-preview-strip' });
@@ -245,10 +246,10 @@ export class TimelineRepairModal extends Modal {
         // Pattern selection
         const patternSection = rightCol.createDiv({ cls: 'rt-timeline-repair-config-block' });
         patternSection.createDiv({ cls: 'rt-timeline-repair-block-header' })
-            .createEl('h5', { text: 'Pattern', cls: 'rt-timeline-repair-block-title' });
+            .createEl('h5', { text: t('timelineRepairModal.pattern.name'), cls: 'rt-timeline-repair-block-title' });
         patternSection.createDiv({
             cls: 'rt-timeline-repair-section-desc',
-            text: 'Apply the selected spacing pattern in narrative order.'
+            text: t('timelineRepairModal.pattern.desc')
         });
 
         const patternRow = patternSection.createDiv({ cls: 'rt-timeline-repair-pattern-grid' });
@@ -281,24 +282,24 @@ export class TimelineRepairModal extends Modal {
 
         const optionsSection = rightCol.createDiv({ cls: 'rt-timeline-repair-config-block' });
         optionsSection.createDiv({ cls: 'rt-timeline-repair-block-header' })
-            .createEl('h5', { text: 'Refinements', cls: 'rt-timeline-repair-block-title' });
+            .createEl('h5', { text: t('timelineRepairModal.refinements.name'), cls: 'rt-timeline-repair-block-title' });
         optionsSection.createDiv({
             cls: 'rt-timeline-repair-section-desc',
-            text: 'Base scaffold assigns When values in narrative order using the selected pattern.'
+            text: t('timelineRepairModal.refinements.desc')
         });
 
         let useTextCues = true;
 
         const baseRow = optionsSection.createDiv({ cls: 'rt-timeline-repair-option-row rt-is-static' });
         const baseText = baseRow.createDiv({ cls: 'rt-timeline-repair-level-text' });
-        baseText.createDiv({ cls: 'rt-timeline-repair-level-title', text: 'Base scaffold' });
-        baseText.createDiv({ cls: 'rt-timeline-repair-level-desc', text: 'Assigns When values across the active book using the selected pattern.' });
-        baseRow.createSpan({ cls: 'rt-timeline-repair-status-pill', text: 'Always on' });
+        baseText.createDiv({ cls: 'rt-timeline-repair-level-title', text: t('timelineRepairModal.refinements.baseScaffoldTitle') });
+        baseText.createDiv({ cls: 'rt-timeline-repair-level-desc', text: t('timelineRepairModal.refinements.baseScaffoldDesc') });
+        baseRow.createSpan({ cls: 'rt-timeline-repair-status-pill', text: t('timelineRepairModal.refinements.alwaysOn') });
 
         this.createLevelToggle(
             optionsSection,
-            'Text cues',
-            'Detect simple phrases like "next morning" or "three days later".',
+            t('timelineRepairModal.refinements.textCuesTitle'),
+            t('timelineRepairModal.refinements.textCuesDesc'),
             useTextCues,
             false,
             (val) => { useTextCues = val; }
@@ -308,7 +309,7 @@ export class TimelineRepairModal extends Modal {
         const buttonRow = this.contentEl.createDiv({ cls: 'ert-modal-actions' });
 
         new ButtonComponent(buttonRow)
-            .setButtonText('Preview Scaffold')
+            .setButtonText(t('timelineRepairModal.config.previewButton'))
             .setCta()
             .onClick(async () => {
                 const anchorWhen = this.parseAnchorWhenFromInputs(dateInput.value, timeInput.value, defaultAnchorWhen);
@@ -324,7 +325,7 @@ export class TimelineRepairModal extends Modal {
             });
 
         new ButtonComponent(buttonRow)
-            .setButtonText('Cancel')
+            .setButtonText(t('timelineRepairModal.config.cancelButton'))
             .onClick(() => this.close());
     }
 
@@ -369,9 +370,9 @@ export class TimelineRepairModal extends Modal {
 
         // Header
         const header = this.contentEl.createDiv({ cls: 'ert-modal-header' });
-        header.createSpan({ cls: 'ert-modal-badge', text: 'Quick Scaffold' });
-        header.createDiv({ cls: 'ert-modal-title', text: 'Scaffolding When dates...' });
-        const statusEl = header.createDiv({ cls: 'ert-modal-subtitle', text: 'Applying pattern spacing...' });
+        header.createSpan({ cls: 'ert-modal-badge', text: t('timelineRepairModal.analyzing.badge') });
+        header.createDiv({ cls: 'ert-modal-title', text: t('timelineRepairModal.analyzing.title') });
+        const statusEl = header.createDiv({ cls: 'ert-modal-subtitle', text: t('timelineRepairModal.analyzing.statusApplying') });
 
         // Progress card
         const progressCard = this.contentEl.createDiv({ cls: 'rt-glass-card' });
@@ -381,16 +382,16 @@ export class TimelineRepairModal extends Modal {
         progressBar.style.setProperty('--progress-width', '0%');
 
         const progressText = progressCard.createDiv({ cls: 'rt-pulse-progress-text' });
-        progressText.setText('Preparing...');
+        progressText.setText(t('timelineRepairModal.analyzing.preparing'));
 
         // Abort button
         const buttonRow = this.contentEl.createDiv({ cls: 'ert-modal-actions' });
         new ButtonComponent(buttonRow)
-            .setButtonText('Abort')
+            .setButtonText(t('timelineRepairModal.analyzing.abortButton'))
             .setWarning()
             .onClick(() => {
                 this.abortController?.abort();
-                new Notice('Scaffold aborted');
+                new Notice(t('timelineRepairModal.analyzing.abortedNotice'));
                 this.showConfigPhase();
             });
 
@@ -405,15 +406,15 @@ export class TimelineRepairModal extends Modal {
                     onPhaseChange: (phase) => {
                         switch (phase) {
                             case 'pattern':
-                                statusEl.setText('Applying pattern spacing...');
+                                statusEl.setText(t('timelineRepairModal.analyzing.phasePattern'));
                                 progressBar.style.setProperty('--progress-width', '30%');
                                 break;
                             case 'cues':
-                                statusEl.setText('Checking simple text cues...');
+                                statusEl.setText(t('timelineRepairModal.analyzing.phaseCues'));
                                 progressBar.style.setProperty('--progress-width', '70%');
                                 break;
                             case 'complete':
-                                statusEl.setText('Scaffold ready');
+                                statusEl.setText(t('timelineRepairModal.analyzing.phaseComplete'));
                                 progressBar.style.setProperty('--progress-width', '100%');
                                 break;
                         }
@@ -454,26 +455,26 @@ export class TimelineRepairModal extends Modal {
 
         // Badge row: Quick Scaffold + status counts
         const badgeRow = header.createDiv({ cls: 'rt-timeline-repair-badge-row' });
-        badgeRow.createSpan({ cls: 'ert-modal-badge', text: 'Quick Scaffold' });
+        badgeRow.createSpan({ cls: 'ert-modal-badge', text: t('timelineRepairModal.review.badge') });
         this.summaryBarEl = badgeRow.createSpan({ cls: 'rt-timeline-repair-header-status' });
         this.updateSummaryBar();
 
-        header.createDiv({ cls: 'ert-modal-title', text: 'Review scaffolded dates' });
+        header.createDiv({ cls: 'ert-modal-title', text: t('timelineRepairModal.review.title') });
         header.createDiv({
             cls: 'ert-modal-subtitle',
-            text: 'Adjust the scaffold before writing YAML. J/K to navigate, [ and ] to shift days.'
+            text: t('timelineRepairModal.review.subtitle')
         });
 
         // Filter toggles
         const filterRow = this.contentEl.createDiv({ cls: 'rt-timeline-repair-filter-row' });
 
-        this.createFilterPill(filterRow, 'Needs Review', this.filterNeedsReview, (val) => {
+        this.createFilterPill(filterRow, t('timelineRepairModal.review.filterNeedsReview'), this.filterNeedsReview, (val) => {
             this.filterNeedsReview = val;
             this.renderSceneList();
         });
 
         if (this.result.cueRefined > 0) {
-            this.createFilterPill(filterRow, 'Text cues', this.filterKeywordDerived, (val) => {
+            this.createFilterPill(filterRow, t('timelineRepairModal.review.filterTextCues'), this.filterKeywordDerived, (val) => {
                 this.filterKeywordDerived = val;
                 this.renderSceneList();
             });
@@ -481,12 +482,12 @@ export class TimelineRepairModal extends Modal {
 
         // Ripple mode toggle
         const rippleContainer = filterRow.createDiv({ cls: 'rt-timeline-repair-ripple-toggle' });
-        rippleContainer.createSpan({ text: 'Ripple Mode' });
+        rippleContainer.createSpan({ text: t('timelineRepairModal.review.rippleMode') });
 
         const rippleHelp = rippleContainer.createSpan({ cls: 'rt-timeline-repair-ripple-help' });
         setIcon(rippleHelp, 'help-circle');
         rippleHelp.setAttribute('aria-label',
-            'Ripple Mode\nAdjusting a scene shifts all subsequent scenes to preserve spacing.\nTurn off to adjust scenes independently.'
+            t('timelineRepairModal.review.rippleModeHelp')
         );
 
         const rippleToggle = new ToggleComponent(rippleContainer);
@@ -507,7 +508,7 @@ export class TimelineRepairModal extends Modal {
 
         // Undo/Redo buttons
         const undoBtn = new ButtonComponent(buttonRow)
-            .setButtonText('Undo')
+            .setButtonText(t('timelineRepairModal.review.undoButton'))
             .setDisabled(!canUndo(this.session))
             .onClick(() => {
                 if (this.session && canUndo(this.session)) {
@@ -520,7 +521,7 @@ export class TimelineRepairModal extends Modal {
             });
 
         const redoBtn = new ButtonComponent(buttonRow)
-            .setButtonText('Redo')
+            .setButtonText(t('timelineRepairModal.review.redoButton'))
             .setDisabled(!canRedo(this.session))
             .onClick(() => {
                 if (this.session && canRedo(this.session)) {
@@ -536,11 +537,11 @@ export class TimelineRepairModal extends Modal {
         buttonRow.createDiv({ cls: 'rt-timeline-repair-button-spacer' });
 
         new ButtonComponent(buttonRow)
-            .setButtonText('Back')
+            .setButtonText(t('timelineRepairModal.review.backButton'))
             .onClick(() => this.showConfigPhase());
 
         new ButtonComponent(buttonRow)
-            .setButtonText('Apply When Dates')
+            .setButtonText(t('timelineRepairModal.review.applyButton'))
             .setCta()
             .setDisabled(!this.session.hasUnsavedChanges)
             .onClick(() => this.applyChanges());
@@ -599,7 +600,7 @@ export class TimelineRepairModal extends Modal {
         if (entries.length === 0) {
             this.sceneListEl.createDiv({
                 cls: 'rt-timeline-repair-empty',
-                text: 'No scenes match the current filters.'
+                text: t('timelineRepairModal.review.emptyFilter')
             });
             return;
         }
@@ -647,7 +648,7 @@ export class TimelineRepairModal extends Modal {
             cls: 'rt-timeline-repair-scene-number'
         });
         line1.createSpan({
-            text: entry.scene.title || 'Untitled',
+            text: entry.scene.title || t('timelineRepairModal.review.untitled'),
             cls: 'rt-timeline-repair-scene-title'
         });
 
@@ -687,12 +688,12 @@ export class TimelineRepairModal extends Modal {
         if (entry.hasBackwardTime) {
             const warningBadge = line1.createSpan({ cls: 'rt-timeline-repair-warning-badge' });
             setIcon(warningBadge, 'alert-triangle');
-            warningBadge.setAttribute('aria-label', 'Backward time');
+            warningBadge.setAttribute('aria-label', t('timelineRepairModal.review.warningBackwardTime'));
         }
         if (entry.hasLargeGap) {
             const gapBadge = line1.createSpan({ cls: 'rt-timeline-repair-gap-badge' });
             setIcon(gapBadge, 'clock');
-            gapBadge.setAttribute('aria-label', 'Large time gap');
+            gapBadge.setAttribute('aria-label', t('timelineRepairModal.review.warningLargeGap'));
         }
 
         // Pattern compliance chip
@@ -738,13 +739,13 @@ export class TimelineRepairModal extends Modal {
         // Day controls
         const dayRow = controlsArea.createDiv({ cls: 'rt-timeline-repair-day-controls' });
 
-        const dayMinusBtn = dayRow.createEl('button', { cls: 'rt-timeline-repair-nudge-btn', text: '−1d' });
+        const dayMinusBtn = dayRow.createEl('button', { cls: 'rt-timeline-repair-nudge-btn', text: t('timelineRepairModal.review.dayMinus') });
         dayMinusBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             this.handleDayShift(idx, -1);
         });
 
-        const dayPlusBtn = dayRow.createEl('button', { cls: 'rt-timeline-repair-nudge-btn', text: '+1d' });
+        const dayPlusBtn = dayRow.createEl('button', { cls: 'rt-timeline-repair-nudge-btn', text: t('timelineRepairModal.review.dayPlus') });
         dayPlusBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             this.handleDayShift(idx, 1);
@@ -884,7 +885,7 @@ export class TimelineRepairModal extends Modal {
         const summary = getChangeSummary(this.session);
 
         if (summary.totalChanges === 0) {
-            new Notice('No changes to apply');
+            new Notice(t('timelineRepairModal.apply.noChangesNotice'));
             return;
         }
 
@@ -916,20 +917,20 @@ export class TimelineRepairModal extends Modal {
     private showConfirmDialog(changeCount: number): Promise<boolean> {
         return new Promise((resolve) => {
             const modal = new Modal(this.app);
-            modal.titleEl.setText('Confirm Changes');
+            modal.titleEl.setText(t('timelineRepairModal.confirm.title'));
 
             modal.contentEl.createDiv({
                 text: `This will update ${changeCount} scene file(s) with scaffolded When dates and provenance metadata.`
             });
             modal.contentEl.createDiv({
-                text: 'This action cannot be undone automatically. Make sure you have a backup if needed.',
+                text: t('timelineRepairModal.confirm.warning'),
                 cls: 'rt-timeline-repair-confirm-warning'
             });
 
             const buttonRow = modal.contentEl.createDiv({ cls: 'ert-modal-actions' });
 
             new ButtonComponent(buttonRow)
-                .setButtonText('Apply When Dates')
+                .setButtonText(t('timelineRepairModal.confirm.applyButton'))
                 .setCta()
                 .onClick(() => {
                     modal.close();
@@ -937,7 +938,7 @@ export class TimelineRepairModal extends Modal {
                 });
 
             new ButtonComponent(buttonRow)
-                .setButtonText('Cancel')
+                .setButtonText(t('timelineRepairModal.confirm.cancelButton'))
                 .onClick(() => {
                     modal.close();
                     resolve(false);

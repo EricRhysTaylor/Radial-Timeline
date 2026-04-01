@@ -10,6 +10,7 @@ import { App, Setting, TextComponent, DropdownComponent, setIcon, Modal, ButtonC
 import type RadialTimelinePlugin from '../../main';
 import type { RuntimeContentType, RuntimeRateProfile } from '../../types';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
+import { t } from '../../i18n';
 import { hasProFeatureAccess } from '../featureGate';
 import { ERT_CLASSES } from '../../ui/classes';
 import { fitSelectToSelectedLabel } from '../selectSizing';
@@ -107,9 +108,9 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
     }
 
     // Header row with Pro badge and description
-    const runtimeDescOn = 'Activate runtime estimate sub-mode in Chronologue Mode, timeline hover text, and command palette runtime estimator.';
+    const runtimeDescOn = t('settings.runtime.header.desc');
     const panelHeader = new Setting(proContainer)
-        .setName('Runtime estimation')
+        .setName(t('settings.runtime.header.name'))
         .setHeading()
         .setDesc(runtimeDescOn);
 
@@ -122,7 +123,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
         });
         const badgeIcon = badgeEl.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON });
         setIcon(badgeIcon, 'signature');
-        badgeEl.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'Pro' });
+        badgeEl.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: t('settings.runtime.header.badgeText') });
     }
     const panelHeaderEl = panelHeader.settingEl;
     const clearConditionalContent = () => {
@@ -192,7 +193,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
 
             const contentType = selectedProfile.contentType || 'novel';
             const ratesHeading = new Setting(ratesRow)
-                .setName('Rates & timings')
+                .setName(t('settings.runtime.rates.name'))
                 .setHeading();
             const ratesIconName = contentType === 'screenplay' ? 'projector' : 'mic-vocal';
             addHeadingIcon(ratesHeading, ratesIconName);
@@ -201,12 +202,12 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
 
             // Content Type Selection
             addProRow(new Setting(ratesRow))
-                .setName('Content type')
-                .setDesc('Novel calculates all text at narration pace. Screenplay separates dialogue from action.')
+                .setName(t('settings.runtime.contentType.name'))
+                .setDesc(t('settings.runtime.contentType.desc'))
                 .addDropdown((dropdown: DropdownComponent) => {
                     dropdown
-                        .addOption('novel', 'Novel / Audiobook')
-                        .addOption('screenplay', 'Screenplay')
+                        .addOption('novel', t('settings.runtime.contentType.optionNovel'))
+                        .addOption('screenplay', t('settings.runtime.contentType.optionScreenplay'))
                         .setValue(contentType)
                         .onChange(async (value: string) => {
                             await updateProfile((p) => { p.contentType = value as RuntimeContentType; });
@@ -217,8 +218,8 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
             // Word Rates (content-type specific)
             if (contentType === 'screenplay') {
                 addProRow(new Setting(ratesRow))
-                    .setName('Dialogue words per minute')
-                    .setDesc('Reading speed for quoted dialogue.')
+                    .setName(t('settings.runtime.dialogueWpm.name'))
+                    .setDesc(t('settings.runtime.dialogueWpm.desc'))
                     .addText((text: TextComponent) => {
                         text.inputEl.type = 'number';
                         text.inputEl.min = '50';
@@ -237,8 +238,8 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
                     });
 
                 addProRow(new Setting(ratesRow))
-                    .setName('Action words per minute')
-                    .setDesc('Reading speed for scene descriptions and action lines.')
+                    .setName(t('settings.runtime.actionWpm.name'))
+                    .setDesc(t('settings.runtime.actionWpm.desc'))
                     .addText((text: TextComponent) => {
                         text.inputEl.type = 'number';
                         text.inputEl.min = '50';
@@ -263,11 +264,11 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
                     desc: string;
                     defaultVal: number;
                 }> = [
-                    { key: 'beatSeconds', label: '(beat)', desc: 'Brief pause. Parenthetical timings — seconds added when screenplay directives are detected.', defaultVal: 2 },
-                    { key: 'pauseSeconds', label: '(pause)', desc: 'Standard pause', defaultVal: 3 },
-                    { key: 'longPauseSeconds', label: '(long pause)', desc: 'Extended silence', defaultVal: 5 },
-                    { key: 'momentSeconds', label: '(a moment)', desc: 'Reflective beat', defaultVal: 4 },
-                    { key: 'silenceSeconds', label: '(silence)', desc: 'Atmospheric pause', defaultVal: 5 },
+                    { key: 'beatSeconds', label: t('settings.runtime.parenthetical.beat.name'), desc: t('settings.runtime.parenthetical.beat.desc'), defaultVal: 2 },
+                    { key: 'pauseSeconds', label: t('settings.runtime.parenthetical.pause.name'), desc: t('settings.runtime.parenthetical.pause.desc'), defaultVal: 3 },
+                    { key: 'longPauseSeconds', label: t('settings.runtime.parenthetical.longPause.name'), desc: t('settings.runtime.parenthetical.longPause.desc'), defaultVal: 5 },
+                    { key: 'momentSeconds', label: t('settings.runtime.parenthetical.moment.name'), desc: t('settings.runtime.parenthetical.moment.desc'), defaultVal: 4 },
+                    { key: 'silenceSeconds', label: t('settings.runtime.parenthetical.silence.name'), desc: t('settings.runtime.parenthetical.silence.desc'), defaultVal: 5 },
                 ];
 
                 for (const p of parentheticals) {
@@ -295,7 +296,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
                         })
                         .addExtraButton(btn => {
                             btn.setIcon('rotate-ccw');
-                            btn.setTooltip('Reset to default');
+                            btn.setTooltip(t('settings.runtime.parenthetical.resetTooltip'));
                             btn.onClick(async () => {
                                 await updateProfile((profile) => {
                                     (profile as unknown as Record<string, unknown>)[p.key] = p.defaultVal;
@@ -307,8 +308,8 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
             } else {
                 // Novel / Audiobook mode
                 addProRow(new Setting(ratesRow))
-                    .setName('Narration words per minute')
-                    .setDesc('Reading pace for all content (audiobook narration).')
+                    .setName(t('settings.runtime.narrationWpm.name'))
+                    .setDesc(t('settings.runtime.narrationWpm.desc'))
                     .addText((text: TextComponent) => {
                         text.inputEl.type = 'number';
                         text.inputEl.min = '50';
@@ -329,8 +330,8 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
 
             // Session planning (optional, per profile) — 3rd row in ert-panel stack
             const sessionHeading = addProRow(new Setting(sessionPlanningRow))
-                .setName('Session planning (optional)')
-                .setDesc('Used in the Outline export: Index cards (JSON) summary to estimate writing hours and total sessions.')
+                .setName(t('settings.runtime.sessionPlanning.name'))
+                .setDesc(t('settings.runtime.sessionPlanning.desc'))
                 .setHeading();
             addHeadingIcon(sessionHeading, 'calendar-clock');
             addWikiLink(sessionHeading, 'Settings#runtime-estimation');
@@ -338,8 +339,8 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
             const session = selectedProfile.sessionPlanning || {};
 
             addProRow(new Setting(sessionPlanningRow))
-                .setName('Drafting words per minute (optional)')
-                .setDesc('Your writing speed for session time estimates.')
+                .setName(t('settings.runtime.draftingWpm.name'))
+                .setDesc(t('settings.runtime.draftingWpm.desc'))
                 .addText((text: TextComponent) => {
                     text.inputEl.type = 'number';
                     text.inputEl.min = '0';
@@ -360,8 +361,8 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
                 });
 
             addProRow(new Setting(sessionPlanningRow))
-                .setName('Daily minutes available (optional)')
-                .setDesc('For shooting schedule time estimates.')
+                .setName(t('settings.runtime.dailyMinutes.name'))
+                .setDesc(t('settings.runtime.dailyMinutes.desc'))
                 .addText((text: TextComponent) => {
                     text.inputEl.type = 'number';
                     text.inputEl.min = '0';
@@ -387,14 +388,14 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
             });
             patternsInfo.createEl('p', {
                 cls: ERT_CLASSES.SECTION_DESC,
-                text: 'Explicit duration patterns are always parsed and added to runtime:'
+                text: t('settings.runtime.patterns.heading')
             });
             const patternsList = patternsInfo.createEl('ul');
             const patterns = [
-                '(30 seconds) or (30s)',
-                '(2 minutes) or (2m)',
-                '(runtime: 3m)',
-                '(allow 5 minutes) — for demos, podcasts',
+                t('settings.runtime.patterns.seconds'),
+                t('settings.runtime.patterns.minutes'),
+                t('settings.runtime.patterns.runtime'),
+                t('settings.runtime.patterns.allow'),
             ];
             for (const pat of patterns) {
                 patternsList.createEl('li').createEl('code', { text: pat });
@@ -408,11 +409,11 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
             const selectedProfile = currentProfiles.find(p => p.id === selectedProfileId) || currentProfiles[0];
             const currentDefault = currentProfiles.find(p => p.id === plugin.settings.defaultRuntimeProfileId);
             const isDefault = selectedProfile && selectedProfile.id === plugin.settings.defaultRuntimeProfileId;
-            const defaultNote = isDefault ? ' (default)' : '';
+            const defaultNote = isDefault ? t('settings.runtime.profile.defaultSuffix') : '';
 
             const headerSetting = addProRow(new Setting(headerContainer))
-                .setName('Profile')
-                .setDesc(`Select, rename, duplicate, delete, or set as default. Current default: ${currentDefault?.label || 'None'}`);
+                .setName(t('settings.runtime.profile.name'))
+                .setDesc(`Select, rename, duplicate, delete, or set as default. Current default: ${currentDefault?.label || t('settings.runtime.profile.noneFallback')}`);
 
             headerSetting.addDropdown((dropdown: DropdownComponent) => {
                 dropdown.selectEl.addClass('ert-input', 'ert-input--fit-selected');
@@ -431,7 +432,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
 
             headerSetting.addExtraButton(btn => {
                 btn.setIcon('plus');
-                btn.setTooltip('Duplicate profile');
+                btn.setTooltip(t('settings.runtime.profile.duplicateTooltip'));
                 btn.onClick(async () => {
                     const base = selectedProfile || currentProfiles[0];
                     if (!base) return;
@@ -450,7 +451,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
 
             headerSetting.addExtraButton(btn => {
                 btn.setIcon('pencil');
-                btn.setTooltip('Rename profile');
+                btn.setTooltip(t('settings.runtime.profile.renameTooltip'));
                 btn.setDisabled(!selectedProfile);
                 btn.onClick(() => {
                     if (!selectedProfile) return;
@@ -461,7 +462,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
                     contentEl.addClass('ert-modal-container');
 
                     const header = contentEl.createDiv({ cls: 'ert-modal-header' });
-                    header.createDiv({ cls: 'ert-modal-title', text: 'Rename profile' });
+                    header.createDiv({ cls: 'ert-modal-title', text: t('settings.runtime.profile.renameTitle') });
 
                     const inputContainer = contentEl.createDiv({ cls: 'ert-search-input-container' });
                     const inputEl = inputContainer.createEl('input', {
@@ -496,11 +497,11 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
 
                     const buttonRow = contentEl.createDiv({ cls: 'ert-modal-actions' });
                     new ButtonComponent(buttonRow)
-                        .setButtonText('OK')
+                        .setButtonText(t('settings.runtime.profile.okButton'))
                         .setCta()
                         .onClick(() => submit());
                     new ButtonComponent(buttonRow)
-                        .setButtonText('Cancel')
+                        .setButtonText(t('settings.runtime.profile.cancelButton'))
                         .onClick(() => modal.close());
 
                     modal.open();
@@ -509,7 +510,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
 
             headerSetting.addExtraButton(btn => {
                 btn.setIcon('trash');
-                btn.setTooltip('Delete profile');
+                btn.setTooltip(t('settings.runtime.profile.deleteTooltip'));
                 btn.setDisabled(currentProfiles.length <= 1);
                 btn.onClick(async () => {
                     if (currentProfiles.length <= 1) return;
@@ -529,7 +530,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
 
             headerSetting.addExtraButton(btn => {
                 btn.setIcon('star');
-                btn.setTooltip(isDefault ? 'Already default' : 'Set as default');
+                btn.setTooltip(isDefault ? t('settings.runtime.profile.alreadyDefaultTooltip') : t('settings.runtime.profile.setDefaultTooltip'));
                 btn.setDisabled(!selectedProfile || isDefault);
                 btn.onClick(async () => {
                     if (!selectedProfile) return;

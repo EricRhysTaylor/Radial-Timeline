@@ -44,6 +44,7 @@ import { buildInquiryPromptParts, INQUIRY_ROLE_TEMPLATE_GUARDRAIL } from '../../
 import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { cleanEvidenceBody } from '../../inquiry/utils/evidenceCleaning';
 import { getSortedSceneFiles } from '../../utils/manuscript';
+import { t } from '../../i18n';
 import { extractBeatOrder } from '../../utils/gossamer';
 import { resolveSelectedBeatModelFromSettings } from '../../utils/beatSystemState';
 import { getSynopsisGenerationWordLimit, getSynopsisHoverLineLimit } from '../../utils/synopsisLimits';
@@ -111,12 +112,12 @@ export function renderAiSection(params: {
     const badge = heroBadgeRow.createSpan({ cls: ERT_CLASSES.BADGE_PILL });
     const badgeIcon = badge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON });
     setIcon(badgeIcon, 'cpu');
-    badge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'AI' });
+    badge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: t('settings.ai.hero.badgeText') });
     const badgeWikiLink = badge.createEl('a', {
         href: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#ai',
         cls: 'ert-badgePill__inlineLink',
         attr: {
-            'aria-label': 'Read more in the Wiki',
+            'aria-label': t('settings.ai.hero.wikiAriaLabel'),
             'target': '_blank',
             'rel': 'noopener'
         }
@@ -124,31 +125,31 @@ export function renderAiSection(params: {
     setIcon(badgeWikiLink, 'external-link');
 
     const heroToggleWrap = heroBadgeRow.createDiv({ cls: 'ert-toggle-item ert-ai-hero-toggle' });
-    const heroToggleLabel = heroToggleWrap.createSpan({ cls: 'ert-toggle-label', text: 'Inactive' });
+    const heroToggleLabel = heroToggleWrap.createSpan({ cls: 'ert-toggle-label', text: t('settings.ai.hero.toggleInactive') });
     const heroToggleInput = heroToggleWrap.createEl('input', {
         cls: 'ert-toggle-input',
-        attr: { type: 'checkbox', 'aria-label': 'Enable AI features' }
+        attr: { type: 'checkbox', 'aria-label': t('settings.ai.hero.toggleAriaLabel') }
     }) as HTMLInputElement;
 
     const heroTitle = aiHero.createEl('h3', {
         cls: `${ERT_CLASSES.SECTION_TITLE} ert-hero-title`,
-        text: 'A deep editorial lens for your manuscript.'
+        text: t('settings.ai.hero.titleActive')
     });
     const heroOnState = aiHero.createDiv({ cls: `${ERT_CLASSES.STACK} ert-ai-hero-state-on` });
     heroOnState.createEl('p', {
         cls: `${ERT_CLASSES.SECTION_DESC} ert-hero-subtitle`,
-        text: 'Radial Timeline uses AI to help authors prepare their work for editorial review\u2014by beta readers, collaborators, and professional editors. It analyzes structure, momentum, and continuity across scenes, helping the author identify gaps, surface contradictions, and strengthen narrative clarity.'
+        text: t('settings.ai.hero.descriptionActive')
     });
     const heroOnFeatures = heroOnState.createDiv({
         cls: `${ERT_CLASSES.HERO_FEATURES} ${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}`
     });
-    heroOnFeatures.createEl('h5', { text: 'AI HIGHLIGHTS', cls: 'ert-kicker' });
+    heroOnFeatures.createEl('h5', { text: t('settings.ai.hero.highlightsKicker'), cls: 'ert-kicker' });
     const heroOnList = heroOnFeatures.createEl('ul', { cls: ERT_CLASSES.STACK });
     [
-        { icon: 'waves', text: 'Inquiry - Ask precise, cross-scene questions and receive structured editorial feedback.' },
-        { icon: 'activity', text: 'Pulse (Triplet Analysis) - Examine scenes in context using Radial Timeline\u2019s three-scene lens.' },
-        { icon: 'waypoints', text: 'Gossamer Momentum - Measure beat-level tension and narrative drive.' },
-        { icon: 'sparkles', text: 'Force multiplier - Expand analytical reach while saving time with contextual, actionable insight.' }
+        { icon: 'waves', text: t('settings.ai.hero.featureInquiry') },
+        { icon: 'activity', text: t('settings.ai.hero.featurePulse') },
+        { icon: 'waypoints', text: t('settings.ai.hero.featureGossamer') },
+        { icon: 'sparkles', text: t('settings.ai.hero.featureForceMultiplier') }
     ].forEach(item => {
         const li = heroOnList.createEl('li', { cls: `${ERT_CLASSES.INLINE} ert-feature-item` });
         const icon = li.createSpan({ cls: 'ert-feature-icon' });
@@ -159,22 +160,22 @@ export function renderAiSection(params: {
     const heroOffState = aiHero.createDiv({ cls: `${ERT_CLASSES.STACK} ert-ai-hero-state-off` });
     heroOffState.createEl('p', {
         cls: `${ERT_CLASSES.SECTION_DESC} ert-hero-subtitle`,
-        text: 'Your manuscript is being shaped through human judgment, revision, and creative instinct. Radial Timeline continues to support structure, sequencing, and story architecture without automated analysis.'
+        text: t('settings.ai.heroOff.descriptionPrimary')
     });
     heroOffState.createEl('p', {
         cls: `${ERT_CLASSES.SECTION_DESC} ert-hero-subtitle`,
-        text: 'AI in Radial Timeline is editorial - never generative. It does not replace your voice or substitute machine-written prose. It can be enabled at any time when you want an additional layer of structured insight.'
+        text: t('settings.ai.heroOff.descriptionSecondary')
     });
     const heroOffFeatures = heroOffState.createDiv({
         cls: `${ERT_CLASSES.HERO_FEATURES} ${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}`
     });
-    heroOffFeatures.createEl('h5', { text: 'AI TOOLS AVAILABLE WHEN ENABLED', cls: 'ert-kicker' });
+    heroOffFeatures.createEl('h5', { text: t('settings.ai.heroOff.toolsKicker'), cls: 'ert-kicker' });
     const heroOffList = heroOffFeatures.createEl('ul', { cls: ERT_CLASSES.STACK });
     [
-        'Inquiry - Cross-scene structural analysis via custom inquiry questions.',
-        'Pulse (Triplet Analysis) - Context-aware scene evaluation.',
-        'Gossamer Momentum - Beat-level narrative momentum mapping.',
-        'Enhanced features such as scene summaries & runtime estimates - Tools that speed workflow.'
+        t('settings.ai.heroOff.featureInquiry'),
+        t('settings.ai.heroOff.featurePulse'),
+        t('settings.ai.heroOff.featureGossamer'),
+        t('settings.ai.heroOff.featureEnhanced')
     ].forEach(text => {
         const li = heroOffList.createEl('li', { cls: `${ERT_CLASSES.INLINE} ert-feature-item` });
         const icon = li.createSpan({ cls: 'ert-feature-icon' });
@@ -183,7 +184,7 @@ export function renderAiSection(params: {
     });
     heroOffState.createDiv({
         cls: 'ert-ai-hero-muted',
-        text: 'Your voice leads. AI supports.'
+        text: t('settings.ai.heroOff.muted')
     });
 
     const aiStateContent = containerEl.createDiv({ cls: ERT_CLASSES.STACK });
@@ -191,11 +192,11 @@ export function renderAiSection(params: {
 
     const updateAiHeroState = (enabled: boolean): void => {
         heroToggleInput.checked = enabled;
-        heroToggleLabel.setText(enabled ? 'Active' : 'Inactive');
+        heroToggleLabel.setText(enabled ? t('settings.ai.hero.toggleActive') : t('settings.ai.hero.toggleInactive'));
         heroToggleLabel.toggleClass('is-active', enabled);
         heroTitle.setText(enabled
-            ? 'A deep editorial lens for your manuscript.'
-            : 'AI guidance is currently paused.');
+            ? t('settings.ai.hero.titleActive')
+            : t('settings.ai.hero.titleInactive'));
         heroOnState.toggleClass('ert-settings-hidden', !enabled);
         heroOnState.toggleClass('ert-settings-visible', enabled);
         heroOffState.toggleClass('ert-settings-hidden', enabled);
@@ -223,10 +224,10 @@ export function renderAiSection(params: {
     const quickSetupSection = aiSettingsGroup.createDiv({
         cls: `${ERT_CLASSES.CARD} ${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK} ert-ai-section-card`
     });
-    quickSetupSection.createDiv({ cls: 'ert-section-title', text: 'AI Strategy' });
+    quickSetupSection.createDiv({ cls: 'ert-section-title', text: t('settings.ai.strategy.title') });
     quickSetupSection.createDiv({
         cls: 'ert-section-desc',
-        text: 'Set how AI selects its model and how deeply it analyzes your manuscript.'
+        text: t('settings.ai.strategy.desc')
     });
     const quickSetupGrid = quickSetupSection.createDiv({
         cls: `${ERT_CLASSES.GRID_FORM} ${ERT_CLASSES.GRID_FORM_3} ert-ai-quick-grid`
@@ -237,19 +238,19 @@ export function renderAiSection(params: {
     const costEstimateSection = aiSettingsGroup.createDiv({
         cls: `${ERT_CLASSES.CARD} ${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK} ert-ai-section-card`
     });
-    costEstimateSection.createDiv({ cls: 'ert-section-title', text: 'AI Cost Estimate' });
+    costEstimateSection.createDiv({ cls: 'ert-section-title', text: t('settings.ai.costEstimate.title') });
     costEstimateSection.createDiv({
         cls: 'ert-section-desc',
-        text: 'Cost estimates based on the current Inquiry scope. Includes scenes, outlines, and reference documents according to Inquiry settings.'
+        text: t('settings.ai.costEstimate.desc')
     });
     const costEstimateCorpusSummary = costEstimateSection.createDiv({ cls: `${ERT_CLASSES.STACK_TIGHT}` });
     const costEstimateCorpusSize = costEstimateCorpusSummary.createDiv({
         cls: 'ert-section-desc',
-        text: 'Inquiry Corpus: Calculating...'
+        text: t('settings.ai.costEstimate.corpusCalculating')
     });
     const costEstimateCorpusStructure = costEstimateCorpusSummary.createDiv({
         cls: 'ert-field-note',
-        text: 'Scanning corpus...'
+        text: t('settings.ai.costEstimate.corpusScanning')
     });
     const costEstimateTable = costEstimateSection.createDiv({ cls: 'ert-ai-models-table' });
     const costEstimateFootnote = costEstimateSection.createDiv({ cls: 'ert-ai-cost-footnote' });
@@ -466,7 +467,7 @@ export function renderAiSection(params: {
     });
     largeHandlingSection.setAttr('data-ert-role', 'ai-setting:large-manuscript-handling');
     const largeHandlingHeader = new Settings(largeHandlingSection)
-        .setName('What gets sent to the AI')
+        .setName(t('settings.ai.largeHandling.name'))
         .setHeading();
     applyErtHeaderLayout(largeHandlingHeader);
     const capacityGrid = largeHandlingSection.createDiv({ cls: 'ert-ai-capacity-grid' });
@@ -749,16 +750,16 @@ export function renderAiSection(params: {
 
     // ── Execution preference dropdown ──
     const executionPreferenceSetting = new Settings(aiSettingsGroup)
-        .setName('Execution preference')
-        .setDesc('Choose how large requests are handled during Inquiry. Automatic is recommended.');
+        .setName(t('settings.ai.executionPreference.name'))
+        .setDesc(t('settings.ai.executionPreference.desc'));
     executionPreferenceSetting.settingEl.setAttr('data-ert-role', 'ai-setting:execution-preference');
     let executionPreferenceDropdown: DropdownComponent | null = null;
     executionPreferenceSetting.addDropdown(dropdown => {
         executionPreferenceDropdown = dropdown;
         dropdown.selectEl.addClass('ert-input', 'ert-input--lg');
-        dropdown.addOption('automatic', 'Automatic');
-        dropdown.addOption('singlePassOnly', 'Single-pass only');
-        dropdown.addOption('segmented', 'Segmented (always split)');
+        dropdown.addOption('automatic', t('settings.ai.executionPreference.optionAutomatic'));
+        dropdown.addOption('singlePassOnly', t('settings.ai.executionPreference.optionSinglePass'));
+        dropdown.addOption('segmented', t('settings.ai.executionPreference.optionSegmented'));
         dropdown.onChange(async value => {
             if (isSyncingRoutingUi) return;
             const aiSettings = ensureCanonicalAiSettings();
@@ -775,9 +776,9 @@ export function renderAiSection(params: {
         const mode = ensureCanonicalAiSettings().analysisPackaging;
         executionPreferenceNote.setText(
             mode === 'singlePassOnly'
-                ? 'Runs only when the Inquiry corpus fits one pass. Otherwise reduce scope or switch to Automatic.'
+                ? t('settings.ai.executionPreference.noteSinglePass')
                 : mode === 'segmented'
-                ? 'Always splits the run into structured passes, even when one pass would fit.'
+                ? t('settings.ai.executionPreference.noteSegmented')
                 : ''
         );
         executionPreferenceNote.toggleClass('ert-settings-hidden', mode === 'automatic');
@@ -791,17 +792,17 @@ export function renderAiSection(params: {
     const roleContextSection = aiSettingsGroup.createDiv({
         cls: `${ERT_CLASSES.CARD} ${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK} ert-ai-section-card`
     });
-    roleContextSection.createDiv({ cls: 'ert-section-title', text: 'Role context' });
+    roleContextSection.createDiv({ cls: 'ert-section-title', text: t('settings.ai.roleContext.title') });
     roleContextSection.createDiv({
         cls: 'ert-section-desc',
-        text: 'Active role and context framing used for AI submissions. Applied to Inquiry, Pulse (Triplet Analysis), Gossamer Momentum, Summary Refresh, Runtime AI Estimation.'
+        text: t('settings.ai.roleContext.desc')
     });
 
     const apiKeysFold = aiSettingsGroup.createDiv({
         cls: `${ERT_CLASSES.STACK} ert-ai-configuration`
     });
     const apiKeysHeader = new Settings(apiKeysFold)
-        .setName('API keys')
+        .setName(t('settings.ai.apiKeys.name'))
         .setHeading();
     addHeadingIcon(apiKeysHeader, 'key');
     addWikiLink(apiKeysHeader, 'Settings#ai');
@@ -813,17 +814,17 @@ export function renderAiSection(params: {
     });
     aiConfigFold.setAttr('data-ert-role', 'ai-setting:configuration');
     const aiConfigHeader = new Settings(aiConfigFold)
-        .setName('Configuration')
+        .setName(t('settings.ai.configuration.name'))
         .setHeading();
     applyErtHeaderLayout(aiConfigHeader);
     const aiConfigBody = aiConfigFold.createDiv({ cls: [ERT_CLASSES.SECTION_BODY, ERT_CLASSES.STACK] });
 
     const contextTemplateSetting = new Settings(roleContextSection)
-        .setName('AI prompt role & context template')
+        .setName(t('settings.ai.contextTemplate.name'))
         .setDesc(`Active: ${getActiveTemplateName()}`)
         .addExtraButton(button => button
             .setIcon('gear')
-            .setTooltip('Manage context templates for AI prompt generation and Gossamer score generation')
+            .setTooltip(t('settings.ai.contextTemplate.tooltip'))
             .onClick(() => {
                 const modal = new AiContextModal(app, plugin, () => {
                     contextTemplateSetting.setDesc(`Active: ${getActiveTemplateName()}`);
@@ -834,10 +835,10 @@ export function renderAiSection(params: {
 
     const capabilityFloor: Capability[] = ['longContext', 'jsonStrict', 'reasoningStrong', 'highOutputCap'];
     const providerLabel: Record<AIProviderId, string> = {
-        anthropic: 'Anthropic',
-        openai: 'OpenAI',
-        google: 'Google',
-        ollama: 'Local LLM',
+        anthropic: t('settings.ai.provider.optionAnthropic'),
+        openai: t('settings.ai.provider.optionOpenai'),
+        google: t('settings.ai.provider.optionGoogle'),
+        ollama: t('settings.ai.provider.optionLocalLlm'),
         none: 'Disabled'
     };
 
@@ -1031,17 +1032,17 @@ export function renderAiSection(params: {
     };
 
     const providerSetting = new Settings(quickSetupGrid)
-        .setName('Provider')
-        .setDesc('Select the AI service or Local LLM runtime that powers structural analysis and editorial insight.');
+        .setName(t('settings.ai.provider.name'))
+        .setDesc(t('settings.ai.provider.desc'));
     providerSetting.settingEl.setAttr('data-ert-role', 'ai-setting:provider');
     let providerDropdown: DropdownComponent | null = null;
     providerSetting.addDropdown(dropdown => {
         providerDropdown = dropdown;
         dropdown.selectEl.addClass('ert-input', 'ert-input--md', 'ert-ai-strategy-select');
-        dropdown.addOption('anthropic', 'Anthropic');
-        dropdown.addOption('openai', 'OpenAI');
-        dropdown.addOption('google', 'Google');
-        dropdown.addOption('ollama', 'Local LLM');
+        dropdown.addOption('anthropic', t('settings.ai.provider.optionAnthropic'));
+        dropdown.addOption('openai', t('settings.ai.provider.optionOpenai'));
+        dropdown.addOption('google', t('settings.ai.provider.optionGoogle'));
+        dropdown.addOption('ollama', t('settings.ai.provider.optionLocalLlm'));
         dropdown.onChange(async value => {
             if (isSyncingRoutingUi) return;
             const aiSettings = ensureCanonicalAiSettings();
@@ -1066,8 +1067,8 @@ export function renderAiSection(params: {
     params.addAiRelatedElement(providerSetting.settingEl);
 
     const modelOverrideSetting = new Settings(quickSetupGrid)
-        .setName('Model')
-        .setDesc('Choose Auto to use the latest stable model, or pick a specific model.');
+        .setName(t('settings.ai.modelOverride.name'))
+        .setDesc(t('settings.ai.modelOverride.desc'));
     modelOverrideSetting.settingEl.setAttr('data-ert-role', 'ai-setting:model-override');
     let modelOverrideDropdown: DropdownComponent | null = null;
     modelOverrideSetting.addDropdown(dropdown => {
@@ -1100,22 +1101,22 @@ export function renderAiSection(params: {
     params.addAiRelatedElement(modelOverrideSetting.settingEl);
 
     // Do not rewrite this copy as generic: it reflects limits specifically granted to the author/user by their provider.
-    const ACCESS_TIER_COPY = 'Increase available context headroom if your provider has granted you a higher Tier.';
+    const ACCESS_TIER_COPY = t('settings.ai.accessTier.desc');
     const LOCAL_MODEL_STRATEGY_COPY = 'Select the active local model here. If discovery fails, use the manual fallback in Local LLM Configuration below.';
     const LOCAL_OVERRIDE_COPY = 'Use Auto for standard Local LLM setup. Switch to Custom only when you need to override backend or transport settings.';
 
     const accessTierSetting = new Settings(quickSetupGrid)
-        .setName('Access')
+        .setName(t('settings.ai.accessTier.name'))
         .setDesc(ACCESS_TIER_COPY);
     accessTierSetting.settingEl.setAttr('data-ert-role', 'ai-setting:access-level');
     let accessTierDropdown: DropdownComponent | null = null;
     accessTierSetting.addDropdown(dropdown => {
         accessTierDropdown = dropdown;
         dropdown.selectEl.addClass('ert-input', 'ert-input--md', 'ert-ai-strategy-select');
-        dropdown.addOption('1', 'Tier 1');
-        dropdown.addOption('2', 'Tier 2');
-        dropdown.addOption('3', 'Tier 3');
-        dropdown.addOption('4', 'Tier 4');
+        dropdown.addOption('1', t('settings.ai.accessTier.tier1'));
+        dropdown.addOption('2', t('settings.ai.accessTier.tier2'));
+        dropdown.addOption('3', t('settings.ai.accessTier.tier3'));
+        dropdown.addOption('4', t('settings.ai.accessTier.tier4'));
         dropdown.onChange(async value => {
             if (isSyncingRoutingUi) return;
             const aiSettings = ensureCanonicalAiSettings();
@@ -1164,15 +1165,15 @@ export function renderAiSection(params: {
     });
     const resolvedPreviewKicker = resolvedPreviewFrame.createDiv({
         cls: 'ert-ai-resolved-preview-kicker',
-        text: 'PREVIEW (ACTIVE MODEL)'
+        text: t('settings.ai.preview.kicker')
     });
     const resolvedPreviewModel = resolvedPreviewFrame.createDiv({
         cls: 'ert-ai-resolved-preview-model',
-        text: 'Resolving...'
+        text: t('settings.ai.preview.resolving')
     });
     const resolvedPreviewProvider = resolvedPreviewFrame.createDiv({
         cls: 'ert-ai-resolved-preview-provider',
-        text: 'Provider: —'
+        text: t('settings.ai.preview.providerPlaceholder')
     });
     const resolvedPreviewComparator = resolvedPreviewFrame.createDiv({
         cls: 'ert-ai-resolved-preview-comparator ert-settings-hidden'
@@ -1228,7 +1229,7 @@ export function renderAiSection(params: {
     }
 
     const renderLocalPreviewUnavailable = (title: string, detail: string): void => {
-        resolvedPreviewKicker.setText('PREVIEW (ACTIVE MODEL)');
+        resolvedPreviewKicker.setText(t('settings.ai.preview.kicker'));
         resolvedPreviewModel.setText(title);
         resolvedPreviewProvider.setText(detail);
         resolvedPreviewComparatorLabel.setText('');
@@ -1253,7 +1254,7 @@ export function renderAiSection(params: {
     };
 
     const renderResolvedPreview = (state: ResolvedPreviewRenderState): void => {
-        resolvedPreviewKicker.setText('PREVIEW (ACTIVE MODEL)');
+        resolvedPreviewKicker.setText(t('settings.ai.preview.kicker'));
         const previewModelLabel = state.provider === 'ollama'
             ? state.modelLabel.replace(/^Local LLM:\s*/i, '').trim() || state.modelLabel
             : state.modelLabel;
@@ -1978,17 +1979,17 @@ export function renderAiSection(params: {
 
     if (!secretStorageAvailable) {
         const warningSetting = new Settings(configurationBody)
-            .setName('Secure key saving unavailable')
-            .setDesc('Secure key saving is unavailable in this Obsidian build. Provider API keys cannot be configured until secret storage is available.');
+            .setName(t('settings.ai.secureKey.unavailableName'))
+            .setDesc(t('settings.ai.secureKey.unavailableDesc'));
         params.addAiRelatedElement(warningSetting.settingEl);
     }
 
     if (secretStorageAvailable && needsLegacyKeyMigration(plugin)) {
         const migrateKeysSetting = new Settings(configurationBody)
-            .setName('Secure my saved keys')
-            .setDesc('Moves older provider key fields into private saved keys and clears plaintext values.');
+            .setName(t('settings.ai.secureKey.migrateName'))
+            .setDesc(t('settings.ai.secureKey.migrateDesc'));
         migrateKeysSetting.addButton(button => button
-            .setButtonText('Secure now')
+            .setButtonText(t('settings.ai.secureKey.migrateButton'))
             .onClick(async () => {
                 button.setDisabled(true);
                 try {
@@ -1996,7 +1997,7 @@ export function renderAiSection(params: {
                     if (migration.migratedProviders.length) {
                         new Notice(`Secured ${migration.migratedProviders.length} provider key(s).`);
                     } else {
-                        new Notice('No legacy provider keys were available to migrate.');
+                        new Notice(t('settings.ai.secureKey.noLegacyKeysNotice'));
                     }
                     if (migration.warnings.length) {
                         new Notice(migration.warnings[0]);
@@ -2128,30 +2129,30 @@ export function renderAiSection(params: {
             const text = body.createSpan({ cls: 'ert-ai-provider-key-state__text' });
             if (next === 'ready') {
                 providerStateDetail = '';
-                text.setText('Status: Ready ✓');
+                text.setText(t('settings.ai.credential.statusReady'));
             } else if (next === 'rejected') {
                 providerStateDetail = '';
-                text.setText('Status: Key rejected');
+                text.setText(t('settings.ai.credential.statusRejected'));
             } else if (next === 'network_blocked') {
-                text.setText('Status: Provider validation failed');
+                text.setText(t('settings.ai.credential.statusNetworkBlocked'));
             } else if (next === 'checking') {
                 providerStateDetail = '';
-                text.setText('Status: Checking key...');
+                text.setText(t('settings.ai.credential.statusChecking'));
             } else {
                 providerStateDetail = '';
-                text.setText('Status: Not configured');
+                text.setText(t('settings.ai.credential.statusNotConfigured'));
             }
             desc.appendChild(stateBlock);
 
             const helper = body.createSpan({ cls: 'ert-ai-provider-key-state__helper' });
             if (next === 'not_configured') {
-                helper.textContent = 'Paste a key to enable this provider.';
+                helper.textContent = t('settings.ai.credential.helperNotConfigured');
             } else if (next === 'rejected') {
-                helper.textContent = 'Paste a new key to replace the saved one.';
+                helper.textContent = t('settings.ai.credential.helperRejected');
             } else if (next === 'network_blocked') {
-                helper.textContent = providerStateDetail || 'Provider could not be reached. You can still replace the key below.';
+                helper.textContent = providerStateDetail || t('settings.ai.credential.helperNetworkBlocked');
             } else if (next === 'checking') {
-                helper.textContent = 'Validating saved key with the provider...';
+                helper.textContent = t('settings.ai.credential.helperChecking');
             }
             if (!helper.textContent) helper.remove();
 
@@ -2161,7 +2162,7 @@ export function renderAiSection(params: {
                 const replaceBtn = document.createElement('button');
                 replaceBtn.className = 'ert-ai-provider-key-action';
                 replaceBtn.type = 'button';
-                replaceBtn.textContent = 'Replace key...';
+                replaceBtn.textContent = t('settings.ai.credential.replaceKeyButton');
                 replaceBtn.addEventListener('click', () => {
                     replaceRequested = true;
                     setProviderState(providerState);
@@ -2173,14 +2174,14 @@ export function renderAiSection(params: {
                     const copyBtn = document.createElement('button');
                     copyBtn.className = 'ert-ai-provider-key-action';
                     copyBtn.type = 'button';
-                    copyBtn.textContent = 'Copy key name';
+                    copyBtn.textContent = t('settings.ai.credential.copyKeyNameButton');
                     copyBtn.addEventListener('click', () => {
                         revealSecretName = true;
                         setProviderState(providerState);
                         secretIdSetting.settingEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                         void navigator.clipboard.writeText(secretId)
-                            .then(() => new Notice('Saved key name copied.'))
-                            .catch(() => new Notice('Unable to copy saved key name.'));
+                            .then(() => new Notice(t('settings.ai.credential.keyNameCopiedNotice')))
+                            .catch(() => new Notice(t('settings.ai.credential.keyNameCopyFailNotice')));
                     });
                     actions.appendChild(copyBtn);
                 }
@@ -2319,21 +2320,21 @@ export function renderAiSection(params: {
         section: anthropicSection,
         provider: 'anthropic',
         providerName: 'Anthropic',
-        keyPlaceholder: 'Enter your Anthropic API key',
+        keyPlaceholder: t('settings.ai.credential.placeholderAnthropic'),
         docsUrl: 'https://platform.claude.com'
     });
     renderCredentialSettings({
         section: googleSection,
         provider: 'google',
         providerName: 'Google',
-        keyPlaceholder: 'Enter your Google API key',
+        keyPlaceholder: t('settings.ai.credential.placeholderGoogle'),
         docsUrl: 'https://aistudio.google.com'
     });
     renderCredentialSettings({
         section: openaiSection,
         provider: 'openai',
         providerName: 'OpenAI',
-        keyPlaceholder: 'Enter your OpenAI API key',
+        keyPlaceholder: t('settings.ai.credential.placeholderOpenai'),
         docsUrl: 'https://platform.openai.com'
     });
 
@@ -2444,24 +2445,24 @@ export function renderAiSection(params: {
         cls: [`${ERT_CLASSES.CARD}`, `${ERT_CLASSES.PANEL}`, `${ERT_CLASSES.STACK}`, 'ert-ai-local-llm-config', 'ert-settings-hidden']
     });
     localLlmConfigSectionEl = localLlmConfigSection;
-    localLlmConfigSection.createDiv({ cls: 'ert-section-title', text: 'Local LLM Configuration' });
+    localLlmConfigSection.createDiv({ cls: 'ert-section-title', text: t('settings.ai.localLlm.configTitle') });
     localLlmConfigSection.createDiv({
         cls: 'ert-section-desc',
-        text: 'Override the auto-detected Local LLM setup only when the standard path fails or you need a deliberate custom transport.'
+        text: t('settings.ai.localLlm.configDesc')
     });
 
     const localLlmStatusSection = quickSetupPreviewSection.createDiv({
         cls: [`${ERT_CLASSES.CARD}`, `${ERT_CLASSES.PANEL}`, `${ERT_CLASSES.STACK}`, 'ert-ai-local-llm-status', 'ert-settings-hidden']
     });
     localLlmStatusSectionEl = localLlmStatusSection;
-    localLlmStatusSection.createDiv({ cls: 'ert-section-title', text: 'Local LLM Status / Validation' });
+    localLlmStatusSection.createDiv({ cls: 'ert-section-title', text: t('settings.ai.localLlm.statusTitle') });
     localLlmStatusSection.createDiv({
         cls: 'ert-section-desc',
-        text: 'Auto-configuration diagnostics for the current Local LLM setup. This stays visible so you can confirm connection, validation, and capability.'
+        text: t('settings.ai.localLlm.statusDesc')
     });
     const localLlmServerSetting = new Settings(localLlmStatusSection)
-        .setName('Local server')
-        .setDesc('Choose between detected local runtimes when more than one healthy server is available.')
+        .setName(t('settings.ai.localLlm.serverName'))
+        .setDesc(t('settings.ai.localLlm.serverDesc'))
         .addDropdown(dropdown => {
             localLlmServerDropdown = dropdown;
             dropdown.onChange((value) => {
@@ -2605,13 +2606,13 @@ export function renderAiSection(params: {
     }
 
     const localLlmBackendSetting = new Settings(localLlmConfigSection)
-        .setName('Local server')
-        .setDesc('Choose the local server/runtime behind the Local LLM path. Server-specific transport stays below this seam.')
+        .setName(t('settings.ai.localLlmConfig.serverName'))
+        .setDesc(t('settings.ai.localLlmConfig.serverDesc'))
         .addDropdown(dropdown => {
             dropdown
-                .addOption('ollama', 'Ollama')
-                .addOption('lmStudio', 'LM Studio')
-                .addOption('openaiCompatible', 'OpenAI-Compatible')
+                .addOption('ollama', t('settings.ai.localLlmConfig.optionOllama'))
+                .addOption('lmStudio', t('settings.ai.localLlmConfig.optionLmStudio'))
+                .addOption('openaiCompatible', t('settings.ai.localLlmConfig.optionOpenaiCompat'))
                 .setValue(getLocalLlmBackendId())
                 .onChange(async (value) => {
                     const aiSettings = ensureCanonicalAiSettings();
@@ -2629,8 +2630,8 @@ export function renderAiSection(params: {
     localLlmBackendSetting.settingEl.addClass(ERT_CLASSES.ROW);
 
     const localLlmBaseUrlSetting = new Settings(localLlmConfigSection)
-        .setName('Base URL')
-        .setDesc('The API endpoint for the selected Local server. For example: Ollama "http://localhost:11434/v1" or LM Studio "http://localhost:1234/v1".')
+        .setName(t('settings.ai.localLlmConfig.baseUrlName'))
+        .setDesc(t('settings.ai.localLlmConfig.baseUrlDesc'))
         .addText(text => {
             text.inputEl.addClass('ert-input--full');
             text
@@ -2664,8 +2665,8 @@ export function renderAiSection(params: {
     localLlmBaseUrlSetting.settingEl.addClass('ert-setting-full-width-input');
 
     const localLlmModelSetting = new Settings(localLlmConfigSection)
-        .setName('Manual model ID (fallback)')
-        .setDesc('Only use this if automatic model discovery cannot find the model you want. The AI Strategy model dropdown above is now the primary local model selector.')
+        .setName(t('settings.ai.localLlmConfig.manualModelName'))
+        .setDesc(t('settings.ai.localLlmConfig.manualModelDesc'))
         .addText(text => {
             text.inputEl.addClass('ert-input--lg');
             localLlmModelText = text;
@@ -2725,7 +2726,7 @@ export function renderAiSection(params: {
         localLlmModelsList.empty();
         localLlmModelsLegend.empty();
         if (localLlmModelLoadPending) {
-            localLlmModelsSummary.setText('Checking the local server and loading available models...');
+            localLlmModelsSummary.setText(t('settings.ai.localLlm.modelsLoading'));
             return;
         }
 
@@ -2737,8 +2738,8 @@ export function renderAiSection(params: {
         if (!localLlmLoadedModels.length) {
             localLlmModelsSummary.setText(
                 getLocalLlmConfigurationMode() === 'auto'
-                    ? 'No local models are loaded yet. This list will appear when a healthy local server responds.'
-                    : 'No local models are loaded yet. Use the actions below to check the selected local server.'
+                    ? t('settings.ai.localLlm.noModelsAuto')
+                    : t('settings.ai.localLlm.noModelsCustom')
             );
             return;
         }
@@ -2748,13 +2749,13 @@ export function renderAiSection(params: {
         localLlmModelsSummary.setText(
             `${activeServerLabel}: ${localLlmLoadedModels.length} model${localLlmLoadedModels.length === 1 ? '' : 's'} loaded. ${selectedExists ? 'Selected model found.' : 'Selected model missing from the loaded list.'}${loadStamp ? ` Last loaded ${loadStamp}.` : ''}`
         );
-        localLlmModelsLegend.createSpan({ cls: 'ert-ai-local-llm-legend-chip ert-ai-local-llm-legend-chip--tier0', text: 'Not usable' });
+        localLlmModelsLegend.createSpan({ cls: 'ert-ai-local-llm-legend-chip ert-ai-local-llm-legend-chip--tier0', text: t('settings.ai.localLlm.legendNotUsable') });
         localLlmModelsLegend.createSpan({ text: ' · ' });
-        localLlmModelsLegend.createSpan({ cls: 'ert-ai-local-llm-legend-chip ert-ai-local-llm-legend-chip--tier1', text: 'Limited' });
+        localLlmModelsLegend.createSpan({ cls: 'ert-ai-local-llm-legend-chip ert-ai-local-llm-legend-chip--tier1', text: t('settings.ai.localLlm.legendLimited') });
         localLlmModelsLegend.createSpan({ text: ' · ' });
-        localLlmModelsLegend.createSpan({ cls: 'ert-ai-local-llm-legend-chip ert-ai-local-llm-legend-chip--tier3', text: 'Strong' });
+        localLlmModelsLegend.createSpan({ cls: 'ert-ai-local-llm-legend-chip ert-ai-local-llm-legend-chip--tier3', text: t('settings.ai.localLlm.legendStrong') });
         localLlmModelsLegend.createSpan({ text: ' · ' });
-        localLlmModelsLegend.createSpan({ cls: 'ert-ai-local-llm-legend-chip ert-ai-local-llm-legend-chip--tier4', text: 'Inquiry eligible' });
+        localLlmModelsLegend.createSpan({ cls: 'ert-ai-local-llm-legend-chip ert-ai-local-llm-legend-chip--tier4', text: t('settings.ai.localLlm.legendInquiryEligible') });
 
         localLlmLoadedModels.forEach(model => {
             const pill = localLlmModelsList.createSpan({
@@ -2768,7 +2769,7 @@ export function renderAiSection(params: {
             }
             pill.createSpan({ cls: 'ert-ai-local-model-pill-label', text: model.id });
             if (isActiveModel) {
-                pill.createSpan({ cls: 'ert-ai-local-model-pill-active', text: 'Active' });
+                pill.createSpan({ cls: 'ert-ai-local-model-pill-active', text: t('settings.ai.localLlm.modelActive') });
             }
             pill.setAttribute('role', 'button');
             pill.setAttribute('tabindex', '0');
@@ -3024,7 +3025,7 @@ export function renderAiSection(params: {
     localLlmModelSetting.addExtraButton(button => {
         button
             .setIcon('refresh-ccw')
-            .setTooltip('Load models from the selected local server')
+            .setTooltip(t('settings.ai.localLlm.loadModelsTooltip'))
             .onClick(async () => {
                 button.setDisabled(true);
                 button.setIcon('loader-2');
@@ -3038,22 +3039,22 @@ export function renderAiSection(params: {
     });
 
     const localLlmActionsSetting = new Settings(localLlmActionsRow)
-        .setName('Local setup actions')
-        .setDesc('Use these actions when Local server detection, model loading, or validation needs another pass.');
+        .setName(t('settings.ai.localLlm.actionsName'))
+        .setDesc(t('settings.ai.localLlm.actionsDesc'));
     localLlmActionsSetting.addButton(button => button
-        .setButtonText('Load Servers')
+        .setButtonText(t('settings.ai.localLlm.loadServersButton'))
         .onClick(() => {
             button.setDisabled(true);
             void detectLocalLlmServers().finally(() => button.setDisabled(false));
         }));
     localLlmActionsSetting.addButton(button => button
-        .setButtonText('Load Models')
+        .setButtonText(t('settings.ai.localLlm.loadModelsButton'))
         .onClick(() => {
             button.setDisabled(true);
             void loadLocalLlmModels().finally(() => button.setDisabled(false));
         }));
     localLlmActionsSetting.addButton(button => button
-        .setButtonText('Validate Local LLM')
+        .setButtonText(t('settings.ai.localLlm.validateButton'))
         .setCta()
         .onClick(() => {
             button.setDisabled(true);
@@ -3121,11 +3122,11 @@ export function renderAiSection(params: {
     };
 
     const aiDisplayGroup = aiConfigBody.createDiv({ cls: 'ert-config-group' });
-    aiDisplayGroup.createDiv({ cls: 'ert-config-group-title', text: 'Timeline Display' });
+    aiDisplayGroup.createDiv({ cls: 'ert-config-group-title', text: t('settings.ai.config.timelineDisplayTitle') });
 
     aiConfigCreateRow(aiDisplayGroup, {
-        title: 'Pulse context',
-        description: 'Include previous and next scenes in triplet analysis hover reveal. (Does not affect the underlying scene properties.)',
+        title: t('settings.ai.config.pulseContextName'),
+        description: t('settings.ai.config.pulseContextDesc'),
         control: (setting) => {
             setting.addToggle(toggle => toggle
                 .setValue(plugin.settings.showFullTripletAnalysis ?? true)
@@ -3137,15 +3138,15 @@ export function renderAiSection(params: {
     });
 
     aiConfigCreateRow(aiDisplayGroup, {
-        title: 'Synopsis max words',
-        description: 'Base cap for generated Synopsis text. Hover can use a little more when space allows, but this remains the stored Synopsis target.',
+        title: t('settings.ai.config.synopsisMaxWordsName'),
+        description: t('settings.ai.config.synopsisMaxWordsDesc'),
         control: (setting) => {
             aiConfigCreateNumberInput(setting, {
                 value: getSynopsisGenerationWordLimit(plugin.settings),
                 min: 10,
                 max: 300,
                 step: 5,
-                invalidNotice: 'Synopsis length must be between 10 and 300 words.',
+                invalidNotice: t('settings.ai.config.synopsisMaxWordsInvalid'),
                 onSave: async (value) => {
                     plugin.settings.synopsisGenerationMaxWords = value;
                     plugin.settings.synopsisHoverMaxLines = getSynopsisHoverLineLimit(plugin.settings);
@@ -3156,18 +3157,18 @@ export function renderAiSection(params: {
     });
 
     const summaryRefreshGroup = aiConfigBody.createDiv({ cls: 'ert-config-group' });
-    summaryRefreshGroup.createDiv({ cls: 'ert-config-group-title', text: 'Summary Refresh Defaults' });
+    summaryRefreshGroup.createDiv({ cls: 'ert-config-group-title', text: t('settings.ai.config.summaryRefreshTitle') });
 
     aiConfigCreateRow(summaryRefreshGroup, {
-        title: 'Target summary length',
-        description: 'Default word count used when opening Summary refresh. You can still change it per run.',
+        title: t('settings.ai.config.targetSummaryName'),
+        description: t('settings.ai.config.targetSummaryDesc'),
         control: (setting) => {
             aiConfigCreateNumberInput(setting, {
                 value: plugin.settings.synopsisTargetWords ?? 200,
                 min: 75,
                 max: 500,
                 step: 25,
-                invalidNotice: 'Target summary length must be between 75 and 500 words.',
+                invalidNotice: t('settings.ai.config.targetSummaryInvalid'),
                 onSave: async (value) => {
                     plugin.settings.synopsisTargetWords = value;
                     await plugin.saveSettings();
@@ -3177,15 +3178,15 @@ export function renderAiSection(params: {
     });
 
     aiConfigCreateRow(summaryRefreshGroup, {
-        title: 'Treat summary as weak if under',
-        description: 'Default threshold used to decide which scenes are selected for Summary refresh.',
+        title: t('settings.ai.config.weakThresholdName'),
+        description: t('settings.ai.config.weakThresholdDesc'),
         control: (setting) => {
             aiConfigCreateNumberInput(setting, {
                 value: plugin.settings.synopsisWeakThreshold ?? 75,
                 min: 10,
                 max: 300,
                 step: 5,
-                invalidNotice: 'Weak summary threshold must be between 10 and 300 words.',
+                invalidNotice: t('settings.ai.config.weakThresholdInvalid'),
                 onSave: async (value) => {
                     plugin.settings.synopsisWeakThreshold = value;
                     await plugin.saveSettings();
@@ -3195,8 +3196,8 @@ export function renderAiSection(params: {
     });
 
     aiConfigCreateRow(summaryRefreshGroup, {
-        title: 'Also update Synopsis',
-        description: 'When enabled, Summary refresh also writes Synopsis using the configured Synopsis max words.',
+        title: t('settings.ai.config.alsoUpdateSynopsisName'),
+        description: t('settings.ai.config.alsoUpdateSynopsisDesc'),
         control: (setting) => {
             setting.addToggle(toggle => toggle
                 .setValue(plugin.settings.alsoUpdateSynopsis ?? false)

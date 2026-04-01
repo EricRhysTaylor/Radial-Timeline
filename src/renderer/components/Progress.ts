@@ -1,6 +1,7 @@
 import { formatNumber, escapeXml } from '../../utils/svg';
 import { dateToAngle } from '../../utils/date';
 import type { CompletionEstimate } from '../../services/TimelineMetricsService';
+import { getFormattingLocale } from '../../i18n';
 
 // Hotspot radius for the estimate tick (large enough for easy hover/touch)
 const ESTIMATE_HOTSPOT_RADIUS = 20;
@@ -15,7 +16,7 @@ export function renderEstimatedDateElements(params: {
   const stageClass = estimate.stage ? ` estimate-stage-${estimate.stage}` : '';
   const labelText = estimate.labelText;
   const displayDate = estimateDate === null ? new Date(new Date().getFullYear(), 0, 1) : estimateDate;
-  const dateFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
+  const dateFormatter = new Intl.DateTimeFormat(getFormattingLocale(), { month: 'short', day: 'numeric' });
   const dateDisplay = labelText ?? dateFormatter.format(displayDate);
   
   // Build tooltip text (escaped for use in data attribute)

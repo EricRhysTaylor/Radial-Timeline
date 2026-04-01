@@ -10,6 +10,7 @@
 import type { PatternPresetId, TimeBucket } from './types';
 import { TIME_BUCKET_LABELS, SCAFFOLD_PATTERNS } from './types';
 import { getInitialBeatIndex } from './patternSync';
+import { getFormattingLocale } from '../i18n';
 
 export interface ScaffoldPreviewStep {
     sceneLabel: string;
@@ -74,13 +75,13 @@ function buildBeatLabels(cycle: TimeBucket[], startIndex: number, count: number)
 }
 
 function formatAnchorLabel(anchorWhen: Date): string {
-    const dateLabel = new Intl.DateTimeFormat('en-US', {
+    const dateLabel = new Intl.DateTimeFormat(getFormattingLocale(), {
         month: 'short',
         day: 'numeric',
         year: 'numeric'
     }).format(anchorWhen);
 
-    const timeLabel = new Intl.DateTimeFormat('en-US', {
+    const timeLabel = new Intl.DateTimeFormat(getFormattingLocale(), {
         hour: 'numeric',
         minute: '2-digit'
     }).format(anchorWhen);

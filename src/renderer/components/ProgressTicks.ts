@@ -1,5 +1,6 @@
 import type { PluginRendererFacade } from '../../utils/sceneHelpers';
 import { formatNumber, escapeXml } from '../../utils/svg';
+import { getFormattingLocale } from '../../i18n';
 
 const STAGE_ORDER = ['Zero', 'Author', 'House', 'Press'] as const;
 type Stage = typeof STAGE_ORDER[number];
@@ -33,7 +34,7 @@ function buildEnhancedTooltip(
     isOverdue: boolean,
     enhancedData?: TargetTickEnhancedData
 ): string {
-    const dateFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const dateFormatter = new Intl.DateTimeFormat(getFormattingLocale(), { month: 'short', day: 'numeric', year: 'numeric' });
     
     // Line 1: Stage and date
     let tooltip = isOverdue 
@@ -94,7 +95,7 @@ export function renderTargetDateTick(params: {
         const targetDateAngle = dateToAngle(estimatedDate);
         
         // Build tooltip for auto mode
-        const dateFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        const dateFormatter = new Intl.DateTimeFormat(getFormattingLocale(), { month: 'short', day: 'numeric', year: 'numeric' });
         const remaining = enhancedData.stageRemaining[stage] ?? 0;
         const lines: string[] = [
             `${stage} est. completion: ${dateFormatter.format(estimatedDate)}`,
@@ -206,7 +207,7 @@ export function renderTargetDateTick(params: {
                 const targetDate = new Date(plugin.settings.targetCompletionDate + 'T00:00:00');
                 if (!isNaN(targetDate.getTime()) && targetDate > today) {
                     const targetDateAngle = dateToAngle(targetDate);
-                    const dateFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                    const dateFormatter = new Intl.DateTimeFormat(getFormattingLocale(), { month: 'short', day: 'numeric', year: 'numeric' });
                     const daysUntil = Math.ceil((targetDate.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
                     const tooltipText = `Target: ${dateFormatter.format(targetDate)}\n~${daysUntil} days`;
                     const escapedTooltip = escapeXml(tooltipText);

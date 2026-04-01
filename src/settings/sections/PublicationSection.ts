@@ -1,7 +1,7 @@
 import type { App } from 'obsidian';
 import { Setting as ObsidianSetting, Notice, setIcon, setTooltip } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
-import { t } from '../../i18n';
+import { t, getFormattingLocale } from '../../i18n';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import { getAllScenes } from '../../utils/manuscript';
 import type { CompletionEstimate } from '../../services/TimelineMetricsService';
@@ -539,7 +539,7 @@ export function renderCompletionEstimatePreview(params: {
             // Estimated completion date
             const dateRow = body.createDiv({ cls: 'ert-completion-date-row' });
             if (estimate.date && estimate.labelText !== '?') {
-                const dateFormatter = new Intl.DateTimeFormat('en-US', {
+                const dateFormatter = new Intl.DateTimeFormat(getFormattingLocale(), {
                     weekday: 'long',
                     year: 'numeric',
                     month: 'long',
@@ -577,7 +577,7 @@ export function renderCompletionEstimatePreview(params: {
             if (estimate.lastProgressDate) {
                 const lastProgressRow = body.createDiv({ cls: 'ert-completion-last-progress' });
                 const daysSince = Math.floor((Date.now() - estimate.lastProgressDate.getTime()) / (24 * 60 * 60 * 1000));
-                const dateFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
+                const dateFormatter = new Intl.DateTimeFormat(getFormattingLocale(), { month: 'short', day: 'numeric' });
                 lastProgressRow.setText(`Last progress: ${dateFormatter.format(estimate.lastProgressDate)} (${daysSince} day${daysSince !== 1 ? 's' : ''} ago) • ${estimate.windowDays}-day rolling window`);
             }
 
@@ -673,7 +673,7 @@ export function renderCompletionEstimatePreview(params: {
                     } catch { }
                 }
 
-                const monthFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', year: '2-digit' });
+                const monthFormatter = new Intl.DateTimeFormat(getFormattingLocale(), { month: 'short', year: '2-digit' });
                 months.push({
                     month: monthFormatter.format(monthStart),
                     monthStart,
@@ -698,7 +698,7 @@ export function renderCompletionEstimatePreview(params: {
         headerRow.createSpan({ text: 'Total' });
         headerRow.createSpan({ text: 'Progress' });
 
-        const dateFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
+        const dateFormatter = new Intl.DateTimeFormat(getFormattingLocale(), { month: 'short', day: 'numeric' });
 
         for (let idx = 0; idx < months.length; idx++) {
             const m = months[idx];

@@ -13,6 +13,7 @@ import type {
 import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { openOrRevealFile } from '../../utils/fileUtils';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
+import { t, getFormattingLocale } from '../../i18n';
 import { ERT_CLASSES } from '../../ui/classes';
 import { badgePill } from '../../ui/ui';
 import { hasProFeatureAccess } from '../featureGate';
@@ -126,10 +127,10 @@ const compareClassSummary = (a: string, b: string): number => {
     return a.localeCompare(b);
 };
 
-const relativeTimeFormatter = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
+const relativeTimeFormatter = new Intl.RelativeTimeFormat(getFormattingLocale(), { numeric: 'auto' });
 
 const formatRelativeTime = (timestamp: number): string => {
-    if (!Number.isFinite(timestamp)) return 'just now';
+    if (!Number.isFinite(timestamp)) return t('settings.inquiry.time.justNow');
     const deltaMs = timestamp - Date.now();
     const minute = 60_000;
     const hour = 60 * minute;
@@ -143,11 +144,11 @@ const formatRelativeTime = (timestamp: number): string => {
     if (Math.abs(deltaMs) >= minute) {
         return relativeTimeFormatter.format(Math.round(deltaMs / minute), 'minute');
     }
-    return 'just now';
+    return t('settings.inquiry.time.justNow');
 };
 
 const formatSessionScopeLabel = (session: InquirySession): string => {
-    const scopeLabel = session.result.scope === 'saga' ? 'Saga' : 'Book';
+    const scopeLabel = session.result.scope === 'saga' ? t('settings.inquiry.session.scopeSaga') : t('settings.inquiry.session.scopeBook');
     const scopeValue = session.result.scopeLabel?.trim();
     return scopeValue ? `${scopeLabel} ${scopeValue}` : scopeLabel;
 };
@@ -168,10 +169,13 @@ const formatSessionProviderModel = (session: InquirySession): string => {
 };
 
 const REFERENCE_ONLY_CLASSES = new Set(['character', 'place', 'power']);
-const CONTRIBUTION_LABELS: Record<SceneInclusion, string> = {
-    excluded: 'Exclude',
-    summary: 'Summary',
-    full: 'Full Scene'
+const getContributionLabel = (mode: SceneInclusion): string => {
+    switch (mode) {
+        case 'excluded': return t('settings.inquiry.contribution.excluded');
+        case 'summary': return t('settings.inquiry.contribution.summary');
+        case 'full': return t('settings.inquiry.contribution.full');
+        default: return mode;
+    }
 };
 
 const defaultModeForClass = (className: string): SceneInclusion => {
@@ -243,11 +247,11 @@ const normalizeCorpusThresholds = (raw?: InquiryCorpusThresholds): InquiryCorpus
 };
 
 const validateCorpusThresholds = (next: InquiryCorpusThresholds): string | null => {
-    if (!Number.isFinite(next.emptyMax) || next.emptyMax < 0) return 'Empty max must be a non-negative number.';
-    if (!Number.isFinite(next.sketchyMin) || next.sketchyMin <= next.emptyMax) return 'Sketchy min must be greater than Empty max.';
-    if (!Number.isFinite(next.mediumMin) || next.mediumMin <= next.sketchyMin) return 'Medium min must be greater than Sketchy min.';
+    if (!Number.isFinite(next.emptyMax) || next.emptyMax < 0) return t('settings.inquiry.corpus.errorEmptyMax');
+    if (!Number.isFinite(next.sketchyMin) || next.sketchyMin <= next.emptyMax) return t('settings.inquiry.corpus.errorSketchyMin');
+    if (!Number.isFinite(next.mediumMin) || next.mediumMin <= next.sketchyMin) return t('settings.inquiry.corpus.errorMediumMin');
     if (!Number.isFinite(next.substantiveMin) || next.substantiveMin <= next.mediumMin) {
-        return 'Substantive min must be greater than Medium min.';
+        return t('settings.inquiry.corpus.errorSubstantiveMin');
     }
     return null;
 };
@@ -281,14 +285,14 @@ export function renderInquirySection(params: SectionParams): void {
     plugin.settings.inquirySources = inquirySources;
 
     const promptsBody = createSection(containerEl, {
-        title: 'Inquiry prompts',
+        title: t('settings.inquiry.prompts.name'),
         icon: 'list',
         wiki: 'Settings#inquiry-prompts'
     });
     renderPromptConfiguration(promptsBody);
 
     const sourcesBody = createSection(containerEl, {
-        title: 'Inquiry sources',
+        title: t('settings.inquiry.sources.name'),
         icon: 'search',
         wiki: 'Settings#inquiry-sources'
     });
@@ -360,16 +364,16 @@ export function renderInquirySection(params: SectionParams): void {
     const booksForInquiryTitleWrap = booksForInquiryHeader.createDiv({ cls: ERT_CLASSES.STACK });
     booksForInquiryTitleWrap.createDiv({
         cls: ['ert-planetary-preview-heading', 'ert-previewFrame__title'],
-        text: 'Books for Inquiry'
+        text: t('settings.inquiry.booksForInquiry.name')
     });
     booksForInquiryTitleWrap.createDiv({
         cls: 'setting-item-description',
-        text: 'Book Manager defines Inquiry books and their B1/B2/B3 sequence. Folder names stay vault-facing; row order drives traversal.'
+        text: t('settings.inquiry.booksForInquiry.desc')
     });
     const manageBooksBtn = booksForInquiryHeader.createEl('button', {
         cls: `${ERT_CLASSES.PILL_BTN} ert-preset-pill`,
-        text: 'Open Book Manager',
-        attr: { type: 'button', 'aria-label': 'Open Book Manager' }
+        text: t('settings.inquiry.booksForInquiry.buttonText'),
+        attr: { type: 'button', 'aria-label': t('settings.inquiry.booksForInquiry.ariaLabel') }
     });
     plugin.registerDomEvent(manageBooksBtn, 'click', (evt) => {
         evt.preventDefault();
@@ -380,14 +384,14 @@ export function renderInquirySection(params: SectionParams): void {
     });
 
     const scanRootsSetting = new Settings(sourcesBody)
-        .setName('Supporting material folders')
-        .setDesc('Inquiry always uses scenes and outlines from Book Manager books. Add folders here only for extra supporting material such as characters, places, heredity, lore, or research.');
+        .setName(t('settings.inquiry.scanRoots.name'))
+        .setDesc(t('settings.inquiry.scanRoots.desc'));
     scanRootsSetting.settingEl.setAttribute('data-ert-role', 'inquiry-setting:scan-roots');
     scanRootsSetting.settingEl.classList.add(ERT_CLASSES.ROW, 'ert-row--stack');
 
     const scanRootsText = new TextAreaComponent(scanRootsSetting.controlEl);
     scanRootsText.setValue(listToText(inquirySources.scanRoots));
-    scanRootsText.setPlaceholder('/Character/\n/Place/\n/Heredity/\n/Lore/\n/Research/');
+    scanRootsText.setPlaceholder(t('settings.inquiry.scanRoots.placeholder'));
     scanRootsText.inputEl.rows = 3;
     scanRootsText.inputEl.addClass('ert-textarea--wide');
     scanRootsText.inputEl.addClass('mod-styled-scrollbar');
@@ -462,10 +466,10 @@ export function renderInquirySection(params: SectionParams): void {
         syncButtonState();
     };
 
-    addScanRootToggle('Character folder', () => ['/Character/']);
-    addScanRootToggle('Place folder', () => ['/Place/']);
-    addScanRootToggle('Heredity folder', () => ['/Heredity/']);
-    addScanRootToggle('Common support folders', () => ['/Character/', '/Place/', '/Heredity/', '/Lore/', '/Research/']);
+    addScanRootToggle(t('settings.inquiry.scanRoots.characterFolder'), () => ['/Character/']);
+    addScanRootToggle(t('settings.inquiry.scanRoots.placeFolder'), () => ['/Place/']);
+    addScanRootToggle(t('settings.inquiry.scanRoots.heredityFolder'), () => ['/Heredity/']);
+    addScanRootToggle(t('settings.inquiry.scanRoots.commonSupportFolders'), () => ['/Character/', '/Place/', '/Heredity/', '/Lore/', '/Research/']);
 
     const supportingMaterialPreview = sourcesBody.createDiv({
         cls: [ERT_CLASSES.PREVIEW_FRAME, ERT_CLASSES.STACK, 'ert-previewFrame--flush'],
@@ -473,21 +477,21 @@ export function renderInquirySection(params: SectionParams): void {
     });
     const supportingMaterialHeading = supportingMaterialPreview.createDiv({
         cls: ['ert-planetary-preview-heading', 'ert-previewFrame__title'],
-        text: 'Detected supporting material'
+        text: t('settings.inquiry.supportingMaterial.name')
     });
     const supportingMaterialList = supportingMaterialPreview.createDiv({
         cls: ['ert-controlGroup', 'ert-controlGroup--inquiry-supporting-material']
     });
 
     const materialRulesHeader = new Settings(sourcesBody)
-        .setName('Material rules')
-        .setDesc('Define how each material type participates in Book, Saga, and Reference analysis.');
+        .setName(t('settings.inquiry.materialRules.name'))
+        .setDesc(t('settings.inquiry.materialRules.desc'));
     materialRulesHeader.setHeading();
     applyErtHeaderLayout(materialRulesHeader);
 
     const classScopeSetting = new Settings(sourcesBody)
-        .setName('Material types (advanced)')
-        .setDesc('Frontmatter Class values to include. One class per line. Use / to allow all classes. Empty = no classes allowed.');
+        .setName(t('settings.inquiry.classScope.name'))
+        .setDesc(t('settings.inquiry.classScope.desc'));
     classScopeSetting.settingEl.setAttribute('data-ert-role', 'inquiry-setting:class-scope');
     classScopeSetting.settingEl.addClass(ERT_CLASSES.ROW, ERT_CLASSES.ROW_WIDE_CONTROL);
 
@@ -496,7 +500,7 @@ export function renderInquirySection(params: SectionParams): void {
         text.inputEl.rows = 4;
         text.inputEl.addClass('ert-textarea--md');
         text.inputEl.addClass('mod-styled-scrollbar');
-        text.setPlaceholder('scene\noutline\ncharacter\nplace');
+        text.setPlaceholder(t('settings.inquiry.classScope.placeholder'));
         classScopeInput = text;
         const autoResizeClassScopeInput = registerDeferredAutoResize(text.inputEl, 4);
         autoResizeClassScopeInput();
@@ -515,8 +519,8 @@ export function renderInquirySection(params: SectionParams): void {
     let resolvedBookCache: InquiryBookResolution | null = null;
 
     const presetSetting = new Settings(sourcesBody)
-        .setName('Presets')
-        .setDesc('Quick starters for material rules. Apply one, then tweak as needed.');
+        .setName(t('settings.inquiry.presets.name'))
+        .setDesc(t('settings.inquiry.presets.desc'));
     presetSetting.settingEl.setAttribute('data-ert-role', 'inquiry-setting:class-presets');
     presetSetting.settingEl.addClass(ERT_CLASSES.ROW, ERT_CLASSES.ROW_TIGHT);
     const presetControls = presetSetting.controlEl.createDiv({ cls: [ERT_CLASSES.INLINE, 'ert-preset-controls'] });
@@ -579,9 +583,9 @@ export function renderInquirySection(params: SectionParams): void {
         presetButtons.set(preset, btn);
     };
 
-    addPresetButton('default', 'Default');
-    addPresetButton('light', 'Light');
-    addPresetButton('deep', 'Deep');
+    addPresetButton('default', t('settings.inquiry.presets.default'));
+    addPresetButton('light', t('settings.inquiry.presets.light'));
+    addPresetButton('deep', t('settings.inquiry.presets.deep'));
 
     const tableCard = sourcesBody.createDiv({ cls: ERT_CLASSES.PANEL });
     const classTableWrap = tableCard.createDiv({
@@ -655,12 +659,12 @@ export function renderInquirySection(params: SectionParams): void {
             container.createDiv({ cls: ['ert-controlGroup__row', ...extraClasses] });
 
         const header = buildRow(['ert-controlGroup__row--header']);
-        header.createDiv({ cls: 'ert-controlGroup__cell', text: 'Enabled' });
-        header.createDiv({ cls: 'ert-controlGroup__cell', text: 'Class' });
-        header.createDiv({ cls: 'ert-controlGroup__cell', text: 'Book' });
-        header.createDiv({ cls: 'ert-controlGroup__cell', text: 'Saga' });
-        header.createDiv({ cls: 'ert-controlGroup__cell', text: 'Reference' });
-        header.createDiv({ cls: 'ert-controlGroup__cell', text: 'Matches' });
+        header.createDiv({ cls: 'ert-controlGroup__cell', text: t('settings.inquiry.classTable.enabled') });
+        header.createDiv({ cls: 'ert-controlGroup__cell', text: t('settings.inquiry.classTable.class') });
+        header.createDiv({ cls: 'ert-controlGroup__cell', text: t('settings.inquiry.classTable.book') });
+        header.createDiv({ cls: 'ert-controlGroup__cell', text: t('settings.inquiry.classTable.saga') });
+        header.createDiv({ cls: 'ert-controlGroup__cell', text: t('settings.inquiry.classTable.reference') });
+        header.createDiv({ cls: 'ert-controlGroup__cell', text: t('settings.inquiry.classTable.matches') });
 
         configs.forEach(config => {
             const row = buildRow(['ert-controlGroup__row--card']);
@@ -694,7 +698,7 @@ export function renderInquirySection(params: SectionParams): void {
             ) => {
                 const select = cell.createEl('select', { cls: 'ert-input ert-input--md' });
                 modes.forEach(mode => {
-                    select.createEl('option', { value: mode, text: CONTRIBUTION_LABELS[mode] });
+                    select.createEl('option', { value: mode, text: getContributionLabel(mode) });
                 });
                 select.value = value;
                 select.disabled = disabled;
@@ -836,15 +840,15 @@ export function renderInquirySection(params: SectionParams): void {
         const sceneCount = classCounts.scene || 0;
         const outlineCount = classCounts.outline || 0;
         if (sceneCount > 0 && outlineCount > 0) {
-            return { label: 'Ready', cls: 'ert-controlGroup__status--ready' };
+            return { label: t('settings.inquiry.bookStatus.ready'), cls: 'ert-controlGroup__status--ready' };
         }
         if (sceneCount <= 0 && outlineCount <= 0) {
-            return { label: 'Missing scenes + outline', cls: 'ert-controlGroup__status--warning' };
+            return { label: t('settings.inquiry.bookStatus.missingScenesAndOutline'), cls: 'ert-controlGroup__status--warning' };
         }
         if (sceneCount <= 0) {
-            return { label: 'Missing scenes', cls: 'ert-controlGroup__status--warning' };
+            return { label: t('settings.inquiry.bookStatus.missingScenes'), cls: 'ert-controlGroup__status--warning' };
         }
-        return { label: 'Missing outline', cls: 'ert-controlGroup__status--warning' };
+        return { label: t('settings.inquiry.bookStatus.missingOutline'), cls: 'ert-controlGroup__status--warning' };
     };
 
     const renderBooksForInquiry = (
@@ -854,16 +858,16 @@ export function renderInquirySection(params: SectionParams): void {
         const container = document.createElement('div');
         container.className = booksForInquiryList.className;
         const header = container.createDiv({ cls: ['ert-controlGroup__row', 'ert-controlGroup__row--header'] });
-        header.createDiv({ cls: 'ert-controlGroup__cell', text: 'Sequence' });
-        header.createDiv({ cls: 'ert-controlGroup__cell', text: 'Book' });
-        header.createDiv({ cls: 'ert-controlGroup__cell', text: 'Detected material' });
-        header.createDiv({ cls: 'ert-controlGroup__cell', text: 'Status' });
+        header.createDiv({ cls: 'ert-controlGroup__cell', text: t('settings.inquiry.booksTable.sequence') });
+        header.createDiv({ cls: 'ert-controlGroup__cell', text: t('settings.inquiry.booksTable.book') });
+        header.createDiv({ cls: 'ert-controlGroup__cell', text: t('settings.inquiry.booksTable.detectedMaterial') });
+        header.createDiv({ cls: 'ert-controlGroup__cell', text: t('settings.inquiry.booksTable.status') });
 
         if (!resolution.candidates.length) {
             const emptyRow = container.createDiv({ cls: ['ert-controlGroup__row', 'ert-controlGroup__row--card'] });
             const emptyCell = emptyRow.createDiv({
                 cls: ['ert-controlGroup__cell', 'ert-controlGroup__cell--faint'],
-                text: 'No Book Manager books are configured yet.'
+                text: t('settings.inquiry.booksTable.empty')
             });
             emptyCell.style.gridColumn = '1 / -1';
         } else {
@@ -911,19 +915,19 @@ export function renderInquirySection(params: SectionParams): void {
         const visibleEntries = Object.entries(discoveredCounts)
             .filter(([className, count]) => count > 0 && participatingClasses.has(className))
             .sort(([a], [b]) => compareClassSummary(a, b));
-        supportingMaterialHeading.setText(`Detected supporting material${visibleEntries.length ? ` (${visibleEntries.length})` : ''}`);
+        supportingMaterialHeading.setText(`${t('settings.inquiry.supportingMaterial.name')}${visibleEntries.length ? ` (${visibleEntries.length})` : ''}`);
 
         const container = document.createElement('div');
         container.className = supportingMaterialList.className;
         const header = container.createDiv({ cls: ['ert-controlGroup__row', 'ert-controlGroup__row--header'] });
-        header.createDiv({ cls: 'ert-controlGroup__cell', text: 'Material' });
-        header.createDiv({ cls: 'ert-controlGroup__cell', text: 'Matches' });
+        header.createDiv({ cls: 'ert-controlGroup__cell', text: t('settings.inquiry.supportingTable.material') });
+        header.createDiv({ cls: 'ert-controlGroup__cell', text: t('settings.inquiry.supportingTable.matches') });
 
         if (!visibleEntries.length) {
             const emptyRow = container.createDiv({ cls: ['ert-controlGroup__row', 'ert-controlGroup__row--card'] });
             const emptyCell = emptyRow.createDiv({
                 cls: ['ert-controlGroup__cell', 'ert-controlGroup__cell--faint'],
-                text: 'No supporting material detected in the current supporting material folders.'
+                text: t('settings.inquiry.supportingTable.empty')
             });
             emptyCell.style.gridColumn = '1 / -1';
         } else {
@@ -1054,9 +1058,9 @@ export function renderInquirySection(params: SectionParams): void {
         }
 
         const zoneLabels: Record<InquiryZone, string> = {
-            setup: 'Setup',
-            pressure: 'Pressure',
-            payoff: 'Payoff'
+            setup: t('settings.inquiry.zone.setup'),
+            pressure: t('settings.inquiry.zone.pressure'),
+            payoff: t('settings.inquiry.zone.payoff')
         };
         const zoneIcons: Record<InquiryZone, string> = {
             setup: 'sprout',
@@ -1195,11 +1199,11 @@ export function renderInquirySection(params: SectionParams): void {
             const parts = [question.label];
             const existingIndex = findCanonicalSlotIndex(zone, question.id, excludeIndex);
             if (question.tier === 'signature') {
-                parts.push('Pro');
+                parts.push(t('settings.inquiry.prompts.proTag'));
             }
             if (existingIndex !== -1) {
                 parts.push(`#${existingIndex + 1}`);
-                parts.push('Already added');
+                parts.push(t('settings.inquiry.prompts.alreadyAddedTag'));
             }
             return parts.join(' · ');
         };
@@ -1210,7 +1214,7 @@ export function renderInquirySection(params: SectionParams): void {
         ): string => {
             const parts = [`${getCanonicalTemplateOrder(question, zone)}. ${question.label}`];
             if (question.tier === 'signature') {
-                parts.push('Pro');
+                parts.push(t('settings.inquiry.prompts.proTag'));
             }
             return parts.join(' · ');
         };
@@ -1218,7 +1222,7 @@ export function renderInquirySection(params: SectionParams): void {
         const focusCanonicalQuestionRow = (
             zone: InquiryZone,
             canonicalId: string,
-            message = 'Already added — moved to existing question'
+            message = t('settings.inquiry.prompts.alreadyAdded')
         ): boolean => {
             const row = canonicalRowRefs[zone].get(canonicalId);
             if (!row) return false;
@@ -1251,7 +1255,7 @@ export function renderInquirySection(params: SectionParams): void {
                 contentEl.addClass('ert-modal-container', 'ert-stack');
 
                 const header = contentEl.createDiv({ cls: 'ert-modal-header' });
-                header.createSpan({ cls: 'ert-modal-badge', text: 'INQUIRY' });
+                header.createSpan({ cls: 'ert-modal-badge', text: t('settings.inquiry.modal.badge') });
                 header.createDiv({ cls: 'ert-modal-title', text: title });
                 header.createDiv({
                     cls: 'ert-modal-subtitle',
@@ -1273,7 +1277,7 @@ export function renderInquirySection(params: SectionParams): void {
                         confirmModal.close();
                     });
                 new ButtonComponent(footer)
-                    .setButtonText('Cancel')
+                    .setButtonText(t('settings.inquiry.modal.cancel'))
                     .onClick(() => {
                         finish(false);
                         confirmModal.close();
@@ -1482,12 +1486,12 @@ export function renderInquirySection(params: SectionParams): void {
                 const dragHandle = labelCol.createDiv({ cls: 'ert-drag-handle' });
                 dragHandle.draggable = true;
                 setIcon(dragHandle, 'grip-vertical');
-                setTooltip(dragHandle, 'Drag to reorder');
+                setTooltip(dragHandle, t('settings.inquiry.prompts.dragToReorder'));
 
                 const topRow = questionCol.createDiv({ cls: 'ert-inquiry-prompt-topRow' });
                 const labelField = topRow.createDiv({ cls: 'ert-inquiry-prompt-labelField' });
                 const labelInput = new TextComponent(labelField);
-                labelInput.setPlaceholder('Label (optional)')
+                labelInput.setPlaceholder(t('settings.inquiry.prompts.labelPlaceholder'))
                     .setValue(slot.label ?? '');
                 labelInput.inputEl.addClass('ert-input', 'ert-input--md', 'ert-inquiry-prompt-labelInput');
                 if (slotState === 'canonical-loaded') {
@@ -1496,7 +1500,7 @@ export function renderInquirySection(params: SectionParams): void {
                     const templateMeta = topRow.createDiv({ cls: 'ert-inquiry-prompt-templateMeta' });
                     const templateIcon = templateMeta.createDiv({ cls: 'ert-inquiry-prompt-templateMeta__icon' });
                     setIcon(templateIcon, 'lock');
-                    templateMeta.createSpan({ text: 'Fixed template' });
+                    templateMeta.createSpan({ text: t('settings.inquiry.prompts.fixedTemplate') });
                 } else {
                     labelInput.onChange(async (value) => {
                         await updateSlot(zone, slotIndex, { label: value });
@@ -1505,7 +1509,7 @@ export function renderInquirySection(params: SectionParams): void {
                     const pickerWrap = topRow.createDiv({ cls: 'ert-inquiry-prompt-canonical-picker' });
                     const canonicalPicker = new DropdownComponent(pickerWrap);
                     canonicalPicker.selectEl.addClass('ert-input', 'ert-input--md');
-                    canonicalPicker.addOption('', 'Replace with template');
+                    canonicalPicker.addOption('', t('settings.inquiry.prompts.replaceWithTemplate'));
                     getSelectableCanonicalQuestions(zone, slot).forEach(question => {
                         canonicalPicker.addOption(question.id, getCanonicalOptionLabel(question, zone, slotIndex));
                     });
@@ -1522,7 +1526,7 @@ export function renderInquirySection(params: SectionParams): void {
 
                     const applyCanonicalButton = pickerWrap.createEl('button', { cls: ERT_CLASSES.ICON_BTN });
                     setIcon(applyCanonicalButton, 'sparkles');
-                    setTooltip(applyCanonicalButton, 'Apply selected canonical question');
+                    setTooltip(applyCanonicalButton, t('settings.inquiry.prompts.applyCanonical'));
                     applyCanonicalButton.onclick = () => {
                         const selectedId = canonicalPicker.getValue();
                         if (!selectedId) return;
@@ -1534,7 +1538,7 @@ export function renderInquirySection(params: SectionParams): void {
                 if (canonicalQuestion && slotState === 'customized') {
                     const resetButton = rowActions.createEl('button', { cls: ERT_CLASSES.ICON_BTN });
                     setIcon(resetButton, 'rotate-ccw');
-                    setTooltip(resetButton, 'Reset to canonical question');
+                    setTooltip(resetButton, t('settings.inquiry.prompts.resetToCanonical'));
                     resetButton.onclick = () => {
                         labelInput.setValue(canonicalQuestion.label ?? '');
                         questionInput.setValue(canonicalQuestion.standardPrompt ?? '');
@@ -1547,7 +1551,7 @@ export function renderInquirySection(params: SectionParams): void {
                 } else if (canRemoveSlot) {
                     const deleteBtn = rowActions.createEl('button', { cls: ERT_CLASSES.ICON_BTN });
                     setIcon(deleteBtn, 'trash');
-                    setTooltip(deleteBtn, 'Delete question');
+                    setTooltip(deleteBtn, t('settings.inquiry.prompts.deleteQuestion'));
                     deleteBtn.onclick = () => {
                         void removeSlot(zone, slotIndex);
                     };
@@ -1555,7 +1559,7 @@ export function renderInquirySection(params: SectionParams): void {
 
                 const questionMain = questionCol.createDiv({ cls: 'ert-inquiry-prompt-questionRow' });
                 const questionInput = new TextComponent(questionMain);
-                questionInput.setPlaceholder('Question text')
+                questionInput.setPlaceholder(t('settings.inquiry.prompts.questionPlaceholder'))
                     .setValue(slot.question ?? '');
                 questionInput.inputEl.addClass('ert-input', 'ert-input--full', 'ert-inquiry-prompt-questionInput');
                 if (slotState === 'canonical-loaded') {
@@ -1570,7 +1574,7 @@ export function renderInquirySection(params: SectionParams): void {
                     const customizedIcon = questionMain.createDiv({ cls: 'ert-inquiry-prompt-customizedIcon' });
                     customizedIcon.toggleClass('is-signature', canonicalQuestion?.tier === 'signature' || isProRow);
                     setIcon(customizedIcon, 'pencil');
-                    setTooltip(customizedIcon, 'Customized question');
+                    setTooltip(customizedIcon, t('settings.inquiry.prompts.customizedQuestion'));
                 }
 
                 plugin.registerDomEvent(dragHandle, 'dragstart', (e) => {
@@ -1705,11 +1709,11 @@ export function renderInquirySection(params: SectionParams): void {
                 const ghostText = ghostRow.createDiv({
                     cls: 'ert-reorder-placeholder ert-reorder-placeholder--pro'
                 });
-                ghostText.createSpan({ text: 'Unlock more custom questions with Pro' });
+                ghostText.createSpan({ text: t('settings.inquiry.prompts.unlockProGhost') });
                 const ghostBadge = ghostText.createDiv({ cls: ERT_CLASSES.ICON_BTN_GROUP });
                 badgePill(ghostBadge, {
                     icon: 'sparkles',
-                    label: 'Pro',
+                    label: t('settings.inquiry.prompts.proTag'),
                     variant: ERT_CLASSES.BADGE_PILL_PRO,
                     size: ERT_CLASSES.BADGE_PILL_SM
                 });
@@ -1740,14 +1744,14 @@ export function renderInquirySection(params: SectionParams): void {
                 const topRow = questionCol.createDiv({ cls: 'ert-inquiry-prompt-topRow' });
                 const labelField = topRow.createDiv({ cls: 'ert-inquiry-prompt-labelField' });
                 const labelInput = new TextComponent(labelField);
-                labelInput.setPlaceholder('Label (optional)').setValue('');
+                labelInput.setPlaceholder(t('settings.inquiry.prompts.labelPlaceholder')).setValue('');
                 labelInput.inputEl.addClass('ert-input', 'ert-input--md', 'ert-inquiry-prompt-labelInput');
                 labelInput.setDisabled(!canAddCustom);
 
                 const canonicalPickerWrap = topRow.createDiv({ cls: 'ert-inquiry-prompt-canonical-picker' });
                 const canonicalPicker = new DropdownComponent(canonicalPickerWrap);
                 canonicalPicker.selectEl.addClass('ert-input', 'ert-input--md');
-                canonicalPicker.addOption('', canAddCanonical ? 'Or choose a canonical question' : 'No remaining canonical questions');
+                canonicalPicker.addOption('', canAddCanonical ? t('settings.inquiry.prompts.chooseCanonical') : t('settings.inquiry.prompts.noRemainingCanonical'));
                 insertableCanonicalQuestions.forEach(question => {
                     canonicalPicker.addOption(question.id, getCanonicalInsertOptionLabel(question, zone));
                 });
@@ -1756,11 +1760,11 @@ export function renderInquirySection(params: SectionParams): void {
                 const addActions = topRow.createDiv({ cls: ERT_CLASSES.ICON_BTN_GROUP });
                 const addBtn = addActions.createEl('button', { cls: [ERT_CLASSES.ICON_BTN, 'ert-mod-cta'] });
                 setIcon(addBtn, 'plus');
-                setTooltip(addBtn, 'Add question');
+                setTooltip(addBtn, t('settings.inquiry.prompts.addQuestion'));
 
                 const questionMain = questionCol.createDiv({ cls: 'ert-inquiry-prompt-questionRow' });
                 const questionInput = new TextComponent(questionMain);
-                questionInput.setPlaceholder('Question text').setValue('');
+                questionInput.setPlaceholder(t('settings.inquiry.prompts.questionPlaceholder')).setValue('');
                 questionInput.inputEl.addClass('ert-input', 'ert-input--full', 'ert-inquiry-prompt-questionInput');
                 questionInput.setDisabled(!canAddCustom);
 
@@ -1798,7 +1802,7 @@ export function renderInquirySection(params: SectionParams): void {
                 });
             } else if (!hasZoneCapacity) {
                 const fullNote = listEl.createDiv({ cls: 'ert-inquiry-prompt-zoneFullNote' });
-                fullNote.setText('Delete a question to add a custom or remaining template question.');
+                fullNote.setText(t('settings.inquiry.prompts.zoneFullNote'));
             }
         };
 
@@ -1807,11 +1811,11 @@ export function renderInquirySection(params: SectionParams): void {
             zones.forEach(zone => canonicalRowRefs[zone].clear());
 
             const librarySetting = new Settings(promptContainer)
-                .setName('Canonical question library')
+                .setName(t('settings.inquiry.canonicalLibrary.name'))
                 .setDesc(
                     isPro
-                        ? 'Frame Inquiry across three zones: Setup, Pressure, and Payoff. Add your own custom questions, install curated questions line by line, or load the full Pro set across all zones at once.'
-                        : 'Frame Inquiry across three zones: Setup, Pressure, and Payoff. Add your own custom questions, install curated questions line by line, or load the curated Core set across all zones at once.'
+                        ? t('settings.inquiry.canonicalLibrary.descPro')
+                        : t('settings.inquiry.canonicalLibrary.descFree')
                 );
             librarySetting.settingEl.addClass(ERT_CLASSES.ROW, ERT_CLASSES.ROW_TIGHT);
             const libraryActions = librarySetting.controlEl.createDiv({ cls: [ERT_CLASSES.INLINE, 'ert-actions', 'ert-preset-controls'] });
@@ -1822,15 +1826,15 @@ export function renderInquirySection(params: SectionParams): void {
                 });
                 const signatureIcon = signatureButton.createSpan({ cls: ERT_CLASSES.PILL_BTN_ICON });
                 setIcon(signatureIcon, 'signature');
-                signatureButton.createSpan({ cls: ERT_CLASSES.PILL_BTN_LABEL, text: 'Load Full Pro Set' });
-                setTooltip(signatureButton, 'Load all canonical Inquiry questions');
+                signatureButton.createSpan({ cls: ERT_CLASSES.PILL_BTN_LABEL, text: t('settings.inquiry.canonicalLibrary.loadFullProSet') });
+                setTooltip(signatureButton, t('settings.inquiry.canonicalLibrary.loadAllTooltip'));
                 plugin.registerDomEvent(signatureButton, 'click', evt => {
                     evt.preventDefault();
                     void loadCanonicalSet('full-signature');
                 });
             } else {
                 const coreButton = libraryActions.createEl('button', { cls: `${ERT_CLASSES.PILL_BTN} ert-preset-pill` });
-                coreButton.createSpan({ cls: ERT_CLASSES.PILL_BTN_LABEL, text: 'Load Core Questions' });
+                coreButton.createSpan({ cls: ERT_CLASSES.PILL_BTN_LABEL, text: t('settings.inquiry.canonicalLibrary.loadCoreQuestions') });
                 plugin.registerDomEvent(coreButton, 'click', evt => {
                     evt.preventDefault();
                     void loadCanonicalSet('core');
@@ -1865,9 +1869,9 @@ export function renderInquirySection(params: SectionParams): void {
         const table = corpusPanel.createDiv({ cls: ['ert-controlGroup', 'ert-controlGroup--corpus'] });
 
         const header = table.createDiv({ cls: ['ert-controlGroup__row', 'ert-controlGroup__row--header'] });
-        header.createDiv({ cls: 'ert-controlGroup__cell', text: 'Tier' });
+        header.createDiv({ cls: 'ert-controlGroup__cell', text: t('settings.inquiry.corpusTable.tier') });
         header.createDiv({ cls: 'ert-controlGroup__cell' });
-        header.createDiv({ cls: 'ert-controlGroup__cell', text: 'Threshold' });
+        header.createDiv({ cls: 'ert-controlGroup__cell', text: t('settings.inquiry.corpusTable.threshold') });
 
         const inputs: Record<keyof InquiryCorpusThresholds, HTMLInputElement> = {
             emptyMax: document.createElement('input'),
@@ -1893,10 +1897,10 @@ export function renderInquirySection(params: SectionParams): void {
             cell.appendChild(input);
         };
 
-        renderRow('Empty', 'emptyMax', '<');
-        renderRow('Sketchy', 'sketchyMin');
-        renderRow('Medium', 'mediumMin');
-        renderRow('Substantive', 'substantiveMin');
+        renderRow(t('settings.inquiry.corpusTier.empty'), 'emptyMax', '<');
+        renderRow(t('settings.inquiry.corpusTier.sketchy'), 'sketchyMin');
+        renderRow(t('settings.inquiry.corpusTier.medium'), 'mediumMin');
+        renderRow(t('settings.inquiry.corpusTier.substantive'), 'substantiveMin');
 
         const syncInputs = (values: InquiryCorpusThresholds) => {
             (Object.keys(inputs) as Array<keyof InquiryCorpusThresholds>).forEach(key => {
@@ -1929,8 +1933,8 @@ export function renderInquirySection(params: SectionParams): void {
         });
 
         new Settings(corpusPanel)
-            .setName('Highlight completed docs with low substance')
-            .setDesc('Flags completed notes that fall in Empty or Sketchy tiers.')
+            .setName(t('settings.inquiry.highlightLowSubstance.name'))
+            .setDesc(t('settings.inquiry.highlightLowSubstance.desc'))
             .addToggle(toggle => {
                 toggle.setValue(plugin.settings.inquiryCorpusHighlightLowSubstanceComplete ?? true);
                 toggle.onChange(async (value) => {
@@ -1940,7 +1944,7 @@ export function renderInquirySection(params: SectionParams): void {
             })
             .addExtraButton(button => {
                 button.setIcon('rotate-ccw');
-                button.setTooltip('Reset CC thresholds');
+                button.setTooltip(t('settings.inquiry.corpus.resetTooltip'));
                 button.onClick(async () => {
                     const reset = normalizeCorpusThresholds(DEFAULT_SETTINGS.inquiryCorpusThresholds);
                     await commitThresholds(reset);
@@ -1949,23 +1953,23 @@ export function renderInquirySection(params: SectionParams): void {
     };
 
     const corpusBody = createSection(containerEl, {
-        title: 'Corpus (CC)',
-        desc: 'Highlight content quality and completeness according to your quality standards. Thresholds are based on content-only word counts (frontmatter excluded).',
+        title: t('settings.inquiry.corpus.name'),
+        desc: t('settings.inquiry.corpus.desc'),
         icon: 'layout-grid',
         wiki: 'Settings#inquiry-corpus'
     });
     renderCorpusCcSettings(corpusBody);
 
     const configBody = createSection(containerEl, {
-        title: 'Configuration',
-        desc: 'Briefings, action notes, and recent session defaults for Inquiry briefs.',
+        title: t('settings.inquiry.config.name'),
+        desc: t('settings.inquiry.config.desc'),
         icon: 'settings',
         wiki: 'Settings#inquiry'
     });
 
     const artifactSetting = new Settings(configBody)
-        .setName('Briefing folder')
-        .setDesc('Inquiry briefs are saved here when auto-save is enabled.');
+        .setName(t('settings.inquiry.briefingFolder.name'))
+        .setDesc(t('settings.inquiry.briefingFolder.desc'));
 
     artifactSetting.addText(text => {
         const defaultPath = DEFAULT_SETTINGS.inquiryArtifactFolder || 'Radial Timeline/Inquiry/Briefing';
@@ -1995,7 +1999,7 @@ export function renderInquirySection(params: SectionParams): void {
 
             if (illegalChars.test(trimmed)) {
                 flashClass('ert-setting-input-error');
-                new Notice('Folder path cannot contain the characters < > : " | ? *');
+                new Notice(t('settings.inquiry.briefingFolder.invalidChars'));
                 return;
             }
 
@@ -2027,8 +2031,8 @@ export function renderInquirySection(params: SectionParams): void {
     });
 
     new Settings(configBody)
-        .setName('Auto-save Inquiry briefs')
-        .setDesc('Save a brief automatically after each successful Inquiry run.')
+        .setName(t('settings.inquiry.autoSave.name'))
+        .setDesc(t('settings.inquiry.autoSave.desc'))
         .addToggle(toggle => {
             toggle.setValue(plugin.settings.inquiryAutoSave ?? true);
             toggle.onChange(async (value) => {
@@ -2043,8 +2047,8 @@ export function renderInquirySection(params: SectionParams): void {
     };
 
     const actionNotesFieldSetting = new Settings(configBody)
-        .setName('Action notes target YAML field')
-        .setDesc('Frontmatter field to receive Inquiry action notes. Default is "Pending Edits". Notes are appended after any existing content with a link to the Inquiry brief.');
+        .setName(t('settings.inquiry.actionNotesField.name'))
+        .setDesc(t('settings.inquiry.actionNotesField.desc'));
     const defaultActionNotesField = DEFAULT_SETTINGS.inquiryActionNotesTargetField || 'Pending Edits';
     let actionNotesFieldInput: TextComponent | null = null;
 
@@ -2081,7 +2085,7 @@ export function renderInquirySection(params: SectionParams): void {
     actionNotesFieldSetting.addExtraButton(button => {
         button
             .setIcon('reset')
-            .setTooltip('Reset to default')
+            .setTooltip(t('settings.inquiry.actionNotesField.resetTooltip'))
             .onClick(async () => {
                 plugin.settings.inquiryActionNotesTargetField = defaultActionNotesField;
                 actionNotesFieldInput?.setValue(defaultActionNotesField);
@@ -2100,8 +2104,8 @@ export function renderInquirySection(params: SectionParams): void {
     };
 
     const historyLimitSetting = new Settings(configBody)
-        .setName('Inquire session history')
-        .setDesc('This does not affect Inquiry Briefs. It relates only to Inquiry View rehydration, which loads previous sessions from the Session Manager Popover. Limited to a max of 100 sessions.');
+        .setName(t('settings.inquiry.historyLimit.name'))
+        .setDesc(t('settings.inquiry.historyLimit.desc'));
     historyLimitSetting.addDropdown(dropdown => {
         INQUIRY_HISTORY_LIMIT_OPTIONS.forEach(option => dropdown.addOption(String(option), `${option}`));
         const currentLimit = resolveHistoryLimit();
@@ -2130,7 +2134,7 @@ export function renderInquirySection(params: SectionParams): void {
     const historyPreview = configBody.createDiv({
         cls: [ERT_CLASSES.PREVIEW_FRAME, ERT_CLASSES.STACK, 'ert-previewFrame--flush', 'ert-session-history-preview']
     });
-    historyPreview.createDiv({ cls: ['ert-planetary-preview-heading', 'ert-previewFrame__title'], text: 'Recent sessions' });
+    historyPreview.createDiv({ cls: ['ert-planetary-preview-heading', 'ert-previewFrame__title'], text: t('settings.inquiry.recentSessions.name') });
     const historyList = historyPreview.createDiv({ cls: 'ert-session-history-preview__list' });
 
     const openSessionPathIfAvailable = async (path: string | undefined): Promise<boolean> => {
@@ -2148,7 +2152,7 @@ export function renderInquirySection(params: SectionParams): void {
         const view = plugin.getInquiryService().getInquiryViews()[0];
         if (view?.reopenSessionByKey(session.key)) return;
         if (await openSessionPathIfAvailable(session.briefPath)) return;
-        new Notice('Unable to reopen this session right now.');
+        new Notice(t('settings.inquiry.recentSessions.reopenFailed'));
     };
 
     const renderRecentSessionsPreview = (): void => {
@@ -2157,7 +2161,7 @@ export function renderInquirySection(params: SectionParams): void {
         if (!sessions.length) {
             historyList.createDiv({
                 cls: 'ert-session-history-preview__empty',
-                text: 'No recent sessions yet. Run Inquiry to populate this list.'
+                text: t('settings.inquiry.recentSessions.empty')
             });
             return;
         }
@@ -2165,7 +2169,7 @@ export function renderInquirySection(params: SectionParams): void {
         sessions.forEach(session => {
             const row = historyList.createDiv({ cls: [ERT_CLASSES.OBJECT_ROW, 'ert-session-history-preview__item'] });
             const left = row.createDiv({ cls: ERT_CLASSES.OBJECT_ROW_LEFT });
-            const questionTitle = titleMap.get(session.result.questionId) || session.result.questionId || 'Inquiry prompt';
+            const questionTitle = titleMap.get(session.result.questionId) || session.result.questionId || t('settings.inquiry.recentSessions.fallbackTitle');
             left.createDiv({ cls: 'ert-session-history-preview__title', text: questionTitle });
             const timestamp = session.createdAt || session.lastAccessed;
             const passCountRaw = (session.result as unknown as Record<string, unknown>).executionPassCount;

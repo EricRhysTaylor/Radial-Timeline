@@ -170,6 +170,15 @@ export function clearLocaleCache(): void {
 }
 
 /**
+ * Get a BCP-47 locale tag suitable for Intl.DateTimeFormat / Intl.RelativeTimeFormat.
+ * Returns the full Obsidian locale (e.g. 'en-US', 'ja', 'de') so date/number
+ * formatting respects the user's language setting.
+ */
+export function getFormattingLocale(): string {
+    return moment.locale();
+}
+
+/**
  * Get the current locale code (useful for debugging)
  */
 export function getLocale(): string {

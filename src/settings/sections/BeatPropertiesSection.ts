@@ -1,4 +1,5 @@
 import { App, Notice, Setting as Settings, parseYaml, setIcon, setTooltip, Modal, ButtonComponent, getIconIds, TFile, normalizePath } from 'obsidian';
+import { t } from '../../i18n';
 import type RadialTimelinePlugin from '../../main';
 import type { TimelineItem } from '../../types';
 import { CreateBeatSetModal } from '../../modals/CreateBeatsTemplatesModal';
@@ -173,31 +174,31 @@ class SystemEditModal extends Modal {
         contentEl.addClass('ert-modal-container', 'ert-stack');
 
         const header = contentEl.createDiv({ cls: 'ert-modal-header' });
-        header.createSpan({ cls: 'ert-modal-badge', text: 'Edit' });
-        header.createDiv({ cls: 'ert-modal-title', text: 'Edit custom system details' });
-        header.createDiv({ cls: 'ert-modal-subtitle', text: 'This name identifies your beat system and appears in each beat note\'s frontmatter.' });
+        header.createSpan({ cls: 'ert-modal-badge', text: t('settings.beats.systemEditModal.badge') });
+        header.createDiv({ cls: 'ert-modal-title', text: t('settings.beats.systemEditModal.title') });
+        header.createDiv({ cls: 'ert-modal-subtitle', text: t('settings.beats.systemEditModal.subtitle') });
 
         const formStack = contentEl.createDiv({ cls: ERT_CLASSES.STACK });
 
         // Name input
-        const nameLabel = formStack.createDiv({ cls: 'ert-field-label', text: 'System name' });
+        const nameLabel = formStack.createDiv({ cls: 'ert-field-label', text: t('settings.beats.systemEditModal.nameLabel') });
         nameLabel.setAttribute('id', 'sys-name-label');
         const nameInput = formStack.createEl('input', {
             type: 'text',
             value: this.initialName,
             cls: 'ert-input ert-input--full'
         });
-        nameInput.setAttr('placeholder', 'Custom beats');
+        nameInput.setAttr('placeholder', t('settings.beats.systemEditModal.namePlaceholder'));
         nameInput.setAttr('aria-labelledby', 'sys-name-label');
 
         // Description textarea
-        const descLabel = formStack.createDiv({ cls: 'ert-field-label', text: 'Description (optional)' });
+        const descLabel = formStack.createDiv({ cls: 'ert-field-label', text: t('settings.beats.systemEditModal.descLabel') });
         descLabel.setAttribute('id', 'sys-desc-label');
         const descInput = formStack.createEl('textarea', {
             cls: 'ert-input ert-input--full ert-textarea'
         });
         descInput.value = this.initialDesc;
-        descInput.setAttr('placeholder', 'Describe the purpose of this beat system...');
+        descInput.setAttr('placeholder', t('settings.beats.systemEditModal.descPlaceholder'));
         descInput.setAttr('rows', '4');
         descInput.setAttr('aria-labelledby', 'sys-desc-label');
 
@@ -207,15 +208,15 @@ class SystemEditModal extends Modal {
         const save = async () => {
             const name = normalizeBeatSetNameInput(nameInput.value, '');
             if (!name || !hasBeatReadableText(name)) {
-                new Notice('Please enter a system name with letters or numbers.');
+                new Notice(t('settings.beats.systemEditModal.nameRequiredNotice'));
                 return;
             }
             const shouldClose = await this.onSubmit(name, descInput.value.trim());
             if (shouldClose) this.close();
         };
 
-        new ButtonComponent(buttonRow).setButtonText('Save').setCta().onClick(() => { void save(); });
-        new ButtonComponent(buttonRow).setButtonText('Cancel').onClick(() => this.close());
+        new ButtonComponent(buttonRow).setButtonText(t('settings.beats.systemEditModal.saveText')).setCta().onClick(() => { void save(); });
+        new ButtonComponent(buttonRow).setButtonText(t('settings.beats.systemEditModal.cancelText')).onClick(() => this.close());
 
         nameInput.addEventListener('keydown', (evt: KeyboardEvent) => { // SAFE: direct addEventListener; Modal lifecycle manages cleanup
             if (evt.key === 'Enter') { evt.preventDefault(); void save(); }
@@ -311,7 +312,7 @@ export function renderStoryBeatsSection(params: {
 
     // Acts Section (above beats)
     const actsHeading = new Settings(actsStack)
-        .setName('Acts')
+        .setName(t('settings.beats.acts.name'))
         .setHeading();
     addHeadingIcon(actsHeading, 'chart-pie');
     addWikiLink(actsHeading, 'Settings#acts');
@@ -434,7 +435,7 @@ export function renderStoryBeatsSection(params: {
         new SystemEditModal(app, targetSystem.name, targetSystem.description ?? '', async (newName, newDesc) => {
             const normalizedName = normalizeBeatSetNameInput(newName, '');
             if (!normalizedName || !hasBeatReadableText(normalizedName)) {
-                new Notice('System name must include letters or numbers.');
+                new Notice(t('settings.beats.systemEditModal.nameLettersNotice'));
                 return false;
             }
 
@@ -872,10 +873,10 @@ export function renderStoryBeatsSection(params: {
     };
 
     new Settings(actsStack)
-        .setName('Act count')
-        .setDesc('Applies to Narrative, Publication, and Gossamer modes. Scene and Beat properties. (Minimum 3)')
+        .setName(t('settings.beats.actCount.name'))
+        .setDesc(t('settings.beats.actCount.desc'))
         .addText(text => {
-            text.setPlaceholder('3');
+            text.setPlaceholder(t('settings.beats.actCount.placeholder'));
             text.setValue(String(getActCount()));
             text.inputEl.type = 'number';
             text.inputEl.min = '3';
@@ -893,10 +894,10 @@ export function renderStoryBeatsSection(params: {
         });
 
     const actLabelsSetting = new Settings(actsStack)
-        .setName('Act labels (optional)')
-        .setDesc('Comma-separated labels. Leave blank for Act 1, Act 2, Act 3. Examples: "1, 2, 3, 4" or "Spring, Summer, Fall, Winter".')
+        .setName(t('settings.beats.actLabels.name'))
+        .setDesc(t('settings.beats.actLabels.desc'))
         .addText(text => {
-            text.setPlaceholder('Act 1, Act 2, Act 3');
+            text.setPlaceholder(t('settings.beats.actLabels.placeholder'));
             text.setValue(plugin.settings.actLabelsRaw ?? '');
             text.inputEl.addClass('ert-input--xl');
             text.onChange(async (value) => {
@@ -918,7 +919,7 @@ export function renderStoryBeatsSection(params: {
     updateActPreview();
 
     const beatsHeading = new Settings(beatsStack)
-        .setName('Story beats system')
+        .setName(t('settings.beats.storyBeatsSystem.name'))
         .setHeading();
     addHeadingIcon(beatsHeading, 'activity');
     addWikiLink(beatsHeading, 'Settings#story-beats');
@@ -1027,10 +1028,10 @@ export function renderStoryBeatsSection(params: {
         if (starterActive || builtinActive) {
             titleEl.createSpan({ text: customSystemName, cls: 'ert-book-name' });
             originTagEl = titleEl.createSpan({
-                text: builtinActive ? 'Built-in set' : 'Starter set',
+                text: builtinActive ? t('settings.beats.design.builtInTag') : t('settings.beats.design.starterTag'),
                 cls: 'ert-set-origin-tag ert-set-origin-tag--starter'
             });
-            setTooltip(originTagEl, builtinActive ? 'Save a copy to turn this into a saved set.' : 'Save a copy to edit.');
+            setTooltip(originTagEl, builtinActive ? t('settings.beats.design.builtInTagTooltip') : t('settings.beats.design.starterTagTooltip'));
         } else {
             // User system: clickable to edit details
             const nameLink = titleEl.createSpan({
@@ -1047,15 +1048,15 @@ export function renderStoryBeatsSection(params: {
             });
             // Saved set: show origin tag (user-owned)
             if (savedSetActive) {
-                originTagEl = titleEl.createSpan({ text: 'Saved set', cls: 'ert-set-origin-tag ert-set-origin-tag--saved' });
-                setTooltip(originTagEl, 'Last saved version is current.');
+                originTagEl = titleEl.createSpan({ text: t('settings.beats.design.savedTag'), cls: 'ert-set-origin-tag ert-set-origin-tag--saved' });
+                setTooltip(originTagEl, t('settings.beats.design.savedTagTooltip'));
             }
         }
 
         // ── Design guidance (keep concise; long boilerplate lives in Preview stage) ──
         headerRow.createDiv({
             cls: 'ert-beat-template-desc',
-            text: 'Create beats from the row at the bottom: enter a beat name, optional range, choose an act, then click + (or press Enter). Drag beats to reorder or drop them into another act. Use Beat notes below to create or repair beat files in your vault.'
+            text: t('settings.beats.design.guidance')
         });
         const actSet = new Set(getActiveCustomBeats().map(b => b.act));
         const beatCount = getActiveCustomBeats().length;
@@ -1133,16 +1134,16 @@ export function renderStoryBeatsSection(params: {
                 }
                 // Origin tag: orange "Modified" when dirty, clean label when not
                 if (oTag) {
-                    const cleanLabel = builtinActive ? 'Built-in set' : (starterActive ? 'Starter set' : 'Saved set');
+                    const cleanLabel = builtinActive ? t('settings.beats.design.builtInTag') : (starterActive ? t('settings.beats.design.starterTag') : t('settings.beats.design.savedTag'));
                     const cleanTip = builtinActive
-                        ? 'Save a copy to turn this into a saved set.'
-                        : (starterActive ? 'Save a copy to edit.' : 'Last saved version is current.');
+                        ? t('settings.beats.design.builtInTagTooltip')
+                        : (starterActive ? t('settings.beats.design.starterTagTooltip') : t('settings.beats.design.savedTagTooltip'));
                     const dirtyTip = starterActive
-                        ? 'Starter set has been changed. Save a copy to keep your version.'
+                        ? t('settings.beats.design.starterDirtyTooltip')
                         : builtinActive
-                            ? 'Built-in set has been changed. Save a copy to keep your version.'
-                            : 'Changes have been made since last save.';
-                    oTag.setText(dirty ? 'Modified' : cleanLabel);
+                            ? t('settings.beats.design.builtInDirtyTooltip')
+                            : t('settings.beats.design.savedDirtyTooltip');
+                    oTag.setText(dirty ? t('settings.beats.design.modifiedLabel') : cleanLabel);
                     oTag.classList.toggle('ert-set-origin-tag--modified', dirty);
                     oTag.classList.toggle('ert-set-origin-tag--starter', !dirty && starterActive);
                     oTag.classList.toggle('ert-set-origin-tag--saved', !dirty && !starterActive);
@@ -1166,7 +1167,7 @@ export function renderStoryBeatsSection(params: {
                 act: clampBeatAct(beat.act, maxActs),
             }));
             if (normalized.some(beat => !hasBeatReadableText(beat.name))) {
-                new Notice('Beat names must include letters or numbers.');
+                new Notice(t('settings.beats.design.beatNamesNotice'));
                 return;
             }
             setActiveCustomBeats(orderBeatsByAct(normalized, maxActs));
@@ -1333,7 +1334,7 @@ export function renderStoryBeatsSection(params: {
                     // Drag handle
                     const handle = row.createDiv({ cls: 'ert-drag-handle' });
                     setIcon(handle, 'grip-vertical');
-                    setTooltip(handle, 'Drag to reorder beat');
+                    setTooltip(handle, t('settings.beats.design.dragTooltip'));
 
                     const rowInfo = row.createDiv({ cls: 'ert-beat-row-info' });
 
@@ -1353,7 +1354,7 @@ export function renderStoryBeatsSection(params: {
                     // Name input
                     const nameInput = row.createEl('input', { type: 'text', cls: 'ert-beat-name-input ert-input' });
                     nameInput.value = name;
-                    nameInput.placeholder = 'Beat name';
+                    nameInput.placeholder = t('settings.beats.design.beatNamePlaceholder');
                     // Determine row state (mutually exclusive: new | synced | misaligned | duplicate)
                     let rowState: 'new' | 'synced' | 'misaligned' | 'duplicate' = 'new';
                     const rowNotices: string[] = [];
@@ -1409,7 +1410,7 @@ export function renderStoryBeatsSection(params: {
                     plugin.registerDomEvent(nameInput, 'change', () => {
                         const newName = normalizeBeatNameInput(nameInput.value, '');
                         if (!newName || !hasBeatReadableText(newName)) {
-                            new Notice('Beat name must include letters or numbers.');
+                            new Notice(t('settings.beats.design.beatNameNotice'));
                             nameInput.value = name;
                             return;
                         }
@@ -1424,7 +1425,7 @@ export function renderStoryBeatsSection(params: {
                     const rangeInput = row.createEl('input', { type: 'text', cls: 'ert-beat-range-input ert-input' });
                     rangeInput.value = beatLine.range ?? '';
                     rangeInput.placeholder = 'e.g. 10-20';
-                    setTooltip(rangeInput, 'Gossamer momentum range (e.g. 10-20)');
+                    setTooltip(rangeInput, t('settings.beats.design.rangeTooltip'));
                     plugin.registerDomEvent(rangeInput, 'change', () => {
                         const rangeVal = rangeInput.value.trim();
                         const updated = [...orderedBeats];
@@ -1443,7 +1444,7 @@ export function renderStoryBeatsSection(params: {
                         const updated = [...orderedBeats];
                         const currentName = normalizeBeatNameInput(nameInput.value, name);
                         if (!hasBeatReadableText(currentName)) {
-                            new Notice('Beat name must include letters or numbers.');
+                            new Notice(t('settings.beats.design.beatNameNotice'));
                             return;
                         }
                         const actNum = clampBeatAct(parseInt(act, 10) || 1, maxActs);
@@ -1497,22 +1498,22 @@ export function renderStoryBeatsSection(params: {
             addRow.createDiv({ cls: 'ert-beat-ordinal ert-beat-ordinal--empty', text: '' });
             addRow.createDiv({ cls: 'ert-beat-index ert-beat-add-index', text: '' });
 
-            const addNameInput = addRow.createEl('input', { type: 'text', cls: 'ert-beat-name-input ert-input', placeholder: 'New beat' });
+            const addNameInput = addRow.createEl('input', { type: 'text', cls: 'ert-beat-name-input ert-input', placeholder: t('settings.beats.design.newBeatPlaceholder') });
             const addRangeInput = addRow.createEl('input', { type: 'text', cls: 'ert-beat-range-input ert-input', placeholder: 'e.g. 10-20' });
-            setTooltip(addRangeInput, 'Gossamer momentum range (e.g. 10-20)');
+            setTooltip(addRangeInput, t('settings.beats.design.rangeTooltip'));
             const addActSelect = addRow.createEl('select', { cls: 'ert-beat-act-select ert-input' });
             Array.from({ length: maxActs }, (_, i) => i + 1).forEach(n => {
                 const opt = addActSelect.createEl('option', { value: n.toString(), text: actLabels[n - 1] });
                 if (defaultAct === n) opt.selected = true;
             });
 
-            const addBtn = addRow.createEl('button', { cls: ['ert-iconBtn', 'ert-beat-add-btn'], attr: { 'aria-label': 'Add beat' } });
+            const addBtn = addRow.createEl('button', { cls: ['ert-iconBtn', 'ert-beat-add-btn'], attr: { 'aria-label': t('settings.beats.design.addBeatAriaLabel') } });
             setIcon(addBtn, 'plus');
 
             const commitAdd = () => {
                 const name = normalizeBeatNameInput(addNameInput.value || 'New Beat', 'New Beat');
                 if (!hasBeatReadableText(name)) {
-                    new Notice('Beat name must include letters or numbers.');
+                    new Notice(t('settings.beats.design.beatNameNotice'));
                     return;
                 }
                 const act = clampBeatAct(parseInt(addActSelect.value, 10) || defaultAct || 1, maxActs);
@@ -1905,25 +1906,25 @@ export function renderStoryBeatsSection(params: {
         updateTemplateButton(templateSetting, getActiveBeatWorkspaceName('Custom'));
         refreshBeatAuditPrimaryAction?.();
         if (context === 'fields') {
-            new Notice('Set saved. You can run the audit now.');
+            new Notice(t('settings.beats.design.setSavedNotice'));
         }
     };
 
     const templateSetting = new Settings(designActionsContainer)
-        .setName('Beat notes')
-        .setDesc('Create beat note files in your vault based on the selected story structure system.')
+        .setName(t('settings.beats.beatNotes.name'))
+        .setDesc(t('settings.beats.beatNotes.desc'))
         .addButton(button => {
             createTemplatesButton = button;
             button
-                .setButtonText('Create beat notes')
-                .setTooltip('Create beat note files in your source path')
+                .setButtonText(t('settings.beats.beatNotes.createText'))
+                .setTooltip(t('settings.beats.beatNotes.createTooltip'))
                 .onClick(() => { void primaryDesignAction(); });
         })
         .addButton(button => {
             repairBeatNotesButton = button;
             button
-                .setButtonText('Repair beat notes')
-                .setTooltip('Update Act and Beat Model in frontmatter for misaligned beat notes. Prefix numbers are not changed.')
+                .setButtonText(t('settings.beats.beatNotes.repairText'))
+                .setTooltip(t('settings.beats.beatNotes.repairTooltip'))
                 .onClick(async () => {
                     await mergeExistingBeatNotes();
                 });
@@ -1974,13 +1975,13 @@ export function renderStoryBeatsSection(params: {
         };
 
         // Stage 1: Preview (acts + beats overview)
-        makeStageBtn('preview', 1, 'Preview', !hasActiveTab);
+        makeStageBtn('preview', 1, t('settings.beats.stages.preview'), !hasActiveTab);
 
         // Stage 2: Design (beat list editor + beat notes in vault)
-        makeStageBtn('design', 2, 'Design', !hasActiveTab);
+        makeStageBtn('design', 2, t('settings.beats.stages.design'), !hasActiveTab);
 
         // Stage 3: Fields (YAML editor, hover metadata, schema audit)
-        makeStageBtn('fields', 3, 'Fields', !hasActiveTab);
+        makeStageBtn('fields', 3, t('settings.beats.stages.fields'), !hasActiveTab);
     };
 
     /**
@@ -2057,7 +2058,7 @@ export function renderStoryBeatsSection(params: {
 
     const deleteCurrentSetBeatNotes = async (targetTab: LoadedBeatTab): Promise<void> => {
         if (!targetTab) {
-            new Notice('No active beat system selected.');
+            new Notice(t('settings.beats.design.noActiveSystemNotice'));
             return;
         }
 
@@ -2164,7 +2165,7 @@ export function renderStoryBeatsSection(params: {
         });
         const addIcon = addBtn.createSpan({ cls: 'ert-mini-tab-icon ert-beat-health-icon' });
         setIcon(addIcon, 'plus');
-        addBtn.appendText('Add system');
+        addBtn.appendText(t('settings.beats.library.addSystemLabel'));
         addBtn.addEventListener('click', () => {
             _currentInnerStage = 'library';
             renderBeatSystemTabs();
@@ -2176,8 +2177,8 @@ export function renderStoryBeatsSection(params: {
     // ─── BEAT YAML EDITOR — always visible in Fields stage ─────────────
     const beatYamlSection = fieldsContainer.createDiv({ cls: ERT_CLASSES.STACK });
     const beatYamlSetting = new Settings(beatYamlSection)
-        .setName('Beat fields')
-        .setDesc('Customize additional properties for beat notes. Enable fields to show in beat hover info. Use the audit below to check conformity across existing beat notes.');
+        .setName(t('settings.beats.beatFields.name'))
+        .setDesc(t('settings.beats.beatFields.desc'));
     // Force editor enabled so Fields content is always visible
     plugin.settings.enableBeatYamlEditor = true;
 
@@ -2301,7 +2302,7 @@ export function renderStoryBeatsSection(params: {
 
             // Read-only base fields (collapsed summary)
             const baseCard = beatYamlContainer.createDiv({ cls: 'ert-template-base-summary' });
-            baseCard.createDiv({ cls: 'ert-template-base-heading', text: 'Base fields (read-only)' });
+            baseCard.createDiv({ cls: 'ert-template-base-heading', text: t('settings.beats.beatFields.baseFieldsHeading') });
             const basePills = baseCard.createDiv({ cls: 'ert-template-base-pills' });
             beatBaseKeys.forEach(k => {
                 basePills.createSpan({ cls: 'ert-template-base-pill', text: k });
@@ -2311,7 +2312,7 @@ export function renderStoryBeatsSection(params: {
             const listEl = beatYamlContainer.createDiv({ cls: ['ert-template-entries', 'ert-template-indent'] });
 
             if (data.length > 0) {
-                listEl.createDiv({ cls: 'ert-template-section-label', text: 'Custom fields' });
+                listEl.createDiv({ cls: 'ert-template-section-label', text: t('settings.beats.beatFields.customFieldsHeading') });
             }
 
             const renderBeatEntryRow = (entry: FieldEntry, idx: number, list: FieldEntry[]) => {
@@ -2325,7 +2326,7 @@ export function renderStoryBeatsSection(params: {
                 const dragHandle = row.createDiv({ cls: 'ert-drag-handle' });
                 dragHandle.draggable = true;
                 setIcon(dragHandle, 'grip-vertical');
-                setTooltip(dragHandle, 'Drag to reorder');
+                setTooltip(dragHandle, t('settings.beats.beatFields.dragTooltip'));
 
                 row.createDiv({ cls: 'ert-grid-spacer' });
 
@@ -2336,10 +2337,10 @@ export function renderStoryBeatsSection(params: {
                 const iconInput = iconWrapper.createEl('input', {
                     type: 'text',
                     cls: 'ert-input ert-input--md ert-icon-input',
-                    attr: { placeholder: 'Icon name...' }
+                    attr: { placeholder: t('settings.beats.beatFields.iconPlaceholder') }
                 });
                 iconInput.value = currentIcon;
-                setTooltip(iconInput, 'Lucide icon name for hover synopsis');
+                setTooltip(iconInput, t('settings.beats.beatFields.iconTooltip'));
 
                 // Hover checkbox
                 const checkboxWrapper = row.createDiv({ cls: 'ert-hover-checkbox-wrapper' });
@@ -2348,7 +2349,7 @@ export function renderStoryBeatsSection(params: {
                     cls: 'ert-hover-checkbox'
                 });
                 checkbox.checked = currentEnabled;
-                setTooltip(checkbox, 'Show in beat hover synopsis');
+                setTooltip(checkbox, t('settings.beats.beatFields.hoverCheckboxTooltip'));
 
                 new IconSuggest(app, iconInput, (selectedIcon) => {
                     iconInput.value = selectedIcon;
@@ -2377,27 +2378,27 @@ export function renderStoryBeatsSection(params: {
                 // Key input
                 const keyInput = row.createEl('input', { type: 'text', cls: 'ert-input ert-input--md' });
                 keyInput.value = entry.key;
-                keyInput.placeholder = 'Key';
+                keyInput.placeholder = t('settings.beats.beatFields.keyPlaceholder');
                 keyInput.onchange = () => {
                     const newKey = normalizeBeatFieldKeyInput(keyInput.value);
                     if (!newKey || !hasBeatReadableText(newKey)) {
                         keyInput.value = entry.key;
-                        new Notice('Field key must include letters or numbers.');
+                        new Notice(t('settings.beats.beatFields.keyRequiredNotice'));
                         return;
                     }
                     keyInput.value = newKey;
                     if (beatBaseKeys.includes(newKey)) {
-                        new Notice(`"${newKey}" is a base beat field. Choose another name.`);
+                        new Notice(`"${newKey}" ${t('settings.beats.beatFields.baseFieldNotice')}`);
                         keyInput.value = entry.key;
                         return;
                     }
                     if (beatDisallowedNewWriteKeys.has(newKey)) {
-                        new Notice(`"${newKey}" is a legacy beat key. Use "Purpose" instead.`);
+                        new Notice(`"${newKey}" ${t('settings.beats.beatFields.legacyKeyNotice')}`);
                         keyInput.value = entry.key;
                         return;
                     }
                     if (list.some((e, i) => i !== idx && e.key === newKey)) {
-                        new Notice(`Key "${newKey}" already exists.`);
+                        new Notice(`${t('settings.beats.beatFields.keyExistsNotice').replace('{{key}}', newKey)}`);
                         keyInput.value = entry.key;
                         return;
                     }
@@ -2414,7 +2415,7 @@ export function renderStoryBeatsSection(params: {
                 const valInput = row.createEl('input', { type: 'text', cls: 'ert-input ert-input--md' });
                 if (Array.isArray(value)) {
                     valInput.value = value.join(', ');
-                    valInput.placeholder = 'Comma-separated values';
+                    valInput.placeholder = t('settings.beats.beatFields.commaSeparatedPlaceholder');
                     valInput.onchange = () => {
                         valInput.value = normalizeBeatFieldListValueInput(valInput.value).join(', ');
                         const nextList = [...list];
@@ -2424,7 +2425,7 @@ export function renderStoryBeatsSection(params: {
                     };
                 } else {
                     valInput.value = typeof value === 'string' ? value : '';
-                    valInput.placeholder = 'Default value (optional)';
+                    valInput.placeholder = t('settings.beats.beatFields.defaultValuePlaceholder');
                     valInput.onchange = () => {
                         valInput.value = normalizeBeatFieldValueInput(valInput.value);
                         const nextList = [...list];
@@ -2435,9 +2436,9 @@ export function renderStoryBeatsSection(params: {
                 }
 
                 // Delete button (matches scene: ert-iconBtn + trash icon)
-                const delBtn = row.createEl('button', { cls: 'ert-iconBtn', attr: { type: 'button', 'aria-label': 'Remove field' } });
+                const delBtn = row.createEl('button', { cls: 'ert-iconBtn', attr: { type: 'button', 'aria-label': t('settings.beats.beatFields.removeFieldLabel') } });
                 setIcon(delBtn, 'trash');
-                setTooltip(delBtn, 'Remove field');
+                setTooltip(delBtn, t('settings.beats.beatFields.removeFieldLabel'));
                 delBtn.onclick = () => {
                     removeBeatHoverMetadata(entry.key);
                     const nextList = list.filter((_, i) => i !== idx);
@@ -2482,10 +2483,10 @@ export function renderStoryBeatsSection(params: {
             const addIconInput = addIconWrapper.createEl('input', {
                 type: 'text',
                 cls: 'ert-input ert-input--md ert-icon-input',
-                attr: { placeholder: 'Icon name...' }
+                attr: { placeholder: t('settings.beats.beatFields.iconPlaceholder') }
             });
             addIconInput.value = DEFAULT_HOVER_ICON;
-            setTooltip(addIconInput, 'Lucide icon name for beat hover synopsis');
+            setTooltip(addIconInput, t('settings.beats.beatFields.iconTooltip'));
 
             new IconSuggest(app, addIconInput, (selectedIcon) => {
                 addIconInput.value = selectedIcon;
@@ -2508,38 +2509,38 @@ export function renderStoryBeatsSection(params: {
                 cls: 'ert-hover-checkbox'
             });
             addCheckbox.checked = false;
-            setTooltip(addCheckbox, 'Show in beat hover synopsis');
+            setTooltip(addCheckbox, t('settings.beats.beatFields.hoverCheckboxTooltip'));
 
             // 3. Key input
-            const addKeyInput = addRow.createEl('input', { type: 'text', cls: 'ert-input ert-input--full', attr: { placeholder: 'New key' } });
+            const addKeyInput = addRow.createEl('input', { type: 'text', cls: 'ert-input ert-input--full', attr: { placeholder: t('settings.beats.beatFields.newKeyPlaceholder') } });
 
             // 4. Value input
-            const addValInput = addRow.createEl('input', { type: 'text', cls: 'ert-input ert-input--full', attr: { placeholder: 'Value' } }) as HTMLInputElement;
+            const addValInput = addRow.createEl('input', { type: 'text', cls: 'ert-input ert-input--full', attr: { placeholder: t('settings.beats.beatFields.valuePlaceholder') } }) as HTMLInputElement;
 
             // 5. Buttons wrapper (holds add + revert)
             const btnWrap = addRow.createDiv({ cls: ['ert-iconBtnGroup', 'ert-template-actions'] });
 
             const addBtn = btnWrap.createEl('button', { cls: ['ert-iconBtn', 'ert-mod-cta'] });
             setIcon(addBtn, 'plus');
-            setTooltip(addBtn, 'Add custom beat property');
+            setTooltip(addBtn, t('settings.beats.beatFields.addPropertyTooltip'));
 
             const doAddBeatField = () => {
                 const newKey = normalizeBeatFieldKeyInput(addKeyInput.value);
                 if (!newKey || !hasBeatReadableText(newKey)) {
-                    new Notice('Field key must include letters or numbers.');
+                    new Notice(t('settings.beats.beatFields.keyRequiredNotice'));
                     return;
                 }
                 addKeyInput.value = newKey;
                 if (beatBaseKeys.includes(newKey)) {
-                    new Notice(`"${newKey}" is a base beat field.`);
+                    new Notice(`"${newKey}" ${t('settings.beats.beatFields.baseFieldNotice')}`);
                     return;
                 }
                 if (beatDisallowedNewWriteKeys.has(newKey)) {
-                    new Notice(`"${newKey}" is a legacy beat key. Use "Purpose" instead.`);
+                    new Notice(`"${newKey}" ${t('settings.beats.beatFields.legacyKeyNotice')}`);
                     return;
                 }
                 if (data.some(e => e.key === newKey)) {
-                    new Notice(`"${newKey}" already exists.`);
+                    new Notice(`${t('settings.beats.beatFields.keyExistsNotice').replace('{{key}}', newKey)}`);
                     return;
                 }
                 // Save hover metadata for new key
@@ -2559,7 +2560,7 @@ export function renderStoryBeatsSection(params: {
 
             const revertBtn = btnWrap.createEl('button', { cls: ['ert-iconBtn', 'ert-template-reset-btn'] });
             setIcon(revertBtn, 'rotate-ccw');
-            setTooltip(revertBtn, 'Revert beat properties to default');
+            setTooltip(revertBtn, t('settings.beats.beatFields.revertTooltip'));
             revertBtn.onclick = async () => {
                 const confirmed = await new Promise<boolean>((resolve) => {
                     const modal = new Modal(app);
@@ -2571,17 +2572,17 @@ export function renderStoryBeatsSection(params: {
                     contentEl.addClass('ert-modal-container', 'ert-stack');
 
                     const header = contentEl.createDiv({ cls: 'ert-modal-header' });
-                    header.createSpan({ text: 'Warning', cls: 'ert-modal-badge' });
-                    header.createDiv({ text: 'Reset beat properties', cls: 'ert-modal-title' });
-                    header.createDiv({ text: 'Resetting will delete all custom beat properties, lucide icons, and restore the defaults.', cls: 'ert-modal-subtitle' });
+                    header.createSpan({ text: t('settings.beats.resetModal.badge'), cls: 'ert-modal-badge' });
+                    header.createDiv({ text: t('settings.beats.resetModal.title'), cls: 'ert-modal-title' });
+                    header.createDiv({ text: t('settings.beats.resetModal.subtitle'), cls: 'ert-modal-subtitle' });
 
                     const body = contentEl.createDiv({ cls: ['ert-panel', 'ert-panel--glass'] });
-                    body.createDiv({ text: 'Are you sure you want to reset? This cannot be undone.', cls: 'ert-purge-warning' });
+                    body.createDiv({ text: t('settings.beats.resetModal.confirmText'), cls: 'ert-purge-warning' });
 
                     const actionsRow = contentEl.createDiv({ cls: ['ert-modal-actions', 'ert-inline-actions'] });
 
                     new ButtonComponent(actionsRow)
-                        .setButtonText('Reset to default')
+                        .setButtonText(t('settings.beats.resetModal.resetText'))
                         .setWarning()
                         .onClick(() => {
                             modal.close();
@@ -2589,7 +2590,7 @@ export function renderStoryBeatsSection(params: {
                         });
 
                     new ButtonComponent(actionsRow)
-                        .setButtonText('Cancel')
+                        .setButtonText(t('settings.beats.resetModal.cancelText'))
                         .onClick(() => {
                             modal.close();
                             resolve(false);
@@ -2621,7 +2622,7 @@ export function renderStoryBeatsSection(params: {
         cls: ['ert-previewFrame', 'ert-previewFrame--center', 'ert-previewFrame--flush'],
         attr: { 'data-preview': 'beat-metadata' }
     });
-    const beatHoverPreviewHeading = beatHoverPreviewContainer.createDiv({ cls: 'ert-planetary-preview-heading', text: 'Beat Hover Metadata Preview' });
+    const beatHoverPreviewHeading = beatHoverPreviewContainer.createDiv({ cls: 'ert-planetary-preview-heading', text: t('settings.beats.hoverPreview.heading') });
     const beatHoverPreviewBody = beatHoverPreviewContainer.createDiv({ cls: ['ert-hover-preview-body', 'ert-stack'] });
 
     const renderBeatHoverPreview = () => {
@@ -2633,8 +2634,8 @@ export function renderStoryBeatsSection(params: {
 
         if (enabledFields.length === 0) {
             beatHoverPreviewContainer.removeClass('ert-settings-hidden');
-            beatHoverPreviewHeading.setText('Beat Hover Metadata Preview (none enabled)');
-            beatHoverPreviewBody.createDiv({ text: 'Enable fields using the checkboxes above to show them in beat hover synopsis.', cls: 'ert-hover-preview-empty' });
+            beatHoverPreviewHeading.setText(t('settings.beats.hoverPreview.headingNoneEnabled'));
+            beatHoverPreviewBody.createDiv({ text: t('settings.beats.hoverPreview.enableHint'), cls: 'ert-hover-preview-empty' });
             return;
         }
         beatHoverPreviewContainer.removeClass('ert-settings-hidden');
@@ -2665,11 +2666,11 @@ export function renderStoryBeatsSection(params: {
     const savedHeaderRow = savedCard.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
     const savedTitleArea = savedHeaderRow.createDiv({ cls: 'ert-control' });
     const savedTitleRow = savedTitleArea.createEl('h4', { cls: `${ERT_CLASSES.SECTION_TITLE} ${ERT_CLASSES.INLINE}` });
-    savedTitleRow.createSpan({ text: 'Beat system sets' });
+    savedTitleRow.createSpan({ text: t('settings.beats.library.heading') });
 
     savedCard.createEl('p', {
         cls: ERT_CLASSES.SECTION_DESC,
-        text: 'Built-ins and starter sets are library sources. Saved sets are your own versions you can edit and delete.'
+        text: t('settings.beats.library.desc')
     });
 
     const savedControlsContainer = savedCard.createDiv({ cls: ERT_CLASSES.STACK });
@@ -2806,32 +2807,32 @@ export function renderStoryBeatsSection(params: {
             header.createDiv({
                 cls: 'ert-modal-subtitle',
                 text: noteFiles.length > 0
-                    ? 'This moves the beat notes to trash and keeps the set definition available in Add system.'
-                    : 'No deployed beat notes remain. This removes the tab from the workspace and keeps the set definition available in Add system.'
+                    ? t('settings.beats.deleteModal.subtitleWithNotes')
+                    : t('settings.beats.deleteModal.subtitleNoNotes')
             });
 
             const body = modal.contentEl.createDiv({ cls: ['ert-panel', 'ert-panel--glass'] });
             body.createDiv({
                 cls: 'ert-modal-subtitle',
                 text: noteFiles.length > 0
-                    ? `Scope: ${noteFiles.length} beat note${noteFiles.length !== 1 ? 's' : ''}`
-                    : 'Scope: no deployed beat notes remain'
+                    ? `${t('settings.beats.deleteModal.scopePrefix')}${noteFiles.length} ${t('settings.beats.deleteModal.beatNote')}${noteFiles.length !== 1 ? 's' : ''}`
+                    : t('settings.beats.deleteModal.scopeNoNotes')
             });
             if (customContent.notesWithTemplateCustomContent > 0 || customContent.notesWithExtraCustomContent > 0) {
                 const warn = body.createDiv({ cls: 'ert-purge-warning' });
                 if (customContent.notesWithExtraCustomContent > 0) {
                     warn.createDiv({
-                        text: 'Any custom properties with values will be lost, including all data entry in non-template fields.'
+                        text: t('settings.beats.deleteModal.warningExtra')
                     });
                 } else {
                     warn.createDiv({
-                        text: 'Any custom properties with values will be lost, including all data entry.'
+                        text: t('settings.beats.deleteModal.warningTemplate')
                     });
                 }
             }
 
             const confirmEl = body.createDiv({ cls: 'ert-modal-confirm-type' });
-            confirmEl.createDiv({ text: 'Type DELETE to confirm:', cls: 'ert-modal-subtitle' });
+            confirmEl.createDiv({ text: t('settings.beats.deleteModal.typeDeletePrompt'), cls: 'ert-modal-subtitle' });
             const confirmInput = confirmEl.createEl('input', { type: 'text', attr: { placeholder: 'DELETE' } });
 
             const footer = modal.contentEl.createDiv({ cls: 'ert-modal-actions' });
@@ -2852,7 +2853,7 @@ export function renderStoryBeatsSection(params: {
                 actionBtn.setDisabled(confirmInput.value.trim() !== 'DELETE');
                 confirmInput.classList.remove('ert-input-error');
             });
-            new ButtonComponent(footer).setButtonText('Cancel').onClick(() => {
+            new ButtonComponent(footer).setButtonText(t('settings.beats.deleteModal.cancelText')).onClick(() => {
                 resolve(false);
                 modal.close();
             });
@@ -3048,7 +3049,7 @@ export function renderStoryBeatsSection(params: {
 
         const selectorCard = savedControlsContainer.createDiv({ cls: 'ert-set-preview ert-set-selector-card' });
         const selectorRow = selectorCard.createDiv({ cls: 'ert-set-selector-row' });
-        selectorRow.createSpan({ text: 'Select a set', cls: 'ert-set-preview-title' });
+        selectorRow.createSpan({ text: t('settings.beats.library.selectLabel'), cls: 'ert-set-preview-title' });
         const selectEl = selectorRow.createEl('select', {
             cls: 'ert-input ert-input--lg',
             attr: { 'aria-label': 'Select a beat system set' }
@@ -3065,10 +3066,10 @@ export function renderStoryBeatsSection(params: {
             });
         };
 
-        appendOptionGroup('Built-in systems', orderedEntries.filter((entry) => entry.kind === 'builtin'));
-        appendOptionGroup('Starter sets', orderedEntries.filter((entry) => entry.kind === 'starter'));
-        appendOptionGroup('Saved systems', orderedEntries.filter((entry) => entry.kind === 'saved'));
-        appendOptionGroup('Blank system', orderedEntries.filter((entry) => entry.kind === 'blank'));
+        appendOptionGroup(t('settings.beats.library.builtInGroup'), orderedEntries.filter((entry) => entry.kind === 'builtin'));
+        appendOptionGroup(t('settings.beats.library.starterGroup'), orderedEntries.filter((entry) => entry.kind === 'starter'));
+        appendOptionGroup(t('settings.beats.library.savedGroup'), orderedEntries.filter((entry) => entry.kind === 'saved'));
+        appendOptionGroup(t('settings.beats.library.blankGroup'), orderedEntries.filter((entry) => entry.kind === 'blank'));
         selectEl.value = selectedEntry.id;
         selectEl.addEventListener('change', () => {
             selectedLibraryEntryId = selectEl.value;
@@ -3080,12 +3081,12 @@ export function renderStoryBeatsSection(params: {
         previewTitleRow.createSpan({ text: selectedEntry.name, cls: 'ert-set-preview-title' });
         const previewTag = previewTitleRow.createSpan({
             text: selectedEntry.isDefault
-                ? 'Blank system'
+                ? t('settings.beats.library.blankSystemTag')
                 : selectedEntry.kind === 'builtin'
-                    ? 'Built-in system'
+                    ? t('settings.beats.library.builtInSystemTag')
                     : selectedEntry.kind === 'starter'
-                        ? 'Starter set'
-                        : 'Saved system',
+                        ? t('settings.beats.library.starterSetTag')
+                        : t('settings.beats.library.savedSystemTag'),
             cls: `ert-set-preview-tag ${(selectedEntry.kind === 'builtin' || selectedEntry.kind === 'starter') ? 'ert-set-preview-tag--starter' : 'ert-set-preview-tag--saved'}`
         });
         if (selectedEntry.isDefault) {
@@ -3122,8 +3123,8 @@ export function renderStoryBeatsSection(params: {
         const activeWorkspaceTab = getActiveBeatWorkspaceTab();
         const selectedIsActive = !!selectedLoadedTab && !!activeWorkspaceTab && selectedLoadedTab.tabId === activeWorkspaceTab.tabId;
         const statusHints: string[] = [];
-        if (selectedLoadedTab) statusHints.push('Loaded in workspace');
-        if (selectedIsActive) statusHints.push('Active in timeline');
+        if (selectedLoadedTab) statusHints.push(t('settings.beats.library.loadedStatus'));
+        if (selectedIsActive) statusHints.push(t('settings.beats.library.activeStatus'));
         if (statusHints.length > 0) {
             previewCard.createDiv({
                 cls: 'ert-set-preview-status',
@@ -3135,10 +3136,10 @@ export function renderStoryBeatsSection(params: {
         new ButtonComponent(actionsRow)
             .setButtonText(
                 selectedEntry.isDefault
-                    ? 'Create blank system'
+                    ? t('settings.beats.library.createBlankText')
                     : selectedLoadedTab
-                        ? 'Focus tab'
-                        : 'Open tab'
+                        ? t('settings.beats.library.focusTabText')
+                        : t('settings.beats.library.openTabText')
             )
             .setCta()
             .onClick(() => {
@@ -3149,14 +3150,14 @@ export function renderStoryBeatsSection(params: {
 
         const canSaveCopy = !!activeWorkspaceTab && activeWorkspaceTab.beats.length > 0;
         new ButtonComponent(actionsRow)
-            .setButtonText('Save as copy')
+            .setButtonText(t('settings.beats.library.saveAsCopyText'))
             .setDisabled(!canSaveCopy)
             .onClick(() => { void saveSetModal({ isCopy: true }); });
 
         const activeEntry = getEntryFromLoadedTab(activeWorkspaceTab);
         const canResetCurrent = !!activeEntry && !!activeEntry.builtIn && !activeEntry.isDefault && getSelectedEntryBeatNoteFiles(activeEntry).length > 0;
         new ButtonComponent(actionsRow)
-            .setButtonText('Reset to default')
+            .setButtonText(t('settings.beats.library.resetToDefaultText'))
             .setDisabled(!canResetCurrent)
             .onClick(() => {
                 if (activeEntry) {
@@ -3172,20 +3173,20 @@ export function renderStoryBeatsSection(params: {
                     name: normalizeBeatNameInput(b.name, ''),
                 }));
             if (currentBeats.some(b => !hasBeatReadableText(b.name))) {
-                new Notice('Beat names must include letters or numbers before saving a set.');
+                new Notice(t('settings.beats.saveModal.beatNamesNotice'));
                 return;
             }
             if (currentBeats.length === 0) {
-                new Notice('No beats defined. Add beats before saving.');
+                new Notice(t('settings.beats.saveModal.noBeatsNotice'));
                 return;
             }
             const activeConfig = getBeatConfigForSystem(plugin.settings);
             const currentName = getActiveCustomName('Custom');
             const defaultName = opts.isCopy ? `${currentName} (Copy)` : currentName;
-            const modalTitle = opts.isCopy ? 'Save a copy' : 'Save set';
+            const modalTitle = opts.isCopy ? t('settings.beats.saveModal.copyTitle') : t('settings.beats.saveModal.saveTitle');
             const modalSubtitle = opts.isCopy
-                ? 'Create an editable copy of this starter set. The original stays unchanged.'
-                : 'Enter a name for this set. Existing sets with the same name will be updated.';
+                ? t('settings.beats.saveModal.copySubtitle')
+                : t('settings.beats.saveModal.saveSubtitle');
 
             const saveName = await new Promise<string | null>((resolve) => {
                 const modal = new Modal(app);
@@ -3195,33 +3196,33 @@ export function renderStoryBeatsSection(params: {
                 modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal-shell--md');
                 contentEl.addClass('ert-modal-container', 'ert-stack');
                 const header = contentEl.createDiv({ cls: 'ert-modal-header' });
-                header.createSpan({ cls: 'ert-modal-badge', text: 'BEAT SYSTEM' });
+                header.createSpan({ cls: 'ert-modal-badge', text: t('settings.beats.saveModal.badge') });
                 header.createDiv({ cls: 'ert-modal-title', text: modalTitle });
                 header.createDiv({ cls: 'ert-modal-subtitle', text: modalSubtitle });
                 const inputRow = contentEl.createDiv({ cls: ['ert-panel', 'ert-panel--glass'] });
                 const nameInput = inputRow.createEl('input', {
                     type: 'text',
                     cls: 'ert-input ert-input--full',
-                    attr: { placeholder: 'Set name' }
+                    attr: { placeholder: t('settings.beats.saveModal.namePlaceholder') }
                 }) as HTMLInputElement;
                 nameInput.value = defaultName;
                 const actionsDiv = contentEl.createDiv({ cls: ['ert-modal-actions', 'ert-inline-actions'] });
-                new ButtonComponent(actionsDiv).setButtonText('Save').setCta().onClick(() => {
+                new ButtonComponent(actionsDiv).setButtonText(t('settings.beats.saveModal.saveText')).setCta().onClick(() => {
                     const name = normalizeBeatSetNameInput(nameInput.value, '');
                     if (!name || !hasBeatReadableText(name)) {
-                        new Notice('Set name must include letters or numbers.');
+                        new Notice(t('settings.beats.saveModal.nameRequiredNotice'));
                         return;
                     }
                     modal.close();
                     resolve(name);
                 });
-                new ButtonComponent(actionsDiv).setButtonText('Cancel').onClick(() => { modal.close(); resolve(null); });
+                new ButtonComponent(actionsDiv).setButtonText(t('settings.beats.saveModal.cancelText')).onClick(() => { modal.close(); resolve(null); });
                 nameInput.addEventListener('keydown', (e) => {
                     if (e.key === 'Enter') {
                         e.preventDefault();
                         const name = normalizeBeatSetNameInput(nameInput.value, '');
                         if (!name || !hasBeatReadableText(name)) {
-                            new Notice('Set name must include letters or numbers.');
+                            new Notice(t('settings.beats.saveModal.nameRequiredNotice'));
                             return;
                         }
                         modal.close();
@@ -3325,17 +3326,17 @@ export function renderStoryBeatsSection(params: {
     const backdropYamlSection = (backdropYamlTargetEl ?? yamlStack).createDiv({ cls: ERT_CLASSES.STACK });
 
     const backdropYamlHeading = new Settings(backdropYamlSection)
-        .setName('Backdrop properties editor')
-        .setDesc('Customize additional YAML keys for backdrop notes. Enable fields to show in backdrop hover synopsis.');
+        .setName(t('settings.beats.backdrop.name'))
+        .setDesc(t('settings.beats.backdrop.desc'));
     const backdropYamlToggleBtn = backdropYamlHeading.controlEl.createEl('button', {
         cls: ERT_CLASSES.ICON_BTN,
-        attr: { type: 'button', 'aria-label': 'Show backdrop properties editor' }
+        attr: { type: 'button', 'aria-label': t('settings.beats.backdrop.showLabel') }
     });
     const refreshBackdropYamlToggle = () => {
         const expanded = plugin.settings.enableBackdropYamlEditor ?? false;
         setIcon(backdropYamlToggleBtn, expanded ? 'chevron-down' : 'chevron-right');
-        setTooltip(backdropYamlToggleBtn, expanded ? 'Hide backdrop properties editor' : 'Show backdrop properties editor');
-        backdropYamlToggleBtn.setAttribute('aria-label', expanded ? 'Hide backdrop properties editor' : 'Show backdrop properties editor');
+        setTooltip(backdropYamlToggleBtn, expanded ? t('settings.beats.backdrop.hideLabel') : t('settings.beats.backdrop.showLabel'));
+        backdropYamlToggleBtn.setAttribute('aria-label', expanded ? t('settings.beats.backdrop.hideLabel') : t('settings.beats.backdrop.showLabel'));
     };
     refreshBackdropYamlToggle();
 
@@ -3450,7 +3451,7 @@ export function renderStoryBeatsSection(params: {
 
             // Read-only base fields (collapsed summary)
             const baseCard = backdropYamlContainer.createDiv({ cls: 'ert-template-base-summary' });
-            baseCard.createDiv({ cls: 'ert-template-base-heading', text: 'Base fields (read-only)' });
+            baseCard.createDiv({ cls: 'ert-template-base-heading', text: t('settings.beats.beatFields.baseFieldsHeading') });
             const basePills = baseCard.createDiv({ cls: 'ert-template-base-pills' });
             backdropBaseKeys.forEach(k => {
                 basePills.createSpan({ cls: 'ert-template-base-pill', text: k });
@@ -3460,7 +3461,7 @@ export function renderStoryBeatsSection(params: {
             const listEl = backdropYamlContainer.createDiv({ cls: ['ert-template-entries', 'ert-template-indent'] });
 
             if (data.length > 0) {
-                listEl.createDiv({ cls: 'ert-template-section-label', text: 'Custom fields' });
+                listEl.createDiv({ cls: 'ert-template-section-label', text: t('settings.beats.beatFields.customFieldsHeading') });
             }
 
             const renderBackdropEntryRow = (entry: FieldEntry, idx: number, list: FieldEntry[]) => {
@@ -3474,7 +3475,7 @@ export function renderStoryBeatsSection(params: {
                 const dragHandle = row.createDiv({ cls: 'ert-drag-handle' });
                 dragHandle.draggable = true;
                 setIcon(dragHandle, 'grip-vertical');
-                setTooltip(dragHandle, 'Drag to reorder');
+                setTooltip(dragHandle, t('settings.beats.beatFields.dragTooltip'));
 
                 row.createDiv({ cls: 'ert-grid-spacer' });
 
@@ -3485,10 +3486,10 @@ export function renderStoryBeatsSection(params: {
                 const iconInput = iconWrapper.createEl('input', {
                     type: 'text',
                     cls: 'ert-input ert-input--md ert-icon-input',
-                    attr: { placeholder: 'Icon name...' }
+                    attr: { placeholder: t('settings.beats.beatFields.iconPlaceholder') }
                 });
                 iconInput.value = currentIcon;
-                setTooltip(iconInput, 'Lucide icon name for hover synopsis');
+                setTooltip(iconInput, t('settings.beats.backdrop.iconTooltip'));
 
                 // Hover checkbox
                 const checkboxWrapper = row.createDiv({ cls: 'ert-hover-checkbox-wrapper' });
@@ -3497,7 +3498,7 @@ export function renderStoryBeatsSection(params: {
                     cls: 'ert-hover-checkbox'
                 });
                 checkbox.checked = currentEnabled;
-                setTooltip(checkbox, 'Show in backdrop hover synopsis');
+                setTooltip(checkbox, t('settings.beats.backdrop.hoverCheckboxTooltip'));
 
                 new IconSuggest(app, iconInput, (selectedIcon) => {
                     iconInput.value = selectedIcon;
@@ -3538,7 +3539,7 @@ export function renderStoryBeatsSection(params: {
                 // Delete button
                 const delBtn = row.createEl('button', { cls: ERT_CLASSES.ICON_BTN });
                 setIcon(delBtn, 'trash');
-                setTooltip(delBtn, 'Remove field');
+                setTooltip(delBtn, t('settings.beats.beatFields.removeFieldLabel'));
                 delBtn.addEventListener('click', () => {
                     removeBackdropHoverMetadata(entry.key);
                     const next = list.filter((_, i) => i !== idx);
@@ -3555,27 +3556,27 @@ export function renderStoryBeatsSection(params: {
                         return;
                     }
                     if (!hasBeatReadableText(newKey)) {
-                        new Notice('Field key must include letters or numbers.');
+                        new Notice(t('settings.beats.beatFields.keyRequiredNotice'));
                         keyInput.value = entry.key;
                         return;
                     }
                     if (isBackdropReservedSystemKey(newKey)) {
-                        new Notice(`"${newKey}" is system-managed. Use "Insert missing IDs" from the audit panel instead.`);
+                        new Notice(`"${newKey}" ${t('settings.beats.backdrop.systemManagedNotice')}`);
                         keyInput.value = entry.key;
                         return;
                     }
                     if (isBackdropBaseKey(newKey)) {
-                        new Notice(`"${newKey}" is a base field and cannot be used as a custom key.`);
+                        new Notice(`"${newKey}" ${t('settings.beats.backdrop.baseFieldNotice')}`);
                         keyInput.value = entry.key;
                         return;
                     }
                     if (isBackdropLegacyKey(newKey)) {
-                        new Notice(`"${newKey}" is a legacy backdrop key. Use "Context" instead.`);
+                        new Notice(`"${newKey}" ${t('settings.beats.backdrop.legacyKeyNotice')}`);
                         keyInput.value = entry.key;
                         return;
                     }
                     if (backdropHasCustomKey(list, newKey, idx)) {
-                        new Notice(`Key "${newKey}" already exists.`);
+                        new Notice(`${t('settings.beats.beatFields.keyExistsNotice').replace('{{key}}', newKey)}`);
                         keyInput.value = entry.key;
                         return;
                     }
@@ -3637,10 +3638,10 @@ export function renderStoryBeatsSection(params: {
             const addIconInput = addIconWrapper.createEl('input', {
                 type: 'text',
                 cls: 'ert-input ert-input--md ert-icon-input',
-                attr: { placeholder: 'Icon name...' }
+                attr: { placeholder: t('settings.beats.beatFields.iconPlaceholder') }
             });
             addIconInput.value = DEFAULT_HOVER_ICON;
-            setTooltip(addIconInput, 'Lucide icon name for hover synopsis');
+            setTooltip(addIconInput, t('settings.beats.backdrop.iconTooltip'));
 
             new IconSuggest(app, addIconInput, (selectedIcon) => {
                 addIconInput.value = selectedIcon;
@@ -3663,41 +3664,41 @@ export function renderStoryBeatsSection(params: {
                 cls: 'ert-hover-checkbox'
             });
             addCheckbox.checked = false;
-            setTooltip(addCheckbox, 'Show in backdrop hover synopsis');
+            setTooltip(addCheckbox, t('settings.beats.backdrop.hoverCheckboxTooltip'));
 
             // 5. Key input (direct child)
-            const addKeyInput = addRow.createEl('input', { type: 'text', cls: 'ert-input ert-input--full', attr: { placeholder: 'New key' } });
+            const addKeyInput = addRow.createEl('input', { type: 'text', cls: 'ert-input ert-input--full', attr: { placeholder: t('settings.beats.beatFields.newKeyPlaceholder') } });
 
             // 6. Value input (direct child)
-            const addValInput = addRow.createEl('input', { type: 'text', cls: 'ert-input ert-input--full', attr: { placeholder: 'Value' } }) as HTMLInputElement;
+            const addValInput = addRow.createEl('input', { type: 'text', cls: 'ert-input ert-input--full', attr: { placeholder: t('settings.beats.beatFields.valuePlaceholder') } }) as HTMLInputElement;
 
             // 7. Buttons wrapper (holds both + and reset)
             const btnWrap = addRow.createDiv({ cls: ['ert-iconBtnGroup', 'ert-template-actions'] });
 
             const addBtn = btnWrap.createEl('button', { cls: ['ert-iconBtn', 'ert-mod-cta'] });
             setIcon(addBtn, 'plus');
-            setTooltip(addBtn, 'Add custom field');
+            setTooltip(addBtn, t('settings.beats.backdrop.addFieldTooltip'));
             addBtn.addEventListener('click', () => {
                 const k = normalizeBackdropFieldKey(addKeyInput.value || '');
                 if (!k || !hasBeatReadableText(k)) {
-                    new Notice('Field key must include letters or numbers.');
+                    new Notice(t('settings.beats.beatFields.keyRequiredNotice'));
                     return;
                 }
                 addKeyInput.value = k;
                 if (isBackdropReservedSystemKey(k)) {
-                    new Notice(`"${k}" is system-managed. Use "Insert missing IDs" from the audit panel instead.`);
+                    new Notice(`"${k}" ${t('settings.beats.backdrop.systemManagedNotice')}`);
                     return;
                 }
                 if (isBackdropBaseKey(k)) {
-                    new Notice(`"${k}" is a base field and cannot be used as a custom key.`);
+                    new Notice(`"${k}" ${t('settings.beats.backdrop.baseFieldNotice')}`);
                     return;
                 }
                 if (isBackdropLegacyKey(k)) {
-                    new Notice(`"${k}" is a legacy backdrop key. Use "Context" instead.`);
+                    new Notice(`"${k}" ${t('settings.beats.backdrop.legacyKeyNotice')}`);
                     return;
                 }
                 if (backdropHasCustomKey(data, k)) {
-                    new Notice(`Key "${k}" already exists.`);
+                    new Notice(`${t('settings.beats.beatFields.keyExistsNotice').replace('{{key}}', k)}`);
                     return;
                 }
                 const iconName = addIconInput.value.trim() || DEFAULT_HOVER_ICON;
@@ -3712,7 +3713,7 @@ export function renderStoryBeatsSection(params: {
 
             const revertBtn = btnWrap.createEl('button', { cls: ['ert-iconBtn', 'ert-template-reset-btn'] });
             setIcon(revertBtn, 'rotate-ccw');
-            setTooltip(revertBtn, 'Clear all custom backdrop fields');
+            setTooltip(revertBtn, t('settings.beats.backdrop.revertTooltip'));
             revertBtn.addEventListener('click', async () => {
                 if (!plugin.settings.backdropYamlTemplates) {
                     plugin.settings.backdropYamlTemplates = { base: backdropBaseTemplate, advanced: '' };
@@ -3745,7 +3746,7 @@ export function renderStoryBeatsSection(params: {
         cls: ['ert-previewFrame', 'ert-previewFrame--center', 'ert-previewFrame--flush'],
         attr: { 'data-preview': 'backdrop-metadata' }
     });
-    const backdropHoverPreviewHeading = backdropHoverPreviewContainer.createDiv({ cls: 'ert-planetary-preview-heading', text: 'Backdrop Hover Metadata Preview' });
+    const backdropHoverPreviewHeading = backdropHoverPreviewContainer.createDiv({ cls: 'ert-planetary-preview-heading', text: t('settings.beats.backdrop.hoverPreviewHeading') });
     const backdropHoverPreviewBody = backdropHoverPreviewContainer.createDiv({ cls: ['ert-hover-preview-body', 'ert-stack'] });
 
     const renderBackdropHoverPreview = () => {
@@ -3757,8 +3758,8 @@ export function renderStoryBeatsSection(params: {
         const backdropEditorVisible = plugin.settings.enableBackdropYamlEditor ?? false;
         if (!backdropEditorVisible || enabledFields.length === 0) {
             backdropHoverPreviewContainer.toggleClass('ert-settings-hidden', !backdropEditorVisible);
-            backdropHoverPreviewHeading.setText('Backdrop Hover Metadata Preview (none enabled)');
-            backdropHoverPreviewBody.createDiv({ text: 'Enable fields using the checkboxes above to show them in backdrop hover synopsis.', cls: 'ert-hover-preview-empty' });
+            backdropHoverPreviewHeading.setText(t('settings.beats.backdrop.hoverPreviewNoneEnabled'));
+            backdropHoverPreviewBody.createDiv({ text: t('settings.beats.backdrop.hoverPreviewEnableHint'), cls: 'ert-hover-preview-empty' });
             return;
         }
         backdropHoverPreviewContainer.removeClass('ert-settings-hidden');
@@ -4059,12 +4060,12 @@ export function renderStoryBeatsSection(params: {
         auditSetting.addButton(button => {
             button
                 .setIcon('clipboard-copy')
-                .setTooltip('Copy status report to clipboard')
+                .setTooltip(t('settings.beats.audit.copyTooltip'))
                 .onClick(() => {
                     if (!auditResult) return;
                     const report = formatAuditReport(auditResult, noteType);
                     navigator.clipboard.writeText(report).then(() => {
-                        new Notice('Audit report copied to clipboard.');
+                        new Notice(t('settings.beats.audit.copiedNotice'));
                     });
                 });
             copyBtn = button.buttonEl;
@@ -4075,8 +4076,8 @@ export function renderStoryBeatsSection(params: {
         let backfillBtn: HTMLButtonElement | undefined;
         auditSetting.addButton(button => {
             button
-                .setButtonText('Insert missing fields')
-                .setTooltip('Add missing custom fields to existing notes')
+                .setButtonText(t('settings.beats.audit.insertFieldsText'))
+                .setTooltip(t('settings.beats.audit.insertFieldsTooltip'))
                 .onClick(() => void handleBackfill());
             backfillBtn = button.buttonEl;
             backfillBtn.classList.add('ert-settings-hidden');
@@ -4085,8 +4086,8 @@ export function renderStoryBeatsSection(params: {
         let insertMissingIdsBtn: HTMLButtonElement | undefined;
         auditSetting.addButton(button => {
             button
-                .setButtonText('Insert missing IDs')
-                .setTooltip('Insert missing Reference IDs in this scope')
+                .setButtonText(t('settings.beats.audit.insertIdsText'))
+                .setTooltip(t('settings.beats.audit.insertIdsTooltip'))
                 .onClick(() => void handleInsertMissingIds());
             insertMissingIdsBtn = button.buttonEl;
             insertMissingIdsBtn.classList.add('ert-settings-hidden');
@@ -4094,8 +4095,8 @@ export function renderStoryBeatsSection(params: {
         let fixDuplicateIdsBtn: HTMLButtonElement | undefined;
         auditSetting.addButton(button => {
             button
-                .setButtonText('Fix duplicate IDs')
-                .setTooltip('Reassign duplicate Reference IDs in this scope')
+                .setButtonText(t('settings.beats.audit.fixDuplicateIdsText'))
+                .setTooltip(t('settings.beats.audit.fixDuplicateIdsTooltip'))
                 .onClick(() => void handleFixDuplicateIds());
             fixDuplicateIdsBtn = button.buttonEl;
             fixDuplicateIdsBtn.classList.add('ert-settings-hidden');
@@ -4103,8 +4104,8 @@ export function renderStoryBeatsSection(params: {
         let fillEmptyBtn: HTMLButtonElement | undefined;
         auditSetting.addButton(button => {
             button
-                .setButtonText('Fill empty values')
-                .setTooltip('Fill empty existing custom beat fields in the active book folder')
+                .setButtonText(t('settings.beats.audit.fillEmptyText'))
+                .setTooltip(t('settings.beats.audit.fillEmptyTooltip'))
                 .onClick(() => void handleFillEmptyValues());
             fillEmptyBtn = button.buttonEl;
             fillEmptyBtn.classList.add('ert-settings-hidden');
@@ -4114,8 +4115,8 @@ export function renderStoryBeatsSection(params: {
         let migrateDeprecatedBtn: HTMLButtonElement | undefined;
         auditSetting.addButton(button => {
             button
-                .setButtonText('Migrate deprecated fields')
-                .setTooltip('Migrate deprecated YAML keys to canonical fields before cleanup')
+                .setButtonText(t('settings.beats.audit.migrateDeprecatedText'))
+                .setTooltip(t('settings.beats.audit.migrateDeprecatedTooltip'))
                 .onClick(() => void handleMigrateDeprecatedFields());
             migrateDeprecatedBtn = button.buttonEl;
             migrateDeprecatedBtn.classList.add('ert-settings-hidden');
@@ -4125,8 +4126,8 @@ export function renderStoryBeatsSection(params: {
         let deleteExtraBtn: HTMLButtonElement | undefined;
         auditSetting.addButton(button => {
             button
-                .setButtonText('Remove unused fields')
-                .setTooltip('Remove frontmatter fields not defined in the current property rules')
+                .setButtonText(t('settings.beats.audit.removeUnusedText'))
+                .setTooltip(t('settings.beats.audit.removeUnusedTooltip'))
                 .onClick(() => void handleDeleteExtraFields());
             deleteExtraBtn = button.buttonEl;
             deleteExtraBtn.classList.add('ert-settings-hidden');
@@ -4136,8 +4137,8 @@ export function renderStoryBeatsSection(params: {
         let deleteAdvancedBtn: HTMLButtonElement | undefined;
         auditSetting.addButton(button => {
             button
-                .setButtonText('Delete custom fields')
-                .setTooltip('Remove custom template fields from existing notes (base fields are preserved)')
+                .setButtonText(t('settings.beats.audit.deleteCustomText'))
+                .setTooltip(t('settings.beats.audit.deleteCustomTooltip'))
                 .onClick(() => void handleDeleteAdvancedFields());
             deleteAdvancedBtn = button.buttonEl;
             deleteAdvancedBtn.classList.add('ert-settings-hidden');
@@ -4147,8 +4148,8 @@ export function renderStoryBeatsSection(params: {
         let reorderBtn: HTMLButtonElement | undefined;
         auditSetting.addButton(button => {
             button
-                .setButtonText('Reorder properties')
-                .setTooltip('Reorder frontmatter properties to match the canonical template order')
+                .setButtonText(t('settings.beats.audit.reorderText'))
+                .setTooltip(t('settings.beats.audit.reorderTooltip'))
                 .onClick(() => void handleReorderFields());
             reorderBtn = button.buttonEl;
             reorderBtn.classList.add('ert-settings-hidden');
@@ -4162,8 +4163,8 @@ export function renderStoryBeatsSection(params: {
             const isBeatFieldsStage = noteType === 'Beat' && isEditableActiveBeatWorkspace();
             if (isBeatFieldsStage && isSetDirty()) {
                 auditBtn.setDisabled(false);
-                auditBtn.setButtonText('Save changes');
-                auditBtn.setTooltip('Save changes before running beat audit');
+                auditBtn.setButtonText(t('settings.beats.audit.saveChangesText'));
+                auditBtn.setTooltip(t('settings.beats.audit.saveChangesTooltip'));
                 auditBtn.buttonEl.classList.add('ert-save-changes-btn--attention');
                 auditPrimaryAction = () => { void saveCurrentCustomSet('fields'); };
                 return;
@@ -4173,15 +4174,15 @@ export function renderStoryBeatsSection(params: {
             const preCheckScope = collectFilesForAuditWithScope(app, noteType, plugin.settings, activeBeatSystemKey);
             if (preCheckScope.reason) {
                 auditBtn.setDisabled(true);
-                auditBtn.setButtonText('Check notes');
+                auditBtn.setButtonText(t('settings.beats.audit.checkNotesText'));
                 auditBtn.setTooltip(preCheckScope.reason);
             } else if (preCheckScope.files.length === 0) {
                 auditBtn.setDisabled(true);
-                auditBtn.setButtonText('Check notes');
+                auditBtn.setButtonText(t('settings.beats.audit.checkNotesText'));
                 auditBtn.setTooltip(`No ${noteType.toLowerCase()} notes found. Create beat notes first.`);
             } else {
                 auditBtn.setDisabled(false);
-                auditBtn.setButtonText('Check notes');
+                auditBtn.setButtonText(t('settings.beats.audit.checkNotesText'));
                 auditBtn.setTooltip(`Check ${preCheckScope.scopeSummary} for missing properties, unused fields, IDs, and layout issues`);
             }
             auditPrimaryAction = () => runAudit();
@@ -4189,7 +4190,7 @@ export function renderStoryBeatsSection(params: {
         auditSetting.addButton(button => {
             auditBtn = button;
             button
-                .setButtonText('Check notes')
+                .setButtonText(t('settings.beats.audit.checkNotesText'))
                 .setTooltip(`Check all ${noteType.toLowerCase()} notes for missing properties, unused fields, IDs, and layout issues`)
                 .onClick(() => auditPrimaryAction?.());
         });
@@ -4468,11 +4469,11 @@ export function renderStoryBeatsSection(params: {
                         ? 'mixed'
                         : 'clean';
             const healthLabels: Record<string, string> = {
-                'clean': 'Clean',
-                'mixed': 'Some cleanup needed',
-                'needs-attention': 'Missing required properties',
-                'critical': 'Critical property issues',
-                'unsafe': 'Unsafe notes detected',
+                'clean': t('settings.beats.audit.healthClean'),
+                'mixed': t('settings.beats.audit.healthMixed'),
+                'needs-attention': t('settings.beats.audit.healthNeedsAttention'),
+                'critical': t('settings.beats.audit.healthCritical'),
+                'unsafe': t('settings.beats.audit.healthUnsafe'),
             };
             const headerEl = resultsEl.createDiv({ cls: 'ert-audit-result-header' });
             headerEl.createSpan({ text: `Scope: ${getAuditScopeDisplay()}`, cls: 'ert-audit-summary' });
