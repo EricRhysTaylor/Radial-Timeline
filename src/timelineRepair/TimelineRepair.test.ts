@@ -76,7 +76,7 @@ describe('timeline repair normalizer', () => {
 
         expect(runPatternSync(baseInputs.slice(0, 4), {
             anchorWhen: anchor,
-            patternPreset: 'twoBeatDay'
+            patternPreset: 'beats2'
         }).map(entry => toIsoLocal(entry.proposedWhen))).toEqual([
             '2026-01-10 08:00',
             '2026-01-10 19:00',
@@ -86,7 +86,7 @@ describe('timeline repair normalizer', () => {
 
         expect(runPatternSync(baseInputs, {
             anchorWhen: anchor,
-            patternPreset: 'fourBeatDay'
+            patternPreset: 'beats4'
         }).map(entry => toIsoLocal(entry.proposedWhen))).toEqual([
             '2026-01-10 08:00',
             '2026-01-10 13:00',
@@ -195,7 +195,7 @@ describe('timeline repair normalizer', () => {
     it('builds compact preview labels for each pattern and reflects anchor changes', () => {
         const daily = buildScaffoldPreview('daily', new Date(2026, 11, 27, 0, 0, 0, 0), 82);
         expect(daily.startLabel).toBe('Start: Dec 27, 2026 · 12:00 AM');
-        expect(daily.helperLabel).toBe('Scaffolds 82 scenes in manuscript order.');
+        expect(daily.helperLabel).toBe('Scaffolds 82 scenes in narrative order.');
         expect(daily.steps.map(step => step.spacingLabel)).toEqual([
             'Day 1',
             'Day 2',
@@ -204,31 +204,31 @@ describe('timeline repair normalizer', () => {
             'Day 5'
         ]);
 
-        const twoBeatMorning = buildScaffoldPreview('twoBeatDay', new Date(2026, 0, 10, 8, 0, 0, 0), 5);
+        const twoBeatMorning = buildScaffoldPreview('beats2', new Date(2026, 0, 10, 8, 0, 0, 0), 5);
         expect(twoBeatMorning.steps.map(step => step.spacingLabel)).toEqual([
             'Morning',
             'Evening',
-            'Next morning',
+            'Morning',
             'Evening',
-            'Next morning'
+            'Morning'
         ]);
 
-        const twoBeatEvening = buildScaffoldPreview('twoBeatDay', new Date(2026, 0, 10, 19, 0, 0, 0), 5);
+        const twoBeatEvening = buildScaffoldPreview('beats2', new Date(2026, 0, 10, 19, 0, 0, 0), 5);
         expect(twoBeatEvening.startLabel).toBe('Start: Jan 10, 2026 · 7:00 PM');
         expect(twoBeatEvening.steps.map(step => step.spacingLabel)).toEqual([
             'Evening',
-            'Next morning',
+            'Morning',
             'Evening',
-            'Next morning',
+            'Morning',
             'Evening'
         ]);
 
-        const fourBeat = buildScaffoldPreview('fourBeatDay', new Date(2026, 0, 10, 13, 0, 0, 0), 5);
+        const fourBeat = buildScaffoldPreview('beats4', new Date(2026, 0, 10, 13, 0, 0, 0), 5);
         expect(fourBeat.steps.map(step => step.spacingLabel)).toEqual([
             'Afternoon',
             'Evening',
             'Night',
-            'Next morning',
+            'Morning',
             'Afternoon'
         ]);
 

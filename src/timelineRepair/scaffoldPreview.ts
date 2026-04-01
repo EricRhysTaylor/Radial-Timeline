@@ -8,11 +8,8 @@
  */
 
 import type { PatternPresetId, TimeBucket } from './types';
-import { TIME_BUCKET_LABELS } from './types';
-import { detectTimeBucket } from './patternSync';
-
-const TWO_BEAT_SEQUENCE: TimeBucket[] = ['morning', 'evening'];
-const FOUR_BEAT_SEQUENCE: TimeBucket[] = ['morning', 'afternoon', 'evening', 'night'];
+import { TIME_BUCKET_LABELS, SCAFFOLD_PATTERNS } from './types';
+import { getInitialBeatIndex } from './patternSync';
 
 export interface ScaffoldPreviewStep {
     sceneLabel: string;
@@ -35,7 +32,7 @@ export function buildScaffoldPreview(
 
     return {
         startLabel: `Start: ${formatAnchorLabel(anchorWhen)}`,
-        helperLabel: `Scaffolds ${totalScenes} ${totalScenes === 1 ? 'scene' : 'scenes'} in manuscript order.`,
+        helperLabel: `Scaffolds ${totalScenes} ${totalScenes === 1 ? 'scene' : 'scenes'} in narrative order.`,
         steps: buildPreviewLabels(patternPreset, anchorWhen, visibleSteps).map((spacingLabel, index) => ({
             sceneLabel: `S${index + 1}`,
             spacingLabel
@@ -48,18 +45,19 @@ function buildPreviewLabels(
     anchorWhen: Date,
     count: number
 ): string[] {
-    switch (patternPreset) {
-        case 'daily':
-            return Array.from({ length: count }, (_, index) => `Day ${index + 1}`);
-        case 'weekly':
+    const pattern = SCAFFOLD_PATTERNS[patternPreset];
+    
+    if (pattern.type === 'interval') {
+        if (patternPreset === 'weekly') {
             return Array.from({ length: count }, (_, index) => `Week ${index + 1}`);
-        case 'twoBeatDay':
-            return buildBeatLabels(TWO_BEAT_SEQUENCE, getTwoBeatStartIndex(anchorWhen), count);
-        case 'fourBeatDay':
-            return buildBeatLabels(FOUR_BEAT_SEQUENCE, getFourBeatStartIndex(anchorWhen), count);
-        default:
-            return Array.from({ length: count }, (_, index) => `Step ${index + 1}`);
+        } else {
+            return Array.from({ length: count }, (_, index) => `Day ${index + 1}`);
+        }
     }
+    
+    // Cycle pattern
+    const startIndex = getInitialBeatIndex(anchorWhen, patternPreset);
+    return buildBeatLabels(pattern.sequence, startIndex, count);
 }
 
 function buildBeatLabels(cycle: TimeBucket[], startIndex: number, count: number): string[] {
@@ -68,21 +66,11 @@ function buildBeatLabels(cycle: TimeBucket[], startIndex: number, count: number)
     for (let index = 0; index < count; index++) {
         const cycleIndex = (startIndex + index) % cycle.length;
         const bucket = cycle[cycleIndex];
-        const wrapped = index > 0 && cycleIndex === 0;
         const bucketLabel = TIME_BUCKET_LABELS[bucket];
-        labels.push(wrapped ? `Next ${bucketLabel.toLowerCase()}` : bucketLabel);
+        labels.push(bucketLabel);
     }
 
     return labels;
-}
-
-function getTwoBeatStartIndex(anchorWhen: Date): number {
-    return anchorWhen.getHours() < 15 ? 0 : 1;
-}
-
-function getFourBeatStartIndex(anchorWhen: Date): number {
-    const bucket = detectTimeBucket(anchorWhen);
-    return FOUR_BEAT_SEQUENCE.indexOf(bucket);
 }
 
 function formatAnchorLabel(anchorWhen: Date): string {

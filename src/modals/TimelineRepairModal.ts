@@ -19,7 +19,7 @@ import {
     type PatternPresetId,
     type RepairSceneEntry,
     type TimeBucket,
-    PATTERN_PRESETS,
+    SCAFFOLD_PATTERNS,
     TIME_BUCKET_HOURS,
     TIME_BUCKET_LABELS,
     getEffectiveWhen
@@ -163,7 +163,7 @@ export class TimelineRepairModal extends Modal {
         header.createDiv({ cls: 'ert-modal-title', text: 'Timeline order normalizer' });
         header.createDiv({
             cls: 'ert-modal-subtitle',
-            text: 'Quickly scaffold When dates from manuscript order so Chronologue becomes usable. Uses pattern spacing and simple text cues. For deeper timeline analysis, use Timeline Audit. Scaffolds When values across the active book in manuscript order and updates conflicting values.'
+            text: 'Quickly scaffold When dates from narrative order so Chronologue becomes usable. Uses pattern spacing and simple text cues. For deeper timeline analysis, use Timeline Audit. Scaffolds When values across the active book in narrative order and updates conflicting values.'
         });
 
         // Scene count summary
@@ -211,7 +211,7 @@ export class TimelineRepairModal extends Modal {
         });
         timeInput.value = `${String(defaultAnchorWhen.getHours()).padStart(2, '0')}:${String(defaultAnchorWhen.getMinutes()).padStart(2, '0')}`;
 
-        let selectedPattern: PatternPresetId = 'twoBeatDay';
+        let selectedPattern: PatternPresetId = 'beats2';
 
         const previewSection = leftCol.createDiv({ cls: 'rt-timeline-repair-config-block rt-timeline-repair-preview-section' });
         previewSection.createDiv({ cls: 'rt-timeline-repair-block-header' })
@@ -248,12 +248,12 @@ export class TimelineRepairModal extends Modal {
             .createEl('h5', { text: 'Pattern', cls: 'rt-timeline-repair-block-title' });
         patternSection.createDiv({
             cls: 'rt-timeline-repair-section-desc',
-            text: 'Apply the selected spacing pattern in manuscript order.'
+            text: 'Apply the selected spacing pattern in narrative order.'
         });
 
         const patternRow = patternSection.createDiv({ cls: 'rt-timeline-repair-pattern-grid' });
 
-        for (const preset of PATTERN_PRESETS) {
+        for (const preset of Object.values(SCAFFOLD_PATTERNS)) {
             const option = patternRow.createEl('label', { cls: 'rt-timeline-repair-pattern-option' });
             const radio = option.createEl('input', {
                 type: 'radio',
@@ -284,7 +284,7 @@ export class TimelineRepairModal extends Modal {
             .createEl('h5', { text: 'Refinements', cls: 'rt-timeline-repair-block-title' });
         optionsSection.createDiv({
             cls: 'rt-timeline-repair-section-desc',
-            text: 'Base scaffold always runs. Optional cue matching only looks for obvious phrases.'
+            text: 'Base scaffold assigns When values in narrative order using the selected pattern.'
         });
 
         let useTextCues = true;

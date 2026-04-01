@@ -14,7 +14,8 @@ import {
     type PatternPresetId,
     type RepairSceneEntry,
     type TimeBucket,
-    TIME_BUCKET_HOURS
+    TIME_BUCKET_HOURS,
+    SCAFFOLD_PATTERNS
 } from './types';
 
 // ============================================================================
@@ -22,98 +23,58 @@ import {
 // ============================================================================
 
 /**
- * Two-beat day cycle: Morning → Evening → next Morning
- */
-const TWO_BEAT_CYCLE: TimeBucket[] = ['morning', 'evening'];
-
-/**
- * Four-beat day cycle: Morning → Afternoon → Evening → Night → next Morning
- */
-const FOUR_BEAT_CYCLE: TimeBucket[] = ['morning', 'afternoon', 'evening', 'night'];
-
-/**
  * Get the next date based on pattern preset.
  * 
  * @param currentDate - Current date in the sequence
  * @param beatIndex - Current beat index (for multi-beat patterns)
- * @param preset - The pattern preset to use
+ * @param presetId - The pattern preset to use
  * @returns Object with next date and updated beat index
  */
 function getNextPatternDate(
     currentDate: Date,
     beatIndex: number,
-    preset: PatternPresetId
+    presetId: PatternPresetId
 ): { date: Date; beatIndex: number } {
     const result = new Date(currentDate);
+    const pattern = SCAFFOLD_PATTERNS[presetId];
     
-    switch (preset) {
-        case 'daily': {
-            // Add 1 day, keep same time
-            result.setDate(result.getDate() + 1);
-            return { date: result, beatIndex: 0 };
-        }
-        
-        case 'twoBeatDay': {
-            const nextBeat = (beatIndex + 1) % TWO_BEAT_CYCLE.length;
-            const bucket = TWO_BEAT_CYCLE[nextBeat];
-            result.setHours(TIME_BUCKET_HOURS[bucket], 0, 0, 0);
-            
-            // If we wrapped around, advance the day
-            if (nextBeat === 0) {
-                result.setDate(result.getDate() + 1);
-            }
-            return { date: result, beatIndex: nextBeat };
-        }
-        
-        case 'fourBeatDay': {
-            const nextBeat = (beatIndex + 1) % FOUR_BEAT_CYCLE.length;
-            const bucket = FOUR_BEAT_CYCLE[nextBeat];
-            result.setHours(TIME_BUCKET_HOURS[bucket], 0, 0, 0);
-            
-            // If we wrapped around, advance the day
-            if (nextBeat === 0) {
-                result.setDate(result.getDate() + 1);
-            }
-            return { date: result, beatIndex: nextBeat };
-        }
-        
-        case 'weekly': {
-            // Add 7 days, keep same time
+    if (pattern.type === 'interval') {
+        if (presetId === 'weekly') {
             result.setDate(result.getDate() + 7);
-            return { date: result, beatIndex: 0 };
-        }
-        
-        default:
-            // Fallback to daily
+        } else {
+            // default to daily
             result.setDate(result.getDate() + 1);
-            return { date: result, beatIndex: 0 };
+        }
+        return { date: result, beatIndex: 0 };
     }
+    
+    // Cycle pattern
+    const nextBeat = (beatIndex + 1) % pattern.sequence.length;
+    const bucket = pattern.sequence[nextBeat];
+    result.setHours(TIME_BUCKET_HOURS[bucket], 0, 0, 0);
+    
+    // If we wrapped around, advance the day
+    if (nextBeat === 0) {
+        result.setDate(result.getDate() + 1);
+    }
+    
+    return { date: result, beatIndex: nextBeat };
 }
 
 /**
  * Get the initial beat index for a given anchor date and preset.
  * Determines which beat in the cycle the anchor falls on based on its hour.
  */
-function getInitialBeatIndex(anchorDate: Date, preset: PatternPresetId): number {
-    const hour = anchorDate.getHours();
+export function getInitialBeatIndex(anchorDate: Date, presetId: PatternPresetId): number {
+    const pattern = SCAFFOLD_PATTERNS[presetId];
+    if (pattern.type === 'interval') return 0;
     
-    switch (preset) {
-        case 'twoBeatDay': {
-            // Morning (before 15:00) = 0, Evening = 1
-            return hour < 15 ? 0 : 1;
-        }
-        
-        case 'fourBeatDay': {
-            // Morning < 11, Afternoon < 17, Evening < 21, Night >= 21
-            if (hour < 11) return 0;      // Morning
-            if (hour < 17) return 1;      // Afternoon
-            if (hour < 21) return 2;      // Evening
-            return 3;                      // Night
-        }
-        
-        default:
-            return 0;
-    }
+    const bucket = detectTimeBucket(anchorDate);
+    const index = pattern.sequence.indexOf(bucket);
+    
+    // If exact bucket not in sequence, default to 0, or could do a closest match, 
+    // but returning 0 is safe.
+    return index >= 0 ? index : 0;
 }
 
 // ============================================================================

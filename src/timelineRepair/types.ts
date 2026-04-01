@@ -13,40 +13,60 @@ import type { TimelineItem } from '../types';
 // Pattern Presets
 // ============================================================================
 
-/**
- * Built-in pattern presets for the deterministic pattern scaffold.
- * Each preset defines how When dates are assigned sequentially.
- */
-export type PatternPresetId = 'daily' | 'twoBeatDay' | 'fourBeatDay' | 'weekly';
+export type PatternPresetId = 'daily' | 'beats2' | 'beats3' | 'beats4' | 'weekly';
 
-export interface PatternPreset {
+export interface IntervalPattern {
+    type: 'interval';
     id: PatternPresetId;
     label: string;
     description: string;
 }
 
-export const PATTERN_PRESETS: PatternPreset[] = [
-    {
+export interface CyclePattern {
+    type: 'cycle';
+    id: PatternPresetId;
+    label: string;
+    description: string;
+    sequence: TimeBucket[];
+}
+
+export type ScaffoldPattern = IntervalPattern | CyclePattern;
+
+export const SCAFFOLD_PATTERNS: Record<PatternPresetId, ScaffoldPattern> = {
+    daily: {
+        type: 'interval',
         id: 'daily',
         label: 'Daily',
-        description: '+1 day per scene'
+        description: '1 scene per day'
     },
-    {
-        id: 'twoBeatDay',
-        label: 'Two-beat day',
-        description: 'morning -> evening -> next day'
+    beats2: {
+        type: 'cycle',
+        id: 'beats2',
+        label: '2 beats',
+        description: 'Morning \u2192 Evening',
+        sequence: ['morning', 'evening']
     },
-    {
-        id: 'fourBeatDay',
-        label: 'Four-beat day',
-        description: 'morning -> afternoon -> evening -> night -> next day'
+    beats3: {
+        type: 'cycle',
+        id: 'beats3',
+        label: '3 beats',
+        description: 'Morning \u2192 Afternoon \u2192 Evening',
+        sequence: ['morning', 'afternoon', 'evening']
     },
-    {
+    beats4: {
+        type: 'cycle',
+        id: 'beats4',
+        label: '4 beats',
+        description: 'Morning \u2192 Afternoon \u2192 Evening \u2192 Night',
+        sequence: ['morning', 'afternoon', 'evening', 'night']
+    },
+    weekly: {
+        type: 'interval',
         id: 'weekly',
         label: 'Weekly',
-        description: '+7 days per scene'
+        description: '1 scene per week'
     }
-];
+};
 
 // ============================================================================
 // Time Buckets
@@ -224,7 +244,7 @@ export interface RepairPipelineConfig {
  */
 export const DEFAULT_PIPELINE_CONFIG: Omit<RepairPipelineConfig, 'anchorWhen'> = {
     anchorSceneIndex: 0,
-    patternPreset: 'twoBeatDay',
+    patternPreset: 'beats2',
     useTextCues: true
 };
 
