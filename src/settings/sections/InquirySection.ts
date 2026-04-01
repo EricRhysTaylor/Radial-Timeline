@@ -150,7 +150,7 @@ const formatRelativeTime = (timestamp: number): string => {
 const formatSessionScopeLabel = (session: InquirySession): string => {
     const scopeLabel = session.result.scope === 'saga' ? t('settings.inquiry.session.scopeSaga') : t('settings.inquiry.session.scopeBook');
     const scopeValue = session.result.scopeLabel?.trim();
-    return scopeValue ? `${scopeLabel} ${scopeValue}` : scopeLabel;
+    return scopeValue ? t('settings.inquiry.session.scopeWithLabel', { scope: scopeLabel, label: scopeValue }) : scopeLabel;
 };
 
 const formatSessionProviderModel = (session: InquirySession): string => {
@@ -766,7 +766,7 @@ export function renderInquirySection(params: SectionParams): void {
                 cls: ['ert-controlGroup__cell', 'ert-controlGroup__cell--meta', 'ert-controlGroup__cell--mono']
             });
             const count = counts[config.className] ?? 0;
-            countCell.setText(`${count} matches`);
+            countCell.setText(t('settings.inquiry.classTable.matchCount', { count }));
             if (!count) {
                 countCell.addClass('ert-controlGroup__cell--faint');
             }
@@ -896,7 +896,7 @@ export function renderInquirySection(params: SectionParams): void {
                 const sceneCount = counts.scene || 0;
                 const outlineCount = counts.outline || 0;
                 const countsCell = row.createDiv({ cls: ['ert-controlGroup__cell', 'ert-controlGroup__cell--meta'] });
-                countsCell.setText(`${sceneCount} ${sceneCount === 1 ? 'scene' : 'scenes'} \u00b7 ${outlineCount} ${outlineCount === 1 ? 'outline' : 'outlines'}`);
+                countsCell.setText(t('settings.inquiry.booksTable.materialCounts', { sceneCount, outlineCount }));
 
                 const status = getInquiryBookStatus(counts);
                 const statusCell = row.createDiv({ cls: 'ert-controlGroup__cell' });
@@ -915,7 +915,9 @@ export function renderInquirySection(params: SectionParams): void {
         const visibleEntries = Object.entries(discoveredCounts)
             .filter(([className, count]) => count > 0 && participatingClasses.has(className))
             .sort(([a], [b]) => compareClassSummary(a, b));
-        supportingMaterialHeading.setText(`${t('settings.inquiry.supportingMaterial.name')}${visibleEntries.length ? ` (${visibleEntries.length})` : ''}`);
+        supportingMaterialHeading.setText(visibleEntries.length
+            ? t('settings.inquiry.supportingMaterial.nameWithCount', { count: visibleEntries.length })
+            : t('settings.inquiry.supportingMaterial.name'));
 
         const container = document.createElement('div');
         container.className = supportingMaterialList.className;
@@ -980,7 +982,7 @@ export function renderInquirySection(params: SectionParams): void {
                     resolvedRoots: resolved.resolvedRoots
                 };
                 if (resolved.totalMatches > MAX_RESOLVED_SCAN_ROOTS) {
-                    new Notice(`Pattern expands to ${resolved.totalMatches} folders; refine your root.`);
+                    new Notice(t('settings.inquiry.scanRoots.tooManyFolders', { count: resolved.totalMatches }));
                 }
             }
         }

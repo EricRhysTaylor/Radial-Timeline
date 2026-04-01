@@ -169,6 +169,19 @@ export interface TranslationKeys {
         };
         publication: {
             heading: string;
+            completionEstimate: {
+                heading: string;
+                scenesComplete: string;
+                remaining: string;
+                perWeek: string;
+                completedFraction: string;
+                estimatedCompletion: string;
+                daysFromNow: string;
+                insufficientData: string;
+                projectionHeading: string;
+                projectionHeadingLastPace: string;
+                lastProgress: string;
+            };
         };
         chronologue: {
             heading: string;
@@ -381,24 +394,25 @@ export interface TranslationKeys {
                 duplicateTooltip: string; renameTooltip: string; renameTitle: string;
                 okButton: string; cancelButton: string; deleteTooltip: string;
                 alreadyDefaultTooltip: string; setDefaultTooltip: string;
+                desc: string;
             };
         };
         inquiry: {
             time: { justNow: string; };
-            session: { scopeSaga: string; scopeBook: string; };
+            session: { scopeSaga: string; scopeBook: string; scopeWithLabel: string; };
             contribution: { excluded: string; summary: string; full: string; };
             corpus: { errorEmptyMax: string; errorSketchyMin: string; errorMediumMin: string; errorSubstantiveMin: string; resetTooltip: string; name: string; desc: string; };
             prompts: { name: string; proTag: string; alreadyAddedTag: string; alreadyAdded: string; dragToReorder: string; labelPlaceholder: string; fixedTemplate: string; replaceWithTemplate: string; applyCanonical: string; resetToCanonical: string; deleteQuestion: string; questionPlaceholder: string; customizedQuestion: string; unlockProGhost: string; chooseCanonical: string; noRemainingCanonical: string; addQuestion: string; zoneFullNote: string; };
             sources: { name: string; };
             booksForInquiry: { name: string; desc: string; buttonText: string; ariaLabel: string; };
-            scanRoots: { name: string; desc: string; placeholder: string; characterFolder: string; placeFolder: string; heredityFolder: string; commonSupportFolders: string; };
-            supportingMaterial: { name: string; };
+            scanRoots: { name: string; desc: string; placeholder: string; characterFolder: string; placeFolder: string; heredityFolder: string; commonSupportFolders: string; tooManyFolders: string; };
+            supportingMaterial: { name: string; nameWithCount: string; };
             materialRules: { name: string; desc: string; };
             classScope: { name: string; desc: string; placeholder: string; };
             presets: { name: string; desc: string; default: string; light: string; deep: string; };
-            classTable: { enabled: string; class: string; book: string; saga: string; reference: string; matches: string; };
+            classTable: { enabled: string; class: string; book: string; saga: string; reference: string; matches: string; matchCount: string; };
             bookStatus: { ready: string; missingScenesAndOutline: string; missingScenes: string; missingOutline: string; };
-            booksTable: { sequence: string; book: string; detectedMaterial: string; status: string; empty: string; };
+            booksTable: { sequence: string; book: string; detectedMaterial: string; status: string; empty: string; materialCounts: string; };
             supportingTable: { material: string; matches: string; empty: string; };
             zone: { setup: string; pressure: string; payoff: string; };
             modal: { badge: string; cancel: string; };
@@ -415,7 +429,7 @@ export interface TranslationKeys {
         };
         authorProgress: {
             hero: { badgeRefresh: string; badgeDefault: string; wikiAriaLabel: string; title: string; desc: string; keyBenefitsHeading: string; featureSpoilerSafe: string; featureShareable: string; featureStageWeighted: string; };
-            preview: { sizeLabel: string; actualSizePreview: string; teaserAuto: string; teaserRing: string; teaserScenes: string; teaserColor: string; teaserComplete: string; loading: string; lastUpdateNever: string; kickstarterReady: string; patreonFriendly: string; emptyState: string; renderError: string; };
+            preview: { sizeLabel: string; actualSizePreview: string; teaserAuto: string; teaserRing: string; teaserScenes: string; teaserColor: string; teaserComplete: string; loading: string; lastUpdateNever: string; kickstarterReady: string; patreonFriendly: string; emptyState: string; renderError: string; lastUpdate: string; };
             configuration: { name: string; desc: string; projectPath: { name: string; desc: string; placeholder: string; }; linkUrl: { name: string; desc: string; placeholder: string; }; autoUpdateExportPaths: { name: string; desc: string; }; };
             styling: {
                 name: string; desc: string; choosePaletteButton: string;
@@ -437,7 +451,7 @@ export interface TranslationKeys {
                 name: string;
                 updateFrequency: { name: string; desc: string; };
                 frequencyManual: string; frequencyDaily: string; frequencyWeekly: string; frequencyMonthly: string;
-                refreshAlertThreshold: { name: string; };
+                refreshAlertThreshold: { name: string; desc: string; };
                 exportPath: { name: string; desc: string; };
                 autoUpdateExportPaths: { name: string; desc: string; };
                 proTeaser: { wantMore: string; enhanceWorkflow: string; desc: string; upgradeLink: string; };
@@ -448,6 +462,7 @@ export interface TranslationKeys {
                 errorEnterBothDates: string; errorUseDateFormat: string; errorStartBeforeTarget: string;
                 zeroMode: string; dateTargetMode: string; guidanceZero: string; guidanceDate: string;
                 publishStageAuto: string; guidancePublishStage: string;
+                stageDetected: string;
             };
             attribution: { name: string; desc: string; };
         };
@@ -459,29 +474,29 @@ export interface TranslationKeys {
         pattern: { name: string; desc: string; };
         refinements: { name: string; desc: string; baseScaffoldTitle: string; baseScaffoldDesc: string; alwaysOn: string; textCuesTitle: string; textCuesDesc: string; };
         analyzing: { badge: string; title: string; statusApplying: string; preparing: string; abortButton: string; abortedNotice: string; phasePattern: string; phaseCues: string; phaseComplete: string; };
-        review: { badge: string; title: string; subtitle: string; filterNeedsReview: string; filterTextCues: string; rippleMode: string; rippleModeHelp: string; undoButton: string; redoButton: string; backButton: string; applyButton: string; emptyFilter: string; untitled: string; warningBackwardTime: string; warningLargeGap: string; dayMinus: string; dayPlus: string; };
-        apply: { noChangesNotice: string; };
-        confirm: { title: string; warning: string; applyButton: string; cancelButton: string; };
+        review: { badge: string; title: string; subtitle: string; filterNeedsReview: string; filterTextCues: string; rippleMode: string; rippleModeHelp: string; undoButton: string; redoButton: string; backButton: string; applyButton: string; emptyFilter: string; untitled: string; warningBackwardTime: string; warningLargeGap: string; dayMinus: string; dayPlus: string; summaryChanged: string; summaryNeedReview: string; summarySelected: string; };
+        apply: { noChangesNotice: string; partialNotice: string; successNotice: string; };
+        confirm: { title: string; warning: string; applyButton: string; cancelButton: string; description: string; };
     };
     timelineAuditModal: {
         header: { badge: string; title: string; subtitle: string; aiEnhancedBadge: string; };
         loading: { title: string; description: string; };
         actions: { abort: string; reRunAudit: string; applyAccepted: string; close: string; };
         empty: { noResults: string; noFindings: string; };
-        scope: { entireVault: string; };
+        scope: { entireVault: string; activeScope: string; };
         stats: { totalScenes: string; aligned: string; warnings: string; contradictions: string; missingWhen: string; };
         filters: { all: string; contradictions: string; missingWhen: string; summaryBodyDisagreement: string; continuityProblems: string; aiSuggested: string; unresolved: string; };
         controls: { title: string; };
         instantCard: { title: string; description: string; status: string; continuityPassToggle: string; continuityPassDesc: string; };
         aiCard: { title: string; aiEnhancedBadge: string; description: string; actionRunning: string; actionReRun: string; actionStart: string; };
-        aiStatus: { inProgress: string; complete: string; failed: string; notStarted: string; runningBackground: string; failedRetry: string; notStartedHint: string; };
-        relativeTime: { justNow: string; };
+        aiStatus: { inProgress: string; complete: string; failed: string; notStarted: string; runningBackground: string; failedRetry: string; notStartedHint: string; progressCount: string; progressCountWithScene: string; completedAgo: string; };
+        relativeTime: { justNow: string; minutesAgo: string; hoursAgo: string; daysAgo: string; };
         overview: { title: string; };
-        detail: { whatYamlSays: string; chronologyNotPlaced: string; whatManuscriptImplies: string; noAlternatePosition: string; noSuggestedWhen: string; whyFlagged: string; whatAuthorCanDo: string; actionEligible: string; actionIneligible: string; noEvidence: string; applyButton: string; keepButton: string; markReviewButton: string; noRationale: string; whenMissing: string; formatWhenMissing: string; };
+        detail: { whatYamlSays: string; chronologyNotPlaced: string; whatManuscriptImplies: string; noAlternatePosition: string; noSuggestedWhen: string; whyFlagged: string; whatAuthorCanDo: string; actionEligible: string; actionIneligible: string; noEvidence: string; applyButton: string; keepButton: string; markReviewButton: string; noRationale: string; whenMissing: string; formatWhenMissing: string; chronologyPosition: string; suggestedWhen: string; evidenceLabel: string; whenInvalid: string; whenCurrent: string; };
         evidenceSource: { summary: string; synopsis: string; body: string; neighbor: string; ai: string; };
         evidenceTier: { direct: string; strongInference: string; ambiguous: string; };
         detectionSource: { deterministic: string; continuity: string; ai: string; };
-        notices: { applySuccess: string; };
+        notices: { applySuccess: string; applyPartial: string; };
     };
     timeline: {
         acts: {
@@ -904,6 +919,19 @@ export const en: TranslationKeys = {
         },
         publication: {
             heading: 'Publication & Progress',
+            completionEstimate: {
+                heading: 'Completion Estimate \u2022 {{stage}} Stage',
+                scenesComplete: 'Scenes Complete',
+                remaining: 'Remaining',
+                perWeek: 'Per Week',
+                completedFraction: '{{completed}}/{{total}}',
+                estimatedCompletion: 'Estimated Completion:',
+                daysFromNow: '({{days}} days from now)',
+                insufficientData: 'Insufficient data to calculate',
+                projectionHeading: 'Monthly Progress Projection',
+                projectionHeadingLastPace: 'Monthly Progress Projection (based on last known pace)',
+                lastProgress: 'Last progress: {{date}} ({{days}} days ago) \u2022 {{window}}-day rolling window',
+            },
         },
         chronologue: {
             heading: 'Chronologue Mode',
@@ -1146,11 +1174,12 @@ export const en: TranslationKeys = {
                 deleteTooltip: 'Delete profile',
                 alreadyDefaultTooltip: 'Already default',
                 setDefaultTooltip: 'Set as default',
+                desc: 'Select, rename, duplicate, delete, or set as default. Current default: {{current}}',
             },
         },
         inquiry: {
             time: { justNow: 'just now' },
-            session: { scopeSaga: 'Saga', scopeBook: 'Book' },
+            session: { scopeSaga: 'Saga', scopeBook: 'Book', scopeWithLabel: '{{scope}} {{label}}' },
             contribution: { excluded: 'Excluded', summary: 'Summary', full: 'Full' },
             corpus: {
                 errorEmptyMax: 'Empty max must be a non-negative number.',
@@ -1196,8 +1225,9 @@ export const en: TranslationKeys = {
                 placeFolder: 'Place folder',
                 heredityFolder: 'Heredity folder',
                 commonSupportFolders: 'Common support folders',
+                tooManyFolders: 'Pattern expands to {{count}} folders; refine your root.',
             },
-            supportingMaterial: { name: 'Detected supporting material' },
+            supportingMaterial: { name: 'Detected supporting material', nameWithCount: 'Detected supporting material ({{count}})' },
             materialRules: { name: 'Material rules', desc: 'Define how each material type participates in Book, Saga, and Reference analysis.' },
             classScope: {
                 name: 'Material types (advanced)',
@@ -1211,7 +1241,7 @@ export const en: TranslationKeys = {
                 light: 'Light',
                 deep: 'Deep',
             },
-            classTable: { enabled: 'Enabled', class: 'Class', book: 'Book', saga: 'Saga', reference: 'Reference', matches: 'Matches' },
+            classTable: { enabled: 'Enabled', class: 'Class', book: 'Book', saga: 'Saga', reference: 'Reference', matches: 'Matches', matchCount: '{{count}} matches' },
             bookStatus: {
                 ready: 'Ready',
                 missingScenesAndOutline: 'Missing scenes + outline',
@@ -1224,6 +1254,7 @@ export const en: TranslationKeys = {
                 detectedMaterial: 'Detected material',
                 status: 'Status',
                 empty: 'No Book Manager books are configured yet.',
+                materialCounts: '{{sceneCount}} scenes \u00b7 {{outlineCount}} outlines',
             },
             supportingTable: {
                 material: 'Material',
@@ -1292,6 +1323,7 @@ export const en: TranslationKeys = {
                 patreonFriendly: 'Patreon friendly',
                 emptyState: 'Create scenes to see a preview of your Social report.',
                 renderError: 'Failed to render preview.',
+                lastUpdate: 'Last update: {{date}}',
             },
             configuration: {
                 name: 'Configuration',
@@ -1386,7 +1418,7 @@ export const en: TranslationKeys = {
                 frequencyDaily: 'Daily',
                 frequencyWeekly: 'Weekly',
                 frequencyMonthly: 'Monthly',
-                refreshAlertThreshold: { name: 'Refresh alert threshold' },
+                refreshAlertThreshold: { name: 'Refresh alert threshold', desc: 'Days before showing a refresh reminder in the timeline view. Currently: {{days}} days.' },
                 exportPath: { name: 'Export path', desc: 'Location for the live export file. Format follows the Social modal setting.' },
                 autoUpdateExportPaths: {
                     name: 'Auto-update export paths',
@@ -1417,6 +1449,7 @@ export const en: TranslationKeys = {
                 guidanceDate: 'Date Mode: choose a start date and target completion date.',
                 publishStageAuto: 'Publish-stage progress (auto)',
                 guidancePublishStage: 'Using publish-stage progress.',
+                stageDetected: '{{stage}} DETECTED',
             },
             attribution: {
                 name: 'RT attribution',
@@ -1481,13 +1514,17 @@ export const en: TranslationKeys = {
             warningLargeGap: 'Large time gap',
             dayMinus: '\u22121d',
             dayPlus: '+1d',
+            summaryChanged: '{{count}} changed',
+            summaryNeedReview: '{{count}} need review',
+            summarySelected: '{{count}} selected',
         },
-        apply: { noChangesNotice: 'No changes to apply' },
+        apply: { noChangesNotice: 'No changes to apply', partialNotice: 'Applied {{success}} changes. {{failed}} failed.', successNotice: 'Successfully applied {{count}} timeline changes' },
         confirm: {
             title: 'Confirm Changes',
             warning: 'This action cannot be undone automatically. Make sure you have a backup if needed.',
             applyButton: 'Apply When Dates',
             cancelButton: 'Cancel',
+            description: 'This will update {{count}} scene file(s) with scaffolded When dates and provenance metadata.',
         },
     },
     timelineAuditModal: {
@@ -1511,7 +1548,7 @@ export const en: TranslationKeys = {
             noResults: 'No audit results available.',
             noFindings: 'No findings match the current filter.',
         },
-        scope: { entireVault: 'Entire vault' },
+        scope: { entireVault: 'Entire vault', activeScope: 'Active scope: {{path}}' },
         stats: {
             totalScenes: 'Total scenes',
             aligned: 'Aligned',
@@ -1552,8 +1589,11 @@ export const en: TranslationKeys = {
             runningBackground: 'AI audit is running in the background.',
             failedRetry: 'Try starting the AI audit again.',
             notStartedHint: 'Instant audit is done. Start AI Audit to look for subtler timeline problems.',
+            progressCount: '{{current}}/{{total}}',
+            progressCountWithScene: '{{current}}/{{total}} \u00b7 {{scene}}',
+            completedAgo: 'AI audit run {{time}}',
         },
-        relativeTime: { justNow: 'just now' },
+        relativeTime: { justNow: 'just now', minutesAgo: '{{minutes}} min ago', hoursAgo: '{{hours}}h ago', daysAgo: '{{days}}d ago' },
         overview: { title: 'Timeline overview' },
         detail: {
             whatYamlSays: 'What YAML currently says',
@@ -1572,11 +1612,16 @@ export const en: TranslationKeys = {
             noRationale: 'No rationale recorded.',
             whenMissing: 'YAML When: missing from frontmatter.',
             formatWhenMissing: 'Missing',
+            chronologyPosition: 'Chronology position: {{position}}',
+            suggestedWhen: 'Suggested When: {{when}}',
+            evidenceLabel: '{{source}} \u00b7 {{tier}}',
+            whenInvalid: 'YAML When: invalid in frontmatter ({{raw}}).',
+            whenCurrent: 'YAML When: {{when}}.',
         },
         evidenceSource: { summary: 'Summary', synopsis: 'Synopsis', body: 'Body', neighbor: 'Neighbor', ai: 'AI' },
         evidenceTier: { direct: 'Direct text', strongInference: 'Strong inference', ambiguous: 'Ambiguous cue' },
         detectionSource: { deterministic: 'Deterministic', continuity: 'Continuity', ai: 'AI' },
-        notices: { applySuccess: 'Applied timeline audit decisions.' },
+        notices: { applySuccess: 'Applied timeline audit decisions.', applyPartial: 'Applied timeline audit decisions — {{failed}} failed.' },
     },
     timeline: {
         acts: {

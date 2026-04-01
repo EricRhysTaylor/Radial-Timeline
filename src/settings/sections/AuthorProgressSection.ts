@@ -244,7 +244,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         : t('settings.authorProgress.preview.lastUpdateNever');
 
     const meta = previewCard.createDiv({ cls: ERT_CLASSES.INLINE });
-    meta.createSpan({ text: `Last update: ${lastDate}`, cls: `${ERT_CLASSES.CHIP} ${ERT_CLASSES.FIELD_NOTE}` });
+    meta.createSpan({ text: t('settings.authorProgress.preview.lastUpdate', { date: lastDate }), cls: `${ERT_CLASSES.CHIP} ${ERT_CLASSES.FIELD_NOTE}` });
     meta.createSpan({ text: t('settings.authorProgress.preview.kickstarterReady'), cls: ERT_CLASSES.CHIP });
     meta.createSpan({ text: t('settings.authorProgress.preview.patreonFriendly'), cls: ERT_CLASSES.CHIP });
 
@@ -1300,7 +1300,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             const currentDays = settings?.stalenessThresholdDays || 30;
             const stalenessSetting = new Setting(automationCard)
                 .setName(t('settings.authorProgress.publishing.refreshAlertThreshold.name'))
-                .setDesc(`Days before showing a refresh reminder in the timeline view. Currently: ${currentDays} days.`)
+                .setDesc(t('settings.authorProgress.publishing.refreshAlertThreshold.desc', { days: currentDays }))
                 .addSlider(slider => {
                     slider
                         .setLimits(1, 90, 1)
@@ -1312,7 +1312,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                                 // Update description with new value
                                 const descEl = stalenessSetting.descEl;
                                 if (descEl) {
-                                    descEl.setText(`Days before showing a refresh reminder in the timeline view. Currently: ${val} days.`);
+                                    descEl.setText(t('settings.authorProgress.publishing.refreshAlertThreshold.desc', { days: val }));
                                 }
                                 // Update value label
                                 if (valueLabel) {
@@ -1614,7 +1614,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
     const updateStageUI = (stage: (typeof STAGE_ORDER)[number], total: number, note: string) => {
         isZeroStage = stage === 'Zero';
-        stageBadge.setText(`${stage.toUpperCase()} DETECTED`);
+        stageBadge.setText(t('settings.authorProgress.progressMode.stageDetected', { stage: stage.toUpperCase() }));
         applyStageBadgeTone(stage);
         stageNote.setText(note);
         updateModeUI();

@@ -505,7 +505,7 @@ export function renderCompletionEstimatePreview(params: {
             }
 
             const heading = previewContainer.createDiv({ cls: 'ert-planetary-preview-heading' });
-            heading.setText(`Completion Estimate • ${estimate.stage} Stage`);
+            heading.setText(t('settings.publication.completionEstimate.heading', { stage: estimate.stage }));
 
             const body = previewContainer.createDiv({ cls: 'ert-planetary-preview-body ert-completion-preview-body' });
 
@@ -514,19 +514,19 @@ export function renderCompletionEstimatePreview(params: {
 
             // Completed / Total
             const completedMetric = metricsRow.createDiv({ cls: 'ert-completion-metric' });
-            completedMetric.createDiv({ cls: 'ert-completion-metric-value', text: `${estimate.total - estimate.remaining}/${estimate.total}` });
-            completedMetric.createDiv({ cls: 'ert-completion-metric-label', text: 'Scenes Complete' });
+            completedMetric.createDiv({ cls: 'ert-completion-metric-value', text: t('settings.publication.completionEstimate.completedFraction', { completed: estimate.total - estimate.remaining, total: estimate.total }) });
+            completedMetric.createDiv({ cls: 'ert-completion-metric-label', text: t('settings.publication.completionEstimate.scenesComplete') });
 
             // Remaining
             const remainingMetric = metricsRow.createDiv({ cls: 'ert-completion-metric' });
             remainingMetric.createDiv({ cls: 'ert-completion-metric-value', text: String(estimate.remaining) });
-            remainingMetric.createDiv({ cls: 'ert-completion-metric-label', text: 'Remaining' });
+            remainingMetric.createDiv({ cls: 'ert-completion-metric-label', text: t('settings.publication.completionEstimate.remaining') });
 
             // Rate
             const rateMetric = metricsRow.createDiv({ cls: 'ert-completion-metric' });
             const rateValue = estimate.rate > 0 ? estimate.rate.toFixed(1) : '—';
             rateMetric.createDiv({ cls: 'ert-completion-metric-value', text: rateValue });
-            rateMetric.createDiv({ cls: 'ert-completion-metric-label', text: 'Per Week' });
+            rateMetric.createDiv({ cls: 'ert-completion-metric-label', text: t('settings.publication.completionEstimate.perWeek') });
 
             // Staleness indicator
             if (estimate.staleness !== 'fresh') {
@@ -545,7 +545,7 @@ export function renderCompletionEstimatePreview(params: {
                     month: 'long',
                     day: 'numeric'
                 });
-                dateRow.createDiv({ cls: 'ert-completion-date-label', text: 'Estimated Completion:' });
+                dateRow.createDiv({ cls: 'ert-completion-date-label', text: t('settings.publication.completionEstimate.estimatedCompletion') });
                 dateRow.createDiv({ cls: 'ert-completion-date-value', text: dateFormatter.format(estimate.date) });
 
                 // Days until completion
@@ -553,20 +553,20 @@ export function renderCompletionEstimatePreview(params: {
                 today.setHours(0, 0, 0, 0);
                 const daysUntil = Math.ceil((estimate.date.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
                 if (daysUntil > 0) {
-                    dateRow.createDiv({ cls: 'ert-completion-days-until', text: `(${daysUntil} days from now)` });
+                    dateRow.createDiv({ cls: 'ert-completion-days-until', text: t('settings.publication.completionEstimate.daysFromNow', { days: daysUntil }) });
                 }
             } else {
-                dateRow.createDiv({ cls: 'ert-completion-date-label', text: 'Estimated Completion:' });
+                dateRow.createDiv({ cls: 'ert-completion-date-label', text: t('settings.publication.completionEstimate.estimatedCompletion') });
                 dateRow.createDiv({ cls: 'ert-completion-date-value ert-completion-date-unknown', text: '?' });
-                dateRow.createDiv({ cls: 'ert-completion-days-until', text: 'Insufficient data to calculate' });
+                dateRow.createDiv({ cls: 'ert-completion-days-until', text: t('settings.publication.completionEstimate.insufficientData') });
             }
 
             // Monthly projection breakdown
             if (estimate.date && estimate.rate > 0) {
                 const projectionSection = body.createDiv({ cls: 'ert-completion-projection' });
                 const projectionHeading = estimate.labelText === '?'
-                    ? 'Monthly Progress Projection (based on last known pace)'
-                    : 'Monthly Progress Projection';
+                    ? t('settings.publication.completionEstimate.projectionHeadingLastPace')
+                    : t('settings.publication.completionEstimate.projectionHeading');
                 projectionSection.createDiv({ cls: 'ert-completion-projection-heading', text: projectionHeading });
 
                 const projectionGrid = projectionSection.createDiv({ cls: 'ert-completion-projection-grid' });
@@ -578,7 +578,7 @@ export function renderCompletionEstimatePreview(params: {
                 const lastProgressRow = body.createDiv({ cls: 'ert-completion-last-progress' });
                 const daysSince = Math.floor((Date.now() - estimate.lastProgressDate.getTime()) / (24 * 60 * 60 * 1000));
                 const dateFormatter = new Intl.DateTimeFormat(getFormattingLocale(), { month: 'short', day: 'numeric' });
-                lastProgressRow.setText(`Last progress: ${dateFormatter.format(estimate.lastProgressDate)} (${daysSince} day${daysSince !== 1 ? 's' : ''} ago) • ${estimate.windowDays}-day rolling window`);
+                lastProgressRow.setText(t('settings.publication.completionEstimate.lastProgress', { date: dateFormatter.format(estimate.lastProgressDate), days: daysSince, window: estimate.windowDays }));
             }
 
         } catch (e) {

@@ -413,7 +413,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
 
             const headerSetting = addProRow(new Setting(headerContainer))
                 .setName(t('settings.runtime.profile.name'))
-                .setDesc(`Select, rename, duplicate, delete, or set as default. Current default: ${currentDefault?.label || t('settings.runtime.profile.noneFallback')}`);
+                .setDesc(t('settings.runtime.profile.desc', { current: currentDefault?.label || t('settings.runtime.profile.noneFallback') }));
 
             headerSetting.addDropdown((dropdown: DropdownComponent) => {
                 dropdown.selectEl.addClass('ert-input', 'ert-input--fit-selected');

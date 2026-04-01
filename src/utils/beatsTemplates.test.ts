@@ -65,4 +65,34 @@ describe('beatsTemplates', () => {
         expect(created).toContain('Description: "Legacy purpose"');
         expect(created).not.toContain('{{Description}}');
     });
+
+    it('supports explicit scene anchoring for beat filenames', async () => {
+        const vault = createVaultMock();
+        const customSystem: PlotSystemPreset = {
+            name: 'Custom',
+            beatCount: 2,
+            beats: ['Opening Beat', 'Closing Beat'],
+            beatDetails: [
+                {
+                    name: 'Opening Beat',
+                    description: 'Opener',
+                    act: 1
+                },
+                {
+                    name: 'Closing Beat',
+                    description: 'Closer',
+                    act: 3
+                }
+            ]
+        };
+
+        await createBeatNotesFromSet(vault as never, 'Custom', 'Story', customSystem, {
+            explicitSceneNumbers: [3, 12]
+        });
+
+        expect([...vault.files.keys()]).toEqual([
+            'Story/3.01 Opening Beat.md',
+            'Story/12.01 Closing Beat.md'
+        ]);
+    });
 });

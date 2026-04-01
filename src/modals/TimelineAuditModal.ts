@@ -241,7 +241,7 @@ export class TimelineAuditModal extends Modal {
         });
         scopeRow.createSpan({
             cls: 'rt-timeline-audit-scope-path',
-            text: `Active scope: ${book?.sourceFolder?.trim() || this.plugin.settings.sourcePath || t('timelineAuditModal.scope.entireVault')}`
+            text: t('timelineAuditModal.scope.activeScope', { path: book?.sourceFolder?.trim() || this.plugin.settings.sourcePath || t('timelineAuditModal.scope.entireVault') })
         });
 
         const statsGrid = statsCard.createDiv({ cls: 'rt-timeline-audit-stats-grid' });
@@ -399,14 +399,16 @@ export class TimelineAuditModal extends Modal {
     private getAiStatusMeta(): string {
         if (this.aiState.status === 'running') {
             if (this.aiState.progressTotal > 0) {
-                const scene = this.aiState.currentSceneName ? ` · ${this.aiState.currentSceneName}` : '';
-                return `${this.aiState.progressCurrent}/${this.aiState.progressTotal}${scene}`;
+                if (this.aiState.currentSceneName) {
+                    return t('timelineAuditModal.aiStatus.progressCountWithScene', { current: this.aiState.progressCurrent, total: this.aiState.progressTotal, scene: this.aiState.currentSceneName });
+                }
+                return t('timelineAuditModal.aiStatus.progressCount', { current: this.aiState.progressCurrent, total: this.aiState.progressTotal });
             }
             return this.aiState.message || t('timelineAuditModal.aiStatus.runningBackground');
         }
 
         if (this.aiState.status === 'completed' && this.aiState.completedAt) {
-            return `AI audit run ${this.formatRelativeAge(this.aiState.completedAt)}`;
+            return t('timelineAuditModal.aiStatus.completedAgo', { time: this.formatRelativeAge(this.aiState.completedAt) });
         }
 
         if (this.aiState.status === 'failed') {
@@ -420,11 +422,11 @@ export class TimelineAuditModal extends Modal {
         const deltaMs = Math.max(0, Date.now() - timestamp);
         const minutes = Math.floor(deltaMs / 60000);
         if (minutes < 1) return t('timelineAuditModal.relativeTime.justNow');
-        if (minutes < 60) return `${minutes}m ago`;
+        if (minutes < 60) return t('timelineAuditModal.relativeTime.minutesAgo', { minutes });
         const hours = Math.floor(minutes / 60);
-        if (hours < 24) return `${hours}h ago`;
+        if (hours < 24) return t('timelineAuditModal.relativeTime.hoursAgo', { hours });
         const days = Math.floor(hours / 24);
-        return `${days}d ago`;
+        return t('timelineAuditModal.relativeTime.daysAgo', { days });
     }
 
     private createStat(container: HTMLElement, label: string, value: string): void {
@@ -618,11 +620,11 @@ export class TimelineAuditModal extends Modal {
         const qaGrid = card.createDiv({ cls: 'rt-timeline-audit-qa-grid' });
         this.createQuestionBlock(qaGrid, t('timelineAuditModal.detail.whatYamlSays'), [
             this.describeCurrentWhen(finding),
-            `Chronology position: ${finding.expectedChronologyPosition ?? t('timelineAuditModal.detail.chronologyNotPlaced')}`
+            t('timelineAuditModal.detail.chronologyPosition', { position: finding.expectedChronologyPosition ?? t('timelineAuditModal.detail.chronologyNotPlaced') })
         ]);
         this.createQuestionBlock(qaGrid, t('timelineAuditModal.detail.whatManuscriptImplies'), [
             finding.inferredWrittenTimelinePosition?.label ?? t('timelineAuditModal.detail.noAlternatePosition'),
-            finding.suggestedWhen ? `Suggested When: ${this.formatWhen(finding.suggestedWhen)}` : t('timelineAuditModal.detail.noSuggestedWhen')
+            finding.suggestedWhen ? t('timelineAuditModal.detail.suggestedWhen', { when: this.formatWhen(finding.suggestedWhen) }) : t('timelineAuditModal.detail.noSuggestedWhen')
         ]);
         this.createQuestionBlock(qaGrid, t('timelineAuditModal.detail.whyFlagged'), this.getFlagExplanationLines(finding));
         this.createQuestionBlock(qaGrid, t('timelineAuditModal.detail.whatAuthorCanDo'), [
@@ -639,7 +641,7 @@ export class TimelineAuditModal extends Modal {
                 const evidenceItem = evidenceList.createDiv({ cls: 'rt-timeline-audit-evidence-item' });
                 evidenceItem.createSpan({
                     cls: 'rt-timeline-audit-evidence-label',
-                    text: `${this.formatEvidenceSource(evidence.source)} · ${this.formatEvidenceTier(evidence.tier)}`
+                    text: t('timelineAuditModal.detail.evidenceLabel', { source: this.formatEvidenceSource(evidence.source), tier: this.formatEvidenceTier(evidence.tier) })
                 });
                 evidenceItem.createSpan({
                     cls: 'rt-timeline-audit-evidence-snippet',
@@ -707,8 +709,8 @@ export class TimelineAuditModal extends Modal {
 
     private describeCurrentWhen(finding: TimelineAuditFinding): string {
         if (finding.whenParseIssue === 'missing_when') return t('timelineAuditModal.detail.whenMissing');
-        if (finding.whenParseIssue === 'invalid_when') return `YAML When: invalid in frontmatter (${finding.currentWhenRaw ?? 'unknown'}).`;
-        return `YAML When: ${this.formatWhen(finding.currentWhen)}.`;
+        if (finding.whenParseIssue === 'invalid_when') return t('timelineAuditModal.detail.whenInvalid', { raw: finding.currentWhenRaw ?? 'unknown' });
+        return t('timelineAuditModal.detail.whenCurrent', { when: this.formatWhen(finding.currentWhen) });
     }
 
     private formatWhen(value: Date | null): string {
@@ -757,7 +759,7 @@ export class TimelineAuditModal extends Modal {
         try {
             const applyResult = await applyAuditFindings(this.app, result.findings);
             if (applyResult.failed > 0) {
-                new Notice(`Applied timeline audit decisions with ${applyResult.failed} failure(s).`);
+                new Notice(t('timelineAuditModal.notices.applyPartial', { failed: applyResult.failed }));
             } else {
                 new Notice(t('timelineAuditModal.notices.applySuccess'));
             }

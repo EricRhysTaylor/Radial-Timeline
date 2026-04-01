@@ -1084,7 +1084,7 @@
   border: 1px solid var(--ert-iconBtn-border);
   background: var(--ert-iconBtn-bg);
   color: var(--ert-iconBtn-color);
-  box-shadow: var(--ert-iconBtn-shadow);
+  box-shadow: none;
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
 }
@@ -1099,7 +1099,7 @@
   background: var(--ert-iconBtn-hover-bg);
   color: var(--ert-iconBtn-hover-color);
   border-color: var(--ert-accent);
-  box-shadow: var(--ert-iconBtn-shadow), var(--ert-iconBtn-hover-ring);
+  box-shadow: var(--ert-iconBtn-hover-ring);
 }
 
 .ert-ui .ert-card {
@@ -8441,7 +8441,7 @@
 .ert-ui.ert-scope--settings .ert-skin--pro .ert-pillBtn--pro {
   background: color-mix(in srgb, var(--ert-accent) 18%, var(--background-secondary) 80%);
   border: 1px solid color-mix(in srgb, var(--ert-accent) 35%, transparent);
-  box-shadow: var(--ert-pill-shadow);
+  box-shadow: none;
 }
 
 .ert-ui.ert-scope--settings .ert-objectRow.is-needs-refresh {
@@ -10529,18 +10529,18 @@
   background: var(--ert-pro-gradient-primary);
   color: var(--ert-color-white);
   border: none;
-  box-shadow: var(--ert-shadow-pro-glow);
+  box-shadow: none;
 }
 
 .ert-ui .ert-btn--primary-pro:hover:not(:disabled) {
   background: var(--ert-pro-gradient-primary-hover);
-  box-shadow: var(--ert-shadow-pro-glow-strong);
+  box-shadow: none;
   transform: translateY(-1px);
 }
 
 .ert-ui .ert-btn--primary-pro:active:not(:disabled) {
   transform: translateY(0);
-  box-shadow: var(--ert-shadow-pro-glow-subtle);
+  box-shadow: none;
 }
 
 .ert-ui .ert-btn--primary-pro:disabled {
@@ -10559,7 +10559,7 @@
   color: var(--text-normal);
   border: 1px solid var(--ert-pro-accent-border);
   /* Pro accent tint */
-  box-shadow: var(--ert-shadow-soft-subtle);
+  box-shadow: none;
 }
 
 .ert-ui.ert-scope--settings .ert-btn--standard-pro:hover:not(:disabled),

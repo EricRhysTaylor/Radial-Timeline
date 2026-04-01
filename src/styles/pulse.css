@@ -326,7 +326,7 @@
 .rt-manuscript-pill.rt-is-active {
   background: linear-gradient(120deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.08));
   border-color: rgba(255, 255, 255, 0.3);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  box-shadow: none;
 }
 
 .rt-manuscript-pill:hover {
@@ -367,7 +367,7 @@
 .rt-manuscript-pill.rt-manuscript-pill-pro.rt-is-active {
   background: linear-gradient(120deg, rgba(217, 70, 239, 0.22), rgba(217, 70, 239, 0.12));
   border-color: rgba(217, 70, 239, 0.55);
-  box-shadow: 0 10px 30px rgba(217, 70, 239, 0.25);
+  box-shadow: none;
 }
 
 /* Disabled Pro pills (Core users) - grayed out */

@@ -138,15 +138,15 @@ export function t(key: string, vars?: Record<string, string | number>): string {
         if (value && typeof value === 'object' && k in value) {
             value = (value as Record<string, unknown>)[k];
         } else {
-            // Key not found - return the key itself for debugging
+            // Key not found - return a bracketed marker for debugging
             console.warn(`[i18n] Missing translation key: ${key}`);
-            return key;
+            return `[missing: ${key}]`;
         }
     }
     
     if (typeof value !== 'string') {
         console.warn(`[i18n] Translation key "${key}" is not a string`);
-        return key;
+        return `[missing: ${key}]`;
     }
     
     // Variable substitution: {{name}} -> value

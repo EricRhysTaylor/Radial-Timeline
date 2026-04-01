@@ -23,16 +23,34 @@
     margin-top: 0; /* remove inherited pulse margin in Book Designer */
 }
 
-/* Hero meta status pills */
-.rt-book-designer-modal .ert-modal-meta-item.rt-meta-auto {
-    background: rgba(255, 255, 255, 0.06);
-    border-color: rgba(255, 255, 255, 0.14);
+.rt-book-designer-modal .rt-book-designer-badge {
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.rt-book-designer-modal .rt-book-designer-badge-label {
+    letter-spacing: 0.08em;
+}
+
+.rt-book-designer-modal :is(.rt-book-designer-badge-detail, .rt-book-designer-badge-sep) {
+    text-transform: none;
+    letter-spacing: normal;
+}
+
+.rt-book-designer-modal .rt-book-designer-badge-detail {
+    font-size: 0.78rem;
+    color: var(--text-normal);
+}
+
+.rt-book-designer-modal .rt-book-designer-badge-sep {
+    color: var(--text-faint);
+}
+
+.rt-book-designer-modal .rt-book-designer-badge-mode.rt-meta-auto {
     color: var(--text-muted);
 }
 
-.rt-book-designer-modal .ert-modal-meta-item.rt-meta-manual {
-    background: rgba(var(--interactive-accent-rgb), 0.12);
-    border-color: rgba(var(--interactive-accent-rgb), 0.6);
+.rt-book-designer-modal .rt-book-designer-badge-mode.rt-meta-manual {
     color: var(--text-normal);
 }
 
@@ -336,6 +354,12 @@
     gap: 8px;
 }
 
+.rt-book-designer-modal .rt-manuscript-pill {
+    min-height: 28px;
+    padding: 5px 10px;
+    font-size: 0.9rem;
+}
+
 /* Card Note */
 .rt-manuscript-surface .rt-sub-card-note {
     margin-top: 4px;
@@ -431,6 +455,16 @@
     flex-wrap: wrap;
     gap: 8px;
     margin-top: 8px;
+}
+
+.rt-book-designer-modal .rt-template-actions > button {
+    min-height: 30px;
+    padding: 6px 12px;
+    box-shadow: none;
+}
+
+.rt-book-designer-modal .rt-book-designer-demo-btn {
+    align-self: flex-start;
 }
 
 .rt-book-designer-modal .rt-layout-templates-card {

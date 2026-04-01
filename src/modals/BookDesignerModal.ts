@@ -702,14 +702,14 @@ export class BookDesignerModal extends Modal {
         const displayPath = this.targetPath || 'vault root';
         // Hero Header using generic modal system
         const hero = contentEl.createDiv({ cls: 'ert-modal-header' });
-        hero.createSpan({ cls: 'ert-modal-badge', text: 'SETUP' });
+        const heroBadge = hero.createSpan({ cls: 'ert-modal-badge rt-book-designer-badge' });
+        heroBadge.createSpan({ cls: 'rt-book-designer-badge-label', text: 'SETUP' });
+        heroBadge.createSpan({ cls: 'rt-book-designer-badge-sep', text: '•' });
+        this.heroLocationMeta = heroBadge.createSpan({ cls: 'rt-book-designer-badge-detail', text: `Location: ${displayPath}` });
+        heroBadge.createSpan({ cls: 'rt-book-designer-badge-sep', text: '•' });
+        this.heroModeMeta = heroBadge.createSpan({ cls: 'rt-book-designer-badge-detail rt-book-designer-badge-mode rt-meta-auto', text: 'Auto mode' });
         hero.createDiv({ cls: 'ert-modal-title', text: 'Book designer' });
         hero.createDiv({ cls: 'ert-modal-subtitle', text: `Configure and generate the scaffold for your new novel. Drag scenes in Preview to different acts and subplots to activate manual mode. Save the template to reuse it later.` });
-
-
-        const heroMeta = hero.createDiv({ cls: 'ert-modal-meta' });
-        this.heroLocationMeta = heroMeta.createSpan({ cls: 'ert-modal-meta-item', text: `Location: ${displayPath}` });
-        this.heroModeMeta = heroMeta.createSpan({ cls: 'ert-modal-meta-item rt-meta-auto', text: 'Auto mode' });
         this.updateHeroMeta();
 
         const scrollContainer = contentEl.createDiv({ cls: 'rt-container rt-card-stack' });
@@ -1086,7 +1086,7 @@ export class BookDesignerModal extends Modal {
                 new Notice('Layout reset to defaults with auto distribution.');
             });
 
-        new ButtonComponent(templateActions)
+        const demoProjectButton = new ButtonComponent(templateActions)
             .setButtonText('Demo Project')
             .onClick(() => {
                 new GenerateDemoProjectModal(this.app, (startDate) => {
@@ -1094,6 +1094,7 @@ export class BookDesignerModal extends Modal {
                     void this.generateNonlinearDemoProject(startDate);
                 }).open();
             });
+        demoProjectButton.buttonEl.addClass('ert-btn', 'ert-btn--standard-pro', 'rt-book-designer-demo-btn');
 
         templateCard.createDiv({
             cls: 'rt-sub-card-note',

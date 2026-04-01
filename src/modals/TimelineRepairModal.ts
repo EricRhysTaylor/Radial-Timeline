@@ -555,9 +555,9 @@ export class TimelineRepairModal extends Modal {
         const changedCount = getChangedCount(this.session);
         const reviewCount = getNeedsReviewCount(this.session);
 
-        const parts: string[] = [`${changedCount} changed`];
-        if (reviewCount > 0) parts.push(`${reviewCount} need review`);
-        if (this.selectedIndices.size > 0) parts.push(`${this.selectedIndices.size} selected`);
+        const parts: string[] = [t('timelineRepairModal.review.summaryChanged', { count: changedCount })];
+        if (reviewCount > 0) parts.push(t('timelineRepairModal.review.summaryNeedReview', { count: reviewCount }));
+        if (this.selectedIndices.size > 0) parts.push(t('timelineRepairModal.review.summarySelected', { count: this.selectedIndices.size }));
 
         this.summaryBarEl.setText(parts.join(' · '));
 
@@ -902,9 +902,9 @@ export class TimelineRepairModal extends Modal {
             });
 
             if (result.failed > 0) {
-                new Notice(`Applied ${result.success} changes. ${result.failed} failed.`);
+                new Notice(t('timelineRepairModal.apply.partialNotice', { success: result.success, failed: result.failed }));
             } else {
-                new Notice(`Successfully applied ${result.success} timeline changes`);
+                new Notice(t('timelineRepairModal.apply.successNotice', { count: result.success }));
             }
 
             this.close();
@@ -920,7 +920,7 @@ export class TimelineRepairModal extends Modal {
             modal.titleEl.setText(t('timelineRepairModal.confirm.title'));
 
             modal.contentEl.createDiv({
-                text: `This will update ${changeCount} scene file(s) with scaffolded When dates and provenance metadata.`
+                text: t('timelineRepairModal.confirm.description', { count: changeCount })
             });
             modal.contentEl.createDiv({
                 text: t('timelineRepairModal.confirm.warning'),
