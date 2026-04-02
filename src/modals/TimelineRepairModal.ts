@@ -150,6 +150,79 @@ export class TimelineRepairModal extends Modal {
         this.files = buildSharedSceneNoteFileMap(sceneNotes);
     }
 
+    private normalizeCueSearchText(value: string): string {
+        return value
+            .replace(/[\u2018\u2019]/g, '\'')
+            .replace(/[\u201C\u201D]/g, '"')
+            .replace(/\s+/g, ' ')
+            .trim();
+    }
+
+    private findCueRange(content: string, cueText: string): { start: number; end: number } | null {
+        const attempts = [
+            cueText,
+            this.normalizeCueSearchText(cueText)
+        ].filter((value, index, items) => value.length > 0 && items.indexOf(value) === index);
+
+        for (const attempt of attempts) {
+            const exactIndex = content.indexOf(attempt);
+            if (exactIndex >= 0) {
+                return { start: exactIndex, end: exactIndex + attempt.length };
+            }
+
+            const lowerContent = content.toLowerCase();
+            const lowerAttempt = attempt.toLowerCase();
+            const lowerIndex = lowerContent.indexOf(lowerAttempt);
+            if (lowerIndex >= 0) {
+                return { start: lowerIndex, end: lowerIndex + attempt.length };
+            }
+        }
+
+        const normalizedContent = this.normalizeCueSearchText(content);
+        const normalizedCue = this.normalizeCueSearchText(cueText);
+        if (!normalizedCue) return null;
+
+        const normalizedIndex = normalizedContent.toLowerCase().indexOf(normalizedCue.toLowerCase());
+        if (normalizedIndex < 0) return null;
+
+        const prefix = normalizedContent.slice(0, normalizedIndex);
+        const rawPrefixMatch = content.match(new RegExp(`^[\\s\\S]{0,${prefix.length * 2}}`));
+        const rawStart = rawPrefixMatch ? rawPrefixMatch[0].length : normalizedIndex;
+        return {
+            start: rawStart,
+            end: Math.min(content.length, rawStart + cueText.length)
+        };
+    }
+
+    private async openCueInFreshTab(file: TFile, cueText: string): Promise<void> {
+        const leaf = this.app.workspace.getLeaf('tab');
+        await leaf.openFile(file, { active: true });
+        this.app.workspace.revealLeaf(leaf);
+
+        const attemptSelection = (): boolean => {
+            const view = leaf.view;
+            if (!view || !('editor' in view)) return false;
+            const editor = (view as { editor?: { getValue(): string; offsetToPos(offset: number): unknown; setSelection(from: unknown, to: unknown): void; scrollIntoView(range: { from: unknown; to: unknown }, center?: boolean): void; }; }).editor;
+            if (!editor) return false;
+
+            const content = editor.getValue();
+            const range = this.findCueRange(content, cueText);
+            if (!range) return false;
+
+            const from = editor.offsetToPos(range.start);
+            const to = editor.offsetToPos(range.end);
+            editor.setSelection(from, to);
+            editor.scrollIntoView({ from, to }, true);
+            return true;
+        };
+
+        if (attemptSelection()) return;
+
+        window.setTimeout(() => {
+            attemptSelection();
+        }, 50);
+    }
+
     private buildConfigBadgeText(): string {
         const scenesWithWhen = this.scenes.filter(s => s.when instanceof Date).length;
         return `${t('timelineRepairModal.config.badge')}: ${this.scenes.length} scenes • ${scenesWithWhen} When dates`;
@@ -649,24 +722,7 @@ export class TimelineRepairModal extends Modal {
                 cueChip.addEventListener('click', (e) => {
                     e.stopPropagation();
                     e.preventDefault();
-                    const leaf = this.app.workspace.getLeaf(false);
-                    leaf.openFile(entry.file).then(() => {
-                        // Attempt to highlight the cue text in the editor
-                        const view = leaf.view;
-                        if (view && 'editor' in view) {
-                            const editor = (view as any).editor;
-                            if (editor) {
-                                const content = editor.getValue();
-                                const idx = content.indexOf(cue.match);
-                                if (idx >= 0) {
-                                    const from = editor.offsetToPos(idx);
-                                    const to = editor.offsetToPos(idx + cue.match.length);
-                                    editor.setSelection(from, to);
-                                    editor.scrollIntoView({ from, to }, true);
-                                }
-                            }
-                        }
-                    });
+                    void this.openCueInFreshTab(entry.file, cue.match);
                     this.close();
                 });
             }

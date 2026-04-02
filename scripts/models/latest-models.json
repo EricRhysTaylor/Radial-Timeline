@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-03-31T23:13:08.159Z",
+  "generatedAt": "2026-04-02T23:57:54.698Z",
   "summary": {
     "openai": 122,
     "anthropic": 9,
-    "google": 49
+    "google": 50
   },
   "models": [
     {
@@ -2243,32 +2243,6 @@
     },
     {
       "provider": "google",
-      "id": "gemini-2.5-flash-lite-preview-09-2025",
-      "raw": {
-        "name": "models/gemini-2.5-flash-lite-preview-09-2025",
-        "version": "2.5-preview-09-25",
-        "displayName": "Gemini 2.5 Flash-Lite Preview Sep 2025",
-        "description": "Preview release (Septempber 25th, 2025) of Gemini 2.5 Flash-Lite",
-        "inputTokenLimit": 1048576,
-        "outputTokenLimit": 65536,
-        "supportedGenerationMethods": [
-          "generateContent",
-          "countTokens",
-          "createCachedContent",
-          "batchGenerateContent"
-        ],
-        "temperature": 1,
-        "topP": 0.95,
-        "topK": 64,
-        "maxTemperature": 2,
-        "thinking": true
-      },
-      "label": "Gemini 2.5 Flash-Lite Preview Sep 2025",
-      "inputTokenLimit": 1048576,
-      "outputTokenLimit": 65536
-    },
-    {
-      "provider": "google",
       "id": "gemini-2.5-flash-native-audio-latest",
       "raw": {
         "name": "models/gemini-2.5-flash-native-audio-latest",
@@ -2883,6 +2857,54 @@
       "label": "Gemma 3n E4B",
       "inputTokenLimit": 8192,
       "outputTokenLimit": 2048
+    },
+    {
+      "provider": "google",
+      "id": "gemma-4-26b-a4b-it",
+      "raw": {
+        "name": "models/gemma-4-26b-a4b-it",
+        "version": "001",
+        "displayName": "Gemma 4 26B A4B IT",
+        "description": "Gemma 4 26B A4B IT",
+        "inputTokenLimit": 262144,
+        "outputTokenLimit": 32768,
+        "supportedGenerationMethods": [
+          "generateContent",
+          "countTokens"
+        ],
+        "temperature": 1,
+        "topP": 0.95,
+        "topK": 64,
+        "maxTemperature": 2,
+        "thinking": true
+      },
+      "label": "Gemma 4 26B A4B IT",
+      "inputTokenLimit": 262144,
+      "outputTokenLimit": 32768
+    },
+    {
+      "provider": "google",
+      "id": "gemma-4-31b-it",
+      "raw": {
+        "name": "models/gemma-4-31b-it",
+        "version": "001",
+        "displayName": "Gemma 4 31B IT",
+        "description": "Gemma 4 31B IT",
+        "inputTokenLimit": 262144,
+        "outputTokenLimit": 32768,
+        "supportedGenerationMethods": [
+          "generateContent",
+          "countTokens"
+        ],
+        "temperature": 1,
+        "topP": 0.95,
+        "topK": 64,
+        "maxTemperature": 2,
+        "thinking": true
+      },
+      "label": "Gemma 4 31B IT",
+      "inputTokenLimit": 262144,
+      "outputTokenLimit": 32768
     },
     {
       "provider": "google",
