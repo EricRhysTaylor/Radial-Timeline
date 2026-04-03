@@ -69,12 +69,12 @@ describe('beat workspace initialization', () => {
         const workspace = ensureMaterializedBeatWorkspaceState(app, settings);
         const loadedTabs = getLoadedBeatTabs(settings);
 
-        expect(workspace.activeTabId).toBeTruthy();
+        expect(workspace.activeTabId).toBeUndefined();
         expect(loadedTabs).toHaveLength(1);
         expect(loadedTabs[0].sourceKind).toBe('builtin');
         expect(loadedTabs[0].name).toBe('Story Grid');
-        expect(getActiveLoadedBeatTab(settings)?.tabId).toBe(loadedTabs[0].tabId);
-        expect(resolveSelectedBeatModelFromSettings(settings)).toBe('Story Grid');
+        expect(getActiveLoadedBeatTab(settings)).toBeUndefined();
+        expect(resolveSelectedBeatModelFromSettings(settings)).toBeUndefined();
     });
 });
 
@@ -123,6 +123,32 @@ describe('beat workspace loading', () => {
         expect(getActiveLoadedBeatTab(settings)?.tabId).toBe(builtinTab.tabId);
         expect(resolveSelectedBeatModelFromSettings(settings)).toBe('Story Grid');
     });
+
+    it('restores the selected beat system for each book independently', () => {
+        const settings: RadialTimelineSettings = {
+            ...DEFAULT_SETTINGS,
+            books: [
+                { id: 'book-1', title: 'Book One', sourceFolder: 'Books/One' },
+                { id: 'book-2', title: 'Book Two', sourceFolder: 'Books/Two' },
+            ],
+            activeBookId: 'book-1',
+        };
+
+        const storyGrid = getBeatLibraryItems(settings).find((item) => item.kind === 'builtin' && item.name === 'Story Grid');
+        const starter = getBeatLibraryItems(settings).find((item) => item.kind === 'starter');
+        expect(storyGrid).toBeTruthy();
+        expect(starter).toBeTruthy();
+
+        loadBeatTabFromLibraryItem(settings, storyGrid!);
+        expect(resolveSelectedBeatModelFromSettings(settings)).toBe('Story Grid');
+
+        settings.activeBookId = 'book-2';
+        loadBeatTabFromLibraryItem(settings, starter!);
+        expect(resolveSelectedBeatModelFromSettings(settings)).toBe(starter!.name);
+
+        settings.activeBookId = 'book-1';
+        expect(resolveSelectedBeatModelFromSettings(settings)).toBe('Story Grid');
+    });
 });
 
 describe('manuscript-detected beat tabs', () => {
@@ -168,7 +194,7 @@ describe('manuscript-detected beat tabs', () => {
         expect(detectedTab?.beats[0].name).toBe('Archive Shock');
     });
 
-    it('activates the first detected manuscript tab when bootstrapped into workspace', () => {
+    it('does not auto-select a detected manuscript tab when bootstrapped into workspace', () => {
         const settings = buildSettings();
         const app = buildBeatApp([
             {
@@ -182,7 +208,8 @@ describe('manuscript-detected beat tabs', () => {
 
         ensureMaterializedBeatWorkspaceState(app, settings);
 
-        expect(getActiveLoadedBeatTab(settings)?.name).toBe('Historical Spiral');
-        expect(resolveSelectedBeatModelFromSettings(settings)).toBe('Historical Spiral');
+        expect(getActiveLoadedBeatTab(settings)).toBeUndefined();
+        expect(resolveSelectedBeatModelFromSettings(settings)).toBeUndefined();
+        expect(getLoadedBeatTabs(settings).map((tab) => tab.name)).toContain('Historical Spiral');
     });
 });

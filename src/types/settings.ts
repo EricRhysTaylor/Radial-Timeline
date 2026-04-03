@@ -601,7 +601,10 @@ export interface RadialTimelineSettings {
     chronologueDurationCapSelection?: string;
     discontinuityThreshold?: string;
     shouldRestoreTimelineOnLoad?: boolean;
+    /** @deprecated Legacy global beat-system selector. Migrated into per-book beatWorkspace and not used at runtime. */
     beatSystem?: string;
+    /** Internal one-time migration flag for per-book beat system selection bootstrap. */
+    beatSelectionMigrationComplete?: boolean;
     dominantSubplots?: Record<string, string>;
     globalPovMode?: GlobalPovMode;
     readabilityScale?: ReadabilityScale;

@@ -2185,7 +2185,7 @@ export function renderStoryBeatsSection(params: {
     const beatYamlContainer = beatYamlSection.createDiv({ cls: ['ert-panel', 'ert-advanced-template-card'] });
 
     // ─── Beat-fields config helpers (all systems: built-in + custom) ────
-    const getActiveSystemKey = (): string => getActiveBeatWorkspaceName('Save The Cat');
+    const getActiveSystemKey = (): string | undefined => getActiveBeatWorkspaceTab()?.name?.trim() || undefined;
     const getConfigForCurrentSystem = (): BeatSystemConfig =>
         getActiveBeatWorkspaceTab()?.config ?? getBeatConfigForSystem(plugin.settings, getActiveSystemKey());
     const updateConfigForCurrentSystem = (updater: (config: BeatSystemConfig) => void): BeatSystemConfig => {
@@ -3301,8 +3301,17 @@ export function renderStoryBeatsSection(params: {
         };
     };
 
+    if (!getActiveBeatWorkspaceTab()) {
+        _currentInnerStage = 'library';
+    }
     renderSavedBeatSystems();
-    updateBeatSystemCard(getActiveBeatWorkspaceName('Custom'));
+    const initialActiveBeatTab = getActiveBeatWorkspaceTab();
+    if (initialActiveBeatTab) {
+        updateBeatSystemCard(initialActiveBeatTab.name);
+    } else {
+        renderStageSwitcher();
+        updateStageVisibility();
+    }
     renderBeatSystemTabs();
     _unsubTopBeatTabsDirty = dirtyState.subscribe(() => {
         renderBeatSystemTabs();
@@ -5837,7 +5846,7 @@ export function renderStoryBeatsSection(params: {
         beatAuditContainer,
         'Beat',
         isActiveWorkspaceBuiltin()
-            ? getActiveBeatWorkspaceName('Save The Cat')
+            ? (getActiveBeatWorkspaceTab()?.name?.trim() || undefined)
             : (() => {
                 const activeTab = getActiveBeatWorkspaceTab();
                 return activeTab ? `custom:${getLoadedBeatTabWorkspaceSystemId(activeTab)}` : undefined;

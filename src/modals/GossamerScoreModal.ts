@@ -10,7 +10,6 @@ import type { TimelineItem } from '../types';
 import { filterBeatsBySystem, normalizeBeatName, normalizeGossamerHistory } from '../utils/gossamer';
 import { parseScoresFromClipboard } from '../GossamerCommands';
 import { getPlotSystem } from '../utils/beatsSystems';
-import { normalizeBeatSetNameInput } from '../utils/beatsInputNormalize';
 import {
   resolveSelectedBeatModelFromSettings
 } from '../utils/beatSystemState';
@@ -221,8 +220,8 @@ export class GossamerScoreModal extends Modal {
     contentEl.addClass('ert-modal-container', 'ert-stack', 'rt-gossamer-score-modal');
 
     const selectedBeatModel = resolveSelectedBeatModelFromSettings(this.plugin.settings);
-    const settingsSystem = normalizeBeatSetNameInput((selectedBeatModel ?? ''), 'Save The Cat');
-    const beatModelLabel = selectedBeatModel ?? settingsSystem;
+    const settingsSystem = selectedBeatModel ?? '';
+    const beatModelLabel = selectedBeatModel ?? 'No active beat system selected';
     
     // ... filtering logic ...
 
@@ -282,7 +281,9 @@ export class GossamerScoreModal extends Modal {
     // Show warning if no beats match
     if (actualCount === 0) {
       const noBeatsWarning = contentEl.createEl('div', {
-        text: settingsSystem === 'Custom'
+        text: !selectedBeatModel
+          ? 'No active beat system selected for this book. Choose one in Beat Manager to score momentum against a specific structure.'
+          : settingsSystem === 'Custom'
           ? `⚠️ No custom story beats found. Create notes with "Class: Beat" and "Beat Model: ${beatModelLabel}", or change beat system in Settings.`
           : `⚠️ No story beats found with "Beat Model: ${beatModelLabel}". Check your beat notes have the correct Beat Model field, or change beat system in Settings.`
       });
@@ -589,7 +590,11 @@ export class GossamerScoreModal extends Modal {
   private async copyTemplateForAI(): Promise<void> {
     try {
       // Get beat system name for context
-      const settingsSystem = resolveSelectedBeatModelFromSettings(this.plugin.settings) || 'Save The Cat';
+      const settingsSystem = resolveSelectedBeatModelFromSettings(this.plugin.settings);
+      if (!settingsSystem) {
+        new Notice('No active beat system selected for this book.');
+        return;
+      }
 
       const { name: contextTemplateName, prompt: contextPrompt } = this.getActiveAiContextInfo();
 

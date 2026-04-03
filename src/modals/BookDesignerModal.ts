@@ -1226,8 +1226,8 @@ export class BookDesignerModal extends Modal {
 
     private getActiveBeatSetTitle(): string {
         const activeTab = getActiveLoadedBeatTab(this.plugin.settings);
-        const beatSystem = (activeTab?.name || resolveSelectedBeatModelFromSettings(this.plugin.settings) || 'Custom').trim();
-        return beatSystem.length > 0 ? beatSystem : 'Custom';
+        const beatSystem = (activeTab?.name || resolveSelectedBeatModelFromSettings(this.plugin.settings) || '').trim();
+        return beatSystem.length > 0 ? beatSystem : 'No beat system selected';
     }
 
     private truncateLabel(text: string, maxLength = 22): string {
@@ -1805,23 +1805,28 @@ export class BookDesignerModal extends Modal {
                 beatsSkippedDuplicate = true;
             } else {
                 const activeTab = getActiveLoadedBeatTab(this.plugin.settings);
-                const beatSystem = activeTab?.name || resolveSelectedBeatModelFromSettings(this.plugin.settings) || 'Custom';
-                const beatTemplate = getTemplateParts('Beat', this.plugin.settings).merged;
-
-                const activeWorkspaceSystem = getCustomSystemFromSettings(this.plugin.settings);
-                if (activeWorkspaceSystem.beats.length > 0 && !getPlotSystem(beatSystem)) {
-                    try {
-                        const result = await createBeatNotesFromSet(vault, beatSystem, targetFolder, activeWorkspaceSystem, { beatTemplate, actSceneNumbers });
-                        beatsCreated = result.created;
-                    } catch (e) {
-                        new Notice(`Error creating beats: ${e}`);
-                    }
+                const beatSystem = (activeTab?.name || resolveSelectedBeatModelFromSettings(this.plugin.settings) || '').trim();
+                if (!beatSystem) {
+                    new Notice('No active beat system selected for this book. Choose one in Beat Manager before creating beat notes.');
+                    beatsSkippedDuplicate = true;
                 } else {
-                    try {
-                        const result = await createBeatNotesFromSet(vault, beatSystem, targetFolder, undefined, { beatTemplate, actSceneNumbers });
-                        beatsCreated = result.created;
-                    } catch (e) {
-                        new Notice(`Error creating beats: ${e}`);
+                    const beatTemplate = getTemplateParts('Beat', this.plugin.settings).merged;
+
+                    const activeWorkspaceSystem = getCustomSystemFromSettings(this.plugin.settings);
+                    if (activeWorkspaceSystem.beats.length > 0 && !getPlotSystem(beatSystem)) {
+                        try {
+                            const result = await createBeatNotesFromSet(vault, beatSystem, targetFolder, activeWorkspaceSystem, { beatTemplate, actSceneNumbers });
+                            beatsCreated = result.created;
+                        } catch (e) {
+                            new Notice(`Error creating beats: ${e}`);
+                        }
+                    } else {
+                        try {
+                            const result = await createBeatNotesFromSet(vault, beatSystem, targetFolder, undefined, { beatTemplate, actSceneNumbers });
+                            beatsCreated = result.created;
+                        } catch (e) {
+                            new Notice(`Error creating beats: ${e}`);
+                        }
                     }
                 }
             }

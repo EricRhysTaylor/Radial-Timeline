@@ -1,13 +1,16 @@
 import { DEFAULT_SETTINGS } from '../settings/defaults';
-import type { BeatDefinition, BeatSystemConfig, HoverMetadataField, RadialTimelineSettings, SavedBeatSystem } from '../types/settings';
-import { generateBeatGuid, normalizeBeatNameInput, normalizeBeatSetNameInput } from '../utils/beatsInputNormalize';
+import type { BeatDefinition, BeatSystemConfig, BeatWorkspaceState, BookProfile, HoverMetadataField, LoadedBeatTab, RadialTimelineSettings, SavedBeatSystem } from '../types/settings';
+import { generateBeatGuid, normalizeBeatNameInput, normalizeBeatSetNameInput, toBeatModelMatchKey } from '../utils/beatsInputNormalize';
 import { PLOT_SYSTEM_NAMES } from '../utils/beatsSystems';
 import {
     DEFAULT_CUSTOM_BEAT_SYSTEM_ID,
     buildDefaultCustomBeatSystem,
+    DEFAULT_CUSTOM_BEAT_SYSTEM_NAME,
     getCustomBeatConfigKey,
     replaceSavedBeatSystem,
 } from '../utils/beatSystemState';
+import { getBeatLibraryItems } from '../storyBeats/libraryState';
+import { WORKSPACE_TAB_ID_PREFIX } from '../storyBeats/workspaceState';
 
 type LegacyBeatSettings = RadialTimelineSettings & {
     customBeatSystemName?: string;
@@ -35,10 +38,22 @@ export interface BeatSettingsMigrationResult {
     schemaNormalized: boolean;
     beatIdsMigrated: boolean;
     legacyFieldsRemoved: boolean;
+    selectionMigrated: boolean;
 }
 
 function cloneHoverFields(fields: HoverMetadataField[] | undefined): HoverMetadataField[] {
     return (fields ?? []).map((field) => ({ ...field }));
+}
+
+function cloneBeatDefinitions(beats: BeatDefinition[] | undefined): BeatDefinition[] {
+    return (beats ?? []).map((beat) => ({ ...beat }));
+}
+
+function cloneBeatConfig(config: BeatSystemConfig | undefined): BeatSystemConfig {
+    return {
+        beatYamlAdvanced: typeof config?.beatYamlAdvanced === 'string' ? config.beatYamlAdvanced : '',
+        beatHoverMetadataFields: cloneHoverFields(config?.beatHoverMetadataFields),
+    };
 }
 
 function getLegacyActiveCustomBeatSystemId(settings: Pick<RadialTimelineSettings, 'activeCustomBeatSystemId'>): string {
@@ -153,12 +168,109 @@ function ensureBeatConfigSlot(
     return configs[key];
 }
 
+function buildWorkspaceTabId(kind: LoadedBeatTab['sourceKind'], id?: string): string {
+    if (kind === 'blank') return `${WORKSPACE_TAB_ID_PREFIX}blank`;
+    return `${WORKSPACE_TAB_ID_PREFIX}${kind}:${id ?? ''}`;
+}
+
+function buildWorkspaceFromLoadedTab(tab: LoadedBeatTab): BeatWorkspaceState {
+    return {
+        loadedTabIds: [tab.tabId],
+        tabsById: {
+            [tab.tabId]: tab,
+        },
+        activeTabId: tab.tabId,
+    };
+}
+
+function buildLoadedTabFromLegacySelection(
+    settings: Pick<LegacyBeatSettings, 'beatSystemConfigs' | 'savedBeatSystems' | 'beatSystem' | 'activeCustomBeatSystemId'>
+): LoadedBeatTab | undefined {
+    const legacySelection = normalizeBeatSetNameInput(settings.beatSystem ?? '', '');
+    if (!legacySelection) return undefined;
+
+    const legacyKey = toBeatModelMatchKey(legacySelection);
+    const matchedLibraryItem = getBeatLibraryItems(settings)
+        .filter((item) => item.kind !== 'blank')
+        .find((item) => toBeatModelMatchKey(item.name) === legacyKey);
+
+    if (matchedLibraryItem) {
+        return {
+            tabId: buildWorkspaceTabId(matchedLibraryItem.kind, matchedLibraryItem.id),
+            sourceKind: matchedLibraryItem.kind,
+            sourceId: matchedLibraryItem.id,
+            name: normalizeBeatSetNameInput(matchedLibraryItem.name, DEFAULT_CUSTOM_BEAT_SYSTEM_NAME),
+            description: matchedLibraryItem.description ?? '',
+            beats: cloneBeatDefinitions(matchedLibraryItem.beats),
+            config: cloneBeatConfig(matchedLibraryItem.config),
+            linkedSavedSystemId: matchedLibraryItem.linkedSavedSystemId,
+            dirty: false,
+        };
+    }
+
+    const activeCustomId = getLegacyActiveCustomBeatSystemId(settings);
+    const activeCustomSystem = (settings.savedBeatSystems ?? []).find((system) => system.id === activeCustomId)
+        ?? (settings.savedBeatSystems ?? []).find((system) => system.id === DEFAULT_CUSTOM_BEAT_SYSTEM_ID);
+    const legacyMatchesDefaultCustom = legacyKey === toBeatModelMatchKey('Custom')
+        || (!!activeCustomSystem && legacyKey === toBeatModelMatchKey(activeCustomSystem.name));
+
+    if (!legacyMatchesDefaultCustom) return undefined;
+
+    const customSystem = activeCustomSystem ?? buildDefaultCustomBeatSystem();
+    return {
+        tabId: buildWorkspaceTabId('blank'),
+        sourceKind: 'blank',
+        name: normalizeBeatSetNameInput(customSystem.name, DEFAULT_CUSTOM_BEAT_SYSTEM_NAME),
+        description: typeof customSystem.description === 'string' ? customSystem.description : '',
+        beats: cloneBeatDefinitions(customSystem.beats),
+        config: cloneBeatConfig(settings.beatSystemConfigs?.[getCustomBeatConfigKey(customSystem.id)]),
+        linkedSavedSystemId: customSystem.id,
+        dirty: false,
+    };
+}
+
+function hasExplicitBeatWorkspaceSelection(book: BookProfile | undefined): boolean {
+    const activeTabId = book?.beatWorkspace?.activeTabId;
+    return !!(activeTabId && book?.beatWorkspace?.tabsById?.[activeTabId]);
+}
+
+function migrateBookBeatSelections(settings: LegacyBeatSettings): boolean {
+    if (settings.beatSelectionMigrationComplete) return false;
+
+    const seededTab = buildLoadedTabFromLegacySelection(settings);
+    let changed = true;
+
+    settings.books = (settings.books ?? []).map((book) => {
+        if (hasExplicitBeatWorkspaceSelection(book)) return book;
+        if (!seededTab) return book;
+
+        changed = true;
+        return {
+            ...book,
+            beatWorkspace: buildWorkspaceFromLoadedTab({
+                ...seededTab,
+                beats: cloneBeatDefinitions(seededTab.beats),
+                config: cloneBeatConfig(seededTab.config),
+            }),
+        };
+    });
+
+    settings.beatSelectionMigrationComplete = true;
+    if (settings.beatSystem !== undefined) {
+        delete settings.beatSystem;
+        changed = true;
+    }
+
+    return changed;
+}
+
 export function migrateBeatSettings(settings: LegacyBeatSettings): BeatSettingsMigrationResult {
     let customStateMigrated = false;
     let configMigrated = false;
     let schemaNormalized = false;
     let beatIdsMigrated = false;
     let legacyFieldsRemoved = false;
+    let selectionMigrated = false;
     const legacyAdvanced = typeof settings.beatYamlTemplates?.advanced === 'string'
         ? settings.beatYamlTemplates.advanced
         : '';
@@ -281,22 +393,28 @@ export function migrateBeatSettings(settings: LegacyBeatSettings): BeatSettingsM
     });
     settings.beatSystemConfigs = normalizedConfigs;
 
+    if (migrateBookBeatSelections(settings)) {
+        selectionMigrated = true;
+    }
+
     if (settings.customBeatSystemName !== undefined
         || settings.customBeatSystemDescription !== undefined
         || settings.customBeatSystemBeats !== undefined
         || settings.beatHoverMetadataFields !== undefined
+        || settings.beatSystem !== undefined
         || typeof settings.beatYamlTemplates?.advanced === 'string') {
         legacyFieldsRemoved = true;
     }
     stripLegacyBeatSettings(settings);
 
     return {
-        changed: customStateMigrated || configMigrated || schemaNormalized || beatIdsMigrated || legacyFieldsRemoved,
+        changed: customStateMigrated || configMigrated || schemaNormalized || beatIdsMigrated || legacyFieldsRemoved || selectionMigrated,
         customStateMigrated,
         configMigrated,
         schemaNormalized,
         beatIdsMigrated,
         legacyFieldsRemoved,
+        selectionMigrated,
     };
 }
 
@@ -305,6 +423,7 @@ export function stripLegacyBeatSettings(settings: LegacyBeatSettings): void {
     delete settings.customBeatSystemDescription;
     delete settings.customBeatSystemBeats;
     delete settings.beatHoverMetadataFields;
+    delete settings.beatSystem;
     if (settings.beatYamlTemplates && 'advanced' in settings.beatYamlTemplates) {
         delete settings.beatYamlTemplates.advanced;
     }

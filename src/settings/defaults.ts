@@ -106,7 +106,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     chronologueDurationCapSelection: 'auto',
     readabilityScale: 'normal',
     shouldRestoreTimelineOnLoad: false,
-    beatSystem: 'Save The Cat', // Default beat system
+    beatSelectionMigrationComplete: false,
     dominantSubplots: {}, // Default: empty map, will use outermost subplot for scenes in multiple subplots
     globalPovMode: 'off',
     lastSeenReleaseNotesVersion: '',

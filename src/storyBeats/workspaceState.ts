@@ -120,7 +120,7 @@ function normalizeWorkspace(workspace: BeatWorkspaceState | undefined): BeatWork
     const loadedTabIds = (workspace.loadedTabIds || []).filter((tabId) => !!tabsById[tabId]);
     const activeTabId = workspace.activeTabId && tabsById[workspace.activeTabId]
         ? workspace.activeTabId
-        : loadedTabIds[0];
+        : undefined;
     return { loadedTabIds, tabsById, activeTabId };
 }
 
@@ -166,7 +166,9 @@ function mergeDetectedTabsIntoWorkspace(
         changed = true;
     }
 
-    const nextActiveTabId = workspace.activeTabId ?? nextLoadedTabIds[0];
+    const nextActiveTabId = workspace.activeTabId && nextTabsById[workspace.activeTabId]
+        ? workspace.activeTabId
+        : undefined;
     if (nextActiveTabId !== workspace.activeTabId) {
         changed = true;
     }
@@ -338,13 +340,13 @@ export function getMaterializedBeatTabs(app: App, settings: RadialTimelineSettin
 
 export function getActiveLoadedBeatTab(settings: RadialTimelineSettings): LoadedBeatTab | undefined {
     const workspace = getWorkspace(settings);
-    const activeTabId = workspace.activeTabId ?? workspace.loadedTabIds[0];
+    const activeTabId = workspace.activeTabId;
     const activeTab = activeTabId ? workspace.tabsById[activeTabId] : undefined;
     return activeTab ? cloneLoadedTab(activeTab) : undefined;
 }
 
 export function getActiveLoadedBeatTabId(settings: RadialTimelineSettings): string | undefined {
-    return getWorkspace(settings).activeTabId ?? getWorkspace(settings).loadedTabIds[0];
+    return getWorkspace(settings).activeTabId;
 }
 
 export function isBeatLibraryItemLoaded(
