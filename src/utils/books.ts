@@ -2,6 +2,7 @@
  * Book profile helpers
  */
 import type { BeatDefinition, BeatSystemConfig, BeatWorkspaceState, BookProfile, LoadedBeatTab, ManuscriptSceneHeadingMode, RadialTimelineSettings } from '../types/settings';
+import { normalizeRecentStructuralMoves } from './recentStructuralMoves';
 
 export const DEFAULT_BOOK_TITLE = 'Untitled Manuscript';
 
@@ -70,7 +71,8 @@ export function normalizeBookProfile(profile: BookProfile): BookProfile {
     fileStem: fileStem && fileStem.length > 0 ? fileStem : undefined,
     ...(profile.lastUsedPandocLayoutByPreset ? { lastUsedPandocLayoutByPreset: { ...profile.lastUsedPandocLayoutByPreset } } : {}),
     ...(Object.keys(normalizedLayoutOptions).length > 0 ? { layoutOptions: normalizedLayoutOptions } : {}),
-    ...(normalizeBeatWorkspace(profile.beatWorkspace) ? { beatWorkspace: normalizeBeatWorkspace(profile.beatWorkspace) } : {})
+    ...(normalizeBeatWorkspace(profile.beatWorkspace) ? { beatWorkspace: normalizeBeatWorkspace(profile.beatWorkspace) } : {}),
+    ...(normalizeRecentStructuralMoves(profile.recentStructuralMoves) ? { recentStructuralMoves: normalizeRecentStructuralMoves(profile.recentStructuralMoves) } : {})
   };
 }
 

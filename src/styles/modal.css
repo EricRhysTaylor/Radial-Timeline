@@ -407,6 +407,21 @@
   margin: 0;
 }
 
+.rt-drag-confirm-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rt-drag-confirm-section-title {
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 0 2px;
+}
+
 .rt-drag-confirm-row {
   display: flex;
   align-items: center;
@@ -433,6 +448,64 @@
 .rt-drag-confirm-row-text {
   font-size: 1.05em;
   line-height: 1.4;
+}
+
+.rt-drag-confirm-impact-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.rt-drag-confirm-impact-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 12px;
+  background-color: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+}
+
+.rt-drag-confirm-impact-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rt-drag-confirm-impact-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.rt-drag-confirm-impact-value {
+  font-size: 0.96rem;
+  line-height: 1.35;
+  color: var(--text-normal);
+}
+
+.rt-drag-confirm-history-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  background-color: color-mix(in srgb, var(--background-secondary) 92%, transparent);
+  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 86%, transparent);
+  border-radius: 8px;
+}
+
+.rt-drag-confirm-history-summary {
+  font-size: 0.95rem;
+  line-height: 1.35;
+  color: var(--text-normal);
+}
+
+.rt-drag-confirm-history-meta {
+  font-size: 0.78rem;
+  line-height: 1.3;
+  color: var(--text-muted);
 }
 
 .rt-drag-confirm-row.is-status-row {

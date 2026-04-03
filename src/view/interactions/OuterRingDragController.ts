@@ -9,9 +9,11 @@ import { DragConfirmModal } from '../../modals/DragConfirmModal';
 import { DRAG_DROP_ARC_RADIUS, DRAG_DROP_TICK_OUTER_RADIUS, DRAG_DROP_TICK_LENGTH } from '../../renderer/layout/LayoutConstants';
 import { formatBeatDecimalPrefix, formatIntegerPrefix } from '../../utils/prefixOrder';
 import { resolveSelectedBeatModelFromSettings } from '../../utils/beatSystemState';
+import { appendRecentStructuralMove, getActiveRecentStructuralMoves } from '../../utils/recentStructuralMoves';
+import type { RadialTimelineSettings } from '../../types/settings';
 
 export interface OuterRingViewAdapter {
-    plugin: { app: App; settings: Record<string, unknown> };
+    plugin: { app: App; settings: RadialTimelineSettings };
     registerDomEvent: (el: HTMLElement, event: string, handler: (ev: Event) => void) => void;
 }
 
@@ -216,6 +218,83 @@ export class OuterRingDragController {
         return formatIntegerPrefix(index, width);
     }
 
+    private getLabelFromBasename(basename: string, fallbackType: 'Scene' | 'Beat'): string {
+        const stripped = basename.replace(/^\s*\d+(?:\.\d+)?\s+/, '').trim();
+        return stripped || fallbackType;
+    }
+
+    private formatItemDescriptor(entry: Pick<OuterRingOrderEntry, 'itemType' | 'numberText' | 'basename'>): string {
+        const label = this.getLabelFromBasename(entry.basename, entry.itemType);
+        if (entry.itemType === 'Scene') {
+            return entry.numberText ? `Scene ${entry.numberText}` : label;
+        }
+        if (label && label !== 'Beat') {
+            return `${label} beat`;
+        }
+        return entry.numberText ? `Beat ${entry.numberText}` : 'Beat';
+    }
+
+    private formatContext(actNumber?: number, subplot?: string): string | undefined {
+        const parts: string[] = [];
+        if (actNumber !== undefined && Number.isFinite(actNumber)) {
+            parts.push(`Act ${actNumber}`);
+        }
+        if (subplot && subplot.trim().length > 0) {
+            parts.push(subplot.trim());
+        }
+        return parts.length > 0 ? parts.join(' • ') : undefined;
+    }
+
+    private resolveStableItemId(filePath: string | null, fallbackId: string): string {
+        const normalizedFallback = fallbackId.trim() || filePath?.trim() || 'unknown-item';
+        if (!filePath) return normalizedFallback;
+        const file = this.view.plugin.app.vault.getAbstractFileByPath(filePath);
+        if (!file) return normalizedFallback;
+        const frontmatter = this.view.plugin.app.metadataCache.getFileCache(file as any)?.frontmatter;
+        const fromId = frontmatter?.ID ?? frontmatter?.id ?? frontmatter?.['Reference ID'] ?? frontmatter?.referenceId;
+        if (typeof fromId === 'string' && fromId.trim().length > 0) {
+            return fromId.trim();
+        }
+        return normalizedFallback;
+    }
+
+    private async recordRecentMove(entry: {
+        itemType: 'Scene' | 'Beat';
+        filePath: string | null;
+        fallbackItemId: string;
+        itemLabel: string;
+        sourceContext?: string;
+        destinationContext?: string;
+        summary: string;
+        renameCount?: number;
+        crossedActs?: boolean;
+        rippleRename?: boolean;
+    }): Promise<void> {
+        const pluginAny = this.view.plugin as {
+            settings: RadialTimelineSettings;
+            saveSettings?: () => Promise<void>;
+        };
+        const itemId = this.resolveStableItemId(entry.filePath, entry.fallbackItemId);
+        const changed = appendRecentStructuralMove(pluginAny.settings, {
+            timestamp: new Date().toISOString(),
+            itemType: entry.itemType,
+            itemId,
+            itemLabel: entry.itemLabel,
+            summary: entry.summary,
+            renameCount: entry.renameCount ?? 0,
+            crossedActs: entry.crossedActs ?? false,
+            rippleRename: entry.rippleRename ?? false,
+            ...(entry.sourceContext ? { sourceContext: entry.sourceContext } : {}),
+            ...(entry.destinationContext ? { destinationContext: entry.destinationContext } : {}),
+        });
+        if (!changed || typeof pluginAny.saveSettings !== 'function') return;
+        try {
+            await pluginAny.saveSettings();
+        } catch (error) {
+            console.warn('Failed to persist recent structural moves history:', error);
+        }
+    }
+
     private buildRenumberDiff(
         reordered: OuterRingOrderEntry[],
         forceNoRenumber: boolean = false
@@ -256,28 +335,12 @@ export class OuterRingDragController {
         return Boolean((this.view.plugin.settings as any).enableManuscriptRippleRename);
     }
 
-    private appendRippleRenameSummary(summaryLines: string[]): void {
-        if (!this.isRippleRenameEnabled()) return;
-        summaryLines.push('Ripple rename is enabled: scene and active-beat filenames are normalized after drop (filenames only). Scenes stay integer-numbered; beats are rewritten as decimal minors.');
-    }
-
-    private buildResequenceSummaryLine(
-        renumberUpdates: SceneUpdate[],
-        orderedEntries: OuterRingOrderEntry[]
-    ): string {
-        const itemTypeByPath = new Map(orderedEntries.map(entry => [entry.path, entry.itemType] as const));
-        let sceneCount = 0;
-        let beatCount = 0;
-        for (const update of renumberUpdates) {
-            if (itemTypeByPath.get(update.path) === 'Beat') beatCount += 1;
-            else sceneCount += 1;
-        }
-
-        const total = sceneCount + beatCount;
-        if (beatCount === 0) {
-            return `Will resequence ${total} filenames (${sceneCount} scenes) — updates numbering.`;
-        }
-        return `Will resequence ${total} filenames (${sceneCount} scenes, ${beatCount} beats) — scenes stay integers and beats use decimal minors.`;
+    private buildContextChangeSummary(sourceContext?: string, destinationContext?: string): string | undefined {
+        if (!sourceContext && !destinationContext) return undefined;
+        if (!sourceContext) return destinationContext;
+        if (!destinationContext) return sourceContext;
+        if (sourceContext === destinationContext) return undefined;
+        return `${sourceContext} → ${destinationContext}`;
     }
 
     /** Extract the scene/beat path element ID from an .rt-scene-group */
@@ -688,22 +751,27 @@ export class OuterRingDragController {
         const targetOriginalNumber = order[toIdx]?.numberText ?? '';
         const sourceLabel = sourceType === 'Beat' ? 'beat' : 'scene';
         const targetLabel = (targetItemType === 'Beat') ? 'beat' : 'scene';
-        const summaryLines = [
-            `Place ${sourceLabel} ${sourceOriginalNumber} ${insertionRelation} ${targetLabel} ${targetOriginalNumber}.`,
-            this.buildResequenceSummaryLine(renumberUpdates, reordered),
-        ];
-        this.appendRippleRenameSummary(summaryLines);
-        if (actChanged) {
-            summaryLines.push(`Update moved ${sourceLabel} Act → ${targetActNumber}.`);
-        }
-        if (subplotChanged && sourceType === 'Scene') {
-            summaryLines.push(`Update moved scene Subplot → ${targetSubplot}.`);
-        }
+        const sourceDescriptor = this.formatItemDescriptor(moved);
+        const targetDescriptor = this.formatItemDescriptor(order[toIdx]);
+        const sourceContext = this.formatContext(sourceActNumber, sourceSubplot);
+        const destinationContext = this.formatContext(targetActNumber, targetSubplot);
+        const contextChange = this.buildContextChangeSummary(
+            sourceContext,
+            (actChanged || (subplotChanged && sourceType === 'Scene')) ? destinationContext : sourceContext
+        );
+        const rippleRename = this.isRippleRenameEnabled();
+        const recentMoves = getActiveRecentStructuralMoves(this.view.plugin.settings as any);
 
         this.confirming = true;
         const modal = new DragConfirmModal(
             this.view.plugin.app,
-            summaryLines,
+            {
+                actionSummary: `Move ${sourceDescriptor} ${insertionRelation} ${targetDescriptor}`,
+                renameCount: renumberUpdates.length,
+                ...(contextChange ? { contextChange } : {}),
+                rippleRename,
+            },
+            recentMoves,
             this.originModalColor ?? this.originColor,
             sourceLabel
         );
@@ -749,7 +817,20 @@ export class OuterRingDragController {
                     modal.updateProgress(this.formatRenameProgressLine('Reorder', progress));
                 }
             });
-            new Notice(`Moved ${sourceLabel} ${sourceOriginalNumber} → ${insertionRelation} ${targetLabel} ${targetOriginalNumber}`, 2000);
+            const historySummary = `Moved ${sourceDescriptor} before ${targetDescriptor}`;
+            await this.recordRecentMove({
+                itemType: sourceType,
+                filePath: sourcePath,
+                fallbackItemId: this.sourceSceneId,
+                itemLabel: this.getLabelFromBasename(moved.basename, sourceType),
+                sourceContext,
+                destinationContext,
+                summary: historySummary,
+                renameCount: renumberUpdates.length,
+                crossedActs: actChanged,
+                rippleRename,
+            });
+            new Notice(historySummary, 2000);
             await this.runRippleRenameIfEnabled((message) => modal.updateProgress(message));
             modal.updateProgress('Refreshing timeline...');
             // Small delay to allow Obsidian's metadata cache to update before refresh
@@ -789,6 +870,7 @@ export class OuterRingDragController {
         const sourceType = movedEntry.itemType;
         const sourceLabel = sourceType === 'Beat' ? 'beat' : 'scene';
         const targetSubplotName = this.getSubplotNameFromRing(target.ring);
+        const sourceDescriptor = this.formatItemDescriptor(movedEntry);
 
         // Build the post-drop sequence by inserting the moved item at the void-cell angle.
         // This keeps numbering aligned with neighboring beats/scenes in manuscript order.
@@ -815,35 +897,19 @@ export class OuterRingDragController {
         // Determine new subplots based on the move
         // Beats are always on Main Plot, so only process subplot changes for scenes
         let newSubplots: string[] | undefined;
-        let subplotChangeDesc = '';
-        
         if (sourceType === 'Beat') {
             // Beats stay on Main Plot - no subplot changes
-            subplotChangeDesc = 'Beat subplot unchanged (Main Plot).';
         } else {
             // Check if target subplot is already one of the scene's subplots
             const isMovingToExistingSubplot = currentSubplots.includes(targetSubplotName);
             
             if (isMovingToExistingSubplot) {
-                subplotChangeDesc = `Scene already belongs to "${targetSubplotName}".`;
             } else if (target.isOuterRing) {
-                subplotChangeDesc = 'Subplot unchanged (outer ring).';
             } else {
                 if (hasMainPlot) {
                     newSubplots = ['Main Plot', targetSubplotName];
-                    if (currentSubplots.length > 1) {
-                        const otherSubplots = currentSubplots.filter(s => s !== 'Main Plot');
-                        subplotChangeDesc = `Keep "Main Plot", change "${otherSubplots.join(', ')}" → "${targetSubplotName}".`;
-                    } else {
-                        subplotChangeDesc = `Add "${targetSubplotName}" to scene subplots.`;
-                    }
                 } else {
                     newSubplots = [targetSubplotName];
-                    if (currentSubplots.length > 0) {
-                        subplotChangeDesc = `Change subplot "${currentSubplots.join(', ')}" → "${targetSubplotName}".`;
-                    } else {
-                        subplotChangeDesc = `Set subplot to "${targetSubplotName}".`;
-                    }
                 }
             }
         }
@@ -868,24 +934,29 @@ export class OuterRingDragController {
             return;
         }
 
-        // Build descriptive summary message
-        const summaryLines: string[] = [];
-        if (actChanged) {
-            const locationDesc = target.isOuterRing 
-                ? `Act ${targetActNumber}` 
-                : `Act ${targetActNumber}, "${targetSubplotName}"`;
-            summaryLines.push(`Move ${sourceLabel} ${sourceDisplayNumber} to ${locationDesc}.`);
-        } else {
-            summaryLines.push(`Move ${sourceLabel} ${sourceDisplayNumber} to "${targetSubplotName}".`);
-        }
-        summaryLines.push(subplotChangeDesc);
-        summaryLines.push(this.buildResequenceSummaryLine(renumberUpdates, reordered));
-        this.appendRippleRenameSummary(summaryLines);
+        const sourceContext = this.formatContext(sourceActNumber, movedEntry.subplot);
+        const destinationSubplot = target.isOuterRing ? movedEntry.subplot : targetSubplotName;
+        const destinationContext = this.formatContext(targetActNumber, destinationSubplot);
+        const contextChange = this.buildContextChangeSummary(
+            sourceContext,
+            (actChanged || newSubplots !== undefined) ? destinationContext : sourceContext
+        );
+        const rippleRename = this.isRippleRenameEnabled();
+        const recentMoves = getActiveRecentStructuralMoves(this.view.plugin.settings as any);
+        const actionSummary = target.isOuterRing
+            ? `Move ${sourceDescriptor} to Act ${targetActNumber}`
+            : `Move ${sourceDescriptor} to Act ${targetActNumber} • ${targetSubplotName}`;
 
         this.confirming = true;
         const modal = new DragConfirmModal(
             this.view.plugin.app,
-            summaryLines,
+            {
+                actionSummary,
+                renameCount: renumberUpdates.length,
+                ...(contextChange ? { contextChange } : {}),
+                rippleRename,
+            },
+            recentMoves,
             this.originModalColor ?? this.originColor,
             sourceLabel
         );
@@ -897,14 +968,26 @@ export class OuterRingDragController {
         }
 
         const noticeText = target.isOuterRing 
-            ? `Moved ${sourceLabel} ${sourceDisplayNumber} → Act ${targetActNumber}`
-            : `Moved ${sourceLabel} ${sourceDisplayNumber} → Act ${targetActNumber}, "${targetSubplotName}"`;
+            ? `Moved ${sourceDescriptor} to Act ${targetActNumber}`
+            : `Moved ${sourceDescriptor} to Act ${targetActNumber}, ${targetSubplotName}`;
         try {
             this.log('apply void cell drop', { targetAct: targetActNumber, ring: target.ring, subplot: targetSubplotName, path: this.sourcePath, itemType: sourceType });
             await applySceneNumberUpdates(this.view.plugin.app, updates, {
                 onProgress: (progress) => {
                     modal.updateProgress(this.formatRenameProgressLine('Reorder', progress));
                 }
+            });
+            await this.recordRecentMove({
+                itemType: sourceType,
+                filePath: this.sourcePath,
+                fallbackItemId: this.sourceSceneId,
+                itemLabel: this.getLabelFromBasename(movedEntry.basename, sourceType),
+                sourceContext,
+                destinationContext,
+                summary: noticeText,
+                renameCount: renumberUpdates.length,
+                crossedActs: actChanged,
+                rippleRename,
             });
             new Notice(noticeText, 2000);
             await this.runRippleRenameIfEnabled((message) => modal.updateProgress(message));

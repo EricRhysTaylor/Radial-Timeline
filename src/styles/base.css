@@ -332,6 +332,54 @@ body.rt-modal-open .radial-timeline-container * {
   fill: none;
 }
 
+.rt-recent-moves {
+  position: absolute;
+  left: 1rem;
+  bottom: 1rem;
+  z-index: 6;
+  width: min(24rem, calc(100% - 2rem));
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem 0.875rem;
+  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 82%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--background-primary) 78%, transparent);
+  backdrop-filter: blur(10px);
+}
+
+.rt-recent-moves__header {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.rt-recent-moves__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.rt-recent-moves__item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+}
+
+.rt-recent-moves__summary {
+  font-size: 0.88rem;
+  line-height: 1.35;
+  color: var(--text-normal);
+}
+
+.rt-recent-moves__meta {
+  font-size: 0.72rem;
+  line-height: 1.3;
+  color: var(--text-faint);
+}
+
 /* In Gossamer mode, ensure default cursor unless over beat elements */
 .radial-timeline-svg[data-gossamer-mode="true"] {
   cursor: default;

@@ -31,6 +31,8 @@ import { AuthorProgressModal } from '../modals/AuthorProgressModal';
 import { isMatterNote } from '../utils/sceneHelpers';
 import { DEFAULT_BOOK_TITLE, getActiveBookTitle } from '../utils/books';
 import { resolveSelectedBeatModelFromSettings } from '../utils/beatSystemState';
+import { getActiveRecentStructuralMoves } from '../utils/recentStructuralMoves';
+import type { StructuralMoveHistoryEntry } from '../types/settings';
 
 // Duplicate of constants defined in main for now. We can consolidate later.
 export const TIMELINE_VIEW_TYPE = "radial-timeline";
@@ -880,6 +882,7 @@ export class RadialTimelineView extends ItemView {
                 
             // Add the fragment to the container
             container.appendChild(fragment);
+            this.renderRecentMovesPanel(timelineContainer);
             this.scheduleBeatLabelAdjustment();
             
             // Attach Obsidian bubble tooltips to grid headers and buttons
@@ -928,6 +931,72 @@ export class RadialTimelineView extends ItemView {
             container.createEl("div", {
                 text: "Error rendering timeline. Check console for details."
             });
+        }
+    }
+
+    private renderRecentMovesPanel(timelineContainer: HTMLElement): void {
+        if (this.currentMode !== 'narrative') return;
+
+        const entries = getActiveRecentStructuralMoves(this.plugin.settings);
+        if (entries.length === 0) return;
+
+        const panel = document.createElement('section');
+        panel.className = 'rt-recent-moves';
+
+        const header = document.createElement('div');
+        header.className = 'rt-recent-moves__header';
+        header.textContent = 'Recent moves';
+        panel.appendChild(header);
+
+        const list = document.createElement('div');
+        list.className = 'rt-recent-moves__list';
+        panel.appendChild(list);
+
+        entries.forEach((entry) => {
+            list.appendChild(this.buildRecentMoveRow(entry));
+        });
+
+        timelineContainer.appendChild(panel);
+    }
+
+    private buildRecentMoveRow(entry: StructuralMoveHistoryEntry): HTMLElement {
+        const row = document.createElement('div');
+        row.className = 'rt-recent-moves__item';
+
+        const summary = document.createElement('div');
+        summary.className = 'rt-recent-moves__summary';
+        summary.textContent = entry.summary;
+        row.appendChild(summary);
+
+        const meta = document.createElement('div');
+        meta.className = 'rt-recent-moves__meta';
+        const parts = [this.formatRecentMoveAge(entry.timestamp)];
+        if (entry.sourceContext && entry.destinationContext) {
+            parts.push(`${entry.sourceContext} -> ${entry.destinationContext}`);
+        } else if (entry.destinationContext) {
+            parts.push(entry.destinationContext);
+        } else if (entry.sourceContext) {
+            parts.push(entry.sourceContext);
+        }
+        meta.textContent = parts.join(' • ');
+        row.appendChild(meta);
+
+        return row;
+    }
+
+    private formatRecentMoveAge(timestamp: string): string {
+        const parsed = Date.parse(timestamp);
+        if (!Number.isFinite(parsed)) return 'Recently';
+
+        const elapsedMs = Date.now() - parsed;
+        if (elapsedMs < 60_000) return 'Just now';
+        if (elapsedMs < 3_600_000) return `${Math.max(1, Math.floor(elapsedMs / 60_000))}m ago`;
+        if (elapsedMs < 86_400_000) return `${Math.max(1, Math.floor(elapsedMs / 3_600_000))}h ago`;
+
+        try {
+            return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date(parsed));
+        } catch {
+            return 'Recently';
         }
     }
     

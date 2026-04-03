@@ -256,6 +256,19 @@ export interface HoverMetadataField {
     enabled: boolean;      // Show in hover synopsis
 }
 
+export interface StructuralMoveHistoryEntry {
+    timestamp: string;
+    itemType: 'Scene' | 'Beat';
+    itemId: string;
+    itemLabel: string;
+    sourceContext?: string;
+    destinationContext?: string;
+    summary: string;
+    renameCount?: number;
+    crossedActs?: boolean;
+    rippleRename?: boolean;
+}
+
 export interface BookProfile {
     id: string;
     title: string;
@@ -264,6 +277,7 @@ export interface BookProfile {
     lastUsedPandocLayoutByPreset?: Partial<Record<'novel' | 'screenplay' | 'podcast', string>>;
     layoutOptions?: Record<string, BookLayoutOptions>;
     beatWorkspace?: BeatWorkspaceState;
+    recentStructuralMoves?: StructuralMoveHistoryEntry[];
 }
 
 export interface BookLayoutOptions {
