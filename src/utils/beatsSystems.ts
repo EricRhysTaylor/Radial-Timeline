@@ -317,7 +317,28 @@ export const PLOT_SYSTEMS: Record<string, PlotSystemPreset> = {
 export const PLOT_SYSTEM_NAMES = Object.keys(PLOT_SYSTEMS);
 
 export function getPlotSystem(name: string): PlotSystemPreset | null {
-  return PLOT_SYSTEMS[name] || null;
+  const builtin = PLOT_SYSTEMS[name];
+  if (builtin) return builtin;
+
+  // Resolve starter beat sets so all callers get a uniform PlotSystemPreset.
+  const starter = STARTER_BEAT_SETS.find(s => s.name === name);
+  if (!starter) return null;
+
+  const beats = starter.beats
+    .map(b => normalizeBeatNameInput(b.name, ''))
+    .filter(n => n.length > 0);
+  const beatDetails: PlotBeatInfo[] = starter.beats
+    .map(b => ({ ...b, name: normalizeBeatNameInput(b.name, '') }))
+    .filter(b => b.name.length > 0)
+    .map(b => ({
+      name: b.name,
+      description: typeof b.purpose === 'string' ? b.purpose.trim() : '',
+      range: typeof b.range === 'string' ? b.range.trim() : '',
+      act: b.act,
+      id: b.id,
+    }));
+
+  return { name: starter.name, beats, beatDetails, beatCount: beats.length };
 }
 
 // ─── Starter Beat Sets ────────────────────────────────────────────────

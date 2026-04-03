@@ -4,7 +4,7 @@
  * Compatibility aliases here are limited to the export/template boundary.
  */
 import { Vault, TFile, normalizePath } from 'obsidian';
-import { PLOT_SYSTEMS, PLOT_SYSTEM_NAMES, STARTER_BEAT_SETS, PlotSystemPreset, PlotBeatInfo } from './beatsSystems';
+import { PLOT_SYSTEMS, PLOT_SYSTEM_NAMES, STARTER_BEAT_SETS, PlotSystemPreset, PlotBeatInfo, getPlotSystem } from './beatsSystems';
 import type { BeatSystemConfig, RadialTimelineSettings } from '../types/settings';
 import { normalizeBeatSetNameInput, sanitizeBeatFilenameSegment, toBeatModelMatchKey } from './beatsInputNormalize';
 import { mergeTemplateParts } from './templateMerge';
@@ -424,12 +424,8 @@ export async function createBeatNotesFromSet(
   customSystem?: PlotSystemPreset,
   options?: { actSceneNumbers?: Map<number, number[]>; beatTemplate?: string; explicitSceneNumbers?: number[] }
 ): Promise<{ created: number; skipped: number; errors: string[]; createdPaths: string[] }> {
-  let beatSystem = PLOT_SYSTEMS[beatSystemName];
-  
-  if (beatSystemName === 'Custom' && customSystem) {
-    beatSystem = customSystem;
-  }
-  
+  const beatSystem = getPlotSystem(beatSystemName) ?? customSystem;
+
   if (!beatSystem) {
     throw new Error(`Unknown beat system: ${beatSystemName}`);
   }
