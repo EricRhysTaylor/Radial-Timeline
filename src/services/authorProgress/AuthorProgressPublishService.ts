@@ -2,6 +2,7 @@ import { App, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { resolveBookTitle, resolveProjectPath } from '../../renderer/apr/aprHelpers';
 import { AuthorProgressRenderService } from './AuthorProgressRenderService';
+import { writeManagedOutput } from '../../utils/safeVaultOps';
 
 export class AuthorProgressPublishService {
     constructor(
@@ -67,11 +68,18 @@ export class AuthorProgressPublishService {
             noteContent = this.createPresetNoteContent(exportPath);
         }
 
-        const existingNote = this.app.vault.getAbstractFileByPath(notePath);
-        if (existingNote) {
-            await this.app.vault.modify(existingNote as any, noteContent);
-        } else {
-            await this.app.vault.create(notePath, noteContent);
+        const writeResult = await writeManagedOutput(this.app, notePath, noteContent, {
+            operation: 'author-progress-note',
+            aiOutputFolder: this.plugin.settings.aiOutputFolder,
+            managedMarker: '<!-- Radial Timeline Managed Output: author-progress-note -->',
+            unmanagedOverwritePrompt: (file) => `Overwrite existing author progress note "${file.path}"? RT will archive the current contents to a safety snapshot first. Manual edits may be replaced.`
+        });
+        if (writeResult.skipped) {
+            new Notice('Author progress note publish cancelled before overwriting the existing note.');
+            return null;
+        }
+        if (writeResult.snapshotPath) {
+            new Notice(`Archived existing author progress note before overwrite: ${writeResult.snapshotPath}`);
         }
 
         settings.lastPublishedDate = new Date().toISOString();

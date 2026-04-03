@@ -341,7 +341,7 @@ export function renderScenePropertiesSection(params: {
                 setIcon(iconPreview, currentIcon);
                 const iconInput = iconWrapper.createEl('input', {
                     type: 'text',
-                    cls: 'ert-input ert-input--lg ert-icon-input',
+                    cls: 'ert-input ert-input--md ert-icon-input',
                     attr: { placeholder: 'Icon name...' }
                 });
                 iconInput.value = currentIcon;

@@ -7,7 +7,7 @@ import type RadialTimelinePlugin from '../main';
 import { buildDefaultAiSettings } from '../ai/settings/aiSettings';
 import { validateAiSettings } from '../ai/settings/validateAiSettings';
 import type { TimelineItem } from '../types';
-import { filterBeatsBySystem, normalizeBeatName, normalizeGossamerHistory } from '../utils/gossamer';
+import { collectGossamerManagedSnapshot, filterBeatsBySystem, normalizeBeatName, normalizeGossamerHistory } from '../utils/gossamer';
 import { parseScoresFromClipboard } from '../GossamerCommands';
 import { getPlotSystem } from '../utils/beatsSystems';
 import {
@@ -16,6 +16,7 @@ import {
 import { isPathInFolderScope } from '../utils/pathScope';
 import { comparePrefixTokens, extractPrefixToken } from '../utils/prefixOrder';
 import { getActiveLoadedBeatTab } from '../storyBeats/workspaceState';
+import { snapshotFrontmatterFields } from '../utils/safeVaultOps';
 
 interface ScoreHistoryItem {
   index: number;
@@ -62,6 +63,18 @@ export class GossamerScoreModal extends Modal {
     super(app);
     this.plugin = plugin;
     this.plotBeats = plotBeats;
+  }
+
+  private async snapshotGossamerFields(files: TFile[], operation: string, meta: Record<string, unknown> = {}): Promise<string | null> {
+    return snapshotFrontmatterFields(this.app, files, {
+      operation,
+      aiOutputFolder: this.plugin.settings.aiOutputFolder,
+      selectFields: (frontmatter) => collectGossamerManagedSnapshot(frontmatter as Record<string, any>),
+      meta: {
+        scope: 'beat-note',
+        ...meta
+      }
+    });
   }
 
   private analyzeNormalizationFrontmatter(frontmatter: Record<string, any>, beatTitle: string): NormalizationIssue {
@@ -127,8 +140,8 @@ export class GossamerScoreModal extends Modal {
     }
 
     const confirmMessage = normalizationIssues.length > 0
-      ? `Will renumber and clean ${normalizationIssues.length} beat${normalizationIssues.length === 1 ? '' : 's'} with gaps or orphaned justifications. Back up your vault before running cleanup as a safety measure.`
-      : 'No numbering gaps or orphaned Gossamer justifications were detected. Back up your vault before running cleanup.';
+      ? `Will renumber and clean ${normalizationIssues.length} beat${normalizationIssues.length === 1 ? '' : 's'} with gaps or orphaned justifications. RT will archive removed Gossamer fields before cleanup.`
+      : 'No numbering gaps or orphaned Gossamer justifications were detected. RT will still archive any removed Gossamer fields before cleanup.';
 
     new NormalizeConfirmationModal(
       this.app,
@@ -136,6 +149,12 @@ export class GossamerScoreModal extends Modal {
       normalizationIssues,
       async () => {
         let changedCount = 0;
+        const filesToSnapshot = beatsToNormalize
+          .map((beat) => beat.path ? this.plugin.app.vault.getAbstractFileByPath(beat.path) : null)
+          .filter((file): file is TFile => !!file && file instanceof TFile);
+        const snapshotPath = await this.snapshotGossamerFields(filesToSnapshot, 'gossamer-normalize', {
+          beatCount: filesToSnapshot.length
+        });
 
         for (const beat of beatsToNormalize) {
           if (!beat.path) continue;
@@ -157,7 +176,9 @@ export class GossamerScoreModal extends Modal {
         }
 
         if (changedCount > 0) {
-          new Notice(`Normalized Gossamer scores in ${changedCount} beat${changedCount === 1 ? '' : 's'}.`);
+          const parts = [`Normalized Gossamer scores in ${changedCount} beat${changedCount === 1 ? '' : 's'}.`];
+          if (snapshotPath) parts.push(`Archived removed fields: ${snapshotPath}`);
+          new Notice(parts.join(' '));
           this.close();
           const refreshed = new GossamerScoreModal(this.app, this.plugin, this.plotBeats);
           refreshed.open();
@@ -824,8 +845,33 @@ export class GossamerScoreModal extends Modal {
       ? allFiles.filter(f => isPathInFolderScope(f.path, sourcePath))
       : allFiles;
 
+    const filesToSnapshot: TFile[] = [];
     for (const [beatTitle, gossamerNums] of deletions) {
       // Find Plot note by title (same logic as saveGossamerScores)
+      let file = null;
+      const targetKey = normalizeBeatName(beatTitle);
+      for (const f of files) {
+        if (normalizeBeatName(f.basename) === targetKey) {
+          const cache = this.plugin.app.metadataCache.getFileCache(f);
+          const fm = cache?.frontmatter;
+          if (fm && (fm.Class === 'Beat' || fm.Class === 'Plot')) {
+            file = f;
+            break;
+          }
+        }
+      }
+
+      if (!file) {
+        continue;
+      }
+      filesToSnapshot.push(file);
+    }
+
+    const snapshotPath = await this.snapshotGossamerFields(filesToSnapshot, 'gossamer-delete-selected', {
+      beatCount: filesToSnapshot.length
+    });
+
+    for (const [beatTitle, gossamerNums] of deletions) {
       let file = null;
       const targetKey = normalizeBeatName(beatTitle);
       for (const f of files) {
@@ -856,6 +902,10 @@ export class GossamerScoreModal extends Modal {
       } catch (error) {
         console.error(`[Gossamer] Failed to delete scores for ${beatTitle}:`, error);
       }
+    }
+
+    if (snapshotPath) {
+      new Notice(`Archived removed Gossamer fields before cleanup: ${snapshotPath}`);
     }
   }
 
@@ -903,13 +953,13 @@ export class GossamerScoreModal extends Modal {
       const hero = contentEl.createDiv({ cls: 'ert-modal-header' });
       hero.createSpan({ text: 'Warning', cls: 'ert-modal-badge' });
       hero.createDiv({ text: 'Delete all Gossamer scores', cls: 'ert-modal-title' });
-      hero.createDiv({ cls: 'ert-modal-subtitle', text: 'This action cannot be undone.' });
+      hero.createDiv({ cls: 'ert-modal-subtitle', text: 'RT will archive removed Gossamer fields before cleanup.' });
 
       const card = contentEl.createDiv({ cls: 'rt-glass-card' });
 
       // Warning message with proper styling
       const warningEl = card.createDiv({
-        text: 'This will permanently delete ALL Gossamer scores (Gossamer1-30) and their justifications from ALL Beat notes.',
+        text: 'This will remove ALL Gossamer scores (Gossamer1-30) and their justifications from ALL Beat notes, then archive the removed fields to a safety snapshot.',
         cls: 'rt-gossamer-confirm-warning'
       });
 
@@ -938,6 +988,17 @@ export class GossamerScoreModal extends Modal {
 
     try {
       let deletedCount = 0;
+      const filesToSnapshot = files.filter((file) => {
+        const fm = this.plugin.app.metadataCache.getFileCache(file)?.frontmatter;
+        if (!(fm && (fm.Class === 'Beat' || fm.class === 'Beat'))) return false;
+        for (let i = 1; i <= 30; i++) {
+          if (fm[`Gossamer${i}`] !== undefined) return true;
+        }
+        return false;
+      });
+      const snapshotPath = await this.snapshotGossamerFields(filesToSnapshot, 'gossamer-delete-all', {
+        beatCount: filesToSnapshot.length
+      });
 
       for (const file of files) {
         const cache = this.plugin.app.metadataCache.getFileCache(file);
@@ -971,7 +1032,9 @@ export class GossamerScoreModal extends Modal {
         }
       }
 
-      new Notice(`✓ Deleted all Gossamer scores and justifications from ${deletedCount} Beat note(s).`);
+      const parts = [`Deleted all Gossamer scores and justifications from ${deletedCount} Beat note(s).`];
+      if (snapshotPath) parts.push(`Archived removed fields: ${snapshotPath}`);
+      new Notice(parts.join(' '));
       this.close(); // Close the modal since all scores are cleared
 
     } catch (error) {

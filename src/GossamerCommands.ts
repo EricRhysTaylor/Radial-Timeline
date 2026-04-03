@@ -2,7 +2,7 @@
  * Gossamer Commands and State - Manual Score Entry
  */
 import type RadialTimelinePlugin from './main';
-import { buildRunFromDefault, buildAllGossamerRuns, GossamerRun, normalizeBeatName, appendGossamerScore, extractBeatOrder, detectDominantStage } from './utils/gossamer';
+import { buildRunFromDefault, buildAllGossamerRuns, GossamerRun, normalizeBeatName, appendGossamerScore, collectGossamerManagedSnapshot, extractBeatOrder, detectDominantStage, willAppendGossamerPrune } from './utils/gossamer';
 import { Notice, TFile, TFolder, App, normalizePath } from 'obsidian';
 import { GossamerScoreModal } from './modals/GossamerScoreModal';
 import { GossamerProcessingModal, type ManuscriptInfo, type AnalysisOptions } from './modals/GossamerProcessingModal';
@@ -26,6 +26,7 @@ import { FORECAST_CHARS_PER_TOKEN, FORECAST_PROMPT_OVERHEAD_TOKENS } from './ai/
 import type { AIRunRequest, AIProviderId } from './ai/types';
 import { buildGossamerEvidenceDocument } from './gossamer/evidence/buildGossamerEvidence';
 import { logCountingForensics } from './ai/diagnostics/countingForensics';
+import { snapshotFrontmatterFields } from './utils/safeVaultOps';
 
 const sanitizeSegment = (value: string | null | undefined) => {
   if (!value) return '';
@@ -242,6 +243,24 @@ async function saveGossamerScores(
       console.error('[Gossamer] Failed to detect dominant stage, defaulting to Zero:', sanitizeLogPayload(e).sanitized);
     }
   }
+
+  const filesToSnapshot = [...scores.keys()]
+    .map((beatTitle) => findBeatNoteByTitle(files, beatTitle, plugin.app))
+    .filter((file): file is TFile => !!file)
+    .filter((file) => {
+      const frontmatter = plugin.app.metadataCache.getFileCache(file)?.frontmatter as Record<string, any> | undefined;
+      if (!frontmatter) return false;
+      return willAppendGossamerPrune(frontmatter) || Object.keys(collectGossamerManagedSnapshot(frontmatter)).length > 0;
+    });
+  const snapshotPath = await snapshotFrontmatterFields(plugin.app, filesToSnapshot, {
+    operation: 'gossamer-save',
+    aiOutputFolder: plugin.settings.aiOutputFolder,
+    selectFields: (frontmatter) => collectGossamerManagedSnapshot(frontmatter as Record<string, any>),
+    meta: {
+      scope: 'beat-note',
+      beatCount: filesToSnapshot.length
+    }
+  });
   
   for (const [beatTitle, newScore] of scores) {
     const file = findBeatNoteByTitle(files, beatTitle, plugin.app);
@@ -277,7 +296,9 @@ async function saveGossamerScores(
   }
   
   if (updateCount > 0) {
-    new Notice(`Updated ${updateCount} beat scores (${stage} stage).`);
+    const parts = [`Updated ${updateCount} beat scores (${stage} stage).`];
+    if (snapshotPath) parts.push(`Archived replaced Gossamer history: ${snapshotPath}`);
+    new Notice(parts.join(' '));
   }
 }
 
@@ -984,6 +1005,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
     const files = plugin.app.vault.getMarkdownFiles().filter(f => isPathInFolderScope(f.path, geminiBookScope));
     let updateCount = 0;
     const unmatchedBeats: string[] = [];
+    const snapshotPaths = new Set<string>();
 
     // Match beats by index - Gemini returns them in the same order they were sent
     for (let i = 0; i < analysis.beats.length; i++) {
@@ -1001,6 +1023,19 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
         unmatchedBeats.push(beat.beatName);
         continue;
       }
+
+      const priorFrontmatter = plugin.app.metadataCache.getFileCache(file)?.frontmatter as Record<string, any> | undefined;
+      const snapshotPath = priorFrontmatter && (willAppendGossamerPrune(priorFrontmatter) || Object.keys(collectGossamerManagedSnapshot(priorFrontmatter)).length > 0)
+        ? await snapshotFrontmatterFields(plugin.app, [file], {
+            operation: 'gossamer-clipboard-save',
+            aiOutputFolder: plugin.settings.aiOutputFolder,
+            selectFields: (frontmatter) => collectGossamerManagedSnapshot(frontmatter as Record<string, any>),
+            meta: {
+              scope: 'beat-note',
+              beat: beat.beatName
+            }
+          })
+        : null;
 
       // Update beat note with scores
       await plugin.app.fileManager.processFrontMatter(file, (yaml) => {
@@ -1028,6 +1063,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
         const modelId = result.modelResolved || result.modelRequested || 'ai-model';
         fm['Gossamer Last Updated'] = `${timestamp} by ${modelId}`;
       });
+      if (snapshotPath) snapshotPaths.add(snapshotPath);
       
       updateCount++;
     }
@@ -1035,6 +1071,9 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
     // Log unmatched beats
     if (unmatchedBeats.length > 0) {
       modal.addError(`Could not match ${unmatchedBeats.length} beat(s): ${unmatchedBeats.join(', ')}`);
+    }
+    if (snapshotPaths.size > 0) {
+      new Notice(`Archived replaced Gossamer history before save (${snapshotPaths.size} snapshot${snapshotPaths.size === 1 ? '' : 's'}).`);
     }
 
     // Create analysis log (unified AI log envelope)

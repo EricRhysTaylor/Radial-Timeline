@@ -2,8 +2,9 @@ import { Notice, TFile, App } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import { normalizeFrontmatterKeys } from '../utils/frontmatter';
 import { isStoryBeat } from '../utils/sceneHelpers';
-import { appendGossamerScore, detectDominantStage } from '../utils/gossamer';
+import { appendGossamerScore, collectGossamerManagedSnapshot, detectDominantStage, willAppendGossamerPrune } from '../utils/gossamer';
 import { isPathInFolderScope } from '../utils/pathScope';
+import { snapshotFrontmatterFields } from '../utils/safeVaultOps';
 
 export class GossamerScoreService {
     constructor(private app: App, private plugin: RadialTimelinePlugin) {}
@@ -25,6 +26,7 @@ export class GossamerScoreService {
         }
 
         let updateCount = 0;
+        const snapshotPaths = new Set<string>();
 
         for (const [beatTitle, newScore] of scores) {
             let file: TFile | null = null;
@@ -48,6 +50,18 @@ export class GossamerScoreService {
             if (!file) continue;
 
             try {
+                const priorFrontmatter = this.app.metadataCache.getFileCache(file)?.frontmatter as Record<string, any> | undefined;
+                const snapshotPath = priorFrontmatter && (willAppendGossamerPrune(priorFrontmatter) || Object.keys(collectGossamerManagedSnapshot(priorFrontmatter)).length > 0)
+                    ? await snapshotFrontmatterFields(this.app, [file], {
+                        operation: 'gossamer-save',
+                        aiOutputFolder: this.plugin.settings.aiOutputFolder,
+                        selectFields: (frontmatter) => collectGossamerManagedSnapshot(frontmatter as Record<string, any>),
+                        meta: {
+                            scope: 'beat-note',
+                            beat: beatTitle
+                        }
+                    })
+                    : null;
                 await this.app.fileManager.processFrontMatter(file, (yaml) => {
                     const fm = yaml as Record<string, any>;
                     const { nextIndex, updated } = appendGossamerScore(fm);
@@ -59,6 +73,7 @@ export class GossamerScoreService {
                     delete fm.GossamerRuns;
                     delete fm.GossamerLatestRun;
                 });
+                if (snapshotPath) snapshotPaths.add(snapshotPath);
                 updateCount++;
             } catch (e) {
                 console.error(`[Gossamer] Failed to update beat ${beatTitle}:`, e);
@@ -66,7 +81,9 @@ export class GossamerScoreService {
         }
 
         if (updateCount > 0) {
-            new Notice(`Updated ${updateCount} beat score${updateCount > 1 ? 's' : ''} (${dominantStage} stage).`);
+            const parts = [`Updated ${updateCount} beat score${updateCount > 1 ? 's' : ''} (${dominantStage} stage).`];
+            if (snapshotPaths.size > 0) parts.push(`Archived replaced Gossamer history in ${snapshotPaths.size} snapshot${snapshotPaths.size === 1 ? '' : 's'}.`);
+            new Notice(parts.join(' '));
         } else {
             new Notice('No beats were updated.');
         }

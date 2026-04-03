@@ -37,6 +37,7 @@ import { ExportFailure, categorizeExportError } from '../utils/exportErrors';
 import { resolveSelectedBeatModelFromSettings } from '../utils/beatSystemState';
 import { getRuntimeSettings } from '../utils/runtimeEstimator';
 import { t } from '../i18n';
+import { writeManagedOutput } from '../utils/safeVaultOps';
 
 export class CommandRegistrar {
     private inquiryRibbonIcon: HTMLElement | null = null;
@@ -349,10 +350,14 @@ export class CommandRegistrar {
                             extension: outline.extension
                         });
                     const vaultPath = `${outputFolder}/${filename}`;
-                    await this.writeVaultTextFile(vaultPath, outline.text);
-                    savedPaths.push(vaultPath);
+                    const wrote = await this.writeVaultTextFile(vaultPath, outline.text, 'outline-export');
+                    if (wrote) savedPaths.push(vaultPath);
                 }
 
+                if (savedPaths.length === 0) {
+                    new Notice('Outline export cancelled before any existing outputs were overwritten.');
+                    return { messages: statusMessages };
+                }
                 if (isSplitRun) {
                     new Notice(`Outline exported to ${outputFolder} (${savedPaths.length} files)`);
                 } else {
@@ -421,10 +426,14 @@ export class CommandRegistrar {
                             extension
                         });
                     const vaultPath = `${outputFolder}/${filename}`;
-                    await this.writeVaultTextFile(vaultPath, sanitizedText);
-                    savedPaths.push(vaultPath);
+                    const wrote = await this.writeVaultTextFile(vaultPath, sanitizedText, 'manuscript-export');
+                    if (wrote) savedPaths.push(vaultPath);
                 }
 
+                if (savedPaths.length === 0) {
+                    new Notice('Manuscript export cancelled before any existing outputs were overwritten.');
+                    return { messages: statusMessages };
+                }
                 if (isSplitRun) {
                     new Notice(`Manuscript exported to ${outputFolder} (${savedPaths.length} files)`);
                 } else {
@@ -539,9 +548,10 @@ export class CommandRegistrar {
                     const artifactNames = this.buildSanitizedArtifactNames(basePrecursorName);
                     const compiledPath = `${outputFolder}/${artifactNames.compiledName}`;
                     const sanitizedPath = `${outputFolder}/${artifactNames.sanitizedName}`;
-                    await this.writeVaultTextFile(compiledPath, compiledMarkdown);
-                    await this.writeVaultTextFile(sanitizedPath, sanitizedMarkdown);
-                    savedPaths.push(compiledPath, sanitizedPath);
+                    const wroteCompiled = await this.writeVaultTextFile(compiledPath, compiledMarkdown, 'manuscript-compiled-artifact');
+                    const wroteSanitized = await this.writeVaultTextFile(sanitizedPath, sanitizedMarkdown, 'manuscript-sanitized-artifact');
+                    if (wroteCompiled) savedPaths.push(compiledPath);
+                    if (wroteSanitized) savedPaths.push(sanitizedPath);
                 }
 
                 const renderedFilename = isSplitRun
@@ -716,13 +726,23 @@ export class CommandRegistrar {
         };
     }
 
-    private async writeVaultTextFile(vaultPath: string, content: string): Promise<void> {
-        const existing = this.app.vault.getAbstractFileByPath(vaultPath);
-        if (existing instanceof TFile) {
-            await this.app.vault.modify(existing, content);
-            return;
+    private async writeVaultTextFile(vaultPath: string, content: string, operation: string): Promise<boolean> {
+        const managedMarker = vaultPath.toLowerCase().endsWith('.md')
+            ? `<!-- Radial Timeline Managed Output: ${operation} -->`
+            : undefined;
+        const result = await writeManagedOutput(this.app, vaultPath, content, {
+            operation,
+            aiOutputFolder: this.plugin.settings.aiOutputFolder,
+            managedMarker,
+            unmanagedOverwritePrompt: (file) => `Overwrite existing output "${file.path}"? RT will archive the current contents to a safety snapshot first. Manual edits may be replaced.`
+        });
+        if (result.skipped) {
+            return false;
         }
-        await this.app.vault.create(vaultPath, content);
+        if (result.snapshotPath) {
+            new Notice(`Archived existing output before overwrite: ${result.snapshotPath}`);
+        }
+        return true;
     }
 
     private async ensureVaultFolderPath(folderPath: string): Promise<void> {

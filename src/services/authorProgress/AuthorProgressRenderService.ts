@@ -8,6 +8,7 @@ import { isBeatNote, isSceneItem } from '../../utils/sceneHelpers';
 import { buildDefaultEmbedPath, normalizeAprExportFormat, type AprExportFormat } from '../../utils/aprPaths';
 import { resolveBookTitle, resolveProjectPath } from '../../renderer/apr/aprHelpers';
 import type { TimelineItem } from '../../types/timeline';
+import { writeManagedOutput } from '../../utils/safeVaultOps';
 
 export interface AuthorProgressReportBuildResult {
     settings: AuthorProgressDefaults;
@@ -88,11 +89,14 @@ export class AuthorProgressRenderService {
     public async saveAprOutput(path: string, format: AprExportFormat, svgString: string, width: number, height: number): Promise<void> {
         await this.ensureFolder(path);
         if (format === 'svg') {
-            const existingFile = this.app.vault.getAbstractFileByPath(path);
-            if (existingFile && 'path' in existingFile) {
-                await this.app.vault.modify(existingFile as Parameters<typeof this.app.vault.modify>[0], svgString);
-            } else {
-                await this.app.vault.create(path, svgString);
+            const result = await writeManagedOutput(this.app, path, svgString, {
+                operation: 'author-progress-svg',
+                aiOutputFolder: this.plugin.settings.aiOutputFolder,
+                managedMarker: '<!-- Radial Timeline Managed Output: author-progress-svg -->',
+                unmanagedOverwritePrompt: (file) => `Overwrite existing author progress SVG "${file.path}"? RT will archive the current SVG to a safety snapshot first. Manual edits may be replaced.`
+            });
+            if (result.skipped) {
+                throw new Error('Author progress SVG overwrite cancelled.');
             }
             return;
         }

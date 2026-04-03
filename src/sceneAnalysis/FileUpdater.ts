@@ -1,5 +1,6 @@
 import type { Vault, TFile } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
+import { snapshotFrontmatterFields } from '../utils/safeVaultOps';
 
 export type ParsedSceneAnalysis = { 'previousSceneAnalysis': string; 'currentSceneAnalysis': string; 'nextSceneAnalysis': string };
 
@@ -8,6 +9,13 @@ const PULSE_REVIEW_WARNING_KEYS = [
   PULSE_REVIEW_WARNING_FIELD,
   'PulseReviewWarning',
   'pulsereviewwarning'
+];
+const SCENE_ANALYSIS_MANAGED_FIELDS = [
+  'previousSceneAnalysis',
+  'currentSceneAnalysis',
+  'nextSceneAnalysis',
+  'Pulse Last Updated',
+  ...PULSE_REVIEW_WARNING_KEYS
 ];
 
 function clearPulseReviewWarning(fmObj: Record<string, unknown>): void {
@@ -24,6 +32,16 @@ export async function updateSceneAnalysis(
   modelIdUsed: string | null
 ): Promise<boolean> {
   try {
+    await snapshotFrontmatterFields(plugin.app, [file], {
+      operation: 'scene-analysis-refresh',
+      aiOutputFolder: plugin.settings.aiOutputFolder,
+      fields: SCENE_ANALYSIS_MANAGED_FIELDS,
+      meta: {
+        scope: 'scene-note',
+        path: file.path
+      }
+    });
+
     const toArray = (block: string): string[] =>
       block
         .split('\n')

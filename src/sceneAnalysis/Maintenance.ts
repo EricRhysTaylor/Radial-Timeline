@@ -12,12 +12,27 @@ import type { SceneData, ParsedSceneAnalysis } from './types';
 import { parsePulseAnalysisResponse } from './responseParsing';
 import { generateSceneContent, SceneCreationData } from '../utils/sceneGenerator';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
+import { snapshotFrontmatterFields } from '../utils/safeVaultOps';
 
 type FMInfo = {
     exists: boolean;
     frontmatter?: string;
     position?: { start?: { offset: number }, end?: { offset: number } };
 };
+
+const SCENE_ANALYSIS_SNAPSHOT_FIELDS = [
+    '1beats',
+    '2beats',
+    '3beats',
+    'previousSceneAnalysis',
+    'currentSceneAnalysis',
+    'nextSceneAnalysis',
+    'Pulse Last Updated',
+    'Beats Last Updated',
+    'Pulse Review Warning',
+    'PulseReviewWarning',
+    'pulsereviewwarning'
+];
 
 async function updateSceneFile(
     vault: Vault,
@@ -27,6 +42,17 @@ async function updateSceneFile(
     modelIdUsed: string | null
 ): Promise<boolean> {
     try {
+        await snapshotFrontmatterFields(plugin.app, [scene.file], {
+            operation: 'scene-analysis-refresh',
+            aiOutputFolder: plugin.settings.aiOutputFolder,
+            fields: SCENE_ANALYSIS_SNAPSHOT_FIELDS,
+            meta: {
+                scope: 'scene-note',
+                source: 'scene-analysis-maintenance',
+                path: scene.file.path
+            }
+        });
+
         const toArray = (block: string): string[] => {
             return block
                 .split('\n')
@@ -207,7 +233,7 @@ class PurgeConfirmationModal extends Modal {
         const hero = contentEl.createDiv({ cls: 'ert-modal-header' });
         hero.createSpan({ text: 'Warning', cls: 'ert-modal-badge' });
         hero.createDiv({ text: 'Confirm purge beats', cls: 'ert-modal-title' });
-        hero.createDiv({ text: 'This action cannot be undone.', cls: 'ert-modal-subtitle' });
+        hero.createDiv({ text: 'RT will archive removed scene-analysis fields before cleanup.', cls: 'ert-modal-subtitle' });
 
         const card = contentEl.createDiv({ cls: 'rt-glass-card rt-purge-confirm-card' });
 
@@ -215,7 +241,7 @@ class PurgeConfirmationModal extends Modal {
         messageEl.setText(this.message);
 
         const detailsEl = card.createDiv({ cls: 'rt-purge-details' });
-        detailsEl.createEl('div', { text: 'This will permanently delete:', cls: 'rt-purge-danger' });
+        detailsEl.createEl('div', { text: 'This will remove these fields and archive them to a safety snapshot first:', cls: 'rt-purge-danger' });
         const listEl = detailsEl.createEl('ul', { cls: 'rt-purge-list' });
         this.details.forEach(detail => {
             const li = listEl.createEl('li');
@@ -254,7 +280,17 @@ async function purgeScenesBeats(
     plugin: RadialTimelinePlugin,
     vault: Vault,
     scenes: SceneData[]
-): Promise<number> {
+): Promise<{ purgedCount: number; snapshotPath: string | null }> {
+    const snapshotPath = await snapshotFrontmatterFields(plugin.app, scenes.map(scene => scene.file), {
+        operation: 'scene-analysis-purge',
+        aiOutputFolder: plugin.settings.aiOutputFolder,
+        fields: SCENE_ANALYSIS_SNAPSHOT_FIELDS,
+        meta: {
+            scope: 'scene-note',
+            sceneCount: scenes.length
+        }
+    });
+
     let purgedCount = 0;
     for (const scene of scenes) {
         try {
@@ -279,7 +315,7 @@ async function purgeScenesBeats(
             console.error(`[purgeScenesBeats] Error purging beats from ${scene.file.path}:`, error);
         }
     }
-    return purgedCount;
+    return { purgedCount, snapshotPath };
 }
 
 export async function purgeBeatsByManuscriptOrder(
@@ -302,12 +338,16 @@ export async function purgeBeatsByManuscriptOrder(
             ],
             async () => {
                 const notice = new Notice('Purging beats from all scenes...', 0);
-                const purgedCount = await purgeScenesBeats(plugin, vault, allScenes);
+                const result = await purgeScenesBeats(plugin, vault, allScenes);
 
                 notice.hide();
                 await plugin.saveSettings();
                 plugin.refreshTimelineIfNeeded(null);
-                new Notice(`Purged beats from ${purgedCount} of ${allScenes.length} scene${allScenes.length !== 1 ? 's' : ''}.`);
+                const parts = [`Purged beats from ${result.purgedCount} of ${allScenes.length} scene${allScenes.length !== 1 ? 's' : ''}.`];
+                if (result.snapshotPath) {
+                    parts.push(`Archived removed fields: ${result.snapshotPath}`);
+                }
+                new Notice(parts.join(' '));
             }
         );
 
@@ -341,12 +381,16 @@ export async function purgeBeatsBySubplotName(
             ],
             async () => {
                 const notice = new Notice(`Purging beats from "${subplotName}"...`, 0);
-                const purgedCount = await purgeScenesBeats(plugin, vault, filtered);
+                const result = await purgeScenesBeats(plugin, vault, filtered);
 
                 notice.hide();
                 await plugin.saveSettings();
                 plugin.refreshTimelineIfNeeded(null);
-                new Notice(`Purged beats from ${purgedCount} of ${filtered.length} scene${filtered.length !== 1 ? 's' : ''} in subplot "${subplotName}".`);
+                const parts = [`Purged beats from ${result.purgedCount} of ${filtered.length} scene${filtered.length !== 1 ? 's' : ''} in subplot "${subplotName}".`];
+                if (result.snapshotPath) {
+                    parts.push(`Archived removed fields: ${result.snapshotPath}`);
+                }
+                new Notice(parts.join(' '));
             }
         );
 

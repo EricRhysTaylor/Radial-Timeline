@@ -928,9 +928,8 @@ export function renderPublicationSection(params: {
     estimateToggle.nameEl.appendText(` ${t('settings.configuration.showEstimate.name')}`);
 
     // --- Completion estimate window (days) ---
-    new ObsidianSetting(stackEl)
-        .setName('Completion estimate window (days)')
-        .setDesc('Active Publish Stage only. Pace = completed scenes in the last N days ÷ N. Estimate date = remaining scenes ÷ pace. Inactivity colors the date (7/14/21 days) and shows “?” after 21 days of no progress.')
+    const windowSetting = new ObsidianSetting(stackEl)
+        .setName('Estimate window')
         .addText(text => {
             const current = String(plugin.settings.completionEstimateWindowDays ?? 30);
             text.inputEl.type = 'number';
@@ -955,6 +954,7 @@ export function renderPublicationSection(params: {
                 const clamped = Math.min(90, Math.max(14, Math.round(raw)));
                 plugin.settings.completionEstimateWindowDays = clamped;
                 text.setValue(String(clamped));
+                updateWindowDesc(clamped);
                 await plugin.saveSettings();
                 plugin.onSettingChanged(IMPACT_FULL); // Tier 3: estimate calculation affects timeline
             };
@@ -964,5 +964,24 @@ export function renderPublicationSection(params: {
                 onCompletionPreviewRefresh?.();
             });
         });
+
+    // Dynamic description with bold N value + tip line
+    const descEl = windowSetting.descEl;
+    descEl.empty();
+    const primaryLine = descEl.createSpan({ cls: 'ert-estimate-window-desc' });
+    const tipLine = descEl.createDiv({ cls: 'ert-estimate-window-tip' });
+    tipLine.setText('Larger windows smooth out bursts. Smaller windows react faster.');
+
+    const updateWindowDesc = (n: number) => {
+        primaryLine.empty();
+        primaryLine.appendText('Projects your finish date based on your writing pace over the last ');
+        const updatedN = primaryLine.createSpan({ cls: 'ert-estimate-window-n' });
+        updatedN.setText(`${n}`);
+        primaryLine.appendText(' days.');
+        // Brief highlight animation on change
+        updatedN.addClass('ert-estimate-window-n--flash');
+        setTimeout(() => updatedN.removeClass('ert-estimate-window-n--flash'), 600);
+    };
+    updateWindowDesc(plugin.settings.completionEstimateWindowDays ?? 30);
 
 }

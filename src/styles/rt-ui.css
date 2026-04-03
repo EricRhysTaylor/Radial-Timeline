@@ -866,8 +866,9 @@
 
 .ert-ui.ert-scope--settings .ert-frontmatter-remap-panel {
   --ert-panel-bg: color-mix(in srgb, var(--background-secondary) 88%, var(--background-primary) 12%);
-  --ert-panel-border: color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
+  --ert-panel-border: none;
   --ert-panel-shadow: none;
+  border: 2.5px dashed color-mix(in srgb, var(--text-muted) 40%, transparent);
   gap: var(--ert-gap-sm);
 }
 
@@ -4766,6 +4767,31 @@
 
 .ert-ui.ert-scope--settings .ert-planetary-validation-icon.is-invalid {
   color: var(--text-error);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Estimate window description                                               */
+/* -------------------------------------------------------------------------- */
+
+.ert-estimate-window-n {
+  font-weight: 700;
+  color: var(--text-normal);
+}
+
+.ert-estimate-window-n--flash {
+  animation: ert-n-flash 0.6s ease-out;
+}
+
+@keyframes ert-n-flash {
+  0%   { color: var(--interactive-accent); }
+  100% { color: var(--text-normal); }
+}
+
+.ert-estimate-window-tip {
+  margin-top: 0.2em;
+  font-size: 0.8em;
+  color: var(--text-faint);
+  font-style: italic;
 }
 
 /* -------------------------------------------------------------------------- */

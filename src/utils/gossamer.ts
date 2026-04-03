@@ -32,6 +32,14 @@ export interface GossamerRun {
   };
 }
 
+export const GOSSAMER_LEGACY_FIELDS = [
+  'GossamerLocation',
+  'GossamerNote',
+  'GossamerRuns',
+  'GossamerLatestRun',
+  'Gossamer Last Updated'
+];
+
 const BUILTIN_BEAT_MODEL_KEYS = new Set<string>([
   toBeatModelMatchKey('Save The Cat'),
   toBeatModelMatchKey("Hero's Journey"),
@@ -682,6 +690,37 @@ export function normalizeGossamerHistory(frontmatter: Record<string, any>): {
   });
 
   return { normalized, changed };
+}
+
+export function collectGossamerManagedSnapshot(frontmatter: Record<string, any>, maxHistory: number = 40): Record<string, unknown> {
+  const snapshot: Record<string, unknown> = {};
+  for (let i = 1; i <= maxHistory; i++) {
+    const scoreKey = `Gossamer${i}`;
+    const justKey = `Gossamer${i} Justification`;
+    const stageKey = `GossamerStage${i}`;
+    if (frontmatter[scoreKey] !== undefined) snapshot[scoreKey] = frontmatter[scoreKey];
+    if (frontmatter[justKey] !== undefined) snapshot[justKey] = frontmatter[justKey];
+    if (frontmatter[stageKey] !== undefined) snapshot[stageKey] = frontmatter[stageKey];
+  }
+  for (const key of GOSSAMER_LEGACY_FIELDS) {
+    if (frontmatter[key] !== undefined) snapshot[key] = frontmatter[key];
+  }
+  return snapshot;
+}
+
+export function willAppendGossamerPrune(frontmatter: Record<string, any>, maxHistory: number = 30): boolean {
+  const hasValue = (value: unknown): boolean => {
+    if (value === null || value === undefined) return false;
+    if (typeof value === 'number') return !Number.isNaN(value);
+    if (typeof value === 'string') return value.trim().length > 0;
+    return false;
+  };
+  for (let i = 1; i <= maxHistory; i++) {
+    if (!hasValue(frontmatter[`Gossamer${i}`])) {
+      return false;
+    }
+  }
+  return true;
 }
 
 export function appendGossamerScore(
