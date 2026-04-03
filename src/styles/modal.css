@@ -240,7 +240,7 @@
   border-radius: 24px;
   background: linear-gradient(145deg, rgba(16, 16, 21, 0.95), rgba(36, 28, 24, 0.92));
   border: 1px solid rgba(255, 255, 255, 0.05);
-  box-shadow: 0 24px 56px rgba(0, 0, 0, 0.42);
+  box-shadow: none;
   overflow-y: auto;
   overflow-x: hidden;
   display: flex;
@@ -291,6 +291,7 @@
 
 .ert-modal-shell.modal:has(.rt-manage-subplots-modal) {
   width: min(700px, 90vw);
+  max-height: calc(92vh - 100px);
 }
 
 .rt-manage-subplots-modal {
@@ -298,8 +299,8 @@
   flex-direction: column;
   gap: 16px;
   height: 100%;
-  min-height: 80vh;
-  max-height: 90vh;
+  min-height: calc(80vh - 100px);
+  max-height: calc(90vh - 100px);
 }
 
 /* Height-safe shells for tall modals */

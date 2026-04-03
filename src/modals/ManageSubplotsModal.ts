@@ -20,7 +20,6 @@ export class ManageSubplotsModal extends Modal {
     private subplots: SubplotStats[] = [];
     
     // UI Elements
-    private statsContainer: HTMLElement | null = null;
     private listContainer: HTMLElement | null = null;
 
     constructor(app: App, plugin: RadialTimelinePlugin) {
@@ -45,13 +44,14 @@ export class ManageSubplotsModal extends Modal {
         hero.createDiv({ text: 'Manage Subplots', cls: 'ert-modal-title' });
         hero.createDiv({ text: 'Rename or remove subplots across the timeline. Orphaned scenes will be moved to Main Plot.', cls: 'ert-modal-subtitle' });
 
-        // Stats Placeholder
-        this.statsContainer = hero.createDiv({ cls: 'ert-modal-meta' });
-        this.statsContainer.createSpan({ text: 'Loading stats...', cls: 'ert-modal-meta-item' });
-
         // Single card container (avoid extra nesting)
         const card = contentEl.createDiv({ cls: 'rt-manage-subplots-card rt-glass-card' });
         this.listContainer = card.createDiv({ cls: 'rt-manage-subplots-list' });
+
+        const actions = contentEl.createDiv({ cls: 'ert-modal-actions' });
+        new ButtonComponent(actions)
+            .setButtonText('Cancel')
+            .onClick(() => this.close());
         
         // Initial load
         this.loadSubplots();
@@ -63,7 +63,7 @@ export class ManageSubplotsModal extends Modal {
     }
 
     renderList() {
-        if (!this.listContainer || !this.statsContainer) return;
+        if (!this.listContainer) return;
 
         // Sort: Main Plot first, then by count (desc), then name
         const sorted = [...this.subplots].sort((a, b) => {
@@ -73,16 +73,12 @@ export class ManageSubplotsModal extends Modal {
             return a.name.localeCompare(b.name);
         });
 
-        // Update Stats
-        this.statsContainer.empty();
-        this.statsContainer.createSpan({ text: `Total Subplots: ${this.subplots.length}`, cls: 'ert-modal-meta-item' });
-
         // Clear list
         this.listContainer.empty();
         
         // Header
         const header = this.listContainer.createDiv({ cls: 'rt-manage-subplots-header' });
-        header.setText('Active Subplots');
+        header.setText(`Active Subplots · ${sorted.length}`);
 
         // List Scroll Area
         const scrollArea = this.listContainer.createDiv({ cls: 'rt-manage-subplots-scroll' });

@@ -202,7 +202,7 @@ export function renderCompletionEstimatePreview(params: {
         title: string;
         subtitle?: string;
         quote?: Quote;
-    }) => {
+    }, options?: { hideToggle?: boolean }) => {
         const summaryRow = previewContainer.createDiv({ cls: 'ert-completion-summary-row' });
         const summaryBody = summaryRow.createDiv({ cls: 'ert-completion-summary' });
         if (summary.quote) {
@@ -217,6 +217,10 @@ export function renderCompletionEstimatePreview(params: {
             if (summary.subtitle) {
                 summaryBody.createDiv({ cls: 'ert-completion-summary-author', text: summary.subtitle });
             }
+        }
+
+        if (options?.hideToggle) {
+            return;
         }
 
         const toggleButton = summaryRow.createEl('button', {
@@ -337,14 +341,8 @@ export function renderCompletionEstimatePreview(params: {
 
                 // Show hero card based on milestone type (single source of truth)
                 if (milestone.type === 'stage-press-complete' || milestone.type === 'book-complete') {
-                    renderSummaryRow({
-                        title: 'Book Complete',
-                        subtitle: 'Your manuscript is finished.'
-                    });
-                    if (!isExpanded) {
-                        previewContainer.addClass('ert-completion-preview-collapsed');
-                        return;
-                    }
+                    isExpanded = true;
+                    saveExpandedState(true);
                     // Final gold celebration once Press stage is fully complete.
                     previewContainer.addClass('ert-completion-preview-book-complete');
 

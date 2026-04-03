@@ -821,6 +821,12 @@
   min-height: 0;
 }
 
+.rt-manage-subplots-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .rt-manage-subplots-scroll {
   display: flex;
   flex-direction: column;
@@ -879,6 +885,25 @@
 .rt-manage-subplots-btn svg {
   width: 18px;
   height: 18px;
+}
+
+.ert-ui.ert-scope--modal .rt-pulse-progress-hero,
+.ert-ui.ert-scope--modal .rt-pulse-progress-bar,
+.ert-ui.ert-scope--modal .rt-pulse-ruler-item,
+.ert-ui.ert-scope--modal .rt-manuscript-range-card,
+.ert-ui.ert-scope--modal .rt-manuscript-range-handle,
+.ert-ui.ert-scope--modal .rt-gossamer-score-item-container,
+.ert-ui.ert-scope--modal .rt-gossamer-score-input,
+.ert-ui.ert-scope--modal .rt-tooltip,
+.ert-ui .ert-scope--modal .rt-pulse-progress-hero,
+.ert-ui .ert-scope--modal .rt-pulse-progress-bar,
+.ert-ui .ert-scope--modal .rt-pulse-ruler-item,
+.ert-ui .ert-scope--modal .rt-manuscript-range-card,
+.ert-ui .ert-scope--modal .rt-manuscript-range-handle,
+.ert-ui .ert-scope--modal .rt-gossamer-score-item-container,
+.ert-ui .ert-scope--modal .rt-gossamer-score-input,
+.ert-ui .ert-scope--modal .rt-tooltip {
+  box-shadow: none;
 }
 
 

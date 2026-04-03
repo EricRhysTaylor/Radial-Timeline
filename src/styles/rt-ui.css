@@ -6606,6 +6606,15 @@
   padding: var(--ert-gap-sm);
 }
 
+.ert-ui.ert-scope--modal,
+.ert-ui .ert-scope--modal {
+  --ert-panel-shadow: none;
+  --ert-panel-shadow-elev: none;
+  --ert-pill-shadow: none;
+  --ert-iconBtn-shadow: none;
+  --ert-swatch-shadow: none;
+}
+
 .ert-ui.ert-modal-shell--sm.modal,
 .ert-ui .ert-modal-shell--sm.modal {
   width: 400px;
@@ -6652,6 +6661,13 @@
 .ert-ui.ert-scope--modal .ert-panel--glass,
 .ert-ui .ert-scope--modal .ert-panel--glass {
   --ert-panel-shadow: none;
+}
+
+.ert-ui.ert-scope--modal .rt-glass-card,
+.ert-ui.ert-scope--modal .rt-card-glass,
+.ert-ui .ert-scope--modal .rt-glass-card,
+.ert-ui .ert-scope--modal .rt-card-glass {
+  box-shadow: none;
 }
 
 .ert-ui .ert-modal-shell input[type="text"]:not([class*="rt-input-"]):not([class*="ert-input-"]),

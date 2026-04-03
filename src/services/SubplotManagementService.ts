@@ -4,7 +4,7 @@
  * Handles renaming and deleting subplots across scene files.
  */
 
-import { App, TFile, Notice } from 'obsidian';
+import { App, TFile, Notice, getFrontMatterInfo, parseYaml } from 'obsidian';
 import { SceneDataService } from './SceneDataService';
 import { normalizeFrontmatterKeys } from '../utils/frontmatter';
 import { isPathInFolderScope } from '../utils/pathScope';
@@ -25,31 +25,29 @@ export class SubplotManagementService {
 
     /**
      * Get all unique subplots and their scene counts.
-     * Uses SceneDataService to ensure consistent filtering/parsing.
+     * Reads fresh frontmatter from scene files so the modal reflects rename/delete
+     * changes immediately instead of waiting on scene data cache refresh.
      */
     async getSubplotStats(): Promise<SubplotStats[]> {
-        const scenes = await this.sceneDataService.getSceneData({ filterBeatsBySystem: false });
-        
         const counts = new Map<string, number>();
-        
-        // "Main Plot" should always exist, at least conceptually
+
         counts.set("Main Plot", 0);
 
-        for (const scene of scenes) {
-            // Only count actual scenes, not beats
-            if (scene.itemType !== "Scene") continue;
+        const files = await this.getSceneFiles();
+        for (const file of files) {
+            const subplotNames = await this.getSceneSubplots(file);
+            const uniqueSubplots = new Set(subplotNames.length > 0 ? subplotNames : ["Main Plot"]);
 
-            const subplot = scene.subplot || "Main Plot";
-            counts.set(subplot, (counts.get(subplot) || 0) + 1);
+            for (const subplot of uniqueSubplots) {
+                counts.set(subplot, (counts.get(subplot) || 0) + 1);
+            }
         }
 
-        // Convert to array
         const result: SubplotStats[] = [];
         for (const [name, count] of counts.entries()) {
             result.push({ name, count });
         }
 
-        // Sort: Main Plot first, then alphabetical
         return result.sort((a, b) => {
             if (a.name === "Main Plot") return -1;
             if (b.name === "Main Plot") return 1;
@@ -258,5 +256,38 @@ export class SubplotManagementService {
         }
         
         return sceneFiles;
+    }
+
+    private async getSceneSubplots(file: TFile): Promise<string[]> {
+        const content = await this.app.vault.read(file);
+        const fmInfo = getFrontMatterInfo(content) as { exists?: boolean; frontmatter?: string };
+        if (!fmInfo?.exists || !fmInfo.frontmatter) {
+            return ["Main Plot"];
+        }
+
+        try {
+            const parsed = parseYaml(fmInfo.frontmatter);
+            if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+                return ["Main Plot"];
+            }
+
+            const normalized = normalizeFrontmatterKeys(parsed as Record<string, unknown>);
+            const rawSubplots = normalized.Subplot;
+
+            if (Array.isArray(rawSubplots)) {
+                const names = rawSubplots
+                    .map(value => String(value).trim())
+                    .filter(Boolean);
+                return names.length > 0 ? names : ["Main Plot"];
+            }
+
+            if (rawSubplots === null || rawSubplots === undefined || rawSubplots === '') {
+                return ["Main Plot"];
+            }
+
+            return [String(rawSubplots).trim()].filter(Boolean);
+        } catch {
+            return ["Main Plot"];
+        }
     }
 }
