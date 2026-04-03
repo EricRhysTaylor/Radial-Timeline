@@ -1,14 +1,13 @@
-import { App, getFrontMatterInfo, parseYaml, stringifyYaml, TFile } from 'obsidian';
+import { App, stringifyYaml, TFile } from 'obsidian';
 import type { NoteType } from './yamlTemplateNormalize';
 import { ensureReferenceIdFrontmatter, generateSceneId, readReferenceId } from './sceneIds';
 import { buildFrontmatterDocument, extractBodyAfterFrontmatter } from './frontmatterDocument';
-
-type FrontmatterInfo = {
-    exists?: boolean;
-    frontmatter?: string;
-    to?: number;
-    position?: { end?: { offset?: number } };
-};
+import {
+    formatAliasConflictMessage,
+    prepareFrontmatterRewrite,
+    type FrontmatterRewriteInfo,
+    verifyFrontmatterRewrite,
+} from './frontmatterWriteSafety';
 
 export interface ReferenceIdBackfillOptions {
     app: App;
@@ -56,39 +55,37 @@ export async function runReferenceIdBackfill(options: ReferenceIdBackfillOptions
 
         try {
             const content = await app.vault.read(file);
-            const info = getFrontMatterInfo(content) as unknown as FrontmatterInfo;
-            if (!info?.exists || !info.frontmatter) {
+            const prepared = prepareFrontmatterRewrite(content);
+            if (!prepared) {
                 result.skipped += 1;
                 continue;
             }
-
-            let parsed: Record<string, unknown>;
-            try {
-                const yaml = parseYaml(info.frontmatter);
-                if (!yaml || typeof yaml !== 'object') {
-                    result.skipped += 1;
-                    continue;
-                }
-                parsed = yaml as Record<string, unknown>;
-            } catch (error) {
+            if (prepared.aliasConflicts.length > 0) {
                 result.failed += 1;
                 result.errors.push({
                     file,
-                    error: error instanceof Error ? error.message : String(error)
+                    error: `Refused rewrite due to duplicate canonical aliases: ${formatAliasConflictMessage(prepared.aliasConflicts)}`
                 });
                 continue;
             }
 
-            const normalized = ensureReferenceIdFrontmatter(parsed, { classFallback });
+            const normalized = ensureReferenceIdFrontmatter(prepared.parsed, { classFallback });
             if (!normalized.changed) {
                 result.skipped += 1;
                 continue;
             }
 
             const rebuiltYaml = stringifyYaml(normalized.frontmatter);
-            const body = extractBodyAfterFrontmatter(content, info);
-            const updatedContent = buildFrontmatterDocument(rebuiltYaml, body);
+            const updatedContent = buildFrontmatterDocument(rebuiltYaml, prepared.body);
             await app.vault.modify(file, updatedContent);
+            const verifiedContent = await app.vault.read(file);
+            const verification = verifyFrontmatterRewrite(verifiedContent, {
+                originalBody: prepared.body,
+                verifyParsed: (verifiedFrontmatter) => readReferenceId(verifiedFrontmatter) === normalized.id
+            });
+            if (!verification.ok) {
+                throw new Error(verification.reason ?? 'Reference ID backfill verification failed.');
+            }
             result.updated += 1;
         } catch (error) {
             result.failed += 1;
@@ -115,7 +112,7 @@ export async function runReferenceIdDuplicateRepair(options: ReferenceIdBackfill
     type ParsedRecord = {
         file: TFile;
         content: string;
-        info: FrontmatterInfo;
+        info: FrontmatterRewriteInfo;
         parsed: Record<string, unknown>;
         referenceId?: string;
     };
@@ -129,25 +126,16 @@ export async function runReferenceIdDuplicateRepair(options: ReferenceIdBackfill
 
         try {
             const content = await app.vault.read(file);
-            const info = getFrontMatterInfo(content) as unknown as FrontmatterInfo;
-            if (!info?.exists || !info.frontmatter) {
+            const prepared = prepareFrontmatterRewrite(content);
+            if (!prepared) {
                 result.skipped += 1;
                 continue;
             }
-
-            let parsed: Record<string, unknown>;
-            try {
-                const yaml = parseYaml(info.frontmatter);
-                if (!yaml || typeof yaml !== 'object') {
-                    result.skipped += 1;
-                    continue;
-                }
-                parsed = yaml as Record<string, unknown>;
-            } catch (error) {
+            if (prepared.aliasConflicts.length > 0) {
                 result.failed += 1;
                 result.errors.push({
                     file,
-                    error: error instanceof Error ? error.message : String(error)
+                    error: `Refused rewrite due to duplicate canonical aliases: ${formatAliasConflictMessage(prepared.aliasConflicts)}`
                 });
                 continue;
             }
@@ -155,9 +143,9 @@ export async function runReferenceIdDuplicateRepair(options: ReferenceIdBackfill
             parsedRecords.push({
                 file,
                 content,
-                info,
-                parsed,
-                referenceId: readReferenceId(parsed)
+                info: prepared.info,
+                parsed: prepared.parsed,
+                referenceId: readReferenceId(prepared.parsed)
             });
         } catch (error) {
             result.failed += 1;
@@ -211,6 +199,14 @@ export async function runReferenceIdDuplicateRepair(options: ReferenceIdBackfill
                 const body = extractBodyAfterFrontmatter(target.content, target.info);
                 const updatedContent = buildFrontmatterDocument(rebuiltYaml, body);
                 await app.vault.modify(target.file, updatedContent);
+                const verifiedContent = await app.vault.read(target.file);
+                const verification = verifyFrontmatterRewrite(verifiedContent, {
+                    originalBody: body,
+                    verifyParsed: (verifiedFrontmatter) => readReferenceId(verifiedFrontmatter) === nextId
+                });
+                if (!verification.ok) {
+                    throw new Error(verification.reason ?? 'Duplicate Reference ID repair verification failed.');
+                }
                 result.updated += 1;
             } catch (error) {
                 result.failed += 1;

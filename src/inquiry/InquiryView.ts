@@ -317,6 +317,12 @@ import type {
     OmnibusProviderPlan
 } from './types/inquiryViewTypes';
 import {
+    appendInquiryNotesToPendingEdits,
+    validatePendingEditsValue,
+    purgeInquiryNotesFromPendingEdits,
+} from './pendingEditsSafety';
+import { prepareFrontmatterRewrite, verifyFrontmatterRewrite } from '../utils/frontmatterWriteSafety';
+import {
     buildManifestTocLines,
     buildSceneDossierBodyLines,
     buildSceneDossierHeader,
@@ -1748,9 +1754,8 @@ export class InquiryView extends ItemView {
         scenes: InquirySceneItem[]
     ): Promise<{ purgedCount: number; totalScenes: number }> {
         const targetField = this.resolveInquiryActionNotesFieldLabel();
-        const inquiryLinkToken = '[[Inquiry Brief —';
-        const isInquiryLine = (line: string): boolean => line.includes(inquiryLinkToken);
         let purgedCount = 0;
+        let refusedCount = 0;
 
         for (const scene of scenes) {
             const filePath = scene.filePath;
@@ -1759,42 +1764,45 @@ export class InquiryView extends ItemView {
             if (!file || !(file instanceof TFile)) continue;
 
             try {
+                const originalContent = await this.app.vault.read(file);
+                const prepared = prepareFrontmatterRewrite(originalContent);
+                if (!prepared || prepared.aliasConflicts.length > 0) {
+                    refusedCount++;
+                    continue;
+                }
                 let hadInquiryLines = false;
                 await this.app.fileManager.processFrontMatter(file, (fm) => {
                     const frontmatter = fm as Record<string, unknown>;
-                    const rawValue = frontmatter[targetField];
-                    if (rawValue === undefined || rawValue === null) return;
-
-                    let rawText = '';
-                    if (typeof rawValue === 'string') {
-                        rawText = rawValue;
-                    } else if (Array.isArray(rawValue)) {
-                        rawText = rawValue.map(entry => (typeof entry === 'string' ? entry : String(entry))).join('\n');
-                    } else {
-                        rawText = String(rawValue);
+                    const nextState = purgeInquiryNotesFromPendingEdits(frontmatter[targetField]);
+                    if (!nextState.ok) {
+                        refusedCount++;
+                        return;
                     }
-
-                    if (!rawText.trim()) return;
-
-                    const newline = rawText.includes('\r\n') ? '\r\n' : '\n';
-                    const lines = rawText.split(/\r?\n/);
-                    const filteredLines = lines.filter(line => !isInquiryLine(line));
-
-                    if (filteredLines.length < lines.length) {
+                    if (nextState.outcome === 'written') {
                         hadInquiryLines = true;
-                        const nextText = filteredLines.join(newline).trim();
-                        // Preserve the YAML key even when all inquiry lines are removed.
-                        // Only the inquiry-inserted content is purged; user text and the key itself stay.
-                        frontmatter[targetField] = nextText || '';
+                        frontmatter[targetField] = nextState.value ?? '';
                     }
                 });
 
                 if (hadInquiryLines) {
+                    const verifiedContent = await this.app.vault.read(file);
+                    const verification = verifyFrontmatterRewrite(verifiedContent, {
+                        originalBody: prepared.body,
+                        verifyParsed: (verifiedFrontmatter) => validatePendingEditsValue(verifiedFrontmatter[targetField]).ok
+                    });
+                    if (!verification.ok) {
+                        refusedCount++;
+                        continue;
+                    }
                     purgedCount++;
                 }
             } catch (error) {
                 console.warn('[Inquiry] Error purging action items from scene:', filePath, error);
             }
+        }
+
+        if (refusedCount > 0) {
+            new Notice('Pending Edits could not be safely updated due to unexpected structure. Please review or reset the Pending Edits section.', 7000);
         }
 
         return { purgedCount, totalScenes: scenes.length };
@@ -6667,6 +6675,7 @@ export class InquiryView extends ItemView {
         const targetField = (this.plugin.settings.inquiryActionNotesTargetField ?? defaultField).trim() || 'Pending Edits';
         let wroteAny = false;
         let duplicateAny = false;
+        let refusedAny = false;
 
         for (const [path, notes] of notesByMaterial.entries()) {
             const file = this.app.vault.getAbstractFileByPath(path);
@@ -6675,6 +6684,7 @@ export class InquiryView extends ItemView {
                 const outcome = await this.appendInquiryNotesToFrontmatter(file, targetField, briefTitle, notes);
                 if (outcome === 'written') wroteAny = true;
                 if (outcome === 'duplicate') duplicateAny = true;
+                if (outcome === 'refused') refusedAny = true;
             } catch (error) {
                 console.warn('[Inquiry] Unable to write Pending Edits.', { path, error });
             }
@@ -6687,6 +6697,9 @@ export class InquiryView extends ItemView {
             this.invalidateBriefingPurgeAvailability();
             this.refreshBriefingPanel();
             void this.refreshBriefingPurgeAvailability();
+        }
+        if (refusedAny) {
+            new Notice('Pending Edits could not be safely updated due to unexpected structure. Please review or reset the Pending Edits section.', 7000);
         }
         return applied;
     }
@@ -6776,67 +6789,39 @@ export class InquiryView extends ItemView {
         notes: string[]
     ): Promise<InquiryWritebackOutcome> {
         if (!notes.length) return 'skipped';
-        const briefLinkNeedle = `[[${briefTitle}`;
-        let outcome: InquiryWritebackOutcome = 'skipped';
-        const inquiryLinkToken = '[[Inquiry Brief —';
-        const isInquiryLine = (line: string): boolean => line.includes(inquiryLinkToken);
-        const normalizeInquiryLinkLine = (line: string): string => {
-            if (!line) return line;
-            return line
-                .replace(/^\\?"(\[\[[^\]]+\]\])"\\?(\s+—\s+)/, '$1$2')
-                .replace(/^\\?"(\[\[[^\]]+\]\])"\\?$/, '$1');
-        };
+        const originalContent = await this.app.vault.read(file);
+        const prepared = prepareFrontmatterRewrite(originalContent);
+        if (!prepared || prepared.aliasConflicts.length > 0) {
+            return 'refused';
+        }
+        let outcome: InquiryWritebackOutcome | null = null;
 
         await this.app.fileManager.processFrontMatter(file, (fm) => {
             const frontmatter = fm as Record<string, unknown>;
-            const rawValue = frontmatter[fieldKey];
-            let rawText = '';
-            if (typeof rawValue === 'string') {
-                rawText = rawValue;
-            } else if (Array.isArray(rawValue)) {
-                rawText = rawValue.map(entry => (typeof entry === 'string' ? entry : String(entry))).join('\n');
-            } else if (rawValue !== undefined && rawValue !== null) {
-                rawText = String(rawValue);
-            }
-
-            const newline = rawText.includes('\r\n') ? '\r\n' : '\n';
-            const lines = rawText === '' ? [] : rawText.split(/\r?\n/);
-            const normalizedLines = lines.map(line => normalizeInquiryLinkLine(line));
-            const normalizedExisting = normalizedLines.some((line, index) => line !== lines[index]);
-            const inquiryIndices = normalizedLines.reduce<number[]>((acc, line, index) => {
-                if (isInquiryLine(line)) acc.push(index);
-                return acc;
-            }, []);
-
-            if (inquiryIndices.some(index => normalizedLines[index].includes(briefLinkNeedle))) {
-                if (!normalizedExisting) {
-                    outcome = 'duplicate';
-                    return;
-                }
-                const normalizedText = normalizedLines.join(newline);
-                frontmatter[fieldKey] = normalizedText;
-                outcome = 'written';
+            const nextState = appendInquiryNotesToPendingEdits(frontmatter[fieldKey], briefTitle, notes, INQUIRY_NOTES_MAX);
+            if (!nextState.ok) {
+                outcome = 'refused';
                 return;
             }
-
-            const nextNotes = notes.map(note => normalizeInquiryLinkLine(note));
-            let nextLines = [...normalizedLines, ...nextNotes];
-
-            const nextInquiryIndices = nextLines.reduce<number[]>((acc, line, index) => {
-                if (isInquiryLine(line)) acc.push(index);
-                return acc;
-            }, []);
-            if (nextInquiryIndices.length > INQUIRY_NOTES_MAX) {
-                const dropCount = nextInquiryIndices.length - INQUIRY_NOTES_MAX;
-                const dropIndices = new Set(nextInquiryIndices.slice(0, dropCount));
-                nextLines = nextLines.filter((_, index) => !dropIndices.has(index));
+            if (nextState.outcome === 'written') {
+                frontmatter[fieldKey] = nextState.value ?? '';
             }
-
-            const nextText = nextLines.join(newline);
-            frontmatter[fieldKey] = nextText;
-            outcome = 'written';
+            outcome = nextState.outcome ?? 'skipped';
         });
-        return outcome;
+        if (outcome === 'written') {
+            const verifiedContent = await this.app.vault.read(file);
+            const verification = verifyFrontmatterRewrite(verifiedContent, {
+                originalBody: prepared.body,
+                verifyParsed: (verifiedFrontmatter) => {
+                    const validated = validatePendingEditsValue(verifiedFrontmatter[fieldKey]);
+                    return validated.ok;
+                }
+            });
+            if (!verification.ok) {
+                return 'refused';
+            }
+        }
+        return outcome ?? 'skipped';
     }
 
     private formatApiErrorReason(result: InquiryResult): string {

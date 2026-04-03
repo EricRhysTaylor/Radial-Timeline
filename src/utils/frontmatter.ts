@@ -2,26 +2,12 @@
  * Frontmatter utilities - case-insensitive key handling
  */
 
-/**
- * Normalize frontmatter keys to canonical case-insensitive format.
- * This allows users to write keys in any case (e.g., "class", "Class", "CLASS")
- * and the code will find them under the canonical name.
- * 
- * Canonical key mappings:
- * - class/CLASS/Class → Class
- * - beat model/Beat Model/BEAT MODEL/BeatModel → Beat Model
- * - pulse update/Pulse Update/PulseUpdate/Beats Update → Pulse Update
- * - publish stage/Publish Stage/PublishStage → Publish Stage
- * - scene number/Scene Number/SceneNumber → Scene Number
- * - etc.
- * 
- * @param fm - The raw frontmatter object
- * @param customMappings - Optional user-defined mappings (User Key -> Canonical Key)
- */
-export function normalizeFrontmatterKeys(fm: Record<string, unknown>, customMappings?: Record<string, string>): Record<string, unknown> {
-  const normalized: Record<string, unknown> = {};
+export interface CanonicalAliasConflict {
+  canonicalKey: string;
+  keys: string[];
+}
 
-  // Define canonical key names (proper case with spaces)
+function buildFrontmatterKeyMappings(customMappings?: Record<string, string>): Record<string, string> {
   const keyMappings: Record<string, string> = {
     'class': 'Class',
     'itemtype': 'itemType',
@@ -52,8 +38,8 @@ export function normalizeFrontmatterKeys(fm: Record<string, unknown>, customMapp
     'due': 'Due',
     'pendingedits': 'Pending Edits',
     'iteration': 'Iteration',
-    'iterations': 'Iteration', // Legacy plural form maps to singular
-    'revision': 'Iteration', // Deprecated: "Revision" renamed to "Iteration"
+    'iterations': 'Iteration',
+    'revision': 'Iteration',
     'pov': 'POV',
     'duration': 'Duration',
     'type': 'Type',
@@ -102,21 +88,68 @@ export function normalizeFrontmatterKeys(fm: Record<string, unknown>, customMapp
     'when': 'When',
     'place': 'Place',
     'scope': 'Scope',
-    // BookMeta keys
     'book': 'Book',
     'rights': 'Rights',
     'identifiers': 'Identifiers',
     'publisher': 'Publisher'
   };
 
-  // Merge custom mappings
   if (customMappings) {
     for (const [userKey, canonicalKey] of Object.entries(customMappings)) {
-      // Normalize to lowercase, remove spaces and special chars for lookup
       const normalizedKey = userKey.toLowerCase().replace(/[\s_-]/g, '');
       keyMappings[normalizedKey] = canonicalKey;
     }
   }
+
+  return keyMappings;
+}
+
+export function canonicalizeFrontmatterKey(key: string, customMappings?: Record<string, string>): string {
+  const normalizedKey = key.toLowerCase().replace(/[\s_-]/g, '');
+  const keyMappings = buildFrontmatterKeyMappings(customMappings);
+  return keyMappings[normalizedKey] || key;
+}
+
+export function findCanonicalAliasConflicts(fm: Record<string, unknown>, customMappings?: Record<string, string>): CanonicalAliasConflict[] {
+  const seen = new Map<string, string[]>();
+  const legacyConflictCanonical = (key: string): string => {
+    const normalized = key.toLowerCase().replace(/[\s_-]/g, '');
+    if (normalized === 'description' || normalized === 'purpose') return 'Purpose';
+    if (normalized === 'synopsis' || normalized === 'context') return 'Context';
+    return canonicalizeFrontmatterKey(key, customMappings);
+  };
+
+  for (const key of Object.keys(fm)) {
+    const canonicalKey = legacyConflictCanonical(key);
+    const keys = seen.get(canonicalKey) ?? [];
+    keys.push(key);
+    seen.set(canonicalKey, keys);
+  }
+
+  return Array.from(seen.entries())
+    .filter(([, keys]) => new Set(keys.map(key => key.toLowerCase())).size > 1)
+    .map(([canonicalKey, keys]) => ({ canonicalKey, keys }));
+}
+
+/**
+ * Normalize frontmatter keys to canonical case-insensitive format.
+ * This allows users to write keys in any case (e.g., "class", "Class", "CLASS")
+ * and the code will find them under the canonical name.
+ * 
+ * Canonical key mappings:
+ * - class/CLASS/Class → Class
+ * - beat model/Beat Model/BEAT MODEL/BeatModel → Beat Model
+ * - pulse update/Pulse Update/PulseUpdate/Beats Update → Pulse Update
+ * - publish stage/Publish Stage/PublishStage → Publish Stage
+ * - scene number/Scene Number/SceneNumber → Scene Number
+ * - etc.
+ * 
+ * @param fm - The raw frontmatter object
+ * @param customMappings - Optional user-defined mappings (User Key -> Canonical Key)
+ */
+export function normalizeFrontmatterKeys(fm: Record<string, unknown>, customMappings?: Record<string, string>): Record<string, unknown> {
+  const normalized: Record<string, unknown> = {};
+  const keyMappings = buildFrontmatterKeyMappings(customMappings);
 
   // Process each key in the original frontmatter
   for (const [key, value] of Object.entries(fm)) {

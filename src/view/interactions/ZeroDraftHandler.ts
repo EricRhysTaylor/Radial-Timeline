@@ -1,6 +1,7 @@
-import { App, TFile } from 'obsidian';
+import { App, Notice, TFile } from 'obsidian';
 import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { normalizeStatus } from '../../utils/text';
+import { prepareFrontmatterRewrite, verifyFrontmatterRewrite } from '../../utils/frontmatterWriteSafety';
 
 type ZeroDraftOptions = {
     app: App;
@@ -57,11 +58,32 @@ export async function maybeHandleZeroDraftClick(options: ZeroDraftOptions): Prom
         initialText: pendingEdits,
         onOk: async (nextText: string) => {
             try {
+                const originalContent = await app.vault.read(file);
+                const prepared = prepareFrontmatterRewrite(originalContent);
+                if (!prepared || prepared.aliasConflicts.length > 0) {
+                    new Notice('Pending Edits could not be safely updated due to unexpected structure. Please review or reset the Pending Edits section.', 7000);
+                    return false;
+                }
                 await app.fileManager.processFrontMatter(file, (yaml: Record<string, unknown>) => {
                     yaml['Pending Edits'] = nextText;
                 });
+                const verifiedContent = await app.vault.read(file);
+                const verification = verifyFrontmatterRewrite(verifiedContent, {
+                    originalBody: prepared.body,
+                    verifyParsed: (verifiedFrontmatter) => {
+                        const normalizedVerified = normalizeFrontmatterKeys(verifiedFrontmatter);
+                        const verifiedValue = normalizedVerified['Pending Edits'];
+                        return typeof verifiedValue === 'string' ? verifiedValue.trim() === nextText.trim() : nextText.trim() === '';
+                    }
+                });
+                if (!verification.ok) {
+                    new Notice('RT detected a potential issue after this operation. Please review the affected note. If needed, use backup or sync/version history to restore.', 8000);
+                    return false;
+                }
+                return true;
             } catch (e) {
-                // SAFE: Notice suppressed here to avoid UI noise; modal informs user on failure
+                new Notice('Pending Edits could not be safely updated due to unexpected structure. Please review or reset the Pending Edits section.', 7000);
+                return false;
             }
         },
         onOverride: async () => {

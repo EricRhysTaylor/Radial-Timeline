@@ -1,4 +1,4 @@
-import { TFile, App } from 'obsidian';
+import { TFile, App, getFrontMatterInfo, parseYaml } from 'obsidian';
 import type { TimelineItem } from '../types';
 import { filterBeatsBySystem } from '../utils/gossamer';
 import {
@@ -7,6 +7,7 @@ import {
     formatBeatDecimalPrefix,
     formatIntegerPrefix
 } from '../utils/prefixOrder';
+import { readReferenceId } from '../utils/sceneIds';
 
 export interface SceneUpdate {
     path: string;
@@ -20,6 +21,8 @@ export interface RippleRenamePlan {
     updates: SceneUpdate[];
     checked: number;
     needRename: number;
+    orderedPaths: string[];
+    expectedNumbersByPath: Record<string, string>;
 }
 
 export interface RippleRenamePlanOptions {
@@ -37,6 +40,20 @@ export interface SceneReorderProgress {
 
 export interface ApplySceneNumberUpdatesOptions {
     onProgress?: (progress: SceneReorderProgress) => void;
+    verification?: {
+        expectedOrderedPaths: string[];
+        expectedNumbersByPath: Record<string, string>;
+        movedItemPath?: string;
+        expectedMovedIndex?: number;
+    };
+    onWarning?: (message: string) => void;
+}
+
+interface RenameOp {
+    originalPath: string;
+    tempPath: string;
+    finalBasename: string;
+    finalPath: string;
 }
 
 function reportProgress(
@@ -60,19 +77,17 @@ export async function applySceneNumberUpdates(
     updates: SceneUpdate[],
     options?: ApplySceneNumberUpdatesOptions
 ): Promise<void> {
-    interface RenameOp {
-        originalPath: string;
-        tempPath: string;
-        finalBasename: string;
-        finalPath: string;
-    }
-    
     const renameOps: RenameOp[] = [];
+    const expectedReferenceIds = new Map<string, string>();
     
     // First pass: Update frontmatter and collect rename operations
     for (const update of updates) {
         const file = app.vault.getAbstractFileByPath(update.path);
         if (!(file instanceof TFile)) continue;
+        const referenceId = await readReferenceIdFromFile(app, file);
+        if (referenceId) {
+            expectedReferenceIds.set(update.path, referenceId);
+        }
         
         // Update frontmatter only when explicitly requested.
         // Ripple rename passes number-only updates and should not touch file contents.
@@ -143,6 +158,14 @@ export async function applySceneNumberUpdates(
     }
 
     reportProgress(options, { phase: 'done', totalFiles, stagedFiles: totalFiles, renamedFiles: totalFiles });
+
+    if (options?.verification) {
+        const verificationFailure = await verifySceneReorderResult(app, renameOps, expectedReferenceIds, options.verification);
+        if (verificationFailure) {
+            options.onWarning?.(verificationFailure);
+            throw new Error(verificationFailure);
+        }
+    }
 }
 
 function buildRenamedBasename(basename: string, newNumber: string): string {
@@ -248,6 +271,7 @@ export function buildRippleRenamePlan(items: TimelineItem[], options?: RippleRen
     const candidates = dedupeAndCollectEligible(items, activeBeatPaths);
     const ordered = buildCanonicalOrder(candidates);
     const updates: SceneUpdate[] = [];
+    const expectedNumbersByPath: Record<string, string> = {};
     const beatMinorByMajor = new Map<string, number>();
     let nextSceneNumber = 1;
     let currentScenePrefix = '0';
@@ -258,6 +282,7 @@ export function buildRippleRenamePlan(items: TimelineItem[], options?: RippleRen
             ? (() => {
                 const prefix = formatIntegerPrefix(nextSceneNumber);
                 currentScenePrefix = prefix;
+                beatMinorByMajor.set(prefix, 0);
                 nextSceneNumber += 1;
                 return prefix;
             })()
@@ -267,6 +292,7 @@ export function buildRippleRenamePlan(items: TimelineItem[], options?: RippleRen
                 beatMinorByMajor.set(major, nextMinor);
                 return formatBeatDecimalPrefix(major, nextMinor, 2);
             })();
+        expectedNumbersByPath[entry.path] = newNumber;
         const finalBasename = buildRenamedBasename(currentBasename, newNumber);
         if (finalBasename !== currentBasename) {
             updates.push({ path: entry.path, newNumber });
@@ -276,6 +302,78 @@ export function buildRippleRenamePlan(items: TimelineItem[], options?: RippleRen
     return {
         updates,
         checked: ordered.length,
-        needRename: updates.length
+        needRename: updates.length,
+        orderedPaths: ordered.map(entry => entry.path),
+        expectedNumbersByPath,
     };
+}
+
+async function readReferenceIdFromFile(app: App, file: TFile): Promise<string | undefined> {
+    try {
+        const content = await app.vault.read(file);
+        const info = getFrontMatterInfo(content);
+        if (!info.frontmatter) return undefined;
+        const parsed = parseYaml(info.frontmatter);
+        if (!parsed || typeof parsed !== 'object') return undefined;
+        return readReferenceId(parsed as Record<string, unknown>);
+    } catch {
+        return undefined;
+    }
+}
+
+async function verifySceneReorderResult(
+    app: App,
+    renameOps: RenameOp[],
+    expectedReferenceIds: Map<string, string>,
+    options: NonNullable<ApplySceneNumberUpdatesOptions['verification']>
+): Promise<string | null> {
+    const finalPathByOriginal = new Map<string, string>();
+    renameOps.forEach((op) => finalPathByOriginal.set(op.originalPath, op.finalPath));
+    const resolvePath = (originalPath: string): string => finalPathByOriginal.get(originalPath) ?? originalPath;
+    const resolvedPaths = options.expectedOrderedPaths.map(resolvePath);
+
+    if (new Set(resolvedPaths).size !== resolvedPaths.length) {
+        return 'RT detected a potential issue after this operation. Please review the affected note. If needed, use backup or sync/version history to restore.';
+    }
+
+    for (const path of resolvedPaths) {
+        const file = app.vault.getAbstractFileByPath(path);
+        if (!(file instanceof TFile)) {
+            return 'RT detected a potential issue after this operation. Please review the affected note. If needed, use backup or sync/version history to restore.';
+        }
+    }
+
+    for (const originalPath of options.expectedOrderedPaths) {
+        const expectedPrefix = options.expectedNumbersByPath[originalPath];
+        if (!expectedPrefix) continue;
+        const finalPath = resolvePath(originalPath);
+        const file = app.vault.getAbstractFileByPath(finalPath);
+        if (!(file instanceof TFile)) {
+            return 'RT detected a potential issue after this operation. Please review the affected note. If needed, use backup or sync/version history to restore.';
+        }
+        if (extractPrefixToken(file.basename) !== expectedPrefix) {
+            return 'RT detected a potential issue after this operation. Please review the affected note. If needed, use backup or sync/version history to restore.';
+        }
+    }
+
+    for (const [originalPath, expectedId] of expectedReferenceIds.entries()) {
+        const finalPath = resolvePath(originalPath);
+        const file = app.vault.getAbstractFileByPath(finalPath);
+        if (!(file instanceof TFile)) {
+            return 'RT detected a potential issue after this operation. Please review the affected note. If needed, use backup or sync/version history to restore.';
+        }
+        const actualId = await readReferenceIdFromFile(app, file);
+        if (actualId !== expectedId) {
+            return 'RT detected a potential issue after this operation. Please review the affected note. If needed, use backup or sync/version history to restore.';
+        }
+    }
+
+    if (typeof options.expectedMovedIndex === 'number' && options.movedItemPath) {
+        const resolvedMovedPath = resolvePath(options.movedItemPath);
+        if (resolvedPaths[options.expectedMovedIndex] !== resolvedMovedPath) {
+            return 'RT detected a potential issue after this operation. Please review the affected note. If needed, use backup or sync/version history to restore.';
+        }
+    }
+
+    return null;
 }

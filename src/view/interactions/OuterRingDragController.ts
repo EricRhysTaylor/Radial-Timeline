@@ -713,8 +713,10 @@ export class OuterRingDragController {
             reordered.splice(insertionIndex, 0, moved);
         }
 
-        const { updates: renumberUpdates } = this.buildRenumberDiff(reordered, isNoOpReorder);
+        const { updates: renumberUpdates, nextNumberByPath } = this.buildRenumberDiff(reordered, isNoOpReorder);
         const updates: SceneUpdate[] = [...renumberUpdates];
+        const expectedOrderedPaths = reordered.map(entry => entry.path);
+        const expectedNumbersByPath = Object.fromEntries(nextNumberByPath);
 
         const targetPathEl = this.svg.querySelector<SVGPathElement>(`#${this.cssEscape(targetId)}`);
         const targetGroup = targetPathEl?.closest('.rt-scene-group');
@@ -815,7 +817,16 @@ export class OuterRingDragController {
             await applySceneNumberUpdates(this.view.plugin.app, updates, {
                 onProgress: (progress) => {
                     modal.updateProgress(this.formatRenameProgressLine('Reorder', progress));
-                }
+                },
+                verification: {
+                    expectedOrderedPaths,
+                    expectedNumbersByPath,
+                    movedItemPath: sourcePath,
+                    expectedMovedIndex: reordered.findIndex(entry => entry.path === sourcePath),
+                },
+                onWarning: () => {
+                    new Notice('RT detected a potential issue after this operation. Please review the affected note. If needed, use backup or sync/version history to restore.', 8000);
+                },
             });
             const historySummary = `Moved ${sourceDescriptor} before ${targetDescriptor}`;
             await this.recordRecentMove({
@@ -882,6 +893,8 @@ export class OuterRingDragController {
         const isNoOpReorder = insertionIndex === fromIdx;
         const { updates: renumberUpdates, nextNumberByPath } = this.buildRenumberDiff(reordered, isNoOpReorder);
         const updates: SceneUpdate[] = [...renumberUpdates];
+        const expectedOrderedPaths = reordered.map(entry => entry.path);
+        const expectedNumbersByPath = Object.fromEntries(nextNumberByPath);
 
         // Safety fallback: if a dragged scene has no numeric prefix, force a valid sequence number.
         const fallbackSourceNumber = this.formatPrefixWithWidth(1, this.getPrefixWidthForEntry(movedEntry));
@@ -975,7 +988,16 @@ export class OuterRingDragController {
             await applySceneNumberUpdates(this.view.plugin.app, updates, {
                 onProgress: (progress) => {
                     modal.updateProgress(this.formatRenameProgressLine('Reorder', progress));
-                }
+                },
+                verification: {
+                    expectedOrderedPaths,
+                    expectedNumbersByPath,
+                    movedItemPath: this.sourcePath,
+                    expectedMovedIndex: reordered.findIndex(entry => entry.path === this.sourcePath),
+                },
+                onWarning: () => {
+                    new Notice('RT detected a potential issue after this operation. Please review the affected note. If needed, use backup or sync/version history to restore.', 8000);
+                },
             });
             await this.recordRecentMove({
                 itemType: sourceType,
@@ -1047,7 +1069,14 @@ export class OuterRingDragController {
                 onProgress: (progress) => {
                     if (!onStatus) return;
                     onStatus(this.formatRenameProgressLine('Ripple rename', progress));
-                }
+                },
+                verification: {
+                    expectedOrderedPaths: plan.orderedPaths,
+                    expectedNumbersByPath: plan.expectedNumbersByPath,
+                },
+                onWarning: () => {
+                    new Notice('RT detected a potential issue after this operation. Please review the affected note. If needed, use backup or sync/version history to restore.', 8000);
+                },
             });
         } catch (error) {
             console.error('Ripple rename failed:', error);

@@ -19,11 +19,35 @@ export interface InMemoryApp {
     };
     fileManager: {
         processFrontMatter: (file: TFile, cb: (fm: Record<string, unknown>) => void) => Promise<void>;
+        renameFile: (file: TFile, newPath: string) => Promise<void>;
     };
 }
 
 function normalizeVaultPath(path: string): string {
     return path.replace(/\\/g, '/').replace(/\/+/g, '/').replace(/^\/|\/$/g, '');
+}
+
+function decorateFile(file: TFile, path: string): TFile {
+    const normalized = normalizeVaultPath(path);
+    const segments = normalized.split('/');
+    const name = segments[segments.length - 1] ?? normalized;
+    const extensionMatch = name.match(/\.([^.]+)$/);
+    const extension = extensionMatch?.[1] ?? '';
+    const basename = extensionMatch ? name.slice(0, -(extension.length + 1)) : name;
+    const parentPath = segments.slice(0, -1).join('/');
+    const target = file as TFile & {
+        path: string;
+        name: string;
+        basename: string;
+        extension: string;
+        parent: TFolder | null;
+    };
+    target.path = normalized;
+    target.name = name;
+    target.basename = basename;
+    target.extension = extension;
+    target.parent = parentPath ? new TFolder(parentPath) : null;
+    return file;
 }
 
 function splitFrontmatter(content: string): {
@@ -72,7 +96,7 @@ export function createInMemoryApp(initialFiles: Record<string, string>): InMemor
 
     const addFile = (path: string, content: string): TFile => {
         const normalized = normalizeVaultPath(path);
-        const file = new TFile(normalized);
+        const file = decorateFile(new TFile(normalized), normalized);
         records.set(normalized, { file, content });
         collectParentFolders(normalized).forEach(folder => folders.add(folder));
         return file;
@@ -132,6 +156,16 @@ export function createInMemoryApp(initialFiles: Record<string, string>): InMemor
                 cb(fm);
                 const body = parsed.hasFrontmatter ? parsed.body : record.content;
                 record.content = buildFrontmatterDocument(fm, body);
+            },
+            async renameFile(file: TFile, newPath: string): Promise<void> {
+                const oldKey = normalizeVaultPath(file.path);
+                const record = records.get(oldKey);
+                if (!record) throw new Error(`File not found: ${file.path}`);
+                const nextKey = normalizeVaultPath(newPath);
+                const nextFile = decorateFile(new TFile(nextKey), nextKey);
+                records.delete(oldKey);
+                records.set(nextKey, { file: nextFile, content: record.content });
+                collectParentFolders(nextKey).forEach(folder => folders.add(folder));
             }
         }
     };

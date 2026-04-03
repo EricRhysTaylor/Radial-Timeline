@@ -70,4 +70,31 @@ describe('yamlManager reorder', () => {
             after: ['ID', 'Class', 'When', 'End', 'Context', 'Test Field 1'],
         });
     });
+
+    it('refuses reorder when duplicate canonical aliases would collapse author data', async () => {
+        const app = createInMemoryApp({
+            'Books/BookA/Backdrop.md': [
+                '---',
+                'ID: scn_d23a3033',
+                'Description: Legacy value',
+                'Purpose: New value',
+                'Class: Backdrop',
+                '---',
+                'Body',
+            ].join('\n'),
+        });
+        const file = app.vault.getMarkdownFiles()[0];
+
+        const result = await runYamlReorder({
+            app: app as never,
+            files: [file],
+            canonicalOrder: BACKDROP_CANONICAL_ORDER,
+        });
+
+        expect(result.reordered).toBe(0);
+        expect(result.failed).toBe(1);
+        expect(result.errors[0]?.error).toContain('duplicate canonical aliases');
+        expect(await readFile(app, 'Books/BookA/Backdrop.md')).toContain('Description: Legacy value');
+        expect(await readFile(app, 'Books/BookA/Backdrop.md')).toContain('Purpose: New value');
+    });
 });

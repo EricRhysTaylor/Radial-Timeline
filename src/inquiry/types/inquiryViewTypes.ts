@@ -170,7 +170,7 @@ export type CorpusCcStats = {
     title?: string;
 };
 
-export type InquiryWritebackOutcome = 'written' | 'duplicate' | 'skipped';
+export type InquiryWritebackOutcome = 'written' | 'duplicate' | 'skipped' | 'refused';
 export type InquiryGuidanceState = 'not-configured' | 'no-scenes' | 'ready' | 'running' | 'results';
 
 export type OmnibusProviderChoice = {

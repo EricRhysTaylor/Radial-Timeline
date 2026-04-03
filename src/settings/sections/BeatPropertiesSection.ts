@@ -1858,6 +1858,7 @@ export function renderStoryBeatsSection(params: {
     const designActionsContainer = beatSystemCard.createDiv();
     let createTemplatesButton: ButtonComponent | undefined;
     let repairBeatNotesButton: ButtonComponent | undefined;
+    let deleteBeatNotesButton: ButtonComponent | undefined;
     let refreshBeatAuditPrimaryAction: (() => void) | null = null;
     let resetBeatAuditPanel: (() => void) | null = null;
     let primaryDesignAction: (() => Promise<void>) = async () => { await createBeatTemplates(); };
@@ -1928,6 +1929,20 @@ export function renderStoryBeatsSection(params: {
                 .onClick(async () => {
                     await mergeExistingBeatNotes();
                 });
+        })
+        .addButton(button => {
+            deleteBeatNotesButton = button;
+            button
+                .setButtonText('Delete beat notes')
+                .setTooltip('Delete all beat notes for this system from the manuscript')
+                .setWarning()
+                .onClick(async () => {
+                    const activeTab = getActiveBeatWorkspaceTab();
+                    if (activeTab) {
+                        await deleteCurrentSetBeatNotes(activeTab);
+                    }
+                });
+            button.buttonEl.addClass('ert-hidden');
         });
 
     updateTemplateButton(templateSetting, getActiveBeatWorkspaceName('Custom'));
@@ -2056,26 +2071,7 @@ export function renderStoryBeatsSection(params: {
         updateStageVisibility();
     };
 
-    const deleteCurrentSetBeatNotes = async (targetTab: LoadedBeatTab): Promise<void> => {
-        if (!targetTab) {
-            new Notice(t('settings.beats.design.noActiveSystemNotice'));
-            return;
-        }
-
-        const noteFiles = getBeatNoteFilesForLoadedTab(targetTab);
-        const confirmed = await openDeleteBeatNotesModal({
-            title: targetTab.name,
-            noteFiles,
-            actionLabel: 'Delete beat notes',
-            systemTag: targetTab.name,
-        });
-
-        if (!confirmed) return;
-
-        const result = await trashBeatNoteFiles(noteFiles);
-        if (result.failed > 0) {
-            console.error('[Beat Sets] Failed to trash beat notes:', result.errors);
-        }
+    const closeBeatTab = async (targetTab: LoadedBeatTab): Promise<void> => {
         const nextActiveTabId = unloadBeatTab(plugin.settings, targetTab.tabId);
         if (!nextActiveTabId) {
             _currentInnerStage = 'library';
@@ -2097,6 +2093,29 @@ export function renderStoryBeatsSection(params: {
         renderStageSwitcher();
         updateStageVisibility();
         plugin.onSettingChanged(IMPACT_FULL);
+    };
+
+    const deleteCurrentSetBeatNotes = async (targetTab: LoadedBeatTab): Promise<void> => {
+        if (!targetTab) {
+            new Notice(t('settings.beats.design.noActiveSystemNotice'));
+            return;
+        }
+
+        const noteFiles = getBeatNoteFilesForLoadedTab(targetTab);
+        const confirmed = await openDeleteBeatNotesModal({
+            title: targetTab.name,
+            noteFiles,
+            actionLabel: 'Delete beat notes',
+            systemTag: targetTab.name,
+        });
+
+        if (!confirmed) return;
+
+        const result = await trashBeatNoteFiles(noteFiles);
+        if (result.failed > 0) {
+            console.error('[Beat Sets] Failed to trash beat notes:', result.errors);
+        }
+        await closeBeatTab(targetTab);
         const parts = result.trashed > 0
             ? [`Moved ${result.trashed} beat note${result.trashed !== 1 ? 's' : ''} to trash.`]
             : ['No deployed beat notes remained.'];
@@ -2127,13 +2146,13 @@ export function renderStoryBeatsSection(params: {
             setIcon(iconEl, status.icon);
             setTooltip(iconEl, status.tooltip);
             btn.createSpan({ cls: 'ert-mini-tab-label', text: tab.name });
-            const closeEl = btn.createSpan({ cls: 'ert-mini-tab-close', attr: { role: 'button', 'aria-label': `Delete beat notes for ${tab.name}` } });
-            setIcon(closeEl, 'circle-x');
-            setTooltip(closeEl, `Delete all beat notes for "${tab.name}" and close this tab.`);
+            const closeEl = btn.createSpan({ cls: 'ert-mini-tab-close', attr: { role: 'button', 'aria-label': `Close ${tab.name}` } });
+            setIcon(closeEl, 'x');
+            setTooltip(closeEl, `Close "${tab.name}" tab`);
             closeEl.addEventListener('click', (event) => {
                 event.preventDefault();
                 event.stopPropagation();
-                void deleteCurrentSetBeatNotes(tab);
+                void closeBeatTab(tab);
             });
 
             btn.addEventListener('click', async () => { // SAFE: direct addEventListener; Settings lifecycle manages cleanup
@@ -2817,6 +2836,14 @@ export function renderStoryBeatsSection(params: {
                 text: noteFiles.length > 0
                     ? `${t('settings.beats.deleteModal.scopePrefix')}${noteFiles.length} ${t('settings.beats.deleteModal.beatNote')}${noteFiles.length !== 1 ? 's' : ''}`
                     : t('settings.beats.deleteModal.scopeNoNotes')
+            });
+            body.createDiv({
+                cls: 'ert-modal-subtitle',
+                text: 'These notes will be moved to trash, not permanently deleted.'
+            });
+            body.createDiv({
+                cls: 'ert-modal-subtitle',
+                text: 'For added safety, use backups or sync/version history.'
             });
             if (customContent.notesWithTemplateCustomContent > 0 || customContent.notesWithExtraCustomContent > 0) {
                 const warn = body.createDiv({ cls: 'ert-purge-warning' });
@@ -5968,6 +5995,10 @@ export function renderStoryBeatsSection(params: {
             repairBeatNotesButton.setDisabled(true);
             repairBeatNotesButton.buttonEl.addClass('ert-hidden');
         }
+        if (deleteBeatNotesButton) {
+            deleteBeatNotesButton.setDisabled(true);
+            deleteBeatNotesButton.buttonEl.addClass('ert-hidden');
+        }
         syncDesignRowMutedState();
         if (isDirtyCustom) {
             setting.setDesc(`${baseDesc} Save changes before creating or repairing beat notes.`);
@@ -6112,6 +6143,13 @@ export function renderStoryBeatsSection(params: {
                 if (misaligned > 0) repairBits.push(`${misaligned} misaligned`);
                 if (missingModel > 0) repairBits.push(`${missingModel} missing Beat Model`);
                 repairBeatNotesButton.setTooltip(`Update Act and Beat Model for ${repairBits.join(' and ')} beat note${repairCount > 1 ? 's' : ''}. Prefix numbers are not changed.`);
+            }
+
+            // Show Delete when beat notes exist in the manuscript
+            if (deleteBeatNotesButton && summary.matchedCount > 0) {
+                deleteBeatNotesButton.buttonEl.removeClass('ert-hidden');
+                deleteBeatNotesButton.setDisabled(false);
+                deleteBeatNotesButton.setTooltip(`Delete ${summary.matchedCount} beat note${summary.matchedCount !== 1 ? 's' : ''} for "${displayName}" from the manuscript`);
             }
 
             if (hasDuplicates) {

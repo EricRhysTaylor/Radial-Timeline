@@ -12,7 +12,7 @@ import { App, Modal, ButtonComponent } from 'obsidian';
 export class ZeroDraftModal extends Modal {
     private readonly titleText: string;
     private readonly originalText: string;
-    private readonly onOk: (nextText: string) => void;
+    private readonly onOk: (nextText: string) => Promise<boolean> | boolean;
     private readonly onOverride: () => void;
 
     private textareaEl!: HTMLTextAreaElement;
@@ -22,7 +22,7 @@ export class ZeroDraftModal extends Modal {
         options: {
             titleText: string;
             initialText: string;
-            onOk: (nextText: string) => void;
+            onOk: (nextText: string) => Promise<boolean> | boolean;
             onOverride: () => void;
         }
     ) {
@@ -133,8 +133,10 @@ export class ZeroDraftModal extends Modal {
                     if (!confirmed) return; // Do not close or write
                 }
                 // Proceed with write
-                this.onOk(next);
-                this.close();
+                const written = await this.onOk(next);
+                if (written !== false) {
+                    this.close();
+                }
             });
 
         // Override button
