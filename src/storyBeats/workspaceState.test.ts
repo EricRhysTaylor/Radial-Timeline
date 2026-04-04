@@ -3,7 +3,7 @@ import { TFolder } from 'obsidian';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
 import type { RadialTimelineSettings, SavedBeatSystem } from '../types/settings';
 import { getBeatLibraryItems } from './libraryState';
-import { activateLoadedBeatTab, ensureBeatWorkspaceState, ensureMaterializedBeatWorkspaceState, getActiveLoadedBeatTab, getLoadedBeatTabs, getMaterializedBeatTabs, loadBeatTabFromLibraryItem } from './workspaceState';
+import { activateLoadedBeatTab, ensureBeatWorkspaceState, ensureMaterializedBeatWorkspaceState, getActiveLoadedBeatTab, getLoadedBeatTabs, getMaterializedBeatTabs, loadBeatTabFromLibraryItem, unloadBeatTab } from './workspaceState';
 import { resolveSelectedBeatModelFromSettings } from '../utils/beatSystemState';
 
 function buildSettings(): RadialTimelineSettings {
@@ -211,5 +211,140 @@ describe('manuscript-detected beat tabs', () => {
         expect(getActiveLoadedBeatTab(settings)).toBeUndefined();
         expect(resolveSelectedBeatModelFromSettings(settings)).toBeUndefined();
         expect(getLoadedBeatTabs(settings).map((tab) => tab.name)).toContain('Historical Spiral');
+    });
+});
+
+describe('unloadBeatTab (safe close)', () => {
+    it('removes the tab from workspace without affecting other tabs', () => {
+        const settings = buildSettings();
+        const items = getBeatLibraryItems(settings);
+        const storyGrid = items.find((item) => item.kind === 'builtin' && item.name === 'Story Grid')!;
+        const starter = items.find((item) => item.kind === 'starter')!;
+
+        loadBeatTabFromLibraryItem(settings, storyGrid);
+        const starterTab = loadBeatTabFromLibraryItem(settings, starter);
+
+        expect(getLoadedBeatTabs(settings)).toHaveLength(2);
+
+        unloadBeatTab(settings, starterTab.tabId);
+
+        const remaining = getLoadedBeatTabs(settings);
+        expect(remaining).toHaveLength(1);
+        expect(remaining[0].name).toBe('Story Grid');
+    });
+
+    it('selects the next tab when the active tab is closed', () => {
+        const settings = buildSettings();
+        const items = getBeatLibraryItems(settings);
+        const storyGrid = items.find((item) => item.kind === 'builtin' && item.name === 'Story Grid')!;
+        const starter = items.find((item) => item.kind === 'starter')!;
+
+        const sgTab = loadBeatTabFromLibraryItem(settings, storyGrid);
+        loadBeatTabFromLibraryItem(settings, starter);
+
+        activateLoadedBeatTab(settings, sgTab.tabId);
+        expect(getActiveLoadedBeatTab(settings)?.tabId).toBe(sgTab.tabId);
+
+        const nextActiveId = unloadBeatTab(settings, sgTab.tabId);
+
+        expect(getLoadedBeatTabs(settings)).toHaveLength(1);
+        expect(nextActiveId).toBeDefined();
+        expect(getActiveLoadedBeatTab(settings)?.name).toBe(starter.name);
+    });
+
+    it('returns undefined when the last tab is closed', () => {
+        const settings = buildSettings();
+        const items = getBeatLibraryItems(settings);
+        const starter = items.find((item) => item.kind === 'starter')!;
+
+        const tab = loadBeatTabFromLibraryItem(settings, starter);
+        const nextActiveId = unloadBeatTab(settings, tab.tabId);
+
+        expect(getLoadedBeatTabs(settings)).toHaveLength(0);
+        expect(nextActiveId).toBeUndefined();
+        expect(getActiveLoadedBeatTab(settings)).toBeUndefined();
+    });
+
+    it('is a no-op for an unknown tab id', () => {
+        const settings = buildSettings();
+        const items = getBeatLibraryItems(settings);
+        const starter = items.find((item) => item.kind === 'starter')!;
+
+        const tab = loadBeatTabFromLibraryItem(settings, starter);
+        const result = unloadBeatTab(settings, 'nonexistent-tab-id');
+
+        expect(getLoadedBeatTabs(settings)).toHaveLength(1);
+        expect(getActiveLoadedBeatTab(settings)?.tabId).toBe(tab.tabId);
+        expect(result).toBe(tab.tabId);
+    });
+
+    it('does not touch beat system configs — only removes the workspace tab', () => {
+        const settings = buildSettings();
+        const items = getBeatLibraryItems(settings);
+        const starter = items.find((item) => item.kind === 'starter')!;
+
+        const tab = loadBeatTabFromLibraryItem(settings, starter);
+        const configsBefore = JSON.stringify(settings.beatSystemConfigs);
+
+        unloadBeatTab(settings, tab.tabId);
+
+        expect(JSON.stringify(settings.beatSystemConfigs)).toBe(configsBefore);
+        expect(getLoadedBeatTabs(settings)).toHaveLength(0);
+    });
+
+    it('tab remains active and usable when not unloaded (delete-without-close contract)', () => {
+        // Simulates the product rule: deleting beat notes refreshes UI but keeps the tab open.
+        // After deletion the caller refreshes state without calling unloadBeatTab.
+        // The tab must remain loaded, active, and re-activatable.
+        const settings = buildSettings();
+        const items = getBeatLibraryItems(settings);
+        const starter = items.find((item) => item.kind === 'starter')!;
+
+        const tab = loadBeatTabFromLibraryItem(settings, starter);
+        const tabIdBefore = tab.tabId;
+
+        // Verify tab is active
+        expect(getActiveLoadedBeatTab(settings)?.tabId).toBe(tabIdBefore);
+
+        // Simulate "delete notes happened" — no unloadBeatTab called
+        // Tab should still be fully present and active
+        expect(getLoadedBeatTabs(settings)).toHaveLength(1);
+        expect(getActiveLoadedBeatTab(settings)?.tabId).toBe(tabIdBefore);
+        expect(resolveSelectedBeatModelFromSettings(settings)).toBe(tab.name);
+
+        // Can still switch away and back
+        const builtin = items.find((item) => item.kind === 'builtin' && item.name === 'Story Grid')!;
+        const builtinTab = loadBeatTabFromLibraryItem(settings, builtin);
+        expect(getActiveLoadedBeatTab(settings)?.tabId).toBe(builtinTab.tabId);
+
+        activateLoadedBeatTab(settings, tabIdBefore);
+        expect(getActiveLoadedBeatTab(settings)?.tabId).toBe(tabIdBefore);
+    });
+
+    it('close and delete are independent operations on the same tab', () => {
+        const settings = buildSettings();
+        const items = getBeatLibraryItems(settings);
+        const storyGrid = items.find((item) => item.kind === 'builtin' && item.name === 'Story Grid')!;
+        const starter = items.find((item) => item.kind === 'starter')!;
+
+        loadBeatTabFromLibraryItem(settings, storyGrid);
+        const starterTab = loadBeatTabFromLibraryItem(settings, starter);
+
+        // Close Story Grid (safe, non-destructive)
+        const sgTab = getLoadedBeatTabs(settings).find((t) => t.name === 'Story Grid')!;
+        unloadBeatTab(settings, sgTab.tabId);
+
+        // Only starter remains, still active
+        expect(getLoadedBeatTabs(settings)).toHaveLength(1);
+        expect(getActiveLoadedBeatTab(settings)?.tabId).toBe(starterTab.tabId);
+        expect(resolveSelectedBeatModelFromSettings(settings)).toBe(starter.name);
+
+        // Configs untouched — deletion of notes would be a separate vault operation
+        const configsAfterClose = JSON.stringify(settings.beatSystemConfigs);
+
+        // Now close the last tab
+        unloadBeatTab(settings, starterTab.tabId);
+        expect(getLoadedBeatTabs(settings)).toHaveLength(0);
+        expect(JSON.stringify(settings.beatSystemConfigs)).toBe(configsAfterClose);
     });
 });

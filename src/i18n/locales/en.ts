@@ -303,10 +303,8 @@ export interface TranslationKeys {
             };
             deleteModal: {
                 subtitleWithNotes: string;
-                subtitleNoNotes: string;
                 scopePrefix: string;
                 beatNote: string;
-                scopeNoNotes: string;
                 warningExtra: string;
                 warningTemplate: string;
                 typeDeletePrompt: string;
@@ -1060,11 +1058,9 @@ export const en: TranslationKeys = {
                 resetToDefaultText: 'Reset to default',
             },
             deleteModal: {
-                subtitleWithNotes: 'This moves the beat notes to trash and keeps the set definition available in Add system.',
-                subtitleNoNotes: 'No deployed beat notes remain. This removes the tab from the workspace and keeps the set definition available in Add system.',
+                subtitleWithNotes: 'This moves beat notes to trash. The set definition remains available in Add system.',
                 scopePrefix: 'Scope: ',
                 beatNote: 'beat note',
-                scopeNoNotes: 'Scope: no deployed beat notes remain',
                 warningExtra: 'Any custom properties with values will be lost, including all data entry in non-template fields.',
                 warningTemplate: 'Any custom properties with values will be lost, including all data entry.',
                 typeDeletePrompt: 'Type DELETE to confirm:',

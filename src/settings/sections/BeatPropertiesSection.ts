@@ -2102,6 +2102,11 @@ export function renderStoryBeatsSection(params: {
         }
 
         const noteFiles = getBeatNoteFilesForLoadedTab(targetTab);
+        if (noteFiles.length === 0) {
+            new Notice(`No beat notes found for "${targetTab.name}".`);
+            return;
+        }
+
         const confirmed = await openDeleteBeatNotesModal({
             title: targetTab.name,
             noteFiles,
@@ -2115,12 +2120,24 @@ export function renderStoryBeatsSection(params: {
         if (result.failed > 0) {
             console.error('[Beat Sets] Failed to trash beat notes:', result.errors);
         }
-        await closeBeatTab(targetTab);
-        const parts = result.trashed > 0
-            ? [`Moved ${result.trashed} beat note${result.trashed !== 1 ? 's' : ''} to trash.`]
-            : ['No deployed beat notes remained.'];
-        if (result.failed > 0) parts.push(`${result.failed} failed`);
-        parts.push(`"${targetTab.name}" closed.`);
+        // Refresh UI in-place — tab stays open so user can redesign/redeploy
+        invalidateBeatStructuralStatus();
+        resetBeatAuditPanel?.();
+        renderCustomConfig();
+        const activeName = getActiveBeatWorkspaceName('Custom');
+        renderPreviewContent(activeName);
+        updateTemplateButton(templateSetting, activeName);
+        updateBeatSystemCard(activeName, { resetStage: false });
+        renderBeatYamlEditor();
+        updateBeatHoverPreview?.();
+        renderSavedBeatSystems();
+        renderBeatSystemTabs();
+        renderStageSwitcher();
+        updateStageVisibility();
+        plugin.onSettingChanged(IMPACT_FULL);
+        const parts: string[] = [];
+        if (result.trashed > 0) parts.push(`Moved ${result.trashed} beat note${result.trashed !== 1 ? 's' : ''} to trash.`);
+        if (result.failed > 0) parts.push(`${result.failed} failed.`);
         new Notice(parts.join(' '));
     };
 
@@ -2825,17 +2842,13 @@ export function renderStoryBeatsSection(params: {
             header.createDiv({ cls: 'ert-modal-title', text: actionLabel });
             header.createDiv({
                 cls: 'ert-modal-subtitle',
-                text: noteFiles.length > 0
-                    ? t('settings.beats.deleteModal.subtitleWithNotes')
-                    : t('settings.beats.deleteModal.subtitleNoNotes')
+                text: t('settings.beats.deleteModal.subtitleWithNotes')
             });
 
             const body = modal.contentEl.createDiv({ cls: ['ert-panel', 'ert-panel--glass'] });
             body.createDiv({
                 cls: 'ert-modal-subtitle',
-                text: noteFiles.length > 0
-                    ? `${t('settings.beats.deleteModal.scopePrefix')}${noteFiles.length} ${t('settings.beats.deleteModal.beatNote')}${noteFiles.length !== 1 ? 's' : ''}`
-                    : t('settings.beats.deleteModal.scopeNoNotes')
+                text: `${t('settings.beats.deleteModal.scopePrefix')}${noteFiles.length} ${t('settings.beats.deleteModal.beatNote')}${noteFiles.length !== 1 ? 's' : ''}`
             });
             body.createDiv({
                 cls: 'ert-modal-subtitle',
@@ -2986,6 +2999,10 @@ export function renderStoryBeatsSection(params: {
 
         const openBuiltInResetModal = async (entry: LoadableEntry) => {
             const noteFiles = getSelectedEntryBeatNoteFiles(entry);
+            if (noteFiles.length === 0) {
+                new Notice(`No beat notes found for "${entry.name}".`);
+                return;
+            }
             const confirmed = await openDeleteBeatNotesModal({
                 title: entry.name,
                 noteFiles,
