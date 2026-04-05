@@ -27,6 +27,7 @@ export function buildBuiltinBeatId(systemName: string, beatName: string): string
 export interface PlotSystemPreset {
   name: string;
   category: BeatLibraryCategory;
+  icon: string;
   beatCount: number;
   beats: string[];
   beatDetails: PlotBeatInfo[];
@@ -36,6 +37,7 @@ export const PLOT_SYSTEMS: Record<string, PlotSystemPreset> = {
   "Save The Cat": {
     name: "Save The Cat",
     category: 'narrative',
+    icon: 'paw-print',
     beatCount: 15,
     beats: [
       "Opening Image",
@@ -165,6 +167,7 @@ export const PLOT_SYSTEMS: Record<string, PlotSystemPreset> = {
   "Hero's Journey": {
     name: "Hero's Journey",
     category: 'narrative',
+    icon: 'route',
     beatCount: 12,
     beats: [
       "Ordinary World",
@@ -270,11 +273,12 @@ export const PLOT_SYSTEMS: Record<string, PlotSystemPreset> = {
   "Classic Dramatic Structure": {
     name: "Classic Dramatic Structure",
     category: 'narrative',
+    icon: 'zap',
     beatCount: 5,
     beats: [
       "Setup",
       "Complication",
-      "Escalation",
+      "Pressure",
       "Decision",
       "Outcome"
     ],
@@ -282,28 +286,28 @@ export const PLOT_SYSTEMS: Record<string, PlotSystemPreset> = {
       {
         name: "Setup",
         id: "classic-dramatic-structure:setup",
-        description: "An event disrupts the status quo and creates a problem the protagonist cannot ignore. Establishes the core value at stake.",
+        description: "Something disrupts the status quo and creates a problem that demands attention. Establishes what is at stake.",
         placement: "0-10%",
         range: "10-25"
       },
       {
         name: "Complication",
         id: "classic-dramatic-structure:complication",
-        description: "Escalating obstacles worsen the situation. Each complication raises stakes and limits options — pressure increases without repetition.",
+        description: "Obstacles worsen the situation. Each complication raises the cost of action and narrows available options.",
         placement: "10-50%",
         range: "25-50"
       },
       {
-        name: "Escalation",
-        id: "classic-dramatic-structure:escalation",
-        description: "Tension peaks as the protagonist faces a forced choice between costly alternatives. The scene's central pressure reaches its highest point.",
+        name: "Pressure",
+        id: "classic-dramatic-structure:pressure",
+        description: "Tension reaches its peak. The protagonist faces a forced choice between costly alternatives with no clean exit.",
         placement: "50-75%",
         range: "50-75"
       },
       {
         name: "Decision",
         id: "classic-dramatic-structure:decision",
-        description: "An irreversible action answers the central question. The protagonist commits to a course that changes everything.",
+        description: "An irreversible action answers the central question. The protagonist commits and the situation changes permanently.",
         placement: "75-90%",
         range: "75-100"
       },
@@ -347,7 +351,7 @@ export function getPlotSystem(name: string): PlotSystemPreset | null {
       id: b.id,
     }));
 
-  return { name: starter.name, category: starter.category, beats, beatDetails, beatCount: beats.length };
+  return { name: starter.name, category: starter.category, icon: starter.icon, beats, beatDetails, beatCount: beats.length };
 }
 
 // ─── Starter Beat Sets ────────────────────────────────────────────────
@@ -358,6 +362,7 @@ export interface StarterBeatSet {
   id: string;
   name: string;
   category: BeatLibraryCategory;
+  icon: string;
   description: string;
   beats: BeatDefinition[];
   beatYamlAdvanced: string;
@@ -369,6 +374,7 @@ export const STARTER_BEAT_SETS: StarterBeatSet[] = [
     id: 'starter:podcast_narrative',
     name: 'Podcast Narrative Arc',
     category: 'format',
+    icon: 'mic',
     description: 'Design narrative tension for audio storytelling.\n\nThis structure is built for documentary and narrative podcast episodes where the hook must land fast and revelations unfold deliberately. Instead of focusing on character transformation alone, it tracks investigation, escalation, and emotional resonance across segments. Use this system to measure how curiosity builds, where tension peaks, and whether your final reflection lands with weight.\n\nBest for: narrative podcasts, investigative journalism, audio essays\nMomentum profile: Early spike → steady climb → late revelation → reflective close',
     beats: [
       // Act 1 — Hook & Context
@@ -402,6 +408,7 @@ export const STARTER_BEAT_SETS: StarterBeatSet[] = [
     id: 'starter:youtube_explainer',
     name: 'YouTube Explainer Arc',
     category: 'format',
+    icon: 'play-circle',
     description: 'Optimize clarity, escalation, and retention.\n\nDesigned for educational and thought-leadership content, this structure emphasizes value delivery, progressive insight, and strategic surprise. It mirrors how high-performing explainer videos sustain attention: hook hard, deepen understanding, escalate examples, then reward the viewer. Gossamer reveals where energy dips, where complexity spikes, and whether your twist earns its payoff.\n\nBest for: educational YouTube, commentary, business explainers\nMomentum profile: Hook → clarity plateau → acceleration → twist → payoff',
     beats: [
       // Act 1 — Capture Attention
@@ -432,6 +439,7 @@ export const STARTER_BEAT_SETS: StarterBeatSet[] = [
     id: 'starter:historical_narrative',
     name: 'Historical Narrative Arc',
     category: 'format',
+    icon: 'clock',
     description: 'Shape real events into compelling narrative flow.\n\nHistorical and biographical writing often resists conventional three-act fiction models. This framework focuses on forces, pressure, crisis, and consequence — allowing you to track tension across political, cultural, or personal change. Use it to see whether escalation builds naturally and whether aftermath and legacy receive the structural weight they deserve.\n\nBest for: biography, memoir, historical nonfiction\nMomentum profile: Gradual rise → crisis compression → reflective descent',
     beats: [
       // Act 1 — Conditions
@@ -465,6 +473,7 @@ export const STARTER_BEAT_SETS: StarterBeatSet[] = [
     id: 'starter:romance_tropes',
     name: 'Romance Tropes Ladder',
     category: 'engine',
+    icon: 'heart',
     description: 'Track emotional escalation with precision.\n\nRomance thrives on rhythm — attraction, complication, rupture, reunion. This system is built around emotional beats rather than plot mechanics, allowing you to measure chemistry, conflict, and payoff across the relationship arc. Gossamer highlights emotional valleys and surges, revealing whether the breakup lands hard enough and whether the reunion feels earned.\n\nBest for: contemporary romance, rom-com, genre romance\nMomentum profile: Emotional rise → rupture → valley → surge → commitment',
     beats: [
       // Act 1 — Attraction
@@ -495,6 +504,7 @@ export const STARTER_BEAT_SETS: StarterBeatSet[] = [
     id: 'starter:thriller_escalation',
     name: 'Thriller Escalation Ladder',
     category: 'engine',
+    icon: 'trending-up',
     description: 'Engineer sustained tension and explosive payoff.\n\nThrillers demand relentless escalation. This structure focuses on threat signals, rising stakes, false victories, and catastrophic setbacks, ensuring momentum compounds rather than plateaus. Use it to visualize where danger intensifies, where stakes peak too early, or where the final confrontation needs more compression.\n\nBest for: thriller, suspense, action, crime\nMomentum profile: Steady escalation → compressed second half → explosive climax',
     beats: [
       // Act 1 — Threat Emerges
@@ -551,6 +561,7 @@ export function getCustomSystemFromSettings(
     return {
         name,
         category: 'blank',
+        icon: 'square',
         beats,
         beatDetails,
         beatCount: beats.length

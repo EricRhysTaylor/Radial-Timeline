@@ -46,6 +46,21 @@ export interface ManagedOutputWriteResult {
     skipped: boolean;
 }
 
+/**
+ * Reads the user's Obsidian "Deleted files" preference and returns whether
+ * to use the OS system trash (macOS Trash / Windows Recycle Bin) or the
+ * vault-local `.trash/` folder. Falls back to `.trash/` when the setting
+ * is missing or set to anything other than `'system'`.
+ */
+export function useSystemTrash(app: App): boolean {
+    try {
+        const trashOption = (app.vault as any).getConfig?.('trashOption');
+        return trashOption === 'system';
+    } catch {
+        return false;
+    }
+}
+
 function resolveSafetyFolder(aiOutputFolder?: string): string {
     const base = normalizePath((aiOutputFolder || DEFAULT_LOG_ROOT).trim() || DEFAULT_LOG_ROOT);
     return normalizePath(`${base}/${DEFAULT_SAFETY_FOLDER}`);
@@ -132,9 +147,10 @@ export async function trashFiles(app: App, files: TFile[], options: TrashFilesOp
     let failed = 0;
     const errors: string[] = [];
 
+    const systemTrash = useSystemTrash(app);
     for (const file of uniqueFiles) {
         try {
-            await app.vault.trash(file, false);
+            await app.vault.trash(file, systemTrash);
             trashed += 1;
         } catch (error) {
             failed += 1;

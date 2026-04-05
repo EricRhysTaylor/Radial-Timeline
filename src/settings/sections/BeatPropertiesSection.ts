@@ -75,6 +75,7 @@ import {
     unloadBeatTab,
     updateLoadedBeatTab,
 } from '../../storyBeats/workspaceState';
+import { parseDescriptionParts, splitOverviewParagraphs, KNOWN_LABELS } from '../../utils/descriptionParser';
 
 type FieldEntryValue = string | string[];
 type FieldEntry = { key: string; value: FieldEntryValue; required: boolean };
@@ -135,7 +136,7 @@ const BEAT_SYSTEM_COPY: Record<string, {
     },
     'Classic Dramatic Structure': {
         title: 'Classic Dramatic Structure',
-        description: 'Emphasizes scene pressure, turning points, decisions, and consequential outcomes.\n\nUse it when you want to stress-test whether each scene creates movement through conflict and change.\n\nBest for: literary fiction, drama, tightly edited scene work, revision passes\nMomentum profile: setup -> complication -> decision -> outcome shift',
+        description: 'Emphasizes scene pressure, turning points, decisions, and consequential outcomes.\n\nUse it when you want to stress-test whether each scene creates movement through conflict and change.\n\nBest for: literary fiction, drama, tightly edited scene work, revision passes\nMomentum profile: setup → complication → pressure → decision → outcome',
         examples: 'Examples: Pride and Prejudice, Hamlet, The Godfather.',
     },
     'Podcast Narrative Arc': {
@@ -883,19 +884,57 @@ export function renderStoryBeatsSection(params: {
         };
     };
 
-    const splitOverviewParagraphs = (value: string): string[] => {
-        return value
-            .split(/\n\s*\n/g)
-            .map((paragraph) => paragraph.trim())
-            .filter((paragraph) => paragraph.length > 0);
-    };
+    /**
+     * Renders a system description into a consistent structured layout:
+     *  - Summary (top line, slightly stronger weight)
+     *  - Body paragraphs ("Use it when…")
+     *  - Label/value fields (Best for, Momentum profile)
+     *  - Examples (visually muted)
+     *  - Beat/act count meta line
+     */
+    const renderSystemDescription = (
+        container: HTMLElement,
+        overview: ReturnType<typeof getSystemOverviewState>,
+        options?: { prefix?: string }
+    ): void => {
+        const prefix = options?.prefix ?? 'ert-desc';
+        const parts = parseDescriptionParts(overview.description);
+        const wrapper = container.createDiv({ cls: `${prefix}-block` });
 
-    const renderOverviewTextBlocks = (container: HTMLElement, cls: string, value: string): void => {
-        splitOverviewParagraphs(value).forEach((paragraph) => {
-            const block = container.createDiv({ cls });
-            block.setText(paragraph);
-            block.style.whiteSpace = 'pre-line';
-        });
+        // Summary
+        if (parts.summary) {
+            wrapper.createDiv({ cls: `${prefix}-summary`, text: parts.summary });
+        }
+
+        // Body paragraphs (e.g. "Use it when…")
+        for (const paragraph of parts.body) {
+            wrapper.createDiv({ cls: `${prefix}-body`, text: paragraph });
+        }
+
+        // Label/value fields
+        if (parts.fields.length > 0) {
+            const fieldsEl = wrapper.createDiv({ cls: `${prefix}-fields` });
+            for (const field of parts.fields) {
+                const row = fieldsEl.createDiv({ cls: `${prefix}-field` });
+                if (field.label) {
+                    row.createSpan({ cls: `${prefix}-field-label`, text: `${field.label}: ` });
+                }
+                row.createSpan({ cls: `${prefix}-field-value`, text: field.value });
+            }
+        }
+
+        // Examples
+        if (!overview.hasAuthorDesc && overview.examples) {
+            wrapper.createDiv({ cls: `${prefix}-examples`, text: overview.examples });
+        }
+
+        // Meta (beat/act count)
+        if (overview.totalBeats > 0) {
+            wrapper.createDiv({
+                cls: `${prefix}-meta`,
+                text: `${overview.totalBeats} beats · ${overview.totalActs} acts`
+            });
+        }
     };
 
     new Settings(actsStack)
@@ -2056,15 +2095,7 @@ export function renderStoryBeatsSection(params: {
             const sourceIcon = sourceLink.createSpan({ cls: 'ert-beat-template-source-link-icon' });
             setIcon(sourceIcon, 'external-link');
         }
-        renderOverviewTextBlocks(tierBannerEl, 'ert-beat-template-desc', overview.description);
-        if (!overview.hasAuthorDesc && overview.examples) {
-            renderOverviewTextBlocks(tierBannerEl, 'ert-beat-template-examples', overview.examples);
-        }
-        const metaEl = tierBannerEl.createDiv({
-            cls: 'ert-beat-template-meta',
-            text: overview.totalBeats > 0 ? `${overview.totalBeats} beats · ${overview.totalActs} acts` : ''
-        });
-        metaEl.toggleClass('ert-settings-hidden', overview.totalBeats === 0);
+        renderSystemDescription(tierBannerEl, overview, { prefix: 'ert-desc' });
     }
 
     const updateBeatSystemCard = (system: string, options?: { resetStage?: boolean }) => {
@@ -2745,9 +2776,17 @@ export function renderStoryBeatsSection(params: {
         let failed = 0;
         const errors: string[] = [];
 
+        // Respect the user's Obsidian "Deleted files" preference:
+        // 'system' → OS trash (macOS Trash / Windows Recycle Bin)
+        // anything else → vault .trash/ folder
+        let systemTrash = false;
+        try {
+            systemTrash = (app.vault as any).getConfig?.('trashOption') === 'system';
+        } catch { /* fallback to .trash/ */ }
+
         for (const file of files) {
             try {
-                await app.vault.trash(file, false);
+                await app.vault.trash(file, systemTrash);
                 trashed += 1;
             } catch (error) {
                 failed += 1;
@@ -2967,6 +3006,7 @@ export function renderStoryBeatsSection(params: {
                 id: BLANK_LIBRARY_ITEM_ID,
                 kind: 'blank',
                 category: 'blank',
+                icon: 'square',
                 name: 'Blank custom',
                 description: '',
                 beats: [],
@@ -3108,6 +3148,10 @@ export function renderStoryBeatsSection(params: {
 
         const previewCard = savedControlsContainer.createDiv({ cls: 'ert-set-preview' });
         const previewTitleRow = previewCard.createDiv({ cls: 'ert-set-preview-header' });
+        if (selectedEntry.icon) {
+            const previewIconEl = previewTitleRow.createSpan({ cls: 'ert-set-preview-icon' });
+            setIcon(previewIconEl, selectedEntry.icon);
+        }
         previewTitleRow.createSpan({ text: selectedEntry.name, cls: 'ert-set-preview-title' });
         const isLibrarySystem = selectedEntry.kind === 'builtin' || selectedEntry.kind === 'starter';
         const previewTag = previewTitleRow.createSpan({
@@ -3139,14 +3183,7 @@ export function renderStoryBeatsSection(params: {
             const sourceIcon = sourceLink.createSpan({ cls: 'ert-beat-template-source-link-icon' });
             setIcon(sourceIcon, 'external-link');
         }
-        renderOverviewTextBlocks(previewCard, 'ert-set-preview-desc', overview.description);
-        if (!overview.hasAuthorDesc && overview.examples) {
-            renderOverviewTextBlocks(previewCard, 'ert-set-preview-desc', overview.examples);
-        }
-        previewCard.createDiv({
-            cls: 'ert-set-preview-meta',
-            text: `${overview.totalBeats} beats · ${overview.totalActs} acts`
-        });
+        renderSystemDescription(previewCard, overview, { prefix: 'ert-desc' });
 
         const selectedLoadedTab = isBeatLibraryItemLoaded(plugin.settings, selectedEntry);
         const activeWorkspaceTab = getActiveBeatWorkspaceTab();
@@ -6302,6 +6339,7 @@ export function renderStoryBeatsSection(params: {
             storyStructure = {
                 name: activeTab.name,
                 category: 'blank',
+                icon: 'square',
                 beatCount: activeTab.beats.length,
                 beats: activeTab.beats.map((beat) => beat.name),
                 beatDetails: activeTab.beats.map((beat) => ({

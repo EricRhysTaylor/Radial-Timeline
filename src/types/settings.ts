@@ -193,6 +193,7 @@ export interface BeatLibraryItem {
     id: string;
     kind: BeatSourceKind;
     category: BeatLibraryCategory;
+    icon?: string;
     name: string;
     description?: string;
     beats: BeatDefinition[];

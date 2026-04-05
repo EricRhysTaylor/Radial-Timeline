@@ -370,7 +370,7 @@ describe('library catalog structure', () => {
         const cds = items.find((item) => item.name === 'Classic Dramatic Structure')!;
 
         const beatNames = cds.beats.map((b) => b.name);
-        expect(beatNames).toEqual(['Setup', 'Complication', 'Escalation', 'Decision', 'Outcome']);
+        expect(beatNames).toEqual(['Setup', 'Complication', 'Pressure', 'Decision', 'Outcome']);
     });
 
     it('categories are correctly assigned across all library items', () => {
@@ -387,6 +387,37 @@ describe('library catalog structure', () => {
         expect(formatItems.map((i) => i.name).sort()).toEqual(['Historical Narrative Arc', 'Podcast Narrative Arc', 'YouTube Explainer Arc']);
         expect(blankItems).toHaveLength(1);
         expect(blankItems[0].name).toBe('Blank custom');
+    });
+
+    it('every built-in and starter library item includes a valid icon', () => {
+        const settings = buildSettings();
+        const items = getBeatLibraryItems(settings);
+        const libraryItems = items.filter((i) => i.kind === 'builtin' || i.kind === 'starter');
+
+        expect(libraryItems.length).toBeGreaterThan(0);
+        for (const item of libraryItems) {
+            expect(typeof item.icon).toBe('string');
+            expect(item.icon!.length).toBeGreaterThan(0);
+        }
+    });
+
+    it('blank library item uses square icon', () => {
+        const settings = buildSettings();
+        const items = getBeatLibraryItems(settings);
+        const blank = items.find((i) => i.kind === 'blank');
+
+        expect(blank).toBeDefined();
+        expect(blank!.icon).toBe('square');
+    });
+
+    it('no user-visible library item name contains Story Grid or grid', () => {
+        const settings = buildSettings();
+        const items = getBeatLibraryItems(settings);
+
+        for (const item of items) {
+            expect(item.name.toLowerCase()).not.toContain('story grid');
+            expect(item.name.toLowerCase()).not.toContain('grid');
+        }
     });
 
     it('fresh vault shows only Add system with no preloaded tabs', () => {

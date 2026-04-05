@@ -103,7 +103,7 @@ export function detectDominantStage(
 
 /**
  * Single source of truth for filtering beats by Beat Model.
- * Handles both built-in systems (Save The Cat, Hero's Journey, Story Grid) and Custom.
+ * Handles both built-in systems (Save The Cat, Hero's Journey, Classic Dramatic Structure) and Custom.
  * 
  * @param beats - Array of beat objects with optional "Beat Model" field
  * @param selectedBeatModel - The beat model to filter by (e.g., "Save The Cat", "Podcast Narrative Arc")

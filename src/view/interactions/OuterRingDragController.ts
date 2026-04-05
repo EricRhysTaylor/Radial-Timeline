@@ -54,6 +54,57 @@ export function dedupeOuterRingOrderEntries(entries: OuterRingOrderEntry[]): Out
     return deduped;
 }
 
+export function reorderScenesPreservingBeatGaps(
+    order: OuterRingOrderEntry[],
+    sourceSceneId: string,
+    targetSceneId: string
+): OuterRingOrderEntry[] {
+    const sceneEntries: OuterRingOrderEntry[] = [];
+    const beatGaps: OuterRingOrderEntry[][] = [[]];
+
+    for (const entry of order) {
+        if (entry.itemType === 'Scene') {
+            sceneEntries.push(entry);
+            beatGaps[sceneEntries.length] = [];
+        } else {
+            beatGaps[sceneEntries.length] ||= [];
+            beatGaps[sceneEntries.length].push(entry);
+        }
+    }
+
+    const fromSceneIdx = sceneEntries.findIndex((entry) => entry.sceneId === sourceSceneId);
+    const toSceneIdx = sceneEntries.findIndex((entry) => entry.sceneId === targetSceneId);
+    if (fromSceneIdx === -1 || toSceneIdx === -1) return [...order];
+
+    const reorderedScenes = [...sceneEntries];
+    const [movedScene] = reorderedScenes.splice(fromSceneIdx, 1);
+    if (!movedScene) return [...order];
+
+    const insertionIndex = fromSceneIdx < toSceneIdx ? Math.max(0, toSceneIdx - 1) : toSceneIdx;
+    reorderedScenes.splice(insertionIndex, 0, movedScene);
+
+    const rebuilt: OuterRingOrderEntry[] = [];
+    rebuilt.push(...(beatGaps[0] ?? []));
+    reorderedScenes.forEach((scene, index) => {
+        rebuilt.push(scene);
+        rebuilt.push(...(beatGaps[index + 1] ?? []));
+    });
+    return rebuilt;
+}
+
+function describeFollowUpIssue(error: unknown): string {
+    if (error instanceof SceneReorderVerificationError && error.message.trim()) {
+        return error.message.trim();
+    }
+    if (error instanceof Error && error.message.trim()) {
+        return error.message.trim();
+    }
+    if (typeof error === 'string' && error.trim()) {
+        return error.trim();
+    }
+    return 'Unknown follow-up issue';
+}
+
 /**
  * Flag to coordinate with click handlers - prevents file open during/after drag
  */
@@ -257,8 +308,10 @@ export class OuterRingDragController {
         return parts.length > 0 ? parts.join(' • ') : undefined;
     }
 
-    private resolveStableItemId(filePath: string | null, fallbackId: string): string {
-        const normalizedFallback = fallbackId.trim() || filePath?.trim() || 'unknown-item';
+    private resolveStableItemId(filePath: string | null, fallbackId: string | null | undefined): string {
+        const normalizedFallback = (typeof fallbackId === 'string' ? fallbackId.trim() : '')
+            || filePath?.trim()
+            || 'unknown-item';
         if (!filePath) return normalizedFallback;
         const file = this.view.plugin.app.vault.getAbstractFileByPath(filePath);
         if (!file) return normalizedFallback;
@@ -720,15 +773,24 @@ export class OuterRingDragController {
         }
 
         const moved = order[fromIdx];
+        const sourceSceneId = this.sourceSceneId;
+        const targetEntry = order[toIdx];
         const insertionRelation: 'before' = 'before';
-        // Always insert before the drop target.
-        // When moving forward (fromIdx < toIdx), the target shifts left after removal.
-        const insertionIndex = fromIdx < toIdx ? Math.max(0, toIdx - 1) : toIdx;
-        const isNoOpReorder = insertionIndex === fromIdx;
-        const reordered = [...order];
-        if (!isNoOpReorder) {
-            reordered.splice(fromIdx, 1);
-            reordered.splice(insertionIndex, 0, moved);
+        let reordered = [...order];
+        let isNoOpReorder = false;
+        if (moved.itemType === 'Scene' && targetEntry?.itemType === 'Scene') {
+            reordered = reorderScenesPreservingBeatGaps(order, sourceSceneId, targetId);
+            isNoOpReorder = reordered.every((entry, index) => entry.path === order[index]?.path);
+        } else {
+            // Always insert before the drop target.
+            // When moving forward (fromIdx < toIdx), the target shifts left after removal.
+            const insertionIndex = fromIdx < toIdx ? Math.max(0, toIdx - 1) : toIdx;
+            isNoOpReorder = insertionIndex === fromIdx;
+            reordered = [...order];
+            if (!isNoOpReorder) {
+                reordered.splice(fromIdx, 1);
+                reordered.splice(insertionIndex, 0, moved);
+            }
         }
 
         const { updates: renumberUpdates, nextNumberByPath } = this.buildRenumberDiff(reordered, isNoOpReorder);
@@ -830,6 +892,7 @@ export class OuterRingDragController {
             this.resetState();
             return;
         }
+        let reorderApplied = false;
         try {
             this.log('apply updates', { count: updates.length, from: fromIdx, to: toIdx, itemType: sourceType, subplot: subplotChanged ? targetSubplot : undefined });
             await applySceneNumberUpdates(this.view.plugin.app, updates, {
@@ -846,11 +909,12 @@ export class OuterRingDragController {
                     new Notice('RT detected a potential issue after this operation. Please review the affected note. If needed, use backup or sync/version history to restore.', 8000);
                 },
             });
+            reorderApplied = true;
             const historySummary = `Moved ${sourceDescriptor} before ${targetDescriptor}`;
             await this.recordRecentMove({
                 itemType: sourceType,
                 filePath: sourcePath,
-                fallbackItemId: this.sourceSceneId,
+                fallbackItemId: sourceSceneId,
                 itemLabel: this.getLabelFromBasename(moved.basename, sourceType),
                 sourceContext,
                 destinationContext,
@@ -868,11 +932,21 @@ export class OuterRingDragController {
             await modal.finishWithDismiss('Reorder complete. Review updates, then dismiss.');
         } catch (error) {
             if (error instanceof SceneReorderVerificationError) {
-                console.warn('Drag reorder verification warning:', error);
+                console.error('Drag reorder verification warning:', error);
                 modal.updateProgress('Refreshing timeline...');
                 await new Promise(resolve => window.setTimeout(resolve, 100));
                 this.options.onRefresh();
-                await modal.finishWithDismiss('Reorder applied, but RT detected a potential issue. Please review the affected notes, then dismiss.', true);
+                await modal.finishWithDismiss(`Reorder applied, but RT detected a potential issue: ${describeFollowUpIssue(error)}. Please review the affected notes, then dismiss.`, true);
+            } else if (reorderApplied) {
+                console.error('Drag reorder post-apply warning:', error);
+                try {
+                    modal.updateProgress('Refreshing timeline...');
+                    await new Promise(resolve => window.setTimeout(resolve, 100));
+                    this.options.onRefresh();
+                } catch (refreshError) {
+                    console.error('Drag reorder refresh after post-apply warning failed:', refreshError);
+                }
+                await modal.finishWithDismiss(`Reorder applied, but a follow-up step reported an issue: ${describeFollowUpIssue(error)}. Please review the affected notes, then dismiss.`, true);
             } else {
                 console.error('Drag reorder failed:', error);
                 await modal.finishWithDismiss('Reorder failed. Check console for details, then dismiss.', true);
@@ -972,6 +1046,7 @@ export class OuterRingDragController {
             this.resetState();
             return;
         }
+        let reorderApplied = false;
 
         const sourceContext = this.formatContext(sourceActNumber, movedEntry.subplot);
         const destinationSubplot = target.isOuterRing ? movedEntry.subplot : targetSubplotName;
@@ -1025,6 +1100,7 @@ export class OuterRingDragController {
                     new Notice('RT detected a potential issue after this operation. Please review the affected note. If needed, use backup or sync/version history to restore.', 8000);
                 },
             });
+            reorderApplied = true;
             await this.recordRecentMove({
                 itemType: sourceType,
                 filePath: this.sourcePath,
@@ -1046,11 +1122,21 @@ export class OuterRingDragController {
             await modal.finishWithDismiss('Reorder complete. Review updates, then dismiss.');
         } catch (error) {
             if (error instanceof SceneReorderVerificationError) {
-                console.warn('Drag reorder verification warning:', error);
+                console.error('Drag reorder verification warning:', error);
                 modal.updateProgress('Refreshing timeline...');
                 await new Promise(resolve => window.setTimeout(resolve, 100));
                 this.options.onRefresh();
-                await modal.finishWithDismiss('Reorder applied, but RT detected a potential issue. Please review the affected notes, then dismiss.', true);
+                await modal.finishWithDismiss(`Reorder applied, but RT detected a potential issue: ${describeFollowUpIssue(error)}. Please review the affected notes, then dismiss.`, true);
+            } else if (reorderApplied) {
+                console.error('Drag reorder post-apply warning:', error);
+                try {
+                    modal.updateProgress('Refreshing timeline...');
+                    await new Promise(resolve => window.setTimeout(resolve, 100));
+                    this.options.onRefresh();
+                } catch (refreshError) {
+                    console.error('Drag reorder refresh after post-apply warning failed:', refreshError);
+                }
+                await modal.finishWithDismiss(`Reorder applied, but a follow-up step reported an issue: ${describeFollowUpIssue(error)}. Please review the affected notes, then dismiss.`, true);
             } else {
                 console.error('Drag reorder failed:', error);
                 await modal.finishWithDismiss('Reorder failed. Check console for details, then dismiss.', true);
