@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { TFile } from 'obsidian';
 import { createInMemoryApp } from '../../tests/helpers/inMemoryObsidian';
-import { applySceneNumberUpdates } from './SceneReorderService';
+import { applySceneNumberUpdates, SceneReorderVerificationError } from './SceneReorderService';
 
 describe('applySceneNumberUpdates', () => {
     it('verifies reordered filenames and preserves reference ids', async () => {
@@ -46,6 +46,6 @@ describe('applySceneNumberUpdates', () => {
                     'Book/01 First.md': '02',
                 },
             }
-        })).rejects.toThrow('RT detected a potential issue after this operation');
+        })).rejects.toBeInstanceOf(SceneReorderVerificationError);
     });
 });

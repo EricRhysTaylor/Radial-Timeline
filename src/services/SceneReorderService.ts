@@ -49,6 +49,13 @@ export interface ApplySceneNumberUpdatesOptions {
     onWarning?: (message: string) => void;
 }
 
+export class SceneReorderVerificationError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = 'SceneReorderVerificationError';
+    }
+}
+
 interface RenameOp {
     originalPath: string;
     tempPath: string;
@@ -163,7 +170,7 @@ export async function applySceneNumberUpdates(
         const verificationFailure = await verifySceneReorderResult(app, renameOps, expectedReferenceIds, options.verification);
         if (verificationFailure) {
             options.onWarning?.(verificationFailure);
-            throw new Error(verificationFailure);
+            throw new SceneReorderVerificationError(verificationFailure);
         }
     }
 }

@@ -2,6 +2,7 @@ import { Notice, App } from 'obsidian';
 import {
     applySceneNumberUpdates,
     buildRippleRenamePlan,
+    SceneReorderVerificationError,
     type SceneUpdate,
     type SceneReorderProgress
 } from '../../services/SceneReorderService';
@@ -31,7 +32,7 @@ type DropTarget =
     | { type: 'scene'; group: SVGGElement; sceneId: string; act: number; ring: number }
     | { type: 'void'; element: SVGPathElement; act: number; ring: number; startAngle: number; endAngle: number; isOuterRing: boolean };
 
-type OuterRingOrderEntry = {
+export type OuterRingOrderEntry = {
     sceneId: string;
     path: string;
     basename: string;
@@ -41,6 +42,17 @@ type OuterRingOrderEntry = {
     itemType: 'Scene' | 'Beat';
     startAngle: number;
 };
+
+export function dedupeOuterRingOrderEntries(entries: OuterRingOrderEntry[]): OuterRingOrderEntry[] {
+    const seenPaths = new Set<string>();
+    const deduped: OuterRingOrderEntry[] = [];
+    for (const entry of entries) {
+        if (!entry.path || seenPaths.has(entry.path)) continue;
+        seenPaths.add(entry.path);
+        deduped.push(entry);
+    }
+    return deduped;
+}
 
 /**
  * Flag to coordinate with click handlers - prevents file open during/after drag
@@ -374,7 +386,7 @@ export class OuterRingDragController {
             return aAngle - bAngle;
         });
         
-        return outerGroups.map((group) => {
+        const mapped = outerGroups.map((group) => {
             const sceneId = this.getSceneIdFromSceneGroup(group) || '';
             const encodedPath = group.getAttribute('data-path') || '';
             const path = encodedPath ? decodeURIComponent(encodedPath) : '';
@@ -392,6 +404,12 @@ export class OuterRingDragController {
             const startAngle = Number(group.getAttribute('data-start-angle') ?? 0);
             return { sceneId, path, basename, numberText, subplot, ring, itemType, startAngle };
         }).filter(entry => entry.sceneId && entry.path);
+
+        const deduped = dedupeOuterRingOrderEntries(mapped);
+        if (deduped.length !== mapped.length) {
+            this.log('deduped outer ring order', { before: mapped.length, after: deduped.length });
+        }
+        return deduped;
     }
 
     private findInsertionIndexByAngle(
@@ -849,8 +867,16 @@ export class OuterRingDragController {
             this.options.onRefresh();
             await modal.finishWithDismiss('Reorder complete. Review updates, then dismiss.');
         } catch (error) {
-            console.error('Drag reorder failed:', error);
-            await modal.finishWithDismiss('Reorder failed. Check console for details, then dismiss.', true);
+            if (error instanceof SceneReorderVerificationError) {
+                console.warn('Drag reorder verification warning:', error);
+                modal.updateProgress('Refreshing timeline...');
+                await new Promise(resolve => window.setTimeout(resolve, 100));
+                this.options.onRefresh();
+                await modal.finishWithDismiss('Reorder applied, but RT detected a potential issue. Please review the affected notes, then dismiss.', true);
+            } else {
+                console.error('Drag reorder failed:', error);
+                await modal.finishWithDismiss('Reorder failed. Check console for details, then dismiss.', true);
+            }
         } finally {
             this.confirming = false;
             this.resetState();
@@ -1019,8 +1045,16 @@ export class OuterRingDragController {
             this.options.onRefresh();
             await modal.finishWithDismiss('Reorder complete. Review updates, then dismiss.');
         } catch (error) {
-            console.error('Drag reorder failed:', error);
-            await modal.finishWithDismiss('Reorder failed. Check console for details, then dismiss.', true);
+            if (error instanceof SceneReorderVerificationError) {
+                console.warn('Drag reorder verification warning:', error);
+                modal.updateProgress('Refreshing timeline...');
+                await new Promise(resolve => window.setTimeout(resolve, 100));
+                this.options.onRefresh();
+                await modal.finishWithDismiss('Reorder applied, but RT detected a potential issue. Please review the affected notes, then dismiss.', true);
+            } else {
+                console.error('Drag reorder failed:', error);
+                await modal.finishWithDismiss('Reorder failed. Check console for details, then dismiss.', true);
+            }
         } finally {
             this.confirming = false;
             this.resetState();
@@ -1079,9 +1113,15 @@ export class OuterRingDragController {
                 },
             });
         } catch (error) {
-            console.error('Ripple rename failed:', error);
-            if (onStatus) onStatus('Ripple rename failed. See console for details.');
-            else new Notice('Ripple rename failed. See console for details.', 3500);
+            if (error instanceof SceneReorderVerificationError) {
+                console.warn('Ripple rename verification warning:', error);
+                if (onStatus) onStatus('Ripple rename applied, but RT detected a potential issue. Review affected notes.');
+                else new Notice('Ripple rename applied, but RT detected a potential issue. Review affected notes.', 5000);
+            } else {
+                console.error('Ripple rename failed:', error);
+                if (onStatus) onStatus('Ripple rename failed. See console for details.');
+                else new Notice('Ripple rename failed. See console for details.', 3500);
+            }
         }
     }
 
