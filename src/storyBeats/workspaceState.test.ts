@@ -292,36 +292,7 @@ describe('unloadBeatTab (safe close)', () => {
         expect(getLoadedBeatTabs(settings)).toHaveLength(0);
     });
 
-    it('tab remains active and usable when not unloaded (delete-without-close contract)', () => {
-        // Simulates the product rule: deleting beat notes refreshes UI but keeps the tab open.
-        // After deletion the caller refreshes state without calling unloadBeatTab.
-        // The tab must remain loaded, active, and re-activatable.
-        const settings = buildSettings();
-        const items = getBeatLibraryItems(settings);
-        const starter = items.find((item) => item.kind === 'starter')!;
-
-        const tab = loadBeatTabFromLibraryItem(settings, starter);
-        const tabIdBefore = tab.tabId;
-
-        // Verify tab is active
-        expect(getActiveLoadedBeatTab(settings)?.tabId).toBe(tabIdBefore);
-
-        // Simulate "delete notes happened" — no unloadBeatTab called
-        // Tab should still be fully present and active
-        expect(getLoadedBeatTabs(settings)).toHaveLength(1);
-        expect(getActiveLoadedBeatTab(settings)?.tabId).toBe(tabIdBefore);
-        expect(resolveSelectedBeatModelFromSettings(settings)).toBe(tab.name);
-
-        // Can still switch away and back
-        const builtin = items.find((item) => item.kind === 'builtin' && item.name === 'Story Grid')!;
-        const builtinTab = loadBeatTabFromLibraryItem(settings, builtin);
-        expect(getActiveLoadedBeatTab(settings)?.tabId).toBe(builtinTab.tabId);
-
-        activateLoadedBeatTab(settings, tabIdBefore);
-        expect(getActiveLoadedBeatTab(settings)?.tabId).toBe(tabIdBefore);
-    });
-
-    it('close and delete are independent operations on the same tab', () => {
+    it('unloading multiple tabs sequentially leaves workspace empty', () => {
         const settings = buildSettings();
         const items = getBeatLibraryItems(settings);
         const storyGrid = items.find((item) => item.kind === 'builtin' && item.name === 'Story Grid')!;
