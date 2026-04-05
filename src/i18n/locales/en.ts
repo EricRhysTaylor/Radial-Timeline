@@ -285,13 +285,13 @@ export interface TranslationKeys {
                 desc: string;
                 addSystemLabel: string;
                 selectLabel: string;
-                builtInGroup: string;
-                starterGroup: string;
+                narrativeGroup: string;
+                engineGroup: string;
+                formatGroup: string;
                 savedGroup: string;
                 blankGroup: string;
                 blankSystemTag: string;
-                builtInSystemTag: string;
-                starterSetTag: string;
+                librarySystemTag: string;
                 savedSystemTag: string;
                 loadedStatus: string;
                 activeStatus: string;
@@ -1038,16 +1038,16 @@ export const en: TranslationKeys = {
             },
             library: {
                 heading: 'Beat system sets',
-                desc: 'Built-ins and starter sets are library sources. Saved sets are your own versions you can edit and delete.',
+                desc: 'Library systems are ready-to-use structural lenses. Saved sets are your own versions you can edit and delete.',
                 addSystemLabel: 'Add system',
                 selectLabel: 'Select a set',
-                builtInGroup: 'Built-in systems',
-                starterGroup: 'Starter sets',
+                narrativeGroup: 'Narrative Frameworks',
+                engineGroup: 'Story Engines',
+                formatGroup: 'Format Structures',
                 savedGroup: 'Saved systems',
-                blankGroup: 'Blank system',
+                blankGroup: 'Blank / Custom',
                 blankSystemTag: 'Blank system',
-                builtInSystemTag: 'Built-in system',
-                starterSetTag: 'Starter set',
+                librarySystemTag: 'Library system',
                 savedSystemTag: 'Saved system',
                 loadedStatus: 'Loaded in workspace',
                 activeStatus: 'Active in timeline',

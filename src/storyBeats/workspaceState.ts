@@ -20,6 +20,11 @@ import { resolveBookScopedFiles } from '../services/NoteScopeResolver';
 import { normalizeFrontmatterKeys } from '../utils/frontmatter';
 import { isStoryBeat } from '../utils/sceneHelpers';
 
+/** Maps legacy manuscript Beat Model values to their current canonical names. */
+const LEGACY_MODEL_ALIASES: Record<string, string> = {
+    'Story Grid': 'Classic Dramatic Structure',
+};
+
 export const WORKSPACE_TAB_ID_PREFIX = 'beat-tab:';
 export const WORKSPACE_CUSTOM_ID_PREFIX = 'workspace:';
 
@@ -260,8 +265,9 @@ function collectManuscriptDetectedTabs(app: App, settings: RadialTimelineSetting
         const classValue = typeof frontmatter.Class === 'string' ? frontmatter.Class.trim() : '';
         if (classValue.length > 0 && !isStoryBeat(classValue)) continue;
 
-        const modelName = normalizeBeatSetNameInput(typeof frontmatter['Beat Model'] === 'string' ? frontmatter['Beat Model'] : '', '');
-        if (!modelName) continue;
+        const rawModelName = normalizeBeatSetNameInput(typeof frontmatter['Beat Model'] === 'string' ? frontmatter['Beat Model'] : '', '');
+        if (!rawModelName) continue;
+        const modelName = LEGACY_MODEL_ALIASES[rawModelName] ?? rawModelName;
         const modelKey = toBeatModelMatchKey(modelName);
         if (!modelKey) continue;
         const group = manuscriptGroups.get(modelKey) ?? {

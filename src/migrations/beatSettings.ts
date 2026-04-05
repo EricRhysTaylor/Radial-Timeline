@@ -186,9 +186,12 @@ function buildWorkspaceFromLoadedTab(tab: LoadedBeatTab): BeatWorkspaceState {
 function buildLoadedTabFromLegacySelection(
     settings: Pick<LegacyBeatSettings, 'beatSystemConfigs' | 'savedBeatSystems' | 'beatSystem' | 'activeCustomBeatSystemId'>
 ): LoadedBeatTab | undefined {
-    const legacySelection = normalizeBeatSetNameInput(settings.beatSystem ?? '', '');
-    if (!legacySelection) return undefined;
+    const rawSelection = normalizeBeatSetNameInput(settings.beatSystem ?? '', '');
+    if (!rawSelection) return undefined;
 
+    // Resolve legacy system names to their current canonical equivalents
+    const LEGACY_MIGRATION_ALIASES: Record<string, string> = { 'Story Grid': 'Classic Dramatic Structure' };
+    const legacySelection = LEGACY_MIGRATION_ALIASES[rawSelection] ?? rawSelection;
     const legacyKey = toBeatModelMatchKey(legacySelection);
     const matchedLibraryItem = getBeatLibraryItems(settings)
         .filter((item) => item.kind !== 'blank')

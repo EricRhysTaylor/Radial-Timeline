@@ -1,4 +1,4 @@
-import type { BeatDefinition, BeatLibraryItem, BeatSourceKind, BeatSystemConfig, RadialTimelineSettings, SavedBeatSystem } from '../types/settings';
+import type { BeatDefinition, BeatLibraryCategory, BeatLibraryItem, BeatSourceKind, BeatSystemConfig, RadialTimelineSettings, SavedBeatSystem } from '../types/settings';
 import { getPlotSystem, PLOT_SYSTEM_NAMES, STARTER_BEAT_SETS } from '../utils/beatsSystems';
 import { DEFAULT_CUSTOM_BEAT_SYSTEM_ID, getCustomBeatConfigKey } from '../utils/beatSystemState';
 
@@ -10,7 +10,7 @@ const EMPTY_BEAT_CONFIG: BeatSystemConfig = {
 const BUILTIN_SOURCE_IDS: Record<string, string> = {
     'Save The Cat': 'builtin:save_the_cat',
     "Hero's Journey": 'builtin:heros_journey',
-    'Story Grid': 'builtin:story_grid',
+    'Classic Dramatic Structure': 'builtin:classic_dramatic_structure',
 };
 
 export const BLANK_LIBRARY_ITEM_ID = 'blank';
@@ -64,6 +64,7 @@ export function getBlankBeatLibraryItem(): BeatLibraryItem {
     return {
         id: BLANK_LIBRARY_ITEM_ID,
         kind: 'blank',
+        category: 'blank',
         name: 'Blank custom',
         description: '',
         beats: [],
@@ -72,20 +73,25 @@ export function getBlankBeatLibraryItem(): BeatLibraryItem {
 }
 
 export function getBuiltinBeatLibraryItems(settings: Pick<RadialTimelineSettings, 'beatSystemConfigs'>): BeatLibraryItem[] {
-    return PLOT_SYSTEM_NAMES.map((systemName) => ({
-        id: getBuiltinItemId(systemName),
-        kind: 'builtin' as BeatSourceKind,
-        name: systemName,
-        description: '',
-        beats: buildBuiltinBeatDefinitions(systemName).map(cloneBeatDefinition),
-        config: cloneBeatConfig(settings.beatSystemConfigs?.[systemName]),
-    }));
+    return PLOT_SYSTEM_NAMES.map((systemName) => {
+        const preset = getPlotSystem(systemName);
+        return {
+            id: getBuiltinItemId(systemName),
+            kind: 'builtin' as BeatSourceKind,
+            category: (preset?.category ?? 'narrative') as BeatLibraryCategory,
+            name: systemName,
+            description: '',
+            beats: buildBuiltinBeatDefinitions(systemName).map(cloneBeatDefinition),
+            config: cloneBeatConfig(settings.beatSystemConfigs?.[systemName]),
+        };
+    });
 }
 
 export function getStarterBeatLibraryItems(settings: Pick<RadialTimelineSettings, 'beatSystemConfigs'>): BeatLibraryItem[] {
     return STARTER_BEAT_SETS.map((system) => ({
         id: system.id,
         kind: 'starter' as BeatSourceKind,
+        category: system.category,
         name: system.name,
         description: system.description,
         beats: system.beats.map(cloneBeatDefinition),
@@ -107,6 +113,7 @@ export function getSavedBeatLibraryItems(
         .map((system: SavedBeatSystem) => ({
             id: system.id,
             kind: 'saved' as BeatSourceKind,
+            category: 'saved' as BeatLibraryCategory,
             name: system.name,
             description: system.description,
             beats: system.beats.map(cloneBeatDefinition),

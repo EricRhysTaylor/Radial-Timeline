@@ -74,9 +74,9 @@ describe('migrateBeatSettings', () => {
         expect(settings.beatSelectionMigrationComplete).toBe(true);
         expect(settings.beatSystem).toBeUndefined();
         settings.activeBookId = 'book-1';
-        expect(resolveSelectedBeatModelFromSettings(settings)).toBe('Story Grid');
+        expect(resolveSelectedBeatModelFromSettings(settings)).toBe('Classic Dramatic Structure');
         settings.activeBookId = 'book-2';
-        expect(resolveSelectedBeatModelFromSettings(settings)).toBe('Story Grid');
+        expect(resolveSelectedBeatModelFromSettings(settings)).toBe('Classic Dramatic Structure');
     });
 
     it('never overrides an existing per-book workspace selection during migration', () => {

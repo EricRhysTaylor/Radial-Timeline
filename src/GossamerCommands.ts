@@ -713,7 +713,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
     new Notice('No active beat system selected for this book. Choose one in Beat Manager before running Gossamer.');
     return;
   }
-  const recognizedSystems = ['Save The Cat', 'Hero\'s Journey', 'Story Grid'];
+  const recognizedSystems = ['Save The Cat', 'Hero\'s Journey', 'Classic Dramatic Structure'];
 
   // Resolve the display name from the active beat model first.
   let beatSystemDisplayName = settingsBeatSystem;

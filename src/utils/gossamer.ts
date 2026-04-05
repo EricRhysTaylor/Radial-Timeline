@@ -43,7 +43,8 @@ export const GOSSAMER_LEGACY_FIELDS = [
 const BUILTIN_BEAT_MODEL_KEYS = new Set<string>([
   toBeatModelMatchKey('Save The Cat'),
   toBeatModelMatchKey("Hero's Journey"),
-  toBeatModelMatchKey('Story Grid'),
+  toBeatModelMatchKey('Classic Dramatic Structure'),
+  toBeatModelMatchKey('Story Grid'), // legacy alias
 ]);
 
 /**

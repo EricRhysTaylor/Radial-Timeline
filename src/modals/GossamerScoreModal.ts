@@ -276,6 +276,7 @@ export class GossamerScoreModal extends Modal {
         const customName = activeTab.name;
         plotSystemTemplate = {
             name: customName,
+            category: 'blank',
             beats: activeTab.beats.map(b => b.name),
             beatDetails: activeTab.beats.map(b => ({ name: b.name, description: '', range: '' })),
             beatCount: activeTab.beats.length

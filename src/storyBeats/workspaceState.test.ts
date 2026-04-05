@@ -58,10 +58,10 @@ describe('beat workspace initialization', () => {
         const settings = buildSettings();
         const app = buildBeatApp([
             {
-                ID: 'story-grid:inciting-incident',
+                ID: 'classic-dramatic-structure:setup',
                 Class: 'Beat',
-                'Beat Model': 'Story Grid',
-                Title: 'Inciting Incident',
+                'Beat Model': 'Classic Dramatic Structure',
+                Title: 'Setup',
                 Act: 1,
             },
         ]);
@@ -72,7 +72,7 @@ describe('beat workspace initialization', () => {
         expect(workspace.activeTabId).toBeUndefined();
         expect(loadedTabs).toHaveLength(1);
         expect(loadedTabs[0].sourceKind).toBe('builtin');
-        expect(loadedTabs[0].name).toBe('Story Grid');
+        expect(loadedTabs[0].name).toBe('Classic Dramatic Structure');
         expect(getActiveLoadedBeatTab(settings)).toBeUndefined();
         expect(resolveSelectedBeatModelFromSettings(settings)).toBeUndefined();
     });
@@ -108,7 +108,7 @@ describe('beat workspace loading', () => {
     it('can reactivate a previously loaded tab without fixed-tab state', () => {
         const settings = buildSettings();
 
-        const builtinItem = getBeatLibraryItems(settings).find((item) => item.kind === 'builtin' && item.name === 'Story Grid');
+        const builtinItem = getBeatLibraryItems(settings).find((item) => item.kind === 'builtin' && item.name === 'Classic Dramatic Structure');
         const starterItem = getBeatLibraryItems(settings).find((item) => item.kind === 'starter');
         expect(builtinItem).toBeTruthy();
         expect(starterItem).toBeTruthy();
@@ -121,7 +121,7 @@ describe('beat workspace loading', () => {
         activateLoadedBeatTab(settings, builtinTab.tabId);
 
         expect(getActiveLoadedBeatTab(settings)?.tabId).toBe(builtinTab.tabId);
-        expect(resolveSelectedBeatModelFromSettings(settings)).toBe('Story Grid');
+        expect(resolveSelectedBeatModelFromSettings(settings)).toBe('Classic Dramatic Structure');
     });
 
     it('restores the selected beat system for each book independently', () => {
@@ -134,25 +134,44 @@ describe('beat workspace loading', () => {
             activeBookId: 'book-1',
         };
 
-        const storyGrid = getBeatLibraryItems(settings).find((item) => item.kind === 'builtin' && item.name === 'Story Grid');
+        const cds = getBeatLibraryItems(settings).find((item) => item.kind === 'builtin' && item.name === 'Classic Dramatic Structure');
         const starter = getBeatLibraryItems(settings).find((item) => item.kind === 'starter');
-        expect(storyGrid).toBeTruthy();
+        expect(cds).toBeTruthy();
         expect(starter).toBeTruthy();
 
-        loadBeatTabFromLibraryItem(settings, storyGrid!);
-        expect(resolveSelectedBeatModelFromSettings(settings)).toBe('Story Grid');
+        loadBeatTabFromLibraryItem(settings, cds!);
+        expect(resolveSelectedBeatModelFromSettings(settings)).toBe('Classic Dramatic Structure');
 
         settings.activeBookId = 'book-2';
         loadBeatTabFromLibraryItem(settings, starter!);
         expect(resolveSelectedBeatModelFromSettings(settings)).toBe(starter!.name);
 
         settings.activeBookId = 'book-1';
-        expect(resolveSelectedBeatModelFromSettings(settings)).toBe('Story Grid');
+        expect(resolveSelectedBeatModelFromSettings(settings)).toBe('Classic Dramatic Structure');
     });
 });
 
 describe('manuscript-detected beat tabs', () => {
     it('materializes recognized manuscript systems as canonical tabs', () => {
+        const settings = buildSettings();
+        const app = buildBeatApp([
+            {
+                ID: 'classic-dramatic-structure:setup',
+                Class: 'Beat',
+                'Beat Model': 'Classic Dramatic Structure',
+                Title: 'Setup',
+                Act: 1,
+            },
+        ]);
+
+        const tabs = getMaterializedBeatTabs(app, settings);
+
+        expect(tabs.map((tab) => tab.name)).toContain('Classic Dramatic Structure');
+        expect(tabs.every((tab) => tab.name !== 'Save The Cat')).toBe(true);
+        expect(tabs.find((tab) => tab.name === 'Classic Dramatic Structure')?.sourceKind).toBe('builtin');
+    });
+
+    it('resolves legacy Story Grid manuscript references to Classic Dramatic Structure', () => {
         const settings = buildSettings();
         const app = buildBeatApp([
             {
@@ -165,10 +184,10 @@ describe('manuscript-detected beat tabs', () => {
         ]);
 
         const tabs = getMaterializedBeatTabs(app, settings);
+        const matched = tabs.find((tab) => tab.name === 'Classic Dramatic Structure');
 
-        expect(tabs.map((tab) => tab.name)).toContain('Story Grid');
-        expect(tabs.every((tab) => tab.name !== 'Save The Cat')).toBe(true);
-        expect(tabs.find((tab) => tab.name === 'Story Grid')?.sourceKind).toBe('builtin');
+        expect(matched).toBeTruthy();
+        expect(matched?.sourceKind).toBe('builtin');
     });
 
     it('materializes unknown manuscript systems as detected generic tabs', () => {
@@ -218,10 +237,10 @@ describe('unloadBeatTab (safe close)', () => {
     it('removes the tab from workspace without affecting other tabs', () => {
         const settings = buildSettings();
         const items = getBeatLibraryItems(settings);
-        const storyGrid = items.find((item) => item.kind === 'builtin' && item.name === 'Story Grid')!;
+        const cds = items.find((item) => item.kind === 'builtin' && item.name === 'Classic Dramatic Structure')!;
         const starter = items.find((item) => item.kind === 'starter')!;
 
-        loadBeatTabFromLibraryItem(settings, storyGrid);
+        loadBeatTabFromLibraryItem(settings, cds);
         const starterTab = loadBeatTabFromLibraryItem(settings, starter);
 
         expect(getLoadedBeatTabs(settings)).toHaveLength(2);
@@ -230,22 +249,22 @@ describe('unloadBeatTab (safe close)', () => {
 
         const remaining = getLoadedBeatTabs(settings);
         expect(remaining).toHaveLength(1);
-        expect(remaining[0].name).toBe('Story Grid');
+        expect(remaining[0].name).toBe('Classic Dramatic Structure');
     });
 
     it('selects the next tab when the active tab is closed', () => {
         const settings = buildSettings();
         const items = getBeatLibraryItems(settings);
-        const storyGrid = items.find((item) => item.kind === 'builtin' && item.name === 'Story Grid')!;
+        const cds = items.find((item) => item.kind === 'builtin' && item.name === 'Classic Dramatic Structure')!;
         const starter = items.find((item) => item.kind === 'starter')!;
 
-        const sgTab = loadBeatTabFromLibraryItem(settings, storyGrid);
+        const cdsTab = loadBeatTabFromLibraryItem(settings, cds);
         loadBeatTabFromLibraryItem(settings, starter);
 
-        activateLoadedBeatTab(settings, sgTab.tabId);
-        expect(getActiveLoadedBeatTab(settings)?.tabId).toBe(sgTab.tabId);
+        activateLoadedBeatTab(settings, cdsTab.tabId);
+        expect(getActiveLoadedBeatTab(settings)?.tabId).toBe(cdsTab.tabId);
 
-        const nextActiveId = unloadBeatTab(settings, sgTab.tabId);
+        const nextActiveId = unloadBeatTab(settings, cdsTab.tabId);
 
         expect(getLoadedBeatTabs(settings)).toHaveLength(1);
         expect(nextActiveId).toBeDefined();
@@ -295,27 +314,87 @@ describe('unloadBeatTab (safe close)', () => {
     it('unloading multiple tabs sequentially leaves workspace empty', () => {
         const settings = buildSettings();
         const items = getBeatLibraryItems(settings);
-        const storyGrid = items.find((item) => item.kind === 'builtin' && item.name === 'Story Grid')!;
+        const cds = items.find((item) => item.kind === 'builtin' && item.name === 'Classic Dramatic Structure')!;
         const starter = items.find((item) => item.kind === 'starter')!;
 
-        loadBeatTabFromLibraryItem(settings, storyGrid);
+        loadBeatTabFromLibraryItem(settings, cds);
         const starterTab = loadBeatTabFromLibraryItem(settings, starter);
 
-        // Close Story Grid (safe, non-destructive)
-        const sgTab = getLoadedBeatTabs(settings).find((t) => t.name === 'Story Grid')!;
-        unloadBeatTab(settings, sgTab.tabId);
+        const cdsTab = getLoadedBeatTabs(settings).find((t) => t.name === 'Classic Dramatic Structure')!;
+        unloadBeatTab(settings, cdsTab.tabId);
 
-        // Only starter remains, still active
         expect(getLoadedBeatTabs(settings)).toHaveLength(1);
         expect(getActiveLoadedBeatTab(settings)?.tabId).toBe(starterTab.tabId);
         expect(resolveSelectedBeatModelFromSettings(settings)).toBe(starter.name);
 
-        // Configs untouched — deletion of notes would be a separate vault operation
         const configsAfterClose = JSON.stringify(settings.beatSystemConfigs);
 
-        // Now close the last tab
         unloadBeatTab(settings, starterTab.tabId);
         expect(getLoadedBeatTabs(settings)).toHaveLength(0);
         expect(JSON.stringify(settings.beatSystemConfigs)).toBe(configsAfterClose);
+    });
+});
+
+describe('library catalog structure', () => {
+    it('all library items have a category field', () => {
+        const settings = buildSettings();
+        const items = getBeatLibraryItems(settings);
+
+        for (const item of items) {
+            expect(item.category).toBeDefined();
+            expect(['narrative', 'engine', 'format', 'saved', 'blank']).toContain(item.category);
+        }
+    });
+
+    it('Classic Dramatic Structure appears in the catalog with narrative category', () => {
+        const settings = buildSettings();
+        const items = getBeatLibraryItems(settings);
+        const cds = items.find((item) => item.name === 'Classic Dramatic Structure');
+
+        expect(cds).toBeTruthy();
+        expect(cds?.kind).toBe('builtin');
+        expect(cds?.category).toBe('narrative');
+    });
+
+    it('no library item is named Story Grid', () => {
+        const settings = buildSettings();
+        const items = getBeatLibraryItems(settings);
+        const sg = items.find((item) => item.name === 'Story Grid');
+
+        expect(sg).toBeUndefined();
+    });
+
+    it('Classic Dramatic Structure uses neutral beat labels', () => {
+        const settings = buildSettings();
+        const items = getBeatLibraryItems(settings);
+        const cds = items.find((item) => item.name === 'Classic Dramatic Structure')!;
+
+        const beatNames = cds.beats.map((b) => b.name);
+        expect(beatNames).toEqual(['Setup', 'Complication', 'Escalation', 'Decision', 'Outcome']);
+    });
+
+    it('categories are correctly assigned across all library items', () => {
+        const settings = buildSettings();
+        const items = getBeatLibraryItems(settings);
+
+        const narrativeItems = items.filter((i) => i.category === 'narrative');
+        const engineItems = items.filter((i) => i.category === 'engine');
+        const formatItems = items.filter((i) => i.category === 'format');
+        const blankItems = items.filter((i) => i.category === 'blank');
+
+        expect(narrativeItems.map((i) => i.name).sort()).toEqual(['Classic Dramatic Structure', "Hero's Journey", 'Save The Cat']);
+        expect(engineItems.map((i) => i.name).sort()).toEqual(['Romance Tropes Ladder', 'Thriller Escalation Ladder']);
+        expect(formatItems.map((i) => i.name).sort()).toEqual(['Historical Narrative Arc', 'Podcast Narrative Arc', 'YouTube Explainer Arc']);
+        expect(blankItems).toHaveLength(1);
+        expect(blankItems[0].name).toBe('Blank custom');
+    });
+
+    it('fresh vault shows only Add system with no preloaded tabs', () => {
+        const settings = buildSettings();
+        const workspace = ensureBeatWorkspaceState(settings);
+        const tabs = getLoadedBeatTabs(settings);
+
+        expect(workspace.activeTabId).toBeUndefined();
+        expect(tabs).toHaveLength(0);
     });
 });

@@ -5640,6 +5640,13 @@
   font-weight: 700;
 }
 
+.ert-ui .ert-delete-modal-caution {
+  color: var(--text-error);
+  font-weight: 600;
+  font-size: var(--font-ui-small);
+  margin-top: 0.25em;
+}
+
 .ert-ui.ert-scope--settings .ert-story-structure-selected {
   color: var(--text-success);
   font-weight: 500;

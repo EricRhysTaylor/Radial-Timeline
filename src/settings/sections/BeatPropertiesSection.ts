@@ -126,26 +126,52 @@ const BEAT_SYSTEM_COPY: Record<string, {
     },
     'Hero\'s Journey': {
         title: 'Hero\'s Journey',
-        description: 'Mythic, adventure, and transformation stories. Focuses on the protagonist\'s arc through trials and self-discovery.\n\nUse it when the story is driven by departure, initiation, return, and inner transformation as much as external plot movement.\n\nBest for: fantasy, adventure, quest stories, coming-of-age\nMomentum profile: call -> trials -> return with transformation',
-        examples: 'Examples: The Odyssey, The Hobbit, Harry Potter and the Sorcerer\'s Stone.',
+        description: 'Tracks departure, transformation, ordeal, and return.\n\nUse it when you want a mythic or identity-driven arc with visible inner and outer transformation.\n\nBest for: quest stories, speculative fiction, coming-of-age, transformational journeys\nMomentum profile: departure -> trials -> ordeal -> return with change',
+        examples: 'Examples: Star Wars, The Hobbit, A Wizard of Earthsea.',
         sourceLink: {
             label: "Joseph Campbell and the Hero's Journey",
             href: 'https://www.jcf.org/learn/joseph-campbell-heros-journey'
         }
     },
-    'Story Grid': {
-        title: 'Story Grid',
-        description: 'Scene-driven structure built around the 5 Commandments: Inciting Incident, Progressive Complications, Crisis, Climax, Resolution.\n\nUse it when you want to diagnose scene-level causality, pressure, and payoff across the manuscript rather than rely only on macro turning points.\n\nBest for: revision, scene diagnosis, causality-focused drafting\nMomentum profile: complication -> crisis -> climax -> resolution',
-        examples: 'Examples: The Silence of the Lambs, Pride and Prejudice.',
-        sourceLink: {
-            label: 'Story Grid by Shawn Coyne',
-            href: 'https://storygrid.com/'
-        }
+    'Classic Dramatic Structure': {
+        title: 'Classic Dramatic Structure',
+        description: 'Emphasizes scene pressure, turning points, decisions, and consequential outcomes.\n\nUse it when you want to stress-test whether each scene creates movement through conflict and change.\n\nBest for: literary fiction, drama, tightly edited scene work, revision passes\nMomentum profile: setup -> complication -> decision -> outcome shift',
+        examples: 'Examples: Pride and Prejudice, Hamlet, The Godfather.',
+    },
+    'Podcast Narrative Arc': {
+        title: 'Podcast Narrative Arc',
+        description: 'Shapes spoken storytelling around hook, setup, development, and payoff.\n\nUse it when you want strong listener retention and clean verbal progression.\n\nBest for: podcasts, audio essays, monologues, narrated nonfiction\nMomentum profile: hook -> framing -> development -> payoff',
+        examples: 'Examples: narrative podcast episodes, interview-led story episodes, documentary audio segments.',
+    },
+    'YouTube Explainer Arc': {
+        title: 'YouTube Explainer Arc',
+        description: 'Organizes teaching and explanation around curiosity, clarity, and progression.\n\nUse it when you want a viewer to understand something quickly while staying engaged.\n\nBest for: explainers, educational videos, commentary, tutorials\nMomentum profile: hook -> promise -> breakdown -> takeaway',
+        examples: 'Examples: educational explainers, commentary channels, tutorial-driven storytelling.',
+    },
+    'Historical Narrative Arc': {
+        title: 'Historical Narrative Arc',
+        description: 'Balances chronology, context, stakes, and consequence in retold events.\n\nUse it when you need to guide the audience through real events without losing momentum.\n\nBest for: history writing, documentary structure, nonfiction storytelling, timelines\nMomentum profile: context -> buildup -> pivot -> consequence',
+        examples: 'Examples: historical documentaries, narrative history chapters, event reconstructions.',
+    },
+    'Romance Tropes Ladder': {
+        title: 'Romance Tropes Ladder',
+        description: 'Tracks attraction, tension, vulnerability, rupture, and emotional payoff.\n\nUse it when the emotional relationship arc is the main engine of reader investment.\n\nBest for: romance, romantic subplots, character chemistry passes\nMomentum profile: spark -> tension -> vulnerability -> rupture -> union/decision',
+        examples: 'Examples: enemies-to-lovers, forced proximity, slow burn.',
+    },
+    'Thriller Escalation Ladder': {
+        title: 'Thriller Escalation Ladder',
+        description: 'Builds pressure through danger, revelation, reversals, and narrowing options.\n\nUse it when you want every phase to tighten risk and reduce the protagonist\'s safe choices.\n\nBest for: thrillers, suspense, chase plots, survival narratives\nMomentum profile: threat -> pursuit -> reversal -> compression -> confrontation',
+        examples: 'Examples: The Fugitive, Gone Girl, The Silence of the Lambs.',
     },
     'Custom': {
         title: 'Custom system',
-        description: 'Design your own structural framework for this manuscript. Define the beats that matter to your story — whether they follow a classic arc or track genre-specific progression.\n\nCustom systems can represent tropes, thematic turns, investigative milestones, historical phases, or any structural rhythm you want to measure. Gossamer measures momentum across the structure you create.',
-        examples: 'Examples: Podcast Narrative Arc, YouTube Explainer Arc, Historical Narrative, Romance Tropes Ladder, Thriller Escalation Ladder.'
+        description: 'Design your own structural framework for this manuscript. Define the beats that matter to your story — whether they follow a classic arc or track genre-specific progression.\n\nCustom systems can represent tropes, thematic turns, investigative milestones, historical phases, or any structural rhythm you want to measure.',
+        examples: 'Examples: custom novel workflows, bespoke revision systems, classroom structures.',
+    },
+    'Blank custom': {
+        title: 'Blank custom',
+        description: 'Starts empty so you can design your own structure from scratch.\n\nUse it when none of the library lenses match your process or you want a project-specific model.\n\nBest for: custom beat design, experimentation, hybrid structures, teaching your own method\nMomentum profile: author-defined',
+        examples: 'Start with at least 3 beats. Name each beat by function, not theme. Use a clear progression such as opening -> pressure -> shift. Add or reorder beats only when each one serves a distinct structural purpose.',
     }
 };
 
@@ -2814,7 +2840,7 @@ export function renderStoryBeatsSection(params: {
             header.createDiv({ cls: 'ert-modal-title', text: actionLabel });
             header.createDiv({
                 cls: 'ert-modal-subtitle',
-                text: t('settings.beats.deleteModal.subtitleWithNotes')
+                text: `${t('settings.beats.deleteModal.subtitleWithNotes')} Notes are moved to trash, not permanently deleted — use backups or sync/version history for added safety.`
             });
 
             const body = modal.contentEl.createDiv({ cls: ['ert-panel', 'ert-panel--glass'] });
@@ -2822,25 +2848,11 @@ export function renderStoryBeatsSection(params: {
                 cls: 'ert-modal-subtitle',
                 text: `${t('settings.beats.deleteModal.scopePrefix')}${noteFiles.length} ${t('settings.beats.deleteModal.beatNote')}${noteFiles.length !== 1 ? 's' : ''}`
             });
-            body.createDiv({
-                cls: 'ert-modal-subtitle',
-                text: 'These notes will be moved to trash, not permanently deleted.'
-            });
-            body.createDiv({
-                cls: 'ert-modal-subtitle',
-                text: 'For added safety, use backups or sync/version history.'
-            });
             if (customContent.notesWithTemplateCustomContent > 0 || customContent.notesWithExtraCustomContent > 0) {
-                const warn = body.createDiv({ cls: 'ert-purge-warning' });
-                if (customContent.notesWithExtraCustomContent > 0) {
-                    warn.createDiv({
-                        text: t('settings.beats.deleteModal.warningExtra')
-                    });
-                } else {
-                    warn.createDiv({
-                        text: t('settings.beats.deleteModal.warningTemplate')
-                    });
-                }
+                const warnText = customContent.notesWithExtraCustomContent > 0
+                    ? t('settings.beats.deleteModal.warningExtra')
+                    : t('settings.beats.deleteModal.warningTemplate');
+                body.createDiv({ cls: 'ert-delete-modal-caution', text: warnText });
             }
 
             const confirmEl = body.createDiv({ cls: 'ert-modal-confirm-type' });
@@ -2954,6 +2966,7 @@ export function renderStoryBeatsSection(params: {
             loadBeatTabFromLibraryItem(plugin.settings, {
                 id: BLANK_LIBRARY_ITEM_ID,
                 kind: 'blank',
+                category: 'blank',
                 name: 'Blank custom',
                 description: '',
                 beats: [],
@@ -3082,10 +3095,11 @@ export function renderStoryBeatsSection(params: {
             });
         };
 
-        appendOptionGroup(t('settings.beats.library.builtInGroup'), orderedEntries.filter((entry) => entry.kind === 'builtin'));
-        appendOptionGroup(t('settings.beats.library.starterGroup'), orderedEntries.filter((entry) => entry.kind === 'starter'));
-        appendOptionGroup(t('settings.beats.library.savedGroup'), orderedEntries.filter((entry) => entry.kind === 'saved'));
-        appendOptionGroup(t('settings.beats.library.blankGroup'), orderedEntries.filter((entry) => entry.kind === 'blank'));
+        appendOptionGroup(t('settings.beats.library.narrativeGroup'), orderedEntries.filter((entry) => entry.category === 'narrative'));
+        appendOptionGroup(t('settings.beats.library.engineGroup'), orderedEntries.filter((entry) => entry.category === 'engine'));
+        appendOptionGroup(t('settings.beats.library.formatGroup'), orderedEntries.filter((entry) => entry.category === 'format'));
+        appendOptionGroup(t('settings.beats.library.savedGroup'), orderedEntries.filter((entry) => entry.category === 'saved'));
+        appendOptionGroup(t('settings.beats.library.blankGroup'), orderedEntries.filter((entry) => entry.category === 'blank'));
         selectEl.value = selectedEntry.id;
         selectEl.addEventListener('change', () => {
             selectedLibraryEntryId = selectEl.value;
@@ -3095,19 +3109,18 @@ export function renderStoryBeatsSection(params: {
         const previewCard = savedControlsContainer.createDiv({ cls: 'ert-set-preview' });
         const previewTitleRow = previewCard.createDiv({ cls: 'ert-set-preview-header' });
         previewTitleRow.createSpan({ text: selectedEntry.name, cls: 'ert-set-preview-title' });
+        const isLibrarySystem = selectedEntry.kind === 'builtin' || selectedEntry.kind === 'starter';
         const previewTag = previewTitleRow.createSpan({
             text: selectedEntry.isDefault
                 ? t('settings.beats.library.blankSystemTag')
-                : selectedEntry.kind === 'builtin'
-                    ? t('settings.beats.library.builtInSystemTag')
-                    : selectedEntry.kind === 'starter'
-                        ? t('settings.beats.library.starterSetTag')
-                        : t('settings.beats.library.savedSystemTag'),
-            cls: `ert-set-preview-tag ${(selectedEntry.kind === 'builtin' || selectedEntry.kind === 'starter') ? 'ert-set-preview-tag--starter' : 'ert-set-preview-tag--saved'}`
+                : isLibrarySystem
+                    ? t('settings.beats.library.librarySystemTag')
+                    : t('settings.beats.library.savedSystemTag'),
+            cls: `ert-set-preview-tag ${isLibrarySystem ? 'ert-set-preview-tag--starter' : 'ert-set-preview-tag--saved'}`
         });
         if (selectedEntry.isDefault) {
             setIcon(previewTag, 'square-pen');
-        } else if (selectedEntry.kind === 'builtin' || selectedEntry.kind === 'starter') {
+        } else if (isLibrarySystem) {
             setIcon(previewTag, 'star');
         }
 
@@ -6288,6 +6301,7 @@ export function renderStoryBeatsSection(params: {
             }
             storyStructure = {
                 name: activeTab.name,
+                category: 'blank',
                 beatCount: activeTab.beats.length,
                 beats: activeTab.beats.map((beat) => beat.name),
                 beatDetails: activeTab.beats.map((beat) => ({

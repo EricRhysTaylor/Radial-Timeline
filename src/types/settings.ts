@@ -187,9 +187,12 @@ export interface SavedBeatSystem {
 
 export type BeatSourceKind = 'builtin' | 'starter' | 'saved' | 'blank' | 'detected';
 
+export type BeatLibraryCategory = 'narrative' | 'engine' | 'format' | 'saved' | 'blank';
+
 export interface BeatLibraryItem {
     id: string;
     kind: BeatSourceKind;
+    category: BeatLibraryCategory;
     name: string;
     description?: string;
     beats: BeatDefinition[];

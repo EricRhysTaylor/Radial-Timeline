@@ -214,6 +214,7 @@ function buildIllustrationBeatSystem(): SavedBeatSystem {
 function buildIllustrationPlotSystem(system: SavedBeatSystem): PlotSystemPreset {
     return {
         name: system.name,
+        category: 'blank',
         beatCount: system.beats.length,
         beats: system.beats.map((beat) => beat.name),
         beatDetails: system.beats.map((beat) => ({
