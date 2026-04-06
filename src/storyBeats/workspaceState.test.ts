@@ -370,7 +370,7 @@ describe('library catalog structure', () => {
         const cds = items.find((item) => item.name === 'Classic Dramatic Structure')!;
 
         const beatNames = cds.beats.map((b) => b.name);
-        expect(beatNames).toEqual(['Setup', 'Complication', 'Pressure', 'Decision', 'Outcome']);
+        expect(beatNames).toEqual(['Setup', 'Complication', 'Pressure', 'Pivotal Choice', 'Outcome']);
     });
 
     it('categories are correctly assigned across all library items', () => {
@@ -384,7 +384,7 @@ describe('library catalog structure', () => {
 
         expect(narrativeItems.map((i) => i.name).sort()).toEqual(['Classic Dramatic Structure', "Hero's Journey", 'Save The Cat']);
         expect(engineItems.map((i) => i.name).sort()).toEqual(['Romance Tropes Ladder', 'Thriller Escalation Ladder']);
-        expect(formatItems.map((i) => i.name).sort()).toEqual(['Historical Narrative Arc', 'Podcast Narrative Arc', 'YouTube Explainer Arc']);
+        expect(formatItems.map((i) => i.name).sort()).toEqual(['Documentary Narrative Arc', 'Podcast Narrative Arc', 'YouTube Explainer Arc']);
         expect(blankItems).toHaveLength(1);
         expect(blankItems[0].name).toBe('Blank custom');
     });

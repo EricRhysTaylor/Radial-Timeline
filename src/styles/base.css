@@ -334,22 +334,24 @@ body.rt-modal-open .radial-timeline-container * {
 
 .rt-recent-moves {
   position: absolute;
-  left: 1rem;
-  bottom: 1rem;
+  left: var(--rt-recent-moves-left, 0);
+  top: 0;
   z-index: 6;
-  width: min(24rem, calc(100% - 2rem));
+  width: var(--rt-recent-moves-width, 17.5rem);
+  max-width: max(10rem, calc(100% - var(--rt-recent-moves-left, 0px)));
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  padding: 0.75rem 0.875rem;
-  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 82%, transparent);
+  padding: 0.5rem 0.625rem;
   border-radius: 12px;
   background: color-mix(in srgb, var(--background-primary) 78%, transparent);
   backdrop-filter: blur(10px);
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .rt-recent-moves__header {
-  font-size: 0.72rem;
+  font-size: 0.6rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -366,18 +368,21 @@ body.rt-modal-open .radial-timeline-container * {
   display: flex;
   flex-direction: column;
   gap: 0.18rem;
+  min-width: 0;
 }
 
 .rt-recent-moves__summary {
-  font-size: 0.88rem;
+  font-size: 0.75rem;
   line-height: 1.35;
   color: var(--text-normal);
+  overflow-wrap: anywhere;
 }
 
 .rt-recent-moves__meta {
-  font-size: 0.72rem;
+  font-size: 0.6rem;
   line-height: 1.3;
   color: var(--text-faint);
+  overflow-wrap: anywhere;
 }
 
 /* In Gossamer mode, ensure default cursor unless over beat elements */

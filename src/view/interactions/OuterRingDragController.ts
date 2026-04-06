@@ -289,7 +289,13 @@ export class OuterRingDragController {
     private formatItemDescriptor(entry: Pick<OuterRingOrderEntry, 'itemType' | 'numberText' | 'basename'>): string {
         const label = this.getLabelFromBasename(entry.basename, entry.itemType);
         if (entry.itemType === 'Scene') {
+            if (entry.numberText && label && label !== 'Scene') {
+                return `Scene ${entry.numberText} ${label}`;
+            }
             return entry.numberText ? `Scene ${entry.numberText}` : label;
+        }
+        if (entry.numberText && label && label !== 'Beat') {
+            return `Beat ${entry.numberText} ${label}`;
         }
         if (label && label !== 'Beat') {
             return `${label} beat`;
@@ -929,7 +935,7 @@ export class OuterRingDragController {
             // Small delay to allow Obsidian's metadata cache to update before refresh
             await new Promise(resolve => window.setTimeout(resolve, 100));
             this.options.onRefresh();
-            await modal.finishWithDismiss('Reorder complete. Review updates, then dismiss.');
+            await modal.finishWithDismiss('Reorder complete.');
         } catch (error) {
             if (error instanceof SceneReorderVerificationError) {
                 console.error('Drag reorder verification warning:', error);
@@ -1119,7 +1125,7 @@ export class OuterRingDragController {
             // Small delay to allow Obsidian's metadata cache to update before refresh
             await new Promise(resolve => window.setTimeout(resolve, 100));
             this.options.onRefresh();
-            await modal.finishWithDismiss('Reorder complete. Review updates, then dismiss.');
+            await modal.finishWithDismiss('Reorder complete.');
         } catch (error) {
             if (error instanceof SceneReorderVerificationError) {
                 console.error('Drag reorder verification warning:', error);

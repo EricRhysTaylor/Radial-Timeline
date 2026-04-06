@@ -936,9 +936,12 @@ export class RadialTimelineView extends ItemView {
 
     private renderRecentMovesPanel(timelineContainer: HTMLElement): void {
         if (this.currentMode !== 'narrative') return;
+        if (this.plugin.settings.showRecentMovesOverlay === false) return;
 
         const entries = getActiveRecentStructuralMoves(this.plugin.settings);
         if (entries.length === 0) return;
+
+        this.applyRecentMovesPanelBounds(timelineContainer);
 
         const panel = document.createElement('section');
         panel.className = 'rt-recent-moves';
@@ -957,6 +960,19 @@ export class RadialTimelineView extends ItemView {
         });
 
         timelineContainer.appendChild(panel);
+    }
+
+    private applyRecentMovesPanelBounds(timelineContainer: HTMLElement): void {
+        const containerWidth = timelineContainer.clientWidth;
+        const containerHeight = timelineContainer.clientHeight;
+        if (containerWidth <= 0 || containerHeight <= 0) return;
+
+        const viewboxSize = Math.min(containerWidth, containerHeight);
+        const leftGutter = Math.max(0, (containerWidth - viewboxSize) / 2);
+        const panelWidth = Math.max(0, Math.min(280, leftGutter));
+
+        timelineContainer.style.setProperty('--rt-recent-moves-left', `${leftGutter}px`);
+        timelineContainer.style.setProperty('--rt-recent-moves-width', `${panelWidth}px`);
     }
 
     private buildRecentMoveRow(entry: StructuralMoveHistoryEntry): HTMLElement {

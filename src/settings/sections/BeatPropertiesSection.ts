@@ -136,7 +136,7 @@ const BEAT_SYSTEM_COPY: Record<string, {
     },
     'Classic Dramatic Structure': {
         title: 'Classic Dramatic Structure',
-        description: 'Emphasizes scene pressure, turning points, decisions, and consequential outcomes.\n\nUse it when you want to stress-test whether each scene creates movement through conflict and change.\n\nBest for: literary fiction, drama, tightly edited scene work, revision passes\nMomentum profile: setup → complication → pressure → decision → outcome',
+        description: 'Emphasizes scene pressure, turning points, pivotal choices, and consequential outcomes.\n\nUse it when you want to stress-test whether each scene creates movement through conflict and change.\n\nBest for: literary fiction, drama, tightly edited scene work, revision passes\nMomentum profile: setup → complication → pressure → pivotal choice → outcome',
         examples: 'Examples: Pride and Prejudice, Hamlet, The Godfather.',
     },
     'Podcast Narrative Arc': {
@@ -149,8 +149,8 @@ const BEAT_SYSTEM_COPY: Record<string, {
         description: 'Organizes teaching and explanation around curiosity, clarity, and progression.\n\nUse it when you want a viewer to understand something quickly while staying engaged.\n\nBest for: explainers, educational videos, commentary, tutorials\nMomentum profile: hook -> promise -> breakdown -> takeaway',
         examples: 'Examples: educational explainers, commentary channels, tutorial-driven storytelling.',
     },
-    'Historical Narrative Arc': {
-        title: 'Historical Narrative Arc',
+    'Documentary Narrative Arc': {
+        title: 'Documentary Narrative Arc',
         description: 'Balances chronology, context, stakes, and consequence in retold events.\n\nUse it when you need to guide the audience through real events without losing momentum.\n\nBest for: history writing, documentary structure, nonfiction storytelling, timelines\nMomentum profile: context -> buildup -> pivot -> consequence',
         examples: 'Examples: historical documentaries, narrative history chapters, event reconstructions.',
     },
@@ -316,7 +316,7 @@ const dirtyState = {
 let _unsubTopBeatTabsDirty: (() => void) | null = null;
 let _unsubBeatAuditDirty: (() => void) | null = null;
 
-export function renderStoryBeatsSection(params: {
+export function renderBeatPropertiesSection(params: {
     app: App;
     plugin: RadialTimelinePlugin;
     containerEl: HTMLElement;
@@ -2879,7 +2879,7 @@ export function renderStoryBeatsSection(params: {
             header.createDiv({ cls: 'ert-modal-title', text: actionLabel });
             header.createDiv({
                 cls: 'ert-modal-subtitle',
-                text: `${t('settings.beats.deleteModal.subtitleWithNotes')} Notes are moved to trash, not permanently deleted — use backups or sync/version history for added safety.`
+                text: t('settings.beats.deleteModal.subtitleWithNotes')
             });
 
             const body = modal.contentEl.createDiv({ cls: ['ert-panel', 'ert-panel--glass'] });
@@ -6523,6 +6523,3 @@ function entriesFromTemplate(template: string, requiredOrder: string[]): FieldEn
         required: requiredOrder.includes(key)
     }));
 }
-
-// Primary export
-export { renderStoryBeatsSection as renderBeatPropertiesSection };

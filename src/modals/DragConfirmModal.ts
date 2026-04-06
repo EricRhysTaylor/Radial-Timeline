@@ -4,7 +4,7 @@ import type { StructuralMoveHistoryEntry } from '../types/settings';
 const ICON_SHUFFLE = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-shuffle-icon lucide-shuffle"><path d="m18 14 4 4-4 4"/><path d="m18 2 4 4-4 4"/><path d="M2 18h1.973a4 4 0 0 0 3.3-1.7l5.454-8.6a4 4 0 0 1 3.3-1.7H22"/><path d="M2 6h1.972a4 4 0 0 1 3.6 2.2"/><path d="M22 18h-6.041a4 4 0 0 1-3.3-1.8l-.359-.45"/></svg>`;
 const ICON_LIST_ORDERED = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-list-ordered-icon lucide-list-ordered"><path d="M11 5h10"/><path d="M11 12h10"/><path d="M11 19h10"/><path d="M4 4h1v5"/><path d="M4 9h2"/><path d="M6.5 20H3.4c0-1 2.6-1.925 2.6-3.5a1.5 1.5 0 0 0-2.6-1.02"/></svg>`;
 const ICON_BLOCKS = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-blocks-icon lucide-blocks"><path d="M10 22V7a1 1 0 0 0-1-1H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5a1 1 0 0 0-1-1H2"/><rect x="14" y="2" width="8" height="8" rx="1"/></svg>`;
-const ICON_HISTORY = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-history"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/></svg>`;
+const ICON_WAVES = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-waves"><path d="M2 6c1.2 0 1.8.6 2.4 1.2.6.6 1.2 1.2 2.4 1.2s1.8-.6 2.4-1.2C9.8 6.6 10.4 6 11.6 6s1.8.6 2.4 1.2c.6.6 1.2 1.2 2.4 1.2s1.8-.6 2.4-1.2C19.4 6.6 20 6 21.2 6"/><path d="M2 12c1.2 0 1.8.6 2.4 1.2.6.6 1.2 1.2 2.4 1.2s1.8-.6 2.4-1.2c.6-.6 1.2-1.2 2.4-1.2s1.8.6 2.4 1.2c.6.6 1.2 1.2 2.4 1.2s1.8-.6 2.4-1.2c.6-.6 1.2-1.2 2.4-1.2"/><path d="M2 18c1.2 0 1.8.6 2.4 1.2.6.6 1.2 1.2 2.4 1.2s1.8-.6 2.4-1.2c.6-.6 1.2-1.2 2.4-1.2s1.8.6 2.4 1.2c.6.6 1.2 1.2 2.4 1.2s1.8-.6 2.4-1.2c.6-.6 1.2-1.2 2.4-1.2"/></svg>`;
 
 export interface DragConfirmCurrentMoveSummary {
     actionSummary: string;
@@ -100,7 +100,7 @@ export class DragConfirmModal extends Modal {
             this.createImpactCard(impactGrid, 'Context change', this.currentMove.contextChange, ICON_BLOCKS);
         }
         if (this.currentMove.rippleRename) {
-            this.createImpactCard(impactGrid, 'Extra effect', 'Ripple rename enabled', ICON_HISTORY);
+            this.createImpactCard(impactGrid, 'Extra effect', 'Ripple rename enabled', ICON_WAVES);
         }
 
         if (this.recentMoves.length > 0) {

@@ -676,17 +676,17 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
     private renderAdvancedHero(containerEl: HTMLElement): void {
         this.renderSettingsHero(containerEl, {
-            badgeLabel: 'Advanced',
+            badgeLabel: 'Advanced · configuration',
             badgeIcon: 'pyramid',
             badgeVariant: ERT_CLASSES.BADGE_PILL_NEUTRAL,
             wikiHref: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#configuration',
-            title: 'Advanced settings and system controls.',
-            subtitle: 'This tab now holds configuration-first controls that support the rest of the plugin without crowding your day-to-day writing setup.',
+            title: 'Configuration and system controls.',
+            subtitle: 'Configuration now lives here. Use this tab for timeline display controls, metadata remapping, logs, output folders, and other system-level behavior.',
             kicker: 'Currently here:',
             features: [
+                { icon: 'monitor', text: 'Timeline display controls and marker overlays' },
                 { icon: 'folder-cog', text: 'Logs, output folders, and generated file locations' },
                 { icon: 'waypoints', text: 'Metadata remapping and manuscript behavior controls' },
-                { icon: 'settings-2', text: 'Room for deeper system settings as Advanced grows' },
             ]
         });
     }

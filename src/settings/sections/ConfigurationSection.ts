@@ -257,6 +257,20 @@ export function renderConfigurationSection(params: { app: App; plugin: RadialTim
     });
 
     createDenseRow(displayContainer, {
+        title: 'Recent drag move overlay in narrative mode',
+        description: 'Shows the last committed scene and beat drag moves in narrative timeline.',
+        control: (setting) => {
+            setting.addToggle(toggle => toggle
+                .setValue(plugin.settings.showRecentMovesOverlay ?? true)
+                .onChange(async (value) => {
+                    plugin.settings.showRecentMovesOverlay = value;
+                    await plugin.saveSettings();
+                    plugin.onSettingChanged(IMPACT_FULL);
+                }));
+        }
+    });
+
+    createDenseRow(displayContainer, {
         title: t('settings.configuration.readability.name'),
         description: t('settings.configuration.readability.desc'),
         control: (setting) => {

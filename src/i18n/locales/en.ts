@@ -769,7 +769,7 @@ export const en: TranslationKeys = {
             },
             heroOff: {
                 descriptionPrimary: 'Your manuscript is being shaped through human judgment, revision, and creative instinct. Radial Timeline continues to support structure, sequencing, and story architecture without automated analysis.',
-                descriptionSecondary: 'AI in Radial Timeline is editorial - never generative. It does not replace your voice or substitute machine-written prose. It can be enabled at any time when you want an additional layer of structured insight.',
+                descriptionSecondary: 'AI in Radial Timeline is editorial in nature and supports your goals as a writer or author. It can be enabled at any time when you want an additional layer of structured insight.',
                 toolsKicker: 'AI TOOLS AVAILABLE WHEN ENABLED',
                 featureInquiry: 'Inquiry - Cross-scene structural analysis via custom inquiry questions.',
                 featurePulse: 'Pulse (Triplet Analysis) - Context-aware scene evaluation.',

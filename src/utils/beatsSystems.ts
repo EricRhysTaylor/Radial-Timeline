@@ -279,7 +279,7 @@ export const PLOT_SYSTEMS: Record<string, PlotSystemPreset> = {
       "Setup",
       "Complication",
       "Pressure",
-      "Decision",
+      "Pivotal Choice",
       "Outcome"
     ],
     beatDetails: [
@@ -305,8 +305,8 @@ export const PLOT_SYSTEMS: Record<string, PlotSystemPreset> = {
         range: "50-75"
       },
       {
-        name: "Decision",
-        id: "classic-dramatic-structure:decision",
+        name: "Pivotal Choice",
+        id: "classic-dramatic-structure:pivotal-choice",
         description: "An irreversible action answers the central question. The protagonist commits and the situation changes permanently.",
         placement: "75-90%",
         range: "75-100"
@@ -437,7 +437,7 @@ export const STARTER_BEAT_SETS: StarterBeatSet[] = [
   },
   {
     id: 'starter:historical_narrative',
-    name: 'Historical Narrative Arc',
+    name: 'Documentary Narrative Arc',
     category: 'format',
     icon: 'clock',
     description: 'Shape real events into compelling narrative flow.\n\nHistorical and biographical writing often resists conventional three-act fiction models. This framework focuses on forces, pressure, crisis, and consequence — allowing you to track tension across political, cultural, or personal change. Use it to see whether escalation builds naturally and whether aftermath and legacy receive the structural weight they deserve.\n\nBest for: biography, memoir, historical nonfiction\nMomentum profile: Gradual rise → crisis compression → reflective descent',

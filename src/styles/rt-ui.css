@@ -2222,10 +2222,21 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--ert-gap-md);
+  min-width: 0;
+  width: 100%;
 }
 
 .ert-ui.ert-scope--settings .ert-ai-hero-toggle {
   margin-left: auto;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-hero-card,
+.ert-ui.ert-scope--settings .ert-ai-hero-state-on,
+.ert-ui.ert-scope--settings .ert-ai-hero-state-off {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .ert-ui.ert-scope--settings .ert-ai-hero-muted {
@@ -3168,8 +3179,6 @@
   border-radius: var(--ert-control-radius);
   overflow: hidden;
   background: color-mix(in srgb, var(--background-secondary) 60%, var(--background-primary) 40%);
-  margin-top: var(--ert-pad-xs, 4px);
-  margin-bottom: var(--ert-pad-sm, 6px);
 }
 
 .ert-ui.ert-scope--settings button.ert-stage-btn {
