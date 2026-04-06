@@ -689,6 +689,7 @@ export function renderInquirySection(params: SectionParams): void {
             const isSynopsisCapable = isSynopsisCapableClass(config.className);
             const isReference = !isSynopsisCapable;
 
+            // Size must match --class-scope grid columns: repeat(3, minmax(var(--ert-input-width-sm), max-content))
             const buildScopeSelect = (
                 cell: HTMLElement,
                 value: SceneInclusion,
@@ -696,7 +697,7 @@ export function renderInquirySection(params: SectionParams): void {
                 modes: SceneInclusion[],
                 onChange: (next: SceneInclusion) => void
             ) => {
-                const select = cell.createEl('select', { cls: 'ert-input ert-input--md' });
+                const select = cell.createEl('select', { cls: 'ert-input ert-input--sm' });
                 modes.forEach(mode => {
                     select.createEl('option', { value: mode, text: getContributionLabel(mode) });
                 });
@@ -1627,10 +1628,11 @@ export function renderInquirySection(params: SectionParams): void {
             });
         };
 
+        const persistedZoneExpanded = plugin.settings.inquiryPromptZoneExpanded;
         const zoneExpanded: Record<InquiryZone, boolean> = {
-            setup: true,
-            pressure: true,
-            payoff: true
+            setup: persistedZoneExpanded?.setup ?? true,
+            pressure: persistedZoneExpanded?.pressure ?? true,
+            payoff: persistedZoneExpanded?.payoff ?? true
         };
 
         const renderZoneCard = (
@@ -1692,7 +1694,9 @@ export function renderInquirySection(params: SectionParams): void {
             refreshToggle();
             toggleButton.onclick = () => {
                 zoneExpanded[zone] = !zoneExpanded[zone];
+                plugin.settings.inquiryPromptZoneExpanded = { ...zoneExpanded };
                 refreshToggle();
+                void plugin.saveSettings();
             };
 
             const slots = getSlotList(zone);

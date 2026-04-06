@@ -52,9 +52,8 @@ describe('resolveCorpusSceneStatus', () => {
 });
 
 describe('isLowSubstanceTier', () => {
-    it('returns true for empty, bare, and sketchy', () => {
+    it('returns true for empty and sketchy', () => {
         expect(isLowSubstanceTier('empty')).toBe(true);
-        expect(isLowSubstanceTier('bare')).toBe(true);
         expect(isLowSubstanceTier('sketchy')).toBe(true);
     });
 

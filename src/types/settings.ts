@@ -578,6 +578,7 @@ export interface RadialTimelineSettings {
     inquiryLastMode?: 'flow' | 'depth';
     inquiryCorpusThresholds?: InquiryCorpusThresholds;
     inquiryCorpusHighlightLowSubstanceComplete?: boolean;
+    inquiryPromptZoneExpanded?: Record<InquiryZone, boolean>;
     inquiryActionNotesAutoPopulate?: boolean;
     inquiryActionNotesTargetField?: string;
     inquiryOmnibusProgress?: OmnibusProgressState;

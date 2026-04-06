@@ -44,6 +44,11 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
         substantiveMin: 1000
     },
     inquiryCorpusHighlightLowSubstanceComplete: true,
+    inquiryPromptZoneExpanded: {
+        setup: true,
+        pressure: true,
+        payoff: true
+    },
     inquiryActionNotesAutoPopulate: false,
     inquiryActionNotesTargetField: 'Pending Edits',
     inquiryTimingHistory: {},

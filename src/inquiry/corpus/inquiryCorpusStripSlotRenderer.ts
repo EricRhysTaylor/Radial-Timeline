@@ -75,7 +75,6 @@ export function applyInquiryCorpusCcSlotViewModel(
 
     slot.group.classList.remove(
         'is-tier-empty',
-        'is-tier-bare',
         'is-tier-sketchy',
         'is-tier-medium',
         'is-tier-substantive',
@@ -120,7 +119,7 @@ function getInquiryCorpusTier(
     thresholds: InquiryCorpusThresholds
 ): CorpusSubstanceTier {
     if (wordCount < thresholds.emptyMax) return 'empty';
-    if (wordCount < thresholds.sketchyMin) return 'bare';
+    if (wordCount < thresholds.sketchyMin) return 'sketchy';
     if (wordCount < thresholds.mediumMin) return 'sketchy';
     if (wordCount < thresholds.substantiveMin) return 'medium';
     return 'substantive';
@@ -138,7 +137,7 @@ function getInquiryCorpusSynopsisTier(
 
 function getInquiryCorpusTierLabel(tier: CorpusSubstanceTier): string {
     if (tier === 'empty') return 'Empty';
-    if (tier === 'bare' || tier === 'sketchy') return 'Sketchy';
+    if (tier === 'sketchy') return 'Sketchy';
     if (tier === 'medium') return 'Medium';
     return 'Substantive';
 }

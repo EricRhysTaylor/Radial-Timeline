@@ -1269,7 +1269,7 @@ export const en: TranslationKeys = {
             },
             corpusTable: { tier: 'Tier', threshold: 'Threshold' },
             corpusTier: { empty: 'Empty', sketchy: 'Sketchy', medium: 'Medium', substantive: 'Substantive' },
-            highlightLowSubstance: { name: 'Highlight completed docs with low substance', desc: 'Flags completed notes that fall in Empty or Sketchy tiers.' },
+            highlightLowSubstance: { name: 'Highlight completed docs with low substance', desc: 'Marks completed scene cells in the Inquiry corpus strip with an X when they fall in Empty or Sketchy tiers.' },
             config: { name: 'Configuration', desc: 'Briefings, action notes, and recent session defaults for Inquiry briefs.' },
             briefingFolder: {
                 name: 'Briefing folder',
