@@ -93,7 +93,7 @@ export const INQUIRY_CORPUS_CC_LAYOUT = {
     headerIconGap: 4,
     headerIconOffset: 1,
     cellIconOffset: -1,
-    labelHintSize: 22,
+    labelHintSize: 18,
     rightMargin: 50,
     bottomMargin: 50
 } as const;

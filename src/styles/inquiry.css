@@ -891,6 +891,10 @@
 
 .ert-inquiry-cc-legend-bg {
   fill: var(--background-primary, #1e1e1e);
+}
+
+.ert-inquiry-cc-legend-border {
+  fill: none;
   stroke: var(--text-faint);
   stroke-width: 1.5;
   stroke-dasharray: 6 3;
@@ -902,6 +906,13 @@
   letter-spacing: 0.08em;
   fill: var(--text-faint);
   text-transform: uppercase;
+}
+
+.ert-inquiry-cc-legend-click-icon {
+  color: var(--text-muted);
+  fill: none;
+  stroke: var(--text-muted);
+  stroke-width: 2;
 }
 
 .ert-inquiry-cc-legend-label {

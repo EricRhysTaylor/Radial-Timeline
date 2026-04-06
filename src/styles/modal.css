@@ -325,7 +325,6 @@
 .rt-gossamer-processing-modal {
   overflow-y: auto;
   overflow-x: hidden;
-  scrollbar-gutter: stable;
   overscroll-behavior: contain;
   contain: paint;
 }
@@ -413,13 +412,21 @@
   gap: 10px;
 }
 
+.rt-drag-confirm-history-frame {
+  background-color: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  padding: 8px;
+}
+
 .rt-drag-confirm-history-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  max-height: 360px;
+  gap: 6px;
+  max-height: 340px;
   overflow-y: auto;
-  padding-right: 4px;
+  overflow-x: hidden;
+  padding: 0 2px 0 4px;
 }
 
 .rt-drag-confirm-section-title {
@@ -496,37 +503,41 @@
 }
 
 .rt-drag-confirm-history-item {
+  all: unset;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 1px;
   width: 100%;
   text-align: left;
-  padding: 10px 12px;
-  background-color: color-mix(in srgb, var(--background-secondary) 92%, transparent);
-  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 86%, transparent);
+  box-sizing: border-box;
+  padding: 6px 10px;
+  margin: 0;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 8px;
+  box-shadow: none;
+  appearance: none;
+  -webkit-appearance: none;
   cursor: pointer;
 }
 
 .rt-drag-confirm-history-item:hover {
-  border-color: color-mix(in srgb, var(--rt-confirm-accent, var(--interactive-accent)) 28%, var(--background-modifier-border));
-  background-color: color-mix(in srgb, var(--background-secondary) 84%, var(--rt-confirm-accent, var(--interactive-accent)) 16%);
+  background: color-mix(in srgb, var(--background-secondary) 96%, transparent);
 }
 
 .rt-drag-confirm-history-item:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--rt-confirm-accent, var(--interactive-accent)) 55%, transparent);
-  outline-offset: 2px;
+  outline: none;
 }
 
 .rt-drag-confirm-history-summary {
-  font-size: 0.95rem;
-  line-height: 1.35;
+  font-size: 0.8rem;
+  line-height: 1.05;
   color: var(--text-normal);
 }
 
 .rt-drag-confirm-history-meta {
-  font-size: 0.78rem;
-  line-height: 1.3;
+  font-size: 0.66rem;
+  line-height: 1;
   color: var(--text-muted);
 }
 
@@ -739,11 +750,12 @@
 
 .rt-gossamer-proc-modal .rt-pulse-progress-body {
   margin-top: 8px;
+  overflow-y: visible;
+  width: 100%;
 }
 
 .rt-gossamer-proc-info-section,
-.rt-gossamer-proc-status-section,
-.rt-gossamer-proc-api-section {
+.rt-gossamer-proc-status-section {
   margin-bottom: 20px;
 }
 
@@ -810,12 +822,11 @@
 }
 
 .rt-gossamer-proc-api-status {
-  padding: 10px 12px;
-  background-color: var(--background-secondary);
-  border-radius: 4px;
+  margin-top: 8px;
+  padding: 0 2px;
   font-size: 13px;
   color: var(--text-muted);
-  min-height: 40px;
+  min-height: 0;
   display: flex;
   align-items: center;
 }

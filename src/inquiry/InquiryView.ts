@@ -1951,6 +1951,8 @@ export class InquiryView extends ItemView {
             'activity',
             'arrow-big-up',
             'arrow-big-up-dash',
+            'arrow-big-right-dash',
+            'mouse-pointer-click',
             'check-circle',
             'sigma',
             'x',

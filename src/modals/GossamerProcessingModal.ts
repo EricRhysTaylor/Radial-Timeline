@@ -222,10 +222,7 @@ export class GossamerProcessingModal extends Modal {
         this.statusTextEl = statusSection.createDiv({ cls: 'rt-gossamer-proc-status-text' });
         this.statusTextEl.setText(this.currentStatus);
 
-        // API status section
-        const apiSection = progressCard.createDiv({ cls: 'rt-gossamer-proc-api-section' });
-        apiSection.createEl('h3', { text: 'API Activity', cls: 'rt-section-title' });
-        this.apiStatusEl = apiSection.createDiv({ cls: 'rt-gossamer-proc-api-status' });
+        this.apiStatusEl = statusSection.createDiv({ cls: 'rt-gossamer-proc-api-status' });
         this.apiStatusEl.setText('Waiting to send...');
 
         const advancedDetails = progressCard.createEl('details', { cls: 'ert-ai-advanced-details' });

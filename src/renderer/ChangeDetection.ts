@@ -8,6 +8,7 @@ import type { TimelineItem, RadialTimelineSettings } from '../types';
 import type { GossamerRun } from '../utils/gossamer';
 import { getVersionCheckService } from '../services/VersionCheckService';
 import { isRuntimeModeActive } from '../view/interactions/ChronologueShiftController';
+import { DEFAULT_BOOK_TITLE, getActiveBookTitle } from '../utils/books';
 
 /**
  * Types of changes that can trigger renders
@@ -56,6 +57,8 @@ export interface TimelineSnapshot {
     subplotColorsHash: string;
     dominantSubplotsHash: string;
     povMode: string;
+    activeBookId: string;
+    activeBookTitle: string;
     
     // Gossamer
     gossamerRunExists: boolean;
@@ -195,6 +198,8 @@ export function createSnapshot(
         subplotColorsHash,
         dominantSubplotsHash,
         povMode: settings.globalPovMode ?? 'off',
+        activeBookId: settings.activeBookId ?? '',
+        activeBookTitle: getActiveBookTitle(settings, DEFAULT_BOOK_TITLE),
         gossamerRunExists: !!gossamerRun,
         gossamerRunHash,
         updateAvailable: getVersionCheckService()?.isUpdateAvailable() ?? false,
@@ -252,7 +257,9 @@ export function detectChanges(
         prev.microBackdropHash !== current.microBackdropHash ||
         prev.publishStageColorsHash !== current.publishStageColorsHash ||
         prev.subplotColorsHash !== current.subplotColorsHash ||
-        prev.povMode !== current.povMode) {
+        prev.povMode !== current.povMode ||
+        prev.activeBookId !== current.activeBookId ||
+        prev.activeBookTitle !== current.activeBookTitle) {
         changeTypes.add(ChangeType.SETTINGS);
     }
     

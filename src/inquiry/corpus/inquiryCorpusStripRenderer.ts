@@ -88,12 +88,13 @@ type LegendRow = {
 /** Build a note-shaped rect (taller than wide, like corpus cells). */
 function buildLegendNoteRect(
     g: SVGGElement, cx: number, cy: number, w: number, h: number,
-    opts: { stroke: string; strokeWidth: string; dasharray?: string; linecap?: string; fill?: string }
+    opts: { stroke: string; strokeWidth: string; dasharray?: string; linecap?: string; fill?: string; corner?: number }
 ): void {
     const r = createSvgElement('rect');
     r.setAttribute('x', String(cx - w / 2)); r.setAttribute('y', String(cy - h / 2));
     r.setAttribute('width', String(w)); r.setAttribute('height', String(h));
-    r.setAttribute('rx', '3'); r.setAttribute('ry', '3');
+    const cr = opts.corner ?? 2;
+    r.setAttribute('rx', String(cr)); r.setAttribute('ry', String(cr));
     r.style.fill = opts.fill ?? 'none';
     r.style.stroke = opts.stroke; r.style.strokeWidth = opts.strokeWidth;
     if (opts.dasharray) r.style.strokeDasharray = opts.dasharray;
@@ -101,7 +102,10 @@ function buildLegendNoteRect(
     g.appendChild(r);
 }
 
-function buildCorpusLegendPanel(panel: SVGGElement): void {
+function buildCorpusLegendPanel(
+    panel: SVGGElement,
+    createIconUse: (iconName: string, x: number, y: number, size: number) => SVGUseElement
+): void {
     // All sizes in SVG viewbox units (1600-unit space).
     // At ~600px container width, 1 SVG unit ≈ 0.375 real px.
     const rowHeight = 32;
@@ -109,12 +113,48 @@ function buildCorpusLegendPanel(panel: SVGGElement): void {
     const labelColX = 58;
     const fontSize = 16;
     const sectionFontSize = 13;
-    const noteW = 18;
-    const noteH = 26;
-    const circleR = 8;
+    // Use canonical corpus cell dimensions (CC_PAGE_BASE_SIZE = 16)
+    const noteW = CC_PAGE_BASE_SIZE;
+    const noteH = Math.round(CC_PAGE_BASE_SIZE * 1.45);
+    const noteCorner = Math.max(2, Math.round(noteW * 0.125));
+    const circleR = Math.round(CC_PAGE_BASE_SIZE * 0.25 * 10) / 10;
+    const innerR = Math.max(1.2, Math.round(circleR * 0.35 * 10) / 10);
+    const xInset = Math.max(2, Math.round(noteW * 0.14));
+    const yInset = Math.max(2, Math.round(noteH * 0.14));
     const padding = 14;
 
+    const clickIconSize = 22;
+
     const sections: { title: string; rows: LegendRow[] }[] = [
+        {
+            title: 'CLICK KEYS',
+            rows: [
+                {
+                    label: 'Click — cycle scope',
+                    buildIcon: (g, cx, cy) => {
+                        const icon = createIconUse('mouse-pointer-click', cx - clickIconSize / 2, cy - clickIconSize / 2, clickIconSize);
+                        icon.classList.add('ert-inquiry-cc-legend-click-icon');
+                        g.appendChild(icon);
+                    }
+                },
+                {
+                    label: 'Shift + Click — toggle targeting',
+                    buildIcon: (g, cx, cy) => {
+                        const icon = createIconUse('arrow-big-up-dash', cx - clickIconSize / 2, cy - clickIconSize / 2, clickIconSize);
+                        icon.classList.add('ert-inquiry-cc-legend-click-icon');
+                        g.appendChild(icon);
+                    }
+                },
+                {
+                    label: 'Right + Click — open menu',
+                    buildIcon: (g, cx, cy) => {
+                        const icon = createIconUse('arrow-big-right-dash', cx - clickIconSize / 2, cy - clickIconSize / 2, clickIconSize);
+                        icon.classList.add('ert-inquiry-cc-legend-click-icon');
+                        g.appendChild(icon);
+                    }
+                }
+            ]
+        },
         {
             title: 'MODE (icon + color)',
             rows: [
@@ -134,13 +174,13 @@ function buildCorpusLegendPanel(panel: SVGGElement): void {
                         const outer = createSvgElement('circle');
                         outer.setAttribute('cx', String(cx)); outer.setAttribute('cy', String(cy));
                         outer.setAttribute('r', String(circleR));
-                        outer.style.fill = 'none'; outer.style.stroke = '#3b82ff'; outer.style.strokeWidth = '2';
+                        outer.style.fill = 'none'; outer.style.stroke = '#3b82ff'; outer.style.strokeWidth = '1.2';
                         g.appendChild(outer);
-                        const inner = createSvgElement('circle');
-                        inner.setAttribute('cx', String(cx)); inner.setAttribute('cy', String(cy));
-                        inner.setAttribute('r', String(circleR * 0.35));
-                        inner.style.fill = '#3b82ff';
-                        g.appendChild(inner);
+                        const dot = createSvgElement('circle');
+                        dot.setAttribute('cx', String(cx)); dot.setAttribute('cy', String(cy));
+                        dot.setAttribute('r', String(innerR));
+                        dot.style.fill = '#3b82ff';
+                        g.appendChild(dot);
                     }
                 },
                 {
@@ -149,7 +189,7 @@ function buildCorpusLegendPanel(panel: SVGGElement): void {
                         const c = createSvgElement('circle');
                         c.setAttribute('cx', String(cx)); c.setAttribute('cy', String(cy));
                         c.setAttribute('r', String(circleR));
-                        c.style.fill = 'none'; c.style.stroke = '#ff4d4f'; c.style.strokeWidth = '2';
+                        c.style.fill = 'none'; c.style.stroke = '#ff4d4f'; c.style.strokeWidth = '1.2';
                         g.appendChild(c);
                     }
                 }
@@ -161,15 +201,15 @@ function buildCorpusLegendPanel(panel: SVGGElement): void {
                 {
                     label: 'Complete — solid border',
                     buildIcon: (g, cx, cy) => {
-                        buildLegendNoteRect(g, cx, cy, noteW, noteH, { stroke: 'var(--text-muted)', strokeWidth: '2' });
+                        buildLegendNoteRect(g, cx, cy, noteW, noteH, { stroke: 'var(--text-muted)', strokeWidth: '1.2', corner: noteCorner });
                     }
                 },
                 {
                     label: 'Working — dotted border',
                     buildIcon: (g, cx, cy) => {
                         buildLegendNoteRect(g, cx, cy, noteW, noteH, {
-                            stroke: 'var(--text-muted)', strokeWidth: '2.5',
-                            dasharray: '0 5', linecap: 'round'
+                            stroke: 'var(--text-muted)', strokeWidth: '1.8',
+                            dasharray: '0 3.2', linecap: 'round', corner: noteCorner
                         });
                     }
                 },
@@ -177,8 +217,8 @@ function buildCorpusLegendPanel(panel: SVGGElement): void {
                     label: 'Todo — dashed border',
                     buildIcon: (g, cx, cy) => {
                         buildLegendNoteRect(g, cx, cy, noteW, noteH, {
-                            stroke: 'var(--text-muted)', strokeWidth: '2',
-                            dasharray: '10 4'
+                            stroke: 'var(--text-muted)', strokeWidth: '1.2',
+                            dasharray: '7 2.5', corner: noteCorner
                         });
                     }
                 },
@@ -186,7 +226,7 @@ function buildCorpusLegendPanel(panel: SVGGElement): void {
                     label: 'Overdue — red border',
                     buildIcon: (g, cx, cy) => {
                         buildLegendNoteRect(g, cx, cy, noteW, noteH, {
-                            stroke: '#ff4d4f', strokeWidth: '2.5'
+                            stroke: '#ff4d4f', strokeWidth: '1.6', corner: noteCorner
                         });
                     }
                 }
@@ -198,11 +238,11 @@ function buildCorpusLegendPanel(panel: SVGGElement): void {
                 {
                     label: 'Substantive — full fill',
                     buildIcon: (g, cx, cy) => {
-                        buildLegendNoteRect(g, cx, cy, noteW, noteH, { stroke: 'var(--text-muted)', strokeWidth: '2' });
+                        buildLegendNoteRect(g, cx, cy, noteW, noteH, { stroke: 'var(--text-muted)', strokeWidth: '1.2', corner: noteCorner });
                         const f = createSvgElement('rect');
-                        f.setAttribute('x', String(cx - noteW / 2 + 2)); f.setAttribute('y', String(cy - noteH / 2 + 2));
-                        f.setAttribute('width', String(noteW - 4)); f.setAttribute('height', String(noteH - 4));
-                        f.setAttribute('rx', '2'); f.setAttribute('ry', '2');
+                        f.setAttribute('x', String(cx - noteW / 2 + xInset)); f.setAttribute('y', String(cy - noteH / 2 + yInset));
+                        f.setAttribute('width', String(noteW - xInset * 2)); f.setAttribute('height', String(noteH - yInset * 2));
+                        f.setAttribute('rx', '1'); f.setAttribute('ry', '1');
                         f.style.fill = 'color-mix(in srgb, var(--text-normal) 40%, transparent)';
                         g.appendChild(f);
                     }
@@ -210,13 +250,13 @@ function buildCorpusLegendPanel(panel: SVGGElement): void {
                 {
                     label: 'Medium — partial fill',
                     buildIcon: (g, cx, cy) => {
-                        buildLegendNoteRect(g, cx, cy, noteW, noteH, { stroke: 'var(--text-muted)', strokeWidth: '2' });
-                        const fillH = Math.round(noteH * 0.55);
+                        buildLegendNoteRect(g, cx, cy, noteW, noteH, { stroke: 'var(--text-muted)', strokeWidth: '1.2', corner: noteCorner });
+                        const fillH = Math.round((noteH - yInset * 2) * 0.55);
                         const f = createSvgElement('rect');
-                        f.setAttribute('x', String(cx - noteW / 2 + 2));
-                        f.setAttribute('y', String(cy + noteH / 2 - fillH - 2));
-                        f.setAttribute('width', String(noteW - 4)); f.setAttribute('height', String(fillH));
-                        f.setAttribute('rx', '2'); f.setAttribute('ry', '2');
+                        f.setAttribute('x', String(cx - noteW / 2 + xInset));
+                        f.setAttribute('y', String(cy + noteH / 2 - yInset - fillH));
+                        f.setAttribute('width', String(noteW - xInset * 2)); f.setAttribute('height', String(fillH));
+                        f.setAttribute('rx', '1'); f.setAttribute('ry', '1');
                         f.style.fill = 'color-mix(in srgb, var(--text-normal) 40%, transparent)';
                         g.appendChild(f);
                     }
@@ -224,13 +264,13 @@ function buildCorpusLegendPanel(panel: SVGGElement): void {
                 {
                     label: 'Sketchy — low fill',
                     buildIcon: (g, cx, cy) => {
-                        buildLegendNoteRect(g, cx, cy, noteW, noteH, { stroke: 'var(--text-muted)', strokeWidth: '2' });
-                        const fillH = Math.round(noteH * 0.2);
+                        buildLegendNoteRect(g, cx, cy, noteW, noteH, { stroke: 'var(--text-muted)', strokeWidth: '1.2', corner: noteCorner });
+                        const fillH = Math.round((noteH - yInset * 2) * 0.2);
                         const f = createSvgElement('rect');
-                        f.setAttribute('x', String(cx - noteW / 2 + 2));
-                        f.setAttribute('y', String(cy + noteH / 2 - fillH - 2));
-                        f.setAttribute('width', String(noteW - 4)); f.setAttribute('height', String(fillH));
-                        f.setAttribute('rx', '2'); f.setAttribute('ry', '2');
+                        f.setAttribute('x', String(cx - noteW / 2 + xInset));
+                        f.setAttribute('y', String(cy + noteH / 2 - yInset - fillH));
+                        f.setAttribute('width', String(noteW - xInset * 2)); f.setAttribute('height', String(fillH));
+                        f.setAttribute('rx', '1'); f.setAttribute('ry', '1');
                         f.style.fill = 'color-mix(in srgb, var(--text-normal) 40%, transparent)';
                         g.appendChild(f);
                     }
@@ -238,7 +278,7 @@ function buildCorpusLegendPanel(panel: SVGGElement): void {
                 {
                     label: 'Empty — no fill',
                     buildIcon: (g, cx, cy) => {
-                        buildLegendNoteRect(g, cx, cy, noteW, noteH, { stroke: 'var(--text-muted)', strokeWidth: '2' });
+                        buildLegendNoteRect(g, cx, cy, noteW, noteH, { stroke: 'var(--text-muted)', strokeWidth: '1.2', corner: noteCorner });
                     }
                 }
             ]
@@ -249,17 +289,16 @@ function buildCorpusLegendPanel(panel: SVGGElement): void {
                 {
                     label: 'Low substance (X)',
                     buildIcon: (g, cx, cy) => {
-                        buildLegendNoteRect(g, cx, cy, noteW, noteH, { stroke: 'var(--text-muted)', strokeWidth: '2' });
-                        const pad = 6;
+                        buildLegendNoteRect(g, cx, cy, noteW, noteH, { stroke: 'var(--text-muted)', strokeWidth: '1.2', corner: noteCorner });
                         const l1 = createSvgElement('line');
-                        l1.setAttribute('x1', String(cx - noteW / 2 + pad)); l1.setAttribute('y1', String(cy - noteH / 2 + pad));
-                        l1.setAttribute('x2', String(cx + noteW / 2 - pad)); l1.setAttribute('y2', String(cy + noteH / 2 - pad));
-                        l1.style.stroke = '#ff4d4f'; l1.style.strokeWidth = '2.5'; l1.style.strokeLinecap = 'round';
+                        l1.setAttribute('x1', String(cx - noteW / 2 + xInset)); l1.setAttribute('y1', String(cy - noteH / 2 + yInset));
+                        l1.setAttribute('x2', String(cx + noteW / 2 - xInset)); l1.setAttribute('y2', String(cy + noteH / 2 - yInset));
+                        l1.style.stroke = '#ff4d4f'; l1.style.strokeWidth = '2'; l1.style.strokeLinecap = 'round';
                         g.appendChild(l1);
                         const l2 = createSvgElement('line');
-                        l2.setAttribute('x1', String(cx + noteW / 2 - pad)); l2.setAttribute('y1', String(cy - noteH / 2 + pad));
-                        l2.setAttribute('x2', String(cx - noteW / 2 + pad)); l2.setAttribute('y2', String(cy + noteH / 2 - pad));
-                        l2.style.stroke = '#ff4d4f'; l2.style.strokeWidth = '2.5'; l2.style.strokeLinecap = 'round';
+                        l2.setAttribute('x1', String(cx + noteW / 2 - xInset)); l2.setAttribute('y1', String(cy - noteH / 2 + yInset));
+                        l2.setAttribute('x2', String(cx - noteW / 2 + xInset)); l2.setAttribute('y2', String(cy + noteH / 2 - yInset));
+                        l2.style.stroke = '#ff4d4f'; l2.style.strokeWidth = '2'; l2.style.strokeLinecap = 'round';
                         g.appendChild(l2);
                     }
                 }
@@ -290,6 +329,17 @@ function buildCorpusLegendPanel(panel: SVGGElement): void {
     bg.setAttribute('rx', '5');
     bg.setAttribute('ry', '5');
     panel.appendChild(bg);
+    // Inset dashed border — drawn on top of bg so dash gaps show bg, not scene behind
+    const inset = 2;
+    const border = createSvgElement('rect');
+    border.classList.add('ert-inquiry-cc-legend-border');
+    border.setAttribute('x', String(panelLeft + inset));
+    border.setAttribute('y', String(14 + inset));
+    border.setAttribute('width', String(panelWidth - inset * 2));
+    border.setAttribute('height', String(panelHeight - inset * 2));
+    border.setAttribute('rx', '4');
+    border.setAttribute('ry', '4');
+    panel.appendChild(border);
 
     let currentY = 14 + padding + titleHeight / 2;
     for (const section of sections) {
@@ -415,7 +465,7 @@ export function renderInquiryCorpusStrip(args: {
     // ── Legend panel (child of ccGroup, not the trigger — avoids clipping) ──
     if (!refs.ccLegendPanel) {
         refs.ccLegendPanel = createSvgGroup(refs.ccGroup, 'ert-inquiry-cc-legend-panel', 0, 0);
-        buildCorpusLegendPanel(refs.ccLegendPanel);
+        buildCorpusLegendPanel(refs.ccLegendPanel, args.createIconUse);
         // JS hover: toggle visibility class since panel is a sibling, not child, of trigger
         const legendPanel = refs.ccLegendPanel;
         const legendTrigger = refs.ccLegendTrigger!;
@@ -439,31 +489,7 @@ export function renderInquiryCorpusStrip(args: {
         refs.ccLabel.classList.add('is-actionable');
     }
 
-    // ── Up-arrow hint ──
-    if (!refs.ccLabelHint) {
-        refs.ccLabelHint = createSvgGroup(refs.ccGroup, 'ert-inquiry-cc-hint', 0, 0);
-        const hintHitPad = 10;
-        const hintHitRect = createSvgElement('rect');
-        hintHitRect.classList.add('ert-inquiry-cc-hint-hit');
-        hintHitRect.setAttribute('x', String(-(CC_LABEL_HINT_SIZE / 2) - hintHitPad));
-        hintHitRect.setAttribute('y', String(-(CC_LABEL_HINT_SIZE / 2) - hintHitPad));
-        hintHitRect.setAttribute('width', String(CC_LABEL_HINT_SIZE + hintHitPad * 2));
-        hintHitRect.setAttribute('height', String(CC_LABEL_HINT_SIZE + hintHitPad * 2));
-        refs.ccLabelHint.appendChild(hintHitRect);
-        refs.ccLabelHintIcon = args.createIconUse(
-            'arrow-big-up-dash',
-            -CC_LABEL_HINT_SIZE / 2,
-            -CC_LABEL_HINT_SIZE / 2,
-            CC_LABEL_HINT_SIZE
-        );
-        refs.ccLabelHintIcon.classList.add('ert-inquiry-cc-hint-icon');
-        refs.ccLabelHint.appendChild(refs.ccLabelHintIcon);
-        addTooltipData(
-            refs.ccLabelHint,
-            balanceTooltipText('Click corpus note to cycle scope.\nShift-click to toggle Targeting. Right-click for menu.'),
-            'top'
-        );
-    }
+    // Arrow hint no longer rendered in subheader — moved into legend panel
 
     // ── Position labels ──
     refs.ccLabel.textContent = args.getScopeLabel();
@@ -471,35 +497,24 @@ export function renderInquiryCorpusStrip(args: {
     const corpusTitleY = -18;
     const scopeLabelY = 0;
 
-    // CORPUS text centered on strip, arrow + [?] placed to its right
-    const corpusTextW = refs.ccCorpusLabel?.getComputedTextLength?.() ?? 0;
-    const arrowGap = 8;
+    // CORPUS text centered on strip
     refs.ccCorpusLabel.setAttribute('x', String(stripCenterX));
     refs.ccCorpusLabel.setAttribute('y', String(corpusTitleY));
 
-    const iconCenterX = Math.round(stripCenterX + corpusTextW / 2 + arrowGap + CC_LABEL_HINT_SIZE / 2);
-
-    // Arrow aligned with CORPUS row
-    if (refs.ccLabelHint) {
-        refs.ccLabelHint.setAttribute('transform', `translate(${iconCenterX} ${corpusTitleY})`);
-    }
-
-    // [?] page icon aligned with rightmost corpus column, 30 units above the arrow
+    // [?] page icon — rightmost corpus column center
+    const rightColCenterX = Math.round(layout.anchorRightX + layout.pageWidth / 2);
+    const qY = corpusTitleY - 40;
     if (refs.ccLegendTrigger) {
-        const rightColCenterX = Math.round(layout.anchorRightX + layout.pageWidth / 2);
-        refs.ccLegendTrigger.setAttribute('transform', `translate(${rightColCenterX} ${corpusTitleY - 30})`);
+        refs.ccLegendTrigger.setAttribute('transform', `translate(${rightColCenterX} ${qY})`);
     }
 
-    // Position legend panel: anchor right edge to stay within viewbox
+    // Legend panel: top-right corner aligns to top-left of [?] icon minus 5px
     if (refs.ccLegendPanel) {
         const legendPanelW = 324; // must match panelWidth in buildCorpusLegendPanel
-        const maxRight = VIEWBOX_MAX - CC_RIGHT_MARGIN;
-        // Align left edge of legend with left edge of corpus strip, clamped to viewbox
-        let legendX = layout.rightBlockLeft;
-        if (legendX + legendPanelW > maxRight) {
-            legendX = maxRight - legendPanelW;
-        }
-        refs.ccLegendPanel.setAttribute('transform', `translate(${Math.round(legendX)} ${corpusTitleY})`);
+        const qTopLeftX = rightColCenterX - layout.pageWidth / 2;
+        const legendX = Math.round(qTopLeftX - 5 - legendPanelW);
+        const qTopY = qY - layout.pageHeight / 2;
+        refs.ccLegendPanel.setAttribute('transform', `translate(${legendX} ${Math.round(qTopY - 14)})`);
     }
 
     // BOOK B1 line: center independently on the strip
