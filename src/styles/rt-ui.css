@@ -676,10 +676,6 @@
   --ert-controlGroup-columns: minmax(74px, max-content) minmax(220px, 1.15fr) minmax(180px, 1fr) minmax(120px, max-content);
 }
 
-.ert-ui.ert-scope--settings .ert-controlGroup--inquiry-supporting-material {
-  --ert-controlGroup-columns: minmax(180px, 1fr) minmax(120px, max-content);
-}
-
 .ert-ui.ert-scope--settings .ert-controlGroup--inquiry-material-rules {
   gap: calc(var(--ert-gap-sm) - 2px);
 }

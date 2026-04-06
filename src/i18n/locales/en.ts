@@ -403,15 +403,12 @@ export interface TranslationKeys {
             prompts: { name: string; proTag: string; alreadyAddedTag: string; alreadyAdded: string; dragToReorder: string; labelPlaceholder: string; fixedTemplate: string; replaceWithTemplate: string; applyCanonical: string; resetToCanonical: string; deleteQuestion: string; questionPlaceholder: string; customizedQuestion: string; unlockProGhost: string; chooseCanonical: string; noRemainingCanonical: string; addQuestion: string; zoneFullNote: string; };
             sources: { name: string; };
             booksForInquiry: { name: string; desc: string; buttonText: string; ariaLabel: string; };
-            scanRoots: { name: string; desc: string; placeholder: string; characterFolder: string; placeFolder: string; heredityFolder: string; commonSupportFolders: string; tooManyFolders: string; };
-            supportingMaterial: { name: string; nameWithCount: string; };
+            scanRoots: { name: string; desc: string; placeholder: string; characterFolder: string; placeFolder: string; commonSupportFolders: string; tooManyFolders: string; };
             materialRules: { name: string; desc: string; };
-            classScope: { name: string; desc: string; placeholder: string; };
             presets: { name: string; desc: string; default: string; light: string; deep: string; };
             classTable: { enabled: string; class: string; book: string; saga: string; reference: string; matches: string; matchCount: string; };
             bookStatus: { ready: string; missingScenesAndOutline: string; missingScenes: string; missingOutline: string; };
             booksTable: { sequence: string; book: string; detectedMaterial: string; status: string; empty: string; materialCounts: string; };
-            supportingTable: { material: string; matches: string; empty: string; };
             zone: { setup: string; pressure: string; payoff: string; };
             modal: { badge: string; cancel: string; };
             canonicalLibrary: { name: string; descPro: string; descFree: string; loadFullProSet: string; loadAllTooltip: string; loadCoreQuestions: string; };
@@ -1219,17 +1216,10 @@ export const en: TranslationKeys = {
                 placeholder: '/Character/\n/Place/\n/Heredity/\n/Lore/\n/Research/',
                 characterFolder: 'Character folder',
                 placeFolder: 'Place folder',
-                heredityFolder: 'Heredity folder',
                 commonSupportFolders: 'Common support folders',
                 tooManyFolders: 'Pattern expands to {{count}} folders; refine your root.',
             },
-            supportingMaterial: { name: 'Detected supporting material', nameWithCount: 'Detected supporting material ({{count}})' },
-            materialRules: { name: 'Material rules', desc: 'Define how each material type participates in Book, Saga, and Reference analysis.' },
-            classScope: {
-                name: 'Material types (advanced)',
-                desc: 'Frontmatter Class values to include. One class per line. Use / to allow all classes. Empty = no classes allowed.',
-                placeholder: 'scene\noutline\ncharacter\nplace',
-            },
+            materialRules: { name: 'Material rules', desc: 'Define where material lives and how each class participates in Book, Saga, and Reference analysis.' },
             presets: {
                 name: 'Presets',
                 desc: 'Quick starters for material rules. Apply one, then tweak as needed.',
@@ -1251,11 +1241,6 @@ export const en: TranslationKeys = {
                 status: 'Status',
                 empty: 'No Book Manager books are configured yet.',
                 materialCounts: '{{sceneCount}} scenes \u00b7 {{outlineCount}} outlines',
-            },
-            supportingTable: {
-                material: 'Material',
-                matches: 'Matches',
-                empty: 'No supporting material detected in the current supporting material folders.',
             },
             zone: { setup: 'Setup', pressure: 'Pressure', payoff: 'Payoff' },
             modal: { badge: 'INQUIRY', cancel: 'Cancel' },

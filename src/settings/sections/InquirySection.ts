@@ -52,7 +52,6 @@ import {
     type InquiryResolvedBook
 } from '../../inquiry/services/bookResolution';
 import {
-    getClassScopeConfig,
     getDefaultMaterialMode,
     isSynopsisCapableClass,
     normalizeClassContribution,
@@ -73,59 +72,8 @@ interface SectionParams {
 const listToText = (values?: string[]): string =>
     (values || []).join('\n');
 
-const parseClassScopeInput = (raw: string): string[] => {
-    const lines = raw
-        .split(/[\n,]/)
-        .map(entry => entry.trim().toLowerCase())
-        .filter(Boolean);
-    if (!lines.length) return [];
-    return Array.from(new Set(lines));
-};
-
-const normalizeClassLabel = (className: string): string =>
-    className
-        .replace(/[_-]+/g, ' ')
-        .trim()
-        .toLowerCase();
-
-const pluralizeWord = (word: string): string => {
-    if (!word) return 'items';
-    const secondToLast = word[word.length - 2];
-    if (word.endsWith('y') && secondToLast && !'aeiou'.includes(secondToLast)) {
-        return `${word.slice(0, -1)}ies`;
-    }
-    if (/(s|x|z|ch|sh)$/i.test(word)) {
-        return `${word}es`;
-    }
-    return `${word}s`;
-};
-
-const pluralizePhrase = (phrase: string): string => {
-    const tokens = phrase.split(/\s+/).filter(Boolean);
-    if (!tokens.length) return 'items';
-    const last = tokens.pop()!;
-    tokens.push(pluralizeWord(last));
-    return tokens.join(' ');
-};
-
-const formatClassCountLabel = (className: string, count: number): string => {
-    const normalized = normalizeClassLabel(className);
-    if (!normalized) return count === 1 ? 'item' : 'items';
-    return count === 1 ? normalized : pluralizePhrase(normalized);
-};
-
-const CLASS_SUMMARY_ORDER = ['scene', 'outline', 'character', 'place', 'power'];
 const PRESET_SEED_CLASSES = ['scene', 'outline', 'character', 'place', 'power'];
 const PRESET_MATCH_ORDER: InquirySourcesPreset[] = ['default', 'light', 'deep'];
-
-const compareClassSummary = (a: string, b: string): number => {
-    const aIdx = CLASS_SUMMARY_ORDER.indexOf(a);
-    const bIdx = CLASS_SUMMARY_ORDER.indexOf(b);
-    if (aIdx !== -1 || bIdx !== -1) {
-        return (aIdx === -1 ? Number.POSITIVE_INFINITY : aIdx) - (bIdx === -1 ? Number.POSITIVE_INFINITY : bIdx);
-    }
-    return a.localeCompare(b);
-};
 
 const relativeTimeFormatter = new Intl.RelativeTimeFormat(getFormattingLocale(), { numeric: 'auto' });
 
@@ -298,7 +246,6 @@ export function renderInquirySection(params: SectionParams): void {
     });
 
     let scanRootsInput: TextAreaComponent | null = null;
-    let classScopeInput: TextAreaComponent | null = null;
     const scanRootActionSyncers: Array<() => void> = [];
     const autoResizeTextAreaRows = (inputEl: HTMLTextAreaElement, minRows: number) => {
         const style = window.getComputedStyle(inputEl);
@@ -382,6 +329,12 @@ export function renderInquirySection(params: SectionParams): void {
     const booksForInquiryList = booksForInquiryPreview.createDiv({
         cls: ['ert-controlGroup', 'ert-controlGroup--inquiry-books']
     });
+
+    const materialRulesHeader = new Settings(sourcesBody)
+        .setName(t('settings.inquiry.materialRules.name'))
+        .setDesc(t('settings.inquiry.materialRules.desc'));
+    materialRulesHeader.setHeading();
+    applyErtHeaderLayout(materialRulesHeader);
 
     const scanRootsSetting = new Settings(sourcesBody)
         .setName(t('settings.inquiry.scanRoots.name'))
@@ -468,52 +421,7 @@ export function renderInquirySection(params: SectionParams): void {
 
     addScanRootToggle(t('settings.inquiry.scanRoots.characterFolder'), () => ['/Character/']);
     addScanRootToggle(t('settings.inquiry.scanRoots.placeFolder'), () => ['/Place/']);
-    addScanRootToggle(t('settings.inquiry.scanRoots.heredityFolder'), () => ['/Heredity/']);
-    addScanRootToggle(t('settings.inquiry.scanRoots.commonSupportFolders'), () => ['/Character/', '/Place/', '/Heredity/', '/Lore/', '/Research/']);
-
-    const supportingMaterialPreview = sourcesBody.createDiv({
-        cls: [ERT_CLASSES.PREVIEW_FRAME, ERT_CLASSES.STACK, 'ert-previewFrame--flush'],
-        attr: { 'data-preview': 'inquiry-detected-supporting-material' }
-    });
-    const supportingMaterialHeading = supportingMaterialPreview.createDiv({
-        cls: ['ert-planetary-preview-heading', 'ert-previewFrame__title'],
-        text: t('settings.inquiry.supportingMaterial.name')
-    });
-    const supportingMaterialList = supportingMaterialPreview.createDiv({
-        cls: ['ert-controlGroup', 'ert-controlGroup--inquiry-supporting-material']
-    });
-
-    const materialRulesHeader = new Settings(sourcesBody)
-        .setName(t('settings.inquiry.materialRules.name'))
-        .setDesc(t('settings.inquiry.materialRules.desc'));
-    materialRulesHeader.setHeading();
-    applyErtHeaderLayout(materialRulesHeader);
-
-    const classScopeSetting = new Settings(sourcesBody)
-        .setName(t('settings.inquiry.classScope.name'))
-        .setDesc(t('settings.inquiry.classScope.desc'));
-    classScopeSetting.settingEl.setAttribute('data-ert-role', 'inquiry-setting:class-scope');
-    classScopeSetting.settingEl.addClass(ERT_CLASSES.ROW, ERT_CLASSES.ROW_WIDE_CONTROL);
-
-    classScopeSetting.addTextArea(text => {
-        text.setValue(listToText(inquirySources.classScope));
-        text.inputEl.rows = 4;
-        text.inputEl.addClass('ert-textarea--md');
-        text.inputEl.addClass('mod-styled-scrollbar');
-        text.setPlaceholder(t('settings.inquiry.classScope.placeholder'));
-        classScopeInput = text;
-        const autoResizeClassScopeInput = registerDeferredAutoResize(text.inputEl, 4);
-        autoResizeClassScopeInput();
-
-        plugin.registerDomEvent(text.inputEl, 'input', () => {
-            autoResizeClassScopeInput();
-        });
-
-        plugin.registerDomEvent(text.inputEl, 'blur', () => {
-            const nextScope = parseClassScopeInput(text.getValue());
-            applyClassScope(nextScope);
-        });
-    });
+    addScanRootToggle(t('settings.inquiry.scanRoots.commonSupportFolders'), () => ['/Character/', '/Place/', '/Lore/', '/Research/']);
 
     let resolvedRootCache: { signature: string; resolvedRoots: string[] } | null = null;
     let resolvedBookCache: InquiryBookResolution | null = null;
@@ -600,11 +508,13 @@ export function renderInquirySection(params: SectionParams): void {
         discoveredCounts: Record<string, number>;
         discoveredClasses: string[];
         containerClassCounts: Record<string, Record<string, number>>;
+        classSources: Record<string, Set<string>>;
     }> => {
         if (!roots.length) {
-            return { discoveredCounts: {}, discoveredClasses: [], containerClassCounts: {} };
+            return { discoveredCounts: {}, discoveredClasses: [], containerClassCounts: {}, classSources: {} };
         }
         const discoveredCounts: Record<string, number> = {};
+        const classSources: Record<string, Set<string>> = {};
         const containerClassCounts: Record<string, Record<string, number>> = {};
         containerCandidates.forEach(candidate => {
             containerClassCounts[candidate.rootPath] = {};
@@ -614,6 +524,10 @@ export function renderInquirySection(params: SectionParams): void {
 
         const inRoots = (path: string) => {
             return resolvedVaultRoots.some(root => !root || path === root || path.startsWith(`${root}/`));
+        };
+
+        const matchingRoot = (path: string): string | undefined => {
+            return resolvedVaultRoots.find(root => root && path.startsWith(`${root}/`));
         };
 
         files.forEach(file => {
@@ -629,12 +543,16 @@ export function renderInquirySection(params: SectionParams): void {
                 ? findInquiryBookForPath(file.path, containerCandidates)
                 : undefined;
             const includeInDiscoveredCounts = !includePath || includePath(file.path);
+            const root = matchingRoot(file.path);
             values.forEach(value => {
                 const name = typeof value === 'string' ? value.trim() : String(value).trim();
                 if (!name) return;
                 const key = name.toLowerCase();
                 if (includeInDiscoveredCounts) {
                     discoveredCounts[key] = (discoveredCounts[key] || 0) + 1;
+                    if (root) {
+                        (classSources[key] ||= new Set()).add(toDisplayRoot(root));
+                    }
                 }
                 if (ownerContainer?.rootPath) {
                     const bucket = containerClassCounts[ownerContainer.rootPath] || {};
@@ -647,11 +565,12 @@ export function renderInquirySection(params: SectionParams): void {
         return {
             discoveredCounts,
             discoveredClasses: Object.keys(discoveredCounts).sort(),
-            containerClassCounts
+            containerClassCounts,
+            classSources
         };
     };
 
-    const renderClassTable = (configs: InquiryClassConfig[], counts: Record<string, number>) => {
+    const renderClassTable = (configs: InquiryClassConfig[], counts: Record<string, number>, classSources?: Record<string, Set<string>>) => {
         // Build into a temporary container then replace in one go to avoid empty-then-rebuild flicker.
         const container = document.createElement('div');
         container.className = classTableWrap.className;
@@ -685,6 +604,14 @@ export function renderInquirySection(params: SectionParams): void {
 
             const nameCell = row.createDiv({ cls: 'ert-controlGroup__cell' });
             nameCell.createEl('strong', { text: config.className });
+            const sources = classSources?.[config.className];
+            if (sources?.size) {
+                const sourceLabel = Array.from(sources).sort().join(', ');
+                nameCell.createEl('span', {
+                    cls: 'ert-controlGroup__cell--meta ert-controlGroup__cell--faint',
+                    text: `from ${sourceLabel}`
+                });
+            }
 
             const isSynopsisCapable = isSynopsisCapableClass(config.className);
             const isReference = !isSynopsisCapable;
@@ -909,44 +836,6 @@ export function renderInquirySection(params: SectionParams): void {
         booksForInquiryList.replaceChildren(...Array.from(container.children));
     };
 
-    const renderDetectedSupportingMaterial = (
-        discoveredCounts: Record<string, number>,
-        participatingClasses: Set<string>
-    ) => {
-        const visibleEntries = Object.entries(discoveredCounts)
-            .filter(([className, count]) => count > 0 && participatingClasses.has(className))
-            .sort(([a], [b]) => compareClassSummary(a, b));
-        supportingMaterialHeading.setText(visibleEntries.length
-            ? t('settings.inquiry.supportingMaterial.nameWithCount', { count: visibleEntries.length })
-            : t('settings.inquiry.supportingMaterial.name'));
-
-        const container = document.createElement('div');
-        container.className = supportingMaterialList.className;
-        const header = container.createDiv({ cls: ['ert-controlGroup__row', 'ert-controlGroup__row--header'] });
-        header.createDiv({ cls: 'ert-controlGroup__cell', text: t('settings.inquiry.supportingTable.material') });
-        header.createDiv({ cls: 'ert-controlGroup__cell', text: t('settings.inquiry.supportingTable.matches') });
-
-        if (!visibleEntries.length) {
-            const emptyRow = container.createDiv({ cls: ['ert-controlGroup__row', 'ert-controlGroup__row--card'] });
-            const emptyCell = emptyRow.createDiv({
-                cls: ['ert-controlGroup__cell', 'ert-controlGroup__cell--faint'],
-                text: t('settings.inquiry.supportingTable.empty')
-            });
-            emptyCell.style.gridColumn = '1 / -1';
-        } else {
-            visibleEntries.forEach(([className, count]) => {
-                const row = container.createDiv({ cls: ['ert-controlGroup__row', 'ert-controlGroup__row--card'] });
-                row.createDiv({ cls: 'ert-controlGroup__cell', text: count === 1 ? normalizeClassLabel(className) : pluralizePhrase(normalizeClassLabel(className)) });
-                row.createDiv({
-                    cls: ['ert-controlGroup__cell', 'ert-controlGroup__cell--meta'],
-                    text: `${count} ${formatClassCountLabel(className, count)}`
-                });
-            });
-        }
-
-        supportingMaterialList.replaceChildren(...Array.from(container.children));
-    };
-
     const applyScanRoots = (nextRoots: string[]) => {
         const normalized = nextRoots.length ? normalizeScanRootPatterns(nextRoots) : [];
         inquirySources = { ...inquirySources, scanRoots: normalized };
@@ -955,17 +844,6 @@ export function renderInquirySection(params: SectionParams): void {
         scanRootActionSyncers.forEach(sync => sync());
         resolvedRootCache = null;
         resolvedBookCache = null;
-        void refreshClassScan();
-    };
-
-    const applyClassScope = (nextScope: string[]) => {
-        const normalized = parseClassScopeInput(nextScope.join('\n'));
-        inquirySources = { ...inquirySources, classScope: normalized };
-        const nextValue = listToText(normalized);
-        classScopeInput?.setValue(nextValue);
-        if (classScopeInput) {
-            autoResizeTextAreaRows(classScopeInput.inputEl, 4);
-        }
         void refreshClassScan();
     };
 
@@ -998,22 +876,15 @@ export function renderInquirySection(params: SectionParams): void {
             undefined,
             resolvedBookCache?.candidates || []
         );
-        const supportingScan = await scanInquiryClasses(
-            resolvedVaultRoots,
-            (path) => !findInquiryBookForPath(path, resolvedBookCache?.candidates || [])
-        );
-        const scopeConfig = getClassScopeConfig(inquirySources.classScope);
-        const allowedClasses = scopeConfig.allowAll ? scan.discoveredClasses : scopeConfig.allowed;
-        const allowedSet = new Set(allowedClasses);
-        const allConfigNames = Array.from(new Set([...scan.discoveredClasses, ...scopeConfig.allowed]));
+        // All discovered classes participate — classScope is always allowAll.
+        const allConfigNames = Array.from(new Set(scan.discoveredClasses));
         const merged = mergeClassConfigs(inquirySources.classes || [], allConfigNames);
-        const visibleConfigs = merged.filter(config => allowedSet.has(config.className));
         const effectivePreset = inquirySources.preset ?? inferPresetFromClasses(merged) ?? undefined;
         inquirySources = {
             preset: effectivePreset,
             scanRoots: rawRoots,
             bookInclusion: {},
-            classScope: inquirySources.classScope || [],
+            classScope: ['/'],
             classes: merged,
             classCounts: scan.discoveredCounts,
             resolvedScanRoots: rootResolution.supportResolvedRoots,
@@ -1021,22 +892,9 @@ export function renderInquirySection(params: SectionParams): void {
         };
         plugin.settings.inquirySources = inquirySources;
         await plugin.saveSettings();
-        renderClassTable(visibleConfigs, scan.discoveredCounts);
+        renderClassTable(merged, scan.discoveredCounts, scan.classSources);
         syncPresetButtons();
-
-        const participatingClasses = new Set<string>();
-        visibleConfigs.forEach(config => {
-            const participates = config.enabled
-                && (config.bookScope !== 'excluded'
-                    || config.sagaScope !== 'excluded'
-                    || config.referenceScope !== 'excluded');
-            if (!participates) return;
-            participatingClasses.add(config.className);
-        });
-
         renderBooksForInquiry(resolvedBookCache, scan.containerClassCounts);
-        renderDetectedSupportingMaterial(supportingScan.discoveredCounts, participatingClasses);
-
     };
 
     function renderPromptConfiguration(targetEl: HTMLElement): void {
