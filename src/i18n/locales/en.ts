@@ -1648,7 +1648,7 @@ export const en: TranslationKeys = {
     manuscriptModal: {
         badge: 'Export',
         title: 'Export',
-        description: 'Export your active book as a manuscript or a structural outline. Choose what to include and how it should be formatted.',
+        description: 'Export your scenes as plain text or PDF (Pro Tier). Choose what to include and how it should be formatted.',
         heroLoading: 'Loading scenes...',
         heroNarrativeMeta: 'Adjust scene range below.',
         exportHeading: 'Export type',

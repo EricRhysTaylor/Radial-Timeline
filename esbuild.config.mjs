@@ -74,7 +74,7 @@ if (isCI) {
 } else {
 	// Local development paths
 	destDirs = [
-		{ path: "/Users/ericrhystaylor/Documents/Author Eric Rhys Taylor/Obsidian Vault Author .nosync/.obsidian/plugins/radial-timeline", name: "Author" },
+		{ path: "/Users/ericrhystaylor/Obsidian Vault Author/.obsidian/plugins/radial-timeline", name: "Author" },
 		{ path: "/Users/ericrhystaylor/Documents/RT LLC/CodeBase/Obsidian Vault New/.obsidian/plugins/radial-timeline", name: "New" },
 		{ path: "/Users/ericrhystaylor/Documents/RT LLC/CodeBase/Obsidian Vault Fresh/.obsidian/plugins/radial-timeline", name: "Fresh" },
 		{ path: "/Users/ericrhystaylor/Documents/RT LLC/CodeBase/Obsidian Vault Jane Austin/.obsidian/plugins/radial-timeline", name: "Jane Austin" },

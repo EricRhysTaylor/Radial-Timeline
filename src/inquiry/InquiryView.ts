@@ -4310,7 +4310,7 @@ export class InquiryView extends ItemView {
         const classScope = this.getClassScopeConfig(sources.classScope);
         const configMap = new Map((sources.classes || []).map(config => [config.className, config]));
         const configs = (sources.classes || [])
-            .filter(config => classScope.allowAll || classScope.allowed.has(config.className));
+            .filter(config => config.enabled && (classScope.allowAll || classScope.allowed.has(config.className)));
         const groups: CorpusCcGroup[] = [];
         const ensureGroup = (className: string, mode: SceneInclusion) => {
             const items = entriesByClass.get(className) ?? [];
@@ -4351,6 +4351,9 @@ export class InquiryView extends ItemView {
 
         entriesByClass.forEach((items, className) => {
             if (groups.some(group => group.key === className || group.className === className)) return;
+            const baseClass = this.getCorpusGroupBaseClass(className);
+            const entryConfig = configMap.get(baseClass);
+            if (entryConfig && !entryConfig.enabled) return;
             const override = this.corpusService.getClassOverride(className);
             const mode = override ?? items[0]?.mode ?? 'excluded';
             groups.push({
@@ -4358,7 +4361,7 @@ export class InquiryView extends ItemView {
                 className,
                 items,
                 count: items.length,
-                mode: this.normalizeContributionMode(mode, this.getCorpusGroupBaseClass(className))
+                mode: this.normalizeContributionMode(mode, baseClass)
             });
         });
 
@@ -7205,6 +7208,8 @@ export class InquiryView extends ItemView {
                 const isContextClass = INQUIRY_CONTEXT_CLASSES.has(className);
                 const contextOverride = contextRequired && isContextClass;
                 if (!config && !contextOverride) return;
+                // Disabled classes do not participate — skip unless context override applies.
+                if (config && !config.enabled && !contextOverride) return;
 
                 let mode: SceneInclusion = 'excluded';
                 if (className === 'outline') {

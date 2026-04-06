@@ -212,6 +212,7 @@ export function getCorpusGroupKeys(
         if (!keys.includes(key)) keys.push(key);
     };
     (sources.classes || []).forEach(config => {
+        if (!config.enabled) return;
         if (!classScope.allowAll && !classScope.allowed.has(config.className)) return;
         if (config.className === 'outline') {
             addKey('outline');

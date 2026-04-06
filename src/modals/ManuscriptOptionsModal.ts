@@ -188,6 +188,7 @@ export class ManuscriptOptionsModal extends Modal {
     private scenePaths: string[] = [];
     private sceneWhenDates: (string | null)[] = [];
     private sceneNumbers: number[] = [];
+    private sceneWordCounts: (number | null)[] = [];
     private totalScenes = 0;
     private rangeStart = 1;
     private rangeEnd = 1;
@@ -811,7 +812,8 @@ export class ManuscriptOptionsModal extends Modal {
         if (!this.badgeEl) return;
         const bookTitle = getActiveBookTitle(this.plugin.settings, DEFAULT_BOOK_TITLE);
         const count = this.getSelectedSceneCount();
-        this.badgeEl.setText(`EXPORT — ${bookTitle}, ${count} scenes selected`);
+        const words = this.getSelectedWordCount();
+        this.badgeEl.setText(`EXPORT — ${bookTitle}, ${count} scenes selected · ${words.toLocaleString()} words`);
     }
 
     private refreshExportProfileState(): void {
@@ -1887,6 +1889,16 @@ Sarah stood at the window, watching the world wake up.`;
         return this.sceneTitles.slice(startIndex, endIndexExclusive);
     }
 
+    private getSelectedWordCount(): number {
+        if (this.totalScenes === 0 || this.sceneWordCounts.length === 0) return 0;
+        const startIndex = Math.max(0, this.rangeStart - 1);
+        const endIndexExclusive = Math.min(this.rangeEnd, this.sceneWordCounts.length);
+        if (endIndexExclusive <= startIndex) return 0;
+        return this.sceneWordCounts
+            .slice(startIndex, endIndexExclusive)
+            .reduce<number>((sum, count) => sum + (typeof count === 'number' && Number.isFinite(count) ? count : 0), 0);
+    }
+
     private getSelectedScenePaths(): string[] {
         if (this.totalScenes === 0 || this.scenePaths.length === 0) return [];
         const startIndex = Math.max(0, this.rangeStart - 1);
@@ -2241,7 +2253,7 @@ Sarah stood at the window, watching the world wake up.`;
             const isOpenScenes = this.isOpenScenesMode();
             const effectiveSubplot = isPdfManuscript || this.subplot === 'All Subplots' || isOpenScenes ? undefined : this.subplot;
             const result = await getSceneFilesByOrder(this.app, this.plugin, effectiveOrder, effectiveSubplot);
-            let { titles, whenDates, sceneNumbers } = result;
+            let { titles, whenDates, sceneNumbers, wordCounts } = result;
             const paths = result.files.map(f => f.path);
 
             if (isOpenScenes) {
@@ -2249,6 +2261,7 @@ Sarah stood at the window, watching the world wake up.`;
                 titles = indices.map(i => titles[i]);
                 whenDates = indices.map(i => whenDates[i]);
                 sceneNumbers = indices.map(i => sceneNumbers[i]);
+                wordCounts = indices.map(i => wordCounts[i]);
                 this.scenePaths = indices.map(i => paths[i]);
             } else {
                 this.scenePaths = paths;
@@ -2257,6 +2270,7 @@ Sarah stood at the window, watching the world wake up.`;
             this.sceneTitles = titles;
             this.sceneWhenDates = whenDates;
             this.sceneNumbers = sceneNumbers;
+            this.sceneWordCounts = wordCounts;
             this.totalScenes = titles.length;
             this.rangeStart = 1;
             this.rangeEnd = Math.max(1, this.totalScenes);
