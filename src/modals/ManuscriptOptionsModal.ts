@@ -813,7 +813,7 @@ export class ManuscriptOptionsModal extends Modal {
         const bookTitle = getActiveBookTitle(this.plugin.settings, DEFAULT_BOOK_TITLE);
         const count = this.getSelectedSceneCount();
         const words = this.getSelectedWordCount();
-        this.badgeEl.setText(`EXPORT — ${bookTitle}, ${count} scenes selected · ${words.toLocaleString()} words`);
+        this.badgeEl.setText(`EXPORT — ${bookTitle} • ${count} scenes selected • ${words.toLocaleString()} words`);
     }
 
     private refreshExportProfileState(): void {

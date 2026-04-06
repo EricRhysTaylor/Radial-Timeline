@@ -4172,7 +4172,7 @@ export class InquiryView extends ItemView {
             return [`${SIGMA_CHAR}`];
         }
         const base = this.getCorpusClassLabelVariants(className);
-        return base.map(label => `${label} ${count}`);
+        return base.map(label => `${label}${count}`);
     }
 
     private getCorpusCcHeaderTooltip(
@@ -4214,8 +4214,8 @@ export class InquiryView extends ItemView {
             ? words.map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ')
             : normalized.charAt(0).toUpperCase() + normalized.slice(1);
         const acronym = words.length > 1
-            ? words.map(word => word.charAt(0).toUpperCase()).join('').slice(0, 3)
-            : title.slice(0, 3).toUpperCase();
+            ? words.map(word => word.charAt(0).toUpperCase()).join('').slice(0, 2)
+            : title.slice(0, 2).toUpperCase();
         const letter = title.charAt(0).toUpperCase();
         const variants = [title, acronym, letter];
         return Array.from(new Set(variants.filter(Boolean)));
