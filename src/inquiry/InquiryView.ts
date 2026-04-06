@@ -3737,11 +3737,10 @@ export class InquiryView extends ItemView {
 
     private getCorpusCcScopeLabel(): string {
         const scopeLabel = this.getScopeLabel();
-        const targetLabel = this.getTargetSceneStatusLabel();
         if (this.state.scope === 'saga') {
-            return `Corpus · Saga ${scopeLabel} · ${targetLabel}`;
+            return `Corpus · Saga ${scopeLabel}`;
         }
-        return `Corpus · Book ${scopeLabel} · ${targetLabel}`;
+        return `Corpus · Book ${scopeLabel}`;
     }
 
     private getCorpusGroupBaseClass(className: string): string {

@@ -869,16 +869,33 @@ export function renderInquirySection(params: SectionParams): void {
             scanRoots: rawRoots,
             resolvedScanRoots: resolvedRootCache.resolvedRoots
         }, plugin.settings.books);
-        const { resolvedVaultRoots } = rootResolution;
+        const { resolvedVaultRoots, supportVaultRoots } = rootResolution;
         resolvedBookCache = resolveBookManagerInquiryBooks(plugin.settings.books);
-        const scan = await scanInquiryClasses(
+
+        // Full scan (book + support roots) — used for book inventory and total counts.
+        const fullScan = await scanInquiryClasses(
             resolvedVaultRoots,
             undefined,
             resolvedBookCache?.candidates || []
         );
-        // All discovered classes participate — classScope is always allowAll.
-        const allConfigNames = Array.from(new Set(scan.discoveredClasses));
-        const merged = mergeClassConfigs(inquirySources.classes || [], allConfigNames);
+        // Support-only scan — classes discovered only in configured support folders.
+        // This keeps book-internal classes (beat, backdrop, backmatter, etc.) out of the rules table.
+        const supportScan = await scanInquiryClasses(supportVaultRoots);
+
+        // Rules table shows: support-folder classes + preset seeds (scene/outline always visible).
+        const rulesClasses = Array.from(new Set([
+            ...PRESET_SEED_CLASSES,
+            ...supportScan.discoveredClasses
+        ]));
+        // Merge counts: support classes use support counts; scene/outline use full-scan counts.
+        const rulesCounts: Record<string, number> = { ...supportScan.discoveredCounts };
+        for (const seed of PRESET_SEED_CLASSES) {
+            if (fullScan.discoveredCounts[seed] && !rulesCounts[seed]) {
+                rulesCounts[seed] = fullScan.discoveredCounts[seed];
+            }
+        }
+
+        const merged = mergeClassConfigs(inquirySources.classes || [], rulesClasses);
         const effectivePreset = inquirySources.preset ?? inferPresetFromClasses(merged) ?? undefined;
         inquirySources = {
             preset: effectivePreset,
@@ -886,15 +903,15 @@ export function renderInquirySection(params: SectionParams): void {
             bookInclusion: {},
             classScope: ['/'],
             classes: merged,
-            classCounts: scan.discoveredCounts,
+            classCounts: rulesCounts,
             resolvedScanRoots: rootResolution.supportResolvedRoots,
             lastScanAt: new Date().toISOString()
         };
         plugin.settings.inquirySources = inquirySources;
         await plugin.saveSettings();
-        renderClassTable(merged, scan.discoveredCounts, scan.classSources);
+        renderClassTable(merged, rulesCounts, supportScan.classSources);
         syncPresetButtons();
-        renderBooksForInquiry(resolvedBookCache, scan.containerClassCounts);
+        renderBooksForInquiry(resolvedBookCache, fullScan.containerClassCounts);
     };
 
     function renderPromptConfiguration(targetEl: HTMLElement): void {
