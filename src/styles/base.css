@@ -334,68 +334,72 @@ body.rt-modal-open .radial-timeline-container * {
   fill: none;
 }
 
+.rt-recent-moves-fo {
+  overflow: visible;
+}
+
 .rt-recent-moves {
-  position: absolute;
-  left: var(--rt-recent-moves-left, 0);
-  top: 0;
-  z-index: 1;
-  width: var(--rt-recent-moves-width, 17.5rem);
-  max-width: max(10rem, calc(100% - var(--rt-recent-moves-left, 0px)));
+  width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  padding: 0.5rem 0.625rem;
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--background-primary) 78%, transparent);
-  backdrop-filter: blur(10px);
+  gap: 0.22rem;
+  padding: 0.35rem 0.5rem;
+  background: transparent;
   box-sizing: border-box;
   overflow: hidden;
   -webkit-mask-image: radial-gradient(
-    circle var(--rt-recent-moves-fade-radius, 400px) at var(--rt-recent-moves-fade-center-x, 100%) var(--rt-recent-moves-fade-center-y, 50%),
+    circle var(--rt-recent-moves-fade-radius, 790px) at var(--rt-recent-moves-fade-center-x, 800px) var(--rt-recent-moves-fade-center-y, 800px),
     rgba(0, 0, 0, 0) 0,
-    rgba(0, 0, 0, 0) calc(var(--rt-recent-moves-fade-radius, 400px) - var(--rt-recent-moves-fade-width, 30px)),
-    rgba(0, 0, 0, 1) var(--rt-recent-moves-fade-radius, 400px)
+    rgba(0, 0, 0, 0) var(--rt-recent-moves-fade-radius, 790px),
+    rgba(0, 0, 0, 0.5) calc(var(--rt-recent-moves-fade-radius, 790px) + (var(--rt-recent-moves-fade-width, 110px) * 0.45)),
+    rgba(0, 0, 0, 1) calc(var(--rt-recent-moves-fade-radius, 790px) + var(--rt-recent-moves-fade-width, 110px))
   );
   mask-image: radial-gradient(
-    circle var(--rt-recent-moves-fade-radius, 400px) at var(--rt-recent-moves-fade-center-x, 100%) var(--rt-recent-moves-fade-center-y, 50%),
+    circle var(--rt-recent-moves-fade-radius, 790px) at var(--rt-recent-moves-fade-center-x, 800px) var(--rt-recent-moves-fade-center-y, 800px),
     rgba(0, 0, 0, 0) 0,
-    rgba(0, 0, 0, 0) calc(var(--rt-recent-moves-fade-radius, 400px) - var(--rt-recent-moves-fade-width, 30px)),
-    rgba(0, 0, 0, 1) var(--rt-recent-moves-fade-radius, 400px)
+    rgba(0, 0, 0, 0) var(--rt-recent-moves-fade-radius, 790px),
+    rgba(0, 0, 0, 0.5) calc(var(--rt-recent-moves-fade-radius, 790px) + (var(--rt-recent-moves-fade-width, 110px) * 0.45)),
+    rgba(0, 0, 0, 1) calc(var(--rt-recent-moves-fade-radius, 790px) + var(--rt-recent-moves-fade-width, 110px))
   );
 }
 
 .rt-recent-moves__header {
-  font-size: 0.56rem;
+  font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: color-mix(in srgb, var(--text-muted) 82%, transparent);
+  opacity: 0.8;
+  line-height: 1.1;
 }
 
 .rt-recent-moves__list {
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
+  gap: 0.28rem;
 }
 
 .rt-recent-moves__item {
   display: flex;
   flex-direction: column;
-  gap: 0.18rem;
+  gap: 0.04rem;
   min-width: 0;
 }
 
 .rt-recent-moves__summary {
-  font-size: 0.68rem;
-  line-height: 1.25;
-  color: var(--text-normal);
+  font-size: 15px;
+  line-height: 1.16;
+  color: color-mix(in srgb, var(--text-muted) 96%, transparent);
+  opacity: 0.72;
   overflow-wrap: anywhere;
 }
 
 .rt-recent-moves__meta {
-  font-size: 0.56rem;
-  line-height: 1.3;
-  color: var(--text-faint);
+  font-size: 13px;
+  line-height: 1.12;
+  color: color-mix(in srgb, var(--text-faint) 90%, transparent);
+  opacity: 0.68;
   overflow-wrap: anywhere;
 }
 

@@ -2250,6 +2250,18 @@
   overflow: visible;
 }
 
+.ert-ui.ert-scope--settings .ert-ai-strategy-select.is-ready {
+  color: var(--text-success);
+}
+
+.ert-ui.ert-scope--settings .ert-ai-strategy-select.is-warning {
+  color: var(--text-warning);
+}
+
+.ert-ui.ert-scope--settings .ert-ai-strategy-select.is-muted {
+  color: var(--text-muted);
+}
+
 /* ── AI Strategy step hierarchy ───────────────────────────────────────── */
 .ert-ui.ert-scope--settings .ert-ai-steps-row {
   display: grid;

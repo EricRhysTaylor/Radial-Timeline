@@ -19,6 +19,7 @@ import { RendererService } from '../services/RendererService';
 import { ModeManager, createModeManager } from '../modes/ModeManager';
 import { ModeInteractionController, createInteractionController } from '../modes/ModeInteractionController';
 import { renderWelcomeScreen } from './WelcomeScreen';
+import { MONTH_LABEL_RADIUS, SVG_SIZE } from '../renderer/layout/LayoutConstants';
 import { 
     createSnapshot, 
     detectChanges, 
@@ -882,7 +883,10 @@ export class RadialTimelineView extends ItemView {
                 
             // Add the fragment to the container
             container.appendChild(fragment);
-            this.renderRecentMovesPanel(timelineContainer);
+            const svgForRecentMoves = timelineContainer.querySelector('.radial-timeline-svg') as SVGSVGElement | null;
+            if (svgForRecentMoves) {
+                this.renderRecentMovesPanel(svgForRecentMoves);
+            }
             this.scheduleBeatLabelAdjustment();
             
             // Attach Obsidian bubble tooltips to grid headers and buttons
@@ -934,24 +938,43 @@ export class RadialTimelineView extends ItemView {
         }
     }
 
-    private renderRecentMovesPanel(timelineContainer: HTMLElement): void {
+    private renderRecentMovesPanel(svg: SVGSVGElement): void {
         if (this.currentMode !== 'narrative') return;
         if (this.plugin.settings.showRecentMovesOverlay === false) return;
 
-        const entries = getActiveRecentStructuralMoves(this.plugin.settings).slice(0, 4);
+        const entries = getActiveRecentStructuralMoves(this.plugin.settings).slice(0, 10);
         if (entries.length === 0) return;
 
-        this.applyRecentMovesPanelBounds(timelineContainer);
+        const xhtmlNs = 'http://www.w3.org/1999/xhtml';
+        const svgNs = 'http://www.w3.org/2000/svg';
+        const viewBoxMin = -(SVG_SIZE / 2);
+        const panelX = viewBoxMin;
+        const panelY = viewBoxMin + 24;
+        const panelWidth = 520;
+        const rowHeight = 52;
+        const panelHeight = 28 + (entries.length * rowHeight);
 
-        const panel = document.createElement('section');
+        const foreignObject = document.createElementNS(svgNs, 'foreignObject');
+        foreignObject.setAttribute('x', String(panelX));
+        foreignObject.setAttribute('y', String(panelY));
+        foreignObject.setAttribute('width', String(panelWidth));
+        foreignObject.setAttribute('height', String(panelHeight));
+        foreignObject.setAttribute('class', 'rt-recent-moves-fo');
+        foreignObject.style.pointerEvents = 'none';
+
+        const panel = document.createElementNS(xhtmlNs, 'section');
         panel.className = 'rt-recent-moves';
+        panel.style.setProperty('--rt-recent-moves-fade-center-x', `${-panelX}px`);
+        panel.style.setProperty('--rt-recent-moves-fade-center-y', `${-panelY}px`);
+        panel.style.setProperty('--rt-recent-moves-fade-radius', `${MONTH_LABEL_RADIUS}px`);
+        panel.style.setProperty('--rt-recent-moves-fade-width', '110px');
 
-        const header = document.createElement('div');
+        const header = document.createElementNS(xhtmlNs, 'div');
         header.className = 'rt-recent-moves__header';
         header.textContent = 'Recent moves';
         panel.appendChild(header);
 
-        const list = document.createElement('div');
+        const list = document.createElementNS(xhtmlNs, 'div');
         list.className = 'rt-recent-moves__list';
         panel.appendChild(list);
 
@@ -959,41 +982,21 @@ export class RadialTimelineView extends ItemView {
             list.appendChild(this.buildRecentMoveRow(entry));
         });
 
-        timelineContainer.appendChild(panel);
-    }
-
-    private applyRecentMovesPanelBounds(timelineContainer: HTMLElement): void {
-        const containerWidth = timelineContainer.clientWidth;
-        const containerHeight = timelineContainer.clientHeight;
-        if (containerWidth <= 0 || containerHeight <= 0) return;
-
-        const viewboxSize = Math.min(containerWidth, containerHeight);
-        const leftGutter = Math.max(0, (containerWidth - viewboxSize) / 2);
-        const overlapFade = 30;
-        const panelLeft = Math.max(0, leftGutter - 20);
-        const panelWidth = Math.max(0, Math.min(420, leftGutter + overlapFade + 100));
-        const outerRadius = viewboxSize / 2;
-        const fadeCenterX = (leftGutter + outerRadius) - panelLeft;
-        const fadeCenterY = containerHeight / 2;
-
-        timelineContainer.style.setProperty('--rt-recent-moves-left', `${panelLeft}px`);
-        timelineContainer.style.setProperty('--rt-recent-moves-width', `${panelWidth}px`);
-        timelineContainer.style.setProperty('--rt-recent-moves-fade-width', `${overlapFade}px`);
-        timelineContainer.style.setProperty('--rt-recent-moves-fade-center-x', `${fadeCenterX}px`);
-        timelineContainer.style.setProperty('--rt-recent-moves-fade-center-y', `${fadeCenterY}px`);
-        timelineContainer.style.setProperty('--rt-recent-moves-fade-radius', `${outerRadius}px`);
+        foreignObject.appendChild(panel);
+        svg.appendChild(foreignObject);
     }
 
     private buildRecentMoveRow(entry: StructuralMoveHistoryEntry): HTMLElement {
-        const row = document.createElement('div');
+        const xhtmlNs = 'http://www.w3.org/1999/xhtml';
+        const row = document.createElementNS(xhtmlNs, 'div');
         row.className = 'rt-recent-moves__item';
 
-        const summary = document.createElement('div');
+        const summary = document.createElementNS(xhtmlNs, 'div');
         summary.className = 'rt-recent-moves__summary';
         summary.textContent = entry.summary;
         row.appendChild(summary);
 
-        const meta = document.createElement('div');
+        const meta = document.createElementNS(xhtmlNs, 'div');
         meta.className = 'rt-recent-moves__meta';
         const parts = [this.formatRecentMoveAge(entry.timestamp)];
         if (entry.sourceContext && entry.destinationContext) {

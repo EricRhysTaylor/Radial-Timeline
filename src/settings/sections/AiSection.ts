@@ -1031,6 +1031,21 @@ export function renderAiSection(params: {
         plugin.getInquiryService().notifyAiSettingsChanged();
     };
 
+    const providerKeyStates: Record<string, string> = {};
+    const refreshDropdownKeyIndicators = (): void => {
+        if (!providerDropdown) return;
+        const selectEl = providerDropdown.selectEl;
+        const selectedState = providerKeyStates[selectEl.value];
+        selectEl.removeClass('is-ready', 'is-warning', 'is-muted');
+        if (selectedState === 'ready') {
+            selectEl.addClass('is-ready');
+        } else if (selectedState === 'not_configured' || selectedState === 'rejected' || selectedState === 'network_blocked') {
+            selectEl.addClass('is-warning');
+        } else if (selectedState === 'checking') {
+            selectEl.addClass('is-muted');
+        }
+    };
+
     const providerSetting = new Settings(quickSetupGrid)
         .setName(t('settings.ai.provider.name'))
         .setDesc(t('settings.ai.provider.desc'));
@@ -1058,6 +1073,7 @@ export function renderAiSection(params: {
 
             await persistCanonical();
             refreshRoutingUi();
+            refreshDropdownKeyIndicators();
             if (nextProvider === 'ollama') {
                 markLocalLlmConfigurationDirty();
                 queueLocalLlmAutoValidation();
@@ -2117,6 +2133,8 @@ export function renderAiSection(params: {
 
         const setProviderState = (next: ProviderKeyUiState): void => {
             providerState = next;
+            providerKeyStates[options.provider] = next;
+            refreshDropdownKeyIndicators();
             const ai = ensureCanonicalAiSettings();
             const secretId = getCredentialSecretId(ai, options.provider).trim();
             const desc = document.createDocumentFragment();
