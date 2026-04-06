@@ -160,7 +160,7 @@ export function renderInquiryCorpusStrip(args: {
         refs.ccLabelHint.appendChild(refs.ccLabelHintIcon);
         addTooltipData(
             refs.ccLabelHint,
-            balanceTooltipText('Click to change inclusion. Shift-click a scene to toggle Target Scenes. Right-click for the scene menu.'),
+            balanceTooltipText('Click corpus note to cycle scope.\nShift-click to toggle Targeting. Right-click for menu.'),
             'top'
         );
     }

@@ -150,6 +150,29 @@ function getInquiryCorpusCcStatusIcon(status?: CorpusSceneStatus): string {
     return '';
 }
 
+function getTierThresholdLabel(
+    tier: CorpusSubstanceTier,
+    thresholds: InquiryCorpusThresholds
+): string {
+    if (tier === 'empty') return `< ${thresholds.emptyMax}`;
+    if (tier === 'sketchy') return `< ${thresholds.mediumMin}`;
+    if (tier === 'medium') return `>= ${thresholds.mediumMin}`;
+    return `>= ${thresholds.substantiveMin}`;
+}
+
+function getTierVisualLabel(
+    tier: CorpusSubstanceTier,
+    mode: string,
+    isLowSubstance: boolean
+): string {
+    if (isLowSubstance) return 'X';
+    if (mode === 'excluded') return 'empty circle';
+    if (tier === 'empty') return 'empty cell';
+    if (tier === 'sketchy') return 'small disc';
+    if (tier === 'medium') return 'medium disc';
+    return 'solid disc';
+}
+
 function buildInquiryCorpusCcTooltip(args: {
     entry: CorpusCcEntry;
     stats: CorpusCcStats;
@@ -167,16 +190,18 @@ function buildInquiryCorpusCcTooltip(args: {
         const statusLabel = args.sceneStatus === 'overdue'
             ? 'Overdue'
             : `${args.sceneStatus.charAt(0).toUpperCase()}${args.sceneStatus.slice(1)}`;
-        const statusIcon = getInquiryCorpusCcStatusIcon(args.sceneStatus);
         const statusBorderNote = args.sceneStatus === 'todo'
             ? ' (dashed border)'
             : args.sceneStatus === 'working'
                 ? ''
                 : args.sceneStatus === 'overdue'
-                    ? ' (solid red border)'
+                    ? ' (red border)'
                     : ' (solid border)';
-        const statusIconText = statusIcon ? ` ${statusIcon}` : '';
-        conditions.push(`Status: ${statusLabel}${statusIconText}${statusBorderNote}`);
+        conditions.push(`Status: ${statusLabel}${statusBorderNote}`);
+    }
+
+    if (args.entry.mode === 'excluded') {
+        conditions.push('Mode: Exclude');
     }
 
     if (args.entry.isTarget) {
@@ -185,25 +210,9 @@ function buildInquiryCorpusCcTooltip(args: {
 
     const tierLabel = getInquiryCorpusTierLabel(args.tier);
     const wordLabel = args.wordCount.toLocaleString();
-    const isSynopsisCapable = args.entry.className === 'scene' || args.entry.className.startsWith('outline');
-    if (args.entry.mode === 'excluded') {
-        conditions.push('Mode: Exclude');
-    }
-    if (isSynopsisCapable) {
-        if (args.entry.mode === 'summary') {
-            conditions.push(`Tier: Summary ${tierLabel.toLowerCase()} (${wordLabel} words)`);
-        } else if (args.entry.mode === 'full') {
-            conditions.push(`Tier: Full Scene ${tierLabel.toLowerCase()} (${wordLabel} words)`);
-        } else {
-            conditions.push(`Tier: ${tierLabel} (${wordLabel} words)`);
-        }
-    } else {
-        conditions.push(`Tier: ${tierLabel} (${wordLabel} words)`);
-    }
-
-    if (args.isLowSubstance) {
-        conditions.push(`Low substance: marked with X (${args.thresholds.sketchyMin} words target)`);
-    }
+    const thresholdLabel = getTierThresholdLabel(args.tier, args.thresholds);
+    const visual = getTierVisualLabel(args.tier, args.entry.mode, args.isLowSubstance);
+    conditions.push(`Tier: ${tierLabel} ${thresholdLabel} words (${visual})`);
 
     return `${tooltipTitle} [${classInitial}]\n${conditions.map(item => `• ${item}`).join('\n')}`;
 }

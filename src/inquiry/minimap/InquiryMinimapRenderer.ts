@@ -196,6 +196,7 @@ export class InquiryMinimapRenderer {
     private minimapTokenCapStartCap?: SVGRectElement;
     private minimapTokenCapEndCap?: SVGRectElement;
     private minimapTokenCapSplitGroup?: SVGGElement;
+    private minimapTokenCapLabelGroup?: SVGGElement;
     private minimapTokenCapCachedOverlay?: SVGRectElement;
     private minimapTicks: SVGGElement[] = [];
     private minimapGroup?: SVGGElement;
@@ -280,6 +281,7 @@ export class InquiryMinimapRenderer {
         this.minimapTokenCapEndCap.classList.add('ert-inquiry-minimap-tokencap-endcap');
         parentGroup.appendChild(this.minimapTokenCapEndCap);
         this.minimapTokenCapSplitGroup = createSvgGroup(parentGroup, 'ert-inquiry-minimap-tokencap-splits');
+        this.minimapTokenCapLabelGroup = createSvgGroup(parentGroup, 'ert-inquiry-minimap-tokencap-labels');
         this.minimapStagesGroup = createSvgGroup(parentGroup, 'ert-inquiry-minimap-stages');
 
         this.minimapTokenCapCachedOverlay = createSvgElement('rect');
@@ -747,7 +749,9 @@ export class InquiryMinimapRenderer {
         overCapacityTone: 'amber' | 'red',
         totalPassCount: number,
         styleSource: Element,
-        advancedContext: AIRunAdvancedContext | null
+        advancedContext: AIRunAdvancedContext | null,
+        safeInputBudget?: number,
+        formatTokenEstimate?: (value: number) => string
     ): void {
         if (!this.minimapTokenCapBar || !this.minimapLayout) return;
         const length = this.minimapLayout.length;
@@ -776,6 +780,7 @@ export class InquiryMinimapRenderer {
             isOverCapacity ? overCapacityTone : undefined,
             styleSource
         );
+        this.updateTokenCapLabels(totalPassCount, safeInputBudget, formatTokenEstimate);
         this.updateTokenCapCachedOverlay(fillRatio, advancedContext);
     }
 
@@ -819,6 +824,53 @@ export class InquiryMinimapRenderer {
             this.minimapTokenCapSplitGroup.appendChild(splitTick);
         }
         this.minimapTokenCapSplitGroup.classList.remove('ert-hidden');
+    }
+
+    private updateTokenCapLabels(
+        totalPassCount: number,
+        safeInputBudget?: number,
+        formatTokenEstimate?: (value: number) => string
+    ): void {
+        if (!this.minimapTokenCapLabelGroup || !this.minimapLayout) return;
+        clearSvgChildren(this.minimapTokenCapLabelGroup);
+
+        const hasBudget = typeof safeInputBudget === 'number' && safeInputBudget > 0 && formatTokenEstimate;
+        if (!hasBudget) {
+            this.minimapTokenCapLabelGroup.classList.add('ert-hidden');
+            return;
+        }
+
+        const baselineStart = Math.round(this.minimapLayout.startX);
+        const length = this.minimapLayout.length;
+        const labelY = MINIMAP_TOKEN_CAP_Y + MINIMAP_TOKEN_CAP_ENDCAP_HEIGHT + 12;
+
+        // Left endcap label: "0"
+        const leftLabel = createSvgText(this.minimapTokenCapLabelGroup, 'ert-inquiry-minimap-tokencap-label', '0', baselineStart, labelY);
+        leftLabel.setAttribute('text-anchor', 'start');
+
+        // Right endcap label: max context
+        const maxLabel = formatTokenEstimate(safeInputBudget);
+        const rightLabel = createSvgText(this.minimapTokenCapLabelGroup, 'ert-inquiry-minimap-tokencap-label', maxLabel, baselineStart + length, labelY);
+        rightLabel.setAttribute('text-anchor', 'end');
+
+        // Interior tick labels for multi-pass
+        if (totalPassCount > 1) {
+            for (let index = 1; index < totalPassCount; index += 1) {
+                const ratio = index / totalPassCount;
+                const centerX = baselineStart + (length * ratio);
+                const passTokens = Math.round(safeInputBudget * ratio);
+                const passLabel = createSvgText(
+                    this.minimapTokenCapLabelGroup,
+                    'ert-inquiry-minimap-tokencap-label',
+                    formatTokenEstimate(passTokens),
+                    centerX,
+                    labelY
+                );
+                passLabel.setAttribute('text-anchor', 'middle');
+            }
+        }
+
+        this.minimapTokenCapLabelGroup.classList.remove('ert-hidden');
     }
 
     private updateTokenCapCachedOverlay(
@@ -978,7 +1030,7 @@ export class InquiryMinimapRenderer {
         const usesMultiPassPackaging = readinessUi.packaging === 'segmented'
             || (readinessUi.packaging === 'automatic' && readinessUi.readiness.exceedsBudget);
         const overCapacityTone: 'amber' | 'red' = usesMultiPassPackaging ? 'amber' : 'red';
-        this.updateTokenCapBar(clamped, isOverCapacity, overCapacityTone, passPlan.displayPassCount, styleSource, advancedContext);
+        this.updateTokenCapBar(clamped, isOverCapacity, overCapacityTone, passPlan.displayPassCount, styleSource, advancedContext, readinessUi.safeInputBudget, formatTokenEstimate);
         this.updateExecutionPassSegments(passPlan.displayPassCount, progress, styleSource);
         this.updateBackboneCachedOverlay(progress, advancedContext);
         this.minimapBaseline.style.stroke = '';

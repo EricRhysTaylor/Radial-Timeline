@@ -558,6 +558,24 @@
   opacity: 0.46;
 }
 
+/* ── Token cap context labels ── */
+.ert-inquiry-minimap-tokencap-label {
+  font-size: 10px;
+  font-weight: 500;
+  fill: var(--text-muted);
+  opacity: 0.55;
+  letter-spacing: 0.06em;
+  pointer-events: none;
+}
+
+.ert-inquiry-svg.is-running .ert-inquiry-minimap-tokencap-label {
+  opacity: 0.3;
+}
+
+.ert-inquiry-svg.is-guidance-lockout .ert-inquiry-minimap-tokencap-labels {
+  display: none;
+}
+
 /* ── Cached portion overlay (hatched segment on tokencap bar) ── */
 .ert-inquiry-minimap-tokencap-cached {
   fill: url(#ert-inquiry-minimap-cached-hatch);
