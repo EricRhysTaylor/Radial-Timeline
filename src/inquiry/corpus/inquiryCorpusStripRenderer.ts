@@ -35,6 +35,9 @@ export type InquiryCorpusStripRefs = {
     ccLabelGroup?: SVGGElement;
     ccLabelHit?: SVGRectElement;
     ccLabel?: SVGTextElement;
+    ccCorpusLabel?: SVGTextElement;
+    ccLegendTrigger?: SVGGElement;
+    ccLegendPanel?: SVGGElement;
     ccLabelHint?: SVGGElement;
     ccLabelHintIcon?: SVGUseElement;
     ccEmptyText?: SVGTextElement;
@@ -74,6 +77,239 @@ type InquiryCorpusStripComputedLayout = InquiryCorpusStripLayout & {
     rightBlockRight: number;
     overlapSetup: boolean;
 };
+
+// ── Legend panel builder ────────────────────────────────────────────
+
+type LegendRow = {
+    label: string;
+    buildIcon: (group: SVGGElement, cx: number, cy: number, size: number) => void;
+};
+
+/** Build a note-shaped rect (taller than wide, like corpus cells). */
+function buildLegendNoteRect(
+    g: SVGGElement, cx: number, cy: number, w: number, h: number,
+    opts: { stroke: string; strokeWidth: string; dasharray?: string; linecap?: string; fill?: string }
+): void {
+    const r = createSvgElement('rect');
+    r.setAttribute('x', String(cx - w / 2)); r.setAttribute('y', String(cy - h / 2));
+    r.setAttribute('width', String(w)); r.setAttribute('height', String(h));
+    r.setAttribute('rx', '3'); r.setAttribute('ry', '3');
+    r.style.fill = opts.fill ?? 'none';
+    r.style.stroke = opts.stroke; r.style.strokeWidth = opts.strokeWidth;
+    if (opts.dasharray) r.style.strokeDasharray = opts.dasharray;
+    if (opts.linecap) r.style.strokeLinecap = opts.linecap;
+    g.appendChild(r);
+}
+
+function buildCorpusLegendPanel(panel: SVGGElement): void {
+    // All sizes in SVG viewbox units (1600-unit space).
+    // At ~600px container width, 1 SVG unit ≈ 0.375 real px.
+    const rowHeight = 32;
+    const iconColX = 24;
+    const labelColX = 58;
+    const fontSize = 16;
+    const sectionFontSize = 13;
+    const noteW = 18;
+    const noteH = 26;
+    const circleR = 8;
+    const padding = 14;
+
+    const sections: { title: string; rows: LegendRow[] }[] = [
+        {
+            title: 'MODE (icon + color)',
+            rows: [
+                {
+                    label: 'Full — solid disc (green)',
+                    buildIcon: (g, cx, cy) => {
+                        const c = createSvgElement('circle');
+                        c.setAttribute('cx', String(cx)); c.setAttribute('cy', String(cy));
+                        c.setAttribute('r', String(circleR));
+                        c.style.fill = '#00ff00';
+                        g.appendChild(c);
+                    }
+                },
+                {
+                    label: 'Summary — ring + dot (blue)',
+                    buildIcon: (g, cx, cy) => {
+                        const outer = createSvgElement('circle');
+                        outer.setAttribute('cx', String(cx)); outer.setAttribute('cy', String(cy));
+                        outer.setAttribute('r', String(circleR));
+                        outer.style.fill = 'none'; outer.style.stroke = '#3b82ff'; outer.style.strokeWidth = '2';
+                        g.appendChild(outer);
+                        const inner = createSvgElement('circle');
+                        inner.setAttribute('cx', String(cx)); inner.setAttribute('cy', String(cy));
+                        inner.setAttribute('r', String(circleR * 0.35));
+                        inner.style.fill = '#3b82ff';
+                        g.appendChild(inner);
+                    }
+                },
+                {
+                    label: 'Exclude — empty ring (red)',
+                    buildIcon: (g, cx, cy) => {
+                        const c = createSvgElement('circle');
+                        c.setAttribute('cx', String(cx)); c.setAttribute('cy', String(cy));
+                        c.setAttribute('r', String(circleR));
+                        c.style.fill = 'none'; c.style.stroke = '#ff4d4f'; c.style.strokeWidth = '2';
+                        g.appendChild(c);
+                    }
+                }
+            ]
+        },
+        {
+            title: 'STATUS (border)',
+            rows: [
+                {
+                    label: 'Complete — solid border',
+                    buildIcon: (g, cx, cy) => {
+                        buildLegendNoteRect(g, cx, cy, noteW, noteH, { stroke: 'var(--text-muted)', strokeWidth: '2' });
+                    }
+                },
+                {
+                    label: 'Working — dotted border',
+                    buildIcon: (g, cx, cy) => {
+                        buildLegendNoteRect(g, cx, cy, noteW, noteH, {
+                            stroke: 'var(--text-muted)', strokeWidth: '2.5',
+                            dasharray: '0 5', linecap: 'round'
+                        });
+                    }
+                },
+                {
+                    label: 'Todo — dashed border',
+                    buildIcon: (g, cx, cy) => {
+                        buildLegendNoteRect(g, cx, cy, noteW, noteH, {
+                            stroke: 'var(--text-muted)', strokeWidth: '2',
+                            dasharray: '10 4'
+                        });
+                    }
+                },
+                {
+                    label: 'Overdue — red border',
+                    buildIcon: (g, cx, cy) => {
+                        buildLegendNoteRect(g, cx, cy, noteW, noteH, {
+                            stroke: '#ff4d4f', strokeWidth: '2.5'
+                        });
+                    }
+                }
+            ]
+        },
+        {
+            title: 'TIER (fill level)',
+            rows: [
+                {
+                    label: 'Substantive — full fill',
+                    buildIcon: (g, cx, cy) => {
+                        buildLegendNoteRect(g, cx, cy, noteW, noteH, { stroke: 'var(--text-muted)', strokeWidth: '2' });
+                        const f = createSvgElement('rect');
+                        f.setAttribute('x', String(cx - noteW / 2 + 2)); f.setAttribute('y', String(cy - noteH / 2 + 2));
+                        f.setAttribute('width', String(noteW - 4)); f.setAttribute('height', String(noteH - 4));
+                        f.setAttribute('rx', '2'); f.setAttribute('ry', '2');
+                        f.style.fill = 'color-mix(in srgb, var(--text-normal) 40%, transparent)';
+                        g.appendChild(f);
+                    }
+                },
+                {
+                    label: 'Medium — partial fill',
+                    buildIcon: (g, cx, cy) => {
+                        buildLegendNoteRect(g, cx, cy, noteW, noteH, { stroke: 'var(--text-muted)', strokeWidth: '2' });
+                        const fillH = Math.round(noteH * 0.55);
+                        const f = createSvgElement('rect');
+                        f.setAttribute('x', String(cx - noteW / 2 + 2));
+                        f.setAttribute('y', String(cy + noteH / 2 - fillH - 2));
+                        f.setAttribute('width', String(noteW - 4)); f.setAttribute('height', String(fillH));
+                        f.setAttribute('rx', '2'); f.setAttribute('ry', '2');
+                        f.style.fill = 'color-mix(in srgb, var(--text-normal) 40%, transparent)';
+                        g.appendChild(f);
+                    }
+                },
+                {
+                    label: 'Sketchy — low fill',
+                    buildIcon: (g, cx, cy) => {
+                        buildLegendNoteRect(g, cx, cy, noteW, noteH, { stroke: 'var(--text-muted)', strokeWidth: '2' });
+                        const fillH = Math.round(noteH * 0.2);
+                        const f = createSvgElement('rect');
+                        f.setAttribute('x', String(cx - noteW / 2 + 2));
+                        f.setAttribute('y', String(cy + noteH / 2 - fillH - 2));
+                        f.setAttribute('width', String(noteW - 4)); f.setAttribute('height', String(fillH));
+                        f.setAttribute('rx', '2'); f.setAttribute('ry', '2');
+                        f.style.fill = 'color-mix(in srgb, var(--text-normal) 40%, transparent)';
+                        g.appendChild(f);
+                    }
+                },
+                {
+                    label: 'Empty — no fill',
+                    buildIcon: (g, cx, cy) => {
+                        buildLegendNoteRect(g, cx, cy, noteW, noteH, { stroke: 'var(--text-muted)', strokeWidth: '2' });
+                    }
+                }
+            ]
+        },
+        {
+            title: 'ALERTS',
+            rows: [
+                {
+                    label: 'Low substance (X)',
+                    buildIcon: (g, cx, cy) => {
+                        buildLegendNoteRect(g, cx, cy, noteW, noteH, { stroke: 'var(--text-muted)', strokeWidth: '2' });
+                        const pad = 6;
+                        const l1 = createSvgElement('line');
+                        l1.setAttribute('x1', String(cx - noteW / 2 + pad)); l1.setAttribute('y1', String(cy - noteH / 2 + pad));
+                        l1.setAttribute('x2', String(cx + noteW / 2 - pad)); l1.setAttribute('y2', String(cy + noteH / 2 - pad));
+                        l1.style.stroke = '#ff4d4f'; l1.style.strokeWidth = '2.5'; l1.style.strokeLinecap = 'round';
+                        g.appendChild(l1);
+                        const l2 = createSvgElement('line');
+                        l2.setAttribute('x1', String(cx + noteW / 2 - pad)); l2.setAttribute('y1', String(cy - noteH / 2 + pad));
+                        l2.setAttribute('x2', String(cx - noteW / 2 + pad)); l2.setAttribute('y2', String(cy + noteH / 2 - pad));
+                        l2.style.stroke = '#ff4d4f'; l2.style.strokeWidth = '2.5'; l2.style.strokeLinecap = 'round';
+                        g.appendChild(l2);
+                    }
+                }
+            ]
+        }
+    ];
+
+    // Calculate total height
+    let totalRows = 0;
+    const sectionGap = 10;
+    const titleHeight = 24;
+    for (const section of sections) {
+        totalRows += section.rows.length;
+    }
+    const panelHeight = (sections.length * (titleHeight + sectionGap)) + (totalRows * rowHeight) + padding * 2;
+
+    // Width: labelColX + longest label (~28 chars × ~9 units at 16px) + right padding
+    const panelWidth = labelColX + 252 + padding;
+    const panelLeft = 0;
+
+    // Background — opaque, matches viewbox bg
+    const bg = createSvgElement('rect');
+    bg.classList.add('ert-inquiry-cc-legend-bg');
+    bg.setAttribute('x', String(panelLeft));
+    bg.setAttribute('y', '14');
+    bg.setAttribute('width', String(panelWidth));
+    bg.setAttribute('height', String(panelHeight));
+    bg.setAttribute('rx', '5');
+    bg.setAttribute('ry', '5');
+    panel.appendChild(bg);
+
+    let currentY = 14 + padding + titleHeight / 2;
+    for (const section of sections) {
+        // Section title
+        const title = createSvgText(panel, 'ert-inquiry-cc-legend-section-title', section.title, panelLeft + padding, currentY);
+        title.setAttribute('dominant-baseline', 'middle');
+        currentY += titleHeight;
+
+        for (const row of section.rows) {
+            const rowGroup = createSvgGroup(panel, '', 0, 0);
+            const iconCx = panelLeft + iconColX;
+            const iconCy = currentY;
+            row.buildIcon(rowGroup, iconCx, iconCy, 0);
+            const label = createSvgText(rowGroup, 'ert-inquiry-cc-legend-label', row.label, panelLeft + labelColX, iconCy);
+            label.setAttribute('dominant-baseline', 'central');
+            currentY += rowHeight;
+        }
+        currentY += sectionGap;
+    }
+}
 
 export function renderInquiryCorpusStrip(args: {
     rootSvg: SVGSVGElement;
@@ -141,17 +377,79 @@ export function renderInquiryCorpusStrip(args: {
         });
     }
 
+    // ── "CORPUS" title line (static, with ? legend trigger) ──
+    if (!refs.ccCorpusLabel) {
+        refs.ccCorpusLabel = createSvgText(refs.ccGroup, 'ert-inquiry-cc-corpus-title', 'CORPUS', 0, 0);
+        refs.ccCorpusLabel.setAttribute('text-anchor', 'middle');
+        refs.ccCorpusLabel.setAttribute('dominant-baseline', 'middle');
+    }
+
+    // ── "?" legend trigger next to CORPUS ──
+    if (!refs.ccLegendTrigger) {
+        refs.ccLegendTrigger = createSvgGroup(refs.ccGroup, 'ert-inquiry-cc-legend-trigger', 0, 0);
+        const qSize = 18;
+        const qBorder = createSvgElement('rect');
+        qBorder.classList.add('ert-inquiry-cc-legend-trigger-border');
+        qBorder.setAttribute('x', String(-qSize / 2));
+        qBorder.setAttribute('y', String(-qSize / 2));
+        qBorder.setAttribute('width', String(qSize));
+        qBorder.setAttribute('height', String(qSize));
+        qBorder.setAttribute('rx', '2');
+        qBorder.setAttribute('ry', '2');
+        refs.ccLegendTrigger.appendChild(qBorder);
+        const qText = createSvgText(refs.ccLegendTrigger, 'ert-inquiry-cc-legend-trigger-text', '?', 0, 0);
+        qText.setAttribute('text-anchor', 'middle');
+        qText.setAttribute('dominant-baseline', 'central');
+        // Invisible hit rect for larger hover target
+        const qHit = createSvgElement('rect');
+        qHit.classList.add('ert-inquiry-cc-hint-hit');
+        qHit.setAttribute('x', String(-qSize));
+        qHit.setAttribute('y', String(-qSize));
+        qHit.setAttribute('width', String(qSize * 2));
+        qHit.setAttribute('height', String(qSize * 2));
+        refs.ccLegendTrigger.appendChild(qHit);
+    }
+
+    // ── Legend panel (child of ccGroup, not the trigger — avoids clipping) ──
+    if (!refs.ccLegendPanel) {
+        refs.ccLegendPanel = createSvgGroup(refs.ccGroup, 'ert-inquiry-cc-legend-panel', 0, 0);
+        buildCorpusLegendPanel(refs.ccLegendPanel);
+        // JS hover: toggle visibility class since panel is a sibling, not child, of trigger
+        const legendPanel = refs.ccLegendPanel;
+        const legendTrigger = refs.ccLegendTrigger!;
+        legendTrigger.addEventListener('mouseenter', () => legendPanel.classList.add('is-legend-visible'));
+        legendTrigger.addEventListener('mouseleave', () => {
+            // Short delay so user can move mouse to the panel itself
+            setTimeout(() => {
+                if (!legendPanel.matches(':hover')) {
+                    legendPanel.classList.remove('is-legend-visible');
+                }
+            }, 80);
+        });
+        legendPanel.addEventListener('mouseleave', () => legendPanel.classList.remove('is-legend-visible'));
+    }
+
+    // ── Scope label line (e.g. "BOOK B1") — clickable ──
     if (!refs.ccLabel) {
-        refs.ccLabel = createSvgText(refs.ccLabelGroup ?? refs.ccGroup, 'ert-inquiry-cc-label', 'Corpus', 0, 0);
+        refs.ccLabel = createSvgText(refs.ccLabelGroup ?? refs.ccGroup, 'ert-inquiry-cc-label', '', 0, 0);
         refs.ccLabel.setAttribute('text-anchor', 'middle');
         refs.ccLabel.setAttribute('dominant-baseline', 'middle');
         refs.ccLabel.classList.add('is-actionable');
     }
 
+    // ── Up-arrow hint ──
     if (!refs.ccLabelHint) {
         refs.ccLabelHint = createSvgGroup(refs.ccGroup, 'ert-inquiry-cc-hint', 0, 0);
+        const hintHitPad = 10;
+        const hintHitRect = createSvgElement('rect');
+        hintHitRect.classList.add('ert-inquiry-cc-hint-hit');
+        hintHitRect.setAttribute('x', String(-(CC_LABEL_HINT_SIZE / 2) - hintHitPad));
+        hintHitRect.setAttribute('y', String(-(CC_LABEL_HINT_SIZE / 2) - hintHitPad));
+        hintHitRect.setAttribute('width', String(CC_LABEL_HINT_SIZE + hintHitPad * 2));
+        hintHitRect.setAttribute('height', String(CC_LABEL_HINT_SIZE + hintHitPad * 2));
+        refs.ccLabelHint.appendChild(hintHitRect);
         refs.ccLabelHintIcon = args.createIconUse(
-            'arrow-big-up',
+            'arrow-big-up-dash',
             -CC_LABEL_HINT_SIZE / 2,
             -CC_LABEL_HINT_SIZE / 2,
             CC_LABEL_HINT_SIZE
@@ -165,29 +463,60 @@ export function renderInquiryCorpusStrip(args: {
         );
     }
 
+    // ── Position labels ──
     refs.ccLabel.textContent = args.getScopeLabel();
-    const labelX = Math.round((layout.rightBlockLeft + layout.rightBlockRight) / 2);
-    const labelYOffset = -5;
-    refs.ccLabelGroup?.setAttribute('transform', `translate(0 ${labelYOffset})`);
-    refs.ccLabel.setAttribute('x', String(labelX));
+    const stripCenterX = Math.round((layout.rightBlockLeft + layout.rightBlockRight) / 2);
+    const corpusTitleY = -18;
+    const scopeLabelY = 0;
+
+    // CORPUS line: center the full assembly "CORPUS [?] ⬆" as a unit
+    const corpusTextW = refs.ccCorpusLabel?.getComputedTextLength?.() ?? 0;
+    const qGap = 10; const qBoxW = 18; const arrowGap = 5;
+    const totalCorpusLineW = corpusTextW + qGap + qBoxW + arrowGap + CC_LABEL_HINT_SIZE;
+    const corpusLineLeft = stripCenterX - Math.round(totalCorpusLineW / 2);
+    const corpusTextX = corpusLineLeft + Math.round(corpusTextW / 2);
+    refs.ccCorpusLabel.setAttribute('x', String(corpusTextX));
+    refs.ccCorpusLabel.setAttribute('y', String(corpusTitleY));
+
+    if (refs.ccLegendTrigger) {
+        const qX = Math.round(corpusLineLeft + corpusTextW + qGap + qBoxW / 2);
+        refs.ccLegendTrigger.setAttribute('transform', `translate(${qX} ${corpusTitleY})`);
+    }
+
+    if (refs.ccLabelHint) {
+        const hintX = Math.round(corpusLineLeft + corpusTextW + qGap + qBoxW + arrowGap + CC_LABEL_HINT_SIZE / 2);
+        refs.ccLabelHint.setAttribute('transform', `translate(${hintX} ${corpusTitleY})`);
+    }
+
+    // Position legend panel: anchor right edge to stay within viewbox
+    if (refs.ccLegendPanel) {
+        const legendPanelW = 324; // must match panelWidth in buildCorpusLegendPanel
+        const maxRight = VIEWBOX_MAX - CC_RIGHT_MARGIN;
+        // Align left edge of legend with left edge of corpus strip, clamped to viewbox
+        let legendX = layout.rightBlockLeft;
+        if (legendX + legendPanelW > maxRight) {
+            legendX = maxRight - legendPanelW;
+        }
+        refs.ccLegendPanel.setAttribute('transform', `translate(${Math.round(legendX)} ${corpusTitleY})`);
+    }
+
+    // BOOK B1 line: center independently on the strip
+    refs.ccLabelGroup?.setAttribute('transform', `translate(0 ${scopeLabelY})`);
+    refs.ccLabel.setAttribute('x', String(stripCenterX));
     refs.ccLabel.setAttribute('y', '0');
     if (refs.ccLabelGroup) {
         addTooltipData(refs.ccLabelGroup, balanceTooltipText('Cycle all corpus scopes.'), 'top');
     }
-    if (refs.ccLabelHint) {
-        const labelWidth = refs.ccLabel.getComputedTextLength?.() ?? 0;
-        const hintX = Math.round(labelX + (labelWidth / 2) + 5 + (CC_LABEL_HINT_SIZE / 2));
-        refs.ccLabelHint.setAttribute('transform', `translate(${hintX} ${labelYOffset})`);
-        if (refs.ccLabelHit) {
-            const hitPaddingX = 6;
-            const hitHeight = 20;
-            const hitStartX = Math.round(labelX - (labelWidth / 2) - hitPaddingX);
-            const hitWidth = Math.max(0, Math.round(labelWidth + (hitPaddingX * 2)));
-            refs.ccLabelHit.setAttribute('x', String(hitStartX));
-            refs.ccLabelHit.setAttribute('y', String(-Math.round(hitHeight / 2)));
-            refs.ccLabelHit.setAttribute('width', String(hitWidth));
-            refs.ccLabelHit.setAttribute('height', String(hitHeight));
-        }
+    if (refs.ccLabelHit) {
+        const scopeW = refs.ccLabel?.getComputedTextLength?.() ?? 0;
+        const hitPaddingX = 6;
+        const hitHeight = 20;
+        const hitStartX = Math.round(stripCenterX - (scopeW / 2) - hitPaddingX);
+        const hitWidth = Math.max(0, Math.round(scopeW + (hitPaddingX * 2)));
+        refs.ccLabelHit.setAttribute('x', String(hitStartX));
+        refs.ccLabelHit.setAttribute('y', String(-Math.round(hitHeight / 2)));
+        refs.ccLabelHit.setAttribute('width', String(hitWidth));
+        refs.ccLabelHit.setAttribute('height', String(hitHeight));
     }
 
     if (!refs.ccEmptyText) {
@@ -399,6 +728,20 @@ export function renderInquiryCorpusStrip(args: {
         }
         if (!hasFit) {
             header.text.textContent = fallbackVariant;
+        }
+
+        // Split trailing digits into a dimmed tspan for the count portion
+        const finalText = header.text.textContent ?? '';
+        const digitMatch = finalText.match(/^([A-Za-zΣ]+)(\d+)$/);
+        if (digitMatch) {
+            header.text.textContent = '';
+            const letterSpan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+            letterSpan.textContent = digitMatch[1];
+            const countSpan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+            countSpan.textContent = digitMatch[2];
+            countSpan.classList.add('ert-inquiry-cc-class-label-count');
+            header.text.appendChild(letterSpan);
+            header.text.appendChild(countSpan);
         }
 
         const textWidth = header.text.getComputedTextLength();

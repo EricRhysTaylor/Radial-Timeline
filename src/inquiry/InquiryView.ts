@@ -501,6 +501,9 @@ export class InquiryView extends ItemView {
     private ccLabelGroup?: SVGGElement;
     private ccLabelHit?: SVGRectElement;
     private ccLabel?: SVGTextElement;
+    private ccCorpusLabel?: SVGTextElement;
+    private ccLegendTrigger?: SVGGElement;
+    private ccLegendPanel?: SVGGElement;
     private ccLabelHint?: SVGGElement;
     private ccLabelHintIcon?: SVGUseElement;
     private ccEmptyText?: SVGTextElement;
@@ -3689,6 +3692,9 @@ export class InquiryView extends ItemView {
                 ccLabelGroup: this.ccLabelGroup,
                 ccLabelHit: this.ccLabelHit,
                 ccLabel: this.ccLabel,
+                ccCorpusLabel: this.ccCorpusLabel,
+                ccLegendTrigger: this.ccLegendTrigger,
+                ccLegendPanel: this.ccLegendPanel,
                 ccLabelHint: this.ccLabelHint,
                 ccLabelHintIcon: this.ccLabelHintIcon,
                 ccEmptyText: this.ccEmptyText,
@@ -3723,6 +3729,9 @@ export class InquiryView extends ItemView {
         this.ccLabelGroup = rendered.ccLabelGroup;
         this.ccLabelHit = rendered.ccLabelHit;
         this.ccLabel = rendered.ccLabel;
+        this.ccCorpusLabel = rendered.ccCorpusLabel;
+        this.ccLegendTrigger = rendered.ccLegendTrigger;
+        this.ccLegendPanel = rendered.ccLegendPanel;
         this.ccLabelHint = rendered.ccLabelHint;
         this.ccLabelHintIcon = rendered.ccLabelHintIcon;
         this.ccEmptyText = rendered.ccEmptyText;
@@ -3738,9 +3747,9 @@ export class InquiryView extends ItemView {
     private getCorpusCcScopeLabel(): string {
         const scopeLabel = this.getScopeLabel();
         if (this.state.scope === 'saga') {
-            return `Corpus · Saga ${scopeLabel}`;
+            return `Saga ${scopeLabel}`;
         }
-        return `Corpus · Book ${scopeLabel}`;
+        return `Book ${scopeLabel}`;
     }
 
     private getCorpusGroupBaseClass(className: string): string {

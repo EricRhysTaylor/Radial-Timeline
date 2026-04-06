@@ -142,35 +142,14 @@ function getInquiryCorpusTierLabel(tier: CorpusSubstanceTier): string {
     return 'Substantive';
 }
 
-function getInquiryCorpusCcStatusIcon(status?: CorpusSceneStatus): string {
-    if (status === 'todo') return '☐';
-    if (status === 'working') return '□';
-    if (status === 'complete') return '✓';
-    if (status === 'overdue') return '⚠';
-    return '';
-}
-
 function getTierThresholdLabel(
     tier: CorpusSubstanceTier,
     thresholds: InquiryCorpusThresholds
 ): string {
-    if (tier === 'empty') return `< ${thresholds.emptyMax}`;
-    if (tier === 'sketchy') return `< ${thresholds.mediumMin}`;
-    if (tier === 'medium') return `>= ${thresholds.mediumMin}`;
-    return `>= ${thresholds.substantiveMin}`;
-}
-
-function getTierVisualLabel(
-    tier: CorpusSubstanceTier,
-    mode: string,
-    isLowSubstance: boolean
-): string {
-    if (isLowSubstance) return 'X';
-    if (mode === 'excluded') return 'empty circle';
-    if (tier === 'empty') return 'empty cell';
-    if (tier === 'sketchy') return 'small disc';
-    if (tier === 'medium') return 'medium disc';
-    return 'solid disc';
+    if (tier === 'empty') return `< ${thresholds.emptyMax} words`;
+    if (tier === 'sketchy') return `< ${thresholds.mediumMin} words`;
+    if (tier === 'medium') return `>= ${thresholds.mediumMin} words`;
+    return `>= ${thresholds.substantiveMin} words`;
 }
 
 function buildInquiryCorpusCcTooltip(args: {
@@ -209,10 +188,12 @@ function buildInquiryCorpusCcTooltip(args: {
     }
 
     const tierLabel = getInquiryCorpusTierLabel(args.tier);
-    const wordLabel = args.wordCount.toLocaleString();
     const thresholdLabel = getTierThresholdLabel(args.tier, args.thresholds);
-    const visual = getTierVisualLabel(args.tier, args.entry.mode, args.isLowSubstance);
-    conditions.push(`Tier: ${tierLabel} ${thresholdLabel} words (${visual})`);
+    if (args.isLowSubstance) {
+        conditions.push(`Tier: ${tierLabel} ${thresholdLabel} (X)`);
+    } else {
+        conditions.push(`Tier: ${tierLabel} ${thresholdLabel}`);
+    }
 
     return `${tooltipTitle} [${classInitial}]\n${conditions.map(item => `• ${item}`).join('\n')}`;
 }

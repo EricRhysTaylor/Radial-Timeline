@@ -560,7 +560,7 @@
 
 /* ── Token cap context labels ── */
 .ert-inquiry-minimap-tokencap-label {
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 500;
   fill: var(--text-muted);
   opacity: 0.55;
@@ -825,8 +825,17 @@
   cursor: pointer;
 }
 
-.ert-inquiry-cc-label {
+.ert-inquiry-cc-corpus-title {
   font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  fill: var(--text-muted);
+  pointer-events: none;
+}
+
+.ert-inquiry-cc-label {
+  font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -842,19 +851,88 @@
   fill: var(--text-normal);
 }
 
+/* ── Legend trigger (? icon) ── */
+.ert-inquiry-cc-legend-trigger {
+  pointer-events: auto;
+  cursor: help;
+}
+
+.ert-inquiry-cc-legend-trigger-border {
+  fill: none;
+  stroke: var(--text-faint);
+  stroke-width: 1.2;
+}
+
+.ert-inquiry-cc-legend-trigger-text {
+  font-size: 14px;
+  font-weight: 700;
+  fill: var(--text-faint);
+}
+
+.ert-inquiry-cc-legend-trigger:hover .ert-inquiry-cc-legend-trigger-border {
+  stroke: var(--text-normal);
+}
+
+.ert-inquiry-cc-legend-trigger:hover .ert-inquiry-cc-legend-trigger-text {
+  fill: var(--text-normal);
+}
+
+/* ── Legend panel (revealed on hover) ── */
+.ert-inquiry-cc-legend-panel {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms ease;
+}
+
+.ert-inquiry-cc-legend-panel.is-legend-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.ert-inquiry-cc-legend-bg {
+  fill: var(--background-primary);
+  fill-opacity: 0.94;
+  stroke: var(--text-faint);
+  stroke-width: 1.5;
+  stroke-dasharray: 6 3;
+}
+
+.ert-inquiry-cc-legend-section-title {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  fill: var(--text-faint);
+  text-transform: uppercase;
+}
+
+.ert-inquiry-cc-legend-label {
+  font-size: 16px;
+  font-weight: 500;
+  fill: var(--text-muted);
+  letter-spacing: 0.02em;
+}
+
 .ert-inquiry-cc-hint {
   pointer-events: auto;
   cursor: help;
 }
 
+.ert-inquiry-cc-hint-hit {
+  fill: transparent;
+  pointer-events: all;
+}
+
 .ert-inquiry-cc-hint-icon {
-  fill: var(--text-faint);
+  color: var(--text-faint);
+  fill: none;
+  stroke: var(--text-faint);
   opacity: 1;
-  transition: fill 120ms ease, opacity 120ms ease;
+  transition: color 120ms ease, stroke 120ms ease;
 }
 
 .ert-inquiry-cc-hint:hover .ert-inquiry-cc-hint-icon {
-  fill: var(--text-normal);
+  color: var(--text-normal);
+  stroke: var(--text-normal);
 }
 
 .ert-inquiry-cc-label-hit {
@@ -876,6 +954,10 @@
   text-transform: uppercase;
   fill: var(--ert-inquiry-cc-class-label-color);
   pointer-events: none;
+}
+
+.ert-inquiry-cc-class-label-count {
+  opacity: 0.55;
 }
 
 .ert-inquiry-cc-class-icon {
