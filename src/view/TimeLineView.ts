@@ -938,7 +938,7 @@ export class RadialTimelineView extends ItemView {
         if (this.currentMode !== 'narrative') return;
         if (this.plugin.settings.showRecentMovesOverlay === false) return;
 
-        const entries = getActiveRecentStructuralMoves(this.plugin.settings);
+        const entries = getActiveRecentStructuralMoves(this.plugin.settings).slice(0, 4);
         if (entries.length === 0) return;
 
         this.applyRecentMovesPanelBounds(timelineContainer);
@@ -969,10 +969,19 @@ export class RadialTimelineView extends ItemView {
 
         const viewboxSize = Math.min(containerWidth, containerHeight);
         const leftGutter = Math.max(0, (containerWidth - viewboxSize) / 2);
-        const panelWidth = Math.max(0, Math.min(280, leftGutter));
+        const overlapFade = 30;
+        const panelLeft = Math.max(0, leftGutter - 20);
+        const panelWidth = Math.max(0, Math.min(420, leftGutter + overlapFade + 100));
+        const outerRadius = viewboxSize / 2;
+        const fadeCenterX = (leftGutter + outerRadius) - panelLeft;
+        const fadeCenterY = containerHeight / 2;
 
-        timelineContainer.style.setProperty('--rt-recent-moves-left', `${leftGutter}px`);
+        timelineContainer.style.setProperty('--rt-recent-moves-left', `${panelLeft}px`);
         timelineContainer.style.setProperty('--rt-recent-moves-width', `${panelWidth}px`);
+        timelineContainer.style.setProperty('--rt-recent-moves-fade-width', `${overlapFade}px`);
+        timelineContainer.style.setProperty('--rt-recent-moves-fade-center-x', `${fadeCenterX}px`);
+        timelineContainer.style.setProperty('--rt-recent-moves-fade-center-y', `${fadeCenterY}px`);
+        timelineContainer.style.setProperty('--rt-recent-moves-fade-radius', `${outerRadius}px`);
     }
 
     private buildRecentMoveRow(entry: StructuralMoveHistoryEntry): HTMLElement {

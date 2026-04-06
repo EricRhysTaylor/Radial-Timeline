@@ -314,6 +314,8 @@ body.rt-modal-open .radial-timeline-container * {
   max-width: 100%;
   max-height: 100%;
   display: block;
+  position: relative;
+  z-index: 2;
 }
 
 .radial-timeline-container svg {
@@ -336,7 +338,7 @@ body.rt-modal-open .radial-timeline-container * {
   position: absolute;
   left: var(--rt-recent-moves-left, 0);
   top: 0;
-  z-index: 6;
+  z-index: 1;
   width: var(--rt-recent-moves-width, 17.5rem);
   max-width: max(10rem, calc(100% - var(--rt-recent-moves-left, 0px)));
   display: flex;
@@ -348,10 +350,22 @@ body.rt-modal-open .radial-timeline-container * {
   backdrop-filter: blur(10px);
   box-sizing: border-box;
   overflow: hidden;
+  -webkit-mask-image: radial-gradient(
+    circle var(--rt-recent-moves-fade-radius, 400px) at var(--rt-recent-moves-fade-center-x, 100%) var(--rt-recent-moves-fade-center-y, 50%),
+    rgba(0, 0, 0, 0) 0,
+    rgba(0, 0, 0, 0) calc(var(--rt-recent-moves-fade-radius, 400px) - var(--rt-recent-moves-fade-width, 30px)),
+    rgba(0, 0, 0, 1) var(--rt-recent-moves-fade-radius, 400px)
+  );
+  mask-image: radial-gradient(
+    circle var(--rt-recent-moves-fade-radius, 400px) at var(--rt-recent-moves-fade-center-x, 100%) var(--rt-recent-moves-fade-center-y, 50%),
+    rgba(0, 0, 0, 0) 0,
+    rgba(0, 0, 0, 0) calc(var(--rt-recent-moves-fade-radius, 400px) - var(--rt-recent-moves-fade-width, 30px)),
+    rgba(0, 0, 0, 1) var(--rt-recent-moves-fade-radius, 400px)
+  );
 }
 
 .rt-recent-moves__header {
-  font-size: 0.6rem;
+  font-size: 0.56rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -372,14 +386,14 @@ body.rt-modal-open .radial-timeline-container * {
 }
 
 .rt-recent-moves__summary {
-  font-size: 0.75rem;
-  line-height: 1.35;
+  font-size: 0.68rem;
+  line-height: 1.25;
   color: var(--text-normal);
   overflow-wrap: anywhere;
 }
 
 .rt-recent-moves__meta {
-  font-size: 0.6rem;
+  font-size: 0.56rem;
   line-height: 1.3;
   color: var(--text-faint);
   overflow-wrap: anywhere;
