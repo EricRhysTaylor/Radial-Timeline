@@ -422,11 +422,12 @@
 .rt-drag-confirm-history-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  flex: 1 1 auto;
+  min-height: 0;
   max-height: 340px;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 0 2px 0 4px;
+  padding-bottom: 4px;
 }
 
 .rt-drag-confirm-section-title {
@@ -506,15 +507,14 @@
   all: unset;
   display: flex;
   flex-direction: column;
-  gap: 1px;
-  width: 100%;
+  justify-content: center;
   text-align: left;
   box-sizing: border-box;
-  padding: 6px 10px;
-  margin: 0;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 4px;
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
   box-shadow: none;
   appearance: none;
   -webkit-appearance: none;
@@ -522,23 +522,26 @@
 }
 
 .rt-drag-confirm-history-item:hover {
-  background: color-mix(in srgb, var(--background-secondary) 96%, transparent);
+  border-color: rgba(255, 255, 255, 0.18);
 }
 
 .rt-drag-confirm-history-item:focus-visible {
   outline: none;
+  border-color: rgba(255, 255, 255, 0.18);
 }
 
 .rt-drag-confirm-history-summary {
-  font-size: 0.8rem;
-  line-height: 1.05;
+  font-size: 0.88em;
+  line-height: 1.35;
   color: var(--text-normal);
 }
 
 .rt-drag-confirm-history-meta {
-  font-size: 0.66rem;
-  line-height: 1;
+  font-size: 0.78em;
+  line-height: 1.35;
   color: var(--text-muted);
+  margin-top: 2px;
+  font-weight: 600;
 }
 
 .rt-drag-confirm-row.is-status-row {

@@ -365,24 +365,17 @@ export class GossamerProcessingModal extends Modal {
             ? `${minutes}:${seconds.toString().padStart(2, '0')}`
             : `${seconds}s`;
 
-        // Different messages based on elapsed time
-        let message: string;
-        if (elapsed < 30) {
-            message = `Sending manuscript to AI... ${timeStr}`;
-        } else if (elapsed < 60) {
-            message = `Evaluating beats... ${timeStr}`;
+        const estimateSeconds = Math.round(this.estimatedProcessingMs / 1000);
+        let message = `Elapsed ${timeStr}`;
+        if (Number.isFinite(estimateSeconds)) {
+            message += elapsed > estimateSeconds
+                ? ` · running longer than expected (est. ~${estimateSeconds}s)`
+                : ` · est. ~${estimateSeconds}s`;
         } else {
-            message = `Preparing response... ${timeStr}`;
+            message += ' · typically 30–90 seconds';
         }
 
-        const estimateSeconds = Math.round(this.estimatedProcessingMs / 1000);
-        const estimateSuffix = Number.isFinite(estimateSeconds)
-            ? (elapsed > estimateSeconds
-                ? ` (running longer than expected · est. ~${estimateSeconds}s)`
-                : ` (est. ~${estimateSeconds}s)`)
-            : ' (typically 30-90 seconds)';
-
-        this.apiStatusEl.setText(message + estimateSuffix);
+        this.apiStatusEl.setText(message);
     }
 
     /**
