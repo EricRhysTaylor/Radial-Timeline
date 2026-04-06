@@ -1,4 +1,5 @@
 import { Notice, App } from 'obsidian';
+import type RadialTimelinePlugin from '../../main';
 import {
     applySceneNumberUpdates,
     buildRippleRenamePlan,
@@ -11,10 +12,11 @@ import { DRAG_DROP_ARC_RADIUS, DRAG_DROP_TICK_OUTER_RADIUS, DRAG_DROP_TICK_LENGT
 import { formatBeatDecimalPrefix, formatIntegerPrefix } from '../../utils/prefixOrder';
 import { resolveSelectedBeatModelFromSettings } from '../../utils/beatSystemState';
 import { appendRecentStructuralMove, getActiveRecentStructuralMoves } from '../../utils/recentStructuralMoves';
+import { openStructuralMoveHistoryLog } from '../../utils/recentStructuralMoveLog';
 import type { RadialTimelineSettings } from '../../types/settings';
 
 export interface OuterRingViewAdapter {
-    plugin: { app: App; settings: RadialTimelineSettings };
+    plugin: RadialTimelinePlugin;
     registerDomEvent: (el: HTMLElement, event: string, handler: (ev: Event) => void) => void;
 }
 
@@ -848,7 +850,7 @@ export class OuterRingDragController {
             (actChanged || (subplotChanged && sourceType === 'Scene')) ? destinationContext : sourceContext
         );
         const rippleRename = this.isRippleRenameEnabled();
-        const recentMoves = getActiveRecentStructuralMoves(this.view.plugin.settings as any);
+        const recentMoves = getActiveRecentStructuralMoves(this.view.plugin.settings);
 
         this.confirming = true;
         const modal = new DragConfirmModal(
@@ -860,6 +862,7 @@ export class OuterRingDragController {
                 rippleRename,
             },
             recentMoves,
+            () => openStructuralMoveHistoryLog(this.view.plugin),
             this.originModalColor ?? this.originColor,
             sourceLabel
         );
@@ -1062,7 +1065,7 @@ export class OuterRingDragController {
             (actChanged || newSubplots !== undefined) ? destinationContext : sourceContext
         );
         const rippleRename = this.isRippleRenameEnabled();
-        const recentMoves = getActiveRecentStructuralMoves(this.view.plugin.settings as any);
+        const recentMoves = getActiveRecentStructuralMoves(this.view.plugin.settings);
         const actionSummary = target.isOuterRing
             ? `Move ${sourceDescriptor} to Act ${targetActNumber}`
             : `Move ${sourceDescriptor} to Act ${targetActNumber} • ${targetSubplotName}`;
@@ -1077,6 +1080,7 @@ export class OuterRingDragController {
                 rippleRename,
             },
             recentMoves,
+            () => openStructuralMoveHistoryLog(this.view.plugin),
             this.originModalColor ?? this.originColor,
             sourceLabel
         );

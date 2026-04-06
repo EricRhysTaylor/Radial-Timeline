@@ -859,14 +859,14 @@
 
 .ert-inquiry-cc-legend-trigger-border {
   fill: none;
-  stroke: var(--text-faint);
+  stroke: var(--text-muted);
   stroke-width: 1.2;
 }
 
 .ert-inquiry-cc-legend-trigger-text {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 700;
-  fill: var(--text-faint);
+  fill: var(--text-muted);
 }
 
 .ert-inquiry-cc-legend-trigger:hover .ert-inquiry-cc-legend-trigger-border {
@@ -890,8 +890,7 @@
 }
 
 .ert-inquiry-cc-legend-bg {
-  fill: var(--background-primary);
-  fill-opacity: 0.94;
+  fill: var(--background-primary, #1e1e1e);
   stroke: var(--text-faint);
   stroke-width: 1.5;
   stroke-dasharray: 6 3;
@@ -923,9 +922,10 @@
 }
 
 .ert-inquiry-cc-hint-icon {
-  color: var(--text-faint);
+  color: var(--text-muted);
   fill: none;
-  stroke: var(--text-faint);
+  stroke: var(--text-muted);
+  stroke-width: 2;
   opacity: 1;
   transition: color 120ms ease, stroke 120ms ease;
 }

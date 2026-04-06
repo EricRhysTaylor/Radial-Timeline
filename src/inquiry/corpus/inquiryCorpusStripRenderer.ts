@@ -280,7 +280,7 @@ function buildCorpusLegendPanel(panel: SVGGElement): void {
     const panelWidth = labelColX + 252 + padding;
     const panelLeft = 0;
 
-    // Background — opaque, matches viewbox bg
+    // Background — fully opaque, matches viewbox bg
     const bg = createSvgElement('rect');
     bg.classList.add('ert-inquiry-cc-legend-bg');
     bg.setAttribute('x', String(panelLeft));
@@ -384,18 +384,20 @@ export function renderInquiryCorpusStrip(args: {
         refs.ccCorpusLabel.setAttribute('dominant-baseline', 'middle');
     }
 
-    // ── "?" legend trigger next to CORPUS ──
+    // ── "?" legend trigger — page-shaped icon matching corpus cells ──
     if (!refs.ccLegendTrigger) {
         refs.ccLegendTrigger = createSvgGroup(refs.ccGroup, 'ert-inquiry-cc-legend-trigger', 0, 0);
-        const qSize = 18;
+        const qW = layout.pageWidth;
+        const qH = layout.pageHeight;
+        const qCorner = Math.max(2, Math.round(qW * 0.125));
         const qBorder = createSvgElement('rect');
         qBorder.classList.add('ert-inquiry-cc-legend-trigger-border');
-        qBorder.setAttribute('x', String(-qSize / 2));
-        qBorder.setAttribute('y', String(-qSize / 2));
-        qBorder.setAttribute('width', String(qSize));
-        qBorder.setAttribute('height', String(qSize));
-        qBorder.setAttribute('rx', '2');
-        qBorder.setAttribute('ry', '2');
+        qBorder.setAttribute('x', String(-qW / 2));
+        qBorder.setAttribute('y', String(-qH / 2));
+        qBorder.setAttribute('width', String(qW));
+        qBorder.setAttribute('height', String(qH));
+        qBorder.setAttribute('rx', String(qCorner));
+        qBorder.setAttribute('ry', String(qCorner));
         refs.ccLegendTrigger.appendChild(qBorder);
         const qText = createSvgText(refs.ccLegendTrigger, 'ert-inquiry-cc-legend-trigger-text', '?', 0, 0);
         qText.setAttribute('text-anchor', 'middle');
@@ -403,10 +405,10 @@ export function renderInquiryCorpusStrip(args: {
         // Invisible hit rect for larger hover target
         const qHit = createSvgElement('rect');
         qHit.classList.add('ert-inquiry-cc-hint-hit');
-        qHit.setAttribute('x', String(-qSize));
-        qHit.setAttribute('y', String(-qSize));
-        qHit.setAttribute('width', String(qSize * 2));
-        qHit.setAttribute('height', String(qSize * 2));
+        qHit.setAttribute('x', String(-qW));
+        qHit.setAttribute('y', String(-qH));
+        qHit.setAttribute('width', String(qW * 2));
+        qHit.setAttribute('height', String(qH * 2));
         refs.ccLegendTrigger.appendChild(qHit);
     }
 
@@ -469,23 +471,23 @@ export function renderInquiryCorpusStrip(args: {
     const corpusTitleY = -18;
     const scopeLabelY = 0;
 
-    // CORPUS line: center the full assembly "CORPUS [?] ⬆" as a unit
+    // CORPUS text centered on strip, arrow + [?] placed to its right
     const corpusTextW = refs.ccCorpusLabel?.getComputedTextLength?.() ?? 0;
-    const qGap = 10; const qBoxW = 18; const arrowGap = 5;
-    const totalCorpusLineW = corpusTextW + qGap + qBoxW + arrowGap + CC_LABEL_HINT_SIZE;
-    const corpusLineLeft = stripCenterX - Math.round(totalCorpusLineW / 2);
-    const corpusTextX = corpusLineLeft + Math.round(corpusTextW / 2);
-    refs.ccCorpusLabel.setAttribute('x', String(corpusTextX));
+    const arrowGap = 8;
+    refs.ccCorpusLabel.setAttribute('x', String(stripCenterX));
     refs.ccCorpusLabel.setAttribute('y', String(corpusTitleY));
 
-    if (refs.ccLegendTrigger) {
-        const qX = Math.round(corpusLineLeft + corpusTextW + qGap + qBoxW / 2);
-        refs.ccLegendTrigger.setAttribute('transform', `translate(${qX} ${corpusTitleY})`);
+    const iconCenterX = Math.round(stripCenterX + corpusTextW / 2 + arrowGap + CC_LABEL_HINT_SIZE / 2);
+
+    // Arrow aligned with CORPUS row
+    if (refs.ccLabelHint) {
+        refs.ccLabelHint.setAttribute('transform', `translate(${iconCenterX} ${corpusTitleY})`);
     }
 
-    if (refs.ccLabelHint) {
-        const hintX = Math.round(corpusLineLeft + corpusTextW + qGap + qBoxW + arrowGap + CC_LABEL_HINT_SIZE / 2);
-        refs.ccLabelHint.setAttribute('transform', `translate(${hintX} ${corpusTitleY})`);
+    // [?] page icon aligned with rightmost corpus column, 30 units above the arrow
+    if (refs.ccLegendTrigger) {
+        const rightColCenterX = Math.round(layout.anchorRightX + layout.pageWidth / 2);
+        refs.ccLegendTrigger.setAttribute('transform', `translate(${rightColCenterX} ${corpusTitleY - 30})`);
     }
 
     // Position legend panel: anchor right edge to stay within viewbox
@@ -778,6 +780,11 @@ export function renderInquiryCorpusStrip(args: {
         if (index < layout.classLayouts.length) return;
         header.group.classList.add('ert-hidden');
     });
+
+    // Ensure legend panel paints on top of corpus cells (SVG z-order = DOM order)
+    if (refs.ccLegendPanel && refs.ccGroup) {
+        refs.ccGroup.appendChild(refs.ccLegendPanel);
+    }
 
     return {
         ...refs,

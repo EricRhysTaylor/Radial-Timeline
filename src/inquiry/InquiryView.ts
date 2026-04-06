@@ -1950,6 +1950,7 @@ export class InquiryView extends ItemView {
             'help-circle',
             'activity',
             'arrow-big-up',
+            'arrow-big-up-dash',
             'check-circle',
             'sigma',
             'x',

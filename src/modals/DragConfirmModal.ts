@@ -16,6 +16,7 @@ export interface DragConfirmCurrentMoveSummary {
 export class DragConfirmModal extends Modal {
     private readonly currentMove: DragConfirmCurrentMoveSummary;
     private readonly recentMoves: StructuralMoveHistoryEntry[];
+    private readonly onHistoryClick?: (entry: StructuralMoveHistoryEntry) => Promise<void> | void;
     private readonly accent?: string;
     private readonly itemLabel: string; // 'scene' or 'beat'
     private phase: 'confirm' | 'running' | 'done' = 'confirm';
@@ -32,12 +33,14 @@ export class DragConfirmModal extends Modal {
         app: App,
         currentMove: DragConfirmCurrentMoveSummary,
         recentMoves: StructuralMoveHistoryEntry[],
+        onHistoryClick?: (entry: StructuralMoveHistoryEntry) => Promise<void> | void,
         accent?: string,
         itemLabel?: string
     ) {
         super(app);
         this.currentMove = currentMove;
-        this.recentMoves = recentMoves.slice(0, 5);
+        this.recentMoves = recentMoves.slice(0, 20);
+        this.onHistoryClick = onHistoryClick;
         this.accent = accent;
         this.itemLabel = itemLabel || 'scene';
     }
@@ -106,14 +109,21 @@ export class DragConfirmModal extends Modal {
         if (this.recentMoves.length > 0) {
             const historySection = listDiv.createDiv({ cls: 'rt-drag-confirm-section' });
             historySection.createDiv({ cls: 'rt-drag-confirm-section-title', text: 'Recent moves' });
+            const historyList = historySection.createDiv({ cls: 'rt-drag-confirm-history-list' });
             this.recentMoves.forEach((entry) => {
-                const row = historySection.createDiv({ cls: 'rt-drag-confirm-history-item' });
+                const row = historyList.createEl('button', {
+                    cls: 'rt-drag-confirm-history-item',
+                    attr: { type: 'button' }
+                });
                 row.createDiv({ cls: 'rt-drag-confirm-history-summary', text: entry.summary });
 
                 const metaParts = [this.formatRenameImpact(entry.renameCount ?? 0)];
                 if (entry.crossedActs) metaParts.push('Crossed Acts');
                 if (entry.rippleRename) metaParts.push('Ripple rename');
                 row.createDiv({ cls: 'rt-drag-confirm-history-meta', text: metaParts.join(' • ') });
+                row.addEventListener('click', () => {
+                    void this.onHistoryClick?.(entry);
+                });
             });
         }
 

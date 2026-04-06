@@ -31,21 +31,36 @@ function makeEntry(index: number, overrides: Partial<StructuralMoveHistoryEntry>
 }
 
 describe('recent structural moves', () => {
-    it('keeps newest first and trims to the last five entries', () => {
+    it('keeps newest first and trims to the last twenty entries', () => {
         const settings = makeSettings();
 
-        for (let i = 1; i <= 7; i += 1) {
+        for (let i = 1; i <= 24; i += 1) {
             appendRecentStructuralMove(settings, makeEntry(i));
         }
 
         const entries = getActiveRecentStructuralMoves(settings);
         expect(entries).toHaveLength(MAX_RECENT_STRUCTURAL_MOVES);
         expect(entries.map((entry) => entry.itemId)).toEqual([
+            'scene_24',
+            'scene_23',
+            'scene_22',
+            'scene_21',
+            'scene_20',
+            'scene_19',
+            'scene_18',
+            'scene_17',
+            'scene_16',
+            'scene_15',
+            'scene_14',
+            'scene_13',
+            'scene_12',
+            'scene_11',
+            'scene_10',
+            'scene_9',
+            'scene_8',
             'scene_7',
             'scene_6',
-            'scene_5',
-            'scene_4',
-            'scene_3'
+            'scene_5'
         ]);
     });
 
@@ -69,6 +84,13 @@ describe('recent structural moves', () => {
             { ...makeEntry(3), summary: '   ' }
         ] as StructuralMoveHistoryEntry[]);
 
-        expect(normalized).toEqual([makeEntry(1)]);
+        expect(normalized).toEqual([
+            {
+                ...makeEntry(1),
+                renameCount: 0,
+                crossedActs: false,
+                rippleRename: false
+            }
+        ]);
     });
 });

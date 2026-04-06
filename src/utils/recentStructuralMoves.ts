@@ -1,6 +1,6 @@
 import type { BookProfile, RadialTimelineSettings, StructuralMoveHistoryEntry } from '../types/settings';
 
-export const MAX_RECENT_STRUCTURAL_MOVES = 5;
+export const MAX_RECENT_STRUCTURAL_MOVES = 20;
 
 function normalizeOptionalString(value: unknown): string | undefined {
     if (typeof value !== 'string') return undefined;

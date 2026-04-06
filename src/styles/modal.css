@@ -413,6 +413,15 @@
   gap: 10px;
 }
 
+.rt-drag-confirm-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 360px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
 .rt-drag-confirm-section-title {
   font-size: 0.76rem;
   font-weight: 700;
@@ -490,10 +499,23 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+  width: 100%;
+  text-align: left;
   padding: 10px 12px;
   background-color: color-mix(in srgb, var(--background-secondary) 92%, transparent);
   border: 1px solid color-mix(in srgb, var(--background-modifier-border) 86%, transparent);
   border-radius: 8px;
+  cursor: pointer;
+}
+
+.rt-drag-confirm-history-item:hover {
+  border-color: color-mix(in srgb, var(--rt-confirm-accent, var(--interactive-accent)) 28%, var(--background-modifier-border));
+  background-color: color-mix(in srgb, var(--background-secondary) 84%, var(--rt-confirm-accent, var(--interactive-accent)) 16%);
+}
+
+.rt-drag-confirm-history-item:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--rt-confirm-accent, var(--interactive-accent)) 55%, transparent);
+  outline-offset: 2px;
 }
 
 .rt-drag-confirm-history-summary {
