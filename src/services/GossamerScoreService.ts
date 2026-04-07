@@ -4,7 +4,7 @@ import { normalizeFrontmatterKeys } from '../utils/frontmatter';
 import { isStoryBeat } from '../utils/sceneHelpers';
 import { appendGossamerScore, collectGossamerManagedSnapshot, detectDominantStage, willAppendGossamerPrune } from '../utils/gossamer';
 import { isPathInFolderScope } from '../utils/pathScope';
-import { snapshotFrontmatterFields } from '../utils/safeVaultOps';
+import { archiveGossamerFrontmatterFields } from '../gossamer/logs';
 
 export class GossamerScoreService {
     constructor(private app: App, private plugin: RadialTimelinePlugin) {}
@@ -52,9 +52,9 @@ export class GossamerScoreService {
             try {
                 const priorFrontmatter = this.app.metadataCache.getFileCache(file)?.frontmatter as Record<string, any> | undefined;
                 const snapshotPath = priorFrontmatter && (willAppendGossamerPrune(priorFrontmatter) || Object.keys(collectGossamerManagedSnapshot(priorFrontmatter)).length > 0)
-                    ? await snapshotFrontmatterFields(this.app, [file], {
+                    ? await archiveGossamerFrontmatterFields(this.app, [file], {
                         operation: 'gossamer-save',
-                        aiOutputFolder: this.plugin.settings.aiOutputFolder,
+                        logRoot: this.plugin.settings.aiOutputFolder,
                         selectFields: (frontmatter) => collectGossamerManagedSnapshot(frontmatter as Record<string, any>),
                         meta: {
                             scope: 'beat-note',

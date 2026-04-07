@@ -15,28 +15,22 @@ import {
   formatAiLogContent,
   formatSummaryLogContent,
   formatLogTimestamp,
-  resolveAiLogFolder,
   resolveAvailableLogPath,
   sanitizeLogPayload
 } from './ai/log';
-import { ensureGossamerContentLogFolder, resolveGossamerContentLogFolder } from './inquiry/utils/logs';
+import {
+  archiveGossamerFrontmatterFields,
+  ensureGossamerContentLogFolder,
+  ensureGossamerLogFolder,
+  resolveGossamerContentLogFolder,
+  resolveGossamerLogFolder
+} from './gossamer/logs';
 import { resolveSelectedBeatModelFromSettings } from './utils/beatSystemState';
 import { isPathInFolderScope } from './utils/pathScope';
 import { FORECAST_CHARS_PER_TOKEN, FORECAST_PROMPT_OVERHEAD_TOKENS } from './ai/forecast/estimateTokensFromVault';
 import type { AIRunRequest, AIProviderId } from './ai/types';
 import { buildGossamerEvidenceDocument } from './gossamer/evidence/buildGossamerEvidence';
 import { logCountingForensics } from './ai/diagnostics/countingForensics';
-import { snapshotFrontmatterFields } from './utils/safeVaultOps';
-
-const sanitizeSegment = (value: string | null | undefined) => {
-  if (!value) return '';
-  return value
-    .replace(/[<>:"/\\|?*]+/g, '-')
-    .replace(/\s+/g, ' ')
-    .replace(/-+/g, '-')
-    .trim()
-    .replace(/^-+|-+$/g, '');
-};
 
 interface ResolvedGossamerEvidence {
   document: Awaited<ReturnType<typeof buildGossamerEvidenceDocument>>;
@@ -77,6 +71,16 @@ type GossamerLogPayload = {
   schemaWarnings?: string[];
 };
 
+function sanitizeSegment(value: string | null | undefined): string {
+  if (!value) return '';
+  return value
+    .replace(/[<>:"/\\|?*]+/g, '-')
+    .replace(/\s+/g, ' ')
+    .replace(/-+/g, '-')
+    .trim()
+    .replace(/^-+|-+$/g, '');
+}
+
 async function writeGossamerLog(
   plugin: RadialTimelinePlugin,
   payload: GossamerLogPayload
@@ -103,7 +107,7 @@ async function writeGossamerLog(
   let contentLogWritten = false;
   if (shouldWriteContent) {
     try {
-      const contentFolder = await ensureGossamerContentLogFolder(plugin.app);
+      const contentFolder = await ensureGossamerContentLogFolder(plugin.app, plugin.settings.aiOutputFolder);
       if (contentFolder) {
         const contentTitle = `Gossamer Content Log — ${payload.beatSystemLabel} ${readableTimestamp}`;
         const contentBaseName = `Gossamer Content Log — ${safeBeatSystem} ${readableTimestamp}`;
@@ -141,7 +145,7 @@ async function writeGossamerLog(
           derivedSummary: payload.derivedSummary
         });
 
-        const contentFolderPath = resolveGossamerContentLogFolder();
+        const contentFolderPath = resolveGossamerContentLogFolder(plugin.settings.aiOutputFolder);
         const contentFilePath = resolveAvailableLogPath(plugin.app.vault, contentFolderPath, contentBaseName);
         await plugin.app.vault.create(contentFilePath, contentLogContent.trim());
         contentLogWritten = true;
@@ -155,17 +159,12 @@ async function writeGossamerLog(
   // Write Summary Log (always written for AI runs)
   let summaryFile: TFile | null = null;
   try {
-    const summaryFolderPath = normalizePath(resolveAiLogFolder());
-    const existing = plugin.app.vault.getAbstractFileByPath(summaryFolderPath);
-    if (existing && !(existing instanceof TFolder)) {
-      console.error('[Gossamer][log] Log folder path is not a folder.');
+    const summaryFolder = await ensureGossamerLogFolder(plugin.app, plugin.settings.aiOutputFolder);
+    if (!summaryFolder) {
+      console.error('[Gossamer][log] Gossamer log folder path is not a folder.');
       return null;
     }
-    try {
-      await plugin.app.vault.createFolder(summaryFolderPath);
-    } catch {
-      // Folder may already exist.
-    }
+    const summaryFolderPath = normalizePath(summaryFolder.path);
 
     const summaryTitle = `Gossamer Log — ${payload.beatSystemLabel} ${readableTimestamp}`;
     const summaryBaseName = `Gossamer Log — ${safeBeatSystem} ${readableTimestamp}`;
@@ -252,9 +251,9 @@ async function saveGossamerScores(
       if (!frontmatter) return false;
       return willAppendGossamerPrune(frontmatter) || Object.keys(collectGossamerManagedSnapshot(frontmatter)).length > 0;
     });
-  const snapshotPath = await snapshotFrontmatterFields(plugin.app, filesToSnapshot, {
+  const snapshotPath = await archiveGossamerFrontmatterFields(plugin.app, filesToSnapshot, {
     operation: 'gossamer-save',
-    aiOutputFolder: plugin.settings.aiOutputFolder,
+    logRoot: plugin.settings.aiOutputFolder,
     selectFields: (frontmatter) => collectGossamerManagedSnapshot(frontmatter as Record<string, any>),
     meta: {
       scope: 'beat-note',
@@ -1026,9 +1025,9 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
 
       const priorFrontmatter = plugin.app.metadataCache.getFileCache(file)?.frontmatter as Record<string, any> | undefined;
       const snapshotPath = priorFrontmatter && (willAppendGossamerPrune(priorFrontmatter) || Object.keys(collectGossamerManagedSnapshot(priorFrontmatter)).length > 0)
-        ? await snapshotFrontmatterFields(plugin.app, [file], {
+        ? await archiveGossamerFrontmatterFields(plugin.app, [file], {
             operation: 'gossamer-clipboard-save',
-            aiOutputFolder: plugin.settings.aiOutputFolder,
+            logRoot: plugin.settings.aiOutputFolder,
             selectFields: (frontmatter) => collectGossamerManagedSnapshot(frontmatter as Record<string, any>),
             meta: {
               scope: 'beat-note',
@@ -1126,7 +1125,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
 
     const successMessage = `✓ Updated ${updateCount} beats with momentum scores`;
     
-    const aiFolderPath = resolveAiLogFolder();
+    const aiFolderPath = resolveGossamerLogFolder(plugin.settings.aiOutputFolder);
     const logMessage = plugin.settings.logApiInteractions
       ? `${successMessage}. Log saved to ${aiFolderPath} (evidence: ${evidenceModeLabel.toLowerCase()}).`
       : `${successMessage}. (Logging disabled - no report saved)`;

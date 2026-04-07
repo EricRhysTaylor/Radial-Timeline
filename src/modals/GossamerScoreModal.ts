@@ -16,7 +16,7 @@ import {
 import { isPathInFolderScope } from '../utils/pathScope';
 import { comparePrefixTokens, extractPrefixToken } from '../utils/prefixOrder';
 import { getActiveLoadedBeatTab } from '../storyBeats/workspaceState';
-import { snapshotFrontmatterFields } from '../utils/safeVaultOps';
+import { archiveGossamerFrontmatterFields } from '../gossamer/logs';
 
 interface ScoreHistoryItem {
   index: number;
@@ -66,9 +66,9 @@ export class GossamerScoreModal extends Modal {
   }
 
   private async snapshotGossamerFields(files: TFile[], operation: string, meta: Record<string, unknown> = {}): Promise<string | null> {
-    return snapshotFrontmatterFields(this.app, files, {
+    return archiveGossamerFrontmatterFields(this.app, files, {
       operation,
-      aiOutputFolder: this.plugin.settings.aiOutputFolder,
+      logRoot: this.plugin.settings.aiOutputFolder,
       selectFields: (frontmatter) => collectGossamerManagedSnapshot(frontmatter as Record<string, any>),
       meta: {
         scope: 'beat-note',
@@ -955,13 +955,13 @@ export class GossamerScoreModal extends Modal {
       const hero = contentEl.createDiv({ cls: 'ert-modal-header' });
       hero.createSpan({ text: 'Warning', cls: 'ert-modal-badge' });
       hero.createDiv({ text: 'Delete all Gossamer scores', cls: 'ert-modal-title' });
-      hero.createDiv({ cls: 'ert-modal-subtitle', text: 'RT will archive removed Gossamer fields before cleanup.' });
+      hero.createDiv({ cls: 'ert-modal-subtitle', text: 'RT will archive removed Gossamer fields to the Gossamer log before cleanup.' });
 
       const card = contentEl.createDiv({ cls: 'rt-glass-card' });
 
       // Warning message with proper styling
       const warningEl = card.createDiv({
-        text: 'This will remove ALL Gossamer scores (Gossamer1-30) and their justifications from ALL Beat notes, then archive the removed fields to a safety snapshot.',
+        text: 'This will remove ALL Gossamer scores (Gossamer1-30) and their justifications from ALL Beat notes, then archive the removed fields to the Gossamer log.',
         cls: 'rt-gossamer-confirm-warning'
       });
 
