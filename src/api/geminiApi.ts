@@ -199,10 +199,12 @@ export async function callGeminiApi(
   if (maxTokens !== null) {
     body.generationConfig.maxOutputTokens = maxTokens;
   }
-  if (typeof temperature === 'number') {
+  // Gemini 2.5+ thinking models reject custom temperature/topP — omit them.
+  const isThinkingModel = /\b2\.5\b|\b3\.\d/.test(cleanModelId);
+  if (typeof temperature === 'number' && !isThinkingModel) {
     body.generationConfig.temperature = temperature;
   }
-  if (typeof topP === 'number') {
+  if (typeof topP === 'number' && !isThinkingModel) {
     body.generationConfig.topP = topP;
   }
   // Disable thinking mode if requested (for 2.5-pro models)
