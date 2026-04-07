@@ -439,7 +439,6 @@
 .ert-inquiry-minimap-baseline {
   stroke: var(--text-normal);
   stroke-width: 3;
-  vector-effect: non-scaling-stroke;
 }
 
 .ert-inquiry-minimap-backbone {

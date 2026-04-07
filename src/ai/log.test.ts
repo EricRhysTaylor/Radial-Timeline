@@ -1,5 +1,20 @@
 import { describe, expect, it } from 'vitest';
-import { buildUsageCostBreakdown, formatUsageCostBreakdownLines } from './log';
+import {
+    buildUsageCostBreakdown,
+    formatUsageCostBreakdownLines,
+    resolveContentLogsRoot,
+    resolveLogsRoot
+} from './log';
+
+describe('log roots', () => {
+    it('resolves the shared concise log root', () => {
+        expect(resolveLogsRoot()).toBe('Radial Timeline/Logs');
+    });
+
+    it('resolves the shared content log root', () => {
+        expect(resolveContentLogsRoot()).toBe('Radial Timeline/Logs/Content');
+    });
+});
 
 describe('buildUsageCostBreakdown', () => {
     it('builds a cache-aware Anthropic cost breakdown from aggregated usage', () => {

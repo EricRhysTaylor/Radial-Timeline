@@ -74,8 +74,8 @@ export const ja: DeepPartial<TranslationKeys> = {
         configuration: {
             heading: '詳細設定',
             aiOutputFolder: {
-                name: 'AI出力フォルダ',
-                desc: 'AIログやローカルLLMレポートを保存するフォルダです。ボールト内のフォルダを指定してください。',
+                name: 'ログ',
+                desc: '実行ログ、アーカイブ、スナップショット、Move History は Radial Timeline/Logs に保存されます。',
                 placeholder: 'Radial Timeline/Logs',
             },
             manuscriptOutputFolder: {

@@ -37,7 +37,7 @@ import { ExportFailure, categorizeExportError } from '../utils/exportErrors';
 import { resolveSelectedBeatModelFromSettings } from '../utils/beatSystemState';
 import { getRuntimeSettings } from '../utils/runtimeEstimator';
 import { t } from '../i18n';
-import { writeManagedOutput } from '../utils/safeVaultOps';
+import { writeManagedOutput } from '../utils/logVaultOps';
 
 export class CommandRegistrar {
     private inquiryRibbonIcon: HTMLElement | null = null;
@@ -732,9 +732,8 @@ export class CommandRegistrar {
             : undefined;
         const result = await writeManagedOutput(this.app, vaultPath, content, {
             operation,
-            aiOutputFolder: this.plugin.settings.aiOutputFolder,
             managedMarker,
-            unmanagedOverwritePrompt: (file) => `Overwrite existing output "${file.path}"? RT will archive the current contents to a safety snapshot first. Manual edits may be replaced.`
+            unmanagedOverwritePrompt: (file) => `Overwrite existing output "${file.path}"? RT will archive the current contents to a log snapshot first. Manual edits may be replaced.`
         });
         if (result.skipped) {
             return false;

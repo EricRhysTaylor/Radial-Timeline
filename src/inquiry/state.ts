@@ -80,6 +80,8 @@ export interface InquiryResult {
     executionState?: 'blocked_before_send' | 'dispatched_to_provider' | 'packaging_failed';
     executionPath?: 'one_pass' | 'multi_pass';
     failureStage?: 'preflight' | 'chunk_execution' | 'synthesis' | 'provider_response_parsing';
+    /** Raw provider or runner error message for surfacing in UI diagnostics. */
+    aiErrorDetail?: string;
     tokenUsageKnown?: boolean;
     tokenUsageScope?: InquiryTokenUsageScope;
     tokenEstimateInput?: number;

@@ -12,7 +12,7 @@ import type { SceneData, ParsedSceneAnalysis } from './types';
 import { parsePulseAnalysisResponse } from './responseParsing';
 import { generateSceneContent, SceneCreationData } from '../utils/sceneGenerator';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
-import { snapshotFrontmatterFields } from '../utils/safeVaultOps';
+import { snapshotFrontmatterFields } from '../utils/logVaultOps';
 
 type FMInfo = {
     exists: boolean;
@@ -44,7 +44,6 @@ async function updateSceneFile(
     try {
         await snapshotFrontmatterFields(plugin.app, [scene.file], {
             operation: 'scene-analysis-refresh',
-            aiOutputFolder: plugin.settings.aiOutputFolder,
             fields: SCENE_ANALYSIS_SNAPSHOT_FIELDS,
             meta: {
                 scope: 'scene-note',
@@ -241,7 +240,7 @@ class PurgeConfirmationModal extends Modal {
         messageEl.setText(this.message);
 
         const detailsEl = card.createDiv({ cls: 'rt-purge-details' });
-        detailsEl.createEl('div', { text: 'This will remove these fields and archive them to a safety snapshot first:', cls: 'rt-purge-danger' });
+        detailsEl.createEl('div', { text: 'This will remove these fields and archive them to a log snapshot first:', cls: 'rt-purge-danger' });
         const listEl = detailsEl.createEl('ul', { cls: 'rt-purge-list' });
         this.details.forEach(detail => {
             const li = listEl.createEl('li');
@@ -283,7 +282,6 @@ async function purgeScenesBeats(
 ): Promise<{ purgedCount: number; snapshotPath: string | null }> {
     const snapshotPath = await snapshotFrontmatterFields(plugin.app, scenes.map(scene => scene.file), {
         operation: 'scene-analysis-purge',
-        aiOutputFolder: plugin.settings.aiOutputFolder,
         fields: SCENE_ANALYSIS_SNAPSHOT_FIELDS,
         meta: {
             scope: 'scene-note',

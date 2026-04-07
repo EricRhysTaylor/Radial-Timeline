@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { App } from 'obsidian';
-import { useSystemTrash } from './safeVaultOps';
+import { useSystemTrash } from './logVaultOps';
 
 function buildMockApp(trashOption?: string): App {
     return {

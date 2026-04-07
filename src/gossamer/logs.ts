@@ -1,8 +1,12 @@
-import { App, TFile, TFolder, getFrontMatterInfo, normalizePath, parseYaml, stringifyYaml } from 'obsidian';
-import { formatLogTimestamp, resolveAiLogFolder, resolveAvailableLogPath } from '../ai/log';
-
-const GOSSAMER_LOG_FOLDER_NAME = 'Gossamer';
-const GOSSAMER_CONTENT_LOG_FOLDER_NAME = 'Content Logs';
+import { App, TFile, TFolder, getFrontMatterInfo, parseYaml, stringifyYaml } from 'obsidian';
+import {
+    ensureContentLogsRoot,
+    ensureLogsRoot,
+    formatLogTimestamp,
+    resolveAvailableLogPath,
+    resolveContentLogsRoot,
+    resolveLogsRoot
+} from '../ai/log';
 
 function sanitizeSegment(value: string | null | undefined): string {
     if (!value) return '';
@@ -12,26 +16,6 @@ function sanitizeSegment(value: string | null | undefined): string {
         .replace(/-+/g, '-')
         .trim()
         .replace(/^-+|-+$/g, '');
-}
-
-function resolveLogRoot(logRoot?: string): string {
-    const fallback = resolveAiLogFolder();
-    return normalizePath((logRoot || fallback).trim() || fallback);
-}
-
-async function ensureFolder(app: App, folderPath: string): Promise<TFolder | null> {
-    const normalized = normalizePath(folderPath);
-    const existing = app.vault.getAbstractFileByPath(normalized);
-    if (existing && !(existing instanceof TFolder)) {
-        return null;
-    }
-    try {
-        await app.vault.createFolder(normalized);
-    } catch {
-        // Folder may already exist.
-    }
-    const folder = app.vault.getAbstractFileByPath(normalized);
-    return folder instanceof TFolder ? folder : null;
 }
 
 async function readFrontmatterFromFile(app: App, file: TFile): Promise<Record<string, unknown> | null> {
@@ -58,20 +42,20 @@ function formatMeta(meta: Record<string, unknown> | undefined): string[] {
         .map(([key, value]) => `- ${key}: ${String(value)}`);
 }
 
-export function resolveGossamerLogFolder(logRoot?: string): string {
-    return normalizePath(`${resolveLogRoot(logRoot)}/${GOSSAMER_LOG_FOLDER_NAME}`);
+export function resolveGossamerLogFolder(): string {
+    return resolveLogsRoot();
 }
 
-export function resolveGossamerContentLogFolder(logRoot?: string): string {
-    return normalizePath(`${resolveGossamerLogFolder(logRoot)}/${GOSSAMER_CONTENT_LOG_FOLDER_NAME}`);
+export function resolveGossamerContentLogFolder(): string {
+    return resolveContentLogsRoot();
 }
 
-export async function ensureGossamerLogFolder(app: App, logRoot?: string): Promise<TFolder | null> {
-    return ensureFolder(app, resolveGossamerLogFolder(logRoot));
+export async function ensureGossamerLogFolder(app: App): Promise<TFolder | null> {
+    return ensureLogsRoot(app.vault);
 }
 
-export async function ensureGossamerContentLogFolder(app: App, logRoot?: string): Promise<TFolder | null> {
-    return ensureFolder(app, resolveGossamerContentLogFolder(logRoot));
+export async function ensureGossamerContentLogFolder(app: App): Promise<TFolder | null> {
+    return ensureContentLogsRoot(app.vault);
 }
 
 export async function archiveGossamerFrontmatterFields(
@@ -79,7 +63,6 @@ export async function archiveGossamerFrontmatterFields(
     files: TFile[],
     options: {
         operation: string;
-        logRoot?: string;
         selectFields: (frontmatter: Record<string, unknown>, file: TFile) => Record<string, unknown>;
         meta?: Record<string, unknown>;
     }
@@ -105,7 +88,7 @@ export async function archiveGossamerFrontmatterFields(
 
     if (entries.length === 0) return null;
 
-    const folder = await ensureGossamerLogFolder(app, options.logRoot);
+    const folder = await ensureGossamerLogFolder(app);
     if (!folder) return null;
 
     const now = new Date();
@@ -134,7 +117,7 @@ export async function archiveGossamerFrontmatterFields(
         lines.push('```');
     }
 
-    const filePath = resolveAvailableLogPath(app.vault, resolveGossamerLogFolder(options.logRoot), baseName);
+    const filePath = resolveAvailableLogPath(app.vault, resolveGossamerLogFolder(), baseName);
     await app.vault.create(filePath, lines.join('\n').trim());
     return filePath;
 }

@@ -107,7 +107,7 @@ async function writeGossamerLog(
   let contentLogWritten = false;
   if (shouldWriteContent) {
     try {
-      const contentFolder = await ensureGossamerContentLogFolder(plugin.app, plugin.settings.aiOutputFolder);
+      const contentFolder = await ensureGossamerContentLogFolder(plugin.app);
       if (contentFolder) {
         const contentTitle = `Gossamer Content Log — ${payload.beatSystemLabel} ${readableTimestamp}`;
         const contentBaseName = `Gossamer Content Log — ${safeBeatSystem} ${readableTimestamp}`;
@@ -145,7 +145,7 @@ async function writeGossamerLog(
           derivedSummary: payload.derivedSummary
         });
 
-        const contentFolderPath = resolveGossamerContentLogFolder(plugin.settings.aiOutputFolder);
+        const contentFolderPath = resolveGossamerContentLogFolder();
         const contentFilePath = resolveAvailableLogPath(plugin.app.vault, contentFolderPath, contentBaseName);
         await plugin.app.vault.create(contentFilePath, contentLogContent.trim());
         contentLogWritten = true;
@@ -159,7 +159,7 @@ async function writeGossamerLog(
   // Write Summary Log (always written for AI runs)
   let summaryFile: TFile | null = null;
   try {
-    const summaryFolder = await ensureGossamerLogFolder(plugin.app, plugin.settings.aiOutputFolder);
+    const summaryFolder = await ensureGossamerLogFolder(plugin.app);
     if (!summaryFolder) {
       console.error('[Gossamer][log] Gossamer log folder path is not a folder.');
       return null;
@@ -253,7 +253,6 @@ async function saveGossamerScores(
     });
   const snapshotPath = await archiveGossamerFrontmatterFields(plugin.app, filesToSnapshot, {
     operation: 'gossamer-save',
-    logRoot: plugin.settings.aiOutputFolder,
     selectFields: (frontmatter) => collectGossamerManagedSnapshot(frontmatter as Record<string, any>),
     meta: {
       scope: 'beat-note',
@@ -1027,7 +1026,6 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       const snapshotPath = priorFrontmatter && (willAppendGossamerPrune(priorFrontmatter) || Object.keys(collectGossamerManagedSnapshot(priorFrontmatter)).length > 0)
         ? await archiveGossamerFrontmatterFields(plugin.app, [file], {
             operation: 'gossamer-clipboard-save',
-            logRoot: plugin.settings.aiOutputFolder,
             selectFields: (frontmatter) => collectGossamerManagedSnapshot(frontmatter as Record<string, any>),
             meta: {
               scope: 'beat-note',
@@ -1125,10 +1123,10 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
 
     const successMessage = `✓ Updated ${updateCount} beats with momentum scores`;
     
-    const aiFolderPath = resolveGossamerLogFolder(plugin.settings.aiOutputFolder);
+    const aiFolderPath = resolveGossamerLogFolder();
     const logMessage = plugin.settings.logApiInteractions
       ? `${successMessage}. Log saved to ${aiFolderPath} (evidence: ${evidenceModeLabel.toLowerCase()}).`
-      : `${successMessage}. (Logging disabled - no report saved)`;
+      : `${successMessage}. Summary log saved to ${aiFolderPath}. Content logs are disabled.`;
 
     modal.completeProcessing(true, successMessage);
     new Notice(logMessage);

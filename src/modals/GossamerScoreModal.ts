@@ -68,7 +68,6 @@ export class GossamerScoreModal extends Modal {
   private async snapshotGossamerFields(files: TFile[], operation: string, meta: Record<string, unknown> = {}): Promise<string | null> {
     return archiveGossamerFrontmatterFields(this.app, files, {
       operation,
-      logRoot: this.plugin.settings.aiOutputFolder,
       selectFields: (frontmatter) => collectGossamerManagedSnapshot(frontmatter as Record<string, any>),
       meta: {
         scope: 'beat-note',

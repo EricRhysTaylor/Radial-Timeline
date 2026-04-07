@@ -565,6 +565,7 @@ export interface RadialTimelineSettings {
     showSourcePathAsTitle?: boolean;
     validFolderPaths: string[];
     validProjectPaths?: string[];  // Autocomplete history for Social Project Path field
+    /** @deprecated Logging paths are internalized and no longer user-configurable. */
     aiOutputFolder?: string;
     manuscriptOutputFolder?: string;
     outlineOutputFolder?: string;

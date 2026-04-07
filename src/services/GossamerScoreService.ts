@@ -54,7 +54,6 @@ export class GossamerScoreService {
                 const snapshotPath = priorFrontmatter && (willAppendGossamerPrune(priorFrontmatter) || Object.keys(collectGossamerManagedSnapshot(priorFrontmatter)).length > 0)
                     ? await archiveGossamerFrontmatterFields(this.app, [file], {
                         operation: 'gossamer-save',
-                        logRoot: this.plugin.settings.aiOutputFolder,
                         selectFields: (frontmatter) => collectGossamerManagedSnapshot(frontmatter as Record<string, any>),
                         meta: {
                             scope: 'beat-note',

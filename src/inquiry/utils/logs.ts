@@ -1,63 +1,31 @@
-import { App, normalizePath, TFolder } from 'obsidian';
+import { App, TFolder } from 'obsidian';
 import {
-    DEFAULT_INQUIRY_CONTENT_LOG_FOLDER,
-    DEFAULT_INQUIRY_LOG_FOLDER,
-    DEFAULT_PULSE_CONTENT_LOG_FOLDER
-} from '../constants';
+    ensureContentLogsRoot,
+    ensureLogsRoot,
+    resolveContentLogsRoot,
+    resolveLogsRoot
+} from '../../ai/log';
 
 export function resolveInquiryLogFolder(): string {
-    return normalizePath(DEFAULT_INQUIRY_LOG_FOLDER);
+    return resolveLogsRoot();
 }
 
 export function resolveInquiryContentLogFolder(): string {
-    return normalizePath(DEFAULT_INQUIRY_CONTENT_LOG_FOLDER);
+    return resolveContentLogsRoot();
 }
 
 export async function ensureInquiryLogFolder(app: App): Promise<TFolder | null> {
-    const folderPath = resolveInquiryLogFolder();
-    const existing = app.vault.getAbstractFileByPath(folderPath);
-    if (existing && !(existing instanceof TFolder)) {
-        return null;
-    }
-    try {
-        await app.vault.createFolder(folderPath);
-    } catch {
-        // Folder may already exist.
-    }
-    const folder = app.vault.getAbstractFileByPath(folderPath);
-    return folder instanceof TFolder ? folder : null;
+    return ensureLogsRoot(app.vault);
 }
 
 export async function ensureInquiryContentLogFolder(app: App): Promise<TFolder | null> {
-    const folderPath = resolveInquiryContentLogFolder();
-    const existing = app.vault.getAbstractFileByPath(folderPath);
-    if (existing && !(existing instanceof TFolder)) {
-        return null;
-    }
-    try {
-        await app.vault.createFolder(folderPath);
-    } catch {
-        // Folder may already exist.
-    }
-    const folder = app.vault.getAbstractFileByPath(folderPath);
-    return folder instanceof TFolder ? folder : null;
+    return ensureContentLogsRoot(app.vault);
 }
 
 export function resolvePulseContentLogFolder(): string {
-    return normalizePath(DEFAULT_PULSE_CONTENT_LOG_FOLDER);
+    return resolveContentLogsRoot();
 }
 
 export async function ensurePulseContentLogFolder(app: App): Promise<TFolder | null> {
-    const folderPath = resolvePulseContentLogFolder();
-    const existing = app.vault.getAbstractFileByPath(folderPath);
-    if (existing && !(existing instanceof TFolder)) {
-        return null;
-    }
-    try {
-        await app.vault.createFolder(folderPath);
-    } catch {
-        // Folder may already exist.
-    }
-    const folder = app.vault.getAbstractFileByPath(folderPath);
-    return folder instanceof TFolder ? folder : null;
+    return ensureContentLogsRoot(app.vault);
 }

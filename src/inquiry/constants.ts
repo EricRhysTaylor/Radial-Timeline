@@ -1,9 +1,6 @@
 export const INQUIRY_VIEW_TYPE = 'radial-inquiry';
 export const INQUIRY_VIEW_DISPLAY_TEXT = 'Inquiry';
 export const DEFAULT_INQUIRY_ARTIFACT_FOLDER = 'Radial Timeline/Inquiry/Briefing';
-export const DEFAULT_INQUIRY_LOG_FOLDER = 'Radial Timeline/Logs';
-export const DEFAULT_INQUIRY_CONTENT_LOG_FOLDER = 'Radial Timeline/Logs/Inquiry Content';
-export const DEFAULT_PULSE_CONTENT_LOG_FOLDER = 'Radial Timeline/Logs/Pulse Content';
 export const MAX_INQUIRY_HISTORY = 100;
 export const DEFAULT_INQUIRY_HISTORY_LIMIT = 30;
 export const INQUIRY_HISTORY_LIMIT_OPTIONS = [10, 30, 60, 100] as const;

@@ -6,7 +6,6 @@ import { fetchOpenAiModels } from '../../api/openaiApi';
 import { fetchGeminiModels as fetchGoogleModels } from '../../api/geminiApi';
 import { AiContextModal } from '../AiContextModal';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
-import { resolveAiLogFolder } from '../../ai/log';
 import { ERT_CLASSES } from '../../ui/classes';
 import { IMPACT_FULL } from '../SettingImpact';
 import { buildDefaultAiSettings } from '../../ai/settings/aiSettings';
@@ -2358,7 +2357,6 @@ export function renderAiSection(params: {
 
     params.setProviderSections({ anthropic: anthropicSection, google: googleSection, openai: openaiSection });
 
-    const aiLogFolder = resolveAiLogFolder();
     let localLlmModelText: TextComponent | null = null;
     let localLlmServerDropdown: DropdownComponent | null = null;
     let localLlmLoadedModels: LocalLlmModelEntry[] = [];

@@ -7,7 +7,7 @@ import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import { ERT_CLASSES } from '../../ui/classes';
 import { IMPACT_FULL } from '../SettingImpact';
 import { DEFAULT_SETTINGS } from '../defaults';
-import { resolveAiLogFolder, countAiLogFiles } from '../../ai/log';
+import { countContentLogFiles, resolveContentLogsRoot, resolveLogsRoot } from '../../ai/log';
 import { renderMetadataSection } from './MetadataSection';
 import {
     buildTimelineChapterResolverItems,
@@ -138,16 +138,16 @@ export function renderConfigurationSection(params: { app: App; plugin: RadialTim
     logsContainer.createDiv({ cls: 'ert-config-group-title', text: 'Logs' });
 
     // Logs
-    createFolderPathRow(logsContainer, {
+    createDenseRow(logsContainer, {
         title: t('settings.configuration.aiOutputFolder.name'),
         description: t('settings.configuration.aiOutputFolder.desc'),
-        placeholder: t('settings.configuration.aiOutputFolder.placeholder'),
-        defaultPath: DEFAULT_SETTINGS.aiOutputFolder || 'Radial Timeline/Logs',
-        currentValue: () => plugin.settings.aiOutputFolder,
-        saveValue: async (normalized) => {
-            plugin.settings.aiOutputFolder = normalized;
-            await plugin.saveSettings();
-        }
+        control: () => {}
+    });
+
+    createDenseRow(logsContainer, {
+        title: 'Content logs',
+        description: `Full prompt and payload logs are stored in "${resolveContentLogsRoot()}".`,
+        control: () => {}
     });
 
     createFolderPathRow(logsContainer, {
@@ -163,18 +163,19 @@ export function renderConfigurationSection(params: { app: App; plugin: RadialTim
         }
     });
 
-    const outputFolder = resolveAiLogFolder();
+    const outputFolder = resolveLogsRoot();
+    const contentFolder = resolveContentLogsRoot();
     const formatLogCount = (fileCount: number | null): string => {
-        if (fileCount === null) return 'Counting log files...';
+        if (fileCount === null) return 'Counting content logs...';
         return fileCount === 0
-            ? 'No log files yet'
+            ? 'No content logs yet'
             : fileCount === 1
-                ? '1 log file'
-                : `${fileCount} log files`;
+                ? '1 content log'
+                : `${fileCount} content logs`;
     };
     const getLoggingDesc = (fileCount: number | null): string => {
         const countText = formatLogCount(fileCount);
-        return `Summary logs (run metadata, token usage, results) are always written for Inquiry, Pulse, and Gossamer. When enabled, also writes Content logs containing full prompts, materials, and API responses\u2014useful for debugging and understanding AI behavior. Recommended while learning the system. Logs are stored in \u201c${outputFolder}\u201d (${countText}).`;
+        return `Concise logs, archives, snapshots, and move history are always written to "${outputFolder}". When enabled, content logs containing full prompts, materials, and API responses are written to "${contentFolder}" (${countText}).`;
     };
 
     const apiLoggingSetting = createDenseRow(logsContainer, {
@@ -192,7 +193,7 @@ export function renderConfigurationSection(params: { app: App; plugin: RadialTim
 
     const scheduleLogCount = () => {
         const runCount = () => {
-            const fileCount = countAiLogFiles(plugin);
+            const fileCount = countContentLogFiles(plugin);
             apiLoggingSetting.setDesc(getLoggingDesc(fileCount));
         };
         const requestIdleCallback = (window as Window & {

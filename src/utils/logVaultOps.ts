@@ -1,17 +1,13 @@
 import { App, TAbstractFile, TFile, getFrontMatterInfo, normalizePath, parseYaml } from 'obsidian';
-
-const DEFAULT_LOG_ROOT = 'Radial Timeline/Logs';
-const DEFAULT_SAFETY_FOLDER = 'Safety';
+import { resolveLogsRoot } from '../ai/log';
 
 export interface TrashFilesOptions {
     operation: string;
-    aiOutputFolder?: string;
     snapshotBeforeTrash?: boolean;
 }
 
 export interface SnapshotFrontmatterFieldsOptions {
     operation: string;
-    aiOutputFolder?: string;
     fields?: string[];
     selectFields?: (frontmatter: Record<string, unknown>, file: TFile) => Record<string, unknown>;
     meta?: Record<string, unknown>;
@@ -19,7 +15,6 @@ export interface SnapshotFrontmatterFieldsOptions {
 
 export interface SnapshotFileBeforeOverwriteOptions {
     operation: string;
-    aiOutputFolder?: string;
     meta?: Record<string, unknown>;
 }
 
@@ -30,7 +25,6 @@ export interface ManagedOutputOverwriteCheckOptions {
 
 export interface ManagedOutputWriteOptions extends ManagedOutputOverwriteCheckOptions {
     operation: string;
-    aiOutputFolder?: string;
     managedMarker?: string;
     unmanagedOverwritePrompt?: string | ((file: TFile) => string);
     snapshotOnManagedOverwrite?: boolean;
@@ -61,9 +55,8 @@ export function useSystemTrash(app: App): boolean {
     }
 }
 
-function resolveSafetyFolder(aiOutputFolder?: string): string {
-    const base = normalizePath((aiOutputFolder || DEFAULT_LOG_ROOT).trim() || DEFAULT_LOG_ROOT);
-    return normalizePath(`${base}/${DEFAULT_SAFETY_FOLDER}`);
+function resolveArchiveLogFolder(): string {
+    return resolveLogsRoot();
 }
 
 async function ensureFolder(app: App, folderPath: string): Promise<void> {
@@ -86,10 +79,10 @@ function createSnapshotFileName(operation: string): string {
     return `${timestamp}-${safeOperation}.json`;
 }
 
-async function writeSnapshotPayload(app: App, payload: Record<string, unknown>, options: { operation: string; aiOutputFolder?: string }): Promise<string> {
-    const safetyFolder = resolveSafetyFolder(options.aiOutputFolder);
-    await ensureFolder(app, safetyFolder);
-    const snapshotPath = normalizePath(`${safetyFolder}/${createSnapshotFileName(options.operation)}`);
+async function writeSnapshotPayload(app: App, payload: Record<string, unknown>, options: { operation: string }): Promise<string> {
+    const logsFolder = resolveArchiveLogFolder();
+    await ensureFolder(app, logsFolder);
+    const snapshotPath = normalizePath(`${logsFolder}/${createSnapshotFileName(options.operation)}`);
     await app.vault.create(snapshotPath, JSON.stringify(payload, null, 2));
     return snapshotPath;
 }
@@ -138,7 +131,6 @@ export async function trashFiles(app: App, files: TFile[], options: TrashFilesOp
     const snapshotPath = options.snapshotBeforeTrash
         ? await snapshotFileCollection(app, uniqueFiles, {
             operation: options.operation,
-            aiOutputFolder: options.aiOutputFolder,
             meta: { mode: 'pre-trash' }
         })
         : null;
@@ -196,7 +188,7 @@ export async function snapshotFrontmatterFields(
         fileCount: entries.length,
         entries,
         meta: options.meta ?? {}
-    }, options);
+    }, { operation: options.operation });
 }
 
 export async function snapshotFileBeforeOverwrite(
@@ -218,7 +210,7 @@ export async function snapshotFileBeforeOverwrite(
             content
         }],
         meta: options.meta ?? {}
-    }, options);
+    }, { operation: options.operation });
 }
 
 async function snapshotFileCollection(
@@ -249,7 +241,7 @@ async function snapshotFileCollection(
         fileCount: entries.length,
         entries,
         meta: options.meta ?? {}
-    }, options);
+    }, { operation: options.operation });
 }
 
 export async function canOverwriteManagedOutput(
@@ -305,7 +297,7 @@ export async function writeManagedOutput(
         const prompt = typeof options.unmanagedOverwritePrompt === 'function'
             ? options.unmanagedOverwritePrompt(existing)
             : options.unmanagedOverwritePrompt
-                ?? `Overwrite existing output "${existing.path}"? Existing content will be archived to a safety snapshot first.`;
+                ?? `Overwrite existing output "${existing.path}"? Existing content will be archived to a log snapshot first.`;
         const confirmed = typeof window !== 'undefined' ? window.confirm(prompt) : false;
         if (!confirmed) {
             return {
@@ -319,7 +311,6 @@ export async function writeManagedOutput(
         }
         snapshotPath = await snapshotFileBeforeOverwrite(app, existing, {
             operation: options.operation,
-            aiOutputFolder: options.aiOutputFolder,
             meta: {
                 reason: 'overwrite-unmanaged-output',
                 ...(options.meta ?? {})
@@ -329,7 +320,6 @@ export async function writeManagedOutput(
     } else if (options.snapshotOnManagedOverwrite) {
         snapshotPath = await snapshotFileBeforeOverwrite(app, existing, {
             operation: options.operation,
-            aiOutputFolder: options.aiOutputFolder,
             meta: {
                 reason: 'overwrite-managed-output',
                 ...(options.meta ?? {})

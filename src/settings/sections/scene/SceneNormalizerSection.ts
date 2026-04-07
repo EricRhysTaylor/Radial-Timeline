@@ -27,6 +27,7 @@ import { RESERVED_OBSIDIAN_KEYS } from '../../../utils/yamlTemplateNormalize';
 import { formatSafetyIssues } from '../../../utils/yamlSafety';
 import { openOrRevealFile } from '../../../utils/fileUtils';
 import { getAdvancedMode, shouldEnableRemoveAdvanced } from '../../../scenes/core/scenePropertyState';
+import { resolveLogsRoot } from '../../../ai/log';
 
 type DeletePreviewDetail = { fields: string[]; values: Record<string, unknown> };
 
@@ -137,13 +138,13 @@ async function writeDeletionSnapshot(app: App, plugin: RadialTimelinePlugin, par
 
     if (entries.length === 0) return null;
 
-    const baseFolder = normalizePath((plugin.settings.aiOutputFolder || DEFAULT_SETTINGS.aiOutputFolder || 'Radial Timeline/Logs').trim() || 'Radial Timeline/Logs');
-    const snapshotFolder = await ensureVaultFolder(app, `${baseFolder}/YAML Safety/Deletion Snapshots`);
+    const logsRoot = resolveLogsRoot();
+    const snapshotFolder = await ensureVaultFolder(app, logsRoot);
     if (!snapshotFolder) return null;
 
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const filename = `${timestamp}-scene-${params.operation}.json`;
-    const snapshotPath = normalizePath(`${snapshotFolder}/${filename}`);
+    const snapshotPath = normalizePath(`${logsRoot}/${filename}`);
     const payload = {
         version: 1,
         createdAt: new Date().toISOString(),

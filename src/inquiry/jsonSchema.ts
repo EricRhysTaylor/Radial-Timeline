@@ -4,7 +4,7 @@ export function buildInquiryJsonSchema(): Record<string, unknown> {
     return {
         type: 'object',
         properties: {
-            schema_version: { type: 'number', const: INQUIRY_SCHEMA_VERSION },
+            schema_version: { type: 'number', enum: [INQUIRY_SCHEMA_VERSION] },
             summaryFlow: { type: 'string' },
             summaryDepth: { type: 'string' },
             verdict: {
@@ -49,7 +49,7 @@ export function buildInquiryOmnibusJsonSchema(): Record<string, unknown> {
     return {
         type: 'object',
         properties: {
-            schema_version: { type: 'number', const: INQUIRY_SCHEMA_VERSION },
+            schema_version: { type: 'number', enum: [INQUIRY_SCHEMA_VERSION] },
             results: {
                 type: 'array',
                 items: {

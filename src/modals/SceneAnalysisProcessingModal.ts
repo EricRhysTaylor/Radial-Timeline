@@ -8,7 +8,7 @@
  */
 import { App, Modal, ButtonComponent, Notice, setIcon, TFile } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
-import { resolveAiLogFolder } from '../ai/log';
+import { resolveContentLogsRoot } from '../ai/log';
 import { getModelDisplayName } from '../utils/modelResolver';
 import type { LlmTimingStats } from '../types/settings';
 import { getSynopsisGenerationWordLimit, getSynopsisHoverLineLimit } from '../utils/synopsisLimits';
@@ -1523,8 +1523,8 @@ export class SceneAnalysisProcessingModal extends Modal {
                 ? 'Valid Local LLM pulse updates were written to scene yaml. Invalid results were logged and marked for review.'
                 : 'Triplet pulse updates were written to scene yaml.';
             if (this.logAttempts > 0) {
-                const aiFolder = resolveAiLogFolder();
-                logNoteEl.appendText(`Detailed AI interaction logs were saved to ${aiFolder}. ${pulseRouting}`);
+                const contentLogFolder = resolveContentLogsRoot();
+                logNoteEl.appendText(`Detailed AI interaction logs were saved to ${contentLogFolder}. ${pulseRouting}`);
             } else {
                 logNoteEl.appendText(`Logging is enabled, but no AI request reached the server. ${pulseRouting}`);
             }

@@ -76,6 +76,7 @@ import {
     updateLoadedBeatTab,
 } from '../../storyBeats/workspaceState';
 import { parseDescriptionParts, splitOverviewParagraphs, KNOWN_LABELS } from '../../utils/descriptionParser';
+import { resolveLogsRoot } from '../../ai/log';
 
 type FieldEntryValue = string | string[];
 type FieldEntry = { key: string; value: FieldEntryValue; required: boolean };
@@ -4097,13 +4098,13 @@ export function renderBeatPropertiesSection(params: {
 
             if (entries.length === 0) return null;
 
-            const baseFolder = normalizePath((plugin.settings.aiOutputFolder || DEFAULT_SETTINGS.aiOutputFolder || 'Radial Timeline/Logs').trim() || 'Radial Timeline/Logs');
-            const snapshotFolder = await ensureVaultFolder(`${baseFolder}/YAML Safety/Deletion Snapshots`);
+            const logsRoot = resolveLogsRoot();
+            const snapshotFolder = await ensureVaultFolder(logsRoot);
             if (!snapshotFolder) return null;
 
             const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
             const filename = `${timestamp}-${noteType.toLowerCase()}-${params.operation}.json`;
-            const snapshotPath = normalizePath(`${snapshotFolder}/${filename}`);
+            const snapshotPath = normalizePath(`${logsRoot}/${filename}`);
             const payload = {
                 version: 1,
                 createdAt: new Date().toISOString(),
@@ -4769,7 +4770,7 @@ export function renderBeatPropertiesSection(params: {
                         } else if (activeChip.kind === 'duplicate') {
                             new Notice(reason);
                         } else if (activeChip.kind === 'unsafe' || activeChip.kind === 'suspicious') {
-                            new Notice(`Safety: ${reason}`);
+                            new Notice(`Review note: ${reason}`);
                         } else if (entry.missingFields.length > 0) {
                             new Notice(`Missing properties: ${entry.missingFields.join(', ')}`);
                         } else if (entry.semanticWarnings.length > 0) {

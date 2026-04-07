@@ -8,7 +8,7 @@ import { isBeatNote, isSceneItem } from '../../utils/sceneHelpers';
 import { buildDefaultEmbedPath, normalizeAprExportFormat, type AprExportFormat } from '../../utils/aprPaths';
 import { resolveBookTitle, resolveProjectPath } from '../../renderer/apr/aprHelpers';
 import type { TimelineItem } from '../../types/timeline';
-import { writeManagedOutput } from '../../utils/safeVaultOps';
+import { writeManagedOutput } from '../../utils/logVaultOps';
 
 export interface AuthorProgressReportBuildResult {
     settings: AuthorProgressDefaults;
@@ -91,9 +91,8 @@ export class AuthorProgressRenderService {
         if (format === 'svg') {
             const result = await writeManagedOutput(this.app, path, svgString, {
                 operation: 'author-progress-svg',
-                aiOutputFolder: this.plugin.settings.aiOutputFolder,
                 managedMarker: '<!-- Radial Timeline Managed Output: author-progress-svg -->',
-                unmanagedOverwritePrompt: (file) => `Overwrite existing author progress SVG "${file.path}"? RT will archive the current SVG to a safety snapshot first. Manual edits may be replaced.`
+                unmanagedOverwritePrompt: (file) => `Overwrite existing author progress SVG "${file.path}"? RT will archive the current SVG to a log snapshot first. Manual edits may be replaced.`
             });
             if (result.skipped) {
                 throw new Error('Author progress SVG overwrite cancelled.');

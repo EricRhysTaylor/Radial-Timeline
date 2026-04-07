@@ -1,23 +1,19 @@
-import { normalizePath, TFile, TFolder } from 'obsidian';
+import { normalizePath, TFile } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
-import { ensureAiOutputFolder } from './aiOutput';
+import { ensureLogsRoot, resolveAvailableLogPath, resolveLogsRoot } from '../ai/log';
 import { openOrRevealFile, openOrRevealFileAtSubpath } from './fileUtils';
-import { getActiveBook, getActiveBookExportContext, getActiveBookTitle } from './books';
+import { getActiveBook, getActiveBookTitle } from './books';
 import { getActiveRecentStructuralMoves } from './recentStructuralMoves';
 import type { StructuralMoveHistoryEntry } from '../types/settings';
 
-const MOVE_HISTORY_FOLDER = 'Move History';
-
-async function ensureFolder(plugin: RadialTimelinePlugin, folderPath: string): Promise<TFolder | null> {
-    const existing = plugin.app.vault.getAbstractFileByPath(folderPath);
-    if (existing && !(existing instanceof TFolder)) return null;
-    try {
-        await plugin.app.vault.createFolder(folderPath);
-    } catch {
-        // Folder may already exist.
-    }
-    const folder = plugin.app.vault.getAbstractFileByPath(folderPath);
-    return folder instanceof TFolder ? folder : null;
+function sanitizeSegment(value: string | null | undefined): string {
+    if (!value) return '';
+    return value
+        .replace(/[<>:"/\\|?*]+/g, '-')
+        .replace(/\s+/g, ' ')
+        .replace(/-+/g, '-')
+        .trim()
+        .replace(/^-+|-+$/g, '');
 }
 
 function formatBoolean(value: boolean | undefined): string {
@@ -66,24 +62,28 @@ export async function openStructuralMoveHistoryLog(
     plugin: RadialTimelinePlugin,
     targetEntry?: StructuralMoveHistoryEntry
 ): Promise<void> {
-    const baseFolder = await ensureAiOutputFolder(plugin);
-    const moveHistoryFolder = normalizePath(`${baseFolder}/${MOVE_HISTORY_FOLDER}`);
-    const folder = await ensureFolder(plugin, moveHistoryFolder);
+    const logsRoot = resolveLogsRoot();
+    const folder = await ensureLogsRoot(plugin.app.vault);
     if (!folder) {
-        throw new Error(`Unable to prepare move history folder: ${moveHistoryFolder}`);
+        throw new Error(`Unable to prepare log folder: ${logsRoot}`);
     }
 
-    const { fileStem } = getActiveBookExportContext(plugin.settings);
-    const logPath = normalizePath(`${moveHistoryFolder}/${fileStem}-note-move-history.md`);
+    const bookTitle = getActiveBookTitle(plugin.settings).trim() || 'Project';
+    const baseName = `Move History — ${sanitizeSegment(bookTitle)}`;
+    const preferredPath = normalizePath(`${logsRoot}/${baseName}.md`);
     const entries = getActiveRecentStructuralMoves(plugin.settings);
     const content = buildMoveHistoryMarkdown(plugin);
 
-    const existing = plugin.app.vault.getAbstractFileByPath(logPath);
+    const existing = plugin.app.vault.getAbstractFileByPath(preferredPath);
     let file: TFile;
     if (existing instanceof TFile) {
         await plugin.app.vault.modify(existing, content);
         file = existing;
+    } else if (!existing) {
+        file = await plugin.app.vault.create(preferredPath, content);
     } else {
+        const datedName = `${baseName} — ${new Date().toISOString().slice(0, 10)}`;
+        const logPath = resolveAvailableLogPath(plugin.app.vault, logsRoot, datedName);
         file = await plugin.app.vault.create(logPath, content);
     }
 

@@ -1,6 +1,6 @@
 import type { Vault, TFile } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
-import { snapshotFrontmatterFields } from '../utils/safeVaultOps';
+import { snapshotFrontmatterFields } from '../utils/logVaultOps';
 
 export type ParsedSceneAnalysis = { 'previousSceneAnalysis': string; 'currentSceneAnalysis': string; 'nextSceneAnalysis': string };
 
@@ -34,7 +34,6 @@ export async function updateSceneAnalysis(
   try {
     await snapshotFrontmatterFields(plugin.app, [file], {
       operation: 'scene-analysis-refresh',
-      aiOutputFolder: plugin.settings.aiOutputFolder,
       fields: SCENE_ANALYSIS_MANAGED_FIELDS,
       meta: {
         scope: 'scene-note',

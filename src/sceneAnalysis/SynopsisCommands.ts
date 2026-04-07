@@ -21,7 +21,7 @@ import { normalizeBooleanValue } from '../utils/sceneHelpers';
 import { getSynopsisGenerationWordLimit, truncateToWordLimit } from '../utils/synopsisLimits';
 import { resolveBookScopedFiles } from '../services/NoteScopeResolver';
 import { getCanonicalAiSettings, resolveConfiguredSelection } from '../ai/runtime/runtimeSelection';
-import { snapshotFrontmatterFields } from '../utils/safeVaultOps';
+import { snapshotFrontmatterFields } from '../utils/logVaultOps';
 
 /**
  * Check freshness: is the scene's Due/Completed date newer than the last AI update timestamp?
@@ -110,7 +110,6 @@ async function persistSummaryForScene(
 
     await snapshotFrontmatterFields(plugin.app, [file], {
         operation: 'scene-summary-refresh',
-        aiOutputFolder: plugin.settings.aiOutputFolder,
         fields: ['Summary', 'Synopsis', 'Summary Update', 'SummaryUpdate', 'summaryupdate', 'Synopsis Update', 'SynopsisUpdate', 'synopsisupdate'],
         meta: {
             scope: 'scene-note',

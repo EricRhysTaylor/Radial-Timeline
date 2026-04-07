@@ -1072,10 +1072,11 @@ export class InquiryView extends ItemView {
         const result = this.state.activeResult;
         if (!result) return null;
         if (!this.isErrorResult(result)) return null;
-        const reason = this.formatApiErrorReason(result);
+        const reason = this.formatApiErrorClassification(result);
         const reasonSuffix = reason ? ` (${reason})` : '';
+        const detail = result.aiErrorDetail ? `\n${result.aiErrorDetail}` : '';
         return {
-            message: `Inquiry failed${reasonSuffix}. Use Open Inquiry Log in the footer for the detailed error report.`
+            message: `Inquiry failed${reasonSuffix}.${detail}\nUse Open Inquiry Log in the footer for the detailed error report.`
         };
     }
 
@@ -6886,7 +6887,7 @@ export class InquiryView extends ItemView {
         return outcome ?? 'skipped';
     }
 
-    private formatApiErrorReason(result: InquiryResult): string {
+    private formatApiErrorClassification(result: InquiryResult): string {
         const status = result.aiStatus || 'unknown';
         const reason = result.aiReason;
         const reasonText = reason ? `${status} (${reason})` : status;
@@ -6897,8 +6898,17 @@ export class InquiryView extends ItemView {
         if (typeof result.tokenUsageKnown === 'boolean') {
             executionBits.push(`usage=${this.formatTokenUsageVisibility(result.tokenUsageKnown, result.tokenUsageScope)}`);
         }
-        if (!executionBits.length) return reasonText;
-        return `${reasonText} [${executionBits.join(', ')}]`;
+        return executionBits.length
+            ? `${reasonText} [${executionBits.join(', ')}]`
+            : reasonText;
+    }
+
+    private formatApiErrorReason(result: InquiryResult): string {
+        const classification = this.formatApiErrorClassification(result);
+        if (result.aiErrorDetail) {
+            return `${classification}\n${result.aiErrorDetail}`;
+        }
+        return classification;
     }
 
     private formatTokenUsageVisibility(

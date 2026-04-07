@@ -2276,7 +2276,8 @@ export class InquiryRunnerService implements InquiryRunner {
             },
             findings,
             corpusFingerprint: input.corpus.fingerprint,
-            ...aiMeta
+            ...aiMeta,
+            ...(message ? { aiErrorDetail: message } : {})
         };
     }
 

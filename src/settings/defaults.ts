@@ -17,7 +17,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     sourcePath: '',
     showSourcePathAsTitle: true, // @deprecated Legacy — book title from BookProfile after migration
     validFolderPaths: [], // Default empty array for folder path history
-    aiOutputFolder: 'Radial Timeline/Logs',
+    aiOutputFolder: 'Radial Timeline/Logs', // @deprecated Logging paths are now internalized.
     manuscriptOutputFolder: 'Radial Timeline/Export',
     outlineOutputFolder: 'Radial Timeline/Export',
     inquiryArtifactFolder: 'Radial Timeline/Inquiry/Briefing',

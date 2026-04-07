@@ -2,7 +2,7 @@ import { App, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { resolveBookTitle, resolveProjectPath } from '../../renderer/apr/aprHelpers';
 import { AuthorProgressRenderService } from './AuthorProgressRenderService';
-import { writeManagedOutput } from '../../utils/safeVaultOps';
+import { writeManagedOutput } from '../../utils/logVaultOps';
 
 export class AuthorProgressPublishService {
     constructor(
@@ -70,9 +70,8 @@ export class AuthorProgressPublishService {
 
         const writeResult = await writeManagedOutput(this.app, notePath, noteContent, {
             operation: 'author-progress-note',
-            aiOutputFolder: this.plugin.settings.aiOutputFolder,
             managedMarker: '<!-- Radial Timeline Managed Output: author-progress-note -->',
-            unmanagedOverwritePrompt: (file) => `Overwrite existing author progress note "${file.path}"? RT will archive the current contents to a safety snapshot first. Manual edits may be replaced.`
+            unmanagedOverwritePrompt: (file) => `Overwrite existing author progress note "${file.path}"? RT will archive the current contents to a log snapshot first. Manual edits may be replaced.`
         });
         if (writeResult.skipped) {
             new Notice('Author progress note publish cancelled before overwriting the existing note.');

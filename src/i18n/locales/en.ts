@@ -694,8 +694,8 @@ export const en: TranslationKeys = {
         configuration: {
             heading: 'Configuration',
             aiOutputFolder: {
-                name: 'Logs & generated files output folder',
-                desc: 'Folder where AI logs and local LLM reports are saved. Default: Radial Timeline/Logs.',
+                name: 'Logs',
+                desc: 'Runtime logs, archives, snapshots, and move history are stored in Radial Timeline/Logs.',
                 placeholder: 'Radial Timeline/Logs',
             },
             manuscriptOutputFolder: {

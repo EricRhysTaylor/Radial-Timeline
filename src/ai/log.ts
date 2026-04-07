@@ -3,7 +3,6 @@
  */
 import type RadialTimelinePlugin from '../main';
 import { normalizePath, Notice, type Vault, TFile, TFolder } from 'obsidian';
-import { resolveInquiryLogFolder } from '../inquiry/utils/logs';
 import { redactSensitiveObject, redactSensitiveValue } from './credentials/redactSensitive';
 import { getModelDisplayName } from '../utils/modelResolver';
 import {
@@ -94,6 +93,9 @@ export type UsageCostBreakdown = {
     outputCostUSD?: number;
     totalCostUSD?: number;
 };
+
+const DEFAULT_LOGS_ROOT = 'Radial Timeline/Logs';
+const CONTENT_LOGS_FOLDER_NAME = 'Content';
 
 function normalizePricingProvider(provider?: string | null): 'anthropic' | 'openai' | 'google' | null {
     const normalized = (provider || '').trim().toLowerCase();
@@ -445,8 +447,46 @@ export function formatSummaryLogContent(envelope: SummaryLogEnvelope): string {
     return lines.join('\n');
 }
 
+export function resolveLogsRoot(): string {
+    return normalizePath(DEFAULT_LOGS_ROOT);
+}
+
+export function resolveContentLogsRoot(): string {
+    return normalizePath(`${resolveLogsRoot()}/${CONTENT_LOGS_FOLDER_NAME}`);
+}
+
+export async function ensureLogsRoot(vault: Vault): Promise<TFolder | null> {
+    const folderPath = resolveLogsRoot();
+    const existing = vault.getAbstractFileByPath(folderPath);
+    if (existing && !(existing instanceof TFolder)) {
+        return null;
+    }
+    try {
+        await vault.createFolder(folderPath);
+    } catch {
+        // Folder may already exist.
+    }
+    const folder = vault.getAbstractFileByPath(folderPath);
+    return folder instanceof TFolder ? folder : null;
+}
+
+export async function ensureContentLogsRoot(vault: Vault): Promise<TFolder | null> {
+    const folderPath = resolveContentLogsRoot();
+    const existing = vault.getAbstractFileByPath(folderPath);
+    if (existing && !(existing instanceof TFolder)) {
+        return null;
+    }
+    try {
+        await vault.createFolder(folderPath);
+    } catch {
+        // Folder may already exist.
+    }
+    const folder = vault.getAbstractFileByPath(folderPath);
+    return folder instanceof TFolder ? folder : null;
+}
+
 export function resolveAiLogFolder(): string {
-    return resolveInquiryLogFolder();
+    return resolveLogsRoot();
 }
 
 export function resolveAvailableLogPath(vault: Vault, folderPath: string, baseName: string): string {
@@ -464,24 +504,19 @@ export function resolveAvailableLogPath(vault: Vault, folderPath: string, baseNa
     return `${sanitizedFolder}/${cleanBase}-${Date.now()}.md`;
 }
 
-export function countAiLogFiles(plugin: RadialTimelinePlugin): number {
-    const folderPath = resolveAiLogFolder();
+export function countContentLogFiles(plugin: RadialTimelinePlugin): number {
+    const folderPath = resolveContentLogsRoot();
     const abstractFile = plugin.app.vault.getAbstractFileByPath(folderPath);
     if (!abstractFile || !(abstractFile instanceof TFolder)) {
         return 0;
     }
 
     let count = 0;
-    const countRecursive = (folder: TFolder) => {
-        for (const child of folder.children) {
-            if (child instanceof TFile && child.extension === 'md') {
-                count += 1;
-            } else if (child instanceof TFolder) {
-                countRecursive(child);
-            }
+    for (const child of abstractFile.children) {
+        if (child instanceof TFile && child.extension === 'md') {
+            count += 1;
         }
-    };
-    countRecursive(abstractFile);
+    }
     return count;
 }
 
@@ -490,18 +525,10 @@ export async function writeAiLog(
     vault: Vault,
     options: { baseName: string; content: string }
 ): Promise<void> {
-    if (!plugin.settings.logApiInteractions) return;
-    const folderPath = normalizePath(resolveAiLogFolder());
+    const folderPath = normalizePath(resolveLogsRoot());
     try {
-        const existing = vault.getAbstractFileByPath(folderPath);
-        if (existing && !(existing instanceof TFolder)) {
-            throw new Error('Log folder path is not a folder.');
-        }
-        try {
-            await vault.createFolder(folderPath);
-        } catch {
-            // Folder may already exist.
-        }
+        const folder = await ensureLogsRoot(vault);
+        if (!folder) throw new Error('Log folder path is not a folder.');
         const filePath = resolveAvailableLogPath(vault, folderPath, options.baseName);
         await vault.create(filePath, options.content.trim());
     } catch (e) {
