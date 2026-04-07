@@ -81,9 +81,7 @@
 .ert-inquiry-svg.is-guidance-lockout .ert-inquiry-minimap-tokencap-bar,
 .ert-inquiry-svg.is-guidance-lockout .ert-inquiry-minimap-tokencap-endcap,
 .ert-inquiry-svg.is-guidance-lockout .ert-inquiry-minimap-tokencap-splits,
-.ert-inquiry-svg.is-guidance-lockout .ert-inquiry-minimap-tokencap-cached,
-.ert-inquiry-svg.is-guidance-lockout .ert-inquiry-minimap-reuse-band,
-.ert-inquiry-svg.is-guidance-lockout .ert-inquiry-minimap-reuse-dot {
+.ert-inquiry-svg.is-guidance-lockout .ert-inquiry-minimap-tokencap-cached {
   display: none;
 }
 
@@ -477,9 +475,6 @@
   filter: none;
 }
 
-.ert-inquiry-minimap-backbone-cached {
-  display: none;
-}
 
 .ert-inquiry-minimap-backbone.is-pressure-over-budget .ert-inquiry-minimap-backbone-glow {
   animation: none;
@@ -603,59 +598,6 @@
 }
 
 /* ── Reuse band ── */
-.ert-inquiry-minimap-reuse-band {
-  display: none;
-  stroke: var(--text-muted);
-  stroke-width: 2;
-  opacity: 0.3;
-  vector-effect: non-scaling-stroke;
-  pointer-events: auto;
-  transition: stroke 300ms ease, opacity 300ms ease;
-}
-
-.ert-inquiry-minimap[data-reuse-state="eligible"] .ert-inquiry-minimap-reuse-band {
-  display: block;
-  stroke: var(--text-accent);
-  opacity: 0.55;
-}
-
-.ert-inquiry-minimap[data-reuse-state="warm"] .ert-inquiry-minimap-reuse-band {
-  display: block;
-  stroke: var(--ert-inquiry-ai-success);
-  opacity: 0.9;
-  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--ert-inquiry-ai-success) 60%, transparent));
-}
-
-.ert-inquiry-svg.is-running .ert-inquiry-minimap-reuse-band {
-  opacity: 0;
-  animation: none;
-}
-
-.ert-inquiry-svg.is-running .ert-inquiry-minimap-reuse-dot {
-  opacity: 0;
-}
-
-/* ── Reuse dot ── */
-.ert-inquiry-minimap-reuse-dot {
-  display: none;
-  fill: var(--text-muted);
-  opacity: 0;
-  pointer-events: none;
-  transition: fill 300ms ease, opacity 300ms ease;
-}
-
-.ert-inquiry-minimap[data-reuse-state="eligible"] .ert-inquiry-minimap-reuse-dot {
-  display: block;
-  fill: var(--text-accent);
-  opacity: 0.75;
-}
-
-.ert-inquiry-minimap[data-reuse-state="warm"] .ert-inquiry-minimap-reuse-dot {
-  display: block;
-  fill: var(--ert-inquiry-ai-success);
-  opacity: 0.95;
-}
-
 .ert-inquiry-minimap-ticks {
   pointer-events: auto;
 }

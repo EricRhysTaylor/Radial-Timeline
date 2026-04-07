@@ -5415,6 +5415,10 @@ export class InquiryView extends ItemView {
         this.updateRings();
         if (this.isResultsState() && this.state.activeResult) {
             this.showResultsPreview(this.state.activeResult);
+            // Sync findings panel summary to match the preview hero lens.
+            if (this.summaryEl) {
+                this.summaryEl.textContent = this.getResultSummaryForMode(this.state.activeResult, mode);
+            }
         }
         if (!this.previewLocked && this.previewGroup?.classList.contains('is-visible') && this.previewLast) {
             this.updatePromptPreview(this.previewLast.zone, mode, this.previewLast.question, undefined, undefined, { hideEmpty: true });

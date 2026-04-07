@@ -207,7 +207,6 @@ export class InquiryMinimapRenderer {
     private minimapBackboneGroup?: SVGGElement;
     private minimapBackboneGlow?: SVGRectElement;
     private minimapBackboneShine?: SVGRectElement;
-    // minimapBackboneCachedOverlay removed — cache shown on token cap bar only.
     private minimapBackboneClip?: SVGClipPathElement;
     private minimapBackboneClipRect?: SVGRectElement;
     private minimapBackboneLayout?: {
@@ -221,12 +220,10 @@ export class InquiryMinimapRenderer {
     private minimapBackboneGradientStops: SVGStopElement[] = [];
     private minimapBackboneShineStops: SVGStopElement[] = [];
 
-    // ── Pass indicator / reuse ───────────────────────────────────────
+    // ── Pass indicator ────────────────────────────────────────────────
 
     private minimapPassIndicatorGroup?: SVGGElement;
     private minimapPassIndicatorText?: SVGTextElement;
-    private minimapReuseBand?: SVGLineElement;
-    private minimapReuseDot?: SVGCircleElement;
     private minimapStagesGroup?: SVGGElement;
 
     // ── Color / animation state ──────────────────────────────────────
@@ -288,10 +285,6 @@ export class InquiryMinimapRenderer {
         this.minimapTokenCapCachedOverlay.classList.add('ert-inquiry-minimap-tokencap-cached');
         this.minimapTokenCapCachedOverlay.classList.add('ert-hidden');
         parentGroup.appendChild(this.minimapTokenCapCachedOverlay);
-
-        this.minimapReuseBand = createSvgElement('line');
-        this.minimapReuseBand.classList.add('ert-inquiry-minimap-reuse-band');
-        parentGroup.appendChild(this.minimapReuseBand);
 
         this.minimapTicksEl = createSvgGroup(parentGroup, 'ert-inquiry-minimap-ticks', baselineStartX, 0);
     }
@@ -398,8 +391,6 @@ export class InquiryMinimapRenderer {
             this.minimapBackboneShine = shine;
         }
 
-        // Backbone cached overlay removed — cache status shown on token cap bar only.
-
         let passGroup = this.minimapPassIndicatorGroup;
         if (!passGroup) {
             passGroup = createSvgGroup(this.minimapGroup, 'ert-inquiry-minimap-pass-indicator');
@@ -412,15 +403,6 @@ export class InquiryMinimapRenderer {
             passText.setAttribute('dominant-baseline', 'middle');
             this.minimapPassIndicatorText = passText;
         }
-        if (!this.minimapReuseDot && passGroup) {
-            this.minimapReuseDot = createSvgElement('circle');
-            this.minimapReuseDot.classList.add('ert-inquiry-minimap-reuse-dot');
-            this.minimapReuseDot.setAttribute('r', '3');
-            this.minimapReuseDot.setAttribute('cx', '-6');
-            this.minimapReuseDot.setAttribute('cy', '0');
-            passGroup.appendChild(this.minimapReuseDot);
-        }
-
         glow.setAttribute('x', baselineStart.toFixed(2));
         glow.setAttribute('y', String(glowY));
         glow.setAttribute('width', length.toFixed(2));
@@ -434,8 +416,6 @@ export class InquiryMinimapRenderer {
         shine.setAttribute('height', String(shineHeight));
         shine.setAttribute('rx', String(Math.round(shineHeight / 2)));
         shine.setAttribute('ry', String(Math.round(shineHeight / 2)));
-        // Backbone cached overlay layout removed — cache shown on token cap bar only.
-
         if (passGroup) {
             passGroup.setAttribute('transform', `translate(${Math.round(baselineStart + length + 10)} 0)`);
         }
@@ -681,7 +661,6 @@ export class InquiryMinimapRenderer {
     resetPressureGauge(): void {
         this.minimapBackboneGlow?.setAttribute('width', '0');
         this.minimapBackboneShine?.setAttribute('width', '0');
-        // Backbone cached overlay removed — reset no longer needed.
         this.minimapBackboneGroup?.classList.remove(
             'is-pressure-normal',
             'is-pressure-amber',
@@ -912,8 +891,6 @@ export class InquiryMinimapRenderer {
         }
     }
 
-    // updateBackboneCachedOverlay removed — cache status shown on token cap bar only.
-
     private updateExecutionPassSegments(
         totalPassCount: number,
         progress: InquiryRunProgressEvent | null,
@@ -991,7 +968,6 @@ export class InquiryMinimapRenderer {
         const overCapacityTone: 'amber' | 'red' = usesMultiPassPackaging ? 'amber' : 'red';
         this.updateTokenCapBar(clamped, isOverCapacity, overCapacityTone, passPlan.displayPassCount, styleSource, advancedContext, readinessUi.safeInputBudget, formatTokenEstimate);
         this.updateExecutionPassSegments(passPlan.displayPassCount, progress, styleSource);
-        // Backbone cached overlay removed — cache shown on token cap bar only.
         this.minimapBaseline.style.stroke = '';
         this.minimapEndCapStart?.style.removeProperty('fill');
         this.minimapEndCapEnd?.style.removeProperty('fill');
@@ -1067,9 +1043,6 @@ export class InquiryMinimapRenderer {
         if (!this.minimapGroup) return;
         const reuseState = advanced?.reuseState ?? 'idle';
         this.minimapGroup.setAttribute('data-reuse-state', reuseState);
-        // Reuse band removed — cache status now shown as overlay on the token cap bar.
-        this.minimapReuseBand?.classList.add('ert-hidden');
-        this.minimapReuseDot?.classList.add('ert-hidden');
     }
 
     // ── Preview panel position ───────────────────────────────────────
@@ -1244,14 +1217,6 @@ export class InquiryMinimapRenderer {
         if (this.minimapTokenCapSplitGroup) {
             clearSvgChildren(this.minimapTokenCapSplitGroup);
             this.minimapTokenCapSplitGroup.classList.add('ert-hidden');
-        }
-        const reuseBandY = MINIMAP_TOKEN_CAP_Y + MINIMAP_TOKEN_CAP_BAR_HEIGHT
-                           + MINIMAP_TOKEN_CAP_SPLIT_TICK_HEIGHT; // 7+4+10 = 21
-        if (this.minimapReuseBand) {
-            this.minimapReuseBand.setAttribute('x1', String(baselineStart));
-            this.minimapReuseBand.setAttribute('y1', String(reuseBandY));
-            this.minimapReuseBand.setAttribute('x2', String(baselineEnd));
-            this.minimapReuseBand.setAttribute('y2', String(reuseBandY));
         }
         this.minimapBottomOffset = tokenCapCapY + tokenCapCapHeight;
         this.minimapTicksEl.setAttribute('transform', `translate(${baselineStart} 0)`);
