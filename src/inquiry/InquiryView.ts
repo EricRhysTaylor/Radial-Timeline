@@ -493,6 +493,7 @@ export class InquiryView extends ItemView {
     private entryBodyCharLoads = new Map<string, Promise<void>>();
     private payloadStatsRefreshTimer?: number;
     private payloadStatsRefreshDirty = false;
+    private sourcesRefreshTimer?: number;
     private duplicatePulseTimer?: number;
     private rehydratePulseTimer?: number;
     private rehydrateHighlightTimer?: number;
@@ -646,6 +647,10 @@ export class InquiryView extends ItemView {
         if (this.payloadStatsRefreshTimer !== undefined) {
             window.clearTimeout(this.payloadStatsRefreshTimer);
             this.payloadStatsRefreshTimer = undefined;
+        }
+        if (this.sourcesRefreshTimer !== undefined) {
+            window.clearTimeout(this.sourcesRefreshTimer);
+            this.sourcesRefreshTimer = undefined;
         }
         this.payloadStatsRefreshDirty = false;
         this.contentEl.empty();
@@ -3189,6 +3194,17 @@ export class InquiryView extends ItemView {
     /** Called externally when Book Manager settings or order change. */
     onBookSettingsChanged(): void {
         this.refreshUI({ reason: 'book settings changed' });
+    }
+
+    /** Called externally when material source/class settings change. Debounced to avoid flicker. */
+    onSourcesSettingsChanged(): void {
+        if (this.sourcesRefreshTimer !== undefined) {
+            window.clearTimeout(this.sourcesRefreshTimer);
+        }
+        this.sourcesRefreshTimer = window.setTimeout(() => {
+            this.sourcesRefreshTimer = undefined;
+            this.refreshUI({ reason: 'sources settings changed' });
+        }, 250);
     }
 
     private refreshUI(options?: { skipCorpus?: boolean, reason?: string }): void {

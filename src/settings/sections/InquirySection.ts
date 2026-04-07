@@ -912,6 +912,7 @@ export function renderInquirySection(params: SectionParams): void {
         };
         plugin.settings.inquirySources = inquirySources;
         await plugin.saveSettings();
+        plugin.getInquiryService().notifySourcesSettingsChanged();
         renderClassTable(merged, rulesCounts, supportScan.classSources);
         syncPresetButtons();
         renderBooksForInquiry(resolvedBookCache, fullScan.containerClassCounts);

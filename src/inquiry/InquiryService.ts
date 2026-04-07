@@ -40,6 +40,13 @@ export class InquiryService {
         }
     }
 
+    /** Notify all open Inquiry views that material source/class settings changed. */
+    notifySourcesSettingsChanged(): void {
+        for (const view of this.getInquiryViews()) {
+            view.onSourcesSettingsChanged();
+        }
+    }
+
     async activateView(): Promise<void> {
         if (!(this.plugin.settings.enableAiSceneAnalysis ?? true)) {
             new Notice('Inquiry requires AI features to be enabled. Turn on "Enable AI LLM features" in settings.');
