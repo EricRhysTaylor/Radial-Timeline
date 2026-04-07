@@ -72,7 +72,8 @@ interface SectionParams {
 const listToText = (values?: string[]): string =>
     (values || []).join('\n');
 
-const PRESET_SEED_CLASSES = ['scene', 'outline', 'character', 'place', 'power'];
+// Core book-project classes — the only classes that exist without discovery.
+const CORE_CLASSES = ['scene', 'outline'];
 const PRESET_MATCH_ORDER: InquirySourcesPreset[] = ['default', 'light', 'deep'];
 
 const relativeTimeFormatter = new Intl.RelativeTimeFormat(getFormattingLocale(), { numeric: 'auto' });
@@ -166,9 +167,8 @@ const mergeClassConfigs = (existing: InquiryClassConfig[], discovered: string[])
     // Start from discovered classes only — stale names not in discovered are pruned.
     const names = new Set<string>(discovered);
     const sorted = Array.from(names).sort((a, b) => {
-        const order = ['scene', 'outline', 'character', 'place', 'power'];
-        const aIdx = order.indexOf(a);
-        const bIdx = order.indexOf(b);
+        const aIdx = CORE_CLASSES.indexOf(a);
+        const bIdx = CORE_CLASSES.indexOf(b);
         if (aIdx !== -1 || bIdx !== -1) {
             return (aIdx === -1 ? 999 : aIdx) - (bIdx === -1 ? 999 : bIdx);
         }
@@ -210,7 +210,7 @@ export function renderInquirySection(params: SectionParams): void {
 
     const createSection = (
         parent: HTMLElement,
-        options: { title: string; desc?: string; icon: string; wiki?: string; headingClass?: string }
+        options: { title: string; desc?: string; icon: string; wiki?: string; headingClass?: string; role?: string }
     ) => {
         const header = new Settings(parent).setName(options.title);
         if (options.desc) {
@@ -219,6 +219,9 @@ export function renderInquirySection(params: SectionParams): void {
         header.setHeading();
         if (options.headingClass) {
             header.settingEl.addClass(options.headingClass);
+        }
+        if (options.role) {
+            header.settingEl.setAttribute('data-ert-role', options.role);
         }
         addHeadingIcon(header, options.icon);
         if (options.wiki) {
@@ -242,7 +245,8 @@ export function renderInquirySection(params: SectionParams): void {
     const sourcesBody = createSection(containerEl, {
         title: t('settings.inquiry.sources.name'),
         icon: 'search',
-        wiki: 'Settings#inquiry-sources'
+        wiki: 'Settings#inquiry-sources',
+        role: 'inquiry-setting:sources-heading'
     });
 
     let scanRootsInput: TextAreaComponent | null = null;
@@ -436,11 +440,9 @@ export function renderInquirySection(params: SectionParams): void {
 
     const inferPresetFromClasses = (classes: InquiryClassConfig[] | undefined): InquirySourcesPreset | null => {
         if (!classes || !classes.length) return null;
-        const classNames = new Set<string>(PRESET_SEED_CLASSES);
         const byName = new Map<string, InquiryClassConfig>();
         classes.forEach(config => {
             const className = config.className.toLowerCase();
-            classNames.add(className);
             byName.set(className, normalizeClassContribution({
                 className,
                 enabled: !!config.enabled,
@@ -451,7 +453,7 @@ export function renderInquirySection(params: SectionParams): void {
         });
 
         const matchesPreset = (preset: InquirySourcesPreset): boolean => {
-            return Array.from(classNames).every(className => {
+            return Array.from(byName.keys()).every(className => {
                 const current = byName.get(className) ?? defaultClassConfig(className);
                 const expected = buildPresetClassConfig(current, preset);
                 return current.enabled === expected.enabled
@@ -752,8 +754,7 @@ export function renderInquirySection(params: SectionParams): void {
     };
 
     const applyPreset = (preset: InquirySourcesPreset) => {
-        const merged = mergeClassConfigs(inquirySources.classes || [], PRESET_SEED_CLASSES);
-        const nextClasses = merged.map(config => buildPresetClassConfig(config, preset));
+        const nextClasses = (inquirySources.classes || []).map(config => buildPresetClassConfig(config, preset));
         inquirySources = {
             ...inquirySources,
             preset,
@@ -884,16 +885,16 @@ export function renderInquirySection(params: SectionParams): void {
         const exclusiveSupportRoots = supportVaultRoots.filter(root => !bookRootSet.has(root));
         const supportScan = await scanInquiryClasses(exclusiveSupportRoots);
 
-        // Rules table shows: support-folder classes + preset seeds (scene/outline always visible).
+        // Rules table: core classes (scene/outline) + genuinely discovered support classes.
         const rulesClasses = Array.from(new Set([
-            ...PRESET_SEED_CLASSES,
+            ...CORE_CLASSES,
             ...supportScan.discoveredClasses
         ]));
-        // Merge counts: support classes use support counts; scene/outline use full-scan counts.
+        // Counts: support classes use support counts; core classes backfill from full scan.
         const rulesCounts: Record<string, number> = { ...supportScan.discoveredCounts };
-        for (const seed of PRESET_SEED_CLASSES) {
-            if (fullScan.discoveredCounts[seed] && !rulesCounts[seed]) {
-                rulesCounts[seed] = fullScan.discoveredCounts[seed];
+        for (const core of CORE_CLASSES) {
+            if (fullScan.discoveredCounts[core] && !rulesCounts[core]) {
+                rulesCounts[core] = fullScan.discoveredCounts[core];
             }
         }
 

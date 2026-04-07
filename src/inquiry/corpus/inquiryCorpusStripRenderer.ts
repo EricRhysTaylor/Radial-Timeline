@@ -386,6 +386,7 @@ export function renderInquiryCorpusStrip(args: {
     onItemHover: (entryKey: string) => void;
     onItemLeave: () => void;
     openEntryPath: (filePath: string) => void;
+    onCorpusTitleClick: () => void;
 }): InquiryCorpusStripRenderResult {
     const refs = args.refs;
 
@@ -427,11 +428,14 @@ export function renderInquiryCorpusStrip(args: {
         });
     }
 
-    // ── "CORPUS" title line (static, with ? legend trigger) ──
+    // ── "CORPUS" title line (clickable → opens Inquiry Sources settings) ──
     if (!refs.ccCorpusLabel) {
         refs.ccCorpusLabel = createSvgText(refs.ccGroup, 'ert-inquiry-cc-corpus-title', 'CORPUS', 0, 0);
         refs.ccCorpusLabel.setAttribute('text-anchor', 'middle');
         refs.ccCorpusLabel.setAttribute('dominant-baseline', 'middle');
+        args.registerSvgEvent(refs.ccCorpusLabel, 'click', () => {
+            args.onCorpusTitleClick();
+        });
     }
 
     // ── "?" legend trigger — page-shaped icon matching corpus cells ──
@@ -494,7 +498,7 @@ export function renderInquiryCorpusStrip(args: {
     // ── Position labels ──
     refs.ccLabel.textContent = args.getScopeLabel();
     const stripCenterX = Math.round((layout.rightBlockLeft + layout.rightBlockRight) / 2);
-    const corpusTitleY = -18;
+    const corpusTitleY = -20;
     const scopeLabelY = 0;
 
     // CORPUS text centered on strip

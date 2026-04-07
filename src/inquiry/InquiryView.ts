@@ -3726,6 +3726,9 @@ export class InquiryView extends ItemView {
                 if (file && this.isTFile(file)) {
                     void openOrRevealFile(this.app, file);
                 }
+            },
+            onCorpusTitleClick: () => {
+                this.openInquirySettings('sources');
             }
         });
         this.ccGroup = rendered.ccGroup;
@@ -5328,18 +5331,17 @@ export class InquiryView extends ItemView {
                 return;
             }
             if (focus === 'sources') {
-                this.scrollInquirySetting('class-scope');
-                window.setTimeout(() => this.scrollInquirySetting('scan-roots'), 80);
+                this.scrollInquirySetting('sources-heading');
                 return;
             }
             this.scrollInquirySetting(focus);
         }, 160);
     }
 
-    private scrollInquirySetting(target: 'class-scope' | 'scan-roots' | 'class-presets'): void {
+    private scrollInquirySetting(target: 'sources-heading' | 'class-scope' | 'scan-roots' | 'class-presets'): void {
         const el = document.querySelector(`[data-ert-role="inquiry-setting:${target}"]`);
         if (!(el instanceof HTMLElement)) return;
-        el.scrollIntoView({ block: 'center' });
+        el.scrollIntoView({ block: 'start' });
     }
 
     private startRunningAnimations(): void {

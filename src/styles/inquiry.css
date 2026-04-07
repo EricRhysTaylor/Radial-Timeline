@@ -826,12 +826,17 @@
 }
 
 .ert-inquiry-cc-corpus-title {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   letter-spacing: 0.10em;
   text-transform: uppercase;
   fill: var(--text-muted);
-  pointer-events: none;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.ert-inquiry-cc-corpus-title:hover {
+  fill: var(--text-normal);
 }
 
 .ert-inquiry-cc-label {
@@ -864,7 +869,7 @@
 }
 
 .ert-inquiry-cc-legend-trigger-text {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   fill: var(--text-muted);
 }
