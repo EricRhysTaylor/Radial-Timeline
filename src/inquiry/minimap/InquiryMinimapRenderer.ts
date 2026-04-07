@@ -355,8 +355,8 @@ export class InquiryMinimapRenderer {
             }
         }
 
-        const barHeight = 2;
-        const barY = -1;
+        const barHeight = 3;
+        const barY = -1.5;
         const glowHeight = barHeight;
         const glowY = barY;
         const shineHeight = barHeight;
