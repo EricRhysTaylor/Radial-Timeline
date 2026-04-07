@@ -807,18 +807,16 @@
   stroke-width: 1.2;
 }
 
-.ert-inquiry-cc-legend-trigger-text {
-  font-size: 13px;
-  font-weight: 700;
-  fill: var(--text-muted);
+.ert-inquiry-cc-legend-trigger-icon {
+  color: var(--text-muted);
 }
 
 .ert-inquiry-cc-legend-trigger:hover .ert-inquiry-cc-legend-trigger-border {
   stroke: var(--text-normal);
 }
 
-.ert-inquiry-cc-legend-trigger:hover .ert-inquiry-cc-legend-trigger-text {
-  fill: var(--text-normal);
+.ert-inquiry-cc-legend-trigger:hover .ert-inquiry-cc-legend-trigger-icon {
+  color: var(--text-normal);
 }
 
 /* ── Legend panel (revealed on hover) ── */
@@ -2464,6 +2462,10 @@ body.rt-modal-open .ert-inquiry-svg {
 .ert-inquiry-engine-guard-note {
   font-size: 10px;
   color: var(--text-muted);
+  overflow-wrap: break-word;
+  word-break: break-word;
+  white-space: pre-line;
+  min-width: 0;
 }
 
 .ert-inquiry-engine-guard.is-error-guidance .ert-inquiry-engine-guard-note {

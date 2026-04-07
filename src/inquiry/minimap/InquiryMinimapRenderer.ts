@@ -658,6 +658,16 @@ export class InquiryMinimapRenderer {
         this.minimapBackboneShine?.style.removeProperty('fill');
     }
 
+    /** Show a full-width red error bar on the backbone after a failed run. */
+    showErrorState(styleSource: Element): void {
+        if (!this.minimapBackboneLayout || !this.minimapBackboneGlow) return;
+        const errorColors = getBackbonePressureColors(styleSource, 'red', false);
+        this.applyStopColors(errorColors.gradient, errorColors.shine);
+        this.setFillProgress(1);
+        this.minimapBackboneGroup?.classList.remove('is-pressure-normal', 'is-pressure-amber', 'is-pressure-red', 'is-pressure-over-budget');
+        this.minimapBackboneGroup?.classList.add('is-pressure-red');
+    }
+
     resetPressureGauge(): void {
         this.minimapBackboneGlow?.setAttribute('width', '0');
         this.minimapBackboneShine?.setAttribute('width', '0');

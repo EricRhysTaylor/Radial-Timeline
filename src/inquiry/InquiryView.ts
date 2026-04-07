@@ -1417,6 +1417,7 @@ export class InquiryView extends ItemView {
             onUpdateClick: (event: MouseEvent) => {
                 event.stopPropagation();
                 if (pendingEditsApplied) return;
+                if (status === 'error') return;
                 if (pendingEditsEmpty) {
                     this.notifyInteraction('No action items met the writeback threshold.');
                     return;
@@ -1970,7 +1971,8 @@ export class InquiryView extends ItemView {
             'x',
             'circle',
             'circle-dot',
-            'disc'
+            'disc',
+            'square-asterisk'
         ].forEach(icon => {
             const symbolId = this.createIconSymbol(defs, icon);
             if (symbolId) {
@@ -4978,6 +4980,7 @@ export class InquiryView extends ItemView {
         this.resetPreviewRowLabels();
         this.setPreviewFooterText('Click panel to open the Inquiry Log.');
         this.updatePromptPreview(zone, this.state.mode, 'Inquiry paused.', emptyRows, meta, { hideEmpty: true });
+        this.minimap.showErrorState(this.getStyleSource());
     }
 
     private updateMinimapFindingStates(result: InquiryResult | null | undefined): void {
@@ -5773,6 +5776,7 @@ export class InquiryView extends ItemView {
                 void this.writeInquiryPendingEdits(session, result);
             }
         } finally {
+            this.currentRunProgress = null;
             this.currentRunElapsedMs = 0;
             this.currentRunEstimatedMaxMs = 0;
             this.finishInquiryRunToken(runToken);

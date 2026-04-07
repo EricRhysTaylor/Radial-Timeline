@@ -144,12 +144,6 @@ export function renderConfigurationSection(params: { app: App; plugin: RadialTim
         control: () => {}
     });
 
-    createDenseRow(logsContainer, {
-        title: 'Content logs',
-        description: `Full prompt and payload logs are stored in "${resolveContentLogsRoot()}".`,
-        control: () => {}
-    });
-
     createFolderPathRow(logsContainer, {
         title: t('settings.configuration.manuscriptOutputFolder.name'),
         description: t('settings.configuration.manuscriptOutputFolder.desc'),
@@ -175,7 +169,7 @@ export function renderConfigurationSection(params: { app: App; plugin: RadialTim
     };
     const getLoggingDesc = (fileCount: number | null): string => {
         const countText = formatLogCount(fileCount);
-        return `Concise logs, archives, snapshots, and move history are always written to "${outputFolder}". When enabled, content logs containing full prompts, materials, and API responses are written to "${contentFolder}" (${countText}).`;
+        return `Full prompt and payload logs are stored in "${contentFolder}". Concise logs, archives, snapshots, and move history are always written to "${outputFolder}". When enabled, content logs containing full prompts, materials, and API responses are written to "${contentFolder}" (${countText}).`;
     };
 
     const apiLoggingSetting = createDenseRow(logsContainer, {

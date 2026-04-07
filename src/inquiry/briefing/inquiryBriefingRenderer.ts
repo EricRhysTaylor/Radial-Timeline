@@ -55,13 +55,14 @@ export function renderInquiryBriefingSessionItem(args: {
             'aria-label': pendingLabel
         }
     });
-    const pendingIcon = args.pendingEditsApplied ? 'check' : args.pendingEditsEmpty ? 'minus' : 'plus';
+    const isError = args.status === 'error';
+    const pendingIcon = args.pendingEditsApplied ? 'check' : (args.pendingEditsEmpty || isError) ? 'minus' : 'plus';
     setIcon(updateButton, pendingIcon);
-    updateButton.disabled = args.blocked || args.pendingEditsEmpty;
+    updateButton.disabled = args.blocked || args.pendingEditsEmpty || isError;
     if (args.pendingEditsApplied) {
         updateButton.classList.add('is-applied');
     }
-    if (args.pendingEditsEmpty) {
+    if (args.pendingEditsEmpty || isError) {
         updateButton.classList.add('is-empty');
     }
 

@@ -1,10 +1,8 @@
-import { INQUIRY_SCHEMA_VERSION } from './constants';
-
 export function buildInquiryJsonSchema(): Record<string, unknown> {
     return {
         type: 'object',
         properties: {
-            schema_version: { type: 'number', enum: [INQUIRY_SCHEMA_VERSION] },
+            schema_version: { type: 'number' },
             summaryFlow: { type: 'string' },
             summaryDepth: { type: 'string' },
             verdict: {
@@ -24,7 +22,7 @@ export function buildInquiryJsonSchema(): Record<string, unknown> {
                 items: {
                     type: 'object',
                     properties: {
-                        ref_id: { type: 'string', pattern: '^scn_[a-f0-9]{8,10}$' },
+                        ref_id: { type: 'string' },
                         ref_label: { type: 'string' },
                         ref_path: { type: 'string' },
                         kind: { type: 'string' },
@@ -49,7 +47,7 @@ export function buildInquiryOmnibusJsonSchema(): Record<string, unknown> {
     return {
         type: 'object',
         properties: {
-            schema_version: { type: 'number', enum: [INQUIRY_SCHEMA_VERSION] },
+            schema_version: { type: 'number' },
             results: {
                 type: 'array',
                 items: {
@@ -76,7 +74,7 @@ export function buildInquiryOmnibusJsonSchema(): Record<string, unknown> {
                             items: {
                                 type: 'object',
                                 properties: {
-                                    ref_id: { type: 'string', pattern: '^scn_[a-f0-9]{8,10}$' },
+                                    ref_id: { type: 'string' },
                                     ref_label: { type: 'string' },
                                     ref_path: { type: 'string' },
                                     kind: { type: 'string' },

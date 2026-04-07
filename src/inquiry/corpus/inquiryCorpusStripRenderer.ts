@@ -494,9 +494,10 @@ export function renderInquiryCorpusStrip(args: {
         qBorder.setAttribute('rx', String(qCorner));
         qBorder.setAttribute('ry', String(qCorner));
         refs.ccLegendTrigger.appendChild(qBorder);
-        const qText = createSvgText(refs.ccLegendTrigger, 'ert-inquiry-cc-legend-trigger-text', '?', 0, 0);
-        qText.setAttribute('text-anchor', 'middle');
-        qText.setAttribute('dominant-baseline', 'central');
+        const qIconSize = Math.round(Math.min(qW, qH) * 0.7);
+        const qIcon = args.createIconUse('square-asterisk', -qIconSize / 2, -qIconSize / 2, qIconSize);
+        qIcon.classList.add('ert-inquiry-cc-legend-trigger-icon');
+        refs.ccLegendTrigger.appendChild(qIcon);
         // Invisible hit rect for larger hover target
         const qHit = createSvgElement('rect');
         qHit.classList.add('ert-inquiry-cc-hint-hit');
