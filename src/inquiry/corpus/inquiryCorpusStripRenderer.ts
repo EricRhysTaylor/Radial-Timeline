@@ -110,7 +110,7 @@ function buildCorpusLegendPanel(
     // At ~600px container width, 1 SVG unit ≈ 0.375 real px.
     const rowHeight = 32;
     const iconColX = 24;
-    const labelColX = 58;
+    const labelColX = 48;
     const fontSize = 16;
     const sectionFontSize = 13;
     // Use canonical corpus cell dimensions (CC_PAGE_BASE_SIZE = 16)

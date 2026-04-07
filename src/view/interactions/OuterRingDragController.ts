@@ -862,7 +862,7 @@ export class OuterRingDragController {
                 rippleRename,
             },
             recentMoves,
-            () => openStructuralMoveHistoryLog(this.view.plugin),
+            (entry) => openStructuralMoveHistoryLog(this.view.plugin, entry),
             this.originModalColor ?? this.originColor,
             sourceLabel
         );
@@ -1080,7 +1080,7 @@ export class OuterRingDragController {
                 rippleRename,
             },
             recentMoves,
-            () => openStructuralMoveHistoryLog(this.view.plugin),
+            (entry) => openStructuralMoveHistoryLog(this.view.plugin, entry),
             this.originModalColor ?? this.originColor,
             sourceLabel
         );

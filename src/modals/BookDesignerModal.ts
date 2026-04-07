@@ -1032,11 +1032,11 @@ export class BookDesignerModal extends Modal {
             text: `Generate ${shortBeatSetTitle} beats`
         });
         beatLabelEl.setAttribute('title', `Generate ${activeBeatSetTitle} beats`);
-        const beatPills = beatSetting.createDiv({ cls: 'rt-manuscript-pill-row' });
+        const beatPills = beatSetting.createDiv({ cls: 'rt-manuscript-pill-row rt-book-designer-yesno-row' });
 
         const beatOptions = [{ val: false, label: 'No' }, { val: true, label: 'Yes' }];
         beatOptions.forEach(opt => {
-            const pill = beatPills.createDiv({ cls: 'rt-manuscript-pill' });
+            const pill = beatPills.createDiv({ cls: 'rt-manuscript-pill rt-book-designer-yesno-pill' });
             pill.setText(opt.label);
             if (this.generateBeats === opt.val) pill.addClass('rt-is-active');
             pill.setAttr('data-generate-beats', String(opt.val));

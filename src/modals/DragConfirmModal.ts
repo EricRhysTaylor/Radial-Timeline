@@ -112,9 +112,9 @@ export class DragConfirmModal extends Modal {
             const historyFrame = historySection.createDiv({ cls: 'rt-drag-confirm-history-frame' });
             const historyList = historyFrame.createDiv({ cls: 'rt-drag-confirm-history-list' });
             this.recentMoves.forEach((entry) => {
-                const row = historyList.createEl('button', {
+                const row = historyList.createDiv({
                     cls: 'rt-drag-confirm-history-item',
-                    attr: { type: 'button' }
+                    attr: { role: 'button', tabindex: '0' }
                 });
                 row.createDiv({ cls: 'rt-drag-confirm-history-summary', text: entry.summary });
 

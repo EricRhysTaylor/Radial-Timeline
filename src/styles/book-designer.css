@@ -360,6 +360,24 @@
     font-size: 0.9rem;
 }
 
+.rt-book-designer-modal .rt-book-designer-yesno-row {
+    align-items: center;
+}
+
+.rt-book-designer-modal .rt-book-designer-yesno-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    align-self: flex-start;
+    flex: 0 0 auto;
+    min-width: 56px;
+    min-height: 32px;
+    height: 32px;
+    padding: 0 14px;
+    line-height: 1;
+    border-radius: 999px;
+}
+
 /* Card Note */
 .rt-manuscript-surface .rt-sub-card-note {
     margin-top: 4px;

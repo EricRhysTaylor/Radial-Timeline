@@ -1,9 +1,10 @@
 import { normalizePath, TFile, TFolder } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import { ensureAiOutputFolder } from './aiOutput';
-import { openOrRevealFile } from './fileUtils';
+import { openOrRevealFile, openOrRevealFileAtSubpath } from './fileUtils';
 import { getActiveBook, getActiveBookExportContext, getActiveBookTitle } from './books';
 import { getActiveRecentStructuralMoves } from './recentStructuralMoves';
+import type { StructuralMoveHistoryEntry } from '../types/settings';
 
 const MOVE_HISTORY_FOLDER = 'Move History';
 
@@ -61,7 +62,10 @@ function buildMoveHistoryMarkdown(plugin: RadialTimelinePlugin): string {
     return lines.join('\n');
 }
 
-export async function openStructuralMoveHistoryLog(plugin: RadialTimelinePlugin): Promise<void> {
+export async function openStructuralMoveHistoryLog(
+    plugin: RadialTimelinePlugin,
+    targetEntry?: StructuralMoveHistoryEntry
+): Promise<void> {
     const baseFolder = await ensureAiOutputFolder(plugin);
     const moveHistoryFolder = normalizePath(`${baseFolder}/${MOVE_HISTORY_FOLDER}`);
     const folder = await ensureFolder(plugin, moveHistoryFolder);
@@ -71,6 +75,7 @@ export async function openStructuralMoveHistoryLog(plugin: RadialTimelinePlugin)
 
     const { fileStem } = getActiveBookExportContext(plugin.settings);
     const logPath = normalizePath(`${moveHistoryFolder}/${fileStem}-note-move-history.md`);
+    const entries = getActiveRecentStructuralMoves(plugin.settings);
     const content = buildMoveHistoryMarkdown(plugin);
 
     const existing = plugin.app.vault.getAbstractFileByPath(logPath);
@@ -80,6 +85,17 @@ export async function openStructuralMoveHistoryLog(plugin: RadialTimelinePlugin)
         file = existing;
     } else {
         file = await plugin.app.vault.create(logPath, content);
+    }
+
+    if (targetEntry) {
+        const matchIndex = entries.findIndex(
+            (e) => e.timestamp === targetEntry.timestamp && e.itemId === targetEntry.itemId
+        );
+        if (matchIndex >= 0) {
+            const heading = `${matchIndex + 1}. ${entries[matchIndex].summary}`;
+            await openOrRevealFileAtSubpath(plugin.app, file, `#${heading}`, false);
+            return;
+        }
     }
 
     await openOrRevealFile(plugin.app, file, false);

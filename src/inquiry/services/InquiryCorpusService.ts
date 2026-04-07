@@ -185,7 +185,7 @@ export function normalizeInquirySources(raw?: InquirySourcesSettings): InquirySo
         scanRoots: raw.scanRoots && raw.scanRoots.length ? normalizeScanRootPatterns(raw.scanRoots) : [],
         bookInclusion: normalizeInquiryBookInclusion(raw.bookInclusion),
         classScope: raw.classScope ? raw.classScope.map(value => value.trim().toLowerCase()).filter(Boolean) : [],
-        classes: (raw.classes || []).map(config => normalizeClassContribution({
+        classes: (raw.classes || []).filter(config => !config.className.startsWith('/')).map(config => normalizeClassContribution({
             className: config.className.toLowerCase(),
             enabled: !!config.enabled,
             bookScope: normalizeMaterialMode(config.bookScope, config.className.toLowerCase()),

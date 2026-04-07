@@ -413,10 +413,10 @@
 }
 
 .rt-drag-confirm-history-frame {
-  background-color: var(--background-secondary);
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 8px;
-  padding: 8px;
+  background: none;
+  border: none;
+  border-radius: 0;
+  padding: 0;
 }
 
 .rt-drag-confirm-history-list {
@@ -427,7 +427,7 @@
   max-height: 340px;
   overflow-y: auto;
   overflow-x: hidden;
-  padding-bottom: 4px;
+  padding: 6px 4px 6px 4px;
 }
 
 .rt-drag-confirm-section-title {
@@ -504,20 +504,16 @@
 }
 
 .rt-drag-confirm-history-item {
-  all: unset;
   display: flex;
   flex-direction: column;
   justify-content: center;
   text-align: left;
   box-sizing: border-box;
-  padding: 10px 14px;
-  margin-bottom: 4px;
+  padding: 12px 14px;
+  margin-bottom: 8px;
   background: none;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
-  box-shadow: none;
-  appearance: none;
-  -webkit-appearance: none;
   cursor: pointer;
 }
 

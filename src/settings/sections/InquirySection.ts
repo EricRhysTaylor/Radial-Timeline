@@ -163,8 +163,8 @@ const defaultClassConfig = (className: string): InquiryClassConfig => {
 
 const mergeClassConfigs = (existing: InquiryClassConfig[], discovered: string[]): InquiryClassConfig[] => {
     const byName = new Map(existing.map(config => [config.className, config]));
-    const names = new Set<string>(existing.map(config => config.className));
-    discovered.forEach(name => names.add(name));
+    // Start from discovered classes only — stale names not in discovered are pruned.
+    const names = new Set<string>(discovered);
     const sorted = Array.from(names).sort((a, b) => {
         const order = ['scene', 'outline', 'character', 'place', 'power'];
         const aIdx = order.indexOf(a);
@@ -869,7 +869,7 @@ export function renderInquirySection(params: SectionParams): void {
             scanRoots: rawRoots,
             resolvedScanRoots: resolvedRootCache.resolvedRoots
         }, plugin.settings.books);
-        const { resolvedVaultRoots, supportVaultRoots } = rootResolution;
+        const { resolvedVaultRoots, supportVaultRoots, bookVaultRoots } = rootResolution;
         resolvedBookCache = resolveBookManagerInquiryBooks(plugin.settings.books);
 
         // Full scan (book + support roots) — used for book inventory and total counts.
@@ -879,8 +879,10 @@ export function renderInquirySection(params: SectionParams): void {
             resolvedBookCache?.candidates || []
         );
         // Support-only scan — classes discovered only in configured support folders.
-        // This keeps book-internal classes (beat, backdrop, backmatter, etc.) out of the rules table.
-        const supportScan = await scanInquiryClasses(supportVaultRoots);
+        // Subtract book roots so book-internal classes (beat, backdrop, etc.) never enter the rules table.
+        const bookRootSet = new Set(bookVaultRoots);
+        const exclusiveSupportRoots = supportVaultRoots.filter(root => !bookRootSet.has(root));
+        const supportScan = await scanInquiryClasses(exclusiveSupportRoots);
 
         // Rules table shows: support-folder classes + preset seeds (scene/outline always visible).
         const rulesClasses = Array.from(new Set([
