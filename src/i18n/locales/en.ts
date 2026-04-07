@@ -428,7 +428,7 @@ export interface TranslationKeys {
             configuration: { name: string; desc: string; projectPath: { name: string; desc: string; placeholder: string; }; linkUrl: { name: string; desc: string; placeholder: string; }; autoUpdateExportPaths: { name: string; desc: string; }; };
             styling: {
                 name: string; desc: string; choosePaletteButton: string;
-                fontDefault: string; fontInter: string; fontSystemUI: string; fontExo: string; fontRoboto: string; fontMontserrat: string; fontOpenSans: string; fontDancingScript: string; fontCaveat: string;
+                fontDefault: string; fontSystemUI: string;
                 weightLight: string; weightLightItalic: string; weightNormal: string; weightNormalItalic: string; weightMedium: string; weightMediumItalic: string; weightSemiBold: string; weightSemiBoldItalic: string; weightBold: string; weightBoldItalic: string; weightExtraBold: string; weightExtraBoldItalic: string; weightBlack: string; weightBlackItalic: string;
                 customFontModal: { customOption: string; title: string; hint: string; placeholder: string; cancel: string; save: string; };
                 autoButton: string;
@@ -1326,17 +1326,10 @@ export const en: TranslationKeys = {
             },
             styling: {
                 name: 'Styling',
-                desc: 'Adjust colors, fonts and borders for your Social report. Configure the background based on the hosted location. Use the theme palette (keys off the Title color) to apply curated colors across Title, Author, % Symbol, and % Number. Manual edits override per row.',
+                desc: 'Adjust colors, fonts, and borders for your APR. Set the background to transparent or a color to match the background. Use the theme palette (keys to Title color) to apply curated colors across text elements. Or manually edit to taste.',
                 choosePaletteButton: 'Choose Palette',
-                fontDefault: 'Default',
-                fontInter: 'Inter',
+                fontDefault: 'Default (Inter)',
                 fontSystemUI: 'System UI',
-                fontExo: 'Exo',
-                fontRoboto: 'Roboto',
-                fontMontserrat: 'Montserrat',
-                fontOpenSans: 'Open Sans',
-                fontDancingScript: 'Dancing Script',
-                fontCaveat: 'Caveat',
                 weightLight: 'Light (300)',
                 weightLightItalic: 'Light Italic',
                 weightNormal: 'Normal (400)',

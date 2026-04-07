@@ -990,10 +990,10 @@ export class RadialTimelineView extends ItemView {
 
         const xhtmlNs = 'http://www.w3.org/1999/xhtml';
         const svgNs = 'http://www.w3.org/2000/svg';
-        const panelX = 470;
-        const panelY = -756;
-        const panelWidth = 290;
-        const legendHeight = 10 + (Math.min(visibleRuns.length, 4) * 20);
+        const panelX = 567;
+        const panelY = -680;
+        const panelWidth = 352;
+        const legendHeight = 12 + (Math.min(visibleRuns.length, 4) * 24);
         const popoverHeight = this.gossamerRunsPopoverOpen
             ? (this.plugin.gossamerLatestOnly ? 64 : Math.min(260, 92 + (runs.length * 30)))
             : 0;

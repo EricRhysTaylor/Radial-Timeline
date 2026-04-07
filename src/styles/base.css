@@ -433,7 +433,7 @@ body.rt-modal-open .radial-timeline-container * {
 .rt-gossamer-runs {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   width: 100%;
   height: 100%;
   box-sizing: border-box;
@@ -443,25 +443,27 @@ body.rt-modal-open .radial-timeline-container * {
 .rt-gossamer-runs__controls {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
 }
 
 .rt-gossamer-runs__button {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-height: 26px;
-  padding: 4px 10px;
-  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 92%, transparent);
+  min-height: 28px;
+  padding: 4px 12px;
+  border: 1px dashed color-mix(in srgb, var(--interactive-accent) 42%, var(--background-modifier-border));
   border-radius: 999px;
-  background: color-mix(in srgb, var(--background-primary-alt) 86%, transparent);
+  background: transparent;
   color: var(--text-normal);
-  font: inherit;
+  font-family: var(--font-monospace);
+  font-size: 14px;
+  line-height: 1;
   cursor: pointer;
 }
 
 .rt-gossamer-runs__button:hover {
-  border-color: color-mix(in srgb, var(--interactive-accent) 46%, var(--background-modifier-border));
+  border-color: color-mix(in srgb, var(--interactive-accent) 68%, var(--background-modifier-border));
 }
 
 .rt-gossamer-runs__button-icon {
@@ -476,8 +478,8 @@ body.rt-modal-open .radial-timeline-container * {
 }
 
 .rt-gossamer-runs__summary {
-  font-size: 12px;
-  line-height: 1.15;
+  font-size: 14px;
+  line-height: 1.2;
   color: var(--text-muted);
   white-space: nowrap;
 }
@@ -485,13 +487,13 @@ body.rt-modal-open .radial-timeline-container * {
 .rt-gossamer-runs__legend {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 5px;
 }
 
 .rt-gossamer-runs__legend-row {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   min-width: 0;
 }
 
@@ -508,15 +510,15 @@ body.rt-modal-open .radial-timeline-container * {
 
 .rt-gossamer-runs__legend-label {
   min-width: 0;
-  font-size: 11px;
-  line-height: 1.15;
+  font-size: 13px;
+  line-height: 1.2;
   color: var(--text-muted);
   overflow-wrap: anywhere;
 }
 
 .rt-gossamer-runs__latest {
   flex: 0 0 auto;
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -528,9 +530,9 @@ body.rt-modal-open .radial-timeline-container * {
   flex-direction: column;
   gap: 8px;
   padding: 10px 12px;
-  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 92%, transparent);
+  border: 1px dashed color-mix(in srgb, var(--interactive-accent) 42%, var(--background-modifier-border));
   border-radius: 12px;
-  background: color-mix(in srgb, var(--background-primary-alt) 94%, transparent);
+  background: transparent;
 }
 
 .rt-gossamer-runs__divider {
@@ -539,7 +541,8 @@ body.rt-modal-open .radial-timeline-container * {
 }
 
 .rt-gossamer-runs__section-title {
-  font-size: 10px;
+  font-family: var(--font-monospace);
+  font-size: 11px;
   line-height: 1;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -559,7 +562,8 @@ body.rt-modal-open .radial-timeline-container * {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 11px;
+  font-family: var(--font-monospace);
+  font-size: 13px;
   line-height: 1.2;
   color: var(--text-normal);
 }

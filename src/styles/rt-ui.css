@@ -2039,7 +2039,8 @@
 .ert-ui.ert-scope--settings .ert-typography-modal .ert-typography-modal__body {
   display: flex;
   flex-direction: column;
-  gap: var(--ert-gap-sm);
+  gap: var(--ert-gap-md);
+  padding: var(--ert-gap-md) 0 0;
 }
 
 .ert-ui.ert-scope--settings .ert-typography-modal .ert-typography-modal__hint {
@@ -2054,9 +2055,9 @@
 
 .ert-ui.ert-scope--settings .ert-typography-modal .ert-typography-modal__actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: var(--ert-gap-sm);
-  margin-top: 12px;
+  margin-top: var(--ert-gap-md);
 }
 
 /* Pro skin overrides (visual only) */

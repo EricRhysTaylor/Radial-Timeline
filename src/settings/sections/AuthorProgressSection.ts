@@ -452,6 +452,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     //               Row 2 = Font + Weight
     // ─────────────────────────────────────────────────────────────────────────
     const themeCard = contentWrapper.createDiv({ cls: ERT_CLASSES.PANEL });
+    contentWrapper.insertBefore(themeCard, stylingCard); // Styling before Configuration
     const themeBlock = themeCard.createDiv({ cls: ERT_CLASSES.STACK });
     const themeHeader = themeBlock.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
     const themeHeading = new Setting(themeHeader)
@@ -504,18 +505,49 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
     const bookTitleColorFallback = plugin.settings.publishStageColors?.Press || '#6FB971';
 
-    // Curated font list
-    const FONT_OPTIONS = [
-        { value: 'default', label: t('settings.authorProgress.styling.fontDefault') },
-        { value: 'Inter', label: t('settings.authorProgress.styling.fontInter') },
-        { value: 'system-ui', label: t('settings.authorProgress.styling.fontSystemUI') },
-        { value: 'Exo', label: t('settings.authorProgress.styling.fontExo') },
-        { value: 'Roboto', label: t('settings.authorProgress.styling.fontRoboto') },
-        { value: 'Montserrat', label: t('settings.authorProgress.styling.fontMontserrat') },
-        { value: 'Open Sans', label: t('settings.authorProgress.styling.fontOpenSans') },
-        { value: 'Dancing Script', label: t('settings.authorProgress.styling.fontDancingScript') },
-        { value: 'Caveat', label: t('settings.authorProgress.styling.fontCaveat') }
+    // Font availability check — canvas measurement against monospace baseline
+    const fontCheckCtx = (typeof document !== 'undefined' ? document.createElement('canvas') : null)?.getContext('2d') ?? null;
+    const fontCheckSample = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    let fontCheckBaseline: number | null = null;
+    const isFontAvailable = (fontName: string): boolean => {
+        if (!fontCheckCtx) return true;
+        if (fontCheckBaseline === null) {
+            fontCheckCtx.font = '16px monospace';
+            fontCheckBaseline = fontCheckCtx.measureText(fontCheckSample).width;
+        }
+        fontCheckCtx.font = `16px "${fontName}", monospace`;
+        return fontCheckCtx.measureText(fontCheckSample).width !== fontCheckBaseline;
+    };
+
+    // System font candidates — filtered at runtime to only show fonts the OS has loaded
+    const ALL_FONT_CANDIDATES: Array<{ value: string; label: string; alwaysShow?: boolean }> = [
+        { value: 'default', label: t('settings.authorProgress.styling.fontDefault'), alwaysShow: true },
+        { value: 'system-ui', label: t('settings.authorProgress.styling.fontSystemUI'), alwaysShow: true },
+        // Cross-platform system fonts
+        { value: 'Arial', label: 'Arial' },
+        { value: 'Verdana', label: 'Verdana' },
+        { value: 'Georgia', label: 'Georgia' },
+        { value: 'Times New Roman', label: 'Times New Roman' },
+        { value: 'Trebuchet MS', label: 'Trebuchet MS' },
+        { value: 'Tahoma', label: 'Tahoma' },
+        // macOS system fonts
+        { value: 'Avenir Next', label: 'Avenir Next' },
+        { value: 'Futura', label: 'Futura' },
+        { value: 'Gill Sans', label: 'Gill Sans' },
+        { value: 'Baskerville', label: 'Baskerville' },
+        { value: 'Didot', label: 'Didot' },
+        { value: 'Optima', label: 'Optima' },
+        { value: 'Palatino', label: 'Palatino' },
+        // Windows system fonts
+        { value: 'Segoe UI', label: 'Segoe UI' },
+        { value: 'Calibri', label: 'Calibri' },
+        { value: 'Cambria', label: 'Cambria' },
+        { value: 'Candara', label: 'Candara' },
     ];
+
+    const FONT_OPTIONS = ALL_FONT_CANDIDATES.filter(opt =>
+        opt.alwaysShow || isFontAvailable(opt.value)
+    );
 
     // Weight options with italic variants
     const WEIGHT_OPTIONS = [
@@ -667,12 +699,6 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
             const actions = modal.contentEl.createDiv({ cls: 'ert-typography-modal__actions' });
             new ButtonComponent(actions)
-                .setButtonText(t('settings.authorProgress.styling.customFontModal.cancel'))
-                .onClick(() => {
-                    modal.close();
-                });
-
-            new ButtonComponent(actions)
                 .setButtonText(t('settings.authorProgress.styling.customFontModal.save'))
                 .setCta()
                 .onClick(async () => {
@@ -684,6 +710,12 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                     await onSave(value);
                     currentFont = value;
                     updateOptions(currentFont);
+                    modal.close();
+                });
+
+            new ButtonComponent(actions)
+                .setButtonText(t('settings.authorProgress.styling.customFontModal.cancel'))
+                .onClick(() => {
                     modal.close();
                 });
 
