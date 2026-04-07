@@ -1519,11 +1519,23 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         const estimate = plugin.calculateCompletionEstimate(scenes);
         const stage = normalizeStage(estimate?.stage);
         if (!estimate || total === 0) {
-            return {
-                stage: 'Zero',
-                total,
-                note: total === 0 ? t('settings.authorProgress.progressMode.noScenesFound') : t('settings.authorProgress.progressMode.noProgressEstimate')
+            if (total === 0) {
+                return { stage: 'Zero', total, note: t('settings.authorProgress.progressMode.noScenesFound') };
+            }
+            // estimate is null but scenes exist — check if all scenes are complete (book is done)
+            const sceneNotesOnly = scenes.filter(s => !s.itemType || s.itemType === 'Scene');
+            const isCompleted = (status: TimelineItem['status']): boolean => {
+                const val = Array.isArray(status) ? status[0] : status;
+                const normalized = (val ?? '').toString().trim().toLowerCase();
+                return normalized === 'complete' || normalized === 'completed' || normalized === 'done';
             };
+            if (sceneNotesOnly.length > 0 && sceneNotesOnly.every(s => isCompleted(s.status))) {
+                const highestStage = [...STAGE_ORDER].reverse().find(s =>
+                    sceneNotesOnly.some(scene => normalizeStage(scene['Publish Stage']) === s)
+                ) ?? 'Zero';
+                return { stage: highestStage, total, note: t('settings.authorProgress.progressMode.allScenesComplete') };
+            }
+            return { stage: 'Zero', total, note: t('settings.authorProgress.progressMode.noProgressEstimate') };
         }
         return { stage, total, note: t('settings.authorProgress.progressMode.basedOnEstimate') };
     };

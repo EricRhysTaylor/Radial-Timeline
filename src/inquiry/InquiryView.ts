@@ -1972,7 +1972,7 @@ export class InquiryView extends ItemView {
             'circle',
             'circle-dot',
             'disc',
-            'square-asterisk'
+            'asterisk'
         ].forEach(icon => {
             const symbolId = this.createIconSymbol(defs, icon);
             if (symbolId) {

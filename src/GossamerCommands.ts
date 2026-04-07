@@ -2,7 +2,19 @@
  * Gossamer Commands and State - Manual Score Entry
  */
 import type RadialTimelinePlugin from './main';
-import { buildRunFromDefault, buildAllGossamerRuns, GossamerRun, normalizeBeatName, appendGossamerScore, collectGossamerManagedSnapshot, extractBeatOrder, detectDominantStage, willAppendGossamerPrune } from './utils/gossamer';
+import {
+  applyGossamerRunMetadata,
+  appendGossamerScore,
+  buildAllGossamerRuns,
+  buildRunFromDefault,
+  collectGossamerManagedSnapshot,
+  createGossamerRunId,
+  detectDominantStage,
+  extractBeatOrder,
+  GossamerRun,
+  normalizeBeatName,
+  willAppendGossamerPrune
+} from './utils/gossamer';
 import { Notice, TFile, TFolder, App, normalizePath } from 'obsidian';
 import { GossamerScoreModal } from './modals/GossamerScoreModal';
 import { GossamerProcessingModal, type ManuscriptInfo, type AnalysisOptions } from './modals/GossamerProcessingModal';
@@ -31,6 +43,7 @@ import { FORECAST_CHARS_PER_TOKEN, FORECAST_PROMPT_OVERHEAD_TOKENS } from './ai/
 import type { AIRunRequest, AIProviderId } from './ai/types';
 import { buildGossamerEvidenceDocument } from './gossamer/evidence/buildGossamerEvidence';
 import { logCountingForensics } from './ai/diagnostics/countingForensics';
+import { toBeatModelMatchKey } from './utils/beatsInputNormalize';
 
 interface ResolvedGossamerEvidence {
   document: Awaited<ReturnType<typeof buildGossamerEvidenceDocument>>;
@@ -242,6 +255,8 @@ async function saveGossamerScores(
       console.error('[Gossamer] Failed to detect dominant stage, defaulting to Zero:', sanitizeLogPayload(e).sanitized);
     }
   }
+  const runId = createGossamerRunId();
+  const createdAt = new Date().toISOString();
 
   const filesToSnapshot = [...scores.keys()]
     .map((beatTitle) => findBeatNoteByTitle(files, beatTitle, plugin.app))
@@ -276,9 +291,13 @@ async function saveGossamerScores(
         
         // Set new score at next available index
         fm[`Gossamer${nextIndex}`] = newScore;
-        
-        // Set the stage for this run
-        fm[`GossamerStage${nextIndex}`] = stage;
+        applyGossamerRunMetadata(fm, nextIndex, {
+          runId,
+          createdAt,
+          provider: 'manual',
+          model: 'Manual entry',
+          stage
+        });
         
         // Clean up old/deprecated fields
         delete fm.GossamerLocation;
@@ -421,6 +440,36 @@ export function getActiveGossamerRun(plugin: RadialTimelinePlugin): GossamerRun 
   return lastRunByPlugin.get(plugin) ?? null;
 }
 
+export async function syncGossamerPresentationState(
+  plugin: RadialTimelinePlugin,
+  scenesInput?: Awaited<ReturnType<RadialTimelinePlugin['getSceneData']>>
+) {
+  const scenes = scenesInput ?? await plugin.getSceneData();
+  const selectedBeatModel = resolveSelectedBeatModelFromSettings(plugin.settings);
+  const allRuns = buildAllGossamerRuns(
+    scenes as unknown as { itemType?: string; [key: string]: unknown }[],
+    selectedBeatModel,
+    {
+      latestOnly: plugin.gossamerLatestOnly,
+      visibleRunIds: plugin.gossamerVisibleRunIds,
+      beatSystemKey: plugin.gossamerFilterBeatSystemKey
+    }
+  );
+
+  plugin.gossamerRunInventory = allRuns.runs;
+  plugin.gossamerVisibleRunInventory = allRuns.visibleRuns;
+  plugin.gossamerVisibleRunIds = allRuns.latestOnly ? [] : allRuns.visibleRunIds;
+  plugin.gossamerLatestOnly = allRuns.latestOnly;
+  plugin.gossamerFilterBeatSystemKey = allRuns.beatSystemKey;
+
+  setInMemoryRun(plugin, allRuns.current);
+  (plugin as any)._gossamerHistoricalRuns = allRuns.historical;
+  (plugin as any)._gossamerMinMax = allRuns.minMax;
+  (plugin as any)._gossamerHasAnyScores = allRuns.hasAnyScores;
+
+  return allRuns;
+}
+
 export async function toggleGossamerMode(plugin: RadialTimelinePlugin): Promise<void> {
   const view = getFirstView(plugin);
   if (!view) return;
@@ -444,9 +493,15 @@ export async function toggleGossamerMode(plugin: RadialTimelinePlugin): Promise<
     
     // Use beat system from settings if explicitly set (not empty)
     const selectedBeatModel = resolveSelectedBeatModelFromSettings(plugin.settings);
-    
+    const selectedBeatModelKey = toBeatModelMatchKey(selectedBeatModel ?? '');
+    if (plugin.gossamerFilterBeatSystemKey !== selectedBeatModelKey) {
+      plugin.gossamerLatestOnly = true;
+      plugin.gossamerVisibleRunIds = [];
+      plugin.gossamerFilterBeatSystemKey = selectedBeatModelKey;
+    }
+
     // Build all runs (Gossamer1-30) with min/max band
-    const allRuns = buildAllGossamerRuns(scenes as unknown as { itemType?: string; [key: string]: unknown }[], selectedBeatModel);
+    const allRuns = await syncGossamerPresentationState(plugin, scenes);
     
     if (allRuns.current.beats.length === 0) {
       const systemHint = selectedBeatModel
@@ -460,11 +515,6 @@ export async function toggleGossamerMode(plugin: RadialTimelinePlugin): Promise<
     if (!allRuns.hasAnyScores) {
       new Notice('No Gossamer scores found. Showing ideal ranges and spokes. Add scores using "Gossamer enter momentum scores" command.');
     }
-    
-    // Store all runs on plugin (for renderer)
-    setInMemoryRun(plugin, allRuns.current);
-    (plugin as any)._gossamerHistoricalRuns = allRuns.historical;
-    (plugin as any)._gossamerMinMax = allRuns.minMax;
     
     setBaseModeAllScenes(plugin);
     resetRotation(plugin);
@@ -1004,6 +1054,10 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
     let updateCount = 0;
     const unmatchedBeats: string[] = [];
     const snapshotPaths = new Set<string>();
+    const runId = createGossamerRunId();
+    const createdAt = new Date().toISOString();
+    const runProvider = result.provider;
+    const runModel = result.modelResolved || result.modelRequested || 'ai-model';
 
     // Match beats by index - Gemini returns them in the same order they were sent
     for (let i = 0; i < analysis.beats.length; i++) {
@@ -1044,8 +1098,14 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
         
         // Set new score, stage, and justification at next available index
         fm[`Gossamer${nextIndex}`] = beat.momentumScore;
-        fm[`GossamerStage${nextIndex}`] = dominantStage;
         fm[`Gossamer${nextIndex} Justification`] = beat.justification || '';
+        applyGossamerRunMetadata(fm, nextIndex, {
+          runId,
+          createdAt,
+          provider: runProvider,
+          model: runModel,
+          stage: dominantStage
+        });
         
         // Add timestamp and model info
         const now = new Date();
@@ -1057,7 +1117,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
           minute: '2-digit',
           hour12: true
         });
-        const modelId = result.modelResolved || result.modelRequested || 'ai-model';
+        const modelId = runModel;
         fm['Gossamer Last Updated'] = `${timestamp} by ${modelId}`;
       });
       if (snapshotPath) snapshotPaths.add(snapshotPath);

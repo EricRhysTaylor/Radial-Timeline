@@ -426,6 +426,148 @@ body.rt-modal-open .radial-timeline-container * {
   overflow-wrap: anywhere;
 }
 
+.rt-gossamer-runs-fo {
+  overflow: visible;
+}
+
+.rt-gossamer-runs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  pointer-events: auto;
+}
+
+.rt-gossamer-runs__controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rt-gossamer-runs__button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 26px;
+  padding: 4px 10px;
+  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 92%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--background-primary-alt) 86%, transparent);
+  color: var(--text-normal);
+  font: inherit;
+  cursor: pointer;
+}
+
+.rt-gossamer-runs__button:hover {
+  border-color: color-mix(in srgb, var(--interactive-accent) 46%, var(--background-modifier-border));
+}
+
+.rt-gossamer-runs__button-icon {
+  display: inline-flex;
+  width: 14px;
+  height: 14px;
+}
+
+.rt-gossamer-runs__button-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.rt-gossamer-runs__summary {
+  font-size: 12px;
+  line-height: 1.15;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.rt-gossamer-runs__legend {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.rt-gossamer-runs__legend-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.rt-gossamer-runs__swatch {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 0;
+  border-top: 2px solid color-mix(in srgb, var(--text-normal) 94%, transparent);
+}
+
+.rt-gossamer-runs__swatch.is-secondary {
+  opacity: 0.48;
+}
+
+.rt-gossamer-runs__legend-label {
+  min-width: 0;
+  font-size: 11px;
+  line-height: 1.15;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+.rt-gossamer-runs__latest {
+  flex: 0 0 auto;
+  font-size: 10px;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+}
+
+.rt-gossamer-runs__popover {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 92%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--background-primary-alt) 94%, transparent);
+}
+
+.rt-gossamer-runs__divider {
+  height: 1px;
+  background: color-mix(in srgb, var(--background-modifier-border) 92%, transparent);
+}
+
+.rt-gossamer-runs__section-title {
+  font-size: 10px;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.rt-gossamer-runs__list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 180px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.rt-gossamer-runs__checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  line-height: 1.2;
+  color: var(--text-normal);
+}
+
+.rt-gossamer-runs__checkbox-row input[type="checkbox"] {
+  margin: 0;
+}
+
 /* In Gossamer mode, ensure default cursor unless over beat elements */
 .radial-timeline-svg[data-gossamer-mode="true"] {
   cursor: default;

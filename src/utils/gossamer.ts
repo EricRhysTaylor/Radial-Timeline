@@ -26,10 +26,35 @@ export interface GossamerRun {
     incompleteBeats?: string[];
   };
   meta?: {
-    model?: string;
+    model?: string; // Selected beat system (renderer compatibility)
+    beatSystem?: string;
+    provider?: string;
+    runModel?: string;
+    createdAt?: string;
+    id?: string;
+    runIndex?: number;
     date?: string; // ISO
     label?: string;
   };
+}
+
+export interface GossamerRunRecord {
+  id: string;
+  runIndex: number;
+  beatSystem?: string;
+  provider?: string;
+  runModel?: string;
+  createdAt?: string;
+  label: string;
+  isLatest: boolean;
+  stage?: string;
+  run: GossamerRun;
+}
+
+export interface GossamerRunFilterState {
+  latestOnly?: boolean;
+  visibleRunIds?: string[];
+  beatSystemKey?: string;
 }
 
 export const GOSSAMER_LEGACY_FIELDS = [
@@ -39,6 +64,168 @@ export const GOSSAMER_LEGACY_FIELDS = [
   'GossamerLatestRun',
   'Gossamer Last Updated'
 ];
+
+const GOSSAMER_MAX_HISTORY = 30;
+
+type GossamerSlotMetadata = {
+  runId?: string;
+  createdAt?: string;
+  provider?: string;
+  model?: string;
+  stage?: string;
+};
+
+function readGossamerFieldValue(source: Record<string, unknown>, key: string): unknown {
+  const rawFrontmatter = source.rawFrontmatter as Record<string, unknown> | undefined;
+  return source[key] ?? rawFrontmatter?.[key];
+}
+
+function getGossamerScoreKey(index: number): string {
+  return `Gossamer${index}`;
+}
+
+function getGossamerJustificationKey(index: number): string {
+  return `Gossamer${index} Justification`;
+}
+
+function getGossamerStageKey(index: number): string {
+  return `GossamerStage${index}`;
+}
+
+function getGossamerRunIdKey(index: number): string {
+  return `GossamerRunId${index}`;
+}
+
+function getGossamerCreatedAtKey(index: number): string {
+  return `GossamerCreatedAt${index}`;
+}
+
+function getGossamerProviderKey(index: number): string {
+  return `GossamerProvider${index}`;
+}
+
+function getGossamerModelKey(index: number): string {
+  return `GossamerModel${index}`;
+}
+
+export function createGossamerRunId(): string {
+  return `goss-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+export function applyGossamerRunMetadata(frontmatter: Record<string, unknown>, index: number, metadata: GossamerSlotMetadata): void {
+  if (metadata.stage) frontmatter[getGossamerStageKey(index)] = metadata.stage;
+  if (metadata.runId) frontmatter[getGossamerRunIdKey(index)] = metadata.runId;
+  if (metadata.createdAt) frontmatter[getGossamerCreatedAtKey(index)] = metadata.createdAt;
+  if (metadata.provider) frontmatter[getGossamerProviderKey(index)] = metadata.provider;
+  if (metadata.model) frontmatter[getGossamerModelKey(index)] = metadata.model;
+}
+
+export function clearGossamerRunSlot(frontmatter: Record<string, unknown>, index: number): void {
+  delete frontmatter[getGossamerScoreKey(index)];
+  delete frontmatter[getGossamerJustificationKey(index)];
+  delete frontmatter[getGossamerStageKey(index)];
+  delete frontmatter[getGossamerRunIdKey(index)];
+  delete frontmatter[getGossamerCreatedAtKey(index)];
+  delete frontmatter[getGossamerProviderKey(index)];
+  delete frontmatter[getGossamerModelKey(index)];
+}
+
+function readGossamerSlotMetadata(source: Record<string, unknown>, index: number): GossamerSlotMetadata {
+  const readString = (key: string): string | undefined => {
+    const value = readGossamerFieldValue(source, key);
+    return typeof value === 'string' && value.trim().length > 0 ? value : undefined;
+  };
+
+  return {
+    runId: readString(getGossamerRunIdKey(index)),
+    createdAt: readString(getGossamerCreatedAtKey(index)),
+    provider: readString(getGossamerProviderKey(index)),
+    model: readString(getGossamerModelKey(index)),
+    stage: readString(getGossamerStageKey(index))
+  };
+}
+
+function formatGossamerRunTimestamp(value: string | undefined, fallbackIndex: number): string {
+  if (!value) return `Run ${fallbackIndex}`;
+
+  const parsed = Date.parse(value);
+  if (!Number.isFinite(parsed)) return `Run ${fallbackIndex}`;
+
+  try {
+    return new Intl.DateTimeFormat(undefined, {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    }).format(new Date(parsed));
+  } catch {
+    return `Run ${fallbackIndex}`;
+  }
+}
+
+function buildGossamerRunModelLabel(metadata: GossamerSlotMetadata): string {
+  if (metadata.model) return metadata.model;
+  if (metadata.provider === 'manual') return 'Manual entry';
+  if (metadata.provider) return metadata.provider;
+  return 'Legacy run';
+}
+
+function parseGossamerRunIndex(fieldName: string): number {
+  const match = fieldName.match(/^Gossamer(\d+)$/);
+  if (!match) return 1;
+  const parsed = parseInt(match[1], 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+}
+
+function parseGossamerScoreValue(value: unknown): number | undefined {
+  if (typeof value === 'number' && !Number.isNaN(value)) {
+    return value;
+  }
+  if (typeof value === 'string') {
+    const match = value.match(/\d+/);
+    if (!match) return undefined;
+    const parsed = parseInt(match[0], 10);
+    if (!Number.isNaN(parsed) && parsed >= 0 && parsed <= 100) {
+      return parsed;
+    }
+  }
+  return undefined;
+}
+
+function formatRunListLabel(metadata: GossamerSlotMetadata, runIndex: number): string {
+  const timeLabel = formatGossamerRunTimestamp(metadata.createdAt, runIndex);
+  const modelLabel = buildGossamerRunModelLabel(metadata);
+  return `${timeLabel} · ${modelLabel}`;
+}
+
+function getRunStageFromScenes(
+  scenes: { itemType?: string; [key: string]: unknown }[],
+  runIndex: number,
+  selectedBeatModel?: string
+): typeof STAGE_ORDER[number] | undefined {
+  let plotNotes = scenes.filter((scene) => scene.itemType === 'Beat' || scene.itemType === 'Plot');
+  if (toBeatModelMatchKey(selectedBeatModel ?? '')) {
+    plotNotes = filterBeatsBySystem(plotNotes, selectedBeatModel);
+  }
+  for (const note of plotNotes) {
+    const stage = readGossamerFieldValue(note as Record<string, unknown>, getGossamerStageKey(runIndex));
+    if (typeof stage === 'string') {
+      const match = STAGE_ORDER.find((candidate) => candidate === stage);
+      if (match) return match;
+    }
+  }
+  return undefined;
+}
+
+function cloneRunWithMeta(run: GossamerRun, meta: NonNullable<GossamerRun['meta']>): GossamerRun {
+  return {
+    ...run,
+    meta: {
+      ...(run.meta || {}),
+      ...meta
+    }
+  };
+}
 
 const BUILTIN_BEAT_MODEL_KEYS = new Set<string>([
   toBeatModelMatchKey('Save The Cat'),
@@ -179,6 +366,7 @@ export function buildRunFromGossamerField(
   selectedBeatModel?: string,
   includeZeroScores: boolean = true
 ): GossamerRun {
+  const runIndex = parseGossamerRunIndex(fieldName);
   let beats: GossamerBeat[];
   
   if (!scenes || scenes.length === 0) {
@@ -189,33 +377,19 @@ export function buildRunFromGossamerField(
         refinements: [],
         incompleteBeats: [],
       },
-      meta: { label: fieldName, date: new Date().toISOString() },
+      meta: {
+        label: `Run ${runIndex}`,
+        date: new Date().toISOString(),
+        model: selectedBeatModel,
+        beatSystem: selectedBeatModel,
+        runIndex
+      },
     };
   }
 
   // If 'Gossamer1' is requested, check if we should be using a dynamically determined latest run instead.
   // We only do this "smart" redirect if we are asking for the default/current run (often passed as 'Gossamer1')
   // and we want to ensure we actually get the LATEST data if the user has tracked multiple runs.
-  let actualField = fieldName;
-  if (fieldName === 'Gossamer1') {
-    // Try to find the max run index from ANY scene to know what "current" really means
-    let maxIndex = 1;
-    scenes.forEach(s => {
-      for (let i = 30; i >= 1; i--) {
-        if (s[`Gossamer${i}`] !== undefined) {
-          maxIndex = Math.max(maxIndex, i);
-          break; // Found max for this scene
-        }
-      }
-    });
-    // If we found a higher index, use that as "Current"
-    // BUT: Historical view logic (buildAllGossamerRuns) calls this iteratively for 1..30.
-    // We must be careful not to break historical loading.
-    // Actually, `buildAllGossamerRuns` calls this with specific field names (Gossamer1, Gossamer2...).
-    // Only `buildRunFromDefault` calls it with 'Gossamer1'.
-    // So, we should change `buildRunFromDefault` instead of changing this low-level function.
-  }
-  
   // Filter Beat notes by Beat Model only if explicitly specified and not empty
   let plotNotes = scenes.filter(s => s.itemType === 'Beat' || s.itemType === 'Plot');
   
@@ -233,7 +407,13 @@ export function buildRunFromGossamerField(
         refinements: [],
         incompleteBeats: [],
       },
-      meta: { label: fieldName, date: new Date().toISOString() },
+      meta: {
+        label: `Run ${runIndex}`,
+        date: new Date().toISOString(),
+        model: selectedBeatModel,
+        beatSystem: selectedBeatModel,
+        runIndex
+      },
     };
   }
   
@@ -247,26 +427,17 @@ export function buildRunFromGossamerField(
   });
   
   const incompleteBeats: string[] = [];
+  let slotMetadata: GossamerSlotMetadata | undefined;
   beats = plotNotes.map((plotNote) => {
     const beatTitle = (plotNote.title || '').replace(/^\s*\d+(?:\.\d+)?\s+/, '').trim();
     
     // Parse score from the specified field
-    let parsedScore: number | undefined = undefined;
-    const fieldValue = plotNote[fieldName];
-    
-    if (fieldValue !== undefined && fieldValue !== null) {
-      const raw: unknown = fieldValue;
-      
-      if (typeof raw === 'number') {
-        parsedScore = raw;
-      } else if (typeof raw === 'string') {
-        const match = raw.match(/\d+/);
-        if (match) {
-          const num = parseInt(match[0], 10);
-          if (!isNaN(num) && num >= 0 && num <= 100) {
-            parsedScore = num;
-          }
-        }
+    const fieldValue = readGossamerFieldValue(plotNote as Record<string, unknown>, fieldName);
+    const parsedScore = parseGossamerScoreValue(fieldValue);
+    if (!slotMetadata) {
+      const candidateMetadata = readGossamerSlotMetadata(plotNote as Record<string, unknown>, runIndex);
+      if (candidateMetadata.runId || candidateMetadata.createdAt || candidateMetadata.provider || candidateMetadata.model || candidateMetadata.stage) {
+        slotMetadata = candidateMetadata;
       }
     }
     
@@ -319,6 +490,9 @@ export function buildRunFromGossamerField(
   }).filter(beat => beat.status !== 'missing');
   
   const presentCount = beats.filter(b => b.status === 'present').length;
+  const metadata = slotMetadata ?? {
+    stage: getRunStageFromScenes(scenes as { itemType?: string; [key: string]: unknown }[], runIndex, selectedBeatModel)
+  };
   
   return {
     beats: beats,
@@ -331,8 +505,14 @@ export function buildRunFromGossamerField(
     },
     meta: { 
       label: fieldName.startsWith('Gossamer') ? `Run ${fieldName.replace('Gossamer', '')}` : fieldName,
-      date: new Date().toISOString(),
-      model: selectedBeatModel 
+      date: metadata.createdAt ?? new Date().toISOString(),
+      model: selectedBeatModel,
+      beatSystem: selectedBeatModel,
+      provider: metadata.provider,
+      runModel: metadata.model,
+      createdAt: metadata.createdAt,
+      id: metadata.runId,
+      runIndex
     },
   };
 }
@@ -370,10 +550,11 @@ export function buildRunFromDefault(scenes?: { itemType?: string; subplot?: stri
     let latestRunIndex = 0;
     
     // Check Gossamer1 through Gossamer30
-    for (let i = 30; i >= 1; i--) {
-      const val = note[`Gossamer${i}`];
-      if (val !== undefined && val !== null && typeof val === 'number') {
-        latestScore = val;
+    for (let i = GOSSAMER_MAX_HISTORY; i >= 1; i--) {
+      const val = readGossamerFieldValue(note as Record<string, unknown>, getGossamerScoreKey(i));
+      const parsed = parseGossamerScoreValue(val);
+      if (parsed !== undefined) {
+        latestScore = parsed;
         latestRunIndex = i;
         break;
       }
@@ -424,74 +605,136 @@ export function buildRunFromDefault(scenes?: { itemType?: string; subplot?: stri
     meta: {
       label: 'Latest Run',
       date: new Date().toISOString(),
-      model: selectedBeatModel
+      model: selectedBeatModel,
+      beatSystem: selectedBeatModel
     }
   };
+}
+
+export function buildGossamerRunInventory(
+  scenes: { itemType?: string; subplot?: string; title?: string; [key: string]: unknown }[] | undefined,
+  selectedBeatModel?: string
+): GossamerRunRecord[] {
+  if (!scenes || scenes.length === 0) return [];
+
+  const plotNotes = (() => {
+    let notes = scenes.filter((scene) => scene.itemType === 'Beat' || scene.itemType === 'Plot');
+    if (toBeatModelMatchKey(selectedBeatModel ?? '')) {
+      notes = filterBeatsBySystem(notes, selectedBeatModel);
+    }
+    return notes;
+  })();
+
+  if (plotNotes.length === 0) return [];
+
+  const runIndexes: number[] = [];
+  for (let runIndex = 1; runIndex <= GOSSAMER_MAX_HISTORY; runIndex++) {
+    const hasAnyValue = plotNotes.some((note) => parseGossamerScoreValue(readGossamerFieldValue(note as Record<string, unknown>, getGossamerScoreKey(runIndex))) !== undefined);
+    if (hasAnyValue) runIndexes.push(runIndex);
+  }
+
+  const records = runIndexes.map((runIndex) => {
+    const run = buildRunFromGossamerField(scenes, getGossamerScoreKey(runIndex), selectedBeatModel, true);
+    const metadataFromRun = run.meta || {};
+    const metadata: GossamerSlotMetadata = {
+      runId: metadataFromRun.id,
+      createdAt: metadataFromRun.createdAt,
+      provider: metadataFromRun.provider,
+      model: metadataFromRun.runModel,
+      stage: getRunStageFromScenes(scenes as { itemType?: string; [key: string]: unknown }[], runIndex, selectedBeatModel)
+    };
+    return {
+      id: metadata.runId || `${toBeatModelMatchKey(selectedBeatModel ?? 'default') || 'default'}::run-${runIndex}`,
+      runIndex,
+      beatSystem: selectedBeatModel,
+      provider: metadata.provider,
+      runModel: metadata.model,
+      createdAt: metadata.createdAt,
+      label: formatRunListLabel(metadata, runIndex),
+      isLatest: false,
+      stage: metadata.stage,
+      run
+    };
+  });
+
+  if (records.length > 0) {
+    records[records.length - 1].isLatest = true;
+  }
+
+  return records;
 }
 
 /**
  * Build all gossamer runs (Gossamer1-30) and calculate min/max for band.
  * Includes stage information for each run to enable stage-based coloring.
  */
-export function buildAllGossamerRuns(scenes: { itemType?: string; [key: string]: unknown }[] | undefined, selectedBeatModel?: string): { // SAFE: unknown type used for dynamic Gossamer1-30 field access
+export function buildAllGossamerRuns(
+  scenes: { itemType?: string; [key: string]: unknown }[] | undefined,
+  selectedBeatModel?: string,
+  filterState: GossamerRunFilterState = {}
+): { // SAFE: unknown type used for dynamic Gossamer1-30 field access
   current: GossamerRun;
   historical: Array<{ label: string; points: { beat: string; score: number }[]; color: string; stage?: string; runIndex: number }>;
   minMax: { min: { beat: string; score: number }[]; max: { beat: string; score: number }[] } | null;
   hasAnyScores: boolean;
+  runs: GossamerRunRecord[];
+  visibleRuns: GossamerRunRecord[];
+  visibleRunIds: string[];
+  visibleModelCount: number;
+  latestOnly: boolean;
+  beatSystemKey: string;
 } {
+  const beatSystemKey = toBeatModelMatchKey(selectedBeatModel ?? '');
   if (!scenes || scenes.length === 0) {
     return {
       current: buildRunFromGossamerField(scenes, 'Gossamer1', selectedBeatModel, true),
       historical: [],
       minMax: null,
-      hasAnyScores: false
+      hasAnyScores: false,
+      runs: [],
+      visibleRuns: [],
+      visibleRunIds: [],
+      visibleModelCount: 0,
+      latestOnly: true,
+      beatSystemKey
     };
   }
-
-  // Build current run (Gossamer1)
-  const current = buildRunFromGossamerField(scenes, 'Gossamer1', selectedBeatModel, true);
+  const runs = buildGossamerRunInventory(scenes as { itemType?: string; subplot?: string; title?: string; [key: string]: unknown }[], selectedBeatModel);
+  const beatSystemChanged = (filterState.beatSystemKey ?? '') !== beatSystemKey;
+  const latestOnly = beatSystemChanged ? true : filterState.latestOnly !== false;
+  const visibleRunIds = latestOnly
+    ? []
+    : (filterState.visibleRunIds || []).filter((id) => runs.some((run) => run.id === id));
+  const visibleRuns = (() => {
+    if (runs.length === 0) return [];
+    if (latestOnly) return [runs[runs.length - 1]];
+    if (visibleRunIds.length === 0) return [...runs];
+    const selectedRuns = runs.filter((run) => visibleRunIds.includes(run.id));
+    return selectedRuns.length > 0 ? selectedRuns : [runs[runs.length - 1]];
+  })();
+  const currentRecord = visibleRuns[visibleRuns.length - 1];
+  const current = currentRecord
+    ? cloneRunWithMeta(currentRecord.run, {
+        ...(currentRecord.run.meta || {}),
+        label: currentRecord.isLatest ? 'Latest Run' : currentRecord.label,
+        model: selectedBeatModel,
+        beatSystem: selectedBeatModel
+      })
+    : buildRunFromDefault(scenes as { itemType?: string; subplot?: string; title?: string; Gossamer1?: number; "Beat Model"?: string; [key: string]: unknown }[], selectedBeatModel);
   
   // Default gray color for runs without stage data (legacy fallback)
   const historicalColor = '#c0c0c0'; // Same as --rt-gossamer-historical-color
-  
-  // Helper to get the stage for a run by checking beat notes
-  const getRunStage = (runIndex: number): string | undefined => {
-    const stageFieldName = `GossamerStage${runIndex}`;
-    // Look for stage in any beat note - GossamerStage fields are in rawFrontmatter
-    for (const scene of scenes) {
-      if (scene.itemType === 'Beat' || scene.itemType === 'Plot') {
-        const fm = (scene as { rawFrontmatter?: Record<string, unknown> }).rawFrontmatter || {};
-        const stage = fm[stageFieldName];
-        if (typeof stage === 'string' && ['Zero', 'Author', 'House', 'Press'].includes(stage)) {
-          return stage;
-        }
-      }
-    }
-    return undefined;
-  };
-  
-  // Build historical runs (Gossamer2-30)
+
+  // Build historical runs from the remaining visible records (oldest to newest)
   const historical: Array<{ label: string; points: { beat: string; score: number }[]; color: string; stage?: string; runIndex: number }> = [];
-  
-  for (let i = 2; i <= 30; i++) {
-    const fieldName = `Gossamer${i}`;
-    
-    // Check if ANY value exists for this field
-    const hasAnyValue = scenes.some(s => (s.itemType === 'Beat' || s.itemType === 'Plot') && s[fieldName] !== undefined && s[fieldName] !== null);
-    
-    if (hasAnyValue) {
-      // If any value exists, default ALL missing beats to 0 (encourages complete data)
-      const run = buildRunFromGossamerField(scenes, fieldName, selectedBeatModel, true);
-      const stage = getRunStage(i);
-      
-      historical.push({
-        label: fieldName,
-        points: run.beats.map(b => ({ beat: b.beat, score: b.score as number })),
-        color: historicalColor, // Will be overridden by renderer if stage is present
-        stage,
-        runIndex: i
-      });
-    }
+  for (const record of visibleRuns.slice(0, -1)) {
+    historical.push({
+      label: record.label,
+      points: record.run.beats.map((beat) => ({ beat: beat.beat, score: beat.score as number })),
+      color: historicalColor,
+      stage: record.stage,
+      runIndex: record.runIndex
+    });
   }
   
   // Calculate min/max if we have at least 2 runs
@@ -543,8 +786,22 @@ export function buildAllGossamerRuns(scenes: { itemType?: string; [key: string]:
   const hasAnyCurrentScores = current.beats.some(b => b.status === 'present' && typeof b.score === 'number');
   const hasHistoricalScores = historical.some(run => run.points.some(point => typeof point.score === 'number' && !Number.isNaN(point.score)));
   const hasAnyScores = hasAnyCurrentScores || hasHistoricalScores;
+  const visibleModelCount = new Set(
+    visibleRuns.map((record) => record.runModel || record.provider || 'Legacy run')
+  ).size;
   
-  return { current, historical, minMax, hasAnyScores };
+  return {
+    current,
+    historical,
+    minMax,
+    hasAnyScores,
+    runs,
+    visibleRuns,
+    visibleRunIds: visibleRuns.map((record) => record.id),
+    visibleModelCount,
+    latestOnly,
+    beatSystemKey
+  };
 }
 
 export function zeroOffsetRun(run: GossamerRun): GossamerRun {
@@ -602,45 +859,26 @@ export function extractBeatOrder(scenes: { itemType?: string; subplot?: string; 
  * Shifts both scores and justifications. Returns updated frontmatter.
  */
 export function shiftGossamerHistory(frontmatter: Record<string, any>): Record<string, any> {
-  const maxHistory = 30;
+  const maxHistory = GOSSAMER_MAX_HISTORY;
   const updated = { ...frontmatter };
-  
-  // Find existing Gossamer scores and justifications
-  const existingScores: Record<number, number> = {};
-  const existingJustifications: Record<number, string> = {};
-  
-  for (let i = 1; i <= maxHistory; i++) {
-    const scoreKey = `Gossamer${i}`;
-    const justKey = `Gossamer${i} Justification`;
-    
-    if (typeof updated[scoreKey] === 'number') {
-      existingScores[i] = updated[scoreKey];
+  for (let i = maxHistory; i >= 2; i--) {
+    clearGossamerRunSlot(updated, i);
+
+    const priorScore = updated[getGossamerScoreKey(i - 1)];
+    if (priorScore !== undefined) {
+      updated[getGossamerScoreKey(i)] = priorScore;
     }
-    if (typeof updated[justKey] === 'string') {
-      existingJustifications[i] = updated[justKey];
+
+    const priorJustification = updated[getGossamerJustificationKey(i - 1)];
+    if (priorJustification !== undefined) {
+      updated[getGossamerJustificationKey(i)] = priorJustification;
     }
+
+    const priorMetadata = readGossamerSlotMetadata(updated, i - 1);
+    applyGossamerRunMetadata(updated, i, priorMetadata);
   }
-  
-  // Delete all Gossamer fields (including any beyond maxHistory)
-  for (let i = 1; i <= maxHistory + 10; i++) {
-    delete updated[`Gossamer${i}`];
-    delete updated[`Gossamer${i} Justification`];
-  }
-  
-  // Shift down: 1→2, 2→3, 3→4, etc.
-  Object.entries(existingScores).forEach(([oldIndex, score]) => {
-    const newIndex = parseInt(oldIndex) + 1;
-    if (newIndex <= maxHistory) {
-      updated[`Gossamer${newIndex}`] = score;
-    }
-  });
-  
-  Object.entries(existingJustifications).forEach(([oldIndex, justification]) => {
-    const newIndex = parseInt(oldIndex) + 1;
-    if (newIndex <= maxHistory) {
-      updated[`Gossamer${newIndex} Justification`] = justification;
-    }
-  });
+
+  clearGossamerRunSlot(updated, 1);
   
   // Gossamer1 and Gossamer1 Justification will be set by the caller with the new values
   return updated;
@@ -650,44 +888,52 @@ export function normalizeGossamerHistory(frontmatter: Record<string, any>): {
   normalized: Record<string, any>;
   changed: boolean;
 } {
-  const maxHistory = 30;
+  const maxHistory = GOSSAMER_MAX_HISTORY;
   const normalized: Record<string, any> = {};
-  type Entry = { score: number; justification?: string; originalIndex: number };
+  type Entry = {
+    score: number;
+    justification?: string;
+    originalIndex: number;
+    metadata: GossamerSlotMetadata;
+  };
   const entries: Entry[] = [];
-  let hasOrphanJustification = false;
+  let hasOrphanField = false;
 
   for (let i = 1; i <= maxHistory; i++) {
-    const scoreKey = `Gossamer${i}`;
-    const justKey = `Gossamer${i} Justification`;
-    const rawScore = frontmatter[scoreKey];
-    let numeric: number | undefined;
-    if (typeof rawScore === 'number') {
-      numeric = rawScore;
-    } else if (typeof rawScore === 'string') {
-      const parsed = parseInt(rawScore);
-      if (!Number.isNaN(parsed)) numeric = parsed;
-    }
+    const scoreKey = getGossamerScoreKey(i);
+    const justKey = getGossamerJustificationKey(i);
+    const numeric = parseGossamerScoreValue(frontmatter[scoreKey]);
+    const metadata = readGossamerSlotMetadata(frontmatter, i);
     if (numeric !== undefined) {
-      const entry: Entry = { score: numeric, originalIndex: i };
+      const entry: Entry = { score: numeric, originalIndex: i, metadata };
       const justification = frontmatter[justKey];
       if (typeof justification === 'string' && justification.trim().length > 0) {
         entry.justification = justification;
       }
       entries.push(entry);
-    } else if (typeof frontmatter[justKey] === 'string' && frontmatter[justKey].trim().length > 0) {
-      hasOrphanJustification = true;
+    } else if (
+      (typeof frontmatter[justKey] === 'string' && frontmatter[justKey].trim().length > 0) ||
+      metadata.runId ||
+      metadata.createdAt ||
+      metadata.provider ||
+      metadata.model ||
+      metadata.stage
+    ) {
+      hasOrphanField = true;
     }
   }
 
   const needsRenumber = entries.some((entry, idx) => entry.originalIndex !== idx + 1);
-  const changed = needsRenumber || hasOrphanJustification;
+  const changed = needsRenumber || hasOrphanField;
 
   entries.forEach((entry, idx) => {
-    const key = `Gossamer${idx + 1}`;
+    const nextIndex = idx + 1;
+    const key = getGossamerScoreKey(nextIndex);
     normalized[key] = entry.score;
     if (entry.justification) {
       normalized[`${key} Justification`] = entry.justification;
     }
+    applyGossamerRunMetadata(normalized, nextIndex, entry.metadata);
   });
 
   return { normalized, changed };
@@ -696,12 +942,20 @@ export function normalizeGossamerHistory(frontmatter: Record<string, any>): {
 export function collectGossamerManagedSnapshot(frontmatter: Record<string, any>, maxHistory: number = 40): Record<string, unknown> {
   const snapshot: Record<string, unknown> = {};
   for (let i = 1; i <= maxHistory; i++) {
-    const scoreKey = `Gossamer${i}`;
-    const justKey = `Gossamer${i} Justification`;
-    const stageKey = `GossamerStage${i}`;
+    const scoreKey = getGossamerScoreKey(i);
+    const justKey = getGossamerJustificationKey(i);
+    const stageKey = getGossamerStageKey(i);
+    const runIdKey = getGossamerRunIdKey(i);
+    const createdAtKey = getGossamerCreatedAtKey(i);
+    const providerKey = getGossamerProviderKey(i);
+    const modelKey = getGossamerModelKey(i);
     if (frontmatter[scoreKey] !== undefined) snapshot[scoreKey] = frontmatter[scoreKey];
     if (frontmatter[justKey] !== undefined) snapshot[justKey] = frontmatter[justKey];
     if (frontmatter[stageKey] !== undefined) snapshot[stageKey] = frontmatter[stageKey];
+    if (frontmatter[runIdKey] !== undefined) snapshot[runIdKey] = frontmatter[runIdKey];
+    if (frontmatter[createdAtKey] !== undefined) snapshot[createdAtKey] = frontmatter[createdAtKey];
+    if (frontmatter[providerKey] !== undefined) snapshot[providerKey] = frontmatter[providerKey];
+    if (frontmatter[modelKey] !== undefined) snapshot[modelKey] = frontmatter[modelKey];
   }
   for (const key of GOSSAMER_LEGACY_FIELDS) {
     if (frontmatter[key] !== undefined) snapshot[key] = frontmatter[key];
@@ -726,7 +980,7 @@ export function willAppendGossamerPrune(frontmatter: Record<string, any>, maxHis
 
 export function appendGossamerScore(
   frontmatter: Record<string, any>,
-  maxHistory: number = 30
+  maxHistory: number = GOSSAMER_MAX_HISTORY
 ): { nextIndex: number; updated: Record<string, any> } {
   const updated = { ...frontmatter };
   const hasValue = (value: unknown): boolean => {
@@ -737,7 +991,7 @@ export function appendGossamerScore(
   };
 
   for (let i = 1; i <= maxHistory; i++) {
-    const key = `Gossamer${i}`;
+    const key = getGossamerScoreKey(i);
     if (!hasValue(updated[key])) {
       return { nextIndex: i, updated };
     }
@@ -745,26 +999,25 @@ export function appendGossamerScore(
 
   // All slots are full – drop the oldest (index 1) and shift everything up.
   for (let i = 2; i <= maxHistory; i++) {
-    const currentKey = `Gossamer${i}`;
-    const previousKey = `Gossamer${i - 1}`;
-    const currentJustKey = `Gossamer${i} Justification`;
-    const previousJustKey = `Gossamer${i - 1} Justification`;
+    const currentKey = getGossamerScoreKey(i);
+    const previousKey = getGossamerScoreKey(i - 1);
+    const currentJustKey = getGossamerJustificationKey(i);
+    const previousJustKey = getGossamerJustificationKey(i - 1);
+    const currentScore = updated[currentKey];
+    const currentJustification = updated[currentJustKey];
+    const metadata = readGossamerSlotMetadata(updated, i);
 
-    if (hasValue(updated[currentKey])) {
-      updated[previousKey] = updated[currentKey];
-    } else {
-      delete updated[previousKey];
+    clearGossamerRunSlot(updated, i - 1);
+    if (hasValue(currentScore)) {
+      updated[previousKey] = currentScore;
     }
-
-    if (hasValue(updated[currentJustKey])) {
-      updated[previousJustKey] = updated[currentJustKey];
-    } else {
-      delete updated[previousJustKey];
+    if (hasValue(currentJustification)) {
+      updated[previousJustKey] = currentJustification;
     }
+    applyGossamerRunMetadata(updated, i - 1, metadata);
   }
 
-  delete updated[`Gossamer${maxHistory}`];
-  delete updated[`Gossamer${maxHistory} Justification`];
+  clearGossamerRunSlot(updated, maxHistory);
 
   return { nextIndex: maxHistory, updated };
 }

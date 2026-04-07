@@ -69,11 +69,10 @@ export const GOSSAMER_MODE: ModeDefinition = {
         }
         
         // Build and store Gossamer runs
-        const { buildAllGossamerRuns } = await import('../../utils/gossamer');
-        const { setBaseModeAllScenes, resetRotation } = await import('../../GossamerCommands');
+        const { setBaseModeAllScenes, resetRotation, syncGossamerPresentationState } = await import('../../GossamerCommands');
         
         const selectedBeatModel = resolveSelectedBeatModelFromSettings(plugin.settings);
-        const allRuns = buildAllGossamerRuns(scenes as any, selectedBeatModel);
+        const allRuns = await syncGossamerPresentationState(plugin, scenes as any);
         
         if (allRuns.current.beats.length === 0) {
             const systemHint = selectedBeatModel
@@ -87,11 +86,6 @@ export const GOSSAMER_MODE: ModeDefinition = {
         if (!allRuns.hasAnyScores) {
             new Notice('No Gossamer scores found. Showing ideal ranges and spokes. Add scores using "Gossamer enter momentum scores" command.');
         }
-        
-        // Store runs on plugin
-        (plugin as any)._gossamerLastRun = allRuns.current;
-        (plugin as any)._gossamerHistoricalRuns = allRuns.historical;
-        (plugin as any)._gossamerMinMax = allRuns.minMax;
         
         // Setup mode
         setBaseModeAllScenes(plugin);

@@ -7,7 +7,7 @@ import type RadialTimelinePlugin from '../main';
 import { buildDefaultAiSettings } from '../ai/settings/aiSettings';
 import { validateAiSettings } from '../ai/settings/validateAiSettings';
 import type { TimelineItem } from '../types';
-import { collectGossamerManagedSnapshot, filterBeatsBySystem, normalizeBeatName, normalizeGossamerHistory } from '../utils/gossamer';
+import { clearGossamerRunSlot, collectGossamerManagedSnapshot, filterBeatsBySystem, normalizeBeatName, normalizeGossamerHistory } from '../utils/gossamer';
 import { parseScoresFromClipboard } from '../GossamerCommands';
 import { getPlotSystem } from '../utils/beatsSystems';
 import {
@@ -166,8 +166,7 @@ export class GossamerScoreModal extends Modal {
             if (changed) {
               changedCount++;
               for (let i = 1; i <= 40; i++) {
-                delete fm[`Gossamer${i}`];
-                delete fm[`Gossamer${i} Justification`];
+                clearGossamerRunSlot(fm, i);
               }
               Object.assign(fm, normalized);
             }
@@ -896,8 +895,7 @@ export class GossamerScoreModal extends Modal {
 
           // Delete specified Gossamer fields
           for (const num of gossamerNums) {
-            delete fm[`Gossamer${num}`];
-            delete fm[`Gossamer${num} Justification`];
+            clearGossamerRunSlot(fm, num);
           }
         });
       } catch (error) {
@@ -1021,8 +1019,7 @@ export class GossamerScoreModal extends Modal {
 
               // Delete all Gossamer fields (Gossamer1-30) and their justifications
               for (let i = 1; i <= 30; i++) {
-                delete frontmatter[`Gossamer${i}`];
-                delete frontmatter[`Gossamer${i} Justification`];
+                clearGossamerRunSlot(frontmatter, i);
               }
 
               // Also delete the Last Updated field

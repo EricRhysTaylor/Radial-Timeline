@@ -808,7 +808,8 @@
 }
 
 .ert-inquiry-cc-legend-trigger-icon {
-  color: var(--text-muted);
+  stroke: var(--text-muted);
+  fill: none;
 }
 
 .ert-inquiry-cc-legend-trigger:hover .ert-inquiry-cc-legend-trigger-border {
@@ -816,7 +817,7 @@
 }
 
 .ert-inquiry-cc-legend-trigger:hover .ert-inquiry-cc-legend-trigger-icon {
-  color: var(--text-normal);
+  stroke: var(--text-normal);
 }
 
 /* ── Legend panel (revealed on hover) ── */

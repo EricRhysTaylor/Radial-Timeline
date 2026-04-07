@@ -218,7 +218,9 @@ export async function callGeminiApi(
     body.generationConfig.responseMimeType = 'application/json';
     body.generationConfig.responseSchema = jsonSchema;
   }
-  if (citationsEnabled) {
+  // Gemini rejects tools + responseMimeType 'application/json' in the same request.
+  // When structured output is required, skip Search grounding.
+  if (citationsEnabled && !jsonSchema) {
     body.tools = [{ google_search: {} }];
   }
 

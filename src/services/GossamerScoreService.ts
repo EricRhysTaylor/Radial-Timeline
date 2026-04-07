@@ -2,7 +2,7 @@ import { Notice, TFile, App } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import { normalizeFrontmatterKeys } from '../utils/frontmatter';
 import { isStoryBeat } from '../utils/sceneHelpers';
-import { appendGossamerScore, collectGossamerManagedSnapshot, detectDominantStage, willAppendGossamerPrune } from '../utils/gossamer';
+import { appendGossamerScore, applyGossamerRunMetadata, collectGossamerManagedSnapshot, createGossamerRunId, detectDominantStage, willAppendGossamerPrune } from '../utils/gossamer';
 import { isPathInFolderScope } from '../utils/pathScope';
 import { archiveGossamerFrontmatterFields } from '../gossamer/logs';
 
@@ -27,6 +27,8 @@ export class GossamerScoreService {
 
         let updateCount = 0;
         const snapshotPaths = new Set<string>();
+        const runId = createGossamerRunId();
+        const createdAt = new Date().toISOString();
 
         for (const [beatTitle, newScore] of scores) {
             let file: TFile | null = null;
@@ -66,7 +68,13 @@ export class GossamerScoreService {
                     const { nextIndex, updated } = appendGossamerScore(fm);
                     Object.assign(fm, updated);
                     fm[`Gossamer${nextIndex}`] = newScore;
-                    fm[`GossamerStage${nextIndex}`] = dominantStage;
+                    applyGossamerRunMetadata(fm, nextIndex, {
+                        runId,
+                        createdAt,
+                        provider: 'manual',
+                        model: 'Manual entry',
+                        stage: dominantStage
+                    });
                     delete fm.GossamerLocation;
                     delete fm.GossamerNote;
                     delete fm.GossamerRuns;

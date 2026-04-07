@@ -56,6 +56,7 @@ import { PublishingValidationService } from './services/PublishingValidationServ
 import { TimelineAuditAiService } from './services/TimelineAuditAiService';
 import { ensureBundledPandocLayoutsRegistered } from './utils/pandocBundledLayouts';
 import { normalizeManuscriptCleanupOptions } from './utils/manuscriptSanitize';
+import type { GossamerRunRecord } from './utils/gossamer';
 
 
 // Declare the variable that will be injected by the build process
@@ -134,6 +135,11 @@ export default class RadialTimelinePlugin extends Plugin {
     private timelineAuditAiService!: TimelineAuditAiService;
     public milestonesService!: import('./services/MilestonesService').MilestonesService;
     public lastSceneData?: TimelineItem[];
+    public gossamerLatestOnly = true;
+    public gossamerVisibleRunIds: string[] = [];
+    public gossamerRunInventory: GossamerRunRecord[] = [];
+    public gossamerVisibleRunInventory: GossamerRunRecord[] = [];
+    public gossamerFilterBeatSystemKey = '';
     
     // APR Service
     private authorProgressService!: AuthorProgressService;

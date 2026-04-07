@@ -453,7 +453,7 @@ export interface TranslationKeys {
             };
             progressMode: {
                 name: string; desc: string; detecting: string; dateRangePlaceholder: string; dateRangeFormat: string;
-                noScenesFound: string; noProgressEstimate: string; basedOnEstimate: string;
+                noScenesFound: string; noProgressEstimate: string; allScenesComplete: string; basedOnEstimate: string;
                 errorEnterBothDates: string; errorUseDateFormat: string; errorStartBeforeTarget: string;
                 zeroMode: string; dateTargetMode: string; guidanceZero: string; guidanceDate: string;
                 publishStageAuto: string; guidancePublishStage: string;
@@ -1420,6 +1420,7 @@ export const en: TranslationKeys = {
                 dateRangeFormat: 'Format: YYYY-MM-DD to YYYY-MM-DD.',
                 noScenesFound: 'No scenes found yet; assuming Zero stage.',
                 noProgressEstimate: 'No progress estimate available yet.',
+                allScenesComplete: 'All scenes complete — manuscript at this stage.',
                 basedOnEstimate: 'Based on the progress estimate (active publish stage).',
                 errorEnterBothDates: 'Enter both start and target dates (YYYY-MM-DD).',
                 errorUseDateFormat: 'Use YYYY-MM-DD for both dates.',
@@ -1427,7 +1428,7 @@ export const en: TranslationKeys = {
                 zeroMode: 'Zero Mode (End scene number created by Author)',
                 dateTargetMode: 'Date Target Mode',
                 guidanceZero: 'Zero Mode (recommended): create a placeholder final scene note with a high prefix number (e.g., "60 The End") to set intended total scene count.',
-                guidanceDate: 'Date Mode: choose a start date and target completion date.',
+                guidanceDate: 'Date Mode: choose a start date and target completion date. For example, if you expect to take 10 months to write your book, set a target date that fits that timeline.',
                 publishStageAuto: 'Publish-stage progress (auto)',
                 guidancePublishStage: 'Using publish-stage progress.',
                 stageDetected: '{{stage}} DETECTED',

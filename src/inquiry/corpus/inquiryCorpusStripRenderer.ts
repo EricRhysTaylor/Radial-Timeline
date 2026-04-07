@@ -494,8 +494,8 @@ export function renderInquiryCorpusStrip(args: {
         qBorder.setAttribute('rx', String(qCorner));
         qBorder.setAttribute('ry', String(qCorner));
         refs.ccLegendTrigger.appendChild(qBorder);
-        const qIconSize = Math.round(Math.min(qW, qH) * 0.7);
-        const qIcon = args.createIconUse('square-asterisk', -qIconSize / 2, -qIconSize / 2, qIconSize);
+        const qIconSize = Math.round(Math.min(qW, qH) * 1.4);
+        const qIcon = args.createIconUse('asterisk', -qIconSize / 2, -qIconSize / 2, qIconSize);
         qIcon.classList.add('ert-inquiry-cc-legend-trigger-icon');
         refs.ccLegendTrigger.appendChild(qIcon);
         // Invisible hit rect for larger hover target
