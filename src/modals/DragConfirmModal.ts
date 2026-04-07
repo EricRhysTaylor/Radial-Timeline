@@ -5,6 +5,7 @@ const ICON_SHUFFLE = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height=
 const ICON_LIST_ORDERED = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-list-ordered-icon lucide-list-ordered"><path d="M11 5h10"/><path d="M11 12h10"/><path d="M11 19h10"/><path d="M4 4h1v5"/><path d="M4 9h2"/><path d="M6.5 20H3.4c0-1 2.6-1.925 2.6-3.5a1.5 1.5 0 0 0-2.6-1.02"/></svg>`;
 const ICON_BLOCKS = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-blocks-icon lucide-blocks"><path d="M10 22V7a1 1 0 0 0-1-1H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5a1 1 0 0 0-1-1H2"/><rect x="14" y="2" width="8" height="8" rx="1"/></svg>`;
 const ICON_WAVES = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-waves"><path d="M2 6c1.2 0 1.8.6 2.4 1.2.6.6 1.2 1.2 2.4 1.2s1.8-.6 2.4-1.2C9.8 6.6 10.4 6 11.6 6s1.8.6 2.4 1.2c.6.6 1.2 1.2 2.4 1.2s1.8-.6 2.4-1.2C19.4 6.6 20 6 21.2 6"/><path d="M2 12c1.2 0 1.8.6 2.4 1.2.6.6 1.2 1.2 2.4 1.2s1.8-.6 2.4-1.2c.6-.6 1.2-1.2 2.4-1.2s1.8.6 2.4 1.2c.6.6 1.2 1.2 2.4 1.2s1.8-.6 2.4-1.2c.6-.6 1.2-1.2 2.4-1.2"/><path d="M2 18c1.2 0 1.8.6 2.4 1.2.6.6 1.2 1.2 2.4 1.2s1.8-.6 2.4-1.2c.6-.6 1.2-1.2 2.4-1.2s1.8.6 2.4 1.2c.6.6 1.2 1.2 2.4 1.2s1.8-.6 2.4-1.2c.6-.6 1.2-1.2 2.4-1.2"/></svg>`;
+const ICON_ARROW_RIGHT_TO_LINE = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-right-to-line"><path d="M17 12H3"/><path d="m11 18 6-6-6-6"/><path d="M21 5v14"/></svg>`;
 
 export interface DragConfirmCurrentMoveSummary {
     actionSummary: string;
@@ -116,7 +117,10 @@ export class DragConfirmModal extends Modal {
                     cls: 'rt-drag-confirm-history-item',
                     attr: { role: 'button', tabindex: '0' }
                 });
-                row.createDiv({ cls: 'rt-drag-confirm-history-summary', text: entry.summary });
+                const rowHeader = row.createDiv({ cls: 'rt-drag-confirm-history-header' });
+                const rowIcon = rowHeader.createDiv({ cls: 'rt-drag-confirm-history-icon' });
+                this.setIcon(rowIcon, ICON_ARROW_RIGHT_TO_LINE);
+                rowHeader.createDiv({ cls: 'rt-drag-confirm-history-summary', text: entry.summary });
 
                 const metaParts = [this.formatRenameImpact(entry.renameCount ?? 0)];
                 if (entry.crossedActs) metaParts.push('Crossed Acts');

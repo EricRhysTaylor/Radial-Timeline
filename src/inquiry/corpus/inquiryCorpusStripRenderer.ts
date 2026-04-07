@@ -148,9 +148,50 @@ function buildCorpusLegendPanel(
                 {
                     label: 'Right + Click — open menu',
                     buildIcon: (g, cx, cy) => {
-                        const icon = createIconUse('arrow-big-right-dash', cx - clickIconSize / 2, cy - clickIconSize / 2, clickIconSize);
-                        icon.classList.add('ert-inquiry-cc-legend-click-icon');
-                        g.appendChild(icon);
+                        const mouseW = clickIconSize * 0.5;
+                        const mouseH = clickIconSize * 0.72;
+                        const mouseX = cx - mouseW / 2;
+                        const mouseY = cy - mouseH / 2;
+                        const radius = Math.max(2, clickIconSize * 0.14);
+
+                        const body = createSvgElement('rect');
+                        body.setAttribute('x', String(mouseX));
+                        body.setAttribute('y', String(mouseY));
+                        body.setAttribute('width', String(mouseW));
+                        body.setAttribute('height', String(mouseH));
+                        body.setAttribute('rx', String(radius));
+                        body.setAttribute('ry', String(radius));
+                        body.style.fill = 'none';
+                        body.style.stroke = 'currentColor';
+                        body.style.strokeWidth = '1.6';
+                        g.appendChild(body);
+
+                        const divider = createSvgElement('line');
+                        divider.setAttribute('x1', String(cx));
+                        divider.setAttribute('y1', String(mouseY + 2));
+                        divider.setAttribute('x2', String(cx));
+                        divider.setAttribute('y2', String(mouseY + mouseH * 0.42));
+                        divider.style.stroke = 'currentColor';
+                        divider.style.strokeWidth = '1.4';
+                        divider.style.strokeLinecap = 'round';
+                        g.appendChild(divider);
+
+                        const rightButton = createSvgElement('path');
+                        rightButton.setAttribute(
+                            'd',
+                            [
+                                `M ${cx} ${mouseY + 1.2}`,
+                                `L ${mouseX + mouseW - radius} ${mouseY + 1.2}`,
+                                `Q ${mouseX + mouseW} ${mouseY + 1.2} ${mouseX + mouseW} ${mouseY + radius + 0.5}`,
+                                `L ${mouseX + mouseW} ${mouseY + mouseH * 0.42}`,
+                                `L ${cx} ${mouseY + mouseH * 0.42}`,
+                                'Z'
+                            ].join(' ')
+                        );
+                        rightButton.style.fill = 'currentColor';
+                        rightButton.style.opacity = '0.22';
+                        rightButton.style.stroke = 'none';
+                        g.appendChild(rightButton);
                     }
                 }
             ]

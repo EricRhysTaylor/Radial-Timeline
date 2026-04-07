@@ -25,7 +25,7 @@ function makeEntry(index: number, overrides: Partial<StructuralMoveHistoryEntry>
         itemType: 'Scene',
         itemId: `scene_${index}`,
         itemLabel: `Scene ${index}`,
-        summary: `Moved Scene ${index} before Scene ${index + 1}`,
+        summary: `Scene ${index} before Scene ${index + 1}`,
         ...overrides
     };
 }

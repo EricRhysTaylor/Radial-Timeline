@@ -17,6 +17,7 @@ export interface InquirySession {
     scope?: InquiryScope;
     questionZone?: InquiryZone;
     pendingEditsApplied?: boolean;
+    pendingEditsEmpty?: boolean;
 }
 
 export interface InquirySessionCache {

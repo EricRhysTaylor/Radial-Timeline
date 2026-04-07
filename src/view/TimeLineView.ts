@@ -991,10 +991,19 @@ export class RadialTimelineView extends ItemView {
         const row = document.createElementNS(xhtmlNs, 'div');
         row.className = 'rt-recent-moves__item';
 
+        const header = document.createElementNS(xhtmlNs, 'div');
+        header.className = 'rt-recent-moves__header-row';
+
+        const icon = document.createElementNS(xhtmlNs, 'div');
+        icon.className = 'rt-recent-moves__icon';
+        setIcon(icon as unknown as HTMLElement, 'arrow-right-to-line');
+        header.appendChild(icon);
+
         const summary = document.createElementNS(xhtmlNs, 'div');
         summary.className = 'rt-recent-moves__summary';
         summary.textContent = entry.summary;
-        row.appendChild(summary);
+        header.appendChild(summary);
+        row.appendChild(header);
 
         const meta = document.createElementNS(xhtmlNs, 'div');
         meta.className = 'rt-recent-moves__meta';

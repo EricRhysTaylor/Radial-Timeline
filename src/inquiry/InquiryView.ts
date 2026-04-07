@@ -1385,6 +1385,7 @@ export class InquiryView extends ItemView {
         const metaText = `${this.formatSessionScope(session)} · ${this.formatSessionProviderModel(session)} · ${this.formatSessionTime(session)}${overrideLabel ? ` · ${overrideLabel}` : ''}`;
         const status = this.resolveSessionStatus(session);
         const pendingEditsApplied = !!session.pendingEditsApplied;
+        const pendingEditsEmpty = !!session.pendingEditsEmpty;
         const autoPopulateEnabled = this.plugin.settings.inquiryActionNotesAutoPopulate ?? false;
         const fieldLabel = this.resolveInquiryActionNotesFieldLabel();
         const refs = renderInquiryBriefingSessionItem({
@@ -1397,6 +1398,7 @@ export class InquiryView extends ItemView {
             status,
             blocked,
             pendingEditsApplied,
+            pendingEditsEmpty,
             autoPopulateEnabled,
             fieldLabel,
             hasBriefPath: !!session.briefPath
@@ -1414,6 +1416,10 @@ export class InquiryView extends ItemView {
             onUpdateClick: (event: MouseEvent) => {
                 event.stopPropagation();
                 if (pendingEditsApplied) return;
+                if (pendingEditsEmpty) {
+                    this.notifyInteraction('No action items met the writeback threshold.');
+                    return;
+                }
                 void this.handleBriefingPendingEditsClick(session);
             },
             onOpenClick: (event: MouseEvent) => {
@@ -5433,8 +5439,18 @@ export class InquiryView extends ItemView {
     }
 
     private handleModeIconToggleClick(): void {
+        if (this.state.activeResult && !this.hasDistinctLensSummaries(this.state.activeResult)) {
+            this.notifyInteraction('Only one summary lens available for this run.');
+            return;
+        }
         const nextMode: InquiryLens = this.state.mode === 'flow' ? 'depth' : 'flow';
         this.handleRingClick(nextMode);
+    }
+
+    private hasDistinctLensSummaries(result: InquiryResult): boolean {
+        const flow = this.getResultSummaryForMode(result, 'flow');
+        const depth = this.getResultSummaryForMode(result, 'depth');
+        return flow !== depth && !!flow && !!depth;
     }
 
     private buildModeToggleHoverText(): string {
@@ -6701,7 +6717,17 @@ export class InquiryView extends ItemView {
 
         const briefTitle = this.formatInquiryBriefTitle(normalized);
         const notesByMaterial = this.buildInquiryActionNotes(normalized, briefTitle, session.activeBookId);
-        if (!notesByMaterial.size) return false;
+        if (!notesByMaterial.size) {
+            session.pendingEditsEmpty = true;
+            if (session.key) {
+                this.sessionStore.updateSession(session.key, { pendingEditsEmpty: true });
+            }
+            if (options?.notify) {
+                this.notifyInteraction('No action items met the writeback threshold.');
+            }
+            this.refreshBriefingPanel();
+            return false;
+        }
 
         const defaultField = DEFAULT_SETTINGS.inquiryActionNotesTargetField || 'Pending Edits';
         const targetField = (this.plugin.settings.inquiryActionNotesTargetField ?? defaultField).trim() || 'Pending Edits';
@@ -8899,7 +8925,7 @@ export class InquiryView extends ItemView {
         const targetFindings = orderedFindings.filter(finding => this.getFindingRole(finding) === 'target');
         const contextFindings = orderedFindings.filter(finding => this.getFindingRole(finding) === 'context');
 
-        this.summaryEl.textContent = this.getResultSummaryForMode(result, result.mode || this.state.mode);
+        this.summaryEl.textContent = this.getResultSummaryForMode(result, this.state.mode);
         const selectionText = selectionMode === 'focused'
             ? `Selection Mode · Focused · ${targetFindings.length} target · ${contextFindings.length} context`
             : 'Selection Mode · Discover';

@@ -919,7 +919,8 @@ export class OuterRingDragController {
                 },
             });
             reorderApplied = true;
-            const historySummary = `Moved ${sourceDescriptor} before ${targetDescriptor}`;
+            const historySummary = `${sourceDescriptor} | ${targetDescriptor}`;
+            const noticeText = `${sourceDescriptor} before ${targetDescriptor}`;
             await this.recordRecentMove({
                 itemType: sourceType,
                 filePath: sourcePath,
@@ -932,7 +933,7 @@ export class OuterRingDragController {
                 crossedActs: actChanged,
                 rippleRename,
             });
-            new Notice(historySummary, 2000);
+            new Notice(noticeText, 2000);
             await this.runRippleRenameIfEnabled((message) => modal.updateProgress(message));
             modal.updateProgress('Refreshing timeline...');
             // Small delay to allow Obsidian's metadata cache to update before refresh
@@ -1111,6 +1112,9 @@ export class OuterRingDragController {
                 },
             });
             reorderApplied = true;
+            const historySummary = target.isOuterRing
+                ? `${sourceDescriptor} | Act ${targetActNumber}`
+                : `${sourceDescriptor} | Act ${targetActNumber} • ${targetSubplotName}`;
             await this.recordRecentMove({
                 itemType: sourceType,
                 filePath: this.sourcePath,
@@ -1118,7 +1122,7 @@ export class OuterRingDragController {
                 itemLabel: this.getLabelFromBasename(movedEntry.basename, sourceType),
                 sourceContext,
                 destinationContext,
-                summary: noticeText,
+                summary: historySummary,
                 renameCount: renumberUpdates.length,
                 crossedActs: actChanged,
                 rippleRename,

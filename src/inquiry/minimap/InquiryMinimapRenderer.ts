@@ -207,7 +207,7 @@ export class InquiryMinimapRenderer {
     private minimapBackboneGroup?: SVGGElement;
     private minimapBackboneGlow?: SVGRectElement;
     private minimapBackboneShine?: SVGRectElement;
-    private minimapBackboneCachedOverlay?: SVGRectElement;
+    // minimapBackboneCachedOverlay removed — cache shown on token cap bar only.
     private minimapBackboneClip?: SVGClipPathElement;
     private minimapBackboneClipRect?: SVGRectElement;
     private minimapBackboneLayout?: {
@@ -398,13 +398,7 @@ export class InquiryMinimapRenderer {
             this.minimapBackboneShine = shine;
         }
 
-        let cachedOverlay = this.minimapBackboneCachedOverlay;
-        if (!cachedOverlay) {
-            cachedOverlay = createSvgElement('rect');
-            cachedOverlay.classList.add('ert-inquiry-minimap-backbone-cached', 'ert-hidden');
-            backboneGroup.appendChild(cachedOverlay);
-            this.minimapBackboneCachedOverlay = cachedOverlay;
-        }
+        // Backbone cached overlay removed — cache status shown on token cap bar only.
 
         let passGroup = this.minimapPassIndicatorGroup;
         if (!passGroup) {
@@ -440,13 +434,7 @@ export class InquiryMinimapRenderer {
         shine.setAttribute('height', String(shineHeight));
         shine.setAttribute('rx', String(Math.round(shineHeight / 2)));
         shine.setAttribute('ry', String(Math.round(shineHeight / 2)));
-        cachedOverlay.setAttribute('x', baselineStart.toFixed(2));
-        cachedOverlay.setAttribute('y', String(glowY - 1));
-        cachedOverlay.setAttribute('width', '0');
-        cachedOverlay.setAttribute('height', String(glowHeight + 2));
-        cachedOverlay.setAttribute('rx', String(Math.round((glowHeight + 2) / 2)));
-        cachedOverlay.setAttribute('ry', String(Math.round((glowHeight + 2) / 2)));
-        cachedOverlay.classList.add('ert-hidden');
+        // Backbone cached overlay layout removed — cache shown on token cap bar only.
 
         if (passGroup) {
             passGroup.setAttribute('transform', `translate(${Math.round(baselineStart + length + 10)} 0)`);
@@ -693,8 +681,7 @@ export class InquiryMinimapRenderer {
     resetPressureGauge(): void {
         this.minimapBackboneGlow?.setAttribute('width', '0');
         this.minimapBackboneShine?.setAttribute('width', '0');
-        this.minimapBackboneCachedOverlay?.classList.add('ert-hidden');
-        this.minimapBackboneCachedOverlay?.setAttribute('width', '0');
+        // Backbone cached overlay removed — reset no longer needed.
         this.minimapBackboneGroup?.classList.remove(
             'is-pressure-normal',
             'is-pressure-amber',
@@ -925,35 +912,7 @@ export class InquiryMinimapRenderer {
         }
     }
 
-    private updateBackboneCachedOverlay(
-        progress: InquiryRunProgressEvent | null,
-        advanced: AIRunAdvancedContext | null
-    ): void {
-        if (!this.minimapBackboneCachedOverlay || !this.minimapBackboneLayout) return;
-        const cachedRatio = advanced?.cachedStableRatio;
-        const cachedTokens = advanced?.cachedStableTokens;
-        const hasRealCacheMetric = typeof cachedRatio === 'number'
-            && Number.isFinite(cachedRatio)
-            && cachedRatio > 0
-            && typeof cachedTokens === 'number'
-            && Number.isFinite(cachedTokens)
-            && cachedTokens > 0
-            && advanced?.reuseState === 'warm';
-        if (progress || !hasRealCacheMetric) {
-            this.minimapBackboneCachedOverlay.classList.add('ert-hidden');
-            this.minimapBackboneCachedOverlay.setAttribute('width', '0');
-            return;
-        }
-        const overlayWidth = this.minimapBackboneLayout.length * Math.min(cachedRatio, 1);
-        if (overlayWidth < 4) {
-            this.minimapBackboneCachedOverlay.classList.add('ert-hidden');
-            this.minimapBackboneCachedOverlay.setAttribute('width', '0');
-            return;
-        }
-        this.minimapBackboneCachedOverlay.classList.remove('ert-hidden');
-        this.minimapBackboneCachedOverlay.setAttribute('x', this.minimapBackboneLayout.startX.toFixed(2));
-        this.minimapBackboneCachedOverlay.setAttribute('width', overlayWidth.toFixed(2));
-    }
+    // updateBackboneCachedOverlay removed — cache status shown on token cap bar only.
 
     private updateExecutionPassSegments(
         totalPassCount: number,
@@ -1032,7 +991,7 @@ export class InquiryMinimapRenderer {
         const overCapacityTone: 'amber' | 'red' = usesMultiPassPackaging ? 'amber' : 'red';
         this.updateTokenCapBar(clamped, isOverCapacity, overCapacityTone, passPlan.displayPassCount, styleSource, advancedContext, readinessUi.safeInputBudget, formatTokenEstimate);
         this.updateExecutionPassSegments(passPlan.displayPassCount, progress, styleSource);
-        this.updateBackboneCachedOverlay(progress, advancedContext);
+        // Backbone cached overlay removed — cache shown on token cap bar only.
         this.minimapBaseline.style.stroke = '';
         this.minimapEndCapStart?.style.removeProperty('fill');
         this.minimapEndCapEnd?.style.removeProperty('fill');

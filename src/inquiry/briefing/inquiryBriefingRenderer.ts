@@ -17,6 +17,7 @@ export function renderInquiryBriefingSessionItem(args: {
     status: string;
     blocked: boolean;
     pendingEditsApplied: boolean;
+    pendingEditsEmpty: boolean;
     autoPopulateEnabled: boolean;
     fieldLabel: string;
     hasBriefPath: boolean;
@@ -45,17 +46,23 @@ export function renderInquiryBriefingSessionItem(args: {
     const actionGroup = actionRow.createDiv({ cls: 'ert-inquiry-briefing-actions' });
     const pendingLabel = args.pendingEditsApplied
         ? `${args.fieldLabel} updated`
-        : (args.autoPopulateEnabled ? `Update ${args.fieldLabel}` : `Write to ${args.fieldLabel}`);
+        : args.pendingEditsEmpty
+            ? `No pending edits`
+            : (args.autoPopulateEnabled ? `Update ${args.fieldLabel}` : `Write to ${args.fieldLabel}`);
     const updateButton = actionGroup.createEl('button', {
         cls: 'ert-inquiry-briefing-update',
         attr: {
             'aria-label': pendingLabel
         }
     });
-    setIcon(updateButton, args.pendingEditsApplied ? 'check' : 'plus');
-    updateButton.disabled = args.blocked;
+    const pendingIcon = args.pendingEditsApplied ? 'check' : args.pendingEditsEmpty ? 'minus' : 'plus';
+    setIcon(updateButton, pendingIcon);
+    updateButton.disabled = args.blocked || args.pendingEditsEmpty;
     if (args.pendingEditsApplied) {
         updateButton.classList.add('is-applied');
+    }
+    if (args.pendingEditsEmpty) {
+        updateButton.classList.add('is-empty');
     }
 
     let openButton: HTMLButtonElement | undefined;

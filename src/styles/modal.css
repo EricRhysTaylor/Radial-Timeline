@@ -526,10 +526,33 @@
   border-color: rgba(255, 255, 255, 0.18);
 }
 
+.rt-drag-confirm-history-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.rt-drag-confirm-history-icon {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  color: var(--text-muted);
+  opacity: 0.82;
+  margin-top: 2px;
+}
+
+.rt-drag-confirm-history-icon svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
 .rt-drag-confirm-history-summary {
   font-size: 0.88em;
   line-height: 1.35;
   color: var(--text-normal);
+  min-width: 0;
 }
 
 .rt-drag-confirm-history-meta {

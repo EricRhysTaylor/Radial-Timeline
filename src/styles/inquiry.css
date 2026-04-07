@@ -465,7 +465,7 @@
 }
 
 .ert-inquiry-minimap-backbone-glow {
-  fill: var(--ert-inquiry-ai-warning);
+  fill: url(#ert-inquiry-minimap-backbone-grad);
   opacity: 1;
   filter: none;
   mix-blend-mode: normal;
@@ -478,9 +478,7 @@
 }
 
 .ert-inquiry-minimap-backbone-cached {
-  fill: url(#ert-inquiry-minimap-cached-hatch);
-  opacity: 1;
-  pointer-events: none;
+  display: none;
 }
 
 .ert-inquiry-minimap-backbone.is-pressure-over-budget .ert-inquiry-minimap-backbone-glow {
@@ -3033,6 +3031,17 @@ body.rt-modal-open .ert-inquiry-svg {
 }
 
 .ert-inquiry-briefing-update.is-applied:hover {
+  color: var(--text-faint);
+  background: transparent;
+}
+
+.ert-inquiry-briefing-update.is-empty {
+  color: var(--text-faint);
+  cursor: default;
+  opacity: 0.45;
+}
+
+.ert-inquiry-briefing-update.is-empty:hover {
   color: var(--text-faint);
   background: transparent;
 }

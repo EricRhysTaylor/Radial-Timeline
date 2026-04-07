@@ -387,12 +387,35 @@ body.rt-modal-open .radial-timeline-container * {
   min-width: 0;
 }
 
+.rt-recent-moves__header-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+}
+
+.rt-recent-moves__icon {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  color: color-mix(in srgb, var(--text-muted) 92%, transparent);
+  opacity: 0.72;
+  margin-top: 1px;
+}
+
+.rt-recent-moves__icon svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
 .rt-recent-moves__summary {
   font-size: 15px;
   line-height: 1.16;
   color: color-mix(in srgb, var(--text-muted) 96%, transparent);
   opacity: 0.72;
   overflow-wrap: anywhere;
+  min-width: 0;
 }
 
 .rt-recent-moves__meta {

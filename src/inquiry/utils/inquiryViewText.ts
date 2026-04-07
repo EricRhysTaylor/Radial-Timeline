@@ -237,6 +237,8 @@ export const renderInquiryBrief = (brief: InquiryBriefModel): string => {
         brief.pendingActions.forEach(action => {
             lines.push(`- ${action}`);
         });
+    } else if (brief.findings.length) {
+        lines.push('', '## Pending Author Actions', 'No pending edit actions were generated for this run.');
     }
 
     lines.push('', brief.logTitle
