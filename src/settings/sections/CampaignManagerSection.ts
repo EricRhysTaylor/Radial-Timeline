@@ -722,9 +722,10 @@ function renderCampaignDetails(
             fitSelectToSelectedLabel(dropdown.selectEl, { minPx: 72, extraPx: 16 });
         });
 
-    // Refresh threshold — inline sub-section of frequency setting (manual only)
+    // Refresh threshold — subordinate to frequency setting (manual only)
     const isManual = !campaign.updateFrequency || campaign.updateFrequency === 'manual';
-    const refreshWrap = freqSetting.settingEl.createDiv({ cls: 'ert-campaign-refresh-inline' });
+    const refreshWrap = details.createDiv({ cls: 'ert-campaign-refresh-inline' });
+    details.insertBefore(refreshWrap, freqSetting.settingEl.nextSibling);
     if (!isManual) refreshWrap.addClass('ert-hidden');
 
     refreshWrap.createEl('hr');

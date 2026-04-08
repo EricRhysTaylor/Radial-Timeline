@@ -770,12 +770,17 @@
   letter-spacing: 0.10em;
   text-transform: uppercase;
   fill: var(--text-muted);
+  text-decoration: underline;
+  text-decoration-style: dashed;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--text-faint);
   pointer-events: auto;
   cursor: pointer;
 }
 
 .ert-inquiry-cc-corpus-title:hover {
   fill: var(--text-normal);
+  text-decoration-color: var(--text-muted);
 }
 
 .ert-inquiry-cc-label {

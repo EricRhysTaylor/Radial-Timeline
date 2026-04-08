@@ -82,7 +82,6 @@ export class RadialTimelineView extends ItemView {
     // Store event handler references for clean removal
     private normalEventHandlers: Map<string, EventListener> = new Map();
     private gossamerEventHandlers: Map<string, EventListener> = new Map();
-    private gossamerRunsPopoverOpen = false;
 
     // Expose a safe registrar for Gossamer handlers so external modules can record svg-level listeners
     public registerGossamerHandler(key: string, handler: EventListener): void {
@@ -994,11 +993,9 @@ export class RadialTimelineView extends ItemView {
         const panelX = viewBoxMin;
         const panelY = viewBoxMin + 24;
         const panelWidth = 352;
-        const legendHeight = 12 + (Math.min(visibleRuns.length, 4) * 28);
-        const popoverHeight = this.gossamerRunsPopoverOpen
-            ? Math.min(320, 28 + (runs.length * 34))
-            : 0;
-        const panelHeight = 34 + legendHeight + (this.gossamerRunsPopoverOpen ? popoverHeight + 8 : 0);
+        const displayedRuns = runs.slice().reverse().slice(0, 15);
+        const listHeight = 8 + (displayedRuns.length * 30);
+        const panelHeight = 44 + listHeight;
 
         const foreignObject = document.createElementNS(svgNs, 'foreignObject');
         foreignObject.setAttribute('x', String(panelX));
@@ -1015,24 +1012,16 @@ export class RadialTimelineView extends ItemView {
 
         const button = document.createElementNS(xhtmlNs, 'div') as HTMLDivElement;
         button.className = 'rt-gossamer-runs__button';
-        button.tabIndex = 0;
-        button.setAttribute('role', 'button');
-        button.setAttribute('aria-label', 'Toggle Gossamer runs');
-        button.setAttribute('aria-expanded', this.gossamerRunsPopoverOpen ? 'true' : 'false');
         const buttonLabel = document.createElementNS(xhtmlNs, 'span');
-        buttonLabel.textContent = `${runs.length} Runs`;
+        buttonLabel.textContent = `${runs.length} RUNS`;
         button.appendChild(buttonLabel);
-        const buttonIcon = document.createElementNS(xhtmlNs, 'span');
-        buttonIcon.className = 'rt-gossamer-runs__button-icon';
-        setIcon(buttonIcon as unknown as HTMLElement, this.gossamerRunsPopoverOpen ? 'chevron-up' : 'chevron-down');
-        button.appendChild(buttonIcon);
         controlsRow.appendChild(button);
 
         const showAllRow = document.createElementNS(xhtmlNs, 'label');
         showAllRow.className = 'rt-gossamer-runs__show-all';
         const showAllCheckbox = document.createElementNS(xhtmlNs, 'input') as HTMLInputElement;
         showAllCheckbox.type = 'checkbox';
-        showAllCheckbox.checked = !this.plugin.gossamerLatestOnly;
+        showAllCheckbox.checked = visibleRuns.length === runs.length;
         showAllRow.appendChild(showAllCheckbox);
         const showAllText = document.createElementNS(xhtmlNs, 'span');
         showAllText.textContent = 'Show all';
@@ -1040,80 +1029,53 @@ export class RadialTimelineView extends ItemView {
         controlsRow.appendChild(showAllRow);
         panel.appendChild(controlsRow);
 
-        const legend = document.createElementNS(xhtmlNs, 'div');
-        legend.className = 'rt-gossamer-runs__legend rt-gossamer-runs__legend--single';
-        visibleRuns.slice().reverse().forEach((record, index) => {
-            legend.appendChild(this.buildGossamerLegendRow(record, index === 0));
+        const list = document.createElementNS(xhtmlNs, 'div');
+        list.className = 'rt-gossamer-runs__list rt-gossamer-runs__list--inline';
+        displayedRuns.forEach((record) => {
+            list.appendChild(this.buildGossamerRunToggleRow(record));
         });
-        panel.appendChild(legend);
+        panel.appendChild(list);
 
-        if (this.gossamerRunsPopoverOpen) {
-            const popover = document.createElementNS(xhtmlNs, 'div');
-            popover.className = 'rt-gossamer-runs__popover';
-            const list = document.createElementNS(xhtmlNs, 'div');
-            list.className = 'rt-gossamer-runs__list';
-            runs.slice().reverse().forEach((record) => {
-                list.appendChild(this.buildGossamerRunToggleRow(record));
-            });
-            popover.appendChild(list);
-
-            panel.appendChild(popover);
-        }
-
-        this.registerDomEvent(showAllCheckbox, 'change', () => {
-            this.plugin.gossamerLatestOnly = !showAllCheckbox.checked;
-            if (this.plugin.gossamerLatestOnly) {
-                this.plugin.gossamerVisibleRunIds = [];
-            }
-            this.lastSnapshot = null;
-            this.refreshTimeline();
-        });
-
-        foreignObject.appendChild(panel);
-        svg.appendChild(foreignObject);
-
-        const togglePopover = () => {
-            this.gossamerRunsPopoverOpen = !this.gossamerRunsPopoverOpen;
-            this.lastSnapshot = null;
-            this.refreshTimeline();
+        const schedulePanelRefresh = () => {
+            window.setTimeout(() => {
+                this.lastSnapshot = null;
+                this.refreshTimeline();
+            }, 0);
+        };
+        const stopRunsEvent = (event: Event) => {
+            event.stopPropagation();
         };
 
-        this.registerDomEvent(button, 'click', (event) => {
+        this.registerDomEvent(panel, 'click', stopRunsEvent);
+        this.registerDomEvent(panel, 'mousedown', stopRunsEvent);
+        this.registerDomEvent(panel, 'mouseup', stopRunsEvent);
+        this.registerDomEvent(panel, 'pointerdown', stopRunsEvent);
+        this.registerDomEvent(panel, 'pointerup', stopRunsEvent);
+
+        this.registerDomEvent(showAllCheckbox, 'change', (event) => {
             event.stopPropagation();
-            togglePopover();
-        });
-        this.registerDomEvent(button, 'keydown', (event: KeyboardEvent) => {
-            if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault();
-                event.stopPropagation();
-                togglePopover();
+            if (showAllCheckbox.checked) {
+                this.plugin.gossamerLatestOnly = false;
+                this.plugin.gossamerVisibleRunIds = runs.map((run) => run.id);
+            } else {
+                this.plugin.gossamerLatestOnly = true;
+                this.plugin.gossamerVisibleRunIds = [];
             }
+            schedulePanelRefresh();
         });
-    }
+        this.registerDomEvent(showAllCheckbox, 'click', stopRunsEvent);
+        this.registerDomEvent(showAllCheckbox, 'mousedown', stopRunsEvent);
+        this.registerDomEvent(showAllCheckbox, 'mouseup', stopRunsEvent);
+        this.registerDomEvent(showAllCheckbox, 'pointerdown', stopRunsEvent);
+        this.registerDomEvent(showAllCheckbox, 'pointerup', stopRunsEvent);
+        this.registerDomEvent(showAllRow, 'click', stopRunsEvent);
+        this.registerDomEvent(showAllRow, 'mousedown', stopRunsEvent);
+        this.registerDomEvent(showAllRow, 'mouseup', stopRunsEvent);
+        this.registerDomEvent(showAllRow, 'pointerdown', stopRunsEvent);
+        this.registerDomEvent(showAllRow, 'pointerup', stopRunsEvent);
 
-    private buildGossamerLegendRow(record: GossamerRunRecord, isPrimary: boolean): HTMLElement {
-        const xhtmlNs = 'http://www.w3.org/1999/xhtml';
-        const row = document.createElementNS(xhtmlNs, 'div');
-        row.className = 'rt-gossamer-runs__legend-row';
-
-        const swatch = document.createElementNS(xhtmlNs, 'span');
-        swatch.className = 'rt-gossamer-runs__swatch';
-        if (!isPrimary) swatch.classList.add('is-secondary');
-        row.appendChild(swatch);
-
-        const label = document.createElementNS(xhtmlNs, 'span');
-        label.className = 'rt-gossamer-runs__legend-label';
-        label.textContent = record.label;
-        row.appendChild(label);
-
-        if (record.isLatest) {
-            const badge = document.createElementNS(xhtmlNs, 'span');
-            badge.className = 'rt-gossamer-runs__latest';
-            badge.textContent = 'Latest';
-            row.appendChild(badge);
-        }
-
-        return row;
+        foreignObject.appendChild(panel);
+        svg.insertBefore(foreignObject, svg.firstChild);
     }
 
     private buildGossamerRunToggleRow(record: GossamerRunRecord): HTMLElement {
@@ -1123,9 +1085,11 @@ export class RadialTimelineView extends ItemView {
 
         const checkbox = document.createElementNS(xhtmlNs, 'input') as HTMLInputElement;
         checkbox.type = 'checkbox';
-        const selectedIds = this.plugin.gossamerVisibleRunIds.length > 0
-            ? this.plugin.gossamerVisibleRunIds
-            : this.plugin.gossamerRunInventory.map((run) => run.id);
+        const selectedIds = this.plugin.gossamerLatestOnly
+            ? this.plugin.gossamerRunInventory.filter((run) => run.isLatest).map((run) => run.id)
+            : (this.plugin.gossamerVisibleRunIds.length > 0
+                ? this.plugin.gossamerVisibleRunIds
+                : this.plugin.gossamerRunInventory.map((run) => run.id));
         checkbox.checked = selectedIds.includes(record.id);
         row.appendChild(checkbox);
 
@@ -1140,11 +1104,31 @@ export class RadialTimelineView extends ItemView {
             row.appendChild(badge);
         }
 
-        this.registerDomEvent(checkbox, 'change', () => {
+        const schedulePanelRefresh = () => {
+            window.setTimeout(() => {
+                this.lastSnapshot = null;
+                this.refreshTimeline();
+            }, 0);
+        };
+        const stopRunsEvent = (event: Event) => {
+            event.stopPropagation();
+        };
+
+        this.registerDomEvent(row, 'click', stopRunsEvent);
+        this.registerDomEvent(row, 'mousedown', stopRunsEvent);
+        this.registerDomEvent(row, 'mouseup', stopRunsEvent);
+        this.registerDomEvent(row, 'pointerdown', stopRunsEvent);
+        this.registerDomEvent(row, 'pointerup', stopRunsEvent);
+
+        this.registerDomEvent(checkbox, 'change', (event) => {
+            event.stopPropagation();
             const allIds = this.plugin.gossamerRunInventory.map((run) => run.id);
-            const nextSelected = this.plugin.gossamerVisibleRunIds.length > 0
-                ? [...this.plugin.gossamerVisibleRunIds]
-                : [...allIds];
+            const latestIds = this.plugin.gossamerRunInventory.filter((run) => run.isLatest).map((run) => run.id);
+            const nextSelected = this.plugin.gossamerLatestOnly
+                ? [...latestIds]
+                : (this.plugin.gossamerVisibleRunIds.length > 0
+                    ? [...this.plugin.gossamerVisibleRunIds]
+                    : [...allIds]);
 
             if (checkbox.checked) {
                 if (!nextSelected.includes(record.id)) nextSelected.push(record.id);
@@ -1159,9 +1143,13 @@ export class RadialTimelineView extends ItemView {
 
             this.plugin.gossamerLatestOnly = false;
             this.plugin.gossamerVisibleRunIds = nextSelected;
-            this.lastSnapshot = null;
-            this.refreshTimeline();
+            schedulePanelRefresh();
         });
+        this.registerDomEvent(checkbox, 'click', stopRunsEvent);
+        this.registerDomEvent(checkbox, 'mousedown', stopRunsEvent);
+        this.registerDomEvent(checkbox, 'mouseup', stopRunsEvent);
+        this.registerDomEvent(checkbox, 'pointerdown', stopRunsEvent);
+        this.registerDomEvent(checkbox, 'pointerup', stopRunsEvent);
 
         return row;
     }

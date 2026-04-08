@@ -8696,8 +8696,8 @@
 }
 
 .ert-ui.ert-scope--settings .ert-campaign-refresh-inline {
-  width: 100%;
-  margin-top: var(--ert-gap-sm);
+  margin-top: calc(-1 * var(--ert-gap-xs));
+  padding: 0 var(--ert-gap-md) var(--ert-gap-sm);
 }
 
 .ert-ui.ert-scope--settings .ert-campaign-refresh-inline hr {
