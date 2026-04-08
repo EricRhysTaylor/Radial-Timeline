@@ -14,6 +14,7 @@ import {
     buildCampaignEmbedPath,
     normalizeAprExportFormat,
     type AprExportFormat,
+    type AprExportQuality,
     type AprSize
 } from '../../utils/aprPaths';
 import { resolveBookTitle, resolveProjectPath, validateAndRememberProjectPath } from '../../renderer/apr/aprHelpers';
@@ -650,7 +651,7 @@ function renderCampaignDetails(
 ): void {
     const details = parentRow.createDiv({ cls: `ert-campaign-details ${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
 
-    const freqSetting = details.createDiv({ cls: ['setting-item', 'ert-campaign-frequency-setting'] });
+    const freqSetting = details.createDiv({ cls: ['setting-item', 'ert-elementBlock', 'ert-campaign-frequency-setting'] });
     const freqRow = freqSetting.createDiv({ cls: 'ert-campaign-frequency-setting__row' });
     const freqInfo = freqRow.createDiv({ cls: 'ert-settingComposite__info' });
     freqInfo.createDiv({ cls: 'setting-item-name', text: 'Update frequency' });
@@ -989,16 +990,17 @@ function renderCampaignDetails(
     // Export Quality
     const exportQualitySetting = new Setting(details)
         .setName('Export quality')
-        .setDesc('Standard (1200px) for social media. Ultra (2400px) for print and high-DPI displays.')
+        .setDesc('Standard (1200px · ~150 KB) for social media. Ultra (2400px · ~400 KB) for high-DPI displays. Print (4800px · ~1.2 MB) for posters and physical media.')
         .addDropdown(drop => {
             drop.selectEl.addClass('ert-input', 'ert-input--lg');
             const globalQuality = plugin.settings.authorProgress?.defaults.aprExportQuality ?? 'standard';
             const latestCampaign = plugin.settings.authorProgress?.campaigns?.[index];
             const campaignQuality = latestCampaign?.aprExportQuality ?? campaign.aprExportQuality;
-            const defaultLabel = globalQuality === 'ultra' ? 'Ultra 2400px' : 'Standard 1200px';
+            const defaultLabel = globalQuality === 'print' ? 'Print 4800px' : globalQuality === 'ultra' ? 'Ultra 2400px' : 'Standard 1200px';
             drop.addOption('', `Default (${defaultLabel})`);
-            drop.addOption('standard', 'Standard (1200px)');
-            drop.addOption('ultra', 'Ultra (2400px)');
+            drop.addOption('standard', 'Standard (1200px · ~150 KB)');
+            drop.addOption('ultra', 'Ultra (2400px · ~400 KB)');
+            drop.addOption('print', 'Print (4800px · ~1.2 MB)');
             drop.setValue(campaignQuality ?? '');
             drop.onChange(async (val) => {
                 if (!plugin.settings.authorProgress?.campaigns) return;
@@ -1019,7 +1021,7 @@ function renderCampaignDetails(
                     teaserEnabled: target.teaserReveal?.enabled ?? true,
                     exportFormat: resolveCampaignExportFormat(target)
                 });
-                target.aprExportQuality = val === '' ? undefined : (val as 'standard' | 'ultra');
+                target.aprExportQuality = val === '' ? undefined : (val as AprExportQuality);
                 if (settings.autoUpdateExportPath && target.exportPath === oldDefaultPath) {
                     target.exportPath = buildCampaignEmbedPath({
                         bookTitle: resolvedBookTitle,

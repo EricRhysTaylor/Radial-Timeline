@@ -1597,7 +1597,7 @@
 .ert-ui.ert-scope--modal .ert-pillBtn.is-active {
   color: var(--ert-pill-hover-color);
   border-color: var(--ert-accent, var(--interactive-accent));
-  box-shadow: 0 0 8px color-mix(in srgb, var(--ert-accent, var(--interactive-accent)) 35%, transparent);
+  box-shadow: none;
 }
 
 .ert-ui.ert-scope--modal .ert-pillBtn--social {

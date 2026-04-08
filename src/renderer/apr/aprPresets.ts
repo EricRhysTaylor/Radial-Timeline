@@ -8,7 +8,7 @@
 
 export type AprSize = 'thumb' | 'small' | 'medium' | 'large';
 
-export type AprExportQuality = 'standard' | 'ultra';
+export type AprExportQuality = 'standard' | 'ultra' | 'print';
 
 export type AprPresetKey = 'xs100' | 'sm150' | 'md300' | 'lg450';
 
@@ -64,6 +64,7 @@ export const APR_SIZE_TO_PRESET: Record<AprSize, AprPresetKey> = {
 export const APR_EXPORT_PX: Record<AprExportQuality, number> = {
     standard: 1200,
     ultra: 2400,
+    print: 4800,
 };
 
 export function getAprPreset(sizeOrKey: AprSize | AprPresetKey): AprPreset {

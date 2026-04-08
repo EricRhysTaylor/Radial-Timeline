@@ -293,7 +293,7 @@ export interface BookLayoutOptions {
 export type AuthorProgressPublishTarget = 'folder' | 'github_pages' | 'note';
 export type AuthorProgressFrequency = 'manual' | 'daily' | 'weekly' | 'monthly';
 export type AprExportFormat = 'png' | 'svg';
-export type AprExportQuality = 'standard' | 'ultra';
+export type AprExportQuality = 'standard' | 'ultra' | 'print';
 
 export interface AuthorProgressDefaults {
     noteBehavior: 'preset' | 'custom';

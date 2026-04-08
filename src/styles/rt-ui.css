@@ -1268,7 +1268,7 @@
 .ert-ui.ert-scope--settings .ert-chip.is-active {
   background: color-mix(in srgb, var(--ert-accent) 20%, var(--ert-chip-bg) 80%);
   border-color: var(--ert-accent);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ert-accent) 15%, transparent);
+  box-shadow: none;
 }
 
 .ert-ui.ert-scope--settings .ert-previewFrame {
@@ -8698,6 +8698,7 @@
 .ert-ui.ert-scope--settings .ert-campaign-frequency-setting {
   display: block;
   padding-top: var(--ert-gap-sm);
+  width: 100%;
 }
 
 .ert-ui.ert-scope--settings .ert-campaign-frequency-setting__row {
@@ -8705,6 +8706,7 @@
   grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
   align-items: center;
   column-gap: var(--ert-gap-md);
+  width: 100%;
 }
 
 .ert-ui.ert-scope--settings .ert-campaign-frequency-setting__row + .ert-campaign-frequency-setting__row {
@@ -8718,6 +8720,7 @@
 
 .ert-ui.ert-scope--settings .ert-settingComposite__info {
   min-width: 0;
+  width: 100%;
 }
 
 .ert-ui.ert-scope--settings .ert-settingComposite__info .setting-item-name {
@@ -8732,6 +8735,9 @@
   justify-self: end;
   align-self: center;
   min-width: 0;
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
 }
 
 .ert-ui.ert-scope--settings .ert-campaign-refresh-controls {
@@ -8739,6 +8745,7 @@
   align-items: center;
   gap: var(--ert-gap-sm);
   width: min(100%, 420px);
+  max-width: 420px;
 }
 
 .ert-ui.ert-scope--settings .ert-campaign-refresh-controls input[type="range"] {
@@ -10519,6 +10526,8 @@
 /* Active state — standard */
 .ert-ui.ert-scope--settings .ert-pillBtn.is-active {
   color: var(--ert-pill-hover-color);
+  border-color: var(--ert-accent, var(--interactive-accent));
+  box-shadow: none;
 }
 
 .ert-ui.ert-scope--settings .ert-pillBtn.is-active .ert-pillBtn__icon svg {
@@ -10550,7 +10559,7 @@
 
 .ert-ui.ert-scope--settings .ert-pillBtn--pro:hover:not(:disabled),
 .ert-ui.ert-scope--settings .ert-pillBtn--pro.is-active {
-  box-shadow: 0 0 12px color-mix(in srgb, var(--ert-accent) 40%, transparent);
+  box-shadow: none;
   border-color: var(--ert-accent);
 }
 

@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Component, setIcon, TextComponent, normalizePath } from 'obsidian';
+import { App, Notice, PluginSettingTab, Component, setIcon, TextComponent, normalizePath } from 'obsidian';
 import { renderGeneralSection } from './sections/GeneralSection';
 import { renderCompletionEstimatePreview, renderPublicationSection } from './sections/PublicationSection';
 import { renderChronologueSection } from './sections/ChronologueSection';
@@ -420,7 +420,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                     panelParent.empty();
                     this.renderRefactorAlerts(panelParent);
                 }
-                new (await import('obsidian')).Notice('Template updated successfully');
+                new Notice('Template updated successfully');
             });
 
             // View YAML button (↓)

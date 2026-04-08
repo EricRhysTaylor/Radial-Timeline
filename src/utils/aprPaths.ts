@@ -1,7 +1,7 @@
 export type AprSize = 'thumb' | 'small' | 'medium' | 'large';
 export type AprFrequency = 'manual' | 'daily' | 'weekly' | 'monthly';
 export type AprExportFormat = 'png' | 'svg';
-export type AprExportQuality = 'standard' | 'ultra';
+export type AprExportQuality = 'standard' | 'ultra' | 'print';
 
 /**
  * APR Path Schema v2
@@ -58,7 +58,7 @@ export function normalizeAprExportFormat(value: unknown): AprExportFormat {
 
 /** Legacy size tokens used in v1 paths */
 const LEGACY_SIZES: AprSize[] = ['thumb', 'small', 'medium', 'large'];
-const QUALITY_TOKENS: AprExportQuality[] = ['standard', 'ultra'];
+const QUALITY_TOKENS: AprExportQuality[] = ['standard', 'ultra', 'print'];
 
 /**
  * Returns true if the path is a default/core APR path for the given book and mode.

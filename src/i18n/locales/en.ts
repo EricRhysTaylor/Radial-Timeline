@@ -1422,8 +1422,8 @@ export const en: TranslationKeys = {
                 dateTargetMode: 'Date Target Mode',
                 guidanceZero: 'Zero Mode (recommended): create a placeholder final scene note with a high prefix number (e.g., "60 The End") to set intended total scene count.',
                 guidanceDate: 'Date Mode: choose a start date and target completion date. For example, if you expect to take 10 months to write your book, set a target date that fits that timeline.',
-                publishStageAuto: 'Publish-stage progress (auto)',
-                guidancePublishStage: 'Using publish-stage progress.',
+                publishStageAuto: 'Publish Stage Progress (auto)',
+                guidancePublishStage: 'Using Publish Stage Progress.',
                 stageDetected: '{{stage}} DETECTED',
             },
             attribution: {

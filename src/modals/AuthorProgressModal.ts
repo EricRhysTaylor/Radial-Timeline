@@ -12,7 +12,8 @@ import {
     buildDefaultEmbedPath,
     isDefaultEmbedPath,
     normalizeAprExportFormat,
-    type AprExportFormat
+    type AprExportFormat,
+    type AprExportQuality
 } from '../utils/aprPaths';
 import { resolveBookTitle, resolveProjectPath } from '../renderer/apr/aprHelpers';
 import { isSceneItem } from '../utils/sceneHelpers';
@@ -24,7 +25,7 @@ export class AuthorProgressModal extends Modal {
     // Reveal options (derived from settings)
     private aprSize: 'thumb' | 'small' | 'medium' | 'large';
     private lastFullSize: 'small' | 'medium' | 'large' = 'medium';
-    private exportQuality: 'standard' | 'ultra' = 'standard';
+    private exportQuality: AprExportQuality = 'standard';
     private selectedTargetId: 'default' | string = 'default';
 
     private statusSectionEl: HTMLElement | null = null;
@@ -288,7 +289,7 @@ export class AuthorProgressModal extends Modal {
         projectPath: string;
         path: string;
         size: 'thumb' | 'small' | 'medium' | 'large';
-        exportQuality: 'standard' | 'ultra';
+        exportQuality: AprExportQuality;
         campaign?: AuthorProgressCampaign;
     }>, includeFormatColumn = false): void {
         if (targets.length === 0) return;
@@ -449,9 +450,10 @@ export class AuthorProgressModal extends Modal {
         const exportRow = container.createDiv({ cls: 'ert-apr-target-row' });
         exportRow.createSpan({ text: 'Export quality', cls: ERT_CLASSES.LABEL });
 
-        const qualityOptions: Array<{ quality: 'standard' | 'ultra'; label: string; detail: string }> = [
+        const qualityOptions: Array<{ quality: AprExportQuality; label: string; detail: string }> = [
             { quality: 'standard', label: 'Standard', detail: '1200px · ~150 KB' },
-            { quality: 'ultra', label: 'Ultra', detail: '2400px · ~400 KB' }
+            { quality: 'ultra', label: 'Ultra', detail: '2400px · ~400 KB' },
+            { quality: 'print', label: 'Print', detail: '4800px · ~1.2 MB' }
         ];
 
         const qualityButtonRow = exportRow.createDiv({ cls: `ert-apr-size-buttons ${ERT_CLASSES.INLINE}` });
@@ -747,7 +749,7 @@ export class AuthorProgressModal extends Modal {
         projectPath: string;
         path: string;
         size: 'thumb' | 'small' | 'medium' | 'large';
-        exportQuality: 'standard' | 'ultra';
+        exportQuality: AprExportQuality;
         campaign?: AuthorProgressCampaign;
     }> {
         const authorProgress = this.plugin.settings.authorProgress;
@@ -759,7 +761,7 @@ export class AuthorProgressModal extends Modal {
             projectPath: string;
             path: string;
             size: 'thumb' | 'small' | 'medium' | 'large';
-            exportQuality: 'standard' | 'ultra';
+            exportQuality: AprExportQuality;
             campaign?: AuthorProgressCampaign;
         }> = [];
 
@@ -819,7 +821,8 @@ export class AuthorProgressModal extends Modal {
         });
     }
 
-    private getQualityLabel(quality: 'standard' | 'ultra'): string {
+    private getQualityLabel(quality: AprExportQuality): string {
+        if (quality === 'print') return '4800px Print';
         return quality === 'ultra' ? '2400px Ultra' : '1200px Standard';
     }
 

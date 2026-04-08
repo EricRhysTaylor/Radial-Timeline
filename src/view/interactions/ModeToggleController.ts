@@ -1,3 +1,4 @@
+import { Notice } from 'obsidian';
 import { resetGossamerModeState } from '../../GossamerCommands';
 import type { ModeManager } from '../../modes/ModeManager';
 import { TimelineMode } from '../../modes/ModeDefinition';
@@ -203,11 +204,7 @@ async function switchToMode(view: ModeToggleView, modeId: string, modeSelector: 
         const fallbackMode = modeManager?.getCurrentMode?.() ?? view.plugin.settings.currentMode ?? 'narrative';
         updateModeSelectorState(modeSelector, fallbackMode);
         console.error(`[ModeToggle] Failed to switch to ${modeId}:`, error);
-        // Import Notice dynamically to avoid circular deps
-        try {
-            const { Notice } = await import('obsidian');
-            new Notice(`Could not switch to ${modeId} mode. Check the developer console for details.`, 6000);
-        } catch { /* Notice import failed — console.error above is the fallback */ }
+        new Notice(`Could not switch to ${modeId} mode. Check the developer console for details.`, 6000);
     }
 }
 
