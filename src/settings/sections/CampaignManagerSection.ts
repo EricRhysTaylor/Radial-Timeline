@@ -3,7 +3,7 @@
  * Allows managing multiple APR campaigns with independent refresh schedules
  */
 
-import { App, Setting, setIcon, setTooltip, ButtonComponent, Notice, Modal } from 'obsidian';
+import { App, Setting, setIcon, setTooltip, ButtonComponent, Notice, Modal, DropdownComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import type { AuthorProgressCampaign, AuthorProgressSettings, TeaserPreset, TeaserRevealLevel } from '../../types/settings';
 import { hasProFeatureAccess } from '../featureGate';
@@ -650,58 +650,62 @@ function renderCampaignDetails(
 ): void {
     const details = parentRow.createDiv({ cls: `ert-campaign-details ${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
 
-    const freqSetting = new Setting(details)
-        .setName('Update frequency')
-        .setDesc('How often to auto-update this campaign\'s embed file. "Manual" requires clicking the Publish button.')
-        .addDropdown(dropdown => {
-            dropdown.selectEl.addClass('ert-input', 'ert-input--fit-selected'); // SAFE: removed unprefixed 'dropdown' class
-            dropdown
-                .addOption('manual', 'Manual Only')
-                .addOption('daily', 'Daily')
-                .addOption('weekly', 'Weekly')
-                .addOption('monthly', 'Monthly')
-                .setValue(campaign.updateFrequency || 'manual')
-                .onChange(async (val) => {
-                    fitSelectToSelectedLabel(dropdown.selectEl, { minPx: 72, extraPx: 16 });
-                    if (!plugin.settings.authorProgress?.campaigns) return;
-                    const authorProgress = plugin.settings.authorProgress;
-                    const settings = authorProgress.defaults;
-                    if (!authorProgress.campaigns) return;
-                    const target = authorProgress.campaigns[index];
-                    const resolvedBookTitle = resolveCampaignBookTitle(
-                        authorProgress,
-                        target,
-                        plugin.settings.sourcePath
-                    );
-                    const oldDefaultPath = buildCampaignEmbedPath({
-                        bookTitle: resolvedBookTitle,
-                        campaignName: target.name,
-                        updateFrequency: target.updateFrequency,
-                        aprExportQuality: target.aprExportQuality ?? settings.aprExportQuality,
-                        teaserEnabled: target.teaserReveal?.enabled ?? true,
-                        exportFormat: resolveCampaignExportFormat(target)
-                    });
-                    target.updateFrequency = val as 'manual' | 'daily' | 'weekly' | 'monthly';
-                    if (settings.autoUpdateExportPath && target.exportPath === oldDefaultPath) {
-                        target.exportPath = buildCampaignEmbedPath({
-                            bookTitle: resolvedBookTitle,
-                            campaignName: target.name,
-                            updateFrequency: target.updateFrequency,
-                            aprExportQuality: target.aprExportQuality ?? settings.aprExportQuality,
-                            teaserEnabled: target.teaserReveal?.enabled ?? true,
-                            exportFormat: resolveCampaignExportFormat(target)
-                        });
-                    }
-                    await plugin.saveSettings();
-                    onUpdate();
+    const freqSetting = details.createDiv({ cls: ['setting-item', 'ert-campaign-frequency-setting'] });
+    const freqRow = freqSetting.createDiv({ cls: 'ert-campaign-frequency-setting__row' });
+    const freqInfo = freqRow.createDiv({ cls: 'ert-settingComposite__info' });
+    freqInfo.createDiv({ cls: 'setting-item-name', text: 'Update frequency' });
+    freqInfo.createDiv({
+        cls: 'setting-item-description',
+        text: 'How often to auto-update this campaign\'s embed file. "Manual" requires clicking the Publish button.'
+    });
+    const freqControl = freqRow.createDiv({ cls: 'ert-settingComposite__control' });
+    const frequencyDropdown = new DropdownComponent(freqControl);
+    frequencyDropdown.selectEl.addClass('ert-input', 'ert-input--fit-selected'); // SAFE: removed unprefixed 'dropdown' class
+    frequencyDropdown
+        .addOption('manual', 'Manual Only')
+        .addOption('daily', 'Daily')
+        .addOption('weekly', 'Weekly')
+        .addOption('monthly', 'Monthly')
+        .setValue(campaign.updateFrequency || 'manual')
+        .onChange(async (val) => {
+            fitSelectToSelectedLabel(frequencyDropdown.selectEl, { minPx: 72, extraPx: 16 });
+            if (!plugin.settings.authorProgress?.campaigns) return;
+            const authorProgress = plugin.settings.authorProgress;
+            const settings = authorProgress.defaults;
+            if (!authorProgress.campaigns) return;
+            const target = authorProgress.campaigns[index];
+            const resolvedBookTitle = resolveCampaignBookTitle(
+                authorProgress,
+                target,
+                plugin.settings.sourcePath
+            );
+            const oldDefaultPath = buildCampaignEmbedPath({
+                bookTitle: resolvedBookTitle,
+                campaignName: target.name,
+                updateFrequency: target.updateFrequency,
+                aprExportQuality: target.aprExportQuality ?? settings.aprExportQuality,
+                teaserEnabled: target.teaserReveal?.enabled ?? true,
+                exportFormat: resolveCampaignExportFormat(target)
+            });
+            target.updateFrequency = val as 'manual' | 'daily' | 'weekly' | 'monthly';
+            if (settings.autoUpdateExportPath && target.exportPath === oldDefaultPath) {
+                target.exportPath = buildCampaignEmbedPath({
+                    bookTitle: resolvedBookTitle,
+                    campaignName: target.name,
+                    updateFrequency: target.updateFrequency,
+                    aprExportQuality: target.aprExportQuality ?? settings.aprExportQuality,
+                    teaserEnabled: target.teaserReveal?.enabled ?? true,
+                    exportFormat: resolveCampaignExportFormat(target)
                 });
-            fitSelectToSelectedLabel(dropdown.selectEl, { minPx: 72, extraPx: 16 });
+            }
+            await plugin.saveSettings();
+            onUpdate();
         });
-    freqSetting.settingEl.addClass('ert-campaign-frequency-setting');
+    fitSelectToSelectedLabel(frequencyDropdown.selectEl, { minPx: 72, extraPx: 16 });
 
     // Refresh threshold — subordinate to frequency setting (manual only)
     const isManual = !campaign.updateFrequency || campaign.updateFrequency === 'manual';
-    const refreshWrap = freqSetting.settingEl.createDiv({ cls: 'ert-campaign-refresh-inline' });
+    const refreshWrap = freqSetting.createDiv({ cls: ['ert-campaign-frequency-setting__row', 'ert-campaign-frequency-setting__row--subordinate'] });
     if (!isManual) refreshWrap.addClass('ert-hidden');
     const refreshMin = 1;
     const refreshMax = 90;
@@ -709,12 +713,12 @@ function renderCampaignDetails(
         plugin.settings.authorProgress?.campaigns?.[index]?.refreshThresholdDays ?? campaign.refreshThresholdDays;
     const clampRefreshValue = (value: number) => Math.min(refreshMax, Math.max(refreshMin, Math.round(value)));
 
-    const refreshSettingRow = refreshWrap.createDiv({ cls: 'ert-campaign-refresh-subrow' });
-    const refreshInfo = refreshSettingRow.createDiv({ cls: 'setting-item-info' });
+    const refreshInfo = refreshWrap.createDiv({ cls: 'ert-settingComposite__info' });
+    refreshInfo.createDiv({ cls: 'setting-item-name', text: 'Refresh reminder threshold' });
     const refreshNote = refreshInfo.createDiv({ cls: 'setting-item-description' });
     refreshNote.setText(`Days before showing a refresh reminder in the timeline view. Currently: ${getRefreshValue()} days.`);
 
-    const refreshControl = refreshSettingRow.createDiv({ cls: 'setting-item-control ert-campaign-refresh-controls' });
+    const refreshControl = refreshWrap.createDiv({ cls: 'ert-settingComposite__control ert-campaign-refresh-controls' });
     const sliderEl = refreshControl.createEl('input', {
         type: 'range',
         attr: { min: String(refreshMin), max: String(refreshMax), step: '1', value: String(getRefreshValue()) }

@@ -401,7 +401,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                 cls: 'ert-iconBtn ert-refactor-alert__btn--update',
                 attr: { 'aria-label': 'Apply update automatically' }
             });
-            setIcon(autoUpdateBtn, 'refresh-cw');
+            setIcon(autoUpdateBtn, 'check');
             this.plugin.registerDomEvent(autoUpdateBtn, 'click', async () => {
                 const template = this.plugin.settings.sceneYamlTemplates?.advanced ?? '';
                 const updated = applyAlertMigrations(alert, template);

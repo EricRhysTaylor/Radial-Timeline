@@ -8695,68 +8695,50 @@
   color: var(--text-muted);
 }
 
-.ert-ui.ert-scope--settings .ert-campaign-refresh-inline {
-  flex-basis: 100%;
-  width: 100%;
-  margin-top: 0;
+.ert-ui.ert-scope--settings .ert-campaign-frequency-setting {
+  display: block;
   padding-top: var(--ert-gap-sm);
-  border-top: 1px solid var(--background-modifier-border);
+}
+
+.ert-ui.ert-scope--settings .ert-campaign-frequency-setting__row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
   align-items: center;
   column-gap: var(--ert-gap-md);
-  row-gap: 0;
 }
 
-.ert-ui.ert-scope--settings .ert-campaign-frequency-setting {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  column-gap: var(--ert-gap-md);
-  row-gap: var(--ert-gap-sm);
+.ert-ui.ert-scope--settings .ert-campaign-frequency-setting__row + .ert-campaign-frequency-setting__row {
+  margin-top: var(--ert-gap-sm);
+}
+
+.ert-ui.ert-scope--settings .ert-campaign-frequency-setting__row--subordinate {
   padding-top: var(--ert-gap-sm);
+  border-top: 1px solid var(--background-modifier-border);
 }
 
-.ert-ui.ert-scope--settings .ert-campaign-frequency-setting > .setting-item-info {
-  grid-column: 1;
-  grid-row: 1;
+.ert-ui.ert-scope--settings .ert-settingComposite__info {
   min-width: 0;
 }
 
-.ert-ui.ert-scope--settings .ert-campaign-frequency-setting > .setting-item-control {
-  grid-column: 2;
-  grid-row: 1;
-  justify-self: end;
-  align-self: center;
+.ert-ui.ert-scope--settings .ert-settingComposite__info .setting-item-name {
+  margin: 0 0 var(--ert-gap-2xs) 0;
 }
 
-.ert-ui.ert-scope--settings .ert-campaign-frequency-setting > .ert-campaign-refresh-inline {
-  grid-column: 1 / -1;
-  grid-row: 2;
-}
-
-.ert-ui.ert-scope--settings .ert-campaign-refresh-subrow {
-  display: contents;
-}
-
-.ert-ui.ert-scope--settings .ert-campaign-refresh-subrow .setting-item-info {
-  grid-column: 1;
-  min-width: 0;
-  padding-right: var(--ert-gap-sm);
-  align-items: center;
-}
-
-.ert-ui.ert-scope--settings .ert-campaign-refresh-subrow .setting-item-description {
+.ert-ui.ert-scope--settings .ert-settingComposite__info .setting-item-description {
   margin: 0;
 }
 
+.ert-ui.ert-scope--settings .ert-settingComposite__control {
+  justify-self: end;
+  align-self: center;
+  min-width: 0;
+}
+
 .ert-ui.ert-scope--settings .ert-campaign-refresh-controls {
-  grid-column: 2;
   display: flex;
   align-items: center;
   gap: var(--ert-gap-sm);
   width: min(100%, 420px);
-  justify-self: end;
 }
 
 .ert-ui.ert-scope--settings .ert-campaign-refresh-controls input[type="range"] {
