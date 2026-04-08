@@ -851,6 +851,11 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
         const coreStack = coreContent.createDiv({ cls: ERT_CLASSES.STACK });
         this.renderCoreHero(coreStack);
+
+        // Refactor alerts (shown at top when migrations are needed)
+        const alertsRow = coreStack.createDiv();
+        this.renderRefactorAlerts(alertsRow);
+
         const forceExpandCompletionPreview = this._forceExpandCoreCompletionPreview;
         this._forceExpandCoreCompletionPreview = false;
 
@@ -939,10 +944,6 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             { label: 'Chronology', target: chronologueSection },
             { label: 'Backdrop', target: backdropSection }
         ]);
-
-        // Refactor alerts (shown at top when migrations are needed)
-        const alertsRow = coreStack.createDiv();
-        this.renderRefactorAlerts(alertsRow);
 
         const inquirySection = inquiryBody.createDiv({
             cls: ERT_CLASSES.STACK,

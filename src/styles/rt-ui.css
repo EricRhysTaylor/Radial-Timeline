@@ -6350,7 +6350,7 @@
   padding: 0 14px;
   border-radius: 8px;
   cursor: pointer;
-  box-shadow: var(--ert-iconBtn-shadow);
+  box-shadow: none;
   overflow: visible;
 }
 
