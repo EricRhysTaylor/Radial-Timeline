@@ -340,6 +340,7 @@ export interface AuthorProgressDefaults {
     aprRtBadgeFontItalic?: boolean; // Italic for stage badge / RT mark (default: false)
     aprRtBadgeFontSize?: number;    // Font size for stage badge / RT mark (default: from preset)
     aprShowRtAttribution?: boolean; // Show RT attribution mark (Pro can disable)
+    aprStylingExpanded?: boolean; // Collapse state for the styling panel body
 
     // Identity & Branding
     bookTitleOverride?: string;

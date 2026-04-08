@@ -312,7 +312,8 @@ export function setupModeToggleController(view: ModeToggleView, svg: SVGSVGEleme
     MODE_OPTIONS.forEach(mode => {
         const modeElement = modeSelector.querySelector(`[data-mode="${mode.id}"]`);
         if (modeElement) {
-            view.registerDomEvent(modeElement as unknown as HTMLElement, 'click', async (e: MouseEvent) => {
+            const clickTarget = (modeElement.querySelector('.rt-document-bg') ?? modeElement) as unknown as HTMLElement;
+            view.registerDomEvent(clickTarget, 'click', async (e: MouseEvent) => {
                 e.stopPropagation();
                 await switchToMode(view, mode.id, modeSelector);
             });

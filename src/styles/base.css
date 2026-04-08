@@ -446,48 +446,94 @@ body.rt-modal-open .radial-timeline-container * {
   gap: 12px;
 }
 
-.rt-gossamer-runs__button {
+.rt-gossamer-runs button.rt-gossamer-runs__button {
+  all: unset;
+  appearance: none;
+  -webkit-appearance: none;
+  box-sizing: border-box;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-height: 28px;
-  padding: 4px 12px;
-  border: 1px dashed color-mix(in srgb, var(--interactive-accent) 42%, var(--background-modifier-border));
+  min-height: 32px;
+  padding: 6px 14px;
+  border-width: 1px;
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--interactive-accent) 58%, var(--background-modifier-border));
   border-radius: 999px;
   background: transparent;
+  background-color: transparent;
+  background-image: none;
   color: var(--text-normal);
   font-family: var(--font-monospace);
-  font-size: 14px;
-  line-height: 1;
+  font-size: 16px;
+  line-height: 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
   cursor: pointer;
+  box-shadow: none;
+  -webkit-box-shadow: none;
+  outline: none;
+  text-shadow: none;
+  filter: none;
+  transform: none;
 }
 
-.rt-gossamer-runs__button:hover {
+.rt-gossamer-runs button.rt-gossamer-runs__button:hover {
   border-color: color-mix(in srgb, var(--interactive-accent) 68%, var(--background-modifier-border));
+  background: transparent;
+  background-color: transparent;
+  background-image: none;
+  box-shadow: none;
+  -webkit-box-shadow: none;
+}
+
+.rt-gossamer-runs button.rt-gossamer-runs__button:focus,
+.rt-gossamer-runs button.rt-gossamer-runs__button:focus-visible,
+.rt-gossamer-runs button.rt-gossamer-runs__button:active {
+  background: transparent;
+  background-color: transparent;
+  background-image: none;
+  box-shadow: none;
+  -webkit-box-shadow: none;
+  outline: none;
+  border-color: color-mix(in srgb, var(--interactive-accent) 72%, var(--background-modifier-border));
 }
 
 .rt-gossamer-runs__button-icon {
   display: inline-flex;
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
 }
 
 .rt-gossamer-runs__button-icon svg {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
 }
 
-.rt-gossamer-runs__summary {
-  font-size: 14px;
-  line-height: 1.2;
-  color: var(--text-muted);
+.rt-gossamer-runs__show-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-monospace);
+  font-size: 15px;
+  line-height: 16px;
+  color: color-mix(in srgb, var(--text-muted) 96%, transparent);
+  opacity: 0.72;
   white-space: nowrap;
+}
+
+.rt-gossamer-runs__show-all input[type="checkbox"] {
+  margin: 0;
 }
 
 .rt-gossamer-runs__legend {
   display: flex;
   flex-direction: column;
   gap: 5px;
+}
+
+.rt-gossamer-runs__legend--single {
+  gap: 6px;
 }
 
 .rt-gossamer-runs__legend-row {
@@ -510,19 +556,21 @@ body.rt-modal-open .radial-timeline-container * {
 
 .rt-gossamer-runs__legend-label {
   min-width: 0;
-  font-size: 13px;
-  line-height: 1.2;
-  color: var(--text-muted);
+  font-size: 17px;
+  line-height: 18px;
+  color: color-mix(in srgb, var(--text-muted) 96%, transparent);
+  opacity: 0.72;
   overflow-wrap: anywhere;
 }
 
 .rt-gossamer-runs__latest {
   flex: 0 0 auto;
-  font-size: 11px;
-  line-height: 1;
+  font-size: 14px;
+  line-height: 14px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--text-faint);
+  color: color-mix(in srgb, var(--text-faint) 90%, transparent);
+  opacity: 0.68;
 }
 
 .rt-gossamer-runs__popover {
@@ -533,20 +581,6 @@ body.rt-modal-open .radial-timeline-container * {
   border: 1px dashed color-mix(in srgb, var(--interactive-accent) 42%, var(--background-modifier-border));
   border-radius: 12px;
   background: transparent;
-}
-
-.rt-gossamer-runs__divider {
-  height: 1px;
-  background: color-mix(in srgb, var(--background-modifier-border) 92%, transparent);
-}
-
-.rt-gossamer-runs__section-title {
-  font-family: var(--font-monospace);
-  font-size: 11px;
-  line-height: 1;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-muted);
 }
 
 .rt-gossamer-runs__list {
@@ -563,8 +597,8 @@ body.rt-modal-open .radial-timeline-container * {
   align-items: center;
   gap: 8px;
   font-family: var(--font-monospace);
-  font-size: 13px;
-  line-height: 1.2;
+  font-size: 15px;
+  line-height: 16px;
   color: var(--text-normal);
 }
 

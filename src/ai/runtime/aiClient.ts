@@ -5,7 +5,7 @@ import { mapErrorToUserMessage, mapProviderFailureToError, MalformedJsonError } 
 import { compilePrompt } from '../prompts/compilePrompt';
 import { composeEnvelope, CACHE_BREAK_DELIMITER } from '../prompts/composeEnvelope';
 import { buildOutputRulesText } from '../prompts/outputRules';
-import { modelSupportsSystemRole } from '../../api/providerCapabilities';
+import { modelSupportsSystemRole, sanitizeDispatchParams, type AiProvider, type ProviderDispatchParams } from '../../api/providerCapabilities';
 import { ModelRegistry } from '../registry/modelRegistry';
 import { findSnapshotModel, loadProviderSnapshot, type ProviderSnapshotLoadResult } from '../registry/providerSnapshot';
 import { cacheResolvedModel } from '../../utils/modelResolver';
@@ -604,7 +604,7 @@ export class AIClient {
             thinkingBudgetTokens: caps.thinkingBudgetTokens,
             citationsEnabled: caps.citationsEnabled,
             evidenceDocuments: estimate.useDocumentBlocks ? estimate.evidenceDocuments : undefined
-        }, request.returnType, caps);
+        }, request.returnType, caps, modelSelection.model.constraints);
         recordResolvedAlias(execution.aiModelRequested, execution.aiModelResolved);
 
         if (provider === 'openai' && execution.aiTransportLane) {
@@ -677,7 +677,7 @@ export class AIClient {
                         topP: estimate.topP,
                         jsonSchema: request.responseSchema,
                         jsonStrict: estimate.jsonStrict
-                    }, request.returnType, caps);
+                    }, request.returnType, caps, modelSelection.model.constraints);
 
                     if (retry.aiStatus === 'success' && retry.content) {
                         recordResolvedAlias(retry.aiModelRequested, retry.aiModelResolved);
@@ -760,49 +760,59 @@ export class AIClient {
 
     private async execute(
         provider: AIProvider,
-        params: {
-            modelId: string;
-            systemPrompt?: string | null;
-            userPrompt: string;
-            maxOutputTokens: number;
-            temperature?: number;
-            topP?: number;
-            jsonSchema?: Record<string, unknown>;
-            jsonStrict?: boolean;
-            thinkingBudgetTokens?: number;
-            citationsEnabled?: boolean;
-            evidenceDocuments?: { title: string; content: string }[];
-        },
+        params: ProviderDispatchParams,
         returnType: 'text' | 'json',
-        _caps: ComputedCaps
+        _caps: ComputedCaps,
+        modelConstraints?: { cacheVsCitationsExclusive?: boolean }
     ): Promise<ProviderExecutionResult> {
+        // Central sanitization — authoritative enforcement point.
+        // Provider adapters receive only sanitized params.
+        const providerId = provider.id as AiProvider;
+        const { params: sanitized, notes } = sanitizeDispatchParams(
+            providerId, params, modelConstraints
+        );
+        if (notes.length) {
+            console.debug(`[AI Sanitization] ${providerId}/${params.modelId}:`, notes);
+        }
+
+        let result: ProviderExecutionResult;
         if (returnType === 'json') {
-            return provider.generateJson({
-                modelId: params.modelId,
-                systemPrompt: params.systemPrompt ?? null,
-                userPrompt: params.userPrompt,
-                maxOutputTokens: params.maxOutputTokens,
-                temperature: params.temperature,
-                topP: params.topP,
-                jsonSchema: params.jsonSchema || { type: 'object' },
-                jsonStrict: params.jsonStrict,
-                thinkingBudgetTokens: params.thinkingBudgetTokens,
-                citationsEnabled: params.citationsEnabled,
-                evidenceDocuments: params.evidenceDocuments
+            result = await provider.generateJson({
+                modelId: sanitized.modelId,
+                systemPrompt: sanitized.systemPrompt ?? null,
+                userPrompt: sanitized.userPrompt,
+                maxOutputTokens: sanitized.maxOutputTokens,
+                temperature: sanitized.temperature,
+                topP: sanitized.topP,
+                jsonSchema: sanitized.jsonSchema || { type: 'object' },
+                jsonStrict: sanitized.jsonStrict,
+                thinkingBudgetTokens: sanitized.thinkingBudgetTokens,
+                citationsEnabled: sanitized.citationsEnabled,
+                evidenceDocuments: sanitized.evidenceDocuments,
+                disableThinking: sanitized.disableThinking
+            });
+        } else {
+            result = await provider.generateText({
+                modelId: sanitized.modelId,
+                systemPrompt: sanitized.systemPrompt ?? null,
+                userPrompt: sanitized.userPrompt,
+                maxOutputTokens: sanitized.maxOutputTokens,
+                temperature: sanitized.temperature,
+                topP: sanitized.topP,
+                thinkingBudgetTokens: sanitized.thinkingBudgetTokens,
+                citationsEnabled: sanitized.citationsEnabled,
+                evidenceDocuments: sanitized.evidenceDocuments,
+                disableThinking: sanitized.disableThinking
             });
         }
 
-        return provider.generateText({
-            modelId: params.modelId,
-            systemPrompt: params.systemPrompt ?? null,
-            userPrompt: params.userPrompt,
-            maxOutputTokens: params.maxOutputTokens,
-            temperature: params.temperature,
-            topP: params.topP,
-            thinkingBudgetTokens: params.thinkingBudgetTokens,
-            citationsEnabled: params.citationsEnabled,
-            evidenceDocuments: params.evidenceDocuments
-        });
+        if (notes.length) {
+            result.sanitizationNotes = [
+                ...(result.sanitizationNotes || []),
+                ...notes
+            ];
+        }
+        return result;
     }
 }
 

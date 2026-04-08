@@ -249,6 +249,8 @@ export interface GenerateTextRequest {
     thinkingBudgetTokens?: number;
     citationsEnabled?: boolean;
     evidenceDocuments?: EvidenceDocument[];
+    /** Disable extended thinking for models that support it (Google thinkingConfig). */
+    disableThinking?: boolean;
 }
 
 export interface GenerateJsonRequest extends GenerateTextRequest {

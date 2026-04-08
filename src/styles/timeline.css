@@ -212,9 +212,17 @@
 }
 
 .rt-mode-option {
-  cursor: pointer;
+  pointer-events: none;
 }
 
+.rt-mode-option .rt-document-bg {
+  pointer-events: visiblePainted;
+  cursor: pointer;
+  fill: var(--interactive-normal);
+  stroke: var(--text-normal);
+  stroke-width: 2px;
+  transition: fill 0.2s ease;
+}
 
 .rt-mode-option:hover .rt-document-bg {
   fill: var(--interactive-accent);
@@ -224,13 +232,6 @@
 
 .rt-mode-option:hover .rt-mode-acronym-text {
   fill: var(--text-on-accent);
-}
-
-.rt-mode-option .rt-document-bg {
-  fill: var(--interactive-normal);
-  stroke: var(--text-normal);
-  stroke-width: 2px;
-  transition: fill 0.2s ease;
 }
 
 .rt-mode-option .rt-mode-acronym-text {

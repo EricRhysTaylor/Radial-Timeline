@@ -26,7 +26,7 @@ export class GossamerScoreService {
         }
 
         let updateCount = 0;
-        const snapshotPaths = new Set<string>();
+        const targets: Array<{ beatTitle: string; newScore: number; file: TFile }> = [];
         const runId = createGossamerRunId();
         const createdAt = new Date().toISOString();
 
@@ -50,19 +50,28 @@ export class GossamerScoreService {
             }
 
             if (!file) continue;
+            targets.push({ beatTitle, newScore, file });
+        }
 
-            try {
+        const filesToSnapshot = targets
+            .map(({ file }) => file)
+            .filter((file, index, array) => array.findIndex((candidate) => candidate.path === file.path) === index)
+            .filter((file) => {
                 const priorFrontmatter = this.app.metadataCache.getFileCache(file)?.frontmatter as Record<string, any> | undefined;
-                const snapshotPath = priorFrontmatter && (willAppendGossamerPrune(priorFrontmatter) || Object.keys(collectGossamerManagedSnapshot(priorFrontmatter)).length > 0)
-                    ? await archiveGossamerFrontmatterFields(this.app, [file], {
-                        operation: 'gossamer-save',
-                        selectFields: (frontmatter) => collectGossamerManagedSnapshot(frontmatter as Record<string, any>),
-                        meta: {
-                            scope: 'beat-note',
-                            beat: beatTitle
-                        }
-                    })
-                    : null;
+                if (!priorFrontmatter) return false;
+                return willAppendGossamerPrune(priorFrontmatter) || Object.keys(collectGossamerManagedSnapshot(priorFrontmatter)).length > 0;
+            });
+        const snapshotPath = await archiveGossamerFrontmatterFields(this.app, filesToSnapshot, {
+            operation: 'gossamer-save',
+            selectFields: (frontmatter) => collectGossamerManagedSnapshot(frontmatter as Record<string, any>),
+            meta: {
+                scope: 'beat-note',
+                beatCount: filesToSnapshot.length
+            }
+        });
+
+        for (const { beatTitle, newScore, file } of targets) {
+            try {
                 await this.app.fileManager.processFrontMatter(file, (yaml) => {
                     const fm = yaml as Record<string, any>;
                     const { nextIndex, updated } = appendGossamerScore(fm);
@@ -80,7 +89,6 @@ export class GossamerScoreService {
                     delete fm.GossamerRuns;
                     delete fm.GossamerLatestRun;
                 });
-                if (snapshotPath) snapshotPaths.add(snapshotPath);
                 updateCount++;
             } catch (e) {
                 console.error(`[Gossamer] Failed to update beat ${beatTitle}:`, e);
@@ -89,7 +97,7 @@ export class GossamerScoreService {
 
         if (updateCount > 0) {
             const parts = [`Updated ${updateCount} beat score${updateCount > 1 ? 's' : ''} (${dominantStage} stage).`];
-            if (snapshotPaths.size > 0) parts.push(`Archived replaced Gossamer history in ${snapshotPaths.size} snapshot${snapshotPaths.size === 1 ? '' : 's'}.`);
+            if (snapshotPath) parts.push('Archived replaced Gossamer history in 1 snapshot.');
             new Notice(parts.join(' '));
         } else {
             new Notice('No beats were updated.');

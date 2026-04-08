@@ -722,31 +722,36 @@ function renderCampaignDetails(
             fitSelectToSelectedLabel(dropdown.selectEl, { minPx: 72, extraPx: 16 });
         });
 
-    // Refresh threshold (with dynamic description and editable value input)
+    // Refresh threshold — inline sub-section of frequency setting (manual only)
+    const isManual = !campaign.updateFrequency || campaign.updateFrequency === 'manual';
+    const refreshWrap = freqSetting.settingEl.createDiv({ cls: 'ert-campaign-refresh-inline' });
+    if (!isManual) refreshWrap.addClass('ert-hidden');
+
+    refreshWrap.createEl('hr');
     const refreshMin = 1;
     const refreshMax = 90;
-    const refreshStep = 1;
-    let refreshValueInput: HTMLInputElement | null = null;
     const getRefreshValue = () =>
         plugin.settings.authorProgress?.campaigns?.[index]?.refreshThresholdDays ?? campaign.refreshThresholdDays;
     const clampRefreshValue = (value: number) => Math.min(refreshMax, Math.max(refreshMin, Math.round(value)));
 
-    const refreshSetting = new Setting(details)
-        .setName('Refresh alert threshold')
-        .setDesc(`Days before showing a refresh reminder in the timeline view. Currently: ${campaign.refreshThresholdDays} days.`);
+    const refreshNote = refreshWrap.createDiv({ cls: ERT_CLASSES.FIELD_NOTE });
+    refreshNote.setText(`Days before showing a refresh reminder in the timeline view. Currently: ${getRefreshValue()} days.`);
 
-    const updateRefreshDescription = (val: number) => {
-        const descEl = refreshSetting.descEl;
-        if (descEl) {
-            descEl.setText(`Days before showing a refresh reminder in the timeline view. Currently: ${val} days.`);
-        }
-    };
+    const refreshRow = refreshWrap.createDiv({ cls: 'ert-campaign-refresh-controls' });
+    const sliderEl = refreshRow.createEl('input', {
+        type: 'range',
+        attr: { min: String(refreshMin), max: String(refreshMax), step: '1', value: String(getRefreshValue()) }
+    });
+    const refreshValueInput = refreshRow.createEl('input', {
+        type: 'number',
+        cls: 'ert-input ert-input--2digit',
+        value: String(getRefreshValue()),
+        attr: { min: String(refreshMin), max: String(refreshMax), step: '1', 'aria-label': 'Refresh alert threshold (days)' }
+    });
 
-    const syncRefreshDisplay = (val: number, { skipInput = false }: { skipInput?: boolean } = {}) => {
-        updateRefreshDescription(val);
-        if (!refreshValueInput || skipInput) return;
-        if (document.activeElement === refreshValueInput) return;
-        refreshValueInput.value = String(val);
+    const syncRefreshDisplay = (val: number) => {
+        refreshNote.setText(`Days before showing a refresh reminder in the timeline view. Currently: ${val} days.`);
+        if (document.activeElement !== refreshValueInput) refreshValueInput.value = String(val);
     };
 
     const commitRefreshValue = async (val: number) => {
@@ -755,85 +760,37 @@ function renderCampaignDetails(
         plugin.settings.authorProgress.campaigns[index].refreshThresholdDays = nextValue;
         await plugin.saveSettings();
         syncRefreshDisplay(nextValue);
-        if (refreshValueInput) {
-            refreshValueInput.value = String(nextValue);
-        }
+        refreshValueInput.value = String(nextValue);
+        // Sync the schedule badge pill in the campaign header
+        const badgeEl = parentRow.querySelector('.ert-campaign-refresh-badge');
+        if (badgeEl) badgeEl.textContent = `Manual · ${nextValue}d`;
     };
 
-    const parseRefreshValue = (raw: string) => {
-        if (!raw.trim()) return null;
-        const parsed = Number(raw);
-        if (!Number.isFinite(parsed)) return null;
-        return parsed;
-    };
+    // SAFE: Settings sections are standalone functions without Component lifecycle; Obsidian manages settings tab cleanup
+    sliderEl.addEventListener('input', () => {
+        const nextValue = clampRefreshValue(Number(sliderEl.value));
+        syncRefreshDisplay(nextValue);
+    });
+    sliderEl.addEventListener('change', () => {
+        void commitRefreshValue(Number(sliderEl.value));
+    });
 
-    refreshSetting.addSlider(slider => {
-        slider.setLimits(refreshMin, refreshMax, refreshStep)
-            .setValue(getRefreshValue())
-            .onChange(async (val) => {
-                await commitRefreshValue(val);
-            });
-
-        const sliderEl = slider.sliderEl;
-        // SAFE: Settings sections are standalone functions without Component lifecycle; Obsidian manages settings tab cleanup
-        sliderEl.addEventListener('input', () => {
-            const nextValue = clampRefreshValue(Number(sliderEl.value));
-            syncRefreshDisplay(nextValue);
-        });
-
-        const controlEl = sliderEl.parentElement;
-        if (controlEl) {
-            refreshValueInput = controlEl.createEl('input', {
-                type: 'number',
-                cls: 'ert-input ert-input--2digit',
-                value: String(getRefreshValue()),
-                attr: {
-                    min: String(refreshMin),
-                    max: String(refreshMax),
-                    step: String(refreshStep),
-                    'aria-label': 'Refresh alert threshold (days)'
-                }
-            });
-
-            // SAFE: Settings sections are standalone functions without Component lifecycle; Obsidian manages settings tab cleanup
-            refreshValueInput.addEventListener('input', () => {
-                const parsed = parseRefreshValue(refreshValueInput?.value ?? '');
-                if (parsed === null) return;
-                if (parsed < refreshMin || parsed > refreshMax) return;
-                syncRefreshDisplay(parsed, { skipInput: true });
-                slider.setValue(parsed);
-            });
-
-            const finalizeInput = async () => {
-                const currentValue = getRefreshValue();
-                const parsed = parseRefreshValue(refreshValueInput?.value ?? '');
-                const nextValue = parsed === null ? currentValue : clampRefreshValue(parsed);
-                if (refreshValueInput) {
-                    refreshValueInput.value = String(nextValue);
-                }
-                slider.setValue(nextValue);
-                if (nextValue !== currentValue) {
-                    await commitRefreshValue(nextValue);
-                } else {
-                    syncRefreshDisplay(nextValue);
-                }
-            };
-
-            // SAFE: Settings sections are standalone functions without Component lifecycle
-            refreshValueInput.addEventListener('blur', () => {
-                void finalizeInput();
-            });
-
-            // SAFE: Settings sections are standalone functions without Component lifecycle
-            refreshValueInput.addEventListener('keydown', (evt: KeyboardEvent) => {
-                if (evt.key === 'Enter') {
-                    evt.preventDefault();
-                    refreshValueInput?.blur();
-                }
-            });
-        }
-
-        return slider;
+    // SAFE: Settings sections are standalone functions without Component lifecycle; Obsidian manages settings tab cleanup
+    refreshValueInput.addEventListener('input', () => {
+        const parsed = Number(refreshValueInput.value);
+        if (!Number.isFinite(parsed) || parsed < refreshMin || parsed > refreshMax) return;
+        sliderEl.value = String(parsed);
+        syncRefreshDisplay(parsed);
+    });
+    refreshValueInput.addEventListener('blur', () => {
+        const parsed = Number(refreshValueInput.value);
+        const nextValue = Number.isFinite(parsed) ? clampRefreshValue(parsed) : getRefreshValue();
+        refreshValueInput.value = String(nextValue);
+        sliderEl.value = String(nextValue);
+        void commitRefreshValue(nextValue);
+    });
+    refreshValueInput.addEventListener('keydown', (evt: KeyboardEvent) => {
+        if (evt.key === 'Enter') { evt.preventDefault(); refreshValueInput.blur(); }
     });
 
     // ─────────────────────────────────────────────────────────────────────────

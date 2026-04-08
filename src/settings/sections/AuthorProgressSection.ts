@@ -1,4 +1,4 @@
-import { App, Setting, Notice, setIcon, normalizePath, DropdownComponent, TextComponent, Modal, ButtonComponent } from 'obsidian';
+import { App, Setting, Notice, setIcon, setTooltip, normalizePath, DropdownComponent, TextComponent, Modal, ButtonComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { AuthorProgressService } from '../../services/AuthorProgressService';
 import { DEFAULT_SETTINGS } from '../defaults';
@@ -501,6 +501,28 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         );
         modal.open();
     });
+    // Collapse / expand toggle for the styling body
+    const stylingToggleBtn = themeControl.createEl('button', {
+        cls: ERT_CLASSES.ICON_BTN,
+        attr: { type: 'button', 'aria-label': 'Show styling controls' }
+    });
+    const stylingExpanded = plugin.settings.authorProgress?.defaults.aprStylingExpanded ?? false;
+    const refreshStylingToggle = () => {
+        const expanded = plugin.settings.authorProgress?.defaults.aprStylingExpanded ?? false;
+        setIcon(stylingToggleBtn, expanded ? 'chevron-down' : 'chevron-right');
+        setTooltip(stylingToggleBtn, expanded ? 'Hide styling controls' : 'Show styling controls');
+        stylingToggleBtn.setAttribute('aria-label', expanded ? 'Hide styling controls' : 'Show styling controls');
+        themeBody.toggleClass('ert-settings-hidden', !expanded);
+    };
+    refreshStylingToggle();
+    // SAFE: Settings sections are standalone functions without Component lifecycle; Obsidian manages settings tab cleanup
+    stylingToggleBtn.addEventListener('click', async () => {
+        if (!plugin.settings.authorProgress) return;
+        plugin.settings.authorProgress.defaults.aprStylingExpanded = !(plugin.settings.authorProgress.defaults.aprStylingExpanded ?? false);
+        refreshStylingToggle();
+        await plugin.saveSettings();
+    });
+
     applyErtHeaderLayout(themeHeading);
 
     const bookTitleColorFallback = plugin.settings.publishStageColors?.Press || '#6FB971';

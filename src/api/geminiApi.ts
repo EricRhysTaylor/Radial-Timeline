@@ -199,7 +199,9 @@ export async function callGeminiApi(
   if (maxTokens !== null) {
     body.generationConfig.maxOutputTokens = maxTokens;
   }
-  // Gemini 2.5+ thinking models reject custom temperature/topP — omit them.
+  // Secondary safety net for temperature/topP on Gemini thinking models.
+  // Central sanitization in sanitizeDispatchParams is authoritative;
+  // this guard prevents direct callGeminiApi callers from hitting API errors.
   const isThinkingModel = /\b2\.5\b|\b3\.\d/.test(cleanModelId);
   if (typeof temperature === 'number' && !isThinkingModel) {
     body.generationConfig.temperature = temperature;
@@ -207,19 +209,18 @@ export async function callGeminiApi(
   if (typeof topP === 'number' && !isThinkingModel) {
     body.generationConfig.topP = topP;
   }
-  // Disable thinking mode if requested (for 2.5-pro models)
-  if (disableThinking) {
-    // Only set thinking_config if explicitly required, otherwise don't send it at all
-    // Some models (like 2.5-pro or non-thinking models) might reject unknown fields
-    // body.generationConfig.thinkingConfig = { mode: "NONE" };
+  // Disable thinking mode when explicitly requested (2.5+ thinking models).
+  if (disableThinking && isThinkingModel) {
+    body.generationConfig.thinkingConfig = { mode: 'NONE' };
   }
   // Enable JSON mode if schema provided
   if (jsonSchema) {
     body.generationConfig.responseMimeType = 'application/json';
     body.generationConfig.responseSchema = jsonSchema;
   }
-  // Gemini rejects tools + responseMimeType 'application/json' in the same request.
-  // When structured output is required, skip Search grounding.
+  // Secondary safety net: Gemini rejects tools + responseMimeType 'application/json'.
+  // Central sanitization handles cacheVsCitationsExclusive; this guard handles
+  // the tools-vs-JSON mutual exclusion at the API level.
   if (citationsEnabled && !jsonSchema) {
     body.tools = [{ google_search: {} }];
   }

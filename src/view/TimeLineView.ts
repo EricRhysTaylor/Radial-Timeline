@@ -990,12 +990,13 @@ export class RadialTimelineView extends ItemView {
 
         const xhtmlNs = 'http://www.w3.org/1999/xhtml';
         const svgNs = 'http://www.w3.org/2000/svg';
-        const panelX = 567;
-        const panelY = -680;
+        const viewBoxMin = -(SVG_SIZE / 2);
+        const panelX = viewBoxMin;
+        const panelY = viewBoxMin + 24;
         const panelWidth = 352;
-        const legendHeight = 12 + (Math.min(visibleRuns.length, 4) * 24);
+        const legendHeight = 12 + (Math.min(visibleRuns.length, 4) * 28);
         const popoverHeight = this.gossamerRunsPopoverOpen
-            ? (this.plugin.gossamerLatestOnly ? 64 : Math.min(260, 92 + (runs.length * 30)))
+            ? Math.min(320, 28 + (runs.length * 34))
             : 0;
         const panelHeight = 34 + legendHeight + (this.gossamerRunsPopoverOpen ? popoverHeight + 8 : 0);
 
@@ -1012,11 +1013,14 @@ export class RadialTimelineView extends ItemView {
         const controlsRow = document.createElementNS(xhtmlNs, 'div');
         controlsRow.className = 'rt-gossamer-runs__controls';
 
-        const button = document.createElementNS(xhtmlNs, 'button') as HTMLButtonElement;
-        button.type = 'button';
+        const button = document.createElementNS(xhtmlNs, 'div') as HTMLDivElement;
         button.className = 'rt-gossamer-runs__button';
+        button.tabIndex = 0;
+        button.setAttribute('role', 'button');
+        button.setAttribute('aria-label', 'Toggle Gossamer runs');
+        button.setAttribute('aria-expanded', this.gossamerRunsPopoverOpen ? 'true' : 'false');
         const buttonLabel = document.createElementNS(xhtmlNs, 'span');
-        buttonLabel.textContent = 'Runs';
+        buttonLabel.textContent = `${runs.length} Runs`;
         button.appendChild(buttonLabel);
         const buttonIcon = document.createElementNS(xhtmlNs, 'span');
         buttonIcon.className = 'rt-gossamer-runs__button-icon';
@@ -1024,14 +1028,20 @@ export class RadialTimelineView extends ItemView {
         button.appendChild(buttonIcon);
         controlsRow.appendChild(button);
 
-        const summary = document.createElementNS(xhtmlNs, 'div');
-        summary.className = 'rt-gossamer-runs__summary';
-        summary.textContent = `${visibleRuns.length} run${visibleRuns.length === 1 ? '' : 's'} visible`;
-        controlsRow.appendChild(summary);
+        const showAllRow = document.createElementNS(xhtmlNs, 'label');
+        showAllRow.className = 'rt-gossamer-runs__show-all';
+        const showAllCheckbox = document.createElementNS(xhtmlNs, 'input') as HTMLInputElement;
+        showAllCheckbox.type = 'checkbox';
+        showAllCheckbox.checked = !this.plugin.gossamerLatestOnly;
+        showAllRow.appendChild(showAllCheckbox);
+        const showAllText = document.createElementNS(xhtmlNs, 'span');
+        showAllText.textContent = 'Show all';
+        showAllRow.appendChild(showAllText);
+        controlsRow.appendChild(showAllRow);
         panel.appendChild(controlsRow);
 
         const legend = document.createElementNS(xhtmlNs, 'div');
-        legend.className = 'rt-gossamer-runs__legend';
+        legend.className = 'rt-gossamer-runs__legend rt-gossamer-runs__legend--single';
         visibleRuns.slice().reverse().forEach((record, index) => {
             legend.appendChild(this.buildGossamerLegendRow(record, index === 0));
         });
@@ -1040,55 +1050,44 @@ export class RadialTimelineView extends ItemView {
         if (this.gossamerRunsPopoverOpen) {
             const popover = document.createElementNS(xhtmlNs, 'div');
             popover.className = 'rt-gossamer-runs__popover';
-
-            const latestRow = document.createElementNS(xhtmlNs, 'label');
-            latestRow.className = 'rt-gossamer-runs__checkbox-row';
-            const latestCheckbox = document.createElementNS(xhtmlNs, 'input') as HTMLInputElement;
-            latestCheckbox.type = 'checkbox';
-            latestCheckbox.checked = this.plugin.gossamerLatestOnly;
-            latestRow.appendChild(latestCheckbox);
-            const latestText = document.createElementNS(xhtmlNs, 'span');
-            latestText.textContent = 'Latest only';
-            latestRow.appendChild(latestText);
-            popover.appendChild(latestRow);
-
-            if (!this.plugin.gossamerLatestOnly) {
-                const divider = document.createElementNS(xhtmlNs, 'div');
-                divider.className = 'rt-gossamer-runs__divider';
-                popover.appendChild(divider);
-
-                const listHeader = document.createElementNS(xhtmlNs, 'div');
-                listHeader.className = 'rt-gossamer-runs__section-title';
-                listHeader.textContent = 'Runs';
-                popover.appendChild(listHeader);
-
-                const list = document.createElementNS(xhtmlNs, 'div');
-                list.className = 'rt-gossamer-runs__list';
-                runs.slice().reverse().forEach((record) => {
-                    list.appendChild(this.buildGossamerRunToggleRow(record));
-                });
-                popover.appendChild(list);
-            }
+            const list = document.createElementNS(xhtmlNs, 'div');
+            list.className = 'rt-gossamer-runs__list';
+            runs.slice().reverse().forEach((record) => {
+                list.appendChild(this.buildGossamerRunToggleRow(record));
+            });
+            popover.appendChild(list);
 
             panel.appendChild(popover);
-
-            this.registerDomEvent(latestCheckbox, 'change', () => {
-                this.plugin.gossamerLatestOnly = latestCheckbox.checked;
-                if (latestCheckbox.checked) {
-                    this.plugin.gossamerVisibleRunIds = [];
-                }
-                this.lastSnapshot = null;
-                this.refreshTimeline();
-            });
         }
+
+        this.registerDomEvent(showAllCheckbox, 'change', () => {
+            this.plugin.gossamerLatestOnly = !showAllCheckbox.checked;
+            if (this.plugin.gossamerLatestOnly) {
+                this.plugin.gossamerVisibleRunIds = [];
+            }
+            this.lastSnapshot = null;
+            this.refreshTimeline();
+        });
 
         foreignObject.appendChild(panel);
         svg.appendChild(foreignObject);
 
-        this.registerDomEvent(button, 'click', () => {
+        const togglePopover = () => {
             this.gossamerRunsPopoverOpen = !this.gossamerRunsPopoverOpen;
             this.lastSnapshot = null;
             this.refreshTimeline();
+        };
+
+        this.registerDomEvent(button, 'click', (event) => {
+            event.stopPropagation();
+            togglePopover();
+        });
+        this.registerDomEvent(button, 'keydown', (event: KeyboardEvent) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                event.stopPropagation();
+                togglePopover();
+            }
         });
     }
 
@@ -1133,6 +1132,13 @@ export class RadialTimelineView extends ItemView {
         const text = document.createElementNS(xhtmlNs, 'span');
         text.textContent = record.label;
         row.appendChild(text);
+
+        if (record.isLatest) {
+            const badge = document.createElementNS(xhtmlNs, 'span');
+            badge.className = 'rt-gossamer-runs__latest';
+            badge.textContent = 'Latest';
+            row.appendChild(badge);
+        }
 
         this.registerDomEvent(checkbox, 'change', () => {
             const allIds = this.plugin.gossamerRunInventory.map((run) => run.id);

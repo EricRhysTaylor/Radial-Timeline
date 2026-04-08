@@ -8695,6 +8695,28 @@
   color: var(--text-muted);
 }
 
+.ert-ui.ert-scope--settings .ert-campaign-refresh-inline {
+  width: 100%;
+  margin-top: var(--ert-gap-sm);
+}
+
+.ert-ui.ert-scope--settings .ert-campaign-refresh-inline hr {
+  border: none;
+  border-top: 1px solid var(--background-modifier-border);
+  margin: 0 0 var(--ert-gap-sm);
+}
+
+.ert-ui.ert-scope--settings .ert-campaign-refresh-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--ert-gap-sm);
+  margin-top: var(--ert-gap-xs);
+}
+
+.ert-ui.ert-scope--settings .ert-campaign-refresh-controls input[type="range"] {
+  flex: 1;
+}
+
 .ert-ui.ert-scope--settings .ert-iconBtn--active {
   color: var(--text-success);
   border-color: color-mix(in srgb, var(--text-success) 50%, transparent);

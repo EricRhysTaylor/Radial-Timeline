@@ -82,7 +82,7 @@ const PROVIDER_CAPABILITIES: Record<AiProvider, ProviderCapabilities> = {
 };
 
 const MODEL_TEMPERATURE_UNSUPPORTED: Record<AiProvider, Set<string>> = {
-    openai: new Set(),
+    openai: new Set(['o1', 'o1-mini', 'o1-preview']),
     anthropic: new Set(),
     google: new Set(),
     ollama: new Set()
@@ -119,6 +119,7 @@ export function providerSupportsBatchApi(provider: AiProvider): boolean {
     return PROVIDER_CAPABILITIES[provider].supportsBatchApi;
 }
 
+/** @deprecated Legacy sanitization — use sanitizeDispatchParams for the modern aiClient path. */
 export function sanitizeProviderArgs(
     provider: AiProvider,
     modelId: string | undefined,
@@ -166,6 +167,120 @@ export function sanitizeProviderArgs(
     }
 
     return sanitized;
+}
+
+// ---------------------------------------------------------------------------
+// Modern dispatch sanitization — authoritative enforcement for aiClient.execute()
+// ---------------------------------------------------------------------------
+
+/** Parameters flowing through aiClient.execute() to provider adapters. */
+export interface ProviderDispatchParams {
+    modelId: string;
+    systemPrompt?: string | null;
+    userPrompt: string;
+    maxOutputTokens: number;
+    temperature?: number;
+    topP?: number;
+    jsonSchema?: Record<string, unknown>;
+    jsonStrict?: boolean;
+    thinkingBudgetTokens?: number;
+    citationsEnabled?: boolean;
+    evidenceDocuments?: { title: string; content: string }[];
+    disableThinking?: boolean;
+}
+
+export interface SanitizeDispatchResult {
+    params: ProviderDispatchParams;
+    notes: string[];
+}
+
+/** Whether a Gemini model ID refers to a thinking-capable model (2.5+ series). */
+function isGeminiThinkingModel(modelId: string): boolean {
+    const clean = modelId.replace(/^models\//, '');
+    return /\b2\.5\b|\b3\.\d/.test(clean);
+}
+
+/**
+ * Central sanitization gate for all provider dispatch parameters.
+ * Strips unsupported or conflicting parameters and returns structured notes
+ * documenting every strip/coercion with provider + model + reason.
+ *
+ * This is the authoritative enforcement point invoked in aiClient.execute().
+ * Provider-local guards (e.g. geminiApi temperature regex) are retained as
+ * secondary safety nets but should never be the only protection.
+ */
+export function sanitizeDispatchParams(
+    provider: AiProvider,
+    params: ProviderDispatchParams,
+    constraints?: { cacheVsCitationsExclusive?: boolean }
+): SanitizeDispatchResult {
+    const capabilities = PROVIDER_CAPABILITIES[provider];
+    const notes: string[] = [];
+    const sanitized: ProviderDispatchParams = { ...params };
+    const modelLabel = `${provider}/${params.modelId}`;
+
+    // --- Temperature ---
+    if (typeof sanitized.temperature === 'number') {
+        const normalizedId = normalizeModelId(provider, params.modelId);
+        if (MODEL_TEMPERATURE_UNSUPPORTED[provider]?.has(normalizedId)) {
+            notes.push(`Stripped temperature for ${modelLabel}: model does not support temperature`);
+            sanitized.temperature = undefined;
+        } else if (provider === 'google' && isGeminiThinkingModel(params.modelId)) {
+            notes.push(`Stripped temperature for ${modelLabel}: Gemini thinking model rejects custom temperature`);
+            sanitized.temperature = undefined;
+        }
+    }
+
+    // --- topP ---
+    if (typeof sanitized.topP === 'number') {
+        if (!capabilities.supportsTopP) {
+            notes.push(`Stripped topP for ${modelLabel}: unsupported by provider`);
+            sanitized.topP = undefined;
+        } else if (provider === 'google' && isGeminiThinkingModel(params.modelId)) {
+            notes.push(`Stripped topP for ${modelLabel}: Gemini thinking model rejects custom topP`);
+            sanitized.topP = undefined;
+        }
+    }
+
+    // --- thinkingBudgetTokens (Anthropic extended thinking only) ---
+    if (typeof sanitized.thinkingBudgetTokens === 'number' && !capabilities.supportsExtendedThinking) {
+        notes.push(`Stripped thinkingBudgetTokens for ${modelLabel}: unsupported by provider`);
+        sanitized.thinkingBudgetTokens = undefined;
+    }
+
+    // --- disableThinking (Google thinkingConfig only) ---
+    if (sanitized.disableThinking !== undefined && !capabilities.supportsThinkingConfig) {
+        notes.push(`Stripped disableThinking for ${modelLabel}: unsupported by provider`);
+        sanitized.disableThinking = undefined;
+    }
+
+    // --- citationsEnabled ---
+    const supportsCitationControl = capabilities.supportsCitations || provider === 'google';
+    if (sanitized.citationsEnabled && !supportsCitationControl) {
+        notes.push(`Stripped citationsEnabled for ${modelLabel}: unsupported by provider`);
+        sanitized.citationsEnabled = undefined;
+    }
+
+    // --- cacheVsCitationsExclusive model constraint ---
+    if (constraints?.cacheVsCitationsExclusive && sanitized.citationsEnabled) {
+        notes.push(`Stripped citationsEnabled for ${modelLabel}: model constraint cacheVsCitationsExclusive — cache takes precedence`);
+        sanitized.citationsEnabled = undefined;
+    }
+
+    // --- evidenceDocuments (Anthropic direct manuscript citations only) ---
+    if (sanitized.evidenceDocuments?.length && !capabilities.supportsCitations) {
+        notes.push(`Stripped evidenceDocuments for ${modelLabel}: provider does not support document citations`);
+        sanitized.evidenceDocuments = undefined;
+    }
+
+    // --- jsonStrict (no provider API implements this as a toggle) ---
+    // The Capability 'jsonStrict' is used for model selection; the request parameter
+    // is not consumed by any provider adapter. Strip to avoid fake surface area.
+    if (sanitized.jsonStrict !== undefined) {
+        sanitized.jsonStrict = undefined;
+    }
+
+    return { params: sanitized, notes };
 }
 
 /** Capability-driven check for system role support.

@@ -1053,11 +1053,11 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
     const files = plugin.app.vault.getMarkdownFiles().filter(f => isPathInFolderScope(f.path, geminiBookScope));
     let updateCount = 0;
     const unmatchedBeats: string[] = [];
-    const snapshotPaths = new Set<string>();
     const runId = createGossamerRunId();
     const createdAt = new Date().toISOString();
     const runProvider = result.provider;
     const runModel = result.modelResolved || result.modelRequested || 'ai-model';
+    const matchedTargets: Array<{ beat: EnrichedBeatAnalysis; file: TFile }> = [];
 
     // Match beats by index - Gemini returns them in the same order they were sent
     for (let i = 0; i < analysis.beats.length; i++) {
@@ -1075,19 +1075,27 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
         unmatchedBeats.push(beat.beatName);
         continue;
       }
+      matchedTargets.push({ beat, file });
+    }
 
-      const priorFrontmatter = plugin.app.metadataCache.getFileCache(file)?.frontmatter as Record<string, any> | undefined;
-      const snapshotPath = priorFrontmatter && (willAppendGossamerPrune(priorFrontmatter) || Object.keys(collectGossamerManagedSnapshot(priorFrontmatter)).length > 0)
-        ? await archiveGossamerFrontmatterFields(plugin.app, [file], {
-            operation: 'gossamer-clipboard-save',
-            selectFields: (frontmatter) => collectGossamerManagedSnapshot(frontmatter as Record<string, any>),
-            meta: {
-              scope: 'beat-note',
-              beat: beat.beatName
-            }
-          })
-        : null;
+    const filesToSnapshot = matchedTargets
+      .map(({ file }) => file)
+      .filter((file, index, array) => array.findIndex((candidate) => candidate.path === file.path) === index)
+      .filter((file) => {
+        const priorFrontmatter = plugin.app.metadataCache.getFileCache(file)?.frontmatter as Record<string, any> | undefined;
+        if (!priorFrontmatter) return false;
+        return willAppendGossamerPrune(priorFrontmatter) || Object.keys(collectGossamerManagedSnapshot(priorFrontmatter)).length > 0;
+      });
+    const snapshotPath = await archiveGossamerFrontmatterFields(plugin.app, filesToSnapshot, {
+      operation: 'gossamer-clipboard-save',
+      selectFields: (frontmatter) => collectGossamerManagedSnapshot(frontmatter as Record<string, any>),
+      meta: {
+        scope: 'beat-note',
+        beatCount: filesToSnapshot.length
+      }
+    });
 
+    for (const { beat, file } of matchedTargets) {
       // Update beat note with scores
       await plugin.app.fileManager.processFrontMatter(file, (yaml) => {
         const fm = yaml as Record<string, any>;
@@ -1120,7 +1128,6 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
         const modelId = runModel;
         fm['Gossamer Last Updated'] = `${timestamp} by ${modelId}`;
       });
-      if (snapshotPath) snapshotPaths.add(snapshotPath);
       
       updateCount++;
     }
@@ -1129,8 +1136,8 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
     if (unmatchedBeats.length > 0) {
       modal.addError(`Could not match ${unmatchedBeats.length} beat(s): ${unmatchedBeats.join(', ')}`);
     }
-    if (snapshotPaths.size > 0) {
-      new Notice(`Archived replaced Gossamer history before save (${snapshotPaths.size} snapshot${snapshotPaths.size === 1 ? '' : 's'}).`);
+    if (snapshotPath) {
+      new Notice('Archived replaced Gossamer history before save (1 snapshot).');
     }
 
     // Create analysis log (unified AI log envelope)
