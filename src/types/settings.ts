@@ -293,6 +293,7 @@ export interface BookLayoutOptions {
 export type AuthorProgressPublishTarget = 'folder' | 'github_pages' | 'note';
 export type AuthorProgressFrequency = 'manual' | 'daily' | 'weekly' | 'monthly';
 export type AprExportFormat = 'png' | 'svg';
+export type AprExportQuality = 'standard' | 'ultra';
 
 export interface AuthorProgressDefaults {
     noteBehavior: 'preset' | 'custom';
@@ -308,6 +309,7 @@ export interface AuthorProgressDefaults {
     aprProgressDateStart?: string;
     aprProgressDateTarget?: string;
     aprSize?: 'thumb' | 'small' | 'medium' | 'large';
+    aprExportQuality?: AprExportQuality; // Standard (1200px) or Ultra (2400px)
     exportFormat?: AprExportFormat; // Core/default report export format
     aprBackgroundColor?: string;
     aprCenterTransparent?: boolean;
@@ -436,6 +438,7 @@ export interface AuthorProgressCampaign {
     bookTitleOverride?: string;
 
     aprSize?: 'thumb' | 'small' | 'medium' | 'large';
+    aprExportQuality?: AprExportQuality;
 
     // Per-campaign styling (optional overrides)
     customBackgroundColor?: string;

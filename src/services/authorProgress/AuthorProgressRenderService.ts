@@ -1,7 +1,8 @@
 import { App } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { createAprSVG } from '../../renderer/apr/AprRenderer';
-import type { AuthorProgressCampaign, AuthorProgressDefaults } from '../../types/settings';
+import { getExportPreset } from '../../renderer/apr/aprPresets';
+import type { AuthorProgressCampaign, AuthorProgressDefaults, AprExportQuality } from '../../types/settings';
 import { getTeaserThresholds, getTeaserRevealLevel, teaserLevelToRevealOptions } from '../../renderer/apr/AprConstants';
 import { hasProFeatureAccess } from '../../settings/featureGate';
 import { isBeatNote, isSceneItem } from '../../utils/sceneHelpers';
@@ -73,7 +74,7 @@ export class AuthorProgressRenderService {
         return settings.exportPath || buildDefaultEmbedPath({
             bookTitle: settings.bookTitleOverride,
             updateFrequency: settings.updateFrequency,
-            aprSize: settings.aprSize,
+            aprExportQuality: settings.aprExportQuality,
             exportFormat: this.getDefaultExportFormat(settings)
         });
     }
@@ -131,12 +132,14 @@ export class AuthorProgressRenderService {
             ? settings.aprShowRtAttribution !== false
             : true;
 
-        const size = settings.aprSize || 'medium';
-        const isThumb = size === 'thumb';
+        const designSize = settings.aprSize || 'medium';
+        const exportQuality: AprExportQuality = settings.aprExportQuality || 'standard';
+        const isThumb = designSize === 'thumb';
         const bookTitle = resolveBookTitle(authorProgress, null, projectPath);
 
         const { svgString, width, height } = createAprSVG(scenesFiltered, {
-            size,
+            size: designSize,
+            exportPreset: getExportPreset(designSize, exportQuality),
             progressPercent,
             bookTitle,
             authorName: settings.authorName || '',
@@ -244,12 +247,14 @@ export class AuthorProgressRenderService {
             grayscaleScenes = revealOptions.grayscaleScenes;
         }
 
-        const size = campaign.aprSize || settings.aprSize || 'medium';
-        const ringOnly = size === 'thumb' || isTeaserBar;
+        const designSize = campaign.aprSize || settings.aprSize || 'medium';
+        const exportQuality: AprExportQuality = campaign.aprExportQuality || settings.aprExportQuality || 'standard';
+        const ringOnly = designSize === 'thumb' || isTeaserBar;
         const bookTitle = resolveBookTitle(authorProgress, campaign, projectPath);
 
         const { svgString, width, height } = createAprSVG(scenesFiltered, {
-            size,
+            size: designSize,
+            exportPreset: getExportPreset(designSize, exportQuality),
             progressPercent,
             bookTitle,
             authorName: settings.authorName || '',
@@ -304,7 +309,7 @@ export class AuthorProgressRenderService {
             height,
             meta: {
                 format: this.getCampaignExportFormat(campaign),
-                size,
+                size: designSize,
                 stage: debugStage,
                 percent: progressPercent
             }

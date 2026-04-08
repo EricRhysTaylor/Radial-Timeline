@@ -9294,6 +9294,16 @@ export class InquiryView extends ItemView {
 
         const words = text.split(/\s+/).filter(Boolean);
         const x = textEl.getAttribute('x') ?? '0';
+
+        // Compute balanced lines BEFORE capturing existingTspans.
+        // computeBalancedSvgLines uses textEl.textContent = ... for measurement,
+        // which destroys all child nodes (including tspans). Capturing tspan refs
+        // before this call creates orphaned references that are never re-appended,
+        // causing blank hero text on lens toggle (depth view blank bug).
+        const balancedLines = maxLines > 1
+            ? this.computeBalancedSvgLines(textEl, text, maxWidth, { maxLines })
+            : [];
+
         const existingTspans = Array.from(textEl.childNodes).filter(n => n.nodeName === 'tspan') as SVGTSpanElement[];
         let tspanCount = 0;
 
@@ -9312,10 +9322,6 @@ export class InquiryView extends ItemView {
             tspanCount++;
             return tspan;
         };
-
-        const balancedLines = maxLines > 1
-            ? this.computeBalancedSvgLines(textEl, text, maxWidth, { maxLines })
-            : [];
         if (balancedLines.length > 0 && balancedLines.length <= maxLines) {
             balancedLines.forEach((lineText, index) => {
                 const nextTspan = getNextTspan(index === 0);

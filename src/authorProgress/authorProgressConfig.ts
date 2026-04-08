@@ -193,7 +193,7 @@ function migrateDefaults(raw: LegacyAuthorProgressSettings | null): AuthorProgre
         exportPath: asString(raw.exportPath ?? raw.dynamicEmbedPath) ?? buildDefaultEmbedPath({
             bookTitle: asString(raw.bookTitleOverride ?? raw.bookTitle),
             updateFrequency,
-            aprSize,
+            aprExportQuality: asString(raw.aprExportQuality) as any,
             exportFormat
         }),
         autoUpdateExportPath: asBoolean(raw.autoUpdateExportPath ?? raw.autoUpdateEmbedPaths, defaults.autoUpdateExportPath ?? true)
@@ -224,8 +224,7 @@ function migrateCampaign(raw: unknown, defaults: AuthorProgressDefaults): Author
             bookTitle: asString(record.bookTitleOverride ?? record.bookTitle) ?? defaults.bookTitleOverride,
             campaignName: name,
             updateFrequency,
-            aprSize,
-            fallbackSize: defaults.aprSize,
+            aprExportQuality: asString(record.aprExportQuality) as any,
             teaserEnabled: teaserReveal?.enabled,
             exportFormat
         }),

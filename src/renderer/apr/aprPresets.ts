@@ -1,8 +1,14 @@
 /**
  * APR presets - minimal definitions for derived layout.
+ *
+ * Preview sizes (thumb/small/medium/large) control the settings preview.
+ * Export quality (standard/ultra) controls the actual published output.
+ * All exports render at high resolution regardless of preview size.
  */
 
 export type AprSize = 'thumb' | 'small' | 'medium' | 'large';
+
+export type AprExportQuality = 'standard' | 'ultra';
 
 export type AprPresetKey = 'xs100' | 'sm150' | 'md300' | 'lg450';
 
@@ -54,9 +60,33 @@ export const APR_SIZE_TO_PRESET: Record<AprSize, AprPresetKey> = {
     large: 'lg450',
 };
 
+/** Export quality → output pixel dimensions. */
+export const APR_EXPORT_PX: Record<AprExportQuality, number> = {
+    standard: 1200,
+    ultra: 2400,
+};
+
 export function getAprPreset(sizeOrKey: AprSize | AprPresetKey): AprPreset {
     const key = (sizeOrKey in APR_SIZE_TO_PRESET)
         ? APR_SIZE_TO_PRESET[sizeOrKey as AprSize]
         : (sizeOrKey as AprPresetKey);
     return APR_PRESETS[key];
+}
+
+/**
+ * Build an export preset from a design intent (thumb vs full) and export quality.
+ * Preview sizes control the design features (text, labels, density).
+ * Export quality controls the output resolution.
+ */
+export function getExportPreset(designSize: AprSize, quality: AprExportQuality): AprPreset {
+    const exportPx = APR_EXPORT_PX[quality];
+    const isThumb = designSize === 'thumb';
+
+    return {
+        key: (isThumb ? 'xs100' : 'lg450') as AprPresetKey,
+        outerPx: exportPx,
+        enableText: !isThumb,
+        enableCenterLabel: !isThumb,
+        density: 0.55,
+    };
 }

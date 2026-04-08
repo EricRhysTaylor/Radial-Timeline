@@ -36,6 +36,7 @@ export type InquiryCorpusStripRefs = {
     ccLabelHit?: SVGRectElement;
     ccLabel?: SVGTextElement;
     ccCorpusLabel?: SVGTextElement;
+    ccCorpusUnderline?: SVGLineElement;
     ccLegendTrigger?: SVGGElement;
     ccLegendPanel?: SVGGElement;
     ccLabelHint?: SVGGElement;
@@ -477,6 +478,11 @@ export function renderInquiryCorpusStrip(args: {
         args.registerSvgEvent(refs.ccCorpusLabel, 'click', () => {
             args.onCorpusTitleClick();
         });
+        // Dashed underline — SVG text does not support text-decoration-style: dashed.
+        // Uses shape-rendering: crispEdges for pixel-perfect rendering.
+        refs.ccCorpusUnderline = createSvgElement('line');
+        refs.ccCorpusUnderline.classList.add('ert-inquiry-cc-corpus-underline');
+        refs.ccGroup.appendChild(refs.ccCorpusUnderline);
     }
 
     // ── "?" legend trigger — page-shaped icon matching corpus cells ──
@@ -546,6 +552,15 @@ export function renderInquiryCorpusStrip(args: {
     // CORPUS text centered on strip
     refs.ccCorpusLabel.setAttribute('x', String(stripCenterX));
     refs.ccCorpusLabel.setAttribute('y', String(corpusTitleY));
+    // Dashed underline positioned below text
+    if (refs.ccCorpusUnderline) {
+        const underlineHalfW = 38;
+        const underlineY = corpusTitleY + 7;
+        refs.ccCorpusUnderline.setAttribute('x1', String(stripCenterX - underlineHalfW));
+        refs.ccCorpusUnderline.setAttribute('x2', String(stripCenterX + underlineHalfW));
+        refs.ccCorpusUnderline.setAttribute('y1', String(underlineY));
+        refs.ccCorpusUnderline.setAttribute('y2', String(underlineY));
+    }
 
     // [?] page icon — rightmost corpus column center
     const rightColCenterX = Math.round(layout.anchorRightX + layout.pageWidth / 2);

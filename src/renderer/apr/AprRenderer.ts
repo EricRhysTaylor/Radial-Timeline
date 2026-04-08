@@ -8,7 +8,7 @@ import { computePositions } from '../utils/SceneLayout';
 import { sceneArcPath } from '../components/SceneArcs';
 import { APR_COLORS, APR_TEXT_COLORS, APR_FIXED_STROKES, APR_HEADLESS_PATTERNS } from './AprConstants';
 import { computeAprLayout } from './aprLayout';
-import { getAprPreset, type AprSize } from './aprPresets';
+import { getAprPreset, type AprSize, type AprPreset } from './aprPresets';
 import { renderDefs } from '../components/Defs';
 import { getFillForScene } from '../utils/SceneFill';
 import { DEFAULT_SETTINGS } from '../../settings/defaults';
@@ -18,6 +18,7 @@ import { STAGE_ORDER } from '../../utils/constants';
 
 export interface AprRenderOptions {
     size: AprSize;
+    exportPreset?: AprPreset; // When provided, overrides size for resolution (export path)
     bookTitle: string;
     authorName?: string;
     authorUrl?: string;
@@ -197,7 +198,8 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
     const color = resolveColor(portableSvg);
     const opacity = resolveOpacity(portableSvg);
 
-    const layout = computeAprLayout(getAprPreset(size), { percent: progressPercent });
+    const preset = opts.exportPreset ?? getAprPreset(size);
+    const layout = computeAprLayout(preset, { percent: progressPercent });
     const svgSize = layout.outerPx;
     const innerRadius = layout.ringInnerR;
     const outerRadius = layout.ringOuterR;

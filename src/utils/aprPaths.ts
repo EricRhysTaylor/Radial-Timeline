@@ -1,9 +1,10 @@
 export type AprSize = 'thumb' | 'small' | 'medium' | 'large';
 export type AprFrequency = 'manual' | 'daily' | 'weekly' | 'monthly';
 export type AprExportFormat = 'png' | 'svg';
+export type AprExportQuality = 'standard' | 'ultra';
 
 /**
- * APR Path Schema (LOCKED - do not modify without migration plan)
+ * APR Path Schema v2
  * ═══════════════════════════════════════════════════════════════
  * Book scoping is handled ONLY in the folder path, never in the filename.
  *
@@ -11,19 +12,22 @@ export type AprExportFormat = 'png' | 'svg';
  *   Default/Core:  Radial Timeline/Social/{bookSlug}/
  *   Campaigns:     Radial Timeline/Social/{bookSlug}/campaigns/
  *
- * Filename schema (frozen token order):
- *   apr-{campaignSlug}-{mode}-{size}{-teaser}.{format}
+ * Filename schema:
+ *   apr-{campaignSlug}-{mode}-{quality}{-teaser}.{format}
  *
  * Where:
  *   {campaignSlug} = slugified campaign name (use "default" for core report)
  *   {mode}         = manual | auto-daily | auto-weekly | auto-monthly
- *   {size}         = thumb | small | medium | large
+ *   {quality}      = standard | ultra
  *   {-teaser}      = suffix only if teaser enabled
  *   {format}       = png | svg
  *
  * Examples:
- *   Core:     Radial Timeline/Social/my-novel/apr-default-manual-large.png
- *   Campaign: Radial Timeline/Social/my-novel/campaigns/apr-kickstarter-auto-weekly-large-teaser.png
+ *   Core:     Radial Timeline/Social/my-novel/apr-default-manual-standard.png
+ *   Campaign: Radial Timeline/Social/my-novel/campaigns/apr-kickstarter-auto-weekly-ultra-teaser.png
+ *
+ * Legacy format (still matched for migration):
+ *   apr-{campaignSlug}-{mode}-{size}.{format}  (size = thumb|small|medium|large)
  */
 
 export function slugify(value: string | undefined, fallback: string): string {
@@ -40,8 +44,8 @@ function formatAprMode(updateFrequency?: AprFrequency): string {
     return `auto-${updateFrequency}`;
 }
 
-function resolveAprSize(primary?: AprSize, fallback?: AprSize): AprSize {
-    return primary ?? fallback ?? 'medium';
+function resolveQuality(quality?: AprExportQuality): AprExportQuality {
+    return quality ?? 'standard';
 }
 
 const EXPORT_FORMATS: AprExportFormat[] = ['png', 'svg'];
@@ -52,11 +56,13 @@ export function normalizeAprExportFormat(value: unknown): AprExportFormat {
     return EXPORT_FORMATS.includes(normalized as AprExportFormat) ? normalized as AprExportFormat : 'png';
 }
 
-const DEFAULT_SIZES: AprSize[] = ['thumb', 'small', 'medium', 'large'];
+/** Legacy size tokens used in v1 paths */
+const LEGACY_SIZES: AprSize[] = ['thumb', 'small', 'medium', 'large'];
+const QUALITY_TOKENS: AprExportQuality[] = ['standard', 'ultra'];
 
 /**
- * Returns true if the path is a default/core APR path for the given book and mode (any size).
- * Matches current format (apr-default-{mode}-{size}.svg) and legacy format (apr-{bookSlug}-default-{mode}-{size}.svg).
+ * Returns true if the path is a default/core APR path for the given book and mode.
+ * Matches both v2 (quality-based) and legacy v1 (size-based) formats.
  */
 export function isDefaultEmbedPath(path: string | undefined, options: { bookTitle?: string; updateFrequency?: AprFrequency }): boolean {
     if (!path?.trim()) return false;
@@ -65,8 +71,13 @@ export function isDefaultEmbedPath(path: string | undefined, options: { bookTitl
     const prefix = `Radial Timeline/Social/${bookSlug}/`;
     if (!path.startsWith(prefix)) return false;
     const filename = path.slice(prefix.length);
-    for (const size of DEFAULT_SIZES) {
-        for (const format of EXPORT_FORMATS) {
+    for (const format of EXPORT_FORMATS) {
+        // v2: quality-based
+        for (const q of QUALITY_TOKENS) {
+            if (filename === `apr-default-${mode}-${q}.${format}`) return true;
+        }
+        // Legacy v1: size-based
+        for (const size of LEGACY_SIZES) {
             if (filename === `apr-default-${mode}-${size}.${format}`) return true;
             if (filename === `apr-${bookSlug}-default-${mode}-${size}.${format}`) return true;
         }
@@ -76,30 +87,31 @@ export function isDefaultEmbedPath(path: string | undefined, options: { bookTitl
 
 /**
  * Builds the embed path for the default/core APR report.
- * Book title scopes the folder; filename uses "default" as campaignSlug.
  */
 export function buildDefaultEmbedPath(options: {
     bookTitle?: string;
     updateFrequency?: AprFrequency;
+    aprExportQuality?: AprExportQuality;
+    /** @deprecated Use aprExportQuality instead. Accepted for backwards compat. */
     aprSize?: AprSize;
     exportFormat?: AprExportFormat;
 }): string {
     const bookSlug = slugify(options.bookTitle, 'book');
     const mode = formatAprMode(options.updateFrequency);
-    const size = resolveAprSize(options.aprSize);
+    const quality = resolveQuality(options.aprExportQuality);
     const format = normalizeAprExportFormat(options.exportFormat);
-    // Filename: apr-default-{mode}-{size}.{format} (no bookSlug in filename)
-    return `Radial Timeline/Social/${bookSlug}/apr-default-${mode}-${size}.${format}`;
+    return `Radial Timeline/Social/${bookSlug}/apr-default-${mode}-${quality}.${format}`;
 }
 
 /**
  * Builds the embed path for a campaign APR report.
- * Book title scopes the folder; campaignSlug identifies the campaign in filename.
  */
 export function buildCampaignEmbedPath(options: {
     bookTitle?: string;
     campaignName: string;
     updateFrequency?: AprFrequency;
+    aprExportQuality?: AprExportQuality;
+    /** @deprecated Use aprExportQuality instead. Accepted for backwards compat. */
     aprSize?: AprSize;
     fallbackSize?: AprSize;
     teaserEnabled?: boolean;
@@ -108,9 +120,8 @@ export function buildCampaignEmbedPath(options: {
     const bookSlug = slugify(options.bookTitle, 'book');
     const campaignSlug = slugify(options.campaignName, 'campaign');
     const mode = formatAprMode(options.updateFrequency);
-    const size = resolveAprSize(options.aprSize, options.fallbackSize);
+    const quality = resolveQuality(options.aprExportQuality);
     const teaserSuffix = options.teaserEnabled ? '-teaser' : '';
     const format = normalizeAprExportFormat(options.exportFormat);
-    // Filename: apr-{campaignSlug}-{mode}-{size}{-teaser}.{format} (no bookSlug in filename)
-    return `Radial Timeline/Social/${bookSlug}/campaigns/apr-${campaignSlug}-${mode}-${size}${teaserSuffix}.${format}`;
+    return `Radial Timeline/Social/${bookSlug}/campaigns/apr-${campaignSlug}-${mode}-${quality}${teaserSuffix}.${format}`;
 }

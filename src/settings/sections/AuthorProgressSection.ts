@@ -159,7 +159,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             const oldDefaultPath = buildDefaultEmbedPath({
                 bookTitle: settings.bookTitleOverride,
                 updateFrequency: settings.updateFrequency,
-                aprSize: settings.aprSize,
+                aprExportQuality: settings.aprExportQuality,
                 exportFormat: defaultFormat
             });
             settings.aprSize = size;
@@ -167,7 +167,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                 settings.exportPath = buildDefaultEmbedPath({
                     bookTitle: settings.bookTitleOverride,
                     updateFrequency: settings.updateFrequency,
-                    aprSize: size,
+                    aprExportQuality: settings.aprExportQuality,
                     exportFormat: defaultFormat
                 });
             }
@@ -1327,7 +1327,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                         const oldDefaultPath = buildDefaultEmbedPath({
                             bookTitle: current.bookTitleOverride,
                             updateFrequency: current.updateFrequency,
-                            aprSize: current.aprSize,
+                            aprExportQuality: current.aprExportQuality,
                             exportFormat: defaultFormat
                         });
                         current.updateFrequency = val as any;
@@ -1335,7 +1335,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                             current.exportPath = buildDefaultEmbedPath({
                                 bookTitle: current.bookTitleOverride,
                                 updateFrequency: current.updateFrequency,
-                                aprSize: current.aprSize,
+                                aprExportQuality: current.aprExportQuality,
                                 exportFormat: defaultFormat
                             });
                         }
@@ -1402,7 +1402,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             const defaultPath = buildDefaultEmbedPath({
                 bookTitle: settings?.bookTitleOverride,
                 updateFrequency: settings?.updateFrequency,
-                aprSize: settings?.aprSize,
+                aprExportQuality: settings?.aprExportQuality,
                 exportFormat: defaultFormat
             });
             const successClass = 'ert-input--success';

@@ -212,7 +212,6 @@ export function createDefaultCampaign(
         bookTitle: options?.bookTitle,
         campaignName: name,
         updateFrequency: 'manual',
-        aprSize: options?.aprSize,
         teaserEnabled: true,
         exportFormat: 'png'
     });
@@ -556,8 +555,7 @@ function renderCampaignRow(
                     bookTitle: resolvedBookTitle,
                     campaignName: campaign.name,
                     updateFrequency: campaign.updateFrequency,
-                    aprSize: campaign.aprSize,
-                    fallbackSize: plugin.settings.authorProgress?.defaults.aprSize,
+                    aprExportQuality: campaign.aprExportQuality ?? plugin.settings.authorProgress?.defaults.aprExportQuality,
                     teaserEnabled: campaign.teaserReveal?.enabled ?? true,
                     exportFormat: resolveCampaignExportFormat(campaign)
                 });
@@ -565,8 +563,7 @@ function renderCampaignRow(
                     bookTitle: resolvedBookTitle,
                     campaignName: newName,
                     updateFrequency: campaign.updateFrequency,
-                    aprSize: campaign.aprSize,
-                    fallbackSize: plugin.settings.authorProgress?.defaults.aprSize,
+                    aprExportQuality: campaign.aprExportQuality ?? plugin.settings.authorProgress?.defaults.aprExportQuality,
                     teaserEnabled: campaign.teaserReveal?.enabled ?? true,
                     exportFormat: resolveCampaignExportFormat(campaign)
                 });
@@ -699,8 +696,7 @@ function renderCampaignDetails(
                         bookTitle: resolvedBookTitle,
                         campaignName: target.name,
                         updateFrequency: target.updateFrequency,
-                        aprSize: target.aprSize,
-                        fallbackSize: settings.aprSize,
+                        aprExportQuality: target.aprExportQuality ?? settings.aprExportQuality,
                         teaserEnabled: target.teaserReveal?.enabled ?? true,
                         exportFormat: resolveCampaignExportFormat(target)
                     });
@@ -710,8 +706,7 @@ function renderCampaignDetails(
                             bookTitle: resolvedBookTitle,
                             campaignName: target.name,
                             updateFrequency: target.updateFrequency,
-                            aprSize: target.aprSize,
-                            fallbackSize: settings.aprSize,
+                            aprExportQuality: target.aprExportQuality ?? settings.aprExportQuality,
                             teaserEnabled: target.teaserReveal?.enabled ?? true,
                             exportFormat: resolveCampaignExportFormat(target)
                         });
@@ -721,29 +716,31 @@ function renderCampaignDetails(
                 });
             fitSelectToSelectedLabel(dropdown.selectEl, { minPx: 72, extraPx: 16 });
         });
+    freqSetting.settingEl.addClass('ert-campaign-frequency-setting');
 
     // Refresh threshold — subordinate to frequency setting (manual only)
     const isManual = !campaign.updateFrequency || campaign.updateFrequency === 'manual';
-    const refreshWrap = details.createDiv({ cls: 'ert-campaign-refresh-inline' });
-    details.insertBefore(refreshWrap, freqSetting.settingEl.nextSibling);
+    const refreshWrap = freqSetting.settingEl.createDiv({ cls: 'ert-campaign-refresh-inline' });
     if (!isManual) refreshWrap.addClass('ert-hidden');
 
-    refreshWrap.createEl('hr');
+    refreshWrap.createDiv({ cls: 'ert-divider ert-campaign-refresh-inline__divider' });
     const refreshMin = 1;
     const refreshMax = 90;
     const getRefreshValue = () =>
         plugin.settings.authorProgress?.campaigns?.[index]?.refreshThresholdDays ?? campaign.refreshThresholdDays;
     const clampRefreshValue = (value: number) => Math.min(refreshMax, Math.max(refreshMin, Math.round(value)));
 
-    const refreshNote = refreshWrap.createDiv({ cls: ERT_CLASSES.FIELD_NOTE });
+    const refreshSettingRow = refreshWrap.createDiv({ cls: 'ert-campaign-refresh-subrow' });
+    const refreshInfo = refreshSettingRow.createDiv({ cls: 'setting-item-info' });
+    const refreshNote = refreshInfo.createDiv({ cls: 'setting-item-description' });
     refreshNote.setText(`Days before showing a refresh reminder in the timeline view. Currently: ${getRefreshValue()} days.`);
 
-    const refreshRow = refreshWrap.createDiv({ cls: 'ert-campaign-refresh-controls' });
-    const sliderEl = refreshRow.createEl('input', {
+    const refreshControl = refreshSettingRow.createDiv({ cls: 'setting-item-control ert-campaign-refresh-controls' });
+    const sliderEl = refreshControl.createEl('input', {
         type: 'range',
         attr: { min: String(refreshMin), max: String(refreshMax), step: '1', value: String(getRefreshValue()) }
     });
-    const refreshValueInput = refreshRow.createEl('input', {
+    const refreshValueInput = refreshControl.createEl('input', {
         type: 'number',
         cls: 'ert-input ert-input--2digit',
         value: String(getRefreshValue()),
@@ -934,8 +931,7 @@ function renderCampaignDetails(
         bookTitle: resolvedBookTitle,
         campaignName: campaign.name,
         updateFrequency: campaign.updateFrequency,
-        aprSize: campaign.aprSize,
-        fallbackSize: plugin.settings.authorProgress?.defaults.aprSize,
+        aprExportQuality: campaign.aprExportQuality ?? plugin.settings.authorProgress?.defaults.aprExportQuality,
         teaserEnabled: campaign.teaserReveal?.enabled ?? true,
         exportFormat: resolveCampaignExportFormat(campaign)
     });
@@ -1038,8 +1034,7 @@ function renderCampaignDetails(
                     bookTitle: resolvedBookTitle,
                     campaignName: target.name,
                     updateFrequency: target.updateFrequency,
-                    aprSize: normalizeAprSize(target.aprSize),
-                    fallbackSize: settings.aprSize,
+                    aprExportQuality: target.aprExportQuality ?? settings.aprExportQuality,
                     teaserEnabled: target.teaserReveal?.enabled ?? true,
                     exportFormat: resolveCampaignExportFormat(target)
                 });
@@ -1049,8 +1044,7 @@ function renderCampaignDetails(
                         bookTitle: resolvedBookTitle,
                         campaignName: target.name,
                         updateFrequency: target.updateFrequency,
-                        aprSize: normalizeAprSize(target.aprSize),
-                        fallbackSize: settings.aprSize,
+                        aprExportQuality: target.aprExportQuality ?? settings.aprExportQuality,
                         teaserEnabled: target.teaserReveal?.enabled ?? true,
                         exportFormat: resolveCampaignExportFormat(target)
                     });

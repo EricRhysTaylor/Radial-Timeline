@@ -3,7 +3,7 @@
  */
 
 import type { AprPreset } from './aprPresets';
-import { APR_BASE_RADII, APR_SIZE_SCALES, APR_THUMB_RADII, APR_BRANDING_TUNING } from './AprConstants';
+import { APR_BASE_RADII, APR_THUMB_RADII, APR_BRANDING_TUNING } from './AprConstants';
 
 export type AprData = {
     percent?: number;
@@ -83,22 +83,28 @@ export function computeAprLayout(preset: AprPreset, data: AprData = {}): AprLayo
     const outerR = outerPx / 2;
     const safeInset = px(outerPx, kInset);
     const textBand = preset.enableText ? px(outerPx, kTextBand) : 0;
-    const sizeScale = APR_SIZE_SCALES[preset.key as keyof typeof APR_SIZE_SCALES] ?? 1;
-    const radii = preset.key === 'xs100'
-        ? APR_THUMB_RADII
+
+    // Derive scale from outerPx — no lookup table needed
+    const isThumbDesign = !preset.enableText;
+    const radii = isThumbDesign
+        ? {
+            inner: APR_THUMB_RADII.inner * (outerPx / 100),
+            outer: APR_THUMB_RADII.outer * (outerPx / 100),
+        }
         : {
-            inner: APR_BASE_RADII.inner * sizeScale,
-            outer: APR_BASE_RADII.outer * sizeScale,
-            text: APR_BASE_RADII.text * sizeScale,
+            inner: APR_BASE_RADII.inner * (outerPx / 300),
+            outer: APR_BASE_RADII.outer * (outerPx / 300),
+            text: APR_BASE_RADII.text * (outerPx / 300),
         };
     const ringOuterR = radii.outer;
     const ringInnerR = radii.inner;
     const ringThickness = ringOuterR - ringInnerR;
     const ringBand = ringOuterR * 2;
+    const sizeScale = outerPx / 300;
     const textR = preset.enableText ? APR_BASE_RADII.text * sizeScale : null;
 
-    // Fixed stroke widths as requested: 1px for 150px, 2px for 300px+
-    const fixedStroke = outerPx <= 150 ? 1 : 2;
+    // Strokes scale proportionally with size (2px at 300px baseline)
+    const fixedStroke = outerPx <= 150 ? 1 : Math.max(2, Math.round(outerPx / 150));
 
     const ringStroke = fixedStroke;
     const dividerStroke = fixedStroke;

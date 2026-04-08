@@ -24,6 +24,7 @@ export class AuthorProgressModal extends Modal {
     // Reveal options (derived from settings)
     private aprSize: 'thumb' | 'small' | 'medium' | 'large';
     private lastFullSize: 'small' | 'medium' | 'large' = 'medium';
+    private exportQuality: 'standard' | 'ultra' = 'standard';
     private selectedTargetId: 'default' | string = 'default';
 
     private statusSectionEl: HTMLElement | null = null;
@@ -48,6 +49,7 @@ export class AuthorProgressModal extends Modal {
         if (this.aprSize !== 'thumb') {
             this.lastFullSize = this.aprSize;
         }
+        this.exportQuality = settings.aprExportQuality ?? 'standard';
     }
 
     private getSelectedCampaign(): AuthorProgressCampaign | undefined {
@@ -286,6 +288,7 @@ export class AuthorProgressModal extends Modal {
         projectPath: string;
         path: string;
         size: 'thumb' | 'small' | 'medium' | 'large';
+        exportQuality: 'standard' | 'ultra';
         campaign?: AuthorProgressCampaign;
     }>, includeFormatColumn = false): void {
         if (targets.length === 0) return;
@@ -338,7 +341,7 @@ export class AuthorProgressModal extends Modal {
             const exportPill = exportCell.createSpan({
                 cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_SM}`
             });
-            exportPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: this.getSizeLabelPx(target.size) });
+            exportPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: this.getQualityLabel(target.exportQuality) });
 
             const stageCell = dataRow.createDiv({ cls: 'ert-apr-status-cell' });
             const stagePill = stageCell.createSpan({
@@ -443,34 +446,30 @@ export class AuthorProgressModal extends Modal {
             this.renderActions();
         };
 
-        // === EXPORT SIZE ROW (two-column: label left, buttons right) ===
+        // === EXPORT QUALITY ROW (two-column: label left, buttons right) ===
         const exportRow = container.createDiv({ cls: 'ert-apr-target-row' });
-        exportRow.createSpan({ text: 'Export size', cls: ERT_CLASSES.LABEL });
+        exportRow.createSpan({ text: 'Export quality', cls: ERT_CLASSES.LABEL });
 
-        const sizeOptions: Array<{ size: 'thumb' | 'small' | 'medium' | 'large'; dimension: string }> = [
-            { size: 'thumb', dimension: '100px' },
-            { size: 'small', dimension: '150px' },
-            { size: 'medium', dimension: '300px' },
-            { size: 'large', dimension: '450px' }
+        const qualityOptions: Array<{ quality: 'standard' | 'ultra'; label: string; detail: string }> = [
+            { quality: 'standard', label: 'Standard', detail: '1200px · ~150 KB' },
+            { quality: 'ultra', label: 'Ultra', detail: '2400px · ~400 KB' }
         ];
 
-        const sizeButtonRow = exportRow.createDiv({ cls: `ert-apr-size-buttons ${ERT_CLASSES.INLINE}` });
-        sizeOptions.forEach(option => {
-            const isActive = option.size === this.getActiveAprSize();
-            const btn = sizeButtonRow.createEl('button', {
+        const qualityButtonRow = exportRow.createDiv({ cls: `ert-apr-size-buttons ${ERT_CLASSES.INLINE}` });
+        qualityOptions.forEach(option => {
+            const isActive = option.quality === this.exportQuality;
+            const btn = qualityButtonRow.createEl('button', {
                 cls: `${ERT_CLASSES.PILL_BTN} ${ERT_CLASSES.PILL_BTN_SOCIAL} ${isActive ? ERT_CLASSES.IS_ACTIVE : ''}`
             });
-            const dims = btn.createSpan({ cls: ERT_CLASSES.PILL_BTN_LABEL });
-            dims.append(document.createTextNode(option.dimension));
+            const label = btn.createSpan({ cls: ERT_CLASSES.PILL_BTN_LABEL });
+            label.append(document.createTextNode(option.label));
+            btn.setAttr('title', option.detail);
             if (isActive) {
                 btn.setAttr('aria-pressed', 'true');
             }
             btn.onclick = async () => {
-                this.aprSize = option.size;
-                if (option.size !== 'thumb') {
-                    this.lastFullSize = option.size;
-                }
-                await this.saveSize();
+                this.exportQuality = option.quality;
+                await this.saveQuality();
                 this.renderStatusSection();
                 this.renderActions();
             };
@@ -486,7 +485,7 @@ export class AuthorProgressModal extends Modal {
         const defaultPath = buildDefaultEmbedPath({
             bookTitle: settings?.bookTitleOverride,
             updateFrequency: settings?.updateFrequency,
-            aprSize: settings?.aprSize,
+            aprExportQuality: settings?.aprExportQuality,
             exportFormat: this.getDefaultExportFormat()
         });
         const currentPath = settings?.exportPath || defaultPath;
@@ -604,8 +603,7 @@ export class AuthorProgressModal extends Modal {
                     bookTitle: settings.bookTitleOverride,
                     campaignName: campaign.name,
                     updateFrequency: campaign.updateFrequency,
-                    aprSize: campaign.aprSize,
-                    fallbackSize: settings.aprSize,
+                    aprExportQuality: campaign.aprExportQuality ?? settings.aprExportQuality,
                     teaserEnabled: campaign.teaserReveal?.enabled ?? true,
                     exportFormat: this.getCampaignExportFormat(campaign)
                 });
@@ -617,8 +615,8 @@ export class AuthorProgressModal extends Modal {
         // === STATUS ROW (grid-style: Book, Format, Export, Schedule, Stage) ===
         const projectPath = resolveProjectPath(this.plugin.settings.authorProgress!, campaign, this.plugin.settings.sourcePath);
         const bookTitle = resolveBookTitle(this.plugin.settings.authorProgress!, campaign, projectPath);
-        const activeSize = this.getEffectiveAprSize(campaign);
         const format = this.getCampaignExportFormat(campaign);
+        const campaignQuality = campaign.aprExportQuality ?? this.plugin.settings.authorProgress?.defaults.aprExportQuality ?? 'standard';
         const scheduleLabel = this.getTeaserScheduleLabel(campaign);
         const stageInfo = this.resolveTeaserStatus(campaign).info ?? TEASER_LEVEL_INFO.full;
 
@@ -642,7 +640,7 @@ export class AuthorProgressModal extends Modal {
         const exportPill = exportCell.createSpan({
             cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_SM}`
         });
-        exportPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: this.getSizeLabelPx(activeSize) });
+        exportPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: this.getQualityLabel(campaignQuality) });
 
         const scheduleCell = statusRow.createDiv({ cls: 'ert-apr-status-cell' });
         const schedulePill = scheduleCell.createSpan({
@@ -740,6 +738,7 @@ export class AuthorProgressModal extends Modal {
         projectPath: string;
         path: string;
         size: 'thumb' | 'small' | 'medium' | 'large';
+        exportQuality: 'standard' | 'ultra';
         campaign?: AuthorProgressCampaign;
     }> {
         const authorProgress = this.plugin.settings.authorProgress;
@@ -751,6 +750,7 @@ export class AuthorProgressModal extends Modal {
             projectPath: string;
             path: string;
             size: 'thumb' | 'small' | 'medium' | 'large';
+            exportQuality: 'standard' | 'ultra';
             campaign?: AuthorProgressCampaign;
         }> = [];
 
@@ -762,17 +762,19 @@ export class AuthorProgressModal extends Modal {
         const defaultPath = buildDefaultEmbedPath({
             bookTitle: settings.bookTitleOverride,
             updateFrequency: settings.updateFrequency,
-            aprSize: settings.aprSize,
+            aprExportQuality: settings.aprExportQuality,
             exportFormat: this.getDefaultExportFormat()
         });
         const defaultSize = this.getGlobalAprSize();
+        const defaultQuality = settings.aprExportQuality ?? 'standard';
         targets.push({
             id: 'default',
             label: 'Default Report',
             bookTitle: defaultBookTitle,
             projectPath: defaultProjectPath,
             path: settings.exportPath || defaultPath,
-            size: defaultSize
+            size: defaultSize,
+            exportQuality: defaultQuality
         });
 
         // Campaigns (Pro overrides)
@@ -787,6 +789,7 @@ export class AuthorProgressModal extends Modal {
                 projectPath: campaignProjectPath,
                 path: campaign.exportPath,
                 size: this.getEffectiveAprSize(campaign),
+                exportQuality: campaign.aprExportQuality ?? settings.aprExportQuality ?? 'standard',
                 campaign
             });
         });
@@ -802,23 +805,13 @@ export class AuthorProgressModal extends Modal {
         return settings?.exportPath || buildDefaultEmbedPath({
             bookTitle: settings?.bookTitleOverride,
             updateFrequency: settings?.updateFrequency,
-            aprSize: settings?.aprSize,
+            aprExportQuality: settings?.aprExportQuality,
             exportFormat: this.getDefaultExportFormat()
         });
     }
 
-    private getSizeMeta(size: 'thumb' | 'small' | 'medium' | 'large'): { label: string; dimension: string } {
-        switch (size) {
-            case 'thumb': return { label: 'Thumb', dimension: '100' };
-            case 'small': return { label: 'Small', dimension: '150' };
-            case 'large': return { label: 'Large', dimension: '450' };
-            default: return { label: 'Medium', dimension: '300' };
-        }
-    }
-
-    private getSizeLabelPx(size: 'thumb' | 'small' | 'medium' | 'large'): string {
-        const meta = this.getSizeMeta(size);
-        return `${meta.dimension}px`;
+    private getQualityLabel(quality: 'standard' | 'ultra'): string {
+        return quality === 'ultra' ? '2400px Ultra' : '1200px Standard';
     }
 
     private summarizePath(path: string, maxLength = 42): string {
@@ -913,13 +906,13 @@ export class AuthorProgressModal extends Modal {
         const oldDefaultPath = buildDefaultEmbedPath({
             bookTitle: settings.bookTitleOverride,
             updateFrequency: settings.updateFrequency,
-            aprSize: settings.aprSize,
+            aprExportQuality: settings.aprExportQuality,
             exportFormat: currentFormat
         });
         const newDefaultPath = buildDefaultEmbedPath({
             bookTitle: settings.bookTitleOverride,
             updateFrequency: settings.updateFrequency,
-            aprSize: settings.aprSize,
+            aprExportQuality: settings.aprExportQuality,
             exportFormat: nextFormat
         });
         const currentPath = settings.exportPath?.trim() ?? '';
@@ -955,8 +948,7 @@ export class AuthorProgressModal extends Modal {
             bookTitle: resolvedBookTitle,
             campaignName: target.name,
             updateFrequency: target.updateFrequency,
-            aprSize: target.aprSize,
-            fallbackSize: settings.aprSize,
+            aprExportQuality: target.aprExportQuality ?? settings.aprExportQuality,
             teaserEnabled: target.teaserReveal?.enabled ?? true,
             exportFormat: currentFormat
         });
@@ -964,8 +956,7 @@ export class AuthorProgressModal extends Modal {
             bookTitle: resolvedBookTitle,
             campaignName: target.name,
             updateFrequency: target.updateFrequency,
-            aprSize: target.aprSize,
-            fallbackSize: settings.aprSize,
+            aprExportQuality: target.aprExportQuality ?? settings.aprExportQuality,
             teaserEnabled: target.teaserReveal?.enabled ?? true,
             exportFormat: nextFormat
         });
@@ -998,9 +989,18 @@ export class AuthorProgressModal extends Modal {
             this.plugin.settings.authorProgress = buildDefaultAuthorProgressSettings();
         }
         const settings = this.plugin.settings.authorProgress?.defaults;
-        const legacyPath = 'Radial Timeline/Social/progress.svg';
         settings.aprSize = this.aprSize;
-        // Recompute default path when size changes if path is unset or any default (current or legacy format)
+        await this.plugin.saveSettings();
+    }
+
+    private async saveQuality() {
+        if (!this.plugin.settings.authorProgress) {
+            this.plugin.settings.authorProgress = buildDefaultAuthorProgressSettings();
+        }
+        const settings = this.plugin.settings.authorProgress?.defaults;
+        const legacyPath = 'Radial Timeline/Social/progress.svg';
+        settings.aprExportQuality = this.exportQuality;
+        // Recompute default path when quality changes if path is unset or default
         const pathIsDefaultOrUnset = !settings.exportPath?.trim()
             || settings.exportPath === legacyPath
             || isDefaultEmbedPath(settings.exportPath, {
@@ -1011,7 +1011,7 @@ export class AuthorProgressModal extends Modal {
             settings.exportPath = buildDefaultEmbedPath({
                 bookTitle: settings.bookTitleOverride,
                 updateFrequency: settings.updateFrequency,
-                aprSize: settings.aprSize,
+                aprExportQuality: settings.aprExportQuality,
                 exportFormat: this.getDefaultExportFormat()
             });
         }
