@@ -62,18 +62,18 @@
   --rt-ai-error-border: color-mix(in srgb, var(--rt-ai-error) 48%, transparent);
   --rt-ai-running-border: color-mix(in srgb, var(--rt-ai-running) 42%, transparent);
   --rt-ai-advisory-border: color-mix(in srgb, var(--rt-ai-advisory) 35%, transparent);
-  --ert-shadow-soft: 0 6px 18px color-mix(in srgb, var(--background-modifier-border) 30%, transparent);
-  --ert-shadow-soft-tight: 0 1px 3px color-mix(in srgb, var(--background-modifier-border) 55%, transparent);
-  --ert-shadow-soft-subtle: 0 1px 2px color-mix(in srgb, var(--background-modifier-border) 45%, transparent);
+  --ert-shadow-soft: 0 2px 6px color-mix(in srgb, var(--background-modifier-border) 22%, transparent);
+  --ert-shadow-soft-tight: 0 1px 3px color-mix(in srgb, var(--background-modifier-border) 40%, transparent);
+  --ert-shadow-soft-subtle: 0 1px 2px color-mix(in srgb, var(--background-modifier-border) 30%, transparent);
   --ert-shadow-ring-accent: 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 15%, transparent);
   --ert-shadow-ring-accent-strong: 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 20%, transparent);
-  --ert-shadow-pro-glow: 0 2px 8px color-mix(in srgb, var(--ert-pro-accent-color) 30%, transparent);
-  --ert-shadow-pro-glow-strong: 0 4px 12px color-mix(in srgb, var(--ert-pro-accent-color) 50%, transparent);
-  --ert-shadow-pro-glow-subtle: 0 1px 4px color-mix(in srgb, var(--ert-pro-accent-color) 30%, transparent);
-  --ert-shadow-apr-glow: 0 0 15px color-mix(in srgb, var(--ert-alert-warning-color) 40%, transparent);
+  --ert-shadow-pro-glow: 0 1px 4px color-mix(in srgb, var(--ert-pro-accent-color) 18%, transparent);
+  --ert-shadow-pro-glow-strong: 0 2px 6px color-mix(in srgb, var(--ert-pro-accent-color) 28%, transparent);
+  --ert-shadow-pro-glow-subtle: 0 1px 2px color-mix(in srgb, var(--ert-pro-accent-color) 14%, transparent);
+  --ert-shadow-apr-glow: none;
   --ert-surface-hero: color-mix(in srgb, var(--background-primary) 92%, var(--interactive-accent) 4%);
   --ert-border-hero: color-mix(in srgb, var(--background-modifier-border) 90%, transparent);
-  --ert-shadow-hero: 0 8px 28px color-mix(in srgb, var(--background-modifier-border) 35%, transparent);
+  --ert-shadow-hero: 0 4px 12px color-mix(in srgb, var(--background-modifier-border) 20%, transparent);
   --ert-hero-grad: radial-gradient(circle at 10% 15%, color-mix(in srgb, var(--background-secondary) 20%, transparent) 0%, transparent 40%), linear-gradient(135deg, color-mix(in srgb, var(--background-secondary) 16%, transparent) 0%, color-mix(in srgb, var(--background-secondary) 8%, transparent) 100%);
   --ert-iconBadge-bg: color-mix(in srgb, var(--background-secondary) 80%, var(--interactive-accent) 6%);
   --ert-chip-bg: color-mix(in srgb, var(--background-secondary) 88%, var(--interactive-accent) 4%);
@@ -184,14 +184,14 @@
   --ert-modal-bg: color-mix(in srgb, var(--background-primary) 68%, transparent);
   --ert-modal-border: color-mix(in srgb, var(--background-modifier-border) 96%, transparent);
   --ert-modal-shadow: none;
-  --ert-modal-blur: blur(34px) saturate(1.35);
+  --ert-modal-blur: blur(24px) saturate(1.12);
   --ert-modal-tint: linear-gradient(
     180deg,
-    color-mix(in srgb, var(--ert-accent) 28%, transparent) 0%,
-    color-mix(in srgb, var(--background-primary) 10%, transparent) 55%,
+    color-mix(in srgb, var(--ert-accent) 10%, transparent) 0%,
+    color-mix(in srgb, var(--background-primary) 4%, transparent) 55%,
     transparent 82%
   );
-  --ert-modal-glow: 0 18px 50px color-mix(in srgb, var(--ert-accent) 22%, transparent);
+  --ert-modal-glow: 0 4px 16px color-mix(in srgb, var(--ert-accent) 10%, transparent);
   --ert-input-width-xs: var(--rt-input-width-xs, 6ch);
   --ert-input-width-2digit: var(--rt-input-width-2digit, 4.75ch);
   --ert-input-width-3digit: var(--rt-input-width-3digit, 5.75ch);
@@ -942,8 +942,8 @@
 .ert-ui .ert-panel--glass {
   --ert-panel-bg: color-mix(in srgb, var(--background-primary) 90%, transparent);
   --ert-panel-border: color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
-  --ert-panel-shadow: var(--shadow-l);
-  --ert-panel-backdrop: var(--ert-modal-blur);
+  --ert-panel-shadow: none;
+  --ert-panel-backdrop: blur(16px);
 }
 
 .ert-ui .ert-panel__header {
@@ -1454,7 +1454,7 @@
   --ert-accent-rgb: var(--rt-social-color-rgb, 255, 212, 29);
   --ert-surface-hero: color-mix(in srgb, var(--background-primary) 80%, var(--ert-accent) 8%);
   --ert-border-hero: color-mix(in srgb, var(--ert-accent) 25%, transparent);
-  --ert-shadow-hero: 0 10px 36px color-mix(in srgb, var(--ert-accent) 18%, transparent);
+  --ert-shadow-hero: 0 4px 12px color-mix(in srgb, var(--ert-accent) 12%, transparent);
   --ert-hero-grad: radial-gradient(circle at 12% 20%, color-mix(in srgb, var(--ert-accent) 24%, transparent) 0%, transparent 46%), linear-gradient(135deg, color-mix(in srgb, var(--ert-accent) 18%, transparent) 0%, color-mix(in srgb, var(--ert-accent) 6%, transparent) 100%);
   --ert-iconBadge-bg: color-mix(in srgb, var(--ert-accent) 18%, transparent);
   --ert-chip-bg: color-mix(in srgb, var(--ert-accent) 10%, var(--background-secondary) 80%);
@@ -1462,8 +1462,8 @@
   --ert-previewFrame-border: color-mix(in srgb, var(--ert-accent) 22%, transparent);
   --ert-panel-bg: rgba(255, 255, 255, 0.03);
   --ert-panel-border: rgba(255, 255, 255, 0.08);
-  --ert-panel-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 20px 45px rgba(0, 0, 0, 0.35);
-  --ert-panel-shadow-elev: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 20px 45px rgba(0, 0, 0, 0.35);
+  --ert-panel-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --ert-panel-shadow-elev: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .ert-ui.ert-scope--settings.ert-skin--social,
@@ -1472,8 +1472,7 @@
   --ert-social-border: color-mix(in srgb, var(--ert-social-accent) 28%, transparent);
   --ert-social-surface: color-mix(in srgb, var(--background-primary) 88%, var(--ert-social-accent) 6%);
   --ert-social-surface-2: color-mix(in srgb, var(--background-secondary) 88%, var(--ert-social-accent) 8%);
-  --ert-social-glow: 0 18px 40px color-mix(in srgb, var(--ert-social-accent) 20%, transparent),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --ert-social-glow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
   --ert-social-grad: linear-gradient(135deg,
       color-mix(in srgb, var(--ert-social-accent) 16%, transparent) 0%,
       color-mix(in srgb, var(--ert-social-accent) 5%, transparent) 100%);
@@ -1734,8 +1733,7 @@
     linear-gradient(135deg, color-mix(in srgb, var(--ert-pro-accent) 12%, transparent) 0%, color-mix(in srgb, var(--ert-pro-accent) 5%, transparent) 100%),
     color-mix(in srgb, var(--background-primary) 90%, var(--ert-pro-accent) 6%);
   --ert-pro-surface-2: color-mix(in srgb, var(--background-secondary) 88%, var(--ert-pro-accent) 8%);
-  --ert-pro-glow: 0 18px 40px color-mix(in srgb, var(--ert-pro-accent) 20%, transparent),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --ert-pro-glow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .ert-ui.ert-scope--settings.ert-skin--social .ert-skin--pro .ert-panel,
@@ -1860,9 +1858,11 @@
 
 .ert-ui.ert-scope--modal input.ert-input--warning,
 .ert-ui.ert-scope--modal .ert-input--warning {
-  border-color: var(--ert-alert-warning-color);
+  border-color: transparent;
   background-color: color-mix(in srgb, var(--ert-alert-warning-color) 10%, transparent);
-  box-shadow: 0 0 0 calc(var(--ert-gap-xs) / 2) color-mix(in srgb, var(--ert-alert-warning-color) 30%, transparent);
+  outline: 1px solid var(--ert-alert-warning-color);
+  outline-offset: 0;
+  box-shadow: none;
 }
 
 .ert-ui.ert-scope--settings .ert-sliderValueLabel {
@@ -2073,7 +2073,7 @@
   --ert-pro-surface-2: color-mix(in srgb, var(--background-secondary) 88%, var(--ert-accent) 8%);
   --ert-surface-hero: var(--ert-pro-surface-bg);
   --ert-border-hero: color-mix(in srgb, var(--ert-accent) 30%, transparent);
-  --ert-shadow-hero: 0 10px 36px color-mix(in srgb, var(--ert-accent) 18%, transparent);
+  --ert-shadow-hero: 0 4px 12px color-mix(in srgb, var(--ert-accent) 12%, transparent);
   --ert-hero-grad: none;
   --ert-iconBadge-bg: color-mix(in srgb, var(--ert-accent) 18%, transparent);
   --ert-chip-bg: color-mix(in srgb, var(--ert-accent) 12%, var(--background-secondary) 78%);
@@ -2081,8 +2081,8 @@
   --ert-previewFrame-border: color-mix(in srgb, var(--ert-accent) 22%, transparent);
   --ert-panel-bg: var(--ert-pro-surface-bg);
   --ert-panel-border: var(--ert-pro-border);
-  --ert-panel-shadow: 0 8px 32px color-mix(in srgb, var(--ert-accent) 18%, transparent);
-  --ert-panel-shadow-elev: var(--ert-panel-shadow);
+  --ert-panel-shadow: none;
+  --ert-panel-shadow-elev: none;
 }
 
 .ert-ui.ert-skin--pro .setting-item:not(.setting-item-heading),
@@ -2091,7 +2091,7 @@
 .ert-ui.ert-scope--settings.ert-skin--pro .setting-item.ert-settingRow:not(.setting-item-heading) {
   background: color-mix(in srgb, var(--background-secondary) 80%, color-mix(in srgb, var(--ert-accent) 24%, transparent) 0%);
   border: 1px solid var(--ert-pro-border);
-  box-shadow: 0 5px 18px color-mix(in srgb, var(--ert-accent) 16%, transparent);
+  box-shadow: none;
 }
 
 
@@ -2103,15 +2103,15 @@
   --ert-modal-border: color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
   --ert-panel-bg: color-mix(in srgb, var(--background-primary) 86%, transparent);
   --ert-panel-border: color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
-  --ert-panel-shadow: 0 10px 30px color-mix(in srgb, var(--background-primary) 22%, transparent);
+  --ert-panel-shadow: none;
 }
 
 .ert-ui.ert-modal--social .ert-panel--glass,
 .ert-ui .ert-modal--social .ert-panel--glass {
   --ert-panel-bg: color-mix(in srgb, var(--background-primary) 78%, transparent);
   --ert-panel-border: color-mix(in srgb, var(--background-modifier-border) 60%, transparent);
-  --ert-panel-shadow: 0 8px 20px color-mix(in srgb, var(--background-primary) 18%, transparent);
-  --ert-panel-backdrop: blur(16px) saturate(1.1);
+  --ert-panel-shadow: none;
+  --ert-panel-backdrop: blur(12px);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -5215,7 +5215,6 @@
   font-size: 1.6rem;
   font-weight: 700;
   color: var(--rt-color-empty);
-  text-shadow: 0 0.125rem 0.5rem color-mix(in srgb, var(--text-normal) 30%, transparent);
 }
 
 .ert-ui.ert-scope--settings .ert-completion-complete-subtitle {
@@ -5236,15 +5235,11 @@
 .ert-ui.ert-scope--settings :is(.ert-completion-preview-press-complete, .ert-completion-preview-book-complete) {
   background: var(--rt-completion-press-grad);
   border: 0.125rem solid var(--rt-completion-gold);
-  box-shadow:
-    0 0 2.5rem color-mix(in srgb, var(--rt-completion-gold) 40%, transparent),
-    0 0 5rem color-mix(in srgb, var(--rt-completion-gold) 20%, transparent),
-    inset 0 0 3.75rem color-mix(in srgb, var(--rt-completion-gold) 15%, transparent);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--rt-completion-gold) 18%, transparent);
 }
 
 .ert-ui.ert-scope--settings :is(.ert-completion-preview-press-complete, .ert-completion-preview-book-complete) .ert-planetary-preview-heading {
   color: color-mix(in srgb, var(--text-on-accent) 95%, transparent);
-  text-shadow: 0 0.0625rem 0.25rem color-mix(in srgb, var(--text-normal) 30%, transparent);
   position: relative;
   z-index: 1;
 }
@@ -5255,7 +5250,7 @@
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  filter: drop-shadow(0 0.125rem 0.25rem color-mix(in srgb, var(--text-normal) 40%, transparent));
+  filter: none;
 }
 
 .ert-ui.ert-scope--settings :is(.ert-completion-preview-press-complete, .ert-completion-preview-book-complete) .ert-completion-complete-subtitle {
@@ -5275,9 +5270,7 @@
 .ert-ui.ert-scope--settings .ert-completion-preview-zero-complete {
   background: var(--rt-completion-zero-grad);
   border: 0.125rem solid var(--rt-color-zero);
-  box-shadow:
-    0 0 1.875rem color-mix(in srgb, var(--rt-color-zero) 35%, transparent),
-    inset 0 0 3.75rem color-mix(in srgb, var(--rt-color-zero) 12%, transparent);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--rt-color-zero) 18%, transparent);
 }
 
 .ert-ui.ert-scope--settings .ert-completion-preview-zero-complete .ert-planetary-preview-heading {
@@ -5301,9 +5294,7 @@
 .ert-ui.ert-scope--settings .ert-completion-preview-author-complete {
   background: var(--rt-completion-author-grad);
   border: 0.125rem solid var(--rt-color-author);
-  box-shadow:
-    0 0 1.875rem color-mix(in srgb, var(--rt-color-author) 35%, transparent),
-    inset 0 0 3.75rem color-mix(in srgb, var(--rt-color-author) 12%, transparent);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--rt-color-author) 18%, transparent);
 }
 
 .ert-ui.ert-scope--settings .ert-completion-preview-author-complete .ert-planetary-preview-heading {
@@ -5327,9 +5318,7 @@
 .ert-ui.ert-scope--settings .ert-completion-preview-house-complete {
   background: var(--rt-completion-house-grad);
   border: 0.125rem solid var(--rt-color-house);
-  box-shadow:
-    0 0 1.875rem color-mix(in srgb, var(--rt-color-house) 35%, transparent),
-    inset 0 0 3.75rem color-mix(in srgb, var(--rt-color-house) 12%, transparent);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--rt-color-house) 18%, transparent);
 }
 
 .ert-ui.ert-scope--settings .ert-completion-preview-house-complete .ert-planetary-preview-heading {
@@ -6673,7 +6662,7 @@
 .ert-ui.ert-modal-shell.modal,
 .ert-ui .ert-modal-shell.modal {
   --ert-modal-bg: color-mix(in srgb, var(--background-primary) 50%, transparent);
-  --ert-modal-blur: blur(32px) saturate(1.24);
+  --ert-modal-blur: blur(24px) saturate(1.12);
   background: var(--ert-modal-bg);
   border: 1px solid var(--ert-modal-border);
   border-radius: calc(var(--ert-panel-radius) + var(--ert-gap-sm));
@@ -6690,6 +6679,7 @@
   --ert-pill-shadow: none;
   --ert-iconBtn-shadow: none;
   --ert-swatch-shadow: none;
+  --ert-badgePill-shadow: none;
 }
 
 .ert-ui.ert-modal-shell--sm.modal,
@@ -7695,6 +7685,18 @@
   flex: 1;
 }
 
+.ert-ui button.ert-btn--icon-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ert-ui button.ert-btn--icon-left .svg-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
 .ert-ui.ert-scope--modal button.ert-modal-choice,
 .ert-ui.ert-scope--modal a.ert-modal-choice {
   appearance: none;
@@ -8113,7 +8115,7 @@
 .ert-ui.ert-scope--modal .ert-release-notes-hero-link:hover {
   background-color: var(--ert-accent);
   color: var(--text-on-accent, var(--ert-color-white));
-  box-shadow: var(--shadow-l);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--ert-accent) 18%, transparent);
 }
 
 .ert-ui.ert-scope--modal .ert-release-notes-hero-hint {
@@ -8143,7 +8145,7 @@
 .ert-ui.ert-scope--modal .ert-release-notes-details {
   --ert-panel-bg: color-mix(in srgb, var(--background-secondary) 88%, var(--background-primary) 12%);
   --ert-panel-border: color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
-  --ert-panel-shadow: var(--shadow-l);
+  --ert-panel-shadow: none;
   --ert-panel-radius: calc(var(--ert-panel-radius) + var(--ert-gap-xs));
   --ert-panel-pad: calc(var(--ert-pad-md) + var(--ert-gap-xs));
   display: flex;
@@ -8187,7 +8189,7 @@
 
 .ert-ui.ert-scope--modal .ert-release-notes-details-major {
   --ert-panel-border: var(--ert-accent);
-  --ert-panel-shadow: var(--shadow-l);
+  --ert-panel-shadow: none;
 }
 
 .ert-ui.ert-scope--modal .ert-release-notes-details-major::before {
@@ -8520,7 +8522,7 @@
 .ert-ui.ert-scope--settings .ert-skin--pro .ert-elementBlock {
   background: var(--ert-pro-surface-2);
   border: 1px solid var(--ert-pro-border);
-  box-shadow: 0 8px 18px color-mix(in srgb, var(--ert-accent) 12%, transparent);
+  box-shadow: none;
 }
 
 .ert-ui.ert-skin--pro .ert-row--recommended,
@@ -8696,31 +8698,25 @@
 }
 
 .ert-ui.ert-scope--settings .ert-campaign-frequency-setting {
-  display: block;
-  padding-top: var(--ert-gap-sm);
-  width: 100%;
+  display: grid;
+  row-gap: var(--ert-gap-sm);
 }
 
 .ert-ui.ert-scope--settings .ert-campaign-frequency-setting__row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 280px);
   align-items: center;
   column-gap: var(--ert-gap-md);
-  width: 100%;
-}
-
-.ert-ui.ert-scope--settings .ert-campaign-frequency-setting__row + .ert-campaign-frequency-setting__row {
-  margin-top: var(--ert-gap-sm);
 }
 
 .ert-ui.ert-scope--settings .ert-campaign-frequency-setting__row--subordinate {
+  margin-top: 0;
   padding-top: var(--ert-gap-sm);
-  border-top: 1px solid var(--background-modifier-border);
+  border-top: 1px solid color-mix(in srgb, var(--ert-pro-border) 75%, transparent);
 }
 
 .ert-ui.ert-scope--settings .ert-settingComposite__info {
   min-width: 0;
-  width: 100%;
 }
 
 .ert-ui.ert-scope--settings .ert-settingComposite__info .setting-item-name {
@@ -8735,21 +8731,18 @@
   justify-self: end;
   align-self: center;
   min-width: 0;
-  width: 100%;
-  display: flex;
-  justify-content: flex-end;
 }
 
 .ert-ui.ert-scope--settings .ert-campaign-refresh-controls {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--ert-gap-sm);
-  width: min(100%, 420px);
-  max-width: 420px;
+  width: 280px;
 }
 
 .ert-ui.ert-scope--settings .ert-campaign-refresh-controls input[type="range"] {
-  flex: 1;
+  width: 100%;
 }
 
 .ert-ui.ert-scope--settings .ert-iconBtn--active {
@@ -10523,7 +10516,7 @@
   opacity: 1;
 }
 
-/* Active state — standard */
+/* Active state — standard: bright border + text, no glow */
 .ert-ui.ert-scope--settings .ert-pillBtn.is-active {
   color: var(--ert-pill-hover-color);
   border-color: var(--ert-accent, var(--interactive-accent));
@@ -10567,6 +10560,66 @@
 .ert-ui.ert-scope--settings .ert-pillBtn--social {
   --ert-accent: var(--rt-social-color, #ffd41d);
   --ert-accent-rgb: var(--rt-social-color-rgb, 255, 212, 29);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Platform Background Presets                                                */
+/* -------------------------------------------------------------------------- */
+
+.ert-ui.ert-scope--settings .ert-platform-presets {
+  margin-top: 4px;
+  margin-bottom: 12px;
+}
+
+.ert-ui.ert-scope--settings .ert-platform-presets__label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.ert-ui.ert-scope--settings .ert-platform-presets__swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ert-ui.ert-scope--settings .ert-platform-swatch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 6px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  background: var(--background-secondary);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+  line-height: 1;
+}
+
+.ert-ui.ert-scope--settings .ert-platform-swatch:hover {
+  border-color: var(--ert-accent, var(--interactive-accent));
+  background: var(--background-primary);
+}
+
+.ert-ui.ert-scope--settings .ert-platform-swatch__color {
+  display: block;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  background: var(--swatch-color);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  flex-shrink: 0;
+}
+
+.ert-ui.ert-scope--settings .ert-platform-swatch__name {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.ert-ui.ert-scope--settings .ert-platform-swatch:hover .ert-platform-swatch__name {
+  color: var(--text-normal);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -10659,6 +10712,10 @@
 /* -------------------------------------------------------------------------- */
 /* ERT Buttons (Standard & Pro)                                               */
 /* -------------------------------------------------------------------------- */
+
+.ert-ui .ert-btn--fit {
+  width: auto;
+}
 
 .ert-ui.ert-scope--settings .ert-btn,
 .ert-ui.ert-scope--modal .ert-btn {

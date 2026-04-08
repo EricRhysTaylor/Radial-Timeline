@@ -689,7 +689,7 @@ function renderCampaignDetails(
                 exportFormat: resolveCampaignExportFormat(target)
             });
             target.updateFrequency = val as 'manual' | 'daily' | 'weekly' | 'monthly';
-            if (settings.autoUpdateExportPath && target.exportPath === oldDefaultPath) {
+            if (target.exportPath === oldDefaultPath) {
                 target.exportPath = buildCampaignEmbedPath({
                     bookTitle: resolvedBookTitle,
                     campaignName: target.name,
@@ -1022,7 +1022,7 @@ function renderCampaignDetails(
                     exportFormat: resolveCampaignExportFormat(target)
                 });
                 target.aprExportQuality = val === '' ? undefined : (val as AprExportQuality);
-                if (settings.autoUpdateExportPath && target.exportPath === oldDefaultPath) {
+                if (target.exportPath === oldDefaultPath) {
                     target.exportPath = buildCampaignEmbedPath({
                         bookTitle: resolvedBookTitle,
                         campaignName: target.name,

@@ -113,20 +113,24 @@ export function computeAprLayout(preset: AprPreset, data: AprData = {}): AprLayo
 
     const patternScale = preset.density ?? (outerPx / 300) * 0.4;
 
-    const brandingFontSize = preset.enableText ? clampPx(textBand * kPercent, 8, 42) : 0;
-    const badgeFontSize = clampPx(outerPx * (kInset + kDividerStroke), 6, 32);
+    // Scale clamp bounds proportionally (baseline 300px)
+    const scaledClamp = (value: number, minAt300: number, maxAt300: number) =>
+        clampPx(value, minAt300 * sizeScale, maxAt300 * sizeScale);
+
+    const brandingFontSize = preset.enableText ? scaledClamp(textBand * kPercent, 8, 42) : 0;
+    const badgeFontSize = scaledClamp(outerPx * (kInset + kDividerStroke), 6, 32);
 
     const percentValue = Number.isFinite(data.percent) ? (data.percent as number) : 0;
     const percentText = String(Math.round(percentValue));
     const charCount = Math.max(1, percentText.length);
-    const baseCenterNumberPx = clampPx(outerPx * kCenterNumber, 18, 120);
+    const baseCenterNumberPx = scaledClamp(outerPx * kCenterNumber, 18, 120);
     const innerDiameter = ringInnerR * 2;
     const estimatedWidth = charCount * baseCenterNumberPx * kPercent;
     const fitScale = (innerDiameter > 0 && estimatedWidth > 0)
         ? Math.min(1, innerDiameter / estimatedWidth)
         : 1;
     const centerNumberPx = preset.enableCenterLabel
-        ? clampPx(baseCenterNumberPx * fitScale, 18, 120)
+        ? scaledClamp(baseCenterNumberPx * fitScale, 18, 120)
         : 0;
     // % symbol sized to fill (and slightly overflow) the inner circle
     const centerPercentPx = preset.enableCenterLabel

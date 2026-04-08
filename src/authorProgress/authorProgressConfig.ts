@@ -118,7 +118,7 @@ export function buildDefaultAuthorProgressDefaults(): AuthorProgressDefaults {
         updateFrequency: 'manual',
         stalenessThresholdDays: 30,
         enableReminders: true,
-        exportPath: 'Radial Timeline/Social/book/social-default-manual-medium.png',
+        exportPath: '',
         autoUpdateExportPath: true
     };
 }

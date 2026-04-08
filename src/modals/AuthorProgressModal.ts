@@ -181,6 +181,18 @@ export class AuthorProgressModal extends Modal {
 
         // Footer actions
         const footer = contentEl.createDiv({ cls: 'ert-modal-actions' });
+        const settingsBtn = new ButtonComponent(footer)
+            .setButtonText('Settings')
+            .onClick(() => {
+                this.close();
+                const setting = (this.app as unknown as { setting?: { open: () => void; openTabById: (id: string) => void } }).setting;
+                if (!setting) return;
+                this.plugin.settingsTab?.setActiveTab('social');
+                setting.open();
+                setting.openTabById('radial-timeline');
+            });
+        setIcon(settingsBtn.buttonEl, 'settings');
+        settingsBtn.buttonEl.addClass('ert-btn--icon-left');
         new ButtonComponent(footer)
             .setButtonText('Close')
             .onClick(() => this.close());
@@ -481,7 +493,7 @@ export class AuthorProgressModal extends Modal {
             cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_COMPACT} ${ERT_CLASSES.ROW_MIDDLE_ALIGN}`
         });
         pathRow.createSpan({ text: 'Output file', cls: ERT_CLASSES.LABEL });
-        const pathControl = pathRow.createDiv({ cls: ERT_CLASSES.CONTROL });
+        const pathControl = pathRow.createDiv({ cls: `${ERT_CLASSES.CONTROL} ${ERT_CLASSES.INLINE}` });
         const pathInput = new TextComponent(pathControl);
         const defaultPath = buildDefaultEmbedPath({
             bookTitle: settings?.bookTitleOverride,
@@ -490,7 +502,7 @@ export class AuthorProgressModal extends Modal {
             exportFormat: this.getDefaultExportFormat()
         });
         // Migrate stale legacy paths to v2 quality-based format
-        if (settings && settings.autoUpdateExportPath !== false && settings.exportPath && settings.exportPath !== defaultPath) {
+        if (settings && settings.exportPath && settings.exportPath !== defaultPath) {
             if (isDefaultEmbedPath(settings.exportPath, {
                 bookTitle: settings.bookTitleOverride,
                 updateFrequency: settings.updateFrequency
@@ -504,22 +516,18 @@ export class AuthorProgressModal extends Modal {
             pathInput.inputEl.removeClass('ert-input--error');
             pathInput.inputEl.removeClass('ert-input--success');
         };
-        const looksLikeDefaultPath = (path: string): boolean => {
-            if (!path?.trim()) return false;
-            const normalized = path.replace(/\\/g, '/');
-            return normalized.startsWith('Radial Timeline/Social/')
-                && (normalized.includes('/apr-default-') || normalized.includes('/social-default-'))
-                && (normalized.toLowerCase().endsWith('.png') || normalized.toLowerCase().endsWith('.svg'));
-        };
         const applyWarningState = (pathValue: string) => {
-            const shouldWarnPath = settings?.autoUpdateExportPath === false
+            const isCustomPath = !!pathValue?.trim()
                 && pathValue !== defaultPath
-                && looksLikeDefaultPath(pathValue);
-            if (shouldWarnPath) {
+                && !isDefaultEmbedPath(pathValue, {
+                    bookTitle: settings?.bookTitleOverride,
+                    updateFrequency: settings?.updateFrequency
+                });
+            if (isCustomPath) {
                 pathInput.inputEl.addClass('ert-input--warning');
                 pathInput.inputEl.setAttribute(
                     'title',
-                    'Auto-update export paths is off. Update this filename manually when size or schedule changes.'
+                    `Custom path. Canonical: ${defaultPath}`
                 );
             } else {
                 pathInput.inputEl.removeClass('ert-input--warning');
@@ -555,6 +563,21 @@ export class AuthorProgressModal extends Modal {
             }
         });
 
+        // Reset path button
+        const resetBtn = pathControl.createEl('button', {
+            cls: 'ert-iconBtn',
+            attr: { 'aria-label': 'Reset to default path', type: 'button' }
+        });
+        setIcon(resetBtn, 'rotate-ccw');
+        resetBtn.addEventListener('click', async () => {
+            if (!this.plugin.settings.authorProgress) return;
+            this.plugin.settings.authorProgress.defaults.exportPath = defaultPath;
+            await this.plugin.saveSettings();
+            pathInput.setValue(defaultPath);
+            clearState();
+            applyWarningState(defaultPath);
+        });
+
         // === PUBLISH BUTTON ===
         const actionRow = container.createDiv({ cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_MIDDLE_ALIGN}` });
         actionRow.createSpan({ text: '', cls: ERT_CLASSES.LABEL });
@@ -562,7 +585,11 @@ export class AuthorProgressModal extends Modal {
         const primaryButton = new ButtonComponent(actionControl)
             .setButtonText('Publish')
             .setCta();
+        primaryButton.buttonEl.addClass('ert-btn--fit');
         primaryButton.onClick(() => this.publish('dynamic'));
+
+        // Bottom spacing
+        actionRow.style.marginBottom = '12px';
     }
 
     private renderProActions(container: HTMLElement, campaigns: AuthorProgressCampaign[]): void {
@@ -605,8 +632,8 @@ export class AuthorProgressModal extends Modal {
             this.renderActions();
         };
 
-        // Auto-update legacy export paths if enabled
-        if (settings?.autoUpdateExportPath) {
+        // Auto-update legacy export paths
+        if (settings) {
             const legacySlug = campaign.name.toLowerCase().replace(/\s+/g, '-');
             const legacyPath = `Radial Timeline/Social/${legacySlug}-progress.svg`;
             if (campaign.exportPath === legacyPath) {
@@ -822,8 +849,8 @@ export class AuthorProgressModal extends Modal {
     }
 
     private getQualityLabel(quality: AprExportQuality): string {
-        if (quality === 'print') return '4800px Print';
-        return quality === 'ultra' ? '2400px Ultra' : '1200px Standard';
+        if (quality === 'print') return '4800px Prt';
+        return quality === 'ultra' ? '2400px Ult' : '1200px Std';
     }
 
     private summarizePath(path: string, maxLength = 42): string {
@@ -930,9 +957,7 @@ export class AuthorProgressModal extends Modal {
         const currentPath = settings.exportPath?.trim() ?? '';
 
         settings.exportFormat = nextFormat;
-        if (!currentPath) {
-            settings.exportPath = newDefaultPath;
-        } else if (settings.autoUpdateExportPath && currentPath === oldDefaultPath) {
+        if (!currentPath || currentPath === oldDefaultPath) {
             settings.exportPath = newDefaultPath;
         } else {
             settings.exportPath = normalizePath(this.swapPathExtension(currentPath, nextFormat));
@@ -975,9 +1000,7 @@ export class AuthorProgressModal extends Modal {
         const currentPath = target.exportPath?.trim() ?? '';
 
         target.exportFormat = nextFormat;
-        if (!currentPath) {
-            target.exportPath = newDefaultPath;
-        } else if (settings.autoUpdateExportPath && currentPath === oldDefaultPath) {
+        if (!currentPath || currentPath === oldDefaultPath) {
             target.exportPath = newDefaultPath;
         } else {
             target.exportPath = normalizePath(this.swapPathExtension(currentPath, nextFormat));
@@ -1019,7 +1042,7 @@ export class AuthorProgressModal extends Modal {
                 bookTitle: settings.bookTitleOverride,
                 updateFrequency: settings.updateFrequency
             });
-        if (settings.autoUpdateExportPath !== false && pathIsDefaultOrUnset) {
+        if (pathIsDefaultOrUnset) {
             settings.exportPath = buildDefaultEmbedPath({
                 bookTitle: settings.bookTitleOverride,
                 updateFrequency: settings.updateFrequency,

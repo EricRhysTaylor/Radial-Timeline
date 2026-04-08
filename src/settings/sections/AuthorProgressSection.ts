@@ -163,7 +163,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                 exportFormat: defaultFormat
             });
             settings.aprSize = size;
-            if (settings.autoUpdateExportPath && settings.exportPath === oldDefaultPath) {
+            if (settings.exportPath === oldDefaultPath) {
                 settings.exportPath = buildDefaultEmbedPath({
                     bookTitle: settings.bookTitleOverride,
                     updateFrequency: settings.updateFrequency,
@@ -432,19 +432,6 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             }
         });
     });
-
-    new Setting(stylingBody)
-        .setName(t('settings.authorProgress.configuration.autoUpdateExportPaths.name'))
-        .setDesc(t('settings.authorProgress.configuration.autoUpdateExportPaths.desc'))
-        .addToggle(toggle => {
-            const current = settings?.autoUpdateExportPath ?? true;
-            toggle.setValue(current);
-            toggle.onChange(async (val) => {
-                if (!plugin.settings.authorProgress) return;
-                plugin.settings.authorProgress.defaults.autoUpdateExportPath = val;
-                await plugin.saveSettings();
-            });
-        });
 
     // ─────────────────────────────────────────────────────────────────────────
     // UNIFIED TYPOGRAPHY & COLOR CONTROLS
@@ -1216,6 +1203,40 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
     updateEmphasis(currentTransparent);
 
+    // Social media platform background presets
+    const platformPresets: Array<{ label: string; color: string }> = [
+        { label: 'X / Twitter', color: '#000000' },
+        { label: 'Bluesky', color: '#0d1117' },
+        { label: 'Facebook', color: '#18191a' },
+        { label: 'Instagram', color: '#121212' },
+        { label: 'LinkedIn', color: '#1b1f23' },
+        { label: 'Threads', color: '#101010' },
+        { label: 'Discord', color: '#313338' },
+        { label: 'Kickstarter', color: '#0a0b0d' },
+        { label: 'Patreon', color: '#141518' },
+        { label: 'Substack', color: '#121212' },
+    ];
+    const platformRow = themeBody.createDiv({ cls: 'ert-platform-presets' });
+    platformRow.createSpan({ text: 'Platform backgrounds', cls: 'ert-platform-presets__label' });
+    const platformSwatches = platformRow.createDiv({ cls: 'ert-platform-presets__swatches' });
+    for (const preset of platformPresets) {
+        const btn = platformSwatches.createEl('button', {
+            cls: 'ert-platform-swatch',
+            attr: { 'aria-label': `${preset.label} (${preset.color})`, type: 'button' }
+        });
+        btn.style.setProperty('--swatch-color', preset.color);
+        btn.createSpan({ cls: 'ert-platform-swatch__color' });
+        btn.createSpan({ cls: 'ert-platform-swatch__name', text: preset.label });
+        btn.addEventListener('click', async () => {
+            if (!plugin.settings.authorProgress) return;
+            plugin.settings.authorProgress.defaults.aprBackgroundColor = preset.color;
+            await plugin.saveSettings();
+            bgColorPicker?.setValue(preset.color);
+            bgTextInput?.setValue(preset.color);
+            refreshPreview();
+        });
+    }
+
     const spokeColorSetting = new Setting(themeBody)
         .setName(t('settings.authorProgress.styling.spokesAndBorders.name'))
         .setDesc(t('settings.authorProgress.styling.spokesAndBorders.desc'));
@@ -1331,7 +1352,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                             exportFormat: defaultFormat
                         });
                         current.updateFrequency = val as any;
-                        if (current.autoUpdateExportPath && current.exportPath === oldDefaultPath) {
+                        if (current.exportPath === oldDefaultPath) {
                             current.exportPath = buildDefaultEmbedPath({
                                 bookTitle: current.bookTitleOverride,
                                 updateFrequency: current.updateFrequency,
@@ -1476,18 +1497,6 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             });
         });
 
-        new Setting(automationCard)
-            .setName(t('settings.authorProgress.publishing.autoUpdateExportPaths.name'))
-            .setDesc(t('settings.authorProgress.publishing.autoUpdateExportPaths.desc'))
-            .addToggle(toggle => {
-                toggle.setValue(settings?.autoUpdateExportPath ?? true);
-                toggle.onChange(async (val) => {
-                    if (!plugin.settings.authorProgress) return;
-                    plugin.settings.authorProgress.defaults.autoUpdateExportPath = val;
-                    await plugin.saveSettings();
-                });
-            });
-
         // Pro upgrade teaser for non-Pro users
         const proTeaser = automationCard.createDiv({ cls: `ert-apr-pro-teaser ${ERT_CLASSES.SKIN_PRO}` });
         const headerRow = proTeaser.createDiv({ cls: 'ert-apr-pro-teaser-header' });
@@ -1538,7 +1547,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
     const modeCell = progressModeGrid.createDiv({ cls: ERT_CLASSES.GRID_FORM_CELL });
     const modeDropdown = new DropdownComponent(modeCell);
-    modeDropdown.selectEl.addClass('ert-input--md');
+    modeDropdown.selectEl.addClass('ert-input--lg');
     const modeGuidance = modeCell.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
 
     const dateRangeWrap = modeCell.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });

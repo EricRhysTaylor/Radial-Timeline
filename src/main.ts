@@ -578,19 +578,13 @@ export default class RadialTimelinePlugin extends Plugin {
             this.settings.cachedReleaseNotes = DEFAULT_SETTINGS.cachedReleaseNotes;
         }
         if (this.settings.authorProgress) {
-            const apr = this.settings.authorProgress;
-            const defaults = apr.defaults;
-            if (defaults.autoUpdateExportPath === undefined) {
-                defaults.autoUpdateExportPath = true;
-            }
-            const hasPublished = !!defaults.lastPublishedDate?.trim();
-            const hasCampaigns = (apr.campaigns ?? []).length > 0;
-            const isDefaultPath = isDefaultEmbedPath(defaults.exportPath, {
-                bookTitle: defaults.bookTitleOverride,
-                updateFrequency: defaults.updateFrequency
-            });
-            if (!hasPublished && !hasCampaigns && isDefaultPath && defaults.autoUpdateExportPath === false) {
-                defaults.autoUpdateExportPath = true;
+            // Always auto-update export paths (no user toggle)
+            this.settings.authorProgress.defaults.autoUpdateExportPath = true;
+            // Clear stale legacy paths that use old size tokens (medium/small/large/thumb)
+            const defaults = this.settings.authorProgress.defaults;
+            const ep = defaults.exportPath ?? '';
+            if (ep && /-(thumb|small|medium|large)\.(png|svg)$/.test(ep)) {
+                defaults.exportPath = '';
             }
         }
         if (this.settings.releaseNotesLastFetched !== undefined) {
