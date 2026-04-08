@@ -145,25 +145,6 @@ function getNextUpdateLabel(campaign: AuthorProgressCampaign): string {
 }
 
 const AUTO_UPDATE_FREQUENCIES: readonly string[] = ['daily', 'weekly', 'monthly'];
-const APR_SIZE_OPTIONS: readonly AprSize[] = ['thumb', 'small', 'medium', 'large'];
-
-function normalizeAprSize(value: unknown): AprSize | undefined {
-    if (typeof value !== 'string') return undefined;
-    return APR_SIZE_OPTIONS.includes(value as AprSize) ? value as AprSize : undefined;
-}
-
-function describeAprSize(size: AprSize): string {
-    switch (size) {
-        case 'thumb':
-            return 'Thumb (100px)';
-        case 'small':
-            return 'Small (150px)';
-        case 'large':
-            return 'Large (450px)';
-        default:
-            return 'Medium (300px)';
-    }
-}
 
 function resolveCampaignExportFormat(campaign: AuthorProgressCampaign | undefined): AprExportFormat {
     if (!campaign) return 'png';
@@ -722,8 +703,6 @@ function renderCampaignDetails(
     const isManual = !campaign.updateFrequency || campaign.updateFrequency === 'manual';
     const refreshWrap = freqSetting.settingEl.createDiv({ cls: 'ert-campaign-refresh-inline' });
     if (!isManual) refreshWrap.addClass('ert-hidden');
-
-    refreshWrap.createDiv({ cls: 'ert-divider ert-campaign-refresh-inline__divider' });
     const refreshMin = 1;
     const refreshMax = 90;
     const getRefreshValue = () =>
@@ -1003,22 +982,20 @@ function renderCampaignDetails(
             });
     });
 
-    // Size
-    const exportSizeSetting = new Setting(details)
-        .setName('Export size')
-        .setDesc('Dimensions: Small for widgets, Medium for social/newsletters, Large for website embeds.')
+    // Export Quality
+    const exportQualitySetting = new Setting(details)
+        .setName('Export quality')
+        .setDesc('Standard (1200px) for social media. Ultra (2400px) for print and high-DPI displays.')
         .addDropdown(drop => {
             drop.selectEl.addClass('ert-input', 'ert-input--lg');
-            const globalSize = normalizeAprSize(plugin.settings.authorProgress?.defaults.aprSize) ?? 'medium';
+            const globalQuality = plugin.settings.authorProgress?.defaults.aprExportQuality ?? 'standard';
             const latestCampaign = plugin.settings.authorProgress?.campaigns?.[index];
-            const campaignSize = normalizeAprSize(latestCampaign?.aprSize ?? campaign.aprSize);
-            const defaultSizeLabel = describeAprSize(globalSize).replace(/\s*\(([^)]+)\)/, ' $1');
-            drop.addOption('', `Default (${defaultSizeLabel})`);
-            drop.addOption('thumb', 'Thumb (100px)');
-            drop.addOption('small', 'Small (150px)');
-            drop.addOption('medium', 'Medium (300px)');
-            drop.addOption('large', 'Large (450px)');
-            drop.setValue(campaignSize ?? '');
+            const campaignQuality = latestCampaign?.aprExportQuality ?? campaign.aprExportQuality;
+            const defaultLabel = globalQuality === 'ultra' ? 'Ultra 2400px' : 'Standard 1200px';
+            drop.addOption('', `Default (${defaultLabel})`);
+            drop.addOption('standard', 'Standard (1200px)');
+            drop.addOption('ultra', 'Ultra (2400px)');
+            drop.setValue(campaignQuality ?? '');
             drop.onChange(async (val) => {
                 if (!plugin.settings.authorProgress?.campaigns) return;
                 const authorProgress = plugin.settings.authorProgress;
@@ -1038,7 +1015,7 @@ function renderCampaignDetails(
                     teaserEnabled: target.teaserReveal?.enabled ?? true,
                     exportFormat: resolveCampaignExportFormat(target)
                 });
-                target.aprSize = val === '' ? undefined : normalizeAprSize(val);
+                target.aprExportQuality = val === '' ? undefined : (val as 'standard' | 'ultra');
                 if (settings.autoUpdateExportPath && target.exportPath === oldDefaultPath) {
                     target.exportPath = buildCampaignEmbedPath({
                         bookTitle: resolvedBookTitle,

@@ -297,8 +297,8 @@ export class AuthorProgressModal extends Modal {
         const statusGrid = container.createDiv({ cls: `ert-apr-status-grid${includeFormatColumn ? ' ert-apr-status-grid--with-format' : ''}` });
         const statusHeaderRow = statusGrid.createDiv({ cls: 'ert-apr-status-row ert-apr-status-row--header' });
         const headerLabels = includeFormatColumn
-            ? ['APR', 'Book Title', 'Format', 'Export', 'Stage', 'Update In', 'Reminder']
-            : ['APR', 'Book Title', 'Export', 'Stage', 'Update In', 'Reminder'];
+            ? ['APR', 'Book Title', 'Format', 'Export', 'Stage', 'Update In']
+            : ['APR', 'Book Title', 'Export', 'Stage', 'Update In'];
         headerLabels.forEach(label => {
             const headerCell = statusHeaderRow.createDiv({
                 text: label,
@@ -350,7 +350,9 @@ export class AuthorProgressModal extends Modal {
             const stageIcon = stagePill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON });
             const stageMeta = target.campaign
                 ? this.getCampaignStageDisplay(target.campaign)
-                : { label: TEASER_LEVEL_INFO.full.label.toUpperCase(), icon: TEASER_LEVEL_INFO.full.icon };
+                : target.size === 'thumb'
+                    ? { label: TEASER_LEVEL_INFO.bar.label.toUpperCase(), icon: TEASER_LEVEL_INFO.bar.icon }
+                    : { label: TEASER_LEVEL_INFO.full.label.toUpperCase(), icon: TEASER_LEVEL_INFO.full.icon };
             setIcon(stageIcon, stageMeta.icon);
             stagePill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: stageMeta.label });
             if (stageMeta.tooltip) {
@@ -377,13 +379,10 @@ export class AuthorProgressModal extends Modal {
                             reminderDays: target.campaign ? target.campaign.refreshThresholdDays : settings?.stalenessThresholdDays,
                             remindersEnabled: target.campaign ? true : settings?.enableReminders
                         });
-            updatePill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: updateInfo.label });
-
-            const reminderCell = dataRow.createDiv({ cls: 'ert-apr-status-cell ert-apr-status-cell--reminder' });
-            reminderCell.createSpan({
-                cls: ERT_CLASSES.FIELD_NOTE,
-                text: (isUnpublished ? '—' : undefined) ?? updateInfo.reminder ?? '—'
-            });
+            const updateLabel = updateInfo.reminder
+                ? `${updateInfo.label} · ${updateInfo.reminder}`
+                : updateInfo.label;
+            updatePill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: updateLabel });
         });
     }
 
@@ -488,6 +487,16 @@ export class AuthorProgressModal extends Modal {
             aprExportQuality: settings?.aprExportQuality,
             exportFormat: this.getDefaultExportFormat()
         });
+        // Migrate stale legacy paths to v2 quality-based format
+        if (settings && settings.autoUpdateExportPath !== false && settings.exportPath && settings.exportPath !== defaultPath) {
+            if (isDefaultEmbedPath(settings.exportPath, {
+                bookTitle: settings.bookTitleOverride,
+                updateFrequency: settings.updateFrequency
+            })) {
+                settings.exportPath = defaultPath;
+                void this.plugin.saveSettings();
+            }
+        }
         const currentPath = settings?.exportPath || defaultPath;
         const clearState = () => {
             pathInput.inputEl.removeClass('ert-input--error');
@@ -497,7 +506,7 @@ export class AuthorProgressModal extends Modal {
             if (!path?.trim()) return false;
             const normalized = path.replace(/\\/g, '/');
             return normalized.startsWith('Radial Timeline/Social/')
-                && normalized.includes('/apr-default-')
+                && (normalized.includes('/apr-default-') || normalized.includes('/social-default-'))
                 && (normalized.toLowerCase().endsWith('.png') || normalized.toLowerCase().endsWith('.svg'));
         };
         const applyWarningState = (pathValue: string) => {

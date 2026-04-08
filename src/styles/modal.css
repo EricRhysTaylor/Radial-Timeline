@@ -1583,17 +1583,39 @@
   stroke: var(--rt-social-color, #ffd41d);
 }
 
+/* Pill button states (modal scope) */
+.ert-ui.ert-scope--modal .ert-pillBtn {
+  --ert-pill-hover-color: var(--text-normal);
+  --ert-pill-icon-hover-color: var(--text-normal);
+  --ert-pill-icon-active-color: var(--text-normal);
+}
+
+.ert-ui.ert-scope--modal .ert-pillBtn:hover:not(:disabled) {
+  color: var(--ert-pill-hover-color);
+}
+
+.ert-ui.ert-scope--modal .ert-pillBtn.is-active {
+  color: var(--ert-pill-hover-color);
+  border-color: var(--ert-accent, var(--interactive-accent));
+  box-shadow: 0 0 8px color-mix(in srgb, var(--ert-accent, var(--interactive-accent)) 35%, transparent);
+}
+
+.ert-ui.ert-scope--modal .ert-pillBtn--social {
+  --ert-accent: var(--rt-social-color, #ffd41d);
+  --ert-accent-rgb: var(--rt-social-color-rgb, 255, 212, 29);
+}
+
 /* APR Status Grid */
 .ert-ui.ert-scope--modal .ert-apr-status-grid {
   display: grid;
-  grid-template-columns: fit-content(32ch) fit-content(20ch) max-content max-content max-content max-content;
+  grid-template-columns: fit-content(32ch) fit-content(20ch) max-content max-content max-content;
   column-gap: 10px;
   row-gap: var(--ert-gap-xs);
   width: 100%;
 }
 
 .ert-ui.ert-scope--modal .ert-apr-status-grid--with-format {
-  grid-template-columns: fit-content(32ch) fit-content(20ch) max-content max-content max-content max-content max-content;
+  grid-template-columns: fit-content(32ch) fit-content(20ch) max-content max-content max-content max-content;
 }
 
 .ert-ui.ert-scope--modal .ert-apr-status-row {

@@ -5080,7 +5080,22 @@ export class InquiryView extends ItemView {
             minute: '2-digit',
             hour12: true
         });
-        return `ID: ${formatted.replace(/\s+(AM|PM)/i, (_, m) => m.toLowerCase())}`;
+        const timeStr = formatted.replace(/\s+(AM|PM)/i, (_, m) => m.toLowerCase());
+        const zoneTag = this.buildSessionZoneTag(session);
+        return zoneTag ? `ID: ${zoneTag} ${timeStr}` : `ID: ${timeStr}`;
+    }
+
+    private buildSessionZoneTag(session: InquirySession): string | null {
+        const zone = session.questionZone ?? session.result?.questionZone;
+        if (!zone) return null;
+        const abbr = zone === 'setup' ? 'Se' : zone === 'pressure' ? 'Pr' : 'Pa';
+        const questionId = session.result?.questionId;
+        if (!questionId) return abbr;
+        const config = this.getPromptConfig();
+        const slots = config[zone] ?? [];
+        const slotIndex = slots.findIndex(slot => slot.id === questionId);
+        const num = slotIndex >= 0 ? slotIndex + 1 : null;
+        return num !== null ? `${abbr}${num}` : abbr;
     }
 
     private buildWelcomeNavLabel(date: Date = new Date()): string {
@@ -8088,8 +8103,8 @@ export class InquiryView extends ItemView {
                 }
                 if (isLast) {
                     linePenalty += slackRatio * slackRatio * 0.45;
-                    if (fillRatio < 0.72 && startIndex > 0) {
-                        linePenalty += (0.72 - fillRatio) * 3.6;
+                    if (fillRatio < 0.82 && startIndex > 0) {
+                        linePenalty += (0.82 - fillRatio) * 4.8;
                     }
                 }
 
@@ -8164,7 +8179,6 @@ export class InquiryView extends ItemView {
             if (
                 options?.justify
                 && align === 'start'
-                && index < lines.length - 1
                 && /\s/.test(line)
             ) {
                 tspan.setAttribute('textLength', String(maxWidth));

@@ -76,10 +76,15 @@ export function isDefaultEmbedPath(path: string | undefined, options: { bookTitl
         for (const q of QUALITY_TOKENS) {
             if (filename === `apr-default-${mode}-${q}.${format}`) return true;
         }
-        // Legacy v1: size-based
+        // Legacy v1: size-based (apr- prefix)
         for (const size of LEGACY_SIZES) {
             if (filename === `apr-default-${mode}-${size}.${format}`) return true;
             if (filename === `apr-${bookSlug}-default-${mode}-${size}.${format}`) return true;
+        }
+        // Legacy v0: social- prefix
+        for (const size of LEGACY_SIZES) {
+            if (filename === `social-default-${mode}-${size}.${format}`) return true;
+            if (filename === `social-${bookSlug}-default-${mode}-${size}.${format}`) return true;
         }
     }
     return false;
