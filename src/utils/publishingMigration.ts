@@ -81,7 +81,7 @@ export function normalizeExportProfile(profile: Partial<ExportProfile>): ExportP
         subplot,
         includeMatter: profile.includeMatter ?? exportType === 'manuscript',
         includeSynopsis: profile.includeSynopsis ?? exportType === 'outline',
-        updateWordCounts: profile.updateWordCounts ?? false,
+        updateWordCounts: profile.updateWordCounts ?? true,
         saveMarkdownArtifact: profile.saveMarkdownArtifact ?? false,
         cleanup: normalizeManuscriptCleanupOptions(profile.cleanup, cleanupFormat),
         splitMode: profile.splitMode || 'single',

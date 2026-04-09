@@ -304,7 +304,10 @@ export class CommandRegistrar {
                 manuscriptPreset: result.manuscriptPreset,
                 selectedLayoutId: result.selectedLayoutId,
             });
-            const preflightFailure = this.buildPreflightExportFailure(preflightSnapshot);
+            const preflightFailure = this.buildPreflightExportFailure(preflightSnapshot, {
+                exportType: result.exportType,
+                outputFormat: result.outputFormat,
+            });
             if (preflightFailure) {
                 throw preflightFailure;
             }
@@ -635,14 +638,25 @@ export class CommandRegistrar {
         return {};
     }
 
-    private buildPreflightExportFailure(snapshot: PublishingValidationSnapshot): ExportFailure | null {
+    private buildPreflightExportFailure(
+        snapshot: PublishingValidationSnapshot,
+        context: {
+            exportType: 'manuscript' | 'outline';
+            outputFormat: 'pdf' | 'markdown' | 'csv' | 'json';
+        }
+    ): ExportFailure | null {
+        const shouldBlockOnBookMeta = context.exportType === 'manuscript' && context.outputFormat === 'pdf';
         const blocking = snapshot.preflightIssues.find(issue => issue.level === 'error')
-            || snapshot.activeBookMetaIssues.find(issue => issue.level === 'error');
+            || (shouldBlockOnBookMeta
+                ? snapshot.activeBookMetaIssues.find(issue => issue.level === 'error')
+                : undefined);
         if (!blocking) return null;
 
         const detailLines = [
             ...snapshot.preflightIssues.map(issue => `Preflight: ${issue.message}`),
-            ...snapshot.activeBookMetaIssues.map(issue => `BookMeta: ${issue.message}`),
+            ...(shouldBlockOnBookMeta
+                ? snapshot.activeBookMetaIssues.map(issue => `BookMeta: ${issue.message}`)
+                : []),
         ];
 
         let category: ConstructorParameters<typeof ExportFailure>[0]['category'] = 'pandoc_compile_failure';

@@ -171,7 +171,7 @@ export class ManuscriptOptionsModal extends Modal {
     private manuscriptPreset: ManuscriptPreset = 'novel';
     private outlinePreset: OutlinePreset = 'beat-sheet';
     private outputFormat: ExportFormat = 'markdown';
-    private updateWordCounts: boolean = false;
+    private updateWordCounts: boolean = true;
     private includeSynopsis: boolean = true;
     private includeMatter: boolean = true;
     private saveMarkdownArtifact: boolean = true;

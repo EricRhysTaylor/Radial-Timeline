@@ -8826,7 +8826,7 @@
 }
 
 .ert-ui.ert-scope--settings .ert-campaign-teaser-section {
-  padding-top: var(--ert-gap-md);
+  padding-top: var(--ert-gap-sm);
   border-top: 1px solid var(--background-modifier-border);
 }
 
