@@ -1,216 +1,36 @@
-import type { AuthorProgressSettings, AuthorProgressCampaign } from '../../types/settings';
-import type RadialTimelinePlugin from '../../main';
-import { normalizePath, TFolder } from 'obsidian';
+import type { AuthorProgressCampaign, BookProfile } from '../../types/settings';
 
 /**
- * Resolves the effective project path for a given target (Core Social or Campaign override)
- *
- * Inheritance order:
- * 1. Campaign override (campaign.projectPath)
- * 2. Social defaults (projectPathOverride)
- * 3. Fallback to main Source path for backward compatibility
- *
- * @param authorProgress - Core Social settings
- * @param campaign - Optional campaign with possible override
- * @param sourcePath - Main source path (fallback)
- * @returns The resolved project path
+ * Resolves the effective project path for a target.
+ * If the campaign locks to a specific book, uses that book's sourceFolder.
+ * Otherwise uses the active book's path (synced to sourcePath by Book Manager).
  */
 export function resolveProjectPath(
-    authorProgress: AuthorProgressSettings,
     campaign: AuthorProgressCampaign | null,
-    sourcePath: string
+    books: BookProfile[] | undefined,
+    activeSourcePath: string
 ): string {
-    // Campaign override takes priority
-    if (campaign?.projectPathOverride && campaign.projectPathOverride.trim()) {
-        return campaign.projectPathOverride.trim();
+    if (campaign?.targetBookId) {
+        const book = books?.find(b => b.id === campaign.targetBookId);
+        if (book?.sourceFolder?.trim()) return book.sourceFolder.trim();
     }
-
-    // Use Social defaults
-    if (authorProgress.defaults.projectPathOverride && authorProgress.defaults.projectPathOverride.trim()) {
-        return authorProgress.defaults.projectPathOverride.trim();
-    }
-
-    // Fallback to main Source path for backward compatibility
-    return sourcePath;
+    return activeSourcePath;
 }
 
 /**
- * Resolves the effective book title for a given target (Core Social or Campaign override)
- *
- * Inheritance order:
- * 1. Campaign override (campaign.bookTitleOverride)
- * 2. Author Progress default title (bookTitleOverride)
- * 3. Fallback to derived title from project path folder basename
- *
- * @param authorProgress - Core Social settings
- * @param campaign - Optional campaign with possible override
- * @param projectPath - The resolved project path (to derive title from)
- * @returns The resolved book title
+ * Resolves the effective book title for a target.
+ * If the campaign locks to a specific book, uses that book's title.
+ * Otherwise uses the active book's title.
  */
 export function resolveBookTitle(
-    authorProgress: AuthorProgressSettings,
     campaign: AuthorProgressCampaign | null,
-    projectPath: string
+    books: BookProfile[] | undefined,
+    activeBookTitle: string
 ): string {
-    // Campaign override takes priority
-    if (campaign?.bookTitleOverride && campaign.bookTitleOverride.trim()) {
-        return campaign.bookTitleOverride.trim();
+    if (campaign?.targetBookId) {
+        const book = books?.find(b => b.id === campaign.targetBookId);
+        if (book?.title?.trim()) return book.title.trim();
     }
-
-    // Use canonical authorProgress title override
-    if (authorProgress.defaults.bookTitleOverride && authorProgress.defaults.bookTitleOverride.trim()) {
-        return authorProgress.defaults.bookTitleOverride.trim();
-    }
-
-    // Fallback to derived title from folder basename
-    return deriveBookTitleFromPath(projectPath);
+    return activeBookTitle;
 }
 
-/**
- * Derives a book title from a folder path by taking the last segment (basename)
- * and normalizing it for public-facing display.
- *
- * Normalization steps:
- * - Replace '-' and '_' with spaces
- * - Collapse multiple spaces into single space
- * - Strip common folder tokens (projects, books, drafts, manuscripts)
- * - Title Case
- * - Clamp to ~50 characters with ellipsis
- *
- * Examples:
- * - "Books/My-Novel/working-draft" -> "My Novel Working Draft"
- * - "Projects/songrise_2.0" -> "Songrise 2.0"
- * - "manuscripts/the-great-adventure-book-one" -> "The Great Adventure Book One"
- *
- * @param path - The folder path
- * @returns The derived, normalized title
- */
-export function deriveBookTitleFromPath(path: string): string {
-    if (!path || !path.trim()) {
-        return 'Untitled';
-    }
-
-    const normalized = normalizePath(path.trim());
-    const segments = normalized.split('/').filter(s => s.length > 0);
-
-    if (segments.length === 0) {
-        return 'Untitled';
-    }
-
-    let title = segments[segments.length - 1];
-
-    // Replace '-' and '_' with spaces
-    title = title.replace(/[-_]/g, ' ');
-
-    // Collapse multiple spaces into single space
-    title = title.replace(/\s+/g, ' ').trim();
-
-    // Strip common folder tokens (case-insensitive)
-    const tokensToRemove = /\b(projects?|books?|drafts?|manuscripts?|writing|work|wip)\b/gi;
-    title = title.replace(tokensToRemove, ' ');
-
-    // Collapse spaces again after token removal
-    title = title.replace(/\s+/g, ' ').trim();
-
-    // If title is now empty, return Untitled
-    if (!title) {
-        return 'Untitled';
-    }
-
-    // Title Case - capitalize first letter of each word
-    title = title
-        .split(' ')
-        .map(word => {
-            if (!word) return '';
-            // Preserve numbers and special characters as-is
-            if (/^[\d.]+$/.test(word)) return word;
-            // Capitalize first letter, lowercase rest
-            return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
-        })
-        .join(' ');
-
-    // Clamp to ~50 characters with ellipsis
-    const maxLength = 50;
-    if (title.length > maxLength) {
-        title = title.slice(0, maxLength - 1).trim() + '…';
-    }
-
-    return title;
-}
-
-/**
- * Validates that a project path exists and is a folder
- *
- * @param path - The path to validate
- * @param plugin - The plugin instance (for vault access)
- * @returns true if path is valid and points to an existing folder
- */
-export async function validateProjectPath(
-    path: string,
-    plugin: RadialTimelinePlugin
-): Promise<boolean> {
-    if (!path || path.trim() === '') {
-        return false;
-    }
-
-    const normalizedPath = normalizePath(path.trim());
-    const file = plugin.app.vault.getAbstractFileByPath(normalizedPath);
-    const isValid = file instanceof TFolder && file.path === normalizedPath;
-
-    return isValid;
-}
-
-/**
- * Remembers a valid project path in the settings for autocomplete suggestions
- * De-duplicates and prioritizes recent entries (most recent first)
- *
- * @param path - The valid path to remember
- * @param plugin - The plugin instance
- */
-export async function rememberProjectPath(
-    path: string,
-    plugin: RadialTimelinePlugin
-): Promise<void> {
-    const normalizedPath = normalizePath(path.trim());
-
-    // Initialize validProjectPaths if it doesn't exist
-    if (!plugin.settings.validProjectPaths) {
-        plugin.settings.validProjectPaths = [];
-    }
-
-    let { validProjectPaths } = plugin.settings;
-
-    // Remove existing entry if present (for de-duplication and re-prioritization)
-    validProjectPaths = validProjectPaths.filter(p => p !== normalizedPath);
-
-    // Add to front (most recent first)
-    validProjectPaths.unshift(normalizedPath);
-
-    // Keep last 10 entries (cap at 10)
-    if (validProjectPaths.length > 10) {
-        validProjectPaths = validProjectPaths.slice(0, 10);
-    }
-
-    plugin.settings.validProjectPaths = validProjectPaths;
-    await plugin.saveSettings();
-}
-
-/**
- * Validates and remembers a project path (combines validation + persistence)
- *
- * @param path - The path to validate and remember
- * @param plugin - The plugin instance
- * @returns true if path is valid
- */
-export async function validateAndRememberProjectPath(
-    path: string,
-    plugin: RadialTimelinePlugin
-): Promise<boolean> {
-    const isValid = await validateProjectPath(path, plugin);
-
-    if (isValid) {
-        await rememberProjectPath(path, plugin);
-    }
-
-    return isValid;
-}

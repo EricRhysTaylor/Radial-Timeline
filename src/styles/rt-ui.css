@@ -8699,6 +8699,11 @@
   color: var(--text-muted);
 }
 
+.ert-ui.ert-scope--settings .ert-campaign-refresh-badge.is-book {
+  background: color-mix(in srgb, var(--ert-accent) 14%, transparent);
+  color: var(--text-normal);
+}
+
 .ert-ui.ert-scope--settings .ert-campaign-next-update {
   color: var(--text-muted);
 }
@@ -8821,7 +8826,6 @@
 }
 
 .ert-ui.ert-scope--settings .ert-campaign-teaser-section {
-  margin-top: var(--ert-gap-md);
   padding-top: var(--ert-gap-md);
   border-top: 1px solid var(--background-modifier-border);
 }
@@ -10860,13 +10864,6 @@
 /* =============================================================================
    APR Teaser Stepper (Author Progress Modal)
    ============================================================================= */
-
-.ert-ui.ert-scope--modal .ert-apr-publish-row {
-  display: flex;
-  justify-content: center;
-  padding-top: var(--ert-gap-sm);
-  padding-bottom: var(--ert-gap-sm);
-}
 
 .ert-ui.ert-scope--modal .ert-apr-stepper {
   display: flex;

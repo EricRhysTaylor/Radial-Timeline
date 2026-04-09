@@ -72,7 +72,7 @@ export class AuthorProgressRenderService {
 
     public getDefaultExportPath(settings: AuthorProgressDefaults): string {
         return settings.exportPath || buildDefaultEmbedPath({
-            bookTitle: settings.bookTitleOverride,
+            bookTitle: this.plugin.getActiveBookTitle(),
             updateFrequency: settings.updateFrequency,
             aprExportQuality: settings.aprExportQuality,
             exportFormat: this.getDefaultExportFormat(settings)
@@ -123,7 +123,7 @@ export class AuthorProgressRenderService {
         const settings = authorProgress?.defaults;
         if (!authorProgress || !settings) return null;
 
-        const projectPath = resolveProjectPath(authorProgress, null, this.plugin.settings.sourcePath);
+        const projectPath = resolveProjectPath(null, this.plugin.settings.books, this.plugin.settings.sourcePath);
         const scenes = await this.plugin.getSceneData({ sourcePath: projectPath });
         const scenesFiltered = scenes.filter(isSceneItem);
         const progressPercent = this.calculateProgress(scenesFiltered);
@@ -135,7 +135,7 @@ export class AuthorProgressRenderService {
         const designSize = settings.aprSize || 'medium';
         const exportQuality: AprExportQuality = settings.aprExportQuality || 'standard';
         const isThumb = designSize === 'thumb';
-        const bookTitle = resolveBookTitle(authorProgress, null, projectPath);
+        const bookTitle = resolveBookTitle(null, this.plugin.settings.books, this.plugin.getActiveBookTitle());
 
         const { svgString, width, height } = createAprSVG(scenesFiltered, {
             size: designSize,
@@ -203,7 +203,8 @@ export class AuthorProgressRenderService {
         const campaign = authorProgress.campaigns?.find(c => c.id === campaignId);
         if (!campaign) return null;
 
-        const projectPath = resolveProjectPath(authorProgress, campaign, this.plugin.settings.sourcePath);
+        const books = this.plugin.settings.books;
+        const projectPath = resolveProjectPath(campaign, books, this.plugin.settings.sourcePath);
         const scenes = await this.plugin.getSceneData({ sourcePath: projectPath });
         const scenesFiltered = scenes.filter(isSceneItem);
         const progressPercent = this.calculateProgress(scenesFiltered);
@@ -252,7 +253,7 @@ export class AuthorProgressRenderService {
         const designSize = campaign.aprSize || settings.aprSize || 'medium';
         const exportQuality: AprExportQuality = campaign.aprExportQuality || settings.aprExportQuality || 'standard';
         const ringOnly = designSize === 'thumb' || isTeaserBar;
-        const bookTitle = resolveBookTitle(authorProgress, campaign, projectPath);
+        const bookTitle = resolveBookTitle(campaign, books, this.plugin.getActiveBookTitle());
 
         const { svgString, width, height } = createAprSVG(scenesFiltered, {
             size: designSize,

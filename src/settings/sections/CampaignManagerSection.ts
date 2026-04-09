@@ -5,7 +5,7 @@
 
 import { App, Setting, setIcon, setTooltip, ButtonComponent, Notice, Modal, DropdownComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
-import type { AuthorProgressCampaign, AuthorProgressSettings, TeaserPreset, TeaserRevealLevel } from '../../types/settings';
+import type { AuthorProgressCampaign, TeaserPreset, TeaserRevealLevel } from '../../types/settings';
 import { hasProFeatureAccess } from '../featureGate';
 import { getTeaserThresholds, teaserLevelToRevealOptions, TEASER_LEVEL_INFO } from '../../renderer/apr/AprConstants';
 import { createAprSVG } from '../../renderer/apr/AprRenderer';
@@ -17,12 +17,12 @@ import {
     type AprExportQuality,
     type AprSize
 } from '../../utils/aprPaths';
-import { resolveBookTitle, resolveProjectPath, validateAndRememberProjectPath } from '../../renderer/apr/aprHelpers';
+import { resolveBookTitle } from '../../renderer/apr/aprHelpers';
 
 import { ERT_CLASSES } from '../../ui/classes';
-import { ProjectPathSuggest } from '../ProjectPathSuggest';
 import { fitSelectToSelectedLabel } from '../selectSizing';
 import { scheduleFocusAfterPaint } from '../../utils/domFocus';
+import { getActiveBook } from '../../utils/books';
 
 export interface CampaignManagerProps {
     app: App;
@@ -145,8 +145,6 @@ function getNextUpdateLabel(campaign: AuthorProgressCampaign): string {
     return remaining === 0 ? 'Auto update due' : `Auto update in ${remaining}d`;
 }
 
-const AUTO_UPDATE_FREQUENCIES: readonly string[] = ['daily', 'weekly', 'monthly'];
-
 function resolveCampaignExportFormat(campaign: AuthorProgressCampaign | undefined): AprExportFormat {
     if (!campaign) return 'png';
     if (typeof campaign.exportFormat === 'string' && campaign.exportFormat.trim()) {
@@ -156,28 +154,24 @@ function resolveCampaignExportFormat(campaign: AuthorProgressCampaign | undefine
     return path.endsWith('.svg') ? 'svg' : 'png';
 }
 
-function getScheduleBadge(campaign: AuthorProgressCampaign): { label: string; cls: string } {
-    if (!campaign.isActive) return { label: 'Paused', cls: 'is-paused' };
-    const frequency = campaign.updateFrequency ?? 'manual';
-    // Only treat known auto frequencies as auto (avoids showing "Auto · Full" or other invalid values)
-    if (frequency !== 'manual' && AUTO_UPDATE_FREQUENCIES.includes(frequency)) {
-        const label = frequency.charAt(0).toUpperCase() + frequency.slice(1);
-        return { label: `Auto · ${label}`, cls: 'is-auto' };
-    }
-    const days = Number.isFinite(campaign.refreshThresholdDays) && campaign.refreshThresholdDays > 0
-        ? campaign.refreshThresholdDays
-        : 7;
-    return { label: `Manual · ${days}d`, cls: 'is-manual' };
+function resolveCampaignBookTitle(
+    campaign: AuthorProgressCampaign | null,
+    books: import('../../types/settings').BookProfile[] | undefined,
+    activeBookTitle: string
+): string | undefined {
+    return resolveBookTitle(campaign, books, activeBookTitle);
 }
 
-function resolveCampaignBookTitle(
-    settings: AuthorProgressSettings | undefined,
-    campaign: AuthorProgressCampaign | null,
-    sourcePath: string
-): string | undefined {
-    if (!settings) return undefined;
-    const projectPath = resolveProjectPath(settings, campaign, sourcePath);
-    return resolveBookTitle(settings, campaign, projectPath);
+/** Resolve the display name for a campaign's targeted book. */
+function getCampaignBookLabel(
+    campaign: AuthorProgressCampaign,
+    plugin: RadialTimelinePlugin
+): string {
+    if (campaign.targetBookId) {
+        const book = plugin.settings.books?.find(b => b.id === campaign.targetBookId);
+        if (book?.title?.trim()) return book.title.trim();
+    }
+    return plugin.getActiveBookTitle();
 }
 
 /**
@@ -312,9 +306,9 @@ export function renderCampaignManagerSection({ app, plugin, containerEl, onCampa
                         }
 
         const resolvedBookTitle = resolveCampaignBookTitle(
-            plugin.settings.authorProgress,
             null,
-            plugin.settings.sourcePath
+            plugin.settings.books,
+            plugin.getActiveBookTitle()
         );
         const newCampaign = createDefaultCampaign(name, {
             bookTitle: resolvedBookTitle,
@@ -370,9 +364,9 @@ export function renderCampaignManagerSection({ app, plugin, containerEl, onCampa
             if (exists) return;
 
             const resolvedBookTitle = resolveCampaignBookTitle(
-                plugin.settings.authorProgress,
                 null,
-                plugin.settings.sourcePath
+                plugin.settings.books,
+                plugin.getActiveBookTitle()
             );
             const newCampaign = createDefaultCampaign(template.name, {
                 bookTitle: resolvedBookTitle,
@@ -434,9 +428,9 @@ export function renderCampaignManagerSection({ app, plugin, containerEl, onCampa
                 if (exists) return;
 
                 const resolvedBookTitle = resolveCampaignBookTitle(
-                    plugin.settings.authorProgress,
                     null,
-                    plugin.settings.sourcePath
+                    plugin.settings.books,
+                    plugin.getActiveBookTitle()
                 );
                 const newCampaign = createDefaultCampaign(template.name, {
                     bookTitle: resolvedBookTitle,
@@ -529,9 +523,9 @@ function renderCampaignRow(
                 }
 
                 const resolvedBookTitle = resolveCampaignBookTitle(
-                    plugin.settings.authorProgress,
                     campaign,
-                    plugin.settings.sourcePath
+                    plugin.settings.books,
+                    plugin.getActiveBookTitle()
                 );
                 const oldDefaultPath = buildCampaignEmbedPath({
                     bookTitle: resolvedBookTitle,
@@ -571,10 +565,10 @@ function renderCampaignRow(
         }
     });
 
-    const scheduleBadge = getScheduleBadge(campaign);
+    const bookLabel = getCampaignBookLabel(campaign, plugin);
     titleRow.createSpan({
-        text: scheduleBadge.label,
-        cls: `ert-campaign-refresh-badge ${scheduleBadge.cls}`
+        text: bookLabel,
+        cls: 'ert-campaign-refresh-badge is-book'
     });
 
     // Last published info
@@ -651,6 +645,84 @@ function renderCampaignDetails(
 ): void {
     const details = parentRow.createDiv({ cls: `ert-campaign-details ${ERT_CLASSES.STACK}` });
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // TARGET BOOK (Pro: select a specific book; free: follows active book)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    const isPro = hasProFeatureAccess(plugin);
+    const books = plugin.settings.books ?? [];
+    const activeBook = getActiveBook(plugin.settings);
+    const activeLabel = activeBook?.title?.trim() || 'Untitled';
+
+    if (isPro && books.length > 1) {
+        const bookSetting = new Setting(details)
+            .setName('Target book')
+            .setDesc('Which book this campaign tracks. "Current book" follows your active selection.');
+
+        const bookDropdown = new DropdownComponent(bookSetting.controlEl);
+        bookDropdown.addOption('', `Current book (${activeLabel})`);
+        for (const book of books) {
+            bookDropdown.addOption(book.id, book.title?.trim() || 'Untitled');
+        }
+        bookDropdown.setValue(campaign.targetBookId ?? '');
+        bookDropdown.onChange(async (val) => {
+            if (!plugin.settings.authorProgress?.campaigns) return;
+            plugin.settings.authorProgress.campaigns[index].targetBookId = val || undefined;
+            await plugin.saveSettings();
+            onUpdate();
+        });
+    }
+
+    // Export Quality
+    const exportQualitySetting = new Setting(details)
+        .setName('Export quality')
+        .setDesc('Standard (1200px · ~150 KB) for social media. Ultra (2400px · ~400 KB) for high-DPI displays. Print (4800px · ~1.2 MB) for posters and physical media.')
+        .addDropdown(drop => {
+            drop.selectEl.addClass('ert-input', 'ert-input--lg');
+            const globalQuality = plugin.settings.authorProgress?.defaults.aprExportQuality ?? 'standard';
+            const latestCampaign = plugin.settings.authorProgress?.campaigns?.[index];
+            const campaignQuality = latestCampaign?.aprExportQuality ?? campaign.aprExportQuality;
+            const defaultLabel = globalQuality === 'print' ? 'Print 4800px' : globalQuality === 'ultra' ? 'Ultra 2400px' : 'Standard 1200px';
+            drop.addOption('', `Default (${defaultLabel})`);
+            drop.addOption('standard', 'Standard (1200px · ~150 KB)');
+            drop.addOption('ultra', 'Ultra (2400px · ~400 KB)');
+            drop.addOption('print', 'Print (4800px · ~1.2 MB)');
+            drop.setValue(campaignQuality ?? '');
+            drop.onChange(async (val) => {
+                if (!plugin.settings.authorProgress?.campaigns) return;
+                const authorProgress = plugin.settings.authorProgress;
+                const settings = authorProgress.defaults;
+                if (!authorProgress.campaigns) return;
+                const target = authorProgress.campaigns[index];
+                const resolvedBookTitle = resolveCampaignBookTitle(
+                    target,
+                    plugin.settings.books,
+                    plugin.getActiveBookTitle()
+                );
+                const oldDefaultPath = buildCampaignEmbedPath({
+                    bookTitle: resolvedBookTitle,
+                    campaignName: target.name,
+                    updateFrequency: target.updateFrequency,
+                    aprExportQuality: target.aprExportQuality ?? settings.aprExportQuality,
+                    teaserEnabled: target.teaserReveal?.enabled ?? true,
+                    exportFormat: resolveCampaignExportFormat(target)
+                });
+                target.aprExportQuality = val === '' ? undefined : (val as AprExportQuality);
+                if (target.exportPath === oldDefaultPath) {
+                    target.exportPath = buildCampaignEmbedPath({
+                        bookTitle: resolvedBookTitle,
+                        campaignName: target.name,
+                        updateFrequency: target.updateFrequency,
+                        aprExportQuality: target.aprExportQuality ?? settings.aprExportQuality,
+                        teaserEnabled: target.teaserReveal?.enabled ?? true,
+                        exportFormat: resolveCampaignExportFormat(target)
+                    });
+                }
+                await plugin.saveSettings();
+                onUpdate();
+            });
+        });
+
     const freqSetting = details.createDiv({ cls: ['setting-item', 'ert-elementBlock', 'ert-campaign-frequency-setting'] });
     const freqRow = freqSetting.createDiv({ cls: 'ert-campaign-frequency-setting__row' });
     const freqInfo = freqRow.createDiv({ cls: 'ert-settingComposite__info' });
@@ -676,9 +748,9 @@ function renderCampaignDetails(
             if (!authorProgress.campaigns) return;
             const target = authorProgress.campaigns[index];
             const resolvedBookTitle = resolveCampaignBookTitle(
-                authorProgress,
                 target,
-                plugin.settings.sourcePath
+                plugin.settings.books,
+                plugin.getActiveBookTitle()
             );
             const oldDefaultPath = buildCampaignEmbedPath({
                 bookTitle: resolvedBookTitle,
@@ -743,9 +815,6 @@ function renderCampaignDetails(
         await plugin.saveSettings();
         syncRefreshDisplay(nextValue);
         refreshValueInput.value = String(nextValue);
-        // Sync the schedule badge pill in the campaign header
-        const badgeEl = parentRow.querySelector('.ert-campaign-refresh-badge');
-        if (badgeEl) badgeEl.textContent = `Manual · ${nextValue}d`;
         // Sync the "Reminder in Xd" line in the campaign header
         const nextUpdateEl = parentRow.querySelector('.ert-campaign-next-update');
         if (nextUpdateEl) {
@@ -781,141 +850,11 @@ function renderCampaignDetails(
         if (evt.key === 'Enter') { evt.preventDefault(); refreshValueInput.blur(); }
     });
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // BOOK TITLE & PROJECT PATH OVERRIDES (Pro Campaign Feature)
-    // ─────────────────────────────────────────────────────────────────────────
-
-    // Book Title Override
-    const bookTitleOverrideSetting = new Setting(details)
-        .setName('Book title override')
-        .setDesc('Optional: Override the display title for this campaign. Leave blank to inherit from Social Configuration.');
-
-    bookTitleOverrideSetting.settingEl.addClass('ert-setting-full-width-input');
-
-    bookTitleOverrideSetting.addText(text => {
-        text.setPlaceholder('Leave blank to inherit')
-            .setValue(campaign.bookTitleOverride || '');
-        text.inputEl.addClass('ert-input--lg');
-
-        const handleBlur = async () => {
-            if (!plugin.settings.authorProgress?.campaigns) return;
-            const val = text.getValue().trim();
-            plugin.settings.authorProgress.campaigns[index].bookTitleOverride = val || undefined;
-            await plugin.saveSettings();
-            onUpdate();
-        };
-
-        // SAFE: Settings sections rebuild DOM on any change; input element cleanup handles listener
-        text.inputEl.addEventListener('blur', handleBlur);
-        // SAFE: Settings sections rebuild DOM on any change; input element cleanup handles listener
-        text.inputEl.addEventListener('keydown', (evt: KeyboardEvent) => {
-            if (evt.key === 'Enter') {
-                evt.preventDefault();
-                text.inputEl.blur();
-            }
-        });
-    });
-
-    // Project Path Override
-    const projectPathOverrideSetting = new Setting(details)
-        .setName('Project path override')
-        .setDesc('Optional: Override the project folder path for this campaign. Leave blank to inherit from Social Configuration.');
-
-    projectPathOverrideSetting.settingEl.addClass('ert-setting-full-width-input');
-
-    projectPathOverrideSetting.addText(text => {
-        const successClass = 'ert-input--success';
-        const errorClass = 'ert-input--error';
-
-        const clearInputState = () => {
-            text.inputEl.removeClass(successClass);
-            text.inputEl.removeClass(errorClass);
-        };
-
-        const flashError = (timeout = 2000) => {
-            text.inputEl.addClass(errorClass);
-            window.setTimeout(() => {
-                text.inputEl.removeClass(errorClass);
-            }, timeout);
-        };
-
-        const flashSuccess = (timeout = 1000) => {
-            text.inputEl.addClass(successClass);
-            window.setTimeout(() => {
-                text.inputEl.removeClass(successClass);
-            }, timeout);
-        };
-
-        text.setPlaceholder('Leave blank to inherit')
-            .setValue(campaign.projectPathOverride || '');
-        text.inputEl.addClass('ert-input--lg');
-
-        text.onChange(() => {
-            clearInputState();
-        });
-
-        new ProjectPathSuggest(plugin.app, text.inputEl, plugin, text, {
-            onValidPath: async (normalized) => {
-                if (!plugin.settings.authorProgress?.campaigns) return;
-                plugin.settings.authorProgress.campaigns[index].projectPathOverride = normalized;
-                await plugin.saveSettings();
-                onUpdate();
-            },
-            getSavedValue: () => plugin.settings.authorProgress?.campaigns?.[index]?.projectPathOverride || '',
-            successClass,
-            errorClass
-        });
-
-        const handleBlur = async () => {
-            const val = text.getValue().trim();
-            clearInputState();
-
-            if (!val) {
-                // Empty is allowed - means inherit from Social Configuration
-                if (!plugin.settings.authorProgress?.campaigns) return;
-                plugin.settings.authorProgress.campaigns[index].projectPathOverride = undefined;
-                await plugin.saveSettings();
-                flashSuccess();
-                onUpdate();
-                return;
-            }
-
-            // Validate the path exists
-            const isValid = await validateAndRememberProjectPath(val, plugin);
-
-            if (!isValid) {
-                // Invalid path - revert to last saved value
-                const savedValue = plugin.settings.authorProgress?.campaigns?.[index]?.projectPathOverride || '';
-                text.setValue(savedValue);
-                flashError();
-                new Notice(`Invalid project path: "${val}" does not exist or is not a folder. Reverting to saved value.`);
-                return;
-            }
-
-            // Save if valid
-            flashSuccess();
-            if (!plugin.settings.authorProgress?.campaigns) return;
-            plugin.settings.authorProgress.campaigns[index].projectPathOverride = val;
-            await plugin.saveSettings();
-            onUpdate();
-        };
-
-        // SAFE: Settings sections rebuild DOM on any change; input element cleanup handles listener
-        text.inputEl.addEventListener('blur', handleBlur);
-        // SAFE: Settings sections rebuild DOM on any change; input element cleanup handles listener
-        text.inputEl.addEventListener('keydown', (evt: KeyboardEvent) => {
-            if (evt.key === 'Enter') {
-                evt.preventDefault();
-                text.inputEl.blur();
-            }
-        });
-    });
-
     // Embed path (with validation and reset)
     const resolvedBookTitle = resolveCampaignBookTitle(
-        plugin.settings.authorProgress,
         campaign,
-        plugin.settings.sourcePath
+        plugin.settings.books,
+        plugin.getActiveBookTitle()
     );
     const defaultPath = buildCampaignEmbedPath({
         bookTitle: resolvedBookTitle,
@@ -992,56 +931,6 @@ function renderCampaignDetails(
                 onUpdate();
             });
     });
-
-    // Export Quality
-    const exportQualitySetting = new Setting(details)
-        .setName('Export quality')
-        .setDesc('Standard (1200px · ~150 KB) for social media. Ultra (2400px · ~400 KB) for high-DPI displays. Print (4800px · ~1.2 MB) for posters and physical media.')
-        .addDropdown(drop => {
-            drop.selectEl.addClass('ert-input', 'ert-input--lg');
-            const globalQuality = plugin.settings.authorProgress?.defaults.aprExportQuality ?? 'standard';
-            const latestCampaign = plugin.settings.authorProgress?.campaigns?.[index];
-            const campaignQuality = latestCampaign?.aprExportQuality ?? campaign.aprExportQuality;
-            const defaultLabel = globalQuality === 'print' ? 'Print 4800px' : globalQuality === 'ultra' ? 'Ultra 2400px' : 'Standard 1200px';
-            drop.addOption('', `Default (${defaultLabel})`);
-            drop.addOption('standard', 'Standard (1200px · ~150 KB)');
-            drop.addOption('ultra', 'Ultra (2400px · ~400 KB)');
-            drop.addOption('print', 'Print (4800px · ~1.2 MB)');
-            drop.setValue(campaignQuality ?? '');
-            drop.onChange(async (val) => {
-                if (!plugin.settings.authorProgress?.campaigns) return;
-                const authorProgress = plugin.settings.authorProgress;
-                const settings = authorProgress.defaults;
-                if (!authorProgress.campaigns) return;
-                const target = authorProgress.campaigns[index];
-                const resolvedBookTitle = resolveCampaignBookTitle(
-                    authorProgress,
-                    target,
-                    plugin.settings.sourcePath
-                );
-                const oldDefaultPath = buildCampaignEmbedPath({
-                    bookTitle: resolvedBookTitle,
-                    campaignName: target.name,
-                    updateFrequency: target.updateFrequency,
-                    aprExportQuality: target.aprExportQuality ?? settings.aprExportQuality,
-                    teaserEnabled: target.teaserReveal?.enabled ?? true,
-                    exportFormat: resolveCampaignExportFormat(target)
-                });
-                target.aprExportQuality = val === '' ? undefined : (val as AprExportQuality);
-                if (target.exportPath === oldDefaultPath) {
-                    target.exportPath = buildCampaignEmbedPath({
-                        bookTitle: resolvedBookTitle,
-                        campaignName: target.name,
-                        updateFrequency: target.updateFrequency,
-                        aprExportQuality: target.aprExportQuality ?? settings.aprExportQuality,
-                        teaserEnabled: target.teaserReveal?.enabled ?? true,
-                        exportFormat: resolveCampaignExportFormat(target)
-                    });
-                }
-                await plugin.saveSettings();
-                onUpdate();
-            });
-        });
 
     // ─────────────────────────────────────────────────────────────────────────
     // TEASER REVEAL (Progressive Reveal)
@@ -1303,9 +1192,9 @@ async function renderTeaserStagesPreviews(
 
         try {
             const resolvedBookTitle = resolveCampaignBookTitle(
-                authorProgress,
                 campaign,
-                plugin.settings.sourcePath
+                plugin.settings.books,
+                plugin.getActiveBookTitle()
             ) ?? 'Book';
             const isRingOnly = stage.level === 'bar';
             const { svgString } = createAprSVG(scenes, {

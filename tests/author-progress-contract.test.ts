@@ -5,20 +5,16 @@ import { buildDefaultAuthorProgressSettings, migrateAuthorProgressSettings } fro
 import { resolveBookTitle, resolveProjectPath } from '../src/renderer/apr/aprHelpers';
 
 describe('authorProgress contract', () => {
-    it('migrates legacy social settings into canonical defaults and campaign overrides', () => {
+    it('migrates legacy social settings into canonical defaults', () => {
         const migrated = migrateAuthorProgressSettings({
             enabled: true,
             defaultPublishTarget: 'note',
-            bookTitle: 'Base Title',
-            socialProjectPath: 'Projects/Base',
             dynamicEmbedPath: 'Radial Timeline/Social/base/apr-default-manual-medium.png',
             campaigns: [
                 {
                     id: 'campaign-1',
                     name: 'Launch',
                     embedPath: 'Radial Timeline/Social/base/campaigns/apr-launch-auto-weekly-large-teaser.png',
-                    projectPath: 'Projects/Launch',
-                    bookTitle: 'Launch Title',
                     teaserReveal: { enabled: true, preset: 'fast' }
                 }
             ],
@@ -27,8 +23,9 @@ describe('authorProgress contract', () => {
 
         expect(migrated.enabled).toBe(true);
         expect(migrated.defaults.publishTarget).toBe('note');
-        expect(migrated.defaults.bookTitleOverride).toBe('Base Title');
-        expect(migrated.defaults.projectPathOverride).toBe('Projects/Base');
+        // bookTitleOverride and projectPathOverride no longer exist on defaults
+        expect((migrated.defaults as any).bookTitleOverride).toBeUndefined();
+        expect((migrated.defaults as any).projectPathOverride).toBeUndefined();
         expect((migrated.defaults as any).defaultPublishTarget).toBeUndefined();
         expect((migrated.defaults as any).dynamicEmbedPath).toBeUndefined();
         expect((migrated.defaults as any).socialProjectPath).toBeUndefined();
@@ -38,36 +35,56 @@ describe('authorProgress contract', () => {
         expect(migrated.campaigns?.[0]).toMatchObject({
             id: 'campaign-1',
             name: 'Launch',
-            exportPath: 'Radial Timeline/Social/base/campaigns/apr-launch-auto-weekly-large-teaser.png',
-            projectPathOverride: 'Projects/Launch',
-            bookTitleOverride: 'Launch Title'
+            exportPath: 'Radial Timeline/Social/base/campaigns/apr-launch-auto-weekly-large-teaser.png'
         });
+        // Legacy overrides no longer exist on campaigns
+        expect((migrated.campaigns?.[0] as any).projectPathOverride).toBeUndefined();
+        expect((migrated.campaigns?.[0] as any).bookTitleOverride).toBeUndefined();
         expect((migrated.campaigns?.[0] as any).embedPath).toBeUndefined();
         expect((migrated.campaigns?.[0] as any).projectPath).toBeUndefined();
         expect((migrated.campaigns?.[0] as any).bookTitle).toBeUndefined();
     });
 
-    it('applies base defaults and campaign overrides through one resolution path', () => {
-        const settings = buildDefaultAuthorProgressSettings();
-        settings.defaults.projectPathOverride = 'Projects/Base';
-        settings.defaults.bookTitleOverride = 'Base Title';
-        settings.campaigns = [
-            {
-                id: 'campaign-1',
-                name: 'Launch',
-                isActive: true,
-                refreshThresholdDays: 7,
-                exportPath: 'Radial Timeline/Social/base/campaigns/apr-launch-manual-medium.png',
-                projectPathOverride: 'Projects/Launch',
-                bookTitleOverride: 'Launch Title',
-                teaserReveal: { enabled: true, preset: 'standard' }
-            }
+    it('resolves book title via targetBookId on campaigns', () => {
+        const books = [
+            { id: 'book-1', title: 'Novel A', sourceFolder: 'Projects/NovelA' },
+            { id: 'book-2', title: 'Novel B', sourceFolder: 'Projects/NovelB' }
         ];
 
-        expect(resolveProjectPath(settings, null, 'Source/Book')).toBe('Projects/Base');
-        expect(resolveBookTitle(settings, null, 'Projects/Base')).toBe('Base Title');
-        expect(resolveProjectPath(settings, settings.campaigns[0], 'Source/Book')).toBe('Projects/Launch');
-        expect(resolveBookTitle(settings, settings.campaigns[0], 'Projects/Launch')).toBe('Launch Title');
+        // No campaign → active book title
+        expect(resolveBookTitle(null, books as any, 'Active Title')).toBe('Active Title');
+
+        // Campaign without targetBookId → active book title
+        const campaign = {
+            id: 'c1', name: 'Launch', isActive: true,
+            refreshThresholdDays: 7, exportPath: 'test.png'
+        };
+        expect(resolveBookTitle(campaign as any, books as any, 'Active Title')).toBe('Active Title');
+
+        // Campaign with targetBookId → locked book title
+        const lockedCampaign = { ...campaign, targetBookId: 'book-2' };
+        expect(resolveBookTitle(lockedCampaign as any, books as any, 'Active Title')).toBe('Novel B');
+    });
+
+    it('resolves project path via targetBookId on campaigns', () => {
+        const books = [
+            { id: 'book-1', title: 'Novel A', sourceFolder: 'Projects/NovelA' },
+            { id: 'book-2', title: 'Novel B', sourceFolder: 'Projects/NovelB' }
+        ];
+
+        // No campaign → active source path
+        expect(resolveProjectPath(null, books as any, 'Source/Active')).toBe('Source/Active');
+
+        // Campaign without targetBookId → active source path
+        const campaign = {
+            id: 'c1', name: 'Launch', isActive: true,
+            refreshThresholdDays: 7, exportPath: 'test.png'
+        };
+        expect(resolveProjectPath(campaign as any, books as any, 'Source/Active')).toBe('Source/Active');
+
+        // Campaign with targetBookId → locked book's sourceFolder
+        const lockedCampaign = { ...campaign, targetBookId: 'book-1' };
+        expect(resolveProjectPath(lockedCampaign as any, books as any, 'Source/Active')).toBe('Projects/NovelA');
     });
 
     it('uses canonical social contract names outside the migration seam', () => {
@@ -93,6 +110,6 @@ describe('authorProgress contract', () => {
         expect(combined.includes("socialTab.createSpan({ text: 'Social'")).toBe(true);
         expect(combined.includes('Social / authorProgress settings')).toBe(true);
         expect(combined.includes('![Social](')).toBe(true);
-        expect(combined.includes('social-default-manual-medium.png')).toBe(true);
+        // Path schema lives in aprPaths.ts, not in these contract files
     });
 });

@@ -348,12 +348,8 @@ export interface AuthorProgressDefaults {
     aprCustomBgPresets?: Array<{ label: string; color: string }>;
 
     // Identity & Branding
-    bookTitleOverride?: string;
     authorName?: string;
     authorUrl: string;
-
-    // Social project defaults
-    projectPathOverride?: string;
 
     // Publishing defaults
     lastPublishedDate?: string; // ISO string
@@ -436,9 +432,8 @@ export interface AuthorProgressCampaign {
     exportPath: string;              // Where to save the exported report for this campaign
     exportFormat?: AprExportFormat;  // Campaign export format (PNG recommended, SVG optional for web embeds)
 
-    // Campaign-specific Project Configuration (campaign overrides)
-    projectPathOverride?: string;
-    bookTitleOverride?: string;
+    // Book targeting (Pro: select a specific book; default: follows active book)
+    targetBookId?: string;            // Book Manager book ID — undefined = current active book
 
     aprSize?: 'thumb' | 'small' | 'medium' | 'large';
     aprExportQuality?: AprExportQuality;

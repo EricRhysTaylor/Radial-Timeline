@@ -425,7 +425,7 @@ export interface TranslationKeys {
         authorProgress: {
             hero: { badgeRefresh: string; badgeDefault: string; wikiAriaLabel: string; title: string; desc: string; keyBenefitsHeading: string; featureSpoilerSafe: string; featureShareable: string; featureStageWeighted: string; };
             preview: { sizeLabel: string; actualSizePreview: string; teaserAuto: string; teaserRing: string; teaserScenes: string; teaserColor: string; teaserComplete: string; loading: string; lastUpdateNever: string; kickstarterReady: string; patreonFriendly: string; emptyState: string; renderError: string; lastUpdate: string; };
-            configuration: { name: string; desc: string; projectPath: { name: string; desc: string; placeholder: string; }; linkUrl: { name: string; desc: string; placeholder: string; }; autoUpdateExportPaths: { name: string; desc: string; }; };
+            configuration: { name: string; desc: string; linkUrl: { name: string; desc: string; placeholder: string; }; autoUpdateExportPaths: { name: string; desc: string; }; };
             styling: {
                 name: string; desc: string; choosePaletteButton: string;
                 fontDefault: string; fontSystemUI: string;
@@ -1309,11 +1309,6 @@ export const en: TranslationKeys = {
             configuration: {
                 name: 'Configuration',
                 desc: 'Configure your project settings and Social destination details, including project path and link URL.',
-                projectPath: {
-                    name: 'Project path',
-                    desc: 'Project folder path for this Social target. Leave blank to use the main Source path.',
-                    placeholder: 'Projects/My Novel',
-                },
                 linkUrl: {
                     name: 'Link URL',
                     desc: 'Where the graphic should link to (e.g. your website, Kickstarter, or shop).',

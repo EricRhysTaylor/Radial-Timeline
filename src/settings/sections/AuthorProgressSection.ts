@@ -18,8 +18,6 @@ import { STAGE_ORDER } from '../../utils/constants';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import { t } from '../../i18n';
 import { buildDefaultEmbedPath, normalizeAprExportFormat, type AprExportFormat } from '../../utils/aprPaths';
-import { ProjectPathSuggest } from '../ProjectPathSuggest';
-import { validateAndRememberProjectPath } from '../../renderer/apr/aprHelpers';
 import { fitSelectToSelectedLabel } from '../selectSizing';
 export interface AuthorProgressSectionProps {
     app: App;
@@ -67,9 +65,13 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         `ert-badgePill--alert ${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_APR}` :
         `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_APR}`;
     const badge = badgeRow.createSpan({ cls: badgeClasses });
-    // Left Icon and Text
+    // Left Icon and Text — append active book name
     setIcon(badge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON }), needsRefresh ? 'alert-triangle' : 'radio');
-    badge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: needsRefresh ? t('settings.authorProgress.hero.badgeRefresh') : t('settings.authorProgress.hero.badgeDefault') });
+    const activeBookTitle = plugin.getActiveBookTitle();
+    const badgeText = needsRefresh
+        ? t('settings.authorProgress.hero.badgeRefresh')
+        : `${t('settings.authorProgress.hero.badgeDefault')} · ${activeBookTitle}`;
+    badge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: badgeText });
 
     // Right Icon (Wiki Link) - Manually constructed for ERT styling
     const wikiLink = badge.createEl('a', {
@@ -157,7 +159,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             const settings = plugin.settings.authorProgress.defaults;
             const defaultFormat = resolveDefaultExportFormat(plugin.settings.authorProgress);
             const oldDefaultPath = buildDefaultEmbedPath({
-                bookTitle: settings.bookTitleOverride,
+                bookTitle: plugin.getActiveBookTitle(),
                 updateFrequency: settings.updateFrequency,
                 aprExportQuality: settings.aprExportQuality,
                 exportFormat: defaultFormat
@@ -165,7 +167,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             settings.aprSize = size;
             if (settings.exportPath === oldDefaultPath) {
                 settings.exportPath = buildDefaultEmbedPath({
-                    bookTitle: settings.bookTitleOverride,
+                    bookTitle: plugin.getActiveBookTitle(),
                     updateFrequency: settings.updateFrequency,
                     aprExportQuality: settings.aprExportQuality,
                     exportFormat: defaultFormat
@@ -265,90 +267,6 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     addWikiLink(stylingHeading, 'Settings#social-media-styling');
     applyErtHeaderLayout(stylingHeading, { variant: 'inline' });
     const stylingBody = stylingBlock.createDiv({ cls: 'ert-typography-stack' });
-
-    // Project Path for Social
-    const projectPathSetting = new Setting(stylingBody)
-        .setName(t('settings.authorProgress.configuration.projectPath.name'))
-        .setDesc(t('settings.authorProgress.configuration.projectPath.desc'));
-
-    projectPathSetting.settingEl.addClass('ert-setting-full-width-input');
-
-    projectPathSetting.addText(text => {
-        const successClass = 'ert-input--success';
-        const errorClass = 'ert-input--error';
-
-        const clearInputState = () => {
-            text.inputEl.removeClass(successClass);
-            text.inputEl.removeClass(errorClass);
-        };
-
-        const flashError = (timeout = 2000) => {
-            text.inputEl.addClass(errorClass);
-            window.setTimeout(() => {
-                text.inputEl.removeClass(errorClass);
-            }, timeout);
-        };
-
-        const flashSuccess = (timeout = 1000) => {
-            text.inputEl.addClass(successClass);
-            window.setTimeout(() => {
-                text.inputEl.removeClass(successClass);
-            }, timeout);
-        };
-
-        text.setPlaceholder(t('settings.authorProgress.configuration.projectPath.placeholder'))
-            .setValue(settings?.projectPathOverride || '')
-            .onChange(() => {
-                clearInputState();
-            });
-
-        // Attach ProjectPathSuggest for autocomplete
-        new ProjectPathSuggest(app, text.inputEl, plugin, text);
-
-        const handleBlur = async () => {
-            const val = text.getValue().trim();
-            clearInputState();
-
-            if (!val) {
-                // Empty is allowed - means use Source path
-                if (plugin.settings.authorProgress) {
-                    plugin.settings.authorProgress.defaults.projectPathOverride = '';
-                    await plugin.saveSettings();
-                    refreshPreview();
-                    flashSuccess();
-                }
-                return;
-            }
-
-            // Validate the path
-            const isValid = await validateAndRememberProjectPath(val, plugin);
-
-            if (!isValid) {
-                // Invalid path - revert to last saved value
-                const savedValue = plugin.settings.authorProgress?.defaults.projectPathOverride || '';
-                text.setValue(savedValue);
-                flashError();
-                new Notice(`Invalid project path: "${val}" does not exist or is not a folder. Reverting to saved value.`);
-                return;
-            }
-
-            // Save if valid
-            if (plugin.settings.authorProgress) {
-                plugin.settings.authorProgress.defaults.projectPathOverride = val;
-                await plugin.saveSettings();
-                refreshPreview();
-                flashSuccess();
-            }
-        };
-
-        plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });
-        plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
-            if (evt.key === 'Enter') {
-                evt.preventDefault();
-                text.inputEl.blur();
-            }
-        });
-    });
 
     const currentBg = settings?.aprBackgroundColor || '#0d0d0f';
     const currentTransparent = settings?.aprCenterTransparent ?? true; // Default to true (recommended)
@@ -993,13 +911,6 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         label: t('settings.authorProgress.styling.title.label'),
         desc: t('settings.authorProgress.styling.title.desc'),
         dataTypo: 'title',
-        text: {
-            placeholder: DEFAULT_BOOK_TITLE,
-            value: settings?.bookTitleOverride || '',
-            onChange: async (val) => {
-                await setAprSetting('bookTitleOverride', val as AuthorProgressDefaults['bookTitleOverride']);
-            }
-        },
         color: {
             key: 'aprBookAuthorColor',
             value: currentBookTitleColorVal,
@@ -1466,7 +1377,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                         const current = plugin.settings.authorProgress.defaults;
                         const defaultFormat = resolveDefaultExportFormat(plugin.settings.authorProgress);
                         const oldDefaultPath = buildDefaultEmbedPath({
-                            bookTitle: current.bookTitleOverride,
+                            bookTitle: plugin.getActiveBookTitle(),
                             updateFrequency: current.updateFrequency,
                             aprExportQuality: current.aprExportQuality,
                             exportFormat: defaultFormat
@@ -1474,7 +1385,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                         current.updateFrequency = val as any;
                         if (current.exportPath === oldDefaultPath) {
                             current.exportPath = buildDefaultEmbedPath({
-                                bookTitle: current.bookTitleOverride,
+                                bookTitle: plugin.getActiveBookTitle(),
                                 updateFrequency: current.updateFrequency,
                                 aprExportQuality: current.aprExportQuality,
                                 exportFormat: defaultFormat
@@ -1541,7 +1452,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         exportPathSetting.addText(text => {
             const defaultFormat = resolveDefaultExportFormat(plugin.settings.authorProgress);
             const defaultPath = buildDefaultEmbedPath({
-                bookTitle: settings?.bookTitleOverride,
+                bookTitle: plugin.getActiveBookTitle(),
                 updateFrequency: settings?.updateFrequency,
                 aprExportQuality: settings?.aprExportQuality,
                 exportFormat: defaultFormat
@@ -2001,7 +1912,7 @@ async function renderHeroPreview(
         const { svgString, width, height } = createAprSVG(scenes, {
             size: size,
             progressPercent: displayPercent,
-            bookTitle: aprSettings?.bookTitleOverride || DEFAULT_BOOK_TITLE,
+            bookTitle: plugin.getActiveBookTitle(),
             authorName: aprSettings?.authorName || '',
             authorUrl: aprSettings?.authorUrl || '',
             showScenes,

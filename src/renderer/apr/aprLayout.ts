@@ -103,8 +103,8 @@ export function computeAprLayout(preset: AprPreset, data: AprData = {}): AprLayo
     const sizeScale = outerPx / 300;
     const textR = preset.enableText ? APR_BASE_RADII.text * sizeScale : null;
 
-    // Strokes scale proportionally with size (2px at 300px baseline)
-    const fixedStroke = outerPx <= 150 ? 1 : Math.max(2, Math.round(outerPx / 150));
+    // Strokes scale proportionally with size (~20% thinner than legacy 1:150 ratio)
+    const fixedStroke = outerPx <= 150 ? 1 : Math.max(2, Math.round(outerPx / 188));
 
     const ringStroke = fixedStroke;
     const dividerStroke = fixedStroke;

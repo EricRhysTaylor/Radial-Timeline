@@ -182,16 +182,13 @@ function migrateDefaults(raw: LegacyAuthorProgressSettings | null): AuthorProgre
         aprRtBadgeFontItalic: asBoolean(raw.aprRtBadgeFontItalic, defaults.aprRtBadgeFontItalic ?? false),
         aprRtBadgeFontSize: typeof raw.aprRtBadgeFontSize === 'number' ? raw.aprRtBadgeFontSize : undefined,
         aprShowRtAttribution: asBoolean(raw.aprShowRtAttribution, defaults.aprShowRtAttribution ?? true),
-        bookTitleOverride: asString(raw.bookTitleOverride ?? raw.bookTitle),
         authorName: asString(raw.authorName),
         authorUrl: asString(raw.authorUrl) ?? defaults.authorUrl,
-        projectPathOverride: asString(raw.projectPathOverride ?? raw.socialProjectPath),
         lastPublishedDate: asString(raw.lastPublishedDate),
         updateFrequency,
         stalenessThresholdDays: asNumber(raw.stalenessThresholdDays, defaults.stalenessThresholdDays),
         enableReminders: asBoolean(raw.enableReminders, defaults.enableReminders),
         exportPath: asString(raw.exportPath ?? raw.dynamicEmbedPath) ?? buildDefaultEmbedPath({
-            bookTitle: asString(raw.bookTitleOverride ?? raw.bookTitle),
             updateFrequency,
             aprExportQuality: asString(raw.aprExportQuality) as any,
             exportFormat
@@ -221,7 +218,6 @@ function migrateCampaign(raw: unknown, defaults: AuthorProgressDefaults): Author
         refreshThresholdDays: asNumber(record.refreshThresholdDays, defaults.stalenessThresholdDays),
         lastPublishedDate: asString(record.lastPublishedDate),
         exportPath: asString(record.exportPath ?? record.embedPath) ?? buildCampaignEmbedPath({
-            bookTitle: asString(record.bookTitleOverride ?? record.bookTitle) ?? defaults.bookTitleOverride,
             campaignName: name,
             updateFrequency,
             aprExportQuality: asString(record.aprExportQuality) as any,
@@ -229,8 +225,7 @@ function migrateCampaign(raw: unknown, defaults: AuthorProgressDefaults): Author
             exportFormat
         }),
         exportFormat,
-        projectPathOverride: asString(record.projectPathOverride ?? record.projectPath),
-        bookTitleOverride: asString(record.bookTitleOverride ?? record.bookTitle),
+        targetBookId: asString(record.targetBookId),
         aprSize,
         customBackgroundColor: asString(record.customBackgroundColor),
         customTransparent: typeof record.customTransparent === 'boolean' ? record.customTransparent : undefined,

@@ -1,4 +1,4 @@
-import { App, Modal, ButtonComponent, Notice, TextComponent, setIcon, setTooltip, normalizePath } from 'obsidian';
+import { App, Modal, ButtonComponent, Notice, setIcon, setTooltip, normalizePath } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import { TimelineItem } from '../types/timeline';
 import { AuthorProgressService } from '../services/AuthorProgressService';
@@ -10,7 +10,6 @@ import { ERT_CLASSES } from '../ui/classes';
 import {
     buildCampaignEmbedPath,
     buildDefaultEmbedPath,
-    isDefaultEmbedPath,
     normalizeAprExportFormat,
     type AprExportFormat,
     type AprExportQuality
@@ -181,6 +180,10 @@ export class AuthorProgressModal extends Modal {
 
         // Footer actions
         const footer = contentEl.createDiv({ cls: 'ert-modal-actions' });
+        new ButtonComponent(footer)
+            .setButtonText('Publish')
+            .setCta()
+            .onClick(() => this.publish('dynamic'));
         const settingsBtn = new ButtonComponent(footer)
             .setButtonText('Settings')
             .onClick(() => {
@@ -216,7 +219,7 @@ export class AuthorProgressModal extends Modal {
 
         // Get resolved project path for the selected target
         const campaign = this.getSelectedCampaign();
-        const projectPath = resolveProjectPath(authorProgress, campaign ?? null, this.plugin.settings.sourcePath);
+        const projectPath = resolveProjectPath(campaign ?? null, this.plugin.settings.books, this.plugin.settings.sourcePath);
 
         // Only reload if project path changed (cache invalidation on projectPath change)
         if (this.cachedProjectPath === projectPath && this.cachedScenes.length > 0) {
@@ -492,101 +495,21 @@ export class AuthorProgressModal extends Modal {
         // === OUTPUT FILE ===
         const pathRow = container.createDiv({ cls: 'ert-apr-target-row' });
         pathRow.createSpan({ text: 'Output file', cls: ERT_CLASSES.LABEL });
-        const pathControl = pathRow.createDiv({ cls: ERT_CLASSES.INLINE });
-        pathControl.style.flex = '1'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-        pathControl.style.minWidth = '0'; // SAFE: prevent overflow from long paths
-        const pathInput = new TextComponent(pathControl);
         const defaultPath = buildDefaultEmbedPath({
-            bookTitle: settings?.bookTitleOverride,
+            bookTitle: this.plugin.getActiveBookTitle(),
             updateFrequency: settings?.updateFrequency,
             aprExportQuality: settings?.aprExportQuality,
             exportFormat: this.getDefaultExportFormat()
         });
-        // Migrate stale legacy paths to v2 quality-based format
-        if (settings && settings.exportPath && settings.exportPath !== defaultPath) {
-            if (isDefaultEmbedPath(settings.exportPath, {
-                bookTitle: settings.bookTitleOverride,
-                updateFrequency: settings.updateFrequency
-            })) {
-                settings.exportPath = defaultPath;
-                void this.plugin.saveSettings();
-            }
+        // Auto-sync export path to canonical default
+        if (settings) {
+            settings.exportPath = defaultPath;
+            void this.plugin.saveSettings();
         }
-        const currentPath = settings?.exportPath || defaultPath;
-        const clearState = () => {
-            pathInput.inputEl.removeClass('ert-input--error');
-            pathInput.inputEl.removeClass('ert-input--success');
-        };
-        const applyWarningState = (pathValue: string) => {
-            const isCustomPath = !!pathValue?.trim()
-                && pathValue !== defaultPath
-                && !isDefaultEmbedPath(pathValue, {
-                    bookTitle: settings?.bookTitleOverride,
-                    updateFrequency: settings?.updateFrequency
-                });
-            if (isCustomPath) {
-                pathInput.inputEl.addClass('ert-input--warning');
-                pathInput.inputEl.setAttribute(
-                    'title',
-                    `Custom path. Canonical: ${defaultPath}`
-                );
-            } else {
-                pathInput.inputEl.removeClass('ert-input--warning');
-                pathInput.inputEl.removeAttribute('title');
-            }
-        };
-        pathInput.setPlaceholder(defaultPath);
-        pathInput.setValue(currentPath);
-        pathInput.inputEl.style.flex = '1'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-        pathInput.inputEl.style.minWidth = '0'; // SAFE: prevent overflow from long paths
-        applyWarningState(currentPath);
+        const pathDisplay = pathRow.createSpan({ cls: ERT_CLASSES.FIELD_NOTE });
+        pathDisplay.setText(this.summarizePath(defaultPath));
+        pathDisplay.setAttr('title', defaultPath);
 
-        const savePath = async () => {
-            const val = pathInput.getValue().trim();
-            clearState();
-            const requiredExt = `.${this.getDefaultExportFormat()}`;
-            if (!val || !val.toLowerCase().endsWith(requiredExt)) {
-                pathInput.inputEl.addClass('ert-input--error');
-                return;
-            }
-            if (!this.plugin.settings.authorProgress) return;
-            this.plugin.settings.authorProgress.defaults.exportPath = normalizePath(val);
-            await this.plugin.saveSettings();
-            pathInput.inputEl.addClass('ert-input--success');
-            window.setTimeout(() => pathInput.inputEl.removeClass('ert-input--success'), 900);
-            applyWarningState(val);
-        };
-
-        pathInput.inputEl.addEventListener('blur', () => { void savePath(); });
-        pathInput.inputEl.addEventListener('keydown', (evt: KeyboardEvent) => {
-            if (evt.key === 'Enter') {
-                evt.preventDefault();
-                pathInput.inputEl.blur();
-            }
-        });
-
-        // Reset path button
-        const resetBtn = pathControl.createEl('button', {
-            cls: 'ert-iconBtn',
-            attr: { 'aria-label': 'Reset to default path', type: 'button' }
-        });
-        setIcon(resetBtn, 'rotate-ccw');
-        resetBtn.addEventListener('click', async () => {
-            if (!this.plugin.settings.authorProgress) return;
-            this.plugin.settings.authorProgress.defaults.exportPath = defaultPath;
-            await this.plugin.saveSettings();
-            pathInput.setValue(defaultPath);
-            clearState();
-            applyWarningState(defaultPath);
-        });
-
-        // === PUBLISH BUTTON ===
-        const actionRow = container.createDiv({ cls: 'ert-apr-publish-row' });
-        const primaryButton = new ButtonComponent(actionRow)
-            .setButtonText('Publish')
-            .setCta();
-        primaryButton.buttonEl.addClass('ert-btn--lg');
-        primaryButton.onClick(() => this.publish('dynamic'));
     }
 
     private renderProActions(container: HTMLElement, campaigns: AuthorProgressCampaign[]): void {
@@ -635,7 +558,7 @@ export class AuthorProgressModal extends Modal {
             const legacyPath = `Radial Timeline/Social/${legacySlug}-progress.svg`;
             if (campaign.exportPath === legacyPath) {
                 const nextPath = buildCampaignEmbedPath({
-                    bookTitle: settings.bookTitleOverride,
+                    bookTitle: this.plugin.getActiveBookTitle(),
                     campaignName: campaign.name,
                     updateFrequency: campaign.updateFrequency,
                     aprExportQuality: campaign.aprExportQuality ?? settings.aprExportQuality,
@@ -648,8 +571,8 @@ export class AuthorProgressModal extends Modal {
         }
 
         // === STATUS ROW (grid-style: Book, Format, Export, Schedule, Stage) ===
-        const projectPath = resolveProjectPath(this.plugin.settings.authorProgress!, campaign, this.plugin.settings.sourcePath);
-        const bookTitle = resolveBookTitle(this.plugin.settings.authorProgress!, campaign, projectPath);
+        const projectPath = resolveProjectPath(campaign, this.plugin.settings.books, this.plugin.settings.sourcePath);
+        const bookTitle = resolveBookTitle(campaign, this.plugin.settings.books, this.plugin.getActiveBookTitle());
         const format = this.getCampaignExportFormat(campaign);
         const campaignQuality = campaign.aprExportQuality ?? this.plugin.settings.authorProgress?.defaults.aprExportQuality ?? 'standard';
         const scheduleLabel = this.getTeaserScheduleLabel(campaign);
@@ -704,14 +627,6 @@ export class AuthorProgressModal extends Modal {
         });
         pathText.setAttr('title', campaign.exportPath);
 
-        // === PUBLISH BUTTON ===
-        const actionRow = container.createDiv({ cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_MIDDLE_ALIGN}` });
-        actionRow.createSpan({ text: '', cls: ERT_CLASSES.LABEL });
-        const actionControl = actionRow.createDiv({ cls: ERT_CLASSES.CONTROL });
-        const primaryButton = new ButtonComponent(actionControl)
-            .setButtonText('Publish Campaign');
-        primaryButton.buttonEl.addClass('ert-btn', 'ert-btn--standard-pro');
-        primaryButton.onClick(() => this.publish('dynamic'));
     }
 
     private renderRefreshAlert(container: HTMLElement): void {
@@ -792,10 +707,10 @@ export class AuthorProgressModal extends Modal {
         if (!authorProgress || !settings) return targets;
 
         // Default Report (Core Social)
-        const defaultProjectPath = resolveProjectPath(authorProgress, null, this.plugin.settings.sourcePath);
-        const defaultBookTitle = resolveBookTitle(authorProgress, null, defaultProjectPath);
+        const defaultProjectPath = resolveProjectPath(null, this.plugin.settings.books, this.plugin.settings.sourcePath);
+        const defaultBookTitle = resolveBookTitle(null, this.plugin.settings.books, this.plugin.getActiveBookTitle());
         const defaultPath = buildDefaultEmbedPath({
-            bookTitle: settings.bookTitleOverride,
+            bookTitle: this.plugin.getActiveBookTitle(),
             updateFrequency: settings.updateFrequency,
             aprExportQuality: settings.aprExportQuality,
             exportFormat: this.getDefaultExportFormat()
@@ -815,8 +730,8 @@ export class AuthorProgressModal extends Modal {
         // Campaigns (Pro overrides)
         const campaigns = authorProgress.campaigns || [];
         campaigns.forEach(campaign => {
-            const campaignProjectPath = resolveProjectPath(authorProgress, campaign, this.plugin.settings.sourcePath);
-            const campaignBookTitle = resolveBookTitle(authorProgress, campaign, campaignProjectPath);
+            const campaignProjectPath = resolveProjectPath(campaign, this.plugin.settings.books, this.plugin.settings.sourcePath);
+            const campaignBookTitle = resolveBookTitle(campaign, this.plugin.settings.books, this.plugin.getActiveBookTitle());
             targets.push({
                 id: campaign.id,
                 label: campaign.name,
@@ -838,7 +753,7 @@ export class AuthorProgressModal extends Modal {
         const campaign = this.getSelectedCampaign();
         if (campaign?.exportPath) return campaign.exportPath;
         return settings?.exportPath || buildDefaultEmbedPath({
-            bookTitle: settings?.bookTitleOverride,
+            bookTitle: this.plugin.getActiveBookTitle(),
             updateFrequency: settings?.updateFrequency,
             aprExportQuality: settings?.aprExportQuality,
             exportFormat: this.getDefaultExportFormat()
@@ -938,27 +853,14 @@ export class AuthorProgressModal extends Modal {
         if (!settings) return;
 
         const nextFormat = normalizeAprExportFormat(format);
-        const currentFormat = this.getDefaultExportFormat();
-        const oldDefaultPath = buildDefaultEmbedPath({
-            bookTitle: settings.bookTitleOverride,
-            updateFrequency: settings.updateFrequency,
-            aprExportQuality: settings.aprExportQuality,
-            exportFormat: currentFormat
-        });
-        const newDefaultPath = buildDefaultEmbedPath({
-            bookTitle: settings.bookTitleOverride,
+        settings.exportFormat = nextFormat;
+        // Always recompute canonical default path when format changes
+        settings.exportPath = buildDefaultEmbedPath({
+            bookTitle: this.plugin.getActiveBookTitle(),
             updateFrequency: settings.updateFrequency,
             aprExportQuality: settings.aprExportQuality,
             exportFormat: nextFormat
         });
-        const currentPath = settings.exportPath?.trim() ?? '';
-
-        settings.exportFormat = nextFormat;
-        if (!currentPath || currentPath === oldDefaultPath) {
-            settings.exportPath = newDefaultPath;
-        } else {
-            settings.exportPath = normalizePath(this.swapPathExtension(currentPath, nextFormat));
-        }
 
         await this.plugin.saveSettings();
     }
@@ -974,9 +876,9 @@ export class AuthorProgressModal extends Modal {
         const nextFormat = normalizeAprExportFormat(format);
         const currentFormat = this.getCampaignExportFormat(target);
         const resolvedBookTitle = resolveBookTitle(
-            authorProgress,
             target,
-            resolveProjectPath(authorProgress, target, this.plugin.settings.sourcePath)
+            this.plugin.settings.books,
+            this.plugin.getActiveBookTitle()
         );
         const oldDefaultPath = buildCampaignEmbedPath({
             bookTitle: resolvedBookTitle,
@@ -1030,23 +932,14 @@ export class AuthorProgressModal extends Modal {
             this.plugin.settings.authorProgress = buildDefaultAuthorProgressSettings();
         }
         const settings = this.plugin.settings.authorProgress?.defaults;
-        const legacyPath = 'Radial Timeline/Social/progress.svg';
         settings.aprExportQuality = this.exportQuality;
-        // Recompute default path when quality changes if path is unset or default
-        const pathIsDefaultOrUnset = !settings.exportPath?.trim()
-            || settings.exportPath === legacyPath
-            || isDefaultEmbedPath(settings.exportPath, {
-                bookTitle: settings.bookTitleOverride,
-                updateFrequency: settings.updateFrequency
-            });
-        if (pathIsDefaultOrUnset) {
-            settings.exportPath = buildDefaultEmbedPath({
-                bookTitle: settings.bookTitleOverride,
-                updateFrequency: settings.updateFrequency,
-                aprExportQuality: settings.aprExportQuality,
-                exportFormat: this.getDefaultExportFormat()
-            });
-        }
+        // Always recompute canonical default path when quality changes
+        settings.exportPath = buildDefaultEmbedPath({
+            bookTitle: this.plugin.getActiveBookTitle(),
+            updateFrequency: settings.updateFrequency,
+            aprExportQuality: settings.aprExportQuality,
+            exportFormat: this.getDefaultExportFormat()
+        });
         await this.plugin.saveSettings();
     }
 

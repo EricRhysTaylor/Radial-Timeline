@@ -89,8 +89,8 @@ export class AuthorProgressPublishService {
     private createPresetNoteContent(svgPath: string): string {
         const authorProgress = this.plugin.settings.authorProgress;
         const settings = authorProgress?.defaults;
-        const projectPath = resolveProjectPath(authorProgress!, null, this.plugin.settings.sourcePath);
-        const bookTitle = resolveBookTitle(authorProgress!, null, projectPath);
+        const projectPath = resolveProjectPath(null, this.plugin.settings.books, this.plugin.settings.sourcePath);
+        const bookTitle = resolveBookTitle(null, this.plugin.settings.books, this.plugin.getActiveBookTitle());
         const authorName = settings?.authorName || '';
 
         let content = `# ${bookTitle}${authorName ? ` by ${authorName}` : ''}\n\n`;
