@@ -156,8 +156,8 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
         }
 
         const headerContainer = proContainer.createDiv({ cls: ERT_CLASSES.STACK });
-        const ratesRow = proContainer.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
-        const sessionPlanningRow = proContainer.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
+        const ratesRow = proContainer.createDiv({ cls: ERT_CLASSES.STACK });
+        const sessionPlanningRow = proContainer.createDiv({ cls: ERT_CLASSES.STACK });
         const patternsRow = proContainer.createDiv({ cls: ERT_CLASSES.STACK });
 
         const getSelectedProfile = (): RuntimeRateProfile | undefined => {

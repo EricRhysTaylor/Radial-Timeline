@@ -649,7 +649,7 @@ function renderCampaignDetails(
     plugin: RadialTimelinePlugin,
     onUpdate: () => void
 ): void {
-    const details = parentRow.createDiv({ cls: `ert-campaign-details ${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
+    const details = parentRow.createDiv({ cls: `ert-campaign-details ${ERT_CLASSES.STACK}` });
 
     const freqSetting = details.createDiv({ cls: ['setting-item', 'ert-elementBlock', 'ert-campaign-frequency-setting'] });
     const freqRow = freqSetting.createDiv({ cls: 'ert-campaign-frequency-setting__row' });

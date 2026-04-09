@@ -1739,7 +1739,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
     applyErtHeaderLayout(pandocHeading);
 
     const systemConfigPanel = pandocPanel.createDiv({
-        cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}`,
+        cls: ERT_CLASSES.STACK,
         attr: { [ERT_DATA.SECTION]: 'export-check' }
     });
     systemConfigPanel.style.order = '50';
@@ -1885,7 +1885,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
 
     // ── Layout Registry Subsection ──────────────────────────────────────────
     const layoutPanel = pandocPanel.createDiv({
-        cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}`,
+        cls: ERT_CLASSES.STACK,
         attr: { [ERT_DATA.SECTION]: 'pdf-style' }
     });
     layoutPanel.style.order = '30';
@@ -3104,7 +3104,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
     let activeBookMetaPreviewOverride: BookMeta | null = null;
     let activeBookMetaEditBusy = false;
     const bookMetaPreviewPanel = pandocPanel.createDiv({
-        cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}`,
+        cls: ERT_CLASSES.STACK,
         attr: { [ERT_DATA.SECTION]: 'book-details' }
     });
     bookMetaPreviewPanel.style.order = '10';
@@ -3412,7 +3412,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
 
     // ── Publishing Setup ────────────────────────────────────────────────────
     const publishingSetupPanel = pandocPanel.createDiv({
-        cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}`,
+        cls: ERT_CLASSES.STACK,
         attr: { [ERT_DATA.SECTION]: 'book-pages' }
     });
     publishingSetupPanel.style.order = '20';

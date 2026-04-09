@@ -404,9 +404,9 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
         }
     }
 
-    // Center hole
-    const centerStroke = centerStrokeWidth ? ` stroke-width="${centerStrokeWidth}"` : '';
-    svg += `<circle cx="0" cy="0" r="${innerRadius}" fill="${color('--apr-center-fill', holeFill)}" stroke="${color('--apr-struct-border', structural.border)}"${centerStroke} />`;
+    // Center hole — inner radius stroke uses publish stage color
+    const centerStrokeW = centerStrokeWidth ?? borderWidth;
+    svg += `<circle cx="0" cy="0" r="${innerRadius}" fill="${color('--apr-center-fill', holeFill)}" stroke="${color('--apr-stage-badge-color', stageBadgeColor)}" stroke-width="${centerStrokeW}" />`;
 
     if (centerMarkFinal !== 'none') {
         svg += renderCenterMark(innerRadius, centerMarkFinal, progressColor, color);
