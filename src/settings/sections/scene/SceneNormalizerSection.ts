@@ -172,21 +172,6 @@ export function renderSceneNormalizerSection(params: {
     let auditScopeSummary = '';
     let hasCheckedScenes = false;
     let checkedSceneFiles: TFile[] = [];
-    const buildMaintenanceDescription = (): string => {
-        return 'Check scene notes for missing core properties, IDs, layout order, and optional advanced properties.';
-    };
-    const buildPolicyExplanation = (): { lead: string; detail: string } => {
-        const advancedEnabled = getAdvancedMode(plugin.settings) === 'enabled';
-        return advancedEnabled
-            ? {
-                lead: 'Core and Advanced properties are currently maintained in scene notes.',
-                detail: 'Missing advanced fields will be reported and can be added automatically.'
-            }
-            : {
-                lead: 'Core properties are currently maintained in scene notes.',
-                detail: 'Advanced properties remain optional and can be removed with “Remove advanced properties”.'
-            };
-    };
     const buildPolicyBadge = (): string => (
         getAdvancedMode(plugin.settings) === 'enabled' ? 'Core + advanced' : 'Core only'
     );
@@ -202,20 +187,14 @@ export function renderSceneNormalizerSection(params: {
     addHeadingIcon(headerRow, 'shield-check');
     addWikiLink(headerRow, 'Settings#yaml-templates');
     applyErtHeaderLayout(headerRow);
-    const maintenanceDescriptionEl = headerRow.descEl.createDiv({ cls: 'ert-scene-maintenance-desc' });
     const policyBadgeEl = createBadge(headerRow.controlEl, buildPolicyBadge());
     const panel = parentEl.createDiv({ cls: ['ert-panel', 'ert-stack', 'ert-scene-maintenance-panel', 'ert-settings-hidden'] });
-    const policyBlock = panel.createDiv({ cls: ['ert-panel', 'ert-scene-maintenance-policy-block'] });
-    const policyLeadEl = policyBlock.createDiv({ cls: 'ert-scene-maintenance-policy-lead' });
-    const policyDetailEl = policyBlock.createDiv({ cls: 'ert-scene-maintenance-policy-detail' });
     const maintenanceSection = panel.createDiv({ cls: ['ert-stack', 'ert-scene-maintenance-section'] });
     maintenanceSection.createDiv({ cls: 'ert-scene-maintenance-group-label', text: 'Maintenance' });
     const maintenanceGroup = maintenanceSection.createDiv({ cls: ['ert-inline-actions', 'ert-scene-maintenance-actions'] });
-    const maintenanceHelperEl = maintenanceSection.createDiv({ cls: 'ert-scene-maintenance-helper' });
     const cleanupSection = panel.createDiv({ cls: ['ert-stack', 'ert-scene-maintenance-section', 'ert-scene-maintenance-section--cleanup'] });
     cleanupSection.createDiv({ cls: 'ert-scene-maintenance-group-label', text: 'Cleanup' });
     const cleanupGroup = cleanupSection.createDiv({ cls: ['ert-inline-actions', 'ert-inline-actions--end', 'ert-scene-maintenance-actions', 'ert-scene-maintenance-actions--cleanup'] });
-    const cleanupHelperEl = cleanupSection.createDiv({ cls: 'ert-scene-maintenance-helper' });
     const resultsSection = panel.createDiv({ cls: ['ert-stack', 'ert-scene-maintenance-section', 'ert-scene-maintenance-section--results', 'ert-settings-hidden'] });
     resultsSection.createDiv({ cls: 'ert-scene-maintenance-group-label', text: 'Scene status' });
     const resultsEl = resultsSection.createDiv({ cls: 'ert-audit-results-row' });
@@ -223,12 +202,7 @@ export function renderSceneNormalizerSection(params: {
         resultsSection.toggleClass('ert-settings-hidden', resultsEl.childElementCount === 0);
     };
     const refreshMaintenanceCopy = () => {
-        maintenanceDescriptionEl.setText(buildMaintenanceDescription());
-        const policy = buildPolicyExplanation();
-        policyLeadEl.setText(policy.lead);
-        policyDetailEl.setText(policy.detail);
         policyBadgeEl.querySelector('.ert-badgePill__text')?.replaceChildren(document.createTextNode(buildPolicyBadge()));
-        setTooltip(policyBadgeEl, `${policy.lead} ${policy.detail}`);
         if (removeUnusedBtn) {
             setTooltip(removeUnusedBtn.buttonEl, buildUnusedFieldsTooltip());
         }
@@ -286,36 +260,6 @@ export function renderSceneNormalizerSection(params: {
                 : (disabledReasonBase || 'No scenes currently contain advanced properties to remove.')
         );
         setButtonDisabled(fixDuplicateBtn, !summary || summary.scenesDuplicateIds === 0, disabledReasonBase || 'No duplicate scene IDs were detected.');
-
-        const maintenanceReasons: string[] = [];
-        const cleanupReasons: string[] = [];
-        if (!summary) {
-            maintenanceReasons.push('Run Check Scenes to load scene status and available maintenance actions.');
-            cleanupReasons.push('Cleanup actions unlock after scene status has been checked.');
-        } else {
-            if (summary.scenesWithMissingCore === 0) maintenanceReasons.push('All scenes already contain core properties.');
-            if (!advancedEnabled) {
-                maintenanceReasons.push('Advanced properties are disabled, so advanced fields are not added automatically.');
-            } else if (summary.scenesWithMissingAdvanced === 0) {
-                maintenanceReasons.push('No advanced properties are currently missing.');
-            }
-            if (summary.scenesMissingIds === 0) maintenanceReasons.push('All scenes already have IDs.');
-            if (summary.scenesWithDrift === 0) maintenanceReasons.push('Scene property order already matches the current layout.');
-
-            if (summary.scenesWithExtra === 0) cleanupReasons.push(advancedEnabled
-                ? 'No unused fields were detected.'
-                : 'No unused non-Advanced fields were detected. Advanced fields are preserved.');
-            if (advancedMode === 'enabled') {
-                cleanupReasons.push('Advanced properties are currently maintained, so removal is disabled.');
-            } else if (!removableAdvanced) {
-                cleanupReasons.push('No scenes currently contain removable advanced properties.');
-            }
-            if (summary.scenesDuplicateIds === 0) cleanupReasons.push('No duplicate scene IDs were detected.');
-        }
-        maintenanceHelperEl.setText(maintenanceReasons[0] ?? '');
-        cleanupHelperEl.setText(cleanupReasons[0] ?? '');
-        maintenanceHelperEl.toggleClass('ert-settings-hidden', maintenanceReasons.length === 0);
-        cleanupHelperEl.toggleClass('ert-settings-hidden', cleanupReasons.length === 0);
     };
 
     const renderResults = () => {

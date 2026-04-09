@@ -73,7 +73,8 @@ export function splitSceneMissingKeys(
 ): { missingCoreKeys: string[]; missingAdvancedKeys: string[] } {
     const coreKeySet = new Set(expected.coreKeys);
     const advancedKeySet = new Set(expected.advancedKeys);
-    const missingCoreKeys = missingKeys.filter((key) => coreKeySet.has(key));
+    // Chapter is optional in maintenance context; only flagged in publishing/export readiness.
+    const missingCoreKeys = missingKeys.filter((key) => coreKeySet.has(key) && key !== 'Chapter');
     const missingAdvancedKeys = policy.advancedEnabled
         ? missingKeys.filter((key) => advancedKeySet.has(key))
         : [];
