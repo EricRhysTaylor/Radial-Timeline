@@ -1169,7 +1169,23 @@ export class RadialTimelineView extends ItemView {
 
         const summary = document.createElementNS(xhtmlNs, 'div');
         summary.className = 'rt-recent-moves__summary';
-        summary.textContent = entry.summary;
+        const [sourceLabel, targetLabel] = entry.summary.split('|').map((part) => part.trim());
+        if (sourceLabel && targetLabel) {
+            const source = document.createElementNS(xhtmlNs, 'span');
+            source.textContent = sourceLabel;
+            summary.appendChild(source);
+
+            const cornerIcon = document.createElementNS(xhtmlNs, 'span');
+            cornerIcon.className = 'rt-recent-moves__inline-icon';
+            setIcon(cornerIcon as unknown as HTMLElement, 'corner-up-right');
+            summary.appendChild(cornerIcon);
+
+            const target = document.createElementNS(xhtmlNs, 'span');
+            target.textContent = targetLabel;
+            summary.appendChild(target);
+        } else {
+            summary.textContent = entry.summary;
+        }
         header.appendChild(summary);
         row.appendChild(header);
 

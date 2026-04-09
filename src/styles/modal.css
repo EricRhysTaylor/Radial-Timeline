@@ -467,6 +467,22 @@
   line-height: 1.4;
 }
 
+.rt-drag-confirm-inline-icon {
+  display: inline-flex;
+  width: 14px;
+  height: 14px;
+  margin: 0 6px;
+  vertical-align: text-bottom;
+  color: var(--text-muted);
+  opacity: 0.86;
+}
+
+.rt-drag-confirm-inline-icon svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
 .rt-drag-confirm-impact-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));

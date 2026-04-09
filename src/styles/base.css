@@ -418,6 +418,21 @@ body.rt-modal-open .radial-timeline-container * {
   min-width: 0;
 }
 
+.rt-recent-moves__inline-icon {
+  display: inline-flex;
+  width: 14px;
+  height: 14px;
+  margin: 0 6px;
+  vertical-align: text-bottom;
+  color: color-mix(in srgb, var(--text-muted) 92%, transparent);
+}
+
+.rt-recent-moves__inline-icon svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
 .rt-recent-moves__meta {
   font-size: 13px;
   line-height: 1.12;
