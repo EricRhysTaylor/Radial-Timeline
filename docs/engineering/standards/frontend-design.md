@@ -44,7 +44,7 @@ Use animations for high-impact moments. Focus on orchestrated reveals (staggered
 Unexpected layouts. Asymmetry. Overlap. Diagonal flow. Grid-breaking elements. Generous negative space OR controlled density. Avoid predictable, cookie-cutter component patterns.
 
 ### Backgrounds & Visual Details
-Create atmosphere and depth rather than defaulting to solid colors. Apply creative forms like gradient meshes, noise textures, geometric patterns, layered transparencies, dramatic shadows, decorative borders, and grain overlays — matched to the overall aesthetic.
+Default to flat, theme-native surfaces. Reserve atmospheric treatments (accent gradients, layered transparencies, subtle shadows) for intentional hero surfaces only. Workflow panels, settings rows, and modal internals must stay flat — use borders, spacing, contrast, and typography to create hierarchy. See [css-guidelines.md § Surface Treatment Doctrine](css-guidelines.md#surface-treatment-doctrine) for the full rule.
 
 ---
 

@@ -1621,7 +1621,7 @@ export const en: TranslationKeys = {
         planetaryTimeCalculator: 'Planetary time calculator',
         gossamerScoreManager: 'Gossamer score manager',
         gossamerAnalysis: 'Gossamer analysis',
-        authorProgressReport: 'Author progress report',
+        authorProgressReport: 'Author progress report (APR)',
     },
     common: {
         yes: 'Yes',

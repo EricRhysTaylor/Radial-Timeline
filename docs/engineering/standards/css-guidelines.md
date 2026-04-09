@@ -34,6 +34,35 @@ Do not mix settings-root selectors and modal-root selectors casually. They are s
 - **Current**: `rt-ui.css` must not grow new `.rt-*` selectors.
 - **Legacy / tolerated**: `.rt-*` still exists outside `rt-ui.css`, especially in domain islands and legacy files.
 
+## Surface Treatment Doctrine
+
+Glow is not a default surface treatment.
+
+Build hierarchy with borders, contrast, spacing, and typography first.
+Only hero surfaces (`.ert-card--hero`, `.ert-section--hero`) may use restrained atmospheric lift — a subtle shadow or faint accent gradient.
+All other surfaces — workflow panels, settings rows, modal internals, pills, badges, nested containers — stay flat.
+
+Prohibited on non-hero surfaces:
+- `box-shadow` with blur > 0 (rings `0 0 0 Npx` are fine)
+- `text-shadow`
+- `drop-shadow()` filter
+- large warm gradients (`> 10%` accent opacity) on panel backgrounds
+- `::before` / `::after` pseudo-element wash overlays that create ambient bloom
+
+Allowed everywhere:
+- border (solid, dashed, color-mixed)
+- background color (flat, via token)
+- `inset 0 1px 0` hairline highlights (≤ 4% opacity)
+- `0 0 0 Npx` focus/state rings
+- `backdrop-filter: blur()` only on modal shells and locked-content overlays
+
+Hero surfaces may use:
+- `--ert-shadow-hero` (currently `0 4px 12px` at ≤ 20% opacity)
+- `--ert-hero-grad` (restrained radial + linear, ≤ 14% accent hotspot)
+- accent-tinted `--ert-surface-hero` background (≤ 8% accent mix)
+
+When in doubt, leave the surface flat. If a surface needs emphasis, reach for a stronger border or typographic weight before adding a shadow.
+
 ## Spacing and Layout
 - stacks own spacing
 - row/control archetypes own alignment

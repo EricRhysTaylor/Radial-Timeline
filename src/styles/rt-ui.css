@@ -62,6 +62,14 @@
   --rt-ai-error-border: color-mix(in srgb, var(--rt-ai-error) 48%, transparent);
   --rt-ai-running-border: color-mix(in srgb, var(--rt-ai-running) 42%, transparent);
   --rt-ai-advisory-border: color-mix(in srgb, var(--rt-ai-advisory) 35%, transparent);
+  /* ── Surface Treatment Doctrine ──────────────────────────────────────
+     Glow is NOT a default surface treatment.
+     Hierarchy comes from borders, contrast, spacing, and typography.
+     Only hero surfaces (.ert-card--hero, .ert-section--hero) may use
+     restrained atmospheric lift (--ert-shadow-hero, --ert-hero-grad).
+     All other surfaces stay flat.
+     See: docs/engineering/standards/css-guidelines.md § Surface Treatment
+     ──────────────────────────────────────────────────────────────────── */
   --ert-shadow-soft: 0 2px 6px color-mix(in srgb, var(--background-modifier-border) 22%, transparent);
   --ert-shadow-soft-tight: 0 1px 3px color-mix(in srgb, var(--background-modifier-border) 40%, transparent);
   --ert-shadow-soft-subtle: 0 1px 2px color-mix(in srgb, var(--background-modifier-border) 30%, transparent);
@@ -10571,6 +10579,19 @@
 /* Platform Background Presets                                                */
 /* -------------------------------------------------------------------------- */
 
+/* Source label: shows which preset matches the current bg color */
+.ert-ui.ert-scope--settings .ert-bg-source-label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+  text-align: right;
+  min-height: 1em;
+}
+
+.ert-ui.ert-scope--settings .ert-bg-source-label.is-hidden {
+  display: none;
+}
+
 .ert-ui.ert-scope--settings .ert-platform-presets {
   margin-top: 4px;
   margin-bottom: 12px;
@@ -10626,6 +10647,39 @@
 .ert-ui.ert-scope--settings .ert-platform-swatch:hover .ert-platform-swatch__name {
   color: var(--text-normal);
 }
+
+.ert-ui.ert-scope--settings .ert-platform-presets__custom {
+  margin-top: 2px;
+}
+
+.ert-ui.ert-scope--settings .ert-platform-swatch--empty {
+  border-style: dashed;
+  opacity: 0.7;
+}
+
+.ert-ui.ert-scope--settings .ert-platform-swatch--empty:hover {
+  opacity: 1;
+}
+
+.ert-ui.ert-scope--settings .ert-platform-swatch__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  color: var(--text-faint);
+}
+
+.ert-ui.ert-scope--settings .ert-platform-swatch__icon svg {
+  width: 12px;
+  height: 12px;
+}
+
+.ert-ui.ert-scope--settings .ert-platform-swatch--empty:hover .ert-platform-swatch__icon {
+  color: var(--text-muted);
+}
+
 
 /* -------------------------------------------------------------------------- */
 /* APR Size Buttons (Migrated from Legacy)                                    */
@@ -10722,6 +10776,13 @@
   width: auto;
 }
 
+.ert-ui .ert-btn--lg {
+  width: auto;
+  min-width: 180px;
+  padding: 10px 36px;
+  font-size: 14px;
+}
+
 .ert-ui.ert-scope--settings .ert-btn,
 .ert-ui.ert-scope--modal .ert-btn {
   display: inline-flex;
@@ -10791,6 +10852,13 @@
 /* =============================================================================
    APR Teaser Stepper (Author Progress Modal)
    ============================================================================= */
+
+.ert-ui.ert-scope--modal .ert-apr-publish-row {
+  display: flex;
+  justify-content: center;
+  padding-top: var(--ert-gap-sm);
+  padding-bottom: var(--ert-gap-sm);
+}
 
 .ert-ui.ert-scope--modal .ert-apr-stepper {
   display: flex;

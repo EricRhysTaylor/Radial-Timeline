@@ -1172,6 +1172,57 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         });
     });
 
+    // ── Source label ─────────────────────────────────────────────────────
+    // Shows which preset (if any) matches the current background color.
+    // Created early so onChange handlers below can reference it.
+    const bgSourceLabel = bgSetting.settingEl.createDiv({ cls: 'ert-bg-source-label' });
+
+    // Social media platform background presets
+    // Dark-mode: actual card/feed background color per platform dark theme.
+    // Light-mode: White is the most common light-mode feed bg.
+    const platformPresets: Array<{ label: string; color: string }> = [
+        // — Dark backgrounds —
+        { label: 'X / Twitter', color: '#000000' },
+        { label: 'Bluesky', color: '#161E27' },
+        { label: 'Facebook', color: '#242526' },
+        { label: 'Instagram', color: '#000000' },
+        { label: 'LinkedIn', color: '#1B1F23' },
+        { label: 'Threads', color: '#101010' },
+        { label: 'Discord', color: '#313338' },
+        { label: 'Kickstarter', color: '#0B3B2D' },
+        { label: 'Patreon', color: '#141518' },
+        { label: 'Substack', color: '#121212' },
+        // — Light backgrounds —
+        { label: 'White', color: '#FFFFFF' },
+    ];
+
+    // Custom presets (user-saved colors with custom names)
+    const MAX_CUSTOM_PRESETS = 2;
+    const getCustomPresets = (): Array<{ label: string; color: string }> => {
+        return plugin.settings.authorProgress?.defaults.aprCustomBgPresets ?? [];
+    };
+
+    // Resolve which preset name matches a color (check built-in, then custom)
+    const resolveSourceName = (hex: string): string | null => {
+        const norm = hex.toUpperCase().trim();
+        const builtIn = platformPresets.find(p => p.color.toUpperCase() === norm);
+        if (builtIn) return builtIn.label;
+        const custom = getCustomPresets().find(p => p.color.toUpperCase() === norm);
+        if (custom) return custom.label;
+        return null;
+    };
+
+    const updateSourceLabel = (hex: string) => {
+        const name = resolveSourceName(hex);
+        if (name) {
+            bgSourceLabel.textContent = name;
+            bgSourceLabel.classList.remove('is-hidden');
+        } else {
+            bgSourceLabel.textContent = '';
+            bgSourceLabel.classList.add('is-hidden');
+        }
+    };
+
     const bgSwatch = colorSwatch(bgSetting.controlEl, {
         value: currentBg,
         ariaLabel: 'Background color',
@@ -1182,6 +1233,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             plugin.settings.authorProgress.defaults.aprBackgroundColor = next;
             await plugin.saveSettings();
             bgTextInput?.setValue(next);
+            updateSourceLabel(next);
             refreshPreview();
         }
     });
@@ -1197,35 +1249,31 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             plugin.settings.authorProgress.defaults.aprBackgroundColor = val;
             await plugin.saveSettings();
             bgColorPicker?.setValue(val);
+            updateSourceLabel(val);
             refreshPreview();
         });
     });
 
     updateEmphasis(currentTransparent);
 
-    // Social media platform background presets
-    // Dark-mode: actual card/feed background color per platform dark theme.
-    // Light-mode: common light-theme surface colors (most platforms use plain white).
-    const platformPresets: Array<{ label: string; color: string }> = [
-        // — Dark backgrounds —
-        { label: 'X / Twitter', color: '#000000' },
-        { label: 'Bluesky', color: '#161E27' },
-        { label: 'Facebook', color: '#242526' },
-        { label: 'Instagram', color: '#000000' },
-        { label: 'LinkedIn', color: '#1B1F23' },
-        { label: 'Threads', color: '#101010' },
-        { label: 'Discord', color: '#313338' },
-        { label: 'Kickstarter', color: '#0B3B2D' },
-        { label: 'Patreon', color: '#141518' },
-        { label: 'Substack', color: '#121212' },
-        // — Light backgrounds —
-        { label: 'White', color: '#FFFFFF' },
-        { label: 'Off-White', color: '#F5F5F5' },
-        { label: 'Warm Paper', color: '#FAF8F4' },
-    ];
+    // Initialize source label with current color
+    updateSourceLabel(currentBg);
+
+    // ── Platform preset pills ────────────────────────────────────────────
     const platformRow = themeBody.createDiv({ cls: 'ert-platform-presets' });
     platformRow.createSpan({ text: 'Platform backgrounds', cls: 'ert-platform-presets__label' });
     const platformSwatches = platformRow.createDiv({ cls: 'ert-platform-presets__swatches' });
+
+    const applyPreset = async (color: string) => {
+        if (!plugin.settings.authorProgress) return;
+        plugin.settings.authorProgress.defaults.aprBackgroundColor = color;
+        await plugin.saveSettings();
+        bgColorPicker?.setValue(color);
+        bgTextInput?.setValue(color);
+        updateSourceLabel(color);
+        refreshPreview();
+    };
+
     for (const preset of platformPresets) {
         const btn = platformSwatches.createEl('button', {
             cls: 'ert-platform-swatch',
@@ -1234,15 +1282,76 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         btn.style.setProperty('--swatch-color', preset.color);
         btn.createSpan({ cls: 'ert-platform-swatch__color' });
         btn.createSpan({ cls: 'ert-platform-swatch__name', text: preset.label });
-        btn.addEventListener('click', async () => {
-            if (!plugin.settings.authorProgress) return;
-            plugin.settings.authorProgress.defaults.aprBackgroundColor = preset.color;
-            await plugin.saveSettings();
-            bgColorPicker?.setValue(preset.color);
-            bgTextInput?.setValue(preset.color);
-            refreshPreview();
-        });
+        btn.addEventListener('click', () => applyPreset(preset.color));
     }
+
+    // ── Custom preset pills ──────────────────────────────────────────────
+    const customSwatchContainer = platformRow.createDiv({ cls: 'ert-platform-presets__swatches ert-platform-presets__custom' });
+
+    const renderCustomPills = () => {
+        customSwatchContainer.empty();
+        const customs = getCustomPresets();
+
+        for (let i = 0; i < MAX_CUSTOM_PRESETS; i++) {
+            const saved = customs[i];
+            const btn = customSwatchContainer.createEl('button', {
+                cls: `ert-platform-swatch${saved ? '' : ' ert-platform-swatch--empty'}`,
+                attr: {
+                    'aria-label': saved ? `${saved.label} (${saved.color})` : `Custom ${i + 1} — click to set`,
+                    type: 'button'
+                }
+            });
+
+            if (saved) {
+                btn.style.setProperty('--swatch-color', saved.color);
+                btn.createSpan({ cls: 'ert-platform-swatch__color' });
+                btn.createSpan({ cls: 'ert-platform-swatch__name', text: saved.label });
+
+                // Click → apply the saved color
+                btn.addEventListener('click', () => applyPreset(saved.color));
+
+                // Long-press / right-click → open editor to rename or delete
+                btn.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    openCustomPresetModal(i, saved);
+                });
+            } else {
+                const icon = btn.createSpan({ cls: 'ert-platform-swatch__icon' });
+                setIcon(icon, 'plus');
+                btn.createSpan({ cls: 'ert-platform-swatch__name', text: `Custom ${i + 1}` });
+                btn.addEventListener('click', () => openCustomPresetModal(i, null));
+            }
+        }
+    };
+
+    const openCustomPresetModal = (index: number, existing: { label: string; color: string } | null) => {
+        const modal = new CustomBgPresetModal(app, plugin, {
+            index,
+            existing,
+            currentBg: plugin.settings.authorProgress?.defaults.aprBackgroundColor ?? '#0d0d0f',
+            onSave: async (preset) => {
+                if (!plugin.settings.authorProgress) return;
+                const presets = [...getCustomPresets()];
+                presets[index] = preset;
+                plugin.settings.authorProgress.defaults.aprCustomBgPresets = presets;
+                await plugin.saveSettings();
+                renderCustomPills();
+                applyPreset(preset.color);
+            },
+            onDelete: async () => {
+                if (!plugin.settings.authorProgress) return;
+                const presets = [...getCustomPresets()];
+                presets.splice(index, 1);
+                plugin.settings.authorProgress.defaults.aprCustomBgPresets = presets;
+                await plugin.saveSettings();
+                renderCustomPills();
+                updateSourceLabel(plugin.settings.authorProgress.defaults.aprBackgroundColor ?? '#0d0d0f');
+            }
+        });
+        modal.open();
+    };
+
+    renderCustomPills();
 
     const spokeColorSetting = new Setting(themeBody)
         .setName(t('settings.authorProgress.styling.spokesAndBorders.name'))
@@ -1954,5 +2063,122 @@ async function renderHeroPreview(
             text: t('settings.authorProgress.preview.renderError')
         });
         console.error('Social settings preview error:', e);
+    }
+}
+
+// ── Custom Background Preset Modal ───────────────────────────────────────────
+// Small modal to create, rename, or delete a user-saved background color preset.
+
+interface CustomBgPresetModalOpts {
+    index: number;
+    existing: { label: string; color: string } | null;
+    currentBg: string;
+    onSave: (preset: { label: string; color: string }) => Promise<void>;
+    onDelete: () => Promise<void>;
+}
+
+class CustomBgPresetModal extends Modal {
+    private opts: CustomBgPresetModalOpts;
+    private plugin: RadialTimelinePlugin;
+
+    constructor(app: App, plugin: RadialTimelinePlugin, opts: CustomBgPresetModalOpts) {
+        super(app);
+        this.plugin = plugin;
+        this.opts = opts;
+    }
+
+    onOpen(): void {
+        const { contentEl, modalEl, titleEl } = this;
+        contentEl.empty();
+        titleEl.setText('');
+
+        modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal-shell--sm');
+        contentEl.addClass('ert-modal-container', 'ert-stack');
+
+        const isEdit = !!this.opts.existing;
+        const initialColor = this.opts.existing?.color ?? this.opts.currentBg;
+        const initialLabel = this.opts.existing?.label ?? '';
+
+        // Title
+        contentEl.createDiv({
+            cls: 'ert-modal-header',
+        }).createDiv({
+            cls: 'ert-modal-title',
+            text: isEdit ? 'Edit custom preset' : 'Save custom preset',
+        });
+
+        // Color row
+        const colorRow = new Setting(contentEl)
+            .setName('Color');
+        colorRow.settingEl.addClass('ert-settingRow');
+
+        let pickedColor = initialColor;
+
+        const swatch = colorSwatch(colorRow.controlEl, {
+            value: initialColor,
+            ariaLabel: 'Preset color',
+            onChange: (val) => {
+                pickedColor = val;
+                hexInput?.setValue(val);
+            }
+        });
+
+        let hexInput: TextComponent | null = null;
+        colorRow.addText(text => {
+            hexInput = text;
+            text.setPlaceholder('#000000').setValue(initialColor);
+            text.inputEl.classList.add('ert-input--hex');
+            text.onChange((val) => {
+                if (/^#[0-9a-f]{6}$/i.test(val)) {
+                    pickedColor = val;
+                    swatch.setValue(val);
+                }
+            });
+        });
+
+        // Name row
+        const nameRow = new Setting(contentEl)
+            .setName('Name');
+        nameRow.settingEl.addClass('ert-settingRow');
+
+        let pickedLabel = initialLabel;
+        nameRow.addText(text => {
+            text.setPlaceholder('e.g. My Blog').setValue(initialLabel);
+            text.onChange((val) => { pickedLabel = val.trim(); });
+            // Auto-focus the name input for quick entry
+            setTimeout(() => text.inputEl.focus(), 50);
+        });
+
+        // Action buttons
+        const actions = contentEl.createDiv({ cls: 'ert-modal-actions' });
+
+        if (isEdit) {
+            const deleteBtn = new ButtonComponent(actions)
+                .setButtonText('Delete')
+                .setWarning();
+            deleteBtn.buttonEl.addClass('ert-btn--fit');
+            deleteBtn.onClick(async () => {
+                await this.opts.onDelete();
+                this.close();
+            });
+        }
+
+        // Spacer pushes save to the right
+        actions.createDiv({ cls: 'ert-modal-actions-spacer' });
+
+        const cancelBtn = new ButtonComponent(actions)
+            .setButtonText('Cancel');
+        cancelBtn.buttonEl.addClass('ert-btn--fit');
+        cancelBtn.onClick(() => this.close());
+
+        const saveBtn = new ButtonComponent(actions)
+            .setButtonText('Save')
+            .setCta();
+        saveBtn.buttonEl.addClass('ert-btn--fit');
+        saveBtn.onClick(async () => {
+            const label = pickedLabel || `Custom ${this.opts.index + 1}`;
+            await this.opts.onSave({ label, color: pickedColor });
+            this.close();
+        });
     }
 }

@@ -193,6 +193,7 @@ export class AuthorProgressModal extends Modal {
             });
         setIcon(settingsBtn.buttonEl, 'settings');
         settingsBtn.buttonEl.addClass('ert-btn--icon-left');
+        setTooltip(settingsBtn.buttonEl, 'Settings APR');
         new ButtonComponent(footer)
             .setButtonText('Close')
             .onClick(() => this.close());
@@ -536,7 +537,7 @@ export class AuthorProgressModal extends Modal {
         };
         pathInput.setPlaceholder(defaultPath);
         pathInput.setValue(currentPath);
-        pathInput.inputEl.addClass('ert-input--full');
+        pathInput.inputEl.addClass('ert-input--xl');
         applyWarningState(currentPath);
 
         const savePath = async () => {
@@ -579,17 +580,12 @@ export class AuthorProgressModal extends Modal {
         });
 
         // === PUBLISH BUTTON ===
-        const actionRow = container.createDiv({ cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_MIDDLE_ALIGN}` });
-        actionRow.createSpan({ text: '', cls: ERT_CLASSES.LABEL });
-        const actionControl = actionRow.createDiv({ cls: ERT_CLASSES.CONTROL });
-        const primaryButton = new ButtonComponent(actionControl)
+        const actionRow = container.createDiv({ cls: 'ert-apr-publish-row' });
+        const primaryButton = new ButtonComponent(actionRow)
             .setButtonText('Publish')
             .setCta();
-        primaryButton.buttonEl.addClass('ert-btn--fit');
+        primaryButton.buttonEl.addClass('ert-btn--lg');
         primaryButton.onClick(() => this.publish('dynamic'));
-
-        // Bottom spacing
-        actionRow.style.marginBottom = '12px';
     }
 
     private renderProActions(container: HTMLElement, campaigns: AuthorProgressCampaign[]): void {

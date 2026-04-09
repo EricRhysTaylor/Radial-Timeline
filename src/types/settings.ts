@@ -344,6 +344,9 @@ export interface AuthorProgressDefaults {
     aprShowRtAttribution?: boolean; // Show RT attribution mark (Pro can disable)
     aprStylingExpanded?: boolean; // Collapse state for the styling panel body
 
+    // Custom background presets (user-saved colors with names)
+    aprCustomBgPresets?: Array<{ label: string; color: string }>;
+
     // Identity & Branding
     bookTitleOverride?: string;
     authorName?: string;

@@ -127,28 +127,33 @@ function resolvePublishStageKey(raw: unknown, stageColors: Record<string, string
  * No patternTransform. No <text>. No CSS vars. Pure geometry.
  * Tunable via APR_HEADLESS_PATTERNS in AprConstants.ts.
  */
-function renderHeadlessPatternDefs(stageColors: Record<string, string>): string {
+function renderHeadlessPatternDefs(stageColors: Record<string, string>, outerPx: number): string {
     const todo = APR_HEADLESS_PATTERNS.todo;
     const working = APR_HEADLESS_PATTERNS.working;
+    // Scale pattern tiles proportionally so visual density stays constant across resolutions.
+    // Base constants were tuned at ~300px; at 4800px, sizeScale = 16 → tiles/strokes 16× larger.
+    const sizeScale = Math.max(1, outerPx / 300);
     let defs = '';
     for (const [stage, stageColor] of Object.entries(stageColors)) {
         // ── Todo: gray base + 45° crosshatch (diagonal lines, no patternTransform) ──
-        const ts = todo.tileSize;
+        const ts = todo.tileSize * sizeScale;
+        const tsSw = todo.strokeWidth * sizeScale;
         defs += `<pattern id="aprHeadlessTodo${stage}" patternUnits="userSpaceOnUse" width="${ts}" height="${ts}">` +
             `<rect width="${ts}" height="${ts}" fill="${todo.fill}"/>` +
             `<path d="M0,0 l${ts},${ts} M0,${ts} l${ts},-${ts}" ` +
-                `stroke="${stageColor}" stroke-width="${todo.strokeWidth}" stroke-opacity="${todo.strokeOpacity}" fill="none"/>` +
+                `stroke="${stageColor}" stroke-width="${tsSw}" stroke-opacity="${todo.strokeOpacity}" fill="none"/>` +
             `</pattern>`;
 
         // ── Working: pink base + horizontal sine wave (no patternTransform) ──
-        const ww = working.tileW;
-        const wh = working.tileH;
+        const ww = working.tileW * sizeScale;
+        const wh = working.tileH * sizeScale;
+        const wSw = working.strokeWidth * sizeScale;
         const mid = wh / 2;
         // Quadratic bezier wave: one full period per tile width, seamless horizontal tiling
         defs += `<pattern id="aprHeadlessWorking${stage}" patternUnits="userSpaceOnUse" width="${ww}" height="${wh}">` +
             `<rect width="${ww}" height="${wh}" fill="${working.fill}"/>` +
             `<path d="M0,${mid} Q${ww / 4},0 ${ww / 2},${mid} Q${ww * 3 / 4},${wh} ${ww},${mid}" ` +
-                `stroke="${stageColor}" stroke-width="${working.strokeWidth}" stroke-opacity="${working.strokeOpacity}" fill="none"/>` +
+                `stroke="${stageColor}" stroke-width="${wSw}" stroke-opacity="${working.strokeOpacity}" fill="none"/>` +
             `</pattern>`;
     }
     return defs;
@@ -203,9 +208,9 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
     const svgSize = layout.outerPx;
     const innerRadius = layout.ringInnerR;
     const outerRadius = layout.ringOuterR;
-    const spokeWidth = APR_FIXED_STROKES.spoke;
-    const borderWidth = APR_FIXED_STROKES.border;
-    const actSpokeWidth = APR_FIXED_STROKES.actSpoke;
+    const spokeWidth = layout.strokes.spoke;
+    const borderWidth = layout.strokes.ring;
+    const actSpokeWidth = layout.strokes.actSpoke;
     const patternScale = layout.patternScale;
     const half = svgSize / 2;
 
@@ -372,7 +377,7 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
     // renderDefs() provides the standard plaid patterns (CSS-mode or portable hex colors).
     // In portable mode we also emit Figma-safe headless patterns that use direct geometry
     // (no patternTransform) so Todo crosshatch and Working waves render in Figma/Illustrator.
-    const headlessPatterns = portableSvg ? renderHeadlessPatternDefs(stageColorMap) : '';
+    const headlessPatterns = portableSvg ? renderHeadlessPatternDefs(stageColorMap, svgSize) : '';
     svg += `<defs>${renderDefs(stageColorMap, patternScale, portableSvg, statusColorsResolved)}${headlessPatterns}${percentShadow}${grayscaleFilter}</defs>`;
 
     // ─────────────────────────────────────────────────────────────────────────
