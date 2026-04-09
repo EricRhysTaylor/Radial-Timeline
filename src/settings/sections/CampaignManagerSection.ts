@@ -715,9 +715,9 @@ function renderCampaignDetails(
     const clampRefreshValue = (value: number) => Math.min(refreshMax, Math.max(refreshMin, Math.round(value)));
 
     const refreshInfo = refreshWrap.createDiv({ cls: 'ert-settingComposite__info' });
-    refreshInfo.createDiv({ cls: 'setting-item-name', text: 'Refresh reminder threshold' });
+    refreshInfo.createDiv({ cls: 'setting-item-name', text: 'Update reminder' });
     const refreshNote = refreshInfo.createDiv({ cls: 'setting-item-description' });
-    refreshNote.setText(`Days before showing a refresh reminder in the timeline view. Currently: ${getRefreshValue()} days.`);
+    refreshNote.setText(`Days before showing an update reminder in the timeline view. Currently: ${getRefreshValue()} days.`);
 
     const refreshControl = refreshWrap.createDiv({ cls: 'ert-settingComposite__control ert-campaign-refresh-controls' });
     const sliderEl = refreshControl.createEl('input', {
@@ -732,7 +732,7 @@ function renderCampaignDetails(
     });
 
     const syncRefreshDisplay = (val: number) => {
-        refreshNote.setText(`Days before showing a refresh reminder in the timeline view. Currently: ${val} days.`);
+        refreshNote.setText(`Days before showing an update reminder in the timeline view. Currently: ${val} days.`);
         if (document.activeElement !== refreshValueInput) refreshValueInput.value = String(val);
     };
 

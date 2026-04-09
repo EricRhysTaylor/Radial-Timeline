@@ -1204,17 +1204,24 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     updateEmphasis(currentTransparent);
 
     // Social media platform background presets
+    // Dark-mode: actual card/feed background color per platform dark theme.
+    // Light-mode: common light-theme surface colors (most platforms use plain white).
     const platformPresets: Array<{ label: string; color: string }> = [
+        // — Dark backgrounds —
         { label: 'X / Twitter', color: '#000000' },
-        { label: 'Bluesky', color: '#0d1117' },
-        { label: 'Facebook', color: '#18191a' },
-        { label: 'Instagram', color: '#121212' },
-        { label: 'LinkedIn', color: '#1b1f23' },
+        { label: 'Bluesky', color: '#161E27' },
+        { label: 'Facebook', color: '#242526' },
+        { label: 'Instagram', color: '#000000' },
+        { label: 'LinkedIn', color: '#1B1F23' },
         { label: 'Threads', color: '#101010' },
         { label: 'Discord', color: '#313338' },
-        { label: 'Kickstarter', color: '#0a0b0d' },
+        { label: 'Kickstarter', color: '#0B3B2D' },
         { label: 'Patreon', color: '#141518' },
         { label: 'Substack', color: '#121212' },
+        // — Light backgrounds —
+        { label: 'White', color: '#FFFFFF' },
+        { label: 'Off-White', color: '#F5F5F5' },
+        { label: 'Warm Paper', color: '#FAF8F4' },
     ];
     const platformRow = themeBody.createDiv({ cls: 'ert-platform-presets' });
     platformRow.createSpan({ text: 'Platform backgrounds', cls: 'ert-platform-presets__label' });
