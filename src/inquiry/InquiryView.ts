@@ -10575,6 +10575,11 @@ export class InquiryView extends ItemView {
         }
         const verbMatch = cleaned.match(/\b(is|are|was|were|feels|seems|appears|looks|drags|lags|sags|rushes|stalls|slows|reads)\b/i);
         if (verbMatch?.index !== undefined && verbMatch.index > 0) {
+            // If the verb appears very late, the "subject" is nearly the whole sentence —
+            // extracting it loses the tail and produces a truncated suggestion.
+            if (verbMatch.index / cleaned.length > 0.6) {
+                return `Revise ${cleaned.replace(/^(the|this|that|these|those|a|an)\s+/i, '').trim()}`;
+            }
             const subject = cleaned.slice(0, verbMatch.index).replace(/^(the|this|that|these|those|a|an)\s+/i, '').trim();
             const remainder = cleaned.slice(verbMatch.index + verbMatch[0].length).trim();
             const locationMatch = remainder.match(/\b(in|during|at|by|within|around)\s+.+$/i);
