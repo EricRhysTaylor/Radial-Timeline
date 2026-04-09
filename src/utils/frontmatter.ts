@@ -9,6 +9,7 @@ export interface CanonicalAliasConflict {
 
 function buildFrontmatterKeyMappings(customMappings?: Record<string, string>): Record<string, string> {
   const keyMappings: Record<string, string> = {
+    'id': 'ID',
     'class': 'Class',
     'itemtype': 'itemType',
     'plotsystem': 'Plot System',
