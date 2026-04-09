@@ -406,8 +406,7 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
 
     // Center hole
     const centerStroke = centerStrokeWidth ? ` stroke-width="${centerStrokeWidth}"` : '';
-    const centerStrokeOpacity = opacity('var(--apr-struct-border-opacity, 0.35)', '0.35');
-    svg += `<circle cx="0" cy="0" r="${innerRadius}" fill="${color('--apr-center-fill', holeFill)}" stroke="${color('--apr-struct-border', structural.border)}" stroke-opacity="${centerStrokeOpacity}"${centerStroke} />`;
+    svg += `<circle cx="0" cy="0" r="${innerRadius}" fill="${color('--apr-center-fill', holeFill)}" stroke="${color('--apr-struct-border', structural.border)}"${centerStroke} />`;
 
     if (centerMarkFinal !== 'none') {
         svg += renderCenterMark(innerRadius, centerMarkFinal, progressColor, color);
@@ -503,7 +502,11 @@ function renderRing(
         actScenes[Math.min(actIdx, numActs - 1)].push(scene);
     });
 
+    // Pass 1: Fills only (no stroke) — scene wedges, voids
     let svg = '';
+    const borderPaths: string[] = [];
+    const borderColor = color('--apr-struct-border', structural.border);
+
     for (let act = 0; act < numActs; act++) {
         const actStart = -Math.PI / 2 + (act * 2 * Math.PI) / numActs;
         const actEnd = -Math.PI / 2 + ((act + 1) * 2 * Math.PI) / numActs;
@@ -513,10 +516,10 @@ function renderRing(
         scenesInAct.sort(sortByManuscriptOrder);
 
         if (scenesInAct.length === 0) {
-            // full void arc for this act - use light gray void color
             const voidPath = sceneArcPath(ring.innerR, ring.outerR, actStart, actEnd);
             const voidOpacity = opacity('var(--apr-scene-void-opacity, 0.85)', '0.85');
-            svg += `<path d="${voidPath}" fill="${color('--apr-scene-void', APR_COLORS.void)}" fill-opacity="${voidOpacity}" stroke="${color('--apr-struct-border', structural.border)}" stroke-width="${borderWidth}" />`;
+            svg += `<path d="${voidPath}" fill="${color('--apr-scene-void', APR_COLORS.void)}" fill-opacity="${voidOpacity}" stroke="none" />`;
+            borderPaths.push(voidPath);
             continue;
         }
 
@@ -528,34 +531,36 @@ function renderRing(
             used += pos.endAngle - pos.startAngle;
             const sceneColor = resolveSceneColor(scene, showStatusColors, showStageColors, grayCompletedScenes, stageColors, portableSvg);
             const path = sceneArcPath(ring.innerR, ring.outerR, pos.startAngle, pos.endAngle);
-            // Portable mode: swap plaid pattern refs → Figma-safe headless patterns
-            // (real plaid defs use patternTransform which Figma ignores).
             const patternMatch = portableSvg ? sceneColor.match(/^url\(#plaid(Working|Todo)/) : null;
             if (patternMatch) {
                 const stageKey = resolvePublishStageKey(scene['Publish Stage'], stageColors);
                 const headlessFill = patternMatch[1] === 'Todo'
                     ? `url(#aprHeadlessTodo${stageKey})`
                     : `url(#aprHeadlessWorking${stageKey})`;
-                svg += `<path d="${path}" fill="${headlessFill}" stroke="${color('--apr-struct-border', structural.border)}" stroke-width="${borderWidth}" />`;
-                return;
+                svg += `<path d="${path}" fill="${headlessFill}" stroke="none" />`;
+            } else {
+                svg += `<path d="${path}" fill="${sceneColor}" stroke="none" />`;
             }
-            svg += `<path d="${path}" fill="${sceneColor}" stroke="${color('--apr-struct-border', structural.border)}" stroke-width="${borderWidth}" />`;
+            borderPaths.push(path);
         });
 
-        // Void for remaining space in this act, if any - use light gray void color
         const span = actEnd - actStart;
         const remaining = span - used;
         if (remaining > 0.0001) {
             const voidStart = actEnd - remaining;
             const voidPath = sceneArcPath(ring.innerR, ring.outerR, voidStart, actEnd);
             const voidOpacity = opacity('var(--apr-scene-void-opacity, 0.85)', '0.85');
-            svg += `<path d="${voidPath}" fill="${color('--apr-scene-void', APR_COLORS.void)}" fill-opacity="${voidOpacity}" stroke="${color('--apr-struct-border', structural.border)}" stroke-width="${borderWidth}" />`;
+            svg += `<path d="${voidPath}" fill="${color('--apr-scene-void', APR_COLORS.void)}" fill-opacity="${voidOpacity}" stroke="none" />`;
+            borderPaths.push(voidPath);
         }
     }
 
-    // Ring frames (inner/outer)
-    svg += `<circle r="${ring.outerR}" fill="none" stroke="${color('--apr-struct-border', structural.border)}" stroke-width="${borderWidth}" />`;
-    svg += `<circle r="${ring.innerR}" fill="none" stroke="${color('--apr-struct-border', structural.border)}" stroke-width="${borderWidth}" />`;
+    // Pass 2: Borders on top — fully opaque, above all fills
+    for (const d of borderPaths) {
+        svg += `<path d="${d}" fill="none" stroke="${borderColor}" stroke-width="${borderWidth}" />`;
+    }
+    svg += `<circle r="${ring.outerR}" fill="none" stroke="${borderColor}" stroke-width="${borderWidth}" />`;
+    svg += `<circle r="${ring.innerR}" fill="none" stroke="${borderColor}" stroke-width="${borderWidth}" />`;
 
     return svg;
 }
@@ -680,9 +685,9 @@ function resolveStructuralColors(theme: 'dark' | 'light' | 'none', customSpokeCo
 
     if (theme === 'light') {
         return {
-            spoke: 'rgba(0, 0, 0, 0.5)',
-            actSpoke: 'rgba(0, 0, 0, 0.65)',
-            border: 'rgba(0, 0, 0, 0.35)',
+            spoke: '#000000',
+            actSpoke: '#000000',
+            border: '#000000',
             centerHole: '#ffffff',
             background: '#ffffff'
         };
@@ -697,11 +702,11 @@ function resolveStructuralColors(theme: 'dark' | 'light' | 'none', customSpokeCo
             background: 'transparent'
         };
     }
-    // Default: dark theme
+    // Default: dark theme — white borders
     return {
-        spoke: 'rgba(255, 255, 255, 0.4)',
-        actSpoke: 'rgba(255, 255, 255, 0.7)',
-        border: 'rgba(255, 255, 255, 0.25)',
+        spoke: '#ffffff',
+        actSpoke: '#ffffff',
+        border: '#ffffff',
         centerHole: '#0a0a0a',
         background: 'transparent'
     };

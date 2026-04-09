@@ -1583,6 +1583,20 @@
   stroke: var(--rt-social-color, #ffd41d);
 }
 
+/* Color swatch (modal scope) */
+.ert-ui.ert-scope--modal .ert-swatch {
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 3px;
+  background: var(--ert-swatch-color, transparent);
+  padding: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* Pill button states (modal scope) */
 .ert-ui.ert-scope--modal .ert-pillBtn {
   --ert-pill-hover-color: var(--text-normal);

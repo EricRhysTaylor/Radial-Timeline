@@ -161,7 +161,9 @@ export class AuthorProgressRenderService {
             percentNumberColor: settings.aprPercentNumberColor ?? settings.aprBookAuthorColor ?? (this.plugin.settings.publishStageColors?.Press),
             percentSymbolColor: settings.aprPercentSymbolColor ?? settings.aprBookAuthorColor ?? (this.plugin.settings.publishStageColors?.Press),
             theme: settings.aprTheme || 'dark',
-            spokeColor: settings.aprSpokeColorMode === 'custom' ? settings.aprSpokeColor : undefined,
+            spokeColor: settings.aprSpokeColorMode === 'custom' ? settings.aprSpokeColor
+                : settings.aprSpokeColorMode === 'sync' ? settings.aprBackgroundColor
+                : undefined,
             publishStageLabel,
             showRtAttribution,
             teaserRevealEnabled: false,
@@ -279,7 +281,9 @@ export class AuthorProgressRenderService {
             percentNumberColor: settings.aprPercentNumberColor ?? settings.aprBookAuthorColor ?? (this.plugin.settings.publishStageColors?.Press),
             percentSymbolColor: settings.aprPercentSymbolColor ?? settings.aprBookAuthorColor ?? (this.plugin.settings.publishStageColors?.Press),
             theme: campaign.customTheme ?? settings.aprTheme ?? 'dark',
-            spokeColor: settings.aprSpokeColorMode === 'custom' ? settings.aprSpokeColor : undefined,
+            spokeColor: settings.aprSpokeColorMode === 'custom' ? settings.aprSpokeColor
+                : settings.aprSpokeColorMode === 'sync' ? (campaign.customBackgroundColor ?? settings.aprBackgroundColor)
+                : undefined,
             publishStageLabel,
             showRtAttribution,
             teaserRevealEnabled: campaign.teaserReveal?.enabled ?? false,

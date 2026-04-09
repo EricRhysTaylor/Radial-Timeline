@@ -10585,7 +10585,7 @@
   color: var(--text-muted);
   margin-top: 2px;
   text-align: right;
-  min-height: 1em;
+  flex-basis: 100%;
 }
 
 .ert-ui.ert-scope--settings .ert-bg-source-label.is-hidden {
@@ -10608,6 +10608,18 @@
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+  align-items: center;
+}
+
+.ert-ui.ert-scope--settings .ert-platform-presets__divider {
+  color: var(--text-faint);
+  font-size: 0.8rem;
+  user-select: none;
+  padding: 0 2px;
+}
+
+.ert-ui.ert-scope--settings .ert-platform-presets__custom-inline {
+  display: contents;
 }
 
 .ert-ui.ert-scope--settings .ert-platform-swatch {
@@ -10646,10 +10658,6 @@
 
 .ert-ui.ert-scope--settings .ert-platform-swatch:hover .ert-platform-swatch__name {
   color: var(--text-normal);
-}
-
-.ert-ui.ert-scope--settings .ert-platform-presets__custom {
-  margin-top: 2px;
 }
 
 .ert-ui.ert-scope--settings .ert-platform-swatch--empty {

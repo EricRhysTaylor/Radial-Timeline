@@ -162,7 +162,7 @@ function migrateDefaults(raw: LegacyAuthorProgressSettings | null): AuthorProgre
         aprPercentNumberColor: asString(raw.aprPercentNumberColor) ?? defaults.aprPercentNumberColor,
         aprPercentSymbolColor: asString(raw.aprPercentSymbolColor) ?? defaults.aprPercentSymbolColor,
         aprTheme: raw.aprTheme === 'light' || raw.aprTheme === 'none' ? raw.aprTheme : defaults.aprTheme,
-        aprSpokeColorMode: raw.aprSpokeColorMode === 'light' || raw.aprSpokeColorMode === 'none' || raw.aprSpokeColorMode === 'custom'
+        aprSpokeColorMode: raw.aprSpokeColorMode === 'light' || raw.aprSpokeColorMode === 'none' || raw.aprSpokeColorMode === 'custom' || raw.aprSpokeColorMode === 'sync'
             ? raw.aprSpokeColorMode
             : defaults.aprSpokeColorMode,
         aprSpokeColor: asString(raw.aprSpokeColor) ?? defaults.aprSpokeColor,

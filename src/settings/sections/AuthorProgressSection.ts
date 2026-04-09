@@ -1175,7 +1175,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // ── Source label ─────────────────────────────────────────────────────
     // Shows which preset (if any) matches the current background color.
     // Created early so onChange handlers below can reference it.
-    const bgSourceLabel = bgSetting.settingEl.createDiv({ cls: 'ert-bg-source-label' });
+    const bgSourceLabel = bgSetting.controlEl.createDiv({ cls: 'ert-bg-source-label' });
 
     // Social media platform background presets
     // Dark-mode: actual card/feed background color per platform dark theme.
@@ -1285,8 +1285,11 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         btn.addEventListener('click', () => applyPreset(preset.color));
     }
 
-    // ── Custom preset pills ──────────────────────────────────────────────
-    const customSwatchContainer = platformRow.createDiv({ cls: 'ert-platform-presets__swatches ert-platform-presets__custom' });
+    // Separator between platform and custom presets
+    platformSwatches.createSpan({ cls: 'ert-platform-presets__divider', text: '—' });
+
+    // Custom preset pills (inline after the divider)
+    const customSwatchContainer = platformSwatches.createSpan({ cls: 'ert-platform-presets__custom-inline' });
 
     const renderCustomPills = () => {
         customSwatchContainer.empty();
@@ -1402,13 +1405,14 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     spokeModeDropdown.addOption('dark', t('settings.authorProgress.styling.strokeLightStrokes'));
     spokeModeDropdown.addOption('light', t('settings.authorProgress.styling.strokeDarkStrokes'));
     spokeModeDropdown.addOption('none', t('settings.authorProgress.styling.strokeNoStrokes'));
+    spokeModeDropdown.addOption('sync', t('settings.authorProgress.styling.strokeSyncBackground'));
     spokeModeDropdown.addOption('custom', t('settings.authorProgress.styling.strokeCustomColor'));
     const currentValue = currentSpokeMode !== 'dark' ? currentSpokeMode : (currentTheme !== 'dark' ? currentTheme : 'dark');
     spokeModeDropdown.setValue(currentValue);
     spokeModeDropdown.onChange(async (val) => {
         if (!plugin.settings.authorProgress) return;
-        const mode = (val as 'dark' | 'light' | 'none' | 'custom') || 'dark';
-        plugin.settings.authorProgress.defaults.aprTheme = mode === 'custom' ? 'dark' : (mode as 'dark' | 'light' | 'none');
+        const mode = (val as 'dark' | 'light' | 'none' | 'custom' | 'sync') || 'dark';
+        plugin.settings.authorProgress.defaults.aprTheme = (mode === 'custom' || mode === 'sync') ? 'dark' : (mode as 'dark' | 'light' | 'none');
         plugin.settings.authorProgress.defaults.aprSpokeColorMode = mode;
         await plugin.saveSettings();
 
@@ -2020,7 +2024,9 @@ async function renderHeroPreview(
             percentNumberColor: aprSettings?.aprPercentNumberColor ?? aprSettings?.aprBookAuthorColor ?? (plugin.settings.publishStageColors?.Press),
             percentSymbolColor: aprSettings?.aprPercentSymbolColor ?? aprSettings?.aprBookAuthorColor ?? (plugin.settings.publishStageColors?.Press),
             theme: aprSettings?.aprTheme || 'dark',
-            spokeColor: aprSettings?.aprSpokeColorMode === 'custom' ? aprSettings?.aprSpokeColor : undefined,
+            spokeColor: aprSettings?.aprSpokeColorMode === 'custom' ? aprSettings?.aprSpokeColor
+                : aprSettings?.aprSpokeColorMode === 'sync' ? aprSettings?.aprBackgroundColor
+                : undefined,
             publishStageLabel,
             showRtAttribution,
             teaserRevealEnabled: false,

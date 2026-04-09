@@ -319,7 +319,7 @@ export interface AuthorProgressDefaults {
     aprPercentNumberColor?: string; // Color for the center percent number
     aprPercentSymbolColor?: string; // Color for the center % symbol
     aprTheme?: 'dark' | 'light' | 'none'; // Controls stroke/border contrast
-    aprSpokeColorMode?: 'dark' | 'light' | 'none' | 'custom'; // Act spokes color mode
+    aprSpokeColorMode?: 'dark' | 'light' | 'none' | 'custom' | 'sync'; // Act spokes color mode
     aprSpokeColor?: string; // Custom spokes color (used when mode is 'custom')
 
     // Typography Settings (since SVG embeds fonts, these are user-configurable)

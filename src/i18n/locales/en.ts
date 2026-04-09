@@ -440,7 +440,7 @@ export interface TranslationKeys {
                 transparentMode: { name: string; desc: string; };
                 backgroundColor: { name: string; desc: string; };
                 spokesAndBorders: { name: string; desc: string; };
-                strokeLightStrokes: string; strokeDarkStrokes: string; strokeNoStrokes: string; strokeCustomColor: string;
+                strokeLightStrokes: string; strokeDarkStrokes: string; strokeNoStrokes: string; strokeCustomColor: string; strokeSyncBackground: string;
             };
             publishing: {
                 name: string;
@@ -1374,13 +1374,14 @@ export const en: TranslationKeys = {
                     desc: 'Bakes in a solid background. Use when transparency isn\'t reliable: email newsletters, Kickstarter, PDF exports, or platforms that rasterize SVGs.',
                 },
                 spokesAndBorders: {
-                    name: 'Spokes and borders',
-                    desc: 'Choose contrasting color or none. Controls all structural elements including scene borders and act division spokes.',
+                    name: 'Borders',
+                    desc: 'Controls scene borders and act division lines. Choose white, black, none, or a custom color.',
                 },
-                strokeLightStrokes: 'Light Strokes',
-                strokeDarkStrokes: 'Dark Strokes',
-                strokeNoStrokes: 'No Strokes',
+                strokeLightStrokes: 'Light Borders',
+                strokeDarkStrokes: 'Dark Borders',
+                strokeNoStrokes: 'No Borders',
                 strokeCustomColor: 'Custom Color',
+                strokeSyncBackground: 'Sync to Background',
             },
             publishing: {
                 name: 'Publishing & automation',

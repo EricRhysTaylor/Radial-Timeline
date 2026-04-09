@@ -746,6 +746,12 @@ function renderCampaignDetails(
         // Sync the schedule badge pill in the campaign header
         const badgeEl = parentRow.querySelector('.ert-campaign-refresh-badge');
         if (badgeEl) badgeEl.textContent = `Manual · ${nextValue}d`;
+        // Sync the "Reminder in Xd" line in the campaign header
+        const nextUpdateEl = parentRow.querySelector('.ert-campaign-next-update');
+        if (nextUpdateEl) {
+            const latestCampaign = plugin.settings.authorProgress?.campaigns?.[index];
+            if (latestCampaign) nextUpdateEl.textContent = getNextUpdateLabel(latestCampaign);
+        }
     };
 
     // SAFE: Settings sections are standalone functions without Component lifecycle; Obsidian manages settings tab cleanup
@@ -1328,7 +1334,9 @@ async function renderTeaserStagesPreviews(
                 percentNumberColor: settings.aprPercentNumberColor ?? settings.aprBookAuthorColor ?? (plugin.settings.publishStageColors?.Press),
                 percentSymbolColor: settings.aprPercentSymbolColor ?? settings.aprBookAuthorColor ?? (plugin.settings.publishStageColors?.Press),
                 theme: campaign.customTheme ?? settings.aprTheme ?? 'dark',
-                spokeColor: settings.aprSpokeColorMode === 'custom' ? settings.aprSpokeColor : undefined,
+                spokeColor: settings.aprSpokeColorMode === 'custom' ? settings.aprSpokeColor
+                    : settings.aprSpokeColorMode === 'sync' ? (campaign.customBackgroundColor ?? settings.aprBackgroundColor)
+                    : undefined,
                 publishStageLabel,
                 showRtAttribution,
                 teaserRevealEnabled: campaign.teaserReveal?.enabled ?? false,

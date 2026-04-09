@@ -490,11 +490,11 @@ export class AuthorProgressModal extends Modal {
         });
 
         // === OUTPUT FILE ===
-        const pathRow = container.createDiv({
-            cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_COMPACT} ${ERT_CLASSES.ROW_MIDDLE_ALIGN}`
-        });
+        const pathRow = container.createDiv({ cls: 'ert-apr-target-row' });
         pathRow.createSpan({ text: 'Output file', cls: ERT_CLASSES.LABEL });
-        const pathControl = pathRow.createDiv({ cls: `${ERT_CLASSES.CONTROL} ${ERT_CLASSES.INLINE}` });
+        const pathControl = pathRow.createDiv({ cls: ERT_CLASSES.INLINE });
+        pathControl.style.flex = '1'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+        pathControl.style.minWidth = '0'; // SAFE: prevent overflow from long paths
         const pathInput = new TextComponent(pathControl);
         const defaultPath = buildDefaultEmbedPath({
             bookTitle: settings?.bookTitleOverride,
@@ -537,7 +537,8 @@ export class AuthorProgressModal extends Modal {
         };
         pathInput.setPlaceholder(defaultPath);
         pathInput.setValue(currentPath);
-        pathInput.inputEl.addClass('ert-input--xl');
+        pathInput.inputEl.style.flex = '1'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+        pathInput.inputEl.style.minWidth = '0'; // SAFE: prevent overflow from long paths
         applyWarningState(currentPath);
 
         const savePath = async () => {
