@@ -33,11 +33,24 @@ const RT_TOOLTIP_PLACEMENT_ATTR = 'data-rt-tip-placement';
 const RT_TOOLTIP_ANCHOR_ATTR = 'data-rt-tip-anchor';
 const RT_TOOLTIP_OFFSET_X_ATTR = 'data-rt-tip-offset-x';
 const RT_TOOLTIP_OFFSET_Y_ATTR = 'data-rt-tip-offset-y';
+const TOOLTIP_ACTIVE_CLASS = 'rt-tooltip-active';
 
 // Singleton tooltip element
 let customTooltipEl: HTMLElement | null = null;
 let currentTarget: Element | null = null;
 let hideTimeout: number | null = null;
+
+function clearActiveTooltipTarget(target: Element | null): void {
+    if (!target) return;
+    target.classList.remove(TOOLTIP_ACTIVE_CLASS);
+    target.closest('.rt-backdrop-micro-outer')?.classList.remove(TOOLTIP_ACTIVE_CLASS);
+}
+
+function setActiveTooltipTarget(target: Element | null): void {
+    if (!target) return;
+    target.classList.add(TOOLTIP_ACTIVE_CLASS);
+    target.closest('.rt-backdrop-micro-outer')?.classList.add(TOOLTIP_ACTIVE_CLASS);
+}
 
 function isSvgLikeElement(element: Element): element is SVGElement {
     if (element instanceof SVGElement) return true;
@@ -213,6 +226,7 @@ export function setupTooltipsFromDataAttributes(
             
             // Only update if it's a different target
             if (target !== currentTarget) {
+                clearActiveTooltipTarget(currentTarget);
                 currentTarget = target;
                 const text = getTooltipText(target, rtOnly);
                 const placement = getTooltipPlacement(target, rtOnly);
@@ -457,10 +471,12 @@ function showCustomTooltip(
     updateTooltipPosition(target, placement, anchorPoint, rtOnly);
 
     // Show
+    setActiveTooltipTarget(target);
     customTooltipEl.classList.add('rt-visible');
 }
 
 function hideCustomTooltip() {
+    clearActiveTooltipTarget(currentTarget);
     if (customTooltipEl) {
         customTooltipEl.classList.remove('rt-visible');
         currentTarget = null;

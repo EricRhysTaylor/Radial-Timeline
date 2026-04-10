@@ -46,8 +46,9 @@ export function buildSynopsisElement(
         const lines = [scene.title || 'Untitled'];
         const backdropContext = typeof scene.Context === 'string' ? scene.Context.trim() : '';
         if (backdropContext) {
-            lines.push(...splitIntoBalancedLinesOptimal(backdropContext, maxTextWidth, fontScale));
+            lines.push(backdropContext);
         }
+        lines.push('\u00A0');
         return plugin.synopsisManager.generateElement(scene, lines, sceneId, subplotIndexResolver);
     }
 
@@ -56,7 +57,7 @@ export function buildSynopsisElement(
     const contentLines = [
         scene.title || '',
         ...(isBeatNote(scene) && beatPurpose
-            ? splitIntoBalancedLinesOptimal(beatPurpose, maxTextWidth, fontScale)
+            ? [beatPurpose]
             : cappedSynopsis
                 ? [cappedSynopsis]
                 : [])
