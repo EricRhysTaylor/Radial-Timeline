@@ -7,11 +7,8 @@ import {
     MODE_SELECTOR_POS_X,
     MODE_SELECTOR_POS_Y,
     MODE_TITLE_POS_X,
-    MODE_TITLE_POS_Y,
-    BOOK_TITLE_POS_X,
-    BOOK_TITLE_POS_Y
+    MODE_TITLE_POS_Y
 } from '../../renderer/layout/LayoutConstants';
-import { DEFAULT_BOOK_TITLE, getActiveBookTitle } from '../../utils/books';
 import type { RadialTimelineSettings } from '../../types';
 
 interface ModeToggleView {
@@ -134,22 +131,6 @@ function createModeSelectorGrid(view: ModeToggleView): SVGGElement {
         optionGroup.appendChild(innerGroup);
         grid.appendChild(optionGroup);
     });
-
-    const bookTitle = getActiveBookTitle(view.plugin.settings, DEFAULT_BOOK_TITLE);
-
-    // Add book title text above the mode title (10px higher)
-    if (bookTitle) {
-        const bookTitleText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        bookTitleText.setAttribute('class', 'rt-book-title-text');
-        bookTitleText.setAttribute('x', String(BOOK_TITLE_POS_X));
-        bookTitleText.setAttribute('y', String(BOOK_TITLE_POS_Y));
-        bookTitleText.setAttribute('text-anchor', 'start');
-        bookTitleText.setAttribute('dominant-baseline', 'baseline');
-        bookTitleText.setAttribute('id', 'book-title');
-        bookTitleText.textContent = bookTitle;
-
-        grid.appendChild(bookTitleText);
-    }
 
     // Add mode title text above the first icon
     const titleText = document.createElementNS('http://www.w3.org/2000/svg', 'text');

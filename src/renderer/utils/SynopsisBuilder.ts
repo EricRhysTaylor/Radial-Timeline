@@ -3,21 +3,7 @@ import { isBeatNote, type PluginRendererFacade } from '../../utils/sceneHelpers'
 import { splitIntoBalancedLinesOptimal } from '../../utils/text';
 import { resolveScenePov } from '../../utils/pov';
 import { getReadabilityMultiplier } from '../../utils/readability';
-import { getSynopsisGenerationWordLimit, getSynopsisHoverLineLimit, getSynopsisHoverWordLimit, truncateToWordLimit } from '../../utils/synopsisLimits';
-
-/**
- * Split text into balanced lines and truncate to a maximum line count.
- * Adds "..." to the last line if truncated.
- */
-function splitAndTruncateLines(text: string, maxTextWidth: number, fontScale: number, maxLines: number): string[] {
-    if (!text) return [];
-    const allLines = splitIntoBalancedLinesOptimal(text, maxTextWidth, fontScale);
-    if (allLines.length <= maxLines) return allLines;
-    const truncated = allLines.slice(0, maxLines);
-    // Add ellipsis to the last line
-    truncated[truncated.length - 1] = truncated[truncated.length - 1] + '...';
-    return truncated;
-}
+import { getSynopsisGenerationWordLimit, getSynopsisHoverWordLimit, truncateToWordLimit } from '../../utils/synopsisLimits';
 
 function countWords(text: string | undefined): number {
     const normalized = String(text ?? '').replace(/\s+/g, ' ').trim();
@@ -54,24 +40,23 @@ export function buildSynopsisElement(
     const fontScale = getReadabilityMultiplier(plugin.settings as any);
     const synopsisWordLimit = getSynopsisGenerationWordLimit(plugin.settings as any);
     const hoverWordLimit = getSynopsisHoverWordLimit(plugin.settings as any);
-    const maxLines = getSynopsisHoverLineLimit(plugin.settings as any);
 
-    // For Backdrop items, only show Title and world context text
+    // For Backdrop items, only show Title and Context text from YAML.
     if (scene.itemType === 'Backdrop') {
         const lines = [scene.title || 'Untitled'];
-        const backdropContext = scene.Context ?? scene.synopsis ?? scene.Description;
+        const backdropContext = typeof scene.Context === 'string' ? scene.Context.trim() : '';
         if (backdropContext) {
-            lines.push(...splitAndTruncateLines(truncateToWordLimit(backdropContext, hoverWordLimit), maxTextWidth, fontScale, maxLines));
+            lines.push(...splitIntoBalancedLinesOptimal(backdropContext, maxTextWidth, fontScale));
         }
         return plugin.synopsisManager.generateElement(scene, lines, sceneId, subplotIndexResolver);
     }
 
-    const beatPurpose = scene.Purpose ?? scene.Description;
+    const beatPurpose = typeof scene.Purpose === 'string' ? scene.Purpose.trim() : '';
     const cappedSynopsis = resolveHoverSynopsisText(scene, synopsisWordLimit, hoverWordLimit);
     const contentLines = [
         scene.title || '',
         ...(isBeatNote(scene) && beatPurpose
-            ? [beatPurpose]
+            ? splitIntoBalancedLinesOptimal(beatPurpose, maxTextWidth, fontScale)
             : cappedSynopsis
                 ? [cappedSynopsis]
                 : [])

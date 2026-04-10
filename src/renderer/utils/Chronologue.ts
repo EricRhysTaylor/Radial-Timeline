@@ -308,25 +308,45 @@ export function renderChronologueOuterTicks({
         const arcRadius = monthTickEnd - 2.5;
         microRingSegments.forEach(segment => {
             const largeArcFlag = (segment.endAngle - segment.startAngle) > Math.PI ? 1 : 0;
-            const x1 = formatNumber(arcRadius * Math.cos(segment.startAngle));
-            const y1 = formatNumber(arcRadius * Math.sin(segment.startAngle));
-            const x2 = formatNumber(arcRadius * Math.cos(segment.endAngle));
-            const y2 = formatNumber(arcRadius * Math.sin(segment.endAngle));
+            const safeTitle = escapeXml(segment.title);
 
-            svg += `<path
-                d="M ${x1} ${y1} A ${formatNumber(arcRadius)} ${formatNumber(arcRadius)} 0 ${largeArcFlag} 1 ${x2} ${y2}"
-                class="rt-backdrop-micro-arc"
-                stroke="${segment.color}"
-                stroke-width="5"
-                stroke-opacity="0.1"
-                stroke-linecap="round"
-                fill="none"
-                pointer-events="none"
-            />`;
+            const arcX1 = formatNumber(arcRadius * Math.cos(segment.startAngle));
+            const arcY1 = formatNumber(arcRadius * Math.sin(segment.startAngle));
+            const arcX2 = formatNumber(arcRadius * Math.cos(segment.endAngle));
+            const arcY2 = formatNumber(arcRadius * Math.sin(segment.endAngle));
+
+            const startX1 = formatNumber(monthTickStart * Math.cos(segment.startAngle));
+            const startY1 = formatNumber(monthTickStart * Math.sin(segment.startAngle));
+            const startX2 = formatNumber(monthTickEnd * Math.cos(segment.startAngle));
+            const startY2 = formatNumber(monthTickEnd * Math.sin(segment.startAngle));
+
+            const endX1 = formatNumber(monthTickStart * Math.cos(segment.endAngle));
+            const endY1 = formatNumber(monthTickStart * Math.sin(segment.endAngle));
+            const endX2 = formatNumber(monthTickEnd * Math.cos(segment.endAngle));
+            const endY2 = formatNumber(monthTickEnd * Math.sin(segment.endAngle));
+
+            svg += `<g class="rt-backdrop-micro-outer rt-tooltip-target"
+                data-tooltip="${safeTitle}"
+                data-tooltip-placement="top">
+                <path
+                    d="M ${arcX1} ${arcY1} A ${formatNumber(arcRadius)} ${formatNumber(arcRadius)} 0 ${largeArcFlag} 1 ${arcX2} ${arcY2}"
+                    class="rt-backdrop-micro-arc"
+                    stroke="${segment.color}"
+                    stroke-width="5"
+                    stroke-linecap="round"
+                    fill="none"
+                />
+                <line x1="${startX1}" y1="${startY1}" x2="${startX2}" y2="${startY2}"
+                    class="rt-backdrop-micro-tick"
+                    stroke="${segment.color}"
+                />
+                <line x1="${endX1}" y1="${endY1}" x2="${endX2}" y2="${endY2}"
+                    class="rt-backdrop-micro-tick"
+                    stroke="${segment.color}"
+                />
+            </g>`;
         });
-    }
-
-    if (microRingTicks?.length) {
+    } else if (microRingTicks?.length) {
         microRingTicks.forEach(tick => {
             const x1 = formatNumber(monthTickStart * Math.cos(tick.angle));
             const y1 = formatNumber(monthTickStart * Math.sin(tick.angle));

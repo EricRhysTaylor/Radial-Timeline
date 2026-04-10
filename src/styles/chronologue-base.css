@@ -234,6 +234,20 @@
   cursor: pointer;
 }
 
+.rt-backdrop-micro-outer {
+  pointer-events: visiblePainted;
+  cursor: pointer;
+}
+
+.rt-backdrop-micro-arc {
+  opacity: 0.1;
+  pointer-events: none;
+}
+
+.rt-backdrop-micro-outer:hover .rt-backdrop-micro-arc {
+  opacity: 1;
+}
+
 .rt-backdrop-micro-tick {
   stroke-width: 2px;
   stroke-linecap: round;
@@ -271,6 +285,16 @@
 .radial-timeline-svg[data-mode="chronologue"]:not([data-shift-mode]).scene-hover .rt-backdrop-micro-tick,
 .radial-timeline-svg[data-chronologue-mode="true"]:not([data-shift-mode]).scene-hover .rt-backdrop-micro-tick {
   stroke: var(--rt-color-empty);
+  opacity: 1;
+}
+
+.radial-timeline-svg[data-mode="chronologue"]:not([data-shift-mode]).scene-hover .rt-backdrop-micro-arc,
+.radial-timeline-svg[data-chronologue-mode="true"]:not([data-shift-mode]).scene-hover .rt-backdrop-micro-arc {
+  opacity: 0.1;
+}
+
+.radial-timeline-svg[data-mode="chronologue"]:not([data-shift-mode]).scene-hover .rt-backdrop-micro-outer:hover .rt-backdrop-micro-arc,
+.radial-timeline-svg[data-chronologue-mode="true"]:not([data-shift-mode]).scene-hover .rt-backdrop-micro-outer:hover .rt-backdrop-micro-arc {
   opacity: 1;
 }
 
