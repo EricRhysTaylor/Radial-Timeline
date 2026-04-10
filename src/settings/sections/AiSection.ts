@@ -27,12 +27,12 @@ import {
 import { hasSecret, isSecretStorageAvailable, setSecret } from '../../ai/credentials/secretStorage';
 import type { AccessTier, AIProviderId, Capability, LocalLlmConfigurationMode, LocalLlmSettings, ModelInfo, ModelStatus, RTCorpusTokenBreakdown } from '../../ai/types';
 import type { LocalLlmDiagnosticsReport } from '../../ai/localLlm/diagnostics';
-import { buildCanonicalExecutionEstimate, estimateGossamerTokens } from '../../ai/forecast/estimateTokensFromVault';
+import { buildCanonicalExecutionEstimate, estimateGossamerTokens, estimateInquiryTokens } from '../../ai/forecast/estimateTokensFromVault';
 import {
     estimateCorpusCost,
     formatUsdCost
 } from '../../ai/cost/estimateCorpusCost';
-import { getProviderPricing, getActivePricingMeta, getPricingFreshnessLabel } from '../../ai/cost/providerPricing';
+import { getProviderPricing, getActivePricingMeta, getActivePromos, getPricingFreshnessLabel } from '../../ai/cost/providerPricing';
 import { buildOutputRulesText } from '../../ai/prompts/outputRules';
 import { buildUnifiedBeatAnalysisPromptParts, getUnifiedBeatAnalysisJsonSchema } from '../../ai/prompts/unifiedBeatAnalysis';
 import { resolveActiveRoleTemplate } from '../../ai/roleTemplate';
@@ -185,6 +185,44 @@ export function renderAiSection(params: {
         cls: 'ert-ai-hero-muted',
         text: t('settings.ai.heroOff.muted')
     });
+
+    const promoBannerContainer = containerEl.createDiv({ cls: 'ert-ai-promo-banners' });
+    params.addAiRelatedElement(promoBannerContainer);
+
+    const renderPromoBanners = (): void => {
+        promoBannerContainer.empty();
+        const activePromos = getActivePromos();
+        if (!activePromos.length) return;
+
+        for (const promo of activePromos) {
+            const modelInfo = BUILTIN_MODELS.find(m => m.provider === promo.provider && m.id === promo.modelId);
+            const modelLabel = modelInfo?.label ?? promo.modelId;
+            const providerLabel = promo.provider === 'anthropic' ? 'Anthropic'
+                : promo.provider === 'openai' ? 'OpenAI'
+                : promo.provider === 'google' ? 'Google'
+                : promo.provider;
+            const isFree = promo.inputPer1M === 0 && promo.outputPer1M === 0;
+            const title = isFree
+                ? `${modelLabel} — free to use`
+                : `${modelLabel} — ${promo.promo.label}`;
+            const expiryNote = promo.promo.expiresAt
+                ? ` Available until ${new Date(promo.promo.expiresAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}.`
+                : '';
+            const description = isFree
+                ? `${providerLabel} is offering ${modelLabel} at no cost.${expiryNote} Select ${providerLabel} in AI Strategy to use it for Inquiry runs.`
+                : `${providerLabel} is offering ${modelLabel} at promotional pricing.${expiryNote}`;
+
+            const alertEl = promoBannerContainer.createDiv({
+                cls: 'ert-refactor-alert ert-refactor-alert--promo'
+            });
+            const contentSide = alertEl.createDiv({ cls: 'ert-refactor-alert__content' });
+            const heading = contentSide.createDiv({ cls: 'ert-refactor-alert__heading' });
+            const iconWrapper = heading.createDiv({ cls: 'ert-refactor-alert__icon' });
+            setIcon(iconWrapper, 'gift');
+            heading.createSpan({ text: title, cls: 'ert-refactor-alert__title' });
+            contentSide.createDiv({ cls: 'ert-refactor-alert__description', text: description });
+        }
+    };
 
     const aiStateContent = containerEl.createDiv({ cls: ERT_CLASSES.STACK });
     params.addAiRelatedElement(aiStateContent);
@@ -1420,22 +1458,38 @@ export function renderAiSection(params: {
         questionText: string;
     }) => {
         const currentCorpus = getCurrentCorpusContext();
-        if (!currentCorpus) {
-            throw new Error('Current Inquiry corpus is unavailable.');
+        if (currentCorpus) {
+            return await buildCanonicalExecutionEstimate({
+                plugin,
+                provider: params.provider,
+                modelId: params.modelId,
+                questionText: params.questionText,
+                scope: currentCorpus.scope,
+                activeBookId: currentCorpus.activeBookId,
+                scopeLabel: currentCorpus.scopeLabel,
+                manifestEntries: currentCorpus.manifestEntries,
+                vault: app.vault,
+                metadataCache: app.metadataCache,
+                frontmatterMappings: plugin.settings.frontmatterMappings
+            });
         }
-        return await buildCanonicalExecutionEstimate({
+        const vaultEstimate = await estimateInquiryTokens({
             plugin,
             provider: params.provider,
             modelId: params.modelId,
             questionText: params.questionText,
-            scope: currentCorpus.scope,
-            activeBookId: currentCorpus.activeBookId,
-            scopeLabel: currentCorpus.scopeLabel,
-            manifestEntries: currentCorpus.manifestEntries,
             vault: app.vault,
             metadataCache: app.metadataCache,
+            inquirySources: plugin.settings.inquirySources,
             frontmatterMappings: plugin.settings.frontmatterMappings
         });
+        return vaultEstimate.providerExecutionEstimate ?? {
+            estimatedTokens: vaultEstimate.corpus.estimatedTokens,
+            method: vaultEstimate.corpus.method,
+            promptEnvelopeCharsAdded: 0,
+            expectedPassCount: 1,
+            maxOutputTokens: 16000
+        };
     };
 
     const renderCostComparisonRows = (rows: CostComparisonRow[]): void => {
@@ -1510,10 +1564,26 @@ export function renderAiSection(params: {
                 )
             };
         }
-        return {
-            sizeText: 'Inquiry corpus stats will be available once you run Inquiry View.',
-            structureText: ''
-        };
+        try {
+            const vaultEstimate = await estimateInquiryTokens({
+                vault: app.vault,
+                metadataCache: app.metadataCache,
+                inquirySources: plugin.settings.inquirySources,
+                frontmatterMappings: plugin.settings.frontmatterMappings
+            });
+            return {
+                sizeText: `Inquiry Corpus: ${formatCorpusTokenSummary(vaultEstimate.corpus.estimatedTokens)}`,
+                structureText: formatCorpusStructureSummary(
+                    vaultEstimate.corpus.sceneCount,
+                    vaultEstimate.corpus.outlineCount
+                )
+            };
+        } catch {
+            return {
+                sizeText: 'Inquiry corpus estimate unavailable.',
+                structureText: ''
+            };
+        }
     };
 
     const computeCostComparisonRows = async (): Promise<CostComparisonRow[]> => {
@@ -1579,6 +1649,7 @@ export function renderAiSection(params: {
         renderCostEstimateCorpusSummary(corpusSummary);
         renderCostComparisonRows(rows);
         costEstimateFreshness.setText(getPricingFreshnessLabel(getActivePricingMeta()));
+        renderPromoBanners();
     };
 
     const computeVaultForecasts = async (engine?: {

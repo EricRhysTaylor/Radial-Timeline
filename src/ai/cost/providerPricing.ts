@@ -130,6 +130,33 @@ export function getActivePricingTable(): ProviderPricingTable {
     return activePricing;
 }
 
+export interface ActivePromoInfo {
+    provider: AIProviderId;
+    modelId: string;
+    promo: PromoPricing;
+    inputPer1M: number;
+    outputPer1M: number;
+}
+
+export function getActivePromos(): ActivePromoInfo[] {
+    const promos: ActivePromoInfo[] = [];
+    for (const [provider, models] of Object.entries(activePricing)) {
+        if (!models) continue;
+        for (const [modelId, pricing] of Object.entries(models)) {
+            if (pricing.promo && isPromoActive(pricing.promo)) {
+                promos.push({
+                    provider: provider as AIProviderId,
+                    modelId,
+                    promo: pricing.promo,
+                    inputPer1M: pricing.inputPer1M,
+                    outputPer1M: pricing.outputPer1M
+                });
+            }
+        }
+    }
+    return promos;
+}
+
 export function getActivePricingMeta(): PricingMeta {
     return activeMeta;
 }
@@ -153,14 +180,27 @@ export function resetPricingToBuiltin(): void {
     activeMeta = { source: 'builtin' };
 }
 
+function formatPricingDate(isoDate: string): string {
+    const d = new Date(isoDate);
+    if (!Number.isFinite(d.getTime())) return '';
+    const month = d.toLocaleString('en-US', { month: 'short' });
+    const day = d.getDate();
+    const hours = d.getHours();
+    const minutes = d.getMinutes().toString().padStart(2, '0');
+    const ampm = hours >= 12 ? 'pm' : 'am';
+    const hour12 = hours % 12 || 12;
+    return `${month} ${day}, ${hour12}:${minutes}${ampm}`;
+}
+
 export function getPricingFreshnessLabel(meta: PricingMeta): string {
     if (meta.source === 'builtin') return 'Using fallback pricing';
     if (!meta.fetchedAt) return 'Using cached pricing';
     const ageMs = Date.now() - Date.parse(meta.fetchedAt);
     if (!Number.isFinite(ageMs) || ageMs < 0) return 'Using cached pricing';
+    const dateStr = formatPricingDate(meta.fetchedAt);
     const THREE_DAYS_MS = 72 * 60 * 60 * 1000;
-    if (ageMs <= THREE_DAYS_MS) return 'Pricing updated recently';
-    return 'Using cached pricing';
+    if (ageMs <= THREE_DAYS_MS) return `Pricing checked ${dateStr}`;
+    return `Using cached pricing from ${dateStr}`;
 }
 
 export function getProviderPricing(

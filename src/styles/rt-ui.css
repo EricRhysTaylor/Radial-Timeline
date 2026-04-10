@@ -4032,6 +4032,12 @@
   --alert-bg: var(--ert-alert-critical-bg);
 }
 
+/* Severity: Promo (green) - static */
+.ert-ui.ert-scope--settings .ert-refactor-alert--promo {
+  --alert-color: var(--ert-alert-success-color);
+  --alert-bg: var(--ert-alert-success-bg);
+}
+
 /* Update button keeps static severity styling and only reacts on hover */
 .ert-ui.ert-scope--settings .ert-refactor-alert--warning .ert-refactor-alert__btn--update.ert-iconBtn {
   box-shadow: none;
