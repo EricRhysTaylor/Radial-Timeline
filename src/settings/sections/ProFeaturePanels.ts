@@ -247,6 +247,9 @@ const STARTER_PUBLISHING_SETUP_BUTTON = 'Create starter publishing setup';
 const STARTER_PUBLISHING_SETUP_BUSY = 'Creating starter publishing setup…';
 const STARTER_PUBLISHING_SETUP_ALREADY_EXISTS = 'Starter publishing files already exist.';
 
+const AUTO_CONFIGURE_BUTTON = 'Auto configure publishing';
+const AUTO_CONFIGURE_BUSY = 'Configuring publishing…';
+
 interface TemplatePathSuggestion {
     fullPath: string;
     storedPath: string;
@@ -330,6 +333,75 @@ async function ensureVaultFolderPath(plugin: RadialTimelinePlugin, folderPath: s
         if (existing) throw new Error(`Cannot create folder "${current}" because a file exists at that path.`);
         await plugin.app.vault.createFolder(current);
     }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// AUTO-CONFIGURE PUBLISHING ENVIRONMENT
+// ═══════════════════════════════════════════════════════════════════════════════
+
+interface PublishingEnvironmentResult {
+    pandocFound: boolean;
+    latexFound: boolean;
+    templatesInstalled: number;
+    folderReady: boolean;
+    issues: string[];
+}
+
+async function ensurePublishingEnvironment(plugin: RadialTimelinePlugin): Promise<PublishingEnvironmentResult> {
+    const issues: string[] = [];
+    let pandocFound = false;
+    let latexFound = false;
+    let templatesInstalled = 0;
+    let folderReady = false;
+
+    // ── Resolve Pandoc & LaTeX paths (respect existing valid config) ──────
+    const existingPandocPath = (plugin.settings.pandocPath || '').trim();
+    const pandocAlreadyValid = existingPandocPath.length > 0 && isConfiguredPandocPathValid(plugin);
+
+    const scan = await scanSystemPaths();
+
+    if (!pandocAlreadyValid) {
+        if (scan.pandocPath) {
+            plugin.settings.pandocPath = scan.pandocPath;
+            pandocFound = true;
+        } else {
+            issues.push('Pandoc not found — install from pandoc.org');
+        }
+    } else {
+        pandocFound = true;
+    }
+
+    if (scan.latexPath) {
+        latexFound = true;
+    } else {
+        issues.push('LaTeX not found — install to enable PDF export');
+    }
+
+    // ── Ensure Pandoc folder exists ──────────────────────────────────────
+    const pandocFolder = getConfiguredPandocFolder(plugin);
+    try {
+        await ensureVaultFolderPath(plugin, pandocFolder);
+        folderReady = true;
+    } catch (e) {
+        issues.push(`Could not create Pandoc folder: ${(e as Error).message}`);
+    }
+
+    // ── Install bundled templates ────────────────────────────────────────
+    if (folderReady) {
+        const result = await installBundledPandocLayouts(plugin);
+        templatesInstalled = result.installed.length;
+        if (result.failed.length > 0) {
+            issues.push(`Failed to install templates: ${result.failed.join(', ')}`);
+        }
+    }
+
+    // ── Register templates in settings ───────────────────────────────────
+    ensureBundledPandocLayoutsRegistered(plugin);
+
+    // ── Persist ──────────────────────────────────────────────────────────
+    await plugin.saveSettings();
+
+    return { pandocFound, latexFound, templatesInstalled, folderReady, issues };
 }
 
 async function maybeRenameTemplateFileForPathChange(
@@ -1743,6 +1815,12 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
         attr: { [ERT_DATA.SECTION]: 'export-check' }
     });
     systemConfigPanel.style.order = '50';
+    // Hidden by default — revealed when validation fails or user expands Advanced
+    systemConfigPanel.addClass('is-hidden');
+    const revealSystemConfig = () => {
+        systemConfigPanel.removeClass('is-hidden');
+        systemConfigPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
     const systemConfigHeading = addProRow(new Setting(systemConfigPanel))
         .setName('System configuration')
         .setDesc('Configure Pandoc for PDF export.')
@@ -3059,16 +3137,43 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
     const setSetupButtonState = (busy: boolean) => {
         if (!setupButtonComponent) return;
         setupButtonComponent.setDisabled(busy);
-        setupButtonComponent.setButtonText(busy ? STARTER_PUBLISHING_SETUP_BUSY : STARTER_PUBLISHING_SETUP_BUTTON);
+        setupButtonComponent.setButtonText(busy ? AUTO_CONFIGURE_BUSY : AUTO_CONFIGURE_BUTTON);
         if (exportOptionsButtonComponent) {
             exportOptionsButtonComponent.setDisabled(busy);
         }
     };
-    const runPublishingSetup = async () => {
+    const runAutoConfigurePublishing = async () => {
         if (setupInFlight) return;
         setupInFlight = true;
         setSetupButtonState(true);
         try {
+            // ── Phase 1: Environment (paths, folders, templates) ─────────
+            const envResult = await ensurePublishingEnvironment(plugin);
+
+            // Update Pandoc path input if it was auto-filled
+            if (envResult.pandocFound && pandocPathInputEl) {
+                pandocPathInputEl.value = plugin.settings.pandocPath || '';
+            }
+
+            // Refresh status cards after environment changes
+            refreshPublishingStatusCard();
+
+            // Show environment issues as partial-success guidance
+            const blockingIssues = envResult.issues.filter(i => i.startsWith('Pandoc not found'));
+            if (blockingIssues.length > 0) {
+                // Pandoc missing — cannot proceed with full setup
+                new Notice(blockingIssues[0]);
+                revealSystemConfig();
+                return;
+            }
+
+            // Non-blocking issues (e.g. LaTeX missing) — show but continue
+            const warnings = envResult.issues.filter(i => !i.startsWith('Pandoc not found'));
+            if (warnings.length > 0) {
+                new Notice(warnings.join('\n'));
+            }
+
+            // ── Phase 2: Sample templates (guided/advanced lane) ─────────
             const lane = await chooseMatterSampleLane(plugin.app, selectedMatterWorkflow, includeScriptExamples);
             if (!lane) return;
             if (plugin.settings.matterWorkflowMode !== lane) {
@@ -3082,7 +3187,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             const matterTargetLabel = sourceFolder || scriptTargetLabel;
             if (created.length > 0) {
                 const laneLabel = lane === 'guided' ? 'starter' : 'advanced';
-                new Notice(`Created ${created.length} ${laneLabel} publishing setup files. Book details + pages → ${matterTargetLabel}, PDF styles → ${getConfiguredPandocFolder(plugin)}/.`);
+                new Notice(`Publishing configured. Created ${created.length} ${laneLabel} setup files. Book details + pages → ${matterTargetLabel}, PDF styles → ${getConfiguredPandocFolder(plugin)}/.`);
             } else {
                 new Notice(STARTER_PUBLISHING_SETUP_ALREADY_EXISTS);
             }
@@ -3090,7 +3195,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             rerender();
         } catch (e) {
             const msg = (e as Error).message || String(e);
-            new Notice(`Error setting up publishing: ${msg}`);
+            new Notice(`Error configuring publishing: ${msg}`);
         } finally {
             setupInFlight = false;
             setSetupButtonState(false);
@@ -3485,9 +3590,9 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
         }
 
         setupButtonComponent = new ButtonComponent(setupActionRow)
-            .setButtonText(STARTER_PUBLISHING_SETUP_BUTTON)
+            .setButtonText(AUTO_CONFIGURE_BUTTON)
             .onClick(() => {
-                void runPublishingSetup();
+                void runAutoConfigurePublishing();
             });
         if (!showExportButton || !exportPrimary) {
             setupButtonComponent.setCta();
@@ -3532,7 +3637,11 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                 stage.detail,
                 stage.statusKey,
                 () => {
-                    targetByStage[stage.id]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    if (stage.id === 'export-check' && systemConfigPanel.hasClass('is-hidden')) {
+                        revealSystemConfig();
+                    } else {
+                        targetByStage[stage.id]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
                 }
             );
         });
@@ -3656,6 +3765,32 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
     void renderMatterPreview();
 
     renderPublishingStatusCard();
+
+    // ── System Configuration visibility: show when pandoc path is invalid ──
+    if (!isConfiguredPandocPathValid(plugin)) {
+        systemConfigPanel.removeClass('is-hidden');
+    }
+
+    // ── "Advanced configuration" disclosure toggle ─────────────────────────
+    const advancedToggle = pandocPanel.createDiv({ cls: 'ert-advanced-config-toggle' });
+    advancedToggle.style.order = '49';
+    const advancedLink = advancedToggle.createEl('a', {
+        cls: 'ert-advanced-config-link',
+        text: 'Advanced configuration',
+        attr: { href: '#' }
+    });
+    const advancedIcon = advancedToggle.createSpan({ cls: 'ert-advanced-config-icon' });
+    setIcon(advancedIcon, 'chevron-right');
+    advancedToggle.prepend(advancedIcon);
+    // Hide toggle if system config is already visible
+    if (!systemConfigPanel.hasClass('is-hidden')) {
+        advancedToggle.addClass('is-hidden');
+    }
+    advancedLink.addEventListener('click', (evt: MouseEvent) => {
+        evt.preventDefault();
+        advancedToggle.addClass('is-hidden');
+        revealSystemConfig();
+    });
 
     // ── System Configuration: Repair tools (only when mismatches exist) ────
     const repairPlan = buildMatterRepairPlan(plugin);

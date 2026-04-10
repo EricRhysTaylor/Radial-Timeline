@@ -9923,6 +9923,46 @@
   border: none;
 }
 
+.ert-ui.ert-scope--settings .ert-advanced-config-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 0;
+  cursor: pointer;
+}
+
+.ert-ui.ert-scope--settings .ert-advanced-config-toggle .ert-advanced-config-icon {
+  display: inline-flex;
+  color: var(--text-muted);
+  width: 16px;
+  height: 16px;
+}
+
+.ert-ui.ert-scope--settings .ert-advanced-config-toggle .ert-advanced-config-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.ert-ui.ert-scope--settings .ert-advanced-config-link {
+  font-size: var(--font-ui-small);
+  color: var(--text-muted);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.ert-ui.ert-scope--settings .ert-advanced-config-link:hover {
+  color: var(--text-normal);
+  text-decoration: underline;
+}
+
+.ert-ui.ert-scope--settings .ert-advanced-config-toggle.is-hidden {
+  display: none;
+}
+
+.ert-ui.ert-scope--settings [data-ert-section="export-check"].is-hidden {
+  display: none;
+}
+
 .ert-ui.ert-scope--settings .ert-bookmeta-preview-body {
   width: 100%;
   display: flex;

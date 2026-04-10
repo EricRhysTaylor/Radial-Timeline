@@ -549,16 +549,17 @@ export class RadialTimelineView extends ItemView {
                 const cache = this.app.metadataCache.getFileCache(file);
                 if (!cache || !cache.frontmatter) return;
                 
-                // Check if this is a scene or beat file (Class: Scene or Class: Beat/Plot)
+                // Check if this is a scene, beat/plot, or backdrop file.
                 const fm = cache.frontmatter;
                 const isScene = (fm.Class === 'Scene') || (fm.class === 'Scene');
                 const isBeatOrPlot = (fm.Class === 'Plot') || (fm.class === 'Plot') || (fm.Class === 'Beat') || (fm.class === 'Beat');
-                
-                if (!isScene && !isBeatOrPlot) return;
-                
-                // Beat note frontmatter can affect timeline hover in multiple modes.
-                // Always refresh on Scene or Beat/Plot frontmatter change so note values
-                // remain the source of truth over settings defaults.
+                const isBackdrop = (fm.Class === 'Backdrop') || (fm.class === 'Backdrop');
+
+                if (!isScene && !isBeatOrPlot && !isBackdrop) return;
+
+                // Scene, Beat/Plot, and Backdrop frontmatter can affect timeline render
+                // and hover content in multiple modes. Always refresh on those YAML
+                // changes so note values remain the source of truth over cached DOM.
                 
                 // Check if this is a frontmatter change
                 const fileId = file.path;
