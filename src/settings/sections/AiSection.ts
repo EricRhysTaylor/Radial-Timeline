@@ -189,6 +189,10 @@ export function renderAiSection(params: {
     const promoBannerContainer = containerEl.createDiv({ cls: 'ert-ai-promo-banners' });
     params.addAiRelatedElement(promoBannerContainer);
 
+    const PROMO_PROVIDER_LABELS: Record<string, string> = {
+        anthropic: 'Anthropic', openai: 'OpenAI', google: 'Google'
+    };
+
     const renderPromoBanners = (): void => {
         promoBannerContainer.empty();
         const activePromos = getActivePromos();
@@ -197,20 +201,17 @@ export function renderAiSection(params: {
         for (const promo of activePromos) {
             const modelInfo = BUILTIN_MODELS.find(m => m.provider === promo.provider && m.id === promo.modelId);
             const modelLabel = modelInfo?.label ?? promo.modelId;
-            const providerLabel = promo.provider === 'anthropic' ? 'Anthropic'
-                : promo.provider === 'openai' ? 'OpenAI'
-                : promo.provider === 'google' ? 'Google'
-                : promo.provider;
+            const providerLabel = PROMO_PROVIDER_LABELS[promo.provider] ?? promo.provider;
             const isFree = promo.inputPer1M === 0 && promo.outputPer1M === 0;
             const title = isFree
                 ? `${modelLabel} — free to use`
                 : `${modelLabel} — ${promo.promo.label}`;
-            const expiryNote = promo.promo.expiresAt
-                ? ` Available until ${new Date(promo.promo.expiresAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}.`
+            const expiry = promo.promo.expiresAt
+                ? `Until ${new Date(promo.promo.expiresAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}.`
                 : '';
-            const description = isFree
-                ? `${providerLabel} is offering ${modelLabel} at no cost.${expiryNote} Select ${providerLabel} in AI Strategy to use it for Inquiry runs.`
-                : `${providerLabel} is offering ${modelLabel} at promotional pricing.${expiryNote}`;
+            const body = isFree
+                ? `${providerLabel} — no cost for Inquiry runs. ${expiry}`
+                : `${providerLabel} — promotional pricing. ${expiry}`;
 
             const alertEl = promoBannerContainer.createDiv({
                 cls: 'ert-refactor-alert ert-refactor-alert--promo'
@@ -220,7 +221,7 @@ export function renderAiSection(params: {
             const iconWrapper = heading.createDiv({ cls: 'ert-refactor-alert__icon' });
             setIcon(iconWrapper, 'gift');
             heading.createSpan({ text: title, cls: 'ert-refactor-alert__title' });
-            contentSide.createDiv({ cls: 'ert-refactor-alert__description', text: description });
+            contentSide.createDiv({ cls: 'ert-refactor-alert__description', text: body });
         }
     };
 
@@ -292,7 +293,7 @@ export function renderAiSection(params: {
     const costEstimateTable = costEstimateSection.createDiv({ cls: 'ert-ai-models-table' });
     const costEstimateFreshness = costEstimateSection.createDiv({ cls: 'ert-ai-cost-freshness' });
     const costEstimateFootnote = costEstimateSection.createDiv({ cls: 'ert-ai-cost-footnote' });
-    costEstimateFootnote.appendText('* Cloud-provider rows use published provider pricing. Actual charges may differ due to provider-side billing rules and account-level adjustments such as caching, credits, promos, or contract pricing. ');
+    costEstimateFootnote.appendText('* Based on published provider pricing. Actual charges may differ due to caching, credits, or account-level adjustments. ');
     costEstimateFootnote.createSpan({ text: 'See provider pricing: ' });
     [
         { label: 'OpenAI', href: 'https://openai.com/api/pricing/' },
@@ -313,8 +314,8 @@ export function renderAiSection(params: {
         }
     });
     costEstimateFootnote.appendText('. ');
-    costEstimateFootnote.createEl('strong', { text: 'LOCAL PROCESSING' });
-    costEstimateFootnote.appendText(' runs on your machine. No API charges. Performance and output depend on your hardware and model.');
+    costEstimateFootnote.createEl('strong', { text: 'Local LLM' });
+    costEstimateFootnote.appendText(' runs on your machine with no API charges.');
 
     const ensureCanonicalAiSettings = () => {
         if (!plugin.settings.aiSettings) {
@@ -1625,9 +1626,9 @@ export function renderAiSection(params: {
             } catch {
                 return {
                     model,
-                    freshText: 'Estimate unavailable',
-                    cachedText: 'Estimate unavailable',
-                    passesText: 'Unavailable'
+                    freshText: 'No estimate yet',
+                    cachedText: 'No estimate yet',
+                    passesText: '\u2014'
                 };
             }
         }));
