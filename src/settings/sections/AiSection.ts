@@ -11,10 +11,10 @@ import { IMPACT_FULL } from '../SettingImpact';
 import { buildDefaultAiSettings } from '../../ai/settings/aiSettings';
 import { validateAiSettings } from '../../ai/settings/validateAiSettings';
 import { BUILTIN_MODELS } from '../../ai/registry/builtinModels';
-import { compareNewestModels, getPickerModelsForProvider, selectLatestModelByReleaseChannel } from '../../ai/registry/releaseChannels';
+import { getPickerModelsForProvider, PROVIDER_DISPLAY_LABELS, selectLatestModelByReleaseChannel } from '../../ai/registry/releaseChannels';
 import { selectModel } from '../../ai/router/selectModel';
 import { computeCaps } from '../../ai/caps/computeCaps';
-import { resolveEngineCapabilities } from '../../ai/caps/engineCapabilities';
+import { getModelUiSignals } from '../../ai/caps/engineCapabilities';
 import { getAIClient } from '../../ai/runtime/aiClient';
 import { getLocalLlmClient } from '../../ai/localLlm/client';
 import {
@@ -25,7 +25,7 @@ import {
     setCredentialSecretId
 } from '../../ai/credentials/credentials';
 import { hasSecret, isSecretStorageAvailable, setSecret } from '../../ai/credentials/secretStorage';
-import type { AccessTier, AIProviderId, Capability, LocalLlmConfigurationMode, LocalLlmSettings, ModelInfo, ModelStatus, RTCorpusTokenBreakdown } from '../../ai/types';
+import type { AccessTier, AIProviderId, Capability, LocalLlmConfigurationMode, LocalLlmSettings, ModelInfo, RTCorpusTokenBreakdown } from '../../ai/types';
 import type { LocalLlmDiagnosticsReport } from '../../ai/localLlm/diagnostics';
 import { buildCanonicalExecutionEstimate, estimateGossamerTokens, estimateInquiryTokens } from '../../ai/forecast/estimateTokensFromVault';
 import {
@@ -189,10 +189,6 @@ export function renderAiSection(params: {
     const promoBannerContainer = containerEl.createDiv({ cls: 'ert-ai-promo-banners' });
     params.addAiRelatedElement(promoBannerContainer);
 
-    const PROMO_PROVIDER_LABELS: Record<string, string> = {
-        anthropic: 'Anthropic', openai: 'OpenAI', google: 'Google'
-    };
-
     const renderPromoBanners = (): void => {
         promoBannerContainer.empty();
         const activePromos = getActivePromos();
@@ -201,7 +197,9 @@ export function renderAiSection(params: {
         for (const promo of activePromos) {
             const modelInfo = BUILTIN_MODELS.find(m => m.provider === promo.provider && m.id === promo.modelId);
             const modelLabel = modelInfo?.label ?? promo.modelId;
-            const providerLabel = PROMO_PROVIDER_LABELS[promo.provider] ?? promo.provider;
+            const providerLabel = promo.provider !== 'none'
+                ? PROVIDER_DISPLAY_LABELS[promo.provider]
+                : promo.provider;
             const isFree = promo.inputPer1M === 0 && promo.outputPer1M === 0;
             const title = isFree
                 ? `${modelLabel} — free to use`
@@ -910,42 +908,11 @@ export function renderAiSection(params: {
     ] as const;
     const MAX_PREVIEW_SIGNALS = 4;
 
-    const resolvePreviewCitationSignal = (model: ModelInfo): string | null => {
-        const capabilities = resolveEngineCapabilities(model);
+    const resolvePreviewCitationSignal = (model: ModelInfo): string | null =>
+        getModelUiSignals(model).citationLabel;
 
-        // When cache and citations are mutually exclusive, show a combined pill
-        // instead of separate independent pills (doctrine: do not lie to the author).
-        if (capabilities.constraints.cacheVsCitationsExclusive
-            && capabilities.corpusReuse.availableInRt
-            && (capabilities.directManuscriptCitations.availableInRt || capabilities.groundedToolAttribution.availableInRt)) {
-            return 'Citation or Cache (exclusive)';
-        }
-
-        if (capabilities.directManuscriptCitations.availableInRt) {
-            return 'Citation · Direct manuscript';
-        }
-        if (capabilities.groundedToolAttribution.availableInRt) {
-            return model.provider === 'google'
-                ? 'Citation · Grounded search'
-                : 'Citation · Tool annotations';
-        }
-        return null;
-    };
-
-    const resolvePreviewReuseSignal = (model: ModelInfo): string | null => {
-        const capabilities = resolveEngineCapabilities(model);
-
-        // When the combined exclusive pill is shown, suppress the separate reuse pill.
-        if (capabilities.constraints.cacheVsCitationsExclusive
-            && capabilities.corpusReuse.availableInRt
-            && (capabilities.directManuscriptCitations.availableInRt || capabilities.groundedToolAttribution.availableInRt)) {
-            return null;
-        }
-
-        return capabilities.corpusReuse.availableInRt
-            ? 'Reuse · Provider cache'
-            : 'Reuse · No provider cache';
-    };
+    const resolvePreviewReuseSignal = (model: ModelInfo): string | null =>
+        getModelUiSignals(model).reuseLabel;
 
     const resolvePreviewSignals = (state: {
         citationLabel: string | null;
@@ -989,9 +956,11 @@ export function renderAiSection(params: {
             .filter(model => model.provider === provider && model.status !== 'deprecated')
             .map(model => model.alias);
 
-    const getProviderPickerAliases = (provider: AIProviderId): string[] => {
-        return getPickerModelsForProvider(BUILTIN_MODELS, provider).map(model => model.alias);
-    };
+    const getProviderPickerModels = (provider: AIProviderId): ModelInfo[] =>
+        getPickerModelsForProvider(BUILTIN_MODELS, provider);
+
+    const getProviderPickerAliases = (provider: AIProviderId): string[] =>
+        getProviderPickerModels(provider).map(model => model.alias);
 
     const isOpenAiInternalAlias = (alias: string): boolean =>
         !!alias
@@ -1369,17 +1338,6 @@ export function renderAiSection(params: {
         `${provider}::${modelId}`;
 
     const COST_PROVIDER_ORDER: ReadonlyArray<Exclude<AIProviderId, 'none' | 'ollama'>> = ['anthropic', 'openai', 'google'];
-    const MODEL_STATUS_ORDER: Record<ModelStatus, number> = {
-        stable: 0,
-        preview: 1,
-        legacy: 2,
-        deprecated: 3
-    };
-    const PROVIDER_LABELS: Record<Exclude<AIProviderId, 'none' | 'ollama'>, string> = {
-        anthropic: 'Anthropic',
-        openai: 'OpenAI',
-        google: 'Google'
-    };
 
     const supportsCostComparisonModel = (provider: AIProviderId, modelId: string): boolean => {
         if (provider === 'none' || provider === 'ollama') return false;
@@ -1395,17 +1353,12 @@ export function renderAiSection(params: {
         const cloudModels: CostComparisonModel[] = COST_PROVIDER_ORDER.flatMap(provider => {
             const providerModels = getPickerModelsForProvider(BUILTIN_MODELS, provider)
                 .filter(model => !model.id.endsWith('-latest'))
-                .filter(model => supportsCostComparisonModel(provider, model.id))
-                .sort((left, right) => {
-                    const statusDelta = MODEL_STATUS_ORDER[left.status] - MODEL_STATUS_ORDER[right.status];
-                    if (statusDelta !== 0) return statusDelta;
-                    return compareNewestModels(left, right);
-                });
+                .filter(model => supportsCostComparisonModel(provider, model.id));
 
             return providerModels.map(model => ({
                 provider,
                 modelId: model.id,
-                providerLabel: PROVIDER_LABELS[provider],
+                providerLabel: PROVIDER_DISPLAY_LABELS[provider],
                 modelLabel: model.label
             }));
         });
@@ -1414,7 +1367,7 @@ export function renderAiSection(params: {
         return cloudModels.concat({
             provider: 'ollama',
             modelId: localModel.id,
-            providerLabel: 'Local LLM',
+            providerLabel: PROVIDER_DISPLAY_LABELS.ollama,
             modelLabel: localModel.label
         });
     };
@@ -1821,10 +1774,8 @@ export function renderAiSection(params: {
                 } else {
                     modelOverrideDropdown.selectEl.disabled = false;
                     modelOverrideDropdown.addOption('auto', 'Auto');
-                    providerPickerAliases.forEach(alias => {
-                        const model = BUILTIN_MODELS.find(entry => entry.alias === alias);
-                        const label = model?.label || alias;
-                        modelOverrideDropdown?.addOption(alias, label);
+                    getProviderPickerModels(provider).forEach(model => {
+                        modelOverrideDropdown?.addOption(model.alias, model.label);
                     });
                     if (provider === 'openai'
                         && policy.type === 'pinned'

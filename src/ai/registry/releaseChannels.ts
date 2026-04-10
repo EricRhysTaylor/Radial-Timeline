@@ -1,5 +1,12 @@
 import type { AIProviderId, ModelInfo, ModelReleaseChannel } from '../types';
 
+export const PROVIDER_DISPLAY_LABELS: Record<Exclude<AIProviderId, 'none'>, string> = {
+    anthropic: 'Anthropic',
+    openai: 'OpenAI',
+    google: 'Google',
+    ollama: 'Local LLM'
+};
+
 const OPENAI_PICKER_CHANNEL_ORDER: ReadonlyArray<ModelReleaseChannel> = ['stable', 'pro', 'rollback'];
 
 function isLatestCompatibilityAlias(model: ModelInfo): boolean {

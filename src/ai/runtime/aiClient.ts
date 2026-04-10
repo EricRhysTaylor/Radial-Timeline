@@ -9,7 +9,7 @@ import { modelSupportsSystemRole, sanitizeDispatchParams, type AiProvider, type 
 import { ModelRegistry } from '../registry/modelRegistry';
 import { findSnapshotModel, loadProviderSnapshot, type ProviderSnapshotLoadResult } from '../registry/providerSnapshot';
 import { loadRemotePricing, type RemotePricingLoadResult } from '../cost/remotePricing';
-import { mergeRemotePricing } from '../cost/providerPricing';
+import { mergeRemotePricing, getActivePricingTable } from '../cost/providerPricing';
 import { cacheResolvedModel } from '../../utils/modelResolver';
 import { selectModel } from '../router/selectModel';
 import { resolveActiveRoleTemplate } from '../roleTemplate';
@@ -261,12 +261,38 @@ export class AIClient {
             this.refreshProviderSnapshot(forceRemote),
             this.refreshPricing()
         ]);
+        this.validateRegistryPricingAlignment();
         return {
             registry,
             snapshot,
             pricing,
             lastUpdatedAt: this.getLastModelUpdateAt()
         };
+    }
+
+    private validateRegistryPricingAlignment(): void {
+        const registryModels = this.registry.getAll();
+        const pricingTable = getActivePricingTable();
+        const cloudProviders: AIProviderId[] = ['anthropic', 'openai', 'google'];
+
+        for (const model of registryModels) {
+            if (!cloudProviders.includes(model.provider)) continue;
+            const providerPricing = pricingTable[model.provider];
+            if (!providerPricing?.[model.id]) {
+                console.debug(`[AI] Registry model ${model.provider}:${model.id} has no pricing entry.`);
+            }
+        }
+
+        for (const provider of cloudProviders) {
+            const providerPricing = pricingTable[provider];
+            if (!providerPricing) continue;
+            for (const modelId of Object.keys(providerPricing)) {
+                const inRegistry = registryModels.some(m => m.provider === provider && m.id === modelId);
+                if (!inRegistry) {
+                    console.debug(`[AI] Pricing entry ${provider}:${modelId} has no registry model.`);
+                }
+            }
+        }
     }
 
     async refreshModelDataIfStale(maxAgeMs = 24 * 60 * 60 * 1000): Promise<boolean> {
