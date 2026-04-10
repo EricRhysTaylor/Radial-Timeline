@@ -175,6 +175,7 @@ export class InquiryOmnibusModal extends Modal {
     private selectedScope: InquiryScope;
     private createIndex = true;
     private runDisabledReason?: string | null;
+    private badgeEl?: HTMLSpanElement;
     private isRunning = false;
     private abortRequested = false;
     private progressEl?: HTMLDivElement;
@@ -207,7 +208,7 @@ export class InquiryOmnibusModal extends Modal {
         contentEl.addClass('ert-modal-container', 'ert-stack');
 
         const header = contentEl.createDiv({ cls: 'ert-modal-header' });
-        header.createSpan({ cls: 'ert-modal-badge', text: 'Inquiry' });
+        this.badgeEl = header.createSpan({ cls: 'ert-modal-badge' });
         header.createDiv({ cls: 'ert-modal-title', text: 'Run Omnibus Pass' });
         header.createDiv({ cls: 'ert-modal-subtitle', text: 'Runs all enabled Inquiry questions for the selected scope.' });
 
@@ -248,36 +249,44 @@ export class InquiryOmnibusModal extends Modal {
 
         const summaryGrid = panel.createDiv({ cls: 'ert-apr-status-grid ert-omnibus-summary-grid' });
         const summaryHeaderRow = summaryGrid.createDiv({ cls: 'ert-apr-status-row ert-apr-status-row--header' });
-        ['Scope', 'Questions', 'Provider', 'Index'].forEach(label => {
+        ['Scope', 'Questions', 'Provider'].forEach(label => {
             summaryHeaderRow.createDiv({
                 text: label,
                 cls: 'ert-apr-status-cell ert-apr-status-cell--header'
             });
         });
+        const indexHeader = summaryHeaderRow.createDiv({ cls: 'ert-apr-status-cell ert-apr-status-cell--header' });
+        const indexHeaderInline = indexHeader.createDiv({ cls: 'ert-inline' });
+        indexHeaderInline.createSpan({ text: 'Index' });
+        const indexHelp = indexHeaderInline.createSpan({ cls: 'ert-help-dot', text: '?' });
+        setTooltip(
+            indexHelp,
+            'Creates an omnibus index note so the full pass can be reopened and reviewed from one place.'
+        );
 
         const summaryRow = summaryGrid.createDiv({ cls: 'ert-apr-status-row ert-apr-status-row--data' });
         const scopeCell = summaryRow.createDiv({ cls: 'ert-apr-status-cell' });
         const scopePillRow = scopeCell.createDiv({ cls: 'ert-inline' });
         const bookPill = scopePillRow.createEl('button', {
-            cls: 'ert-badgePill ert-badgePill--sm ert-omnibus-pill',
+            cls: 'ert-badgePill ert-badgePill--sm ert-omnibus-pill ert-omnibus-table-pill',
             text: `Book (${this.options.bookLabel})`,
             type: 'button'
         });
         const sagaPill = scopePillRow.createEl('button', {
-            cls: 'ert-badgePill ert-badgePill--sm ert-omnibus-pill',
+            cls: 'ert-badgePill ert-badgePill--sm ert-omnibus-pill ert-omnibus-table-pill',
             text: `Saga (${SIGMA_CHAR})`,
             type: 'button'
         });
 
         const totalCell = summaryRow.createDiv({ cls: 'ert-apr-status-cell' });
         totalCell.createSpan({
-            cls: 'ert-badgePill ert-badgePill--sm',
+            cls: 'ert-badgePill ert-badgePill--sm ert-omnibus-table-pill',
             text: `${this.options.questions.length} questions`
         });
 
         const providerCell = summaryRow.createDiv({ cls: 'ert-apr-status-cell' });
         const providerPill = providerCell.createSpan({
-            cls: 'ert-badgePill ert-badgePill--sm',
+            cls: 'ert-badgePill ert-badgePill--sm ert-omnibus-table-pill',
             text: this.options.providerLabel
         });
         setTooltip(providerPill, this.options.providerSummary);
@@ -305,9 +314,12 @@ export class InquiryOmnibusModal extends Modal {
         const scopePills: HTMLSpanElement[] = [];
         const getScopeLabel = (scope: InquiryScope): string =>
             scope === 'saga' ? `Saga (${SIGMA_CHAR})` : `Book (${this.options.bookLabel})`;
+        const getBadgeLabel = (scope: InquiryScope): string =>
+            scope === 'saga' ? `Inquiry · Saga (${SIGMA_CHAR})` : `Inquiry · Book (${this.options.bookLabel})`;
 
         const updateScopeSelection = (scope: InquiryScope): void => {
             this.selectedScope = scope;
+            this.badgeEl?.setText(getBadgeLabel(scope));
             const scopeLabel = getScopeLabel(scope);
             scopePills.forEach(pill => pill.setText(scopeLabel));
             bookPill.classList.toggle('is-active', scope === 'book');
@@ -333,24 +345,24 @@ export class InquiryOmnibusModal extends Modal {
                 const dataRow = questionGrid.createDiv({ cls: 'ert-apr-status-row ert-apr-status-row--data' });
 
                 const zoneCell = dataRow.createDiv({ cls: 'ert-apr-status-cell' });
-                zoneCell.createSpan({ cls: 'ert-badgePill ert-badgePill--sm', text: zoneLabel });
+                zoneCell.createSpan({ cls: 'ert-badgePill ert-badgePill--sm ert-omnibus-table-pill', text: zoneLabel });
 
                 const questionCell = dataRow.createDiv({ cls: 'ert-apr-status-cell ert-omnibus-question-cell' });
                 const questionText = questionCell.createSpan({ cls: 'ert-omnibus-question', text: question.standardPrompt });
                 setTooltip(questionText, question.standardPrompt);
 
                 const lensCell = dataRow.createDiv({ cls: 'ert-apr-status-cell' });
-                lensCell.createSpan({ cls: 'ert-badgePill ert-badgePill--sm', text: lensLabel });
+                lensCell.createSpan({ cls: 'ert-badgePill ert-badgePill--sm ert-omnibus-table-pill', text: lensLabel });
 
                 const scopeCell = dataRow.createDiv({ cls: 'ert-apr-status-cell' });
                 const scopePill = scopeCell.createSpan({
-                    cls: 'ert-badgePill ert-badgePill--sm',
+                    cls: 'ert-badgePill ert-badgePill--sm ert-omnibus-table-pill',
                     text: getScopeLabel(this.selectedScope)
                 });
                 scopePills.push(scopePill);
 
                 const statusCell = dataRow.createDiv({ cls: 'ert-apr-status-cell' });
-                statusCell.createSpan({ cls: 'ert-badgePill ert-badgePill--sm', text: 'Brief + Log' });
+                statusCell.createSpan({ cls: 'ert-badgePill ert-badgePill--sm ert-omnibus-table-pill', text: 'Brief + Log' });
             });
         });
 

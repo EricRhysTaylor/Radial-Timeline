@@ -1,4 +1,4 @@
-import { App, Modal, Setting, Notice, normalizePath, ButtonComponent, TextAreaComponent, TextComponent } from 'obsidian';
+import { App, Modal, Setting, Notice, normalizePath, ButtonComponent, DropdownComponent, TextAreaComponent, TextComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import { createBeatNotesFromSet } from '../utils/beatsTemplates';
 import { generateSceneContent, SceneCreationData } from '../utils/sceneGenerator';
@@ -6,11 +6,11 @@ import { getTemplateParts } from '../utils/yamlTemplateNormalize';
 import { parseDuration, parseDurationDetail } from '../utils/date';
 import { getCustomSystemFromSettings, getPlotSystem } from '../utils/beatsSystems';
 import type { BookDesignerTemplate, BookDesignerSceneAssignment } from '../types/settings';
-import { ModalFolderSuggest } from '../settings/FolderSuggest';
 import { ensureSceneTemplateFrontmatter } from '../utils/sceneIds';
 import { getActiveLoadedBeatTab } from '../storyBeats/workspaceState';
 import { getCustomBeatConfigKey, replaceSavedBeatSystem, resolveSelectedBeatModelFromSettings } from '../utils/beatSystemState';
 import { replayTransientClass } from '../utils/domClassEffects';
+import { getActiveBook } from '../utils/books';
 import {
     NONLINEAR_DEMO_ACT_COUNT,
     NONLINEAR_DEMO_DEFAULT_START_DATE,
@@ -239,6 +239,7 @@ export class BookDesignerModal extends Modal {
     private character: string = DEFAULT_CHARACTERS;
     private templateType: 'base' | 'advanced';
     private generateBeats: boolean = false;
+    private targetBookId: string = '';
     private targetPath: string = '';
 
     // Preview
@@ -262,7 +263,7 @@ export class BookDesignerModal extends Modal {
     private timeIncrementInput: TextComponent | null = null;
     private scenesInput: TextComponent | null = null;
     private targetRangeInput: TextComponent | null = null;
-    private targetPathInput: TextComponent | null = null;
+    private targetBookDropdown: DropdownComponent | null = null;
     private subplotsInput: TextAreaComponent | null = null;
     private characterInput: TextAreaComponent | null = null;
     private templateDropdown: HTMLSelectElement | null = null;
@@ -285,6 +286,47 @@ export class BookDesignerModal extends Modal {
         return Math.min(10, Math.max(3, parsed));
     }
 
+    private getBookProfiles() {
+        return this.plugin.settings.books ?? [];
+    }
+
+    private getSelectedBook() {
+        const books = this.getBookProfiles();
+        if (!books.length) return null;
+        const selected = this.targetBookId
+            ? books.find(book => book.id === this.targetBookId)
+            : undefined;
+        return selected ?? getActiveBook(this.plugin.settings) ?? books[0] ?? null;
+    }
+
+    private getSelectedBookTitle(): string {
+        const book = this.getSelectedBook();
+        return book?.title?.trim() || 'No book selected';
+    }
+
+    private getSelectedBookFolder(): string {
+        const book = this.getSelectedBook();
+        return (book?.sourceFolder || '').trim();
+    }
+
+    private syncTargetBookSelection(): void {
+        const selected = this.getSelectedBook();
+        this.targetBookId = selected?.id ?? '';
+        this.targetPath = this.getSelectedBookFolder();
+        if (this.targetBookDropdown) {
+            this.targetBookDropdown.setValue(this.targetBookId);
+        }
+        this.updateHeroMeta();
+        this.refreshBeatExistsWarning();
+    }
+
+    private findBookIdByLegacyTargetPath(path: string | undefined): string {
+        const normalizedTarget = normalizePath((path || '').trim());
+        if (!normalizedTarget) return '';
+        const match = this.getBookProfiles().find(book => normalizePath((book.sourceFolder || '').trim()) === normalizedTarget);
+        return match?.id ?? '';
+    }
+
     private normalizeSelectedActs(maxActs: number): number[] {
         const unique = Array.from(new Set(this.selectedActs)).filter(a => a >= 1 && a <= maxActs);
         if (unique.length > 0) return unique.sort((a, b) => a - b);
@@ -293,7 +335,7 @@ export class BookDesignerModal extends Modal {
 
     /** Check if beat notes already exist in the target folder and update the Yes pill. */
     private refreshBeatExistsWarning(): void {
-        const folder = this.targetPath ? normalizePath(this.targetPath.trim()) : '';
+        const folder = this.getSelectedBookFolder();
         const exists = this.app.vault.getMarkdownFiles().some(f => {
             if (folder && !f.path.startsWith(folder + '/')) return false;
             if (!folder && f.path.includes('/')) return false;
@@ -488,8 +530,7 @@ export class BookDesignerModal extends Modal {
 
     private updateHeroMeta(): void {
         if (this.heroLocationMeta) {
-            const displayPath = this.targetPath || 'vault root';
-            this.heroLocationMeta.setText(`Location: ${displayPath}`);
+            this.heroLocationMeta.setText(this.getSelectedBookTitle());
         }
 
         if (this.heroModeMeta) {
@@ -590,6 +631,7 @@ export class BookDesignerModal extends Modal {
             characters,
             generateBeats: this.generateBeats,
             assignments: assignments.map(a => ({ ...a })),
+            targetBookId: this.targetBookId || undefined,
             targetPath: this.targetPath || undefined
         };
 
@@ -623,7 +665,9 @@ export class BookDesignerModal extends Modal {
         this.subplots = template.subplots.join('\n') || 'Main Plot';
         this.character = template.characters.join('\n') || 'Hero';
         this.generateBeats = template.generateBeats;
-        this.targetPath = template.targetPath ?? this.plugin.settings.sourcePath;
+        const templatedBookId = template.targetBookId?.trim() || this.findBookIdByLegacyTargetPath(template.targetPath);
+        this.targetBookId = templatedBookId || (getActiveBook(this.plugin.settings)?.id ?? this.getBookProfiles()[0]?.id ?? '');
+        this.targetPath = this.getSelectedBookFolder();
 
         const subplotCount = Math.max(1, template.subplots.length || this.parseSubplots().length);
         const coerced = this.coerceAssignments(template.assignments, subplotCount, this.selectedActs);
@@ -643,7 +687,7 @@ export class BookDesignerModal extends Modal {
         if (this.timeIncrementInput) this.timeIncrementInput.setValue(this.timeIncrement);
         if (this.scenesInput) this.scenesInput.setValue(this.scenesToGenerate.toString());
         if (this.targetRangeInput) this.targetRangeInput.setValue(this.targetRangeMax.toString());
-        if (this.targetPathInput) this.targetPathInput.setValue(this.targetPath);
+        if (this.targetBookDropdown) this.targetBookDropdown.setValue(this.targetBookId);
         if (this.subplotsInput) this.subplotsInput.setValue(this.subplots);
         if (this.characterInput) this.characterInput.setValue(this.character);
 
@@ -686,7 +730,9 @@ export class BookDesignerModal extends Modal {
         this.beatPills = [];
         this.heroLocationMeta = null;
         this.heroModeMeta = null;
-        this.targetPath = this.plugin.settings.sourcePath;
+        const activeBook = getActiveBook(this.plugin.settings);
+        this.targetBookId = activeBook?.id ?? this.getBookProfiles()[0]?.id ?? '';
+        this.targetPath = this.getSelectedBookFolder();
 
         // Use generic modal system + Book Designer specific class
         if (modalEl) {
@@ -699,14 +745,12 @@ export class BookDesignerModal extends Modal {
         contentEl.addClass('rt-book-designer-modal');
         contentEl.addClass('rt-manuscript-surface');
 
-
-        const displayPath = this.targetPath || 'vault root';
         // Hero Header using generic modal system
         const hero = contentEl.createDiv({ cls: 'ert-modal-header' });
         const heroBadge = hero.createSpan({ cls: 'ert-modal-badge rt-book-designer-badge' });
         heroBadge.createSpan({ cls: 'rt-book-designer-badge-label', text: 'SETUP' });
         heroBadge.createSpan({ cls: 'rt-book-designer-badge-sep', text: '•' });
-        this.heroLocationMeta = heroBadge.createSpan({ cls: 'rt-book-designer-badge-detail', text: `Location: ${displayPath}` });
+        this.heroLocationMeta = heroBadge.createSpan({ cls: 'rt-book-designer-badge-detail', text: this.getSelectedBookTitle() });
         heroBadge.createSpan({ cls: 'rt-book-designer-badge-sep', text: '•' });
         this.heroModeMeta = heroBadge.createSpan({ cls: 'rt-book-designer-badge-detail rt-book-designer-badge-mode rt-meta-auto', text: 'Auto mode' });
         hero.createDiv({ cls: 'ert-modal-title', text: 'Book designer' });
@@ -719,28 +763,36 @@ export class BookDesignerModal extends Modal {
         const structCard = scrollContainer.createDiv({ cls: 'rt-glass-card rt-sub-card' });
         structCard.createDiv({ cls: 'rt-sub-card-head', text: 'Location & Structure' });
 
-        // Target book folder
+        // Target book
         new Setting(structCard)
-            .setName('Target book folder')
-            .setDesc('Where scenes and beats will be created. Defaults to the global source path.')
-            .addText(text => {
-                this.targetPathInput = text;
-                text.setValue(this.targetPath)
-                    .setPlaceholder('vault root');
-                text.inputEl.addClass('rt-input-lg');
-                new ModalFolderSuggest(this.app, text.inputEl, (path: string) => {
-                    this.targetPath = path;
-                    text.setValue(path);
-                    this.updateHeroMeta();
-                    this.refreshBeatExistsWarning();
-                });
-                text.inputEl.addEventListener('blur', () => {
-                    const raw = text.getValue().trim();
-                    this.targetPath = raw;
-                    this.updateHeroMeta();
-                    this.refreshBeatExistsWarning();
+            .setName('Target book')
+            .setDesc('Choose the Book Manager project where scenes and beats will be created.')
+            .addDropdown(drop => {
+                this.targetBookDropdown = drop;
+                drop.selectEl.addClass('ert-input', 'ert-input--lg');
+                const books = this.getBookProfiles();
+                if (!books.length) {
+                    drop.addOption('', 'No books configured');
+                    drop.setValue('');
+                    drop.setDisabled(true);
+                    return;
+                }
+                for (const book of books) {
+                    drop.addOption(book.id, book.title?.trim() || 'Untitled');
+                }
+                this.syncTargetBookSelection();
+                drop.onChange(value => {
+                    this.targetBookId = value;
+                    this.syncTargetBookSelection();
                 });
             });
+
+        if (this.getBookProfiles().length === 0) {
+            structCard.createDiv({
+                cls: 'rt-sub-card-note',
+                text: 'Add a book in Book Manager and set its folder before generating a scaffold here.'
+            });
+        }
 
         // Time Increment Setting
         new Setting(structCard)
@@ -1135,14 +1187,6 @@ export class BookDesignerModal extends Modal {
             btn.style.cursor = 'pointer';
         });
 
-        // Prevent AbstractInputSuggest from firing on modal open:
-        // Obsidian auto-focuses the first focusable element (the folder input),
-        // which triggers the suggestion dropdown. Defocus it after render.
-        requestAnimationFrame(() => {
-            if (this.targetPathInput) {
-                this.targetPathInput.inputEl.blur();
-            }
-        });
     }
 
     private updateTargetDesc(setting: Setting): void {
@@ -1542,7 +1586,12 @@ export class BookDesignerModal extends Modal {
 
     private async generateNonlinearDemoProject(startDate: string): Promise<void> {
         const vault = this.plugin.app.vault;
-        const targetFolder = this.targetPath ? normalizePath(this.targetPath.trim()) : '';
+        const targetFolder = this.getSelectedBookFolder();
+
+        if (!targetFolder) {
+            new Notice('Select a Book Manager book with a folder before generating a demo project.');
+            return;
+        }
 
         if (targetFolder && !vault.getAbstractFileByPath(targetFolder)) {
             try {
@@ -1619,8 +1668,13 @@ export class BookDesignerModal extends Modal {
 
     async generateBook(): Promise<void> {
         const vault = this.plugin.app.vault;
-        const targetPath = this.targetPath;
+        const targetPath = this.getSelectedBookFolder();
         const targetFolder = targetPath ? normalizePath(targetPath.trim()) : '';
+
+        if (!targetFolder) {
+            new Notice('Select a Book Manager book with a folder before generating scenes.');
+            return;
+        }
 
         // Ensure folder exists
         if (targetFolder && !vault.getAbstractFileByPath(targetFolder)) {

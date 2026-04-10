@@ -22,6 +22,7 @@ export interface BookDesignerTemplate {
     characters: string[];
     generateBeats: boolean;
     assignments: BookDesignerSceneAssignment[];
+    targetBookId?: string;
     targetPath?: string;
 }
 

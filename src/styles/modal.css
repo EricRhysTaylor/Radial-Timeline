@@ -70,6 +70,11 @@
   display: none;
 }
 
+/* Settings gear pinned left in modal actions row */
+.ert-ui.ert-scope--modal .ert-modal-actions .ert-modal-settings-btn {
+  margin-right: auto;
+}
+
 /* ert-modal-actions base consolidated in rt-ui.css */
 
 .rt-pulse-modal .ert-modal-actions {
@@ -81,6 +86,14 @@
   width: 720px;
   max-width: 92vw;
   max-height: 92vh;
+}
+
+/* Badge row — keeps PRO pill and mode badge on one line */
+.ert-modal-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 /* Pro badge styling - used in manuscript modal and runtime modal */
@@ -105,16 +118,6 @@
   stroke: var(--rt-pro-color, #d946ef);
   stroke-width: 2;
   fill: none;
-}
-
-.ert-runtime-mode-info {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--ert-gap-xs);
-  font-size: 0.75rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-muted);
 }
 
 /* Rename Subplot Modal sizing */
@@ -358,19 +361,36 @@
   border: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 10px;
 }
 
 .rt-planetary-modal .setting-item {
   border-top: none;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: none;
   padding: 12px 0;
+}
+
+.rt-planetary-modal .setting-item + .setting-item {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Match date and time inputs to the same theme style */
+.rt-planetary-modal input[type="date"],
+.rt-planetary-modal input[type="time"] {
+  background-color: var(--background-primary-alt);
+  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--input-radius);
+  padding: var(--size-2-3) var(--size-4-3);
+  font-size: var(--font-ui-medium);
+  color-scheme: dark;
 }
 
 .rt-planetary-modal .ert-modal-header {
   padding-bottom: 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   margin-bottom: 0;
+  border-bottom: none;
 }
 
 .rt-planetary-modal-result-row {
@@ -1335,6 +1355,12 @@
   margin-top: 4px;
 }
 
+/* Keep score label/value readable on hover in the manual update modal */
+.rt-gossamer-score-modal .rt-gossamer-score-item-container:hover .rt-gossamer-score-value,
+.rt-gossamer-score-modal .rt-gossamer-score-item-container:hover .rt-gossamer-score-label {
+  color: var(--text-normal);
+}
+
 .rt-purge-issues-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -1889,6 +1915,10 @@
 
 .ert-ui.ert-scope--modal .ert-omnibus-pill {
   cursor: pointer;
+}
+
+.ert-ui.ert-scope--modal .ert-omnibus-table-pill {
+  font-weight: 400;
 }
 
 .ert-ui.ert-scope--modal .ert-omnibus-pill.is-active {

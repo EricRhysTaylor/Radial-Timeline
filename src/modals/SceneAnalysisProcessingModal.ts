@@ -16,6 +16,7 @@ import type { AIRunAdvancedContext } from '../ai/types';
 import { redactSensitiveValue } from '../ai/credentials/redactSensitive';
 import { getCanonicalAiSettings, resolveConfiguredSelection } from '../ai/runtime/runtimeSelection';
 import { getLocalLlmSettings, LOCAL_LLM_BACKEND_LABELS } from '../ai/localLlm/settings';
+import { getActiveBookTitle } from '../utils/books';
 
 export type ProcessingMode = 'flagged' | 'unprocessed' | 'force-all' | 'synopsis-flagged' | 'synopsis-missing-weak' | 'synopsis-missing' | 'synopsis-all';
 
@@ -256,8 +257,10 @@ export class SceneAnalysisProcessingModal extends Modal {
         // Use flat header style matching Book Designer (no border/background on header)
         const hero = parent.createDiv({ cls: 'ert-modal-header' });
         const modelLabel = this.getActiveModelDisplayName();
+        const bookTitle = getActiveBookTitle(this.plugin.settings);
         const badgeLabel = this.taskType === 'synopsis' ? 'AI Summary' : 'AI Pulse Run';
-        const badgeText = modelLabel ? `${badgeLabel} · ${modelLabel}` : badgeLabel;
+        const parts = [badgeLabel, bookTitle, modelLabel].filter(Boolean);
+        const badgeText = parts.join(' · ');
         hero.createSpan({ text: badgeText, cls: 'rt-scene-analysis-badge' });
         hero.createDiv({ text: this.getProcessingTitle(), cls: 'ert-modal-title' });
         const subtitleText = options?.subtitle ?? this.getProcessingSubtitle();

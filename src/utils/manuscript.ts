@@ -9,6 +9,7 @@ import { getActiveBookExportContext } from './exportContext';
 import { normalizeMatterBodyMode, parseMatterMetaFromFrontmatter, type MatterBodyMode } from './matterMeta';
 import { normalizeFrontmatterKeys } from './frontmatter';
 import { groupTimelineChapterMarkersByScenePath, resolveTimelineChapterMarkers, type TimelineChapterMarker } from './timelineChapters';
+import { cleanEvidenceBody } from '../inquiry/utils/evidenceCleaning';
 
 export interface SceneContent {
   title: string;
@@ -95,6 +96,14 @@ function warnMatterLikeWithoutClass(scene: TimelineItem): void {
  */
 export function extractBodyText(content: string): string {
   return content.replace(/\r\n?/g, '\n').trim();
+}
+
+/**
+ * Extract the body text basis used for manuscript word counts.
+ * Excludes YAML frontmatter and draft-only comment syntax.
+ */
+export function extractCountableBodyText(content: string): string {
+  return cleanEvidenceBody(content.replace(/\r\n?/g, '\n'));
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -480,13 +489,19 @@ export async function getSceneFilesByOrder(
     const rt = rf?.Runtime as string | number | undefined;
     runtimes.push(parseRuntimeField(rt));
 
+    let fallbackWordCount: number | null = null;
     const w = rf?.Words;
-    if (typeof w === 'number') wordCounts.push(w);
+    if (typeof w === 'number') fallbackWordCount = w;
     else if (typeof w === 'string') {
       const parsed = parseInt(w, 10);
-      wordCounts.push(Number.isFinite(parsed) ? parsed : null);
-    } else {
-      wordCounts.push(null);
+      fallbackWordCount = Number.isFinite(parsed) ? parsed : null;
+    }
+
+    try {
+      const raw = await app.vault.cachedRead(file);
+      wordCounts.push(countWords(extractCountableBodyText(raw)));
+    } catch {
+      wordCounts.push(fallbackWordCount);
     }
 
     if (isMatterItem(scene) && scene.path) {
@@ -849,6 +864,7 @@ export async function assembleManuscript(
         endMatterChrome();
       }
       const bodyText = extractBodyText(content);
+      const countableBodyText = extractCountableBodyText(content);
       const declaredMode = normalizeMatterBodyMode(matterMeta?.bodyMode);
       const chosenBodyMode = resolveEffectiveBodyMode(bodyText, declaredMode);
 
@@ -866,7 +882,7 @@ export async function assembleManuscript(
 
       if (matterMeta?.role === 'copyright' && matterMeta?.usesBookMeta && bookMeta) {
         const rendered = renderCopyrightPage(bookMeta, bodyText, chosenBodyMode);
-        const wordCount = countWords(bodyText);
+        const wordCount = countWords(countableBodyText);
 
         scenes.push({ title, bodyText: rendered, wordCount });
         totalWords += wordCount;
@@ -874,13 +890,13 @@ export async function assembleManuscript(
         // No ## heading for copyright page — it's a layout-only page
         textParts.push(`${rendered}\n\n`);
       } else if (isMatterNote && chosenBodyMode === 'latex') {
-        const wordCount = countWords(bodyText);
+        const wordCount = countWords(countableBodyText);
         scenes.push({ title, bodyText, wordCount });
         totalWords += wordCount;
         textParts.push(`${bodyText}\n\n`);
       } else {
         // ── Normal rendering path ──────────────────────────────────────
-        const wordCount = countWords(bodyText);
+        const wordCount = countWords(countableBodyText);
         if (modernClassicState.enabled && !isMatterNote) {
           const beatRef = extractSceneBeatReference(content);
           const beatDef = resolveModernClassicBeatDefinition(modernClassicState, beatRef);
