@@ -482,7 +482,7 @@ export class InquiryView extends ItemView {
     private previewRows: InquiryPreviewRow[] = [];
     private previewRowDefaultLabels: string[] = [];
     private previewHideTimer?: number;
-    private previewLast?: { zone: InquiryZone; question: string };
+    private previewLast?: { zone: InquiryZone; question: string; questionId?: string };
     private previewLocked = false;
     private previewShimmerGroup?: SVGGElement;
     private previewShimmerMask?: SVGMaskElement;
@@ -2790,7 +2790,8 @@ export class InquiryView extends ItemView {
                     this.state.mode,
                     prompt
                         ? this.resolveQuestionPromptForRun(prompt, this.getSelectionMode(this.getActiveTargetSceneIds()), this.getEffectivePromptOverride(promptId))
-                        : promptText
+                        : promptText,
+                    prompt?.id
                 );
             },
             onPromptHoverEnd: () => {
@@ -2937,7 +2938,8 @@ export class InquiryView extends ItemView {
                         this.showPromptPreview(
                             zone.id,
                             this.state.mode,
-                            this.resolveQuestionPromptForRun(prompt, this.getSelectionMode(this.getActiveTargetSceneIds()), this.getEffectivePromptOverride(prompt.id))
+                            this.resolveQuestionPromptForRun(prompt, this.getSelectionMode(this.getActiveTargetSceneIds()), this.getEffectivePromptOverride(prompt.id)),
+                            prompt.id
                         );
                     }
                     this.setHoverText(this.buildZoneHoverText(zone.id));
@@ -5441,7 +5443,14 @@ export class InquiryView extends ItemView {
             }
         }
         if (!this.previewLocked && this.previewGroup?.classList.contains('is-visible') && this.previewLast) {
-            this.updatePromptPreview(this.previewLast.zone, mode, this.previewLast.question, undefined, undefined, { hideEmpty: true });
+            this.updatePromptPreview(
+                this.previewLast.zone,
+                mode,
+                this.previewLast.question,
+                this.getPreviewPayloadRows(this.previewLast.zone, this.previewLast.questionId),
+                undefined,
+                { hideEmpty: true }
+            );
         }
     }
 
@@ -5578,6 +5587,7 @@ export class InquiryView extends ItemView {
         const effectiveOverride = options?.promptOverride ?? this.getEffectivePromptOverride(question.id);
         const questionText = this.resolveQuestionPromptForRun(question, selectionMode, effectiveOverride);
         const questionPromptForm = this.resolveQuestionPromptFormForRun(question, selectionMode, effectiveOverride);
+        const questionSignature = this.buildQuestionSignature(questionText);
         const activeBookId = this.state.scope === 'saga' ? this.state.activeBookId : this.state.activeBookId;
 
         const engineSelection = this.resolveEngineSelectionForRun();
@@ -5592,6 +5602,7 @@ export class InquiryView extends ItemView {
         const baseKey = this.sessionStore.buildBaseKey({
             questionId: question.id,
             questionPromptForm,
+            questionSignature,
             scope: this.state.scope,
             scopeKey,
             targetSceneIds
@@ -6247,6 +6258,8 @@ export class InquiryView extends ItemView {
         const normalizationNotes = this.collectNormalizationNotes(tracedResult, normalized);
         const baseKey = this.sessionStore.buildBaseKey({
             questionId: normalized.questionId,
+            questionPromptForm: normalized.questionPromptForm,
+            questionSignature: this.buildQuestionSignature(normalized.questionText),
             scope: normalized.scope,
             scopeKey: options.scopeKey,
             targetSceneIds: options.targetSceneIds
@@ -7048,6 +7061,7 @@ export class InquiryView extends ItemView {
         const selectionMode = this.getSelectionMode(targetSceneIds);
         const questionText = this.resolveQuestionPromptForRun(selectedPrompt, selectionMode);
         const questionPromptForm = this.resolveQuestionPromptFormForRun(selectedPrompt, selectionMode);
+        const questionSignature = this.buildQuestionSignature(questionText);
         this.lockPromptPreview(selectedPrompt, questionText);
 
         const manifest = this.buildCorpusManifest(selectedPrompt.id, {
@@ -7063,6 +7077,7 @@ export class InquiryView extends ItemView {
         const baseKey = this.sessionStore.buildBaseKey({
             questionId: selectedPrompt.id,
             questionPromptForm,
+            questionSignature,
             scope: this.state.scope,
             scopeKey,
             targetSceneIds
@@ -8274,7 +8289,7 @@ export class InquiryView extends ItemView {
         }
     }
 
-    private showPromptPreview(zone: InquiryZone, mode: InquiryLens, question: string): void {
+    private showPromptPreview(zone: InquiryZone, mode: InquiryLens, question: string, questionId?: string): void {
         if (this.previewLocked) return;
         if (!this.previewGroup) return;
         if (this.previewHideTimer) {
@@ -8284,8 +8299,8 @@ export class InquiryView extends ItemView {
         this.previewGroup.classList.remove('is-error');
         this.setPreviewShimmerEnabled(false);
         this.setPreviewRunningNoteText('');
-        this.previewLast = { zone, question };
-        this.updatePromptPreview(zone, mode, question, undefined, undefined, { hideEmpty: true });
+        this.previewLast = { zone, question, questionId };
+        this.updatePromptPreview(zone, mode, question, this.getPreviewPayloadRows(zone, questionId), undefined, { hideEmpty: true });
         this.previewGroup.classList.add('is-visible');
         this.lastReadinessUiState = this.buildReadinessUiState();
         this.updateMinimapPressureGauge();
@@ -8367,7 +8382,7 @@ export class InquiryView extends ItemView {
                 this.previewLast.zone,
                 this.state.mode,
                 this.previewLast.question,
-                undefined,
+                this.getPreviewPayloadRows(this.previewLast.zone, this.previewLast.questionId),
                 undefined,
                 { hideEmpty: true }
             );
@@ -8745,7 +8760,7 @@ export class InquiryView extends ItemView {
             zone,
             mode,
             question,
-            rows: rowsOverride ?? this.getPreviewPayloadRows(),
+            rows: rowsOverride ?? this.getPreviewPayloadRows(zone, this.previewLast?.questionId),
             metaOverride,
             hideEmpty: layoutOptions?.hideEmpty,
             isRunning: this.state.isRunning,
@@ -9239,7 +9254,7 @@ export class InquiryView extends ItemView {
             window.clearTimeout(this.previewHideTimer);
             this.previewHideTimer = undefined;
         }
-        const rows = this.getPreviewPayloadRows();
+        const rows = this.getPreviewPayloadRows(question.zone, question.id);
         this.previewLocked = true;
         this.previewGroup.classList.add('is-visible', 'is-locked');
         this.previewGroup.classList.remove('is-results');
@@ -9248,6 +9263,7 @@ export class InquiryView extends ItemView {
         this.setPreviewRunningNoteText(this.buildRunningStatusNote(questionText));
         this.setPreviewFooterText('');
         this.resetPreviewRowLabels();
+        this.previewLast = { zone: question.zone, question: questionText, questionId: question.id };
         this.updatePromptPreview(question.zone, this.state.mode, questionText, rows, undefined, { hideEmpty: true });
         this.lastReadinessUiState = this.buildReadinessUiState();
         this.updateMinimapPressureGauge();
@@ -9438,7 +9454,7 @@ export class InquiryView extends ItemView {
                 this.previewLast.zone,
                 this.state.mode,
                 this.previewLast.question,
-                undefined,
+                this.getPreviewPayloadRows(this.previewLast.zone, this.previewLast.questionId),
                 undefined,
                 { hideEmpty: true }
             );
@@ -9712,7 +9728,7 @@ export class InquiryView extends ItemView {
         return String(raw).trim();
     }
 
-    private getPreviewPayloadRows(): string[] {
+    private getPreviewPayloadRows(zone?: InquiryZone, questionId?: string): string[] {
         return [
             this.getPreviewScopeValue(),
             this.getPreviewScenesValue(),
@@ -9720,7 +9736,7 @@ export class InquiryView extends ItemView {
             this.getPreviewModelValue(),
             this.getPreviewTokensValue(),
             this.getPreviewCostValue(),
-            this.getPreviewHistoryValue()
+            this.getPreviewHistoryValue(zone, questionId)
         ];
     }
 
@@ -9788,9 +9804,19 @@ export class InquiryView extends ItemView {
         }
     }
 
-    private getPreviewHistoryValue(): string {
-        const activeZone = this.state.activeZone ?? 'setup';
-        const activeQuestion = this.getActivePrompt(activeZone);
+    private buildQuestionSignature(questionText?: string | null): string {
+        const normalized = (questionText ?? '')
+            .trim()
+            .toLowerCase()
+            .replace(/\s+/g, ' ');
+        return this.hashString(normalized || 'question');
+    }
+
+    private getPreviewHistoryValue(zone?: InquiryZone, questionId?: string): string {
+        const effectiveZone = zone ?? this.previewLast?.zone ?? this.state.activeZone ?? 'setup';
+        const activeQuestion = questionId
+            ? this.getPromptOptions(effectiveZone).find(prompt => prompt.id === questionId)
+            : this.getActivePrompt(effectiveZone);
         if (!activeQuestion) return '';
         const targetSceneIds = this.getActiveTargetSceneIds();
         const selectionMode = this.getSelectionMode(targetSceneIds);
@@ -9799,9 +9825,15 @@ export class InquiryView extends ItemView {
             selectionMode,
             this.getEffectivePromptOverride(activeQuestion.id)
         );
+        const questionText = this.resolveQuestionPromptForRun(
+            activeQuestion,
+            selectionMode,
+            this.getEffectivePromptOverride(activeQuestion.id)
+        );
         const baseKey = this.sessionStore.buildBaseKey({
             questionId: activeQuestion.id,
             questionPromptForm,
+            questionSignature: this.buildQuestionSignature(questionText),
             scope: this.state.scope,
             scopeKey: this.getScopeKey(),
             targetSceneIds

@@ -1615,6 +1615,23 @@
 
 /* Pill button states (modal scope) */
 .ert-ui.ert-scope--modal .ert-pillBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ert-gap-xs);
+  padding: var(--ert-pill-pad-y) var(--ert-pill-pad-x);
+  min-height: var(--ert-pill-min-height);
+  border-radius: var(--ert-pill-radius);
+  cursor: pointer;
+  color: var(--ert-pill-color);
+  font-size: var(--ert-pill-font-size);
+  font-weight: var(--ert-pill-font-weight);
+  line-height: 1;
+  background: var(--ert-pill-bg);
+  border: 1px solid var(--ert-pill-border);
+  box-shadow: var(--ert-pill-shadow);
+  transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  box-sizing: border-box;
   --ert-pill-hover-color: var(--text-normal);
   --ert-pill-icon-hover-color: var(--text-normal);
   --ert-pill-icon-active-color: var(--text-normal);
@@ -1622,14 +1639,88 @@
 
 .ert-ui.ert-scope--modal .ert-pillBtn:hover:not(:disabled) {
   color: var(--ert-pill-hover-color);
+  background: var(--ert-pill-hover-bg);
+  border-color: var(--ert-pill-hover-border);
 }
 
 .ert-ui.ert-scope--modal .ert-pillBtn.is-active {
-  color: var(--ert-pill-hover-color);
-  border-color: var(--ert-accent, var(--interactive-accent));
+  color: var(--text-normal);
+  border-color: var(--interactive-accent);
+  background: var(--interactive-hover);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--interactive-accent) 30%, transparent);
+}
+
+/* Icon sub-component */
+.ert-ui.ert-scope--modal .ert-pillBtn__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ert-ui.ert-scope--modal .ert-pillBtn__icon svg {
+  width: 14px;
+  height: 14px;
+  color: var(--ert-pill-icon-color);
+  opacity: var(--ert-pill-icon-opacity);
+  transition: all 0.15s ease;
+}
+
+.ert-ui.ert-scope--modal .ert-pillBtn:hover:not(:disabled) .ert-pillBtn__icon svg {
+  color: var(--ert-pill-icon-hover-color);
+  opacity: 1;
+}
+
+.ert-ui.ert-scope--modal .ert-pillBtn.is-active .ert-pillBtn__icon svg {
+  color: var(--ert-pill-icon-active-color);
+  opacity: 1;
+}
+
+/* Label sub-component */
+.ert-ui.ert-scope--modal .ert-pillBtn__label {
+  line-height: 1;
+}
+
+/* Disabled / used state */
+.ert-ui.ert-scope--modal .ert-pillBtn.ert-pillBtn--used,
+.ert-ui.ert-scope--modal .ert-pillBtn:disabled {
+  opacity: var(--ert-pill-disabled-opacity);
+  cursor: not-allowed;
+}
+
+/* Pro variant — matches Campaign Presets style */
+.ert-ui.ert-scope--modal .ert-pillBtn--pro {
+  --ert-accent: var(--rt-pro-color, #d946ef);
+  --ert-accent-rgb: var(--rt-pro-color-rgb, 217, 70, 239);
+  --ert-pill-hover-color: var(--ert-accent);
+  --ert-pill-icon-hover-color: var(--ert-accent);
+  --ert-pill-icon-active-color: var(--ert-accent);
+  background: color-mix(in srgb, var(--ert-accent) 8%, var(--background-secondary));
+  border-color: color-mix(in srgb, var(--ert-accent) 30%, transparent);
   box-shadow: none;
 }
 
+.ert-ui.ert-scope--modal .ert-pillBtn--pro:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--ert-accent) 50%, transparent);
+  background: color-mix(in srgb, var(--ert-accent) 14%, var(--background-secondary));
+}
+
+.ert-ui.ert-scope--modal .ert-pillBtn--pro.is-active {
+  color: var(--ert-accent);
+  border-color: var(--ert-accent);
+  background: color-mix(in srgb, var(--ert-accent) 20%, var(--background-secondary));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ert-accent) 35%, transparent);
+}
+
+.ert-ui.ert-scope--modal .ert-pillBtn--pro.is-active .ert-pillBtn__icon svg {
+  color: var(--ert-accent);
+}
+
+.ert-ui.ert-scope--modal .ert-pillBtn--pro.is-active .ert-pillBtn__label {
+  color: var(--ert-accent);
+}
+
+/* Social variant */
 .ert-ui.ert-scope--modal .ert-pillBtn--social {
   --ert-accent: var(--rt-social-color, #ffd41d);
   --ert-accent-rgb: var(--rt-social-color-rgb, 255, 212, 29);

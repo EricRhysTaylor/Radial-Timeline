@@ -244,7 +244,8 @@
   padding: 0;
 }
 
-.ert-manuscript-pill-row--single .rt-manuscript-pill {
+.ert-manuscript-pill-row--single .rt-manuscript-pill,
+.ert-manuscript-pill-row--single .ert-pillBtn {
   flex: 0 0 auto;
 }
 

@@ -78,6 +78,7 @@ if (isCI) {
 		{ path: "/Users/ericrhystaylor/Documents/RT LLC/CodeBase/Obsidian Vault New/.obsidian/plugins/radial-timeline", name: "New" },
 		{ path: "/Users/ericrhystaylor/Documents/RT LLC/CodeBase/Obsidian Vault Fresh/.obsidian/plugins/radial-timeline", name: "Fresh" },
 		{ path: "/Users/ericrhystaylor/Documents/RT LLC/CodeBase/Obsidian Vault Jane Austin/.obsidian/plugins/radial-timeline", name: "Jane Austin" },
+		{ path: "/Users/ericrhystaylor/Documents/RT LLC/CodeBase/Obsidian Vault Sherlock Holmes/.obsidian/plugins/radial-timeline", name: "Sherlock Holmes" },
 		{ path: "./release", name: "release" }
 	];
 }

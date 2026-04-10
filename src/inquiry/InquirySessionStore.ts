@@ -107,6 +107,7 @@ export class InquirySessionStore {
     buildBaseKey(parts: {
         questionId: string;
         questionPromptForm?: 'standard' | 'focused';
+        questionSignature?: string;
         scope: string;
         scopeKey: string;
         targetSceneIds?: string[];
@@ -115,7 +116,8 @@ export class InquirySessionStore {
             ? parts.targetSceneIds.map(value => value.trim()).filter(Boolean).sort().join(',')
             : '';
         const questionPromptForm = parts.questionPromptForm === 'focused' ? 'focused' : 'standard';
-        return `${parts.questionId}::${questionPromptForm}::${parts.scope}::${parts.scopeKey}::${targetSceneKey}`;
+        const questionSignature = (parts.questionSignature ?? '').trim();
+        return `${parts.questionId}::${questionPromptForm}::${questionSignature}::${parts.scope}::${parts.scopeKey}::${targetSceneKey}`;
     }
 
     buildKey(baseKey: string, fingerprint: string): string {
