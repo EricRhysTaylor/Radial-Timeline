@@ -6578,6 +6578,24 @@
   flex-wrap: nowrap;
 }
 
+.ert-ui.ert-scope--settings .ert-ai-models-row--promo {
+  background: color-mix(in srgb, var(--color-green) 6%, transparent);
+}
+
+.ert-ui.ert-scope--settings .ert-ai-cost-promo-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 2px 6px;
+  margin-left: 6px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--color-green) 18%, transparent);
+  color: var(--color-green);
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
 .ert-ui.ert-scope--settings .ert-ai-models-provider-mark {
   width: 18px;
   height: 18px;

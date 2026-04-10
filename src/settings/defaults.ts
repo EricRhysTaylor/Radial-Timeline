@@ -121,6 +121,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     aiSettings: buildDefaultAiSettings(),
     aiRegistryCacheJson: '',
     aiProviderSnapshotCacheJson: '',
+    aiPricingCacheJson: '',
     enablePlanetaryTime: false,
     planetarySectionExpanded: true,
     planetaryProfiles: [],

@@ -1322,6 +1322,7 @@ export function renderAiSection(params: {
         freshText: string;
         cachedText: string;
         passesText: string;
+        promoLabel?: string;
     };
 
     const getCostComparisonRowKey = (provider: AIProviderId, modelId: string): string =>
@@ -1445,13 +1446,31 @@ export function renderAiSection(params: {
             createCostTableCell(headerRow, text);
         });
 
-        rows.forEach(row => {
+        const sorted = [...rows].sort((a, b) => {
+            const aPromo = a.promoLabel ? 0 : 1;
+            const bPromo = b.promoLabel ? 0 : 1;
+            return aPromo - bPromo;
+        });
+
+        sorted.forEach(row => {
             const rowEl = costEstimateTable.createDiv({ cls: 'ert-ai-models-row' });
             if (activeCostComparisonRowKey === getCostComparisonRowKey(row.model.provider, row.model.modelId)) {
                 rowEl.addClass('ert-ai-models-row--active');
             }
+            if (row.promoLabel) {
+                rowEl.addClass('ert-ai-models-row--promo');
+            }
             createCostTableCell(rowEl, row.model.providerLabel);
-            createCostTableCell(rowEl, row.model.modelLabel, 'ert-ai-models-cell--model');
+            const modelCell = rowEl.createDiv({
+                cls: 'ert-ai-models-cell ert-ai-models-cell--model'
+            });
+            modelCell.createSpan({ text: row.model.modelLabel });
+            if (row.promoLabel) {
+                modelCell.createSpan({
+                    cls: 'ert-ai-cost-promo-badge',
+                    text: row.promoLabel
+                });
+            }
             createCostTableCell(rowEl, row.freshText);
             createCostTableCell(rowEl, row.cachedText);
             createCostTableCell(rowEl, row.passesText);
@@ -1524,11 +1543,13 @@ export function renderAiSection(params: {
                     executionEstimate.expectedPassCount
                 );
                 const passLabel = `${cost.expectedPasses} ${cost.expectedPasses === 1 ? 'pass' : 'passes'}`;
+                const promoLabel = cost.promo?.label;
                 return {
                     model,
                     freshText: formatUsdCost(cost.freshCostUSD),
                     cachedText: formatUsdCost(cost.cachedCostUSD),
-                    passesText: passLabel
+                    passesText: passLabel,
+                    promoLabel
                 };
             } catch {
                 return {

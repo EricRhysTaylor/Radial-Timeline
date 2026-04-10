@@ -611,6 +611,7 @@ export interface RadialTimelineSettings {
     aiSettings?: AiSettingsV1;
     aiRegistryCacheJson?: string;
     aiProviderSnapshotCacheJson?: string;
+    aiPricingCacheJson?: string;
     enableAiSceneAnalysis: boolean;
     enableZeroDraftMode?: boolean;
     enableSceneTitleAutoExpand?: boolean;

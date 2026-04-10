@@ -1,7 +1,18 @@
-import { describe, expect, it } from 'vitest';
-import { getProviderPricing, resolveProviderModelPricing } from './providerPricing';
+import { describe, expect, it, afterEach } from 'vitest';
+import {
+    getProviderPricing,
+    resolveProviderModelPricing,
+    isPromoActive,
+    mergeRemotePricing,
+    resetPricingToBuiltin,
+    getActivePricingTable
+} from './providerPricing';
 
 describe('providerPricing', () => {
+    afterEach(() => {
+        resetPricingToBuiltin();
+    });
+
     it('stores an explicit Sonnet 4.5 pricing row', () => {
         const pricing = getProviderPricing('anthropic', 'claude-sonnet-4-5-20250929');
 
@@ -66,5 +77,108 @@ describe('providerPricing', () => {
         expect(longContext.outputPer1M).toBe(22.5);
         expect(longContext.cacheWrite5mPer1M).toBe(7.5);
         expect(longContext.cacheReadPer1M).toBe(0.6);
+    });
+
+    it('isPromoActive returns true for promo without expiresAt', () => {
+        expect(isPromoActive({ label: 'Free preview' })).toBe(true);
+    });
+
+    it('isPromoActive returns false for expired promo', () => {
+        expect(isPromoActive({ label: 'Expired', expiresAt: '2020-01-01T00:00:00Z' })).toBe(false);
+    });
+
+    it('isPromoActive returns true for future-dated promo', () => {
+        const future = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+        expect(isPromoActive({ label: 'Active', expiresAt: future })).toBe(true);
+    });
+
+    it('isPromoActive returns false for undefined', () => {
+        expect(isPromoActive(undefined)).toBe(false);
+    });
+
+    it('mergeRemotePricing adds new models to active pricing', () => {
+        mergeRemotePricing({
+            google: {
+                'gemini-4-flash-preview': {
+                    inputPer1M: 0,
+                    outputPer1M: 0,
+                    promo: { label: 'Free preview' }
+                }
+            }
+        });
+
+        const pricing = getProviderPricing('google', 'gemini-4-flash-preview');
+        expect(pricing.inputPer1M).toBe(0);
+        expect(pricing.promo?.label).toBe('Free preview');
+    });
+
+    it('mergeRemotePricing overrides existing model pricing', () => {
+        mergeRemotePricing({
+            openai: {
+                'gpt-5.4': {
+                    inputPer1M: 2.0,
+                    outputPer1M: 8.0
+                }
+            }
+        });
+
+        const pricing = getProviderPricing('openai', 'gpt-5.4');
+        expect(pricing.inputPer1M).toBe(2.0);
+        expect(pricing.outputPer1M).toBe(8.0);
+    });
+
+    it('mergeRemotePricing preserves builtin models not in remote', () => {
+        mergeRemotePricing({
+            openai: {
+                'gpt-5.4': { inputPer1M: 2.0, outputPer1M: 8.0 }
+            }
+        });
+
+        // Anthropic models should still be available from builtin
+        const pricing = getProviderPricing('anthropic', 'claude-sonnet-4-6');
+        expect(pricing.inputPer1M).toBe(3);
+    });
+
+    it('resetPricingToBuiltin restores original pricing', () => {
+        mergeRemotePricing({
+            openai: {
+                'gpt-5.4': { inputPer1M: 0, outputPer1M: 0 }
+            }
+        });
+        resetPricingToBuiltin();
+
+        const pricing = getProviderPricing('openai', 'gpt-5.4');
+        expect(pricing.inputPer1M).toBe(3);
+    });
+
+    it('resolveProviderModelPricing surfaces active promo', () => {
+        mergeRemotePricing({
+            google: {
+                'gemini-2.5-pro': {
+                    inputPer1M: 0,
+                    outputPer1M: 0,
+                    promo: { label: 'Launch promo', expiresAt: new Date(Date.now() + 86400000).toISOString() }
+                }
+            }
+        });
+
+        const resolved = resolveProviderModelPricing('google', 'gemini-2.5-pro', 50_000);
+        expect(resolved.inputPer1M).toBe(0);
+        expect(resolved.promo?.label).toBe('Launch promo');
+    });
+
+    it('resolveProviderModelPricing omits expired promo', () => {
+        mergeRemotePricing({
+            google: {
+                'gemini-2.5-pro': {
+                    inputPer1M: 0,
+                    outputPer1M: 0,
+                    promo: { label: 'Expired promo', expiresAt: '2020-01-01T00:00:00Z' }
+                }
+            }
+        });
+
+        const resolved = resolveProviderModelPricing('google', 'gemini-2.5-pro', 50_000);
+        expect(resolved.promo).toBeUndefined();
     });
 });

@@ -1,5 +1,5 @@
 import type { AIProviderId } from '../types';
-import { resolveProviderModelPricing } from './providerPricing';
+import { resolveProviderModelPricing, isPromoActive, type PromoPricing } from './providerPricing';
 import type { TokenUsage } from '../usage/providerUsage';
 
 export interface CorpusCostEstimate {
@@ -12,6 +12,7 @@ export interface CorpusCostEstimate {
     freshCostUSD: number;
     cachedCostUSD: number;
     effectiveCostUSD: number;
+    promo?: PromoPricing;
 }
 
 export interface UsageCostEstimate {
@@ -121,6 +122,9 @@ export function estimateCorpusCost(
         scenario: 'cached'
     });
 
+    const pricing = resolveProviderModelPricing(provider, modelId, inputTokens);
+    const promo = isPromoActive(pricing.promo) ? pricing.promo : undefined;
+
     return {
         provider,
         modelId,
@@ -130,7 +134,8 @@ export function estimateCorpusCost(
         cacheReuseRatio,
         freshCostUSD,
         cachedCostUSD,
-        effectiveCostUSD: cachedCostUSD
+        effectiveCostUSD: cachedCostUSD,
+        promo
     };
 }
 
