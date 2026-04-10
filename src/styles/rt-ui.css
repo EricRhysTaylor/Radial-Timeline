@@ -9917,7 +9917,7 @@
   gap: var(--ert-gap-sm);
   flex-wrap: wrap;
   padding: 0;
-  margin-top: 10px;
+  margin-top: 0;
   min-height: 0;
   background: transparent;
   border: none;
@@ -10611,6 +10611,17 @@
 .ert-ui.ert-scope--settings .ert-pillBtn--pro.is-active {
   box-shadow: none;
   border-color: var(--ert-accent);
+}
+
+/* Muted variant — nothing left to configure */
+.ert-ui.ert-scope--settings .ert-pillBtn--muted {
+  opacity: 0.45;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.ert-ui.ert-scope--settings .ert-pillBtn--muted:hover {
+  opacity: 0.7;
 }
 
 /* Social variant (yellow) */

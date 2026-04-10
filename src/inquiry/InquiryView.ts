@@ -1462,10 +1462,11 @@ export class InquiryView extends ItemView {
 
     private resolveSessionQuestionLabel(session: InquirySession): string {
         const zoneLabel = this.resolveSessionZoneLabel(session);
+        const compactTag = this.buildSessionZoneTag(session) ?? zoneLabel;
         const promptLabel = this.findPromptLabelById(session.result.questionId)?.trim();
-        if (promptLabel) return `${zoneLabel}: ${promptLabel}`;
-        if (session.result.questionId?.trim()) return `${zoneLabel}: ${session.result.questionId.trim()}`;
-        return `${zoneLabel}: ${this.resolveSessionLensLabel(session, zoneLabel)}`;
+        if (promptLabel) return `${compactTag}: ${promptLabel}`;
+        if (session.result.questionId?.trim()) return `${compactTag}: ${session.result.questionId.trim()}`;
+        return `${compactTag}: ${this.resolveSessionLensLabel(session, zoneLabel)}`;
     }
 
     private formatSessionProviderModel(session: InquirySession): string {
@@ -5082,13 +5083,13 @@ export class InquiryView extends ItemView {
         });
         const timeStr = formatted.replace(/\s+(AM|PM)/i, (_, m) => m.toLowerCase());
         const zoneTag = this.buildSessionZoneTag(session);
-        return zoneTag ? `ID: ${zoneTag} ${timeStr}` : `ID: ${timeStr}`;
+        return zoneTag ? `ID: ${zoneTag} · ${timeStr}` : `ID: ${timeStr}`;
     }
 
     private buildSessionZoneTag(session: InquirySession): string | null {
         const zone = session.questionZone ?? session.result?.questionZone;
         if (!zone) return null;
-        const abbr = zone === 'setup' ? 'Se' : zone === 'pressure' ? 'Pr' : 'Pa';
+        const abbr = zone === 'setup' ? 'Set' : zone === 'pressure' ? 'Pres' : 'Pay';
         const questionId = session.result?.questionId;
         if (!questionId) return abbr;
         const config = this.getPromptConfig();
@@ -9718,7 +9719,8 @@ export class InquiryView extends ItemView {
             this.getPreviewOutlinesValue(),
             this.getPreviewModelValue(),
             this.getPreviewTokensValue(),
-            this.getPreviewCostValue()
+            this.getPreviewCostValue(),
+            this.getPreviewHistoryValue()
         ];
     }
 
@@ -9784,6 +9786,60 @@ export class InquiryView extends ItemView {
         } catch {
             return 'Cost · Estimate unavailable';
         }
+    }
+
+    private getPreviewHistoryValue(): string {
+        const activeZone = this.state.activeZone ?? 'setup';
+        const activeQuestion = this.getActivePrompt(activeZone);
+        if (!activeQuestion) return '';
+        const targetSceneIds = this.getActiveTargetSceneIds();
+        const selectionMode = this.getSelectionMode(targetSceneIds);
+        const questionPromptForm = this.resolveQuestionPromptFormForRun(
+            activeQuestion,
+            selectionMode,
+            this.getEffectivePromptOverride(activeQuestion.id)
+        );
+        const baseKey = this.sessionStore.buildBaseKey({
+            questionId: activeQuestion.id,
+            questionPromptForm,
+            scope: this.state.scope,
+            scopeKey: this.getScopeKey(),
+            targetSceneIds
+        });
+        const allSessions = this.sessionStore.getRecentSessions(this.sessionStore.getSessionCount());
+        const models: string[] = [];
+        const seen = new Set<string>();
+        allSessions.forEach(session => {
+            if (session.baseKey !== baseKey) return;
+            const label = this.formatPreviewHistoryModelLabel(session);
+            if (!label) return;
+            const key = label.toLowerCase();
+            if (seen.has(key)) return;
+            seen.add(key);
+            models.push(label);
+        });
+        if (!models.length) return '';
+        const visible = models.slice(0, 4);
+        const overflow = models.length - visible.length;
+        return overflow > 0 ? `${visible.join(' · ')} · +${overflow}` : visible.join(' · ');
+    }
+
+    private formatPreviewHistoryModelLabel(session: InquirySession): string {
+        const raw = (session.result.aiModelResolved || session.result.aiModelRequested || '').trim();
+        if (!raw) return '';
+        const normalized = raw.toLowerCase();
+        if (normalized.startsWith('gpt-')) {
+            return raw.replace(/^gpt-/i, 'GPT-');
+        }
+        if (normalized.startsWith('claude-')) {
+            const body = raw.replace(/^claude-/i, '').replace(/-/g, ' ');
+            return `Claude ${body}`;
+        }
+        if (normalized.startsWith('gemini-')) {
+            const body = raw.replace(/^gemini-/i, '').replace(/-/g, ' ');
+            return `Gemini ${body.replace(/\bpro\b/gi, 'Pro').replace(/\bflash\b/gi, 'Flash')}`;
+        }
+        return raw.replace(/-/g, ' ');
     }
 
 

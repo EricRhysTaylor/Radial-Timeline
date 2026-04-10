@@ -241,13 +241,17 @@ export function createInquiryPromptPreviewPanel(args: {
     meta.setAttribute('text-anchor', 'middle');
     meta.setAttribute('dominant-baseline', 'hanging');
 
-    const rowLabels = ['', '', '', '', '', ''];
+    const rowLabels = ['', '', '', '', '', '', 'Earlier ·'];
     const previewRowDefaultLabels = rowLabels.slice();
     const tokensRowIndex = 4;
+    const historyRowIndex = 6;
     const previewRows = rowLabels.map((label, index) => {
         const group = createSvgGroup(panel, 'ert-inquiry-preview-pill');
         if (index === tokensRowIndex) {
             group.classList.add('is-tokens-slot');
+        }
+        if (index === historyRowIndex) {
+            group.classList.add('is-history-slot');
         }
         const bg = createSvgElement('rect') as SVGRectElement;
         bg.classList.add('ert-inquiry-preview-pill-bg');
