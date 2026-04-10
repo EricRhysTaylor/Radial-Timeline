@@ -64,6 +64,12 @@
   border: 1px solid rgba(255, 165, 0, 0.2);
 }
 
+/* Generic modal-scope hidden utility */
+.ert-ui.ert-scope--modal .is-hidden,
+.ert-ui.ert-scope--modal button.is-hidden {
+  display: none;
+}
+
 /* ert-modal-actions base consolidated in rt-ui.css */
 
 .rt-pulse-modal .ert-modal-actions {
@@ -1724,6 +1730,24 @@
 .ert-ui.ert-scope--modal .ert-pillBtn--social {
   --ert-accent: var(--rt-social-color, #ffd41d);
   --ert-accent-rgb: var(--rt-social-color-rgb, 255, 212, 29);
+}
+
+/* ── Core export toggles — native theme buttons, only active ring added ── */
+.ert-ui.ert-scope--modal [data-ert-toggle].is-active {
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--interactive-accent) 30%, transparent);
+}
+
+.ert-ui.ert-scope--modal .ert-export-pill-icon {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  margin-right: 4px;
+}
+
+.ert-ui.ert-scope--modal .ert-export-pill-icon svg {
+  width: 14px;
+  height: 14px;
 }
 
 /* APR Status Grid */

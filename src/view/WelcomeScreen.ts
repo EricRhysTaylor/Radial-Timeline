@@ -3,7 +3,7 @@
  * Copyright (c) 2025 Eric Rhys Taylor
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
-import { ButtonComponent, setIcon } from 'obsidian';
+import { ButtonComponent, Platform, setIcon } from 'obsidian';
 import RadialTimelinePlugin from '../main';
 import { BookDesignerModal } from '../modals/BookDesignerModal';
 
@@ -76,6 +76,18 @@ const openRadialTimelineSettings = (
     setting.openTabById('radial-timeline');
 };
 
+const appendCommandPaletteKeycaps = (parent: HTMLElement): void => {
+    const wrap = parent.createSpan({ cls: 'rt-welcome-keycaps' });
+    wrap.createEl('kbd', { cls: 'rt-welcome-keycap', text: Platform.isMacOS ? '⌘' : 'Ctrl' });
+    wrap.createSpan({ cls: 'rt-welcome-keycaps-sep', text: '+' });
+    wrap.createEl('kbd', { cls: 'rt-welcome-keycap', text: 'P' });
+};
+
+const runCreateNoteCommand = (plugin: RadialTimelinePlugin): void => {
+    const commandManager = (plugin.app as unknown as { commands?: { executeCommandById?: (id: string) => void } }).commands;
+    commandManager?.executeCommandById?.('radial-timeline:create-note');
+};
+
 export function renderWelcomeScreen({ container, plugin, refreshTimeline }: WelcomeScreenParams): void {
     container.addClass('rt-welcome-view');
 
@@ -105,8 +117,7 @@ export function renderWelcomeScreen({ container, plugin, refreshTimeline }: Welc
         .setButtonText(WELCOME_COPY.actions.primary)
         .setCta()
         .onClick(() => {
-            const commandManager = (plugin.app as unknown as { commands?: { executeCommandById?: (id: string) => void } }).commands;
-            commandManager?.executeCommandById?.('radial-timeline:create-note');
+            runCreateNoteCommand(plugin);
         });
     createSceneBtn.buttonEl.classList.add('rt-welcome-primary-btn', 'rt-welcome-action-btn');
     addButtonIcon(createSceneBtn.buttonEl, WELCOME_ICONS.primary);
@@ -152,14 +163,13 @@ export function renderWelcomeScreen({ container, plugin, refreshTimeline }: Welc
     const step2 = body.createDiv({ cls: 'rt-welcome-step' });
     step2.createEl('h3', { cls: 'rt-welcome-step-title', text: WELCOME_COPY.step2.title });
     const step2Text = step2.createEl('p', { cls: 'rt-welcome-paragraph' });
-    step2Text.createSpan({ text: 'Create your first scene using the command palette (' });
-    step2Text.createEl('code', { text: 'Cmd/Ctrl+P' });
-    step2Text.createSpan({ text: '), then ' });
+    step2Text.createSpan({ text: 'Create your first scene using the command palette ' });
+    appendCommandPaletteKeycaps(step2Text);
+    step2Text.createSpan({ text: ', then ' });
     const createNoteLink = step2Text.createEl('a', { text: 'Create note…', href: '#' });
     plugin.registerDomEvent(createNoteLink, 'click', (evt) => {
         evt.preventDefault();
-        const commandManager = (plugin.app as unknown as { commands?: { executeCommandById?: (id: string) => void } }).commands;
-        commandManager?.executeCommandById?.('radial-timeline:create-note');
+        runCreateNoteCommand(plugin);
     });
     step2Text.createSpan({ text: ' and start writing. As characters and time become clear, add them in Scene Properties. The default subplot is Main Plot—you can move it anytime.' });
 
@@ -170,9 +180,9 @@ export function renderWelcomeScreen({ container, plugin, refreshTimeline }: Welc
 
     const designerLi = step3List.createEl('li');
     designerLi.createEl('strong', { text: WELCOME_COPY.step3.bullets[0].title });
-    designerLi.createSpan({ text: ' — Use the command palette (' });
-    designerLi.createEl('code', { text: 'Cmd/Ctrl+P' });
-    designerLi.createSpan({ text: ') and open ' });
+    designerLi.createSpan({ text: ' — Use the command palette ' });
+    appendCommandPaletteKeycaps(designerLi);
+    designerLi.createSpan({ text: ' and open ' });
     const bookDesignLink = designerLi.createEl('a', { text: 'Book Design…', href: '#' });
     plugin.registerDomEvent(bookDesignLink, 'click', (evt) => {
         evt.preventDefault();

@@ -306,7 +306,8 @@ export class BookDesignerModal extends Modal {
         // Update the "Yes" pill visual state
         const yesPill = this.beatPills.find(p => p.dataset.generateBeats === 'true');
         if (!yesPill) return;
-        yesPill.toggleClass('rt-manuscript-pill--warn', exists);
+        yesPill.toggleClass('is-warn', exists);
+        (yesPill as HTMLButtonElement).disabled = exists;
         if (exists) {
             yesPill.setAttribute('aria-label', 'Beat notes already exist in this folder');
         } else {
@@ -315,9 +316,9 @@ export class BookDesignerModal extends Modal {
         // If beats exist and Yes was selected, switch to No
         if (exists && this.generateBeats) {
             this.generateBeats = false;
-            this.beatPills.forEach(p => p.removeClass('rt-is-active'));
+            this.beatPills.forEach(p => p.removeClass('is-active'));
             const noPill = this.beatPills.find(p => p.dataset.generateBeats === 'false');
-            noPill?.addClass('rt-is-active');
+            noPill?.addClass('is-active');
         }
     }
 
@@ -360,15 +361,15 @@ export class BookDesignerModal extends Modal {
         this.templateTypePills.forEach(pill => {
             const id = pill.getAttr('data-template-id') as 'base' | 'advanced' | null;
             if (!id) return;
-            if (id === this.templateType) pill.addClass('rt-is-active');
-            else pill.removeClass('rt-is-active');
+            if (id === this.templateType) pill.addClass('is-active');
+            else pill.removeClass('is-active');
         });
 
         // Beat pills
         this.beatPills.forEach(pill => {
             const val = pill.getAttr('data-generate-beats') === 'true';
-            if (val === this.generateBeats) pill.addClass('rt-is-active');
-            else pill.removeClass('rt-is-active');
+            if (val === this.generateBeats) pill.addClass('is-active');
+            else pill.removeClass('is-active');
         });
 
         if (this.templateDropdown) this.templateDropdown.value = '';
@@ -658,15 +659,15 @@ export class BookDesignerModal extends Modal {
         this.templateTypePills.forEach(pill => {
             const id = pill.getAttr('data-template-id') as 'base' | 'advanced' | null;
             if (!id) return;
-            if (id === this.templateType) pill.addClass('rt-is-active');
-            else pill.removeClass('rt-is-active');
+            if (id === this.templateType) pill.addClass('is-active');
+            else pill.removeClass('is-active');
         });
 
         // Beat pills
         this.beatPills.forEach(pill => {
             const val = pill.getAttr('data-generate-beats') === 'true';
-            if (val === this.generateBeats) pill.addClass('rt-is-active');
-            else pill.removeClass('rt-is-active');
+            if (val === this.generateBeats) pill.addClass('is-active');
+            else pill.removeClass('is-active');
         });
 
         this.refreshTemplateDropdown();
@@ -1007,18 +1008,17 @@ export class BookDesignerModal extends Modal {
 
         const options: { id: 'base' | 'advanced', label: string }[] = [
             { id: 'base', label: 'Base Scene Set' },
-            { id: 'advanced', label: 'Advanced scene properties' }
+            { id: 'advanced', label: 'Advanced properties' }
         ];
 
         options.forEach(opt => {
-            const pill = templPills.createDiv({ cls: 'rt-manuscript-pill' });
+            const pill = templPills.createEl('button', { attr: { 'data-ert-toggle': '', 'data-template-id': opt.id } });
             pill.setText(opt.label);
-            if (this.templateType === opt.id) pill.addClass('rt-is-active');
-            pill.setAttr('data-template-id', opt.id);
+            if (this.templateType === opt.id) pill.addClass('is-active');
             this.templateTypePills.push(pill);
             pill.onclick = () => {
-                templPills.querySelectorAll('.rt-manuscript-pill').forEach(p => p.removeClass('rt-is-active'));
-                pill.addClass('rt-is-active');
+                templPills.querySelectorAll('[data-ert-toggle]').forEach(p => p.removeClass('is-active'));
+                pill.addClass('is-active');
                 this.templateType = opt.id;
             };
         });
@@ -1036,16 +1036,15 @@ export class BookDesignerModal extends Modal {
 
         const beatOptions = [{ val: false, label: 'No' }, { val: true, label: 'Yes' }];
         beatOptions.forEach(opt => {
-            const pill = beatPills.createDiv({ cls: 'rt-manuscript-pill rt-book-designer-yesno-pill' });
+            const pill = beatPills.createEl('button', { attr: { 'data-ert-toggle': '', 'data-generate-beats': String(opt.val) } });
             pill.setText(opt.label);
-            if (this.generateBeats === opt.val) pill.addClass('rt-is-active');
-            pill.setAttr('data-generate-beats', String(opt.val));
+            if (this.generateBeats === opt.val) pill.addClass('is-active');
             this.beatPills.push(pill);
             pill.onclick = () => {
                 // Block selecting Yes when beats already exist
                 if (opt.val && this.beatsExistInFolder) return;
-                beatPills.querySelectorAll('.rt-manuscript-pill').forEach(p => p.removeClass('rt-is-active'));
-                pill.addClass('rt-is-active');
+                beatPills.querySelectorAll('[data-ert-toggle]').forEach(p => p.removeClass('is-active'));
+                pill.addClass('is-active');
                 this.generateBeats = opt.val;
             };
         });

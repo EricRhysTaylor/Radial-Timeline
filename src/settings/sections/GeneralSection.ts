@@ -280,7 +280,7 @@ export function renderGeneralSection(params: {
             empty.createDiv({ cls: 'ert-bookmeta-preview-empty-title', text: 'No books configured' });
             empty.createDiv({
                 cls: 'ert-bookmeta-preview-empty-desc',
-                text: 'Add a book profile to restore the blank manager state and set a title or source folder when you need one.'
+                text: 'Add a book profile and set the title and folder.'
             });
             const actions = empty.createDiv({ cls: 'ert-bookmeta-preview-empty-actions' });
             new ButtonComponent(actions)

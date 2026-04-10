@@ -15,6 +15,7 @@ import type { AIRunAdvancedContext } from '../ai/types';
 import { describeTokenEstimateMethod } from '../ai/tokens/inputTokenEstimate';
 import { redactSensitiveValue } from '../ai/credentials/redactSensitive';
 import { CANONICAL_PROVIDER_LABELS, getCanonicalAiSettings, resolveConfiguredSelection } from '../ai/runtime/runtimeSelection';
+import { getActiveBookTitle } from '../utils/books';
 
 export interface ManuscriptInfo {
     totalScenes: number;
@@ -91,11 +92,11 @@ export class GossamerProcessingModal extends Modal {
 
     private renderProcessingHero(parent: HTMLElement, subtitle: string, modelName?: string): void {
         const hero = parent.createDiv({ cls: 'ert-modal-header' });
-        
-        // Build badge text
-        const badgeText = modelName 
-            ? `AI momentum analysis · ${modelName}`
-            : 'AI momentum analysis';
+
+        // Build badge text with active book title
+        const bookTitle = getActiveBookTitle(this.plugin.settings);
+        const parts = ['AI momentum analysis', bookTitle, modelName].filter(Boolean);
+        const badgeText = parts.join(' · ');
             
         hero.createSpan({ text: badgeText, cls: 'ert-modal-badge' });
         hero.createDiv({ text: 'Gossamer momentum analysis', cls: 'ert-modal-title' });

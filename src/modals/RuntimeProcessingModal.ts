@@ -147,22 +147,10 @@ export class RuntimeProcessingModal extends Modal {
         const contentType = this.plugin.settings.runtimeContentType || 'novel';
         const modeLabel = contentType === 'screenplay' ? 'Screenplay' : 'Audiobook';
         const modeIconName = contentType === 'screenplay' ? 'film' : 'mic-vocal';
-        const badgeText = `Runtime estimator · ${modeLabel}`;
-
-        const pill = header.createSpan({
-            cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO}`,
-        });
-        const pillIcon = pill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON });
-        setIcon(pillIcon, 'signature');
-        pill.createSpan({
-            cls: ERT_CLASSES.BADGE_PILL_TEXT,
-            text: 'PRO',
-        });
-
-        const runtimeInfo = header.createSpan({ cls: 'ert-runtime-mode-info' });
-        const modeIcon = runtimeInfo.createSpan({ cls: 'ert-modal-badge-icon' });
+        const badge = header.createSpan({ cls: 'ert-modal-badge' });
+        const modeIcon = badge.createSpan({ cls: 'ert-modal-badge-icon' });
         setIcon(modeIcon, modeIconName);
-        runtimeInfo.createSpan({ text: badgeText });
+        badge.appendText(`Runtime · ${modeLabel}`);
         header.createDiv({ cls: 'ert-modal-title', text: 'Runtime estimation' });
         header.createDiv({ cls: 'ert-modal-subtitle', text: 'Algorithmic word-count analysis. Calculates runtime from scene text using configured WPM rates and parenthetical timing.' });
 

@@ -155,10 +155,10 @@ export class CreateRtNoteModal extends Modal {
         grid.replaceChildren(...nextButtons);
 
         if (this.backButton?.buttonEl) {
-            this.backButton.buttonEl.hidden = !activeFamily;
+            this.backButton.buttonEl.toggleClass('is-hidden', !activeFamily);
         }
         if (this.backSpacerEl) {
-            this.backSpacerEl.hidden = !activeFamily;
+            this.backSpacerEl.toggleClass('is-hidden', !activeFamily);
         }
 
         const firstOption = grid.querySelector<HTMLButtonElement>('.ert-note-creator-option');

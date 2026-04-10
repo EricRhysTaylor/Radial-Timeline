@@ -1326,11 +1326,11 @@ export class ManuscriptOptionsModal extends Modal {
 
     // Interaction helpers ----------------------------------------------------
     private createPill(parent: HTMLElement, label: string, active: boolean, onClick: () => void): void {
-        const pill = parent.createEl('button', { cls: 'ert-pillBtn' });
-        pill.createSpan({ cls: 'ert-pillBtn__label', text: label });
+        const pill = parent.createEl('button', { attr: { 'data-ert-toggle': '' } });
+        pill.setText(label);
         if (active) pill.addClass('is-active');
         pill.onClickEvent(() => {
-            parent.querySelectorAll('.ert-pillBtn').forEach(el => el.removeClass('is-active'));
+            parent.querySelectorAll('[data-ert-toggle]').forEach(el => el.removeClass('is-active'));
             pill.addClass('is-active');
             onClick();
             this.updateTemplateActionButtonState();
@@ -1338,7 +1338,7 @@ export class ManuscriptOptionsModal extends Modal {
     }
 
     private updatePills(parent: HTMLElement, activeIndex: number): void {
-        const pills = Array.from(parent.querySelectorAll('.ert-pillBtn'));
+        const pills = Array.from(parent.querySelectorAll('[data-ert-toggle]'));
         pills.forEach((el, idx) => {
             if (idx === activeIndex) {
                 el.classList.add('is-active');
@@ -1359,8 +1359,8 @@ export class ManuscriptOptionsModal extends Modal {
     }
 
     private createOrderPill(parent: HTMLElement, label: string, order: ManuscriptOrder): void {
-        const pill = parent.createEl('button', { cls: 'ert-pillBtn' });
-        pill.createSpan({ cls: 'ert-pillBtn__label', text: label });
+        const pill = parent.createEl('button', { attr: { 'data-ert-toggle': '' } });
+        pill.setText(label);
         this.orderPills.push({ el: pill, order });
 
         if (this.order === order) pill.addClass('is-active');
@@ -1376,12 +1376,17 @@ export class ManuscriptOptionsModal extends Modal {
     }
 
     private createExportTypePill(parent: HTMLElement, label: string, type: ExportType, disabled = false, isPro = false): void {
-        const pill = parent.createEl('button', { cls: 'ert-pillBtn' });
-        if (isPro) pill.addClass('ert-pillBtn--pro');
-        pill.createSpan({ cls: 'ert-pillBtn__label', text: label });
+        const pill = isPro
+            ? parent.createEl('button', { cls: 'ert-pillBtn ert-pillBtn--pro' })
+            : parent.createEl('button', { attr: { 'data-ert-toggle': '' } });
+        if (isPro) {
+            pill.createSpan({ cls: 'ert-pillBtn__label', text: label });
+        } else {
+            pill.setText(label);
+        }
         if (this.exportType === type) pill.addClass('is-active');
         if (disabled) {
-            pill.addClass('ert-pillBtn--used');
+            if (isPro) pill.addClass('ert-pillBtn--used');
             pill.disabled = true;
         }
         if (disabled && isPro && !this.isPro && !pill.closest('.ert-pro-locked')) {
@@ -1403,8 +1408,9 @@ export class ManuscriptOptionsModal extends Modal {
     }
 
     private createOutputFormatPill(parent: HTMLElement, label: string, format: ExportFormat, disabled = false, scope: ExportType | 'both' = 'both', isPro = false): void {
-        const pill = parent.createEl('button', { cls: 'ert-pillBtn', attr: { 'data-scope': scope } });
-        if (isPro) pill.addClass('ert-pillBtn--pro');
+        const pill = isPro
+            ? parent.createEl('button', { cls: 'ert-pillBtn ert-pillBtn--pro', attr: { 'data-scope': scope } })
+            : parent.createEl('button', { attr: { 'data-scope': scope, 'data-ert-toggle': '' } });
 
         // Add icon based on format
         const iconMap: Record<ExportFormat, string> = {
@@ -1414,16 +1420,24 @@ export class ManuscriptOptionsModal extends Modal {
             'json': 'code'
         };
         const iconName = iconMap[format];
-        if (iconName) {
-            const icon = pill.createSpan({ cls: 'ert-pillBtn__icon' });
-            setIcon(icon, iconName);
+        if (isPro) {
+            if (iconName) {
+                const icon = pill.createSpan({ cls: 'ert-pillBtn__icon' });
+                setIcon(icon, iconName);
+            }
+            pill.createSpan({ cls: 'ert-pillBtn__label', text: label });
+        } else {
+            if (iconName) {
+                const icon = pill.createSpan({ cls: 'ert-export-pill-icon' });
+                setIcon(icon, iconName);
+            }
+            pill.createSpan({ text: label });
         }
 
-        pill.createSpan({ cls: 'ert-pillBtn__label', text: label });
         const isActive = this.outputFormat === format;
         if (isActive) pill.addClass('is-active');
         if (disabled) {
-            pill.addClass('ert-pillBtn--used');
+            if (isPro) pill.addClass('ert-pillBtn--used');
             pill.disabled = true;
         }
         if (disabled && isPro && !this.isPro && !pill.closest('.ert-pro-locked')) {
@@ -1865,11 +1879,9 @@ Sarah stood at the window, watching the world wake up.`;
             const btn = p.el as HTMLButtonElement;
             if (isChronological && disableChronological) {
                 btn.disabled = true;
-                btn.addClass('ert-pillBtn--used');
                 btn.removeClass('is-active');
             } else {
                 btn.disabled = false;
-                btn.removeClass('ert-pillBtn--used');
             }
             btn.toggleClass('is-active', this.order === p.order && !(isChronological && disableChronological));
         });

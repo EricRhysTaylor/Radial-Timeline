@@ -245,7 +245,8 @@
 }
 
 .ert-manuscript-pill-row--single .rt-manuscript-pill,
-.ert-manuscript-pill-row--single .ert-pillBtn {
+.ert-manuscript-pill-row--single .ert-pillBtn,
+.ert-manuscript-pill-row--single [data-ert-toggle] {
   flex: 0 0 auto;
 }
 
@@ -405,6 +406,21 @@
 }
 
 .rt-manuscript-pill.rt-manuscript-pill--warn:hover {
+  transform: none;
+  border-color: rgba(220, 60, 60, 0.4);
+  background: rgba(220, 60, 60, 0.08);
+}
+
+/* Warning state for data-ert-toggle buttons (e.g. beats already exist) */
+[data-ert-toggle].is-warn {
+  opacity: 0.45;
+  cursor: not-allowed;
+  border-color: rgba(220, 60, 60, 0.4);
+  background: rgba(220, 60, 60, 0.08);
+  color: rgba(220, 100, 100, 0.85);
+}
+
+[data-ert-toggle].is-warn:hover {
   transform: none;
   border-color: rgba(220, 60, 60, 0.4);
   background: rgba(220, 60, 60, 0.08);
