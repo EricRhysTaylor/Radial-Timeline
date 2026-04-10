@@ -293,13 +293,13 @@ describe('providerPricing', () => {
         expect(getPricingFreshnessLabel({ source: 'builtin' })).toBe('Using fallback pricing');
 
         const now = new Date().toISOString();
-        expect(getPricingFreshnessLabel({ source: 'remote', fetchedAt: now })).toBe('Pricing updated recently');
+        expect(getPricingFreshnessLabel({ source: 'remote', fetchedAt: now })).toMatch(/^Pricing checked /);
 
         const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
-        expect(getPricingFreshnessLabel({ source: 'cache', fetchedAt: twoDaysAgo })).toBe('Pricing updated recently');
+        expect(getPricingFreshnessLabel({ source: 'cache', fetchedAt: twoDaysAgo })).toMatch(/^Pricing checked /);
 
         const fourDaysAgo = new Date(Date.now() - 96 * 60 * 60 * 1000).toISOString();
-        expect(getPricingFreshnessLabel({ source: 'cache', fetchedAt: fourDaysAgo })).toBe('Using cached pricing');
+        expect(getPricingFreshnessLabel({ source: 'cache', fetchedAt: fourDaysAgo })).toMatch(/^Using cached pricing from /);
 
         expect(getPricingFreshnessLabel({ source: 'cache' })).toBe('Using cached pricing');
     });
