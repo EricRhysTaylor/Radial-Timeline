@@ -15,7 +15,7 @@ function isFiniteNonNeg(value) {
     return typeof value === 'number' && Number.isFinite(value) && value >= 0;
 }
 
-function validateEntry(entry, index) {
+function validateEntry(entry, index, warnings) {
     const errors = [];
     const prefix = `models[${index}]`;
 
@@ -63,7 +63,28 @@ function validateEntry(entry, index) {
                 const ts = Date.parse(entry.promo.expiresAt);
                 if (!Number.isFinite(ts)) {
                     errors.push(`${prefix}.promo.expiresAt: invalid ISO date`);
+                } else if (ts < Date.now()) {
+                    warnings.push(`${prefix}.promo.expiresAt: promo "${entry.promo.label}" has expired (${entry.promo.expiresAt})`);
                 }
+            }
+
+            // Promo price higher than standard makes no sense
+            if (isFiniteNonNeg(entry.promo.standardInputPer1M)
+                && isFiniteNonNeg(entry.inputPer1M)
+                && entry.inputPer1M > entry.promo.standardInputPer1M) {
+                warnings.push(`${prefix}: promo inputPer1M ($${entry.inputPer1M}) > standardInputPer1M ($${entry.promo.standardInputPer1M})`);
+            }
+            if (isFiniteNonNeg(entry.promo.standardOutputPer1M)
+                && isFiniteNonNeg(entry.outputPer1M)
+                && entry.outputPer1M > entry.promo.standardOutputPer1M) {
+                warnings.push(`${prefix}: promo outputPer1M ($${entry.outputPer1M}) > standardOutputPer1M ($${entry.promo.standardOutputPer1M})`);
+            }
+
+            // Free promo with no standard fallback
+            if (entry.inputPer1M === 0 && entry.outputPer1M === 0
+                && !isFiniteNonNeg(entry.promo.standardInputPer1M)
+                && !isFiniteNonNeg(entry.promo.standardOutputPer1M)) {
+                warnings.push(`${prefix}: $0 promo "${entry.promo.label}" has no standard fallback prices — will remain $0 after expiry`);
             }
         }
     }
@@ -91,6 +112,7 @@ async function main() {
     }
 
     const errors = [];
+    const warnings = [];
 
     if (typeof data.generatedAt !== 'string') {
         errors.push('generatedAt: missing or not a string');
@@ -113,7 +135,7 @@ async function main() {
             errors.push('models: empty array');
         }
         data.models.forEach((entry, index) => {
-            errors.push(...validateEntry(entry, index));
+            errors.push(...validateEntry(entry, index, warnings));
         });
 
         // Check for duplicate provider+modelId pairs
@@ -129,13 +151,18 @@ async function main() {
         });
     }
 
+    if (warnings.length > 0) {
+        console.warn('[validate-pricing] Warnings:');
+        warnings.forEach(w => console.warn(`  ⚠ ${w}`));
+    }
+
     if (errors.length > 0) {
         console.error('[validate-pricing] Validation failed:');
         errors.forEach(err => console.error(`  - ${err}`));
         process.exitCode = 1;
     } else {
         const modelCount = data.models?.length ?? 0;
-        console.log(`[validate-pricing] OK (${modelCount} entries)`);
+        console.log(`[validate-pricing] OK (${modelCount} entries${warnings.length ? `, ${warnings.length} warning(s)` : ''})`);
     }
 }
 

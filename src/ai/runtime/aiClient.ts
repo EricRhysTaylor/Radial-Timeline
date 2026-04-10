@@ -201,7 +201,25 @@ export class AIClient {
             }
         });
         if (result.table) {
-            mergeRemotePricing(result.table);
+            mergeRemotePricing(result.table, result.source, result.fetchedAt);
+        }
+        this.pricingReady = true;
+        return result;
+    }
+
+    async refreshPricingNow(): Promise<RemotePricingLoadResult> {
+        const result = await loadRemotePricing({
+            enabled: true,
+            url: DEFAULT_REMOTE_PRICING_URL,
+            ttlMs: 0,
+            readCache: async () => this.plugin.settings.aiPricingCacheJson ?? null,
+            writeCache: async (content: string) => {
+                this.plugin.settings.aiPricingCacheJson = content;
+                await this.plugin.saveSettings();
+            }
+        });
+        if (result.table) {
+            mergeRemotePricing(result.table, result.source, result.fetchedAt);
         }
         this.pricingReady = true;
         return result;

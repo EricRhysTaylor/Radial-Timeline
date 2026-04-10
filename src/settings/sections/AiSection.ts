@@ -32,7 +32,7 @@ import {
     estimateCorpusCost,
     formatUsdCost
 } from '../../ai/cost/estimateCorpusCost';
-import { getProviderPricing } from '../../ai/cost/providerPricing';
+import { getProviderPricing, getActivePricingMeta, getPricingFreshnessLabel } from '../../ai/cost/providerPricing';
 import { buildOutputRulesText } from '../../ai/prompts/outputRules';
 import { buildUnifiedBeatAnalysisPromptParts, getUnifiedBeatAnalysisJsonSchema } from '../../ai/prompts/unifiedBeatAnalysis';
 import { resolveActiveRoleTemplate } from '../../ai/roleTemplate';
@@ -252,6 +252,7 @@ export function renderAiSection(params: {
         text: t('settings.ai.costEstimate.corpusScanning')
     });
     const costEstimateTable = costEstimateSection.createDiv({ cls: 'ert-ai-models-table' });
+    const costEstimateFreshness = costEstimateSection.createDiv({ cls: 'ert-ai-cost-freshness' });
     const costEstimateFootnote = costEstimateSection.createDiv({ cls: 'ert-ai-cost-footnote' });
     costEstimateFootnote.appendText('* Cloud-provider rows use published provider pricing. Actual charges may differ due to provider-side billing rules and account-level adjustments such as caching, credits, promos, or contract pricing. ');
     costEstimateFootnote.createSpan({ text: 'See provider pricing: ' });
@@ -1577,6 +1578,7 @@ export function renderAiSection(params: {
         if (requestId !== costComparisonRequestId) return;
         renderCostEstimateCorpusSummary(corpusSummary);
         renderCostComparisonRows(rows);
+        costEstimateFreshness.setText(getPricingFreshnessLabel(getActivePricingMeta()));
     };
 
     const computeVaultForecasts = async (engine?: {

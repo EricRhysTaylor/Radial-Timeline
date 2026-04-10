@@ -1,5 +1,7 @@
 import type { AIProviderId } from '../types';
 
+export type PricingSource = 'remote' | 'cache' | 'builtin';
+
 export interface PromoPricing {
     label: string;
     expiresAt?: string;
@@ -26,6 +28,11 @@ export interface ProviderModelPricing {
 
 export type ProviderPricingTable = Partial<Record<AIProviderId, Record<string, ProviderModelPricing>>>;
 
+export interface PricingMeta {
+    source: PricingSource;
+    fetchedAt?: string;
+}
+
 export interface ResolvedProviderModelPricing {
     inputPer1M: number;
     outputPer1M: number;
@@ -34,6 +41,7 @@ export interface ResolvedProviderModelPricing {
     cacheReadPer1M?: number;
     pricingPhase: 'standard' | 'longContext';
     promo?: PromoPricing;
+    meta: PricingMeta;
 }
 
 export const BUILTIN_PRICING: ProviderPricingTable = {
@@ -110,6 +118,7 @@ export const BUILTIN_PRICING: ProviderPricingTable = {
 };
 
 let activePricing: ProviderPricingTable = structuredClone(BUILTIN_PRICING);
+let activeMeta: PricingMeta = { source: 'builtin' };
 
 export function isPromoActive(promo: PromoPricing | undefined): boolean {
     if (!promo) return false;
@@ -121,7 +130,11 @@ export function getActivePricingTable(): ProviderPricingTable {
     return activePricing;
 }
 
-export function mergeRemotePricing(remote: ProviderPricingTable): void {
+export function getActivePricingMeta(): PricingMeta {
+    return activeMeta;
+}
+
+export function mergeRemotePricing(remote: ProviderPricingTable, source: PricingSource, fetchedAt?: string): void {
     const merged: ProviderPricingTable = structuredClone(BUILTIN_PRICING);
     for (const provider of Object.keys(remote) as AIProviderId[]) {
         const remoteModels = remote[provider];
@@ -132,10 +145,22 @@ export function mergeRemotePricing(remote: ProviderPricingTable): void {
         }
     }
     activePricing = merged;
+    activeMeta = { source, fetchedAt };
 }
 
 export function resetPricingToBuiltin(): void {
     activePricing = structuredClone(BUILTIN_PRICING);
+    activeMeta = { source: 'builtin' };
+}
+
+export function getPricingFreshnessLabel(meta: PricingMeta): string {
+    if (meta.source === 'builtin') return 'Using fallback pricing';
+    if (!meta.fetchedAt) return 'Using cached pricing';
+    const ageMs = Date.now() - Date.parse(meta.fetchedAt);
+    if (!Number.isFinite(ageMs) || ageMs < 0) return 'Using cached pricing';
+    const THREE_DAYS_MS = 72 * 60 * 60 * 1000;
+    if (ageMs <= THREE_DAYS_MS) return 'Pricing updated recently';
+    return 'Using cached pricing';
 }
 
 export function getProviderPricing(
@@ -150,6 +175,16 @@ export function getProviderPricing(
     return pricing;
 }
 
+function resolveExpiredPromoRates(pricing: ProviderModelPricing): { inputPer1M: number; outputPer1M: number } {
+    const promo = pricing.promo;
+    if (!promo) return pricing;
+    if (isPromoActive(promo)) return pricing;
+    return {
+        inputPer1M: promo.standardInputPer1M ?? pricing.inputPer1M,
+        outputPer1M: promo.standardOutputPer1M ?? pricing.outputPer1M
+    };
+}
+
 export function resolveProviderModelPricing(
     provider: AIProviderId,
     modelId: string,
@@ -160,7 +195,10 @@ export function resolveProviderModelPricing(
         ? Math.max(0, Math.floor(totalInputTokens))
         : 0;
     const longContext = pricing.longContext;
-    const promo = isPromoActive(pricing.promo) ? pricing.promo : undefined;
+    const promoActive = isPromoActive(pricing.promo);
+    const promo = promoActive ? pricing.promo : undefined;
+    const meta = activeMeta;
+    const effectiveRates = resolveExpiredPromoRates(pricing);
 
     if (
         provider === 'anthropic'
@@ -174,17 +212,19 @@ export function resolveProviderModelPricing(
             cacheWrite1hPer1M: longContext.cacheWrite1hPer1M,
             cacheReadPer1M: longContext.cacheReadPer1M,
             pricingPhase: 'longContext',
-            promo
+            promo,
+            meta
         };
     }
 
     return {
-        inputPer1M: pricing.inputPer1M,
-        outputPer1M: pricing.outputPer1M,
+        inputPer1M: effectiveRates.inputPer1M,
+        outputPer1M: effectiveRates.outputPer1M,
         cacheWrite5mPer1M: pricing.cacheWrite5mPer1M,
         cacheWrite1hPer1M: pricing.cacheWrite1hPer1M,
         cacheReadPer1M: pricing.cacheReadPer1M,
         pricingPhase: 'standard',
-        promo
+        promo,
+        meta
     };
 }
