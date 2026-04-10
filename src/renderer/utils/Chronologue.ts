@@ -13,7 +13,12 @@ import {
     type ChronologueSceneEntry
 } from '../components/ChronologueTimeline';
 import { renderBackdropRing } from '../components/BackdropRing';
-import { renderBackdropMicroRings, type BackdropMicroRingLayout, type MicroRingTick } from '../components/BackdropMicroRings';
+import {
+    renderBackdropMicroRings,
+    type BackdropMicroRingLayout,
+    type MicroRingSegment,
+    type MicroRingTick
+} from '../components/BackdropMicroRings';
 import { MICRO_RING_GAP, MICRO_RING_WIDTH } from '../layout/LayoutConstants';
 
 export type ChronologueLabel = {
@@ -257,6 +262,7 @@ type ChronoTickParams = {
     outerLabels: ChronologueLabel[];
     monthTickStart: number;
     monthTickEnd: number;
+    microRingSegments?: MicroRingSegment[];
     microRingTicks?: MicroRingTick[];
 };
 
@@ -264,6 +270,7 @@ export function renderChronologueOuterTicks({
     outerLabels,
     monthTickStart,
     monthTickEnd,
+    microRingSegments,
     microRingTicks
 }: ChronoTickParams): string {
     if (!outerLabels.length) {
@@ -296,6 +303,28 @@ export function renderChronologueOuterTicks({
                 class="rt-chronological-tick rt-chronological-tick-minor"${dataAttrs}/>`;
         }
     });
+
+    if (microRingSegments?.length) {
+        const arcRadius = monthTickEnd - 2.5;
+        microRingSegments.forEach(segment => {
+            const largeArcFlag = (segment.endAngle - segment.startAngle) > Math.PI ? 1 : 0;
+            const x1 = formatNumber(arcRadius * Math.cos(segment.startAngle));
+            const y1 = formatNumber(arcRadius * Math.sin(segment.startAngle));
+            const x2 = formatNumber(arcRadius * Math.cos(segment.endAngle));
+            const y2 = formatNumber(arcRadius * Math.sin(segment.endAngle));
+
+            svg += `<path
+                d="M ${x1} ${y1} A ${formatNumber(arcRadius)} ${formatNumber(arcRadius)} 0 ${largeArcFlag} 1 ${x2} ${y2}"
+                class="rt-backdrop-micro-arc"
+                stroke="${segment.color}"
+                stroke-width="5"
+                stroke-opacity="0.1"
+                stroke-linecap="round"
+                fill="none"
+                pointer-events="none"
+            />`;
+        });
+    }
 
     if (microRingTicks?.length) {
         microRingTicks.forEach(tick => {

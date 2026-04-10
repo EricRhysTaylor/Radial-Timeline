@@ -387,6 +387,12 @@
   color-scheme: dark;
 }
 
+.rt-planetary-modal input[type="date"]::-webkit-calendar-picker-indicator,
+.rt-planetary-modal input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.7) sepia(0.3) hue-rotate(10deg);
+  opacity: 0.7;
+}
+
 .rt-planetary-modal .ert-modal-header {
   padding-bottom: 12px;
   margin-bottom: 0;
@@ -421,6 +427,7 @@
 
 .rt-planetary-result-text {
   flex: 1;
+  text-align: center;
 }
 
 /* rt-drag-confirm-modal width controlled via inline styles in DragConfirmModal.ts */

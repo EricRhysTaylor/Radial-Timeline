@@ -415,6 +415,7 @@ export function createTimelineSVG(
             outerLabels,
             monthTickStart,
             monthTickEnd,
+            microRingSegments: microRingLayout?.segments,
             microRingTicks: microRingLayout?.ticks
         });
         if (ticksSvg) {
