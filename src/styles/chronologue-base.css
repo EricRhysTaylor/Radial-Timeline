@@ -237,8 +237,8 @@
 
 .rt-backdrop-micro-ring:hover,
 .rt-backdrop-micro-ring.rt-tooltip-active {
-  opacity: 0.5;
-  stroke-opacity: 0.5;
+  opacity: 0.8;
+  stroke-opacity: 0.8;
 }
 
 .rt-backdrop-micro-outer {

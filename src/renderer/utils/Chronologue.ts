@@ -266,6 +266,10 @@ type ChronoTickParams = {
     microRingTicks?: MicroRingTick[];
 };
 
+function tooltipKeyForTitle(title: string): string {
+    return encodeURIComponent(title.trim().toLowerCase());
+}
+
 export function renderChronologueOuterTicks({
     outerLabels,
     monthTickStart,
@@ -309,6 +313,7 @@ export function renderChronologueOuterTicks({
         microRingSegments.forEach(segment => {
             const largeArcFlag = (segment.endAngle - segment.startAngle) > Math.PI ? 1 : 0;
             const safeTitle = escapeXml(segment.title);
+            const tooltipKey = escapeXml(tooltipKeyForTitle(segment.title));
 
             const arcX1 = formatNumber(arcRadius * Math.cos(segment.startAngle));
             const arcY1 = formatNumber(arcRadius * Math.sin(segment.startAngle));
@@ -327,7 +332,8 @@ export function renderChronologueOuterTicks({
 
             svg += `<g class="rt-backdrop-micro-outer rt-tooltip-target"
                 data-tooltip="${safeTitle}"
-                data-tooltip-placement="top">
+                data-tooltip-placement="top"
+                data-tooltip-key="${tooltipKey}">
                 <path
                     d="M ${arcX1} ${arcY1} A ${formatNumber(arcRadius)} ${formatNumber(arcRadius)} 0 ${largeArcFlag} 1 ${arcX2} ${arcY2}"
                     class="rt-backdrop-micro-arc"
@@ -353,12 +359,14 @@ export function renderChronologueOuterTicks({
             const x2 = formatNumber(monthTickEnd * Math.cos(tick.angle));
             const y2 = formatNumber(monthTickEnd * Math.sin(tick.angle));
             const safeTitle = escapeXml(tick.title);
+            const tooltipKey = escapeXml(tooltipKeyForTitle(tick.title));
 
             svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" 
                 class="rt-backdrop-micro-tick rt-tooltip-target"
                 stroke="${tick.color}"
                 data-tooltip="${safeTitle}"
                 data-tooltip-placement="top"
+                data-tooltip-key="${tooltipKey}"
             />`;
         });
     }

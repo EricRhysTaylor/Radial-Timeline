@@ -40,14 +40,36 @@ let customTooltipEl: HTMLElement | null = null;
 let currentTarget: Element | null = null;
 let hideTimeout: number | null = null;
 
+function getTooltipKeyPeers(target: Element): Element[] {
+    const key = target.getAttribute('data-tooltip-key');
+    if (!key) return [];
+    return Array.from(document.querySelectorAll(`[data-tooltip-key="${key}"]`));
+}
+
 function clearActiveTooltipTarget(target: Element | null): void {
     if (!target) return;
+    const peers = getTooltipKeyPeers(target);
+    if (peers.length > 0) {
+        peers.forEach((peer) => {
+            peer.classList.remove(TOOLTIP_ACTIVE_CLASS);
+            peer.closest('.rt-backdrop-micro-outer')?.classList.remove(TOOLTIP_ACTIVE_CLASS);
+        });
+        return;
+    }
     target.classList.remove(TOOLTIP_ACTIVE_CLASS);
     target.closest('.rt-backdrop-micro-outer')?.classList.remove(TOOLTIP_ACTIVE_CLASS);
 }
 
 function setActiveTooltipTarget(target: Element | null): void {
     if (!target) return;
+    const peers = getTooltipKeyPeers(target);
+    if (peers.length > 0) {
+        peers.forEach((peer) => {
+            peer.classList.add(TOOLTIP_ACTIVE_CLASS);
+            peer.closest('.rt-backdrop-micro-outer')?.classList.add(TOOLTIP_ACTIVE_CLASS);
+        });
+        return;
+    }
     target.classList.add(TOOLTIP_ACTIVE_CLASS);
     target.closest('.rt-backdrop-micro-outer')?.classList.add(TOOLTIP_ACTIVE_CLASS);
 }

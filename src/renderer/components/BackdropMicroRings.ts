@@ -38,6 +38,10 @@ type MicroRingConfig = {
 
 const HEX_COLOR = /^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
 
+function tooltipKeyForTitle(title: string): string {
+    return encodeURIComponent(title.trim().toLowerCase());
+}
+
 function normalizeHexColor(value: string, fallback: string): string {
     if (!value || !HEX_COLOR.test(value)) return fallback;
     return value.startsWith('#') ? value : `#${value}`;
@@ -210,6 +214,7 @@ export function renderBackdropMicroRings(params: {
         const x2 = formatNumber(radius * Math.cos(segment.endAngle));
         const y2 = formatNumber(radius * Math.sin(segment.endAngle));
         const safeTitle = escapeXml(segment.title);
+        const tooltipKey = escapeXml(tooltipKeyForTitle(segment.title));
 
         svg += `
             <path
@@ -219,6 +224,7 @@ export function renderBackdropMicroRings(params: {
                 stroke-width="${MICRO_RING_WIDTH}"
                 fill="none"
                 data-tooltip="${safeTitle}"
+                data-tooltip-key="${tooltipKey}"
                 data-tooltip-placement="bottom"
                 data-tooltip-anchor="cursor"
             />
