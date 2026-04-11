@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { BUILTIN_MODELS } from '../registry/builtinModels';
 import {
     buildEngineCapabilityMatrix,
+    getModelUiSignals,
     resolveEngineCapabilities,
     resolveEngineCapabilitiesForRef
 } from './engineCapabilities';
@@ -96,5 +97,48 @@ describe('resolveEngineCapabilities', () => {
                 batchAnalysis: 'provider_supported_not_used'
             }
         ]);
+    });
+});
+
+describe('getModelUiSignals', () => {
+    it('returns citation and reuse labels for Anthropic model with exclusive constraint', () => {
+        const model = byAlias('claude-sonnet-4.6');
+        const signals = getModelUiSignals(model);
+
+        // Sonnet 4.6 has cacheVsCitationsExclusive constraint
+        if (model.constraints?.cacheVsCitationsExclusive) {
+            expect(signals.citationLabel).toBe('Citation or Cache (exclusive)');
+            expect(signals.reuseLabel).toBeNull();
+        } else {
+            expect(signals.citationLabel).toContain('Citation');
+            expect(signals.reuseLabel).toContain('Reuse');
+        }
+    });
+
+    it('returns reuse label for OpenAI model', () => {
+        const model = byAlias('gpt-5.4');
+        const signals = getModelUiSignals(model);
+
+        expect(signals.reuseLabel).toContain('Reuse');
+    });
+
+    it('returns isPreview true for preview models', () => {
+        const preview = BUILTIN_MODELS.find(m => m.status === 'preview');
+        if (preview) {
+            expect(getModelUiSignals(preview).isPreview).toBe(true);
+        }
+    });
+
+    it('returns isPreview false for stable models', () => {
+        const stable = byAlias('claude-sonnet-4.6');
+        expect(getModelUiSignals(stable).isPreview).toBe(false);
+    });
+
+    it('returns citation label for Google model', () => {
+        const google = BUILTIN_MODELS.find(m => m.provider === 'google' && m.status !== 'deprecated');
+        if (google) {
+            const signals = getModelUiSignals(google);
+            expect(signals.citationLabel).not.toBeNull();
+        }
     });
 });

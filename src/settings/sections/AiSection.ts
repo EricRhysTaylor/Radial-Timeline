@@ -2382,21 +2382,21 @@ export function renderAiSection(params: {
     renderCredentialSettings({
         section: anthropicSection,
         provider: 'anthropic',
-        providerName: 'Anthropic',
+        providerName: PROVIDER_DISPLAY_LABELS.anthropic,
         keyPlaceholder: t('settings.ai.credential.placeholderAnthropic'),
         docsUrl: 'https://platform.claude.com'
     });
     renderCredentialSettings({
         section: googleSection,
         provider: 'google',
-        providerName: 'Google',
+        providerName: PROVIDER_DISPLAY_LABELS.google,
         keyPlaceholder: t('settings.ai.credential.placeholderGoogle'),
         docsUrl: 'https://aistudio.google.com'
     });
     renderCredentialSettings({
         section: openaiSection,
         provider: 'openai',
-        providerName: 'OpenAI',
+        providerName: PROVIDER_DISPLAY_LABELS.openai,
         keyPlaceholder: t('settings.ai.credential.placeholderOpenai'),
         docsUrl: 'https://platform.openai.com'
     });
