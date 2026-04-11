@@ -218,18 +218,18 @@ export function getModelUiSignals(model: ModelInfo): ModelUiSignals {
     if (hasExclusiveConstraint) {
         citationLabel = 'Citation or Cache (exclusive)';
     } else if (capabilities.directManuscriptCitations.availableInRt) {
-        citationLabel = 'Citation \u00b7 Direct manuscript';
+        citationLabel = 'Citation · Direct manuscript';
     } else if (capabilities.groundedToolAttribution.availableInRt) {
         citationLabel = model.provider === 'google'
-            ? 'Citation \u00b7 Grounded search'
-            : 'Citation \u00b7 Tool annotations';
+            ? 'Citation · Grounded search'
+            : 'Citation · Tool annotations';
     }
 
     let reuseLabel: string | null = null;
     if (!hasExclusiveConstraint) {
         reuseLabel = capabilities.corpusReuse.availableInRt
-            ? 'Reuse \u00b7 Provider cache'
-            : 'Reuse \u00b7 No provider cache';
+            ? 'Reuse · Provider cache'
+            : 'Reuse · No provider cache';
     }
 
     return {

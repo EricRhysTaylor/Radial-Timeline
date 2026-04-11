@@ -492,7 +492,7 @@
           "label": "Inquiry still recognizes external attribution citations in the rendered pipeline",
           "sourceFiles": [
             "src/inquiry/services/inquirySources.ts",
-            "src/settings/sections/AiSection.ts"
+            "src/ai/caps/engineCapabilities.ts"
           ],
           "allOf": [
             "isExternalAttributionCitation",

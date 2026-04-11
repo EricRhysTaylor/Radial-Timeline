@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-04-11T00:26:03.473Z",
+  "generatedAt": "2026-04-11T00:30:59.312Z",
   "scoringModel": "rt-impact-v1",
   "scoringAxes": [
     "authorTrust",
@@ -12,18 +12,7 @@
   "validationWarnings": [
     "openai-citations-annotations: missing availableSince (required for provider reality)"
   ],
-  "evidenceFailures": [
-    {
-      "id": "openai-citations-annotations",
-      "kind": "evidence_matcher_stale",
-      "reason": "Inquiry still recognizes external attribution citations in the rendered pipeline: missing required evidence /Citation · Tool annotations/",
-      "rule": "Inquiry still recognizes external attribution citations in the rendered pipeline",
-      "sourceFiles": [
-        "src/inquiry/services/inquirySources.ts",
-        "src/settings/sections/AiSection.ts"
-      ]
-    }
-  ],
+  "evidenceFailures": [],
   "providerSummaries": {
     "anthropic": {
       "total": 9,
