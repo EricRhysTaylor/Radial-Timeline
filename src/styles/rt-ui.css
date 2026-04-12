@@ -501,6 +501,7 @@
 
 .ert-ui.ert-scope--settings .ert-pro-hero-card--collapsed {
   padding: 0;
+  overflow: hidden;
 }
 
 .ert-ui.ert-scope--settings .ert-pro-hero-card::before {
@@ -564,6 +565,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--ert-gap-xs) var(--ert-gap-sm);
+  margin-top: var(--ert-gap-sm);
 }
 
 .ert-ui.ert-scope--settings .ert-pro-hero-pill {
@@ -614,102 +616,19 @@
   letter-spacing: 0.2px;
 }
 
-.ert-ui.ert-scope--settings .ert-pro-hero-value {
-  display: flex;
-  flex-direction: column;
-  gap: var(--ert-gap-xs);
-}
-
-.ert-ui.ert-scope--settings .ert-pro-hero-valueGrid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--ert-gap-sm);
-}
-
-.ert-ui.ert-scope--settings .ert-pro-hero-valueCard {
-  background: color-mix(in srgb, var(--background-secondary) 68%, #050507 32%);
-  border: 1px solid color-mix(in srgb, var(--ert-pro-accent-color) 20%, transparent);
-  border-radius: 10px;
-  padding: var(--ert-pad-sm);
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.ert-ui.ert-scope--settings .ert-pro-hero-valueCard.is-wide {
-  grid-column: 1 / -1;
-}
-
-.ert-ui.ert-scope--settings .ert-pro-hero-valueTitle {
-  margin: 0;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text-normal);
-}
-
-.ert-ui.ert-scope--settings .ert-pro-hero-valueList {
-  margin: 0;
-  padding-left: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 12px;
-  color: var(--text-muted);
-  line-height: 1.5;
-}
-
-.ert-ui.ert-scope--settings .ert-pro-hero-list {
-  margin: 0;
-  padding-left: 18px;
-  display: flex;
-  flex-direction: column;
-  gap: var(--ert-gap-xs);
-  color: color-mix(in srgb, var(--text-muted) 90%, transparent);
-  font-size: 12px;
-  line-height: 1.5;
-}
-
-.ert-ui.ert-scope--settings .ert-pro-hero-details {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  opacity: 0.85;
-}
-
-.ert-ui.ert-scope--settings .ert-pro-hero-details-note {
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--text-muted);
-}
-
-.ert-ui.ert-scope--settings .ert-pro-hero-exclusives {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.ert-ui.ert-scope--settings .ert-pro-hero-exclusives-copy {
-  font-size: 12px;
-  line-height: 1.6;
-  color: color-mix(in srgb, var(--text-muted) 92%, transparent);
-  max-width: 760px;
-}
-
-.ert-ui.ert-scope--settings .ert-pro-hero-final {
-  font-size: 12px;
-  color: var(--text-muted);
-  font-weight: 500;
-}
-
 .ert-ui.ert-scope--settings .ert-pro-hero-body {
   line-height: 1.65;
   max-width: 720px;
 }
 
-@media (max-width: 720px) {
-  .ert-ui.ert-scope--settings .ert-pro-hero-valueGrid {
-    grid-template-columns: 1fr;
-  }
+.ert-ui.ert-scope--settings .ert-mono-inline {
+  font-family: var(--font-monospace);
+  font-size: 0.95em;
+  letter-spacing: -0.01em;
+  color: color-mix(in srgb, var(--text-normal) 88%, var(--text-muted));
+  background: color-mix(in srgb, var(--background-secondary) 70%, transparent);
+  padding: 1px 4px;
+  border-radius: 5px;
 }
 
 .ert-ui.ert-scope--settings .ert-kicker {

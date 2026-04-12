@@ -55,8 +55,6 @@ export function renderProEntitlementPanel({
     const collapsed = panel.createDiv({
         cls: `${ERT_CLASSES.CARD} ${ERT_CLASSES.CARD_HERO} ert-pro-hero-card ert-pro-hero-card--collapsed ert-pro-mode__collapsed`
     });
-    const collapsedWatermark = collapsed.createSpan({ cls: 'ert-pro-hero-watermark', attr: { 'aria-hidden': 'true' } });
-    setIcon(collapsedWatermark, 'signature');
     const collapsedButton = collapsed.createDiv({
         cls: 'ert-pro-mode__collapsed-button',
         attr: { role: 'button', tabindex: '0', 'aria-expanded': 'false' }
@@ -103,10 +101,12 @@ export function renderProEntitlementPanel({
         cls: `${ERT_CLASSES.SECTION_TITLE} ert-hero-title`,
         text: proModeLabel
     });
-    heroContent.createEl('p', {
-        cls: `${ERT_CLASSES.SECTION_DESC} ert-hero-subtitle ert-pro-hero-body`,
-        text: 'Pro Mode expands Radial Timeline into a complete manuscript system—where writing, analysis, and publishing work together. You can evaluate your story with deeper Inquiry questions, track momentum and structure across scenes, and generate polished manuscripts using advanced Pandoc PDF exports with custom LaTeX templates. On the sharing side, Pro introduces Social APR campaigns to present your progress clearly without spoilers. Instead of stitching together tools and workflows, Pro brings everything into one system—so you can move faster, make better decisions, and finish stronger.'
-    });
+    const heroCopy = heroContent.createEl('p', { cls: `${ERT_CLASSES.SECTION_DESC} ert-hero-subtitle ert-pro-hero-body` });
+    heroCopy.appendText('Pro Mode expands Radial Timeline into a complete manuscript system—where writing, analysis, and publishing work together. Evaluate your story with deeper INQUIRY+ questions, track structure and momentum across scenes, and generate polished manuscripts with PANDOC PDF EXPORTS and custom LaTeX templates. Share progress through APR CAMPAIGNS, and explore WEBSITE EXCLUSIVES including ');
+    heroCopy.createSpan({ cls: 'ert-mono-inline', text: 'Pride & Prejudice' });
+    heroCopy.appendText(' and ');
+    heroCopy.createSpan({ cls: 'ert-mono-inline', text: 'Sherlock Holmes' });
+    heroCopy.appendText(' template vaults, Inquiry View Omnibus Briefings, and guided workflow demonstrations. Instead of stitching together tools, Pro brings everything into one system—so you can move faster, decide with confidence, and finish stronger.');
 
     const featureStrip = heroContent.createDiv({ cls: 'ert-pro-hero-pillStrip' });
     const featureItems = [
@@ -123,50 +123,6 @@ export function renderProEntitlementPanel({
         item.createSpan({ cls: 'ert-pro-hero-pill-label', text: label });
     });
 
-    const valueSection = heroContent.createDiv({ cls: 'ert-pro-hero-value' });
-    valueSection.createEl('h5', { text: 'Designed to remove friction', cls: 'ert-kicker' });
-    const valueGrid = valueSection.createDiv({ cls: 'ert-pro-hero-valueGrid' });
-    const writeCard = valueGrid.createDiv({ cls: 'ert-pro-hero-valueCard' });
-    writeCard.createEl('h6', { text: 'Write Faster', cls: 'ert-pro-hero-valueTitle' });
-    const writeList = writeCard.createEl('ul', { cls: 'ert-pro-hero-valueList' });
-    ['Export clean manuscripts instantly', 'No manual formatting'].forEach((item) => writeList.createEl('li', { text: item }));
-    const thinkCard = valueGrid.createDiv({ cls: 'ert-pro-hero-valueCard' });
-    thinkCard.createEl('h6', { text: 'Think Clearly', cls: 'ert-pro-hero-valueTitle' });
-    const thinkList = thinkCard.createEl('ul', { cls: 'ert-pro-hero-valueList' });
-    ['See structure across scenes', 'Track momentum visually'].forEach((item) => thinkList.createEl('li', { text: item }));
-    const detailsSection = heroContent.createDiv({ cls: 'ert-pro-hero-details' });
-    detailsSection.createEl('h5', { text: "What's included", cls: 'ert-kicker' });
-    const detailsList = detailsSection.createEl('ul', { cls: 'ert-pro-hero-list' });
-    [
-        'Inquiry View — cross-scene diagnostics',
-        'Gossamer — momentum tracking',
-        'Beat System Designer — custom frameworks',
-        'Publishing — advanced templates and exports',
-        'Author Progress Report — shareable visuals'
-    ].forEach((item) => detailsList.createEl('li', { text: item }));
-    detailsSection.createEl('p', {
-        cls: `${ERT_CLASSES.SECTION_DESC} ert-pro-hero-details-note`,
-        text: 'Pro will become a subscription that unlocks advanced tools across Radial Timeline. During Early Access, everything remains available.'
-    });
-
-    const exclusivesSection = heroContent.createDiv({ cls: 'ert-pro-hero-exclusives' });
-    exclusivesSection.createEl('h5', { text: 'Website Exclusives', cls: 'ert-kicker' });
-    exclusivesSection.createEl('p', {
-        cls: `${ERT_CLASSES.SECTION_DESC} ert-pro-hero-exclusives-copy`,
-        text: 'Pro also includes website-exclusive resources designed to help authors learn by example: downloadable Pride & Prejudice and Sherlock Holmes template vaults, expanded Inquiry View Omnibus Briefings, and focused demonstrations of real Radial Timeline workflows.'
-    });
-    const exclusivesList = exclusivesSection.createEl('ul', { cls: 'ert-pro-hero-list' });
-    [
-        'Pride & Prejudice template vault',
-        'Sherlock Holmes template vault',
-        'Inquiry View Omnibus Briefings',
-        'Exclusive usage demonstrations'
-    ].forEach((item) => exclusivesList.createEl('li', { text: item }));
-
-    heroContent.createDiv({
-        cls: 'ert-pro-hero-final',
-        text: 'Pro is where the system comes together.'
-    });
 
     const toggleExpanded = (expanded: boolean): void => {
         panel.toggleClass('is-expanded', expanded);
