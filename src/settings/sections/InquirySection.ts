@@ -1345,6 +1345,7 @@ export function renderInquirySection(params: SectionParams): void {
                     canonicalRowRefs[zone].set(canonicalQuestion.id, row);
                 }
                 if (isProRow) {
+                    row.addClass('ert-skin--pro', 'ert-elementBlock');
                     row.addClass('ert-reorder-row--pro');
                     if (!isPro) {
                         row.addClass('ert-reorder-row--locked');
