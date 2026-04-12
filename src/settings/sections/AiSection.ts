@@ -1349,9 +1349,10 @@ export function renderAiSection(params: {
         }
     };
 
-    const getCostComparisonModels = (): CostComparisonModel[] => {
+    const getCostComparisonModels = (registryModels?: ModelInfo[]): CostComparisonModel[] => {
+        const models = registryModels?.length ? registryModels : BUILTIN_MODELS;
         const cloudModels: CostComparisonModel[] = COST_PROVIDER_ORDER.flatMap(provider => {
-            const providerModels = getPickerModelsForProvider(BUILTIN_MODELS, provider)
+            const providerModels = getPickerModelsForProvider(models, provider)
                 .filter(model => !model.id.endsWith('-latest'))
                 .filter(model => supportsCostComparisonModel(provider, model.id));
 
@@ -1515,8 +1516,8 @@ export function renderAiSection(params: {
         };
     };
 
-    const computeCostComparisonRows = async (): Promise<CostComparisonRow[]> => {
-        return await Promise.all(getCostComparisonModels().map(async model => {
+    const computeCostComparisonRows = async (registryModels?: ModelInfo[]): Promise<CostComparisonRow[]> => {
+        return await Promise.all(getCostComparisonModels(registryModels).map(async model => {
             try {
                 const executionEstimate = await buildCurrentInquiryExecutionEstimate({
                     provider: model.provider,
@@ -1570,10 +1571,14 @@ export function renderAiSection(params: {
         });
         setActiveCostComparisonRow(null, null);
         renderCostComparisonRows(buildLoadingCostRows());
-        await getAIClient(plugin).refreshPricing();
+        const aiClient = getAIClient(plugin);
+        const [registryModels] = await Promise.all([
+            aiClient.getRegistryModels(),
+            aiClient.refreshPricing()
+        ]);
         const [corpusSummary, rows] = await Promise.all([
             computeCostEstimateCorpusSummary(),
-            computeCostComparisonRows()
+            computeCostComparisonRows(registryModels)
         ]);
         if (requestId !== costComparisonRequestId) return;
         renderCostEstimateCorpusSummary(corpusSummary);
@@ -2134,7 +2139,7 @@ export function renderAiSection(params: {
             .setDesc('');
         keyStatusSetting.settingEl.addClass('ert-ai-provider-key-status-row');
 
-        let providerState: ProviderKeyUiState = 'not_configured';
+        let providerState: ProviderKeyUiState = 'checking';
         let providerStateDetail = '';
         let replaceRequested = false;
         let revealSecretName = false;

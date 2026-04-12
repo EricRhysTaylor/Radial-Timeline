@@ -4,17 +4,14 @@ import { hasProFeatureAccess } from './featureGate';
 describe('hasProFeatureAccess', () => {
     it('uses Pro entitlement as the single feature access source', () => {
         expect(hasProFeatureAccess({
-            settings: {
-                proLicenseKey: '1234567890abcdef',
-                proAccessEnabled: true
-            }
+            settings: {}
         } as any)).toBe(true);
 
         expect(hasProFeatureAccess({
             settings: {
-                proLicenseKey: ''
+                proAccessEnabled: true
             }
-        } as any)).toBe(false);
+        } as any)).toBe(true);
 
         expect(hasProFeatureAccess({
             settings: {

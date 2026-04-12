@@ -406,6 +406,215 @@
   color: var(--text-normal);
 }
 
+.ert-ui.ert-scope--settings .ert-pro-mode {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ert-gap-sm);
+}
+
+.ert-ui.ert-scope--settings .ert-pro-mode__collapsed {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--background-primary) 94%, var(--ert-pro-accent-color) 6%);
+}
+
+.ert-ui.ert-scope--settings .ert-pro-mode__collapsed-button {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--ert-pad-sm) var(--ert-pad-md);
+  cursor: pointer;
+  border-radius: 12px;
+}
+
+.ert-ui.ert-scope--settings .ert-pro-mode__collapsed-button:focus-visible {
+  outline: 2px solid var(--ert-pro-accent-border);
+  outline-offset: 2px;
+}
+
+.ert-ui.ert-scope--settings .ert-pro-mode__collapsed-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ert-gap-sm);
+}
+
+.ert-ui.ert-scope--settings .ert-pro-mode__collapsed-title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ert-gap-xs);
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+.ert-ui.ert-scope--settings .ert-pro-mode__chevron {
+  display: inline-flex;
+  align-items: center;
+  opacity: 0.6;
+  transition: transform 0.2s ease;
+}
+
+.ert-ui.ert-scope--settings .ert-pro-mode__collapsed-subtext {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ert-ui.ert-scope--settings .ert-pro-mode__expanded {
+  display: none;
+}
+
+.ert-ui.ert-scope--settings .ert-pro-mode.is-expanded .ert-pro-mode__expanded {
+  display: block;
+}
+
+.ert-ui.ert-scope--settings .ert-pro-mode.is-expanded .ert-pro-mode__collapsed {
+  border-color: var(--ert-pro-accent-border);
+  box-shadow: var(--ert-shadow-pro-glow-subtle);
+}
+
+.ert-ui.ert-scope--settings .ert-pro-hero-card,
+.ert-ui.ert-scope--settings .ert-skin--pro .ert-pro-hero-card {
+  position: relative;
+  overflow: hidden;
+  --ert-surface-hero: #0b0a10;
+  --ert-hero-grad:
+    radial-gradient(circle at 12% 18%, color-mix(in srgb, var(--ert-pro-accent-color) 35%, transparent) 0%, transparent 46%),
+    radial-gradient(circle at 90% 8%, color-mix(in srgb, #8b5cf6 28%, transparent) 0%, transparent 52%),
+    linear-gradient(135deg, #050507 0%, color-mix(in srgb, var(--ert-pro-accent-color) 40%, #050507) 52%, color-mix(in srgb, #8b5cf6 30%, #050507) 100%);
+  --ert-border-hero: color-mix(in srgb, var(--ert-pro-accent-color) 38%, transparent);
+  --ert-shadow-hero: 0 16px 32px color-mix(in srgb, var(--ert-pro-accent-color) 12%, transparent);
+  background: var(--ert-surface-hero);
+  background-image: var(--ert-hero-grad);
+  border: 1px solid var(--ert-border-hero);
+  box-shadow: var(--ert-shadow-hero);
+}
+
+.ert-ui.ert-scope--settings .ert-pro-hero-card::before {
+  content: '';
+  position: absolute;
+  inset: -35%;
+  background:
+    repeating-radial-gradient(circle at 30% 22%,
+      color-mix(in srgb, var(--ert-pro-accent-color) 18%, transparent) 0 1px,
+      transparent 1px 64px);
+  opacity: 0.08;
+  pointer-events: none;
+}
+
+.ert-ui.ert-scope--settings .ert-pro-hero-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--ert-pro-accent-color) 24%, transparent),
+    inset 0 0 24px color-mix(in srgb, var(--ert-pro-accent-color) 16%, transparent);
+  pointer-events: none;
+}
+
+.ert-ui.ert-scope--settings .ert-pro-hero-content {
+  position: relative;
+  z-index: 2;
+}
+
+.ert-ui.ert-scope--settings .ert-pro-hero-watermark {
+  position: absolute;
+  right: -36px;
+  top: -36px;
+  width: 180px;
+  height: 180px;
+  opacity: 0.12;
+  color: var(--ert-pro-accent-color);
+  z-index: 1;
+  pointer-events: none;
+}
+
+.ert-ui.ert-scope--settings .ert-pro-hero-watermark svg {
+  width: 100%;
+  height: 100%;
+}
+
+.ert-ui.ert-scope--settings .ert-pro-hero-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ert-gap-sm) var(--ert-gap-md);
+}
+
+.ert-ui.ert-scope--settings .ert-pro-hero-feature {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ert-gap-xs);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.ert-ui.ert-scope--settings .ert-pro-hero-feature-icon {
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-muted);
+  transition: color 0.2s ease;
+}
+
+.ert-ui.ert-scope--settings .ert-pro-hero-feature-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.ert-ui.ert-scope--settings .ert-pro-mode.is-pro-enabled .ert-pro-hero-feature-icon {
+  color: var(--ert-pro-accent-color);
+}
+
+.ert-ui.ert-scope--settings .ert-pro-hero-value {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ert-gap-xs);
+}
+
+.ert-ui.ert-scope--settings .ert-pro-hero-list {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ert-gap-xs);
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.ert-ui.ert-scope--settings .ert-pro-hero-control {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ert-gap-sm);
+  padding-top: var(--ert-gap-xs);
+}
+
+.ert-ui.ert-scope--settings .ert-pro-hero-control-label {
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+.ert-ui.ert-scope--settings .ert-pro-hero-details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ert-gap-xs);
+}
+
+.ert-ui.ert-scope--settings .ert-pro-hero-details-note {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.ert-ui.ert-scope--settings .ert-pro-hero-final {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
 .ert-ui.ert-scope--settings .ert-kicker {
   margin: 0;
   font-size: 12px;
@@ -2263,12 +2472,13 @@
   color: var(--text-muted);
 }
 
-.ert-ui.ert-scope--settings .ert-ai-grid-item:has(.ert-ai-strategy-select.is-ready) {
-  border-color: color-mix(in srgb, var(--text-success) 30%, var(--background-modifier-border));
+@keyframes ert-border-flash-green {
+  0%   { border-color: color-mix(in srgb, var(--text-success) 60%, var(--background-modifier-border)); }
+  100% { border-color: color-mix(in srgb, var(--background-modifier-border) 100%, transparent); }
 }
 
-.ert-ui.ert-scope--settings .ert-ai-grid-item:has(.ert-ai-strategy-select.is-warning) {
-  border-color: color-mix(in srgb, var(--text-warning) 30%, var(--background-modifier-border));
+.ert-ui.ert-scope--settings .ert-ai-grid-item:has(.ert-ai-strategy-select.is-ready) {
+  animation: ert-border-flash-green 1.2s ease-out forwards;
 }
 
 /* ── AI Strategy step hierarchy ───────────────────────────────────────── */

@@ -1,4 +1,4 @@
-import { Notice, Setting, setIcon } from 'obsidian';
+import { Notice, setIcon } from 'obsidian';
 import type { App } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { ERT_CLASSES } from '../../ui/classes';
@@ -11,9 +11,6 @@ interface ProEntitlementPanelParams {
     onEntitlementChanged?: () => void;
 }
 
-const TEMPORARY_BETA_KEY = '1234567890abcdef';
-const TEMPORARY_BETA_KEY_EXPIRY = 'December 31, 2026';
-
 export function renderProEntitlementPanel({
     app: _app,
     plugin,
@@ -21,92 +18,159 @@ export function renderProEntitlementPanel({
     onEntitlementChanged
 }: ProEntitlementPanelParams): HTMLElement {
     const entitlement = getProEntitlement(plugin);
-    const panel = containerEl.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK_TIGHT}` });
+    const panel = containerEl.createDiv({ cls: 'ert-pro-mode' });
+    const toggleInputs: HTMLInputElement[] = [];
+    const proModeLabel = 'Pro Mode';
 
-    const statusRow = panel.createDiv({ cls: 'ert-pro-status-inline' });
-    const statusBadge = statusRow.createSpan({
-        cls: `${ERT_CLASSES.BADGE_PILL} ${entitlement.isProActive ? ERT_CLASSES.BADGE_PILL_PRO : ERT_CLASSES.BADGE_PILL_NEUTRAL}`
-    });
-    const statusBadgeIcon = statusBadge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON });
-    setIcon(statusBadgeIcon, 'signature');
-    statusBadge.createSpan({
-        cls: ERT_CLASSES.BADGE_PILL_TEXT,
-        text: entitlement.isProActive ? 'PRO ACTIVE' : 'PRO OFF'
-    });
-    statusRow.createSpan({
-        cls: 'ert-pro-status-label',
-        text: entitlement.isProActive
-            ? 'Pro features are unlocked for this vault.'
-            : entitlement.hasProLicenseKey
-                ? 'Pro key saved, but Pro is currently turned off for this vault.'
-                : 'Enter a Pro key and turn Pro on to unlock Pro features.'
-    });
-
-    const enabledSetting = new Setting(panel)
-        .setName('Enable Pro')
-        .setDesc('Turn Pro features on or off for testing without removing the saved key.')
-        .addToggle(toggle => {
-            toggle
-                .setValue(entitlement.isProEnabled)
-                .onChange(async (value) => {
-                    plugin.settings.proAccessEnabled = value;
-                    await plugin.saveSettings();
-                    onEntitlementChanged?.();
-                });
+    const createToggle = (parent: HTMLElement, ariaLabel: string): HTMLInputElement => {
+        const toggleWrap = parent.createDiv({ cls: `${ERT_CLASSES.TOGGLE_ITEM} ert-pro-mode__toggle` });
+        const toggleInput = toggleWrap.createEl('input', {
+            cls: 'ert-toggle-input',
+            attr: { type: 'checkbox', 'aria-label': ariaLabel }
         });
-    enabledSetting.settingEl.addClass('ert-settingRow');
+        toggleInputs.push(toggleInput);
+        plugin.registerDomEvent(toggleInput, 'click', (evt) => evt.stopPropagation());
+        plugin.registerDomEvent(toggleWrap, 'click', (evt) => evt.stopPropagation());
+        return toggleInput;
+    };
 
-    const keySetting = new Setting(panel)
-        .setName('Pro access key')
-        .setDesc(`Enter your Pro access key to unlock Pro features. Temporary beta key: ${TEMPORARY_BETA_KEY} (expires ${TEMPORARY_BETA_KEY_EXPIRY}).`)
-        .addText(text => {
-            text.setPlaceholder('XXXX-XXXX-XXXX-XXXX');
-            text.setValue(plugin.settings.proLicenseKey || '');
-            text.inputEl.addClass('ert-input--lg');
-            text.inputEl.type = 'password';
-
-            const toggleVis = text.inputEl.parentElement?.createEl('button', {
-                cls: 'ert-clickable-icon clickable-icon',
-                attr: { type: 'button', 'aria-label': 'Show or hide Pro access key' }
-            });
-            if (toggleVis) {
-                setIcon(toggleVis, 'eye');
-                plugin.registerDomEvent(toggleVis, 'click', () => {
-                    if (text.inputEl.type === 'password') {
-                        text.inputEl.type = 'text';
-                        setIcon(toggleVis, 'eye-off');
-                    } else {
-                        text.inputEl.type = 'password';
-                        setIcon(toggleVis, 'eye');
-                    }
-                });
-            }
-
-            plugin.registerDomEvent(text.inputEl, 'blur', async () => {
-                const value = text.getValue().trim();
-                plugin.settings.proLicenseKey = value || undefined;
-                await plugin.saveSettings();
-                onEntitlementChanged?.();
-            });
-        })
-        .addButton(button => {
-            button.setButtonText('Copy beta key');
-            button.onClick(async () => {
-                try {
-                    await navigator.clipboard.writeText(TEMPORARY_BETA_KEY);
-                    new Notice('Temporary beta key copied to clipboard.');
-                } catch {
-                    new Notice(`Could not copy automatically. Use ${TEMPORARY_BETA_KEY}.`);
-                }
-            });
+    const applyProState = (enabled: boolean): void => {
+        toggleInputs.forEach((input) => {
+            input.checked = enabled;
         });
+        panel.toggleClass('is-pro-enabled', enabled);
+        panel.toggleClass('is-pro-disabled', !enabled);
+    };
 
-    keySetting.nameEl.createEl('a', {
-        text: ' Get Pro →',
-        href: 'https://radial-timeline.com/signature',
-        cls: 'ert-link-accent',
-        attr: { target: '_blank', rel: 'noopener' }
+    const setProEnabled = async (enabled: boolean): Promise<void> => {
+        applyProState(enabled);
+        plugin.settings.proAccessEnabled = enabled;
+        await plugin.saveSettings();
+        if (!enabled) {
+            new Notice('Pro disabled — previewing Core mode');
+        }
+        onEntitlementChanged?.();
+    };
+
+    const collapsed = panel.createDiv({ cls: 'ert-pro-mode__collapsed' });
+    const collapsedButton = collapsed.createDiv({
+        cls: 'ert-pro-mode__collapsed-button',
+        attr: { role: 'button', tabindex: '0', 'aria-expanded': 'false' }
     });
+    const collapsedRow = collapsedButton.createDiv({ cls: 'ert-pro-mode__collapsed-row' });
+    const collapsedTitle = collapsedRow.createDiv({ cls: 'ert-pro-mode__collapsed-title' });
+    const collapsedChevron = collapsedTitle.createSpan({ cls: 'ert-pro-mode__chevron' });
+    setIcon(collapsedChevron, 'chevron-right');
+    collapsedTitle.createSpan({ cls: 'ert-pro-mode__title-text', text: 'Pro Mode (Early Access)' });
+    const collapsedToggle = createToggle(collapsedRow, 'Toggle Pro Mode');
+    collapsedButton.createDiv({
+        cls: 'ert-pro-mode__collapsed-subtext',
+        text: 'Magenta sections are Pro features.'
+    });
+
+    const expanded = panel.createDiv({ cls: 'ert-pro-mode__expanded' });
+    const expandedId = 'ert-pro-mode-expanded';
+    expanded.id = expandedId;
+    collapsedButton.setAttr('aria-controls', expandedId);
+    const hero = expanded.createDiv({
+        cls: `${ERT_CLASSES.CARD} ${ERT_CLASSES.CARD_HERO} ert-pro-hero-card`
+    });
+    const watermark = hero.createSpan({ cls: 'ert-pro-hero-watermark', attr: { 'aria-hidden': 'true' } });
+    setIcon(watermark, 'signature');
+    const heroContent = hero.createDiv({ cls: `${ERT_CLASSES.STACK} ert-pro-hero-content` });
+
+    heroContent.createEl('div', { cls: 'ert-kicker', text: 'EARLY ACCESS' });
+    heroContent.createEl('h3', {
+        cls: `${ERT_CLASSES.SECTION_TITLE} ert-hero-title`,
+        text: proModeLabel
+    });
+    heroContent.createEl('p', {
+        cls: `${ERT_CLASSES.SECTION_DESC} ert-hero-subtitle ert-pro-hero-body`,
+        text: 'Pro Mode expands Radial Timeline into a complete manuscript system—where writing, analysis, and publishing work together. You can evaluate your story with deeper Inquiry questions, track momentum and structure across scenes, and generate polished manuscripts using advanced Pandoc PDF exports with custom LaTeX templates. On the sharing side, Pro introduces Social APR campaigns to present your progress clearly without spoilers. Instead of stitching together tools and workflows, Pro brings everything into one system—so you can move faster, make better decisions, and finish stronger.'
+    });
+
+    const featureStrip = heroContent.createDiv({ cls: 'ert-pro-hero-strip' });
+    const featureItems = [
+        { icon: 'file-text', label: 'Publishing — Pandoc PDF + LaTeX templates' },
+        { icon: 'share-2', label: 'APR Campaigns — shareable progress systems' },
+        { icon: 'waves', label: 'Inquiry+ — expanded question sets' },
+        { icon: 'waypoints', label: 'Structure — advanced beat systems' },
+        { icon: 'sparkles', label: 'Showcase — examples & website resources' }
+    ];
+    featureItems.forEach(({ icon, label }) => {
+        const item = featureStrip.createDiv({ cls: 'ert-pro-hero-feature' });
+        const iconEl = item.createSpan({ cls: 'ert-pro-hero-feature-icon' });
+        setIcon(iconEl, icon);
+        item.createSpan({ cls: 'ert-pro-hero-feature-label', text: label });
+    });
+
+    const valueSection = heroContent.createDiv({ cls: 'ert-pro-hero-value' });
+    valueSection.createEl('h5', { text: 'Designed to remove friction', cls: 'ert-kicker' });
+    const valueList = valueSection.createEl('ul', { cls: 'ert-pro-hero-list' });
+    [
+        'Export clean manuscripts without manual formatting',
+        'See structural issues across scenes instantly',
+        'Evaluate story momentum visually',
+        'Share progress clearly without spoilers'
+    ].forEach((item) => valueList.createEl('li', { text: item }));
+
+    const controlRow = heroContent.createDiv({ cls: 'ert-pro-hero-control' });
+    controlRow.createSpan({ cls: 'ert-pro-hero-control-label', text: proModeLabel });
+    const controlToggle = createToggle(controlRow, 'Toggle Pro Mode');
+    heroContent.createDiv({
+        cls: ERT_CLASSES.FIELD_NOTE,
+        text: 'Turn off to preview Core mode'
+    });
+
+    const detailsSection = heroContent.createDiv({ cls: 'ert-pro-hero-details' });
+    detailsSection.createEl('h5', { text: "What's included", cls: 'ert-kicker' });
+    const detailsList = detailsSection.createEl('ul', { cls: 'ert-pro-hero-list' });
+    [
+        'Inquiry View — cross-scene diagnostics',
+        'Gossamer — momentum tracking',
+        'Beat System Designer — custom frameworks',
+        'Publishing — advanced templates and exports',
+        'Author Progress Report — shareable visuals'
+    ].forEach((item) => detailsList.createEl('li', { text: item }));
+    detailsSection.createEl('p', {
+        cls: `${ERT_CLASSES.SECTION_DESC} ert-pro-hero-details-note`,
+        text: 'Pro will become a subscription that unlocks advanced tools across Radial Timeline. During Early Access, everything remains available.'
+    });
+
+    heroContent.createDiv({
+        cls: 'ert-pro-hero-final',
+        text: 'Pro is where the system comes together.'
+    });
+
+    const toggleExpanded = (expanded: boolean): void => {
+        panel.toggleClass('is-expanded', expanded);
+        collapsedButton.setAttr('aria-expanded', `${expanded}`);
+        setIcon(collapsedChevron, expanded ? 'chevron-down' : 'chevron-right');
+    };
+
+    const handleToggleChange = async (value: boolean): Promise<void> => {
+        await setProEnabled(value);
+    };
+
+    plugin.registerDomEvent(collapsedButton, 'click', () => {
+        toggleExpanded(!panel.hasClass('is-expanded'));
+    });
+    plugin.registerDomEvent(collapsedButton, 'keydown', (evt: KeyboardEvent) => {
+        if (evt.key === 'Enter' || evt.key === ' ') {
+            evt.preventDefault();
+            toggleExpanded(!panel.hasClass('is-expanded'));
+        }
+    });
+
+    plugin.registerDomEvent(collapsedToggle, 'change', async () => {
+        await handleToggleChange(collapsedToggle.checked);
+    });
+    plugin.registerDomEvent(controlToggle, 'change', async () => {
+        await handleToggleChange(controlToggle.checked);
+    });
+
+    applyProState(entitlement.isProEnabled);
+    toggleExpanded(false);
 
     return panel;
 }

@@ -52,9 +52,10 @@ function parseCache(raw: string | null): RemoteRegistryCache | null {
 }
 
 function isCacheFresh(cache: RemoteRegistryCache, ttlMs: number): boolean {
+    if (ttlMs <= 0) return false;
     const ts = Date.parse(cache.fetchedAt);
     if (!Number.isFinite(ts)) return false;
-    return (Date.now() - ts) <= ttlMs;
+    return (Date.now() - ts) < ttlMs;
 }
 
 async function defaultFetch(url: string): Promise<{ ok: boolean; status: number; json: () => Promise<unknown> }> {
@@ -129,7 +130,12 @@ export async function loadRemoteRegistry(
             fetchedAt: new Date().toISOString(),
             models
         };
-        await options.writeCache(JSON.stringify(nextCache));
+        try {
+            await options.writeCache(JSON.stringify(nextCache));
+        } catch (writeError) {
+            const writeMsg = writeError instanceof Error ? writeError.message : String(writeError);
+            console.warn(`[RT] Remote registry fetched successfully but cache write failed: ${writeMsg}`);
+        }
         return { source: 'remote', models, fetchedAt: nextCache.fetchedAt };
     } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
