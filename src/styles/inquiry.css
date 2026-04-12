@@ -3542,9 +3542,9 @@ body.rt-modal-open .ert-inquiry-svg {
 }
 
 :is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-prompt-row--signature {
-  background: color-mix(in srgb, var(--background-secondary) 78%, var(--ert-pro-accent-color) 22%);
-  border-color: color-mix(in srgb, var(--ert-pro-accent-color) 48%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ert-pro-accent-color) 24%, transparent);
+  background: var(--ert-pro-surface-bg);
+  border-color: var(--ert-pro-border);
+  box-shadow: none;
 }
 
 :is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-prompt-row--focusflash {

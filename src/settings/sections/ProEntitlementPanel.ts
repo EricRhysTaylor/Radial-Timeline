@@ -84,16 +84,13 @@ export function renderProEntitlementPanel({
     collapsedButton.setAttr('aria-controls', expandedId);
     const heroContent = expanded.createDiv({ cls: `${ERT_CLASSES.STACK} ert-pro-hero-content` });
     const heroCopy = heroContent.createEl('p', { cls: `${ERT_CLASSES.SECTION_DESC} ert-hero-subtitle ert-pro-hero-body` });
-    heroCopy.appendText('Pro Mode expands Radial Timeline into a ');
-    heroCopy.createEl('strong', { text: 'complete manuscript system' });
-    heroCopy.appendText('—where writing, analysis, and publishing work together. Evaluate your story with deeper INQUIRY+ questions, track structure and momentum across scenes, and generate polished manuscripts with PANDOC PDF EXPORTS and custom LaTeX templates. Share progress through APR CAMPAIGNS, and explore WEBSITE EXCLUSIVES including ');
+    heroCopy.appendText('Pro Mode extends Radial Timeline with ');
+    heroCopy.createEl('strong', { text: 'advanced workflows for serious authors' });
+    heroCopy.appendText('. Evaluate your story with deeper INQUIRY+ questions, track structure and momentum across scenes, and generate polished manuscripts with PANDOC PDF EXPORTS and custom LaTeX templates. Share progress through APR CAMPAIGNS, and explore WEBSITE EXCLUSIVES including ');
     heroCopy.createSpan({ cls: 'ert-mono-inline', text: 'Pride & Prejudice' });
     heroCopy.appendText(' and ');
     heroCopy.createSpan({ cls: 'ert-mono-inline', text: 'Sherlock Holmes' });
-    heroCopy.appendText(' template vaults, Inquiry View Omnibus Briefings, and guided workflow demonstrations. ');
-    heroCopy.createEl('em', {
-        text: 'Instead of stitching together tools, Pro brings everything into one system—so you can move faster, decide with confidence, and finish stronger.'
-    });
+    heroCopy.appendText(' template vaults, Omnibus Inquiry briefings, and guided workflow demonstrations.');
 
     const featureStrip = heroContent.createDiv({ cls: 'ert-pro-hero-pillStrip' });
     const featureItems = [
