@@ -1,0 +1,91 @@
+{
+  "generatedAt": "2026-04-10T00:00:00.000Z",
+  "models": [
+    {
+      "provider": "anthropic",
+      "modelId": "claude-opus-4-1-20250805",
+      "inputPer1M": 15.0,
+      "outputPer1M": 75.0,
+      "cacheWrite5mPer1M": 18.75,
+      "cacheWrite1hPer1M": 30.0,
+      "cacheReadPer1M": 1.5
+    },
+    {
+      "provider": "anthropic",
+      "modelId": "claude-sonnet-4-6",
+      "inputPer1M": 3.0,
+      "outputPer1M": 15.0,
+      "cacheWrite5mPer1M": 3.75,
+      "cacheWrite1hPer1M": 6.0,
+      "cacheReadPer1M": 0.3
+    },
+    {
+      "provider": "anthropic",
+      "modelId": "claude-sonnet-4-5-20250929",
+      "inputPer1M": 3.0,
+      "outputPer1M": 15.0,
+      "cacheWrite5mPer1M": 3.75,
+      "cacheWrite1hPer1M": 6.0,
+      "cacheReadPer1M": 0.3,
+      "longContext": {
+        "thresholdInputTokens": 200000,
+        "inputPer1M": 6.0,
+        "outputPer1M": 22.5,
+        "cacheWrite5mPer1M": 7.5,
+        "cacheWrite1hPer1M": 12.0,
+        "cacheReadPer1M": 0.6
+      }
+    },
+    {
+      "provider": "anthropic",
+      "modelId": "claude-opus-4-6",
+      "inputPer1M": 5.0,
+      "outputPer1M": 25.0,
+      "cacheWrite5mPer1M": 6.25,
+      "cacheWrite1hPer1M": 10.0,
+      "cacheReadPer1M": 0.5
+    },
+    {
+      "provider": "openai",
+      "modelId": "gpt-5.4",
+      "inputPer1M": 3.0,
+      "outputPer1M": 10.0
+    },
+    {
+      "provider": "openai",
+      "modelId": "gpt-5.4-2026-03-05",
+      "inputPer1M": 3.0,
+      "outputPer1M": 10.0
+    },
+    {
+      "provider": "openai",
+      "modelId": "gpt-5.4-pro",
+      "inputPer1M": 20.0,
+      "outputPer1M": 120.0
+    },
+    {
+      "provider": "openai",
+      "modelId": "gpt-5.4-pro-2026-03-05",
+      "inputPer1M": 20.0,
+      "outputPer1M": 120.0
+    },
+    {
+      "provider": "google",
+      "modelId": "gemini-3.1-pro-preview",
+      "inputPer1M": 2.5,
+      "outputPer1M": 15.0
+    },
+    {
+      "provider": "google",
+      "modelId": "gemini-pro-latest",
+      "inputPer1M": 2.5,
+      "outputPer1M": 15.0
+    },
+    {
+      "provider": "google",
+      "modelId": "gemini-2.5-pro",
+      "inputPer1M": 2.5,
+      "outputPer1M": 15.0
+    }
+  ]
+}

@@ -2198,25 +2198,23 @@
 }
 
 .ert-ui.ert-scope--settings .setting-item.is-attention-pulse {
-  border: 1px solid color-mix(in srgb, var(--text-error) 45%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text-warning) 40%, transparent);
   border-radius: 10px;
-  background: color-mix(in srgb, var(--text-error) 10%, var(--background-secondary));
-  animation: ert-settings-attention-pulse 1.3s ease-in-out 2;
+  animation: ert-settings-attention-pulse 1.8s ease-in-out 2;
 }
 
 .ert-ui.ert-scope--settings [data-ert-role^="ai-setting:"].is-attention-pulse:not(.setting-item) {
-  border: 1px solid color-mix(in srgb, var(--text-error) 45%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text-warning) 40%, transparent);
   border-radius: 10px;
-  background: color-mix(in srgb, var(--text-error) 10%, var(--background-secondary));
-  animation: ert-settings-attention-pulse 1.3s ease-in-out 2;
+  animation: ert-settings-attention-pulse 1.8s ease-in-out 2;
 }
 
 @keyframes ert-settings-attention-pulse {
   0%, 100% {
-    box-shadow: 0 0 0 0 color-mix(in srgb, var(--text-error) 25%, transparent);
+    box-shadow: 0 0 0 0 transparent;
   }
   50% {
-    box-shadow: 0 0 0 8px color-mix(in srgb, var(--text-error) 8%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--text-warning) 12%, transparent);
   }
 }
 
@@ -2263,6 +2261,14 @@
 
 .ert-ui.ert-scope--settings .ert-ai-strategy-select.is-muted {
   color: var(--text-muted);
+}
+
+.ert-ui.ert-scope--settings .ert-ai-grid-item:has(.ert-ai-strategy-select.is-ready) {
+  border-color: color-mix(in srgb, var(--text-success) 30%, var(--background-modifier-border));
+}
+
+.ert-ui.ert-scope--settings .ert-ai-grid-item:has(.ert-ai-strategy-select.is-warning) {
+  border-color: color-mix(in srgb, var(--text-warning) 30%, var(--background-modifier-border));
 }
 
 /* ── AI Strategy step hierarchy ───────────────────────────────────────── */
@@ -2832,6 +2838,13 @@
 
 .ert-ui.ert-scope--settings .ert-ai-details-link:hover {
   text-decoration: underline;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-cost-freshness {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-faint);
+  padding: 4px 0 0;
 }
 
 .ert-ui.ert-scope--settings .ert-ai-cost-footnote {
@@ -4023,6 +4036,12 @@
 .ert-ui.ert-scope--settings .ert-refactor-alert--critical {
   --alert-color: var(--ert-alert-critical-color);
   --alert-bg: var(--ert-alert-critical-bg);
+}
+
+/* Severity: Promo (green) - static */
+.ert-ui.ert-scope--settings .ert-refactor-alert--promo {
+  --alert-color: var(--ert-alert-success-color);
+  --alert-bg: var(--ert-alert-success-bg);
 }
 
 /* Update button keeps static severity styling and only reacts on hover */
@@ -6554,6 +6573,14 @@
   font-weight: 700;
 }
 
+.ert-ui.ert-scope--settings .ert-ai-models-row--active.ert-ai-models-row--ready {
+  --interactive-accent: var(--text-success);
+}
+
+.ert-ui.ert-scope--settings .ert-ai-models-row--active.ert-ai-models-row--warning {
+  --interactive-accent: var(--text-warning);
+}
+
 .ert-ui.ert-scope--settings button.ert-ai-models-row:hover {
   background: color-mix(in srgb, var(--background-secondary) 70%, transparent);
 }
@@ -6581,6 +6608,24 @@
 
 .ert-ui.ert-scope--settings .ert-ai-models-cell--model {
   flex-wrap: nowrap;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-models-row--promo {
+  background: color-mix(in srgb, var(--color-green) 6%, transparent);
+}
+
+.ert-ui.ert-scope--settings .ert-ai-cost-promo-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 2px 6px;
+  margin-left: 6px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--color-green) 18%, transparent);
+  color: var(--color-green);
+  white-space: nowrap;
+  vertical-align: middle;
 }
 
 .ert-ui.ert-scope--settings .ert-ai-models-provider-mark {

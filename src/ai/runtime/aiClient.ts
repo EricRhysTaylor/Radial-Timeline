@@ -8,6 +8,8 @@ import { buildOutputRulesText } from '../prompts/outputRules';
 import { modelSupportsSystemRole, sanitizeDispatchParams, type AiProvider, type ProviderDispatchParams } from '../../api/providerCapabilities';
 import { ModelRegistry } from '../registry/modelRegistry';
 import { findSnapshotModel, loadProviderSnapshot, type ProviderSnapshotLoadResult } from '../registry/providerSnapshot';
+import { loadRemotePricing, type RemotePricingLoadResult } from '../cost/remotePricing';
+import { mergeRemotePricing, getActivePricingTable } from '../cost/providerPricing';
 import { cacheResolvedModel } from '../../utils/modelResolver';
 import { selectModel } from '../router/selectModel';
 import { resolveActiveRoleTemplate } from '../roleTemplate';
@@ -40,6 +42,7 @@ import { estimateInputTokens, estimateUncertaintyTokens } from '../tokens/inputT
 
 const DEFAULT_REMOTE_REGISTRY_URL = 'https://raw.githubusercontent.com/ericrhystaylor/radial-timeline/main/scripts/models/registry.json';
 const DEFAULT_REMOTE_PROVIDER_SNAPSHOT_URL = 'https://raw.githubusercontent.com/ericrhystaylor/radial-timeline/HEAD/scripts/models/latest-models.json';
+const DEFAULT_REMOTE_PRICING_URL = 'https://raw.githubusercontent.com/ericrhystaylor/radial-timeline/main/scripts/models/pricing.json';
 
 interface PluginWithAiDebug extends RadialTimelinePlugin {
     _aiLastRunAdvancedByFeature?: Record<string, AIRunAdvancedContext>;
@@ -142,6 +145,7 @@ export class AIClient {
     private registryReady = false;
     private providerSnapshot: ProviderSnapshotLoadResult = { source: 'none', snapshot: null };
     private providerSnapshotReady = false;
+    private pricingReady = false;
 
     constructor(private plugin: RadialTimelinePlugin) {
         this.providers = buildProviders(plugin);
@@ -186,6 +190,41 @@ export class AIClient {
         return this.providerSnapshot;
     }
 
+    async refreshPricing(): Promise<RemotePricingLoadResult> {
+        const result = await loadRemotePricing({
+            enabled: true,
+            url: DEFAULT_REMOTE_PRICING_URL,
+            readCache: async () => this.plugin.settings.aiPricingCacheJson ?? null,
+            writeCache: async (content: string) => {
+                this.plugin.settings.aiPricingCacheJson = content;
+                await this.plugin.saveSettings();
+            }
+        });
+        if (result.table) {
+            mergeRemotePricing(result.table, result.source, result.fetchedAt);
+        }
+        this.pricingReady = true;
+        return result;
+    }
+
+    async refreshPricingNow(): Promise<RemotePricingLoadResult> {
+        const result = await loadRemotePricing({
+            enabled: true,
+            url: DEFAULT_REMOTE_PRICING_URL,
+            ttlMs: 0,
+            readCache: async () => this.plugin.settings.aiPricingCacheJson ?? null,
+            writeCache: async (content: string) => {
+                this.plugin.settings.aiPricingCacheJson = content;
+                await this.plugin.saveSettings();
+            }
+        });
+        if (result.table) {
+            mergeRemotePricing(result.table, result.source, result.fetchedAt);
+        }
+        this.pricingReady = true;
+        return result;
+    }
+
     private parseCacheFetchedAt(raw: string | null | undefined): string | null {
         if (!raw) return null;
         try {
@@ -202,7 +241,8 @@ export class AIClient {
     getLastModelUpdateAt(): string | null {
         const registryFetchedAt = this.parseCacheFetchedAt(this.plugin.settings.aiRegistryCacheJson ?? null);
         const snapshotFetchedAt = this.parseCacheFetchedAt(this.plugin.settings.aiProviderSnapshotCacheJson ?? null);
-        const candidates = [registryFetchedAt, snapshotFetchedAt]
+        const pricingFetchedAt = this.parseCacheFetchedAt(this.plugin.settings.aiPricingCacheJson ?? null);
+        const candidates = [registryFetchedAt, snapshotFetchedAt, pricingFetchedAt]
             .filter((value): value is string => !!value)
             .map(value => Date.parse(value))
             .filter(value => Number.isFinite(value));
@@ -213,17 +253,46 @@ export class AIClient {
     async updateModelData(forceRemote = true): Promise<{
         registry: RegistryRefreshResult;
         snapshot: ProviderSnapshotLoadResult;
+        pricing: RemotePricingLoadResult;
         lastUpdatedAt: string | null;
     }> {
-        const [registry, snapshot] = await Promise.all([
+        const [registry, snapshot, pricing] = await Promise.all([
             this.refreshRegistry(forceRemote),
-            this.refreshProviderSnapshot(forceRemote)
+            this.refreshProviderSnapshot(forceRemote),
+            this.refreshPricing()
         ]);
+        this.validateRegistryPricingAlignment();
         return {
             registry,
             snapshot,
+            pricing,
             lastUpdatedAt: this.getLastModelUpdateAt()
         };
+    }
+
+    private validateRegistryPricingAlignment(): void {
+        const registryModels = this.registry.getAll();
+        const pricingTable = getActivePricingTable();
+        const cloudProviders: AIProviderId[] = ['anthropic', 'openai', 'google'];
+
+        for (const model of registryModels) {
+            if (!cloudProviders.includes(model.provider)) continue;
+            const providerPricing = pricingTable[model.provider];
+            if (!providerPricing?.[model.id]) {
+                console.debug(`[AI] Registry model ${model.provider}:${model.id} has no pricing entry.`);
+            }
+        }
+
+        for (const provider of cloudProviders) {
+            const providerPricing = pricingTable[provider];
+            if (!providerPricing) continue;
+            for (const modelId of Object.keys(providerPricing)) {
+                const inRegistry = registryModels.some(m => m.provider === provider && m.id === modelId);
+                if (!inRegistry) {
+                    console.debug(`[AI] Pricing entry ${provider}:${modelId} has no registry model.`);
+                }
+            }
+        }
     }
 
     async refreshModelDataIfStale(maxAgeMs = 24 * 60 * 60 * 1000): Promise<boolean> {
@@ -257,6 +326,9 @@ export class AIClient {
         const aiSettings = getAiSettings(this.plugin.settings);
         if (!this.registryReady) {
             await this.refreshRegistry(false);
+        }
+        if (!this.pricingReady) {
+            await this.refreshPricing();
         }
 
         const featureProfile = aiSettings.featureProfiles?.[request.feature];

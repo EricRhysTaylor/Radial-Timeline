@@ -11,10 +11,10 @@ import { IMPACT_FULL } from '../SettingImpact';
 import { buildDefaultAiSettings } from '../../ai/settings/aiSettings';
 import { validateAiSettings } from '../../ai/settings/validateAiSettings';
 import { BUILTIN_MODELS } from '../../ai/registry/builtinModels';
-import { compareNewestModels, getPickerModelsForProvider, selectLatestModelByReleaseChannel } from '../../ai/registry/releaseChannels';
+import { getPickerModelsForProvider, PROVIDER_DISPLAY_LABELS, selectLatestModelByReleaseChannel } from '../../ai/registry/releaseChannels';
 import { selectModel } from '../../ai/router/selectModel';
 import { computeCaps } from '../../ai/caps/computeCaps';
-import { resolveEngineCapabilities } from '../../ai/caps/engineCapabilities';
+import { getModelUiSignals } from '../../ai/caps/engineCapabilities';
 import { getAIClient } from '../../ai/runtime/aiClient';
 import { getLocalLlmClient } from '../../ai/localLlm/client';
 import {
@@ -25,14 +25,14 @@ import {
     setCredentialSecretId
 } from '../../ai/credentials/credentials';
 import { hasSecret, isSecretStorageAvailable, setSecret } from '../../ai/credentials/secretStorage';
-import type { AccessTier, AIProviderId, Capability, LocalLlmConfigurationMode, LocalLlmSettings, ModelInfo, ModelStatus, RTCorpusTokenBreakdown } from '../../ai/types';
+import type { AccessTier, AIProviderId, Capability, LocalLlmConfigurationMode, LocalLlmSettings, ModelInfo, RTCorpusTokenBreakdown } from '../../ai/types';
 import type { LocalLlmDiagnosticsReport } from '../../ai/localLlm/diagnostics';
 import { buildCanonicalExecutionEstimate, estimateGossamerTokens } from '../../ai/forecast/estimateTokensFromVault';
 import {
     estimateCorpusCost,
     formatUsdCost
 } from '../../ai/cost/estimateCorpusCost';
-import { getProviderPricing } from '../../ai/cost/providerPricing';
+import { getProviderPricing, getActivePricingMeta, getActivePromos, getPricingFreshnessLabel } from '../../ai/cost/providerPricing';
 import { buildOutputRulesText } from '../../ai/prompts/outputRules';
 import { buildUnifiedBeatAnalysisPromptParts, getUnifiedBeatAnalysisJsonSchema } from '../../ai/prompts/unifiedBeatAnalysis';
 import { resolveActiveRoleTemplate } from '../../ai/roleTemplate';
@@ -186,6 +186,43 @@ export function renderAiSection(params: {
         text: t('settings.ai.heroOff.muted')
     });
 
+    const promoBannerContainer = containerEl.createDiv({ cls: 'ert-ai-promo-banners' });
+    params.addAiRelatedElement(promoBannerContainer);
+
+    const renderPromoBanners = (): void => {
+        promoBannerContainer.empty();
+        const activePromos = getActivePromos();
+        if (!activePromos.length) return;
+
+        for (const promo of activePromos) {
+            const modelInfo = BUILTIN_MODELS.find(m => m.provider === promo.provider && m.id === promo.modelId);
+            const modelLabel = modelInfo?.label ?? promo.modelId;
+            const providerLabel = promo.provider !== 'none'
+                ? PROVIDER_DISPLAY_LABELS[promo.provider]
+                : promo.provider;
+            const isFree = promo.inputPer1M === 0 && promo.outputPer1M === 0;
+            const title = isFree
+                ? `${modelLabel} — free to use`
+                : `${modelLabel} — ${promo.promo.label}`;
+            const expiry = promo.promo.expiresAt
+                ? `Until ${new Date(promo.promo.expiresAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}.`
+                : '';
+            const body = isFree
+                ? `${providerLabel} — no cost for Inquiry runs. ${expiry}`
+                : `${providerLabel} — promotional pricing. ${expiry}`;
+
+            const alertEl = promoBannerContainer.createDiv({
+                cls: 'ert-refactor-alert ert-refactor-alert--promo'
+            });
+            const contentSide = alertEl.createDiv({ cls: 'ert-refactor-alert__content' });
+            const heading = contentSide.createDiv({ cls: 'ert-refactor-alert__heading' });
+            const iconWrapper = heading.createDiv({ cls: 'ert-refactor-alert__icon' });
+            setIcon(iconWrapper, 'gift');
+            heading.createSpan({ text: title, cls: 'ert-refactor-alert__title' });
+            contentSide.createDiv({ cls: 'ert-refactor-alert__description', text: body });
+        }
+    };
+
     const aiStateContent = containerEl.createDiv({ cls: ERT_CLASSES.STACK });
     params.addAiRelatedElement(aiStateContent);
 
@@ -252,8 +289,9 @@ export function renderAiSection(params: {
         text: t('settings.ai.costEstimate.corpusScanning')
     });
     const costEstimateTable = costEstimateSection.createDiv({ cls: 'ert-ai-models-table' });
+    const costEstimateFreshness = costEstimateSection.createDiv({ cls: 'ert-ai-cost-freshness' });
     const costEstimateFootnote = costEstimateSection.createDiv({ cls: 'ert-ai-cost-footnote' });
-    costEstimateFootnote.appendText('* Cloud-provider rows use published provider pricing. Actual charges may differ due to provider-side billing rules and account-level adjustments such as caching, credits, promos, or contract pricing. ');
+    costEstimateFootnote.appendText('* Based on published provider pricing. Actual charges may differ due to caching, credits, or account-level adjustments. ');
     costEstimateFootnote.createSpan({ text: 'See provider pricing: ' });
     [
         { label: 'OpenAI', href: 'https://openai.com/api/pricing/' },
@@ -274,8 +312,8 @@ export function renderAiSection(params: {
         }
     });
     costEstimateFootnote.appendText('. ');
-    costEstimateFootnote.createEl('strong', { text: 'LOCAL PROCESSING' });
-    costEstimateFootnote.appendText(' runs on your machine. No API charges. Performance and output depend on your hardware and model.');
+    costEstimateFootnote.createEl('strong', { text: 'Local LLM' });
+    costEstimateFootnote.appendText(' runs on your machine with no API charges.');
 
     const ensureCanonicalAiSettings = () => {
         if (!plugin.settings.aiSettings) {
@@ -870,42 +908,11 @@ export function renderAiSection(params: {
     ] as const;
     const MAX_PREVIEW_SIGNALS = 4;
 
-    const resolvePreviewCitationSignal = (model: ModelInfo): string | null => {
-        const capabilities = resolveEngineCapabilities(model);
+    const resolvePreviewCitationSignal = (model: ModelInfo): string | null =>
+        getModelUiSignals(model).citationLabel;
 
-        // When cache and citations are mutually exclusive, show a combined pill
-        // instead of separate independent pills (doctrine: do not lie to the author).
-        if (capabilities.constraints.cacheVsCitationsExclusive
-            && capabilities.corpusReuse.availableInRt
-            && (capabilities.directManuscriptCitations.availableInRt || capabilities.groundedToolAttribution.availableInRt)) {
-            return 'Citation or Cache (exclusive)';
-        }
-
-        if (capabilities.directManuscriptCitations.availableInRt) {
-            return 'Citation · Direct manuscript';
-        }
-        if (capabilities.groundedToolAttribution.availableInRt) {
-            return model.provider === 'google'
-                ? 'Citation · Grounded search'
-                : 'Citation · Tool annotations';
-        }
-        return null;
-    };
-
-    const resolvePreviewReuseSignal = (model: ModelInfo): string | null => {
-        const capabilities = resolveEngineCapabilities(model);
-
-        // When the combined exclusive pill is shown, suppress the separate reuse pill.
-        if (capabilities.constraints.cacheVsCitationsExclusive
-            && capabilities.corpusReuse.availableInRt
-            && (capabilities.directManuscriptCitations.availableInRt || capabilities.groundedToolAttribution.availableInRt)) {
-            return null;
-        }
-
-        return capabilities.corpusReuse.availableInRt
-            ? 'Reuse · Provider cache'
-            : 'Reuse · No provider cache';
-    };
+    const resolvePreviewReuseSignal = (model: ModelInfo): string | null =>
+        getModelUiSignals(model).reuseLabel;
 
     const resolvePreviewSignals = (state: {
         citationLabel: string | null;
@@ -949,9 +956,11 @@ export function renderAiSection(params: {
             .filter(model => model.provider === provider && model.status !== 'deprecated')
             .map(model => model.alias);
 
-    const getProviderPickerAliases = (provider: AIProviderId): string[] => {
-        return getPickerModelsForProvider(BUILTIN_MODELS, provider).map(model => model.alias);
-    };
+    const getProviderPickerModels = (provider: AIProviderId): ModelInfo[] =>
+        getPickerModelsForProvider(BUILTIN_MODELS, provider);
+
+    const getProviderPickerAliases = (provider: AIProviderId): string[] =>
+        getProviderPickerModels(provider).map(model => model.alias);
 
     const isOpenAiInternalAlias = (alias: string): boolean =>
         !!alias
@@ -1322,23 +1331,13 @@ export function renderAiSection(params: {
         freshText: string;
         cachedText: string;
         passesText: string;
+        promoLabel?: string;
     };
 
     const getCostComparisonRowKey = (provider: AIProviderId, modelId: string): string =>
         `${provider}::${modelId}`;
 
     const COST_PROVIDER_ORDER: ReadonlyArray<Exclude<AIProviderId, 'none' | 'ollama'>> = ['anthropic', 'openai', 'google'];
-    const MODEL_STATUS_ORDER: Record<ModelStatus, number> = {
-        stable: 0,
-        preview: 1,
-        legacy: 2,
-        deprecated: 3
-    };
-    const PROVIDER_LABELS: Record<Exclude<AIProviderId, 'none' | 'ollama'>, string> = {
-        anthropic: 'Anthropic',
-        openai: 'OpenAI',
-        google: 'Google'
-    };
 
     const supportsCostComparisonModel = (provider: AIProviderId, modelId: string): boolean => {
         if (provider === 'none' || provider === 'ollama') return false;
@@ -1354,17 +1353,12 @@ export function renderAiSection(params: {
         const cloudModels: CostComparisonModel[] = COST_PROVIDER_ORDER.flatMap(provider => {
             const providerModels = getPickerModelsForProvider(BUILTIN_MODELS, provider)
                 .filter(model => !model.id.endsWith('-latest'))
-                .filter(model => supportsCostComparisonModel(provider, model.id))
-                .sort((left, right) => {
-                    const statusDelta = MODEL_STATUS_ORDER[left.status] - MODEL_STATUS_ORDER[right.status];
-                    if (statusDelta !== 0) return statusDelta;
-                    return compareNewestModels(left, right);
-                });
+                .filter(model => supportsCostComparisonModel(provider, model.id));
 
             return providerModels.map(model => ({
                 provider,
                 modelId: model.id,
-                providerLabel: PROVIDER_LABELS[provider],
+                providerLabel: PROVIDER_DISPLAY_LABELS[provider],
                 modelLabel: model.label
             }));
         });
@@ -1373,7 +1367,7 @@ export function renderAiSection(params: {
         return cloudModels.concat({
             provider: 'ollama',
             modelId: localModel.id,
-            providerLabel: 'Local LLM',
+            providerLabel: PROVIDER_DISPLAY_LABELS.ollama,
             modelLabel: localModel.label
         });
     };
@@ -1408,6 +1402,7 @@ export function renderAiSection(params: {
     };
 
     let activeCostComparisonRowKey: string | null = null;
+    let activeCostRowCredentialState: string | null = null;
     let lastCostComparisonRows: CostComparisonRow[] = [];
 
     const getCurrentCorpusContext = () => plugin.getInquiryService().getCurrentCorpusContext();
@@ -1419,7 +1414,7 @@ export function renderAiSection(params: {
     }) => {
         const currentCorpus = getCurrentCorpusContext();
         if (!currentCorpus) {
-            throw new Error('Current Inquiry corpus is unavailable.');
+            throw new Error('Inquiry corpus is not available yet. Open Inquiry View to populate estimates.');
         }
         return await buildCanonicalExecutionEstimate({
             plugin,
@@ -1445,13 +1440,36 @@ export function renderAiSection(params: {
             createCostTableCell(headerRow, text);
         });
 
-        rows.forEach(row => {
+        const sorted = [...rows].sort((a, b) => {
+            const aPromo = a.promoLabel ? 0 : 1;
+            const bPromo = b.promoLabel ? 0 : 1;
+            return aPromo - bPromo;
+        });
+
+        sorted.forEach(row => {
             const rowEl = costEstimateTable.createDiv({ cls: 'ert-ai-models-row' });
             if (activeCostComparisonRowKey === getCostComparisonRowKey(row.model.provider, row.model.modelId)) {
                 rowEl.addClass('ert-ai-models-row--active');
+                if (activeCostRowCredentialState === 'ready') {
+                    rowEl.addClass('ert-ai-models-row--ready');
+                } else if (activeCostRowCredentialState === 'not_configured' || activeCostRowCredentialState === 'rejected') {
+                    rowEl.addClass('ert-ai-models-row--warning');
+                }
+            }
+            if (row.promoLabel) {
+                rowEl.addClass('ert-ai-models-row--promo');
             }
             createCostTableCell(rowEl, row.model.providerLabel);
-            createCostTableCell(rowEl, row.model.modelLabel, 'ert-ai-models-cell--model');
+            const modelCell = rowEl.createDiv({
+                cls: 'ert-ai-models-cell ert-ai-models-cell--model'
+            });
+            modelCell.createSpan({ text: row.model.modelLabel });
+            if (row.promoLabel) {
+                modelCell.createSpan({
+                    cls: 'ert-ai-cost-promo-badge',
+                    text: row.promoLabel
+                });
+            }
             createCostTableCell(rowEl, row.freshText);
             createCostTableCell(rowEl, row.cachedText);
             createCostTableCell(rowEl, row.passesText);
@@ -1462,6 +1480,7 @@ export function renderAiSection(params: {
         activeCostComparisonRowKey = provider && modelId
             ? getCostComparisonRowKey(provider, modelId)
             : null;
+        activeCostRowCredentialState = provider ? (providerKeyStates[provider] ?? null) : null;
         if (lastCostComparisonRows.length > 0) {
             renderCostComparisonRows(lastCostComparisonRows);
         }
@@ -1491,7 +1510,7 @@ export function renderAiSection(params: {
             };
         }
         return {
-            sizeText: 'Inquiry corpus stats will be available once you run Inquiry View.',
+            sizeText: 'Open Inquiry View to see corpus estimates and pricing.',
             structureText: ''
         };
     };
@@ -1524,18 +1543,20 @@ export function renderAiSection(params: {
                     executionEstimate.expectedPassCount
                 );
                 const passLabel = `${cost.expectedPasses} ${cost.expectedPasses === 1 ? 'pass' : 'passes'}`;
+                const promoLabel = cost.promo?.label;
                 return {
                     model,
                     freshText: formatUsdCost(cost.freshCostUSD),
                     cachedText: formatUsdCost(cost.cachedCostUSD),
-                    passesText: passLabel
+                    passesText: passLabel,
+                    promoLabel
                 };
             } catch {
                 return {
                     model,
-                    freshText: 'Estimate unavailable',
-                    cachedText: 'Estimate unavailable',
-                    passesText: 'Unavailable'
+                    freshText: 'No estimate yet',
+                    cachedText: 'No estimate yet',
+                    passesText: '\u2014'
                 };
             }
         }));
@@ -1556,6 +1577,8 @@ export function renderAiSection(params: {
         if (requestId !== costComparisonRequestId) return;
         renderCostEstimateCorpusSummary(corpusSummary);
         renderCostComparisonRows(rows);
+        costEstimateFreshness.setText(getPricingFreshnessLabel(getActivePricingMeta()));
+        renderPromoBanners();
     };
 
     const computeVaultForecasts = async (engine?: {
@@ -1726,10 +1749,8 @@ export function renderAiSection(params: {
                 } else {
                     modelOverrideDropdown.selectEl.disabled = false;
                     modelOverrideDropdown.addOption('auto', 'Auto');
-                    providerPickerAliases.forEach(alias => {
-                        const model = BUILTIN_MODELS.find(entry => entry.alias === alias);
-                        const label = model?.label || alias;
-                        modelOverrideDropdown?.addOption(alias, label);
+                    getProviderPickerModels(provider).forEach(model => {
+                        modelOverrideDropdown?.addOption(model.alias, model.label);
                     });
                     if (provider === 'openai'
                         && policy.type === 'pinned'
@@ -2336,21 +2357,21 @@ export function renderAiSection(params: {
     renderCredentialSettings({
         section: anthropicSection,
         provider: 'anthropic',
-        providerName: 'Anthropic',
+        providerName: PROVIDER_DISPLAY_LABELS.anthropic,
         keyPlaceholder: t('settings.ai.credential.placeholderAnthropic'),
         docsUrl: 'https://platform.claude.com'
     });
     renderCredentialSettings({
         section: googleSection,
         provider: 'google',
-        providerName: 'Google',
+        providerName: PROVIDER_DISPLAY_LABELS.google,
         keyPlaceholder: t('settings.ai.credential.placeholderGoogle'),
         docsUrl: 'https://aistudio.google.com'
     });
     renderCredentialSettings({
         section: openaiSection,
         provider: 'openai',
-        providerName: 'OpenAI',
+        providerName: PROVIDER_DISPLAY_LABELS.openai,
         keyPlaceholder: t('settings.ai.credential.placeholderOpenai'),
         docsUrl: 'https://platform.openai.com'
     });

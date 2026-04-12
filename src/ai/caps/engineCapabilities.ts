@@ -202,6 +202,43 @@ export function resolveEngineCapabilitiesForRef(
     return model ? resolveEngineCapabilities(model) : null;
 }
 
+export interface ModelUiSignals {
+    citationLabel: string | null;
+    reuseLabel: string | null;
+    isPreview: boolean;
+}
+
+export function getModelUiSignals(model: ModelInfo): ModelUiSignals {
+    const capabilities = resolveEngineCapabilities(model);
+    const hasExclusiveConstraint = capabilities.constraints.cacheVsCitationsExclusive
+        && capabilities.corpusReuse.availableInRt
+        && (capabilities.directManuscriptCitations.availableInRt || capabilities.groundedToolAttribution.availableInRt);
+
+    let citationLabel: string | null = null;
+    if (hasExclusiveConstraint) {
+        citationLabel = 'Citation or Cache (exclusive)';
+    } else if (capabilities.directManuscriptCitations.availableInRt) {
+        citationLabel = 'Citation · Direct manuscript';
+    } else if (capabilities.groundedToolAttribution.availableInRt) {
+        citationLabel = model.provider === 'google'
+            ? 'Citation · Grounded search'
+            : 'Citation · Tool annotations';
+    }
+
+    let reuseLabel: string | null = null;
+    if (!hasExclusiveConstraint) {
+        reuseLabel = capabilities.corpusReuse.availableInRt
+            ? 'Reuse · Provider cache'
+            : 'Reuse · No provider cache';
+    }
+
+    return {
+        citationLabel,
+        reuseLabel,
+        isPreview: capabilities.isPreview
+    };
+}
+
 export function buildEngineCapabilityMatrix(models: ModelInfo[]): EngineCapabilityMatrixRow[] {
     return models.map(model => {
         const resolved = resolveEngineCapabilities(model);
