@@ -413,18 +413,18 @@
 }
 
 .ert-ui.ert-scope--settings .ert-pro-mode__collapsed {
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--background-primary) 94%, var(--ert-pro-accent-color) 6%);
+  padding: 0;
 }
 
 .ert-ui.ert-scope--settings .ert-pro-mode__collapsed-button {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: var(--ert-pad-sm) var(--ert-pad-md);
+  gap: 6px;
+  padding: var(--ert-pad-sm);
   cursor: pointer;
   border-radius: 12px;
+  position: relative;
+  z-index: 2;
 }
 
 .ert-ui.ert-scope--settings .ert-pro-mode__collapsed-button:focus-visible {
@@ -437,6 +437,13 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--ert-gap-sm);
+}
+
+.ert-ui.ert-scope--settings .ert-pro-mode__collapsed-left {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ert-gap-sm);
+  flex-wrap: wrap;
 }
 
 .ert-ui.ert-scope--settings .ert-pro-mode__collapsed-title {
@@ -492,6 +499,10 @@
   box-shadow: var(--ert-shadow-hero);
 }
 
+.ert-ui.ert-scope--settings .ert-pro-hero-card--collapsed {
+  padding: 0;
+}
+
 .ert-ui.ert-scope--settings .ert-pro-hero-card::before {
   content: '';
   position: absolute;
@@ -518,18 +529,26 @@
 .ert-ui.ert-scope--settings .ert-pro-hero-content {
   position: relative;
   z-index: 2;
+  --ert-group-gap: calc(var(--ert-gap-md) + 6px);
 }
 
 .ert-ui.ert-scope--settings .ert-pro-hero-watermark {
   position: absolute;
-  right: -36px;
-  top: -36px;
-  width: 180px;
-  height: 180px;
-  opacity: 0.12;
+  left: 50%;
+  top: 46%;
+  width: 320px;
+  height: 320px;
+  transform: translate(-50%, -50%);
+  opacity: 0.1;
   color: var(--ert-pro-accent-color);
   z-index: 1;
   pointer-events: none;
+}
+
+.ert-ui.ert-scope--settings .ert-pro-hero-card--collapsed .ert-pro-hero-watermark {
+  width: 200px;
+  height: 200px;
+  opacity: 0.12;
 }
 
 .ert-ui.ert-scope--settings .ert-pro-hero-watermark svg {
@@ -537,34 +556,68 @@
   height: 100%;
 }
 
-.ert-ui.ert-scope--settings .ert-pro-hero-strip {
+.ert-ui.ert-scope--settings .ert-pro-hero-badgeRow {
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--ert-gap-sm) var(--ert-gap-md);
+  align-items: center;
+  gap: var(--ert-gap-sm);
 }
 
-.ert-ui.ert-scope--settings .ert-pro-hero-feature {
+.ert-ui.ert-scope--settings .ert-pro-pill {
+  letter-spacing: 0.4px;
+}
+
+.ert-ui.ert-scope--settings .ert-pro-hero-pillStrip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ert-gap-xs) var(--ert-gap-sm);
+}
+
+.ert-ui.ert-scope--settings .ert-pro-hero-pill {
   display: inline-flex;
   align-items: center;
   gap: var(--ert-gap-xs);
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--text-normal);
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--ert-pro-accent-color) 30%, transparent);
+  background: color-mix(in srgb, var(--background-secondary) 70%, var(--ert-pro-accent-color) 10%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--background-primary) 40%, transparent);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }
 
-.ert-ui.ert-scope--settings .ert-pro-hero-feature-icon {
+.ert-ui.ert-scope--settings .ert-pro-hero-pill:hover {
+  border-color: color-mix(in srgb, var(--ert-pro-accent-color) 55%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ert-pro-accent-color) 22%, transparent);
+  transform: translateY(-1px);
+}
+
+.ert-ui.ert-scope--settings .ert-pro-mode.is-pro-disabled .ert-pro-hero-pill {
+  border-color: color-mix(in srgb, var(--background-modifier-border) 80%, transparent);
+  background: color-mix(in srgb, var(--background-secondary) 80%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--background-primary) 60%, transparent);
+}
+
+.ert-ui.ert-scope--settings .ert-pro-hero-pill-icon {
   display: inline-flex;
   align-items: center;
   color: var(--text-muted);
   transition: color 0.2s ease;
 }
 
-.ert-ui.ert-scope--settings .ert-pro-hero-feature-icon svg {
-  width: 16px;
-  height: 16px;
+.ert-ui.ert-scope--settings .ert-pro-hero-pill-icon svg {
+  width: 14px;
+  height: 14px;
 }
 
-.ert-ui.ert-scope--settings .ert-pro-mode.is-pro-enabled .ert-pro-hero-feature-icon {
+.ert-ui.ert-scope--settings .ert-pro-mode.is-pro-enabled .ert-pro-hero-pill-icon {
   color: var(--ert-pro-accent-color);
+}
+
+.ert-ui.ert-scope--settings .ert-pro-hero-pill-label {
+  letter-spacing: 0.2px;
 }
 
 .ert-ui.ert-scope--settings .ert-pro-hero-value {
@@ -573,34 +626,60 @@
   gap: var(--ert-gap-xs);
 }
 
+.ert-ui.ert-scope--settings .ert-pro-hero-valueGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ert-gap-sm);
+}
+
+.ert-ui.ert-scope--settings .ert-pro-hero-valueCard {
+  background: color-mix(in srgb, var(--background-secondary) 68%, #050507 32%);
+  border: 1px solid color-mix(in srgb, var(--ert-pro-accent-color) 20%, transparent);
+  border-radius: 10px;
+  padding: var(--ert-pad-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ert-ui.ert-scope--settings .ert-pro-hero-valueCard.is-wide {
+  grid-column: 1 / -1;
+}
+
+.ert-ui.ert-scope--settings .ert-pro-hero-valueTitle {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-normal);
+}
+
+.ert-ui.ert-scope--settings .ert-pro-hero-valueList {
+  margin: 0;
+  padding-left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
 .ert-ui.ert-scope--settings .ert-pro-hero-list {
   margin: 0;
   padding-left: 18px;
   display: flex;
   flex-direction: column;
   gap: var(--ert-gap-xs);
-  color: var(--text-muted);
-  font-size: 13px;
+  color: color-mix(in srgb, var(--text-muted) 90%, transparent);
+  font-size: 12px;
   line-height: 1.5;
-}
-
-.ert-ui.ert-scope--settings .ert-pro-hero-control {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--ert-gap-sm);
-  padding-top: var(--ert-gap-xs);
-}
-
-.ert-ui.ert-scope--settings .ert-pro-hero-control-label {
-  font-weight: 600;
-  color: var(--text-normal);
 }
 
 .ert-ui.ert-scope--settings .ert-pro-hero-details {
   display: flex;
   flex-direction: column;
-  gap: var(--ert-gap-xs);
+  gap: 6px;
+  opacity: 0.85;
 }
 
 .ert-ui.ert-scope--settings .ert-pro-hero-details-note {
@@ -613,6 +692,17 @@
   font-size: 12px;
   color: var(--text-muted);
   font-weight: 500;
+}
+
+.ert-ui.ert-scope--settings .ert-pro-hero-body {
+  line-height: 1.65;
+  max-width: 720px;
+}
+
+@media (max-width: 720px) {
+  .ert-ui.ert-scope--settings .ert-pro-hero-valueGrid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .ert-ui.ert-scope--settings .ert-kicker {

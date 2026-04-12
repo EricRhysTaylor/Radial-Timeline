@@ -52,13 +52,24 @@ export function renderProEntitlementPanel({
         onEntitlementChanged?.();
     };
 
-    const collapsed = panel.createDiv({ cls: 'ert-pro-mode__collapsed' });
+    const collapsed = panel.createDiv({
+        cls: `${ERT_CLASSES.CARD} ${ERT_CLASSES.CARD_HERO} ert-pro-hero-card ert-pro-hero-card--collapsed ert-pro-mode__collapsed`
+    });
+    const collapsedWatermark = collapsed.createSpan({ cls: 'ert-pro-hero-watermark', attr: { 'aria-hidden': 'true' } });
+    setIcon(collapsedWatermark, 'signature');
     const collapsedButton = collapsed.createDiv({
         cls: 'ert-pro-mode__collapsed-button',
         attr: { role: 'button', tabindex: '0', 'aria-expanded': 'false' }
     });
     const collapsedRow = collapsedButton.createDiv({ cls: 'ert-pro-mode__collapsed-row' });
-    const collapsedTitle = collapsedRow.createDiv({ cls: 'ert-pro-mode__collapsed-title' });
+    const collapsedLeft = collapsedRow.createDiv({ cls: 'ert-pro-mode__collapsed-left' });
+    const collapsedPill = collapsedLeft.createSpan({
+        cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO} ert-pro-pill`
+    });
+    const collapsedPillIcon = collapsedPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON });
+    setIcon(collapsedPillIcon, 'signature');
+    collapsedPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'PRO' });
+    const collapsedTitle = collapsedLeft.createDiv({ cls: 'ert-pro-mode__collapsed-title' });
     const collapsedChevron = collapsedTitle.createSpan({ cls: 'ert-pro-mode__chevron' });
     setIcon(collapsedChevron, 'chevron-right');
     collapsedTitle.createSpan({ cls: 'ert-pro-mode__title-text', text: 'Pro Mode (Early Access)' });
@@ -79,6 +90,14 @@ export function renderProEntitlementPanel({
     setIcon(watermark, 'signature');
     const heroContent = hero.createDiv({ cls: `${ERT_CLASSES.STACK} ert-pro-hero-content` });
 
+    const heroBadgeRow = heroContent.createDiv({ cls: 'ert-pro-hero-badgeRow' });
+    const heroPill = heroBadgeRow.createSpan({
+        cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO} ert-pro-pill`
+    });
+    const heroPillIcon = heroPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON });
+    setIcon(heroPillIcon, 'signature');
+    heroPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'PRO' });
+
     heroContent.createEl('div', { cls: 'ert-kicker', text: 'EARLY ACCESS' });
     heroContent.createEl('h3', {
         cls: `${ERT_CLASSES.SECTION_TITLE} ert-hero-title`,
@@ -89,38 +108,36 @@ export function renderProEntitlementPanel({
         text: 'Pro Mode expands Radial Timeline into a complete manuscript system—where writing, analysis, and publishing work together. You can evaluate your story with deeper Inquiry questions, track momentum and structure across scenes, and generate polished manuscripts using advanced Pandoc PDF exports with custom LaTeX templates. On the sharing side, Pro introduces Social APR campaigns to present your progress clearly without spoilers. Instead of stitching together tools and workflows, Pro brings everything into one system—so you can move faster, make better decisions, and finish stronger.'
     });
 
-    const featureStrip = heroContent.createDiv({ cls: 'ert-pro-hero-strip' });
+    const featureStrip = heroContent.createDiv({ cls: 'ert-pro-hero-pillStrip' });
     const featureItems = [
-        { icon: 'file-text', label: 'Publishing — Pandoc PDF + LaTeX templates' },
-        { icon: 'share-2', label: 'APR Campaigns — shareable progress systems' },
-        { icon: 'waves', label: 'Inquiry+ — expanded question sets' },
-        { icon: 'waypoints', label: 'Structure — advanced beat systems' },
-        { icon: 'sparkles', label: 'Showcase — examples & website resources' }
+        { icon: 'file-text', label: 'Publishing' },
+        { icon: 'share-2', label: 'APR Campaigns' },
+        { icon: 'waves', label: 'Inquiry+' },
+        { icon: 'waypoints', label: 'Structure' },
+        { icon: 'sparkles', label: 'Showcase' }
     ];
     featureItems.forEach(({ icon, label }) => {
-        const item = featureStrip.createDiv({ cls: 'ert-pro-hero-feature' });
-        const iconEl = item.createSpan({ cls: 'ert-pro-hero-feature-icon' });
+        const item = featureStrip.createDiv({ cls: 'ert-pro-hero-pill' });
+        const iconEl = item.createSpan({ cls: 'ert-pro-hero-pill-icon' });
         setIcon(iconEl, icon);
-        item.createSpan({ cls: 'ert-pro-hero-feature-label', text: label });
+        item.createSpan({ cls: 'ert-pro-hero-pill-label', text: label });
     });
 
     const valueSection = heroContent.createDiv({ cls: 'ert-pro-hero-value' });
     valueSection.createEl('h5', { text: 'Designed to remove friction', cls: 'ert-kicker' });
-    const valueList = valueSection.createEl('ul', { cls: 'ert-pro-hero-list' });
-    [
-        'Export clean manuscripts without manual formatting',
-        'See structural issues across scenes instantly',
-        'Evaluate story momentum visually',
-        'Share progress clearly without spoilers'
-    ].forEach((item) => valueList.createEl('li', { text: item }));
-
-    const controlRow = heroContent.createDiv({ cls: 'ert-pro-hero-control' });
-    controlRow.createSpan({ cls: 'ert-pro-hero-control-label', text: proModeLabel });
-    const controlToggle = createToggle(controlRow, 'Toggle Pro Mode');
-    heroContent.createDiv({
-        cls: ERT_CLASSES.FIELD_NOTE,
-        text: 'Turn off to preview Core mode'
-    });
+    const valueGrid = valueSection.createDiv({ cls: 'ert-pro-hero-valueGrid' });
+    const writeCard = valueGrid.createDiv({ cls: 'ert-pro-hero-valueCard' });
+    writeCard.createEl('h6', { text: 'Write Faster', cls: 'ert-pro-hero-valueTitle' });
+    const writeList = writeCard.createEl('ul', { cls: 'ert-pro-hero-valueList' });
+    ['Export clean manuscripts instantly', 'No manual formatting'].forEach((item) => writeList.createEl('li', { text: item }));
+    const thinkCard = valueGrid.createDiv({ cls: 'ert-pro-hero-valueCard' });
+    thinkCard.createEl('h6', { text: 'Think Clearly', cls: 'ert-pro-hero-valueTitle' });
+    const thinkList = thinkCard.createEl('ul', { cls: 'ert-pro-hero-valueList' });
+    ['See structure across scenes', 'Track momentum visually'].forEach((item) => thinkList.createEl('li', { text: item }));
+    const shareCard = valueGrid.createDiv({ cls: 'ert-pro-hero-valueCard is-wide' });
+    shareCard.createEl('h6', { text: 'Share Progress', cls: 'ert-pro-hero-valueTitle' });
+    const shareList = shareCard.createEl('ul', { cls: 'ert-pro-hero-valueList' });
+    ['Present updates without spoilers'].forEach((item) => shareList.createEl('li', { text: item }));
 
     const detailsSection = heroContent.createDiv({ cls: 'ert-pro-hero-details' });
     detailsSection.createEl('h5', { text: "What's included", cls: 'ert-kicker' });
@@ -165,10 +182,6 @@ export function renderProEntitlementPanel({
     plugin.registerDomEvent(collapsedToggle, 'change', async () => {
         await handleToggleChange(collapsedToggle.checked);
     });
-    plugin.registerDomEvent(controlToggle, 'change', async () => {
-        await handleToggleChange(controlToggle.checked);
-    });
-
     applyProState(entitlement.isProEnabled);
     toggleExpanded(false);
 
