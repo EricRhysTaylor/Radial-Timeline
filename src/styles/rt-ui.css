@@ -485,7 +485,7 @@
 .ert-ui.ert-scope--settings .ert-pro-hero-card,
 .ert-ui.ert-scope--settings .ert-skin--pro .ert-pro-hero-card {
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   --ert-surface-hero: #0b0a10;
   --ert-hero-grad:
     radial-gradient(circle at 12% 18%, color-mix(in srgb, var(--ert-pro-accent-color) 35%, transparent) 0%, transparent 46%),
@@ -535,20 +535,14 @@
 .ert-ui.ert-scope--settings .ert-pro-hero-watermark {
   position: absolute;
   left: 50%;
-  top: 46%;
-  width: 320px;
-  height: 320px;
-  transform: translate(-50%, -50%);
-  opacity: 0.1;
+  top: 50%;
+  width: 960px;
+  height: 960px;
+  transform: translate(-50%, -50%) rotate(-12deg);
+  opacity: 0.08;
   color: var(--ert-pro-accent-color);
   z-index: 1;
   pointer-events: none;
-}
-
-.ert-ui.ert-scope--settings .ert-pro-hero-card--collapsed .ert-pro-hero-watermark {
-  width: 200px;
-  height: 200px;
-  opacity: 0.12;
 }
 
 .ert-ui.ert-scope--settings .ert-pro-hero-watermark svg {
@@ -5698,6 +5692,10 @@
   max-width: 25rem;
 }
 
+.ert-ui.ert-scope--settings .ert-completion-quote-line {
+  display: block;
+}
+
 .ert-ui.ert-scope--settings .ert-completion-quote-author {
   display: block;
   margin-top: calc(var(--ert-gap-xs) * 0.75);
@@ -6198,7 +6196,7 @@
 }
 
 .ert-ui.ert-scope--settings .ert-reorder-row--pro {
-  background: var(--ert-pro-surface-2);
+  background: var(--ert-pro-surface-bg);
   border: 1px solid var(--ert-pro-border);
   border-radius: calc(var(--ert-control-radius) + (var(--ert-gap-xs) / 2));
   padding: calc(var(--ert-gap-xs) + 2px) var(--ert-gap-sm);
@@ -8871,7 +8869,8 @@
 }
 
 .ert-ui.ert-scope--settings.ert-skin--pro .ert-elementBlock,
-.ert-ui.ert-scope--settings .ert-skin--pro .ert-elementBlock {
+.ert-ui.ert-scope--settings .ert-skin--pro .ert-elementBlock,
+.ert-ui.ert-scope--settings .ert-elementBlock.ert-skin--pro {
   background: var(--ert-pro-surface-2);
   border: 1px solid var(--ert-pro-border);
   box-shadow: none;

@@ -8,6 +8,7 @@ import type { CompletionEstimate } from '../../services/TimelineMetricsService';
 import { STAGE_ORDER } from '../../utils/constants';
 import { ERT_CLASSES } from '../../ui/classes';
 import { IMPACT_FULL } from '../SettingImpact';
+import { splitIntoBalancedLinesOptimal } from '../../utils/text';
 
 type Stage = typeof STAGE_ORDER[number];
 type Quote = { text: string; author: string };
@@ -18,7 +19,12 @@ function renderQuoteBlock(
     quoteClass: string,
     authorClass: string
 ): void {
-    container.createDiv({ cls: quoteClass, text: `"${quote.text}"` });
+    const quoteEl = container.createDiv({ cls: quoteClass });
+    const availableWidth = Math.max(420, Math.min(760, (container.clientWidth || 0) - 140 || 640));
+    const balancedLines = splitIntoBalancedLinesOptimal(`"${quote.text}"`, availableWidth, 1.35);
+    balancedLines.forEach(line => {
+        quoteEl.createDiv({ cls: 'ert-completion-quote-line', text: line });
+    });
     container.createDiv({ cls: authorClass, text: `— ${quote.author}` });
 }
 

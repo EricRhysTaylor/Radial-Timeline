@@ -114,7 +114,7 @@ export function renderProEntitlementPanel({
         { icon: 'share-2', label: 'APR Campaigns' },
         { icon: 'waves', label: 'Inquiry+' },
         { icon: 'waypoints', label: 'Structure' },
-        { icon: 'sparkles', label: 'Showcase' }
+        { icon: 'sparkles', label: 'Website Exclusives' }
     ];
     featureItems.forEach(({ icon, label }) => {
         const item = featureStrip.createDiv({ cls: 'ert-pro-hero-pill' });
@@ -134,11 +134,6 @@ export function renderProEntitlementPanel({
     thinkCard.createEl('h6', { text: 'Think Clearly', cls: 'ert-pro-hero-valueTitle' });
     const thinkList = thinkCard.createEl('ul', { cls: 'ert-pro-hero-valueList' });
     ['See structure across scenes', 'Track momentum visually'].forEach((item) => thinkList.createEl('li', { text: item }));
-    const shareCard = valueGrid.createDiv({ cls: 'ert-pro-hero-valueCard is-wide' });
-    shareCard.createEl('h6', { text: 'Share Progress', cls: 'ert-pro-hero-valueTitle' });
-    const shareList = shareCard.createEl('ul', { cls: 'ert-pro-hero-valueList' });
-    ['Present updates without spoilers'].forEach((item) => shareList.createEl('li', { text: item }));
-
     const detailsSection = heroContent.createDiv({ cls: 'ert-pro-hero-details' });
     detailsSection.createEl('h5', { text: "What's included", cls: 'ert-kicker' });
     const detailsList = detailsSection.createEl('ul', { cls: 'ert-pro-hero-list' });
@@ -153,6 +148,20 @@ export function renderProEntitlementPanel({
         cls: `${ERT_CLASSES.SECTION_DESC} ert-pro-hero-details-note`,
         text: 'Pro will become a subscription that unlocks advanced tools across Radial Timeline. During Early Access, everything remains available.'
     });
+
+    const exclusivesSection = heroContent.createDiv({ cls: 'ert-pro-hero-exclusives' });
+    exclusivesSection.createEl('h5', { text: 'Website Exclusives', cls: 'ert-kicker' });
+    exclusivesSection.createEl('p', {
+        cls: `${ERT_CLASSES.SECTION_DESC} ert-pro-hero-exclusives-copy`,
+        text: 'Pro also includes website-exclusive resources designed to help authors learn by example: downloadable Pride & Prejudice and Sherlock Holmes template vaults, expanded Inquiry View Omnibus Briefings, and focused demonstrations of real Radial Timeline workflows.'
+    });
+    const exclusivesList = exclusivesSection.createEl('ul', { cls: 'ert-pro-hero-list' });
+    [
+        'Pride & Prejudice template vault',
+        'Sherlock Holmes template vault',
+        'Inquiry View Omnibus Briefings',
+        'Exclusive usage demonstrations'
+    ].forEach((item) => exclusivesList.createEl('li', { text: item }));
 
     heroContent.createDiv({
         cls: 'ert-pro-hero-final',
