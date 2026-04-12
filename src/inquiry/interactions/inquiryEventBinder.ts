@@ -170,12 +170,12 @@ export function bindInquiryBriefingSessionItemEvents(args: {
 export function bindInquiryZonePodEvents(args: {
     registerSvgEvent: InquirySvgEventRegistrar;
     zoneEl: SVGGElement;
-    onClick: () => void;
+    onClick: (event: MouseEvent) => void;
     onContextMenu?: (event: MouseEvent) => void;
     onPointerEnter: () => void;
     onPointerLeave: () => void;
 }): void {
-    args.registerSvgEvent(args.zoneEl, 'click', () => args.onClick());
+    args.registerSvgEvent(args.zoneEl, 'click', (event: Event) => args.onClick(event as MouseEvent));
     if (args.onContextMenu) {
         args.registerSvgEvent(args.zoneEl, 'contextmenu', (event: Event) => {
             event.preventDefault();

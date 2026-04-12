@@ -2666,6 +2666,72 @@ export class InquiryView extends ItemView {
         return { id: result.questionId, status };
     }
 
+    /**
+     * Computes the set of prompt IDs that have a valid (non-error) cached session
+     * for the current scope, corpus, model, and question signature context.
+     * Uses the same cache-key logic as runInquiry rehydration so the visual state
+     * is an honest reflection of what will happen on click.
+     */
+    private computeCachedPromptIds(): Set<string> {
+        const cachedIds = new Set<string>();
+        const scopeKey = this.getScopeKey();
+        const targetSceneIds = this.getActiveTargetSceneIds();
+        const selectionMode = this.getSelectionMode(targetSceneIds);
+        const engineSelection = this.resolveEngineSelectionForRun();
+        const modelId = engineSelection.modelId;
+
+        // Cache entry-derived fingerprintSource by contextRequired flag.
+        // Entries only differ based on this flag (questionId/zone don't affect entries
+        // when contextRequired is passed explicitly). This avoids redundant vault scans.
+        const fingerprintSourceByContext = new Map<boolean, string>();
+
+        for (const zone of ['setup', 'pressure', 'payoff'] as const) {
+            const prompts = this.getPromptOptions(zone);
+            for (const prompt of prompts) {
+                const contextRequired = this.isContextRequiredForQuestion(prompt.id, zone);
+
+                let fingerprintSource = fingerprintSourceByContext.get(contextRequired);
+                if (fingerprintSource === undefined) {
+                    const manifest = this.buildCorpusManifest(prompt.id, {
+                        modelId,
+                        questionZone: zone,
+                        contextRequired
+                    });
+                    fingerprintSource = manifest.entries
+                        .map(e => `${e.path}:${e.sceneId ?? ''}:${e.mtime}:${e.mode}:${e.isTarget ? 1 : 0}`)
+                        .sort()
+                        .join('|');
+                    fingerprintSourceByContext.set(contextRequired, fingerprintSource);
+                }
+
+                const fingerprintRaw = `${INQUIRY_SCHEMA_VERSION}|${prompt.id}|${modelId}|${fingerprintSource}`;
+                const fingerprint = this.hashString(fingerprintRaw);
+
+                const effectiveOverride = this.getEffectivePromptOverride(prompt.id);
+                const questionText = this.resolveQuestionPromptForRun(prompt, selectionMode, effectiveOverride);
+                const questionPromptForm = this.resolveQuestionPromptFormForRun(prompt, selectionMode, effectiveOverride);
+                const questionSignature = this.buildQuestionSignature(questionText);
+
+                const baseKey = this.sessionStore.buildBaseKey({
+                    questionId: prompt.id,
+                    questionPromptForm,
+                    questionSignature,
+                    scope: this.state.scope,
+                    scopeKey,
+                    targetSceneIds
+                });
+
+                const key = this.sessionStore.buildKey(baseKey, fingerprint);
+                const session = this.sessionStore.peekSession(key);
+                if (session && !this.isErrorResult(session.result)) {
+                    cachedIds.add(prompt.id);
+                }
+            }
+        }
+
+        return cachedIds;
+    }
+
     private updateZonePrompts(): void {
         this.syncSelectedPromptIds();
         const paddingX = 24;
@@ -2747,6 +2813,7 @@ export class InquiryView extends ItemView {
                 }
             }
         }
+        const cachedPromptIds = this.computeCachedPromptIds();
         this.glyph.updatePromptState({
             promptsByZone,
             selectedPromptIds: this.state.selectedPromptIds,
@@ -2754,7 +2821,8 @@ export class InquiryView extends ItemView {
             processedStatus: processed.status,
             lockedPromptId: this.state.isRunning ? this.state.activeQuestionId : null,
             focusedFormIds,
-            onPromptSelect: (zone, promptId) => {
+            cachedPromptIds,
+            onPromptSelect: (zone, promptId, event) => {
                 if (this.isInquiryRunDisabled()) return;
                 if (this.state.isRunning) {
                     this.notifyInteraction('Inquiry running. Please wait.');
@@ -2769,7 +2837,7 @@ export class InquiryView extends ItemView {
                 this.clearErrorStateForAction();
                 this.setSelectedPrompt(zone, promptId);
                 if (prompt) {
-                    void this.handleQuestionClick(prompt);
+                    void this.handleQuestionClick(prompt, { forceRerun: event?.shiftKey });
                 } else {
                     this.notifyInteraction('No question configured for this slot.');
                 }
@@ -2824,7 +2892,7 @@ export class InquiryView extends ItemView {
         this.updateGlyphPromptState();
     }
 
-    private handlePromptClick(zone: InquiryZone): void {
+    private handlePromptClick(zone: InquiryZone, event?: MouseEvent): void {
         if (this.isInquiryRunDisabled()) return;
         if (this.state.isRunning) {
             this.notifyInteraction('Inquiry running. Please wait.');
@@ -2845,7 +2913,7 @@ export class InquiryView extends ItemView {
             this.notifyInteraction('No questions configured for this zone.');
             return;
         }
-        if (this.isErrorState() && this.state.activeResult?.questionId === nextPrompt.id) {
+        if (!event?.shiftKey && this.isErrorState() && this.state.activeResult?.questionId === nextPrompt.id) {
             void this.openInquiryErrorLog();
             return;
         }
@@ -2853,7 +2921,7 @@ export class InquiryView extends ItemView {
         if (nextPrompt.id !== currentId) {
             this.setSelectedPrompt(zone, nextPrompt.id);
         }
-        void this.handleQuestionClick(nextPrompt);
+        void this.handleQuestionClick(nextPrompt, { forceRerun: event?.shiftKey });
     }
 
     private showQuestionRunMenu(question: InquiryQuestion, event: MouseEvent): void {
@@ -2872,6 +2940,14 @@ export class InquiryView extends ItemView {
                 });
             });
         }
+        menu.addSeparator();
+        menu.addItem(item => {
+            item.setTitle('Force Re-run');
+            item.onClick(() => {
+                this.setSelectedPrompt(question.zone, question.id);
+                void this.handleQuestionClick(question, { forceRerun: true });
+            });
+        });
         menu.showAtMouseEvent(event);
     }
 
@@ -2921,7 +2997,7 @@ export class InquiryView extends ItemView {
             bindInquiryZonePodEvents({
                 registerSvgEvent: this.registerSvgEvent.bind(this),
                 zoneEl,
-                onClick: () => this.handlePromptClick(zone.id),
+                onClick: (event) => this.handlePromptClick(zone.id, event),
                 onContextMenu: (event) => {
                     if (this.isInquiryRunDisabled()) return;
                     const prompt = this.getActivePrompt(zone.id);
@@ -5554,9 +5630,9 @@ export class InquiryView extends ItemView {
 
     private async handleQuestionClick(
         question: InquiryQuestion,
-        options?: { promptOverride?: InquiryQuestionPromptForm }
+        options?: { promptOverride?: InquiryQuestionPromptForm; forceRerun?: boolean }
     ): Promise<void> {
-        if (this.isErrorState() && this.state.activeResult?.questionId === question.id) {
+        if (!options?.forceRerun && this.isErrorState() && this.state.activeResult?.questionId === question.id) {
             await this.openInquiryErrorLog();
             return;
         }
@@ -5565,7 +5641,7 @@ export class InquiryView extends ItemView {
 
     private async runInquiry(
         question: InquiryQuestion,
-        options?: { bypassTokenGuard?: boolean; promptOverride?: InquiryQuestionPromptForm }
+        options?: { bypassTokenGuard?: boolean; promptOverride?: InquiryQuestionPromptForm; forceRerun?: boolean }
     ): Promise<void> {
         if (this.isInquiryRunDisabled()) return;
         if (this.state.isRunning) {
@@ -5608,34 +5684,37 @@ export class InquiryView extends ItemView {
             targetSceneIds
         });
         const key = this.sessionStore.buildKey(baseKey, manifest.fingerprint);
-        if (this.state.activeSessionId === key && this.state.activeResult && !this.isErrorResult(this.state.activeResult)) {
-            this.handleDuplicateRunFeedback(question, key);
-            this.showResultsPreview(this.state.activeResult);
-            return;
-        }
         let cacheStatus: 'fresh' | 'stale' | 'missing' = 'missing';
-        let cachedSession: InquirySession | undefined;
-        const cached = this.sessionStore.getSession(key);
-        if (cached) {
-            cachedSession = cached;
-            cacheStatus = 'fresh';
-        }
-        if (!cachedSession) {
-            const prior = this.sessionStore.getLatestByBaseKey(baseKey);
-            if (prior && prior.result.corpusFingerprint !== manifest.fingerprint) {
-                cacheStatus = 'stale';
-                this.sessionStore.markStaleByBaseKey(baseKey);
+
+        if (!options?.forceRerun) {
+            if (this.state.activeSessionId === key && this.state.activeResult && !this.isErrorResult(this.state.activeResult)) {
+                this.handleDuplicateRunFeedback(question, key);
+                this.showResultsPreview(this.state.activeResult);
+                return;
             }
-        }
-        if (cachedSession && this.isErrorResult(cachedSession.result)) {
-            cachedSession = undefined;
-            cacheStatus = 'missing';
-        }
-        if (cachedSession) {
-            this.state.cacheStatus = cacheStatus;
-            this.handleDuplicateRunFeedback(question, cachedSession.key);
-            this.activateSession(cachedSession);
-            return;
+            let cachedSession: InquirySession | undefined;
+            const cached = this.sessionStore.getSession(key);
+            if (cached) {
+                cachedSession = cached;
+                cacheStatus = 'fresh';
+            }
+            if (!cachedSession) {
+                const prior = this.sessionStore.getLatestByBaseKey(baseKey);
+                if (prior && prior.result.corpusFingerprint !== manifest.fingerprint) {
+                    cacheStatus = 'stale';
+                    this.sessionStore.markStaleByBaseKey(baseKey);
+                }
+            }
+            if (cachedSession && this.isErrorResult(cachedSession.result)) {
+                cachedSession = undefined;
+                cacheStatus = 'missing';
+            }
+            if (cachedSession) {
+                this.state.cacheStatus = cacheStatus;
+                this.handleDuplicateRunFeedback(question, cachedSession.key);
+                this.activateSession(cachedSession);
+                return;
+            }
         }
 
         if (!options?.bypassTokenGuard) {

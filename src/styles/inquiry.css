@@ -1468,6 +1468,15 @@
   fill: var(--ert-inquiry-ai-error);
 }
 
+/* Cached result — muted zone-color ring indicating a rehydratable session exists */
+.ert-inquiry-svg:not(.is-running) .inq-zone-dot.is-cached .inq-zone-dot-circle {
+  stroke: color-mix(in srgb, var(--ert-inquiry-zone-color) 30%, transparent);
+}
+
+.ert-inquiry-svg:not(.is-running) .inq-zone-dot.is-cached .inq-zone-dot-text {
+  fill: color-mix(in srgb, var(--ert-inquiry-zone-color) 35%, transparent);
+}
+
 .inq-zone-dot.is-duplicate-pulse .inq-zone-dot-circle {
   stroke: var(--ert-inquiry-zone-color);
   filter: drop-shadow(0 0 8px color-mix(in srgb, var(--ert-inquiry-zone-color) 80%, transparent));

@@ -8893,6 +8893,13 @@
   box-shadow: none;
 }
 
+/* Pro question rows: override elementBlock surface with vivid Pro gradient */
+.ert-ui.ert-scope--settings .ert-reorder-row--pro.ert-elementBlock.ert-skin--pro {
+  background: var(--ert-pro-surface-bg);
+  border: 1px solid var(--ert-pro-accent-border);
+  box-shadow: var(--ert-shadow-pro-glow);
+}
+
 .ert-ui.ert-skin--pro .ert-row--recommended,
 .ert-ui .ert-skin--pro .ert-row--recommended {
   background: var(--ert-pro-surface-2);

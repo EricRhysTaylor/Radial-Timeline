@@ -27,7 +27,8 @@ export interface InquiryGlyphPromptState {
     processedStatus?: 'success' | 'error' | null;
     lockedPromptId?: string | null;
     focusedFormIds?: Set<string>;
-    onPromptSelect?: (zone: InquiryZone, promptId: string) => void;
+    cachedPromptIds?: Set<string>;
+    onPromptSelect?: (zone: InquiryZone, promptId: string, event: MouseEvent) => void;
     onPromptContextMenu?: (zone: InquiryZone, promptId: string, event: MouseEvent) => void;
     onPromptHover?: (zone: InquiryZone, promptId: string, promptText: string) => void;
     onPromptHoverEnd?: () => void;
@@ -426,10 +427,10 @@ export class InquiryGlyph {
                     promptText?: string;
                 } = { group: dotGroup, circle: dotCircle, text: dotText, zone: zone.id, index: i };
                 // SAFE: InquiryGlyph is a plain class without Component lifecycle; owner view manages cleanup
-                dotGroup.addEventListener('click', () => {
+                dotGroup.addEventListener('click', (event: MouseEvent) => {
                     if (!this.zoneInteractionsEnabled) return;
                     if (!marker.promptId) return;
-                    this.promptState?.onPromptSelect?.(marker.zone, marker.promptId);
+                    this.promptState?.onPromptSelect?.(marker.zone, marker.promptId, event);
                 });
                 // SAFE: InquiryGlyph is a plain class without Component lifecycle
                 dotGroup.addEventListener('contextmenu', (event: MouseEvent) => {
@@ -541,6 +542,7 @@ export class InquiryGlyph {
                 const isProcessed = !!prompt && processedPromptId === prompt.id;
                 const isError = isProcessed && processedStatus === 'error';
                 const isLocked = !!prompt && lockedPromptId === prompt.id;
+                const isCached = !!prompt && !isProcessed && (this.promptState?.cachedPromptIds?.has(prompt.id) ?? false);
                 marker.text.textContent = prompt ? (isError ? 'X' : String(idx + 1)) : '';
                 marker.group.setAttribute('display', prompt ? 'inline' : 'none');
                 marker.group.classList.toggle('is-signature', prompt?.tier === 'signature');
@@ -549,15 +551,23 @@ export class InquiryGlyph {
                 marker.group.classList.toggle('is-processed-success', isProcessed && processedStatus === 'success');
                 marker.group.classList.toggle('is-processed-error', isError);
                 marker.group.classList.toggle('is-locked', isLocked);
+                marker.group.classList.toggle('is-cached', isCached);
                 const isFocusedForm = !!prompt && (this.promptState?.focusedFormIds?.has(prompt.id) ?? false);
                 marker.group.classList.toggle('is-focused-form', isFocusedForm);
-                marker.group.removeAttribute('aria-label');
                 if (prompt) {
                     marker.group.setAttribute('role', 'button');
                     marker.group.setAttribute('tabindex', '0');
+                    if (isProcessed && processedStatus === 'success') {
+                        marker.group.setAttribute('aria-label', 'Current result');
+                    } else if (isCached) {
+                        marker.group.setAttribute('aria-label', 'Open cached result');
+                    } else {
+                        marker.group.setAttribute('aria-label', 'Run question');
+                    }
                 } else {
                     marker.group.removeAttribute('role');
                     marker.group.removeAttribute('tabindex');
+                    marker.group.removeAttribute('aria-label');
                 }
                 marker.group.removeAttribute('data-rt-tip');
                 marker.group.removeAttribute('data-rt-tip-placement');

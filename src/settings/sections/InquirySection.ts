@@ -76,24 +76,31 @@ const listToText = (values?: string[]): string =>
 const CORE_CLASSES = ['scene', 'outline'];
 const PRESET_MATCH_ORDER: InquirySourcesPreset[] = ['default', 'light', 'deep'];
 
-const relativeTimeFormatter = new Intl.RelativeTimeFormat(getFormattingLocale(), { numeric: 'auto' });
-
-const formatRelativeTime = (timestamp: number): string => {
+const formatSessionExactTime = (timestamp: number): string => {
     if (!Number.isFinite(timestamp)) return t('settings.inquiry.time.justNow');
-    const deltaMs = timestamp - Date.now();
-    const minute = 60_000;
-    const hour = 60 * minute;
-    const day = 24 * hour;
-    if (Math.abs(deltaMs) >= day) {
-        return relativeTimeFormatter.format(Math.round(deltaMs / day), 'day');
-    }
-    if (Math.abs(deltaMs) >= hour) {
-        return relativeTimeFormatter.format(Math.round(deltaMs / hour), 'hour');
-    }
-    if (Math.abs(deltaMs) >= minute) {
-        return relativeTimeFormatter.format(Math.round(deltaMs / minute), 'minute');
-    }
-    return t('settings.inquiry.time.justNow');
+    const raw = new Date(timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    return raw.replace(/\s+/g, '').toLowerCase();
+};
+
+const buildSessionZoneTag = (session: InquirySession, config: InquiryPromptConfig): string | null => {
+    const zone = session.questionZone ?? (session.result.questionZone as InquiryZone | undefined);
+    if (!zone) return null;
+    const abbr = zone === 'setup' ? 'Set' : zone === 'pressure' ? 'Pres' : 'Pay';
+    const questionId = session.result.questionId;
+    if (!questionId) return abbr;
+    const slots = config[zone] ?? [];
+    const slotIndex = slots.findIndex(slot => slot.id === questionId);
+    return slotIndex >= 0 ? `${abbr}${slotIndex + 1}` : abbr;
+};
+
+const resolveSessionQuestionLabel = (session: InquirySession, config: InquiryPromptConfig): string => {
+    const zoneTag = buildSessionZoneTag(session, config);
+    const slots = Object.values(config).flat();
+    const label = slots.find(slot => slot.id === session.result.questionId)?.label?.trim();
+    if (label && zoneTag) return `${zoneTag}: ${label}`;
+    if (label) return label;
+    if (session.result.questionId?.trim() && zoneTag) return `${zoneTag}: ${session.result.questionId.trim()}`;
+    return session.result.questionId?.trim() || t('settings.inquiry.recentSessions.fallbackTitle');
 };
 
 const formatSessionScopeLabel = (session: InquirySession): string => {
@@ -2010,14 +2017,6 @@ export function renderInquirySection(params: SectionParams): void {
         });
     });
 
-    const sessionTitleByQuestionId = (): Map<string, string> => {
-        const config = normalizeInquiryPromptConfig(plugin.settings.inquiryPromptConfig);
-        const pairs = (Object.values(config) as InquiryPromptSlot[][])
-            .flat()
-            .map(slot => [slot.id, slot.label?.trim() || slot.question?.trim() || slot.id] as const);
-        return new Map(pairs);
-    };
-
     const historyPreview = configBody.createDiv({
         cls: [ERT_CLASSES.PREVIEW_FRAME, ERT_CLASSES.STACK, 'ert-previewFrame--flush', 'ert-session-history-preview']
     });
@@ -2052,11 +2051,11 @@ export function renderInquirySection(params: SectionParams): void {
             });
             return;
         }
-        const titleMap = sessionTitleByQuestionId();
+        const promptConfig = normalizeInquiryPromptConfig(plugin.settings.inquiryPromptConfig);
         sessions.forEach(session => {
             const row = historyList.createDiv({ cls: [ERT_CLASSES.OBJECT_ROW, 'ert-session-history-preview__item'] });
             const left = row.createDiv({ cls: ERT_CLASSES.OBJECT_ROW_LEFT });
-            const questionTitle = titleMap.get(session.result.questionId) || session.result.questionId || t('settings.inquiry.recentSessions.fallbackTitle');
+            const questionTitle = resolveSessionQuestionLabel(session, promptConfig);
             left.createDiv({ cls: 'ert-session-history-preview__title', text: questionTitle });
             const timestamp = session.createdAt || session.lastAccessed;
             const passCountRaw = (session.result as unknown as Record<string, unknown>).executionPassCount;
@@ -2064,7 +2063,7 @@ export function renderInquirySection(params: SectionParams): void {
             const meta = [
                 formatSessionScopeLabel(session),
                 formatSessionProviderModel(session),
-                formatRelativeTime(timestamp),
+                formatSessionExactTime(timestamp),
                 passCount ? `Passes ${passCount}` : ''
             ].filter(Boolean).join(' · ');
             left.createDiv({ cls: ERT_CLASSES.OBJECT_ROW_META, text: meta });
