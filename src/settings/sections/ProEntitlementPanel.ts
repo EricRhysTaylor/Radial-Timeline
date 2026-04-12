@@ -20,7 +20,6 @@ export function renderProEntitlementPanel({
     const entitlement = getProEntitlement(plugin);
     const panel = containerEl.createDiv({ cls: 'ert-pro-mode' });
     const toggleInputs: HTMLInputElement[] = [];
-    const proModeLabel = 'Pro Mode';
 
     const createToggle = (parent: HTMLElement, ariaLabel: string): HTMLInputElement => {
         const toggleWrap = parent.createDiv({ cls: `${ERT_CLASSES.TOGGLE_ITEM} ert-pro-mode__toggle` });
@@ -55,6 +54,8 @@ export function renderProEntitlementPanel({
     const collapsed = panel.createDiv({
         cls: `${ERT_CLASSES.CARD} ${ERT_CLASSES.CARD_HERO} ert-pro-hero-card ert-pro-hero-card--collapsed ert-pro-mode__collapsed`
     });
+    const collapsedWatermark = collapsed.createSpan({ cls: 'ert-pro-hero-watermark', attr: { 'aria-hidden': 'true' } });
+    setIcon(collapsedWatermark, 'signature');
     const collapsedButton = collapsed.createDiv({
         cls: 'ert-pro-mode__collapsed-button',
         attr: { role: 'button', tabindex: '0', 'aria-expanded': 'false' }
@@ -70,43 +71,29 @@ export function renderProEntitlementPanel({
     const collapsedTitle = collapsedLeft.createDiv({ cls: 'ert-pro-mode__collapsed-title' });
     const collapsedChevron = collapsedTitle.createSpan({ cls: 'ert-pro-mode__chevron' });
     setIcon(collapsedChevron, 'chevron-right');
-    collapsedTitle.createSpan({ cls: 'ert-pro-mode__title-text', text: 'Pro Mode (Early Access)' });
+    collapsedTitle.createSpan({ cls: 'ert-pro-mode__title-text', text: 'Pro Signature (Early Access)' });
     const collapsedToggle = createToggle(collapsedRow, 'Toggle Pro Mode');
     collapsedButton.createDiv({
         cls: 'ert-pro-mode__collapsed-subtext',
-        text: 'Magenta sections are Pro features.'
+        text: 'Pro workflows appear throughout RT in magenta.'
     });
 
-    const expanded = panel.createDiv({ cls: 'ert-pro-mode__expanded' });
+    const expanded = collapsed.createDiv({ cls: 'ert-pro-mode__expanded' });
     const expandedId = 'ert-pro-mode-expanded';
     expanded.id = expandedId;
     collapsedButton.setAttr('aria-controls', expandedId);
-    const hero = expanded.createDiv({
-        cls: `${ERT_CLASSES.CARD} ${ERT_CLASSES.CARD_HERO} ert-pro-hero-card`
-    });
-    const watermark = hero.createSpan({ cls: 'ert-pro-hero-watermark', attr: { 'aria-hidden': 'true' } });
-    setIcon(watermark, 'signature');
-    const heroContent = hero.createDiv({ cls: `${ERT_CLASSES.STACK} ert-pro-hero-content` });
-
-    const heroBadgeRow = heroContent.createDiv({ cls: 'ert-pro-hero-badgeRow' });
-    const heroPill = heroBadgeRow.createSpan({
-        cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO} ert-pro-pill`
-    });
-    const heroPillIcon = heroPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON });
-    setIcon(heroPillIcon, 'signature');
-    heroPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'PRO' });
-
-    heroContent.createEl('div', { cls: 'ert-kicker', text: 'EARLY ACCESS' });
-    heroContent.createEl('h3', {
-        cls: `${ERT_CLASSES.SECTION_TITLE} ert-hero-title`,
-        text: proModeLabel
-    });
+    const heroContent = expanded.createDiv({ cls: `${ERT_CLASSES.STACK} ert-pro-hero-content` });
     const heroCopy = heroContent.createEl('p', { cls: `${ERT_CLASSES.SECTION_DESC} ert-hero-subtitle ert-pro-hero-body` });
-    heroCopy.appendText('Pro Mode expands Radial Timeline into a complete manuscript system—where writing, analysis, and publishing work together. Evaluate your story with deeper INQUIRY+ questions, track structure and momentum across scenes, and generate polished manuscripts with PANDOC PDF EXPORTS and custom LaTeX templates. Share progress through APR CAMPAIGNS, and explore WEBSITE EXCLUSIVES including ');
+    heroCopy.appendText('Pro Mode expands Radial Timeline into a ');
+    heroCopy.createEl('strong', { text: 'complete manuscript system' });
+    heroCopy.appendText('—where writing, analysis, and publishing work together. Evaluate your story with deeper INQUIRY+ questions, track structure and momentum across scenes, and generate polished manuscripts with PANDOC PDF EXPORTS and custom LaTeX templates. Share progress through APR CAMPAIGNS, and explore WEBSITE EXCLUSIVES including ');
     heroCopy.createSpan({ cls: 'ert-mono-inline', text: 'Pride & Prejudice' });
     heroCopy.appendText(' and ');
     heroCopy.createSpan({ cls: 'ert-mono-inline', text: 'Sherlock Holmes' });
-    heroCopy.appendText(' template vaults, Inquiry View Omnibus Briefings, and guided workflow demonstrations. Instead of stitching together tools, Pro brings everything into one system—so you can move faster, decide with confidence, and finish stronger.');
+    heroCopy.appendText(' template vaults, Inquiry View Omnibus Briefings, and guided workflow demonstrations. ');
+    heroCopy.createEl('em', {
+        text: 'Instead of stitching together tools, Pro brings everything into one system—so you can move faster, decide with confidence, and finish stronger.'
+    });
 
     const featureStrip = heroContent.createDiv({ cls: 'ert-pro-hero-pillStrip' });
     const featureItems = [

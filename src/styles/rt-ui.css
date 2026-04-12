@@ -471,6 +471,9 @@
 
 .ert-ui.ert-scope--settings .ert-pro-mode__expanded {
   display: none;
+  padding: 0 var(--ert-pad-sm) var(--ert-pad-sm);
+  position: relative;
+  z-index: 2;
 }
 
 .ert-ui.ert-scope--settings .ert-pro-mode.is-expanded .ert-pro-mode__expanded {
@@ -485,7 +488,7 @@
 .ert-ui.ert-scope--settings .ert-pro-hero-card,
 .ert-ui.ert-scope--settings .ert-skin--pro .ert-pro-hero-card {
   position: relative;
-  overflow: visible;
+  overflow: hidden;
   --ert-surface-hero: #0b0a10;
   --ert-hero-grad:
     radial-gradient(circle at 12% 18%, color-mix(in srgb, var(--ert-pro-accent-color) 35%, transparent) 0%, transparent 46%),
@@ -566,6 +569,7 @@
   flex-wrap: wrap;
   gap: var(--ert-gap-xs) var(--ert-gap-sm);
   margin-top: var(--ert-gap-sm);
+  justify-content: center;
 }
 
 .ert-ui.ert-scope--settings .ert-pro-hero-pill {
@@ -619,6 +623,16 @@
 .ert-ui.ert-scope--settings .ert-pro-hero-body {
   line-height: 1.65;
   max-width: 720px;
+}
+
+.ert-ui.ert-scope--settings .ert-pro-hero-body strong {
+  color: var(--text-normal);
+  font-weight: 700;
+}
+
+.ert-ui.ert-scope--settings .ert-pro-hero-body em {
+  font-style: italic;
+  color: color-mix(in srgb, var(--text-normal) 86%, var(--text-muted));
 }
 
 .ert-ui.ert-scope--settings .ert-mono-inline {
@@ -6128,19 +6142,21 @@
 }
 
 .ert-ui.ert-scope--settings .ert-reorder-row--pro {
-  background:
-    radial-gradient(circle at 12% 18%, color-mix(in srgb, var(--ert-pro-accent-color) 16%, transparent) 0%, transparent 52%),
-    radial-gradient(circle at 86% 78%, color-mix(in srgb, var(--ert-pro-accent-color) 8%, transparent) 0%, transparent 55%),
-    linear-gradient(135deg, color-mix(in srgb, var(--ert-pro-accent-color) 6%, transparent) 0%, color-mix(in srgb, var(--ert-pro-accent-color) 2%, transparent) 100%),
-    color-mix(in srgb, var(--background-primary) 94%, var(--ert-pro-accent-color) 4%);
-  border: 1px solid var(--ert-pro-accent-border);
   border-radius: calc(var(--ert-control-radius) + (var(--ert-gap-xs) / 2));
   padding: calc(var(--ert-gap-xs) + 2px) var(--ert-gap-sm);
-  box-shadow: var(--ert-shadow-pro-glow);
+  color: var(--ert-pro-accent-color);
 }
 
 .ert-ui.ert-scope--settings .ert-reorder-row--pro .ert-drag-handle {
   color: var(--ert-pro-accent-color);
+}
+
+.ert-ui.ert-scope--settings .ert-reorder-row--pro .ert-input {
+  color: color-mix(in srgb, var(--ert-pro-accent-color) 55%, var(--text-normal));
+}
+
+.ert-ui.ert-scope--settings .ert-reorder-row--pro .ert-iconBtn {
+  color: color-mix(in srgb, var(--ert-pro-accent-color) 60%, var(--text-muted));
 }
 
 .ert-ui.ert-scope--settings .ert-reorder-row--ghost {
@@ -8812,12 +8828,6 @@
   box-shadow: none;
 }
 
-/* Pro question rows: override elementBlock surface with vivid Pro gradient */
-.ert-ui.ert-scope--settings .ert-reorder-row--pro.ert-elementBlock.ert-skin--pro {
-  background: var(--ert-pro-surface-bg);
-  border: 1px solid var(--ert-pro-accent-border);
-  box-shadow: var(--ert-shadow-pro-glow);
-}
 
 .ert-ui.ert-skin--pro .ert-row--recommended,
 .ert-ui .ert-skin--pro .ert-row--recommended {
