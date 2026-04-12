@@ -6108,7 +6108,7 @@
 }
 
 .ert-ui.ert-scope--settings .ert-reorder-row--pro {
-  background: var(--ert-pro-surface-bg);
+  background: var(--ert-pro-surface-2);
   border: 1px solid var(--ert-pro-border);
   border-radius: calc(var(--ert-control-radius) + (var(--ert-gap-xs) / 2));
   padding: calc(var(--ert-gap-xs) + 2px) var(--ert-gap-sm);
