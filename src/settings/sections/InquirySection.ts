@@ -1341,13 +1341,14 @@ export function renderInquirySection(params: SectionParams): void {
                 const isProRow = slotState === 'customized' && customIndex >= freeCustomLimit;
                 const canonicalQuestion = getCanonicalQuestionForSlot(slot);
                 const canRemoveSlot = slotIndex > 0;
+                const isSignatureTemplateRow = slotState === 'canonical-loaded' && canonicalQuestion?.tier === 'signature';
                 if (canonicalQuestion) {
                     canonicalRowRefs[zone].set(canonicalQuestion.id, row);
                 }
-                if (isProRow) {
+                if (isProRow || isSignatureTemplateRow) {
                     row.addClass('ert-skin--pro', 'ert-elementBlock');
                     row.addClass('ert-reorder-row--pro');
-                    if (!isPro) {
+                    if (!isPro && (isProRow || isSignatureTemplateRow)) {
                         row.addClass('ert-reorder-row--locked');
                     }
                 }
@@ -1355,7 +1356,7 @@ export function renderInquirySection(params: SectionParams): void {
                 row.toggleClass('ert-inquiry-prompt-row--customized', slotState === 'customized');
                 row.toggleClass(
                     'ert-inquiry-prompt-row--signature',
-                    slotState === 'canonical-loaded' && canonicalQuestion?.tier === 'signature'
+                    isSignatureTemplateRow
                 );
 
                 const labelCol = row.createDiv({ cls: 'ert-reorder-col ert-inquiry-prompt-col ert-inquiry-prompt-col--handle' });

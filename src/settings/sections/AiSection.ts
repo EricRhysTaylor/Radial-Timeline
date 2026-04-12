@@ -1570,6 +1570,7 @@ export function renderAiSection(params: {
         });
         setActiveCostComparisonRow(null, null);
         renderCostComparisonRows(buildLoadingCostRows());
+        await getAIClient(plugin).refreshPricing();
         const [corpusSummary, rows] = await Promise.all([
             computeCostEstimateCorpusSummary(),
             computeCostComparisonRows()
