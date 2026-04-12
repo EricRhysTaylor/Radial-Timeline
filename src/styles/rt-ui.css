@@ -6209,11 +6209,15 @@
 }
 
 .ert-ui.ert-scope--settings .ert-reorder-row--pro {
-  background: var(--ert-pro-surface-bg);
-  border: 1px solid var(--ert-pro-border);
+  background:
+    radial-gradient(circle at 12% 18%, color-mix(in srgb, var(--ert-pro-accent-color) 16%, transparent) 0%, transparent 52%),
+    radial-gradient(circle at 86% 78%, color-mix(in srgb, var(--ert-pro-accent-color) 8%, transparent) 0%, transparent 55%),
+    linear-gradient(135deg, color-mix(in srgb, var(--ert-pro-accent-color) 6%, transparent) 0%, color-mix(in srgb, var(--ert-pro-accent-color) 2%, transparent) 100%),
+    color-mix(in srgb, var(--background-primary) 94%, var(--ert-pro-accent-color) 4%);
+  border: 1px solid var(--ert-pro-accent-border);
   border-radius: calc(var(--ert-control-radius) + (var(--ert-gap-xs) / 2));
   padding: calc(var(--ert-gap-xs) + 2px) var(--ert-gap-sm);
-  box-shadow: var(--ert-shadow-hero);
+  box-shadow: var(--ert-shadow-pro-glow);
 }
 
 .ert-ui.ert-scope--settings .ert-reorder-row--pro .ert-drag-handle {
