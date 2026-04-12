@@ -682,6 +682,19 @@
   color: var(--text-muted);
 }
 
+.ert-ui.ert-scope--settings .ert-pro-hero-exclusives {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ert-ui.ert-scope--settings .ert-pro-hero-exclusives-copy {
+  font-size: 12px;
+  line-height: 1.6;
+  color: color-mix(in srgb, var(--text-muted) 92%, transparent);
+  max-width: 760px;
+}
+
 .ert-ui.ert-scope--settings .ert-pro-hero-final {
   font-size: 12px;
   color: var(--text-muted);
