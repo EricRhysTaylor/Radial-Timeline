@@ -1326,24 +1326,24 @@ export class ManuscriptOptionsModal extends Modal {
 
     // Interaction helpers ----------------------------------------------------
     private createPill(parent: HTMLElement, label: string, active: boolean, onClick: () => void): void {
-        const pill = parent.createDiv({ cls: 'rt-manuscript-pill' });
-        pill.createSpan({ text: label });
-        if (active) pill.classList.add('rt-is-active');
+        const pill = parent.createEl('button', { attr: { 'data-ert-toggle': '' } });
+        pill.setText(label);
+        if (active) pill.addClass('is-active');
         pill.onClickEvent(() => {
-            parent.querySelectorAll('.rt-manuscript-pill').forEach(el => el.removeClass('rt-is-active'));
-            pill.classList.add('rt-is-active');
+            parent.querySelectorAll('[data-ert-toggle]').forEach(el => el.removeClass('is-active'));
+            pill.addClass('is-active');
             onClick();
             this.updateTemplateActionButtonState();
         });
     }
 
     private updatePills(parent: HTMLElement, activeIndex: number): void {
-        const pills = Array.from(parent.querySelectorAll('.rt-manuscript-pill'));
+        const pills = Array.from(parent.querySelectorAll('[data-ert-toggle]'));
         pills.forEach((el, idx) => {
             if (idx === activeIndex) {
-                el.classList.add('rt-is-active');
+                el.classList.add('is-active');
             } else {
-                el.removeClass('rt-is-active');
+                el.removeClass('is-active');
             }
         });
     }
@@ -1359,30 +1359,38 @@ export class ManuscriptOptionsModal extends Modal {
     }
 
     private createOrderPill(parent: HTMLElement, label: string, order: ManuscriptOrder): void {
-        const pill = parent.createDiv({ cls: 'rt-manuscript-pill' });
-        pill.createSpan({ text: label });
+        const pill = parent.createEl('button', { attr: { 'data-ert-toggle': '' } });
+        pill.setText(label);
         this.orderPills.push({ el: pill, order });
-        
-        if (this.order === order) pill.classList.add('rt-is-active');
-        
+
+        if (this.order === order) pill.addClass('is-active');
+
         pill.onClickEvent(async () => {
-            if (pill.hasClass('rt-is-disabled')) return;
-            
-            this.orderPills.forEach(p => p.el.removeClass('rt-is-active'));
-            pill.classList.add('rt-is-active');
+            if (pill.disabled) return;
+
+            this.orderPills.forEach(p => p.el.removeClass('is-active'));
+            pill.addClass('is-active');
             this.order = order;
             await this.loadScenesForOrder();
         });
     }
 
     private createExportTypePill(parent: HTMLElement, label: string, type: ExportType, disabled = false, isPro = false): void {
-        const pill = parent.createDiv({ cls: 'rt-manuscript-pill' });
-        if (isPro) pill.classList.add('rt-manuscript-pill-pro');
-        pill.createSpan({ text: label });
-        if (this.exportType === type) pill.classList.add('rt-is-active');
-        if (disabled) pill.classList.add('rt-is-disabled');
+        const pill = isPro
+            ? parent.createEl('button', { cls: 'ert-pillBtn ert-pillBtn--pro' })
+            : parent.createEl('button', { attr: { 'data-ert-toggle': '' } });
+        if (isPro) {
+            pill.createSpan({ cls: 'ert-pillBtn__label', text: label });
+        } else {
+            pill.setText(label);
+        }
+        if (this.exportType === type) pill.addClass('is-active');
+        if (disabled) {
+            if (isPro) pill.addClass('ert-pillBtn--used');
+            pill.disabled = true;
+        }
         if (disabled && isPro && !this.isPro && !pill.closest('.ert-pro-locked')) {
-            pill.classList.add('ert-pro-locked');
+            pill.addClass('ert-pro-locked');
         }
         this.exportTypePills.push({ el: pill, type });
 
@@ -1391,8 +1399,8 @@ export class ManuscriptOptionsModal extends Modal {
                 new Notice(t('manuscriptModal.proRequired'));
                 return;
             }
-            this.exportTypePills.forEach(p => p.el.removeClass('rt-is-active'));
-            pill.classList.add('rt-is-active');
+            this.exportTypePills.forEach(p => p.el.removeClass('is-active'));
+            pill.addClass('is-active');
             this.exportType = type;
             this.normalizeOutputFormatForOutline();
             this.syncExportUi();
@@ -1400,9 +1408,10 @@ export class ManuscriptOptionsModal extends Modal {
     }
 
     private createOutputFormatPill(parent: HTMLElement, label: string, format: ExportFormat, disabled = false, scope: ExportType | 'both' = 'both', isPro = false): void {
-        const pill = parent.createDiv({ cls: 'rt-manuscript-pill', attr: { 'data-scope': scope } });
-        if (isPro) pill.classList.add('rt-manuscript-pill-pro');
-        
+        const pill = isPro
+            ? parent.createEl('button', { cls: 'ert-pillBtn ert-pillBtn--pro', attr: { 'data-scope': scope } })
+            : parent.createEl('button', { attr: { 'data-scope': scope, 'data-ert-toggle': '' } });
+
         // Add icon based on format
         const iconMap: Record<ExportFormat, string> = {
             'markdown': 'file-text',
@@ -1411,17 +1420,28 @@ export class ManuscriptOptionsModal extends Modal {
             'json': 'code'
         };
         const iconName = iconMap[format];
-        if (iconName) {
-            const icon = pill.createSpan({ cls: 'rt-manuscript-pill-icon' });
-            setIcon(icon, iconName);
+        if (isPro) {
+            if (iconName) {
+                const icon = pill.createSpan({ cls: 'ert-pillBtn__icon' });
+                setIcon(icon, iconName);
+            }
+            pill.createSpan({ cls: 'ert-pillBtn__label', text: label });
+        } else {
+            if (iconName) {
+                const icon = pill.createSpan({ cls: 'ert-export-pill-icon' });
+                setIcon(icon, iconName);
+            }
+            pill.createSpan({ text: label });
         }
-        
-        pill.createSpan({ cls: 'rt-manuscript-pill-text', text: label });
+
         const isActive = this.outputFormat === format;
-        if (isActive) pill.classList.add('rt-is-active');
-        if (disabled) pill.classList.add('rt-is-disabled');
+        if (isActive) pill.addClass('is-active');
+        if (disabled) {
+            if (isPro) pill.addClass('ert-pillBtn--used');
+            pill.disabled = true;
+        }
         if (disabled && isPro && !this.isPro && !pill.closest('.ert-pro-locked')) {
-            pill.classList.add('ert-pro-locked');
+            pill.addClass('ert-pro-locked');
         }
         this.outputFormatPills.push({ el: pill, format });
 
@@ -1437,8 +1457,8 @@ export class ManuscriptOptionsModal extends Modal {
                     const pillScope = p.el.getAttribute('data-scope') as ExportType | 'both' | null;
                     return pillScope === 'both' || pillScope === this.exportType;
                 })
-                .forEach(p => p.el.removeClass('rt-is-active'));
-            pill.classList.add('rt-is-active');
+                .forEach(p => p.el.removeClass('is-active'));
+            pill.addClass('is-active');
             this.outputFormat = format;
             this.normalizeOutputFormatForOutline();
             this.syncExportUi();
@@ -1458,9 +1478,9 @@ export class ManuscriptOptionsModal extends Modal {
             const scopeMatch = scope === 'both' || scope === this.exportType;
             const shouldHide = this.exportType === 'outline';
             p.el.toggleClass('rt-hidden', shouldHide);
-            p.el.toggleClass('rt-is-active', scopeMatch && this.outputFormat === p.format);
+            p.el.toggleClass('is-active', scopeMatch && this.outputFormat === p.format);
             if (!scopeMatch) {
-                p.el.removeClass('rt-is-active');
+                p.el.removeClass('is-active');
             }
         });
     }
@@ -1856,18 +1876,19 @@ Sarah stood at the window, watching the world wake up.`;
 
         this.orderPills.forEach(p => {
             const isChronological = p.order === 'chronological' || p.order === 'reverse-chronological';
+            const btn = p.el as HTMLButtonElement;
             if (isChronological && disableChronological) {
-                p.el.addClass('rt-is-disabled');
-                p.el.removeClass('rt-is-active');
+                btn.disabled = true;
+                btn.removeClass('is-active');
             } else {
-                p.el.removeClass('rt-is-disabled');
+                btn.disabled = false;
             }
-            p.el.toggleClass('rt-is-active', this.order === p.order && !(isChronological && disableChronological));
+            btn.toggleClass('is-active', this.order === p.order && !(isChronological && disableChronological));
         });
 
         if (disableChronological && (this.order === 'chronological' || this.order === 'reverse-chronological')) {
             this.order = 'narrative';
-            this.orderPills.forEach(p => p.el.toggleClass('rt-is-active', p.order === this.order));
+            this.orderPills.forEach(p => p.el.toggleClass('is-active', p.order === this.order));
         }
     }
 

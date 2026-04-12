@@ -3,7 +3,7 @@
  * Copyright (c) 2025 Eric Rhys Taylor
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
-import { ButtonComponent, setIcon } from 'obsidian';
+import { ButtonComponent, Platform, setIcon } from 'obsidian';
 import RadialTimelinePlugin from '../main';
 import { BookDesignerModal } from '../modals/BookDesignerModal';
 
@@ -19,17 +19,17 @@ const WELCOME_COPY = {
     actions: {
         primary: 'Create your first scene',
         secondary: 'Design a story framework',
-        tertiary: 'How scenes, structure, and the timeline work'
+        tertiary: 'How the timeline works'
     },
     stepsHeading: 'Start in three steps:',
     step1: {
         title: '1. Set the active book folder',
-        body: 'Choose where your scenes live in your vault',
-        note: '(Set the active book folder in Settings \u2192 Core \u2192 General \u2192 Books.)'
+        body: 'Create a folder for your book, then link it in the Book Manager.',
+        note: ''
     },
     step2: {
         title: '2. Write prose immediately',
-        body: 'Open the scene and start writing. You can leave scene details blank until you need them. As you write and the story unfolds, add characters, subplots, and other details to the note frontmatter so you can see it in the timeline.'
+        body: 'Create your first scene using the command palette (\u201cCreate note\u2026\u201d), then start writing. As characters and time become clear, add them in Scene Properties. The default subplot is Main Plot\u2014you can move it anytime.'
     },
     step3: {
         title: '3. Shape the story structure',
@@ -40,7 +40,7 @@ const WELCOME_COPY = {
             },
             {
                 title: 'Refine structure later',
-                body: ' \u2014 A the number of acts, the beat notes and system and more anytime in Settings.'
+                body: ' \u2014 adjust acts, add beats, and more in Settings.'
             }
         ]
     },
@@ -61,6 +61,31 @@ const addButtonIcon = (buttonEl: HTMLButtonElement, iconName: string): void => {
     const icon = buttonEl.createSpan({ cls: 'rt-welcome-button-icon' });
     buttonEl.prepend(icon);
     setIcon(icon, iconName);
+};
+
+const openRadialTimelineSettings = (
+    plugin: RadialTimelinePlugin,
+    tab: 'core' | 'social' | 'inquiry' | 'publishing' | 'ai' | 'advanced' = 'core'
+): void => {
+    if (plugin.settingsTab) {
+        plugin.settingsTab.setActiveTab(tab);
+    }
+    const setting = (plugin.app as unknown as { setting?: { open: () => void; openTabById: (id: string) => void } }).setting;
+    if (!setting) return;
+    setting.open();
+    setting.openTabById('radial-timeline');
+};
+
+const appendCommandPaletteKeycaps = (parent: HTMLElement): void => {
+    const wrap = parent.createSpan({ cls: 'rt-welcome-keycaps' });
+    wrap.createEl('kbd', { cls: 'rt-welcome-keycap', text: Platform.isMacOS ? '⌘' : 'Ctrl' });
+    wrap.createSpan({ cls: 'rt-welcome-keycaps-sep', text: '+' });
+    wrap.createEl('kbd', { cls: 'rt-welcome-keycap', text: 'P' });
+};
+
+const runCreateNoteCommand = (plugin: RadialTimelinePlugin): void => {
+    const commandManager = (plugin.app as unknown as { commands?: { executeCommandById?: (id: string) => void } }).commands;
+    commandManager?.executeCommandById?.('radial-timeline:create-note');
 };
 
 export function renderWelcomeScreen({ container, plugin, refreshTimeline }: WelcomeScreenParams): void {
@@ -92,8 +117,7 @@ export function renderWelcomeScreen({ container, plugin, refreshTimeline }: Welc
         .setButtonText(WELCOME_COPY.actions.primary)
         .setCta()
         .onClick(() => {
-            const commandManager = (plugin.app as unknown as { commands?: { executeCommandById?: (id: string) => void } }).commands;
-            commandManager?.executeCommandById?.('radial-timeline:create-note');
+            runCreateNoteCommand(plugin);
         });
     createSceneBtn.buttonEl.classList.add('rt-welcome-primary-btn', 'rt-welcome-action-btn');
     addButtonIcon(createSceneBtn.buttonEl, WELCOME_ICONS.primary);
@@ -124,14 +148,30 @@ export function renderWelcomeScreen({ container, plugin, refreshTimeline }: Welc
     const step1 = body.createDiv({ cls: 'rt-welcome-step' });
     step1.createEl('h3', { cls: 'rt-welcome-step-title', text: WELCOME_COPY.step1.title });
     const step1Text = step1.createEl('p', { cls: 'rt-welcome-paragraph' });
-    step1Text.createSpan({ text: WELCOME_COPY.step1.body });
-    step1.createEl('p', { cls: 'rt-welcome-paragraph rt-welcome-footnote', text: WELCOME_COPY.step1.note });
+    step1Text.createSpan({ text: 'Create a folder for your book, then link it in the ' });
+    const bookManagerLink = step1Text.createEl('a', { text: 'Book Manager', href: '#' });
+    plugin.registerDomEvent(bookManagerLink, 'click', (evt) => {
+        evt.preventDefault();
+        openRadialTimelineSettings(plugin, 'core');
+    });
+    step1Text.createSpan({ text: '.' });
+    if (WELCOME_COPY.step1.note) {
+        step1.createEl('p', { cls: 'rt-welcome-paragraph rt-welcome-footnote', text: WELCOME_COPY.step1.note });
+    }
 
     // Step 2: Write prose immediately
     const step2 = body.createDiv({ cls: 'rt-welcome-step' });
     step2.createEl('h3', { cls: 'rt-welcome-step-title', text: WELCOME_COPY.step2.title });
     const step2Text = step2.createEl('p', { cls: 'rt-welcome-paragraph' });
-    step2Text.createSpan({ text: WELCOME_COPY.step2.body });
+    step2Text.createSpan({ text: 'Create your first scene using the command palette ' });
+    appendCommandPaletteKeycaps(step2Text);
+    step2Text.createSpan({ text: ', then ' });
+    const createNoteLink = step2Text.createEl('a', { text: 'Create note…', href: '#' });
+    plugin.registerDomEvent(createNoteLink, 'click', (evt) => {
+        evt.preventDefault();
+        runCreateNoteCommand(plugin);
+    });
+    step2Text.createSpan({ text: ' and start writing. As characters and time become clear, add them in Scene Properties. The default subplot is Main Plot—you can move it anytime.' });
 
     // Step 3: Story setup
     const step3 = body.createDiv({ cls: 'rt-welcome-step' });
@@ -140,11 +180,25 @@ export function renderWelcomeScreen({ container, plugin, refreshTimeline }: Welc
 
     const designerLi = step3List.createEl('li');
     designerLi.createEl('strong', { text: WELCOME_COPY.step3.bullets[0].title });
-    designerLi.createSpan({ text: WELCOME_COPY.step3.bullets[0].body });
+    designerLi.createSpan({ text: ' — Use the command palette ' });
+    appendCommandPaletteKeycaps(designerLi);
+    designerLi.createSpan({ text: ' and open ' });
+    const bookDesignLink = designerLi.createEl('a', { text: 'Book Design…', href: '#' });
+    plugin.registerDomEvent(bookDesignLink, 'click', (evt) => {
+        evt.preventDefault();
+        new BookDesignerModal(plugin.app, plugin).open();
+    });
+    designerLi.createSpan({ text: ' to set up acts, subplots, characters, and optional beats as a starting point.' });
 
     const settingsLi = step3List.createEl('li');
     settingsLi.createEl('strong', { text: WELCOME_COPY.step3.bullets[1].title });
-    settingsLi.createSpan({ text: WELCOME_COPY.step3.bullets[1].body });
+    settingsLi.createSpan({ text: ' — adjust acts, add beats, and more in ' });
+    const settingsLink = settingsLi.createEl('a', { text: 'Settings', href: '#' });
+    plugin.registerDomEvent(settingsLink, 'click', (evt) => {
+        evt.preventDefault();
+        openRadialTimelineSettings(plugin, 'core');
+    });
+    settingsLi.createSpan({ text: '.' });
 
     body.createEl('p', {
         cls: 'rt-welcome-paragraph',

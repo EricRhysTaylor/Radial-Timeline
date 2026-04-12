@@ -1899,6 +1899,17 @@
   --ert-inquiry-pill-text-opacity: 0.68;
 }
 
+.ert-inquiry-preview-pill.is-history-slot {
+  --ert-inquiry-pill-fill: calc(var(--ert-inquiry-texture-opacity) + 0.01);
+  --ert-inquiry-pill-stroke: calc(var(--ert-inquiry-texture-opacity) + 0.05);
+  --ert-inquiry-pill-stroke-width: 0.8;
+  --ert-inquiry-pill-text-opacity: 0.56;
+}
+
+.ert-inquiry-preview-pill.is-history-slot .ert-inquiry-preview-pill-text {
+  font-size: 12px;
+}
+
 .ert-inquiry-preview-pill.is-token-amber .ert-inquiry-preview-pill-bg {
   fill: color-mix(in srgb, var(--ert-inquiry-ai-warning) 16%, rgb(255 255 255 / var(--ert-inquiry-pill-fill)));
   stroke: color-mix(in srgb, var(--ert-inquiry-ai-warning) 45%, rgb(255 255 255 / var(--ert-inquiry-pill-stroke)));

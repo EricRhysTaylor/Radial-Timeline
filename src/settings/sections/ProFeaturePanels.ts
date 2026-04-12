@@ -568,10 +568,10 @@ class MatterSampleLaneModal extends Modal {
         const badgeIcon = badge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON });
         setIcon(badgeIcon, 'signature');
         badge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'PRO' });
-        header.createDiv({ cls: 'ert-modal-title', text: STARTER_PUBLISHING_SETUP_TITLE });
+        header.createDiv({ cls: 'ert-modal-title', text: AUTO_CONFIGURE_BUTTON });
         header.createDiv({
             cls: 'ert-modal-subtitle',
-            text: 'Set up your book details, pages, and PDF style in one guided flow.'
+            text: 'Configure your publishing environment, book details, pages, and PDF style in one step.'
         });
 
         const createdBlock = contentEl.createDiv({ cls: 'ert-template-pack-created ert-stack--tight' });
@@ -669,7 +669,7 @@ class MatterSampleLaneModal extends Modal {
 
         const actions = contentEl.createDiv({ cls: 'ert-modal-actions ert-template-pack-actions' });
         const generateButton = new ButtonComponent(actions)
-            .setButtonText(STARTER_PUBLISHING_SETUP_BUTTON);
+            .setButtonText(AUTO_CONFIGURE_BUTTON);
         generateButton.buttonEl.addClass('ert-btn', 'ert-btn--standard-pro');
         generateButton.onClick(() => {
                 this.resolved = true;
@@ -3568,7 +3568,29 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
         const exportStage = stages.find(stage => stage.id === 'export-check');
         const showExportButton = !!exportStage && exportStage.statusKey !== 'needs-setup';
         const exportPrimary = exportStage?.statusKey === 'ready';
+        const allReady = stages.every(stage => stage.statusKey === 'ready');
 
+        // Auto configure — rendered first (left position)
+        setupButtonComponent = new ButtonComponent(setupActionRow)
+            .setButtonText(AUTO_CONFIGURE_BUTTON)
+            .onClick(() => {
+                void runAutoConfigurePublishing();
+            });
+        if (allReady) {
+            // Nothing left to configure — mute the button
+            setupButtonComponent.buttonEl.addClass('ert-pillBtn', 'ert-pillBtn--muted');
+        } else if (!showExportButton || !exportPrimary) {
+            setupButtonComponent.setCta();
+            setupButtonComponent.buttonEl.addClass('ert-pillBtn', 'ert-pillBtn--pro');
+        } else {
+            setupButtonComponent.buttonEl.addClass('ert-pillBtn', 'ert-pillBtn--pro');
+        }
+
+        if (setupInFlight) {
+            setSetupButtonState(true);
+        }
+
+        // Export now — rendered second (right position)
         if (showExportButton) {
             exportOptionsButtonComponent = new ButtonComponent(setupActionRow)
                 .setButtonText('Export now')
@@ -3587,20 +3609,6 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             });
             const exportIcon = exportOptionsButtonComponent.buttonEl.createSpan({ cls: ERT_CLASSES.PILL_BTN_ICON });
             setIcon(exportIcon, 'arrow-right');
-        }
-
-        setupButtonComponent = new ButtonComponent(setupActionRow)
-            .setButtonText(AUTO_CONFIGURE_BUTTON)
-            .onClick(() => {
-                void runAutoConfigurePublishing();
-            });
-        if (!showExportButton || !exportPrimary) {
-            setupButtonComponent.setCta();
-        }
-        setupButtonComponent.buttonEl.addClass('ert-pillBtn', 'ert-pillBtn--pro');
-
-        if (setupInFlight) {
-            setSetupButtonState(true);
         }
     };
 

@@ -1312,6 +1312,9 @@ export default class SynopsisManager {
           synopsisLineElement.textContent = lineContent;
           synopsisLineElement.setAttribute('data-synopsis-line', 'true');
           synopsisLineElement.setAttribute('data-synopsis-raw', lineContent);
+          if (scene.itemType === 'Backdrop' || isBeatNote(scene)) {
+            synopsisLineElement.setAttribute('data-synopsis-budget-exempt', 'true');
+          }
         }
       }
 
@@ -2333,7 +2336,10 @@ export default class SynopsisManager {
     };
 
     const getCategory = (textEl: SVGTextElement): { category: 'synopsis' | 'pending' | 'advanced' | 'other'; key?: string } => {
-      if (textEl.getAttribute('data-synopsis-line') === 'true' || textEl.getAttribute('data-synopsis-wrap') === 'true') {
+      if (
+        (textEl.getAttribute('data-synopsis-line') === 'true' || textEl.getAttribute('data-synopsis-wrap') === 'true')
+        && textEl.getAttribute('data-synopsis-budget-exempt') !== 'true'
+      ) {
         return { category: 'synopsis' };
       }
       if (textEl.getAttribute('data-pending-line') === 'true' || textEl.getAttribute('data-pending-wrap') === 'true') {

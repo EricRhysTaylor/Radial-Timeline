@@ -127,6 +127,38 @@
   color: var(--text-accent);
 }
 
+.rt-welcome-keycaps {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  vertical-align: baseline;
+}
+
+.rt-welcome-keycap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 6px;
+  margin: 0;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  color: #0f172a;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.rt-welcome-keycaps-sep {
+  color: var(--text-muted);
+  font-size: 0.95em;
+}
+
 .rt-welcome-links-wrapper {
   width: 100%;
   display: flex;

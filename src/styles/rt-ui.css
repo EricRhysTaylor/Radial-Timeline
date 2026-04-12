@@ -5898,10 +5898,15 @@
 }
 
 .ert-ui.ert-scope--settings .ert-reorder-row--pro {
-  background: color-mix(in srgb, var(--ert-pro-accent-color) 8%, var(--background-secondary));
-  border: 1px solid color-mix(in srgb, var(--ert-pro-accent-color) 28%, transparent);
+  background:
+    radial-gradient(circle at 8% 30%, color-mix(in srgb, var(--ert-pro-accent-color) 18%, transparent) 0%, transparent 50%),
+    radial-gradient(circle at 92% 70%, color-mix(in srgb, var(--ert-pro-accent-color) 10%, transparent) 0%, transparent 50%),
+    linear-gradient(135deg, color-mix(in srgb, var(--ert-pro-accent-color) 8%, transparent) 0%, color-mix(in srgb, var(--ert-pro-accent-color) 3%, transparent) 100%),
+    color-mix(in srgb, var(--background-secondary) 90%, var(--ert-pro-accent-color) 6%);
+  border: 1px solid color-mix(in srgb, var(--ert-pro-accent-color) 35%, transparent);
   border-radius: calc(var(--ert-control-radius) + (var(--ert-gap-xs) / 2));
   padding: calc(var(--ert-gap-xs) + 2px) var(--ert-gap-sm);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--ert-pro-accent-color) 10%, transparent);
 }
 
 .ert-ui.ert-scope--settings .ert-reorder-row--pro .ert-drag-handle {
@@ -9962,7 +9967,7 @@
   gap: var(--ert-gap-sm);
   flex-wrap: wrap;
   padding: 0;
-  margin-top: 10px;
+  margin-top: 0;
   min-height: 0;
   background: transparent;
   border: none;
@@ -10656,6 +10661,17 @@
 .ert-ui.ert-scope--settings .ert-pillBtn--pro.is-active {
   box-shadow: none;
   border-color: var(--ert-accent);
+}
+
+/* Muted variant — nothing left to configure */
+.ert-ui.ert-scope--settings .ert-pillBtn--muted {
+  opacity: 0.45;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.ert-ui.ert-scope--settings .ert-pillBtn--muted:hover {
+  opacity: 0.7;
 }
 
 /* Social variant (yellow) */

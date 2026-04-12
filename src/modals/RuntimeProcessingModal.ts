@@ -147,9 +147,9 @@ export class RuntimeProcessingModal extends Modal {
         const contentType = this.plugin.settings.runtimeContentType || 'novel';
         const modeLabel = contentType === 'screenplay' ? 'Screenplay' : 'Audiobook';
         const modeIconName = contentType === 'screenplay' ? 'film' : 'mic-vocal';
-        const badgeText = `Runtime estimator · ${modeLabel}`;
+        const badgeRow = header.createDiv({ cls: 'ert-modal-badge-row' });
 
-        const pill = header.createSpan({
+        const pill = badgeRow.createSpan({
             cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO}`,
         });
         const pillIcon = pill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON });
@@ -159,15 +159,15 @@ export class RuntimeProcessingModal extends Modal {
             text: 'PRO',
         });
 
-        const runtimeInfo = header.createSpan({ cls: 'ert-runtime-mode-info' });
-        const modeIcon = runtimeInfo.createSpan({ cls: 'ert-modal-badge-icon' });
+        const badge = badgeRow.createSpan({ cls: 'ert-modal-badge' });
+        const modeIcon = badge.createSpan({ cls: 'ert-modal-badge-icon' });
         setIcon(modeIcon, modeIconName);
-        runtimeInfo.createSpan({ text: badgeText });
+        badge.appendText(`Runtime · ${modeLabel}`);
         header.createDiv({ cls: 'ert-modal-title', text: 'Runtime estimation' });
         header.createDiv({ cls: 'ert-modal-subtitle', text: 'Algorithmic word-count analysis. Calculates runtime from scene text using configured WPM rates and parenthetical timing.' });
 
         // ===== SCOPE SECTION =====
-        const scopeCard = contentEl.createDiv({ cls: 'rt-glass-card ert-runtime-section' });
+        const scopeCard = contentEl.createDiv({ cls: 'ert-panel ert-runtime-section' });
         const scopeLayout = scopeCard.createDiv({ cls: 'rt-row rt-row-wrap rt-row-between' });
         const scopeInfo = scopeLayout.createDiv({ cls: 'rt-stack rt-stack-tight' });
         scopeInfo.createEl('h4', { text: 'Scope', cls: 'rt-section-title' });
@@ -222,7 +222,7 @@ export class RuntimeProcessingModal extends Modal {
         this.currentSceneNameEl = this.currentSceneContainer.createSpan({ cls: 'ert-runtime-current-scene-name' });
 
         // ===== STATUS FILTERS SECTION =====
-        const statusCard = contentEl.createDiv({ cls: 'rt-glass-card ert-runtime-section' });
+        const statusCard = contentEl.createDiv({ cls: 'ert-panel ert-runtime-section' });
         statusCard.createEl('h4', { text: 'Scene Status Filter', cls: 'rt-section-title' });
         statusCard.createDiv({ cls: 'ert-runtime-section-desc', text: 'Only scenes with the selected status will be processed.' });
 
@@ -233,7 +233,7 @@ export class RuntimeProcessingModal extends Modal {
         this.createStatusCheckbox(statusRow, 'Complete', 'includeComplete', this.statusFilters.includeComplete);
 
         // ===== OVERRIDE SECTION =====
-        const overrideCard = contentEl.createDiv({ cls: 'rt-glass-card ert-runtime-section' });
+        const overrideCard = contentEl.createDiv({ cls: 'ert-panel ert-runtime-section' });
         overrideCard.createEl('h4', { text: 'Override', cls: 'rt-section-title' });
         overrideCard.createDiv({ cls: 'ert-runtime-section-desc', text: 'By default, only scenes without a Runtime field are processed.' });
 
@@ -251,7 +251,7 @@ export class RuntimeProcessingModal extends Modal {
         labelContainer.createDiv({ cls: 'ert-runtime-field-hint', text: 'Replaces existing Runtime values, including manual estimates you may have entered.' });
 
         // ===== SETTINGS ACCORDION =====
-        const settingsCard = contentEl.createDiv({ cls: 'rt-glass-card ert-runtime-section' });
+        const settingsCard = contentEl.createDiv({ cls: 'ert-panel ert-runtime-section' });
         
         this.settingsAccordion = settingsCard.createDiv({ cls: 'ert-runtime-accordion-header' });
         const accordionIcon = this.settingsAccordion.createSpan({ cls: 'ert-runtime-accordion-icon' });
@@ -274,7 +274,7 @@ export class RuntimeProcessingModal extends Modal {
         });
 
         // ===== MODE SELECTION =====
-        const modeCard = contentEl.createDiv({ cls: 'rt-glass-card ert-runtime-section' });
+        const modeCard = contentEl.createDiv({ cls: 'ert-panel ert-runtime-section' });
         modeCard.createEl('h4', { text: 'Estimation Mode', cls: 'rt-section-title' });
         this.modeDescEl = modeCard.createDiv({ cls: 'ert-runtime-section-desc' });
 
@@ -293,13 +293,29 @@ export class RuntimeProcessingModal extends Modal {
         this.updateModeDescription();
 
         // ===== SCENE COUNT SECTION =====
-        const countCard = contentEl.createDiv({ cls: 'rt-glass-card ert-runtime-section' });
+        const countCard = contentEl.createDiv({ cls: 'ert-panel ert-runtime-section' });
         countCard.createEl('h4', { text: 'Summary', cls: 'rt-section-title' });
         this.countEl = countCard.createDiv({ cls: 'ert-runtime-count' });
         this.countEl.setText('Calculating...');
 
         // Action buttons
         const buttonRow = contentEl.createDiv({ cls: 'ert-modal-actions' });
+
+        const settingsBtn = new ButtonComponent(buttonRow)
+            .setIcon('settings')
+            .setTooltip('Open runtime settings')
+            .onClick(() => {
+                this.close();
+                // Set active tab before display() so core tab renders
+                this.plugin.settingsTab?.setActiveTab('core');
+                // @ts-ignore - Obsidian API
+                this.app.setting.open();
+                // @ts-ignore - Obsidian API
+                this.app.setting.openTabById('radial-timeline');
+                // Scroll to runtime after DOM is built
+                this.plugin.settingsTab?.revealSettingsSection('core', 'runtime');
+            });
+        settingsBtn.buttonEl.addClass('ert-modal-settings-btn');
 
         this.actionButton = new ButtonComponent(buttonRow)
             .setButtonText('Estimate Runtimes')
@@ -562,7 +578,7 @@ export class RuntimeProcessingModal extends Modal {
         this.statusTextEl.setText('Initializing...');
 
         // Progress card
-        const progressCard = contentEl.createDiv({ cls: 'rt-glass-card ert-runtime-section' });
+        const progressCard = contentEl.createDiv({ cls: 'ert-panel ert-runtime-section' });
 
         // Progress bar
         const progressContainer = progressCard.createDiv({ cls: 'rt-pulse-progress-container' });

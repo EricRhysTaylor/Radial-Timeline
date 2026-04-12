@@ -180,12 +180,9 @@ export class AuthorProgressModal extends Modal {
 
         // Footer actions
         const footer = contentEl.createDiv({ cls: 'ert-modal-actions' });
-        new ButtonComponent(footer)
-            .setButtonText('Publish')
-            .setCta()
-            .onClick(() => this.publish('dynamic'));
         const settingsBtn = new ButtonComponent(footer)
-            .setButtonText('Settings')
+            .setIcon('settings')
+            .setTooltip('Open APR settings')
             .onClick(() => {
                 this.close();
                 const setting = (this.app as unknown as { setting?: { open: () => void; openTabById: (id: string) => void } }).setting;
@@ -194,9 +191,11 @@ export class AuthorProgressModal extends Modal {
                 setting.open();
                 setting.openTabById('radial-timeline');
             });
-        setIcon(settingsBtn.buttonEl, 'settings');
-        settingsBtn.buttonEl.addClass('ert-btn--icon-left');
-        setTooltip(settingsBtn.buttonEl, 'Settings APR');
+        settingsBtn.buttonEl.addClass('ert-modal-settings-btn');
+        new ButtonComponent(footer)
+            .setButtonText('Publish')
+            .setCta()
+            .onClick(() => this.publish('dynamic'));
         new ButtonComponent(footer)
             .setButtonText('Close')
             .onClick(() => this.close());

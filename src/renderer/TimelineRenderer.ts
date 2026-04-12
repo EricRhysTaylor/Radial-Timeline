@@ -347,7 +347,6 @@ export function createTimelineSVG(
         isChronologueMode,
         currentMonthIndex
     });
-    svg += outerLabelRender.labelsSvg;
     boundaryLabelsHtml = outerLabelRender.boundaryLabelsHtml;
 
     // --- Draw Act labels early (below story beat labels) into rotatable group later ---
@@ -415,12 +414,14 @@ export function createTimelineSVG(
             outerLabels,
             monthTickStart,
             monthTickEnd,
+            microRingSegments: microRingLayout?.segments,
             microRingTicks: microRingLayout?.ticks
         });
         if (ticksSvg) {
             svg += ticksSvg;
         }
     }
+    svg += outerLabelRender.labelsSvg;
 
 
     // Draw the year progress ring segments

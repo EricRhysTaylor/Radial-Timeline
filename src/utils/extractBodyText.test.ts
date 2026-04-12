@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { extractBodyText } from './manuscript';
+import { extractBodyText, extractCountableBodyText } from './manuscript';
 
 describe('extractBodyText keeps source content with minimal normalization', () => {
     it('preserves YAML frontmatter', () => {
@@ -29,5 +29,17 @@ describe('extractBodyText keeps source content with minimal normalization', () =
 
     it('handles empty content', () => {
         expect(extractBodyText('')).toBe('');
+    });
+});
+
+describe('extractCountableBodyText', () => {
+    it('strips YAML frontmatter before counting', () => {
+        const input = '---\ntitle: My Scene\nWords: 999\n---\nThe story begins here.';
+        expect(extractCountableBodyText(input)).toBe('The story begins here.');
+    });
+
+    it('strips HTML and Obsidian comments before counting', () => {
+        const input = 'Visible <!-- hidden --> text %%draft%% only';
+        expect(extractCountableBodyText(input)).toBe('Visible  text  only');
     });
 });

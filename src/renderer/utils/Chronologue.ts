@@ -13,7 +13,12 @@ import {
     type ChronologueSceneEntry
 } from '../components/ChronologueTimeline';
 import { renderBackdropRing } from '../components/BackdropRing';
-import { renderBackdropMicroRings, type BackdropMicroRingLayout, type MicroRingTick } from '../components/BackdropMicroRings';
+import {
+    renderBackdropMicroRings,
+    type BackdropMicroRingLayout,
+    type MicroRingSegment,
+    type MicroRingTick
+} from '../components/BackdropMicroRings';
 import { MICRO_RING_GAP, MICRO_RING_WIDTH } from '../layout/LayoutConstants';
 
 export type ChronologueLabel = {
@@ -257,13 +262,19 @@ type ChronoTickParams = {
     outerLabels: ChronologueLabel[];
     monthTickStart: number;
     monthTickEnd: number;
+    microRingSegments?: MicroRingSegment[];
     microRingTicks?: MicroRingTick[];
 };
+
+function tooltipKeyForTitle(title: string): string {
+    return encodeURIComponent(title.trim().toLowerCase());
+}
 
 export function renderChronologueOuterTicks({
     outerLabels,
     monthTickStart,
     monthTickEnd,
+    microRingSegments,
     microRingTicks
 }: ChronoTickParams): string {
     if (!outerLabels.length) {
@@ -297,19 +308,65 @@ export function renderChronologueOuterTicks({
         }
     });
 
-    if (microRingTicks?.length) {
+    if (microRingSegments?.length) {
+        const arcRadius = monthTickEnd - 2.5;
+        microRingSegments.forEach(segment => {
+            const largeArcFlag = (segment.endAngle - segment.startAngle) > Math.PI ? 1 : 0;
+            const safeTitle = escapeXml(segment.title);
+            const tooltipKey = escapeXml(tooltipKeyForTitle(segment.title));
+
+            const arcX1 = formatNumber(arcRadius * Math.cos(segment.startAngle));
+            const arcY1 = formatNumber(arcRadius * Math.sin(segment.startAngle));
+            const arcX2 = formatNumber(arcRadius * Math.cos(segment.endAngle));
+            const arcY2 = formatNumber(arcRadius * Math.sin(segment.endAngle));
+
+            const startX1 = formatNumber(monthTickStart * Math.cos(segment.startAngle));
+            const startY1 = formatNumber(monthTickStart * Math.sin(segment.startAngle));
+            const startX2 = formatNumber(monthTickEnd * Math.cos(segment.startAngle));
+            const startY2 = formatNumber(monthTickEnd * Math.sin(segment.startAngle));
+
+            const endX1 = formatNumber(monthTickStart * Math.cos(segment.endAngle));
+            const endY1 = formatNumber(monthTickStart * Math.sin(segment.endAngle));
+            const endX2 = formatNumber(monthTickEnd * Math.cos(segment.endAngle));
+            const endY2 = formatNumber(monthTickEnd * Math.sin(segment.endAngle));
+
+            svg += `<g class="rt-backdrop-micro-outer rt-tooltip-target"
+                data-tooltip="${safeTitle}"
+                data-tooltip-placement="top"
+                data-tooltip-key="${tooltipKey}">
+                <path
+                    d="M ${arcX1} ${arcY1} A ${formatNumber(arcRadius)} ${formatNumber(arcRadius)} 0 ${largeArcFlag} 1 ${arcX2} ${arcY2}"
+                    class="rt-backdrop-micro-arc"
+                    stroke="${segment.color}"
+                    stroke-width="5"
+                    stroke-linecap="round"
+                    fill="none"
+                />
+                <line x1="${startX1}" y1="${startY1}" x2="${startX2}" y2="${startY2}"
+                    class="rt-backdrop-micro-tick"
+                    stroke="${segment.color}"
+                />
+                <line x1="${endX1}" y1="${endY1}" x2="${endX2}" y2="${endY2}"
+                    class="rt-backdrop-micro-tick"
+                    stroke="${segment.color}"
+                />
+            </g>`;
+        });
+    } else if (microRingTicks?.length) {
         microRingTicks.forEach(tick => {
             const x1 = formatNumber(monthTickStart * Math.cos(tick.angle));
             const y1 = formatNumber(monthTickStart * Math.sin(tick.angle));
             const x2 = formatNumber(monthTickEnd * Math.cos(tick.angle));
             const y2 = formatNumber(monthTickEnd * Math.sin(tick.angle));
             const safeTitle = escapeXml(tick.title);
+            const tooltipKey = escapeXml(tooltipKeyForTitle(tick.title));
 
             svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" 
                 class="rt-backdrop-micro-tick rt-tooltip-target"
                 stroke="${tick.color}"
                 data-tooltip="${safeTitle}"
                 data-tooltip-placement="top"
+                data-tooltip-key="${tooltipKey}"
             />`;
         });
     }
