@@ -27,7 +27,7 @@ import {
 import { hasSecret, isSecretStorageAvailable, setSecret } from '../../ai/credentials/secretStorage';
 import type { AccessTier, AIProviderId, Capability, LocalLlmConfigurationMode, LocalLlmSettings, ModelInfo, RTCorpusTokenBreakdown } from '../../ai/types';
 import type { LocalLlmDiagnosticsReport } from '../../ai/localLlm/diagnostics';
-import { buildCanonicalExecutionEstimate, estimateGossamerTokens, estimateInquiryTokens } from '../../ai/forecast/estimateTokensFromVault';
+import { buildCanonicalExecutionEstimate, estimateGossamerTokens } from '../../ai/forecast/estimateTokensFromVault';
 import {
     estimateCorpusCost,
     formatUsdCost
@@ -1402,6 +1402,7 @@ export function renderAiSection(params: {
     };
 
     let activeCostComparisonRowKey: string | null = null;
+    let activeCostRowCredentialState: string | null = null;
     let lastCostComparisonRows: CostComparisonRow[] = [];
 
     const getCurrentCorpusContext = () => plugin.getInquiryService().getCurrentCorpusContext();
@@ -1412,38 +1413,22 @@ export function renderAiSection(params: {
         questionText: string;
     }) => {
         const currentCorpus = getCurrentCorpusContext();
-        if (currentCorpus) {
-            return await buildCanonicalExecutionEstimate({
-                plugin,
-                provider: params.provider,
-                modelId: params.modelId,
-                questionText: params.questionText,
-                scope: currentCorpus.scope,
-                activeBookId: currentCorpus.activeBookId,
-                scopeLabel: currentCorpus.scopeLabel,
-                manifestEntries: currentCorpus.manifestEntries,
-                vault: app.vault,
-                metadataCache: app.metadataCache,
-                frontmatterMappings: plugin.settings.frontmatterMappings
-            });
+        if (!currentCorpus) {
+            throw new Error('Inquiry corpus is not available yet. Open Inquiry View to populate estimates.');
         }
-        const vaultEstimate = await estimateInquiryTokens({
+        return await buildCanonicalExecutionEstimate({
             plugin,
             provider: params.provider,
             modelId: params.modelId,
             questionText: params.questionText,
+            scope: currentCorpus.scope,
+            activeBookId: currentCorpus.activeBookId,
+            scopeLabel: currentCorpus.scopeLabel,
+            manifestEntries: currentCorpus.manifestEntries,
             vault: app.vault,
             metadataCache: app.metadataCache,
-            inquirySources: plugin.settings.inquirySources,
             frontmatterMappings: plugin.settings.frontmatterMappings
         });
-        return vaultEstimate.providerExecutionEstimate ?? {
-            estimatedTokens: vaultEstimate.corpus.estimatedTokens,
-            method: vaultEstimate.corpus.method,
-            promptEnvelopeCharsAdded: 0,
-            expectedPassCount: 1,
-            maxOutputTokens: 16000
-        };
     };
 
     const renderCostComparisonRows = (rows: CostComparisonRow[]): void => {
@@ -1465,6 +1450,11 @@ export function renderAiSection(params: {
             const rowEl = costEstimateTable.createDiv({ cls: 'ert-ai-models-row' });
             if (activeCostComparisonRowKey === getCostComparisonRowKey(row.model.provider, row.model.modelId)) {
                 rowEl.addClass('ert-ai-models-row--active');
+                if (activeCostRowCredentialState === 'ready') {
+                    rowEl.addClass('ert-ai-models-row--ready');
+                } else if (activeCostRowCredentialState === 'not_configured' || activeCostRowCredentialState === 'rejected') {
+                    rowEl.addClass('ert-ai-models-row--warning');
+                }
             }
             if (row.promoLabel) {
                 rowEl.addClass('ert-ai-models-row--promo');
@@ -1490,6 +1480,7 @@ export function renderAiSection(params: {
         activeCostComparisonRowKey = provider && modelId
             ? getCostComparisonRowKey(provider, modelId)
             : null;
+        activeCostRowCredentialState = provider ? (providerKeyStates[provider] ?? null) : null;
         if (lastCostComparisonRows.length > 0) {
             renderCostComparisonRows(lastCostComparisonRows);
         }
@@ -1518,26 +1509,10 @@ export function renderAiSection(params: {
                 )
             };
         }
-        try {
-            const vaultEstimate = await estimateInquiryTokens({
-                vault: app.vault,
-                metadataCache: app.metadataCache,
-                inquirySources: plugin.settings.inquirySources,
-                frontmatterMappings: plugin.settings.frontmatterMappings
-            });
-            return {
-                sizeText: `Inquiry Corpus: ${formatCorpusTokenSummary(vaultEstimate.corpus.estimatedTokens)}`,
-                structureText: formatCorpusStructureSummary(
-                    vaultEstimate.corpus.sceneCount,
-                    vaultEstimate.corpus.outlineCount
-                )
-            };
-        } catch {
-            return {
-                sizeText: 'Inquiry corpus estimate unavailable.',
-                structureText: ''
-            };
-        }
+        return {
+            sizeText: 'Open Inquiry View to see corpus estimates and pricing.',
+            structureText: ''
+        };
     };
 
     const computeCostComparisonRows = async (): Promise<CostComparisonRow[]> => {
