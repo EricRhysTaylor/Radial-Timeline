@@ -76,6 +76,10 @@
   margin: 1em 0;
 }
 
+.ert-settings-root .documentation-container img[alt="Radial Timeline Logo"] {
+  border-radius: 0;
+}
+
 .ert-settings-root .documentation-container code {
   background-color: var(--background-primary);
   padding: 0.2em 0.4em;

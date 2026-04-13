@@ -6530,6 +6530,10 @@
   height: auto;
 }
 
+.ert-ui.ert-scope--settings .ert-manuscript-readme-container img[alt="Radial Timeline Logo"] {
+  border-radius: 0;
+}
+
 .ert-ui.ert-scope--settings .ert-reorder-row .ert-drag-handle {
   width: 1.375rem;
   height: 1.625rem;

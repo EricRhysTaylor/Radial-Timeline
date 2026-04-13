@@ -6,7 +6,6 @@ import type RadialTimelinePlugin from '../main';
 import { getSceneFilesByOrder, ManuscriptOrder, TocMode } from '../utils/manuscript';
 import { t } from '../i18n';
 import { ExportFormat, ExportType, ManuscriptPreset, OutlinePreset, getAutoPdfEngineSelection, resolveTemplatePath, validatePandocLayout, getTemplateFontDiagnostics } from '../utils/exportFormats';
-import { SHARED_CHAPTER_FIELD_PUBLICATION_COPY } from '../utils/timelineChapters';
 import { hasProFeatureAccess } from '../settings/featureGate';
 import { getActiveBook, getActiveBookTitle, getActiveBookSourceFolder, DEFAULT_BOOK_TITLE } from '../utils/books';
 import { chunkScenesIntoParts } from '../utils/splitOutput';
@@ -1649,30 +1648,30 @@ export class ManuscriptOptionsModal extends Modal {
         }
         const key = layoutName.toLowerCase();
         if (key.includes('basic manuscript') || key.includes('classic manuscript') || key.includes('traditional')) {
-            desc.setText('Centered running header with book title and bottom-centered page numbers. One-inch margins, 1.5 line spacing, serif body text, and minimal ornamentation.');
+            desc.setText('Clean serif layout with standard margins and centered page numbers.');
             return;
         }
         if (key.includes('modern classic') || key.includes('modern-classic') || key.includes('modern_classic')) {
-            desc.setText(`Acts can open with optional epigraphs and Roman numeral PART pages. ${SHARED_CHAPTER_FIELD_PUBLICATION_COPY} Page numbers live in the headers: the left-page header pairs page number with author, and the right-page header pairs title with page number. Scene breaks use lower-case Roman numerals with a short rule.`);
+            desc.setText('Elegant layout with part pages, author/title headers, and scene-break numbering.');
             return;
         }
         if (key.includes('contemporary literary') || key.includes('contemporary')) {
-            desc.setText('Running headers show book title on even pages and section context on odd pages. Page numbers are centered at the bottom. Chapter and section opener pages suppress headers and page numbers.');
+            desc.setText('Modern layout with contextual running headers and clean chapter openers.');
             return;
         }
         if (key.includes('signature literary') || key.includes('(st)') || key.includes('signature')) {
-            desc.setText('Page numbers are header-only: the left-page header pairs page number with author, and the right-page header pairs title with page number. Scene opener pages use generous vertical spacing and suppress headers and folios. Refined serif body typography.');
+            desc.setText('Refined layout with header-only page numbers and generous scene spacing.');
             return;
         }
         if (key.includes('novel')) {
             desc.setText('Serif fiction layout with print-oriented margins and running headers.');
             return;
         }
-        desc.setText('Custom layout for manuscript PDF rendering.');
+        desc.setText('Controls typography, spacing, headers, and chapter styling.');
     }
 
     /**
-     * Update template validation warning based on current preset and format
+     * Update PDF Output summary based on current preset and format
      */
     private updateTemplateWarning(): void {
         if (!this.templateWarningEl || this.exportType !== 'manuscript') {
@@ -1719,7 +1718,7 @@ export class ManuscriptOptionsModal extends Modal {
             const icon = this.templateWarningEl.createSpan({ cls: 'rt-warning-icon' });
             setIcon(icon, 'alert-triangle');
             const text = this.templateWarningEl.createSpan({ cls: 'rt-warning-text' });
-            text.createSpan({ text: validation.error || 'Template file not found.' });
+            text.createSpan({ text: validation.error || 'Layout template not found.' });
             return;
         }
 
@@ -1736,47 +1735,74 @@ export class ManuscriptOptionsModal extends Modal {
             : null;
         const hasFontRisk = canVerifyFonts && (fontDiagnostics.missingRequiredFonts.length > 0 || hasPrimaryMissing);
 
-        const summaryLines: string[] = [];
-        if (!primaryRequested) {
-            summaryLines.push('Template font: not specified (LaTeX default serif).');
-        } else if (!canVerifyFonts) {
+        // ── Build user-facing summary ────────────────────────────────
+        const resolvedFont = this.buildFontDisplayName(primaryRequested, canVerifyFonts, hasPrimaryMissing, fallbackFont);
+        const layoutDesc = selectedProfile.name || selectedLayout.name || 'Custom';
+        const willEmbed = fontDiagnostics.usesFontspec;
+
+        // ── Build technical details (hidden by default) ──────────────
+        const technicalLines: string[] = [];
+        if (primaryRequested) {
             const requestedType = this.getFontFamilyType(primaryRequested);
-            const declaredFallback = fontDiagnostics.requiredFonts[0] || null;
-            summaryLines.push(`Template asks for: ${primaryRequested} (${requestedType}).`);
-            if (declaredFallback && declaredFallback !== primaryRequested) {
-                const fallbackType = this.getFontFamilyType(declaredFallback);
-                summaryLines.push(`PDF uses template fallback logic: ${primaryRequested} or ${declaredFallback} (${fallbackType}).`);
-            } else {
-                summaryLines.push(`PDF will request: ${primaryRequested} (${requestedType}).`);
-            }
-        } else if (hasPrimaryMissing) {
-            const requestedType = this.getFontFamilyType(primaryRequested);
-            if (fallbackFont && fallbackFont !== primaryRequested) {
-                const fallbackType = this.getFontFamilyType(fallbackFont);
-                summaryLines.push(`Template asks for: ${primaryRequested} (${requestedType}).`);
-                summaryLines.push(`PDF will use: ${fallbackFont} (${fallbackType}) because ${primaryRequested} is not installed. Install ${primaryRequested} to match the layout.`);
-            } else {
-                summaryLines.push(`Template asks for: ${primaryRequested} (${requestedType}).`);
-                summaryLines.push(`PDF cannot use that font right now. Install ${primaryRequested} before export.`);
-            }
-        } else {
-            const requestedType = this.getFontFamilyType(primaryRequested);
-            summaryLines.push(`Template asks for: ${primaryRequested} (${requestedType}).`);
-            summaryLines.push(`PDF will use: ${primaryRequested} (installed).`);
+            technicalLines.push(`Requested font: ${primaryRequested} (${requestedType})`);
+        }
+        if (hasPrimaryMissing && fallbackFont && fallbackFont !== primaryRequested) {
+            const fallbackType = this.getFontFamilyType(fallbackFont);
+            technicalLines.push(`Fallback: ${fallbackFont} (${fallbackType})`);
+        }
+        technicalLines.push(`Engine: ${engineSelection.engine}`);
+        if (willEmbed) {
+            technicalLines.push('Font embedding: enabled via fontspec');
         }
 
-        if (fontDiagnostics.usesFontspec) {
-            summaryLines.push(`Embedding: yes (${engineSelection.engine} embeds resolved OpenType/TrueType fonts).`);
-        } else {
-            summaryLines.push('Embedding: layout does not declare custom font embedding via fontspec.');
-        }
-
-        // Template exists — show status indicator
+        // ── Render ───────────────────────────────────────────────────
         this.templateWarningEl.addClass(hasFontRisk ? 'rt-warning-error' : 'rt-warning-info');
         const icon = this.templateWarningEl.createSpan({ cls: 'rt-warning-icon' });
         setIcon(icon, hasFontRisk ? 'alert-triangle' : 'check-circle-2');
-        const text = this.templateWarningEl.createSpan({ cls: 'rt-warning-text' });
-        text.setText(summaryLines.join('\n'));
+
+        const content = this.templateWarningEl.createDiv({ cls: 'rt-warning-text' });
+
+        if (hasFontRisk) {
+            // Font issue — show actionable message
+            if (hasPrimaryMissing && fallbackFont && fallbackFont !== primaryRequested) {
+                content.createDiv({ cls: 'ert-pdf-output-line', text: `Font: Using ${fallbackFont} — install ${primaryRequested} for the intended look.` });
+            } else if (hasPrimaryMissing && primaryRequested) {
+                content.createDiv({ cls: 'ert-pdf-output-line', text: `Font: ${primaryRequested} is not installed. Install it before exporting.` });
+            }
+        } else {
+            content.createDiv({ cls: 'ert-pdf-output-line', text: 'This layout is ready to use.' });
+            content.createDiv({ cls: 'ert-pdf-output-line', text: `Font: ${resolvedFont}` });
+            content.createDiv({ cls: 'ert-pdf-output-line', text: `Page layout: ${layoutDesc}` });
+            if (willEmbed) {
+                content.createDiv({ cls: 'ert-pdf-output-line', text: 'Embedding: Fonts will be included' });
+            }
+        }
+
+        // ── Technical details toggle ─────────────────────────────────
+        if (technicalLines.length > 0) {
+            const details = content.createEl('details', { cls: 'ert-pdf-output-details' });
+            details.createEl('summary', { text: 'View technical details' });
+            const detailsContent = details.createDiv({ cls: 'ert-pdf-output-details-content' });
+            for (const line of technicalLines) {
+                detailsContent.createDiv({ text: line });
+            }
+        }
+    }
+
+    /**
+     * Build a human-readable font name for the PDF Output summary
+     */
+    private buildFontDisplayName(
+        primaryRequested: string | null,
+        canVerifyFonts: boolean,
+        hasPrimaryMissing: boolean,
+        fallbackFont: string | null
+    ): string {
+        if (!primaryRequested) return 'Default serif';
+        if (!canVerifyFonts) return primaryRequested;
+        if (hasPrimaryMissing && fallbackFont && fallbackFont !== primaryRequested) return fallbackFont;
+        if (hasPrimaryMissing) return `${primaryRequested} (not found)`;
+        return primaryRequested;
     }
 
     /**

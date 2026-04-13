@@ -1680,9 +1680,9 @@
 }
 
 .rt-manuscript-template-warning.rt-warning-info {
-  background: rgba(87, 255, 87, 0.15);
-  border: 1px solid rgba(87, 255, 87, 0.3);
-  color: var(--text-success, #57ff57);
+  background: var(--background-modifier-success, rgba(109, 220, 207, 0.08));
+  border: 1px solid var(--background-modifier-success-hover, rgba(109, 220, 207, 0.2));
+  color: var(--text-normal, #dcddde);
 }
 
 .rt-manuscript-template-warning .rt-warning-icon {
@@ -1722,6 +1722,44 @@
 
 .rt-error-text {
   color: var(--text-error, var(--color-red, #ff6b6b));
+}
+
+/* PDF Output summary lines */
+.ert-pdf-output-line {
+  line-height: 1.6;
+}
+
+.ert-pdf-output-line:first-child {
+  font-weight: 500;
+}
+
+/* Technical details toggle */
+.ert-pdf-output-details {
+  margin-top: 6px;
+  font-size: 0.8rem;
+  opacity: 0.75;
+}
+
+.ert-pdf-output-details summary {
+  cursor: pointer;
+  user-select: none;
+  font-size: 0.78rem;
+  opacity: 0.8;
+}
+
+.ert-pdf-output-details summary:hover {
+  opacity: 1;
+}
+
+.ert-pdf-output-details-content {
+  margin-top: 4px;
+  padding-left: 4px;
+  line-height: 1.5;
+}
+
+/* Info state icon inherits text color for subtlety */
+.rt-manuscript-template-warning.rt-warning-info .rt-warning-icon {
+  color: var(--text-success, var(--color-green, #6ddccf));
 }
 
 /* Status bar item for active beats processing */
