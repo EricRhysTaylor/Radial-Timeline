@@ -1386,7 +1386,7 @@ export class InquiryView extends ItemView {
         const metaText = `${this.formatSessionScope(session)} · ${this.formatSessionProviderModel(session)} · ${this.formatSessionTime(session)}${overrideLabel ? ` · ${overrideLabel}` : ''}`;
         const status = this.resolveSessionStatus(session);
         const pendingEditsApplied = !!session.pendingEditsApplied;
-        const pendingEditsEmpty = !!session.pendingEditsEmpty;
+        const pendingEditsEmpty = this.ensurePendingEditsEmpty(session);
         const autoPopulateEnabled = this.plugin.settings.inquiryActionNotesAutoPopulate ?? false;
         const fieldLabel = this.resolveInquiryActionNotesFieldLabel();
         const refs = renderInquiryBriefingSessionItem({
@@ -1462,11 +1462,33 @@ export class InquiryView extends ItemView {
 
     private resolveSessionQuestionLabel(session: InquirySession): string {
         const zoneLabel = this.resolveSessionZoneLabel(session);
-        const compactTag = this.buildSessionZoneTag(session) ?? zoneLabel;
-        const promptLabel = this.findPromptLabelById(session.result.questionId)?.trim();
-        if (promptLabel) return `${compactTag}: ${promptLabel}`;
-        if (session.result.questionId?.trim()) return `${compactTag}: ${session.result.questionId.trim()}`;
-        return `${compactTag}: ${this.resolveSessionLensLabel(session, zoneLabel)}`;
+        const fallbackLabel = this.resolveSessionLensLabel(session, zoneLabel);
+        const questionPrefix = this.resolveInquiryQuestionPrefix({
+            questionId: session.result.questionId,
+            questionZone: session.questionZone ?? this.findPromptZoneById(session.result.questionId),
+            fallbackLabel
+        });
+        return questionPrefix ?? `${zoneLabel}: ${fallbackLabel}`;
+    }
+
+    private ensurePendingEditsEmpty(session: InquirySession): boolean {
+        if (typeof session.pendingEditsEmpty === 'boolean') return session.pendingEditsEmpty;
+        const pendingEditsEmpty = this.resolvePendingEditsEmpty(session.result, session.activeBookId);
+        session.pendingEditsEmpty = pendingEditsEmpty;
+        if (session.key) {
+            this.sessionStore.updateSession(session.key, { pendingEditsEmpty });
+        }
+        return pendingEditsEmpty;
+    }
+
+    private resolvePendingEditsEmpty(result: InquiryResult, activeBookId?: string): boolean {
+        const normalized = this.normalizeLegacyResult(result);
+        if (this.isErrorResult(normalized)) return true;
+        if (normalized.scope !== 'book') return true;
+        if (!this.corpus) return true;
+        const briefTitle = this.formatInquiryBriefTitle(normalized);
+        const notesByMaterial = this.buildInquiryActionNotes(normalized, briefTitle, activeBookId);
+        return notesByMaterial.size === 0;
     }
 
     private formatSessionProviderModel(session: InquirySession): string {
@@ -5165,16 +5187,45 @@ export class InquiryView extends ItemView {
     }
 
     private buildSessionZoneTag(session: InquirySession): string | null {
-        const zone = session.questionZone ?? session.result?.questionZone;
-        if (!zone) return null;
-        const abbr = zone === 'setup' ? 'Set' : zone === 'pressure' ? 'Pres' : 'Pay';
         const questionId = session.result?.questionId;
+        const zone = session.questionZone ?? session.result?.questionZone ?? (questionId ? this.findPromptZoneById(questionId) : null);
+        return this.buildZoneTagForQuestion(questionId, zone);
+    }
+
+    private buildZoneTagForQuestion(questionId?: string | null, zone?: InquiryZone | null): string | null {
+        const resolvedZone = zone ?? (questionId ? this.findPromptZoneById(questionId) : null);
+        if (!resolvedZone) return null;
+        const abbr = resolvedZone === 'setup' ? 'Set' : resolvedZone === 'pressure' ? 'Pres' : 'Pay';
         if (!questionId) return abbr;
         const config = this.getPromptConfig();
-        const slots = config[zone] ?? [];
+        const slots = config[resolvedZone] ?? [];
         const slotIndex = slots.findIndex(slot => slot.id === questionId);
         const num = slotIndex >= 0 ? slotIndex + 1 : null;
         return num !== null ? `${abbr}${num}` : abbr;
+    }
+
+    private resolveInquiryQuestionPrefix(options: {
+        questionId?: string | null;
+        questionZone?: InquiryZone | null;
+        fallbackLabel?: string | null;
+    }): string | null {
+        const questionId = options.questionId?.trim();
+        const zoneTag = this.buildZoneTagForQuestion(questionId, options.questionZone);
+        const promptLabel = questionId ? this.findPromptLabelById(questionId)?.trim() : null;
+        const label = promptLabel || questionId || options.fallbackLabel?.trim();
+        if (!label && zoneTag) return zoneTag;
+        if (!label) return null;
+        return zoneTag ? `${zoneTag}: ${label}` : label;
+    }
+
+    private resolveInquiryQuestionPrefixForResult(result: InquiryResult): string | null {
+        const zoneLabel = this.resolveInquiryBriefZoneLabel(result);
+        const fallbackLabel = this.resolveInquiryBriefLensLabel(result, zoneLabel);
+        return this.resolveInquiryQuestionPrefix({
+            questionId: result.questionId,
+            questionZone: result.questionZone ?? this.findPromptZoneById(result.questionId),
+            fallbackLabel
+        });
     }
 
     private buildWelcomeNavLabel(date: Date = new Date()): string {
@@ -5730,7 +5781,9 @@ export class InquiryView extends ItemView {
         this.clearActiveResultState();
         this.currentRunProgress = null;
         this.currentRunElapsedMs = 0;
-        this.currentRunEstimatedMaxMs = this.estimateRunDurationRange(questionText).maxSeconds * 1000;
+        const durationRange = this.estimateRunDurationRange(questionText);
+        // Use midpoint of the range so the bar is optimistic — better to finish than stall.
+        this.currentRunEstimatedMaxMs = ((durationRange.minSeconds + durationRange.maxSeconds) / 2) * 1000;
         this.state.activeQuestionId = question.id;
         this.state.activeZone = question.zone;
         this.lockPromptPreview(question, questionText);
@@ -5829,6 +5882,7 @@ export class InquiryView extends ItemView {
                 scope: this.state.scope,
                 questionZone: question.zone
             };
+            session.pendingEditsEmpty = this.resolvePendingEditsEmpty(result, activeBookId);
             this.sessionStore.setSession(session);
             const traceForLog = runTrace
                 ?? await this.buildFallbackTrace(runnerInput, 'Trace unavailable; log created without prompt capture.');
@@ -5841,17 +5895,27 @@ export class InquiryView extends ItemView {
             }
             session = this.sessionStore.peekSession(session.key) ?? session;
 
+            const rawResponse = runTrace?.response?.content ?? null;
+            const hasRawResponse = typeof rawResponse === 'string' && rawResponse.trim().length > 0;
+            const shouldForceSave = hasRawResponse
+                && this.isErrorResult(result)
+                && session.status !== 'saved'
+                && !session.briefPath;
             const autoSaveEnabled = this.plugin.settings.inquiryAutoSave ?? true;
             const shouldAutoSave = autoSaveEnabled
                 && !this.isErrorResult(result)
                 && session.status !== 'simulated'
                 && session.status !== 'saved'
                 && !session.briefPath;
-            if (shouldAutoSave) {
+            if (shouldForceSave || shouldAutoSave) {
                 await this.saveBrief(result, {
                     openFile: false,
                     silent: true,
-                    sessionKey: session.key
+                    sessionKey: session.key,
+                    rawResponse: shouldForceSave ? rawResponse : undefined,
+                    statusOverride: shouldForceSave
+                        ? this.resolveSessionStatusFromResult(result)
+                        : undefined
                 });
                 session = this.sessionStore.peekSession(session.key) ?? session;
             }
@@ -6357,6 +6421,7 @@ export class InquiryView extends ItemView {
             scope: normalized.scope,
             questionZone: options.question.zone
         };
+        session.pendingEditsEmpty = this.resolvePendingEditsEmpty(normalized, options.activeBookId);
         this.sessionStore.setSession(session);
 
         const logPath = await this.saveInquiryLog(normalized, options.trace, options.manifest, {
@@ -6364,11 +6429,18 @@ export class InquiryView extends ItemView {
             normalizationNotes,
             silent: true
         });
+        const rawResponse = options.trace.response?.content ?? null;
+        const hasRawResponse = typeof rawResponse === 'string' && rawResponse.trim().length > 0;
+        const preserveStatus = this.isErrorResult(normalized)
+            ? this.resolveSessionStatusFromResult(normalized)
+            : undefined;
         const briefPath = await this.saveBrief(normalized, {
             openFile: false,
             silent: true,
             sessionKey: session.key,
-            logPath: logPath ?? undefined
+            logPath: logPath ?? undefined,
+            rawResponse: hasRawResponse ? rawResponse : undefined,
+            statusOverride: preserveStatus
         });
         const updated = this.sessionStore.peekSession(session.key) ?? session;
         return {
@@ -8538,10 +8610,10 @@ export class InquiryView extends ItemView {
             return null;
         }
         const predictedMs = Math.max(4000, estimatedInputTokens * entry.avgMsPerInputToken);
-        const variance = entry.samples >= 6 ? 0.2 : entry.samples >= 3 ? 0.32 : 0.45;
+        // Lean optimistic so the bar finishes rather than stalling at 1/3.
         return {
-            minSeconds: Math.max(4, (predictedMs * (1 - variance)) / 1000),
-            maxSeconds: Math.max(6, (predictedMs * (1 + variance)) / 1000)
+            minSeconds: Math.max(4, (predictedMs * 0.7) / 1000),
+            maxSeconds: Math.max(6, predictedMs / 1000)
         };
     }
 
@@ -8556,16 +8628,19 @@ export class InquiryView extends ItemView {
             : null;
         if (!durationMs || durationMs <= 0) return;
 
-        const usage = trace?.usage
-            ?? (trace?.response?.responseData && provider
-                ? extractTokenUsage(provider, trace.response.responseData)
-                : null);
+        // Use the pre-run estimate token count, matching what estimateRunDurationRange uses
+        // for prediction. This keeps record and predict on the same basis regardless of
+        // multi-pass aggregation or partial API usage reporting.
         const inputTokens = (() => {
-            if (typeof usage?.inputTokens === 'number' && Number.isFinite(usage.inputTokens) && usage.inputTokens > 0) {
-                return usage.inputTokens;
-            }
             if (typeof result.tokenEstimateInput === 'number' && Number.isFinite(result.tokenEstimateInput) && result.tokenEstimateInput > 0) {
                 return result.tokenEstimateInput;
+            }
+            const usage = trace?.usage
+                ?? (trace?.response?.responseData && provider
+                    ? extractTokenUsage(provider, trace.response.responseData)
+                    : null);
+            if (typeof usage?.inputTokens === 'number' && Number.isFinite(usage.inputTokens) && usage.inputTokens > 0) {
+                return usage.inputTokens;
             }
             return null;
         })();
@@ -8649,36 +8724,23 @@ export class InquiryView extends ItemView {
 
     private estimateRunDurationRange(questionText: string): { minSeconds: number; maxSeconds: number } {
         const readinessUi = this.buildReadinessUiState();
-        const passPlan = this.getCurrentPassPlan(readinessUi);
         const estimatedTokens = Math.max(0, readinessUi.estimateInputTokens || 0);
-        const totalPasses = Math.max(1, passPlan.displayPassCount || 1);
-        const perPassTokens = estimatedTokens > 0
-            ? estimatedTokens / totalPasses
-            : 0;
-        const questionComplexityBoost = Math.min(4, Math.max(0, Math.round((questionText?.trim().length ?? 0) / 90)));
-        const perPassMin = 6 + (perPassTokens / 900) + (questionComplexityBoost * 0.5);
-        const perPassMax = 12 + (perPassTokens / 550) + questionComplexityBoost;
-        const multiPassOverheadMin = Math.max(0, totalPasses - 1) * 5;
-        const multiPassOverheadMax = Math.max(0, totalPasses - 1) * 9;
-        const minSeconds = Math.max(6, (perPassMin * totalPasses) + multiPassOverheadMin);
-        const maxSeconds = Math.max(minSeconds + 6, (perPassMax * totalPasses) + multiPassOverheadMax);
+
+        // If we have history for this model, trust it directly.
         const timingEstimate = this.buildTimingEstimateFromHistory(
             estimatedTokens,
             readinessUi.provider,
             readinessUi.model?.id
         );
-        if (!timingEstimate) {
-            return {
-                minSeconds,
-                maxSeconds
-            };
+        if (timingEstimate) {
+            return timingEstimate;
         }
+
+        // Cold-start fallback: optimistic rate (~3000 tokens/sec input throughput).
+        const coldStartMs = Math.max(6000, estimatedTokens / 3);
         return {
-            minSeconds: Math.max(4, Math.min(minSeconds, timingEstimate.minSeconds)),
-            maxSeconds: Math.max(
-                Math.max(minSeconds + 2, timingEstimate.maxSeconds),
-                Math.min(maxSeconds, timingEstimate.maxSeconds * 1.1)
-            )
+            minSeconds: Math.max(4, (coldStartMs * 0.7) / 1000),
+            maxSeconds: Math.max(6, coldStartMs / 1000)
         };
     }
 
@@ -10075,7 +10137,14 @@ export class InquiryView extends ItemView {
 
     private async saveBrief(
         result: InquiryResult,
-        options: { openFile: boolean; silent: boolean; sessionKey?: string; logPath?: string }
+        options: {
+            openFile: boolean;
+            silent: boolean;
+            sessionKey?: string;
+            logPath?: string;
+            rawResponse?: string | null;
+            statusOverride?: InquirySessionStatus;
+        }
     ): Promise<string | null> {
         const folder = await ensureInquiryArtifactFolder(this.app, this.plugin.settings);
         if (!folder) {
@@ -10090,7 +10159,7 @@ export class InquiryView extends ItemView {
         const filePath = this.getAvailableArtifactPath(folder.path, baseName);
         const sessionLogPath = options.logPath
             ?? (options.sessionKey ? this.sessionStore.peekSession(options.sessionKey)?.logPath : undefined);
-        const content = this.buildArtifactContent(result, sessionLogPath);
+        const content = this.buildArtifactContent(result, sessionLogPath, options.rawResponse);
 
         try {
             const file = await this.app.vault.create(filePath, content);
@@ -10102,7 +10171,7 @@ export class InquiryView extends ItemView {
             }
             if (options.sessionKey) {
                 this.sessionStore.updateSession(options.sessionKey, {
-                    status: 'saved',
+                    status: options.statusOverride ?? 'saved',
                     briefPath: file.path
                 });
             }
@@ -10229,13 +10298,18 @@ export class InquiryView extends ItemView {
 
     private buildArtifactContent(
         result: InquiryResult,
-        logPath?: string
+        logPath?: string,
+        rawResponse?: string | null
     ): string {
-        const brief = this.buildInquiryBriefModel(result, logPath);
+        const brief = this.buildInquiryBriefModel(result, logPath, rawResponse);
         return renderInquiryBrief(brief);
     }
 
-    private buildInquiryBriefModel(result: InquiryResult, logPath?: string): InquiryBriefModel {
+    private buildInquiryBriefModel(
+        result: InquiryResult,
+        logPath?: string,
+        rawResponse?: string | null
+    ): InquiryBriefModel {
         const questionTitle = this.findPromptLabelById(result.questionId) || 'Inquiry Question';
         const questionTextRaw = result.questionText?.trim() || this.getQuestionTextById(result.questionId);
         const questionText = questionTextRaw && questionTextRaw.trim().length > 0
@@ -10289,6 +10363,8 @@ export class InquiryView extends ItemView {
         const sceneNotes = this.buildInquirySceneNotes(result);
         const pendingActions = getPendingInquiryActions(result);
         const logTitle = this.resolveInquiryLogLinkTitle(result, logPath);
+        const rawResponseText = typeof rawResponse === 'string' ? rawResponse.trim() : '';
+        const includeRawResponse = rawResponseText.length > 0 && this.isErrorResult(result);
 
         return {
             questionTitle,
@@ -10303,7 +10379,8 @@ export class InquiryView extends ItemView {
             sources,
             sceneNotes,
             pendingActions,
-            logTitle
+            logTitle,
+            rawResponse: includeRawResponse ? rawResponseText : null
         };
     }
 
@@ -10447,7 +10524,8 @@ export class InquiryView extends ItemView {
             logTitle: logTitle ?? this.formatInquiryLogTitle(result),
             contentLogWritten,
             deps: {
-                getQuestionLabel: (currentResult) => this.findPromptLabelById(currentResult.questionId)
+                getQuestionLabel: (currentResult) => this.resolveInquiryQuestionPrefixForResult(currentResult)
+                    || this.findPromptLabelById(currentResult.questionId)
                     || this.getQuestionTextById(currentResult.questionId)
                     || currentResult.questionId
                     || 'Inquiry Question',
@@ -10485,7 +10563,8 @@ export class InquiryView extends ItemView {
             logTitle: logTitle ?? this.formatInquiryContentLogTitle(result),
             normalizationNotes,
             deps: {
-                getQuestionLabel: (currentResult) => this.findPromptLabelById(currentResult.questionId)
+                getQuestionLabel: (currentResult) => this.resolveInquiryQuestionPrefixForResult(currentResult)
+                    || this.findPromptLabelById(currentResult.questionId)
                     || this.getQuestionTextById(currentResult.questionId)
                     || currentResult.questionId
                     || 'Inquiry Question',
@@ -10514,6 +10593,7 @@ export class InquiryView extends ItemView {
         const timestamp = this.formatInquiryBriefTimestamp(timestampSource);
         const zoneLabel = this.resolveInquiryBriefZoneLabel(result);
         const lensLabel = this.resolveInquiryBriefLensLabel(result, zoneLabel);
+        const questionPrefix = this.resolveInquiryQuestionPrefixForResult(result);
         const parts: string[] = [];
         if (result.aiReason === 'simulated' || result.aiReason === 'stub') {
             parts.push('TEST RUN');
@@ -10521,7 +10601,11 @@ export class InquiryView extends ItemView {
         if (result.scope === 'saga') {
             parts.push('Saga');
         }
-        parts.push(zoneLabel, lensLabel);
+        if (questionPrefix) {
+            parts.push(questionPrefix);
+        } else {
+            parts.push(zoneLabel, lensLabel);
+        }
         return `Inquiry Log — ${parts.join(' · ')} ${timestamp}`;
     }
 
@@ -10530,6 +10614,7 @@ export class InquiryView extends ItemView {
         const timestamp = this.formatInquiryBriefTimestamp(timestampSource);
         const zoneLabel = this.resolveInquiryBriefZoneLabel(result);
         const lensLabel = this.resolveInquiryBriefLensLabel(result, zoneLabel);
+        const questionPrefix = this.resolveInquiryQuestionPrefixForResult(result);
         const parts: string[] = [];
         if (result.aiReason === 'simulated' || result.aiReason === 'stub') {
             parts.push('TEST RUN');
@@ -10537,7 +10622,11 @@ export class InquiryView extends ItemView {
         if (result.scope === 'saga') {
             parts.push('Saga');
         }
-        parts.push(zoneLabel, lensLabel);
+        if (questionPrefix) {
+            parts.push(questionPrefix);
+        } else {
+            parts.push(zoneLabel, lensLabel);
+        }
         return `Inquiry Content Log — ${parts.join(' · ')} ${timestamp}`;
     }
 
@@ -10556,11 +10645,16 @@ export class InquiryView extends ItemView {
         const timestamp = this.formatInquiryBriefTimestamp(timestampSource);
         const zoneLabel = this.resolveInquiryBriefZoneLabel(result);
         const lensLabel = this.resolveInquiryBriefLensLabel(result, zoneLabel);
+        const questionPrefix = this.resolveInquiryQuestionPrefixForResult(result);
         const parts: string[] = [];
         if (result.scope === 'saga') {
             parts.push('Saga');
         }
-        parts.push(zoneLabel, lensLabel);
+        if (questionPrefix) {
+            parts.push(questionPrefix);
+        } else {
+            parts.push(zoneLabel, lensLabel);
+        }
         return `Inquiry Brief — ${parts.join(' · ')} ${timestamp}`;
     }
 

@@ -160,6 +160,13 @@ export const formatManifestModeLabel = (
 
 export const renderInquiryBrief = (brief: InquiryBriefModel): string => {
     const lines: string[] = [];
+    const renderRawResponse = (raw: string): void => {
+        const trimmed = raw.trim();
+        if (!trimmed) return;
+        const fence = trimmed.includes('```') ? '~~~' : '```';
+        const safeBody = fence === '~~~' ? trimmed.replace(/~~~/g, '~~\\~') : trimmed;
+        lines.push('', '## Provider Response (Unparsed)', `${fence}text`, safeBody, fence);
+    };
 
     lines.push('# Question', '', `**${brief.questionTitle}**`, brief.questionText);
     if (brief.scopeIndicator) {
@@ -239,6 +246,10 @@ export const renderInquiryBrief = (brief: InquiryBriefModel): string => {
         });
     } else if (brief.findings.length) {
         lines.push('', '## Pending Author Actions', 'No pending edit actions were generated for this run.');
+    }
+
+    if (brief.rawResponse) {
+        renderRawResponse(brief.rawResponse);
     }
 
     lines.push('', brief.logTitle

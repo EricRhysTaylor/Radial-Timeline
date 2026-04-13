@@ -224,7 +224,9 @@ function parseSceneNumberToken(raw: string): { sceneNumber?: number; slugKey?: s
     if (!trimmed) return {};
     const withoutPrefix = trimmed.replace(/^scn_/i, '').trim();
 
-    const numbered = withoutPrefix.match(/^s(?:cene)?[\s._-]*(\d{1,4})(?:[\s._-]+(.+))?$/i)
+    const fullScene = withoutPrefix.match(/^f(?:ull)?(?:\s*scene)?[\s._-]*(\d{1,4})(?:[\s._-]+(.+))?$/i);
+    const numbered = fullScene
+        || withoutPrefix.match(/^s(?:cene)?[\s._-]*(\d{1,4})(?:[\s._-]+(.+))?$/i)
         || withoutPrefix.match(/^(\d{1,4})(?:[\s._-]+(.+))?$/i);
     if (!numbered) return {};
 

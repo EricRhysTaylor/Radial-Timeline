@@ -54,6 +54,18 @@ describe('sceneRefNormalizer', () => {
         expect(normalized.unresolved).toBe(false);
     });
 
+    it('resolves full-scene shorthand refs to canonical scene ids', () => {
+        const normalized = normalizeSceneRef({ ref_id: 'F44' }, index);
+        expect(normalized.ref.ref_id).toBe('scn_b2c3d4e5');
+        expect(normalized.unresolved).toBe(false);
+    });
+
+    it('resolves full-scene text refs to canonical scene ids', () => {
+        const normalized = normalizeSceneRef({ ref_id: 'Full Scene 38' }, index);
+        expect(normalized.ref.ref_id).toBe('scn_a1b2c3d4');
+        expect(normalized.unresolved).toBe(false);
+    });
+
     it('does not remap explicit scene numbers to a different scene by title', () => {
         const normalized = normalizeSceneRef({ ref_id: 'S25 · Long Road Up' }, index);
         expect(normalized.ref.ref_id).toBe('');

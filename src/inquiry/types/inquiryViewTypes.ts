@@ -70,6 +70,7 @@ export type InquiryBriefModel = {
     }>;
     pendingActions: string[];
     logTitle?: string | null;
+    rawResponse?: string | null;
 };
 
 export type InquiryPreviewRow = {

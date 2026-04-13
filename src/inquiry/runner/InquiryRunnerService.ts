@@ -1953,18 +1953,18 @@ export class InquiryRunnerService implements InquiryRunner {
         const findings = Array.isArray(parsed.findings) ? parsed.findings : [];
         const invalidRefs = findings
             .map(finding => String(finding.ref_id || '').trim().toLowerCase())
-            .filter(refId => !!refId && !allowedSceneIds.has(refId));
+            .filter(refId => !!refId && isStableSceneId(refId) && !allowedSceneIds.has(refId));
 
         if (invalidRefs.length) {
             return { ok: false, reason: `pass 1 returned scene refs outside the active corpus: ${invalidRefs.join(', ')}.` };
         }
 
-        const bindableFindings = findings.filter(finding => {
-            const refId = String(finding.ref_id || '').trim().toLowerCase();
-            return !!refId && allowedSceneIds.has(refId);
-        });
+        const stableRefs = findings
+            .map(finding => String(finding.ref_id || '').trim().toLowerCase())
+            .filter(refId => !!refId && isStableSceneId(refId));
+        const bindableStableRefs = stableRefs.filter(refId => allowedSceneIds.has(refId));
 
-        if (findings.length > 0 && bindableFindings.length === 0) {
+        if (stableRefs.length > 0 && bindableStableRefs.length === 0) {
             return { ok: false, reason: 'pass 1 returned findings, but none referenced a valid scene in the active corpus.' };
         }
 
