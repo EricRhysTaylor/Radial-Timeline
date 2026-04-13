@@ -19,6 +19,12 @@ export type CredentialSecretField = keyof typeof DEFAULT_CREDENTIAL_SECRET_IDS;
 export type CredentialSecretProvider = 'openai' | 'anthropic' | 'google' | 'ollama';
 
 export const DEFAULT_MODEL_POLICY: ModelPolicy = { type: 'latestStable' };
+export const DEFAULT_CACHE_WINDOWS = {
+    anthropicTtl: '5m',
+    googleTtlSeconds: 900,
+    openaiRetention: 'in_memory',
+    openaiInMemoryWindowMinutes: 10
+} as const;
 export const DEFAULT_LOCAL_LLM_SETTINGS: LocalLlmSettings = {
     enabled: true,
     configurationMode: 'auto',
@@ -100,6 +106,7 @@ export function buildDefaultAiSettings(): AiSettingsV1 {
             allowRemoteRegistry: false,
             allowProviderSnapshot: false
         },
+        cacheWindows: { ...DEFAULT_CACHE_WINDOWS },
         featureProfiles: {},
         credentials: {
             ...DEFAULT_CREDENTIAL_SECRET_IDS

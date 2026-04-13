@@ -2,6 +2,8 @@ import type RadialTimelinePlugin from '../../main';
 import { callOpenAiResponsesApi } from '../../api/openaiApi';
 import { classifyProviderError } from '../../api/providerErrors';
 import { getCredential } from '../credentials/credentials';
+import { buildDefaultAiSettings } from '../settings/aiSettings';
+import { validateAiSettings } from '../settings/validateAiSettings';
 import type { AIProvider, Capability, GenerateJsonRequest, GenerateTextRequest, ProviderExecutionResult } from '../types';
 
 const CAPS: Capability[] = ['longContext', 'jsonStrict', 'reasoningStrong', 'toolCalling', 'functionCalling', 'streaming'];
@@ -17,6 +19,8 @@ export class OpenAIProvider implements AIProvider {
 
     async generateText(req: GenerateTextRequest): Promise<ProviderExecutionResult> {
         const apiKey = await getCredential(this.plugin, 'openai');
+        const aiSettings = validateAiSettings(this.plugin.settings.aiSettings ?? buildDefaultAiSettings()).value;
+        const promptCacheRetention = aiSettings.cacheWindows?.openaiRetention === '24h' ? '24h' : undefined;
         const result = await callOpenAiResponsesApi(
             apiKey,
             req.modelId,
@@ -25,7 +29,8 @@ export class OpenAIProvider implements AIProvider {
             req.maxOutputTokens,
             undefined,
             req.temperature,
-            req.topP
+            req.topP,
+            promptCacheRetention
         );
         return result.success
             ? {
@@ -56,6 +61,8 @@ export class OpenAIProvider implements AIProvider {
 
     async generateJson(req: GenerateJsonRequest): Promise<ProviderExecutionResult> {
         const apiKey = await getCredential(this.plugin, 'openai');
+        const aiSettings = validateAiSettings(this.plugin.settings.aiSettings ?? buildDefaultAiSettings()).value;
+        const promptCacheRetention = aiSettings.cacheWindows?.openaiRetention === '24h' ? '24h' : undefined;
         const result = await callOpenAiResponsesApi(
             apiKey,
             req.modelId,
@@ -70,7 +77,8 @@ export class OpenAIProvider implements AIProvider {
                 }
             },
             req.temperature,
-            req.topP
+            req.topP,
+            promptCacheRetention
         );
         return result.success
             ? {

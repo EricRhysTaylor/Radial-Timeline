@@ -7,7 +7,7 @@
 import { requestUrl } from 'obsidian'; // Use requestUrl for consistency
 import { warnLegacyAccess } from './legacyAccessGuard';
 import { modelSupportsSystemRole } from './providerCapabilities';
-import type { SourceAttributionType, SourceCitation } from '../ai/types';
+import type { OpenAiPromptCacheRetention, SourceAttributionType, SourceCitation } from '../ai/types';
 
 /** @deprecated Use modelSupportsSystemRole(provider, modelId) from providerCapabilities.
  *  Retained as thin wrapper for backward compat and evidence pattern validation. */
@@ -542,6 +542,7 @@ export async function callOpenAiResponsesApi(
     responseFormat?: OpenAiResponseFormat,
     temperature?: number,
     topP?: number,
+    promptCacheRetention?: OpenAiPromptCacheRetention,
     allowFormatFallback = true,
     internalAdapterAccess?: boolean
 ): Promise<OpenAiApiResponse> {
@@ -572,6 +573,7 @@ export async function callOpenAiResponsesApi(
         text?: { format: OpenAiResponsesTextFormat };
         temperature?: number;
         top_p?: number;
+        prompt_cache_retention?: OpenAiPromptCacheRetention;
     } = {
         model: modelId,
         input: buildOpenAiResponsesInput(modelId, systemPrompt, userPrompt)
@@ -588,6 +590,9 @@ export async function callOpenAiResponsesApi(
     }
     if (typeof topP === 'number') {
         requestBody.top_p = topP;
+    }
+    if (promptCacheRetention) {
+        requestBody.prompt_cache_retention = promptCacheRetention;
     }
 
     let responseData: unknown;
@@ -618,6 +623,7 @@ export async function callOpenAiResponsesApi(
                     undefined,
                     temperature,
                     topP,
+                    promptCacheRetention,
                     false,
                     internalAdapterAccess
                 );

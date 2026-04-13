@@ -2,6 +2,8 @@ import type { AiStatus } from '../api/providerErrors';
 
 export type AIProviderId = 'openai' | 'anthropic' | 'google' | 'ollama' | 'none';
 export type AccessTier = 1 | 2 | 3 | 4;
+export type AnthropicCacheTtl = '5m' | '1h';
+export type OpenAiPromptCacheRetention = 'in_memory' | '24h';
 
 export type Capability =
     | 'longContext'
@@ -149,6 +151,13 @@ export interface AIProviderConnectionSettings {
     ollamaBaseUrl?: string;
 }
 
+export interface AICacheWindowSettings {
+    anthropicTtl: AnthropicCacheTtl;
+    googleTtlSeconds: number;
+    openaiRetention: OpenAiPromptCacheRetention;
+    openaiInMemoryWindowMinutes: number;
+}
+
 export type AnalysisPackaging = 'automatic' | 'singlePassOnly' | 'segmented';
 
 export type LocalLlmBackendId = 'ollama' | 'lmStudio' | 'openaiCompatible';
@@ -184,6 +193,7 @@ export interface AiSettingsV1 {
     overrides: AIOverrides;
     aiAccessProfile: AIAccessProfile;
     privacy: AIPrivacySettings;
+    cacheWindows?: AICacheWindowSettings;
     featureProfiles?: Record<string, AIFeatureProfile>;
     credentials?: AIProviderCredentials;
     connections?: AIProviderConnectionSettings;

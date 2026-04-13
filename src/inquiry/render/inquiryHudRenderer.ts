@@ -157,15 +157,20 @@ export function renderInquiryRunningHud(args: {
     currentRunProgress: InquiryRunProgressEvent | null;
     formatElapsedRunClock: (elapsedMs: number) => string;
     buildRunningStageLabel: (progress: InquiryRunProgressEvent | null) => string;
+    engineTimerText?: string;
+    engineTimerVisible?: boolean;
     setTextIfChanged: (el: Element | null | undefined, text: string) => void;
     toggleClassIfChanged: (el: Element | null | undefined, cls: string, force: boolean) => void;
 }): void {
     if (args.engineTimerLabel) {
-        args.toggleClassIfChanged(args.engineTimerLabel, 'ert-hidden', !args.isRunning);
-        args.setTextIfChanged(
-            args.engineTimerLabel,
-            args.isRunning ? args.formatElapsedRunClock(args.currentRunElapsedMs) : ''
-        );
+        const visible = typeof args.engineTimerVisible === 'boolean'
+            ? args.engineTimerVisible
+            : args.isRunning;
+        const timerText = typeof args.engineTimerText === 'string'
+            ? args.engineTimerText
+            : (args.isRunning ? args.formatElapsedRunClock(args.currentRunElapsedMs) : '');
+        args.toggleClassIfChanged(args.engineTimerLabel, 'ert-hidden', !visible);
+        args.setTextIfChanged(args.engineTimerLabel, timerText);
     }
 
     if (args.isRunning && args.navSessionLabel) {

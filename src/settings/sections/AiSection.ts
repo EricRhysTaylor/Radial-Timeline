@@ -2360,6 +2360,139 @@ export function renderAiSection(params: {
         }
     };
 
+    const getCacheWindows = () => {
+        const aiSettings = ensureCanonicalAiSettings();
+        if (!aiSettings.cacheWindows) {
+            aiSettings.cacheWindows = buildDefaultAiSettings().cacheWindows ?? {
+                anthropicTtl: '5m',
+                googleTtlSeconds: 900,
+                openaiRetention: 'in_memory',
+                openaiInMemoryWindowMinutes: 10
+            };
+        }
+        return aiSettings.cacheWindows;
+    };
+
+    const renderCacheWindowSettings = (): void => {
+        const cacheSettings = getCacheWindows();
+
+        const anthropicCacheSetting = new Settings(anthropicSection)
+            .setName('Prompt cache window (Anthropic)')
+            .setDesc('Sets the Anthropic prompt cache TTL sent via cache_control. 5m is default; 1h keeps caches warm longer.');
+        anthropicCacheSetting.addDropdown(dropdown => {
+            dropdown.addOption('5m', '5 minutes');
+            dropdown.addOption('1h', '1 hour');
+            dropdown.setValue(cacheSettings.anthropicTtl);
+            dropdown.onChange(async value => {
+                const aiSettings = ensureCanonicalAiSettings();
+                const windows = getCacheWindows();
+                windows.anthropicTtl = value === '1h' ? '1h' : '5m';
+                aiSettings.cacheWindows = windows;
+                await persistCanonical();
+            });
+        });
+
+        const googleCacheSetting = new Settings(googleSection)
+            .setName('Prompt cache TTL (Gemini)')
+            .setDesc('Controls the Gemini cached content TTL in minutes. Applies when the stable prefix is cached.');
+        googleCacheSetting.addText(text => {
+            text.inputEl.type = 'number';
+            text.inputEl.min = '1';
+            text.inputEl.max = '1440';
+            text.inputEl.step = '1';
+            text.inputEl.addClass('ert-input--xs');
+            text.setValue(String(Math.max(1, Math.round(cacheSettings.googleTtlSeconds / 60))));
+            plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
+                if (evt.key === 'Enter') {
+                    evt.preventDefault();
+                    text.inputEl.blur();
+                }
+            });
+            plugin.registerDomEvent(text.inputEl, 'blur', () => {
+                void (async () => {
+                    const parsed = parseInt(text.getValue().trim(), 10);
+                    if (!Number.isFinite(parsed) || parsed < 1 || parsed > 1440) {
+                        const current = getCacheWindows();
+                        new Notice('Gemini cache TTL must be between 1 and 1440 minutes.');
+                        text.setValue(String(Math.max(1, Math.round(current.googleTtlSeconds / 60))));
+                        return;
+                    }
+                    const aiSettings = ensureCanonicalAiSettings();
+                    const windows = getCacheWindows();
+                    windows.googleTtlSeconds = parsed * 60;
+                    aiSettings.cacheWindows = windows;
+                    await persistCanonical();
+                    text.setValue(String(parsed));
+                })();
+            });
+        });
+
+        const openAiRetentionSetting = new Settings(openaiSection)
+            .setName('Prompt cache retention (OpenAI)')
+            .setDesc('In-memory caches typically idle out in 5-10 minutes (max 1 hour). Extended retention keeps caches up to 24h for supported models.');
+        openAiRetentionSetting.addDropdown(dropdown => {
+            dropdown.addOption('in_memory', 'In-memory (default)');
+            dropdown.addOption('24h', 'Extended 24h (supported models)');
+            dropdown.setValue(cacheSettings.openaiRetention);
+            dropdown.onChange(async value => {
+                const aiSettings = ensureCanonicalAiSettings();
+                const windows = getCacheWindows();
+                windows.openaiRetention = value === '24h' ? '24h' : 'in_memory';
+                aiSettings.cacheWindows = windows;
+                await persistCanonical();
+                syncOpenAiInMemoryUi();
+            });
+        });
+
+        let openAiInMemoryInput: HTMLInputElement | null = null;
+        const openAiWindowSetting = new Settings(openaiSection)
+            .setName('In-memory cache window (minutes)')
+            .setDesc('Controls the countdown window used when OpenAI retention is in-memory.');
+        openAiWindowSetting.addText(text => {
+            openAiInMemoryInput = text.inputEl;
+            text.inputEl.type = 'number';
+            text.inputEl.min = '5';
+            text.inputEl.max = '60';
+            text.inputEl.step = '1';
+            text.inputEl.addClass('ert-input--xs');
+            text.setValue(String(cacheSettings.openaiInMemoryWindowMinutes));
+            plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
+                if (evt.key === 'Enter') {
+                    evt.preventDefault();
+                    text.inputEl.blur();
+                }
+            });
+            plugin.registerDomEvent(text.inputEl, 'blur', () => {
+                void (async () => {
+                    const parsed = parseInt(text.getValue().trim(), 10);
+                    if (!Number.isFinite(parsed) || parsed < 5 || parsed > 60) {
+                        const current = getCacheWindows();
+                        new Notice('OpenAI in-memory cache window must be between 5 and 60 minutes.');
+                        text.setValue(String(current.openaiInMemoryWindowMinutes));
+                        return;
+                    }
+                    const aiSettings = ensureCanonicalAiSettings();
+                    const windows = getCacheWindows();
+                    windows.openaiInMemoryWindowMinutes = parsed;
+                    aiSettings.cacheWindows = windows;
+                    await persistCanonical();
+                    text.setValue(String(parsed));
+                })();
+            });
+        });
+
+        const syncOpenAiInMemoryUi = (): void => {
+            const retention = getCacheWindows().openaiRetention;
+            const disabled = retention === '24h';
+            if (openAiInMemoryInput) {
+                openAiInMemoryInput.disabled = disabled;
+            }
+            openAiWindowSetting.settingEl.toggleClass('is-disabled', disabled);
+        };
+
+        syncOpenAiInMemoryUi();
+    };
+
     renderCredentialSettings({
         section: anthropicSection,
         provider: 'anthropic',
@@ -2381,6 +2514,8 @@ export function renderAiSection(params: {
         keyPlaceholder: t('settings.ai.credential.placeholderOpenai'),
         docsUrl: 'https://platform.openai.com'
     });
+
+    renderCacheWindowSettings();
 
     params.setProviderSections({ anthropic: anthropicSection, google: googleSection, openai: openaiSection });
 

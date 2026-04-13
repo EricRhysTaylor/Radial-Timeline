@@ -54,6 +54,13 @@ export function validateAiSettings(input?: AiSettingsV1 | null): AiSettingsValid
         return normalized.length ? normalized : defaultsList;
     };
 
+    const defaultCacheWindows = defaults.cacheWindows ?? {
+        anthropicTtl: '5m',
+        googleTtlSeconds: 900,
+        openaiRetention: 'in_memory',
+        openaiInMemoryWindowMinutes: 10
+    };
+
     const value: AiSettingsV1 = {
         ...defaults,
         ...(input || {}),
@@ -86,6 +93,10 @@ export function validateAiSettings(input?: AiSettingsV1 | null): AiSettingsValid
         connections: {
             ...defaults.connections,
             ...(input?.connections || {})
+        },
+        cacheWindows: {
+            ...defaultCacheWindows,
+            ...(((input?.cacheWindows && typeof input.cacheWindows === 'object') ? input.cacheWindows : {}) || {})
         }
     };
 
@@ -243,6 +254,29 @@ export function validateAiSettings(input?: AiSettingsV1 | null): AiSettingsValid
             if (typeof check.heuristicSummary !== 'string' || !check.heuristicSummary.trim()) {
                 check.heuristicSummary = 'No limit info available.';
             }
+        }
+    }
+
+    if (value.cacheWindows) {
+        if (value.cacheWindows.anthropicTtl !== '1h' && value.cacheWindows.anthropicTtl !== '5m') {
+            value.cacheWindows.anthropicTtl = defaults.cacheWindows?.anthropicTtl ?? '5m';
+        }
+        if (typeof value.cacheWindows.googleTtlSeconds !== 'number' || !Number.isFinite(value.cacheWindows.googleTtlSeconds)) {
+            value.cacheWindows.googleTtlSeconds = defaults.cacheWindows?.googleTtlSeconds ?? 900;
+        } else {
+            value.cacheWindows.googleTtlSeconds = Math.max(60, Math.min(86_400, Math.round(value.cacheWindows.googleTtlSeconds)));
+        }
+        if (value.cacheWindows.openaiRetention !== '24h' && value.cacheWindows.openaiRetention !== 'in_memory') {
+            value.cacheWindows.openaiRetention = defaults.cacheWindows?.openaiRetention ?? 'in_memory';
+        }
+        if (typeof value.cacheWindows.openaiInMemoryWindowMinutes !== 'number'
+            || !Number.isFinite(value.cacheWindows.openaiInMemoryWindowMinutes)) {
+            value.cacheWindows.openaiInMemoryWindowMinutes = defaults.cacheWindows?.openaiInMemoryWindowMinutes ?? 10;
+        } else {
+            value.cacheWindows.openaiInMemoryWindowMinutes = Math.max(
+                5,
+                Math.min(60, Math.round(value.cacheWindows.openaiInMemoryWindowMinutes))
+            );
         }
     }
 

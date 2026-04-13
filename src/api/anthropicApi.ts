@@ -7,12 +7,12 @@
 import { requestUrl } from 'obsidian';
 import { warnLegacyAccess } from './legacyAccessGuard';
 import { CACHE_BREAK_DELIMITER } from '../ai/prompts/composeEnvelope';
-import type { EvidenceDocument, TokenCountResult } from '../ai/types';
+import type { AnthropicCacheTtl, EvidenceDocument, TokenCountResult } from '../ai/types';
 
 export type AnthropicTextBlock = {
   type: 'text';
   text: string;
-  cache_control?: { type: 'ephemeral' };
+  cache_control?: { type: 'ephemeral'; ttl?: AnthropicCacheTtl };
 };
 
 export type AnthropicDocumentBlock = {
@@ -20,7 +20,7 @@ export type AnthropicDocumentBlock = {
   source: { type: 'text'; media_type: 'text/plain'; data: string };
   title?: string;
   citations: { enabled: true };
-  cache_control?: { type: 'ephemeral' };
+  cache_control?: { type: 'ephemeral'; ttl?: AnthropicCacheTtl };
 };
 
 export type AnthropicContentBlock = AnthropicTextBlock | AnthropicDocumentBlock;
@@ -40,6 +40,7 @@ export interface BuildAnthropicUserContentInput {
   userPrompt: string;
   citationsEnabled?: boolean;
   evidenceDocuments?: { title: string; content: string }[];
+  cacheTtl?: AnthropicCacheTtl;
 }
 
 interface AnthropicResponseCitation {
@@ -111,6 +112,7 @@ interface BuildAnthropicMessageRequestInput {
   thinkingBudgetTokens?: number;
   citationsEnabled?: boolean;
   evidenceDocuments?: EvidenceDocument[];
+  cacheTtl?: AnthropicCacheTtl;
   jsonSchema?: Record<string, unknown>;
 }
 
@@ -134,7 +136,6 @@ export function buildAnthropicUserContent(input: BuildAnthropicUserContentInput)
 
   const stableText = input.userPrompt.slice(0, delimIndex).trimEnd();
   const volatileText = input.userPrompt.slice(delimIndex + CACHE_BREAK_DELIMITER.length).trimStart();
-
   if (input.citationsEnabled && input.evidenceDocuments?.length) {
     // Per-scene document blocks with citations enabled.
     // Instructions/rules stay in the stable text block; evidence goes in document blocks.
@@ -146,7 +147,8 @@ export function buildAnthropicUserContent(input: BuildAnthropicUserContentInput)
         title: doc.title,
         citations: { enabled: true as const },
         ...(i === input.evidenceDocuments!.length - 1
-          ? { cache_control: { type: 'ephemeral' as const } } : {})
+          ? { cache_control: { type: 'ephemeral' as const, ...(input.cacheTtl ? { ttl: input.cacheTtl } : {}) } }
+          : {})
       })
     );
     return [
@@ -158,7 +160,7 @@ export function buildAnthropicUserContent(input: BuildAnthropicUserContentInput)
 
   // Standard caching path (no citations)
   return [
-    { type: 'text', text: stableText, cache_control: { type: 'ephemeral' } },
+    { type: 'text', text: stableText, cache_control: { type: 'ephemeral' as const, ...(input.cacheTtl ? { ttl: input.cacheTtl } : {}) } },
     { type: 'text', text: volatileText },
   ];
 }
@@ -169,7 +171,8 @@ function buildAnthropicMessageRequestBody(
   const userContent = buildAnthropicUserContent({
     userPrompt: input.userPrompt,
     citationsEnabled: input.citationsEnabled,
-    evidenceDocuments: input.evidenceDocuments
+    evidenceDocuments: input.evidenceDocuments,
+    cacheTtl: input.cacheTtl
   });
 
   const requestBody: AnthropicMessageRequestBody = {
@@ -260,7 +263,8 @@ export async function callAnthropicApi(
   thinkingBudgetTokens?: number,
   citationsEnabled?: boolean,
   evidenceDocuments?: { title: string; content: string }[],
-  jsonSchema?: Record<string, unknown>
+  jsonSchema?: Record<string, unknown>,
+  cacheTtl?: AnthropicCacheTtl
 ): Promise<AnthropicApiResponse> {
   warnLegacyAccess('anthropicApi.callAnthropicApi', internalAdapterAccess);
   const apiUrl = 'https://api.anthropic.com/v1/messages';
@@ -284,7 +288,8 @@ export async function callAnthropicApi(
     thinkingBudgetTokens,
     citationsEnabled,
     evidenceDocuments,
-    jsonSchema
+    jsonSchema,
+    cacheTtl
   });
 
   let responseData: unknown;
@@ -341,7 +346,8 @@ export async function countAnthropicTokens(
   systemPrompt: string | null,
   userPrompt: string,
   citationsEnabled?: boolean,
-  evidenceDocuments?: EvidenceDocument[]
+  evidenceDocuments?: EvidenceDocument[],
+  cacheTtl?: AnthropicCacheTtl
 ): Promise<TokenCountResult> {
   const apiUrl = 'https://api.anthropic.com/v1/messages/count_tokens';
   const apiVersion = '2023-06-01';
@@ -359,7 +365,8 @@ export async function countAnthropicTokens(
     systemPrompt,
     userPrompt,
     citationsEnabled,
-    evidenceDocuments
+    evidenceDocuments,
+    cacheTtl
   });
 
   let responseData: unknown;

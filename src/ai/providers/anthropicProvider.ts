@@ -2,6 +2,8 @@ import type RadialTimelinePlugin from '../../main';
 import { callAnthropicApi } from '../../api/anthropicApi';
 import { classifyProviderError } from '../../api/providerErrors';
 import { getCredential } from '../credentials/credentials';
+import { buildDefaultAiSettings } from '../settings/aiSettings';
+import { validateAiSettings } from '../settings/validateAiSettings';
 import type { AIProvider, Capability, GenerateJsonRequest, GenerateTextRequest, ProviderExecutionResult } from '../types';
 
 const CAPS: Capability[] = ['longContext', 'jsonStrict', 'reasoningStrong'];
@@ -17,6 +19,8 @@ export class AnthropicProvider implements AIProvider {
 
     async generateText(req: GenerateTextRequest): Promise<ProviderExecutionResult> {
         const apiKey = await getCredential(this.plugin, 'anthropic');
+        const aiSettings = validateAiSettings(this.plugin.settings.aiSettings ?? buildDefaultAiSettings()).value;
+        const cacheTtl = aiSettings.cacheWindows?.anthropicTtl;
         const result = await callAnthropicApi(
             apiKey,
             req.modelId,
@@ -28,7 +32,9 @@ export class AnthropicProvider implements AIProvider {
             req.topP,
             req.thinkingBudgetTokens,
             req.citationsEnabled,
-            req.evidenceDocuments
+            req.evidenceDocuments,
+            undefined,
+            cacheTtl
         );
         const classification = classifyProviderError(result);
         return {
@@ -47,6 +53,8 @@ export class AnthropicProvider implements AIProvider {
 
     async generateJson(req: GenerateJsonRequest): Promise<ProviderExecutionResult> {
         const apiKey = await getCredential(this.plugin, 'anthropic');
+        const aiSettings = validateAiSettings(this.plugin.settings.aiSettings ?? buildDefaultAiSettings()).value;
+        const cacheTtl = aiSettings.cacheWindows?.anthropicTtl;
         const result = await callAnthropicApi(
             apiKey,
             req.modelId,
@@ -59,7 +67,8 @@ export class AnthropicProvider implements AIProvider {
             req.thinkingBudgetTokens,
             req.citationsEnabled,
             req.evidenceDocuments,
-            req.jsonSchema
+            req.jsonSchema,
+            cacheTtl
         );
         const classification = classifyProviderError(result);
         return {

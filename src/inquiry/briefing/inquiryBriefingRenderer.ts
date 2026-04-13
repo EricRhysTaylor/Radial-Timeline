@@ -1,4 +1,5 @@
 import { setIcon } from 'obsidian';
+import { tooltip } from '../../utils/tooltip';
 import type { InquiryZone } from '../state';
 
 export type InquiryBriefingSessionItemRefs = {
@@ -44,21 +45,26 @@ export function renderInquiryBriefingSessionItem(args: {
     statusEl.setAttribute('aria-label', `History status: ${args.status}`);
 
     const actionGroup = actionRow.createDiv({ cls: 'ert-inquiry-briefing-actions' });
-    const pendingLabel = args.pendingEditsApplied
-        ? `${args.fieldLabel} updated`
-        : args.pendingEditsEmpty
-            ? `No pending edits`
-            : (args.autoPopulateEnabled ? `Update ${args.fieldLabel}` : `Write to ${args.fieldLabel}`);
+    const isError = args.status === 'error';
+    const pendingLabel = args.blocked
+        ? 'Inquiry is blocked'
+        : args.pendingEditsApplied
+            ? `${args.fieldLabel} already updated`
+            : isError
+                ? 'No pending edits (run failed)'
+                : args.pendingEditsEmpty
+                    ? 'No pending edits'
+                    : (args.autoPopulateEnabled ? `Update ${args.fieldLabel}` : `Write to ${args.fieldLabel}`);
     const updateButton = actionGroup.createEl('button', {
         cls: 'ert-inquiry-briefing-update',
         attr: {
             'aria-label': pendingLabel
         }
     });
-    const isError = args.status === 'error';
     const pendingIcon = args.pendingEditsApplied ? 'check' : (args.pendingEditsEmpty || isError) ? 'minus' : 'plus';
     setIcon(updateButton, pendingIcon);
-    updateButton.disabled = args.blocked || args.pendingEditsEmpty || isError;
+    updateButton.disabled = args.blocked || args.pendingEditsEmpty || isError || args.pendingEditsApplied;
+    tooltip(updateButton, pendingLabel, 'top');
     if (args.pendingEditsApplied) {
         updateButton.classList.add('is-applied');
     }

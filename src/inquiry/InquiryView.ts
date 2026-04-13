@@ -5265,22 +5265,29 @@ export class InquiryView extends ItemView {
         if (isRunning) {
             this.startRunningAnimations();
             this.updateMinimapPressureGauge();
-            if (!this.updateRunningClockInterval) {
-                this.updateRunningClockInterval = window.setInterval(() => this.updateRunningHud(), 1000);
-            }
         } else {
             this.stopRunningAnimations();
-            if (this.updateRunningClockInterval) {
-                window.clearInterval(this.updateRunningClockInterval);
-                this.updateRunningClockInterval = undefined;
-            }
             if (wasRunning) {
                 this.startBackboneFadeOut();
             }
             this.updateMinimapPressureGauge();
         }
+        this.reconcileEngineTimerInterval();
         this.updateRunningHud();
         this.updateNavSessionLabel();
+    }
+
+    private reconcileEngineTimerInterval(hasCacheCountdown?: boolean): void {
+        const cacheActive = typeof hasCacheCountdown === 'boolean'
+            ? hasCacheCountdown
+            : !!this.getActiveCacheWindowExpiry();
+        const shouldRunTimer = this.state.isRunning || cacheActive;
+        if (shouldRunTimer && !this.updateRunningClockInterval) {
+            this.updateRunningClockInterval = window.setInterval(() => this.updateRunningHud(), 1000);
+        } else if (!shouldRunTimer && this.updateRunningClockInterval) {
+            window.clearInterval(this.updateRunningClockInterval);
+            this.updateRunningClockInterval = undefined;
+        }
     }
 
     private resolveGuidanceState(): InquiryGuidanceState {
@@ -5882,6 +5889,10 @@ export class InquiryView extends ItemView {
                 scope: this.state.scope,
                 questionZone: question.zone
             };
+            const cacheWindowExpiresAt = this.resolveCacheWindowExpiry(result, runTrace);
+            if (cacheWindowExpiresAt) {
+                session.cacheWindowExpiresAt = cacheWindowExpiresAt;
+            }
             session.pendingEditsEmpty = this.resolvePendingEditsEmpty(result, activeBookId);
             this.sessionStore.setSession(session);
             const traceForLog = runTrace
@@ -8782,6 +8793,78 @@ export class InquiryView extends ItemView {
         return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
     }
 
+    private formatCacheCountdown(remainingMs: number): string {
+        const totalSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+        if (hours > 0) {
+            return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        }
+        return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    }
+
+    private resolveCacheWindowMs(provider: AIProviderId, aiSettings: AiSettingsV1): number | null {
+        const windows = aiSettings.cacheWindows;
+        if (!windows) return null;
+        if (provider === 'anthropic') {
+            return windows.anthropicTtl === '1h' ? 60 * 60 * 1000 : 5 * 60 * 1000;
+        }
+        if (provider === 'google') {
+            return Math.max(60, windows.googleTtlSeconds) * 1000;
+        }
+        if (provider === 'openai') {
+            return windows.openaiRetention === '24h'
+                ? 24 * 60 * 60 * 1000
+                : Math.max(5, windows.openaiInMemoryWindowMinutes) * 60 * 1000;
+        }
+        return null;
+    }
+
+    private resolveCacheWindowExpiry(result: InquiryResult, trace?: InquiryRunTrace | null): number | null {
+        if (this.isErrorResult(result)) return null;
+        const provider = (result.aiProvider ?? '').trim().toLowerCase() as AIProviderId;
+        if (!provider || provider === 'none' || provider === 'ollama') return null;
+        const aiSettings = this.getCanonicalAiSettings();
+        const ttlMs = this.resolveCacheWindowMs(provider, aiSettings);
+        if (!ttlMs) return null;
+
+        const usage = trace?.usage;
+        const hasAnthropicCacheUsage = !!(
+            (usage?.cacheReadInputTokens && usage.cacheReadInputTokens > 0)
+            || (usage?.cacheCreationInputTokens && usage.cacheCreationInputTokens > 0)
+            || (usage?.cacheCreation5mInputTokens && usage.cacheCreation5mInputTokens > 0)
+            || (usage?.cacheCreation1hInputTokens && usage.cacheCreation1hInputTokens > 0)
+        );
+
+        if (provider === 'anthropic') {
+            if (!hasAnthropicCacheUsage && trace?.cacheReuseState !== 'warm') return null;
+        } else if (provider === 'google') {
+            if (!trace?.cacheStatus && trace?.cacheReuseState !== 'warm') return null;
+        } else if (provider === 'openai') {
+            const inputTokens = trace?.tokenEstimate?.inputTokens ?? result.tokenEstimateInput ?? 0;
+            if (inputTokens < 1024) return null;
+        }
+
+        return Date.now() + ttlMs;
+    }
+
+    private getActiveCacheWindowExpiry(): number | null {
+        if (!this.state.activeSessionId) return null;
+        const session = this.sessionStore.peekSession(this.state.activeSessionId);
+        if (!session?.cacheWindowExpiresAt) return null;
+        if (session.cacheWindowExpiresAt <= Date.now()) return null;
+        return session.cacheWindowExpiresAt;
+    }
+
+    private buildCacheCountdownLabel(): string | null {
+        const expiresAt = this.getActiveCacheWindowExpiry();
+        if (!expiresAt) return null;
+        const remainingMs = expiresAt - Date.now();
+        if (remainingMs <= 0) return null;
+        return `CACHE ${this.formatCacheCountdown(remainingMs)}`;
+    }
+
     private reconcileRunningEstimate(progress: InquiryRunProgressEvent | null): void {
         if (!progress || this.currentRunElapsedMs <= 0) return;
         if (progress.phase === 'finalizing') {
@@ -8816,6 +8899,7 @@ export class InquiryView extends ItemView {
     }
 
     private updateRunningHud(): void {
+        const cacheLabel = this.state.isRunning ? null : this.buildCacheCountdownLabel();
         renderInquiryRunningHud({
             engineTimerLabel: this.engineTimerLabel,
             navSessionLabel: this.navSessionLabel,
@@ -8824,9 +8908,16 @@ export class InquiryView extends ItemView {
             currentRunProgress: this.currentRunProgress,
             formatElapsedRunClock: this.formatElapsedRunClock.bind(this),
             buildRunningStageLabel: this.buildRunningStageLabel.bind(this),
+            engineTimerText: this.state.isRunning
+                ? this.formatElapsedRunClock(this.currentRunElapsedMs)
+                : (cacheLabel ?? ''),
+            engineTimerVisible: this.state.isRunning || !!cacheLabel,
             setTextIfChanged: (el, text) => this.setTextIfChanged(el, text, 'hudTextWrites'),
             toggleClassIfChanged: (el, cls, force) => this.toggleClassIfChanged(el, cls, force, 'hudAttrWrites')
         });
+        if (!this.state.isRunning) {
+            this.reconcileEngineTimerInterval(!!cacheLabel);
+        }
     }
 
     private describeRunEvidenceMode(): string {
