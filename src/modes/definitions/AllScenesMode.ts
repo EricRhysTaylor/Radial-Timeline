@@ -39,7 +39,6 @@ export const NARRATIVE_MODE: ModeDefinition = {
         acronym: 'NARR',
         tooltip: 'Switch to Narrative mode',
         showInToggleButton: true,
-        order: 1
+        order: 2
     }
 };
-

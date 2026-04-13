@@ -913,7 +913,7 @@ export const en: TranslationKeys = {
             },
         },
         progress: {
-            heading: 'Progress & Status',
+            heading: 'Progress and status',
             completionEstimate: {
                 heading: 'Completion Estimate \u2022 {{stage}} Stage',
                 scenesComplete: 'Scenes Complete',

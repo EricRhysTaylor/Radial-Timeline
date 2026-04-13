@@ -47,7 +47,7 @@ export const GOSSAMER_MODE: ModeDefinition = {
         acronym: 'GOSS',
         tooltip: 'Gossamer mode — momentum analysis (requires beat notes)',
         showInToggleButton: true, // Show in mode toggle button
-        order: 3
+        order: 4
     },
     
     // Lifecycle hooks

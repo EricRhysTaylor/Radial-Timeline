@@ -770,7 +770,7 @@ export function renderProgressSection(params: {
     containerEl.classList.add(ERT_CLASSES.STACK);
 
     const progressHeading = new ObsidianSetting(containerEl)
-        .setName('Progress & Status')
+        .setName('Progress and status')
         .setHeading();
     addHeadingIcon(progressHeading, 'activity');
     addWikiLink(progressHeading, 'Settings#progress-status');

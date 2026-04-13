@@ -332,13 +332,30 @@
 
 /* stage header hover effect */
 .stage-header-letter {
-  transition: transform 120ms ease, fill 120ms ease, text-decoration-color 120ms ease;
+  color: var(--text-normal);
+  fill: currentColor;
+  transition: transform 120ms ease, color 120ms ease, text-decoration-color 120ms ease;
   text-decoration: none;
+}
+
+.stage-header-letter[data-stage="zero"] {
+  color: var(--rt-publishStageColors-Zero, var(--rt-color-zero));
+}
+
+.stage-header-letter[data-stage="author"] {
+  color: var(--rt-publishStageColors-Author, var(--rt-color-author));
+}
+
+.stage-header-letter[data-stage="house"] {
+  color: var(--rt-publishStageColors-House, var(--rt-color-house));
+}
+
+.stage-header-letter[data-stage="press"] {
+  color: var(--rt-publishStageColors-Press, var(--rt-color-press));
 }
 
 .stage-header:hover .stage-header-letter {
   transform: scale(1.07);
-  fill: var(--rt-color-empty);
   text-decoration: underline;
 }
 

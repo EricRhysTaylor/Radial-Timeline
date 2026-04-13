@@ -21,8 +21,8 @@ import { CHRONOLOGUE_MODE } from './definitions/ChronologueMode';
  * Registry of all available modes
  */
 const MODE_REGISTRY = new Map<TimelineMode, ModeDefinition>([
-    [TimelineMode.NARRATIVE, NARRATIVE_MODE],
     [TimelineMode.PROGRESS, PROGRESS_MODE],
+    [TimelineMode.NARRATIVE, NARRATIVE_MODE],
     [TimelineMode.CHRONOLOGUE, CHRONOLOGUE_MODE],
     [TimelineMode.GOSSAMER, GOSSAMER_MODE],
 ]);
