@@ -65,6 +65,10 @@ function buildProHeroLogo(parent: HTMLElement): () => void {
     };
 
     requestAnimationFrame(fitLogoToBounds);
+    if (typeof ResizeObserver !== 'undefined') {
+        const observer = new ResizeObserver(() => fitLogoToBounds());
+        observer.observe(svg);
+    }
     return fitLogoToBounds;
 }
 
@@ -134,7 +138,7 @@ export function renderProEntitlementPanel({
     proNote.createSpan({ text: 'Pro workflows appear throughout RT in magenta.' });
     const heroCopy = heroContent.createEl('p', { cls: `${ERT_CLASSES.SECTION_DESC} ert-hero-subtitle ert-pro-hero-body` });
     heroCopy.appendText('Pro Mode extends Radial Timeline with ');
-    heroCopy.createEl('strong', { text: 'advanced workflows for serious authors' });
+    heroCopy.createEl('strong', { text: 'advanced workflows for authors who want more' });
     heroCopy.appendText('. Evaluate your story with deeper INQUIRY+ questions, track structure and momentum across scenes, and generate polished manuscripts with PANDOC PDF EXPORTS and custom LaTeX templates. Share progress through APR CAMPAIGNS, and explore WEBSITE EXCLUSIVES including ');
     heroCopy.createSpan({ cls: 'ert-mono-inline', text: 'Pride & Prejudice' });
     heroCopy.appendText(' and ');

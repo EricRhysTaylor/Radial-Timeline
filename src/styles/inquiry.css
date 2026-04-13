@@ -3571,7 +3571,8 @@ body.rt-modal-open .ert-inquiry-svg {
   color: var(--ert-inquiry-row-icon);
 }
 
-:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-prompt-row--signature {
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-settings-root .ert-inquiry-prompt-row.ert-reorder-row--pro,
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-settings-root .ert-inquiry-prompt-row--signature {
   --ert-inquiry-row-pro-accent: var(--rt-pro-color, #d946ef);
   --ert-inquiry-row-bg:
     radial-gradient(circle at 12% 18%, color-mix(in srgb, var(--ert-inquiry-row-pro-accent) 16%, transparent) 0%, transparent 52%),
@@ -3588,6 +3589,9 @@ body.rt-modal-open .ert-inquiry-svg {
   --ert-inquiry-row-chip-bg: color-mix(in srgb, var(--background-primary) 70%, var(--ert-inquiry-row-pro-accent) 30%);
   --ert-inquiry-row-chip-border: color-mix(in srgb, var(--ert-inquiry-row-pro-accent) 28%, transparent);
   --ert-inquiry-row-chip-text: var(--ert-inquiry-row-icon);
+  background: var(--ert-inquiry-row-bg);
+  border-color: var(--ert-inquiry-row-border);
+  color: var(--ert-inquiry-row-text);
   box-shadow: none;
 }
 
