@@ -329,7 +329,6 @@ export function renderInquirySection(params: SectionParams): void {
         text: t('settings.inquiry.booksForInquiry.desc')
     });
     const manageBooksBtn = booksForInquiryHeader.createEl('button', {
-        cls: `${ERT_CLASSES.PILL_BTN} ert-preset-pill`,
         text: t('settings.inquiry.booksForInquiry.buttonText'),
         attr: { type: 'button', 'aria-label': t('settings.inquiry.booksForInquiry.ariaLabel') }
     });
@@ -396,8 +395,10 @@ export function renderInquirySection(params: SectionParams): void {
         resolveRoots: () => string[],
         emptyNotice?: string
     ) => {
-        const btn = scanRootActions.createEl('button', { cls: `${ERT_CLASSES.PILL_BTN} ert-preset-pill` });
-        btn.createSpan({ cls: ERT_CLASSES.PILL_BTN_LABEL, text: label });
+        const btn = scanRootActions.createEl('button', {
+            text: label,
+            attr: { type: 'button' }
+        });
         const syncButtonState = () => {
             const roots = normalizeScanRootPatterns(resolveRoots());
             const hasRoots = roots.length > 0;
@@ -405,9 +406,8 @@ export function renderInquirySection(params: SectionParams): void {
             const rootSet = new Set(selectedRoots);
             const explicitlyActive = hasRoots && roots.every(root => rootSet.has(root));
             const isActive = explicitlyActive || (hasRoots && isScanPresetCovered(roots, selectedRoots));
-            btn.classList.toggle(ERT_CLASSES.IS_ACTIVE, isActive);
+            btn.classList.toggle('mod-cta', isActive);
             btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
-            btn.classList.toggle(ERT_CLASSES.PILL_BTN_USED, !hasRoots);
             btn.disabled = !hasRoots;
         };
         plugin.registerDomEvent(btn, 'click', (evt) => {
@@ -485,14 +485,16 @@ export function renderInquirySection(params: SectionParams): void {
         const activePreset = getEffectivePresetSelection();
         presetButtons.forEach((button, key) => {
             const isActive = activePreset === key;
-            button.classList.toggle(ERT_CLASSES.IS_ACTIVE, isActive);
+            button.classList.toggle('mod-cta', isActive);
             button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
         });
     };
 
     const addPresetButton = (preset: InquirySourcesPreset, label: string) => {
-        const btn = presetControls.createEl('button', { cls: `${ERT_CLASSES.PILL_BTN} ert-preset-pill` });
-        btn.createSpan({ cls: ERT_CLASSES.PILL_BTN_LABEL, text: label });
+        const btn = presetControls.createEl('button', {
+            text: label,
+            attr: { type: 'button' }
+        });
         plugin.registerDomEvent(btn, 'click', (evt) => {
             evt.preventDefault();
             applyPreset(preset);

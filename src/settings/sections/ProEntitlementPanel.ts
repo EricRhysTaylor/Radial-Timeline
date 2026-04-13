@@ -11,6 +11,48 @@ interface ProEntitlementPanelParams {
     onEntitlementChanged?: () => void;
 }
 
+const RT_LOGO_PATHS = [
+    'M604.11,1274.16l-131.83.12,36.57-162.23c12.42-55.12,57.45-94.1,114.42-94.09h122.98c10.22.01,20-1.99,28.72-6.65,14.3-7.63,20.82-22.45,19.24-38.15-2.34-23.35-20.29-34.12-42.51-35.41l-201.37-.06,29.2-125.03,185.04.12c69.83,3.45,127.94,44.91,151.99,110.3,18.56,53.7,7.91,111.98-27.6,156.25-17.24,21.5-39.41,37.45-64.95,49.11l71.96,144.34c.9,1.81,1.8,2.59-1.12,1.42l-142.07.04-64.96-128.49-53.36-.13-30.34,128.56Z',
+    'M937.3,1274.25l17.69-77.78,60.02-258.56-45.47-.23c-9.55-54.08-42.3-98.13-90.97-124.96l425-.04-28.48,125.02-129.43.05-78.44,336.43-129.93.06Z'
+] as const;
+
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+function buildProHeroLogo(parent: HTMLElement): void {
+    const wrap = parent.createDiv({ cls: 'ert-pro-hero-logoRow' });
+    const svg = document.createElementNS(SVG_NS, 'svg');
+    svg.setAttr('class', 'ert-pro-hero-logo');
+    svg.setAttr('viewBox', '0 0 2048 2048');
+    svg.setAttr('aria-hidden', 'true');
+
+    const defs = document.createElementNS(SVG_NS, 'defs');
+    const gradient = document.createElementNS(SVG_NS, 'linearGradient');
+    gradient.setAttr('id', 'ert-pro-hero-logo-gradient');
+    gradient.setAttr('x1', '0%');
+    gradient.setAttr('y1', '0%');
+    gradient.setAttr('x2', '100%');
+    gradient.setAttr('y2', '100%');
+
+    const start = document.createElementNS(SVG_NS, 'stop');
+    start.setAttr('offset', '0%');
+    start.setAttr('stop-color', '#d946ef');
+    const end = document.createElementNS(SVG_NS, 'stop');
+    end.setAttr('offset', '100%');
+    end.setAttr('stop-color', '#8b5cf6');
+    gradient.append(start, end);
+    defs.append(gradient);
+    svg.append(defs);
+
+    RT_LOGO_PATHS.forEach((pathData) => {
+        const path = document.createElementNS(SVG_NS, 'path');
+        path.setAttr('d', pathData);
+        path.setAttr('fill', 'url(#ert-pro-hero-logo-gradient)');
+        svg.append(path);
+    });
+
+    wrap.appendChild(svg);
+}
+
 export function renderProEntitlementPanel({
     app: _app,
     plugin,
@@ -83,6 +125,7 @@ export function renderProEntitlementPanel({
     expanded.id = expandedId;
     collapsedButton.setAttr('aria-controls', expandedId);
     const heroContent = expanded.createDiv({ cls: `${ERT_CLASSES.STACK} ert-pro-hero-content` });
+    buildProHeroLogo(heroContent);
     const heroCopy = heroContent.createEl('p', { cls: `${ERT_CLASSES.SECTION_DESC} ert-hero-subtitle ert-pro-hero-body` });
     heroCopy.appendText('Pro Mode extends Radial Timeline with ');
     heroCopy.createEl('strong', { text: 'advanced workflows for serious authors' });
