@@ -564,6 +564,8 @@
 .ert-ui.ert-scope--settings .ert-pro-hero-watermark svg {
   width: 100%;
   height: 100%;
+  transform: scale(1.45);
+  transform-origin: center;
 }
 
 .ert-ui.ert-scope--settings .ert-pro-hero-badgeRow {
