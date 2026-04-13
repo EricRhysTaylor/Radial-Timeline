@@ -1528,24 +1528,6 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             });
         });
 
-        // Pro upgrade teaser for non-Pro users
-        const proTeaser = automationCard.createDiv({ cls: `ert-apr-pro-teaser ${ERT_CLASSES.SKIN_PRO}` });
-        const headerRow = proTeaser.createDiv({ cls: 'ert-apr-pro-teaser-header' });
-        const teaserIcon = headerRow.createSpan({ cls: 'ert-apr-pro-teaser-icon' });
-        setIcon(teaserIcon, 'signature');
-        const teaserHeading = headerRow.createDiv({ cls: 'ert-apr-pro-teaser-heading' });
-        teaserHeading.createEl('strong', { text: t('settings.authorProgress.publishing.proTeaser.wantMore') });
-        const teaserLabel = headerRow.createDiv({ cls: 'ert-apr-pro-teaser-header-label', text: t('settings.authorProgress.publishing.proTeaser.enhanceWorkflow') });
-        const teaserDescription = proTeaser.createDiv({ cls: 'ert-apr-pro-teaser-description' });
-        teaserDescription.setText(
-            t('settings.authorProgress.publishing.proTeaser.desc')
-        );
-        const teaserLink = proTeaser.createEl('a', {
-            text: t('settings.authorProgress.publishing.proTeaser.upgradeLink'),
-            href: 'https://radialtimeline.com/pro',
-            cls: 'ert-apr-pro-teaser-link',
-            attr: { target: '_blank', rel: 'noopener' }
-        });
     } // End of non-Pro publishing section
 
     // ─────────────────────────────────────────────────────────────────────────

@@ -19,6 +19,7 @@ import { renderPlanetaryTimeSection } from './sections/PlanetaryTimeSection';
 
 import { renderRuntimeSection } from './sections/RuntimeSection';
 import { renderProEntitlementPanel } from './sections/ProEntitlementPanel';
+import { getProEntitlement } from './proEntitlement';
 import { renderProFeaturePanels } from './sections/ProFeaturePanels';
 import { FolderSuggest } from './FolderSuggest';
 import { ERT_CLASSES, ERT_DATA } from '../ui/classes';
@@ -51,17 +52,17 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
     private _ollamaBaseUrlInput?: HTMLInputElement;
     private _ollamaModelIdInput?: HTMLInputElement;
     private _aiRelatedElements: HTMLElement[] = [];
-    private _activeTab: 'core' | 'social' | 'inquiry' | 'publishing' | 'ai' | 'advanced' = 'core';
+    private _activeTab: 'core' | 'social' | 'inquiry' | 'publishing' | 'ai' | 'advanced' | 'pro' = 'core';
     private _forceExpandCoreCompletionPreview = false;
     private _pendingSectionRevealTimer: number | null = null;
 
     /** Public method to set active tab before/after opening settings */
-    public setActiveTab(tab: 'core' | 'social' | 'inquiry' | 'publishing' | 'ai' | 'advanced'): void {
+    public setActiveTab(tab: 'core' | 'social' | 'inquiry' | 'publishing' | 'ai' | 'advanced' | 'pro'): void {
         this._activeTab = tab;
     }
 
     public revealSettingsSection(
-        tab: 'core' | 'social' | 'inquiry' | 'publishing' | 'ai' | 'advanced',
+        tab: 'core' | 'social' | 'inquiry' | 'publishing' | 'ai' | 'advanced' | 'pro',
         sectionKey: string
     ): void {
         this._activeTab = tab;
@@ -779,6 +780,10 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const advancedIcon = advancedTab.createSpan({ cls: 'ert-settings-tab-icon' });
         setIcon(advancedIcon, 'pyramid');
         advancedTab.createSpan({ text: 'Advanced', cls: 'ert-settings-tab-label' });
+        const proTab = tabBar.createDiv({ cls: 'ert-settings-tab ert-settings-tab-pro' });
+        const proIcon = proTab.createSpan({ cls: 'ert-settings-tab-icon' });
+        setIcon(proIcon, 'signature');
+        proTab.createSpan({ text: 'PRO', cls: 'ert-settings-tab-label' });
 
         const coreContent = containerEl.createDiv({ cls: 'ert-settings-tab-content ert-settings-core-content ert-scope--settings' });
         const socialContent = containerEl.createDiv({
@@ -790,6 +795,9 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         });
         const aiContent = containerEl.createDiv({ cls: 'ert-settings-tab-content ert-settings-ai-content ert-scope--settings' });
         const advancedContent = containerEl.createDiv({ cls: 'ert-settings-tab-content ert-settings-advanced-content ert-scope--settings' });
+        const proContent = containerEl.createDiv({
+            cls: `ert-settings-tab-content ert-settings-pro-content ${ERT_CLASSES.ROOT} ert-scope--settings ${ERT_CLASSES.SKIN_PRO}`
+        });
 
         const updateTabState = () => {
             coreTab.toggleClass('ert-settings-tab-active', this._activeTab === 'core');
@@ -798,12 +806,14 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             publishingTab.toggleClass('ert-settings-tab-active', this._activeTab === 'publishing');
             aiTab.toggleClass('ert-settings-tab-active', this._activeTab === 'ai');
             advancedTab.toggleClass('ert-settings-tab-active', this._activeTab === 'advanced');
+            proTab.toggleClass('ert-settings-tab-active', this._activeTab === 'pro');
             coreContent.toggleClass('ert-hidden', this._activeTab !== 'core');
             socialContent.toggleClass('ert-hidden', this._activeTab !== 'social');
             inquiryContent.toggleClass('ert-hidden', this._activeTab !== 'inquiry');
             publishingContent.toggleClass('ert-hidden', this._activeTab !== 'publishing');
             aiContent.toggleClass('ert-hidden', this._activeTab !== 'ai');
             advancedContent.toggleClass('ert-hidden', this._activeTab !== 'advanced');
+            proContent.toggleClass('ert-hidden', this._activeTab !== 'pro');
         };
 
         this.plugin.registerDomEvent(coreTab, 'click', () => { this._activeTab = 'core'; updateTabState(); });
@@ -812,7 +822,12 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         this.plugin.registerDomEvent(publishingTab, 'click', () => { this._activeTab = 'publishing'; updateTabState(); });
         this.plugin.registerDomEvent(aiTab, 'click', () => { this._activeTab = 'ai'; updateTabState(); });
         this.plugin.registerDomEvent(advancedTab, 'click', () => { this._activeTab = 'advanced'; updateTabState(); });
+        this.plugin.registerDomEvent(proTab, 'click', () => { this._activeTab = 'pro'; updateTabState(); });
         updateTabState();
+
+        const proEntitlement = getProEntitlement(this.plugin);
+        proTab.toggleClass('is-pro-active', proEntitlement.isProActive);
+        proTab.toggleClass('is-pro-disabled', !proEntitlement.isProActive);
 
         const publishingStack = publishingContent.createDiv({ cls: ERT_CLASSES.STACK });
         this.renderPublishingHero(publishingStack);
@@ -827,19 +842,20 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const advancedStack = advancedContent.createDiv({ cls: ERT_CLASSES.STACK });
         const advancedIntro = advancedStack.createDiv({ cls: ERT_CLASSES.STACK });
         this.renderAdvancedHero(advancedIntro);
-        const advancedEntitlement = advancedStack.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.SKIN_PRO}` });
-        renderProEntitlementPanel({
-            app: this.app,
-            plugin: this.plugin,
-            containerEl: advancedEntitlement,
-            onEntitlementChanged: refreshProDependentSections
-        });
         const advancedConfigurationSection = advancedStack.createDiv({ attr: { [ERT_DATA.SECTION]: 'configuration' } });
         renderConfigurationSection({
             app: this.app,
             plugin: this.plugin,
             containerEl: advancedConfigurationSection,
             attachFolderSuggest: (t) => this.attachFolderSuggest(t)
+        });
+
+        const proStack = proContent.createDiv({ cls: ERT_CLASSES.STACK });
+        renderProEntitlementPanel({
+            app: this.app,
+            plugin: this.plugin,
+            containerEl: proStack,
+            onEntitlementChanged: refreshProDependentSections
         });
 
         // Social Tab Content - Social Section

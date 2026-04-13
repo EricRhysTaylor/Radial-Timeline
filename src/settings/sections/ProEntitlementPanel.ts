@@ -18,11 +18,12 @@ const RT_LOGO_PATHS = [
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
-function buildProHeroLogo(parent: HTMLElement): void {
+function buildProHeroLogo(parent: HTMLElement): () => void {
     const wrap = parent.createDiv({ cls: 'ert-pro-hero-logoRow' });
     const svg = document.createElementNS(SVG_NS, 'svg');
     svg.setAttr('class', 'ert-pro-hero-logo');
     svg.setAttr('viewBox', '0 0 2048 2048');
+    svg.setAttr('preserveAspectRatio', 'xMidYMid meet');
     svg.setAttr('aria-hidden', 'true');
 
     const defs = document.createElementNS(SVG_NS, 'defs');
@@ -51,6 +52,20 @@ function buildProHeroLogo(parent: HTMLElement): void {
     });
 
     wrap.appendChild(svg);
+
+    const fitLogoToBounds = (): void => {
+        try {
+            const box = svg.getBBox();
+            if (!box.width || !box.height) return;
+            const pad = Math.min(box.width, box.height) * 0.02;
+            svg.setAttr('viewBox', `${box.x - pad} ${box.y - pad} ${box.width + pad * 2} ${box.height + pad * 2}`);
+        } catch {
+            // Ignore sizing failures; falls back to default viewBox.
+        }
+    };
+
+    requestAnimationFrame(fitLogoToBounds);
+    return fitLogoToBounds;
 }
 
 export function renderProEntitlementPanel({
@@ -99,8 +114,7 @@ export function renderProEntitlementPanel({
     const collapsedWatermark = collapsed.createSpan({ cls: 'ert-pro-hero-watermark', attr: { 'aria-hidden': 'true' } });
     setIcon(collapsedWatermark, 'signature');
     const collapsedButton = collapsed.createDiv({
-        cls: 'ert-pro-mode__collapsed-button',
-        attr: { role: 'button', tabindex: '0', 'aria-expanded': 'false' }
+        cls: 'ert-pro-mode__collapsed-button'
     });
     const collapsedRow = collapsedButton.createDiv({ cls: 'ert-pro-mode__collapsed-row' });
     const collapsedLeft = collapsedRow.createDiv({ cls: 'ert-pro-mode__collapsed-left' });
@@ -111,21 +125,13 @@ export function renderProEntitlementPanel({
     setIcon(collapsedPillIcon, 'signature');
     collapsedPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'PRO' });
     const collapsedTitle = collapsedLeft.createDiv({ cls: 'ert-pro-mode__collapsed-title' });
-    const collapsedChevron = collapsedTitle.createSpan({ cls: 'ert-pro-mode__chevron' });
-    setIcon(collapsedChevron, 'chevron-right');
     collapsedTitle.createSpan({ cls: 'ert-pro-mode__title-text', text: 'Pro Signature (Early Access)' });
     const collapsedToggle = createToggle(collapsedRow, 'Toggle Pro Mode');
-    collapsedButton.createDiv({
-        cls: 'ert-pro-mode__collapsed-subtext',
-        text: 'Pro workflows appear throughout RT in magenta.'
-    });
 
-    const expanded = collapsed.createDiv({ cls: 'ert-pro-mode__expanded' });
-    const expandedId = 'ert-pro-mode-expanded';
-    expanded.id = expandedId;
-    collapsedButton.setAttr('aria-controls', expandedId);
-    const heroContent = expanded.createDiv({ cls: `${ERT_CLASSES.STACK} ert-pro-hero-content` });
+    const heroContent = collapsed.createDiv({ cls: `${ERT_CLASSES.STACK} ert-pro-hero-content` });
     buildProHeroLogo(heroContent);
+    const proNote = heroContent.createDiv({ cls: 'ert-pro-hero-notePill' });
+    proNote.createSpan({ text: 'Pro workflows appear throughout RT in magenta.' });
     const heroCopy = heroContent.createEl('p', { cls: `${ERT_CLASSES.SECTION_DESC} ert-hero-subtitle ert-pro-hero-body` });
     heroCopy.appendText('Pro Mode extends Radial Timeline with ');
     heroCopy.createEl('strong', { text: 'advanced workflows for serious authors' });
@@ -151,31 +157,14 @@ export function renderProEntitlementPanel({
     });
 
 
-    const toggleExpanded = (expanded: boolean): void => {
-        panel.toggleClass('is-expanded', expanded);
-        collapsedButton.setAttr('aria-expanded', `${expanded}`);
-        setIcon(collapsedChevron, expanded ? 'chevron-down' : 'chevron-right');
-    };
-
     const handleToggleChange = async (value: boolean): Promise<void> => {
         await setProEnabled(value);
     };
-
-    plugin.registerDomEvent(collapsedButton, 'click', () => {
-        toggleExpanded(!panel.hasClass('is-expanded'));
-    });
-    plugin.registerDomEvent(collapsedButton, 'keydown', (evt: KeyboardEvent) => {
-        if (evt.key === 'Enter' || evt.key === ' ') {
-            evt.preventDefault();
-            toggleExpanded(!panel.hasClass('is-expanded'));
-        }
-    });
 
     plugin.registerDomEvent(collapsedToggle, 'change', async () => {
         await handleToggleChange(collapsedToggle.checked);
     });
     applyProState(entitlement.isProEnabled);
-    toggleExpanded(false);
 
     return panel;
 }
