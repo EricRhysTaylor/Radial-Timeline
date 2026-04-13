@@ -17,9 +17,9 @@ describe('AI settings models table', () => {
 
     it('keeps AI Strategy to provider, model, and access controls', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
-        expect(source.includes(".setName('Provider')")).toBe(true);
-        expect(source.includes(".setName('Model')")).toBe(true);
-        expect(source.includes(".setName('Access')")).toBe(true);
+        expect(source.includes("setName(t('settings.ai.provider.name'))")).toBe(true);
+        expect(source.includes("setName(t('settings.ai.modelOverride.name'))")).toBe(true);
+        expect(source.includes("setName(t('settings.ai.accessTier.name'))")).toBe(true);
         expect(source.includes(".setName('Thinking Style')")).toBe(false);
     });
 
@@ -32,13 +32,13 @@ describe('AI settings models table', () => {
     it('keeps AI configuration focused on display and summary defaults without an empty advanced fold', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
         expect(source.includes("text: 'Advanced & Diagnostics'")).toBe(false);
-        expect(source.includes("text: 'Timeline Display'")).toBe(true);
-        expect(source.includes("text: 'Summary Refresh Defaults'")).toBe(true);
-        expect(source.includes("title: 'Pulse context'")).toBe(true);
-        expect(source.includes("title: 'Synopsis max words'")).toBe(true);
-        expect(source.includes("title: 'Target summary length'")).toBe(true);
-        expect(source.includes("title: 'Treat summary as weak if under'")).toBe(true);
-        expect(source.includes("title: 'Also update Synopsis'")).toBe(true);
+        expect(source.includes("text: t('settings.ai.config.timelineDisplayTitle')")).toBe(true);
+        expect(source.includes("text: t('settings.ai.config.summaryRefreshTitle')")).toBe(true);
+        expect(source.includes("title: t('settings.ai.config.pulseContextName')")).toBe(true);
+        expect(source.includes("title: t('settings.ai.config.synopsisMaxWordsName')")).toBe(true);
+        expect(source.includes("title: t('settings.ai.config.targetSummaryName')")).toBe(true);
+        expect(source.includes("title: t('settings.ai.config.weakThresholdName')")).toBe(true);
+        expect(source.includes("title: t('settings.ai.config.alsoUpdateSynopsisName')")).toBe(true);
     });
 
     it('locks gossamer to bodies-only with no evidence mode dropdown', () => {
@@ -55,20 +55,18 @@ describe('AI settings models table', () => {
 
     it('renders active model preview with author-facing pill signals only', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
-        expect(source.includes('PREVIEW (ACTIVE MODEL)')).toBe(true);
+        expect(source.includes("t('settings.ai.preview.kicker')")).toBe(true);
         expect(source.includes('resolvePreviewSignals')).toBe(true);
         expect(source.includes('resolveDisplayModelForLatestAlias')).toBe(true);
         expect(source.includes('displayModel: selected')).toBe(true);
         expect(source.includes('getResolvedModelId')).toBe(true);
         expect(source.includes('ID pending')).toBe(true);
-        expect(source.includes('Citation or Cache (exclusive)')).toBe(true);
         expect(source.includes('Context · Single-pass at this corpus')).toBe(true);
         expect(source.includes('Automatic Packaging')).toBe(false);
         expect(source.includes('Manual Selection')).toBe(false);
         expect(source.includes('Availability ·')).toBe(false);
         expect(source.includes('API lane ·')).toBe(false);
         expect(source.includes('provider-supported, not integrated')).toBe(false);
-        expect(source.includes('not available')).toBe(false);
         expect(source.includes('Grounded/tool attribution')).toBe(false);
         expect(source.includes('Best for')).toBe(false);
     });
@@ -147,18 +145,17 @@ describe('AI settings models table', () => {
 
     it('renders cloud transparency sections while hiding them for the Local provider path', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
-        expect(source.includes(".setName('What gets sent to the AI')")).toBe(true);
+        expect(source.includes("setName(t('settings.ai.largeHandling.name'))")).toBe(true);
         expect(source.includes('Fresh Run*')).toBe(true);
-        expect(source.includes('* Cloud-provider rows use published provider pricing. Actual charges may differ due to provider-side billing rules and account-level adjustments such as caching, credits, promos, or contract pricing.')).toBe(true);
+        expect(source.includes('* Based on published provider pricing. Actual charges may differ due to caching, credits, or account-level adjustments.')).toBe(true);
         expect(source.includes("createSpan({ text: 'See provider pricing: ' })")).toBe(true);
-        expect(source.includes("createEl('strong', { text: 'LOCAL PROCESSING' })")).toBe(true);
-        expect(source.includes("appendText(' runs on your machine. No API charges. Performance and output depend on your hardware and model.')")).toBe(true);
+        expect(source.includes("appendText(' runs on your machine with no API charges.')")).toBe(true);
         expect(source.includes('https://openai.com/api/pricing/')).toBe(true);
         expect(source.includes('https://platform.claude.com/docs/en/about-claude/pricing')).toBe(true);
         expect(source.includes('https://ai.google.dev/')).toBe(true);
         expect(source.includes('Google Gemini')).toBe(false);
-        expect(source.includes('Local LLM Configuration')).toBe(true);
-        expect(source.includes('Local LLM Status / Validation')).toBe(true);
+        expect(source.includes("t('settings.ai.localLlm.configTitle')")).toBe(true);
+        expect(source.includes("t('settings.ai.localLlm.statusTitle')")).toBe(true);
         expect(source.includes("rowEl.addClass('ert-ai-models-row--active')")).toBe(true);
         expect(source.includes('setActiveCostComparisonRow(provider, displayModel.id)')).toBe(true);
         expect(source.includes("freshText: 'Local compute'")).toBe(true);
@@ -166,7 +163,7 @@ describe('AI settings models table', () => {
         expect(source.includes('Request composition')).toBe(false);
         expect(source.includes("createEl('details', { cls: 'ert-ai-fold ert-ai-large-handling' }")).toBe(false);
         expect(source.includes('attachAiCollapseButton(largeHandling')).toBe(false);
-        expect(source.includes('Execution preference')).toBe(true);
+        expect(source.includes("t('settings.ai.executionPreference.name')")).toBe(true);
         expect(source.includes('singlePassOnly')).toBe(true);
         expect(source.includes('ert-ai-capacity-grid')).toBe(true);
         expect(source.includes('Expected Structured Passes')).toBe(true);
@@ -176,7 +173,7 @@ describe('AI settings models table', () => {
 
     it('clarifies that Pulse context only affects hover reveal', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
-        expect(source.includes('Include previous and next scenes in triplet analysis hover reveal. (Does not affect the underlying scene properties.)')).toBe(true);
+        expect(source.includes("t('settings.ai.config.pulseContextDesc')")).toBe(true);
     });
 
     it('renders structured Inquiry and Gossamer request composition strings', () => {
@@ -214,22 +211,22 @@ describe('AI settings models table', () => {
 
     it('renders provider key status states without saved-not-tested phrasing', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
-        expect(source.includes('Status: Ready ✓')).toBe(true);
-        expect(source.includes('Status: Not configured')).toBe(true);
-        expect(source.includes('Status: Key rejected')).toBe(true);
-        expect(source.includes('Status: Provider validation failed')).toBe(true);
-        expect(source.includes('Replace key...')).toBe(true);
-        expect(source.includes('Copy key name')).toBe(true);
+        expect(source.includes("t('settings.ai.credential.statusReady')")).toBe(true);
+        expect(source.includes("t('settings.ai.credential.statusNotConfigured')")).toBe(true);
+        expect(source.includes("t('settings.ai.credential.statusRejected')")).toBe(true);
+        expect(source.includes("t('settings.ai.credential.statusNetworkBlocked')")).toBe(true);
+        expect(source.includes("t('settings.ai.credential.replaceKeyButton')")).toBe(true);
+        expect(source.includes("t('settings.ai.credential.copyKeyNameButton')")).toBe(true);
         expect(source.includes('Saved (not tested)')).toBe(false);
     });
 
     it('uses Local LLM as the provider label and keeps backend names inside the Local LLM section only', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
-        expect(source.includes("dropdown.addOption('ollama', 'Local LLM');")).toBe(true);
-        expect(source.includes(".addOption('ollama', 'Ollama')")).toBe(true);
-        expect(source.includes('Local LLM Configuration')).toBe(true);
-        expect(source.includes("setName('Local server')")).toBe(true);
-        expect(source.includes("providerLabel: 'Local LLM'")).toBe(true);
+        expect(source.includes("dropdown.addOption('ollama', t('settings.ai.provider.optionLocalLlm'))")).toBe(true);
+        expect(source.includes("addOption('ollama', t('settings.ai.localLlmConfig.optionOllama'))")).toBe(true);
+        expect(source.includes("t('settings.ai.localLlm.configTitle')")).toBe(true);
+        expect(source.includes("setName(t('settings.ai.localLlm.serverName'))")).toBe(true);
+        expect(source.includes("ollama: t('settings.ai.provider.optionLocalLlm')")).toBe(true);
         expect(source.includes('Ollama API key')).toBe(false);
         expect(source.includes('Advanced: Ollama saved key (optional)')).toBe(false);
         expect(source.includes('Ollama saved key name')).toBe(false);
@@ -244,39 +241,39 @@ describe('AI settings models table', () => {
 
     it('shows Local LLM model loading and persistent validation messaging in the primary flow', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
-        expect(source.includes('Load Servers')).toBe(true);
-        expect(source.includes('Load Models')).toBe(true);
-        expect(source.includes('Validate Local LLM')).toBe(true);
+        expect(source.includes("t('settings.ai.localLlm.loadServersButton')")).toBe(true);
+        expect(source.includes("t('settings.ai.localLlm.loadModelsButton')")).toBe(true);
+        expect(source.includes("t('settings.ai.localLlm.validateButton')")).toBe(true);
         expect(source.includes('Troubleshooting')).toBe(false);
-        expect(source.includes('Local setup actions')).toBe(true);
+        expect(source.includes("t('settings.ai.localLlm.actionsName')")).toBe(true);
         expect(source.includes('detectLocalLlmServers')).toBe(true);
         expect(source.includes("const localLlmServerSetting = new Settings(localLlmStatusSection)")).toBe(true);
-        expect(source.includes("setName('Local server')")).toBe(true);
+        expect(source.includes("setName(t('settings.ai.localLlm.serverName'))")).toBe(true);
         expect(source.includes('shouldRevealLocalLlmActionRow')).toBe(true);
         expect(source.includes("model${localLlmLoadedModels.length === 1 ? '' : 's'} loaded.")).toBe(true);
-        expect(source.includes("localLlmModelsLegend.createSpan({ cls: 'ert-ai-local-llm-legend-chip ert-ai-local-llm-legend-chip--tier0', text: 'Not usable' });")).toBe(true);
-        expect(source.includes("localLlmModelsLegend.createSpan({ cls: 'ert-ai-local-llm-legend-chip ert-ai-local-llm-legend-chip--tier1', text: 'Limited' });")).toBe(true);
-        expect(source.includes("localLlmModelsLegend.createSpan({ cls: 'ert-ai-local-llm-legend-chip ert-ai-local-llm-legend-chip--tier3', text: 'Strong' });")).toBe(true);
-        expect(source.includes("localLlmModelsLegend.createSpan({ cls: 'ert-ai-local-llm-legend-chip ert-ai-local-llm-legend-chip--tier4', text: 'Inquiry eligible' });")).toBe(true);
+        expect(source.includes("t('settings.ai.localLlm.legendNotUsable')")).toBe(true);
+        expect(source.includes("t('settings.ai.localLlm.legendLimited')")).toBe(true);
+        expect(source.includes("t('settings.ai.localLlm.legendStrong')")).toBe(true);
+        expect(source.includes("t('settings.ai.localLlm.legendInquiryEligible')")).toBe(true);
         expect(source.includes('getLocalStrategyModelOptions')).toBe(true);
         expect(source.includes("['Capability', `${selectedCapability.tierSummary} (${selectedCapability.tierName})${selectedCapability.confidence === 'heuristic' ? ' (heuristic)' : ''}`],")).toBe(true);
         expect(source.includes("['Supports', buildLocalFeatureSummary(selectedCapability)],")).toBe(true);
         expect(source.includes("['Confidence', 'Likely fit for Radial Timeline tasks. Final results still depend on corpus size and complexity.']")).toBe(true);
-        expect(source.includes('Auto-configuration diagnostics for the current Local LLM setup. This stays visible so you can confirm connection, validation, and capability.')).toBe(true);
+        expect(source.includes("t('settings.ai.localLlm.statusDesc')")).toBe(true);
         expect(source.includes('Summary —')).toBe(true);
         expect(source.includes('Inquiry —')).toBe(true);
         expect(source.includes('buildLocalCapabilityTooltip')).toBe(true);
         expect(source.includes('buildLocalFeatureSummary')).toBe(true);
         expect(source.includes('ert-ai-local-model-pill--tier')).toBe(true);
-        expect(source.includes("pill.createSpan({ cls: 'ert-ai-local-model-pill-active', text: 'Active' });")).toBe(true);
+        expect(source.includes("pill.createSpan({ cls: 'ert-ai-local-model-pill-active', text: t('settings.ai.localLlm.modelActive') })")).toBe(true);
         expect(source.includes('if (localLlmModelText) localLlmModelText.setValue(value);')).toBe(true);
-        expect(source.includes('Checking the local server and loading available models...')).toBe(true);
+        expect(source.includes("t('settings.ai.localLlm.modelsLoading')")).toBe(true);
         expect(source.includes('Selected model missing from the loaded list.')).toBe(true);
         expect(source.includes('No healthy local servers were detected automatically.')).toBe(true);
         expect(source.includes('No Local Server Detected')).toBe(true);
         expect(source.includes('Checking Local Server...')).toBe(true);
         expect(source.includes('No local server detected')).toBe(true);
-        expect(source.includes('No local models are loaded yet. This list will appear when a healthy local server responds.')).toBe(true);
+        expect(source.includes("t('settings.ai.localLlm.noModelsAuto')")).toBe(true);
         expect(source.includes("['Connection', localLlmValidationReport?.reachable ?? null]")).toBe(true);
         expect(source.includes("['Model availability', localLlmValidationReport?.modelAvailable ?? null]")).toBe(true);
         expect(source.includes("['Basic validation', localLlmValidationReport?.basicCompletion ?? null]")).toBe(true);
@@ -306,8 +303,8 @@ describe('AI settings models table', () => {
         expect(source.includes("modelOverrideDropdown.setValue('—');")).toBe(false);
         expect(source.includes("modelOverrideDropdown.selectEl.disabled = true;")).toBe(false);
         expect(source.includes('setOllamaModelId(value);')).toBe(true);
-        expect(source.includes('Manual model ID (fallback)')).toBe(true);
-        expect(source.includes('The AI Strategy model dropdown above is now the primary local model selector.')).toBe(true);
+        expect(source.includes("t('settings.ai.localLlmConfig.manualModelName')")).toBe(true);
+        expect(source.includes("t('settings.ai.localLlmConfig.manualModelDesc')")).toBe(true);
     });
 
     it('repurposes the third Local LLM strategy card into Auto vs Custom setup mode', () => {

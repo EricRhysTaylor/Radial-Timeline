@@ -20,7 +20,8 @@ describe('Pro contract', () => {
         expect(getProEntitlement(activePlugin)).toEqual({
             state: 'active',
             isProActive: true,
-            hasProLicenseKey: true
+            hasProLicenseKey: true,
+            isProEnabled: true
         });
         expect(isProActive(activePlugin)).toBe(true);
         expect(hasProFeatureAccess(activePlugin)).toBe(true);
@@ -28,7 +29,8 @@ describe('Pro contract', () => {
         expect(getProEntitlement(inactivePlugin)).toEqual({
             state: 'inactive',
             isProActive: false,
-            hasProLicenseKey: false
+            hasProLicenseKey: false,
+            isProEnabled: true
         });
         expect(isProActive(inactivePlugin)).toBe(false);
         expect(hasProFeatureAccess(inactivePlugin)).toBe(false);

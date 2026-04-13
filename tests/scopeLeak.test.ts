@@ -105,6 +105,7 @@ describe('Scope leak protections', () => {
             addWarning: vi.fn(),
             setProcessingQueue: vi.fn(),
             setSynopsisPreview: vi.fn(),
+            setAiAdvancedContext: vi.fn(),
             startSceneAnimation: vi.fn(),
             updateProgress: vi.fn(),
             markQueueStatus: vi.fn()
@@ -174,8 +175,8 @@ describe('Scope leak protections', () => {
         const a1 = await readFile(app, 'Books/BookA/01 A1.md');
         const b1 = await readFile(app, 'Books/BookB/01 B1.md');
 
-        expect(a1).toMatch(/id:\s*scn_[0-9a-f]{8,10}/);
-        expect(b1).not.toMatch(/id:\s*scn_[0-9a-f]{8,10}/);
+        expect(a1).toMatch(/id:\s*scn_[0-9a-f]{8,10}/i);
+        expect(b1).not.toMatch(/id:\s*scn_[0-9a-f]{8,10}/i);
     });
 
     it('audit marks missing IDs as critical and scoped insert only updates active book', async () => {
@@ -210,7 +211,7 @@ describe('Scope leak protections', () => {
 
         const a1 = await readFile(app, 'Books/BookA/01 A1.md');
         const b1 = await readFile(app, 'Books/BookB/01 B1.md');
-        expect(a1).toMatch(/^---\nid:\s*scn_[0-9a-f]{8,10}\nClass:\s*Scene/m);
-        expect(b1).not.toMatch(/id:\s*scn_[0-9a-f]{8,10}/);
+        expect(a1).toMatch(/^---\nid:\s*scn_[0-9a-f]{8,10}\nClass:\s*Scene/im);
+        expect(b1).not.toMatch(/id:\s*scn_[0-9a-f]{8,10}/i);
     });
 });

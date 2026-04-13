@@ -135,13 +135,13 @@ describe('timeline audit pipeline', () => {
         expect(result.findings[0].issues.some((issue) => issue.type === 'summary_body_disagree')).toBe(true);
     });
 
-    it('keeps ambiguous cues as warnings without enabling safe apply', async () => {
+    it('treats later-that-night cues as safe-apply eligible when time-of-day is direct', async () => {
         const result = await runTimelineAuditFromInputs([
             makeInput({
                 path: 'Story/1 Ambiguous.md',
                 manuscriptOrderIndex: 0,
                 rawWhen: '2026-01-01 08:00',
-                bodyExcerpt: 'Later, the carriage finally arrives.'
+                bodyExcerpt: 'Later that night, the carriage finally arrives.'
             })
         ], {
             runDeterministicPass: true,
@@ -150,8 +150,8 @@ describe('timeline audit pipeline', () => {
         });
 
         const finding = result.findings[0];
-        expect(finding.issues.some((issue) => issue.type === 'ambiguous_time_signal')).toBe(true);
-        expect(finding.safeApplyEligible).toBe(false);
+        expect(finding.issues.some((issue) => issue.type === 'time_of_day_conflict')).toBe(true);
+        expect(finding.safeApplyEligible).toBe(true);
     });
 
     it('validates AI response parsing conservatively', () => {

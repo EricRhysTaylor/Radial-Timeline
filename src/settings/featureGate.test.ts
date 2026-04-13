@@ -5,10 +5,17 @@ describe('hasProFeatureAccess', () => {
     it('uses Pro entitlement as the single feature access source', () => {
         expect(hasProFeatureAccess({
             settings: {}
-        } as any)).toBe(true);
+        } as any)).toBe(false);
 
         expect(hasProFeatureAccess({
             settings: {
+                proAccessEnabled: true
+            }
+        } as any)).toBe(false);
+
+        expect(hasProFeatureAccess({
+            settings: {
+                proLicenseKey: '1234567890abcdef',
                 proAccessEnabled: true
             }
         } as any)).toBe(true);

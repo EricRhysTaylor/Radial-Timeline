@@ -17,8 +17,8 @@ export function isProLicenseKeyValid(key: string | undefined): boolean {
 export function getProEntitlement(plugin: RadialTimelinePlugin): ProEntitlement {
     const hasProLicenseKey = isProLicenseKeyValid(plugin.settings.proLicenseKey);
     const isProEnabled = plugin.settings.proAccessEnabled !== false;
-    // Early Access: Pro is available without a license key; use the toggle as the source of truth.
-    const isProActive = isProEnabled;
+    // Pro requires a valid license key; the toggle only disables access.
+    const isProActive = hasProLicenseKey && isProEnabled;
     return {
         state: isProActive ? 'active' : 'inactive',
         isProActive,

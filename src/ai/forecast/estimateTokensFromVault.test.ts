@@ -9,6 +9,7 @@ import {
 
 describe('estimateInquiryTokens', () => {
     const file = new TFile('Book 1/01 Scene.md');
+    const bookProfiles = [{ id: 'book-1', title: 'Book 1', sourceFolder: 'Book 1' }];
 
     const makeVault = (rawByPath: Record<string, string>): Vault => ({
         getMarkdownFiles: () => [file],
@@ -38,6 +39,7 @@ After.`;
             metadataCache: makeMetadataCache({
                 [file.path]: { Class: 'scene', Summary: 'A short summary' }
             }),
+            bookProfiles,
             inquirySources: {
                 scanRoots: ['/Book 1/'],
                 resolvedScanRoots: ['/Book 1/'],
@@ -76,6 +78,7 @@ This very long body should not be counted when summary mode is selected.`;
             metadataCache: makeMetadataCache({
                 [file.path]: { Class: 'scene', Summary: summary }
             }),
+            bookProfiles,
             inquirySources: {
                 scanRoots: ['/Book 1/'],
                 resolvedScanRoots: ['/Book 1/'],
