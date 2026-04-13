@@ -635,7 +635,7 @@
   max-width: 720px;
   padding-inline: var(--ert-pad-sm);
   column-count: 2;
-  column-gap: 28px;
+  column-gap: 14px;
   column-fill: balance;
 }
 
@@ -1896,10 +1896,6 @@
   color: var(--text-error);
   font-size: 0.95rem;
   padding: calc(var(--ert-pad-md) + var(--ert-pad-md) + var(--ert-pad-md) / 2);
-}
-
-.ert-ui.ert-scope--settings .ert-apr-content {
-  gap: var(--ert-gap-md);
 }
 
 .ert-ui.ert-scope--settings .ert-apr-pro-teaser {

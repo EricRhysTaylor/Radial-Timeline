@@ -253,10 +253,8 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // ─────────────────────────────────────────────────────────────────────────
     // CONFIGURATION SECTION
     // ─────────────────────────────────────────────────────────────────────────
-    const contentWrapper = section.createDiv({ cls: `ert-apr-content ${ERT_CLASSES.STACK}` });
-
     // Configuration (project setup) - placed first, close to preview
-    const stylingCard = contentWrapper.createDiv({ cls: ERT_CLASSES.PANEL });
+    const stylingCard = section.createDiv({ cls: ERT_CLASSES.PANEL });
     const stylingBlock = stylingCard.createDiv({ cls: ERT_CLASSES.STACK });
     const stylingHeader = stylingBlock.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
     const stylingHeading = new Setting(stylingHeader)
@@ -356,8 +354,8 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // Each element: Row 1 = Label + Text Input (if applicable) + Color + Hex
     //               Row 2 = Font + Weight
     // ─────────────────────────────────────────────────────────────────────────
-    const themeCard = contentWrapper.createDiv({ cls: ERT_CLASSES.PANEL });
-    contentWrapper.insertBefore(themeCard, stylingCard); // Styling before Configuration
+    const themeCard = section.createDiv({ cls: ERT_CLASSES.PANEL });
+    section.insertBefore(themeCard, stylingCard); // Styling before Configuration
     const themeBlock = themeCard.createDiv({ cls: ERT_CLASSES.STACK });
     const themeHeader = themeBlock.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
     const themeHeading = new Setting(themeHeader)
@@ -1355,7 +1353,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
     // Only show basic Publishing & Automation for non-Pro users
     if (!isProActive) {
-        const automationCard = contentWrapper.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` });
+        const automationCard = section.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` });
         const automationHeader = new Setting(automationCard)
             .setName(t('settings.authorProgress.publishing.name'))
             .setHeading();
@@ -1534,7 +1532,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // PUBLISH STAGE DETECTION & PROGRESS MODE
     // ─────────────────────────────────────────────────────────────────────────
     type AprProgressMode = 'stage' | 'zero' | 'date';
-    const progressModeCard = contentWrapper.createDiv({ cls: ERT_CLASSES.PANEL });
+    const progressModeCard = section.createDiv({ cls: ERT_CLASSES.PANEL });
     const progressModeBlock = progressModeCard.createDiv({ cls: ERT_CLASSES.STACK });
     const progressModeHeader = progressModeBlock.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
     const progressModeHeading = new Setting(progressModeHeader)
@@ -1775,7 +1773,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // CAMPAIGN MANAGER (PRO FEATURE)
     // Always visible; locked styling handled inside section when Pro is inactive
     // ─────────────────────────────────────────────────────────────────────────
-    const proContainer = contentWrapper.createDiv({ cls: `${ERT_CLASSES.SKIN_PRO} ${ERT_CLASSES.STACK}` });
+    const proContainer = section.createDiv({ cls: `${ERT_CLASSES.SKIN_PRO} ${ERT_CLASSES.STACK}` });
     renderCampaignManagerSection({
         app,
         plugin,
