@@ -550,6 +550,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             wikiHref: string;
             title: string;
             subtitle: string;
+            helperLine?: string;
             kicker?: string;
             features?: { icon: string; text: string; targetSection?: string }[];
         }
@@ -587,6 +588,12 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             cls: `${ERT_CLASSES.SECTION_DESC} ert-hero-subtitle`,
             text: options.subtitle
         });
+        if (options.helperLine) {
+            hero.createEl('p', {
+                cls: ERT_CLASSES.FIELD_NOTE,
+                text: options.helperLine
+            });
+        }
         const features = options.features || [];
         if (features.length > 0 && options.kicker) {
             const featuresSection = hero.createDiv({
@@ -663,14 +670,15 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             badgeIcon: 'book-open-text',
             badgeVariant: ERT_CLASSES.BADGE_PILL_PRO,
             wikiHref: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#professional',
-            title: 'Set up your book for export.',
-            subtitle: 'Add your book details, review your pages, choose a PDF style, and check export readiness.',
-            kicker: 'PUBLISHING STEPS',
+            title: 'Prepare your manuscript for export and publication.',
+            subtitle: 'Turn your draft into a polished, shareable manuscript. Radial Timeline brings your book details, pages, and layout together—so you can generate clean, print-ready PDFs without wrestling with formatting.',
+            helperLine: 'Powered by Pandoc and LaTeX — industry-standard tools for high-quality document formatting, handled for you behind the scenes.',
+            kicker: 'WHAT YOU CAN DO',
             features: [
-                { icon: 'file-text', text: 'Book Details — Define title, author, and publishing info', targetSection: 'book-details' },
-                { icon: 'book-open-text', text: 'Book Pages — Add title page, dedication, epigraph, and more', targetSection: 'book-pages' },
-                { icon: 'layout-grid', text: 'PDF Style — Choose the layout for your manuscript', targetSection: 'pdf-style' },
-                { icon: 'check-circle-2', text: 'Export Check — Make sure everything is ready', targetSection: 'export-check' }
+                { icon: 'file-text', text: 'Book Details — Define your title, author, and publishing info in one place' },
+                { icon: 'book-open-text', text: 'Book Pages — Add title page, dedication, epigraph, and other front/back matter' },
+                { icon: 'layout-template', text: 'PDF Layouts — Choose from built-in styles or import your own templates' },
+                { icon: 'file-output', text: 'Export — Generate clean, print-ready PDFs with one click' }
             ]
         });
     }
@@ -831,6 +839,10 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
         const publishingStack = publishingContent.createDiv({ cls: ERT_CLASSES.STACK });
         this.renderPublishingHero(publishingStack);
+        publishingStack.createDiv({
+            cls: ERT_CLASSES.FIELD_NOTE,
+            text: 'Everything you need to go from draft to finished manuscript lives here.'
+        });
         const refreshProDependentSections = () => this.display();
         const publishingPanels = publishingStack.createDiv({ cls: ERT_CLASSES.STACK });
         renderProFeaturePanels({

@@ -1766,9 +1766,6 @@
   line-height: 1.5;
 }
 
-.ert-manuscript-layout-desc-line + .ert-manuscript-layout-desc-line {
-  margin-top: 2px;
-}
 
 /* Info state icon inherits text color for subtlety */
 .rt-manuscript-template-warning.rt-warning-info .rt-warning-icon {

@@ -1646,14 +1646,7 @@ export class ManuscriptOptionsModal extends Modal {
             desc.setText('Choose a PDF layout to continue.');
             return;
         }
-        desc.createDiv({
-            cls: 'ert-manuscript-layout-desc-line',
-            text: 'Controls typography, spacing, headers, and chapter styling.'
-        });
-        desc.createDiv({
-            cls: 'ert-manuscript-layout-desc-line',
-            text: 'Choose the tone and structure of your final PDF.'
-        });
+        desc.setText('Controls typography, spacing, headers, and chapter styling. Choose the tone and structure of your final PDF.');
     }
 
     /**

@@ -132,27 +132,30 @@ export function renderProEntitlementPanel({
     collapsedTitle.createSpan({ cls: 'ert-pro-mode__title-text', text: 'Pro Signature (Early Access)' });
     const collapsedToggle = createToggle(collapsedRow, 'Toggle Pro Mode');
 
-    // ── Pro access (preview — future account-based validation) ─
+    // ── Pro access key (preview — future account-based validation) ─
     const keyContainer = collapsed.createDiv({ cls: 'ert-pro-key-container' });
     const keySetting = new Setting(keyContainer)
         .setName('Pro access (coming soon)')
         .setDesc(
             'You\u2019re currently using Pro Mode during Early Access. ' +
-            'As development continues, Pro will transition to an access-based system ' +
-            'for advanced workflows and features designed for authors who want more. ' +
-            'Core features continue alongside providing a full Radial Timeline workflow at the free tier.'
+            'As development continues, Pro will transition to an access-based system, ' +
+            'with free Core features alongside it as before.'
         )
         .addText(text => {
-            text.setPlaceholder('Access key (available after Early Access)');
+            text.setPlaceholder('XXXX-XXXX-XXXX-XXXX');
             text.inputEl.addClass('ert-input--lg');
-            text.inputEl.disabled = true;
-            text.inputEl.addClass('ert-pro-key-input--preview');
+            text.inputEl.type = 'password';
         })
         .addButton(button => {
             button.setButtonText('Validate access');
-            button.buttonEl.disabled = true;
-            button.buttonEl.addClass('ert-pro-key-button--preview');
         });
+
+    keySetting.nameEl.createEl('a', {
+        text: ' Learn more \u2192',
+        href: 'https://radial-timeline.com/wiki/pro',
+        cls: 'ert-link-accent',
+        attr: { target: '_blank', rel: 'noopener' }
+    });
 
     const heroContent = collapsed.createDiv({ cls: `${ERT_CLASSES.STACK} ert-pro-hero-content` });
     buildProHeroLogo(heroContent);
