@@ -1671,6 +1671,7 @@ export class ManuscriptOptionsModal extends Modal {
         this.templateWarningEl.empty();
         this.templateWarningEl.removeClass('rt-warning-error');
         this.templateWarningEl.removeClass('rt-warning-info');
+        this.templateWarningEl.removeClass('ert-pdf-output-summary');
 
         // Only check templates for PDF format
         if (this.outputFormat === 'markdown') {
@@ -1740,7 +1741,7 @@ export class ManuscriptOptionsModal extends Modal {
         }
         technicalLines.push(`Engine: ${engineSelection.engine}`);
         if (willEmbed) {
-            technicalLines.push('Font embedding: enabled via fontspec');
+            technicalLines.push('Font embedding: enabled');
         }
 
         // ── Render ───────────────────────────────────────────────────
@@ -1769,9 +1770,7 @@ export class ManuscriptOptionsModal extends Modal {
             content.createDiv({ cls: 'ert-pdf-output-line', text: 'This layout is ready to use.' });
             content.createDiv({ cls: 'ert-pdf-output-line', text: `Font: ${resolvedFont}` });
             content.createDiv({ cls: 'ert-pdf-output-line', text: `Page layout: ${layoutDesc}` });
-            if (willEmbed) {
-                content.createDiv({ cls: 'ert-pdf-output-line', text: 'Embedding: Fonts will be included' });
-            }
+            content.createDiv({ cls: 'ert-pdf-output-line', text: 'Embedding: Fonts will be included' });
         }
 
         // ── Technical details toggle ─────────────────────────────────

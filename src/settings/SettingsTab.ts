@@ -770,7 +770,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         inquiryTab.createSpan({ text: 'Inquiry', cls: 'ert-settings-tab-label' });
         const publishingTab = tabBar.createDiv({ cls: 'ert-settings-tab ert-settings-tab-publishing' });
         const publishingIcon = publishingTab.createSpan({ cls: 'ert-settings-tab-icon' });
-        setIcon(publishingIcon, 'signature');
+        setIcon(publishingIcon, 'book-open-text');
         publishingTab.createSpan({ text: 'Publishing', cls: 'ert-settings-tab-label' });
         const aiTab = tabBar.createDiv({ cls: 'ert-settings-tab' });
         const aiIcon = aiTab.createSpan({ cls: 'ert-settings-tab-icon' });

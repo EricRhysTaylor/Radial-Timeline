@@ -479,7 +479,7 @@
 .ert-ui.ert-scope--settings .ert-pro-key-container {
   position: relative;
   z-index: 1;
-  padding: 8px 20px 4px;
+  padding: 0 var(--ert-pad-sm) var(--ert-pad-sm);
 }
 
 .ert-ui.ert-scope--settings .ert-pro-key-container .setting-item {
