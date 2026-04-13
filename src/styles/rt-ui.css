@@ -476,6 +476,37 @@
   overflow: hidden;
 }
 
+.ert-ui.ert-scope--settings .ert-pro-key-container {
+  position: relative;
+  z-index: 1;
+  padding: 8px 20px 4px;
+}
+
+.ert-ui.ert-scope--settings .ert-pro-key-container .setting-item {
+  border-top: none;
+  padding-top: 8px;
+}
+
+.ert-ui.ert-scope--settings .ert-pro-key-container .setting-item-name {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.ert-ui.ert-scope--settings .ert-pro-key-container .setting-item-description {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.ert-ui.ert-scope--settings .ert-pro-key-container .ert-link-accent {
+  color: var(--rt-pro-color);
+}
+
+.ert-ui.ert-scope--settings .ert-pro-mode.is-pro-disabled .ert-pro-key-container .setting-item-name {
+  color: var(--text-normal);
+}
+
+.ert-ui.ert-scope--settings .ert-pro-mode.is-pro-disabled .ert-pro-key-container .setting-item-description {
+  color: var(--text-muted);
+}
+
 .ert-ui.ert-scope--settings .ert-pro-mode.is-pro-disabled .ert-pro-hero-card {
   background: #0a0a0a;
   background-image: none;
@@ -2431,6 +2462,7 @@
   letter-spacing: 0.4px;
 }
 
+/* ── Pro ON (not selected) ─────────────────────────────────── */
 .ert-ui.ert-scope--settings .ert-settings-tab-pro.is-pro-active {
   color: var(--rt-pro-color);
   border-color: rgba(var(--rt-pro-color-rgb), 0.25);
@@ -2446,25 +2478,47 @@
   color: var(--rt-pro-color);
 }
 
-.ert-ui.ert-scope--settings .ert-settings-tab-pro.is-pro-disabled {
-  color: #111;
-  border-color: color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
-  background: color-mix(in srgb, var(--background-primary) 85%, transparent);
+/* ── Pro ON + selected ─────────────────────────────────────── */
+.ert-ui.ert-scope--settings .ert-settings-tab-pro.is-pro-active.ert-settings-tab-active {
+  color: #fff;
+  border-color: rgba(var(--rt-pro-color-rgb), 0.5);
+  background: linear-gradient(135deg, rgba(var(--rt-pro-color-rgb), 0.30), rgba(var(--rt-pro-color-rgb), 0.14));
+  box-shadow: 0 0 12px rgba(var(--rt-pro-color-rgb), 0.2), var(--ert-shadow-soft-subtle);
 }
 
-.ert-ui.ert-scope--settings .ert-settings-tab-pro.is-pro-disabled.ert-settings-tab-active {
-  background: color-mix(in srgb, var(--background-primary) 92%, transparent);
-  border-color: color-mix(in srgb, var(--background-modifier-border) 85%, transparent);
-  box-shadow: var(--ert-shadow-soft-subtle);
+.ert-ui.ert-scope--settings .ert-settings-tab-pro.is-pro-active.ert-settings-tab-active .ert-settings-tab-icon {
+  color: #fff;
+}
+
+/* ── Pro OFF (not selected) ────────────────────────────────── */
+.ert-ui.ert-scope--settings .ert-settings-tab-pro.is-pro-disabled {
+  color: var(--text-muted);
+  border-color: color-mix(in srgb, var(--background-modifier-border) 50%, transparent);
+  background: transparent;
+  opacity: 0.6;
 }
 
 .ert-ui.ert-scope--settings .ert-settings-tab-pro.is-pro-disabled:hover {
-  color: #111;
-  background: color-mix(in srgb, var(--background-primary) 78%, transparent);
+  color: var(--text-normal);
+  background: var(--background-modifier-hover);
+  opacity: 0.8;
 }
 
 .ert-ui.ert-scope--settings .ert-settings-tab-pro.is-pro-disabled .ert-settings-tab-icon {
-  color: #111;
+  color: var(--text-muted);
+}
+
+/* ── Pro OFF + selected ────────────────────────────────────── */
+.ert-ui.ert-scope--settings .ert-settings-tab-pro.is-pro-disabled.ert-settings-tab-active {
+  color: var(--text-normal);
+  background: var(--background-primary);
+  border-color: color-mix(in srgb, var(--background-modifier-border) 85%, transparent);
+  box-shadow: var(--ert-shadow-soft-subtle);
+  opacity: 1;
+}
+
+.ert-ui.ert-scope--settings .ert-settings-tab-pro.is-pro-disabled.ert-settings-tab-active .ert-settings-tab-icon {
+  color: var(--text-muted);
 }
 
 .ert-ui.ert-scope--settings .ert-settings-tab:hover {
@@ -2472,18 +2526,9 @@
   background: var(--background-modifier-hover);
 }
 
-.ert-ui.ert-scope--settings .ert-settings-tab-pro:hover {
-  color: inherit;
-  background: color-mix(in srgb, var(--background-secondary) 70%, transparent);
-}
-
 .ert-ui.ert-scope--settings .ert-settings-tab-active {
   background: var(--background-primary);
   color: var(--text-normal);
-  box-shadow: var(--ert-shadow-soft-subtle);
-}
-
-.ert-ui.ert-scope--settings .ert-settings-tab-pro.ert-settings-tab-active {
   box-shadow: var(--ert-shadow-soft-subtle);
 }
 

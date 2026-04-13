@@ -1646,28 +1646,14 @@ export class ManuscriptOptionsModal extends Modal {
             desc.setText('Choose a PDF layout to continue.');
             return;
         }
-        const key = layoutName.toLowerCase();
-        if (key.includes('basic manuscript') || key.includes('classic manuscript') || key.includes('traditional')) {
-            desc.setText('Clean serif layout with standard margins and centered page numbers.');
-            return;
-        }
-        if (key.includes('modern classic') || key.includes('modern-classic') || key.includes('modern_classic')) {
-            desc.setText('Elegant layout with part pages, author/title headers, and scene-break numbering.');
-            return;
-        }
-        if (key.includes('contemporary literary') || key.includes('contemporary')) {
-            desc.setText('Modern layout with contextual running headers and clean chapter openers.');
-            return;
-        }
-        if (key.includes('signature literary') || key.includes('(st)') || key.includes('signature')) {
-            desc.setText('Refined layout with header-only page numbers and generous scene spacing.');
-            return;
-        }
-        if (key.includes('novel')) {
-            desc.setText('Serif fiction layout with print-oriented margins and running headers.');
-            return;
-        }
-        desc.setText('Controls typography, spacing, headers, and chapter styling.');
+        desc.createDiv({
+            cls: 'ert-manuscript-layout-desc-line',
+            text: 'Controls typography, spacing, headers, and chapter styling.'
+        });
+        desc.createDiv({
+            cls: 'ert-manuscript-layout-desc-line',
+            text: 'Choose the tone and structure of your final PDF.'
+        });
     }
 
     /**
@@ -1714,11 +1700,13 @@ export class ManuscriptOptionsModal extends Modal {
         const validation = validatePandocLayout(this.plugin, selectedLayout);
 
         if (!validation.valid) {
+            this.templateWarningEl.addClass('ert-pdf-output-summary');
             this.templateWarningEl.addClass('rt-warning-error');
             const icon = this.templateWarningEl.createSpan({ cls: 'rt-warning-icon' });
             setIcon(icon, 'alert-triangle');
-            const text = this.templateWarningEl.createSpan({ cls: 'rt-warning-text' });
-            text.createSpan({ text: validation.error || 'Layout template not found.' });
+            const text = this.templateWarningEl.createDiv({ cls: 'ert-pdf-output-text' });
+            text.createDiv({ cls: 'ert-pdf-output-title', text: 'PDF Output' });
+            text.createDiv({ cls: 'ert-pdf-output-line', text: validation.error || 'Layout template not found.' });
             return;
         }
 
@@ -1756,18 +1744,26 @@ export class ManuscriptOptionsModal extends Modal {
         }
 
         // ── Render ───────────────────────────────────────────────────
+        this.templateWarningEl.addClass('ert-pdf-output-summary');
         this.templateWarningEl.addClass(hasFontRisk ? 'rt-warning-error' : 'rt-warning-info');
         const icon = this.templateWarningEl.createSpan({ cls: 'rt-warning-icon' });
         setIcon(icon, hasFontRisk ? 'alert-triangle' : 'check-circle-2');
 
-        const content = this.templateWarningEl.createDiv({ cls: 'rt-warning-text' });
+        const content = this.templateWarningEl.createDiv({ cls: 'ert-pdf-output-text' });
+        content.createDiv({ cls: 'ert-pdf-output-title', text: 'PDF Output' });
 
         if (hasFontRisk) {
             // Font issue — show actionable message
             if (hasPrimaryMissing && fallbackFont && fallbackFont !== primaryRequested) {
-                content.createDiv({ cls: 'ert-pdf-output-line', text: `Font: Using ${fallbackFont} — install ${primaryRequested} for the intended look.` });
+                content.createDiv({
+                    cls: 'ert-pdf-output-line',
+                    text: `Font: Using ${fallbackFont} — install ${primaryRequested} for the intended look.`
+                });
             } else if (hasPrimaryMissing && primaryRequested) {
-                content.createDiv({ cls: 'ert-pdf-output-line', text: `Font: ${primaryRequested} is not installed. Install it before exporting.` });
+                content.createDiv({
+                    cls: 'ert-pdf-output-line',
+                    text: `Font: ${primaryRequested} is not installed. Install it before exporting.`
+                });
             }
         } else {
             content.createDiv({ cls: 'ert-pdf-output-line', text: 'This layout is ready to use.' });
@@ -1810,12 +1806,7 @@ export class ManuscriptOptionsModal extends Modal {
      */
     private updateManuscriptPresetDescription(): void {
         if (!this.manuscriptPresetDescEl) return;
-        const descriptions: Record<ManuscriptPreset, string> = {
-            novel: t('manuscriptModal.presetNovelDesc'),
-            screenplay: t('manuscriptModal.presetScreenplayDesc'),
-            podcast: t('manuscriptModal.presetPodcastDesc'),
-        };
-        this.manuscriptPresetDescEl.textContent = descriptions[this.manuscriptPreset] || descriptions.novel;
+        this.manuscriptPresetDescEl.textContent = 'Formats your scenes into a readable manuscript.';
     }
 
     /**

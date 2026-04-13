@@ -1,4 +1,4 @@
-import { Notice, setIcon } from 'obsidian';
+import { Notice, Setting, setIcon } from 'obsidian';
 import type { App } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { ERT_CLASSES } from '../../ui/classes';
@@ -10,6 +10,9 @@ interface ProEntitlementPanelParams {
     containerEl: HTMLElement;
     onEntitlementChanged?: () => void;
 }
+
+const TEMPORARY_BETA_KEY = '1234567890abcdef';
+const TEMPORARY_BETA_KEY_EXPIRY = 'December 31, 2026';
 
 const RT_LOGO_PATHS = [
     'M604.11,1274.16l-131.83.12,36.57-162.23c12.42-55.12,57.45-94.1,114.42-94.09h122.98c10.22.01,20-1.99,28.72-6.65,14.3-7.63,20.82-22.45,19.24-38.15-2.34-23.35-20.29-34.12-42.51-35.41l-201.37-.06,29.2-125.03,185.04.12c69.83,3.45,127.94,44.91,151.99,110.3,18.56,53.7,7.91,111.98-27.6,156.25-17.24,21.5-39.41,37.45-64.95,49.11l71.96,144.34c.9,1.81,1.8,2.59-1.12,1.42l-142.07.04-64.96-128.49-53.36-.13-30.34,128.56Z',
@@ -131,6 +134,60 @@ export function renderProEntitlementPanel({
     const collapsedTitle = collapsedLeft.createDiv({ cls: 'ert-pro-mode__collapsed-title' });
     collapsedTitle.createSpan({ cls: 'ert-pro-mode__title-text', text: 'Pro Signature (Early Access)' });
     const collapsedToggle = createToggle(collapsedRow, 'Toggle Pro Mode');
+
+    // ── Pro access key input ───────────────────────────────────
+    const keyContainer = collapsed.createDiv({ cls: 'ert-pro-key-container' });
+    const keySetting = new Setting(keyContainer)
+        .setName('Pro access key')
+        .setDesc(`Enter your Pro access key to unlock Pro features. Temporary beta key: ${TEMPORARY_BETA_KEY} (expires ${TEMPORARY_BETA_KEY_EXPIRY}).`)
+        .addText(text => {
+            text.setPlaceholder('XXXX-XXXX-XXXX-XXXX');
+            text.setValue(plugin.settings.proLicenseKey || '');
+            text.inputEl.addClass('ert-input--lg');
+            text.inputEl.type = 'password';
+
+            const toggleVis = text.inputEl.parentElement?.createEl('button', {
+                cls: 'ert-clickable-icon clickable-icon',
+                attr: { type: 'button', 'aria-label': 'Show or hide Pro access key' }
+            });
+            if (toggleVis) {
+                setIcon(toggleVis, 'eye');
+                plugin.registerDomEvent(toggleVis, 'click', () => {
+                    if (text.inputEl.type === 'password') {
+                        text.inputEl.type = 'text';
+                        setIcon(toggleVis, 'eye-off');
+                    } else {
+                        text.inputEl.type = 'password';
+                        setIcon(toggleVis, 'eye');
+                    }
+                });
+            }
+
+            plugin.registerDomEvent(text.inputEl, 'blur', async () => {
+                const value = text.getValue().trim();
+                plugin.settings.proLicenseKey = value || undefined;
+                await plugin.saveSettings();
+                onEntitlementChanged?.();
+            });
+        })
+        .addButton(button => {
+            button.setButtonText('Copy beta key');
+            button.onClick(async () => {
+                try {
+                    await navigator.clipboard.writeText(TEMPORARY_BETA_KEY);
+                    new Notice('Temporary beta key copied to clipboard.');
+                } catch {
+                    new Notice(`Could not copy automatically. Use ${TEMPORARY_BETA_KEY}.`);
+                }
+            });
+        });
+
+    keySetting.nameEl.createEl('a', {
+        text: ' Get Pro \u2192',
+        href: 'https://radial-timeline.com/signature',
+        cls: 'ert-link-accent',
+        attr: { target: '_blank', rel: 'noopener' }
+    });
 
     const heroContent = collapsed.createDiv({ cls: `${ERT_CLASSES.STACK} ert-pro-hero-content` });
     buildProHeroLogo(heroContent);
