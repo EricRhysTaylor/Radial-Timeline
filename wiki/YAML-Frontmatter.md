@@ -15,7 +15,7 @@ Subplot: Main Plot        # Single subplot (or use array format below for multip
 Character:                # Characters in the scene (use array format below for multiple)
 POV:                      # blank, first, you, third, omni, narrator, two, all, count
 Status: Todo              # Scene status (Todo/Working/Complete)
-Publish Stage: Zero       # Publication stage (Zero/Author/House/Press)
+Publish Stage: Zero       # Progress stage (Zero/Author/House/Press)
 Due:                      # Target completion date (YYYY-MM-DD). When setting Scene to Complete, change this to that day's date for better novel completion estimate
 Pending Edits:            # Notes for next revision (especially for zero draft mode)
 Pulse Update:             # AI-generated scene pulse analysis flag

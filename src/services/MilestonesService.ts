@@ -9,12 +9,12 @@ import type { MilestoneInfo } from '../renderer/components/MilestoneIndicator';
  * 
  * MILESTONES SYSTEM (this service):
  * - Detects when stages are COMPLETELY done (all scenes at that stage complete)
- * - Shows celebration hero cards in settings (PublicationSection)
+ * - Shows celebration hero cards in settings (ProgressSection)
  * - Shows pulsing indicator on timeline (above Help icon)
  * - Detects staleness warnings (author getting behind)
  * 
  * Used by:
- * - PublicationSection (Progress Tracker in settings - hero cards with quotes)
+ * - ProgressSection (Progress Tracker in settings - hero cards with quotes)
  * - Timeline indicator (pulsing icon above Help icon, bottom-right)
  * 
  * SEPARATE FROM: TimelineMetricsService (estimation/tick tracking system)
@@ -76,7 +76,7 @@ export class MilestonesService {
 
         // Check if ALL scenes at the highest stage are complete
         // AND there are no scenes still at lower stages.
-        // This is what triggers the hero card celebrations in PublicationSection
+        // This is what triggers the hero card celebrations in ProgressSection
         const scenesAtHighestStage = sceneNotesOnly.filter(scene => 
             normalizeStage(scene['Publish Stage']) === highestStageWithScenes
         );
@@ -85,7 +85,7 @@ export class MilestonesService {
         
         if (allComplete && !hasLowerStageScenes) {
             // Stage is completely done → show celebration milestone
-            // This syncs with the hero cards in PublicationSection (Zero/Author/House/Press complete)
+            // This syncs with the hero cards in ProgressSection (Zero/Author/House/Press complete)
             if (highestStageWithScenes === 'Press') {
                 // Final celebration state (not a publish stage): all Press scenes complete = book complete.
                 return { type: 'book-complete', stage: highestStageWithScenes };
@@ -99,7 +99,7 @@ export class MilestonesService {
         }
 
         // STEP 2: Check for staleness warnings (author getting behind)
-        // This also syncs with PublicationSection which shows warn/late/stalled styling
+        // This also syncs with ProgressSection which shows warn/late/stalled styling
         try {
             const estimate = this.plugin.calculateCompletionEstimate(scenes);
             if (estimate && estimate.staleness !== 'fresh') {

@@ -61,7 +61,7 @@ export class RendererService {
      */
     private detectProgressMilestone(scenes: TimelineItem[]): MilestoneInfo | null {
         // Use the shared service - single source of truth
-        // This ensures timeline indicator matches PublicationSection Progress Tracker exactly
+        // This ensures timeline indicator matches ProgressSection progress tracker exactly
         return this.plugin.milestonesService.detectMilestone(scenes);
     }
 

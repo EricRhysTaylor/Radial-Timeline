@@ -118,7 +118,7 @@ function getIconForMilestone(type: MilestoneType): { icon: string; color: string
  * MILESTONES SYSTEM (this component):
  * - Shows celebration icons when stages are COMPLETELY done (all scenes at that stage complete)
  * - Shows encouragement icons when author is getting behind (staleness warnings)
- * - Syncs with PublicationSection Progress Tracker (hero cards in settings)
+ * - Syncs with ProgressSection progress tracker (hero cards in settings)
  * 
  * SEPARATE FROM: Estimation/Tick Tracking System
  * - TimelineMetricsService handles progress tracking, completion estimates, target dates

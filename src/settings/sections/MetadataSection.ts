@@ -9,6 +9,9 @@ const CANONICAL_KEYS = [
 ].sort();
 
 const ALL_CANONICAL_KEYS = CANONICAL_KEYS;
+const CANONICAL_KEY_LABELS: Record<string, string> = {
+    'Publish Stage': 'Progress Stage',
+};
 
 export function renderMetadataSection(params: { app: App; plugin: RadialTimelinePlugin; containerEl: HTMLElement; }): void {
     const { app, plugin, containerEl } = params;
@@ -115,11 +118,11 @@ export function renderMetadataSection(params: { app: App; plugin: RadialTimeline
                 // 2. Any key NOT in usedCanonicalKeys
                 
                 // Always add the current value first or ensure it's there
-                dropdown.addOption(systemKey, systemKey);
+                dropdown.addOption(systemKey, CANONICAL_KEY_LABELS[systemKey] ?? systemKey);
                 
                 ALL_CANONICAL_KEYS.forEach(key => {
                     if (key !== systemKey && !usedCanonicalKeys.has(key)) {
-                        dropdown.addOption(key, key);
+                        dropdown.addOption(key, CANONICAL_KEY_LABELS[key] ?? key);
                     }
                 });
                 
@@ -204,11 +207,11 @@ export function renderMetadataSection(params: { app: App; plugin: RadialTimeline
                     ...pendingMappings.filter(p => p !== pending).map(p => p.systemKey)
                 ]);
 
-                dropdown.addOption(pending.systemKey, pending.systemKey);
+                dropdown.addOption(pending.systemKey, CANONICAL_KEY_LABELS[pending.systemKey] ?? pending.systemKey);
 
                 ALL_CANONICAL_KEYS.forEach(key => {
                     if (key !== pending.systemKey && !usedCanonicalKeysForDraft.has(key)) {
-                        dropdown.addOption(key, key);
+                        dropdown.addOption(key, CANONICAL_KEY_LABELS[key] ?? key);
                     }
                 });
 

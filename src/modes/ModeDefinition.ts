@@ -21,8 +21,8 @@ export enum TimelineMode {
     /** All scenes from all subplots in manuscript order (Narrative Mode) */
     NARRATIVE = 'narrative',
     
-    /** Stage/status by subplot with publish-stage coloring (Publication Mode, formerly Subplot) */
-    PUBLICATION = 'publication',
+    /** Stage/status by subplot with progress-stage coloring (Progress Mode) */
+    PROGRESS = 'progress',
     
     /** Gossamer analysis overlay with beat tracking */
     GOSSAMER = 'gossamer',
@@ -36,7 +36,7 @@ export enum TimelineMode {
  */
 export type OuterRingContent = 
     | 'narrative'          // All scenes from all subplots in manuscript order (Narrative Mode)
-    | 'subplot-only'       // Only Main Plot subplot scenes (Publication Mode)
+    | 'subplot-only'       // Only Main Plot subplot scenes (Progress Mode)
     | 'chronologue';       // Scenes ordered by story chronology based on When field
 
 /**
@@ -52,14 +52,14 @@ export type InnerRingContent =
  */
 export type BeatDisplay = 
     | 'outer-ring-slices'  // Gray slices with labels in outer ring (Narrative mode)
-    | 'none';              // Don't show beats (Chronologue, Publication modes)
+    | 'none';              // Don't show beats (Chronologue, Progress modes)
 
 /**
  * Scene coloring strategy
  */
 export type SceneColoring = 
     | 'subplot'            // Color by subplot (Narrative mode)
-    | 'publish-stage'      // Color by publish stage (Publication mode)
+    | 'publish-stage'      // Color by progress stage (Progress mode)
     | 'chronological';     // Color by story time (future)
 
 /**
@@ -85,7 +85,7 @@ export type OverlayLayer =
  */
 export type VisualMuting = 
     | 'non-plot'           // Mute all non-plot elements (Gossamer mode)
-    | 'non-main-plot'      // Mute all non-main-plot elements (Publication mode)
+    | 'non-main-plot'      // Mute all non-main-plot elements (Progress mode)
     | 'future-scenes';     // Mute scenes that haven't happened yet in story (future)
 
 /**
@@ -111,7 +111,7 @@ export type ModeClickBehavior =
  */
 export type ModeExitBehavior = 
     | 'click-background'         // Click background to exit (Gossamer)
-    | 'toggle-button'            // Use mode toggle button (Narrative ↔ Publication)
+    | 'toggle-button'            // Use mode toggle button (Narrative ↔ Progress)
     | 'none';                    // No special exit behavior
 
 /**
@@ -177,7 +177,7 @@ export interface ModeUIConfig {
     /** Icon for this mode (if used in UI) */
     icon?: string;
     
-    /** Short acronym for compact display (e.g., "NARR", "PUBL") */
+    /** Short acronym for compact display (e.g., "NARR", "PROG") */
     acronym?: string;
     
     /** Tooltip text for toggle button */
@@ -225,5 +225,3 @@ export interface ModeDefinition {
 export function isTimelineMode(value: string): value is TimelineMode {
     return Object.values(TimelineMode).includes(value as TimelineMode);
 }
-
-

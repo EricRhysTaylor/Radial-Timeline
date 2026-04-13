@@ -127,7 +127,7 @@ You can filter scenes by searching for text content across multiple fields. Sear
     *   **Text**: Matching text within the synopsis hover metadata is highlighted in yellow.
 *   **Clear**: Click the clear button in the modal.
 
-> **Note**: Status, Publish Stage, Due date, Pending Edits, and Gossamer scores are not included in search.
+> **Note**: Status, Publish Stage (Progress Stage), Due date, Pending Edits, and Gossamer scores are not included in search.
 
 ### Rotate the timeline
-In Narrative and Publication modes you can use the **rotation toggle** (arrow icon near the outer ring) to rotate the timeline for easier reading. The rotation offset is **act-aware** (based on your configured **Act count**) and keeps scene number squares oriented correctly.
+In Narrative and Progress modes you can use the **rotation toggle** (arrow icon near the outer ring) to rotate the timeline for easier reading. The rotation offset is **act-aware** (based on your configured **Act count**) and keeps scene number squares oriented correctly.

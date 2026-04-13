@@ -37,10 +37,9 @@ export const NARRATIVE_MODE: ModeDefinition = {
     
     ui: {
         acronym: 'NARR',
-        tooltip: 'Switch to Subplot mode',
+        tooltip: 'Switch to Narrative mode',
         showInToggleButton: true,
         order: 1
     }
 };
-
 

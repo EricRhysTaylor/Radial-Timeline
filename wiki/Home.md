@@ -20,9 +20,9 @@ Radial Timeline™ captures and visualizes all 4 critical timelines:
 *   **Narrative time**: the sequence you reveal events to readers.
 *   **Chronological time**: when events happen in your story's world.
 *   **Author time**: your scene writing progress with target due dates tracking Todo, Working, Complete and Overdue.
-*   **Publishing time**: manuscript revision stages from Zero draft through Press-ready.
+*   **Progress stages**: manuscript revision stages from Zero draft through Press-ready.
 
-Narrative and Chronologue modes keep subplot colors front-and-center so you can compare structure without workflow noise. When you need to see Todo/Working/Overdue status or publish stage colors, jump into Publication Mode (formerly Subplot Mode) where all scenes is replaced by Main Plot and scenes inherit the author-status and publish-stage palette.
+Narrative and Chronologue modes keep subplot colors front-and-center so you can compare structure without workflow noise. When you need to see Todo/Working/Overdue status or progress stage colors, jump into Progress Mode where all scenes is replaced by Main Plot and scenes inherit the author-status and progress-stage palette.
 
 ---
 
@@ -41,8 +41,8 @@ Narrative and Chronologue modes keep subplot colors front-and-center so you can 
 
 <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-top: 20px;">
   <div style="text-align: center;">
-    <img src="images/subplot.jpeg" alt="Publication Mode: author status (Todo/Working/Overdue/Complete) and publish stage colors" style="width: 300px; max-width: 100%; border-radius: 8px;" />
-    <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Publication Mode — schedule/status + publish stage progress</div>
+    <img src="images/subplot.jpeg" alt="Progress Mode: author status (Todo/Working/Overdue/Complete) and progress stage colors" style="width: 300px; max-width: 100%; border-radius: 8px;" />
+    <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Progress Mode — schedule/status + progress stage momentum</div>
   </div>
   <div style="text-align: center;">
     <img src="images/chronologue.jpeg" alt="Chronologue Mode: scenes ordered by When/Duration with overlaps and adaptive time labeling" style="width: 300px; max-width: 100%; border-radius: 8px;" />

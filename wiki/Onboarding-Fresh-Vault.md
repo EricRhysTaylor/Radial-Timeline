@@ -30,7 +30,7 @@ This page covers the fresh vault flow. If you already have scenes, jump to [[Onb
 
 ## 4. Orient to the key modes
 - Narrative (1). Manuscript order and subplot structure.
-- Publication (2). Writing status and publish stage.
+- Progress (2). Writing status and progress stage.
 - Chronologue (3). Story-world time.
 - Gossamer (4). Beat momentum and scoring.
 

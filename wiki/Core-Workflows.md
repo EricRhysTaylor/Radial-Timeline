@@ -12,13 +12,13 @@ Core workflows are a reference for ongoing use. For first-time setup, see [[Fres
 *   **Create note…**: Command palette → **Radial Timeline: Create note…**.
 *   **Scene options**: In the picker, choose **Scene** and then **Basic scene** or **Advanced scene**. Screenplay and podcast scene types are also available in the same flow.
 
-### Publication Mode and Tracking Progress (formerly Subplot)
-*   **Scene Status Colors**: In Publication Mode, scenes are color-coded by status: Todo = plaid, Working = pink, Overdue = red, Complete = publish stage color. In Narrative and Chronologue modes, scenes display their subplot color.
-*   **Publishing Stages**: Track manuscript through Zero → Author → House → Press.
+### Progress Mode and Tracking Momentum
+*   **Scene Status Colors**: In Progress Mode, scenes are color-coded by status: Todo = plaid, Working = pink, Overdue = red, Complete = progress stage color. In Narrative and Chronologue modes, scenes display their subplot color.
+*   **Progress Stages**: Track manuscript through Zero → Author → House → Press.
 *   **Completion Estimate Mark**: Plugin calculates target completion date based on your recent writing pace. The calculation is most accurate when the `Due` date is updated to the day of scene completion.
 
-**Modes**: Publication `2`
-**Settings**: Publishing stage colors
+**Modes**: Progress `2`
+**Settings**: Progress stage colors
 
 ### Exporting a Manuscript
 

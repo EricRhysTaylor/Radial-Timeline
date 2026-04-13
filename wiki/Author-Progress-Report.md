@@ -9,14 +9,14 @@ The Author Progress Report is a shareable, spoiler-safe graphic that shows your 
 
 ## Progress Calculation
 
-APR uses a **weighted stage-based** approach to calculate your book's completion percentage. Each scene contributes based on its Publish Stage:
+APR uses a **weighted stage-based** approach to calculate your book's completion percentage. Each scene contributes based on its Progress Stage (Publish Stage field):
 
-| Publish Stage | Contribution |
+| Progress Stage | Contribution |
 |---------------|--------------|
 | Zero (First Draft) | 25% |
 | Author (Self-Revision) | 50% |
 | House (Editor Revision) | 75% |
-| Press (Publication Ready) | 100% |
+| Press (Release Ready) | 100% |
 
 **Example**: A book with 100 scenes where:
 - 50 scenes are at Zero -> 50 x 0.25 = 12.5%

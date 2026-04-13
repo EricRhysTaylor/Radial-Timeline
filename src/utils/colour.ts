@@ -8,11 +8,11 @@ import type { TimelineItem } from '../types';
 import { STAGE_ORDER } from './constants';
 
 /**
- * Gets the color for the most advanced publish stage across all scenes.
+ * Gets the color for the most advanced progress stage across all scenes.
  * 
  * This is the single source of truth for determining the dominant project color.
  * It's used consistently across many UI elements that should reflect the overall 
- * project's most advanced publication state:
+ * project's most advanced progress-stage state:
  * 
  * - Act labels (ACT 1, ACT 2, etc.)
  * - Subplot arcing headline labels (top-left quadrant, all subplot rings)
@@ -24,7 +24,7 @@ import { STAGE_ORDER } from './constants';
  * 
  * @param scenes - Array of scenes to analyze
  * @param publishStageColors - Map of stage names to their colors (Zero, Author, House, Press)
- * @returns The hex color of the most advanced publish stage found, or the Zero stage color as fallback
+ * @returns The hex color of the most advanced progress stage found, or the Zero stage color as fallback
  */
 export function getMostAdvancedStageColor(
   scenes: TimelineItem[],
@@ -182,7 +182,7 @@ export function getRunColorWithSaturation(
  * 
  * In Gossamer mode, we want to use the stage color from the LATEST AI sweep
  * (e.g., GossamerStage5 if Gossamer5 is the most recent run), not the most 
- * advanced publish stage of the manuscript.
+ * advanced progress stage of the manuscript.
  * 
  * This ensures the Gossamer visualization reflects the stage at which the
  * momentum analysis was performed.

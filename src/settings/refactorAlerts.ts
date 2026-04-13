@@ -79,13 +79,6 @@ export const REFACTOR_ALERTS: RefactorAlert[] = [
         ]
     },
     {
-        id: 'subplot-to-publication-mode-rename',
-        severity: 'info',
-        icon: 'info',
-        title: 'Mode Renamed',
-        description: 'The "Subplot Mode" button (SUBP) has been renamed to "Publication" (PUBL). Same great features, clearer name reflecting its use for publication-focused workflows.',
-    },
-    {
         id: 'change-type-pulse-update',
         severity: 'info',
         icon: 'info',

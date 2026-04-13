@@ -1,6 +1,6 @@
 import { App, Notice, PluginSettingTab, Component, setIcon, TextComponent, normalizePath } from 'obsidian';
 import { renderGeneralSection } from './sections/GeneralSection';
-import { renderCompletionEstimatePreview, renderPublicationSection } from './sections/PublicationSection';
+import { renderCompletionEstimatePreview, renderProgressSection } from './sections/ProgressSection';
 import { renderChronologueSection } from './sections/ChronologueSection';
 import { renderBackdropSection } from './sections/BackdropSection';
 import { renderBeatPropertiesSection } from './sections/BeatPropertiesSection';
@@ -922,11 +922,11 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         progressSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'progress' } });
         const progressStack = progressSection.createDiv({ cls: ERT_CLASSES.STACK });
 
-        const publicationSection = progressStack.createDiv({ attr: { [ERT_DATA.SECTION]: 'publication' } });
-        const publicationStack = publicationSection.createDiv({ cls: ERT_CLASSES.STACK });
-        renderPublicationSection({
+        const progressStatusSection = progressStack.createDiv({ attr: { [ERT_DATA.SECTION]: 'progress-status' } });
+        const progressStatusStack = progressStatusSection.createDiv({ cls: ERT_CLASSES.STACK });
+        renderProgressSection({
             plugin: this.plugin,
-            containerEl: publicationStack,
+            containerEl: progressStatusStack,
             onCompletionPreviewRefresh: completionPreviewRefresh
         });
 

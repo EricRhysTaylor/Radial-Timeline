@@ -103,7 +103,7 @@ export class ZeroDraftModal extends Modal {
 
         // Info note
         const infoEl = contentEl.createDiv({ cls: 'ert-field-note' });
-        infoEl.setText('Zero draft mode is enabled. This scene has Publish Stage = Zero and Status = Complete. You can turn this off in Settings → Zero draft mode.');
+        infoEl.setText('Zero draft mode is enabled. This scene has Progress Stage = Zero and Status = Complete. You can turn this off in Settings → Zero draft mode.');
 
         // Textarea
         const textareaRow = contentEl.createDiv({ cls: 'ert-row ert-row--stack' });

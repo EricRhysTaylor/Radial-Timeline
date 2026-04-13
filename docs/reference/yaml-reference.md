@@ -20,7 +20,7 @@ Complete guide to frontmatter fields used in Radial Timeline. This YAML must be 
 | `When` | Date | In-world date (YYYY-MM-DD or ISO format) |
 | `Synopsis` | String | Brief description of what happens |
 | `Character` | Array | Characters on stage (link to character notes) |
-| `Publish Stage` | String | `Zero`, `Author`, `House`, or `Press` |
+| `Publish Stage` | String | Progress stage: `Zero`, `Author`, `House`, or `Press` |
 | `Iteration` | Number | Edit iteration count (leave blank until stage > zero) |
 | `Due` | Date | Deadline for this scene (YYYY-MM-DD) |
 
@@ -270,21 +270,21 @@ Place:
 
 Workflow status: `Todo`, `Working`, or `Complete`
 
-Determines scene color coding in Publication Mode (formerly Subplot Mode) with Todo/Working/Complete/Overdue patterns.
+Determines scene color coding in Progress Mode with Todo/Working/Complete/Overdue patterns.
 
 ---
 
-### Publish Stage
+### Progress Stage
 **Optional** | Type: String
 
-Publication readiness: `Zero`, `Author`, `House`, or `Press`
+Progress stage (YAML key: `Publish Stage`): `Zero`, `Author`, `House`, or `Press`
 
 - **Zero**: Draft stage
 - **Author**: Ready for revision
 - **House**: Reviewed and edited
-- **Press**: Ready for publication
+- **Press**: Ready for release
 
-Used for color coding in Publication mode.
+Used for color coding in Progress mode.
 
 ---
 
@@ -460,7 +460,7 @@ Gossamer4: 15    # Fourth run (now the most recent)
 ### GossamerStage1-30
 **Optional for Beats** | Type: String (Zero/Author/House/Press)
 
-Tracks the dominant publish stage when each Gossamer run was created. Automatically saved alongside Gossamer scores.
+Tracks the dominant progress stage when each Gossamer run was created. Automatically saved alongside Gossamer scores.
 
 - Each `GossamerStageN` corresponds to the same run as `GossamerN`
 - Used for stage-based coloring of historical Gossamer runs

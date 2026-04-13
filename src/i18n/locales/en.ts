@@ -167,7 +167,7 @@ export interface TranslationKeys {
             localLlmConfig: { serverName: string; serverDesc: string; optionOllama: string; optionLmStudio: string; optionOpenaiCompat: string; baseUrlName: string; baseUrlDesc: string; manualModelName: string; manualModelDesc: string; };
             config: { timelineDisplayTitle: string; pulseContextName: string; pulseContextDesc: string; synopsisMaxWordsName: string; synopsisMaxWordsDesc: string; synopsisMaxWordsInvalid: string; summaryRefreshTitle: string; targetSummaryName: string; targetSummaryDesc: string; targetSummaryInvalid: string; weakThresholdName: string; weakThresholdDesc: string; weakThresholdInvalid: string; alsoUpdateSynopsisName: string; alsoUpdateSynopsisDesc: string; };
         };
-        publication: {
+        progress: {
             heading: string;
             completionEstimate: {
                 heading: string;
@@ -912,8 +912,8 @@ export const en: TranslationKeys = {
                 alsoUpdateSynopsisDesc: 'When enabled, Summary refresh also writes Synopsis using the configured Synopsis max words.',
             },
         },
-        publication: {
-            heading: 'Publication & Progress',
+        progress: {
+            heading: 'Progress & Status',
             completionEstimate: {
                 heading: 'Completion Estimate \u2022 {{stage}} Stage',
                 scenesComplete: 'Scenes Complete',
@@ -941,7 +941,7 @@ export const en: TranslationKeys = {
             acts: { name: 'Acts' },
             actCount: {
                 name: 'Act count',
-                desc: 'Applies to Narrative, Publication, and Gossamer modes. Scene and Beat properties. (Minimum 3)',
+                desc: 'Applies to Narrative, Progress, and Gossamer modes. Scene and Beat properties. (Minimum 3)',
                 placeholder: '3',
             },
             actLabels: {
@@ -1359,7 +1359,7 @@ export const en: TranslationKeys = {
                 },
                 percentSymbol: { label: '% Symbol', desc: 'Center percent symbol.' },
                 percentNumber: { label: '% Number', desc: 'Center progress number.' },
-                stageBadge: { label: 'Stage badge / RT mark', desc: 'Typography for the publish stage badge and the RT attribution mark.' },
+                stageBadge: { label: 'Stage badge / RT mark', desc: 'Typography for the progress stage badge and the RT attribution mark.' },
                 transparentMode: {
                     name: 'Transparent mode',
                     desc: 'No background fill \u2014 adapts to any page or app. Ideal for websites, blogs, and platforms that preserve SVG transparency.',
@@ -1402,15 +1402,15 @@ export const en: TranslationKeys = {
                 },
             },
             progressMode: {
-                name: 'Publish stage detection & progress mode',
-                desc: 'Detects your current publish stage. In new projects, select between a target manuscript length (recommended) or date range.',
+                name: 'Progress stage detection & progress mode',
+                desc: 'Detects your current progress stage. In new projects, select between a target manuscript length (recommended) or date range.',
                 detecting: 'DETECTING\u2026',
                 dateRangePlaceholder: 'YYYY-MM-DD to YYYY-MM-DD',
                 dateRangeFormat: 'Format: YYYY-MM-DD to YYYY-MM-DD.',
                 noScenesFound: 'No scenes found yet; assuming Zero stage.',
                 noProgressEstimate: 'No progress estimate available yet.',
                 allScenesComplete: 'All scenes complete — manuscript at this stage.',
-                basedOnEstimate: 'Based on the progress estimate (active publish stage).',
+                basedOnEstimate: 'Based on the progress estimate (active progress stage).',
                 errorEnterBothDates: 'Enter both start and target dates (YYYY-MM-DD).',
                 errorUseDateFormat: 'Use YYYY-MM-DD for both dates.',
                 errorStartBeforeTarget: 'Start date must be before target date.',
@@ -1418,8 +1418,8 @@ export const en: TranslationKeys = {
                 dateTargetMode: 'Date Target Mode',
                 guidanceZero: 'Zero Mode (recommended): create a placeholder final scene note with a high prefix number (e.g., "60 The End") to set intended total scene count.',
                 guidanceDate: 'Date Mode: choose a start date and target completion date. For example, if you expect to take 10 months to write your book, set a target date that fits that timeline.',
-                publishStageAuto: 'Publish Stage Progress (auto)',
-                guidancePublishStage: 'Using Publish Stage Progress.',
+                publishStageAuto: 'Progress Stage (auto)',
+                guidancePublishStage: 'Using Progress Stage.',
                 stageDetected: '{{stage}} DETECTED',
             },
             attribution: {

@@ -36,6 +36,7 @@ import type { SceneAnalysisProcessingModal } from './modals/SceneAnalysisProcess
 import { TimelineMetricsService } from './services/TimelineMetricsService';
 import { migrateSceneAnalysisFields } from './migrations/sceneAnalysis';
 import { migrateSceneFrontmatterIds } from './migrations/sceneIds';
+import { normalizeTimelineMode } from './migrations/timelineMode';
 import { SettingsService } from './services/SettingsService';
 import { DEFAULT_SETTINGS } from './settings/defaults';
 import { migrateAiSettings, stripLegacyAiSettings } from './ai/settings/migrateAiSettings';
@@ -459,6 +460,17 @@ export default class RadialTimelinePlugin extends Plugin {
         this.settings = Object.assign({}, DEFAULT_SETTINGS, loadedSettings);
         this.settings.aiSettings = (loadedSettings as Partial<RadialTimelineSettings>).aiSettings;
         this.settings.authorProgress = migrateAuthorProgressSettings((loadedSettings as Partial<RadialTimelineSettings>).authorProgress);
+        let modeMigrated = false;
+        const modeNormalization = normalizeTimelineMode(this.settings.currentMode);
+        if (modeNormalization.mode) {
+            if (modeNormalization.mode !== this.settings.currentMode) {
+                this.settings.currentMode = modeNormalization.mode;
+                modeMigrated = true;
+            }
+        } else if (this.settings.currentMode) {
+            this.settings.currentMode = DEFAULT_SETTINGS.currentMode || 'narrative';
+            modeMigrated = true;
+        }
         let planetarySelectionMigrated = false;
         const planetaryProfiles = Array.isArray(this.settings.planetaryProfiles) ? this.settings.planetaryProfiles : [];
         this.settings.planetaryProfiles = planetaryProfiles;
@@ -751,7 +763,7 @@ export default class RadialTimelinePlugin extends Plugin {
             globalLastUsed.novel = legacyLayoutIdMap[globalLastUsed.novel];
             pandocLayoutReferenceMigrated = true;
         }
-        if (aiSettingsMigrated || actionNotesTargetMigrated || exportFolderMigrated || beatSettingsMigration.changed || backdropTemplateMigrated || pandocLayoutsMigrated || bundledPandocLayoutsRegistered || publishingModelMigrated || matterWorkflowMigrated || pandocLayoutReferenceMigrated || manuscriptExportCleanupMigrated || booksMigrated || planetarySelectionMigrated) {
+        if (aiSettingsMigrated || actionNotesTargetMigrated || exportFolderMigrated || beatSettingsMigration.changed || backdropTemplateMigrated || pandocLayoutsMigrated || bundledPandocLayoutsRegistered || publishingModelMigrated || matterWorkflowMigrated || pandocLayoutReferenceMigrated || manuscriptExportCleanupMigrated || booksMigrated || planetarySelectionMigrated || modeMigrated) {
             await this.saveSettings();
         }
     }

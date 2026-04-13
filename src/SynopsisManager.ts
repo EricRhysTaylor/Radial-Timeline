@@ -1066,7 +1066,7 @@ export default class SynopsisManager {
     // Create the main container group
     const containerGroup = createSynopsisContainer(sceneId, scene.path);
 
-    // Store publish stage color on synopsis for hover title color updates in Subplot mode
+    // Store publish stage color on synopsis for hover title color updates in Progress mode
     containerGroup.setAttribute('data-stage-color', titleColor);
 
     // Create the synopsis text group
@@ -1734,12 +1734,12 @@ export default class SynopsisManager {
 
     const currentMode = (this.plugin.settings as any).currentMode || 'narrative';
     const isChronologueMode = currentMode === 'chronologue';
-    const isPublicationMode = currentMode === 'publication';
+    const isProgressMode = currentMode === 'progress';
     const readabilityScale = getReadabilityScale(this.plugin.settings);
 
     const subplotOuterRadius = isChronologueMode
       ? SUBPLOT_OUTER_RADIUS_CHRONOLOGUE
-      : isPublicationMode
+      : isProgressMode
         ? SUBPLOT_OUTER_RADIUS_MAINPLOT
         : SUBPLOT_OUTER_RADIUS_STANDARD[readabilityScale];
 

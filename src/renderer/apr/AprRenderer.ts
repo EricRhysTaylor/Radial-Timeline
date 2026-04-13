@@ -217,7 +217,7 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
     // Structural palette based on theme (with optional custom spokes color)
     const structural = resolveStructuralColors(theme, spokeColor);
 
-    // Normalize stage colors to match Publication mode (settings or defaults)
+    // Normalize stage colors to match Progress mode (settings or defaults)
     const stageColorMap = stageColors || DEFAULT_SETTINGS.publishStageColors;
     const stageColorLookup = stageColorMap as Record<string, string>;
     const isThumb = size === 'thumb';
@@ -356,7 +356,7 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
     let svg = `<svg width="${svgSize}" height="${svgSize}" viewBox="-${half} -${half} ${svgSize} ${svgSize}" xmlns="http://www.w3.org/2000/svg" class="apr-svg apr-${size}${portableClass}"${svgStyleAttr}>`;
     svg += `<rect x="-${half}" y="-${half}" width="${svgSize}" height="${svgSize}" fill="${color('--apr-bg', bgFill)}" />`;
 
-    // Publication-mode defs (plaid patterns etc.) + optional filters
+    // Progress-mode defs (plaid patterns etc.) + optional filters
     // Use patternScale from preset for denser patterns at smaller sizes
     // Note: Filters are skipped in portable mode for Figma/Illustrator compatibility
     const percentShadow = portableSvg ? '' : `

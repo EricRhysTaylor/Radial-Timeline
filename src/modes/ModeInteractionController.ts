@@ -56,8 +56,8 @@ export class ModeInteractionController {
                 await this.setupAllScenesHandlers(svg);
                 break;
                 
-            case TimelineMode.PUBLICATION:
-                await this.setupPublicationHandlers(svg);
+            case TimelineMode.PROGRESS:
+                await this.setupProgressHandlers(svg);
                 break;
                 
             case TimelineMode.GOSSAMER:
@@ -129,9 +129,9 @@ export class ModeInteractionController {
     }
     
     /**
-     * Setup handlers for Publication mode
+     * Setup handlers for Progress mode
      */
-    private async setupPublicationHandlers(svg: SVGSVGElement): Promise<void> {
+    private async setupProgressHandlers(svg: SVGSVGElement): Promise<void> {
         // Import and use existing Main Plot mode setup
         const { setupMainPlotMode } = await import('../view/modes/MainPlotMode');
         setupMainPlotMode(this.view as any, svg);
@@ -186,4 +186,3 @@ export class ModeInteractionController {
 export function createInteractionController(view: RadialTimelineView): ModeInteractionController {
     return new ModeInteractionController(view);
 }
-

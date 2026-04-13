@@ -364,7 +364,7 @@ export function renderCompletionEstimatePreview(params: {
                         { title: "Author status: confirmed.", subtitle: "Press stage complete. This is a real book now." },
                         { title: "CHAMPION", subtitle: "From zero draft to press-ready. Incredible." },
                         { title: "The manuscript is complete.", subtitle: "Time to uncork something." },
-                        { title: "Publishing awaits.", subtitle: "You've done your part. Every. Single. Scene." },
+                        { title: "Release awaits.", subtitle: "You've done your part. Every. Single. Scene." },
                         { title: "Final boss defeated.", subtitle: "The book is finished. You win." },
                         { title: "Standing ovation.", subtitle: "From first word to final scene — you did this." },
                     ];
@@ -509,7 +509,7 @@ export function renderCompletionEstimatePreview(params: {
             }
 
             const heading = previewContainer.createDiv({ cls: 'ert-planetary-preview-heading' });
-            heading.setText(t('settings.publication.completionEstimate.heading', { stage: estimate.stage }));
+            heading.setText(t('settings.progress.completionEstimate.heading', { stage: estimate.stage }));
 
             const body = previewContainer.createDiv({ cls: 'ert-planetary-preview-body ert-completion-preview-body' });
 
@@ -518,19 +518,19 @@ export function renderCompletionEstimatePreview(params: {
 
             // Completed / Total
             const completedMetric = metricsRow.createDiv({ cls: 'ert-completion-metric' });
-            completedMetric.createDiv({ cls: 'ert-completion-metric-value', text: t('settings.publication.completionEstimate.completedFraction', { completed: estimate.total - estimate.remaining, total: estimate.total }) });
-            completedMetric.createDiv({ cls: 'ert-completion-metric-label', text: t('settings.publication.completionEstimate.scenesComplete') });
+            completedMetric.createDiv({ cls: 'ert-completion-metric-value', text: t('settings.progress.completionEstimate.completedFraction', { completed: estimate.total - estimate.remaining, total: estimate.total }) });
+            completedMetric.createDiv({ cls: 'ert-completion-metric-label', text: t('settings.progress.completionEstimate.scenesComplete') });
 
             // Remaining
             const remainingMetric = metricsRow.createDiv({ cls: 'ert-completion-metric' });
             remainingMetric.createDiv({ cls: 'ert-completion-metric-value', text: String(estimate.remaining) });
-            remainingMetric.createDiv({ cls: 'ert-completion-metric-label', text: t('settings.publication.completionEstimate.remaining') });
+            remainingMetric.createDiv({ cls: 'ert-completion-metric-label', text: t('settings.progress.completionEstimate.remaining') });
 
             // Rate
             const rateMetric = metricsRow.createDiv({ cls: 'ert-completion-metric' });
             const rateValue = estimate.rate > 0 ? estimate.rate.toFixed(1) : '—';
             rateMetric.createDiv({ cls: 'ert-completion-metric-value', text: rateValue });
-            rateMetric.createDiv({ cls: 'ert-completion-metric-label', text: t('settings.publication.completionEstimate.perWeek') });
+            rateMetric.createDiv({ cls: 'ert-completion-metric-label', text: t('settings.progress.completionEstimate.perWeek') });
 
             // Staleness indicator
             if (estimate.staleness !== 'fresh') {
@@ -549,7 +549,7 @@ export function renderCompletionEstimatePreview(params: {
                     month: 'long',
                     day: 'numeric'
                 });
-                dateRow.createDiv({ cls: 'ert-completion-date-label', text: t('settings.publication.completionEstimate.estimatedCompletion') });
+                dateRow.createDiv({ cls: 'ert-completion-date-label', text: t('settings.progress.completionEstimate.estimatedCompletion') });
                 dateRow.createDiv({ cls: 'ert-completion-date-value', text: dateFormatter.format(estimate.date) });
 
                 // Days until completion
@@ -557,20 +557,20 @@ export function renderCompletionEstimatePreview(params: {
                 today.setHours(0, 0, 0, 0);
                 const daysUntil = Math.ceil((estimate.date.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
                 if (daysUntil > 0) {
-                    dateRow.createDiv({ cls: 'ert-completion-days-until', text: t('settings.publication.completionEstimate.daysFromNow', { days: daysUntil }) });
+                    dateRow.createDiv({ cls: 'ert-completion-days-until', text: t('settings.progress.completionEstimate.daysFromNow', { days: daysUntil }) });
                 }
             } else {
-                dateRow.createDiv({ cls: 'ert-completion-date-label', text: t('settings.publication.completionEstimate.estimatedCompletion') });
+                dateRow.createDiv({ cls: 'ert-completion-date-label', text: t('settings.progress.completionEstimate.estimatedCompletion') });
                 dateRow.createDiv({ cls: 'ert-completion-date-value ert-completion-date-unknown', text: '?' });
-                dateRow.createDiv({ cls: 'ert-completion-days-until', text: t('settings.publication.completionEstimate.insufficientData') });
+                dateRow.createDiv({ cls: 'ert-completion-days-until', text: t('settings.progress.completionEstimate.insufficientData') });
             }
 
             // Monthly projection breakdown
             if (estimate.date && estimate.rate > 0) {
                 const projectionSection = body.createDiv({ cls: 'ert-completion-projection' });
                 const projectionHeading = estimate.labelText === '?'
-                    ? t('settings.publication.completionEstimate.projectionHeadingLastPace')
-                    : t('settings.publication.completionEstimate.projectionHeading');
+                    ? t('settings.progress.completionEstimate.projectionHeadingLastPace')
+                    : t('settings.progress.completionEstimate.projectionHeading');
                 projectionSection.createDiv({ cls: 'ert-completion-projection-heading', text: projectionHeading });
 
                 const projectionGrid = projectionSection.createDiv({ cls: 'ert-completion-projection-grid' });
@@ -582,7 +582,7 @@ export function renderCompletionEstimatePreview(params: {
                 const lastProgressRow = body.createDiv({ cls: 'ert-completion-last-progress' });
                 const daysSince = Math.floor((Date.now() - estimate.lastProgressDate.getTime()) / (24 * 60 * 60 * 1000));
                 const dateFormatter = new Intl.DateTimeFormat(getFormattingLocale(), { month: 'short', day: 'numeric' });
-                lastProgressRow.setText(t('settings.publication.completionEstimate.lastProgress', { date: dateFormatter.format(estimate.lastProgressDate), days: daysSince, window: estimate.windowDays }));
+                lastProgressRow.setText(t('settings.progress.completionEstimate.lastProgress', { date: dateFormatter.format(estimate.lastProgressDate), days: daysSince, window: estimate.windowDays }));
             }
 
         } catch (e) {
@@ -761,7 +761,7 @@ export function renderCompletionEstimatePreview(params: {
     };
 }
 
-export function renderPublicationSection(params: {
+export function renderProgressSection(params: {
     plugin: RadialTimelinePlugin;
     containerEl: HTMLElement;
     onCompletionPreviewRefresh?: () => void;
@@ -769,22 +769,22 @@ export function renderPublicationSection(params: {
     const { plugin, containerEl, onCompletionPreviewRefresh } = params;
     containerEl.classList.add(ERT_CLASSES.STACK);
 
-    const pubHeading = new ObsidianSetting(containerEl)
-        .setName('Publication and progress')
+    const progressHeading = new ObsidianSetting(containerEl)
+        .setName('Progress & Status')
         .setHeading();
-    addHeadingIcon(pubHeading, 'printer');
-    addWikiLink(pubHeading, 'Settings#publication');
-    applyErtHeaderLayout(pubHeading);
+    addHeadingIcon(progressHeading, 'activity');
+    addWikiLink(progressHeading, 'Settings#progress-status');
+    applyErtHeaderLayout(progressHeading);
 
     const stackEl = containerEl.createDiv({ cls: ERT_CLASSES.STACK });
 
     // --- Stage Target Dates ---
-    // Create target date settings for each publish stage (Zero, Author, House, Press)
+    // Create target date settings for each progress stage (Zero, Author, House, Press)
     const stageDescriptions: Record<Stage, string> = {
         Zero: 'All scenes written, continuity intact, no prose polishing beyond clarity. Consider using Zero draft mode to discourage never-ending revision loops.',
         Author: 'Let sit two weeks or more. Self-edited for structure, character intent, and pacing. Alpha readers engaged, story questions resolved, ready for professional feedback.',
-        House: 'Professional Editor feedback incorporated; structural and tonal notes addressed, ready for press.',
-        Press: 'Line edited, copy edited, proofread. No open queries. No tracked changes. Publication-ready manuscript.'
+        House: 'Professional editor feedback incorporated; structural and tonal notes addressed, ready for press.',
+        Press: 'Line edited, copy edited, proofread. No open queries. No tracked changes. Release-ready manuscript.'
     };
 
     for (const stage of STAGE_ORDER) {
@@ -894,7 +894,7 @@ export function renderPublicationSection(params: {
     const zeroStageColor = getStageColor(plugin, 'Zero');
     const zeroDraftSetting = new ObsidianSetting(stackEl)
         .setName('Zero draft mode')
-        .setDesc('Intercept clicks on scenes with Publish Stage = Zero and Status = Complete to capture Pending Edits without opening the scene.')
+        .setDesc('Intercept clicks on scenes with Progress Stage = Zero and Status = Complete to capture Pending Edits without opening the scene.')
         .addToggle(toggle => toggle
             .setValue(plugin.settings.enableZeroDraftMode ?? false)
             .onChange(async (value) => {

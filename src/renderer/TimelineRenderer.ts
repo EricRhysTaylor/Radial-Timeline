@@ -115,7 +115,7 @@ const STAGE_HEADER_TOOLTIPS: Record<string, string> = {
     Zero: 'Zero stage — The raw first draft. Unpolished ideas on the page, no revisions yet.',
     Author: 'Author stage — The author revises and refines the draft after letting it rest.',
     House: 'House stage — Alpha and beta readers give feedback. Publisher or editor reviews the manuscript. Copy-edited and proofed.',
-    Press: 'Press stage — Final version is ready for publication.'
+    Press: 'Press stage — Final version is ready for release.'
 };
 
 // Status header tooltips (used for grid column headers Tdo/Wrk/Due/Cmt)
@@ -258,7 +258,7 @@ export function createTimelineSVG(
     const numActs = getConfiguredActCount(plugin.settings as any);
     const actLabels = parseActLabels(plugin.settings as any, numActs);
     const isChronologueMode = currentMode === 'chronologue';
-    const isPublicationMode = currentMode === 'publication';
+    const isProgressMode = currentMode === 'progress';
     const sortByWhen = isChronologueMode ? true : ((plugin.settings as any).sortByWhenDate ?? false);
     const forceChronological = isChronologueMode;
     const showChapterMarkers = isNarrativeMode && !sortByWhen && ((plugin.settings as any).showChapterMarkers ?? false);
@@ -284,7 +284,7 @@ export function createTimelineSVG(
     // Use appropriate subplot outer radius based on mode and readability scale
     const subplotOuterRadius = isChronologueMode
         ? SUBPLOT_OUTER_RADIUS_CHRONOLOGUE
-        : isPublicationMode
+        : isProgressMode
             ? SUBPLOT_OUTER_RADIUS_MAINPLOT
             : SUBPLOT_OUTER_RADIUS_STANDARD[readabilityScale];
 
@@ -317,7 +317,7 @@ export function createTimelineSVG(
     // Begin defs act
     svg += `<defs>`;
 
-    // Define patterns for Working and Todo states with Publish Stage colors
+    // Define patterns for Working and Todo states with Progress Stage colors
     svg += renderDefs(PUBLISH_STAGE_COLORS);
 
 

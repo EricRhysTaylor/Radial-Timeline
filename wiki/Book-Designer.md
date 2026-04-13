@@ -57,7 +57,7 @@ If your writing methodology uses fields beyond the built-in keys (e.g., Story Gr
 3.  Add your custom keys to the list.
 4.  In the Book Designer, select **Advanced** as your scene set type.
 
-> **Note**: Radial Timeline already tracks draft status (`Status` and `Publish Stage`), point of view (`POV`), and many other metadata fields in the built-in sets. Only add custom keys for data that your methodology requires beyond what the plugin already provides. See [[YAML-Frontmatter]] for the full list of built-in fields.
+> **Note**: Radial Timeline already tracks draft status (`Status` and `Publish Stage` / Progress Stage), point of view (`POV`), and many other metadata fields in the built-in sets. Only add custom keys for data that your methodology requires beyond what the plugin already provides. See [[YAML-Frontmatter]] for the full list of built-in fields.
 
 ## Custom Beat Systems
 

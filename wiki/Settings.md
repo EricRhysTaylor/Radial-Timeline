@@ -167,7 +167,7 @@ Control how narrative perspective is visualized.
 <a name="acts"></a>
 ### Acts
 Configure the high-level structure of your narrative ring.
-*   **Act count**: Sets the number of acts (Minimum 3). This divides the Narrative, Publication, and Gossamer timeline rings.
+*   **Act count**: Sets the number of acts (Minimum 3). This divides the Narrative, Progress, and Gossamer timeline rings.
 *   **Act labels**: (Optional) Define custom names for your acts (e.g., "Part 1, Part 2, Part 3").
 *   **Show act labels**: Toggle to hide labels and show only act numbers.
 
@@ -205,8 +205,8 @@ Manage how Radial Timeline reads and writes metadata.
 > *   For scene set customization: [[YAML-Frontmatter#advanced-yaml-editor]]
 > *   For a full list of keys: [[YAML-Frontmatter]]
 
-<a name="publication"></a>
-### Publication and progress
+<a name="progress-status"></a>
+### Progress & Status
 Manage your project's milestones and status tracking.
 
 **Stage Target Dates:**
@@ -218,12 +218,12 @@ Manage your project's milestones and status tracking.
 Target dates are validated to ensure proper stage ordering. Overdue dates are highlighted in red. Each stage has its own color-coded marker on the timeline.
 
 <a name="zero-draft-mode"></a>
-*   **Zero draft mode**: A focused mode for reviewing. Intercepts clicks on scenes with `Publish Stage: Zero` and `Status: Complete` to open a "Pending Edits" modal instead of the full note.
+*   **Zero draft mode**: A focused mode for reviewing. Intercepts clicks on scenes with Progress Stage = Zero (`Publish Stage: Zero` in YAML) and `Status: Complete` to open a "Pending Edits" modal instead of the full note.
 *   **Show completion estimate**: Toggles the predicted completion tick mark on the timeline.
-*   **Completion estimate window (days)**: Rolling window (default 30, min 14, max 90) used to measure pace. Pace = completions in the active publish stage within the last N days ÷ N (scenes/day).
+*   **Completion estimate window (days)**: Rolling window (default 30, min 14, max 90) used to measure pace. Pace = completions in the active progress stage within the last N days ÷ N (scenes/day).
 
 **How the completion estimate works**
-* Scope: Only the active publish stage (highest stage with any incomplete scenes). Other stages do not affect pace or remaining.
+* Scope: Only the active progress stage (highest stage with any incomplete scenes). Other stages do not affect pace or remaining.
 * Total scenes for the active stage: `max(unique stage scenes, highest scene number seen anywhere)`. This lets an early high-numbered scene (e.g., “Scene 70”) set a floor even if few notes exist.
 * Remaining: Total − Completed (stage-scoped, deduped by path, clamped to ≥0).
 * Date: Requires at least 2 completed scenes in the window for a confident pace. With fewer, the geometry stays but the label shows “?”.
@@ -292,9 +292,9 @@ Technical configuration and file handling.
 *   **Metadata refresh debounce**: Adjust how often the timeline refreshes while typing (default 10000ms).
 *   **Reset subplot color precedence**: Clears manually assigned dominant subplot colors.
 
-<a name="publishing-stage-colors"></a>
-### Publishing stage colors
-*   **Publishing stage colors**: Customize the colors used for the publishing stages (Zero Draft, Author's Draft, House Edit, Press Ready).
+<a name="progress-stage-colors"></a>
+### Progress stage colors
+*   **Progress stage colors**: Customize the colors used for the progress stages (Zero Draft, Author's Draft, House Edit, Press Ready).
 
 <a name="subplot-ring-colors"></a>
 ### Subplot ring colors

@@ -1529,7 +1529,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     } // End of non-Pro publishing section
 
     // ─────────────────────────────────────────────────────────────────────────
-    // PUBLISH STAGE DETECTION & PROGRESS MODE
+    // PROGRESS STAGE DETECTION & PROGRESS MODE
     // ─────────────────────────────────────────────────────────────────────────
     type AprProgressMode = 'stage' | 'zero' | 'date';
     const progressModeCard = section.createDiv({ cls: ERT_CLASSES.PANEL });

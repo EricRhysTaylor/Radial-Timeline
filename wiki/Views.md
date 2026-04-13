@@ -21,7 +21,7 @@ Inquiry organizes its analysis into three narrative zones (Setup, Pressure, Payo
 | Mode | Key | Focus |
 | :--- | :--- | :--- |
 | **Narrative** | `1` | Manuscript reading order — subplot colors, story beats, scene reordering |
-| **Publication** | `2` | Writing status and revision stages — Todo/Working/Overdue, publish-stage colors |
+| **Progress** | `2` | Writing status and revision stages — Todo/Working/Overdue, progress-stage colors |
 | **Chronologue** | `3` | Story-world chronology — when events happen, elapsed time, duration arcs |
 | **Gossamer** | `4` | Narrative momentum — story beat scores, pacing, tension mapping |
 

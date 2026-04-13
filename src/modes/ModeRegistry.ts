@@ -13,7 +13,7 @@
 
 import { ModeDefinition, TimelineMode } from './ModeDefinition';
 import { NARRATIVE_MODE } from './definitions/AllScenesMode';
-import { PUBLICATION_MODE } from './definitions/MainPlotMode';
+import { PROGRESS_MODE } from './definitions/MainPlotMode';
 import { GOSSAMER_MODE } from './definitions/GossamerMode';
 import { CHRONOLOGUE_MODE } from './definitions/ChronologueMode';
 
@@ -22,7 +22,7 @@ import { CHRONOLOGUE_MODE } from './definitions/ChronologueMode';
  */
 const MODE_REGISTRY = new Map<TimelineMode, ModeDefinition>([
     [TimelineMode.NARRATIVE, NARRATIVE_MODE],
-    [TimelineMode.PUBLICATION, PUBLICATION_MODE],
+    [TimelineMode.PROGRESS, PROGRESS_MODE],
     [TimelineMode.CHRONOLOGUE, CHRONOLOGUE_MODE],
     [TimelineMode.GOSSAMER, GOSSAMER_MODE],
 ]);
@@ -78,4 +78,3 @@ export function getNextToggleMode(currentMode: TimelineMode): TimelineMode {
 export function isModeRegistered(mode: TimelineMode): boolean {
     return MODE_REGISTRY.has(mode);
 }
-
