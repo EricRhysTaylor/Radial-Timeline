@@ -20,7 +20,7 @@ export type CredentialSecretProvider = 'openai' | 'anthropic' | 'google' | 'olla
 
 export const DEFAULT_MODEL_POLICY: ModelPolicy = { type: 'latestStable' };
 export const DEFAULT_CACHE_WINDOWS = {
-    anthropicTtl: '5m',
+    anthropicTtl: '1h',
     googleTtlSeconds: 900,
     openaiRetention: 'in_memory',
     openaiInMemoryWindowMinutes: 10

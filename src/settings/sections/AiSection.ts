@@ -2324,7 +2324,7 @@ export function renderAiSection(params: {
         const aiSettings = ensureCanonicalAiSettings();
         if (!aiSettings.cacheWindows) {
             aiSettings.cacheWindows = buildDefaultAiSettings().cacheWindows ?? {
-                anthropicTtl: '5m',
+                anthropicTtl: '1h',
                 googleTtlSeconds: 900,
                 openaiRetention: 'in_memory',
                 openaiInMemoryWindowMinutes: 10

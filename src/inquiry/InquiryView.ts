@@ -1861,6 +1861,9 @@ export class InquiryView extends ItemView {
                 return true;
             }
         }
+        // If there is an active session but no log was saved, don't fall through
+        // to an unrelated older log — report the failure honestly.
+        if (activeSession) return false;
         const fallback = this.getMostRecentInquiryLogFile();
         if (!fallback) return false;
         await openOrRevealFile(this.app, fallback);

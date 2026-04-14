@@ -55,7 +55,7 @@ export function validateAiSettings(input?: AiSettingsV1 | null): AiSettingsValid
     };
 
     const defaultCacheWindows = defaults.cacheWindows ?? {
-        anthropicTtl: '5m',
+        anthropicTtl: '1h',
         googleTtlSeconds: 900,
         openaiRetention: 'in_memory',
         openaiInMemoryWindowMinutes: 10
@@ -245,7 +245,7 @@ export function validateAiSettings(input?: AiSettingsV1 | null): AiSettingsValid
 
     if (value.cacheWindows) {
         if (value.cacheWindows.anthropicTtl !== '1h' && value.cacheWindows.anthropicTtl !== '5m') {
-            value.cacheWindows.anthropicTtl = defaults.cacheWindows?.anthropicTtl ?? '5m';
+            value.cacheWindows.anthropicTtl = defaults.cacheWindows?.anthropicTtl ?? '1h';
         }
         if (typeof value.cacheWindows.googleTtlSeconds !== 'number' || !Number.isFinite(value.cacheWindows.googleTtlSeconds)) {
             value.cacheWindows.googleTtlSeconds = defaults.cacheWindows?.googleTtlSeconds ?? 900;
