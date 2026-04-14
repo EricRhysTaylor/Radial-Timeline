@@ -11402,6 +11402,11 @@
   border-color: color-mix(in srgb, var(--text-success) 50%, transparent);
 }
 
+.rt-book-card.setting-item.rt-book-card--link-broken {
+  border-color: color-mix(in srgb, var(--text-error) 42%, var(--background-modifier-border));
+  background: color-mix(in srgb, var(--text-error) 6%, var(--background-primary));
+}
+
 /* Name column: status icon + title stacked above desc */
 .rt-book-card__name {
   display: flex;
@@ -11453,6 +11458,10 @@
   color: var(--text-success);
 }
 
+.rt-book-card__status--invalid {
+  color: var(--text-error);
+}
+
 /* Clickable row to activate inactive book */
 .rt-book-card--clickable {
   cursor: pointer;
@@ -11466,8 +11475,20 @@
   color: var(--text-success);
 }
 
+.rt-book-card--clickable.rt-book-card--link-broken:hover {
+  border-color: color-mix(in srgb, var(--text-error) 42%, var(--background-modifier-border));
+}
+
+.rt-book-card--clickable.rt-book-card--link-broken:hover .rt-book-card__status--invalid {
+  color: var(--text-error);
+}
+
 .rt-book-card__stat--warn {
   color: var(--text-faint);
+}
+
+.rt-book-card__stat--invalid {
+  color: var(--text-error);
 }
 
 .rt-book-card__trash.is-disabled {

@@ -552,10 +552,10 @@ export class InquiryRunnerService implements InquiryRunner {
             const summary = this.extractSummary(frontmatter);
             const sceneNumber = this.extractSceneNumber(frontmatter) ?? this.extractSceneNumberFromText(file.basename);
             const title = this.getSceneTitle(file, frontmatter);
-            const sceneId = this.resolveCanonicalSceneId(entry.sceneId ?? readSceneId(frontmatter) ?? undefined);
+            let sceneId = this.resolveCanonicalSceneId(entry.sceneId ?? readSceneId(frontmatter) ?? undefined);
             if (!sceneId) {
-                console.warn(`[Inquiry] Scene "${file.path}" is missing canonical YAML id (scn_<hash>); skipping scene evidence block.`);
-                return;
+                sceneId = this.buildPathFallbackSceneId(normalizedPath);
+                console.warn(`[Inquiry] Scene "${file.path}" is missing canonical YAML id (scn_<hash>); using fallback id "${sceneId}".`);
             }
             scenes.push({
                 path: file.path,
@@ -2116,6 +2116,16 @@ export class InquiryRunnerService implements InquiryRunner {
     private resolveCanonicalSceneId(value: string | undefined): string | undefined {
         if (!isStableSceneId(value)) return undefined;
         return String(value).trim().toLowerCase();
+    }
+
+    /** Deterministic fallback scn_ ID derived from file path (FNV-1a). */
+    private buildPathFallbackSceneId(path: string): string {
+        let h = 0x811c9dc5;
+        for (let i = 0; i < path.length; i++) {
+            h ^= path.charCodeAt(i);
+            h = Math.imul(h, 0x01000193);
+        }
+        return `scn_${(h >>> 0).toString(16).padStart(8, '0')}`;
     }
 
     private buildStubResult(

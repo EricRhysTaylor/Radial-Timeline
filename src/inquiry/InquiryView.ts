@@ -184,6 +184,7 @@ import {
 import { addTooltipData, balanceTooltipText, setupTooltipsFromDataAttributes } from '../utils/tooltip';
 import { classifySynopsis, type SynopsisQuality } from '../sceneAnalysis/synopsisQuality';
 import { readSceneId } from '../utils/sceneIds';
+import { migrateSceneFrontmatterIds } from '../migrations/sceneIds';
 import { buildSceneRefIndex, isStableSceneId, normalizeSceneRef } from '../ai/references/sceneRefNormalizer';
 import {
     DEFAULT_CHARS_PER_TOKEN,
@@ -4303,6 +4304,9 @@ export class InquiryView extends ItemView {
         if (normalized === 'outline-saga') {
             return [`${SIGMA_CHAR}`, 'Saga', 'S'];
         }
+        if (normalized === 'scene') {
+            return ['SC', 'S'];
+        }
         const words = normalized
             .replace(/([a-z])([A-Z])/g, '$1 $2')
             .replace(/[^a-zA-Z0-9]+/g, ' ')
@@ -5683,13 +5687,26 @@ export class InquiryView extends ItemView {
         const activeBookId = this.state.scope === 'saga' ? this.state.activeBookId : this.state.activeBookId;
 
         const engineSelection = this.resolveEngineSelectionForRun();
-        const manifest = this.buildCorpusManifest(question.id, {
+        let manifest = this.buildCorpusManifest(question.id, {
             modelId: engineSelection.modelId,
             questionZone: question.zone
         });
         if (!manifest.entries.length) {
             this.handleEmptyCorpusRun();
             return;
+        }
+        // Ensure scene files have canonical IDs before running.
+        // Migration only runs at startup, so scenes added later may lack IDs.
+        const scenesWithoutIds = manifest.entries.filter(entry => entry.class === 'scene' && !entry.sceneId);
+        if (scenesWithoutIds.length > 0) {
+            const migrated = await migrateSceneFrontmatterIds(this.plugin);
+            if (migrated > 0) {
+                // Rebuild manifest to pick up newly assigned IDs from the metadata cache.
+                manifest = this.buildCorpusManifest(question.id, {
+                    modelId: engineSelection.modelId,
+                    questionZone: question.zone
+                });
+            }
         }
         const baseKey = this.sessionStore.buildBaseKey({
             questionId: question.id,
@@ -6029,13 +6046,23 @@ export class InquiryView extends ItemView {
         const selectionMode = this.getSelectionMode(targetSceneIds);
         const activeBookId = this.state.activeBookId ?? this.corpus?.books?.[0]?.id;
         const contextRequired = this.isContextRequiredForQuestions(questions);
-        const manifest = this.buildCorpusManifest('omnibus', {
+        let manifest = this.buildCorpusManifest('omnibus', {
             modelId: providerChoice.modelId,
             contextRequired
         });
         if (!manifest.entries.length) {
             this.handleEmptyCorpusRun();
             return;
+        }
+        const scenesWithoutIds = manifest.entries.filter(entry => entry.class === 'scene' && !entry.sceneId);
+        if (scenesWithoutIds.length > 0) {
+            const migrated = await migrateSceneFrontmatterIds(this.plugin);
+            if (migrated > 0) {
+                manifest = this.buildCorpusManifest('omnibus', {
+                    modelId: providerChoice.modelId,
+                    contextRequired
+                });
+            }
         }
         const submittedAt = new Date();
 
@@ -6202,6 +6229,18 @@ export class InquiryView extends ItemView {
         this.state.isRunning = true;
         this.setApiStatus('running');
         this.refreshUI({ skipCorpus: true });
+
+        // Ensure scene IDs exist before the sequential loop.
+        {
+            const preflightManifest = this.buildCorpusManifest(questions[0]?.id ?? 'preflight', {
+                modelId: providerChoice.modelId,
+                questionZone: questions[0]?.zone
+            });
+            const missingIds = preflightManifest.entries.filter(entry => entry.class === 'scene' && !entry.sceneId);
+            if (missingIds.length > 0) {
+                await migrateSceneFrontmatterIds(this.plugin);
+            }
+        }
 
         try {
             for (let qi = 0; qi < questions.length; qi += 1) {

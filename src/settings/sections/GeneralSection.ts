@@ -1,5 +1,5 @@
 import type { App, TextComponent } from 'obsidian';
-import { Setting as ObsidianSetting, normalizePath, Notice, Modal, ButtonComponent, setIcon, setTooltip } from 'obsidian';
+import { Setting as ObsidianSetting, normalizePath, Notice, Modal, ButtonComponent, setIcon, setTooltip, TFolder } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { t } from '../../i18n';
 import { DEFAULT_SETTINGS } from '../defaults';
@@ -209,7 +209,12 @@ export function renderGeneralSection(params: {
     const updateAddBtnPulse = () => {
         const books = plugin.settings.books || [];
         const needsAttention = books.length === 0
-            || books.some(b => !b.sourceFolder?.trim());
+            || books.some(b => {
+                const rawFolder = (b.sourceFolder || '').trim();
+                if (!rawFolder) return true;
+                const normalizedFolder = normalizePath(rawFolder);
+                return !(app.vault.getAbstractFileByPath(normalizedFolder) instanceof TFolder);
+            });
         addBookBtn.toggleClass('rt-books-add-btn--pulse', needsAttention);
     };
 
@@ -295,31 +300,40 @@ export function renderGeneralSection(params: {
             const isActive = book.id === activeId;
             const label = book.title?.trim() || DEFAULT_BOOK_TITLE;
             const sequenceNumber = getBookSequenceNumber(plugin.settings, book.id) ?? index + 1;
+            const rawFolder = (book.sourceFolder || '').trim();
+            const normalizedFolder = rawFolder ? normalizePath(rawFolder) : '';
+            const abstractFolder = normalizedFolder
+                ? app.vault.getAbstractFileByPath(normalizedFolder)
+                : null;
+            const hasConfiguredFolder = normalizedFolder.length > 0;
+            const hasResolvedFolder = abstractFolder instanceof TFolder;
+            const hasBrokenFolderLink = hasConfiguredFolder && !hasResolvedFolder;
 
             // ── Scene count (only Class: Scene files) ────────────────
             let sceneStatText = 'No folder';
             let sceneStatWarn = true;
-            const folder = book.sourceFolder?.trim();
-            if (folder) {
-                const abstractFolder = app.vault.getAbstractFileByPath(normalizePath(folder));
-                if (abstractFolder && 'children' in abstractFolder) {
-                    const children = (abstractFolder as { children: { path: string }[] }).children;
-                    let sceneCount = 0;
-                    for (const child of children) {
-                        if (!child.path.endsWith('.md')) continue;
-                        const tfile = app.vault.getAbstractFileByPath(child.path);
-                        if (!tfile) continue;
-                        const fm = app.metadataCache.getFileCache(tfile as import('obsidian').TFile)?.frontmatter;
-                        if (fm && (fm.Class === 'Scene' || fm.class === 'Scene')) sceneCount++;
-                    }
-                    sceneStatText = sceneCount === 1 ? '1 scene' : `${sceneCount} scenes`;
-                    sceneStatWarn = false;
+            if (hasBrokenFolderLink) {
+                sceneStatText = 'Folder missing';
+            } else if (hasResolvedFolder) {
+                const children = abstractFolder.children;
+                let sceneCount = 0;
+                for (const child of children) {
+                    if (!child.path.endsWith('.md')) continue;
+                    const tfile = app.vault.getAbstractFileByPath(child.path);
+                    if (!tfile) continue;
+                    const fm = app.metadataCache.getFileCache(tfile as import('obsidian').TFile)?.frontmatter;
+                    if (fm && (fm.Class === 'Scene' || fm.class === 'Scene')) sceneCount++;
                 }
+                sceneStatText = sceneCount === 1 ? '1 scene' : `${sceneCount} scenes`;
+                sceneStatWarn = false;
             }
 
             // ── Single-row book card (Setting row) ───────────────────
             const row = new ObsidianSetting(booksPanel);
             row.settingEl.addClass('rt-book-card', isActive ? 'is-active' : 'is-inactive');
+            if (hasBrokenFolderLink) {
+                row.settingEl.addClass('rt-book-card--link-broken');
+            }
             row.settingEl.setAttribute('data-book-sequence', String(sequenceNumber));
 
             const dragHandle = row.settingEl.createDiv({ cls: 'rt-book-card__drag ert-drag-handle' });
@@ -334,9 +348,17 @@ export function renderGeneralSection(params: {
             nameEl.addClass('rt-book-card__name');
 
             const statusIcon = nameEl.createDiv({
-                cls: `rt-book-card__status ${isActive ? 'rt-book-card__status--active' : ''}`
+                cls: `rt-book-card__status ${hasBrokenFolderLink ? 'rt-book-card__status--invalid' : isActive ? 'rt-book-card__status--active' : ''}`
             });
-            setIcon(statusIcon, 'check-circle');
+            setIcon(statusIcon, hasBrokenFolderLink ? 'x-circle' : 'check-circle');
+            setTooltip(
+                statusIcon,
+                hasBrokenFolderLink
+                    ? `Folder not found: ${normalizedFolder}`
+                    : hasResolvedFolder
+                        ? `Linked folder: ${normalizedFolder}`
+                        : 'No folder linked'
+            );
 
             const titleSpan = nameEl.createSpan({
                 text: label,
@@ -363,7 +385,9 @@ export function renderGeneralSection(params: {
             // Desc: scene count stat
             row.setDesc(`BOOK ${sequenceNumber} — ${sceneStatText}`);
             row.descEl.addClass('rt-book-card__meta');
-            if (sceneStatWarn) {
+            if (hasBrokenFolderLink) {
+                row.descEl.addClass('rt-book-card__stat--invalid');
+            } else if (sceneStatWarn) {
                 row.descEl.addClass('rt-book-card__stat--warn');
             }
 
@@ -376,6 +400,7 @@ export function renderGeneralSection(params: {
                     renderBooksManager();
                 });
                 // Prevent input/trash clicks from activating
+                row.controlEl.addEventListener('mousedown', (e) => e.stopPropagation()); // SAFE: direct addEventListener; Settings lifecycle manages cleanup
                 row.controlEl.addEventListener('click', (e) => e.stopPropagation()); // SAFE: direct addEventListener; Settings lifecycle manages cleanup
             }
 
@@ -500,6 +525,7 @@ export function renderGeneralSection(params: {
                 text.inputEl.addClass('ert-input--xl');
 
                 const inputEl = text.inputEl;
+                let blurCommitTimer: number | null = null;
                 const resetState = () => {
                     inputEl.removeClass('ert-setting-input-success');
                     inputEl.removeClass('ert-setting-input-error');
@@ -531,10 +557,17 @@ export function renderGeneralSection(params: {
                     }
                 };
 
-                new ModalFolderSuggest(app, inputEl, (path) => {
+                const folderSuggest = new ModalFolderSuggest(app, inputEl, (path) => {
                     text.setValue(path);
                     void handleBlur(path);
                 });
+
+                const openFolderSuggest = () => {
+                    window.setTimeout(() => {
+                        if (document.activeElement !== inputEl) return;
+                        try { folderSuggest.open(); } catch { }
+                    }, 0);
+                };
 
                 plugin.registerDomEvent(inputEl, 'keydown', (evt: KeyboardEvent) => {
                     if (evt.key === 'Enter') {
@@ -543,7 +576,18 @@ export function renderGeneralSection(params: {
                     }
                 });
 
-                plugin.registerDomEvent(inputEl, 'blur', () => { void handleBlur(); });
+                plugin.registerDomEvent(inputEl, 'focus', openFolderSuggest);
+                plugin.registerDomEvent(inputEl, 'click', openFolderSuggest);
+                plugin.registerDomEvent(inputEl, 'blur', () => {
+                    if (blurCommitTimer !== null) {
+                        window.clearTimeout(blurCommitTimer);
+                    }
+                    blurCommitTimer = window.setTimeout(() => {
+                        blurCommitTimer = null;
+                        if (document.activeElement === inputEl) return;
+                        void handleBlur();
+                    }, 0);
+                });
             });
 
             row.addExtraButton(button => {

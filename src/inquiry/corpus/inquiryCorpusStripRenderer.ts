@@ -552,9 +552,10 @@ export function renderInquiryCorpusStrip(args: {
     // CORPUS text centered on strip
     refs.ccCorpusLabel.setAttribute('x', String(stripCenterX));
     refs.ccCorpusLabel.setAttribute('y', String(corpusTitleY));
-    // Dashed underline positioned below text
+    // Dashed underline positioned below text — width measured from the CORPUS text
     if (refs.ccCorpusUnderline) {
-        const underlineHalfW = 38;
+        const textWidth = refs.ccCorpusLabel.getComputedTextLength?.() ?? 76;
+        const underlineHalfW = Math.round(textWidth / 2);
         const underlineY = corpusTitleY + 7;
         refs.ccCorpusUnderline.setAttribute('x1', String(stripCenterX - underlineHalfW));
         refs.ccCorpusUnderline.setAttribute('x2', String(stripCenterX + underlineHalfW));

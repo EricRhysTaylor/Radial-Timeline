@@ -3349,7 +3349,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             activeBookMetaDraft = '';
             activeBookMetaEditSourcePath = file.path;
             activeBookMetaPreviewOverride = applyBookMetaEditToPreview(meta, field, result.normalizedValue, file.path);
-            rerender();
+            renderBookMetaPreview();
         };
 
         const normalizeValue = (value?: string | number | null): string | null => {

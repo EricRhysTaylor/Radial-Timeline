@@ -58,6 +58,7 @@ import { TimelineAuditAiService } from './services/TimelineAuditAiService';
 import { ensureBundledPandocLayoutsRegistered } from './utils/pandocBundledLayouts';
 import { normalizeManuscriptCleanupOptions } from './utils/manuscriptSanitize';
 import type { GossamerRunRecord } from './utils/gossamer';
+import { seedProEntitlement } from './settings/proEntitlementSeed';
 
 
 // Declare the variable that will be injected by the build process
@@ -458,6 +459,7 @@ export default class RadialTimelinePlugin extends Plugin {
     async loadSettings() {
         const loadedSettings = (await this.loadData()) ?? {};
         this.settings = Object.assign({}, DEFAULT_SETTINGS, loadedSettings);
+        const proEntitlementSeeded = seedProEntitlement(this.settings);
         this.settings.aiSettings = (loadedSettings as Partial<RadialTimelineSettings>).aiSettings;
         this.settings.authorProgress = migrateAuthorProgressSettings((loadedSettings as Partial<RadialTimelineSettings>).authorProgress);
         let modeMigrated = false;
@@ -762,7 +764,7 @@ export default class RadialTimelinePlugin extends Plugin {
             globalLastUsed.novel = legacyLayoutIdMap[globalLastUsed.novel];
             pandocLayoutReferenceMigrated = true;
         }
-        if (aiSettingsMigrated || exportFolderMigrated || beatSettingsMigration.changed || backdropTemplateMigrated || pandocLayoutsMigrated || bundledPandocLayoutsRegistered || publishingModelMigrated || matterWorkflowMigrated || pandocLayoutReferenceMigrated || manuscriptExportCleanupMigrated || booksMigrated || planetarySelectionMigrated || modeMigrated) {
+        if (proEntitlementSeeded || aiSettingsMigrated || exportFolderMigrated || beatSettingsMigration.changed || backdropTemplateMigrated || pandocLayoutsMigrated || bundledPandocLayoutsRegistered || publishingModelMigrated || matterWorkflowMigrated || pandocLayoutReferenceMigrated || manuscriptExportCleanupMigrated || booksMigrated || planetarySelectionMigrated || modeMigrated) {
             await this.saveSettings();
         }
     }
