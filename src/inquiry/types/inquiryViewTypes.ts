@@ -71,6 +71,7 @@ export type InquiryBriefModel = {
     pendingActions: string[];
     logTitle?: string | null;
     rawResponse?: string | null;
+    refNormalized?: boolean;
 };
 
 export type InquiryPreviewRow = {

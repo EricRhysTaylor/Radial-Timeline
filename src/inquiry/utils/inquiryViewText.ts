@@ -252,6 +252,10 @@ export const renderInquiryBrief = (brief: InquiryBriefModel): string => {
         renderRawResponse(brief.rawResponse);
     }
 
+    if (brief.refNormalized) {
+        lines.push('', '_\\* Some scene references were normalized from non-standard formats._');
+    }
+
     lines.push('', brief.logTitle
         ? `[[${brief.logTitle}|View full Inquiry Log →]]`
         : 'View full Inquiry Log →');

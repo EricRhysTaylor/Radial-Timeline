@@ -89,6 +89,8 @@ export interface InquiryResult {
     submittedAt?: string;
     completedAt?: string;
     roundTripMs?: number;
+    /** Number of findings whose ref_id was normalized from a non-canonical format (e.g. scene number, title). */
+    refNormalizationCount?: number;
     /** Normalized source attribution from provider runtime (manuscript and tool/file/url forms). */
     citations?: InquiryCitation[];
     /** Ordered metadata for evidence documents sent to the AI. Indices match citation documentIndex. */

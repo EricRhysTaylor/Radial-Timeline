@@ -1484,26 +1484,22 @@ export class InquiryView extends ItemView {
     }
 
     private formatSessionProviderModel(session: InquirySession): string {
-        const providerRaw = session.result.aiProvider?.trim().toLowerCase();
         const model = (session.result.aiModelResolved || session.result.aiModelRequested || '').trim();
-        if (!providerRaw && !model) return 'Engine unknown';
-        const provider = providerRaw === 'openai'
-            ? 'OpenAI'
-            : providerRaw === 'anthropic'
-                ? 'Anthropic'
-                : providerRaw === 'google'
-                    ? 'Google'
-                    : providerRaw === 'ollama'
-                        ? 'Ollama'
-                        : (providerRaw ? providerRaw.charAt(0).toUpperCase() + providerRaw.slice(1) : 'Provider unknown');
-        return model ? `${provider}/${model}` : provider;
+        if (!model) return 'Engine unknown';
+        return getModelDisplayName(model);
     }
 
     private formatSessionTime(session: InquirySession): string {
         const timestamp = session.createdAt || session.lastAccessed;
         const date = new Date(timestamp);
-        const raw = date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-        return raw.replace(/\s+/g, '').toLowerCase();
+        const formatted = date.toLocaleString(undefined, {
+            month: 'short',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+        });
+        return formatted.replace(/\s+(AM|PM)/i, (_, m) => m.toLowerCase());
     }
 
     private formatSessionScope(session: InquirySession): string {
@@ -5522,7 +5518,7 @@ export class InquiryView extends ItemView {
             this.showResultsPreview(this.state.activeResult);
             // Sync findings panel summary to match the preview hero lens.
             if (this.summaryEl) {
-                this.summaryEl.textContent = this.getResultSummaryForMode(this.state.activeResult, mode);
+                this.summaryEl.textContent = this.buildResultsHeroText(this.state.activeResult, mode);
             }
         }
         if (!this.previewLocked && this.previewGroup?.classList.contains('is-visible') && this.previewLast) {
@@ -6699,16 +6695,18 @@ export class InquiryView extends ItemView {
         };
         const impact = verdict.impact ?? verdict.severity ?? 'low';
         const assessmentConfidence = verdict.assessmentConfidence ?? verdict.confidence ?? 'low';
+        let refNormalizationCount = 0;
         const findings = result.findings.map(finding => {
             const legacy = finding as InquiryFinding & { severity?: InquirySeverity; confidence?: InquiryConfidence };
-            const normalizedRefId = this.normalizeResultRefId(legacy.refId);
+            const normalizedRef = this.normalizeResultRefId(legacy.refId);
+            if (normalizedRef.wasNormalized) refNormalizationCount++;
             const role: InquiryFinding['role'] = legacy.role === 'target'
                 ? 'target'
                 : legacy.role === 'context'
                     ? 'context'
                     : undefined;
             return {
-                refId: normalizedRefId,
+                refId: normalizedRef.refId,
                 kind: legacy.kind,
                 status: legacy.status,
                 impact: legacy.impact ?? legacy.severity ?? 'low',
@@ -6739,7 +6737,8 @@ export class InquiryView extends ItemView {
                 impact,
                 assessmentConfidence
             },
-            findings
+            findings,
+            refNormalizationCount: refNormalizationCount > 0 ? refNormalizationCount : undefined
         };
         const inquiryId = this.formatInquiryIdFromResult(normalized);
         if (inquiryId && (!normalized.runId || normalized.runId.startsWith('run-'))) {
@@ -6748,11 +6747,11 @@ export class InquiryView extends ItemView {
         return normalized;
     }
 
-    private normalizeResultRefId(refId: string | undefined): string {
+    private normalizeResultRefId(refId: string | undefined): { refId: string; wasNormalized: boolean } {
         const trimmed = typeof refId === 'string' ? refId.trim() : '';
-        if (!trimmed) return '';
+        if (!trimmed) return { refId: '', wasNormalized: false };
         if (!this.corpus?.scenes?.length) {
-            return isStableSceneId(trimmed) ? trimmed.toLowerCase() : '';
+            return { refId: isStableSceneId(trimmed) ? trimmed.toLowerCase() : '', wasNormalized: false };
         }
 
         const index = buildSceneRefIndex(this.corpus.scenes
@@ -6768,7 +6767,10 @@ export class InquiryView extends ItemView {
         if (normalized.warning) {
             console.warn(`[Inquiry] ${normalized.warning}`);
         }
-        return normalized.ref.ref_id || '';
+        return {
+            refId: normalized.ref.ref_id || '',
+            wasNormalized: normalized.normalizedFromLegacy && !normalized.unresolved
+        };
     }
 
     private collectNormalizationNotes(raw: InquiryResult, normalized: InquiryResult): string[] {
@@ -6827,6 +6829,10 @@ export class InquiryView extends ItemView {
         }
         if (raw.runId !== normalized.runId && normalized.runId) {
             notes.push('Normalized runId to inquiry id.');
+        }
+        const refNormCount = normalized.refNormalizationCount ?? 0;
+        if (refNormCount > 0) {
+            notes.push(`Normalized ${refNormCount} scene ref${refNormCount === 1 ? '' : 's'} from non-standard format to canonical scn_ id.`);
         }
         return notes;
     }
@@ -8592,7 +8598,7 @@ export class InquiryView extends ItemView {
     }
 
     private async recordInquiryTimingSample(result: InquiryResult, trace: InquiryRunTrace | null | undefined): Promise<void> {
-        if (!result || this.isErrorResult(result) || result.aiReason === 'simulated' || result.aiReason === 'stub') return;
+        if (!result || result.aiReason === 'simulated' || result.aiReason === 'stub') return;
         const provider = result.aiProvider?.trim();
         const model = (result.aiModelResolved || result.aiModelRequested || '').trim();
         const key = this.getInquiryTimingHistoryKey(provider, model);
@@ -9024,14 +9030,30 @@ export class InquiryView extends ItemView {
         const emptyRows = Array(this.previewRows.length || 6).fill('');
         this.resetPreviewRowLabels();
         this.updatePromptPreview(zone, mode, hero, emptyRows, meta, { hideEmpty: true });
+        this.setPreviewHeroNormalizationTooltip(result);
         const scopeTypeLabel = result.scope === 'saga' ? 'Saga' : 'Book';
         const resultScopeLabel = result.scopeLabel || this.getScopeLabel();
         this.setPreviewFooterText(`${scopeTypeLabel} ${resultScopeLabel} · Click to dismiss.`);
         this.updateResultsFooterPosition();
     }
 
+    private setPreviewHeroNormalizationTooltip(result: InquiryResult): void {
+        if (!this.previewHero) return;
+        const existing = this.previewHero.querySelector('title');
+        if (existing) existing.remove();
+        if ((result.refNormalizationCount ?? 0) > 0) {
+            const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+            title.textContent = 'Some scene references were normalized.';
+            this.previewHero.appendChild(title);
+        }
+    }
+
     private buildResultsHeroText(result: InquiryResult, mode: InquiryLens): string {
-        return this.getResultSummaryForMode(result, mode);
+        const summary = this.getResultSummaryForMode(result, mode);
+        if ((result.refNormalizationCount ?? 0) > 0) {
+            return summary + ' *';
+        }
+        return summary;
     }
 
     private buildResultsMetaText(result: InquiryResult, mode: InquiryLens, zone: InquiryZone): string {
@@ -9188,7 +9210,7 @@ export class InquiryView extends ItemView {
         const targetFindings = orderedFindings.filter(finding => this.getFindingRole(finding) === 'target');
         const contextFindings = orderedFindings.filter(finding => this.getFindingRole(finding) === 'context');
 
-        this.summaryEl.textContent = this.getResultSummaryForMode(result, this.state.mode);
+        this.summaryEl.textContent = this.buildResultsHeroText(result, this.state.mode);
         const selectionText = selectionMode === 'focused'
             ? `Selection Mode · Focused · ${targetFindings.length} target · ${contextFindings.length} context`
             : 'Selection Mode · Discover';
@@ -10454,7 +10476,8 @@ export class InquiryView extends ItemView {
             sceneNotes,
             pendingActions,
             logTitle,
-            rawResponse: includeRawResponse ? rawResponseText : null
+            rawResponse: includeRawResponse ? rawResponseText : null,
+            refNormalized: (result.refNormalizationCount ?? 0) > 0
         };
     }
 
@@ -10937,16 +10960,17 @@ export class InquiryView extends ItemView {
 
     private getAvailableArtifactPath(folderPath: string, baseName: string): string {
         const sanitizedFolder = normalizePath(folderPath);
+        const safeName = baseName.replace(/[/:*?"<>|\\]/g, ' ').replace(/\s+/g, ' ').trim();
         let attempt = 0;
         while (attempt < 50) {
             const suffix = attempt === 0 ? '' : `-${attempt}`;
-            const filePath = `${sanitizedFolder}/${baseName}${suffix}.md`;
+            const filePath = `${sanitizedFolder}/${safeName}${suffix}.md`;
             if (!this.app.vault.getAbstractFileByPath(filePath)) {
                 return filePath;
             }
             attempt += 1;
         }
-        return `${sanitizedFolder}/${baseName}-${Date.now()}.md`;
+        return `${sanitizedFolder}/${safeName}-${Date.now()}.md`;
     }
 
     private async openArtifactsFolder(): Promise<void> {
