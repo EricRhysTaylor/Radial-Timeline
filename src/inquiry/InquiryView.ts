@@ -188,8 +188,7 @@ import { migrateSceneFrontmatterIds } from '../migrations/sceneIds';
 import { buildSceneRefIndex, isStableSceneId, normalizeSceneRef } from '../ai/references/sceneRefNormalizer';
 import {
     DEFAULT_CHARS_PER_TOKEN,
-    estimateTokensFromChars as estimateTokensFromCharsHeuristic,
-    estimateUncertaintyTokens
+    estimateTokensFromChars as estimateTokensFromCharsHeuristic
 } from '../ai/tokens/inputTokenEstimate';
 import {
     estimateCorpusCost,
@@ -415,7 +414,6 @@ export class InquiryView extends ItemView {
     private enginePanelHideTimer?: number;
     private pendingGuardQuestion?: InquiryQuestion;
     private enginePanelFailureGuidance: EngineFailureGuidance | null = null;
-    private lastReadinessUiState?: InquiryReadinessUiState;
     private lastEngineAdvisoryContext: InquiryAdvisoryContext | null = null;
     private lastEngineAdvisoryInputKey = '';
     /** Memoized per-refresh-cycle. Invalidated at top of refreshUI(). */
@@ -971,7 +969,6 @@ export class InquiryView extends ItemView {
 
         const engine = this.getResolvedEngine();
         const readinessUi = this.buildReadinessUiState();
-        this.lastReadinessUiState = readinessUi;
         const advisoryContext = this.buildInquiryAdvisoryContext(readinessUi);
         this.lastEngineAdvisoryContext = advisoryContext;
 
@@ -1217,16 +1214,12 @@ export class InquiryView extends ItemView {
 
     private buildReadinessUiState(): InquiryReadinessUiState {
         const engine = this.getResolvedEngine();
-        const provider = engine.provider === 'none' ? 'openai' as const : engine.provider;
-        const aiSettings = this.getCanonicalAiSettings();
         return buildReadinessUiStatePure({
             snapshot: this.plugin.getInquiryEstimateService().getSnapshot(),
             scope: this.state.scope,
             scopeLabel: this.getScopeLabel(),
-            aiSettings,
             resolvedEngine: engine,
             hasCredential: engine.hasCredential,
-            accessTier: this.getAccessTierForProvider(provider, aiSettings),
             payloadStats: this.getPayloadStats(),
             selectedSceneOverrideCount: this.getSelectedSceneOverrideEntries().length,
             hasAnyBodyEvidence: this.hasAnyBodyEvidence(),
@@ -3707,29 +3700,24 @@ export class InquiryView extends ItemView {
 
     private updateMinimapPressureGauge(): void {
         const readinessUi = this.buildReadinessUiState();
-        const effectiveReadinessUi = readinessUi.pending
-            ? (this.lastReadinessUiState ?? readinessUi)
-            : readinessUi;
-        // While the estimate is still loading and there is no prior stable state, skip rendering.
-        if (effectiveReadinessUi.pending) {
-            console.debug('[Inquiry] Pressure gauge reset — estimate pending',
-                { hasPrior: !!this.lastReadinessUiState, snapshot: !!this.plugin.getInquiryEstimateService().getSnapshot() });
+        // While the estimate is pending, reset the gauge — never show stale data.
+        if (readinessUi.pending) {
+            console.debug('[Inquiry] Pressure gauge reset — estimate pending');
             this.minimap.resetPressureGauge();
             this.updateMinimapReuseStatus();
             return;
         }
-        this.lastReadinessUiState = effectiveReadinessUi;
-        const basePassPlan = this.getCurrentPassPlan(effectiveReadinessUi);
+        const basePassPlan = this.getCurrentPassPlan(readinessUi);
         const passPlan = this.getDisplayedPassPlan(basePassPlan);
         const styleSource = this.getStyleSource();
         const isPro = hasProFeatureAccess(this.plugin);
         const advancedContext = getLastAiAdvancedContext(this.plugin, 'InquiryMode') ?? null;
         console.debug('[Inquiry] Pressure gauge render',
-            { ratio: effectiveReadinessUi.readiness.pressureRatio, state: effectiveReadinessUi.readiness.state,
-              budget: effectiveReadinessUi.safeInputBudget, input: effectiveReadinessUi.estimateInputTokens,
+            { ratio: readinessUi.readiness.pressureRatio, state: readinessUi.readiness.state,
+              budget: readinessUi.safeInputBudget, input: readinessUi.estimateInputTokens,
               passes: passPlan.displayPassCount });
         this.minimap.updatePressureGauge(
-            effectiveReadinessUi,
+            readinessUi,
             passPlan,
             styleSource,
             isPro,
@@ -5762,7 +5750,6 @@ export class InquiryView extends ItemView {
 
         if (!options?.bypassTokenGuard) {
             const readinessUi = this.buildReadinessUiState();
-            this.lastReadinessUiState = readinessUi;
             if (readinessUi.readiness.state === 'blocked') {
                 this.pendingGuardQuestion = question;
                 this.showEnginePanel();
@@ -8496,7 +8483,6 @@ export class InquiryView extends ItemView {
         this.previewLast = { zone, question, questionId };
         this.updatePromptPreview(zone, mode, question, this.getPreviewPayloadRows(zone, questionId), undefined, { hideEmpty: true });
         this.previewGroup.classList.add('is-visible');
-        this.lastReadinessUiState = this.buildReadinessUiState();
         this.updateMinimapPressureGauge();
     }
 
@@ -9565,7 +9551,6 @@ export class InquiryView extends ItemView {
         this.resetPreviewRowLabels();
         this.previewLast = { zone: question.zone, question: questionText, questionId: question.id };
         this.updatePromptPreview(question.zone, this.state.mode, questionText, rows, undefined, { hideEmpty: true });
-        this.lastReadinessUiState = this.buildReadinessUiState();
         this.updateMinimapPressureGauge();
     }
 
@@ -9584,7 +9569,6 @@ export class InquiryView extends ItemView {
         this.setPreviewShimmerEnabled(false);
         this.setPreviewRunningNoteText('');
         this.setPreviewFooterText('');
-        this.lastReadinessUiState = undefined;
         this.updateMinimapPressureGauge();
     }
 
@@ -10371,7 +10355,10 @@ export class InquiryView extends ItemView {
                     outputTokens: INQUIRY_MAX_OUTPUT_TOKENS,
                     totalTokens: Number.NaN,
                     inputChars: 0,
-                    uncertaintyTokens: estimateUncertaintyTokens('heuristic_chars')
+                    estimationMethod: 'heuristic_chars',
+                    uncertaintyTokens: 0,
+                    effectiveInputCeiling: 0,
+                    expectedPassCount: 1
                 },
                 outputTokenCap: INQUIRY_MAX_OUTPUT_TOKENS,
                 response: null,

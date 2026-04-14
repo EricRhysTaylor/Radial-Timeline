@@ -2566,43 +2566,38 @@ export class InquiryRunnerService implements InquiryRunner {
         jsonSchema: Record<string, unknown>,
         userQuestion?: string
     ): Promise<InquiryRunTrace['tokenEstimate']> {
-        const inputChars = (systemPrompt?.length ?? 0) + (userPrompt?.length ?? 0);
+        const evidenceChars = evidenceBlocks.reduce((sum, block) => (
+            sum + block.label.length + block.content.length + 6
+        ), 0);
+        const inputChars = (systemPrompt?.length ?? 0) + (userPrompt?.length ?? 0) + evidenceChars;
         const cacheKey = this.hashText(`${ai.provider}|${ai.modelId}|${inputChars}|${outputTokens}|${systemPrompt}|${userPrompt}|${userQuestion ?? ''}`);
         const cached = this.tokenEstimateCache.get(cacheKey);
         if (cached) return cached;
 
         const aiClient = getAIClient(this.plugin);
-        let prepared: Awaited<ReturnType<typeof this.prepareInquiryRunEstimate>> = null;
-        try {
-            prepared = await this.prepareInquiryRunEstimate(aiClient, {
-                task: 'InquiryTraceEstimate',
-                systemPrompt,
-                userPrompt,
-                userQuestion,
-                ai,
-                jsonSchema,
-                temperature: 0.2,
-                maxTokens: outputTokens,
-                evidenceBlocks
-            });
-        } catch (error) {
-            // Graceful degradation: if the AI client's estimate preparation
-            // fails (registry refresh, model selection, network, etc.), fall
-            // through to heuristic estimation instead of killing the snapshot.
-            const message = error instanceof Error ? error.message : String(error);
-            console.warn(`[Inquiry] Token estimate preparation failed — using heuristic fallback: ${message}`);
+        const prepared = await this.prepareInquiryRunEstimate(aiClient, {
+            task: 'InquiryTraceEstimate',
+            systemPrompt,
+            userPrompt,
+            userQuestion,
+            ai,
+            jsonSchema,
+            temperature: 0.2,
+            maxTokens: outputTokens,
+            evidenceBlocks
+        });
+        if (!prepared) {
+            throw new Error('Token estimate unavailable — AI client returned no estimate');
         }
-        const inputTokens = prepared?.tokenEstimateInput
-            ?? estimateTokensFromChars(inputChars);
         const tokenEstimate: InquiryRunTrace['tokenEstimate'] = {
-            inputTokens,
+            inputTokens: prepared.tokenEstimateInput,
             outputTokens,
-            totalTokens: inputTokens + outputTokens,
+            totalTokens: prepared.tokenEstimateInput + outputTokens,
             inputChars,
-            estimationMethod: prepared?.tokenEstimateMethod ?? 'heuristic_chars',
-            uncertaintyTokens: prepared?.tokenEstimateUncertainty ?? 0,
-            effectiveInputCeiling: prepared?.effectiveInputCeiling,
-            expectedPassCount: prepared?.expectedPassCount
+            estimationMethod: prepared.tokenEstimateMethod,
+            uncertaintyTokens: prepared.tokenEstimateUncertainty,
+            effectiveInputCeiling: prepared.effectiveInputCeiling,
+            expectedPassCount: prepared.expectedPassCount
         };
         const filesIncluded = Array.from(new Set(
             evidenceBlocks
@@ -2623,12 +2618,6 @@ export class InquiryRunnerService implements InquiryRunner {
             }
             referenceCount += 1;
         });
-        const totalEvidenceChars = evidenceBlocks.reduce((sum, block) => (
-            sum + block.label.length + block.content.length + 6
-        ), 0);
-        const promptEnvelopeCharsAdded = prepared
-            ? ((prepared.systemPrompt?.length ?? 0) + (prepared.userPrompt?.length ?? 0))
-            : inputChars;
         logCountingForensics({
             path: 'inquiry',
             phase: 'run_trace',
@@ -2636,9 +2625,9 @@ export class InquiryRunnerService implements InquiryRunner {
             sceneCount,
             outlineCount,
             referenceCount,
-            totalEvidenceChars,
-            promptEnvelopeCharsAdded,
-            tokenMethodUsed: tokenEstimate.estimationMethod ?? 'heuristic_chars',
+            totalEvidenceChars: evidenceChars,
+            promptEnvelopeCharsAdded: (prepared.systemPrompt?.length ?? 0) + (prepared.userPrompt?.length ?? 0),
+            tokenMethodUsed: tokenEstimate.estimationMethod,
             finalTokenEstimate: tokenEstimate.inputTokens
         });
         this.tokenEstimateCache.set(cacheKey, tokenEstimate);

@@ -5,7 +5,9 @@
 
 import { App, Setting, setIcon, setTooltip, ButtonComponent, Notice, Modal, DropdownComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
-import type { AuthorProgressCampaign, TeaserPreset, TeaserRevealLevel } from '../../types/settings';
+import type { AprStyleProfile, AuthorProgressCampaign, TeaserPreset, TeaserRevealLevel } from '../../types/settings';
+import { AprProgressService } from '../../services/apr/AprProgressService';
+import { AprStyleService } from '../../services/apr/AprStyleService';
 import { hasProFeatureAccess } from '../featureGate';
 import { getTeaserThresholds, teaserLevelToRevealOptions, TEASER_LEVEL_INFO } from '../../renderer/apr/AprConstants';
 import { createAprSVG } from '../../renderer/apr/AprRenderer';
@@ -201,9 +203,8 @@ export function createDefaultCampaign(
         lastPublishedDate: undefined,
         exportPath,
         exportFormat: 'png',
+        styleSource: 'global',
         // aprSize defaults to global setting (undefined)
-        customTransparent: true,
-        customTheme: 'dark',
         // Teaser Reveal defaults (enabled by default for campaigns)
         teaserReveal: {
             enabled: true,
@@ -644,6 +645,7 @@ function renderCampaignDetails(
     onUpdate: () => void
 ): void {
     const details = parentRow.createDiv({ cls: `ert-campaign-details ${ERT_CLASSES.STACK}` });
+    const styleService = new AprStyleService(plugin);
 
     // ─────────────────────────────────────────────────────────────────────────
     // TARGET BOOK (Pro: select a specific book; free: follows active book)
@@ -671,8 +673,211 @@ function renderCampaignDetails(
             plugin.settings.authorProgress.campaigns[index].targetBookId = val || undefined;
             await plugin.saveSettings();
             onUpdate();
-        });
+            });
     }
+
+    const renderStyleSelector = () => {
+        styleBlock.empty();
+        const currentCampaign = plugin.settings.authorProgress?.campaigns?.[index];
+        if (!currentCampaign) return;
+        const styleProfiles = styleService.getProfiles();
+        const currentSource = currentCampaign.styleSource ?? 'global';
+        const selectedProfile = styleProfiles.find(profile => profile.id === currentCampaign.styleProfileId) ?? styleProfiles[0];
+        const activeProfile = currentSource === 'profile' ? selectedProfile : undefined;
+
+        const saveOrOverwriteStyleProfile = () => {
+            const suggestedName = selectedProfile?.name ?? `${campaign.name} Style`;
+            const modal = new CampaignNameModal(plugin.app, {
+                badgeLabel: 'Style',
+                title: 'Save APR Style',
+                subtitle: 'Save the current Social APR appearance as a reusable style. Using an existing name will overwrite that preset.',
+                initialValue: suggestedName,
+                actionLabel: 'Save',
+                onSubmit: async (value) => {
+                    const nextName = value.trim();
+                    if (!nextName) return false;
+                    const existingProfile = styleService.findProfileByName(nextName);
+                    const { profile, overwritten } = styleService.saveCurrentStyleAsProfile(nextName, { overwrite: true });
+                    if (!plugin.settings.authorProgress?.campaigns) return false;
+                    const targetCampaign = plugin.settings.authorProgress.campaigns[index];
+                    targetCampaign.styleSource = 'profile';
+                    targetCampaign.styleProfileId = profile.id;
+                    await plugin.saveSettings();
+                    new Notice(
+                        overwritten || existingProfile
+                            ? `Updated style "${profile.name}"`
+                            : `Saved style "${profile.name}"`
+                    );
+                    onUpdate();
+                    return true;
+                }
+            });
+            modal.open();
+        };
+
+        const openDeleteStyleModal = (profile: AprStyleProfile) => {
+            const modal = new Modal(plugin.app);
+            modal.onOpen = () => {
+                const { contentEl, modalEl } = modal;
+                contentEl.empty();
+
+                if (modalEl) {
+                    modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-campaign-name-modal');
+                    modalEl.style.width = '420px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+                    modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+                }
+
+                contentEl.addClass('ert-modal-container', 'ert-stack');
+                const header = contentEl.createDiv({ cls: 'ert-modal-header' });
+                header.createSpan({ cls: 'ert-modal-badge', text: 'Style' });
+                header.createDiv({ cls: 'ert-modal-title', text: 'Delete APR Style' });
+                header.createDiv({
+                    cls: 'ert-modal-subtitle',
+                    text: `Delete "${profile.name}"? Campaigns using it will fall back to the live APR style.`
+                });
+
+                const actions = contentEl.createDiv({ cls: 'ert-modal-actions' });
+                new ButtonComponent(actions)
+                    .setButtonText('Delete')
+                    .setWarning()
+                    .onClick(async () => {
+                        const deletedProfile = styleService.deleteProfile(profile.id);
+                        if (!deletedProfile) {
+                            new Notice('Saved style not found');
+                            modal.close();
+                            return;
+                        }
+                        await plugin.saveSettings();
+                        new Notice(`Deleted style "${deletedProfile.name}"`);
+                        modal.close();
+                        onUpdate();
+                    });
+                new ButtonComponent(actions)
+                    .setButtonText('Cancel')
+                    .onClick(() => modal.close());
+            };
+            modal.onClose = () => modal.contentEl.empty();
+            modal.open();
+        };
+
+        const rowHeader = styleBlock.createDiv({ cls: `${ERT_CLASSES.STACK_TIGHT} ert-campaign-style-header` });
+        rowHeader.createDiv({ cls: 'setting-item-name', text: 'Campaign style' });
+        rowHeader.createDiv({
+            cls: 'setting-item-description',
+            text: 'Choose the source, load a saved preset, and manage style profiles for the preview above.'
+        });
+
+        const styleGrid = styleBlock.createDiv({ cls: `${ERT_CLASSES.GRID_FORM} ${ERT_CLASSES.GRID_FORM_3} ert-campaign-style-grid` });
+
+        const createStyleCard = (title: string, description: string, badgeText: string) => {
+            const cardEl = styleGrid.createDiv({ cls: `${ERT_CLASSES.PANEL} ert-panel--muted ${ERT_CLASSES.STACK} ert-campaign-style-card` });
+            const headerEl = cardEl.createDiv({ cls: `${ERT_CLASSES.STACK_TIGHT} ert-campaign-style-card__header` });
+            headerEl.createSpan({ cls: ERT_CLASSES.ICON_BADGE, text: badgeText });
+            headerEl.createDiv({ cls: 'setting-item-name', text: title });
+            headerEl.createDiv({ cls: 'setting-item-description', text: description });
+            return cardEl;
+        };
+
+        const sourceCard = createStyleCard(
+            'Source',
+            'Pick whether this campaign follows the live Social APR style or a saved preset.',
+            currentSource === 'profile' ? 'Saved preset' : 'Live APR'
+        );
+        if (currentSource === 'global') sourceCard.addClass('is-active');
+        const sourceControl = sourceCard.createDiv({ cls: 'ert-campaign-style-card__control' });
+        const styleSourceDropdown = new DropdownComponent(sourceControl);
+        styleSourceDropdown.selectEl.addClass('ert-input', 'ert-input--fit-selected', 'ert-typography-select');
+        styleSourceDropdown.addOption('global', 'Use current APR style');
+        styleSourceDropdown.addOption('profile', 'Use saved style');
+        styleSourceDropdown.setValue(currentSource);
+        fitSelectToSelectedLabel(styleSourceDropdown.selectEl, { minPx: 150, extraPx: 18 });
+        styleSourceDropdown.onChange(async (val) => {
+            if (!plugin.settings.authorProgress?.campaigns) return;
+            const targetCampaign = plugin.settings.authorProgress.campaigns[index];
+            targetCampaign.styleSource = val === 'profile' ? 'profile' : 'global';
+            if (targetCampaign.styleSource === 'global') {
+                targetCampaign.styleProfileId = undefined;
+            } else if (!targetCampaign.styleProfileId && styleProfiles[0]) {
+                targetCampaign.styleProfileId = styleProfiles[0].id;
+            }
+            await plugin.saveSettings();
+            onUpdate();
+        });
+        sourceCard.createDiv({
+            cls: ERT_CLASSES.FIELD_NOTE,
+            text: currentSource === 'profile'
+                ? `Preview is using ${activeProfile ? `"${activeProfile.name}"` : 'a saved style'}.`
+                : 'Preview is using the current Social APR settings.'
+        });
+
+        const profileBadge = selectedProfile?.name ?? (styleProfiles.length > 0 ? `${styleProfiles.length} saved` : 'No presets');
+        const profileCard = createStyleCard(
+            'Saved style',
+            'Choose which saved profile this campaign should load into the preview and export path.',
+            profileBadge
+        );
+        if (selectedProfile) profileCard.addClass('is-active');
+        const profileControl = profileCard.createDiv({ cls: 'ert-campaign-style-card__control' });
+        const profileDropdown = new DropdownComponent(profileControl);
+        profileDropdown.selectEl.addClass('ert-input', 'ert-input--fit-selected', 'ert-typography-select');
+        if (styleProfiles.length === 0) {
+            profileDropdown.addOption('', 'No saved styles yet');
+            profileDropdown.setDisabled(true);
+        } else {
+            styleProfiles.forEach((profile) => {
+                profileDropdown.addOption(profile.id, profile.name);
+            });
+            profileDropdown.setValue(selectedProfile?.id ?? styleProfiles[0].id);
+            fitSelectToSelectedLabel(profileDropdown.selectEl, { minPx: 150, extraPx: 18 });
+            profileDropdown.onChange(async (val) => {
+                if (!plugin.settings.authorProgress?.campaigns) return;
+                const targetCampaign = plugin.settings.authorProgress.campaigns[index];
+                targetCampaign.styleProfileId = val || undefined;
+                targetCampaign.styleSource = val ? 'profile' : 'global';
+                await plugin.saveSettings();
+                onUpdate();
+            });
+        }
+        profileCard.createDiv({
+            cls: ERT_CLASSES.FIELD_NOTE,
+            text: styleProfiles.length === 0
+                ? 'Save a preset first, then load it here.'
+                : 'Selecting a preset loads it into the campaign preview immediately.'
+        });
+
+        const libraryBadge = styleProfiles.length === 1 ? '1 preset' : `${styleProfiles.length} presets`;
+        const libraryCard = createStyleCard(
+            'Style library',
+            'Save the current Social APR style as a preset, overwrite an existing preset by name, or delete the selected preset.',
+            libraryBadge
+        );
+        const libraryActions = libraryCard.createDiv({ cls: `${ERT_CLASSES.INLINE} ert-campaign-style-card__actions` });
+        const saveStyleBtn = new ButtonComponent(libraryActions)
+            .setButtonText('Save / overwrite')
+            .setCta()
+            .onClick(() => saveOrOverwriteStyleProfile());
+        saveStyleBtn.buttonEl.addClass('ert-button--sm');
+
+        const deleteStyleBtn = new ButtonComponent(libraryActions)
+            .setButtonText('Delete preset')
+            .setWarning()
+            .onClick(() => {
+                if (!selectedProfile) return;
+                openDeleteStyleModal(selectedProfile);
+            });
+        deleteStyleBtn.buttonEl.addClass('ert-button--sm');
+        deleteStyleBtn.setDisabled(!selectedProfile);
+
+        libraryCard.createDiv({
+            cls: ERT_CLASSES.FIELD_NOTE,
+            text: selectedProfile
+                ? `Selected preset: "${selectedProfile.name}". Saving with the same name overwrites it.`
+                : 'No preset selected. Saving creates a new reusable style profile.'
+        });
+    };
+
+    const styleBlock = details.createDiv({ cls: `${ERT_CLASSES.STACK} ert-campaign-style-block` });
+    renderStyleSelector();
 
     // Export Quality
     const exportQualitySetting = new Setting(details)
@@ -1007,6 +1212,8 @@ async function renderTeaserStagesPreviews(
     const authorProgress = plugin.settings.authorProgress;
     const settings = authorProgress?.defaults;
     if (!authorProgress || !settings) return;
+    const progressService = new AprProgressService(plugin);
+    const styleService = new AprStyleService(plugin);
 
     // Get scenes for preview
     const scenes = await getAllScenes(plugin.app, plugin);
@@ -1018,9 +1225,9 @@ async function renderTeaserStagesPreviews(
         return;
     }
 
-    const publishStageLabel = plugin.calculateCompletionEstimate(scenes)?.stage ?? 'Zero';
+    const resolvedStyle = styleService.resolveStyle(campaign);
     const showRtAttribution = hasProFeatureAccess(plugin)
-        ? settings?.aprShowRtAttribution !== false
+        ? resolvedStyle.aprShowRtAttribution !== false
         : true;
 
     // Get disabled stages
@@ -1082,6 +1289,7 @@ async function renderTeaserStagesPreviews(
                 plugin.getActiveBookTitle()
             ) ?? 'Book';
             const isRingOnly = stage.level === 'bar';
+            const previewStageLabel = progressService.getDisplayStageForPercent(stage.progress);
             const { svgString } = createAprSVG(scenes, {
                 size: 'small',
                 progressPercent: stage.progress,
@@ -1100,36 +1308,10 @@ async function renderTeaserStagesPreviews(
                 centerMark: 'none',
                 stageColors: plugin.settings.publishStageColors,
                 actCount: plugin.settings.actCount,
-                backgroundColor: campaign.customBackgroundColor ?? settings.aprBackgroundColor,
-                transparentCenter: campaign.customTransparent ?? settings.aprCenterTransparent,
-                bookAuthorColor: settings.aprBookAuthorColor ?? (plugin.settings.publishStageColors?.Press),
-                authorColor: settings.aprAuthorColor ?? settings.aprBookAuthorColor ?? (plugin.settings.publishStageColors?.Press),
-                engineColor: settings.aprEngineColor,
-                percentNumberColor: settings.aprPercentNumberColor ?? settings.aprBookAuthorColor ?? (plugin.settings.publishStageColors?.Press),
-                percentSymbolColor: settings.aprPercentSymbolColor ?? settings.aprBookAuthorColor ?? (plugin.settings.publishStageColors?.Press),
-                theme: campaign.customTheme ?? settings.aprTheme ?? 'dark',
-                spokeColor: settings.aprSpokeColorMode === 'custom' ? settings.aprSpokeColor
-                    : settings.aprSpokeColorMode === 'sync' ? (campaign.customBackgroundColor ?? settings.aprBackgroundColor)
-                    : undefined,
-                publishStageLabel,
+                ...styleService.buildRenderStyle(resolvedStyle),
+                publishStageLabel: previewStageLabel,
                 showRtAttribution,
                 teaserRevealEnabled: campaign.teaserReveal?.enabled ?? false,
-                // Typography settings
-                bookTitleFontFamily: settings.aprBookTitleFontFamily,
-                bookTitleFontWeight: settings.aprBookTitleFontWeight,
-                bookTitleFontItalic: settings.aprBookTitleFontItalic,
-                bookTitleFontSize: settings.aprBookTitleFontSize,
-                authorNameFontFamily: settings.aprAuthorNameFontFamily,
-                authorNameFontWeight: settings.aprAuthorNameFontWeight,
-                authorNameFontItalic: settings.aprAuthorNameFontItalic,
-                authorNameFontSize: settings.aprAuthorNameFontSize,
-                percentNumberFontSize1Digit: settings.aprPercentNumberFontSize1Digit,
-                percentNumberFontSize2Digit: settings.aprPercentNumberFontSize2Digit,
-                percentNumberFontSize3Digit: settings.aprPercentNumberFontSize3Digit,
-                rtBadgeFontFamily: settings.aprRtBadgeFontFamily,
-                rtBadgeFontWeight: settings.aprRtBadgeFontWeight,
-                rtBadgeFontItalic: settings.aprRtBadgeFontItalic,
-                rtBadgeFontSize: settings.aprRtBadgeFontSize,
                 portableSvg: true
             });
 

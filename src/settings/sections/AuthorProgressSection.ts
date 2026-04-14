@@ -4,12 +4,9 @@ import { buildDefaultAuthorProgressDefaults } from '../../authorProgress/authorP
 import { AuthorProgressService } from '../../services/AuthorProgressService';
 import { DEFAULT_SETTINGS } from '../defaults';
 import type { AuthorProgressDefaults, AuthorProgressSettings, TeaserRevealLevel } from '../../types/settings';
-import type { TimelineItem } from '../../types';
 import { getAllScenes } from '../../utils/manuscript';
 import { createAprSVG } from '../../renderer/apr/AprRenderer';
 import { getTeaserRevealLevel, getTeaserThresholds, teaserLevelToRevealOptions } from '../../renderer/apr/AprConstants';
-import { getPresetPalettes, generatePaletteFromColor } from '../../utils/aprPaletteGenerator';
-import { DEFAULT_BOOK_TITLE } from '../../utils/books';
 import { AprPaletteModal } from '../../modals/AprPaletteModal';
 import { renderCampaignManagerSection } from './CampaignManagerSection';
 import { hasProFeatureAccess } from '../featureGate';
@@ -266,6 +263,234 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     addWikiLink(stylingHeading, 'Settings#social-media-styling');
     applyErtHeaderLayout(stylingHeading, { variant: 'inline' });
     const stylingBody = stylingBlock.createDiv({ cls: 'ert-typography-stack' });
+
+    // Progress tracking
+    type AprProgressMode = 'stage' | 'date' | 'full';
+    const progressTrackingCard = stylingBody.createDiv({ cls: `${ERT_CLASSES.PREVIEW_FRAME} ert-previewFrame--flush ${ERT_CLASSES.STACK}` });
+    progressTrackingCard.createDiv({ cls: 'setting-item-name', text: 'Progress tracking' });
+
+    const progressModeGrid = progressTrackingCard.createDiv({ cls: ERT_CLASSES.GRID_FORM });
+    progressModeGrid.style.gridTemplateColumns = 'minmax(0, 1fr) auto minmax(0, 1fr)';
+    progressModeGrid.style.columnGap = 'var(--ert-gap-md)';
+
+    const stageCell = progressModeGrid.createDiv({ cls: ERT_CLASSES.GRID_FORM_CELL });
+    const stageBadgeRow = stageCell.createDiv({ cls: ERT_CLASSES.INLINE });
+    stageBadgeRow.style.alignSelf = 'flex-start';
+    const stageBadge = stageBadgeRow.createSpan({ cls: ERT_CLASSES.CHIP, text: 'TRACKING STAGE' });
+    const stageNote = stageCell.createDiv({ cls: ERT_CLASSES.FIELD_NOTE });
+
+    progressModeGrid.createDiv({ cls: 'ert-divider--vertical' });
+
+    const modeCell = progressModeGrid.createDiv({ cls: ERT_CLASSES.GRID_FORM_CELL });
+    const modeControlRow = modeCell.createDiv({ cls: 'ert-typography-controls' });
+    const modeDropdown = new DropdownComponent(modeControlRow);
+    modeDropdown.selectEl.addClass('ert-input', 'ert-input--fit-selected', 'ert-typography-select');
+    const modeGuidance = modeCell.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
+
+    const trackedStageWrap = modeCell.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
+    const trackedStageControlRow = trackedStageWrap.createDiv({ cls: 'ert-typography-controls' });
+    const trackedStageDropdown = new DropdownComponent(trackedStageControlRow);
+    trackedStageDropdown.selectEl.addClass('ert-input', 'ert-input--fit-selected', 'ert-typography-select');
+    STAGE_ORDER.forEach(stage => trackedStageDropdown.addOption(stage, stage));
+    trackedStageWrap.createDiv({
+        cls: ERT_CLASSES.FIELD_NOTE,
+        text: 'Tracked stage for manual APR progress.'
+    });
+
+    const dateRangeWrap = modeCell.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
+    dateRangeWrap.addClass('ert-hidden');
+    const dateRangeInput = new TextComponent(dateRangeWrap);
+    dateRangeInput.setPlaceholder('YYYY-MM-DD to YYYY-MM-DD');
+    dateRangeInput.inputEl.addClass('ert-input--full');
+    dateRangeWrap.createDiv({
+        cls: ERT_CLASSES.FIELD_NOTE,
+        text: 'Format: YYYY-MM-DD to YYYY-MM-DD.'
+    });
+
+    const applyStageBadgeTone = (stage: (typeof STAGE_ORDER)[number]) => {
+        const color = plugin.settings.publishStageColors?.[stage] ?? '#808080';
+        stageBadge.style.setProperty('--ert-chip-bg', `color-mix(in srgb, ${color} 18%, var(--background-secondary) 82%)`);
+        stageBadge.style.setProperty('border', `1px solid ${color}`);
+        stageBadge.style.setProperty('color', color);
+    };
+
+    const formatDateRange = (start?: string, target?: string): string => {
+        if (!start || !target) return '';
+        return `${start} to ${target}`;
+    };
+
+    const parseIsoDate = (value: string): number | null => {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+        const parsed = new Date(`${value}T00:00:00`);
+        const time = parsed.getTime();
+        return Number.isFinite(time) ? time : null;
+    };
+
+    const parseDateRange = (value: string): { start?: string; target?: string; error?: string } => {
+        const matches = value.match(/\d{4}-\d{2}-\d{2}/g);
+        if (!matches || matches.length < 2) {
+            return { error: 'Enter both start and target dates (YYYY-MM-DD).' };
+        }
+        const [start, target] = matches;
+        const startTime = parseIsoDate(start);
+        const targetTime = parseIsoDate(target);
+        if (!startTime || !targetTime) {
+            return { error: 'Use YYYY-MM-DD for both dates.' };
+        }
+        if (startTime > targetTime) {
+            return { error: 'Start date must be before target date.' };
+        }
+        return { start, target };
+    };
+
+    const setGuidanceLines = (lines: string[]): void => {
+        modeGuidance.empty();
+        lines.forEach(line => {
+            modeGuidance.createDiv({ cls: ERT_CLASSES.FIELD_NOTE, text: line });
+        });
+    };
+
+    const dateInputSuccessClass = 'ert-setting-input-success';
+    const dateInputErrorClass = 'ert-setting-input-error';
+
+    const flashDateInput = (cls: string, timeout: number) => {
+        dateRangeInput.inputEl.addClass(cls);
+        window.setTimeout(() => dateRangeInput.inputEl.removeClass(cls), timeout);
+    };
+
+    const clearDateInputState = () => {
+        dateRangeInput.inputEl.removeClass(dateInputSuccessClass);
+        dateRangeInput.inputEl.removeClass(dateInputErrorClass);
+    };
+
+    let isUpdatingMode = false;
+    const progressTrackingService = new AuthorProgressService(plugin, app);
+
+    const updateModeUI = (modeOverride?: AprProgressMode) => {
+        isUpdatingMode = true;
+        const nextMode = modeOverride ?? (plugin.settings.authorProgress?.defaults.aprProgressMode ?? 'stage') as AprProgressMode;
+        modeDropdown.setValue(nextMode);
+        trackedStageWrap.toggleClass('ert-hidden', nextMode !== 'stage');
+        dateRangeWrap.toggleClass('ert-hidden', nextMode !== 'date');
+        const guidance = nextMode === 'stage'
+            ? ['Stage mode: choose the publish stage APR should track manually.']
+            : nextMode === 'date'
+                ? ['Date mode: progress follows the selected start and target dates.']
+                : ['Full mode: APR measures the whole manuscript across Zero, Author, House, and Press.'];
+        setGuidanceLines(guidance);
+        fitSelectToSelectedLabel(modeDropdown.selectEl, { minPx: 132, extraPx: 18 });
+        fitSelectToSelectedLabel(trackedStageDropdown.selectEl, { minPx: 92, extraPx: 18 });
+        isUpdatingMode = false;
+    };
+
+    const updateStageUI = (
+        mode: AprProgressMode,
+        displayStage: (typeof STAGE_ORDER)[number],
+        trackedStage: (typeof STAGE_ORDER)[number],
+        note: string
+    ) => {
+        const badgeText = mode === 'stage'
+            ? `TRACKING ${trackedStage.toUpperCase()}`
+            : mode === 'date'
+                ? 'DATE RANGE'
+                : 'FULL MANUSCRIPT';
+        stageBadge.setText(badgeText);
+        applyStageBadgeTone(displayStage);
+        stageNote.setText(note);
+        trackedStageDropdown.setValue(trackedStage);
+        updateModeUI(mode);
+    };
+
+    modeDropdown.onChange(async (val) => {
+        if (isUpdatingMode) return;
+        if (!plugin.settings.authorProgress) return;
+        const nextMode = (val === 'date' || val === 'full' ? val : 'stage') as AprProgressMode;
+        plugin.settings.authorProgress.defaults.aprProgressMode = nextMode;
+        await plugin.saveSettings();
+        await refreshTrackingState();
+        refreshPreview();
+    });
+
+    trackedStageDropdown.onChange(async (val) => {
+        if (isUpdatingMode || !plugin.settings.authorProgress) return;
+        const nextStage = STAGE_ORDER.find(stage => stage === val) ?? 'Zero';
+        plugin.settings.authorProgress.defaults.aprTrackedStage = nextStage;
+        await plugin.saveSettings();
+        await refreshTrackingState();
+        refreshPreview();
+    });
+
+    dateRangeInput.onChange(() => {
+        clearDateInputState();
+    });
+
+    const handleDateRangeBlur = async (): Promise<void> => {
+        if (!plugin.settings.authorProgress) return;
+        clearDateInputState();
+        const raw = dateRangeInput.getValue().trim();
+        if (!raw) {
+            plugin.settings.authorProgress.defaults.aprProgressDateStart = undefined;
+            plugin.settings.authorProgress.defaults.aprProgressDateTarget = undefined;
+            await plugin.saveSettings();
+            await refreshTrackingState();
+            refreshPreview();
+            return;
+        }
+        const parsed = parseDateRange(raw);
+        if (!parsed.start || !parsed.target) {
+            flashDateInput(dateInputErrorClass, 2000);
+            return;
+        }
+        plugin.settings.authorProgress.defaults.aprProgressDateStart = parsed.start;
+        plugin.settings.authorProgress.defaults.aprProgressDateTarget = parsed.target;
+        await plugin.saveSettings();
+        dateRangeInput.setValue(formatDateRange(parsed.start, parsed.target));
+        flashDateInput(dateInputSuccessClass, 1000);
+        await refreshTrackingState();
+        refreshPreview();
+    };
+
+    plugin.registerDomEvent(dateRangeInput.inputEl, 'blur', () => { void handleDateRangeBlur(); });
+    plugin.registerDomEvent(dateRangeInput.inputEl, 'keydown', (evt: KeyboardEvent) => {
+        if (evt.key === 'Enter') {
+            evt.preventDefault();
+            dateRangeInput.inputEl.blur();
+        }
+    });
+
+    const seedDateRange = () => {
+        const start = plugin.settings.authorProgress?.defaults.aprProgressDateStart;
+        const target = plugin.settings.authorProgress?.defaults.aprProgressDateTarget;
+        dateRangeInput.setValue(formatDateRange(start, target));
+    };
+
+    const refreshTrackingState = async (): Promise<void> => {
+        try {
+            const scenes = await getAllScenes(app, plugin);
+            const progressState = progressTrackingService.resolveProgressState(scenes);
+            const note = progressState.mode === 'stage'
+                ? `Manually tracking the ${progressState.trackedStage} stage.`
+                : progressState.mode === 'date'
+                    ? progressState.dateRange?.valid && progressState.dateRange.start && progressState.dateRange.target
+                        ? `Using ${progressState.dateRange.start} to ${progressState.dateRange.target}.`
+                        : 'Choose a start and target date for calendar-based progress.'
+                    : scenes.length > 0
+                        ? 'Using fixed stage positions across the full manuscript.'
+                        : 'Using fixed stage positions. Add scenes to start measuring the manuscript.';
+            updateStageUI(progressState.mode, progressState.displayStage, progressState.trackedStage, note);
+            seedDateRange();
+        } catch {
+            const trackedStage = plugin.settings.authorProgress?.defaults.aprTrackedStage ?? 'Zero';
+            const mode = (plugin.settings.authorProgress?.defaults.aprProgressMode ?? 'stage') as AprProgressMode;
+            updateStageUI(mode, trackedStage, trackedStage, 'No scenes found yet.');
+            seedDateRange();
+        }
+    };
+
+    modeDropdown.addOption('stage', 'Stage mode');
+    modeDropdown.addOption('date', 'Date mode');
+    modeDropdown.addOption('full', 'Full manuscript mode');
+    void refreshTrackingState();
 
     const currentBg = settings?.aprBackgroundColor || '#0d0d0f';
     const currentTransparent = settings?.aprCenterTransparent ?? true; // Default to true (recommended)
@@ -1534,247 +1759,6 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     } // End of non-Pro publishing section
 
     // ─────────────────────────────────────────────────────────────────────────
-    // PROGRESS STAGE DETECTION & PROGRESS MODE
-    // ─────────────────────────────────────────────────────────────────────────
-    type AprProgressMode = 'stage' | 'zero' | 'date';
-    const progressModeCard = section.createDiv({ cls: ERT_CLASSES.PANEL });
-    const progressModeBlock = progressModeCard.createDiv({ cls: ERT_CLASSES.STACK });
-    const progressModeHeader = progressModeBlock.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
-    const progressModeHeading = new Setting(progressModeHeader)
-        .setName(t('settings.authorProgress.progressMode.name'))
-        .setDesc(t('settings.authorProgress.progressMode.desc'))
-        .setHeading();
-    addHeadingIcon(progressModeHeading, 'activity');
-    addWikiLink(progressModeHeading, 'Settings#social-media');
-    applyErtHeaderLayout(progressModeHeading);
-
-    const progressModeGroup = progressModeBlock.createDiv({ cls: `${ERT_CLASSES.PREVIEW_FRAME} ert-previewFrame--flush` });
-    const progressModeGrid = progressModeGroup.createDiv({ cls: ERT_CLASSES.GRID_FORM });
-    progressModeGrid.style.gridTemplateColumns = 'minmax(0, 1fr) auto minmax(0, 1fr)';
-    progressModeGrid.style.columnGap = 'var(--ert-gap-md)';
-
-    const stageCell = progressModeGrid.createDiv({ cls: ERT_CLASSES.GRID_FORM_CELL });
-    const stageBadgeRow = stageCell.createDiv({ cls: ERT_CLASSES.INLINE });
-    stageBadgeRow.style.alignSelf = 'flex-start';
-    const stageBadge = stageBadgeRow.createSpan({ cls: ERT_CLASSES.CHIP, text: t('settings.authorProgress.progressMode.detecting') });
-    const stageNote = stageCell.createDiv({ cls: ERT_CLASSES.FIELD_NOTE });
-
-    progressModeGrid.createDiv({ cls: 'ert-divider--vertical' });
-
-    const modeCell = progressModeGrid.createDiv({ cls: ERT_CLASSES.GRID_FORM_CELL });
-    const modeDropdown = new DropdownComponent(modeCell);
-    modeDropdown.selectEl.addClass('ert-input--lg');
-    const modeGuidance = modeCell.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
-
-    const dateRangeWrap = modeCell.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
-    dateRangeWrap.addClass('ert-hidden');
-    const dateRangeInput = new TextComponent(dateRangeWrap);
-    dateRangeInput.setPlaceholder(t('settings.authorProgress.progressMode.dateRangePlaceholder'));
-    dateRangeInput.inputEl.addClass('ert-input--full');
-    dateRangeWrap.createDiv({
-        cls: ERT_CLASSES.FIELD_NOTE,
-        text: t('settings.authorProgress.progressMode.dateRangeFormat')
-    });
-
-    const normalizeStage = (raw: unknown): (typeof STAGE_ORDER)[number] => {
-        const value = Array.isArray(raw) ? raw[0] : raw;
-        const trimmed = (value ?? '').toString().trim().toLowerCase();
-        const match = STAGE_ORDER.find(stage => stage.toLowerCase() === trimmed);
-        return match ?? 'Zero';
-    };
-
-    const detectPublishStage = (scenes: TimelineItem[]): {
-        stage: (typeof STAGE_ORDER)[number];
-        total: number;
-        note: string;
-    } => {
-        const seen = new Set<string>();
-        scenes.forEach(scene => {
-            if (scene?.itemType && scene.itemType !== 'Scene') return;
-            if (scene?.path && seen.has(scene.path)) return;
-            if (scene?.path) seen.add(scene.path);
-        });
-        const total = seen.size;
-        const estimate = plugin.calculateCompletionEstimate(scenes);
-        const stage = normalizeStage(estimate?.stage);
-        if (!estimate || total === 0) {
-            if (total === 0) {
-                return { stage: 'Zero', total, note: t('settings.authorProgress.progressMode.noScenesFound') };
-            }
-            // estimate is null but scenes exist — check if all scenes are complete (book is done)
-            const sceneNotesOnly = scenes.filter(s => !s.itemType || s.itemType === 'Scene');
-            const isCompleted = (status: TimelineItem['status']): boolean => {
-                const val = Array.isArray(status) ? status[0] : status;
-                const normalized = (val ?? '').toString().trim().toLowerCase();
-                return normalized === 'complete' || normalized === 'completed' || normalized === 'done';
-            };
-            if (sceneNotesOnly.length > 0 && sceneNotesOnly.every(s => isCompleted(s.status))) {
-                const highestStage = [...STAGE_ORDER].reverse().find(s =>
-                    sceneNotesOnly.some(scene => normalizeStage(scene['Publish Stage']) === s)
-                ) ?? 'Zero';
-                return { stage: highestStage, total, note: t('settings.authorProgress.progressMode.allScenesComplete') };
-            }
-            return { stage: 'Zero', total, note: t('settings.authorProgress.progressMode.noProgressEstimate') };
-        }
-        return { stage, total, note: t('settings.authorProgress.progressMode.basedOnEstimate') };
-    };
-
-    const applyStageBadgeTone = (stage: (typeof STAGE_ORDER)[number]) => {
-        const color = plugin.settings.publishStageColors?.[stage] ?? '#808080';
-        stageBadge.style.setProperty('--ert-chip-bg', `color-mix(in srgb, ${color} 18%, var(--background-secondary) 82%)`);
-        stageBadge.style.setProperty('border', `1px solid ${color}`);
-        stageBadge.style.setProperty('color', color);
-    };
-
-    const formatDateRange = (start?: string, target?: string): string => {
-        if (!start || !target) return '';
-        return `${start} to ${target}`;
-    };
-
-    const parseIsoDate = (value: string): number | null => {
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
-        const parsed = new Date(`${value}T00:00:00`);
-        const time = parsed.getTime();
-        return Number.isFinite(time) ? time : null;
-    };
-
-    const parseDateRange = (value: string): { start?: string; target?: string; error?: string } => {
-        const matches = value.match(/\d{4}-\d{2}-\d{2}/g);
-        if (!matches || matches.length < 2) {
-            return { error: t('settings.authorProgress.progressMode.errorEnterBothDates') };
-        }
-        const [start, target] = matches;
-        const startTime = parseIsoDate(start);
-        const targetTime = parseIsoDate(target);
-        if (!startTime || !targetTime) {
-            return { error: t('settings.authorProgress.progressMode.errorUseDateFormat') };
-        }
-        if (startTime > targetTime) {
-            return { error: t('settings.authorProgress.progressMode.errorStartBeforeTarget') };
-        }
-        return { start, target };
-    };
-
-    const setGuidanceLines = (lines: string[]): void => {
-        modeGuidance.empty();
-        lines.forEach(line => {
-            modeGuidance.createDiv({ cls: ERT_CLASSES.FIELD_NOTE, text: line });
-        });
-    };
-
-    const dateInputSuccessClass = 'ert-setting-input-success';
-    const dateInputErrorClass = 'ert-setting-input-error';
-
-    const flashDateInput = (cls: string, timeout: number) => {
-        dateRangeInput.inputEl.addClass(cls);
-        window.setTimeout(() => dateRangeInput.inputEl.removeClass(cls), timeout);
-    };
-
-    const clearDateInputState = () => {
-        dateRangeInput.inputEl.removeClass(dateInputSuccessClass);
-        dateRangeInput.inputEl.removeClass(dateInputErrorClass);
-    };
-
-    let isZeroStage = true;
-    let isUpdatingMode = false;
-
-    const updateModeUI = (modeOverride?: AprProgressMode) => {
-        isUpdatingMode = true;
-        modeDropdown.selectEl.options.length = 0;
-        if (isZeroStage) {
-            modeDropdown.addOption('zero', t('settings.authorProgress.progressMode.zeroMode'));
-            modeDropdown.addOption('date', t('settings.authorProgress.progressMode.dateTargetMode'));
-            modeDropdown.setDisabled(false);
-            const storedMode = (plugin.settings.authorProgress?.defaults.aprProgressMode ?? 'zero') as AprProgressMode;
-            const nextMode = modeOverride ?? (storedMode === 'date' ? 'date' : 'zero');
-            modeDropdown.setValue(nextMode);
-            setGuidanceLines([
-                t('settings.authorProgress.progressMode.guidanceZero'),
-                t('settings.authorProgress.progressMode.guidanceDate')
-            ]);
-            dateRangeWrap.toggleClass('ert-hidden', nextMode !== 'date');
-        } else {
-            modeDropdown.addOption('stage', t('settings.authorProgress.progressMode.publishStageAuto'));
-            modeDropdown.setValue('stage');
-            modeDropdown.setDisabled(true);
-            setGuidanceLines([t('settings.authorProgress.progressMode.guidancePublishStage')]);
-            dateRangeWrap.addClass('ert-hidden');
-        }
-        isUpdatingMode = false;
-    };
-
-    const updateStageUI = (stage: (typeof STAGE_ORDER)[number], total: number, note: string) => {
-        isZeroStage = stage === 'Zero';
-        stageBadge.setText(t('settings.authorProgress.progressMode.stageDetected', { stage: stage.toUpperCase() }));
-        applyStageBadgeTone(stage);
-        stageNote.setText(note);
-        updateModeUI();
-    };
-
-    modeDropdown.onChange(async (val) => {
-        if (isUpdatingMode || !isZeroStage) return;
-        if (!plugin.settings.authorProgress) return;
-        const nextMode = (val === 'date' ? 'date' : 'zero') as AprProgressMode;
-        plugin.settings.authorProgress.defaults.aprProgressMode = nextMode;
-        await plugin.saveSettings();
-        updateModeUI(nextMode);
-    });
-
-    dateRangeInput.onChange(() => {
-        clearDateInputState();
-    });
-
-    const handleDateRangeBlur = async (): Promise<void> => {
-        if (!plugin.settings.authorProgress) return;
-        clearDateInputState();
-        const raw = dateRangeInput.getValue().trim();
-        if (!raw) {
-            plugin.settings.authorProgress.defaults.aprProgressDateStart = undefined;
-            plugin.settings.authorProgress.defaults.aprProgressDateTarget = undefined;
-            await plugin.saveSettings();
-            return;
-        }
-        const parsed = parseDateRange(raw);
-        if (!parsed.start || !parsed.target) {
-            flashDateInput(dateInputErrorClass, 2000);
-            return;
-        }
-        plugin.settings.authorProgress.defaults.aprProgressDateStart = parsed.start;
-        plugin.settings.authorProgress.defaults.aprProgressDateTarget = parsed.target;
-        await plugin.saveSettings();
-        dateRangeInput.setValue(formatDateRange(parsed.start, parsed.target));
-        flashDateInput(dateInputSuccessClass, 1000);
-    };
-
-    plugin.registerDomEvent(dateRangeInput.inputEl, 'blur', () => { void handleDateRangeBlur(); });
-    plugin.registerDomEvent(dateRangeInput.inputEl, 'keydown', (evt: KeyboardEvent) => {
-        if (evt.key === 'Enter') {
-            evt.preventDefault();
-            dateRangeInput.inputEl.blur();
-        }
-    });
-
-    const seedDateRange = () => {
-        const start = plugin.settings.authorProgress?.defaults.aprProgressDateStart;
-        const target = plugin.settings.authorProgress?.defaults.aprProgressDateTarget;
-        dateRangeInput.setValue(formatDateRange(start, target));
-    };
-
-    const refreshPublishStage = async (): Promise<void> => {
-        try {
-            const scenes = await getAllScenes(app, plugin);
-            const result = detectPublishStage(scenes);
-            updateStageUI(result.stage, result.total, result.note);
-            seedDateRange();
-        } catch {
-            updateStageUI('Zero', 0, t('settings.authorProgress.progressMode.noScenesFound'));
-            seedDateRange();
-        }
-    };
-
-    void refreshPublishStage();
-
-    // ─────────────────────────────────────────────────────────────────────────
     // CAMPAIGN MANAGER (PRO FEATURE)
     // Always visible; locked styling handled inside section when Pro is inactive
     // ─────────────────────────────────────────────────────────────────────────
@@ -1833,16 +1817,17 @@ async function renderHeroPreview(
             return;
         }
 
-        // Calculate progress using AuthorProgressService
+        // Calculate progress and style from shared APR services
         const service = new AuthorProgressService(plugin, app);
-        const progressPercent = service.calculateProgress(scenes);
+        const progressState = service.resolveProgressState(scenes);
+        const progressPercent = progressState.percent;
+        const resolvedStyle = service.resolveStyle();
 
         const authorProgress = plugin.settings.authorProgress;
         const aprSettings = authorProgress?.defaults;
-        const publishStageLabel = plugin.calculateCompletionEstimate(scenes)?.stage ?? 'Zero';
         const isProActive = hasProFeatureAccess(plugin);
         const showRtAttribution = isProActive
-            ? aprSettings?.aprShowRtAttribution !== false
+            ? resolvedStyle.aprShowRtAttribution !== false
             : true;
 
         const isThumb = size === 'thumb';
@@ -1912,36 +1897,36 @@ async function renderHeroPreview(
             centerMark: 'none',
             stageColors: (plugin.settings as any).publishStageColors,
             actCount: plugin.settings.actCount || undefined,
-            backgroundColor: aprSettings?.aprBackgroundColor,
-            transparentCenter: aprSettings?.aprCenterTransparent,
-            bookAuthorColor: aprSettings?.aprBookAuthorColor ?? (plugin.settings.publishStageColors?.Press),
-            authorColor: aprSettings?.aprAuthorColor ?? aprSettings?.aprBookAuthorColor ?? (plugin.settings.publishStageColors?.Press),
-            engineColor: aprSettings?.aprEngineColor,
-            percentNumberColor: aprSettings?.aprPercentNumberColor ?? aprSettings?.aprBookAuthorColor ?? (plugin.settings.publishStageColors?.Press),
-            percentSymbolColor: aprSettings?.aprPercentSymbolColor ?? aprSettings?.aprBookAuthorColor ?? (plugin.settings.publishStageColors?.Press),
-            theme: aprSettings?.aprTheme || 'dark',
-            spokeColor: aprSettings?.aprSpokeColorMode === 'custom' ? aprSettings?.aprSpokeColor
-                : aprSettings?.aprSpokeColorMode === 'sync' ? aprSettings?.aprBackgroundColor
+            backgroundColor: resolvedStyle.aprBackgroundColor,
+            transparentCenter: resolvedStyle.aprCenterTransparent,
+            bookAuthorColor: resolvedStyle.aprBookAuthorColor ?? (plugin.settings.publishStageColors?.Press),
+            authorColor: resolvedStyle.aprAuthorColor ?? resolvedStyle.aprBookAuthorColor ?? (plugin.settings.publishStageColors?.Press),
+            engineColor: resolvedStyle.aprEngineColor,
+            percentNumberColor: resolvedStyle.aprPercentNumberColor ?? resolvedStyle.aprBookAuthorColor ?? (plugin.settings.publishStageColors?.Press),
+            percentSymbolColor: resolvedStyle.aprPercentSymbolColor ?? resolvedStyle.aprBookAuthorColor ?? (plugin.settings.publishStageColors?.Press),
+            theme: resolvedStyle.aprTheme || 'dark',
+            spokeColor: resolvedStyle.aprSpokeColorMode === 'custom' ? resolvedStyle.aprSpokeColor
+                : resolvedStyle.aprSpokeColorMode === 'sync' ? resolvedStyle.aprBackgroundColor
                 : undefined,
-            publishStageLabel,
+            publishStageLabel: progressState.displayStage,
             showRtAttribution,
             teaserRevealEnabled: false,
             // Typography settings
-            bookTitleFontFamily: aprSettings?.aprBookTitleFontFamily,
-            bookTitleFontWeight: aprSettings?.aprBookTitleFontWeight,
-            bookTitleFontItalic: aprSettings?.aprBookTitleFontItalic,
-            bookTitleFontSize: aprSettings?.aprBookTitleFontSize,
-            authorNameFontFamily: aprSettings?.aprAuthorNameFontFamily,
-            authorNameFontWeight: aprSettings?.aprAuthorNameFontWeight,
-            authorNameFontItalic: aprSettings?.aprAuthorNameFontItalic,
-            authorNameFontSize: aprSettings?.aprAuthorNameFontSize,
-            percentNumberFontSize1Digit: aprSettings?.aprPercentNumberFontSize1Digit,
-            percentNumberFontSize2Digit: aprSettings?.aprPercentNumberFontSize2Digit,
-            percentNumberFontSize3Digit: aprSettings?.aprPercentNumberFontSize3Digit,
-            rtBadgeFontFamily: aprSettings?.aprRtBadgeFontFamily,
-            rtBadgeFontWeight: aprSettings?.aprRtBadgeFontWeight,
-            rtBadgeFontItalic: aprSettings?.aprRtBadgeFontItalic,
-            rtBadgeFontSize: aprSettings?.aprRtBadgeFontSize,
+            bookTitleFontFamily: resolvedStyle.aprBookTitleFontFamily,
+            bookTitleFontWeight: resolvedStyle.aprBookTitleFontWeight,
+            bookTitleFontItalic: resolvedStyle.aprBookTitleFontItalic,
+            bookTitleFontSize: resolvedStyle.aprBookTitleFontSize,
+            authorNameFontFamily: resolvedStyle.aprAuthorNameFontFamily,
+            authorNameFontWeight: resolvedStyle.aprAuthorNameFontWeight,
+            authorNameFontItalic: resolvedStyle.aprAuthorNameFontItalic,
+            authorNameFontSize: resolvedStyle.aprAuthorNameFontSize,
+            percentNumberFontSize1Digit: resolvedStyle.aprPercentNumberFontSize1Digit,
+            percentNumberFontSize2Digit: resolvedStyle.aprPercentNumberFontSize2Digit,
+            percentNumberFontSize3Digit: resolvedStyle.aprPercentNumberFontSize3Digit,
+            rtBadgeFontFamily: resolvedStyle.aprRtBadgeFontFamily,
+            rtBadgeFontWeight: resolvedStyle.aprRtBadgeFontWeight,
+            rtBadgeFontItalic: resolvedStyle.aprRtBadgeFontItalic,
+            rtBadgeFontSize: resolvedStyle.aprRtBadgeFontSize,
             portableSvg: true
         });
 

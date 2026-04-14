@@ -17,7 +17,11 @@ describe('buildInquiryEstimateTrace', () => {
                         inputTokens: 0,
                         outputTokens: 0,
                         totalTokens: 0,
-                        inputChars: 0
+                        inputChars: 0,
+                        estimationMethod: 'heuristic_chars',
+                        uncertaintyTokens: 0,
+                        effectiveInputCeiling: 0,
+                        expectedPassCount: 1
                     },
                     outputTokenCap: 1200,
                     response: null,

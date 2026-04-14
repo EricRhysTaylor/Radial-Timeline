@@ -273,29 +273,28 @@ describe('InquiryEstimateService', () => {
         expect(mockBuild).toHaveBeenCalledTimes(2);
     });
 
-    it('heuristic-only snapshot (effectiveInputCeiling = 0) still produces a valid snapshot', async () => {
-        // When the AI client fails and the runner falls back to heuristic
-        // estimation, effectiveInputCeiling is 0. The snapshot must still be
-        // built and returned — not null. The readiness layer handles the
-        // zero-ceiling case with its own fallback (computeCaps).
-        const heuristicSnapshot = makeSnapshot({
+    it('snapshot with all required estimate fields is returned intact', async () => {
+        // Per RT Engineering Doctrine: snapshot estimate fields are authoritative.
+        // No defaults, no fallbacks — every field must be present and real.
+        const fullSnapshot = makeSnapshot({
             estimate: {
-                estimatedInputTokens: 25000,
-                effectiveInputCeiling: 0,
+                estimatedInputTokens: 45000,
+                effectiveInputCeiling: 180000,
                 maxOutputTokens: 16384,
                 expectedPassCount: 1,
-                estimationMethod: 'heuristic_chars',
-                uncertaintyTokens: 0
+                estimationMethod: 'anthropic_count',
+                uncertaintyTokens: 256
             }
         });
-        mockBuild.mockResolvedValue(heuristicSnapshot);
+        mockBuild.mockResolvedValue(fullSnapshot);
 
         const result = await service.requestSnapshot(makeParams());
 
         expect(result).not.toBeNull();
-        expect(result!.estimate.estimatedInputTokens).toBe(25000);
-        expect(result!.estimate.effectiveInputCeiling).toBe(0);
-        expect(result!.estimate.estimationMethod).toBe('heuristic_chars');
+        expect(result!.estimate.estimatedInputTokens).toBe(45000);
+        expect(result!.estimate.effectiveInputCeiling).toBe(180000);
+        expect(result!.estimate.estimationMethod).toBe('anthropic_count');
+        expect(result!.estimate.uncertaintyTokens).toBe(256);
         expect(service.getSnapshot()).toBe(result);
     });
 

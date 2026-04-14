@@ -228,7 +228,7 @@ export class AuthorProgressModal extends Modal {
         // Load scenes from the resolved project path
         const allScenes = await this.plugin.getSceneData({ sourcePath: projectPath });
         this.cachedScenes = allScenes.filter(isSceneItem);
-        this.progressPercent = this.service.calculateProgress(this.cachedScenes);
+        this.progressPercent = this.service.resolveProgressState(this.cachedScenes).percent;
         this.cachedProjectPath = projectPath;
 
         // Empty project feedback - show Notice when valid path has no scenes

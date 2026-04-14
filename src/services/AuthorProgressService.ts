@@ -2,16 +2,22 @@ import { App } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import type { AuthorProgressCampaign } from '../types/settings';
 import type { TimelineItem } from '../types/timeline';
+import { AprProgressService, type AprResolvedProgressState } from './apr/AprProgressService';
+import { AprStyleService } from './apr/AprStyleService';
 import { AuthorProgressRenderService } from './authorProgress/AuthorProgressRenderService';
 import { AuthorProgressPublishService } from './authorProgress/AuthorProgressPublishService';
 import { AuthorProgressCampaignService } from './authorProgress/AuthorProgressCampaignService';
 
 export class AuthorProgressService {
+    private readonly aprProgressService: AprProgressService;
+    private readonly aprStyleService: AprStyleService;
     private readonly renderService: AuthorProgressRenderService;
     private readonly publishService: AuthorProgressPublishService;
     private readonly campaignService: AuthorProgressCampaignService;
 
     constructor(plugin: RadialTimelinePlugin, app: App) {
+        this.aprProgressService = new AprProgressService(plugin);
+        this.aprStyleService = new AprStyleService(plugin);
         this.renderService = new AuthorProgressRenderService(plugin, app);
         this.publishService = new AuthorProgressPublishService(plugin, app, this.renderService);
         this.campaignService = new AuthorProgressCampaignService(plugin, app, this.renderService, this.publishService);
@@ -38,7 +44,15 @@ export class AuthorProgressService {
     }
 
     public calculateProgress(scenes: TimelineItem[]): number {
-        return this.renderService.calculateProgress(scenes);
+        return this.aprProgressService.getPercent(scenes);
+    }
+
+    public resolveProgressState(scenes: TimelineItem[]): AprResolvedProgressState {
+        return this.aprProgressService.resolveProgress(scenes);
+    }
+
+    public resolveStyle(campaign?: AuthorProgressCampaign) {
+        return this.aprStyleService.resolveStyle(campaign);
     }
 
     public generateReport(mode?: 'static' | 'dynamic'): Promise<string | null> {

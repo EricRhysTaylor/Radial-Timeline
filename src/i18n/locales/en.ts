@@ -1268,7 +1268,7 @@ export const en: TranslationKeys = {
             },
             configuration: {
                 name: 'Configuration',
-                desc: 'Configure your project settings and Social destination details, including project path and link URL.',
+                desc: 'Choose how APR measures progress, then set where the graphic should link (e.g. your website, Kickstarter, or shop).',
                 linkUrl: {
                     name: 'Link URL',
                     desc: 'Where the graphic should link to (e.g. your website, Kickstarter, or shop).',

@@ -31,21 +31,43 @@ describe('InquiryRunnerService execution integrity', () => {
         expect(source).toContain("normalized.includes('safe limit for a single pass')");
     });
 
-    it('wraps prepareInquiryRunEstimate in try/catch so token estimate falls back on failure', () => {
+    it('buildTokenEstimate throws on failure instead of falling back to heuristic', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/inquiry/runner/InquiryRunnerService.ts'), 'utf8');
-        // The buildTokenEstimate method must catch errors from prepareInquiryRunEstimate
-        // so that AI client failures (registry, network, model selection) degrade to
-        // heuristic estimation instead of killing the estimate snapshot.
+        // Per RT Engineering Doctrine: "Fail clearly instead of falling back."
+        // buildTokenEstimate must NOT have try/catch around prepareInquiryRunEstimate.
+        // If the estimate fails, the error propagates to the service layer which
+        // returns null — the UI shows "Estimate unavailable", never fabricated numbers.
         const buildTokenEstimateBlock = source.slice(
             source.indexOf('private async buildTokenEstimate('),
             source.indexOf('private getOutputTokenCap(')
         );
         expect(buildTokenEstimateBlock).toBeTruthy();
-        // Must have try/catch around prepareInquiryRunEstimate
-        expect(buildTokenEstimateBlock).toContain('try {');
+        // Must call prepareInquiryRunEstimate without try/catch wrapping
         expect(buildTokenEstimateBlock).toContain('prepareInquiryRunEstimate');
-        expect(buildTokenEstimateBlock).toContain('} catch');
-        // Must fall back to heuristic on failure
-        expect(buildTokenEstimateBlock).toContain('estimateTokensFromChars');
+        // Must NOT contain heuristic fallback via estimateTokensFromChars
+        expect(buildTokenEstimateBlock).not.toContain('estimateTokensFromChars');
+        // Must throw when prepared is null
+        expect(buildTokenEstimateBlock).toContain("throw new Error('Token estimate unavailable");
+    });
+
+    it('buildTokenEstimate reads all fields from prepared estimate without defaults', () => {
+        const source = readFileSync(resolve(process.cwd(), 'src/inquiry/runner/InquiryRunnerService.ts'), 'utf8');
+        // Per RT Engineering Doctrine: "No fabricated numbers."
+        // Token estimate fields must come directly from the prepared estimate —
+        // no ?? 0, no ?? 'heuristic_chars', no substitute values.
+        const buildTokenEstimateBlock = source.slice(
+            source.indexOf('private async buildTokenEstimate('),
+            source.indexOf('private getOutputTokenCap(')
+        );
+        expect(buildTokenEstimateBlock).toBeTruthy();
+        // All fields sourced from prepared.*
+        expect(buildTokenEstimateBlock).toContain('prepared.tokenEstimateInput');
+        expect(buildTokenEstimateBlock).toContain('prepared.tokenEstimateMethod');
+        expect(buildTokenEstimateBlock).toContain('prepared.tokenEstimateUncertainty');
+        expect(buildTokenEstimateBlock).toContain('prepared.effectiveInputCeiling');
+        expect(buildTokenEstimateBlock).toContain('prepared.expectedPassCount');
+        // No fabricated token defaults (string length ?? 0 guards are fine)
+        expect(buildTokenEstimateBlock).not.toContain("?? 'heuristic_chars'");
+        expect(buildTokenEstimateBlock).not.toContain('estimateTokensFromChars');
     });
 });

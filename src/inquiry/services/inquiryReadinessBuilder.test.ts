@@ -23,7 +23,6 @@ import {
 import type { InquiryEstimateSnapshot } from './inquiryEstimateSnapshot';
 import type { InquiryPayloadStats, InquiryReadinessUiState } from '../types';
 import type { ResolvedInquiryEngine } from './inquiryModelResolver';
-import type { AiSettingsV1 } from '../../ai/types';
 import type { TokenEstimateMethod } from '../../ai/tokens/inputTokenEstimate';
 
 // ── Fixtures ──────────────────────────────────────────────────────────
@@ -86,21 +85,6 @@ function makeEngine(overrides?: Partial<ResolvedInquiryEngine>): ResolvedInquiry
     };
 }
 
-function makeAiSettings(overrides?: Partial<AiSettingsV1>): AiSettingsV1 {
-    return {
-        version: 1,
-        provider: 'anthropic',
-        thinkingStyle: 'careful',
-        pinnedModels: {},
-        aiAccessProfile: {
-            anthropicTier: 1,
-            openaiTier: 1,
-            googleTier: 1
-        },
-        ...overrides
-    } as AiSettingsV1;
-}
-
 function makePayloadStats(overrides?: Partial<InquiryPayloadStats>): InquiryPayloadStats {
     return {
         scope: 'book',
@@ -129,10 +113,8 @@ function makeBaseInput(overrides?: Partial<BuildReadinessUiStateInput>): BuildRe
         snapshot: makeSnapshot({}),
         scope: 'book',
         scopeLabel: 'Book A',
-        aiSettings: makeAiSettings(),
         resolvedEngine: makeEngine(),
         hasCredential: true,
-        accessTier: 1,
         payloadStats: makePayloadStats(),
         selectedSceneOverrideCount: 0,
         hasAnyBodyEvidence: true,
@@ -614,15 +596,15 @@ describe('pressure gauge data flow', () => {
         expect(computeFillRatio(ui)).toBe(1);
     });
 
-    it('produces fillRatio of 1 when safeInputBudget is 0 (Infinity ratio)', () => {
+    it('produces fillRatio of 1 when effectiveInputCeiling is 0 (no fallback to model caps)', () => {
         const ui = buildReadinessUiState(makeBaseInput({
             snapshot: makeSnapshot({ estimatedInputTokens: 50000, effectiveInputCeiling: 0 })
         }));
-        // When effectiveInputCeiling is 0, the builder falls back to model caps.
-        // If model caps provide a budget, ratio is finite.
-        // But if somehow safeInputBudget stays 0, ratio is Infinity → clamped to 1.
-        const fill = computeFillRatio(ui);
-        expect(fill).toBeGreaterThan(0);
+        // Per RT Doctrine: no computeCaps fallback. effectiveInputCeiling = 0 means
+        // safeInputBudget = 0, pressureRatio = Infinity, clamped to 1.
+        expect(ui.safeInputBudget).toBe(0);
+        expect(ui.readiness.pressureRatio).toBe(Number.POSITIVE_INFINITY);
+        expect(computeFillRatio(ui)).toBe(1);
     });
 
     it('pending state produces zero fill (gauge should reset)', () => {

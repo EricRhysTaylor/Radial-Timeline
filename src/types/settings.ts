@@ -306,7 +306,8 @@ export interface AuthorProgressDefaults {
     showActs: boolean;      // Show act divisions vs full circle
     showStatus: boolean;    // Show real stage colors vs neutral gray
     showProgressPercent?: boolean; // Show big center %
-    aprProgressMode?: 'stage' | 'zero' | 'date';
+    aprProgressMode?: 'stage' | 'date' | 'full';
+    aprTrackedStage?: AprTrackedStage;
     aprProgressDateStart?: string;
     aprProgressDateTarget?: string;
     aprSize?: 'thumb' | 'small' | 'medium' | 'large';
@@ -364,9 +365,49 @@ export interface AuthorProgressDefaults {
 export interface AuthorProgressSettings {
     enabled: boolean;
     defaults: AuthorProgressDefaults;
+    styleProfiles?: AprStyleProfile[];
 
     // Pro Feature: Campaign Manager
     campaigns?: AuthorProgressCampaign[];
+}
+
+export type AprTrackedStage = 'Zero' | 'Author' | 'House' | 'Press';
+export type AprStyleSource = 'global' | 'profile';
+
+export interface AprStyleSettings {
+    aprBackgroundColor?: string;
+    aprCenterTransparent?: boolean;
+    aprBookAuthorColor?: string;
+    aprAuthorColor?: string;
+    aprEngineColor?: string;
+    aprPercentNumberColor?: string;
+    aprPercentSymbolColor?: string;
+    aprTheme?: 'dark' | 'light' | 'none';
+    aprSpokeColorMode?: 'dark' | 'light' | 'none' | 'custom' | 'sync';
+    aprSpokeColor?: string;
+    aprBookTitleFontFamily?: string;
+    aprBookTitleFontWeight?: number;
+    aprBookTitleFontItalic?: boolean;
+    aprBookTitleFontSize?: number;
+    aprAuthorNameFontFamily?: string;
+    aprAuthorNameFontWeight?: number;
+    aprAuthorNameFontItalic?: boolean;
+    aprAuthorNameFontSize?: number;
+    aprPercentNumberFontSize1Digit?: number;
+    aprPercentNumberFontSize2Digit?: number;
+    aprPercentNumberFontSize3Digit?: number;
+    aprRtBadgeFontFamily?: string;
+    aprRtBadgeFontWeight?: number;
+    aprRtBadgeFontItalic?: boolean;
+    aprRtBadgeFontSize?: number;
+    aprShowRtAttribution?: boolean;
+}
+
+export interface AprStyleProfile {
+    id: string;
+    name: string;
+    createdAt: string;
+    style: AprStyleSettings;
 }
 
 /**
@@ -439,7 +480,11 @@ export interface AuthorProgressCampaign {
     aprSize?: 'thumb' | 'small' | 'medium' | 'large';
     aprExportQuality?: AprExportQuality;
 
-    // Per-campaign styling (optional overrides)
+    // Explicit style resolution
+    styleSource?: AprStyleSource;
+    styleProfileId?: string;
+
+    // Legacy per-campaign styling overrides retained for migration only
     customBackgroundColor?: string;
     customTransparent?: boolean;
     customTheme?: 'dark' | 'light';

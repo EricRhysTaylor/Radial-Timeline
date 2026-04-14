@@ -3,9 +3,11 @@ import type RadialTimelinePlugin from '../../main';
 import { createAprSVG } from '../../renderer/apr/AprRenderer';
 import { getExportPreset } from '../../renderer/apr/aprPresets';
 import type { AuthorProgressCampaign, AuthorProgressDefaults, AprExportQuality } from '../../types/settings';
+import { AprProgressService } from '../apr/AprProgressService';
+import { AprStyleService } from '../apr/AprStyleService';
 import { getTeaserThresholds, getTeaserRevealLevel, teaserLevelToRevealOptions } from '../../renderer/apr/AprConstants';
 import { hasProFeatureAccess } from '../../settings/featureGate';
-import { isBeatNote, isSceneItem } from '../../utils/sceneHelpers';
+import { isSceneItem } from '../../utils/sceneHelpers';
 import { buildDefaultEmbedPath, normalizeAprExportFormat, type AprExportFormat } from '../../utils/aprPaths';
 import { resolveBookTitle, resolveProjectPath } from '../../renderer/apr/aprHelpers';
 import type { TimelineItem } from '../../types/timeline';
@@ -35,32 +37,16 @@ export interface AuthorProgressCampaignBuildResult {
 }
 
 export class AuthorProgressRenderService {
-    constructor(private plugin: RadialTimelinePlugin, private app: App) {}
+    private readonly aprProgressService: AprProgressService;
+    private readonly aprStyleService: AprStyleService;
+
+    constructor(private plugin: RadialTimelinePlugin, private app: App) {
+        this.aprProgressService = new AprProgressService(plugin);
+        this.aprStyleService = new AprStyleService(plugin);
+    }
 
     public calculateProgress(scenes: TimelineItem[]): number {
-        const settings = this.plugin.settings.authorProgress?.defaults;
-        if (settings?.aprProgressMode === 'date') {
-            const dateProgress = this.calculateDateProgress(settings.aprProgressDateStart, settings.aprProgressDateTarget);
-            if (dateProgress !== null) {
-                return dateProgress;
-            }
-        }
-
-        const estimate = this.plugin.calculateCompletionEstimate(scenes);
-        if (!estimate || estimate.total === 0) {
-            const sceneNotesOnly = scenes.filter(scene => !isBeatNote(scene));
-            if (sceneNotesOnly.length === 0) return 0;
-            const isCompleted = (status: TimelineItem['status']): boolean => {
-                const val = Array.isArray(status) ? status[0] : status;
-                const normalized = (val ?? '').toString().trim().toLowerCase();
-                return normalized === 'complete' || normalized === 'completed' || normalized === 'done';
-            };
-            return sceneNotesOnly.every(scene => isCompleted(scene.status)) ? 100 : 0;
-        }
-
-        const completed = estimate.total - estimate.remaining;
-        const percent = (completed / estimate.total) * 100;
-        return Math.min(100, Math.max(0, Math.round(percent)));
+        return this.aprProgressService.getPercent(scenes);
     }
 
     public getDefaultExportFormat(settings: AuthorProgressDefaults): AprExportFormat {
@@ -126,10 +112,11 @@ export class AuthorProgressRenderService {
         const projectPath = resolveProjectPath(null, this.plugin.settings.books, this.plugin.settings.sourcePath);
         const scenes = await this.plugin.getSceneData({ sourcePath: projectPath });
         const scenesFiltered = scenes.filter(isSceneItem);
-        const progressPercent = this.calculateProgress(scenesFiltered);
-        const publishStageLabel = this.resolvePublishStageLabel(scenesFiltered);
+        const progressState = this.aprProgressService.resolveProgress(scenesFiltered, settings);
+        const style = this.aprStyleService.resolveStyle();
+        const renderStyle = this.aprStyleService.buildRenderStyle(style);
         const showRtAttribution = hasProFeatureAccess(this.plugin)
-            ? settings.aprShowRtAttribution !== false
+            ? renderStyle.showRtAttribution !== false
             : true;
 
         const designSize = settings.aprSize || 'medium';
@@ -140,7 +127,7 @@ export class AuthorProgressRenderService {
         const { svgString, width, height } = createAprSVG(scenesFiltered, {
             size: designSize,
             exportPreset: getExportPreset(designSize, exportQuality),
-            progressPercent,
+            progressPercent: progressState.percent,
             bookTitle,
             authorName: settings.authorName || '',
             authorUrl: settings.authorUrl || '',
@@ -153,35 +140,10 @@ export class AuthorProgressRenderService {
             centerMark: 'none',
             stageColors: (this.plugin.settings as any).publishStageColors,
             actCount: this.plugin.settings.actCount || undefined,
-            backgroundColor: settings.aprBackgroundColor,
-            transparentCenter: settings.aprCenterTransparent,
-            bookAuthorColor: settings.aprBookAuthorColor ?? (this.plugin.settings.publishStageColors?.Press),
-            authorColor: settings.aprAuthorColor ?? settings.aprBookAuthorColor ?? (this.plugin.settings.publishStageColors?.Press),
-            engineColor: settings.aprEngineColor,
-            percentNumberColor: settings.aprPercentNumberColor ?? settings.aprBookAuthorColor ?? (this.plugin.settings.publishStageColors?.Press),
-            percentSymbolColor: settings.aprPercentSymbolColor ?? settings.aprBookAuthorColor ?? (this.plugin.settings.publishStageColors?.Press),
-            theme: settings.aprTheme || 'dark',
-            spokeColor: settings.aprSpokeColorMode === 'custom' ? settings.aprSpokeColor
-                : settings.aprSpokeColorMode === 'sync' ? settings.aprBackgroundColor
-                : undefined,
-            publishStageLabel,
+            ...renderStyle,
+            publishStageLabel: progressState.displayStage,
             showRtAttribution,
             teaserRevealEnabled: false,
-            bookTitleFontFamily: settings.aprBookTitleFontFamily,
-            bookTitleFontWeight: settings.aprBookTitleFontWeight,
-            bookTitleFontItalic: settings.aprBookTitleFontItalic,
-            bookTitleFontSize: settings.aprBookTitleFontSize,
-            authorNameFontFamily: settings.aprAuthorNameFontFamily,
-            authorNameFontWeight: settings.aprAuthorNameFontWeight,
-            authorNameFontItalic: settings.aprAuthorNameFontItalic,
-            authorNameFontSize: settings.aprAuthorNameFontSize,
-            percentNumberFontSize1Digit: settings.aprPercentNumberFontSize1Digit,
-            percentNumberFontSize2Digit: settings.aprPercentNumberFontSize2Digit,
-            percentNumberFontSize3Digit: settings.aprPercentNumberFontSize3Digit,
-            rtBadgeFontFamily: settings.aprRtBadgeFontFamily,
-            rtBadgeFontWeight: settings.aprRtBadgeFontWeight,
-            rtBadgeFontItalic: settings.aprRtBadgeFontItalic,
-            rtBadgeFontSize: settings.aprRtBadgeFontSize,
             portableSvg: true
         });
 
@@ -207,10 +169,11 @@ export class AuthorProgressRenderService {
         const projectPath = resolveProjectPath(campaign, books, this.plugin.settings.sourcePath);
         const scenes = await this.plugin.getSceneData({ sourcePath: projectPath });
         const scenesFiltered = scenes.filter(isSceneItem);
-        const progressPercent = this.calculateProgress(scenesFiltered);
-        const publishStageLabel = this.resolvePublishStageLabel(scenesFiltered);
+        const progressState = this.aprProgressService.resolveProgress(scenesFiltered, settings);
+        const style = this.aprStyleService.resolveStyle(campaign);
+        const renderStyle = this.aprStyleService.buildRenderStyle(style);
         const showRtAttribution = hasProFeatureAccess(this.plugin)
-            ? settings.aprShowRtAttribution !== false
+            ? renderStyle.showRtAttribution !== false
             : true;
 
         const baseShowSubplots = settings.showSubplots ?? true;
@@ -233,7 +196,7 @@ export class AuthorProgressRenderService {
             const preset = campaign.teaserReveal.preset ?? 'standard';
             const thresholds = getTeaserThresholds(preset, campaign.teaserReveal.customThresholds);
             const revealLevel = getTeaserRevealLevel(
-                progressPercent,
+                progressState.percent,
                 thresholds,
                 campaign.teaserReveal.disabledStages
             );
@@ -258,7 +221,7 @@ export class AuthorProgressRenderService {
         const { svgString, width, height } = createAprSVG(scenesFiltered, {
             size: designSize,
             exportPreset: getExportPreset(designSize, exportQuality),
-            progressPercent,
+            progressPercent: progressState.percent,
             bookTitle,
             authorName: settings.authorName || '',
             authorUrl: settings.authorUrl || '',
@@ -274,35 +237,10 @@ export class AuthorProgressRenderService {
             centerMark: 'none',
             stageColors: this.plugin.settings.publishStageColors,
             actCount: this.plugin.settings.actCount || undefined,
-            backgroundColor: campaign.customBackgroundColor ?? settings.aprBackgroundColor,
-            transparentCenter: campaign.customTransparent ?? settings.aprCenterTransparent,
-            bookAuthorColor: settings.aprBookAuthorColor ?? (this.plugin.settings.publishStageColors?.Press),
-            authorColor: settings.aprAuthorColor ?? settings.aprBookAuthorColor ?? (this.plugin.settings.publishStageColors?.Press),
-            engineColor: settings.aprEngineColor,
-            percentNumberColor: settings.aprPercentNumberColor ?? settings.aprBookAuthorColor ?? (this.plugin.settings.publishStageColors?.Press),
-            percentSymbolColor: settings.aprPercentSymbolColor ?? settings.aprBookAuthorColor ?? (this.plugin.settings.publishStageColors?.Press),
-            theme: campaign.customTheme ?? settings.aprTheme ?? 'dark',
-            spokeColor: settings.aprSpokeColorMode === 'custom' ? settings.aprSpokeColor
-                : settings.aprSpokeColorMode === 'sync' ? (campaign.customBackgroundColor ?? settings.aprBackgroundColor)
-                : undefined,
-            publishStageLabel,
+            ...renderStyle,
+            publishStageLabel: progressState.displayStage,
             showRtAttribution,
             teaserRevealEnabled: campaign.teaserReveal?.enabled ?? false,
-            bookTitleFontFamily: settings.aprBookTitleFontFamily,
-            bookTitleFontWeight: settings.aprBookTitleFontWeight,
-            bookTitleFontItalic: settings.aprBookTitleFontItalic,
-            bookTitleFontSize: settings.aprBookTitleFontSize,
-            authorNameFontFamily: settings.aprAuthorNameFontFamily,
-            authorNameFontWeight: settings.aprAuthorNameFontWeight,
-            authorNameFontItalic: settings.aprAuthorNameFontItalic,
-            authorNameFontSize: settings.aprAuthorNameFontSize,
-            percentNumberFontSize1Digit: settings.aprPercentNumberFontSize1Digit,
-            percentNumberFontSize2Digit: settings.aprPercentNumberFontSize2Digit,
-            percentNumberFontSize3Digit: settings.aprPercentNumberFontSize3Digit,
-            rtBadgeFontFamily: settings.aprRtBadgeFontFamily,
-            rtBadgeFontWeight: settings.aprRtBadgeFontWeight,
-            rtBadgeFontItalic: settings.aprRtBadgeFontItalic,
-            rtBadgeFontSize: settings.aprRtBadgeFontSize,
             portableSvg: true
         });
 
@@ -316,40 +254,9 @@ export class AuthorProgressRenderService {
                 format: this.getCampaignExportFormat(campaign),
                 size: designSize,
                 stage: debugStage,
-                percent: progressPercent
+                percent: progressState.percent
             }
         };
-    }
-
-    private calculateDateProgress(start?: string, target?: string): number | null {
-        if (!start || !target) return null;
-        const parseIsoDate = (value: string): number | null => {
-            if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
-            const parsed = new Date(`${value}T00:00:00`);
-            const time = parsed.getTime();
-            return Number.isFinite(time) ? time : null;
-        };
-        const startMs = parseIsoDate(start);
-        const targetMs = parseIsoDate(target);
-        if (startMs === null || targetMs === null) return null;
-        if (targetMs < startMs) return null;
-
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const now = today.getTime();
-
-        if (targetMs === startMs) {
-            return now >= targetMs ? 100 : 0;
-        }
-        if (now <= startMs) return 0;
-        if (now >= targetMs) return 100;
-
-        const percent = ((now - startMs) / (targetMs - startMs)) * 100;
-        return Math.min(100, Math.max(0, Math.round(percent)));
-    }
-
-    private resolvePublishStageLabel(scenes: TimelineItem[]): string {
-        return this.plugin.calculateCompletionEstimate(scenes)?.stage ?? 'Zero';
     }
 
     private pathFormat(path: string, fallback: AprExportFormat): AprExportFormat {

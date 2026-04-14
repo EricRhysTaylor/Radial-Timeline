@@ -17,7 +17,7 @@
 import type { InquiryScope } from '../state';
 import type { InquiryEstimateSnapshot } from './inquiryEstimateSnapshot';
 import type { TokenEstimateMethod } from '../../ai/tokens/inputTokenEstimate';
-import type { AIProviderId, AIRunAdvancedContext, AccessTier, AiSettingsV1, ModelInfo } from '../../ai/types';
+import type { AIProviderId, AIRunAdvancedContext, ModelInfo } from '../../ai/types';
 import type { ResolvedInquiryEngine } from './inquiryModelResolver';
 import type {
     TokenTier,
@@ -27,8 +27,6 @@ import type {
     PassPlanResult
 } from '../types';
 import { evaluateInquiryReadiness } from './readiness';
-import { estimateUncertaintyTokens } from '../../ai/tokens/inputTokenEstimate';
-import { computeCaps, INPUT_TOKEN_GUARD_FACTOR } from '../../ai/caps/computeCaps';
 import { BUILTIN_MODELS } from '../../ai/registry/builtinModels';
 import { INQUIRY_MAX_OUTPUT_TOKENS } from '../constants';
 import { buildRTCorpusEstimate } from './buildRTCorpusEstimate';
@@ -44,10 +42,8 @@ export interface BuildReadinessUiStateInput {
     snapshot: InquiryEstimateSnapshot | null;
     scope: InquiryScope;
     scopeLabel: string;
-    aiSettings: AiSettingsV1;
     resolvedEngine: ResolvedInquiryEngine;
     hasCredential: boolean;
-    accessTier: AccessTier;
     payloadStats: InquiryPayloadStats;
     selectedSceneOverrideCount: number;
     hasAnyBodyEvidence: boolean;
@@ -228,7 +224,7 @@ export function buildAdvisoryInputKey(params: AdvisoryInputKeyParams): string {
 // ── Readiness UI state (main builder) ─────────────────────────────────
 
 export function buildReadinessUiState(input: BuildReadinessUiStateInput): InquiryReadinessUiState {
-    const { snapshot, scope, scopeLabel, aiSettings, resolvedEngine, hasCredential, accessTier, payloadStats, selectedSceneOverrideCount } = input;
+    const { snapshot, scope, scopeLabel, resolvedEngine, hasCredential, payloadStats, selectedSceneOverrideCount } = input;
     const provider = resolvedEngine.provider === 'none' ? 'openai' as const : resolvedEngine.provider;
     const providerLabel = resolvedEngine.providerLabel;
 
@@ -291,50 +287,16 @@ export function buildReadinessUiState(input: BuildReadinessUiStateInput): Inquir
     }
 
     const estimateInputTokens = snapshot.estimate.estimatedInputTokens;
-    const expectedPassCount = Number.isFinite(snapshot.estimate.expectedPassCount)
-        ? Math.max(1, Math.floor(snapshot.estimate.expectedPassCount))
-        : 1;
+    const expectedPassCount = Math.max(1, Math.floor(snapshot.estimate.expectedPassCount));
     const estimateMethod: TokenEstimateMethod = snapshot.estimate.estimationMethod;
-    const effectiveInputCeiling = snapshot.estimate.effectiveInputCeiling;
-    let hasEligibleModel = false;
-    let reason = 'Fits safely - single pass.';
-    let safeInputBudget = 0;
-    let outputBudget = INQUIRY_MAX_OUTPUT_TOKENS;
-    let model: ModelInfo | undefined;
-    const preparedSafeBudget = Number.isFinite(effectiveInputCeiling)
-        ? Math.max(0, Math.floor(effectiveInputCeiling))
-        : 0;
-    if (preparedSafeBudget > 0) {
-        safeInputBudget = preparedSafeBudget;
-        hasEligibleModel = true;
-    }
+    const safeInputBudget = Math.max(0, Math.floor(snapshot.estimate.effectiveInputCeiling));
+    const outputBudget = snapshot.estimate.maxOutputTokens;
+    const estimateUncertaintyBudget = Math.max(0, Math.floor(snapshot.estimate.uncertaintyTokens));
 
-    try {
-        // Use the resolved model from the canonical resolver.
-        const resolvedModel = BUILTIN_MODELS.find(m => m.id === resolvedEngine.modelId);
-        if (!resolvedModel) throw new Error(`Resolved model "${resolvedEngine.modelId}" not found in registry.`);
-        model = resolvedModel;
-        if (preparedSafeBudget <= 0) {
-            hasEligibleModel = true;
-            const caps = computeCaps({
-                provider,
-                model: resolvedModel,
-                accessTier,
-                feature: 'InquiryMode',
-                overrides: aiSettings.overrides
-            });
-            safeInputBudget = Math.floor(caps.maxInputTokens * INPUT_TOKEN_GUARD_FACTOR);
-            outputBudget = caps.maxOutputTokens;
-        } else {
-            outputBudget = snapshot.estimate.maxOutputTokens || outputBudget;
-        }
-    } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        reason = message || 'No model satisfies capability floor.';
-    }
-    const estimateUncertaintyBudget = Number.isFinite(snapshot.estimate.uncertaintyTokens)
-        ? Math.max(0, Math.floor(snapshot.estimate.uncertaintyTokens))
-        : estimateUncertaintyTokens(estimateMethod, safeInputBudget);
+    // Model lookup — for metadata only, not for recomputing budgets.
+    const model = BUILTIN_MODELS.find(m => m.id === resolvedEngine.modelId);
+    const hasEligibleModel = safeInputBudget > 0;
+    let reason = 'Fits safely - single pass.';
 
     const readiness = evaluateInquiryReadiness({
         hasEligibleModel,

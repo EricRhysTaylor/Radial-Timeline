@@ -113,10 +113,10 @@ export interface InquiryRunTrace {
         outputTokens: number;
         totalTokens: number;
         inputChars: number;
-        estimationMethod?: TokenEstimateMethod;
-        uncertaintyTokens?: number;
-        effectiveInputCeiling?: number;
-        expectedPassCount?: number;
+        estimationMethod: TokenEstimateMethod;
+        uncertaintyTokens: number;
+        effectiveInputCeiling: number;
+        expectedPassCount: number;
     };
     outputTokenCap: number;
     retryCount?: number;
