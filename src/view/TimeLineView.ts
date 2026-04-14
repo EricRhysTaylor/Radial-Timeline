@@ -1062,6 +1062,7 @@ export class RadialTimelineView extends ItemView {
                 this.plugin.gossamerLatestOnly = true;
                 this.plugin.gossamerVisibleRunIds = [];
             }
+            void this.plugin.saveGossamerRunFilterState();
             schedulePanelRefresh();
         });
         this.registerDomEvent(showAllCheckbox, 'click', stopRunsEvent);
@@ -1144,6 +1145,7 @@ export class RadialTimelineView extends ItemView {
 
             this.plugin.gossamerLatestOnly = false;
             this.plugin.gossamerVisibleRunIds = nextSelected;
+            void this.plugin.saveGossamerRunFilterState();
             schedulePanelRefresh();
         });
         this.registerDomEvent(checkbox, 'click', stopRunsEvent);

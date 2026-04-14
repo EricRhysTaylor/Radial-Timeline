@@ -51,6 +51,11 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     dismissedAlerts: [],
     actCount: 3,
     actLabelsRaw: '',
+    gossamerRunFilter: {
+        latestOnly: false,
+        visibleRunIds: [],
+        beatSystemKey: '',
+    },
     publishStageColors: {
         Zero: '#9E70CF',   // Purple (Stage Zero)
         Author: '#5E85CF', // Blue   (Author)

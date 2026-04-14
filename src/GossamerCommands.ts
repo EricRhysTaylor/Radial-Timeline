@@ -495,9 +495,10 @@ export async function toggleGossamerMode(plugin: RadialTimelinePlugin): Promise<
     const selectedBeatModel = resolveSelectedBeatModelFromSettings(plugin.settings);
     const selectedBeatModelKey = toBeatModelMatchKey(selectedBeatModel ?? '');
     if (plugin.gossamerFilterBeatSystemKey !== selectedBeatModelKey) {
-      plugin.gossamerLatestOnly = true;
+      plugin.gossamerLatestOnly = false;
       plugin.gossamerVisibleRunIds = [];
       plugin.gossamerFilterBeatSystemKey = selectedBeatModelKey;
+      void plugin.saveGossamerRunFilterState();
     }
 
     // Build all runs (Gossamer1-30) with min/max band

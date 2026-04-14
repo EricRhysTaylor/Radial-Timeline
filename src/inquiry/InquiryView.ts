@@ -503,6 +503,7 @@ export class InquiryView extends ItemView {
     private ccLabelHit?: SVGRectElement;
     private ccLabel?: SVGTextElement;
     private ccCorpusLabel?: SVGTextElement;
+    private ccCorpusUnderline?: SVGLineElement;
     private ccLegendTrigger?: SVGGElement;
     private ccLegendPanel?: SVGGElement;
     private ccLabelHint?: SVGGElement;
@@ -3711,6 +3712,8 @@ export class InquiryView extends ItemView {
             : readinessUi;
         // While the estimate is still loading and there is no prior stable state, skip rendering.
         if (effectiveReadinessUi.pending) {
+            console.debug('[Inquiry] Pressure gauge reset — estimate pending',
+                { hasPrior: !!this.lastReadinessUiState, snapshot: !!this.plugin.getInquiryEstimateService().getSnapshot() });
             this.minimap.resetPressureGauge();
             this.updateMinimapReuseStatus();
             return;
@@ -3721,6 +3724,10 @@ export class InquiryView extends ItemView {
         const styleSource = this.getStyleSource();
         const isPro = hasProFeatureAccess(this.plugin);
         const advancedContext = getLastAiAdvancedContext(this.plugin, 'InquiryMode') ?? null;
+        console.debug('[Inquiry] Pressure gauge render',
+            { ratio: effectiveReadinessUi.readiness.pressureRatio, state: effectiveReadinessUi.readiness.state,
+              budget: effectiveReadinessUi.safeInputBudget, input: effectiveReadinessUi.estimateInputTokens,
+              passes: passPlan.displayPassCount });
         this.minimap.updatePressureGauge(
             effectiveReadinessUi,
             passPlan,
@@ -3781,6 +3788,7 @@ export class InquiryView extends ItemView {
                 ccLabelHit: this.ccLabelHit,
                 ccLabel: this.ccLabel,
                 ccCorpusLabel: this.ccCorpusLabel,
+                ccCorpusUnderline: this.ccCorpusUnderline,
                 ccLegendTrigger: this.ccLegendTrigger,
                 ccLegendPanel: this.ccLegendPanel,
                 ccLabelHint: this.ccLabelHint,
@@ -3821,6 +3829,7 @@ export class InquiryView extends ItemView {
         this.ccLabelHit = rendered.ccLabelHit;
         this.ccLabel = rendered.ccLabel;
         this.ccCorpusLabel = rendered.ccCorpusLabel;
+        this.ccCorpusUnderline = rendered.ccCorpusUnderline;
         this.ccLegendTrigger = rendered.ccLegendTrigger;
         this.ccLegendPanel = rendered.ccLegendPanel;
         this.ccLabelHint = rendered.ccLabelHint;
@@ -5324,7 +5333,8 @@ export class InquiryView extends ItemView {
         });
 
         this.setIconButtonDisabled(this.apiSimulationButton, runDisabled || running);
-        this.setIconButtonDisabled(this.scopeToggleButton, lockout || running);
+        const singleBook = (this.corpus?.books ?? []).length <= 1;
+        this.setIconButtonDisabled(this.scopeToggleButton, lockout || running || singleBook);
         this.setIconButtonDisabled(this.engineBadgeGroup, lockout || running);
         this.setIconButtonDisabled(this.artifactButton, lockout || running);
         this.setIconButtonDisabled(this.detailsToggle, lockout || running);
@@ -8539,7 +8549,12 @@ export class InquiryView extends ItemView {
             selectionMode: this.getSelectionMode(targetSceneIds),
         });
 
-        if (!snapshot) return; // stale or failed
+        if (!snapshot) {
+            console.debug('[Inquiry] Estimate snapshot failed or stale — pressure gauge will not render');
+            return;
+        }
+        console.debug('[Inquiry] Estimate snapshot ready',
+            { inputTokens: snapshot.estimate.estimatedInputTokens, ceiling: snapshot.estimate.effectiveInputCeiling });
         this.refreshEstimateDisplays(); // Renders once with final values
     }
 

@@ -544,6 +544,12 @@ export interface InquirySessionCacheRecord {
     max: number;
 }
 
+export interface GossamerRunFilterSettings {
+    latestOnly: boolean;
+    visibleRunIds: string[];
+    beatSystemKey: string;
+}
+
 /** A Pandoc LaTeX layout template scoped to a manuscript preset. */
 export interface PandocLayoutTemplate {
     id: string;                // unique, e.g. "bundled-fiction-signature-literary"
@@ -585,6 +591,7 @@ export interface RadialTimelineSettings {
     inquiryTimingHistory?: Record<string, InquiryTimingHistoryEntry>;
     actCount?: number;
     actLabelsRaw?: string;
+    gossamerRunFilter?: GossamerRunFilterSettings;
     publishStageColors: {
         Zero: string;
         Author: string;

@@ -100,15 +100,17 @@ export class InquiryEstimateService {
 
             // Guard: if a newer request has superseded this one, discard.
             if (this.currentStateKey !== stateKey) {
+                console.debug('[Inquiry] Estimate snapshot discarded — superseded by newer request');
                 return null;
             }
 
             this.snapshot = result;
             this.pending = null;
             return result;
-        } catch {
+        } catch (error) {
             // Build failed — clear pending but preserve stateKey so a retry
             // with the same key will attempt a fresh build.
+            console.warn('[Inquiry] Estimate snapshot build failed:', error instanceof Error ? error.message : error);
             if (this.currentStateKey === stateKey) {
                 this.pending = null;
             }

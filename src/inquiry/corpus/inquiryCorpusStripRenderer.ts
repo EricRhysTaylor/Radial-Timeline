@@ -473,7 +473,9 @@ export function renderInquiryCorpusStrip(args: {
     // ── "CORPUS" title line (clickable → opens Inquiry Sources settings) ──
     if (!refs.ccCorpusLabel) {
         refs.ccCorpusLabel = createSvgText(refs.ccGroup, 'ert-inquiry-cc-corpus-title', 'CORPUS', 0, 0);
-        refs.ccCorpusLabel.setAttribute('text-anchor', 'middle');
+        // Use text-anchor: start and manually center — avoids browser inconsistencies
+        // between text-anchor: middle and CSS letter-spacing when computing anchor offsets.
+        refs.ccCorpusLabel.setAttribute('text-anchor', 'start');
         refs.ccCorpusLabel.setAttribute('dominant-baseline', 'middle');
         args.registerSvgEvent(refs.ccCorpusLabel, 'click', () => {
             args.onCorpusTitleClick();
@@ -549,16 +551,17 @@ export function renderInquiryCorpusStrip(args: {
     const corpusTitleY = -20;
     const scopeLabelY = 0;
 
-    // CORPUS text centered on strip
-    refs.ccCorpusLabel.setAttribute('x', String(stripCenterX));
+    // CORPUS text: manually centered via text-anchor: start + measured width.
+    // This avoids browser inconsistencies between text-anchor: middle and CSS letter-spacing.
+    const corpusTextW = refs.ccCorpusLabel.getComputedTextLength?.() ?? 76;
+    const corpusTextX = Math.round(stripCenterX - corpusTextW / 2);
+    refs.ccCorpusLabel.setAttribute('x', String(corpusTextX));
     refs.ccCorpusLabel.setAttribute('y', String(corpusTitleY));
-    // Dashed underline positioned below text — width measured from the CORPUS text
+    // Dashed underline spans the same range as the text
     if (refs.ccCorpusUnderline) {
-        const textWidth = refs.ccCorpusLabel.getComputedTextLength?.() ?? 76;
-        const underlineHalfW = Math.round(textWidth / 2);
         const underlineY = corpusTitleY + 7;
-        refs.ccCorpusUnderline.setAttribute('x1', String(stripCenterX - underlineHalfW));
-        refs.ccCorpusUnderline.setAttribute('x2', String(stripCenterX + underlineHalfW));
+        refs.ccCorpusUnderline.setAttribute('x1', String(corpusTextX));
+        refs.ccCorpusUnderline.setAttribute('x2', String(Math.round(corpusTextX + corpusTextW)));
         refs.ccCorpusUnderline.setAttribute('y1', String(underlineY));
         refs.ccCorpusUnderline.setAttribute('y2', String(underlineY));
     }
@@ -901,23 +904,27 @@ function buildCorpusStripLayout(
     const columnStep = pageWidth + gap;
     const anchorRightX = VIEWBOX_MAX - CC_RIGHT_MARGIN - pageWidth;
     const anchorLeftX = VIEWBOX_MIN + CC_RIGHT_MARGIN;
+    const classGroupGap = 1; // extra spacing between class groups
     let placeLeft = false;
     let rightColumnsUsed = 0;
     let leftColumnsUsed = 0;
+    let rightGroupGapAccum = 0;
+    let leftGroupGapAccum = 0;
     const placements: InquiryCorpusStripPlacement[] = [];
     const layoutEntries: CorpusCcEntry[] = [];
     const classLayouts: InquiryCorpusStripClassLayout[] = [];
 
-    classGroups.forEach(group => {
+    classGroups.forEach((group, groupIndex) => {
         const columnsNeeded = Math.max(1, Math.ceil(group.items.length / rowsPerColumn));
         const side = placeLeft ? 'left' : 'right';
         const startIndex = side === 'right' ? rightColumnsUsed : leftColumnsUsed;
+        const sideGapAccum = side === 'right' ? rightGroupGapAccum : leftGroupGapAccum;
         const classLeftEdge = side === 'right'
-            ? anchorRightX - ((startIndex + columnsNeeded - 1) * columnStep)
-            : anchorLeftX + (startIndex * columnStep);
+            ? anchorRightX - ((startIndex + columnsNeeded - 1) * columnStep) - sideGapAccum
+            : anchorLeftX + (startIndex * columnStep) + sideGapAccum;
         const classRightEdge = side === 'right'
-            ? anchorRightX - (startIndex * columnStep) + pageWidth
-            : anchorLeftX + ((startIndex + columnsNeeded - 1) * columnStep) + pageWidth;
+            ? anchorRightX - (startIndex * columnStep) + pageWidth - sideGapAccum
+            : anchorLeftX + ((startIndex + columnsNeeded - 1) * columnStep) + pageWidth + sideGapAccum;
         const classWidth = classRightEdge - classLeftEdge;
         classLayouts.push({
             group,
@@ -931,8 +938,8 @@ function buildCorpusStripLayout(
                 if (entryIndex >= group.items.length) break;
                 const entry = group.items[entryIndex];
                 const x = side === 'right'
-                    ? anchorRightX - ((startIndex + colOffset) * columnStep)
-                    : anchorLeftX + ((startIndex + colOffset) * columnStep);
+                    ? anchorRightX - ((startIndex + colOffset) * columnStep) - sideGapAccum
+                    : anchorLeftX + ((startIndex + colOffset) * columnStep) + sideGapAccum;
                 const y = docStartY + (rowIndex * rowStep);
                 placements.push({ entry, x: Math.round(x), y: Math.round(y) });
                 layoutEntries.push(entry);
@@ -942,26 +949,28 @@ function buildCorpusStripLayout(
 
         if (side === 'right') {
             rightColumnsUsed += columnsNeeded;
-            const leftmostEdge = anchorRightX - ((rightColumnsUsed - 1) * columnStep);
+            if (groupIndex < classGroups.length - 1) rightGroupGapAccum += classGroupGap;
+            const leftmostEdge = anchorRightX - ((rightColumnsUsed - 1) * columnStep) - rightGroupGapAccum;
             if (!placeLeft && leftmostEdge <= (zoneRight + zoneBuffer)) {
                 placeLeft = true;
             }
         } else {
             leftColumnsUsed += columnsNeeded;
+            leftGroupGapAccum += classGroupGap;
         }
     });
 
     const rightBlockLeft = rightColumnsUsed > 0
-        ? anchorRightX - ((rightColumnsUsed - 1) * columnStep)
+        ? anchorRightX - ((rightColumnsUsed - 1) * columnStep) - rightGroupGapAccum
         : anchorRightX;
     const rightBlockRight = rightColumnsUsed > 0
         ? anchorRightX + pageWidth
         : anchorRightX + pageWidth;
     const rightmostLeftEdge = leftColumnsUsed > 0
-        ? anchorLeftX + ((leftColumnsUsed - 1) * columnStep) + pageWidth
+        ? anchorLeftX + ((leftColumnsUsed - 1) * columnStep) + pageWidth + leftGroupGapAccum
         : anchorLeftX;
     const leftmostRightEdge = rightColumnsUsed > 0
-        ? anchorRightX - ((rightColumnsUsed - 1) * columnStep)
+        ? anchorRightX - ((rightColumnsUsed - 1) * columnStep) - rightGroupGapAccum
         : anchorRightX;
     const overlapSetup = rightmostLeftEdge >= zoneLeft || leftmostRightEdge <= zoneLeft;
 

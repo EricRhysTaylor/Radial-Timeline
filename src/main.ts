@@ -22,7 +22,7 @@ import { RadialTimelineSettingsTab } from './settings/SettingsTab';
 import { parseWhenField } from './utils/date';
 import { normalizeBooleanValue } from './utils/sceneHelpers';
 import { cleanupTooltipAnchors } from './utils/tooltip';
-import type { RadialTimelineSettings, TimelineItem, BookMeta, EmbeddedReleaseNotesBundle, EmbeddedReleaseNotesEntry, BookProfile, ManuscriptExportCleanupOptions } from './types';
+import type { RadialTimelineSettings, TimelineItem, BookMeta, EmbeddedReleaseNotesBundle, EmbeddedReleaseNotesEntry, BookProfile, ManuscriptExportCleanupOptions, GossamerRunFilterSettings } from './types';
 import { ReleaseNotesService } from './services/ReleaseNotesService';
 import { CommandRegistrar } from './services/CommandRegistrar';
 import { HoverHighlighter } from './services/HoverHighlighter';
@@ -137,7 +137,7 @@ export default class RadialTimelinePlugin extends Plugin {
     private timelineAuditAiService!: TimelineAuditAiService;
     public milestonesService!: import('./services/MilestonesService').MilestonesService;
     public lastSceneData?: TimelineItem[];
-    public gossamerLatestOnly = true;
+    public gossamerLatestOnly = false;
     public gossamerVisibleRunIds: string[] = [];
     public gossamerRunInventory: GossamerRunRecord[] = [];
     public gossamerVisibleRunInventory: GossamerRunRecord[] = [];
@@ -168,6 +168,36 @@ export default class RadialTimelinePlugin extends Plugin {
     private getFirstTimelineView(): RadialTimelineView | null {
         const list = this.getTimelineViews();
         return list.length > 0 ? list[0] : null;
+    }
+
+    private normalizeGossamerRunFilterSettings(input: unknown): GossamerRunFilterSettings {
+        const current = (input && typeof input === 'object') ? input as Partial<GossamerRunFilterSettings> : {};
+        return {
+            latestOnly: current.latestOnly === true,
+            visibleRunIds: Array.isArray(current.visibleRunIds)
+                ? current.visibleRunIds.filter((value): value is string => typeof value === 'string')
+                : [],
+            beatSystemKey: typeof current.beatSystemKey === 'string' ? current.beatSystemKey : '',
+        };
+    }
+
+    private syncGossamerRunFilterSettings(): boolean {
+        const next = this.normalizeGossamerRunFilterSettings({
+            latestOnly: this.gossamerLatestOnly,
+            visibleRunIds: this.gossamerVisibleRunIds,
+            beatSystemKey: this.gossamerFilterBeatSystemKey,
+        });
+        const current = this.normalizeGossamerRunFilterSettings(this.settings.gossamerRunFilter);
+        if (JSON.stringify(current) === JSON.stringify(next)) {
+            return false;
+        }
+        this.settings.gossamerRunFilter = next;
+        return true;
+    }
+
+    public async saveGossamerRunFilterState(): Promise<void> {
+        if (!this.syncGossamerRunFilterSettings()) return;
+        await this.saveSettings();
     }
 
     public getActiveBook() {
@@ -459,6 +489,12 @@ export default class RadialTimelinePlugin extends Plugin {
     async loadSettings() {
         const loadedSettings = (await this.loadData()) ?? {};
         this.settings = Object.assign({}, DEFAULT_SETTINGS, loadedSettings);
+        const normalizedGossamerRunFilter = this.normalizeGossamerRunFilterSettings(this.settings.gossamerRunFilter);
+        const gossamerRunFilterMigrated = JSON.stringify(this.settings.gossamerRunFilter ?? null) !== JSON.stringify(normalizedGossamerRunFilter);
+        this.settings.gossamerRunFilter = normalizedGossamerRunFilter;
+        this.gossamerLatestOnly = normalizedGossamerRunFilter.latestOnly;
+        this.gossamerVisibleRunIds = [...normalizedGossamerRunFilter.visibleRunIds];
+        this.gossamerFilterBeatSystemKey = normalizedGossamerRunFilter.beatSystemKey;
         const proEntitlementSeeded = seedProEntitlement(this.settings);
         this.settings.aiSettings = (loadedSettings as Partial<RadialTimelineSettings>).aiSettings;
         this.settings.authorProgress = migrateAuthorProgressSettings((loadedSettings as Partial<RadialTimelineSettings>).authorProgress);
@@ -764,12 +800,13 @@ export default class RadialTimelinePlugin extends Plugin {
             globalLastUsed.novel = legacyLayoutIdMap[globalLastUsed.novel];
             pandocLayoutReferenceMigrated = true;
         }
-        if (proEntitlementSeeded || aiSettingsMigrated || exportFolderMigrated || beatSettingsMigration.changed || backdropTemplateMigrated || pandocLayoutsMigrated || bundledPandocLayoutsRegistered || publishingModelMigrated || matterWorkflowMigrated || pandocLayoutReferenceMigrated || manuscriptExportCleanupMigrated || booksMigrated || planetarySelectionMigrated || modeMigrated) {
+        if (proEntitlementSeeded || gossamerRunFilterMigrated || aiSettingsMigrated || exportFolderMigrated || beatSettingsMigration.changed || backdropTemplateMigrated || pandocLayoutsMigrated || bundledPandocLayoutsRegistered || publishingModelMigrated || matterWorkflowMigrated || pandocLayoutReferenceMigrated || manuscriptExportCleanupMigrated || booksMigrated || planetarySelectionMigrated || modeMigrated) {
             await this.saveSettings();
         }
     }
 
     async saveSettings() {
+        this.syncGossamerRunFilterSettings();
         this.syncLegacySourcePathFromActiveBook();
         this.syncPublishingModelState();
         stripLegacyAiSettings(this.settings);

@@ -12,6 +12,28 @@ function makeBeat(title: string, fields: Record<string, unknown> = {}) {
 }
 
 describe('gossamer run inventory', () => {
+  it('defaults to showing all runs when no filter state is stored', () => {
+    const scenes = [
+      makeBeat('1 Opening Image', {
+        Gossamer1: 20,
+        GossamerRunId1: 'run-1',
+        GossamerCreatedAt1: '2026-04-07T10:00:00.000Z',
+        GossamerModel1: 'Gemini 3.1 Pro',
+        Gossamer2: 40,
+        GossamerRunId2: 'run-2',
+        GossamerCreatedAt2: '2026-04-07T11:00:00.000Z',
+        GossamerModel2: 'GPT-5.4'
+      })
+    ];
+
+    const allRuns = buildAllGossamerRuns(scenes, 'Save The Cat');
+
+    expect(allRuns.latestOnly).toBe(false);
+    expect(allRuns.visibleRunIds).toEqual(['run-1', 'run-2']);
+    expect(allRuns.current.meta?.id).toBe('run-2');
+    expect(allRuns.historical).toHaveLength(1);
+  });
+
   it('reconstructs multiple runs for one beat system and uses the latest visible run as current', () => {
     const scenes = [
       makeBeat('1 Opening Image', {
@@ -80,6 +102,31 @@ describe('gossamer run inventory', () => {
     expect(filtered.visibleRunIds).toEqual(['run-1']);
     expect(filtered.current.meta?.id).toBe('run-1');
     expect(filtered.historical).toHaveLength(0);
+  });
+
+  it('falls back to show all when the beat system changes', () => {
+    const scenes = [
+      makeBeat('1 Opening Image', {
+        Gossamer1: 10,
+        GossamerRunId1: 'run-1',
+        GossamerCreatedAt1: '2026-04-07T10:00:00.000Z',
+        GossamerModel1: 'Gemini 3.1 Pro',
+        Gossamer2: 60,
+        GossamerRunId2: 'run-2',
+        GossamerCreatedAt2: '2026-04-07T11:00:00.000Z',
+        GossamerModel2: 'GPT-5.4'
+      })
+    ];
+
+    const filtered = buildAllGossamerRuns(scenes, 'Save The Cat', {
+      latestOnly: true,
+      visibleRunIds: ['run-2'],
+      beatSystemKey: toBeatModelMatchKey('Story Circle')
+    });
+
+    expect(filtered.latestOnly).toBe(false);
+    expect(filtered.visibleRunIds).toEqual(['run-1', 'run-2']);
+    expect(filtered.current.meta?.id).toBe('run-2');
   });
 });
 

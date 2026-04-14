@@ -695,16 +695,18 @@ export function buildAllGossamerRuns(
       visibleRuns: [],
       visibleRunIds: [],
       visibleModelCount: 0,
-      latestOnly: true,
+      latestOnly: false,
       beatSystemKey
     };
   }
   const runs = buildGossamerRunInventory(scenes as { itemType?: string; subplot?: string; title?: string; [key: string]: unknown }[], selectedBeatModel);
   const beatSystemChanged = (filterState.beatSystemKey ?? '') !== beatSystemKey;
-  const latestOnly = beatSystemChanged ? true : filterState.latestOnly !== false;
+  const latestOnly = beatSystemChanged ? false : filterState.latestOnly === true;
   const visibleRunIds = latestOnly
     ? []
-    : (filterState.visibleRunIds || []).filter((id) => runs.some((run) => run.id === id));
+    : (beatSystemChanged
+        ? []
+        : (filterState.visibleRunIds || []).filter((id) => runs.some((run) => run.id === id)));
   const visibleRuns = (() => {
     if (runs.length === 0) return [];
     if (latestOnly) return [runs[runs.length - 1]];
