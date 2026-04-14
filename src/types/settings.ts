@@ -573,6 +573,7 @@ export interface RadialTimelineSettings {
     manuscriptOutputFolder?: string;
     outlineOutputFolder?: string;
     inquiryArtifactFolder?: string;
+    /** @deprecated Briefs are now always saved for real API returns. */
     inquiryAutoSave?: boolean;
     inquiryRecentSessionsLimit?: number;
     inquirySources?: InquirySourcesSettings;

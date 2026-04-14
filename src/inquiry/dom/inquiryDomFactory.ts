@@ -55,7 +55,6 @@ export type InquiryBriefingPanelRefs = {
     briefingListEl: HTMLDivElement;
     briefingEmptyEl: HTMLDivElement;
     briefingFooterEl: HTMLDivElement;
-    briefingSaveButton: HTMLButtonElement;
     briefingClearButton: HTMLButtonElement;
     briefingResetButton: HTMLButtonElement;
     briefingPurgeButton: HTMLButtonElement;
@@ -304,10 +303,6 @@ export function createInquiryBriefingPanel(contentEl: HTMLElement): InquiryBrief
     const briefingListEl = briefingPanelEl.createDiv({ cls: 'ert-inquiry-briefing-list' });
     const briefingEmptyEl = briefingPanelEl.createDiv({ cls: 'ert-inquiry-briefing-empty', text: 'No recent inquiries yet.' });
     const briefingFooterEl = briefingPanelEl.createDiv({ cls: 'ert-inquiry-briefing-footer' });
-    const briefingSaveButton = briefingFooterEl.createEl('button', {
-        cls: 'ert-inquiry-briefing-save',
-        text: 'Save current brief'
-    });
     const briefingClearButton = briefingFooterEl.createEl('button', {
         cls: 'ert-inquiry-briefing-clear',
         text: 'Clear recent sessions'
@@ -340,7 +335,6 @@ export function createInquiryBriefingPanel(contentEl: HTMLElement): InquiryBrief
         briefingListEl,
         briefingEmptyEl,
         briefingFooterEl,
-        briefingSaveButton,
         briefingClearButton,
         briefingResetButton,
         briefingPurgeButton

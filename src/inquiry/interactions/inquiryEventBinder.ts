@@ -111,18 +111,15 @@ export function bindInquiryMobileGateEvents(args: {
 export function bindInquiryBriefingPanelEvents(args: {
     registerDomEvent: InquiryDomEventRegistrar;
     briefingPanelEl?: HTMLDivElement;
-    briefingSaveButton?: HTMLButtonElement;
     briefingClearButton?: HTMLButtonElement;
     briefingResetButton?: HTMLButtonElement;
     briefingPurgeButton?: HTMLButtonElement;
-    onSaveClick: (event: MouseEvent) => void;
     onClearClick: (event: MouseEvent) => void;
     onResetClick: (event: MouseEvent) => void;
     onPurgeClick: (event: MouseEvent) => void;
     onPointerEnter: () => void;
     onPointerLeave: () => void;
 }): void {
-    args.registerDomEvent(args.briefingSaveButton, 'click', (event: Event) => args.onSaveClick(event as MouseEvent));
     args.registerDomEvent(args.briefingClearButton, 'click', (event: Event) => args.onClearClick(event as MouseEvent));
     args.registerDomEvent(args.briefingResetButton, 'click', (event: Event) => args.onResetClick(event as MouseEvent));
     args.registerDomEvent(args.briefingPurgeButton, 'click', (event: Event) => args.onPurgeClick(event as MouseEvent));

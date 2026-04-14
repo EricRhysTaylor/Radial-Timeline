@@ -387,7 +387,6 @@ export class InquiryView extends ItemView {
     private briefingPanelEl?: HTMLDivElement;
     private briefingListEl?: HTMLDivElement;
     private briefingFooterEl?: HTMLDivElement;
-    private briefingSaveButton?: HTMLButtonElement;
     private briefingClearButton?: HTMLButtonElement;
     private briefingResetButton?: HTMLButtonElement;
     private briefingPurgeButton?: HTMLButtonElement;
@@ -875,7 +874,6 @@ export class InquiryView extends ItemView {
         this.briefingListEl = refs.briefingListEl;
         this.briefingEmptyEl = refs.briefingEmptyEl;
         this.briefingFooterEl = refs.briefingFooterEl;
-        this.briefingSaveButton = refs.briefingSaveButton;
         this.briefingClearButton = refs.briefingClearButton;
         this.briefingResetButton = refs.briefingResetButton;
         this.briefingPurgeButton = refs.briefingPurgeButton;
@@ -883,14 +881,9 @@ export class InquiryView extends ItemView {
         bindInquiryBriefingPanelEvents({
             registerDomEvent: (element, event, handler, options) => this.registerBoundDomEvent(element, event, handler as EventListener, options),
             briefingPanelEl: this.briefingPanelEl,
-            briefingSaveButton: this.briefingSaveButton,
             briefingClearButton: this.briefingClearButton,
             briefingResetButton: this.briefingResetButton,
             briefingPurgeButton: this.briefingPurgeButton,
-            onSaveClick: (event: MouseEvent) => {
-                event.stopPropagation();
-                void this.handleBriefingSaveClick();
-            },
             onClearClick: (event: MouseEvent) => {
                 event.stopPropagation();
                 this.handleBriefingClearClick();
@@ -1540,17 +1533,6 @@ export class InquiryView extends ItemView {
         this.artifactButton.removeAttribute('data-rt-tip-placement');
     }
 
-    private shouldAutoSaveBriefs(): boolean {
-        return this.plugin.settings.inquiryAutoSave ?? true;
-    }
-
-    private canManuallySaveActiveBrief(): boolean {
-        if (this.shouldAutoSaveBriefs()) return false;
-        const activeSession = this.state.activeSessionId
-            ? this.sessionStore.peekSession(this.state.activeSessionId)
-            : undefined;
-        return !!activeSession && this.resolveSessionStatus(activeSession) === 'unsaved';
-    }
 
     private getBriefingPurgeAvailabilityKey(): string {
         const scenes = this.corpus?.scenes ?? [];
@@ -1572,16 +1554,11 @@ export class InquiryView extends ItemView {
     }
 
     private updateBriefingFooterActionStates(): void {
-        const blocked = this.isInquiryBlocked();
         const lockout = this.isInquiryGuidanceLockout();
         const running = this.state.isRunning;
-        const canSave = this.canManuallySaveActiveBrief();
         const canClear = this.sessionStore.getSessionCount() > 0;
         const canPurge = this.briefingPurgeAvailable;
 
-        if (this.briefingSaveButton) {
-            this.briefingSaveButton.disabled = blocked || lockout || running || !canSave;
-        }
         if (this.briefingClearButton) {
             this.briefingClearButton.disabled = lockout || running || !canClear;
             this.briefingClearButton.classList.toggle('is-inert', !canClear);
@@ -1623,36 +1600,6 @@ export class InquiryView extends ItemView {
         this.briefingPurgeScanPending = false;
         this.briefingPurgeAvailable = affectedScenes.length > 0;
         this.updateBriefingFooterActionStates();
-    }
-
-    private async handleBriefingSaveClick(): Promise<void> {
-        if (this.isInquiryBlocked()) return;
-        if (!this.canManuallySaveActiveBrief()) {
-            if (this.shouldAutoSaveBriefs()) {
-                this.notifyInteraction('Auto-save Inquiry briefs is enabled in settings.');
-            } else if (this.state.activeResult) {
-                const activeSession = this.state.activeSessionId
-                    ? this.sessionStore.peekSession(this.state.activeSessionId)
-                    : undefined;
-                const status = activeSession ? this.resolveSessionStatus(activeSession) : null;
-                this.notifyInteraction(status === 'saved'
-                    ? 'Current brief is already saved.'
-                    : 'Current result is not available for manual save.');
-            } else {
-                new Notice('Run an inquiry before saving a brief.');
-            }
-            return;
-        }
-        const result = this.state.activeResult;
-        if (!result) {
-            new Notice('Run an inquiry before saving a brief.');
-            return;
-        }
-        await this.saveBrief(result, {
-            openFile: true,
-            silent: false,
-            sessionKey: this.state.activeSessionId
-        });
     }
 
     private async handleBriefingPendingEditsClick(session: InquirySession): Promise<void> {
@@ -5896,7 +5843,8 @@ export class InquiryView extends ItemView {
                 ?? await this.buildFallbackTrace(runnerInput, 'Trace unavailable; log created without prompt capture.');
             await this.saveInquiryLog(result, traceForLog, manifest, {
                 sessionKey: session.key,
-                normalizationNotes
+                normalizationNotes,
+                silent: false
             });
             if (this.shouldDiscardInquiryRunOutcome(runToken)) {
                 return;
@@ -5905,23 +5853,17 @@ export class InquiryView extends ItemView {
 
             const rawResponse = runTrace?.response?.content ?? null;
             const hasRawResponse = typeof rawResponse === 'string' && rawResponse.trim().length > 0;
-            const shouldForceSave = hasRawResponse
-                && this.isErrorResult(result)
+            const isError = this.isErrorResult(result);
+            const shouldSaveBrief = session.status !== 'simulated'
                 && session.status !== 'saved'
                 && !session.briefPath;
-            const autoSaveEnabled = this.plugin.settings.inquiryAutoSave ?? true;
-            const shouldAutoSave = autoSaveEnabled
-                && !this.isErrorResult(result)
-                && session.status !== 'simulated'
-                && session.status !== 'saved'
-                && !session.briefPath;
-            if (shouldForceSave || shouldAutoSave) {
+            if (shouldSaveBrief) {
                 await this.saveBrief(result, {
                     openFile: false,
-                    silent: true,
+                    silent: false,
                     sessionKey: session.key,
-                    rawResponse: shouldForceSave ? rawResponse : undefined,
-                    statusOverride: shouldForceSave
+                    rawResponse: isError && hasRawResponse ? rawResponse : undefined,
+                    statusOverride: isError
                         ? this.resolveSessionStatusFromResult(result)
                         : undefined
                 });

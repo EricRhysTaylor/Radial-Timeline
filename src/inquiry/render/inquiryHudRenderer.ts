@@ -201,8 +201,22 @@ export function updateInquiryPreviewShimmerLayout(args: {
 }): void {
     if (!args.refs.previewShimmerMaskRect || !args.refs.previewShimmerGroup) return;
     const height = Math.max(args.refs.previewPanelHeight, PREVIEW_PILL_HEIGHT * 2);
-    const startX = (-PREVIEW_PANEL_WIDTH / 2) - PREVIEW_SHIMMER_OVERHANG;
-    const maskWidth = PREVIEW_PANEL_WIDTH + (PREVIEW_SHIMMER_OVERHANG * 2);
+    const shimmerPadding = Math.max(PREVIEW_SHIMMER_OVERHANG, PREVIEW_SHIMMER_WIDTH * 0.6);
+    let textWidth = PREVIEW_PANEL_WIDTH - (PREVIEW_PANEL_PADDING_X * 2);
+    let textStartX = -textWidth / 2;
+    if (args.refs.previewHero) {
+        try {
+            const heroBox = args.refs.previewHero.getBBox();
+            if (Number.isFinite(heroBox.width) && heroBox.width > 0) {
+                textWidth = heroBox.width;
+                textStartX = heroBox.x;
+            }
+        } catch {
+            // Ignore DOM measurement failures and fall back to panel bounds.
+        }
+    }
+    const maskWidth = Math.max(PREVIEW_SHIMMER_WIDTH + 2, textWidth + (shimmerPadding * 2));
+    const startX = textStartX - shimmerPadding;
 
     if (args.refs.previewShimmerMask) {
         args.refs.previewShimmerMask.setAttribute('x', String(startX));

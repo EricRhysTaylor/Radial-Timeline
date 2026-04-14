@@ -1926,17 +1926,6 @@ export function renderInquirySection(params: SectionParams): void {
         });
     });
 
-    new Settings(configBody)
-        .setName(t('settings.inquiry.autoSave.name'))
-        .setDesc(t('settings.inquiry.autoSave.desc'))
-        .addToggle(toggle => {
-            toggle.setValue(plugin.settings.inquiryAutoSave ?? true);
-            toggle.onChange(async (value) => {
-                plugin.settings.inquiryAutoSave = value;
-                await plugin.saveSettings();
-            });
-        });
-
     const resolveActionNotesFieldLabel = () => {
         const fallback = DEFAULT_SETTINGS.inquiryActionNotesTargetField || 'Pending Edits';
         return (plugin.settings.inquiryActionNotesTargetField ?? fallback).trim() || fallback;
