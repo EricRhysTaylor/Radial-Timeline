@@ -56,9 +56,9 @@ export function validateAiSettings(input?: AiSettingsV1 | null): AiSettingsValid
 
     const defaultCacheWindows = defaults.cacheWindows ?? {
         anthropicTtl: '1h',
-        googleTtlSeconds: 900,
-        openaiRetention: 'in_memory',
-        openaiInMemoryWindowMinutes: 10
+        googleTtlSeconds: 86_400,
+        openaiRetention: '24h',
+        openaiInMemoryWindowMinutes: 60
     };
 
     const value: AiSettingsV1 = {

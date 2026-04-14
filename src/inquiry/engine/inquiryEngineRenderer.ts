@@ -36,6 +36,7 @@ export function renderInquiryEngineReadinessStrip(args: {
     readinessCause?: InquiryReadinessUiState['readiness']['cause'];
     readinessReason: string;
     runScopeLabel: string;
+    cacheTtlLabel?: string;
 }): void {
     if (!args.readinessEl
         || !args.readinessStatusEl
@@ -65,12 +66,14 @@ export function renderInquiryEngineReadinessStrip(args: {
     args.readinessStatusEl.setText(statusText);
     args.readinessCorpusEl.setText(args.corpusSummary);
 
+    const cacheSuffix = args.cacheTtlLabel ? ` Provider cache · ${args.cacheTtlLabel}.` : '';
+
     if (args.blocked && isLocalLlm) {
         args.readinessCorpusEl.setText('Local LLM is connected');
         args.readinessMessageEl.setText('Selected model passes basic validation');
         args.readinessScopeEl.setText('This model does not meet Inquiry requirements for the current corpus');
     } else if (args.popoverState === 'ready') {
-        args.readinessMessageEl.setText('Single pass.');
+        args.readinessMessageEl.setText(`Single pass.${cacheSuffix}`);
         args.readinessScopeEl.setText(args.runScopeLabel);
     } else if (args.popoverState === 'multi-pass') {
         const estimateLabel = args.passPlan.estimatedPassCount ?? args.passPlan.displayPassCount;
@@ -80,7 +83,7 @@ export function renderInquiryEngineReadinessStrip(args: {
         const reason = args.passPlan.multiPassTriggerReason
             ?? 'Manuscript exceeds the per-pass planning budget.';
         args.readinessMessageEl.setText(
-            `Expected structured passes: ${estimateLabel} — ${reason.replace(/\.$/, '')}.${recentRunSuffix}`
+            `Expected structured passes: ${estimateLabel} — ${reason.replace(/\.$/, '')}.${recentRunSuffix}${cacheSuffix}`
         );
         args.readinessScopeEl.setText(args.runScopeLabel);
     } else {

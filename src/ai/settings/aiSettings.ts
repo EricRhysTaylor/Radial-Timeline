@@ -21,9 +21,9 @@ export type CredentialSecretProvider = 'openai' | 'anthropic' | 'google' | 'olla
 export const DEFAULT_MODEL_POLICY: ModelPolicy = { type: 'latestStable' };
 export const DEFAULT_CACHE_WINDOWS = {
     anthropicTtl: '1h',
-    googleTtlSeconds: 900,
-    openaiRetention: 'in_memory',
-    openaiInMemoryWindowMinutes: 10
+    googleTtlSeconds: 86_400,
+    openaiRetention: '24h',
+    openaiInMemoryWindowMinutes: 60
 } as const;
 export const DEFAULT_LOCAL_LLM_SETTINGS: LocalLlmSettings = {
     enabled: true,

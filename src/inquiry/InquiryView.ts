@@ -996,7 +996,8 @@ export class InquiryView extends ItemView {
             passPlan: this.getCurrentPassPlan(readinessUi),
             readinessCause: readinessUi.readiness.cause,
             readinessReason: readinessUi.reason,
-            runScopeLabel: this.getEngineRunScopeLabel(readinessUi.runScopeLabel)
+            runScopeLabel: this.getEngineRunScopeLabel(readinessUi.runScopeLabel),
+            cacheTtlLabel: this.getProviderCacheTtlLabel(engine.provider)
         });
 
         // ── Guard (error/failure guidance) ──
@@ -3235,6 +3236,15 @@ export class InquiryView extends ItemView {
             this._resolvedEngine = resolveInquiryEngine(this.plugin, BUILTIN_MODELS);
         }
         return this._resolvedEngine;
+    }
+
+    private getProviderCacheTtlLabel(provider: string): string {
+        switch (provider) {
+            case 'anthropic': return '1h';
+            case 'openai': return '24h';
+            case 'google': return '24h';
+            default: return '';
+        }
     }
 
     /** Called externally (e.g. from Settings) when AI strategy changes. */

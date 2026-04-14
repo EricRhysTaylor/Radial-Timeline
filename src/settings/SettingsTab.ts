@@ -839,10 +839,6 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
         const publishingStack = publishingContent.createDiv({ cls: ERT_CLASSES.STACK });
         this.renderPublishingHero(publishingStack);
-        publishingStack.createDiv({
-            cls: ERT_CLASSES.FIELD_NOTE,
-            text: 'Everything you need to go from draft to finished manuscript lives here.'
-        });
         const refreshProDependentSections = () => this.display();
         const publishingPanels = publishingStack.createDiv({ cls: ERT_CLASSES.STACK });
         renderProFeaturePanels({
