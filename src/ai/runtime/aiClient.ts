@@ -374,17 +374,18 @@ export class AIClient {
             && request.feature.toLowerCase().includes('inquiry')
             && (request.evidenceDocuments?.length ?? 0) > 0;
 
+        const isInquiry = request.feature.toLowerCase().includes('inquiry');
         const envelope = composeEnvelope({
             roleTemplateName: roleTemplate.name,
             roleTemplateText: roleTemplate.prompt,
-            projectContext: getProjectContext(this.plugin, request),
+            projectContext: isInquiry ? '' : getProjectContext(this.plugin, request),
             featureModeInstructions,
             userInput: useDocumentBlocks
                 ? ''
                 : (request.userInput ?? compiledPrompt.userPrompt ?? request.promptText ?? ''),
-            userQuestion: request.userQuestion,
+            userQuestion: isInquiry ? undefined : request.userQuestion,
             outputRules: getOutputRules(request),
-            placeUserQuestionLast: request.feature.toLowerCase().includes('inquiry'),
+            placeUserQuestionLast: false,
             cacheBreakDelimiter: (provider === 'anthropic' || provider === 'google')
                 ? CACHE_BREAK_DELIMITER : undefined
         });

@@ -41,19 +41,10 @@ export function buildInquiryPromptParts(input: string | InquiryPromptScaffoldInp
     userPrompt: string;
 } {
     const normalized = normalizePromptInput(input);
-    const targetSceneLines = normalized.targetSceneIds.length
-        ? normalized.targetSceneIds.map(sceneId => `- ${sceneId}`)
-        : ['- no target scenes selected'];
-    const manifestLines = normalized.corpusManifestLines.length
-        ? normalized.corpusManifestLines.map(line => `- ${line}`)
-        : ['- no corpus entries included'];
 
     const systemPrompt = [
         'You are an editorial analysis engine.',
         'Scores are corpus-level diagnostics, not answer quality.',
-        'Scope clarification:',
-        'Book: material = scenes in this book (summary-based unless configured otherwise).',
-        'Saga: material = books in saga (outlines + scene summaries unless configured otherwise).',
         'Return JSON only. No prose outside JSON.'
     ].join('\n');
 
@@ -126,6 +117,14 @@ export function buildInquiryPromptParts(input: string | InquiryPromptScaffoldInp
         'Return JSON only using the exact schema below.'
     ].join('\n');
 
+    const targetSceneBlock = normalized.selectionMode === 'focused' && normalized.targetSceneIds.length
+        ? [
+            '',
+            'TARGET SCENES:',
+            ...normalized.targetSceneIds.map(sceneId => `- ${sceneId}`)
+        ]
+        : [];
+
     const userPrompt = [
         instructionText,
         '',
@@ -133,18 +132,7 @@ export function buildInquiryPromptParts(input: string | InquiryPromptScaffoldInp
         '',
         'TASK:',
         normalized.task || '(not provided)',
-        '',
-        'LENS:',
-        normalized.lens,
-        '',
-        'SELECTION MODE:',
-        normalized.selectionMode,
-        '',
-        'TARGET SCENES:',
-        ...targetSceneLines,
-        '',
-        'CORPUS MANIFEST:',
-        ...manifestLines,
+        ...targetSceneBlock,
         '',
         'EVIDENCE:',
         normalized.evidenceText

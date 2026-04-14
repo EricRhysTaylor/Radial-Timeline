@@ -17,7 +17,7 @@ describe('buildInquiryPromptParts', () => {
         expect(parts.userPrompt).toBe(scaffold.userPrompt);
         expect(parts.schemaText.includes('"schema_version"')).toBe(true);
         expect(parts.instructionText.includes('Answer the editorial question using the evidence.')).toBe(true);
-        expect(parts.userPrompt.includes('SELECTION MODE:\nfocused')).toBe(true);
+        expect(parts.userPrompt.includes('SELECTION MODE')).toBe(false);
         expect(parts.userPrompt.includes('TARGET SCENES:\n- scn_target_01')).toBe(true);
         expect(INQUIRY_ROLE_TEMPLATE_GUARDRAIL.includes('role template')).toBe(true);
     });

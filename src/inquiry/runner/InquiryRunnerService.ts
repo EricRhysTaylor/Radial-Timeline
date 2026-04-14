@@ -732,9 +732,6 @@ export class InquiryRunnerService implements InquiryRunner {
         const systemPrompt = [
             'You are an editorial analysis engine.',
             'Scores are corpus-level diagnostics, not answer quality.',
-            'Scope clarification:',
-            'Book: material = scenes in this book (summary-based unless configured otherwise).',
-            'Saga: material = books in saga (outlines + scene summaries unless configured otherwise).',
             'Return JSON only. No prose outside JSON.'
         ].join('\n');
 
@@ -788,6 +785,14 @@ export class InquiryRunnerService implements InquiryRunner {
             evidenceText
         });
 
+        const targetSceneBlock = input.selectionMode === 'focused' && input.targetSceneIds.length
+            ? [
+                '',
+                'TARGET SCENES:',
+                ...input.targetSceneIds.map(sceneId => `- ${sceneId}`)
+            ]
+            : [];
+
         const userPrompt = [
             instructionText,
             '',
@@ -799,18 +804,7 @@ export class InquiryRunnerService implements InquiryRunner {
             '',
             'TASK:',
             questionLines.join('\n'),
-            '',
-            'LENS:',
-            input.mode,
-            '',
-            'SELECTION MODE:',
-            input.selectionMode,
-            '',
-            'TARGET SCENES:',
-            ...(input.targetSceneIds.length ? input.targetSceneIds.map(sceneId => `- ${sceneId}`) : ['- no target scenes selected']),
-            '',
-            'CORPUS MANIFEST:',
-            ...this.buildCorpusManifestLines(input.corpus.entries).map(line => `- ${line}`),
+            ...targetSceneBlock,
             '',
             'EVIDENCE:',
             evidenceText
