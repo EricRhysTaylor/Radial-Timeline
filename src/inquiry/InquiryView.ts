@@ -8513,7 +8513,6 @@ export class InquiryView extends ItemView {
     private async requestEstimateSnapshot(): Promise<void> {
         const stats = this.getPayloadStats();
         const engine = this.getResolvedEngine();
-
         // Blocked engines (e.g. ollama) cannot produce estimates — skip the
         // snapshot request entirely and refresh displays to show the blocked state.
         if (engine.blocked) {
@@ -8528,7 +8527,6 @@ export class InquiryView extends ItemView {
         this.refreshEstimateDisplays(); // Shows "Estimating…" if snapshot is null
 
         const service = this.plugin.getInquiryEstimateService();
-        const aiSettings = this.getCanonicalAiSettings();
         const snapshot = await service.requestSnapshot({
             scope: this.state.scope,
             activeBookId: this.state.activeBookId ?? this.corpus?.books?.[0]?.id,
@@ -8553,8 +8551,6 @@ export class InquiryView extends ItemView {
             console.debug('[Inquiry] Estimate snapshot failed or stale — pressure gauge will not render');
             return;
         }
-        console.debug('[Inquiry] Estimate snapshot ready',
-            { inputTokens: snapshot.estimate.estimatedInputTokens, ceiling: snapshot.estimate.effectiveInputCeiling });
         this.refreshEstimateDisplays(); // Renders once with final values
     }
 

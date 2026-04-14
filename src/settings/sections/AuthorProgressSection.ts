@@ -1,5 +1,6 @@
 import { App, Setting, Notice, setIcon, setTooltip, normalizePath, DropdownComponent, TextComponent, Modal, ButtonComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
+import { buildDefaultAuthorProgressDefaults } from '../../authorProgress/authorProgressConfig';
 import { AuthorProgressService } from '../../services/AuthorProgressService';
 import { DEFAULT_SETTINGS } from '../defaults';
 import type { AuthorProgressDefaults, AuthorProgressSettings, TeaserRevealLevel } from '../../types/settings';
@@ -385,10 +386,13 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     themeButton.createSpan({ cls: 'ert-pillBtn__label', text: t('settings.authorProgress.styling.choosePaletteButton') });
     // SAFE: Settings sections are standalone functions without Component lifecycle; Obsidian manages settings tab cleanup
     themeButton.addEventListener('click', () => {
+        const paletteSeedColor = bookTitleTextRef?.getValue().trim()
+            || plugin.settings.authorProgress?.defaults.aprBookAuthorColor
+            || bookTitleColorFallback;
         const modal = new AprPaletteModal(
             app,
             plugin,
-            plugin.settings.authorProgress || DEFAULT_SETTINGS.authorProgress || {} as any,
+            plugin.settings.authorProgress?.defaults ?? DEFAULT_SETTINGS.authorProgress?.defaults ?? buildDefaultAuthorProgressDefaults(),
             (palette) => {
                 bookTitleColorPickerRef?.setValue(palette.bookTitle);
                 bookTitleTextRef?.setValue(palette.bookTitle);
@@ -400,7 +404,8 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                 percentSymbolTextRef?.setValue(palette.percentSymbol);
                 lastAppliedPalette = palette;
                 refreshPreview();
-            }
+            },
+            paletteSeedColor
         );
         modal.open();
     });

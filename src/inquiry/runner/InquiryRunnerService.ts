@@ -2572,17 +2572,26 @@ export class InquiryRunnerService implements InquiryRunner {
         if (cached) return cached;
 
         const aiClient = getAIClient(this.plugin);
-        const prepared = await this.prepareInquiryRunEstimate(aiClient, {
-            task: 'InquiryTraceEstimate',
-            systemPrompt,
-            userPrompt,
-            userQuestion,
-            ai,
-            jsonSchema,
-            temperature: 0.2,
-            maxTokens: outputTokens,
-            evidenceBlocks
-        });
+        let prepared: Awaited<ReturnType<typeof this.prepareInquiryRunEstimate>> = null;
+        try {
+            prepared = await this.prepareInquiryRunEstimate(aiClient, {
+                task: 'InquiryTraceEstimate',
+                systemPrompt,
+                userPrompt,
+                userQuestion,
+                ai,
+                jsonSchema,
+                temperature: 0.2,
+                maxTokens: outputTokens,
+                evidenceBlocks
+            });
+        } catch (error) {
+            // Graceful degradation: if the AI client's estimate preparation
+            // fails (registry refresh, model selection, network, etc.), fall
+            // through to heuristic estimation instead of killing the snapshot.
+            const message = error instanceof Error ? error.message : String(error);
+            console.warn(`[Inquiry] Token estimate preparation failed — using heuristic fallback: ${message}`);
+        }
         const inputTokens = prepared?.tokenEstimateInput
             ?? estimateTokensFromChars(inputChars);
         const tokenEstimate: InquiryRunTrace['tokenEstimate'] = {

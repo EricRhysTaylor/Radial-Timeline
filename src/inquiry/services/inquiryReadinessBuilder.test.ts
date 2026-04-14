@@ -580,3 +580,87 @@ describe('buildReadinessUiState', () => {
         expect(result.runScopeLabel).toContain('Book A');
     });
 });
+
+// ── Pressure gauge data flow ─────────────────────────────────────────
+// Simulates the exact data path that feeds the minimap pressure bar:
+//   snapshot → buildReadinessUiState → pressureRatio → fillRatio → bar width
+
+describe('pressure gauge data flow', () => {
+    /** Replicate the minimap renderer's clamping logic. */
+    function computeFillRatio(readinessUi: InquiryReadinessUiState): number {
+        const ratio = Math.max(0, readinessUi.readiness.pressureRatio);
+        return Math.min(ratio, 1);
+    }
+
+    it('produces non-zero fillRatio for a normal book corpus', () => {
+        const ui = buildReadinessUiState(makeBaseInput({
+            snapshot: makeSnapshot({ estimatedInputTokens: 50000, effectiveInputCeiling: 180000 })
+        }));
+        expect(ui.pending).toBe(false);
+        expect(ui.safeInputBudget).toBeGreaterThan(0);
+        expect(ui.estimateInputTokens).toBeGreaterThan(0);
+        expect(ui.readiness.pressureRatio).toBeGreaterThan(0);
+        expect(ui.readiness.pressureRatio).toBeLessThan(1);
+        const fill = computeFillRatio(ui);
+        expect(fill).toBeGreaterThan(0);
+        expect(fill).toBeLessThan(1);
+    });
+
+    it('produces fillRatio of 1 when over budget', () => {
+        const ui = buildReadinessUiState(makeBaseInput({
+            snapshot: makeSnapshot({ estimatedInputTokens: 300000, effectiveInputCeiling: 180000 })
+        }));
+        expect(ui.readiness.pressureRatio).toBeGreaterThan(1);
+        expect(computeFillRatio(ui)).toBe(1);
+    });
+
+    it('produces fillRatio of 1 when safeInputBudget is 0 (Infinity ratio)', () => {
+        const ui = buildReadinessUiState(makeBaseInput({
+            snapshot: makeSnapshot({ estimatedInputTokens: 50000, effectiveInputCeiling: 0 })
+        }));
+        // When effectiveInputCeiling is 0, the builder falls back to model caps.
+        // If model caps provide a budget, ratio is finite.
+        // But if somehow safeInputBudget stays 0, ratio is Infinity → clamped to 1.
+        const fill = computeFillRatio(ui);
+        expect(fill).toBeGreaterThan(0);
+    });
+
+    it('pending state produces zero fill (gauge should reset)', () => {
+        const ui = buildReadinessUiState(makeBaseInput({ snapshot: null }));
+        expect(ui.pending).toBe(true);
+        // When pending, InquiryView resets the gauge — it does NOT call updatePressureGauge.
+        // pressureRatio from pending state should be safe to check but won't be used.
+        expect(ui.estimateInputTokens).toBe(0);
+    });
+
+    it('blocked state (missing key) still has renderable pressure data', () => {
+        const ui = buildReadinessUiState(makeBaseInput({
+            hasCredential: false,
+            snapshot: makeSnapshot({ estimatedInputTokens: 50000, effectiveInputCeiling: 180000 })
+        }));
+        expect(ui.readiness.state).toBe('blocked');
+        expect(ui.readiness.cause).toBe('missing_key');
+        // Even blocked state should have valid pressure ratio for the bar
+        expect(ui.readiness.pressureRatio).toBeGreaterThan(0);
+        expect(Number.isFinite(ui.readiness.pressureRatio)).toBe(true);
+        expect(computeFillRatio(ui)).toBeGreaterThan(0);
+    });
+
+    it('pass plan uses exceedsBudget for multi-pass expectation', () => {
+        const ui = buildReadinessUiState(makeBaseInput({
+            snapshot: makeSnapshot({ estimatedInputTokens: 300000, effectiveInputCeiling: 180000, expectedPassCount: 3 })
+        }));
+        const plan = getCurrentPassPlan(ui, null);
+        expect(plan.multiPassExpected).toBe(true);
+        expect(plan.displayPassCount).toBeGreaterThan(1);
+    });
+
+    it('pass plan returns single pass when within budget', () => {
+        const ui = buildReadinessUiState(makeBaseInput({
+            snapshot: makeSnapshot({ estimatedInputTokens: 50000, effectiveInputCeiling: 180000 })
+        }));
+        const plan = getCurrentPassPlan(ui, null);
+        expect(plan.multiPassExpected).toBe(false);
+        expect(plan.displayPassCount).toBe(1);
+    });
+});

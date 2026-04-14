@@ -30,4 +30,22 @@ describe('InquiryRunnerService execution integrity', () => {
         expect(source).toContain("normalized.includes('single-pass planning budget')");
         expect(source).toContain("normalized.includes('safe limit for a single pass')");
     });
+
+    it('wraps prepareInquiryRunEstimate in try/catch so token estimate falls back on failure', () => {
+        const source = readFileSync(resolve(process.cwd(), 'src/inquiry/runner/InquiryRunnerService.ts'), 'utf8');
+        // The buildTokenEstimate method must catch errors from prepareInquiryRunEstimate
+        // so that AI client failures (registry, network, model selection) degrade to
+        // heuristic estimation instead of killing the estimate snapshot.
+        const buildTokenEstimateBlock = source.slice(
+            source.indexOf('private async buildTokenEstimate('),
+            source.indexOf('private getOutputTokenCap(')
+        );
+        expect(buildTokenEstimateBlock).toBeTruthy();
+        // Must have try/catch around prepareInquiryRunEstimate
+        expect(buildTokenEstimateBlock).toContain('try {');
+        expect(buildTokenEstimateBlock).toContain('prepareInquiryRunEstimate');
+        expect(buildTokenEstimateBlock).toContain('} catch');
+        // Must fall back to heuristic on failure
+        expect(buildTokenEstimateBlock).toContain('estimateTokensFromChars');
+    });
 });

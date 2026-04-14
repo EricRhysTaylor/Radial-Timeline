@@ -11,14 +11,22 @@ import { getPresetPalettes, generatePaletteFromColor, type AprPalette } from '..
 
 export class AprPaletteModal extends Modal {
     private plugin: RadialTimelinePlugin;
-    private settings: AuthorProgressDefaults;
+    private defaults: AuthorProgressDefaults;
     private onApply: (palette: AprPalette) => void;
+    private seedColor?: string;
 
-    constructor(app: App, plugin: RadialTimelinePlugin, settings: AuthorProgressDefaults, onApply: (palette: AprPalette) => void) {
+    constructor(
+        app: App,
+        plugin: RadialTimelinePlugin,
+        defaults: AuthorProgressDefaults,
+        onApply: (palette: AprPalette) => void,
+        seedColor?: string
+    ) {
         super(app);
         this.plugin = plugin;
-        this.settings = settings;
+        this.defaults = defaults;
         this.onApply = onApply;
+        this.seedColor = seedColor;
     }
 
     onOpen(): void {
@@ -53,7 +61,7 @@ export class AprPaletteModal extends Modal {
         const generateCard = contentEl.createDiv({ cls: 'ert-panel ert-panel--glass ert-apr-palette-generate' });
         generateCard.createEl('h4', { text: 'Generate from Book Title Color', cls: 'ert-section-title' });
 
-        const currentBookColor = this.settings?.aprBookAuthorColor || '#6FB971';
+        const currentBookColor = this.seedColor?.trim() || this.defaults?.aprBookAuthorColor || '#6FB971';
         const schemes: Array<{ value: 'analogous' | 'complementary' | 'triadic' | 'monochromatic'; label: string }> = [
             { value: 'analogous', label: 'Analogous (adjacent colors)' },
             { value: 'complementary', label: 'Complementary (opposite colors)' },
