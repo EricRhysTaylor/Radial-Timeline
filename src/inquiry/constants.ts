@@ -1,9 +1,7 @@
 export const INQUIRY_VIEW_TYPE = 'radial-inquiry';
 export const INQUIRY_VIEW_DISPLAY_TEXT = 'Inquiry';
 export const DEFAULT_INQUIRY_ARTIFACT_FOLDER = 'Radial Timeline/Inquiry/Briefing';
-export const MAX_INQUIRY_HISTORY = 100;
 export const DEFAULT_INQUIRY_HISTORY_LIMIT = 30;
-export const INQUIRY_HISTORY_LIMIT_OPTIONS = [10, 30, 60, 100] as const;
 export const INQUIRY_SCHEMA_VERSION = 1;
 export const INQUIRY_MAX_OUTPUT_TOKENS = 1200;
 export const INQUIRY_CANONICAL_ESTIMATE_QUESTION = 'Analyze corpus-level flow and depth quality.';

@@ -1,17 +1,14 @@
 import { App, normalizePath, TFile, TFolder, TAbstractFile } from 'obsidian';
-import type { RadialTimelineSettings } from '../../types';
 import { DEFAULT_INQUIRY_ARTIFACT_FOLDER } from '../constants';
 
-export function resolveInquiryArtifactFolder(settings: RadialTimelineSettings): string {
-    const raw = settings.inquiryArtifactFolder?.trim() || DEFAULT_INQUIRY_ARTIFACT_FOLDER;
-    return normalizePath(raw);
+export function resolveInquiryArtifactFolder(): string {
+    return normalizePath(DEFAULT_INQUIRY_ARTIFACT_FOLDER);
 }
 
 export async function ensureInquiryArtifactFolder(
-    app: App,
-    settings: RadialTimelineSettings
+    app: App
 ): Promise<TFolder | null> {
-    const folderPath = resolveInquiryArtifactFolder(settings);
+    const folderPath = resolveInquiryArtifactFolder();
     const existing = app.vault.getAbstractFileByPath(folderPath);
     if (existing && !(existing instanceof TFolder)) {
         return null;
@@ -26,10 +23,9 @@ export async function ensureInquiryArtifactFolder(
 }
 
 export function getMostRecentArtifactFile(
-    app: App,
-    settings: RadialTimelineSettings
+    app: App
 ): TFile | null {
-    const folderPath = resolveInquiryArtifactFolder(settings);
+    const folderPath = resolveInquiryArtifactFolder();
     const folder = app.vault.getAbstractFileByPath(folderPath);
     if (!folder || !(folder instanceof TFolder)) return null;
 

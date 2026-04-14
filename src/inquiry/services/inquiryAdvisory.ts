@@ -293,7 +293,7 @@ function buildRecommendationMessage(
         return plural ? 'Single-pass options:' : 'Single-pass option:';
     }
     if (reasonCode === 'cost_reuse_preferred') {
-        return plural ? 'Cache-aware alternatives:' : 'Cache-aware alternative:';
+        return plural ? 'Context-aware alternatives:' : 'Context-aware alternative:';
     }
     return plural ? 'Reasoning-first alternatives:' : 'Reasoning-first alternative:';
 }

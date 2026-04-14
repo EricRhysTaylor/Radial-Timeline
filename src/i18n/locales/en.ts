@@ -395,8 +395,6 @@ export interface TranslationKeys {
             };
         };
         inquiry: {
-            time: { justNow: string; };
-            session: { scopeSaga: string; scopeBook: string; scopeWithLabel: string; };
             contribution: { excluded: string; summary: string; full: string; };
             corpus: { errorEmptyMax: string; errorSketchyMin: string; errorMediumMin: string; errorSubstantiveMin: string; resetTooltip: string; name: string; desc: string; };
             prompts: { name: string; proTag: string; alreadyAddedTag: string; alreadyAdded: string; dragToReorder: string; labelPlaceholder: string; fixedTemplate: string; replaceWithTemplate: string; applyCanonical: string; resetToCanonical: string; deleteQuestion: string; questionPlaceholder: string; customizedQuestion: string; unlockProGhost: string; chooseCanonical: string; noRemainingCanonical: string; addQuestion: string; zoneFullNote: string; };
@@ -415,11 +413,6 @@ export interface TranslationKeys {
             corpusTier: { empty: string; sketchy: string; medium: string; substantive: string; };
             highlightLowSubstance: { name: string; desc: string; };
             config: { name: string; desc: string; };
-            briefingFolder: { name: string; desc: string; invalidChars: string; };
-            autoSave: { name: string; desc: string; };
-            actionNotesField: { name: string; desc: string; resetTooltip: string; };
-            historyLimit: { name: string; desc: string; };
-            recentSessions: { name: string; reopenFailed: string; empty: string; fallbackTitle: string; };
         };
         authorProgress: {
             hero: { badgeRefresh: string; badgeDefault: string; wikiAriaLabel: string; title: string; desc: string; keyBenefitsHeading: string; featureSpoilerSafe: string; featureShareable: string; featureStageWeighted: string; };
@@ -1161,8 +1154,6 @@ export const en: TranslationKeys = {
             },
         },
         inquiry: {
-            time: { justNow: 'just now' },
-            session: { scopeSaga: 'Saga', scopeBook: 'Book', scopeWithLabel: '{{scope}} {{label}}' },
             contribution: { excluded: 'Excluded', summary: 'Summary', full: 'Full' },
             corpus: {
                 errorEmptyMax: 'Empty max must be a non-negative number.',
@@ -1245,28 +1236,7 @@ export const en: TranslationKeys = {
             corpusTable: { tier: 'Tier', threshold: 'Threshold' },
             corpusTier: { empty: 'Empty', sketchy: 'Sketchy', medium: 'Medium', substantive: 'Substantive' },
             highlightLowSubstance: { name: 'Highlight completed docs with low substance', desc: 'Marks completed scene cells in the Inquiry corpus strip with an X when they fall in Empty or Sketchy tiers.' },
-            config: { name: 'Configuration', desc: 'Briefings, action notes, and recent session defaults for Inquiry briefs.' },
-            briefingFolder: {
-                name: 'Briefing folder',
-                desc: 'Inquiry briefs are saved here when auto-save is enabled.',
-                invalidChars: 'Folder path cannot contain the characters < > : " | ? *',
-            },
-            autoSave: { name: 'Auto-save Inquiry briefs', desc: 'Save a brief automatically after each successful Inquiry run.' },
-            actionNotesField: {
-                name: 'Action notes target YAML field',
-                desc: 'Frontmatter field to receive Inquiry action notes. Default is "Pending Edits". Notes are appended after any existing content with a link to the Inquiry brief.',
-                resetTooltip: 'Reset to default',
-            },
-            historyLimit: {
-                name: 'Inquire session history',
-                desc: 'This does not affect Inquiry Briefs. It relates only to Inquiry View rehydration, which loads previous sessions from the Session Manager Popover. Limited to a max of 100 sessions.',
-            },
-            recentSessions: {
-                name: 'Recent sessions',
-                reopenFailed: 'Unable to reopen this session right now.',
-                empty: 'No recent sessions yet. Run Inquiry to populate this list.',
-                fallbackTitle: 'Inquiry prompt',
-            },
+            config: { name: 'Configuration', desc: 'Pending edit behavior for Inquiry briefs.' },
         },
         authorProgress: {
             hero: {

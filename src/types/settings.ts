@@ -572,10 +572,6 @@ export interface RadialTimelineSettings {
     aiOutputFolder?: string;
     manuscriptOutputFolder?: string;
     outlineOutputFolder?: string;
-    inquiryArtifactFolder?: string;
-    /** @deprecated Briefs are now always saved for real API returns. */
-    inquiryAutoSave?: boolean;
-    inquiryRecentSessionsLimit?: number;
     inquirySources?: InquirySourcesSettings;
     inquiryPromptConfig?: InquiryPromptConfig;
     inquirySessionCache?: InquirySessionCacheRecord;
@@ -585,7 +581,6 @@ export interface RadialTimelineSettings {
     inquiryCorpusHighlightLowSubstanceComplete?: boolean;
     inquiryPromptZoneExpanded?: Record<InquiryZone, boolean>;
     inquiryActionNotesAutoPopulate?: boolean;
-    inquiryActionNotesTargetField?: string;
     inquiryOmnibusProgress?: OmnibusProgressState;
     inquiryTimingHistory?: Record<string, InquiryTimingHistoryEntry>;
     actCount?: number;

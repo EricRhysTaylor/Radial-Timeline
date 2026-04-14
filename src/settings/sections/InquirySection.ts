@@ -1,4 +1,4 @@
-import { App, ButtonComponent, DropdownComponent, Modal, Setting as Settings, TFile, TextComponent, TextAreaComponent, normalizePath, Notice, setIcon, setTooltip } from 'obsidian';
+import { App, ButtonComponent, DropdownComponent, Modal, Setting as Settings, TextComponent, TextAreaComponent, normalizePath, Notice, setIcon, setTooltip } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { DEFAULT_SETTINGS } from '../defaults';
 import type {
@@ -11,14 +11,11 @@ import type {
     InquirySourcesSettings
 } from '../../types/settings';
 import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
-import { openOrRevealFile } from '../../utils/fileUtils';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import { t, getFormattingLocale } from '../../i18n';
 import { ERT_CLASSES } from '../../ui/classes';
 import { badgePill } from '../../ui/ui';
 import { hasProFeatureAccess } from '../featureGate';
-import { InquirySessionStore } from '../../inquiry/InquirySessionStore';
-import { DEFAULT_INQUIRY_HISTORY_LIMIT, INQUIRY_HISTORY_LIMIT_OPTIONS } from '../../inquiry/constants';
 import {
     buildDefaultInquiryPromptConfig,
     createCanonicalPromptSlotById,
@@ -37,7 +34,6 @@ import {
     groupCanonicalQuestionsByZone,
     type InquiryCanonicalQuestionDefinition
 } from '../../inquiry/questions/canonicalQuestions';
-import type { InquirySession } from '../../inquiry/sessionTypes';
 import {
     MAX_RESOLVED_SCAN_ROOTS,
     normalizeScanRootPatterns,
@@ -75,54 +71,6 @@ const listToText = (values?: string[]): string =>
 // Core book-project classes — the only classes that exist without discovery.
 const CORE_CLASSES = ['scene', 'outline'];
 const PRESET_MATCH_ORDER: InquirySourcesPreset[] = ['default', 'light', 'deep'];
-
-const formatSessionExactTime = (timestamp: number): string => {
-    if (!Number.isFinite(timestamp)) return t('settings.inquiry.time.justNow');
-    const raw = new Date(timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-    return raw.replace(/\s+/g, '').toLowerCase();
-};
-
-const buildSessionZoneTag = (session: InquirySession, config: InquiryPromptConfig): string | null => {
-    const zone = session.questionZone ?? (session.result.questionZone as InquiryZone | undefined);
-    if (!zone) return null;
-    const abbr = zone === 'setup' ? 'Set' : zone === 'pressure' ? 'Pres' : 'Pay';
-    const questionId = session.result.questionId;
-    if (!questionId) return abbr;
-    const slots = config[zone] ?? [];
-    const slotIndex = slots.findIndex(slot => slot.id === questionId);
-    return slotIndex >= 0 ? `${abbr}${slotIndex + 1}` : abbr;
-};
-
-const resolveSessionQuestionLabel = (session: InquirySession, config: InquiryPromptConfig): string => {
-    const zoneTag = buildSessionZoneTag(session, config);
-    const slots = Object.values(config).flat();
-    const label = slots.find(slot => slot.id === session.result.questionId)?.label?.trim();
-    if (label && zoneTag) return `${zoneTag}: ${label}`;
-    if (label) return label;
-    if (session.result.questionId?.trim() && zoneTag) return `${zoneTag}: ${session.result.questionId.trim()}`;
-    return session.result.questionId?.trim() || t('settings.inquiry.recentSessions.fallbackTitle');
-};
-
-const formatSessionScopeLabel = (session: InquirySession): string => {
-    const scopeLabel = session.result.scope === 'saga' ? t('settings.inquiry.session.scopeSaga') : t('settings.inquiry.session.scopeBook');
-    const scopeValue = session.result.scopeLabel?.trim();
-    return scopeValue ? t('settings.inquiry.session.scopeWithLabel', { scope: scopeLabel, label: scopeValue }) : scopeLabel;
-};
-
-const formatSessionProviderModel = (session: InquirySession): string => {
-    const providerRaw = session.result.aiProvider?.trim().toLowerCase();
-    const model = (session.result.aiModelResolved || session.result.aiModelRequested || '').trim();
-    const provider = providerRaw === 'openai'
-        ? 'OpenAI'
-        : providerRaw === 'anthropic'
-            ? 'Anthropic'
-            : providerRaw === 'google'
-                ? 'Google'
-                : providerRaw === 'ollama'
-                    ? 'Ollama'
-                    : (providerRaw ? providerRaw.charAt(0).toUpperCase() + providerRaw.slice(1) : 'Engine');
-    return model ? `${provider}/${model}` : provider;
-};
 
 const REFERENCE_ONLY_CLASSES = new Set(['character', 'place', 'power']);
 const getContributionLabel = (mode: SceneInclusion): string => {
@@ -213,7 +161,7 @@ const validateCorpusThresholds = (next: InquiryCorpusThresholds): string | null 
 
 export function renderInquirySection(params: SectionParams): void {
     const { app, plugin, containerEl, attachFolderSuggest } = params;
-    containerEl.addClass('ert-inquiry-settings-root');
+    containerEl.addClass('ert-settings-inquiry-root');
 
     const createSection = (
         parent: HTMLElement,
@@ -1863,83 +1811,9 @@ export function renderInquirySection(params: SectionParams): void {
         wiki: 'Settings#inquiry'
     });
 
-    const artifactSetting = new Settings(configBody)
-        .setName(t('settings.inquiry.briefingFolder.name'))
-        .setDesc(t('settings.inquiry.briefingFolder.desc'));
-
-    artifactSetting.addText(text => {
-        const defaultPath = DEFAULT_SETTINGS.inquiryArtifactFolder || 'Radial Timeline/Inquiry/Briefing';
-        const fallbackFolder = plugin.settings.inquiryArtifactFolder?.trim() || defaultPath;
-        const illegalChars = /[<>:"|?*]/;
-
-        text.setPlaceholder(defaultPath)
-            .setValue(fallbackFolder);
-        text.inputEl.addClass('ert-input--xl');
-
-        if (attachFolderSuggest) {
-            attachFolderSuggest(text);
-        }
-
-        const inputEl = text.inputEl;
-        const flashClass = (cls: string) => {
-            inputEl.addClass(cls);
-            window.setTimeout(() => inputEl.removeClass(cls), cls === 'ert-setting-input-success' ? 1000 : 2000);
-        };
-
-        const validatePath = async () => {
-            inputEl.removeClass('ert-setting-input-success');
-            inputEl.removeClass('ert-setting-input-error');
-
-            const rawValue = text.getValue();
-            const trimmed = rawValue.trim() || fallbackFolder;
-
-            if (illegalChars.test(trimmed)) {
-                flashClass('ert-setting-input-error');
-                new Notice(t('settings.inquiry.briefingFolder.invalidChars'));
-                return;
-            }
-
-            const normalized = normalizePath(trimmed);
-            try { await plugin.app.vault.createFolder(normalized); } catch { /* folder may already exist */ }
-
-            plugin.settings.inquiryArtifactFolder = normalized;
-            await plugin.saveSettings();
-            flashClass('ert-setting-input-success');
-        };
-
-        text.onChange(() => {
-            inputEl.removeClass('ert-setting-input-success');
-            inputEl.removeClass('ert-setting-input-error');
-        });
-
-        plugin.registerDomEvent(text.inputEl, 'blur', () => { void validatePath(); });
-
-        artifactSetting.addExtraButton(button => {
-            button.setIcon('rotate-ccw');
-            button.setTooltip(`Reset to ${defaultPath}`);
-            button.onClick(async () => {
-                text.setValue(defaultPath);
-                plugin.settings.inquiryArtifactFolder = normalizePath(defaultPath);
-                await plugin.saveSettings();
-                flashClass('ert-setting-input-success');
-            });
-        });
-    });
-
-    const resolveActionNotesFieldLabel = () => {
-        const fallback = DEFAULT_SETTINGS.inquiryActionNotesTargetField || 'Pending Edits';
-        return (plugin.settings.inquiryActionNotesTargetField ?? fallback).trim() || fallback;
-    };
-
-    const actionNotesFieldSetting = new Settings(configBody)
-        .setName(t('settings.inquiry.actionNotesField.name'))
-        .setDesc(t('settings.inquiry.actionNotesField.desc'));
-    const defaultActionNotesField = DEFAULT_SETTINGS.inquiryActionNotesTargetField || 'Pending Edits';
-    let actionNotesFieldInput: TextComponent | null = null;
-
-    const autoPopulateSetting = new Settings(configBody)
-        .setName(`Auto-populate ${resolveActionNotesFieldLabel()}`)
-        .setDesc('Automatically write action notes to the target yaml field after each Inquiry run. When off, use Recent Inquiry Sessions to write manually.')
+    new Settings(configBody)
+        .setName('Auto-populate Pending Edits')
+        .setDesc('Automatically write action notes to the Pending Edits yaml field after each Inquiry run. When off, use Recent Inquiry Sessions to write manually.')
         .addToggle(toggle => {
             toggle.setValue(plugin.settings.inquiryActionNotesAutoPopulate ?? false);
             toggle.onChange(async (value) => {
@@ -1947,131 +1821,6 @@ export function renderInquirySection(params: SectionParams): void {
                 await plugin.saveSettings();
             });
         });
-
-    const refreshActionNotesLabels = () => {
-        const fieldLabel = resolveActionNotesFieldLabel();
-        autoPopulateSetting.setName(`Auto-populate ${fieldLabel}`);
-    };
-
-    actionNotesFieldSetting.addText(text => {
-        const current = plugin.settings.inquiryActionNotesTargetField?.trim() || defaultActionNotesField;
-        actionNotesFieldInput = text;
-        text.setPlaceholder(defaultActionNotesField);
-        text.setValue(current);
-        text.inputEl.addClass('ert-input--lg');
-        text.onChange(async (value) => {
-            const next = value.trim() || defaultActionNotesField;
-            plugin.settings.inquiryActionNotesTargetField = next;
-            await plugin.saveSettings();
-            refreshActionNotesLabels();
-        });
-    });
-
-    actionNotesFieldSetting.addExtraButton(button => {
-        button
-            .setIcon('reset')
-            .setTooltip(t('settings.inquiry.actionNotesField.resetTooltip'))
-            .onClick(async () => {
-                plugin.settings.inquiryActionNotesTargetField = defaultActionNotesField;
-                actionNotesFieldInput?.setValue(defaultActionNotesField);
-                await plugin.saveSettings();
-                refreshActionNotesLabels();
-            });
-    });
-
-    const historyStore = new InquirySessionStore(plugin);
-    const resolveHistoryLimit = (): number => {
-        const normalized = historyStore.getConfiguredLimit();
-        if (plugin.settings.inquiryRecentSessionsLimit !== normalized) {
-            plugin.settings.inquiryRecentSessionsLimit = normalized;
-        }
-        return normalized;
-    };
-
-    const historyLimitSetting = new Settings(configBody)
-        .setName(t('settings.inquiry.historyLimit.name'))
-        .setDesc(t('settings.inquiry.historyLimit.desc'));
-    historyLimitSetting.addDropdown(dropdown => {
-        INQUIRY_HISTORY_LIMIT_OPTIONS.forEach(option => dropdown.addOption(String(option), `${option}`));
-        const currentLimit = resolveHistoryLimit();
-        dropdown.setValue(String(currentLimit));
-        dropdown.selectEl.addClass('ert-input--sm');
-        dropdown.onChange(async value => {
-            const parsed = Number(value);
-            const nextLimit = INQUIRY_HISTORY_LIMIT_OPTIONS.includes(parsed as typeof INQUIRY_HISTORY_LIMIT_OPTIONS[number])
-                ? parsed
-                : DEFAULT_INQUIRY_HISTORY_LIMIT;
-            plugin.settings.inquiryRecentSessionsLimit = nextLimit;
-            historyStore.applyConfiguredLimit();
-            await plugin.saveSettings();
-            renderRecentSessionsPreview();
-        });
-    });
-
-    const historyPreview = configBody.createDiv({
-        cls: [ERT_CLASSES.PREVIEW_FRAME, ERT_CLASSES.STACK, 'ert-previewFrame--flush', 'ert-session-history-preview']
-    });
-    historyPreview.createDiv({ cls: ['ert-planetary-preview-heading', 'ert-previewFrame__title'], text: t('settings.inquiry.recentSessions.name') });
-    const historyList = historyPreview.createDiv({ cls: 'ert-session-history-preview__list' });
-
-    const openSessionPathIfAvailable = async (path: string | undefined): Promise<boolean> => {
-        const normalized = path?.trim();
-        if (!normalized) return false;
-        const file = plugin.app.vault.getAbstractFileByPath(normalized);
-        if (!(file instanceof TFile)) return false;
-        await openOrRevealFile(plugin.app, file);
-        return true;
-    };
-
-    const openRecentSession = async (session: InquirySession): Promise<void> => {
-        if (await openSessionPathIfAvailable(session.logPath)) return;
-        await plugin.getInquiryService().activateView();
-        const view = plugin.getInquiryService().getInquiryViews()[0];
-        if (view?.reopenSessionByKey(session.key)) return;
-        if (await openSessionPathIfAvailable(session.briefPath)) return;
-        new Notice(t('settings.inquiry.recentSessions.reopenFailed'));
-    };
-
-    const renderRecentSessionsPreview = (): void => {
-        historyList.empty();
-        const sessions = historyStore.getRecentSessions(5);
-        if (!sessions.length) {
-            historyList.createDiv({
-                cls: 'ert-session-history-preview__empty',
-                text: t('settings.inquiry.recentSessions.empty')
-            });
-            return;
-        }
-        const promptConfig = normalizeInquiryPromptConfig(plugin.settings.inquiryPromptConfig);
-        sessions.forEach(session => {
-            const row = historyList.createDiv({ cls: [ERT_CLASSES.OBJECT_ROW, 'ert-session-history-preview__item'] });
-            const left = row.createDiv({ cls: ERT_CLASSES.OBJECT_ROW_LEFT });
-            const questionTitle = resolveSessionQuestionLabel(session, promptConfig);
-            left.createDiv({ cls: 'ert-session-history-preview__title', text: questionTitle });
-            const timestamp = session.createdAt || session.lastAccessed;
-            const passCountRaw = (session.result as unknown as Record<string, unknown>).executionPassCount;
-            const passCount = typeof passCountRaw === 'number' && passCountRaw > 1 ? passCountRaw : null;
-            const meta = [
-                formatSessionScopeLabel(session),
-                formatSessionProviderModel(session),
-                formatSessionExactTime(timestamp),
-                passCount ? `Passes ${passCount}` : ''
-            ].filter(Boolean).join(' · ');
-            left.createDiv({ cls: ERT_CLASSES.OBJECT_ROW_META, text: meta });
-            row.setAttribute('role', 'button');
-            row.setAttribute('tabindex', '0');
-            row.setAttribute('aria-label', `Open recent session ${questionTitle}`);
-            plugin.registerDomEvent(row, 'click', () => { void openRecentSession(session); });
-            plugin.registerDomEvent(row, 'keydown', (evt: KeyboardEvent) => {
-                if (evt.key === 'Enter' || evt.key === ' ') {
-                    evt.preventDefault();
-                    void openRecentSession(session);
-                }
-            });
-        });
-    };
-
-    renderRecentSessionsPreview();
 
     void refreshClassScan();
 }

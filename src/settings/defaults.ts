@@ -20,8 +20,6 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     aiOutputFolder: 'Radial Timeline/Logs', // @deprecated Logging paths are now internalized.
     manuscriptOutputFolder: 'Radial Timeline/Export',
     outlineOutputFolder: 'Radial Timeline/Export',
-    inquiryArtifactFolder: 'Radial Timeline/Inquiry/Briefing',
-    inquiryRecentSessionsLimit: 30,
     inquirySources: {
         scanRoots: [],
         bookInclusion: {},
@@ -49,7 +47,6 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
         payoff: true
     },
     inquiryActionNotesAutoPopulate: false,
-    inquiryActionNotesTargetField: 'Pending Edits',
     inquiryTimingHistory: {},
     dismissedAlerts: [],
     actCount: 3,

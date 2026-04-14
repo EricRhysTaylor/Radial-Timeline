@@ -1399,7 +1399,7 @@ export function renderAiSection(params: {
         costEstimateTable.empty();
 
         const headerRow = costEstimateTable.createDiv({ cls: 'ert-ai-models-row ert-ai-models-row--header' });
-        ['Provider', 'Model', 'Fresh Run*', 'Cached Run', 'Expected Structured Passes'].forEach(text => {
+        ['Provider', 'Model', 'Fresh Run*', 'Context Run', 'Expected Structured Passes'].forEach(text => {
             createCostTableCell(headerRow, text);
         });
 
@@ -2337,8 +2337,8 @@ export function renderAiSection(params: {
         const cacheSettings = getCacheWindows();
 
         const anthropicCacheSetting = new Settings(anthropicSection)
-            .setName('Prompt cache window (Anthropic)')
-            .setDesc('Sets the Anthropic prompt cache TTL sent via cache_control. 5m is default; 1h keeps caches warm longer.');
+            .setName('Prompt context window (Anthropic)')
+            .setDesc('Sets the Anthropic prompt context window sent via cache_control. 5m is default; 1h keeps context available longer.');
         anthropicCacheSetting.addDropdown(dropdown => {
             dropdown.addOption('5m', '5 minutes');
             dropdown.addOption('1h', '1 hour');
@@ -2353,8 +2353,8 @@ export function renderAiSection(params: {
         });
 
         const googleCacheSetting = new Settings(googleSection)
-            .setName('Prompt cache TTL (Gemini)')
-            .setDesc('Controls the Gemini cached content TTL in minutes. Applies when the stable prefix is cached.');
+            .setName('Prompt context window (Gemini)')
+            .setDesc('Controls the Gemini context window duration in minutes. Applies when the stable prefix is retained.');
         googleCacheSetting.addText(text => {
             text.inputEl.type = 'number';
             text.inputEl.min = '1';
@@ -2373,7 +2373,7 @@ export function renderAiSection(params: {
                     const parsed = parseInt(text.getValue().trim(), 10);
                     if (!Number.isFinite(parsed) || parsed < 1 || parsed > 1440) {
                         const current = getCacheWindows();
-                        new Notice('Gemini cache TTL must be between 1 and 1440 minutes.');
+                        new Notice('Gemini context window must be between 1 and 1440 minutes.');
                         text.setValue(String(Math.max(1, Math.round(current.googleTtlSeconds / 60))));
                         return;
                     }
@@ -2388,8 +2388,8 @@ export function renderAiSection(params: {
         });
 
         const openAiRetentionSetting = new Settings(openaiSection)
-            .setName('Prompt cache retention (OpenAI)')
-            .setDesc('In-memory caches typically idle out in 5-10 minutes (max 1 hour). Extended retention keeps caches up to 24h for supported models.');
+            .setName('Prompt context retention (OpenAI)')
+            .setDesc('In-memory context typically idles out in 5-10 minutes (max 1 hour). Extended retention keeps context up to 24h for supported models.');
         openAiRetentionSetting.addDropdown(dropdown => {
             dropdown.addOption('in_memory', 'In-memory (default)');
             dropdown.addOption('24h', 'Extended 24h (supported models)');
@@ -2406,7 +2406,7 @@ export function renderAiSection(params: {
 
         let openAiInMemoryInput: HTMLInputElement | null = null;
         const openAiWindowSetting = new Settings(openaiSection)
-            .setName('In-memory cache window (minutes)')
+            .setName('In-memory context window (minutes)')
             .setDesc('Controls the countdown window used when OpenAI retention is in-memory.');
         openAiWindowSetting.addText(text => {
             openAiInMemoryInput = text.inputEl;
@@ -2427,7 +2427,7 @@ export function renderAiSection(params: {
                     const parsed = parseInt(text.getValue().trim(), 10);
                     if (!Number.isFinite(parsed) || parsed < 5 || parsed > 60) {
                         const current = getCacheWindows();
-                        new Notice('OpenAI in-memory cache window must be between 5 and 60 minutes.');
+                        new Notice('OpenAI in-memory context window must be between 5 and 60 minutes.');
                         text.setValue(String(current.openaiInMemoryWindowMinutes));
                         return;
                     }

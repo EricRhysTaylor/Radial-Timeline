@@ -560,7 +560,7 @@ export class InquiryGlyph {
                     if (isProcessed && processedStatus === 'success') {
                         marker.group.setAttribute('aria-label', 'Current result');
                     } else if (isCached) {
-                        marker.group.setAttribute('aria-label', 'Open cached result');
+                        marker.group.setAttribute('aria-label', 'Open previous result');
                     } else {
                         marker.group.setAttribute('aria-label', 'Run question');
                     }

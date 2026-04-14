@@ -2199,6 +2199,15 @@
   pointer-events: none;
 }
 
+.ert-inquiry-engine-timer.is-context-countdown {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.ert-inquiry-engine-timer.is-context-countdown:hover {
+  fill: var(--text-accent);
+}
+
 .ert-inquiry-status {
   font-size: 12px;
   fill: var(--text-muted);
@@ -3358,44 +3367,44 @@ body.rt-modal-open .ert-inquiry-svg {
   align-items: stretch;
 }
 
-:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-settings-root .ert-preset-pill {
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-settings-inquiry-root .ert-preset-pill {
   background: color-mix(in srgb, var(--background-secondary) 62%, var(--background-primary) 38%);
   border: 1px solid color-mix(in srgb, var(--background-modifier-border) 90%, transparent);
   box-shadow: none;
 }
 
-:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-settings-root .ert-preset-pill:hover:not(:disabled) {
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-settings-inquiry-root .ert-preset-pill:hover:not(:disabled) {
   border-color: color-mix(in srgb, var(--interactive-accent) 26%, var(--background-modifier-border));
   box-shadow: none;
 }
 
-:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-settings-root .ert-preset-pill.is-active {
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-settings-inquiry-root .ert-preset-pill.is-active {
   border: 1px solid color-mix(in srgb, var(--interactive-accent) 34%, var(--background-modifier-border));
   color: var(--text-normal);
   background: color-mix(in srgb, var(--background-primary) 92%, var(--interactive-accent) 8%);
   box-shadow: none;
 }
 
-:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-settings-root .ert-preset-pill.ert-pillBtn--pro {
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-settings-inquiry-root .ert-preset-pill.ert-pillBtn--pro {
   background: rgba(255, 255, 255, 0.05);
   color: var(--text-normal);
   border: 1px solid var(--ert-pro-accent-border);
   box-shadow: none;
 }
 
-:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-settings-root .ert-preset-pill.ert-pillBtn--pro .ert-pillBtn__icon svg {
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-settings-inquiry-root .ert-preset-pill.ert-pillBtn--pro .ert-pillBtn__icon svg {
   color: currentColor;
   opacity: 0.9;
 }
 
-:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-settings-root .ert-preset-pill.ert-pillBtn--pro:hover:not(:disabled),
-:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-settings-root .ert-preset-pill.ert-pillBtn--pro.is-active {
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-settings-inquiry-root .ert-preset-pill.ert-pillBtn--pro:hover:not(:disabled),
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-settings-inquiry-root .ert-preset-pill.ert-pillBtn--pro.is-active {
   background: rgba(255, 255, 255, 0.08);
   border-color: var(--ert-pro-accent-border-strong);
   box-shadow: none;
 }
 
-:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-settings-root .ert-inquiry-prompt-row {
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-settings-inquiry-root .ert-inquiry-prompt-row {
   --ert-inquiry-row-bg: color-mix(in srgb, var(--background-secondary) 26%, transparent);
   --ert-inquiry-row-border: color-mix(in srgb, var(--background-modifier-border) 84%, transparent);
   --ert-inquiry-row-text: var(--text-normal);
@@ -3432,7 +3441,7 @@ body.rt-modal-open .ert-inquiry-svg {
   --ert-inquiry-row-bg: color-mix(in srgb, var(--background-secondary) 34%, transparent);
 }
 
-:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-settings-root .ert-inquiry-prompt-row.is-dragging {
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-settings-inquiry-root .ert-inquiry-prompt-row.is-dragging {
   opacity: 0.34;
   box-shadow: none;
 }
@@ -3451,16 +3460,16 @@ body.rt-modal-open .ert-inquiry-svg {
   pointer-events: none;
 }
 
-:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-settings-root .ert-inquiry-prompt-row.is-dragover {
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-settings-inquiry-root .ert-inquiry-prompt-row.is-dragover {
   border-color: color-mix(in srgb, var(--interactive-accent) 72%, var(--background-modifier-border));
   box-shadow:
     0 0 0 2px color-mix(in srgb, var(--interactive-accent) 30%, transparent),
     inset 0 0 0 1px color-mix(in srgb, var(--interactive-accent) 18%, transparent);
 }
 
-:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-settings-root .ert-inquiry-prompt-config--dragging .ert-inquiry-prompt-row .ert-input,
-:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-settings-root .ert-inquiry-prompt-config--dragging .ert-inquiry-prompt-row button,
-:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-settings-root .ert-inquiry-prompt-config--dragging .ert-inquiry-prompt-row select {
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-settings-inquiry-root .ert-inquiry-prompt-config--dragging .ert-inquiry-prompt-row .ert-input,
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-settings-inquiry-root .ert-inquiry-prompt-config--dragging .ert-inquiry-prompt-row button,
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-settings-inquiry-root .ert-inquiry-prompt-config--dragging .ert-inquiry-prompt-row select {
   pointer-events: none;
 }
 
@@ -3506,12 +3515,12 @@ body.rt-modal-open .ert-inquiry-svg {
   width: 100%;
 }
 
-:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-settings-root .ert-inquiry-prompt-row .ert-input {
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-settings-inquiry-root .ert-inquiry-prompt-row .ert-input {
   color: var(--ert-control-color);
 }
 
-:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-settings-root .ert-inquiry-prompt-row .ert-input[readonly],
-:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-settings-root .ert-inquiry-prompt-row .ert-input.is-readonly {
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-settings-inquiry-root .ert-inquiry-prompt-row .ert-input[readonly],
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-settings-inquiry-root .ert-inquiry-prompt-row .ert-input.is-readonly {
   color: var(--ert-inquiry-row-muted);
 }
 
@@ -3571,8 +3580,8 @@ body.rt-modal-open .ert-inquiry-svg {
   color: var(--ert-inquiry-row-icon);
 }
 
-:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-settings-root .ert-inquiry-prompt-row.ert-reorder-row--pro,
-:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-settings-root .ert-inquiry-prompt-row--signature {
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-settings-inquiry-root .ert-inquiry-prompt-row.ert-reorder-row--pro,
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-settings-inquiry-root .ert-inquiry-prompt-row--signature {
   --ert-inquiry-row-pro-accent: var(--rt-pro-color, #d946ef);
   --ert-inquiry-row-bg:
     radial-gradient(circle at 12% 18%, color-mix(in srgb, var(--ert-inquiry-row-pro-accent) 16%, transparent) 0%, transparent 52%),
@@ -3595,17 +3604,17 @@ body.rt-modal-open .ert-inquiry-svg {
   box-shadow: none;
 }
 
-:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-settings-root .ert-inquiry-prompt-row .ert-iconBtn {
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-settings-inquiry-root .ert-inquiry-prompt-row .ert-iconBtn {
   color: var(--ert-iconBtn-color);
 }
 
-:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-settings-root .ert-inquiry-prompt-row .ert-iconBtn:hover {
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-settings-inquiry-root .ert-inquiry-prompt-row .ert-iconBtn:hover {
   background: var(--ert-iconBtn-hover-bg);
   border-color: var(--ert-iconBtn-hover-border);
   color: var(--ert-iconBtn-hover-color);
 }
 
-:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-settings-root .ert-inquiry-prompt-row .ert-drag-handle {
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-settings-inquiry-root .ert-inquiry-prompt-row .ert-drag-handle {
   color: var(--ert-inquiry-row-icon);
 }
 

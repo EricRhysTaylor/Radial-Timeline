@@ -627,7 +627,6 @@ export default class RadialTimelinePlugin extends Plugin {
             this.settingsService = new SettingsService(this);
         }
 
-        const actionNotesTargetMigrated = this.settingsService.migrateInquiryActionNotesTargetField();
         const beatSettingsMigration = migrateBeatSettings(this.settings);
         let schemaOntologyMigrated = beatSettingsMigration.schemaNormalized;
 
@@ -763,7 +762,7 @@ export default class RadialTimelinePlugin extends Plugin {
             globalLastUsed.novel = legacyLayoutIdMap[globalLastUsed.novel];
             pandocLayoutReferenceMigrated = true;
         }
-        if (aiSettingsMigrated || actionNotesTargetMigrated || exportFolderMigrated || beatSettingsMigration.changed || backdropTemplateMigrated || pandocLayoutsMigrated || bundledPandocLayoutsRegistered || publishingModelMigrated || matterWorkflowMigrated || pandocLayoutReferenceMigrated || manuscriptExportCleanupMigrated || booksMigrated || planetarySelectionMigrated || modeMigrated) {
+        if (aiSettingsMigrated || exportFolderMigrated || beatSettingsMigration.changed || backdropTemplateMigrated || pandocLayoutsMigrated || bundledPandocLayoutsRegistered || publishingModelMigrated || matterWorkflowMigrated || pandocLayoutReferenceMigrated || manuscriptExportCleanupMigrated || booksMigrated || planetarySelectionMigrated || modeMigrated) {
             await this.saveSettings();
         }
     }

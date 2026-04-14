@@ -704,6 +704,8 @@ export class InquiryView extends ItemView {
         this.navNextIcon = shell.navNextIcon;
         this.navSessionLabel = shell.navSessionLabel;
 
+        this.registerSvgEvent(this.engineTimerLabel, 'click', () => this.clearContextWindow());
+
         setupTooltipsFromDataAttributes(this.rootSvg, this.registerDomEvent.bind(this), { rtOnly: true });
         this.minimap.initElements(shell.minimapGroup, VIEWBOX_SIZE);
         this.renderModeIcons(shell.minimapGroup);
@@ -6412,7 +6414,7 @@ export class InquiryView extends ItemView {
     }
 
     private async saveOmnibusIndexNote(briefPaths: string[], scopeLabel: string): Promise<string | null> {
-        const folder = await ensureInquiryArtifactFolder(this.app, this.plugin.settings);
+        const folder = await ensureInquiryArtifactFolder(this.app);
         if (!folder) return null;
         const timestamp = this.formatInquiryBriefTimestamp(new Date());
         const scopeTitle = this.state.scope === 'saga' ? 'Saga' : `Book ${scopeLabel}`;
@@ -6827,8 +6829,7 @@ export class InquiryView extends ItemView {
     }
 
     private resolveInquiryActionNotesFieldLabel(): string {
-        const fallback = DEFAULT_SETTINGS.inquiryActionNotesTargetField || 'Pending Edits';
-        return (this.plugin.settings.inquiryActionNotesTargetField ?? fallback).trim() || fallback;
+        return 'Pending Edits';
     }
 
     private shouldAutoPopulatePendingEdits(): boolean {
@@ -6868,8 +6869,7 @@ export class InquiryView extends ItemView {
             return false;
         }
 
-        const defaultField = DEFAULT_SETTINGS.inquiryActionNotesTargetField || 'Pending Edits';
-        const targetField = (this.plugin.settings.inquiryActionNotesTargetField ?? defaultField).trim() || 'Pending Edits';
+        const targetField = 'Pending Edits';
         let wroteAny = false;
         let duplicateAny = false;
         let refusedAny = false;
@@ -8795,12 +8795,29 @@ export class InquiryView extends ItemView {
         return session.cacheWindowExpiresAt;
     }
 
-    private buildCacheCountdownLabel(): string | null {
-        const expiresAt = this.getActiveCacheWindowExpiry();
-        if (!expiresAt) return null;
-        const remainingMs = expiresAt - Date.now();
-        if (remainingMs <= 0) return null;
-        return `CACHE ${this.formatCacheCountdown(remainingMs)}`;
+    private buildContextCountdownLabel(): string | null {
+        if (!this.state.activeSessionId) return null;
+        const session = this.sessionStore.peekSession(this.state.activeSessionId);
+        if (!session?.cacheWindowExpiresAt) return null;
+
+        const remainingMs = session.cacheWindowExpiresAt - Date.now();
+        if (remainingMs > 0) {
+            return `Context available · ${this.formatCacheCountdown(remainingMs)} remaining`;
+        }
+        // Show expired message for up to 30 seconds after expiry
+        if (remainingMs > -30_000) {
+            return 'Context expired — next run is fresh';
+        }
+        return null;
+    }
+
+    private clearContextWindow(): void {
+        if (!this.state.activeSessionId) return;
+        const session = this.sessionStore.peekSession(this.state.activeSessionId);
+        if (!session?.cacheWindowExpiresAt) return;
+        delete session.cacheWindowExpiresAt;
+        this.sessionStore.setSession(session);
+        this.updateRunningHud();
     }
 
     private reconcileRunningEstimate(progress: InquiryRunProgressEvent | null): void {
@@ -8837,7 +8854,7 @@ export class InquiryView extends ItemView {
     }
 
     private updateRunningHud(): void {
-        const cacheLabel = this.state.isRunning ? null : this.buildCacheCountdownLabel();
+        const contextLabel = this.state.isRunning ? null : this.buildContextCountdownLabel();
         renderInquiryRunningHud({
             engineTimerLabel: this.engineTimerLabel,
             navSessionLabel: this.navSessionLabel,
@@ -8848,13 +8865,16 @@ export class InquiryView extends ItemView {
             buildRunningStageLabel: this.buildRunningStageLabel.bind(this),
             engineTimerText: this.state.isRunning
                 ? this.formatElapsedRunClock(this.currentRunElapsedMs)
-                : (cacheLabel ?? ''),
-            engineTimerVisible: this.state.isRunning || !!cacheLabel,
+                : (contextLabel ?? ''),
+            engineTimerVisible: this.state.isRunning || !!contextLabel,
             setTextIfChanged: (el, text) => this.setTextIfChanged(el, text, 'hudTextWrites'),
             toggleClassIfChanged: (el, cls, force) => this.toggleClassIfChanged(el, cls, force, 'hudAttrWrites')
         });
+        if (this.engineTimerLabel) {
+            this.toggleClassIfChanged(this.engineTimerLabel, 'is-context-countdown', !!contextLabel, 'hudAttrWrites');
+        }
         if (!this.state.isRunning) {
-            this.reconcileEngineTimerInterval(!!cacheLabel);
+            this.reconcileEngineTimerInterval(!!contextLabel);
         }
     }
 
@@ -10175,7 +10195,7 @@ export class InquiryView extends ItemView {
             statusOverride?: InquirySessionStatus;
         }
     ): Promise<string | null> {
-        const folder = await ensureInquiryArtifactFolder(this.app, this.plugin.settings);
+        const folder = await ensureInquiryArtifactFolder(this.app);
         if (!folder) {
             if (!options.silent) {
                 new Notice('Unable to create brief folder.');
@@ -10905,8 +10925,8 @@ export class InquiryView extends ItemView {
     }
 
     private async openArtifactsFolder(): Promise<void> {
-        const folderPath = resolveInquiryArtifactFolder(this.plugin.settings);
-        const folder = await ensureInquiryArtifactFolder(this.app, this.plugin.settings);
+        const folderPath = resolveInquiryArtifactFolder();
+        const folder = await ensureInquiryArtifactFolder(this.app);
         if (!folder) {
             new Notice(`Unable to access folder: ${folderPath}`);
             return;
@@ -10915,7 +10935,7 @@ export class InquiryView extends ItemView {
     }
 
     private async openMostRecentArtifact(): Promise<void> {
-        const file = getMostRecentArtifactFile(this.app, this.plugin.settings);
+        const file = getMostRecentArtifactFile(this.app);
         if (!file) {
             new Notice('No briefs found.');
             return;
