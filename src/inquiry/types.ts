@@ -14,7 +14,7 @@
 import type { InquiryScope } from './state';
 import type { InquiryReadinessResult } from './services/readiness';
 import type { TokenEstimateMethod } from '../ai/tokens/inputTokenEstimate';
-import type { AIProviderId, AnalysisPackaging, ModelInfo, RTCorpusTokenEstimate } from '../ai/types';
+import type { AIProviderId, ModelInfo, RTCorpusTokenEstimate } from '../ai/types';
 import type { CorpusManifestEntry } from './runner/types';
 
 // ── Token tier ────────────────────────────────────────────────────────
@@ -65,7 +65,6 @@ export type InquiryReadinessUiState = {
     estimateUncertaintyTokens: number;
     safeInputBudget: number;
     outputBudget: number;
-    packaging: AnalysisPackaging;
     hasEligibleModel: boolean;
     hasCredential: boolean;
     provider: AIProviderId;

@@ -59,8 +59,7 @@ export class InquiryEstimateService {
             provider: params.engine.provider,
             modelId: params.engine.modelId,
             overrideClassCount: params.overrideSummary.classCount,
-            overrideItemCount: params.overrideSummary.itemCount,
-            analysisPackaging: params.analysisPackaging
+            overrideItemCount: params.overrideSummary.itemCount
         });
 
         // Cache hit — same key, snapshot already available.

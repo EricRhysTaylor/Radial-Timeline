@@ -17,7 +17,7 @@
 import type { InquiryScope } from '../state';
 import type { InquiryEstimateSnapshot } from './inquiryEstimateSnapshot';
 import type { TokenEstimateMethod } from '../../ai/tokens/inputTokenEstimate';
-import type { AIProviderId, AIRunAdvancedContext, AccessTier, AiSettingsV1, AnalysisPackaging, ModelInfo } from '../../ai/types';
+import type { AIProviderId, AIRunAdvancedContext, AccessTier, AiSettingsV1, ModelInfo } from '../../ai/types';
 import type { ResolvedInquiryEngine } from './inquiryModelResolver';
 import type {
     TokenTier,
@@ -65,7 +65,6 @@ export interface AdvisoryInputKeyParams {
     scopeLabel: string;
     provider: AIProviderId;
     modelId: string;
-    packaging: AnalysisPackaging;
     estimatedInputTokens: number;
     estimateMethod: TokenEstimateMethod;
     estimateUncertaintyTokens: number;
@@ -126,10 +125,8 @@ export function buildEnginePayloadSummary(input: BuildEnginePayloadSummaryInput)
 // ── Popover state ─────────────────────────────────────────────────────
 
 export function resolveEnginePopoverState(readinessUi: InquiryReadinessUiState): InquiryEnginePopoverState {
-    // Segmented mode always shows multi-pass, even when corpus fits in one pass.
-    if (readinessUi.packaging === 'segmented') return 'multi-pass';
     if (readinessUi.readiness.state === 'ready') return 'ready';
-    if (readinessUi.readiness.state === 'large' && readinessUi.packaging !== 'singlePassOnly') return 'multi-pass';
+    if (readinessUi.readiness.state === 'large') return 'multi-pass';
     return 'exceeds';
 }
 
@@ -146,8 +143,7 @@ export function getCurrentPassPlan(
     readinessUi: InquiryReadinessUiState,
     lastAdvancedContext: AIRunAdvancedContext | null
 ): PassPlanResult {
-    const packagingExpected = readinessUi.packaging === 'segmented'
-        || (readinessUi.packaging === 'automatic' && readinessUi.readiness.exceedsBudget);
+    const packagingExpected = readinessUi.readiness.exceedsBudget;
     if (!packagingExpected) {
         return {
             packagingExpected: false,
@@ -157,21 +153,17 @@ export function getCurrentPassPlan(
             packagingTriggerReason: null
         };
     }
-    const isSegmented = readinessUi.packaging === 'segmented';
     const recentExactPassCount = typeof lastAdvancedContext?.executionPassCount === 'number' && lastAdvancedContext.executionPassCount > 1
         ? lastAdvancedContext.executionPassCount
         : null;
     const estimatedPassCount = estimateStructuredPassCount(readinessUi);
-    // Segmented mode always requires at least 2 passes even when corpus fits in one.
-    const effectiveEstimate = isSegmented ? Math.max(2, estimatedPassCount) : estimatedPassCount;
+    const effectiveEstimate = estimatedPassCount;
     return {
         packagingExpected: true,
         estimatedPassCount: effectiveEstimate,
         recentExactPassCount,
         displayPassCount: recentExactPassCount ?? effectiveEstimate,
-        packagingTriggerReason: isSegmented
-            ? 'Segmented mode forces multi-pass segmentation.'
-            : (lastAdvancedContext?.packagingTriggerReason ?? null)
+        packagingTriggerReason: lastAdvancedContext?.packagingTriggerReason ?? null
     };
 }
 
@@ -221,7 +213,6 @@ export function buildAdvisoryInputKey(params: AdvisoryInputKeyParams): string {
         params.scopeLabel,
         params.provider,
         params.modelId,
-        params.packaging,
         Math.round(params.estimatedInputTokens / 5000) * 5000,
         params.estimateMethod,
         Math.round(params.estimateUncertaintyTokens / 1000) * 1000,
@@ -250,7 +241,6 @@ export function buildReadinessUiState(input: BuildReadinessUiStateInput): Inquir
             readiness: evaluateInquiryReadiness({
                 hasEligibleModel: false,
                 hasCredential,
-                analysisPackaging: aiSettings.analysisPackaging,
                 estimatedInputTokens: 0,
                 safeInputBudget: 0,
                 estimateUncertaintyTokens: 0
@@ -261,7 +251,6 @@ export function buildReadinessUiState(input: BuildReadinessUiStateInput): Inquir
             estimateUncertaintyTokens: 0,
             safeInputBudget: 0,
             outputBudget: INQUIRY_MAX_OUTPUT_TOKENS,
-            packaging: aiSettings.analysisPackaging,
             hasEligibleModel: false,
             hasCredential,
             provider,
@@ -280,7 +269,6 @@ export function buildReadinessUiState(input: BuildReadinessUiStateInput): Inquir
             readiness: evaluateInquiryReadiness({
                 hasEligibleModel: false,
                 hasCredential,
-                analysisPackaging: aiSettings.analysisPackaging,
                 estimatedInputTokens: 0,
                 safeInputBudget: 0,
                 estimateUncertaintyTokens: 0
@@ -291,7 +279,6 @@ export function buildReadinessUiState(input: BuildReadinessUiStateInput): Inquir
             estimateUncertaintyTokens: 0,
             safeInputBudget: 0,
             outputBudget: INQUIRY_MAX_OUTPUT_TOKENS,
-            packaging: aiSettings.analysisPackaging,
             hasEligibleModel: false,
             hasCredential,
             provider,
@@ -352,7 +339,6 @@ export function buildReadinessUiState(input: BuildReadinessUiStateInput): Inquir
     const readiness = evaluateInquiryReadiness({
         hasEligibleModel,
         hasCredential,
-        analysisPackaging: aiSettings.analysisPackaging,
         estimatedInputTokens: estimateInputTokens,
         safeInputBudget,
         estimateUncertaintyTokens: estimateUncertaintyBudget
@@ -369,12 +355,8 @@ export function buildReadinessUiState(input: BuildReadinessUiStateInput): Inquir
         reason = `${providerLabel} key is missing. Add a saved key in AI settings.`;
     } else if (readiness.cause === 'capability_floor') {
         reason = `${providerLabel} cannot satisfy this Inquiry setup. Update Provider, Thinking Style, or Access level.`;
-    } else if (readiness.cause === 'single_pass_limit') {
-        reason = 'Exceeds the single-pass planning budget. Switch to Automatic or choose a larger-context engine.';
     } else if (readiness.state === 'large') {
-        reason = aiSettings.analysisPackaging === 'segmented'
-            ? 'Segmented mode forces structured multi-pass analysis.'
-            : 'Automatic packaging will run multiple structured passes.';
+        reason = 'Automatic packaging will run multiple structured passes.';
     }
 
     return {
@@ -386,7 +368,6 @@ export function buildReadinessUiState(input: BuildReadinessUiStateInput): Inquir
         estimateUncertaintyTokens: estimateUncertaintyBudget,
         safeInputBudget,
         outputBudget,
-        packaging: aiSettings.analysisPackaging,
         hasEligibleModel,
         hasCredential,
         provider,

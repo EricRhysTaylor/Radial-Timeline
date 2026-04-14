@@ -20,8 +20,8 @@ Inquiry organizes its analysis into three narrative zones (Setup, Pressure, Payo
 
 | Mode | Key | Focus |
 | :--- | :--- | :--- |
-| **Narrative** | `1` | Manuscript reading order — subplot colors, story beats, scene reordering |
-| **Progress** | `2` | Writing status and revision stages — Todo/Working/Overdue, progress-stage colors |
+| **Progress** | `1` | Writing status and revision stages — Todo/Working/Overdue, progress-stage colors |
+| **Narrative** | `2` | Manuscript reading order — subplot colors, story beats, scene reordering |
 | **Chronologue** | `3` | Story-world chronology — when events happen, elapsed time, duration arcs |
 | **Gossamer** | `4` | Narrative momentum — story beat scores, pacing, tension mapping |
 
@@ -36,4 +36,4 @@ The two views complement each other at different altitudes:
 
 A typical workflow might be: draft and arrange scenes in the Timeline view, then open Inquiry to check the structural health of your manuscript. Findings from Inquiry can write action notes directly into your scene frontmatter, creating a feedback loop between the two views.
 
-Both views share the same AI provider configuration (Settings → Core → AI) and the same source path, so they always analyze the same manuscript.
+Both views share the same AI provider configuration (Settings → AI) and the same source path, so they always analyze the same manuscript.

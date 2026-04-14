@@ -6,67 +6,59 @@ This page serves as a comprehensive reference for all plugin settings.
 
 ## Settings Tabs
 
-The settings interface is organized into four tabs:
+The settings interface is organized into seven tabs:
 
-*   **Pro** — Professional features including runtime estimation and manuscript exports
+*   **Core** — Timeline configuration, progress tracking, story beats, chronology, and metadata
+*   **Social** — Author Progress Report (APR) for sharing your writing journey
 *   **Inquiry** — Corpus scanning, prompt libraries, and Inquiry automation
-*   **Core** — Essential settings for timeline configuration, metadata, and workflow
-*   **Social Media** — Author Progress Report (APR) for sharing your writing journey
+*   **Publishing** — Manuscript export via Pandoc with templates and format configuration
+*   **AI** — AI provider configuration, model selection, and analysis settings
+*   **Advanced** — Technical configuration and file handling
+*   **PRO** — Pro entitlement, access keys, and feature overview
 
 Use the tab bar at the top of the settings panel to switch between sections.
 
-<div style="display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; margin: 20px 0;">
-  <div style="text-align: center;">
-    <img src="images/settings-core-tab.png" alt="Core settings tab" style="width: 220px; max-width: 100%; border-radius: 6px;" />
-    <div style="font-size: 0.8em; margin-top: 6px; color: #666;">Core tab</div>
-  </div>
-  <div style="text-align: center;">
-    <img src="images/settings-pro-tab.png" alt="Pro settings tab" style="width: 220px; max-width: 100%; border-radius: 6px;" />
-    <div style="font-size: 0.8em; margin-top: 6px; color: #666;">Pro tab</div>
-  </div>
-  <div style="text-align: center;">
-    <img src="images/settings-inquiry-tab.png" alt="Inquiry settings tab" style="width: 220px; max-width: 100%; border-radius: 6px;" />
-    <div style="font-size: 0.8em; margin-top: 6px; color: #666;">Inquiry tab</div>
-  </div>
-  <div style="text-align: center;">
-    <img src="images/settings-social-tab.png" alt="Social Media settings tab" style="width: 220px; max-width: 100%; border-radius: 6px;" />
-    <div style="font-size: 0.8em; margin-top: 6px; color: #666;">Social tab</div>
-  </div>
-</div>
+---
 
-## Pro Tab
+<a name="core"></a>
+## Core Tab
 
-<a name="professional"></a>
-### Professional · Signature ✦
-Professional tools for serious writers.
+<a name="general"></a>
+### General
+*   **Source path**: The root folder in your vault containing your manuscript scene files (e.g., `Book 1`). Leave blank to scan the entire vault.
+*   **Show source path as title**: When enabled, the timeline uses the source folder name as the central title. When disabled, it displays "Work in Progress".
+*   **Logs & generated files output folder**: Storage location for AI logs and local LLM reports (default `Radial Timeline/Logs`).
+*   **Export folder**: Destination for manuscript, outline, and cue card exports — Markdown, PDF, beat sheets, and index cards (default `Radial Timeline/Export`).
 
-The Signature tier unlocks advanced capabilities for professional workflows. During the Open Beta, all Pro features are available free to early adopters.
+<a name="progress-status"></a>
+### Progress and status
+Manage your project's milestones and status tracking.
 
-**Pro features include:**
-*   **Runtime Estimation** — Screen time, audiobook duration, and manuscript length analysis with custom profiles
-*   **Pro Exports** — Manuscript generation via Pandoc for screenplay, podcast, and novel formats
-*   **Chronologue Runtime sub-mode** — Blue wireframe sub-mode showing scene runtime duration arcs
-*   **Campaign Manager** — Manage multiple Author Progress Report campaigns with independent refresh schedules and Teaser Reveal settings
-*   **Teaser Reveal** — Progressive reveal system that automatically shows more timeline detail as your book progresses (Pro feature within Campaign Manager)
+**Stage Target Dates:**
+*   **Zero target date**: Target completion date for the Zero Draft stage (YYYY-MM-DD). A marker appears on the timeline when set.
+*   **Author target date**: Target completion date for the Author's Draft stage. Must be after the Zero target date.
+*   **House target date**: Target completion date for the House Edit stage. Must be after the Author target date.
+*   **Press target date**: Target completion date for the Press Ready stage. Must be after the House target date.
 
-**License & access:**
-*   **Open Beta**: Pro is active by default during the beta period.
-*   **License key**: When paid licensing launches, enter your key here to unlock Pro features.
+Target dates are validated to ensure proper stage ordering. Overdue dates are highlighted in red. Each stage has its own color-coded marker on the timeline.
 
-**Export & Pandoc settings:**
-*   **Pandoc binary path**: Optional custom path to your pandoc executable. If blank, system PATH is used.
-*   **Enable fallback Pandoc**: Attempt a secondary bundled/portable pandoc if the primary is missing.
-*   **Fallback Pandoc path**: Path to a portable/bundled pandoc binary.
-*   **Pandoc templates**: Custom LaTeX templates for Screenplay, Podcast Script, and Novel Manuscript formats.
+<a name="zero-draft-mode"></a>
+*   **Zero draft mode**: A focused mode for first-draft writing. Intercepts clicks on scenes with Publish Stage = Zero and Status = Complete to open a "Pending Edits" modal instead of the full note.
+*   **Show completion estimate**: Toggles the predicted completion tick mark on the timeline.
+*   **Completion estimate window (days)**: Rolling window (default 30, min 14, max 90) used to measure pace. Pace = completions in the active stage within the last N days / N (scenes/day).
+
+**How the completion estimate works**
+* Scope: Only the active stage (highest stage with any incomplete scenes). Other stages do not affect pace or remaining.
+* Total scenes for the active stage: `max(unique stage scenes, highest scene number seen anywhere)`. This lets an early high-numbered scene (e.g., "Scene 70") set a floor even if few notes exist.
+* Remaining: Total - Completed (stage-scoped, deduped by path, clamped to >= 0).
+* Date: Requires at least 2 completed scenes in the window for a confident pace. With fewer, the geometry stays but the label shows "?".
+* Staleness colors: fresh (<= 7d, normal), warn (8-10d, orange), late (11-20d, red), stalled (>20d or no pace/insufficient samples, red "?"). Geometry is frozen until new completions update the pace.
 
 > [!NOTE]
-> Campaign Manager, Teaser Reveal, and Pandoc Manuscript Export (including templates) are undergoing final testing and will be available soon. During the Open Beta, all Pro features are free to early adopters.
-
-> [!NOTE]
-> See [[Signature]] for full Pro feature documentation.
+> Learn more about workflows in [[Core-Workflows]].
 
 <a name="runtime-estimation"></a>
-### Runtime estimation ✦ Pro
+### Runtime estimation (Pro)
 Calculate screen time, audiobook duration, and manuscript length estimates.
 
 *   **Enable runtime estimation**: Activates runtime calculations for scenes and the Chronologue Runtime sub-mode.
@@ -78,7 +70,7 @@ Calculate screen time, audiobook duration, and manuscript length estimates.
 **Screenplay mode settings:**
 *   **Dialogue words per minute**: Reading speed for quoted dialogue (default 160).
 *   **Action words per minute**: Reading speed for scene descriptions (default 100).
-*   **Parenthetical timings**: Seconds added for screenplay directives—(beat), (pause), (long pause), (a moment), (silence).
+*   **Parenthetical timings**: Seconds added for screenplay directives — (beat), (pause), (long pause), (a moment), (silence).
 
 **Novel/Audiobook mode settings:**
 *   **Narration words per minute**: Reading pace for all content (default 150).
@@ -90,11 +82,168 @@ Calculate screen time, audiobook duration, and manuscript length estimates.
 *   **Runtime arc cap default**: Controls Chronologue Runtime sub-mode arc scaling. Lower values emphasize shorter scenes.
 
 > [!NOTE]
-> See [[Signature]] for full Pro feature documentation and [[Chronologue-Mode#runtime-mode-pro]] for the Runtime sub-mode visualization.
+> See [[Pro]] for full Pro feature documentation and [[Chronologue-Mode#runtime-mode-pro]] for the Runtime sub-mode visualization.
 
-## Inquiry Tab
+<a name="story-beats"></a>
+### Story beats system
+Configure the structural pacing guide for your story.
+*   **Story beats system**: Select a preset structure (**Save The Cat**, **Hero's Journey**, **Story Grid**) or choose **Custom**.
+*   **Custom story beat system editor**: (Visible when "Custom" is selected) Name your beat system, then add beats. Assign each beat to an act and drag to reorder. Row colors show sync status at a glance:
+    *   **Green** — beat note exists and Act matches.
+    *   **Orange** — beat note exists but Act is wrong. Use **Repair** to update frontmatter.
+    *   **Red** — duplicate beat title or multiple files match. Resolve manually.
+    *   **No highlight** — new beat with no file yet. Use **Create** to generate it.
+*   **Create sets**: Generate beat set notes in your source folder. The button shows how many new notes will be created and is disabled when all beats already have files.
+*   **Beat filename numbering**: Generated beat notes use decimal minor prefixes (for example, `7.01 Midpoint.md`) so scene integer slots remain canonical.
+*   **Repair beat notes**: (Appears when misaligned beats or missing Beat Model are detected) Updates frontmatter (Act, Beat Model, Class) only. Does not rename files. See [[Beat-Audit-Heal]] for details.
+*   **Beat properties editor**: Customize additional beat properties and choose which fields appear in the beat hover synopsis. Stored per beat system.
+*   **Saved sets (Pro)**: Save and switch between multiple custom beat systems (unlimited beat sets). Each system stores its beat list, Beat properties editor fields, and hover metadata selections. Core includes a single custom beat system.
+
+> [!NOTE]
+> Custom beat properties use the same structure as preset systems (`Class: Beat`, `Act`, `Purpose`, `Beat Model`, `Range`, etc.). Use the Beat properties editor to extend this with your own fields.
+
+> [!NOTE]
+> Learn more about using beats in [[Gossamer-Mode]].
+
+<a name="acts"></a>
+### Acts
+Configure the high-level structure of your narrative ring.
+*   **Act count**: Sets the number of acts (Minimum 3). This divides the Progress, Narrative, and Gossamer timeline rings.
+*   **Act labels**: (Optional) Define custom names for your acts (e.g., "Part 1, Part 2, Part 3").
+*   **Show act labels**: Toggle to hide labels and show only act numbers.
+
+> [!NOTE]
+> See [[Narrative-Mode]] for details on the act structure.
+
+<a name="yaml-templates"></a>
+### Scene sets & remapping
+Manage how Radial Timeline reads and writes metadata.
+*   **Custom Metadata Mapping**: Map existing frontmatter keys in your vault (e.g., `story_date`) to the system keys (e.g., `When`) without changing your files.
+*   **Scene properties editor**: Enable this to customize the Advanced Scene Set, add optional fields, and control hover metadata icons/order.
+
+> [!NOTE]
+> *   For scene set customization: [[YAML-Frontmatter#advanced-yaml-editor]]
+> *   For a full list of keys: [[YAML-Frontmatter]]
+
+<a name="chronologue"></a>
+### Chronologue mode settings
+Configure the time-based visualization of your story.
+*   **Chronologue duration arc cap**: Determines the maximum duration used for scaling the "duration arcs" (outer ring segments). Can be set to "Auto" or specific timeframes.
+*   **Discontinuity gap threshold**: Controls the sensitivity of the Shift sub-mode (time gaps). When the gap between scenes exceeds this threshold, an infinity symbol appears. Default is auto-calculated (3x median gap).
+
+> [!NOTE]
+> Read more about [[Chronologue-Mode]].
+
+<a name="pov"></a>
+### Point of view
+Control how narrative perspective is visualized.
+*   **Global POV**: Sets a default Point of View mode (e.g., First Person, Third Person) for the entire project.
+*   **Scene level YAML overrides**: You can override the global default on a per-scene basis using the `POV` YAML key.
+
+> [!NOTE]
+> See [[YAML-Frontmatter#pov-keywords]] for configuration details and supported keywords.
+
+<a name="planetary-time"></a>
+### Planetary Time
+Configure custom calendars for sci-fi and fantasy worlds.
+*   **Enable planetary time**: Activates the planetary time conversion features.
+*   **Active profile**: Selects which custom calendar profile is currently active (includes a Mars template).
+*   **Profiles**: Create and edit profiles. Define day length, year length, epoch offsets, and custom month/day names.
+
+> [!NOTE]
+> See [[Chronologue-Mode#planetary-time]] for usage details.
+
+<a name="backdrop"></a>
+### Backdrop & Micro-backdrops
+Configure the Chronologue backdrop ring and micro-backdrop rings.
+*   **Show backdrop ring**: Display the backdrop ring in Chronologue mode. When disabled, the ring space is reclaimed for subplot rings.
+*   **Micro backdrops**: Create micro-backdrop rings — thin colored ring segments with a title, color, and date range — to highlight eras, seasons, or historical milestones without creating full backdrop note files.
+
+> [!NOTE]
+> See [[Chronologue-Mode#backdrop-notes--micro-backdrop-rings]] for full details on both backdrop types.
+
+<a name="progress-stage-colors"></a>
+### Progress stage colors
+*   **Progress stage colors**: Customize the colors used for the progress stages (Zero Draft, Author's Draft, House Edit, Press Ready).
+
+<a name="subplot-ring-colors"></a>
+### Subplot ring colors
+*   **Subplot ring colors**: Customize the 16-color palette used for subplot rings.
+
+---
+
+<a name="social"></a>
+## Social Tab
+
+### Social · Author Progress Report
+Generate shareable, spoiler-safe progress graphics for social media, crowdfunding campaigns, and newsletters.
+
+> [!NOTE]
+> For detailed information about how APR works, see [[Author-Progress-Report]].
+
+**Preview & Size:**
+*   **Preview Size**: Choose Thumbnail (100x100px), Small (150x150px), Medium (300x300px), or Large (450x450px). This also sets the default export size and updates the preview in real time.
+
+#### Styling
+*   **Transparent Mode (Recommended)**: No background fill — adapts to any page or app. Ideal for websites, blogs, and platforms that preserve SVG transparency.
+*   **Background Color**: Bakes in a solid background. Use when transparency isn't reliable: email newsletters, Kickstarter, PDF exports, or platforms that rasterize SVGs.
+*   **Theme Contrast**: Choose Light Strokes, Dark Strokes, or No Strokes to match your background.
+*   **Link URL**: Where the graphic should link to (e.g., your website, Kickstarter, or shop).
+
+#### Theme
+*   **Theme palette**: Applies curated colors across Title, Author, % Symbol, % Number, and RT Badge based on the Title color.
+*   **Book Title**: Appears on your public report graphic.
+*   **Author Name**: Appears alongside the title (e.g., "Title - Author").
+*   **Typography & color overrides**: Fine-tune fonts, weights, and colors for title, author, percent number/symbol, and RT badge.
+
+#### Sharing & Automation
+*   **Update Frequency**: How often to auto-update the live embed file. Options: Manual Only, Daily, Weekly, or Monthly. "Manual" requires clicking the update button in the Author Progress Report modal.
+*   **Refresh Alert Threshold**: Days before showing a refresh reminder in the Timeline view (1-90 days, default 30). Only shown when Update Frequency is set to Manual.
+*   **Embed File Path**: Location for the "Live Embed" SVG file. Must end with `.svg`. Default: `Radial Timeline/Social/book/apr-default-manual-medium.svg`.
+*   **Auto-update embed paths**: When size or schedule changes, update default and campaign embed paths if they still match the default pattern.
+
+**Campaign Manager (Pro):**
+Create multiple APR configurations for different platforms (Kickstarter, Patreon, Newsletter, Website) with independent refresh schedules.
+
+*   **Campaign Presets**: One-click setup for common platforms:
+    *   Kickstarter (7-day refresh reminders)
+    *   Patreon (14-day refresh reminders)
+    *   Newsletter (14-day refresh reminders)
+    *   Website (30-day refresh reminders)
+
+*   **Per-Campaign Settings:**
+    *   **Update Frequency**: Manual, Daily, Weekly, or Monthly auto-updates
+    *   **Refresh Alert Threshold**: Days before showing refresh reminder (1-90 days)
+    *   **Embed File Path**: Custom SVG path for each campaign
+    *   **Export Size**: Thumbnail, Small, Medium, or Large
+    *   **Manual Reveal Options**: Show/hide Subplots, Acts, Status, and Progress Percent (only when Teaser Reveal is disabled)
+
+*   **Teaser Reveal (Pro):**
+    Automatically reveal more detail as your book progresses. Creates anticipation as your audience sees more of your timeline structure.
+
+    *   **Enable Teaser Reveal**: Toggle progressive reveal on/off
+    *   **Reveal Schedule**: Choose a preset or customize:
+        *   **Slow**: Reveals at 15%, 40%, and 70% progress
+        *   **Standard**: Reveals at 10%, 30%, and 60% progress (default)
+        *   **Fast**: Reveals at 5%, 20%, and 45% progress
+        *   **Custom**: Set your own thresholds (1-99%)
+    
+    *   **Reveal Stages:**
+        *   **Teaser** (0%): Progress ring only
+        *   **Scenes** (threshold 1): Scene cells appear (no colors)
+        *   **Colors** (threshold 2): Scene cells with status colors
+        *   **Full** (threshold 3): Complete timeline with subplots and acts
+    
+    *   **Stage Skipping**: Click on middle stages (Scenes, Colors) in the preview to skip them entirely, jumping directly to the next stage.
+
+> [!NOTE]
+> Campaign Manager and Teaser Reveal are undergoing final testing and will be available soon. During the Open Beta, all Pro features are free to early adopters.
+
+---
 
 <a name="inquiry"></a>
+## Inquiry Tab
+
 ### Inquiry
 Configure how Inquiry scans, stores, and annotates briefs. See [[Inquiry]] for full feature documentation.
 
@@ -122,7 +271,7 @@ Configure how Inquiry scans, stores, and annotates briefs. See [[Inquiry]] for f
 Inquiry uses two methods to identify which folders are books:
 
 1.  **Folder name**: Folders named `Book 1`, `Book 2`, etc. (case-insensitive) are automatically recognized as books.
-2.  **Outline metadata**: Any folder that contains an Outline file with `scope: book` in its YAML frontmatter is recognized as a book—regardless of the folder's name.
+2.  **Outline metadata**: Any folder that contains an Outline file with `scope: book` in its YAML frontmatter is recognized as a book — regardless of the folder's name.
 
 The second method lets you name book folders however you like (e.g., *The Fellowship of the Ring*) as long as the folder contains an Outline note with the following frontmatter:
 
@@ -145,122 +294,32 @@ The Outline file can be anywhere inside the book folder (including inside subfol
 *   **Thresholds**: Tune word-count tiers (Empty, Sketchy, Medium, Substantive) used in Corpus cards.
 *   **Highlight completed docs with low substance**: Flags completed notes that remain in Empty or Sketchy tiers.
 
-<a name="core"></a>
-## Core Tab
+---
 
-<a name="general"></a>
-### General
-*   **Source path**: The root folder in your vault containing your manuscript scene files (e.g., `Book 1`). Leave blank to scan the entire vault.
-*   **Show source path as title**: When enabled, the timeline uses the source folder name as the central title. When disabled, it displays "Work in Progress".
-*   **Logs & generated files output folder**: Storage location for AI logs and local LLM reports (default `Radial Timeline/Logs`).
-*   **Export folder**: Destination for manuscript, outline, and cue card exports — Markdown, PDF, beat sheets, and index cards (default `Radial Timeline/Export`).
+<a name="publishing"></a>
+## Publishing Tab
 
-<a name="pov"></a>
-### Point of view
-Control how narrative perspective is visualized.
-*   **Global POV**: Sets a default Point of View mode (e.g., First Person, Third Person) for the entire project.
-*   **Scene level YAML overrides**: You can override the global default on a per-scene basis using the `POV` YAML key.
+Everything you need to go from draft to finished manuscript.
 
-> [!NOTE]
-> See [[YAML-Frontmatter#pov-keywords]] for configuration details and supported keywords.
+### Export & Pandoc settings
+*   **Pandoc binary path**: Optional custom path to your pandoc executable. If blank, system PATH is used.
+*   **Enable fallback Pandoc**: Attempt a secondary bundled/portable pandoc if the primary is missing.
+*   **Fallback Pandoc path**: Path to a portable/bundled pandoc binary.
+*   **Pandoc templates**: Custom LaTeX templates for Screenplay, Podcast Script, and Novel Manuscript formats.
 
-<a name="acts"></a>
-### Acts
-Configure the high-level structure of your narrative ring.
-*   **Act count**: Sets the number of acts (Minimum 3). This divides the Narrative, Progress, and Gossamer timeline rings.
-*   **Act labels**: (Optional) Define custom names for your acts (e.g., "Part 1, Part 2, Part 3").
-*   **Show act labels**: Toggle to hide labels and show only act numbers.
+**Supported export formats:**
+*   **Screenplay** — Industry-standard screenplay formatting
+*   **Podcast Script** — Structured audio content with timing
+*   **Novel Manuscript** — Standard submission format for prose
 
 > [!NOTE]
-> See [[Narrative-Mode]] for details on the act structure.
+> Publishing exports are a Pro feature. See [[Pro#publishing-exports]] for full documentation. For the core manuscript export workflow (Markdown, outlines, index cards), see [[Core-Workflows#exporting-a-manuscript]].
 
-<a name="story-beats"></a>
-### Story beats system
-Configure the structural pacing guide for your story.
-*   **Story beats system**: Select a preset structure (**Save The Cat**, **Hero's Journey**, **Story Grid**) or choose **Custom**.
-*   **Custom story beat system editor**: (Visible when "Custom" is selected) Name your beat system, then add beats. Assign each beat to an act and drag to reorder. Row colors show sync status at a glance:
-    *   **Green** — beat note exists and Act matches.
-    *   **Orange** — beat note exists but Act is wrong. Use **Repair** to update frontmatter.
-    *   **Red** — duplicate beat title or multiple files match. Resolve manually.
-    *   **No highlight** — new beat with no file yet. Use **Create** to generate it.
-*   **Create sets**: Generate beat set notes in your source folder. The button shows how many new notes will be created and is disabled when all beats already have files.
-*   **Beat filename numbering**: Generated beat notes use decimal minor prefixes (for example, `7.01 Midpoint.md`) so scene integer slots remain canonical.
-*   **Repair beat notes**: (Appears when misaligned beats or missing Beat Model are detected) Updates frontmatter (Act, Beat Model, Class) only. Does not rename files. See [[Beat-Audit-Heal]] for details.
-*   **Beat properties editor**: Customize additional beat properties and choose which fields appear in the beat hover synopsis. Stored per beat system.
-*   **Saved sets ✦ Pro**: Save and switch between multiple custom beat systems (unlimited beat sets). Each system stores its beat list, Beat properties editor fields, and hover metadata selections. Core includes a single custom beat system.
-
-> [!NOTE]
-> Custom beat properties use the same structure as preset systems (`Class: Beat`, `Act`, `Purpose`, `Beat Model`, `Range`, etc.). Use the Beat properties editor to extend this with your own fields.
-
-> [!NOTE]
-> Learn more about using beats in [[Gossamer-Mode]].
-
-<a name="yaml-templates"></a>
-### Scene sets & remapping
-Manage how Radial Timeline reads and writes metadata.
-*   **Custom Metadata Mapping**: Map existing frontmatter keys in your vault (e.g., `story_date`) to the system keys (e.g., `When`) without changing your files.
-*   **Scene properties editor**: Enable this to customize the Advanced Scene Set, add optional fields, and control hover metadata icons/order.
-
-> [!NOTE]
-> *   For scene set customization: [[YAML-Frontmatter#advanced-yaml-editor]]
-> *   For a full list of keys: [[YAML-Frontmatter]]
-
-<a name="progress-status"></a>
-### Progress & Status
-Manage your project's milestones and status tracking.
-
-**Stage Target Dates:**
-*   **Zero target date**: Target completion date for the Zero Draft stage (YYYY-MM-DD). A marker appears on the timeline when set.
-*   **Author target date**: Target completion date for the Author's Draft stage. Must be after the Zero target date.
-*   **House target date**: Target completion date for the House Edit stage. Must be after the Author target date.
-*   **Press target date**: Target completion date for the Press Ready stage. Must be after the House target date.
-
-Target dates are validated to ensure proper stage ordering. Overdue dates are highlighted in red. Each stage has its own color-coded marker on the timeline.
-
-<a name="zero-draft-mode"></a>
-*   **Zero draft mode**: A focused mode for reviewing. Intercepts clicks on scenes with Progress Stage = Zero (`Publish Stage: Zero` in YAML) and `Status: Complete` to open a "Pending Edits" modal instead of the full note.
-*   **Show completion estimate**: Toggles the predicted completion tick mark on the timeline.
-*   **Completion estimate window (days)**: Rolling window (default 30, min 14, max 90) used to measure pace. Pace = completions in the active progress stage within the last N days ÷ N (scenes/day).
-
-**How the completion estimate works**
-* Scope: Only the active progress stage (highest stage with any incomplete scenes). Other stages do not affect pace or remaining.
-* Total scenes for the active stage: `max(unique stage scenes, highest scene number seen anywhere)`. This lets an early high-numbered scene (e.g., “Scene 70”) set a floor even if few notes exist.
-* Remaining: Total − Completed (stage-scoped, deduped by path, clamped to ≥0).
-* Date: Requires at least 2 completed scenes in the window for a confident pace. With fewer, the geometry stays but the label shows “?”.
-* Staleness colors: fresh (≤7d, normal), warn (8–10d, orange), late (11–20d, red), stalled (>20d or no pace/insufficient samples, red “?”). Geometry is frozen until new completions update the pace.
-
-> [!NOTE]
-> Learn more about workflows in [[Core-Workflows]].
-
-<a name="chronologue"></a>
-### Chronologue mode settings
-Configure the time-based visualization of your story.
-*   **Chronologue duration arc cap**: Determines the maximum duration used for scaling the "duration arcs" (outer ring segments). Can be set to "Auto" or specific timeframes.
-*   **Discontinuity gap threshold**: Controls the sensitivity of the Shift sub-mode (time gaps). When the gap between scenes exceeds this threshold, an infinity symbol appears. Default is auto-calculated (3x median gap).
-
-> [!NOTE]
-> Read more about [[Chronologue-Mode]].
-
-<a name="backdrop"></a>
-### Backdrop & Micro-backdrops
-Configure the Chronologue backdrop ring and micro-backdrop rings.
-*   **Show backdrop ring**: Display the backdrop ring in Chronologue mode. When disabled, the ring space is reclaimed for subplot rings.
-*   **Micro backdrops**: Create micro-backdrop rings — thin colored ring segments with a title, color, and date range — to highlight eras, seasons, or historical milestones without creating full backdrop note files.
-
-> [!NOTE]
-> See [[Chronologue-Mode#backdrop-notes--micro-backdrop-rings]] for full details on both backdrop types.
-
-<a name="planetary-time"></a>
-### Planetary Time
-Configure custom calendars for sci-fi and fantasy worlds.
-*   **Enable planetary time**: Activates the planetary time conversion features.
-*   **Active profile**: Selects which custom calendar profile is currently active (includes a Mars template).
-*   **Profiles**: Create and edit profiles. Define day length, year length, epoch offsets, and custom month/day names.
-
-> [!NOTE]
-> See [[Chronologue-Mode#planetary-time]] for usage details.
+---
 
 <a name="ai"></a>
+## AI Tab
+
 ### AI LLM for scene analysis
 Configure the AI assistant for narrative analysis.
 *   **Enable AI LLM features**: Toggles AI commands and visual indicators.
@@ -283,7 +342,11 @@ Configure the AI assistant for narrative analysis.
 > [!NOTE]
 > Learn how to interpret the analysis in [[AI-Pulse-Analysis|AI Pulse Triplet Analysis]].
 
-<a name="configuration"></a>
+---
+
+<a name="advanced"></a>
+## Advanced Tab
+
 ### Configuration
 Technical configuration and file handling.
 *   **Manuscript ripple rename**: Normalizes scene and active-beat filename prefixes after drag reorder. Scenes are resequenced as integers (`1`, `2`, `3`), while beats are resequenced as decimal minors (`1.01`, `1.02`, ...).
@@ -292,80 +355,24 @@ Technical configuration and file handling.
 *   **Metadata refresh debounce**: Adjust how often the timeline refreshes while typing (default 10000ms).
 *   **Reset subplot color precedence**: Clears manually assigned dominant subplot colors.
 
-<a name="progress-stage-colors"></a>
-### Progress stage colors
-*   **Progress stage colors**: Customize the colors used for the progress stages (Zero Draft, Author's Draft, House Edit, Press Ready).
+---
 
-<a name="subplot-ring-colors"></a>
-### Subplot ring colors
-*   **Subplot ring colors**: Customize the 16-color palette used for subplot rings.
+<a name="pro"></a>
+## PRO Tab
 
-## Social Media Tab
+### Pro Signature (Early Access)
+Pro Mode extends Radial Timeline with advanced workflows for authors who want more.
 
-<a name="social-media"></a>
-### Social Media · Author Progress Report
-Generate shareable, spoiler-safe progress graphics for social media, crowdfunding campaigns, and newsletters.
+*   **Pro toggle**: Enable or disable Pro features. When disabled, you preview the Core experience.
+*   **Pro access key** (coming soon): During Early Access, Pro is active by default. When paid licensing launches, enter your key here.
 
-> [!NOTE]
-> For detailed information about how APR works, see [[Author-Progress-Report]].
-
-**Preview & Size:**
-*   **Preview Size**: Choose Thumbnail (100x100px), Small (150x150px), Medium (300x300px), or Large (450x450px). This also sets the default export size and updates the preview in real time.
-
-<a name="social-media-styling"></a>
-#### Styling
-*   **Transparent Mode (Recommended)**: No background fill—adapts to any page or app. Ideal for websites, blogs, and platforms that preserve SVG transparency.
-*   **Background Color**: Bakes in a solid background. Use when transparency isn't reliable: email newsletters, Kickstarter, PDF exports, or platforms that rasterize SVGs.
-*   **Theme Contrast**: Choose Light Strokes, Dark Strokes, or No Strokes to match your background.
-*   **Link URL**: Where the graphic should link to (e.g., your website, Kickstarter, or shop).
-
-<a name="social-media-theme"></a>
-#### Theme
-*   **Theme palette**: Applies curated colors across Title, Author, % Symbol, % Number, and RT Badge based on the Title color.
-*   **Book Title**: Appears on your public report graphic.
-*   **Author Name**: Appears alongside the title (e.g., "Title · Author").
-*   **Typography & color overrides**: Fine-tune fonts, weights, and colors for title, author, percent number/symbol, and RT badge.
-
-<a name="social-media-publishing"></a>
-#### Publishing & Automation
-*   **Update Frequency**: How often to auto-update the live embed file. Options: Manual Only, Daily, Weekly, or Monthly. "Manual" requires clicking the update button in the Author Progress Report modal.
-*   **Refresh Alert Threshold**: Days before showing a refresh reminder in the Timeline view (1-90 days, default 30). Only shown when Update Frequency is set to Manual.
-*   **Embed File Path**: Location for the "Live Embed" SVG file. Must end with `.svg`. Default: `Radial Timeline/Social/book/apr-default-manual-medium.svg`.
-*   **Auto-update embed paths**: When size or schedule changes, update default and campaign embed paths if they still match the default pattern.
-
-**Campaign Manager** ✦ Pro:
-Create multiple APR configurations for different platforms (Kickstarter, Patreon, Newsletter, Website) with independent refresh schedules.
-
-*   **Campaign Presets**: One-click setup for common platforms:
-    *   Kickstarter (7-day refresh reminders)
-    *   Patreon (14-day refresh reminders)
-    *   Newsletter (14-day refresh reminders)
-    *   Website (30-day refresh reminders)
-
-*   **Per-Campaign Settings:**
-    *   **Update Frequency**: Manual, Daily, Weekly, or Monthly auto-updates
-    *   **Refresh Alert Threshold**: Days before showing refresh reminder (1-90 days)
-    *   **Embed File Path**: Custom SVG path for each campaign
-    *   **Export Size**: Thumbnail, Small, Medium, or Large
-    *   **Manual Reveal Options**: Show/hide Subplots, Acts, Status, and Progress Percent (only when Teaser Reveal is disabled)
-
-*   **Teaser Reveal** ✦ Pro:
-    Automatically reveal more detail as your book progresses. Creates anticipation as your audience sees more of your timeline structure.
-
-    *   **Enable Teaser Reveal**: Toggle progressive reveal on/off
-    *   **Reveal Schedule**: Choose a preset or customize:
-        *   **Slow**: Reveals at 15%, 40%, and 70% progress
-        *   **Standard**: Reveals at 10%, 30%, and 60% progress (default)
-        *   **Fast**: Reveals at 5%, 20%, and 45% progress
-        *   **Custom**: Set your own thresholds (1-99%)
-    
-    *   **Reveal Stages:**
-        *   **Teaser** (0%): Progress ring only
-        *   **Scenes** (threshold 1): Scene cells appear (no colors)
-        *   **Colors** (threshold 2): Scene cells with status colors
-        *   **Full** (threshold 3): Complete timeline with subplots and acts
-    
-    *   **Stage Skipping**: Click on middle stages (Scenes, Colors) in the preview to skip them entirely, jumping directly to the next stage.
+**Pro features include:**
+*   **Inquiry+** — Additional custom question slots per zone
+*   **Publishing exports** — Manuscript generation via Pandoc
+*   **APR Campaigns** — Multiple Author Progress Report campaigns
+*   **Chronologue Runtime sub-mode** — Scene duration visualization
+*   **Saved beat sets** — Unlimited custom beat systems
+*   **Website Exclusives** — Template vaults and guided demonstrations
 
 > [!NOTE]
-> Campaign Manager and Teaser Reveal are undergoing final testing and will be available soon. During the Open Beta, all Pro features are free to early adopters.
+> See [[Pro]] for full Pro feature documentation.

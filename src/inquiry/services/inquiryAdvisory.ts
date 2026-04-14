@@ -3,7 +3,6 @@ import { resolveEngineCapabilities } from '../../ai/caps/engineCapabilities';
 import { selectModel } from '../../ai/router/selectModel';
 import type {
     AIProviderId,
-    AnalysisPackaging,
     ModelInfo,
 } from '../../ai/types';
 import type { TokenEstimateMethod } from '../../ai/tokens/inputTokenEstimate';
@@ -75,7 +74,6 @@ export interface ComputeInquiryAdvisoryInput {
     resolvedEngine: ResolvedInquiryEngine;
     currentModel: ModelInfo | null;
     models: ModelInfo[];
-    analysisPackaging: AnalysisPackaging;
     estimatedInputTokens: number;
     currentSafeInputBudget?: number;
     estimationMethod?: TokenEstimateMethod;
@@ -187,16 +185,11 @@ function buildIdentity(context: InquiryAdvisoryContext): string {
     ].join('|');
 }
 
-function buildCurrentBehaviorLabel(expectedPassCount: number, packaging: AnalysisPackaging): string {
+function buildCurrentBehaviorLabel(expectedPassCount: number): string {
     if (expectedPassCount <= 1) {
         return 'This run is expected to fit in one pass.';
     }
-    const modeSuffix = packaging === 'automatic'
-        ? ''
-        : packaging === 'singlePassOnly'
-            ? ' (single-pass only mode)'
-            : ' (segmented mode)';
-    return `This run is expected to require ${expectedPassCount} passes${modeSuffix}.`;
+    return `This run is expected to require ${expectedPassCount} passes.`;
 }
 
 function buildProviderCandidates(
@@ -335,7 +328,7 @@ export function computeInquiryAdvisoryContext(input: ComputeInquiryAdvisoryInput
     if (!sortedAlternatives.length) return null;
 
     const currentPassCount = Math.max(1, currentCandidate.expectedPassCount);
-    const currentBehavior = buildCurrentBehaviorLabel(currentPassCount, input.analysisPackaging);
+    const currentBehavior = buildCurrentBehaviorLabel(currentPassCount);
 
     let reasonCode: InquiryAdvisoryReasonCode | null = null;
     let suggestions: AdvisoryCandidate[] = [];

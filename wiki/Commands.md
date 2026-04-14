@@ -59,13 +59,13 @@ Type "Radial Timeline" to filter the list.
 
 | Command | Description | Documentation |
 | :--- | :--- | :--- |
-| **Runtime estimator** | Opens the runtime estimation modal for screenplay, audiobook, or novel duration analysis. Requires Pro license. | [[Signature#runtime-estimation]] |
+| **Runtime estimator** | Opens the runtime estimation modal for screenplay, audiobook, or novel duration analysis. Requires Pro. | [[Pro#runtime-estimation]] |
 | **Author progress report** | Opens the Author Progress Report modal for generating shareable progress graphics. | [[Author Progress Report]] |
 
 ## Conditional Commands
 
 Some commands only appear in the Command Palette when their required feature is enabled:
 
-*   **AI commands** (Scene pulse analysis, Summary refresh, Gossamer analysis): Require **AI LLM features** to be enabled in Settings → Core → AI.
-*   **Runtime estimator**: Requires **Pro license** to be active in Settings → Pro.
+*   **AI commands** (Scene pulse analysis, Summary refresh, Gossamer analysis): Require **AI LLM features** to be enabled in Settings → AI.
+*   **Runtime estimator**: Requires **Pro** to be active in Settings → PRO.
 *   **Planetary time calculator**: Requires **Planetary time** to be enabled in Settings → Core.

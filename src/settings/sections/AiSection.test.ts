@@ -163,8 +163,6 @@ describe('AI settings models table', () => {
         expect(source.includes('Request composition')).toBe(false);
         expect(source.includes("createEl('details', { cls: 'ert-ai-fold ert-ai-large-handling' }")).toBe(false);
         expect(source.includes('attachAiCollapseButton(largeHandling')).toBe(false);
-        expect(source.includes("t('settings.ai.executionPreference.name')")).toBe(true);
-        expect(source.includes('singlePassOnly')).toBe(true);
         expect(source.includes('ert-ai-capacity-grid')).toBe(true);
         expect(source.includes('Expected Structured Passes')).toBe(true);
         expect(source.includes('Estimated provider input')).toBe(true);

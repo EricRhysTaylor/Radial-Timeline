@@ -1,6 +1,6 @@
 # Narrative Mode
 
-**Keyboard Shortcut**: `1`
+**Keyboard Shortcut**: `2`
 
 Narrative Mode is your primary manuscript-order workspace. It displays all scenes from all subplots on the outer ring, organized by **act divisions** (default 3 acts, configurable in **Settings → Acts**). Each act spans an equal segment of the 360° circle. This view emphasizes **Narrative time** (the order readers will experience the story).
 
@@ -26,4 +26,4 @@ When a scene belongs to multiple subplots, the outer All Scenes ring must choose
     *   **Darker hue** of the subplot ring color — this subplot is dominant and expressed on the outer ring above all others.
 *   **Reset**: Use **Settings → Core → Configuration → Reset subplot color precedence** to clear all manually assigned dominance.
 
-This mode hides status and publishing stage overlays to keep the focus on story structure and the weaving of subplots.
+This mode hides status and progress stage overlays to keep the focus on story structure and the weaving of subplots.

@@ -261,7 +261,7 @@ export class GossamerProcessingModal extends Modal {
             `Availability: ${ctx.availabilityStatus === 'visible' ? 'Visible to your key ✅' : ctx.availabilityStatus === 'not_visible' ? 'Not visible ⚠️' : 'Unknown (snapshot unavailable)'}`,
             `Applied caps: input=${ctx.maxInputTokens}, output=${ctx.maxOutputTokens}`,
             `Token estimate: ${typeof ctx.totalInputTokens === 'number' && Number.isFinite(ctx.totalInputTokens) ? `${Math.max(0, Math.floor(ctx.totalInputTokens)).toLocaleString()} via ${describeTokenEstimateMethod(ctx.tokenEstimateMethod ?? 'heuristic_chars')}` : 'unavailable'}`,
-            `Packaging: ${ctx.analysisPackaging === 'singlePassOnly' ? 'Single-pass only' : ctx.analysisPackaging === 'segmented' ? 'Segmented' : 'Automatic'}`,
+            `Packaging: Automatic`,
             `Evidence: ${this.manuscriptInfo?.evidenceMode || 'Auto (scene bodies first)'}`,
             '',
             'Feature mode instructions:',

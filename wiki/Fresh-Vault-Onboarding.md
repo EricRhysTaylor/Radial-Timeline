@@ -29,8 +29,8 @@ This page covers the fresh vault flow. If you already have scenes, jump to [[Exi
 - If you skipped beats in Book Designer, use **Create** to generate beat set notes later. Use **Merge** to realign files after reordering or renaming.
 
 ## 4. Orient to the key modes
-- Narrative (1). Manuscript order and subplot structure.
-- Progress (2). Writing status and progress stage.
+- Progress (1). Writing status and progress stage.
+- Narrative (2). Manuscript order and subplot structure.
 - Chronologue (3). Story-world time.
 - Gossamer (4). Beat momentum and scoring.
 

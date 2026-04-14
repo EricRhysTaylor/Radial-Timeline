@@ -8,7 +8,7 @@ import type {
     InquiryResult
 } from '../state';
 import type { SceneInclusion } from '../../types/settings';
-import type { AIProviderId, AnalysisPackaging } from '../../ai/types';
+import type { AIProviderId } from '../../ai/types';
 import type { TokenEstimateMethod } from '../../ai/tokens/inputTokenEstimate';
 import type { TokenUsage } from '../../ai/usage/providerUsage';
 import type { InquiryQuestionPromptForm } from '../questions/resolveQuestionPrompt';
@@ -127,7 +127,6 @@ export interface InquiryRunTrace {
         aiReason?: string;
         error?: string;
     } | null;
-    analysisPackaging?: AnalysisPackaging;
     executionPassCount?: number;
     packagingTriggerReason?: string;
     executionState?: InquiryExecutionState;

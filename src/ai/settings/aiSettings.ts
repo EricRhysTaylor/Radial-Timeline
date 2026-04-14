@@ -87,7 +87,6 @@ export function buildDefaultAiSettings(): AiSettingsV1 {
         schemaVersion: AI_SETTINGS_SCHEMA_VERSION,
         provider: DEFAULT_CANONICAL_PROVIDER,
         modelPolicy: { ...DEFAULT_MODEL_POLICY },
-        analysisPackaging: 'automatic',
         localLlm: cloneDefaultLocalLlmSettings(),
         roleTemplateId: 'commercial_genre',
         roleTemplates: cloneBuiltInRoleTemplates(),

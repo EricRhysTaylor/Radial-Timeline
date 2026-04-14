@@ -128,6 +128,20 @@ try {
   // Push to master branch
   run(`git push origin ${branch}`);
   console.log(`[backup] ✅ Pushed to origin/${branch} (safe backup)`);
+
+  // Auto-publish GitHub wiki when wiki/ files changed
+  const wikiChanged = files.some(f => f.startsWith('wiki/'));
+  if (wikiChanged) {
+    const wikiFiles = files.filter(f => f.startsWith('wiki/'));
+    console.log(`[backup] Wiki files changed (${wikiFiles.length}): ${wikiFiles.slice(0, 8).join(', ')}${wikiFiles.length > 8 ? ', …' : ''}`);
+    try {
+      run('node scripts/publish-wiki.mjs');
+      console.log('[backup] ✅ GitHub wiki published');
+    } catch (wikiErr) {
+      // Wiki publish failure must never fail the backup
+      console.warn('[backup] ⚠️  Wiki publish failed (backup itself succeeded):', wikiErr?.message || wikiErr);
+    }
+  }
 } catch (err) {
   console.error('[backup] Failed:', err?.message || err);
   process.exit(1);

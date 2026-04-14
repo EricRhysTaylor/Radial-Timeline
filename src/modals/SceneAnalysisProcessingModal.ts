@@ -1380,7 +1380,7 @@ export class SceneAnalysisProcessingModal extends Modal {
             typeof ctx.totalInputTokens === 'number'
                 ? `Estimated input: ~${Math.round(ctx.totalInputTokens).toLocaleString()} tokens`
                 : '',
-            `Packaging: ${ctx.analysisPackaging === 'singlePassOnly' ? 'Single-pass only' : ctx.analysisPackaging === 'segmented' ? 'Segmented' : 'Automatic'}`,
+            `Packaging: Automatic`,
             '',
             'Feature mode instructions:',
             redactSensitiveValue(ctx.featureModeInstructions || '(none)'),

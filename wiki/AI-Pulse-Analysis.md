@@ -7,7 +7,7 @@
 
 The Pulse Triplet Analysis is the key first line of defense in stress testing the manuscript from a developmental editor's viewpoint.
 
-**Modes**: Narrative mode (key 1), Progress mode (key 2), Chronologue mode (key 3)
+**Modes**: Progress mode (key 1), Narrative mode (key 2), Chronologue mode (key 3)
 **Command**: `Scene pulse analysis (manuscript order)`, `Scene pulse analysis (subplot order)`
 **Settings**: `AI LLM for scene analysis`
 

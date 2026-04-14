@@ -100,20 +100,6 @@ export function validateAiSettings(input?: AiSettingsV1 | null): AiSettingsValid
         }
     };
 
-    const legacyAnalysisMethod = (input as unknown as { analysisMethod?: string } | undefined)?.analysisMethod;
-    const rawAnalysisPackaging = (input as unknown as { analysisPackaging?: string } | undefined)?.analysisPackaging;
-    const incomingPackaging = typeof rawAnalysisPackaging === 'string'
-        ? rawAnalysisPackaging
-        : legacyAnalysisMethod;
-    value.analysisPackaging =
-        incomingPackaging === 'singlePassOnly' ? 'singlePassOnly'
-        : incomingPackaging === 'segmented' ? 'segmented'
-        : 'automatic';
-    const legacyCleanup = value as unknown as Record<string, unknown>;
-    if ('analysisMethod' in legacyCleanup) {
-        delete legacyCleanup.analysisMethod;
-    }
-
     if (!VALID_PROVIDERS.includes(value.provider)) {
         warnings.push(`Unknown provider "${String(value.provider)}"; using default provider.`);
         value.provider = defaults.provider;

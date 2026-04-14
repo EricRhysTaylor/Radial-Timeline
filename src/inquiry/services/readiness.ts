@@ -1,18 +1,14 @@
-import type { AnalysisPackaging } from '../../ai/types';
-
 export type InquiryReadinessState = 'ready' | 'large' | 'blocked';
 export type InquiryPressureTone = 'normal' | 'amber' | 'red';
 export type InquiryReadinessCause =
     | 'ok'
     | 'packaging_expected'
-    | 'single_pass_limit'
     | 'capability_floor'
     | 'missing_key';
 
 export interface EvaluateInquiryReadinessInput {
     hasEligibleModel: boolean;
     hasCredential: boolean;
-    analysisPackaging: AnalysisPackaging;
     estimatedInputTokens: number;
     safeInputBudget: number;
     estimateUncertaintyTokens?: number;
@@ -77,19 +73,7 @@ export function evaluateInquiryReadiness(input: EvaluateInquiryReadinessInput): 
         };
     }
 
-    if (exceedsBudget && input.analysisPackaging === 'singlePassOnly') {
-        return {
-            state: 'blocked',
-            cause: 'single_pass_limit',
-            pressureRatio,
-            pressureTone: toPressureTone(pressureRatio),
-            exceedsBudget,
-            materiallyExceedsBudget
-        };
-    }
-
-    // Segmented mode always forces multi-pass planning, regardless of budget.
-    if (exceedsBudget || input.analysisPackaging === 'segmented') {
+    if (exceedsBudget) {
         return {
             state: 'large',
             cause: 'packaging_expected',

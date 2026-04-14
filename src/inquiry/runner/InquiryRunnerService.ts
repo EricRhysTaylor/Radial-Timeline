@@ -21,7 +21,7 @@ import type {
 import { getAIClient } from '../../ai/runtime/aiClient';
 import { buildDefaultAiSettings } from '../../ai/settings/aiSettings';
 import { validateAiSettings } from '../../ai/settings/validateAiSettings';
-import type { AIRunPreparedEstimate, AIRunResult, AIProviderId, AnalysisPackaging, SceneRef } from '../../ai/types';
+import type { AIRunPreparedEstimate, AIRunResult, AIProviderId, SceneRef } from '../../ai/types';
 import { extractTokenUsage } from '../../ai/usage/providerUsage';
 import { readSceneId } from '../../utils/sceneIds';
 import { buildSceneRefIndex, isStableSceneId, normalizeSceneRef } from '../../ai/references/sceneRefNormalizer';
@@ -118,7 +118,6 @@ type ProviderResult = {
     error?: string;
     sanitizationNotes?: string[];
     retryCount?: number;
-    analysisPackaging?: AnalysisPackaging;
     executionPassCount?: number;
     packagingTriggerReason?: string;
     executionState?: InquiryExecutionState;
@@ -232,9 +231,6 @@ export class InquiryRunnerService implements InquiryRunner {
             if (typeof response.retryCount === 'number') {
                 trace.retryCount = response.retryCount;
             }
-            if (response.analysisPackaging) {
-                trace.analysisPackaging = response.analysisPackaging;
-            }
             if (typeof response.executionPassCount === 'number') {
                 trace.executionPassCount = response.executionPassCount;
             }
@@ -343,9 +339,6 @@ export class InquiryRunnerService implements InquiryRunner {
             if (typeof response.retryCount === 'number') {
                 trace.retryCount = response.retryCount;
             }
-            if (response.analysisPackaging) {
-                trace.analysisPackaging = response.analysisPackaging;
-            }
             if (typeof response.executionPassCount === 'number') {
                 trace.executionPassCount = response.executionPassCount;
             }
@@ -438,7 +431,6 @@ export class InquiryRunnerService implements InquiryRunner {
         options?: {
             estimatedInputTokens?: number;
             safeInputTokens?: number;
-            analysisPackaging?: AnalysisPackaging;
         }
     ): number {
         const chunkPlan = this.buildEvidenceChunkPrompts(userPrompt, {
@@ -447,12 +439,6 @@ export class InquiryRunnerService implements InquiryRunner {
             safeInputTokens: options?.safeInputTokens
         });
         const chunkCount = chunkPlan ? chunkPlan.prompts.length : 0;
-        // Segmented mode always forces multi-pass. If the chunk planner
-        // produced fewer than 2 chunks (small corpus), the runtime still
-        // uses the multi-pass pipeline (evidence + synthesis = 2 minimum).
-        if (options?.analysisPackaging === 'segmented') {
-            return chunkCount > 1 ? chunkCount + 1 : 2;
-        }
         if (chunkCount <= 1) return 1;
         return chunkCount + 1;
     }
@@ -830,7 +816,6 @@ export class InquiryRunnerService implements InquiryRunner {
         executionOptions?: InquiryRunExecutionOptions
     ): Promise<ProviderResult> {
         const aiClient = getAIClient(this.plugin);
-        const analysisPackaging = this.getAnalysisPackaging();
         const packagingPrecheck = await this.getPackagingPrecheck({
             aiClient,
             systemPrompt,
@@ -846,7 +831,6 @@ export class InquiryRunnerService implements InquiryRunner {
             const reason = `Unable to prepare an authoritative provider execution estimate. ${packagingPrecheck.reason}`.trim();
             return this.buildPackagingFailedResult(
                 ai,
-                analysisPackaging,
                 reason,
                 'preflight',
                 false
@@ -855,36 +839,18 @@ export class InquiryRunnerService implements InquiryRunner {
         const precheck = packagingPrecheck;
 
         /**
-         * Inquiry packaging policy (overflow = tokenEstimateInput > effectiveInputCeiling)
+         * Inquiry packaging policy (automatic only)
          *
-         * Mode            One-pass fit check role         One-pass permission         Required route
-         * singlePassOnly  hard gate                        allowed only if fits        overflow/unknown => reject before send
-         * automatic       routing hint                     allowed only if fits        overflow/unknown => multi-pass
-         * segmented       informational                    never                        always multi-pass
-         *
-         * If required multi-pass fails, return packaging_failed.
-         * Do not emit single-pass-limit rejection for automatic/segmented.
+         * If estimated input overflows the safe budget, route to multi-pass.
+         * If multi-pass fails, return packaging_failed.
          */
         const onePassFit = precheck.onePassFit;
-        const requiresMultiPass = analysisPackaging === 'segmented'
-            || (analysisPackaging === 'automatic' && onePassFit !== 'fits');
-
-        if (analysisPackaging === 'singlePassOnly' && onePassFit === 'overflows') {
-            const reason = `Estimated input ${Math.round(precheck.inputTokens).toLocaleString()} exceeds safe input budget ${Math.round(precheck.safeInputTokens).toLocaleString()} for this Inquiry request.`;
-            return this.buildSinglePassOnlyOverflowResult(ai, reason);
-        }
-
-        if (analysisPackaging === 'singlePassOnly' && onePassFit === 'unknown') {
-            const reason = 'Unable to verify one-pass fit for this request. Single-pass only mode blocks execution without fit confirmation.';
-            return this.buildSinglePassOnlyUnknownFitResult(ai, reason);
-        }
+        const requiresMultiPass = onePassFit !== 'fits';
 
         if (requiresMultiPass) {
-            const triggerReason = analysisPackaging === 'segmented'
-                ? 'Segmented mode forces multi-pass segmentation.'
-                : onePassFit === 'overflows'
-                    ? `Estimated input ${Math.round(precheck.inputTokens).toLocaleString()} exceeded safe input budget ${Math.round(precheck.safeInputTokens).toLocaleString()}.`
-                    : 'One-pass fit estimate was unavailable, so automatic mode preferred multi-pass packaging.';
+            const triggerReason = onePassFit === 'overflows'
+                ? `Estimated input ${Math.round(precheck.inputTokens).toLocaleString()} exceeded safe input budget ${Math.round(precheck.safeInputTokens).toLocaleString()}.`
+                : 'One-pass fit estimate was unavailable, so automatic mode preferred multi-pass packaging.';
             const multiPass = await this.runChunkedInquiry(aiClient, {
                 systemPrompt,
                 userPrompt,
@@ -903,7 +869,6 @@ export class InquiryRunnerService implements InquiryRunner {
             });
             if (multiPass.ok) {
                 return this.toProviderResult(this.withExecutionContext(multiPass.run, {
-                    analysisPackaging,
                     executionPassCount: multiPass.run.advancedContext?.executionPassCount,
                     packagingTriggerReason: triggerReason
                 }), {
@@ -911,15 +876,12 @@ export class InquiryRunnerService implements InquiryRunner {
                     tokenUsageScope: multiPass.tokenUsageScope
                 });
             }
-            const reason = analysisPackaging === 'segmented'
-                ? 'Segmented mode requires multi-pass packaging, but chunking/synthesis did not complete.'
-                : onePassFit === 'overflows'
-                    ? `Automatic mode routed to multi-pass because estimated input ${Math.round(precheck.inputTokens).toLocaleString()} exceeded safe input budget ${Math.round(precheck.safeInputTokens).toLocaleString()}, but chunking/synthesis did not complete.`
-                    : 'Automatic mode preferred multi-pass because one-pass fit was unknown, but chunking/synthesis did not complete.';
+            const reason = onePassFit === 'overflows'
+                ? `Automatic mode routed to multi-pass because estimated input ${Math.round(precheck.inputTokens).toLocaleString()} exceeded safe input budget ${Math.round(precheck.safeInputTokens).toLocaleString()}, but chunking/synthesis did not complete.`
+                : 'Automatic mode preferred multi-pass because one-pass fit was unknown, but chunking/synthesis did not complete.';
             const reasonWithStage = `${reason} ${multiPass.failureReason}`.trim();
             return this.buildPackagingFailedResult(
                 ai,
-                analysisPackaging,
                 reasonWithStage,
                 multiPass.failureStage,
                 multiPass.tokenUsageKnown,
@@ -948,28 +910,12 @@ export class InquiryRunnerService implements InquiryRunner {
             preparedEstimate: precheck.preparedEstimate
         });
         run = this.withExecutionContext(run, {
-            analysisPackaging,
             executionPassCount: 1
         });
 
-        // Inquiry specialization: if single-pass truncates, package and synthesize unless explicitly disabled.
+        // Inquiry specialization: if single-pass truncates, package and synthesize.
         if (run.aiReason === 'truncated') {
-            if (analysisPackaging === 'singlePassOnly') {
-                run = this.withExecutionContext({
-                    ...run,
-                    aiStatus: run.aiStatus === 'success' ? 'rejected' : run.aiStatus,
-                    aiReason: run.aiReason || 'truncated',
-                    error: run.error || SINGLE_PASS_PLANNING_BUDGET_ERROR,
-                    warnings: [
-                        ...(run.warnings || []),
-                        'Single-pass only is enabled, so large-manuscript packaging was skipped.'
-                    ]
-                }, {
-                    analysisPackaging,
-                    executionPassCount: 1,
-                    packagingTriggerReason: 'Single-pass response exceeded the planning budget, but automatic packaging is disabled.'
-                });
-            } else {
+            {
                 const multiPass = await this.runChunkedInquiry(aiClient, {
                     systemPrompt,
                     userPrompt,
@@ -991,7 +937,6 @@ export class InquiryRunnerService implements InquiryRunner {
                 } else {
                     return this.buildPackagingFailedResult(
                         ai,
-                        analysisPackaging,
                         `Single-pass response was truncated, and fallback multi-pass packaging did not complete. ${multiPass.failureReason}`.trim(),
                         multiPass.failureStage,
                         multiPass.tokenUsageKnown,
@@ -1124,14 +1069,6 @@ export class InquiryRunnerService implements InquiryRunner {
         return (hash >>> 0).toString(16);
     }
 
-    private getAnalysisPackaging(): AnalysisPackaging {
-        const aiSettings = validateAiSettings(this.plugin.settings.aiSettings ?? buildDefaultAiSettings()).value;
-        const pkg = aiSettings.analysisPackaging;
-        return pkg === 'singlePassOnly' ? 'singlePassOnly'
-            : pkg === 'segmented' ? 'segmented'
-            : 'automatic';
-    }
-
     private async getPackagingPrecheck(options: {
         aiClient: ReturnType<typeof getAIClient>;
         systemPrompt: string;
@@ -1193,61 +1130,8 @@ export class InquiryRunnerService implements InquiryRunner {
         }
     }
 
-    private buildSinglePassOnlyOverflowResult(
-        ai: InquiryRunnerInput['ai'],
-        reason: string
-    ): ProviderResult {
-        return {
-            success: false,
-            content: null,
-            responseData: null,
-            provider: ai.provider,
-            modelId: ai.modelId,
-            aiProvider: ai.provider,
-            aiModelRequested: ai.modelId,
-            aiModelResolved: ai.modelId,
-            aiStatus: 'rejected',
-            aiReason: 'truncated',
-            error: SINGLE_PASS_PLANNING_BUDGET_ERROR,
-            analysisPackaging: 'singlePassOnly',
-            executionPassCount: 1,
-            packagingTriggerReason: reason,
-            executionState: 'blocked_before_send',
-            executionPath: 'one_pass',
-            failureStage: 'preflight',
-            tokenUsageKnown: false
-        };
-    }
-
-    private buildSinglePassOnlyUnknownFitResult(
-        ai: InquiryRunnerInput['ai'],
-        reason: string
-    ): ProviderResult {
-        return {
-            success: false,
-            content: null,
-            responseData: null,
-            provider: ai.provider,
-            modelId: ai.modelId,
-            aiProvider: ai.provider,
-            aiModelRequested: ai.modelId,
-            aiModelResolved: ai.modelId,
-            aiStatus: 'rejected',
-            aiReason: 'packaging_failed',
-            error: 'Unable to verify one-pass fit in Single-pass only mode. Try again, or switch Execution Preference to Automatic.',
-            analysisPackaging: 'singlePassOnly',
-            executionPassCount: 1,
-            packagingTriggerReason: reason,
-            executionState: 'blocked_before_send',
-            executionPath: 'one_pass',
-            failureStage: 'preflight',
-            tokenUsageKnown: false
-        };
-    }
-
     private buildPackagingFailedResult(
         ai: InquiryRunnerInput['ai'],
-        analysisPackaging: AnalysisPackaging,
         reason: string,
         failureStage: InquiryFailureStage,
         tokenUsageKnown: boolean,
@@ -1271,7 +1155,6 @@ export class InquiryRunnerService implements InquiryRunner {
             aiStatus: 'rejected',
             aiReason: 'packaging_failed',
             error: `The run failed during multi-pass ${stageLabel}. RT did not receive valid structured output for a required pass. This is a packaging/parsing failure in the current Inquiry path. Open Inquiry Log for details.`,
-            analysisPackaging,
             executionPassCount: 1,
             packagingTriggerReason: reason,
             executionState: 'packaging_failed',
@@ -1286,7 +1169,6 @@ export class InquiryRunnerService implements InquiryRunner {
     private withExecutionContext(
         run: AIRunResult,
         context: {
-            analysisPackaging: AnalysisPackaging;
             executionPassCount?: number;
             packagingTriggerReason?: string;
         }
@@ -1296,7 +1178,6 @@ export class InquiryRunnerService implements InquiryRunner {
             ...run,
             advancedContext: {
                 ...run.advancedContext,
-                analysisPackaging: context.analysisPackaging,
                 executionPassCount: context.executionPassCount ?? run.advancedContext.executionPassCount,
                 packagingTriggerReason: context.packagingTriggerReason ?? run.advancedContext.packagingTriggerReason
             }
@@ -1340,7 +1221,6 @@ export class InquiryRunnerService implements InquiryRunner {
             error: run.error,
             sanitizationNotes: run.sanitizationNotes,
             retryCount: run.retryCount,
-            analysisPackaging: run.advancedContext?.analysisPackaging,
             executionPassCount: run.advancedContext?.executionPassCount,
             packagingTriggerReason: run.advancedContext?.packagingTriggerReason,
             executionState,
@@ -1578,8 +1458,7 @@ export class InquiryRunnerService implements InquiryRunner {
                 warnings: [...(synthesisRun.warnings || []), `Inquiry chunked execution used ${chunkPlan.prompts.length} chunks before synthesis.`]
                     .concat(recoveryWarning ? [recoveryWarning] : [])
             }, {
-                analysisPackaging: 'automatic',
-                executionPassCount: passCount,
+                    executionPassCount: passCount,
                 packagingTriggerReason: 'Single-pass request exceeded the planning budget, so structured packaging and synthesis were used.'
             })
         };

@@ -154,7 +154,6 @@ export interface TranslationKeys {
             provider: { name: string; desc: string; optionAnthropic: string; optionOpenai: string; optionGoogle: string; optionLocalLlm: string; };
             modelOverride: { name: string; desc: string; };
             accessTier: { name: string; desc: string; tier1: string; tier2: string; tier3: string; tier4: string; };
-            executionPreference: { name: string; desc: string; optionAutomatic: string; optionSinglePass: string; optionSegmented: string; noteSinglePass: string; noteSegmented: string; };
             largeHandling: { name: string; };
             roleContext: { title: string; desc: string; };
             apiKeys: { name: string; };
@@ -803,15 +802,6 @@ export const en: TranslationKeys = {
                 tier2: 'Tier 2',
                 tier3: 'Tier 3',
                 tier4: 'Tier 4',
-            },
-            executionPreference: {
-                name: 'Execution preference',
-                desc: 'How large Inquiry runs are handled. Automatic is recommended.',
-                optionAutomatic: 'Automatic',
-                optionSinglePass: 'Single-pass only',
-                optionSegmented: 'Segmented (always split)',
-                noteSinglePass: 'Runs only when the corpus fits one pass. Reduce scope or switch to Automatic if blocked.',
-                noteSegmented: 'Always splits into structured passes, even when one pass would fit.',
             },
             largeHandling: {
                 name: 'What gets sent to the AI',

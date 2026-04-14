@@ -973,8 +973,7 @@ export class InquiryMinimapRenderer {
         }
 
         const isOverCapacity = ratio >= 1;
-        const usesMultiPassPackaging = readinessUi.packaging === 'segmented'
-            || (readinessUi.packaging === 'automatic' && readinessUi.readiness.exceedsBudget);
+        const usesMultiPassPackaging = readinessUi.readiness.exceedsBudget;
         const overCapacityTone: 'amber' | 'red' = usesMultiPassPackaging ? 'amber' : 'red';
         this.updateTokenCapBar(clamped, isOverCapacity, overCapacityTone, passPlan.displayPassCount, styleSource, advancedContext, readinessUi.safeInputBudget, formatTokenEstimate);
         this.updateExecutionPassSegments(passPlan.displayPassCount, progress, styleSource);
@@ -1002,22 +1001,17 @@ export class InquiryMinimapRenderer {
         );
         this.minimapBackboneGroup.classList.toggle(
             'is-pressure-over-budget',
-            readinessUi.packaging === 'singlePassOnly' && readinessUi.readiness.exceedsBudget
+            false
         );
 
         const inputLabel = formatTokenEstimate(readinessUi.estimateInputTokens);
         const safeLabel = readinessUi.safeInputBudget > 0 ? formatTokenEstimate(readinessUi.safeInputBudget) : 'n/a';
-        const multiPassLabel = readinessUi.packaging === 'singlePassOnly'
-            ? 'Disabled (single-pass only)'
-            : readinessUi.packaging === 'segmented'
-                ? 'Segmented (always multi-pass)'
-                : 'Automatic';
+        const multiPassLabel = 'Automatic';
         const tooltipLines = [
             `Inquiry request: ~${inputLabel} / ~${safeLabel} budget`,
             `Multi-pass: ${multiPassLabel}`
         ];
-        if (readinessUi.packaging === 'segmented'
-            || (readinessUi.packaging === 'automatic' && readinessUi.readiness.exceedsBudget)) {
+        if (readinessUi.readiness.exceedsBudget) {
             tooltipLines.push('Will split into multiple analysis passes');
         }
         addTooltipData(this.minimapBaseline, balanceTooltipText(tooltipLines.join('\n')), 'top');

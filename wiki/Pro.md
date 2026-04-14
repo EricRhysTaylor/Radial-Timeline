@@ -1,10 +1,22 @@
-# Signature · Pro Features
+# Pro
 
-**Professional tools for serious writers.**
+**Advanced workflows for authors who want more.**
 
-Radial Timeline's Signature tier unlocks advanced capabilities designed for professional workflows: runtime estimation, premium exports, campaign tools for Author Progress Reports, and specialized Chronologue visualization modes.
+Pro Mode extends Radial Timeline with deeper analysis, polished exports, campaign tools, and specialized visualization modes. The core writing experience remains free — Pro adds capabilities for authors ready to go further.
 
 > **Early Access**: During the Open Beta, all Pro features are available free to early adopters. Your feedback shapes the future of Radial Timeline. When paid licensing launches, early supporters may receive special perks.
+
+---
+
+## What Pro Adds
+
+*   **Inquiry+** — Additional custom question slots per zone (up to 7 vs 2 in Core)
+*   **Runtime Estimation** — Screen time, audiobook duration, and manuscript length analysis
+*   **Publishing exports** — Manuscript generation via Pandoc for screenplay, podcast, and novel formats
+*   **Chronologue Runtime sub-mode** — Blue wireframe showing scene runtime duration arcs
+*   **Campaign Manager** — Multiple Author Progress Report campaigns with independent schedules and Teaser Reveal
+*   **Saved beat sets** — Unlimited custom beat systems (Core includes one)
+*   **Website Exclusives** — Template vaults, Omnibus Inquiry briefings, and guided workflow demonstrations
 
 ---
 
@@ -37,7 +49,7 @@ Runtime Estimation analyzes your scenes to calculate realistic duration estimate
 
 ---
 
-## Pro Exports
+## Publishing Exports
 
 *Generate production-ready manuscripts via Pandoc.*
 
@@ -51,9 +63,9 @@ Export your manuscript in professional formats using customizable Pandoc templat
 **Configuration:**
 - Primary and fallback Pandoc binary paths
 - Custom LaTeX templates per format
-- Output to your AI folder alongside analysis files
+- Output to your export folder alongside analysis files
 
-> **Settings**: [[Settings#professional]]
+> **Settings**: [[Settings#publishing]]
 
 ---
 
@@ -70,7 +82,7 @@ Campaign Manager lets you manage multiple APR configurations for different platf
 - **Manual reveal options** - Toggle acts, subplots, status colors, and percent display when Teaser Reveal is disabled
 - **Teaser Reveal presets** - Slow (15/40/70), Standard (10/30/60), Fast (5/20/45), or custom thresholds
 
-> **Settings**: [[Settings#social-media]]
+> **Settings**: [[Settings#social]]
 
 ---
 
@@ -87,7 +99,7 @@ The Runtime sub-mode is one of three sub-modes within Chronologue mode. It repla
 - **Scene selection** — Click scenes to compare their runtime visually
 
 **Usage:**
-1. Enable Runtime Estimation in Settings → Pro
+1. Enable Runtime Estimation in Settings → PRO
 2. Switch to Chronologue mode (keyboard **3**)
 3. Click the **RT** button to enter the Runtime sub-mode
 4. Adjust the cap slider to tune visualization
@@ -96,11 +108,13 @@ The Runtime sub-mode is one of three sub-modes within Chronologue mode. It repla
 
 ---
 
-## Getting Started
+## Access and Entitlement
 
-1. **Configure Runtime Estimation** — Go to Settings → Pro and enable Runtime Estimation. Create profiles for your content types.
-2. **Set up Pandoc** (optional) — If you want Pro Exports, configure your Pandoc path in Settings → Pro.
-3. **Explore the Chronologue Runtime sub-mode** — Switch to Chronologue and click the RT button to visualize scene durations.
+1. **Open Beta** — Pro is active by default during the beta period.
+2. **Pro access key** — When paid licensing launches, enter your key in Settings → PRO to unlock Pro features.
+3. **Core remains free** — The core writing, timeline, and analysis experience is always available without Pro.
+
+Pro workflows appear throughout Radial Timeline in magenta.
 
 ---
 

@@ -29,6 +29,6 @@ This wiki is designed to explain all operations of the Radial Timeline plugin fo
 
 For hands-on guidance, **[[Fresh-Vault-Onboarding|Fresh Vault Onboarding]]** walks you through building a new manuscript with Book Designer and structural beats, while **[[Existing-Vault-Onboarding|Existing Vault Onboarding]]** shows how to connect notes you've already written. Once you're comfortable, **[[Core-Workflows|Core Workflows]]** reveals techniques for planning, drafting, and tracking progress across your novel.
 
-As your needs deepen, explore **[[Timeline-Modes|Timeline Modes]]** to visualize your story through Narrative, Progress, Chronologue, and Gossamer views. The **[[Inquiry]]** tools help you analyze scenes and themes, while the **[[Author-Progress-Report|Author Progress Report]]** tracks your drafting and revision momentum.
+As your needs deepen, explore **[[Timeline-Modes|Timeline Modes]]** to visualize your story through Progress, Narrative, Chronologue, and Gossamer modes. The **[[Inquiry]]** tools help you analyze scenes and themes, while the **[[Author-Progress-Report|Author Progress Report]]** tracks your drafting and revision momentum.
 
-Advanced writers can dive into **[[YAML-Frontmatter|Scene YAML]]** for full schema control and custom fields, consult the **[[Commands]]** reference for command palette shortcuts, or experiment with **[[AI-Analysis|AI Analysis]]** workflows to unlock optional scene analysis features.
+Advanced writers can dive into **[[YAML-Frontmatter|Scene YAML]]** for full schema control and custom fields, consult the **[[Commands]]** reference for command palette shortcuts, or experiment with **[[AI-Pulse-Analysis|AI Pulse Triplet Analysis]]** to unlock optional scene analysis features.

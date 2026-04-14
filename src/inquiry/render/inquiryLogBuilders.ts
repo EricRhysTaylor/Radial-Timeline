@@ -304,7 +304,7 @@ export function buildInquiryLogContent(args: {
     lines.push('');
 
     lines.push('## Execution');
-    lines.push(`- Packaging: ${isSimulated ? 'Simulation only' : (trace.analysisPackaging === 'singlePassOnly' ? 'Single-pass only' : trace.analysisPackaging === 'segmented' ? 'Segmented' : 'Automatic')}`);
+    lines.push(`- Packaging: ${isSimulated ? 'Simulation only' : 'Automatic'}`);
     lines.push(`- Execution state: ${isSimulated ? 'simulated' : (trace.executionState ?? 'unknown')}`);
     lines.push(`- Execution path: ${isSimulated ? 'simulated' : (trace.executionPath ?? ((typeof trace.executionPassCount === 'number' && trace.executionPassCount > 1) ? 'multi_pass' : 'one_pass'))}`);
     lines.push(`- Failure stage: ${isSimulated ? 'none' : (trace.failureStage ?? (status === 'error' ? 'provider_response_parsing' : 'none'))}`);
@@ -456,7 +456,7 @@ export function buildInquiryContentLogContent(args: {
         `- AI model resolved: ${isSimulated ? 'not applicable' : (result.aiModelResolved || 'unknown')}`,
         `- OpenAI transport lane: ${trace.openAiTransportLane || 'n/a'}`,
         `- AI next-run override: ${typeof result.aiModelNextRunOnly === 'boolean' ? String(result.aiModelNextRunOnly) : 'unknown'}`,
-        `- Packaging: ${isSimulated ? 'simulated' : (trace.analysisPackaging === 'singlePassOnly' ? 'singlePassOnly' : trace.analysisPackaging === 'segmented' ? 'segmented' : 'automatic')}`,
+        `- Packaging: ${isSimulated ? 'simulated' : 'automatic'}`,
         `- AI status: ${degraded ? 'degraded' : (result.aiStatus || 'unknown')}`,
         `- AI reason: ${result.aiReason || 'none'}`,
         `- Execution state: ${isSimulated ? 'simulated' : (trace.executionState ?? 'unknown')}`,

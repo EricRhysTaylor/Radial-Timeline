@@ -1158,7 +1158,6 @@ export class InquiryView extends ItemView {
             scopeLabel: this.getScopeLabel(),
             provider: engine.provider,
             modelId: engine.modelId,
-            packaging: readinessUi.packaging,
             estimatedInputTokens,
             estimateMethod: readinessUi.estimateMethod,
             estimateUncertaintyTokens: readinessUi.estimateUncertaintyTokens,
@@ -1176,7 +1175,6 @@ export class InquiryView extends ItemView {
             resolvedEngine: engine,
             currentModel,
             models: BUILTIN_MODELS,
-            analysisPackaging: readinessUi.packaging,
             estimatedInputTokens,
             currentSafeInputBudget: readinessUi.safeInputBudget,
             estimationMethod: readinessUi.estimateMethod,
@@ -3509,8 +3507,7 @@ export class InquiryView extends ItemView {
         }
         const hasError = this.isErrorState();
         const red = hasError
-            || readinessUi.readiness.state === 'blocked'
-            || (readinessUi.packaging === 'singlePassOnly' && readinessUi.readiness.exceedsBudget);
+            || readinessUi.readiness.state === 'blocked';
         this.engineBadgeGroup.classList.remove('is-engine-pulse-amber');
         this.engineBadgeGroup.classList.toggle('is-engine-pulse-red', red);
     }
@@ -8515,7 +8512,6 @@ export class InquiryView extends ItemView {
             rules: this.getEvidenceRules(),
             mode: this.state.mode,
             selectionMode: this.getSelectionMode(targetSceneIds),
-            analysisPackaging: aiSettings.analysisPackaging,
         });
 
         if (!snapshot) return; // stale or failed

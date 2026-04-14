@@ -22,7 +22,6 @@ describe('migrateAiSettings', () => {
         expect(result.aiSettings.provider).toBe('google');
         expect(result.aiSettings.modelPolicy.type).toBe('pinned');
         expect((result.aiSettings.modelPolicy as any).pinnedAlias).toBe('gemini-pro-latest');
-        expect(result.aiSettings.analysisPackaging).toBe('automatic');
         expect((result.aiSettings.credentials as any).googleApiKey).toBeUndefined();
         expect(result.aiSettings.credentials?.googleSecretId).toBeTruthy();
         expect(result.changed).toBe(true);
@@ -47,7 +46,6 @@ describe('migrateAiSettings', () => {
                 schemaVersion: 1,
                 provider: 'anthropic',
                 modelPolicy: { type: 'pinned', pinnedAlias: 'claude-sonnet-4.6' },
-                analysisPackaging: 'automatic',
                 roleTemplateId: 'commercial_genre',
                 roleTemplates: [
                     { id: 'commercial_genre', name: 'Commercial', prompt: 'Prompt', isBuiltIn: true }

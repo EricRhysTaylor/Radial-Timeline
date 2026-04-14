@@ -785,46 +785,8 @@ export function renderAiSection(params: {
         new AiPassStrategyDetailsModal(plugin.app).open();
     });
 
-    // ── Execution preference dropdown ──
-    const executionPreferenceSetting = new Settings(aiSettingsGroup)
-        .setName(t('settings.ai.executionPreference.name'))
-        .setDesc(t('settings.ai.executionPreference.desc'));
-    executionPreferenceSetting.settingEl.setAttr('data-ert-role', 'ai-setting:execution-preference');
-    let executionPreferenceDropdown: DropdownComponent | null = null;
-    executionPreferenceSetting.addDropdown(dropdown => {
-        executionPreferenceDropdown = dropdown;
-        dropdown.selectEl.addClass('ert-input', 'ert-input--lg');
-        dropdown.addOption('automatic', t('settings.ai.executionPreference.optionAutomatic'));
-        dropdown.addOption('singlePassOnly', t('settings.ai.executionPreference.optionSinglePass'));
-        dropdown.addOption('segmented', t('settings.ai.executionPreference.optionSegmented'));
-        dropdown.onChange(async value => {
-            if (isSyncingRoutingUi) return;
-            const aiSettings = ensureCanonicalAiSettings();
-            aiSettings.analysisPackaging =
-                value === 'singlePassOnly' ? 'singlePassOnly'
-                : value === 'segmented' ? 'segmented'
-                : 'automatic';
-            await persistCanonical();
-            refreshRoutingUi();
-        });
-    });
-    const executionPreferenceNote = aiSettingsGroup.createDiv({ cls: 'ert-field-note' });
-    const updateExecutionPreferenceNote = (): void => {
-        const mode = ensureCanonicalAiSettings().analysisPackaging;
-        executionPreferenceNote.setText(
-            mode === 'singlePassOnly'
-                ? t('settings.ai.executionPreference.noteSinglePass')
-                : mode === 'segmented'
-                ? t('settings.ai.executionPreference.noteSegmented')
-                : ''
-        );
-        executionPreferenceNote.toggleClass('ert-settings-hidden', mode === 'automatic');
-    };
-    updateExecutionPreferenceNote();
     params.addAiRelatedElement(largeHandlingSection);
     params.addAiRelatedElement(detailsBtn);
-    params.addAiRelatedElement(executionPreferenceSetting.settingEl);
-    params.addAiRelatedElement(executionPreferenceNote);
 
     const roleContextSection = aiSettingsGroup.createDiv({
         cls: `${ERT_CLASSES.CARD} ${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK} ert-ai-section-card`
@@ -1795,11 +1757,9 @@ export function renderAiSection(params: {
                 }
             }
 
-            setDropdownValueSafe(executionPreferenceDropdown, aiSettings.analysisPackaging, 'automatic');
         } finally {
             isSyncingRoutingUi = false;
         }
-        updateExecutionPreferenceNote();
 
         providerSetting.settingEl.toggleClass('ert-settings-hidden', false);
         providerSetting.settingEl.toggleClass('ert-settings-visible', true);
@@ -3394,9 +3354,8 @@ export function renderAiSection(params: {
     // 5) AI Cost Estimate
     // 6) Role context
     // 7) AI transparency
-    // 8) Execution preference
-    // 9) API Keys
-    // 10) Configuration
+    // 8) API Keys
+    // 9) Configuration
     [
         quickSetupSection,
         quickSetupPreviewSection,
@@ -3404,8 +3363,6 @@ export function renderAiSection(params: {
         roleContextSection,
         largeHandlingSection,
         detailsBtn,
-        executionPreferenceSetting.settingEl,
-        executionPreferenceNote,
         apiKeysFold,
         aiConfigFold
     ].forEach(section => aiSettingsGroup.appendChild(section));

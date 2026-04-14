@@ -45,8 +45,17 @@ function publish() {
         if (!status) {
             console.log('✅ No changes to publish.');
         } else {
+            // Build a descriptive commit message from the changed files
+            const changedFiles = status.split('\n').filter(Boolean).map(l => l.slice(3).trim());
+            const pad = (n) => String(n).padStart(2, '0');
+            const now = new Date();
+            const ts = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+            const summary = changedFiles.slice(0, 6).map(f => f.replace(/\.md$/, '')).join(', ');
+            const extra = changedFiles.length > 6 ? ` (+${changedFiles.length - 6} more)` : '';
+            const commitMsg = `[wiki] ${ts} — ${changedFiles.length} pages — ${summary}${extra}`;
+
             run('git add .', cwd);
-            run('git commit -m "Update Wiki content from local project"', cwd);
+            run(`git commit -m ${JSON.stringify(commitMsg)}`, cwd);
             run('git push', cwd);
             console.log('✅ Wiki published successfully!');
         }

@@ -6,7 +6,6 @@ describe('readiness', () => {
         const state = evaluateInquiryReadiness({
             hasEligibleModel: true,
             hasCredential: true,
-            analysisPackaging: 'automatic',
             estimatedInputTokens: 40000,
             safeInputBudget: 100000
         });
@@ -19,7 +18,6 @@ describe('readiness', () => {
         const state = evaluateInquiryReadiness({
             hasEligibleModel: true,
             hasCredential: true,
-            analysisPackaging: 'automatic',
             estimatedInputTokens: 120000,
             safeInputBudget: 100000
         });
@@ -28,64 +26,10 @@ describe('readiness', () => {
         expect(state.pressureTone).toBe('red');
     });
 
-    it('returns blocked when single-pass only exceeds budget', () => {
+    it('returns ready when corpus fits in budget', () => {
         const state = evaluateInquiryReadiness({
             hasEligibleModel: true,
             hasCredential: true,
-            analysisPackaging: 'singlePassOnly',
-            estimatedInputTokens: 120000,
-            safeInputBudget: 100000
-        });
-        expect(state.state).toBe('blocked');
-        expect(state.cause).toBe('single_pass_limit');
-    });
-
-    it('keeps single-pass guard strict while reporting non-material overages', () => {
-        const state = evaluateInquiryReadiness({
-            hasEligibleModel: true,
-            hasCredential: true,
-            analysisPackaging: 'singlePassOnly',
-            estimatedInputTokens: 101000,
-            safeInputBudget: 100000,
-            estimateUncertaintyTokens: 2000
-        });
-        expect(state.state).toBe('blocked');
-        expect(state.cause).toBe('single_pass_limit');
-        expect(state.exceedsBudget).toBe(true);
-        expect(state.materiallyExceedsBudget).toBe(false);
-    });
-
-    it('returns large (not blocked) when segmented mode exceeds budget', () => {
-        const state = evaluateInquiryReadiness({
-            hasEligibleModel: true,
-            hasCredential: true,
-            analysisPackaging: 'segmented',
-            estimatedInputTokens: 120000,
-            safeInputBudget: 100000
-        });
-        expect(state.state).toBe('large');
-        expect(state.cause).toBe('packaging_expected');
-        expect(state.pressureTone).toBe('red');
-    });
-
-    it('returns large when segmented mode even if corpus fits in budget', () => {
-        const state = evaluateInquiryReadiness({
-            hasEligibleModel: true,
-            hasCredential: true,
-            analysisPackaging: 'segmented',
-            estimatedInputTokens: 40000,
-            safeInputBudget: 100000
-        });
-        expect(state.state).toBe('large');
-        expect(state.cause).toBe('packaging_expected');
-        expect(state.exceedsBudget).toBe(false);
-    });
-
-    it('returns ready when automatic mode and corpus fits in budget', () => {
-        const state = evaluateInquiryReadiness({
-            hasEligibleModel: true,
-            hasCredential: true,
-            analysisPackaging: 'automatic',
             estimatedInputTokens: 40000,
             safeInputBudget: 100000
         });
@@ -97,7 +41,6 @@ describe('readiness', () => {
         const state = evaluateInquiryReadiness({
             hasEligibleModel: false,
             hasCredential: true,
-            analysisPackaging: 'automatic',
             estimatedInputTokens: 20000,
             safeInputBudget: 100000
         });
@@ -109,7 +52,6 @@ describe('readiness', () => {
         const state = evaluateInquiryReadiness({
             hasEligibleModel: true,
             hasCredential: false,
-            analysisPackaging: 'automatic',
             estimatedInputTokens: 20000,
             safeInputBudget: 100000
         });

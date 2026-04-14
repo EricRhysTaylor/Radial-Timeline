@@ -158,8 +158,6 @@ export interface AICacheWindowSettings {
     openaiInMemoryWindowMinutes: number;
 }
 
-export type AnalysisPackaging = 'automatic' | 'singlePassOnly' | 'segmented';
-
 export type LocalLlmBackendId = 'ollama' | 'lmStudio' | 'openaiCompatible';
 export type LocalLlmJsonMode = 'response_format' | 'prompt_only';
 export type LocalLlmConfigurationMode = 'auto' | 'custom';
@@ -186,7 +184,6 @@ export interface AiSettingsV1 {
     schemaVersion: 1;
     provider: AIProviderId;
     modelPolicy: ModelPolicy;
-    analysisPackaging: AnalysisPackaging;
     localLlm: LocalLlmSettings;
     roleTemplateId?: string;
     roleTemplates?: AIRoleTemplate[];
@@ -398,7 +395,6 @@ export interface AIRunPreparedEstimate {
         baseDelayMs: number;
         retryMalformedJson: boolean;
     };
-    analysisPackaging: AnalysisPackaging;
     resolvedOverrides: AIOverrides;
     allowTelemetry: boolean;
     cacheKey: string;
@@ -419,7 +415,6 @@ export interface AIRunAdvancedContext {
     maxOutputTokens: number;
     tokenEstimateMethod?: InputTokenEstimateMethod;
     tokenEstimateUncertainty?: number;
-    analysisPackaging: AnalysisPackaging;
     executionPassCount?: number;
     packagingTriggerReason?: string;
     reuseState?: 'idle' | 'eligible' | 'warm';

@@ -17,7 +17,7 @@ Core workflows are a reference for ongoing use. For first-time setup, see [[Fres
 *   **Progress Stages**: Track manuscript through Zero → Author → House → Press.
 *   **Completion Estimate Mark**: Plugin calculates target completion date based on your recent writing pace. The calculation is most accurate when the `Due` date is updated to the day of scene completion.
 
-**Modes**: Progress `2`
+**Modes**: Progress `1`
 **Settings**: Progress stage colors
 
 ### Exporting a Manuscript
@@ -87,7 +87,7 @@ For PDF output:
 
 1.  **Install Pandoc** — download from [pandoc.org](https://pandoc.org/installing.html)
 2.  **Install LaTeX** (for PDF) — [MacTeX](https://www.tug.org/mactex/) on macOS, [MiKTeX](https://miktex.org/) on Windows
-3.  **Auto-detect:** Go to **Settings → Professional → Export & Pandoc** and click **Scan** to find installations automatically
+3.  **Auto-detect:** Go to **Settings → Publishing → Export & Pandoc** and click **Scan** to find installations automatically
 4.  **Generate samples:** Click **Generate Samples** to create sample scene files and LaTeX templates in `Radial Timeline/Export/Templates/`. Template paths are auto-configured.
 
 ### Zero Draft Mode

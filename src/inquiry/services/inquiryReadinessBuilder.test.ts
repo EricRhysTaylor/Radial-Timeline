@@ -91,9 +91,7 @@ function makeAiSettings(overrides?: Partial<AiSettingsV1>): AiSettingsV1 {
         version: 1,
         provider: 'anthropic',
         thinkingStyle: 'careful',
-        analysisPackaging: 'automatic',
         pinnedModels: {},
-        executionPreference: 'balanced',
         aiAccessProfile: {
             anthropicTier: 1,
             openaiTier: 1,
@@ -160,7 +158,6 @@ function makeReadinessUi(overrides?: Partial<InquiryReadinessUiState>): InquiryR
         estimateUncertaintyTokens: 5000,
         safeInputBudget: 180000,
         outputBudget: 16384,
-        packaging: 'automatic',
         hasEligibleModel: true,
         hasCredential: true,
         provider: 'anthropic',
@@ -252,7 +249,7 @@ describe('resolveEnginePopoverState', () => {
         expect(resolveEnginePopoverState(makeReadinessUi())).toBe('ready');
     });
 
-    it('returns multi-pass when large and automatic packaging', () => {
+    it('returns multi-pass when large', () => {
         expect(resolveEnginePopoverState(makeReadinessUi({
             readiness: {
                 state: 'large',
@@ -261,50 +258,7 @@ describe('resolveEnginePopoverState', () => {
                 pressureTone: 'red',
                 exceedsBudget: true,
                 materiallyExceedsBudget: true
-            },
-            packaging: 'automatic'
-        }))).toBe('multi-pass');
-    });
-
-    it('returns exceeds when large and singlePassOnly', () => {
-        expect(resolveEnginePopoverState(makeReadinessUi({
-            readiness: {
-                state: 'large',
-                cause: 'packaging_expected',
-                pressureRatio: 1.5,
-                pressureTone: 'red',
-                exceedsBudget: true,
-                materiallyExceedsBudget: true
-            },
-            packaging: 'singlePassOnly'
-        }))).toBe('exceeds');
-    });
-
-    it('returns multi-pass when large and segmented packaging', () => {
-        expect(resolveEnginePopoverState(makeReadinessUi({
-            readiness: {
-                state: 'large',
-                cause: 'packaging_expected',
-                pressureRatio: 0.3,
-                pressureTone: 'normal',
-                exceedsBudget: false,
-                materiallyExceedsBudget: false
-            },
-            packaging: 'segmented'
-        }))).toBe('multi-pass');
-    });
-
-    it('returns multi-pass for segmented even when corpus fits in one pass (ready state)', () => {
-        expect(resolveEnginePopoverState(makeReadinessUi({
-            readiness: {
-                state: 'ready',
-                cause: undefined,
-                pressureRatio: 0.3,
-                pressureTone: 'normal',
-                exceedsBudget: false,
-                materiallyExceedsBudget: false
-            },
-            packaging: 'segmented'
+            }
         }))).toBe('multi-pass');
     });
 
@@ -365,7 +319,7 @@ describe('getCurrentPassPlan', () => {
         expect(plan.displayPassCount).toBe(1);
     });
 
-    it('returns multi-pass plan when exceeding budget with automatic packaging', () => {
+    it('returns multi-pass plan when exceeding budget', () => {
         const plan = getCurrentPassPlan(makeReadinessUi({
             readiness: {
                 state: 'large',
@@ -377,8 +331,7 @@ describe('getCurrentPassPlan', () => {
             },
             estimateInputTokens: 200000,
             expectedPassCount: 4,
-            safeInputBudget: 100000,
-            packaging: 'automatic'
+            safeInputBudget: 100000
         }), null);
         expect(plan.packagingExpected).toBe(true);
         expect(plan.estimatedPassCount).toBe(4);
@@ -397,8 +350,7 @@ describe('getCurrentPassPlan', () => {
                     materiallyExceedsBudget: true
                 },
                 estimateInputTokens: 300000,
-                safeInputBudget: 100000,
-                packaging: 'automatic'
+                safeInputBudget: 100000
             }),
             { executionPassCount: 4, packagingTriggerReason: 'context_overflow' } as any
         );
@@ -419,53 +371,11 @@ describe('getCurrentPassPlan', () => {
                     materiallyExceedsBudget: true
                 },
                 estimateInputTokens: 150000,
-                safeInputBudget: 100000,
-                packaging: 'automatic'
+                safeInputBudget: 100000
             }),
             { executionPassCount: 1 } as any
         );
         expect(plan.recentExactPassCount).toBeNull();
-    });
-
-    it('returns multi-pass plan when segmented even if corpus fits in budget', () => {
-        const plan = getCurrentPassPlan(makeReadinessUi({
-            readiness: {
-                state: 'large',
-                cause: 'packaging_expected',
-                pressureRatio: 0.3,
-                pressureTone: 'normal',
-                exceedsBudget: false,
-                materiallyExceedsBudget: false
-            },
-            estimateInputTokens: 40000,
-            expectedPassCount: 1,
-            safeInputBudget: 180000,
-            packaging: 'segmented'
-        }), null);
-        expect(plan.packagingExpected).toBe(true);
-        expect(plan.estimatedPassCount).toBeGreaterThanOrEqual(2);
-        expect(plan.displayPassCount).toBeGreaterThanOrEqual(2);
-        expect(plan.packagingTriggerReason).toBe('Segmented mode forces multi-pass segmentation.');
-    });
-
-    it('segmented mode with larger corpus uses real pass count (can be > 2)', () => {
-        const plan = getCurrentPassPlan(makeReadinessUi({
-            readiness: {
-                state: 'large',
-                cause: 'packaging_expected',
-                pressureRatio: 2.5,
-                pressureTone: 'red',
-                exceedsBudget: true,
-                materiallyExceedsBudget: true
-            },
-            estimateInputTokens: 500000,
-            expectedPassCount: 4,
-            safeInputBudget: 180000,
-            packaging: 'segmented'
-        }), null);
-        expect(plan.packagingExpected).toBe(true);
-        expect(plan.estimatedPassCount).toBe(4);
-        expect(plan.displayPassCount).toBe(4);
     });
 });
 
@@ -543,7 +453,6 @@ describe('buildAdvisoryInputKey', () => {
             scopeLabel: 'Book A',
             provider: 'anthropic' as const,
             modelId: 'claude-sonnet-4-20250514',
-            packaging: 'automatic' as const,
             estimatedInputTokens: 50000,
             estimateMethod: 'heuristic_chars' as const,
             estimateUncertaintyTokens: 5000,
@@ -560,7 +469,6 @@ describe('buildAdvisoryInputKey', () => {
             scopeLabel: 'Book A',
             provider: 'anthropic' as const,
             modelId: 'claude-sonnet-4-20250514',
-            packaging: 'automatic' as const,
             estimatedInputTokens: 50000,
             estimateMethod: 'heuristic_chars' as const,
             estimateUncertaintyTokens: 5000,
@@ -579,7 +487,6 @@ describe('buildAdvisoryInputKey', () => {
             scopeLabel: 'Book A',
             provider: 'anthropic' as const,
             modelId: 'claude-sonnet-4-20250514',
-            packaging: 'automatic' as const,
             estimatedInputTokens: 50001,
             estimateMethod: 'heuristic_chars' as const,
             estimateUncertaintyTokens: 5000,
@@ -630,21 +537,12 @@ describe('buildReadinessUiState', () => {
         expect(result.reason).toContain('key is missing');
     });
 
-    it('returns large state when exceeding budget with automatic packaging', () => {
+    it('returns large state when exceeding budget', () => {
         const result = buildReadinessUiState(makeBaseInput({
             snapshot: makeSnapshot({ estimatedInputTokens: 300000, effectiveInputCeiling: 180000 })
         }));
         expect(result.readiness.state).toBe('large');
         expect(result.readiness.cause).toBe('packaging_expected');
-    });
-
-    it('describes single-pass overflow as a planning-budget constraint', () => {
-        const result = buildReadinessUiState(makeBaseInput({
-            aiSettings: makeAiSettings({ analysisPackaging: 'singlePassOnly' }),
-            snapshot: makeSnapshot({ estimatedInputTokens: 300000, effectiveInputCeiling: 180000 })
-        }));
-        expect(result.readiness.cause).toBe('single_pass_limit');
-        expect(result.reason).toBe('Exceeds the single-pass planning budget. Switch to Automatic or choose a larger-context engine.');
     });
 
     it('sets canSwitchToSummaries when body evidence exists and summaries fit', () => {
@@ -680,24 +578,5 @@ describe('buildReadinessUiState', () => {
     it('includes run scope label', () => {
         const result = buildReadinessUiState(makeBaseInput());
         expect(result.runScopeLabel).toContain('Book A');
-    });
-
-    it('returns large state for segmented mode even when corpus fits in budget', () => {
-        const result = buildReadinessUiState(makeBaseInput({
-            aiSettings: makeAiSettings({ analysisPackaging: 'segmented' }),
-            snapshot: makeSnapshot({ estimatedInputTokens: 40000, effectiveInputCeiling: 180000 })
-        }));
-        expect(result.readiness.state).toBe('large');
-        expect(result.readiness.cause).toBe('packaging_expected');
-        expect(result.reason).toBe('Segmented mode forces structured multi-pass analysis.');
-    });
-
-    it('segmented mode shows automatic reason when exceeding budget', () => {
-        const result = buildReadinessUiState(makeBaseInput({
-            aiSettings: makeAiSettings({ analysisPackaging: 'segmented' }),
-            snapshot: makeSnapshot({ estimatedInputTokens: 300000, effectiveInputCeiling: 180000 })
-        }));
-        expect(result.readiness.state).toBe('large');
-        expect(result.reason).toBe('Segmented mode forces structured multi-pass analysis.');
     });
 });

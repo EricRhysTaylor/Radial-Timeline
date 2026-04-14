@@ -478,7 +478,6 @@ export class AIClient {
                 thinkingBudgetTokens: caps.thinkingBudgetTokens,
                 citationsEnabled: caps.citationsEnabled,
                 retryPolicy: caps.retryPolicy,
-                analysisPackaging: aiSettings.analysisPackaging,
                 resolvedOverrides: overrides,
                 allowTelemetry: aiSettings.privacy.allowTelemetry,
                 cacheKey
@@ -540,7 +539,6 @@ export class AIClient {
                     availabilityStatus: 'unknown',
                     maxInputTokens: estimate.maxInputTokens,
                     maxOutputTokens: estimate.maxOutputTokens,
-                    analysisPackaging: estimate.analysisPackaging,
                     executionPassCount: 1,
                     totalInputTokens: tokenEstimateInput,
                     featureModeInstructions: estimate.featureModeInstructions,
@@ -647,7 +645,6 @@ export class AIClient {
             availabilityStatus,
             maxInputTokens: caps.maxInputTokens,
             maxOutputTokens: caps.maxOutputTokens,
-            analysisPackaging: estimate.analysisPackaging,
             tokenEstimateMethod: estimate.tokenEstimateMethod,
             tokenEstimateUncertainty: estimate.tokenEstimateUncertainty,
             executionPassCount: 1,

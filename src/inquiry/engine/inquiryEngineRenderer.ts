@@ -83,12 +83,6 @@ export function renderInquiryEngineReadinessStrip(args: {
             `Expected structured passes: ${estimateLabel} — ${reason.replace(/\.$/, '')}.${recentRunSuffix}`
         );
         args.readinessScopeEl.setText(args.runScopeLabel);
-    } else if (args.readinessCause === 'single_pass_limit') {
-        const estimateLabel = args.passPlan.estimatedPassCount ?? args.passPlan.displayPassCount;
-        args.readinessMessageEl.setText(
-            `Expected structured passes: ${estimateLabel} — single-pass mode blocks this run.`
-        );
-        args.readinessScopeEl.setText(args.runScopeLabel);
     } else {
         args.readinessMessageEl.setText(args.readinessReason);
         args.readinessScopeEl.setText(args.runScopeLabel);

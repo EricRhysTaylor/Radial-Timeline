@@ -105,18 +105,6 @@ describe('computeEstimateStateKey', () => {
         expect(key1).not.toBe(key2);
     });
 
-    it('invalidates when analysisPackaging changes', () => {
-        const key1 = computeEstimateStateKey({ ...baseParams, analysisPackaging: 'automatic' });
-        const key2 = computeEstimateStateKey({ ...baseParams, analysisPackaging: 'segmented' });
-        expect(key1).not.toBe(key2);
-    });
-
-    it('defaults analysisPackaging to automatic when omitted', () => {
-        const key1 = computeEstimateStateKey(baseParams);
-        const key2 = computeEstimateStateKey({ ...baseParams, analysisPackaging: 'automatic' });
-        expect(key1).toBe(key2);
-    });
-
     // ── Exclusions: things that should NOT change the key ──
 
     it('excludes mode — changing mode does not change the key', () => {
@@ -147,8 +135,8 @@ describe('computeEstimateStateKey', () => {
     it('uses pipe delimiters', () => {
         const key = computeEstimateStateKey(baseParams);
         expect(key).toContain('|');
-        // 8 components → 7 pipes
-        expect(key.split('|').length).toBe(8);
+        // 7 components → 6 pipes
+        expect(key.split('|').length).toBe(7);
     });
 });
 
@@ -343,8 +331,7 @@ describe('buildInquiryEstimateSnapshot', () => {
                 crossScopeUsage: 'conflict-only'
             },
             mode: 'flow',
-            selectionMode: 'discover',
-            analysisPackaging: 'automatic'
+            selectionMode: 'discover'
         });
 
         expect(snapshot.estimate.estimatedInputTokens).toBe(18432);

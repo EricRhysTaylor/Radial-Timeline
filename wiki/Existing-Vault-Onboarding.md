@@ -19,7 +19,7 @@ This page covers the existing vault flow. If you are starting fresh, see [[Fresh
 ## 2. Map your metadata
 - Minimum fields for Timeline view: `Class: Scene`, `Act`, `Synopsis`, `Subplot`.
 - Chronologue mode needs `When` and `Duration` to place scenes in time.
-- Progress mode needs `Status` and `Publish Stage` (Progress Stage) for tracking.
+- Progress mode needs `Status` and `Publish Stage` for progress tracking.
 - If your frontmatter uses different keys, use **Settings -> Custom Metadata Mapping**.
 
 See [[YAML-Frontmatter|YAML Frontmatter]] for the full schema.
