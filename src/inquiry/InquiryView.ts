@@ -3779,10 +3779,10 @@ export class InquiryView extends ItemView {
         }
         return {
             ...passPlan,
-            packagingExpected: true,
+            multiPassExpected: true,
             recentExactPassCount: progress.totalPasses,
             displayPassCount: progress.totalPasses,
-            packagingTriggerReason: this.describeRunningPassPlan(progress)
+            multiPassTriggerReason: this.describeRunningPassPlan(progress)
         };
     }
 

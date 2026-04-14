@@ -96,14 +96,14 @@ function setGlobalFlag(key: string, value: unknown) {
     });
 }
 
-describe('InquiryRunnerService packaging policy', () => {
+describe('InquiryRunnerService execution policy', () => {
     beforeEach(() => {
         vi.mocked(getAIClient).mockReturnValue({} as never);
     });
 
-    it('automatic overflow + chunk failure returns packaging_failed', async () => {
+    it('automatic overflow + chunk failure returns multi_pass_failed', async () => {
         const service = createService();
-        const getPackagingPrecheck = vi.fn().mockResolvedValue(buildPrecheck({ onePassFit: 'overflows' }));
+        const getExecutionPrecheck = vi.fn().mockResolvedValue(buildPrecheck({ onePassFit: 'overflows' }));
         const runChunkedInquiry = vi.fn().mockResolvedValue({
             ok: false,
             failureStage: 'chunk_execution',
@@ -112,7 +112,7 @@ describe('InquiryRunnerService packaging policy', () => {
         });
         const runInquiryRequest = vi.fn();
         Object.assign(service, {
-            getPackagingPrecheck,
+            getExecutionPrecheck,
             runChunkedInquiry,
             runInquiryRequest
         });
@@ -128,8 +128,8 @@ describe('InquiryRunnerService packaging policy', () => {
         );
 
         expect(result.aiStatus).toBe('rejected');
-        expect(result.aiReason).toBe('packaging_failed');
-        expect(result.executionState).toBe('packaging_failed');
+        expect(result.aiReason).toBe('multi_pass_failed');
+        expect(result.executionState).toBe('multi_pass_failed');
         expect(result.executionPath).toBe('multi_pass');
         expect(result.failureStage).toBe('chunk_execution');
         expect(result.tokenUsageKnown).toBe(false);
@@ -137,7 +137,7 @@ describe('InquiryRunnerService packaging policy', () => {
         expect(runChunkedInquiry).toHaveBeenCalledWith(
             expect.anything(),
             expect.objectContaining({
-                packagingPrecheck: expect.objectContaining({
+                executionPrecheck: expect.objectContaining({
                     inputTokens: 220000,
                     safeInputTokens: 140000,
                     onePassFit: 'overflows'
@@ -147,16 +147,16 @@ describe('InquiryRunnerService packaging policy', () => {
         expect(runInquiryRequest).not.toHaveBeenCalled();
     });
 
-    it('returns explicit preflight packaging failure when authoritative precheck is unavailable', async () => {
+    it('returns explicit preflight execution failure when authoritative precheck is unavailable', async () => {
         const service = createService();
-        const getPackagingPrecheck = vi.fn().mockResolvedValue({
+        const getExecutionPrecheck = vi.fn().mockResolvedValue({
             ok: false,
             reason: 'prepareRunEstimate unavailable'
         });
         const runChunkedInquiry = vi.fn();
         const runInquiryRequest = vi.fn();
         Object.assign(service, {
-            getPackagingPrecheck,
+            getExecutionPrecheck,
             runChunkedInquiry,
             runInquiryRequest
         });
@@ -172,9 +172,9 @@ describe('InquiryRunnerService packaging policy', () => {
         );
 
         expect(result.aiStatus).toBe('rejected');
-        expect(result.aiReason).toBe('packaging_failed');
+        expect(result.aiReason).toBe('multi_pass_failed');
         expect(result.failureStage).toBe('preflight');
-        expect(String(result.error)).toContain('packaging/parsing failure');
+        expect(String(result.error)).toContain('multi-pass/parsing failure');
         expect(runChunkedInquiry).not.toHaveBeenCalled();
         expect(runInquiryRequest).not.toHaveBeenCalled();
     });

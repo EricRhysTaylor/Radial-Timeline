@@ -416,7 +416,7 @@ export interface AIRunAdvancedContext {
     tokenEstimateMethod?: InputTokenEstimateMethod;
     tokenEstimateUncertainty?: number;
     executionPassCount?: number;
-    packagingTriggerReason?: string;
+    multiPassTriggerReason?: string;
     reuseState?: 'idle' | 'eligible' | 'warm';
     /** 0–1: fraction of total input in the cached stable prefix (only set when reuseState is warm). */
     cachedStableRatio?: number;

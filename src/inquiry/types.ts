@@ -83,9 +83,9 @@ export type InquiryEnginePopoverState = 'ready' | 'multi-pass' | 'exceeds';
 // ── Pass plan result ──────────────────────────────────────────────────
 
 export type PassPlanResult = {
-    packagingExpected: boolean;
+    multiPassExpected: boolean;
     estimatedPassCount: number | null;
     recentExactPassCount: number | null;
     displayPassCount: number;
-    packagingTriggerReason: string | null;
+    multiPassTriggerReason: string | null;
 };

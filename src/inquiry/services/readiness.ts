@@ -2,7 +2,7 @@ export type InquiryReadinessState = 'ready' | 'large' | 'blocked';
 export type InquiryPressureTone = 'normal' | 'amber' | 'red';
 export type InquiryReadinessCause =
     | 'ok'
-    | 'packaging_expected'
+    | 'multi_pass_expected'
     | 'capability_floor'
     | 'missing_key';
 
@@ -76,7 +76,7 @@ export function evaluateInquiryReadiness(input: EvaluateInquiryReadinessInput): 
     if (exceedsBudget) {
         return {
             state: 'large',
-            cause: 'packaging_expected',
+            cause: 'multi_pass_expected',
             pressureRatio,
             pressureTone: toPressureTone(pressureRatio),
             exceedsBudget,
@@ -96,7 +96,7 @@ export function evaluateInquiryReadiness(input: EvaluateInquiryReadinessInput): 
 
 export function buildPassIndicator(
     passCount?: number,
-    packagingExpected?: boolean,
+    multiPassExpected?: boolean,
     estimatedPassCount?: number
 ): PassIndicatorResult {
     const normalizedPassCount = Number.isFinite(passCount) ? Math.max(0, Math.round(passCount as number)) : 0;
@@ -114,12 +114,12 @@ export function buildPassIndicator(
         };
     }
 
-    if (packagingExpected) {
+    if (multiPassExpected) {
         const normalizedEstimate = Number.isFinite(estimatedPassCount)
             ? Math.max(2, Math.round(estimatedPassCount as number))
             : 2;
         const extraPassCount = normalizedEstimate - 1;
-        // Predicted packaging is not an exact observed pass count. Keep the
+        // Predicted multi-pass is not an exact observed pass count. Keep the
         // glyph to a single marker so it reads as "multi-pass expected"
         // instead of implying a confirmed number of passes.
         const visibleCount = 1;

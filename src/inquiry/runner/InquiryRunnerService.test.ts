@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-describe('InquiryRunnerService packaging integrity', () => {
+describe('InquiryRunnerService execution integrity', () => {
     it('uses scene ids for inquiry evidence citation references', () => {
         const runnerSource = readFileSync(resolve(process.cwd(), 'src/inquiry/runner/InquiryRunnerService.ts'), 'utf8');
         const scaffoldSource = readFileSync(resolve(process.cwd(), 'src/inquiry/promptScaffold.ts'), 'utf8');

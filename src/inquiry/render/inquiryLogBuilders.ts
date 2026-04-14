@@ -223,7 +223,7 @@ export function buildInquiryLogContent(args: {
         const reasonLower = reason.toLowerCase();
         const failureReason = resolveFailureReason() ?? '';
         const failureLower = failureReason.toLowerCase();
-        const isPackagingFailure = reasonLower === 'packaging_failed'
+        const isPackagingFailure = reasonLower === 'multi_pass_failed'
             || trace.failureStage === 'chunk_execution'
             || trace.failureStage === 'synthesis'
             || trace.failureStage === 'preflight';
@@ -239,7 +239,7 @@ export function buildInquiryLogContent(args: {
             || failureLower.includes('length exceeded');
 
         if (isPackagingFailure) {
-            suggestions.push('Run failed during Inquiry packaging/parsing. Open Inquiry Log for exact chunk/synthesis failure details.');
+            suggestions.push('Run failed during multi-pass analysis. Open Inquiry Log for exact chunk/synthesis failure details.');
             suggestions.push('Retry once with the same settings after reviewing the log.');
         } else if (isInvalidStructuredOutput) {
             suggestions.push('Run failed because Inquiry did not receive valid structured output.');
@@ -318,8 +318,8 @@ export function buildInquiryLogContent(args: {
     if (typeof trace.executionPassCount === 'number' && trace.executionPassCount > 1) {
         lines.push(`- Pass count: ${trace.executionPassCount}`);
     }
-    if (!isSimulated && trace.packagingTriggerReason) {
-        lines.push(`- Packaging trigger: ${trace.packagingTriggerReason}`);
+    if (!isSimulated && trace.multiPassTriggerReason) {
+        lines.push(`- Multi-pass trigger: ${trace.multiPassTriggerReason}`);
     }
     lines.push('');
 
@@ -478,8 +478,8 @@ export function buildInquiryContentLogContent(args: {
     if (typeof trace.executionPassCount === 'number' && trace.executionPassCount > 1) {
         contextLines.push(`- Execution pass count: ${trace.executionPassCount}`);
     }
-    if (trace.packagingTriggerReason) {
-        contextLines.push(`- Packaging trigger reason: ${trace.packagingTriggerReason}`);
+    if (trace.multiPassTriggerReason) {
+        contextLines.push(`- Multi-pass trigger reason: ${trace.multiPassTriggerReason}`);
     }
     if (manifest) {
         const counts = manifest.classCounts || {};

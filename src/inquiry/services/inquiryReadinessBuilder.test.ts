@@ -253,7 +253,7 @@ describe('resolveEnginePopoverState', () => {
         expect(resolveEnginePopoverState(makeReadinessUi({
             readiness: {
                 state: 'large',
-                cause: 'packaging_expected',
+                cause: 'multi_pass_expected',
                 pressureRatio: 1.5,
                 pressureTone: 'red',
                 exceedsBudget: true,
@@ -315,7 +315,7 @@ describe('estimateStructuredPassCount', () => {
 describe('getCurrentPassPlan', () => {
     it('returns single-pass plan when not exceeding budget', () => {
         const plan = getCurrentPassPlan(makeReadinessUi(), null);
-        expect(plan.packagingExpected).toBe(false);
+        expect(plan.multiPassExpected).toBe(false);
         expect(plan.displayPassCount).toBe(1);
     });
 
@@ -323,7 +323,7 @@ describe('getCurrentPassPlan', () => {
         const plan = getCurrentPassPlan(makeReadinessUi({
             readiness: {
                 state: 'large',
-                cause: 'packaging_expected',
+                cause: 'multi_pass_expected',
                 pressureRatio: 1.5,
                 pressureTone: 'red',
                 exceedsBudget: true,
@@ -333,7 +333,7 @@ describe('getCurrentPassPlan', () => {
             expectedPassCount: 4,
             safeInputBudget: 100000
         }), null);
-        expect(plan.packagingExpected).toBe(true);
+        expect(plan.multiPassExpected).toBe(true);
         expect(plan.estimatedPassCount).toBe(4);
         expect(plan.displayPassCount).toBe(4);
     });
@@ -343,7 +343,7 @@ describe('getCurrentPassPlan', () => {
             makeReadinessUi({
                 readiness: {
                     state: 'large',
-                    cause: 'packaging_expected',
+                    cause: 'multi_pass_expected',
                     pressureRatio: 2.5,
                     pressureTone: 'red',
                     exceedsBudget: true,
@@ -352,11 +352,11 @@ describe('getCurrentPassPlan', () => {
                 estimateInputTokens: 300000,
                 safeInputBudget: 100000
             }),
-            { executionPassCount: 4, packagingTriggerReason: 'context_overflow' } as any
+            { executionPassCount: 4, multiPassTriggerReason: 'context_overflow' } as any
         );
         expect(plan.recentExactPassCount).toBe(4);
         expect(plan.displayPassCount).toBe(4);
-        expect(plan.packagingTriggerReason).toBe('context_overflow');
+        expect(plan.multiPassTriggerReason).toBe('context_overflow');
     });
 
     it('ignores executionPassCount of 1', () => {
@@ -364,7 +364,7 @@ describe('getCurrentPassPlan', () => {
             makeReadinessUi({
                 readiness: {
                     state: 'large',
-                    cause: 'packaging_expected',
+                    cause: 'multi_pass_expected',
                     pressureRatio: 1.5,
                     pressureTone: 'red',
                     exceedsBudget: true,
@@ -542,7 +542,7 @@ describe('buildReadinessUiState', () => {
             snapshot: makeSnapshot({ estimatedInputTokens: 300000, effectiveInputCeiling: 180000 })
         }));
         expect(result.readiness.state).toBe('large');
-        expect(result.readiness.cause).toBe('packaging_expected');
+        expect(result.readiness.cause).toBe('multi_pass_expected');
     });
 
     it('sets canSwitchToSummaries when body evidence exists and summaries fit', () => {

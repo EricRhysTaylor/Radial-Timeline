@@ -204,7 +204,6 @@ export type AiSettingsFocus =
     | 'thinking-style'
     | 'access-level'
     | 'pinned-model'
-    | 'execution-preference'
     | 'large-manuscript-handling';
 
 export type EngineFailureGuidance = {

@@ -485,8 +485,8 @@ export class InquiryOmnibusModal extends Modal {
         if (typeof ctx.executionPassCount === 'number' && ctx.executionPassCount > 1) {
             lines.splice(6, 0, `Pass count: ${ctx.executionPassCount}`);
         }
-        if (ctx.packagingTriggerReason) {
-            lines.splice(7, 0, `Packaging trigger: ${redactSensitiveValue(ctx.packagingTriggerReason)}`);
+        if (ctx.multiPassTriggerReason) {
+            lines.splice(7, 0, `Multi-pass trigger: ${redactSensitiveValue(ctx.multiPassTriggerReason)}`);
         }
         this.aiAdvancedPreEl.setText(lines.join('\n'));
     }

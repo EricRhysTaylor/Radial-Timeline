@@ -77,7 +77,7 @@ export interface InquiryResult {
     aiModelNextRunOnly?: boolean;
     aiStatus?: InquiryAiStatus;
     aiReason?: string;
-    executionState?: 'blocked_before_send' | 'dispatched_to_provider' | 'packaging_failed';
+    executionState?: 'blocked_before_send' | 'dispatched_to_provider' | 'multi_pass_failed';
     executionPath?: 'one_pass' | 'multi_pass';
     failureStage?: 'preflight' | 'chunk_execution' | 'synthesis' | 'provider_response_parsing';
     /** Raw provider or runner error message for surfacing in UI diagnostics. */

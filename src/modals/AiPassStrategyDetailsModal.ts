@@ -1,9 +1,8 @@
 /*
  * AI Pass Strategy Details Modal
  *
- * Shows detailed explanations of single-pass, multi-pass, and segmented
- * analysis strategies. Replaces the inline analysis mode blocks that
- * previously lived in the AI settings panel.
+ * Shows detailed explanations of single-pass and multi-pass analysis
+ * strategies. The system chooses automatically based on manuscript size.
  */
 import { App, Modal, setIcon } from 'obsidian';
 
@@ -25,7 +24,7 @@ export class AiPassStrategyDetailsModal extends Modal {
         hero.createDiv({ cls: 'ert-modal-title', text: 'Analysis pass strategies' });
         hero.createDiv({
             cls: 'ert-modal-subtitle',
-            text: 'How manuscript analysis is structured based on size and settings.'
+            text: 'How manuscript analysis is structured based on size.'
         });
 
         // ── Single-Pass section ──
@@ -57,17 +56,6 @@ export class AiPassStrategyDetailsModal extends Modal {
             ]
         });
 
-        // Divider
-        contentEl.createDiv({ cls: 'ert-ai-strategy-divider' });
-
-        // ── Segmented section ──
-        this.createStrategySection(contentEl, {
-            icon: 'layout-grid',
-            title: 'Segmented (Always Split)',
-            body: 'Forces multi-pass segmentation regardless of manuscript size. Useful when you want consistent segment-level analysis even for shorter works.',
-            questions: [],
-            note: 'Segmented mode currently forces splitting for Inquiry. Other tools (Gossamer, Scene Analysis) may still run single-pass when content fits safely.'
-        });
     }
 
     private createStrategySection(container: HTMLElement, config: {

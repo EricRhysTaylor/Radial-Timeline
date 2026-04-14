@@ -14,7 +14,7 @@ import type { TokenUsage } from '../../ai/usage/providerUsage';
 import type { InquiryQuestionPromptForm } from '../questions/resolveQuestionPrompt';
 
 export type EvidenceClass = string;
-export type InquiryExecutionState = 'blocked_before_send' | 'dispatched_to_provider' | 'packaging_failed';
+export type InquiryExecutionState = 'blocked_before_send' | 'dispatched_to_provider' | 'multi_pass_failed';
 export type InquiryExecutionPath = 'one_pass' | 'multi_pass';
 export type InquiryFailureStage = 'preflight' | 'chunk_execution' | 'synthesis' | 'provider_response_parsing';
 
@@ -128,7 +128,7 @@ export interface InquiryRunTrace {
         error?: string;
     } | null;
     executionPassCount?: number;
-    packagingTriggerReason?: string;
+    multiPassTriggerReason?: string;
     executionState?: InquiryExecutionState;
     executionPath?: InquiryExecutionPath;
     failureStage?: InquiryFailureStage;

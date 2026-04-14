@@ -1018,14 +1018,14 @@ export class InquiryMinimapRenderer {
 
         const passIndicator = buildPassIndicator(
             passPlan.recentExactPassCount ?? undefined,
-            passPlan.packagingExpected,
+            passPlan.multiPassExpected,
             passPlan.estimatedPassCount ?? undefined
         );
         if (this.minimapPassIndicatorGroup && this.minimapPassIndicatorText) {
             this.minimapPassIndicatorGroup.classList.toggle('ert-hidden', !passIndicator.visible);
             if (passIndicator.visible) {
                 this.minimapPassIndicatorText.textContent = passIndicator.marks;
-                const reason = passPlan.packagingTriggerReason
+                const reason = passPlan.multiPassTriggerReason
                     || (passIndicator.expectedOnly
                         ? 'Manuscript exceeds the per-pass planning budget; splitting into structured passes.'
                         : 'Multi-pass analysis completed.');

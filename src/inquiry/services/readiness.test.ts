@@ -14,7 +14,7 @@ describe('readiness', () => {
         expect(state.pressureTone).toBe('normal');
     });
 
-    it('returns large when automatic packaging can absorb over-budget input', () => {
+    it('returns large when automatic multi-pass can absorb over-budget input', () => {
         const state = evaluateInquiryReadiness({
             hasEligibleModel: true,
             hasCredential: true,
@@ -22,7 +22,7 @@ describe('readiness', () => {
             safeInputBudget: 100000
         });
         expect(state.state).toBe('large');
-        expect(state.cause).toBe('packaging_expected');
+        expect(state.cause).toBe('multi_pass_expected');
         expect(state.pressureTone).toBe('red');
     });
 
@@ -83,7 +83,7 @@ describe('readiness', () => {
         expect(marks.exactCount).toBe(9);
     });
 
-    it('shows a single expected mark when packaging is predicted but pass count is unknown', () => {
+    it('shows a single expected mark when multi-pass is predicted but pass count is unknown', () => {
         const marks = buildPassIndicator(undefined, true);
         expect(marks.visible).toBe(true);
         expect(marks.marks).toBe('+');
@@ -93,7 +93,7 @@ describe('readiness', () => {
         expect(marks.exactCount).toBeNull();
     });
 
-    it('uses estimated pass count for predicted packaging markers', () => {
+    it('uses estimated pass count for predicted multi-pass markers', () => {
         const marks = buildPassIndicator(undefined, true, 4);
         expect(marks.visible).toBe(true);
         expect(marks.marks).toBe('+');

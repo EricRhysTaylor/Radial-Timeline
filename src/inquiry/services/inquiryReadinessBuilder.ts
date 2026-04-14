@@ -143,14 +143,14 @@ export function getCurrentPassPlan(
     readinessUi: InquiryReadinessUiState,
     lastAdvancedContext: AIRunAdvancedContext | null
 ): PassPlanResult {
-    const packagingExpected = readinessUi.readiness.exceedsBudget;
-    if (!packagingExpected) {
+    const multiPassExpected = readinessUi.readiness.exceedsBudget;
+    if (!multiPassExpected) {
         return {
-            packagingExpected: false,
+            multiPassExpected: false,
             estimatedPassCount: null,
             recentExactPassCount: null,
             displayPassCount: 1,
-            packagingTriggerReason: null
+            multiPassTriggerReason: null
         };
     }
     const recentExactPassCount = typeof lastAdvancedContext?.executionPassCount === 'number' && lastAdvancedContext.executionPassCount > 1
@@ -159,11 +159,11 @@ export function getCurrentPassPlan(
     const estimatedPassCount = estimateStructuredPassCount(readinessUi);
     const effectiveEstimate = estimatedPassCount;
     return {
-        packagingExpected: true,
+        multiPassExpected: true,
         estimatedPassCount: effectiveEstimate,
         recentExactPassCount,
         displayPassCount: recentExactPassCount ?? effectiveEstimate,
-        packagingTriggerReason: lastAdvancedContext?.packagingTriggerReason ?? null
+        multiPassTriggerReason: lastAdvancedContext?.multiPassTriggerReason ?? null
     };
 }
 
@@ -356,7 +356,7 @@ export function buildReadinessUiState(input: BuildReadinessUiStateInput): Inquir
     } else if (readiness.cause === 'capability_floor') {
         reason = `${providerLabel} cannot satisfy this Inquiry setup. Update Provider, Thinking Style, or Access level.`;
     } else if (readiness.state === 'large') {
-        reason = 'Automatic packaging will run multiple structured passes.';
+        reason = 'Automatic analysis will run multiple structured passes.';
     }
 
     return {

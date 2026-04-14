@@ -11,7 +11,7 @@ import type { AccessTier, AIProviderId, AIOverrides, ModelInfo } from '../types'
  * `safeUtilization` already provides an additional margin (0.7–0.9),
  * so the combined effective ceiling is contextWindow × safeUtil × 0.9.
  *
- * Used by both the aiClient pre-flight guard and the Inquiry packaging
+ * Used by both the aiClient pre-flight guard and the Inquiry execution
  * precheck so the two layers agree on the effective ceiling.
  */
 export const INPUT_TOKEN_GUARD_FACTOR = 0.9;

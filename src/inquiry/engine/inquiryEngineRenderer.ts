@@ -77,7 +77,7 @@ export function renderInquiryEngineReadinessStrip(args: {
         const recentRunSuffix = args.passPlan.recentExactPassCount
             ? ` Recent run used ${args.passPlan.recentExactPassCount} passes.`
             : '';
-        const reason = args.passPlan.packagingTriggerReason
+        const reason = args.passPlan.multiPassTriggerReason
             ?? 'Manuscript exceeds the per-pass planning budget.';
         args.readinessMessageEl.setText(
             `Expected structured passes: ${estimateLabel} — ${reason.replace(/\.$/, '')}.${recentRunSuffix}`
