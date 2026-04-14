@@ -1067,11 +1067,10 @@ export class InquiryView extends ItemView {
         const result = this.state.activeResult;
         if (!result) return null;
         if (!this.isErrorResult(result)) return null;
-        const reason = this.formatApiErrorClassification(result);
-        const reasonSuffix = reason ? ` (${reason})` : '';
+        const hero = this.formatAuthorFacingErrorHero(result);
         const detail = result.aiErrorDetail ? `\n${result.aiErrorDetail}` : '';
         return {
-            message: `Inquiry failed${reasonSuffix}.${detail}\nUse Open Inquiry Log in the footer for the detailed error report.`
+            message: `${hero}${detail}\nOpen Inquiry Log for detailed error report.`
         };
     }
 
@@ -2609,7 +2608,11 @@ export class InquiryView extends ItemView {
     private getPromptOptions(zone: InquiryZone): InquiryQuestion[] {
         const config = this.getPromptConfig();
         const icon = zone === 'setup' ? 'help-circle' : zone === 'pressure' ? 'activity' : 'check-circle';
-        return (config[zone] ?? [])
+        const slots = config[zone] ?? [];
+        const visibleSlots = hasProFeatureAccess(this.plugin)
+            ? slots
+            : slots.slice(0, 4);
+        return visibleSlots
             .map((slot, slotIndex) => this.buildInquiryQuestion(zone, slot, icon, slotIndex))
             .filter((question): question is InquiryQuestion => !!question);
     }
@@ -5017,16 +5020,16 @@ export class InquiryView extends ItemView {
             this.previewHideTimer = undefined;
         }
         const zone = result.questionZone ?? this.findPromptZoneById(result.questionId) ?? 'setup';
-        const reason = this.formatApiErrorReason(result);
-        const meta = reason ? `Error: ${reason}` : 'Error';
+        const hero = this.formatAuthorFacingErrorHero(result);
+        const meta = this.formatAuthorFacingErrorDetail(result);
         const emptyRows = Array(this.previewRows.length || 6).fill('');
         this.previewLocked = true;
         this.previewGroup.classList.add('is-visible', 'is-error');
         this.previewGroup.classList.remove('is-locked', 'is-results');
         this.setPreviewRunningNoteText('');
         this.resetPreviewRowLabels();
-        this.setPreviewFooterText('Click panel to open the Inquiry Log.');
-        this.updatePromptPreview(zone, this.state.mode, 'Inquiry paused.', emptyRows, meta, { hideEmpty: true });
+        this.setPreviewFooterText('Open Inquiry Log for detailed error report.');
+        this.updatePromptPreview(zone, this.state.mode, hero, emptyRows, meta, { hideEmpty: true });
         this.minimap.showErrorState(this.getStyleSource());
     }
 
@@ -7043,6 +7046,28 @@ export class InquiryView extends ItemView {
             return `${classification}\n${result.aiErrorDetail}`;
         }
         return classification;
+    }
+
+    private formatAuthorFacingErrorHero(result: InquiryResult): string {
+        const status = result.aiStatus;
+        const reason = result.aiReason;
+        if (status === 'rejected' && reason === 'invalid_response') return 'Briefing received with errors.';
+        if (status === 'rejected' && reason === 'citation_binding_failed') return 'AI response could not be matched to this corpus.';
+        if (status === 'rejected' && reason === 'multi_pass_failed') return 'Multi-pass analysis could not complete.';
+        if (status === 'rejected' && reason === 'unsupported_param') return 'Request rejected by provider.';
+        if (status === 'rejected') return 'Request rejected by provider.';
+        if (status === 'auth') return 'Authentication failed.';
+        if (status === 'timeout') return 'Request timed out.';
+        if (status === 'rate_limit') return 'Rate limit reached. Try again shortly.';
+        if (status === 'unavailable') return 'Provider unavailable.';
+        return 'Inquiry could not complete.';
+    }
+
+    private formatAuthorFacingErrorDetail(result: InquiryResult): string {
+        if (result.aiErrorDetail) return result.aiErrorDetail;
+        if (result.aiReason === 'citation_binding_failed') return 'No findings could be placed on the minimap.';
+        if (result.aiReason === 'invalid_response') return 'Invalid structured response from AI.';
+        return '';
     }
 
     private formatTokenUsageVisibility(
