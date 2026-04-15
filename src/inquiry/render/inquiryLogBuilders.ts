@@ -140,6 +140,7 @@ export function buildInquiryLogContent(args: {
     const cacheTokensLabel = typeof trace.cachedStableTokens === 'number' && Number.isFinite(trace.cachedStableTokens)
         ? formatTokenCount(trace.cachedStableTokens)
         : null;
+    const anthropicDispatchNote = trace.notes?.find(note => note.startsWith('Anthropic dispatch:')) ?? null;
 
     const describeMode = (className: string): string | null => {
         if (!manifest) return null;
@@ -314,6 +315,9 @@ export function buildInquiryLogContent(args: {
         if (cachePrefixLabel) cacheParts.push(`prefix=${cachePrefixLabel}`);
         if (cacheTokensLabel) cacheParts.push(`tokens=${cacheTokensLabel}`);
         lines.push(cacheParts.join(' · '));
+    }
+    if (!isSimulated && anthropicDispatchNote) {
+        lines.push(`- ${anthropicDispatchNote}`);
     }
     if (typeof trace.executionPassCount === 'number' && trace.executionPassCount > 1) {
         lines.push(`- Pass count: ${trace.executionPassCount}`);

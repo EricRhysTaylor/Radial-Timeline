@@ -9424,7 +9424,7 @@
 .ert-ui.ert-scope--settings .ert-stageCard__svg {
   width: 80px;
   height: 80px;
-  border-radius: 50%;
+  border-radius: calc(var(--ert-panel-radius) - 2px);
   overflow: hidden;
   background: color-mix(in srgb, var(--background-primary) 70%, transparent);
   display: flex;

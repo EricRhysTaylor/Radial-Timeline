@@ -82,9 +82,23 @@ export interface AnthropicApiResponse {
   success: boolean;
   content: string | null;
   responseData: unknown;
+  requestPayload?: unknown;
   error?: string;
   citations?: { citedText: string; documentIndex: number; documentTitle?: string;
                 startCharIndex?: number; endCharIndex?: number }[];
+}
+
+export interface AnthropicDispatchDiagnostics {
+  requestedCacheTtl: AnthropicCacheTtl | 'none';
+  hasCacheablePrefix: boolean;
+  cachePrefixFingerprint: string;
+  stableTextFingerprint: string;
+  stableTextChars: number;
+  documentBlockCount: number;
+  documentChars: number;
+  volatileTextFingerprint: string;
+  volatileTextChars: number;
+  blockShape: string;
 }
 
 function mapAnthropicResponseCitations(
@@ -168,6 +182,64 @@ export function buildAnthropicUserContent(input: BuildAnthropicUserContentInput)
     { type: 'text', text: stableText, cache_control: { type: 'ephemeral' as const, ...(input.cacheTtl ? { ttl: input.cacheTtl } : {}) } },
     { type: 'text', text: volatileText },
   ];
+}
+
+function fingerprintAnthropicText(value: string): string {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index++) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(16).padStart(8, '0');
+}
+
+export function buildAnthropicDispatchDiagnostics(
+  content: AnthropicContentBlock[],
+  requestedCacheTtl?: AnthropicCacheTtl
+): AnthropicDispatchDiagnostics {
+  let cacheBoundaryIndex = -1;
+  for (let index = content.length - 1; index >= 0; index--) {
+    if (content[index]?.cache_control) {
+      cacheBoundaryIndex = index;
+      break;
+    }
+  }
+  const cacheableBlocks = cacheBoundaryIndex >= 0
+    ? content.slice(0, cacheBoundaryIndex + 1)
+    : [];
+  const volatileBlocks = cacheBoundaryIndex >= 0
+    ? content.slice(cacheBoundaryIndex + 1)
+    : content;
+  const stableText = cacheableBlocks
+    .filter((block): block is AnthropicTextBlock => block.type === 'text')
+    .map(block => block.text)
+    .join('\n');
+  const documentBlocks = cacheableBlocks.filter((block): block is AnthropicDocumentBlock => block.type === 'document');
+  const documentChars = documentBlocks.reduce((total, block) => total + (block.source.data?.length ?? 0), 0);
+  const volatileText = volatileBlocks
+    .filter((block): block is AnthropicTextBlock => block.type === 'text')
+    .map(block => block.text)
+    .join('\n');
+  return {
+    requestedCacheTtl: requestedCacheTtl ?? 'none',
+    hasCacheablePrefix: cacheableBlocks.length > 0,
+    cachePrefixFingerprint: cacheableBlocks.length > 0
+      ? fingerprintAnthropicText(JSON.stringify(cacheableBlocks))
+      : 'none',
+    stableTextFingerprint: stableText.length > 0
+      ? fingerprintAnthropicText(stableText)
+      : 'none',
+    stableTextChars: stableText.length,
+    documentBlockCount: documentBlocks.length,
+    documentChars,
+    volatileTextFingerprint: volatileText.length > 0
+      ? fingerprintAnthropicText(volatileText)
+      : 'none',
+    volatileTextChars: volatileText.length,
+    blockShape: content
+      .map(block => `${block.type}${block.cache_control ? '*' : ''}`)
+      .join('>')
+  };
 }
 
 function buildAnthropicMessageRequestBody(
@@ -296,6 +368,7 @@ export async function callAnthropicApi(
     jsonSchema,
     cacheTtl
   });
+  const dispatchDiagnostics = buildAnthropicDispatchDiagnostics(requestBody.messages[0]?.content ?? [], cacheTtl);
 
   let responseData: unknown;
   try {
@@ -315,7 +388,13 @@ export async function callAnthropicApi(
     if (response.status >= 400) {
       const err = responseData as AnthropicErrorResponse;
       const msg = err?.error?.message ?? response.text ?? `Anthropic error (${response.status})`;
-      return { success: false, content: null, responseData, error: msg };
+      return {
+        success: false,
+        content: null,
+        responseData,
+        requestPayload: { dispatchDiagnostics },
+        error: msg
+      };
     }
     const success = responseData as AnthropicSuccessResponse;
     // Skip thinking blocks — concatenate all text content blocks.
@@ -332,16 +411,29 @@ export async function callAnthropicApi(
         success: true,
         content: JSON.stringify(toolUseBlock.input),
         responseData,
+        requestPayload: { dispatchDiagnostics },
         ...(mappedCitations?.length ? { citations: mappedCitations } : {})
       };
     }
     const content = textBlocks.map(b => b.text ?? '').join('').trim();
-    if (content) return { success: true, content, responseData, citations: mappedCitations };
-    return { success: false, content: null, responseData, error: 'Invalid response structure from Anthropic.' };
+    if (content) return { success: true, content, responseData, requestPayload: { dispatchDiagnostics }, citations: mappedCitations };
+    return {
+      success: false,
+      content: null,
+      responseData,
+      requestPayload: { dispatchDiagnostics },
+      error: 'Invalid response structure from Anthropic.'
+    };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     responseData = { type: 'error', error: { type: 'network_or_execution_error', message: msg } };
-    return { success: false, content: null, responseData, error: msg };
+    return {
+      success: false,
+      content: null,
+      responseData,
+      requestPayload: { dispatchDiagnostics },
+      error: msg
+    };
   }
 }
 

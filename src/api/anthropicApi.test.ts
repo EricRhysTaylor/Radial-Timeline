@@ -6,7 +6,12 @@ vi.mock('obsidian', () => ({
 
 import * as obsidian from 'obsidian';
 
-import { buildAnthropicUserContent, countAnthropicTokens, normalizeAnthropicTokenCountResponse } from './anthropicApi';
+import {
+    buildAnthropicDispatchDiagnostics,
+    buildAnthropicUserContent,
+    countAnthropicTokens,
+    normalizeAnthropicTokenCountResponse
+} from './anthropicApi';
 
 const mockedRequestUrl = vi.spyOn(obsidian, 'requestUrl');
 
@@ -104,5 +109,42 @@ describe('buildAnthropicUserContent', () => {
             citations: { enabled: true }
         });
         expect(content[2]).toEqual({ type: 'text', text: 'Volatile question' });
+    });
+
+    it('builds dispatch diagnostics from the cacheable prefix and volatile tail separately', () => {
+        const content = buildAnthropicUserContent({
+            userPrompt: 'Stable instructions\n<<<CACHE_BREAK>>>\nVolatile question',
+            citationsEnabled: true,
+            evidenceDocuments: [
+                { title: 'Scene S1', content: 'Scene evidence text' }
+            ]
+        });
+
+        const diagnostics = buildAnthropicDispatchDiagnostics(content);
+
+        expect(diagnostics.requestedCacheTtl).toBe('none');
+        expect(diagnostics.hasCacheablePrefix).toBe(true);
+        expect(diagnostics.documentBlockCount).toBe(1);
+        expect(diagnostics.documentChars).toBe('Scene evidence text'.length);
+        expect(diagnostics.stableTextChars).toBe('Stable instructions'.length);
+        expect(diagnostics.volatileTextChars).toBe('Volatile question'.length);
+        expect(diagnostics.cachePrefixFingerprint).not.toBe('none');
+        expect(diagnostics.volatileTextFingerprint).not.toBe('none');
+        expect(diagnostics.blockShape).toBe('text>document*>text');
+    });
+
+    it('records the requested cache ttl in dispatch diagnostics', () => {
+        const content = buildAnthropicUserContent({
+            userPrompt: 'Stable instructions\n<<<CACHE_BREAK>>>\nVolatile question',
+            citationsEnabled: true,
+            evidenceDocuments: [
+                { title: 'Scene S1', content: 'Scene evidence text' }
+            ],
+            cacheTtl: '1h'
+        });
+
+        const diagnostics = buildAnthropicDispatchDiagnostics(content, '1h');
+
+        expect(diagnostics.requestedCacheTtl).toBe('1h');
     });
 });

@@ -1,5 +1,6 @@
 import type {
     AIProviderId,
+    AnthropicCacheTtl,
     AiSettingsV1,
     AIRoleTemplate,
     LocalLlmSettings,
@@ -19,8 +20,9 @@ export type CredentialSecretField = keyof typeof DEFAULT_CREDENTIAL_SECRET_IDS;
 export type CredentialSecretProvider = 'openai' | 'anthropic' | 'google' | 'ollama';
 
 export const DEFAULT_MODEL_POLICY: ModelPolicy = { type: 'latestStable' };
+export const ANTHROPIC_REQUESTED_CACHE_TTL: AnthropicCacheTtl = '1h';
 export const DEFAULT_CACHE_WINDOWS = {
-    anthropicTtl: '1h',
+    anthropicTtl: ANTHROPIC_REQUESTED_CACHE_TTL,
     googleTtlSeconds: 86_400,
     openaiRetention: '24h',
     openaiInMemoryWindowMinutes: 60

@@ -3,9 +3,9 @@ import { callAnthropicApi } from '../../api/anthropicApi';
 import { classifyProviderError } from '../../api/providerErrors';
 import { extractTokenUsage } from '../usage/providerUsage';
 import { getCredential } from '../credentials/credentials';
-import { buildDefaultAiSettings } from '../settings/aiSettings';
+import { ANTHROPIC_REQUESTED_CACHE_TTL, buildDefaultAiSettings } from '../settings/aiSettings';
 import { validateAiSettings } from '../settings/validateAiSettings';
-import type { AIProvider, Capability, GenerateJsonRequest, GenerateTextRequest, ProviderExecutionResult } from '../types';
+import type { AIProvider, AnthropicCacheTtl, Capability, GenerateJsonRequest, GenerateTextRequest, ProviderExecutionResult } from '../types';
 
 const CAPS: Capability[] = ['longContext', 'jsonStrict', 'reasoningStrong'];
 
@@ -39,8 +39,8 @@ export class AnthropicProvider implements AIProvider {
 
     async generateText(req: GenerateTextRequest): Promise<ProviderExecutionResult> {
         const apiKey = await getCredential(this.plugin, 'anthropic');
-        const aiSettings = validateAiSettings(this.plugin.settings.aiSettings ?? buildDefaultAiSettings()).value;
-        const cacheTtl = aiSettings.cacheWindows?.anthropicTtl;
+        validateAiSettings(this.plugin.settings.aiSettings ?? buildDefaultAiSettings());
+        const cacheTtl: AnthropicCacheTtl = ANTHROPIC_REQUESTED_CACHE_TTL;
         const result = await callAnthropicApi(
             apiKey,
             req.modelId,
@@ -62,6 +62,7 @@ export class AnthropicProvider implements AIProvider {
             success: result.success,
             content: result.content,
             responseData: result.responseData,
+            requestPayload: result.requestPayload,
             aiStatus: result.success ? 'success' : classification.aiStatus,
             aiReason: result.success ? undefined : classification.aiReason,
             aiProvider: 'anthropic',
@@ -75,8 +76,8 @@ export class AnthropicProvider implements AIProvider {
 
     async generateJson(req: GenerateJsonRequest): Promise<ProviderExecutionResult> {
         const apiKey = await getCredential(this.plugin, 'anthropic');
-        const aiSettings = validateAiSettings(this.plugin.settings.aiSettings ?? buildDefaultAiSettings()).value;
-        const cacheTtl = aiSettings.cacheWindows?.anthropicTtl;
+        validateAiSettings(this.plugin.settings.aiSettings ?? buildDefaultAiSettings());
+        const cacheTtl: AnthropicCacheTtl = ANTHROPIC_REQUESTED_CACHE_TTL;
         const result = await callAnthropicApi(
             apiKey,
             req.modelId,
@@ -98,6 +99,7 @@ export class AnthropicProvider implements AIProvider {
             success: result.success,
             content: result.content,
             responseData: result.responseData,
+            requestPayload: result.requestPayload,
             aiStatus: result.success ? 'success' : classification.aiStatus,
             aiReason: result.success ? undefined : classification.aiReason,
             aiProvider: 'anthropic',

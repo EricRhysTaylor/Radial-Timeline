@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { validateAiSettings } from './validateAiSettings';
 import type { AiSettingsV1 } from '../types';
+import { ANTHROPIC_REQUESTED_CACHE_TTL } from './aiSettings';
 
 describe('validateAiSettings', () => {
     it('falls back invalid provider and bad pinned alias', () => {
@@ -119,5 +120,25 @@ describe('validateAiSettings', () => {
         expect(result.value.localLlm.timeoutMs).toBeLessThanOrEqual(120000);
         expect(result.value.localLlm.maxRetries).toBe(0);
         expect(result.value.localLlm.jsonMode).toBe('response_format');
+    });
+
+    it('ignores persisted Anthropic cache ttl overrides and forces the canonical 1h request ttl', () => {
+        const result = validateAiSettings({
+            schemaVersion: 1,
+            provider: 'anthropic',
+            modelPolicy: { type: 'latestStable' },
+            overrides: {},
+            aiAccessProfile: {},
+            privacy: { allowTelemetry: false, allowRemoteRegistry: false, allowProviderSnapshot: false },
+            cacheWindows: {
+                anthropicTtl: '5m',
+                googleTtlSeconds: 900,
+                openaiRetention: '24h',
+                openaiInMemoryWindowMinutes: 60
+            }
+        } as unknown as AiSettingsV1);
+
+        expect(result.value.cacheWindows?.anthropicTtl).toBe(ANTHROPIC_REQUESTED_CACHE_TTL);
+        expect(result.warnings.some(warning => warning.includes('Anthropic cache TTL is fixed at'))).toBe(true);
     });
 });

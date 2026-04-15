@@ -1247,8 +1247,8 @@ export const en: TranslationKeys = {
                 desc: 'Generate vibrant, spoiler-safe progress graphics for social media and crowdfunding. Perfect for Kickstarter updates, Patreon posts, or sharing your writing journey with fans.',
                 keyBenefitsHeading: 'Key Benefits:',
                 featureSpoilerSafe: 'Spoiler-Safe \u2014 Scene titles and content are not part of the graphic build process.',
-                featureShareable: 'Shareable \u2014 Export as static snapshot or live-updating embed',
-                featureStageWeighted: 'Stage-Weighted Progress \u2014 Tracks advancement through Zero \u2192 Author \u2192 House \u2192 Press',
+                featureShareable: 'Shareable \u2014 Export as a snapshot in high resolution.',
+                featureStageWeighted: 'Stage Progress \u2014 Track advancement via three different modalities',
             },
             preview: {
                 sizeLabel: 'APR Preview',

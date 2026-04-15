@@ -1,5 +1,5 @@
 import type { AiSettingsV1, AIProviderId, LocalLlmBackendId, LocalLlmConfigurationMode, LocalLlmJsonMode } from '../types';
-import { buildDefaultAiSettings, cloneBuiltInRoleTemplates } from './aiSettings';
+import { ANTHROPIC_REQUESTED_CACHE_TTL, buildDefaultAiSettings, cloneBuiltInRoleTemplates } from './aiSettings';
 import { BUILTIN_MODELS } from '../registry/builtinModels';
 
 export interface AiSettingsValidationResult {
@@ -55,7 +55,7 @@ export function validateAiSettings(input?: AiSettingsV1 | null): AiSettingsValid
     };
 
     const defaultCacheWindows = defaults.cacheWindows ?? {
-        anthropicTtl: '1h',
+        anthropicTtl: ANTHROPIC_REQUESTED_CACHE_TTL,
         googleTtlSeconds: 86_400,
         openaiRetention: '24h',
         openaiInMemoryWindowMinutes: 60
@@ -244,8 +244,9 @@ export function validateAiSettings(input?: AiSettingsV1 | null): AiSettingsValid
     }
 
     if (value.cacheWindows) {
-        if (value.cacheWindows.anthropicTtl !== '1h' && value.cacheWindows.anthropicTtl !== '5m') {
-            value.cacheWindows.anthropicTtl = defaults.cacheWindows?.anthropicTtl ?? '1h';
+        if (value.cacheWindows.anthropicTtl !== ANTHROPIC_REQUESTED_CACHE_TTL) {
+            warnings.push(`Anthropic cache TTL is fixed at ${ANTHROPIC_REQUESTED_CACHE_TTL}; ignoring persisted value.`);
+            value.cacheWindows.anthropicTtl = ANTHROPIC_REQUESTED_CACHE_TTL;
         }
         if (typeof value.cacheWindows.googleTtlSeconds !== 'number' || !Number.isFinite(value.cacheWindows.googleTtlSeconds)) {
             value.cacheWindows.googleTtlSeconds = defaults.cacheWindows?.googleTtlSeconds ?? 900;

@@ -225,6 +225,14 @@ describe('AI settings models table', () => {
         expect(source.includes('refreshActiveCostComparisonRowState(options.provider, next);')).toBe(true);
     });
 
+    it('uses configured cache-window settings for context-run labels instead of hardcoded provider defaults', () => {
+        const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
+        expect(source.includes('const getProviderCacheTtlLabel = (provider: AIProviderId): string => {')).toBe(true);
+        expect(source.includes("case 'anthropic':\n                return ANTHROPIC_REQUESTED_CACHE_TTL;")).toBe(true);
+        expect(source.includes("return aiSettings.cacheWindows?.openaiRetention === '24h'")).toBe(true);
+        expect(source.includes("return `${Math.max(60, aiSettings.cacheWindows?.googleTtlSeconds ?? 900) / 60}m`;")).toBe(true);
+    });
+
     it('uses Local LLM as the provider label and keeps backend names inside the Local LLM section only', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
         expect(source.includes("dropdown.addOption('ollama', t('settings.ai.provider.optionLocalLlm'))")).toBe(true);

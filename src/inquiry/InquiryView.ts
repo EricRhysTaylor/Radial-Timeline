@@ -36,6 +36,7 @@ import {
     InquiryZone
 } from './state';
 import { replayTransientClass } from '../utils/domClassEffects';
+import { ANTHROPIC_REQUESTED_CACHE_TTL } from '../ai/settings/aiSettings';
 import type {
     InquiryCanonicalQuestionTier,
     InquiryClassConfig,
@@ -550,6 +551,7 @@ export class InquiryView extends ItemView {
     private currentRunProgress: InquiryRunProgressEvent | null = null;
     private currentRunElapsedMs = 0;
     private currentRunEstimatedMaxMs = 0;
+    private lastAnthropicDispatchPrefixByEngine = new Map<string, string>();
 
     constructor(leaf: WorkspaceLeaf, plugin: RadialTimelinePlugin) {
         super(leaf);
@@ -3235,7 +3237,7 @@ export class InquiryView extends ItemView {
 
     private getProviderCacheTtlLabel(provider: string): string {
         switch (provider) {
-            case 'anthropic': return '1h';
+            case 'anthropic': return ANTHROPIC_REQUESTED_CACHE_TTL;
             case 'openai': return '24h';
             case 'google': return '24h';
             default: return '';
@@ -5837,6 +5839,7 @@ export class InquiryView extends ItemView {
             result = this.normalizeLegacyResult(result);
             const normalizationNotes = this.collectNormalizationNotes(rawResult, result);
             result = this.applyExecutionObservabilityFromTrace(result, runTrace);
+            this.appendAnthropicDispatchTraceNote(result, runTrace);
             void this.recordInquiryTimingSample(result, runTrace);
             if (this.shouldRejectUnboundHitResult(result)) {
                 runTrace?.notes.push('Inquiry result rejected after execution: no finding could be matched to the active corpus.');
@@ -6395,6 +6398,7 @@ export class InquiryView extends ItemView {
             timedResult.aiModelNextRunOnly = false;
         }
         const tracedResult = this.applyExecutionObservabilityFromTrace(timedResult, options.trace);
+        this.appendAnthropicDispatchTraceNote(tracedResult, options.trace);
         void this.recordInquiryTimingSample(tracedResult, options.trace);
 
         const normalized = this.normalizeLegacyResult(tracedResult);
@@ -8646,7 +8650,7 @@ export class InquiryView extends ItemView {
             && entry.lastInputTokens > 0
             ? Math.max(4000, estimatedInputTokens * (entry.lastDurationMs / entry.lastInputTokens))
             : null;
-        const preferLatestSample = options?.preferLatestSample === true && typeof lastPredictedMs === 'number';
+        const preferLatestSample = options?.preferLatestSample !== false && typeof lastPredictedMs === 'number';
         const predictedMs = typeof lastPredictedMs === 'number'
             ? (preferLatestSample
                 ? lastPredictedMs
@@ -8693,7 +8697,7 @@ export class InquiryView extends ItemView {
         const previousSamples = Math.min(previous?.samples ?? 0, 19);
         const samples = previousSamples + 1;
         const avgMsPerInputToken = previous
-            ? (((previous.avgMsPerInputToken * previousSamples) + sampleRate) / Math.max(samples, 1))
+            ? ((previous.avgMsPerInputToken * 0.25) + (sampleRate * 0.75))
             : sampleRate;
 
         history[key] = {
@@ -8767,7 +8771,7 @@ export class InquiryView extends ItemView {
     private estimateRunDurationRange(questionText: string): { minSeconds: number; maxSeconds: number } {
         const readinessUi = this.buildReadinessUiState();
         const estimatedTokens = Math.max(0, readinessUi.estimateInputTokens || 0);
-        const preferLatestSample = !!this.getActiveCacheWindowExpiry();
+        const preferLatestSample = true;
 
         // If we have history for this model, trust it directly.
         const timingEstimate = this.buildTimingEstimateFromHistory(
@@ -8837,11 +8841,85 @@ export class InquiryView extends ItemView {
         return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
     }
 
+    private getAnthropicDispatchDiagnostics(trace: InquiryRunTrace | null | undefined): {
+        requestedCacheTtl: string;
+        hasCacheablePrefix: boolean;
+        cachePrefixFingerprint: string;
+        stableTextChars: number;
+        documentBlockCount: number;
+        documentChars: number;
+        volatileTextChars: number;
+        blockShape: string;
+    } | null {
+        const payload = trace?.requestPayload;
+        if (!payload || typeof payload !== 'object') return null;
+        const dispatchDiagnostics = (payload as Record<string, unknown>).dispatchDiagnostics;
+        if (!dispatchDiagnostics || typeof dispatchDiagnostics !== 'object') return null;
+        const diagnostics = dispatchDiagnostics as Record<string, unknown>;
+        if (typeof diagnostics.cachePrefixFingerprint !== 'string') return null;
+        return {
+            requestedCacheTtl: typeof diagnostics.requestedCacheTtl === 'string' ? diagnostics.requestedCacheTtl : 'none',
+            hasCacheablePrefix: diagnostics.hasCacheablePrefix === true,
+            cachePrefixFingerprint: diagnostics.cachePrefixFingerprint,
+            stableTextChars: typeof diagnostics.stableTextChars === 'number' ? diagnostics.stableTextChars : 0,
+            documentBlockCount: typeof diagnostics.documentBlockCount === 'number' ? diagnostics.documentBlockCount : 0,
+            documentChars: typeof diagnostics.documentChars === 'number' ? diagnostics.documentChars : 0,
+            volatileTextChars: typeof diagnostics.volatileTextChars === 'number' ? diagnostics.volatileTextChars : 0,
+            blockShape: typeof diagnostics.blockShape === 'string' ? diagnostics.blockShape : 'unknown'
+        };
+    }
+
+    private getAnthropicAcceptedCacheTtl(trace: InquiryRunTrace | null | undefined): '5m' | '1h' | 'mixed' | 'unknown' {
+        const usage = trace?.usage;
+        const has5m = !!(usage?.cacheCreation5mInputTokens && usage.cacheCreation5mInputTokens > 0);
+        const has1h = !!(usage?.cacheCreation1hInputTokens && usage.cacheCreation1hInputTokens > 0);
+        if (has5m && has1h) return 'mixed';
+        if (has1h) return '1h';
+        if (has5m) return '5m';
+        return 'unknown';
+    }
+
+    private getDispatchEngineKey(result: InquiryResult): string | null {
+        const provider = (result.aiProvider ?? '').trim().toLowerCase();
+        const model = (result.aiModelResolved || result.aiModelRequested || '').trim().toLowerCase();
+        if (!provider || !model) return null;
+        return `${provider}::${model}`;
+    }
+
+    private appendAnthropicDispatchTraceNote(result: InquiryResult, trace: InquiryRunTrace | null | undefined): void {
+        if (result.aiProvider?.trim().toLowerCase() !== 'anthropic' || !trace) return;
+        const diagnostics = this.getAnthropicDispatchDiagnostics(trace);
+        const engineKey = this.getDispatchEngineKey(result);
+        if (!diagnostics || !engineKey) return;
+        const previousFingerprint = this.lastAnthropicDispatchPrefixByEngine.get(engineKey);
+        const sameAsPrevious = previousFingerprint === diagnostics.cachePrefixFingerprint;
+        const acceptedCacheTtl = this.getAnthropicAcceptedCacheTtl(trace);
+        const note = [
+            'Anthropic dispatch:',
+            `requested=${diagnostics.requestedCacheTtl}`,
+            `accepted=${acceptedCacheTtl}`,
+            `cacheable=${diagnostics.hasCacheablePrefix ? 'yes' : 'no'}`,
+            `prefix=${diagnostics.cachePrefixFingerprint}`,
+            `shape=${diagnostics.blockShape}`,
+            `stable=${diagnostics.stableTextChars} chars`,
+            `docs=${diagnostics.documentBlockCount}/${diagnostics.documentChars} chars`,
+            `volatile=${diagnostics.volatileTextChars} chars`,
+            `same-as-previous=${previousFingerprint ? (sameAsPrevious ? 'yes' : 'no') : 'n/a'}`,
+            `previous=${previousFingerprint ?? 'none'}`
+        ].join(' · ');
+        if (!trace.notes.includes(note)) {
+            trace.notes.unshift(note);
+        }
+        this.lastAnthropicDispatchPrefixByEngine.set(engineKey, diagnostics.cachePrefixFingerprint);
+    }
+
     private resolveCacheWindowMs(provider: AIProviderId, aiSettings: AiSettingsV1): number | null {
         const windows = aiSettings.cacheWindows;
         if (!windows) return null;
         if (provider === 'anthropic') {
-            return windows.anthropicTtl === '1h' ? 60 * 60 * 1000 : 5 * 60 * 1000;
+            return ANTHROPIC_REQUESTED_CACHE_TTL === '1h'
+                ? 60 * 60 * 1000
+                : 5 * 60 * 1000;
         }
         if (provider === 'google') {
             return Math.max(60, windows.googleTtlSeconds) * 1000;
@@ -8872,6 +8950,13 @@ export class InquiryView extends ItemView {
 
         if (provider === 'anthropic') {
             if (!hasAnthropicCacheUsage && trace?.cacheReuseState !== 'warm') return null;
+            const acceptedCacheTtl = this.getAnthropicAcceptedCacheTtl(trace);
+            if (acceptedCacheTtl === '1h') {
+                return Date.now() + (60 * 60 * 1000);
+            }
+            if (acceptedCacheTtl === '5m') {
+                return Date.now() + (5 * 60 * 1000);
+            }
         } else if (provider === 'google') {
             if (!trace?.cacheStatus && trace?.cacheReuseState !== 'warm') return null;
         } else if (provider === 'openai') {

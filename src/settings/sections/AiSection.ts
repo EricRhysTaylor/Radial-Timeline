@@ -8,7 +8,7 @@ import { AiContextModal } from '../AiContextModal';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import { ERT_CLASSES } from '../../ui/classes';
 import { IMPACT_FULL } from '../SettingImpact';
-import { buildDefaultAiSettings } from '../../ai/settings/aiSettings';
+import { ANTHROPIC_REQUESTED_CACHE_TTL, buildDefaultAiSettings } from '../../ai/settings/aiSettings';
 import { validateAiSettings } from '../../ai/settings/validateAiSettings';
 import { BUILTIN_MODELS } from '../../ai/registry/builtinModels';
 import { getPickerModelsForProvider, PROVIDER_DISPLAY_LABELS, selectLatestModelByReleaseChannel } from '../../ai/registry/releaseChannels';
@@ -1300,10 +1300,16 @@ export function renderAiSection(params: {
         `${provider}::${modelId}`;
 
     const getProviderCacheTtlLabel = (provider: AIProviderId): string => {
+        const aiSettings = ensureCanonicalAiSettings();
         switch (provider) {
-            case 'anthropic': return '1h';
-            case 'openai': return '24h';
-            case 'google': return '24h';
+            case 'anthropic':
+                return ANTHROPIC_REQUESTED_CACHE_TTL;
+            case 'openai':
+                return aiSettings.cacheWindows?.openaiRetention === '24h'
+                    ? '24h'
+                    : `${Math.max(5, aiSettings.cacheWindows?.openaiInMemoryWindowMinutes ?? 10)}m`;
+            case 'google':
+                return `${Math.max(60, aiSettings.cacheWindows?.googleTtlSeconds ?? 900) / 60}m`;
             default: return '';
         }
     };

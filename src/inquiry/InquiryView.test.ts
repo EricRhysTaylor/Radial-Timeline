@@ -153,13 +153,27 @@ describe('InquiryView payload accounting', () => {
         expect(viewSource.includes('this.reconcileEngineTimerInterval(hasLiveContextCountdown);')).toBe(true);
     });
 
-    it('prefers latest timing samples and cached next-run cost when live context reuse exists', () => {
+    it('uses the latest same-model timing sample and cached next-run cost when available', () => {
         const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
         expect(viewSource.includes('options?: { preferLatestSample?: boolean }')).toBe(true);
-        expect(viewSource.includes('const preferLatestSample = !!this.getActiveCacheWindowExpiry();')).toBe(true);
+        expect(viewSource.includes('const preferLatestSample = options?.preferLatestSample !== false')).toBe(true);
+        expect(viewSource.includes('const preferLatestSample = true;')).toBe(true);
+        expect(viewSource.includes('((previous.avgMsPerInputToken * 0.25) + (sampleRate * 0.75))')).toBe(true);
         expect(viewSource.includes('this.refreshEstimateDisplays();')).toBe(true);
         expect(viewSource.includes('const nextRunCanReuseCache = !!cacheSession?.cacheWindowExpiresAt')).toBe(true);
         expect(viewSource.includes("return `Cost · ${cachedLabel} cached`;")).toBe(true);
+    });
+
+    it('stamps Anthropic dispatch fingerprints into the trace and compares them to the previous same-engine run', () => {
+        const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
+        expect(viewSource.includes('private lastAnthropicDispatchPrefixByEngine = new Map<string, string>();')).toBe(true);
+        expect(viewSource.includes('private appendAnthropicDispatchTraceNote(result: InquiryResult, trace: InquiryRunTrace | null | undefined): void {')).toBe(true);
+        expect(viewSource.includes("private getAnthropicAcceptedCacheTtl(trace: InquiryRunTrace | null | undefined): '5m' | '1h' | 'mixed' | 'unknown' {")).toBe(true);
+        expect(viewSource.includes("if (!trace.notes.includes(note)) {\n            trace.notes.unshift(note);\n        }")).toBe(true);
+        expect(viewSource.includes('`requested=${diagnostics.requestedCacheTtl}`')).toBe(true);
+        expect(viewSource.includes('`accepted=${acceptedCacheTtl}`')).toBe(true);
+        expect(viewSource.includes('same-as-previous=')).toBe(true);
+        expect(viewSource.includes('this.lastAnthropicDispatchPrefixByEngine.set(engineKey, diagnostics.cachePrefixFingerprint);')).toBe(true);
     });
 
 });

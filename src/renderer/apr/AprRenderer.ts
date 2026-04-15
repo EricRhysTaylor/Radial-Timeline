@@ -312,7 +312,7 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
     const authorColorResolved = authorColorResolvedInput ?? bookTitleColorResolved;
     const engineColorResolved = engineColorResolvedInput ?? APR_TEXT_COLORS.primary;
     const stageBadgeColorResolved = stageBadgeColor;
-    const rtAttributionColorResolved = pressStageColor;
+    const rtAttributionColorResolved = stageBadgeColorResolved;
     const percentNumberColorResolved = percentNumberColorResolvedInput ?? bookTitleColorResolved;
     const percentSymbolColorResolved = percentSymbolColorResolvedInput ?? bookTitleColorResolved;
     const ringOptions = !showScenesFinal && isThumb

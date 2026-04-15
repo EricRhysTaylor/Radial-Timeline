@@ -342,10 +342,21 @@ export interface AprBadgeOptions {
     portableSvg?: boolean;
 }
 
-function renderRtLogoMark(x: number, y: number, fill: string, opacityValue: string): string {
-    const width = 17;
-    const height = 10;
-    const translateY = y - height;
+function renderRtLogoMark(
+    x: number,
+    y: number,
+    fill: string,
+    opacityValue: string,
+    badgeSize: number
+): string {
+    const aspectRatio = 42.5 / 25;
+    const height = Math.min(25, Math.max(7, badgeSize * 1.03));
+    const width = height * aspectRatio;
+    const inset = Math.min(4, Math.max(1.5, height * 0.16));
+    const leftInset = inset;
+    const bottomInset = inset;
+    const translateX = x + leftInset;
+    const translateY = y - height - bottomInset;
     const pathMarkup = RT_LOGO_PATHS
         .map(pathData => `<path d="${pathData}" fill="${fill}" />`)
         .join('');
@@ -353,7 +364,7 @@ function renderRtLogoMark(x: number, y: number, fill: string, opacityValue: stri
     return `
         <svg
             class="apr-rt-attribution__logo"
-            x="${x.toFixed(2)}"
+            x="${translateX.toFixed(2)}"
             y="${translateY.toFixed(2)}"
             width="${width}"
             height="${height}"
@@ -411,7 +422,7 @@ export function renderAprBadges(options: AprBadgeOptions): string {
     const countdownFill = color('--apr-countdown-color', countdownColor || badgeColor || APR_TEXT_COLORS.primary);
     const countdownOpacity = opacity('var(--apr-countdown-opacity, 0.7)', '0.7');
     const rtFill = color('--apr-rt-attrib-color', rtAttributionColor || badgeColor || APR_TEXT_COLORS.primary);
-    const rtOpacity = opacity('var(--apr-rt-attrib-opacity, 0.35)', '0.35');
+    const rtOpacity = opacity('var(--apr-rt-attrib-opacity, 1)', '1');
     const badgeFontFamilyEscaped = escapeXmlAttr(resolveAprFontFamily(rtBadgeFontFamily));
 
     const stageBadge = showStageBadge ? `
@@ -452,7 +463,7 @@ export function renderAprBadges(options: AprBadgeOptions): string {
 
     const rtAttribution = showRtAttribution ? `
         <a href="https://radialtimeline.com" target="_blank" rel="noopener" class="apr-rt-attribution">
-            ${renderRtLogoMark(-half + stageEdgeInset, half - stageEdgeInset, rtFill, rtOpacity)}
+            ${renderRtLogoMark(-half + stageEdgeInset, half - stageEdgeInset, rtFill, rtOpacity, badgeSize)}
         </a>
     ` : '';
 

@@ -152,6 +152,7 @@ export interface AIProviderConnectionSettings {
 }
 
 export interface AICacheWindowSettings {
+    /** @deprecated Anthropic Inquiry requests use a fixed 1h TTL; persisted values are ignored. */
     anthropicTtl: AnthropicCacheTtl;
     googleTtlSeconds: number;
     openaiRetention: OpenAiPromptCacheRetention;
