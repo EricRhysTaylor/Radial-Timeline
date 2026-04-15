@@ -417,7 +417,7 @@ export interface TranslationKeys {
         authorProgress: {
             hero: { badgeRefresh: string; badgeDefault: string; wikiAriaLabel: string; title: string; desc: string; keyBenefitsHeading: string; featureSpoilerSafe: string; featureShareable: string; featureStageWeighted: string; };
             preview: { sizeLabel: string; actualSizePreview: string; teaserAuto: string; teaserRing: string; teaserScenes: string; teaserColor: string; teaserComplete: string; loading: string; lastUpdateNever: string; kickstarterReady: string; patreonFriendly: string; emptyState: string; renderError: string; lastUpdate: string; };
-            configuration: { name: string; desc: string; linkUrl: { name: string; desc: string; placeholder: string; }; autoUpdateExportPaths: { name: string; desc: string; }; };
+            configuration: { name: string; desc: string; autoUpdateExportPaths: { name: string; desc: string; }; };
             styling: {
                 name: string; desc: string; choosePaletteButton: string;
                 fontDefault: string; fontSystemUI: string;
@@ -1268,12 +1268,7 @@ export const en: TranslationKeys = {
             },
             configuration: {
                 name: 'Configuration',
-                desc: 'Choose how APR measures progress, then set where the graphic should link (e.g. your website, Kickstarter, or shop).',
-                linkUrl: {
-                    name: 'Link URL',
-                    desc: 'Where the graphic should link to (e.g. your website, Kickstarter, or shop).',
-                    placeholder: 'https://your-site.com',
-                },
+                desc: 'Choose how APR measures progress.',
                 autoUpdateExportPaths: {
                     name: 'Auto-update export paths',
                     desc: 'When size or schedule changes, update default and campaign export paths if they still match the default pattern.',

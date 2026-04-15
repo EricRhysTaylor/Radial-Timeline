@@ -56,7 +56,20 @@ function makeSnapshot(overrides: Partial<{
             outlineCount: 1,
             referenceCount: 5,
             evidenceChars: 50000,
-            corpusFingerprint: overrides.corpusFingerprint ?? 'fp-test'
+            corpusFingerprint: overrides.corpusFingerprint ?? 'fp-test',
+            estimate: {
+                sceneCount: 10,
+                outlineCount: 1,
+                referenceCount: 5,
+                evidenceChars: 50000,
+                estimatedTokens: 12500,
+                method: 'rt_cleaned_corpus_exact',
+                breakdown: {
+                    scenesTokens: 10000,
+                    outlineTokens: 1500,
+                    referenceTokens: 1000
+                }
+            }
         },
         estimate: {
             estimatedInputTokens: overrides.estimatedInputTokens ?? 50000,

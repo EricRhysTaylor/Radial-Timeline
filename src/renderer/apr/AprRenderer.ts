@@ -21,7 +21,6 @@ export interface AprRenderOptions {
     exportPreset?: AprPreset; // When provided, overrides size for resolution (export path)
     bookTitle: string;
     authorName?: string;
-    authorUrl?: string;
     progressPercent: number;
     showScenes?: boolean;           // When false, show solid progress ring (bar mode)
     showSubplots?: boolean;
@@ -172,7 +171,6 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
         teaserRevealEnabled,
         bookTitle,
         authorName,
-        authorUrl,
         progressPercent,
         showScenes = true,      // New: when false, shows bar-only mode
         showSubplots = true,
@@ -428,7 +426,6 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
         svg += renderAprBranding({
             bookTitle: bookTitle || DEFAULT_BOOK_TITLE,
             authorName,
-            authorUrl: sanitizeAuthorUrl(authorUrl),
             size,
             layout,
             bookAuthorColor: bookTitleColorResolved,
@@ -634,15 +631,6 @@ function resolveSceneColor(
 
     // Full colors: use getFillForScene for everything
     return getFillForScene(scene, stageColors, undefined, undefined, undefined, portableSvg);
-}
-
-function sanitizeAuthorUrl(url?: string): string | undefined {
-    if (!url) return undefined;
-    const trimmed = url.trim();
-    if (!trimmed) return undefined;
-    const placeholder = 'https://your-site.com';
-    if (trimmed.toLowerCase() === placeholder.toLowerCase()) return undefined;
-    return trimmed;
 }
 
 function resolveStageLabel(stageLabel?: string): { label: string; key: string } {

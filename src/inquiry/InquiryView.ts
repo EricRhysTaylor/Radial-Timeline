@@ -149,7 +149,7 @@ import {
     INQUIRY_INPUT_TOKENS_AMBER,
     INQUIRY_INPUT_TOKENS_RED
 } from './services/inquiryReadinessBuilder';
-import { buildRTCorpusEstimate } from './services/buildRTCorpusEstimate';
+import { buildPendingCorpusEstimateFromManifestEntries } from './services/buildExactCorpusEstimate';
 import {
     InquiryCorpusService,
     isSynopsisCapableClass as isSynopsisCapableClassPure,
@@ -972,6 +972,7 @@ export class InquiryView extends ItemView {
         const engine = this.getResolvedEngine();
         const readinessUi = this.buildReadinessUiState();
         const advisoryContext = this.buildInquiryAdvisoryContext(readinessUi);
+        const currentCorpus = this.getCurrentCorpusContext();
         this.lastEngineAdvisoryContext = advisoryContext;
 
         const failureGuidance = this.getEngineFailureGuidance();
@@ -993,7 +994,11 @@ export class InquiryView extends ItemView {
             providerLabel: engine.provider === 'ollama' ? 'Local LLM' : engine.providerLabel,
             popoverState: this.resolveEnginePopoverState(readinessUi),
             blocked: !!engine.blocked,
-            corpusSummary: buildInquiryEngineCorpusSummary(this.getRTCorpusEstimate(), this.formatApproxCorpusTokens.bind(this)),
+            corpusSummary: buildInquiryEngineCorpusSummary(
+                currentCorpus.corpus,
+                currentCorpus.requestTokens,
+                this.formatApproxCorpusTokens.bind(this)
+            ),
             passPlan: this.getCurrentPassPlan(readinessUi),
             readinessCause: readinessUi.readiness.cause,
             readinessReason: readinessUi.reason,
@@ -1094,11 +1099,11 @@ export class InquiryView extends ItemView {
     } {
         const currentCorpus = this.getCurrentCorpusContext();
         return {
-            text: currentCorpus.corpus.estimatedTokens > 0
-                ? `Inquiry Corpus: ~${this.formatTokenEstimate(currentCorpus.corpus.estimatedTokens)}`
-                : 'Inquiry Corpus: Estimating…',
-            inputTokens: currentCorpus.corpus.estimatedTokens,
-            tier: this.getTokenTier(currentCorpus.corpus.estimatedTokens)
+            text: currentCorpus.requestTokens > 0
+                ? `Full Request: ~${this.formatTokenEstimate(currentCorpus.requestTokens)}`
+                : 'Full Request: Estimating…',
+            inputTokens: currentCorpus.requestTokens,
+            tier: this.getTokenTier(currentCorpus.requestTokens)
         };
     }
 
@@ -1107,26 +1112,24 @@ export class InquiryView extends ItemView {
     }
 
     public getCurrentCorpusContext(): InquiryCurrentCorpusContext {
-        if (this._currentCorpusContext) {
-            return this._currentCorpusContext;
-        }
-        const entryList = this.buildCorpusEntryList('current-corpus', {
-            contextRequired: false,
-            includeInactive: false,
-            applyOverrides: true
-        });
-        const fingerprintSource = entryList.entries
-            .map(entry => `${entry.path}:${entry.sceneId ?? ''}:${entry.mtime}:${entry.mode}:${entry.isTarget ? 1 : 0}`)
-            .sort()
-            .join('|');
-        const manifestFingerprint = this.hashString(`current-corpus|${fingerprintSource}`);
-        const stats = this.buildPayloadStatsFromEntries(entryList.entries, entryList.resolvedRoots, manifestFingerprint, false);
+        const manifest = this.buildCorpusManifest('estimate-snapshot');
+        const snapshot = this.plugin.getInquiryEstimateService().getSnapshot();
+        const snapshotMatches = !!snapshot
+            && snapshot.scope === this.state.scope
+            && snapshot.activeBookId === this.getCanonicalActiveBookId()
+            && snapshot.corpus.corpusFingerprint === manifest.fingerprint;
         this._currentCorpusContext = {
             scope: this.state.scope,
-            activeBookId: stats.activeBookId,
+            activeBookId: this.getCanonicalActiveBookId(),
             scopeLabel: this.getScopeLabel(),
-            corpus: buildRTCorpusEstimate(stats),
-            manifestEntries: entryList.entries.map(entry => ({ ...entry }))
+            corpus: snapshotMatches
+                ? snapshot.corpus.estimate
+                : buildPendingCorpusEstimateFromManifestEntries(manifest.entries),
+            requestTokens: snapshotMatches ? snapshot.estimate.estimatedInputTokens : 0,
+            requestEstimateMethod: snapshotMatches ? snapshot.estimate.estimationMethod : undefined,
+            expectedPassCount: snapshotMatches ? snapshot.estimate.expectedPassCount : 1,
+            safeInputBudget: snapshotMatches ? snapshot.estimate.effectiveInputCeiling : 0,
+            manifestEntries: manifest.entries.map(entry => ({ ...entry }))
         };
         return this._currentCorpusContext;
     }
@@ -3725,6 +3728,7 @@ export class InquiryView extends ItemView {
             isPro,
             advancedContext,
             this.currentRunProgress,
+            this.getRTCorpusEstimate().estimatedTokens,
             (value) => this.formatTokenEstimate(value),
             balanceTooltipText
         );
@@ -8529,6 +8533,9 @@ export class InquiryView extends ItemView {
                 referenceCount: stats.referenceCounts.total,
                 evidenceChars: stats.evidenceChars
             },
+            vault: this.app.vault,
+            metadataCache: this.app.metadataCache,
+            frontmatterMappings: this.plugin.settings.frontmatterMappings,
             runner: this.runner,
             engine,
             overrideSummary: overrides,
@@ -10169,9 +10176,13 @@ export class InquiryView extends ItemView {
     }
 
     private getPreviewTokensValue(): string {
-        const estimate = this.getRTCorpusEstimate();
-        if (estimate.estimatedTokens <= 0) return 'Inquiry Corpus · Estimating…';
-        return `Inquiry Corpus · ~${this.formatTokenEstimate(estimate.estimatedTokens)}`;
+        const context = this.getCurrentCorpusContext();
+        if (context.requestTokens <= 0) return 'Full request · Estimating…';
+        const requestLabel = this.formatTokenEstimate(context.requestTokens);
+        if (context.corpus.estimatedTokens <= 0) {
+            return `Full request · ~${requestLabel}`;
+        }
+        return `Full request · ~${requestLabel} (Corpus ~${this.formatTokenEstimate(context.corpus.estimatedTokens)})`;
     }
 
     private getPreviewCostValue(): string {

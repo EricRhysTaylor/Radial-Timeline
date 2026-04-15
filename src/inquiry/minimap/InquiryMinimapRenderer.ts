@@ -959,6 +959,7 @@ export class InquiryMinimapRenderer {
         isPro: boolean,
         advancedContext: AIRunAdvancedContext | null,
         progress: InquiryRunProgressEvent | null,
+        corpusTokens: number,
         formatTokenEstimate: (value: number) => string,
         balanceTooltipText: (text: string) => string
     ): void {
@@ -1006,10 +1007,15 @@ export class InquiryMinimapRenderer {
 
         const inputLabel = formatTokenEstimate(readinessUi.estimateInputTokens);
         const safeLabel = readinessUi.safeInputBudget > 0 ? formatTokenEstimate(readinessUi.safeInputBudget) : 'n/a';
-        const multiPassLabel = 'Automatic';
+        const corpusLabel = corpusTokens > 0 ? formatTokenEstimate(corpusTokens) : null;
+        const passCount = Math.max(1, Math.floor(passPlan.displayPassCount || 1));
+        const passLabel = passCount === 1 ? '1 pass' : `${passCount} passes`;
         const tooltipLines = [
-            `Inquiry request: ~${inputLabel} / ~${safeLabel} budget`,
-            `Multi-pass: ${multiPassLabel}`
+            `Full request: ~${inputLabel} / ~${safeLabel} per-pass budget`,
+            corpusLabel && corpusLabel !== inputLabel
+                ? `Corpus only: ~${corpusLabel} manuscript`
+                : `Corpus only: ~${inputLabel} manuscript`,
+            `Execution: ${passLabel}`
         ];
         if (readinessUi.readiness.exceedsBudget) {
             tooltipLines.push('Will split into multiple analysis passes');

@@ -8,6 +8,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { buildInquiryEstimateSnapshot, computeEstimateStateKey } from './inquiryEstimateSnapshot';
 import { estimatePassCount } from './inquiryAdvisory';
 import { buildInquiryEstimateTrace } from './inquiryEstimateTrace';
+import { buildExactCorpusEstimateFromManifestEntries } from './buildExactCorpusEstimate';
 
 vi.mock('./inquiryEstimateTrace', () => ({
     buildInquiryEstimateTrace: vi.fn(async () => ({
@@ -28,6 +29,21 @@ vi.mock('./inquiryEstimateTrace', () => ({
         response: null,
         sanitizationNotes: [],
         notes: []
+    }))
+}));
+vi.mock('./buildExactCorpusEstimate', () => ({
+    buildExactCorpusEstimateFromManifestEntries: vi.fn(async () => ({
+        sceneCount: 53,
+        outlineCount: 0,
+        referenceCount: 0,
+        evidenceChars: 53_000,
+        estimatedTokens: 13_250,
+        method: 'rt_cleaned_corpus_exact',
+        breakdown: {
+            scenesTokens: 13_250,
+            outlineTokens: 0,
+            referenceTokens: 0
+        }
     }))
 }));
 
@@ -244,6 +260,9 @@ describe('buildInquiryEstimateSnapshot', () => {
                 referenceCount: 0,
                 evidenceChars: 53_000
             },
+            vault: {} as never,
+            metadataCache: {} as never,
+            frontmatterMappings: undefined,
             runner: { estimateExecutionPassCountFromPrompt: () => 1 } as never,
             engine: {
                 provider: 'anthropic',
@@ -269,6 +288,7 @@ describe('buildInquiryEstimateSnapshot', () => {
 
         expect(snapshot.corpus.sceneCount).toBe(53);
         expect(snapshot.corpus.scenes).toHaveLength(53);
+        expect(snapshot.corpus.estimate.estimatedTokens).toBe(13_250);
     });
 
     it('preserves provider-counted estimation metadata from the canonical trace', async () => {
@@ -312,6 +332,9 @@ describe('buildInquiryEstimateSnapshot', () => {
                 referenceCount: 0,
                 evidenceChars: 0
             },
+            vault: {} as never,
+            metadataCache: {} as never,
+            frontmatterMappings: undefined,
             runner: { estimateExecutionPassCountFromPrompt: () => 2 } as never,
             engine: {
                 provider: 'anthropic',
@@ -338,5 +361,6 @@ describe('buildInquiryEstimateSnapshot', () => {
         expect(snapshot.estimate.estimationMethod).toBe('anthropic_count');
         expect(snapshot.estimate.uncertaintyTokens).toBe(256);
         expect(snapshot.estimate.expectedPassCount).toBe(2);
+        expect(vi.mocked(buildExactCorpusEstimateFromManifestEntries)).toHaveBeenCalled();
     });
 });

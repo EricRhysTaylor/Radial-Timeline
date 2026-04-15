@@ -349,9 +349,8 @@ export interface AuthorProgressDefaults {
     // Custom background presets (user-saved colors with names)
     aprCustomBgPresets?: Array<{ label: string; color: string }>;
 
-    // Identity & Branding
+    // Identity
     authorName?: string;
-    authorUrl: string;
 
     // Publishing defaults
     lastPublishedDate?: string; // ISO string

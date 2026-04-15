@@ -46,7 +46,20 @@ function makeSnapshot(overrides?: Partial<InquiryEstimateSnapshot>): InquiryEsti
             outlineCount: 1,
             referenceCount: 0,
             evidenceChars: 20000,
-            corpusFingerprint: 'fp-test'
+            corpusFingerprint: 'fp-test',
+            estimate: {
+                sceneCount: 2,
+                outlineCount: 1,
+                referenceCount: 0,
+                evidenceChars: 20000,
+                estimatedTokens: 5000,
+                method: 'rt_cleaned_corpus_exact',
+                breakdown: {
+                    scenesTokens: 4500,
+                    outlineTokens: 500,
+                    referenceTokens: 0
+                }
+            }
         },
         estimate: {
             estimatedInputTokens: 50000,
@@ -88,6 +101,9 @@ function makeParams(overrides?: Partial<{
             referenceCount: 0,
             evidenceChars: 20000
         },
+        vault: {} as any,
+        metadataCache: {} as any,
+        frontmatterMappings: undefined,
         runner: {} as any,
         engine: {
             provider: (overrides?.provider ?? 'anthropic') as any,

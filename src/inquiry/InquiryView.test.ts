@@ -176,4 +176,11 @@ describe('InquiryView payload accounting', () => {
         expect(viewSource.includes('this.lastAnthropicDispatchPrefixByEngine.set(engineKey, diagnostics.cachePrefixFingerprint);')).toBe(true);
     });
 
+    it('matches current corpus context against the estimate-snapshot manifest fingerprint instead of a separate current-corpus hash', () => {
+        const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
+        expect(viewSource.includes("const manifest = this.buildCorpusManifest('estimate-snapshot');")).toBe(true);
+        expect(viewSource.includes('snapshot.corpus.corpusFingerprint === manifest.fingerprint')).toBe(true);
+        expect(viewSource.includes("this.hashString(`current-corpus|${fingerprintSource}`)")).toBe(false);
+    });
+
 });

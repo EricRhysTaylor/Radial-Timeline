@@ -2,9 +2,10 @@ import type { RTCorpusTokenEstimate } from '../../ai/types';
 
 export function buildInquiryEngineCorpusSummary(
     estimate: RTCorpusTokenEstimate,
+    requestTokens: number,
     formatApproxCorpusTokens: (value: number) => string
 ): string {
-    if (estimate.estimatedTokens <= 0) return 'Corpus · Estimating…';
+    if (requestTokens <= 0 && estimate.estimatedTokens <= 0) return 'Full request · Estimating…';
     const outlineLabel = estimate.breakdown.outlineTokens > 0
         ? `Outline ${formatApproxCorpusTokens(estimate.breakdown.outlineTokens)}`
         : 'Outline none';
@@ -12,7 +13,12 @@ export function buildInquiryEngineCorpusSummary(
         ? `References ${formatApproxCorpusTokens(estimate.breakdown.referenceTokens)}`
         : 'References none';
     return [
-        `Corpus · Total ${formatApproxCorpusTokens(estimate.estimatedTokens)}`,
+        requestTokens > 0
+            ? `Full request ${formatApproxCorpusTokens(requestTokens)}`
+            : 'Full request Estimating…',
+        estimate.estimatedTokens > 0
+            ? `Corpus ${formatApproxCorpusTokens(estimate.estimatedTokens)}`
+            : 'Corpus estimating…',
         `Scenes ${formatApproxCorpusTokens(estimate.breakdown.scenesTokens)}`,
         outlineLabel,
         referenceLabel

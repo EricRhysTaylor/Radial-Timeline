@@ -1486,12 +1486,21 @@ export function renderAiSection(params: {
     }> => {
         const currentCorpus = getCurrentCorpusContext();
         if (currentCorpus) {
+            const requestText = currentCorpus.requestTokens > 0
+                ? `Full Request: ${formatCorpusTokenSummary(currentCorpus.requestTokens)}`
+                : 'Full Request: Calculating...';
+            const corpusText = currentCorpus.corpus.estimatedTokens > 0
+                ? `Corpus: ${formatCorpusTokenSummary(currentCorpus.corpus.estimatedTokens)}`
+                : 'Corpus: Calculating...';
             return {
-                sizeText: `Inquiry Corpus: ${formatCorpusTokenSummary(currentCorpus.corpus.estimatedTokens)}`,
-                structureText: formatCorpusStructureSummary(
-                    currentCorpus.corpus.sceneCount,
-                    currentCorpus.corpus.outlineCount
-                )
+                sizeText: requestText,
+                structureText: [
+                    corpusText,
+                    formatCorpusStructureSummary(
+                        currentCorpus.corpus.sceneCount,
+                        currentCorpus.corpus.outlineCount
+                    )
+                ].filter(Boolean).join(' · ')
             };
         }
         return {
@@ -1552,7 +1561,7 @@ export function renderAiSection(params: {
     const refreshCostComparisonTable = async (): Promise<void> => {
         const requestId = ++costComparisonRequestId;
         renderCostEstimateCorpusSummary({
-            sizeText: 'Inquiry Corpus: Calculating...',
+            sizeText: 'Full Request: Calculating...',
             structureText: 'Scanning corpus...'
         });
         setActiveCostComparisonRow(null, null);

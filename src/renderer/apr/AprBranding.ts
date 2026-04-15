@@ -133,7 +133,6 @@ function resolvePortableBaselineY(
 export interface AprBrandingOptions {
     bookTitle: string;
     authorName?: string;
-    authorUrl?: string;
     size: AprSize;
     layout?: AprLayoutSpec;
     bookAuthorColor?: string;
@@ -160,7 +159,7 @@ export interface AprBrandingOptions {
  */
 export function renderAprBranding(options: AprBrandingOptions): string {
     const {
-        bookTitle, authorName, authorUrl, size, bookAuthorColor, authorColor,
+        bookTitle, authorName, size, bookAuthorColor, authorColor,
         bookTitleFontFamily = 'Inter', bookTitleFontWeight = 400, bookTitleFontItalic = false, bookTitleFontSize,
         authorNameFontFamily = 'Inter', authorNameFontWeight = 400, authorNameFontItalic = false, authorNameFontSize,
         portableSvg = false
@@ -305,19 +304,8 @@ export function renderAprBranding(options: AprBrandingOptions): string {
     // causes all whitespace to be rendered as actual space characters on the path
     const brandingText = `<text font-family="${escapeXmlAttr(resolvedBookTitleFontFamily)}" font-size="${avgFontSize}" font-weight="${bookTitleFontWeight}" ${italicAttr(bookTitleFontItalic)} letter-spacing="${adjustedLetterSpacing}" xml:space="preserve"><textPath href="#${circlePathId}" startOffset="${startOffset}">${textContent}</textPath></text>`;
 
-
-
-    // Large clickable hotspot covering the entire timeline for author URL
-    // Place it behind everything but in front of background
-    const timelineHotspot = authorUrl?.trim() ? `
-        <a href="${escapeXmlAttr(authorUrl)}" target="_blank" rel="noopener" class="apr-timeline-hotspot">
-            <circle cx="0" cy="0" r="${brandingRadius}" fill="transparent" />
-        </a>
-    ` : '';
-
     return `
         <g class="apr-branding">
-            ${timelineHotspot}
             ${brandingDefs}
             ${brandingText}
         </g>

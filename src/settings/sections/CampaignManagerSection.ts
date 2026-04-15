@@ -706,16 +706,19 @@ function renderCampaignDetails(
         const currentCampaign = plugin.settings.authorProgress?.campaigns?.[index];
         if (!currentCampaign) return;
         const styleProfiles = styleService.getProfiles();
-        const currentSource = currentCampaign.styleSource ?? 'global';
-        const selectedProfile = styleProfiles.find(profile => profile.id === currentCampaign.styleProfileId) ?? styleProfiles[0];
-        const activeProfile = currentSource === 'profile' ? selectedProfile : undefined;
+        const selectedProfile = styleProfiles.find(profile => profile.id === currentCampaign.styleProfileId);
+        const designerStyle = styleService.resolveDesignerStyle();
+        const baselineStyle = selectedProfile
+            ? selectedProfile.style
+            : styleService.captureCurrentStyle(styleService.getDefaults());
+        const hasUnsavedStyleChanges = !styleService.stylesMatch(designerStyle, baselineStyle);
 
-        const saveOrOverwriteStyleProfile = () => {
+        const openSaveStyleModal = () => {
             const suggestedName = selectedProfile?.name ?? `${campaign.name} Style`;
             const modal = new CampaignNameModal(plugin.app, {
                 badgeLabel: 'Style',
                 title: 'Save APR Style',
-                subtitle: 'Save the current Social APR appearance as a reusable style. Using an existing name will overwrite that preset.',
+                subtitle: 'Save the current APR preview as a reusable style preset. Using an existing name will update that preset.',
                 initialValue: suggestedName,
                 actionLabel: 'Save',
                 onSubmit: async (value) => {
@@ -740,6 +743,19 @@ function renderCampaignDetails(
                 }
             });
             modal.open();
+        };
+
+        const updateSelectedStyleProfile = async () => {
+            if (!selectedProfile || !plugin.settings.authorProgress?.campaigns) return;
+            const targetCampaign = plugin.settings.authorProgress.campaigns[index];
+            const { profile } = styleService.saveCurrentStyleAsProfile(selectedProfile.name, { overwrite: true });
+            targetCampaign.styleSource = 'profile';
+            targetCampaign.styleProfileId = profile.id;
+            styleService.loadCampaignIntoDesigner(targetCampaign.id);
+            await plugin.saveSettings();
+            new Notice(`Updated style "${profile.name}"`);
+            if (onDesignerContextChange) onDesignerContextChange();
+            else onUpdate();
         };
 
         const openDeleteStyleModal = (profile: AprStyleProfile) => {
@@ -793,13 +809,14 @@ function renderCampaignDetails(
         };
 
         const rowHeader = styleBlock.createDiv({ cls: `${ERT_CLASSES.STACK_TIGHT} ert-campaign-style-header` });
-        rowHeader.createDiv({ cls: 'setting-item-name', text: 'Campaign style' });
+        rowHeader.createDiv({ cls: 'setting-item-name', text: 'APR style' });
         rowHeader.createDiv({
             cls: 'setting-item-description',
-            text: 'Choose the source, load a saved preset, and manage style profiles for the preview above.'
+            text: 'Load a saved style into the APR preview, edit it above, then save or update presets.'
         });
 
-        const styleGrid = styleBlock.createDiv({ cls: `${ERT_CLASSES.GRID_FORM} ${ERT_CLASSES.GRID_FORM_3} ert-campaign-style-grid` });
+        const styleGrid = styleBlock.createDiv({ cls: `${ERT_CLASSES.GRID_FORM} ert-campaign-style-grid` });
+        styleGrid.style.gridTemplateColumns = 'minmax(0, 1.2fr) minmax(0, 1fr)';
 
         const createStyleCard = (title: string, description: string) => {
             const cardEl = styleGrid.createDiv({ cls: `${ERT_CLASSES.PANEL} ert-panel--muted ${ERT_CLASSES.STACK} ert-campaign-style-card` });
@@ -809,86 +826,71 @@ function renderCampaignDetails(
             return cardEl;
         };
 
-        const sourceCard = createStyleCard(
-            'Source',
-            'Pick whether this campaign follows the live Social APR style or a saved preset.'
-        );
-        if (currentSource === 'global') sourceCard.addClass('is-active');
-        const sourceControl = sourceCard.createDiv({ cls: 'ert-campaign-style-card__control' });
-        const styleSourceDropdown = new DropdownComponent(sourceControl);
-        styleSourceDropdown.selectEl.addClass('ert-input', 'ert-input--fit-selected', 'ert-typography-select');
-        styleSourceDropdown.addOption('global', 'Use current APR style');
-        styleSourceDropdown.addOption('profile', 'Use saved style');
-        styleSourceDropdown.setValue(currentSource);
-        fitSelectToSelectedLabel(styleSourceDropdown.selectEl, { minPx: 150, extraPx: 18 });
-        styleSourceDropdown.onChange(async (val) => {
-            if (!plugin.settings.authorProgress?.campaigns) return;
-            const targetCampaign = plugin.settings.authorProgress.campaigns[index];
-            targetCampaign.styleSource = val === 'profile' ? 'profile' : 'global';
-            if (targetCampaign.styleSource === 'global') {
-                targetCampaign.styleProfileId = undefined;
-            } else if (!targetCampaign.styleProfileId && styleProfiles[0]) {
-                targetCampaign.styleProfileId = styleProfiles[0].id;
-            }
-            styleService.loadCampaignIntoDesigner(targetCampaign.id);
-            await plugin.saveSettings();
-            if (onDesignerContextChange) onDesignerContextChange();
-            else onUpdate();
-        });
-        sourceCard.createDiv({
-            cls: ERT_CLASSES.FIELD_NOTE,
-            text: currentSource === 'profile'
-                ? `Preview is using ${activeProfile ? `"${activeProfile.name}"` : 'a saved style'}.`
-                : 'Preview is using the current Social APR settings.'
-        });
-
         const profileCard = createStyleCard(
             'Saved style',
-            'Choose which saved profile this campaign should load into the preview and export path.'
+            'Choose a saved style to load into the APR preview, or keep working from the current preview.'
         );
         if (selectedProfile) profileCard.addClass('is-active');
         const profileControl = profileCard.createDiv({ cls: 'ert-campaign-style-card__control' });
         const profileDropdown = new DropdownComponent(profileControl);
         profileDropdown.selectEl.addClass('ert-input', 'ert-input--fit-selected', 'ert-typography-select');
-        if (styleProfiles.length === 0) {
-            profileDropdown.addOption('', 'No saved styles yet');
-            profileDropdown.setDisabled(true);
-        } else {
-            styleProfiles.forEach((profile) => {
-                profileDropdown.addOption(profile.id, profile.name);
-            });
-            profileDropdown.setValue(selectedProfile?.id ?? styleProfiles[0].id);
-            fitSelectToSelectedLabel(profileDropdown.selectEl, { minPx: 150, extraPx: 18 });
-            profileDropdown.onChange(async (val) => {
-                if (!plugin.settings.authorProgress?.campaigns) return;
-                const targetCampaign = plugin.settings.authorProgress.campaigns[index];
-                targetCampaign.styleProfileId = val || undefined;
-                targetCampaign.styleSource = val ? 'profile' : 'global';
-                styleService.loadCampaignIntoDesigner(targetCampaign.id);
-                await plugin.saveSettings();
-                if (onDesignerContextChange) onDesignerContextChange();
-                else onUpdate();
-            });
-        }
+        profileDropdown.addOption('', 'Current APR preview');
+        styleProfiles.forEach((profile) => {
+            profileDropdown.addOption(profile.id, profile.name);
+        });
+        profileDropdown.setValue(selectedProfile?.id ?? '');
+        fitSelectToSelectedLabel(profileDropdown.selectEl, { minPx: 170, extraPx: 18 });
+        profileDropdown.onChange(async (val) => {
+            if (!plugin.settings.authorProgress?.campaigns) return;
+            const targetCampaign = plugin.settings.authorProgress.campaigns[index];
+            targetCampaign.styleProfileId = val || undefined;
+            targetCampaign.styleSource = val ? 'profile' : 'global';
+            styleService.loadCampaignIntoDesigner(targetCampaign.id);
+            await plugin.saveSettings();
+            if (onDesignerContextChange) onDesignerContextChange();
+            else onUpdate();
+        });
         profileCard.createDiv({
             cls: ERT_CLASSES.FIELD_NOTE,
-            text: styleProfiles.length === 0
-                ? 'Save a preset first, then load it here.'
-                : 'Selecting a preset loads it into the APR preview.'
+            text: selectedProfile
+                ? `Loaded from "${selectedProfile.name}".`
+                : 'Using the current APR preview only.'
+        });
+        profileCard.createDiv({
+            cls: ERT_CLASSES.FIELD_NOTE,
+            text: hasUnsavedStyleChanges
+                ? 'Changes not saved.'
+                : selectedProfile
+                    ? 'Loaded preset is up to date.'
+                    : 'Current preview is not saved as a preset yet.'
         });
 
-        const libraryCard = createStyleCard(
-            'Style library',
-            'Save the current APR preview as a new preset, overwrite or delete.'
+        const actionsCard = createStyleCard(
+            'Preset actions',
+            'Save the current APR preview as a new preset, update the loaded preset, or delete it.'
         );
-        const libraryActions = libraryCard.createDiv({ cls: `${ERT_CLASSES.INLINE} ert-campaign-style-card__actions` });
-        const saveStyleBtn = new ButtonComponent(libraryActions)
-            .setButtonText('Save / overwrite')
+        const actionsRow = actionsCard.createDiv({ cls: `${ERT_CLASSES.INLINE} ert-campaign-style-card__actions` });
+        const primaryLabel = selectedProfile && hasUnsavedStyleChanges ? 'Update' : 'Save';
+        const primaryAction = new ButtonComponent(actionsRow)
+            .setButtonText(primaryLabel)
             .setCta()
-            .onClick(() => saveOrOverwriteStyleProfile());
-        saveStyleBtn.buttonEl.addClass('ert-button--sm');
+            .onClick(() => {
+                if (selectedProfile && hasUnsavedStyleChanges) {
+                    void updateSelectedStyleProfile();
+                    return;
+                }
+                openSaveStyleModal();
+            });
+        primaryAction.buttonEl.addClass('ert-button--sm');
 
-        const deleteStyleBtn = libraryActions.createEl('button', {
+        if (selectedProfile) {
+            const saveNewBtn = new ButtonComponent(actionsRow)
+                .setButtonText('Save as new')
+                .onClick(() => openSaveStyleModal());
+            saveNewBtn.buttonEl.addClass('ert-button--sm');
+        }
+
+        const deleteStyleBtn = actionsRow.createEl('button', {
             cls: `${ERT_CLASSES.ICON_BTN} ert-iconBtn--danger`,
             attr: { type: 'button', 'aria-label': 'Delete preset' }
         });
@@ -899,6 +901,16 @@ function renderCampaignDetails(
             if (!selectedProfile) return;
             openDeleteStyleModal(selectedProfile);
         };
+        actionsCard.createDiv({
+            cls: ERT_CLASSES.FIELD_NOTE,
+            text: hasUnsavedStyleChanges
+                ? selectedProfile
+                    ? `Changes not saved. Update "${selectedProfile.name}" or save as new.`
+                    : 'Changes not saved. Save to create a reusable preset.'
+                : selectedProfile
+                    ? `Ready to reuse "${selectedProfile.name}".`
+                    : 'Save the current preview if you want to reuse it across campaigns.'
+        });
     };
 
     const styleBlock = details.createDiv({ cls: `${ERT_CLASSES.STACK} ert-campaign-style-block` });
@@ -1327,7 +1339,6 @@ async function renderTeaserStagesPreviews(
                 progressPercent: stage.progress,
                 bookTitle: resolvedBookTitle,
                 authorName: settings.authorName || '',
-                authorUrl: '',
                 showScenes: isRingOnly ? false : revealOptions.showScenes,
                 showSubplots: revealOptions.showSubplots,
                 showActs: revealOptions.showActs,

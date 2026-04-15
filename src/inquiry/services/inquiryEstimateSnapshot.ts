@@ -22,7 +22,9 @@
  *     because changing rules changes manifest entries → changes fingerprint.
  */
 
+import type { MetadataCache, Vault } from 'obsidian';
 import type { AIProviderId } from '../../ai/types';
+import type { RTCorpusTokenEstimate } from '../../ai/types';
 import type { TokenEstimateMethod } from '../../ai/tokens/inputTokenEstimate';
 import type { InquiryLens, InquiryScope, InquirySelectionMode } from '../state';
 import type { ResolvedInquiryEngine } from './inquiryModelResolver';
@@ -31,6 +33,7 @@ import type { InquiryRunnerService } from '../runner/InquiryRunnerService';
 import { INQUIRY_CANONICAL_ESTIMATE_QUESTION, INQUIRY_MAX_OUTPUT_TOKENS } from '../constants';
 import { buildInquiryEstimateTrace } from './inquiryEstimateTrace';
 import { summarizeScopedInquiryEntries } from './canonicalInquiryCorpus';
+import { buildExactCorpusEstimateFromManifestEntries } from './buildExactCorpusEstimate';
 
 // ── Version ─────────────────────────────────────────────────────────
 
@@ -62,6 +65,7 @@ export interface InquiryEstimateSnapshot {
         readonly referenceCount: number;
         readonly evidenceChars: number;
         readonly corpusFingerprint: string;
+        readonly estimate: RTCorpusTokenEstimate;
     };
 
     readonly estimate: {
@@ -88,6 +92,9 @@ export interface EstimateSnapshotParams {
         referenceCount: number;
         evidenceChars: number;
     };
+    vault: Vault;
+    metadataCache: MetadataCache;
+    frontmatterMappings?: Record<string, string>;
     runner: InquiryRunnerService;
     engine: ResolvedInquiryEngine;
     overrideSummary: {
@@ -179,6 +186,12 @@ export async function buildInquiryEstimateSnapshot(
     });
 
     const corpusIds = extractCorpusIds(params.manifest);
+    const corpusEstimate = await buildExactCorpusEstimateFromManifestEntries({
+        entries: params.manifest.entries,
+        vault: params.vault,
+        metadataCache: params.metadataCache,
+        frontmatterMappings: params.frontmatterMappings
+    });
 
     // Build a trace using the canonical question to get a precise token estimate.
     const runnerInput: InquiryRunnerInput = {
@@ -231,11 +244,12 @@ export async function buildInquiryEstimateSnapshot(
             scenes: corpusIds.scenes,
             outlines: corpusIds.outlines,
             references: corpusIds.references,
-            sceneCount: corpusIds.scenes.length,
-            outlineCount: corpusIds.outlines.length,
-            referenceCount: corpusIds.references.length,
-            evidenceChars: params.payloadStats.evidenceChars,
+            sceneCount: corpusEstimate.sceneCount,
+            outlineCount: corpusEstimate.outlineCount,
+            referenceCount: corpusEstimate.referenceCount,
+            evidenceChars: corpusEstimate.evidenceChars,
             corpusFingerprint: params.manifest.fingerprint,
+            estimate: corpusEstimate,
         },
 
         estimate: {

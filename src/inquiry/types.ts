@@ -51,6 +51,10 @@ export type InquiryCurrentCorpusContext = {
     activeBookId?: string;
     scopeLabel: string;
     corpus: RTCorpusTokenEstimate;
+    requestTokens: number;
+    requestEstimateMethod?: TokenEstimateMethod;
+    expectedPassCount: number;
+    safeInputBudget: number;
     manifestEntries: CorpusManifestEntry[];
 };
 

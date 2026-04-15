@@ -340,7 +340,10 @@ export interface AIRunRequest {
 
 export type InputTokenEstimateMethod = 'heuristic_chars' | 'anthropic_count';
 export type TokenCountSource = 'provider_count' | 'estimate';
-export type RTCorpusEstimateMethod = 'rt_chars_heuristic';
+export type RTCorpusEstimateMethod =
+    | 'rt_chars_heuristic'
+    | 'rt_cleaned_corpus_exact'
+    | 'rt_pending';
 
 export interface TokenCountResult {
     provider: Exclude<AIProviderId, 'none'>;

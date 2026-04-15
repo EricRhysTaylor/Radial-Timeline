@@ -187,6 +187,12 @@ export class AprStyleService {
         });
     }
 
+    public stylesMatch(a?: AprStyleSettings, b?: AprStyleSettings): boolean {
+        const left = a ?? {};
+        const right = b ?? {};
+        return this.styleKeys.every((key) => left[key] === right[key]);
+    }
+
     public resolveStyleProfile(campaign?: AuthorProgressCampaign): AprStyleProfile | undefined {
         if (campaign?.styleSource !== 'profile' || !campaign.styleProfileId) return undefined;
         return this.getProfiles().find(entry => entry.id === campaign.styleProfileId);

@@ -73,7 +73,7 @@ export function renderInquiryEngineReadinessStrip(args: {
         args.readinessMessageEl.setText('Selected model passes basic validation');
         args.readinessScopeEl.setText('This model does not meet Inquiry requirements for the current corpus');
     } else if (args.popoverState === 'ready') {
-        args.readinessMessageEl.setText(`Single pass.${cacheSuffix}`);
+        args.readinessMessageEl.setText(`Execution: 1 pass.${cacheSuffix}`);
         args.readinessScopeEl.setText(args.runScopeLabel);
     } else if (args.popoverState === 'multi-pass') {
         const estimateLabel = args.passPlan.estimatedPassCount ?? args.passPlan.displayPassCount;
@@ -83,7 +83,7 @@ export function renderInquiryEngineReadinessStrip(args: {
         const reason = args.passPlan.multiPassTriggerReason
             ?? 'Manuscript exceeds the per-pass planning budget.';
         args.readinessMessageEl.setText(
-            `Expected structured passes: ${estimateLabel} — ${reason.replace(/\.$/, '')}.${recentRunSuffix}${cacheSuffix}`
+            `Estimated execution: ${estimateLabel} ${estimateLabel === 1 ? 'pass' : 'passes'} — ${reason.replace(/\.$/, '')}.${recentRunSuffix}${cacheSuffix}`
         );
         args.readinessScopeEl.setText(args.runScopeLabel);
     } else {

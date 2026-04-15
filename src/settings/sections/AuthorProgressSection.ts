@@ -527,83 +527,6 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const currentSpokeMode = styleSettings.aprSpokeColorMode || 'dark';
     const currentSpokeColor = styleSettings.aprSpokeColor || '#ffffff';
 
-    // Link URL
-    const linkUrlSetting = new Setting(stylingBody)
-        .setName(t('settings.authorProgress.configuration.linkUrl.name'))
-        .setDesc(t('settings.authorProgress.configuration.linkUrl.desc'));
-
-    linkUrlSetting.settingEl.addClass('ert-setting-full-width-input');
-
-    linkUrlSetting.addText(text => {
-        const successClass = 'ert-input--success';
-        const errorClass = 'ert-input--error';
-        const clearInputState = () => {
-            text.inputEl.removeClass(successClass);
-            text.inputEl.removeClass(errorClass);
-        };
-        const flashError = (timeout = 2000) => {
-            text.inputEl.addClass(errorClass);
-            window.setTimeout(() => {
-                text.inputEl.removeClass(errorClass);
-            }, timeout);
-        };
-        const flashSuccess = (timeout = 1000) => {
-            text.inputEl.addClass(successClass);
-            window.setTimeout(() => {
-                text.inputEl.removeClass(successClass);
-            }, timeout);
-        };
-        const isValidUrl = (value: string) => {
-            try {
-                const url = new URL(value);
-                return url.protocol === 'http:' || url.protocol === 'https:';
-            } catch {
-                return false;
-            }
-        };
-
-        text.setPlaceholder(t('settings.authorProgress.configuration.linkUrl.placeholder'))
-            .setValue(settings?.authorUrl || '')
-            .onChange(() => {
-                clearInputState();
-            });
-
-        const handleBlur = async () => {
-            const val = text.getValue().trim();
-            clearInputState();
-
-            if (!val) {
-                if (plugin.settings.authorProgress) {
-                    plugin.settings.authorProgress.defaults.authorUrl = '';
-                    await plugin.saveSettings();
-                    refreshPreview();
-                    flashSuccess();
-                }
-                return;
-            }
-
-            if (!isValidUrl(val)) {
-                flashError();
-                return;
-            }
-
-            if (plugin.settings.authorProgress) {
-                plugin.settings.authorProgress.defaults.authorUrl = val;
-                await plugin.saveSettings();
-                refreshPreview();
-                flashSuccess();
-            }
-        };
-
-        plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });
-        plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
-            if (evt.key === 'Enter') {
-                evt.preventDefault();
-                text.inputEl.blur();
-            }
-        });
-    });
-
     // ─────────────────────────────────────────────────────────────────────────
     // UNIFIED TYPOGRAPHY & COLOR CONTROLS
     // Each element: Row 1 = Label + Text Input (if applicable) + Color + Hex
@@ -1960,7 +1883,6 @@ async function renderHeroPreview(
             progressPercent: displayPercent,
             bookTitle: previewBookTitle,
             authorName: aprSettings?.authorName || '',
-            authorUrl: aprSettings?.authorUrl || '',
             showScenes,
             showSubplots,
             showActs,
