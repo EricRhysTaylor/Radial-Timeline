@@ -19,6 +19,37 @@ export class GoogleProvider implements AIProvider {
         return CAPS.includes(capability);
     }
 
+    private buildCacheSetupFailure(
+        req: GenerateTextRequest,
+        ttlSeconds: number,
+        stableText: string,
+        error: unknown
+    ): ProviderExecutionResult {
+        const message = error instanceof Error ? error.message : String(error);
+        return {
+            success: false,
+            content: null,
+            responseData: {
+                error: {
+                    message,
+                    type: 'cache_setup_error'
+                }
+            },
+            diagnostics: {
+                cacheSetupFailed: true,
+                cacheSetupMode: 'cached_content',
+                stableTextChars: stableText.length,
+                ttlSeconds
+            },
+            aiStatus: 'rejected',
+            aiReason: 'cache_setup_failed',
+            aiProvider: 'google',
+            aiModelRequested: req.modelId,
+            aiModelResolved: req.modelId,
+            error: `Gemini cached content setup failed before dispatch: ${message}`
+        };
+    }
+
     async generateText(req: GenerateTextRequest): Promise<ProviderExecutionResult> {
         const apiKey = await getCredential(this.plugin, 'google');
         const aiSettings = validateAiSettings(this.plugin.settings.aiSettings ?? buildDefaultAiSettings()).value;
@@ -26,7 +57,7 @@ export class GoogleProvider implements AIProvider {
         let userPrompt = req.userPrompt;
         let cachedContentName: string | undefined;
         let cacheStatus: ProviderExecutionResult['cacheStatus'];
-        if (!req.citationsEnabled) {
+        if (!req.citationsEnabled && !req.bypassProviderReuse) {
             const delimIndex = userPrompt.indexOf(CACHE_BREAK_DELIMITER);
             if (delimIndex > 0) {
                 const stableText = userPrompt.slice(0, delimIndex).trimEnd();
@@ -46,7 +77,7 @@ export class GoogleProvider implements AIProvider {
                             userPrompt = volatileText;
                         }
                     } catch (error) {
-                        console.warn('[Gemini cache] Falling back to uncached request:', error);
+                        return this.buildCacheSetupFailure(req, ttlSeconds, stableText, error);
                     }
                 }
             }
@@ -70,6 +101,7 @@ export class GoogleProvider implements AIProvider {
             success: result.success,
             content: result.content,
             responseData: result.responseData,
+            requestPayload: result.requestPayload,
             aiStatus: result.success ? 'success' : classification.aiStatus,
             aiReason: result.success ? undefined : classification.aiReason,
             aiProvider: 'google',
@@ -89,7 +121,7 @@ export class GoogleProvider implements AIProvider {
         let userPrompt = req.userPrompt;
         let cachedContentName: string | undefined;
         let cacheStatus: ProviderExecutionResult['cacheStatus'];
-        if (!req.citationsEnabled) {
+        if (!req.citationsEnabled && !req.bypassProviderReuse) {
             const delimIndex = userPrompt.indexOf(CACHE_BREAK_DELIMITER);
             if (delimIndex > 0) {
                 const stableText = userPrompt.slice(0, delimIndex).trimEnd();
@@ -109,7 +141,7 @@ export class GoogleProvider implements AIProvider {
                             userPrompt = volatileText;
                         }
                     } catch (error) {
-                        console.warn('[Gemini cache] Falling back to uncached request:', error);
+                        return this.buildCacheSetupFailure(req, ttlSeconds, stableText, error);
                     }
                 }
             }
@@ -133,6 +165,7 @@ export class GoogleProvider implements AIProvider {
             success: result.success,
             content: result.content,
             responseData: result.responseData,
+            requestPayload: result.requestPayload,
             aiStatus: result.success ? 'success' : classification.aiStatus,
             aiReason: result.success ? undefined : classification.aiReason,
             aiProvider: 'google',

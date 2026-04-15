@@ -36,7 +36,7 @@ describe('runStructuredJsonPipeline', () => {
         }
     });
 
-    it('repairs malformed JSON once and succeeds', async () => {
+    it('fails explicitly on malformed JSON instead of attempting a repair pass', async () => {
         let calls = 0;
         const result = await runStructuredJsonPipeline({
             providerLabel: 'Local LLM',
@@ -44,15 +44,8 @@ describe('runStructuredJsonPipeline', () => {
             jsonMode: 'prompt_only',
             maxRetries: 1,
             runner: {
-                async run({ userPrompt }) {
+                async run() {
                     calls += 1;
-                    if (userPrompt.includes('Repair the invalid JSON below.')) {
-                        return {
-                            content: '{"status":"ok"}',
-                            responseData: { repaired: true },
-                            requestPayload: { repaired: true }
-                        };
-                    }
                     return {
                         content: '```json\n{"status": }\n```',
                         responseData: { repaired: false },
@@ -64,14 +57,16 @@ describe('runStructuredJsonPipeline', () => {
             userPrompt: 'Return {"status":"ok"}'
         });
 
-        expect(calls).toBe(2);
-        expect(result.ok).toBe(true);
-        if (result.ok) {
-            expect(result.repairCount).toBe(1);
+        expect(calls).toBe(1);
+        expect(result.ok).toBe(false);
+        if (!result.ok) {
+            expect(result.stage).toBe('initial');
+            expect(result.repairCount).toBe(0);
+            expect(result.error).toContain('Invalid JSON');
         }
     });
 
-    it('fails explicitly when repair cannot recover valid JSON', async () => {
+    it('fails explicitly when malformed JSON is returned', async () => {
         const result = await runStructuredJsonPipeline({
             providerLabel: 'Local LLM',
             schema,
@@ -92,7 +87,7 @@ describe('runStructuredJsonPipeline', () => {
 
         expect(result.ok).toBe(false);
         if (!result.ok) {
-            expect(result.stage).toBe('repair');
+            expect(result.stage).toBe('initial');
             expect(result.error).toContain('Invalid JSON');
         }
     });

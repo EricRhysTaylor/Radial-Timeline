@@ -317,7 +317,7 @@ export function normalizeAnthropicTokenCountResponse(
   const data = responseData as AnthropicTokenCountSuccessResponse;
   const inputTokens = typeof data?.input_tokens === 'number'
     ? data.input_tokens
-    : (typeof data?.total_tokens === 'number' ? data.total_tokens : undefined);
+    : undefined;
   if (typeof inputTokens !== 'number' || !Number.isFinite(inputTokens)) {
     return null;
   }

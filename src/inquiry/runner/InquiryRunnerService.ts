@@ -281,10 +281,6 @@ export class InquiryRunnerService implements InquiryRunner {
                 if (response.error) {
                     trace.notes.push(`Provider error: ${response.error}`);
                 }
-                const recovered = this.tryRecoverSingleInvalidResponse(input, response, trace, 'provider', evidenceDocMeta);
-                if (recovered) {
-                    return { result: recovered, trace };
-                }
                 return {
                     result: this.buildStubResult(input, this.getAiMetaFromResponse(response), response.error),
                     trace
@@ -309,10 +305,6 @@ export class InquiryRunnerService implements InquiryRunner {
                 trace.tokenUsageKnown = trace.tokenUsageKnown ?? !!trace.usage;
                 const usage = trace.usage ?? this.extractUsage(response.aiProvider ?? response.provider, response.responseData);
                 if (usage) trace.usage = usage;
-                const recovered = this.tryRecoverSingleInvalidResponse(input, response, trace, 'parse', evidenceDocMeta);
-                if (recovered) {
-                    return { result: recovered, trace };
-                }
                 const fallbackMeta = this.withParseFailureMeta(this.getAiMetaFromResponse(response), response.aiStatus ?? 'rejected');
                 return {
                     result: this.buildStubResult(input, fallbackMeta, parseError),
@@ -388,10 +380,6 @@ export class InquiryRunnerService implements InquiryRunner {
                 if (response.error) {
                     trace.notes.push(`Provider error: ${response.error}`);
                 }
-                const recovered = this.tryRecoverOmnibusInvalidResponse(input, response, trace, 'provider', evidenceDocMeta);
-                if (recovered) {
-                    return recovered;
-                }
                 const aiMeta = this.getAiMetaFromResponse(response);
                 return {
                     results: this.buildOmnibusStubResults(input, aiMeta, response.error),
@@ -416,10 +404,6 @@ export class InquiryRunnerService implements InquiryRunner {
                 trace.tokenUsageKnown = trace.tokenUsageKnown ?? !!trace.usage;
                 const usage = trace.usage ?? this.extractUsage(response.aiProvider ?? response.provider, response.responseData);
                 if (usage) trace.usage = usage;
-                const recovered = this.tryRecoverOmnibusInvalidResponse(input, response, trace, 'parse', evidenceDocMeta);
-                if (recovered) {
-                    return recovered;
-                }
                 const fallbackMeta = this.withParseFailureMeta(this.getAiMetaFromResponse(response), response.aiStatus ?? 'rejected');
                 return {
                     results: this.buildOmnibusStubResults(input, fallbackMeta, parseError),
@@ -1020,7 +1004,8 @@ export class InquiryRunnerService implements InquiryRunner {
             maxTokens,
             evidenceBlocks,
             preparedEstimate: precheck.preparedEstimate,
-            instructionPrompt
+            instructionPrompt,
+            forceFreshRun: executionOptions?.forceFreshRun
         });
         run = this.withExecutionContext(run, {
             executionPassCount: 1
@@ -1077,6 +1062,7 @@ export class InquiryRunnerService implements InquiryRunner {
             evidenceBlocks?: EvidenceBlock[];
             preparedEstimate?: AIRunPreparedEstimate | null;
             instructionPrompt?: string;
+            forceFreshRun?: boolean;
         }
     ): Promise<AIRunResult> {
         const preparedEstimate = options.preparedEstimate
@@ -1119,6 +1105,8 @@ export class InquiryRunnerService implements InquiryRunner {
                 reasoningDepth: 'deep',
                 jsonStrict: true
             },
+            bypassInMemoryCache: options.forceFreshRun === true,
+            bypassProviderReuse: options.forceFreshRun === true,
             preparedEstimate: preparedEstimate ?? undefined,
             evidenceDocuments: options.evidenceBlocks?.length
                 ? options.evidenceBlocks.map(block => ({
@@ -1420,7 +1408,6 @@ export class InquiryRunnerService implements InquiryRunner {
         const chunkOutputs: string[] = [];
         const totalPasses = chunkPlan.prompts.length + 1;
         const usageAccumulator = this.createUsageAccumulator(totalPasses);
-        const recoveredStages: string[] = [];
         const sceneRefLedger = this.buildSceneRefLedger(options.evidenceBlocks);
         for (let i = 0; i < chunkPlan.prompts.length; i += 1) {
             this.throwIfAborted(options.executionOptions?.shouldAbort);
@@ -1440,30 +1427,12 @@ export class InquiryRunnerService implements InquiryRunner {
                 ai: options.ai,
                 jsonSchema: options.jsonSchema,
                 temperature: options.temperature,
-                maxTokens: options.maxTokens
+                maxTokens: options.maxTokens,
+                forceFreshRun: options.executionOptions?.forceFreshRun
             });
             this.recordUsage(usageAccumulator, this.extractUsage(options.ai.provider, chunkRun.responseData), 'chunk');
             this.throwIfAborted(options.executionOptions?.shouldAbort);
             if (chunkRun.aiStatus !== 'success' || !chunkRun.content) {
-                const recoveredChunkJson = this.tryRecoverChunkInvalidResponse(chunkRun, i + 1, chunkPlan.prompts.length);
-                if (recoveredChunkJson) {
-                    if (i === 0 || this.shouldAbortOnRecoveredInvalidResponse('chunk', i + 1)) {
-                        const usageSummary = this.finalizeUsageAccumulator(usageAccumulator);
-                        return {
-                            ok: false,
-                            failureStage: 'chunk_execution',
-                            failureReason: i === 0
-                                ? `[Inquiry] Chunk 1 health check failed: pass 1 required local JSON extraction.`
-                                : `[Inquiry] Strict recovery debug abort: chunk ${i + 1}/${chunkPlan.prompts.length} required local JSON extraction.`,
-                            tokenUsageKnown: usageSummary.tokenUsageKnown,
-                            tokenUsageScope: usageSummary.tokenUsageScope,
-                            usage: usageSummary.usage
-                        };
-                    }
-                    recoveredStages.push(`chunk ${i + 1}/${chunkPlan.prompts.length}`);
-                    chunkOutputs.push(recoveredChunkJson);
-                    continue;
-                }
                 const failureReason = `[Inquiry] Chunk ${i + 1}/${chunkPlan.prompts.length} failed:`
                     + ` status=${chunkRun.aiStatus}, reason=${chunkRun.aiReason ?? 'none'}`
                     + `, error=${chunkRun.error ?? 'none'}`
@@ -1542,50 +1511,30 @@ export class InquiryRunnerService implements InquiryRunner {
             ai: options.ai,
             jsonSchema: options.jsonSchema,
             temperature: options.temperature,
-            maxTokens: options.maxTokens
+            maxTokens: options.maxTokens,
+            forceFreshRun: options.executionOptions?.forceFreshRun
         });
         this.recordUsage(usageAccumulator, this.extractUsage(options.ai.provider, synthesisRun.responseData), 'synthesis');
         this.throwIfAborted(options.executionOptions?.shouldAbort);
 
         if (synthesisRun.aiStatus !== 'success' || !synthesisRun.content) {
-            const recoveredSynthesisRun = this.tryRecoverSynthesisInvalidResponse(synthesisRun, chunkOutputs.length);
-            if (recoveredSynthesisRun) {
-                if (this.shouldAbortOnRecoveredInvalidResponse('synthesis')) {
-                    const usageSummary = this.finalizeUsageAccumulator(usageAccumulator);
-                    return {
-                        ok: false,
-                        failureStage: 'synthesis',
-                        failureReason: '[Inquiry] Strict recovery debug abort: synthesis required local JSON extraction.',
-                        tokenUsageKnown: usageSummary.tokenUsageKnown,
-                        tokenUsageScope: usageSummary.tokenUsageScope,
-                        usage: usageSummary.usage
-                    };
-                }
-                recoveredStages.push('synthesis');
-                synthesisRun = recoveredSynthesisRun;
-            } else {
-                const failureReason = `[Inquiry] Synthesis pass failed after ${chunkOutputs.length} successful chunks:`
-                    + ` status=${synthesisRun.aiStatus}, reason=${synthesisRun.aiReason ?? 'none'}`
-                    + `, error=${synthesisRun.error ?? 'none'}`;
-                console.warn(failureReason);
-                const usageSummary = this.finalizeUsageAccumulator(usageAccumulator);
-                return {
-                    ok: false,
-                    failureStage: 'synthesis',
-                    failureReason,
-                    tokenUsageKnown: usageSummary.tokenUsageKnown,
-                    tokenUsageScope: usageSummary.tokenUsageScope,
-                    usage: usageSummary.usage
-                };
-            }
+            const failureReason = `[Inquiry] Synthesis pass failed after ${chunkOutputs.length} successful chunks:`
+                + ` status=${synthesisRun.aiStatus}, reason=${synthesisRun.aiReason ?? 'none'}`
+                + `, error=${synthesisRun.error ?? 'none'}`;
+            console.warn(failureReason);
+            const usageSummary = this.finalizeUsageAccumulator(usageAccumulator);
+            return {
+                ok: false,
+                failureStage: 'synthesis',
+                failureReason,
+                tokenUsageKnown: usageSummary.tokenUsageKnown,
+                tokenUsageScope: usageSummary.tokenUsageScope,
+                usage: usageSummary.usage
+            };
         }
 
         const passCount = totalPasses;
         const usageSummary = this.finalizeUsageAccumulator(usageAccumulator);
-        const hadRecoveredStages = recoveredStages.length > 0;
-        const recoveryWarning = hadRecoveredStages
-            ? `Inquiry recovered invalid structured output during ${recoveredStages.join(', ')}. Result marked degraded.`
-            : null;
         return {
             ok: true,
             tokenUsageKnown: usageSummary.tokenUsageKnown,
@@ -1593,9 +1542,7 @@ export class InquiryRunnerService implements InquiryRunner {
             usage: usageSummary.usage,
             run: this.withExecutionContext({
                 ...synthesisRun,
-                aiReason: hadRecoveredStages ? 'recovered_invalid_response' : synthesisRun.aiReason,
                 warnings: [...(synthesisRun.warnings || []), `Inquiry chunked execution used ${chunkPlan.prompts.length} chunks before synthesis.`]
-                    .concat(recoveryWarning ? [recoveryWarning] : [])
             }, {
                     executionPassCount: passCount,
                 multiPassTriggerReason: 'Single-pass request exceeded the planning budget, so structured multi-pass analysis and synthesis were used.'
@@ -1723,55 +1670,6 @@ export class InquiryRunnerService implements InquiryRunner {
         }
 
         return Math.max(1200, Math.min(120000, targetChunkTokens));
-    }
-
-    private tryRecoverChunkInvalidResponse(
-        run: AIRunResult,
-        chunkIndex: number,
-        chunkTotal: number
-    ): string | null {
-        const recovered = this.recoverInvalidResponsePayload({
-            aiReason: run.aiReason,
-            content: run.content,
-            parse: content => this.parseResponse(content),
-            onRecovered: () => {
-                console.warn(`[Inquiry] Chunk ${chunkIndex}/${chunkTotal}: recovered invalid_response via local JSON extraction.`);
-            }
-        });
-        return recovered ? JSON.stringify(recovered) : null;
-    }
-
-    private tryRecoverSynthesisInvalidResponse(
-        run: AIRunResult,
-        completedChunkCount: number
-    ): AIRunResult | null {
-        const recovered = this.recoverInvalidResponsePayload({
-            aiReason: run.aiReason,
-            content: run.content,
-            parse: content => this.parseResponse(content),
-            onRecovered: () => {
-                console.warn(`[Inquiry] Synthesis: recovered invalid_response via local JSON extraction after ${completedChunkCount} chunks.`);
-            }
-        });
-        if (!recovered) return null;
-        return {
-            ...run,
-            aiStatus: 'success',
-            aiReason: 'recovered_invalid_response',
-            content: JSON.stringify(recovered),
-            warnings: [...(run.warnings || []), 'Synthesis invalid_response recovered via local JSON extraction.']
-        };
-    }
-
-    private shouldAbortOnRecoveredInvalidResponse(
-        phase: 'chunk' | 'synthesis',
-        chunkIndex?: number
-    ): boolean {
-        const abortOnAnyRecovery = this.readBooleanDebugFlag('RT_INQUIRY_ABORT_ON_ANY_RECOVERY', '__RT_INQUIRY_ABORT_ON_ANY_RECOVERY__');
-        if (abortOnAnyRecovery) return true;
-        if (phase !== 'chunk' || chunkIndex !== 1) return false;
-        return this.readBooleanDebugFlag('RT_INQUIRY_STRICT_DEBUG', '__RT_INQUIRY_STRICT_DEBUG__')
-            || this.readBooleanDebugFlag('RT_INQUIRY_ABORT_ON_FIRST_RECOVERY', '__RT_INQUIRY_ABORT_ON_FIRST_RECOVERY__');
     }
 
     private readBooleanDebugFlag(envKey: string, globalKey: string): boolean {
@@ -2342,97 +2240,6 @@ export class InquiryRunnerService implements InquiryRunner {
             return { ...meta, aiStatus: 'rejected', aiReason: 'invalid_response' };
         }
         return meta;
-    }
-
-    private withRecoveredInvalidResponseMeta(
-        meta: Pick<InquiryResult, 'aiProvider' | 'aiModelRequested' | 'aiModelResolved' | 'aiStatus' | 'aiReason'>
-    ): Pick<InquiryResult, 'aiProvider' | 'aiModelRequested' | 'aiModelResolved' | 'aiStatus' | 'aiReason'> {
-        return {
-            ...meta,
-            aiStatus: 'degraded',
-            aiReason: 'recovered_invalid_response'
-        };
-    }
-
-    private recoverInvalidResponsePayload<T>(params: {
-        aiReason?: string;
-        content: string | null;
-        parse: (content: string) => T;
-        onRecovered?: () => void;
-        onFailure?: (message: string) => void;
-    }): T | null {
-        if (!params.content || params.aiReason !== 'invalid_response') return null;
-        try {
-            const recovered = params.parse(params.content);
-            params.onRecovered?.();
-            return recovered;
-        } catch (error) {
-            const message = error instanceof Error ? error.message : String(error);
-            params.onFailure?.(message);
-            return null;
-        }
-    }
-
-    private tryRecoverSingleInvalidResponse(
-        input: InquiryRunnerInput,
-        response: ProviderResult,
-        trace: InquiryRunTrace,
-        context: string,
-        evidenceDocumentMeta?: EvidenceDocumentMeta[]
-    ): InquiryResult | null {
-        const recovered = this.recoverInvalidResponsePayload({
-            aiReason: response.aiReason,
-            content: response.content,
-            parse: content => this.parseResponse(content),
-            onRecovered: () => {
-                trace.notes.push(`${context}: recovered from invalid_response via local JSON extraction.`);
-            },
-            onFailure: message => {
-                trace.notes.push(`${context}: invalid_response recovery failed (${message}).`);
-            }
-        });
-        if (!recovered) return null;
-        const recoveredMeta = this.withRecoveredInvalidResponseMeta(this.getAiMetaFromResponse(response));
-        try {
-            return this.buildResult(input, recovered, recoveredMeta, response.citations, evidenceDocumentMeta);
-        } catch (error) {
-            const message = error instanceof Error ? error.message : String(error);
-            trace.notes.push(`${context}: recovered payload still failed validation (${message}).`);
-            return null;
-        }
-    }
-
-    private tryRecoverOmnibusInvalidResponse(
-        input: InquiryOmnibusInput,
-        response: ProviderResult,
-        trace: InquiryRunTrace,
-        context: string,
-        evidenceDocumentMeta?: EvidenceDocumentMeta[]
-    ): { results: InquiryResult[]; trace: InquiryRunTrace; rawResponse: RawOmnibusResponse } | null {
-        const recovered = this.recoverInvalidResponsePayload({
-            aiReason: response.aiReason,
-            content: response.content,
-            parse: content => this.parseOmnibusResponse(content),
-            onRecovered: () => {
-                trace.notes.push(`${context}: recovered omnibus response from invalid_response via local JSON extraction.`);
-            },
-            onFailure: message => {
-                trace.notes.push(`${context}: omnibus invalid_response recovery failed (${message}).`);
-            }
-        });
-        if (!recovered) return null;
-        const recoveredMeta = this.withRecoveredInvalidResponseMeta(this.getAiMetaFromResponse(response));
-        try {
-            return {
-                results: this.buildOmnibusResults(input, recovered, recoveredMeta, trace, response.citations, evidenceDocumentMeta),
-                trace,
-                rawResponse: recovered
-            };
-        } catch (error) {
-            const message = error instanceof Error ? error.message : String(error);
-            trace.notes.push(`${context}: recovered omnibus payload still failed validation (${message}).`);
-            return null;
-        }
     }
 
     private buildStubSummary(aiStatus?: InquiryAiStatus, aiReason?: string, message?: string): string {

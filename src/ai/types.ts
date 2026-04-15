@@ -257,6 +257,8 @@ export interface GenerateTextRequest {
     thinkingBudgetTokens?: number;
     citationsEnabled?: boolean;
     evidenceDocuments?: EvidenceDocument[];
+    /** Skip provider-level prompt/context reuse when the adapter supports it. */
+    bypassProviderReuse?: boolean;
     /** Disable extended thinking for models that support it (Google thinkingConfig). */
     disableThinking?: boolean;
 }
@@ -336,6 +338,10 @@ export interface AIRunRequest {
     preparedEstimate?: AIRunPreparedEstimate;
     /** Per-scene evidence documents for provider-level citations. */
     evidenceDocuments?: EvidenceDocument[];
+    /** Skip RT's shared in-memory result cache for this run. */
+    bypassInMemoryCache?: boolean;
+    /** Skip provider-level prompt/context reuse for this run. */
+    bypassProviderReuse?: boolean;
 }
 
 export type InputTokenEstimateMethod = 'heuristic_chars' | 'anthropic_count';
@@ -436,6 +442,37 @@ export interface AIRunAdvancedContext {
     finalPrompt: string;
 }
 
+export interface AIRunValidation {
+    schemaVersion: 1;
+    feature: string;
+    task: string;
+    provider: AIProviderId;
+    modelRequested: string;
+    modelResolved: string;
+    returnType: 'text' | 'json';
+    status: AiStatus;
+    reason?: string;
+    servedFromCache: boolean;
+    bypassedInMemoryCache: boolean;
+    bypassedProviderReuse: boolean;
+    providerReuseCapable: boolean;
+    providerReuseRequested: boolean;
+    reuseState?: AIRunAdvancedContext['reuseState'];
+    providerCacheStatus?: AIRunAdvancedContext['cacheStatus'];
+    evidenceTransport: 'none' | 'inline_prompt' | 'document_blocks' | 'cached_content';
+    schemaMode: 'none' | 'json_schema';
+    citationsRequested: boolean;
+    citationsReturned: number;
+    requestPayloadCaptured: boolean;
+    actualUsageCaptured: boolean;
+    transportLane?: 'chat_completions' | 'responses';
+    sanitizationNotes: string[];
+    adapterNotes: string[];
+    submittedAt?: string;
+    returnedAt?: string;
+    durationMs?: number;
+}
+
 export interface AIRunResult {
     content: string | null;
     responseData: unknown;
@@ -447,6 +484,14 @@ export interface AIRunResult {
     aiReason?: string;
     warnings: string[];
     reason: string;
+    /** True when the result was served from the shared in-memory RT cache without a provider call. */
+    servedFromCache?: boolean;
+    /** ISO timestamp captured immediately before the provider call started. */
+    submittedAt?: string;
+    /** ISO timestamp captured immediately after the final provider response was accepted. */
+    returnedAt?: string;
+    /** Measured wall-clock time for the provider call path that produced this result. */
+    durationMs?: number;
     requestPayload?: unknown;
     /** OpenAI-only transport truth for runtime/log alignment. */
     aiTransportLane?: 'chat_completions' | 'responses';
@@ -457,6 +502,7 @@ export interface AIRunResult {
     advancedContext?: AIRunAdvancedContext;
     /** Normalized source attribution from provider responses. */
     citations?: SourceCitation[];
+    validation?: AIRunValidation;
 }
 
 export interface RegistryRefreshResult {

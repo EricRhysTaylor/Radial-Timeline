@@ -40,7 +40,9 @@ export class AnthropicProvider implements AIProvider {
     async generateText(req: GenerateTextRequest): Promise<ProviderExecutionResult> {
         const apiKey = await getCredential(this.plugin, 'anthropic');
         validateAiSettings(this.plugin.settings.aiSettings ?? buildDefaultAiSettings());
-        const cacheTtl: AnthropicCacheTtl = ANTHROPIC_REQUESTED_CACHE_TTL;
+        const cacheTtl: AnthropicCacheTtl | undefined = req.bypassProviderReuse
+            ? undefined
+            : ANTHROPIC_REQUESTED_CACHE_TTL;
         const result = await callAnthropicApi(
             apiKey,
             req.modelId,
@@ -77,7 +79,9 @@ export class AnthropicProvider implements AIProvider {
     async generateJson(req: GenerateJsonRequest): Promise<ProviderExecutionResult> {
         const apiKey = await getCredential(this.plugin, 'anthropic');
         validateAiSettings(this.plugin.settings.aiSettings ?? buildDefaultAiSettings());
-        const cacheTtl: AnthropicCacheTtl = ANTHROPIC_REQUESTED_CACHE_TTL;
+        const cacheTtl: AnthropicCacheTtl | undefined = req.bypassProviderReuse
+            ? undefined
+            : ANTHROPIC_REQUESTED_CACHE_TTL;
         const result = await callAnthropicApi(
             apiKey,
             req.modelId,

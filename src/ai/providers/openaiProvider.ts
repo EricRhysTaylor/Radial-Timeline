@@ -20,7 +20,9 @@ export class OpenAIProvider implements AIProvider {
     async generateText(req: GenerateTextRequest): Promise<ProviderExecutionResult> {
         const apiKey = await getCredential(this.plugin, 'openai');
         const aiSettings = validateAiSettings(this.plugin.settings.aiSettings ?? buildDefaultAiSettings()).value;
-        const promptCacheRetention = aiSettings.cacheWindows?.openaiRetention === '24h' ? '24h' : undefined;
+        const promptCacheRetention = req.bypassProviderReuse
+            ? undefined
+            : (aiSettings.cacheWindows?.openaiRetention === '24h' ? '24h' : undefined);
         const result = await callOpenAiResponsesApi(
             apiKey,
             req.modelId,
@@ -37,6 +39,8 @@ export class OpenAIProvider implements AIProvider {
                 success: true,
                 content: result.content,
                 responseData: result.responseData,
+                requestPayload: result.requestPayload,
+                diagnostics: result.adapterNotes?.length ? { adapterNotes: result.adapterNotes } : undefined,
                 aiStatus: 'success',
                 aiProvider: 'openai',
                 aiModelRequested: req.modelId,
@@ -48,6 +52,8 @@ export class OpenAIProvider implements AIProvider {
                 success: false,
                 content: result.content,
                 responseData: result.responseData,
+                requestPayload: result.requestPayload,
+                diagnostics: result.adapterNotes?.length ? { adapterNotes: result.adapterNotes } : undefined,
                 aiStatus: classifyProviderError(result).aiStatus,
                 aiReason: classifyProviderError(result).aiReason,
                 aiProvider: 'openai',
@@ -62,7 +68,9 @@ export class OpenAIProvider implements AIProvider {
     async generateJson(req: GenerateJsonRequest): Promise<ProviderExecutionResult> {
         const apiKey = await getCredential(this.plugin, 'openai');
         const aiSettings = validateAiSettings(this.plugin.settings.aiSettings ?? buildDefaultAiSettings()).value;
-        const promptCacheRetention = aiSettings.cacheWindows?.openaiRetention === '24h' ? '24h' : undefined;
+        const promptCacheRetention = req.bypassProviderReuse
+            ? undefined
+            : (aiSettings.cacheWindows?.openaiRetention === '24h' ? '24h' : undefined);
         const result = await callOpenAiResponsesApi(
             apiKey,
             req.modelId,
@@ -85,6 +93,8 @@ export class OpenAIProvider implements AIProvider {
                 success: true,
                 content: result.content,
                 responseData: result.responseData,
+                requestPayload: result.requestPayload,
+                diagnostics: result.adapterNotes?.length ? { adapterNotes: result.adapterNotes } : undefined,
                 aiStatus: 'success',
                 aiProvider: 'openai',
                 aiModelRequested: req.modelId,
@@ -96,6 +106,8 @@ export class OpenAIProvider implements AIProvider {
                 success: false,
                 content: result.content,
                 responseData: result.responseData,
+                requestPayload: result.requestPayload,
+                diagnostics: result.adapterNotes?.length ? { adapterNotes: result.adapterNotes } : undefined,
                 aiStatus: classifyProviderError(result).aiStatus,
                 aiReason: classifyProviderError(result).aiReason,
                 aiProvider: 'openai',

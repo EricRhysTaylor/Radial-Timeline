@@ -133,4 +133,67 @@ describe('gemini grounding citation extraction', () => {
 
         expect(parsed.tools).toEqual([{ google_search: {} }]);
     });
+
+    it('returns the exact Gemini request payload used for the run', async () => {
+        mockedRequestUrl.mockResolvedValue({
+            status: 200,
+            text: '',
+            json: {
+                candidates: [
+                    {
+                        content: {
+                            parts: [{ text: '{"ok":true}' }]
+                        }
+                    }
+                ]
+            }
+        } as never);
+
+        const response = await callGeminiApi(
+            'test-key',
+            'gemini-2.0-flash',
+            'You are precise.',
+            'Return JSON.',
+            256,
+            0.2,
+            {
+                type: 'object',
+                properties: {
+                    ok: { type: 'boolean' }
+                },
+                required: ['ok']
+            },
+            false,
+            undefined,
+            0.8,
+            false,
+            true
+        );
+
+        expect(response.success).toBe(true);
+        expect(response.requestPayload).toEqual({
+            contents: [
+                {
+                    role: 'user',
+                    parts: [{ text: 'Return JSON.' }]
+                }
+            ],
+            generationConfig: {
+                maxOutputTokens: 256,
+                temperature: 0.2,
+                topP: 0.8,
+                responseMimeType: 'application/json',
+                responseSchema: {
+                    type: 'object',
+                    properties: {
+                        ok: { type: 'boolean' }
+                    },
+                    required: ['ok']
+                }
+            },
+            systemInstruction: {
+                parts: [{ text: 'You are precise.' }]
+            }
+        });
+    });
 });

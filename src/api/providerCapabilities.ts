@@ -186,6 +186,7 @@ export interface ProviderDispatchParams {
     thinkingBudgetTokens?: number;
     citationsEnabled?: boolean;
     evidenceDocuments?: { title: string; content: string }[];
+    bypassProviderReuse?: boolean;
     disableThinking?: boolean;
 }
 
@@ -259,6 +260,10 @@ export function sanitizeDispatchParams(
     if (sanitized.citationsEnabled && !supportsCitationControl) {
         notes.push(`Stripped citationsEnabled for ${modelLabel}: unsupported by provider`);
         sanitized.citationsEnabled = undefined;
+    }
+
+    if (sanitized.bypassProviderReuse && !capabilities.supportsCorpusReuse) {
+        notes.push(`bypassProviderReuse requested for ${modelLabel}: provider has no provider-level reuse path`);
     }
 
     // --- cacheVsCitationsExclusive model constraint ---

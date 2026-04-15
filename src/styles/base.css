@@ -51,6 +51,12 @@
   stroke-width: 0.5;
 }
 
+.rt-welcome-bg-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
 .rt-welcome-title {
   font-size: 200px;
   margin: 0 0 16px 0;
@@ -160,11 +166,7 @@
 }
 
 /* ── Context-menu keycap hints ───────────────────────────── */
-
-.menu-item .menu-item-title:has(.rt-menu-keycaps) {
-  display: flex;
-  align-items: center;
-}
+/* Appended as direct children of .menu-item (already display:flex). */
 
 .rt-menu-keycaps {
   display: inline-flex;
@@ -172,6 +174,7 @@
   gap: 3px;
   margin-left: auto;
   padding-left: 16px;
+  padding-right: 4px;
   flex-shrink: 0;
 }
 
@@ -179,9 +182,9 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 5px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
   font-family: system-ui, -apple-system, sans-serif;
   font-size: 10px;
   font-weight: 500;
@@ -196,7 +199,7 @@
 
 .rt-menu-keycaps-sep {
   color: var(--text-muted);
-  font-size: 0.85em;
+  font-size: 0.8em;
 }
 
 .rt-welcome-links-wrapper {

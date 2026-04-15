@@ -45,7 +45,9 @@ export interface OpenAiApiResponse {
     success: boolean;
     content: string | null;
     responseData: unknown;
+    requestPayload?: unknown;
     citations?: SourceCitation[];
+    adapterNotes?: string[];
     error?: string;
 }
 
@@ -458,7 +460,6 @@ export async function callOpenAiApi(
     responseFormat?: OpenAiResponseFormat,
     temperature?: number,
     topP?: number,
-    allowFormatFallback = true,
     internalAdapterAccess?: boolean
 ): Promise<OpenAiApiResponse> {
     warnLegacyAccess('openaiApi.callOpenAiApi', internalAdapterAccess);
@@ -512,24 +513,31 @@ export async function callOpenAiApi(
         if (response.status >= 400) {
             const errorDetails = responseData as OpenAiErrorResponse;
             const msg = errorDetails?.error?.message ?? response.text ?? `OpenAI error (${response.status})`;
-            // Broaden check to catch "JSON mode" errors from various local servers (Ollama, etc.)
-            if (responseFormat && allowFormatFallback && /(response_format|json)/i.test(msg)) {
-                console.warn('[OpenAI API] JSON mode not supported by server/model, retrying without enforcement.');
-                return callOpenAiApi(apiKey, modelId, systemPrompt, userPrompt, maxTokens, baseUrl, undefined, temperature, topP, false, internalAdapterAccess);
+            if (responseFormat && /(response_format|json)/i.test(msg)) {
+                return {
+                    success: false,
+                    content: null,
+                    responseData,
+                    requestPayload: requestBody,
+                    adapterNotes: [
+                        'Legacy OpenAI chat response_format was rejected by the model or endpoint; RT did not retry without JSON-mode enforcement.'
+                    ],
+                    error: `Legacy OpenAI chat endpoint rejected response_format: ${msg}`
+                };
             }
-            return { success: false, content: null, responseData, error: msg };
+            return { success: false, content: null, responseData, requestPayload: requestBody, error: msg };
         }
         const success = responseData as OpenAiChatSuccessResponse;
         const content = extractChatMessageContent(success?.choices?.[0]?.message?.content);
         if (content) {
             const citations = extractOpenAiAnnotationCitations(responseData);
-            return { success: true, content, responseData, ...(citations.length ? { citations } : {}) };
+            return { success: true, content, responseData, requestPayload: requestBody, ...(citations.length ? { citations } : {}) };
         }
-        return { success: false, content: null, responseData, error: 'Invalid response structure from OpenAI.' };
+        return { success: false, content: null, responseData, requestPayload: requestBody, error: 'Invalid response structure from OpenAI.' };
     } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         responseData = { error: { message: msg, type: 'network_or_execution_error' } };
-        return { success: false, content: null, responseData, error: msg };
+        return { success: false, content: null, responseData, requestPayload: requestBody, error: msg };
     }
 }
 
@@ -543,7 +551,6 @@ export async function callOpenAiResponsesApi(
     temperature?: number,
     topP?: number,
     promptCacheRetention?: OpenAiPromptCacheRetention,
-    allowFormatFallback = true,
     internalAdapterAccess?: boolean
 ): Promise<OpenAiApiResponse> {
     warnLegacyAccess('openaiApi.callOpenAiResponsesApi', internalAdapterAccess);
@@ -578,6 +585,7 @@ export async function callOpenAiResponsesApi(
         model: modelId,
         input: buildOpenAiResponsesInput(modelId, systemPrompt, userPrompt)
     };
+    const adapterNotes: string[] = [];
 
     if (maxTokens !== null) {
         requestBody.max_output_tokens = maxTokens;
@@ -612,23 +620,19 @@ export async function callOpenAiResponsesApi(
         if (response.status >= 400) {
             const errorDetails = responseData as OpenAiErrorResponse;
             const msg = errorDetails?.error?.message ?? response.text ?? `OpenAI error (${response.status})`;
-            if (responseFormat && allowFormatFallback && /(response_format|json|text\.format)/i.test(msg)) {
-                console.warn('[OpenAI API] Responses text format not supported by model, retrying without enforcement.');
-                return callOpenAiResponsesApi(
-                    apiKey,
-                    modelId,
-                    systemPrompt,
-                    userPrompt,
-                    maxTokens,
-                    undefined,
-                    temperature,
-                    topP,
-                    promptCacheRetention,
-                    false,
-                    internalAdapterAccess
-                );
+            if (responseFormat && /(response_format|json|text\.format)/i.test(msg)) {
+                return {
+                    success: false,
+                    content: null,
+                    responseData,
+                    requestPayload: requestBody,
+                    adapterNotes: [
+                        'OpenAI Responses text.format was rejected by the model or endpoint; RT did not retry without structured-format enforcement.'
+                    ],
+                    error: `OpenAI Responses rejected structured text.format: ${msg}`
+                };
             }
-            return { success: false, content: null, responseData, error: msg };
+            return { success: false, content: null, responseData, requestPayload: requestBody, adapterNotes, error: msg };
         }
 
         const content = extractOpenAiResponsesContent(responseData);
@@ -639,6 +643,8 @@ export async function callOpenAiResponsesApi(
                 success: true,
                 content,
                 responseData: normalizedResponseData,
+                requestPayload: requestBody,
+                adapterNotes,
                 ...(citations.length ? { citations } : {})
             };
         }
@@ -649,6 +655,8 @@ export async function callOpenAiResponsesApi(
                 success: false,
                 content: null,
                 responseData: normalizedResponseData,
+                requestPayload: requestBody,
+                adapterNotes,
                 error: `OpenAI Responses returned incomplete output (${incompleteReason}).`
             };
         }
@@ -657,12 +665,14 @@ export async function callOpenAiResponsesApi(
             success: false,
             content: null,
             responseData: normalizedResponseData,
+            requestPayload: requestBody,
+            adapterNotes,
             error: 'Invalid response structure from OpenAI Responses API.'
         };
     } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         responseData = { error: { message: msg, type: 'network_or_execution_error' } };
-        return { success: false, content: null, responseData, error: msg };
+        return { success: false, content: null, responseData, requestPayload: requestBody, adapterNotes, error: msg };
     }
 }
 

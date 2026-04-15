@@ -107,9 +107,6 @@ function buildValidatedExplanation(
     if (!diagnostics.structuredJson.ok) {
         return `Basic completion worked, but structured JSON failed: ${diagnostics.structuredJson.message}`;
     }
-    if (!diagnostics.repairPath.ok) {
-        return `Structured JSON passed, but RT's repair path self-check failed: ${diagnostics.repairPath.message}`;
-    }
     if (tier >= 4) {
         return `Structured JSON validated cleanly. Model hints${heuristicTier >= 4 ? '' : ' and runtime limits'} make Inquiry a reasonable candidate.`;
     }
@@ -135,7 +132,7 @@ export function inferLocalLlmCapability(input: InferLocalLlmCapabilityInput): Lo
             tier = 1;
         } else {
             tier = Math.max(2, heuristicTier) as LocalLlmCapabilityTier;
-            if (!diagnostics.repairPath.ok || hasTimeoutSignal(diagnostics)) {
+            if (hasTimeoutSignal(diagnostics)) {
                 tier = Math.min(tier, 2) as LocalLlmCapabilityTier;
             }
         }

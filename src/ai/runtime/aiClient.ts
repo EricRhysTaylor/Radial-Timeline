@@ -5,7 +5,7 @@ import { mapErrorToUserMessage, mapProviderFailureToError, MalformedJsonError } 
 import { compilePrompt } from '../prompts/compilePrompt';
 import { composeEnvelope, CACHE_BREAK_DELIMITER } from '../prompts/composeEnvelope';
 import { buildOutputRulesText } from '../prompts/outputRules';
-import { modelSupportsSystemRole, sanitizeDispatchParams, type AiProvider, type ProviderDispatchParams } from '../../api/providerCapabilities';
+import { modelSupportsSystemRole, providerSupportsCorpusReuse, sanitizeDispatchParams, type AiProvider, type ProviderDispatchParams } from '../../api/providerCapabilities';
 import { ModelRegistry } from '../registry/modelRegistry';
 import { findSnapshotModel, loadProviderSnapshot, type ProviderSnapshotLoadResult } from '../registry/providerSnapshot';
 import { loadRemotePricing, type RemotePricingLoadResult } from '../cost/remotePricing';
@@ -23,6 +23,7 @@ import type {
     AIRunPreparedEstimate,
     AIRunRequest,
     AIRunResult,
+    AIRunValidation,
     AIRunAdvancedContext,
     AiSettingsV1,
     Capability,
@@ -39,6 +40,7 @@ import { buildTelemetryEvent, emitTelemetry } from './aiTelemetry';
 import { AIRateLimiter } from './rateLimit';
 import { validateJsonResponse } from './jsonValidator';
 import { estimateInputTokens, estimateUncertaintyTokens } from '../tokens/inputTokenEstimate';
+import { extractTokenUsage } from '../usage/providerUsage';
 
 const DEFAULT_REMOTE_REGISTRY_URL = 'https://raw.githubusercontent.com/ericrhystaylor/radial-timeline/master/scripts/models/registry.json';
 const DEFAULT_REMOTE_PROVIDER_SNAPSHOT_URL = 'https://raw.githubusercontent.com/ericrhystaylor/radial-timeline/HEAD/scripts/models/latest-models.json';
@@ -97,13 +99,177 @@ function mergeOverrides(base: AiSettingsV1['overrides'], request: AIRunRequest):
 
 function buildCacheKey(params: {
     provider: string;
+    modelId: string;
     modelAlias: string;
     returnType: string;
     feature: string;
     task: string;
     prompt: string;
+    responseSchema?: Record<string, unknown>;
+    citationsEnabled?: boolean;
+    useDocumentBlocks?: boolean;
+    evidenceDocuments?: Array<{ title: string; content: string }>;
 }): string {
-    return hash(`${params.provider}|${params.modelAlias}|${params.returnType}|${params.feature}|${params.task}|${params.prompt}`);
+    return hash(JSON.stringify({
+        provider: params.provider,
+        modelId: params.modelId,
+        modelAlias: params.modelAlias,
+        returnType: params.returnType,
+        feature: params.feature,
+        task: params.task,
+        prompt: params.prompt,
+        responseSchema: params.responseSchema ?? null,
+        citationsEnabled: params.citationsEnabled ?? false,
+        useDocumentBlocks: params.useDocumentBlocks ?? false,
+        evidenceDocuments: params.evidenceDocuments ?? []
+    }));
+}
+
+function withRunTiming(result: AIRunResult, submittedAt: Date | null, returnedAt: Date | null): AIRunResult {
+    if (!submittedAt || !returnedAt) return result;
+    return {
+        ...result,
+        submittedAt: submittedAt.toISOString(),
+        returnedAt: returnedAt.toISOString(),
+        durationMs: Math.max(0, returnedAt.getTime() - submittedAt.getTime())
+    };
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+    return value && typeof value === 'object'
+        ? value as Record<string, unknown>
+        : null;
+}
+
+function extractAdapterNotes(diagnostics: unknown): string[] {
+    const record = asRecord(diagnostics);
+    const notes = record?.adapterNotes;
+    return Array.isArray(notes)
+        ? notes.filter((note): note is string => typeof note === 'string' && note.trim().length > 0)
+        : [];
+}
+
+function inferProviderReuseRequested(provider: AIProviderId, requestPayload: unknown): boolean {
+    const payload = asRecord(requestPayload);
+    if (!payload) return false;
+    if (provider === 'openai') {
+        return typeof payload.prompt_cache_retention === 'string' && payload.prompt_cache_retention.trim().length > 0;
+    }
+    if (provider === 'google') {
+        return typeof payload.cachedContent === 'string' && payload.cachedContent.trim().length > 0;
+    }
+    if (provider === 'anthropic') {
+        const dispatchDiagnostics = asRecord(payload.dispatchDiagnostics);
+        if (typeof dispatchDiagnostics?.requestedCacheTtl === 'string' && dispatchDiagnostics.requestedCacheTtl !== 'none') {
+            return true;
+        }
+        const messages = Array.isArray(payload.messages) ? payload.messages : [];
+        return messages.some(message => {
+            const messageRecord = asRecord(message);
+            const content = Array.isArray(messageRecord?.content) ? messageRecord.content : [];
+            return content.some(block => asRecord(block)?.cache_control);
+        });
+    }
+    return false;
+}
+
+function inferEvidenceTransport(
+    provider: AIProviderId,
+    requestPayload: unknown,
+    useDocumentBlocks: boolean
+): AIRunValidation['evidenceTransport'] {
+    const payload = asRecord(requestPayload);
+    if (provider === 'anthropic' && useDocumentBlocks) return 'document_blocks';
+    if (provider === 'google' && typeof payload?.cachedContent === 'string' && payload.cachedContent.trim().length > 0) {
+        return 'cached_content';
+    }
+    if (payload) return 'inline_prompt';
+    return 'none';
+}
+
+function inferSchemaMode(
+    provider: AIProviderId,
+    requestPayload: unknown,
+    request: AIRunRequest
+): AIRunValidation['schemaMode'] {
+    const payload = asRecord(requestPayload);
+    if (provider === 'openai' && asRecord(payload?.text)?.format) return 'json_schema';
+    if (provider === 'google' && asRecord(asRecord(payload?.generationConfig)?.responseSchema)) return 'json_schema';
+    if (provider === 'anthropic' && Array.isArray(payload?.tools) && payload.tools.length > 0) return 'json_schema';
+    if (provider === 'ollama' && payload?.response_format) return 'json_schema';
+    return request.returnType === 'json' && request.responseSchema ? 'json_schema' : 'none';
+}
+
+function inferCitationsRequested(
+    provider: AIProviderId,
+    requestPayload: unknown,
+    fallback: boolean
+): boolean {
+    const payload = asRecord(requestPayload);
+    if (!payload) return fallback;
+    if (provider === 'google') {
+        const tools = Array.isArray(payload.tools) ? payload.tools : [];
+        return tools.some(tool => Object.prototype.hasOwnProperty.call(asRecord(tool) ?? {}, 'google_search'));
+    }
+    if (provider === 'anthropic') {
+        const messages = Array.isArray(payload.messages) ? payload.messages : [];
+        const hasDocumentCitations = messages.some(message => {
+            const messageRecord = asRecord(message);
+            const content = Array.isArray(messageRecord?.content) ? messageRecord.content : [];
+            return content.some(block => asRecord(asRecord(block)?.citations)?.enabled === true);
+        });
+        return hasDocumentCitations || fallback;
+    }
+    return fallback;
+}
+
+function withRunValidation(
+    request: AIRunRequest,
+    estimate: AIRunPreparedEstimate,
+    result: AIRunResult,
+    options: {
+        bypassInMemoryCache: boolean;
+        bypassProviderReuse: boolean;
+    }
+): AIRunResult {
+    const provider = result.provider;
+    const adapterNotes = extractAdapterNotes(result.diagnostics);
+    const providerReuseCapable = provider === 'none' ? false : providerSupportsCorpusReuse(provider as AiProvider);
+    const actualUsageCaptured = provider !== 'none' && !!extractTokenUsage(provider, result.responseData);
+    const validation: AIRunValidation = {
+        schemaVersion: 1,
+        feature: request.feature,
+        task: request.task,
+        provider,
+        modelRequested: result.modelRequested,
+        modelResolved: result.modelResolved,
+        returnType: request.returnType,
+        status: result.aiStatus,
+        reason: result.aiReason,
+        servedFromCache: result.servedFromCache === true,
+        bypassedInMemoryCache: options.bypassInMemoryCache,
+        bypassedProviderReuse: options.bypassProviderReuse,
+        providerReuseCapable,
+        providerReuseRequested: !options.bypassProviderReuse && inferProviderReuseRequested(provider, result.requestPayload),
+        reuseState: result.advancedContext?.reuseState,
+        providerCacheStatus: result.advancedContext?.cacheStatus,
+        evidenceTransport: inferEvidenceTransport(provider, result.requestPayload, estimate.useDocumentBlocks),
+        schemaMode: inferSchemaMode(provider, result.requestPayload, request),
+        citationsRequested: inferCitationsRequested(provider, result.requestPayload, !!estimate.citationsEnabled),
+        citationsReturned: result.citations?.length ?? 0,
+        requestPayloadCaptured: !!result.requestPayload,
+        actualUsageCaptured,
+        transportLane: result.aiTransportLane ?? result.advancedContext?.openAiTransportLane,
+        sanitizationNotes: [...(result.sanitizationNotes ?? [])],
+        adapterNotes,
+        submittedAt: result.submittedAt,
+        returnedAt: result.returnedAt,
+        durationMs: result.durationMs
+    };
+    return {
+        ...result,
+        validation
+    };
 }
 
 function getProjectContext(plugin: RadialTimelinePlugin, request: AIRunRequest): string {
@@ -441,11 +607,16 @@ export class AIClient {
 
         const cacheKey = buildCacheKey({
             provider,
+            modelId: initialSelection.model.id,
             modelAlias: initialSelection.model.alias,
             returnType: request.returnType,
             feature: request.feature,
             task: request.task,
-            prompt: envelope.finalPrompt
+            prompt: envelope.finalPrompt,
+            responseSchema: request.responseSchema,
+            citationsEnabled: caps.citationsEnabled,
+            useDocumentBlocks,
+            evidenceDocuments
         });
 
         return {
@@ -513,11 +684,13 @@ export class AIClient {
         };
         const systemPrompt = estimate.systemPrompt;
         const userPrompt = estimate.userPrompt;
+        const bypassProviderReuse = request.bypassProviderReuse === true;
+        const bypassInMemoryCache = request.bypassInMemoryCache === true || bypassProviderReuse;
 
         if (tokenEstimateInput > effectiveInputCeiling) {
             // Always expose the guard; Inquiry-specific chunking should happen in feature orchestration.
             const message = `Input token estimate ${tokenEstimateInput} exceeds safe threshold (${effectiveInputCeiling}).`;
-            return {
+            return withRunValidation(request, estimate, {
                 content: null,
                 responseData: null,
                 provider,
@@ -540,15 +713,19 @@ export class AIClient {
                     maxOutputTokens: estimate.maxOutputTokens,
                     executionPassCount: 1,
                     totalInputTokens: tokenEstimateInput,
+                    reuseState: bypassProviderReuse ? 'idle' : undefined,
                     featureModeInstructions: estimate.featureModeInstructions,
                     finalPrompt: estimate.finalPrompt
                 }
-            };
+            }, {
+                bypassInMemoryCache,
+                bypassProviderReuse
+            });
         }
 
         const providerClient = this.providers[provider];
         if (!providerClient) {
-            return {
+            return withRunValidation(request, estimate, {
                 content: null,
                 responseData: null,
                 provider,
@@ -559,7 +736,10 @@ export class AIClient {
                 warnings: [...modelSelection.warnings, `Provider client missing for ${provider}.`],
                 reason: modelSelection.reason,
                 error: `Provider client missing for ${provider}.`
-            };
+            }, {
+                bypassInMemoryCache,
+                bypassProviderReuse
+            });
         }
 
         const cacheKey = estimate.cacheKey;
@@ -567,13 +747,19 @@ export class AIClient {
             if (!requestedModelId || !resolvedModelId) return;
             cacheResolvedModel(requestedModelId, resolvedModelId);
         };
-        const cached = this.cache.get<AIRunResult>(cacheKey);
-        if (cached) {
-            recordResolvedAlias(cached.modelRequested, cached.modelResolved);
-            return {
-                ...cached,
-                warnings: [...cached.warnings, 'Served from in-memory cache.']
-            };
+        if (!bypassInMemoryCache) {
+            const cached = this.cache.get<AIRunResult>(cacheKey);
+            if (cached) {
+                recordResolvedAlias(cached.modelRequested, cached.modelResolved);
+                return withRunValidation(request, estimate, {
+                    ...cached,
+                    servedFromCache: true,
+                    warnings: [...cached.warnings, 'Served from in-memory cache.']
+                }, {
+                    bypassInMemoryCache,
+                    bypassProviderReuse
+                });
+            }
         }
 
         await this.limiter.waitForSlot(toProviderKey(request.feature, provider), caps.requestPerMinute);
@@ -595,7 +781,9 @@ export class AIClient {
             ? (cacheDelimiterUsed || ((estimate.useDocumentBlocks ? estimate.evidenceDocuments : undefined)?.length ?? 0) > 0)
             : cacheDelimiterUsed;
         let reuseState: AIRunAdvancedContext['reuseState'] = 'idle';
-        if (provider === 'anthropic') {
+        if (bypassProviderReuse) {
+            reuseState = 'idle';
+        } else if (provider === 'anthropic') {
             reuseState = cacheAttempted ? 'eligible' : 'idle';
         } else if (provider === 'google') {
             reuseState = cacheDelimiterUsed ? 'eligible' : 'idle';
@@ -628,7 +816,8 @@ export class AIClient {
         // Optimistic warm: if the in-memory cache store already has a valid entry,
         // we know the upcoming execute will hit it. Set warm + ratio immediately
         // so the UI shows the hatched overlay from the start of the run.
-        const optimisticWarm = provider === 'google' && cacheDelimiterUsed
+        const optimisticWarm = !bypassProviderReuse
+            && provider === 'google' && cacheDelimiterUsed
             && stableText !== undefined && cachedStableRatio !== undefined
             && peekGeminiCache(modelSelection.model.id, systemPrompt, stableText);
 
@@ -661,6 +850,7 @@ export class AIClient {
         };
         setLastRunAdvanced(this.plugin, request.feature, advancedContext);
 
+        const providerCallStartedAt = new Date();
         const execution = await this.execute(providerClient, {
             modelId: modelSelection.model.id,
             systemPrompt,
@@ -672,8 +862,10 @@ export class AIClient {
             jsonStrict: estimate.jsonStrict,
             thinkingBudgetTokens: caps.thinkingBudgetTokens,
             citationsEnabled: caps.citationsEnabled,
+            bypassProviderReuse,
             evidenceDocuments: estimate.useDocumentBlocks ? estimate.evidenceDocuments : undefined
         }, request.returnType, caps, modelSelection.model.constraints);
+        let providerCallReturnedAt = new Date();
         recordResolvedAlias(execution.aiModelRequested, execution.aiModelResolved);
 
         if (provider === 'openai' && execution.aiTransportLane) {
@@ -682,7 +874,7 @@ export class AIClient {
         }
 
         // Post-execute: confirm or downgrade provider cache state using runtime truth.
-        if ((provider === 'anthropic' && cacheAttempted) || (provider === 'google' && cacheDelimiterUsed)) {
+        if (!bypassProviderReuse && ((provider === 'anthropic' && cacheAttempted) || (provider === 'google' && cacheDelimiterUsed))) {
             if (execution.cacheUsed) {
                 // Confirmed hit — safe to mark warm and surface cache coverage.
                 advancedContext.reuseState = 'warm';
@@ -712,7 +904,7 @@ export class AIClient {
                 aiStatus: execution.aiStatus,
                 aiReason: execution.aiReason
             });
-            return {
+            return withRunValidation(request, estimate, withRunTiming({
                 content: execution.content,
                 responseData: execution.responseData,
                 provider,
@@ -731,7 +923,10 @@ export class AIClient {
                 diagnostics: execution.diagnostics,
                 advancedContext,
                 citations: execution.citations
-            };
+            }, providerCallStartedAt, providerCallReturnedAt), {
+                bypassInMemoryCache,
+                bypassProviderReuse
+            });
         }
 
         if (request.returnType === 'json') {
@@ -748,12 +943,13 @@ export class AIClient {
                         jsonSchema: request.responseSchema,
                         jsonStrict: estimate.jsonStrict
                     }, request.returnType, caps, modelSelection.model.constraints);
+                    providerCallReturnedAt = new Date();
 
                     if (retry.aiStatus === 'success' && retry.content) {
                         recordResolvedAlias(retry.aiModelRequested, retry.aiModelResolved);
                         const retryValidation = validateJsonResponse(retry.content, request.responseSchema, provider);
                         if (retryValidation.ok) {
-                            const result: AIRunResult = {
+                            const result = withRunValidation(request, estimate, withRunTiming({
                                 content: retry.content,
                                 responseData: retry.responseData,
                                 provider,
@@ -771,7 +967,10 @@ export class AIClient {
                                 diagnostics: retry.diagnostics,
                                 advancedContext,
                                 citations: retry.citations
-                            };
+                            }, providerCallStartedAt, providerCallReturnedAt), {
+                                bypassInMemoryCache,
+                                bypassProviderReuse
+                            });
                             this.cache.set(cacheKey, result);
                             emitTelemetry(estimate.allowTelemetry, buildTelemetryEvent(request, result));
                             return result;
@@ -780,7 +979,7 @@ export class AIClient {
                 }
 
                 const parseError = validation.error ?? new MalformedJsonError('Invalid JSON response.', { provider });
-                return {
+                return withRunValidation(request, estimate, withRunTiming({
                     content: execution.content,
                     responseData: execution.responseData,
                     provider,
@@ -799,11 +998,14 @@ export class AIClient {
                     diagnostics: execution.diagnostics,
                     advancedContext,
                     citations: execution.citations
-                };
+                }, providerCallStartedAt, providerCallReturnedAt), {
+                    bypassInMemoryCache,
+                    bypassProviderReuse
+                });
             }
         }
 
-        const result: AIRunResult = {
+        const result = withRunValidation(request, estimate, withRunTiming({
             content: execution.content,
             responseData: execution.responseData,
             provider,
@@ -821,7 +1023,10 @@ export class AIClient {
             diagnostics: execution.diagnostics,
             advancedContext,
             citations: execution.citations
-        };
+        }, providerCallStartedAt, providerCallReturnedAt), {
+            bypassInMemoryCache,
+            bypassProviderReuse
+        });
 
         this.cache.set(cacheKey, result);
         emitTelemetry(estimate.allowTelemetry, buildTelemetryEvent(request, result));
@@ -858,6 +1063,7 @@ export class AIClient {
                 jsonStrict: sanitized.jsonStrict,
                 thinkingBudgetTokens: sanitized.thinkingBudgetTokens,
                 citationsEnabled: sanitized.citationsEnabled,
+                bypassProviderReuse: sanitized.bypassProviderReuse,
                 evidenceDocuments: sanitized.evidenceDocuments,
                 disableThinking: sanitized.disableThinking
             });
@@ -871,6 +1077,7 @@ export class AIClient {
                 topP: sanitized.topP,
                 thinkingBudgetTokens: sanitized.thinkingBudgetTokens,
                 citationsEnabled: sanitized.citationsEnabled,
+                bypassProviderReuse: sanitized.bypassProviderReuse,
                 evidenceDocuments: sanitized.evidenceDocuments,
                 disableThinking: sanitized.disableThinking
             });

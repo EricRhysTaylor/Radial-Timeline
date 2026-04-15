@@ -89,6 +89,7 @@ destDirs.forEach(dest => verifyWritableDir(dest.path));
 const filesToCopy = [
 	"manifest.json",
 	"inquiry/assets/radial_texture.png",
+	"assets/rt-logo.png",
 	// "screenshot.jpeg" // Removed as it should be referenced via absolute URL in README
 ];
 

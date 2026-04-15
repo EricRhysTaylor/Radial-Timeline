@@ -4,7 +4,10 @@ vi.mock('obsidian', () => ({
     requestUrl: vi.fn()
 }));
 
+import * as obsidian from 'obsidian';
 import {
+    callOpenAiApi,
+    callOpenAiResponsesApi,
     extractOpenAiAnnotationCitations,
     extractOpenAiResponsesContent,
     normalizeOpenAiResponsesResponseData,
@@ -136,5 +139,160 @@ describe('openai responses normalization', () => {
                 endCharIndex: undefined
             }
         ]);
+    });
+
+    it('returns the exact Responses request payload used for the run', async () => {
+        const mockedRequestUrl = vi.spyOn(obsidian, 'requestUrl').mockResolvedValue({
+            status: 200,
+            text: '',
+            json: {
+                id: 'resp_123',
+                status: 'completed',
+                output_text: 'Structured answer.'
+            }
+        } as never);
+
+        const response = await callOpenAiResponsesApi(
+            'test-key',
+            'gpt-5.4',
+            'You are precise.',
+            'Return JSON.',
+            512,
+            {
+                type: 'json_schema',
+                json_schema: {
+                    name: 'ai_result',
+                    schema: {
+                        type: 'object',
+                        properties: {
+                            ok: { type: 'boolean' }
+                        },
+                        required: ['ok']
+                    }
+                }
+            },
+            0.1,
+            0.9,
+            '24h'
+        );
+
+        expect(response.success).toBe(true);
+        expect(response.requestPayload).toEqual({
+            model: 'gpt-5.4',
+            input: [
+                {
+                    role: 'system',
+                    content: [{ type: 'input_text', text: 'You are precise.' }]
+                },
+                {
+                    role: 'user',
+                    content: [{ type: 'input_text', text: 'Return JSON.' }]
+                }
+            ],
+            max_output_tokens: 512,
+            text: {
+                format: {
+                    type: 'json_schema',
+                    name: 'ai_result',
+                    schema: {
+                        type: 'object',
+                        properties: {
+                            ok: { type: 'boolean' }
+                        },
+                        required: ['ok']
+                    }
+                }
+            },
+            temperature: 0.1,
+            top_p: 0.9,
+            prompt_cache_retention: '24h'
+        });
+        expect(mockedRequestUrl).toHaveBeenCalledTimes(1);
+    });
+
+    it('fails hard when OpenAI rejects structured text.format instead of retrying without it', async () => {
+        const mockedRequestUrl = vi.spyOn(obsidian, 'requestUrl');
+        mockedRequestUrl.mockReset();
+        mockedRequestUrl.mockResolvedValue({
+            status: 400,
+            text: '',
+            json: {
+                error: {
+                    message: 'text.format is not supported for this model.'
+                }
+            }
+        } as never);
+
+        const response = await callOpenAiResponsesApi(
+            'test-key',
+            'gpt-5.4',
+            'You are precise.',
+            'Return JSON.',
+            512,
+            {
+                type: 'json_schema',
+                json_schema: {
+                    name: 'ai_result',
+                    schema: {
+                        type: 'object',
+                        properties: {
+                            ok: { type: 'boolean' }
+                        },
+                        required: ['ok']
+                    }
+                }
+            }
+        );
+
+        expect(response.success).toBe(false);
+        expect(response.error).toContain('rejected structured text.format');
+        expect(response.adapterNotes).toEqual([
+            'OpenAI Responses text.format was rejected by the model or endpoint; RT did not retry without structured-format enforcement.'
+        ]);
+        expect(mockedRequestUrl).toHaveBeenCalledTimes(1);
+    });
+
+    it('fails hard when the legacy chat endpoint rejects response_format instead of retrying without it', async () => {
+        const mockedRequestUrl = vi.spyOn(obsidian, 'requestUrl');
+        mockedRequestUrl.mockReset();
+        mockedRequestUrl.mockResolvedValue({
+            status: 400,
+            text: '',
+            json: {
+                error: {
+                    message: 'response_format is not supported for this model.'
+                }
+            }
+        } as never);
+
+        const response = await callOpenAiApi(
+            'test-key',
+            'gpt-4.1',
+            'You are precise.',
+            'Return JSON.',
+            256,
+            undefined,
+            { type: 'json_object' },
+            0.2,
+            0.9
+        );
+
+        expect(response.success).toBe(false);
+        expect(response.error).toContain('rejected response_format');
+        expect(response.adapterNotes).toEqual([
+            'Legacy OpenAI chat response_format was rejected by the model or endpoint; RT did not retry without JSON-mode enforcement.'
+        ]);
+        expect(response.requestPayload).toEqual({
+            model: 'gpt-4.1',
+            messages: [
+                { role: 'system', content: 'You are precise.' },
+                { role: 'user', content: 'Return JSON.' }
+            ],
+            max_completion_tokens: 256,
+            response_format: { type: 'json_object' },
+            temperature: 0.2,
+            top_p: 0.9
+        });
+        expect(mockedRequestUrl).toHaveBeenCalledTimes(1);
     });
 });

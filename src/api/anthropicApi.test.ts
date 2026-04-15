@@ -58,15 +58,10 @@ describe('anthropic token counting', () => {
         expect(body.messages?.[0]?.content?.[0]).toEqual({ type: 'text', text: 'User prompt body' });
     });
 
-    it('normalizes total_tokens fallback responses into the canonical count result', () => {
+    it('rejects token count responses that omit input_tokens', () => {
         expect(normalizeAnthropicTokenCountResponse({
             total_tokens: 987
-        }, 'claude-opus-4-6')).toEqual({
-            provider: 'anthropic',
-            modelId: 'claude-opus-4-6',
-            inputTokens: 987,
-            source: 'provider_count'
-        });
+        }, 'claude-opus-4-6')).toBeNull();
     });
 });
 

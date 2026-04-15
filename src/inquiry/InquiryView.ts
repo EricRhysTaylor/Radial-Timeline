@@ -3,6 +3,7 @@ import {
     ButtonComponent,
     ItemView,
     Menu,
+    MenuItem,
     Notice,
     Platform,
     setIcon,
@@ -4133,11 +4134,11 @@ export class InquiryView extends ItemView {
         }
     }
 
-    private buildMenuTitleWithKeycaps(title: string, keys: string[]): DocumentFragment {
-        const frag = document.createDocumentFragment();
-        const span = document.createElement('span');
-        span.textContent = title;
-        frag.appendChild(span);
+    private appendMenuKeycaps(menuItem: MenuItem, keys: string[]): void {
+        // MenuItem.dom is not in the public type definitions but is stable across Obsidian versions.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const dom = (menuItem as any).dom;
+        if (!(dom instanceof HTMLElement)) return;
         const wrap = document.createElement('span');
         wrap.className = 'rt-menu-keycaps';
         keys.forEach((key, i) => {
@@ -4152,8 +4153,7 @@ export class InquiryView extends ItemView {
             kbd.textContent = key;
             wrap.appendChild(kbd);
         });
-        frag.appendChild(wrap);
-        return frag;
+        dom.appendChild(wrap);
     }
 
     private doesMinimapItemHaveFinding(item: InquiryCorpusItem): boolean {
@@ -4191,8 +4191,8 @@ export class InquiryView extends ItemView {
         }
         menu.addSeparator();
         menu.addItem(menuItem => {
-            const title = options.isTarget ? 'Remove Focus' : 'Set Focus';
-            menuItem.setTitle(this.buildMenuTitleWithKeycaps(title, ['⇧', 'Click']));
+            menuItem.setTitle(options.isTarget ? 'Remove Focus' : 'Set Focus');
+            this.appendMenuKeycaps(menuItem, ['⇧', 'Click']);
             if (!options.item.sceneId) {
                 menuItem.setDisabled(true);
                 return;
@@ -4226,15 +4226,16 @@ export class InquiryView extends ItemView {
             ['full', 'Set Inclusion: Full Scene']
         ] as const).forEach(([mode, title]) => {
             menu.addItem(item => {
-                item.setTitle(this.buildMenuTitleWithKeycaps(title, ['Click']));
+                item.setTitle(title);
+                this.appendMenuKeycaps(item, ['Click']);
                 item.onClick(() => this.setCorpusItemInclusion(options.entryKey, mode));
             });
         });
         menu.addSeparator();
         menu.addItem(item => {
             const bookOnly = this.state.scope !== 'book';
-            const label = options.isTarget ? 'Remove from Target Scenes' : 'Add to Target Scenes';
-            item.setTitle(this.buildMenuTitleWithKeycaps(label, ['⇧', 'Click']));
+            item.setTitle(options.isTarget ? 'Remove from Target Scenes' : 'Add to Target Scenes');
+            this.appendMenuKeycaps(item, ['⇧', 'Click']);
             if (bookOnly || !options.sceneId) {
                 item.setDisabled(true);
                 return;
@@ -5888,7 +5889,8 @@ export class InquiryView extends ItemView {
                 // Each inquiry produces two compressed answers (flow + depth). Keep this dual-answer model intact.
                 const runOutput = await this.runner.runWithTrace(runnerInput, {
                     onProgress: progress => this.updateRunProgress(progress),
-                    shouldAbort: () => this.shouldDiscardInquiryRunOutcome(runToken)
+                    shouldAbort: () => this.shouldDiscardInquiryRunOutcome(runToken),
+                    forceFreshRun: !!options?.forceRerun
                 });
                 result = runOutput.result;
                 runTrace = runOutput.trace;

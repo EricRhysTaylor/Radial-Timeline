@@ -57,6 +57,7 @@ export interface GeminiApiResponse {
   success: boolean;
   content: string | null;
   responseData: unknown;
+  requestPayload?: unknown;
   citations?: SourceCitation[];
   error?: string;
 }
@@ -154,10 +155,20 @@ export async function callGeminiApi(
 ): Promise<GeminiApiResponse> {
   warnLegacyAccess('geminiApi.callGeminiApi', internalAdapterAccess);
   if (!apiKey) {
-    return { success: false, content: null, responseData: { error: { message: 'Gemini API key not configured.' } }, error: 'Gemini API key not configured.' };
+    return {
+      success: false,
+      content: null,
+      responseData: { error: { message: 'Gemini API key not configured.' } },
+      error: 'Gemini API key not configured.'
+    };
   }
   if (!modelId) {
-    return { success: false, content: null, responseData: { error: { message: 'Gemini model ID not configured.' } }, error: 'Gemini model ID not configured.' };
+    return {
+      success: false,
+      content: null,
+      responseData: { error: { message: 'Gemini model ID not configured.' } },
+      error: 'Gemini model ID not configured.'
+    };
   }
 
   // Handle potential "models/" prefix in the modelId to prevent double prefixing
@@ -238,13 +249,13 @@ export async function callGeminiApi(
     if (resp.status >= 400) {
       const err = responseData as GeminiErrorResponse;
       const msg = err?.error?.message ?? resp.text ?? `Gemini error (${resp.status})`;
-      return { success: false, content: null, responseData, error: msg };
+      return { success: false, content: null, responseData, requestPayload: body, error: msg };
     }
     const success = responseData as GeminiGenerateSuccess;
     // Detect safety block explicitly
     if (success?.promptFeedback && success.promptFeedback.blockReason) {
       const reason = success.promptFeedback.blockReason;
-      return { success: false, content: null, responseData, error: `Gemini safety blocked: ${reason}` };
+      return { success: false, content: null, responseData, requestPayload: body, error: `Gemini safety blocked: ${reason}` };
     }
     
     // Check for finish reasons that indicate incomplete response
@@ -255,6 +266,7 @@ export async function callGeminiApi(
           success: false, 
           content: null, 
           responseData, 
+          requestPayload: body,
           error: 'Response exceeded maximum token limit. The output was truncated before completion. Try reducing the manuscript size or increasing maxOutputTokens.' 
         };
       }
@@ -263,6 +275,7 @@ export async function callGeminiApi(
           success: false, 
           content: null, 
           responseData, 
+          requestPayload: body,
           error: 'Response blocked by Gemini safety filters.' 
         };
       }
@@ -271,6 +284,7 @@ export async function callGeminiApi(
           success: false, 
           content: null, 
           responseData, 
+          requestPayload: body,
           error: 'Response blocked due to recitation concerns.' 
         };
       }
@@ -280,7 +294,13 @@ export async function callGeminiApi(
     const text = candidate?.content?.parts?.map(p => p.text || '').join('').trim();
     if (text) {
       const citations = extractGeminiGroundingCitations(responseData);
-      return { success: true, content: text, responseData, ...(citations.length ? { citations } : {}) };
+      return {
+        success: true,
+        content: text,
+        responseData,
+        requestPayload: body,
+        ...(citations.length ? { citations } : {})
+      };
     }
     
     // Invalid response structure - log minimal debug info
@@ -290,11 +310,11 @@ export async function callGeminiApi(
       finishReason: candidate?.finishReason
     });
     
-    return { success: false, content: null, responseData, error: 'Invalid response structure from Gemini.' };
+    return { success: false, content: null, responseData, requestPayload: body, error: 'Invalid response structure from Gemini.' };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     responseData = { error: { message: msg } };
-    return { success: false, content: null, responseData, error: msg };
+    return { success: false, content: null, responseData, requestPayload: body, error: msg };
   }
 }
 

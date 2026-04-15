@@ -18,6 +18,7 @@ export interface LocalLlmDiagnosticsReport {
     modelAvailable: LocalLlmDiagnosticCheck;
     basicCompletion: LocalLlmDiagnosticCheck;
     structuredJson: LocalLlmDiagnosticCheck;
+    /** Compatibility field: RT no longer auto-repairs malformed JSON at runtime. */
     repairPath: LocalLlmDiagnosticCheck;
 }
 
@@ -70,7 +71,7 @@ export async function runLocalLlmDiagnostics(
             structuredJson,
             repairPath: {
                 ok: true,
-                message: 'Repair path self-check is runtime-local and remains available without a live backend.'
+                message: 'No runtime JSON repair fallback is enabled; malformed JSON fails explicitly.'
             }
         };
     }
@@ -111,44 +112,13 @@ export async function runLocalLlmDiagnostics(
         userPrompt: 'Return {"status":"ok"} as valid JSON.'
     });
     structuredJson = structured.ok
-        ? { ok: true, message: `Structured JSON path succeeded${structured.repairCount > 0 ? ' after repair.' : '.'}` }
+        ? { ok: true, message: 'Structured JSON path succeeded without fallback repair.' }
         : { ok: false, message: structured.error };
 
-    const repairPath: LocalLlmDiagnosticCheck = await (async () => {
-        const result = await runStructuredJsonPipeline({
-            providerLabel: LOCAL_LLM_BACKEND_LABELS[localLlm.backend],
-            schema: {
-                type: 'object',
-                properties: {
-                    status: { type: 'string' }
-                },
-                required: ['status']
-            },
-            jsonMode: localLlm.jsonMode,
-            maxRetries: 1,
-            runner: {
-                async run({ userPrompt }) {
-                    if (userPrompt.includes('Repair the invalid JSON below.')) {
-                        return {
-                            content: '{"status":"ok"}',
-                            responseData: { source: 'repair-self-test' },
-                            requestPayload: { source: 'repair-self-test' }
-                        };
-                    }
-                    return {
-                        content: '{"status": }',
-                        responseData: { source: 'repair-self-test' },
-                        requestPayload: { source: 'repair-self-test' }
-                    };
-                }
-            },
-            systemPrompt: 'Return only JSON.',
-            userPrompt: 'Return {"status":"ok"} as valid JSON.'
-        });
-        return result.ok && result.repairCount === 1
-            ? { ok: true, message: 'Repair path self-check succeeded.' }
-            : { ok: false, message: result.ok ? 'Repair path did not execute.' : result.error };
-    })();
+    const repairPath: LocalLlmDiagnosticCheck = {
+        ok: true,
+        message: 'No runtime JSON repair fallback is enabled; malformed JSON fails explicitly.'
+    };
 
     return {
         backend: LOCAL_LLM_BACKEND_LABELS[localLlm.backend],

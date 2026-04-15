@@ -101,6 +101,7 @@ export type InquiryRunProgressEvent = {
 export interface InquiryRunExecutionOptions {
     onProgress?: (event: InquiryRunProgressEvent) => void;
     shouldAbort?: () => boolean;
+    forceFreshRun?: boolean;
 }
 
 export interface InquiryRunTrace {

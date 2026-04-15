@@ -3,7 +3,7 @@
  * Copyright (c) 2025 Eric Rhys Taylor
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
-import { ButtonComponent, Platform, setIcon } from 'obsidian';
+import { ButtonComponent, normalizePath, Platform, setIcon } from 'obsidian';
 import RadialTimelinePlugin from '../main';
 import { BookDesignerModal } from '../modals/BookDesignerModal';
 
@@ -91,9 +91,15 @@ const runCreateNoteCommand = (plugin: RadialTimelinePlugin): void => {
 export function renderWelcomeScreen({ container, plugin, refreshTimeline }: WelcomeScreenParams): void {
     container.addClass('rt-welcome-view');
 
-    // Background shell icon - large and faint
+    // Background RT logo - large and faint
     const bgIcon = container.createDiv({ cls: 'rt-welcome-bg-icon' });
-    setIcon(bgIcon, 'shell');
+    const configDir = (plugin.app.vault as unknown as { configDir?: string }).configDir ?? '.obsidian';
+    const pluginId = plugin.manifest.id;
+    const assetPath = normalizePath(`${configDir}/plugins/${pluginId}/assets/rt-logo.png`);
+    // SAFE: vault.adapter.getResourcePath is required for converting vault paths to asset URLs (no Vault API alternative)
+    const adapter = plugin.app.vault.adapter as unknown as { getResourcePath?: (path: string) => string };
+    const logoHref = adapter.getResourcePath ? adapter.getResourcePath(assetPath) : assetPath;
+    bgIcon.createEl('img', { attr: { src: logoHref, alt: '' } });
 
     // Huge Welcome Title (custom styled block, not an H1)
     container.createDiv({ cls: 'rt-welcome-title', text: 'Welcome' });

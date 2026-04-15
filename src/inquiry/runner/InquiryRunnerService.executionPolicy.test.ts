@@ -89,13 +89,6 @@ function buildRunResult(overrides?: Partial<AIRunResult>): AIRunResult {
     };
 }
 
-function setGlobalFlag(key: string, value: unknown) {
-    Object.defineProperty(globalThis, key, {
-        configurable: true,
-        value
-    });
-}
-
 describe('InquiryRunnerService execution policy', () => {
     beforeEach(() => {
         vi.mocked(getAIClient).mockReturnValue({} as never);
@@ -177,6 +170,39 @@ describe('InquiryRunnerService execution policy', () => {
         expect(String(result.error)).toContain('multi-pass/parsing failure');
         expect(runChunkedInquiry).not.toHaveBeenCalled();
         expect(runInquiryRequest).not.toHaveBeenCalled();
+    });
+
+    it('propagates forceFreshRun into one-pass provider dispatches', async () => {
+        const service = createService();
+        const getExecutionPrecheck = vi.fn().mockResolvedValue(buildPrecheck({ onePassFit: 'fits' }));
+        const runInquiryRequest = vi.fn().mockResolvedValue(buildRunResult());
+        const runChunkedInquiry = vi.fn();
+        Object.assign(service, {
+            getExecutionPrecheck,
+            runInquiryRequest,
+            runChunkedInquiry
+        });
+
+        await (service.callProvider as (...args: unknown[]) => Promise<Record<string, unknown>>) (
+            'system',
+            'user',
+            TEST_AI,
+            { type: 'object' },
+            0.2,
+            4000,
+            'question',
+            undefined,
+            { forceFreshRun: true }
+        );
+
+        expect(runChunkedInquiry).not.toHaveBeenCalled();
+        expect(runInquiryRequest).toHaveBeenCalledTimes(1);
+        expect(runInquiryRequest).toHaveBeenCalledWith(
+            expect.anything(),
+            expect.objectContaining({
+                forceFreshRun: true
+            })
+        );
     });
 
     it('records OpenAI transport lane in trace notes for logging', () => {
@@ -337,7 +363,7 @@ describe('InquiryRunnerService execution policy', () => {
         expect(result.roleValidation).toBe('missing-target-roles');
     });
 
-    it('recovers later invalid chunk JSON and continues multi-pass execution', async () => {
+    it('fails multi-pass execution when any chunk returns invalid structured output', async () => {
         const service = createService();
         const buildEvidenceChunkPrompts = vi.fn().mockReturnValue({
             prompts: ['chunk-1', 'chunk-2'],
@@ -370,24 +396,6 @@ describe('InquiryRunnerService execution policy', () => {
                     '}',
                     '```'
                 ].join('\n')
-            }))
-            .mockResolvedValueOnce(buildRunResult({
-                aiStatus: 'success',
-                content: JSON.stringify({
-                    summaryFlow: 'Chunk 2 flow summary',
-                    summaryDepth: 'Chunk 2 depth summary',
-                    verdict: { flow: 0.64, depth: 0.57, impact: 'low', assessmentConfidence: 'low' },
-                    findings: []
-                })
-            }))
-            .mockResolvedValueOnce(buildRunResult({
-                aiStatus: 'success',
-                content: JSON.stringify({
-                    summaryFlow: 'Synthesis flow summary',
-                    summaryDepth: 'Synthesis depth summary',
-                    verdict: { flow: 0.66, depth: 0.61, impact: 'low', assessmentConfidence: 'medium' },
-                    findings: []
-                })
             }));
         Object.assign(service, {
             buildEvidenceChunkPrompts,
@@ -406,12 +414,14 @@ describe('InquiryRunnerService execution policy', () => {
             }
         );
 
-        expect(result.ok).toBe(true);
-        expect(result.run.aiReason).toBe('recovered_invalid_response');
-        expect(runInquiryRequest).toHaveBeenCalledTimes(3);
+        expect(result.ok).toBe(false);
+        expect(result.failureStage).toBe('chunk_execution');
+        expect(String(result.failureReason)).toContain('Chunk 2/2 failed');
+        expect(String(result.failureReason)).toContain('reason=invalid_response');
+        expect(runInquiryRequest).toHaveBeenCalledTimes(2);
     });
 
-    it('aborts immediately in strict debug mode when chunk 1 requires recovery', async () => {
+    it('fails immediately when chunk 1 returns invalid structured output', async () => {
         const service = createService();
         const buildEvidenceChunkPrompts = vi.fn().mockReturnValue({
             prompts: ['chunk-1', 'chunk-2'],
@@ -439,28 +449,24 @@ describe('InquiryRunnerService execution policy', () => {
             buildEvidenceChunkPrompts,
             runInquiryRequest
         });
-        setGlobalFlag('__RT_INQUIRY_STRICT_DEBUG__', true);
 
-        try {
-            const result = await (service.runChunkedInquiry as (...args: unknown[]) => Promise<Record<string, unknown>>) (
-                {} as never,
-                {
-                    systemPrompt: 'system',
-                    userPrompt: 'Question\nEvidence:\n## Scene A\nFull',
-                    ai: TEST_AI,
-                    jsonSchema: { type: 'object' },
-                    temperature: 0.2,
-                    maxTokens: 4000
-                }
-            );
+        const result = await (service.runChunkedInquiry as (...args: unknown[]) => Promise<Record<string, unknown>>) (
+            {} as never,
+            {
+                systemPrompt: 'system',
+                userPrompt: 'Question\nEvidence:\n## Scene A\nFull',
+                ai: TEST_AI,
+                jsonSchema: { type: 'object' },
+                temperature: 0.2,
+                maxTokens: 4000
+            }
+        );
 
-            expect(result.ok).toBe(false);
-            expect(result.failureStage).toBe('chunk_execution');
-            expect(String(result.failureReason)).toContain('Chunk 1 health check failed');
-            expect(runInquiryRequest).toHaveBeenCalledTimes(1);
-        } finally {
-            delete (globalThis as Record<string, unknown>).__RT_INQUIRY_STRICT_DEBUG__;
-        }
+        expect(result.ok).toBe(false);
+        expect(result.failureStage).toBe('chunk_execution');
+        expect(String(result.failureReason)).toContain('Chunk 1/2 failed');
+        expect(String(result.failureReason)).toContain('reason=invalid_response');
+        expect(runInquiryRequest).toHaveBeenCalledTimes(1);
     });
 
     it('aborts when chunk 1 returns scene refs outside the active corpus', async () => {

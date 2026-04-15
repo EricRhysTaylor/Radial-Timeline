@@ -80,17 +80,6 @@ function extractBalancedObject(raw: string): string | null {
     return input.trim().startsWith('{') ? input.trim() : null;
 }
 
-function buildRepairPrompt(schema: Record<string, unknown>, invalidContent: string): string {
-    return [
-        'Repair the invalid JSON below.',
-        'Return only a valid JSON object.',
-        'Preserve the intended meaning, but satisfy the required keys and valid JSON syntax.',
-        `Schema: ${JSON.stringify(schema)}`,
-        'Invalid JSON:',
-        invalidContent
-    ].join('\n\n');
-}
-
 function validateStructuredJson(
     content: string | null,
     schema: Record<string, unknown>,
@@ -148,48 +137,15 @@ export async function runStructuredJsonPipeline(input: {
         };
     }
 
-    let latestResponseData = initial.responseData;
-    let latestRequestPayload = initial.requestPayload;
-    let latestError = validated.error;
-    let latestContent = initial.content;
-    let repairedContent: string | null = null;
-    const attempts = Math.max(0, input.maxRetries);
-    for (let repairCount = 1; repairCount <= attempts; repairCount += 1) {
-        const repair = await input.runner.run({
-            systemPrompt: 'Repair malformed JSON for Radial Timeline. Return only valid JSON.',
-            userPrompt: buildRepairPrompt(input.schema, initial.content || ''),
-            useResponseFormat: input.jsonMode === 'response_format'
-        });
-        latestResponseData = repair.responseData;
-        latestRequestPayload = repair.requestPayload;
-        latestContent = repair.content;
-        repairedContent = repair.content;
-        if (repair.error) {
-            latestError = repair.error;
-            continue;
-        }
-        const repairValidation = validateStructuredJson(repair.content, input.schema, input.providerLabel);
-        if (repairValidation.ok) {
-            return {
-                ok: true,
-                content: repairValidation.normalized,
-                responseData: repair.responseData,
-                requestPayload: repair.requestPayload,
-                repairCount
-            };
-        }
-        latestError = repairValidation.error;
-    }
-
     return {
         ok: false,
-        error: latestError,
-        content: latestContent,
+        error: validated.error,
+        content: initial.content,
         initialContent: initial.content,
-        repairedContent,
-        responseData: latestResponseData,
-        requestPayload: latestRequestPayload,
-        stage: 'repair',
-        repairCount: attempts
+        repairedContent: undefined,
+        responseData: initial.responseData,
+        requestPayload: initial.requestPayload,
+        stage: 'initial',
+        repairCount: 0
     };
 }
