@@ -238,6 +238,7 @@ const buildCanonicalManifest = (
     return {
         entries,
         fingerprint: hashString(fingerprintRaw),
+        cacheReuseFingerprint: hashString(`${INQUIRY_SCHEMA_VERSION}|${modelId}|${fingerprintSource}`),
         generatedAt: now,
         resolvedRoots: [],
         allowedClasses: Array.from(new Set(entries.map(entry => entry.class))),

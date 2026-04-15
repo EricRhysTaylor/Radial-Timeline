@@ -65,6 +65,7 @@ export interface InquiryResult {
     verdict: InquiryVerdict;
     findings: InquiryFinding[];
     corpusFingerprint?: string;
+    cacheReuseFingerprint?: string;
     corpusOverridesActive?: boolean;
     corpusOverrideSummary?: {
         classCount: number;

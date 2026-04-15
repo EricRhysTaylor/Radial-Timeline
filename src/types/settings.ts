@@ -589,6 +589,7 @@ export interface InquirySessionCacheRecord {
         pendingEditsEmpty?: boolean;
         logPath?: string;
         cacheWindowExpiresAt?: number;
+        cacheReuseFingerprint?: string;
         cacheReuseState?: 'idle' | 'eligible' | 'warm';
         providerCacheStatus?: 'hit' | 'created';
         cachedStableRatio?: number;

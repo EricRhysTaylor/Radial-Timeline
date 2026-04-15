@@ -1306,8 +1306,8 @@ export function renderAiSection(params: {
         return `${totalMinutes}m remaining`;
     };
 
-    const getPreviewCurrentCorpusFingerprint = (): string | null =>
-        getCurrentCorpusContext()?.corpusFingerprint?.trim() || null;
+    const getPreviewCurrentCacheReuseFingerprint = (): string | null =>
+        getCurrentCorpusContext()?.cacheReuseFingerprint?.trim() || null;
 
     const resetResolvedPreviewCertificateUi = (): void => {
         resolvedPreviewFrame.classList.remove(
@@ -1317,6 +1317,7 @@ export function renderAiSection(params: {
         );
         resolvedPreviewComparatorLabel.setText('');
         resolvedPreviewComparatorValue.setText('');
+        resolvedPreviewComparatorValue.toggleClass('ert-settings-hidden', false);
         resolvedPreviewComparator.toggleClass('ert-settings-hidden', true);
         resolvedPreviewStatus.classList.remove(
             'ert-preview-status-line--success',
@@ -1359,9 +1360,9 @@ export function renderAiSection(params: {
             };
         }
 
-        const currentFingerprint = getPreviewCurrentCorpusFingerprint();
+        const currentFingerprint = getPreviewCurrentCacheReuseFingerprint();
         const activeCacheSession = inquirySessionStore.getLatestActiveCacheSessionForEngine(context.provider, context.modelId, {
-            corpusFingerprint: currentFingerprint ?? undefined
+            cacheReuseFingerprint: currentFingerprint ?? undefined
         });
         const fallbackCacheSession = !activeCacheSession
             ? inquirySessionStore.getLatestActiveCacheSessionForEngine(context.provider, context.modelId)
@@ -1371,10 +1372,9 @@ export function renderAiSection(params: {
         const resultStatus = latestSession.result.aiStatus;
         const reasonLabel = formatPreviewReasonLabel(resultStatus, latestSession.result.aiReason);
         const extraPills: string[] = [];
-
-        if (cacheSession?.cacheWindowExpiresAt && cacheSession.cacheWindowExpiresAt > Date.now()) {
-            extraPills.push(formatPreviewCacheRemaining(cacheSession.cacheWindowExpiresAt - Date.now()));
-        }
+        const cacheRemainingLabel = cacheSession?.cacheWindowExpiresAt && cacheSession.cacheWindowExpiresAt > Date.now()
+            ? formatPreviewCacheRemaining(cacheSession.cacheWindowExpiresAt - Date.now())
+            : null;
 
         if (resultStatus && resultStatus !== 'success') {
             const isWarning = resultStatus === 'degraded';
@@ -1391,33 +1391,17 @@ export function renderAiSection(params: {
         }
 
         if (cacheSession?.cacheWindowExpiresAt && cacheSession.cacheWindowExpiresAt > Date.now()) {
-            const cacheRatio = context.provider === 'anthropic'
-                && typeof cacheSession.cachedStableRatio === 'number'
-                && Number.isFinite(cacheSession.cachedStableRatio)
-                && cacheSession.cachedStableRatio > 0
-                ? Math.min(1, Math.max(0, cacheSession.cachedStableRatio))
-                : undefined;
-            const cachedTokens = typeof cacheSession.cachedStableTokens === 'number' && Number.isFinite(cacheSession.cachedStableTokens)
-                ? Math.max(0, Math.floor(cacheSession.cachedStableTokens))
-                : null;
-            const totalInputTokens = typeof cacheSession.totalInputTokens === 'number' && Number.isFinite(cacheSession.totalInputTokens)
-                ? Math.max(0, Math.floor(cacheSession.totalInputTokens))
-                : null;
             return {
                 tone: 'success',
                 comparatorLabel: 'Last run',
-                comparatorValue: hasCurrentCorpusMatch
-                    ? 'Cache warm on current corpus'
-                    : 'Cache warm on last Inquiry corpus',
+                comparatorValue: null,
                 statusIcon: 'badge-check',
                 statusText: hasCurrentCorpusMatch
-                    ? 'Provider cache is live for the current Inquiry corpus.'
-                    : 'Provider cache is still live for the last Inquiry corpus seen by Inquiry.',
+                    ? `Context warm • ${cacheRemainingLabel ?? 'active'}`
+                    : `Context warm on last Inquiry corpus • ${cacheRemainingLabel ?? 'active'}`,
                 extraPills,
-                cacheRatio,
-                cacheLabel: cacheRatio && cachedTokens && totalInputTokens
-                    ? `Cached for next run · ${formatCorpusBreakdownToken(cachedTokens)} of ${formatCorpusBreakdownToken(totalInputTokens)}`
-                    : null
+                cacheRatio: undefined,
+                cacheLabel: null
             };
         }
 
@@ -1442,9 +1426,10 @@ export function renderAiSection(params: {
         }).concat(certificate.extraPills);
         renderResolvedPreviewPills(previewPills);
 
-        if (certificate.comparatorLabel && certificate.comparatorValue) {
+        if (certificate.comparatorLabel) {
             resolvedPreviewComparatorLabel.setText(certificate.comparatorLabel);
-            resolvedPreviewComparatorValue.setText(certificate.comparatorValue);
+            resolvedPreviewComparatorValue.setText(certificate.comparatorValue ?? '');
+            resolvedPreviewComparatorValue.toggleClass('ert-settings-hidden', !certificate.comparatorValue);
             resolvedPreviewComparator.toggleClass('ert-settings-hidden', false);
         }
 

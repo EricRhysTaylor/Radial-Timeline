@@ -148,9 +148,54 @@ describe('InquiryView payload accounting', () => {
     it('keeps context reuse HUD tied to the current engine instead of hydrated result state', () => {
         const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
         expect(viewSource.includes('private getLatestCacheSessionForResolvedEngine(): InquirySession | null {')).toBe(true);
-        expect(viewSource.includes("return 'Context reuse expired';")).toBe(true);
+        expect(viewSource.includes("return 'Cache expired';")).toBe(true);
         expect(viewSource.includes("const hasLiveContextCountdown = !this.state.isRunning && !!this.getActiveCacheWindowExpiry();")).toBe(true);
         expect(viewSource.includes('this.reconcileEngineTimerInterval(hasLiveContextCountdown);')).toBe(true);
+    });
+
+    it('self-heals stale pending-edits flags and aligns brief actions with writeback suggestions', () => {
+        const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
+        expect(viewSource.includes('const prior = session.pendingEditsEmpty;')).toBe(true);
+        expect(viewSource.includes('if (session.key && prior !== pendingEditsEmpty) {')).toBe(true);
+        expect(viewSource.includes('private buildBriefPendingActions(result: InquiryResult): string[] {')).toBe(true);
+        expect(viewSource.includes('const pendingActions = this.buildBriefPendingActions(result);')).toBe(true);
+    });
+
+    it('prefers the strongest live warm-cache metrics over stale persisted reuse data', () => {
+        const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
+        expect(viewSource.includes('private getLiveReuseAdvancedContext(): AIRunAdvancedContext | null {')).toBe(true);
+        expect(viewSource.includes('private scoreReuseAdvancedContext(context: AIRunAdvancedContext | null): number {')).toBe(true);
+        expect(viewSource.includes('return this.scoreReuseAdvancedContext(live) > this.scoreReuseAdvancedContext(persisted)')).toBe(true);
+    });
+
+    it('defines a visibly tinted cached-overlay hatch for the minimap token bar', () => {
+        const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
+        const cssSource = readFileSync(resolve(process.cwd(), 'src/styles/inquiry.css'), 'utf8');
+        expect(viewSource.includes("hatchBg.classList.add('ert-inquiry-minimap-cached-hatch-bg');")).toBe(true);
+        expect(viewSource.includes('hatchLineSecondary')).toBe(true);
+        expect(cssSource.includes('.ert-inquiry-minimap-tokencap-cached')).toBe(true);
+        expect(cssSource.includes('fill: #ff2d2d;')).toBe(true);
+    });
+
+    it('renders the warm cache HUD countdown as a green flame icon plus timer text', () => {
+        const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
+        const domSource = readFileSync(resolve(process.cwd(), 'src/inquiry/dom/inquiryDomFactory.ts'), 'utf8');
+        const cssSource = readFileSync(resolve(process.cwd(), 'src/styles/inquiry.css'), 'utf8');
+        expect(viewSource.includes("'flame-kindling'")).toBe(true);
+        expect(viewSource.includes("return `${this.formatCacheCountdown(remainingMs)} remaining`;")).toBe(true);
+        expect(domSource.includes("engineTimerIcon.setAttribute('href', '#ert-icon-flame-kindling');")).toBe(true);
+        expect(cssSource.includes('.ert-inquiry-engine-timer-icon.is-context-warm')).toBe(true);
+    });
+
+    it('spells briefing writeback targets from the computed pending-edits plan', () => {
+        const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
+        const rendererSource = readFileSync(resolve(process.cwd(), 'src/inquiry/briefing/inquiryBriefingRenderer.ts'), 'utf8');
+        expect(viewSource.includes('private buildInquiryPendingEditsPlan(')).toBe(true);
+        expect(viewSource.includes('pendingEditsTooltip')).toBe(true);
+        expect(viewSource.includes("return `Write to Pending Edits: ${labels.join(', ')}`;")).toBe(true);
+        expect(viewSource.includes("return `Pending Edits updated for ${labels.join(', ')}.`;")).toBe(true);
+        expect(rendererSource.includes('pendingEditsTooltip?: string;')).toBe(true);
+        expect(rendererSource.includes('const pendingLabel = args.pendingEditsTooltip ||')).toBe(true);
     });
 
     it('uses the latest same-model timing sample and cached next-run cost when available', () => {
@@ -162,6 +207,14 @@ describe('InquiryView payload accounting', () => {
         expect(viewSource.includes('this.refreshEstimateDisplays();')).toBe(true);
         expect(viewSource.includes('const nextRunCanReuseCache = !!cacheSession?.cacheWindowExpiresAt')).toBe(true);
         expect(viewSource.includes("return `Cost · ${cachedLabel} cached`;")).toBe(true);
+    });
+
+    it('derives Anthropic persisted cache coverage from actual usage and refreshes the HUD after estimate snapshots', () => {
+        const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
+        expect(viewSource.includes('private getObservedAnthropicCacheMetrics(trace?: InquiryRunTrace | null):')).toBe(true);
+        expect(viewSource.includes('usage.cacheReadInputTokens')).toBe(true);
+        expect(viewSource.includes('const observedAnthropicCacheMetrics = result.aiProvider?.trim().toLowerCase() === \'anthropic\'')).toBe(true);
+        expect(viewSource.includes('this.updateRunningHud();')).toBe(true);
     });
 
     it('stamps Anthropic dispatch fingerprints into the trace and compares them to the previous same-engine run', () => {

@@ -1938,6 +1938,7 @@ export class InquiryRunnerService implements InquiryRunner {
             },
             findings: mappedFindings,
             corpusFingerprint: input.corpus.fingerprint,
+            cacheReuseFingerprint: input.corpus.cacheReuseFingerprint,
             ...aiMeta,
             ...(citations?.length ? { citations } : {}),
             ...(evidenceDocumentMeta?.length ? { evidenceDocumentMeta } : {})
@@ -2202,6 +2203,7 @@ export class InquiryRunnerService implements InquiryRunner {
             },
             findings,
             corpusFingerprint: input.corpus.fingerprint,
+            cacheReuseFingerprint: input.corpus.cacheReuseFingerprint,
             ...aiMeta,
             ...(message ? { aiErrorDetail: message } : {})
         };

@@ -45,6 +45,7 @@ export interface CorpusManifestEntry {
 export interface CorpusManifest {
     entries: CorpusManifestEntry[];
     fingerprint: string;
+    cacheReuseFingerprint: string;
     generatedAt: number;
     resolvedRoots: string[];
     allowedClasses: EvidenceClass[];

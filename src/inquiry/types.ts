@@ -51,6 +51,7 @@ export type InquiryCurrentCorpusContext = {
     activeBookId?: string;
     scopeLabel: string;
     corpusFingerprint: string;
+    cacheReuseFingerprint: string;
     corpus: RTCorpusTokenEstimate;
     requestTokens: number;
     requestEstimateMethod?: TokenEstimateMethod;

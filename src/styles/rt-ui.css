@@ -2736,9 +2736,15 @@
 }
 
 .ert-ui.ert-scope--settings .ert-ai-resolved-preview-frame.ert-ai-resolved-preview-frame--success {
-  background: color-mix(in srgb, var(--ert-previewFrame-bg) 76%, var(--text-success) 24%);
-  border-color: color-mix(in srgb, var(--text-success) 42%, transparent);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--text-success) 18%, transparent);
+  background:
+    radial-gradient(145% 125% at 50% -10%, color-mix(in srgb, var(--text-success) 50%, transparent) 0%, transparent 54%),
+    radial-gradient(135% 95% at 50% 108%, color-mix(in srgb, var(--text-success) 24%, transparent) 0%, transparent 68%),
+    linear-gradient(180deg, color-mix(in srgb, var(--ert-previewFrame-bg) 34%, var(--text-success) 66%) 0%, color-mix(in srgb, var(--ert-previewFrame-bg) 56%, var(--text-success) 44%) 100%);
+  border-color: color-mix(in srgb, var(--text-success) 68%, transparent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 16%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--text-success) 28%, transparent),
+    0 20px 46px color-mix(in srgb, var(--text-success) 22%, transparent);
 }
 
 .ert-ui.ert-scope--settings .ert-ai-resolved-preview-frame.ert-ai-resolved-preview-frame--warning {
@@ -2778,8 +2784,8 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
-  min-height: 34px;
+  gap: 4px;
+  min-height: 42px;
 }
 
 .ert-ui.ert-scope--settings .ert-ai-resolved-preview-comparator-label {
@@ -2791,9 +2797,11 @@
 }
 
 .ert-ui.ert-scope--settings .ert-ai-resolved-preview-comparator-value {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: clamp(18px, 2.1vw, 22px);
+  font-weight: 700;
+  line-height: 1.15;
   color: var(--text-normal);
+  text-wrap: balance;
 }
 
 .ert-ui.ert-scope--settings .ert-ai-resolved-preview-status {
@@ -2805,6 +2813,17 @@
 .ert-ui.ert-scope--settings .ert-ai-resolved-preview-status-text {
   font-size: 12px;
   line-height: 1.35;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-resolved-preview-frame--success .ert-ai-resolved-preview-status-text {
+  font-size: clamp(14px, 1.45vw, 16px);
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-resolved-preview-frame--success .ert-preview-status-icon svg {
+  width: 15px;
+  height: 15px;
 }
 
 .ert-ui.ert-scope--settings .ert-ai-resolved-preview-pills {
@@ -2828,6 +2847,11 @@
   background: color-mix(in srgb, var(--background-primary) 82%, var(--interactive-accent) 7%);
   border-color: color-mix(in srgb, var(--background-modifier-border) 65%, var(--interactive-accent) 30%);
   letter-spacing: 0.01em;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-resolved-preview-frame--success .ert-ai-resolved-preview-pill {
+  background: color-mix(in srgb, var(--background-primary) 72%, var(--text-success) 28%);
+  border-color: color-mix(in srgb, var(--text-success) 34%, var(--background-modifier-border));
 }
 
 .ert-ui.ert-scope--settings .ert-ai-resolved-preview-cache-meter {

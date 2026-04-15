@@ -329,7 +329,6 @@ import {
     buildSceneDossierHeader,
     formatBriefLabel,
     formatInquiryBriefLink,
-    getPendingInquiryActions,
     getSceneNoteSortOrder,
     normalizeInquiryHeadline,
     parseCorpusLabelNumber,
@@ -530,6 +529,7 @@ export class InquiryView extends ItemView {
     private navPrevIcon?: SVGUseElement;
     private navNextIcon?: SVGUseElement;
     private navSessionLabel?: SVGTextElement;
+    private engineTimerIcon?: SVGUseElement;
     private engineTimerLabel?: SVGTextElement;
     private helpToggleButton?: SVGGElement;
     private helpTipsEnabled = false;
@@ -699,6 +699,7 @@ export class InquiryView extends ItemView {
         this.apiSimulationButton = shell.apiSimulationButton;
         this.helpToggleButton = shell.helpToggleButton;
         this.engineBadgeGroup = shell.engineBadgeGroup;
+        this.engineTimerIcon = shell.engineTimerIcon;
         this.engineTimerLabel = shell.engineTimerLabel;
         this.navPrevButton = shell.navPrevButton;
         this.navNextButton = shell.navNextButton;
@@ -706,6 +707,7 @@ export class InquiryView extends ItemView {
         this.navNextIcon = shell.navNextIcon;
         this.navSessionLabel = shell.navSessionLabel;
 
+        this.registerSvgEvent(this.engineTimerIcon, 'click', () => this.clearContextWindow());
         this.registerSvgEvent(this.engineTimerLabel, 'click', () => this.clearContextWindow());
 
         setupTooltipsFromDataAttributes(this.rootSvg, this.registerDomEvent.bind(this), { rtOnly: true });
@@ -1123,6 +1125,7 @@ export class InquiryView extends ItemView {
             activeBookId: this.getCanonicalActiveBookId(),
             scopeLabel: this.getScopeLabel(),
             corpusFingerprint: manifest.fingerprint,
+            cacheReuseFingerprint: manifest.cacheReuseFingerprint,
             corpus: snapshotMatches
                 ? snapshot.corpus.estimate
                 : buildPendingCorpusEstimateFromManifestEntries(manifest.entries),
@@ -1380,9 +1383,22 @@ export class InquiryView extends ItemView {
         const metaText = `${this.formatSessionScope(session)} · ${this.formatSessionProviderModel(session)} · ${this.formatSessionTime(session)}${overrideLabel ? ` · ${overrideLabel}` : ''}`;
         const status = this.resolveSessionStatus(session);
         const pendingEditsApplied = !!session.pendingEditsApplied;
-        const pendingEditsEmpty = this.ensurePendingEditsEmpty(session);
+        const pendingPlan = this.buildInquiryPendingEditsPlan(session.result, session.activeBookId);
+        const pendingEditsEmpty = pendingPlan.notesByMaterial.size === 0;
+        const priorPendingEditsEmpty = session.pendingEditsEmpty;
+        session.pendingEditsEmpty = pendingEditsEmpty;
+        if (session.key && priorPendingEditsEmpty !== pendingEditsEmpty) {
+            this.sessionStore.updateSession(session.key, { pendingEditsEmpty });
+        }
         const autoPopulateEnabled = this.plugin.settings.inquiryActionNotesAutoPopulate ?? false;
         const fieldLabel = this.resolveInquiryActionNotesFieldLabel();
+        const pendingEditsTooltip = blocked
+            ? 'Inquiry is blocked'
+            : pendingEditsApplied
+                ? `${fieldLabel} already updated`
+                : status === 'error'
+                    ? 'No pending edits (run failed)'
+                    : this.formatPendingEditsTargetsTooltip(pendingPlan.targetLabels);
         const refs = renderInquiryBriefingSessionItem({
             container,
             zoneId,
@@ -1394,6 +1410,7 @@ export class InquiryView extends ItemView {
             blocked,
             pendingEditsApplied,
             pendingEditsEmpty,
+            pendingEditsTooltip,
             autoPopulateEnabled,
             fieldLabel,
             hasBriefPath: !!session.briefPath
@@ -1466,10 +1483,10 @@ export class InquiryView extends ItemView {
     }
 
     private ensurePendingEditsEmpty(session: InquirySession): boolean {
-        if (typeof session.pendingEditsEmpty === 'boolean') return session.pendingEditsEmpty;
         const pendingEditsEmpty = this.resolvePendingEditsEmpty(session.result, session.activeBookId);
+        const prior = session.pendingEditsEmpty;
         session.pendingEditsEmpty = pendingEditsEmpty;
-        if (session.key) {
+        if (session.key && prior !== pendingEditsEmpty) {
             this.sessionStore.updateSession(session.key, { pendingEditsEmpty });
         }
         return pendingEditsEmpty;
@@ -1480,9 +1497,52 @@ export class InquiryView extends ItemView {
         if (this.isErrorResult(normalized)) return true;
         if (normalized.scope !== 'book') return true;
         if (!this.corpus) return true;
+        return this.buildInquiryPendingEditsPlan(normalized, activeBookId).notesByMaterial.size === 0;
+    }
+
+    private buildInquiryPendingEditsPlan(
+        result: InquiryResult,
+        activeBookId?: string
+    ): {
+        notesByMaterial: Map<string, string[]>;
+        targetLabels: string[];
+    } {
+        const normalized = this.normalizeLegacyResult(result);
+        if (this.isErrorResult(normalized) || normalized.scope !== 'book' || !this.corpus) {
+            return { notesByMaterial: new Map(), targetLabels: [] };
+        }
         const briefTitle = this.formatInquiryBriefTitle(normalized);
         const notesByMaterial = this.buildInquiryActionNotes(normalized, briefTitle, activeBookId);
-        return notesByMaterial.size === 0;
+        const sceneLabelsByPath = new Map<string, string>();
+        (this.corpus.scenes ?? []).forEach(scene => {
+            if (scene.filePath && scene.displayLabel) {
+                sceneLabelsByPath.set(scene.filePath, scene.displayLabel);
+            }
+        });
+        const outlinePath = this.resolveBookOutlinePath(activeBookId);
+        const targetLabels = Array.from(notesByMaterial.keys()).map(path => {
+            const sceneLabel = sceneLabelsByPath.get(path);
+            if (sceneLabel) return sceneLabel;
+            if (outlinePath && path === outlinePath) return 'Outline';
+            return path.split('/').pop()?.replace(/\.md$/i, '').trim() || path;
+        });
+        targetLabels.sort((a, b) => {
+            const aMatch = a.match(/^S(\d+)$/i);
+            const bMatch = b.match(/^S(\d+)$/i);
+            if (aMatch && bMatch) return Number(aMatch[1]) - Number(bMatch[1]);
+            return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+        });
+        return { notesByMaterial, targetLabels };
+    }
+
+    private formatPendingEditsTargetsTooltip(labels: string[]): string {
+        if (!labels.length) return 'No pending edits';
+        return `Write to Pending Edits: ${labels.join(', ')}`;
+    }
+
+    private formatPendingEditsSuccessMessage(labels: string[]): string {
+        if (!labels.length) return 'Pending Edits updated successfully.';
+        return `Pending Edits updated for ${labels.join(', ')}.`;
     }
 
     private formatSessionProviderModel(session: InquirySession): string {
@@ -1937,6 +1997,7 @@ export class InquiryView extends ItemView {
             'arrow-big-right-dash',
             'mouse-pointer-click',
             'check-circle',
+            'flame-kindling',
             'sigma',
             'x',
             'circle',
@@ -2411,17 +2472,30 @@ export class InquiryView extends ItemView {
         // Hatched pattern for cached portion overlay on token cap bar
         const cachedPattern = createSvgElement('pattern');
         cachedPattern.setAttribute('id', 'ert-inquiry-minimap-cached-hatch');
-        cachedPattern.setAttribute('width', '4');
-        cachedPattern.setAttribute('height', '4');
+        cachedPattern.setAttribute('width', '8');
+        cachedPattern.setAttribute('height', '8');
         cachedPattern.setAttribute('patternUnits', 'userSpaceOnUse');
-        cachedPattern.setAttribute('patternTransform', 'rotate(45)');
+        const hatchBg = createSvgElement('rect');
+        hatchBg.setAttribute('x', '0');
+        hatchBg.setAttribute('y', '0');
+        hatchBg.setAttribute('width', '8');
+        hatchBg.setAttribute('height', '8');
+        hatchBg.classList.add('ert-inquiry-minimap-cached-hatch-bg');
+        cachedPattern.appendChild(hatchBg);
         const hatchLine = createSvgElement('line');
         hatchLine.setAttribute('x1', '0');
         hatchLine.setAttribute('y1', '0');
-        hatchLine.setAttribute('x2', '0');
-        hatchLine.setAttribute('y2', '4');
+        hatchLine.setAttribute('x2', '8');
+        hatchLine.setAttribute('y2', '8');
         hatchLine.classList.add('ert-inquiry-minimap-cached-hatch-stroke');
         cachedPattern.appendChild(hatchLine);
+        const hatchLineSecondary = createSvgElement('line');
+        hatchLineSecondary.setAttribute('x1', '0');
+        hatchLineSecondary.setAttribute('y1', '8');
+        hatchLineSecondary.setAttribute('x2', '8');
+        hatchLineSecondary.setAttribute('y2', '0');
+        hatchLineSecondary.classList.add('ert-inquiry-minimap-cached-hatch-stroke');
+        cachedPattern.appendChild(hatchLineSecondary);
         defs.appendChild(cachedPattern);
     }
 
@@ -5928,23 +6002,33 @@ export class InquiryView extends ItemView {
                 scope: this.state.scope,
                 questionZone: question.zone
             };
+            session.cacheReuseFingerprint = manifest.cacheReuseFingerprint;
             const cacheWindowExpiresAt = this.resolveCacheWindowExpiry(result, runTrace);
             if (cacheWindowExpiresAt) {
                 session.cacheWindowExpiresAt = cacheWindowExpiresAt;
             }
             session.cacheReuseState = runTrace?.cacheReuseState;
             session.providerCacheStatus = runTrace?.cacheStatus;
-            session.cachedStableRatio = typeof runTrace?.cachedStableRatio === 'number' && Number.isFinite(runTrace.cachedStableRatio)
-                ? Math.min(1, Math.max(0, runTrace.cachedStableRatio))
-                : undefined;
-            session.cachedStableTokens = typeof runTrace?.cachedStableTokens === 'number' && Number.isFinite(runTrace.cachedStableTokens)
-                ? Math.max(0, Math.floor(runTrace.cachedStableTokens))
-                : undefined;
-            session.totalInputTokens = typeof runTrace?.usage?.inputTokens === 'number' && Number.isFinite(runTrace.usage.inputTokens)
-                ? Math.max(0, Math.floor(runTrace.usage.inputTokens))
-                : (typeof result.tokenEstimateInput === 'number' && Number.isFinite(result.tokenEstimateInput)
-                    ? Math.max(0, Math.floor(result.tokenEstimateInput))
+            const observedAnthropicCacheMetrics = result.aiProvider?.trim().toLowerCase() === 'anthropic'
+                ? this.getObservedAnthropicCacheMetrics(runTrace)
+                : null;
+            session.cachedStableRatio = observedAnthropicCacheMetrics
+                ? observedAnthropicCacheMetrics.cachedStableRatio
+                : (typeof runTrace?.cachedStableRatio === 'number' && Number.isFinite(runTrace.cachedStableRatio)
+                    ? Math.min(1, Math.max(0, runTrace.cachedStableRatio))
                     : undefined);
+            session.cachedStableTokens = observedAnthropicCacheMetrics
+                ? observedAnthropicCacheMetrics.cachedStableTokens
+                : (typeof runTrace?.cachedStableTokens === 'number' && Number.isFinite(runTrace.cachedStableTokens)
+                    ? Math.max(0, Math.floor(runTrace.cachedStableTokens))
+                    : undefined);
+            session.totalInputTokens = observedAnthropicCacheMetrics
+                ? observedAnthropicCacheMetrics.totalInputTokens
+                : (typeof runTrace?.usage?.inputTokens === 'number' && Number.isFinite(runTrace.usage.inputTokens)
+                    ? Math.max(0, Math.floor(runTrace.usage.inputTokens))
+                    : (typeof result.tokenEstimateInput === 'number' && Number.isFinite(result.tokenEstimateInput)
+                        ? Math.max(0, Math.floor(result.tokenEstimateInput))
+                        : undefined));
             session.pendingEditsEmpty = this.resolvePendingEditsEmpty(result, activeBookId);
             this.sessionStore.setSession(session);
             const traceForLog = runTrace
@@ -6467,7 +6551,8 @@ export class InquiryView extends ItemView {
             submittedAt: options.submittedAt.toISOString(),
             completedAt: options.completedAt.toISOString(),
             roundTripMs: options.completedAt.getTime() - options.submittedAt.getTime(),
-            corpusFingerprint: options.manifest.fingerprint
+            corpusFingerprint: options.manifest.fingerprint,
+            cacheReuseFingerprint: options.manifest.cacheReuseFingerprint
         };
         this.applyCorpusOverrideSummary(timedResult);
         this.applyTokenEstimateFromTrace(timedResult, options.trace);
@@ -6502,6 +6587,7 @@ export class InquiryView extends ItemView {
             scope: normalized.scope,
             questionZone: options.question.zone
         };
+        session.cacheReuseFingerprint = options.manifest.cacheReuseFingerprint;
         session.pendingEditsEmpty = this.resolvePendingEditsEmpty(normalized, options.activeBookId);
         this.sessionStore.setSession(session);
 
@@ -6994,8 +7080,9 @@ export class InquiryView extends ItemView {
         if (normalized.scope !== 'book') return false;
         if (!this.corpus) return false;
 
+        const pendingPlan = this.buildInquiryPendingEditsPlan(normalized, session.activeBookId);
+        const notesByMaterial = pendingPlan.notesByMaterial;
         const briefTitle = this.formatInquiryBriefTitle(normalized);
-        const notesByMaterial = this.buildInquiryActionNotes(normalized, briefTitle, session.activeBookId);
         if (!notesByMaterial.size) {
             session.pendingEditsEmpty = true;
             if (session.key) {
@@ -7033,6 +7120,9 @@ export class InquiryView extends ItemView {
             this.invalidateBriefingPurgeAvailability();
             this.refreshBriefingPanel();
             void this.refreshBriefingPurgeAvailability();
+            if (options?.notify) {
+                this.notifyInteraction(this.formatPendingEditsSuccessMessage(pendingPlan.targetLabels));
+            }
         }
         if (refusedAny) {
             new Notice('Pending Edits could not be safely updated due to unexpected structure. Please review or reset the Pending Edits section.', 7000);
@@ -7104,6 +7194,19 @@ export class InquiryView extends ItemView {
         });
 
         return notesByMaterial;
+    }
+
+    private buildBriefPendingActions(result: InquiryResult): string[] {
+        const minimumRank = this.getImpactRank('medium');
+        const actions = new Set<string>();
+        result.findings.forEach(finding => {
+            if (!this.isFindingHit(finding)) return;
+            if (this.getImpactRank(finding.impact) < minimumRank) return;
+            const suggestion = this.buildInquiryActionSuggestion(finding);
+            if (!suggestion) return;
+            actions.add(suggestion);
+        });
+        return Array.from(actions);
     }
 
     private resolveBookOutlinePath(activeBookId?: string): string | null {
@@ -7706,6 +7809,7 @@ export class InquiryView extends ItemView {
         const modelId = modelIdOverride ?? this.getResolvedEngine().modelId;
         const fingerprintRaw = `${INQUIRY_SCHEMA_VERSION}|${questionId}|${modelId}|${fingerprintSource}`;
         const fingerprint = this.hashString(fingerprintRaw);
+        const cacheReuseFingerprint = this.hashString(`${INQUIRY_SCHEMA_VERSION}|${modelId}|${fingerprintSource}`);
 
         const classCounts = entries.reduce<Record<string, number>>((acc, entry) => {
             acc[entry.class] = (acc[entry.class] || 0) + 1;
@@ -7717,6 +7821,7 @@ export class InquiryView extends ItemView {
         return {
             entries,
             fingerprint,
+            cacheReuseFingerprint,
             generatedAt: now,
             resolvedRoots,
             allowedClasses,
@@ -8636,6 +8741,7 @@ export class InquiryView extends ItemView {
         if (this.activeCancelRunModal) return;
         this.syncEngineBadgePulse();
         this.updateMinimapPressureGauge();
+        this.updateRunningHud();
         if (this.enginePanelEl && !this.enginePanelEl.classList.contains('ert-hidden')) {
             this.refreshEnginePanel();
         }
@@ -9046,9 +9152,53 @@ export class InquiryView extends ItemView {
         return Date.now() + ttlMs;
     }
 
-    private getCurrentCorpusFingerprint(): string | null {
+    private getObservedAnthropicCacheMetrics(trace?: InquiryRunTrace | null): {
+        cachedStableRatio: number;
+        cachedStableTokens: number;
+        totalInputTokens: number;
+    } | null {
+        const usage = trace?.usage;
+        if (!usage) return null;
+        const cachedTokens = Math.max(
+            0,
+            usage.cacheReadInputTokens
+            ?? usage.cacheCreationInputTokens
+            ?? ((usage.cacheCreation5mInputTokens ?? 0) + (usage.cacheCreation1hInputTokens ?? 0))
+            ?? 0
+        );
+        const totalInputTokens = typeof usage.inputTokens === 'number' && Number.isFinite(usage.inputTokens)
+            ? Math.max(0, Math.floor(usage.inputTokens))
+            : 0;
+        if (cachedTokens <= 0 || totalInputTokens <= 0) {
+            return null;
+        }
+        return {
+            cachedStableRatio: Math.min(cachedTokens / totalInputTokens, 1),
+            cachedStableTokens: Math.max(0, Math.floor(cachedTokens)),
+            totalInputTokens
+        };
+    }
+
+    private getCurrentCacheReuseFingerprint(): string | null {
         const context = this._currentCorpusContext ?? this.getCurrentCorpusContext();
-        return context?.corpusFingerprint?.trim() || null;
+        return context?.cacheReuseFingerprint?.trim() || null;
+    }
+
+    private tryBackfillActiveSessionCacheReuseFingerprint(): InquirySession | null {
+        const activeSessionId = this.state.activeSessionId;
+        if (!activeSessionId || !this.state.corpusFingerprint) return null;
+        const session = this.sessionStore.peekSession(activeSessionId);
+        if (!session?.cacheWindowExpiresAt || session.cacheWindowExpiresAt <= Date.now()) return null;
+        if ((session.cacheReuseFingerprint || session.result.cacheReuseFingerprint)?.trim()) {
+            return session;
+        }
+        if (session.result.corpusFingerprint !== this.state.corpusFingerprint) return null;
+        const cacheReuseFingerprint = this.getCurrentCacheReuseFingerprint();
+        if (!cacheReuseFingerprint) return null;
+        session.cacheReuseFingerprint = cacheReuseFingerprint;
+        session.result.cacheReuseFingerprint = cacheReuseFingerprint;
+        this.sessionStore.setSession(session);
+        return session;
     }
 
     private getPersistedReuseAdvancedContext(): AIRunAdvancedContext | null {
@@ -9057,8 +9207,8 @@ export class InquiryView extends ItemView {
             return null;
         }
         const session = this.sessionStore.getLatestActiveCacheSessionForEngine(engine.provider, engine.modelId, {
-            corpusFingerprint: this.getCurrentCorpusFingerprint() ?? undefined
-        });
+            cacheReuseFingerprint: this.getCurrentCacheReuseFingerprint() ?? undefined
+        }) ?? this.tryBackfillActiveSessionCacheReuseFingerprint();
         if (!session || session.result.aiProvider?.trim().toLowerCase() !== 'anthropic') {
             return null;
         }
@@ -9094,10 +9244,42 @@ export class InquiryView extends ItemView {
         };
     }
 
+    private getLiveReuseAdvancedContext(): AIRunAdvancedContext | null {
+        const context = getLastAiAdvancedContext(this.plugin, 'InquiryMode');
+        if (!context) return null;
+        const engine = this.getResolvedEngine();
+        if (engine.provider === 'none' || engine.provider === 'ollama') return null;
+        if (context.provider !== engine.provider) return null;
+        const normalizedEngineLabel = engine.modelLabel.trim().toLowerCase();
+        const normalizedContextLabel = (context.modelLabel || '').trim().toLowerCase();
+        if (normalizedEngineLabel && normalizedContextLabel && normalizedEngineLabel !== normalizedContextLabel) {
+            return null;
+        }
+        return context;
+    }
+
+    private scoreReuseAdvancedContext(context: AIRunAdvancedContext | null): number {
+        if (!context || context.reuseState !== 'warm') return 0;
+        const ratioScore = typeof context.cachedStableRatio === 'number' && Number.isFinite(context.cachedStableRatio)
+            ? Math.max(0, context.cachedStableRatio)
+            : 0;
+        const tokenScore = typeof context.cachedStableTokens === 'number' && Number.isFinite(context.cachedStableTokens)
+            ? Math.max(0, context.cachedStableTokens)
+            : 0;
+        const inputScore = typeof context.totalInputTokens === 'number' && Number.isFinite(context.totalInputTokens)
+            ? Math.max(0, context.totalInputTokens)
+            : 0;
+        return (ratioScore * 1_000_000) + tokenScore + (inputScore * 0.001);
+    }
+
     private getEffectiveReuseAdvancedContext(): AIRunAdvancedContext | null {
-        return this.getPersistedReuseAdvancedContext()
-            ?? getLastAiAdvancedContext(this.plugin, 'InquiryMode')
-            ?? null;
+        const persisted = this.getPersistedReuseAdvancedContext();
+        const live = this.getLiveReuseAdvancedContext();
+        if (!persisted) return live ?? null;
+        if (!live) return persisted;
+        return this.scoreReuseAdvancedContext(live) > this.scoreReuseAdvancedContext(persisted)
+            ? live
+            : persisted;
     }
 
     private getActiveCacheWindowExpiry(): number | null {
@@ -9113,8 +9295,8 @@ export class InquiryView extends ItemView {
             return null;
         }
         return this.sessionStore.getLatestActiveCacheSessionForEngine(engine.provider, engine.modelId, {
-            corpusFingerprint: this.getCurrentCorpusFingerprint() ?? undefined
-        }) ?? null;
+            cacheReuseFingerprint: this.getCurrentCacheReuseFingerprint() ?? undefined
+        }) ?? this.tryBackfillActiveSessionCacheReuseFingerprint() ?? null;
     }
 
     private buildContextCountdownLabel(): string | null {
@@ -9123,9 +9305,9 @@ export class InquiryView extends ItemView {
 
         const remainingMs = session.cacheWindowExpiresAt - Date.now();
         if (remainingMs > 0) {
-            return `Cache warm · ${this.formatCacheCountdown(remainingMs)} remaining`;
+            return `${this.formatCacheCountdown(remainingMs)} remaining`;
         }
-        return 'Cache reuse expired';
+        return 'Cache expired';
     }
 
     private clearContextWindow(): void {
@@ -9171,8 +9353,10 @@ export class InquiryView extends ItemView {
 
     private updateRunningHud(): void {
         const contextLabel = this.state.isRunning ? null : this.buildContextCountdownLabel();
+        const hasWarmContextCountdown = !this.state.isRunning && !!this.getActiveCacheWindowExpiry();
         const hasLiveContextCountdown = !this.state.isRunning && !!this.getActiveCacheWindowExpiry();
         renderInquiryRunningHud({
+            engineTimerIcon: this.engineTimerIcon,
             engineTimerLabel: this.engineTimerLabel,
             navSessionLabel: this.navSessionLabel,
             isRunning: this.state.isRunning,
@@ -9184,11 +9368,17 @@ export class InquiryView extends ItemView {
                 ? this.formatElapsedRunClock(this.currentRunElapsedMs)
                 : (contextLabel ?? ''),
             engineTimerVisible: this.state.isRunning || !!contextLabel,
+            engineTimerIconVisible: hasWarmContextCountdown,
             setTextIfChanged: (el, text) => this.setTextIfChanged(el, text, 'hudTextWrites'),
             toggleClassIfChanged: (el, cls, force) => this.toggleClassIfChanged(el, cls, force, 'hudAttrWrites')
         });
+        if (this.engineTimerIcon) {
+            this.toggleClassIfChanged(this.engineTimerIcon, 'is-context-countdown', !!contextLabel, 'hudAttrWrites');
+            this.toggleClassIfChanged(this.engineTimerIcon, 'is-context-warm', hasWarmContextCountdown, 'hudAttrWrites');
+        }
         if (this.engineTimerLabel) {
             this.toggleClassIfChanged(this.engineTimerLabel, 'is-context-countdown', !!contextLabel, 'hudAttrWrites');
+            this.toggleClassIfChanged(this.engineTimerLabel, 'is-context-warm', hasWarmContextCountdown, 'hudAttrWrites');
         }
         if (!this.state.isRunning) {
             this.reconcileEngineTimerInterval(hasLiveContextCountdown);
@@ -10321,11 +10511,8 @@ export class InquiryView extends ItemView {
             const freshLabel = formatApproxUsdCost(cost.freshCostUSD);
             const cachedLabel = formatApproxUsdCost(cost.cachedCostUSD);
             const cacheSession = this.getLatestCacheSessionForResolvedEngine();
-            const currentFingerprint = snapshot.corpus.corpusFingerprint;
             const nextRunCanReuseCache = !!cacheSession?.cacheWindowExpiresAt
-                && cacheSession.cacheWindowExpiresAt > Date.now()
-                && !!currentFingerprint
-                && cacheSession.result.corpusFingerprint === currentFingerprint;
+                && cacheSession.cacheWindowExpiresAt > Date.now();
             const corpusWasRun = snapshot.corpus.corpusFingerprint === this.state.corpusFingerprint;
             if (nextRunCanReuseCache) {
                 return `Cost · ${cachedLabel} cached`;
@@ -10757,7 +10944,7 @@ export class InquiryView extends ItemView {
         }));
 
         const sceneNotes = this.buildInquirySceneNotes(result);
-        const pendingActions = getPendingInquiryActions(result);
+        const pendingActions = this.buildBriefPendingActions(result);
         const logTitle = this.resolveInquiryLogLinkTitle(result, logPath);
         const rawResponseText = typeof rawResponse === 'string' ? rawResponse.trim() : '';
         const includeRawResponse = rawResponseText.length > 0 && this.isErrorResult(result);

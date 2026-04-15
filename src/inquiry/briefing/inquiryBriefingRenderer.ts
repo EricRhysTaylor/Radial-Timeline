@@ -19,6 +19,7 @@ export function renderInquiryBriefingSessionItem(args: {
     blocked: boolean;
     pendingEditsApplied: boolean;
     pendingEditsEmpty: boolean;
+    pendingEditsTooltip?: string;
     autoPopulateEnabled: boolean;
     fieldLabel: string;
     hasBriefPath: boolean;
@@ -46,7 +47,7 @@ export function renderInquiryBriefingSessionItem(args: {
 
     const actionGroup = actionRow.createDiv({ cls: 'ert-inquiry-briefing-actions' });
     const isError = args.status === 'error';
-    const pendingLabel = args.blocked
+    const pendingLabel = args.pendingEditsTooltip || (args.blocked
         ? 'Inquiry is blocked'
         : args.pendingEditsApplied
             ? `${args.fieldLabel} already updated`
@@ -54,7 +55,7 @@ export function renderInquiryBriefingSessionItem(args: {
                 ? 'No pending edits (run failed)'
                 : args.pendingEditsEmpty
                     ? 'No pending edits'
-                    : (args.autoPopulateEnabled ? `Update ${args.fieldLabel}` : `Write to ${args.fieldLabel}`);
+                    : (args.autoPopulateEnabled ? `Update ${args.fieldLabel}` : `Write to ${args.fieldLabel}`));
     const updateButton = actionGroup.createEl('button', {
         cls: 'ert-inquiry-briefing-update',
         attr: {

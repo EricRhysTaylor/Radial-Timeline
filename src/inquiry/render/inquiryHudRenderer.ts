@@ -150,6 +150,7 @@ export function renderInquiryPromptPreviewLayout(args: {
 }
 
 export function renderInquiryRunningHud(args: {
+    engineTimerIcon?: SVGUseElement;
     engineTimerLabel?: SVGTextElement;
     navSessionLabel?: SVGTextElement;
     isRunning: boolean;
@@ -159,9 +160,17 @@ export function renderInquiryRunningHud(args: {
     buildRunningStageLabel: (progress: InquiryRunProgressEvent | null) => string;
     engineTimerText?: string;
     engineTimerVisible?: boolean;
+    engineTimerIconVisible?: boolean;
     setTextIfChanged: (el: Element | null | undefined, text: string) => void;
     toggleClassIfChanged: (el: Element | null | undefined, cls: string, force: boolean) => void;
 }): void {
+    if (args.engineTimerIcon) {
+        const iconVisible = typeof args.engineTimerIconVisible === 'boolean'
+            ? args.engineTimerIconVisible
+            : false;
+        args.toggleClassIfChanged(args.engineTimerIcon, 'ert-hidden', !iconVisible);
+    }
+
     if (args.engineTimerLabel) {
         const visible = typeof args.engineTimerVisible === 'boolean'
             ? args.engineTimerVisible

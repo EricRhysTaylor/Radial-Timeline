@@ -18,6 +18,8 @@ describe('AI client resolved-model caching', () => {
         expect(source.includes('const cacheDelimiterUsed = userPrompt.includes(CACHE_BREAK_DELIMITER);')).toBe(true);
         expect(source.includes("reuseState = cacheAttempted ? 'eligible' : 'idle';")).toBe(true);
         expect(source.includes('if (!bypassProviderReuse && ((provider === \'anthropic\' && cacheAttempted) || (provider === \'google\' && cacheDelimiterUsed))) {')).toBe(true);
+        expect(source.includes("if (provider !== 'anthropic' && typeof cachedStableRatio === 'number') {")).toBe(true);
+        expect(source.includes("if (provider !== 'anthropic' && typeof cachedStableTokens === 'number') {")).toBe(true);
     });
 
     it('builds the shared result cache key from the full prepared request contract', () => {

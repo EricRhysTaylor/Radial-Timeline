@@ -876,10 +876,9 @@ export class InquiryMinimapRenderer {
 
         if (hasRealCacheMetric) {
             // Warm or eligible with confirmed cache data — proportional overlay.
-            // Leave a 4px stub at the trailing end to reveal the underlying token cap bar.
+            // Debug mode: render the full observed width so the cache bar is unambiguous.
             const barWidth = this.minimapLayout.length * Math.min(Math.max(fillRatio, 0), 1);
-            const rawOverlayWidth = barWidth * Math.min(cachedRatio!, 1);
-            const overlayWidth = Math.max(0, rawOverlayWidth - CACHE_STUB_PX);
+            const overlayWidth = barWidth * Math.min(cachedRatio!, 1);
             if (overlayWidth < 1) {
                 // Too small to render meaningfully — show the stub instead.
                 this.minimapTokenCapCachedOverlay.classList.remove('ert-hidden');

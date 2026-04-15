@@ -899,15 +899,21 @@ export class AIClient {
             if (execution.cacheUsed) {
                 // Confirmed hit — safe to mark warm and surface cache coverage.
                 advancedContext.reuseState = 'warm';
-                advancedContext.cachedStableRatio = cachedStableRatio;
-                advancedContext.cachedStableTokens = cachedStableTokens;
+                if (provider !== 'anthropic' && typeof cachedStableRatio === 'number') {
+                    advancedContext.cachedStableRatio = cachedStableRatio;
+                }
+                if (provider !== 'anthropic' && typeof cachedStableTokens === 'number') {
+                    advancedContext.cachedStableTokens = cachedStableTokens;
+                }
                 advancedContext.cacheStatus = execution.cacheStatus;
                 setLastRunAdvanced(this.plugin, request.feature, advancedContext);
             } else if (execution.cacheStatus === 'created' || optimisticWarm || advancedContext.reuseState !== 'idle') {
                 // Cache was attempted or predicted but did not hit.
                 advancedContext.reuseState = 'eligible';
-                advancedContext.cachedStableRatio = undefined;
-                advancedContext.cachedStableTokens = undefined;
+                if (provider !== 'anthropic') {
+                    advancedContext.cachedStableRatio = undefined;
+                    advancedContext.cachedStableTokens = undefined;
+                }
                 advancedContext.cacheStatus = execution.cacheStatus;
                 setLastRunAdvanced(this.plugin, request.feature, advancedContext);
             }

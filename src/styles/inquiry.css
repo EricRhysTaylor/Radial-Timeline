@@ -570,23 +570,28 @@
 
 /* ── Cached portion overlay (hatched segment on tokencap bar) ── */
 .ert-inquiry-minimap-tokencap-cached {
-  fill: url(#ert-inquiry-minimap-cached-hatch);
-  opacity: 0.85;
+  fill: #ff2d2d;
+  opacity: 1;
   pointer-events: none;
   transition: opacity 300ms ease;
 }
 
+.ert-inquiry-minimap-cached-hatch-bg {
+  fill: color-mix(in srgb, var(--ert-inquiry-ai-success) 42%, transparent);
+}
+
 .ert-inquiry-minimap-cached-hatch-stroke {
-  stroke: var(--ert-inquiry-ai-success);
-  stroke-width: 2.5;
+  stroke: color-mix(in srgb, white 24%, var(--ert-inquiry-ai-success) 76%);
+  stroke-width: 2.8;
+  stroke-linecap: square;
 }
 
 .ert-inquiry-svg.is-running .ert-inquiry-minimap-tokencap-cached {
-  opacity: 0.4;
+  opacity: 0.9;
 }
 
 .ert-inquiry-minimap[data-reuse-state="warm"] .ert-inquiry-minimap-tokencap-cached {
-  opacity: 0.85;
+  opacity: 1;
 }
 
 /* Stub state — honest 4px white indicator when checking cache, no fabricated values */
@@ -2199,13 +2204,34 @@
   pointer-events: none;
 }
 
+.ert-inquiry-engine-timer-icon {
+  fill: color-mix(in srgb, var(--text-normal) 82%, transparent);
+  opacity: 0.92;
+  pointer-events: none;
+}
+
+.ert-inquiry-engine-timer-icon.is-context-warm,
+.ert-inquiry-engine-timer.is-context-warm {
+  fill: color-mix(in srgb, var(--ert-inquiry-ai-success) 92%, #dfffe7 8%);
+}
+
 .ert-inquiry-engine-timer.is-context-countdown {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.ert-inquiry-engine-timer-icon.is-context-countdown {
   pointer-events: auto;
   cursor: pointer;
 }
 
 .ert-inquiry-engine-timer.is-context-countdown:hover {
   fill: var(--text-accent);
+}
+
+.ert-inquiry-engine-timer-icon.is-context-warm.is-context-countdown:hover,
+.ert-inquiry-engine-timer.is-context-warm.is-context-countdown:hover {
+  fill: color-mix(in srgb, var(--ert-inquiry-ai-success) 78%, #ffffff 22%);
 }
 
 .ert-inquiry-status {

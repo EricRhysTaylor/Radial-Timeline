@@ -65,12 +65,12 @@ export class InquirySessionStore {
         modelId: string,
         options?: {
             now?: number;
-            corpusFingerprint?: string;
+            cacheReuseFingerprint?: string;
         }
     ): InquirySession | undefined {
         const normalizedProvider = provider.trim().toLowerCase();
         const normalizedModelId = modelId.trim();
-        const normalizedFingerprint = (options?.corpusFingerprint ?? '').trim();
+        const normalizedReuseFingerprint = (options?.cacheReuseFingerprint ?? '').trim();
         const now = options?.now ?? Date.now();
         if (!normalizedProvider || !normalizedModelId) return undefined;
         const matches = this.cache.sessions.filter(session => {
@@ -81,7 +81,10 @@ export class InquirySessionStore {
             const requestedModel = (session.result.aiModelRequested || '').trim();
             const modelMatches = resolvedModel === normalizedModelId || requestedModel === normalizedModelId;
             if (!modelMatches) return false;
-            if (normalizedFingerprint && session.result.corpusFingerprint !== normalizedFingerprint) return false;
+            if (normalizedReuseFingerprint) {
+                const sessionReuseFingerprint = (session.cacheReuseFingerprint || session.result.cacheReuseFingerprint || '').trim();
+                if (sessionReuseFingerprint !== normalizedReuseFingerprint) return false;
+            }
             return true;
         });
         if (!matches.length) return undefined;
