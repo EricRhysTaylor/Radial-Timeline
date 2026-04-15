@@ -28,6 +28,7 @@ export interface EstimateInputTokensRequest {
     userPrompt: string;
     evidenceDocuments?: EvidenceDocument[];
     citationsEnabled?: boolean;
+    jsonSchema?: Record<string, unknown>;
     safeInputBudget?: number;
     charsPerToken?: number;
 }
@@ -121,7 +122,9 @@ export async function estimateInputTokens(request: EstimateInputTokensRequest): 
             request.systemPrompt ?? null,
             request.userPrompt,
             request.citationsEnabled,
-            request.evidenceDocuments
+            request.evidenceDocuments,
+            undefined,
+            request.jsonSchema
         );
         return toCountedEstimate(counted, request.safeInputBudget);
     } catch (error) {

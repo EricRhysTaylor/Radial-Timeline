@@ -3,7 +3,6 @@ import {
     ButtonComponent,
     ItemView,
     Menu,
-    MenuItem,
     Notice,
     Platform,
     setIcon,
@@ -103,7 +102,7 @@ import { BUILTIN_MODELS } from '../ai/registry/builtinModels';
 import { selectModel } from '../ai/router/selectModel';
 import { buildDefaultAiSettings } from '../ai/settings/aiSettings';
 import { validateAiSettings } from '../ai/settings/validateAiSettings';
-import type { AIProviderId, AiSettingsV1, ModelInfo, AccessTier, RTCorpusTokenEstimate } from '../ai/types';
+import type { AIProviderId, AiSettingsV1, ModelInfo, AccessTier, RTCorpusTokenEstimate, AIRunAdvancedContext } from '../ai/types';
 import type {
     CorpusManifest,
     CorpusManifestEntry,
@@ -1123,6 +1122,7 @@ export class InquiryView extends ItemView {
             scope: this.state.scope,
             activeBookId: this.getCanonicalActiveBookId(),
             scopeLabel: this.getScopeLabel(),
+            corpusFingerprint: manifest.fingerprint,
             corpus: snapshotMatches
                 ? snapshot.corpus.estimate
                 : buildPendingCorpusEstimateFromManifestEntries(manifest.entries),
@@ -1148,7 +1148,7 @@ export class InquiryView extends ItemView {
             ?? null;
         if (!currentModel) return null;
 
-        const advancedContext = getLastAiAdvancedContext(this.plugin, 'InquiryMode');
+        const advancedContext = this.getEffectiveReuseAdvancedContext();
         const corpusFingerprint = snapshot.corpus.corpusFingerprint || this.state.corpusFingerprint || 'unknown';
         const corpusFingerprintReused = advancedContext?.reuseState === 'warm';
         const overrideSummary = this.getCorpusOverrideSummary();
@@ -1242,7 +1242,7 @@ export class InquiryView extends ItemView {
     }
 
     private getCurrentPassPlan(readinessUi: InquiryReadinessUiState): PassPlanResult {
-        return getCurrentPassPlanPure(readinessUi, getLastAiAdvancedContext(this.plugin, 'InquiryMode'));
+        return getCurrentPassPlanPure(readinessUi, this.getEffectiveReuseAdvancedContext());
     }
 
     private getEngineRunScopeLabel(runScopeLabel: string): string {
@@ -3724,7 +3724,7 @@ export class InquiryView extends ItemView {
         const passPlan = this.getDisplayedPassPlan(basePassPlan);
         const styleSource = this.getStyleSource();
         const isPro = hasProFeatureAccess(this.plugin);
-        const advancedContext = getLastAiAdvancedContext(this.plugin, 'InquiryMode') ?? null;
+        const advancedContext = this.getEffectiveReuseAdvancedContext();
         console.debug('[Inquiry] Pressure gauge render',
             { ratio: readinessUi.readiness.pressureRatio, state: readinessUi.readiness.state,
               budget: readinessUi.safeInputBudget, input: readinessUi.estimateInputTokens,
@@ -3765,7 +3765,7 @@ export class InquiryView extends ItemView {
     }
 
     private updateMinimapReuseStatus(): void {
-        const advanced = getLastAiAdvancedContext(this.plugin, 'InquiryMode') ?? null;
+        const advanced = this.getEffectiveReuseAdvancedContext();
         this.minimap.updateReuseStatus(advanced);
     }
 
@@ -4134,26 +4134,8 @@ export class InquiryView extends ItemView {
         }
     }
 
-    private appendMenuKeycaps(menuItem: MenuItem, keys: string[]): void {
-        // MenuItem.dom is not in the public type definitions but is stable across Obsidian versions.
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const dom = (menuItem as any).dom;
-        if (!(dom instanceof HTMLElement)) return;
-        const wrap = document.createElement('span');
-        wrap.className = 'rt-menu-keycaps';
-        keys.forEach((key, i) => {
-            if (i > 0) {
-                const sep = document.createElement('span');
-                sep.className = 'rt-menu-keycaps-sep';
-                sep.textContent = '+';
-                wrap.appendChild(sep);
-            }
-            const kbd = document.createElement('kbd');
-            kbd.className = 'rt-menu-keycap';
-            kbd.textContent = key;
-            wrap.appendChild(kbd);
-        });
-        dom.appendChild(wrap);
+    private menuTitleWithKeys(title: string, keys: string[]): string {
+        return `${title}        ${keys.join(' + ')}`;
     }
 
     private doesMinimapItemHaveFinding(item: InquiryCorpusItem): boolean {
@@ -4191,8 +4173,8 @@ export class InquiryView extends ItemView {
         }
         menu.addSeparator();
         menu.addItem(menuItem => {
-            menuItem.setTitle(options.isTarget ? 'Remove Focus' : 'Set Focus');
-            this.appendMenuKeycaps(menuItem, ['⇧', 'Click']);
+            const focusLabel = options.isTarget ? 'Remove Focus' : 'Set Focus';
+            menuItem.setTitle(this.menuTitleWithKeys(focusLabel, ['⇧', 'Click']));
             if (!options.item.sceneId) {
                 menuItem.setDisabled(true);
                 return;
@@ -4221,21 +4203,20 @@ export class InquiryView extends ItemView {
         });
         menu.addSeparator();
         ([
-            ['excluded', 'Set Inclusion: Exclude'],
-            ['summary', 'Set Inclusion: Summary'],
-            ['full', 'Set Inclusion: Full Scene']
+            ['excluded', 'Exclude'],
+            ['summary', 'Summary'],
+            ['full', 'Full Scene']
         ] as const).forEach(([mode, title]) => {
             menu.addItem(item => {
-                item.setTitle(title);
-                this.appendMenuKeycaps(item, ['Click']);
+                item.setTitle(this.menuTitleWithKeys(title, ['Click']));
                 item.onClick(() => this.setCorpusItemInclusion(options.entryKey, mode));
             });
         });
         menu.addSeparator();
         menu.addItem(item => {
             const bookOnly = this.state.scope !== 'book';
-            item.setTitle(options.isTarget ? 'Remove from Target Scenes' : 'Add to Target Scenes');
-            this.appendMenuKeycaps(item, ['⇧', 'Click']);
+            const targetLabel = options.isTarget ? 'Remove from Target Scenes' : 'Add to Target Scenes';
+            item.setTitle(this.menuTitleWithKeys(targetLabel, ['⇧', 'Click']));
             if (bookOnly || !options.sceneId) {
                 item.setDisabled(true);
                 return;
@@ -5951,6 +5932,19 @@ export class InquiryView extends ItemView {
             if (cacheWindowExpiresAt) {
                 session.cacheWindowExpiresAt = cacheWindowExpiresAt;
             }
+            session.cacheReuseState = runTrace?.cacheReuseState;
+            session.providerCacheStatus = runTrace?.cacheStatus;
+            session.cachedStableRatio = typeof runTrace?.cachedStableRatio === 'number' && Number.isFinite(runTrace.cachedStableRatio)
+                ? Math.min(1, Math.max(0, runTrace.cachedStableRatio))
+                : undefined;
+            session.cachedStableTokens = typeof runTrace?.cachedStableTokens === 'number' && Number.isFinite(runTrace.cachedStableTokens)
+                ? Math.max(0, Math.floor(runTrace.cachedStableTokens))
+                : undefined;
+            session.totalInputTokens = typeof runTrace?.usage?.inputTokens === 'number' && Number.isFinite(runTrace.usage.inputTokens)
+                ? Math.max(0, Math.floor(runTrace.usage.inputTokens))
+                : (typeof result.tokenEstimateInput === 'number' && Number.isFinite(result.tokenEstimateInput)
+                    ? Math.max(0, Math.floor(result.tokenEstimateInput))
+                    : undefined);
             session.pendingEditsEmpty = this.resolvePendingEditsEmpty(result, activeBookId);
             this.sessionStore.setSession(session);
             const traceForLog = runTrace
@@ -6188,7 +6182,7 @@ export class InquiryView extends ItemView {
             const runOutput = await this.runner.runOmnibusWithTrace(omnibusInput);
             traceForLogs = runOutput.trace;
             if (modal) {
-                modal.setAiAdvancedContext(getLastAiAdvancedContext(this.plugin, 'InquiryMode'));
+                modal.setAiAdvancedContext(this.getEffectiveReuseAdvancedContext());
             }
             const completedAt = new Date();
             const questionsById = new Map(questions.map(question => [question.id, question]));
@@ -6374,7 +6368,7 @@ export class InquiryView extends ItemView {
                     result = runOutput.result;
                     trace = runOutput.trace;
                     if (modal) {
-                        modal.setAiAdvancedContext(getLastAiAdvancedContext(this.plugin, 'InquiryMode'));
+                        modal.setAiAdvancedContext(this.getEffectiveReuseAdvancedContext());
                     }
                 } catch (error) {
                     result = this.buildErrorFallback(
@@ -9046,11 +9040,64 @@ export class InquiryView extends ItemView {
         } else if (provider === 'google') {
             if (!trace?.cacheStatus && trace?.cacheReuseState !== 'warm') return null;
         } else if (provider === 'openai') {
-            const inputTokens = trace?.tokenEstimate?.inputTokens ?? result.tokenEstimateInput ?? 0;
-            if (inputTokens < 1024) return null;
+            return null;
         }
 
         return Date.now() + ttlMs;
+    }
+
+    private getCurrentCorpusFingerprint(): string | null {
+        const context = this._currentCorpusContext ?? this.getCurrentCorpusContext();
+        return context?.corpusFingerprint?.trim() || null;
+    }
+
+    private getPersistedReuseAdvancedContext(): AIRunAdvancedContext | null {
+        const engine = this.getResolvedEngine();
+        if (!engine.modelId || engine.provider === 'none' || engine.provider === 'ollama') {
+            return null;
+        }
+        const session = this.sessionStore.getLatestActiveCacheSessionForEngine(engine.provider, engine.modelId, {
+            corpusFingerprint: this.getCurrentCorpusFingerprint() ?? undefined
+        });
+        if (!session || session.result.aiProvider?.trim().toLowerCase() !== 'anthropic') {
+            return null;
+        }
+        const cachedStableRatio = typeof session.cachedStableRatio === 'number' && Number.isFinite(session.cachedStableRatio)
+            ? Math.min(1, Math.max(0, session.cachedStableRatio))
+            : undefined;
+        const cachedStableTokens = typeof session.cachedStableTokens === 'number' && Number.isFinite(session.cachedStableTokens)
+            ? Math.max(0, Math.floor(session.cachedStableTokens))
+            : undefined;
+        const totalInputTokens = typeof session.totalInputTokens === 'number' && Number.isFinite(session.totalInputTokens)
+            ? Math.max(0, Math.floor(session.totalInputTokens))
+            : undefined;
+        if (!cachedStableRatio || !cachedStableTokens || !totalInputTokens) {
+            return null;
+        }
+        return {
+            roleTemplateName: '',
+            provider: engine.provider,
+            modelAlias: '',
+            modelLabel: engine.modelLabel,
+            modelSelectionReason: 'persisted_cache_certificate',
+            availabilityStatus: 'unknown',
+            maxInputTokens: 0,
+            maxOutputTokens: 0,
+            executionPassCount: 1,
+            reuseState: 'warm',
+            cachedStableRatio,
+            cachedStableTokens,
+            totalInputTokens,
+            cacheStatus: session.providerCacheStatus,
+            featureModeInstructions: '',
+            finalPrompt: ''
+        };
+    }
+
+    private getEffectiveReuseAdvancedContext(): AIRunAdvancedContext | null {
+        return this.getPersistedReuseAdvancedContext()
+            ?? getLastAiAdvancedContext(this.plugin, 'InquiryMode')
+            ?? null;
     }
 
     private getActiveCacheWindowExpiry(): number | null {
@@ -9065,16 +9112,9 @@ export class InquiryView extends ItemView {
         if (!engine.modelId || engine.provider === 'none' || engine.provider === 'ollama') {
             return null;
         }
-        return this.sessionStore
-            .getRecentSessions(this.sessionStore.getSessionCount())
-            .find(session => {
-                if (!session.cacheWindowExpiresAt) return false;
-                const provider = (session.result.aiProvider ?? '').trim().toLowerCase();
-                if (provider !== engine.provider) return false;
-                const resolvedModel = (session.result.aiModelResolved || '').trim();
-                const requestedModel = (session.result.aiModelRequested || '').trim();
-                return resolvedModel === engine.modelId || requestedModel === engine.modelId;
-            }) ?? null;
+        return this.sessionStore.getLatestActiveCacheSessionForEngine(engine.provider, engine.modelId, {
+            corpusFingerprint: this.getCurrentCorpusFingerprint() ?? undefined
+        }) ?? null;
     }
 
     private buildContextCountdownLabel(): string | null {
@@ -9083,9 +9123,9 @@ export class InquiryView extends ItemView {
 
         const remainingMs = session.cacheWindowExpiresAt - Date.now();
         if (remainingMs > 0) {
-            return `Context available · ${this.formatCacheCountdown(remainingMs)} remaining`;
+            return `Cache warm · ${this.formatCacheCountdown(remainingMs)} remaining`;
         }
-        return 'Context reuse expired';
+        return 'Cache reuse expired';
     }
 
     private clearContextWindow(): void {

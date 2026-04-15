@@ -161,7 +161,7 @@ export function buildAnthropicUserContent(input: BuildAnthropicUserContentInput)
         source: { type: 'text' as const, media_type: 'text/plain' as const, data: doc.content },
         title: doc.title,
         citations: { enabled: true as const },
-        ...(i === input.evidenceDocuments!.length - 1
+        ...(i === input.evidenceDocuments!.length - 1 && input.cacheTtl
           ? { cache_control: { type: 'ephemeral' as const, ...(input.cacheTtl ? { ttl: input.cacheTtl } : {}) } }
           : {})
       })
@@ -261,11 +261,23 @@ function buildAnthropicMessageRequestBody(
     requestBody.system = [{ type: 'text', text: input.systemPrompt }];
   }
 
+  const forceStructuredTool = !!input.jsonSchema && Object.keys(input.jsonSchema).length > 0;
+  if (forceStructuredTool) {
+    requestBody.tools = [{
+      name: 'record_structured_response',
+      description: 'Return the final structured response via this tool input.',
+      input_schema: input.jsonSchema as Record<string, unknown>
+    }];
+    requestBody.tool_choice = {
+      type: 'tool',
+      name: 'record_structured_response'
+    };
+  }
+
   if (input.mode === 'count') {
     return requestBody;
   }
 
-  const forceStructuredTool = !!input.jsonSchema && Object.keys(input.jsonSchema).length > 0;
   const thinkingBudget = typeof input.thinkingBudgetTokens === 'number'
     ? input.thinkingBudgetTokens
     : 0;
@@ -287,18 +299,6 @@ function buildAnthropicMessageRequestBody(
   if (thinkingEnabled) {
     requestBody.thinking = { type: 'enabled', budget_tokens: thinkingBudget };
   }
-  if (forceStructuredTool) {
-    requestBody.tools = [{
-      name: 'record_structured_response',
-      description: 'Return the final structured response via this tool input.',
-      input_schema: input.jsonSchema as Record<string, unknown>
-    }];
-    requestBody.tool_choice = {
-      type: 'tool',
-      name: 'record_structured_response'
-    };
-  }
-
   return requestBody;
 }
 
@@ -392,7 +392,10 @@ export async function callAnthropicApi(
         success: false,
         content: null,
         responseData,
-        requestPayload: { dispatchDiagnostics },
+        requestPayload: {
+          requestBody,
+          dispatchDiagnostics
+        },
         error: msg
       };
     }
@@ -411,17 +414,34 @@ export async function callAnthropicApi(
         success: true,
         content: JSON.stringify(toolUseBlock.input),
         responseData,
-        requestPayload: { dispatchDiagnostics },
+        requestPayload: {
+          requestBody,
+          dispatchDiagnostics
+        },
         ...(mappedCitations?.length ? { citations: mappedCitations } : {})
       };
     }
     const content = textBlocks.map(b => b.text ?? '').join('').trim();
-    if (content) return { success: true, content, responseData, requestPayload: { dispatchDiagnostics }, citations: mappedCitations };
+    if (content) {
+      return {
+        success: true,
+        content,
+        responseData,
+        requestPayload: {
+          requestBody,
+          dispatchDiagnostics
+        },
+        citations: mappedCitations
+      };
+    }
     return {
       success: false,
       content: null,
       responseData,
-      requestPayload: { dispatchDiagnostics },
+      requestPayload: {
+        requestBody,
+        dispatchDiagnostics
+      },
       error: 'Invalid response structure from Anthropic.'
     };
   } catch (e) {
@@ -431,7 +451,10 @@ export async function callAnthropicApi(
       success: false,
       content: null,
       responseData,
-      requestPayload: { dispatchDiagnostics },
+      requestPayload: {
+        requestBody,
+        dispatchDiagnostics
+      },
       error: msg
     };
   }
@@ -444,7 +467,8 @@ export async function countAnthropicTokens(
   userPrompt: string,
   citationsEnabled?: boolean,
   evidenceDocuments?: EvidenceDocument[],
-  cacheTtl?: AnthropicCacheTtl
+  cacheTtl?: AnthropicCacheTtl,
+  jsonSchema?: Record<string, unknown>
 ): Promise<TokenCountResult> {
   const apiUrl = 'https://api.anthropic.com/v1/messages/count_tokens';
   const apiVersion = '2023-06-01';
@@ -463,7 +487,8 @@ export async function countAnthropicTokens(
     userPrompt,
     citationsEnabled,
     evidenceDocuments,
-    cacheTtl
+    cacheTtl,
+    jsonSchema
   });
 
   let responseData: unknown;

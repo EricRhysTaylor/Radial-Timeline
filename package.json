@@ -25,6 +25,7 @@
 		"test": "vitest run",
 		"test:watch": "vitest",
 		"test:coverage": "vitest run --coverage",
+		"certify:anthropic": "RT_USE_LIVE_OBSIDIAN_REQUEST=1 vitest run src/ai/certification/anthropicCertification.test.ts",
 		"css-drift": "node scripts/css-drift-check.mjs",
 		"scan-ert": "node scripts/scan-ert-classes.mjs",
 		"verify": "node scripts/verify.mjs",

@@ -596,6 +596,7 @@ export class AIClient {
                 userPrompt,
                 evidenceDocuments,
                 citationsEnabled: caps.citationsEnabled,
+                jsonSchema: request.responseSchema,
                 safeInputBudget: effectiveInputCeiling
             });
         let tokenEstimateInput = countedEstimate.inputTokens;
@@ -871,6 +872,26 @@ export class AIClient {
         if (provider === 'openai' && execution.aiTransportLane) {
             advancedContext.openAiTransportLane = execution.aiTransportLane;
             setLastRunAdvanced(this.plugin, request.feature, advancedContext);
+        }
+
+        const actualUsage = extractTokenUsage(provider, execution.responseData);
+        if (typeof actualUsage?.inputTokens === 'number' && actualUsage.inputTokens > 0) {
+            advancedContext.totalInputTokens = actualUsage.inputTokens;
+        }
+
+        if (!bypassProviderReuse && provider === 'anthropic') {
+            const anthropicCachedTokens = Math.max(
+                0,
+                actualUsage?.cacheReadInputTokens
+                ?? actualUsage?.cacheCreationInputTokens
+                ?? ((actualUsage?.cacheCreation5mInputTokens ?? 0) + (actualUsage?.cacheCreation1hInputTokens ?? 0))
+                ?? 0
+            );
+            const anthropicTotalInputTokens = actualUsage?.inputTokens ?? tokenEstimateInput;
+            if (anthropicCachedTokens > 0 && anthropicTotalInputTokens > 0) {
+                advancedContext.cachedStableTokens = anthropicCachedTokens;
+                advancedContext.cachedStableRatio = Math.min(anthropicCachedTokens / anthropicTotalInputTokens, 1);
+            }
         }
 
         // Post-execute: confirm or downgrade provider cache state using runtime truth.

@@ -50,6 +50,7 @@ export type InquiryCurrentCorpusContext = {
     scope: InquiryScope;
     activeBookId?: string;
     scopeLabel: string;
+    corpusFingerprint: string;
     corpus: RTCorpusTokenEstimate;
     requestTokens: number;
     requestEstimateMethod?: TokenEstimateMethod;

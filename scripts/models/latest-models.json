@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-04-14T19:42:20.239Z",
+  "generatedAt": "2026-04-15T21:26:52.350Z",
   "summary": {
     "openai": 122,
     "anthropic": 9,
-    "google": 50
+    "google": 52
   },
   "models": [
     {
@@ -2538,6 +2538,30 @@
     },
     {
       "provider": "google",
+      "id": "gemini-3.1-flash-tts-preview",
+      "raw": {
+        "name": "models/gemini-3.1-flash-tts-preview",
+        "version": "3.1-flash-tts-preview",
+        "displayName": "Gemini 3.1 Flash TTS Preview",
+        "description": "Gemini 3.1 Flash TTS Preview",
+        "inputTokenLimit": 8192,
+        "outputTokenLimit": 16384,
+        "supportedGenerationMethods": [
+          "generateContent",
+          "countTokens"
+        ],
+        "temperature": 1,
+        "topP": 0.95,
+        "topK": 64,
+        "maxTemperature": 2,
+        "thinking": true
+      },
+      "label": "Gemini 3.1 Flash TTS Preview",
+      "inputTokenLimit": 8192,
+      "outputTokenLimit": 16384
+    },
+    {
+      "provider": "google",
       "id": "gemini-3.1-pro-preview",
       "raw": {
         "name": "models/gemini-3.1-pro-preview",
@@ -2730,6 +2754,32 @@
       },
       "label": "Gemini Robotics-ER 1.5 Preview",
       "inputTokenLimit": 1048576,
+      "outputTokenLimit": 65536
+    },
+    {
+      "provider": "google",
+      "id": "gemini-robotics-er-1.6-preview",
+      "raw": {
+        "name": "models/gemini-robotics-er-1.6-preview",
+        "version": "1.6-preview",
+        "displayName": "Gemini Robotics-ER 1.6 Preview",
+        "description": "Gemini Robotics-ER 1.6 Preview",
+        "inputTokenLimit": 131072,
+        "outputTokenLimit": 65536,
+        "supportedGenerationMethods": [
+          "generateContent",
+          "countTokens",
+          "createCachedContent",
+          "batchGenerateContent"
+        ],
+        "temperature": 1,
+        "topP": 0.95,
+        "topK": 64,
+        "maxTemperature": 2,
+        "thinking": true
+      },
+      "label": "Gemini Robotics-ER 1.6 Preview",
+      "inputTokenLimit": 131072,
       "outputTokenLimit": 65536
     },
     {

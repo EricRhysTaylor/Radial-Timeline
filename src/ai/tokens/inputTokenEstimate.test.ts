@@ -47,6 +47,16 @@ describe('estimateInputTokens', () => {
             method: 'anthropic_count',
             uncertaintyTokens: 500
         });
+        expect(countAnthropicTokens).toHaveBeenCalledWith(
+            'test-key',
+            'claude-sonnet-4-6',
+            'system',
+            'user',
+            undefined,
+            undefined,
+            undefined,
+            undefined
+        );
     });
 
     it('falls back to heuristic estimates when Anthropic counting fails', async () => {

@@ -150,7 +150,32 @@ export class Notice {
 }
 
 // Request URL stub
-export async function requestUrl(_options: unknown): Promise<{ status: number; json: unknown; text: string }> {
+export async function requestUrl(options: unknown): Promise<{ status: number; json: unknown; text: string }> {
+  if (process.env.RT_USE_LIVE_OBSIDIAN_REQUEST === '1') {
+    const request = options as {
+      url?: string;
+      method?: string;
+      headers?: Record<string, string>;
+      body?: string;
+    };
+    const response = await fetch(String(request.url ?? ''), {
+      method: request.method ?? 'GET',
+      headers: request.headers,
+      body: request.body
+    });
+    const text = await response.text();
+    let json: unknown = null;
+    try {
+      json = text ? JSON.parse(text) : null;
+    } catch {
+      json = null;
+    }
+    return {
+      status: response.status,
+      json,
+      text
+    };
+  }
   throw new Error('requestUrl should be mocked in individual tests');
 }
 

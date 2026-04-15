@@ -15,6 +15,7 @@ interface ReleaseNotesSectionArgs {
 
 export async function renderReleaseNotesSection({ plugin, containerEl }: ReleaseNotesSectionArgs): Promise<void> {
     const entries = plugin.getReleaseNotesEntries();
+    containerEl.createEl('hr', { cls: 'ert-settings-separator' });
     const section = containerEl.createDiv({ cls: 'ert-settings-release-notes' });
     section.createEl('h2', { text: "What's New" });
 

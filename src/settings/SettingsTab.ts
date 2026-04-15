@@ -958,6 +958,9 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const colorsWrapper = searchableContent.createDiv();
         renderColorsSection(colorsWrapper, this.plugin);
 
+        const releaseNotesSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'release-notes' } });
+        void renderReleaseNotesSection({ plugin: this.plugin, containerEl: releaseNotesSection });
+
         const readmeSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'readme' } });
         renderReadmeSection({ app: this.app, containerEl: readmeSection, setComponentRef: (c: Component | null) => { this.readmeComponent = c; } });
 
@@ -979,9 +982,6 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             containerEl: inquirySection,
             attachFolderSuggest: (t) => this.attachFolderSuggest(t)
         });
-
-        const releaseNotesSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'release-notes' } });
-        void renderReleaseNotesSection({ plugin: this.plugin, containerEl: releaseNotesSection });
 
         const aiSection = aiContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'ai' } });
         try {

@@ -44,6 +44,51 @@ export class InquirySessionStore {
         return matches[0];
     }
 
+    getLatestSessionForEngine(provider: string, modelId: string): InquirySession | undefined {
+        const normalizedProvider = provider.trim().toLowerCase();
+        const normalizedModelId = modelId.trim();
+        if (!normalizedProvider || !normalizedModelId) return undefined;
+        const matches = this.cache.sessions.filter(session => {
+            const sessionProvider = (session.result.aiProvider ?? '').trim().toLowerCase();
+            if (sessionProvider !== normalizedProvider) return false;
+            const resolvedModel = (session.result.aiModelResolved || '').trim();
+            const requestedModel = (session.result.aiModelRequested || '').trim();
+            return resolvedModel === normalizedModelId || requestedModel === normalizedModelId;
+        });
+        if (!matches.length) return undefined;
+        matches.sort((a, b) => (b.createdAt || b.lastAccessed) - (a.createdAt || a.lastAccessed));
+        return matches[0];
+    }
+
+    getLatestActiveCacheSessionForEngine(
+        provider: string,
+        modelId: string,
+        options?: {
+            now?: number;
+            corpusFingerprint?: string;
+        }
+    ): InquirySession | undefined {
+        const normalizedProvider = provider.trim().toLowerCase();
+        const normalizedModelId = modelId.trim();
+        const normalizedFingerprint = (options?.corpusFingerprint ?? '').trim();
+        const now = options?.now ?? Date.now();
+        if (!normalizedProvider || !normalizedModelId) return undefined;
+        const matches = this.cache.sessions.filter(session => {
+            if (!session.cacheWindowExpiresAt || session.cacheWindowExpiresAt <= now) return false;
+            const sessionProvider = (session.result.aiProvider ?? '').trim().toLowerCase();
+            if (sessionProvider !== normalizedProvider) return false;
+            const resolvedModel = (session.result.aiModelResolved || '').trim();
+            const requestedModel = (session.result.aiModelRequested || '').trim();
+            const modelMatches = resolvedModel === normalizedModelId || requestedModel === normalizedModelId;
+            if (!modelMatches) return false;
+            if (normalizedFingerprint && session.result.corpusFingerprint !== normalizedFingerprint) return false;
+            return true;
+        });
+        if (!matches.length) return undefined;
+        matches.sort((a, b) => (b.createdAt || b.lastAccessed) - (a.createdAt || a.lastAccessed));
+        return matches[0];
+    }
+
     getRecentSessions(limit = 10): InquirySession[] {
         const sessions = [...this.cache.sessions];
         sessions.sort((a, b) => (b.createdAt || b.lastAccessed) - (a.createdAt || a.lastAccessed));

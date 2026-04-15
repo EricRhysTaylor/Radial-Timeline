@@ -58,6 +58,57 @@ describe('anthropic token counting', () => {
         expect(body.messages?.[0]?.content?.[0]).toEqual({ type: 'text', text: 'User prompt body' });
     });
 
+    it('includes the structured tool schema in count_tokens requests for JSON runs', async () => {
+        mockedRequestUrl.mockResolvedValue({
+            status: 200,
+            text: '',
+            json: {
+                input_tokens: 896
+            }
+        } as never);
+
+        await countAnthropicTokens(
+            'test-key',
+            'claude-sonnet-4-6',
+            'System rules',
+            'Return {"answer":"ACK"}.',
+            false,
+            undefined,
+            undefined,
+            {
+                type: 'object',
+                properties: {
+                    answer: { type: 'string' }
+                },
+                required: ['answer'],
+                additionalProperties: false
+            }
+        );
+
+        const request = mockedRequestUrl.mock.calls[0]?.[0] as { body?: string };
+        const body = JSON.parse(request.body ?? '{}') as {
+            tools?: Array<{ name?: string; input_schema?: Record<string, unknown> }>;
+            tool_choice?: { type?: string; name?: string };
+        };
+
+        expect(body.tools).toEqual([{
+            name: 'record_structured_response',
+            description: 'Return the final structured response via this tool input.',
+            input_schema: {
+                type: 'object',
+                properties: {
+                    answer: { type: 'string' }
+                },
+                required: ['answer'],
+                additionalProperties: false
+            }
+        }]);
+        expect(body.tool_choice).toEqual({
+            type: 'tool',
+            name: 'record_structured_response'
+        });
+    });
+
     it('rejects token count responses that omit input_tokens', () => {
         expect(normalizeAnthropicTokenCountResponse({
             total_tokens: 987
@@ -81,8 +132,7 @@ describe('buildAnthropicUserContent', () => {
                 type: 'document',
                 source: { type: 'text', media_type: 'text/plain', data: 'Scene evidence text' },
                 title: 'Scene S1',
-                citations: { enabled: true },
-                cache_control: { type: 'ephemeral' }
+                citations: { enabled: true }
             }
         ]);
     });
@@ -118,14 +168,14 @@ describe('buildAnthropicUserContent', () => {
         const diagnostics = buildAnthropicDispatchDiagnostics(content);
 
         expect(diagnostics.requestedCacheTtl).toBe('none');
-        expect(diagnostics.hasCacheablePrefix).toBe(true);
-        expect(diagnostics.documentBlockCount).toBe(1);
-        expect(diagnostics.documentChars).toBe('Scene evidence text'.length);
-        expect(diagnostics.stableTextChars).toBe('Stable instructions'.length);
-        expect(diagnostics.volatileTextChars).toBe('Volatile question'.length);
-        expect(diagnostics.cachePrefixFingerprint).not.toBe('none');
+        expect(diagnostics.hasCacheablePrefix).toBe(false);
+        expect(diagnostics.documentBlockCount).toBe(0);
+        expect(diagnostics.documentChars).toBe(0);
+        expect(diagnostics.stableTextChars).toBe(0);
+        expect(diagnostics.volatileTextChars).toBe('Stable instructions\nVolatile question'.length);
+        expect(diagnostics.cachePrefixFingerprint).toBe('none');
         expect(diagnostics.volatileTextFingerprint).not.toBe('none');
-        expect(diagnostics.blockShape).toBe('text>document*>text');
+        expect(diagnostics.blockShape).toBe('text>document>text');
     });
 
     it('records the requested cache ttl in dispatch diagnostics', () => {

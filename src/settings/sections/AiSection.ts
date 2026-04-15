@@ -29,9 +29,7 @@ import type { AccessTier, AIProviderId, Capability, LocalLlmConfigurationMode, L
 import type { LocalLlmDiagnosticsReport } from '../../ai/localLlm/diagnostics';
 import {
     buildCanonicalExecutionEstimate,
-    buildCanonicalInquiryComponentBreakdown,
-    estimateGossamerTokens,
-    type InquiryProviderComponentBreakdown
+    estimateGossamerTokens
 } from '../../ai/forecast/estimateTokensFromVault';
 import {
     estimateCorpusCost,
@@ -48,6 +46,7 @@ import { buildInquiryPromptParts, INQUIRY_ROLE_TEMPLATE_GUARDRAIL } from '../../
 import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { cleanEvidenceBody } from '../../inquiry/utils/evidenceCleaning';
 import { getSortedSceneFiles } from '../../utils/manuscript';
+import { InquirySessionStore } from '../../inquiry/InquirySessionStore';
 import { t } from '../../i18n';
 import { extractBeatOrder } from '../../utils/gossamer';
 import { resolveSelectedBeatModelFromSettings } from '../../utils/beatSystemState';
@@ -69,6 +68,7 @@ import type { LocalLlmBackendId } from '../../ai/types';
 type Provider = 'anthropic' | 'google' | 'openai' | 'ollama';
 type CapacityItem = string | { text: string; dividerBefore?: boolean };
 type PromptRequestBreakdown = {
+    requestTokens: number | null;
     roleTemplateTokens: number | null;
     instructionTokens: number | null;
     outputContractTokens: number | null;
@@ -107,6 +107,24 @@ export function renderAiSection(params: {
     const sumTokenParts = (...parts: Array<number | null | undefined>): number | null => {
         if (parts.some(part => part === null || part === undefined || !Number.isFinite(part))) return null;
         return parts.reduce<number>((sum, part) => sum + (part ?? 0), 0);
+    };
+    const splitLeadSentence = (text: string): { lead: string; remainder: string } => {
+        const trimmed = text.trim();
+        if (!trimmed) return { lead: '', remainder: '' };
+        const punctuationIndex = trimmed.search(/[.!?](\s|$)/);
+        if (punctuationIndex === -1) return { lead: trimmed, remainder: '' };
+        const lead = trimmed.slice(0, punctuationIndex + 1).trim();
+        const remainder = trimmed.slice(punctuationIndex + 1).trim();
+        return { lead, remainder };
+    };
+    const computePromptEnvelopeRemainder = (
+        providerExecutionTokens: number | undefined,
+        ...visibleParts: Array<number | null | undefined>
+    ): number | null => {
+        if (!Number.isFinite(providerExecutionTokens ?? NaN)) return null;
+        const visibleTotal = sumTokenParts(...visibleParts);
+        if (visibleTotal === null) return null;
+        return Math.max(0, (providerExecutionTokens ?? 0) - visibleTotal);
     };
 
     const aiHero = containerEl.createDiv({
@@ -545,13 +563,13 @@ export function renderAiSection(params: {
     const formatInquiryCount = (count: number | null): string => count === null ? '?' : count.toLocaleString();
     const formatCorpusBreakdownToken = (tokens: number | null): string => (
         tokens === null
-            ? '~?'
+            ? '—'
             : `~${(Math.round((Number.isFinite(tokens) ? tokens : 0) / 100) / 10).toFixed(1).replace(/\.0$/, '')}k`
     );
     const estimateTokensFromChars = (chars: number): number => chars > 0 ? Math.ceil(chars / 4) : 0;
     const formatPromptToken = (tokens: number | null): string => (
         tokens === null
-            ? '~?'
+            ? '—'
             : tokens >= 1000
                 ? formatCorpusBreakdownToken(tokens)
                 : `~${tokens.toLocaleString()}`
@@ -582,59 +600,9 @@ export function renderAiSection(params: {
         referenceCount: number;
         breakdown: RTCorpusTokenBreakdown;
         promptBreakdown?: PromptRequestBreakdown;
-        exactBreakdown?: InquiryProviderComponentBreakdown | null;
         providerExecutionTokens?: number;
         expectedPassCount?: number;
     }): Array<{ title: string; items: CapacityItem[] }> => {
-        if (counts?.exactBreakdown) {
-            const exact = counts.exactBreakdown;
-            const cleanedSceneTokens = counts.breakdown.scenesTokens ?? 0;
-            const cleanedOutlineTokens = counts.breakdown.outlineTokens ?? 0;
-            const cleanedReferenceTokens = counts.breakdown.referenceTokens ?? 0;
-            const promptSection = (key: InquiryProviderComponentBreakdown['promptSections'][number]['key']) =>
-                exact.promptSections.find(section => section.key === key)?.tokens ?? 0;
-            const passCount = Math.max(1, counts.expectedPassCount ?? 1);
-            return [
-                {
-                    title: 'Corpus',
-                    items: [
-                        counts.sceneCount > 0
-                            ? `Scene documents (${formatInquiryCount(counts.sceneCount)}) — ${formatPromptToken(exact.sceneDocumentTokens)} exact; cleaned manuscript ${formatCorpusBreakdownToken(cleanedSceneTokens)}`
-                            : 'Scenes — none',
-                        counts.outlineCount > 0
-                            ? `Outline documents (${formatInquiryCount(counts.outlineCount)}) — ${formatPromptToken(exact.outlineDocumentTokens)} exact; cleaned manuscript ${formatCorpusBreakdownToken(cleanedOutlineTokens)}`
-                            : 'Outline — none',
-                        counts.referenceCount > 0
-                            ? `Reference documents (${formatInquiryCount(counts.referenceCount)}) — ${formatPromptToken(exact.referenceDocumentTokens)} exact; cleaned manuscript ${formatCorpusBreakdownToken(cleanedReferenceTokens)}`
-                            : 'References — none'
-                    ]
-                },
-                {
-                    title: 'Prompt',
-                    items: [
-                        buildTokenCapacityLine('Project context section', promptSection('projectContext')),
-                        buildTokenCapacityLine('Feature instructions', promptSection('featureInstructions')),
-                        buildTokenCapacityLine('User input', promptSection('userInput')),
-                        buildTokenCapacityLine('User question', promptSection('userQuestion'))
-                    ]
-                },
-                {
-                    title: 'Output',
-                    items: [
-                        buildTokenCapacityLine('Output rules + JSON schema', promptSection('outputRules')),
-                        buildTokenCapacityLine('Other prompt framing', promptSection('userPromptOther'))
-                    ]
-                },
-                {
-                    title: 'Processing',
-                    items: [
-                        buildTokenCapacityLine('System role template', exact.systemPromptTokens),
-                        `Execution: ${passCount} ${passCount === 1 ? 'pass' : 'passes'}`,
-                        { text: `Total provider input ${formatCorpusBreakdownToken(counts.providerExecutionTokens ?? exact.totalTokens)}`, dividerBefore: true }
-                    ]
-                }
-            ];
-        }
         const sceneCount = counts?.sceneCount ?? null;
         const outlineCount = counts?.outlineCount ?? null;
         const referenceCount = counts?.referenceCount ?? null;
@@ -644,13 +612,15 @@ export function renderAiSection(params: {
         const corpusTokens = counts
             ? counts.breakdown.scenesTokens + counts.breakdown.outlineTokens + counts.breakdown.referenceTokens
             : null;
-        const totalTokens = sumTokenParts(
+        const visibleTokens = sumTokenParts(
             corpusTokens,
+            counts?.promptBreakdown?.requestTokens,
             counts?.promptBreakdown?.roleTemplateTokens,
             counts?.promptBreakdown?.instructionTokens,
             counts?.promptBreakdown?.outputContractTokens,
             counts?.promptBreakdown?.transformTokens
         );
+        const totalTokens = counts?.providerExecutionTokens ?? visibleTokens;
         return [
             {
                 title: 'Corpus',
@@ -663,6 +633,7 @@ export function renderAiSection(params: {
             {
                 title: 'Prompt',
                 items: [
+                    buildTokenCapacityLine('Zone question', counts?.promptBreakdown?.requestTokens ?? null),
                     buildTokenCapacityLine('AI role template (author-defined)', counts?.promptBreakdown?.roleTemplateTokens ?? null),
                     buildTokenCapacityLine('Editorial analysis instructions', counts?.promptBreakdown?.instructionTokens ?? null)
                 ]
@@ -678,7 +649,7 @@ export function renderAiSection(params: {
                 title: 'Processing',
                 items: [
                     `Execution: ${Math.max(1, counts?.expectedPassCount ?? 1)} ${Math.max(1, counts?.expectedPassCount ?? 1) === 1 ? 'pass' : 'passes'}`,
-                    'Provider wrappers',
+                    buildTokenCapacityLine('Prompt envelope + provider wrappers', null),
                     { text: `Total ${formatCorpusBreakdownToken(totalTokens)}`, dividerBefore: true }
                 ]
             }
@@ -752,54 +723,62 @@ export function renderAiSection(params: {
     const buildGossamerCapacitySections = (
         sceneCount: number,
         breakdown?: RTCorpusTokenBreakdown,
-        promptBreakdown?: PromptRequestBreakdown
-    ): Array<{ title: string; items: CapacityItem[] }> => [
-        {
-            title: 'Corpus',
-            items: [
-                buildScenesCapacityLine(sceneCount, breakdown?.scenesTokens ?? null),
-                'Outline — not included',
-                'References — not included'
-            ]
-        },
-        {
-            title: 'Transform',
-            items: [buildTokenCapacityLine('Beat overlay (ordered sequence)', promptBreakdown?.transformTokens ?? null)]
-        },
-        {
-            title: 'Prompt',
-            items: [
-                buildTokenCapacityLine('AI role template (author-defined)', promptBreakdown?.roleTemplateTokens ?? null),
-                buildTokenCapacityLine('Beat scoring instructions', promptBreakdown?.instructionTokens ?? null)
-            ]
-        },
-        {
-            title: 'Output',
-            items: [
-                'Per-beat scores',
-                buildTokenCapacityLine('Strict JSON structure', promptBreakdown?.outputContractTokens ?? null)
-            ]
-        },
-        {
-            title: 'Processing',
-            items: [
-                'Single-pass',
-                'Provider wrappers',
-                {
-                    text: `Total ${formatCorpusBreakdownToken(sumTokenParts(
-                        breakdown
-                            ? breakdown.scenesTokens + breakdown.outlineTokens + breakdown.referenceTokens
-                            : null,
-                        promptBreakdown?.roleTemplateTokens,
-                        promptBreakdown?.instructionTokens,
-                        promptBreakdown?.outputContractTokens,
-                        promptBreakdown?.transformTokens
-                    ))}`,
-                    dividerBefore: true
-                }
-            ]
-        }
-    ];
+        promptBreakdown?: PromptRequestBreakdown,
+        providerExecutionTokens?: number
+    ): Array<{ title: string; items: CapacityItem[] }> => {
+        const corpusTokens = breakdown
+            ? breakdown.scenesTokens + breakdown.outlineTokens + breakdown.referenceTokens
+            : null;
+        const visibleTokens = sumTokenParts(
+            corpusTokens,
+            promptBreakdown?.requestTokens,
+            promptBreakdown?.roleTemplateTokens,
+            promptBreakdown?.instructionTokens,
+            promptBreakdown?.outputContractTokens,
+            promptBreakdown?.transformTokens
+        );
+        const totalTokens = providerExecutionTokens ?? visibleTokens;
+        return [
+            {
+                title: 'Corpus',
+                items: [
+                    buildScenesCapacityLine(sceneCount, breakdown?.scenesTokens ?? null),
+                    'Outline — N/A',
+                    'References — N/A'
+                ]
+            },
+            {
+                title: 'Transform',
+                items: [buildTokenCapacityLine('Beat overlay (ordered sequence)', promptBreakdown?.transformTokens ?? null)]
+            },
+            {
+                title: 'Prompt',
+                items: [
+                    buildTokenCapacityLine('Beat scoring request', promptBreakdown?.requestTokens ?? null),
+                    buildTokenCapacityLine('AI role template (author-defined)', promptBreakdown?.roleTemplateTokens ?? null),
+                    buildTokenCapacityLine('Beat scoring instructions', promptBreakdown?.instructionTokens ?? null)
+                ]
+            },
+            {
+                title: 'Output',
+                items: [
+                    'Per-beat scores',
+                    buildTokenCapacityLine('Strict JSON structure', promptBreakdown?.outputContractTokens ?? null)
+                ]
+            },
+            {
+                title: 'Processing',
+                items: [
+                    'Single-pass',
+                    buildTokenCapacityLine('Prompt envelope + provider wrappers', null),
+                    {
+                        text: `Total ${formatCorpusBreakdownToken(totalTokens)}`,
+                        dividerBefore: true
+                    }
+                ]
+            }
+        ];
+    };
 
     const capacityInquiry = createCapacityCell('Inquiry');
     capacityInquiry.labelEl.addClass('ert-ai-capacity-label--forecast');
@@ -1227,7 +1206,24 @@ export function renderAiSection(params: {
     const resolvedPreviewComparatorValue = resolvedPreviewComparator.createDiv({
         cls: 'ert-ai-resolved-preview-comparator-value'
     });
+    const resolvedPreviewStatus = resolvedPreviewFrame.createDiv({
+        cls: 'ert-preview-status-line ert-preview-status-line--muted ert-ai-resolved-preview-status ert-settings-hidden'
+    });
+    const resolvedPreviewStatusIcon = resolvedPreviewStatus.createSpan({
+        cls: 'ert-preview-status-icon'
+    });
+    const resolvedPreviewStatusText = resolvedPreviewStatus.createSpan({
+        cls: 'ert-ai-resolved-preview-status-text'
+    });
     const resolvedPreviewPills = resolvedPreviewFrame.createDiv({ cls: 'ert-ai-resolved-preview-pills' });
+    const resolvedPreviewCacheMeter = resolvedPreviewFrame.createEl('progress', {
+        cls: 'ert-ai-resolved-preview-cache-meter ert-settings-hidden'
+    }) as HTMLProgressElement;
+    resolvedPreviewCacheMeter.max = 1;
+    resolvedPreviewCacheMeter.value = 0;
+    const resolvedPreviewCacheMeterLabel = resolvedPreviewFrame.createDiv({
+        cls: 'ert-ai-resolved-preview-cache-meter-label ert-settings-hidden'
+    });
     params.addAiRelatedElement(resolvedPreviewFrame);
 
     // Forward-declared; populated after credential helpers are defined.
@@ -1271,14 +1267,230 @@ export function renderAiSection(params: {
         isPreview: boolean;
     }
 
-    const renderLocalPreviewUnavailable = (title: string, detail: string): void => {
-        resolvedPreviewKicker.setText(t('settings.ai.preview.kicker'));
-        resolvedPreviewModel.setText(title);
-        resolvedPreviewProvider.setText(detail);
+    type PreviewCertificateContext = {
+        provider: AIProviderId;
+        modelId: string;
+    };
+
+    type PreviewCertificateState = {
+        tone: 'default' | 'success' | 'warning' | 'error';
+        comparatorLabel: string | null;
+        comparatorValue: string | null;
+        statusIcon: string | null;
+        statusText: string | null;
+        extraPills: string[];
+        cacheRatio?: number;
+        cacheLabel?: string | null;
+    };
+
+    const inquirySessionStore = new InquirySessionStore(plugin);
+    let lastResolvedPreviewState: ResolvedPreviewRenderState | null = null;
+    let lastPreviewCertificateContext: PreviewCertificateContext | null = null;
+
+    const formatPreviewReasonLabel = (status?: string, reason?: string): string => {
+        const normalizedReason = (reason ?? status ?? '')
+            .trim()
+            .replace(/_/g, ' ')
+            .replace(/\s+/g, ' ');
+        if (!normalizedReason) return 'issue detected';
+        return normalizedReason.charAt(0).toUpperCase() + normalizedReason.slice(1);
+    };
+
+    const formatPreviewCacheRemaining = (remainingMs: number): string => {
+        const totalMinutes = Math.max(1, Math.ceil(remainingMs / 60000));
+        if (totalMinutes >= 60) {
+            const hours = Math.floor(totalMinutes / 60);
+            const minutes = totalMinutes % 60;
+            return minutes > 0 ? `${hours}h ${minutes}m remaining` : `${hours}h remaining`;
+        }
+        return `${totalMinutes}m remaining`;
+    };
+
+    const getPreviewCurrentCorpusFingerprint = (): string | null =>
+        getCurrentCorpusContext()?.corpusFingerprint?.trim() || null;
+
+    const resetResolvedPreviewCertificateUi = (): void => {
+        resolvedPreviewFrame.classList.remove(
+            'ert-ai-resolved-preview-frame--success',
+            'ert-ai-resolved-preview-frame--warning',
+            'ert-ai-resolved-preview-frame--error'
+        );
         resolvedPreviewComparatorLabel.setText('');
         resolvedPreviewComparatorValue.setText('');
         resolvedPreviewComparator.toggleClass('ert-settings-hidden', true);
+        resolvedPreviewStatus.classList.remove(
+            'ert-preview-status-line--success',
+            'ert-preview-status-line--warning',
+            'ert-preview-status-line--muted'
+        );
+        resolvedPreviewStatus.classList.add('ert-preview-status-line--muted');
+        resolvedPreviewStatus.toggleClass('ert-settings-hidden', true);
+        resolvedPreviewStatusText.setText('');
+        resolvedPreviewStatusIcon.empty();
+        resolvedPreviewCacheMeter.toggleClass('ert-settings-hidden', true);
+        resolvedPreviewCacheMeter.value = 0;
+        resolvedPreviewCacheMeterLabel.toggleClass('ert-settings-hidden', true);
+        resolvedPreviewCacheMeterLabel.setText('');
+    };
+
+    const resolvePreviewCertificateState = (
+        context: PreviewCertificateContext | null
+    ): PreviewCertificateState => {
+        if (!context || !context.modelId || context.provider === 'none' || context.provider === 'ollama') {
+            return {
+                tone: 'default',
+                comparatorLabel: null,
+                comparatorValue: null,
+                statusIcon: null,
+                statusText: null,
+                extraPills: []
+            };
+        }
+
+        const latestSession = inquirySessionStore.getLatestSessionForEngine(context.provider, context.modelId);
+        if (!latestSession) {
+            return {
+                tone: 'default',
+                comparatorLabel: null,
+                comparatorValue: null,
+                statusIcon: null,
+                statusText: null,
+                extraPills: []
+            };
+        }
+
+        const currentFingerprint = getPreviewCurrentCorpusFingerprint();
+        const activeCacheSession = inquirySessionStore.getLatestActiveCacheSessionForEngine(context.provider, context.modelId, {
+            corpusFingerprint: currentFingerprint ?? undefined
+        });
+        const fallbackCacheSession = !activeCacheSession
+            ? inquirySessionStore.getLatestActiveCacheSessionForEngine(context.provider, context.modelId)
+            : undefined;
+        const cacheSession = activeCacheSession ?? fallbackCacheSession;
+        const hasCurrentCorpusMatch = !!activeCacheSession;
+        const resultStatus = latestSession.result.aiStatus;
+        const reasonLabel = formatPreviewReasonLabel(resultStatus, latestSession.result.aiReason);
+        const extraPills: string[] = [];
+
+        if (cacheSession?.cacheWindowExpiresAt && cacheSession.cacheWindowExpiresAt > Date.now()) {
+            extraPills.push(formatPreviewCacheRemaining(cacheSession.cacheWindowExpiresAt - Date.now()));
+        }
+
+        if (resultStatus && resultStatus !== 'success') {
+            const isWarning = resultStatus === 'degraded';
+            return {
+                tone: isWarning ? 'warning' : 'error',
+                comparatorLabel: 'Last run',
+                comparatorValue: isWarning ? `Degraded · ${reasonLabel}` : `Failed · ${reasonLabel}`,
+                statusIcon: isWarning ? 'alert-triangle' : 'x-circle',
+                statusText: isWarning
+                    ? 'Validation surfaced issues on the latest Inquiry run.'
+                    : 'Latest Inquiry run failed and needs attention.',
+                extraPills
+            };
+        }
+
+        if (cacheSession?.cacheWindowExpiresAt && cacheSession.cacheWindowExpiresAt > Date.now()) {
+            const cacheRatio = context.provider === 'anthropic'
+                && typeof cacheSession.cachedStableRatio === 'number'
+                && Number.isFinite(cacheSession.cachedStableRatio)
+                && cacheSession.cachedStableRatio > 0
+                ? Math.min(1, Math.max(0, cacheSession.cachedStableRatio))
+                : undefined;
+            const cachedTokens = typeof cacheSession.cachedStableTokens === 'number' && Number.isFinite(cacheSession.cachedStableTokens)
+                ? Math.max(0, Math.floor(cacheSession.cachedStableTokens))
+                : null;
+            const totalInputTokens = typeof cacheSession.totalInputTokens === 'number' && Number.isFinite(cacheSession.totalInputTokens)
+                ? Math.max(0, Math.floor(cacheSession.totalInputTokens))
+                : null;
+            return {
+                tone: 'success',
+                comparatorLabel: 'Last run',
+                comparatorValue: hasCurrentCorpusMatch
+                    ? 'Cache warm on current corpus'
+                    : 'Cache warm on last Inquiry corpus',
+                statusIcon: 'badge-check',
+                statusText: hasCurrentCorpusMatch
+                    ? 'Provider cache is live for the current Inquiry corpus.'
+                    : 'Provider cache is still live for the last Inquiry corpus seen by Inquiry.',
+                extraPills,
+                cacheRatio,
+                cacheLabel: cacheRatio && cachedTokens && totalInputTokens
+                    ? `Cached for next run · ${formatCorpusBreakdownToken(cachedTokens)} of ${formatCorpusBreakdownToken(totalInputTokens)}`
+                    : null
+            };
+        }
+
+        return {
+            tone: 'default',
+            comparatorLabel: 'Last run',
+            comparatorValue: 'Successful',
+            statusIcon: 'check-circle-2',
+            statusText: 'Latest Inquiry run completed without cache reuse currently active.',
+            extraPills: []
+        };
+    };
+
+    const applyResolvedPreviewCertificate = (): void => {
+        resetResolvedPreviewCertificateUi();
+        if (!lastResolvedPreviewState) return;
+        const certificate = resolvePreviewCertificateState(lastPreviewCertificateContext);
+        const previewPills = resolvePreviewSignals({
+            citationLabel: lastResolvedPreviewState.citationLabel,
+            reuseLabel: lastResolvedPreviewState.reuseLabel,
+            passBehaviorLabel: lastResolvedPreviewState.passBehaviorLabel
+        }).concat(certificate.extraPills);
+        renderResolvedPreviewPills(previewPills);
+
+        if (certificate.comparatorLabel && certificate.comparatorValue) {
+            resolvedPreviewComparatorLabel.setText(certificate.comparatorLabel);
+            resolvedPreviewComparatorValue.setText(certificate.comparatorValue);
+            resolvedPreviewComparator.toggleClass('ert-settings-hidden', false);
+        }
+
+        if (certificate.statusIcon && certificate.statusText) {
+            setIcon(resolvedPreviewStatusIcon, certificate.statusIcon);
+            resolvedPreviewStatusText.setText(certificate.statusText);
+            resolvedPreviewStatus.toggleClass('ert-settings-hidden', false);
+        }
+
+        if (certificate.tone === 'success') {
+            resolvedPreviewFrame.classList.add('ert-ai-resolved-preview-frame--success');
+            resolvedPreviewStatus.classList.remove('ert-preview-status-line--muted', 'ert-preview-status-line--warning');
+            resolvedPreviewStatus.classList.add('ert-preview-status-line--success');
+        } else if (certificate.tone === 'warning') {
+            resolvedPreviewFrame.classList.add('ert-ai-resolved-preview-frame--warning');
+            resolvedPreviewStatus.classList.remove('ert-preview-status-line--muted', 'ert-preview-status-line--success');
+            resolvedPreviewStatus.classList.add('ert-preview-status-line--warning');
+        } else if (certificate.tone === 'error') {
+            resolvedPreviewFrame.classList.add('ert-ai-resolved-preview-frame--error');
+            resolvedPreviewStatus.classList.remove('ert-preview-status-line--muted', 'ert-preview-status-line--success');
+            resolvedPreviewStatus.classList.add('ert-preview-status-line--warning');
+        }
+
+        if (typeof certificate.cacheRatio === 'number' && certificate.cacheRatio > 0 && certificate.cacheLabel) {
+            resolvedPreviewCacheMeter.toggleClass('ert-settings-hidden', false);
+            resolvedPreviewCacheMeter.value = Math.max(0, Math.min(1, certificate.cacheRatio));
+            resolvedPreviewCacheMeterLabel.setText(certificate.cacheLabel);
+            resolvedPreviewCacheMeterLabel.toggleClass('ert-settings-hidden', false);
+        }
+    };
+
+    const previewCertificateIntervalId = window.setInterval(() => {
+        applyResolvedPreviewCertificate();
+    }, 1000);
+    plugin.register(() => {
+        window.clearInterval(previewCertificateIntervalId);
+    });
+
+    const renderLocalPreviewUnavailable = (title: string, detail: string): void => {
+        lastResolvedPreviewState = null;
+        lastPreviewCertificateContext = null;
+        resolvedPreviewKicker.setText(t('settings.ai.preview.kicker'));
+        resolvedPreviewModel.setText(title);
+        resolvedPreviewProvider.setText(detail);
         renderResolvedPreviewPills([]);
+        resetResolvedPreviewCertificateUi();
     };
 
     const createResolvedPreviewPill = (container: HTMLElement, text: string): void => {
@@ -1297,6 +1509,11 @@ export function renderAiSection(params: {
     };
 
     const renderResolvedPreview = (state: ResolvedPreviewRenderState): void => {
+        lastResolvedPreviewState = state;
+        lastPreviewCertificateContext = {
+            provider: state.provider,
+            modelId: state.modelId
+        };
         resolvedPreviewKicker.setText(t('settings.ai.preview.kicker'));
         const previewModelLabel = state.provider === 'ollama'
             ? state.modelLabel.replace(/^Local LLM:\s*/i, '').trim() || state.modelLabel
@@ -1312,18 +1529,7 @@ export function renderAiSection(params: {
                 ? `${providerLabel[state.provider]} · ID pending (${state.modelAlias})`
                 : `${providerLabel[state.provider]} · ${(state.modelId || state.modelLabel)}${previewSuffix}`);
         resolvedPreviewProvider.setText(providerDetail);
-        resolvedPreviewComparatorLabel.setText('');
-        resolvedPreviewComparatorValue.setText('');
-        resolvedPreviewComparator.toggleClass('ert-settings-hidden', true);
-
-        const previewPills = resolvePreviewSignals({
-            citationLabel: state.citationLabel,
-            reuseLabel: state.reuseLabel,
-            passBehaviorLabel: state.passBehaviorLabel
-        });
-
-        renderResolvedPreviewPills(previewPills);
-
+        applyResolvedPreviewCertificate();
     };
 
     type FeatureForecast = {
@@ -1336,7 +1542,6 @@ export function renderAiSection(params: {
         referenceCount: number;
         breakdown: RTCorpusTokenBreakdown;
         promptBreakdown: PromptRequestBreakdown;
-        exactBreakdown?: InquiryProviderComponentBreakdown | null;
         expectedPassCount?: number;
     };
 
@@ -1436,6 +1641,14 @@ export function renderAiSection(params: {
     }): void => {
         costEstimateCorpusSize.setText(options.sizeText);
         costEstimateCorpusStructure.setText(options.structureText);
+    };
+    const renderCostComparisonFailure = (message: string): void => {
+        lastCostComparisonRows = [];
+        costEstimateTable.empty();
+        costEstimateTable.createDiv({
+            cls: 'ert-completion-error',
+            text: `Cost estimate failed: ${message}`
+        });
     };
 
     let activeCostComparisonRowKey: string | null = null;
@@ -1544,76 +1757,58 @@ export function renderAiSection(params: {
         structureText: string;
     }> => {
         const currentCorpus = getCurrentCorpusContext();
-        if (currentCorpus) {
-            const requestText = currentCorpus.requestTokens > 0
-                ? `Full Request: ${formatCorpusTokenSummary(currentCorpus.requestTokens)}`
-                : 'Full Request: Calculating...';
-            const corpusText = currentCorpus.corpus.estimatedTokens > 0
-                ? `Corpus: ${formatCorpusTokenSummary(currentCorpus.corpus.estimatedTokens)}`
-                : 'Corpus: Calculating...';
-            return {
-                sizeText: requestText,
-                structureText: [
-                    corpusText,
-                    formatCorpusStructureSummary(
-                        currentCorpus.corpus.sceneCount,
-                        currentCorpus.corpus.outlineCount
-                    )
-                ].filter(Boolean).join(' · ')
-            };
+        if (!currentCorpus) {
+            throw new Error('Inquiry corpus context is not loaded. Open Inquiry View before using the cost table.');
         }
         return {
-            sizeText: 'Open Inquiry View to see corpus estimates and pricing.',
-            structureText: ''
+            sizeText: `Full Request: ${formatCorpusTokenSummary(currentCorpus.requestTokens)}`,
+            structureText: [
+                `Corpus: ${formatCorpusTokenSummary(currentCorpus.corpus.estimatedTokens)}`,
+                formatCorpusStructureSummary(
+                    currentCorpus.corpus.sceneCount,
+                    currentCorpus.corpus.outlineCount
+                )
+            ].filter(Boolean).join(' · ')
         };
     };
 
     const computeCostComparisonRows = async (registryModels?: ModelInfo[]): Promise<CostComparisonRow[]> => {
         return await Promise.all(getCostComparisonModels(registryModels).map(async model => {
-            try {
-                const executionEstimate = await buildCurrentInquiryExecutionEstimate({
-                    provider: model.provider,
-                    modelId: model.modelId,
-                    questionText: INQUIRY_CANONICAL_ESTIMATE_QUESTION
-                });
-                if (!executionEstimate?.expectedPassCount || !executionEstimate.maxOutputTokens) {
-                    throw new Error('Canonical execution estimate unavailable.');
-                }
-                if (model.provider === 'ollama') {
-                    const passLabel = `${executionEstimate.expectedPassCount} ${executionEstimate.expectedPassCount === 1 ? 'pass' : 'passes'}`;
-                    return {
-                        model,
-                        freshText: 'Local compute',
-                        cachedText: 'Local compute',
-                        passesText: passLabel
-                    };
-                }
-                const cost = estimateCorpusCost(
-                    model.provider,
-                    model.modelId,
-                    executionEstimate.estimatedTokens,
-                    executionEstimate.maxOutputTokens,
-                    executionEstimate.expectedPassCount
-                );
-                const passLabel = `${cost.expectedPasses} ${cost.expectedPasses === 1 ? 'pass' : 'passes'}`;
-                const promoLabel = cost.promo?.label;
-                const ttlLabel = getProviderCacheTtlLabel(model.provider);
-                const cachedSuffix = ttlLabel ? ` (${ttlLabel})` : '';
+            const executionEstimate = await buildCurrentInquiryExecutionEstimate({
+                provider: model.provider,
+                modelId: model.modelId,
+                questionText: INQUIRY_CANONICAL_ESTIMATE_QUESTION
+            });
+            if (!executionEstimate?.expectedPassCount || !executionEstimate.maxOutputTokens) {
+                throw new Error(`Canonical execution estimate unavailable for ${model.modelLabel}.`);
+            }
+            if (model.provider === 'ollama') {
+                const passLabel = `${executionEstimate.expectedPassCount} ${executionEstimate.expectedPassCount === 1 ? 'pass' : 'passes'}`;
                 return {
                     model,
-                    freshText: formatUsdCost(cost.freshCostUSD),
-                    cachedText: `${formatUsdCost(cost.cachedCostUSD)}${cachedSuffix}`,
-                    passesText: passLabel,
-                    promoLabel
-                };
-            } catch {
-                return {
-                    model,
-                    freshText: 'No estimate yet',
-                    cachedText: 'No estimate yet',
-                    passesText: '\u2014'
+                    freshText: 'Local compute',
+                    cachedText: 'Local compute',
+                    passesText: passLabel
                 };
             }
+            const cost = estimateCorpusCost(
+                model.provider,
+                model.modelId,
+                executionEstimate.estimatedTokens,
+                executionEstimate.maxOutputTokens,
+                executionEstimate.expectedPassCount
+            );
+            const passLabel = `${cost.expectedPasses} ${cost.expectedPasses === 1 ? 'pass' : 'passes'}`;
+            const promoLabel = cost.promo?.label;
+            const ttlLabel = getProviderCacheTtlLabel(model.provider);
+            const cachedSuffix = ttlLabel ? ` (${ttlLabel})` : '';
+            return {
+                model,
+                freshText: formatUsdCost(cost.freshCostUSD),
+                cachedText: `${formatUsdCost(cost.cachedCostUSD)}${cachedSuffix}`,
+                passesText: passLabel,
+                promoLabel
+            };
         }));
     };
 
@@ -1626,19 +1821,32 @@ export function renderAiSection(params: {
         setActiveCostComparisonRow(null, null);
         renderCostComparisonRows(buildLoadingCostRows());
         const aiClient = getAIClient(plugin);
-        const [registryModels] = await Promise.all([
-            aiClient.getRegistryModels(),
-            aiClient.refreshPricing()
-        ]);
-        const [corpusSummary, rows] = await Promise.all([
-            computeCostEstimateCorpusSummary(),
-            computeCostComparisonRows(registryModels)
-        ]);
-        if (requestId !== costComparisonRequestId) return;
-        renderCostEstimateCorpusSummary(corpusSummary);
-        renderCostComparisonRows(rows);
-        costEstimateFreshness.setText(getPricingFreshnessLabel(getActivePricingMeta()));
-        renderPromoBanners();
+        try {
+            const [registryModels] = await Promise.all([
+                aiClient.getRegistryModels(),
+                aiClient.refreshPricing()
+            ]);
+            const [corpusSummary, rows] = await Promise.all([
+                computeCostEstimateCorpusSummary(),
+                computeCostComparisonRows(registryModels)
+            ]);
+            if (requestId !== costComparisonRequestId) return;
+            renderCostEstimateCorpusSummary(corpusSummary);
+            renderCostComparisonRows(rows);
+            costEstimateFreshness.setText(getPricingFreshnessLabel(getActivePricingMeta()));
+            renderPromoBanners();
+        } catch (error) {
+            if (requestId !== costComparisonRequestId) return;
+            const message = error instanceof Error ? error.message : String(error);
+            renderCostEstimateCorpusSummary({
+                sizeText: 'Cost estimate failed.',
+                structureText: message
+            });
+            setActiveCostComparisonRow(null, null);
+            renderCostComparisonFailure(message);
+            costEstimateFreshness.setText('Pricing load failed');
+            promoBannerContainer.empty();
+        }
     };
 
     const computeVaultForecasts = async (engine?: {
@@ -1648,6 +1856,7 @@ export function renderAiSection(params: {
         const currentCorpus = getCurrentCorpusContext();
         const roleTemplateTokens = estimateTokensFromChars(getActiveTemplatePrompt().length);
         const inquiryPromptParts = buildInquiryPromptParts('');
+        const inquiryRequestTokens = estimateTokensFromChars(INQUIRY_CANONICAL_ESTIMATE_QUESTION.length);
         const inquiryInstructionTokens = estimateTokensFromChars(
             inquiryPromptParts.systemPrompt.length
             + inquiryPromptParts.instructionText.length
@@ -1665,22 +1874,7 @@ export function renderAiSection(params: {
             ? await buildCurrentInquiryExecutionEstimate({
                 provider: engine.provider,
                 modelId: engine.modelId,
-                questionText: 'Analyze corpus-level flow and depth quality.'
-            })
-            : null;
-        const inquiryExactBreakdown = currentCorpus && engine
-            ? await buildCanonicalInquiryComponentBreakdown({
-                plugin,
-                provider: engine.provider,
-                modelId: engine.modelId,
-                questionText: 'Analyze corpus-level flow and depth quality.',
-                scope: currentCorpus.scope,
-                activeBookId: currentCorpus.activeBookId,
-                scopeLabel: currentCorpus.scopeLabel,
-                manifestEntries: currentCorpus.manifestEntries,
-                vault: app.vault,
-                metadataCache: app.metadataCache,
-                frontmatterMappings: plugin.settings.frontmatterMappings
+                questionText: INQUIRY_CANONICAL_ESTIMATE_QUESTION
             })
             : null;
 
@@ -1716,7 +1910,9 @@ export function renderAiSection(params: {
                 selectedBeatModel || 'Save The Cat'
             )
             : { transformText: '', instructionText: '', prompt: '' };
-        const gossamerInstructionTokens = estimateTokensFromChars(gossamerPromptParts.instructionText.length);
+        const gossamerPromptSplit = splitLeadSentence(gossamerPromptParts.instructionText);
+        const gossamerRequestTokens = estimateTokensFromChars(gossamerPromptSplit.lead.length);
+        const gossamerInstructionTokens = estimateTokensFromChars(gossamerPromptSplit.remainder.length);
         const gossamerTransformTokens = estimateTokensFromChars(gossamerPromptParts.transformText.length);
         const gossamerOutputContractTokens = estimateTokensFromChars(
             buildOutputRulesText({
@@ -1736,12 +1932,14 @@ export function renderAiSection(params: {
         const gossamerCorpusTokens = gossamerDisplayCorpus.estimatedTokens;
         const gossamerProviderTokens = gossamerEstimate.providerExecutionEstimate.estimatedTokens;
         const inquiryPromptBreakdown: PromptRequestBreakdown = {
+            requestTokens: inquiryRequestTokens,
             roleTemplateTokens,
             instructionTokens: inquiryInstructionTokens,
             outputContractTokens: inquiryOutputContractTokens,
             transformTokens: 0
         };
         const gossamerPromptBreakdown: PromptRequestBreakdown = {
+            requestTokens: gossamerRequestTokens,
             roleTemplateTokens,
             instructionTokens: gossamerInstructionTokens,
             outputContractTokens: gossamerOutputContractTokens,
@@ -1752,9 +1950,10 @@ export function renderAiSection(params: {
             inquiry: {
                 available: Boolean(currentCorpus),
                 corpusTokens: inquiryCorpusTokens,
-                providerExecutionTokens: inquiryExactBreakdown?.totalTokens ?? inquiryExecutionEstimate?.estimatedTokens ?? inquiryCorpusTokens,
-                totalEstimatedTokens: inquiryExactBreakdown?.totalTokens ?? sumTokenParts(
+                providerExecutionTokens: inquiryExecutionEstimate?.estimatedTokens ?? inquiryCorpusTokens,
+                totalEstimatedTokens: sumTokenParts(
                     inquiryCorpusTokens,
+                    inquiryPromptBreakdown.requestTokens,
                     inquiryPromptBreakdown.roleTemplateTokens,
                     inquiryPromptBreakdown.instructionTokens,
                     inquiryPromptBreakdown.outputContractTokens,
@@ -1769,7 +1968,6 @@ export function renderAiSection(params: {
                     referenceTokens: 0
                 },
                 promptBreakdown: inquiryPromptBreakdown,
-                exactBreakdown: inquiryExactBreakdown,
                 expectedPassCount: inquiryExecutionEstimate?.expectedPassCount ?? currentCorpus?.expectedPassCount ?? 1
             },
             gossamer: {
@@ -1778,6 +1976,7 @@ export function renderAiSection(params: {
                 providerExecutionTokens: gossamerProviderTokens,
                 totalEstimatedTokens: sumTokenParts(
                     gossamerCorpusTokens,
+                    gossamerPromptBreakdown.requestTokens,
                     gossamerPromptBreakdown.roleTemplateTokens,
                     gossamerPromptBreakdown.instructionTokens,
                     gossamerPromptBreakdown.outputContractTokens,
@@ -1991,62 +2190,58 @@ export function renderAiSection(params: {
             };
             const currentCorpus = getCurrentCorpusContext();
             if (currentCorpus) {
-                try {
-                    const executionEstimate = await buildCurrentInquiryExecutionEstimate({
-                        provider,
-                        modelId: estimate.model.id,
-                        questionText: INQUIRY_CANONICAL_ESTIMATE_QUESTION
-                    });
-                    if (executionEstimate && executionEstimate.estimatedTokens > 0) {
-                        const passes = executionEstimate.expectedPassCount ?? 1;
-                        previewState.passBehaviorLabel = passes <= 1
-                            ? 'Context · Single-pass at this corpus'
-                            : `Context · ${passes}-pass likely at this corpus`;
-                    }
-                } catch {
-                    // Leave pass behavior unset when the current corpus estimate is unavailable.
+                const executionEstimate = await buildCurrentInquiryExecutionEstimate({
+                    provider,
+                    modelId: estimate.model.id,
+                    questionText: INQUIRY_CANONICAL_ESTIMATE_QUESTION
+                });
+                if (executionEstimate && executionEstimate.estimatedTokens > 0) {
+                    const passes = executionEstimate.expectedPassCount ?? 1;
+                    previewState.passBehaviorLabel = passes <= 1
+                        ? 'Context · Single-pass at this corpus'
+                        : `Context · ${passes}-pass likely at this corpus`;
                 }
             }
             renderResolvedPreview(previewState);
             setActiveCostComparisonRow(provider, displayModel.id);
-            void computeVaultForecasts({
+            const forecasts = await computeVaultForecasts({
                 provider,
                 modelId: estimate.model.id
-            }).then(forecasts => {
-                if (forecasts.inquiry.available) {
-                    setTokenDisplay(capacityInquiryToken, formatCorpusBreakdownToken(forecasts.inquiry.providerExecutionTokens), 'tokens');
-                    capacityInquiryExpected.setText(formatExpectedPasses(forecasts.inquiry.providerExecutionTokens));
-                    capacityInquiryProvider.setText(`Cleaned manuscript · ${formatCorpusBreakdownToken(forecasts.inquiry.corpusTokens)}`);
-                    renderCapacitySections(capacityInquirySections, buildInquiryCapacitySections({
-                        sceneCount: forecasts.inquiry.sceneCount,
-                        outlineCount: forecasts.inquiry.outlineCount,
-                        referenceCount: forecasts.inquiry.referenceCount,
-                        breakdown: forecasts.inquiry.breakdown,
-                        promptBreakdown: forecasts.inquiry.promptBreakdown,
-                        exactBreakdown: forecasts.inquiry.exactBreakdown,
-                        providerExecutionTokens: forecasts.inquiry.providerExecutionTokens,
-                        expectedPassCount: forecasts.inquiry.expectedPassCount
-                    }));
-                } else {
-                    capacityInquiryToken.setText('Unavailable');
-                    capacityInquiryExpected.setText('Unavailable');
-                    capacityInquiryProvider.setText('Unavailable');
-                    renderCapacitySections(capacityInquirySections, buildInquiryCapacitySections());
-                }
-
-                setTokenDisplay(capacityGossamerToken, formatCorpusBreakdownToken(forecasts.gossamer.totalEstimatedTokens), 'tokens');
-                capacityGossamerExpected.setText(formatExpectedPasses(forecasts.gossamer.providerExecutionTokens));
-                capacityGossamerProvider.setText(formatProviderInput(forecasts.gossamer.providerExecutionTokens));
-                renderCapacitySections(
-                    capacityGossamerSections,
-                    buildGossamerCapacitySections(
-                        forecasts.gossamer.sceneCount,
-                        forecasts.gossamer.breakdown,
-                        forecasts.gossamer.promptBreakdown
-                    )
-                );
             });
-        } catch {
+            if (forecasts.inquiry.available) {
+                setTokenDisplay(capacityInquiryToken, formatCorpusBreakdownToken(forecasts.inquiry.providerExecutionTokens), 'tokens');
+                capacityInquiryExpected.setText(formatExpectedPasses(forecasts.inquiry.providerExecutionTokens));
+                capacityInquiryProvider.setText(`Cleaned manuscript · ${formatCorpusBreakdownToken(forecasts.inquiry.corpusTokens)}`);
+                renderCapacitySections(capacityInquirySections, buildInquiryCapacitySections({
+                    sceneCount: forecasts.inquiry.sceneCount,
+                    outlineCount: forecasts.inquiry.outlineCount,
+                    referenceCount: forecasts.inquiry.referenceCount,
+                    breakdown: forecasts.inquiry.breakdown,
+                    promptBreakdown: forecasts.inquiry.promptBreakdown,
+                    providerExecutionTokens: forecasts.inquiry.providerExecutionTokens,
+                    expectedPassCount: forecasts.inquiry.expectedPassCount
+                }));
+            } else {
+                capacityInquiryToken.setText('Unavailable');
+                capacityInquiryExpected.setText('Open Inquiry View');
+                capacityInquiryProvider.setText('Inquiry corpus context is not loaded.');
+                renderCapacitySections(capacityInquirySections, buildInquiryCapacitySections());
+            }
+
+            setTokenDisplay(capacityGossamerToken, formatCorpusBreakdownToken(forecasts.gossamer.providerExecutionTokens), 'tokens');
+            capacityGossamerExpected.setText(formatExpectedPasses(forecasts.gossamer.providerExecutionTokens));
+            capacityGossamerProvider.setText(formatProviderInput(forecasts.gossamer.providerExecutionTokens));
+            renderCapacitySections(
+                capacityGossamerSections,
+                buildGossamerCapacitySections(
+                    forecasts.gossamer.sceneCount,
+                    forecasts.gossamer.breakdown,
+                    forecasts.gossamer.promptBreakdown,
+                    forecasts.gossamer.providerExecutionTokens
+                )
+            );
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
             renderResolvedPreview({
                 provider,
                 modelId: '',
@@ -2062,14 +2257,20 @@ export function renderAiSection(params: {
                 isPreview: false
             });
             setActiveCostComparisonRow(null, null);
-            capacityInquiryToken.setText('Unavailable');
-            capacityInquiryExpected.setText('Unavailable');
-            capacityInquiryProvider.setText('Unavailable');
-            renderCapacitySections(capacityInquirySections, buildInquiryCapacitySections());
-            capacityGossamerToken.setText('Unavailable');
-            capacityGossamerExpected.setText('Unavailable');
-            capacityGossamerProvider.setText('Unavailable');
-            renderCapacitySections(capacityGossamerSections, buildGossamerCapacitySections(0));
+            capacityInquiryToken.setText('Failed');
+            capacityInquiryExpected.setText('Forecast failed');
+            capacityInquiryProvider.setText(message);
+            renderCapacitySections(capacityInquirySections, [{
+                title: 'Failure',
+                items: [`Inquiry transparency forecast failed: ${message}`]
+            }]);
+            capacityGossamerToken.setText('Failed');
+            capacityGossamerExpected.setText('Forecast failed');
+            capacityGossamerProvider.setText(message);
+            renderCapacitySections(capacityGossamerSections, [{
+                title: 'Failure',
+                items: [`Gossamer transparency forecast failed: ${message}`]
+            }]);
         }
 
     };

@@ -19,6 +19,11 @@ export interface InquirySession {
     pendingEditsApplied?: boolean;
     pendingEditsEmpty?: boolean;
     cacheWindowExpiresAt?: number;
+    cacheReuseState?: 'idle' | 'eligible' | 'warm';
+    providerCacheStatus?: 'hit' | 'created';
+    cachedStableRatio?: number;
+    cachedStableTokens?: number;
+    totalInputTokens?: number;
 }
 
 export interface InquirySessionCache {

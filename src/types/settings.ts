@@ -586,6 +586,14 @@ export interface InquirySessionCacheRecord {
         scope?: InquiryScope;
         questionZone?: InquiryZone;
         pendingEditsApplied?: boolean;
+        pendingEditsEmpty?: boolean;
+        logPath?: string;
+        cacheWindowExpiresAt?: number;
+        cacheReuseState?: 'idle' | 'eligible' | 'warm';
+        providerCacheStatus?: 'hit' | 'created';
+        cachedStableRatio?: number;
+        cachedStableTokens?: number;
+        totalInputTokens?: number;
     }[];
     max: number;
 }
