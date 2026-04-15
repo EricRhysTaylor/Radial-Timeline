@@ -745,7 +745,7 @@ function renderCampaignDetails(
             modal.open();
         };
 
-        const updateSelectedStyleProfile = async () => {
+        const saveToSelectedStyleProfile = async () => {
             if (!selectedProfile || !plugin.settings.authorProgress?.campaigns) return;
             const targetCampaign = plugin.settings.authorProgress.campaigns[index];
             const { profile } = styleService.saveCurrentStyleAsProfile(selectedProfile.name, { overwrite: true });
@@ -808,13 +808,6 @@ function renderCampaignDetails(
             modal.open();
         };
 
-        const rowHeader = styleBlock.createDiv({ cls: `${ERT_CLASSES.STACK_TIGHT} ert-campaign-style-header` });
-        rowHeader.createDiv({ cls: 'setting-item-name', text: 'APR style' });
-        rowHeader.createDiv({
-            cls: 'setting-item-description',
-            text: 'Load a saved style into the APR preview, edit it above, then save or update presets.'
-        });
-
         const styleGrid = styleBlock.createDiv({ cls: `${ERT_CLASSES.GRID_FORM} ert-campaign-style-grid` });
         styleGrid.style.gridTemplateColumns = 'minmax(0, 1.2fr) minmax(0, 1fr)';
 
@@ -827,8 +820,8 @@ function renderCampaignDetails(
         };
 
         const profileCard = createStyleCard(
-            'Saved style',
-            'Choose a saved style to load into the APR preview, or keep working from the current preview.'
+            'APR style',
+            'Load a saved style into the APR preview, edit it above, then save or update presets.'
         );
         if (selectedProfile) profileCard.addClass('is-active');
         const profileControl = profileCard.createDiv({ cls: 'ert-campaign-style-card__control' });
@@ -853,16 +846,8 @@ function renderCampaignDetails(
         profileCard.createDiv({
             cls: ERT_CLASSES.FIELD_NOTE,
             text: selectedProfile
-                ? `Loaded from "${selectedProfile.name}".`
-                : 'Using the current APR preview only.'
-        });
-        profileCard.createDiv({
-            cls: ERT_CLASSES.FIELD_NOTE,
-            text: hasUnsavedStyleChanges
-                ? 'Changes not saved.'
-                : selectedProfile
-                    ? 'Loaded preset is up to date.'
-                    : 'Current preview is not saved as a preset yet.'
+                ? 'Selecting a preset loads it into the APR preview.'
+                : 'Choose a saved style, or keep working from the current APR preview.'
         });
 
         const actionsCard = createStyleCard(
@@ -875,8 +860,8 @@ function renderCampaignDetails(
             .setButtonText(primaryLabel)
             .setCta()
             .onClick(() => {
-                if (selectedProfile && hasUnsavedStyleChanges) {
-                    void updateSelectedStyleProfile();
+                if (selectedProfile) {
+                    void saveToSelectedStyleProfile();
                     return;
                 }
                 openSaveStyleModal();
@@ -901,16 +886,19 @@ function renderCampaignDetails(
             if (!selectedProfile) return;
             openDeleteStyleModal(selectedProfile);
         };
-        actionsCard.createDiv({
-            cls: ERT_CLASSES.FIELD_NOTE,
-            text: hasUnsavedStyleChanges
-                ? selectedProfile
-                    ? `Changes not saved. Update "${selectedProfile.name}" or save as new.`
-                    : 'Changes not saved. Save to create a reusable preset.'
-                : selectedProfile
-                    ? `Ready to reuse "${selectedProfile.name}".`
-                    : 'Save the current preview if you want to reuse it across campaigns.'
-        });
+        const actionsNote = hasUnsavedStyleChanges
+            ? selectedProfile
+                ? `Changes not saved. Update "${selectedProfile.name}" or save as new.`
+                : null
+            : selectedProfile
+                ? `Ready to reuse "${selectedProfile.name}".`
+                : 'Save the current preview if you want to reuse it across campaigns.';
+        if (actionsNote) {
+            actionsCard.createDiv({
+                cls: ERT_CLASSES.FIELD_NOTE,
+                text: actionsNote
+            });
+        }
     };
 
     const styleBlock = details.createDiv({ cls: `${ERT_CLASSES.STACK} ert-campaign-style-block` });
