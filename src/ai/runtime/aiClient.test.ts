@@ -10,4 +10,13 @@ describe('AI client resolved-model caching', () => {
         expect(source.includes('recordResolvedAlias(retry.aiModelRequested, retry.aiModelResolved)')).toBe(true);
         expect(source.includes('recordResolvedAlias(cached.modelRequested, cached.modelResolved)')).toBe(true);
     });
+
+    it('treats Anthropic Inquiry cache state as eligible until the provider confirms a hit', () => {
+        const source = readFileSync(resolve(process.cwd(), 'src/ai/runtime/aiClient.ts'), 'utf8');
+        expect(source.includes("userQuestion: request.userQuestion")).toBe(true);
+        expect(source.includes("placeUserQuestionLast: isInquiry && typeof request.userQuestion === 'string' && request.userQuestion.trim().length > 0")).toBe(true);
+        expect(source.includes('const cacheDelimiterUsed = userPrompt.includes(CACHE_BREAK_DELIMITER);')).toBe(true);
+        expect(source.includes("reuseState = cacheAttempted ? 'eligible' : 'idle';")).toBe(true);
+        expect(source.includes('if ((provider === \'anthropic\' && cacheAttempted) || (provider === \'google\' && cacheDelimiterUsed)) {')).toBe(true);
+    });
 });

@@ -381,9 +381,9 @@ export class AIClient {
             projectContext: isInquiry ? '' : getProjectContext(this.plugin, request),
             featureModeInstructions,
             userInput: request.userInput ?? compiledPrompt.userPrompt ?? request.promptText ?? '',
-            userQuestion: isInquiry ? undefined : request.userQuestion,
+            userQuestion: request.userQuestion,
             outputRules: getOutputRules(request),
-            placeUserQuestionLast: false,
+            placeUserQuestionLast: isInquiry && typeof request.userQuestion === 'string' && request.userQuestion.trim().length > 0,
             cacheBreakDelimiter: (provider === 'anthropic' || provider === 'google')
                 ? CACHE_BREAK_DELIMITER : undefined
         });
@@ -590,12 +590,13 @@ export class AIClient {
             : (availableModel ? 'visible' : 'not_visible');
 
         // Truth-safe reuse state — warm only when provable
-        const cacheDelimiterUsed = (provider === 'anthropic' || provider === 'google')
-            && request.feature.toLowerCase().includes('inquiry');
+        const cacheDelimiterUsed = userPrompt.includes(CACHE_BREAK_DELIMITER);
+        const cacheAttempted = provider === 'anthropic'
+            ? (cacheDelimiterUsed || ((estimate.useDocumentBlocks ? estimate.evidenceDocuments : undefined)?.length ?? 0) > 0)
+            : cacheDelimiterUsed;
         let reuseState: AIRunAdvancedContext['reuseState'] = 'idle';
         if (provider === 'anthropic') {
-            // Anthropic: warm when delimiter used — cache_control blocks are definitely sent
-            reuseState = cacheDelimiterUsed ? 'warm' : 'eligible';
+            reuseState = cacheAttempted ? 'eligible' : 'idle';
         } else if (provider === 'google') {
             reuseState = cacheDelimiterUsed ? 'eligible' : 'idle';
         } else if (provider === 'openai' && systemPrompt
@@ -648,11 +649,11 @@ export class AIClient {
             tokenEstimateUncertainty: estimate.tokenEstimateUncertainty,
             executionPassCount: 1,
             reuseState,
-            // Anthropic: set immediately (cache_control blocks always sent)
-            // Gemini optimistic: set when peek confirms cache exists
-            cachedStableRatio: (provider === 'anthropic' && cacheDelimiterUsed) || optimisticWarm
+            // Only expose confirmed cached-prefix metrics when the provider
+            // already proved a warm hit.
+            cachedStableRatio: optimisticWarm
                 ? cachedStableRatio : undefined,
-            cachedStableTokens: (provider === 'anthropic' && cacheDelimiterUsed) || optimisticWarm
+            cachedStableTokens: optimisticWarm
                 ? cachedStableTokens : undefined,
             totalInputTokens: tokenEstimateInput,
             featureModeInstructions: estimate.featureModeInstructions,
@@ -680,20 +681,21 @@ export class AIClient {
             setLastRunAdvanced(this.plugin, request.feature, advancedContext);
         }
 
-        // Post-execute: confirm or downgrade Gemini reuseState
-        if (provider === 'google' && cacheDelimiterUsed) {
+        // Post-execute: confirm or downgrade provider cache state using runtime truth.
+        if ((provider === 'anthropic' && cacheAttempted) || (provider === 'google' && cacheDelimiterUsed)) {
             if (execution.cacheUsed) {
-                // Confirmed — ensure warm + ratio are set (covers first-run case too)
+                // Confirmed hit — safe to mark warm and surface cache coverage.
                 advancedContext.reuseState = 'warm';
                 advancedContext.cachedStableRatio = cachedStableRatio;
                 advancedContext.cachedStableTokens = cachedStableTokens;
                 advancedContext.cacheStatus = execution.cacheStatus;
                 setLastRunAdvanced(this.plugin, request.feature, advancedContext);
-            } else if (optimisticWarm) {
-                // Peek said yes but execute said no — downgrade
+            } else if (execution.cacheStatus === 'created' || optimisticWarm || advancedContext.reuseState !== 'idle') {
+                // Cache was attempted or predicted but did not hit.
                 advancedContext.reuseState = 'eligible';
                 advancedContext.cachedStableRatio = undefined;
                 advancedContext.cachedStableTokens = undefined;
+                advancedContext.cacheStatus = execution.cacheStatus;
                 setLastRunAdvanced(this.plugin, request.feature, advancedContext);
             }
         }

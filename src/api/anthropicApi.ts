@@ -130,12 +130,13 @@ type AnthropicMessageRequestBody = {
 
 export function buildAnthropicUserContent(input: BuildAnthropicUserContentInput): AnthropicContentBlock[] {
   const delimIndex = input.userPrompt.indexOf(CACHE_BREAK_DELIMITER);
-  if (delimIndex <= 0) {
-    return [{ type: 'text', text: input.userPrompt }];
-  }
-
-  const stableText = input.userPrompt.slice(0, delimIndex).trimEnd();
-  const volatileText = input.userPrompt.slice(delimIndex + CACHE_BREAK_DELIMITER.length).trimStart();
+  const hasDelimiter = delimIndex > 0;
+  const stableText = hasDelimiter
+    ? input.userPrompt.slice(0, delimIndex).trimEnd()
+    : input.userPrompt;
+  const volatileText = hasDelimiter
+    ? input.userPrompt.slice(delimIndex + CACHE_BREAK_DELIMITER.length).trimStart()
+    : '';
   if (input.citationsEnabled && input.evidenceDocuments?.length) {
     // Per-scene document blocks with citations enabled.
     // Instructions/rules stay in the stable text block; evidence goes in document blocks.
@@ -154,8 +155,12 @@ export function buildAnthropicUserContent(input: BuildAnthropicUserContentInput)
     return [
       { type: 'text', text: stableText },
       ...docBlocks,
-      { type: 'text', text: volatileText },
+      ...(volatileText ? [{ type: 'text' as const, text: volatileText }] : []),
     ];
+  }
+
+  if (!hasDelimiter) {
+    return [{ type: 'text', text: input.userPrompt }];
   }
 
   // Standard caching path (no citations)

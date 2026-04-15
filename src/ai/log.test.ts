@@ -73,6 +73,28 @@ describe('buildUsageCostBreakdown', () => {
         expect(lines).toContain('- Delta: -12.5%');
     });
 
+    it('uses the fresh estimate for cost accuracy when Anthropic created cache but did not hit it', () => {
+        const lines = formatUsageCostBreakdownLines('anthropic', 'claude-sonnet-4-6', {
+            inputTokens: 307_895,
+            outputTokens: 3_165,
+            rawInputTokens: 26,
+            cacheReadInputTokens: 0,
+            cacheCreationInputTokens: 307_869
+        }, {
+            executionInputTokens: 307_895,
+            expectedOutputTokens: 3_165,
+            expectedPasses: 1
+        });
+
+        const estimatedFreshLine = lines.find(line => line.startsWith('- Estimated fresh: '));
+        const estimatedCachedLine = lines.find(line => line.startsWith('- Estimated cached: '));
+        const estimatedLine = lines.find(line => line.startsWith('- Estimated: '));
+        expect(estimatedFreshLine).toBeTruthy();
+        expect(estimatedCachedLine).toBeTruthy();
+        expect(estimatedLine).toBe(estimatedFreshLine?.replace('- Estimated fresh: ', '- Estimated: '));
+        expect(lines.some(line => line.startsWith('- Actual: $'))).toBe(true);
+    });
+
     it('omits cost accuracy when actual cost is unavailable', () => {
         const lines = formatUsageCostBreakdownLines('anthropic', 'claude-sonnet-4-6', {
             outputTokens: 10_000

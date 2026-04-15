@@ -29,7 +29,7 @@ import { cleanEvidenceBody } from '../utils/evidenceCleaning';
 import { estimateTokensFromChars, type TokenEstimateMethod } from '../../ai/tokens/inputTokenEstimate';
 import { logCountingForensics } from '../../ai/diagnostics/countingForensics';
 import { buildInquiryJsonSchema, buildInquiryOmnibusJsonSchema } from '../jsonSchema';
-import { buildInquiryPromptParts, buildInquiryPromptScaffold, INQUIRY_ROLE_TEMPLATE_GUARDRAIL } from '../promptScaffold';
+import { buildInquiryPromptParts, INQUIRY_ROLE_TEMPLATE_GUARDRAIL } from '../promptScaffold';
 
 export { cleanEvidenceBody } from '../utils/evidenceCleaning';
 
@@ -757,16 +757,28 @@ export class InquiryRunnerService implements InquiryRunner {
             corpusManifestLines: this.buildCorpusManifestLines(input.corpus.entries),
             evidenceText
         };
-        const { systemPrompt, userPrompt } = buildInquiryPromptScaffold(scaffoldInput);
+        const { systemPrompt, userPrompt, instructionText, schemaText } = buildInquiryPromptParts(scaffoldInput);
+        const targetSceneBlock = input.selectionMode === 'focused' && input.targetSceneIds.length
+            ? [
+                '',
+                'TARGET SCENES:',
+                ...input.targetSceneIds.map(sceneId => `- ${sceneId}`)
+            ]
+            : [];
 
-        // Instruction-only prompt: same structure but without evidence text.
-        // Used when evidence is sent as Anthropic document blocks so that
-        // the question, analysis instructions, and schema are preserved
-        // in the user prompt — not discarded.
-        const { userPrompt: instructionPrompt } = buildInquiryPromptScaffold({
-            ...scaffoldInput,
-            evidenceText: '(Evidence provided as document attachments.)'
-        });
+        // Stable instruction prompt for attachment-mode caching.
+        // Deliberately omits TASK so the volatile question can be placed after
+        // the cache break and Anthropic can reuse the evidence prefix across
+        // different Inquiry questions on the same corpus.
+        const instructionPrompt = [
+            instructionText,
+            '',
+            schemaText,
+            ...targetSceneBlock,
+            '',
+            'EVIDENCE:',
+            '(Evidence provided as document attachments.)'
+        ].join('\n');
 
         return { systemPrompt, userPrompt, evidenceText, instructionPrompt };
     }
@@ -860,10 +872,14 @@ export class InquiryRunnerService implements InquiryRunner {
             evidenceText
         ].join('\n');
 
-        // Instruction-only prompt: same structure but with a placeholder for
-        // evidence. Used when evidence is sent as Anthropic document blocks.
+        // Stable instruction prompt for attachment-mode caching.
+        // Deliberately omits TASK so the volatile question list can be placed
+        // after the cache break and Anthropic can reuse the evidence prefix.
         const instructionPrompt = [
-            ...promptParts,
+            instructionText,
+            '',
+            schema,
+            ...targetSceneBlock,
             '',
             'EVIDENCE:',
             '(Evidence provided as document attachments.)'
@@ -1051,7 +1067,7 @@ export class InquiryRunnerService implements InquiryRunner {
         // When evidence is sent as document blocks (Anthropic), use the
         // instruction-only prompt as userInput so the AI still receives the
         // question, analysis instructions, and schema — not a blank prompt.
-        const effectiveUserInput = (options.instructionPrompt && options.evidenceBlocks?.length)
+        const effectiveUserInput = (this.shouldUseInstructionPrompt(options.ai.provider, options.instructionPrompt, options.evidenceBlocks))
             ? options.instructionPrompt
             : options.userPrompt;
         return aiClient.run({
@@ -1102,7 +1118,7 @@ export class InquiryRunnerService implements InquiryRunner {
     ): Promise<AIRunPreparedEstimate | null> {
         // When evidence will be sent as document blocks, use instruction-only
         // prompt so the estimate sees the real user prompt (not blank).
-        const effectiveUserInput = (options.instructionPrompt && options.evidenceBlocks?.length)
+        const effectiveUserInput = (this.shouldUseInstructionPrompt(options.ai.provider, options.instructionPrompt, options.evidenceBlocks))
             ? options.instructionPrompt
             : options.userPrompt;
         const prepared = await aiClient.prepareRunEstimate({
@@ -1135,6 +1151,16 @@ export class InquiryRunnerService implements InquiryRunner {
         });
         if (!prepared.ok) return null;
         return prepared.estimate;
+    }
+
+    private shouldUseInstructionPrompt(
+        provider: InquiryRunnerInput['ai']['provider'],
+        instructionPrompt: string | undefined,
+        evidenceBlocks: EvidenceBlock[] | undefined
+    ): instructionPrompt is string {
+        return provider === 'anthropic'
+            && !!instructionPrompt
+            && !!evidenceBlocks?.length;
     }
 
     private resolveMaxOutputMode(maxTokens: number): 'auto' | 'high' | 'max' {

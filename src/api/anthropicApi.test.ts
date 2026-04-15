@@ -6,7 +6,7 @@ vi.mock('obsidian', () => ({
 
 import * as obsidian from 'obsidian';
 
-import { countAnthropicTokens, normalizeAnthropicTokenCountResponse } from './anthropicApi';
+import { buildAnthropicUserContent, countAnthropicTokens, normalizeAnthropicTokenCountResponse } from './anthropicApi';
 
 const mockedRequestUrl = vi.spyOn(obsidian, 'requestUrl');
 
@@ -62,5 +62,47 @@ describe('anthropic token counting', () => {
             inputTokens: 987,
             source: 'provider_count'
         });
+    });
+});
+
+describe('buildAnthropicUserContent', () => {
+    it('emits document blocks without requiring a cache delimiter', () => {
+        const content = buildAnthropicUserContent({
+            userPrompt: 'Analyze the attached manuscript evidence.',
+            citationsEnabled: true,
+            evidenceDocuments: [
+                { title: 'Scene S1', content: 'Scene evidence text' }
+            ]
+        });
+
+        expect(content).toEqual([
+            { type: 'text', text: 'Analyze the attached manuscript evidence.' },
+            {
+                type: 'document',
+                source: { type: 'text', media_type: 'text/plain', data: 'Scene evidence text' },
+                title: 'Scene S1',
+                citations: { enabled: true },
+                cache_control: { type: 'ephemeral' }
+            }
+        ]);
+    });
+
+    it('preserves the trailing volatile block when a cache delimiter is present', () => {
+        const content = buildAnthropicUserContent({
+            userPrompt: 'Stable instructions\n<<<CACHE_BREAK>>>\nVolatile question',
+            citationsEnabled: true,
+            evidenceDocuments: [
+                { title: 'Scene S1', content: 'Scene evidence text' }
+            ]
+        });
+
+        expect(content).toHaveLength(3);
+        expect(content[0]).toEqual({ type: 'text', text: 'Stable instructions' });
+        expect(content[1]).toMatchObject({
+            type: 'document',
+            title: 'Scene S1',
+            citations: { enabled: true }
+        });
+        expect(content[2]).toEqual({ type: 'text', text: 'Volatile question' });
     });
 });

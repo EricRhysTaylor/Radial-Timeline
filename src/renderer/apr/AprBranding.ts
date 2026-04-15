@@ -7,6 +7,7 @@
 import { APR_TEXT_COLORS, APR_BRANDING_TUNING, APR_CENTER_METRIC } from './AprConstants';
 import { computeAprLayout, type AprLayoutSpec } from './aprLayout';
 import { getAprPreset, type AprSize } from './aprPresets';
+import { RT_LOGO_PATHS, RT_LOGO_VIEWBOX } from '../../branding/rtLogo';
 
 const cssVar = (name: string, fallback: string) => `var(${name}-override, var(${name}, ${fallback}))`;
 const italicAttr = (isItalic?: boolean) => (isItalic ? 'font-style="italic"' : ''); // SAFE: inline style used for SVG font-style attribute
@@ -341,6 +342,29 @@ export interface AprBadgeOptions {
     portableSvg?: boolean;
 }
 
+function renderRtLogoMark(x: number, y: number, fill: string, opacityValue: string): string {
+    const width = 17;
+    const height = 10;
+    const translateY = y - height;
+    const pathMarkup = RT_LOGO_PATHS
+        .map(pathData => `<path d="${pathData}" fill="${fill}" />`)
+        .join('');
+
+    return `
+        <svg
+            class="apr-rt-attribution__logo"
+            x="${x.toFixed(2)}"
+            y="${translateY.toFixed(2)}"
+            width="${width}"
+            height="${height}"
+            viewBox="${RT_LOGO_VIEWBOX.x} ${RT_LOGO_VIEWBOX.y} ${RT_LOGO_VIEWBOX.width} ${RT_LOGO_VIEWBOX.height}"
+            preserveAspectRatio="xMinYMin meet"
+            opacity="${opacityValue}">
+            ${pathMarkup}
+        </svg>
+    `;
+}
+
 export function renderAprBadges(options: AprBadgeOptions): string {
     const {
         size,
@@ -428,19 +452,7 @@ export function renderAprBadges(options: AprBadgeOptions): string {
 
     const rtAttribution = showRtAttribution ? `
         <a href="https://radialtimeline.com" target="_blank" rel="noopener" class="apr-rt-attribution">
-            <text 
-                x="${(-half + stageEdgeInset).toFixed(2)}" 
-                y="${(half - stageEdgeInset).toFixed(2)}" 
-                text-anchor="start" 
-                dominant-baseline="text-after-edge"
-                font-family="${badgeFontFamilyEscaped}" 
-                font-size="${Math.max(6, Math.round(badgeSize * 0.75))}" 
-                font-weight="${rtBadgeFontWeight}"
-                ${italicAttr(rtBadgeFontItalic)}
-                fill="${rtFill}"
-                opacity="${rtOpacity}">
-                RT
-            </text>
+            ${renderRtLogoMark(-half + stageEdgeInset, half - stageEdgeInset, rtFill, rtOpacity)}
         </a>
     ` : '';
 

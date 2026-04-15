@@ -85,13 +85,13 @@
   text-decoration: none;
 }
 
-.apr-svg:not(.apr-portable) .apr-rt-attribution text {
-  fill: var(--apr-rt-attrib-color-override, var(--apr-rt-attrib-color, var(--apr-engine-color)));
+.apr-svg:not(.apr-portable) .apr-rt-attribution .apr-rt-attribution__logo {
+  fill: var(--apr-rt-attrib-color-override, var(--apr-rt-attrib-color, var(--apr-stage-badge-color)));
   opacity: var(--apr-rt-attrib-opacity, 0.35);
   transition: fill 0.2s ease, opacity 0.2s ease;
 }
 
-.apr-svg:not(.apr-portable) .apr-rt-attribution:hover text {
+.apr-svg:not(.apr-portable) .apr-rt-attribution:hover .apr-rt-attribution__logo {
   fill: var(--rt-social-color, #ffd41d);
   opacity: 1;
 }

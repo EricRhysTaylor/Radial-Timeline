@@ -312,6 +312,7 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
     const authorColorResolved = authorColorResolvedInput ?? bookTitleColorResolved;
     const engineColorResolved = engineColorResolvedInput ?? APR_TEXT_COLORS.primary;
     const stageBadgeColorResolved = stageBadgeColor;
+    const rtAttributionColorResolved = pressStageColor;
     const percentNumberColorResolved = percentNumberColorResolvedInput ?? bookTitleColorResolved;
     const percentSymbolColorResolved = percentSymbolColorResolvedInput ?? bookTitleColorResolved;
     const ringOptions = !showScenesFinal && isThumb
@@ -339,7 +340,7 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
         `--apr-percent-symbol-color: ${percentSymbolColorResolved}`,
         `--apr-stage-badge-color: ${stageBadgeColorResolved}`,
         `--apr-countdown-color: ${stageBadgeColorResolved}`,
-        `--apr-rt-attrib-color: ${engineColorResolved}`,
+        `--apr-rt-attrib-color: ${rtAttributionColorResolved}`,
         `--apr-progress-color: ${progressColor}`,
         `--apr-progress-ghost-color: ${progressGhostColor}`,
         `--apr-progress-ghost-opacity: ${progressGhostOpacity}`,
@@ -458,7 +459,7 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
             rtBadgeFontSize,
             badgeColor: stageBadgeColorResolved,
             countdownColor: stageBadgeColorResolved,
-            rtAttributionColor: engineColorResolved,
+            rtAttributionColor: rtAttributionColorResolved,
             portableSvg
         });
     }

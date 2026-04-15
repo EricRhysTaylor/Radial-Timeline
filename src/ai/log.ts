@@ -184,11 +184,14 @@ export function formatUsageCostBreakdownLines(
         && typeof breakdown?.totalCostUSD === 'number'
         && Number.isFinite(breakdown.totalCostUSD)
     ) {
+        const estimatedEffectiveCost = (typeof breakdown?.cacheReadInputTokens === 'number' && breakdown.cacheReadInputTokens > 0)
+            ? estimate.cachedCostUSD
+            : estimate.freshCostUSD;
         lines.push('');
         lines.push('## Cost Accuracy');
-        lines.push(`- Estimated: ${formatCost(estimate.effectiveCostUSD)}`);
+        lines.push(`- Estimated: ${formatCost(estimatedEffectiveCost)}`);
         lines.push(`- Actual: ${formatCost(breakdown.totalCostUSD)}`);
-        lines.push(`- Delta: ${formatDeltaPercent(estimate.effectiveCostUSD, breakdown.totalCostUSD)}`);
+        lines.push(`- Delta: ${formatDeltaPercent(estimatedEffectiveCost, breakdown.totalCostUSD)}`);
     }
     lines.push('');
     return lines;

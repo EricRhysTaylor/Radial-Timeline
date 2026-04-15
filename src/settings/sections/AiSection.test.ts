@@ -218,6 +218,13 @@ describe('AI settings models table', () => {
         expect(source.includes('Saved (not tested)')).toBe(false);
     });
 
+    it('keeps the active cost row in sync with provider credential state changes', () => {
+        const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
+        expect(source.includes('const refreshActiveCostComparisonRowState = (provider: AIProviderId, credentialState: string | null): void => {')).toBe(true);
+        expect(source.includes('if (!activeCostComparisonRowKey?.startsWith(`${provider}::`)) return;')).toBe(true);
+        expect(source.includes('refreshActiveCostComparisonRowState(options.provider, next);')).toBe(true);
+    });
+
     it('uses Local LLM as the provider label and keeps backend names inside the Local LLM section only', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
         expect(source.includes("dropdown.addOption('ollama', t('settings.ai.provider.optionLocalLlm'))")).toBe(true);

@@ -24,6 +24,19 @@ describe('InquiryRunnerService execution integrity', () => {
         expect(source).toMatch(/this\.prepareInquiryRunEstimate\([\s\S]*userQuestion,[\s\S]*ai,/);
     });
 
+    it('uses instructionPrompt only for Anthropic attachment runs', () => {
+        const source = readFileSync(resolve(process.cwd(), 'src/inquiry/runner/InquiryRunnerService.ts'), 'utf8');
+        expect(source).toContain("provider === 'anthropic'");
+        expect(source).toContain('private shouldUseInstructionPrompt(');
+    });
+
+    it('keeps Anthropic attachment instruction prompts free of TASK so cacheable prefixes survive question changes', () => {
+        const source = readFileSync(resolve(process.cwd(), 'src/inquiry/runner/InquiryRunnerService.ts'), 'utf8');
+        expect(source).toContain('Deliberately omits TASK so the volatile question can be placed after');
+        expect(source).toContain("'EVIDENCE:',");
+        expect(source).toContain("'(Evidence provided as document attachments.)'");
+    });
+
     it('uses planning-budget wording for single-pass rejection while preserving legacy detection', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/inquiry/runner/InquiryRunnerService.ts'), 'utf8');
         expect(source).toContain('This request exceeds the single-pass planning budget.');

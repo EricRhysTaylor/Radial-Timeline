@@ -1457,6 +1457,13 @@ export function renderAiSection(params: {
             renderCostComparisonRows(lastCostComparisonRows);
         }
     };
+    const refreshActiveCostComparisonRowState = (provider: AIProviderId, credentialState: string | null): void => {
+        if (!activeCostComparisonRowKey?.startsWith(`${provider}::`)) return;
+        activeCostRowCredentialState = credentialState;
+        if (lastCostComparisonRows.length > 0) {
+            renderCostComparisonRows(lastCostComparisonRows);
+        }
+    };
 
     const buildLoadingCostRows = (): CostComparisonRow[] => getCostComparisonModels().map(model => ({
         model,
@@ -2132,6 +2139,7 @@ export function renderAiSection(params: {
             providerState = next;
             providerKeyStates[options.provider] = next;
             refreshDropdownKeyIndicators();
+            refreshActiveCostComparisonRowState(options.provider, next);
             const ai = ensureCanonicalAiSettings();
             const secretId = getCredentialSecretId(ai, options.provider).trim();
             const desc = document.createDocumentFragment();

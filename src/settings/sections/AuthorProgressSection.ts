@@ -42,14 +42,36 @@ function resolveDefaultExportFormat(settings?: AuthorProgressSettings): AprExpor
     return inferExportFormatFromPath(defaults.exportPath, 'png');
 }
 
+function getScrollContainer(el: HTMLElement): HTMLElement | null {
+    let current: HTMLElement | null = el.parentElement;
+    while (current) {
+        const style = window.getComputedStyle(current);
+        const overflowY = style.overflowY;
+        const isScrollable = (overflowY === 'auto' || overflowY === 'scroll') && current.scrollHeight > current.clientHeight;
+        if (isScrollable) return current;
+        current = current.parentElement;
+    }
+    return null;
+}
+
 export function renderAuthorProgressSection({ app, plugin, containerEl }: AuthorProgressSectionProps): void {
     // Social is ERT-only; avoid legacy classes.
     const section = containerEl.createDiv({
         cls: `ert-apr-section ${ERT_CLASSES.ROOT} ${ERT_CLASSES.SKIN_SOCIAL} ${ERT_CLASSES.STACK}`
     });
     const rerenderSection = () => {
+        const scrollContainer = getScrollContainer(containerEl);
+        const scrollTop = scrollContainer?.scrollTop ?? null;
+        const pageScrollTop = document.scrollingElement?.scrollTop ?? null;
         containerEl.empty();
         renderAuthorProgressSection({ app, plugin, containerEl });
+        window.requestAnimationFrame(() => {
+            if (scrollContainer && scrollTop !== null) {
+                scrollContainer.scrollTop = scrollTop;
+            } else if (document.scrollingElement && pageScrollTop !== null) {
+                document.scrollingElement.scrollTop = pageScrollTop;
+            }
+        });
     };
 
     // Check if APR needs refresh
@@ -273,7 +295,6 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // Progress tracking
     type AprProgressMode = 'stage' | 'date' | 'full';
     const progressTrackingCard = stylingBody.createDiv({ cls: `${ERT_CLASSES.PREVIEW_FRAME} ert-previewFrame--flush ${ERT_CLASSES.STACK}` });
-    progressTrackingCard.createDiv({ cls: 'setting-item-name', text: 'Progress tracking' });
 
     const progressModeGrid = progressTrackingCard.createDiv({ cls: ERT_CLASSES.GRID_FORM });
     progressModeGrid.style.gridTemplateColumns = 'minmax(0, 1fr) auto minmax(0, 1fr)';
@@ -760,7 +781,6 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         'aprCenterTransparent',
         'aprBookAuthorColor',
         'aprAuthorColor',
-        'aprEngineColor',
         'aprPercentNumberColor',
         'aprPercentSymbolColor',
         'aprTheme',
@@ -979,13 +999,14 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         label: string;
         desc: string;
         dataTypo: string;
+        showAutoButton?: boolean;
         text?: {
             placeholder: string;
             value: string;
             onChange: (value: string) => Promise<void>;
         };
         primaryAction?: (rowEl: HTMLElement) => void;
-        color: {
+        color?: {
             key: keyof AuthorProgressDefaults;
             value: string;
             fallback: string;
@@ -1087,8 +1108,12 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
         const updateAutoState = (): void => {
             const currentStyle = getActiveStyleSettings() as Record<string, unknown>;
-            const currentColor = normalizeHex((currentStyle[opts.color.key] as string | undefined) ?? opts.color.fallback);
-            const defaultColor = normalizeHex(opts.color.fallback);
+            const colorAuto = (() => {
+                if (!opts.color) return true;
+                const currentColor = normalizeHex((currentStyle[opts.color.key] as string | undefined) ?? opts.color.fallback);
+                const defaultColor = normalizeHex(opts.color.fallback);
+                return currentColor === defaultColor;
+            })();
             const typographyAuto = (() => {
                 if (!opts.typography) return true;
                 const currentFont = (currentStyle[opts.typography.familyKey] as string | undefined) ?? defaultFont;
@@ -1102,7 +1127,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                     && currentItalic === defaultItalic
                     && isSizeAuto;
             })();
-            const isAuto = currentColor === defaultColor && typographyAuto;
+            const isAuto = colorAuto && typographyAuto;
             if (autoButton) {
                 autoButton.classList.toggle('is-active', isAuto);
             }
@@ -1121,49 +1146,57 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             });
         }
 
-        const colorPicker = colorSwatch(rowSecondary, {
-            value: opts.color.value,
-            ariaLabel: `${opts.label} color`,
-            plugin,
-            onChange: async (val) => {
-                if (isSyncing) return;
-                const next = val || opts.color.fallback;
-                await setAprSetting(opts.color.key, next as AuthorProgressDefaults[typeof opts.color.key]);
-                colorText?.setValue(next);
-                opts.color.onAfterChange?.(next);
-                updateAutoState();
-            }
-        });
-        opts.color.setPickerRef?.(colorPicker);
+        let colorPicker: ColorSwatchHandle | null = null;
+        let colorText: TextComponent | null = null;
+        if (opts.color) {
+            const colorConfig = opts.color;
+            colorPicker = colorSwatch(rowSecondary, {
+                value: colorConfig.value,
+                ariaLabel: `${opts.label} color`,
+                plugin,
+                onChange: async (val) => {
+                    if (isSyncing) return;
+                    const next = val || colorConfig.fallback;
+                    await setAprSetting(colorConfig.key, next as AuthorProgressDefaults[typeof colorConfig.key]);
+                    colorText?.setValue(next);
+                    colorConfig.onAfterChange?.(next);
+                    updateAutoState();
+                }
+            });
+            colorConfig.setPickerRef?.(colorPicker);
 
-        const colorText = new TextComponent(rowSecondary);
-        opts.color.setTextRef?.(colorText);
-        colorText.inputEl.classList.add('ert-input--hex');
-        colorText.setPlaceholder(opts.color.fallback).setValue(opts.color.value);
-        colorText.onChange(async (val) => {
-            if (isSyncing) return;
-            if (!val || !/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(val)) return;
-            await setAprSetting(opts.color.key, val as AuthorProgressDefaults[typeof opts.color.key]);
-            colorPicker.setValue(val);
-            opts.color.onAfterChange?.(val);
-            updateAutoState();
-        });
+            colorText = new TextComponent(rowSecondary);
+            colorConfig.setTextRef?.(colorText);
+            colorText.inputEl.classList.add('ert-input--hex');
+            colorText.setPlaceholder(colorConfig.fallback).setValue(colorConfig.value);
+            colorText.onChange(async (val) => {
+                if (isSyncing) return;
+                if (!val || !/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(val)) return;
+                await setAprSetting(colorConfig.key, val as AuthorProgressDefaults[typeof colorConfig.key]);
+                colorPicker?.setValue(val);
+                colorConfig.onAfterChange?.(val);
+                updateAutoState();
+            });
+        }
 
         opts.primaryAction?.(rowSecondary);
 
-        autoButton = rowSecondary.createEl('button', { text: t('settings.authorProgress.styling.autoButton'), cls: 'ert-chip ert-typography-auto' });
-        autoButton.type = 'button';
+        if (opts.showAutoButton !== false) {
+            autoButton = rowSecondary.createEl('button', { text: t('settings.authorProgress.styling.autoButton'), cls: 'ert-chip ert-typography-auto' });
+            autoButton.type = 'button';
+        }
 
         const typographyRefs = (opts.typography && rowPrimary)
             ? buildTypographyControls(rowPrimary, opts.typography, updateAutoState, isSyncingCheck)
             : null;
 
         // SAFE: Settings sections are standalone functions without Component lifecycle; Obsidian manages settings tab cleanup
-        autoButton.addEventListener('click', async () => {
+        autoButton?.addEventListener('click', async () => {
             if (!plugin.settings.authorProgress) return;
-            const updates: Partial<AuthorProgressDefaults> = {
-                [opts.color.key]: opts.color.fallback
-            };
+            const updates: Partial<AuthorProgressDefaults> = {};
+            if (opts.color) {
+                (updates as Record<string, unknown>)[opts.color.key] = opts.color.fallback;
+            }
             if (opts.typography) {
                 Object.assign(updates, {
                     [opts.typography.familyKey]: defaultFont,
@@ -1176,14 +1209,16 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             }
             await setAprSettings(updates);
             isSyncing = true;
-            colorPicker.setValue(opts.color.fallback);
-            colorText.setValue(opts.color.fallback);
+            if (opts.color) {
+                colorPicker?.setValue(opts.color.fallback);
+                colorText?.setValue(opts.color.fallback);
+            }
             if (typographyRefs) {
                 typographyRefs.setFontValue(defaultFont);
                 typographyRefs.setStyleValue(defaultWeight, defaultItalic);
                 typographyRefs.sizeInputs.forEach(input => input.setValue(''));
             }
-            opts.color.onAfterChange?.(opts.color.fallback);
+            opts.color?.onAfterChange?.(opts.color.fallback);
             isSyncing = false;
             updateAutoState();
         });
@@ -1311,20 +1346,13 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     });
 
     // ─────────────────────────────────────────────────────────────────────────
-    // RT BADGE
+    // STAGE / RT
     // ─────────────────────────────────────────────────────────────────────────
-    const rtBadgeColorFallback = '#e5e5e5';
-    const currentRtBadgeColor = styleSettings.aprEngineColor || rtBadgeColorFallback;
-
     addElementBlock(themeBody, {
         label: t('settings.authorProgress.styling.stageBadge.label'),
         desc: t('settings.authorProgress.styling.stageBadge.desc'),
         dataTypo: 'ert-badgePill',
-        color: {
-            key: 'aprEngineColor',
-            value: currentRtBadgeColor,
-            fallback: rtBadgeColorFallback
-        },
+        showAutoButton: false,
         typography: {
             familyKey: 'aprRtBadgeFontFamily',
             weightKey: 'aprRtBadgeFontWeight',

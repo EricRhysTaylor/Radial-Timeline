@@ -145,4 +145,21 @@ describe('InquiryView payload accounting', () => {
         expect(cssSource.includes('.ert-inquiry-briefing-clear.is-inert')).toBe(true);
     });
 
+    it('keeps context reuse HUD tied to the current engine instead of hydrated result state', () => {
+        const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
+        expect(viewSource.includes('private getLatestCacheSessionForResolvedEngine(): InquirySession | null {')).toBe(true);
+        expect(viewSource.includes("return 'Context reuse expired';")).toBe(true);
+        expect(viewSource.includes("const hasLiveContextCountdown = !this.state.isRunning && !!this.getActiveCacheWindowExpiry();")).toBe(true);
+        expect(viewSource.includes('this.reconcileEngineTimerInterval(hasLiveContextCountdown);')).toBe(true);
+    });
+
+    it('prefers latest timing samples and cached next-run cost when live context reuse exists', () => {
+        const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
+        expect(viewSource.includes('options?: { preferLatestSample?: boolean }')).toBe(true);
+        expect(viewSource.includes('const preferLatestSample = !!this.getActiveCacheWindowExpiry();')).toBe(true);
+        expect(viewSource.includes('this.refreshEstimateDisplays();')).toBe(true);
+        expect(viewSource.includes('const nextRunCanReuseCache = !!cacheSession?.cacheWindowExpiresAt')).toBe(true);
+        expect(viewSource.includes("return `Cost · ${cachedLabel} cached`;")).toBe(true);
+    });
+
 });

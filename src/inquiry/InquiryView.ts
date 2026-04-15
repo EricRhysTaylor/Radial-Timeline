@@ -8632,17 +8632,29 @@ export class InquiryView extends ItemView {
     private buildTimingEstimateFromHistory(
         estimatedInputTokens: number,
         provider?: string,
-        model?: string
+        model?: string,
+        options?: { preferLatestSample?: boolean }
     ): { minSeconds: number; maxSeconds: number } | null {
         const entry = this.getInquiryTimingHistoryEntry(provider, model);
         if (!entry || !Number.isFinite(entry.avgMsPerInputToken) || entry.avgMsPerInputToken <= 0) {
             return null;
         }
-        const predictedMs = Math.max(4000, estimatedInputTokens * entry.avgMsPerInputToken);
-        // Lean optimistic so the bar finishes rather than stalling at 1/3.
+        const avgPredictedMs = Math.max(4000, estimatedInputTokens * entry.avgMsPerInputToken);
+        const lastPredictedMs = Number.isFinite(entry.lastDurationMs)
+            && entry.lastDurationMs > 0
+            && Number.isFinite(entry.lastInputTokens)
+            && entry.lastInputTokens > 0
+            ? Math.max(4000, estimatedInputTokens * (entry.lastDurationMs / entry.lastInputTokens))
+            : null;
+        const preferLatestSample = options?.preferLatestSample === true && typeof lastPredictedMs === 'number';
+        const predictedMs = typeof lastPredictedMs === 'number'
+            ? (preferLatestSample
+                ? lastPredictedMs
+                : ((avgPredictedMs * 0.35) + (lastPredictedMs * 0.65)))
+            : avgPredictedMs;
         return {
-            minSeconds: Math.max(4, (predictedMs * 0.7) / 1000),
-            maxSeconds: Math.max(6, predictedMs / 1000)
+            minSeconds: Math.max(4, (predictedMs * (preferLatestSample ? 0.85 : 0.75)) / 1000),
+            maxSeconds: Math.max(6, (predictedMs * (preferLatestSample ? 1.1 : 1.25)) / 1000)
         };
     }
 
@@ -8692,6 +8704,7 @@ export class InquiryView extends ItemView {
             updatedAt: new Date().toISOString()
         };
         this.plugin.settings.inquiryTimingHistory = history;
+        this.refreshEstimateDisplays();
         await this.plugin.saveSettings();
     }
 
@@ -8754,12 +8767,14 @@ export class InquiryView extends ItemView {
     private estimateRunDurationRange(questionText: string): { minSeconds: number; maxSeconds: number } {
         const readinessUi = this.buildReadinessUiState();
         const estimatedTokens = Math.max(0, readinessUi.estimateInputTokens || 0);
+        const preferLatestSample = !!this.getActiveCacheWindowExpiry();
 
         // If we have history for this model, trust it directly.
         const timingEstimate = this.buildTimingEstimateFromHistory(
             estimatedTokens,
             readinessUi.provider,
-            readinessUi.model?.id
+            readinessUi.model?.id,
+            { preferLatestSample }
         );
         if (timingEstimate) {
             return timingEstimate;
@@ -8868,32 +8883,42 @@ export class InquiryView extends ItemView {
     }
 
     private getActiveCacheWindowExpiry(): number | null {
-        if (!this.state.activeSessionId) return null;
-        const session = this.sessionStore.peekSession(this.state.activeSessionId);
+        const session = this.getLatestCacheSessionForResolvedEngine();
         if (!session?.cacheWindowExpiresAt) return null;
         if (session.cacheWindowExpiresAt <= Date.now()) return null;
         return session.cacheWindowExpiresAt;
     }
 
+    private getLatestCacheSessionForResolvedEngine(): InquirySession | null {
+        const engine = this.getResolvedEngine();
+        if (!engine.modelId || engine.provider === 'none' || engine.provider === 'ollama') {
+            return null;
+        }
+        return this.sessionStore
+            .getRecentSessions(this.sessionStore.getSessionCount())
+            .find(session => {
+                if (!session.cacheWindowExpiresAt) return false;
+                const provider = (session.result.aiProvider ?? '').trim().toLowerCase();
+                if (provider !== engine.provider) return false;
+                const resolvedModel = (session.result.aiModelResolved || '').trim();
+                const requestedModel = (session.result.aiModelRequested || '').trim();
+                return resolvedModel === engine.modelId || requestedModel === engine.modelId;
+            }) ?? null;
+    }
+
     private buildContextCountdownLabel(): string | null {
-        if (!this.state.activeSessionId) return null;
-        const session = this.sessionStore.peekSession(this.state.activeSessionId);
+        const session = this.getLatestCacheSessionForResolvedEngine();
         if (!session?.cacheWindowExpiresAt) return null;
 
         const remainingMs = session.cacheWindowExpiresAt - Date.now();
         if (remainingMs > 0) {
             return `Context available · ${this.formatCacheCountdown(remainingMs)} remaining`;
         }
-        // Show expired message for up to 30 seconds after expiry
-        if (remainingMs > -30_000) {
-            return 'Context expired — next run is fresh';
-        }
-        return null;
+        return 'Context reuse expired';
     }
 
     private clearContextWindow(): void {
-        if (!this.state.activeSessionId) return;
-        const session = this.sessionStore.peekSession(this.state.activeSessionId);
+        const session = this.getLatestCacheSessionForResolvedEngine();
         if (!session?.cacheWindowExpiresAt) return;
         delete session.cacheWindowExpiresAt;
         this.sessionStore.setSession(session);
@@ -8935,6 +8960,7 @@ export class InquiryView extends ItemView {
 
     private updateRunningHud(): void {
         const contextLabel = this.state.isRunning ? null : this.buildContextCountdownLabel();
+        const hasLiveContextCountdown = !this.state.isRunning && !!this.getActiveCacheWindowExpiry();
         renderInquiryRunningHud({
             engineTimerLabel: this.engineTimerLabel,
             navSessionLabel: this.navSessionLabel,
@@ -8954,7 +8980,7 @@ export class InquiryView extends ItemView {
             this.toggleClassIfChanged(this.engineTimerLabel, 'is-context-countdown', !!contextLabel, 'hudAttrWrites');
         }
         if (!this.state.isRunning) {
-            this.reconcileEngineTimerInterval(!!contextLabel);
+            this.reconcileEngineTimerInterval(hasLiveContextCountdown);
         }
     }
 
@@ -10079,7 +10105,16 @@ export class InquiryView extends ItemView {
             );
             const freshLabel = formatApproxUsdCost(cost.freshCostUSD);
             const cachedLabel = formatApproxUsdCost(cost.cachedCostUSD);
+            const cacheSession = this.getLatestCacheSessionForResolvedEngine();
+            const currentFingerprint = snapshot.corpus.corpusFingerprint;
+            const nextRunCanReuseCache = !!cacheSession?.cacheWindowExpiresAt
+                && cacheSession.cacheWindowExpiresAt > Date.now()
+                && !!currentFingerprint
+                && cacheSession.result.corpusFingerprint === currentFingerprint;
             const corpusWasRun = snapshot.corpus.corpusFingerprint === this.state.corpusFingerprint;
+            if (nextRunCanReuseCache) {
+                return `Cost · ${cachedLabel} cached`;
+            }
             return corpusWasRun
                 ? `Cost · ${freshLabel} / ${cachedLabel} cached`
                 : `Cost · ${freshLabel}`;

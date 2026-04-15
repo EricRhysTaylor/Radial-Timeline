@@ -1319,7 +1319,7 @@ export const en: TranslationKeys = {
                 },
                 percentSymbol: { label: '% Symbol', desc: 'Center percent symbol.' },
                 percentNumber: { label: '% Number', desc: 'Center progress number.' },
-                stageBadge: { label: 'Stage badge / RT mark', desc: 'Typography for the progress stage badge and the RT attribution mark.' },
+                stageBadge: { label: 'Stage / RT', desc: 'Stage badge typography. The RT logo follows the Publish stage color.' },
                 transparentMode: {
                     name: 'Transparent mode',
                     desc: 'No background fill \u2014 adapts to any page or app. Ideal for websites, blogs, and platforms that preserve SVG transparency.',

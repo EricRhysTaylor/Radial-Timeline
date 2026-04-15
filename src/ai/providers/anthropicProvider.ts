@@ -1,6 +1,7 @@
 import type RadialTimelinePlugin from '../../main';
 import { callAnthropicApi } from '../../api/anthropicApi';
 import { classifyProviderError } from '../../api/providerErrors';
+import { extractTokenUsage } from '../usage/providerUsage';
 import { getCredential } from '../credentials/credentials';
 import { buildDefaultAiSettings } from '../settings/aiSettings';
 import { validateAiSettings } from '../settings/validateAiSettings';
@@ -15,6 +16,25 @@ export class AnthropicProvider implements AIProvider {
 
     supports(capability: Capability): boolean {
         return CAPS.includes(capability);
+    }
+
+    private deriveCacheResult(responseData: unknown): Pick<ProviderExecutionResult, 'cacheUsed' | 'cacheStatus'> {
+        const usage = extractTokenUsage('anthropic', responseData);
+        const cacheRead = usage?.cacheReadInputTokens ?? 0;
+        const cacheWrite = usage?.cacheCreationInputTokens ?? 0;
+        if (cacheRead > 0) {
+            return {
+                cacheUsed: true,
+                cacheStatus: 'hit'
+            };
+        }
+        if (cacheWrite > 0) {
+            return {
+                cacheUsed: false,
+                cacheStatus: 'created'
+            };
+        }
+        return {};
     }
 
     async generateText(req: GenerateTextRequest): Promise<ProviderExecutionResult> {
@@ -37,6 +57,7 @@ export class AnthropicProvider implements AIProvider {
             cacheTtl
         );
         const classification = classifyProviderError(result);
+        const cacheResult = this.deriveCacheResult(result.responseData);
         return {
             success: result.success,
             content: result.content,
@@ -47,7 +68,8 @@ export class AnthropicProvider implements AIProvider {
             aiModelRequested: req.modelId,
             aiModelResolved: req.modelId,
             error: result.error,
-            citations: result.citations
+            citations: result.citations,
+            ...cacheResult
         };
     }
 
@@ -71,6 +93,7 @@ export class AnthropicProvider implements AIProvider {
             cacheTtl
         );
         const classification = classifyProviderError(result);
+        const cacheResult = this.deriveCacheResult(result.responseData);
         return {
             success: result.success,
             content: result.content,
@@ -81,7 +104,8 @@ export class AnthropicProvider implements AIProvider {
             aiModelRequested: req.modelId,
             aiModelResolved: req.modelId,
             error: result.error,
-            citations: result.citations
+            citations: result.citations,
+            ...cacheResult
         };
     }
 }
