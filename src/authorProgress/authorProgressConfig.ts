@@ -138,6 +138,8 @@ export function buildDefaultAuthorProgressSettings(): AuthorProgressSettings {
         enabled: false,
         defaults: buildDefaultAuthorProgressDefaults(),
         styleProfiles: [],
+        designerDraftStyle: undefined,
+        designerCampaignId: undefined,
         campaigns: []
     };
 }
@@ -411,6 +413,8 @@ export function migrateAuthorProgressSettings(raw: unknown): AuthorProgressSetti
         enabled: asBoolean(record.enabled, false),
         defaults,
         styleProfiles,
+        designerDraftStyle: record.designerDraftStyle ? migrateStyleSettings(record.designerDraftStyle, defaults) : undefined,
+        designerCampaignId: asString(record.designerCampaignId),
         campaigns
     };
 }

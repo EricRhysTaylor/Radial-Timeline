@@ -366,6 +366,8 @@ export interface AuthorProgressSettings {
     enabled: boolean;
     defaults: AuthorProgressDefaults;
     styleProfiles?: AprStyleProfile[];
+    designerDraftStyle?: AprStyleSettings;
+    designerCampaignId?: string;
 
     // Pro Feature: Campaign Manager
     campaigns?: AuthorProgressCampaign[];

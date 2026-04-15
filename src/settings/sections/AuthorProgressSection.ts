@@ -2,8 +2,9 @@ import { App, Setting, Notice, setIcon, setTooltip, normalizePath, DropdownCompo
 import type RadialTimelinePlugin from '../../main';
 import { buildDefaultAuthorProgressDefaults } from '../../authorProgress/authorProgressConfig';
 import { AuthorProgressService } from '../../services/AuthorProgressService';
+import { AprStyleService } from '../../services/apr/AprStyleService';
 import { DEFAULT_SETTINGS } from '../defaults';
-import type { AuthorProgressDefaults, AuthorProgressSettings, TeaserRevealLevel } from '../../types/settings';
+import type { AprStyleSettings, AuthorProgressDefaults, AuthorProgressSettings, TeaserRevealLevel } from '../../types/settings';
 import { getAllScenes } from '../../utils/manuscript';
 import { createAprSVG } from '../../renderer/apr/AprRenderer';
 import { getTeaserRevealLevel, getTeaserThresholds, teaserLevelToRevealOptions } from '../../renderer/apr/AprConstants';
@@ -46,9 +47,14 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const section = containerEl.createDiv({
         cls: `ert-apr-section ${ERT_CLASSES.ROOT} ${ERT_CLASSES.SKIN_SOCIAL} ${ERT_CLASSES.STACK}`
     });
+    const rerenderSection = () => {
+        containerEl.empty();
+        renderAuthorProgressSection({ app, plugin, containerEl });
+    };
 
     // Check if APR needs refresh
     const aprService = new AuthorProgressService(plugin, app);
+    const aprStyleService = new AprStyleService(plugin);
     const needsRefresh = aprService.isStale();
     const isProActive = hasProFeatureAccess(plugin);
 
@@ -492,11 +498,13 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     modeDropdown.addOption('full', 'Full manuscript mode');
     void refreshTrackingState();
 
-    const currentBg = settings?.aprBackgroundColor || '#0d0d0f';
-    const currentTransparent = settings?.aprCenterTransparent ?? true; // Default to true (recommended)
-    const currentTheme = settings?.aprTheme || 'dark';
-    const currentSpokeMode = settings?.aprSpokeColorMode || 'dark';
-    const currentSpokeColor = settings?.aprSpokeColor || '#ffffff';
+    const getActiveStyleSettings = (): AprStyleSettings => aprStyleService.resolveDesignerStyle();
+    const styleSettings = getActiveStyleSettings();
+    const currentBg = styleSettings.aprBackgroundColor || '#0d0d0f';
+    const currentTransparent = styleSettings.aprCenterTransparent ?? true; // Default to true (recommended)
+    const currentTheme = styleSettings.aprTheme || 'dark';
+    const currentSpokeMode = styleSettings.aprSpokeColorMode || 'dark';
+    const currentSpokeColor = styleSettings.aprSpokeColor || '#ffffff';
 
     // Link URL
     const linkUrlSetting = new Setting(stylingBody)
@@ -612,13 +620,23 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // SAFE: Settings sections are standalone functions without Component lifecycle; Obsidian manages settings tab cleanup
     themeButton.addEventListener('click', () => {
         const paletteSeedColor = bookTitleTextRef?.getValue().trim()
-            || plugin.settings.authorProgress?.defaults.aprBookAuthorColor
+            || getActiveStyleSettings().aprBookAuthorColor
             || bookTitleColorFallback;
+        const paletteDefaults = {
+            ...(plugin.settings.authorProgress?.defaults ?? DEFAULT_SETTINGS.authorProgress?.defaults ?? buildDefaultAuthorProgressDefaults()),
+            ...getActiveStyleSettings()
+        } as AuthorProgressDefaults;
         const modal = new AprPaletteModal(
             app,
             plugin,
-            plugin.settings.authorProgress?.defaults ?? DEFAULT_SETTINGS.authorProgress?.defaults ?? buildDefaultAuthorProgressDefaults(),
+            paletteDefaults,
             (palette) => {
+                void setAprSettings({
+                    aprBookAuthorColor: palette.bookTitle,
+                    aprAuthorColor: palette.authorName,
+                    aprPercentNumberColor: palette.percentNumber,
+                    aprPercentSymbolColor: palette.percentSymbol,
+                });
                 bookTitleColorPickerRef?.setValue(palette.bookTitle);
                 bookTitleTextRef?.setValue(palette.bookTitle);
                 authorColorPickerRef?.setValue(palette.authorName);
@@ -628,7 +646,6 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                 percentSymbolColorPickerRef?.setValue(palette.percentSymbol);
                 percentSymbolTextRef?.setValue(palette.percentSymbol);
                 lastAppliedPalette = palette;
-                refreshPreview();
             },
             paletteSeedColor
         );
@@ -738,26 +755,71 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         return Number.isFinite(parsed) ? parsed : undefined;
     };
 
+    const styleSettingKeys = new Set<keyof AprStyleSettings>([
+        'aprBackgroundColor',
+        'aprCenterTransparent',
+        'aprBookAuthorColor',
+        'aprAuthorColor',
+        'aprEngineColor',
+        'aprPercentNumberColor',
+        'aprPercentSymbolColor',
+        'aprTheme',
+        'aprSpokeColorMode',
+        'aprSpokeColor',
+        'aprBookTitleFontFamily',
+        'aprBookTitleFontWeight',
+        'aprBookTitleFontItalic',
+        'aprBookTitleFontSize',
+        'aprAuthorNameFontFamily',
+        'aprAuthorNameFontWeight',
+        'aprAuthorNameFontItalic',
+        'aprAuthorNameFontSize',
+        'aprPercentNumberFontSize1Digit',
+        'aprPercentNumberFontSize2Digit',
+        'aprPercentNumberFontSize3Digit',
+        'aprRtBadgeFontFamily',
+        'aprRtBadgeFontWeight',
+        'aprRtBadgeFontItalic',
+        'aprRtBadgeFontSize',
+        'aprShowRtAttribution',
+    ]);
+
     const setAprSetting = async <K extends keyof AuthorProgressDefaults>(key: K, value: AuthorProgressDefaults[K] | undefined): Promise<void> => {
         if (!plugin.settings.authorProgress) return;
-        plugin.settings.authorProgress.defaults[key] = value as AuthorProgressDefaults[K];
+        if (styleSettingKeys.has(key as keyof AprStyleSettings)) {
+            aprStyleService.updateDesignerStyle({ [key]: value } as Partial<AprStyleSettings>);
+        } else {
+            plugin.settings.authorProgress.defaults[key] = value as AuthorProgressDefaults[K];
+        }
         await plugin.saveSettings();
         refreshPreview();
     };
 
     const setAprSettings = async (updates: Partial<AuthorProgressDefaults>): Promise<void> => {
         if (!plugin.settings.authorProgress) return;
-        Object.assign(plugin.settings.authorProgress.defaults, updates);
+        const styleUpdates: Partial<AprStyleSettings> = {};
+        const defaultUpdates: Partial<AuthorProgressDefaults> = {};
+        Object.entries(updates).forEach(([key, value]) => {
+            if (styleSettingKeys.has(key as keyof AprStyleSettings)) {
+                (styleUpdates as Record<string, unknown>)[key] = value;
+            } else {
+                (defaultUpdates as Record<string, unknown>)[key] = value;
+            }
+        });
+        if (Object.keys(styleUpdates).length > 0) {
+            aprStyleService.updateDesignerStyle(styleUpdates);
+        }
+        Object.assign(plugin.settings.authorProgress.defaults, defaultUpdates);
         await plugin.saveSettings();
         refreshPreview();
     };
 
     const clearPercentNumberOverrides = (): void => {
-        if (!settings) return;
+        const currentStyle = getActiveStyleSettings();
         const hasOverrides = [
-            settings.aprPercentNumberFontSize1Digit,
-            settings.aprPercentNumberFontSize2Digit,
-            settings.aprPercentNumberFontSize3Digit
+            currentStyle.aprPercentNumberFontSize1Digit,
+            currentStyle.aprPercentNumberFontSize2Digit,
+            currentStyle.aprPercentNumberFontSize3Digit
         ].some(value => value !== undefined && value !== null);
         if (!hasOverrides) return;
         void setAprSettings({
@@ -946,7 +1008,8 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     } => {
         const fontDrop = new DropdownComponent(rowEl);
         fontDrop.selectEl.addClass('ert-typography-select');
-        const currentFont = (settings?.[opts.familyKey] as string | undefined) ?? opts.fontDefault ?? 'Inter';
+        const currentStyle = getActiveStyleSettings() as Record<string, unknown>;
+        const currentFont = (currentStyle[opts.familyKey] as string | undefined) ?? opts.fontDefault ?? 'Inter';
         const { setValue: setFontValue } = applyFontDropdown(fontDrop, currentFont, async (val) => {
             if (isSyncing()) return;
             await setAprSetting(opts.familyKey, val as AuthorProgressDefaults[typeof opts.familyKey]);
@@ -956,8 +1019,8 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         const styleDrop = new DropdownComponent(rowEl);
         styleDrop.selectEl.addClass('ert-typography-select');
         WEIGHT_OPTIONS.forEach(opt => styleDrop.addOption(opt.value, opt.label));
-        const currentWeight = (settings?.[opts.weightKey] as number | undefined) ?? opts.weightDefault;
-        const currentItalic = (settings?.[opts.italicKey] as boolean | undefined) ?? opts.italicDefault ?? false;
+        const currentWeight = (currentStyle[opts.weightKey] as number | undefined) ?? opts.weightDefault;
+        const currentItalic = (currentStyle[opts.italicKey] as boolean | undefined) ?? opts.italicDefault ?? false;
         let isStyleUpdating = false;
         styleDrop.setValue(formatWeightValue(currentWeight, currentItalic));
         styleDrop.onChange(async (val) => {
@@ -982,7 +1045,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             opts.sizeKeys.forEach((key, index) => {
                 const input = new TextComponent(sizeGroup);
                 input.setPlaceholder(opts.sizePlaceholders?.[index] ?? t('settings.authorProgress.styling.autoButton'));
-                const currentValue = settings?.[key] as number | undefined;
+                const currentValue = currentStyle[key] as number | undefined;
                 input.setValue(currentValue !== undefined ? String(currentValue) : '');
                 input.onChange(async (val) => {
                     if (isSyncing()) return;
@@ -1023,15 +1086,16 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         const defaultItalic = opts.typography?.italicDefault ?? false;
 
         const updateAutoState = (): void => {
-            const currentColor = normalizeHex((settings?.[opts.color.key] as string | undefined) ?? opts.color.fallback);
+            const currentStyle = getActiveStyleSettings() as Record<string, unknown>;
+            const currentColor = normalizeHex((currentStyle[opts.color.key] as string | undefined) ?? opts.color.fallback);
             const defaultColor = normalizeHex(opts.color.fallback);
             const typographyAuto = (() => {
                 if (!opts.typography) return true;
-                const currentFont = (settings?.[opts.typography.familyKey] as string | undefined) ?? defaultFont;
-                const currentWeight = (settings?.[opts.typography.weightKey] as number | undefined) ?? defaultWeight;
-                const currentItalic = (settings?.[opts.typography.italicKey] as boolean | undefined) ?? defaultItalic;
+                const currentFont = (currentStyle[opts.typography.familyKey] as string | undefined) ?? defaultFont;
+                const currentWeight = (currentStyle[opts.typography.weightKey] as number | undefined) ?? defaultWeight;
+                const currentItalic = (currentStyle[opts.typography.italicKey] as boolean | undefined) ?? defaultItalic;
                 const isSizeAuto = opts.typography.sizeKeys?.length
-                    ? opts.typography.sizeKeys.every(key => settings?.[key] === undefined)
+                    ? opts.typography.sizeKeys.every(key => currentStyle[key] === undefined)
                     : true;
                 return currentFont === defaultFont
                     && currentWeight === defaultWeight
@@ -1130,7 +1194,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // ─────────────────────────────────────────────────────────────────────────
     // COLOR PALETTE + TITLE BLOCK
     // ─────────────────────────────────────────────────────────────────────────
-    const currentBookTitleColorVal = settings?.aprBookAuthorColor || bookTitleColorFallback;
+    const currentBookTitleColorVal = styleSettings.aprBookAuthorColor || bookTitleColorFallback;
 
     // ─────────────────────────────────────────────────────────────────────────
     // ELEMENT BLOCKS (Title, Author, % Symbol, % Number, Stage Badge / RT Mark)
@@ -1164,8 +1228,8 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // ─────────────────────────────────────────────────────────────────────────
     // AUTHOR
     // ─────────────────────────────────────────────────────────────────────────
-    const authorColorFallback = settings?.aprBookAuthorColor || bookTitleColorFallback;
-    const currentAuthorColor = settings?.aprAuthorColor || authorColorFallback;
+    const authorColorFallback = styleSettings.aprBookAuthorColor || bookTitleColorFallback;
+    const currentAuthorColor = styleSettings.aprAuthorColor || authorColorFallback;
 
     addElementBlock(themeBody, {
         label: t('settings.authorProgress.styling.author.label'),
@@ -1203,8 +1267,8 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // ─────────────────────────────────────────────────────────────────────────
     // % SYMBOL
     // ─────────────────────────────────────────────────────────────────────────
-    const percentSymbolColorFallback = settings?.aprBookAuthorColor || bookTitleColorFallback;
-    const currentPercentSymbolColor = settings?.aprPercentSymbolColor || percentSymbolColorFallback;
+    const percentSymbolColorFallback = styleSettings.aprBookAuthorColor || bookTitleColorFallback;
+    const currentPercentSymbolColor = styleSettings.aprPercentSymbolColor || percentSymbolColorFallback;
 
     addElementBlock(themeBody, {
         label: t('settings.authorProgress.styling.percentSymbol.label'),
@@ -1226,8 +1290,8 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // ─────────────────────────────────────────────────────────────────────────
     // % NUMBER
     // ─────────────────────────────────────────────────────────────────────────
-    const percentNumberColorFallback = settings?.aprBookAuthorColor || bookTitleColorFallback;
-    const currentPercentNumberColor = settings?.aprPercentNumberColor || percentNumberColorFallback;
+    const percentNumberColorFallback = styleSettings.aprBookAuthorColor || bookTitleColorFallback;
+    const currentPercentNumberColor = styleSettings.aprPercentNumberColor || percentNumberColorFallback;
 
     addElementBlock(themeBody, {
         label: t('settings.authorProgress.styling.percentNumber.label'),
@@ -1250,7 +1314,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // RT BADGE
     // ─────────────────────────────────────────────────────────────────────────
     const rtBadgeColorFallback = '#e5e5e5';
-    const currentRtBadgeColor = settings?.aprEngineColor || rtBadgeColorFallback;
+    const currentRtBadgeColor = styleSettings.aprEngineColor || rtBadgeColorFallback;
 
     addElementBlock(themeBody, {
         label: t('settings.authorProgress.styling.stageBadge.label'),
@@ -1303,11 +1367,8 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     transparencySetting.addToggle(toggle => {
         toggle.setValue(currentTransparent);
         toggle.onChange(async (val) => {
-            if (!plugin.settings.authorProgress) return;
-            plugin.settings.authorProgress.defaults.aprCenterTransparent = val;
-            await plugin.saveSettings();
+            await setAprSetting('aprCenterTransparent', val as AuthorProgressDefaults['aprCenterTransparent']);
             updateEmphasis(val);
-            refreshPreview();
         });
     });
 
@@ -1367,13 +1428,10 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         ariaLabel: 'Background color',
         plugin,
         onChange: async (val) => {
-            if (!plugin.settings.authorProgress) return;
             const next = val || '#0d0d0f';
-            plugin.settings.authorProgress.defaults.aprBackgroundColor = next;
-            await plugin.saveSettings();
+            await setAprSetting('aprBackgroundColor', next as AuthorProgressDefaults['aprBackgroundColor']);
             bgTextInput?.setValue(next);
             updateSourceLabel(next);
-            refreshPreview();
         }
     });
     bgColorPicker = bgSwatch;
@@ -1384,12 +1442,9 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         text.inputEl.classList.add('ert-input--hex');
         text.onChange(async (val) => {
             if (!val) return;
-            if (!plugin.settings.authorProgress) return;
-            plugin.settings.authorProgress.defaults.aprBackgroundColor = val;
-            await plugin.saveSettings();
+            await setAprSetting('aprBackgroundColor', val as AuthorProgressDefaults['aprBackgroundColor']);
             bgColorPicker?.setValue(val);
             updateSourceLabel(val);
-            refreshPreview();
         });
     });
 
@@ -1404,13 +1459,10 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const platformSwatches = platformRow.createDiv({ cls: 'ert-platform-presets__swatches' });
 
     const applyPreset = async (color: string) => {
-        if (!plugin.settings.authorProgress) return;
-        plugin.settings.authorProgress.defaults.aprBackgroundColor = color;
-        await plugin.saveSettings();
+        await setAprSetting('aprBackgroundColor', color as AuthorProgressDefaults['aprBackgroundColor']);
         bgColorPicker?.setValue(color);
         bgTextInput?.setValue(color);
         updateSourceLabel(color);
-        refreshPreview();
     };
 
     for (const preset of platformPresets) {
@@ -1470,7 +1522,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         const modal = new CustomBgPresetModal(app, plugin, {
             index,
             existing,
-            currentBg: plugin.settings.authorProgress?.defaults.aprBackgroundColor ?? '#0d0d0f',
+            currentBg: getActiveStyleSettings().aprBackgroundColor ?? '#0d0d0f',
             onSave: async (preset) => {
                 if (!plugin.settings.authorProgress) return;
                 const presets = [...getCustomPresets()];
@@ -1487,7 +1539,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                 plugin.settings.authorProgress.defaults.aprCustomBgPresets = presets;
                 await plugin.saveSettings();
                 renderCustomPills();
-                updateSourceLabel(plugin.settings.authorProgress.defaults.aprBackgroundColor ?? '#0d0d0f');
+                updateSourceLabel(getActiveStyleSettings().aprBackgroundColor ?? '#0d0d0f');
             }
         });
         modal.open();
@@ -1513,10 +1565,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         plugin,
         onChange: async (val) => {
             if (/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(val)) {
-                if (!plugin.settings.authorProgress) return;
-                plugin.settings.authorProgress.defaults.aprSpokeColor = val || fallbackColor;
-                await plugin.saveSettings();
-                refreshPreview();
+                await setAprSetting('aprSpokeColor', (val || fallbackColor) as AuthorProgressDefaults['aprSpokeColor']);
                 spokeColorInputRef?.setValue(val);
             }
         }
@@ -1532,10 +1581,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     spokeColorInput.onChange(async (val) => {
         if (!val) return;
         if (/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(val)) {
-            if (!plugin.settings.authorProgress) return;
-            plugin.settings.authorProgress.defaults.aprSpokeColor = val;
-            await plugin.saveSettings();
-            refreshPreview();
+            await setAprSetting('aprSpokeColor', val as AuthorProgressDefaults['aprSpokeColor']);
             spokeColorPickerRef?.setValue(val);
         }
     });
@@ -1549,25 +1595,23 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const currentValue = currentSpokeMode !== 'dark' ? currentSpokeMode : (currentTheme !== 'dark' ? currentTheme : 'dark');
     spokeModeDropdown.setValue(currentValue);
     spokeModeDropdown.onChange(async (val) => {
-        if (!plugin.settings.authorProgress) return;
         const mode = (val as 'dark' | 'light' | 'none' | 'custom' | 'sync') || 'dark';
-        plugin.settings.authorProgress.defaults.aprTheme = (mode === 'custom' || mode === 'sync') ? 'dark' : (mode as 'dark' | 'light' | 'none');
-        plugin.settings.authorProgress.defaults.aprSpokeColorMode = mode;
-        await plugin.saveSettings();
+        await setAprSettings({
+            aprTheme: (mode === 'custom' || mode === 'sync') ? 'dark' : (mode as 'dark' | 'light' | 'none'),
+            aprSpokeColorMode: mode as AuthorProgressDefaults['aprSpokeColorMode']
+        });
 
         const isCustom = mode === 'custom';
         spokeColorPickerRef?.setDisabled(!isCustom);
         spokeColorInputRef?.setDisabled(!isCustom);
         if (isCustom && spokeColorInputRef) {
-            const current = plugin.settings.authorProgress.defaults.aprSpokeColor || fallbackColor;
+            const current = getActiveStyleSettings().aprSpokeColor || fallbackColor;
             spokeColorInputRef.setValue(current);
             spokeColorPickerRef?.setValue(current);
         } else if (spokeColorInputRef) {
             spokeColorInputRef.setValue(fallbackColor);
             spokeColorPickerRef?.setValue(fallbackColor);
         }
-
-        refreshPreview();
     });
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -1770,6 +1814,9 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         onCampaignChange: () => {
             // Refresh the hero preview when campaigns change
             refreshPreview?.();
+        },
+        onDesignerContextChange: () => {
+            rerenderSection();
         }
     });
 
@@ -1782,12 +1829,9 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             .setName(t('settings.authorProgress.attribution.name'))
             .setDesc(t('settings.authorProgress.attribution.desc'))
             .addToggle(toggle => {
-                toggle.setValue(settings?.aprShowRtAttribution !== false)
+                toggle.setValue(getActiveStyleSettings().aprShowRtAttribution !== false)
                     .onChange(async (val) => {
-                        if (!plugin.settings.authorProgress) return;
-                        plugin.settings.authorProgress.defaults.aprShowRtAttribution = val;
-                        await plugin.saveSettings();
-                        refreshPreview();
+                        await setAprSetting('aprShowRtAttribution', val as AuthorProgressDefaults['aprShowRtAttribution']);
                     });
             });
         attributionSetting.settingEl.addClass('ert-setting--flush');
@@ -1821,7 +1865,8 @@ async function renderHeroPreview(
         const service = new AuthorProgressService(plugin, app);
         const progressState = service.resolveProgressState(scenes);
         const progressPercent = progressState.percent;
-        const resolvedStyle = service.resolveStyle();
+        const resolvedStyle = service.resolveDesignerStyle();
+        const activeDesignerCampaign = service.getDesignerCampaign();
 
         const authorProgress = plugin.settings.authorProgress;
         const aprSettings = authorProgress?.defaults;
@@ -1852,7 +1897,7 @@ async function renderHeroPreview(
                 previewLevel = teaserPreviewMode;
             } else {
                 const campaigns = authorProgress?.campaigns ?? [];
-                const activeCampaign = campaigns.find(c => c.isActive) ?? campaigns[0];
+                const activeCampaign = activeDesignerCampaign ?? campaigns.find(c => c.isActive) ?? campaigns[0];
                 const teaserSettings = activeCampaign?.teaserReveal;
                 if (teaserSettings?.enabled) {
                     const preset = teaserSettings.preset ?? 'standard';
@@ -1879,10 +1924,13 @@ async function renderHeroPreview(
         }
 
         const displayPercent = progressPercent;
+        const previewBookTitle = activeDesignerCampaign?.targetBookId
+            ? plugin.settings.books?.find(book => book.id === activeDesignerCampaign.targetBookId)?.title?.trim() || plugin.getActiveBookTitle()
+            : plugin.getActiveBookTitle();
         const { svgString, width, height } = createAprSVG(scenes, {
             size: size,
             progressPercent: displayPercent,
-            bookTitle: plugin.getActiveBookTitle(),
+            bookTitle: previewBookTitle,
             authorName: aprSettings?.authorName || '',
             authorUrl: aprSettings?.authorUrl || '',
             showScenes,

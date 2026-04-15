@@ -51,6 +51,35 @@ function sanitizeName(name: string): string {
 export class AprStyleService {
     constructor(private plugin: RadialTimelinePlugin) {}
 
+    private readonly styleKeys: Array<keyof AprStyleSettings> = [
+        'aprBackgroundColor',
+        'aprCenterTransparent',
+        'aprBookAuthorColor',
+        'aprAuthorColor',
+        'aprEngineColor',
+        'aprPercentNumberColor',
+        'aprPercentSymbolColor',
+        'aprTheme',
+        'aprSpokeColorMode',
+        'aprSpokeColor',
+        'aprBookTitleFontFamily',
+        'aprBookTitleFontWeight',
+        'aprBookTitleFontItalic',
+        'aprBookTitleFontSize',
+        'aprAuthorNameFontFamily',
+        'aprAuthorNameFontWeight',
+        'aprAuthorNameFontItalic',
+        'aprAuthorNameFontSize',
+        'aprPercentNumberFontSize1Digit',
+        'aprPercentNumberFontSize2Digit',
+        'aprPercentNumberFontSize3Digit',
+        'aprRtBadgeFontFamily',
+        'aprRtBadgeFontWeight',
+        'aprRtBadgeFontItalic',
+        'aprRtBadgeFontSize',
+        'aprShowRtAttribution',
+    ];
+
     public getDefaults(): AuthorProgressDefaults {
         return this.plugin.settings.authorProgress?.defaults ?? buildDefaultAuthorProgressDefaults();
     }
@@ -63,6 +92,25 @@ export class AprStyleService {
         const normalized = name.trim().toLowerCase();
         if (!normalized) return undefined;
         return this.getProfiles().find(profile => profile.name.trim().toLowerCase() === normalized);
+    }
+
+    public getDesignerCampaignId(): string | undefined {
+        return this.plugin.settings.authorProgress?.designerCampaignId;
+    }
+
+    public getDesignerCampaign(): AuthorProgressCampaign | undefined {
+        const campaignId = this.getDesignerCampaignId();
+        if (!campaignId) return undefined;
+        return this.plugin.settings.authorProgress?.campaigns?.find(campaign => campaign.id === campaignId);
+    }
+
+    public resolveDesignerStyle(): AprStyleSettings {
+        const draft = this.plugin.settings.authorProgress?.designerDraftStyle;
+        return draft ? { ...draft } : this.captureCurrentStyle(this.getDefaults());
+    }
+
+    public isDesignerCampaignActive(campaignId: string): boolean {
+        return this.getDesignerCampaignId() === campaignId;
     }
 
     public captureCurrentStyle(defaults: AuthorProgressDefaults = this.getDefaults()): AprStyleSettings {
@@ -105,6 +153,40 @@ export class AprStyleService {
         return this.captureCurrentStyle(defaults);
     }
 
+    public loadCampaignIntoDesigner(campaignId: string): boolean {
+        const authorProgress = this.ensureAuthorProgressSettings();
+        const campaign = authorProgress.campaigns?.find(entry => entry.id === campaignId);
+        if (!campaign) {
+            return this.clearDesignerContext();
+        }
+        authorProgress.designerCampaignId = campaignId;
+        authorProgress.designerDraftStyle = this.resolveStyle(campaign);
+        return true;
+    }
+
+    public clearDesignerContext(): boolean {
+        const authorProgress = this.ensureAuthorProgressSettings();
+        const hadContext = !!authorProgress.designerCampaignId || !!authorProgress.designerDraftStyle;
+        authorProgress.designerCampaignId = undefined;
+        authorProgress.designerDraftStyle = undefined;
+        return hadContext;
+    }
+
+    public updateDesignerStyle(updates: Partial<AprStyleSettings>): void {
+        const authorProgress = this.ensureAuthorProgressSettings();
+        if (authorProgress.designerCampaignId) {
+            authorProgress.designerDraftStyle = {
+                ...(authorProgress.designerDraftStyle ?? this.resolveDesignerStyle()),
+                ...updates
+            };
+            return;
+        }
+        Object.entries(updates).forEach(([key, value]) => {
+            if (!this.styleKeys.includes(key as keyof AprStyleSettings)) return;
+            (authorProgress.defaults as unknown as Record<string, unknown>)[key] = value;
+        });
+    }
+
     public resolveStyleProfile(campaign?: AuthorProgressCampaign): AprStyleProfile | undefined {
         if (campaign?.styleSource !== 'profile' || !campaign.styleProfileId) return undefined;
         return this.getProfiles().find(entry => entry.id === campaign.styleProfileId);
@@ -137,16 +219,18 @@ export class AprStyleService {
         const authorProgress = this.ensureAuthorProgressSettings();
         const nextName = name.trim();
         const existingProfile = this.findProfileByName(nextName);
+        const sourceStyle = this.resolveDesignerStyle();
         if (existingProfile) {
             if (!options?.overwrite) {
                 return { profile: existingProfile, overwritten: false };
             }
             existingProfile.name = nextName;
-            existingProfile.style = this.captureCurrentStyle(authorProgress.defaults);
+            existingProfile.style = { ...sourceStyle };
             return { profile: existingProfile, overwritten: true };
         }
 
         const profile = this.createStyleProfile(nextName, authorProgress.defaults);
+        profile.style = { ...sourceStyle };
         authorProgress.styleProfiles?.push(profile);
         return { profile, overwritten: false };
     }

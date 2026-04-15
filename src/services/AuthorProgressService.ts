@@ -55,6 +55,14 @@ export class AuthorProgressService {
         return this.aprStyleService.resolveStyle(campaign);
     }
 
+    public resolveDesignerStyle() {
+        return this.aprStyleService.resolveDesignerStyle();
+    }
+
+    public getDesignerCampaign() {
+        return this.aprStyleService.getDesignerCampaign();
+    }
+
     public generateReport(mode?: 'static' | 'dynamic'): Promise<string | null> {
         return this.publishService.generateReport(mode);
     }

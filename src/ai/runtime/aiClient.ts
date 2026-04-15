@@ -380,9 +380,7 @@ export class AIClient {
             roleTemplateText: roleTemplate.prompt,
             projectContext: isInquiry ? '' : getProjectContext(this.plugin, request),
             featureModeInstructions,
-            userInput: useDocumentBlocks
-                ? ''
-                : (request.userInput ?? compiledPrompt.userPrompt ?? request.promptText ?? ''),
+            userInput: request.userInput ?? compiledPrompt.userPrompt ?? request.promptText ?? '',
             userQuestion: isInquiry ? undefined : request.userQuestion,
             outputRules: getOutputRules(request),
             placeUserQuestionLast: false,

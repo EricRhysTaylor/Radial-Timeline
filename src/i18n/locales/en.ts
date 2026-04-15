@@ -1251,7 +1251,7 @@ export const en: TranslationKeys = {
                 featureStageWeighted: 'Stage-Weighted Progress \u2014 Tracks advancement through Zero \u2192 Author \u2192 House \u2192 Press',
             },
             preview: {
-                sizeLabel: 'Preview Size:',
+                sizeLabel: 'APR Preview',
                 actualSizePreview: 'Actual size preview',
                 teaserAuto: 'Auto (Current Stage)',
                 teaserRing: 'Ring',

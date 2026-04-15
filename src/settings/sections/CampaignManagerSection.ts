@@ -31,6 +31,7 @@ export interface CampaignManagerProps {
     plugin: RadialTimelinePlugin;
     containerEl: HTMLElement;
     onCampaignChange?: () => void;
+    onDesignerContextChange?: () => void;
 }
 
 interface CampaignNameModalOptions {
@@ -232,10 +233,15 @@ export function campaignNeedsRefresh(campaign: AuthorProgressCampaign): boolean 
 /**
  * Render the Campaign Manager section
  */
-export function renderCampaignManagerSection({ app, plugin, containerEl, onCampaignChange }: CampaignManagerProps): void {
+export function renderCampaignManagerSection({ app, plugin, containerEl, onCampaignChange, onDesignerContextChange }: CampaignManagerProps): void {
     const isProActive = hasProFeatureAccess(plugin);
     const campaigns = plugin.settings.authorProgress?.campaigns || [];
     const expandedCampaigns = new Set<string>();
+    const styleService = new AprStyleService(plugin);
+    const activeDesignerCampaignId = styleService.getDesignerCampaignId();
+    if (activeDesignerCampaignId) {
+        expandedCampaigns.add(activeDesignerCampaignId);
+    }
 
     // ─────────────────────────────────────────────────────────────────────────
     // CAMPAIGN MANAGER CARD
@@ -275,7 +281,7 @@ export function renderCampaignManagerSection({ app, plugin, containerEl, onCampa
             renderCampaignRow(listContainer, campaign, index, plugin, () => {
                 rerenderCampaignList();
                 onCampaignChange?.();
-            }, expandedCampaigns);
+            }, expandedCampaigns, onDesignerContextChange);
         });
     }
 
@@ -407,7 +413,7 @@ export function renderCampaignManagerSection({ app, plugin, containerEl, onCampa
                 renderCampaignRow(listContainer, campaign, index, plugin, () => {
                     rerenderCampaignList();
                     onCampaignChange?.();
-                }, expandedCampaigns);
+                }, expandedCampaigns, onDesignerContextChange);
             });
         }
 
@@ -463,8 +469,10 @@ function renderCampaignRow(
     index: number,
     plugin: RadialTimelinePlugin,
     onUpdate: () => void,
-    expandedCampaigns: Set<string>
+    expandedCampaigns: Set<string>,
+    onDesignerContextChange?: () => void
 ): void {
+    const styleService = new AprStyleService(plugin);
     const needsRefresh = campaignNeedsRefresh(campaign);
 
     // Create a wrapper to contain both the row and expandable details
@@ -584,7 +592,7 @@ function renderCampaignRow(
 
     if (expandedCampaigns.has(campaignKey)) {
         row.classList.add('is-expanded');
-        renderCampaignDetails(wrapper, campaign, index, plugin, onUpdate);
+        renderCampaignDetails(wrapper, campaign, index, plugin, onUpdate, onDesignerContextChange);
     }
 
     // Actions
@@ -607,17 +615,29 @@ function renderCampaignRow(
     const editBtn = actionGroup.createEl('button', { cls: ERT_CLASSES.ICON_BTN });
     setIcon(editBtn, 'settings');
     setTooltip(editBtn, 'Edit campaign settings');
-    editBtn.onclick = () => {
+    editBtn.onclick = async () => {
         // Toggle expanded state - add details to wrapper, not row
         const existingDetails = wrapper.querySelector('.ert-campaign-details');
         if (existingDetails) {
             existingDetails.remove();
             row.classList.remove('is-expanded');
             expandedCampaigns.delete(campaignKey);
+            if (styleService.isDesignerCampaignActive(campaignKey)) {
+                styleService.clearDesignerContext();
+                await plugin.saveSettings();
+                onDesignerContextChange?.();
+                return;
+            }
         } else {
-            row.classList.add('is-expanded');
+            styleService.loadCampaignIntoDesigner(campaignKey);
+            await plugin.saveSettings();
             expandedCampaigns.add(campaignKey);
-            renderCampaignDetails(wrapper, campaign, index, plugin, onUpdate);
+            if (onDesignerContextChange) {
+                onDesignerContextChange();
+                return;
+            }
+            row.classList.add('is-expanded');
+            renderCampaignDetails(wrapper, campaign, index, plugin, onUpdate, onDesignerContextChange);
         }
     };
 
@@ -627,10 +647,14 @@ function renderCampaignRow(
     setTooltip(deleteBtn, 'Delete campaign');
     deleteBtn.onclick = async () => {
         if (!plugin.settings.authorProgress?.campaigns) return;
+        if (styleService.isDesignerCampaignActive(campaignKey)) {
+            styleService.clearDesignerContext();
+        }
         plugin.settings.authorProgress.campaigns.splice(index, 1);
         await plugin.saveSettings();
         new Notice(`Campaign "${campaign.name}" deleted`);
-        onUpdate();
+        if (onDesignerContextChange) onDesignerContextChange();
+        else onUpdate();
     };
 }
 
@@ -642,7 +666,8 @@ function renderCampaignDetails(
     campaign: AuthorProgressCampaign,
     index: number,
     plugin: RadialTimelinePlugin,
-    onUpdate: () => void
+    onUpdate: () => void,
+    onDesignerContextChange?: () => void
 ): void {
     const details = parentRow.createDiv({ cls: `ert-campaign-details ${ERT_CLASSES.STACK}` });
     const styleService = new AprStyleService(plugin);
@@ -702,13 +727,15 @@ function renderCampaignDetails(
                     const targetCampaign = plugin.settings.authorProgress.campaigns[index];
                     targetCampaign.styleSource = 'profile';
                     targetCampaign.styleProfileId = profile.id;
+                    styleService.loadCampaignIntoDesigner(targetCampaign.id);
                     await plugin.saveSettings();
                     new Notice(
                         overwritten || existingProfile
                             ? `Updated style "${profile.name}"`
                             : `Saved style "${profile.name}"`
                     );
-                    onUpdate();
+                    if (onDesignerContextChange) onDesignerContextChange();
+                    else onUpdate();
                     return true;
                 }
             });
@@ -747,10 +774,15 @@ function renderCampaignDetails(
                             modal.close();
                             return;
                         }
+                        const targetCampaign = plugin.settings.authorProgress?.campaigns?.[index];
+                        if (targetCampaign) {
+                            styleService.loadCampaignIntoDesigner(targetCampaign.id);
+                        }
                         await plugin.saveSettings();
                         new Notice(`Deleted style "${deletedProfile.name}"`);
                         modal.close();
-                        onUpdate();
+                        if (onDesignerContextChange) onDesignerContextChange();
+                        else onUpdate();
                     });
                 new ButtonComponent(actions)
                     .setButtonText('Cancel')
@@ -769,10 +801,9 @@ function renderCampaignDetails(
 
         const styleGrid = styleBlock.createDiv({ cls: `${ERT_CLASSES.GRID_FORM} ${ERT_CLASSES.GRID_FORM_3} ert-campaign-style-grid` });
 
-        const createStyleCard = (title: string, description: string, badgeText: string) => {
+        const createStyleCard = (title: string, description: string) => {
             const cardEl = styleGrid.createDiv({ cls: `${ERT_CLASSES.PANEL} ert-panel--muted ${ERT_CLASSES.STACK} ert-campaign-style-card` });
             const headerEl = cardEl.createDiv({ cls: `${ERT_CLASSES.STACK_TIGHT} ert-campaign-style-card__header` });
-            headerEl.createSpan({ cls: ERT_CLASSES.ICON_BADGE, text: badgeText });
             headerEl.createDiv({ cls: 'setting-item-name', text: title });
             headerEl.createDiv({ cls: 'setting-item-description', text: description });
             return cardEl;
@@ -780,8 +811,7 @@ function renderCampaignDetails(
 
         const sourceCard = createStyleCard(
             'Source',
-            'Pick whether this campaign follows the live Social APR style or a saved preset.',
-            currentSource === 'profile' ? 'Saved preset' : 'Live APR'
+            'Pick whether this campaign follows the live Social APR style or a saved preset.'
         );
         if (currentSource === 'global') sourceCard.addClass('is-active');
         const sourceControl = sourceCard.createDiv({ cls: 'ert-campaign-style-card__control' });
@@ -800,8 +830,10 @@ function renderCampaignDetails(
             } else if (!targetCampaign.styleProfileId && styleProfiles[0]) {
                 targetCampaign.styleProfileId = styleProfiles[0].id;
             }
+            styleService.loadCampaignIntoDesigner(targetCampaign.id);
             await plugin.saveSettings();
-            onUpdate();
+            if (onDesignerContextChange) onDesignerContextChange();
+            else onUpdate();
         });
         sourceCard.createDiv({
             cls: ERT_CLASSES.FIELD_NOTE,
@@ -810,11 +842,9 @@ function renderCampaignDetails(
                 : 'Preview is using the current Social APR settings.'
         });
 
-        const profileBadge = selectedProfile?.name ?? (styleProfiles.length > 0 ? `${styleProfiles.length} saved` : 'No presets');
         const profileCard = createStyleCard(
             'Saved style',
-            'Choose which saved profile this campaign should load into the preview and export path.',
-            profileBadge
+            'Choose which saved profile this campaign should load into the preview and export path.'
         );
         if (selectedProfile) profileCard.addClass('is-active');
         const profileControl = profileCard.createDiv({ cls: 'ert-campaign-style-card__control' });
@@ -834,22 +864,22 @@ function renderCampaignDetails(
                 const targetCampaign = plugin.settings.authorProgress.campaigns[index];
                 targetCampaign.styleProfileId = val || undefined;
                 targetCampaign.styleSource = val ? 'profile' : 'global';
+                styleService.loadCampaignIntoDesigner(targetCampaign.id);
                 await plugin.saveSettings();
-                onUpdate();
+                if (onDesignerContextChange) onDesignerContextChange();
+                else onUpdate();
             });
         }
         profileCard.createDiv({
             cls: ERT_CLASSES.FIELD_NOTE,
             text: styleProfiles.length === 0
                 ? 'Save a preset first, then load it here.'
-                : 'Selecting a preset loads it into the campaign preview immediately.'
+                : 'Selecting a preset loads it into the APR preview.'
         });
 
-        const libraryBadge = styleProfiles.length === 1 ? '1 preset' : `${styleProfiles.length} presets`;
         const libraryCard = createStyleCard(
             'Style library',
-            'Save the current Social APR style as a preset, overwrite an existing preset by name, or delete the selected preset.',
-            libraryBadge
+            'Save the current APR preview as a new preset, overwrite or delete.'
         );
         const libraryActions = libraryCard.createDiv({ cls: `${ERT_CLASSES.INLINE} ert-campaign-style-card__actions` });
         const saveStyleBtn = new ButtonComponent(libraryActions)
@@ -858,22 +888,17 @@ function renderCampaignDetails(
             .onClick(() => saveOrOverwriteStyleProfile());
         saveStyleBtn.buttonEl.addClass('ert-button--sm');
 
-        const deleteStyleBtn = new ButtonComponent(libraryActions)
-            .setButtonText('Delete preset')
-            .setWarning()
-            .onClick(() => {
-                if (!selectedProfile) return;
-                openDeleteStyleModal(selectedProfile);
-            });
-        deleteStyleBtn.buttonEl.addClass('ert-button--sm');
-        deleteStyleBtn.setDisabled(!selectedProfile);
-
-        libraryCard.createDiv({
-            cls: ERT_CLASSES.FIELD_NOTE,
-            text: selectedProfile
-                ? `Selected preset: "${selectedProfile.name}". Saving with the same name overwrites it.`
-                : 'No preset selected. Saving creates a new reusable style profile.'
+        const deleteStyleBtn = libraryActions.createEl('button', {
+            cls: `${ERT_CLASSES.ICON_BTN} ert-iconBtn--danger`,
+            attr: { type: 'button', 'aria-label': 'Delete preset' }
         });
+        setIcon(deleteStyleBtn, 'trash-2');
+        setTooltip(deleteStyleBtn, selectedProfile ? `Delete preset "${selectedProfile.name}"` : 'Delete preset');
+        deleteStyleBtn.disabled = !selectedProfile;
+        deleteStyleBtn.onclick = () => {
+            if (!selectedProfile) return;
+            openDeleteStyleModal(selectedProfile);
+        };
     };
 
     const styleBlock = details.createDiv({ cls: `${ERT_CLASSES.STACK} ert-campaign-style-block` });
@@ -882,7 +907,6 @@ function renderCampaignDetails(
     // Export Quality
     const exportQualitySetting = new Setting(details)
         .setName('Export quality')
-        .setDesc('Standard — 1200px · social posts\nUltra — 2400px · high-res screens\nPrint — 4800px · posters & print')
         .addDropdown(drop => {
             drop.selectEl.addClass('ert-input', 'ert-input--lg');
             const globalQuality = plugin.settings.authorProgress?.defaults.aprExportQuality ?? 'standard';
@@ -901,6 +925,14 @@ function renderCampaignDetails(
                 onUpdate();
             });
         });
+    exportQualitySetting.descEl.empty();
+    [
+        'Standard: 1200px · clean',
+        'Ultra: 2400px · crisp',
+        'Print: 4800px · posters & print'
+    ].forEach(line => {
+        exportQualitySetting.descEl.createDiv({ text: line });
+    });
 
     const freqSetting = details.createDiv({ cls: ['setting-item', 'ert-elementBlock', 'ert-campaign-frequency-setting'] });
     const freqRow = freqSetting.createDiv({ cls: 'ert-campaign-frequency-setting__row' });

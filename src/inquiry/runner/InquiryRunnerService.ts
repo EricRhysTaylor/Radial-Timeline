@@ -224,7 +224,7 @@ export class InquiryRunnerService implements InquiryRunner {
         input: InquiryRunnerInput,
         options?: InquiryRunExecutionOptions
     ): Promise<{ result: InquiryResult; trace: InquiryRunTrace }> {
-        const { trace, evidenceBlocks } = await this.buildInitialTrace(input);
+        const { trace, evidenceBlocks, instructionPrompt } = await this.buildInitialTrace(input);
         const evidenceDocMeta = evidenceBlocks.map(b => b.meta).filter((m): m is EvidenceDocumentMeta => !!m);
         const { systemPrompt, userPrompt } = trace;
 
@@ -243,7 +243,8 @@ export class InquiryRunnerService implements InquiryRunner {
                 maxTokens,
                 input.questionText,
                 evidenceBlocks,
-                options
+                options,
+                instructionPrompt
             );
             if (response.sanitizationNotes?.length) {
                 trace.sanitizationNotes.push(...response.sanitizationNotes);
@@ -333,7 +334,7 @@ export class InquiryRunnerService implements InquiryRunner {
     async runOmnibusWithTrace(
         input: InquiryOmnibusInput
     ): Promise<{ results: InquiryResult[]; trace: InquiryRunTrace; rawResponse?: RawOmnibusResponse | null }> {
-        const { trace, evidenceBlocks } = await this.buildOmnibusTrace(input);
+        const { trace, evidenceBlocks, instructionPrompt } = await this.buildOmnibusTrace(input);
         const evidenceDocMeta = evidenceBlocks.map(b => b.meta).filter((m): m is EvidenceDocumentMeta => !!m);
         const { systemPrompt, userPrompt } = trace;
 
@@ -351,7 +352,9 @@ export class InquiryRunnerService implements InquiryRunner {
                 temperature,
                 maxTokens,
                 input.questions.map(question => question.questionText).join('\n'),
-                evidenceBlocks
+                evidenceBlocks,
+                undefined,
+                instructionPrompt
             );
             if (response.sanitizationNotes?.length) {
                 trace.sanitizationNotes.push(...response.sanitizationNotes);
@@ -468,15 +471,21 @@ export class InquiryRunnerService implements InquiryRunner {
 
     private async buildEvidenceBlocks(input: InquiryRunnerInput): Promise<EvidenceBlock[]> {
         const blocks: EvidenceBlock[] = [];
-        const sceneEntries = input.corpus.entries
+        const allEntries = input.corpus.entries;
+        const sceneEntries = allEntries
             .filter(entry => entry.class === 'scene')
             .filter(entry => this.isModeActive(entry.mode));
-        const outlineEntries = input.corpus.entries
+        const outlineEntries = allEntries
             .filter(entry => entry.class === 'outline')
             .filter(entry => this.isModeActive(entry.mode));
-        const referenceEntries = input.corpus.entries
+        const referenceEntries = allEntries
             .filter(entry => entry.class !== 'scene' && entry.class !== 'outline')
             .filter(entry => this.isModeActive(entry.mode));
+
+        // Diagnostic: log entry counts to surface evidence pipeline failures.
+        const totalEntries = allEntries.length;
+        const sceneEntriesAll = allEntries.filter(entry => entry.class === 'scene').length;
+        console.debug(`[Inquiry] buildEvidenceBlocks: ${totalEntries} manifest entries, ${sceneEntriesAll} scenes (${sceneEntries.length} active), ${outlineEntries.length} outlines, ${referenceEntries.length} references`);
 
         if (input.scope === 'saga') {
             const sagaOutlines = await this.collectOutlines(outlineEntries.filter(entry => entry.scope === 'saga'), 'Saga outline');
@@ -487,9 +496,13 @@ export class InquiryRunnerService implements InquiryRunner {
         blocks.push(...bookOutlines);
 
         const scenes = await this.buildSceneSnapshots(sceneEntries);
+        console.debug(`[Inquiry] buildEvidenceBlocks: ${scenes.length} scene snapshots from ${sceneEntries.length} entries`);
+
         const sceneModeByPath = new Map(
             sceneEntries.map(entry => [entry.path, this.normalizeEntryMode(entry.mode)])
         );
+        let readSuccessCount = 0;
+        let readFailCount = 0;
         for (const scene of scenes) {
             const mode = sceneModeByPath.get(scene.path) ?? 'excluded';
             const sceneLabel = scene.title ? `${scene.title} (${scene.label})` : scene.label;
@@ -501,9 +514,19 @@ export class InquiryRunnerService implements InquiryRunner {
             }
             if (mode === 'full') {
                 const content = await this.readFileContent(scene.path);
-                if (!content) continue;
+                if (!content) {
+                    readFailCount++;
+                    if (readFailCount <= 3) {
+                        console.warn(`[Inquiry] readFileContent returned empty for scene "${scene.path}"`);
+                    }
+                    continue;
+                }
+                readSuccessCount++;
                 blocks.push({ label: `Scene ${sceneLabel} (${scene.sceneId}) (Full)`, content, meta: sceneMeta });
             }
+        }
+        if (readFailCount > 0) {
+            console.warn(`[Inquiry] buildEvidenceBlocks: ${readFailCount} scene reads failed, ${readSuccessCount} succeeded`);
         }
 
         const references = await this.collectReferenceDocs(referenceEntries);
@@ -665,11 +688,24 @@ export class InquiryRunnerService implements InquiryRunner {
 
     private async readFileContent(path: string): Promise<string | null> {
         const file = this.vault.getAbstractFileByPath(path);
-        if (!file || !this.isTFile(file)) return null;
+        if (!file) {
+            console.warn(`[Inquiry] readFileContent: vault.getAbstractFileByPath("${path}") returned null`);
+            return null;
+        }
+        if (!this.isTFile(file)) {
+            console.warn(`[Inquiry] readFileContent: "${path}" is not a TFile (type: ${file.constructor?.name ?? typeof file})`);
+            return null;
+        }
         try {
             const raw = await this.vault.read(file);
-            return cleanEvidenceBody(raw);
-        } catch {
+            const cleaned = cleanEvidenceBody(raw);
+            if (!cleaned) {
+                console.warn(`[Inquiry] readFileContent: "${path}" has ${raw.length} raw chars but cleanEvidenceBody returned empty`);
+            }
+            return cleaned;
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            console.warn(`[Inquiry] readFileContent: vault.read("${path}") threw: ${message}`);
             return null;
         }
     }
@@ -709,26 +745,36 @@ export class InquiryRunnerService implements InquiryRunner {
     private buildPrompt(
         input: InquiryRunnerInput,
         evidence: EvidenceBlock[]
-    ): { systemPrompt: string; userPrompt: string; evidenceText: string } {
+    ): { systemPrompt: string; userPrompt: string; evidenceText: string; instructionPrompt: string } {
         const evidenceText = evidence.map(block => {
             return `## ${block.label}\n${block.content}`;
         }).join('\n\n');
-        const { systemPrompt, userPrompt } = buildInquiryPromptScaffold({
+        const scaffoldInput = {
             task: input.questionText,
             lens: input.mode,
             selectionMode: input.selectionMode,
             targetSceneIds: input.targetSceneIds,
             corpusManifestLines: this.buildCorpusManifestLines(input.corpus.entries),
             evidenceText
+        };
+        const { systemPrompt, userPrompt } = buildInquiryPromptScaffold(scaffoldInput);
+
+        // Instruction-only prompt: same structure but without evidence text.
+        // Used when evidence is sent as Anthropic document blocks so that
+        // the question, analysis instructions, and schema are preserved
+        // in the user prompt — not discarded.
+        const { userPrompt: instructionPrompt } = buildInquiryPromptScaffold({
+            ...scaffoldInput,
+            evidenceText: '(Evidence provided as document attachments.)'
         });
 
-        return { systemPrompt, userPrompt, evidenceText };
+        return { systemPrompt, userPrompt, evidenceText, instructionPrompt };
     }
 
     private buildOmnibusPrompt(
         input: InquiryOmnibusInput,
         evidence: EvidenceBlock[]
-    ): { systemPrompt: string; userPrompt: string; evidenceText: string } {
+    ): { systemPrompt: string; userPrompt: string; evidenceText: string; instructionPrompt: string } {
         const systemPrompt = [
             'You are an editorial analysis engine.',
             'Scores are corpus-level diagnostics, not answer quality.',
@@ -793,7 +839,7 @@ export class InquiryRunnerService implements InquiryRunner {
             ]
             : [];
 
-        const userPrompt = [
+        const promptParts = [
             instructionText,
             '',
             'Answer every listed question using the same evidence and return one result per question.',
@@ -804,13 +850,26 @@ export class InquiryRunnerService implements InquiryRunner {
             '',
             'TASK:',
             questionLines.join('\n'),
-            ...targetSceneBlock,
+            ...targetSceneBlock
+        ];
+
+        const userPrompt = [
+            ...promptParts,
             '',
             'EVIDENCE:',
             evidenceText
         ].join('\n');
 
-        return { systemPrompt, userPrompt, evidenceText };
+        // Instruction-only prompt: same structure but with a placeholder for
+        // evidence. Used when evidence is sent as Anthropic document blocks.
+        const instructionPrompt = [
+            ...promptParts,
+            '',
+            'EVIDENCE:',
+            '(Evidence provided as document attachments.)'
+        ].join('\n');
+
+        return { systemPrompt, userPrompt, evidenceText, instructionPrompt };
     }
 
     private getJsonSchema(): Record<string, unknown> {
@@ -830,7 +889,8 @@ export class InquiryRunnerService implements InquiryRunner {
         maxTokens: number,
         userQuestion?: string,
         evidenceBlocks?: EvidenceBlock[],
-        executionOptions?: InquiryRunExecutionOptions
+        executionOptions?: InquiryRunExecutionOptions,
+        instructionPrompt?: string
     ): Promise<ProviderResult> {
         const aiClient = getAIClient(this.plugin);
         const executionPrecheck = await this.getExecutionPrecheck({
@@ -842,7 +902,8 @@ export class InquiryRunnerService implements InquiryRunner {
             jsonSchema,
             temperature,
             maxTokens,
-            evidenceBlocks
+            evidenceBlocks,
+            instructionPrompt
         });
         if (!executionPrecheck.ok) {
             const reason = `Unable to prepare an authoritative provider execution estimate. ${executionPrecheck.reason}`.trim();
@@ -914,7 +975,8 @@ export class InquiryRunnerService implements InquiryRunner {
             temperature,
             maxTokens,
             evidenceBlocks,
-            preparedEstimate: precheck.preparedEstimate
+            preparedEstimate: precheck.preparedEstimate,
+            instructionPrompt
         });
         run = this.withExecutionContext(run, {
             executionPassCount: 1
@@ -970,6 +1032,7 @@ export class InquiryRunnerService implements InquiryRunner {
             maxTokens: number;
             evidenceBlocks?: EvidenceBlock[];
             preparedEstimate?: AIRunPreparedEstimate | null;
+            instructionPrompt?: string;
         }
     ): Promise<AIRunResult> {
         const preparedEstimate = options.preparedEstimate
@@ -982,8 +1045,15 @@ export class InquiryRunnerService implements InquiryRunner {
                 jsonSchema: options.jsonSchema,
                 temperature: options.temperature,
                 maxTokens: options.maxTokens,
-                evidenceBlocks: options.evidenceBlocks
+                evidenceBlocks: options.evidenceBlocks,
+                instructionPrompt: options.instructionPrompt
             });
+        // When evidence is sent as document blocks (Anthropic), use the
+        // instruction-only prompt as userInput so the AI still receives the
+        // question, analysis instructions, and schema — not a blank prompt.
+        const effectiveUserInput = (options.instructionPrompt && options.evidenceBlocks?.length)
+            ? options.instructionPrompt
+            : options.userPrompt;
         return aiClient.run({
             feature: 'InquiryMode',
             task: options.task,
@@ -992,7 +1062,7 @@ export class InquiryRunnerService implements InquiryRunner {
                 options.systemPrompt,
                 INQUIRY_ROLE_TEMPLATE_GUARDRAIL
             ].filter(Boolean).join('\n'),
-            userInput: options.userPrompt,
+            userInput: effectiveUserInput,
             userQuestion: options.userQuestion,
             promptText: options.userPrompt,
             systemPrompt: undefined,
@@ -1027,8 +1097,14 @@ export class InquiryRunnerService implements InquiryRunner {
             temperature: number;
             maxTokens: number;
             evidenceBlocks?: EvidenceBlock[];
+            instructionPrompt?: string;
         }
     ): Promise<AIRunPreparedEstimate | null> {
+        // When evidence will be sent as document blocks, use instruction-only
+        // prompt so the estimate sees the real user prompt (not blank).
+        const effectiveUserInput = (options.instructionPrompt && options.evidenceBlocks?.length)
+            ? options.instructionPrompt
+            : options.userPrompt;
         const prepared = await aiClient.prepareRunEstimate({
             feature: 'InquiryMode',
             task: options.task,
@@ -1037,7 +1113,7 @@ export class InquiryRunnerService implements InquiryRunner {
                 options.systemPrompt,
                 INQUIRY_ROLE_TEMPLATE_GUARDRAIL
             ].filter(Boolean).join('\n'),
-            userInput: options.userPrompt,
+            userInput: effectiveUserInput,
             userQuestion: options.userQuestion,
             promptText: options.userPrompt,
             systemPrompt: undefined,
@@ -1086,6 +1162,7 @@ export class InquiryRunnerService implements InquiryRunner {
         temperature: number;
         maxTokens: number;
         evidenceBlocks?: EvidenceBlock[];
+        instructionPrompt?: string;
     }): Promise<
         | {
             ok: true;
@@ -1112,7 +1189,8 @@ export class InquiryRunnerService implements InquiryRunner {
                 jsonSchema: options.jsonSchema,
                 temperature: options.temperature,
                 maxTokens: options.maxTokens,
-                evidenceBlocks: options.evidenceBlocks
+                evidenceBlocks: options.evidenceBlocks,
+                instructionPrompt: options.instructionPrompt
             });
             if (!preparedEstimate) {
                 throw new Error('prepareRunEstimate unavailable');
@@ -2464,7 +2542,7 @@ export class InquiryRunnerService implements InquiryRunner {
 
     private async buildInitialTrace(
         input: InquiryRunnerInput
-    ): Promise<{ trace: InquiryRunTrace; evidenceBlocks: EvidenceBlock[] }> {
+    ): Promise<{ trace: InquiryRunTrace; evidenceBlocks: EvidenceBlock[]; instructionPrompt: string }> {
         const notes: string[] = [];
         const sanitizationNotes: string[] = [];
         let evidenceBlocks: EvidenceBlock[] = [];
@@ -2477,7 +2555,7 @@ export class InquiryRunnerService implements InquiryRunner {
             evidenceBlocks = [{ label: 'Evidence', content: 'Unable to build evidence blocks.' }];
         }
 
-        const { systemPrompt, userPrompt, evidenceText } = this.buildPrompt(input, evidenceBlocks);
+        const { systemPrompt, userPrompt, evidenceText, instructionPrompt } = this.buildPrompt(input, evidenceBlocks);
         const outputTokenCap = this.getOutputTokenCap(input.ai.provider);
         const tokenEstimate = await this.buildTokenEstimate(
             systemPrompt,
@@ -2486,7 +2564,8 @@ export class InquiryRunnerService implements InquiryRunner {
             input.ai,
             evidenceBlocks,
             this.getJsonSchema(),
-            input.questionText
+            input.questionText,
+            instructionPrompt
         );
         const trace: InquiryRunTrace = {
             systemPrompt,
@@ -2499,12 +2578,12 @@ export class InquiryRunnerService implements InquiryRunner {
             notes
         };
 
-        return { trace, evidenceBlocks };
+        return { trace, evidenceBlocks, instructionPrompt };
     }
 
     private async buildOmnibusTrace(
         input: InquiryOmnibusInput
-    ): Promise<{ trace: InquiryRunTrace; evidenceBlocks: EvidenceBlock[] }> {
+    ): Promise<{ trace: InquiryRunTrace; evidenceBlocks: EvidenceBlock[]; instructionPrompt: string }> {
         const notes: string[] = [];
         const sanitizationNotes: string[] = [];
         let evidenceBlocks: EvidenceBlock[] = [];
@@ -2532,7 +2611,7 @@ export class InquiryRunnerService implements InquiryRunner {
         }
 
         notes.push(`Omnibus run: ${input.questions.length} questions.`);
-        const { systemPrompt, userPrompt, evidenceText } = this.buildOmnibusPrompt(input, evidenceBlocks);
+        const { systemPrompt, userPrompt, evidenceText, instructionPrompt } = this.buildOmnibusPrompt(input, evidenceBlocks);
         const outputTokenCap = this.getOutputTokenCap(input.ai.provider);
         const tokenEstimate = await this.buildTokenEstimate(
             systemPrompt,
@@ -2541,7 +2620,8 @@ export class InquiryRunnerService implements InquiryRunner {
             input.ai,
             evidenceBlocks,
             this.getOmnibusJsonSchema(),
-            input.questions.map(question => question.questionText).join('\n')
+            input.questions.map(question => question.questionText).join('\n'),
+            instructionPrompt
         );
         const trace: InquiryRunTrace = {
             systemPrompt,
@@ -2554,7 +2634,7 @@ export class InquiryRunnerService implements InquiryRunner {
             notes
         };
 
-        return { trace, evidenceBlocks };
+        return { trace, evidenceBlocks, instructionPrompt };
     }
 
     private async buildTokenEstimate(
@@ -2564,7 +2644,8 @@ export class InquiryRunnerService implements InquiryRunner {
         ai: InquiryRunnerInput['ai'],
         evidenceBlocks: EvidenceBlock[],
         jsonSchema: Record<string, unknown>,
-        userQuestion?: string
+        userQuestion?: string,
+        instructionPrompt?: string
     ): Promise<InquiryRunTrace['tokenEstimate']> {
         const evidenceChars = evidenceBlocks.reduce((sum, block) => (
             sum + block.label.length + block.content.length + 6
@@ -2584,7 +2665,8 @@ export class InquiryRunnerService implements InquiryRunner {
             jsonSchema,
             temperature: 0.2,
             maxTokens: outputTokens,
-            evidenceBlocks
+            evidenceBlocks,
+            instructionPrompt
         });
         if (!prepared) {
             throw new Error('Token estimate unavailable — AI client returned no estimate');
