@@ -21,6 +21,9 @@ import { resolveInquirySourceRoots } from '../../inquiry/utils/sourceRoots';
 import type { AIProviderId } from '../types';
 import { getAIClient } from '../runtime/aiClient';
 import { buildUnifiedBeatAnalysisPrompt, type UnifiedBeatInfo, getUnifiedBeatAnalysisJsonSchema } from '../prompts/unifiedBeatAnalysis';
+import { getCredential } from '../credentials/credentials';
+import { countAnthropicTokens } from '../../api/anthropicApi';
+import { ANTHROPIC_REQUESTED_CACHE_TTL } from '../settings/aiSettings';
 
 export const FORECAST_CHARS_PER_TOKEN = 4;
 export const FORECAST_PROMPT_OVERHEAD_TOKENS = 250;
@@ -67,6 +70,30 @@ export interface InquiryTokenEstimate {
         expectedPassCount?: number;
         maxOutputTokens?: number;
     };
+}
+
+export type InquiryPromptSectionKey =
+    | 'projectContext'
+    | 'featureInstructions'
+    | 'userInput'
+    | 'outputRules'
+    | 'userQuestion'
+    | 'userPromptOther';
+
+export interface InquiryProviderPromptSectionBreakdown {
+    key: InquiryPromptSectionKey;
+    label: string;
+    tokens: number;
+}
+
+export interface InquiryProviderComponentBreakdown {
+    provider: 'anthropic';
+    totalTokens: number;
+    sceneDocumentTokens: number;
+    outlineDocumentTokens: number;
+    referenceDocumentTokens: number;
+    systemPromptTokens: number;
+    promptSections: InquiryProviderPromptSectionBreakdown[];
 }
 
 export interface GossamerTokenEstimate {
@@ -319,6 +346,197 @@ export const buildCanonicalExecutionEstimate = async (
         promptEnvelopeCharsAdded: (trace.systemPrompt?.length ?? 0) + (trace.userPrompt?.length ?? 0),
         expectedPassCount,
         maxOutputTokens: trace.outputTokenCap
+    };
+};
+
+const INQUIRY_USER_PROMPT_SECTION_HEADERS: Array<{
+    key: InquiryPromptSectionKey;
+    label: string;
+    header: string;
+}> = [
+    { key: 'projectContext', label: 'Project context section', header: 'Project Context:\n' },
+    { key: 'featureInstructions', label: 'Feature instructions', header: 'Feature Mode Instructions:\n' },
+    { key: 'userInput', label: 'User input', header: 'User Input:\n' },
+    { key: 'outputRules', label: 'Output rules + JSON schema', header: 'Output Schema / Formatting Rules:\n' },
+    { key: 'userQuestion', label: 'User question', header: 'User Question (highest priority):\n' }
+];
+
+function splitInquiryUserPromptSections(
+    userPrompt: string
+): Array<{ key: InquiryPromptSectionKey; label: string; text: string }> {
+    const positions = INQUIRY_USER_PROMPT_SECTION_HEADERS
+        .map(section => ({
+            ...section,
+            index: userPrompt.indexOf(section.header)
+        }))
+        .filter(section => section.index >= 0)
+        .sort((a, b) => a.index - b.index);
+
+    if (!positions.length) {
+        return userPrompt
+            ? [{ key: 'userPromptOther', label: 'User prompt envelope', text: userPrompt }]
+            : [];
+    }
+
+    const sections: Array<{ key: InquiryPromptSectionKey; label: string; text: string }> = [];
+    if (positions[0].index > 0) {
+        sections.push({
+            key: 'userPromptOther',
+            label: 'User prompt envelope',
+            text: userPrompt.slice(0, positions[0].index)
+        });
+    }
+    positions.forEach((position, index) => {
+        const nextIndex = positions[index + 1]?.index ?? userPrompt.length;
+        sections.push({
+            key: position.key,
+            label: position.label,
+            text: userPrompt.slice(position.index, nextIndex)
+        });
+    });
+    return sections.filter(section => section.text.length > 0);
+}
+
+async function countAnthropicComponentTokens(params: {
+    apiKey: string;
+    modelId: string;
+    systemPrompt: string | null;
+    userPrompt: string;
+    evidenceDocuments: Array<{ title: string; content: string }>;
+    citationsEnabled: boolean;
+}): Promise<number> {
+    const result = await countAnthropicTokens(
+        params.apiKey,
+        params.modelId,
+        params.systemPrompt,
+        params.userPrompt,
+        params.citationsEnabled,
+        params.evidenceDocuments,
+        ANTHROPIC_REQUESTED_CACHE_TTL
+    );
+    return result.inputTokens;
+}
+
+export const buildCanonicalInquiryComponentBreakdown = async (
+    params: CanonicalExecutionEstimateParams
+): Promise<InquiryProviderComponentBreakdown | null> => {
+    if (params.provider !== 'anthropic') return null;
+    const apiKey = await getCredential(params.plugin, 'anthropic');
+    if (!apiKey) return null;
+
+    const runner = new InquiryRunnerService(
+        params.plugin,
+        params.vault,
+        params.metadataCache,
+        params.frontmatterMappings
+    );
+    const artifacts = await runner.buildPreparedEstimateArtifacts({
+        scope: params.scope,
+        activeBookId: params.activeBookId,
+        scopeLabel: params.scopeLabel,
+        targetSceneIds: [],
+        selectionMode: 'discover',
+        mode: 'flow',
+        questionId: 'estimate-snapshot',
+        questionText: params.questionText,
+        questionPromptForm: 'standard',
+        questionZone: 'setup',
+        corpus: buildCanonicalManifest('estimate-snapshot', params.modelId, params.manifestEntries),
+        rules: {
+            sagaOutlineScope: 'saga-only',
+            bookOutlineScope: 'book-only',
+            crossScopeUsage: 'conflict-only'
+        },
+        ai: {
+            provider: params.provider,
+            modelId: params.modelId,
+            modelLabel: params.modelId
+        }
+    });
+    const preparedEstimate = artifacts.preparedEstimate;
+    if (!preparedEstimate) return null;
+
+    const evidenceDocuments = artifacts.evidenceDocuments.map(doc => ({
+        title: doc.title,
+        content: doc.content
+    }));
+    const citationsEnabled = preparedEstimate.citationsEnabled === true && evidenceDocuments.length > 0;
+    const outlineDocuments = artifacts.evidenceDocuments
+        .filter(doc => doc.evidenceClass === 'outline')
+        .map(doc => ({ title: doc.title, content: doc.content }));
+    const outlineAndSceneDocuments = artifacts.evidenceDocuments
+        .filter(doc => doc.evidenceClass === 'outline' || doc.evidenceClass === 'scene')
+        .map(doc => ({ title: doc.title, content: doc.content }));
+
+    const outlineOnlyTokens = citationsEnabled && outlineDocuments.length > 0
+        ? await countAnthropicComponentTokens({
+            apiKey,
+            modelId: params.modelId,
+            systemPrompt: null,
+            userPrompt: '',
+            evidenceDocuments: outlineDocuments,
+            citationsEnabled
+        })
+        : 0;
+    const outlineAndSceneTokens = citationsEnabled && outlineAndSceneDocuments.length > 0
+        ? await countAnthropicComponentTokens({
+            apiKey,
+            modelId: params.modelId,
+            systemPrompt: null,
+            userPrompt: '',
+            evidenceDocuments: outlineAndSceneDocuments,
+            citationsEnabled
+        })
+        : 0;
+    const allDocumentTokens = citationsEnabled && evidenceDocuments.length > 0
+        ? await countAnthropicComponentTokens({
+            apiKey,
+            modelId: params.modelId,
+            systemPrompt: null,
+            userPrompt: '',
+            evidenceDocuments,
+            citationsEnabled
+        })
+        : 0;
+
+    let runningPrompt = '';
+    let priorTotal = allDocumentTokens;
+    const promptSections: InquiryProviderPromptSectionBreakdown[] = [];
+    for (const section of splitInquiryUserPromptSections(preparedEstimate.userPrompt || '')) {
+        runningPrompt += section.text;
+        const sectionTotal = await countAnthropicComponentTokens({
+            apiKey,
+            modelId: params.modelId,
+            systemPrompt: null,
+            userPrompt: runningPrompt,
+            evidenceDocuments,
+            citationsEnabled
+        });
+        promptSections.push({
+            key: section.key,
+            label: section.label,
+            tokens: Math.max(0, sectionTotal - priorTotal)
+        });
+        priorTotal = sectionTotal;
+    }
+
+    const fullTotal = await countAnthropicComponentTokens({
+        apiKey,
+        modelId: params.modelId,
+        systemPrompt: preparedEstimate.systemPrompt || null,
+        userPrompt: preparedEstimate.userPrompt || '',
+        evidenceDocuments,
+        citationsEnabled
+    });
+
+    return {
+        provider: 'anthropic',
+        totalTokens: fullTotal,
+        sceneDocumentTokens: Math.max(0, outlineAndSceneTokens - outlineOnlyTokens),
+        outlineDocumentTokens: Math.max(0, outlineOnlyTokens),
+        referenceDocumentTokens: Math.max(0, allDocumentTokens - outlineAndSceneTokens),
+        systemPromptTokens: Math.max(0, fullTotal - priorTotal),
+        promptSections
     };
 };
 

@@ -452,6 +452,34 @@ export class InquiryRunnerService implements InquiryRunner {
         return trace;
     }
 
+    async buildPreparedEstimateArtifacts(input: InquiryRunnerInput): Promise<{
+        preparedEstimate: AIRunPreparedEstimate | null;
+        evidenceDocuments: Array<{ title: string; content: string; evidenceClass?: string }>;
+    }> {
+        const evidenceBlocks = await this.buildEvidenceBlocks(input);
+        const { systemPrompt, userPrompt, instructionPrompt } = this.buildPrompt(input, evidenceBlocks);
+        const preparedEstimate = await this.prepareInquiryRunEstimate(getAIClient(this.plugin), {
+            task: 'InquiryTraceEstimate',
+            systemPrompt,
+            userPrompt,
+            userQuestion: input.questionText,
+            ai: input.ai,
+            jsonSchema: this.getJsonSchema(),
+            temperature: 0.2,
+            maxTokens: this.getOutputTokenCap(input.ai.provider),
+            evidenceBlocks,
+            instructionPrompt
+        });
+        return {
+            preparedEstimate,
+            evidenceDocuments: evidenceBlocks.map(block => ({
+                title: block.label,
+                content: block.content,
+                evidenceClass: block.meta?.evidenceClass
+            }))
+        };
+    }
+
     estimateExecutionPassCountFromPrompt(
         userPrompt: string,
         options?: {

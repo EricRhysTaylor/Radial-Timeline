@@ -3640,7 +3640,14 @@ export class InquiryView extends ItemView {
                         }
                         return;
                     }
-                    void this.openActiveBriefForItem(item);
+                    if (this.doesMinimapItemHaveFinding(item)) {
+                        void this.openActiveBriefForItem(item);
+                    } else {
+                        const filePath = this.getMinimapItemFilePath(item);
+                        if (filePath) {
+                            void this.openSceneFromMinimap(filePath);
+                        }
+                    }
                     return;
                 }
                 this.drillIntoBook(item.id);
@@ -4126,6 +4133,75 @@ export class InquiryView extends ItemView {
         }
     }
 
+    private buildMenuTitleWithKeycaps(title: string, keys: string[]): DocumentFragment {
+        const frag = document.createDocumentFragment();
+        const span = document.createElement('span');
+        span.textContent = title;
+        frag.appendChild(span);
+        const wrap = document.createElement('span');
+        wrap.className = 'rt-menu-keycaps';
+        keys.forEach((key, i) => {
+            if (i > 0) {
+                const sep = document.createElement('span');
+                sep.className = 'rt-menu-keycaps-sep';
+                sep.textContent = '+';
+                wrap.appendChild(sep);
+            }
+            const kbd = document.createElement('kbd');
+            kbd.className = 'rt-menu-keycap';
+            kbd.textContent = key;
+            wrap.appendChild(kbd);
+        });
+        frag.appendChild(wrap);
+        return frag;
+    }
+
+    private doesMinimapItemHaveFinding(item: InquiryCorpusItem): boolean {
+        const result = this.state.activeResult;
+        if (!result || this.state.isRunning || this.isErrorResult(result)) return false;
+        const resultItems = this.getResultItems(result);
+        const findingMap = this.buildFindingMap(result, resultItems);
+        return findingMap.has(item.displayLabel);
+    }
+
+    private showMinimapSceneMenu(options: {
+        item: InquiryCorpusItem;
+        filePath: string;
+        hasCitation: boolean;
+        isTarget: boolean;
+        event: MouseEvent;
+    }): void {
+        const menu = new Menu();
+        menu.addItem(menuItem => {
+            menuItem.setTitle('Open Scene');
+            menuItem.onClick(() => {
+                const file = this.app.vault.getAbstractFileByPath(options.filePath);
+                if (file && this.isTFile(file)) {
+                    void openOrRevealFile(this.app, file);
+                }
+            });
+        });
+        if (options.hasCitation) {
+            menu.addItem(menuItem => {
+                menuItem.setTitle('Open Citation in Briefing');
+                menuItem.onClick(() => {
+                    void this.openActiveBriefForItem(options.item);
+                });
+            });
+        }
+        menu.addSeparator();
+        menu.addItem(menuItem => {
+            const title = options.isTarget ? 'Remove Focus' : 'Set Focus';
+            menuItem.setTitle(this.buildMenuTitleWithKeycaps(title, ['⇧', 'Click']));
+            if (!options.item.sceneId) {
+                menuItem.setDisabled(true);
+                return;
+            }
+            menuItem.onClick(() => this.toggleTargetScene(options.item.sceneId!, { announce: true }));
+        });
+        menu.showAtMouseEvent(options.event);
+    }
+
     private showSceneEntryMenu(options: {
         entryKey: string;
         filePath: string;
@@ -4150,14 +4226,15 @@ export class InquiryView extends ItemView {
             ['full', 'Set Inclusion: Full Scene']
         ] as const).forEach(([mode, title]) => {
             menu.addItem(item => {
-                item.setTitle(title);
+                item.setTitle(this.buildMenuTitleWithKeycaps(title, ['Click']));
                 item.onClick(() => this.setCorpusItemInclusion(options.entryKey, mode));
             });
         });
         menu.addSeparator();
         menu.addItem(item => {
             const bookOnly = this.state.scope !== 'book';
-            item.setTitle(options.isTarget ? 'Remove from Target Scenes' : 'Add to Target Scenes');
+            const label = options.isTarget ? 'Remove from Target Scenes' : 'Add to Target Scenes';
+            item.setTitle(this.buildMenuTitleWithKeycaps(label, ['⇧', 'Click']));
             if (bookOnly || !options.sceneId) {
                 item.setDisabled(true);
                 return;
@@ -7754,12 +7831,12 @@ export class InquiryView extends ItemView {
         }
         const filePath = this.getMinimapItemFilePath(item);
         if (!filePath) return;
-        const entryKey = this.getCorpusItemKey('scene', filePath, undefined, item.sceneId);
         const isTarget = !!item.sceneId && this.getActiveTargetSceneIds().includes(item.sceneId);
-        this.showSceneEntryMenu({
-            entryKey,
+        const hasCitation = this.doesMinimapItemHaveFinding(item);
+        this.showMinimapSceneMenu({
+            item,
             filePath,
-            sceneId: item.sceneId,
+            hasCitation,
             isTarget,
             event
         });

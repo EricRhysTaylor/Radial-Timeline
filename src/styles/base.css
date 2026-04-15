@@ -159,6 +159,46 @@
   font-size: 0.95em;
 }
 
+/* ── Context-menu keycap hints ───────────────────────────── */
+
+.menu-item .menu-item-title:has(.rt-menu-keycaps) {
+  display: flex;
+  align-items: center;
+}
+
+.rt-menu-keycaps {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: auto;
+  padding-left: 16px;
+  flex-shrink: 0;
+}
+
+.rt-menu-keycap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1;
+  color: #0f172a;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.rt-menu-keycaps-sep {
+  color: var(--text-muted);
+  font-size: 0.85em;
+}
+
 .rt-welcome-links-wrapper {
   width: 100%;
   display: flex;

@@ -27,7 +27,12 @@ import {
 import { hasSecret, isSecretStorageAvailable, setSecret } from '../../ai/credentials/secretStorage';
 import type { AccessTier, AIProviderId, Capability, LocalLlmConfigurationMode, LocalLlmSettings, ModelInfo, RTCorpusTokenBreakdown } from '../../ai/types';
 import type { LocalLlmDiagnosticsReport } from '../../ai/localLlm/diagnostics';
-import { buildCanonicalExecutionEstimate, estimateGossamerTokens } from '../../ai/forecast/estimateTokensFromVault';
+import {
+    buildCanonicalExecutionEstimate,
+    buildCanonicalInquiryComponentBreakdown,
+    estimateGossamerTokens,
+    type InquiryProviderComponentBreakdown
+} from '../../ai/forecast/estimateTokensFromVault';
 import {
     estimateCorpusCost,
     formatUsdCost
@@ -577,7 +582,59 @@ export function renderAiSection(params: {
         referenceCount: number;
         breakdown: RTCorpusTokenBreakdown;
         promptBreakdown?: PromptRequestBreakdown;
+        exactBreakdown?: InquiryProviderComponentBreakdown | null;
+        providerExecutionTokens?: number;
+        expectedPassCount?: number;
     }): Array<{ title: string; items: CapacityItem[] }> => {
+        if (counts?.exactBreakdown) {
+            const exact = counts.exactBreakdown;
+            const cleanedSceneTokens = counts.breakdown.scenesTokens ?? 0;
+            const cleanedOutlineTokens = counts.breakdown.outlineTokens ?? 0;
+            const cleanedReferenceTokens = counts.breakdown.referenceTokens ?? 0;
+            const promptSection = (key: InquiryProviderComponentBreakdown['promptSections'][number]['key']) =>
+                exact.promptSections.find(section => section.key === key)?.tokens ?? 0;
+            const passCount = Math.max(1, counts.expectedPassCount ?? 1);
+            return [
+                {
+                    title: 'Corpus',
+                    items: [
+                        counts.sceneCount > 0
+                            ? `Scene documents (${formatInquiryCount(counts.sceneCount)}) — ${formatPromptToken(exact.sceneDocumentTokens)} exact; cleaned manuscript ${formatCorpusBreakdownToken(cleanedSceneTokens)}`
+                            : 'Scenes — none',
+                        counts.outlineCount > 0
+                            ? `Outline documents (${formatInquiryCount(counts.outlineCount)}) — ${formatPromptToken(exact.outlineDocumentTokens)} exact; cleaned manuscript ${formatCorpusBreakdownToken(cleanedOutlineTokens)}`
+                            : 'Outline — none',
+                        counts.referenceCount > 0
+                            ? `Reference documents (${formatInquiryCount(counts.referenceCount)}) — ${formatPromptToken(exact.referenceDocumentTokens)} exact; cleaned manuscript ${formatCorpusBreakdownToken(cleanedReferenceTokens)}`
+                            : 'References — none'
+                    ]
+                },
+                {
+                    title: 'Prompt',
+                    items: [
+                        buildTokenCapacityLine('Project context section', promptSection('projectContext')),
+                        buildTokenCapacityLine('Feature instructions', promptSection('featureInstructions')),
+                        buildTokenCapacityLine('User input', promptSection('userInput')),
+                        buildTokenCapacityLine('User question', promptSection('userQuestion'))
+                    ]
+                },
+                {
+                    title: 'Output',
+                    items: [
+                        buildTokenCapacityLine('Output rules + JSON schema', promptSection('outputRules')),
+                        buildTokenCapacityLine('Other prompt framing', promptSection('userPromptOther'))
+                    ]
+                },
+                {
+                    title: 'Processing',
+                    items: [
+                        buildTokenCapacityLine('System role template', exact.systemPromptTokens),
+                        `Execution: ${passCount} ${passCount === 1 ? 'pass' : 'passes'}`,
+                        { text: `Total provider input ${formatCorpusBreakdownToken(counts.providerExecutionTokens ?? exact.totalTokens)}`, dividerBefore: true }
+                    ]
+                }
+            ];
+        }
         const sceneCount = counts?.sceneCount ?? null;
         const outlineCount = counts?.outlineCount ?? null;
         const referenceCount = counts?.referenceCount ?? null;
@@ -620,7 +677,7 @@ export function renderAiSection(params: {
             {
                 title: 'Processing',
                 items: [
-                    'Multi-pass (if required)',
+                    `Execution: ${Math.max(1, counts?.expectedPassCount ?? 1)} ${Math.max(1, counts?.expectedPassCount ?? 1) === 1 ? 'pass' : 'passes'}`,
                     'Provider wrappers',
                     { text: `Total ${formatCorpusBreakdownToken(totalTokens)}`, dividerBefore: true }
                 ]
@@ -1279,6 +1336,8 @@ export function renderAiSection(params: {
         referenceCount: number;
         breakdown: RTCorpusTokenBreakdown;
         promptBreakdown: PromptRequestBreakdown;
+        exactBreakdown?: InquiryProviderComponentBreakdown | null;
+        expectedPassCount?: number;
     };
 
     type CostComparisonModel = {
@@ -1602,13 +1661,28 @@ export function renderAiSection(params: {
             }).length
         );
         const inquiryCorpusTokens = currentCorpus?.corpus.estimatedTokens ?? 0;
-        const inquiryProviderTokens = currentCorpus && engine
-            ? (await buildCurrentInquiryExecutionEstimate({
+        const inquiryExecutionEstimate = currentCorpus && engine
+            ? await buildCurrentInquiryExecutionEstimate({
                 provider: engine.provider,
                 modelId: engine.modelId,
                 questionText: 'Analyze corpus-level flow and depth quality.'
-            }))?.estimatedTokens ?? inquiryCorpusTokens
-            : inquiryCorpusTokens;
+            })
+            : null;
+        const inquiryExactBreakdown = currentCorpus && engine
+            ? await buildCanonicalInquiryComponentBreakdown({
+                plugin,
+                provider: engine.provider,
+                modelId: engine.modelId,
+                questionText: 'Analyze corpus-level flow and depth quality.',
+                scope: currentCorpus.scope,
+                activeBookId: currentCorpus.activeBookId,
+                scopeLabel: currentCorpus.scopeLabel,
+                manifestEntries: currentCorpus.manifestEntries,
+                vault: app.vault,
+                metadataCache: app.metadataCache,
+                frontmatterMappings: plugin.settings.frontmatterMappings
+            })
+            : null;
 
         const sceneData = await plugin.getSceneData();
         const selectedBeatModel = resolveSelectedBeatModelFromSettings(plugin.settings);
@@ -1678,8 +1752,8 @@ export function renderAiSection(params: {
             inquiry: {
                 available: Boolean(currentCorpus),
                 corpusTokens: inquiryCorpusTokens,
-                providerExecutionTokens: inquiryProviderTokens,
-                totalEstimatedTokens: sumTokenParts(
+                providerExecutionTokens: inquiryExactBreakdown?.totalTokens ?? inquiryExecutionEstimate?.estimatedTokens ?? inquiryCorpusTokens,
+                totalEstimatedTokens: inquiryExactBreakdown?.totalTokens ?? sumTokenParts(
                     inquiryCorpusTokens,
                     inquiryPromptBreakdown.roleTemplateTokens,
                     inquiryPromptBreakdown.instructionTokens,
@@ -1694,7 +1768,9 @@ export function renderAiSection(params: {
                     outlineTokens: 0,
                     referenceTokens: 0
                 },
-                promptBreakdown: inquiryPromptBreakdown
+                promptBreakdown: inquiryPromptBreakdown,
+                exactBreakdown: inquiryExactBreakdown,
+                expectedPassCount: inquiryExecutionEstimate?.expectedPassCount ?? currentCorpus?.expectedPassCount ?? 1
             },
             gossamer: {
                 available: true,
@@ -1938,15 +2014,18 @@ export function renderAiSection(params: {
                 modelId: estimate.model.id
             }).then(forecasts => {
                 if (forecasts.inquiry.available) {
-                    setTokenDisplay(capacityInquiryToken, formatCorpusBreakdownToken(forecasts.inquiry.totalEstimatedTokens), 'tokens');
+                    setTokenDisplay(capacityInquiryToken, formatCorpusBreakdownToken(forecasts.inquiry.providerExecutionTokens), 'tokens');
                     capacityInquiryExpected.setText(formatExpectedPasses(forecasts.inquiry.providerExecutionTokens));
-                    capacityInquiryProvider.setText(formatProviderInput(forecasts.inquiry.providerExecutionTokens));
+                    capacityInquiryProvider.setText(`Cleaned manuscript · ${formatCorpusBreakdownToken(forecasts.inquiry.corpusTokens)}`);
                     renderCapacitySections(capacityInquirySections, buildInquiryCapacitySections({
                         sceneCount: forecasts.inquiry.sceneCount,
                         outlineCount: forecasts.inquiry.outlineCount,
                         referenceCount: forecasts.inquiry.referenceCount,
                         breakdown: forecasts.inquiry.breakdown,
-                        promptBreakdown: forecasts.inquiry.promptBreakdown
+                        promptBreakdown: forecasts.inquiry.promptBreakdown,
+                        exactBreakdown: forecasts.inquiry.exactBreakdown,
+                        providerExecutionTokens: forecasts.inquiry.providerExecutionTokens,
+                        expectedPassCount: forecasts.inquiry.expectedPassCount
                     }));
                 } else {
                     capacityInquiryToken.setText('Unavailable');
