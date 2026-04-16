@@ -20,6 +20,7 @@ import { loadRemoteRegistry, type RemoteRegistryOptions } from '../registry/remo
 import { BUILTIN_MODELS } from '../registry/builtinModels';
 import { ModelRegistry } from '../registry/modelRegistry';
 import type { ModelInfo } from '../types';
+import { selectModel } from '../router/selectModel';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -400,6 +401,50 @@ describe('remote registry pipeline — happy path', () => {
         expect(found?.label).toBe('Gemini 4 Flash');
     });
 
+    it('preserves curated Anthropic stable/pro routing when remote models duplicate known aliases', async () => {
+        const remoteModels = [
+            makeModel({
+                provider: 'anthropic',
+                id: 'claude-opus-4-7',
+                alias: 'claude-opus-4.7',
+                label: 'Remote Claude Opus 4.7',
+                tier: 'DEEP',
+                capabilities: ['longContext', 'jsonStrict', 'reasoningStrong', 'highOutputCap'],
+                contextWindow: 1_000_000,
+                maxOutput: 16_000,
+                releasedAt: '2026-04-16'
+            }),
+            makeModel({
+                provider: 'anthropic',
+                id: 'claude-sonnet-4-6',
+                alias: 'claude-sonnet-4.6',
+                label: 'Remote Claude Sonnet 4.6',
+                tier: 'BALANCED',
+                capabilities: ['longContext', 'jsonStrict', 'reasoningStrong', 'highOutputCap'],
+                contextWindow: 1_000_000,
+                maxOutput: 16_000,
+                releasedAt: '2026-02-17'
+            })
+        ];
+
+        const registry = new ModelRegistry({
+            remoteRegistryUrl: 'https://example.com/registry.json',
+            allowRemoteRegistry: true,
+            readCache: async () => freshCacheJson({ models: remoteModels }),
+            writeCache: async () => undefined
+        });
+
+        await registry.refresh();
+        const selection = selectModel(registry.getAll(), {
+            provider: 'anthropic',
+            policy: { type: 'latestStable' },
+            requiredCapabilities: ['longContext', 'jsonStrict', 'reasoningStrong', 'highOutputCap'],
+            accessTier: 1
+        });
+
+        expect(selection.model.alias).toBe('claude-sonnet-4.6');
+    });
+
     it('registry cache is written on successful remote fetch', async () => {
         let writtenContent = '';
         await loadRemoteRegistry({
@@ -737,7 +782,7 @@ describe('both registry and pricing fetches failing', () => {
 // ---------------------------------------------------------------------------
 
 describe('ModelRegistry merge behavior', () => {
-    it('remote models override builtin models with same alias', async () => {
+    it('curated models preserve RT semantics when remote duplicates a known alias', async () => {
         const updatedModel: ModelInfo = {
             ...BUILTIN_MODELS[0],
             label: 'Updated Label From Remote',
@@ -753,8 +798,8 @@ describe('ModelRegistry merge behavior', () => {
 
         await registry.refresh();
         const found = registry.findByAlias(BUILTIN_MODELS[0].alias);
-        expect(found?.label).toBe('Updated Label From Remote');
-        expect(found?.contextWindow).toBe(999999);
+        expect(found?.label).toBe(BUILTIN_MODELS[0].label);
+        expect(found?.contextWindow).toBe(BUILTIN_MODELS[0].contextWindow);
     });
 
     it('remote-only model is added alongside builtins', async () => {
@@ -1120,7 +1165,7 @@ describe('AiSection cost table BUILTIN_MODELS fallback', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
 
         // Both calls are in a Promise.all
-        expect(source).toContain("Promise.all([\n            aiClient.getRegistryModels(),\n            aiClient.refreshPricing()");
+        expect(source).toMatch(/Promise\.all\(\[\s*aiClient\.getRegistryModels\(\),\s*aiClient\.refreshPricing\(\)/);
     });
 });
 

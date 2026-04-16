@@ -64,8 +64,29 @@ export class ModelRegistry {
         if (!remote.models.length) return [...BUILTIN_MODELS];
 
         const merged = new Map<string, ModelInfo>();
-        BUILTIN_MODELS.forEach(model => merged.set(model.alias, model));
-        remote.models.forEach(model => merged.set(model.alias, model));
+        const remoteByAlias = new Map(remote.models.map(model => [model.alias, model] as const));
+
+        // Curated models own RT product semantics such as rollout lanes,
+        // capability floors, and author-facing status. Remote registry data
+        // can add new aliases, but must not clobber curated behavior for
+        // known models.
+        BUILTIN_MODELS.forEach(model => {
+            const remoteModel = remoteByAlias.get(model.alias);
+            if (!remoteModel) {
+                merged.set(model.alias, model);
+                return;
+            }
+            merged.set(model.alias, {
+                ...remoteModel,
+                ...model,
+                releasedAt: model.releasedAt ?? remoteModel.releasedAt
+            });
+        });
+        remote.models.forEach(model => {
+            if (!merged.has(model.alias)) {
+                merged.set(model.alias, model);
+            }
+        });
         return Array.from(merged.values());
     }
 }

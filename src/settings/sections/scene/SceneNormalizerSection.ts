@@ -39,20 +39,28 @@ function createBadge(container: HTMLElement, text: string): HTMLElement {
     return badge;
 }
 
-function setButtonDisabled(button: ButtonComponent | undefined, disabled: boolean, reason?: string): void {
+function setButtonDisabled(
+    button: ButtonComponent | undefined,
+    disabled: boolean,
+    disabledReason?: string,
+    enabledReason?: string
+): void {
     if (!button) return;
     button.setDisabled(disabled);
-    if (reason) {
-        setTooltip(button.buttonEl, reason);
-    }
+    const tip = disabled ? disabledReason : enabledReason;
+    setTooltip(button.buttonEl, tip ?? '');
 }
 
-function setIconButtonDisabled(button: HTMLButtonElement | undefined, disabled: boolean, reason?: string): void {
+function setIconButtonDisabled(
+    button: HTMLButtonElement | undefined,
+    disabled: boolean,
+    disabledReason?: string,
+    enabledReason?: string
+): void {
     if (!button) return;
     button.disabled = disabled;
-    if (reason) {
-        setTooltip(button, reason);
-    }
+    const tip = disabled ? disabledReason : enabledReason;
+    setTooltip(button, tip ?? '');
 }
 
 function toDisplayAuditResult(sceneAudit: SceneNormalizationAudit): YamlAuditResult {
@@ -227,6 +235,7 @@ export function renderSceneNormalizerSection(params: {
 
     const updateButtons = () => {
         const summary = sceneAudit?.summary;
+        const notes = sceneAudit?.notes ?? [];
         const advancedMode = getAdvancedMode(plugin.settings);
         const advancedEnabled = advancedMode === 'enabled';
         const removableAdvanced = shouldEnableRemoveAdvanced({
@@ -236,30 +245,74 @@ export function renderSceneNormalizerSection(params: {
                 .filter((frontmatter): frontmatter is Record<string, unknown> => !!frontmatter),
         });
 
-        const disabledReasonBase = hasCheckedScenes
+        // Operations that actively skip dangerous notes (see yamlManager.ts):
+        // reorder, remove unused, remove advanced. Count only what those
+        // operations would actually touch so the button mutes once the
+        // non-dangerous work is done.
+        const isSafe = (note: typeof notes[number]) => note.safetyResult?.status !== 'dangerous';
+        const actionableDrift = notes.filter((n) => n.orderDrift && isSafe(n)).length;
+        const actionableExtra = notes.filter((n) => n.extraKeys.length > 0 && isSafe(n)).length;
+        const driftBlockedByUnsafe = (summary?.scenesWithDrift ?? 0) - actionableDrift;
+        const extraBlockedByUnsafe = (summary?.scenesWithExtra ?? 0) - actionableExtra;
+        const driftBlockedSuffix = driftBlockedByUnsafe > 0
+            ? ` (${driftBlockedByUnsafe} UNSAFE note${driftBlockedByUnsafe !== 1 ? 's' : ''} blocked — review manually)`
+            : '';
+        const extraBlockedSuffix = extraBlockedByUnsafe > 0
+            ? ` (${extraBlockedByUnsafe} UNSAFE note${extraBlockedByUnsafe !== 1 ? 's' : ''} blocked — review manually)`
+            : '';
+
+        const uncheckedHint = hasCheckedScenes
             ? undefined
             : 'Check Scenes to review what needs maintenance.';
 
+        const plural = (n: number, noun: string) => `${n} ${noun}${n !== 1 ? 's' : ''}`;
+
         setIconButtonDisabled(copyBtn, !sceneAudit, sceneAudit ? undefined : 'Check Scenes to generate a status report.');
-        setButtonDisabled(addCoreBtn, !summary || summary.scenesWithMissingCore === 0, disabledReasonBase || 'All scenes already contain core properties.');
+        setButtonDisabled(
+            addCoreBtn,
+            !summary || summary.scenesWithMissingCore === 0,
+            uncheckedHint || 'All scenes already contain core properties.',
+            `Add core properties to ${plural(summary?.scenesWithMissingCore ?? 0, 'scene')}.`
+        );
         setButtonDisabled(
             addAdvancedBtn,
             !advancedEnabled || !summary || summary.scenesWithMissingAdvanced === 0,
             !advancedEnabled
                 ? 'Advanced properties are disabled.'
-                : (disabledReasonBase || 'All maintained advanced properties are already present.')
+                : (uncheckedHint || 'All maintained advanced properties are already present.'),
+            `Add advanced properties to ${plural(summary?.scenesWithMissingAdvanced ?? 0, 'scene')}.`
         );
-        setButtonDisabled(addIdsBtn, !summary || summary.scenesMissingIds === 0, disabledReasonBase || 'All scenes already have IDs.');
-        setButtonDisabled(reorderBtn, !summary || summary.scenesWithDrift === 0, disabledReasonBase || 'Scene property order already matches the current layout.');
-        setButtonDisabled(removeUnusedBtn, !summary || summary.scenesWithExtra === 0, disabledReasonBase || buildUnusedFieldsTooltip());
+        setButtonDisabled(
+            addIdsBtn,
+            !summary || summary.scenesMissingIds === 0,
+            uncheckedHint || 'All scenes already have IDs.',
+            `Add missing IDs to ${plural(summary?.scenesMissingIds ?? 0, 'scene')}.`
+        );
+        setButtonDisabled(
+            reorderBtn,
+            !summary || actionableDrift === 0,
+            uncheckedHint || `Scene property order already matches the current layout.${driftBlockedSuffix}`,
+            `Reorder properties in ${plural(actionableDrift, 'scene')}.${driftBlockedSuffix}`
+        );
+        setButtonDisabled(
+            removeUnusedBtn,
+            !summary || actionableExtra === 0,
+            uncheckedHint || `${buildUnusedFieldsTooltip()}${extraBlockedSuffix}`,
+            `Remove unused fields from ${plural(actionableExtra, 'scene')}.${extraBlockedSuffix}`
+        );
         setButtonDisabled(
             removeAdvancedBtn,
             !removableAdvanced,
             advancedMode === 'enabled'
                 ? 'Advanced properties are currently maintained, so removal is disabled.'
-                : (disabledReasonBase || 'No scenes currently contain advanced properties to remove.')
+                : (uncheckedHint || 'No scenes currently contain advanced properties to remove.')
         );
-        setButtonDisabled(fixDuplicateBtn, !summary || summary.scenesDuplicateIds === 0, disabledReasonBase || 'No duplicate scene IDs were detected.');
+        setButtonDisabled(
+            fixDuplicateBtn,
+            !summary || summary.scenesDuplicateIds === 0,
+            uncheckedHint || 'No duplicate scene IDs were detected.',
+            `Fix ${plural(summary?.scenesDuplicateIds ?? 0, 'duplicate scene ID')}.`
+        );
     };
 
     const renderResults = () => {

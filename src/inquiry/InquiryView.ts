@@ -3797,6 +3797,10 @@ export class InquiryView extends ItemView {
                         return;
                     }
                     if (this.doesMinimapItemHaveFinding(item)) {
+                        if (event.altKey) {
+                            this.openActiveBriefArticleForItem(item);
+                            return;
+                        }
                         void this.openActiveBriefForItem(item);
                     } else {
                         const filePath = this.getMinimapItemFilePath(item);
@@ -4321,7 +4325,7 @@ export class InquiryView extends ItemView {
         });
         if (options.hasCitation) {
             menu.addItem(menuItem => {
-                menuItem.setTitle(this.menuTitleWithKeys('Open Citation in Briefing Article', ['Click']));
+                menuItem.setTitle(this.menuTitleWithKeys('Open Citation in Briefing Article', ['⌥', 'Click']));
                 menuItem.onClick(() => {
                     this.openActiveBriefArticleForItem(options.item);
                 });

@@ -24,6 +24,14 @@ describe('InquiryRunnerService execution integrity', () => {
         expect(source).toMatch(/this\.prepareInquiryRunEstimate\([\s\S]*userQuestion,[\s\S]*ai,/);
     });
 
+    it('pins prepared Inquiry estimates to the resolved engine model instead of re-resolving from settings', () => {
+        const source = readFileSync(resolve(process.cwd(), 'src/inquiry/runner/InquiryRunnerService.ts'), 'utf8');
+        expect(source).toContain('private resolvePolicyOverrideForAi(');
+        expect(source).toContain("entry.provider === ai.provider && entry.id === ai.modelId");
+        expect(source).toContain("return { type: 'pinned', pinnedAlias: model.alias };");
+        expect(source).toContain('policyOverride: this.resolvePolicyOverrideForAi(options.ai),');
+    });
+
     it('uses instructionPrompt only for Anthropic attachment runs', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/inquiry/runner/InquiryRunnerService.ts'), 'utf8');
         expect(source).toContain("provider === 'anthropic'");

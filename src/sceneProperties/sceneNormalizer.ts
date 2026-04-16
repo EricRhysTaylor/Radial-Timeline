@@ -56,7 +56,10 @@ function buildReason(note: SceneNormalizationNote): string {
     }
     if (note.safetyResult && note.safetyResult.status !== 'safe') {
         const label = note.safetyResult.status === 'dangerous' ? 'UNSAFE' : 'review';
-        reasons.push(`safety: ${label} (${note.safetyResult.issues.length} issue${note.safetyResult.issues.length !== 1 ? 's' : ''})`);
+        const issues = note.safetyResult.issues;
+        const primary = issues[0]?.message ?? '';
+        const extras = issues.length > 1 ? ` (+${issues.length - 1} more)` : '';
+        reasons.push(primary ? `${label} — ${primary}${extras}` : `${label}`);
     }
     return reasons.join(' | ');
 }

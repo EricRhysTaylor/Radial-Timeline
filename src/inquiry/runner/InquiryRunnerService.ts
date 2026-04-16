@@ -30,6 +30,7 @@ import { estimateTokensFromChars, type TokenEstimateMethod } from '../../ai/toke
 import { logCountingForensics } from '../../ai/diagnostics/countingForensics';
 import { buildInquiryJsonSchema, buildInquiryOmnibusJsonSchema } from '../jsonSchema';
 import { buildInquiryPromptParts, INQUIRY_ROLE_TEMPLATE_GUARDRAIL } from '../promptScaffold';
+import { BUILTIN_MODELS } from '../../ai/registry/builtinModels';
 
 export { cleanEvidenceBody } from '../utils/evidenceCleaning';
 
@@ -1151,6 +1152,7 @@ export class InquiryRunnerService implements InquiryRunner {
             systemPrompt: undefined,
             returnType: 'json',
             responseSchema: options.jsonSchema,
+            policyOverride: this.resolvePolicyOverrideForAi(options.ai),
             providerOverride: options.ai.provider,
             overrides: {
                 temperature: options.temperature,
@@ -1177,6 +1179,15 @@ export class InquiryRunnerService implements InquiryRunner {
         return provider === 'anthropic'
             && !!instructionPrompt
             && !!evidenceBlocks?.length;
+    }
+
+    private resolvePolicyOverrideForAi(
+        ai: InquiryRunnerInput['ai']
+    ): { type: 'pinned'; pinnedAlias: string } | undefined {
+        if (ai.provider === 'ollama') return undefined;
+        const model = BUILTIN_MODELS.find(entry => entry.provider === ai.provider && entry.id === ai.modelId);
+        if (!model?.alias) return undefined;
+        return { type: 'pinned', pinnedAlias: model.alias };
     }
 
     private resolveMaxOutputMode(maxTokens: number): 'auto' | 'high' | 'max' {
