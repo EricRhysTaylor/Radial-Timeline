@@ -53,6 +53,13 @@ export const BUILTIN_PRICING: ProviderPricingTable = {
             cacheWrite1hPer1M: 30.0,
             cacheReadPer1M: 1.5
         },
+        'claude-opus-4-7': {
+            inputPer1M: 5.0,
+            outputPer1M: 25.0,
+            cacheWrite5mPer1M: 6.25,
+            cacheWrite1hPer1M: 10.0,
+            cacheReadPer1M: 0.5
+        },
         'claude-sonnet-4-6': {
             inputPer1M: 3.0,
             outputPer1M: 15.0,

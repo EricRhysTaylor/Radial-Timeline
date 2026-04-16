@@ -814,7 +814,7 @@ export const en: TranslationKeys = {
                 tooltip: 'Manage context templates for AI prompt generation and Gossamer score generation',
             },
             preview: {
-                kicker: 'PREVIEW (ACTIVE MODEL)',
+                kicker: 'PREVIEW',
                 resolving: 'Resolving...',
                 providerPlaceholder: 'Provider: \u2014',
             },

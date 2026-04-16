@@ -56,16 +56,29 @@ describe('providerPricing', () => {
         expect(pricing.cacheReadPer1M).toBe(0.5);
     });
 
+    it('stores an explicit Opus 4.7 pricing row', () => {
+        const pricing = getProviderPricing('anthropic', 'claude-opus-4-7');
+
+        expect(pricing.inputPer1M).toBe(5);
+        expect(pricing.outputPer1M).toBe(25);
+        expect(pricing.cacheWrite5mPer1M).toBe(6.25);
+        expect(pricing.cacheWrite1hPer1M).toBe(10);
+        expect(pricing.cacheReadPer1M).toBe(0.5);
+    });
+
     it('does not assume newer Anthropic versions are more expensive', () => {
         const sonnet45 = getProviderPricing('anthropic', 'claude-sonnet-4-5-20250929');
         const sonnet46 = getProviderPricing('anthropic', 'claude-sonnet-4-6');
         const opus41 = getProviderPricing('anthropic', 'claude-opus-4-1-20250805');
         const opus46 = getProviderPricing('anthropic', 'claude-opus-4-6');
+        const opus47 = getProviderPricing('anthropic', 'claude-opus-4-7');
 
         expect(sonnet46.inputPer1M).toBe(sonnet45.inputPer1M);
         expect(sonnet46.outputPer1M).toBe(sonnet45.outputPer1M);
         expect(opus46.inputPer1M).toBeLessThan(opus41.inputPer1M);
         expect(opus46.outputPer1M).toBeLessThan(opus41.outputPer1M);
+        expect(opus47.inputPer1M).toBe(opus46.inputPer1M);
+        expect(opus47.outputPer1M).toBe(opus46.outputPer1M);
     });
 
     it('switches Sonnet 4.5 to premium long-context rates above 200k input tokens', () => {

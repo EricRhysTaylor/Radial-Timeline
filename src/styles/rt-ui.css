@@ -3169,6 +3169,11 @@
   line-height: 1.35;
 }
 
+.ert-ui.ert-scope--settings .ert-ai-capacity-item--citation-active {
+  color: color-mix(in srgb, var(--text-success) 85%, var(--text-normal) 15%);
+  font-weight: 600;
+}
+
 .ert-ui.ert-scope--settings .ert-ai-capacity-estimate {
   font-size: 12px;
   font-weight: 600;

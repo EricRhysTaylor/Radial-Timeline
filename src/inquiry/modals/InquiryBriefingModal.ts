@@ -10,6 +10,7 @@ type InquiryBriefingModalOptions = {
     briefFile?: TFile | null;
     logFile?: TFile | null;
     generatedAt?: number | string | null;
+    focusAnchorId?: string | null;
 };
 
 const ARTICLE_DATE_FORMAT = new Intl.DateTimeFormat('en-US', {
@@ -26,9 +27,11 @@ export class InquiryBriefingModal extends Modal {
     private readonly briefFile: TFile | null;
     private readonly logFile: TFile | null;
     private readonly generatedAt: number | string | null | undefined;
+    private readonly focusAnchorId: string | null;
     private themePreference: BriefingThemePreference;
     private readonly themeButtons = new Map<BriefingThemePreference, HTMLButtonElement>();
     private themeObserver?: MutationObserver;
+    private readonly sceneReferenceEntries: Array<{ label: string; anchorId?: string }>;
 
     constructor(app: App, options: InquiryBriefingModalOptions) {
         super(app);
@@ -37,7 +40,9 @@ export class InquiryBriefingModal extends Modal {
         this.briefFile = options.briefFile ?? null;
         this.logFile = options.logFile ?? null;
         this.generatedAt = options.generatedAt;
+        this.focusAnchorId = options.focusAnchorId ?? null;
         this.themePreference = this.plugin.settings.briefingTheme ?? 'auto';
+        this.sceneReferenceEntries = [...(this.brief.sceneReferences || [])].sort((a, b) => b.label.length - a.label.length);
     }
 
     onOpen(): void {
@@ -58,6 +63,7 @@ export class InquiryBriefingModal extends Modal {
         this.renderSceneNotes(shell);
         this.renderPendingActions(shell);
         this.renderRawResponse(shell);
+        window.requestAnimationFrame(() => this.focusRequestedAnchor());
     }
 
     onClose(): void {
@@ -101,15 +107,13 @@ export class InquiryBriefingModal extends Modal {
         });
         this.updateThemeButtons();
 
-        if (this.logFile) {
-            const logAction = actions.createEl('button', {
-                cls: 'rt-briefing-action',
-                text: 'Open Log'
-            });
-            logAction.addEventListener('click', () => {
-                void openOrRevealFile(this.app, this.logFile as TFile);
-            });
-        }
+        const pdfAction = actions.createEl('button', {
+            cls: 'rt-briefing-action',
+            text: 'Save PDF'
+        });
+        pdfAction.addEventListener('click', () => {
+            this.printBriefing();
+        });
         if (this.briefFile) {
             const noteAction = actions.createEl('button', {
                 cls: 'rt-briefing-action',
@@ -152,18 +156,12 @@ export class InquiryBriefingModal extends Modal {
 
         const flowBlock = summaryStack.createEl('article', { cls: 'rt-briefing-block rt-briefing-block--lead rt-briefing-summary-block' });
         flowBlock.createDiv({ cls: 'rt-briefing-summary-label', text: 'Flow' });
-        flowBlock.createEl('p', {
-            cls: 'rt-briefing-paragraph rt-briefing-paragraph--lead',
-            text: this.brief.flowSummary || 'No flow summary available.'
-        });
+        this.renderTextElement(flowBlock, 'p', 'rt-briefing-paragraph rt-briefing-paragraph--lead', this.brief.flowSummary || 'No flow summary available.');
 
         if (this.brief.depthSummary && this.brief.depthSummary !== this.brief.flowSummary) {
             const depthBlock = summaryStack.createEl('article', { cls: 'rt-briefing-block rt-briefing-summary-block' });
             depthBlock.createDiv({ cls: 'rt-briefing-summary-label', text: 'Depth' });
-            depthBlock.createEl('p', {
-                cls: 'rt-briefing-paragraph',
-                text: this.brief.depthSummary
-            });
+            this.renderTextElement(depthBlock, 'p', 'rt-briefing-paragraph', this.brief.depthSummary);
         }
     }
 
@@ -219,10 +217,7 @@ export class InquiryBriefingModal extends Modal {
                 item.createDiv({ cls: 'rt-briefing-source-meta', text: metaParts.join(' · ') });
             }
             if (source.excerpt?.trim()) {
-                item.createEl('p', {
-                    cls: 'rt-briefing-paragraph rt-briefing-source-excerpt',
-                    text: source.excerpt.trim()
-                });
+                this.renderTextElement(item, 'p', 'rt-briefing-paragraph rt-briefing-source-excerpt', source.excerpt.trim());
             }
         });
     }
@@ -233,7 +228,10 @@ export class InquiryBriefingModal extends Modal {
         const notes = section.createDiv({ cls: 'rt-briefing-stack' });
 
         this.brief.sceneNotes.forEach(note => {
-            const article = notes.createEl('article', { cls: 'rt-briefing-block rt-briefing-note' });
+            const article = notes.createEl('article', {
+                cls: 'rt-briefing-block rt-briefing-note',
+                attr: note.anchorId ? { 'data-rt-brief-anchor': note.anchorId } : undefined
+            });
             const labelRow = article.createDiv({ cls: 'rt-briefing-note-label-row' });
             labelRow.createDiv({ cls: 'rt-briefing-note-label', text: note.header });
             if (note.anchorId && this.briefFile) {
@@ -252,16 +250,13 @@ export class InquiryBriefingModal extends Modal {
 
             note.entries.forEach(entry => {
                 const entryBlock = article.createDiv({ cls: 'rt-briefing-note-entry' });
-                entryBlock.createEl('h3', { cls: 'rt-briefing-finding-title', text: entry.headline });
+                this.renderTextElement(entryBlock, 'h3', 'rt-briefing-finding-title', entry.headline);
                 entryBlock.createDiv({
                     cls: 'rt-briefing-finding-meta',
                     text: [entry.lens, `Impact ${entry.impact}`, `Confidence ${entry.confidence}`].filter(Boolean).join(' · ')
                 });
                 entry.bullets.forEach(bullet => {
-                    entryBlock.createEl('p', {
-                        cls: 'rt-briefing-paragraph',
-                        text: bullet
-                    });
+                    this.renderTextElement(entryBlock, 'p', 'rt-briefing-paragraph', bullet);
                 });
             });
         });
@@ -272,7 +267,7 @@ export class InquiryBriefingModal extends Modal {
         const section = this.createSection(container, 'Action Items');
         const list = section.createEl('ol', { cls: 'rt-briefing-action-list' });
         this.brief.pendingActions.forEach(action => {
-            list.createEl('li', { text: action });
+            this.renderTextElement(list, 'li', '', action);
         });
     }
 
@@ -291,7 +286,7 @@ export class InquiryBriefingModal extends Modal {
         group.createDiv({ cls: 'rt-briefing-group-label', text: label });
         findings.forEach(finding => {
             const card = group.createEl('article', { cls: 'rt-briefing-block rt-briefing-finding' });
-            card.createEl('h3', { cls: 'rt-briefing-finding-title', text: finding.headline });
+            this.renderTextElement(card, 'h3', 'rt-briefing-finding-title', finding.headline);
             card.createDiv({
                 cls: 'rt-briefing-finding-meta',
                 text: [
@@ -303,7 +298,7 @@ export class InquiryBriefingModal extends Modal {
             });
             if (finding.bullets.length) {
                 finding.bullets.forEach(bullet => {
-                    card.createEl('p', { cls: 'rt-briefing-paragraph', text: bullet });
+                    this.renderTextElement(card, 'p', 'rt-briefing-paragraph', bullet);
                 });
             }
         });
@@ -373,6 +368,97 @@ export class InquiryBriefingModal extends Modal {
             button.classList.toggle('is-active', active);
             button.setAttribute('aria-pressed', active ? 'true' : 'false');
         });
+    }
+
+    private renderTextElement(
+        container: HTMLElement,
+        tag: keyof HTMLElementTagNameMap,
+        cls: string,
+        text: string
+    ): HTMLElement {
+        const el = container.createEl(tag, cls ? { cls } : undefined);
+        this.appendSceneReferenceMarkup(el, text);
+        return el;
+    }
+
+    private appendSceneReferenceMarkup(container: HTMLElement, text: string): void {
+        const content = text || '';
+        if (!content) return;
+        if (!this.sceneReferenceEntries.length) {
+            container.appendText(content);
+            return;
+        }
+
+        const regex = new RegExp(this.sceneReferenceEntries.map(entry => this.escapeRegExp(entry.label)).join('|'), 'g');
+        let cursor = 0;
+        let match: RegExpExecArray | null = regex.exec(content);
+        while (match) {
+            const [label] = match;
+            const index = match.index;
+            if (index > cursor) {
+                container.appendText(content.slice(cursor, index));
+            }
+            const ref = this.sceneReferenceEntries.find(entry => entry.label === label);
+            container.append(this.buildSceneReferenceNode(label, ref?.anchorId));
+            cursor = index + label.length;
+            match = regex.exec(content);
+        }
+        if (cursor < content.length) {
+            container.appendText(content.slice(cursor));
+        }
+    }
+
+    private buildSceneReferenceNode(label: string, anchorId?: string): HTMLElement {
+        const [numberPart, ...titleParts] = label.split(' ');
+        const titlePart = titleParts.join(' ').trim();
+        const interactive = !!anchorId;
+        const el = document.createElement(interactive ? 'button' : 'span');
+        el.className = 'rt-briefing-scene-ref';
+        if (interactive && el instanceof HTMLButtonElement) {
+            el.type = 'button';
+            el.addEventListener('click', () => this.scrollToSceneReference(anchorId));
+            el.setAttribute('aria-label', `Jump to ${label}`);
+        }
+        const numberEl = document.createElement('span');
+        numberEl.className = 'rt-briefing-scene-ref-num';
+        numberEl.textContent = numberPart;
+        el.append(numberEl);
+        if (titlePart) {
+            const titleEl = document.createElement('span');
+            titleEl.className = 'rt-briefing-scene-ref-title';
+            titleEl.textContent = titlePart;
+            el.append(titleEl);
+        }
+        return el;
+    }
+
+    private scrollToSceneReference(anchorId?: string): void {
+        if (!anchorId) return;
+        this.focusAnchorIdInternal(anchorId);
+    }
+
+    private focusAnchorIdInternal(anchorId: string): void {
+        const notes = Array.from(this.contentEl.querySelectorAll<HTMLElement>('.rt-briefing-note[data-rt-brief-anchor]'));
+        const target = notes.find(note => note.getAttribute('data-rt-brief-anchor') === anchorId);
+        if (!target) return;
+        target.scrollIntoView({ block: 'start', behavior: 'smooth' });
+        target.classList.add('is-focus-target');
+        window.setTimeout(() => {
+            target.classList.remove('is-focus-target');
+        }, 1600);
+    }
+
+    private printBriefing(): void {
+        window.print();
+    }
+
+    private escapeRegExp(value: string): string {
+        return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    private focusRequestedAnchor(): void {
+        if (!this.focusAnchorId) return;
+        this.focusAnchorIdInternal(this.focusAnchorId);
     }
 
     private async setThemePreference(next: BriefingThemePreference): Promise<void> {

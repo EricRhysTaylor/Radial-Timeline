@@ -115,6 +115,7 @@ import type {
 import { InquirySessionStore } from './InquirySessionStore';
 import type { InquirySession, InquirySessionStatus } from './sessionTypes';
 import { normalizeFrontmatterKeys } from '../utils/frontmatter';
+import { getSequencedBooks } from '../utils/books';
 import type { InquirySourcesSettings } from '../types/settings';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
 import { hasProFeatureAccess } from '../settings/featureGate';
@@ -1956,6 +1957,7 @@ export class InquiryView extends ItemView {
             briefFile?: TFile | null;
             logFile?: TFile | null;
             generatedAt?: number | string | null;
+            focusAnchorId?: string | null;
         }
     ): void {
         new InquiryBriefingModal(this.app, {
@@ -1963,7 +1965,8 @@ export class InquiryView extends ItemView {
             plugin: this.plugin,
             briefFile: options?.briefFile ?? null,
             logFile: options?.logFile ?? null,
-            generatedAt: options?.generatedAt ?? null
+            generatedAt: options?.generatedAt ?? null,
+            focusAnchorId: options?.focusAnchorId ?? null
         }).open();
     }
 
@@ -4318,7 +4321,13 @@ export class InquiryView extends ItemView {
         });
         if (options.hasCitation) {
             menu.addItem(menuItem => {
-                menuItem.setTitle(this.menuTitleWithKeys('Open Citation in Briefing', ['Click']));
+                menuItem.setTitle(this.menuTitleWithKeys('Open Citation in Briefing Article', ['Click']));
+                menuItem.onClick(() => {
+                    this.openActiveBriefArticleForItem(options.item);
+                });
+            });
+            menu.addItem(menuItem => {
+                menuItem.setTitle(this.menuTitleWithKeys('Open Citation in Markdown Brief', ['Click']));
                 menuItem.onClick(() => {
                     void this.openActiveBriefForItem(options.item);
                 });
@@ -8001,6 +8010,32 @@ export class InquiryView extends ItemView {
         await this.openActiveBrief(anchorId);
     }
 
+    private openActiveBriefArticleForItem(item: InquiryCorpusItem): void {
+        const sessionId = this.state.activeSessionId;
+        if (!sessionId) {
+            new Notice('No active inquiry brief.');
+            return;
+        }
+        const session = this.sessionStore.peekSession(sessionId);
+        if (!session?.briefPath) {
+            new Notice('No brief saved for the active inquiry.');
+            return;
+        }
+        const file = this.app.vault.getAbstractFileByPath(session.briefPath);
+        if (!(file instanceof TFile)) {
+            new Notice('Brief not found. It may have been moved or deleted.');
+            return;
+        }
+        const anchorSource = this.getMinimapItemFilePath(item) || item.id || item.displayLabel;
+        const anchorId = this.getBriefSceneAnchorId(anchorSource);
+        this.openBriefingPresentation(this.buildInquiryBriefModel(session.result, session.logPath), {
+            briefFile: file,
+            logFile: this.getArtifactFileAtPath(session.logPath),
+            generatedAt: session.result.completedAt ?? session.createdAt,
+            focusAnchorId: anchorId
+        });
+    }
+
     private handleMinimapTickContextMenu(item: InquiryCorpusItem, event: MouseEvent): void {
         if (this.state.isRunning) return;
         event.preventDefault();
@@ -10981,7 +11016,7 @@ export class InquiryView extends ItemView {
         const questionText = questionTextRaw && questionTextRaw.trim().length > 0
             ? questionTextRaw
             : 'Question text unavailable.';
-        const scopeIndicator = resolveInquiryScopeIndicator(result);
+        const scopeIndicator = this.resolveInquiryBriefScopeIndicator(result);
 
         const pills: string[] = [
             `Flow ${this.formatMetricDisplay(result.verdict.flow)}`,
@@ -11039,6 +11074,7 @@ export class InquiryView extends ItemView {
         }));
 
         const sceneNotes = this.buildInquirySceneNotes(result, items, referenceLabels);
+        const sceneReferences = this.buildInquirySceneReferenceIndex(items);
         const pendingActions = this.buildBriefPendingActions(result)
             .map(action => this.normalizeInquiryBriefText(action, referenceLabels));
         const logTitle = this.resolveInquiryLogLinkTitle(result, logPath);
@@ -11057,6 +11093,7 @@ export class InquiryView extends ItemView {
             findings,
             sources,
             sceneNotes,
+            sceneReferences,
             pendingActions,
             logTitle,
             rawResponse: includeRawResponse ? rawResponseText : null,
@@ -11185,6 +11222,13 @@ export class InquiryView extends ItemView {
         return labels;
     }
 
+    private buildInquirySceneReferenceIndex(items: InquiryCorpusItem[]): Array<{ label: string; anchorId?: string }> {
+        return items.map(item => ({
+            label: this.formatInquiryReferenceDisplay(item, item.displayLabel),
+            anchorId: this.getBriefSceneAnchorId(this.getMinimapItemFilePath(item) || item.id || item.displayLabel)
+        }));
+    }
+
     private formatInquiryReferenceDisplay(item: InquiryCorpusItem, fallbackLabel?: string): string {
         return buildSceneDossierHeader({
             label: fallbackLabel || item.displayLabel || item.id,
@@ -11196,6 +11240,19 @@ export class InquiryView extends ItemView {
 
     private normalizeInquiryBriefText(value: string | undefined, referenceLabels: ReadonlyMap<string, string>): string {
         return replaceInquiryReferenceTokens(value, referenceLabels);
+    }
+
+    private resolveInquiryBriefScopeIndicator(result: InquiryResult): string | null {
+        const canonical = resolveInquiryScopeIndicator(result);
+        if (result.scope !== 'book') return canonical;
+        const scopeLabel = result.scopeLabel?.trim();
+        const match = scopeLabel?.match(/^B(\d+)$/i);
+        if (!match) return canonical;
+        const sequence = Number(match[1]);
+        if (!Number.isFinite(sequence) || sequence < 1) return canonical;
+        const book = getSequencedBooks(this.plugin.settings.books).find(entry => entry.sequenceNumber === sequence)?.book;
+        const title = book?.title?.trim();
+        return title || canonical;
     }
 
     private resolveSceneLogLabel(frontmatter: Record<string, unknown> | null, file: TFile): string {

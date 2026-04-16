@@ -68,6 +68,10 @@ export type InquiryBriefModel = {
             lens: string;
         }>;
     }>;
+    sceneReferences: Array<{
+        label: string;
+        anchorId?: string;
+    }>;
     pendingActions: string[];
     logTitle?: string | null;
     rawResponse?: string | null;

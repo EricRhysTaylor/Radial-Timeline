@@ -42,6 +42,7 @@ describe('inquiryViewText', () => {
             ],
             sources: [],
             sceneNotes: [],
+            sceneReferences: [],
             pendingActions: [],
             logTitle: null
         };
@@ -89,6 +90,7 @@ describe('inquiryViewText', () => {
             findings: [],
             sources: [],
             sceneNotes: [],
+            sceneReferences: [],
             pendingActions: [],
             logTitle: null
         };

@@ -8,6 +8,27 @@ const LOCAL_CAPS: Capability[] = ['jsonStrict'];
 export const BUILTIN_MODELS: ModelInfo[] = [
     {
         provider: 'anthropic',
+        id: 'claude-opus-4-7',
+        alias: 'claude-opus-4.7',
+        label: 'Claude Opus 4.7',
+        line: 'claude-opus',
+        tier: 'DEEP',
+        capabilities: [...DEEP_CAPS],
+        personality: { reasoning: 10, writing: 10, determinism: 9 },
+        contextWindow: 1000000,
+        maxOutput: 16000,
+        releasedAt: '2026-04-16',
+        status: 'stable',
+        rollout: {
+            channel: 'pro',
+            status: 'stable',
+            supersedes: 'claude-opus-4-6',
+            fallbackModelId: 'claude-opus-4-6',
+            lane: 'pro'
+        }
+    },
+    {
+        provider: 'anthropic',
         id: 'claude-opus-4-6',
         alias: 'claude-opus-4.6',
         label: 'Claude Opus 4.6',
@@ -32,7 +53,14 @@ export const BUILTIN_MODELS: ModelInfo[] = [
         contextWindow: 1000000,
         maxOutput: 16000,
         releasedAt: '2026-02-17',
-        status: 'stable'
+        status: 'stable',
+        rollout: {
+            channel: 'stable',
+            status: 'stable',
+            supersedes: 'claude-sonnet-4-5-20250929',
+            fallbackModelId: 'claude-sonnet-4-5-20250929',
+            lane: 'default'
+        }
     },
     {
         provider: 'anthropic',

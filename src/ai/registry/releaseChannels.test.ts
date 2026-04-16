@@ -14,6 +14,11 @@ describe('release channel curation', () => {
         expect(picker.includes('gemini-pro-latest')).toBe(false);
     });
 
+    it('keeps Anthropic picker order stable-first while still exposing Opus 4.7', () => {
+        const picker = getPickerModelsForProvider(BUILTIN_MODELS, 'anthropic').map(model => model.alias);
+        expect(picker).toEqual(['claude-sonnet-4.6', 'claude-opus-4.7', 'claude-opus-4.6', 'claude-sonnet-4.5']);
+    });
+
     it('hides OpenAI snapshot models from the normal picker', () => {
         const picker = getPickerModelsForProvider(BUILTIN_MODELS, 'openai').map(model => model.alias);
         expect(picker.includes('gpt-5.4-2026-03-05')).toBe(false);
@@ -27,5 +32,12 @@ describe('release channel curation', () => {
         expect(stable?.alias).toBe('gpt-5.4');
         expect(pro?.alias).toBe('gpt-5.4-pro');
         expect(rollback?.alias).toBe('gpt-5.3');
+    });
+
+    it('selects latest Anthropic models by release channel', () => {
+        const stable = selectLatestModelByReleaseChannel(BUILTIN_MODELS, 'anthropic', 'stable');
+        const pro = selectLatestModelByReleaseChannel(BUILTIN_MODELS, 'anthropic', 'pro');
+        expect(stable?.alias).toBe('claude-sonnet-4.6');
+        expect(pro?.alias).toBe('claude-opus-4.7');
     });
 });

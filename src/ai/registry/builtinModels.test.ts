@@ -40,6 +40,7 @@ describe('BUILTIN_MODELS OpenAI GPT-5.4 metadata', () => {
 describe('BUILTIN_MODELS Anthropic Claude 4.6 metadata', () => {
     it('uses 1M context windows for Claude 4.6 variants', () => {
         const aliases = [
+            'claude-opus-4.7',
             'claude-opus-4.6',
             'claude-sonnet-4.6'
         ];
@@ -48,6 +49,14 @@ describe('BUILTIN_MODELS Anthropic Claude 4.6 metadata', () => {
             expect(model.contextWindow).toBe(1000000);
             expect(model.maxOutput).toBe(16000);
         });
+    });
+
+    it('keeps Sonnet as the Anthropic stable lane and Opus 4.7 as the pro lane', () => {
+        expect(byAlias('claude-sonnet-4.6').rollout?.channel).toBe('stable');
+        expect(byAlias('claude-sonnet-4.6').rollout?.lane).toBe('default');
+        expect(byAlias('claude-opus-4.7').rollout?.channel).toBe('pro');
+        expect(byAlias('claude-opus-4.7').rollout?.supersedes).toBe('claude-opus-4-6');
+        expect(byAlias('claude-opus-4.7').rollout?.fallbackModelId).toBe('claude-opus-4-6');
     });
 });
 

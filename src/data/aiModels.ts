@@ -17,6 +17,11 @@ export const CURATED_MODELS: Record<AiProvider, CuratedModel[]> = {
     ],
     anthropic: [
         {
+            id: 'claude-opus-4-7',
+            label: 'Claude Opus 4.7',
+            guidance: "Claude Opus 4.7 is the explicit Anthropic pro lane in RT. It stays selectable without replacing Sonnet Auto, and it uses the same document-citation and prompt-caching path RT already uses for Anthropic. [FYI](https://docs.anthropic.com/en/docs/build-with-claude/citations)",
+        },
+        {
             id: 'claude-opus-4-6',
             label: 'Claude Opus 4.6',
             guidance: "Claude Opus 4.6 with direct manuscript citation flow in RT Inquiry (document blocks + citations). [FYI](https://platform.claude.com/docs/en/build-with-claude/citations)",

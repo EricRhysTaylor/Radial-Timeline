@@ -8,6 +8,7 @@ export const PROVIDER_DISPLAY_LABELS: Record<Exclude<AIProviderId, 'none'>, stri
 };
 
 const OPENAI_PICKER_CHANNEL_ORDER: ReadonlyArray<ModelReleaseChannel> = ['stable', 'pro', 'rollback'];
+const ANTHROPIC_PICKER_CHANNEL_ORDER: ReadonlyArray<ModelReleaseChannel> = ['stable', 'pro'];
 
 function isLatestCompatibilityAlias(model: ModelInfo): boolean {
     return model.id.includes('-latest') || model.alias.includes('-latest');
@@ -57,6 +58,29 @@ export function getPickerModelsForProvider(models: ModelInfo[], provider: AIProv
     }
 
     if (provider !== 'openai') {
+        if (provider === 'anthropic') {
+            const visible = providerModels.filter(model => model.rollout?.hiddenFromPicker !== true);
+            const newestPerChannel = new Map<ModelReleaseChannel, ModelInfo>();
+
+            visible.forEach(model => {
+                const channel = model.rollout?.channel;
+                if (!channel || !ANTHROPIC_PICKER_CHANNEL_ORDER.includes(channel)) return;
+                const current = newestPerChannel.get(channel);
+                if (!current || compareNewestModels(model, current) < 0) {
+                    newestPerChannel.set(channel, model);
+                }
+            });
+
+            const curated = ANTHROPIC_PICKER_CHANNEL_ORDER
+                .map(channel => newestPerChannel.get(channel))
+                .filter((model): model is ModelInfo => !!model);
+            const curatedIds = new Set(curated.map(model => model.id));
+            const remainder = visible
+                .filter(model => !curatedIds.has(model.id))
+                .sort(compareNewestModels);
+
+            return [...curated, ...remainder];
+        }
         return providerModels.sort(compareNewestModels);
     }
 

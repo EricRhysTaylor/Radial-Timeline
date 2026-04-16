@@ -23,10 +23,8 @@ function selectLatestStable(eligible: ModelInfo[], request: ModelSelectionReques
     const stable = eligible.filter(model => model.status === 'stable');
     const pool = stable.length ? stable : eligible;
 
-    if (request.provider === 'openai') {
-        const stableChannel = selectLatestModelByReleaseChannel(pool, 'openai', 'stable');
-        if (stableChannel) return stableChannel;
-    }
+    const stableChannel = selectLatestModelByReleaseChannel(pool, request.provider, 'stable');
+    if (stableChannel) return stableChannel;
 
     if (!pool.length) {
         throw new Error(`No latest-stable model available for provider ${request.provider}.`);
@@ -44,10 +42,9 @@ function selectLatestStable(eligible: ModelInfo[], request: ModelSelectionReques
 }
 
 function selectLatestPro(eligible: ModelInfo[], request: ModelSelectionRequest): ModelInfo | null {
-    if (request.provider !== 'openai') return null;
     const stable = eligible.filter(model => model.status === 'stable');
     const pool = stable.length ? stable : eligible;
-    return selectLatestModelByReleaseChannel(pool, 'openai', 'pro') ?? null;
+    return selectLatestModelByReleaseChannel(pool, request.provider, 'pro') ?? null;
 }
 
 export function selectModel(models: ModelInfo[], request: ModelSelectionRequest): ModelSelectionResult {

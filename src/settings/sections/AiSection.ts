@@ -66,7 +66,7 @@ import type { LocalLlmModelEntry } from '../../ai/localLlm/transport';
 import type { LocalLlmBackendId } from '../../ai/types';
 
 type Provider = 'anthropic' | 'google' | 'openai' | 'ollama';
-type CapacityItem = string | { text: string; dividerBefore?: boolean };
+type CapacityItem = string | { text: string; dividerBefore?: boolean; extraCls?: string };
 type PromptRequestBreakdown = {
     requestTokens: number | null;
     roleTemplateTokens: number | null;
@@ -556,7 +556,8 @@ export function renderAiSection(params: {
                 if (normalized.dividerBefore) {
                     listEl.createEl('li', { cls: 'ert-ai-capacity-divider' });
                 }
-                listEl.createEl('li', { cls: 'ert-ai-capacity-item', text: normalized.text });
+                const itemCls = ['ert-ai-capacity-item', normalized.extraCls].filter(Boolean).join(' ');
+                listEl.createEl('li', { cls: itemCls, text: normalized.text });
             });
         });
     };
@@ -656,9 +657,12 @@ export function renderAiSection(params: {
                     const overheadLabel = citationsOn
                         ? 'Citation wrappers + provider overhead'
                         : 'Provider overhead';
+                    const overheadText = buildTokenCapacityLine(overheadLabel, overheadTokens);
                     return [
                         `Execution: ${passCount} ${passCount === 1 ? 'pass' : 'passes'}`,
-                        buildTokenCapacityLine(overheadLabel, overheadTokens),
+                        citationsOn
+                            ? { text: overheadText, extraCls: 'ert-ai-capacity-item--citation-active' }
+                            : overheadText,
                         { text: `Total ${formatCorpusBreakdownToken(totalTokens)}`, dividerBefore: true }
                     ];
                 })()

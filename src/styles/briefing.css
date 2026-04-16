@@ -15,23 +15,33 @@
   --rt-briefing-button-shadow: 0 8px 18px rgba(17, 13, 9, 0.18);
   --rt-briefing-toggle-bg: rgba(255, 255, 255, 0.32);
   --rt-briefing-raw-bg: rgba(255, 255, 255, 0.18);
+  --rt-briefing-scene-ref-bg: rgba(45, 37, 30, 0.08);
+  --rt-briefing-scene-ref-border: rgba(45, 37, 30, 0.16);
+  --rt-briefing-scene-ref-text: #17120d;
+  --rt-briefing-scene-ref-num-bg: rgba(45, 37, 30, 0.9);
+  --rt-briefing-scene-ref-num-text: #f5f1e8;
 }
 
 .rt-briefing-modal[data-rt-briefing-theme="dark"] {
-  --rt-briefing-bg: #12100d;
-  --rt-briefing-bg-accent: rgba(255, 255, 255, 0.03);
-  --rt-briefing-text: #f0e7dc;
-  --rt-briefing-body: #e6ddd1;
-  --rt-briefing-title: #d8c0a7;
-  --rt-briefing-muted: rgba(240, 231, 220, 0.74);
-  --rt-briefing-subtle: rgba(240, 231, 220, 0.54);
-  --rt-briefing-line: rgba(240, 231, 220, 0.12);
-  --rt-briefing-line-soft: rgba(240, 231, 220, 0.08);
-  --rt-briefing-button-bg: rgba(240, 231, 220, 0.08);
-  --rt-briefing-button-text: #f0e7dc;
-  --rt-briefing-button-shadow: none;
-  --rt-briefing-toggle-bg: rgba(240, 231, 220, 0.04);
-  --rt-briefing-raw-bg: rgba(255, 255, 255, 0.04);
+  --rt-briefing-bg: #0a0a0a;
+  --rt-briefing-bg-accent: rgba(255, 255, 255, 0.015);
+  --rt-briefing-text: #f4efe8;
+  --rt-briefing-body: #efe8df;
+  --rt-briefing-title: #e6d5c2;
+  --rt-briefing-muted: rgba(244, 239, 232, 0.72);
+  --rt-briefing-subtle: rgba(244, 239, 232, 0.5);
+  --rt-briefing-line: rgba(255, 255, 255, 0.09);
+  --rt-briefing-line-soft: rgba(255, 255, 255, 0.06);
+  --rt-briefing-button-bg: #1a1a1a;
+  --rt-briefing-button-text: #f4efe8;
+  --rt-briefing-button-shadow: 0 8px 18px rgba(0, 0, 0, 0.3);
+  --rt-briefing-toggle-bg: #101010;
+  --rt-briefing-raw-bg: rgba(255, 255, 255, 0.035);
+  --rt-briefing-scene-ref-bg: rgba(255, 255, 255, 0.05);
+  --rt-briefing-scene-ref-border: rgba(255, 255, 255, 0.12);
+  --rt-briefing-scene-ref-text: #f4efe8;
+  --rt-briefing-scene-ref-num-bg: #f4efe8;
+  --rt-briefing-scene-ref-num-text: #0a0a0a;
 }
 
 .rt-briefing-modal .modal-content {
@@ -121,7 +131,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px;
+  padding: 8px;
   border: 1px solid var(--rt-briefing-line);
   border-radius: 999px;
   background: var(--rt-briefing-toggle-bg);
@@ -129,8 +139,9 @@
 
 .rt-briefing-theme-btn {
   appearance: none;
-  min-width: 62px;
-  padding: 10px 12px;
+  min-width: 88px;
+  min-height: 52px;
+  padding: 14px 18px;
   border: 0;
   border-radius: 999px;
   background: transparent;
@@ -285,6 +296,46 @@
   margin-top: 16px;
 }
 
+.rt-briefing-scene-ref {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0.16em;
+  padding: 0.08em 0.58em 0.08em 0.14em;
+  border: 1px solid var(--rt-briefing-scene-ref-border);
+  border-radius: 999px;
+  background: var(--rt-briefing-scene-ref-bg);
+  color: var(--rt-briefing-scene-ref-text);
+  font: 600 0.7em/1 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  letter-spacing: 0.04em;
+  vertical-align: 0.14em;
+}
+
+.rt-briefing-scene-ref-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.95em;
+  min-height: 1.95em;
+  padding: 0 0.42em;
+  border-radius: 999px;
+  background: var(--rt-briefing-scene-ref-num-bg);
+  color: var(--rt-briefing-scene-ref-num-text);
+  font-size: 0.95em;
+  letter-spacing: 0.06em;
+}
+
+.rt-briefing-scene-ref-title {
+  display: inline-block;
+  text-transform: uppercase;
+}
+
+button.rt-briefing-scene-ref {
+  appearance: none;
+  border-width: 1px;
+  cursor: pointer;
+}
+
 .rt-briefing-paragraph--lead {
   font-size: 23px;
   line-height: 1.64;
@@ -418,6 +469,11 @@
   border-top: 1px solid var(--rt-briefing-line-soft);
 }
 
+.rt-briefing-note.is-focus-target {
+  scroll-margin-top: 24px;
+  background: var(--rt-briefing-raw-bg);
+}
+
 .rt-briefing-action-list {
   margin: 12px 0 0;
   padding-left: 24px;
@@ -441,6 +497,29 @@
   font: 13px/1.6 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+@media print {
+  .rt-briefing-modal {
+    width: auto;
+    max-width: none;
+  }
+
+  .rt-briefing-shell {
+    min-height: auto;
+    padding: 0;
+    background: #fff;
+  }
+
+  .rt-briefing-surface {
+    background: #fff;
+    color: #111;
+  }
+
+  .rt-briefing-actions,
+  .rt-briefing-note-link {
+    display: none;
+  }
 }
 
 @media (max-width: 720px) {

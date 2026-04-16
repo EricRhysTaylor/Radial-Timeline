@@ -32,6 +32,21 @@ describe('selectModel', () => {
         expect(result.model.alias).toBe('claude-sonnet-4.6');
     });
 
+    it('resolves latestPro to the newest Anthropic pro-lane model without affecting latestStable', () => {
+        const latestStable = selectModel(BUILTIN_MODELS, {
+            provider: 'anthropic',
+            policy: { type: 'latestStable' },
+            requiredCapabilities: ['longContext', 'jsonStrict', 'reasoningStrong', 'highOutputCap']
+        });
+        const latestPro = selectModel(BUILTIN_MODELS, {
+            provider: 'anthropic',
+            policy: { type: 'latestPro' },
+            requiredCapabilities: ['longContext', 'jsonStrict', 'reasoningStrong', 'highOutputCap']
+        });
+        expect(latestStable.model.alias).toBe('claude-sonnet-4.6');
+        expect(latestPro.model.alias).toBe('claude-opus-4.7');
+    });
+
     it('resolves an OpenAI model for high-output inquiry requirements', () => {
         const result = selectModel(BUILTIN_MODELS, {
             provider: 'openai',
