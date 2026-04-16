@@ -6,6 +6,7 @@ import {
 import type {
     AuthorProgressCampaign,
     AuthorProgressDefaults,
+    AprExportQuality,
     AprStyleProfile,
     AprStyleSettings,
 } from '../../types/settings';
@@ -198,13 +199,20 @@ export class AprStyleService {
         return this.getProfiles().find(entry => entry.id === campaign.styleProfileId);
     }
 
+    public resolveCurrentExportQuality(): AprExportQuality {
+        const defaults = this.getDefaults();
+        const campaign = this.getDesignerCampaign();
+        return campaign?.aprExportQuality ?? defaults.aprExportQuality ?? 'standard';
+    }
+
     public createStyleProfile(name: string, defaults: AuthorProgressDefaults = this.getDefaults()): AprStyleProfile {
         const timestamp = Date.now();
         return {
             id: `apr-style-${sanitizeName(name)}-${timestamp}`,
             name: name.trim(),
             createdAt: new Date(timestamp).toISOString(),
-            style: this.captureCurrentStyle(defaults)
+            style: this.captureCurrentStyle(defaults),
+            aprExportQuality: this.resolveCurrentExportQuality()
         };
     }
 
@@ -232,11 +240,13 @@ export class AprStyleService {
             }
             existingProfile.name = nextName;
             existingProfile.style = { ...sourceStyle };
+            existingProfile.aprExportQuality = this.resolveCurrentExportQuality();
             return { profile: existingProfile, overwritten: true };
         }
 
         const profile = this.createStyleProfile(nextName, authorProgress.defaults);
         profile.style = { ...sourceStyle };
+        profile.aprExportQuality = this.resolveCurrentExportQuality();
         authorProgress.styleProfiles?.push(profile);
         return { profile, overwritten: false };
     }

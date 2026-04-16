@@ -836,8 +836,12 @@ function renderCampaignDetails(
         profileDropdown.onChange(async (val) => {
             if (!plugin.settings.authorProgress?.campaigns) return;
             const targetCampaign = plugin.settings.authorProgress.campaigns[index];
+            const nextProfile = styleProfiles.find(profile => profile.id === val);
             targetCampaign.styleProfileId = val || undefined;
             targetCampaign.styleSource = val ? 'profile' : 'global';
+            if (nextProfile?.aprExportQuality) {
+                targetCampaign.aprExportQuality = nextProfile.aprExportQuality;
+            }
             styleService.loadCampaignIntoDesigner(targetCampaign.id);
             await plugin.saveSettings();
             if (onDesignerContextChange) onDesignerContextChange();
@@ -912,15 +916,13 @@ function renderCampaignDetails(
             const globalQuality = plugin.settings.authorProgress?.defaults.aprExportQuality ?? 'standard';
             const latestCampaign = plugin.settings.authorProgress?.campaigns?.[index];
             const campaignQuality = latestCampaign?.aprExportQuality ?? campaign.aprExportQuality;
-            const defaultLabel = globalQuality === 'print' ? 'Print 4800px' : globalQuality === 'ultra' ? 'Ultra 2400px' : 'Standard 1200px';
-            drop.addOption('', `Default (${defaultLabel})`);
-            drop.addOption('standard', 'Standard (1200px)');
-            drop.addOption('ultra', 'Ultra (2400px)');
-            drop.addOption('print', 'Print (4800px)');
-            drop.setValue(campaignQuality ?? '');
+            drop.addOption('standard', 'Standard');
+            drop.addOption('ultra', 'Ultra');
+            drop.addOption('print', 'Print');
+            drop.setValue(campaignQuality ?? globalQuality);
             drop.onChange(async (val) => {
                 if (!plugin.settings.authorProgress?.campaigns) return;
-                plugin.settings.authorProgress.campaigns[index].aprExportQuality = val === '' ? undefined : (val as AprExportQuality);
+                plugin.settings.authorProgress.campaigns[index].aprExportQuality = val as AprExportQuality;
                 await plugin.saveSettings();
                 onUpdate();
             });

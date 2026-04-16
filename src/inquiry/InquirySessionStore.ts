@@ -1,5 +1,6 @@
 import type RadialTimelinePlugin from '../main';
-import type { InquirySession, InquirySessionCache } from './sessionTypes';
+import type { InquirySession, InquirySessionCache, InquirySessionStatus } from './sessionTypes';
+import type { InquiryScope } from './state';
 import { DEFAULT_INQUIRY_HISTORY_LIMIT } from './constants';
 
 export class InquirySessionStore {
@@ -124,6 +125,27 @@ export class InquirySessionStore {
     clearSessions(): void {
         this.cache.sessions = [];
         this.persist();
+    }
+
+    clearPendingEditsAppliedFlags(options?: {
+        scope?: InquiryScope;
+        activeBookId?: string;
+        statuses?: InquirySessionStatus[];
+    }): number {
+        const statusFilter = options?.statuses?.length ? new Set(options.statuses) : null;
+        let updated = 0;
+        this.cache.sessions.forEach(session => {
+            if (!session.pendingEditsApplied) return;
+            if (options?.scope && session.scope !== options.scope) return;
+            if (options?.activeBookId && session.activeBookId !== options.activeBookId) return;
+            if (statusFilter && !statusFilter.has(session.status ?? 'unsaved')) return;
+            session.pendingEditsApplied = false;
+            updated++;
+        });
+        if (updated > 0) {
+            this.persist();
+        }
+        return updated;
     }
 
     markStaleByBaseKey(baseKey: string): void {

@@ -1395,7 +1395,7 @@ export class InquiryView extends ItemView {
         const pendingEditsTooltip = blocked
             ? 'Inquiry is blocked'
             : pendingEditsApplied
-                ? `${fieldLabel} already updated`
+                ? this.formatPendingEditsSuccessMessage(pendingPlan.targetLabels).replace(/\.$/, '')
                 : status === 'error'
                     ? 'No pending edits (run failed)'
                     : this.formatPendingEditsTargetsTooltip(pendingPlan.targetLabels);
@@ -1730,11 +1730,21 @@ export class InquiryView extends ItemView {
             scopeLabel,
             async () => {
                 const result = await this.purgeInquiryActionItems(scenes);
+                const rearmedSessions = result.purgedCount > 0
+                    ? this.sessionStore.clearPendingEditsAppliedFlags({
+                        scope: this.state.scope,
+                        activeBookId: this.state.scope === 'book' ? this.state.activeBookId : undefined,
+                        statuses: ['saved', 'unsaved']
+                    })
+                    : 0;
                 this.invalidateBriefingPurgeAvailability();
                 this.refreshBriefingPanel();
                 void this.refreshBriefingPurgeAvailability();
                 if (result.purgedCount > 0) {
-                    new Notice(`Purged Inquiry action items from ${result.purgedCount} scene${result.purgedCount !== 1 ? 's' : ''}.`);
+                    const rearmSuffix = rearmedSessions > 0
+                        ? ` Re-armed ${rearmedSessions} session${rearmedSessions !== 1 ? 's' : ''} for fresh writeback.`
+                        : '';
+                    new Notice(`Purged Inquiry action items from ${result.purgedCount} scene${result.purgedCount !== 1 ? 's' : ''}.${rearmSuffix}`);
                 } else {
                     new Notice('No Inquiry action items found to purge.');
                 }
@@ -4229,7 +4239,8 @@ export class InquiryView extends ItemView {
     }): void {
         const menu = new Menu();
         menu.addItem(menuItem => {
-            menuItem.setTitle('Open Scene');
+            const sceneTitle = options.hasCitation ? 'Open Scene' : this.menuTitleWithKeys('Open Scene', ['Click']);
+            menuItem.setTitle(sceneTitle);
             menuItem.onClick(() => {
                 const file = this.app.vault.getAbstractFileByPath(options.filePath);
                 if (file && this.isTFile(file)) {
@@ -4239,7 +4250,7 @@ export class InquiryView extends ItemView {
         });
         if (options.hasCitation) {
             menu.addItem(menuItem => {
-                menuItem.setTitle('Open Citation in Briefing');
+                menuItem.setTitle(this.menuTitleWithKeys('Open Citation in Briefing', ['Click']));
                 menuItem.onClick(() => {
                     void this.openActiveBriefForItem(options.item);
                 });
@@ -7162,7 +7173,6 @@ export class InquiryView extends ItemView {
 
         const outlinePath = this.resolveBookOutlinePath(activeBookId);
         const minimumRank = this.getImpactRank('medium');
-        const handledScenes = new Set<string>();
 
         result.findings.forEach(finding => {
             if (!this.isFindingHit(finding)) return;
@@ -7176,9 +7186,9 @@ export class InquiryView extends ItemView {
                     ?? sceneById.get(refId)
                     ?? sceneByPath.get(refId))
                 : undefined;
-            if (filePath && !handledScenes.has(filePath)) {
+            if (filePath) {
                 addNote(filePath, note);
-                handledScenes.add(filePath);
+                return;
             }
             if (outlinePath) {
                 addNote(outlinePath, note);

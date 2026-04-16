@@ -221,7 +221,8 @@ function migrateStyleProfile(raw: unknown, defaults: AuthorProgressDefaults): Ap
         id,
         name,
         createdAt: asString(record.createdAt) ?? new Date().toISOString(),
-        style: migrateStyleSettings(record.style ?? record, defaults)
+        style: migrateStyleSettings(record.style ?? record, defaults),
+        aprExportQuality: asString(record.aprExportQuality) as any
     };
 }
 
@@ -250,7 +251,8 @@ function createLegacyCampaignStyleProfile(
         id: `legacy-style-${campaignId}`,
         name: `${campaignName} Style`,
         createdAt: asString(record.createdAt) ?? new Date().toISOString(),
-        style
+        style,
+        aprExportQuality: asString(record.aprExportQuality) as any
     };
 }
 

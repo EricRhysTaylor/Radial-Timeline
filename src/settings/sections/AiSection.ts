@@ -1306,6 +1306,17 @@ export function renderAiSection(params: {
         return `${totalMinutes}m remaining`;
     };
 
+    const formatPreviewRunCompletedAt = (timestamp: number): string => {
+        const formatted = new Date(timestamp).toLocaleString(undefined, {
+            month: 'short',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+        });
+        return formatted.replace(/\s+(AM|PM)$/i, (_, meridiem: string) => meridiem.toLowerCase());
+    };
+
     const getPreviewCurrentCacheReuseFingerprint = (): string | null =>
         getCurrentCorpusContext()?.cacheReuseFingerprint?.trim() || null;
 
@@ -1410,7 +1421,7 @@ export function renderAiSection(params: {
             comparatorLabel: null,
             comparatorValue: null,
             statusIcon: 'check-circle-2',
-            statusText: 'Latest Inquiry run completed without cache reuse currently active.',
+            statusText: `Latest Inquiry run completed at ${formatPreviewRunCompletedAt(latestSession.createdAt || latestSession.lastAccessed)}.`,
             extraPills: []
         };
     };

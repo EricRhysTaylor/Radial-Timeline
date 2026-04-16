@@ -409,6 +409,7 @@ export interface AprStyleProfile {
     name: string;
     createdAt: string;
     style: AprStyleSettings;
+    aprExportQuality?: AprExportQuality;
 }
 
 /**

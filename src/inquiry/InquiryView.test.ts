@@ -196,8 +196,26 @@ describe('InquiryView payload accounting', () => {
         expect(viewSource.includes('pendingEditsTooltip')).toBe(true);
         expect(viewSource.includes("return `Write to Pending Edits: ${labels.join(', ')}`;")).toBe(true);
         expect(viewSource.includes("return `Pending Edits updated for ${labels.join(', ')}.`;")).toBe(true);
+        expect(viewSource.includes("this.formatPendingEditsSuccessMessage(pendingPlan.targetLabels).replace(/\\.$/, '')")).toBe(true);
         expect(rendererSource.includes('pendingEditsTooltip?: string;')).toBe(true);
         expect(rendererSource.includes('const pendingLabel = args.pendingEditsTooltip ||')).toBe(true);
+    });
+
+    it('keeps scene-targeted pending edits on their resolved scene and preserves multiple notes per scene', () => {
+        const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
+        expect(viewSource.includes('if (filePath) {\n                addNote(filePath, note);\n                return;\n            }')).toBe(true);
+        expect(viewSource.includes('if (outlinePath) {\n                addNote(outlinePath, note);\n            }')).toBe(true);
+        expect(viewSource.includes('const handledScenes = new Set<string>();')).toBe(false);
+    });
+
+    it('re-arms matching sessions for fresh pending-edits writeback after a purge', () => {
+        const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
+        const storeSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquirySessionStore.ts'), 'utf8');
+        expect(viewSource.includes('this.sessionStore.clearPendingEditsAppliedFlags({')).toBe(true);
+        expect(viewSource.includes("statuses: ['saved', 'unsaved']")).toBe(true);
+        expect(viewSource.includes('Re-armed')).toBe(true);
+        expect(storeSource.includes('clearPendingEditsAppliedFlags(options?: {')).toBe(true);
+        expect(storeSource.includes("session.pendingEditsApplied = false;")).toBe(true);
     });
 
     it('uses the latest same-model timing sample and cached next-run cost when available', () => {
