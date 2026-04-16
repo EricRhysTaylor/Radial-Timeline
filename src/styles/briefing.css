@@ -23,25 +23,25 @@
 }
 
 .rt-briefing-modal[data-rt-briefing-theme="dark"] {
-  --rt-briefing-bg: #0a0a0a;
-  --rt-briefing-bg-accent: rgba(255, 255, 255, 0.015);
-  --rt-briefing-text: #f4efe8;
-  --rt-briefing-body: #efe8df;
-  --rt-briefing-title: #e6d5c2;
-  --rt-briefing-muted: rgba(244, 239, 232, 0.72);
-  --rt-briefing-subtle: rgba(244, 239, 232, 0.5);
-  --rt-briefing-line: rgba(255, 255, 255, 0.09);
-  --rt-briefing-line-soft: rgba(255, 255, 255, 0.06);
-  --rt-briefing-button-bg: #1a1a1a;
-  --rt-briefing-button-text: #f4efe8;
-  --rt-briefing-button-shadow: 0 8px 18px rgba(0, 0, 0, 0.3);
-  --rt-briefing-toggle-bg: #101010;
-  --rt-briefing-raw-bg: rgba(255, 255, 255, 0.035);
-  --rt-briefing-scene-ref-bg: rgba(255, 255, 255, 0.05);
-  --rt-briefing-scene-ref-border: rgba(255, 255, 255, 0.12);
-  --rt-briefing-scene-ref-text: #f4efe8;
-  --rt-briefing-scene-ref-num-bg: #f4efe8;
-  --rt-briefing-scene-ref-num-text: #0a0a0a;
+  --rt-briefing-bg: var(--background-primary, #202020);
+  --rt-briefing-bg-accent: var(--background-secondary, #262626);
+  --rt-briefing-text: var(--text-normal, #dcddde);
+  --rt-briefing-body: var(--text-normal, #dcddde);
+  --rt-briefing-title: var(--text-normal, #dcddde);
+  --rt-briefing-muted: var(--text-muted, #999999);
+  --rt-briefing-subtle: var(--text-faint, #7a7a7a);
+  --rt-briefing-line: var(--background-modifier-border, rgba(255, 255, 255, 0.12));
+  --rt-briefing-line-soft: var(--background-modifier-border-hover, rgba(255, 255, 255, 0.08));
+  --rt-briefing-button-bg: var(--background-secondary, #262626);
+  --rt-briefing-button-text: var(--text-normal, #dcddde);
+  --rt-briefing-button-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
+  --rt-briefing-toggle-bg: var(--background-secondary-alt, #161616);
+  --rt-briefing-raw-bg: var(--background-secondary, #262626);
+  --rt-briefing-scene-ref-bg: var(--background-secondary, #262626);
+  --rt-briefing-scene-ref-border: var(--background-modifier-border, rgba(255, 255, 255, 0.12));
+  --rt-briefing-scene-ref-text: var(--text-normal, #dcddde);
+  --rt-briefing-scene-ref-num-bg: var(--interactive-accent, #7f6df2);
+  --rt-briefing-scene-ref-num-text: var(--text-on-accent, #ffffff);
 }
 
 .rt-briefing-modal .modal-content {

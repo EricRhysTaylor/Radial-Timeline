@@ -4,6 +4,52 @@ import { buildDefaultAiSettings } from '../../ai/settings/aiSettings';
 import { resolveInquiryEngine } from './inquiryModelResolver';
 
 describe('resolveInquiryEngine', () => {
+    it('keeps Anthropic Auto on Sonnet 4.6 when the provider uses latestStable', () => {
+        const plugin = {
+            settings: {
+                aiSettings: {
+                    ...buildDefaultAiSettings(),
+                    provider: 'anthropic',
+                    modelPolicy: { type: 'latestStable' },
+                    credentials: {
+                        ...buildDefaultAiSettings().credentials,
+                        anthropicSecretId: 'rt.anthropic.test'
+                    }
+                }
+            }
+        } as any;
+
+        const resolved = resolveInquiryEngine(plugin, BUILTIN_MODELS);
+
+        expect(resolved.provider).toBe('anthropic');
+        expect(resolved.blocked).toBeUndefined();
+        expect(resolved.modelId).toBe('claude-sonnet-4-6');
+        expect(resolved.modelAlias).toBe('claude-sonnet-4.6');
+    });
+
+    it('resolves pinned Anthropic Opus 4.7 when explicitly selected', () => {
+        const plugin = {
+            settings: {
+                aiSettings: {
+                    ...buildDefaultAiSettings(),
+                    provider: 'anthropic',
+                    modelPolicy: { type: 'pinned', pinnedAlias: 'claude-opus-4.7' },
+                    credentials: {
+                        ...buildDefaultAiSettings().credentials,
+                        anthropicSecretId: 'rt.anthropic.test'
+                    }
+                }
+            }
+        } as any;
+
+        const resolved = resolveInquiryEngine(plugin, BUILTIN_MODELS);
+
+        expect(resolved.provider).toBe('anthropic');
+        expect(resolved.blocked).toBeUndefined();
+        expect(resolved.modelId).toBe('claude-opus-4-7');
+        expect(resolved.modelAlias).toBe('claude-opus-4.7');
+    });
+
     it('does not fall back to legacy provider fields when canonical AI settings disable AI', () => {
         const plugin = {
             settings: {
