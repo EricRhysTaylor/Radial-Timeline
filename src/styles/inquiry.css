@@ -32,7 +32,11 @@
 }
 
 .theme-light .ert-inquiry-svg {
-  --ert-inquiry-texture-opacity: 0.08;
+  --ert-inquiry-texture-opacity: 0.10;
+}
+
+.theme-light .ert-inquiry-bg-image {
+  filter: invert(1);
 }
 
 .ert-inquiry-svg.is-inquiry-blocked {
@@ -1482,6 +1486,17 @@
   fill: color-mix(in srgb, var(--ert-inquiry-zone-color) 35%, transparent);
 }
 
+/* Stale prior run — amber ring indicating a prior session exists but corpus/context drifted.
+   Clicking will trigger a fresh run rather than rehydrating. */
+.ert-inquiry-svg:not(.is-running) .inq-zone-dot.is-stale .inq-zone-dot-circle {
+  stroke: color-mix(in srgb, var(--ert-inquiry-ai-warning) 55%, transparent);
+  stroke-dasharray: 3 2;
+}
+
+.ert-inquiry-svg:not(.is-running) .inq-zone-dot.is-stale .inq-zone-dot-text {
+  fill: color-mix(in srgb, var(--ert-inquiry-ai-warning) 55%, transparent);
+}
+
 .inq-zone-dot.is-duplicate-pulse .inq-zone-dot-circle {
   stroke: var(--ert-inquiry-zone-color);
   filter: drop-shadow(0 0 8px color-mix(in srgb, var(--ert-inquiry-zone-color) 80%, transparent));
@@ -2195,9 +2210,9 @@
 }
 
 .ert-inquiry-engine-timer {
-  font-size: 22px;
+  font-size: 15px;
   fill: color-mix(in srgb, var(--text-normal) 88%, transparent);
-  font-family: var(--font-monospace);
+  font-family: var(--font-interface);
   font-weight: 200;
   letter-spacing: 0.02em;
   user-select: none;

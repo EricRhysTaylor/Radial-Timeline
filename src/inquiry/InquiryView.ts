@@ -1938,7 +1938,8 @@ export class InquiryView extends ItemView {
             this.openBriefingPresentation(this.buildInquiryBriefModel(session.result, session.logPath), {
                 briefFile: file,
                 logFile: this.getArtifactFileAtPath(session.logPath),
-                generatedAt: session.result.completedAt ?? session.createdAt
+                generatedAt: session.result.completedAt ?? session.createdAt,
+                isCorpusStale: this.isSessionCorpusStale(session)
             });
             return;
         }
@@ -1958,6 +1959,7 @@ export class InquiryView extends ItemView {
             logFile?: TFile | null;
             generatedAt?: number | string | null;
             focusAnchorId?: string | null;
+            isCorpusStale?: boolean;
         }
     ): void {
         new InquiryBriefingModal(this.app, {
@@ -1966,8 +1968,16 @@ export class InquiryView extends ItemView {
             briefFile: options?.briefFile ?? null,
             logFile: options?.logFile ?? null,
             generatedAt: options?.generatedAt ?? null,
-            focusAnchorId: options?.focusAnchorId ?? null
+            focusAnchorId: options?.focusAnchorId ?? null,
+            isCorpusStale: options?.isCorpusStale ?? false
         }).open();
+    }
+
+    private isSessionCorpusStale(session: { result?: { corpusFingerprint?: string } } | null | undefined): boolean {
+        const sessionFingerprint = session?.result?.corpusFingerprint;
+        const currentFingerprint = this.state.corpusFingerprint;
+        if (!sessionFingerprint || !currentFingerprint) return false;
+        return sessionFingerprint !== currentFingerprint;
     }
 
     private getMostRecentInquiryLogFile(): TFile | null {
@@ -2795,13 +2805,14 @@ export class InquiryView extends ItemView {
     }
 
     /**
-     * Computes the set of prompt IDs that have a valid (non-error) cached session
-     * for the current scope, corpus, model, and question signature context.
+     * Computes cached (fingerprint matches current context) and stale (prior session
+     * exists but fingerprint mismatches — corpus/model/question drifted) prompt IDs.
      * Uses the same cache-key logic as runInquiry rehydration so the visual state
      * is an honest reflection of what will happen on click.
      */
-    private computeCachedPromptIds(): Set<string> {
+    private computePromptCacheStates(): { cachedIds: Set<string>; staleIds: Set<string> } {
         const cachedIds = new Set<string>();
+        const staleIds = new Set<string>();
         const scopeKey = this.getScopeKey();
         const targetSceneIds = this.getActiveTargetSceneIds();
         const selectionMode = this.getSelectionMode(targetSceneIds);
@@ -2853,11 +2864,16 @@ export class InquiryView extends ItemView {
                 const session = this.sessionStore.peekSession(key);
                 if (session && !this.isErrorResult(session.result)) {
                     cachedIds.add(prompt.id);
+                    continue;
+                }
+                const priorByBase = this.sessionStore.getLatestByBaseKey(baseKey);
+                if (priorByBase && !this.isErrorResult(priorByBase.result)) {
+                    staleIds.add(prompt.id);
                 }
             }
         }
 
-        return cachedIds;
+        return { cachedIds, staleIds };
     }
 
     private updateZonePrompts(): void {
@@ -2941,7 +2957,7 @@ export class InquiryView extends ItemView {
                 }
             }
         }
-        const cachedPromptIds = this.computeCachedPromptIds();
+        const { cachedIds: cachedPromptIds, staleIds: stalePromptIds } = this.computePromptCacheStates();
         this.glyph.updatePromptState({
             promptsByZone,
             selectedPromptIds: this.state.selectedPromptIds,
@@ -2950,6 +2966,7 @@ export class InquiryView extends ItemView {
             lockedPromptId: this.state.isRunning ? this.state.activeQuestionId : null,
             focusedFormIds,
             cachedPromptIds,
+            stalePromptIds,
             onPromptSelect: (zone, promptId, event) => {
                 if (this.isInquiryRunDisabled()) return;
                 if (this.state.isRunning) {
@@ -6985,6 +7002,8 @@ export class InquiryView extends ItemView {
         this.clearResultPreview();
         this.unlockPromptPreview();
         this.setApiStatus('idle');
+        this.startupFreshMode = true;
+        this.freshModeTouchedBookIds.clear();
         this.refreshUI({ skipCorpus: true });
     }
 
@@ -6993,6 +7012,8 @@ export class InquiryView extends ItemView {
         this.clearActiveResultState();
         this.unlockPromptPreview();
         this.setApiStatus('idle');
+        this.startupFreshMode = true;
+        this.freshModeTouchedBookIds.clear();
         this.refreshUI({ skipCorpus: true });
     }
 
@@ -8036,7 +8057,8 @@ export class InquiryView extends ItemView {
             briefFile: file,
             logFile: this.getArtifactFileAtPath(session.logPath),
             generatedAt: session.result.completedAt ?? session.createdAt,
-            focusAnchorId: anchorId
+            focusAnchorId: anchorId,
+            isCorpusStale: this.isSessionCorpusStale(session)
         });
     }
 
@@ -8802,6 +8824,7 @@ export class InquiryView extends ItemView {
     private async requestEstimateSnapshot(): Promise<void> {
         const stats = this.getPayloadStats();
         const engine = this.getResolvedEngine();
+        const activeBookId = this.getCanonicalActiveBookId();
         // Blocked engines (e.g. ollama) cannot produce estimates — skip the
         // snapshot request entirely and refresh displays to show the blocked state.
         if (engine.blocked) {
@@ -8818,7 +8841,7 @@ export class InquiryView extends ItemView {
         const service = this.plugin.getInquiryEstimateService();
         const snapshot = await service.requestSnapshot({
             scope: this.state.scope,
-            activeBookId: this.state.activeBookId ?? this.corpus?.books?.[0]?.id,
+            activeBookId,
             targetSceneIds,
             scopeLabel: this.getScopeLabel(),
             manifest,
@@ -9557,6 +9580,7 @@ export class InquiryView extends ItemView {
         metaOverride?: string,
         layoutOptions?: { hideEmpty?: boolean }
     ): void {
+        this.syncHistoryRowLabel();
         this.previewPanelHeight = renderInquiryPromptPreviewLayout({
             refs: {
                 previewGroup: this.previewGroup,
@@ -10124,8 +10148,38 @@ export class InquiryView extends ItemView {
             row.group.removeAttribute('data-rt-tip-placement');
         });
         if (this.previewGroup?.classList.contains('is-results')) return;
+
+        if (this.isHoveredQuestionStale()) {
+            const historyRow = this.previewRows.find(row => row.group.classList.contains('is-history-slot'));
+            if (historyRow && !historyRow.group.classList.contains('ert-hidden')) {
+                historyRow.group.classList.add('is-token-amber');
+                addTooltipData(
+                    historyRow.group,
+                    balanceTooltipText('Prior run exists — corpus, model, or question changed since then. Click to run fresh.'),
+                    'top'
+                );
+            }
+        }
+
         const tokensRow = this.previewRows.find(row => row.group.classList.contains('is-tokens-slot'));
         if (!tokensRow) return;
+    }
+
+    private syncHistoryRowLabel(): void {
+        const historyRow = this.previewRows.find(row => row.group.classList.contains('is-history-slot'));
+        if (!historyRow) return;
+        const defaultLabel = this.previewRowDefaultLabels.find((_, idx) =>
+            this.previewRows[idx]?.group.classList.contains('is-history-slot')
+        ) ?? 'Earlier ·';
+        historyRow.label = this.isHoveredQuestionStale() ? 'Stale ·' : defaultLabel;
+    }
+
+    private isHoveredQuestionStale(): boolean {
+        const hoveredId = this.previewLast?.questionId;
+        if (!hoveredId) return false;
+        if (this.previewGroup?.classList.contains('is-results')) return false;
+        const { staleIds } = this.computePromptCacheStates();
+        return staleIds.has(hoveredId);
     }
 
     private setWrappedSvgText(
@@ -10306,7 +10360,7 @@ export class InquiryView extends ItemView {
     }
 
     private getPayloadStats(): InquiryPayloadStats {
-        const activeBookId = this.state.activeBookId ?? this.corpus?.books?.[0]?.id;
+        const activeBookId = this.getCanonicalActiveBookId();
         if (!this.payloadStats
             || this.payloadStats.scope !== this.state.scope
             || this.payloadStats.activeBookId !== activeBookId) {

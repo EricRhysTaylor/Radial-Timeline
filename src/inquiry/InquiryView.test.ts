@@ -145,6 +145,20 @@ describe('InquiryView payload accounting', () => {
         expect(cssSource.includes('.ert-inquiry-briefing-clear.is-inert')).toBe(true);
     });
 
+    it('returns to fresh glyph stubs when dismissing rehydrated results or errors', () => {
+        const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
+        expect(viewSource.includes('private dismissResults(): void {')).toBe(true);
+        expect(viewSource.includes('private dismissError(): void {')).toBe(true);
+        expect(viewSource.includes("this.startupFreshMode = true;\n        this.freshModeTouchedBookIds.clear();\n        this.refreshUI({ skipCorpus: true });")).toBe(true);
+    });
+
+    it('uses the canonical active book id for estimate snapshots and payload stats', () => {
+        const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
+        expect(viewSource.includes('const activeBookId = this.getCanonicalActiveBookId();')).toBe(true);
+        expect(viewSource.includes('activeBookId,\n            targetSceneIds,')).toBe(true);
+        expect(viewSource.includes('const activeBookId = this.getCanonicalActiveBookId();\n        if (!this.payloadStats')).toBe(true);
+    });
+
     it('keeps context reuse HUD tied to the current engine instead of hydrated result state', () => {
         const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
         expect(viewSource.includes('private getLatestCacheSessionForResolvedEngine(): InquirySession | null {')).toBe(true);

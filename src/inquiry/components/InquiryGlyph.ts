@@ -28,6 +28,7 @@ export interface InquiryGlyphPromptState {
     lockedPromptId?: string | null;
     focusedFormIds?: Set<string>;
     cachedPromptIds?: Set<string>;
+    stalePromptIds?: Set<string>;
     onPromptSelect?: (zone: InquiryZone, promptId: string, event: MouseEvent) => void;
     onPromptContextMenu?: (zone: InquiryZone, promptId: string, event: MouseEvent) => void;
     onPromptHover?: (zone: InquiryZone, promptId: string, promptText: string) => void;
@@ -543,6 +544,7 @@ export class InquiryGlyph {
                 const isError = isProcessed && processedStatus === 'error';
                 const isLocked = !!prompt && lockedPromptId === prompt.id;
                 const isCached = !!prompt && !isProcessed && (this.promptState?.cachedPromptIds?.has(prompt.id) ?? false);
+                const isStale = !!prompt && !isProcessed && !isCached && (this.promptState?.stalePromptIds?.has(prompt.id) ?? false);
                 marker.text.textContent = prompt ? (isError ? 'X' : String(idx + 1)) : '';
                 marker.group.setAttribute('display', prompt ? 'inline' : 'none');
                 marker.group.classList.toggle('is-signature', prompt?.tier === 'signature');
@@ -552,6 +554,7 @@ export class InquiryGlyph {
                 marker.group.classList.toggle('is-processed-error', isError);
                 marker.group.classList.toggle('is-locked', isLocked);
                 marker.group.classList.toggle('is-cached', isCached);
+                marker.group.classList.toggle('is-stale', isStale);
                 const isFocusedForm = !!prompt && (this.promptState?.focusedFormIds?.has(prompt.id) ?? false);
                 marker.group.classList.toggle('is-focused-form', isFocusedForm);
                 if (prompt) {
@@ -561,6 +564,8 @@ export class InquiryGlyph {
                         marker.group.setAttribute('aria-label', 'Current result');
                     } else if (isCached) {
                         marker.group.setAttribute('aria-label', 'Open previous result');
+                    } else if (isStale) {
+                        marker.group.setAttribute('aria-label', 'Prior result — corpus changed, re-run to refresh');
                     } else {
                         marker.group.setAttribute('aria-label', 'Run question');
                     }

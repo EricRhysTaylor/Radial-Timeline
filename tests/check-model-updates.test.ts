@@ -140,6 +140,8 @@ describe('runModelUpdateCheck', () => {
         const modelsFile = path.join(dir, 'scripts', 'models', 'latest-models.json');
         const latestAliasesFile = path.join(dir, 'scripts', 'models', 'latest-aliases.json');
         const driftReportFile = path.join(dir, 'scripts', 'models', 'model-drift-report.json');
+        const curatedRegistryFile = path.join(dir, 'scripts', 'models', 'registry.json');
+        const releaseWatchFile = path.join(dir, 'scripts', 'models', 'release-watch.json');
 
         await writeJson(modelsFile, {
             generatedAt: '2026-04-15T00:00:00.000Z',
@@ -153,11 +155,21 @@ describe('runModelUpdateCheck', () => {
                 },
             ],
         });
+        await writeJson(curatedRegistryFile, {
+            generatedAt: '2026-04-15T00:00:00.000Z',
+            models: [],
+        });
+        await writeJson(releaseWatchFile, {
+            schemaVersion: 1,
+            watchedReleases: [],
+        });
 
         const result = await runModelUpdateCheck({
             modelsFile,
             latestTrackingFile: latestAliasesFile,
             driftReportFile,
+            curatedRegistryFile,
+            releaseWatchFile,
             quiet: true,
             now: () => Date.parse('2026-04-17T12:00:00.000Z'),
             updateSnapshot: async () => {
@@ -188,6 +200,99 @@ describe('runModelUpdateCheck', () => {
         const driftReport = await readJson(driftReportFile);
         expect(driftReport.changes.anthropic.added).toEqual(['claude-opus-4-7']);
         expect(driftReport.hasActionableChanges).toBe(true);
+    });
+
+    it('does not alert on a refreshed provider addition when RT already curated that model', async () => {
+        const dir = await createTempWorkspace();
+        const modelsFile = path.join(dir, 'scripts', 'models', 'latest-models.json');
+        const latestAliasesFile = path.join(dir, 'scripts', 'models', 'latest-aliases.json');
+        const driftReportFile = path.join(dir, 'scripts', 'models', 'model-drift-report.json');
+        const curatedRegistryFile = path.join(dir, 'scripts', 'models', 'registry.json');
+        const releaseWatchFile = path.join(dir, 'scripts', 'models', 'release-watch.json');
+
+        await writeJson(modelsFile, {
+            generatedAt: '2026-04-15T00:00:00.000Z',
+            models: [
+                {
+                    provider: 'anthropic',
+                    id: 'claude-sonnet-4-6',
+                    label: 'Claude Sonnet 4.6',
+                    createdAt: '2026-02-17T00:00:00.000Z',
+                    raw: {},
+                },
+            ],
+        });
+        await writeJson(latestAliasesFile, {
+            checkedAt: '2026-04-15T12:00:00.000Z',
+            snapshotGeneratedAt: '2026-04-15T00:00:00.000Z',
+            tokenLimits: {},
+            openai: {},
+            gemini: {},
+            anthropic: {
+                newestModel: {
+                    id: 'claude-sonnet-4-6',
+                    displayName: 'Claude Sonnet 4.6',
+                    createdAt: '2026-02-17T00:00:00.000Z',
+                },
+            },
+        });
+        await writeJson(curatedRegistryFile, {
+            generatedAt: '2026-04-16T00:00:00.000Z',
+            models: [{ provider: 'anthropic', id: 'claude-opus-4-7' }],
+        });
+        await writeJson(releaseWatchFile, {
+            schemaVersion: 1,
+            watchedReleases: [],
+        });
+
+        const result = await runModelUpdateCheck({
+            modelsFile,
+            latestTrackingFile: latestAliasesFile,
+            driftReportFile,
+            curatedRegistryFile,
+            releaseWatchFile,
+            quiet: true,
+            now: () => Date.parse('2026-04-17T12:00:00.000Z'),
+            updateSnapshot: async () => {
+                await writeJson(modelsFile, {
+                    generatedAt: '2026-04-17T00:00:00.000Z',
+                    models: [
+                        {
+                            provider: 'anthropic',
+                            id: 'claude-sonnet-4-6',
+                            label: 'Claude Sonnet 4.6',
+                            createdAt: '2026-02-17T00:00:00.000Z',
+                            raw: {},
+                        },
+                        {
+                            provider: 'anthropic',
+                            id: 'claude-opus-4-7',
+                            label: 'Claude Opus 4.7',
+                            createdAt: '2026-04-16T00:00:00.000Z',
+                            raw: {},
+                        },
+                    ],
+                });
+                return { ok: true };
+            },
+        });
+
+        const driftReport = await readJson(driftReportFile);
+        expect(driftReport.changes.anthropic.added).toEqual(['claude-opus-4-7']);
+        expect(driftReport.anthropicNewestChanged).toEqual({
+            from: {
+                id: 'claude-sonnet-4-6',
+                displayName: 'Claude Sonnet 4.6',
+                createdAt: '2026-02-17T00:00:00.000Z',
+            },
+            to: {
+                id: 'claude-opus-4-7',
+                displayName: 'Claude Opus 4.7',
+                createdAt: '2026-04-16T00:00:00.000Z',
+            },
+        });
+        expect(result.hasActionableChanges).toBe(false);
+        expect(driftReport.hasActionableChanges).toBe(false);
     });
 
     it('raises a release alert when a watched provider release is not curated yet', async () => {

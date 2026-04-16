@@ -45,7 +45,31 @@ export const replaceInquiryReferenceTokens = (
         return labelsByRef.get(key) ?? null;
     };
 
-    return String(value)
+    const replaceCompactSequence = (text: string): string => text
+        .replace(/\b([sb])(\d+)\s*([/-])\s*\1?(\d+)\b/gi, (match, prefix: string, leftNum: string, separator: string, rightNum: string) => {
+            const left = resolve(`${prefix}${leftNum}`);
+            const right = resolve(`${prefix}${rightNum}`);
+            if (!left && !right) return match;
+            if (left && right) return `${left}${separator === '/' ? ' / ' : ' - '}${right}`;
+            return left ?? right ?? match;
+        })
+        .replace(/\b([sb]\d+)\s*\/\s*([sb]\d+)\b/gi, (match, leftRaw: string, rightRaw: string) => {
+            const left = resolve(leftRaw);
+            const right = resolve(rightRaw);
+            if (!left && !right) return match;
+            if (left && right) return `${left} / ${right}`;
+            return left ?? right ?? match;
+        })
+        .replace(/\b([sb]\d+)\s*-\s*([sb]\d+)\b/gi, (match, leftRaw: string, rightRaw: string) => {
+            const left = resolve(leftRaw);
+            const right = resolve(rightRaw);
+            if (!left && !right) return match;
+            if (left && right) return `${left} - ${right}`;
+            return left ?? right ?? match;
+        })
+        .replace(/\b[sb]\d+\b/gi, (match) => resolve(match) ?? match);
+
+    return replaceCompactSequence(String(value))
         .replace(/\b\d+\s*\(\s*(scn_[a-z0-9]+)\s*\)/gi, (match, refId: string) => resolve(refId) ?? match)
         .replace(/\b(scn_[a-z0-9]+)\b\s*\(([^)]+)\)/gi, (match, refId: string) => resolve(refId) ?? match)
         .replace(/\bscn_[a-z0-9]+\b/gi, (match) => resolve(match) ?? match)

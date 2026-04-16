@@ -1,25 +1,28 @@
 .rt-briefing-modal {
   width: min(1180px, calc(100vw - 56px));
   max-width: 1180px;
-  --rt-briefing-bg: #f5f1e8;
-  --rt-briefing-bg-accent: rgba(255, 255, 255, 0.78);
-  --rt-briefing-text: #16130f;
-  --rt-briefing-body: #1d1814;
-  --rt-briefing-title: #e8d8c8;
-  --rt-briefing-muted: rgba(22, 19, 15, 0.66);
-  --rt-briefing-subtle: rgba(22, 19, 15, 0.5);
-  --rt-briefing-line: rgba(22, 19, 15, 0.1);
-  --rt-briefing-line-soft: rgba(22, 19, 15, 0.07);
-  --rt-briefing-button-bg: #2d251e;
-  --rt-briefing-button-text: #ead8c2;
-  --rt-briefing-button-shadow: 0 8px 18px rgba(17, 13, 9, 0.18);
-  --rt-briefing-toggle-bg: rgba(255, 255, 255, 0.32);
-  --rt-briefing-raw-bg: rgba(255, 255, 255, 0.18);
-  --rt-briefing-scene-ref-bg: rgba(45, 37, 30, 0.08);
-  --rt-briefing-scene-ref-border: rgba(45, 37, 30, 0.16);
-  --rt-briefing-scene-ref-text: #17120d;
-  --rt-briefing-scene-ref-num-bg: rgba(45, 37, 30, 0.9);
-  --rt-briefing-scene-ref-num-text: #f5f1e8;
+  --rt-briefing-bg: var(--background-primary, #fcfcfc);
+  --rt-briefing-bg-accent: var(--background-secondary, #f5f5f5);
+  --rt-briefing-text: var(--text-normal, #222222);
+  --rt-briefing-body: var(--text-normal, #222222);
+  --rt-briefing-title: color-mix(in srgb, var(--text-normal, #222222) 16%, var(--background-primary, #fcfcfc));
+  --rt-briefing-muted: var(--text-muted, #6f6f6f);
+  --rt-briefing-subtle: var(--text-faint, #8a8a8a);
+  --rt-briefing-line: var(--background-modifier-border, rgba(0, 0, 0, 0.12));
+  --rt-briefing-line-soft: var(--background-modifier-border-hover, rgba(0, 0, 0, 0.08));
+  --rt-briefing-button-bg: var(--background-secondary, #f3f3f3);
+  --rt-briefing-button-text: var(--text-normal, #222222);
+  --rt-briefing-button-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+  --rt-briefing-toggle-bg: var(--background-secondary-alt, #efefef);
+  --rt-briefing-raw-bg: var(--background-secondary, #f5f5f5);
+  --rt-briefing-scene-ref-bg: var(--background-secondary, #f3f3f3);
+  --rt-briefing-scene-ref-border: var(--background-modifier-border, rgba(0, 0, 0, 0.14));
+  --rt-briefing-scene-ref-text: var(--text-normal, #222222);
+  --rt-briefing-scene-ref-num-bg: color-mix(in srgb, var(--text-normal, #222222) 68%, var(--background-primary, #fcfcfc));
+  --rt-briefing-scene-ref-num-text: var(--background-primary, #fcfcfc);
+  --rt-briefing-active-bg: var(--background-primary, #fcfcfc);
+  --rt-briefing-active-text: var(--text-normal, #222222);
+  --rt-briefing-active-shadow: 0 0 0 1px var(--background-modifier-border, rgba(0, 0, 0, 0.14)), 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
 .rt-briefing-modal[data-rt-briefing-theme="dark"] {
@@ -42,6 +45,9 @@
   --rt-briefing-scene-ref-text: var(--text-normal, #dcddde);
   --rt-briefing-scene-ref-num-bg: var(--interactive-accent, #7f6df2);
   --rt-briefing-scene-ref-num-text: var(--text-on-accent, #ffffff);
+  --rt-briefing-active-bg: var(--background-secondary, #262626);
+  --rt-briefing-active-text: var(--text-normal, #dcddde);
+  --rt-briefing-active-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
 }
 
 .rt-briefing-modal .modal-content {
@@ -80,15 +86,20 @@
 }
 
 .rt-briefing-brand-logo {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   flex: 0 0 auto;
   object-fit: contain;
 }
 
+.rt-briefing-modal[data-rt-briefing-theme="light"] .rt-briefing-brand-logo {
+  filter: brightness(0) saturate(100%);
+  opacity: 0.94;
+}
+
 .rt-briefing-brand-mark {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
@@ -131,7 +142,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 8px;
+  padding: 10px 14px;
   border: 1px solid var(--rt-briefing-line);
   border-radius: 999px;
   background: var(--rt-briefing-toggle-bg);
@@ -139,9 +150,9 @@
 
 .rt-briefing-theme-btn {
   appearance: none;
-  min-width: 88px;
-  min-height: 52px;
-  padding: 14px 18px;
+  min-width: 62px;
+  min-height: 0;
+  padding: 10px 12px;
   border: 0;
   border-radius: 999px;
   background: transparent;
@@ -153,9 +164,9 @@
 }
 
 .rt-briefing-theme-btn.is-active {
-  background: var(--rt-briefing-button-bg);
-  color: var(--rt-briefing-button-text);
-  box-shadow: var(--rt-briefing-button-shadow);
+  background: var(--rt-briefing-active-bg);
+  color: var(--rt-briefing-active-text);
+  box-shadow: var(--rt-briefing-active-shadow);
 }
 
 .rt-briefing-action {
@@ -174,7 +185,7 @@
 
 .rt-briefing-theme-btn:hover,
 .rt-briefing-action:hover {
-  color: var(--rt-briefing-button-text);
+  color: var(--rt-briefing-active-text);
 }
 
 .rt-briefing-hero {
@@ -231,6 +242,26 @@
 
 .rt-briefing-meta-line--secondary {
   color: var(--rt-briefing-subtle);
+}
+
+.rt-briefing-stale-badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--rt-briefing-stale-fg, #9a3412);
+  background: var(--rt-briefing-stale-bg, rgba(234, 88, 12, 0.14));
+  border: 1px solid var(--rt-briefing-stale-border, rgba(234, 88, 12, 0.45));
+  text-transform: uppercase;
+  vertical-align: baseline;
+}
+
+[data-rt-briefing-theme="dark"] .rt-briefing-stale-badge {
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.14);
+  border-color: rgba(251, 191, 36, 0.45);
 }
 
 .rt-briefing-section {
@@ -315,13 +346,13 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 1.95em;
-  min-height: 1.95em;
-  padding: 0 0.42em;
+  min-width: 1.7em;
+  min-height: 1.7em;
+  padding: 0 0.34em;
   border-radius: 999px;
   background: var(--rt-briefing-scene-ref-num-bg);
   color: var(--rt-briefing-scene-ref-num-text);
-  font-size: 0.95em;
+  font-size: 0.9em;
   letter-spacing: 0.06em;
 }
 
@@ -330,10 +361,39 @@
   text-transform: uppercase;
 }
 
+.rt-briefing-scene-ref--unresolved {
+  padding: 0.14em 0.52em;
+  border-style: dashed;
+  opacity: 0.86;
+}
+
+.rt-briefing-scene-ref--unresolved .rt-briefing-scene-ref-title {
+  text-transform: none;
+  font-size: 0.9em;
+  letter-spacing: 0.03em;
+}
+
 button.rt-briefing-scene-ref {
   appearance: none;
   border-width: 1px;
   cursor: pointer;
+}
+
+.rt-briefing-quote {
+  display: inline;
+}
+
+.rt-briefing-quote--single {
+  color: color-mix(in srgb, var(--rt-briefing-body) 78%, var(--rt-briefing-muted));
+  font-style: italic;
+}
+
+.rt-briefing-quote--double {
+  color: var(--rt-briefing-text);
+  font-style: italic;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.12em;
 }
 
 .rt-briefing-paragraph--lead {

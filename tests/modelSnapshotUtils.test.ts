@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
     buildModelDriftReport,
+    computeActionableDrift,
     computeAliasChanges,
     computeAnthropicNewestChange,
     computeDiff,
@@ -175,5 +176,51 @@ describe('modelSnapshotUtils', () => {
         expect(report.mode).toBe('report');
         expect(report.hasActionableChanges).toBe(true);
         expect(report.recommendedFollowUps.some(item => item.includes('src/ai/registry/builtinModels.ts'))).toBe(true);
+    });
+
+    it('suppresses already-curated provider additions from actionable drift', () => {
+        const actionable = computeActionableDrift({
+            changes: {
+                openai: { added: [], removed: [] },
+                anthropic: { added: ['claude-opus-4-7'], removed: [] },
+                google: { added: [], removed: [] },
+            },
+            aliasChanges: [],
+            anthropicNewestChanged: {
+                from: {
+                    id: 'claude-sonnet-4-6',
+                    displayName: 'Claude Sonnet 4.6',
+                    createdAt: '2026-02-17T00:00:00.000Z',
+                },
+                to: {
+                    id: 'claude-opus-4-7',
+                    displayName: 'Claude Opus 4.7',
+                    createdAt: '2026-04-16T00:00:00.000Z',
+                },
+            },
+            tokenLimitChanges: [],
+            releaseAlerts: [],
+            curatedModelIds: new Set(['claude-opus-4-7']),
+        });
+
+        const report = buildModelDriftReport({
+            checkedAt: '2026-04-16T12:00:00.000Z',
+            beforeSnapshot: { generatedAt: '2026-04-15T00:00:00.000Z' },
+            afterSnapshot: { generatedAt: '2026-04-16T00:00:00.000Z' },
+            changes: {
+                openai: { added: [], removed: [] },
+                anthropic: { added: ['claude-opus-4-7'], removed: [] },
+                google: { added: [], removed: [] },
+            },
+            aliasChanges: [],
+            anthropicNewestChanged: actionable.anthropicNewestChanged,
+            tokenLimitChanges: [],
+            releaseAlerts: [],
+            actionable,
+        });
+
+        expect(actionable.changes.anthropic.added).toEqual([]);
+        expect(actionable.anthropicNewestChanged).toBeNull();
+        expect(report.hasActionableChanges).toBe(false);
     });
 });

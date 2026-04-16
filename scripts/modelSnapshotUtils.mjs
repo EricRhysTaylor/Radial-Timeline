@@ -362,6 +362,31 @@ export function hasProviderDiff(changes) {
     return PROVIDERS.some(provider => (changes?.[provider]?.added?.length || 0) > 0 || (changes?.[provider]?.removed?.length || 0) > 0);
 }
 
+export function computeActionableDrift(input) {
+    const curatedModelIds = input.curatedModelIds instanceof Set
+        ? input.curatedModelIds
+        : new Set(input.curatedModelIds || []);
+    const actionableChanges = Object.fromEntries(PROVIDERS.map(provider => {
+        const providerChanges = input.changes?.[provider] || { added: [], removed: [] };
+        return [provider, {
+            added: (providerChanges.added || []).filter(modelId => !curatedModelIds.has(modelId)),
+            removed: [...(providerChanges.removed || [])],
+        }];
+    }));
+    const actionableAnthropicNewestChanged = input.anthropicNewestChanged?.to?.id
+        && !curatedModelIds.has(input.anthropicNewestChanged.to.id)
+        ? input.anthropicNewestChanged
+        : null;
+
+    return {
+        changes: actionableChanges,
+        aliasChanges: input.aliasChanges || [],
+        anthropicNewestChanged: actionableAnthropicNewestChanged,
+        tokenLimitChanges: input.tokenLimitChanges || [],
+        releaseAlerts: input.releaseAlerts || [],
+    };
+}
+
 export function buildRecommendedFollowUps(input) {
     const followUps = [];
     const hasModelIdDrift = hasProviderDiff(input.changes);
@@ -382,11 +407,18 @@ export function buildRecommendedFollowUps(input) {
 }
 
 export function buildModelDriftReport(input) {
-    const hasActionableChanges = hasProviderDiff(input.changes)
-        || (input.aliasChanges?.length || 0) > 0
-        || Boolean(input.anthropicNewestChanged)
-        || (input.tokenLimitChanges?.length || 0) > 0
-        || (input.releaseAlerts?.length || 0) > 0;
+    const actionable = input.actionable ?? {
+        changes: input.changes,
+        aliasChanges: input.aliasChanges,
+        anthropicNewestChanged: input.anthropicNewestChanged,
+        tokenLimitChanges: input.tokenLimitChanges,
+        releaseAlerts: input.releaseAlerts || [],
+    };
+    const hasActionableChanges = hasProviderDiff(actionable.changes)
+        || (actionable.aliasChanges?.length || 0) > 0
+        || Boolean(actionable.anthropicNewestChanged)
+        || (actionable.tokenLimitChanges?.length || 0) > 0
+        || (actionable.releaseAlerts?.length || 0) > 0;
 
     return {
         checkedAt: input.checkedAt,
@@ -404,10 +436,10 @@ export function buildModelDriftReport(input) {
         releaseAlerts: input.releaseAlerts || [],
         hasActionableChanges,
         recommendedFollowUps: buildRecommendedFollowUps({
-            changes: input.changes,
-            aliasChanges: input.aliasChanges,
-            anthropicNewestChanged: input.anthropicNewestChanged,
-            tokenLimitChanges: input.tokenLimitChanges,
+            changes: actionable.changes,
+            aliasChanges: actionable.aliasChanges,
+            anthropicNewestChanged: actionable.anthropicNewestChanged,
+            tokenLimitChanges: actionable.tokenLimitChanges,
         }),
     };
 }

@@ -11,6 +11,7 @@ type InquiryBriefingModalOptions = {
     logFile?: TFile | null;
     generatedAt?: number | string | null;
     focusAnchorId?: string | null;
+    isCorpusStale?: boolean;
 };
 
 const ARTICLE_DATE_FORMAT = new Intl.DateTimeFormat('en-US', {
@@ -28,6 +29,7 @@ export class InquiryBriefingModal extends Modal {
     private readonly logFile: TFile | null;
     private readonly generatedAt: number | string | null | undefined;
     private readonly focusAnchorId: string | null;
+    private readonly isCorpusStale: boolean;
     private themePreference: BriefingThemePreference;
     private readonly themeButtons = new Map<BriefingThemePreference, HTMLButtonElement>();
     private themeObserver?: MutationObserver;
@@ -41,6 +43,7 @@ export class InquiryBriefingModal extends Modal {
         this.logFile = options.logFile ?? null;
         this.generatedAt = options.generatedAt;
         this.focusAnchorId = options.focusAnchorId ?? null;
+        this.isCorpusStale = options.isCorpusStale ?? false;
         this.themePreference = this.plugin.settings.briefingTheme ?? 'auto';
         this.sceneReferenceEntries = [...(this.brief.sceneReferences || [])].sort((a, b) => b.label.length - a.label.length);
     }
@@ -120,7 +123,7 @@ export class InquiryBriefingModal extends Modal {
                 text: 'Open Markdown'
             });
             noteAction.addEventListener('click', () => {
-                void openOrRevealFile(this.app, this.briefFile as TFile);
+                void this.openFileAndClose(this.briefFile as TFile);
             });
         }
     }
@@ -143,7 +146,15 @@ export class InquiryBriefingModal extends Modal {
             this.brief.scopeIndicator ? `Scope ${this.brief.scopeIndicator}` : '',
         ].filter(Boolean);
         if (primaryMeta.length) {
-            meta.createDiv({ cls: 'rt-briefing-meta-line', text: primaryMeta.join(' · ') });
+            const primaryLine = meta.createDiv({ cls: 'rt-briefing-meta-line', text: primaryMeta.join(' · ') });
+            if (this.isCorpusStale) {
+                primaryLine.appendText(' · ');
+                primaryLine.createSpan({
+                    cls: 'rt-briefing-stale-badge',
+                    text: 'STALE',
+                    attr: { title: 'Corpus has changed since this briefing was generated. Re-run to refresh.' }
+                });
+            }
         }
         if (this.brief.pills.length) {
             meta.createDiv({ cls: 'rt-briefing-meta-line rt-briefing-meta-line--secondary', text: this.brief.pills.join(' · ') });
@@ -191,7 +202,7 @@ export class InquiryBriefingModal extends Modal {
                 });
                 link.addEventListener('click', event => {
                     event.preventDefault();
-                    void openOrRevealFileByPath(this.app, source.path as string);
+                    void this.openPathAndClose(source.path as string);
                 });
             } else if (source.url) {
                 titleRow.createEl('a', {
@@ -244,7 +255,7 @@ export class InquiryBriefingModal extends Modal {
                     }
                 });
                 anchorAction.addEventListener('click', () => {
-                    void openOrRevealFileAtSubpath(this.app, this.briefFile as TFile, `#^${note.anchorId}`);
+                    void this.openSubpathAndClose(this.briefFile as TFile, `#^${note.anchorId}`);
                 });
             }
 
@@ -385,7 +396,7 @@ export class InquiryBriefingModal extends Modal {
         const content = text || '';
         if (!content) return;
         if (!this.sceneReferenceEntries.length) {
-            container.appendText(content);
+            this.appendStyledPlainText(container, content);
             return;
         }
 
@@ -396,11 +407,38 @@ export class InquiryBriefingModal extends Modal {
             const [label] = match;
             const index = match.index;
             if (index > cursor) {
-                container.appendText(content.slice(cursor, index));
+                this.appendStyledPlainText(container, content.slice(cursor, index));
             }
             const ref = this.sceneReferenceEntries.find(entry => entry.label === label);
             container.append(this.buildSceneReferenceNode(label, ref?.anchorId));
             cursor = index + label.length;
+            match = regex.exec(content);
+        }
+        if (cursor < content.length) {
+            this.appendStyledPlainText(container, content.slice(cursor));
+        }
+    }
+
+    private appendStyledPlainText(container: HTMLElement, text: string): void {
+        const content = text || '';
+        if (!content) return;
+        const regex = /"[^"\n]+"|(?<!\w)'[^'\n]+'(?!\w)|\bscn_[a-z0-9]+\b/gi;
+        let cursor = 0;
+        let match: RegExpExecArray | null = regex.exec(content);
+        while (match) {
+            const token = match[0];
+            const index = match.index;
+            if (index > cursor) {
+                container.appendText(content.slice(cursor, index));
+            }
+            if (/^scn_/i.test(token)) {
+                container.append(this.buildUnresolvedSceneReferenceNode(token));
+            } else if (token.startsWith('"')) {
+                container.append(this.buildQuoteNode(token, 'double'));
+            } else {
+                container.append(this.buildQuoteNode(token, 'single'));
+            }
+            cursor = index + token.length;
             match = regex.exec(content);
         }
         if (cursor < content.length) {
@@ -432,6 +470,23 @@ export class InquiryBriefingModal extends Modal {
         return el;
     }
 
+    private buildUnresolvedSceneReferenceNode(rawRef: string): HTMLElement {
+        const el = document.createElement('span');
+        el.className = 'rt-briefing-scene-ref rt-briefing-scene-ref--unresolved';
+        const textEl = document.createElement('span');
+        textEl.className = 'rt-briefing-scene-ref-title';
+        textEl.textContent = rawRef;
+        el.append(textEl);
+        return el;
+    }
+
+    private buildQuoteNode(text: string, mode: 'single' | 'double'): HTMLElement {
+        const el = document.createElement('span');
+        el.className = `rt-briefing-quote rt-briefing-quote--${mode}`;
+        el.textContent = text;
+        return el;
+    }
+
     private scrollToSceneReference(anchorId?: string): void {
         if (!anchorId) return;
         this.focusAnchorIdInternal(anchorId);
@@ -450,6 +505,21 @@ export class InquiryBriefingModal extends Modal {
 
     private printBriefing(): void {
         window.print();
+    }
+
+    private async openFileAndClose(file: TFile): Promise<void> {
+        await openOrRevealFile(this.app, file);
+        this.close();
+    }
+
+    private async openPathAndClose(path: string): Promise<void> {
+        await openOrRevealFileByPath(this.app, path);
+        this.close();
+    }
+
+    private async openSubpathAndClose(file: TFile, subpath: string): Promise<void> {
+        await openOrRevealFileAtSubpath(this.app, file, subpath);
+        this.close();
     }
 
     private escapeRegExp(value: string): string {

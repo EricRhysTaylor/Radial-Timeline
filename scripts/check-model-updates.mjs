@@ -7,6 +7,7 @@ import { fileURLToPath } from 'url';
 import {
     buildModelDriftReport,
     computeAliasChanges,
+    computeActionableDrift,
     computeAnthropicNewestChange,
     computeDiff,
     computeTokenLimitChanges,
@@ -178,6 +179,14 @@ export async function runModelUpdateCheck(options = {}) {
         ? computeTokenLimitChanges(previousTracking, nextTracking)
         : [];
     const releaseAlerts = computeReleaseAlerts(watchedReleases, usableSnapshot, curatedModelIds);
+    const actionable = computeActionableDrift({
+        changes,
+        aliasChanges,
+        anthropicNewestChanged,
+        tokenLimitChanges,
+        releaseAlerts,
+        curatedModelIds,
+    });
 
     const report = buildModelDriftReport({
         checkedAt: nextTracking.checkedAt,
@@ -188,6 +197,7 @@ export async function runModelUpdateCheck(options = {}) {
         anthropicNewestChanged,
         tokenLimitChanges,
         releaseAlerts,
+        actionable,
     });
 
     await writeJson(latestTrackingFile, nextTracking);
