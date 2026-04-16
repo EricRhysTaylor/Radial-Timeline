@@ -1393,12 +1393,12 @@ export function renderAiSection(params: {
         if (cacheSession?.cacheWindowExpiresAt && cacheSession.cacheWindowExpiresAt > Date.now()) {
             return {
                 tone: 'success',
-                comparatorLabel: 'Last run',
+                comparatorLabel: null,
                 comparatorValue: null,
                 statusIcon: 'badge-check',
                 statusText: hasCurrentCorpusMatch
-                    ? `Context warm • ${cacheRemainingLabel ?? 'active'}`
-                    : `Context warm on last Inquiry corpus • ${cacheRemainingLabel ?? 'active'}`,
+                    ? `Reuse available for current corpus • ${cacheRemainingLabel ?? 'active'}`
+                    : `Reuse available on last Inquiry corpus • ${cacheRemainingLabel ?? 'active'}`,
                 extraPills,
                 cacheRatio: undefined,
                 cacheLabel: null
@@ -1407,8 +1407,8 @@ export function renderAiSection(params: {
 
         return {
             tone: 'default',
-            comparatorLabel: 'Last run',
-            comparatorValue: 'Successful',
+            comparatorLabel: null,
+            comparatorValue: null,
             statusIcon: 'check-circle-2',
             statusText: 'Latest Inquiry run completed without cache reuse currently active.',
             extraPills: []
@@ -1463,6 +1463,9 @@ export function renderAiSection(params: {
 
     const previewCertificateIntervalId = window.setInterval(() => {
         applyResolvedPreviewCertificate();
+        if (lastCostComparisonRows.length > 0) {
+            renderCostComparisonRows(lastCostComparisonRows);
+        }
     }, 1000);
     plugin.register(() => {
         window.clearInterval(previewCertificateIntervalId);
@@ -1599,8 +1602,8 @@ export function renderAiSection(params: {
         });
     };
 
-    const createCostTableCell = (rowEl: HTMLElement, text: string, extraCls?: string): void => {
-        rowEl.createDiv({
+    const createCostTableCell = (rowEl: HTMLElement, text: string, extraCls?: string): HTMLDivElement => {
+        return rowEl.createDiv({
             cls: ['ert-ai-models-cell', extraCls].filter(Boolean).join(' '),
             text
         });
@@ -1642,6 +1645,24 @@ export function renderAiSection(params: {
 
     const getCurrentCorpusContext = () => plugin.getInquiryService().getCurrentCorpusContext();
 
+    const getActiveCostComparisonCacheRowKey = (): string | null => {
+        const currentFingerprint = getPreviewCurrentCacheReuseFingerprint();
+        if (!currentFingerprint) return null;
+        const activeEngine = lastPreviewCertificateContext;
+        if (!activeEngine || activeEngine.provider === 'none' || activeEngine.provider === 'ollama' || !activeEngine.modelId) {
+            return null;
+        }
+        const activeCacheSession = inquirySessionStore.getLatestActiveCacheSessionForEngine(
+            activeEngine.provider,
+            activeEngine.modelId,
+            { cacheReuseFingerprint: currentFingerprint }
+        );
+        if (!activeCacheSession?.cacheWindowExpiresAt || activeCacheSession.cacheWindowExpiresAt <= Date.now()) {
+            return null;
+        }
+        return getCostComparisonRowKey(activeEngine.provider, activeEngine.modelId);
+    };
+
     const buildCurrentInquiryExecutionEstimate = async (params: {
         provider: AIProviderId;
         modelId: string;
@@ -1669,6 +1690,7 @@ export function renderAiSection(params: {
     const renderCostComparisonRows = (rows: CostComparisonRow[]): void => {
         lastCostComparisonRows = rows;
         costEstimateTable.empty();
+        const activeCacheRowKey = getActiveCostComparisonCacheRowKey();
 
         const headerRow = costEstimateTable.createDiv({ cls: 'ert-ai-models-row ert-ai-models-row--header' });
         ['Provider', 'Model', 'Fresh Run*', 'Context Run', 'Expected Structured Passes'].forEach(text => {
@@ -1706,7 +1728,10 @@ export function renderAiSection(params: {
                 });
             }
             createCostTableCell(rowEl, row.freshText);
-            createCostTableCell(rowEl, row.cachedText);
+            const cachedCell = createCostTableCell(rowEl, row.cachedText);
+            if (activeCacheRowKey === getCostComparisonRowKey(row.model.provider, row.model.modelId)) {
+                cachedCell.addClass('ert-ai-models-cell--cache-active');
+            }
             createCostTableCell(rowEl, row.passesText);
         });
     };

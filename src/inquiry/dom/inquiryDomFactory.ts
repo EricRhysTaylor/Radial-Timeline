@@ -171,16 +171,16 @@ export function createInquiryDesktopShell(args: {
     const engineTimerIcon = createSvgElement('use') as SVGUseElement;
     engineTimerIcon.classList.add('ert-inquiry-engine-timer-icon', 'ert-hidden');
     engineTimerIcon.setAttribute('x', String(engineBadgeX + iconSize + 12));
-    engineTimerIcon.setAttribute('y', '20');
-    engineTimerIcon.setAttribute('width', '16');
-    engineTimerIcon.setAttribute('height', '16');
+    engineTimerIcon.setAttribute('y', '4');
+    engineTimerIcon.setAttribute('width', '48');
+    engineTimerIcon.setAttribute('height', '48');
     engineTimerIcon.setAttribute('href', '#ert-icon-flame-kindling');
     engineTimerIcon.setAttributeNS('http://www.w3.org/1999/xlink', 'href', '#ert-icon-flame-kindling');
     hudGroup.appendChild(engineTimerIcon);
 
     const engineTimerLabel = createSvgElement('text') as SVGTextElement;
     engineTimerLabel.classList.add('ert-inquiry-engine-timer', 'ert-hidden');
-    engineTimerLabel.setAttribute('x', String(engineBadgeX + iconSize + 34));
+    engineTimerLabel.setAttribute('x', String(engineBadgeX + iconSize + 68));
     engineTimerLabel.setAttribute('y', '28');
     engineTimerLabel.setAttribute('dominant-baseline', 'central');
     engineTimerLabel.setAttribute('text-anchor', 'start');

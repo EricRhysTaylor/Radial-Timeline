@@ -570,8 +570,8 @@
 
 /* ── Cached portion overlay (hatched segment on tokencap bar) ── */
 .ert-inquiry-minimap-tokencap-cached {
-  fill: #ff2d2d;
-  opacity: 1;
+  fill: url(#ert-inquiry-minimap-cached-hatch);
+  opacity: 0.98;
   pointer-events: none;
   transition: opacity 300ms ease;
 }
@@ -587,11 +587,11 @@
 }
 
 .ert-inquiry-svg.is-running .ert-inquiry-minimap-tokencap-cached {
-  opacity: 0.9;
+  opacity: 0.82;
 }
 
 .ert-inquiry-minimap[data-reuse-state="warm"] .ert-inquiry-minimap-tokencap-cached {
-  opacity: 1;
+  opacity: 0.98;
 }
 
 /* Stub state — honest 4px white indicator when checking cache, no fabricated values */
@@ -2195,11 +2195,11 @@
 }
 
 .ert-inquiry-engine-timer {
-  font-size: 12px;
+  font-size: 24px;
   fill: color-mix(in srgb, var(--text-normal) 82%, transparent);
   font-family: var(--font-interface);
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.04em;
   user-select: none;
   pointer-events: none;
 }

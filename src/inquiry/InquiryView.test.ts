@@ -174,7 +174,7 @@ describe('InquiryView payload accounting', () => {
         expect(viewSource.includes("hatchBg.classList.add('ert-inquiry-minimap-cached-hatch-bg');")).toBe(true);
         expect(viewSource.includes('hatchLineSecondary')).toBe(true);
         expect(cssSource.includes('.ert-inquiry-minimap-tokencap-cached')).toBe(true);
-        expect(cssSource.includes('fill: #ff2d2d;')).toBe(true);
+        expect(cssSource.includes('fill: url(#ert-inquiry-minimap-cached-hatch);')).toBe(true);
     });
 
     it('renders the warm cache HUD countdown as a green flame icon plus timer text', () => {
@@ -184,6 +184,8 @@ describe('InquiryView payload accounting', () => {
         expect(viewSource.includes("'flame-kindling'")).toBe(true);
         expect(viewSource.includes("return `${this.formatCacheCountdown(remainingMs)} remaining`;")).toBe(true);
         expect(domSource.includes("engineTimerIcon.setAttribute('href', '#ert-icon-flame-kindling');")).toBe(true);
+        expect(domSource.includes("engineTimerIcon.setAttribute('width', '48');")).toBe(true);
+        expect(cssSource.includes('font-size: 24px;')).toBe(true);
         expect(cssSource.includes('.ert-inquiry-engine-timer-icon.is-context-warm')).toBe(true);
     });
 

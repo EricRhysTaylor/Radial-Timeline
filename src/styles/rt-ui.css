@@ -2826,6 +2826,11 @@
   height: 15px;
 }
 
+.ert-ui.ert-scope--settings .ert-ai-models-cell--cache-active {
+  color: color-mix(in srgb, var(--text-success) 90%, #eaffef 10%);
+  font-weight: 700;
+}
+
 .ert-ui.ert-scope--settings .ert-ai-resolved-preview-pills {
   display: flex;
   flex-direction: column;
