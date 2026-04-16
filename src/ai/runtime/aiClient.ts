@@ -579,7 +579,8 @@ export class AIClient {
             model: initialSelection.model,
             accessTier: resolveTier(aiSettings, provider),
             feature: request.feature,
-            overrides
+            overrides,
+            userCitationsEnabled: aiSettings.citationsEnabled
         });
         const effectiveInputCeiling = Math.floor(caps.maxInputTokens * INPUT_TOKEN_GUARD_FACTOR);
 

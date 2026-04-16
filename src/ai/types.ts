@@ -195,6 +195,7 @@ export interface AiSettingsV1 {
     featureProfiles?: Record<string, AIFeatureProfile>;
     credentials?: AIProviderCredentials;
     connections?: AIProviderConnectionSettings;
+    citationsEnabled?: boolean;
     migrationWarnings?: string[];
     upgradedBannerPending?: boolean;
     lastThroughputCheck?: AIThroughputCheckResult;

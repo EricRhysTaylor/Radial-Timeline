@@ -218,6 +218,15 @@ describe('InquiryView payload accounting', () => {
         expect(storeSource.includes("session.pendingEditsApplied = false;")).toBe(true);
     });
 
+    it('self-heals stale applied writeback flags by checking current pending-edits markers before disabling the session action', () => {
+        const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
+        expect(viewSource.includes('const pendingEditsApplied = this.syncPendingEditsAppliedState(session, pendingPlan.notesByMaterial);')).toBe(true);
+        expect(viewSource.includes('if (this.syncPendingEditsAppliedState(session)) {')).toBe(true);
+        expect(viewSource.includes('private hasPendingEditsMarkerForSession(')).toBe(true);
+        expect(viewSource.includes('normalizeInquiryLinkLine(line)')).toBe(true);
+        expect(viewSource.includes("this.sessionStore.updateSession(session.key, { pendingEditsApplied: false });")).toBe(true);
+    });
+
     it('uses the latest same-model timing sample and cached next-run cost when available', () => {
         const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
         expect(viewSource.includes('options?: { preferLatestSample?: boolean }')).toBe(true);

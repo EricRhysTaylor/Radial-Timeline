@@ -319,6 +319,7 @@ import type {
 } from './types/inquiryViewTypes';
 import {
     appendInquiryNotesToPendingEdits,
+    normalizeInquiryLinkLine,
     validatePendingEditsValue,
     purgeInquiryNotesFromPendingEdits,
 } from './pendingEditsSafety';
@@ -1382,8 +1383,8 @@ export class InquiryView extends ItemView {
         const overrideLabel = this.formatSessionOverrides(session);
         const metaText = `${this.formatSessionScope(session)} · ${this.formatSessionProviderModel(session)} · ${this.formatSessionTime(session)}${overrideLabel ? ` · ${overrideLabel}` : ''}`;
         const status = this.resolveSessionStatus(session);
-        const pendingEditsApplied = !!session.pendingEditsApplied;
         const pendingPlan = this.buildInquiryPendingEditsPlan(session.result, session.activeBookId);
+        const pendingEditsApplied = this.syncPendingEditsAppliedState(session, pendingPlan.notesByMaterial);
         const pendingEditsEmpty = pendingPlan.notesByMaterial.size === 0;
         const priorPendingEditsEmpty = session.pendingEditsEmpty;
         session.pendingEditsEmpty = pendingEditsEmpty;
@@ -1498,6 +1499,44 @@ export class InquiryView extends ItemView {
         if (normalized.scope !== 'book') return true;
         if (!this.corpus) return true;
         return this.buildInquiryPendingEditsPlan(normalized, activeBookId).notesByMaterial.size === 0;
+    }
+
+    private syncPendingEditsAppliedState(
+        session: InquirySession,
+        notesByMaterial?: Map<string, string[]>
+    ): boolean {
+        if (!session.pendingEditsApplied) return false;
+        const targetNotes = notesByMaterial ?? this.buildInquiryPendingEditsPlan(session.result, session.activeBookId).notesByMaterial;
+        if (this.hasPendingEditsMarkerForSession(session, targetNotes)) {
+            return true;
+        }
+        session.pendingEditsApplied = false;
+        if (session.key) {
+            this.sessionStore.updateSession(session.key, { pendingEditsApplied: false });
+        }
+        return false;
+    }
+
+    private hasPendingEditsMarkerForSession(
+        session: InquirySession,
+        notesByMaterial: Map<string, string[]>
+    ): boolean {
+        if (!notesByMaterial.size) return false;
+        const briefLink = formatInquiryBriefLink(this.formatInquiryBriefTitle(session.result));
+        const targetField = this.resolveInquiryActionNotesFieldLabel();
+        for (const path of notesByMaterial.keys()) {
+            const file = this.app.vault.getAbstractFileByPath(path);
+            if (!file || !(file instanceof TFile)) continue;
+            const frontmatter = this.app.metadataCache.getFileCache(file)?.frontmatter as Record<string, unknown> | undefined;
+            if (!frontmatter) continue;
+            const validated = validatePendingEditsValue(frontmatter[targetField]);
+            if (!validated.ok) continue;
+            const hasMarker = validated.lines
+                .map(line => normalizeInquiryLinkLine(line))
+                .some(line => line.includes(briefLink));
+            if (hasMarker) return true;
+        }
+        return false;
     }
 
     private buildInquiryPendingEditsPlan(
@@ -1667,7 +1706,7 @@ export class InquiryView extends ItemView {
             this.notifyInteraction('Inquiry running. Please wait.');
             return;
         }
-        if (session.pendingEditsApplied) {
+        if (this.syncPendingEditsAppliedState(session)) {
             const fieldLabel = this.resolveInquiryActionNotesFieldLabel();
             this.notifyInteraction(`${fieldLabel} already updated for this session.`);
             return;

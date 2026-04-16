@@ -164,7 +164,7 @@ export interface TranslationKeys {
             credential: { statusReady: string; statusRejected: string; statusNetworkBlocked: string; statusChecking: string; statusNotConfigured: string; helperNotConfigured: string; helperRejected: string; helperNetworkBlocked: string; helperChecking: string; replaceKeyButton: string; copyKeyNameButton: string; keyNameCopiedNotice: string; keyNameCopyFailNotice: string; placeholderAnthropic: string; placeholderGoogle: string; placeholderOpenai: string; };
             localLlm: { configTitle: string; configDesc: string; statusTitle: string; statusDesc: string; serverName: string; serverDesc: string; modelsLoading: string; noModelsAuto: string; noModelsCustom: string; legendNotUsable: string; legendLimited: string; legendStrong: string; legendInquiryEligible: string; modelActive: string; actionsName: string; actionsDesc: string; loadServersButton: string; loadModelsButton: string; validateButton: string; loadModelsTooltip: string; };
             localLlmConfig: { serverName: string; serverDesc: string; optionOllama: string; optionLmStudio: string; optionOpenaiCompat: string; baseUrlName: string; baseUrlDesc: string; manualModelName: string; manualModelDesc: string; };
-            config: { timelineDisplayTitle: string; pulseContextName: string; pulseContextDesc: string; synopsisMaxWordsName: string; synopsisMaxWordsDesc: string; synopsisMaxWordsInvalid: string; summaryRefreshTitle: string; targetSummaryName: string; targetSummaryDesc: string; targetSummaryInvalid: string; weakThresholdName: string; weakThresholdDesc: string; weakThresholdInvalid: string; alsoUpdateSynopsisName: string; alsoUpdateSynopsisDesc: string; };
+            config: { inquiryTitle: string; citationsName: string; citationsDesc: string; timelineDisplayTitle: string; pulseContextName: string; pulseContextDesc: string; synopsisMaxWordsName: string; synopsisMaxWordsDesc: string; synopsisMaxWordsInvalid: string; summaryRefreshTitle: string; targetSummaryName: string; targetSummaryDesc: string; targetSummaryInvalid: string; weakThresholdName: string; weakThresholdDesc: string; weakThresholdInvalid: string; alsoUpdateSynopsisName: string; alsoUpdateSynopsisDesc: string; };
         };
         progress: {
             heading: string;
@@ -878,6 +878,9 @@ export const en: TranslationKeys = {
                 manualModelDesc: 'Only use this if automatic model discovery cannot find the model you want. The AI Strategy model dropdown above is now the primary local model selector.',
             },
             config: {
+                inquiryTitle: 'Inquiry',
+                citationsName: 'Enable citations',
+                citationsDesc: 'Anchor findings to specific passages. Disabling roughly halves Inquiry token usage and API cost.',
                 timelineDisplayTitle: 'Timeline Display',
                 pulseContextName: 'Pulse context',
                 pulseContextDesc: 'Include previous and next scenes in triplet analysis hover reveal. (Does not affect the underlying scene properties.)',

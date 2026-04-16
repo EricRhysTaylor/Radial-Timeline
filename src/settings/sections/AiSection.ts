@@ -3459,6 +3459,22 @@ export function renderAiSection(params: {
         });
     };
 
+    const inquiryGroup = aiConfigBody.createDiv({ cls: 'ert-config-group' });
+    inquiryGroup.createDiv({ cls: 'ert-config-group-title', text: t('settings.ai.config.inquiryTitle') });
+
+    aiConfigCreateRow(inquiryGroup, {
+        title: t('settings.ai.config.citationsName'),
+        description: t('settings.ai.config.citationsDesc'),
+        control: (setting) => {
+            setting.addToggle(toggle => toggle
+                .setValue(ensureCanonicalAiSettings().citationsEnabled !== false)
+                .onChange(async (value) => {
+                    ensureCanonicalAiSettings().citationsEnabled = value;
+                    await persistCanonical();
+                }));
+        }
+    });
+
     const aiDisplayGroup = aiConfigBody.createDiv({ cls: 'ert-config-group' });
     aiDisplayGroup.createDiv({ cls: 'ert-config-group-title', text: t('settings.ai.config.timelineDisplayTitle') });
 

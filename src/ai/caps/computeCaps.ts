@@ -39,6 +39,8 @@ export interface ComputeCapsInput {
     accessTier?: AccessTier;
     feature: string;
     overrides?: Partial<AIOverrides>;
+    /** User-level toggle from AI settings. When false, citations are disabled regardless of provider/feature support. */
+    userCitationsEnabled?: boolean;
 }
 
 function resolveModeMultiplier(mode?: 'auto' | 'high' | 'max'): number {
@@ -77,8 +79,10 @@ function resolveThinkingBudget(
  *  resolver must also gate on that. */
 function resolveCitationsEnabled(
     provider: AIProviderId,
-    feature: string
+    feature: string,
+    userCitationsEnabled?: boolean
 ): boolean {
+    if (userCitationsEnabled === false) return false;
     if (provider !== 'anthropic' && provider !== 'google') return false;
     if (!feature.toLowerCase().includes('inquiry')) return false;
     return true;
@@ -146,7 +150,7 @@ export function computeCaps(input: ComputeCapsInput): ComputedCaps {
             ? input.overrides.temperature
             : resolveDefaultTemperature(input.feature, input.overrides?.reasoningDepth));
 
-    const citationsEnabled = resolveCitationsEnabled(input.provider, input.feature) || undefined;
+    const citationsEnabled = resolveCitationsEnabled(input.provider, input.feature, input.userCitationsEnabled) || undefined;
 
     return {
         maxInputTokens,
