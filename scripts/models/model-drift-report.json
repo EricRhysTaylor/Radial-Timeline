@@ -1,0 +1,29 @@
+{
+  "checkedAt": "2026-04-16T16:39:25.834Z",
+  "mode": "report",
+  "snapshotBefore": {
+    "generatedAt": "2026-04-15T21:26:52.350Z"
+  },
+  "snapshotAfter": {
+    "generatedAt": "2026-04-15T21:26:52.350Z"
+  },
+  "changes": {
+    "openai": {
+      "added": [],
+      "removed": []
+    },
+    "anthropic": {
+      "added": [],
+      "removed": []
+    },
+    "google": {
+      "added": [],
+      "removed": []
+    }
+  },
+  "aliasChanges": [],
+  "anthropicNewestChanged": null,
+  "tokenLimitChanges": [],
+  "hasActionableChanges": false,
+  "recommendedFollowUps": []
+}

@@ -12,9 +12,19 @@
 import fs from 'fs/promises';
 import path from 'path';
 import process from 'process';
+import {
+    PROVIDERS,
+    buildSummary,
+    coerceExistingToCanonicalModels,
+    computeDiff,
+    groupByProvider,
+    normalizeAnthropicModels,
+    normalizeGoogleModels,
+    normalizeOpenAiModels,
+    sortCanonicalModels,
+} from './modelSnapshotUtils.mjs';
 
 const OUTPUT_PATH = path.resolve('scripts/models/latest-models.json');
-const PROVIDERS = ['openai', 'anthropic', 'google'];
 const CONCURRENCY_LIMIT = 2;
 const MAX_RETRIES = 5;
 const REQUEST_TIMEOUT_MS = 30000;
@@ -146,158 +156,6 @@ async function fetchJsonWithRetry(url, options = {}, context = 'request') {
     }
 
     throw new Error(`${context} exhausted retries.`);
-}
-
-function toIsoFromUnixSeconds(value) {
-    if (!Number.isFinite(value)) return undefined;
-    return new Date(value * 1000).toISOString();
-}
-
-function toFiniteNumber(value) {
-    if (typeof value === 'number' && Number.isFinite(value)) return value;
-    if (typeof value === 'string' && value.trim().length > 0) {
-        const parsed = Number(value);
-        return Number.isFinite(parsed) ? parsed : undefined;
-    }
-    return undefined;
-}
-
-function normalizeModelRecord(provider, model, fields = {}) {
-    const record = {
-        provider,
-        id: String(fields.id || model?.id || '').trim(),
-        raw: model,
-    };
-
-    if (!record.id) return null;
-    if (typeof fields.label === 'string' && fields.label.trim()) record.label = fields.label.trim();
-    if (typeof fields.createdAt === 'string' && fields.createdAt.trim()) record.createdAt = fields.createdAt.trim();
-    if (Number.isFinite(fields.inputTokenLimit)) record.inputTokenLimit = fields.inputTokenLimit;
-    if (Number.isFinite(fields.outputTokenLimit)) record.outputTokenLimit = fields.outputTokenLimit;
-
-    return record;
-}
-
-function normalizeOpenAiModels(items) {
-    return (items || [])
-        .map(model => normalizeModelRecord('openai', model, {
-            id: model.id,
-            label: model.name || model.display_name,
-            createdAt: toIsoFromUnixSeconds(model.created),
-        }))
-        .filter(Boolean);
-}
-
-function normalizeAnthropicModels(items) {
-    return (items || [])
-        .map(model => normalizeModelRecord('anthropic', model, {
-            id: model.id,
-            label: model.display_name,
-            createdAt: model.created_at,
-        }))
-        .filter(Boolean);
-}
-
-function normalizeGoogleModels(items) {
-    return (items || [])
-        .map(model => {
-            const normalizedId = typeof model?.name === 'string' && model.name.startsWith('models/')
-                ? model.name.slice(7)
-                : model?.id || model?.name;
-
-            return normalizeModelRecord('google', model, {
-                id: normalizedId,
-                label: model.displayName,
-                inputTokenLimit: toFiniteNumber(model.inputTokenLimit),
-                outputTokenLimit: toFiniteNumber(model.outputTokenLimit),
-            });
-        })
-        .filter(Boolean);
-}
-
-function sortCanonicalModels(models) {
-    return [...models].sort((a, b) => {
-        const pa = PROVIDER_ORDER[a.provider] ?? 99;
-        const pb = PROVIDER_ORDER[b.provider] ?? 99;
-        if (pa !== pb) return pa - pb;
-        return a.id.localeCompare(b.id);
-    });
-}
-
-function buildSummary(models) {
-    return {
-        openai: models.filter(model => model.provider === 'openai').length,
-        anthropic: models.filter(model => model.provider === 'anthropic').length,
-        google: models.filter(model => model.provider === 'google').length,
-    };
-}
-
-function groupByProvider(models) {
-    const grouped = {
-        openai: [],
-        anthropic: [],
-        google: [],
-    };
-
-    for (const model of models || []) {
-        if (grouped[model.provider]) {
-            grouped[model.provider].push(model);
-        }
-    }
-
-    return grouped;
-}
-
-function coerceExistingToCanonicalModels(existingData) {
-    if (!existingData || typeof existingData !== 'object') return [];
-
-    if (Array.isArray(existingData.models)) {
-        return existingData.models
-            .map(item => {
-                if (!item || typeof item !== 'object') return null;
-                const provider = item.provider === 'gemini' ? 'google' : item.provider;
-                if (!PROVIDERS.includes(provider)) return null;
-
-                return normalizeModelRecord(provider, item.raw || item, {
-                    id: item.id,
-                    label: item.label,
-                    createdAt: item.createdAt,
-                    inputTokenLimit: toFiniteNumber(item.inputTokenLimit),
-                    outputTokenLimit: toFiniteNumber(item.outputTokenLimit),
-                });
-            })
-            .filter(Boolean);
-    }
-
-    const openai = normalizeOpenAiModels(existingData.openai || []);
-    const anthropic = normalizeAnthropicModels(existingData.anthropic || []);
-    const google = normalizeGoogleModels(existingData.google || existingData.gemini || []);
-    return [...openai, ...anthropic, ...google];
-}
-
-function buildIdSetByProvider(models) {
-    const grouped = groupByProvider(models);
-    return {
-        openai: new Set(grouped.openai.map(model => model.id)),
-        anthropic: new Set(grouped.anthropic.map(model => model.id)),
-        google: new Set(grouped.google.map(model => model.id)),
-    };
-}
-
-function computeDiff(previousModels, nextModels) {
-    const previous = buildIdSetByProvider(previousModels);
-    const next = buildIdSetByProvider(nextModels);
-    const diff = {};
-    let changed = false;
-
-    for (const provider of PROVIDERS) {
-        const added = [...next[provider]].filter(id => !previous[provider].has(id)).sort();
-        const removed = [...previous[provider]].filter(id => !next[provider].has(id)).sort();
-        diff[provider] = { added, removed };
-        if (added.length || removed.length) changed = true;
-    }
-
-    return { diff, changed };
 }
 
 function printDiff(diff) {
@@ -512,7 +370,8 @@ async function main() {
         models,
     };
 
-    const { diff, changed } = computeDiff(previousModels, models);
+    const diff = computeDiff(previousModels, models);
+    const changed = PROVIDERS.some(provider => diff[provider].added.length || diff[provider].removed.length);
     if (showDiff || checkOnly) {
         printDiff(diff);
         if (!changed) {

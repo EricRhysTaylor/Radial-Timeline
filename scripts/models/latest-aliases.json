@@ -1,7 +1,39 @@
 {
-  "checkedAt": "2026-04-15T21:26:52.357Z",
-  "tokenLimits": {},
-  "openai": {},
-  "gemini": {},
-  "anthropic": {}
+  "checkedAt": "2026-04-16T16:39:25.834Z",
+  "snapshotGeneratedAt": "2026-04-15T21:26:52.350Z",
+  "tokenLimits": {
+    "gemini-pro-latest": 65536,
+    "gemini-flash-latest": 65536
+  },
+  "openai": {
+    "gpt-5.2-chat-latest": {
+      "likelyResolves": "gpt-5.2",
+      "createdAt": "2025-12-09T20:44:11.000Z"
+    },
+    "gpt-5.1-chat-latest": {
+      "likelyResolves": "gpt-5.1",
+      "createdAt": "2025-11-10T18:51:13.000Z"
+    },
+    "gpt-5-chat-latest": {
+      "likelyResolves": "gpt-5.4",
+      "createdAt": "2026-03-05T06:24:12.000Z"
+    }
+  },
+  "gemini": {
+    "gemini-pro-latest": {
+      "likelyResolves": "gemini-3.1-pro-preview",
+      "displayName": "Gemini 3.1 Pro Preview"
+    },
+    "gemini-flash-latest": {
+      "likelyResolves": "gemini-3-flash-preview",
+      "displayName": "Gemini 3 Flash Preview"
+    }
+  },
+  "anthropic": {
+    "newestModel": {
+      "id": "claude-sonnet-4-6",
+      "displayName": "Claude Sonnet 4.6",
+      "createdAt": "2026-02-17T00:00:00Z"
+    }
+  }
 }

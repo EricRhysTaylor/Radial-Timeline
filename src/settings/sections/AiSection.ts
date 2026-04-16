@@ -647,11 +647,21 @@ export function renderAiSection(params: {
             },
             {
                 title: 'Processing',
-                items: [
-                    `Execution: ${Math.max(1, counts?.expectedPassCount ?? 1)} ${Math.max(1, counts?.expectedPassCount ?? 1) === 1 ? 'pass' : 'passes'}`,
-                    buildTokenCapacityLine('Prompt envelope + provider wrappers', null),
-                    { text: `Total ${formatCorpusBreakdownToken(totalTokens)}`, dividerBefore: true }
-                ]
+                items: (() => {
+                    const passCount = Math.max(1, counts?.expectedPassCount ?? 1);
+                    const overheadTokens = (totalTokens && visibleTokens && totalTokens > visibleTokens)
+                        ? totalTokens - visibleTokens
+                        : null;
+                    const citationsOn = ensureCanonicalAiSettings().citationsEnabled !== false;
+                    const overheadLabel = citationsOn
+                        ? 'Citation wrappers + provider overhead'
+                        : 'Provider overhead';
+                    return [
+                        `Execution: ${passCount} ${passCount === 1 ? 'pass' : 'passes'}`,
+                        buildTokenCapacityLine(overheadLabel, overheadTokens),
+                        { text: `Total ${formatCorpusBreakdownToken(totalTokens)}`, dividerBefore: true }
+                    ];
+                })()
             }
         ];
     };
@@ -906,8 +916,13 @@ export function renderAiSection(params: {
     ] as const;
     const MAX_PREVIEW_SIGNALS = 4;
 
-    const resolvePreviewCitationSignal = (model: ModelInfo): string | null =>
-        getModelUiSignals(model).citationLabel;
+    const resolvePreviewCitationSignal = (model: ModelInfo): string | null => {
+        const modelLabel = getModelUiSignals(model).citationLabel;
+        if (ensureCanonicalAiSettings().citationsEnabled === false) {
+            return modelLabel ? 'Citations · Disabled' : null;
+        }
+        return modelLabel;
+    };
 
     const resolvePreviewReuseSignal = (model: ModelInfo): string | null =>
         getModelUiSignals(model).reuseLabel;
@@ -1781,8 +1796,10 @@ export function renderAiSection(params: {
         if (!currentCorpus) {
             throw new Error('Inquiry corpus context is not loaded. Open Inquiry View before using the cost table.');
         }
+        const citationsOn = ensureCanonicalAiSettings().citationsEnabled !== false;
+        const citationsSuffix = citationsOn ? ' (includes citation wrappers)' : '';
         return {
-            sizeText: `Full Request: ${formatCorpusTokenSummary(currentCorpus.requestTokens)}`,
+            sizeText: `Full Request: ${formatCorpusTokenSummary(currentCorpus.requestTokens)}${citationsSuffix}`,
             structureText: [
                 `Corpus: ${formatCorpusTokenSummary(currentCorpus.corpus.estimatedTokens)}`,
                 formatCorpusStructureSummary(
@@ -3471,6 +3488,7 @@ export function renderAiSection(params: {
                 .onChange(async (value) => {
                     ensureCanonicalAiSettings().citationsEnabled = value;
                     await persistCanonical();
+                    void refreshRoutingUi();
                 }));
         }
     });
