@@ -34,6 +34,26 @@ export const stripInquiryReferenceArtifacts = (value?: string): string => {
         .trim();
 };
 
+export const replaceInquiryReferenceTokens = (
+    value: string | undefined,
+    labelsByRef?: ReadonlyMap<string, string>
+): string => {
+    if (!value) return '';
+    if (!labelsByRef || labelsByRef.size === 0) return String(value);
+    const resolve = (raw: string): string | null => {
+        const key = raw.trim().toLowerCase();
+        return labelsByRef.get(key) ?? null;
+    };
+
+    return String(value)
+        .replace(/\b\d+\s*\(\s*(scn_[a-z0-9]+)\s*\)/gi, (match, refId: string) => resolve(refId) ?? match)
+        .replace(/\b(scn_[a-z0-9]+)\b\s*\(([^)]+)\)/gi, (match, refId: string) => resolve(refId) ?? match)
+        .replace(/\bscn_[a-z0-9]+\b/gi, (match) => resolve(match) ?? match)
+        .replace(/\s+([,.;:!?…])/g, '$1')
+        .replace(/\s+/g, ' ')
+        .trim();
+};
+
 export const sanitizeDossierText = (value?: string): string => {
     return stripInquiryReferenceArtifacts(value)
         .replace(/^(?:[SB]\d+|Scene\s+\d+)\s*[:\-–—]\s*/i, '')
@@ -227,8 +247,10 @@ export const renderInquiryBrief = (brief: InquiryBriefModel): string => {
     if (brief.sceneNotes.length) {
         lines.push('', '## Per-Scene / Per-Moment Notes');
         brief.sceneNotes.forEach(note => {
-            const anchor = note.anchorId ? ` ^${note.anchorId}` : '';
-            lines.push('', `### ${note.header}${anchor}`);
+            lines.push('', `### ${note.header}`);
+            if (note.anchorId) {
+                lines.push(`^${note.anchorId}`);
+            }
             note.entries.forEach(entry => {
                 lines.push(
                     `- ${entry.headline}`,

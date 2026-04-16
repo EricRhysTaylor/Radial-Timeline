@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+    replaceInquiryReferenceTokens,
     renderInquiryBrief,
     resolveInquiryScopeIndicator,
     sanitizeDossierText,
@@ -101,5 +102,21 @@ describe('inquiryViewText', () => {
             .toBe('Pressure spike Jump in.');
         expect(sanitizeDossierText('Scene 11: [[Brief#^scene-11|Open brief]] shows scn_da9872d7 clearly.'))
             .toBe('Open brief shows clearly.');
+    });
+
+    it('replaces canonical scene ids with readable scene labels before rendering', () => {
+        const refs = new Map<string, string>([
+            ['scn_70a8d14e', '16 Chae Ban hears about the Homo'],
+            ['scn_9329bdc2', '17 Johnsonian']
+        ]);
+
+        expect(replaceInquiryReferenceTokens(
+            'Revise Scenes 16 (scn_70a8d14e) and 17 (scn_9329bdc2) at this stage',
+            refs
+        )).toBe('Revise Scenes 16 Chae Ban hears about the Homo and 17 Johnsonian at this stage');
+        expect(replaceInquiryReferenceTokens(
+            'The jump to scn_9329bdc2 (Johnsonian) lands too abruptly.',
+            refs
+        )).toBe('The jump to 17 Johnsonian lands too abruptly.');
     });
 });

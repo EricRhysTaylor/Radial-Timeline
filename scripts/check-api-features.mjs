@@ -63,6 +63,24 @@ function log(msg = '') {
     if (!quietMode) console.log(msg);
 }
 
+function hasAuditFailures(validationErrors, evidenceFailures) {
+    return validationErrors.length > 0 || evidenceFailures.length > 0;
+}
+
+function printSummaryAlert(analytics, validationErrors, evidenceFailures) {
+    if (validationErrors.length > 0) {
+        console.log(`${RED}[api-features] ALERT: ${validationErrors.length} validation error(s) in provider feature audit. See scripts/models/feature-audit.json.${RESET}`);
+        return;
+    }
+    if (evidenceFailures.length > 0) {
+        console.log(`${YELLOW}[api-features] ALERT: ${evidenceFailures.length} implementation evidence failure(s) in provider feature audit. See scripts/models/feature-audit.json.${RESET}`);
+        return;
+    }
+    if (analytics.topPriorities.length > 0) {
+        console.log(`${YELLOW}[api-features] ALERT: ${analytics.topPriorities.length} RT-relevant provider feature gap(s) need attention. See scripts/models/feature-audit.json.${RESET}`);
+    }
+}
+
 // ── Load registries ────────────────────────────────────────────────────────────
 
 function loadJson(filePath) {
@@ -613,6 +631,13 @@ function buildAnalytics(capabilities, integrations) {
 // ── Console output ─────────────────────────────────────────────────────────────
 
 function printReport(analytics, sourceFindings, validationErrors, validationWarnings, evidenceFailures) {
+    if (summaryMode) {
+        if (hasAuditFailures(validationErrors, evidenceFailures) || analytics.topPriorities.length > 0) {
+            printSummaryAlert(analytics, validationErrors, evidenceFailures);
+        }
+        return;
+    }
+
     const now = new Date().toISOString().slice(0, 10);
     log(`\n${BOLD}[api-features] RT Provider Feature Audit (${now})${RESET}`);
     log(`${DIM}  Scoring: author trust, runtime reliability, cache/cost, passes, citations${RESET}\n`);

@@ -2859,6 +2859,15 @@
   border-color: color-mix(in srgb, var(--text-success) 34%, var(--background-modifier-border));
 }
 
+.ert-ui.ert-scope--settings .ert-ai-pill--active {
+  background: color-mix(in srgb, var(--background-primary) 72%, var(--text-success) 28%);
+  border-color: color-mix(in srgb, var(--text-success) 40%, var(--background-modifier-border));
+}
+
+.ert-ui.ert-scope--settings .ert-ai-pill--muted {
+  opacity: 0.55;
+}
+
 .ert-ui.ert-scope--settings .ert-ai-resolved-preview-cache-meter {
   appearance: none;
   -webkit-appearance: none;

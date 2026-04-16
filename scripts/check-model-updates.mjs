@@ -19,8 +19,13 @@ import {
 const MODELS_FILE = path.resolve('scripts/models/latest-models.json');
 const LATEST_TRACKING_FILE = path.resolve('scripts/models/latest-aliases.json');
 const DRIFT_REPORT_FILE = path.resolve('scripts/models/model-drift-report.json');
+const CURATED_REGISTRY_FILE = path.resolve('scripts/models/registry.json');
+const RELEASE_WATCH_FILE = path.resolve('scripts/models/release-watch.json');
 const UPDATE_SCRIPT = 'node scripts/update-ai-models.mjs';
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+const YELLOW = '\x1b[33m';
+const RED = '\x1b[31m';
+const RESET = '\x1b[0m';
 
 async function readJson(filePath) {
     try {
@@ -56,10 +61,70 @@ function runUpdateCommand() {
 }
 
 function buildSummaryMessage(report, reportFilePath) {
+    if ((report.releaseAlerts?.length || 0) > 0) {
+        const primary = report.releaseAlerts[0];
+        return `${YELLOW}[check-model-updates] ALERT: ${primary.message} See ${reportFilePath}.${RESET}`;
+    }
     if (report.hasActionableChanges) {
-        return `[check-model-updates] Actionable provider drift detected. See ${reportFilePath}.`;
+        return `${YELLOW}[check-model-updates] ALERT: Actionable provider drift detected. See ${reportFilePath}.${RESET}`;
     }
     return '[check-model-updates] No actionable provider drift detected.';
+}
+
+function parseCuratedRegistry(payload) {
+    if (!payload || typeof payload !== 'object') return new Set();
+    const models = Array.isArray(payload.models) ? payload.models : [];
+    return new Set(models
+        .filter(model => model && typeof model === 'object' && typeof model.id === 'string')
+        .map(model => model.id));
+}
+
+function parseReleaseWatch(payload) {
+    if (!payload || typeof payload !== 'object') return [];
+    const watched = Array.isArray(payload.watchedReleases) ? payload.watchedReleases : [];
+    return watched.filter(entry =>
+        entry
+        && typeof entry === 'object'
+        && typeof entry.provider === 'string'
+        && typeof entry.modelId === 'string'
+        && typeof entry.label === 'string'
+        && typeof entry.announcedAt === 'string'
+    );
+}
+
+function computeReleaseAlerts(watchedReleases, snapshot, curatedModelIds) {
+    const snapshotModelIds = new Set((snapshot?.models || []).map(model => model.id));
+    const alerts = [];
+
+    for (const release of watchedReleases) {
+        const inSnapshot = snapshotModelIds.has(release.modelId);
+        const inCuratedRegistry = curatedModelIds.has(release.modelId);
+        if (release.notifyUntil === 'curated' && inCuratedRegistry) continue;
+
+        let state = null;
+        let message = '';
+        if (!inSnapshot) {
+            state = 'announced_not_in_snapshot';
+            message = `${release.provider} announced ${release.label} on ${release.announcedAt}, but the local provider snapshot does not include ${release.modelId} yet.`;
+        } else if (!inCuratedRegistry) {
+            state = 'announced_not_curated';
+            message = `${release.provider} released ${release.label} on ${release.announcedAt}, and RT has not curated ${release.modelId} yet.`;
+        }
+
+        if (!state) continue;
+        alerts.push({
+            id: release.id,
+            provider: release.provider,
+            modelId: release.modelId,
+            label: release.label,
+            announcedAt: release.announcedAt,
+            sourceUrl: release.sourceUrl || null,
+            state,
+            message,
+        });
+    }
+
+    return alerts;
 }
 
 export async function runModelUpdateCheck(options = {}) {
@@ -67,6 +132,8 @@ export async function runModelUpdateCheck(options = {}) {
         modelsFile = MODELS_FILE,
         latestTrackingFile = LATEST_TRACKING_FILE,
         driftReportFile = DRIFT_REPORT_FILE,
+        curatedRegistryFile = CURATED_REGISTRY_FILE,
+        releaseWatchFile = RELEASE_WATCH_FILE,
         quiet = false,
         now = () => Date.now(),
         updateSnapshot = async () => runUpdateCommand(),
@@ -99,6 +166,8 @@ export async function runModelUpdateCheck(options = {}) {
 
     const previousTracking = parseLatestAliasTracking(await readJson(latestTrackingFile));
     const nextTracking = createLatestAliasTracking(usableSnapshot);
+    const curatedModelIds = parseCuratedRegistry(await readJson(curatedRegistryFile));
+    const watchedReleases = parseReleaseWatch(await readJson(releaseWatchFile));
 
     const changes = computeDiff(beforeSnapshot?.models || [], usableSnapshot.models);
     const aliasChanges = previousTracking ? computeAliasChanges(previousTracking, nextTracking) : [];
@@ -108,6 +177,7 @@ export async function runModelUpdateCheck(options = {}) {
     const tokenLimitChanges = previousTracking
         ? computeTokenLimitChanges(previousTracking, nextTracking)
         : [];
+    const releaseAlerts = computeReleaseAlerts(watchedReleases, usableSnapshot, curatedModelIds);
 
     const report = buildModelDriftReport({
         checkedAt: nextTracking.checkedAt,
@@ -117,6 +187,7 @@ export async function runModelUpdateCheck(options = {}) {
         aliasChanges,
         anthropicNewestChanged,
         tokenLimitChanges,
+        releaseAlerts,
     });
 
     await writeJson(latestTrackingFile, nextTracking);
@@ -147,7 +218,7 @@ const currentFilePath = fileURLToPath(import.meta.url);
 const invokedPath = process.argv[1] ? path.resolve(process.argv[1]) : null;
 if (invokedPath && currentFilePath === invokedPath) {
     main().catch(error => {
-        console.error(`[check-model-updates] Failed: ${error instanceof Error ? error.message : String(error)}`);
+        console.error(`${RED}[check-model-updates] Failed: ${error instanceof Error ? error.message : String(error)}${RESET}`);
         process.exitCode = 1;
     });
 }

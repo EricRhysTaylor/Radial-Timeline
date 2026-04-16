@@ -385,7 +385,8 @@ export function buildModelDriftReport(input) {
     const hasActionableChanges = hasProviderDiff(input.changes)
         || (input.aliasChanges?.length || 0) > 0
         || Boolean(input.anthropicNewestChanged)
-        || (input.tokenLimitChanges?.length || 0) > 0;
+        || (input.tokenLimitChanges?.length || 0) > 0
+        || (input.releaseAlerts?.length || 0) > 0;
 
     return {
         checkedAt: input.checkedAt,
@@ -400,6 +401,7 @@ export function buildModelDriftReport(input) {
         aliasChanges: input.aliasChanges,
         anthropicNewestChanged: input.anthropicNewestChanged,
         tokenLimitChanges: input.tokenLimitChanges,
+        releaseAlerts: input.releaseAlerts || [],
         hasActionableChanges,
         recommendedFollowUps: buildRecommendedFollowUps({
             changes: input.changes,

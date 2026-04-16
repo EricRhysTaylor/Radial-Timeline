@@ -2195,11 +2195,11 @@
 }
 
 .ert-inquiry-engine-timer {
-  font-size: 24px;
-  fill: color-mix(in srgb, var(--text-normal) 82%, transparent);
-  font-family: var(--font-interface);
-  font-weight: 700;
-  letter-spacing: 0.04em;
+  font-size: 22px;
+  fill: color-mix(in srgb, var(--text-normal) 88%, transparent);
+  font-family: var(--font-monospace);
+  font-weight: 200;
+  letter-spacing: 0.02em;
   user-select: none;
   pointer-events: none;
 }

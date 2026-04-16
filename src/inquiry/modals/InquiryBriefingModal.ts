@@ -1,7 +1,8 @@
 import { App, Modal, normalizePath, TFile } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import type { InquiryBriefModel } from '../types/inquiryViewTypes';
-import { openOrRevealFile, openOrRevealFileByPath } from '../../utils/fileUtils';
+import type { BriefingThemePreference } from '../../types/settings';
+import { openOrRevealFile, openOrRevealFileAtSubpath, openOrRevealFileByPath } from '../../utils/fileUtils';
 
 type InquiryBriefingModalOptions = {
     brief: InquiryBriefModel;
@@ -25,6 +26,9 @@ export class InquiryBriefingModal extends Modal {
     private readonly briefFile: TFile | null;
     private readonly logFile: TFile | null;
     private readonly generatedAt: number | string | null | undefined;
+    private themePreference: BriefingThemePreference;
+    private readonly themeButtons = new Map<BriefingThemePreference, HTMLButtonElement>();
+    private themeObserver?: MutationObserver;
 
     constructor(app: App, options: InquiryBriefingModalOptions) {
         super(app);
@@ -33,6 +37,7 @@ export class InquiryBriefingModal extends Modal {
         this.briefFile = options.briefFile ?? null;
         this.logFile = options.logFile ?? null;
         this.generatedAt = options.generatedAt;
+        this.themePreference = this.plugin.settings.briefingTheme ?? 'auto';
     }
 
     onOpen(): void {
@@ -41,6 +46,8 @@ export class InquiryBriefingModal extends Modal {
         titleEl.setText('');
         modalEl.addClass('rt-briefing-modal');
         contentEl.addClass('rt-briefing-surface');
+        this.applyTheme();
+        this.installThemeObserver();
 
         const shell = contentEl.createDiv({ cls: 'rt-briefing-shell' });
         this.renderHeader(shell);
@@ -54,6 +61,9 @@ export class InquiryBriefingModal extends Modal {
     }
 
     onClose(): void {
+        this.themeObserver?.disconnect();
+        this.themeObserver = undefined;
+        this.themeButtons.clear();
         this.contentEl.empty();
     }
 
@@ -78,6 +88,19 @@ export class InquiryBriefingModal extends Modal {
         brandText.createDiv({ cls: 'rt-briefing-brand-subline', text: 'Inquiry Briefing' });
 
         const actions = header.createDiv({ cls: 'rt-briefing-actions' });
+        const themeGroup = actions.createDiv({ cls: 'rt-briefing-theme-toggle', attr: { role: 'group', 'aria-label': 'Briefing theme' } });
+        (['auto', 'light', 'dark'] as BriefingThemePreference[]).forEach(option => {
+            const button = themeGroup.createEl('button', {
+                cls: 'rt-briefing-theme-btn',
+                text: option.charAt(0).toUpperCase() + option.slice(1)
+            });
+            button.addEventListener('click', () => {
+                void this.setThemePreference(option);
+            });
+            this.themeButtons.set(option, button);
+        });
+        this.updateThemeButtons();
+
         if (this.logFile) {
             const logAction = actions.createEl('button', {
                 cls: 'rt-briefing-action',
@@ -100,33 +123,44 @@ export class InquiryBriefingModal extends Modal {
 
     private renderHero(container: HTMLElement): void {
         const hero = container.createEl('section', { cls: 'rt-briefing-hero' });
-        const label = this.brief.questionTitle?.trim() || 'Briefing';
-        hero.createDiv({ cls: 'rt-briefing-kicker', text: label });
+        hero.createDiv({ cls: 'rt-briefing-kicker', text: 'Briefing' });
+        const context = this.brief.questionTitle?.trim();
+        if (context && context.toLowerCase() !== 'briefing') {
+            hero.createDiv({ cls: 'rt-briefing-context', text: context });
+        }
         hero.createEl('h1', {
             cls: 'rt-briefing-title',
             text: this.brief.questionText?.trim() || 'Inquiry question unavailable.'
         });
 
         const meta = hero.createDiv({ cls: 'rt-briefing-meta' });
-        const metaRows = [
+        const primaryMeta = [
+            this.formatGeneratedAt(),
             this.brief.scopeIndicator ? `Scope ${this.brief.scopeIndicator}` : '',
-            this.brief.pills.join(' · '),
-            this.formatGeneratedAt()
         ].filter(Boolean);
-        metaRows.forEach(row => {
-            meta.createDiv({ cls: 'rt-briefing-meta-line', text: row });
-        });
+        if (primaryMeta.length) {
+            meta.createDiv({ cls: 'rt-briefing-meta-line', text: primaryMeta.join(' · ') });
+        }
+        if (this.brief.pills.length) {
+            meta.createDiv({ cls: 'rt-briefing-meta-line rt-briefing-meta-line--secondary', text: this.brief.pills.join(' · ') });
+        }
     }
 
     private renderSummary(container: HTMLElement): void {
-        const section = this.createSection(container, 'Report');
-        const summaryBlock = section.createDiv({ cls: 'rt-briefing-block rt-briefing-block--lead' });
-        summaryBlock.createEl('p', {
+        const section = this.createSection(container, 'Summary');
+        const summaryStack = section.createDiv({ cls: 'rt-briefing-summary-stack' });
+
+        const flowBlock = summaryStack.createEl('article', { cls: 'rt-briefing-block rt-briefing-block--lead rt-briefing-summary-block' });
+        flowBlock.createDiv({ cls: 'rt-briefing-summary-label', text: 'Flow' });
+        flowBlock.createEl('p', {
             cls: 'rt-briefing-paragraph rt-briefing-paragraph--lead',
-            text: this.brief.flowSummary || 'No report summary available.'
+            text: this.brief.flowSummary || 'No flow summary available.'
         });
+
         if (this.brief.depthSummary && this.brief.depthSummary !== this.brief.flowSummary) {
-            summaryBlock.createEl('p', {
+            const depthBlock = summaryStack.createEl('article', { cls: 'rt-briefing-block rt-briefing-summary-block' });
+            depthBlock.createDiv({ cls: 'rt-briefing-summary-label', text: 'Depth' });
+            depthBlock.createEl('p', {
                 cls: 'rt-briefing-paragraph',
                 text: this.brief.depthSummary
             });
@@ -200,7 +234,21 @@ export class InquiryBriefingModal extends Modal {
 
         this.brief.sceneNotes.forEach(note => {
             const article = notes.createEl('article', { cls: 'rt-briefing-block rt-briefing-note' });
-            article.createDiv({ cls: 'rt-briefing-note-label', text: note.header });
+            const labelRow = article.createDiv({ cls: 'rt-briefing-note-label-row' });
+            labelRow.createDiv({ cls: 'rt-briefing-note-label', text: note.header });
+            if (note.anchorId && this.briefFile) {
+                const anchorAction = labelRow.createEl('button', {
+                    cls: 'rt-briefing-note-link',
+                    text: '↗',
+                    attr: {
+                        'aria-label': `Open ${note.header} in Markdown brief`,
+                        title: 'Open in Markdown brief'
+                    }
+                });
+                anchorAction.addEventListener('click', () => {
+                    void openOrRevealFileAtSubpath(this.app, this.briefFile as TFile, `#^${note.anchorId}`);
+                });
+            }
 
             note.entries.forEach(entry => {
                 const entryBlock = article.createDiv({ cls: 'rt-briefing-note-entry' });
@@ -290,5 +338,54 @@ export class InquiryBriefingModal extends Modal {
         const assetPath = normalizePath(`${configDir}/plugins/${pluginId}/assets/rt-logo.png`);
         const adapter = this.app.vault.adapter as unknown as { getResourcePath?: (path: string) => string };
         return adapter.getResourcePath ? adapter.getResourcePath(assetPath) : null;
+    }
+
+    private installThemeObserver(): void {
+        if (this.themePreference !== 'auto') return;
+        this.themeObserver?.disconnect();
+        this.themeObserver = new MutationObserver(() => {
+            this.applyTheme();
+        });
+        this.themeObserver.observe(document.body, {
+            attributes: true,
+            attributeFilter: ['class']
+        });
+    }
+
+    private resolveEffectiveTheme(): Exclude<BriefingThemePreference, 'auto'> {
+        if (this.themePreference === 'dark' || this.themePreference === 'light') {
+            return this.themePreference;
+        }
+        if (document.body.classList.contains('theme-dark')) return 'dark';
+        return 'light';
+    }
+
+    private applyTheme(): void {
+        const effectiveTheme = this.resolveEffectiveTheme();
+        this.modalEl.setAttribute('data-rt-briefing-theme', effectiveTheme);
+        this.modalEl.setAttribute('data-rt-briefing-theme-preference', this.themePreference);
+        this.updateThemeButtons();
+    }
+
+    private updateThemeButtons(): void {
+        this.themeButtons.forEach((button, option) => {
+            const active = option === this.themePreference;
+            button.classList.toggle('is-active', active);
+            button.setAttribute('aria-pressed', active ? 'true' : 'false');
+        });
+    }
+
+    private async setThemePreference(next: BriefingThemePreference): Promise<void> {
+        if (this.themePreference === next) return;
+        this.themePreference = next;
+        this.plugin.settings.briefingTheme = next;
+        this.applyTheme();
+        if (next === 'auto') {
+            this.installThemeObserver();
+        } else {
+            this.themeObserver?.disconnect();
+            this.themeObserver = undefined;
+        }
+        await this.plugin.saveSettings();
     }
 }

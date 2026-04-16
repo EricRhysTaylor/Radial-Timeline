@@ -47,6 +47,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
         payoff: true
     },
     inquiryActionNotesAutoPopulate: false,
+    briefingTheme: 'auto',
     inquiryTimingHistory: {},
     dismissedAlerts: [],
     actCount: 3,

@@ -33,6 +33,8 @@ describe('runModelUpdateCheck', () => {
         const modelsFile = path.join(dir, 'scripts', 'models', 'latest-models.json');
         const latestAliasesFile = path.join(dir, 'scripts', 'models', 'latest-aliases.json');
         const driftReportFile = path.join(dir, 'scripts', 'models', 'model-drift-report.json');
+        const curatedRegistryFile = path.join(dir, 'scripts', 'models', 'registry.json');
+        const releaseWatchFile = path.join(dir, 'scripts', 'models', 'release-watch.json');
 
         await writeJson(modelsFile, {
             generatedAt: '2026-04-16T00:00:00.000Z',
@@ -59,11 +61,21 @@ describe('runModelUpdateCheck', () => {
                 },
             ],
         });
+        await writeJson(curatedRegistryFile, {
+            generatedAt: '2026-04-16T00:00:00.000Z',
+            models: [{ provider: 'anthropic', id: 'claude-opus-4-7' }],
+        });
+        await writeJson(releaseWatchFile, {
+            schemaVersion: 1,
+            watchedReleases: [],
+        });
 
         const result = await runModelUpdateCheck({
             modelsFile,
             latestTrackingFile: latestAliasesFile,
             driftReportFile,
+            curatedRegistryFile,
+            releaseWatchFile,
             quiet: true,
             now: () => Date.parse('2026-04-16T12:00:00.000Z'),
         });
@@ -83,6 +95,8 @@ describe('runModelUpdateCheck', () => {
         const modelsFile = path.join(dir, 'scripts', 'models', 'latest-models.json');
         const latestAliasesFile = path.join(dir, 'scripts', 'models', 'latest-aliases.json');
         const driftReportFile = path.join(dir, 'scripts', 'models', 'model-drift-report.json');
+        const curatedRegistryFile = path.join(dir, 'scripts', 'models', 'registry.json');
+        const releaseWatchFile = path.join(dir, 'scripts', 'models', 'release-watch.json');
 
         await writeJson(modelsFile, {
             generatedAt: '2026-04-15T00:00:00.000Z',
@@ -96,11 +110,21 @@ describe('runModelUpdateCheck', () => {
                 },
             ],
         });
+        await writeJson(curatedRegistryFile, {
+            generatedAt: '2026-04-15T00:00:00.000Z',
+            models: [{ provider: 'anthropic', id: 'claude-opus-4-6' }],
+        });
+        await writeJson(releaseWatchFile, {
+            schemaVersion: 1,
+            watchedReleases: [],
+        });
 
         const result = await runModelUpdateCheck({
             modelsFile,
             latestTrackingFile: latestAliasesFile,
             driftReportFile,
+            curatedRegistryFile,
+            releaseWatchFile,
             quiet: true,
             now: () => Date.parse('2026-04-17T12:00:00.000Z'),
             updateSnapshot: async () => ({ ok: false, error: 'network blocked' }),
@@ -164,6 +188,66 @@ describe('runModelUpdateCheck', () => {
         const driftReport = await readJson(driftReportFile);
         expect(driftReport.changes.anthropic.added).toEqual(['claude-opus-4-7']);
         expect(driftReport.hasActionableChanges).toBe(true);
+    });
+
+    it('raises a release alert when a watched provider release is not curated yet', async () => {
+        const dir = await createTempWorkspace();
+        const modelsFile = path.join(dir, 'scripts', 'models', 'latest-models.json');
+        const latestAliasesFile = path.join(dir, 'scripts', 'models', 'latest-aliases.json');
+        const driftReportFile = path.join(dir, 'scripts', 'models', 'model-drift-report.json');
+        const curatedRegistryFile = path.join(dir, 'scripts', 'models', 'registry.json');
+        const releaseWatchFile = path.join(dir, 'scripts', 'models', 'release-watch.json');
+
+        await writeJson(modelsFile, {
+            generatedAt: '2026-04-16T00:00:00.000Z',
+            models: [
+                {
+                    provider: 'anthropic',
+                    id: 'claude-opus-4-7',
+                    label: 'Claude Opus 4.7',
+                    createdAt: '2026-04-16T00:00:00.000Z',
+                    raw: {},
+                },
+            ],
+        });
+        await writeJson(curatedRegistryFile, {
+            generatedAt: '2026-04-16T00:00:00.000Z',
+            models: [],
+        });
+        await writeJson(releaseWatchFile, {
+            schemaVersion: 1,
+            watchedReleases: [
+                {
+                    id: 'anthropic-claude-opus-4-7-2026-04-16',
+                    provider: 'anthropic',
+                    modelId: 'claude-opus-4-7',
+                    label: 'Claude Opus 4.7',
+                    announcedAt: '2026-04-16',
+                    sourceUrl: 'https://www.anthropic.com/news/claude-opus-4-7',
+                    notifyUntil: 'curated',
+                },
+            ],
+        });
+
+        const result = await runModelUpdateCheck({
+            modelsFile,
+            latestTrackingFile: latestAliasesFile,
+            driftReportFile,
+            curatedRegistryFile,
+            releaseWatchFile,
+            quiet: true,
+            now: () => Date.parse('2026-04-16T12:00:00.000Z'),
+        });
+
+        expect(result.hasActionableChanges).toBe(true);
+        expect(result.summary).toContain('Claude Opus 4.7');
+        const driftReport = await readJson(driftReportFile);
+        expect(driftReport.releaseAlerts).toEqual([
+            expect.objectContaining({
+                modelId: 'claude-opus-4-7',
+                state: 'announced_not_curated',
+            }),
+        ]);
     });
 
     it('fails hard when refresh breaks and no usable snapshot exists', async () => {

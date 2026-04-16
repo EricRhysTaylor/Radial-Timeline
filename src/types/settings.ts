@@ -498,6 +498,7 @@ export interface AuthorProgressCampaign {
 export type SceneInclusion = 'excluded' | 'summary' | 'full';
 
 export type InquirySourcesPreset = 'default' | 'light' | 'deep';
+export type BriefingThemePreference = 'auto' | 'light' | 'dark';
 
 export interface InquiryClassConfig {
     className: string;
@@ -643,6 +644,7 @@ export interface RadialTimelineSettings {
     inquiryCorpusHighlightLowSubstanceComplete?: boolean;
     inquiryPromptZoneExpanded?: Record<InquiryZone, boolean>;
     inquiryActionNotesAutoPopulate?: boolean;
+    briefingTheme?: BriefingThemePreference;
     inquiryOmnibusProgress?: OmnibusProgressState;
     inquiryTimingHistory?: Record<string, InquiryTimingHistoryEntry>;
     actCount?: number;

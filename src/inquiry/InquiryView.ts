@@ -295,6 +295,7 @@ import {
     InquiryOmnibusModal,
     InquiryPurgeConfirmationModal
 } from './modals/InquiryViewModals';
+import { InquiryBriefingModal } from './modals/InquiryBriefingModal';
 import type {
     AiSettingsFocus,
     CorpusCcEntry,
@@ -333,6 +334,7 @@ import {
     getSceneNoteSortOrder,
     normalizeInquiryHeadline,
     parseCorpusLabelNumber,
+    replaceInquiryReferenceTokens,
     renderInquiryBrief,
     resolveInquiryScopeIndicator,
     sanitizeDossierText,
@@ -1932,10 +1934,37 @@ export class InquiryView extends ItemView {
             return;
         }
         if (!anchorId) {
-            await openOrRevealFile(this.app, file);
+            this.openBriefingPresentation(this.buildInquiryBriefModel(session.result, session.logPath), {
+                briefFile: file,
+                logFile: this.getArtifactFileAtPath(session.logPath),
+                generatedAt: session.result.completedAt ?? session.createdAt
+            });
             return;
         }
         await openOrRevealFileAtSubpath(this.app, file, `#^${anchorId}`);
+    }
+
+    private getArtifactFileAtPath(path?: string | null): TFile | null {
+        if (!path) return null;
+        const file = this.app.vault.getAbstractFileByPath(path);
+        return file instanceof TFile ? file : null;
+    }
+
+    private openBriefingPresentation(
+        brief: InquiryBriefModel,
+        options?: {
+            briefFile?: TFile | null;
+            logFile?: TFile | null;
+            generatedAt?: number | string | null;
+        }
+    ): void {
+        new InquiryBriefingModal(this.app, {
+            brief,
+            plugin: this.plugin,
+            briefFile: options?.briefFile ?? null,
+            logFile: options?.logFile ?? null,
+            generatedAt: options?.generatedAt ?? null
+        }).open();
     }
 
     private getMostRecentInquiryLogFile(): TFile | null {
@@ -10788,12 +10817,17 @@ export class InquiryView extends ItemView {
         const filePath = this.getAvailableArtifactPath(folder.path, baseName);
         const sessionLogPath = options.logPath
             ?? (options.sessionKey ? this.sessionStore.peekSession(options.sessionKey)?.logPath : undefined);
-        const content = this.buildArtifactContent(result, sessionLogPath, options.rawResponse);
+        const brief = this.buildInquiryBriefModel(result, sessionLogPath, options.rawResponse);
+        const content = renderInquiryBrief(brief);
 
         try {
             const file = await this.app.vault.create(filePath, content);
             if (options.openFile) {
-                await openOrRevealFile(this.app, file);
+                this.openBriefingPresentation(brief, {
+                    briefFile: file,
+                    logFile: this.getArtifactFileAtPath(sessionLogPath),
+                    generatedAt: result.completedAt ?? Date.now()
+                });
             }
             if (!options.silent) {
                 new Notice('Inquiry brief saved.');
@@ -10964,14 +10998,23 @@ export class InquiryView extends ItemView {
         const modelLabel = this.getBriefModelLabel(result);
         if (modelLabel) pills.push(modelLabel);
 
-        const flowSummary = this.getResultSummaryForMode(result, 'flow') || 'No flow summary available.';
-        const depthSummary = this.getResultSummaryForMode(result, 'depth') || 'No depth summary available.';
+        const items = this.getResultItems(result);
+        const referenceLabels = this.buildInquiryReferenceLabelMap(items);
+
+        const flowSummary = this.normalizeInquiryBriefText(
+            this.getResultSummaryForMode(result, 'flow') || 'No flow summary available.',
+            referenceLabels
+        );
+        const depthSummary = this.normalizeInquiryBriefText(
+            this.getResultSummaryForMode(result, 'depth') || 'No depth summary available.',
+            referenceLabels
+        );
 
         const orderedFindings = this.getOrderedFindings(result, result.mode);
         const findings = orderedFindings
             .filter(finding => this.isFindingHit(finding))
             .map(finding => ({
-                headline: normalizeInquiryHeadline(finding.headline),
+                headline: this.normalizeInquiryBriefText(normalizeInquiryHeadline(finding.headline), referenceLabels),
                 role: this.getFindingRole(finding),
                 clarity: formatBriefLabel(finding.status || 'unclear'),
                 impact: formatBriefLabel(finding.impact),
@@ -10979,7 +11022,10 @@ export class InquiryView extends ItemView {
                 lens: finding.lens === 'both'
                     ? 'Flow / Depth'
                     : formatBriefLabel(finding.lens || result.mode || 'flow'),
-                bullets: (finding.bullets || []).filter(Boolean).slice(0, 3)
+                bullets: (finding.bullets || [])
+                    .filter(Boolean)
+                    .slice(0, 3)
+                    .map(entry => this.normalizeInquiryBriefText(entry, referenceLabels))
             }));
 
         const sourcesVM = buildInquirySourcesViewModel(result.citations, result.evidenceDocumentMeta);
@@ -10992,8 +11038,9 @@ export class InquiryView extends ItemView {
             citationCount: item.citationCount
         }));
 
-        const sceneNotes = this.buildInquirySceneNotes(result);
-        const pendingActions = this.buildBriefPendingActions(result);
+        const sceneNotes = this.buildInquirySceneNotes(result, items, referenceLabels);
+        const pendingActions = this.buildBriefPendingActions(result)
+            .map(action => this.normalizeInquiryBriefText(action, referenceLabels));
         const logTitle = this.resolveInquiryLogLinkTitle(result, logPath);
         const rawResponseText = typeof rawResponse === 'string' ? rawResponse.trim() : '';
         const includeRawResponse = rawResponseText.length > 0 && this.isErrorResult(result);
@@ -11024,7 +11071,11 @@ export class InquiryView extends ItemView {
         return label.replace(/\s*\(.*\)\s*$/, '').trim() || null;
     }
 
-    private buildInquirySceneNotes(result: InquiryResult): Array<{
+    private buildInquirySceneNotes(
+        result: InquiryResult,
+        items: InquiryCorpusItem[] = this.getResultItems(result),
+        referenceLabels: ReadonlyMap<string, string> = this.buildInquiryReferenceLabelMap(items)
+    ): Array<{
         label: string;
         header: string;
         anchorId?: string;
@@ -11037,7 +11088,6 @@ export class InquiryView extends ItemView {
         }>;
     }> {
         if (result.scope !== 'book') return [];
-        const items = this.getResultItems(result);
         const orderedFindings = this.getOrderedFindings(result, result.mode);
         const notes = new Map<string, {
             label: string;
@@ -11070,13 +11120,15 @@ export class InquiryView extends ItemView {
                 : label;
             const anchorId = anchorSource ? this.getBriefSceneAnchorId(anchorSource) : undefined;
             const existing = notes.get(label);
-            const headerTitle = match
-                ? stripNumericTitlePrefix(this.getMinimapItemTitle(match))
-                : '';
-            const header = headerTitle ? `${label.toUpperCase()} · ${headerTitle}` : label.toUpperCase();
+            const header = match
+                ? this.formatInquiryReferenceDisplay(match, label)
+                : label.toUpperCase();
             const entry = {
-                headline: sanitizeDossierText(finding.headline) || 'Finding text unavailable.',
+                headline: sanitizeDossierText(
+                    this.normalizeInquiryBriefText(finding.headline, referenceLabels)
+                ) || 'Finding text unavailable.',
                 bullets: buildSceneDossierBodyLines(finding)
+                    .map(line => this.normalizeInquiryBriefText(line, referenceLabels))
                     .filter(line => line.startsWith('• '))
                     .map(line => line.replace(/^•\s*/, '')),
                 impact: formatBriefLabel(finding.impact),
@@ -11112,6 +11164,38 @@ export class InquiryView extends ItemView {
                 anchorId: entry.anchorId,
                 entries: entry.entries
             }));
+    }
+
+    private buildInquiryReferenceLabelMap(items: InquiryCorpusItem[]): Map<string, string> {
+        const labels = new Map<string, string>();
+        const add = (raw: string | undefined, display: string): void => {
+            const key = raw?.trim().toLowerCase();
+            if (!key || labels.has(key)) return;
+            labels.set(key, display);
+        };
+
+        items.forEach(item => {
+            const display = this.formatInquiryReferenceDisplay(item, item.displayLabel);
+            add(item.displayLabel, display);
+            add(item.id, display);
+            add(item.sceneId, display);
+            item.filePaths?.forEach(path => add(path, display));
+        });
+
+        return labels;
+    }
+
+    private formatInquiryReferenceDisplay(item: InquiryCorpusItem, fallbackLabel?: string): string {
+        return buildSceneDossierHeader({
+            label: fallbackLabel || item.displayLabel || item.id,
+            itemDisplayLabel: item.displayLabel,
+            itemTitle: this.getMinimapItemTitle(item),
+            hoverLabel: fallbackLabel || item.displayLabel || item.id || 'Scene'
+        });
+    }
+
+    private normalizeInquiryBriefText(value: string | undefined, referenceLabels: ReadonlyMap<string, string>): string {
+        return replaceInquiryReferenceTokens(value, referenceLabels);
     }
 
     private resolveSceneLogLabel(frontmatter: Record<string, unknown> | null, file: TFile): string {

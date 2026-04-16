@@ -904,9 +904,14 @@ export function renderAiSection(params: {
         | 'reuse'
         | 'passBehavior';
 
+    interface PreviewPill {
+        text: string;
+        extraCls?: string;
+    }
+
     interface PreviewSignal {
         type: PreviewSignalType;
-        text: string;
+        pill: PreviewPill;
     }
 
     const PREVIEW_SIGNAL_PRIORITY: readonly PreviewSignalType[] = [
@@ -916,42 +921,47 @@ export function renderAiSection(params: {
     ] as const;
     const MAX_PREVIEW_SIGNALS = 4;
 
-    const resolvePreviewCitationSignal = (model: ModelInfo): string | null => {
-        const modelLabel = getModelUiSignals(model).citationLabel;
+    const resolvePreviewCitationSignal = (model: ModelInfo): PreviewPill | null => {
+        const signals = getModelUiSignals(model);
+        if (!signals.citationLabel) return null;
+        // Strip existing "Citation · " prefix to get the mechanism label (e.g. "Direct manuscript")
+        const mechanism = signals.citationLabel.replace(/^Citation\s*·\s*/i, '');
         if (ensureCanonicalAiSettings().citationsEnabled === false) {
-            return modelLabel ? 'Citations · Disabled' : null;
+            return { text: `Citations off · ${mechanism}`, extraCls: 'ert-ai-pill--muted' };
         }
-        return modelLabel;
+        return { text: `Citations on · ${mechanism}`, extraCls: 'ert-ai-pill--active' };
     };
 
-    const resolvePreviewReuseSignal = (model: ModelInfo): string | null =>
-        getModelUiSignals(model).reuseLabel;
+    const resolvePreviewReuseSignal = (model: ModelInfo): PreviewPill | null => {
+        const label = getModelUiSignals(model).reuseLabel;
+        return label ? { text: label } : null;
+    };
 
     const resolvePreviewSignals = (state: {
-        citationLabel: string | null;
-        reuseLabel: string | null;
-        passBehaviorLabel: string | null;
-    }): string[] => {
+        citationLabel: PreviewPill | null;
+        reuseLabel: PreviewPill | null;
+        passBehaviorLabel: PreviewPill | null;
+    }): PreviewPill[] => {
         const candidates: PreviewSignal[] = [];
 
         if (state.citationLabel) {
             candidates.push({
                 type: 'citation',
-                text: state.citationLabel
+                pill: state.citationLabel
             });
         }
 
         if (state.reuseLabel) {
             candidates.push({
                 type: 'reuse',
-                text: state.reuseLabel
+                pill: state.reuseLabel
             });
         }
 
         if (state.passBehaviorLabel) {
             candidates.push({
                 type: 'passBehavior',
-                text: state.passBehaviorLabel
+                pill: state.passBehaviorLabel
             });
         }
 
@@ -960,7 +970,7 @@ export function renderAiSection(params: {
             .filter(signal => allowed.has(signal.type))
             .sort((left, right) => PREVIEW_SIGNAL_PRIORITY.indexOf(left.type) - PREVIEW_SIGNAL_PRIORITY.indexOf(right.type))
             .slice(0, MAX_PREVIEW_SIGNALS)
-            .map(signal => signal.text);
+            .map(signal => signal.pill);
         return sorted;
     };
 
@@ -1276,9 +1286,9 @@ export function renderAiSection(params: {
         contextWindow: number | null;
         maxInputTokens: number | null;
         maxOutputTokens: number | null;
-        citationLabel: string | null;
-        reuseLabel: string | null;
-        passBehaviorLabel: string | null;
+        citationLabel: PreviewPill | null;
+        reuseLabel: PreviewPill | null;
+        passBehaviorLabel: PreviewPill | null;
         isPreview: boolean;
     }
 
@@ -1293,7 +1303,7 @@ export function renderAiSection(params: {
         comparatorValue: string | null;
         statusIcon: string | null;
         statusText: string | null;
-        extraPills: string[];
+        extraPills: PreviewPill[];
         cacheRatio?: number;
         cacheLabel?: string | null;
     };
@@ -1397,7 +1407,7 @@ export function renderAiSection(params: {
         const hasCurrentCorpusMatch = !!activeCacheSession;
         const resultStatus = latestSession.result.aiStatus;
         const reasonLabel = formatPreviewReasonLabel(resultStatus, latestSession.result.aiReason);
-        const extraPills: string[] = [];
+        const extraPills: PreviewPill[] = [];
         const cacheRemainingLabel = cacheSession?.cacheWindowExpiresAt && cacheSession.cacheWindowExpiresAt > Date.now()
             ? formatPreviewCacheRemaining(cacheSession.cacheWindowExpiresAt - Date.now())
             : null;
@@ -1507,19 +1517,22 @@ export function renderAiSection(params: {
         resetResolvedPreviewCertificateUi();
     };
 
-    const createResolvedPreviewPill = (container: HTMLElement, text: string): void => {
-        container.createSpan({
-            cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_SM} ert-ai-resolved-preview-pill`,
-            text
-        });
+    const createResolvedPreviewPill = (container: HTMLElement, pill: PreviewPill): void => {
+        const cls = [
+            ERT_CLASSES.BADGE_PILL,
+            ERT_CLASSES.BADGE_PILL_SM,
+            'ert-ai-resolved-preview-pill',
+            pill.extraCls
+        ].filter(Boolean).join(' ');
+        container.createSpan({ cls, text: pill.text });
     };
 
-    const renderResolvedPreviewPills = (pillTexts: string[]): void => {
+    const renderResolvedPreviewPills = (pills: PreviewPill[]): void => {
         resolvedPreviewPills.empty();
-        if (!pillTexts.length) return;
+        if (!pills.length) return;
 
         const firstRowEl = resolvedPreviewPills.createDiv({ cls: 'ert-ai-resolved-preview-pill-row' });
-        pillTexts.forEach(text => createResolvedPreviewPill(firstRowEl, text));
+        pills.forEach(pill => createResolvedPreviewPill(firstRowEl, pill));
     };
 
     const renderResolvedPreview = (state: ResolvedPreviewRenderState): void => {
@@ -2236,8 +2249,8 @@ export function renderAiSection(params: {
                 if (executionEstimate && executionEstimate.estimatedTokens > 0) {
                     const passes = executionEstimate.expectedPassCount ?? 1;
                     previewState.passBehaviorLabel = passes <= 1
-                        ? 'Context · Single-pass at this corpus'
-                        : `Context · ${passes}-pass likely at this corpus`;
+                        ? { text: 'Context · Single-pass at this corpus' }
+                        : { text: `Context · ${passes}-pass likely at this corpus` };
                 }
             }
             renderResolvedPreview(previewState);
