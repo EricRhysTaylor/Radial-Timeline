@@ -1,7 +1,6 @@
 import { App, Modal, normalizePath, TFile } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import type { InquiryBriefModel } from '../types/inquiryViewTypes';
-import type { BriefingThemePreference } from '../../types/settings';
 import { openOrRevealFile, openOrRevealFileAtSubpath, openOrRevealFileByPath } from '../../utils/fileUtils';
 
 type InquiryBriefingModalOptions = {
@@ -30,8 +29,6 @@ export class InquiryBriefingModal extends Modal {
     private readonly generatedAt: number | string | null | undefined;
     private readonly focusAnchorId: string | null;
     private readonly isCorpusStale: boolean;
-    private themePreference: BriefingThemePreference;
-    private readonly themeButtons = new Map<BriefingThemePreference, HTMLButtonElement>();
     private themeObserver?: MutationObserver;
     private readonly sceneReferenceEntries: Array<{ label: string; anchorId?: string }>;
 
@@ -44,7 +41,6 @@ export class InquiryBriefingModal extends Modal {
         this.generatedAt = options.generatedAt;
         this.focusAnchorId = options.focusAnchorId ?? null;
         this.isCorpusStale = options.isCorpusStale ?? false;
-        this.themePreference = this.plugin.settings.briefingTheme ?? 'auto';
         this.sceneReferenceEntries = [...(this.brief.sceneReferences || [])].sort((a, b) => b.label.length - a.label.length);
     }
 
@@ -72,7 +68,6 @@ export class InquiryBriefingModal extends Modal {
     onClose(): void {
         this.themeObserver?.disconnect();
         this.themeObserver = undefined;
-        this.themeButtons.clear();
         this.contentEl.empty();
     }
 
@@ -97,19 +92,6 @@ export class InquiryBriefingModal extends Modal {
         brandText.createDiv({ cls: 'rt-briefing-brand-subline', text: 'Inquiry Briefing' });
 
         const actions = header.createDiv({ cls: 'rt-briefing-actions' });
-        const themeGroup = actions.createDiv({ cls: 'rt-briefing-theme-toggle', attr: { role: 'group', 'aria-label': 'Briefing theme' } });
-        (['auto', 'light', 'dark'] as BriefingThemePreference[]).forEach(option => {
-            const button = themeGroup.createEl('button', {
-                cls: 'rt-briefing-theme-btn',
-                text: option.charAt(0).toUpperCase() + option.slice(1)
-            });
-            button.addEventListener('click', () => {
-                void this.setThemePreference(option);
-            });
-            this.themeButtons.set(option, button);
-        });
-        this.updateThemeButtons();
-
         const pdfAction = actions.createEl('button', {
             cls: 'rt-briefing-action',
             text: 'Save PDF'
@@ -261,7 +243,7 @@ export class InquiryBriefingModal extends Modal {
 
             note.entries.forEach(entry => {
                 const entryBlock = article.createDiv({ cls: 'rt-briefing-note-entry' });
-                this.renderTextElement(entryBlock, 'h3', 'rt-briefing-finding-title', entry.headline);
+                this.renderTextElement(entryBlock, 'h3', 'rt-briefing-finding-title', entry.headline, 'headline');
                 entryBlock.createDiv({
                     cls: 'rt-briefing-finding-meta',
                     text: [entry.lens, `Impact ${entry.impact}`, `Confidence ${entry.confidence}`].filter(Boolean).join(' · ')
@@ -297,7 +279,7 @@ export class InquiryBriefingModal extends Modal {
         group.createDiv({ cls: 'rt-briefing-group-label', text: label });
         findings.forEach(finding => {
             const card = group.createEl('article', { cls: 'rt-briefing-block rt-briefing-finding' });
-            this.renderTextElement(card, 'h3', 'rt-briefing-finding-title', finding.headline);
+            this.renderTextElement(card, 'h3', 'rt-briefing-finding-title', finding.headline, 'headline');
             card.createDiv({
                 cls: 'rt-briefing-finding-meta',
                 text: [
@@ -347,7 +329,6 @@ export class InquiryBriefingModal extends Modal {
     }
 
     private installThemeObserver(): void {
-        if (this.themePreference !== 'auto') return;
         this.themeObserver?.disconnect();
         this.themeObserver = new MutationObserver(() => {
             this.applyTheme();
@@ -358,45 +339,32 @@ export class InquiryBriefingModal extends Modal {
         });
     }
 
-    private resolveEffectiveTheme(): Exclude<BriefingThemePreference, 'auto'> {
-        if (this.themePreference === 'dark' || this.themePreference === 'light') {
-            return this.themePreference;
-        }
-        if (document.body.classList.contains('theme-dark')) return 'dark';
-        return 'light';
+    private resolveEffectiveTheme(): 'dark' | 'light' {
+        return document.body.classList.contains('theme-dark') ? 'dark' : 'light';
     }
 
     private applyTheme(): void {
         const effectiveTheme = this.resolveEffectiveTheme();
         this.modalEl.setAttribute('data-rt-briefing-theme', effectiveTheme);
-        this.modalEl.setAttribute('data-rt-briefing-theme-preference', this.themePreference);
-        this.updateThemeButtons();
-    }
-
-    private updateThemeButtons(): void {
-        this.themeButtons.forEach((button, option) => {
-            const active = option === this.themePreference;
-            button.classList.toggle('is-active', active);
-            button.setAttribute('aria-pressed', active ? 'true' : 'false');
-        });
     }
 
     private renderTextElement(
         container: HTMLElement,
         tag: keyof HTMLElementTagNameMap,
         cls: string,
-        text: string
+        text: string,
+        sceneRefStyle: 'callout' | 'headline' = 'callout'
     ): HTMLElement {
         const el = container.createEl(tag, cls ? { cls } : undefined);
-        this.appendSceneReferenceMarkup(el, text);
+        this.appendSceneReferenceMarkup(el, text, sceneRefStyle);
         return el;
     }
 
-    private appendSceneReferenceMarkup(container: HTMLElement, text: string): void {
+    private appendSceneReferenceMarkup(container: HTMLElement, text: string, sceneRefStyle: 'callout' | 'headline'): void {
         const content = text || '';
         if (!content) return;
         if (!this.sceneReferenceEntries.length) {
-            this.appendStyledPlainText(container, content);
+            this.appendStyledPlainText(container, content, sceneRefStyle);
             return;
         }
 
@@ -407,19 +375,19 @@ export class InquiryBriefingModal extends Modal {
             const [label] = match;
             const index = match.index;
             if (index > cursor) {
-                this.appendStyledPlainText(container, content.slice(cursor, index));
+                this.appendStyledPlainText(container, content.slice(cursor, index), sceneRefStyle);
             }
             const ref = this.sceneReferenceEntries.find(entry => entry.label === label);
-            container.append(this.buildSceneReferenceNode(label, ref?.anchorId));
+            container.append(this.buildSceneReferenceNode(label, ref?.anchorId, sceneRefStyle));
             cursor = index + label.length;
             match = regex.exec(content);
         }
         if (cursor < content.length) {
-            this.appendStyledPlainText(container, content.slice(cursor));
+            this.appendStyledPlainText(container, content.slice(cursor), sceneRefStyle);
         }
     }
 
-    private appendStyledPlainText(container: HTMLElement, text: string): void {
+    private appendStyledPlainText(container: HTMLElement, text: string, sceneRefStyle: 'callout' | 'headline'): void {
         const content = text || '';
         if (!content) return;
         const regex = /"[^"\n]+"|(?<!\w)'[^'\n]+'(?!\w)|\bscn_[a-z0-9]+\b/gi;
@@ -432,7 +400,7 @@ export class InquiryBriefingModal extends Modal {
                 container.appendText(content.slice(cursor, index));
             }
             if (/^scn_/i.test(token)) {
-                container.append(this.buildUnresolvedSceneReferenceNode(token));
+                container.append(this.buildUnresolvedSceneReferenceNode(token, sceneRefStyle));
             } else if (token.startsWith('"')) {
                 container.append(this.buildQuoteNode(token, 'double'));
             } else {
@@ -446,7 +414,13 @@ export class InquiryBriefingModal extends Modal {
         }
     }
 
-    private buildSceneReferenceNode(label: string, anchorId?: string): HTMLElement {
+    private buildSceneReferenceNode(label: string, anchorId?: string, style: 'callout' | 'headline' = 'callout'): HTMLElement {
+        if (style === 'headline') {
+            const textEl = document.createElement('span');
+            textEl.className = 'rt-briefing-scene-inline';
+            textEl.textContent = label;
+            return textEl;
+        }
         const [numberPart, ...titleParts] = label.split(' ');
         const titlePart = titleParts.join(' ').trim();
         const interactive = !!anchorId;
@@ -470,7 +444,13 @@ export class InquiryBriefingModal extends Modal {
         return el;
     }
 
-    private buildUnresolvedSceneReferenceNode(rawRef: string): HTMLElement {
+    private buildUnresolvedSceneReferenceNode(rawRef: string, style: 'callout' | 'headline' = 'callout'): HTMLElement {
+        if (style === 'headline') {
+            const textEl = document.createElement('span');
+            textEl.className = 'rt-briefing-scene-inline rt-briefing-scene-inline--unresolved';
+            textEl.textContent = rawRef;
+            return textEl;
+        }
         const el = document.createElement('span');
         el.className = 'rt-briefing-scene-ref rt-briefing-scene-ref--unresolved';
         const textEl = document.createElement('span');
@@ -504,7 +484,20 @@ export class InquiryBriefingModal extends Modal {
     }
 
     private printBriefing(): void {
+        const previousTitle = document.title;
+        const nextTitle = this.resolvePrintTitle();
+        let restored = false;
+        const restoreTitle = (): void => {
+            if (restored) return;
+            restored = true;
+            document.title = previousTitle;
+            window.removeEventListener('afterprint', restoreTitle);
+        };
+
+        document.title = nextTitle;
+        window.addEventListener('afterprint', restoreTitle, { once: true });
         window.print();
+        window.setTimeout(restoreTitle, 1500);
     }
 
     private async openFileAndClose(file: TFile): Promise<void> {
@@ -531,17 +524,15 @@ export class InquiryBriefingModal extends Modal {
         this.focusAnchorIdInternal(this.focusAnchorId);
     }
 
-    private async setThemePreference(next: BriefingThemePreference): Promise<void> {
-        if (this.themePreference === next) return;
-        this.themePreference = next;
-        this.plugin.settings.briefingTheme = next;
-        this.applyTheme();
-        if (next === 'auto') {
-            this.installThemeObserver();
-        } else {
-            this.themeObserver?.disconnect();
-            this.themeObserver = undefined;
+    private resolvePrintTitle(): string {
+        const baseName = this.briefFile?.basename?.trim();
+        if (baseName) return baseName;
+
+        const questionText = this.brief.questionText?.trim();
+        if (questionText) {
+            return `Inquiry Brief — ${questionText.replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim()}`;
         }
-        await this.plugin.saveSettings();
+
+        return 'Inquiry Brief';
     }
 }

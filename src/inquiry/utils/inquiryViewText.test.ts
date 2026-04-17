@@ -109,7 +109,13 @@ describe('inquiryViewText', () => {
     it('replaces canonical scene ids with readable scene labels before rendering', () => {
         const refs = new Map<string, string>([
             ['scn_70a8d14e', '16 Chae Ban hears about the Homo'],
-            ['scn_9329bdc2', '17 Johnsonian']
+            ['scn_9329bdc2', '17 Johnsonian'],
+            ['s1', '1 Trisan Training'],
+            ['s4', '4 Party'],
+            ['s5', '5 Aftermath from Ravix Pool'],
+            ['s6', '6 Therapist'],
+            ['s23', '23 Shail Grounded'],
+            ['s34', '34 Stage 3 Volcano']
         ]);
 
         expect(replaceInquiryReferenceTokens(
@@ -120,5 +126,13 @@ describe('inquiryViewText', () => {
             'The jump to scn_9329bdc2 (Johnsonian) lands too abruptly.',
             refs
         )).toBe('The jump to 17 Johnsonian lands too abruptly.');
+        expect(replaceInquiryReferenceTokens(
+            'nothing in S1-S5 prepares the reader. S6 is the first scene where AEA feels personal.',
+            refs
+        )).toBe('nothing in 1 Trisan Training - 5 Aftermath from Ravix Pool prepares the reader. 6 Therapist is the first scene where AEA feels personal.');
+        expect(replaceInquiryReferenceTokens(
+            'Shail\'s hybrid nature must be implied here for S23/S34 revelation to read as payoff.',
+            refs
+        )).toBe('Shail\'s hybrid nature must be implied here for 23 Shail Grounded / 34 Stage 3 Volcano revelation to read as payoff.');
     });
 });

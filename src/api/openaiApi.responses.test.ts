@@ -194,6 +194,7 @@ describe('openai responses normalization', () => {
                 format: {
                     type: 'json_schema',
                     name: 'ai_result',
+                    strict: true,
                     schema: {
                         type: 'object',
                         properties: {

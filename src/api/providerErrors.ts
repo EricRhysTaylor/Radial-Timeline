@@ -63,6 +63,16 @@ const isTruncationMessage = (normalized: string): boolean => {
     return false;
 };
 
+// Anthropic returns this exact phrasing when the author's self-configured monthly
+// spend cap (Console → Limits → Spend limits) is hit. It is NOT an Anthropic-side
+// tier rate limit; surfacing it as "rate_limit" panics authors who have Tier 4 keys.
+const isSpendCapMessage = (normalized: string): boolean => {
+    if (!normalized) return false;
+    if (normalized.includes('specified api usage limits')) return true;
+    if (normalized.includes('reached your specified') && normalized.includes('usage limit')) return true;
+    return false;
+};
+
 export function classifyProviderError(err: unknown): ProviderErrorClassification {
     const envelope: ErrorEnvelope = typeof err === 'object' && err !== null
         ? err as ErrorEnvelope
@@ -71,6 +81,10 @@ export function classifyProviderError(err: unknown): ProviderErrorClassification
     const message = extractMessage(err);
     const normalized = message.toLowerCase();
     const status = extractStatus(envelope);
+
+    if (isSpendCapMessage(normalized)) {
+        return { aiStatus: 'rejected', aiReason: 'spend_cap' };
+    }
 
     if (status === 429 || normalized.includes('rate limit') || normalized.includes('too many requests') || normalized.includes('overloaded')) {
         return { aiStatus: 'rate_limit' };

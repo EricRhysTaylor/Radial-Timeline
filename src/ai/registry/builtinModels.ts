@@ -1,6 +1,7 @@
 import type { Capability, ModelInfo } from '../types';
 
 const DEEP_CAPS: Capability[] = ['longContext', 'jsonStrict', 'reasoningStrong', 'highOutputCap'];
+const DEEP_NON_SCHEMA_CAPS: Capability[] = ['longContext', 'reasoningStrong', 'highOutputCap'];
 const BALANCED_CAPS: Capability[] = ['longContext', 'jsonStrict', 'reasoningStrong'];
 const FAST_CAPS: Capability[] = ['jsonStrict', 'streaming'];
 const LOCAL_CAPS: Capability[] = ['jsonStrict'];
@@ -110,7 +111,7 @@ export const BUILTIN_MODELS: ModelInfo[] = [
         label: 'GPT-5.4 Pro',
         line: 'gpt-5-pro',
         tier: 'DEEP',
-        capabilities: [...DEEP_CAPS, 'toolCalling', 'functionCalling'],
+        capabilities: [...DEEP_NON_SCHEMA_CAPS, 'toolCalling', 'functionCalling'],
         personality: { reasoning: 10, writing: 9, determinism: 9 },
         contextWindow: 1050000,
         maxOutput: 128000,
@@ -154,7 +155,7 @@ export const BUILTIN_MODELS: ModelInfo[] = [
         label: 'GPT-5.4 Pro (2026-03-05)',
         line: 'gpt-5-pro',
         tier: 'DEEP',
-        capabilities: [...DEEP_CAPS, 'toolCalling', 'functionCalling'],
+        capabilities: [...DEEP_NON_SCHEMA_CAPS, 'toolCalling', 'functionCalling'],
         personality: { reasoning: 10, writing: 9, determinism: 9 },
         contextWindow: 1050000,
         maxOutput: 128000,

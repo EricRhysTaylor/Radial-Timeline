@@ -35,6 +35,12 @@ describe('BUILTIN_MODELS OpenAI GPT-5.4 metadata', () => {
         expect(byAlias('gpt-5.4-pro-2026-03-05').rollout?.hiddenFromPicker).toBe(true);
         expect(byAlias('gpt-5.4-pro-2026-03-05').rollout?.supersedes).toBe('gpt-5.4-pro');
     });
+
+    it('keeps structured output capability off the OpenAI pro lane', () => {
+        expect(byAlias('gpt-5.4').capabilities).toContain('jsonStrict');
+        expect(byAlias('gpt-5.4-pro').capabilities).not.toContain('jsonStrict');
+        expect(byAlias('gpt-5.4-pro-2026-03-05').capabilities).not.toContain('jsonStrict');
+    });
 });
 
 describe('BUILTIN_MODELS Anthropic Claude 4.6 metadata', () => {

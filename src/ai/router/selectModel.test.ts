@@ -84,14 +84,25 @@ describe('selectModel', () => {
             policy: { type: 'pinned', pinnedAlias: 'gpt-5.4-pro' },
             requiredCapabilities: ['jsonStrict', 'longContext', 'reasoningStrong', 'highOutputCap']
         });
-        expect(result.model.alias).toBe('gpt-5.4-pro');
+        expect(result.model.alias).toBe('gpt-5.4');
+        expect(result.warnings.some(w => w.includes('gpt-5.4-pro'))).toBe(true);
     });
 
-    it('resolves latestPro to the newest OpenAI pro-lane model', () => {
+    it('routes OpenAI latestPro JSON workflows to the stable lane', () => {
         const result = selectModel(BUILTIN_MODELS, {
             provider: 'openai',
             policy: { type: 'latestPro' },
             requiredCapabilities: ['jsonStrict', 'longContext', 'reasoningStrong', 'highOutputCap']
+        });
+        expect(result.model.alias).toBe('gpt-5.4');
+        expect(result.warnings).toContain('OpenAI pro auto-selection is disabled for schema-required workflows; fallback to latest stable.');
+    });
+
+    it('keeps OpenAI latestPro available for non-schema workflows', () => {
+        const result = selectModel(BUILTIN_MODELS, {
+            provider: 'openai',
+            policy: { type: 'latestPro' },
+            requiredCapabilities: ['longContext', 'reasoningStrong', 'highOutputCap']
         });
         expect(result.model.alias).toBe('gpt-5.4-pro');
     });
@@ -108,7 +119,8 @@ describe('selectModel', () => {
             requiredCapabilities: ['jsonStrict', 'longContext', 'reasoningStrong', 'highOutputCap']
         });
         expect(standardSnapshot.model.alias).toBe('gpt-5.4-2026-03-05');
-        expect(proSnapshot.model.alias).toBe('gpt-5.4-pro-2026-03-05');
+        expect(proSnapshot.model.alias).toBe('gpt-5.4');
+        expect(proSnapshot.warnings.some(w => w.includes('gpt-5.4-pro-2026-03-05'))).toBe(true);
     });
 
     it('ignores access tier for OpenAI latestStable resolution', () => {

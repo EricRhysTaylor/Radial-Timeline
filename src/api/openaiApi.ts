@@ -73,7 +73,7 @@ interface OpenAiResponsesOutputItem {
 
 type OpenAiResponsesTextFormat =
     | { type: 'json_object' }
-    | { type: 'json_schema'; name: string; schema: Record<string, unknown> };
+    | { type: 'json_schema'; name: string; schema: Record<string, unknown>; strict: true };
 
 interface OpenAiAnnotationRecord {
     type?: string;
@@ -140,7 +140,8 @@ function toResponsesTextFormat(responseFormat: OpenAiResponseFormat): OpenAiResp
     return {
         type: 'json_schema',
         name: typeof rawName === 'string' && rawName.trim() ? rawName.trim() : 'ai_result',
-        schema: rawSchema && typeof rawSchema === 'object' ? rawSchema as Record<string, unknown> : {}
+        schema: rawSchema && typeof rawSchema === 'object' ? rawSchema as Record<string, unknown> : {},
+        strict: true
     };
 }
 

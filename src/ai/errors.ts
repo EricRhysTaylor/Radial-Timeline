@@ -78,6 +78,9 @@ export function mapProviderFailureToError(input: {
 }
 
 export function mapErrorToUserMessage(error: unknown): string {
+    if (error instanceof AIBaseError && error.aiReason === 'spend_cap') {
+        return 'Monthly spend cap reached in the Anthropic Console (Limits → Spend limits). Raise the cap or wait for the reset date.';
+    }
     if (error instanceof InvalidKeyError) {
         return 'API key rejected. Open Settings > AI and verify the key for the selected provider.';
     }

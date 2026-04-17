@@ -47,6 +47,10 @@ function selectLatestPro(eligible: ModelInfo[], request: ModelSelectionRequest):
     return selectLatestModelByReleaseChannel(pool, request.provider, 'pro') ?? null;
 }
 
+function shouldAvoidOpenAiPro(request: ModelSelectionRequest): boolean {
+    return request.provider === 'openai' && request.requiredCapabilities.includes('jsonStrict');
+}
+
 export function selectModel(models: ModelInfo[], request: ModelSelectionRequest): ModelSelectionResult {
     const warnings: string[] = [];
     const eligible = filterEligible(models, request);
@@ -82,16 +86,20 @@ export function selectModel(models: ModelInfo[], request: ModelSelectionRequest)
     }
 
     if (request.policy.type === 'latestPro') {
-        const latestPro = selectLatestPro(eligible, request);
-        if (latestPro) {
-            return {
-                provider: request.provider,
-                model: latestPro,
-                warnings,
-                reason: `Auto selected latest pro model in line ${inferLine(latestPro)}: ${latestPro.alias}.`
-            };
+        if (shouldAvoidOpenAiPro(request)) {
+            warnings.push('OpenAI pro auto-selection is disabled for schema-required workflows; fallback to latest stable.');
+        } else {
+            const latestPro = selectLatestPro(eligible, request);
+            if (latestPro) {
+                return {
+                    provider: request.provider,
+                    model: latestPro,
+                    warnings,
+                    reason: `Auto selected latest pro model in line ${inferLine(latestPro)}: ${latestPro.alias}.`
+                };
+            }
+            warnings.push(`No pro-lane model available for provider ${request.provider}; fallback to latest stable.`);
         }
-        warnings.push(`No pro-lane model available for provider ${request.provider}; fallback to latest stable.`);
     }
 
     const selected = selectLatestStable(eligible, request);

@@ -5344,7 +5344,6 @@ export class InquiryView extends ItemView {
 
     private updateNavSessionLabel(): void {
         if (!this.navSessionLabel) return;
-        this.toggleClassIfChanged(this.navSessionLabel, 'is-welcome', false, 'hudAttrWrites');
         if (this.state.scope === 'book' && this.corpus && !this.corpus.bookResolved) {
             this.setTextIfChanged(this.navSessionLabel, 'Book scope unresolved. Check Inquiry sources.', 'hudTextWrites');
             return;
@@ -5360,7 +5359,6 @@ export class InquiryView extends ItemView {
                 this.setTextIfChanged(this.navSessionLabel, this.formatSessionNavLabel(glyphSeed.session), 'hudTextWrites');
                 return;
             }
-            this.toggleClassIfChanged(this.navSessionLabel, 'is-welcome', true, 'hudAttrWrites');
             this.setTextIfChanged(this.navSessionLabel, this.buildWelcomeNavLabel(), 'hudTextWrites');
             return;
         }
@@ -5371,7 +5369,6 @@ export class InquiryView extends ItemView {
                 this.setTextIfChanged(this.navSessionLabel, this.formatSessionNavLabel(glyphSeed.session), 'hudTextWrites');
                 return;
             }
-            this.toggleClassIfChanged(this.navSessionLabel, 'is-welcome', true, 'hudAttrWrites');
             this.setTextIfChanged(this.navSessionLabel, this.buildWelcomeNavLabel(), 'hudTextWrites');
             return;
         }
@@ -7402,6 +7399,7 @@ export class InquiryView extends ItemView {
     private formatAuthorFacingErrorHero(result: InquiryResult): string {
         const status = result.aiStatus;
         const reason = result.aiReason;
+        if (status === 'rejected' && reason === 'spend_cap') return 'Monthly spend cap reached.';
         if (status === 'rejected' && reason === 'invalid_response') return 'Briefing received with errors.';
         if (status === 'rejected' && reason === 'citation_binding_failed') return 'AI response could not be matched to this corpus.';
         if (status === 'rejected' && reason === 'multi_pass_failed') return 'Multi-pass analysis could not complete.';
@@ -7415,10 +7413,22 @@ export class InquiryView extends ItemView {
     }
 
     private formatAuthorFacingErrorDetail(result: InquiryResult): string {
+        if (result.aiReason === 'spend_cap') {
+            const reset = this.extractSpendCapResetDate(result.aiErrorDetail);
+            const resetLine = reset ? ` Resets ${reset}.` : '';
+            return `This is your own monthly spending cap in the Anthropic Console (Limits → Spend limits) — not an API tier rate limit.${resetLine} Raise it in Console → Limits, or wait for the reset.`;
+        }
         if (result.aiErrorDetail) return result.aiErrorDetail;
         if (result.aiReason === 'citation_binding_failed') return 'No findings could be placed on the minimap.';
         if (result.aiReason === 'invalid_response') return 'Invalid structured response from AI.';
         return '';
+    }
+
+    private extractSpendCapResetDate(detail?: string | null): string | null {
+        if (!detail) return null;
+        const match = detail.match(/on\s+(\d{4}-\d{2}-\d{2})(?:\s+at\s+(\d{2}:\d{2})\s+UTC)?/i);
+        if (!match) return null;
+        return match[2] ? `${match[1]} ${match[2]} UTC` : match[1];
     }
 
     private formatTokenUsageVisibility(
