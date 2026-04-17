@@ -599,7 +599,37 @@ export class InquiryView extends ItemView {
     }
 
     getDisplayText(): string {
-        return INQUIRY_VIEW_DISPLAY_TEXT;
+        return this.buildDynamicDisplayText();
+    }
+
+    private buildDynamicDisplayText(): string {
+        const base = INQUIRY_VIEW_DISPLAY_TEXT;
+        if (this.state?.scope === 'saga') {
+            const labels = (this.corpus?.books ?? [])
+                .map(book => book.displayLabel)
+                .filter((label): label is string => !!label && label !== '?');
+            if (labels.length) return `${base}: Saga · ${labels.join(' · ')}`;
+            return `${base}: Saga`;
+        }
+        const bookTitle = this.getActiveBookTitleForMessages();
+        if (bookTitle) return `${base}: ${bookTitle}`;
+        const bookLabel = this.getActiveBookLabel();
+        if (bookLabel && bookLabel !== '?') return `${base}: ${bookLabel}`;
+        return base;
+    }
+
+    private updateViewTitle(): void {
+        const titleText = this.buildDynamicDisplayText();
+        const headerTitle = this.containerEl.querySelector('.view-header-title') as HTMLElement | null;
+        if (headerTitle && headerTitle.textContent !== titleText) {
+            headerTitle.textContent = titleText;
+        }
+        const tabTitle = this.containerEl
+            .closest('.workspace-leaf')
+            ?.querySelector('.workspace-tab-header-inner-title') as HTMLElement | null;
+        if (tabTitle && tabTitle.textContent !== titleText) {
+            tabTitle.textContent = titleText;
+        }
     }
 
     getIcon(): string {
@@ -3487,6 +3517,7 @@ export class InquiryView extends ItemView {
         this.refreshPrimaryChrome();
         this.refreshSessionChrome();
         this.refreshPanelChrome();
+        this.updateViewTitle();
     }
 
     private refreshPrimaryChrome(): void {
