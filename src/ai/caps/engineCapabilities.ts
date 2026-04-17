@@ -19,6 +19,8 @@ type EngineImplementationStatus = {
     directManuscriptCitations: boolean;
     /** Grounded/tool attribution workflow (external-source metadata mapping). */
     groundedToolAttribution: boolean;
+    /** Annotation-style source metadata can be rendered truthfully in RT. */
+    annotationRendering: boolean;
     corpusReuse: boolean;
     batchAnalysis: boolean;
 };
@@ -31,24 +33,28 @@ const RT_IMPLEMENTATION_STATUS: Record<Exclude<AIProviderId, 'none'>, EngineImpl
     anthropic: {
         directManuscriptCitations: true,
         groundedToolAttribution: false,
+        annotationRendering: false,
         corpusReuse: true,
         batchAnalysis: false
     },
     openai: {
         directManuscriptCitations: false,
-        groundedToolAttribution: true,
+        groundedToolAttribution: false,
+        annotationRendering: true,
         corpusReuse: true,
         batchAnalysis: false
     },
     google: {
         directManuscriptCitations: false,
         groundedToolAttribution: true,
+        annotationRendering: true,
         corpusReuse: true,
         batchAnalysis: false
     },
     ollama: {
         directManuscriptCitations: false,
         groundedToolAttribution: false,
+        annotationRendering: false,
         corpusReuse: false,
         batchAnalysis: false
     }
@@ -70,6 +76,7 @@ export interface EngineCapabilityMatrixRow {
     contextWindow: number;
     directManuscriptCitations: EngineCapabilityStatus;
     groundedToolAttribution: EngineCapabilityStatus;
+    annotationRendering: EngineCapabilityStatus;
     corpusReuse: EngineCapabilityStatus;
     largeContext: EngineCapabilityStatus;
     batchAnalysis: EngineCapabilityStatus;
@@ -94,6 +101,7 @@ function resolveImplementationStatus(provider: AIProviderId): EngineImplementati
         return {
             directManuscriptCitations: false,
             groundedToolAttribution: false,
+            annotationRendering: false,
             corpusReuse: false,
             batchAnalysis: false
         };
@@ -148,6 +156,8 @@ export function resolveEngineCapabilities(model: ModelInfo): EngineCapabilities 
         : false;
     const groundedToolAttributionAvailableInRt = supportsGroundedToolAttribution
         && implementationStatus.groundedToolAttribution;
+    const annotationRenderingAvailableInRt = supportsGroundedToolAttribution
+        && implementationStatus.annotationRendering;
 
     const supportsCorpusReuse = provider ? providerSupportsCorpusReuse(provider) : false;
     const corpusReuseAvailableInRt = provider
@@ -166,6 +176,10 @@ export function resolveEngineCapabilities(model: ModelInfo): EngineCapabilities 
         supportsGroundedToolAttribution,
         groundedToolAttributionAvailableInRt
     );
+    const annotationRenderingSignal = buildSignal(
+        supportsGroundedToolAttribution,
+        annotationRenderingAvailableInRt
+    );
 
     return {
         provider: model.provider,
@@ -174,6 +188,7 @@ export function resolveEngineCapabilities(model: ModelInfo): EngineCapabilities 
         modelLabel: model.label,
         directManuscriptCitations: directManuscriptCitationsSignal,
         groundedToolAttribution: groundedToolAttributionSignal,
+        annotationRendering: annotationRenderingSignal,
         corpusReuse: buildSignal(supportsCorpusReuse, corpusReuseAvailableInRt),
         largeContext: {
             ...buildSignal(supportsLargeContext, supportsLargeContext),
@@ -223,6 +238,8 @@ export function getModelUiSignals(model: ModelInfo): ModelUiSignals {
         citationLabel = model.provider === 'google'
             ? 'Citation · Grounded search'
             : 'Citation · Tool annotations';
+    } else if (capabilities.annotationRendering.availableInRt) {
+        citationLabel = 'Sources · Annotation render only';
     }
 
     let reuseLabel: string | null = null;
@@ -250,6 +267,7 @@ export function buildEngineCapabilityMatrix(models: ModelInfo[]): EngineCapabili
             contextWindow: resolved.largeContext.contextWindow,
             directManuscriptCitations: resolved.directManuscriptCitations.status,
             groundedToolAttribution: resolved.groundedToolAttribution.status,
+            annotationRendering: resolved.annotationRendering.status,
             corpusReuse: resolved.corpusReuse.status,
             largeContext: resolved.largeContext.status,
             batchAnalysis: resolved.batchAnalysis.status

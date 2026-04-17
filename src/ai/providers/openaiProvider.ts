@@ -1,6 +1,7 @@
 import type RadialTimelinePlugin from '../../main';
 import { callOpenAiResponsesApi } from '../../api/openaiApi';
 import { classifyProviderError } from '../../api/providerErrors';
+import { extractTokenUsage } from '../usage/providerUsage';
 import { getCredential } from '../credentials/credentials';
 import { buildDefaultAiSettings } from '../settings/aiSettings';
 import { validateAiSettings } from '../settings/validateAiSettings';
@@ -15,6 +16,18 @@ export class OpenAIProvider implements AIProvider {
 
     supports(capability: Capability): boolean {
         return CAPS.includes(capability);
+    }
+
+    private deriveCacheResult(responseData: unknown): Pick<ProviderExecutionResult, 'cacheUsed' | 'cacheStatus'> {
+        const usage = extractTokenUsage('openai', responseData);
+        const cacheRead = usage?.cacheReadInputTokens ?? 0;
+        if (cacheRead > 0) {
+            return {
+                cacheUsed: true,
+                cacheStatus: 'hit'
+            };
+        }
+        return {};
     }
 
     async generateText(req: GenerateTextRequest): Promise<ProviderExecutionResult> {
@@ -34,6 +47,7 @@ export class OpenAIProvider implements AIProvider {
             req.topP,
             promptCacheRetention
         );
+        const cacheResult = this.deriveCacheResult(result.responseData);
         return result.success
             ? {
                 success: true,
@@ -46,7 +60,8 @@ export class OpenAIProvider implements AIProvider {
                 aiModelRequested: req.modelId,
                 aiModelResolved: req.modelId,
                 citations: result.citations,
-                aiTransportLane: 'responses'
+                aiTransportLane: 'responses',
+                ...cacheResult
             }
             : {
                 success: false,
@@ -61,7 +76,8 @@ export class OpenAIProvider implements AIProvider {
                 aiModelResolved: req.modelId,
                 error: result.error,
                 citations: result.citations,
-                aiTransportLane: 'responses'
+                aiTransportLane: 'responses',
+                ...cacheResult
             };
     }
 
@@ -88,6 +104,7 @@ export class OpenAIProvider implements AIProvider {
             req.topP,
             promptCacheRetention
         );
+        const cacheResult = this.deriveCacheResult(result.responseData);
         return result.success
             ? {
                 success: true,
@@ -100,7 +117,8 @@ export class OpenAIProvider implements AIProvider {
                 aiModelRequested: req.modelId,
                 aiModelResolved: req.modelId,
                 citations: result.citations,
-                aiTransportLane: 'responses'
+                aiTransportLane: 'responses',
+                ...cacheResult
             }
             : {
                 success: false,
@@ -115,7 +133,8 @@ export class OpenAIProvider implements AIProvider {
                 aiModelResolved: req.modelId,
                 error: result.error,
                 citations: result.citations,
-                aiTransportLane: 'responses'
+                aiTransportLane: 'responses',
+                ...cacheResult
             };
     }
 }

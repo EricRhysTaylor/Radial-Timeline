@@ -894,16 +894,28 @@ export class AIClient {
                 advancedContext.cachedStableRatio = Math.min(anthropicCachedTokens / anthropicTotalInputTokens, 1);
             }
         }
+        if (!bypassProviderReuse && provider === 'openai') {
+            const openAiCachedTokens = Math.max(0, actualUsage?.cacheReadInputTokens ?? 0);
+            const openAiTotalInputTokens = actualUsage?.inputTokens ?? tokenEstimateInput;
+            if (openAiCachedTokens > 0 && openAiTotalInputTokens > 0) {
+                advancedContext.cachedStableTokens = openAiCachedTokens;
+                advancedContext.cachedStableRatio = Math.min(openAiCachedTokens / openAiTotalInputTokens, 1);
+            }
+        }
 
         // Post-execute: confirm or downgrade provider cache state using runtime truth.
-        if (!bypassProviderReuse && ((provider === 'anthropic' && cacheAttempted) || (provider === 'google' && cacheDelimiterUsed))) {
+        if (!bypassProviderReuse && (
+            (provider === 'anthropic' && cacheAttempted)
+            || (provider === 'google' && cacheDelimiterUsed)
+            || (provider === 'openai' && advancedContext.reuseState !== 'idle')
+        )) {
             if (execution.cacheUsed) {
                 // Confirmed hit — safe to mark warm and surface cache coverage.
                 advancedContext.reuseState = 'warm';
-                if (provider !== 'anthropic' && typeof cachedStableRatio === 'number') {
+                if (provider === 'google' && typeof cachedStableRatio === 'number') {
                     advancedContext.cachedStableRatio = cachedStableRatio;
                 }
-                if (provider !== 'anthropic' && typeof cachedStableTokens === 'number') {
+                if (provider === 'google' && typeof cachedStableTokens === 'number') {
                     advancedContext.cachedStableTokens = cachedStableTokens;
                 }
                 advancedContext.cacheStatus = execution.cacheStatus;
@@ -911,7 +923,7 @@ export class AIClient {
             } else if (execution.cacheStatus === 'created' || optimisticWarm || advancedContext.reuseState !== 'idle') {
                 // Cache was attempted or predicted but did not hit.
                 advancedContext.reuseState = 'eligible';
-                if (provider !== 'anthropic') {
+                if (provider === 'google') {
                     advancedContext.cachedStableRatio = undefined;
                     advancedContext.cachedStableTokens = undefined;
                 }

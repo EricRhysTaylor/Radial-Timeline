@@ -65,4 +65,23 @@ describe('extractTokenUsage', () => {
             cacheCreationInputTokens: undefined
         });
     });
+
+    it('extracts OpenAI cached token usage from Responses-style details', () => {
+        const usage = extractTokenUsage('openai', {
+            usage: {
+                input_tokens: 1200,
+                output_tokens: 300,
+                input_tokens_details: {
+                    cached_tokens: 900
+                }
+            }
+        });
+
+        expect(usage).toEqual({
+            inputTokens: 1200,
+            outputTokens: 300,
+            totalTokens: 1500,
+            cacheReadInputTokens: 900
+        });
+    });
 });

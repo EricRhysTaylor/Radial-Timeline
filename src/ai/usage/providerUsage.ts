@@ -72,12 +72,20 @@ function readOpenAiUsage(responseData: Record<string, unknown>): TokenUsage | nu
     const usageData = usage as Record<string, unknown>;
     const inputTokens = readUsageNumber(usageData.prompt_tokens) ?? readUsageNumber(usageData.input_tokens);
     const outputTokens = readUsageNumber(usageData.completion_tokens) ?? readUsageNumber(usageData.output_tokens);
+    const promptTokenDetails = usageData.prompt_tokens_details && typeof usageData.prompt_tokens_details === 'object'
+        ? usageData.prompt_tokens_details as Record<string, unknown>
+        : undefined;
+    const inputTokenDetails = usageData.input_tokens_details && typeof usageData.input_tokens_details === 'object'
+        ? usageData.input_tokens_details as Record<string, unknown>
+        : undefined;
+    const cacheReadInputTokens = readUsageNumber(promptTokenDetails?.cached_tokens)
+        ?? readUsageNumber(inputTokenDetails?.cached_tokens);
     const totalTokens = readUsageNumber(usageData.total_tokens)
         ?? (typeof inputTokens === 'number' && typeof outputTokens === 'number'
             ? inputTokens + outputTokens
             : undefined);
-    if (inputTokens === undefined && outputTokens === undefined && totalTokens === undefined) return null;
-    return { inputTokens, outputTokens, totalTokens };
+    if (inputTokens === undefined && outputTokens === undefined && totalTokens === undefined && cacheReadInputTokens === undefined) return null;
+    return { inputTokens, outputTokens, totalTokens, cacheReadInputTokens };
 }
 
 function readGeminiUsage(responseData: Record<string, unknown>): TokenUsage | null {

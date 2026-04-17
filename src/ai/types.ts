@@ -95,6 +95,8 @@ export interface EngineCapabilities {
     directManuscriptCitations: EngineCapabilitySignal;
     /** Grounded/tool attribution (for example web/file/tool citation metadata). */
     groundedToolAttribution: EngineCapabilitySignal;
+    /** RT can render annotation-style source metadata, even if it does not acquire it. */
+    annotationRendering: EngineCapabilitySignal;
     corpusReuse: EngineCapabilitySignal;
     largeContext: EngineContextCapabilitySignal;
     batchAnalysis: EngineCapabilitySignal;

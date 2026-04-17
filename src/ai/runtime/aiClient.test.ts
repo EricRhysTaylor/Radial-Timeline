@@ -17,9 +17,10 @@ describe('AI client resolved-model caching', () => {
         expect(source.includes("placeUserQuestionLast: isInquiry && typeof request.userQuestion === 'string' && request.userQuestion.trim().length > 0")).toBe(true);
         expect(source.includes('const cacheDelimiterUsed = userPrompt.includes(CACHE_BREAK_DELIMITER);')).toBe(true);
         expect(source.includes("reuseState = cacheAttempted ? 'eligible' : 'idle';")).toBe(true);
-        expect(source.includes('if (!bypassProviderReuse && ((provider === \'anthropic\' && cacheAttempted) || (provider === \'google\' && cacheDelimiterUsed))) {')).toBe(true);
-        expect(source.includes("if (provider !== 'anthropic' && typeof cachedStableRatio === 'number') {")).toBe(true);
-        expect(source.includes("if (provider !== 'anthropic' && typeof cachedStableTokens === 'number') {")).toBe(true);
+        expect(source.includes("(provider === 'openai' && advancedContext.reuseState !== 'idle')")).toBe(true);
+        expect(source.includes("if (provider === 'google' && typeof cachedStableRatio === 'number') {")).toBe(true);
+        expect(source.includes("if (provider === 'google' && typeof cachedStableTokens === 'number') {")).toBe(true);
+        expect(source.includes("if (!bypassProviderReuse && provider === 'openai') {")).toBe(true);
     });
 
     it('builds the shared result cache key from the full prepared request contract', () => {
@@ -48,6 +49,6 @@ describe('AI client resolved-model caching', () => {
         expect(source.includes('const bypassInMemoryCache = request.bypassInMemoryCache === true || bypassProviderReuse;')).toBe(true);
         expect(source.includes('if (!bypassInMemoryCache) {')).toBe(true);
         expect(source.includes('bypassProviderReuse,')).toBe(true);
-        expect(source.includes('if (!bypassProviderReuse && ((provider === \'anthropic\' && cacheAttempted) || (provider === \'google\' && cacheDelimiterUsed))) {')).toBe(true);
+        expect(source.includes("(provider === 'openai' && advancedContext.reuseState !== 'idle')")).toBe(true);
     });
 });

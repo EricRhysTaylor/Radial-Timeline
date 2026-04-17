@@ -928,6 +928,9 @@ export function renderAiSection(params: {
     const resolvePreviewCitationSignal = (model: ModelInfo): PreviewPill | null => {
         const signals = getModelUiSignals(model);
         if (!signals.citationLabel) return null;
+        if (/^Sources\s*·\s*/i.test(signals.citationLabel)) {
+            return { text: signals.citationLabel, extraCls: 'ert-ai-pill--muted' };
+        }
         // Strip existing "Citation · " prefix to get the mechanism label (e.g. "Direct manuscript")
         const mechanism = signals.citationLabel.replace(/^Citation\s*·\s*/i, '');
         if (ensureCanonicalAiSettings().citationsEnabled === false) {

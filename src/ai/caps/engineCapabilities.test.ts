@@ -27,12 +27,13 @@ describe('resolveEngineCapabilities', () => {
         expect(resolved.batchAnalysis.status).toBe('provider_supported_not_used');
     });
 
-    it('marks OpenAI corpus reuse and grounded attribution available for system-role models', () => {
+    it('marks OpenAI corpus reuse available while citation acquisition stays separate from annotation rendering', () => {
         const model = byAlias('gpt-5.2-latest');
         const resolved = resolveEngineCapabilities(model);
 
         expect(resolved.directManuscriptCitations.status).toBe('unavailable');
-        expect(resolved.groundedToolAttribution.status).toBe('available');
+        expect(resolved.groundedToolAttribution.status).toBe('provider_supported_not_used');
+        expect(resolved.annotationRendering.status).toBe('available');
         expect(resolved.corpusReuse.status).toBe('available');
         expect(resolved.largeContext.status).toBe('available');
         expect(resolved.batchAnalysis.status).toBe('provider_supported_not_used');
@@ -57,6 +58,7 @@ describe('resolveEngineCapabilities', () => {
 
         expect(resolved.directManuscriptCitations.status).toBe('unavailable');
         expect(resolved.groundedToolAttribution.status).toBe('available');
+        expect(resolved.annotationRendering.status).toBe('available');
         expect(resolved.corpusReuse.status).toBe('available');
         expect(resolved.largeContext.status).toBe('available');
         expect(resolved.largeContext.contextWindow).toBe(1048576);
@@ -69,6 +71,7 @@ describe('resolveEngineCapabilities', () => {
 
         expect(resolved.directManuscriptCitations.status).toBe('unavailable');
         expect(resolved.groundedToolAttribution.status).toBe('unavailable');
+        expect(resolved.annotationRendering.status).toBe('unavailable');
         expect(resolved.corpusReuse.status).toBe('unavailable');
         expect(resolved.largeContext.status).toBe('unavailable');
         expect(resolved.batchAnalysis.status).toBe('unavailable');
@@ -92,6 +95,7 @@ describe('resolveEngineCapabilities', () => {
                 contextWindow: 1000000,
                 directManuscriptCitations: 'available',
                 groundedToolAttribution: 'unavailable',
+                annotationRendering: 'unavailable',
                 corpusReuse: 'available',
                 largeContext: 'available',
                 batchAnalysis: 'provider_supported_not_used'
@@ -119,6 +123,7 @@ describe('getModelUiSignals', () => {
         const model = byAlias('gpt-5.4');
         const signals = getModelUiSignals(model);
 
+        expect(signals.citationLabel).toBe('Sources · Annotation render only');
         expect(signals.reuseLabel).toContain('Reuse');
     });
 
