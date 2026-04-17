@@ -18,12 +18,14 @@ export interface UnifiedBeatInfo {
  */
 const UNIFIED_BEAT_ANALYSIS_SCHEMA = {
   type: "object",
+  additionalProperties: false,
   properties: {
     beats: {
       type: "array",
       description: "Momentum analysis for each story beat",
       items: {
         type: "object",
+        additionalProperties: false,
         properties: {
           beatName: { 
             type: "string", 
@@ -45,6 +47,7 @@ const UNIFIED_BEAT_ANALYSIS_SCHEMA = {
     },
     overallAssessment: {
       type: "object",
+      additionalProperties: false,
       description: "Overall manuscript assessment",
       properties: {
         summary: {

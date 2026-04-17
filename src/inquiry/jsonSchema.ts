@@ -1,19 +1,19 @@
 export function buildInquiryJsonSchema(): Record<string, unknown> {
     return {
         type: 'object',
+        additionalProperties: false,
         properties: {
             schema_version: { type: 'number' },
             summaryFlow: { type: 'string' },
             summaryDepth: { type: 'string' },
             verdict: {
                 type: 'object',
+                additionalProperties: false,
                 properties: {
                     flow: { type: 'number' },
                     depth: { type: 'number' },
                     impact: { type: 'string' },
-                    assessmentConfidence: { type: 'string' },
-                    severity: { type: 'string' },
-                    confidence: { type: 'string' }
+                    assessmentConfidence: { type: 'string' }
                 },
                 required: ['flow', 'depth', 'impact', 'assessmentConfidence']
             },
@@ -21,21 +21,18 @@ export function buildInquiryJsonSchema(): Record<string, unknown> {
                 type: 'array',
                 items: {
                     type: 'object',
+                    additionalProperties: false,
                     properties: {
                         ref_id: { type: 'string' },
-                        ref_label: { type: 'string' },
-                        ref_path: { type: 'string' },
                         kind: { type: 'string' },
                         lens: { type: 'string' },
                         headline: { type: 'string' },
                         bullets: { type: 'array', items: { type: 'string' } },
-                        role: { type: 'string', enum: ['target', 'context'] },
+                        role: { type: 'string' },
                         impact: { type: 'string' },
-                        assessmentConfidence: { type: 'string' },
-                        severity: { type: 'string' },
-                        confidence: { type: 'string' }
+                        assessmentConfidence: { type: 'string' }
                     },
-                    required: ['ref_id', 'kind', 'headline', 'impact', 'assessmentConfidence']
+                    required: ['ref_id', 'kind', 'lens', 'headline', 'bullets', 'role', 'impact', 'assessmentConfidence']
                 }
             }
         },
@@ -46,26 +43,26 @@ export function buildInquiryJsonSchema(): Record<string, unknown> {
 export function buildInquiryOmnibusJsonSchema(): Record<string, unknown> {
     return {
         type: 'object',
+        additionalProperties: false,
         properties: {
             schema_version: { type: 'number' },
             results: {
                 type: 'array',
                 items: {
                     type: 'object',
+                    additionalProperties: false,
                     properties: {
                         question_id: { type: 'string' },
-                        question_zone: { type: 'string' },
                         summaryFlow: { type: 'string' },
                         summaryDepth: { type: 'string' },
                         verdict: {
                             type: 'object',
+                            additionalProperties: false,
                             properties: {
                                 flow: { type: 'number' },
                                 depth: { type: 'number' },
                                 impact: { type: 'string' },
-                                assessmentConfidence: { type: 'string' },
-                                severity: { type: 'string' },
-                                confidence: { type: 'string' }
+                                assessmentConfidence: { type: 'string' }
                             },
                             required: ['flow', 'depth', 'impact', 'assessmentConfidence']
                         },
@@ -73,21 +70,18 @@ export function buildInquiryOmnibusJsonSchema(): Record<string, unknown> {
                             type: 'array',
                             items: {
                                 type: 'object',
+                                additionalProperties: false,
                                 properties: {
                                     ref_id: { type: 'string' },
-                                    ref_label: { type: 'string' },
-                                    ref_path: { type: 'string' },
                                     kind: { type: 'string' },
                                     lens: { type: 'string' },
                                     headline: { type: 'string' },
                                     bullets: { type: 'array', items: { type: 'string' } },
-                                    role: { type: 'string', enum: ['target', 'context'] },
+                                    role: { type: 'string' },
                                     impact: { type: 'string' },
-                                    assessmentConfidence: { type: 'string' },
-                                    severity: { type: 'string' },
-                                    confidence: { type: 'string' }
+                                    assessmentConfidence: { type: 'string' }
                                 },
-                                required: ['ref_id', 'kind', 'headline', 'impact', 'assessmentConfidence']
+                                required: ['ref_id', 'kind', 'lens', 'headline', 'bullets', 'role', 'impact', 'assessmentConfidence']
                             }
                         }
                     },

@@ -5,15 +5,15 @@
 
 const SCENE_ANALYSIS_JSON_SCHEMA = {
   type: "object",
+  additionalProperties: false,
   properties: {
     "previousSceneAnalysis": {
       type: "array",
       items: {
         type: "object",
+        additionalProperties: false,
         properties: {
           ref_id: { type: "string", description: "Stable scene reference id (scn_...)" },
-          ref_label: { type: "string", description: "Optional display label for the scene" },
-          ref_path: { type: "string", description: "Optional debug path for scene source" },
           scene: { type: "string", description: "Scene number" },
           title: { type: "string", description: "Short analysis title" },
           grade: { type: "string", enum: ["+", "-", "?"], description: "Connection strength" },
@@ -26,10 +26,9 @@ const SCENE_ANALYSIS_JSON_SCHEMA = {
       type: "array",
       items: {
         type: "object",
+        additionalProperties: false,
         properties: {
           ref_id: { type: "string", description: "Stable scene reference id (scn_...)" },
-          ref_label: { type: "string", description: "Optional display label for the scene" },
-          ref_path: { type: "string", description: "Optional debug path for scene source" },
           scene: { type: "string", description: "Scene number" },
           title: { type: "string", description: "Short analysis title or grade (A/B/C for first item)" },
           grade: { type: "string", enum: ["+", "-", "?", "A", "B", "C"], description: "Grade or connection strength" },
@@ -42,10 +41,9 @@ const SCENE_ANALYSIS_JSON_SCHEMA = {
       type: "array",
       items: {
         type: "object",
+        additionalProperties: false,
         properties: {
           ref_id: { type: "string", description: "Stable scene reference id (scn_...)" },
-          ref_label: { type: "string", description: "Optional display label for the scene" },
-          ref_path: { type: "string", description: "Optional debug path for scene source" },
           scene: { type: "string", description: "Scene number" },
           title: { type: "string", description: "Short analysis title" },
           grade: { type: "string", enum: ["+", "-", "?"], description: "Connection strength" },
@@ -55,7 +53,7 @@ const SCENE_ANALYSIS_JSON_SCHEMA = {
       }
     }
   },
-  required: ["currentSceneAnalysis"]
+  required: ["previousSceneAnalysis", "currentSceneAnalysis", "nextSceneAnalysis"]
 };
 
 export function getSceneAnalysisJsonSchema() {
@@ -120,6 +118,7 @@ export function buildSceneAnalysisPrompt(
     return `${contextPrefix}Evaluate the single scene below. Return ONLY valid JSON matching this structure:
 
 {
+  "previousSceneAnalysis": [],
   "currentSceneAnalysis": [
     {
       "ref_id": "${currentRef}",
@@ -136,13 +135,15 @@ export function buildSceneAnalysisPrompt(
       "comment": "Concise editorial comment (max 10 words)"
     }
     // ... 3-5 more pulse points
-  ]
+  ],
+  "nextSceneAnalysis": []
 }
 
 Rules:
 - Output ONLY valid JSON. No markdown code blocks, no preamble, no commentary.
 - First item in currentSceneAnalysis must have grade A/B/C (overall scene quality).
 - Subsequent items use +/-/? for connection strength.
+- previousSceneAnalysis and nextSceneAnalysis must still be present as empty arrays.
 - Every item must include ref_id using scene IDs: previous=${prevRef}, current=${currentRef}, next=${nextRef}.
 - Keep comments concise (first item max 15 words, others max 10 words).
 - Never use letter grades (A/B/C) outside that first item; use only "+", "-", or "?" afterwards.
@@ -159,6 +160,7 @@ ${currentBody || 'N/A'}
     return `${contextPrefix}Evaluate the first scene in context of the following scene. Return ONLY valid JSON matching this structure:
 
 {
+  "previousSceneAnalysis": [],
   "currentSceneAnalysis": [
     {
       "ref_id": "${currentRef}",
@@ -190,6 +192,7 @@ ${currentBody || 'N/A'}
 
 Rules:
 - Output ONLY valid JSON. No markdown code blocks, no preamble.
+- previousSceneAnalysis must be present as an empty array.
 - First currentSceneAnalysis item: grade A/B/C (overall quality). Others: +/-/? (connection strength).
 - nextSceneAnalysis items: +/-/? showing how next scene builds on current.
 - Every item must include ref_id using scene IDs: previous=${prevRef}, current=${currentRef}, next=${nextRef}.
@@ -237,12 +240,14 @@ ${nextBody ?? 'N/A'}
       "comment": "Editorial comment (max 10 words)"
     }
     // ... 3-5 more pulse points
-  ]
+  ],
+  "nextSceneAnalysis": []
 }
 
 Rules:
 - Output ONLY valid JSON. No markdown code blocks, no preamble.
 - previousSceneAnalysis items: +/-/? showing how previous scene sets up current.
+- nextSceneAnalysis must be present as an empty array.
 - First currentSceneAnalysis item: grade A/B/C (overall quality). Others: +/-/? (connection strength).
 - Every item must include ref_id using scene IDs: previous=${prevRef}, current=${currentRef}, next=${nextRef}.
 - Never use letter grades (A/B/C) outside that first item; use only "+", "-", or "?" afterwards.

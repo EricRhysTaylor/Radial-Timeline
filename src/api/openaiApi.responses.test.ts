@@ -211,6 +211,66 @@ describe('openai responses normalization', () => {
         expect(mockedRequestUrl).toHaveBeenCalledTimes(1);
     });
 
+    it('uses background mode and polls retrieve for the OpenAI pro lane', async () => {
+        const mockedRequestUrl = vi.spyOn(obsidian, 'requestUrl');
+        mockedRequestUrl.mockReset();
+        mockedRequestUrl
+            .mockResolvedValueOnce({
+                status: 200,
+                text: '',
+                json: {
+                    id: 'resp_bg_123',
+                    status: 'queued'
+                }
+            } as never)
+            .mockResolvedValueOnce({
+                status: 200,
+                text: '',
+                json: {
+                    id: 'resp_bg_123',
+                    status: 'completed',
+                    output_text: 'Deep solve complete.'
+                }
+            } as never);
+
+        const response = await callOpenAiResponsesApi(
+            'test-key',
+            'gpt-5.4-pro',
+            'You are precise.',
+            'Solve deeply.',
+            2048
+        );
+
+        expect(response.success).toBe(true);
+        expect(response.content).toBe('Deep solve complete.');
+        expect(response.adapterNotes).toContain('OpenAI Responses background mode enabled for pro lane.');
+        expect(response.requestPayload).toEqual({
+            model: 'gpt-5.4-pro',
+            input: [
+                {
+                    role: 'system',
+                    content: [{ type: 'input_text', text: 'You are precise.' }]
+                },
+                {
+                    role: 'user',
+                    content: [{ type: 'input_text', text: 'Solve deeply.' }]
+                }
+            ],
+            max_output_tokens: 2048,
+            background: true,
+            store: true
+        });
+        expect(mockedRequestUrl).toHaveBeenCalledTimes(2);
+        expect(mockedRequestUrl.mock.calls[0]?.[0]).toMatchObject({
+            url: 'https://api.openai.com/v1/responses',
+            method: 'POST'
+        });
+        expect(mockedRequestUrl.mock.calls[1]?.[0]).toMatchObject({
+            url: 'https://api.openai.com/v1/responses/resp_bg_123',
+            method: 'GET'
+        });
+    });
+
     it('fails hard when OpenAI rejects structured text.format instead of retrying without it', async () => {
         const mockedRequestUrl = vi.spyOn(obsidian, 'requestUrl');
         mockedRequestUrl.mockReset();

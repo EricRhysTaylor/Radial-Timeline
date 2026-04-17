@@ -87,11 +87,34 @@ interface OpenAiAnnotationRecord {
     [key: string]: unknown;
 }
 
+const OPENAI_BACKGROUND_RESPONSE_MODEL_IDS = new Set<string>([
+    'gpt-5.4-pro',
+    'gpt-5.4-pro-2026-03-05'
+]);
+const OPENAI_BACKGROUND_POLL_INTERVAL_MS = 2000;
+const OPENAI_BACKGROUND_MAX_POLLS = 180;
+
 function normalizeBaseUrl(baseUrl: string | undefined, endpointPath: '/chat/completions' | '/responses'): string {
     if (!baseUrl) return `https://api.openai.com/v1${endpointPath}`;
     const base = baseUrl.replace(/\/$/, '');
     if (base.endsWith(endpointPath)) return base;
     return `${base}${endpointPath}`;
+}
+
+function normalizeResponseObjectUrl(responseId: string): string {
+    return `https://api.openai.com/v1/responses/${encodeURIComponent(responseId)}`;
+}
+
+function shouldUseOpenAiBackgroundMode(modelId: string): boolean {
+    return OPENAI_BACKGROUND_RESPONSE_MODEL_IDS.has((modelId || '').trim());
+}
+
+function isPendingBackgroundStatus(status: unknown): boolean {
+    return status === 'queued' || status === 'in_progress';
+}
+
+async function sleep(ms: number): Promise<void> {
+    await new Promise(resolve => globalThis.setTimeout(resolve, ms));
 }
 
 function buildOpenAiChatMessages(
@@ -391,6 +414,54 @@ function extractResponsesErrorReason(responseData: unknown): string | null {
     return typeof reason === 'string' ? reason : 'incomplete';
 }
 
+function extractResponsesFailureMessage(responseData: unknown): string | null {
+    if (!responseData || typeof responseData !== 'object') return null;
+    const data = responseData as Record<string, unknown>;
+    const error = data.error;
+    if (error && typeof error === 'object') {
+        const message = (error as Record<string, unknown>).message;
+        if (typeof message === 'string' && message.trim()) {
+            return message.trim();
+        }
+    }
+    const status = typeof data.status === 'string' ? data.status : null;
+    if (status && status !== 'completed' && status !== 'incomplete') {
+        return `OpenAI Responses finished with status ${status}.`;
+    }
+    return null;
+}
+
+async function pollOpenAiBackgroundResponse(
+    apiKey: string,
+    initialResponseData: unknown
+): Promise<unknown> {
+    let responseData = initialResponseData;
+    for (let pollIndex = 0; pollIndex < OPENAI_BACKGROUND_MAX_POLLS; pollIndex += 1) {
+        if (!responseData || typeof responseData !== 'object') return responseData;
+        const data = responseData as Record<string, unknown>;
+        const status = data.status;
+        if (!isPendingBackgroundStatus(status)) return responseData;
+        const responseId = typeof data.id === 'string' ? data.id.trim() : '';
+        if (!responseId) return responseData;
+        if (pollIndex > 0) {
+            await sleep(OPENAI_BACKGROUND_POLL_INTERVAL_MS);
+        }
+        const response = await requestUrl({
+            url: normalizeResponseObjectUrl(responseId),
+            method: 'GET',
+            headers: {
+                Authorization: `Bearer ${apiKey}`
+            },
+            throw: false
+        });
+        responseData = response.json;
+        if (response.status >= 400) {
+            return responseData;
+        }
+    }
+    return responseData;
+}
+
 export function normalizeOpenAiResponsesUsage(usageValue: unknown): {
     prompt_tokens?: number;
     completion_tokens?: number;
@@ -582,11 +653,14 @@ export async function callOpenAiResponsesApi(
         temperature?: number;
         top_p?: number;
         prompt_cache_retention?: OpenAiPromptCacheRetention;
+        background?: boolean;
+        store?: boolean;
     } = {
         model: modelId,
         input: buildOpenAiResponsesInput(modelId, systemPrompt, userPrompt)
     };
     const adapterNotes: string[] = [];
+    const useBackgroundMode = shouldUseOpenAiBackgroundMode(modelId);
 
     if (maxTokens !== null) {
         requestBody.max_output_tokens = maxTokens;
@@ -602,6 +676,11 @@ export async function callOpenAiResponsesApi(
     }
     if (promptCacheRetention) {
         requestBody.prompt_cache_retention = promptCacheRetention;
+    }
+    if (useBackgroundMode) {
+        requestBody.background = true;
+        requestBody.store = true;
+        adapterNotes.push('OpenAI Responses background mode enabled for pro lane.');
     }
 
     let responseData: unknown;
@@ -635,6 +714,9 @@ export async function callOpenAiResponsesApi(
             }
             return { success: false, content: null, responseData, requestPayload: requestBody, adapterNotes, error: msg };
         }
+        if (useBackgroundMode) {
+            responseData = await pollOpenAiBackgroundResponse(apiKey, responseData);
+        }
 
         const content = extractOpenAiResponsesContent(responseData);
         const citations = extractOpenAiAnnotationCitations(responseData);
@@ -659,6 +741,17 @@ export async function callOpenAiResponsesApi(
                 requestPayload: requestBody,
                 adapterNotes,
                 error: `OpenAI Responses returned incomplete output (${incompleteReason}).`
+            };
+        }
+        const failureMessage = extractResponsesFailureMessage(responseData);
+        if (failureMessage) {
+            return {
+                success: false,
+                content: null,
+                responseData: normalizedResponseData,
+                requestPayload: requestBody,
+                adapterNotes,
+                error: failureMessage
             };
         }
 

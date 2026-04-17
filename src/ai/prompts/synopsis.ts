@@ -6,6 +6,7 @@
 
 const SUMMARY_JSON_SCHEMA = {
   type: "object",
+  additionalProperties: false,
   properties: {
     "summary": {
       type: "string",
@@ -17,6 +18,7 @@ const SUMMARY_JSON_SCHEMA = {
 
 const SYNOPSIS_JSON_SCHEMA = {
   type: "object",
+  additionalProperties: false,
   properties: {
     "synopsis": {
       type: "string",
