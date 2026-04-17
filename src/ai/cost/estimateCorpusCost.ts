@@ -1,5 +1,5 @@
 import type { AIProviderId } from '../types';
-import { resolveProviderModelPricing, isPromoActive, type PromoPricing } from './providerPricing';
+import { resolveProviderModelPricing, isPromoActive, type PromoPricing, type ResolvedProviderModelPricing } from './providerPricing';
 import type { TokenUsage } from '../usage/providerUsage';
 
 export interface CorpusCostEstimate {
@@ -10,8 +10,8 @@ export interface CorpusCostEstimate {
     expectedPasses: number;
     cacheReuseRatio: number;
     freshCostUSD: number;
-    cachedCostUSD: number;
-    effectiveCostUSD: number;
+    cachedCostUSD?: number;
+    effectiveCostUSD?: number;
     promo?: PromoPricing;
 }
 
@@ -50,6 +50,15 @@ function clampCacheReuseRatio(value: number | undefined): number | undefined {
     return Math.min(1, Math.max(0, value));
 }
 
+function hasCacheReadPricing(pricing: ResolvedProviderModelPricing): boolean {
+    return typeof pricing.cacheReadPer1M === 'number' && Number.isFinite(pricing.cacheReadPer1M);
+}
+
+function hasExplicitCacheWritePricing(pricing: ResolvedProviderModelPricing): boolean {
+    return (typeof pricing.cacheWrite5mPer1M === 'number' && Number.isFinite(pricing.cacheWrite5mPer1M))
+        || (typeof pricing.cacheWrite1hPer1M === 'number' && Number.isFinite(pricing.cacheWrite1hPer1M));
+}
+
 export function resolveEstimatedCacheReuseRatio(
     expectedPasses: number,
     override?: number
@@ -69,24 +78,28 @@ function buildEstimatedInputCostUSD(params: {
     expectedPasses: number;
     cacheReuseRatio: number;
     scenario: 'fresh' | 'cached';
-}): number {
+}): number | undefined {
     const pricing = resolveProviderModelPricing(params.provider, params.modelId, params.inputTokens);
     const reusedInputTokens = Math.max(0, Math.floor(params.inputTokens * params.cacheReuseRatio));
     const uncachedInputTokens = Math.max(0, params.inputTokens - reusedInputTokens);
-    const hasExplicitCachePricing = params.provider === 'anthropic'
-        && typeof pricing.cacheWrite5mPer1M === 'number'
-        && typeof pricing.cacheReadPer1M === 'number';
-    const scenarioInputCostUSD = hasExplicitCachePricing
+    const canReadFromCache = hasCacheReadPricing(pricing);
+    const canWriteToCacheExplicitly = hasExplicitCacheWritePricing(pricing);
+    if (params.scenario === 'cached' && !canReadFromCache) return undefined;
+
+    const scenarioInputCostUSD = params.scenario === 'cached'
         ? (
             toUsd(uncachedInputTokens, pricing.inputPer1M)
-            + toUsd(
-                reusedInputTokens,
-                params.scenario === 'fresh'
-                    ? pricing.cacheWrite5mPer1M
-                    : pricing.cacheReadPer1M
-            )
+            + toUsd(reusedInputTokens, pricing.cacheReadPer1M)
         )
-        : toUsd(params.inputTokens, pricing.inputPer1M);
+        : (canReadFromCache && canWriteToCacheExplicitly
+            ? (
+                toUsd(uncachedInputTokens, pricing.inputPer1M)
+                + toUsd(
+                    reusedInputTokens,
+                    pricing.cacheWrite5mPer1M ?? pricing.cacheWrite1hPer1M
+                )
+            )
+            : toUsd(params.inputTokens, pricing.inputPer1M));
     const outputCostUSD = toUsd(params.outputTokens, pricing.outputPer1M);
     return (scenarioInputCostUSD + outputCostUSD) * params.expectedPasses;
 }
@@ -112,6 +125,9 @@ export function estimateCorpusCost(
         cacheReuseRatio,
         scenario: 'fresh'
     });
+    if (typeof freshCostUSD !== 'number' || !Number.isFinite(freshCostUSD)) {
+        throw new Error(`Fresh cost estimate unavailable for ${provider}:${modelId}`);
+    }
     const cachedCostUSD = buildEstimatedInputCostUSD({
         provider,
         modelId,
@@ -151,34 +167,38 @@ export function estimateUsageCost(
             .filter((value): value is number => typeof value === 'number')
             .reduce((sum, value) => sum + value, 0);
     const pricing = resolveProviderModelPricing(provider, modelId, totalInputTokens);
-    const hasAnthropicCachePricing = provider === 'anthropic'
-        && typeof pricing.cacheWrite5mPer1M === 'number'
-        && typeof pricing.cacheReadPer1M === 'number';
+    const hasCacheRead = hasCacheReadPricing(pricing);
+    const hasExplicitCacheWrite = hasExplicitCacheWritePricing(pricing);
     const cacheCreation5mInputTokens = usage.cacheCreation5mInputTokens;
     const cacheCreation1hInputTokens = usage.cacheCreation1hInputTokens;
     const cacheCreationKnownByTtl = (cacheCreation5mInputTokens ?? 0) + (cacheCreation1hInputTokens ?? 0);
     const cacheCreationFallbackTokens = Math.max(0, (usage.cacheCreationInputTokens ?? 0) - cacheCreationKnownByTtl);
-    const hasDetailedAnthropicInputUsage = typeof usage.rawInputTokens === 'number'
+    const inferredRawInputTokens = typeof usage.rawInputTokens === 'number'
+        ? usage.rawInputTokens
+        : (typeof usage.inputTokens === 'number'
+            ? Math.max(0, usage.inputTokens - (usage.cacheReadInputTokens ?? 0) - (usage.cacheCreationInputTokens ?? 0))
+            : undefined);
+    const hasDetailedInputUsage = typeof inferredRawInputTokens === 'number'
         || typeof usage.cacheReadInputTokens === 'number'
         || typeof usage.cacheCreationInputTokens === 'number'
         || typeof cacheCreation5mInputTokens === 'number'
         || typeof cacheCreation1hInputTokens === 'number';
 
-    const rawInputCostUSD = hasAnthropicCachePricing && typeof usage.rawInputTokens === 'number'
-        ? toUsd(usage.rawInputTokens, pricing.inputPer1M)
+    const rawInputCostUSD = hasDetailedInputUsage && typeof inferredRawInputTokens === 'number'
+        ? toUsd(inferredRawInputTokens, pricing.inputPer1M)
         : undefined;
-    const cacheReadCostUSD = hasAnthropicCachePricing && typeof usage.cacheReadInputTokens === 'number'
+    const cacheReadCostUSD = hasCacheRead && typeof usage.cacheReadInputTokens === 'number'
         ? toUsd(usage.cacheReadInputTokens, pricing.cacheReadPer1M)
         : undefined;
-    const cacheCreationCostUSD = hasAnthropicCachePricing
+    const cacheCreationCostUSD = hasExplicitCacheWrite
         ? (
-            toUsd(cacheCreation5mInputTokens ?? 0, pricing.cacheWrite5mPer1M)
+            toUsd(cacheCreation5mInputTokens ?? 0, pricing.cacheWrite5mPer1M ?? pricing.cacheWrite1hPer1M)
             + toUsd(cacheCreation1hInputTokens ?? 0, pricing.cacheWrite1hPer1M ?? pricing.cacheWrite5mPer1M)
-            + toUsd(cacheCreationFallbackTokens, pricing.cacheWrite5mPer1M)
+            + toUsd(cacheCreationFallbackTokens, pricing.cacheWrite5mPer1M ?? pricing.cacheWrite1hPer1M)
         )
         : undefined;
-    const inputCostUSD = hasAnthropicCachePricing
-        ? (hasDetailedAnthropicInputUsage
+    const inputCostUSD = (hasCacheRead || hasExplicitCacheWrite)
+        ? (hasDetailedInputUsage
             ? (
                 (rawInputCostUSD ?? 0)
                 + (cacheReadCostUSD ?? 0)

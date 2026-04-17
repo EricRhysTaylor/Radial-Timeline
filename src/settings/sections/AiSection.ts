@@ -941,7 +941,10 @@ export function renderAiSection(params: {
 
     const resolvePreviewReuseSignal = (model: ModelInfo): PreviewPill | null => {
         const label = getModelUiSignals(model).reuseLabel;
-        return label ? { text: label } : null;
+        if (!label) return null;
+        return /^Reuse\s*·\s*Provider cache$/i.test(label)
+            ? { text: label, extraCls: 'ert-ai-pill--active' }
+            : { text: label, extraCls: 'ert-ai-pill--muted' };
     };
 
     const resolvePreviewSignals = (state: {
@@ -1349,6 +1352,11 @@ export function renderAiSection(params: {
         return formatted.replace(/\s+(AM|PM)$/i, (_, meridiem: string) => meridiem.toLowerCase());
     };
 
+    const formatPreviewCacheObservedLabel = (ratio?: number): string | null => {
+        if (typeof ratio !== 'number' || !Number.isFinite(ratio) || ratio <= 0) return null;
+        return `Observed cache hit · ${Math.round(Math.max(0, Math.min(1, ratio)) * 100)}% reused`;
+    };
+
     const getPreviewCurrentCacheReuseFingerprint = (): string | null =>
         getCurrentCorpusContext()?.cacheReuseFingerprint?.trim() || null;
 
@@ -1418,6 +1426,10 @@ export function renderAiSection(params: {
         const cacheRemainingLabel = cacheSession?.cacheWindowExpiresAt && cacheSession.cacheWindowExpiresAt > Date.now()
             ? formatPreviewCacheRemaining(cacheSession.cacheWindowExpiresAt - Date.now())
             : null;
+        const cacheRatio = typeof cacheSession?.cachedStableRatio === 'number' && Number.isFinite(cacheSession.cachedStableRatio)
+            ? Math.max(0, Math.min(1, cacheSession.cachedStableRatio))
+            : undefined;
+        const cacheLabel = formatPreviewCacheObservedLabel(cacheRatio);
 
         if (resultStatus && resultStatus !== 'success') {
             const isWarning = resultStatus === 'degraded';
@@ -1434,17 +1446,26 @@ export function renderAiSection(params: {
         }
 
         if (cacheSession?.cacheWindowExpiresAt && cacheSession.cacheWindowExpiresAt > Date.now()) {
+            if (cacheSession.cacheReuseState === 'warm') {
+                extraPills.push({ text: 'Cache · Warm hit', extraCls: 'ert-ai-pill--active' });
+            } else {
+                extraPills.push({ text: 'Cache · Ready', extraCls: 'ert-ai-pill--active' });
+            }
             return {
                 tone: 'success',
                 comparatorLabel: null,
                 comparatorValue: null,
                 statusIcon: 'badge-check',
-                statusText: hasCurrentCorpusMatch
-                    ? `Reuse available for current corpus • ${cacheRemainingLabel ?? 'active'}`
-                    : `Reuse available on last Inquiry corpus • ${cacheRemainingLabel ?? 'active'}`,
+                statusText: cacheSession.cacheReuseState === 'warm'
+                    ? (hasCurrentCorpusMatch
+                        ? `Warm cache confirmed for current corpus • ${cacheRemainingLabel ?? 'active'}`
+                        : `Warm cache confirmed on last Inquiry corpus • ${cacheRemainingLabel ?? 'active'}`)
+                    : (hasCurrentCorpusMatch
+                        ? `Cache ready for current corpus • ${cacheRemainingLabel ?? 'active'}`
+                        : `Cache ready on last Inquiry corpus • ${cacheRemainingLabel ?? 'active'}`),
                 extraPills,
-                cacheRatio: undefined,
-                cacheLabel: null
+                cacheRatio,
+                cacheLabel
             };
         }
 
@@ -1859,11 +1880,13 @@ export function renderAiSection(params: {
             const passLabel = `${cost.expectedPasses} ${cost.expectedPasses === 1 ? 'pass' : 'passes'}`;
             const promoLabel = cost.promo?.label;
             const ttlLabel = getProviderCacheTtlLabel(model.provider);
-            const cachedSuffix = ttlLabel ? ` (${ttlLabel})` : '';
+            const cachedSuffix = ttlLabel && typeof cost.cachedCostUSD === 'number' ? ` (${ttlLabel})` : '';
             return {
                 model,
                 freshText: formatUsdCost(cost.freshCostUSD),
-                cachedText: `${formatUsdCost(cost.cachedCostUSD)}${cachedSuffix}`,
+                cachedText: typeof cost.cachedCostUSD === 'number'
+                    ? `${formatUsdCost(cost.cachedCostUSD)}${cachedSuffix}`
+                    : '—',
                 passesText: passLabel,
                 promoLabel
             };

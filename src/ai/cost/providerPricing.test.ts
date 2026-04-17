@@ -66,6 +66,28 @@ describe('providerPricing', () => {
         expect(pricing.cacheReadPer1M).toBe(0.5);
     });
 
+    it('stores an explicit GPT-5.4 pricing row with cached input pricing', () => {
+        const pricing = getProviderPricing('openai', 'gpt-5.4');
+
+        expect(pricing.inputPer1M).toBe(2.5);
+        expect(pricing.outputPer1M).toBe(15);
+        expect(pricing.cacheReadPer1M).toBe(0.25);
+    });
+
+    it('applies GPT-5.4 long-context pricing above 272k input tokens', () => {
+        const standard = resolveProviderModelPricing('openai', 'gpt-5.4', 272_000);
+        const longContext = resolveProviderModelPricing('openai', 'gpt-5.4', 272_001);
+
+        expect(standard.pricingPhase).toBe('standard');
+        expect(standard.inputPer1M).toBe(2.5);
+        expect(standard.outputPer1M).toBe(15);
+        expect(standard.cacheReadPer1M).toBe(0.25);
+        expect(longContext.pricingPhase).toBe('longContext');
+        expect(longContext.inputPer1M).toBe(5);
+        expect(longContext.outputPer1M).toBe(22.5);
+        expect(longContext.cacheReadPer1M).toBe(0.5);
+    });
+
     it('does not assume newer Anthropic versions are more expensive', () => {
         const sonnet45 = getProviderPricing('anthropic', 'claude-sonnet-4-5-20250929');
         const sonnet46 = getProviderPricing('anthropic', 'claude-sonnet-4-6');
@@ -164,7 +186,7 @@ describe('providerPricing', () => {
         resetPricingToBuiltin();
 
         const pricing = getProviderPricing('openai', 'gpt-5.4');
-        expect(pricing.inputPer1M).toBe(3);
+        expect(pricing.inputPer1M).toBe(2.5);
     });
 
     it('resolveProviderModelPricing surfaces active promo', () => {

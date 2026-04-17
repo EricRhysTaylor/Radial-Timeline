@@ -572,35 +572,26 @@
   display: none;
 }
 
-/* ── Cached portion overlay (hatched segment on tokencap bar) ── */
+/* ── Cached portion overlay (solid segment on tokencap bar) ── */
 .ert-inquiry-minimap-tokencap-cached {
-  fill: url(#ert-inquiry-minimap-cached-hatch);
-  opacity: 0.98;
+  fill: color-mix(in srgb, var(--ert-inquiry-ai-success) 92%, #dfffe7 8%);
+  opacity: 1;
   pointer-events: none;
-  transition: opacity 300ms ease;
-}
-
-.ert-inquiry-minimap-cached-hatch-bg {
-  fill: color-mix(in srgb, var(--ert-inquiry-ai-success) 42%, transparent);
-}
-
-.ert-inquiry-minimap-cached-hatch-stroke {
-  stroke: color-mix(in srgb, white 24%, var(--ert-inquiry-ai-success) 76%);
-  stroke-width: 2.8;
-  stroke-linecap: square;
+  transition: opacity 180ms ease, fill 180ms ease;
 }
 
 .ert-inquiry-svg.is-running .ert-inquiry-minimap-tokencap-cached {
-  opacity: 0.82;
+  opacity: 1;
 }
 
 .ert-inquiry-minimap[data-reuse-state="warm"] .ert-inquiry-minimap-tokencap-cached {
-  opacity: 0.98;
+  fill: color-mix(in srgb, var(--ert-inquiry-ai-success) 96%, #f0fff4 4%);
+  opacity: 1;
 }
 
-/* Stub state — honest 4px white indicator when checking cache, no fabricated values */
+/* Stub state — honest compact indicator when cache is armed but no hit ratio is proven yet */
 .ert-inquiry-minimap-tokencap-cached.is-stub {
-  fill: #ffffff;
+  fill: color-mix(in srgb, var(--ert-inquiry-ai-success) 96%, #eaffef 4%);
   opacity: 1;
   animation: none;
 }

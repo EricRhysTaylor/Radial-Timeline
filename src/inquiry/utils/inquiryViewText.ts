@@ -288,7 +288,8 @@ export const renderInquiryBrief = (brief: InquiryBriefModel): string => {
     if (brief.pendingActions.length) {
         lines.push('', '## Pending Author Actions');
         brief.pendingActions.forEach(action => {
-            lines.push(`- ${action}`);
+            const prefix = action.targetLabel ? `${action.targetLabel} — ` : '';
+            lines.push(`- ${prefix}${action.text}`);
         });
     } else if (brief.findings.length) {
         lines.push('', '## Pending Author Actions', 'No pending edit actions were generated for this run.');

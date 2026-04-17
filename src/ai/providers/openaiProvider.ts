@@ -35,7 +35,7 @@ export class OpenAIProvider implements AIProvider {
         const aiSettings = validateAiSettings(this.plugin.settings.aiSettings ?? buildDefaultAiSettings()).value;
         const promptCacheRetention = req.bypassProviderReuse
             ? undefined
-            : (aiSettings.cacheWindows?.openaiRetention === '24h' ? '24h' : undefined);
+            : aiSettings.cacheWindows?.openaiRetention;
         const result = await callOpenAiResponsesApi(
             apiKey,
             req.modelId,
@@ -86,7 +86,7 @@ export class OpenAIProvider implements AIProvider {
         const aiSettings = validateAiSettings(this.plugin.settings.aiSettings ?? buildDefaultAiSettings()).value;
         const promptCacheRetention = req.bypassProviderReuse
             ? undefined
-            : (aiSettings.cacheWindows?.openaiRetention === '24h' ? '24h' : undefined);
+            : aiSettings.cacheWindows?.openaiRetention;
         const result = await callOpenAiResponsesApi(
             apiKey,
             req.modelId,

@@ -864,7 +864,7 @@ export class InquiryMinimapRenderer {
             return;
         }
 
-        const CACHE_STUB_PX = 4;
+        const CACHE_STUB_PX = 8;
         const cachedRatio = advanced?.cachedStableRatio;
         const cachedTokens = advanced?.cachedStableTokens;
         const hasRealCacheMetric = typeof cachedRatio === 'number'

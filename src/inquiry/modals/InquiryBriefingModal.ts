@@ -260,7 +260,11 @@ export class InquiryBriefingModal extends Modal {
         const section = this.createSection(container, 'Action Items');
         const list = section.createEl('ol', { cls: 'rt-briefing-action-list' });
         this.brief.pendingActions.forEach(action => {
-            this.renderTextElement(list, 'li', '', action);
+            const item = list.createEl('li', { cls: 'rt-briefing-action-item' });
+            if (action.targetLabel) {
+                item.createSpan({ cls: 'rt-briefing-action-pill', text: action.targetLabel });
+            }
+            this.renderTextElement(item, 'span', 'rt-briefing-action-text', action.text);
         });
     }
 

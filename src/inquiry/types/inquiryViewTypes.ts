@@ -72,7 +72,10 @@ export type InquiryBriefModel = {
         label: string;
         anchorId?: string;
     }>;
-    pendingActions: string[];
+    pendingActions: Array<{
+        targetLabel?: string;
+        text: string;
+    }>;
     logTitle?: string | null;
     rawResponse?: string | null;
     refNormalized?: boolean;

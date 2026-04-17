@@ -7273,10 +7273,14 @@ export class InquiryView extends ItemView {
         const outlinePath = this.resolveBookOutlinePath(activeBookId);
         const minimumRank = this.getImpactRank('medium');
 
+        const items = this.getResultItems(result);
+
         result.findings.forEach(finding => {
             if (!this.isFindingHit(finding)) return;
             if (this.getImpactRank(finding.impact) < minimumRank) return;
-            const note = this.formatInquiryActionNote(finding, briefTitle);
+            const targetLabel = this.resolveFindingChipLabel(finding, result, items)
+                ?? (finding.refId && /^s\d+$/i.test(finding.refId.trim()) ? finding.refId.trim().toUpperCase() : undefined);
+            const note = this.formatInquiryActionNote(finding, briefTitle, targetLabel);
             if (!note) return; // Skip findings that didn't produce an actionable suggestion.
             const refId = finding.refId?.trim();
             const filePath = refId
@@ -7305,17 +7309,25 @@ export class InquiryView extends ItemView {
         return notesByMaterial;
     }
 
-    private buildBriefPendingActions(result: InquiryResult): string[] {
+    private buildBriefPendingActions(
+        result: InquiryResult,
+        items: InquiryCorpusItem[] = this.getResultItems(result),
+        referenceLabels: ReadonlyMap<string, string> = this.buildInquiryReferenceLabelMap(items)
+    ): Array<{ targetLabel?: string; text: string }> {
         const minimumRank = this.getImpactRank('medium');
-        const actions = new Set<string>();
+        const actions: Array<{ targetLabel?: string; text: string }> = [];
+        const seen = new Set<string>();
         result.findings.forEach(finding => {
             if (!this.isFindingHit(finding)) return;
             if (this.getImpactRank(finding.impact) < minimumRank) return;
-            const suggestion = this.buildInquiryActionSuggestion(finding);
-            if (!suggestion) return;
-            actions.add(suggestion);
+            const action = this.buildInquiryPendingAction(finding, result, items, referenceLabels);
+            if (!action) return;
+            const key = `${action.targetLabel ?? ''}::${action.text}`;
+            if (seen.has(key)) return;
+            seen.add(key);
+            actions.push(action);
         });
-        return Array.from(actions);
+        return actions;
     }
 
     private resolveBookOutlinePath(activeBookId?: string): string | null {
@@ -9296,7 +9308,7 @@ export class InquiryView extends ItemView {
         } else if (provider === 'google') {
             if (!trace?.cacheStatus && trace?.cacheReuseState !== 'warm') return null;
         } else if (provider === 'openai') {
-            return null;
+            if (trace?.cacheReuseState !== 'eligible' && trace?.cacheReuseState !== 'warm') return null;
         }
 
         return Date.now() + ttlMs;
@@ -9359,9 +9371,15 @@ export class InquiryView extends ItemView {
         const session = this.sessionStore.getLatestActiveCacheSessionForEngine(engine.provider, engine.modelId, {
             cacheReuseFingerprint: this.getCurrentCacheReuseFingerprint() ?? undefined
         }) ?? this.tryBackfillActiveSessionCacheReuseFingerprint();
-        if (!session || session.result.aiProvider?.trim().toLowerCase() !== 'anthropic') {
+        if (!session || session.result.aiProvider?.trim().toLowerCase() !== engine.provider) {
             return null;
         }
+        const reuseState = session.cacheReuseState === 'warm'
+            ? 'warm'
+            : session.cacheWindowExpiresAt && session.cacheWindowExpiresAt > Date.now()
+                ? 'eligible'
+                : 'idle';
+        if (reuseState === 'idle') return null;
         const cachedStableRatio = typeof session.cachedStableRatio === 'number' && Number.isFinite(session.cachedStableRatio)
             ? Math.min(1, Math.max(0, session.cachedStableRatio))
             : undefined;
@@ -9371,9 +9389,6 @@ export class InquiryView extends ItemView {
         const totalInputTokens = typeof session.totalInputTokens === 'number' && Number.isFinite(session.totalInputTokens)
             ? Math.max(0, Math.floor(session.totalInputTokens))
             : undefined;
-        if (!cachedStableRatio || !cachedStableTokens || !totalInputTokens) {
-            return null;
-        }
         return {
             roleTemplateName: '',
             provider: engine.provider,
@@ -9384,7 +9399,7 @@ export class InquiryView extends ItemView {
             maxInputTokens: 0,
             maxOutputTokens: 0,
             executionPassCount: 1,
-            reuseState: 'warm',
+            reuseState,
             cachedStableRatio,
             cachedStableTokens,
             totalInputTokens,
@@ -10690,7 +10705,9 @@ export class InquiryView extends ItemView {
                 snapshot.estimate.expectedPassCount
             );
             const freshLabel = formatApproxUsdCost(cost.freshCostUSD);
-            const cachedLabel = formatApproxUsdCost(cost.cachedCostUSD);
+            const cachedLabel = typeof cost.cachedCostUSD === 'number'
+                ? formatApproxUsdCost(cost.cachedCostUSD)
+                : '—';
             const cacheSession = this.getLatestCacheSessionForResolvedEngine();
             const nextRunCanReuseCache = !!cacheSession?.cacheWindowExpiresAt
                 && cacheSession.cacheWindowExpiresAt > Date.now();
@@ -11143,8 +11160,7 @@ export class InquiryView extends ItemView {
 
         const sceneNotes = this.buildInquirySceneNotes(result, items, referenceLabels);
         const sceneReferences = this.buildInquirySceneReferenceIndex(items);
-        const pendingActions = this.buildBriefPendingActions(result)
-            .map(action => this.normalizeInquiryBriefText(action, referenceLabels));
+        const pendingActions = this.buildBriefPendingActions(result, items, referenceLabels);
         const logTitle = this.resolveInquiryLogLinkTitle(result, logPath);
         const rawResponseText = typeof rawResponse === 'string' ? rawResponse.trim() : '';
         const includeRawResponse = rawResponseText.length > 0 && this.isErrorResult(result);
@@ -11630,12 +11646,30 @@ export class InquiryView extends ItemView {
 
     private formatInquiryActionNote(
         finding: InquiryFinding,
-        briefTitle: string
+        briefTitle: string,
+        targetLabel?: string
     ): string | null {
         const suggestion = this.buildInquiryActionSuggestion(finding);
         if (!suggestion) return null;
         const briefLink = formatInquiryBriefLink(briefTitle);
-        return `${briefLink} — ${suggestion}`;
+        const prefix = targetLabel?.trim() ? `${targetLabel.trim()} — ` : '';
+        return `${briefLink} — ${prefix}${suggestion}`;
+    }
+
+    private buildInquiryPendingAction(
+        finding: InquiryFinding,
+        result: InquiryResult,
+        items: InquiryCorpusItem[] = this.getResultItems(result),
+        referenceLabels: ReadonlyMap<string, string> = this.buildInquiryReferenceLabelMap(items)
+    ): { targetLabel?: string; text: string } | null {
+        const suggestion = this.buildInquiryActionSuggestion(finding);
+        if (!suggestion) return null;
+        const targetLabel = this.resolveFindingChipLabel(finding, result, items)
+            ?? (finding.refId && /^s\d+$/i.test(finding.refId.trim()) ? finding.refId.trim().toUpperCase() : undefined);
+        return {
+            targetLabel,
+            text: this.normalizeInquiryBriefText(suggestion, referenceLabels)
+        };
     }
 
     private buildInquiryActionSuggestion(finding: InquiryFinding): string | null {

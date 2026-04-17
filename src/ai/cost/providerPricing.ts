@@ -92,20 +92,44 @@ export const BUILTIN_PRICING: ProviderPricingTable = {
     },
     openai: {
         'gpt-5.4': {
-            inputPer1M: 3.0,
-            outputPer1M: 10.0
+            inputPer1M: 2.5,
+            outputPer1M: 15.0,
+            cacheReadPer1M: 0.25,
+            longContext: {
+                thresholdInputTokens: 272_000,
+                inputPer1M: 5.0,
+                outputPer1M: 22.5,
+                cacheReadPer1M: 0.5
+            }
         },
         'gpt-5.4-2026-03-05': {
-            inputPer1M: 3.0,
-            outputPer1M: 10.0
+            inputPer1M: 2.5,
+            outputPer1M: 15.0,
+            cacheReadPer1M: 0.25,
+            longContext: {
+                thresholdInputTokens: 272_000,
+                inputPer1M: 5.0,
+                outputPer1M: 22.5,
+                cacheReadPer1M: 0.5
+            }
         },
         'gpt-5.4-pro': {
-            inputPer1M: 20.0,
-            outputPer1M: 120.0
+            inputPer1M: 30.0,
+            outputPer1M: 180.0,
+            longContext: {
+                thresholdInputTokens: 272_000,
+                inputPer1M: 60.0,
+                outputPer1M: 270.0
+            }
         },
         'gpt-5.4-pro-2026-03-05': {
-            inputPer1M: 20.0,
-            outputPer1M: 120.0
+            inputPer1M: 30.0,
+            outputPer1M: 180.0,
+            longContext: {
+                thresholdInputTokens: 272_000,
+                inputPer1M: 60.0,
+                outputPer1M: 270.0
+            }
         }
     },
     google: {
@@ -247,11 +271,7 @@ export function resolveProviderModelPricing(
     const meta = activeMeta;
     const effectiveRates = resolveExpiredPromoRates(pricing);
 
-    if (
-        provider === 'anthropic'
-        && longContext
-        && normalizedInputTokens > longContext.thresholdInputTokens
-    ) {
+    if (longContext && normalizedInputTokens > longContext.thresholdInputTokens) {
         return {
             inputPer1M: longContext.inputPer1M,
             outputPer1M: longContext.outputPer1M,
