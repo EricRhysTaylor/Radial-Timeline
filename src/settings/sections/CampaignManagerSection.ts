@@ -32,6 +32,11 @@ export interface CampaignManagerProps {
     containerEl: HTMLElement;
     onCampaignChange?: () => void;
     onDesignerContextChange?: () => void;
+    /**
+     * Called once with a function the caller can invoke to refresh the style state
+     * (unsaved-changes note, tracked stage pill, etc) in-place without rebuilding the whole list.
+     */
+    registerStyleRefresh?: (fn: () => void) => void;
 }
 
 interface CampaignNameModalOptions {
@@ -233,7 +238,7 @@ export function campaignNeedsRefresh(campaign: AuthorProgressCampaign): boolean 
 /**
  * Render the Campaign Manager section
  */
-export function renderCampaignManagerSection({ app, plugin, containerEl, onCampaignChange, onDesignerContextChange }: CampaignManagerProps): void {
+export function renderCampaignManagerSection({ app, plugin, containerEl, onCampaignChange, onDesignerContextChange, registerStyleRefresh }: CampaignManagerProps): void {
     const isProActive = hasProFeatureAccess(plugin);
     const campaigns = plugin.settings.authorProgress?.campaigns || [];
     const expandedCampaigns = new Set<string>();
@@ -242,6 +247,10 @@ export function renderCampaignManagerSection({ app, plugin, containerEl, onCampa
     if (activeDesignerCampaignId) {
         expandedCampaigns.add(activeDesignerCampaignId);
     }
+    // Collected per-campaign style-state refreshers; cleared on each list rerender so stale
+    // closures (pointing at detached DOM) never get invoked.
+    const styleRefreshers: Array<() => void> = [];
+    registerStyleRefresh?.(() => styleRefreshers.forEach(fn => fn()));
 
     // ─────────────────────────────────────────────────────────────────────────
     // CAMPAIGN MANAGER CARD
@@ -281,7 +290,7 @@ export function renderCampaignManagerSection({ app, plugin, containerEl, onCampa
             renderCampaignRow(listContainer, campaign, index, plugin, () => {
                 rerenderCampaignList();
                 onCampaignChange?.();
-            }, expandedCampaigns, onDesignerContextChange);
+            }, expandedCampaigns, onDesignerContextChange, styleRefreshers);
         });
     }
 
@@ -397,6 +406,7 @@ export function renderCampaignManagerSection({ app, plugin, containerEl, onCampa
     // Helper to re-render the list
     function rerenderCampaignList() {
         listContainer.empty();
+        styleRefreshers.length = 0;
         const updatedCampaigns = plugin.settings.authorProgress?.campaigns || [];
 
         if (updatedCampaigns.length === 0) {
@@ -413,7 +423,7 @@ export function renderCampaignManagerSection({ app, plugin, containerEl, onCampa
                 renderCampaignRow(listContainer, campaign, index, plugin, () => {
                     rerenderCampaignList();
                     onCampaignChange?.();
-                }, expandedCampaigns, onDesignerContextChange);
+                }, expandedCampaigns, onDesignerContextChange, styleRefreshers);
             });
         }
 
@@ -470,7 +480,8 @@ function renderCampaignRow(
     plugin: RadialTimelinePlugin,
     onUpdate: () => void,
     expandedCampaigns: Set<string>,
-    onDesignerContextChange?: () => void
+    onDesignerContextChange?: () => void,
+    styleRefreshers?: Array<() => void>
 ): void {
     const styleService = new AprStyleService(plugin);
     const needsRefresh = campaignNeedsRefresh(campaign);
@@ -592,7 +603,7 @@ function renderCampaignRow(
 
     if (expandedCampaigns.has(campaignKey)) {
         row.classList.add('is-expanded');
-        renderCampaignDetails(wrapper, campaign, index, plugin, onUpdate, onDesignerContextChange);
+        renderCampaignDetails(wrapper, campaign, index, plugin, onUpdate, onDesignerContextChange, styleRefreshers);
     }
 
     // Actions
@@ -637,7 +648,7 @@ function renderCampaignRow(
                 return;
             }
             row.classList.add('is-expanded');
-            renderCampaignDetails(wrapper, campaign, index, plugin, onUpdate, onDesignerContextChange);
+            renderCampaignDetails(wrapper, campaign, index, plugin, onUpdate, onDesignerContextChange, styleRefreshers);
         }
     };
 
@@ -667,7 +678,8 @@ function renderCampaignDetails(
     index: number,
     plugin: RadialTimelinePlugin,
     onUpdate: () => void,
-    onDesignerContextChange?: () => void
+    onDesignerContextChange?: () => void,
+    styleRefreshers?: Array<() => void>
 ): void {
     const details = parentRow.createDiv({ cls: `ert-campaign-details ${ERT_CLASSES.STACK}` });
     const styleService = new AprStyleService(plugin);
@@ -911,6 +923,7 @@ function renderCampaignDetails(
 
     const styleBlock = details.createDiv({ cls: `${ERT_CLASSES.STACK} ert-campaign-style-block` });
     renderStyleSelector();
+    styleRefreshers?.push(renderStyleSelector);
 
     // Export Quality
     const exportQualitySetting = new Setting(details)

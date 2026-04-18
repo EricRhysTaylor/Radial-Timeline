@@ -25,6 +25,7 @@ export type AprLayoutSpec = {
         divider: number;
         spoke: number;
         actSpoke: number;
+        centerRing: number;
     };
     patternScale: number;
     branding: {
@@ -110,6 +111,9 @@ export function computeAprLayout(preset: AprPreset, data: AprData = {}): AprLayo
     const dividerStroke = fixedStroke;
     const spokeWidth = fixedStroke;
     const actSpokeWidth = fixedStroke;
+    // Center (hub) stage-color ring gets its own thickness so the publish-stage cue reads clearly
+    // at every size. Doubled for small, tripled for medium+ (matches the RT logo + AUTHOR label weight).
+    const centerRingStroke = outerPx <= 150 ? fixedStroke * 2 : fixedStroke * 3;
 
     const patternScale = preset.density ?? (outerPx / 300) * 0.4;
 
@@ -158,6 +162,7 @@ export function computeAprLayout(preset: AprPreset, data: AprData = {}): AprLayo
             divider: dividerStroke,
             spoke: spokeWidth,
             actSpoke: actSpokeWidth,
+            centerRing: centerRingStroke,
         },
         patternScale,
         branding: {

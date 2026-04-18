@@ -232,7 +232,7 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
     const showRtAttributionFinal = (showRtAttribution ?? true) && layout.preset.enableText && !isThumb;
     const structuralBorderColor = isThumb ? stageBadgeColor : structural.border;
     const structuralBorderOpacity = isThumb ? 1 : undefined;
-    const centerStrokeWidth = isThumb ? APR_FIXED_STROKES.border * 2 : undefined;
+    const centerStrokeW = layout.strokes.centerRing;
 
     // Filter scenes (exclude beat notes always)
     const filteredScenes = scenes.filter(s => !isBeatNote(s));
@@ -403,8 +403,7 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
         }
     }
 
-    // Center hole — inner radius stroke uses publish stage color
-    const centerStrokeW = centerStrokeWidth ?? borderWidth;
+    // Center hole — inner radius stroke uses publish stage color (matches RT logo + AUTHOR label).
     svg += `<circle cx="0" cy="0" r="${innerRadius}" fill="${color('--apr-center-fill', holeFill)}" stroke="${color('--apr-stage-badge-color', stageBadgeColor)}" stroke-width="${centerStrokeW}" />`;
 
     if (centerMarkFinal !== 'none') {

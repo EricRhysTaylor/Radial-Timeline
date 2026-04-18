@@ -151,6 +151,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const sizeSelectorControls = sizeSelectorRow.createDiv({ cls: ERT_CLASSES.INLINE });
     let teaserPreviewMode: TeaserPreviewMode = 'auto';
     let refreshPreview = () => {};
+    let refreshCampaignStyleState: (() => void) | null = null;
     let teaserSelectWrap: HTMLDivElement | null = null;
     const updateTeaserPreviewVisibility = (_size: 'thumb' | 'small' | 'medium' | 'large') => {
         // Dropdown always visible — Ring mode is valid at all sizes including thumb
@@ -833,13 +834,15 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
     const setAprSetting = async <K extends keyof AuthorProgressDefaults>(key: K, value: AuthorProgressDefaults[K] | undefined): Promise<void> => {
         if (!plugin.settings.authorProgress) return;
-        if (styleSettingKeys.has(key as keyof AprStyleSettings)) {
+        const isStyleKey = styleSettingKeys.has(key as keyof AprStyleSettings);
+        if (isStyleKey) {
             aprStyleService.updateDesignerStyle({ [key]: value } as Partial<AprStyleSettings>);
         } else {
             plugin.settings.authorProgress.defaults[key] = value as AuthorProgressDefaults[K];
         }
         await plugin.saveSettings();
         refreshPreview();
+        if (isStyleKey) refreshCampaignStyleState?.();
     };
 
     const setAprSettings = async (updates: Partial<AuthorProgressDefaults>): Promise<void> => {
@@ -853,12 +856,14 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                 (defaultUpdates as Record<string, unknown>)[key] = value;
             }
         });
-        if (Object.keys(styleUpdates).length > 0) {
+        const hasStyleUpdates = Object.keys(styleUpdates).length > 0;
+        if (hasStyleUpdates) {
             aprStyleService.updateDesignerStyle(styleUpdates);
         }
         Object.assign(plugin.settings.authorProgress.defaults, defaultUpdates);
         await plugin.saveSettings();
         refreshPreview();
+        if (hasStyleUpdates) refreshCampaignStyleState?.();
     };
 
     const clearPercentNumberOverrides = (): void => {
@@ -1872,6 +1877,9 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         },
         onDesignerContextChange: () => {
             rerenderSection();
+        },
+        registerStyleRefresh: (fn) => {
+            refreshCampaignStyleState = fn;
         }
     });
 
