@@ -319,22 +319,21 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     trackedStageDropdown.selectEl.addClass('ert-input', 'ert-input--fit-selected', 'ert-typography-select');
     STAGE_ORDER.forEach(stage => trackedStageDropdown.addOption(stage, stage));
 
-    // Scene goal — sits directly below the mode dropdown row.
-    const targetCountWrap = modeCell.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
-    const targetCountControlRow = targetCountWrap.createDiv({ cls: 'ert-typography-controls' });
-    const targetCountInput = new TextComponent(targetCountControlRow);
+    // Scene goal — inline with the mode + tracked-stage dropdowns.
+    const targetCountGroup = modeControlRow.createDiv({ cls: 'ert-apr-targetGroup' });
+    const targetCountInput = new TextComponent(targetCountGroup);
     targetCountInput.inputEl.type = 'number';
     targetCountInput.inputEl.min = '1';
     targetCountInput.inputEl.step = '1';
     targetCountInput.inputEl.addClass('ert-input', 'ert-input--xs');
     targetCountInput.setPlaceholder('—');
-    const targetCountResetBtn = targetCountControlRow.createEl('button', {
+    setTooltip(targetCountInput.inputEl, 'Scene goal');
+    const targetCountResetBtn = targetCountGroup.createEl('button', {
         cls: ERT_CLASSES.ICON_BTN,
         attr: { type: 'button', 'aria-label': 'Match target to current scene count' }
     });
     setIcon(targetCountResetBtn, 'refresh-cw');
     setTooltip(targetCountResetBtn, 'Match target to current scene count');
-    const targetCountNote = targetCountWrap.createDiv({ cls: ERT_CLASSES.FIELD_NOTE });
 
     const dateRangeWrap = modeCell.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
     dateRangeWrap.addClass('ert-hidden');
@@ -423,7 +422,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         modeDropdown.setValue(nextMode);
         trackedStageDropdown.selectEl.toggleClass('ert-hidden', nextMode !== 'stage');
         dateRangeWrap.toggleClass('ert-hidden', nextMode !== 'date');
-        targetCountWrap.toggleClass('ert-hidden', nextMode === 'date');
+        targetCountGroup.toggleClass('ert-hidden', nextMode === 'date');
         fitSelectToSelectedLabel(modeDropdown.selectEl, { minPx: 132, extraPx: 18 });
         fitSelectToSelectedLabel(trackedStageDropdown.selectEl, { minPx: 92, extraPx: 18 });
         isUpdatingMode = false;
@@ -557,11 +556,6 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         isUpdatingTarget = false;
     };
 
-    const formatTargetNote = (_mode: AprProgressMode, sceneCount: number, storedTarget: number | undefined): string => {
-        if (!storedTarget) return 'Scene goal.';
-        return `Scene goal (${sceneCount} of ${storedTarget}).`;
-    };
-
     const composeStageNote = (mode: AprProgressMode): string => {
         if (mode === 'date') {
             return 'Track progress against a timeline. Measure how far you’ve moved between a start and target date.';
@@ -608,7 +602,6 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             stageSubNote.setText(progressState.mode === 'stage' ? `Currently tracking: ${progressState.trackedStage} stage` : '');
             stageSubNote.toggleClass('ert-hidden', progressState.mode !== 'stage');
             seedTargetCount(progressState.sceneCount, storedTarget);
-            targetCountNote.setText(formatTargetNote(progressState.mode, progressState.sceneCount, storedTarget));
             renderFlowBar(progressState.stageBreakdown, progressState.percent);
             seedDateRange();
         } catch {
@@ -620,7 +613,6 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             stageSubNote.setText(mode === 'stage' ? `Currently tracking: ${trackedStage} stage` : '');
             stageSubNote.toggleClass('ert-hidden', mode !== 'stage');
             seedTargetCount(0, storedTarget);
-            targetCountNote.setText(formatTargetNote(mode, 0, storedTarget));
             renderFlowBar({ Zero: 0, Author: 0, House: 0, Press: 0 }, 0);
             seedDateRange();
         }

@@ -298,8 +298,8 @@
 
 .rt-briefing-summary-text {
   color: color-mix(in srgb, var(--rt-briefing-body) 82%, var(--rt-briefing-muted));
-  font-weight: 400;
-  line-height: 1.82;
+  font-weight: 300;
+  line-height: 2;
 }
 
 .rt-briefing-scene-ref {
