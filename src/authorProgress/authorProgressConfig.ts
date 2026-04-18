@@ -96,7 +96,6 @@ export function buildDefaultAuthorProgressDefaults(): AuthorProgressDefaults {
         aprProgressDateStart: undefined,
         aprProgressDateTarget: undefined,
         aprTargetSceneCount: undefined,
-        aprTargetSceneCountAutoSync: true,
         aprSize: 'medium',
         exportFormat: 'png',
         aprBackgroundColor: '#0d0d0f',
@@ -293,7 +292,6 @@ function migrateDefaults(raw: LegacyAuthorProgressSettings | null): AuthorProgre
         aprTargetSceneCount: typeof raw.aprTargetSceneCount === 'number' && raw.aprTargetSceneCount > 0
             ? Math.floor(raw.aprTargetSceneCount)
             : undefined,
-        aprTargetSceneCountAutoSync: asBoolean(raw.aprTargetSceneCountAutoSync, defaults.aprTargetSceneCountAutoSync ?? true),
         aprSize,
         exportFormat,
         aprBackgroundColor: asString(raw.aprBackgroundColor) ?? defaults.aprBackgroundColor,
