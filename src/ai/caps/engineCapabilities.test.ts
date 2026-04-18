@@ -123,7 +123,7 @@ describe('getModelUiSignals', () => {
         const model = byAlias('gpt-5.4');
         const signals = getModelUiSignals(model);
 
-        expect(signals.citationLabel).toBe('Sources · Annotation render only');
+        expect(signals.citationLabel).toBe('Sources · Limited implementation');
         expect(signals.reuseLabel).toContain('Reuse');
     });
 

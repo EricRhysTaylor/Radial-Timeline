@@ -223,7 +223,7 @@ function migrateStyleProfile(raw: unknown, defaults: AuthorProgressDefaults): Ap
         name,
         createdAt: asString(record.createdAt) ?? new Date().toISOString(),
         style: migrateStyleSettings(record.style ?? record, defaults),
-        aprExportQuality: asString(record.aprExportQuality) as any
+        aprExportQuality: normalizeAprExportQuality(record.aprExportQuality)
     };
 }
 
@@ -253,7 +253,7 @@ function createLegacyCampaignStyleProfile(
         name: `${campaignName} Style`,
         createdAt: asString(record.createdAt) ?? new Date().toISOString(),
         style,
-        aprExportQuality: asString(record.aprExportQuality) as any
+        aprExportQuality: normalizeAprExportQuality(record.aprExportQuality)
     };
 }
 
@@ -336,6 +336,10 @@ function migrateDefaults(raw: LegacyAuthorProgressSettings | null): AuthorProgre
     };
 }
 
+function normalizeAprExportQuality(value: unknown): AuthorProgressCampaign['aprExportQuality'] | undefined {
+    return value === 'standard' || value === 'ultra' || value === 'print' ? value : undefined;
+}
+
 function migrateCampaign(
     raw: unknown,
     defaults: AuthorProgressDefaults
@@ -349,6 +353,7 @@ function migrateCampaign(
     const updateFrequency = normalizeFrequency(record.updateFrequency, defaults.updateFrequency);
     const aprSize = normalizeAprSize(record.aprSize, defaults.aprSize);
     const exportFormat = normalizeAprExportFormat(record.exportFormat);
+    const aprExportQuality = normalizeAprExportQuality(record.aprExportQuality);
     const teaserReveal = normalizeTeaserReveal(record.teaserReveal);
     const hasLegacyStyle = hasLegacyCampaignStyleOverrides(record);
     const explicitStyleSource = record.styleSource === 'profile' || record.styleSource === 'global'
@@ -372,11 +377,12 @@ function migrateCampaign(
             exportPath: asString(record.exportPath ?? record.embedPath) ?? buildCampaignEmbedPath({
                 campaignName: name,
                 updateFrequency,
-                aprExportQuality: asString(record.aprExportQuality) as any,
+                aprExportQuality,
                 teaserEnabled: teaserReveal?.enabled,
                 exportFormat
             }),
             exportFormat,
+            aprExportQuality,
             targetBookId: asString(record.targetBookId),
             aprSize,
             styleSource,

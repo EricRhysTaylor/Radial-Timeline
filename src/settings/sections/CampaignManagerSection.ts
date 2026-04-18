@@ -9,7 +9,7 @@ import type { AprStyleProfile, AuthorProgressCampaign, TeaserPreset, TeaserRevea
 import { AprProgressService } from '../../services/apr/AprProgressService';
 import { AprStyleService } from '../../services/apr/AprStyleService';
 import { hasProFeatureAccess } from '../featureGate';
-import { getTeaserThresholds, teaserLevelToRevealOptions, TEASER_LEVEL_INFO } from '../../renderer/apr/AprConstants';
+import { getTeaserThresholds, getTeaserRevealLevel, teaserLevelToRevealOptions, TEASER_LEVEL_INFO } from '../../renderer/apr/AprConstants';
 import { createAprSVG } from '../../renderer/apr/AprRenderer';
 import { getAllScenes } from '../../utils/manuscript';
 import {
@@ -711,7 +711,11 @@ function renderCampaignDetails(
         const baselineStyle = selectedProfile
             ? selectedProfile.style
             : styleService.captureCurrentStyle(styleService.getDefaults());
-        const hasUnsavedStyleChanges = !styleService.stylesMatch(designerStyle, baselineStyle);
+        const styleDiffers = !styleService.stylesMatch(designerStyle, baselineStyle);
+        const currentQuality = currentCampaign.aprExportQuality ?? plugin.settings.authorProgress?.defaults.aprExportQuality ?? 'standard';
+        const baselineQuality = selectedProfile?.aprExportQuality ?? currentQuality;
+        const qualityDiffers = !!selectedProfile && currentQuality !== baselineQuality;
+        const hasUnsavedStyleChanges = styleDiffers || qualityDiffers;
 
         const openSaveStyleModal = () => {
             const suggestedName = selectedProfile?.name ?? `${campaign.name} Style`;
@@ -892,14 +896,14 @@ function renderCampaignDetails(
         };
         const actionsNote = hasUnsavedStyleChanges
             ? selectedProfile
-                ? `Changes not saved. Update "${selectedProfile.name}" or save as new.`
+                ? `Unsaved changes in "${selectedProfile.name}". Update to keep them.`
                 : null
             : selectedProfile
                 ? `Ready to reuse "${selectedProfile.name}".`
                 : 'Save the current preview if you want to reuse it across campaigns.';
         if (actionsNote) {
             actionsCard.createDiv({
-                cls: ERT_CLASSES.FIELD_NOTE,
+                cls: `${ERT_CLASSES.FIELD_NOTE}${hasUnsavedStyleChanges ? ' ert-apr-presetNote--alert' : ''}`,
                 text: actionsNote
             });
         }
@@ -1267,6 +1271,11 @@ async function renderTeaserStagesPreviews(
     // Get disabled stages
     const disabledStages = campaign.teaserReveal?.disabledStages ?? {};
 
+    // Current progress drives which stage is "live" — highlight it in the publish-stage color.
+    const currentProgress = progressService.resolveProgress(scenes, settings);
+    const currentTeaserLevel = getTeaserRevealLevel(currentProgress.percent, thresholds, disabledStages);
+    const currentStageColor = plugin.settings.publishStageColors?.[currentProgress.displayStage] ?? '#808080';
+
     // 4 stages with their properties (labels/icons from TEASER_LEVEL_INFO)
     // Note: Ring stage uses 5% for preview (shows ring) even though threshold is 0%
     const stages: {
@@ -1290,8 +1299,11 @@ async function renderTeaserStagesPreviews(
         const cardClasses: string[] = [ERT_CLASSES.STAGE_CARD];
         if (stage.isDisabled) cardClasses.push('is-disabled');
         if (stage.canDisable) cardClasses.push('is-clickable');
+        const isCurrent = stage.level === currentTeaserLevel && !stage.isDisabled;
+        if (isCurrent) cardClasses.push('is-current');
 
         const card = container.createDiv({ cls: cardClasses.join(' ') });
+        if (isCurrent) card.style.setProperty('--ert-current-stage-color', currentStageColor);
 
         // Click to toggle for middle stages
         if (stage.canDisable && stage.disableKey) {

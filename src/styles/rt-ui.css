@@ -1874,7 +1874,7 @@
   display: flex;
   width: 100%;
   height: 28px;
-  border-radius: 6px;
+  border-radius: 0;
   overflow: hidden;
   background: var(--background-secondary);
   box-shadow: inset 0 0 0 1px var(--background-modifier-border);
@@ -1884,6 +1884,11 @@
   display: inline-flex;
   align-items: center;
   gap: var(--ert-gap-xs);
+}
+
+.ert-ui .ert-apr-presetNote--alert {
+  color: var(--ert-alert-warning-color);
+  font-weight: 600;
 }
 
 .ert-ui .ert-apr-flow__segment {
@@ -9621,6 +9626,18 @@
 
 .ert-ui.ert-scope--settings .ert-stageCard.is-disabled {
   opacity: 0.4;
+}
+
+.ert-ui.ert-scope--settings .ert-stageCard.is-current {
+  border: 2px solid var(--ert-current-stage-color, var(--ert-accent));
+  border-radius: var(--ert-panel-radius);
+  padding: var(--ert-gap-xs);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ert-current-stage-color, var(--ert-accent)) 30%, transparent);
+}
+
+.ert-ui.ert-scope--settings .ert-stageCard.is-current .ert-stageCard__name {
+  color: var(--ert-current-stage-color, var(--ert-accent));
+  font-weight: 700;
 }
 
 .ert-ui.ert-scope--settings .ert-stageCard.is-disabled .ert-stageCard__svg {

@@ -6,6 +6,9 @@ import type { TokenTier } from '../types';
 import { extractTokenUsage, formatAiLogContent, formatDuration, formatUsageCostBreakdownLines, sanitizeLogPayload, type AiLogStatus } from '../../ai/log';
 import { describeTokenEstimateMethod } from '../../ai/tokens/inputTokenEstimate';
 import { buildManifestTocLines, formatManifestClassLabel } from '../utils/inquiryViewText';
+import { buildInquirySourcesViewModel } from '../services/inquirySources';
+import { BUILTIN_MODELS } from '../../ai/registry/builtinModels';
+import { getModelUiSignals } from '../../ai/caps/engineCapabilities';
 
 const PROVIDER_LABELS = {
     anthropic: 'Anthropic',
@@ -141,6 +144,27 @@ export function buildInquiryLogContent(args: {
         ? formatTokenCount(trace.cachedStableTokens)
         : null;
     const anthropicDispatchNote = trace.notes?.find(note => note.startsWith('Anthropic dispatch:')) ?? null;
+    const sourcesVM = buildInquirySourcesViewModel(result.citations, result.evidenceDocumentMeta, result.findings);
+    const providerKey = (result.aiProvider || '').trim().toLowerCase();
+    const resolvedModelKey = (result.aiModelResolved || result.aiModelRequested || '').trim().toLowerCase();
+    const resolvedModel = BUILTIN_MODELS.find(model => (
+        model.provider === providerKey
+        && (model.id.toLowerCase() === resolvedModelKey || model.alias.toLowerCase() === resolvedModelKey)
+    ));
+    const citationSupportLabel = resolvedModel
+        ? getModelUiSignals(resolvedModel).citationLabel
+        : null;
+    const sourceResultDetail = (() => {
+        if (!sourcesVM.hasContent) return 'none surfaced';
+        const counts = new Map<string, number>();
+        for (const item of sourcesVM.items) {
+            counts.set(item.classLabel, (counts.get(item.classLabel) ?? 0) + 1);
+        }
+        const ordered = [...counts.entries()]
+            .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+            .map(([label, count]) => `${label.toLowerCase()}=${count}`);
+        return `${sourcesVM.totalCount} item${sourcesVM.totalCount === 1 ? '' : 's'} · ${ordered.join(', ')}`;
+    })();
 
     const describeMode = (className: string): string | null => {
         if (!manifest) return null;
@@ -275,6 +299,12 @@ export function buildInquiryLogContent(args: {
     lines.push(`- Overrides: ${overrideLabel}`);
     lines.push(`- Status: ${statusLabel}${statusDetail}`);
     lines.push(`- Duration: ${formatDuration(durationMs)}`);
+    if (!isSimulated && citationSupportLabel) {
+        lines.push(`- Citation support: ${citationSupportLabel}`);
+    }
+    if (!isSimulated) {
+        lines.push(`- Source results: ${sourceResultDetail}`);
+    }
     if (!isSimulated && cacheReuseLabel) {
         const cacheSummaryParts = [`- Cache: ${cacheReuseLabel}`];
         if (trace.cacheStatus) cacheSummaryParts.push(`status=${trace.cacheStatus}`);

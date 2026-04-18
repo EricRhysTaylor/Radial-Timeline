@@ -239,7 +239,7 @@ export function getModelUiSignals(model: ModelInfo): ModelUiSignals {
             ? 'Citation · Grounded search'
             : 'Citation · Tool annotations';
     } else if (capabilities.annotationRendering.availableInRt) {
-        citationLabel = 'Sources · Annotation render only';
+        citationLabel = 'Sources · Limited implementation';
     }
 
     let reuseLabel: string | null = null;

@@ -339,7 +339,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     dateRangeWrap.addClass('ert-hidden');
     const dateRangeInput = new TextComponent(dateRangeWrap);
     dateRangeInput.setPlaceholder('YYYY-MM-DD to YYYY-MM-DD');
-    dateRangeInput.inputEl.addClass('ert-input', 'ert-input--md');
+    dateRangeInput.inputEl.addClass('ert-input', 'ert-input--lg');
     dateRangeWrap.createDiv({
         cls: ERT_CLASSES.FIELD_NOTE,
         text: 'Format: YYYY-MM-DD to YYYY-MM-DD.'

@@ -929,7 +929,12 @@ export function renderAiSection(params: {
         const signals = getModelUiSignals(model);
         if (!signals.citationLabel) return null;
         if (/^Sources\s*·\s*/i.test(signals.citationLabel)) {
-            return { text: signals.citationLabel, extraCls: 'ert-ai-pill--muted' };
+            return {
+                text: signals.citationLabel,
+                extraCls: ensureCanonicalAiSettings().citationsEnabled === false
+                    ? 'ert-ai-pill--muted'
+                    : 'ert-ai-pill--active'
+            };
         }
         // Strip existing "Citation · " prefix to get the mechanism label (e.g. "Direct manuscript")
         const mechanism = signals.citationLabel.replace(/^Citation\s*·\s*/i, '');
@@ -3624,17 +3629,17 @@ export function renderAiSection(params: {
     // 3) Local LLM Configuration
     // 4) Local LLM Status / Validation
     // 5) AI Cost Estimate
-    // 6) Role context
-    // 7) AI transparency
+    // 6) AI transparency (What gets sent to the AI)
+    // 7) Role context
     // 8) API Keys
     // 9) Configuration
     [
         quickSetupSection,
         quickSetupPreviewSection,
         costEstimateSection,
-        roleContextSection,
         largeHandlingSection,
         detailsBtn,
+        roleContextSection,
         apiKeysFold,
         aiConfigFold
     ].forEach(section => aiSettingsGroup.appendChild(section));
