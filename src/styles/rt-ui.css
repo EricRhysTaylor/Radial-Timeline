@@ -1815,6 +1815,104 @@
   margin-bottom: calc(var(--ert-pad-md) + var(--ert-pad-md) / 2);
 }
 
+/* Manuscript Flow bar — full-width stage distribution + tick marker for tracked progress. */
+.ert-ui .ert-apr-flow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ert-gap-xs);
+  width: 100%;
+  margin-top: var(--ert-gap-sm);
+}
+
+.ert-ui .ert-apr-flow__tick {
+  position: relative;
+  height: 20px;
+}
+
+.ert-ui .ert-apr-flow__tick-marker {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  pointer-events: none;
+  transition: left 200ms ease;
+}
+
+.ert-ui .ert-apr-flow__tick-label {
+  font-size: var(--ert-fs-xs);
+  font-weight: 600;
+  color: var(--text-normal);
+  line-height: 1;
+  white-space: nowrap;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+}
+
+.ert-ui .ert-apr-flow__tick-line {
+  width: 0;
+  height: 6px;
+  border-left: 2px solid var(--text-normal);
+}
+
+.ert-ui .ert-apr-flow__track {
+  position: relative;
+  display: flex;
+  width: 100%;
+  height: 28px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+}
+
+.ert-ui .ert-apr-flow__segment {
+  flex-basis: 0;
+  min-width: 10px;
+  background: var(--ert-flow-color, #808080);
+  transition: flex-grow 200ms ease;
+}
+
+.ert-ui .ert-apr-flow__segment.is-empty {
+  background: color-mix(in srgb, var(--ert-flow-color, #808080) 35%, var(--background-secondary) 65%);
+}
+
+.ert-ui .ert-apr-flow__segment + .ert-apr-flow__segment {
+  border-left: 1px solid color-mix(in srgb, var(--background-primary) 40%, transparent);
+}
+
+.ert-ui .ert-apr-flow__legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ert-gap-xs);
+  font-size: var(--ert-fs-xs);
+  color: var(--text-muted);
+}
+
+.ert-ui .ert-apr-flow__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ert-ui .ert-apr-flow__legend-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ert-flow-color, #808080);
+}
+
+.ert-ui .ert-apr-flow__legend-sep {
+  color: var(--text-faint);
+}
+
 .ert-ui.ert-scope--settings .ert-badgePill--alert {
   background: color-mix(in srgb, var(--text-error) 20%, transparent);
   color: var(--text-error);

@@ -60,7 +60,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     publishStageColors: {
         Zero: '#9E70CF',   // Purple (Stage Zero)
         Author: '#5E85CF', // Blue   (Author)
-        House: '#DA7847',  // Orange (House)
+        House: '#F2863C',  // Orange (House)
         Press: '#6FB971'   // Green  (Press)
     },
     subplotColors: [

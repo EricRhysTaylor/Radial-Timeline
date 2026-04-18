@@ -291,6 +291,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     addWikiLink(stylingHeading, 'Settings#social-media-styling');
     applyErtHeaderLayout(stylingHeading, { variant: 'inline' });
     const stylingBody = stylingBlock.createDiv({ cls: 'ert-typography-stack' });
+    stylingBody.createDiv({ cls: 'ert-divider' });
 
     // Progress tracking
     type AprProgressMode = 'stage' | 'date' | 'full';
@@ -305,9 +306,6 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     stageBadgeRow.style.alignSelf = 'flex-start';
     const stageBadge = stageBadgeRow.createSpan({ cls: ERT_CLASSES.CHIP, text: 'TRACKING STAGE' });
     const stageNote = stageCell.createDiv({ cls: ERT_CLASSES.FIELD_NOTE });
-    const modeGuidance = stageCell.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
-    const stageStatsRow = stageCell.createDiv({ cls: ERT_CLASSES.INLINE });
-    const stageStatsSummary = stageCell.createDiv({ cls: ERT_CLASSES.FIELD_NOTE });
 
     progressModeGrid.createDiv({ cls: 'ert-divider--vertical' });
 
@@ -316,26 +314,19 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const modeDropdown = new DropdownComponent(modeControlRow);
     modeDropdown.selectEl.addClass('ert-input', 'ert-input--fit-selected', 'ert-typography-select');
 
-    const trackedStageWrap = modeCell.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
-    const trackedStageControlRow = trackedStageWrap.createDiv({ cls: 'ert-typography-controls' });
-    const trackedStageDropdown = new DropdownComponent(trackedStageControlRow);
+    // Tracked-stage dropdown sits inline to the right of the mode dropdown (stage mode only).
+    const trackedStageDropdown = new DropdownComponent(modeControlRow);
     trackedStageDropdown.selectEl.addClass('ert-input', 'ert-input--fit-selected', 'ert-typography-select');
     STAGE_ORDER.forEach(stage => trackedStageDropdown.addOption(stage, stage));
-    trackedStageWrap.createDiv({
-        cls: ERT_CLASSES.FIELD_NOTE,
-        text: 'Tracked stage for manual APR progress.'
-    });
 
-    // Target scene count — denominator override so APR doesn't hit 100% just by completing the
-    // scenes that currently exist. Applies to stage and full modes.
+    // Scene goal — sits directly below the mode dropdown row.
     const targetCountWrap = modeCell.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
     const targetCountControlRow = targetCountWrap.createDiv({ cls: 'ert-typography-controls' });
     const targetCountInput = new TextComponent(targetCountControlRow);
     targetCountInput.inputEl.type = 'number';
     targetCountInput.inputEl.min = '1';
     targetCountInput.inputEl.step = '1';
-    targetCountInput.inputEl.addClass('ert-input', 'ert-input--fit-selected', 'ert-typography-select');
-    targetCountInput.inputEl.size = 6;
+    targetCountInput.inputEl.addClass('ert-input', 'ert-input--xs');
     targetCountInput.setPlaceholder('—');
     const targetCountResetBtn = targetCountControlRow.createEl('button', {
         cls: ERT_CLASSES.ICON_BTN,
@@ -354,6 +345,23 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         cls: ERT_CLASSES.FIELD_NOTE,
         text: 'Format: YYYY-MM-DD to YYYY-MM-DD.'
     });
+
+    // Manuscript Flow bar — full-width, rendered at the bottom of the card.
+    const flowBar = progressTrackingCard.createDiv({ cls: 'ert-apr-flow' });
+    const flowTick = flowBar.createDiv({ cls: 'ert-apr-flow__tick' });
+    const flowTickMarker = flowTick.createDiv({ cls: 'ert-apr-flow__tick-marker' });
+    const flowTickLabel = flowTickMarker.createSpan({ cls: 'ert-apr-flow__tick-label' });
+    flowTickMarker.createSpan({ cls: 'ert-apr-flow__tick-line' });
+    const flowBarTrack = flowBar.createDiv({ cls: 'ert-apr-flow__track' });
+    const flowSegments: Record<(typeof STAGE_ORDER)[number], HTMLDivElement> = {} as Record<(typeof STAGE_ORDER)[number], HTMLDivElement>;
+    STAGE_ORDER.forEach(stage => {
+        const seg = flowBarTrack.createDiv({ cls: `ert-apr-flow__segment ert-apr-flow__segment--${stage.toLowerCase()}` });
+        const color = plugin.settings.publishStageColors?.[stage] ?? '#808080';
+        seg.style.setProperty('--ert-flow-color', color);
+        setTooltip(seg, `${stage}: 0`);
+        flowSegments[stage] = seg;
+    });
+    const flowLegend = flowBar.createDiv({ cls: 'ert-apr-flow__legend' });
 
     const applyStageBadgeTone = (stage: (typeof STAGE_ORDER)[number]) => {
         const color = plugin.settings.publishStageColors?.[stage] ?? '#808080';
@@ -391,13 +399,6 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         return { start, target };
     };
 
-    const setGuidanceLines = (lines: string[]): void => {
-        modeGuidance.empty();
-        lines.forEach(line => {
-            modeGuidance.createDiv({ cls: ERT_CLASSES.FIELD_NOTE, text: line });
-        });
-    };
-
     const dateInputSuccessClass = 'ert-setting-input-success';
     const dateInputErrorClass = 'ert-setting-input-error';
 
@@ -419,24 +420,9 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         isUpdatingMode = true;
         const nextMode = modeOverride ?? (plugin.settings.authorProgress?.defaults.aprProgressMode ?? 'stage') as AprProgressMode;
         modeDropdown.setValue(nextMode);
-        trackedStageWrap.toggleClass('ert-hidden', nextMode !== 'stage');
+        trackedStageDropdown.selectEl.toggleClass('ert-hidden', nextMode !== 'stage');
         dateRangeWrap.toggleClass('ert-hidden', nextMode !== 'date');
         targetCountWrap.toggleClass('ert-hidden', nextMode === 'date');
-        const guidance = nextMode === 'stage'
-            ? [
-                'Stage mode: APR fills as scenes reach or pass the chosen publish stage (Zero → Author → House → Press).',
-                'Pick a stage below. Good for focusing on one phase — drafting at Zero, revisions at Author, production at House or Press.'
-            ]
-            : nextMode === 'date'
-                ? [
-                    'Date mode: APR follows the calendar from the start date to the target date.',
-                    'Progress is tied to time, not work completed — useful for deadlines and campaign countdowns.'
-                ]
-                : [
-                    'Full manuscript mode: APR weighs every scene across all four stages combined.',
-                    '100% means every scene has reached Press. Best once scope is fixed.'
-                ];
-        setGuidanceLines(guidance);
         fitSelectToSelectedLabel(modeDropdown.selectEl, { minPx: 132, extraPx: 18 });
         fitSelectToSelectedLabel(trackedStageDropdown.selectEl, { minPx: 92, extraPx: 18 });
         isUpdatingMode = false;
@@ -570,18 +556,9 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         isUpdatingTarget = false;
     };
 
-    const formatTargetNote = (mode: AprProgressMode, sceneCount: number, storedTarget: number | undefined): string => {
-        if (sceneCount === 0) {
-            return 'Target scenes — set your estimated total once you start adding scenes.';
-        }
-        if (!storedTarget || storedTarget <= sceneCount) {
-            const noun = mode === 'full' ? 'APR' : 'progress';
-            return `Target scenes — ${sceneCount} scene${sceneCount === 1 ? '' : 's'} exist. Set a higher target so ${noun} reflects your full project scope.`;
-        }
-        if (sceneCount >= storedTarget) {
-            return `Target scenes — ${sceneCount} of ${storedTarget} reached. You’ve hit your estimate; raise the target if scope grew.`;
-        }
-        return `Target scenes — ${sceneCount} of ${storedTarget} written.`;
+    const formatTargetNote = (_mode: AprProgressMode, sceneCount: number, storedTarget: number | undefined): string => {
+        if (!storedTarget) return 'Scene goal.';
+        return `Scene goal (${sceneCount} of ${storedTarget}).`;
     };
 
     const composeStageNote = (
@@ -593,58 +570,42 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     ): string => {
         if (mode === 'date') {
             if (dateRange?.valid && dateRange.start && dateRange.target) {
-                return `Calendar progress from ${dateRange.start} to ${dateRange.target}.`;
+                return `${dateRange.start} → ${dateRange.target}`;
             }
-            return 'Choose a start and target date for calendar-based progress.';
+            return 'Set a start and target date.';
         }
         if (sceneCount === 0) {
-            return mode === 'stage'
-                ? `Manually tracking the ${trackedStage} stage. Add scenes to start measuring progress.`
-                : 'Full manuscript mode. Add scenes to start measuring progress.';
+            return 'Add scenes to start tracking.';
         }
         const denom = storedTarget && storedTarget > sceneCount ? storedTarget : sceneCount;
-        if (mode === 'stage') {
-            const base = `Manually tracking the ${trackedStage} stage — ${sceneCount} of ${denom} scenes.`;
-            if (storedTarget && sceneCount >= storedTarget) {
-                return `${base} You’ve reached your target; bump it below if scope grew.`;
-            }
-            if (!storedTarget) {
-                return `${base} Tip: set a target below so APR reflects your full project scope.`;
-            }
-            return base;
-        }
-        const fullBase = `Full manuscript across Zero → Press — ${sceneCount} of ${denom} scenes.`;
-        if (storedTarget && sceneCount >= storedTarget) {
-            return `${fullBase} You’ve reached your target; bump it below if scope grew.`;
-        }
-        if (!storedTarget) {
-            return `${fullBase} Tip: set a target below so APR reflects your full project scope.`;
-        }
-        return fullBase;
+        return mode === 'stage'
+            ? `${sceneCount} of ${denom} scenes at ${trackedStage}`
+            : `${sceneCount} of ${denom} scenes across Zero → Press`;
     };
 
-    const renderStageStats = (
+    const renderFlowBar = (
         breakdown: Record<(typeof STAGE_ORDER)[number], number>,
-        sceneCount: number,
-        targetSceneCount: number | undefined,
         percent: number
     ): void => {
-        stageStatsRow.empty();
-        if (sceneCount === 0) {
-            stageStatsSummary.setText('');
-            return;
-        }
         STAGE_ORDER.forEach(stage => {
-            const chip = stageStatsRow.createSpan({ cls: ERT_CLASSES.CHIP });
-            chip.setText(`${stage} ${breakdown[stage] ?? 0}`);
-            const color = plugin.settings.publishStageColors?.[stage] ?? '#808080';
-            chip.style.setProperty('--ert-chip-bg', `color-mix(in srgb, ${color} 14%, var(--background-secondary) 86%)`);
-            chip.style.setProperty('border', `1px solid ${color}`);
-            chip.style.setProperty('color', color);
+            const seg = flowSegments[stage];
+            const count = breakdown[stage] ?? 0;
+            seg.style.setProperty('flex-grow', String(count));
+            seg.toggleClass('is-empty', count === 0);
+            setTooltip(seg, `${stage}: ${count}`);
         });
-        const denom = targetSceneCount && targetSceneCount > sceneCount ? targetSceneCount : sceneCount;
-        const targetPart = targetSceneCount ? ` · target ${targetSceneCount}` : '';
-        stageStatsSummary.setText(`${sceneCount} of ${denom} scenes${targetPart} · ${percent}%`);
+        const clamped = Math.max(0, Math.min(100, percent));
+        flowTickMarker.style.setProperty('left', `${clamped}%`);
+        flowTickLabel.setText(`${clamped}%`);
+        flowLegend.empty();
+        STAGE_ORDER.forEach((stage, idx) => {
+            if (idx > 0) flowLegend.createSpan({ cls: 'ert-apr-flow__legend-sep', text: '·' });
+            const label = flowLegend.createSpan({ cls: 'ert-apr-flow__legend-item' });
+            const color = plugin.settings.publishStageColors?.[stage] ?? '#808080';
+            label.style.setProperty('--ert-flow-color', color);
+            label.createSpan({ cls: 'ert-apr-flow__legend-dot' });
+            label.createSpan({ cls: 'ert-apr-flow__legend-text', text: `${stage} ${breakdown[stage] ?? 0}` });
+        });
     };
 
     const refreshTrackingState = async (): Promise<void> => {
@@ -663,7 +624,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             updateStageUI(progressState.mode, progressState.displayStage, progressState.trackedStage, note);
             seedTargetCount(progressState.sceneCount, storedTarget);
             targetCountNote.setText(formatTargetNote(progressState.mode, progressState.sceneCount, storedTarget));
-            renderStageStats(progressState.stageBreakdown, progressState.sceneCount, storedTarget, progressState.percent);
+            renderFlowBar(progressState.stageBreakdown, progressState.percent);
             seedDateRange();
         } catch {
             const trackedStage = plugin.settings.authorProgress?.defaults.aprTrackedStage ?? 'Zero';
@@ -673,14 +634,14 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             updateStageUI(mode, trackedStage, trackedStage, 'No scenes found yet.');
             seedTargetCount(0, storedTarget);
             targetCountNote.setText(formatTargetNote(mode, 0, storedTarget));
-            renderStageStats({ Zero: 0, Author: 0, House: 0, Press: 0 }, 0, storedTarget, 0);
+            renderFlowBar({ Zero: 0, Author: 0, House: 0, Press: 0 }, 0);
             seedDateRange();
         }
     };
 
-    modeDropdown.addOption('stage', 'Stage mode');
-    modeDropdown.addOption('date', 'Date mode');
-    modeDropdown.addOption('full', 'Full manuscript mode');
+    modeDropdown.addOption('stage', 'New Project');
+    modeDropdown.addOption('full', 'Full Manuscript');
+    modeDropdown.addOption('date', 'Date Goal');
     void refreshTrackingState();
 
     const getActiveStyleSettings = (): AprStyleSettings => aprStyleService.resolveDesignerStyle();
