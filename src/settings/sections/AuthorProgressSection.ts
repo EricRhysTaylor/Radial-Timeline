@@ -324,6 +324,25 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         text: 'Tracked stage for manual APR progress.'
     });
 
+    // Target scene count — denominator override so APR doesn't hit 100% just by completing the
+    // scenes that currently exist. Applies to stage and full modes.
+    const targetCountWrap = modeCell.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
+    const targetCountControlRow = targetCountWrap.createDiv({ cls: 'ert-typography-controls' });
+    const targetCountInput = new TextComponent(targetCountControlRow);
+    targetCountInput.inputEl.type = 'number';
+    targetCountInput.inputEl.min = '1';
+    targetCountInput.inputEl.step = '1';
+    targetCountInput.inputEl.addClass('ert-input', 'ert-input--fit-selected', 'ert-typography-select');
+    targetCountInput.inputEl.size = 6;
+    targetCountInput.setPlaceholder('—');
+    const targetCountResetBtn = targetCountControlRow.createEl('button', {
+        cls: ERT_CLASSES.ICON_BTN,
+        attr: { type: 'button', 'aria-label': 'Match target to current scene count' }
+    });
+    setIcon(targetCountResetBtn, 'refresh-cw');
+    setTooltip(targetCountResetBtn, 'Match target to current scene count');
+    const targetCountNote = targetCountWrap.createDiv({ cls: ERT_CLASSES.FIELD_NOTE });
+
     const dateRangeWrap = modeCell.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
     dateRangeWrap.addClass('ert-hidden');
     const dateRangeInput = new TextComponent(dateRangeWrap);
@@ -391,6 +410,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     };
 
     let isUpdatingMode = false;
+    let lastKnownSceneCount = 0;
     const progressTrackingService = new AuthorProgressService(plugin, app);
 
     const updateModeUI = (modeOverride?: AprProgressMode) => {
@@ -399,11 +419,21 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         modeDropdown.setValue(nextMode);
         trackedStageWrap.toggleClass('ert-hidden', nextMode !== 'stage');
         dateRangeWrap.toggleClass('ert-hidden', nextMode !== 'date');
+        targetCountWrap.toggleClass('ert-hidden', nextMode === 'date');
         const guidance = nextMode === 'stage'
-            ? ['Stage mode: choose the publish stage APR should track manually.']
+            ? [
+                'Stage mode: APR fills as scenes reach or pass the chosen publish stage (Zero → Author → House → Press).',
+                'Pick a stage below. Good for focusing on one phase — drafting at Zero, revisions at Author, production at House or Press.'
+            ]
             : nextMode === 'date'
-                ? ['Date mode: progress follows the selected start and target dates.']
-                : ['Full mode: APR measures the whole manuscript across Zero, Author, House, and Press.'];
+                ? [
+                    'Date mode: APR follows the calendar from the start date to the target date.',
+                    'Progress is tied to time, not work completed — useful for deadlines and campaign countdowns.'
+                ]
+                : [
+                    'Full manuscript mode: APR weighs every scene across all four stages combined.',
+                    '100% means every scene has reached Press. Best once scope is fixed.'
+                ];
         setGuidanceLines(guidance);
         fitSelectToSelectedLabel(modeDropdown.selectEl, { minPx: 132, extraPx: 18 });
         fitSelectToSelectedLabel(trackedStageDropdown.selectEl, { minPx: 92, extraPx: 18 });
@@ -442,6 +472,45 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         if (isUpdatingMode || !plugin.settings.authorProgress) return;
         const nextStage = STAGE_ORDER.find(stage => stage === val) ?? 'Zero';
         plugin.settings.authorProgress.defaults.aprTrackedStage = nextStage;
+        await plugin.saveSettings();
+        await refreshTrackingState();
+        refreshPreview();
+    });
+
+    let isUpdatingTarget = false;
+    const commitTargetSceneCount = async (rawValue: string, fallbackSceneCount: number): Promise<void> => {
+        if (!plugin.settings.authorProgress) return;
+        const trimmed = rawValue.trim();
+        if (!trimmed) {
+            plugin.settings.authorProgress.defaults.aprTargetSceneCount = undefined;
+        } else {
+            const parsed = Number.parseInt(trimmed, 10);
+            if (!Number.isFinite(parsed) || parsed <= 0) {
+                plugin.settings.authorProgress.defaults.aprTargetSceneCount = undefined;
+            } else {
+                plugin.settings.authorProgress.defaults.aprTargetSceneCount = Math.max(parsed, fallbackSceneCount);
+            }
+        }
+        await plugin.saveSettings();
+        await refreshTrackingState();
+        refreshPreview();
+    };
+
+    plugin.registerDomEvent(targetCountInput.inputEl, 'blur', () => {
+        if (isUpdatingTarget) return;
+        const sceneCount = lastKnownSceneCount;
+        void commitTargetSceneCount(targetCountInput.getValue(), sceneCount);
+    });
+    plugin.registerDomEvent(targetCountInput.inputEl, 'keydown', (evt: KeyboardEvent) => {
+        if (evt.key === 'Enter') {
+            evt.preventDefault();
+            targetCountInput.inputEl.blur();
+        }
+    });
+    // SAFE: settings sections manage their own listener cleanup via the Obsidian settings tab lifecycle.
+    targetCountResetBtn.addEventListener('click', async () => {
+        if (!plugin.settings.authorProgress) return;
+        plugin.settings.authorProgress.defaults.aprTargetSceneCount = undefined;
         await plugin.saveSettings();
         await refreshTrackingState();
         refreshPreview();
@@ -491,25 +560,92 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         dateRangeInput.setValue(formatDateRange(start, target));
     };
 
+    const seedTargetCount = (sceneCount: number, storedTarget: number | undefined): void => {
+        isUpdatingTarget = true;
+        const display = storedTarget && storedTarget > 0 ? String(storedTarget) : '';
+        targetCountInput.setValue(display);
+        targetCountInput.setPlaceholder(sceneCount > 0 ? String(sceneCount) : '—');
+        isUpdatingTarget = false;
+    };
+
+    const formatTargetNote = (mode: AprProgressMode, sceneCount: number, storedTarget: number | undefined): string => {
+        if (sceneCount === 0) {
+            return 'Target scenes — set your estimated total once you start adding scenes.';
+        }
+        if (!storedTarget || storedTarget <= sceneCount) {
+            const noun = mode === 'full' ? 'APR' : 'progress';
+            return `Target scenes — ${sceneCount} scene${sceneCount === 1 ? '' : 's'} exist. Set a higher target so ${noun} reflects your full project scope.`;
+        }
+        if (sceneCount >= storedTarget) {
+            return `Target scenes — ${sceneCount} of ${storedTarget} reached. You’ve hit your estimate; raise the target if scope grew.`;
+        }
+        return `Target scenes — ${sceneCount} of ${storedTarget} written.`;
+    };
+
+    const composeStageNote = (
+        mode: AprProgressMode,
+        trackedStage: (typeof STAGE_ORDER)[number],
+        sceneCount: number,
+        storedTarget: number | undefined,
+        dateRange: { start?: string; target?: string; valid: boolean } | undefined
+    ): string => {
+        if (mode === 'date') {
+            if (dateRange?.valid && dateRange.start && dateRange.target) {
+                return `Calendar progress from ${dateRange.start} to ${dateRange.target}.`;
+            }
+            return 'Choose a start and target date for calendar-based progress.';
+        }
+        if (sceneCount === 0) {
+            return mode === 'stage'
+                ? `Manually tracking the ${trackedStage} stage. Add scenes to start measuring progress.`
+                : 'Full manuscript mode. Add scenes to start measuring progress.';
+        }
+        const denom = storedTarget && storedTarget > sceneCount ? storedTarget : sceneCount;
+        if (mode === 'stage') {
+            const base = `Manually tracking the ${trackedStage} stage — ${sceneCount} of ${denom} scenes.`;
+            if (storedTarget && sceneCount >= storedTarget) {
+                return `${base} You’ve reached your target; bump it below if scope grew.`;
+            }
+            if (!storedTarget) {
+                return `${base} Tip: set a target below so APR reflects your full project scope.`;
+            }
+            return base;
+        }
+        const fullBase = `Full manuscript across Zero → Press — ${sceneCount} of ${denom} scenes.`;
+        if (storedTarget && sceneCount >= storedTarget) {
+            return `${fullBase} You’ve reached your target; bump it below if scope grew.`;
+        }
+        if (!storedTarget) {
+            return `${fullBase} Tip: set a target below so APR reflects your full project scope.`;
+        }
+        return fullBase;
+    };
+
     const refreshTrackingState = async (): Promise<void> => {
         try {
             const scenes = await getAllScenes(app, plugin);
             const progressState = progressTrackingService.resolveProgressState(scenes);
-            const note = progressState.mode === 'stage'
-                ? `Manually tracking the ${progressState.trackedStage} stage.`
-                : progressState.mode === 'date'
-                    ? progressState.dateRange?.valid && progressState.dateRange.start && progressState.dateRange.target
-                        ? `Using ${progressState.dateRange.start} to ${progressState.dateRange.target}.`
-                        : 'Choose a start and target date for calendar-based progress.'
-                    : scenes.length > 0
-                        ? 'Using fixed stage positions across the full manuscript.'
-                        : 'Using fixed stage positions. Add scenes to start measuring the manuscript.';
+            lastKnownSceneCount = progressState.sceneCount;
+            const storedTarget = plugin.settings.authorProgress?.defaults.aprTargetSceneCount;
+            const note = composeStageNote(
+                progressState.mode,
+                progressState.trackedStage,
+                progressState.sceneCount,
+                storedTarget,
+                progressState.dateRange
+            );
             updateStageUI(progressState.mode, progressState.displayStage, progressState.trackedStage, note);
+            seedTargetCount(progressState.sceneCount, storedTarget);
+            targetCountNote.setText(formatTargetNote(progressState.mode, progressState.sceneCount, storedTarget));
             seedDateRange();
         } catch {
             const trackedStage = plugin.settings.authorProgress?.defaults.aprTrackedStage ?? 'Zero';
             const mode = (plugin.settings.authorProgress?.defaults.aprProgressMode ?? 'stage') as AprProgressMode;
+            lastKnownSceneCount = 0;
+            const storedTarget = plugin.settings.authorProgress?.defaults.aprTargetSceneCount;
             updateStageUI(mode, trackedStage, trackedStage, 'No scenes found yet.');
+            seedTargetCount(0, storedTarget);
+            targetCountNote.setText(formatTargetNote(mode, 0, storedTarget));
             seedDateRange();
         }
     };

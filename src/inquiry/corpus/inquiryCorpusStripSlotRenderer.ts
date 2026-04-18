@@ -56,7 +56,6 @@ export function buildInquiryCorpusCcSlotViewModel(args: {
         tooltip: buildInquiryCorpusCcTooltip({
             entry: args.entry,
             stats: args.stats,
-            thresholds: args.thresholds,
             tier,
             sceneStatus,
             isLowSubstance: lowSubstance,
@@ -142,20 +141,9 @@ function getInquiryCorpusTierLabel(tier: CorpusSubstanceTier): string {
     return 'Substantive';
 }
 
-function getTierThresholdLabel(
-    tier: CorpusSubstanceTier,
-    thresholds: InquiryCorpusThresholds
-): string {
-    if (tier === 'empty') return `< ${thresholds.emptyMax} words`;
-    if (tier === 'sketchy') return `< ${thresholds.mediumMin} words`;
-    if (tier === 'medium') return `>= ${thresholds.mediumMin} words`;
-    return `>= ${thresholds.substantiveMin} words`;
-}
-
 function buildInquiryCorpusCcTooltip(args: {
     entry: CorpusCcEntry;
     stats: CorpusCcStats;
-    thresholds: InquiryCorpusThresholds;
     tier: CorpusSubstanceTier;
     sceneStatus?: CorpusSceneStatus;
     isLowSubstance: boolean;
@@ -188,11 +176,11 @@ function buildInquiryCorpusCcTooltip(args: {
     }
 
     const tierLabel = getInquiryCorpusTierLabel(args.tier);
-    const thresholdLabel = getTierThresholdLabel(args.tier, args.thresholds);
+    const wordsLabel = `${args.wordCount.toLocaleString()} words`;
     if (args.isLowSubstance) {
-        conditions.push(`Tier: ${tierLabel} ${thresholdLabel} (X)`);
+        conditions.push(`${tierLabel}: ${wordsLabel} (X)`);
     } else {
-        conditions.push(`Tier: ${tierLabel} ${thresholdLabel}`);
+        conditions.push(`${tierLabel}: ${wordsLabel}`);
     }
 
     return `${tooltipTitle} [${classInitial}]\n${conditions.map(item => `• ${item}`).join('\n')}`;

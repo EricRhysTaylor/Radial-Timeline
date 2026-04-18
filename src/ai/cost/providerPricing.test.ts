@@ -163,6 +163,23 @@ describe('providerPricing', () => {
         const pricing = getProviderPricing('openai', 'gpt-5.4');
         expect(pricing.inputPer1M).toBe(2.0);
         expect(pricing.outputPer1M).toBe(8.0);
+        expect(pricing.cacheReadPer1M).toBe(0.25);
+    });
+
+    it('mergeRemotePricing preserves builtin cache metadata when remote rows are partial', () => {
+        mergeRemotePricing({
+            openai: {
+                'gpt-5.4': {
+                    inputPer1M: 2.0,
+                    outputPer1M: 8.0
+                }
+            }
+        }, 'remote');
+
+        const pricing = getProviderPricing('openai', 'gpt-5.4');
+        expect(pricing.cacheReadPer1M).toBe(0.25);
+        expect(pricing.longContext?.thresholdInputTokens).toBe(272_000);
+        expect(pricing.longContext?.cacheReadPer1M).toBe(0.5);
     });
 
     it('mergeRemotePricing preserves builtin models not in remote', () => {

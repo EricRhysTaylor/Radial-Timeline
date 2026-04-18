@@ -116,13 +116,14 @@ describe('remote pricing pipeline — happy path', () => {
 
     it('remote pricing overrides builtin pricing for same model', async () => {
         const original = getProviderPricing('openai', 'gpt-5.4');
-        expect(original.inputPer1M).toBe(3.0);
+        expect(original.inputPer1M).toBe(2.5);
 
         mergeRemotePricing({
             openai: { 'gpt-5.4': { inputPer1M: 1.5, outputPer1M: 7.0 } }
         }, 'remote', new Date().toISOString());
 
         expect(getProviderPricing('openai', 'gpt-5.4').inputPer1M).toBe(1.5);
+        expect(getProviderPricing('openai', 'gpt-5.4').cacheReadPer1M).toBe(0.25);
     });
 
     it('cache is written on successful remote fetch', async () => {

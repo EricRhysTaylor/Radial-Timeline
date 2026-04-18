@@ -310,6 +310,8 @@ export interface AuthorProgressDefaults {
     aprTrackedStage?: AprTrackedStage;
     aprProgressDateStart?: string;
     aprProgressDateTarget?: string;
+    aprTargetSceneCount?: number; // Author-estimated total scenes — APR denominator when the current scene count is smaller
+    aprTargetSceneCountAutoSync?: boolean; // When true, target tracks max(target, currentSceneCount) automatically
     aprSize?: 'thumb' | 'small' | 'medium' | 'large';
     aprExportQuality?: AprExportQuality; // Standard (1200px) or Ultra (2400px)
     exportFormat?: AprExportFormat; // Core/default report export format

@@ -3724,6 +3724,28 @@ export class InquiryView extends ItemView {
         return item.displayLabel;
     }
 
+    private getMinimapItemTitleWithWordCount(item: InquiryCorpusItem): string {
+        const title = this.getMinimapItemTitle(item);
+        const words = this.getMinimapItemWordCount(item);
+        return words !== null ? `${title} · ${words.toLocaleString()}w` : title;
+    }
+
+    private getMinimapItemWordCount(item: InquiryCorpusItem): number | null {
+        const filePath = this.getMinimapItemFilePath(item);
+        if (!filePath) return null;
+        const file = this.app.vault.getAbstractFileByPath(filePath);
+        if (!file || !this.isTFile(file)) return null;
+        const fm = this.getNormalizedFrontmatter(file);
+        if (!fm) return null;
+        const raw = fm['Words'] ?? fm['words'];
+        if (typeof raw === 'number' && Number.isFinite(raw)) return raw;
+        if (typeof raw === 'string') {
+            const parsed = parseFloat(raw.replace(/,/g, '').trim());
+            if (Number.isFinite(parsed)) return parsed;
+        }
+        return null;
+    }
+
     private normalizeTargetSceneIds(value: unknown): string[] {
         const raw = Array.isArray(value)
             ? value
@@ -3825,7 +3847,7 @@ export class InquiryView extends ItemView {
 
     private buildMinimapRenderCallbacks(): Parameters<InquiryMinimapRenderer['renderTicks']>[3] {
         return {
-            getItemTitle: (item) => this.getMinimapItemTitle(item),
+            getItemTitle: (item) => this.getMinimapItemTitleWithWordCount(item),
             balanceTooltipText,
             registerDomEvent: (el, event, handler) => this.registerDomEvent(el, event, handler),
             onTickClick: (item, event) => {

@@ -13,6 +13,9 @@ export interface AprResolvedProgressState {
     percent: number;
     displayStage: AprTrackedStage;
     displayLabel: string;
+    sceneCount: number;
+    targetSceneCount?: number;
+    effectiveDenominator: number;
     dateRange?: {
         start?: string;
         target?: string;
@@ -30,6 +33,11 @@ function normalizeTrackedStage(value: unknown, fallback: AprTrackedStage = 'Zero
 
 function normalizeMode(value: unknown): AprResolvedProgressMode {
     return value === 'date' || value === 'full' ? value : 'stage';
+}
+
+function normalizeTargetSceneCount(value: unknown): number | undefined {
+    if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return undefined;
+    return Math.floor(value);
 }
 
 function isCompleted(status: TimelineItem['status']): boolean {
@@ -55,6 +63,8 @@ export class AprProgressService {
         const mode = normalizeMode(settings.aprProgressMode);
         const trackedStage = normalizeTrackedStage(settings.aprTrackedStage, 'Zero');
         const uniqueScenes = this.getUniqueScenes(scenes);
+        const targetSceneCount = normalizeTargetSceneCount(settings.aprTargetSceneCount);
+        const effectiveDenominator = Math.max(uniqueScenes.length, targetSceneCount ?? 0);
 
         if (mode === 'date') {
             const percent = this.calculateDateProgress(settings.aprProgressDateStart, settings.aprProgressDateTarget) ?? 0;
@@ -65,6 +75,9 @@ export class AprProgressService {
                 percent,
                 displayStage,
                 displayLabel: displayStage.toUpperCase(),
+                sceneCount: uniqueScenes.length,
+                targetSceneCount,
+                effectiveDenominator,
                 dateRange: {
                     start: settings.aprProgressDateStart,
                     target: settings.aprProgressDateTarget,
@@ -74,24 +87,30 @@ export class AprProgressService {
         }
 
         if (mode === 'full') {
-            const percent = this.calculateFullProgress(uniqueScenes);
+            const percent = this.calculateFullProgress(uniqueScenes, effectiveDenominator);
             const displayStage = this.stageFromPercent(percent);
             return {
                 mode,
                 trackedStage,
                 percent,
                 displayStage,
-                displayLabel: displayStage.toUpperCase()
+                displayLabel: displayStage.toUpperCase(),
+                sceneCount: uniqueScenes.length,
+                targetSceneCount,
+                effectiveDenominator
             };
         }
 
-        const percent = this.calculateTrackedStageProgress(uniqueScenes, trackedStage);
+        const percent = this.calculateTrackedStageProgress(uniqueScenes, trackedStage, effectiveDenominator);
         return {
             mode: 'stage',
             trackedStage,
             percent,
             displayStage: trackedStage,
-            displayLabel: trackedStage.toUpperCase()
+            displayLabel: trackedStage.toUpperCase(),
+            sceneCount: uniqueScenes.length,
+            targetSceneCount,
+            effectiveDenominator
         };
     }
 
@@ -120,8 +139,8 @@ export class AprProgressService {
         return unique;
     }
 
-    private calculateTrackedStageProgress(scenes: TimelineItem[], trackedStage: AprTrackedStage): number {
-        if (scenes.length === 0) return 0;
+    private calculateTrackedStageProgress(scenes: TimelineItem[], trackedStage: AprTrackedStage, denominator: number): number {
+        if (denominator <= 0) return 0;
         const trackedStageIndex = STAGE_ORDER.indexOf(trackedStage);
         const completedCount = scenes.reduce((count, scene) => {
             const stageIndex = STAGE_ORDER.indexOf(normalizeStage(scene['Publish Stage']));
@@ -129,18 +148,18 @@ export class AprProgressService {
             if (stageIndex === trackedStageIndex && isCompleted(scene.status)) return count + 1;
             return count;
         }, 0);
-        return this.toPercent(completedCount / scenes.length);
+        return this.toPercent(completedCount / denominator);
     }
 
-    private calculateFullProgress(scenes: TimelineItem[]): number {
-        if (scenes.length === 0) return 0;
+    private calculateFullProgress(scenes: TimelineItem[], denominator: number): number {
+        if (denominator <= 0) return 0;
         const totalUnits = scenes.reduce((sum, scene) => {
             const stageIndex = STAGE_ORDER.indexOf(normalizeStage(scene['Publish Stage']));
             const baseUnits = Math.max(0, stageIndex);
             const completionUnits = isCompleted(scene.status) ? 1 : 0;
             return sum + baseUnits + completionUnits;
         }, 0);
-        const maxUnits = scenes.length * STAGE_ORDER.length;
+        const maxUnits = denominator * STAGE_ORDER.length;
         return this.toPercent(totalUnits / maxUnits);
     }
 

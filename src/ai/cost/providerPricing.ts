@@ -192,6 +192,21 @@ export function getActivePricingMeta(): PricingMeta {
     return activeMeta;
 }
 
+function mergeModelPricing(base: ProviderModelPricing | undefined, override: ProviderModelPricing): ProviderModelPricing {
+    const mergedLongContext = override.longContext
+        ? {
+            ...(base?.longContext ?? {}),
+            ...override.longContext
+        }
+        : base?.longContext;
+
+    return {
+        ...(base ?? {}),
+        ...override,
+        ...(mergedLongContext ? { longContext: mergedLongContext } : {})
+    };
+}
+
 export function mergeRemotePricing(remote: ProviderPricingTable, source: PricingSource, fetchedAt?: string): void {
     const merged: ProviderPricingTable = structuredClone(BUILTIN_PRICING);
     for (const provider of Object.keys(remote) as AIProviderId[]) {
@@ -199,7 +214,7 @@ export function mergeRemotePricing(remote: ProviderPricingTable, source: Pricing
         if (!remoteModels) continue;
         if (!merged[provider]) merged[provider] = {};
         for (const [modelId, pricing] of Object.entries(remoteModels)) {
-            merged[provider]![modelId] = pricing;
+            merged[provider]![modelId] = mergeModelPricing(merged[provider]![modelId], pricing);
         }
     }
     activePricing = merged;

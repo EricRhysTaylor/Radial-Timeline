@@ -1446,11 +1446,6 @@ export function renderAiSection(params: {
         }
 
         if (cacheSession?.cacheWindowExpiresAt && cacheSession.cacheWindowExpiresAt > Date.now()) {
-            if (cacheSession.cacheReuseState === 'warm') {
-                extraPills.push({ text: 'Cache · Warm hit', extraCls: 'ert-ai-pill--active' });
-            } else {
-                extraPills.push({ text: 'Cache · Ready', extraCls: 'ert-ai-pill--active' });
-            }
             return {
                 tone: 'success',
                 comparatorLabel: null,
