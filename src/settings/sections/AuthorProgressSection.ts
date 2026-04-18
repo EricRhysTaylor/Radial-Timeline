@@ -305,6 +305,9 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     stageBadgeRow.style.alignSelf = 'flex-start';
     const stageBadge = stageBadgeRow.createSpan({ cls: ERT_CLASSES.CHIP, text: 'TRACKING STAGE' });
     const stageNote = stageCell.createDiv({ cls: ERT_CLASSES.FIELD_NOTE });
+    const modeGuidance = stageCell.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
+    const stageStatsRow = stageCell.createDiv({ cls: ERT_CLASSES.INLINE });
+    const stageStatsSummary = stageCell.createDiv({ cls: ERT_CLASSES.FIELD_NOTE });
 
     progressModeGrid.createDiv({ cls: 'ert-divider--vertical' });
 
@@ -312,7 +315,6 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const modeControlRow = modeCell.createDiv({ cls: 'ert-typography-controls' });
     const modeDropdown = new DropdownComponent(modeControlRow);
     modeDropdown.selectEl.addClass('ert-input', 'ert-input--fit-selected', 'ert-typography-select');
-    const modeGuidance = modeCell.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
 
     const trackedStageWrap = modeCell.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
     const trackedStageControlRow = trackedStageWrap.createDiv({ cls: 'ert-typography-controls' });
@@ -621,6 +623,30 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         return fullBase;
     };
 
+    const renderStageStats = (
+        breakdown: Record<(typeof STAGE_ORDER)[number], number>,
+        sceneCount: number,
+        targetSceneCount: number | undefined,
+        percent: number
+    ): void => {
+        stageStatsRow.empty();
+        if (sceneCount === 0) {
+            stageStatsSummary.setText('');
+            return;
+        }
+        STAGE_ORDER.forEach(stage => {
+            const chip = stageStatsRow.createSpan({ cls: ERT_CLASSES.CHIP });
+            chip.setText(`${stage} ${breakdown[stage] ?? 0}`);
+            const color = plugin.settings.publishStageColors?.[stage] ?? '#808080';
+            chip.style.setProperty('--ert-chip-bg', `color-mix(in srgb, ${color} 14%, var(--background-secondary) 86%)`);
+            chip.style.setProperty('border', `1px solid ${color}`);
+            chip.style.setProperty('color', color);
+        });
+        const denom = targetSceneCount && targetSceneCount > sceneCount ? targetSceneCount : sceneCount;
+        const targetPart = targetSceneCount ? ` · target ${targetSceneCount}` : '';
+        stageStatsSummary.setText(`${sceneCount} of ${denom} scenes${targetPart} · ${percent}%`);
+    };
+
     const refreshTrackingState = async (): Promise<void> => {
         try {
             const scenes = await getAllScenes(app, plugin);
@@ -637,6 +663,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             updateStageUI(progressState.mode, progressState.displayStage, progressState.trackedStage, note);
             seedTargetCount(progressState.sceneCount, storedTarget);
             targetCountNote.setText(formatTargetNote(progressState.mode, progressState.sceneCount, storedTarget));
+            renderStageStats(progressState.stageBreakdown, progressState.sceneCount, storedTarget, progressState.percent);
             seedDateRange();
         } catch {
             const trackedStage = plugin.settings.authorProgress?.defaults.aprTrackedStage ?? 'Zero';
@@ -646,6 +673,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             updateStageUI(mode, trackedStage, trackedStage, 'No scenes found yet.');
             seedTargetCount(0, storedTarget);
             targetCountNote.setText(formatTargetNote(mode, 0, storedTarget));
+            renderStageStats({ Zero: 0, Author: 0, House: 0, Press: 0 }, 0, storedTarget, 0);
             seedDateRange();
         }
     };

@@ -7,6 +7,8 @@ import { STAGE_ORDER } from '../../utils/constants';
 
 export type AprResolvedProgressMode = NonNullable<AuthorProgressDefaults['aprProgressMode']>;
 
+export type AprStageBreakdown = Record<AprTrackedStage, number>;
+
 export interface AprResolvedProgressState {
     mode: AprResolvedProgressMode;
     trackedStage: AprTrackedStage;
@@ -16,6 +18,7 @@ export interface AprResolvedProgressState {
     sceneCount: number;
     targetSceneCount?: number;
     effectiveDenominator: number;
+    stageBreakdown: AprStageBreakdown;
     dateRange?: {
         start?: string;
         target?: string;
@@ -65,6 +68,7 @@ export class AprProgressService {
         const uniqueScenes = this.getUniqueScenes(scenes);
         const targetSceneCount = normalizeTargetSceneCount(settings.aprTargetSceneCount);
         const effectiveDenominator = Math.max(uniqueScenes.length, targetSceneCount ?? 0);
+        const stageBreakdown = this.countStages(uniqueScenes);
 
         if (mode === 'date') {
             const percent = this.calculateDateProgress(settings.aprProgressDateStart, settings.aprProgressDateTarget) ?? 0;
@@ -78,6 +82,7 @@ export class AprProgressService {
                 sceneCount: uniqueScenes.length,
                 targetSceneCount,
                 effectiveDenominator,
+                stageBreakdown,
                 dateRange: {
                     start: settings.aprProgressDateStart,
                     target: settings.aprProgressDateTarget,
@@ -97,7 +102,8 @@ export class AprProgressService {
                 displayLabel: displayStage.toUpperCase(),
                 sceneCount: uniqueScenes.length,
                 targetSceneCount,
-                effectiveDenominator
+                effectiveDenominator,
+                stageBreakdown
             };
         }
 
@@ -110,7 +116,8 @@ export class AprProgressService {
             displayLabel: trackedStage.toUpperCase(),
             sceneCount: uniqueScenes.length,
             targetSceneCount,
-            effectiveDenominator
+            effectiveDenominator,
+            stageBreakdown
         };
     }
 
@@ -123,6 +130,14 @@ export class AprProgressService {
 
     public getDisplayStageForPercent(percent: number): AprTrackedStage {
         return this.stageFromPercent(percent);
+    }
+
+    private countStages(scenes: TimelineItem[]): AprStageBreakdown {
+        const breakdown: AprStageBreakdown = { Zero: 0, Author: 0, House: 0, Press: 0 };
+        scenes.forEach(scene => {
+            breakdown[normalizeStage(scene['Publish Stage'])] += 1;
+        });
+        return breakdown;
     }
 
     private getUniqueScenes(scenes: TimelineItem[]): TimelineItem[] {
