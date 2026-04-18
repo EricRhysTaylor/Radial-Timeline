@@ -4042,7 +4042,7 @@ export class InquiryView extends ItemView {
             registerSvgEvent: this.registerSvgEvent.bind(this),
             getScopeLabel: this.getCorpusCcScopeLabel.bind(this),
             getModeMeta: this.getCorpusCcModeMeta.bind(this),
-            getHeaderLabelVariants: this.getCorpusCcHeaderLabelVariants.bind(this),
+            getHeaderLabel: this.getCorpusCcHeaderLabel.bind(this),
             getHeaderTooltip: this.getCorpusCcHeaderTooltip.bind(this),
             onGlobalToggle: this.handleCorpusGlobalToggle.bind(this),
             onGlobalContextMenu: this.handleCorpusGlobalContextMenu.bind(this),
@@ -4570,15 +4570,14 @@ export class InquiryView extends ItemView {
         return { label: 'Exclude', short: 'EXCL', icon: 'circle', isActive: false };
     }
 
-    private getCorpusCcHeaderLabelVariants(className: string, count: number, overrideLabel?: string): string[] {
+    private getCorpusCcHeaderLabel(className: string, count: number, overrideLabel?: string): string {
         if (overrideLabel && overrideLabel.trim().length > 0) {
-            return [overrideLabel.trim()];
+            return overrideLabel.trim();
         }
         if (className === 'outline-saga') {
-            return [`${SIGMA_CHAR}`];
+            return `${SIGMA_CHAR}`;
         }
-        const base = this.getCorpusClassLabelVariants(className);
-        return base.map(label => `${label}${count}`);
+        return `${this.getCorpusClassShort(className)}${count}`;
     }
 
     private getCorpusCcHeaderTooltip(
@@ -4599,35 +4598,26 @@ export class InquiryView extends ItemView {
     }
 
     private getCorpusCcHeaderDisplayLabel(className: string): string {
-        if (className === 'outline-saga') return 'Saga Outline';
-        const variants = this.getCorpusClassLabelVariants(className);
-        return variants[0] ?? 'Class';
+        switch (className) {
+            case 'outline-saga': return 'Saga Outline';
+            case 'character': return 'Character';
+            case 'scene': return 'Scene';
+            case 'outline': return 'Outline';
+            default: return 'Class';
+        }
     }
 
-    private getCorpusClassLabelVariants(className: string): string[] {
-        const normalized = className.trim();
-        if (!normalized) return ['Class', 'Cls', 'C'];
-        if (normalized === 'outline-saga') {
-            return [`${SIGMA_CHAR}`, 'Saga', 'S'];
+    private getCorpusClassShort(className: string): string {
+        switch (className) {
+            case 'outline-saga': return SIGMA_CHAR;
+            case 'character': return 'C';
+            case 'scene': return 'S';
+            case 'outline': return 'O';
+            default: {
+                const first = className.trim().charAt(0).toUpperCase();
+                return first || 'C';
+            }
         }
-        if (normalized === 'scene') {
-            return ['SC', 'S'];
-        }
-        const words = normalized
-            .replace(/([a-z])([A-Z])/g, '$1 $2')
-            .replace(/[^a-zA-Z0-9]+/g, ' ')
-            .trim()
-            .split(/\s+/)
-            .filter(Boolean);
-        const title = words.length
-            ? words.map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ')
-            : normalized.charAt(0).toUpperCase() + normalized.slice(1);
-        const acronym = words.length > 1
-            ? words.map(word => word.charAt(0).toUpperCase()).join('').slice(0, 2)
-            : title.slice(0, 2).toUpperCase();
-        const letter = title.charAt(0).toUpperCase();
-        const variants = [title, acronym, letter];
-        return Array.from(new Set(variants.filter(Boolean)));
     }
 
     private getSceneBookMetaFromEntry(entry: CorpusCcEntry): { bookId: string; bookLabel: string; order: number } {
@@ -11206,7 +11196,7 @@ export class InquiryView extends ItemView {
                     .map(entry => this.normalizeInquiryBriefText(entry, referenceLabels))
             }));
 
-        const sourcesVM = buildInquirySourcesViewModel(result.citations, result.evidenceDocumentMeta);
+        const sourcesVM = buildInquirySourcesViewModel(result.citations, result.evidenceDocumentMeta, result.findings);
         const sources = sourcesVM.items.map(item => ({
             title: item.title,
             excerpt: item.excerpt,
@@ -11227,6 +11217,7 @@ export class InquiryView extends ItemView {
             questionTitle,
             questionText,
             scopeIndicator,
+            mode: result.mode,
             selectionMode: result.selectionMode,
             roleValidation: result.roleValidation,
             pills,

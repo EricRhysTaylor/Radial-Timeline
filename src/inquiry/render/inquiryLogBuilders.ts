@@ -275,18 +275,20 @@ export function buildInquiryLogContent(args: {
     lines.push(`- Overrides: ${overrideLabel}`);
     lines.push(`- Status: ${statusLabel}${statusDetail}`);
     lines.push(`- Duration: ${formatDuration(durationMs)}`);
+    if (!isSimulated && cacheReuseLabel) {
+        const cacheSummaryParts = [`- Cache: ${cacheReuseLabel}`];
+        if (trace.cacheStatus) cacheSummaryParts.push(`status=${trace.cacheStatus}`);
+        if (cachePrefixLabel) cacheSummaryParts.push(`prefix=${cachePrefixLabel}`);
+        if (cacheTokensLabel) cacheSummaryParts.push(`tokens=${cacheTokensLabel}`);
+        if (usage && typeof usage.cacheReadInputTokens === 'number') {
+            cacheSummaryParts.push(`read=${formatTokenCount(usage.cacheReadInputTokens)}`);
+        }
+        lines.push(cacheSummaryParts.join(' · '));
+    }
     lines.push('');
 
     lines.push('## Corpus Summary');
     lines.push(...buildCorpusSummary());
-    lines.push('');
-
-    lines.push('## Corpus TOC');
-    lines.push(...buildManifestTocLines({
-        manifestEntries: manifest?.entries,
-        normalizeEvidenceMode: deps.normalizeEvidenceMode,
-        resolveManifestEntryLabel: deps.resolveManifestEntryLabel
-    }));
     lines.push('');
 
     lines.push('## Tokens');
@@ -353,6 +355,14 @@ export function buildInquiryLogContent(args: {
     buildSuggestedFixes().forEach(fix => {
         lines.push(`- ${fix}`);
     });
+    lines.push('');
+
+    lines.push('## Corpus TOC');
+    lines.push(...buildManifestTocLines({
+        manifestEntries: manifest?.entries,
+        normalizeEvidenceMode: deps.normalizeEvidenceMode,
+        resolveManifestEntryLabel: deps.resolveManifestEntryLabel
+    }));
     lines.push('');
 
     lines.push(`Content Log: ${args.contentLogWritten ? 'written' : 'skipped'}`);

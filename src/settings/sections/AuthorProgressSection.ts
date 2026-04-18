@@ -305,6 +305,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     stageBadgeRow.style.alignSelf = 'flex-start';
     const stageBadge = stageBadgeRow.createSpan({ cls: ERT_CLASSES.CHIP, text: 'TRACKING STAGE' });
     const stageNote = stageCell.createDiv({ cls: ERT_CLASSES.FIELD_NOTE });
+    const stageSubNote = stageCell.createDiv({ cls: `${ERT_CLASSES.FIELD_NOTE} ert-apr-stageSubNote` });
 
     progressModeGrid.createDiv({ cls: 'ert-divider--vertical' });
 
@@ -561,24 +562,14 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         return `Scene goal (${sceneCount} of ${storedTarget}).`;
     };
 
-    const composeStageNote = (
-        mode: AprProgressMode,
-        trackedStage: (typeof STAGE_ORDER)[number],
-        sceneCount: number,
-        storedTarget: number | undefined,
-        dateRange: { start?: string; target?: string; valid: boolean } | undefined
-    ): string => {
+    const composeStageNote = (mode: AprProgressMode): string => {
         if (mode === 'date') {
-            if (dateRange?.valid && dateRange.start && dateRange.target) {
-                return `${dateRange.start} → ${dateRange.target}`;
-            }
-            return 'Set a start and target date.';
+            return 'Track progress against a timeline. Measure how far you’ve moved between a start and target date.';
         }
-        if (sceneCount === 0) {
-            return 'Add scenes to start tracking.';
+        if (mode === 'full') {
+            return 'Track all scenes across Zero → Press. See how your entire manuscript is progressing end to end.';
         }
-        const denom = storedTarget && storedTarget > sceneCount ? storedTarget : sceneCount;
-        return `${sceneCount} of ${denom} scenes`;
+        return 'Track progress within a single stage using a scene goal. Focus on drafting, revision, or publishing — one stage at a time.';
     };
 
     const renderFlowBar = (
@@ -593,16 +584,11 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             setTooltip(seg, `${stage}: ${count}`);
         });
         const clamped = Math.max(0, Math.min(100, percent));
-        // Line stays pinned at the percent position.
         flowTickLine.style.setProperty('left', `${clamped}%`);
-        // Label shifts relative to the line so it stays inside the bar at either extreme.
         flowTickLabel.style.setProperty('left', `${clamped}%`);
-        const labelTx = clamped <= 6 ? '0' : clamped >= 94 ? '-100%' : '-50%';
-        flowTickLabel.style.setProperty('transform', `translateX(${labelTx})`);
         flowTickLabel.setText(`${clamped}%`);
         flowLegend.empty();
-        STAGE_ORDER.forEach((stage, idx) => {
-            if (idx > 0) flowLegend.createSpan({ cls: 'ert-apr-flow__legend-sep', text: '·' });
+        STAGE_ORDER.forEach(stage => {
             const label = flowLegend.createSpan({ cls: 'ert-apr-flow__legend-item' });
             const color = plugin.settings.publishStageColors?.[stage] ?? '#808080';
             label.style.setProperty('--ert-flow-color', color);
@@ -617,14 +603,10 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             const progressState = progressTrackingService.resolveProgressState(scenes);
             lastKnownSceneCount = progressState.sceneCount;
             const storedTarget = plugin.settings.authorProgress?.defaults.aprTargetSceneCount;
-            const note = composeStageNote(
-                progressState.mode,
-                progressState.trackedStage,
-                progressState.sceneCount,
-                storedTarget,
-                progressState.dateRange
-            );
+            const note = composeStageNote(progressState.mode);
             updateStageUI(progressState.mode, progressState.displayStage, progressState.trackedStage, note);
+            stageSubNote.setText(progressState.mode === 'stage' ? `Currently tracking: ${progressState.trackedStage} stage` : '');
+            stageSubNote.toggleClass('ert-hidden', progressState.mode !== 'stage');
             seedTargetCount(progressState.sceneCount, storedTarget);
             targetCountNote.setText(formatTargetNote(progressState.mode, progressState.sceneCount, storedTarget));
             renderFlowBar(progressState.stageBreakdown, progressState.percent);
@@ -634,7 +616,9 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             const mode = (plugin.settings.authorProgress?.defaults.aprProgressMode ?? 'stage') as AprProgressMode;
             lastKnownSceneCount = 0;
             const storedTarget = plugin.settings.authorProgress?.defaults.aprTargetSceneCount;
-            updateStageUI(mode, trackedStage, trackedStage, 'No scenes found yet.');
+            updateStageUI(mode, trackedStage, trackedStage, composeStageNote(mode));
+            stageSubNote.setText(mode === 'stage' ? `Currently tracking: ${trackedStage} stage` : '');
+            stageSubNote.toggleClass('ert-hidden', mode !== 'stage');
             seedTargetCount(0, storedTarget);
             targetCountNote.setText(formatTargetNote(mode, 0, storedTarget));
             renderFlowBar({ Zero: 0, Author: 0, House: 0, Press: 0 }, 0);
@@ -642,7 +626,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         }
     };
 
-    modeDropdown.addOption('stage', 'New Project');
+    modeDropdown.addOption('stage', 'Stage Tracking');
     modeDropdown.addOption('full', 'Full Manuscript');
     modeDropdown.addOption('date', 'Date Goal');
     void refreshTrackingState();

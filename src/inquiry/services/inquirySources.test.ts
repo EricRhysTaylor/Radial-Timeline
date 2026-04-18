@@ -84,4 +84,68 @@ describe('buildInquirySourcesViewModel', () => {
             hasContent: false
         });
     });
+
+    it('derives limited scene anchors from finding refs when provider citations are absent', () => {
+        const docs: EvidenceDocumentMeta[] = [
+            {
+                title: 'The Departure',
+                path: 'Scenes/The Departure.md',
+                sceneId: 'scn_a1b2c3d4',
+                evidenceClass: 'scene'
+            },
+            {
+                title: 'Netherfield Ball',
+                path: 'Scenes/Netherfield Ball.md',
+                sceneId: 'scn_deadbeef',
+                evidenceClass: 'scene'
+            }
+        ];
+
+        const vm = buildInquirySourcesViewModel(undefined, docs, [
+            {
+                refId: 'scn_a1b2c3d4',
+                kind: 'continuity',
+                status: 'unclear',
+                impact: 'medium',
+                assessmentConfidence: 'high',
+                headline: 'The emotional turn arrives before enough setup.',
+                bullets: ['Pressure advances faster than the underlying motive.'],
+                related: [],
+                evidenceType: 'scene'
+            },
+            {
+                refId: 'scn_a1b2c3d4',
+                kind: 'escalation',
+                status: 'unclear',
+                impact: 'medium',
+                assessmentConfidence: 'medium',
+                headline: 'The beat lands but the plateau is underwritten.',
+                bullets: [],
+                related: [],
+                evidenceType: 'scene'
+            },
+            {
+                refId: 'scn_unknown',
+                kind: 'unclear',
+                status: 'unclear',
+                impact: 'low',
+                assessmentConfidence: 'low',
+                headline: 'This should be ignored because it cannot be resolved.',
+                bullets: [],
+                related: [],
+                evidenceType: 'scene'
+            }
+        ]);
+
+        expect(vm.hasContent).toBe(true);
+        expect(vm.totalCount).toBe(1);
+        expect(vm.items[0]).toMatchObject({
+            attributionType: 'scene_anchor',
+            title: 'The Departure',
+            path: 'Scenes/The Departure.md',
+            classLabel: 'Scene Anchor',
+            citationCount: 2
+        });
+        expect(vm.items[0].excerpt).toContain('The emotional turn arrives before enough setup');
+    });
 });

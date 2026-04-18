@@ -33,6 +33,7 @@ export type InquiryBriefModel = {
     questionTitle: string;
     questionText: string;
     scopeIndicator?: string | null;
+    mode?: 'flow' | 'depth';
     selectionMode: 'discover' | 'focused';
     roleValidation: InquiryRoleValidation;
     pills: string[];

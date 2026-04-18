@@ -1271,7 +1271,7 @@ export const en: TranslationKeys = {
             },
             configuration: {
                 name: 'Progress tracking',
-                desc: 'Pick how APR measures your book. New Project tracks scenes toward a scene goal — best for first-drafting. Full Manuscript tracks every scene through Zero → Press — best once scope is set. Date Goal tracks elapsed time toward a deadline — best for campaigns or sprints.',
+                desc: 'Pick how APR measures your book — one stage at a time, the whole pipeline, or elapsed time.',
                 autoUpdateExportPaths: {
                     name: 'Auto-update export paths',
                     desc: 'When size or schedule changes, update default and campaign export paths if they still match the default pattern.',

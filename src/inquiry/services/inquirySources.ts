@@ -8,13 +8,13 @@
  * render scene titles/paths for manuscript citations and clear labels for
  * tool/URL/grounded attribution.
  */
-import type { EvidenceDocumentMeta, InquiryCitation } from '../state';
+import type { EvidenceDocumentMeta, InquiryCitation, InquiryFinding } from '../state';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
 export interface InquirySourceItem {
     /** Normalized attribution family for truthful rendering. */
-    attributionType: 'direct_manuscript' | 'tool_file' | 'tool_url' | 'grounded';
+    attributionType: 'direct_manuscript' | 'tool_file' | 'tool_url' | 'grounded' | 'scene_anchor';
     /** Display title (e.g. "The Departure"). */
     title: string;
     /** Short excerpt from cited text (1–2 lines, truncated). */
@@ -57,7 +57,8 @@ const INITIAL_SHOW_COUNT = 2;
  */
 export function buildInquirySourcesViewModel(
     citations: InquiryCitation[] | undefined,
-    evidenceDocumentMeta: EvidenceDocumentMeta[] | undefined
+    evidenceDocumentMeta: EvidenceDocumentMeta[] | undefined,
+    findings?: InquiryFinding[] | undefined
 ): InquirySourcesViewModel {
     const empty: InquirySourcesViewModel = {
         items: [],
@@ -67,12 +68,13 @@ export function buildInquirySourcesViewModel(
     };
 
     const items: InquirySourceItem[] = [];
-    if (!citations?.length) return empty;
+    const normalizedCitations = citations ?? [];
+    if (!normalizedCitations.length && !findings?.length) return empty;
 
     // Direct manuscript citations remain grouped by evidence document index.
-    if (evidenceDocumentMeta?.length) {
+    if (normalizedCitations.length && evidenceDocumentMeta?.length) {
         const byIndex = new Map<number, InquiryCitation[]>();
-        for (const citation of citations) {
+        for (const citation of normalizedCitations) {
             if (!isDirectManuscriptCitation(citation)) continue;
             if (citation.documentIndex < 0 || citation.documentIndex >= evidenceDocumentMeta.length) continue;
             const existing = byIndex.get(citation.documentIndex) ?? [];
@@ -97,7 +99,7 @@ export function buildInquirySourcesViewModel(
     }
 
     // OpenAI/Gemini-style tool/grounded attribution groups by source identity.
-    const externalCitations = citations.filter(isExternalAttributionCitation);
+    const externalCitations = normalizedCitations.filter(isExternalAttributionCitation);
     if (externalCitations.length) {
         const bySource = new Map<string, typeof externalCitations>();
         for (const citation of externalCitations) {
@@ -124,6 +126,40 @@ export function buildInquirySourcesViewModel(
                 classLabel: formatAttributionClassLabel(first.attributionType),
                 citationCount: grouped.length,
                 url: first.url
+            });
+        }
+    }
+
+    if (!items.length && evidenceDocumentMeta?.length && findings?.length) {
+        const byScene = new Map<string, { meta: EvidenceDocumentMeta; findings: InquiryFinding[] }>();
+        for (const finding of findings) {
+            const refId = finding.refId?.trim();
+            if (!refId) continue;
+            const meta = evidenceDocumentMeta.find(doc => doc.sceneId?.trim() === refId);
+            if (!meta) continue;
+            const key = `${meta.sceneId ?? ''}|${meta.path ?? ''}|${meta.title}`;
+            const existing = byScene.get(key);
+            if (existing) {
+                existing.findings.push(finding);
+                continue;
+            }
+            byScene.set(key, { meta, findings: [finding] });
+        }
+
+        for (const grouped of byScene.values()) {
+            const exemplar = grouped.findings[0];
+            const excerpt = truncateExcerpt(
+                [exemplar.headline, ...(exemplar.bullets || []).filter(Boolean)].join(' '),
+                MAX_EXCERPT_LENGTH
+            );
+            items.push({
+                attributionType: 'scene_anchor',
+                title: grouped.meta.title,
+                excerpt,
+                path: grouped.meta.path,
+                sceneId: grouped.meta.sceneId,
+                classLabel: 'Scene Anchor',
+                citationCount: grouped.findings.length
             });
         }
     }
@@ -185,5 +221,6 @@ function formatAttributionClassLabel(attributionType: InquirySourceItem['attribu
     if (attributionType === 'tool_file') return 'Tool File';
     if (attributionType === 'tool_url') return 'Tool URL';
     if (attributionType === 'grounded') return 'Grounded Source';
+    if (attributionType === 'scene_anchor') return 'Scene Anchor';
     return 'Reference';
 }

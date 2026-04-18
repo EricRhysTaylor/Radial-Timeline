@@ -1838,7 +1838,7 @@
   top: 0;
   left: 0;
   transform: translateX(-50%);
-  font-size: var(--ert-fs-xs);
+  font-size: 10px;
   font-weight: 600;
   color: var(--text-normal);
   line-height: 1;
@@ -1846,6 +1846,11 @@
   padding: 0;
   pointer-events: none;
   transition: left 200ms ease;
+}
+
+.ert-ui .ert-apr-stageSubNote {
+  color: var(--text-faint);
+  font-style: italic;
 }
 
 .ert-ui .ert-apr-flow__tick-line {
@@ -1883,7 +1888,7 @@
 }
 
 .ert-ui .ert-apr-flow__segment.is-empty {
-  background: color-mix(in srgb, var(--ert-flow-color, #808080) 65%, var(--background-secondary) 35%);
+  background: var(--ert-flow-color, #808080);
 }
 
 .ert-ui .ert-apr-flow__segment + .ert-apr-flow__segment {
@@ -1894,7 +1899,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--ert-gap-xs);
+  gap: var(--ert-gap-md);
   font-size: var(--ert-fs-xs);
   color: var(--text-muted);
 }

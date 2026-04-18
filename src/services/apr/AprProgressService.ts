@@ -156,14 +156,11 @@ export class AprProgressService {
 
     private calculateTrackedStageProgress(scenes: TimelineItem[], trackedStage: AprTrackedStage, denominator: number): number {
         if (denominator <= 0) return 0;
-        const trackedStageIndex = STAGE_ORDER.indexOf(trackedStage);
-        const completedCount = scenes.reduce((count, scene) => {
-            const stageIndex = STAGE_ORDER.indexOf(normalizeStage(scene['Publish Stage']));
-            if (stageIndex > trackedStageIndex) return count + 1;
-            if (stageIndex === trackedStageIndex && isCompleted(scene.status)) return count + 1;
-            return count;
+        // Stage-focused: count only scenes currently at the tracked stage. No pass-through.
+        const inStageCount = scenes.reduce((count, scene) => {
+            return normalizeStage(scene['Publish Stage']) === trackedStage ? count + 1 : count;
         }, 0);
-        return this.toPercent(completedCount / denominator);
+        return this.toPercent(inStageCount / denominator);
     }
 
     private calculateFullProgress(scenes: TimelineItem[], denominator: number): number {

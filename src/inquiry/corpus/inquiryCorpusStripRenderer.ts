@@ -412,7 +412,7 @@ export function renderInquiryCorpusStrip(args: {
     registerSvgEvent: (el: Element | null | undefined, type: string, handler: (event: MouseEvent) => void) => void;
     getScopeLabel: () => string;
     getModeMeta: (mode: SceneInclusion) => InquiryCorpusStripModeMeta;
-    getHeaderLabelVariants: (className: string, count: number, overrideLabel?: string) => string[];
+    getHeaderLabel: (className: string, count: number, overrideLabel?: string) => string;
     getHeaderTooltip: (
         className: string,
         mode: SceneInclusion,
@@ -773,8 +773,7 @@ export function renderInquiryCorpusStrip(args: {
 
     layout.classLayouts.forEach((classLayout, index) => {
         const header = refs.ccClassLabels[index];
-        const { group, centerX, width } = classLayout;
-        const availableWidth = Math.max(4, width - layout.gap);
+        const { group, centerX } = classLayout;
         const modeMeta = args.getModeMeta(group.mode);
         header.group.setAttribute('data-group-key', group.key);
         header.group.setAttribute('data-class', group.className);
@@ -789,32 +788,11 @@ export function renderInquiryCorpusStrip(args: {
             header.group.classList.add('is-mode-excluded');
         }
 
-        const variants = args.getHeaderLabelVariants(group.className, group.count, group.headerLabel);
-        header.text.textContent = variants[0] ?? '';
-        const iconAllowance = CC_HEADER_ICON_SIZE + CC_HEADER_ICON_GAP;
-        let fallbackVariant = variants[0] ?? '';
-        let fallbackWidth = Number.POSITIVE_INFINITY;
-        let hasFit = false;
-        for (let variantIndex = 0; variantIndex < variants.length; variantIndex += 1) {
-            const variant = variants[variantIndex] ?? '';
-            header.text.textContent = variant;
-            const measuredWidth = header.text.getComputedTextLength() + iconAllowance;
-            if (measuredWidth < fallbackWidth) {
-                fallbackVariant = variant;
-                fallbackWidth = measuredWidth;
-            }
-            if (measuredWidth <= availableWidth) {
-                hasFit = true;
-                break;
-            }
-        }
-        if (!hasFit) {
-            header.text.textContent = fallbackVariant;
-        }
+        const labelText = args.getHeaderLabel(group.className, group.count, group.headerLabel);
+        header.text.textContent = labelText;
 
         // Split trailing digits into a dimmed tspan for the count portion
-        const finalText = header.text.textContent ?? '';
-        const digitMatch = finalText.match(/^([A-Za-zΣ]+)(\d+)$/);
+        const digitMatch = labelText.match(/^([A-Za-zΣ]+)(\d+)$/);
         if (digitMatch) {
             header.text.textContent = '';
             const letterSpan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');

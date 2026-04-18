@@ -282,15 +282,24 @@
 
 .rt-briefing-paragraph {
   margin: 0;
-  color: var(--rt-briefing-body);
+  color: color-mix(in srgb, var(--rt-briefing-body) 94%, var(--rt-briefing-muted));
   font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif;
-  font-size: 19px;
-  line-height: 1.76;
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 1.84;
   text-wrap: pretty;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
 }
 
 .rt-briefing-paragraph + .rt-briefing-paragraph {
   margin-top: 16px;
+}
+
+.rt-briefing-summary-text {
+  color: color-mix(in srgb, var(--rt-briefing-body) 82%, var(--rt-briefing-muted));
+  font-weight: 400;
+  line-height: 1.82;
 }
 
 .rt-briefing-scene-ref {
@@ -306,6 +315,7 @@
   box-shadow: none;
   font: 600 0.68em/1 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   letter-spacing: 0.03em;
+  text-decoration: none;
   vertical-align: 0.11em;
   transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
 }
@@ -351,7 +361,7 @@
   letter-spacing: 0.03em;
 }
 
-button.rt-briefing-scene-ref {
+a.rt-briefing-scene-ref {
   appearance: none;
   margin: 0 0.14em;
   outline: none;
@@ -380,11 +390,6 @@ button.rt-briefing-scene-ref {
   text-decoration: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 0.12em;
-}
-
-.rt-briefing-paragraph--lead {
-  font-size: 23px;
-  line-height: 1.64;
 }
 
 .rt-briefing-group {
@@ -454,12 +459,14 @@ button.rt-briefing-scene-ref {
 
 .rt-briefing-link {
   color: var(--rt-briefing-text);
-  text-decoration: none;
+  text-decoration-line: underline;
+  text-decoration-thickness: 1px;
+  text-decoration-color: currentColor;
+  text-underline-offset: 0.18em;
 }
 
 .rt-briefing-link:hover {
-  text-decoration: underline;
-  text-underline-offset: 0.18em;
+  text-decoration-thickness: 1.5px;
 }
 
 .rt-briefing-source-meta {
@@ -511,6 +518,7 @@ button.rt-briefing-scene-ref {
   color: var(--rt-briefing-muted);
   font: 500 12px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   letter-spacing: 0.04em;
+  text-decoration: none;
   cursor: pointer;
   opacity: 0.88;
   transform: translateY(-1px);
@@ -632,7 +640,4 @@ button.rt-briefing-scene-ref {
     font-size: 18px;
   }
 
-  .rt-briefing-paragraph--lead {
-    font-size: 20px;
-  }
 }

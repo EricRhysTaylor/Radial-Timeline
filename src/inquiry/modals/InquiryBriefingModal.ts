@@ -147,15 +147,27 @@ export class InquiryBriefingModal extends Modal {
         const section = this.createSection(container, 'Summary');
         const summaryStack = section.createDiv({ cls: 'rt-briefing-summary-stack' });
 
-        const flowBlock = summaryStack.createEl('article', { cls: 'rt-briefing-block rt-briefing-block--lead rt-briefing-summary-block' });
-        flowBlock.createDiv({ cls: 'rt-briefing-summary-label', text: 'Flow' });
-        this.renderTextElement(flowBlock, 'p', 'rt-briefing-paragraph rt-briefing-paragraph--lead', this.brief.flowSummary || 'No flow summary available.');
+        const summaryEntries = this.brief.mode === 'depth'
+            ? [
+                { label: 'Depth', text: this.brief.depthSummary || 'No depth summary available.' },
+                { label: 'Flow', text: this.brief.flowSummary || 'No flow summary available.' }
+            ]
+            : [
+                { label: 'Flow', text: this.brief.flowSummary || 'No flow summary available.' },
+                { label: 'Depth', text: this.brief.depthSummary || 'No depth summary available.' }
+            ];
 
-        if (this.brief.depthSummary && this.brief.depthSummary !== this.brief.flowSummary) {
-            const depthBlock = summaryStack.createEl('article', { cls: 'rt-briefing-block rt-briefing-summary-block' });
-            depthBlock.createDiv({ cls: 'rt-briefing-summary-label', text: 'Depth' });
-            this.renderTextElement(depthBlock, 'p', 'rt-briefing-paragraph', this.brief.depthSummary);
-        }
+        summaryEntries
+            .filter((entry, index, entries) => index === 0 || entry.text !== entries[0].text)
+            .forEach((entry, index) => {
+                const block = summaryStack.createEl('article', {
+                    cls: index === 0
+                        ? 'rt-briefing-block rt-briefing-block--lead rt-briefing-summary-block'
+                        : 'rt-briefing-block rt-briefing-summary-block'
+                });
+                block.createDiv({ cls: 'rt-briefing-summary-label', text: entry.label });
+                this.renderTextElement(block, 'p', 'rt-briefing-paragraph rt-briefing-summary-text', entry.text);
+            });
     }
 
     private renderFindings(container: HTMLElement): void {
@@ -228,15 +240,17 @@ export class InquiryBriefingModal extends Modal {
             const labelRow = article.createDiv({ cls: 'rt-briefing-note-label-row' });
             labelRow.createDiv({ cls: 'rt-briefing-note-label', text: note.header });
             if (note.anchorId && this.briefFile) {
-                const anchorAction = labelRow.createEl('button', {
+                const anchorAction = labelRow.createEl('a', {
                     cls: 'rt-briefing-note-link',
                     text: '↗',
                     attr: {
+                        href: '#',
                         'aria-label': `Open ${note.header} in Markdown brief`,
                         title: 'Open in Markdown brief'
                     }
                 });
-                anchorAction.addEventListener('click', () => {
+                anchorAction.addEventListener('click', (event) => {
+                    event.preventDefault();
                     void this.openSubpathAndClose(this.briefFile as TFile, `#^${note.anchorId}`);
                 });
             }
@@ -428,11 +442,14 @@ export class InquiryBriefingModal extends Modal {
         const [numberPart, ...titleParts] = label.split(' ');
         const titlePart = titleParts.join(' ').trim();
         const interactive = !!anchorId;
-        const el = document.createElement(interactive ? 'button' : 'span');
+        const el = document.createElement(interactive ? 'a' : 'span');
         el.className = 'rt-briefing-scene-ref';
-        if (interactive && el instanceof HTMLButtonElement) {
-            el.type = 'button';
-            el.addEventListener('click', () => this.scrollToSceneReference(anchorId));
+        if (interactive && el instanceof HTMLAnchorElement) {
+            el.href = '#';
+            el.addEventListener('click', (event) => {
+                event.preventDefault();
+                this.scrollToSceneReference(anchorId);
+            });
             el.setAttribute('aria-label', `Jump to ${label}`);
         }
         const numberEl = document.createElement('span');
