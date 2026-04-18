@@ -886,13 +886,16 @@ function renderCampaignDetails(
                 }
                 openSaveStyleModal();
             });
-        primaryAction.buttonEl.addClass('ert-button--sm');
+        primaryAction.buttonEl.addClass('ert-apr-presetBtn');
+        if (hasUnsavedStyleChanges && selectedProfile) {
+            primaryAction.buttonEl.addClass('ert-apr-presetBtn--alert');
+        }
 
         if (selectedProfile) {
             const saveNewBtn = new ButtonComponent(actionsRow)
                 .setButtonText('Save as new')
                 .onClick(() => openSaveStyleModal());
-            saveNewBtn.buttonEl.addClass('ert-button--sm');
+            saveNewBtn.buttonEl.addClass('ert-apr-presetBtn');
         }
 
         const deleteStyleBtn = actionsRow.createEl('button', {
@@ -908,10 +911,10 @@ function renderCampaignDetails(
         };
         const actionsNote = hasUnsavedStyleChanges
             ? selectedProfile
-                ? `Unsaved changes in "${selectedProfile.name}". Update to keep them.`
+                ? `Unsaved changes in "${selectedProfile.name}".`
                 : null
             : selectedProfile
-                ? `Ready to reuse "${selectedProfile.name}".`
+                ? null
                 : 'Save the current preview if you want to reuse it across campaigns.';
         if (actionsNote) {
             actionsCard.createDiv({

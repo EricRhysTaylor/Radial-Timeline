@@ -1835,10 +1835,10 @@
 
 .ert-ui .ert-apr-flow__tick-label {
   position: absolute;
-  top: 0;
+  top: 2px;
   left: 0;
   transform: translateX(-50%);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text-normal);
   line-height: 1;
@@ -1891,6 +1891,21 @@
   font-weight: 600;
 }
 
+.ert-ui button.ert-apr-presetBtn {
+  padding: 4px 10px;
+  height: auto;
+  min-height: 0;
+  line-height: 1.2;
+  font-size: var(--ert-control-font-size, 13px);
+  font-weight: 600;
+  border-radius: 5px;
+}
+
+.ert-ui button.ert-apr-presetBtn--alert {
+  border: 1px solid var(--ert-alert-warning-color);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ert-alert-warning-color) 35%, transparent);
+}
+
 .ert-ui .ert-apr-flow__segment {
   flex-basis: 0;
   min-width: 10px;
@@ -1911,7 +1926,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--ert-gap-md);
-  font-size: var(--ert-fs-xs);
+  font-size: 10px;
   color: var(--text-muted);
 }
 

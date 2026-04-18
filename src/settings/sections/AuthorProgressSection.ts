@@ -298,7 +298,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const progressTrackingCard = stylingBody.createDiv({ cls: `${ERT_CLASSES.PREVIEW_FRAME} ert-previewFrame--flush ${ERT_CLASSES.STACK}` });
 
     const progressModeGrid = progressTrackingCard.createDiv({ cls: ERT_CLASSES.GRID_FORM });
-    progressModeGrid.style.gridTemplateColumns = 'minmax(0, 1fr) auto minmax(0, 1fr)';
+    progressModeGrid.style.gridTemplateColumns = 'minmax(0, 0.85fr) auto minmax(0, 1.15fr)';
     progressModeGrid.style.columnGap = 'var(--ert-gap-md)';
 
     const stageCell = progressModeGrid.createDiv({ cls: ERT_CLASSES.GRID_FORM_CELL });
@@ -336,15 +336,10 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     setIcon(targetCountResetBtn, 'refresh-cw');
     setTooltip(targetCountResetBtn, 'Match target to current scene count');
 
-    const dateRangeWrap = modeCell.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
-    dateRangeWrap.addClass('ert-hidden');
-    const dateRangeInput = new TextComponent(dateRangeWrap);
+    // Date range input sits inline with the mode dropdown (shown only in Date Goal mode).
+    const dateRangeInput = new TextComponent(modeControlRow);
     dateRangeInput.setPlaceholder('YYYY-MM-DD to YYYY-MM-DD');
-    dateRangeInput.inputEl.addClass('ert-input', 'ert-input--lg');
-    dateRangeWrap.createDiv({
-        cls: ERT_CLASSES.FIELD_NOTE,
-        text: 'Format: YYYY-MM-DD to YYYY-MM-DD.'
-    });
+    dateRangeInput.inputEl.addClass('ert-input', 'ert-input--lg', 'ert-hidden');
 
     // Manuscript Flow bar — full-width, rendered at the bottom of the card.
     // Divider sits just above the bar to separate it from the controls.
@@ -422,7 +417,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         const nextMode = modeOverride ?? (plugin.settings.authorProgress?.defaults.aprProgressMode ?? 'stage') as AprProgressMode;
         modeDropdown.setValue(nextMode);
         trackedStageDropdown.selectEl.toggleClass('ert-hidden', nextMode !== 'stage');
-        dateRangeWrap.toggleClass('ert-hidden', nextMode !== 'date');
+        dateRangeInput.inputEl.toggleClass('ert-hidden', nextMode !== 'date');
         targetCountGroup.toggleClass('ert-hidden', nextMode === 'date');
         fitSelectToSelectedLabel(modeDropdown.selectEl, { minPx: 132, extraPx: 18 });
         fitSelectToSelectedLabel(trackedStageDropdown.selectEl, { minPx: 92, extraPx: 18 });

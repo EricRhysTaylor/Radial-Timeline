@@ -9,7 +9,7 @@
 import { App, Setting, TextComponent, DropdownComponent, setIcon, Modal, ButtonComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import type { RuntimeContentType, RuntimeRateProfile } from '../../types';
-import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
+import { addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import { t } from '../../i18n';
 import { hasProFeatureAccess } from '../featureGate';
 import { ERT_CLASSES } from '../../ui/classes';
@@ -99,41 +99,56 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
     };
     
     // ─────────────────────────────────────────────────────────────────────────
-    // Section Header
+    // Section Headers — two sibling Pro cards: Runtime estimation + Writing schedule
     // ─────────────────────────────────────────────────────────────────────────
-    // Pro container wrapping all runtime controls (ert-stack so Profile, Rates, Session planning are distinct rows)
     const proContainer = containerEl.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` });
     if (!hasProfessional) {
         proContainer.addClass('ert-pro-locked');
     }
 
-    // Header row with Pro badge and description
-    const runtimeDescOn = t('settings.runtime.header.desc');
-    const panelHeader = new Setting(proContainer)
+    const runtimeHeader = new Setting(proContainer)
         .setName(t('settings.runtime.header.name'))
         .setHeading()
-        .setDesc(runtimeDescOn);
-
-    addWikiLink(panelHeader, 'Settings#runtime-estimation');
-    const headerLayout = applyErtHeaderLayout(panelHeader);
-    if (headerLayout) {
-        headerLayout.header.removeClass(ERT_CLASSES.HEADER_NO_LEFT);
-        const badgeEl = headerLayout.left.createSpan({
+        .setDesc(t('settings.runtime.header.desc'));
+    addWikiLink(runtimeHeader, 'Settings#runtime-estimation');
+    const runtimeHeaderLayout = applyErtHeaderLayout(runtimeHeader);
+    if (runtimeHeaderLayout) {
+        runtimeHeaderLayout.header.removeClass(ERT_CLASSES.HEADER_NO_LEFT);
+        const badgeEl = runtimeHeaderLayout.left.createSpan({
             cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO} ${ERT_CLASSES.BADGE_PILL_SM}`
         });
         const badgeIcon = badgeEl.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON });
         setIcon(badgeIcon, 'signature');
         badgeEl.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: t('settings.runtime.header.badgeText') });
     }
-    const panelHeaderEl = panelHeader.settingEl;
-    const clearConditionalContent = () => {
-        let node = panelHeaderEl.nextElementSibling;
-        while (node) {
-            const next = node.nextElementSibling;
-            node.remove();
-            node = next;
-        }
-    };
+
+    // Content host within runtime card — all runtime rows re-render inside this element
+    const runtimeBody = proContainer.createDiv({ cls: ERT_CLASSES.STACK });
+
+    // Writing schedule sibling card
+    const scheduleContainer = containerEl.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` });
+    if (!hasProfessional) {
+        scheduleContainer.addClass('ert-pro-locked');
+    }
+
+    const scheduleHeader = new Setting(scheduleContainer)
+        .setName(t('settings.runtime.writingSchedule.header.name'))
+        .setHeading()
+        .setDesc(t('settings.runtime.writingSchedule.header.desc'));
+    addWikiLink(scheduleHeader, 'Settings#runtime-estimation');
+    const scheduleHeaderLayout = applyErtHeaderLayout(scheduleHeader);
+    if (scheduleHeaderLayout) {
+        scheduleHeaderLayout.header.removeClass(ERT_CLASSES.HEADER_NO_LEFT);
+        const badgeEl = scheduleHeaderLayout.left.createSpan({
+            cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO} ${ERT_CLASSES.BADGE_PILL_SM}`
+        });
+        const badgeIcon = badgeEl.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON });
+        setIcon(badgeIcon, 'signature');
+        badgeEl.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: t('settings.runtime.writingSchedule.header.badgeText') });
+    }
+
+    const scheduleBody = scheduleContainer.createDiv({ cls: ERT_CLASSES.STACK });
+
     const addProRow = (setting: Setting) => setting;
 
     // Flash helper for input validation
@@ -147,18 +162,19 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
 
     const renderConditionalContent = () => {
         const scrollState = captureScrollState();
-        clearConditionalContent();
-        
+        runtimeBody.empty();
+        scheduleBody.empty();
+
         ensureProfiles();
         const profiles = plugin.settings.runtimeRateProfiles || [];
         if (!selectedProfileId && profiles[0]) {
             selectedProfileId = profiles[0].id;
         }
 
-        const headerContainer = proContainer.createDiv({ cls: ERT_CLASSES.STACK });
-        const ratesRow = proContainer.createDiv({ cls: ERT_CLASSES.STACK });
-        const sessionPlanningRow = proContainer.createDiv({ cls: ERT_CLASSES.STACK });
-        const patternsRow = proContainer.createDiv({ cls: ERT_CLASSES.STACK });
+        const headerContainer = runtimeBody.createDiv({ cls: ERT_CLASSES.STACK });
+        const ratesRow = runtimeBody.createDiv({ cls: ERT_CLASSES.STACK });
+        const patternsRow = runtimeBody.createDiv({ cls: ERT_CLASSES.STACK });
+        const sessionPlanningRow = scheduleBody.createDiv({ cls: ERT_CLASSES.STACK });
 
         const getSelectedProfile = (): RuntimeRateProfile | undefined => {
             const currentProfiles = plugin.settings.runtimeRateProfiles || [];
@@ -192,13 +208,6 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
             }
 
             const contentType = selectedProfile.contentType || 'novel';
-            const ratesHeading = new Setting(ratesRow)
-                .setName(t('settings.runtime.rates.name'))
-                .setHeading();
-            const ratesIconName = contentType === 'screenplay' ? 'projector' : 'mic-vocal';
-            addHeadingIcon(ratesHeading, ratesIconName);
-            addWikiLink(ratesHeading, 'Settings#runtime-estimation');
-            applyErtHeaderLayout(ratesHeading);
 
             // Content Type Selection
             addProRow(new Setting(ratesRow))
@@ -328,14 +337,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
                     });
             }
 
-            // Session planning (optional, per profile) — 3rd row in ert-panel stack
-            const sessionHeading = addProRow(new Setting(sessionPlanningRow))
-                .setName(t('settings.runtime.sessionPlanning.name'))
-                .setDesc(t('settings.runtime.sessionPlanning.desc'))
-                .setHeading();
-            addHeadingIcon(sessionHeading, 'calendar-clock');
-            addWikiLink(sessionHeading, 'Settings#runtime-estimation');
-            applyErtHeaderLayout(sessionHeading);
+            // Writing schedule fields (rendered into sibling Pro card)
             const session = selectedProfile.sessionPlanning || {};
 
             addProRow(new Setting(sessionPlanningRow))

@@ -369,7 +369,6 @@ export interface TranslationKeys {
         };
         runtime: {
             header: { name: string; desc: string; badgeText: string; };
-            rates: { name: string; };
             contentType: { name: string; desc: string; optionNovel: string; optionScreenplay: string; };
             dialogueWpm: { name: string; desc: string; };
             actionWpm: { name: string; desc: string; };
@@ -382,7 +381,9 @@ export interface TranslationKeys {
                 resetTooltip: string;
             };
             narrationWpm: { name: string; desc: string; };
-            sessionPlanning: { name: string; desc: string; };
+            writingSchedule: {
+                header: { name: string; desc: string; badgeText: string; };
+            };
             draftingWpm: { name: string; desc: string; };
             dailyMinutes: { name: string; desc: string; };
             patterns: { heading: string; seconds: string; minutes: string; runtime: string; allow: string; };
@@ -1110,10 +1111,9 @@ export const en: TranslationKeys = {
         runtime: {
             header: {
                 name: 'Runtime estimation',
-                desc: 'Activate runtime estimate sub-mode in Chronologue Mode, timeline hover text, and command palette runtime estimator.',
+                desc: 'Estimate reading, narration, and screenplay runtime across Chronologue Mode, timeline hover, and runtime tools.',
                 badgeText: 'Pro',
             },
-            rates: { name: 'Rates & timings' },
             contentType: {
                 name: 'Content type',
                 desc: 'Novel calculates all text at narration pace. Screenplay separates dialogue from action.',
@@ -1131,9 +1131,15 @@ export const en: TranslationKeys = {
                 resetTooltip: 'Reset to default',
             },
             narrationWpm: { name: 'Narration words per minute', desc: 'Reading pace for all content (audiobook narration).' },
-            sessionPlanning: { name: 'Session planning (optional)', desc: 'Used in the Outline export: Index cards (JSON) summary to estimate writing hours and total sessions.' },
-            draftingWpm: { name: 'Drafting words per minute (optional)', desc: 'Your writing speed for session time estimates.' },
-            dailyMinutes: { name: 'Daily minutes available (optional)', desc: 'For shooting schedule time estimates.' },
+            writingSchedule: {
+                header: {
+                    name: 'Writing schedule',
+                    desc: 'Estimate how long it will take to finish your manuscript. Used in Pro manuscript exports to project total writing time and session count.',
+                    badgeText: 'Pro',
+                },
+            },
+            draftingWpm: { name: 'Drafting words per minute (optional)', desc: 'Your average writing speed. Used to estimate total drafting hours. Leave blank to skip schedule projections.' },
+            dailyMinutes: { name: 'Daily writing minutes (optional)', desc: 'How much time you can realistically write each day. Used to estimate total sessions and calendar time. Leave blank to skip schedule projections.' },
             patterns: {
                 heading: 'Explicit duration patterns are always parsed and added to runtime:',
                 seconds: '(30 seconds) or (30s)',
