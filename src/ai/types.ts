@@ -254,6 +254,7 @@ export interface GenerateTextRequest {
     modelId: string;
     systemPrompt?: string | null;
     userPrompt: string;
+    promptCacheKey?: string;
     maxOutputTokens?: number;
     temperature?: number;
     topP?: number;
@@ -341,6 +342,7 @@ export interface AIRunRequest {
     preparedEstimate?: AIRunPreparedEstimate;
     /** Per-scene evidence documents for provider-level citations. */
     evidenceDocuments?: EvidenceDocument[];
+    providerReuseKey?: string;
     /** Skip RT's shared in-memory result cache for this run. */
     bypassInMemoryCache?: boolean;
     /** Skip provider-level prompt/context reuse for this run. */
@@ -411,6 +413,7 @@ export interface AIRunPreparedEstimate {
     resolvedOverrides: AIOverrides;
     allowTelemetry: boolean;
     cacheKey: string;
+    providerReuseKey?: string;
 }
 
 export type AIRunEstimateResult =

@@ -57,7 +57,37 @@ describe('OpenAIProvider', () => {
             undefined,
             undefined,
             undefined,
-            'in_memory'
+            'in_memory',
+            undefined
+        );
+    });
+
+    it('passes prompt cache keys through to the OpenAI Responses adapter', async () => {
+        vi.mocked(callOpenAiResponsesApi).mockResolvedValue({
+            success: true,
+            content: 'ok',
+            responseData: {}
+        });
+
+        const provider = new OpenAIProvider({ settings: {} } as never);
+        await provider.generateText({
+            modelId: 'gpt-5.4',
+            systemPrompt: 'You are precise.',
+            userPrompt: 'Return a short answer.',
+            promptCacheKey: 'rt:inquiry:book-b1'
+        });
+
+        expect(callOpenAiResponsesApi).toHaveBeenCalledWith(
+            'test-key',
+            'gpt-5.4',
+            'You are precise.',
+            'Return a short answer.',
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            'in_memory',
+            'rt:inquiry:book-b1'
         );
     });
 

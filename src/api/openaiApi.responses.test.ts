@@ -173,7 +173,8 @@ describe('openai responses normalization', () => {
             },
             0.1,
             0.9,
-            '24h'
+            '24h',
+            'rt:inquiry:book-b1'
         );
 
         expect(response.success).toBe(true);
@@ -206,7 +207,8 @@ describe('openai responses normalization', () => {
             },
             temperature: 0.1,
             top_p: 0.9,
-            prompt_cache_retention: '24h'
+            prompt_cache_retention: '24h',
+            prompt_cache_key: 'rt:inquiry:book-b1'
         });
         expect(mockedRequestUrl).toHaveBeenCalledTimes(1);
     });

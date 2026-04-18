@@ -642,7 +642,15 @@ export class InquiryView extends ItemView {
             this.renderMobileGate();
             return;
         }
-        this.startupFreshMode = this.plugin.consumeInquiryFreshLaunchPending();
+        const freshLaunchPending = this.plugin.consumeInquiryFreshLaunchPending();
+        if (!this.state.isRunning) {
+            this.clearRehydrateState();
+            this.clearActiveResultState();
+            this.clearResultPreview();
+            this.unlockPromptPreview();
+            this.setApiStatus('idle');
+        }
+        this.startupFreshMode = freshLaunchPending || !this.state.isRunning;
         this.freshModeTouchedBookIds.clear();
         this.loadTargetCache({ adoptPersistedSelection: !this.startupFreshMode });
         this.renderDesktopLayout();
@@ -7327,13 +7335,14 @@ export class InquiryView extends ItemView {
         const minimumRank = this.getImpactRank('medium');
 
         const items = this.getResultItems(result);
+        const referenceLabels = this.buildInquiryReferenceLabelMap(items);
 
         result.findings.forEach(finding => {
             if (!this.isFindingHit(finding)) return;
             if (this.getImpactRank(finding.impact) < minimumRank) return;
             const targetLabel = this.resolveFindingChipLabel(finding, result, items)
                 ?? (finding.refId && /^s\d+$/i.test(finding.refId.trim()) ? finding.refId.trim().toUpperCase() : undefined);
-            const note = this.formatInquiryActionNote(finding, briefTitle, targetLabel);
+            const note = this.formatInquiryActionNote(finding, briefTitle, targetLabel, referenceLabels);
             if (!note) return; // Skip findings that didn't produce an actionable suggestion.
             const refId = finding.refId?.trim();
             const filePath = refId
@@ -9235,11 +9244,7 @@ export class InquiryView extends ItemView {
         const totalSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
         const hours = Math.floor(totalSeconds / 3600);
         const minutes = Math.floor((totalSeconds % 3600) / 60);
-        const seconds = totalSeconds % 60;
-        if (hours > 0) {
-            return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-        }
-        return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
     }
 
     private getAnthropicDispatchDiagnostics(trace: InquiryRunTrace | null | undefined): {
@@ -11700,13 +11705,14 @@ export class InquiryView extends ItemView {
     private formatInquiryActionNote(
         finding: InquiryFinding,
         briefTitle: string,
-        targetLabel?: string
+        targetLabel: string | undefined,
+        referenceLabels: ReadonlyMap<string, string>
     ): string | null {
-        const suggestion = this.buildInquiryActionSuggestion(finding);
-        if (!suggestion) return null;
+        const actionText = this.getInquiryActionText(finding, referenceLabels);
+        if (!actionText) return null;
         const briefLink = formatInquiryBriefLink(briefTitle);
         const prefix = targetLabel?.trim() ? `${targetLabel.trim()} — ` : '';
-        return `${briefLink} — ${prefix}${suggestion}`;
+        return `${briefLink} — ${prefix}${actionText}`;
     }
 
     private buildInquiryPendingAction(
@@ -11715,71 +11721,26 @@ export class InquiryView extends ItemView {
         items: InquiryCorpusItem[] = this.getResultItems(result),
         referenceLabels: ReadonlyMap<string, string> = this.buildInquiryReferenceLabelMap(items)
     ): { targetLabel?: string; text: string } | null {
-        const suggestion = this.buildInquiryActionSuggestion(finding);
-        if (!suggestion) return null;
+        const text = this.getInquiryActionText(finding, referenceLabels);
+        if (!text) return null;
         const targetLabel = this.resolveFindingChipLabel(finding, result, items)
             ?? (finding.refId && /^s\d+$/i.test(finding.refId.trim()) ? finding.refId.trim().toUpperCase() : undefined);
         return {
             targetLabel,
-            text: this.normalizeInquiryBriefText(suggestion, referenceLabels)
+            text
         };
     }
 
-    private buildInquiryActionSuggestion(finding: InquiryFinding): string | null {
-        // Non-actionable kinds never produce edit suggestions.
+    private getInquiryActionText(
+        finding: InquiryFinding,
+        referenceLabels: ReadonlyMap<string, string>
+    ): string | null {
         if (finding.kind === 'none' || finding.kind === 'strength') return null;
-
-        const source = (finding.bullets?.find(entry => entry?.trim()) || finding.headline || '').replace(/\s+/g, ' ').trim();
-        if (!source) return null;
-        const cleaned = source.replace(/[.?!]+$/, '').trim();
-        const lowered = cleaned.toLowerCase();
-        const imperativeStarts = [
-            'add', 'adjust', 'align', 'anchor', 'balance', 'clarify', 'condense', 'confirm', 'connect',
-            'deepen', 'define', 'emphasize', 'ensure', 'establish', 'expand', 'foreshadow', 'highlight',
-            'introduce', 'move', 'reframe', 'reorder', 'revisit', 'revise', 'seed', 'sharpen', 'show',
-            'simplify', 'streamline', 'strengthen', 'tighten', 'trim', 'resolve', 'rework', 'shift'
-        ];
-        if (imperativeStarts.some(prefix => lowered.startsWith(`${prefix} `))) {
-            return cleaned;
-        }
-        if (lowered.startsWith('it is unclear ')) {
-            return `Clarify ${cleaned.slice('it is unclear '.length)}`;
-        }
-        if (lowered.startsWith('unclear whether ')) {
-            return `Clarify whether ${cleaned.slice('unclear whether '.length)}`;
-        }
-        if (lowered.startsWith('unclear if ')) {
-            return `Clarify if ${cleaned.slice('unclear if '.length)}`;
-        }
-        if (lowered.startsWith('unclear ')) {
-            return `Clarify ${cleaned.slice('unclear '.length)}`;
-        }
-        if (lowered.startsWith('lacks ')) {
-            return `Add ${cleaned.slice('lacks '.length)}`;
-        }
-        if (lowered.startsWith('missing ')) {
-            return `Add ${cleaned.slice('missing '.length)}`;
-        }
-        if (lowered.startsWith('needs ')) {
-            return `Strengthen ${cleaned.slice('needs '.length)}`;
-        }
-        const verbMatch = cleaned.match(/\b(is|are|was|were|feels|seems|appears|looks|drags|lags|sags|rushes|stalls|slows|reads)\b/i);
-        if (verbMatch?.index !== undefined && verbMatch.index > 0) {
-            // If the verb appears very late, the "subject" is nearly the whole sentence —
-            // extracting it loses the tail and produces a truncated suggestion.
-            if (verbMatch.index / cleaned.length > 0.6) {
-                return `Revise ${cleaned.replace(/^(the|this|that|these|those|a|an)\s+/i, '').trim()}`;
-            }
-            const subject = cleaned.slice(0, verbMatch.index).replace(/^(the|this|that|these|those|a|an)\s+/i, '').trim();
-            const remainder = cleaned.slice(verbMatch.index + verbMatch[0].length).trim();
-            const locationMatch = remainder.match(/\b(in|during|at|by|within|around)\s+.+$/i);
-            if (subject) {
-                const location = locationMatch ? ` ${locationMatch[0].trim()}` : '';
-                return `Revise ${subject}${location}`;
-            }
-        }
-        // No actionable pattern detected — skip rather than fabricating a suggestion.
-        return null;
+        const headline = this.normalizeInquiryBriefText(
+            normalizeInquiryHeadline(finding.headline),
+            referenceLabels
+        ).trim();
+        return headline || null;
     }
 
     private formatRoundTripDuration(ms: number): string {

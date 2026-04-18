@@ -38,6 +38,14 @@ describe('InquiryRunnerService execution integrity', () => {
         expect(source).toContain('private shouldUseInstructionPrompt(');
     });
 
+    it('uses cacheable user input and provider reuse keys for OpenAI inquiry caching', () => {
+        const source = readFileSync(resolve(process.cwd(), 'src/inquiry/runner/InquiryRunnerService.ts'), 'utf8');
+        expect(source).toContain('private resolveProviderUserInput(');
+        expect(source).toContain("(provider === 'openai' || provider === 'google') && cacheableUserInput");
+        expect(source).toContain('providerReuseKey: input.corpus.cacheReuseFingerprint');
+        expect(source).toContain('providerReuseKey: options.providerReuseKey,');
+    });
+
     it('keeps Anthropic attachment instruction prompts free of TASK so cacheable prefixes survive question changes', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/inquiry/runner/InquiryRunnerService.ts'), 'utf8');
         expect(source).toContain('Deliberately omits TASK so the volatile question can be placed after');

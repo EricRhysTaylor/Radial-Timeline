@@ -291,7 +291,6 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     addWikiLink(stylingHeading, 'Settings#social-media-styling');
     applyErtHeaderLayout(stylingHeading, { variant: 'inline' });
     const stylingBody = stylingBlock.createDiv({ cls: 'ert-typography-stack' });
-    stylingBody.createDiv({ cls: 'ert-divider' });
 
     // Progress tracking
     type AprProgressMode = 'stage' | 'date' | 'full';
@@ -309,7 +308,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
     progressModeGrid.createDiv({ cls: 'ert-divider--vertical' });
 
-    const modeCell = progressModeGrid.createDiv({ cls: ERT_CLASSES.GRID_FORM_CELL });
+    const modeCell = progressModeGrid.createDiv({ cls: `${ERT_CLASSES.GRID_FORM_CELL} ert-apr-modeCell` });
     const modeControlRow = modeCell.createDiv({ cls: 'ert-typography-controls' });
     const modeDropdown = new DropdownComponent(modeControlRow);
     modeDropdown.selectEl.addClass('ert-input', 'ert-input--fit-selected', 'ert-typography-select');
@@ -340,18 +339,19 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     dateRangeWrap.addClass('ert-hidden');
     const dateRangeInput = new TextComponent(dateRangeWrap);
     dateRangeInput.setPlaceholder('YYYY-MM-DD to YYYY-MM-DD');
-    dateRangeInput.inputEl.addClass('ert-input--full');
+    dateRangeInput.inputEl.addClass('ert-input', 'ert-input--md');
     dateRangeWrap.createDiv({
         cls: ERT_CLASSES.FIELD_NOTE,
         text: 'Format: YYYY-MM-DD to YYYY-MM-DD.'
     });
 
     // Manuscript Flow bar — full-width, rendered at the bottom of the card.
+    // Divider sits just above the bar to separate it from the controls.
+    progressTrackingCard.createDiv({ cls: 'ert-divider ert-divider--previewFrame' });
     const flowBar = progressTrackingCard.createDiv({ cls: 'ert-apr-flow' });
     const flowTick = flowBar.createDiv({ cls: 'ert-apr-flow__tick' });
-    const flowTickMarker = flowTick.createDiv({ cls: 'ert-apr-flow__tick-marker' });
-    const flowTickLabel = flowTickMarker.createSpan({ cls: 'ert-apr-flow__tick-label' });
-    flowTickMarker.createSpan({ cls: 'ert-apr-flow__tick-line' });
+    const flowTickLabel = flowTick.createSpan({ cls: 'ert-apr-flow__tick-label' });
+    const flowTickLine = flowTick.createSpan({ cls: 'ert-apr-flow__tick-line' });
     const flowBarTrack = flowBar.createDiv({ cls: 'ert-apr-flow__track' });
     const flowSegments: Record<(typeof STAGE_ORDER)[number], HTMLDivElement> = {} as Record<(typeof STAGE_ORDER)[number], HTMLDivElement>;
     STAGE_ORDER.forEach(stage => {
@@ -578,9 +578,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             return 'Add scenes to start tracking.';
         }
         const denom = storedTarget && storedTarget > sceneCount ? storedTarget : sceneCount;
-        return mode === 'stage'
-            ? `${sceneCount} of ${denom} scenes at ${trackedStage}`
-            : `${sceneCount} of ${denom} scenes across Zero → Press`;
+        return `${sceneCount} of ${denom} scenes`;
     };
 
     const renderFlowBar = (
@@ -595,7 +593,12 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             setTooltip(seg, `${stage}: ${count}`);
         });
         const clamped = Math.max(0, Math.min(100, percent));
-        flowTickMarker.style.setProperty('left', `${clamped}%`);
+        // Line stays pinned at the percent position.
+        flowTickLine.style.setProperty('left', `${clamped}%`);
+        // Label shifts relative to the line so it stays inside the bar at either extreme.
+        flowTickLabel.style.setProperty('left', `${clamped}%`);
+        const labelTx = clamped <= 6 ? '0' : clamped >= 94 ? '-100%' : '-50%';
+        flowTickLabel.style.setProperty('transform', `translateX(${labelTx})`);
         flowTickLabel.setText(`${clamped}%`);
         flowLegend.empty();
         STAGE_ORDER.forEach((stage, idx) => {

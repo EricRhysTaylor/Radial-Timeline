@@ -17,6 +17,8 @@ describe('AI client resolved-model caching', () => {
         expect(source.includes("placeUserQuestionLast: isInquiry && typeof request.userQuestion === 'string' && request.userQuestion.trim().length > 0")).toBe(true);
         expect(source.includes('const cacheDelimiterUsed = userPrompt.includes(CACHE_BREAK_DELIMITER);')).toBe(true);
         expect(source.includes("reuseState = cacheAttempted ? 'eligible' : 'idle';")).toBe(true);
+        expect(source.includes("} else if (provider === 'openai') {")).toBe(true);
+        expect(source.includes("reuseState = cacheDelimiterUsed ? 'eligible' : 'idle';")).toBe(true);
         expect(source.includes("(provider === 'openai' && advancedContext.reuseState !== 'idle')")).toBe(true);
         expect(source.includes("if (provider === 'google' && typeof cachedStableRatio === 'number') {")).toBe(true);
         expect(source.includes("if (provider === 'google' && typeof cachedStableTokens === 'number') {")).toBe(true);
@@ -49,6 +51,7 @@ describe('AI client resolved-model caching', () => {
         expect(source.includes('const bypassInMemoryCache = request.bypassInMemoryCache === true || bypassProviderReuse;')).toBe(true);
         expect(source.includes('if (!bypassInMemoryCache) {')).toBe(true);
         expect(source.includes('bypassProviderReuse,')).toBe(true);
+        expect(source.includes("promptCacheKey: !bypassProviderReuse ? estimate.providerReuseKey : undefined,")).toBe(true);
         expect(source.includes("(provider === 'openai' && advancedContext.reuseState !== 'idle')")).toBe(true);
     });
 });

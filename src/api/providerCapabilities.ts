@@ -178,6 +178,7 @@ export interface ProviderDispatchParams {
     modelId: string;
     systemPrompt?: string | null;
     userPrompt: string;
+    promptCacheKey?: string;
     maxOutputTokens: number;
     temperature?: number;
     topP?: number;

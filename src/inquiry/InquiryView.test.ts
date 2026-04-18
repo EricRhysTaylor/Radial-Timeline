@@ -111,7 +111,9 @@ describe('InquiryView payload accounting', () => {
         const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
         expect(mainSource.includes('public inquiryFreshLaunchPending = true;')).toBe(true);
         expect(mainSource.includes('public consumeInquiryFreshLaunchPending(): boolean')).toBe(true);
-        expect(viewSource.includes('this.startupFreshMode = this.plugin.consumeInquiryFreshLaunchPending();')).toBe(true);
+        expect(viewSource.includes('const freshLaunchPending = this.plugin.consumeInquiryFreshLaunchPending();')).toBe(true);
+        expect(viewSource.includes("if (!this.state.isRunning) {\n            this.clearRehydrateState();\n            this.clearActiveResultState();\n            this.clearResultPreview();\n            this.unlockPromptPreview();\n            this.setApiStatus('idle');\n        }")).toBe(true);
+        expect(viewSource.includes("this.startupFreshMode = freshLaunchPending || !this.state.isRunning;")).toBe(true);
         expect(viewSource.includes('this.loadTargetCache({ adoptPersistedSelection: !this.startupFreshMode });')).toBe(true);
         expect(viewSource.includes('if (this.startupFreshMode) {\n            return undefined;\n        }')).toBe(true);
     });
@@ -171,8 +173,8 @@ describe('InquiryView payload accounting', () => {
         const viewSource = readFileSync(resolve(process.cwd(), 'src/inquiry/InquiryView.ts'), 'utf8');
         expect(viewSource.includes('const prior = session.pendingEditsEmpty;')).toBe(true);
         expect(viewSource.includes('if (session.key && prior !== pendingEditsEmpty) {')).toBe(true);
-        expect(viewSource.includes('private buildBriefPendingActions(result: InquiryResult): string[] {')).toBe(true);
-        expect(viewSource.includes('const pendingActions = this.buildBriefPendingActions(result);')).toBe(true);
+        expect(viewSource.includes('private buildBriefPendingActions(')).toBe(true);
+        expect(viewSource.includes('const pendingActions = this.buildBriefPendingActions(result, items, referenceLabels);')).toBe(true);
     });
 
     it('prefers the strongest live warm-cache metrics over stale persisted reuse data', () => {
@@ -188,7 +190,8 @@ describe('InquiryView payload accounting', () => {
         expect(viewSource.includes("hatchBg.classList.add('ert-inquiry-minimap-cached-hatch-bg');")).toBe(true);
         expect(viewSource.includes('hatchLineSecondary')).toBe(true);
         expect(cssSource.includes('.ert-inquiry-minimap-tokencap-cached')).toBe(true);
-        expect(cssSource.includes('fill: url(#ert-inquiry-minimap-cached-hatch);')).toBe(true);
+        expect(viewSource.includes("cachedPattern.setAttribute('id', 'ert-inquiry-minimap-cached-hatch');")).toBe(true);
+        expect(cssSource.includes('fill: color-mix(in srgb, var(--ert-inquiry-ai-success) 92%, #dfffe7 8%);')).toBe(true);
     });
 
     it('renders the warm cache HUD countdown as a green flame icon plus timer text', () => {
@@ -198,8 +201,8 @@ describe('InquiryView payload accounting', () => {
         expect(viewSource.includes("'flame-kindling'")).toBe(true);
         expect(viewSource.includes("return `${this.formatCacheCountdown(remainingMs)} remaining`;")).toBe(true);
         expect(domSource.includes("engineTimerIcon.setAttribute('href', '#ert-icon-flame-kindling');")).toBe(true);
-        expect(domSource.includes("engineTimerIcon.setAttribute('width', '48');")).toBe(true);
-        expect(cssSource.includes('font-size: 24px;')).toBe(true);
+        expect(domSource.includes("engineTimerIcon.setAttribute('width', '34');")).toBe(true);
+        expect(cssSource.includes('font-size: 18px;')).toBe(true);
         expect(cssSource.includes('.ert-inquiry-engine-timer-icon.is-context-warm')).toBe(true);
     });
 

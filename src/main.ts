@@ -489,6 +489,9 @@ export default class RadialTimelinePlugin extends Plugin {
     async loadSettings() {
         const loadedSettings = (await this.loadData()) ?? {};
         this.settings = Object.assign({}, DEFAULT_SETTINGS, loadedSettings);
+        if (this.settings.publishStageColors?.House === '#DA7847') {
+            this.settings.publishStageColors.House = '#F2863C';
+        }
         const normalizedGossamerRunFilter = this.normalizeGossamerRunFilterSettings(this.settings.gossamerRunFilter);
         const gossamerRunFilterMigrated = JSON.stringify(this.settings.gossamerRunFilter ?? null) !== JSON.stringify(normalizedGossamerRunFilter);
         this.settings.gossamerRunFilter = normalizedGossamerRunFilter;

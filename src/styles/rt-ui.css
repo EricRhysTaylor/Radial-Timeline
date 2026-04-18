@@ -1690,6 +1690,10 @@
   margin: var(--ert-gap-sm) 0;
 }
 
+.ert-ui .ert-divider--previewFrame {
+  border-bottom-color: var(--ert-previewFrame-border);
+}
+
 .ert-ui.ert-scope--settings .ert-divider--vertical {
   width: 1px;
   align-self: stretch;
@@ -1829,35 +1833,35 @@
   height: 20px;
 }
 
-.ert-ui .ert-apr-flow__tick-marker {
-  position: absolute;
-  left: 0;
-  top: 0;
-  transform: translateX(-50%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  pointer-events: none;
-  transition: left 200ms ease;
-}
-
 .ert-ui .ert-apr-flow__tick-label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: translateX(-50%);
   font-size: var(--ert-fs-xs);
   font-weight: 600;
   color: var(--text-normal);
   line-height: 1;
   white-space: nowrap;
-  padding: 1px 4px;
-  border-radius: 3px;
-  background: var(--background-secondary);
-  border: 1px solid var(--background-modifier-border);
+  padding: 0;
+  pointer-events: none;
+  transition: left 200ms ease;
 }
 
 .ert-ui .ert-apr-flow__tick-line {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  transform: translateX(-50%);
   width: 0;
   height: 6px;
   border-left: 2px solid var(--text-normal);
+  pointer-events: none;
+  transition: left 200ms ease;
+}
+
+.ert-ui .ert-apr-modeCell {
+  gap: var(--ert-gap-md);
 }
 
 .ert-ui .ert-apr-flow__track {
@@ -1879,7 +1883,7 @@
 }
 
 .ert-ui .ert-apr-flow__segment.is-empty {
-  background: color-mix(in srgb, var(--ert-flow-color, #808080) 35%, var(--background-secondary) 65%);
+  background: color-mix(in srgb, var(--ert-flow-color, #808080) 65%, var(--background-secondary) 35%);
 }
 
 .ert-ui .ert-apr-flow__segment + .ert-apr-flow__segment {

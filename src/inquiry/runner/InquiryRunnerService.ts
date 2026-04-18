@@ -225,7 +225,7 @@ export class InquiryRunnerService implements InquiryRunner {
         input: InquiryRunnerInput,
         options?: InquiryRunExecutionOptions
     ): Promise<{ result: InquiryResult; trace: InquiryRunTrace }> {
-        const { trace, evidenceBlocks, instructionPrompt } = await this.buildInitialTrace(input);
+        const { trace, evidenceBlocks, instructionPrompt, cacheableUserInput } = await this.buildInitialTrace(input);
         const evidenceDocMeta = evidenceBlocks.map(b => b.meta).filter((m): m is EvidenceDocumentMeta => !!m);
         const { systemPrompt, userPrompt } = trace;
 
@@ -245,7 +245,9 @@ export class InquiryRunnerService implements InquiryRunner {
                 input.questionText,
                 evidenceBlocks,
                 options,
-                instructionPrompt
+                instructionPrompt,
+                cacheableUserInput,
+                input.corpus.cacheReuseFingerprint
             );
             if (response.sanitizationNotes?.length) {
                 trace.sanitizationNotes.push(...response.sanitizationNotes);
@@ -327,7 +329,7 @@ export class InquiryRunnerService implements InquiryRunner {
     async runOmnibusWithTrace(
         input: InquiryOmnibusInput
     ): Promise<{ results: InquiryResult[]; trace: InquiryRunTrace; rawResponse?: RawOmnibusResponse | null }> {
-        const { trace, evidenceBlocks, instructionPrompt } = await this.buildOmnibusTrace(input);
+        const { trace, evidenceBlocks, instructionPrompt, cacheableUserInput } = await this.buildOmnibusTrace(input);
         const evidenceDocMeta = evidenceBlocks.map(b => b.meta).filter((m): m is EvidenceDocumentMeta => !!m);
         const { systemPrompt, userPrompt } = trace;
 
@@ -347,7 +349,9 @@ export class InquiryRunnerService implements InquiryRunner {
                 input.questions.map(question => question.questionText).join('\n'),
                 evidenceBlocks,
                 undefined,
-                instructionPrompt
+                instructionPrompt,
+                cacheableUserInput,
+                input.corpus.cacheReuseFingerprint
             );
             if (response.sanitizationNotes?.length) {
                 trace.sanitizationNotes.push(...response.sanitizationNotes);
@@ -442,7 +446,7 @@ export class InquiryRunnerService implements InquiryRunner {
         evidenceDocuments: Array<{ title: string; content: string; evidenceClass?: string }>;
     }> {
         const evidenceBlocks = await this.buildEvidenceBlocks(input);
-        const { systemPrompt, userPrompt, instructionPrompt } = this.buildPrompt(input, evidenceBlocks);
+        const { systemPrompt, userPrompt, instructionPrompt, cacheableUserInput } = this.buildPrompt(input, evidenceBlocks);
         const preparedEstimate = await this.prepareInquiryRunEstimate(getAIClient(this.plugin), {
             task: 'InquiryTraceEstimate',
             systemPrompt,
@@ -453,7 +457,9 @@ export class InquiryRunnerService implements InquiryRunner {
             temperature: 0.2,
             maxTokens: this.getOutputTokenCap(input.ai.provider),
             evidenceBlocks,
-            instructionPrompt
+            instructionPrompt,
+            cacheableUserInput,
+            providerReuseKey: input.corpus.cacheReuseFingerprint
         });
         return {
             preparedEstimate,
@@ -758,7 +764,7 @@ export class InquiryRunnerService implements InquiryRunner {
     private buildPrompt(
         input: InquiryRunnerInput,
         evidence: EvidenceBlock[]
-    ): { systemPrompt: string; userPrompt: string; evidenceText: string; instructionPrompt: string } {
+    ): { systemPrompt: string; userPrompt: string; evidenceText: string; instructionPrompt: string; cacheableUserInput: string } {
         const evidenceText = evidence.map(block => {
             return `## ${block.label}\n${block.content}`;
         }).join('\n\n');
@@ -793,13 +799,23 @@ export class InquiryRunnerService implements InquiryRunner {
             '(Evidence provided as document attachments.)'
         ].join('\n');
 
-        return { systemPrompt, userPrompt, evidenceText, instructionPrompt };
+        const cacheableUserInput = [
+            instructionText,
+            '',
+            schemaText,
+            ...targetSceneBlock,
+            '',
+            'EVIDENCE:',
+            evidenceText
+        ].join('\n');
+
+        return { systemPrompt, userPrompt, evidenceText, instructionPrompt, cacheableUserInput };
     }
 
     private buildOmnibusPrompt(
         input: InquiryOmnibusInput,
         evidence: EvidenceBlock[]
-    ): { systemPrompt: string; userPrompt: string; evidenceText: string; instructionPrompt: string } {
+    ): { systemPrompt: string; userPrompt: string; evidenceText: string; instructionPrompt: string; cacheableUserInput: string } {
         const systemPrompt = [
             'You are an editorial analysis engine.',
             'Scores are corpus-level diagnostics, not answer quality.',
@@ -896,7 +912,17 @@ export class InquiryRunnerService implements InquiryRunner {
             '(Evidence provided as document attachments.)'
         ].join('\n');
 
-        return { systemPrompt, userPrompt, evidenceText, instructionPrompt };
+        const cacheableUserInput = [
+            instructionText,
+            '',
+            schema,
+            ...targetSceneBlock,
+            '',
+            'EVIDENCE:',
+            evidenceText
+        ].join('\n');
+
+        return { systemPrompt, userPrompt, evidenceText, instructionPrompt, cacheableUserInput };
     }
 
     private getJsonSchema(): Record<string, unknown> {
@@ -917,7 +943,9 @@ export class InquiryRunnerService implements InquiryRunner {
         userQuestion?: string,
         evidenceBlocks?: EvidenceBlock[],
         executionOptions?: InquiryRunExecutionOptions,
-        instructionPrompt?: string
+        instructionPrompt?: string,
+        cacheableUserInput?: string,
+        providerReuseKey?: string
     ): Promise<ProviderResult> {
         const aiClient = getAIClient(this.plugin);
         const executionPrecheck = await this.getExecutionPrecheck({
@@ -930,7 +958,9 @@ export class InquiryRunnerService implements InquiryRunner {
             temperature,
             maxTokens,
             evidenceBlocks,
-            instructionPrompt
+            instructionPrompt,
+            cacheableUserInput,
+            providerReuseKey
         });
         if (!executionPrecheck.ok) {
             const reason = `Unable to prepare an authoritative provider execution estimate. ${executionPrecheck.reason}`.trim();
@@ -1004,6 +1034,8 @@ export class InquiryRunnerService implements InquiryRunner {
             evidenceBlocks,
             preparedEstimate: precheck.preparedEstimate,
             instructionPrompt,
+            cacheableUserInput,
+            providerReuseKey,
             forceFreshRun: executionOptions?.forceFreshRun
         });
         run = this.withExecutionContext(run, {
@@ -1061,6 +1093,8 @@ export class InquiryRunnerService implements InquiryRunner {
             evidenceBlocks?: EvidenceBlock[];
             preparedEstimate?: AIRunPreparedEstimate | null;
             instructionPrompt?: string;
+            cacheableUserInput?: string;
+            providerReuseKey?: string;
             forceFreshRun?: boolean;
         }
     ): Promise<AIRunResult> {
@@ -1075,14 +1109,17 @@ export class InquiryRunnerService implements InquiryRunner {
                 temperature: options.temperature,
                 maxTokens: options.maxTokens,
                 evidenceBlocks: options.evidenceBlocks,
-                instructionPrompt: options.instructionPrompt
+                instructionPrompt: options.instructionPrompt,
+                cacheableUserInput: options.cacheableUserInput,
+                providerReuseKey: options.providerReuseKey
             });
-        // When evidence is sent as document blocks (Anthropic), use the
-        // instruction-only prompt as userInput so the AI still receives the
-        // question, analysis instructions, and schema — not a blank prompt.
-        const effectiveUserInput = (this.shouldUseInstructionPrompt(options.ai.provider, options.instructionPrompt, options.evidenceBlocks))
-            ? options.instructionPrompt
-            : options.userPrompt;
+        const effectiveUserInput = this.resolveProviderUserInput(
+            options.ai.provider,
+            options.userPrompt,
+            options.instructionPrompt,
+            options.cacheableUserInput,
+            options.evidenceBlocks
+        );
         return aiClient.run({
             feature: 'InquiryMode',
             task: options.task,
@@ -1107,6 +1144,7 @@ export class InquiryRunnerService implements InquiryRunner {
             bypassInMemoryCache: options.forceFreshRun === true,
             bypassProviderReuse: options.forceFreshRun === true,
             preparedEstimate: preparedEstimate ?? undefined,
+            providerReuseKey: options.providerReuseKey,
             evidenceDocuments: options.evidenceBlocks?.length
                 ? options.evidenceBlocks.map(block => ({
                     title: block.label,
@@ -1129,13 +1167,17 @@ export class InquiryRunnerService implements InquiryRunner {
             maxTokens: number;
             evidenceBlocks?: EvidenceBlock[];
             instructionPrompt?: string;
+            cacheableUserInput?: string;
+            providerReuseKey?: string;
         }
     ): Promise<AIRunPreparedEstimate | null> {
-        // When evidence will be sent as document blocks, use instruction-only
-        // prompt so the estimate sees the real user prompt (not blank).
-        const effectiveUserInput = (this.shouldUseInstructionPrompt(options.ai.provider, options.instructionPrompt, options.evidenceBlocks))
-            ? options.instructionPrompt
-            : options.userPrompt;
+        const effectiveUserInput = this.resolveProviderUserInput(
+            options.ai.provider,
+            options.userPrompt,
+            options.instructionPrompt,
+            options.cacheableUserInput,
+            options.evidenceBlocks
+        );
         const prepared = await aiClient.prepareRunEstimate({
             feature: 'InquiryMode',
             task: options.task,
@@ -1158,6 +1200,7 @@ export class InquiryRunnerService implements InquiryRunner {
                 reasoningDepth: 'deep',
                 jsonStrict: true
             },
+            providerReuseKey: options.providerReuseKey,
             evidenceDocuments: options.evidenceBlocks?.length
                 ? options.evidenceBlocks.map(block => ({
                     title: block.label,
@@ -1177,6 +1220,22 @@ export class InquiryRunnerService implements InquiryRunner {
         return provider === 'anthropic'
             && !!instructionPrompt
             && !!evidenceBlocks?.length;
+    }
+
+    private resolveProviderUserInput(
+        provider: InquiryRunnerInput['ai']['provider'],
+        userPrompt: string,
+        instructionPrompt: string | undefined,
+        cacheableUserInput: string | undefined,
+        evidenceBlocks: EvidenceBlock[] | undefined
+    ): string {
+        if (this.shouldUseInstructionPrompt(provider, instructionPrompt, evidenceBlocks)) {
+            return instructionPrompt;
+        }
+        if ((provider === 'openai' || provider === 'google') && cacheableUserInput) {
+            return cacheableUserInput;
+        }
+        return userPrompt;
     }
 
     private resolvePolicyOverrideForAi(
@@ -1214,6 +1273,8 @@ export class InquiryRunnerService implements InquiryRunner {
         maxTokens: number;
         evidenceBlocks?: EvidenceBlock[];
         instructionPrompt?: string;
+        cacheableUserInput?: string;
+        providerReuseKey?: string;
     }): Promise<
         | {
             ok: true;
@@ -1241,7 +1302,9 @@ export class InquiryRunnerService implements InquiryRunner {
                 temperature: options.temperature,
                 maxTokens: options.maxTokens,
                 evidenceBlocks: options.evidenceBlocks,
-                instructionPrompt: options.instructionPrompt
+                instructionPrompt: options.instructionPrompt,
+                cacheableUserInput: options.cacheableUserInput,
+                providerReuseKey: options.providerReuseKey
             });
             if (!preparedEstimate) {
                 throw new Error('prepareRunEstimate unavailable');
@@ -2414,7 +2477,7 @@ export class InquiryRunnerService implements InquiryRunner {
 
     private async buildInitialTrace(
         input: InquiryRunnerInput
-    ): Promise<{ trace: InquiryRunTrace; evidenceBlocks: EvidenceBlock[]; instructionPrompt: string }> {
+    ): Promise<{ trace: InquiryRunTrace; evidenceBlocks: EvidenceBlock[]; instructionPrompt: string; cacheableUserInput: string }> {
         const notes: string[] = [];
         const sanitizationNotes: string[] = [];
         let evidenceBlocks: EvidenceBlock[] = [];
@@ -2427,7 +2490,7 @@ export class InquiryRunnerService implements InquiryRunner {
             evidenceBlocks = [{ label: 'Evidence', content: 'Unable to build evidence blocks.' }];
         }
 
-        const { systemPrompt, userPrompt, evidenceText, instructionPrompt } = this.buildPrompt(input, evidenceBlocks);
+        const { systemPrompt, userPrompt, evidenceText, instructionPrompt, cacheableUserInput } = this.buildPrompt(input, evidenceBlocks);
         const outputTokenCap = this.getOutputTokenCap(input.ai.provider);
         const tokenEstimate = await this.buildTokenEstimate(
             systemPrompt,
@@ -2437,7 +2500,9 @@ export class InquiryRunnerService implements InquiryRunner {
             evidenceBlocks,
             this.getJsonSchema(),
             input.questionText,
-            instructionPrompt
+            instructionPrompt,
+            cacheableUserInput,
+            input.corpus.cacheReuseFingerprint
         );
         const trace: InquiryRunTrace = {
             systemPrompt,
@@ -2450,12 +2515,12 @@ export class InquiryRunnerService implements InquiryRunner {
             notes
         };
 
-        return { trace, evidenceBlocks, instructionPrompt };
+        return { trace, evidenceBlocks, instructionPrompt, cacheableUserInput };
     }
 
     private async buildOmnibusTrace(
         input: InquiryOmnibusInput
-    ): Promise<{ trace: InquiryRunTrace; evidenceBlocks: EvidenceBlock[]; instructionPrompt: string }> {
+    ): Promise<{ trace: InquiryRunTrace; evidenceBlocks: EvidenceBlock[]; instructionPrompt: string; cacheableUserInput: string }> {
         const notes: string[] = [];
         const sanitizationNotes: string[] = [];
         let evidenceBlocks: EvidenceBlock[] = [];
@@ -2483,7 +2548,7 @@ export class InquiryRunnerService implements InquiryRunner {
         }
 
         notes.push(`Omnibus run: ${input.questions.length} questions.`);
-        const { systemPrompt, userPrompt, evidenceText, instructionPrompt } = this.buildOmnibusPrompt(input, evidenceBlocks);
+        const { systemPrompt, userPrompt, evidenceText, instructionPrompt, cacheableUserInput } = this.buildOmnibusPrompt(input, evidenceBlocks);
         const outputTokenCap = this.getOutputTokenCap(input.ai.provider);
         const tokenEstimate = await this.buildTokenEstimate(
             systemPrompt,
@@ -2493,7 +2558,9 @@ export class InquiryRunnerService implements InquiryRunner {
             evidenceBlocks,
             this.getOmnibusJsonSchema(),
             input.questions.map(question => question.questionText).join('\n'),
-            instructionPrompt
+            instructionPrompt,
+            cacheableUserInput,
+            input.corpus.cacheReuseFingerprint
         );
         const trace: InquiryRunTrace = {
             systemPrompt,
@@ -2506,7 +2573,7 @@ export class InquiryRunnerService implements InquiryRunner {
             notes
         };
 
-        return { trace, evidenceBlocks, instructionPrompt };
+        return { trace, evidenceBlocks, instructionPrompt, cacheableUserInput };
     }
 
     private async buildTokenEstimate(
@@ -2517,7 +2584,9 @@ export class InquiryRunnerService implements InquiryRunner {
         evidenceBlocks: EvidenceBlock[],
         jsonSchema: Record<string, unknown>,
         userQuestion?: string,
-        instructionPrompt?: string
+        instructionPrompt?: string,
+        cacheableUserInput?: string,
+        providerReuseKey?: string
     ): Promise<InquiryRunTrace['tokenEstimate']> {
         const evidenceChars = evidenceBlocks.reduce((sum, block) => (
             sum + block.label.length + block.content.length + 6
@@ -2538,7 +2607,9 @@ export class InquiryRunnerService implements InquiryRunner {
             temperature: 0.2,
             maxTokens: outputTokens,
             evidenceBlocks,
-            instructionPrompt
+            instructionPrompt,
+            cacheableUserInput,
+            providerReuseKey
         });
         if (!prepared) {
             throw new Error('Token estimate unavailable — AI client returned no estimate');

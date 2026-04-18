@@ -45,7 +45,8 @@ export class OpenAIProvider implements AIProvider {
             undefined,
             req.temperature,
             req.topP,
-            promptCacheRetention
+            promptCacheRetention,
+            req.promptCacheKey
         );
         const cacheResult = this.deriveCacheResult(result.responseData);
         return result.success
@@ -102,7 +103,8 @@ export class OpenAIProvider implements AIProvider {
             },
             req.temperature,
             req.topP,
-            promptCacheRetention
+            promptCacheRetention,
+            req.promptCacheKey
         );
         const cacheResult = this.deriveCacheResult(result.responseData);
         return result.success

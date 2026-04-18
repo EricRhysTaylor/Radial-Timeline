@@ -296,16 +296,18 @@
 .rt-briefing-scene-ref {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  margin: 0 0.16em;
-  padding: 0.08em 0.58em 0.08em 0.14em;
+  gap: 8px;
+  margin: 0 0.14em;
+  padding: 0.08em 0.48em 0.08em 0.12em;
   border: 1px solid var(--rt-briefing-scene-ref-border);
   border-radius: 999px;
-  background: var(--rt-briefing-scene-ref-bg);
+  background: color-mix(in srgb, var(--rt-briefing-scene-ref-bg) 72%, var(--rt-briefing-bg));
   color: var(--rt-briefing-scene-ref-text);
-  font: 600 0.7em/1 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  letter-spacing: 0.04em;
-  vertical-align: 0.14em;
+  box-shadow: none;
+  font: 600 0.68em/1 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  letter-spacing: 0.03em;
+  vertical-align: 0.11em;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
 }
 
 .rt-briefing-scene-ref-num {
@@ -325,6 +327,7 @@
 .rt-briefing-scene-ref-title {
   display: inline-block;
   text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 .rt-briefing-scene-inline {
@@ -350,8 +353,16 @@
 
 button.rt-briefing-scene-ref {
   appearance: none;
+  margin: 0 0.14em;
+  outline: none;
+  box-shadow: none;
   border-width: 1px;
   cursor: pointer;
+}
+
+.rt-briefing-scene-ref:hover {
+  border-color: color-mix(in srgb, var(--rt-briefing-scene-ref-border) 72%, var(--rt-briefing-text));
+  background: color-mix(in srgb, var(--rt-briefing-scene-ref-bg) 82%, var(--rt-briefing-bg));
 }
 
 .rt-briefing-quote {
@@ -467,7 +478,7 @@ button.rt-briefing-scene-ref {
 
 .rt-briefing-note-label-row {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 8px;
   margin-bottom: 12px;
 }
@@ -483,17 +494,33 @@ button.rt-briefing-scene-ref {
 
 .rt-briefing-note-link {
   appearance: none;
-  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: auto;
+  height: auto;
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  padding: 0 0 0 2px;
   border: 0;
+  border-radius: 0;
   background: none;
+  box-shadow: none;
   color: var(--rt-briefing-muted);
   font: 500 12px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  letter-spacing: 0.04em;
   cursor: pointer;
+  opacity: 0.88;
   transform: translateY(-1px);
+  transition: color 120ms ease, opacity 120ms ease;
 }
 
 .rt-briefing-note-link:hover {
   color: var(--rt-briefing-text);
+  background: none;
+  opacity: 1;
 }
 
 .rt-briefing-note-entry {
@@ -535,7 +562,7 @@ button.rt-briefing-scene-ref {
   padding: 0.08em 0.55em;
   border: 1px solid var(--rt-briefing-line);
   border-radius: 999px;
-  background: var(--rt-briefing-bg-accent);
+  background: color-mix(in srgb, var(--rt-briefing-bg-accent) 76%, var(--rt-briefing-bg));
   color: var(--rt-briefing-muted);
   font: 600 0.62em/1 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   letter-spacing: 0.12em;

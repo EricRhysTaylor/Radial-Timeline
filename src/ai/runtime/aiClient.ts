@@ -5,7 +5,7 @@ import { mapErrorToUserMessage, mapProviderFailureToError, MalformedJsonError } 
 import { compilePrompt } from '../prompts/compilePrompt';
 import { composeEnvelope, CACHE_BREAK_DELIMITER } from '../prompts/composeEnvelope';
 import { buildOutputRulesText } from '../prompts/outputRules';
-import { modelSupportsSystemRole, providerSupportsCorpusReuse, sanitizeDispatchParams, type AiProvider, type ProviderDispatchParams } from '../../api/providerCapabilities';
+import { providerSupportsCorpusReuse, sanitizeDispatchParams, type AiProvider, type ProviderDispatchParams } from '../../api/providerCapabilities';
 import { ModelRegistry } from '../registry/modelRegistry';
 import { findSnapshotModel, loadProviderSnapshot, type ProviderSnapshotLoadResult } from '../registry/providerSnapshot';
 import { loadRemotePricing, type RemotePricingLoadResult } from '../cost/remotePricing';
@@ -550,7 +550,7 @@ export class AIClient {
             userQuestion: request.userQuestion,
             outputRules: getOutputRules(request),
             placeUserQuestionLast: isInquiry && typeof request.userQuestion === 'string' && request.userQuestion.trim().length > 0,
-            cacheBreakDelimiter: (provider === 'anthropic' || provider === 'google')
+            cacheBreakDelimiter: (provider === 'anthropic' || provider === 'google' || provider === 'openai')
                 ? CACHE_BREAK_DELIMITER : undefined
         });
         const userPrompt = envelope.userPrompt || '';
@@ -652,7 +652,8 @@ export class AIClient {
                 retryPolicy: caps.retryPolicy,
                 resolvedOverrides: overrides,
                 allowTelemetry: aiSettings.privacy.allowTelemetry,
-                cacheKey
+                cacheKey,
+                providerReuseKey: request.providerReuseKey
             }
         };
     }
@@ -789,9 +790,8 @@ export class AIClient {
             reuseState = cacheAttempted ? 'eligible' : 'idle';
         } else if (provider === 'google') {
             reuseState = cacheDelimiterUsed ? 'eligible' : 'idle';
-        } else if (provider === 'openai' && systemPrompt
-                   && modelSupportsSystemRole('openai', modelSelection.model.id)) {
-            reuseState = 'eligible';
+        } else if (provider === 'openai') {
+            reuseState = cacheDelimiterUsed ? 'eligible' : 'idle';
         }
 
         // Compute cached stable ratio from delimiter split.
@@ -857,6 +857,7 @@ export class AIClient {
             modelId: modelSelection.model.id,
             systemPrompt,
             userPrompt,
+            promptCacheKey: !bypassProviderReuse ? estimate.providerReuseKey : undefined,
             maxOutputTokens: caps.maxOutputTokens,
             temperature: caps.temperature,
             topP: estimate.topP,
@@ -1096,6 +1097,7 @@ export class AIClient {
                 modelId: sanitized.modelId,
                 systemPrompt: sanitized.systemPrompt ?? null,
                 userPrompt: sanitized.userPrompt,
+                promptCacheKey: sanitized.promptCacheKey,
                 maxOutputTokens: sanitized.maxOutputTokens,
                 temperature: sanitized.temperature,
                 topP: sanitized.topP,
@@ -1112,6 +1114,7 @@ export class AIClient {
                 modelId: sanitized.modelId,
                 systemPrompt: sanitized.systemPrompt ?? null,
                 userPrompt: sanitized.userPrompt,
+                promptCacheKey: sanitized.promptCacheKey,
                 maxOutputTokens: sanitized.maxOutputTokens,
                 temperature: sanitized.temperature,
                 topP: sanitized.topP,

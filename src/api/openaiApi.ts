@@ -623,6 +623,7 @@ export async function callOpenAiResponsesApi(
     temperature?: number,
     topP?: number,
     promptCacheRetention?: OpenAiPromptCacheRetention,
+    promptCacheKey?: string,
     internalAdapterAccess?: boolean
 ): Promise<OpenAiApiResponse> {
     warnLegacyAccess('openaiApi.callOpenAiResponsesApi', internalAdapterAccess);
@@ -653,6 +654,7 @@ export async function callOpenAiResponsesApi(
         temperature?: number;
         top_p?: number;
         prompt_cache_retention?: OpenAiPromptCacheRetention;
+        prompt_cache_key?: string;
         background?: boolean;
         store?: boolean;
     } = {
@@ -676,6 +678,9 @@ export async function callOpenAiResponsesApi(
     }
     if (promptCacheRetention) {
         requestBody.prompt_cache_retention = promptCacheRetention;
+    }
+    if (promptCacheKey) {
+        requestBody.prompt_cache_key = promptCacheKey;
     }
     if (useBackgroundMode) {
         requestBody.background = true;
