@@ -2807,6 +2807,8 @@
   white-space: nowrap;
   letter-spacing: 0.5px;
   text-transform: uppercase;
+  overflow: hidden;
+  text-overflow: clip;
 }
 
 .ert-ui.ert-scope--settings :is(.ert-ai-quick-grid, .ert-ai-step3-grid, .ert-ai-step-card) .setting-item.ert-ai-strategy-row > .setting-item-control {
@@ -2818,18 +2820,23 @@
   min-width: 0;
 }
 
+.ert-ui.ert-scope--settings :is(.ert-ai-quick-grid, .ert-ai-step3-grid, .ert-ai-step-card) .setting-item.ert-ai-strategy-row {
+  --ert-ai-strategy-select-width: 15ch;
+}
+
 .ert-ui.ert-scope--settings :is(.ert-ai-quick-grid, .ert-ai-step3-grid, .ert-ai-step-card) .setting-item.ert-ai-strategy-row > .setting-item-control :is(select, .dropdown).ert-ai-strategy-select {
-  width: var(--ert-input-width-md);
-  min-width: var(--ert-input-width-md);
-  max-width: var(--ert-input-width-md);
-  flex: 0 0 var(--ert-input-width-md);
-  --ert-control-width: var(--ert-input-width-md);
+  width: var(--ert-ai-strategy-select-width);
+  min-width: var(--ert-ai-strategy-select-width);
+  max-width: var(--ert-ai-strategy-select-width);
+  flex: 0 0 var(--ert-ai-strategy-select-width);
+  --ert-control-width: var(--ert-ai-strategy-select-width);
   font-family: var(--font-monospace, ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   padding-right: var(--ert-select-pad-end);
 }
+
 
 .ert-ui.ert-scope--settings :is(.ert-ai-quick-grid, .ert-ai-step3-grid, .ert-ai-step-card) .setting-item.ert-ai-strategy-row > .ert-ai-strategy-row__desc {
   grid-column: 1 / -1;

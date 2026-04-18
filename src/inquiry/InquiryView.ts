@@ -23,7 +23,6 @@ import {
 import {
     createDefaultInquiryState,
     FindingRole,
-    InquiryConfidence,
     InquiryFinding,
     InquiryLens,
     InquiryRoleValidation,
@@ -31,7 +30,6 @@ import {
     InquiryPromptFormOverride,
     InquirySelectionMode,
     InquiryScope,
-    InquirySeverity,
     InquiryTokenUsageScope,
     InquiryZone
 } from './state';
@@ -763,9 +761,7 @@ export class InquiryView extends ItemView {
             flowValue: glyphSeed.flowValue,
             depthValue: glyphSeed.depthValue,
             flowVisualValue: glyphSeed.flowVisualValue,
-            depthVisualValue: glyphSeed.depthVisualValue,
-            impact: glyphSeed.impact,
-            assessmentConfidence: glyphSeed.assessmentConfidence
+            depthVisualValue: glyphSeed.depthVisualValue
         });
 
         this.flowRingHit = this.glyph.flowRingHit;
@@ -5186,8 +5182,6 @@ export class InquiryView extends ItemView {
             depthValue: glyphSeed.depthValue,
             flowVisualValue: glyphSeed.flowVisualValue,
             depthVisualValue: glyphSeed.depthVisualValue,
-            impact: glyphSeed.impact,
-            assessmentConfidence: glyphSeed.assessmentConfidence,
             errorRing,
             ringOverrideColor
         });
@@ -5238,9 +5232,6 @@ export class InquiryView extends ItemView {
             findings: [{
                 refId: '',
                 kind: 'error',
-                status: 'unclear',
-                impact: 'medium',
-                assessmentConfidence: 'high',
                 headline: 'Inquiry citations could not be matched to this corpus.',
                 bullets: [message],
                 related: [],
@@ -7066,15 +7057,9 @@ export class InquiryView extends ItemView {
     }
 
     private normalizeLegacyResult(result: InquiryResult): InquiryResult {
-        const verdict = result.verdict as InquiryResult['verdict'] & {
-            severity?: InquirySeverity;
-            confidence?: InquiryConfidence;
-        };
-        const impact = verdict.impact ?? verdict.severity ?? 'low';
-        const assessmentConfidence = verdict.assessmentConfidence ?? verdict.confidence ?? 'low';
+        const verdict = result.verdict;
         let refNormalizationCount = 0;
-        const findings = result.findings.map(finding => {
-            const legacy = finding as InquiryFinding & { severity?: InquirySeverity; confidence?: InquiryConfidence };
+        const findings = result.findings.map(legacy => {
             const normalizedRef = this.normalizeResultRefId(legacy.refId);
             if (normalizedRef.wasNormalized) refNormalizationCount++;
             const role: InquiryFinding['role'] = legacy.role === 'target'
@@ -7085,9 +7070,6 @@ export class InquiryView extends ItemView {
             return {
                 refId: normalizedRef.refId,
                 kind: legacy.kind,
-                status: legacy.status,
-                impact: legacy.impact ?? legacy.severity ?? 'low',
-                assessmentConfidence: legacy.assessmentConfidence ?? legacy.confidence ?? 'low',
                 headline: legacy.headline,
                 bullets: legacy.bullets,
                 related: legacy.related,
@@ -7110,9 +7092,7 @@ export class InquiryView extends ItemView {
             questionPromptForm: result.questionPromptForm === 'focused' ? 'focused' : 'standard',
             verdict: {
                 flow: verdict.flow,
-                depth: verdict.depth,
-                impact,
-                assessmentConfidence
+                depth: verdict.depth
             },
             findings,
             refNormalizationCount: refNormalizationCount > 0 ? refNormalizationCount : undefined
@@ -7157,52 +7137,6 @@ export class InquiryView extends ItemView {
         }
         if (!raw.summaryDepth && normalized.summaryDepth) {
             notes.push('Filled summaryDepth from summary.');
-        }
-        const rawVerdict = raw.verdict as InquiryResult['verdict'] & {
-            severity?: InquirySeverity;
-            confidence?: InquiryConfidence;
-        };
-        if (rawVerdict.impact == null) {
-            if (rawVerdict.severity != null) {
-                notes.push('Mapped verdict severity to impact.');
-            } else {
-                notes.push('Defaulted verdict impact.');
-            }
-        }
-        if (rawVerdict.assessmentConfidence == null) {
-            if (rawVerdict.confidence != null) {
-                notes.push('Mapped verdict confidence to assessmentConfidence.');
-            } else {
-                notes.push('Defaulted verdict assessmentConfidence.');
-            }
-        }
-        const missingImpact = raw.findings.filter(finding => {
-            const legacy = finding as InquiryFinding & { severity?: InquirySeverity };
-            return legacy.impact == null && legacy.severity == null;
-        }).length;
-        const mappedImpact = raw.findings.filter(finding => {
-            const legacy = finding as InquiryFinding & { severity?: InquirySeverity };
-            return legacy.impact == null && legacy.severity != null;
-        }).length;
-        if (mappedImpact > 0) {
-            notes.push(`Mapped finding severity to impact for ${mappedImpact} finding${mappedImpact === 1 ? '' : 's'}.`);
-        }
-        if (missingImpact > 0) {
-            notes.push(`Defaulted finding impact for ${missingImpact} finding${missingImpact === 1 ? '' : 's'}.`);
-        }
-        const missingConfidence = raw.findings.filter(finding => {
-            const legacy = finding as InquiryFinding & { confidence?: InquiryConfidence };
-            return legacy.assessmentConfidence == null && legacy.confidence == null;
-        }).length;
-        const mappedConfidence = raw.findings.filter(finding => {
-            const legacy = finding as InquiryFinding & { confidence?: InquiryConfidence };
-            return legacy.assessmentConfidence == null && legacy.confidence != null;
-        }).length;
-        if (mappedConfidence > 0) {
-            notes.push(`Mapped finding confidence to assessmentConfidence for ${mappedConfidence} finding${mappedConfidence === 1 ? '' : 's'}.`);
-        }
-        if (missingConfidence > 0) {
-            notes.push(`Defaulted finding assessmentConfidence for ${missingConfidence} finding${missingConfidence === 1 ? '' : 's'}.`);
         }
         if (raw.runId !== normalized.runId && normalized.runId) {
             notes.push('Normalized runId to inquiry id.');
@@ -7322,14 +7256,12 @@ export class InquiryView extends ItemView {
         }
 
         const outlinePath = this.resolveBookOutlinePath(activeBookId);
-        const minimumRank = this.getImpactRank('medium');
 
         const items = this.getResultItems(result);
         const referenceLabels = this.buildInquiryReferenceLabelMap(items);
 
         result.findings.forEach(finding => {
             if (!this.isFindingHit(finding)) return;
-            if (this.getImpactRank(finding.impact) < minimumRank) return;
             const targetLabel = this.resolveFindingChipLabel(finding, result, items)
                 ?? (finding.refId && /^s\d+$/i.test(finding.refId.trim()) ? finding.refId.trim().toUpperCase() : undefined);
             const note = this.formatInquiryActionNote(finding, briefTitle, targetLabel, referenceLabels);
@@ -7366,12 +7298,10 @@ export class InquiryView extends ItemView {
         items: InquiryCorpusItem[] = this.getResultItems(result),
         referenceLabels: ReadonlyMap<string, string> = this.buildInquiryReferenceLabelMap(items)
     ): Array<{ targetLabel?: string; text: string }> {
-        const minimumRank = this.getImpactRank('medium');
         const actions: Array<{ targetLabel?: string; text: string }> = [];
         const seen = new Set<string>();
         result.findings.forEach(finding => {
             if (!this.isFindingHit(finding)) return;
-            if (this.getImpactRank(finding.impact) < minimumRank) return;
             const action = this.buildInquiryPendingAction(finding, result, items, referenceLabels);
             if (!action) return;
             const key = `${action.targetLabel ?? ''}::${action.text}`;
@@ -7747,18 +7677,13 @@ export class InquiryView extends ItemView {
             summaryDepth: 'Inquiry failed; fallback result returned.',
             verdict: {
                 flow: 0,
-                depth: 0,
-                impact: 'high',
-                assessmentConfidence: 'low'
+                depth: 0
             },
             aiStatus: 'unavailable',
             aiReason: 'exception',
             findings: [{
                 refId: scopeLabel,
                 kind: 'error',
-                status: 'unclear',
-                impact: 'high',
-                assessmentConfidence: 'low',
                 headline: 'Inquiry runner error.',
                 bullets: [message],
                 related: [],
@@ -7792,9 +7717,7 @@ export class InquiryView extends ItemView {
             summaryDepth: 'Simulated inquiry session.',
             verdict: {
                 flow: GLYPH_PLACEHOLDER_FLOW,
-                depth: GLYPH_PLACEHOLDER_DEPTH,
-                impact: 'low',
-                assessmentConfidence: 'low'
+                depth: GLYPH_PLACEHOLDER_DEPTH
             },
             aiStatus: 'success',
             aiReason: 'simulated',
@@ -8324,7 +8247,7 @@ export class InquiryView extends ItemView {
         if (this.state.activeResult) {
             const verdict = this.state.activeResult.verdict;
             const score = ring === 'flow' ? verdict.flow : verdict.depth;
-            return `${label} score ${this.formatMetricDisplay(score)}. Impact ${verdict.impact}. Assessment confidence ${verdict.assessmentConfidence}.`;
+            return `${label} score ${this.formatMetricDisplay(score)}.`;
         }
         const glyphSeed = this.resolveGlyphSeed();
         if (glyphSeed.source === 'session') {
@@ -8344,9 +8267,7 @@ export class InquiryView extends ItemView {
                 flowValue,
                 depthValue,
                 flowVisualValue: flowValue,
-                depthVisualValue: depthValue,
-                impact: activeResult.verdict.impact,
-                assessmentConfidence: activeResult.verdict.assessmentConfidence
+                depthVisualValue: depthValue
             };
         }
 
@@ -8361,8 +8282,6 @@ export class InquiryView extends ItemView {
                 depthValue,
                 flowVisualValue: flowValue,
                 depthVisualValue: depthValue,
-                impact: result.verdict.impact,
-                assessmentConfidence: result.verdict.assessmentConfidence,
                 session
             };
         }
@@ -8372,9 +8291,7 @@ export class InquiryView extends ItemView {
             flowValue: 0,
             depthValue: 0,
             flowVisualValue: GLYPH_EMPTY_STATE_STUB,
-            depthVisualValue: GLYPH_EMPTY_STATE_STUB,
-            impact: 'low',
-            assessmentConfidence: 'low'
+            depthVisualValue: GLYPH_EMPTY_STATE_STUB
         };
     }
 
@@ -8832,12 +8749,6 @@ export class InquiryView extends ItemView {
 
     private isFindingHit(finding: InquiryFinding): boolean {
         return finding.kind !== 'none' && finding.kind !== 'strength';
-    }
-
-    private getImpactRank(impact: InquirySeverity): number {
-        if (impact === 'high') return 3;
-        if (impact === 'medium') return 2;
-        return 1;
     }
 
     private formatMetricDisplay(value: number): string {
@@ -9850,10 +9761,6 @@ export class InquiryView extends ItemView {
             if (lensDelta !== 0) return lensDelta;
             const kindDelta = rankForKind(a.kind) - rankForKind(b.kind);
             if (kindDelta !== 0) return kindDelta;
-            const impactDelta = this.getImpactRank(b.impact) - this.getImpactRank(a.impact);
-            if (impactDelta !== 0) return impactDelta;
-            const confidenceDelta = this.getConfidenceRank(b.assessmentConfidence) - this.getConfidenceRank(a.assessmentConfidence);
-            if (confidenceDelta !== 0) return confidenceDelta;
             return normalizeInquiryHeadline(a.headline).localeCompare(normalizeInquiryHeadline(b.headline));
         });
     }
@@ -9938,7 +9845,7 @@ export class InquiryView extends ItemView {
                 createSvgText(
                     findingsListEl,
                     'ert-inquiry-finding-meta',
-                    `Impact ${formatBriefLabel(finding.impact)} · Confidence ${formatBriefLabel(finding.assessmentConfidence)} · Lens ${lensLabel}`,
+                    `Lens ${lensLabel}`,
                     0,
                     cursorY
                 );
@@ -9953,12 +9860,6 @@ export class InquiryView extends ItemView {
 
         renderSection('Target Findings', targetFindings);
         renderSection('Context Findings', contextFindings);
-    }
-
-    private getConfidenceRank(confidence: InquiryConfidence): number {
-        if (confidence === 'high') return 3;
-        if (confidence === 'medium') return 2;
-        return 1;
     }
 
     private truncatePreviewValue(value: string, maxChars: number): string {
@@ -11154,8 +11055,6 @@ export class InquiryView extends ItemView {
         const pills: string[] = [
             `Flow ${this.formatMetricDisplay(result.verdict.flow)}`,
             `Depth ${this.formatMetricDisplay(result.verdict.depth)}`,
-            `Impact ${formatBriefLabel(result.verdict.impact)}`,
-            `Assessment confidence ${formatBriefLabel(result.verdict.assessmentConfidence)}`,
             `Selection ${formatBriefLabel(result.selectionMode)}`
         ];
 
@@ -11184,9 +11083,6 @@ export class InquiryView extends ItemView {
             .map(finding => ({
                 headline: this.normalizeInquiryBriefText(normalizeInquiryHeadline(finding.headline), referenceLabels),
                 role: this.getFindingRole(finding),
-                clarity: formatBriefLabel(finding.status || 'unclear'),
-                impact: formatBriefLabel(finding.impact),
-                confidence: formatBriefLabel(finding.assessmentConfidence),
                 lens: finding.lens === 'both'
                     ? 'Flow / Depth'
                     : formatBriefLabel(finding.lens || result.mode || 'flow'),
@@ -11252,8 +11148,6 @@ export class InquiryView extends ItemView {
         entries: Array<{
             headline: string;
             bullets: string[];
-            impact: string;
-            confidence: string;
             lens: string;
         }>;
     }> {
@@ -11267,8 +11161,6 @@ export class InquiryView extends ItemView {
             entries: Array<{
                 headline: string;
                 bullets: string[];
-                impact: string;
-                confidence: string;
                 lens: string;
             }>;
         }>();
@@ -11301,8 +11193,6 @@ export class InquiryView extends ItemView {
                     .map(line => this.normalizeInquiryBriefText(line, referenceLabels))
                     .filter(line => line.startsWith('• '))
                     .map(line => line.replace(/^•\s*/, '')),
-                impact: formatBriefLabel(finding.impact),
-                confidence: formatBriefLabel(finding.assessmentConfidence),
                 lens: finding.lens === 'both'
                     ? 'Flow / Depth'
                     : formatBriefLabel(finding.lens || result.mode || 'flow')

@@ -105,9 +105,6 @@ describe('buildInquirySourcesViewModel', () => {
             {
                 refId: 'scn_a1b2c3d4',
                 kind: 'continuity',
-                status: 'unclear',
-                impact: 'medium',
-                assessmentConfidence: 'high',
                 headline: 'The emotional turn arrives before enough setup.',
                 bullets: ['Pressure advances faster than the underlying motive.'],
                 related: [],
@@ -116,9 +113,6 @@ describe('buildInquirySourcesViewModel', () => {
             {
                 refId: 'scn_a1b2c3d4',
                 kind: 'escalation',
-                status: 'unclear',
-                impact: 'medium',
-                assessmentConfidence: 'medium',
                 headline: 'The beat lands but the plateau is underwritten.',
                 bullets: [],
                 related: [],
@@ -127,9 +121,6 @@ describe('buildInquirySourcesViewModel', () => {
             {
                 refId: 'scn_unknown',
                 kind: 'unclear',
-                status: 'unclear',
-                impact: 'low',
-                assessmentConfidence: 'low',
                 headline: 'This should be ignored because it cannot be resolved.',
                 bullets: [],
                 related: [],

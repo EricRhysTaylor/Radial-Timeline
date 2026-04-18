@@ -32,9 +32,7 @@ describe('buildInquiryLogContent', () => {
                 aiModelRequested: 'gpt-5.4',
                 verdict: {
                     flow: 86,
-                    depth: 88,
-                    impact: 'medium',
-                    assessmentConfidence: 'high'
+                    depth: 88
                 }
             } as never,
             trace: {

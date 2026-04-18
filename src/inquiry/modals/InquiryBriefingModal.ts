@@ -258,10 +258,12 @@ export class InquiryBriefingModal extends Modal {
             note.entries.forEach(entry => {
                 const entryBlock = article.createDiv({ cls: 'rt-briefing-note-entry' });
                 this.renderTextElement(entryBlock, 'h3', 'rt-briefing-finding-title', entry.headline, 'headline');
-                entryBlock.createDiv({
-                    cls: 'rt-briefing-finding-meta',
-                    text: [entry.lens, `Impact ${entry.impact}`, `Confidence ${entry.confidence}`].filter(Boolean).join(' · ')
-                });
+                if (entry.lens) {
+                    entryBlock.createDiv({
+                        cls: 'rt-briefing-finding-meta',
+                        text: entry.lens
+                    });
+                }
                 entry.bullets.forEach(bullet => {
                     this.renderTextElement(entryBlock, 'p', 'rt-briefing-paragraph', bullet);
                 });
@@ -298,15 +300,12 @@ export class InquiryBriefingModal extends Modal {
         findings.forEach(finding => {
             const card = group.createEl('article', { cls: 'rt-briefing-block rt-briefing-finding' });
             this.renderTextElement(card, 'h3', 'rt-briefing-finding-title', finding.headline, 'headline');
-            card.createDiv({
-                cls: 'rt-briefing-finding-meta',
-                text: [
-                    finding.lens,
-                    `Clarity ${finding.clarity}`,
-                    `Impact ${finding.impact}`,
-                    `Confidence ${finding.confidence}`
-                ].filter(Boolean).join(' · ')
-            });
+            if (finding.lens) {
+                card.createDiv({
+                    cls: 'rt-briefing-finding-meta',
+                    text: finding.lens
+                });
+            }
             if (finding.bullets.length) {
                 finding.bullets.forEach(bullet => {
                     this.renderTextElement(card, 'p', 'rt-briefing-paragraph', bullet);

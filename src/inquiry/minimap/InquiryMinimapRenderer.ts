@@ -1333,12 +1333,10 @@ export class InquiryMinimapRenderer {
         balanceTooltipText: (text: string) => string
     ): void {
         if (!this.minimapTicks.length) return;
-        const severityClasses = ['is-severity-low', 'is-severity-medium', 'is-severity-high'];
         if (isRunning || isError) {
             this.minimapTicks.forEach(tick => {
                 tick.classList.remove('is-finding');
                 tick.classList.remove('is-target-finding', 'is-context-finding');
-                severityClasses.forEach(cls => tick.classList.remove(cls));
                 const label = tick.getAttribute('data-label') || '';
                 if (label) {
                     const fullLabel = tick.getAttribute('data-full-label') || label;
@@ -1355,7 +1353,6 @@ export class InquiryMinimapRenderer {
             tick.classList.toggle('is-finding', !!finding);
             tick.classList.toggle('is-target-finding', finding?.role === 'target');
             tick.classList.toggle('is-context-finding', !!finding && finding.role !== 'target');
-            severityClasses.forEach(cls => tick.classList.remove(cls));
             const fullLabel = tick.getAttribute('data-full-label') || label;
             const targetTooltip = tick.getAttribute('data-target-tooltip') || '';
             if (finding) {

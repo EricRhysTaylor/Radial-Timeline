@@ -55,9 +55,7 @@ export function buildInquiryPromptParts(input: string | InquiryPromptScaffoldInp
         '  "summaryDepth": "1-2 sentence depth summary (coherence, subtext, logic, alignment, implication phrasing).",',
         '  "verdict": {',
         '    "flow": 0,',
-        '    "depth": 0,',
-        '    "impact": "low|medium|high",',
-        '    "assessmentConfidence": "low|medium|high"',
+        '    "depth": 0',
         '  },',
         '  "findings": [',
         '    {',
@@ -66,9 +64,7 @@ export function buildInquiryPromptParts(input: string | InquiryPromptScaffoldInp
         '      "lens": "flow|depth|both|",',
         '      "headline": "short line",',
         '      "bullets": ["specific", "supporting points"],',
-        '      "role": "target|context|",',
-        '      "impact": "low|medium|high",',
-        '      "assessmentConfidence": "low|medium|high"',
+        '      "role": "target|context|"',
         '    }',
         '  ]',
         '}'
@@ -112,7 +108,7 @@ export function buildInquiryPromptParts(input: string | InquiryPromptScaffoldInp
                 'Avoid drifting into broad global critique when the target scenes already answer the task.'
             ]
             : []),
-        'Return JSON only with summaryFlow, summaryDepth, verdict.flow, verdict.depth, impact, assessmentConfidence, and findings.',
+        'Return JSON only with summaryFlow, summaryDepth, verdict.flow, verdict.depth, and findings.',
         'Return JSON only using the exact schema below.'
     ].join('\n');
 

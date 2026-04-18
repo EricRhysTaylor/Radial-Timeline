@@ -7,8 +7,6 @@ export type InquirySelectionMode = 'discover' | 'focused';
 export type InquiryZone = 'setup' | 'pressure' | 'payoff';
 export type InquiryPromptFormOverride = 'auto' | 'standard' | 'focused';
 
-export type InquirySeverity = 'low' | 'medium' | 'high';
-export type InquiryConfidence = 'low' | 'medium' | 'high';
 export type InquiryAiStatus = 'success' | 'degraded' | 'rejected' | 'unavailable' | 'timeout' | 'auth' | 'rate_limit';
 export type InquiryTokenUsageScope = 'full' | 'partial' | 'synthesis_only';
 export type FindingRole = 'target' | 'context';
@@ -30,16 +28,11 @@ export interface EvidenceDocumentMeta {
 export interface InquiryVerdict {
     flow: number;
     depth: number;
-    impact: InquirySeverity; // Impact rating (always present).
-    assessmentConfidence: InquiryConfidence; // Assessment confidence (always present).
 }
 
 export interface InquiryFinding {
     refId: string;
     kind: 'none' | 'loose_end' | 'continuity' | 'escalation' | 'conflict' | 'unclear' | 'error' | 'strength';
-    status: 'introduced' | 'escalated' | 'resolved' | 'dropped' | 'unclear';
-    impact: InquirySeverity;
-    assessmentConfidence: InquiryConfidence;
     headline: string;
     bullets: string[];
     related: string[];

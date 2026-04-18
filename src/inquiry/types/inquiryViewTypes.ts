@@ -7,13 +7,11 @@ import type {
     OmnibusProgressState
 } from '../../types/settings';
 import type {
-    InquiryConfidence,
     FindingRole,
     InquiryFinding,
     InquiryRoleValidation,
     InquiryResult,
     InquiryScope,
-    InquirySeverity,
     InquiryZone
 } from '../state';
 import type { InquirySession } from '../sessionTypes';
@@ -42,9 +40,6 @@ export type InquiryBriefModel = {
     findings: Array<{
         headline: string;
         role: FindingRole;
-        clarity: string;
-        impact: string;
-        confidence: string;
         lens: string;
         bullets: string[];
     }>;
@@ -64,8 +59,6 @@ export type InquiryBriefModel = {
         entries: Array<{
             headline: string;
             bullets: string[];
-            impact: string;
-            confidence: string;
             lens: string;
         }>;
     }>;
@@ -227,16 +220,12 @@ export type InquiryGlyphSeed = {
     depthValue: number;
     flowVisualValue: number;
     depthVisualValue: number;
-    impact: InquirySeverity;
-    assessmentConfidence: InquiryConfidence;
     session?: InquirySession;
 };
 
 export type InquirySceneNoteEntry = {
     headline: string;
     bullets: string[];
-    impact: string;
-    confidence: string;
     lens: string;
 };
 

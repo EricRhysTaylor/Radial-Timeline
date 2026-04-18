@@ -7,9 +7,6 @@ describe('buildInquiryDossierPresentation', () => {
             finding: {
                 refId: 'scn_001',
                 kind: 'continuity',
-                status: 'unclear',
-                impact: 'medium',
-                assessmentConfidence: 'high',
                 headline: 'Target finding',
                 bullets: ['A supporting note'],
                 related: [],

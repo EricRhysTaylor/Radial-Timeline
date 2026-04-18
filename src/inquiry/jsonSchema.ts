@@ -11,11 +11,9 @@ export function buildInquiryJsonSchema(): Record<string, unknown> {
                 additionalProperties: false,
                 properties: {
                     flow: { type: 'number' },
-                    depth: { type: 'number' },
-                    impact: { type: 'string' },
-                    assessmentConfidence: { type: 'string' }
+                    depth: { type: 'number' }
                 },
-                required: ['flow', 'depth', 'impact', 'assessmentConfidence']
+                required: ['flow', 'depth']
             },
             findings: {
                 type: 'array',
@@ -28,11 +26,9 @@ export function buildInquiryJsonSchema(): Record<string, unknown> {
                         lens: { type: 'string' },
                         headline: { type: 'string' },
                         bullets: { type: 'array', items: { type: 'string' } },
-                        role: { type: 'string' },
-                        impact: { type: 'string' },
-                        assessmentConfidence: { type: 'string' }
+                        role: { type: 'string' }
                     },
-                    required: ['ref_id', 'kind', 'lens', 'headline', 'bullets', 'role', 'impact', 'assessmentConfidence']
+                    required: ['ref_id', 'kind', 'lens', 'headline', 'bullets', 'role']
                 }
             }
         },
@@ -60,11 +56,9 @@ export function buildInquiryOmnibusJsonSchema(): Record<string, unknown> {
                             additionalProperties: false,
                             properties: {
                                 flow: { type: 'number' },
-                                depth: { type: 'number' },
-                                impact: { type: 'string' },
-                                assessmentConfidence: { type: 'string' }
+                                depth: { type: 'number' }
                             },
-                            required: ['flow', 'depth', 'impact', 'assessmentConfidence']
+                            required: ['flow', 'depth']
                         },
                         findings: {
                             type: 'array',
@@ -77,11 +71,9 @@ export function buildInquiryOmnibusJsonSchema(): Record<string, unknown> {
                                     lens: { type: 'string' },
                                     headline: { type: 'string' },
                                     bullets: { type: 'array', items: { type: 'string' } },
-                                    role: { type: 'string' },
-                                    impact: { type: 'string' },
-                                    assessmentConfidence: { type: 'string' }
+                                    role: { type: 'string' }
                                 },
-                                required: ['ref_id', 'kind', 'lens', 'headline', 'bullets', 'role', 'impact', 'assessmentConfidence']
+                                required: ['ref_id', 'kind', 'lens', 'headline', 'bullets', 'role']
                             }
                         }
                     },

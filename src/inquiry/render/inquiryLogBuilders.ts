@@ -5,7 +5,7 @@ import type { SceneInclusion } from '../../types/settings';
 import type { TokenTier } from '../types';
 import { extractTokenUsage, formatAiLogContent, formatDuration, formatUsageCostBreakdownLines, sanitizeLogPayload, type AiLogStatus } from '../../ai/log';
 import { describeTokenEstimateMethod } from '../../ai/tokens/inputTokenEstimate';
-import { buildManifestTocLines, formatBriefLabel, formatManifestClassLabel } from '../utils/inquiryViewText';
+import { buildManifestTocLines, formatManifestClassLabel } from '../utils/inquiryViewText';
 
 const PROVIDER_LABELS = {
     anthropic: 'Anthropic',
@@ -343,7 +343,7 @@ export function buildInquiryLogContent(args: {
 
     lines.push('## Result');
     if (status === 'success') {
-        lines.push(`- Verdict: Flow ${args.deps.formatMetricDisplay(result.verdict.flow)} · Depth ${args.deps.formatMetricDisplay(result.verdict.depth)} · Impact ${formatBriefLabel(result.verdict.impact)} · Confidence ${formatBriefLabel(result.verdict.assessmentConfidence)}`);
+        lines.push(`- Verdict: Flow ${args.deps.formatMetricDisplay(result.verdict.flow)} · Depth ${args.deps.formatMetricDisplay(result.verdict.depth)}`);
     } else if (status === 'simulated') {
         lines.push('- Result: Simulated test run. The corpus was packaged and rendered locally, but no API request was sent.');
     } else {

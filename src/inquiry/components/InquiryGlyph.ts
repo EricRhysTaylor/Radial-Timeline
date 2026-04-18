@@ -1,5 +1,5 @@
 import type { InquiryCanonicalQuestionTier } from '../../types/settings';
-import type { InquiryConfidence, InquirySeverity, InquiryZone } from '../state';
+import type { InquiryZone } from '../state';
 import { ZONE_LAYOUT } from '../zoneLayout';
 
 export interface InquiryGlyphProps {
@@ -8,8 +8,6 @@ export interface InquiryGlyphProps {
     depthValue: number; // 0..1 normalized
     flowVisualValue?: number; // Optional display-only arc position for truthful zero-state stubs
     depthVisualValue?: number; // Optional display-only arc position for truthful zero-state stubs
-    impact: InquirySeverity;
-    assessmentConfidence: InquiryConfidence;
     errorRing?: 'flow' | 'depth' | null;
     ringOverrideColor?: string;
 }
@@ -238,7 +236,6 @@ export class InquiryGlyph {
 
         const errorRing = props.errorRing ?? null;
         this.applyRingState(
-            this.flowGroup,
             this.flowProgressGroup,
             this.flowArc,
             this.flowBadgeCircle,
@@ -248,14 +245,11 @@ export class InquiryGlyph {
             props.flowVisualValue ?? props.flowValue,
             FLOW_RADIUS,
             FLOW_STROKE,
-            props.impact,
-            props.assessmentConfidence,
             'flow',
             errorRing,
             props.ringOverrideColor
         );
         this.applyRingState(
-            this.depthGroup,
             this.depthProgressGroup,
             this.depthArc,
             this.depthBadgeCircle,
@@ -265,8 +259,6 @@ export class InquiryGlyph {
             props.depthVisualValue ?? props.depthValue,
             DEPTH_RADIUS,
             DEPTH_STROKE,
-            props.impact,
-            props.assessmentConfidence,
             'depth',
             errorRing,
             props.ringOverrideColor
@@ -661,7 +653,6 @@ export class InquiryGlyph {
     }
 
     private applyRingState(
-        ring: SVGGElement,
         progress: SVGGElement,
         arc: SVGPathElement,
         badgeCircle: SVGCircleElement,
@@ -671,16 +662,10 @@ export class InquiryGlyph {
         visualValue: number,
         radius: number,
         strokeWidth: number,
-        impact: InquirySeverity,
-        assessmentConfidence: InquiryConfidence,
         kind: 'flow' | 'depth',
         errorRing: InquiryGlyphProps['errorRing'],
         overrideColor?: string
     ): void {
-        ring.classList.remove('is-severity-low', 'is-severity-medium', 'is-severity-high');
-        ring.classList.remove('is-confidence-low', 'is-confidence-medium', 'is-confidence-high');
-        ring.classList.add(`is-severity-${impact}`);
-        ring.classList.add(`is-confidence-${assessmentConfidence}`);
         const showError = errorRing === kind;
         const errorColor = showError ? '#ff4d4d' : undefined;
         const ringColor = overrideColor ?? errorColor;

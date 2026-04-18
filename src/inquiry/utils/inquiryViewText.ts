@@ -237,11 +237,10 @@ export const renderInquiryBrief = (brief: InquiryBriefModel): string => {
             return;
         }
         findings.forEach(finding => {
-            lines.push(
-                '',
-                `### ${finding.headline}`,
-                `Clarity: ${finding.clarity} · Impact: ${finding.impact} · Confidence: ${finding.confidence} · Lens: ${finding.lens}`
-            );
+            lines.push('', `### ${finding.headline}`);
+            if (finding.lens) {
+                lines.push(`Lens: ${finding.lens}`);
+            }
             if (finding.bullets.length) {
                 finding.bullets.forEach(bullet => {
                     lines.push(`- ${bullet}`);
@@ -278,9 +277,11 @@ export const renderInquiryBrief = (brief: InquiryBriefModel): string => {
             note.entries.forEach(entry => {
                 lines.push(
                     `- ${entry.headline}`,
-                    ...entry.bullets.map(bullet => `- ${bullet}`),
-                    `Impact: ${entry.impact} · Confidence: ${entry.confidence} · Lens: ${entry.lens}`
+                    ...entry.bullets.map(bullet => `- ${bullet}`)
                 );
+                if (entry.lens) {
+                    lines.push(`Lens: ${entry.lens}`);
+                }
             });
         });
     }

@@ -4,7 +4,7 @@ import type RadialTimelinePlugin from '../../main';
 import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { INQUIRY_MAX_OUTPUT_TOKENS, INQUIRY_SCHEMA_VERSION } from '../constants';
 import { PROVIDER_MAX_OUTPUT_TOKENS } from '../../constants/tokenLimits';
-import type { EvidenceDocumentMeta, InquiryAiStatus, InquiryCitation, InquiryConfidence, InquiryFinding, InquiryResult, InquiryRoleValidation, InquirySeverity, InquiryTokenUsageScope } from '../state';
+import type { EvidenceDocumentMeta, InquiryAiStatus, InquiryCitation, InquiryFinding, InquiryResult, InquiryRoleValidation, InquiryTokenUsageScope } from '../state';
 import type {
     CorpusManifestEntry,
     InquiryExecutionPath,
@@ -93,10 +93,6 @@ type RawInquiryFinding = {
     headline?: string;
     bullets?: string[];
     role?: string;
-    impact?: string;
-    assessmentConfidence?: string;
-    severity?: string;
-    confidence?: string;
 };
 
 type RawInquiryResponse = {
@@ -107,10 +103,6 @@ type RawInquiryResponse = {
     verdict?: {
         flow?: number;
         depth?: number;
-        impact?: string;
-        assessmentConfidence?: string;
-        severity?: string;
-        confidence?: string;
     };
     findings?: RawInquiryFinding[];
 };
@@ -832,9 +824,7 @@ export class InquiryRunnerService implements InquiryRunner {
             '      "summaryDepth": "1-2 sentence depth summary (coherence, subtext, logic, alignment, implication phrasing).",',
             '      "verdict": {',
             '        "flow": 0,',
-            '        "depth": 0,',
-            '        "impact": "low|medium|high",',
-            '        "assessmentConfidence": "low|medium|high"',
+            '        "depth": 0',
             '      },',
             '      "findings": [',
             '        {',
@@ -843,9 +833,7 @@ export class InquiryRunnerService implements InquiryRunner {
             '          "lens": "flow|depth|both|",',
             '          "headline": "short line",',
             '          "bullets": ["specific", "supporting points"],',
-            '          "role": "target|context|",',
-            '          "impact": "low|medium|high",',
-            '          "assessmentConfidence": "low|medium|high"',
+            '          "role": "target|context|"',
             '        }',
             '      ]',
             '    }',
@@ -882,7 +870,7 @@ export class InquiryRunnerService implements InquiryRunner {
             instructionText,
             '',
             'Answer every listed question using the same evidence and return one result per question.',
-            'Return JSON only with summaryFlow, summaryDepth, verdict.flow, verdict.depth, impact, assessmentConfidence, and findings for every question.',
+            'Return JSON only with summaryFlow, summaryDepth, verdict.flow, verdict.depth, and findings for every question.',
             'Return JSON only using the exact schema below.',
             '',
             schema,
@@ -1969,8 +1957,6 @@ export class InquiryRunnerService implements InquiryRunner {
         const verdict = parsed.verdict || {};
         const flow = this.normalizeScore(verdict.flow);
         const depth = this.normalizeScore(verdict.depth);
-        const impact = this.normalizeImpact(verdict.impact ?? verdict.severity);
-        const assessmentConfidence = this.normalizeAssessmentConfidence(verdict.assessmentConfidence ?? verdict.confidence);
 
         const findings = Array.isArray(parsed.findings) ? parsed.findings : [];
         const sceneRefIndex = this.buildCanonicalSceneRefIndex(input);
@@ -2004,9 +1990,7 @@ export class InquiryRunnerService implements InquiryRunner {
             summaryDepth,
             verdict: {
                 flow,
-                depth,
-                impact,
-                assessmentConfidence
+                depth
             },
             findings: mappedFindings,
             corpusFingerprint: input.corpus.fingerprint,
@@ -2112,9 +2096,6 @@ export class InquiryRunnerService implements InquiryRunner {
         return {
             refId: normalizedRef.ref_id,
             kind,
-            status: kind === 'none' ? 'resolved' : 'unclear',
-            impact: this.normalizeImpact(raw.impact ?? raw.severity),
-            assessmentConfidence: this.normalizeAssessmentConfidence(raw.assessmentConfidence ?? raw.confidence),
             headline: raw.headline ? String(raw.headline) : 'Finding',
             bullets,
             related: [],
@@ -2244,9 +2225,6 @@ export class InquiryRunnerService implements InquiryRunner {
         const findings: InquiryFinding[] = [{
             refId: fallbackRefId,
             kind: 'unclear',
-            status: 'unclear',
-            impact: 'low',
-            assessmentConfidence: 'low',
             headline: 'Inquiry stub result.',
             bullets,
             related: [],
@@ -2269,9 +2247,7 @@ export class InquiryRunnerService implements InquiryRunner {
             summaryDepth: summary,
             verdict: {
                 flow: 0.6,
-                depth: 0.55,
-                impact: 'low',
-                assessmentConfidence: 'low'
+                depth: 0.55
             },
             findings,
             corpusFingerprint: input.corpus.fingerprint,
@@ -2353,22 +2329,6 @@ export class InquiryRunnerService implements InquiryRunner {
             return Math.min(Math.max(parsed, 0), 1);
         }
         return 0;
-    }
-
-    private normalizeImpact(value: unknown): InquirySeverity {
-        const normalized = typeof value === 'string' ? value.toLowerCase().trim() : '';
-        if (normalized === 'high' || normalized === 'medium' || normalized === 'low') {
-            return normalized as InquirySeverity;
-        }
-        return 'low';
-    }
-
-    private normalizeAssessmentConfidence(value: unknown): InquiryConfidence {
-        const normalized = typeof value === 'string' ? value.toLowerCase().trim() : '';
-        if (normalized === 'high' || normalized === 'medium' || normalized === 'low') {
-            return normalized as InquiryConfidence;
-        }
-        return 'low';
     }
 
     private normalizeFindingKind(value?: string): InquiryFinding['kind'] {

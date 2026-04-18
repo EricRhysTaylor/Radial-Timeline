@@ -81,11 +81,7 @@ function buildMetaLine(
     selectionMode?: InquirySelectionMode,
     roleValidation?: InquiryRoleValidation
 ): string {
-    const parts = [
-        `Role ${formatEnumLabel(finding.role || 'context')}`,
-        `Impact ${formatEnumLabel(finding.impact)}`,
-        `Confidence ${formatEnumLabel(finding.assessmentConfidence)}`
-    ];
+    const parts = [`Role ${formatEnumLabel(finding.role || 'context')}`];
     if (selectionMode === 'focused' && roleValidation === 'missing-target-roles') {
         parts.unshift('Validation Incomplete');
     }

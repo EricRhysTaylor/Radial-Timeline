@@ -267,13 +267,11 @@ describe('InquiryRunnerService execution policy', () => {
             },
             {
                 summary: 'Summary',
-                verdict: { flow: 0.7, depth: 0.6, impact: 'medium', assessmentConfidence: 'high' },
+                verdict: { flow: 0.7, depth: 0.6 },
                 findings: [{
                     ref_id: 'scn_b5e1b85f',
                     kind: 'continuity',
                     headline: 'Targeted issue',
-                    impact: 'medium',
-                    assessmentConfidence: 'high',
                     role: 'target'
                 }]
             },
@@ -340,13 +338,11 @@ describe('InquiryRunnerService execution policy', () => {
             },
             {
                 summary: 'Summary',
-                verdict: { flow: 0.7, depth: 0.6, impact: 'medium', assessmentConfidence: 'high' },
+                verdict: { flow: 0.7, depth: 0.6 },
                 findings: [{
                     ref_id: 'scn_b5e1b85f',
                     kind: 'continuity',
                     headline: 'Context-only issue',
-                    impact: 'medium',
-                    assessmentConfidence: 'high',
                     role: 'context'
                 }]
             },
@@ -379,7 +375,7 @@ describe('InquiryRunnerService execution policy', () => {
                 content: JSON.stringify({
                     summaryFlow: 'Chunk 1 flow summary',
                     summaryDepth: 'Chunk 1 depth summary',
-                    verdict: { flow: 0.61, depth: 0.55, impact: 'low', assessmentConfidence: 'low' },
+                    verdict: { flow: 0.61, depth: 0.55 },
                     findings: []
                 })
             }))
@@ -391,7 +387,7 @@ describe('InquiryRunnerService execution policy', () => {
                     '{',
                     '  "summaryFlow": "Recovered flow summary",',
                     '  "summaryDepth": "Recovered depth summary",',
-                    '  "verdict": { "flow": 0.62, "depth": 0.58, "impact": "low", "assessmentConfidence": "low" },',
+                    '  "verdict": { "flow": 0.62, "depth": 0.58 },',
                     '  "findings": []',
                     '}',
                     '```'
@@ -439,7 +435,7 @@ describe('InquiryRunnerService execution policy', () => {
                 '{',
                 '  "summaryFlow": "Recovered flow summary",',
                 '  "summaryDepth": "Recovered depth summary",',
-                '  "verdict": { "flow": 0.62, "depth": 0.58, "impact": "low", "assessmentConfidence": "low" },',
+                '  "verdict": { "flow": 0.62, "depth": 0.58 },',
                 '  "findings": []',
                 '}',
                 '```'
@@ -484,13 +480,11 @@ describe('InquiryRunnerService execution policy', () => {
             content: JSON.stringify({
                 summaryFlow: 'Chunk 1 flow summary',
                 summaryDepth: 'Chunk 1 depth summary',
-                verdict: { flow: 0.62, depth: 0.58, impact: 'low', assessmentConfidence: 'low' },
+                verdict: { flow: 0.62, depth: 0.58 },
                 findings: [{
                     ref_id: 'scn_00000011',
                     kind: 'continuity',
                     headline: 'Bad ref',
-                    impact: 'medium',
-                    assessmentConfidence: 'medium'
                 }]
             })
         }));
@@ -543,7 +537,7 @@ describe('InquiryRunnerService execution policy', () => {
                 content: JSON.stringify({
                     summaryFlow: 'Chunk 1 flow summary',
                     summaryDepth: 'Chunk 1 depth summary',
-                    verdict: { flow: 0.61, depth: 0.55, impact: 'low', assessmentConfidence: 'low' },
+                    verdict: { flow: 0.61, depth: 0.55 },
                     findings: []
                 })
             }))
@@ -552,7 +546,7 @@ describe('InquiryRunnerService execution policy', () => {
                 content: JSON.stringify({
                     summaryFlow: 'Chunk 2 flow summary',
                     summaryDepth: 'Chunk 2 depth summary',
-                    verdict: { flow: 0.64, depth: 0.57, impact: 'low', assessmentConfidence: 'low' },
+                    verdict: { flow: 0.64, depth: 0.57 },
                     findings: []
                 })
             }))
@@ -561,7 +555,7 @@ describe('InquiryRunnerService execution policy', () => {
                 content: JSON.stringify({
                     summaryFlow: 'Synthesis flow summary',
                     summaryDepth: 'Synthesis depth summary',
-                    verdict: { flow: 0.66, depth: 0.61, impact: 'low', assessmentConfidence: 'medium' },
+                    verdict: { flow: 0.66, depth: 0.61 },
                     findings: []
                 })
             }));
@@ -882,13 +876,11 @@ describe('InquiryRunnerService execution policy', () => {
             {
                 summaryFlow: 'Flow',
                 summaryDepth: 'Depth',
-                verdict: { flow: 0.5, depth: 0.5, impact: 'low', assessmentConfidence: 'low' },
+                verdict: { flow: 0.5, depth: 0.5 },
                 findings: [{
                     ref_id: 'scn_00000011',
                     kind: 'continuity',
                     headline: 'Bad ref',
-                    impact: 'medium',
-                    assessmentConfidence: 'medium'
                 }]
             },
             {

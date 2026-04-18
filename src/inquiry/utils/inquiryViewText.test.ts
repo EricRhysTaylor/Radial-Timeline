@@ -24,18 +24,12 @@ describe('inquiryViewText', () => {
                 {
                     headline: 'Primary scene issue',
                     role: 'target',
-                    clarity: 'Unclear',
-                    impact: 'High',
-                    confidence: 'High',
                     lens: 'Flow',
                     bullets: ['Target bullet']
                 },
                 {
                     headline: 'Supporting context issue',
                     role: 'context',
-                    clarity: 'Introduced',
-                    impact: 'Medium',
-                    confidence: 'Medium',
                     lens: 'Depth',
                     bullets: ['Context bullet']
                 }
@@ -67,9 +61,7 @@ describe('inquiryViewText', () => {
             summary: 'Summary',
             verdict: {
                 flow: 0.5,
-                depth: 0.5,
-                impact: 'low',
-                assessmentConfidence: 'low'
+                depth: 0.5
             },
             findings: []
         };
