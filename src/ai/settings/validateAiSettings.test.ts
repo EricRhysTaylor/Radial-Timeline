@@ -141,4 +141,24 @@ describe('validateAiSettings', () => {
         expect(result.value.cacheWindows?.anthropicTtl).toBe(ANTHROPIC_REQUESTED_CACHE_TTL);
         expect(result.warnings.some(warning => warning.includes('Anthropic cache TTL is fixed at'))).toBe(true);
     });
+
+    it('upgrades persisted OpenAI in-memory retention to the canonical 24h window', () => {
+        const result = validateAiSettings({
+            schemaVersion: 1,
+            provider: 'openai',
+            modelPolicy: { type: 'latestStable' },
+            overrides: {},
+            aiAccessProfile: {},
+            privacy: { allowTelemetry: false, allowRemoteRegistry: false, allowProviderSnapshot: false },
+            cacheWindows: {
+                anthropicTtl: '1h',
+                googleTtlSeconds: 900,
+                openaiRetention: 'in_memory',
+                openaiInMemoryWindowMinutes: 10
+            }
+        } as unknown as AiSettingsV1);
+
+        expect(result.value.cacheWindows?.openaiRetention).toBe('24h');
+        expect(result.warnings.some(warning => warning.includes('OpenAI cache retention now defaults to 24h'))).toBe(true);
+    });
 });

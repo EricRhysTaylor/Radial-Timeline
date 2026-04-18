@@ -253,8 +253,11 @@ export function validateAiSettings(input?: AiSettingsV1 | null): AiSettingsValid
         } else {
             value.cacheWindows.googleTtlSeconds = Math.max(60, Math.min(86_400, Math.round(value.cacheWindows.googleTtlSeconds)));
         }
-        if (value.cacheWindows.openaiRetention !== '24h' && value.cacheWindows.openaiRetention !== 'in_memory') {
-            value.cacheWindows.openaiRetention = defaults.cacheWindows?.openaiRetention ?? 'in_memory';
+        if (value.cacheWindows.openaiRetention === 'in_memory') {
+            warnings.push('OpenAI cache retention now defaults to 24h; upgrading persisted in-memory retention.');
+            value.cacheWindows.openaiRetention = '24h';
+        } else if (value.cacheWindows.openaiRetention !== '24h') {
+            value.cacheWindows.openaiRetention = defaults.cacheWindows?.openaiRetention ?? '24h';
         }
         if (typeof value.cacheWindows.openaiInMemoryWindowMinutes !== 'number'
             || !Number.isFinite(value.cacheWindows.openaiInMemoryWindowMinutes)) {
