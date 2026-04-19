@@ -18,6 +18,7 @@ import { validatePandocLayout, slugifyToFileStem } from '../../utils/exportForma
 import type { BookLayoutOptions, BookMeta, BookProfile, ManuscriptSceneHeadingMode, PandocLayoutTemplate, PublishingValidationSnapshot, TemplateProfile, ValidationIssue, ValidationSummary } from '../../types';
 import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { ImportTemplateModal, type ImportedTemplateCommit } from '../../modals/ImportTemplateModal';
+import { confirmWithErtModal } from '../../modals/ErtConfirmModal';
 import { getActiveBookExportContext } from '../../utils/exportContext';
 import { getActiveBook } from '../../utils/books';
 import { isPathInFolderScope } from '../../utils/pathScope';
@@ -239,8 +240,6 @@ function listAvailableLatexEngines(): Array<{ engine: string; path: string }> {
 // ═══════════════════════════════════════════════════════════════════════════════
 // SAMPLE TEMPLATE GENERATION
 // ═══════════════════════════════════════════════════════════════════════════════
-
-type MatterSampleLane = 'guided' | 'advanced';
 
 const STARTER_PUBLISHING_SETUP_TITLE = 'Create starter publishing setup';
 const STARTER_PUBLISHING_SETUP_BUTTON = 'Create starter publishing setup';
@@ -540,16 +539,14 @@ class PandocTemplatePathSuggest extends AbstractInputSuggest<TemplatePathSuggest
     }
 }
 
-class MatterSampleLaneModal extends Modal {
-    private selected: MatterSampleLane;
-    private readonly onPick: (lane: MatterSampleLane | null) => void;
+class StarterPublishingSetupModal extends Modal {
+    private readonly onConfirm: (confirmed: boolean) => void;
     private readonly includeScriptExamples: boolean;
     private resolved = false;
 
-    constructor(app: App, onPick: (lane: MatterSampleLane | null) => void, defaultLane: MatterSampleLane, includeScriptExamples: boolean) {
+    constructor(app: App, onConfirm: (confirmed: boolean) => void, includeScriptExamples: boolean) {
         super(app);
-        this.onPick = onPick;
-        this.selected = defaultLane;
+        this.onConfirm = onConfirm;
         this.includeScriptExamples = includeScriptExamples;
     }
 
@@ -580,92 +577,18 @@ class MatterSampleLaneModal extends Modal {
         setIcon(createdHeadingIcon, 'list-checks');
         createdHeading.createSpan({ text: 'What this setup creates' });
         const createdList = createdBlock.createEl('ol', { cls: 'ert-template-pack-list ert-template-pack-list--ordered' });
-        const renderCreatedList = () => {
-            createdList.empty();
-            const items = this.selected === 'guided'
-                ? [
-                    'Book Details note',
-                    'Book page stubs (Title Page, Copyright, Dedication, and more)',
-                    'PDF style files'
-                ]
-                : [
-                    'Page examples you can edit directly',
-                    'PDF style files'
-                ];
-            if (this.includeScriptExamples) {
-                items.splice(items.length - 1, 0, 'Writing samples (screenplay and podcast)');
-            }
-            items.forEach(item => {
-                const listItem = createdList.createEl('li', { cls: 'ert-template-pack-list-item' });
-                listItem.setText(item);
-            });
-        };
-
-        const optionsEl = contentEl.createDiv({ cls: 'ert-template-pack-options ert-stack--tight' });
-        optionsEl.setAttr('role', 'radiogroup');
-        optionsEl.setAttr('aria-label', 'Publishing setup style');
-        const optionButtons: Partial<Record<MatterSampleLane, HTMLDivElement>> = {};
-        const refreshOptionState = () => {
-            (Object.keys(optionButtons) as MatterSampleLane[]).forEach((lane) => {
-                const active = this.selected === lane;
-                const optionButton = optionButtons[lane];
-                if (!optionButton) return;
-                optionButton.toggleClass(ERT_CLASSES.IS_ACTIVE, active);
-                optionButton.setAttr('aria-checked', active ? 'true' : 'false');
-                optionButton.setAttr('tabindex', active ? '0' : '-1');
-            });
-            renderCreatedList();
-        };
-
-        const makeOption = (
-            lane: MatterSampleLane,
-            title: string,
-            desc: string,
-            iconName: string
-        ) => {
-            const option = optionsEl.createDiv({
-                cls: 'ert-template-pack-option',
-                attr: {
-                    role: 'radio',
-                    tabindex: '-1',
-                    'aria-checked': 'false'
-                }
-            });
-            const radioCol = option.createDiv({ cls: 'ert-template-pack-option-radio-col' });
-            radioCol.createSpan({ cls: 'ert-template-pack-option-radio' });
-            const optionContent = option.createDiv({ cls: 'ert-template-pack-option-content' });
-            const optionHeader = optionContent.createDiv({ cls: 'ert-template-pack-option-header' });
-            const optionIcon = optionHeader.createSpan({ cls: 'ert-template-pack-option-icon' });
-            setIcon(optionIcon, iconName);
-            optionHeader.createSpan({ cls: 'ert-template-pack-option-title', text: title });
-            optionContent.createDiv({ cls: 'ert-template-pack-option-desc', text: desc });
-            option.addEventListener('keydown', (evt: KeyboardEvent) => {
-                if (evt.key !== 'Enter' && evt.key !== ' ') return;
-                evt.preventDefault();
-                this.selected = lane;
-                refreshOptionState();
-            });
-            option.addEventListener('click', () => {
-                this.selected = lane;
-                refreshOptionState();
-            });
-
-            optionButtons[lane] = option;
-        };
-
-        makeOption(
-            'guided',
-            'Starter publishing setup (Recommended)',
-            'Creates the Book Details note, page stubs, and PDF style files most authors need.',
-            'book-open'
-        );
-        makeOption(
-            'advanced',
-            'Advanced page setup',
-            'Creates the fuller page setup for experienced users who want direct control.',
-            'code'
-        );
-        refreshOptionState();
+        const items = [
+            'Book Details note',
+            'Book page stubs (Title Page, Copyright, Dedication, and more)',
+            'PDF style files',
+        ];
+        if (this.includeScriptExamples) {
+            items.splice(items.length - 1, 0, 'Writing samples (screenplay and podcast)');
+        }
+        items.forEach(item => {
+            const listItem = createdList.createEl('li', { cls: 'ert-template-pack-list-item' });
+            listItem.setText(item);
+        });
 
         const actions = contentEl.createDiv({ cls: 'ert-modal-actions ert-template-pack-actions' });
         const generateButton = new ButtonComponent(actions)
@@ -674,29 +597,29 @@ class MatterSampleLaneModal extends Modal {
         generateButton.onClick(() => {
                 this.resolved = true;
                 this.close();
-                this.onPick(this.selected);
+                this.onConfirm(true);
             });
         new ButtonComponent(actions)
             .setButtonText('Cancel')
             .onClick(() => {
                 this.resolved = true;
                 this.close();
-                this.onPick(null);
+                this.onConfirm(false);
             });
     }
 
     onClose(): void {
         if (!this.resolved) {
             this.resolved = true;
-            this.onPick(null);
+            this.onConfirm(false);
         }
         this.contentEl.empty();
     }
 }
 
-async function chooseMatterSampleLane(app: App, defaultLane: MatterSampleLane, includeScriptExamples: boolean): Promise<MatterSampleLane | null> {
+async function confirmStarterPublishingSetup(app: App, includeScriptExamples: boolean): Promise<boolean> {
     return new Promise((resolve) => {
-        new MatterSampleLaneModal(app, resolve, defaultLane, includeScriptExamples).open();
+        new StarterPublishingSetupModal(app, resolve, includeScriptExamples).open();
     });
 }
 
@@ -723,8 +646,8 @@ interface MatterRepairIssue {
     file: TFile;
     reasons: string[];
     nextClass?: 'Frontmatter' | 'Backmatter';
-    nextRole?: 'other';
-    nextBodyMode?: 'auto';
+    clearRole?: boolean;
+    nextBodyMode?: 'plain';
 }
 
 interface MatterRepairPlan {
@@ -741,7 +664,6 @@ const VALID_MATTER_ROLES = new Set([
     'epigraph',
     'acknowledgments',
     'about-author',
-    'other'
 ]);
 
 function normalizeFrontmatterLookupKey(key: string): string {
@@ -799,23 +721,23 @@ function resolveLegacyMatterSide(
         || normalizeMatterSideToken(legacy.Class);
 }
 
-function normalizeRoleForRepair(value: unknown): { invalid: boolean; nextRole?: 'other' } {
+function normalizeRoleForRepair(value: unknown): { invalid: boolean; clearRole?: boolean } {
     if (value === undefined || value === null) return { invalid: false };
-    if (typeof value !== 'string') return { invalid: true, nextRole: 'other' };
+    if (typeof value !== 'string') return { invalid: true, clearRole: true };
     const normalized = value.trim().toLowerCase();
-    if (!normalized.length) return { invalid: true, nextRole: 'other' };
+    if (!normalized.length) return { invalid: true, clearRole: true };
     if (VALID_MATTER_ROLES.has(normalized)) return { invalid: false };
-    return { invalid: true, nextRole: 'other' };
+    return { invalid: true, clearRole: true };
 }
 
-function normalizeBodyModeForRepair(value: unknown): { invalid: boolean; nextBodyMode?: 'auto' } {
+function normalizeBodyModeForRepair(value: unknown): { invalid: boolean; nextBodyMode?: 'plain' } {
     if (value === undefined || value === null) return { invalid: false };
-    if (typeof value !== 'string') return { invalid: true, nextBodyMode: 'auto' };
+    if (typeof value !== 'string') return { invalid: true, nextBodyMode: 'plain' };
     const normalized = value.trim().toLowerCase();
-    if (normalized === 'plain' || normalized === 'latex' || normalized === 'auto') {
+    if (normalized === 'plain' || normalized === 'latex') {
         return { invalid: false };
     }
-    return { invalid: true, nextBodyMode: 'auto' };
+    return { invalid: true, nextBodyMode: 'plain' };
 }
 
 function buildMatterRepairPlan(plugin: RadialTimelinePlugin): MatterRepairPlan {
@@ -838,18 +760,16 @@ function buildMatterRepairPlan(plugin: RadialTimelinePlugin): MatterRepairPlan {
         const rawFrontmatter = cache?.frontmatter as Record<string, unknown> | undefined;
         if (!rawFrontmatter) continue;
         const normalized = normalizeFrontmatterKeys(rawFrontmatter, mappings);
-        const classValue = normalizeMatterClassValue(getFrontmatterField(normalized, ['Class'])?.value);
+        const classValue = normalizeMatterClassValue(normalized.Class);
         const legacyMatterValue = getFrontmatterField(normalized, ['Matter', 'matter'])?.value;
-        const roleValue = getFrontmatterField(normalized, ['Role'])?.value;
-        const bodyModeValue = getFrontmatterField(normalized, ['BodyMode'])?.value;
-        const legacyBodyModeValue = getFrontmatterField(normalized, ['MatterBodyMode'])?.value;
-        const useBookMetaValue = getFrontmatterField(normalized, ['UseBookMeta', 'UsesBookMeta'])?.value;
+        const roleValue = normalized.Role;
+        const bodyModeValue = normalized.BodyMode;
+        const useBookMetaValue = normalized.UseBookMeta;
 
         const hasMatterSignal = !!classValue
             || legacyMatterValue !== undefined
             || roleValue !== undefined
             || bodyModeValue !== undefined
-            || legacyBodyModeValue !== undefined
             || useBookMetaValue !== undefined;
         if (!hasMatterSignal) continue;
 
@@ -875,7 +795,7 @@ function buildMatterRepairPlan(plugin: RadialTimelinePlugin): MatterRepairPlan {
             reasons.push('invalid-role');
         }
 
-        const bodyModeRepair = normalizeBodyModeForRepair(bodyModeValue ?? legacyBodyModeValue);
+        const bodyModeRepair = normalizeBodyModeForRepair(bodyModeValue);
         if (bodyModeRepair.invalid) {
             reasons.push('invalid-bodymode');
         }
@@ -885,7 +805,7 @@ function buildMatterRepairPlan(plugin: RadialTimelinePlugin): MatterRepairPlan {
             file,
             reasons,
             nextClass,
-            nextRole: roleRepair.nextRole,
+            clearRole: roleRepair.clearRole,
             nextBodyMode: bodyModeRepair.nextBodyMode
         });
     }
@@ -912,13 +832,12 @@ async function applyMatterRepairPlan(
             deleteFrontmatterAliases(fm, ['Class']);
             fm.Class = issue.nextClass;
 
-            if (issue.nextRole) {
+            if (issue.clearRole) {
                 deleteFrontmatterAliases(fm, ['Role']);
-                fm.Role = issue.nextRole;
             }
 
             if (issue.nextBodyMode) {
-                deleteFrontmatterAliases(fm, ['BodyMode', 'MatterBodyMode']);
+                deleteFrontmatterAliases(fm, ['BodyMode']);
                 fm.BodyMode = issue.nextBodyMode;
             }
 
@@ -1158,17 +1077,12 @@ interface MatterPreviewItem {
     role?: string;
     usesBookMeta?: boolean;
     modeLabel: string;
-    modeTone: 'plain' | 'latex' | 'auto';
+    modeTone: 'plain' | 'latex';
 }
 
 interface MatterPreviewSummary {
     front: MatterPreviewItem[];
     back: MatterPreviewItem[];
-}
-
-function detectAutoMatterBodyMode(bodyText: string): 'latex' | 'plain' {
-    const latexSignature = /\\begin\{|\\vspace|\\textcopyright|\\newpage|\\thispagestyle|\\chapter\*?|\\centering|\\[A-Za-z]+(?:\*|\b)/;
-    return latexSignature.test(bodyText) ? 'latex' : 'plain';
 }
 
 async function getMatterPreviewSummary(plugin: RadialTimelinePlugin): Promise<MatterPreviewSummary> {
@@ -1185,35 +1099,15 @@ async function getMatterPreviewSummary(plugin: RadialTimelinePlugin): Promise<Ma
         const role = typeof matterMeta.role === 'string' && matterMeta.role.trim().length > 0
             ? matterMeta.role.trim()
             : undefined;
-        const declaredMode = matterMeta.bodyMode === 'latex' || matterMeta.bodyMode === 'plain'
-            ? matterMeta.bodyMode
-            : 'auto';
-
-        let modeLabel = 'Auto';
-        let modeTone: MatterPreviewItem['modeTone'] = 'auto';
-        if (declaredMode === 'latex') {
-            modeLabel = 'LaTeX';
-            modeTone = 'latex';
-        } else if (declaredMode === 'plain') {
-            modeLabel = 'Plain';
-            modeTone = 'plain';
-        } else {
-            try {
-                const content = await plugin.app.vault.cachedRead(file);
-                const effective = detectAutoMatterBodyMode(extractBodyText(content));
-                modeLabel = effective === 'latex' ? 'Auto -> LaTeX' : 'Auto -> Plain';
-            } catch {
-                modeLabel = 'Auto';
-            }
-        }
+        const bodyMode: 'latex' | 'plain' = matterMeta.bodyMode === 'latex' ? 'latex' : 'plain';
 
         const item: MatterPreviewItem = {
             file,
             side,
             role,
             usesBookMeta: matterMeta.usesBookMeta === true,
-            modeLabel,
-            modeTone
+            modeLabel: bodyMode === 'latex' ? 'LaTeX' : 'Plain',
+            modeTone: bodyMode
         };
         if (side === 'back') {
             back.push(item);
@@ -1279,12 +1173,12 @@ async function createBookMetaOnly(plugin: RadialTimelinePlugin): Promise<{ creat
 }
 
 /**
- * Generate sample scene files and LaTeX templates in the user's vault.
+ * Generate the starter publishing setup in the user's vault:
+ * Book Details note, template-managed page stubs, and bundled PDF style files.
  * Skips files that already exist. Auto-configures template paths in settings.
  */
 async function generateSampleTemplates(
     plugin: RadialTimelinePlugin,
-    matterLane: MatterSampleLane,
     includeScriptExamples: boolean
 ): Promise<string[]> {
     const vault = plugin.app.vault;
@@ -1502,7 +1396,7 @@ async function generateSampleTemplates(
         ].join('\n')
     };
 
-    const guidedMatterComment = [
+    const matterPageComment = [
         '<!--',
         'Publishing Setup Page',
         'Rendered using your Book Details and the selected PDF style.',
@@ -1510,18 +1404,9 @@ async function generateSampleTemplates(
         '-->'
     ];
 
-    const advancedMatterComment = [
-        '<!--',
-        'Advanced Publishing Page (Signature Literary)',
-        'Raw LaTeX is used below.',
-        'This is the canonical inline-LaTeX page format for Signature Literary exports.',
-        'Radial Timeline will not escape this content.',
-        '-->'
-    ];
-
-    const guidedMatterSamples: { name: string; content: string }[] = [
+    const matterSamples: { name: string; content: string }[] = [
         {
-            name: '0.2 Title Page (Template-Managed).md',
+            name: '0.2 Title Page.md',
             content: [
                 '---',
                 'Class: Frontmatter',
@@ -1530,12 +1415,12 @@ async function generateSampleTemplates(
                 'BodyMode: plain',
                 '---',
                 '',
-                ...guidedMatterComment,
+                ...matterPageComment,
                 '',
             ].join('\n')
         },
         {
-            name: '0.3 Copyright (Template-Managed).md',
+            name: '0.3 Copyright.md',
             content: [
                 '---',
                 'Class: Frontmatter',
@@ -1544,13 +1429,13 @@ async function generateSampleTemplates(
                 'BodyMode: plain',
                 '---',
                 '',
-                ...guidedMatterComment,
+                ...matterPageComment,
                 '',
                 'Rights notice and legal disclaimer text can be written here in plain language.',
             ].join('\n')
         },
         {
-            name: '0.04 Dedication (Template-Managed).md',
+            name: '0.4 Dedication.md',
             content: [
                 '---',
                 'Class: Frontmatter',
@@ -1558,13 +1443,13 @@ async function generateSampleTemplates(
                 'BodyMode: plain',
                 '---',
                 '',
-                ...guidedMatterComment,
+                ...matterPageComment,
                 '',
                 'For the ones who stayed.',
             ].join('\n')
         },
         {
-            name: '0.05 Epigraph (Template-Managed).md',
+            name: '0.5 Epigraph.md',
             content: [
                 '---',
                 'Class: Frontmatter',
@@ -1572,13 +1457,13 @@ async function generateSampleTemplates(
                 'BodyMode: plain',
                 '---',
                 '',
-                ...guidedMatterComment,
+                ...matterPageComment,
                 '',
                 '"Your quote here."',
             ].join('\n')
         },
         {
-            name: '200.01 Acknowledgments (Template-Managed).md',
+            name: '200.1 Acknowledgments.md',
             content: [
                 '---',
                 'Class: Backmatter',
@@ -1586,13 +1471,13 @@ async function generateSampleTemplates(
                 'BodyMode: plain',
                 '---',
                 '',
-                ...guidedMatterComment,
+                ...matterPageComment,
                 '',
                 'Thank you to everyone who helped shape this manuscript.',
             ].join('\n')
         },
         {
-            name: '200.02 About the Author (Template-Managed).md',
+            name: '200.2 About the Author.md',
             content: [
                 '---',
                 'Class: Backmatter',
@@ -1601,120 +1486,12 @@ async function generateSampleTemplates(
                 'BodyMode: plain',
                 '---',
                 '',
-                ...guidedMatterComment,
+                ...matterPageComment,
                 '',
                 'Author bio goes here.',
             ].join('\n')
         }
     ];
-
-    const advancedMatterSamples: { name: string; content: string }[] = [
-        {
-            name: '0.02 Title Page (Body LaTeX).md',
-            content: [
-                '---',
-                'Class: Frontmatter',
-                'Role: title-page',
-                'BodyMode: latex',
-                '---',
-                '',
-                ...advancedMatterComment,
-                '',
-                '\\begin{center}',
-                '\\vspace*{\\fill}',
-                '{\\Huge Your Title}\\\\[1em]',
-                '{\\Large Author Name}',
-                '\\vspace*{\\fill}',
-                '\\end{center}',
-            ].join('\n')
-        },
-        {
-            name: '0.03 Copyright (Body LaTeX).md',
-            content: [
-                '---',
-                'Class: Frontmatter',
-                'Role: copyright',
-                'BodyMode: latex',
-                '---',
-                '',
-                ...advancedMatterComment,
-                '',
-                '\\begin{center}',
-                '\\vspace*{\\fill}',
-                'Copyright \\textcopyright{} 2026 Author Name',
-                '\\vspace*{\\fill}',
-                '\\end{center}',
-            ].join('\n')
-        },
-        {
-            name: '0.04 Dedication (Body LaTeX).md',
-            content: [
-                '---',
-                'Class: Frontmatter',
-                'Role: dedication',
-                'BodyMode: latex',
-                '---',
-                '',
-                ...advancedMatterComment,
-                '',
-                '\\begin{center}',
-                '\\vspace*{\\fill}',
-                'For the ones who stayed.',
-                '\\vspace*{\\fill}',
-                '\\end{center}',
-            ].join('\n')
-        },
-        {
-            name: '0.05 Epigraph (Body LaTeX).md',
-            content: [
-                '---',
-                'Class: Frontmatter',
-                'Role: epigraph',
-                'BodyMode: latex',
-                '---',
-                '',
-                ...advancedMatterComment,
-                '',
-                '\\begin{flushright}',
-                '\\emph{"Your quote here."}',
-                '\\end{flushright}',
-            ].join('\n')
-        },
-        {
-            name: '200.01 Acknowledgments (Body LaTeX).md',
-            content: [
-                '---',
-                'Class: Backmatter',
-                'Role: acknowledgments',
-                'BodyMode: latex',
-                '---',
-                '',
-                ...advancedMatterComment,
-                '',
-                '\\section*{Acknowledgments}',
-                'Thank you to everyone who helped shape this manuscript.',
-            ].join('\n')
-        },
-        {
-            name: '200.02 About the Author (Body LaTeX).md',
-            content: [
-                '---',
-                'Class: Backmatter',
-                'Role: about-author',
-                'BodyMode: latex',
-                '---',
-                '',
-                ...advancedMatterComment,
-                '',
-                '\\section*{About the Author}',
-                'Author bio goes here.',
-            ].join('\n')
-        }
-    ];
-
-    const matterSamples = matterLane === 'advanced'
-        ? advancedMatterSamples
-        : guidedMatterSamples;
 
     // Create all files (skip existing)
     if (includeScriptExamples) {
@@ -1727,12 +1504,10 @@ async function generateSampleTemplates(
         }
     }
 
-    if (matterLane === 'guided') {
-        const bookMetaPath = normalizePath(`${matterTargetFolder}/${bookMetaSample.name}`);
-        if (!vault.getAbstractFileByPath(bookMetaPath)) {
-            await vault.create(bookMetaPath, bookMetaSample.content);
-            createdFiles.push(bookMetaSample.name);
-        }
+    const bookMetaPath = normalizePath(`${matterTargetFolder}/${bookMetaSample.name}`);
+    if (!vault.getAbstractFileByPath(bookMetaPath)) {
+        await vault.create(bookMetaPath, bookMetaSample.content);
+        createdFiles.push(bookMetaSample.name);
     }
 
     for (const matter of matterSamples) {
@@ -3124,12 +2899,6 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
         });
     });
 
-    const getSavedWorkflowMode = (): MatterSampleLane => {
-        const saved = plugin.settings.matterWorkflowMode;
-        if (saved === 'advanced') return 'advanced';
-        return 'guided';
-    };
-    let selectedMatterWorkflow = getSavedWorkflowMode();
     const includeScriptExamples = false;
     let setupInFlight = false;
     let setupButtonComponent: ButtonComponent | null = null;
@@ -3173,21 +2942,15 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                 new Notice(warnings.join('\n'));
             }
 
-            // ── Phase 2: Sample templates (guided/advanced lane) ─────────
-            const lane = await chooseMatterSampleLane(plugin.app, selectedMatterWorkflow, includeScriptExamples);
-            if (!lane) return;
-            if (plugin.settings.matterWorkflowMode !== lane) {
-                plugin.settings.matterWorkflowMode = lane;
-                selectedMatterWorkflow = lane;
-                await plugin.saveSettings();
-            }
-            const created = await generateSampleTemplates(plugin, lane, includeScriptExamples);
+            // ── Phase 2: Starter publishing setup ─────────────────────────
+            const confirmed = await confirmStarterPublishingSetup(plugin.app, includeScriptExamples);
+            if (!confirmed) return;
+            const created = await generateSampleTemplates(plugin, includeScriptExamples);
             const scriptTargetLabel = `${plugin.settings.manuscriptOutputFolder || 'Radial Timeline/Export'}/Templates`;
             const sourceFolder = getActiveBookExportContext(plugin).sourceFolder.trim();
             const matterTargetLabel = sourceFolder || scriptTargetLabel;
             if (created.length > 0) {
-                const laneLabel = lane === 'guided' ? 'starter' : 'advanced';
-                new Notice(`Publishing configured. Created ${created.length} ${laneLabel} setup files. Book details + pages → ${matterTargetLabel}, PDF styles → ${getConfiguredPandocFolder(plugin)}/.`);
+                new Notice(`Publishing configured. Created ${created.length} starter setup files. Book details + pages → ${matterTargetLabel}, PDF styles → ${getConfiguredPandocFolder(plugin)}/.`);
             } else {
                 new Notice(STARTER_PUBLISHING_SETUP_ALREADY_EXISTS);
             }
@@ -3709,11 +3472,10 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             const overallDescriptor = descriptors.reduce((winner, entry) => {
                 const rank: Record<string, number> = {
                     Ready: 0,
-                    'Custom page': 1,
-                    'Uses page content': 2,
-                    'Excluded by layout': 3,
-                    'Needs repair': 4,
-                    'Needs metadata': 5
+                    'Uses page content': 1,
+                    'Excluded by layout': 2,
+                    'Needs repair': 3,
+                    'Needs metadata': 4
                 };
                 return rank[entry.descriptor.label] > rank[winner.label] ? entry.descriptor : winner;
             }, descriptors[0].descriptor);
@@ -3753,7 +3515,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                     const readinessBadge = badges.createSpan({ cls: 'ert-matter-preview-badge ert-matter-preview-badge--state', text: readiness.label });
                     readinessBadge.setAttr('title', readiness.detail);
                     const role = (item.role || '').trim();
-                    if (role && role.toLowerCase() !== 'other') {
+                    if (role) {
                         badges.createSpan({
                             cls: 'ert-matter-preview-badge ert-matter-preview-badge--role',
                             text: formatRoleLabel(role)
@@ -3826,9 +3588,13 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                     new Notice('No repairable matter metadata mismatches found.');
                     return;
                 }
-                const proceed = window.confirm(
-                    `This will update frontmatter on ${targetCount} notes in the active book. Continue?`
-                );
+                const proceed = await confirmWithErtModal(plugin.app, {
+                    title: 'Repair matter metadata',
+                    message: `This will update frontmatter on ${targetCount} note${targetCount === 1 ? '' : 's'} in the active book. Note bodies and filenames are not changed.`,
+                    confirmText: 'Repair now',
+                    cancelText: 'Cancel',
+                    badge: { text: 'Repair', icon: 'wrench' }
+                });
                 if (!proceed) return;
 
                 button.setDisabled(true);

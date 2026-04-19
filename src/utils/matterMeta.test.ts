@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { parseMatterMetaFromFrontmatter } from './matterMeta';
 
 describe('matterMeta parser', () => {
-  it('parses simplified flat frontmatter fields', () => {
+  it('parses canonical flat frontmatter fields and defaults BodyMode to plain', () => {
     const parsed = parseMatterMetaFromFrontmatter(
       {
         Class: 'Frontmatter',
@@ -15,11 +15,11 @@ describe('matterMeta parser', () => {
       side: 'front',
       role: 'title-page',
       usesBookMeta: true,
-      bodyMode: 'auto'
+      bodyMode: 'plain'
     });
   });
 
-  it('uses back side by class when Class is Backmatter', () => {
+  it('uses back side when Class is Backmatter', () => {
     const parsed = parseMatterMetaFromFrontmatter(
       { Class: 'Backmatter', Role: 'acknowledgments' }
     );
@@ -28,48 +28,65 @@ describe('matterMeta parser', () => {
     expect(parsed?.role).toBe('acknowledgments');
   });
 
-  it('ignores Side overrides and resolves side strictly from Class', () => {
+  it('resolves side strictly from Class and ignores any Side field', () => {
     const parsed = parseMatterMetaFromFrontmatter(
-      { Class: 'Frontmatter', Side: 'back', Role: 'other' }
+      { Class: 'Frontmatter', Side: 'back', Role: 'dedication' }
     );
 
     expect(parsed?.side).toBe('front');
   });
 
-  it('does not parse nested Matter block keys anymore', () => {
+  it('does not honor nested Matter block keys', () => {
     const parsed = parseMatterMetaFromFrontmatter(
       {
         Class: 'Frontmatter',
         Role: 'epigraph',
-        Matter: {
-          role: 'copyright'
-        }
+        Matter: { role: 'copyright' }
       }
     );
 
     expect(parsed).toEqual({
       side: 'front',
       role: 'epigraph',
-      bodyMode: 'auto'
+      bodyMode: 'plain'
     });
   });
 
   it('returns null for Class: Matter', () => {
     const parsed = parseMatterMetaFromFrontmatter(
-      { Class: 'Matter', Role: 'other' }
+      { Class: 'Matter', Role: 'copyright' }
     );
     expect(parsed).toBeNull();
   });
 
-  it('supports Mode alias for BodyMode', () => {
+  it('honors BodyMode: latex but rejects unknown values, defaulting to plain', () => {
+    expect(parseMatterMetaFromFrontmatter(
+      { Class: 'Frontmatter', BodyMode: 'latex' }
+    )?.bodyMode).toBe('latex');
+
+    expect(parseMatterMetaFromFrontmatter(
+      { Class: 'Frontmatter', BodyMode: 'auto' }
+    )?.bodyMode).toBe('plain');
+
+    expect(parseMatterMetaFromFrontmatter(
+      { Class: 'Frontmatter', BodyMode: 'whatever' }
+    )?.bodyMode).toBe('plain');
+  });
+
+  it('does not honor legacy aliases (UsesBookMeta, MatterBodyMode, Mode)', () => {
     const parsed = parseMatterMetaFromFrontmatter(
       {
         Class: 'Frontmatter',
+        UsesBookMeta: true,
+        MatterBodyMode: 'latex',
         Mode: 'latex'
       }
     );
 
-    expect(parsed?.bodyMode).toBe('latex');
+    expect(parsed).toEqual({
+      side: 'front',
+      bodyMode: 'plain'
+    });
   });
 
   it('returns null for non-matter classes', () => {

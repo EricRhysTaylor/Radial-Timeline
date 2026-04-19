@@ -753,12 +753,6 @@ export default class RadialTimelinePlugin extends Plugin {
         }
         const bundledPandocLayoutsRegistered = ensureBundledPandocLayoutsRegistered(this);
         const publishingModelMigrated = this.syncPublishingModelState();
-        let matterWorkflowMigrated = false;
-        const legacyMatterWorkflowMode = (this.settings as { matterWorkflowMode?: string }).matterWorkflowMode;
-        if (legacyMatterWorkflowMode === 'mixed') {
-            this.settings.matterWorkflowMode = 'guided';
-            matterWorkflowMigrated = true;
-        }
         const legacyLayoutIdMap: Record<string, string> = {
             'bundled-novel-signature-literary-rt': 'bundled-fiction-signature-literary',
             'bundled-novel': 'bundled-fiction-signature-literary',
@@ -803,7 +797,7 @@ export default class RadialTimelinePlugin extends Plugin {
             globalLastUsed.novel = legacyLayoutIdMap[globalLastUsed.novel];
             pandocLayoutReferenceMigrated = true;
         }
-        if (proEntitlementSeeded || gossamerRunFilterMigrated || aiSettingsMigrated || exportFolderMigrated || beatSettingsMigration.changed || backdropTemplateMigrated || pandocLayoutsMigrated || bundledPandocLayoutsRegistered || publishingModelMigrated || matterWorkflowMigrated || pandocLayoutReferenceMigrated || manuscriptExportCleanupMigrated || booksMigrated || planetarySelectionMigrated || modeMigrated) {
+        if (proEntitlementSeeded || gossamerRunFilterMigrated || aiSettingsMigrated || exportFolderMigrated || beatSettingsMigration.changed || backdropTemplateMigrated || pandocLayoutsMigrated || bundledPandocLayoutsRegistered || publishingModelMigrated || pandocLayoutReferenceMigrated || manuscriptExportCleanupMigrated || booksMigrated || planetarySelectionMigrated || modeMigrated) {
             await this.saveSettings();
         }
     }

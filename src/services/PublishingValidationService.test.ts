@@ -6,18 +6,35 @@ import {
 } from './PublishingValidationService';
 
 describe('PublishingValidationService matter readiness', () => {
-    it('marks semantic copyright matter as ready when BookMeta is available', () => {
-        const result = describeMatterReadiness({
-            role: 'copyright',
-            usesBookMeta: true,
-            bookMetaAvailable: true
-        });
+    it.each(['copyright', 'title-page', 'about-author'])(
+        'marks %s as ready when UseBookMeta is true and Book Details exist',
+        (role) => {
+            const result = describeMatterReadiness({
+                role,
+                usesBookMeta: true,
+                bookMetaAvailable: true
+            });
 
-        expect(result.label).toBe('Ready');
-        expect(result.tone).toBe('success');
-    });
+            expect(result.label).toBe('Ready');
+            expect(result.tone).toBe('success');
+        }
+    );
 
-    it('marks legacy matter roles as using page content', () => {
+    it.each(['copyright', 'title-page', 'about-author'])(
+        'marks %s as Needs metadata when UseBookMeta is true but Book Details are missing',
+        (role) => {
+            const result = describeMatterReadiness({
+                role,
+                usesBookMeta: true,
+                bookMetaAvailable: false
+            });
+
+            expect(result.label).toBe('Needs metadata');
+            expect(result.tone).toBe('error');
+        }
+    );
+
+    it('marks UseBookMeta on a non-backed role as Uses page content (flag is a no-op)', () => {
         const result = describeMatterReadiness({
             role: 'epigraph',
             usesBookMeta: true,
@@ -26,17 +43,6 @@ describe('PublishingValidationService matter readiness', () => {
 
         expect(result.label).toBe('Uses page content');
         expect(result.tone).toBe('success');
-    });
-
-    it('marks missing BookMeta as needing metadata', () => {
-        const result = describeMatterReadiness({
-            role: 'copyright',
-            usesBookMeta: true,
-            bookMetaAvailable: false
-        });
-
-        expect(result.label).toBe('Needs metadata');
-        expect(result.tone).toBe('error');
     });
 
     it('marks unsupported roles as excluded by layout', () => {
@@ -51,15 +57,16 @@ describe('PublishingValidationService matter readiness', () => {
         expect(result.tone).toBe('warning');
     });
 
-    it('treats Role: other as a valid custom page', () => {
+    it('marks duplicate roles as Needs repair', () => {
         const result = describeMatterReadiness({
-            role: 'other',
-            usesBookMeta: false,
-            bookMetaAvailable: true
+            role: 'copyright',
+            usesBookMeta: true,
+            bookMetaAvailable: true,
+            issueCodes: ['matter_role_duplicate']
         });
 
-        expect(result.label).toBe('Custom page');
-        expect(result.tone).toBe('success');
+        expect(result.label).toBe('Needs repair');
+        expect(result.tone).toBe('warning');
     });
 });
 
@@ -104,17 +111,35 @@ describe('PublishingValidationService checklists', () => {
         expect(checklist.find(item => item.key === 'copyright')?.state).toBe('Needs setup');
     });
 
-    it('marks copyright as ready when Book Details exist', () => {
+    it.each(['copyright', 'title-page', 'about-author'] as const)(
+        'marks %s as Ready when Book Details exist',
+        (role) => {
+            const checklist = buildBookPagesChecklist({
+                bookMetaAvailable: true,
+                items: [
+                    { role, usesBookMeta: true }
+                ],
+                issueCodes: []
+            });
+
+            const entry = checklist.find(item => item.key === role);
+            expect(entry?.state).toBe('Ready');
+            expect(entry?.tone).toBe('success');
+        }
+    );
+
+    it('marks title-page as Needs metadata when UseBookMeta is true but Book Details missing', () => {
         const checklist = buildBookPagesChecklist({
-            bookMetaAvailable: true,
+            bookMetaAvailable: false,
             items: [
-                { role: 'copyright', usesBookMeta: true }
+                { role: 'title-page', usesBookMeta: true }
             ],
             issueCodes: []
         });
 
-        expect(checklist.find(item => item.key === 'copyright')?.state).toBe('Ready');
-        expect(checklist.find(item => item.key === 'copyright')?.tone).toBe('success');
+        const entry = checklist.find(item => item.key === 'title-page');
+        expect(entry?.state).toBe('Needs metadata');
+        expect(entry?.tone).toBe('error');
     });
 
     it('labels unsupported book pages as excluded by layout', () => {

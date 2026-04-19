@@ -241,7 +241,6 @@ Chapter:`,
     pandocPath: '',
     pandocFolder: 'Radial Timeline/Pandoc',
     pandocLayouts: [],
-    matterWorkflowMode: 'guided',
     lastUsedPandocLayoutByPreset: {},
     pandocTemplates: {
         screenplay: '',
