@@ -871,7 +871,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
         const inquiryStack = inquiryContent.createDiv({ cls: ERT_CLASSES.STACK });
         this.renderInquiryHero(inquiryStack);
-        const inquiryBody = inquiryStack.createDiv({ cls: 'ert-settings-searchable-content' });
+        const inquiryBody = inquiryStack.createDiv({ cls: `ert-settings-searchable-content ${ERT_CLASSES.STACK}` });
 
         const coreStack = coreContent.createDiv({ cls: ERT_CLASSES.STACK });
         this.renderCoreHero(coreStack);
@@ -901,7 +901,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         });
 
         const coreBody = coreStack.createDiv();
-        const searchableContent = coreBody.createDiv({ cls: 'ert-settings-searchable-content' });
+        const searchableContent = coreBody.createDiv({ cls: `ert-settings-searchable-content ${ERT_CLASSES.STACK}` });
 
         generalSection = searchableContent.createDiv({
             attr: { [ERT_DATA.SECTION]: 'general' }
@@ -927,7 +927,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         });
 
         const runtimeSection = searchableContent.createDiv({
-            cls: `${ERT_CLASSES.ROOT} ${ERT_CLASSES.SKIN_PRO}`,
+            cls: `${ERT_CLASSES.ROOT} ${ERT_CLASSES.SKIN_PRO} ${ERT_CLASSES.STACK}`,
             attr: { [ERT_DATA.SECTION]: 'runtime' }
         });
         renderRuntimeSection({ app: this.app, plugin: this.plugin, containerEl: runtimeSection });
