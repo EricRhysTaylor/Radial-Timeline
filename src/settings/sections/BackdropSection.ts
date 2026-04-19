@@ -1,4 +1,4 @@
-import { App, Setting as Settings, TextComponent } from 'obsidian';
+import { App, Platform, Setting as Settings, TextComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { parseDateRangeInput } from '../../utils/date';
 import { DEFAULT_SETTINGS } from '../defaults';
@@ -28,9 +28,9 @@ export function renderBackdropSection(params: { app: App; plugin: RadialTimeline
 
     const stackEl = containerEl.createDiv({ cls: ERT_CLASSES.STACK });
 
-    new Settings(stackEl)
+    const showBackdropSetting = new Settings(stackEl)
         .setName('Show backdrop ring')
-        .setDesc('Display the backdrop ring in Chronologue mode. When disabled, the ring space is reclaimed for subplot rings. Create backdrops using the \'class=Backdrop\' in your notes.')
+        .setDesc('Display the backdrop ring in Chronologue mode. When disabled, the ring space is reclaimed for subplot rings. ')
         .addToggle(toggle => toggle
             .setValue(plugin.settings.showBackdropRing ?? true)
             .onChange(async (value) => {
@@ -39,6 +39,15 @@ export function renderBackdropSection(params: { app: App; plugin: RadialTimeline
                 plugin.onSettingChanged(IMPACT_FULL); // Tier 3: structural layout change
                 renderMicroBackdrops();
             }));
+
+    // Inline command-palette hint woven into the description copy
+    const descEl = showBackdropSetting.descEl;
+    descEl.appendText('Use the Command palette ');
+    const keycaps = descEl.createSpan({ cls: 'rt-welcome-keycaps' });
+    keycaps.createEl('kbd', { cls: 'rt-welcome-keycap', text: Platform.isMacOS ? '⌘' : 'Ctrl' });
+    keycaps.createSpan({ cls: 'rt-welcome-keycaps-sep', text: '+' });
+    keycaps.createEl('kbd', { cls: 'rt-welcome-keycap', text: 'P' });
+    descEl.appendText('. Or create a backdrop note using the \'class=Backdrop\'.');
 
     const listContainer = stackEl.createDiv({ cls: `${ERT_CLASSES.PANEL} ert-micro-backdrop-body ert-micro-backdrop-list` });
     const list = listContainer;

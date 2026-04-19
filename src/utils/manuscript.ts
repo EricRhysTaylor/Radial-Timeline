@@ -67,7 +67,6 @@ export interface AssembleManuscriptOptions {
   chapterMarkersByScenePath?: Record<string, TimelineChapterMarker[]>;
 }
 
-type EffectiveBodyMode = 'latex' | 'plain';
 let matterOrderIgnoredWarned = false;
 const matterLikeMissingClassWarnings = new Set<string>();
 
@@ -141,10 +140,9 @@ function escapeLatex(value: string): string {
     .replace(/~/g, '\\textasciitilde{}');
 }
 
-function resolveEffectiveBodyMode(bodyText: string, declared: MatterBodyMode = 'auto'): EffectiveBodyMode {
-  if (declared === 'latex' || declared === 'plain') return declared;
-  const latexSignature = /\\begin\{|\\vspace|\\textcopyright|\\newpage|\\thispagestyle|\\chapter\*?|\\centering|\\[A-Za-z]+(?:\*|\b)/;
-  return latexSignature.test(bodyText) ? 'latex' : 'plain';
+function processBody(bodyText: string, bodyMode: MatterBodyMode): string {
+  const trimmed = bodyText.trim();
+  return bodyMode === 'latex' ? trimmed : escapeLatex(trimmed);
 }
 
 function escapeRegex(value: string): string {
@@ -208,19 +206,49 @@ function resolveLatexSceneHeading(
 }
 
 /**
- * Render a semantic copyright page from BookMeta and body text.
- * Produces raw LaTeX for Pandoc PDF export.
- *
- * This is the first wedge: hardcoded layout that proves
- * an author can edit YAML instead of LaTeX and still get a correct page.
+ * Roles whose pages can be rendered from BookMeta when `UseBookMeta: true`.
+ * Other roles ignore the flag and render their body as-is.
  */
-function renderCopyrightPage(bookMeta: BookMeta, bodyText: string, bodyMode: EffectiveBodyMode): string {
+export const BOOK_META_BACKED_ROLES: ReadonlySet<string> = new Set([
+  'copyright',
+  'title-page',
+  'about-author',
+]);
+
+function renderTitlePage(bookMeta: BookMeta, bodyText: string, bodyMode: MatterBodyMode): string {
+  const title = escapeLatex(bookMeta.title ?? '');
+  const author = escapeLatex(bookMeta.author ?? '');
+  const processedBody = processBody(bodyText, bodyMode);
+
+  const parts: string[] = [];
+  parts.push('\\begin{center}');
+  parts.push('\\vspace*{4cm}');
+  parts.push('');
+  if (title) {
+    parts.push(`{\\Huge ${title}}\\\\[1em]`);
+  }
+  if (author) {
+    parts.push(`{\\Large ${author}}`);
+  }
+  if (processedBody) {
+    parts.push('');
+    parts.push('\\vspace{1cm}');
+    parts.push('');
+    parts.push(processedBody);
+  }
+  parts.push('');
+  parts.push('\\vfill');
+  parts.push('\\end{center}');
+  parts.push('\\newpage');
+
+  return parts.join('\n');
+}
+
+function renderCopyrightPage(bookMeta: BookMeta, bodyText: string, bodyMode: MatterBodyMode): string {
   const year = bookMeta.rights?.year;
   const yearStr = year ? year.toString() : '[YEAR MISSING]';
   const holder = escapeLatex(bookMeta.rights?.copyright_holder ?? bookMeta.author ?? '');
-  const processedBody = bodyMode === 'latex'
-    ? bodyText.trim()
-    : escapeLatex(bodyText.trim());
+  const processedBody = processBody(bodyText, bodyMode);
 
   const parts: string[] = [];
   parts.push('\\begin{center}');
@@ -255,6 +283,42 @@ function renderCopyrightPage(bookMeta: BookMeta, bodyText: string, bodyMode: Eff
   parts.push('\\end{center}');
 
   return parts.join('\n');
+}
+
+function renderAboutAuthorPage(bookMeta: BookMeta, bodyText: string, bodyMode: MatterBodyMode): string {
+  const author = escapeLatex(bookMeta.author ?? '');
+  const processedBody = processBody(bodyText, bodyMode);
+
+  const parts: string[] = [];
+  parts.push('\\section*{About the Author}');
+  parts.push('');
+  if (author) {
+    parts.push(`\\noindent\\textbf{${author}}`);
+    parts.push('');
+  }
+  if (processedBody) {
+    parts.push(processedBody);
+  }
+
+  return parts.join('\n');
+}
+
+function renderBookMetaBackedMatterPage(
+  role: string,
+  bookMeta: BookMeta,
+  bodyText: string,
+  bodyMode: MatterBodyMode
+): string | null {
+  switch (role) {
+    case 'copyright':
+      return renderCopyrightPage(bookMeta, bodyText, bodyMode);
+    case 'title-page':
+      return renderTitlePage(bookMeta, bodyText, bodyMode);
+    case 'about-author':
+      return renderAboutAuthorPage(bookMeta, bodyText, bodyMode);
+    default:
+      return null;
+  }
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -810,9 +874,9 @@ export async function assembleManuscript(
     filePath: string;
     side: 'front' | 'back';
     prefix: number | null;
-    declaredBodyMode: MatterBodyMode;
-    effectiveBodyMode: EffectiveBodyMode;
-    bodyModeResolution: 'explicit' | 'auto-detected';
+    bodyMode: MatterBodyMode;
+    role?: string;
+    usesBookMeta: boolean;
   }> = [];
   const modernClassicState = createModernClassicState(options?.modernClassicStructure);
   let matterChromeActive = false;
@@ -865,31 +929,31 @@ export async function assembleManuscript(
       }
       const bodyText = extractBodyText(content);
       const countableBodyText = extractCountableBodyText(content);
-      const declaredMode = normalizeMatterBodyMode(matterMeta?.bodyMode);
-      const chosenBodyMode = resolveEffectiveBodyMode(bodyText, declaredMode);
+      const bodyMode = normalizeMatterBodyMode(matterMeta?.bodyMode);
+      const role = matterMeta?.role;
+      const usesBookMeta = matterMeta?.usesBookMeta === true;
 
       if (isMatterNote) {
-        const bodyModeResolution: 'explicit' | 'auto-detected' = declaredMode === 'auto' ? 'auto-detected' : 'explicit';
         matterDiagnostics.push({
           filePath: file.path,
           side: inferMatterSide(matterMeta || undefined),
           prefix: extractPrefix(title),
-          declaredBodyMode: declaredMode,
-          effectiveBodyMode: chosenBodyMode,
-          bodyModeResolution
+          bodyMode,
+          role,
+          usesBookMeta,
         });
       }
 
-      if (matterMeta?.role === 'copyright' && matterMeta?.usesBookMeta && bookMeta) {
-        const rendered = renderCopyrightPage(bookMeta, bodyText, chosenBodyMode);
+      const renderedFromBookMeta = (isMatterNote && role && usesBookMeta && bookMeta)
+        ? renderBookMetaBackedMatterPage(role, bookMeta, bodyText, bodyMode)
+        : null;
+
+      if (renderedFromBookMeta !== null) {
         const wordCount = countWords(countableBodyText);
-
-        scenes.push({ title, bodyText: rendered, wordCount });
+        scenes.push({ title, bodyText: renderedFromBookMeta, wordCount });
         totalWords += wordCount;
-
-        // No ## heading for copyright page — it's a layout-only page
-        textParts.push(`${rendered}\n\n`);
-      } else if (isMatterNote && chosenBodyMode === 'latex') {
+        textParts.push(`${renderedFromBookMeta}\n\n`);
+      } else if (isMatterNote && bodyMode === 'latex') {
         const wordCount = countWords(countableBodyText);
         scenes.push({ title, bodyText, wordCount });
         totalWords += wordCount;

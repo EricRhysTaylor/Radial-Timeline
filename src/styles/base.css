@@ -136,7 +136,7 @@
 .rt-welcome-keycaps {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   vertical-align: baseline;
 }
 
@@ -144,25 +144,27 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 24px;
-  height: 24px;
-  padding: 0 6px;
+  box-sizing: border-box;
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  padding: 0;
   margin: 0;
   font-family: system-ui, -apple-system, sans-serif;
   font-size: 12px;
   font-weight: 500;
   line-height: 1;
-  color: #0f172a;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  color: var(--background-primary);
+  background: color-mix(in srgb, var(--text-normal) 88%, var(--background-primary) 12%);
+  border: 1px solid color-mix(in srgb, var(--text-normal) 35%, var(--background-modifier-border));
   border-bottom-width: 2px;
-  border-radius: 5px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  border-radius: 4px;
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--background-primary) 60%, transparent);
 }
 
 .rt-welcome-keycaps-sep {
   color: var(--text-muted);
-  font-size: 0.95em;
+  font-size: 0.9em;
 }
 
 .rt-welcome-links-wrapper {

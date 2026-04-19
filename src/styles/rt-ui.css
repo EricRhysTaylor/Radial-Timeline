@@ -8419,6 +8419,10 @@
 .ert-ui.ert-scope--modal.ert-modal--note-creator .ert-note-creator-panel {
   gap: var(--ert-gap-md);
   min-height: 320px;
+  /* Darker interior provides the contrast; no drop shadow needed */
+  --ert-panel-bg: color-mix(in srgb, var(--background-secondary) 92%, var(--background-primary) 8%);
+  --ert-panel-border: color-mix(in srgb, var(--background-modifier-border) 65%, transparent);
+  box-shadow: none;
 }
 
 .ert-ui.ert-scope--modal.ert-modal--note-creator .ert-note-creator-grid {

@@ -32,18 +32,18 @@ export interface BookMeta {
 
 /**
  * Metadata extracted from matter note YAML.
- * Uses flat fields such as `Role`, `UseBookMeta`, and `BodyMode`.
+ * Uses flat fields: `Class`, `Role`, `UseBookMeta`, `BodyMode`.
  */
 export interface MatterMeta {
     /** front or back */
     side?: string;
-    /** Semantic role: copyright, title-page, dedication, etc. */
+    /** Semantic role: copyright, title-page, about-author, dedication, epigraph, acknowledgments, etc. */
     role?: string;
-    /** Whether this matter note should pull data from BookMeta */
+    /** Whether this matter note should pull data from BookMeta. Honored on copyright, title-page, about-author. */
     usesBookMeta?: boolean;
-    /** Matter body handling mode for semantic renderers. */
-    bodyMode?: 'latex' | 'plain' | 'auto';
-    /** @deprecated Matter ordering now uses filename prefixes only (0.* / 200.*). */
+    /** How the body should be rendered. `plain` escapes for LaTeX; `latex` passes through untouched. */
+    bodyMode?: 'latex' | 'plain';
+    /** @deprecated Matter ordering uses filename prefixes only (0.* / 200.*). */
     order?: number;
 }
 

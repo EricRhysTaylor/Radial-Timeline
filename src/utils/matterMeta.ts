@@ -1,23 +1,8 @@
 import type { MatterMeta } from '../types';
 
 export type MatterSide = 'front' | 'back';
-export type MatterBodyMode = 'latex' | 'plain' | 'auto';
+export type MatterBodyMode = 'latex' | 'plain';
 export type MatterClass = 'frontmatter' | 'backmatter';
-
-function normalizeKey(input: string): string {
-  return input.toLowerCase().replace(/[^a-z0-9]/g, '');
-}
-
-function getFieldValue(source: Record<string, unknown> | undefined, aliases: string[]): unknown {
-  if (!source) return undefined;
-  const aliasSet = new Set(aliases.map(normalizeKey));
-  for (const [key, value] of Object.entries(source)) {
-    if (aliasSet.has(normalizeKey(key))) {
-      return value;
-    }
-  }
-  return undefined;
-}
 
 function asNonEmptyString(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined;
@@ -50,13 +35,14 @@ function parseOrder(value: unknown): number | undefined {
   return undefined;
 }
 
+/**
+ * Parse the BodyMode field. Defaults to `plain` when missing or unrecognized.
+ * `plain` is the safe default — body text is escaped for LaTeX, no injection.
+ * Authors who need raw LaTeX must declare `BodyMode: latex` explicitly.
+ */
 export function normalizeMatterBodyMode(value: unknown): MatterBodyMode {
-  if (typeof value === 'string') {
-    const normalized = value.trim().toLowerCase();
-    if (normalized === 'latex') return 'latex';
-    if (normalized === 'plain') return 'plain';
-  }
-  return 'auto';
+  if (typeof value === 'string' && value.trim().toLowerCase() === 'latex') return 'latex';
+  return 'plain';
 }
 
 export function normalizeMatterClassValue(value: unknown): MatterClass | null {
@@ -74,38 +60,35 @@ export function isMatterClassValue(value: unknown): boolean {
 /**
  * Parse matter metadata from frontmatter.
  *
- * Accepted classes:
- * - `Frontmatter`
- * - `Backmatter`
+ * Required: `Class: Frontmatter | Backmatter`. Returns null if absent.
+ * Recognized fields (canonical names only — no aliases):
+ *   - Class
+ *   - Role
+ *   - UseBookMeta
+ *   - BodyMode
  */
 export function parseMatterMetaFromFrontmatter(
   frontmatter: Record<string, unknown> | undefined
 ): MatterMeta | null {
   if (!frontmatter) return null;
 
-  const classRaw = getFieldValue(frontmatter, ['Class']);
-  const classValue = normalizeMatterClassValue(classRaw);
+  const classValue = normalizeMatterClassValue(frontmatter.Class);
   if (!classValue) return null;
-
-  const rawRole = getFieldValue(frontmatter, ['Role']);
-  const rawUseBookMeta = getFieldValue(frontmatter, ['UseBookMeta', 'UsesBookMeta']);
-  const rawBodyMode = getFieldValue(frontmatter, ['BodyMode', 'MatterBodyMode', 'Mode']);
-  const rawOrder = getFieldValue(frontmatter, ['Order', 'MatterOrder']);
 
   const side: MatterSide = classValue === 'backmatter' ? 'back' : 'front';
 
   const meta: MatterMeta = {
     side,
-    bodyMode: normalizeMatterBodyMode(rawBodyMode),
+    bodyMode: normalizeMatterBodyMode(frontmatter.BodyMode),
   };
 
-  const role = asNonEmptyString(rawRole);
+  const role = asNonEmptyString(frontmatter.Role);
   if (role) meta.role = role;
 
-  const usesBookMeta = parseOptionalBoolean(rawUseBookMeta);
+  const usesBookMeta = parseOptionalBoolean(frontmatter.UseBookMeta);
   if (usesBookMeta !== undefined) meta.usesBookMeta = usesBookMeta;
 
-  const order = parseOrder(rawOrder);
+  const order = parseOrder(frontmatter.Order);
   if (order !== undefined) meta.order = order;
 
   return meta;

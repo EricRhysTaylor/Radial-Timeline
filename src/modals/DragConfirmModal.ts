@@ -6,7 +6,7 @@ const ICON_LIST_ORDERED = `<svg xmlns="http://www.w3.org/2000/svg" width="24" he
 const ICON_BLOCKS = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-blocks-icon lucide-blocks"><path d="M10 22V7a1 1 0 0 0-1-1H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5a1 1 0 0 0-1-1H2"/><rect x="14" y="2" width="8" height="8" rx="1"/></svg>`;
 const ICON_WAVES = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-waves"><path d="M2 6c1.2 0 1.8.6 2.4 1.2.6.6 1.2 1.2 2.4 1.2s1.8-.6 2.4-1.2C9.8 6.6 10.4 6 11.6 6s1.8.6 2.4 1.2c.6.6 1.2 1.2 2.4 1.2s1.8-.6 2.4-1.2C19.4 6.6 20 6 21.2 6"/><path d="M2 12c1.2 0 1.8.6 2.4 1.2.6.6 1.2 1.2 2.4 1.2s1.8-.6 2.4-1.2c.6-.6 1.2-1.2 2.4-1.2s1.8.6 2.4 1.2c.6.6 1.2 1.2 2.4 1.2s1.8-.6 2.4-1.2c.6-.6 1.2-1.2 2.4-1.2"/><path d="M2 18c1.2 0 1.8.6 2.4 1.2.6.6 1.2 1.2 2.4 1.2s1.8-.6 2.4-1.2c.6-.6 1.2-1.2 2.4-1.2s1.8.6 2.4 1.2c.6.6 1.2 1.2 2.4 1.2s1.8-.6 2.4-1.2c.6-.6 1.2-1.2 2.4-1.2"/></svg>`;
 const ICON_ARROW_RIGHT_TO_LINE = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-right-to-line"><path d="M17 12H3"/><path d="m11 18 6-6-6-6"/><path d="M21 5v14"/></svg>`;
-const ICON_CORNER_UP_RIGHT = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-corner-up-right"><path d="M15 14 20 9"/><path d="M4 20h7a4 4 0 0 0 4-4V4"/><path d="M20 15V9h-6"/></svg>`;
+const ICON_ARROW_RIGHT = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-right"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>`;
 
 export interface DragConfirmCurrentMoveSummary {
     actionSummary: string;
@@ -200,7 +200,7 @@ export class DragConfirmModal extends Modal {
         if (sourcePipe && targetPipe) {
             container.createSpan({ text: sourcePipe });
             const inlineIcon = container.createSpan({ cls: 'rt-drag-confirm-inline-icon' });
-            this.setIcon(inlineIcon, ICON_CORNER_UP_RIGHT);
+            this.setIcon(inlineIcon, ICON_ARROW_RIGHT);
             container.createSpan({ text: targetPipe });
             return;
         }
@@ -209,7 +209,7 @@ export class DragConfirmModal extends Modal {
         if (beforeMatch) {
             container.createSpan({ text: beforeMatch[1].trim() });
             const inlineIcon = container.createSpan({ cls: 'rt-drag-confirm-inline-icon' });
-            this.setIcon(inlineIcon, ICON_CORNER_UP_RIGHT);
+            this.setIcon(inlineIcon, ICON_ARROW_RIGHT);
             container.createSpan({ text: beforeMatch[2].trim() });
             return;
         }

@@ -18,6 +18,7 @@ import { normalizeFrontmatterKeys } from '../utils/frontmatter';
 import { parseMatterMetaFromFrontmatter } from '../utils/matterMeta';
 import { isPathInFolderScope } from '../utils/pathScope';
 import { adaptPandocLayoutsToPublishingModel } from '../utils/publishingModel';
+import { BOOK_META_BACKED_ROLES } from '../utils/manuscript';
 
 type ValidationScope = ValidationIssue['scope'];
 
@@ -28,11 +29,8 @@ interface PublishingValidationContext {
     selectedLayoutId?: string;
 }
 
-const CONSTRAINED_MATTER_ROLES = new Set(['title-page', 'copyright', 'about-author']);
-const FALLBACK_ONLY_MATTER_ROLES = new Set(['title-page', 'dedication', 'epigraph', 'acknowledgments', 'about-author']);
-
 export interface MatterReadinessDescriptor {
-    label: 'Ready' | 'Needs metadata' | 'Uses page content' | 'Custom page' | 'Excluded by layout' | 'Needs repair';
+    label: 'Ready' | 'Needs metadata' | 'Uses page content' | 'Excluded by layout' | 'Needs repair';
     detail: string;
     tone: 'success' | 'warning' | 'error';
 }
@@ -51,9 +49,7 @@ export function describeMatterReadiness(params: {
     if (issueCodes.has('matter_book_meta_missing') || issueCodes.has('book_meta_required_missing')) {
         return {
             label: 'Needs metadata',
-            detail: usesBookMeta
-                ? 'This page expects Book Details data that is not currently available.'
-                : 'This page needs publishing metadata before it can be filled in automatically.',
+            detail: 'This page is configured to use Book Details, but the Book Details note is missing or incomplete.',
             tone: 'error',
         };
     }
@@ -64,46 +60,24 @@ export function describeMatterReadiness(params: {
             tone: 'warning',
         };
     }
-    if (issueCodes.has('matter_semantic_fallback')) {
-        return {
-            label: 'Uses page content',
-            detail: 'This page uses the content written in the note.',
-            tone: 'success',
-        };
-    }
-    if (issueCodes.has('matter_role_duplicate') || issueCodes.has('matter_repair_needed')) {
+    if (issueCodes.has('matter_role_duplicate')) {
         return {
             label: 'Needs repair',
-            detail: 'Multiple notes or repairable metadata issues were detected for this matter role.',
+            detail: 'Multiple notes share this matter role. Filename order may be ambiguous.',
             tone: 'warning',
         };
     }
-    if (role === 'other') {
-        return {
-            label: 'Custom page',
-            detail: 'This page uses the content written in the note.',
-            tone: 'success',
-        };
-    }
-    const fallbackOnlyRoles = new Set(['title-page', 'dedication', 'epigraph', 'acknowledgments', 'about-author']);
-    if (role && fallbackOnlyRoles.has(role)) {
-        return {
-            label: 'Uses page content',
-            detail: 'This page uses the content written in the note.',
-            tone: 'success',
-        };
-    }
-    if (usesBookMeta && !bookMetaAvailable) {
-        return {
-            label: 'Needs metadata',
-            detail: 'This page is configured to use Book Details, but no Book Details note is currently available.',
-            tone: 'error',
-        };
-    }
-    if (role === 'copyright' && usesBookMeta && bookMetaAvailable) {
+    if (usesBookMeta && BOOK_META_BACKED_ROLES.has(role)) {
+        if (!bookMetaAvailable) {
+            return {
+                label: 'Needs metadata',
+                detail: 'This page is configured to use Book Details, but no Book Details note is currently available.',
+                tone: 'error',
+            };
+        }
         return {
             label: 'Ready',
-            detail: 'Ready for export.',
+            detail: 'Ready for export. Pulls from Book Details.',
             tone: 'success',
         };
     }
@@ -285,17 +259,18 @@ export function buildBookPagesChecklist(params: {
             };
         }
 
-        if (key === 'copyright' && roleItem.usesBookMeta && !params.bookMetaAvailable) {
-            return {
-                key,
-                label: friendlyName,
-                state: 'Needs metadata',
-                detail: 'Create Book Details to unlock the copyright page.',
-                tone: 'error',
-            };
-        }
-
-        if (key === 'copyright' && roleItem.usesBookMeta && params.bookMetaAvailable) {
+        const usesBookMeta = roleItem.usesBookMeta === true;
+        const isBookMetaBacked = BOOK_META_BACKED_ROLES.has(key);
+        if (usesBookMeta && isBookMetaBacked) {
+            if (!params.bookMetaAvailable) {
+                return {
+                    key,
+                    label: friendlyName,
+                    state: 'Needs metadata',
+                    detail: 'Create Book Details to unlock this page.',
+                    tone: 'error',
+                };
+            }
             return {
                 key,
                 label: friendlyName,
@@ -305,23 +280,11 @@ export function buildBookPagesChecklist(params: {
             };
         }
 
-        if ((roleItem.role || '').trim().toLowerCase() === 'other') {
-            return {
-                key,
-                label: friendlyName,
-                state: 'Custom page',
-                detail: 'This page uses the content written in the note.',
-                tone: 'success',
-            };
-        }
-
         return {
             key,
             label: friendlyName,
             state: 'Uses page content',
-            detail: roleItem.usesBookMeta
-                ? 'This page uses Book Details where available.'
-                : 'This page uses the content written in the note.',
+            detail: 'This page uses the content written in the note.',
             tone: 'success',
         };
     });
@@ -514,22 +477,16 @@ export class PublishingValidationService {
                 seenRoles.set(role, paths);
             }
 
-            if (parsedMeta.usesBookMeta && !bookMetaResolution.bookMeta) {
-                pushIssue(snapshot.matterIssues, 'matter', 'warning', 'matter_book_meta_missing', `Matter note "${file.path}" expects Book Details, but no Book Details note was found.`, {
+            const isBookMetaBacked = role && BOOK_META_BACKED_ROLES.has(role);
+            if (parsedMeta.usesBookMeta && isBookMetaBacked && !bookMetaResolution.bookMeta) {
+                pushIssue(snapshot.matterIssues, 'matter', 'error', 'matter_book_meta_missing', `Matter note "${file.path}" expects Book Details, but no Book Details note was found.`, {
                     actionable: true,
                     field: role || file.path,
                 });
             }
 
-            if (role && FALLBACK_ONLY_MATTER_ROLES.has(role) && parsedMeta.usesBookMeta) {
-                pushIssue(snapshot.matterIssues, 'matter', 'info', 'matter_semantic_fallback', `This page uses the content written in the note.`, {
-                    field: role,
-                });
-            }
-
             if (
                 role &&
-                role !== 'other' &&
                 selectedProfile &&
                 selectedProfile.supportedMatterRoles.length > 0 &&
                 !selectedProfile.supportedMatterRoles.includes(role)
@@ -541,8 +498,8 @@ export class PublishingValidationService {
         });
 
         for (const [role, paths] of seenRoles.entries()) {
-            if (CONSTRAINED_MATTER_ROLES.has(role) && paths.length > 1) {
-                pushIssue(snapshot.matterIssues, 'matter', 'warning', 'matter_role_duplicate', `Multiple "${role}" matter notes found. Using filename order may be ambiguous.`, {
+            if (BOOK_META_BACKED_ROLES.has(role) && paths.length > 1) {
+                pushIssue(snapshot.matterIssues, 'matter', 'warning', 'matter_role_duplicate', `Multiple "${role}" matter notes found. Filename order may be ambiguous.`, {
                     detail: paths.join('\n'),
                     field: role,
                     actionable: true,

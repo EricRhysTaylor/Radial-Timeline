@@ -54,8 +54,8 @@ const RT_NOTE_FAMILIES: RtNoteFamilyOption[] = [
         title: 'Story world',
         description: 'Create contextual notes that shape time, place, or surrounding events.',
         subtypes: [
-            { id: 'backdrop', title: 'Backdrop', description: 'Timeline context note with start and end dates.' },
             { id: 'beat', title: 'Beat', description: 'A single story beat note with act and purpose fields.' },
+            { id: 'backdrop', title: 'Backdrop', description: 'Timeline context note with start and end dates.' },
         ],
     },
 ];
@@ -73,7 +73,6 @@ export class CreateRtNoteModal extends Modal {
     private gridEl: HTMLDivElement | null = null;
     private actionsEl: HTMLDivElement | null = null;
     private backButton: ButtonComponent | null = null;
-    private backSpacerEl: HTMLDivElement | null = null;
     private familyButtonEls = new Map<RtNoteFamilyId, HTMLButtonElement>();
     private subtypeButtonEls = new Map<RtNoteSubtypeId, HTMLButtonElement>();
 
@@ -103,13 +102,13 @@ export class CreateRtNoteModal extends Modal {
         this.gridEl = panel.createDiv({ cls: 'ert-note-creator-grid' });
 
         this.actionsEl = contentEl.createDiv({ cls: 'ert-modal-actions' });
+        // Back sits immediately left of Cancel — both right-aligned via justify-content
         this.backButton = new ButtonComponent(this.actionsEl)
             .setButtonText('Back')
             .onClick(() => {
                 this.selectedFamilyId = null;
                 this.render();
             });
-        this.backSpacerEl = this.actionsEl.createDiv({ cls: 'ert-modal-actions-spacer' });
         new ButtonComponent(this.actionsEl)
             .setButtonText('Cancel')
             .onClick(() => this.close());
@@ -125,7 +124,6 @@ export class CreateRtNoteModal extends Modal {
         this.gridEl = null;
         this.actionsEl = null;
         this.backButton = null;
-        this.backSpacerEl = null;
         this.familyButtonEls.clear();
         this.subtypeButtonEls.clear();
     }
@@ -156,9 +154,6 @@ export class CreateRtNoteModal extends Modal {
 
         if (this.backButton?.buttonEl) {
             this.backButton.buttonEl.toggleClass('is-hidden', !activeFamily);
-        }
-        if (this.backSpacerEl) {
-            this.backSpacerEl.toggleClass('is-hidden', !activeFamily);
         }
 
         const firstOption = grid.querySelector<HTMLButtonElement>('.ert-note-creator-option');
