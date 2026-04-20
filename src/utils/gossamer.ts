@@ -555,16 +555,19 @@ export function buildRunFromGossamerField(
  * finds the highest numbered Gossamer field (e.g. Gossamer5) for EACH beat individually.
  * This ensures "Current" always shows the most recent analysis.
  */
-export function buildRunFromDefault(scenes?: { itemType?: string; subplot?: string; title?: string; Gossamer1?: number; "Beat Model"?: string; [key: string]: unknown }[], selectedBeatModel?: string): GossamerRun {
+export function buildRunFromDefault(
+  scenes?: { itemType?: string; subplot?: string; title?: string; Gossamer1?: number; "Beat Model"?: string; [key: string]: unknown }[],
+  selectedBeatModel?: string,
+  signalFilter?: GossamerSignalType
+): GossamerRun {
   if (!scenes) return buildRunFromGossamerField(scenes, 'Gossamer1', selectedBeatModel, true);
 
-  // We need to construct a "Virtual" run composed of the latest scores
-  // First, let's reuse the logic to filter and sort notes
+  // We need to construct a "Virtual" run composed of the latest scores for the active signal.
   let plotNotes = scenes.filter(s => s.itemType === 'Beat' || s.itemType === 'Plot');
   if (toBeatModelMatchKey(selectedBeatModel ?? '')) {
     plotNotes = filterBeatsBySystem(plotNotes, selectedBeatModel);
   }
-  
+
   plotNotes.sort((a, b) => {
     const aMatch = (a.title || '').match(/^(\d+(?:\.\d+)?)/);
     const bMatch = (b.title || '').match(/^(\d+(?:\.\d+)?)/);
@@ -575,20 +578,23 @@ export function buildRunFromDefault(scenes?: { itemType?: string; subplot?: stri
 
   const beats: GossamerBeat[] = plotNotes.map(note => {
     const beatTitle = (note.title || '').replace(/^\s*\d+(?:\.\d+)?\s+/, '').trim();
-    
-    // Find the latest score
+
+    // Find the latest score whose slot matches the active signal filter (legacy = momentum).
     let latestScore: number | undefined = undefined;
     let latestRunIndex = 0;
-    
-    // Check Gossamer1 through Gossamer30
+
     for (let i = GOSSAMER_MAX_HISTORY; i >= 1; i--) {
       const val = readGossamerFieldValue(note as Record<string, unknown>, getGossamerScoreKey(i));
       const parsed = parseGossamerScoreValue(val);
-      if (parsed !== undefined) {
-        latestScore = parsed;
-        latestRunIndex = i;
-        break;
+      if (parsed === undefined) continue;
+      if (signalFilter) {
+        const slotSignalRaw = readGossamerFieldValue(note as Record<string, unknown>, getGossamerSignalKey(i));
+        const slotSignal = coerceGossamerSignal(slotSignalRaw);
+        if (slotSignal !== signalFilter) continue;
       }
+      latestScore = parsed;
+      latestRunIndex = i;
+      break;
     }
     
     // Range logic
@@ -768,7 +774,7 @@ export function buildAllGossamerRuns(
         model: selectedBeatModel,
         beatSystem: selectedBeatModel
       })
-    : buildRunFromDefault(scenes as { itemType?: string; subplot?: string; title?: string; Gossamer1?: number; "Beat Model"?: string; [key: string]: unknown }[], selectedBeatModel);
+    : buildRunFromDefault(scenes as { itemType?: string; subplot?: string; title?: string; Gossamer1?: number; "Beat Model"?: string; [key: string]: unknown }[], selectedBeatModel, signal);
   
   // Default gray color for runs without stage data (legacy fallback)
   const historicalColor = '#c0c0c0'; // Same as --rt-gossamer-historical-color

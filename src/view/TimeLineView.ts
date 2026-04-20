@@ -35,6 +35,7 @@ import { getActiveRecentStructuralMoves } from '../utils/recentStructuralMoves';
 import type { StructuralMoveHistoryEntry } from '../types/settings';
 import type { GossamerRunRecord } from '../utils/gossamer';
 import { GOSSAMER_SIGNAL_METADATA, GOSSAMER_SIGNAL_TYPES, type GossamerSignalType } from '../types/gossamerSignals';
+import { tooltip as applyTooltip } from '../utils/tooltip';
 
 // Duplicate of constants defined in main for now. We can consolidate later.
 export const TIMELINE_VIEW_TYPE = "radial-timeline";
@@ -1019,7 +1020,11 @@ export class RadialTimelineView extends ItemView {
         button.setAttribute('role', 'button');
         button.setAttribute('tabindex', '0');
         button.setAttribute('data-state', this.plugin.gossamerLatestOnly ? 'latest' : 'all');
-        button.setAttribute('title', this.plugin.gossamerLatestOnly ? 'Click to show all runs' : 'Click to show latest only');
+        applyTooltip(
+            button as unknown as HTMLElement,
+            this.plugin.gossamerLatestOnly ? 'Click to show all runs' : 'Click to show latest only',
+            'bottom'
+        );
         const buttonLabel = document.createElementNS(xhtmlNs, 'span');
         if (runs.length === 0) {
             buttonLabel.textContent = '0 RUNS';
@@ -1044,10 +1049,26 @@ export class RadialTimelineView extends ItemView {
             btn.setAttribute('tabindex', '0');
             btn.setAttribute('aria-selected', signalId === activeSignal ? 'true' : 'false');
             btn.setAttribute('data-signal', signalId);
-            btn.setAttribute('aria-label', meta.tooltip);
-            btn.setAttribute('title', meta.tooltip);
             if (signalId === activeSignal) btn.classList.add('is-active');
-            setIcon(btn as unknown as HTMLElement, meta.icon);
+            if (meta.inlineIconPath) {
+                const svgNs2 = 'http://www.w3.org/2000/svg';
+                const iconSvg = document.createElementNS(svgNs2, 'svg');
+                iconSvg.setAttribute('viewBox', '0 0 24 24');
+                iconSvg.setAttribute('class', `svg-icon lucide-${meta.icon}`);
+                iconSvg.setAttribute('fill', 'none');
+                iconSvg.setAttribute('stroke', 'currentColor');
+                iconSvg.setAttribute('stroke-linecap', 'round');
+                iconSvg.setAttribute('stroke-linejoin', 'round');
+                const path = document.createElementNS(svgNs2, 'path');
+                path.setAttribute('d', meta.inlineIconPath);
+                iconSvg.appendChild(path);
+                btn.appendChild(iconSvg);
+            } else {
+                setIcon(btn as unknown as HTMLElement, meta.icon);
+            }
+            // Narrower balance width than default so the tooltip's native CSS wrap
+            // can't re-break our last line into a widow (e.g. "count." alone).
+            applyTooltip(btn as unknown as HTMLElement, meta.tooltip, 'bottom', 300);
             signalSelector.appendChild(btn);
             signalButtons.push({ el: btn, signal: signalId });
         });

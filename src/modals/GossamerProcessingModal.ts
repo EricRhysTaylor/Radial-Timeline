@@ -8,6 +8,7 @@
  */
 import { App, Modal, ButtonComponent, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
+import { DEFAULT_GOSSAMER_SIGNAL, GOSSAMER_SIGNAL_METADATA } from '../types/gossamerSignals';
 import { getCredential } from '../ai/credentials/credentials';
 import { getModelDisplayName } from '../utils/modelResolver';
 import { SimulatedProgress } from '../utils/simulatedProgress';
@@ -93,13 +94,16 @@ export class GossamerProcessingModal extends Modal {
     private renderProcessingHero(parent: HTMLElement, subtitle: string, modelName?: string): void {
         const hero = parent.createDiv({ cls: 'ert-modal-header' });
 
-        // Build badge text with active book title
+        // Build badge text with active book title and active signal
+        const signal = this.plugin.gossamerSelectedSignal ?? DEFAULT_GOSSAMER_SIGNAL;
+        const signalMeta = GOSSAMER_SIGNAL_METADATA[signal];
+        const signalLabelLower = signalMeta.label.toLowerCase();
         const bookTitle = getActiveBookTitle(this.plugin.settings);
-        const parts = ['AI momentum analysis', bookTitle, modelName].filter(Boolean);
+        const parts = [`AI ${signalLabelLower} analysis`, bookTitle, modelName].filter(Boolean);
         const badgeText = parts.join(' · ');
-            
+
         hero.createSpan({ text: badgeText, cls: 'ert-modal-badge' });
-        hero.createDiv({ text: 'Gossamer momentum analysis', cls: 'ert-modal-title' });
+        hero.createDiv({ text: `Gossamer ${signalLabelLower} analysis`, cls: 'ert-modal-title' });
         hero.createDiv({ text: subtitle, cls: 'ert-modal-subtitle' });
     }
 
@@ -136,7 +140,9 @@ export class GossamerProcessingModal extends Modal {
         contentEl.empty();
 
         const modelName = this.getActiveModelDisplayName();
-        this.renderProcessingHero(contentEl, 'Evaluate narrative momentum at each story beat. This will pass the selected manuscript evidence to the AI for fresh analysis. The AI evaluates the material with fresh eyes each time, without reference to previous scores, to avoid anchoring bias. The AI will return a score and justification for each beat.', modelName);
+        const signal = this.plugin.gossamerSelectedSignal ?? DEFAULT_GOSSAMER_SIGNAL;
+        const signalLabelLower = GOSSAMER_SIGNAL_METADATA[signal].label.toLowerCase();
+        this.renderProcessingHero(contentEl, `Evaluate narrative ${signalLabelLower} at each story beat. This will pass the selected manuscript evidence to the AI for fresh analysis. The AI evaluates the material with fresh eyes each time, without reference to previous scores, to avoid anchoring bias. The AI will return a score and justification for each beat.`, modelName);
 
         this.confirmationView = contentEl;
 

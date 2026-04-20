@@ -307,7 +307,7 @@ export class GossamerScoreModal extends Modal {
     if (actualCount === 0) {
       const noBeatsWarning = contentEl.createEl('div', {
         text: !selectedBeatModel
-          ? 'No active beat system selected for this book. Choose one in Beat Manager to score momentum against a specific structure.'
+          ? `No active beat system selected for this book. Choose one in Beat Manager to score ${signalMeta.label.toLowerCase()} against a specific structure.`
           : settingsSystem === 'Custom'
           ? `⚠️ No custom story beats found. Create notes with "Class: Beat" and "Beat Model: ${beatModelLabel}", or change beat system in Settings.`
           : `⚠️ No story beats found with "Beat Model: ${beatModelLabel}". Check your beat notes have the correct Beat Model field, or change beat system in Settings.`
@@ -655,7 +655,9 @@ export class GossamerScoreModal extends Modal {
       this.entries.forEach((entry, index) => {
         const metadataParts: string[] = [];
         if (entry.range && entry.range.trim().length > 0) {
-          metadataParts.push(`Ideal momentum: ${entry.range}`);
+          metadataParts.push(activeSignal === 'momentum'
+            ? `Ideal momentum: ${entry.range}`
+            : `Ideal range: ${entry.range}`);
         } else {
           missingRangeBeats.push(entry.beatTitle);
         }
@@ -1054,9 +1056,11 @@ export class GossamerScoreModal extends Modal {
     if (active) {
       return { name: active.name, prompt: active.prompt };
     }
+    const signal = this.plugin.gossamerSelectedSignal ?? DEFAULT_GOSSAMER_SIGNAL;
+    const signalLabel = GOSSAMER_SIGNAL_METADATA[signal].label.toLowerCase();
     return {
       name: 'Generic Editor',
-      prompt: 'Act as a developmental editor evaluating narrative momentum, emotional stakes, and pacing across the manuscript beats.'
+      prompt: `Act as a developmental editor evaluating narrative ${signalLabel} across the manuscript beats.`
     };
   }
 

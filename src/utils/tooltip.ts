@@ -128,9 +128,12 @@ function resolveTooltipTarget(start: EventTarget | null, rtOnly = false): Elemen
 export function tooltip(
     element: HTMLElement | SVGElement,
     text: string,
-    placement: TooltipPlacement = 'bottom'
+    placement: TooltipPlacement = 'bottom',
+    maxWidth?: number
 ): void {
-    const balancedText = balanceTooltipText(text);
+    const balancedText = maxWidth !== undefined
+        ? balanceTooltipText(text, maxWidth)
+        : balanceTooltipText(text);
     if (isSvgLikeElement(element)) {
         // Use data attributes for SVG delegation (handled by setupTooltipsFromDataAttributes)
         addTooltipData(element, balancedText, placement);

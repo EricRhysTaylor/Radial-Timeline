@@ -518,7 +518,8 @@ export async function toggleGossamerMode(plugin: RadialTimelinePlugin): Promise<
     
     // Show info message if no scores exist (graceful, not a warning)
     if (!allRuns.hasAnyScores) {
-      new Notice('No Gossamer scores found. Showing ideal ranges and spokes. Add scores using "Gossamer enter momentum scores" command.');
+      const activeSignalLabel = GOSSAMER_SIGNAL_METADATA[plugin.gossamerSelectedSignal ?? DEFAULT_GOSSAMER_SIGNAL].label.toLowerCase();
+      new Notice(`No Gossamer ${activeSignalLabel} scores found. Showing ideal ranges and spokes. Add scores using the Gossamer score-entry command.`);
     }
     
     setBaseModeAllScenes(plugin);
@@ -946,7 +947,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
     });
 
     // Call unified AI client
-    modal.setStatus('Sending manuscript to AI for momentum analysis...');
+    modal.setStatus(`Sending manuscript to AI for ${signalMeta.label.toLowerCase()} analysis...`);
     modal.apiCallStarted();
 
     const submittedAt = new Date();

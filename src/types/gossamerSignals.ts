@@ -29,6 +29,12 @@ export interface GossamerSignalMetadata {
   tooltip: string;      // Hover text for signal selector button
   /** Scoring instruction block inserted into the shared prompt scaffold. */
   promptBlock: string;
+  /**
+   * Optional inline SVG path data. When present, the view renders this path
+   * instead of calling setIcon(), so we can ship a simpler silhouette than
+   * what lucide bundles. Must be a single `d` string for a 24×24 viewBox.
+   */
+  inlineIconPath?: string;
 }
 
 const MOMENTUM_BLOCK = `Score MOMENTUM (0-100) for each listed beat.
@@ -74,8 +80,8 @@ export const GOSSAMER_SIGNAL_METADATA: Record<GossamerSignalType, GossamerSignal
     id: 'momentum',
     label: 'Momentum',
     short: 'MOMENTUM',
-    icon: 'chart-no-axes-combined',
-    tooltip: 'Momentum — forward drive and pacing',
+    icon: 'trending-up',
+    tooltip: 'Momentum\n\nMeasures how strongly the story moves forward—how much each beat pulls the reader toward what happens next. Focuses on pacing and consequence, not just event count.',
     promptBlock: MOMENTUM_BLOCK
   },
   tension: {
@@ -83,7 +89,9 @@ export const GOSSAMER_SIGNAL_METADATA: Record<GossamerSignalType, GossamerSignal
     label: 'Tension',
     short: 'TENSION',
     icon: 'flame',
-    tooltip: 'Tension — pressure and unresolved strain',
+    // Simplified flame silhouette (teardrop) — avoids lucide flame's inner swirl.
+    inlineIconPath: 'M12 2 C9 6 5 10 5 15 A7 7 0 0 0 19 15 C19 10 15 6 12 2 Z',
+    tooltip: 'Tension\n\nMeasures the pressure the reader feels—how much strain, uncertainty, or unresolved conflict is carried forward. A quiet scene can be highly tense if the stakes are clear.',
     promptBlock: TENSION_BLOCK
   },
   activity: {
@@ -91,7 +99,7 @@ export const GOSSAMER_SIGNAL_METADATA: Record<GossamerSignalType, GossamerSignal
     label: 'Activity',
     short: 'ACTIVITY',
     icon: 'zap',
-    tooltip: 'Activity — external event density',
+    tooltip: 'Activity\n\nMeasures how much is physically or visibly happening on the page—actions, events, and external change. High activity doesn\u2019t imply high tension or emotion.',
     promptBlock: ACTIVITY_BLOCK
   },
   interiority: {
@@ -99,7 +107,7 @@ export const GOSSAMER_SIGNAL_METADATA: Record<GossamerSignalType, GossamerSignal
     label: 'Interiority',
     short: 'INTERIORITY',
     icon: 'brain',
-    tooltip: 'Interiority — emotional and psychological intensity',
+    tooltip: 'Interiority\n\nMeasures the intensity of the character\u2019s inner experience—thoughts, emotions, and psychological conflict. A subtle realization can be more intense than a dramatic outburst.',
     promptBlock: INTERIORITY_BLOCK
   }
 };

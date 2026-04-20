@@ -556,14 +556,14 @@ body.rt-modal-open .radial-timeline-container * {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 38px;
+  height: 38px;
   padding: 0;
   margin: 0;
   border-width: 1px;
   border-style: solid;
   border-color: color-mix(in srgb, var(--interactive-accent) 58%, var(--background-modifier-border));
-  border-radius: 6px;
+  border-radius: 7px;
   background: transparent;
   background-color: transparent;
   background-image: none;
@@ -616,15 +616,25 @@ body.rt-modal-open .radial-timeline-container * {
 .rt-gossamer-runs .rt-gossamer-runs__signal > svg,
 .rt-gossamer-runs .rt-gossamer-runs__signal svg.svg-icon,
 .rt-gossamer-runs .rt-gossamer-runs__signal .svg-icon {
-  width: 20px;
-  height: 20px;
-  min-width: 20px;
-  min-height: 20px;
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  min-height: 22px;
   display: block;
   flex: 0 0 auto;
   stroke: currentColor;
-  stroke-width: 2;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
   fill: none;
+}
+
+/* Flame sits visually denser at the same stroke-width as line icons.
+ * Trim it a hair so it reads at the same weight as chart/zap/brain. */
+.rt-gossamer-runs .rt-gossamer-runs__signal[data-signal="tension"] > svg,
+.rt-gossamer-runs .rt-gossamer-runs__signal[data-signal="tension"] svg.svg-icon,
+.rt-gossamer-runs .rt-gossamer-runs__signal[data-signal="tension"] .svg-icon {
+  stroke-width: 1.5;
 }
 
 .rt-gossamer-runs__empty {

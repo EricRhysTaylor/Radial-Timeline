@@ -45,7 +45,7 @@ export const GOSSAMER_MODE: ModeDefinition = {
     
     ui: {
         acronym: 'GOSS',
-        tooltip: 'Gossamer mode — momentum analysis (requires beat notes)',
+        tooltip: 'Gossamer mode — beat-level signal analysis (requires beat notes)',
         showInToggleButton: true, // Show in mode toggle button
         order: 4
     },
@@ -84,7 +84,9 @@ export const GOSSAMER_MODE: ModeDefinition = {
         
         // Show info message if no scores exist (graceful, not a warning)
         if (!allRuns.hasAnyScores) {
-            new Notice('No Gossamer scores found. Showing ideal ranges and spokes. Add scores using "Gossamer enter momentum scores" command.');
+            const { DEFAULT_GOSSAMER_SIGNAL, GOSSAMER_SIGNAL_METADATA } = await import('../../types/gossamerSignals');
+            const activeSignalLabel = GOSSAMER_SIGNAL_METADATA[plugin.gossamerSelectedSignal ?? DEFAULT_GOSSAMER_SIGNAL].label.toLowerCase();
+            new Notice(`No Gossamer ${activeSignalLabel} scores found. Showing ideal ranges and spokes. Add scores using the Gossamer score-entry command.`);
         }
         
         // Setup mode
