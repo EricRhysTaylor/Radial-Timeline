@@ -509,7 +509,7 @@ body.rt-modal-open .radial-timeline-container * {
   min-height: 32px;
   padding: 6px 14px;
   border-width: 1px;
-  border-style: dashed;
+  border-style: solid;
   border-color: color-mix(in srgb, var(--interactive-accent) 58%, var(--background-modifier-border));
   border-radius: 999px;
   background: transparent;
@@ -521,66 +521,110 @@ body.rt-modal-open .radial-timeline-container * {
   line-height: 20px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
+  font-variant: normal;
+  font-stretch: normal;
+  font-feature-settings: normal;
   cursor: pointer;
   user-select: none;
 }
 
+.rt-gossamer-runs .rt-gossamer-runs__button > span {
+  font: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+}
+
 .rt-gossamer-runs .rt-gossamer-runs__button:hover {
-  border-style: solid;
   border-color: color-mix(in srgb, var(--interactive-accent) 80%, var(--background-modifier-border));
 }
 
-.rt-gossamer-runs .rt-gossamer-runs__button[data-state="latest"],
-.rt-gossamer-runs .rt-gossamer-runs__button[data-state="partial"] {
-  border-style: solid;
-  color: var(--interactive-accent);
+/* Latest-only: same text + border color as 3 RUNS, distinguished by dashed stroke. */
+.rt-gossamer-runs .rt-gossamer-runs__button[data-state="latest"] {
+  border-style: dashed;
+  color: var(--text-normal);
 }
 
 .rt-gossamer-runs__signals {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  margin-left: auto;
+  gap: 12px;
 }
 
+/* Inactive: same border as the pill, muted icon. */
 .rt-gossamer-runs__signal {
-  all: unset;
   box-sizing: border-box;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  margin: 0;
+  border-width: 1px;
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--interactive-accent) 58%, var(--background-modifier-border));
   border-radius: 6px;
-  color: color-mix(in srgb, var(--text-muted) 85%, transparent);
-  opacity: 0.65;
+  background: transparent;
+  background-color: transparent;
+  background-image: none;
+  box-shadow: none;
+  color: color-mix(in srgb, var(--text-muted) 80%, transparent);
+  opacity: 0.7;
   cursor: pointer;
-  transition: background-color 120ms ease, opacity 120ms ease, color 120ms ease;
+  user-select: none;
+  -webkit-appearance: none;
+  appearance: none;
+  transition: background-color 120ms ease, opacity 120ms ease, color 120ms ease, border-color 120ms ease;
 }
 
-.rt-gossamer-runs__signal:hover {
-  background-color: color-mix(in srgb, var(--interactive-accent) 12%, transparent);
+.rt-gossamer-runs__signal:hover,
+.rt-gossamer-runs__signal:focus,
+.rt-gossamer-runs__signal:focus-visible {
+  background-image: none;
+  box-shadow: none;
   opacity: 1;
   color: var(--text-normal);
+  border-color: color-mix(in srgb, var(--interactive-accent) 80%, var(--background-modifier-border));
+  outline: none;
+  transform: none;
 }
 
+.rt-gossamer-runs__signal:active {
+  background-image: none;
+  box-shadow: none;
+  transform: none;
+}
+
+/* Active: borrow the nav-button "on" treatment — bright accent fill, contrast icon. */
 .rt-gossamer-runs__signal.is-active {
-  background-color: color-mix(in srgb, var(--interactive-accent) 22%, transparent);
-  color: var(--interactive-accent);
+  background-color: var(--interactive-accent);
+  background-image: none;
+  box-shadow: none;
+  color: var(--text-on-accent);
+  border-color: var(--text-normal);
   opacity: 1;
 }
 
-.rt-gossamer-runs__signal-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
+.rt-gossamer-runs__signal.is-active:hover,
+.rt-gossamer-runs__signal.is-active:focus,
+.rt-gossamer-runs__signal.is-active:focus-visible {
+  background-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-color: var(--text-normal);
 }
 
-.rt-gossamer-runs__signal-icon .svg-icon {
-  width: 18px;
-  height: 18px;
+.rt-gossamer-runs .rt-gossamer-runs__signal > svg,
+.rt-gossamer-runs .rt-gossamer-runs__signal svg.svg-icon,
+.rt-gossamer-runs .rt-gossamer-runs__signal .svg-icon {
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  min-height: 20px;
+  display: block;
+  flex: 0 0 auto;
+  stroke: currentColor;
+  stroke-width: 2;
+  fill: none;
 }
 
 .rt-gossamer-runs__empty {

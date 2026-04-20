@@ -1013,22 +1013,18 @@ export class RadialTimelineView extends ItemView {
         const controlsRow = document.createElementNS(xhtmlNs, 'div');
         controlsRow.className = 'rt-gossamer-runs__controls';
 
-        // "{n} RUNS" pill — click toggles show-all vs latest-only.
-        const showingAll = !this.plugin.gossamerLatestOnly
-            && (this.plugin.gossamerVisibleRunIds.length === 0 || this.plugin.gossamerVisibleRunIds.length === runs.length);
+        // Pill: two states only — "LATEST" (latest only) or "{n} RUNS" (everything else).
         const button = document.createElementNS(xhtmlNs, 'div') as HTMLDivElement;
         button.className = 'rt-gossamer-runs__button';
         button.setAttribute('role', 'button');
         button.setAttribute('tabindex', '0');
-        button.setAttribute('data-state', showingAll ? 'all' : (this.plugin.gossamerLatestOnly ? 'latest' : 'partial'));
-        button.setAttribute('title', showingAll ? 'Showing all runs — click to show latest only' : 'Click to show all runs');
+        button.setAttribute('data-state', this.plugin.gossamerLatestOnly ? 'latest' : 'all');
+        button.setAttribute('title', this.plugin.gossamerLatestOnly ? 'Click to show all runs' : 'Click to show latest only');
         const buttonLabel = document.createElementNS(xhtmlNs, 'span');
         if (runs.length === 0) {
-            buttonLabel.textContent = `0 RUNS`;
+            buttonLabel.textContent = '0 RUNS';
         } else if (this.plugin.gossamerLatestOnly) {
-            buttonLabel.textContent = `LATEST · 1 / ${runs.length}`;
-        } else if (this.plugin.gossamerVisibleRunIds.length > 0 && this.plugin.gossamerVisibleRunIds.length !== runs.length) {
-            buttonLabel.textContent = `${visibleRuns.length} / ${runs.length} RUNS`;
+            buttonLabel.textContent = 'LATEST';
         } else {
             buttonLabel.textContent = `${runs.length} RUNS`;
         }
@@ -1039,22 +1035,19 @@ export class RadialTimelineView extends ItemView {
         const signalSelector = document.createElementNS(xhtmlNs, 'div') as HTMLDivElement;
         signalSelector.className = 'rt-gossamer-runs__signals';
         signalSelector.setAttribute('role', 'tablist');
-        const signalButtons: Array<{ el: HTMLButtonElement; signal: GossamerSignalType }> = [];
+        const signalButtons: Array<{ el: HTMLDivElement; signal: GossamerSignalType }> = [];
         GOSSAMER_SIGNAL_TYPES.forEach((signalId) => {
             const meta = GOSSAMER_SIGNAL_METADATA[signalId];
-            const btn = document.createElementNS(xhtmlNs, 'button') as HTMLButtonElement;
-            btn.type = 'button';
+            const btn = document.createElementNS(xhtmlNs, 'div') as HTMLDivElement;
             btn.className = 'rt-gossamer-runs__signal';
             btn.setAttribute('role', 'tab');
+            btn.setAttribute('tabindex', '0');
             btn.setAttribute('aria-selected', signalId === activeSignal ? 'true' : 'false');
             btn.setAttribute('data-signal', signalId);
             btn.setAttribute('aria-label', meta.tooltip);
             btn.setAttribute('title', meta.tooltip);
             if (signalId === activeSignal) btn.classList.add('is-active');
-            const iconWrap = document.createElementNS(xhtmlNs, 'span');
-            iconWrap.className = 'rt-gossamer-runs__signal-icon';
-            setIcon(iconWrap as unknown as HTMLElement, meta.icon);
-            btn.appendChild(iconWrap);
+            setIcon(btn as unknown as HTMLElement, meta.icon);
             signalSelector.appendChild(btn);
             signalButtons.push({ el: btn, signal: signalId });
         });
@@ -1092,19 +1085,12 @@ export class RadialTimelineView extends ItemView {
         this.registerDomEvent(panel, 'pointerdown', stopRunsEvent);
         this.registerDomEvent(panel, 'pointerup', stopRunsEvent);
 
-        // Pill click: toggle show-all vs latest-only.
+        // Pill click: binary toggle — latest-only vs show-all.
         const togglePillMode = (event: Event) => {
             event.stopPropagation();
             if (runs.length === 0) return;
-            if (this.plugin.gossamerLatestOnly || (this.plugin.gossamerVisibleRunIds.length > 0 && this.plugin.gossamerVisibleRunIds.length < runs.length)) {
-                // Flip to "show all"
-                this.plugin.gossamerLatestOnly = false;
-                this.plugin.gossamerVisibleRunIds = [];
-            } else {
-                // Flip to "latest only"
-                this.plugin.gossamerLatestOnly = true;
-                this.plugin.gossamerVisibleRunIds = [];
-            }
+            this.plugin.gossamerLatestOnly = !this.plugin.gossamerLatestOnly;
+            this.plugin.gossamerVisibleRunIds = [];
             void this.plugin.saveGossamerRunFilterState();
             schedulePanelRefresh();
         };

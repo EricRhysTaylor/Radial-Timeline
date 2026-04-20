@@ -342,7 +342,7 @@ export function getExcludeKeyPredicate(
                 // System-managed reference id; never flag as extra
                 if (key.toLowerCase() === 'id') return true;
                 // All Gossamer-injected fields: Gossamer1, GossamerStage1,
-                // Gossamer1 Justification, Gossamer Last Updated, etc.
+                // GossamerSignal1, Gossamer1 Justification, Gossamer Last Updated, etc.
                 if (/^Gossamer/i.test(key)) return true;
                 // Legacy base field (removed from template but may exist in older notes)
                 if (key === 'When') return true;
