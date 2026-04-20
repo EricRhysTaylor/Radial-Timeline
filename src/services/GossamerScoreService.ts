@@ -10,7 +10,11 @@ import { archiveGossamerFrontmatterFields } from '../gossamer/logs';
 export class GossamerScoreService {
     constructor(private app: App, private plugin: RadialTimelinePlugin) {}
 
-    async saveScores(scores: Map<string, number>, signal: GossamerSignalType = DEFAULT_GOSSAMER_SIGNAL): Promise<void> {
+    async saveScores(
+        scores: Map<string, number>,
+        signal: GossamerSignalType = DEFAULT_GOSSAMER_SIGNAL,
+        justifications?: Map<string, string>
+    ): Promise<void> {
         const sourcePath = this.plugin.settings.sourcePath || '';
         const allFiles = this.app.vault.getMarkdownFiles();
         const files = sourcePath
@@ -78,6 +82,10 @@ export class GossamerScoreService {
                     const { nextIndex, updated } = appendGossamerScore(fm);
                     Object.assign(fm, updated);
                     fm[`Gossamer${nextIndex}`] = newScore;
+                    const justification = justifications?.get(beatTitle);
+                    if (justification && justification.trim().length > 0) {
+                        fm[`Gossamer${nextIndex} Justification`] = justification.trim();
+                    }
                     applyGossamerRunMetadata(fm, nextIndex, {
                         runId,
                         createdAt,

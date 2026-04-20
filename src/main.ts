@@ -912,8 +912,12 @@ export default class RadialTimelinePlugin extends Plugin {
         this.beatsProcessingService?.hideStatus();
     }
 
-    async saveGossamerScores(scores: Map<string, number>, signal: GossamerSignalType = DEFAULT_GOSSAMER_SIGNAL): Promise<void> {
-        await this.gossamerScoreService.saveScores(scores, signal);
+    async saveGossamerScores(
+        scores: Map<string, number>,
+        signal: GossamerSignalType = DEFAULT_GOSSAMER_SIGNAL,
+        justifications?: Map<string, string>
+    ): Promise<void> {
+        await this.gossamerScoreService.saveScores(scores, signal, justifications);
     }
 
     onunload() {

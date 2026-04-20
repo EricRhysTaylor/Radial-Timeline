@@ -9,7 +9,9 @@ import { validateAiSettings } from '../ai/settings/validateAiSettings';
 import type { TimelineItem } from '../types';
 import { clearGossamerRunSlot, collectGossamerManagedSnapshot, filterBeatsBySystem, normalizeBeatName, normalizeGossamerHistory } from '../utils/gossamer';
 import { DEFAULT_GOSSAMER_SIGNAL, GOSSAMER_SIGNAL_METADATA, type GossamerSignalType } from '../types/gossamerSignals';
-import { parseScoresFromClipboard } from '../GossamerCommands';
+import { parseScoresAndJustifications, type ParsedBeatEntry } from '../GossamerCommands';
+import { getSortedSceneFiles } from '../utils/manuscript';
+import { buildGossamerEvidenceDocument } from '../gossamer/evidence/buildGossamerEvidence';
 import { getPlotSystem } from '../utils/beatsSystems';
 import {
   resolveSelectedBeatModelFromSettings
@@ -33,6 +35,7 @@ interface BeatScoreEntry {
   currentJustification?: string;
   history: ScoreHistoryItem[]; // Older scores with their Gossamer numbers
   newScore?: number; // User-entered score
+  newJustification?: string; // Populated by AI-response paste
   inputEl?: TextComponent;
   scoresToDelete: Set<number>; // Track which Gossamer fields to delete (1, 2, 3, etc.)
   scoreDisplayEl?: HTMLElement; // Reference to the scores display element
@@ -358,11 +361,15 @@ export class GossamerScoreModal extends Modal {
         rangeEl.addClass('rt-gossamer-beat-range');
       }
 
-      // 2. Middle: Latest justification (if any)
+      // 2. Middle: Beat Purpose (primary context) + latest justification (secondary)
       const justificationContainer = firstRow.createDiv('rt-gossamer-justification-container');
+      if (entry.description && entry.description.trim().length > 0) {
+        const purposeEl = justificationContainer.createDiv('rt-gossamer-beat-purpose');
+        purposeEl.setText(entry.description.trim());
+      }
       if (entry.currentJustification) {
         const currentNote = justificationContainer.createDiv('rt-gossamer-current-justification');
-        currentNote.setText(`${entry.currentJustification}`);
+        currentNote.setText(`Latest: ${entry.currentJustification}`);
       }
 
       // 3. Right side: New score input
@@ -466,67 +473,89 @@ export class GossamerScoreModal extends Modal {
     });
 
 
-    // Buttons
-    const buttonContainer = contentEl.createDiv({ cls: 'rt-stack rt-stack-loose' });
-    const topActions = buttonContainer.createDiv({ cls: 'rt-row rt-row-wrap' });
-    const bottomActions = buttonContainer.createDiv({ cls: 'rt-row rt-row-wrap rt-row-end' });
+    // Footer: three groups — Maintenance | AI workflow | Commit cluster
+    const activeSignalLabel = signalMeta.label;
+    const footer = contentEl.createDiv({ cls: 'rt-gossamer-footer' });
 
-    const pasteBtn = new ButtonComponent(topActions)
-      .setButtonText('Paste scores')
-      .onClick(async () => {
-        await this.pasteFromClipboard();
-      });
-
-    const copyBtn = new ButtonComponent(topActions)
-      .setButtonText('Copy template for AI')
-      .setTooltip('Copy beat names in AI-ready format')
-      .onClick(async () => {
-        await this.copyTemplateForAI();
-      });
-
-    const toggleLabel = topActions.createEl('label', { cls: 'rt-gossamer-copy-toggle' });
-    const toggleInput = toggleLabel.createEl('input', { type: 'checkbox' });
-    toggleInput.checked = this.includeBeatDescriptions;
-    toggleInput.addEventListener('change', () => {
-      this.includeBeatDescriptions = toggleInput.checked;
-    });
-    toggleLabel.createSpan({ text: 'Include beat purposes when copying template' });
-
-    const normalizeBtn = new ButtonComponent(bottomActions)
+    // Group 1: Maintenance (bordered container)
+    const maintenanceGroup = footer.createDiv({ cls: 'rt-gossamer-footer__group rt-gossamer-footer__group--maintenance' });
+    maintenanceGroup.createEl('span', { text: 'Maintenance', cls: 'rt-gossamer-footer__group-label' });
+    const maintenanceRow = maintenanceGroup.createDiv({ cls: 'rt-row' });
+    const normalizeBtn = new ButtonComponent(maintenanceRow)
       .setButtonText('Normalize history')
-      .setTooltip('Remove gaps and orphaned notes from Gossamer runs')
       .onClick(async () => {
         await this.normalizeAllScores();
       });
-
-    const saveBtn = new ButtonComponent(bottomActions)
-      .setButtonText('Save scores')
-      .setCta()
-      .onClick(async () => {
-        await this.saveScores();
-      });
-
-    const deleteBtn = new ButtonComponent(bottomActions)
-      .setButtonText('Delete scores')
+    const deleteBtn = new ButtonComponent(maintenanceRow)
+      .setButtonText(`Delete ${activeSignalLabel} scores`)
       .setWarning()
       .onClick(async () => {
         await this.deleteAllScores();
       });
 
-    const cancelBtn = new ButtonComponent(bottomActions)
+    // Group 2: AI workflow (bordered container — primary path)
+    const aiGroup = footer.createDiv({ cls: 'rt-gossamer-footer__group rt-gossamer-footer__group--ai' });
+    aiGroup.createEl('span', { text: 'AI workflow', cls: 'rt-gossamer-footer__group-label' });
+    const aiRow = aiGroup.createDiv({ cls: 'rt-row' });
+    const copyBtn = new ButtonComponent(aiRow)
+      .setButtonText('Copy AI prompt')
+      .setCta()
+      .onClick(async () => {
+        await this.copyFullAIPrompt(null);
+      });
+    const aiMeta = aiGroup.createDiv({ cls: 'rt-gossamer-footer__meta' });
+    aiMeta.setText(`Includes full manuscript · ${this.entries.length} beats · ${activeSignalLabel} rubric`);
+
+    // Group 3: Commit cluster (no border — standard dialog actions)
+    const commitGroup = footer.createDiv({ cls: 'rt-gossamer-footer__commit' });
+    const cancelBtn = new ButtonComponent(commitGroup)
       .setButtonText('Cancel')
-      .onClick(() => {
-        this.close();
+      .onClick(() => this.close());
+    const saveBtn = new ButtonComponent(commitGroup)
+      .setButtonText('Save scores')
+      .onClick(async () => {
+        await this.saveScores();
+      });
+    const pasteBtn = new ButtonComponent(commitGroup)
+      .setButtonText('Paste AI response')
+      .setCta()
+      .onClick(async () => {
+        const result = await this.pasteFromClipboard();
+        this.flashPasteResult(pasteBtn.buttonEl, result);
+        if (result.ok) {
+          // Paste IS the commit in this flow — save immediately so user isn't
+          // stuck wondering which button to press next.
+          await this.saveScores();
+        }
       });
 
-    // Tooltips with centered bubble arrow (bottom placement)
-    tooltipForComponent(pasteBtn, 'Paste scores from clipboard', 'bottom');
-    tooltipForComponent(copyBtn, 'Copy beat names for AI prompts', 'bottom');
-    tooltip(toggleLabel, 'Include beat purposes when copying template', 'bottom');
-    tooltipForComponent(normalizeBtn, 'Cleanup score history gaps', 'bottom');
-    tooltipForComponent(saveBtn, 'Save new scores and deletions', 'bottom');
-    tooltipForComponent(deleteBtn, 'Delete all scores for these beats', 'bottom');
-    tooltipForComponent(cancelBtn, 'Close without saving', 'bottom');
+    // Tooltips
+    tooltipForComponent(normalizeBtn, 'Compact numbering gaps and drop orphan justifications', 'top');
+    tooltipForComponent(deleteBtn, `Delete every ${activeSignalLabel} slot across all beats. Other signals untouched.`, 'top');
+    tooltipForComponent(copyBtn, 'Assemble prompt (role · rubric · beats · manuscript) and copy to clipboard', 'top');
+    tooltipForComponent(cancelBtn, 'Close without saving', 'top');
+    tooltipForComponent(saveBtn, 'Save manually entered scores', 'top');
+    tooltipForComponent(pasteBtn, 'Parse clipboard response and save in one step', 'top');
+  }
+
+  /** Flash the paste button green on valid response, red on invalid. */
+  private flashPasteResult(btnEl: HTMLElement, result: { ok: boolean; matchCount: number; expected: number; reason?: string }): void {
+    btnEl.classList.remove('rt-gossamer-paste-success', 'rt-gossamer-paste-error');
+    void btnEl.offsetWidth; // reset animation
+    if (result.ok) {
+      btnEl.classList.add('rt-gossamer-paste-success');
+      if (result.matchCount < result.expected) {
+        new Notice(`✓ Pasted ${result.matchCount} of ${result.expected} beats. Check for any misnamed rows.`);
+      } else {
+        new Notice(`✓ Pasted ${result.matchCount} scores + justifications.`);
+      }
+    } else {
+      btnEl.classList.add('rt-gossamer-paste-error');
+      new Notice(`⚠️ ${result.reason ?? 'Clipboard format not recognized.'} Expected: "Beat Name | 42 | justification"`);
+    }
+    window.setTimeout(() => {
+      btnEl.classList.remove('rt-gossamer-paste-success', 'rt-gossamer-paste-error');
+    }, 1500);
   }
 
   private buildEntries(): void {
@@ -612,195 +641,224 @@ export class GossamerScoreModal extends Modal {
     }
   }
 
-  private async copyTemplateForAI(): Promise<void> {
+  /**
+   * Assemble the full AI prompt: role + signal rubric + beat list (with
+   * Purpose / Range) + full manuscript + output format. One clipboard blob
+   * that a user can paste into any external LLM; the response can be pasted
+   * back via the Paste AI response button.
+   */
+  private async copyFullAIPrompt(meta: { sceneCount: number; wordCount: number } | null): Promise<void> {
     try {
-      // Get beat system name for context
       const settingsSystem = resolveSelectedBeatModelFromSettings(this.plugin.settings);
       if (!settingsSystem) {
         new Notice('No active beat system selected for this book.');
         return;
       }
-
-      const { name: contextTemplateName, prompt: contextPrompt } = this.getActiveAiContextInfo();
-
-      // Build template with beat names and ideal ranges (signal-aware)
-      const activeSignal: GossamerSignalType = this.plugin.gossamerSelectedSignal ?? DEFAULT_GOSSAMER_SIGNAL;
-      const signalMeta = GOSSAMER_SIGNAL_METADATA[activeSignal];
-      const lines: string[] = [];
-      lines.push(`# Beat ${signalMeta.label} Scores (0-100) — ${settingsSystem}`);
-      lines.push('');
-      if (contextPrompt) {
-        lines.push('## Role & Manuscript Context');
-        if (contextTemplateName) {
-          lines.push(`Template: ${contextTemplateName}`);
-        }
-        lines.push(contextPrompt.trim());
-        lines.push(`Consult the complete manuscript and knowledge base for this project before assigning ${signalMeta.label.toLowerCase()} scores.`);
-        lines.push('');
-      }
       if (this.entries.length === 0) {
-        new Notice('No beats available to copy. Add Beat notes with the selected Beat Model first.');
+        new Notice('No beats available. Add Beat notes with the selected Beat Model first.');
         return;
       }
 
-      lines.push('## Story Beats Template Guidance');
-      lines.push(this.includeBeatDescriptions
-        ? 'Purposes are pulled directly from each beat note\'s Purpose field (legacy Description supported).'
-        : 'Update each beat note\'s Range and Purpose fields to customize this list. Toggle above to include purposes.');
+      const { name: contextTemplateName, prompt: contextPrompt } = this.getActiveAiContextInfo();
+      const activeSignal: GossamerSignalType = this.plugin.gossamerSelectedSignal ?? DEFAULT_GOSSAMER_SIGNAL;
+      const signalMeta = GOSSAMER_SIGNAL_METADATA[activeSignal];
+
+      // Gather manuscript evidence (same as automated flow)
+      const { files: sceneFiles } = await getSortedSceneFiles(this.plugin);
+      if (sceneFiles.length === 0) {
+        new Notice('No scenes found in source path. Configure your book source folder first.');
+        return;
+      }
+      const evidenceDocument = await buildGossamerEvidenceDocument({
+        sceneFiles,
+        vault: this.plugin.app.vault,
+        metadataCache: this.plugin.app.metadataCache,
+        frontmatterMappings: this.plugin.settings.frontmatterMappings
+      });
+      if (!evidenceDocument.text || evidenceDocument.text.trim().length === 0) {
+        new Notice('Manuscript is empty. Cannot build AI prompt.');
+        return;
+      }
+
+      const lines: string[] = [];
+      lines.push(`# Gossamer ${signalMeta.label} Analysis — ${settingsSystem}`);
       lines.push('');
 
+      // Role / context
+      if (contextPrompt) {
+        lines.push('## Role');
+        if (contextTemplateName) lines.push(`Template: ${contextTemplateName}`);
+        lines.push(contextPrompt.trim());
+        lines.push('');
+      }
+
+      // Signal-specific scoring rubric
+      lines.push(`## ${signalMeta.label} Scoring Rubric`);
+      lines.push(signalMeta.promptBlock);
+      lines.push('');
+
+      // Beat list with Purpose (always) and Range
+      lines.push(`## Story Beats (${settingsSystem})`);
+      lines.push('Score each beat in the order listed below. Use the beat numbers to keep your response aligned with the original order.');
+      lines.push('');
       const missingRangeBeats: string[] = [];
       const missingPurposeBeats: string[] = [];
-
       this.entries.forEach((entry, index) => {
-        const metadataParts: string[] = [];
-        if (entry.range && entry.range.trim().length > 0) {
-          metadataParts.push(activeSignal === 'momentum'
-            ? `Ideal momentum: ${entry.range}`
-            : `Ideal range: ${entry.range}`);
+        const rangeSuffix = entry.range && entry.range.trim().length > 0
+          ? (activeSignal === 'momentum' ? ` (ideal momentum: ${entry.range})` : ` (ideal range: ${entry.range})`)
+          : '';
+        if (!entry.range || entry.range.trim().length === 0) missingRangeBeats.push(entry.beatTitle);
+        lines.push(`${index + 1}. ${entry.beatTitle}${rangeSuffix}`);
+        if (entry.description && entry.description.trim().length > 0) {
+          lines.push(`   Purpose: ${entry.description.trim()}`);
         } else {
-          missingRangeBeats.push(entry.beatTitle);
-        }
-        const metadata = metadataParts.length > 0 ? ` (${metadataParts.join(' • ')})` : '';
-        lines.push(`${index + 1}. ${entry.beatTitle}${metadata}`);
-        if (this.includeBeatDescriptions) {
-          if (entry.description && entry.description.trim().length > 0) {
-            lines.push(`   ${entry.description.trim()}`);
-          } else {
-            missingPurposeBeats.push(entry.beatTitle);
-          }
+          missingPurposeBeats.push(entry.beatTitle);
         }
         lines.push('');
       });
-      lines.push(`## ${signalMeta.label} Scoring Rubric:`);
-      signalMeta.promptBlock.split('\n').forEach(line => lines.push(line));
+
+      // Output format — pipe-delimited with justification
+      lines.push('## Response Format');
+      lines.push(`Return **only** the block below, one line per beat in the original order. Use pipe (\`|\`) delimiters with no extra commentary before or after:`);
       lines.push('');
-      lines.push('## Output Instructions:');
-      lines.push(`- Respond with the block titled "## Completed ${signalMeta.label} Scores" exactly as shown below.`);
-      lines.push('- Replace the blank after each colon with a single integer from 0-100 (no percentage signs or trailing commentary).');
-      lines.push('- Keep the beat order identical so the response can be copied directly into the Obsidian modal.');
+      lines.push('```');
+      lines.push('Beat Name | score (0-100) | one short sentence justification');
+      lines.push('```');
+      lines.push('');
+      lines.push('Example:');
+      lines.push('```');
+      lines.push(`${this.entries[0]?.beatTitle ?? 'Opening Image'} | 35 | Establishes the protagonist's status quo with quiet unease.`);
+      lines.push('```');
+      lines.push('');
       if (activeSignal === 'momentum') {
-        lines.push('- Favor the ideal range when it fits the manuscript context, but you may go outside the range if justified by the story.');
-      }
-      lines.push('');
-      lines.push(`## Completed ${signalMeta.label} Scores`);
-      lines.push('');
-
-      for (const entry of this.entries) {
-        // Include ideal range if available
-        if (entry.range) {
-          lines.push(`${entry.beatTitle} (ideal: ${entry.range}): `);
-        } else {
-          lines.push(`${entry.beatTitle}: `);
-        }
+        lines.push('Favor the ideal momentum range when it fits the manuscript, but you may exit the range if the story justifies it.');
+        lines.push('');
       }
 
+      // Full manuscript
+      lines.push('## Manuscript');
       lines.push('');
-      lines.push(`# Note: After filling in the numbers, return ONLY the "Completed ${signalMeta.label} Scores" block so it can be pasted back into Obsidian.`);
+      lines.push(evidenceDocument.text);
 
-      const template = lines.join('\n');
-      await navigator.clipboard.writeText(template);
+      const prompt = lines.join('\n');
+      await navigator.clipboard.writeText(prompt);
 
-      new Notice('✓ Template copied! Paste into your AI and have it fill in the scores.');
+      const sceneLabel = meta?.sceneCount ?? evidenceDocument.totalScenes;
+      const wordLabel = (meta?.wordCount ?? evidenceDocument.totalWords).toLocaleString();
+      new Notice(`✓ AI prompt copied. Includes ${sceneLabel} scenes · ${wordLabel} words · ${this.entries.length} beats. Paste into your LLM, then use "Paste AI response".`);
 
       if (missingRangeBeats.length > 0) {
         this.showMetadataWarning('Range', missingRangeBeats);
       }
-      if (this.includeBeatDescriptions && missingPurposeBeats.length > 0) {
+      if (missingPurposeBeats.length > 0) {
         this.showMetadataWarning('Purpose', missingPurposeBeats);
       }
     } catch (error) {
-      console.error('[Gossamer] Failed to copy template:', error);
-      new Notice('Failed to copy template to clipboard.');
+      console.error('[Gossamer] Failed to copy AI prompt:', error);
+      new Notice('Failed to copy AI prompt to clipboard.');
     }
   }
 
-  private async pasteFromClipboard(): Promise<void> {
+  /**
+   * Read clipboard, parse as AI response (pipe-delimited preferred, with
+   * fallback to legacy score-only formats), and populate the modal entries.
+   * Returns a result object the caller can use to flash the paste button.
+   */
+  private async pasteFromClipboard(): Promise<{ ok: boolean; matchCount: number; expected: number; reason?: string }> {
+    let clipboard = '';
     try {
-      const clipboard = await navigator.clipboard.readText();
-      const parsedScores = parseScoresFromClipboard(clipboard);
-
-      if (parsedScores.size === 0) {
-        new Notice('No scores found in clipboard. Expected format: "1: 15, 2: 25" or "Beat Name: 42"');
-        return;
-      }
-
-      // Check if this is positional format (keys start with __position_)
-      const isPositionalFormat = Array.from(parsedScores.keys())[0]?.startsWith('__position_');
-
-      let matchCount = 0;
-
-      if (isPositionalFormat) {
-        // Positional format: map by index
-        for (let i = 0; i < this.entries.length; i++) {
-          const entry = this.entries[i];
-          const position = i + 1; // 1-based position
-          const score = parsedScores.get(`__position_${position}`);
-
-          if (score !== undefined && entry.inputEl) {
-            entry.inputEl.setValue(score.toString());
-            entry.newScore = score;
-            entry.inputEl.inputEl.removeClass('rt-input-error');
-            matchCount++;
-          }
-        }
-
-        // Validate we got all expected scores
-        const expectedCount = this.entries.length;
-        if (matchCount < expectedCount) {
-          new Notice(`⚠️ Warning: Pasted ${matchCount} scores but expected ${expectedCount}. Some beats may be missing scores.`);
-        } else {
-          new Notice(`✓ Populated all ${matchCount} scores from clipboard.`);
-        }
-      } else {
-        // Named format: match by beat name (case-insensitive)
-        for (const entry of this.entries) {
-          const normalized = normalizeBeatName(entry.beatName);
-
-          // Try exact match first
-          let score = parsedScores.get(normalized);
-
-          // If no exact match, try case-insensitive search
-          if (score === undefined) {
-            const normalizedLower = normalized.toLowerCase();
-            for (const [key, value] of parsedScores.entries()) {
-              if (key.toLowerCase() === normalizedLower) {
-                score = value;
-                break;
-              }
-            }
-          }
-
-          if (score !== undefined && entry.inputEl) {
-            entry.inputEl.setValue(score.toString());
-            entry.newScore = score;
-            entry.inputEl.inputEl.removeClass('rt-input-error');
-            matchCount++;
-          }
-        }
-
-        new Notice(`Populated ${matchCount} scores from clipboard.`);
-      }
-    } catch (error) {
-      console.error('[Gossamer] Failed to paste from clipboard:', error);
-      new Notice('Failed to read clipboard.');
+      clipboard = await navigator.clipboard.readText();
+    } catch {
+      return { ok: false, matchCount: 0, expected: this.entries.length, reason: 'Could not read clipboard.' };
     }
+    if (!clipboard || clipboard.trim().length === 0) {
+      return { ok: false, matchCount: 0, expected: this.entries.length, reason: 'Clipboard is empty.' };
+    }
+
+    const parsed = parseScoresAndJustifications(clipboard);
+    if (parsed.size === 0) {
+      return {
+        ok: false,
+        matchCount: 0,
+        expected: this.entries.length,
+        reason: 'No scores detected. Expected "Beat Name | 42 | justification" per line.'
+      };
+    }
+
+    const isPositional = Array.from(parsed.keys())[0]?.startsWith('__position_');
+    let matchCount = 0;
+
+    if (isPositional) {
+      for (let i = 0; i < this.entries.length; i++) {
+        const entry = this.entries[i];
+        const hit = parsed.get(`__position_${i + 1}`);
+        if (hit && entry.inputEl) {
+          entry.inputEl.setValue(hit.score.toString());
+          entry.newScore = hit.score;
+          entry.newJustification = hit.justification;
+          entry.inputEl.inputEl.removeClass('rt-input-error');
+          matchCount++;
+        }
+      }
+    } else {
+      for (const entry of this.entries) {
+        const hit = this.lookupEntryFromParsed(parsed, entry);
+        if (hit && entry.inputEl) {
+          entry.inputEl.setValue(hit.score.toString());
+          entry.newScore = hit.score;
+          entry.newJustification = hit.justification;
+          entry.inputEl.inputEl.removeClass('rt-input-error');
+          matchCount++;
+        }
+      }
+    }
+
+    return { ok: matchCount > 0, matchCount, expected: this.entries.length };
+  }
+
+  /** Try multiple name variants to locate a parsed entry for a given beat. */
+  private lookupEntryFromParsed(parsed: Map<string, ParsedBeatEntry>, entry: BeatScoreEntry): ParsedBeatEntry | undefined {
+    const attempts = new Set<string>();
+    attempts.add(entry.beatTitle);
+    attempts.add(entry.beatTitle.replace(/^\d+(?:\.\d+)?\.?\s*/, '').trim());
+    attempts.add(normalizeBeatName(entry.beatTitle));
+    attempts.add(normalizeBeatName(entry.beatName));
+    attempts.add(entry.beatName);
+
+    for (const key of attempts) {
+      if (!key) continue;
+      const hit = parsed.get(key);
+      if (hit) return hit;
+    }
+
+    // Case-insensitive scan as last resort.
+    const lowerKeys = new Map<string, ParsedBeatEntry>();
+    for (const [k, v] of parsed.entries()) lowerKeys.set(k.toLowerCase(), v);
+    for (const key of attempts) {
+      if (!key) continue;
+      const hit = lowerKeys.get(key.toLowerCase());
+      if (hit) return hit;
+    }
+    return undefined;
   }
 
   private async saveScores(): Promise<void> {
     const scores = new Map<string, number>();
+    const justifications = new Map<string, string>();
     const deletions = new Map<string, Set<number>>(); // beatTitle -> Set of Gossamer numbers to delete
     const errors: string[] = [];
 
-    // Collect scores and deletions
+    // Collect scores, justifications, deletions
     for (const entry of this.entries) {
       if (entry.newScore !== undefined) {
         scores.set(entry.beatTitle, entry.newScore);
+        if (entry.newJustification && entry.newJustification.trim().length > 0) {
+          justifications.set(entry.beatTitle, entry.newJustification.trim());
+        }
       } else if (entry.inputEl && entry.inputEl.getValue().trim().length > 0) {
         errors.push(`Invalid score for "${entry.beatTitle}"`);
       }
 
-      // Track deletions
       if (entry.scoresToDelete.size > 0) {
         deletions.set(entry.beatTitle, entry.scoresToDelete);
       }
@@ -816,12 +874,10 @@ export class GossamerScoreModal extends Modal {
       return;
     }
 
-    // Save scores and handle deletions
     try {
-      // Only save new scores if there are any
       if (scores.size > 0) {
         const signalForSave = this.plugin.gossamerSelectedSignal ?? DEFAULT_GOSSAMER_SIGNAL;
-        await this.plugin.saveGossamerScores(scores, signalForSave);
+        await this.plugin.saveGossamerScores(scores, signalForSave, justifications);
       }
 
       // Process deletions if there are any
@@ -910,64 +966,74 @@ export class GossamerScoreModal extends Modal {
   }
 
   private async deleteAllScores(): Promise<void> {
-    // First check if there are any scores to delete
+    const activeSignal: GossamerSignalType = this.plugin.gossamerSelectedSignal ?? DEFAULT_GOSSAMER_SIGNAL;
+    const activeSignalLabel = GOSSAMER_SIGNAL_METADATA[activeSignal].label;
+
     const sourcePath = this.plugin.settings.sourcePath || '';
     const allFiles = this.plugin.app.vault.getMarkdownFiles();
     const files = sourcePath
       ? allFiles.filter(f => isPathInFolderScope(f.path, sourcePath))
       : allFiles;
 
+    // Signal-aware score detection: only count slots whose GossamerSignal${i}
+    // matches the active signal (missing signal field = momentum by legacy rule).
+    const slotMatchesActiveSignal = (fm: Record<string, any>, index: number): boolean => {
+      const raw = fm[`GossamerSignal${index}`];
+      if (typeof raw === 'string' && raw.trim().length > 0) {
+        return raw.trim().toLowerCase() === activeSignal;
+      }
+      return activeSignal === 'momentum';
+    };
+
+    const fileHasActiveSignalScore = (fm: Record<string, any>): number[] => {
+      const hits: number[] = [];
+      for (let i = 1; i <= 30; i++) {
+        if (fm[`Gossamer${i}`] === undefined) continue;
+        if (slotMatchesActiveSignal(fm, i)) hits.push(i);
+      }
+      return hits;
+    };
+
     let hasAnyScores = false;
     for (const file of files) {
-      const cache = this.plugin.app.metadataCache.getFileCache(file);
-      const fm = cache?.frontmatter;
-
+      const fm = this.plugin.app.metadataCache.getFileCache(file)?.frontmatter;
       if (fm && (fm.Class === 'Beat' || fm.class === 'Beat')) {
-        // Check if this file has any Gossamer scores
-        for (let i = 1; i <= 30; i++) {
-          if (fm[`Gossamer${i}`] !== undefined) {
-            hasAnyScores = true;
-            break;
-          }
+        if (fileHasActiveSignalScore(fm as any).length > 0) {
+          hasAnyScores = true;
+          break;
         }
-        if (hasAnyScores) break;
       }
     }
 
-    // If no scores found, show alert and return
     if (!hasAnyScores) {
-      new Notice('No Gossamer scores found to delete.');
+      new Notice(`No Gossamer ${activeSignalLabel.toLowerCase()} scores found to delete.`);
       return;
     }
 
-    // Show confirmation dialog with improved styling
     const confirmed = await new Promise<boolean>((resolve) => {
       const modal = new Modal(this.app);
       const { modalEl, contentEl } = modal;
       modal.titleEl.setText('');
       contentEl.empty();
-      
+
       modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell');
       contentEl.addClass('ert-modal-container', 'ert-stack', 'rt-gossamer-score-modal');
 
       const hero = contentEl.createDiv({ cls: 'ert-modal-header' });
       hero.createSpan({ text: 'Warning', cls: 'ert-modal-badge' });
-      hero.createDiv({ text: 'Delete all Gossamer scores', cls: 'ert-modal-title' });
-      hero.createDiv({ cls: 'ert-modal-subtitle', text: 'RT will archive removed Gossamer fields to the Gossamer log before cleanup.' });
+      hero.createDiv({ text: `Delete all ${activeSignalLabel} scores`, cls: 'ert-modal-title' });
+      hero.createDiv({ cls: 'ert-modal-subtitle', text: `RT will archive removed ${activeSignalLabel} slots to the Gossamer log before cleanup. Other signal histories are untouched.` });
 
       const card = contentEl.createDiv({ cls: 'rt-glass-card' });
-
-      // Warning message with proper styling
-      const warningEl = card.createDiv({
-        text: 'This will remove ALL Gossamer scores (Gossamer1-30) and their justifications from ALL Beat notes, then archive the removed fields to the Gossamer log.',
+      card.createDiv({
+        text: `This will remove every Gossamer slot whose signal is ${activeSignalLabel} across ALL Beat notes in the active book, including their justifications. Slots belonging to other signals are kept.`,
         cls: 'rt-gossamer-confirm-warning'
       });
 
-      // Button container with proper styling
       const buttonContainer = contentEl.createDiv({ cls: 'rt-row rt-row-end' });
 
       new ButtonComponent(buttonContainer)
-        .setButtonText('Delete all scores')
+        .setButtonText(`Delete ${activeSignalLabel} scores`)
         .setWarning()
         .onClick(async () => {
           modal.close();
@@ -991,47 +1057,39 @@ export class GossamerScoreModal extends Modal {
       const filesToSnapshot = files.filter((file) => {
         const fm = this.plugin.app.metadataCache.getFileCache(file)?.frontmatter;
         if (!(fm && (fm.Class === 'Beat' || fm.class === 'Beat'))) return false;
-        for (let i = 1; i <= 30; i++) {
-          if (fm[`Gossamer${i}`] !== undefined) return true;
-        }
-        return false;
+        return fileHasActiveSignalScore(fm as any).length > 0;
       });
-      const snapshotPath = await this.snapshotGossamerFields(filesToSnapshot, 'gossamer-delete-all', {
-        beatCount: filesToSnapshot.length
+      const snapshotPath = await this.snapshotGossamerFields(filesToSnapshot, `gossamer-delete-${activeSignal}`, {
+        beatCount: filesToSnapshot.length,
+        signal: activeSignal
       });
 
       for (const file of files) {
-        const cache = this.plugin.app.metadataCache.getFileCache(file);
-        const fm = cache?.frontmatter;
+        const fmRead = this.plugin.app.metadataCache.getFileCache(file)?.frontmatter;
+        if (!(fmRead && (fmRead.Class === 'Beat' || fmRead.class === 'Beat'))) continue;
+        const slotsToClear = fileHasActiveSignalScore(fmRead as any);
+        if (slotsToClear.length === 0) continue;
 
-        if (fm && (fm.Class === 'Beat' || fm.class === 'Beat')) {
-          // Check if this file has any Gossamer scores
-          let hasGossamerScores = false;
+        await this.plugin.app.fileManager.processFrontMatter(file, (yaml) => {
+          const frontmatter = yaml as Record<string, any>;
+          // Re-check inside the write to avoid races on stale cache.
           for (let i = 1; i <= 30; i++) {
-            if (fm[`Gossamer${i}`] !== undefined) {
-              hasGossamerScores = true;
-              break;
+            if (frontmatter[`Gossamer${i}`] === undefined) continue;
+            if (slotMatchesActiveSignal(frontmatter, i)) {
+              clearGossamerRunSlot(frontmatter, i);
             }
           }
-
-          if (hasGossamerScores) {
-            await this.plugin.app.fileManager.processFrontMatter(file, (yaml) => {
-              const frontmatter = yaml as Record<string, any>;
-
-              // Delete all Gossamer fields (Gossamer1-30) and their justifications
-              for (let i = 1; i <= 30; i++) {
-                clearGossamerRunSlot(frontmatter, i);
-              }
-
-              // Also delete the Last Updated field
-              delete frontmatter['Gossamer Last Updated'];
-            });
-            deletedCount++;
+          // Only drop the Last Updated field if no signal slots remain at all.
+          let anyRemaining = false;
+          for (let i = 1; i <= 30; i++) {
+            if (frontmatter[`Gossamer${i}`] !== undefined) { anyRemaining = true; break; }
           }
-        }
+          if (!anyRemaining) delete frontmatter['Gossamer Last Updated'];
+        });
+        deletedCount++;
       }
 
-      const parts = [`Deleted all Gossamer scores and justifications from ${deletedCount} Beat note(s).`];
+      const parts = [`Deleted ${activeSignalLabel} scores from ${deletedCount} Beat note(s). Other signal histories untouched.`];
       if (snapshotPath) parts.push(`Archived removed fields: ${snapshotPath}`);
       new Notice(parts.join(' '));
       this.close(); // Close the modal since all scores are cleared

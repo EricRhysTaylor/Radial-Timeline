@@ -336,7 +336,7 @@ async function saveGossamerScores(
  */
 export function parseScoresFromClipboard(clipboardText: string): Map<string, number> {
   const scores = new Map<string, number>();
-  
+
   // Try Format 1 first: Simple numeric format "1: 15, 2: 25, 3: 30"
   const simpleFormatRegex = /(\d+)\s*:\s*(\d+)/g;
   const simpleMatches = Array.from(clipboardText.matchAll(simpleFormatRegex));
@@ -411,6 +411,71 @@ export function parseScoresFromClipboard(clipboardText: string): Map<string, num
   }
   
   return scores;
+}
+
+export interface ParsedBeatEntry {
+  score: number;
+  justification?: string;
+}
+
+/**
+ * Parse LLM response that may include justifications.
+ *
+ * Preferred format (emitted by the new Copy-AI-Prompt flow):
+ *   `Beat Name | 42 | one short sentence justification`
+ *
+ * If the pipe format isn't detected, falls back to the legacy score-only parser
+ * (positional "1: 15, 2: 25" or named "Beat Name: 42") and returns entries
+ * without justifications.
+ *
+ * Returns a Map keyed by beat-name variants (case-insensitive match downstream)
+ * or `__position_${n}` for positional rows.
+ */
+export function parseScoresAndJustifications(clipboardText: string): Map<string, ParsedBeatEntry> {
+  const results = new Map<string, ParsedBeatEntry>();
+
+  // Skip markdown-table separator rows like "|---|---|---|"
+  const cleaned = clipboardText
+    .split(/\r?\n/)
+    .filter((line) => !/^\s*\|?\s*:?-{2,}/.test(line))
+    .join('\n');
+
+  // Pipe-delimited: "Beat Name | 42 | justification"
+  // Tolerates leading/trailing pipes (markdown tables) and missing justification.
+  const pipeRegex = /^\s*\|?\s*([^|\n]+?)\s*\|\s*(\d{1,3})\s*(?:\|\s*([^|\n]+?)\s*)?\|?\s*$/gm;
+  let match;
+  let hits = 0;
+  while ((match = pipeRegex.exec(cleaned)) !== null) {
+    const beatName = match[1].trim();
+    const scoreNum = parseInt(match[2], 10);
+    const justificationRaw = match[3]?.trim();
+    if (isNaN(scoreNum) || scoreNum < 0 || scoreNum > 100) continue;
+    // Skip header-like rows
+    if (/^(beat|beat name|score|justification)$/i.test(beatName)) continue;
+    if (!beatName || beatName.length > 120) continue;
+
+    const entry: ParsedBeatEntry = { score: scoreNum };
+    if (justificationRaw && justificationRaw.length > 0) entry.justification = justificationRaw;
+
+    // Register under the raw name + normalized variants for fuzzy match downstream.
+    results.set(beatName, entry);
+    results.set(normalizeBeatName(beatName), entry);
+    const withoutNumber = beatName.replace(/^\d+(?:\.\d+)?\.?\s*/, '').trim();
+    if (withoutNumber && withoutNumber !== beatName) {
+      results.set(withoutNumber, entry);
+      results.set(normalizeBeatName(withoutNumber), entry);
+    }
+    hits++;
+  }
+
+  if (hits > 0) return results;
+
+  // Fallback to legacy score-only parser.
+  const legacy = parseScoresFromClipboard(clipboardText);
+  for (const [key, score] of legacy) {
+    results.set(key, { score });
+  }
+  return results;
 }
 
 const lastRunByPlugin = new WeakMap<RadialTimelinePlugin, GossamerRun>();

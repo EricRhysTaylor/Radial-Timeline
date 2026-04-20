@@ -1927,17 +1927,99 @@
 
 .rt-gossamer-justification-container {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
   padding: 0 16px;
   border-left: 1px solid rgba(255, 255, 255, 0.1);
   border-right: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.rt-gossamer-current-justification {
+.rt-gossamer-beat-purpose {
   font-size: 13px;
-  color: var(--text-muted);
+  color: var(--text-normal);
   line-height: 1.4;
   font-style: italic;
+  opacity: 0.85;
+}
+
+.rt-gossamer-current-justification {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.35;
+  font-style: italic;
+  opacity: 0.7;
+}
+
+/* Footer layout: three groups (maintenance | AI workflow | commit cluster). */
+.rt-gossamer-footer {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
+}
+
+.rt-gossamer-footer__group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px dashed color-mix(in srgb, var(--background-modifier-border) 80%, transparent);
+  border-radius: 8px;
+  background-color: color-mix(in srgb, var(--background-secondary) 40%, transparent);
+}
+
+.rt-gossamer-footer__group--ai {
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--interactive-accent) 45%, var(--background-modifier-border));
+}
+
+.rt-gossamer-footer__group-label {
+  font-size: 10px;
+  line-height: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-family: var(--font-monospace);
+  color: var(--text-faint);
+}
+
+.rt-gossamer-footer__meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--font-monospace);
+  opacity: 0.8;
+}
+
+.rt-gossamer-footer__commit {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-left: auto;
+  padding-top: 18px; /* align visually with buttons inside bordered groups */
+}
+
+/* Reactive paste feedback — 1.5s flash then reset. */
+@keyframes rt-gossamer-paste-flash-success {
+  0%   { background-color: var(--interactive-accent); box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-green, #6FB971) 70%, transparent); }
+  40%  { background-color: var(--color-green, #6FB971); box-shadow: 0 0 0 6px color-mix(in srgb, var(--color-green, #6FB971) 30%, transparent); }
+  100% { background-color: var(--interactive-accent); box-shadow: 0 0 0 0 transparent; }
+}
+
+@keyframes rt-gossamer-paste-flash-error {
+  0%   { background-color: var(--interactive-accent); box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-red, #E55353) 70%, transparent); }
+  40%  { background-color: var(--color-red, #E55353); box-shadow: 0 0 0 6px color-mix(in srgb, var(--color-red, #E55353) 30%, transparent); }
+  100% { background-color: var(--interactive-accent); box-shadow: 0 0 0 0 transparent; }
+}
+
+.rt-gossamer-paste-success {
+  animation: rt-gossamer-paste-flash-success 1.5s ease-out;
+}
+
+.rt-gossamer-paste-error {
+  animation: rt-gossamer-paste-flash-error 1.5s ease-out;
 }
 
 .rt-gossamer-score-history {
