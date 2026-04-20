@@ -1,7 +1,18 @@
 /*
  * Unified Beat Analysis Prompt Builder
- * Combines Gossamer momentum scoring and beat placement optimization into a single AI submission
+ *
+ * Produces a Gossamer scoring prompt for one of four narrative signals:
+ * momentum, tension, activity, interiority. A shared scaffold wraps a
+ * signal-specific scoring block so every run sends the same envelope
+ * but the AI scores distinct narrative properties.
  */
+
+import {
+  DEFAULT_GOSSAMER_SIGNAL,
+  GOSSAMER_SIGNAL_METADATA,
+  GOSSAMER_SIGNAL_TYPES,
+  type GossamerSignalType
+} from '../../types/gossamerSignals';
 
 export interface UnifiedBeatInfo {
   beatName: string;
@@ -12,9 +23,16 @@ export interface UnifiedBeatInfo {
 }
 
 /**
- * JSON schema for unified beat analysis response
- * Note: idealRange and isWithinRange are computed in code after AI response,
- * not requested from AI to avoid anchoring bias
+ * JSON schema for signal-agnostic beat analysis response.
+ *
+ * Each beat row carries:
+ *   - beatName     (string)
+ *   - signal       (one of the four signal ids — echoed per row for audit/debug)
+ *   - score        (0-100)
+ *   - justification (one short sentence)
+ *
+ * idealRange / isWithinRange are computed in code after the AI response,
+ * not requested from the AI, to avoid anchoring bias.
  */
 const UNIFIED_BEAT_ANALYSIS_SCHEMA = {
   type: "object",
@@ -22,18 +40,23 @@ const UNIFIED_BEAT_ANALYSIS_SCHEMA = {
   properties: {
     beats: {
       type: "array",
-      description: "Momentum analysis for each story beat",
+      description: "Signal scoring for each story beat",
       items: {
         type: "object",
         additionalProperties: false,
         properties: {
-          beatName: { 
-            type: "string", 
-            description: "Name of the beat" 
+          beatName: {
+            type: "string",
+            description: "Name of the beat"
           },
-          momentumScore: { 
-            type: "number", 
-            description: "Narrative momentum score 0-100",
+          signal: {
+            type: "string",
+            enum: [...GOSSAMER_SIGNAL_TYPES],
+            description: "The narrative signal being scored (momentum, tension, activity, interiority)"
+          },
+          score: {
+            type: "number",
+            description: "Signal score 0-100",
             minimum: 0,
             maximum: 100
           },
@@ -42,7 +65,7 @@ const UNIFIED_BEAT_ANALYSIS_SCHEMA = {
             description: "Brief justification for the score (one sentence)"
           }
         },
-        required: ["beatName", "momentumScore", "justification"]
+        required: ["beatName", "signal", "score", "justification"]
       }
     },
     overallAssessment: {
@@ -52,7 +75,7 @@ const UNIFIED_BEAT_ANALYSIS_SCHEMA = {
       properties: {
         summary: {
           type: "string",
-          description: "Brief summary of overall momentum (max 30 words)"
+          description: "Brief summary of the overall signal shape (max 30 words)"
         },
         strengths: {
           type: "array",
@@ -78,7 +101,8 @@ export function getUnifiedBeatAnalysisJsonSchema() {
 export function buildUnifiedBeatAnalysisPromptParts(
   manuscriptText: string,
   beats: UnifiedBeatInfo[],
-  beatSystem: string
+  beatSystem: string,
+  signal: GossamerSignalType = DEFAULT_GOSSAMER_SIGNAL
 ): {
   transformText: string;
   instructionText: string;
@@ -88,36 +112,43 @@ export function buildUnifiedBeatAnalysisPromptParts(
     .map((b, i) => `${i + 1}. ${b.beatName}`)
     .join('\n');
 
-  const transformText = `Beat system: ${beatSystem}
+  const signalBlock = GOSSAMER_SIGNAL_METADATA[signal].promptBlock;
 
+  const transformText = `Beat system: ${beatSystem}
 Story beats:
 ${beatList}`;
 
-  const instructionText = `Score momentum (0-100) for each listed beat based on the actual tension, stakes, and emotional intensity you perceive in the manuscript. Include a brief justification for each score. Respond strictly in the JSON schema that accompanies this prompt.
+  const instructionText = `${signalBlock}
 
-Manuscript text (table of contents followed by scenes):`;
+Respond strictly in the provided JSON schema.
+Return a score (0-100) and one short sentence justification per beat.
+For each row, set "signal" to "${signal}".
+
+Manuscript:`;
 
   return {
     transformText,
     instructionText,
     prompt: `${transformText}
-
 ${instructionText}
 ${manuscriptText}`
   };
 }
 
 /**
- * Build unified beat analysis prompt
+ * Build a Gossamer analysis prompt for a given signal.
+ *
  * @param manuscriptText - Full manuscript text with table of contents and scene headings
- * @param beats - Array of story beats with ranges
+ * @param beats - Array of story beats
  * @param beatSystem - Name of the beat system (e.g., "Save The Cat")
- * @returns Prompt string for Gemini API
+ * @param signal - The signal to score (momentum, tension, activity, interiority). Defaults to momentum.
+ * @returns Prompt string for the AI call.
  */
 export function buildUnifiedBeatAnalysisPrompt(
   manuscriptText: string,
   beats: UnifiedBeatInfo[],
-  beatSystem: string
+  beatSystem: string,
+  signal: GossamerSignalType = DEFAULT_GOSSAMER_SIGNAL
 ): string {
-  return buildUnifiedBeatAnalysisPromptParts(manuscriptText, beats, beatSystem).prompt;
+  return buildUnifiedBeatAnalysisPromptParts(manuscriptText, beats, beatSystem, signal).prompt;
 }

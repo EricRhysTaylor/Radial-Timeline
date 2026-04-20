@@ -56,6 +56,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
         latestOnly: false,
         visibleRunIds: [],
         beatSystemKey: '',
+        signal: 'momentum',
     },
     publishStageColors: {
         Zero: '#9E70CF',   // Purple (Stage Zero)

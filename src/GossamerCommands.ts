@@ -21,6 +21,7 @@ import { GossamerProcessingModal, type ManuscriptInfo, type AnalysisOptions } fr
 import { TimelineMode } from './modes/ModeDefinition';
 import { getSortedSceneFiles } from './utils/manuscript';
 import { buildUnifiedBeatAnalysisPrompt, getUnifiedBeatAnalysisJsonSchema, type UnifiedBeatInfo } from './ai/prompts/unifiedBeatAnalysis';
+import { coerceGossamerSignal, DEFAULT_GOSSAMER_SIGNAL, GOSSAMER_SIGNAL_METADATA, type GossamerSignalType } from './types/gossamerSignals';
 import { getAIClient } from './ai/runtime/aiClient';
 import {
   extractTokenUsage,
@@ -239,6 +240,7 @@ function findBeatNoteByTitle(files: TFile[], beatTitle: string, app: App): TFile
 async function saveGossamerScores(
   plugin: RadialTimelinePlugin,
   scores: Map<string, number>, // beatTitle → score
+  signal: GossamerSignalType,
   dominantStage?: string // Optional pre-computed stage
 ): Promise<void> {
   const bookScope = (plugin.settings.sourcePath || '').trim();
@@ -296,9 +298,10 @@ async function saveGossamerScores(
           createdAt,
           provider: 'manual',
           model: 'Manual entry',
-          stage
+          stage,
+          signal
         });
-        
+
         // Clean up old/deprecated fields
         delete fm.GossamerLocation;
         delete fm.GossamerNote;
@@ -452,7 +455,8 @@ export async function syncGossamerPresentationState(
     {
       latestOnly: plugin.gossamerLatestOnly,
       visibleRunIds: plugin.gossamerVisibleRunIds,
-      beatSystemKey: plugin.gossamerFilterBeatSystemKey
+      beatSystemKey: plugin.gossamerFilterBeatSystemKey,
+      signal: plugin.gossamerSelectedSignal ?? DEFAULT_GOSSAMER_SIGNAL
     }
   );
 
@@ -884,14 +888,16 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
 
     // Build prompt
     modal.setStatus('Building analysis prompt...');
-    const prompt = buildUnifiedBeatAnalysisPrompt(evidenceDocument.text, beats, beatSystem);
+    const selectedSignal: GossamerSignalType = plugin.gossamerSelectedSignal ?? DEFAULT_GOSSAMER_SIGNAL;
+    const signalMeta = GOSSAMER_SIGNAL_METADATA[selectedSignal];
+    const prompt = buildUnifiedBeatAnalysisPrompt(evidenceDocument.text, beats, beatSystem, selectedSignal);
     const schema = getUnifiedBeatAnalysisJsonSchema();
     const aiClient = getAIClient(plugin);
     const runRequest: AIRunRequest = {
       feature: 'Gossamer',
-      task: 'BeatMomentumAnalysis',
+      task: `Beat${signalMeta.short.charAt(0) + signalMeta.short.slice(1).toLowerCase()}Analysis`,
       requiredCapabilities: ['jsonStrict', 'longContext', 'reasoningStrong', 'highOutputCap'],
-      featureModeInstructions: 'Evaluate narrative momentum at each beat using only the submitted manuscript and beat list. Avoid anchoring to prior scores.',
+      featureModeInstructions: `Evaluate narrative ${signalMeta.label.toLowerCase()} at each beat using only the submitted manuscript and beat list. Avoid anchoring to prior scores.`,
       userInput: prompt,
       returnType: 'json',
       responseSchema: schema as unknown as Record<string, unknown>,
@@ -987,7 +993,8 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
     // Parse response - AI returns raw scores without range info (to avoid anchoring bias)
     interface AiBeatAnalysis {
       beatName: string;
-      momentumScore: number;
+      signal: GossamerSignalType;
+      score: number;
       justification: string;
     }
 
@@ -1015,21 +1022,46 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       };
     }
 
-    const rawAnalysis: AiAnalysisResponse = JSON.parse(result.content);
-    
+    interface LegacyAiBeat {
+      beatName: string;
+      signal?: string;
+      score?: number;
+      momentumScore?: number;
+      justification: string;
+    }
+    interface LegacyAiResponse {
+      beats: LegacyAiBeat[];
+      overallAssessment: AiAnalysisResponse['overallAssessment'];
+    }
+    const rawAnalysis: AiAnalysisResponse = (() => {
+      const parsed = JSON.parse(result.content) as LegacyAiResponse;
+      const normalizedBeats: AiBeatAnalysis[] = parsed.beats.map((b) => ({
+        beatName: b.beatName,
+        signal: coerceGossamerSignal(b.signal ?? selectedSignal),
+        score: typeof b.score === 'number' ? b.score : (typeof b.momentumScore === 'number' ? b.momentumScore : 0),
+        justification: b.justification
+      }));
+      return {
+        beats: normalizedBeats,
+        overallAssessment: parsed.overallAssessment
+      };
+    })();
+
     // Import range utilities for computing isWithinRange
     const { parseRange, isScoreInRange } = await import('./utils/rangeValidation');
-    
-    // Enrich AI response with range comparison (computed in code, not by AI)
+
+    // Range comparison is only meaningful for momentum (canonical target logic).
+    // Other signals leave isWithinRange = true (structure preserved for future per-signal ranges).
     const analysis: EnrichedAnalysisResponse = {
       ...rawAnalysis,
       beats: rawAnalysis.beats.map((aiBeat, idx) => {
-        // Match to our beats array which has the range info
         const ourBeat = beats[idx];
         const idealRange = ourBeat?.idealRange || '0-100';
         const parsed = parseRange(idealRange);
-        const isWithinRange = parsed ? isScoreInRange(aiBeat.momentumScore, parsed) : true;
-        
+        const isWithinRange = (selectedSignal === 'momentum' && parsed)
+          ? isScoreInRange(aiBeat.score, parsed)
+          : true;
+
         return {
           ...aiBeat,
           idealRange,
@@ -1106,14 +1138,15 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
         Object.assign(fm, updated);
         
         // Set new score, stage, and justification at next available index
-        fm[`Gossamer${nextIndex}`] = beat.momentumScore;
+        fm[`Gossamer${nextIndex}`] = beat.score;
         fm[`Gossamer${nextIndex} Justification`] = beat.justification || '';
         applyGossamerRunMetadata(fm, nextIndex, {
           runId,
           createdAt,
           provider: runProvider,
           model: runModel,
-          stage: dominantStage
+          stage: dominantStage,
+          signal: selectedSignal
         });
         
         // Add timestamp and model info
@@ -1160,11 +1193,13 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       derivedLines.push(`Unmatched beats: ${unmatchedBeats.join(', ')}`);
     }
     derivedLines.push('');
-    derivedLines.push(`| Beat | Score | Ideal Range | Status |`);
-    derivedLines.push(`|------|-------|-------------|--------|`);
+    derivedLines.push(`| Beat | Signal | Score | Ideal Range | Status |`);
+    derivedLines.push(`|------|--------|-------|-------------|--------|`);
     for (const beat of analysis.beats) {
-      const status = beat.isWithinRange ? 'In range' : 'Out of range';
-      derivedLines.push(`| ${beat.beatName} | ${beat.momentumScore} | ${beat.idealRange} | ${status} |`);
+      const status = selectedSignal === 'momentum'
+        ? (beat.isWithinRange ? 'In range' : 'Out of range')
+        : '—';
+      derivedLines.push(`| ${beat.beatName} | ${beat.signal} | ${beat.score} | ${beat.idealRange} | ${status} |`);
     }
 
     const reportFile = await writeGossamerLog(plugin, {
@@ -1189,7 +1224,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       await leaf.openFile(reportFile);
     }
 
-    const successMessage = `✓ Updated ${updateCount} beats with momentum scores`;
+    const successMessage = `✓ Updated ${updateCount} beats with ${signalMeta.label.toLowerCase()} scores`;
     
     const aiFolderPath = resolveGossamerLogFolder();
     const logMessage = plugin.settings.logApiInteractions

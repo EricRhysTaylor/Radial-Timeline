@@ -58,6 +58,7 @@ import { TimelineAuditAiService } from './services/TimelineAuditAiService';
 import { ensureBundledPandocLayoutsRegistered } from './utils/pandocBundledLayouts';
 import { normalizeManuscriptCleanupOptions } from './utils/manuscriptSanitize';
 import type { GossamerRunRecord } from './utils/gossamer';
+import { coerceGossamerSignal, DEFAULT_GOSSAMER_SIGNAL, type GossamerSignalType } from './types/gossamerSignals';
 import { seedProEntitlement } from './settings/proEntitlementSeed';
 
 
@@ -142,6 +143,7 @@ export default class RadialTimelinePlugin extends Plugin {
     public gossamerRunInventory: GossamerRunRecord[] = [];
     public gossamerVisibleRunInventory: GossamerRunRecord[] = [];
     public gossamerFilterBeatSystemKey = '';
+    public gossamerSelectedSignal: GossamerSignalType = DEFAULT_GOSSAMER_SIGNAL;
     
     // APR Service
     private authorProgressService!: AuthorProgressService;
@@ -178,6 +180,7 @@ export default class RadialTimelinePlugin extends Plugin {
                 ? current.visibleRunIds.filter((value): value is string => typeof value === 'string')
                 : [],
             beatSystemKey: typeof current.beatSystemKey === 'string' ? current.beatSystemKey : '',
+            signal: coerceGossamerSignal(current.signal),
         };
     }
 
@@ -186,6 +189,7 @@ export default class RadialTimelinePlugin extends Plugin {
             latestOnly: this.gossamerLatestOnly,
             visibleRunIds: this.gossamerVisibleRunIds,
             beatSystemKey: this.gossamerFilterBeatSystemKey,
+            signal: this.gossamerSelectedSignal,
         });
         const current = this.normalizeGossamerRunFilterSettings(this.settings.gossamerRunFilter);
         if (JSON.stringify(current) === JSON.stringify(next)) {
@@ -498,6 +502,7 @@ export default class RadialTimelinePlugin extends Plugin {
         this.gossamerLatestOnly = normalizedGossamerRunFilter.latestOnly;
         this.gossamerVisibleRunIds = [...normalizedGossamerRunFilter.visibleRunIds];
         this.gossamerFilterBeatSystemKey = normalizedGossamerRunFilter.beatSystemKey;
+        this.gossamerSelectedSignal = coerceGossamerSignal(normalizedGossamerRunFilter.signal);
         const proEntitlementSeeded = seedProEntitlement(this.settings);
         this.settings.aiSettings = (loadedSettings as Partial<RadialTimelineSettings>).aiSettings;
         this.settings.authorProgress = migrateAuthorProgressSettings((loadedSettings as Partial<RadialTimelineSettings>).authorProgress);
@@ -907,8 +912,8 @@ export default class RadialTimelinePlugin extends Plugin {
         this.beatsProcessingService?.hideStatus();
     }
 
-    async saveGossamerScores(scores: Map<string, number>): Promise<void> {
-        await this.gossamerScoreService.saveScores(scores);
+    async saveGossamerScores(scores: Map<string, number>, signal: GossamerSignalType = DEFAULT_GOSSAMER_SIGNAL): Promise<void> {
+        await this.gossamerScoreService.saveScores(scores, signal);
     }
 
     onunload() {

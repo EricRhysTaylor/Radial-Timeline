@@ -606,6 +606,12 @@ export interface GossamerRunFilterSettings {
     latestOnly: boolean;
     visibleRunIds: string[];
     beatSystemKey: string;
+    /**
+     * Signal the timeline is currently plotting (momentum, tension, activity, interiority).
+     * Only runs matching this signal are shown in the runs panel and plotted.
+     * Defaults to 'momentum' — legacy runs without a stored signal read as momentum.
+     */
+    signal?: string;
 }
 
 /** A Pandoc LaTeX layout template scoped to a manuscript preset. */

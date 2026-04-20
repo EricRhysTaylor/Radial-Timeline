@@ -6,6 +6,7 @@ import { parseRange, isScoreInRange } from './rangeValidation';
 import { STAGE_ORDER } from './constants';
 import { normalizeBeatSetNameInput, toBeatMatchKey, toBeatModelMatchKey } from './beatsInputNormalize';
 import { comparePrefixTokens, extractPrefixToken } from './prefixOrder';
+import { coerceGossamerSignal, DEFAULT_GOSSAMER_SIGNAL, type GossamerSignalType } from '../types/gossamerSignals';
 
 export type GossamerBeatStatus = 'present' | 'outlineOnly' | 'missing';
 
@@ -48,6 +49,7 @@ export interface GossamerRunRecord {
   label: string;
   isLatest: boolean;
   stage?: string;
+  signal: GossamerSignalType;
   run: GossamerRun;
 }
 
@@ -55,6 +57,7 @@ export interface GossamerRunFilterState {
   latestOnly?: boolean;
   visibleRunIds?: string[];
   beatSystemKey?: string;
+  signal?: GossamerSignalType;
 }
 
 export const GOSSAMER_LEGACY_FIELDS = [
@@ -73,6 +76,7 @@ type GossamerSlotMetadata = {
   provider?: string;
   model?: string;
   stage?: string;
+  signal?: GossamerSignalType;
 };
 
 function readGossamerFieldValue(source: Record<string, unknown>, key: string): unknown {
@@ -108,6 +112,29 @@ function getGossamerModelKey(index: number): string {
   return `GossamerModel${index}`;
 }
 
+function getGossamerSignalKey(index: number): string {
+  return `GossamerSignal${index}`;
+}
+
+/**
+ * Determine the signal associated with a Gossamer slot (Gossamer{index}).
+ * The signal is written to any beat in a run, so we check each plot note until
+ * we find one. Legacy runs without a stored signal read as momentum.
+ */
+function readSignalForSlot(
+  plotNotes: { [key: string]: unknown }[],
+  index: number
+): GossamerSignalType {
+  const key = getGossamerSignalKey(index);
+  for (const note of plotNotes) {
+    const value = readGossamerFieldValue(note as Record<string, unknown>, key);
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return coerceGossamerSignal(value);
+    }
+  }
+  return DEFAULT_GOSSAMER_SIGNAL;
+}
+
 export function createGossamerRunId(): string {
   return `goss-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -118,6 +145,7 @@ export function applyGossamerRunMetadata(frontmatter: Record<string, unknown>, i
   if (metadata.createdAt) frontmatter[getGossamerCreatedAtKey(index)] = metadata.createdAt;
   if (metadata.provider) frontmatter[getGossamerProviderKey(index)] = metadata.provider;
   if (metadata.model) frontmatter[getGossamerModelKey(index)] = metadata.model;
+  if (metadata.signal) frontmatter[getGossamerSignalKey(index)] = metadata.signal;
 }
 
 export function clearGossamerRunSlot(frontmatter: Record<string, unknown>, index: number): void {
@@ -128,6 +156,7 @@ export function clearGossamerRunSlot(frontmatter: Record<string, unknown>, index
   delete frontmatter[getGossamerCreatedAtKey(index)];
   delete frontmatter[getGossamerProviderKey(index)];
   delete frontmatter[getGossamerModelKey(index)];
+  delete frontmatter[getGossamerSignalKey(index)];
 }
 
 function readGossamerSlotMetadata(source: Record<string, unknown>, index: number): GossamerSlotMetadata {
@@ -136,12 +165,14 @@ function readGossamerSlotMetadata(source: Record<string, unknown>, index: number
     return typeof value === 'string' && value.trim().length > 0 ? value : undefined;
   };
 
+  const signalRaw = readString(getGossamerSignalKey(index));
   return {
     runId: readString(getGossamerRunIdKey(index)),
     createdAt: readString(getGossamerCreatedAtKey(index)),
     provider: readString(getGossamerProviderKey(index)),
     model: readString(getGossamerModelKey(index)),
-    stage: readString(getGossamerStageKey(index))
+    stage: readString(getGossamerStageKey(index)),
+    signal: signalRaw ? coerceGossamerSignal(signalRaw) : undefined
   };
 }
 
@@ -613,7 +644,8 @@ export function buildRunFromDefault(scenes?: { itemType?: string; subplot?: stri
 
 export function buildGossamerRunInventory(
   scenes: { itemType?: string; subplot?: string; title?: string; [key: string]: unknown }[] | undefined,
-  selectedBeatModel?: string
+  selectedBeatModel?: string,
+  signalFilter?: GossamerSignalType
 ): GossamerRunRecord[] {
   if (!scenes || scenes.length === 0) return [];
 
@@ -633,7 +665,8 @@ export function buildGossamerRunInventory(
     if (hasAnyValue) runIndexes.push(runIndex);
   }
 
-  const records = runIndexes.map((runIndex) => {
+  const allRecords: GossamerRunRecord[] = runIndexes.map((runIndex) => {
+    const slotSignal = readSignalForSlot(plotNotes as Record<string, unknown>[], runIndex);
     const run = buildRunFromGossamerField(scenes, getGossamerScoreKey(runIndex), selectedBeatModel, true);
     const metadataFromRun = run.meta || {};
     const metadata: GossamerSlotMetadata = {
@@ -641,10 +674,11 @@ export function buildGossamerRunInventory(
       createdAt: metadataFromRun.createdAt,
       provider: metadataFromRun.provider,
       model: metadataFromRun.runModel,
-      stage: getRunStageFromScenes(scenes as { itemType?: string; [key: string]: unknown }[], runIndex, selectedBeatModel)
+      stage: getRunStageFromScenes(scenes as { itemType?: string; [key: string]: unknown }[], runIndex, selectedBeatModel),
+      signal: slotSignal
     };
     return {
-      id: metadata.runId || `${toBeatModelMatchKey(selectedBeatModel ?? 'default') || 'default'}::run-${runIndex}`,
+      id: metadata.runId || `${toBeatModelMatchKey(selectedBeatModel ?? 'default') || 'default'}::${slotSignal}::run-${runIndex}`,
       runIndex,
       beatSystem: selectedBeatModel,
       provider: metadata.provider,
@@ -653,9 +687,14 @@ export function buildGossamerRunInventory(
       label: formatRunListLabel(metadata, runIndex),
       isLatest: false,
       stage: metadata.stage,
+      signal: slotSignal,
       run
     };
   });
+
+  const records = signalFilter
+    ? allRecords.filter((record) => record.signal === signalFilter)
+    : allRecords;
 
   if (records.length > 0) {
     records[records.length - 1].isLatest = true;
@@ -683,8 +722,10 @@ export function buildAllGossamerRuns(
   visibleModelCount: number;
   latestOnly: boolean;
   beatSystemKey: string;
+  signal: GossamerSignalType;
 } {
   const beatSystemKey = toBeatModelMatchKey(selectedBeatModel ?? '');
+  const signal: GossamerSignalType = filterState.signal ?? DEFAULT_GOSSAMER_SIGNAL;
   if (!scenes || scenes.length === 0) {
     return {
       current: buildRunFromGossamerField(scenes, 'Gossamer1', selectedBeatModel, true),
@@ -696,10 +737,15 @@ export function buildAllGossamerRuns(
       visibleRunIds: [],
       visibleModelCount: 0,
       latestOnly: false,
-      beatSystemKey
+      beatSystemKey,
+      signal
     };
   }
-  const runs = buildGossamerRunInventory(scenes as { itemType?: string; subplot?: string; title?: string; [key: string]: unknown }[], selectedBeatModel);
+  const runs = buildGossamerRunInventory(
+    scenes as { itemType?: string; subplot?: string; title?: string; [key: string]: unknown }[],
+    selectedBeatModel,
+    signal
+  );
   const beatSystemChanged = (filterState.beatSystemKey ?? '') !== beatSystemKey;
   const latestOnly = beatSystemChanged ? false : filterState.latestOnly === true;
   const visibleRunIds = latestOnly
@@ -802,7 +848,8 @@ export function buildAllGossamerRuns(
     visibleRunIds: visibleRuns.map((record) => record.id),
     visibleModelCount,
     latestOnly,
-    beatSystemKey
+    beatSystemKey,
+    signal
   };
 }
 
@@ -919,7 +966,8 @@ export function normalizeGossamerHistory(frontmatter: Record<string, any>): {
       metadata.createdAt ||
       metadata.provider ||
       metadata.model ||
-      metadata.stage
+      metadata.stage ||
+      metadata.signal
     ) {
       hasOrphanField = true;
     }
@@ -951,6 +999,7 @@ export function collectGossamerManagedSnapshot(frontmatter: Record<string, any>,
     const createdAtKey = getGossamerCreatedAtKey(i);
     const providerKey = getGossamerProviderKey(i);
     const modelKey = getGossamerModelKey(i);
+    const signalKey = getGossamerSignalKey(i);
     if (frontmatter[scoreKey] !== undefined) snapshot[scoreKey] = frontmatter[scoreKey];
     if (frontmatter[justKey] !== undefined) snapshot[justKey] = frontmatter[justKey];
     if (frontmatter[stageKey] !== undefined) snapshot[stageKey] = frontmatter[stageKey];
@@ -958,6 +1007,7 @@ export function collectGossamerManagedSnapshot(frontmatter: Record<string, any>,
     if (frontmatter[createdAtKey] !== undefined) snapshot[createdAtKey] = frontmatter[createdAtKey];
     if (frontmatter[providerKey] !== undefined) snapshot[providerKey] = frontmatter[providerKey];
     if (frontmatter[modelKey] !== undefined) snapshot[modelKey] = frontmatter[modelKey];
+    if (frontmatter[signalKey] !== undefined) snapshot[signalKey] = frontmatter[signalKey];
   }
   for (const key of GOSSAMER_LEGACY_FIELDS) {
     if (frontmatter[key] !== undefined) snapshot[key] = frontmatter[key];

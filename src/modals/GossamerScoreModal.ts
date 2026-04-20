@@ -8,6 +8,7 @@ import { buildDefaultAiSettings } from '../ai/settings/aiSettings';
 import { validateAiSettings } from '../ai/settings/validateAiSettings';
 import type { TimelineItem } from '../types';
 import { clearGossamerRunSlot, collectGossamerManagedSnapshot, filterBeatsBySystem, normalizeBeatName, normalizeGossamerHistory } from '../utils/gossamer';
+import { DEFAULT_GOSSAMER_SIGNAL, GOSSAMER_SIGNAL_METADATA, type GossamerSignalType } from '../types/gossamerSignals';
 import { parseScoresFromClipboard } from '../GossamerCommands';
 import { getPlotSystem } from '../utils/beatsSystems';
 import {
@@ -291,12 +292,15 @@ export class GossamerScoreModal extends Modal {
     // const rangeValidation = validateBeatRanges(filteredBeats, settingsSystem);
 
     // Title with plot system name rendered in hero card
+    const activeSignal: GossamerSignalType = this.plugin.gossamerSelectedSignal ?? DEFAULT_GOSSAMER_SIGNAL;
+    const signalMeta = GOSSAMER_SIGNAL_METADATA[activeSignal];
     const headerEl = contentEl.createDiv({ cls: 'ert-modal-header' });
-    headerEl.createSpan({ text: 'Gossamer momentum', cls: 'ert-modal-badge' });
+    headerEl.createSpan({ text: `Gossamer ${signalMeta.label.toLowerCase()}`, cls: 'ert-modal-badge' });
     headerEl.createDiv({ text: `${beatModelLabel} beat system`, cls: 'ert-modal-title' });
     const heroSubtitle = headerEl.createDiv({ cls: 'ert-modal-subtitle' });
-    heroSubtitle.setText('Enter momentum scores (0-100) for each beat. Previous scores will be saved as history.');
+    heroSubtitle.setText(`Enter ${signalMeta.label.toLowerCase()} scores (0-100) for each beat. Previous scores will be saved as history.`);
     const heroMeta = headerEl.createDiv({ cls: 'ert-modal-meta' });
+    heroMeta.createSpan({ text: `Signal: ${signalMeta.label}`, cls: 'ert-modal-meta-item' });
     heroMeta.createSpan({ text: `Beats detected: ${actualCount}`, cls: 'ert-modal-meta-item' });
 
     // Show warning if no beats match
@@ -619,9 +623,11 @@ export class GossamerScoreModal extends Modal {
 
       const { name: contextTemplateName, prompt: contextPrompt } = this.getActiveAiContextInfo();
 
-      // Build template with beat names and ideal ranges
+      // Build template with beat names and ideal ranges (signal-aware)
+      const activeSignal: GossamerSignalType = this.plugin.gossamerSelectedSignal ?? DEFAULT_GOSSAMER_SIGNAL;
+      const signalMeta = GOSSAMER_SIGNAL_METADATA[activeSignal];
       const lines: string[] = [];
-      lines.push(`# Beat Momentum Scores (0-100) — ${settingsSystem}`);
+      lines.push(`# Beat ${signalMeta.label} Scores (0-100) — ${settingsSystem}`);
       lines.push('');
       if (contextPrompt) {
         lines.push('## Role & Manuscript Context');
@@ -629,7 +635,7 @@ export class GossamerScoreModal extends Modal {
           lines.push(`Template: ${contextTemplateName}`);
         }
         lines.push(contextPrompt.trim());
-        lines.push('Consult the complete manuscript and knowledge base for this project before assigning momentum scores.');
+        lines.push(`Consult the complete manuscript and knowledge base for this project before assigning ${signalMeta.label.toLowerCase()} scores.`);
         lines.push('');
       }
       if (this.entries.length === 0) {
@@ -664,26 +670,18 @@ export class GossamerScoreModal extends Modal {
         }
         lines.push('');
       });
-      lines.push('## Momentum Scale:');
-      lines.push('- 0-20: Quiet, establishing, low tension');
-      lines.push('- 21-40: Building, complications emerging');
-      lines.push('- 41-60: Rising stakes, conflict developing');
-      lines.push('- 61-80: High tension, major conflicts');
-      lines.push('- 81-100: Peak tension, climactic moments');
-      lines.push('');
-      lines.push('## Consider for each beat:');
-      lines.push('- Tension and conflict level');
-      lines.push('- Stakes for protagonist');
-      lines.push('- Emotional intensity');
-      lines.push('- Pacing and urgency');
+      lines.push(`## ${signalMeta.label} Scoring Rubric:`);
+      signalMeta.promptBlock.split('\n').forEach(line => lines.push(line));
       lines.push('');
       lines.push('## Output Instructions:');
-      lines.push('- Respond with the block titled "## Completed Momentum Scores" exactly as shown below.');
+      lines.push(`- Respond with the block titled "## Completed ${signalMeta.label} Scores" exactly as shown below.`);
       lines.push('- Replace the blank after each colon with a single integer from 0-100 (no percentage signs or trailing commentary).');
       lines.push('- Keep the beat order identical so the response can be copied directly into the Obsidian modal.');
-      lines.push('- Favor the ideal range when it fits the manuscript context, but you may go outside the range if justified by the story.');
+      if (activeSignal === 'momentum') {
+        lines.push('- Favor the ideal range when it fits the manuscript context, but you may go outside the range if justified by the story.');
+      }
       lines.push('');
-      lines.push('## Completed Momentum Scores');
+      lines.push(`## Completed ${signalMeta.label} Scores`);
       lines.push('');
 
       for (const entry of this.entries) {
@@ -696,7 +694,7 @@ export class GossamerScoreModal extends Modal {
       }
 
       lines.push('');
-      lines.push('# Note: After filling in the numbers, return ONLY the "Completed Momentum Scores" block so it can be pasted back into Obsidian.');
+      lines.push(`# Note: After filling in the numbers, return ONLY the "Completed ${signalMeta.label} Scores" block so it can be pasted back into Obsidian.`);
 
       const template = lines.join('\n');
       await navigator.clipboard.writeText(template);
@@ -820,7 +818,8 @@ export class GossamerScoreModal extends Modal {
     try {
       // Only save new scores if there are any
       if (scores.size > 0) {
-        await this.plugin.saveGossamerScores(scores);
+        const signalForSave = this.plugin.gossamerSelectedSignal ?? DEFAULT_GOSSAMER_SIGNAL;
+        await this.plugin.saveGossamerScores(scores, signalForSave);
       }
 
       // Process deletions if there are any

@@ -3,13 +3,14 @@ import type RadialTimelinePlugin from '../main';
 import { normalizeFrontmatterKeys } from '../utils/frontmatter';
 import { isStoryBeat } from '../utils/sceneHelpers';
 import { appendGossamerScore, applyGossamerRunMetadata, collectGossamerManagedSnapshot, createGossamerRunId, detectDominantStage, willAppendGossamerPrune } from '../utils/gossamer';
+import { DEFAULT_GOSSAMER_SIGNAL, type GossamerSignalType } from '../types/gossamerSignals';
 import { isPathInFolderScope } from '../utils/pathScope';
 import { archiveGossamerFrontmatterFields } from '../gossamer/logs';
 
 export class GossamerScoreService {
     constructor(private app: App, private plugin: RadialTimelinePlugin) {}
 
-    async saveScores(scores: Map<string, number>): Promise<void> {
+    async saveScores(scores: Map<string, number>, signal: GossamerSignalType = DEFAULT_GOSSAMER_SIGNAL): Promise<void> {
         const sourcePath = this.plugin.settings.sourcePath || '';
         const allFiles = this.app.vault.getMarkdownFiles();
         const files = sourcePath
@@ -82,7 +83,8 @@ export class GossamerScoreService {
                         createdAt,
                         provider: 'manual',
                         model: 'Manual entry',
-                        stage: dominantStage
+                        stage: dominantStage,
+                        signal
                     });
                     delete fm.GossamerLocation;
                     delete fm.GossamerNote;

@@ -34,6 +34,7 @@ import { DEFAULT_BOOK_TITLE, getActiveBookTitle } from '../utils/books';
 import { getActiveRecentStructuralMoves } from '../utils/recentStructuralMoves';
 import type { StructuralMoveHistoryEntry } from '../types/settings';
 import type { GossamerRunRecord } from '../utils/gossamer';
+import { GOSSAMER_SIGNAL_METADATA, GOSSAMER_SIGNAL_TYPES, type GossamerSignalType } from '../types/gossamerSignals';
 
 // Duplicate of constants defined in main for now. We can consolidate later.
 export const TIMELINE_VIEW_TYPE = "radial-timeline";
@@ -986,7 +987,7 @@ export class RadialTimelineView extends ItemView {
 
         const runs = this.plugin.gossamerRunInventory || [];
         const visibleRuns = this.plugin.gossamerVisibleRunInventory || [];
-        if (runs.length === 0 || visibleRuns.length === 0) return;
+        const activeSignal: GossamerSignalType = this.plugin.gossamerSelectedSignal ?? 'momentum';
 
         const xhtmlNs = 'http://www.w3.org/1999/xhtml';
         const svgNs = 'http://www.w3.org/2000/svg';
@@ -996,7 +997,8 @@ export class RadialTimelineView extends ItemView {
         const panelWidth = 352;
         const displayedRuns = runs.slice().reverse().slice(0, 15);
         const listHeight = 8 + (displayedRuns.length * 30);
-        const panelHeight = 44 + listHeight;
+        // Header row remains ~44px; even with zero runs we still show the signal selector + pill.
+        const panelHeight = 44 + (runs.length === 0 ? 0 : listHeight);
 
         const foreignObject = document.createElementNS(svgNs, 'foreignObject');
         foreignObject.setAttribute('x', String(panelX));
@@ -1011,31 +1013,68 @@ export class RadialTimelineView extends ItemView {
         const controlsRow = document.createElementNS(xhtmlNs, 'div');
         controlsRow.className = 'rt-gossamer-runs__controls';
 
+        // "{n} RUNS" pill — click toggles show-all vs latest-only.
+        const showingAll = !this.plugin.gossamerLatestOnly
+            && (this.plugin.gossamerVisibleRunIds.length === 0 || this.plugin.gossamerVisibleRunIds.length === runs.length);
         const button = document.createElementNS(xhtmlNs, 'div') as HTMLDivElement;
         button.className = 'rt-gossamer-runs__button';
+        button.setAttribute('role', 'button');
+        button.setAttribute('tabindex', '0');
+        button.setAttribute('data-state', showingAll ? 'all' : (this.plugin.gossamerLatestOnly ? 'latest' : 'partial'));
+        button.setAttribute('title', showingAll ? 'Showing all runs — click to show latest only' : 'Click to show all runs');
         const buttonLabel = document.createElementNS(xhtmlNs, 'span');
-        buttonLabel.textContent = `${runs.length} RUNS`;
+        if (runs.length === 0) {
+            buttonLabel.textContent = `0 RUNS`;
+        } else if (this.plugin.gossamerLatestOnly) {
+            buttonLabel.textContent = `LATEST · 1 / ${runs.length}`;
+        } else if (this.plugin.gossamerVisibleRunIds.length > 0 && this.plugin.gossamerVisibleRunIds.length !== runs.length) {
+            buttonLabel.textContent = `${visibleRuns.length} / ${runs.length} RUNS`;
+        } else {
+            buttonLabel.textContent = `${runs.length} RUNS`;
+        }
         button.appendChild(buttonLabel);
         controlsRow.appendChild(button);
 
-        const showAllRow = document.createElementNS(xhtmlNs, 'label');
-        showAllRow.className = 'rt-gossamer-runs__show-all';
-        const showAllCheckbox = document.createElementNS(xhtmlNs, 'input') as HTMLInputElement;
-        showAllCheckbox.type = 'checkbox';
-        showAllCheckbox.checked = visibleRuns.length === runs.length;
-        showAllRow.appendChild(showAllCheckbox);
-        const showAllText = document.createElementNS(xhtmlNs, 'span');
-        showAllText.textContent = 'Show all';
-        showAllRow.appendChild(showAllText);
-        controlsRow.appendChild(showAllRow);
+        // Signal selector — 4 lucide icons, one per signal.
+        const signalSelector = document.createElementNS(xhtmlNs, 'div') as HTMLDivElement;
+        signalSelector.className = 'rt-gossamer-runs__signals';
+        signalSelector.setAttribute('role', 'tablist');
+        const signalButtons: Array<{ el: HTMLButtonElement; signal: GossamerSignalType }> = [];
+        GOSSAMER_SIGNAL_TYPES.forEach((signalId) => {
+            const meta = GOSSAMER_SIGNAL_METADATA[signalId];
+            const btn = document.createElementNS(xhtmlNs, 'button') as HTMLButtonElement;
+            btn.type = 'button';
+            btn.className = 'rt-gossamer-runs__signal';
+            btn.setAttribute('role', 'tab');
+            btn.setAttribute('aria-selected', signalId === activeSignal ? 'true' : 'false');
+            btn.setAttribute('data-signal', signalId);
+            btn.setAttribute('aria-label', meta.tooltip);
+            btn.setAttribute('title', meta.tooltip);
+            if (signalId === activeSignal) btn.classList.add('is-active');
+            const iconWrap = document.createElementNS(xhtmlNs, 'span');
+            iconWrap.className = 'rt-gossamer-runs__signal-icon';
+            setIcon(iconWrap as unknown as HTMLElement, meta.icon);
+            btn.appendChild(iconWrap);
+            signalSelector.appendChild(btn);
+            signalButtons.push({ el: btn, signal: signalId });
+        });
+        controlsRow.appendChild(signalSelector);
+
         panel.appendChild(controlsRow);
 
-        const list = document.createElementNS(xhtmlNs, 'div');
-        list.className = 'rt-gossamer-runs__list rt-gossamer-runs__list--inline';
-        displayedRuns.forEach((record) => {
-            list.appendChild(this.buildGossamerRunToggleRow(record));
-        });
-        panel.appendChild(list);
+        if (runs.length > 0) {
+            const list = document.createElementNS(xhtmlNs, 'div');
+            list.className = 'rt-gossamer-runs__list rt-gossamer-runs__list--inline';
+            displayedRuns.forEach((record) => {
+                list.appendChild(this.buildGossamerRunToggleRow(record));
+            });
+            panel.appendChild(list);
+        } else {
+            const empty = document.createElementNS(xhtmlNs, 'div') as HTMLDivElement;
+            empty.className = 'rt-gossamer-runs__empty';
+            empty.textContent = `No ${GOSSAMER_SIGNAL_METADATA[activeSignal].label.toLowerCase()} runs yet.`;
+            panel.appendChild(empty);
+        }
 
         const schedulePanelRefresh = () => {
             window.setTimeout(() => {
@@ -1053,28 +1092,45 @@ export class RadialTimelineView extends ItemView {
         this.registerDomEvent(panel, 'pointerdown', stopRunsEvent);
         this.registerDomEvent(panel, 'pointerup', stopRunsEvent);
 
-        this.registerDomEvent(showAllCheckbox, 'change', (event) => {
+        // Pill click: toggle show-all vs latest-only.
+        const togglePillMode = (event: Event) => {
             event.stopPropagation();
-            if (showAllCheckbox.checked) {
+            if (runs.length === 0) return;
+            if (this.plugin.gossamerLatestOnly || (this.plugin.gossamerVisibleRunIds.length > 0 && this.plugin.gossamerVisibleRunIds.length < runs.length)) {
+                // Flip to "show all"
                 this.plugin.gossamerLatestOnly = false;
-                this.plugin.gossamerVisibleRunIds = runs.map((run) => run.id);
+                this.plugin.gossamerVisibleRunIds = [];
             } else {
+                // Flip to "latest only"
                 this.plugin.gossamerLatestOnly = true;
                 this.plugin.gossamerVisibleRunIds = [];
             }
             void this.plugin.saveGossamerRunFilterState();
             schedulePanelRefresh();
+        };
+        this.registerDomEvent(button, 'click', togglePillMode);
+        this.registerDomEvent(button, 'keydown', (event: KeyboardEvent) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                togglePillMode(event);
+            }
         });
-        this.registerDomEvent(showAllCheckbox, 'click', stopRunsEvent);
-        this.registerDomEvent(showAllCheckbox, 'mousedown', stopRunsEvent);
-        this.registerDomEvent(showAllCheckbox, 'mouseup', stopRunsEvent);
-        this.registerDomEvent(showAllCheckbox, 'pointerdown', stopRunsEvent);
-        this.registerDomEvent(showAllCheckbox, 'pointerup', stopRunsEvent);
-        this.registerDomEvent(showAllRow, 'click', stopRunsEvent);
-        this.registerDomEvent(showAllRow, 'mousedown', stopRunsEvent);
-        this.registerDomEvent(showAllRow, 'mouseup', stopRunsEvent);
-        this.registerDomEvent(showAllRow, 'pointerdown', stopRunsEvent);
-        this.registerDomEvent(showAllRow, 'pointerup', stopRunsEvent);
+
+        // Signal selector click: switch the plotted signal.
+        signalButtons.forEach(({ el, signal }) => {
+            this.registerDomEvent(el, 'click', (event) => {
+                event.stopPropagation();
+                if (this.plugin.gossamerSelectedSignal === signal) return;
+                this.plugin.gossamerSelectedSignal = signal;
+                // Switching signals resets run-level filters (IDs are signal-scoped).
+                this.plugin.gossamerLatestOnly = false;
+                this.plugin.gossamerVisibleRunIds = [];
+                void this.plugin.saveGossamerRunFilterState();
+                schedulePanelRefresh();
+            });
+            this.registerDomEvent(el, 'mousedown', stopRunsEvent);
+            this.registerDomEvent(el, 'pointerdown', stopRunsEvent);
+        });
 
         foreignObject.appendChild(panel);
         svg.insertBefore(foreignObject, svg.firstChild);

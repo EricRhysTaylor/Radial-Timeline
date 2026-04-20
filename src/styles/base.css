@@ -521,23 +521,73 @@ body.rt-modal-open .radial-timeline-container * {
   line-height: 20px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  cursor: default;
+  cursor: pointer;
+  user-select: none;
 }
 
-.rt-gossamer-runs__show-all {
+.rt-gossamer-runs .rt-gossamer-runs__button:hover {
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--interactive-accent) 80%, var(--background-modifier-border));
+}
+
+.rt-gossamer-runs .rt-gossamer-runs__button[data-state="latest"],
+.rt-gossamer-runs .rt-gossamer-runs__button[data-state="partial"] {
+  border-style: solid;
+  color: var(--interactive-accent);
+}
+
+.rt-gossamer-runs__signals {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  font-family: var(--font-monospace);
-  font-size: 15px;
-  line-height: 16px;
-  color: color-mix(in srgb, var(--text-muted) 96%, transparent);
-  opacity: 0.72;
-  white-space: nowrap;
+  gap: 4px;
+  margin-left: auto;
 }
 
-.rt-gossamer-runs__show-all input[type="checkbox"] {
-  margin: 0;
+.rt-gossamer-runs__signal {
+  all: unset;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  color: color-mix(in srgb, var(--text-muted) 85%, transparent);
+  opacity: 0.65;
+  cursor: pointer;
+  transition: background-color 120ms ease, opacity 120ms ease, color 120ms ease;
+}
+
+.rt-gossamer-runs__signal:hover {
+  background-color: color-mix(in srgb, var(--interactive-accent) 12%, transparent);
+  opacity: 1;
+  color: var(--text-normal);
+}
+
+.rt-gossamer-runs__signal.is-active {
+  background-color: color-mix(in srgb, var(--interactive-accent) 22%, transparent);
+  color: var(--interactive-accent);
+  opacity: 1;
+}
+
+.rt-gossamer-runs__signal-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+}
+
+.rt-gossamer-runs__signal-icon .svg-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.rt-gossamer-runs__empty {
+  font-family: var(--font-monospace);
+  font-size: 14px;
+  color: var(--text-faint);
+  padding: 6px 2px 0;
 }
 
 .rt-gossamer-runs__latest {
