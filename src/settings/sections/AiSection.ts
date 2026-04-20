@@ -33,7 +33,8 @@ import {
 } from '../../ai/forecast/estimateTokensFromVault';
 import {
     estimateCorpusCost,
-    formatUsdCost
+    formatUsdCost,
+    clampExpectedOutputForCostPreview
 } from '../../ai/cost/estimateCorpusCost';
 import { getProviderPricing, getActivePricingMeta, getActivePromos, getPricingFreshnessLabel } from '../../ai/cost/providerPricing';
 import { buildOutputRulesText } from '../../ai/prompts/outputRules';
@@ -1874,7 +1875,7 @@ export function renderAiSection(params: {
                 model.provider,
                 model.modelId,
                 executionEstimate.estimatedTokens,
-                executionEstimate.maxOutputTokens,
+                clampExpectedOutputForCostPreview(executionEstimate.maxOutputTokens),
                 executionEstimate.expectedPassCount
             );
             const passLabel = `${cost.expectedPasses} ${cost.expectedPasses === 1 ? 'pass' : 'passes'}`;

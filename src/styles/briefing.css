@@ -595,6 +595,10 @@ a.rt-briefing-scene-ref {
 }
 
 @media print {
+  @page {
+    margin: 0.5in;
+  }
+
   .rt-briefing-modal {
     width: auto;
     max-width: none;
@@ -614,6 +618,15 @@ a.rt-briefing-scene-ref {
   .rt-briefing-actions,
   .rt-briefing-note-link {
     display: none;
+  }
+
+  .rt-briefing-section,
+  .rt-briefing-block,
+  .rt-briefing-note,
+  .rt-briefing-finding,
+  .rt-briefing-group {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 }
 

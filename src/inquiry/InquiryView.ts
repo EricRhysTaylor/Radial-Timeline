@@ -193,7 +193,8 @@ import {
 } from '../ai/tokens/inputTokenEstimate';
 import {
     estimateCorpusCost,
-    formatApproxUsdCost
+    formatApproxUsdCost,
+    clampExpectedOutputForCostPreview
 } from '../ai/cost/estimateCorpusCost';
 import { resolveInquirySourceRoots } from './utils/sourceRoots';
 import { renderInquiryCorpusStrip } from './corpus/inquiryCorpusStripRenderer';
@@ -10707,7 +10708,7 @@ export class InquiryView extends ItemView {
                 engine.provider,
                 engine.modelId,
                 snapshot.estimate.estimatedInputTokens,
-                snapshot.estimate.maxOutputTokens,
+                clampExpectedOutputForCostPreview(snapshot.estimate.maxOutputTokens),
                 snapshot.estimate.expectedPassCount
             );
             const freshLabel = formatApproxUsdCost(cost.freshCostUSD);

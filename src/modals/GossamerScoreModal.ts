@@ -1,7 +1,7 @@
 /*
  * Gossamer Score Entry Modal - Manual entry of beat momentum scores
  */
-import { Modal, App, ButtonComponent, Notice, TextComponent, TFile } from 'obsidian';
+import { Modal, App, ButtonComponent, Notice, TextComponent, TFile, TAbstractFile } from 'obsidian';
 import { tooltip, tooltipForComponent } from '../utils/tooltip';
 import type RadialTimelinePlugin from '../main';
 import { buildDefaultAiSettings } from '../ai/settings/aiSettings';
@@ -12,7 +12,7 @@ import { DEFAULT_GOSSAMER_SIGNAL, GOSSAMER_SIGNAL_METADATA, type GossamerSignalT
 import { parseScoresAndJustifications, type ParsedBeatEntry } from '../GossamerCommands';
 import { getSortedSceneFiles } from '../utils/manuscript';
 import { buildGossamerEvidenceDocument } from '../gossamer/evidence/buildGossamerEvidence';
-import { ensureManuscriptOutputFolder } from '../utils/aiOutput';
+import { ensureManuscriptOutputFolder, resolveManuscriptOutputFolder } from '../utils/aiOutput';
 import { buildExportFilename } from '../utils/exportFormats';
 import { getPlotSystem } from '../utils/beatsSystems';
 import {
@@ -60,6 +60,8 @@ export class GossamerScoreModal extends Modal {
   private entries: BeatScoreEntry[] = [];
   // Internal name retained for local state continuity; controls inclusion of Beat Purpose text.
   private includeBeatDescriptions = false;
+  /** Path of the most recent manuscript export during this modal session. */
+  private lastManuscriptPath: string | null = null;
 
   constructor(
     app: App,
@@ -123,6 +125,38 @@ export class GossamerScoreModal extends Modal {
 
     const changed = hasRenumbering || orphanJustifications.length > 0;
     return { beatTitle, missingSlots, orphanJustifications, hasRenumbering, changed };
+  }
+
+  /**
+   * Reveal the most recent manuscript export in Obsidian's file explorer.
+   * Falls back to the export folder when no file has been written this session,
+   * and shows a Notice if the file explorer sidebar isn't open.
+   */
+  private async revealManuscriptInVault(): Promise<void> {
+    let target: TAbstractFile | null = null;
+    if (this.lastManuscriptPath) {
+      target = this.plugin.app.vault.getAbstractFileByPath(this.lastManuscriptPath);
+    }
+    if (!target) {
+      const folderPath = resolveManuscriptOutputFolder(this.plugin);
+      target = this.plugin.app.vault.getAbstractFileByPath(folderPath);
+    }
+    if (!target) {
+      new Notice('Export folder not found yet — click "Copy AI prompt" to generate a manuscript first.');
+      return;
+    }
+    const explorerLeaf = this.plugin.app.workspace.getLeavesOfType('file-explorer')[0];
+    if (!explorerLeaf) {
+      new Notice('Open the File Explorer sidebar to see the revealed file.');
+      return;
+    }
+    const explorerView = explorerLeaf.view as unknown as { revealInFolder?: (node: TAbstractFile) => void };
+    if (!explorerView.revealInFolder) {
+      new Notice('File explorer does not support reveal.');
+      return;
+    }
+    explorerView.revealInFolder(target);
+    this.plugin.app.workspace.revealLeaf(explorerLeaf);
   }
 
   /** Cheap check: does any in-scope Beat note have at least one slot tagged with the active signal? */
@@ -555,7 +589,17 @@ export class GossamerScoreModal extends Modal {
         }
       });
     const aiMeta = aiGroup.createDiv({ cls: 'rt-gossamer-footer__meta' });
-    aiMeta.setText(`Prompt → clipboard · manuscript → vault file (upload to LLM) · ${this.entries.length} beats · ${activeSignalLabel} rubric`);
+    aiMeta.createSpan({ text: 'Prompt → clipboard · manuscript → ' });
+    const vaultLink = aiMeta.createEl('a', {
+      text: 'vault file',
+      cls: 'rt-gossamer-footer__vault-link',
+      attr: { href: '#', role: 'button', tabindex: '0' }
+    });
+    vaultLink.addEventListener('click', (event) => {
+      event.preventDefault();
+      void this.revealManuscriptInVault();
+    });
+    aiMeta.createSpan({ text: ` · ${this.entries.length} beats · ${activeSignalLabel}` });
 
     // Group 3: Commit cluster (standard dialog actions) — Save (primary) then Cancel.
     const commitGroup = footer.createDiv({ cls: 'rt-gossamer-footer__commit' });
@@ -796,6 +840,7 @@ export class GossamerScoreModal extends Modal {
       });
       const manuscriptPath = `${manuscriptFolder}/${manuscriptFilename}`;
       const manuscriptFile = await this.plugin.app.vault.create(manuscriptPath, evidenceDocument.text);
+      this.lastManuscriptPath = manuscriptPath;
 
       // Copy the small prompt (no manuscript body) to the clipboard.
       await navigator.clipboard.writeText(prompt);

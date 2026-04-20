@@ -1991,6 +1991,24 @@
   color: var(--text-muted);
   font-family: var(--font-monospace);
   opacity: 0.8;
+  max-width: 100%;
+  white-space: nowrap;
+}
+
+.rt-gossamer-footer__vault-link {
+  color: inherit;
+  text-decoration: underline dashed;
+  text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
+  cursor: pointer;
+}
+
+.rt-gossamer-footer__vault-link:hover,
+.rt-gossamer-footer__vault-link:focus,
+.rt-gossamer-footer__vault-link:focus-visible {
+  color: var(--text-normal);
+  opacity: 1;
+  outline: none;
 }
 
 .rt-gossamer-footer__commit {
