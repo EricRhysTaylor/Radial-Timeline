@@ -29,6 +29,7 @@ import type {
 import { evaluateInquiryReadiness } from './readiness';
 import { BUILTIN_MODELS } from '../../ai/registry/builtinModels';
 import { INQUIRY_MAX_OUTPUT_TOKENS } from '../constants';
+import { PROVIDER_MAX_OUTPUT_TOKENS } from '../../constants/tokenLimits';
 import { buildRTCorpusEstimate } from './buildRTCorpusEstimate';
 
 // ── Constants ─────────────────────────────────────────────────────────
@@ -246,7 +247,7 @@ export function buildReadinessUiState(input: BuildReadinessUiStateInput): Inquir
             estimateMethod: 'heuristic_chars',
             estimateUncertaintyTokens: 0,
             safeInputBudget: 0,
-            outputBudget: INQUIRY_MAX_OUTPUT_TOKENS,
+            outputBudget: PROVIDER_MAX_OUTPUT_TOKENS[provider] ?? INQUIRY_MAX_OUTPUT_TOKENS,
             hasEligibleModel: false,
             hasCredential,
             provider,
@@ -274,7 +275,7 @@ export function buildReadinessUiState(input: BuildReadinessUiStateInput): Inquir
             estimateMethod: 'heuristic_chars',
             estimateUncertaintyTokens: 0,
             safeInputBudget: 0,
-            outputBudget: INQUIRY_MAX_OUTPUT_TOKENS,
+            outputBudget: PROVIDER_MAX_OUTPUT_TOKENS[provider] ?? INQUIRY_MAX_OUTPUT_TOKENS,
             hasEligibleModel: false,
             hasCredential,
             provider,

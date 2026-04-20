@@ -2621,7 +2621,7 @@ export class InquiryRunnerService implements InquiryRunner {
 
     private getOutputTokenCap(provider: Exclude<AIProviderId, 'none'>): number {
         const providerCap = PROVIDER_MAX_OUTPUT_TOKENS[provider] ?? INQUIRY_MAX_OUTPUT_TOKENS;
-        return Math.max(512, Math.min(providerCap, INQUIRY_MAX_OUTPUT_TOKENS));
+        return Math.max(512, providerCap);
     }
 
     private applyResponseExecutionReporting(trace: InquiryRunTrace, response: ProviderResult): void {

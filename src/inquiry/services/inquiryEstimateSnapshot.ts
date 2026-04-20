@@ -31,6 +31,7 @@ import type { ResolvedInquiryEngine } from './inquiryModelResolver';
 import type { CorpusManifest, EvidenceParticipationRules, InquiryRunnerInput } from '../runner/types';
 import type { InquiryRunnerService } from '../runner/InquiryRunnerService';
 import { INQUIRY_CANONICAL_ESTIMATE_QUESTION, INQUIRY_MAX_OUTPUT_TOKENS } from '../constants';
+import { PROVIDER_MAX_OUTPUT_TOKENS } from '../../constants/tokenLimits';
 import { buildInquiryEstimateTrace } from './inquiryEstimateTrace';
 import { summarizeScopedInquiryEntries } from './canonicalInquiryCorpus';
 import { buildExactCorpusEstimateFromManifestEntries } from './buildExactCorpusEstimate';
@@ -255,7 +256,9 @@ export async function buildInquiryEstimateSnapshot(
         estimate: {
             estimatedInputTokens,
             effectiveInputCeiling,
-            maxOutputTokens: INQUIRY_MAX_OUTPUT_TOKENS,
+            maxOutputTokens: params.engine.provider !== 'none'
+                ? (PROVIDER_MAX_OUTPUT_TOKENS[params.engine.provider] ?? INQUIRY_MAX_OUTPUT_TOKENS)
+                : INQUIRY_MAX_OUTPUT_TOKENS,
             expectedPassCount,
             estimationMethod,
             uncertaintyTokens,

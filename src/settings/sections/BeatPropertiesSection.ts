@@ -17,7 +17,7 @@ import { clampActNumber, parseActLabels, resolveActLabel } from '../../utils/act
 import { ERT_CLASSES, ERT_DATA } from '../../ui/classes';
 import { getActiveMigrations, REFACTOR_ALERTS, areAlertMigrationsComplete, dismissAlert, type FieldMigration } from '../refactorAlerts';
 import { getScenePrefixNumber } from '../../utils/text';
-import { extractPrefixToken } from '../../utils/prefixOrder';
+import { comparePrefixTokens, extractPrefixToken } from '../../utils/prefixOrder';
 import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { openOrRevealFile } from '../../utils/fileUtils';
 import { tooltipForComponent } from '../../utils/tooltip';
@@ -827,6 +827,49 @@ export function renderBeatPropertiesSection(params: {
         return clampActNumber(Number(actualAct), getActCount()) !== status.expected.actNumber;
     };
 
+    /**
+     * Build a concise out-of-sequence notice for a beat. Identifies which
+     * neighbouring beat the prefix has it swapped with.
+     * Returns null when the beat is not out of sequence or has no active match.
+     */
+    const buildOutOfSequenceNotice = (
+        beatKey: string,
+        structuralStatus: BeatSystemStructuralStatus
+    ): string | null => {
+        const present = structuralStatus.beats
+            .map((beat) => {
+                const matches = structuralStatus.matches.activeByBeatKey.get(beat.expected.key) ?? [];
+                if (matches.length === 0) return null;
+                const rep = [...matches].sort((a, b) =>
+                    comparePrefixTokens(extractPrefixToken(a.basename), extractPrefixToken(b.basename))
+                )[0];
+                return {
+                    beatKey: beat.expected.key,
+                    beatName: beat.expected.name,
+                    templateOrdinal: beat.expected.ordinal,
+                    prefix: extractPrefixToken(rep.basename),
+                };
+            })
+            .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+
+        if (present.length < 2) return null;
+
+        const templateOrder = [...present].sort((a, b) => a.templateOrdinal - b.templateOrdinal);
+        const manuscriptOrder = [...present].sort((a, b) => comparePrefixTokens(a.prefix, b.prefix));
+
+        const templateIdx = templateOrder.findIndex((entry) => entry.beatKey === beatKey);
+        if (templateIdx < 0) return null;
+        const self = templateOrder[templateIdx];
+        // The beat currently sitting at my expected manuscript slot.
+        const usurper = manuscriptOrder[templateIdx];
+        if (!usurper || usurper.beatKey === beatKey) return null;
+
+        const selfComesAfter = comparePrefixTokens(self.prefix, usurper.prefix) > 0;
+        const actual = selfComesAfter ? 'AFTER' : 'BEFORE';
+        const expected = selfComesAfter ? 'BEFORE' : 'AFTER';
+        return `Out of manuscript sequence. File prefix ${self.prefix} places it ${actual} ${usurper.beatName} (${usurper.prefix}), but the template puts it ${expected}.`;
+    };
+
     const getManuscriptAdvisoryState = (system: string, loadedTab?: LoadedBeatTab | null): ManuscriptAdvisoryState | null => {
         const structuralStatus = getBeatStructuralStatus(system, { loadedTab: loadedTab ?? null });
         const summary = structuralStatus.summary;
@@ -1431,9 +1474,10 @@ export function renderBeatPropertiesSection(params: {
                     const nameInput = row.createEl('input', { type: 'text', cls: 'ert-beat-name-input ert-input' });
                     nameInput.value = name;
                     nameInput.placeholder = t('settings.beats.design.beatNamePlaceholder');
-                    // Determine row state (mutually exclusive: new | synced | misaligned | duplicate)
-                    let rowState: 'new' | 'synced' | 'misaligned' | 'duplicate' = 'new';
+                    // Determine row state (mutually exclusive: new | synced | misaligned | out-of-sequence | duplicate)
+                    let rowState: 'new' | 'synced' | 'misaligned' | 'out-of-sequence' | 'duplicate' = 'new';
                     const rowNotices: string[] = [];
+                    const hasOutOfSequence = beatStatus?.issues.some((issue) => issue.code === 'out_of_sequence') ?? false;
 
                     // Duplicate title in settings list takes highest priority
                     if (dupKey && duplicateKeys.has(dupKey)) {
@@ -1471,6 +1515,17 @@ export function renderBeatPropertiesSection(params: {
                             .map((issue) => issue.message)
                             .join(' • ');
                         if (structuralNotice) rowNotices.push(structuralNotice);
+                    }
+
+                    // Out-of-sequence layers on top of the base row state. Duplicate
+                    // and misaligned keep higher priority for border color; plain
+                    // 'synced' or 'new' rows are promoted so the warning band renders.
+                    if (hasOutOfSequence && dupKey && activeMatches.length > 0) {
+                        if (rowState === 'new' || rowState === 'synced') {
+                            rowState = 'out-of-sequence';
+                        }
+                        const notice = buildOutOfSequenceNotice(dupKey, structuralStatus);
+                        if (notice) rowNotices.push(notice);
                     }
 
                     if (rowState !== 'new') {
@@ -1913,7 +1968,11 @@ export function renderBeatPropertiesSection(params: {
                 const rowTone = isActiveInManuscript ? state.tone : 'muted';
                 const row = listEl.createDiv({ cls: `ert-beat-act-item ert-beat-act-item--${rowTone}` });
                 const ordinal = status?.expected.ordinal ?? (++runningBeatIdx);
-                row.createSpan({ text: isActiveInManuscript ? `${ordinal}. ${beat.name} — ` : `${ordinal}. ${beat.name}` });
+                // Beat rows show status as an icon (and optional text). An em-dash
+                // before a lone icon reads as a dangling connector, so only a space
+                // separates the name from the status here. Act headers still use
+                // " — " because their status always includes a text label.
+                row.createSpan({ text: isActiveInManuscript ? `${ordinal}. ${beat.name} ` : `${ordinal}. ${beat.name}` });
                 if (isActiveInManuscript) {
                     appendPreviewStatus(row, state, 'ert-preview-status--compact');
                 }
