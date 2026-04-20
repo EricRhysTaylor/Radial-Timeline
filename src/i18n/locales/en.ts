@@ -693,7 +693,7 @@ export const en: TranslationKeys = {
             },
             manuscriptOutputFolder: {
                 name: 'Export folder',
-                desc: 'Folder where manuscript, outline, and cue card exports (Markdown, PDF, beat sheets, index cards) are saved. Default: Radial Timeline/Export.',
+                desc: 'Manuscript, outline, and cue card exports (Markdown, PDF, beat sheets, index cards) are stored in Radial Timeline/Export.',
                 placeholder: 'Radial Timeline/Export',
             },
             outlineOutputFolder: {

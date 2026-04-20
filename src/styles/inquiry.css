@@ -2068,6 +2068,21 @@
   fill: var(--ert-inquiry-ai-warning);
 }
 
+.ert-inquiry-verdict.is-citation-integrity-warning,
+.ert-inquiry-finding-section.is-citation-integrity-warning,
+.ert-inquiry-finding-head.is-citation-integrity-warning,
+.ert-inquiry-finding-meta.is-citation-integrity-warning {
+  fill: var(--ert-inquiry-ai-warning);
+}
+
+.ert-inquiry-verdict.is-citation-evidence-compromised,
+.ert-inquiry-finding-section.is-citation-evidence-compromised,
+.ert-inquiry-finding-head.is-citation-evidence-compromised,
+.ert-inquiry-finding-meta.is-citation-evidence-compromised {
+  fill: var(--text-error, #e06666);
+  font-weight: 700;
+}
+
 .ert-inquiry-findings-list {
   pointer-events: auto;
 }

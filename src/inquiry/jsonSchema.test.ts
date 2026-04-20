@@ -30,4 +30,20 @@ describe('Inquiry JSON schemas', () => {
         const schema = buildInquiryOmnibusJsonSchema() as Record<string, any>;
         assertOpenAiStrictObjectContracts(schema);
     });
+
+    it('requires ref_id, ref_label, and ref_path on every finding so hallucinated citations can be rescued via label/path', () => {
+        const schema = buildInquiryJsonSchema() as Record<string, any>;
+        const findingItems = schema.properties.findings.items;
+        expect(findingItems.required).toEqual(expect.arrayContaining(['ref_id', 'ref_label', 'ref_path']));
+        expect(findingItems.properties.ref_label).toEqual({ type: 'string' });
+        expect(findingItems.properties.ref_path).toEqual({ type: 'string' });
+    });
+
+    it('requires ref_id, ref_label, and ref_path on omnibus findings', () => {
+        const schema = buildInquiryOmnibusJsonSchema() as Record<string, any>;
+        const findingItems = schema.properties.results.items.properties.findings.items;
+        expect(findingItems.required).toEqual(expect.arrayContaining(['ref_id', 'ref_label', 'ref_path']));
+        expect(findingItems.properties.ref_label).toEqual({ type: 'string' });
+        expect(findingItems.properties.ref_path).toEqual({ type: 'string' });
+    });
 });

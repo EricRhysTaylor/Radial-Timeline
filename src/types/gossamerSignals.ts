@@ -89,8 +89,8 @@ export const GOSSAMER_SIGNAL_METADATA: Record<GossamerSignalType, GossamerSignal
     label: 'Tension',
     short: 'TENSION',
     icon: 'flame',
-    // Simplified flame silhouette (teardrop) — avoids lucide flame's inner swirl.
-    inlineIconPath: 'M12 2 C9 6 5 10 5 15 A7 7 0 0 0 19 15 C19 10 15 6 12 2 Z',
+    // Simplified flame silhouette (no inner swirl) — lucide flame variant.
+    inlineIconPath: 'M12 3q1 4 4 6.5t3 5.5a1 1 0 0 1-14 0 5 5 0 0 1 1-3 1 1 0 0 0 5 0c0-2-1.5-3-1.5-5q0-2 2.5-4',
     tooltip: 'Tension\n\nMeasures the pressure the reader feels—how much strain, uncertainty, or unresolved conflict is carried forward. A quiet scene can be highly tense if the stakes are clear.',
     promptBlock: TENSION_BLOCK
   },

@@ -98,6 +98,94 @@ describe('inquiryViewText', () => {
             .toBe('Open brief shows clearly.');
     });
 
+    it('renders neither citation-integrity banner nor unverified section when a legacy brief has no integrity fields', () => {
+        const brief: InquiryBriefModel = {
+            questionTitle: 'Question',
+            questionText: 'What is breaking?',
+            scopeIndicator: 'Book B1',
+            selectionMode: 'discover',
+            roleValidation: 'ok',
+            pills: [],
+            flowSummary: 'Flow summary',
+            depthSummary: 'Depth summary',
+            findings: [],
+            sources: [],
+            sceneNotes: [],
+            sceneReferences: [],
+            pendingActions: [],
+            logTitle: null
+        };
+
+        const content = renderInquiryBrief(brief);
+        expect(content).not.toContain('Citation integrity warning');
+        expect(content).not.toContain('Evidence compromised');
+        expect(content).not.toContain('Unverified AI Citations');
+    });
+
+    it('renders the normal integrity warning banner (not the compromised one) when some findings were verified', () => {
+        const brief: InquiryBriefModel = {
+            questionTitle: 'Question',
+            questionText: 'What is breaking?',
+            scopeIndicator: 'Book B1',
+            selectionMode: 'discover',
+            roleValidation: 'ok',
+            pills: [],
+            flowSummary: 'Flow',
+            depthSummary: 'Depth',
+            findings: [
+                { headline: 'Clean finding', role: 'target', lens: 'Flow', bullets: [] }
+            ],
+            sources: [],
+            sceneNotes: [],
+            sceneReferences: [],
+            pendingActions: [],
+            logTitle: null,
+            citationIntegrityWarnings: [
+                { stage: 'unresolved_ref', message: 'bad' }
+            ],
+            unverifiedFindings: [
+                { headline: 'Ghost', bullets: [], lens: 'Flow', rawRefId: 'scn_deadbeef', warning: 'nope' }
+            ]
+        };
+
+        const content = renderInquiryBrief(brief);
+        expect(content).toContain('Citation integrity warning');
+        expect(content).not.toContain('Evidence compromised');
+        expect(content).toContain('Unverified AI Citations');
+        expect(content).toContain('should not be trusted as evidence');
+    });
+
+    it('renders the "Evidence compromised" banner when the run has no verified findings and some unverified ones', () => {
+        const brief: InquiryBriefModel = {
+            questionTitle: 'Question',
+            questionText: 'What is breaking?',
+            scopeIndicator: 'Book B1',
+            selectionMode: 'discover',
+            roleValidation: 'ok',
+            pills: [],
+            flowSummary: 'Flow',
+            depthSummary: 'Depth',
+            findings: [],
+            sources: [],
+            sceneNotes: [],
+            sceneReferences: [],
+            pendingActions: [],
+            logTitle: null,
+            evidenceCompromised: true,
+            citationIntegrityWarnings: [
+                { stage: 'unresolved_ref', message: 'bad' }
+            ],
+            unverifiedFindings: [
+                { headline: 'Ghost', bullets: [], lens: 'Flow', rawRefId: 'scn_deadbeef', warning: 'nope' }
+            ]
+        };
+
+        const content = renderInquiryBrief(brief);
+        expect(content).toContain('Evidence compromised');
+        expect(content).toContain('not trustworthy');
+        expect(content).toContain('Unverified AI Citations');
+    });
+
     it('replaces canonical scene ids with readable scene labels before rendering', () => {
         const refs = new Map<string, string>([
             ['scn_70a8d14e', '16 Chae Ban hears about the Homo'],

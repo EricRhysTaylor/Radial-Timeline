@@ -38,6 +38,7 @@ export function buildInquiryPromptParts(input: string | InquiryPromptScaffoldInp
     systemPrompt: string;
     instructionText: string;
     schemaText: string;
+    manifestText: string;
     userPrompt: string;
 } {
     const normalized = normalizePromptInput(input);
@@ -60,6 +61,8 @@ export function buildInquiryPromptParts(input: string | InquiryPromptScaffoldInp
         '  "findings": [',
         '    {',
         '      "ref_id": "scn_a1b2c3d4",',
+        '      "ref_label": "3 Party.md",',
+        '      "ref_path": "Book 1 Shail + Trisan/3 Party.md",',
         '      "kind": "loose_end|continuity|escalation|conflict|unclear|strength",',
         '      "lens": "flow|depth|both|",',
         '      "headline": "short line",',
@@ -81,14 +84,14 @@ export function buildInquiryPromptParts(input: string | InquiryPromptScaffoldInp
         'Use depth summary phrasing that emphasizes alignment, implication, and consistency.',
         'If conclusions align, still phrase summaries to match the active lens emphasis.',
         'All findings must be anchored to specific scenes.',
-        'Prefer using the format: scn_<id> when referencing scenes.',
-        'Use scene ref_id values from evidence labels in parentheses (e.g., scn_a1b2c3d4).',
-        'Canonical scene ids are YAML IDs in the form scn_<hash>.',
-        'Every finding.ref_id must match ^scn_[a-f0-9]{8,10}$ and be copied exactly from evidence labels.',
-        'If the exact ID is not known, reference the scene in a way that can be matched — scene number (e.g. S12, Scene 12), chapter number (e.g. Chapter 3), or scene/chapter title.',
+        'Citation fidelity is mandatory. Every finding MUST include ref_id, ref_label, and ref_path, copied VERBATIM from a single entry in the CORPUS MANIFEST.',
+        'Do not invent, shorten, rename, translate, paraphrase, or infer scene references. Copy all three fields character-for-character from the manifest line you selected.',
+        'If no matching corpus entry exists for a scene you would like to cite, do NOT cite it. Omit the finding rather than fabricate a reference.',
+        'The three fields must be consistent: ref_id, ref_label, and ref_path must come from the SAME manifest row. Do not mix fields across rows.',
+        'Canonical scene ids are YAML IDs in the form scn_<hash> and must match ^scn_[a-f0-9]{8,10}$.',
         'When identifying absences (e.g. missing setup, weak foreshadowing, underdeveloped elements): reference the scene where the absence is most visible to the reader, or the scene where the missing element should have been established.',
         'Avoid abstract identifiers such as gap_001 or similar constructs.',
-        'Every finding must map to a concrete scene or scene-equivalent reference.',
+        'Every finding must map to a concrete scene from the CORPUS MANIFEST.',
         'Never invent scene refs like scn_s38_jump, scn_s44_long_road_up, or title/slug variants.',
         'Evidence headings include "(Summary)" or "(Full)".',
         'Treat "(Summary)" entries as compressed evidence, not full scene prose; avoid claims requiring missing fine-grain details.',
@@ -120,10 +123,19 @@ export function buildInquiryPromptParts(input: string | InquiryPromptScaffoldInp
         ]
         : [];
 
+    const manifestText = normalized.corpusManifestLines.length
+        ? [
+            'CORPUS MANIFEST:',
+            'Every cited scene MUST come from this list. Copy ref_id, ref_label, and ref_path verbatim from one row.',
+            ...normalized.corpusManifestLines.map(line => `- ${line}`)
+        ].join('\n')
+        : '';
+
     const userPrompt = [
         instructionText,
         '',
         schemaText,
+        ...(manifestText ? ['', manifestText] : []),
         '',
         'TASK:',
         normalized.task || '(not provided)',
@@ -133,7 +145,7 @@ export function buildInquiryPromptParts(input: string | InquiryPromptScaffoldInp
         normalized.evidenceText
     ].join('\n');
 
-    return { systemPrompt, instructionText, schemaText, userPrompt };
+    return { systemPrompt, instructionText, schemaText, manifestText, userPrompt };
 }
 
 export function buildInquiryPromptScaffold(input: string | InquiryPromptScaffoldInput): {

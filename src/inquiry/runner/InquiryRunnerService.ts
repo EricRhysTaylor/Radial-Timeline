@@ -4,7 +4,8 @@ import type RadialTimelinePlugin from '../../main';
 import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { INQUIRY_MAX_OUTPUT_TOKENS, INQUIRY_SCHEMA_VERSION } from '../constants';
 import { PROVIDER_MAX_OUTPUT_TOKENS } from '../../constants/tokenLimits';
-import type { EvidenceDocumentMeta, InquiryAiStatus, InquiryCitation, InquiryFinding, InquiryResult, InquiryRoleValidation, InquiryTokenUsageScope } from '../state';
+import type { CitationIntegrityWarning, EvidenceDocumentMeta, InquiryAiStatus, InquiryCitation, InquiryFinding, InquiryResult, InquiryRoleValidation, InquiryTokenUsageScope, UnverifiedCitation } from '../state';
+import { computeCitationIntegritySummary } from '../state';
 import type {
     CorpusManifestEntry,
     InquiryExecutionPath,
@@ -21,7 +22,7 @@ import type {
 import { getAIClient } from '../../ai/runtime/aiClient';
 import { buildDefaultAiSettings } from '../../ai/settings/aiSettings';
 import { validateAiSettings } from '../../ai/settings/validateAiSettings';
-import type { AIRunPreparedEstimate, AIRunResult, AIProviderId, SceneRef } from '../../ai/types';
+import type { AIRunPreparedEstimate, AIRunResult, AIProviderId } from '../../ai/types';
 import { extractTokenUsage } from '../../ai/usage/providerUsage';
 import { readSceneId } from '../../utils/sceneIds';
 import { buildSceneRefIndex, isStableSceneId, normalizeSceneRef } from '../../ai/references/sceneRefNormalizer';
@@ -749,7 +750,10 @@ export class InquiryRunnerService implements InquiryRunner {
         return entries.map(entry => {
             const mode = this.normalizeEntryMode(entry.mode);
             const isTarget = entry.isTarget === true;
-            return `${this.buildManifestSubjectLabel(entry)} | class=${entry.class} | mode=${mode} | isTarget=${isTarget}`;
+            const subject = this.buildManifestSubjectLabel(entry);
+            const filename = entry.path.split('/').pop() || entry.path;
+            const refIdPart = entry.sceneId ? `ref_id=${subject}` : `ref_id=${subject}`;
+            return `${refIdPart} | ref_label=${filename} | ref_path=${entry.path} | class=${entry.class} | mode=${mode} | isTarget=${isTarget}`;
         });
     }
 
@@ -768,7 +772,7 @@ export class InquiryRunnerService implements InquiryRunner {
             corpusManifestLines: this.buildCorpusManifestLines(input.corpus.entries),
             evidenceText
         };
-        const { systemPrompt, userPrompt, instructionText, schemaText } = buildInquiryPromptParts(scaffoldInput);
+        const { systemPrompt, userPrompt, instructionText, schemaText, manifestText } = buildInquiryPromptParts(scaffoldInput);
         const targetSceneBlock = input.selectionMode === 'focused' && input.targetSceneIds.length
             ? [
                 '',
@@ -776,6 +780,7 @@ export class InquiryRunnerService implements InquiryRunner {
                 ...input.targetSceneIds.map(sceneId => `- ${sceneId}`)
             ]
             : [];
+        const manifestBlock = manifestText ? ['', manifestText] : [];
 
         // Stable instruction prompt for attachment-mode caching.
         // Deliberately omits TASK so the volatile question can be placed after
@@ -785,6 +790,7 @@ export class InquiryRunnerService implements InquiryRunner {
             instructionText,
             '',
             schemaText,
+            ...manifestBlock,
             ...targetSceneBlock,
             '',
             'EVIDENCE:',
@@ -795,6 +801,7 @@ export class InquiryRunnerService implements InquiryRunner {
             instructionText,
             '',
             schemaText,
+            ...manifestBlock,
             ...targetSceneBlock,
             '',
             'EVIDENCE:',
@@ -829,6 +836,8 @@ export class InquiryRunnerService implements InquiryRunner {
             '      "findings": [',
             '        {',
             '          "ref_id": "scn_a1b2c3d4",',
+            '          "ref_label": "3 Party.md",',
+            '          "ref_path": "Book 1 Shail + Trisan/3 Party.md",',
             '          "kind": "loose_end|continuity|escalation|conflict|unclear|strength",',
             '          "lens": "flow|depth|both|",',
             '          "headline": "short line",',
@@ -849,7 +858,7 @@ export class InquiryRunnerService implements InquiryRunner {
             const zoneLabel = question.zone === 'setup' ? 'Setup' : question.zone === 'pressure' ? 'Pressure' : 'Payoff';
             return `${index + 1}) [${question.id}] ${zoneLabel}: ${question.questionText}`;
         });
-        const { instructionText } = buildInquiryPromptParts({
+        const { instructionText, manifestText } = buildInquiryPromptParts({
             task: questionLines.join('\n'),
             lens: input.mode,
             selectionMode: input.selectionMode,
@@ -865,6 +874,7 @@ export class InquiryRunnerService implements InquiryRunner {
                 ...input.targetSceneIds.map(sceneId => `- ${sceneId}`)
             ]
             : [];
+        const manifestBlock = manifestText ? ['', manifestText] : [];
 
         const promptParts = [
             instructionText,
@@ -874,6 +884,7 @@ export class InquiryRunnerService implements InquiryRunner {
             'Return JSON only using the exact schema below.',
             '',
             schema,
+            ...manifestBlock,
             '',
             'TASK:',
             questionLines.join('\n'),
@@ -894,6 +905,7 @@ export class InquiryRunnerService implements InquiryRunner {
             instructionText,
             '',
             schema,
+            ...manifestBlock,
             ...targetSceneBlock,
             '',
             'EVIDENCE:',
@@ -904,6 +916,7 @@ export class InquiryRunnerService implements InquiryRunner {
             instructionText,
             '',
             schema,
+            ...manifestBlock,
             ...targetSceneBlock,
             '',
             'EVIDENCE:',
@@ -1960,9 +1973,8 @@ export class InquiryRunnerService implements InquiryRunner {
 
         const findings = Array.isArray(parsed.findings) ? parsed.findings : [];
         const sceneRefIndex = this.buildCanonicalSceneRefIndex(input);
-        this.assertFindingRefsResolve(findings, sceneRefIndex);
-        const mappedFindings = findings.map(finding => this.mapFinding(finding, sceneRefIndex));
-        const roleValidation = this.computeRoleValidation(input.selectionMode, mappedFindings);
+        const partition = this.verifyFindingRefs(findings, sceneRefIndex);
+        const roleValidation = this.computeRoleValidation(input.selectionMode, partition.verified);
 
         const summaryFlow = parsed.summaryFlow
             ? String(parsed.summaryFlow)
@@ -1974,7 +1986,7 @@ export class InquiryRunnerService implements InquiryRunner {
             ? String(parsed.summary)
             : (summaryFlow || summaryDepth || 'No summary provided.');
 
-        return {
+        const result: InquiryResult = {
             runId: `run-${Date.now()}`,
             scope: input.scope,
             scopeLabel: input.scopeLabel,
@@ -1992,13 +2004,24 @@ export class InquiryRunnerService implements InquiryRunner {
                 flow,
                 depth
             },
-            findings: mappedFindings,
+            findings: partition.verified,
             corpusFingerprint: input.corpus.fingerprint,
             cacheReuseFingerprint: input.corpus.cacheReuseFingerprint,
             ...aiMeta,
+            ...(partition.unverified.length ? { unverifiedFindings: partition.unverified } : {}),
+            ...(partition.warnings.length ? { citationIntegrityWarnings: partition.warnings } : {}),
             ...(citations?.length ? { citations } : {}),
             ...(evidenceDocumentMeta?.length ? { evidenceDocumentMeta } : {})
         };
+
+        if (partition.warnings.length > 0 || partition.unverified.length > 0) {
+            const summaryCounts = computeCitationIntegritySummary(result);
+            console.info(
+                `[Inquiry] Citation integrity: verified=${summaryCounts.verifiedCount} rescued=${summaryCounts.rescuedCount} unverified=${summaryCounts.unverifiedCount} mismatch=${summaryCounts.mismatchCount}${summaryCounts.evidenceCompromised ? ' (EVIDENCE COMPROMISED)' : ''}`
+            );
+        }
+
+        return result;
     }
 
     private buildOmnibusResults(
@@ -2083,25 +2106,147 @@ export class InquiryRunnerService implements InquiryRunner {
         };
     }
 
-    private mapFinding(
-        raw: RawInquiryFinding,
+    /**
+     * Splits raw AI findings into verified (in-corpus) and unverified (fabricated
+     * or unresolvable) sets. Never throws. Preserves raw ref values on rescued
+     * findings so the UI can distinguish "AI cited it this way, we matched it
+     * to that" from a clean citation.
+     *
+     * Rescue policy: we only accept the resolution produced by
+     * sceneRefNormalizer, which itself requires a single unambiguous match
+     * (exact id / path / label, or scene-number disambiguated by slug, or a
+     * normalized-key lookup that returns exactly one entry). Ambiguous matches
+     * are treated as unverified.
+     */
+    private verifyFindingRefs(
+        rawFindings: RawInquiryFinding[],
         sceneRefIndex: ReturnType<typeof buildSceneRefIndex>
-    ): InquiryFinding {
-        const kind = this.normalizeFindingKind(raw.kind);
-        const normalizedRef = this.normalizeFindingRef(raw, sceneRefIndex);
-        const lens = this.normalizeFindingLens(raw.lens);
-        const bullets = Array.isArray(raw.bullets)
-            ? raw.bullets.map(value => String(value)).filter(Boolean)
-            : [];
+    ): {
+        verified: InquiryFinding[];
+        unverified: UnverifiedCitation[];
+        warnings: CitationIntegrityWarning[];
+    } {
+        const verified: InquiryFinding[] = [];
+        const unverified: UnverifiedCitation[] = [];
+        const warnings: CitationIntegrityWarning[] = [];
+
+        rawFindings.forEach(raw => {
+            const rawRefId = raw.ref_id ? String(raw.ref_id) : undefined;
+            const rawRefLabel = raw.ref_label ? String(raw.ref_label) : undefined;
+            const rawRefPath = raw.ref_path ? String(raw.ref_path) : undefined;
+
+            const normalized = normalizeSceneRef({
+                ref_id: rawRefId,
+                ref_label: rawRefLabel,
+                ref_path: rawRefPath
+            }, sceneRefIndex);
+
+            const kind = this.normalizeFindingKind(raw.kind);
+            const lens = this.normalizeFindingLens(raw.lens);
+            const role = this.normalizeFindingRole(raw.role);
+            const headline = raw.headline ? String(raw.headline) : 'Finding';
+            const bullets = Array.isArray(raw.bullets)
+                ? raw.bullets.map(value => String(value)).filter(Boolean)
+                : [];
+
+            if (normalized.unresolved) {
+                const offendingRef = rawRefId || rawRefLabel || rawRefPath || '(missing ref)';
+                const warningMessage = normalized.warning
+                    || `AI citation "${offendingRef}" could not be matched to a scene in the active corpus.`;
+                if (normalized.warning) {
+                    console.warn(`[Inquiry] ${normalized.warning}`);
+                }
+                unverified.push({
+                    rawRefId,
+                    rawRefLabel,
+                    rawRefPath,
+                    kind,
+                    headline,
+                    bullets,
+                    lens,
+                    role,
+                    warning: warningMessage
+                });
+                warnings.push({
+                    stage: 'unresolved_ref',
+                    message: `AI citation "${offendingRef}" could not be matched to the active corpus.`
+                });
+                return;
+            }
+
+            const rescued = normalized.normalizedFromLegacy;
+            if (normalized.warning) {
+                console.warn(`[Inquiry] ${normalized.warning}`);
+            }
+
+            const finding: InquiryFinding = {
+                refId: normalized.ref.ref_id,
+                kind,
+                headline,
+                bullets,
+                related: [],
+                evidenceType: 'mixed',
+                lens,
+                role
+            };
+            if (rescued && (rawRefId || rawRefLabel || rawRefPath)) {
+                finding.rawRef = {
+                    ...(rawRefId ? { refId: rawRefId } : {}),
+                    ...(rawRefLabel ? { refLabel: rawRefLabel } : {}),
+                    ...(rawRefPath ? { refPath: rawRefPath } : {})
+                };
+                warnings.push({
+                    stage: 'unresolved_ref',
+                    message: `AI citation "${rawRefId || rawRefLabel || rawRefPath}" could not be matched directly; repaired to ${normalized.ref.ref_id} via label/path.`
+                });
+            }
+
+            const mismatch = this.detectRefMismatch(
+                { rawRefId, rawRefLabel, rawRefPath },
+                normalized.ref.ref_id,
+                sceneRefIndex
+            );
+            if (mismatch) {
+                warnings.push(mismatch);
+                finding.rawRef = {
+                    ...(finding.rawRef || {}),
+                    ...(rawRefId ? { refId: rawRefId } : {}),
+                    ...(rawRefLabel ? { refLabel: rawRefLabel } : {}),
+                    ...(rawRefPath ? { refPath: rawRefPath } : {})
+                };
+            }
+
+            verified.push(finding);
+        });
+
+        return { verified, unverified, warnings };
+    }
+
+    /**
+     * Detects when ref_id resolves to scene A but ref_label or ref_path
+     * resolves to a different scene B. The ref_id is trusted (deterministic
+     * id), but the mismatch is recorded so the author can see the model's
+     * label/path was inconsistent with its id.
+     */
+    private detectRefMismatch(
+        raw: { rawRefId?: string; rawRefLabel?: string; rawRefPath?: string },
+        resolvedRefId: string,
+        sceneRefIndex: ReturnType<typeof buildSceneRefIndex>
+    ): CitationIntegrityWarning | null {
+        if (!raw.rawRefLabel && !raw.rawRefPath) return null;
+        const nonIdResolved = normalizeSceneRef({
+            ref_label: raw.rawRefLabel,
+            ref_path: raw.rawRefPath
+        }, sceneRefIndex);
+        if (nonIdResolved.unresolved) return null;
+        if (!nonIdResolved.ref.ref_id) return null;
+        if (nonIdResolved.ref.ref_id === resolvedRefId) return null;
+        const labelDesc = raw.rawRefLabel ? `ref_label="${raw.rawRefLabel}"` : '';
+        const pathDesc = raw.rawRefPath ? `ref_path="${raw.rawRefPath}"` : '';
+        const descriptor = [labelDesc, pathDesc].filter(Boolean).join(' / ');
         return {
-            refId: normalizedRef.ref_id,
-            kind,
-            headline: raw.headline ? String(raw.headline) : 'Finding',
-            bullets,
-            related: [],
-            evidenceType: 'mixed',
-            lens,
-            role: this.normalizeFindingRole(raw.role)
+            stage: 'ref_label_mismatch',
+            message: `AI returned a valid scene id with mismatched label/path metadata: ref_id ${resolvedRefId}, but ${descriptor} points to ${nonIdResolved.ref.ref_id}. Trusting ref_id.`
         };
     }
 
@@ -2162,40 +2307,6 @@ export class InquiryRunnerService implements InquiryRunner {
         return input.scopeLabel;
     }
 
-    private normalizeFindingRef(
-        raw: RawInquiryFinding,
-        sceneRefIndex: ReturnType<typeof buildSceneRefIndex>
-    ): SceneRef {
-        const normalized = normalizeSceneRef({
-            ref_id: raw.ref_id ? String(raw.ref_id) : undefined,
-            ref_label: raw.ref_label ? String(raw.ref_label) : undefined,
-            ref_path: raw.ref_path ? String(raw.ref_path) : undefined
-        }, sceneRefIndex);
-
-        if (normalized.warning) {
-            console.warn(`[Inquiry] ${normalized.warning}`);
-        }
-        return normalized.ref;
-    }
-
-    private assertFindingRefsResolve(
-        findings: RawInquiryFinding[],
-        sceneRefIndex: ReturnType<typeof buildSceneRefIndex>
-    ): void {
-        const unresolved = findings
-            .map(finding => {
-                const normalized = normalizeSceneRef({
-                    ref_id: finding.ref_id ? String(finding.ref_id) : undefined,
-                    ref_label: finding.ref_label ? String(finding.ref_label) : undefined,
-                    ref_path: finding.ref_path ? String(finding.ref_path) : undefined
-                }, sceneRefIndex);
-                if (!normalized.unresolved) return null;
-                return finding.ref_id || finding.ref_label || finding.ref_path || '(missing ref)';
-            })
-            .filter((value): value is string => !!value);
-        if (!unresolved.length) return;
-        throw new Error(`AI response referenced scenes outside the active corpus: ${unresolved.join(', ')}`);
-    }
 
     private resolveCanonicalSceneId(value: string | undefined): string | undefined {
         if (!isStableSceneId(value)) return undefined;

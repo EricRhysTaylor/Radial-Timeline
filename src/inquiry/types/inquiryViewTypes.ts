@@ -73,6 +73,34 @@ export type InquiryBriefModel = {
     logTitle?: string | null;
     rawResponse?: string | null;
     refNormalized?: boolean;
+    /**
+     * Run-level citation integrity warnings rendered as a blunt banner so
+     * unverified citations never masquerade as verified findings.
+     */
+    citationIntegrityWarnings?: Array<{
+        stage: 'unresolved_ref' | 'ref_label_mismatch';
+        message: string;
+    }>;
+    /**
+     * Findings the AI cited but which could not be matched to the active
+     * corpus. Rendered in a visually distinct "Unverified AI citations"
+     * section beneath verified findings.
+     */
+    unverifiedFindings?: Array<{
+        headline: string;
+        bullets: string[];
+        lens: string;
+        rawRefId?: string;
+        rawRefLabel?: string;
+        rawRefPath?: string;
+        warning: string;
+    }>;
+    /**
+     * True when the run has at least one unverified citation AND zero verified
+     * findings — the whole evidence base is suspect and the UI should show a
+     * harsher state than the normal warning.
+     */
+    evidenceCompromised?: boolean;
 };
 
 export type InquiryPreviewRow = {

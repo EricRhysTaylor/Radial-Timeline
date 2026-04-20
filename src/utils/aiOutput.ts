@@ -40,10 +40,10 @@ export async function ensureOutlineOutputFolder(plugin: RadialTimelinePlugin): P
 }
 
 export function resolveExportOutputFolder(plugin: RadialTimelinePlugin): string {
-    const raw = plugin.settings.manuscriptOutputFolder?.trim()
-        || plugin.settings.outlineOutputFolder?.trim()
-        || DEFAULT_SETTINGS.manuscriptOutputFolder
-        || DEFAULT_SETTINGS.outlineOutputFolder
-        || 'Radial Timeline/Export';
-    return normalizePath(raw);
+    // Export folder is no longer user-configurable (same treatment as the
+    // AI logs folder). All manuscript, outline, and cue-card exports land in
+    // the canonical vault location. Legacy `settings.manuscriptOutputFolder`
+    // values are ignored.
+    void plugin;
+    return normalizePath(DEFAULT_SETTINGS.manuscriptOutputFolder || 'Radial Timeline/Export');
 }

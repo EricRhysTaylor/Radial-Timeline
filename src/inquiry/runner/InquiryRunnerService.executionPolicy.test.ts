@@ -233,8 +233,7 @@ describe('InquiryRunnerService execution policy', () => {
         }]);
 
         Object.assign(service, {
-            buildCanonicalSceneRefIndex: vi.fn(() => sceneRefIndex),
-            assertFindingRefsResolve: vi.fn()
+            buildCanonicalSceneRefIndex: vi.fn(() => sceneRefIndex)
         });
 
         const result = (service.buildResult as (...args: unknown[]) => Record<string, unknown>)(
@@ -304,8 +303,7 @@ describe('InquiryRunnerService execution policy', () => {
         }]);
 
         Object.assign(service, {
-            buildCanonicalSceneRefIndex: vi.fn(() => sceneRefIndex),
-            assertFindingRefsResolve: vi.fn()
+            buildCanonicalSceneRefIndex: vi.fn(() => sceneRefIndex)
         });
 
         const result = (service.buildResult as (...args: unknown[]) => Record<string, unknown>)(
@@ -849,14 +847,14 @@ describe('InquiryRunnerService execution policy', () => {
         expect(runInquiryRequest).toHaveBeenCalledTimes(1);
     });
 
-    it('rejects findings whose scene ids are outside the active corpus', () => {
+    it('quarantines findings whose scene ids are outside the active corpus instead of throwing', () => {
         const service = new InquiryRunnerService(
             { settings: {} } as never,
             { getAbstractFileByPath: () => null } as never,
             {} as never
         ) as unknown as Record<string, unknown>;
 
-        expect(() => (service.buildResult as (...args: unknown[]) => unknown)(
+        const result = (service.buildResult as (...args: unknown[]) => Record<string, unknown>)(
             {
                 scope: 'book',
                 scopeLabel: 'Book B1',
@@ -890,7 +888,18 @@ describe('InquiryRunnerService execution policy', () => {
                 aiStatus: 'success',
                 aiReason: undefined
             }
-        )).toThrow('outside the active corpus');
+        );
+
+        expect(Array.isArray(result.findings)).toBe(true);
+        expect((result.findings as unknown[]).length).toBe(0);
+        const unverified = result.unverifiedFindings as Array<{ rawRefId?: string; headline: string }> | undefined;
+        expect(unverified && unverified.length).toBe(1);
+        expect(unverified?.[0].rawRefId).toBe('scn_00000011');
+        expect(unverified?.[0].headline).toBe('Bad ref');
+        const warnings = result.citationIntegrityWarnings as Array<{ stage: string; message: string }> | undefined;
+        expect(warnings && warnings.length).toBeGreaterThan(0);
+        expect(warnings?.[0].stage).toBe('unresolved_ref');
+        expect(warnings?.[0].message).toContain('scn_00000011');
     });
 
     it('emits exact chunk and synthesis progress for multi-pass execution', async () => {

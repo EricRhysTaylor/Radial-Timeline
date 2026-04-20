@@ -500,8 +500,11 @@
   line-height: 1.4;
 }
 
+/* Default inline arrow — used by the "Recent moves" rows. Small and muted. */
 .rt-drag-confirm-inline-icon {
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 14px;
   height: 14px;
   margin: 0 6px;
@@ -514,6 +517,23 @@
   width: 14px;
   height: 14px;
   display: block;
+}
+
+/* Current move summary row — larger, thicker, tinted with the subplot accent.
+ * Scoped by the row-text parent so history rows keep the small treatment. */
+.rt-drag-confirm-row-text .rt-drag-confirm-inline-icon {
+  width: 20px;
+  height: 20px;
+  margin: 0 8px;
+  vertical-align: -0.28em;
+  color: var(--rt-confirm-accent, var(--text-muted));
+  opacity: 1;
+}
+
+.rt-drag-confirm-row-text .rt-drag-confirm-inline-icon svg {
+  width: 20px;
+  height: 20px;
+  stroke-width: 2.5;
 }
 
 .rt-drag-confirm-impact-grid {

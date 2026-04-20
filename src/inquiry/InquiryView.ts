@@ -21,6 +21,7 @@ import {
     INQUIRY_VIEW_TYPE
 } from './constants';
 import {
+    computeCitationIntegritySummary,
     createDefaultInquiryState,
     FindingRole,
     InquiryFinding,
@@ -7075,7 +7076,8 @@ export class InquiryView extends ItemView {
                 related: legacy.related,
                 evidenceType: legacy.evidenceType,
                 lens: legacy.lens,
-                role
+                role,
+                ...(legacy.rawRef ? { rawRef: legacy.rawRef } : {})
             };
         });
         const normalized: InquiryResult = {
@@ -9817,7 +9819,15 @@ export class InquiryView extends ItemView {
         const scopeNote = this.state.scope === 'saga' && this.state.targetSceneIds.length > 0
             ? ' · Target Scenes are book-only and inactive in Saga scope.'
             : '';
-        this.verdictEl.textContent = `${selectionText}${validationNote}${scopeNote}`;
+        const integrity = computeCitationIntegritySummary(result);
+        const integrityNote = integrity.evidenceCompromised
+            ? ` · ⚠ Evidence compromised — no verified findings; ${integrity.unverifiedCount} AI citation${integrity.unverifiedCount === 1 ? '' : 's'} could not be matched to your manuscript.`
+            : integrity.unverifiedCount > 0
+                ? ` · ⚠ ${integrity.unverifiedCount} AI citation${integrity.unverifiedCount === 1 ? '' : 's'} could not be matched to your manuscript.`
+                : '';
+        this.verdictEl.textContent = `${selectionText}${validationNote}${scopeNote}${integrityNote}`;
+        this.verdictEl.classList.toggle('is-citation-integrity-warning', integrity.unverifiedCount > 0 && !integrity.evidenceCompromised);
+        this.verdictEl.classList.toggle('is-citation-evidence-compromised', integrity.evidenceCompromised);
 
         let cursorY = 0;
         const renderSection = (title: string, findings: InquiryFinding[]) => {
@@ -9860,6 +9870,53 @@ export class InquiryView extends ItemView {
 
         renderSection('Target Findings', targetFindings);
         renderSection('Context Findings', contextFindings);
+
+        const unverifiedFindings = result.unverifiedFindings || [];
+        if (unverifiedFindings.length) {
+            const severityClass = integrity.evidenceCompromised
+                ? 'is-citation-evidence-compromised'
+                : 'is-citation-integrity-warning';
+            createSvgText(
+                findingsListEl,
+                `ert-inquiry-finding-section ${severityClass}`,
+                `⚠ Unverified AI Citations (${unverifiedFindings.length})`,
+                0,
+                cursorY
+            );
+            cursorY += 18;
+            createSvgText(
+                findingsListEl,
+                `ert-inquiry-finding-meta ${severityClass}`,
+                'These citations are unverified and should not be trusted as evidence.',
+                0,
+                cursorY
+            );
+            cursorY += 16;
+            unverifiedFindings.forEach(item => {
+                createSvgText(
+                    findingsListEl,
+                    `ert-inquiry-finding-head ${severityClass}`,
+                    `[Unverified] ${normalizeInquiryHeadline(item.headline)}`,
+                    0,
+                    cursorY
+                );
+                cursorY += 16;
+                const rawDescriptor = item.rawRefId || item.rawRefLabel || item.rawRefPath || '(missing ref)';
+                createSvgText(
+                    findingsListEl,
+                    `ert-inquiry-finding-meta ${severityClass}`,
+                    `Cited: ${rawDescriptor}`,
+                    0,
+                    cursorY
+                );
+                cursorY += 14;
+                (item.bullets || []).filter(Boolean).slice(0, 2).forEach(bullet => {
+                    createSvgText(findingsListEl, 'ert-inquiry-finding-bullet', `• ${bullet}`, 12, cursorY);
+                    cursorY += 14;
+                });
+                cursorY += 8;
+            });
+        }
     }
 
     private truncatePreviewValue(value: string, maxChars: number): string {
@@ -11109,6 +11166,31 @@ export class InquiryView extends ItemView {
         const rawResponseText = typeof rawResponse === 'string' ? rawResponse.trim() : '';
         const includeRawResponse = rawResponseText.length > 0 && this.isErrorResult(result);
 
+        const unverifiedFindings = (result.unverifiedFindings || []).map(item => ({
+            headline: this.normalizeInquiryBriefText(
+                normalizeInquiryHeadline(item.headline),
+                referenceLabels
+            ),
+            bullets: (item.bullets || [])
+                .filter(Boolean)
+                .slice(0, 3)
+                .map(entry => this.normalizeInquiryBriefText(entry, referenceLabels)),
+            lens: item.lens === 'both'
+                ? 'Flow / Depth'
+                : formatBriefLabel(item.lens || result.mode || 'flow'),
+            rawRefId: item.rawRefId,
+            rawRefLabel: item.rawRefLabel,
+            rawRefPath: item.rawRefPath,
+            warning: item.warning
+        }));
+
+        const citationIntegrityWarnings = (result.citationIntegrityWarnings || []).map(entry => ({
+            stage: entry.stage,
+            message: entry.message
+        }));
+
+        const integritySummary = computeCitationIntegritySummary(result);
+
         return {
             questionTitle,
             questionText,
@@ -11126,7 +11208,10 @@ export class InquiryView extends ItemView {
             pendingActions,
             logTitle,
             rawResponse: includeRawResponse ? rawResponseText : null,
-            refNormalized: (result.refNormalizationCount ?? 0) > 0
+            refNormalized: (result.refNormalizationCount ?? 0) > 0,
+            ...(citationIntegrityWarnings.length ? { citationIntegrityWarnings } : {}),
+            ...(unverifiedFindings.length ? { unverifiedFindings } : {}),
+            ...(integritySummary.evidenceCompromised ? { evidenceCompromised: true } : {})
         };
     }
 

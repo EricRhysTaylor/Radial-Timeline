@@ -219,6 +219,20 @@ export const renderInquiryBrief = (brief: InquiryBriefModel): string => {
 
     lines.push('', '## Summary Pills', brief.pills.map(pill => `[${pill}]`).join(' '));
 
+    if (brief.evidenceCompromised) {
+        lines.push(
+            '',
+            '> **⚠ Evidence compromised**',
+            '> No verified evidence is available for this run. Every AI citation could not be matched to a scene in your manuscript. Treat the conclusions with caution — the evidence base is not trustworthy.'
+        );
+    } else if (brief.citationIntegrityWarnings && brief.citationIntegrityWarnings.length) {
+        lines.push(
+            '',
+            '> **⚠ Citation integrity warning**',
+            '> Some AI citations could not be matched to your manuscript. These citations are unverified and should not be trusted as evidence.'
+        );
+    }
+
     lines.push('', '## High-Level Conclusions', '### Flow', brief.flowSummary, '', '### Depth', brief.depthSummary);
 
     if (brief.selectionMode === 'focused' && brief.roleValidation === 'missing-target-roles') {
@@ -251,6 +265,32 @@ export const renderInquiryBrief = (brief: InquiryBriefModel): string => {
 
     renderFindingSection('Target Findings', targetFindings);
     renderFindingSection('Context Findings', contextFindings);
+
+    if (brief.unverifiedFindings && brief.unverifiedFindings.length) {
+        lines.push(
+            '',
+            '## Unverified AI Citations',
+            '_The AI returned these findings but the citations could not be matched to your manuscript. They are shown for transparency and should **not** be trusted as evidence._',
+            ''
+        );
+        brief.unverifiedFindings.forEach(item => {
+            lines.push(`### ${item.headline}`);
+            const rawParts: string[] = [];
+            if (item.rawRefId) rawParts.push(`ref_id=${item.rawRefId}`);
+            if (item.rawRefLabel) rawParts.push(`ref_label=${item.rawRefLabel}`);
+            if (item.rawRefPath) rawParts.push(`ref_path=${item.rawRefPath}`);
+            if (rawParts.length) {
+                lines.push(`Cited: ${rawParts.join(' · ')}`);
+            }
+            lines.push(`Lens: ${item.lens}`);
+            if (item.bullets.length) {
+                item.bullets.forEach(bullet => {
+                    lines.push(`- ${bullet}`);
+                });
+            }
+            lines.push(`_${item.warning}_`, '');
+        });
+    }
 
     if (brief.sources.length) {
         const totalCitations = brief.sources.reduce((sum, s) => sum + (s.citationCount ?? 0), 0);

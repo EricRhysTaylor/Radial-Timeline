@@ -12,6 +12,8 @@ import { DEFAULT_GOSSAMER_SIGNAL, GOSSAMER_SIGNAL_METADATA, type GossamerSignalT
 import { parseScoresAndJustifications, type ParsedBeatEntry } from '../GossamerCommands';
 import { getSortedSceneFiles } from '../utils/manuscript';
 import { buildGossamerEvidenceDocument } from '../gossamer/evidence/buildGossamerEvidence';
+import { ensureManuscriptOutputFolder } from '../utils/aiOutput';
+import { buildExportFilename } from '../utils/exportFormats';
 import { getPlotSystem } from '../utils/beatsSystems';
 import {
   resolveSelectedBeatModelFromSettings
@@ -123,11 +125,33 @@ export class GossamerScoreModal extends Modal {
     return { beatTitle, missingSlots, orphanJustifications, hasRenumbering, changed };
   }
 
-  private async normalizeAllScores(): Promise<void> {
-    const beatsToNormalize = this.plotBeats.filter(beat => beat.path);
-    const normalizationIssues: NormalizationIssue[] = [];
+  /** Cheap check: does any in-scope Beat note have at least one slot tagged with the active signal? */
+  private hasSignalScores(signal: GossamerSignalType): boolean {
+    const sourcePath = this.plugin.settings.sourcePath || '';
+    const allFiles = this.plugin.app.vault.getMarkdownFiles();
+    const files = sourcePath
+      ? allFiles.filter(f => isPathInFolderScope(f.path, sourcePath))
+      : allFiles;
+    for (const file of files) {
+      const fm = this.plugin.app.metadataCache.getFileCache(file)?.frontmatter as Record<string, unknown> | undefined;
+      if (!fm) continue;
+      if (fm.Class !== 'Beat' && fm.class !== 'Beat') continue;
+      for (let i = 1; i <= 30; i++) {
+        if (fm[`Gossamer${i}`] === undefined) continue;
+        const raw = fm[`GossamerSignal${i}`];
+        const slotSignal = typeof raw === 'string' && raw.trim().length > 0
+          ? raw.trim().toLowerCase()
+          : 'momentum';
+        if (slotSignal === signal) return true;
+      }
+    }
+    return false;
+  }
 
-    for (const beat of beatsToNormalize) {
+  /** Scan beat notes for any normalization-worthy issues. Cheap — reads metadata cache. */
+  private collectNormalizationIssues(): NormalizationIssue[] {
+    const issues: NormalizationIssue[] = [];
+    for (const beat of this.plotBeats) {
       if (!beat.path) continue;
       const file = this.plugin.app.vault.getAbstractFileByPath(beat.path);
       if (!file || !(file instanceof TFile)) continue;
@@ -137,14 +161,20 @@ export class GossamerScoreModal extends Modal {
       if (!fm) continue;
 
       const analysis = this.analyzeNormalizationFrontmatter(fm, beat.title || beat.path);
-      if (analysis.changed) {
-        normalizationIssues.push(analysis);
-      }
+      if (analysis.changed) issues.push(analysis);
+    }
+    return issues;
+  }
+
+  private async normalizeAllScores(): Promise<void> {
+    const beatsToNormalize = this.plotBeats.filter(beat => beat.path);
+    const normalizationIssues = this.collectNormalizationIssues();
+    if (normalizationIssues.length === 0) {
+      new Notice('No Gossamer history to normalize.');
+      return;
     }
 
-    const confirmMessage = normalizationIssues.length > 0
-      ? `Will renumber and clean ${normalizationIssues.length} beat${normalizationIssues.length === 1 ? '' : 's'} with gaps or orphaned justifications. RT will archive removed Gossamer fields before cleanup.`
-      : 'No numbering gaps or orphaned Gossamer justifications were detected. RT will still archive any removed Gossamer fields before cleanup.';
+    const confirmMessage = `Will renumber and clean ${normalizationIssues.length} beat${normalizationIssues.length === 1 ? '' : 's'} with gaps or orphaned justifications. RT will archive removed Gossamer fields before cleanup.`;
 
     new NormalizeConfirmationModal(
       this.app,
@@ -481,18 +511,23 @@ export class GossamerScoreModal extends Modal {
     const maintenanceGroup = footer.createDiv({ cls: 'rt-gossamer-footer__group rt-gossamer-footer__group--maintenance' });
     maintenanceGroup.createEl('span', { text: 'Maintenance', cls: 'rt-gossamer-footer__group-label' });
     const maintenanceRow = maintenanceGroup.createDiv({ cls: 'rt-row' });
+    const hasNormalizationWork = this.collectNormalizationIssues().length > 0;
     const normalizeBtn = new ButtonComponent(maintenanceRow)
       .setButtonText('Normalize history')
+      .setDisabled(!hasNormalizationWork)
       .onClick(async () => {
         await this.normalizeAllScores();
       });
+
+    const hasDeletableScores = this.hasSignalScores(activeSignal);
     const deleteBtn = new ButtonComponent(maintenanceRow)
       .setButtonText(`Delete ${activeSignalLabel} scores`)
+      .setDisabled(!hasDeletableScores)
       .onClick(async () => {
         await this.deleteAllScores();
       });
-    // Outline-only danger treatment; avoid Obsidian's filled mod-warning so the
-    // button doesn't outshout the primary workflow CTAs.
+    // Outline-only danger treatment; only the red border is overridden so the
+    // theme's native hover/focus styles still apply.
     deleteBtn.buttonEl.classList.add('rt-gossamer-btn-danger-outline');
 
     // Group 2: AI workflow (bordered container — primary path; both workflow
@@ -504,7 +539,8 @@ export class GossamerScoreModal extends Modal {
       .setButtonText('Copy AI prompt')
       .setCta()
       .onClick(async () => {
-        await this.copyFullAIPrompt(null);
+        const ok = await this.copyFullAIPrompt(null);
+        if (ok) copyBtn.buttonEl.classList.add('rt-gossamer-copy-success');
       });
     const pasteBtn = new ButtonComponent(aiRow)
       .setButtonText('Paste AI response')
@@ -519,7 +555,7 @@ export class GossamerScoreModal extends Modal {
         }
       });
     const aiMeta = aiGroup.createDiv({ cls: 'rt-gossamer-footer__meta' });
-    aiMeta.setText(`Includes full manuscript · ${this.entries.length} beats · ${activeSignalLabel} rubric`);
+    aiMeta.setText(`Prompt → clipboard · manuscript → vault file (upload to LLM) · ${this.entries.length} beats · ${activeSignalLabel} rubric`);
 
     // Group 3: Commit cluster (standard dialog actions) — Save (primary) then Cancel.
     const commitGroup = footer.createDiv({ cls: 'rt-gossamer-footer__commit' });
@@ -532,9 +568,14 @@ export class GossamerScoreModal extends Modal {
       .setButtonText('Cancel')
       .onClick(() => this.close());
 
-    // Tooltips
-    tooltipForComponent(normalizeBtn, 'Compact numbering gaps and drop orphan justifications', 'top');
-    tooltipForComponent(deleteBtn, `Delete every ${activeSignalLabel} slot across all beats. Other signals untouched.`, 'top');
+    // Tooltips (Delete button omitted — its label already says what it does).
+    tooltipForComponent(
+      normalizeBtn,
+      hasNormalizationWork
+        ? 'Compact numbering gaps and drop orphan justifications'
+        : 'No gaps or orphan justifications detected — nothing to normalize',
+      'top'
+    );
     tooltipForComponent(copyBtn, 'Assemble prompt (role · rubric · beats · manuscript) and copy to clipboard', 'top');
     tooltipForComponent(pasteBtn, 'Parse clipboard response and save in one step', 'top');
     tooltipForComponent(saveBtn, 'Save manually entered scores', 'top');
@@ -650,16 +691,16 @@ export class GossamerScoreModal extends Modal {
    * that a user can paste into any external LLM; the response can be pasted
    * back via the Paste AI response button.
    */
-  private async copyFullAIPrompt(meta: { sceneCount: number; wordCount: number } | null): Promise<void> {
+  private async copyFullAIPrompt(meta: { sceneCount: number; wordCount: number } | null): Promise<boolean> {
     try {
       const settingsSystem = resolveSelectedBeatModelFromSettings(this.plugin.settings);
       if (!settingsSystem) {
         new Notice('No active beat system selected for this book.');
-        return;
+        return false;
       }
       if (this.entries.length === 0) {
         new Notice('No beats available. Add Beat notes with the selected Beat Model first.');
-        return;
+        return false;
       }
 
       const { name: contextTemplateName, prompt: contextPrompt } = this.getActiveAiContextInfo();
@@ -670,7 +711,7 @@ export class GossamerScoreModal extends Modal {
       const { files: sceneFiles } = await getSortedSceneFiles(this.plugin);
       if (sceneFiles.length === 0) {
         new Notice('No scenes found in source path. Configure your book source folder first.');
-        return;
+        return false;
       }
       const evidenceDocument = await buildGossamerEvidenceDocument({
         sceneFiles,
@@ -680,7 +721,7 @@ export class GossamerScoreModal extends Modal {
       });
       if (!evidenceDocument.text || evidenceDocument.text.trim().length === 0) {
         new Notice('Manuscript is empty. Cannot build AI prompt.');
-        return;
+        return false;
       }
 
       const lines: string[] = [];
@@ -700,20 +741,17 @@ export class GossamerScoreModal extends Modal {
       lines.push(signalMeta.promptBlock);
       lines.push('');
 
-      // Beat list with Purpose (always) and Range.
+      // Beat list — Purpose only. DO NOT include ideal ranges here: they would
+      // anchor the LLM's scoring toward canonical targets and contaminate the
+      // fresh-eyes judgment. Ranges are used only internally (display, audit).
       // Beat titles already carry a filename prefix that encodes manuscript position
       // (e.g. "1.01 Ordinary World", "10.01 Call to Adventure"). No outer enumeration.
       lines.push(`## Story Beats (${settingsSystem})`);
       lines.push('Score each beat in the order listed below. Keep your response in the same order.');
       lines.push('');
-      const missingRangeBeats: string[] = [];
       const missingPurposeBeats: string[] = [];
       this.entries.forEach((entry) => {
-        const rangeSuffix = entry.range && entry.range.trim().length > 0
-          ? (activeSignal === 'momentum' ? ` (ideal momentum: ${entry.range})` : ` (ideal range: ${entry.range})`)
-          : '';
-        if (!entry.range || entry.range.trim().length === 0) missingRangeBeats.push(entry.beatTitle);
-        lines.push(`${entry.beatTitle}${rangeSuffix}`);
+        lines.push(entry.beatTitle);
         if (entry.description && entry.description.trim().length > 0) {
           lines.push(`Purpose: ${entry.description.trim()}`);
         } else {
@@ -721,6 +759,12 @@ export class GossamerScoreModal extends Modal {
         }
         lines.push('');
       });
+
+      // Tell the LLM the manuscript comes in as an attached file (the user will
+      // upload the file saved below). This keeps the pastable prompt small.
+      lines.push('## Manuscript');
+      lines.push('The full manuscript is provided as a separate attached file (upload). Score each beat based on the content of that file.');
+      lines.push('');
 
       // Output format — pipe-delimited with justification
       lines.push('## Response Format');
@@ -735,32 +779,47 @@ export class GossamerScoreModal extends Modal {
       lines.push(`${this.entries[0]?.beatTitle ?? 'Opening Image'} | 35 | Establishes the protagonist's status quo with quiet unease.`);
       lines.push('```');
       lines.push('');
-      if (activeSignal === 'momentum') {
-        lines.push('Favor the ideal momentum range when it fits the manuscript, but you may exit the range if the story justifies it.');
-        lines.push('');
-      }
-
-      // Full manuscript
-      lines.push('## Manuscript');
-      lines.push('');
-      lines.push(evidenceDocument.text);
 
       const prompt = lines.join('\n');
+
+      // Save the manuscript to the vault so the user can attach it as a file
+      // to the LLM chat. Pasting a 90k-word manuscript into a chat input
+      // exceeds every mainstream LLM's single-message limit, so we don't try.
+      // Use the shared manuscript export path + filename convention so these
+      // land alongside regular manuscript exports.
+      const manuscriptFolder = await ensureManuscriptOutputFolder(this.plugin);
+      const manuscriptFilename = buildExportFilename({
+        exportType: 'manuscript',
+        order: 'narrative',
+        manuscriptPreset: 'novel',
+        extension: 'md'
+      });
+      const manuscriptPath = `${manuscriptFolder}/${manuscriptFilename}`;
+      const manuscriptFile = await this.plugin.app.vault.create(manuscriptPath, evidenceDocument.text);
+
+      // Copy the small prompt (no manuscript body) to the clipboard.
       await navigator.clipboard.writeText(prompt);
+
+      // Open the manuscript file in a new tab so the user can find it in their
+      // vault folder and upload it to the LLM.
+      const leaf = this.plugin.app.workspace.getLeaf('tab');
+      await leaf.openFile(manuscriptFile);
 
       const sceneLabel = meta?.sceneCount ?? evidenceDocument.totalScenes;
       const wordLabel = (meta?.wordCount ?? evidenceDocument.totalWords).toLocaleString();
-      new Notice(`✓ AI prompt copied. Includes ${sceneLabel} scenes · ${wordLabel} words · ${this.entries.length} beats. Paste into your LLM, then use "Paste AI response".`);
+      new Notice(
+        `✓ Prompt copied to clipboard. Manuscript saved to ${manuscriptPath} (${sceneLabel} scenes · ${wordLabel} words). Paste the prompt into your LLM and upload this file as an attachment.`,
+        10000
+      );
 
-      if (missingRangeBeats.length > 0) {
-        this.showMetadataWarning('Range', missingRangeBeats);
-      }
       if (missingPurposeBeats.length > 0) {
         this.showMetadataWarning('Purpose', missingPurposeBeats);
       }
+      return true;
     } catch (error) {
       console.error('[Gossamer] Failed to copy AI prompt:', error);
       new Notice('Failed to copy AI prompt to clipboard.');
+      return false;
     }
   }
 
@@ -1150,16 +1209,22 @@ class NormalizeConfirmationModal extends Modal {
 
     if (modalEl) {
       modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell');
+      // SAFE: Modal sizing via inline styles (Obsidian pattern). Match the
+      // Gossamer score modal's constraints so this confirm dialog doesn't
+      // stretch edge-to-edge.
+      modalEl.style.width = '540px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+      modalEl.style.maxWidth = '90vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
     }
     contentEl.addClass('ert-modal-container', 'ert-stack', 'rt-gossamer-score-modal');
 
     const hero = contentEl.createDiv({ cls: 'ert-modal-header' });
     hero.createSpan({ text: 'Warning', cls: 'ert-modal-badge' });
     hero.createDiv({ text: 'Normalize Gossamer history?', cls: 'ert-modal-title' });
-    hero.createDiv({ cls: 'ert-modal-subtitle', text: 'This action cannot be undone.' });
+    hero.createDiv({ cls: 'ert-modal-subtitle', text: 'This action cannot be undone. RT archives removed fields before cleanup.' });
 
     const card = contentEl.createDiv({ cls: 'rt-glass-card' });
 
+    // Single summary line — count of beats that will be touched.
     card.createDiv({ cls: 'rt-purge-message' }).setText(this.message);
 
     if (this.issues.length > 0) {
@@ -1197,15 +1262,7 @@ class NormalizeConfirmationModal extends Modal {
           text: `+${this.issues.length - preview.length} more beat${this.issues.length - preview.length === 1 ? '' : 's'} will be cleaned.`
         });
       }
-    } else {
-      card.createDiv({
-        cls: 'rt-purge-message rt-purge-message-secondary',
-        text: 'No gaps detected. Normalization will simply compact numbering and remove stray justification fields.'
-      });
     }
-
-    const warningEl = card.createDiv({ cls: 'rt-pulse-warning' });
-    warningEl.createEl('strong', { text: 'Are you sure you want to proceed?' });
 
     const buttonRow = contentEl.createDiv({ cls: 'rt-row rt-row-end' });
     new ButtonComponent(buttonRow)

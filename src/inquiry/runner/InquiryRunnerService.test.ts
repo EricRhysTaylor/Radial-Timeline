@@ -7,7 +7,9 @@ describe('InquiryRunnerService execution integrity', () => {
         const runnerSource = readFileSync(resolve(process.cwd(), 'src/inquiry/runner/InquiryRunnerService.ts'), 'utf8');
         const scaffoldSource = readFileSync(resolve(process.cwd(), 'src/inquiry/promptScaffold.ts'), 'utf8');
         expect(runnerSource.includes('"ref_id": "scn_a1b2c3d4"')).toBe(true);
-        expect(scaffoldSource.includes('Use scene ref_id values from evidence labels in parentheses')).toBe(true);
+        expect(scaffoldSource.includes('copied VERBATIM from a single entry in the CORPUS MANIFEST')).toBe(true);
+        expect(scaffoldSource.includes('Do not invent, shorten, rename')).toBe(true);
+        expect(scaffoldSource.includes('If no matching corpus entry exists')).toBe(true);
         expect(runnerSource.includes('(${scene.sceneId})')).toBe(true);
     });
 

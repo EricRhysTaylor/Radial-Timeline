@@ -39,6 +39,87 @@ export interface InquiryFinding {
     evidenceType: 'scene' | 'outline' | 'mixed';
     lens?: 'flow' | 'depth' | 'both';
     role?: FindingRole;
+    /**
+     * Original ref values emitted by the AI, preserved when normalization altered
+     * or had to infer the canonical ref. Present only for findings whose ref_id
+     * was rescued from a non-canonical or fabricated value.
+     */
+    rawRef?: {
+        refId?: string;
+        refLabel?: string;
+        refPath?: string;
+    };
+}
+
+/**
+ * A finding whose AI-supplied ref_id / ref_label / ref_path could not be matched
+ * to any scene in the active corpus. Surfaces to the author as "Unverified AI
+ * citation" — never rendered as if it were a trusted finding.
+ */
+export interface UnverifiedCitation {
+    rawRefId?: string;
+    rawRefLabel?: string;
+    rawRefPath?: string;
+    kind: InquiryFinding['kind'];
+    headline: string;
+    bullets: string[];
+    lens?: 'flow' | 'depth' | 'both';
+    role?: FindingRole;
+    /** Diagnostic warning from the normalizer explaining the failure. */
+    warning: string;
+}
+
+export type CitationIntegrityStage = 'unresolved_ref' | 'ref_label_mismatch';
+
+/**
+ * A run-level warning about citation integrity. Each entry corresponds to one
+ * integrity event (e.g. a fabricated ref, a label that points to a different
+ * scene than its ref_id). Rendered in a blunt banner above findings.
+ */
+export interface CitationIntegrityWarning {
+    stage: CitationIntegrityStage;
+    message: string;
+}
+
+/**
+ * Derived run-level citation-integrity counts. Not stored on the result —
+ * computed from `findings` + `unverifiedFindings` + `citationIntegrityWarnings`
+ * whenever a surface (log line, dashboard, test) needs a summary.
+ *
+ * - verifiedCount: findings whose refId was accepted as-is by the normalizer.
+ * - rescuedCount:  findings whose AI-supplied ref_id did not match the corpus
+ *   directly but was repaired via label/path.
+ * - unverifiedCount: findings that could not be matched at all.
+ * - mismatchCount: findings whose ref_id resolved to scene A but whose
+ *   ref_label/ref_path pointed to a different scene B (ref_id trusted).
+ * - evidenceCompromised: true when the run produced at least one unverified
+ *   citation AND no verified findings — the whole evidence base is suspect.
+ */
+export interface CitationIntegritySummary {
+    verifiedCount: number;
+    rescuedCount: number;
+    unverifiedCount: number;
+    mismatchCount: number;
+    evidenceCompromised: boolean;
+}
+
+export function computeCitationIntegritySummary(
+    result: Pick<InquiryResult, 'findings' | 'unverifiedFindings' | 'citationIntegrityWarnings'>
+): CitationIntegritySummary {
+    const findings = result.findings || [];
+    const unverified = result.unverifiedFindings || [];
+    const warnings = result.citationIntegrityWarnings || [];
+    const rescuedCount = findings.filter(finding => finding.rawRef !== undefined).length;
+    const mismatchCount = warnings.filter(warning => warning.stage === 'ref_label_mismatch').length;
+    const unverifiedCount = unverified.length;
+    const verifiedCount = findings.length;
+    return {
+        verifiedCount,
+        rescuedCount,
+        unverifiedCount,
+        mismatchCount,
+        evidenceCompromised: unverifiedCount > 0 && verifiedCount === 0
+    };
 }
 
 export interface InquiryResult {
@@ -85,6 +166,17 @@ export interface InquiryResult {
     roundTripMs?: number;
     /** Number of findings whose ref_id was normalized from a non-canonical format (e.g. scene number, title). */
     refNormalizationCount?: number;
+    /**
+     * Findings the AI emitted whose references could not be matched to the
+     * active corpus. Surfaced separately so they never masquerade as verified
+     * evidence. Empty/undefined means every finding resolved cleanly.
+     */
+    unverifiedFindings?: UnverifiedCitation[];
+    /**
+     * Run-level warnings about citation integrity (fabricated refs, mismatched
+     * label-vs-id, etc.). When present, the UI must show a blunt banner.
+     */
+    citationIntegrityWarnings?: CitationIntegrityWarning[];
     /** Normalized source attribution from provider runtime (manuscript and tool/file/url forms). */
     citations?: InquiryCitation[];
     /** Ordered metadata for evidence documents sent to the AI. Indices match citation documentIndex. */

@@ -2022,29 +2022,34 @@
   animation: rt-gossamer-paste-flash-error 1.5s ease-out;
 }
 
-/* Demoted danger button — red outline only, no filled background.
- * Rarely used; should not compete with workflow CTAs for attention. */
+/* Demoted danger button — red border is the ONLY override. Theme handles
+ * background, text color, hover, and focus natively so this button looks
+ * like a normal button with a red outline. */
 .rt-gossamer-btn-danger-outline {
-  background-color: transparent;
-  background-image: none;
-  color: color-mix(in srgb, var(--color-red, #E55353) 85%, var(--text-muted));
-  border: 1px solid color-mix(in srgb, var(--color-red, #E55353) 55%, var(--background-modifier-border));
-  box-shadow: none;
+  border: 1px solid color-mix(in srgb, var(--color-red, #E55353) 60%, var(--background-modifier-border));
 }
 
-.rt-gossamer-btn-danger-outline:hover {
-  background-color: color-mix(in srgb, var(--color-red, #E55353) 12%, transparent);
-  background-image: none;
-  color: color-mix(in srgb, var(--color-red, #E55353) 95%, var(--text-normal));
-  border-color: color-mix(in srgb, var(--color-red, #E55353) 80%, var(--background-modifier-border));
-  box-shadow: none;
+/* Footer buttons — normalize height so CTA buttons don't tower over regular
+ * buttons in adjacent groups. */
+.rt-gossamer-footer button,
+.rt-gossamer-footer .clickable-icon {
+  height: auto;
+  min-height: 32px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+  align-self: center;
 }
 
-.rt-gossamer-btn-danger-outline:focus,
-.rt-gossamer-btn-danger-outline:focus-visible {
-  outline: none;
+/* Copy AI prompt success state — painted green once the clipboard write
+ * succeeds for this modal session. State clears when the modal closes. */
+.rt-gossamer-copy-success,
+.rt-gossamer-copy-success:hover,
+.rt-gossamer-copy-success:focus,
+.rt-gossamer-copy-success:focus-visible {
+  background-color: var(--color-green, #6FB971);
   background-image: none;
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-red, #E55353) 30%, transparent);
+  color: var(--text-on-accent);
+  box-shadow: none;
 }
 
 .rt-gossamer-score-history {

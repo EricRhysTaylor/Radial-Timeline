@@ -24,6 +24,7 @@ import { getActiveBook } from '../../utils/books';
 import { isPathInFolderScope } from '../../utils/pathScope';
 import { normalizeMatterClassValue } from '../../utils/matterMeta';
 import { extractBodyText, getSceneFilesByOrder } from '../../utils/manuscript';
+import { resolveManuscriptOutputFolder } from '../../utils/aiOutput';
 import { updateBookMetaField, type EditableBookMetaFieldKey } from '../../utils/bookMetaEditing';
 import { isProActive } from '../proEntitlement';
 import {
@@ -1182,7 +1183,7 @@ async function generateSampleTemplates(
     includeScriptExamples: boolean
 ): Promise<string[]> {
     const vault = plugin.app.vault;
-    const baseFolder = plugin.settings.manuscriptOutputFolder || 'Radial Timeline/Export';
+    const baseFolder = resolveManuscriptOutputFolder(plugin);
     const templatesFolder = normalizePath(`${baseFolder}/Templates`);
     const pandocFolder = getConfiguredPandocFolder(plugin);
     const activeSourceFolderRaw = getActiveBookExportContext(plugin).sourceFolder.trim();
@@ -2946,7 +2947,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             const confirmed = await confirmStarterPublishingSetup(plugin.app, includeScriptExamples);
             if (!confirmed) return;
             const created = await generateSampleTemplates(plugin, includeScriptExamples);
-            const scriptTargetLabel = `${plugin.settings.manuscriptOutputFolder || 'Radial Timeline/Export'}/Templates`;
+            const scriptTargetLabel = `${resolveManuscriptOutputFolder(plugin)}/Templates`;
             const sourceFolder = getActiveBookExportContext(plugin).sourceFolder.trim();
             const matterTargetLabel = sourceFolder || scriptTargetLabel;
             if (created.length > 0) {
