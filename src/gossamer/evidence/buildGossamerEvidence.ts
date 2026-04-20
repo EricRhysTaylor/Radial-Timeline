@@ -74,13 +74,16 @@ export async function buildGossamerEvidenceDocument(params: {
         '---',
         ''
     ];
-    entries.forEach((entry, index) => {
-        tocLines.push(`${index + 1}. ${entry.title} (${entry.sceneId})`);
+    // Scene titles already carry their own narrative-order prefix (e.g. "1 Training at…",
+    // "10 Chae Ban Breakfast"). No outer enumeration — a second "${index + 1}." in front
+    // only doubles the numbering and adds noise for the LLM.
+    entries.forEach((entry) => {
+        tocLines.push(`${entry.title} (${entry.sceneId})`);
     });
     tocLines.push('', '---', '');
 
-    const sceneSections = entries.map((entry, index) =>
-        `## ${index + 1}. ${entry.title} (${entry.sceneId})\n\n${entry.content}`
+    const sceneSections = entries.map((entry) =>
+        `## ${entry.title} (${entry.sceneId})\n\n${entry.content}`
     );
     const text = `${tocLines.join('\n')}\n${sceneSections.join('\n\n')}\n`;
     const totalWords = entries.reduce((sum, entry) => sum + countWords(entry.content), 0);

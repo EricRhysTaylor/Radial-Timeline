@@ -477,7 +477,7 @@ export class GossamerScoreModal extends Modal {
     const activeSignalLabel = signalMeta.label;
     const footer = contentEl.createDiv({ cls: 'rt-gossamer-footer' });
 
-    // Group 1: Maintenance (bordered container)
+    // Group 1: Maintenance (bordered container — demoted, rarely used)
     const maintenanceGroup = footer.createDiv({ cls: 'rt-gossamer-footer__group rt-gossamer-footer__group--maintenance' });
     maintenanceGroup.createEl('span', { text: 'Maintenance', cls: 'rt-gossamer-footer__group-label' });
     const maintenanceRow = maintenanceGroup.createDiv({ cls: 'rt-row' });
@@ -488,12 +488,15 @@ export class GossamerScoreModal extends Modal {
       });
     const deleteBtn = new ButtonComponent(maintenanceRow)
       .setButtonText(`Delete ${activeSignalLabel} scores`)
-      .setWarning()
       .onClick(async () => {
         await this.deleteAllScores();
       });
+    // Outline-only danger treatment; avoid Obsidian's filled mod-warning so the
+    // button doesn't outshout the primary workflow CTAs.
+    deleteBtn.buttonEl.classList.add('rt-gossamer-btn-danger-outline');
 
-    // Group 2: AI workflow (bordered container — primary path)
+    // Group 2: AI workflow (bordered container — primary path; both workflow
+    // actions live here so Copy → Paste reads as one continuous workflow.)
     const aiGroup = footer.createDiv({ cls: 'rt-gossamer-footer__group rt-gossamer-footer__group--ai' });
     aiGroup.createEl('span', { text: 'AI workflow', cls: 'rt-gossamer-footer__group-label' });
     const aiRow = aiGroup.createDiv({ cls: 'rt-row' });
@@ -503,20 +506,7 @@ export class GossamerScoreModal extends Modal {
       .onClick(async () => {
         await this.copyFullAIPrompt(null);
       });
-    const aiMeta = aiGroup.createDiv({ cls: 'rt-gossamer-footer__meta' });
-    aiMeta.setText(`Includes full manuscript · ${this.entries.length} beats · ${activeSignalLabel} rubric`);
-
-    // Group 3: Commit cluster (no border — standard dialog actions)
-    const commitGroup = footer.createDiv({ cls: 'rt-gossamer-footer__commit' });
-    const cancelBtn = new ButtonComponent(commitGroup)
-      .setButtonText('Cancel')
-      .onClick(() => this.close());
-    const saveBtn = new ButtonComponent(commitGroup)
-      .setButtonText('Save scores')
-      .onClick(async () => {
-        await this.saveScores();
-      });
-    const pasteBtn = new ButtonComponent(commitGroup)
+    const pasteBtn = new ButtonComponent(aiRow)
       .setButtonText('Paste AI response')
       .setCta()
       .onClick(async () => {
@@ -528,14 +518,27 @@ export class GossamerScoreModal extends Modal {
           await this.saveScores();
         }
       });
+    const aiMeta = aiGroup.createDiv({ cls: 'rt-gossamer-footer__meta' });
+    aiMeta.setText(`Includes full manuscript · ${this.entries.length} beats · ${activeSignalLabel} rubric`);
+
+    // Group 3: Commit cluster (standard dialog actions) — Save (primary) then Cancel.
+    const commitGroup = footer.createDiv({ cls: 'rt-gossamer-footer__commit' });
+    const saveBtn = new ButtonComponent(commitGroup)
+      .setButtonText('Save scores')
+      .onClick(async () => {
+        await this.saveScores();
+      });
+    const cancelBtn = new ButtonComponent(commitGroup)
+      .setButtonText('Cancel')
+      .onClick(() => this.close());
 
     // Tooltips
     tooltipForComponent(normalizeBtn, 'Compact numbering gaps and drop orphan justifications', 'top');
     tooltipForComponent(deleteBtn, `Delete every ${activeSignalLabel} slot across all beats. Other signals untouched.`, 'top');
     tooltipForComponent(copyBtn, 'Assemble prompt (role · rubric · beats · manuscript) and copy to clipboard', 'top');
-    tooltipForComponent(cancelBtn, 'Close without saving', 'top');
-    tooltipForComponent(saveBtn, 'Save manually entered scores', 'top');
     tooltipForComponent(pasteBtn, 'Parse clipboard response and save in one step', 'top');
+    tooltipForComponent(saveBtn, 'Save manually entered scores', 'top');
+    tooltipForComponent(cancelBtn, 'Close without saving', 'top');
   }
 
   /** Flash the paste button green on valid response, red on invalid. */
@@ -697,20 +700,22 @@ export class GossamerScoreModal extends Modal {
       lines.push(signalMeta.promptBlock);
       lines.push('');
 
-      // Beat list with Purpose (always) and Range
+      // Beat list with Purpose (always) and Range.
+      // Beat titles already carry a filename prefix that encodes manuscript position
+      // (e.g. "1.01 Ordinary World", "10.01 Call to Adventure"). No outer enumeration.
       lines.push(`## Story Beats (${settingsSystem})`);
-      lines.push('Score each beat in the order listed below. Use the beat numbers to keep your response aligned with the original order.');
+      lines.push('Score each beat in the order listed below. Keep your response in the same order.');
       lines.push('');
       const missingRangeBeats: string[] = [];
       const missingPurposeBeats: string[] = [];
-      this.entries.forEach((entry, index) => {
+      this.entries.forEach((entry) => {
         const rangeSuffix = entry.range && entry.range.trim().length > 0
           ? (activeSignal === 'momentum' ? ` (ideal momentum: ${entry.range})` : ` (ideal range: ${entry.range})`)
           : '';
         if (!entry.range || entry.range.trim().length === 0) missingRangeBeats.push(entry.beatTitle);
-        lines.push(`${index + 1}. ${entry.beatTitle}${rangeSuffix}`);
+        lines.push(`${entry.beatTitle}${rangeSuffix}`);
         if (entry.description && entry.description.trim().length > 0) {
-          lines.push(`   Purpose: ${entry.description.trim()}`);
+          lines.push(`Purpose: ${entry.description.trim()}`);
         } else {
           missingPurposeBeats.push(entry.beatTitle);
         }

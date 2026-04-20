@@ -6,6 +6,7 @@ export type BeatStructuralIssueCode =
     | 'missing'
     | 'duplicate'
     | 'act_mismatch'
+    | 'out_of_sequence'
     | 'missing_model'
     | 'wrong_model'
     | 'non_beat_class';
@@ -74,6 +75,7 @@ export interface BeatStructuralSummary {
     missingCount: number;
     duplicateCount: number;
     misalignedCount: number;
+    outOfSequenceCount: number;
     missingModelNoteCount: number;
     missingModelBeatCount: number;
     wrongModelBeatCount: number;

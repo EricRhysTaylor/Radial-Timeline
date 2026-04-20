@@ -2022,6 +2022,31 @@
   animation: rt-gossamer-paste-flash-error 1.5s ease-out;
 }
 
+/* Demoted danger button — red outline only, no filled background.
+ * Rarely used; should not compete with workflow CTAs for attention. */
+.rt-gossamer-btn-danger-outline {
+  background-color: transparent;
+  background-image: none;
+  color: color-mix(in srgb, var(--color-red, #E55353) 85%, var(--text-muted));
+  border: 1px solid color-mix(in srgb, var(--color-red, #E55353) 55%, var(--background-modifier-border));
+  box-shadow: none;
+}
+
+.rt-gossamer-btn-danger-outline:hover {
+  background-color: color-mix(in srgb, var(--color-red, #E55353) 12%, transparent);
+  background-image: none;
+  color: color-mix(in srgb, var(--color-red, #E55353) 95%, var(--text-normal));
+  border-color: color-mix(in srgb, var(--color-red, #E55353) 80%, var(--background-modifier-border));
+  box-shadow: none;
+}
+
+.rt-gossamer-btn-danger-outline:focus,
+.rt-gossamer-btn-danger-outline:focus-visible {
+  outline: none;
+  background-image: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-red, #E55353) 30%, transparent);
+}
+
 .rt-gossamer-score-history {
   color: var(--text-muted);
   font-size: 11px;

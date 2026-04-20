@@ -10,6 +10,7 @@ import {
     toBeatModelMatchKey,
 } from '../utils/beatsInputNormalize';
 import { isStoryBeat } from '../utils/sceneHelpers';
+import { comparePrefixTokens, extractPrefixToken } from '../utils/prefixOrder';
 import type { BeatDefinition, LoadedBeatTab, RadialTimelineSettings } from '../types/settings';
 import type {
     BeatExpectedBeat,
@@ -213,6 +214,7 @@ export function getBeatSystemStructuralStatus(params: {
             missingCount: expectedBeats.length,
             duplicateCount: 0,
             misalignedCount: 0,
+            outOfSequenceCount: 0,
             missingModelNoteCount: 0,
             missingModelBeatCount: 0,
             wrongModelBeatCount: 0,
@@ -359,6 +361,58 @@ export function getBeatSystemStructuralStatus(params: {
         };
     });
 
+    // Out-of-sequence detection:
+    // A beat's position in the manuscript (filename prefix sort) must line up
+    // with its position in the template ordinal sequence. If they diverge,
+    // beats are physically out of order in the vault even when every beat is
+    // present and in its correct act. This is a distinct defect from
+    // act_mismatch and isn't caught by the other checks.
+    //
+    // We only consider beats that have at least one active match (otherwise
+    // there's no file to rank). For each qualifying beat, pick a representative
+    // file (the one whose filename prefix sorts lowest — i.e. its first
+    // appearance in the manuscript), then compare the two rankings.
+    const sequenceCandidates = beats
+        .map((beat) => {
+            const activeMatches = activeByBeatKey.get(beat.expected.key) ?? [];
+            if (activeMatches.length === 0) return null;
+            const representative = [...activeMatches].sort((a, b) => {
+                const aPrefix = extractPrefixToken(a.basename);
+                const bPrefix = extractPrefixToken(b.basename);
+                return comparePrefixTokens(aPrefix, bPrefix);
+            })[0];
+            return {
+                beatKey: beat.expected.key,
+                templateOrdinal: beat.expected.ordinal,
+                prefix: extractPrefixToken(representative.basename),
+                basename: representative.basename,
+            };
+        })
+        .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+
+    const outOfSequenceKeys = new Set<string>();
+    if (sequenceCandidates.length >= 2) {
+        const templateOrder = [...sequenceCandidates].sort((a, b) => a.templateOrdinal - b.templateOrdinal);
+        const manuscriptOrder = [...sequenceCandidates].sort((a, b) => comparePrefixTokens(a.prefix, b.prefix));
+        for (let i = 0; i < templateOrder.length; i++) {
+            if (templateOrder[i].beatKey !== manuscriptOrder[i].beatKey) {
+                outOfSequenceKeys.add(templateOrder[i].beatKey);
+            }
+        }
+    }
+
+    if (outOfSequenceKeys.size > 0) {
+        beats.forEach((beat) => {
+            if (!outOfSequenceKeys.has(beat.expected.key)) return;
+            beat.issues.push(buildIssue('out_of_sequence', 'Out of manuscript sequence'));
+            beat.issueCount = beat.issues.length;
+            if (beat.kind === 'complete') {
+                beat.kind = 'issue';
+                beat.label = buildBeatLabel('issue');
+            }
+        });
+    }
+
     const actMap = new Map<number, BeatStructuralBeatStatus[]>();
     beats.forEach((beat) => {
         const list = actMap.get(beat.expected.actNumber) ?? [];
@@ -394,6 +448,7 @@ export function getBeatSystemStructuralStatus(params: {
     const missingCount = beats.filter((beat) => beat.kind === 'missing').length;
     const duplicateCount = beats.filter((beat) => beat.issues.some((issue) => issue.code === 'duplicate')).length;
     const misalignedCount = beats.filter((beat) => beat.issues.some((issue) => issue.code === 'act_mismatch')).length;
+    const outOfSequenceCount = beats.filter((beat) => beat.issues.some((issue) => issue.code === 'out_of_sequence')).length;
     const missingModelNoteCount = [...missingModelByBeatKey.values()].reduce((sum, notes) => sum + notes.length, 0);
     const missingModelBeatCount = beats.filter((beat) => beat.issues.some((issue) => issue.code === 'missing_model')).length;
     const wrongModelBeatCount = beats.filter((beat) => beat.issues.some((issue) => issue.code === 'wrong_model')).length;
@@ -413,6 +468,7 @@ export function getBeatSystemStructuralStatus(params: {
         missingCount,
         duplicateCount,
         misalignedCount,
+        outOfSequenceCount,
         missingModelNoteCount,
         missingModelBeatCount,
         wrongModelBeatCount,

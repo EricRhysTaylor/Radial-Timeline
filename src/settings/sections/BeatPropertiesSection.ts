@@ -1152,6 +1152,16 @@ export function renderBeatPropertiesSection(params: {
                     icon: 'circle-alert',
                 });
             }
+            if (structuralStatus.summary.outOfSequenceCount > 0) {
+                const sequenceLine = headerRow.createDiv({
+                    cls: 'ert-preview-status-line ert-preview-status-line--warning ert-beat-template-status'
+                });
+                appendPreviewStatus(sequenceLine, {
+                    text: `${structuralStatus.summary.outOfSequenceCount} beat${structuralStatus.summary.outOfSequenceCount !== 1 ? 's are' : ' is'} out of manuscript sequence (filename prefix ordering does not match the template).`,
+                    tone: 'warning',
+                    icon: 'circle-alert',
+                });
+            }
         } else if (countSummary.length > 0) {
             headerRow.createDiv({
                 cls: 'ert-beat-template-meta',
@@ -4497,7 +4507,12 @@ export function renderBeatPropertiesSection(params: {
             }
 
             if (summary.misalignedCount > 0) {
-                lines.push(`${summary.misalignedCount} beat${summary.misalignedCount !== 1 ? 's are' : ' is'} placed in a different act than the template. Order remains intact.`);
+                lines.push(`${summary.misalignedCount} beat${summary.misalignedCount !== 1 ? 's are' : ' is'} placed in a different act than the template.`);
+            }
+            if (summary.outOfSequenceCount > 0) {
+                lines.push(`${summary.outOfSequenceCount} beat${summary.outOfSequenceCount !== 1 ? 's are' : ' is'} out of manuscript sequence — filename prefixes do not match the template order.`);
+            } else if (summary.misalignedCount > 0) {
+                lines.push('Order remains intact.');
             }
             if (summary.missingModelNoteCount > 0) {
                 lines.push(`${summary.missingModelNoteCount} matching note${summary.missingModelNoteCount !== 1 ? 's are' : ' is'} missing Beat Model.`);

@@ -9,6 +9,7 @@ import type { GossamerRun } from '../utils/gossamer';
 import { getVersionCheckService } from '../services/VersionCheckService';
 import { isRuntimeModeActive } from '../view/interactions/ChronologueShiftController';
 import { DEFAULT_BOOK_TITLE, getActiveBookTitle } from '../utils/books';
+import { getActiveRecentStructuralMoves } from '../utils/recentStructuralMoves';
 
 /**
  * Types of changes that can trigger renders
@@ -25,6 +26,7 @@ export enum ChangeType {
     DOMINANT_SUBPLOT = 'dominant_subplot',  // Dominant subplot changed (scene colors only)
     SYNOPSIS = 'synopsis',            // Synopsis text changed
     UPDATE_STATUS = 'update_status',  // Plugin update available
+    RECENT_MOVES = 'recent_moves',    // Recent structural moves list updated
 }
 
 /**
@@ -66,9 +68,12 @@ export interface TimelineSnapshot {
     
     // Plugin Update Status
     updateAvailable: boolean;
-    
+
     // Runtime mode state (affects Chronologue duration arcs)
     runtimeModeActive: boolean;
+
+    // Recent structural moves (Recent Moves overlay panel)
+    recentMovesHash: string;
     
     timestamp: number;
 }
@@ -178,6 +183,15 @@ export function createSnapshot(
         }
     })();
 
+    const recentMovesHash = (() => {
+        try {
+            const entries = getActiveRecentStructuralMoves(settings).slice(0, 10);
+            return entries.map((entry) => `${entry.timestamp ?? ''}:${entry.itemId ?? ''}`).join('|');
+        } catch {
+            return '';
+        }
+    })();
+
     return {
         sceneCount: scenes.length,
         sceneHash,
@@ -204,6 +218,7 @@ export function createSnapshot(
         gossamerRunHash,
         updateAvailable: getVersionCheckService()?.isUpdateAvailable() ?? false,
         runtimeModeActive: isRuntimeModeActive(),
+        recentMovesHash,
         timestamp: Date.now()
     };
 }
@@ -288,6 +303,11 @@ export function detectChanges(
     if (prev.runtimeModeActive !== current.runtimeModeActive) {
         changeTypes.add(ChangeType.SETTINGS);
     }
+
+    // Detect recent-moves overlay changes (Recent Moves panel)
+    if (prev.recentMovesHash !== current.recentMovesHash) {
+        changeTypes.add(ChangeType.RECENT_MOVES);
+    }
     
     // Determine update strategy
     const hasChanges = changeTypes.size > 0;
@@ -349,6 +369,7 @@ export function describeChanges(result: ChangeDetectionResult): string {
             case ChangeType.TIME: return 'time';
             case ChangeType.GOSSAMER: return 'gossamer';
             case ChangeType.UPDATE_STATUS: return 'plugin update';
+            case ChangeType.RECENT_MOVES: return 'recent moves';
             default: return type;
         }
     }).join(', ');
