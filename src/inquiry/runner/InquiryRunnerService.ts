@@ -224,7 +224,11 @@ export class InquiryRunnerService implements InquiryRunner {
 
         const jsonSchema = this.getJsonSchema();
         const temperature = 0.2;
-        const maxTokens = this.getOutputTokenCap(input.ai.provider);
+        const maxTokens = this.getOutputTokenRequestLimit(
+            input.ai.provider,
+            input.ai.modelId,
+            trace.tokenEstimate.inputTokens
+        );
         let response: ProviderResult | null = null;
 
         try {
@@ -328,7 +332,11 @@ export class InquiryRunnerService implements InquiryRunner {
 
         const jsonSchema = this.getOmnibusJsonSchema();
         const temperature = 0.2;
-        const maxTokens = this.getOutputTokenCap(input.ai.provider);
+        const maxTokens = this.getOutputTokenRequestLimit(
+            input.ai.provider,
+            input.ai.modelId,
+            trace.tokenEstimate.inputTokens
+        );
         let response: ProviderResult | null = null;
 
         try {
@@ -2735,6 +2743,15 @@ export class InquiryRunnerService implements InquiryRunner {
         return Math.max(512, providerCap);
     }
 
+    private getOutputTokenRequestLimit(
+        provider: Exclude<AIProviderId, 'none'>,
+        modelId: string,
+        inputTokens: number
+    ): number {
+        const learned = this.plugin.getOutputProfileStore().getRequestMaxTokens(provider, modelId, inputTokens);
+        return Math.max(512, learned);
+    }
+
     private applyResponseExecutionReporting(trace: InquiryRunTrace, response: ProviderResult): void {
         const usage = response.usage ?? this.extractUsage(response.aiProvider ?? response.provider, response.responseData);
         if (usage) {
@@ -2760,11 +2777,31 @@ export class InquiryRunnerService implements InquiryRunner {
         }
         if (response.aiStatus === 'success' && response.success) {
             trace.failureStage = undefined;
+            this.recordOutputProfileSample(trace, response);
             return;
         }
         trace.failureStage = executionState === 'blocked_before_send'
             ? 'preflight'
             : 'provider_response_parsing';
+    }
+
+    private recordOutputProfileSample(trace: InquiryRunTrace, response: ProviderResult): void {
+        const usage = trace.usage;
+        if (!usage || typeof usage.outputTokens !== 'number' || usage.outputTokens <= 0) return;
+        const inputTokens = typeof usage.inputTokens === 'number' && usage.inputTokens > 0
+            ? usage.inputTokens
+            : trace.tokenEstimate?.inputTokens;
+        if (typeof inputTokens !== 'number' || !Number.isFinite(inputTokens) || inputTokens <= 0) return;
+        const provider = response.aiProvider ?? response.provider;
+        const modelId = response.aiModelResolved ?? response.aiModelRequested ?? response.modelId;
+        if (!provider || !modelId) return;
+        void this.plugin.getOutputProfileStore().record({
+            provider,
+            modelId,
+            inputTokens,
+            outputTokens: usage.outputTokens,
+            timestamp: Date.now()
+        });
     }
 
     private applyOpenAiTransportLaneTraceNote(trace: InquiryRunTrace, response: ProviderResult): void {

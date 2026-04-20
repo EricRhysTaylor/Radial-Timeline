@@ -40,18 +40,6 @@ const TOKENS_PER_MILLION = 1_000_000;
 const DEFAULT_MULTI_PASS_CACHE_REUSE_RATIO = 0.5;
 const DEFAULT_REPEAT_RUN_CACHE_REUSE_RATIO = 0.75;
 
-// Realistic expected output for cost previews. The provider max-output cap (e.g. 128k
-// for OpenAI) is the API request budget, not the expected response size. Typical
-// Inquiry responses land well under 16k tokens; pricing against the cap inflates
-// estimates by 10–60× for high-output-cap providers. Keep the cap for the API
-// payload; use this for the cost preview.
-export const COST_PREVIEW_EXPECTED_OUTPUT_TOKENS = 16000;
-
-export function clampExpectedOutputForCostPreview(maxOutputTokens: number): number {
-    if (!Number.isFinite(maxOutputTokens) || maxOutputTokens <= 0) return 0;
-    return Math.min(Math.floor(maxOutputTokens), COST_PREVIEW_EXPECTED_OUTPUT_TOKENS);
-}
-
 function toUsd(tokens: number, ratePer1M: number | undefined): number {
     if (!Number.isFinite(tokens) || typeof ratePer1M !== 'number' || !Number.isFinite(ratePer1M)) return 0;
     return (tokens / TOKENS_PER_MILLION) * ratePer1M;

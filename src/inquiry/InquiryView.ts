@@ -193,8 +193,7 @@ import {
 } from '../ai/tokens/inputTokenEstimate';
 import {
     estimateCorpusCost,
-    formatApproxUsdCost,
-    clampExpectedOutputForCostPreview
+    formatApproxUsdCost
 } from '../ai/cost/estimateCorpusCost';
 import { resolveInquirySourceRoots } from './utils/sourceRoots';
 import { renderInquiryCorpusStrip } from './corpus/inquiryCorpusStripRenderer';
@@ -6159,21 +6158,19 @@ export class InquiryView extends ItemView {
             }
             session.cacheReuseState = runTrace?.cacheReuseState;
             session.providerCacheStatus = runTrace?.cacheStatus;
-            const observedAnthropicCacheMetrics = result.aiProvider?.trim().toLowerCase() === 'anthropic'
-                ? this.getObservedAnthropicCacheMetrics(runTrace)
-                : null;
-            session.cachedStableRatio = observedAnthropicCacheMetrics
-                ? observedAnthropicCacheMetrics.cachedStableRatio
+            const observedCacheMetrics = this.getObservedCacheMetrics(runTrace);
+            session.cachedStableRatio = observedCacheMetrics
+                ? observedCacheMetrics.cachedStableRatio
                 : (typeof runTrace?.cachedStableRatio === 'number' && Number.isFinite(runTrace.cachedStableRatio)
                     ? Math.min(1, Math.max(0, runTrace.cachedStableRatio))
                     : undefined);
-            session.cachedStableTokens = observedAnthropicCacheMetrics
-                ? observedAnthropicCacheMetrics.cachedStableTokens
+            session.cachedStableTokens = observedCacheMetrics
+                ? observedCacheMetrics.cachedStableTokens
                 : (typeof runTrace?.cachedStableTokens === 'number' && Number.isFinite(runTrace.cachedStableTokens)
                     ? Math.max(0, Math.floor(runTrace.cachedStableTokens))
                     : undefined);
-            session.totalInputTokens = observedAnthropicCacheMetrics
-                ? observedAnthropicCacheMetrics.totalInputTokens
+            session.totalInputTokens = observedCacheMetrics
+                ? observedCacheMetrics.totalInputTokens
                 : (typeof runTrace?.usage?.inputTokens === 'number' && Number.isFinite(runTrace.usage.inputTokens)
                     ? Math.max(0, Math.floor(runTrace.usage.inputTokens))
                     : (typeof result.tokenEstimateInput === 'number' && Number.isFinite(result.tokenEstimateInput)
@@ -7496,9 +7493,15 @@ export class InquiryView extends ItemView {
         if (typeof executionInputTokens !== 'number' || !Number.isFinite(executionInputTokens) || executionInputTokens <= 0) {
             return null;
         }
-        const expectedOutputTokens = Number.isFinite(trace.outputTokenCap)
-            ? Math.max(0, Math.floor(trace.outputTokenCap))
-            : 0;
+        const provider = result.aiProvider as AIProviderId | undefined;
+        const modelId = result.aiModelResolved ?? result.aiModelRequested;
+        const predicted = provider && provider !== 'none' && modelId
+            ? this.plugin.getOutputProfileStore().getExpectedOutputForCost(provider, modelId, executionInputTokens)
+            : null;
+        const cap = Number.isFinite(trace.outputTokenCap) ? Math.max(0, Math.floor(trace.outputTokenCap)) : 0;
+        const expectedOutputTokens = predicted != null
+            ? Math.min(predicted, cap || predicted)
+            : cap;
         const expectedPasses = Number.isFinite(trace.tokenEstimate?.expectedPassCount)
             ? Math.max(1, Math.floor(trace.tokenEstimate.expectedPassCount as number))
             : (Number.isFinite(trace.executionPassCount) ? Math.max(1, Math.floor(trace.executionPassCount as number)) : 1);
@@ -9276,7 +9279,7 @@ export class InquiryView extends ItemView {
         return Date.now() + ttlMs;
     }
 
-    private getObservedAnthropicCacheMetrics(trace?: InquiryRunTrace | null): {
+    private getObservedCacheMetrics(trace?: InquiryRunTrace | null): {
         cachedStableRatio: number;
         cachedStableTokens: number;
         totalInputTokens: number;
@@ -10704,11 +10707,16 @@ export class InquiryView extends ItemView {
             return 'Cost · Estimating…';
         }
         try {
+            const expectedOutputTokens = this.plugin.getOutputProfileStore().getExpectedOutputForCost(
+                engine.provider,
+                engine.modelId,
+                snapshot.estimate.estimatedInputTokens
+            );
             const cost = estimateCorpusCost(
                 engine.provider,
                 engine.modelId,
                 snapshot.estimate.estimatedInputTokens,
-                clampExpectedOutputForCostPreview(snapshot.estimate.maxOutputTokens),
+                Math.min(expectedOutputTokens, snapshot.estimate.maxOutputTokens),
                 snapshot.estimate.expectedPassCount
             );
             const freshLabel = formatApproxUsdCost(cost.freshCostUSD);

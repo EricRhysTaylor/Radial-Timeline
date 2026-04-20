@@ -569,16 +569,18 @@ export class GossamerScoreModal extends Modal {
     const aiGroup = footer.createDiv({ cls: 'rt-gossamer-footer__group rt-gossamer-footer__group--ai' });
     aiGroup.createEl('span', { text: 'AI workflow', cls: 'rt-gossamer-footer__group-label' });
     const aiRow = aiGroup.createDiv({ cls: 'rt-row' });
+    // Neither Copy nor Paste use setCta(): the CTA class forces taller padding
+    // than regular footer buttons, visually "distorting" them relative to Save
+    // scores / Cancel. The bordered AI workflow container already signals that
+    // these are the primary workflow actions.
     const copyBtn = new ButtonComponent(aiRow)
       .setButtonText('Copy AI prompt')
-      .setCta()
       .onClick(async () => {
         const ok = await this.copyFullAIPrompt(null);
         if (ok) copyBtn.buttonEl.classList.add('rt-gossamer-copy-success');
       });
     const pasteBtn = new ButtonComponent(aiRow)
       .setButtonText('Paste AI response')
-      .setCta()
       .onClick(async () => {
         const result = await this.pasteFromClipboard();
         this.flashPasteResult(pasteBtn.buttonEl, result);

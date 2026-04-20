@@ -164,7 +164,7 @@ describe('AI settings models table', () => {
         expect(source.includes("createEl('details', { cls: 'ert-ai-fold ert-ai-large-handling' }")).toBe(false);
         expect(source.includes('attachAiCollapseButton(largeHandling')).toBe(false);
         expect(source.includes('ert-ai-capacity-grid')).toBe(true);
-        expect(source.includes('Expected Structured Passes')).toBe(true);
+        expect(source.includes('Expected Passes')).toBe(true);
         expect(source.includes('Estimated provider input')).toBe(true);
         expect(source.includes("largeHandlingSection.toggleClass('ert-settings-hidden', isOllama);")).toBe(true);
     });

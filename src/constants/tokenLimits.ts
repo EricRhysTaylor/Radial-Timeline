@@ -19,8 +19,11 @@ export const PROVIDER_MAX_OUTPUT_TOKENS = {
     // Extended thinking models use separate "thinking" budget
     anthropic: 16000,
     
-    // GPT-5.4 / GPT-5.4 Pro: up to 128,000 output tokens
-    openai: 128000,
+    // GPT-5.4 / GPT-5.4 Pro: API supports up to 128,000 output tokens, but
+    // realistic Inquiry responses land at 2–16k. Cap at 32k for headroom on
+    // large multi-book sagas without inflating cost previews ~8× against the
+    // hard ceiling. Raise here if we observe truncated responses in the wild.
+    openai: 32000,
     
     // Local LLMs vary widely, use conservative default
     ollama: 4000,

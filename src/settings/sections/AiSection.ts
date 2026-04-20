@@ -33,8 +33,7 @@ import {
 } from '../../ai/forecast/estimateTokensFromVault';
 import {
     estimateCorpusCost,
-    formatUsdCost,
-    clampExpectedOutputForCostPreview
+    formatUsdCost
 } from '../../ai/cost/estimateCorpusCost';
 import { getProviderPricing, getActivePricingMeta, getActivePromos, getPricingFreshnessLabel } from '../../ai/cost/providerPricing';
 import { buildOutputRulesText } from '../../ai/prompts/outputRules';
@@ -338,6 +337,10 @@ export function renderAiSection(params: {
     costEstimateFootnote.appendText('. ');
     costEstimateFootnote.createEl('strong', { text: 'Local LLM' });
     costEstimateFootnote.appendText(' runs on your machine with no API charges.');
+    costEstimateFootnote.createEl('br');
+    costEstimateFootnote.appendText(
+        'Estimates assume a response size learned from your past runs (or a safe default until a few runs have completed). They get more accurate the more you use Inquiry.'
+    );
 
     const ensureCanonicalAiSettings = () => {
         if (!plugin.settings.aiSettings) {
@@ -1761,7 +1764,7 @@ export function renderAiSection(params: {
         const activeCacheRowKey = getActiveCostComparisonCacheRowKey();
 
         const headerRow = costEstimateTable.createDiv({ cls: 'ert-ai-models-row ert-ai-models-row--header' });
-        ['Provider', 'Model', 'Fresh Run*', 'Context Run', 'Expected Structured Passes'].forEach(text => {
+        ['Provider', 'Model', 'Fresh Run*', 'Context (cache) Run', 'Expected Passes'].forEach(text => {
             createCostTableCell(headerRow, text);
         });
 
@@ -1871,11 +1874,16 @@ export function renderAiSection(params: {
                     passesText: passLabel
                 };
             }
+            const predictedOutput = plugin.getOutputProfileStore().getExpectedOutputForCost(
+                model.provider,
+                model.modelId,
+                executionEstimate.estimatedTokens
+            );
             const cost = estimateCorpusCost(
                 model.provider,
                 model.modelId,
                 executionEstimate.estimatedTokens,
-                clampExpectedOutputForCostPreview(executionEstimate.maxOutputTokens),
+                Math.min(predictedOutput, executionEstimate.maxOutputTokens),
                 executionEstimate.expectedPassCount
             );
             const passLabel = `${cost.expectedPasses} ${cost.expectedPasses === 1 ? 'pass' : 'passes'}`;

@@ -546,7 +546,8 @@ a.rt-briefing-scene-ref {
 
 .rt-briefing-action-list {
   margin: 12px 0 0;
-  padding-left: 24px;
+  padding-left: 0;
+  list-style: none;
   color: var(--rt-briefing-body);
   font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif;
   font-size: 19px;
@@ -554,28 +555,28 @@ a.rt-briefing-scene-ref {
 }
 
 .rt-briefing-action-list li + li {
-  margin-top: 8px;
+  margin-top: 18px;
 }
 
 .rt-briefing-action-item {
-  display: list-item;
+  display: block;
 }
 
 .rt-briefing-action-pill {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 2.35em;
-  margin-right: 0.5em;
-  padding: 0.08em 0.55em;
+  min-width: 3em;
+  margin-right: 0.6em;
+  padding: 0.2em 0.7em;
   border: 1px solid var(--rt-briefing-line);
   border-radius: 999px;
   background: color-mix(in srgb, var(--rt-briefing-bg-accent) 76%, var(--rt-briefing-bg));
   color: var(--rt-briefing-muted);
-  font: 600 0.62em/1 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font: 600 0.7em/1 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  vertical-align: 0.18em;
+  vertical-align: 0.14em;
 }
 
 .rt-briefing-action-text {
