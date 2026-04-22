@@ -94,12 +94,13 @@ function readGeminiUsage(responseData: Record<string, unknown>): TokenUsage | nu
     const usageData = usage as Record<string, unknown>;
     const inputTokens = readUsageNumber(usageData.promptTokenCount);
     const outputTokens = readUsageNumber(usageData.candidatesTokenCount);
+    const cacheReadInputTokens = readUsageNumber(usageData.cachedContentTokenCount);
     const totalTokens = readUsageNumber(usageData.totalTokenCount)
         ?? (typeof inputTokens === 'number' && typeof outputTokens === 'number'
             ? inputTokens + outputTokens
             : undefined);
-    if (inputTokens === undefined && outputTokens === undefined && totalTokens === undefined) return null;
-    return { inputTokens, outputTokens, totalTokens };
+    if (inputTokens === undefined && outputTokens === undefined && totalTokens === undefined && cacheReadInputTokens === undefined) return null;
+    return { inputTokens, outputTokens, totalTokens, cacheReadInputTokens };
 }
 
 export function extractTokenUsage(provider: string | null | undefined, responseData: unknown): TokenUsage | null {

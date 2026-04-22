@@ -23,7 +23,7 @@ Inquiry organizes its analysis into three narrative zones (Setup, Pressure, Payo
 | **Progress** | `1` | Writing status and revision stages — Todo/Working/Overdue, progress-stage colors |
 | **Narrative** | `2` | Manuscript reading order — subplot colors, story beats, scene reordering |
 | **Chronologue** | `3` | Story-world chronology — when events happen, elapsed time, duration arcs |
-| **Gossamer** | `4` | Narrative momentum — story beat scores, pacing, tension mapping |
+| **Gossamer** | `4` | Beat-level scoring — Momentum, Tension, Activity, Interiority, and saved runs |
 
 Chronologue mode also provides three **sub-modes** (Shift, Alt, Runtime) for deeper temporal analysis. See [[Timeline Modes]] for full details.
 

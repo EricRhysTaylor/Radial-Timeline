@@ -1,21 +1,22 @@
-**Analyzing Narrative Momentum**
+# Gossamer Mode
 
-Gossamer Mode visualizes narrative momentum using story beat scores. Timeline grays out; momentum values display across story beats to show tension/excitement building.
+Gossamer Mode visualizes beat-level scoring across your active story beat system. It supports four signals — **Momentum**, **Tension**, **Activity**, and **Interiority** — so you can compare not just how your story moves, but what kind of pressure or interior charge each beat carries.
 
-*   **Momentum Tracking**: Chart narrative momentum across story beats and over time with manual or AI-driven scoring.
-*   **Historical tracking**: Compare momentum scores across up to 30 iterations to track how your story evolves.
-*   **Ideal Range**: Based on `Range=0-20` yaml for each story beat creating an idealized story momentum shape (visual reference only).
-*   **Manual score entry**: Track momentum changes over time with manual updates (with or without external AI assistance).
+*   **Four signals**: Score **Momentum**, **Tension**, **Activity**, or **Interiority** against the same beat system.
+*   **Run history**: Compare saved runs across up to 30 slots per beat to track how the shape changes over time.
+*   **Top-left plots panel**: Switch signals, show **LATEST** or all plots, and toggle individual saved runs on or off.
+*   **Ideal Range**: Beat `Range` values provide a visual target for **Momentum** only. They are not sent to the AI.
+*   **Manual score entry**: Enter scores for the current signal yourself, with or without external AI assistance.
 *   **Justification capture**: Each score line now records a brief justification so you know what the score was based on.
-*   **Normalize & repair**: Use the **Normalize Scores** button inside the modal to smooth outliers and automatically repair orphaned/out‑of‑sequence entries.
+*   **Normalize & repair**: Use **Normalize history** inside the modal to compact gaps and repair orphaned entries.
 
 **Timeline mode**: Gossamer (key **4**)
 **Command**: `Gossamer score manager`
-**Settings**: `Story beats system`
+**Settings**: [[Settings#story-beats|Story beats system]]
 
 <div style="text-align: center; margin: 20px 0;">
-  <img src="images/gossamer.jpeg" alt="Gossamer Range & Three Scores" style="width: 400; max-width: 100%;" />
-  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Gossamer Range & Three Scores</div>
+  <img src="images/gossamer.jpeg" alt="Gossamer with saved runs and signal controls" style="width: 400; max-width: 100%;" />
+  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Gossamer — saved runs, signal switching, and beat-level scoring</div>
 </div>
 
 <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-top: 20px;">
@@ -30,17 +31,24 @@ Gossamer Mode visualizes narrative momentum using story beat scores. Timeline gr
 </div>
 
 <div style="text-align: center; margin: 20px 0;">
-  <img src="images/gossamer-score-modal.png" alt="Gossamer score entry modal for manual momentum scoring" style="width: 500px; max-width: 100%; border-radius: 8px;" />
-  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Gossamer score manager — manual momentum entry</div>
+  <img src="images/gossamer-score-modal.png" alt="Gossamer score entry modal for manual signal scoring" style="width: 500px; max-width: 100%; border-radius: 8px;" />
+  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Gossamer score manager — manual entry for the active signal</div>
 </div>
+
+## Signals
+
+*   **Momentum**: How strongly the story pulls the reader toward what happens next.
+*   **Tension**: How much unresolved pressure, uncertainty, or conflict the reader carries forward.
+*   **Activity**: How much is physically or visibly happening on the page.
+*   **Interiority**: How intense the character's inner experience is on the page.
 
 ## Manual Entry
 
-Use **Gossamer score manager** to enter scores yourself. This is a manual workflow by design — you can score purely by your own judgment, or use an external AI tool to help draft scores and justifications, then paste those results into the modal.
+Use **Gossamer score manager** to enter scores for the active signal. This is a manual workflow by design — you can score purely by your own judgment, or use an external AI tool to help draft scores and justifications, then paste those results into the modal.
 
 ## AI Analysis
 
-Use **Gossamer analysis** to run the built-in AI evaluation of narrative momentum. This AI run intentionally **does not receive ideal range guidance** in its payload/instructions, so the result is a fresh take rather than a range‑constrained score.
+Use **Gossamer analysis** to run the built-in AI evaluation for the active signal. The AI run intentionally **does not receive ideal range guidance** in its payload/instructions, so the result is a fresh read rather than a range-constrained score.
 
 ## Story Beats Configuration
 

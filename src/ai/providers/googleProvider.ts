@@ -2,6 +2,7 @@ import type RadialTimelinePlugin from '../../main';
 import { callGeminiApi } from '../../api/geminiApi';
 import { getOrCreateGeminiCache } from '../../api/geminiCacheManager';
 import { classifyProviderError } from '../../api/providerErrors';
+import { extractTokenUsage } from '../usage/providerUsage';
 import { getCredential } from '../credentials/credentials';
 import { CACHE_BREAK_DELIMITER } from '../prompts/composeEnvelope';
 import { buildDefaultAiSettings } from '../settings/aiSettings';
@@ -17,6 +18,22 @@ export class GoogleProvider implements AIProvider {
 
     supports(capability: Capability): boolean {
         return CAPS.includes(capability);
+    }
+
+    private deriveCacheResult(
+        responseData: unknown,
+        cachedContentName: string | undefined,
+        clientCacheStatus: ProviderExecutionResult['cacheStatus']
+    ): Pick<ProviderExecutionResult, 'cacheUsed' | 'cacheStatus'> {
+        const usage = extractTokenUsage('google', responseData);
+        const cacheRead = usage?.cacheReadInputTokens ?? 0;
+        if (cacheRead > 0) {
+            return { cacheUsed: true, cacheStatus: 'hit' };
+        }
+        if (cachedContentName) {
+            return { cacheUsed: false, cacheStatus: clientCacheStatus ?? 'created' };
+        }
+        return {};
     }
 
     private buildCacheSetupFailure(
@@ -97,6 +114,7 @@ export class GoogleProvider implements AIProvider {
             true
         );
         const classification = classifyProviderError(result);
+        const cacheResult = this.deriveCacheResult(result.responseData, cachedContentName, cacheStatus);
         return {
             success: result.success,
             content: result.content,
@@ -109,8 +127,7 @@ export class GoogleProvider implements AIProvider {
             aiModelResolved: req.modelId,
             error: result.error,
             citations: result.citations,
-            cacheUsed: !!cachedContentName,
-            cacheStatus
+            ...cacheResult
         };
     }
 
@@ -161,6 +178,7 @@ export class GoogleProvider implements AIProvider {
             true
         );
         const classification = classifyProviderError(result);
+        const cacheResult = this.deriveCacheResult(result.responseData, cachedContentName, cacheStatus);
         return {
             success: result.success,
             content: result.content,
@@ -173,8 +191,7 @@ export class GoogleProvider implements AIProvider {
             aiModelResolved: req.modelId,
             error: result.error,
             citations: result.citations,
-            cacheUsed: !!cachedContentName,
-            cacheStatus
+            ...cacheResult
         };
     }
 }

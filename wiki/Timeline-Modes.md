@@ -27,7 +27,7 @@ Additional features:
 *   **Dynamic duration arc cap**: Proportionally scales scene durations.
 
 ### Gossamer Mode (keyboard 4)
-Visualizes narrative momentum using story beat scores. The timeline grays out and momentum values display across story beats.
+Visualizes beat-level scoring across your active story beat system. Gossamer supports **Momentum**, **Tension**, **Activity**, and **Interiority**, with saved run history and a top-left plots panel for switching signals and comparing runs.
 
 ---
 <div style="text-align: center; margin: 20px 0;">

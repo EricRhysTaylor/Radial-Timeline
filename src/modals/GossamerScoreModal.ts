@@ -63,6 +63,19 @@ export class GossamerScoreModal extends Modal {
   private includeBeatDescriptions = false;
   /** Path of the most recent manuscript export during this modal session. */
   private lastManuscriptPath: string | null = null;
+  private saveBtn?: ButtonComponent;
+
+  private hasPendingChanges(): boolean {
+    for (const entry of this.entries) {
+      if (entry.newScore !== undefined) return true;
+      if (entry.scoresToDelete.size > 0) return true;
+    }
+    return false;
+  }
+
+  private refreshSaveButtonState(): void {
+    this.saveBtn?.setDisabled(!this.hasPendingChanges());
+  }
 
   constructor(
     app: App,
@@ -461,6 +474,7 @@ export class GossamerScoreModal extends Modal {
           entry.inputEl?.inputEl.removeClass('rt-input-error');
           entry.newScore = undefined;
         }
+        this.refreshSaveButtonState();
       });
 
       // Second row: Existing scores with delete buttons
@@ -505,6 +519,7 @@ export class GossamerScoreModal extends Modal {
           scoreContainer.addEventListener('click', () => {
             entry.scoresToDelete.add(gossamerNum);
             renderScores();
+            this.refreshSaveButtonState();
           });
         };
 
@@ -610,9 +625,11 @@ export class GossamerScoreModal extends Modal {
     const commitGroup = footer.createDiv({ cls: 'rt-gossamer-footer__commit' });
     const saveBtn = new ButtonComponent(commitGroup)
       .setButtonText('Save scores')
+      .setDisabled(true)
       .onClick(async () => {
         await this.saveScores();
       });
+    this.saveBtn = saveBtn;
     const cancelBtn = new ButtonComponent(commitGroup)
       .setButtonText('Cancel')
       .onClick(() => this.close());
@@ -652,6 +669,8 @@ export class GossamerScoreModal extends Modal {
   }
 
   private buildEntries(): void {
+    const activeSignal: GossamerSignalType = this.plugin.gossamerSelectedSignal ?? DEFAULT_GOSSAMER_SIGNAL;
+
     // Sort plot beats by filename prefix using natural token ordering.
     const sortedBeats = [...this.plotBeats].sort((a, b) => {
       const aPrefix = extractPrefixToken(a.title || '');
@@ -706,6 +725,14 @@ export class GossamerScoreModal extends Modal {
           }
 
           if (numeric !== undefined) {
+            // Only include slots whose signal matches the active signal.
+            // Missing signal field = momentum (legacy runs).
+            const rawSignal = fm[`GossamerSignal${i}`];
+            const slotSignal = typeof rawSignal === 'string' && rawSignal.trim().length > 0
+              ? rawSignal.trim().toLowerCase()
+              : 'momentum';
+            if (slotSignal !== activeSignal) continue;
+
             hasAnyScores = true;
             const justificationKey = `Gossamer${i} Justification`;
             const justificationValue = fm[justificationKey];

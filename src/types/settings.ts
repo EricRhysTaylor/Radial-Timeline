@@ -659,6 +659,8 @@ export interface RadialTimelineSettings {
     actCount?: number;
     actLabelsRaw?: string;
     gossamerRunFilter?: GossamerRunFilterSettings;
+    /** Last observed API round-trip duration per signal, used to seed the next run's ETA. */
+    gossamerLastRunMsBySignal?: Record<string, number>;
     publishStageColors: {
         Zero: string;
         Author: string;

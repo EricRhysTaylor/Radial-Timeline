@@ -7,27 +7,29 @@ The Author Progress Report is a shareable, spoiler-safe graphic that shows your 
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Author Progress Report — configure, preview, and export your progress graphic</div>
 </div>
 
-## Progress Calculation
+## Progress Tracking
 
-APR uses a **weighted stage-based** approach to calculate your book's completion percentage. Each scene contributes based on its Progress Stage (Publish Stage field):
+APR can measure progress in three ways:
 
-| Progress Stage | Contribution |
-|---------------|--------------|
-| Zero (First Draft) | 25% |
-| Author (Self-Revision) | 50% |
-| House (Editor Revision) | 75% |
-| Press (Release Ready) | 100% |
+| Mode | How It Works | Best Use |
+|------|--------------|----------|
+| **Stage Tracking** | Tracks one stage at a time against a scene goal. | Zero drafting, focused revision passes, or any stage-specific sprint |
+| **Full Manuscript** | Tracks all scenes across Zero → Press. | End-to-end public progress across the full pipeline |
+| **Date Goal** | Tracks elapsed time between a start date and a target date. | Deadline-driven campaigns and schedule-based updates |
 
-**Example**: A book with 100 scenes where:
-- 50 scenes are at Zero -> 50 x 0.25 = 12.5%
-- 30 scenes are at Author -> 30 x 0.50 = 15%
-- 15 scenes are at House -> 15 x 0.75 = 11.25%
-- 5 scenes are at Press -> 5 x 1.00 = 5%
-- **Total Progress: 44%**
+### Stage Tracking
 
-This gives fans a realistic view of multi-stage publishing progress rather than just counting "done" scenes.
+Stage Tracking focuses on one stage at a time. Choose the tracked stage, then set a scene goal when you want a fixed denominator. This is especially useful in **Zero** when you know the target scene count for the draft and want APR to reflect that specific push.
 
-> **Note**: This calculation is intentionally separate from the main timeline's Estimated Completion feature, which uses velocity-based projections for date estimation.
+### Full Manuscript
+
+Full Manuscript measures the book across the full revision path from **Zero** to **Press**. Use this when you want APR to reflect overall manuscript maturity rather than just the stage you are currently pushing.
+
+### Date Goal
+
+Date Goal measures progress against time rather than scene counts. Set a start date and target date, and APR will show how far you have moved through that range.
+
+> **Note**: APR tracking is separate from the timeline's Estimated Completion feature, which projects pace inside the working manuscript view.
 
 ## Reveal Options
 

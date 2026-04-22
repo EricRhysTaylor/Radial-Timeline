@@ -34,14 +34,14 @@ export const CURATED_MODELS: Record<AiProvider, CuratedModel[]> = {
     ],
     google: [
         {
-            id: 'gemini-2.5-pro',
-            label: 'Google 2.5 Pro',
-            guidance: "→ Google 2.5 Pro (1,048,576 context). Stable Google lane with Search grounding support; RT now maps grounding metadata into Inquiry Brief sources. [FYI](https://ai.google.dev/)",
-        },
-        {
             id: 'gemini-3.1-pro-preview',
             label: 'Google 3.1 Pro Preview',
-            guidance: "Google 3.1 Pro Preview remains the experimental Google lane in RT. Use Google 2.5 Pro when grounded citations need to be dependable. [FYI](https://ai.google.dev/)",
+            guidance: "→ Google 3.1 Pro Preview (1,048,576 context). Current lead Google lane — supersedes the deprecated Gemini 3 Pro Preview. Preview status: no GA release yet. Supports Search grounding; cached content and grounded citations are mutually exclusive per Google's API. [FYI](https://ai.google.dev/gemini-api/docs/models)",
+        },
+        {
+            id: 'gemini-2.5-pro',
+            label: 'Google 2.5 Pro',
+            guidance: "Google 2.5 Pro (1,048,576 context). Stable Google lane; use when you need GA guarantees. RT maps grounding metadata into Inquiry Brief sources. [FYI](https://ai.google.dev/)",
         },
     ],
 };

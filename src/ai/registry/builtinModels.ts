@@ -257,7 +257,8 @@ export const BUILTIN_MODELS: ModelInfo[] = [
         personality: { reasoning: 9, writing: 8, determinism: 8 },
         contextWindow: 1048576,
         maxOutput: 65536,
-        status: 'legacy'
+        status: 'legacy',
+        constraints: { cacheVsCitationsExclusive: true }
     },
     {
         provider: 'ollama',

@@ -45,8 +45,8 @@ Type "Radial Timeline" to filter the list.
 | **Scene pulse analysis (manuscript order)** | Runs AI analysis on all scenes sequentially in narrative order. Requires AI features enabled. | [[AI-Pulse-Analysis|AI Pulse Triplet Analysis]] |
 | **Scene pulse analysis (subplot order)** | Runs AI analysis on scenes within a selected subplot. Requires AI features enabled. | [[AI-Pulse-Analysis|AI Pulse Triplet Analysis]] |
 | **Summary refresh** | Generates AI summaries for Inquiry (target length set in settings, default ≈200–300 words) with optional Synopsis updates for hovers. Requires AI features enabled. | [[AI-Pulse-Analysis|AI Pulse Triplet Analysis]] |
-| **Gossamer score manager** | Opens the score entry modal for manual Gossamer momentum scoring. | [[Gossamer-Mode#manual-entry|Gossamer Mode]] |
-| **Gossamer analysis** | Runs AI evaluation of story beat momentum for Gossamer mode. Requires AI features enabled. | [[Gossamer-Mode#ai-analysis|Gossamer Mode]] |
+| **Gossamer score manager** | Opens the score entry modal for manual Gossamer scoring on the active signal. | [[Gossamer-Mode#manual-entry|Gossamer Mode]] |
+| **Gossamer analysis** | Runs AI evaluation for the active Gossamer signal. Requires AI features enabled. | [[Gossamer-Mode#ai-analysis|Gossamer Mode]] |
 
 ### Inquiry
 

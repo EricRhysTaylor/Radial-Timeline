@@ -14,6 +14,7 @@ Narrative Mode is your primary manuscript-order workspace. It displays all scene
 *   **Subplot Colors**: The outer ring segments are colored by their subplot. This lets you quickly visualize which plot threads are dominant in each section of the book.
 *   **Story Beats**: Displays story beats (like Save the Cat) along the timeline, helping you pace your narrative structure.
 *   **Interactive Reordering**: You can drag scenes on the outer ring to reorder them. See [[How-to#reorder-scenes]] for details.
+*   **Recent moves overlay**: Narrative Mode can show a top-left list of recent committed scene and beat moves. Toggle it in [[Settings#configuration|Settings → Advanced → Configuration]].
 
 ## Dominant Subplots
 

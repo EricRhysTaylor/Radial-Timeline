@@ -47,6 +47,7 @@ export class GossamerProcessingModal extends Modal {
     // UI elements
     private confirmationView?: HTMLElement;
     private processingView?: HTMLElement;
+    private subtitleEl?: HTMLElement;
     private manuscriptInfoEl?: HTMLElement;
     private statusTextEl?: HTMLElement;
     private apiStatusEl?: HTMLElement;
@@ -60,6 +61,7 @@ export class GossamerProcessingModal extends Modal {
     private manuscriptInfo?: ManuscriptInfo;
     private currentStatus: string = 'Initializing...';
     private apiCallStartTime?: number;
+    private lastElapsedSeconds?: string;
     private timerInterval?: number;
     private progressSimulator?: SimulatedProgress;
     private estimatedProcessingMs: number = 45000; // Fallback estimate (45s typical)
@@ -104,7 +106,7 @@ export class GossamerProcessingModal extends Modal {
 
         hero.createSpan({ text: badgeText, cls: 'ert-modal-badge' });
         hero.createDiv({ text: `Gossamer ${signalLabelLower} analysis`, cls: 'ert-modal-title' });
-        hero.createDiv({ text: subtitle, cls: 'ert-modal-subtitle' });
+        this.subtitleEl = hero.createDiv({ text: subtitle, cls: 'ert-modal-subtitle' });
     }
 
     onClose(): void {
@@ -392,11 +394,19 @@ export class GossamerProcessingModal extends Modal {
             this.timerInterval = undefined;
         }
 
-        const elapsed = this.apiCallStartTime ? ((Date.now() - this.apiCallStartTime) / 1000).toFixed(1) : '?';
+        const elapsedMs = this.apiCallStartTime ? Date.now() - this.apiCallStartTime : undefined;
+        this.lastElapsedSeconds = elapsedMs !== undefined ? (elapsedMs / 1000).toFixed(1) : undefined;
 
+        // Persist elapsed per-signal so the next run can seed a realistic ETA
+        // instead of falling back to the size-based heuristic.
+        if (elapsedMs !== undefined && elapsedMs > 0) {
+            void this.persistLastRunDuration(elapsedMs);
+        }
+
+        // Elapsed is now rolled into the combined success line in completeProcessing;
+        // clear the separate "Response received" row so there's only one end-state line.
         if (this.apiStatusEl) {
             this.apiStatusEl.empty();
-            this.apiStatusEl.setText(`✓ Response received (${elapsed}s)`);
         }
 
         // Complete the progress bar and pause animation
@@ -409,6 +419,14 @@ export class GossamerProcessingModal extends Modal {
             // SAFE: inline style used for CSS custom property (--progress-width) to enable smooth progress animation
             this.progressBarEl.style.setProperty('--progress-width', '100%');
         }
+    }
+
+    private async persistLastRunDuration(elapsedMs: number): Promise<void> {
+        const signal = this.plugin.gossamerSelectedSignal ?? DEFAULT_GOSSAMER_SIGNAL;
+        const bucket = this.plugin.settings.gossamerLastRunMsBySignal ?? {};
+        bucket[signal] = elapsedMs;
+        this.plugin.settings.gossamerLastRunMsBySignal = bucket;
+        await this.plugin.saveSettings();
     }
 
     /**
@@ -464,7 +482,12 @@ export class GossamerProcessingModal extends Modal {
         this.isProcessing = false;
 
         if (this.statusTextEl) {
-            this.statusTextEl.setText(message);
+            const elapsedSuffix = success && this.lastElapsedSeconds ? ` (${this.lastElapsedSeconds}s)` : '';
+            this.statusTextEl.setText(`${message}${elapsedSuffix}`);
+        }
+
+        if (this.subtitleEl) {
+            this.subtitleEl.setText(success ? 'Analysis complete' : 'Analysis failed');
         }
 
         // Complete the progress bar and pause animation
@@ -543,10 +566,17 @@ export class GossamerProcessingModal extends Modal {
     }
 
     /**
-     * Estimate processing duration based on manuscript size and beats.
-     * Calibrated so a ~97k word manuscript lands near 40-45 seconds.
+     * Estimate processing duration. Prefers the last observed duration for the
+     * active signal (persisted across runs); falls back to a manuscript-size
+     * heuristic when no prior sample exists.
      */
     private estimateProcessingMs(info?: ManuscriptInfo): number {
+        const signal = this.plugin.gossamerSelectedSignal ?? DEFAULT_GOSSAMER_SIGNAL;
+        const persisted = this.plugin.settings.gossamerLastRunMsBySignal?.[signal];
+        if (typeof persisted === 'number' && Number.isFinite(persisted) && persisted > 0) {
+            return this.clamp(persisted, 5000, 300000);
+        }
+
         if (!info) return this.estimatedProcessingMs || 45000;
 
         const tokens = info.estimatedTokens ?? Math.round(info.totalWords * 1.35);

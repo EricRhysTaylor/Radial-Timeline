@@ -42,7 +42,7 @@ Here's how the two complement each other:
 
 4. **Chronologue mode for timeline complexity** — If your story has non-linear time (flashbacks, multiple timelines), Chronologue tracks story-time vs manuscript-order—useful regardless of planning method.
 
-5. **AI analysis works on any scenes** — Scene triplet analysis provides concise pulse feedback on a scene level while Gossamer AI evalution takes your beat milestones and evaluates overall story punch.
+5. **AI analysis works on any scenes** — Scene triplet analysis provides concise pulse feedback on a scene level while Gossamer AI evaluation scores your beat milestones across the active signal.
 
 ### Summary
 

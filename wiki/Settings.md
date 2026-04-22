@@ -173,6 +173,7 @@ Configure the Chronologue backdrop ring and micro-backdrop rings.
 ---
 
 <a name="social"></a>
+<a name="social-media"></a>
 ## Social Tab
 
 ### Social · Author Progress Report
@@ -181,6 +182,12 @@ Generate shareable, spoiler-safe progress graphics for social media, crowdfundin
 > [!NOTE]
 > For detailed information about how APR works, see [[Author-Progress-Report]].
 
+#### Progress Tracking
+*   **Stage Tracking**: Track one stage at a time using a scene goal. Choose the stage, then set a target scene count when you want a fixed denominator for that stage. This is especially useful in Zero when you want to draft toward a known scene total.
+*   **Full Manuscript**: Track the whole manuscript across Zero → Press. This gives you an end-to-end view of how far the book has moved through the full revision pipeline.
+*   **Date Goal**: Track elapsed time between a start date and a target date. Use this when the APR should reflect calendar progress toward a deadline rather than scene counts.
+
+<a name="social-media-styling"></a>
 **Preview & Size:**
 *   **Preview Size**: Choose Thumbnail (100x100px), Small (150x150px), Medium (300x300px), or Large (450x450px). This also sets the default export size and updates the preview in real time.
 
@@ -190,12 +197,14 @@ Generate shareable, spoiler-safe progress graphics for social media, crowdfundin
 *   **Theme Contrast**: Choose Light Strokes, Dark Strokes, or No Strokes to match your background.
 *   **Link URL**: Where the graphic should link to (e.g., your website, Kickstarter, or shop).
 
+<a name="social-media-theme"></a>
 #### Theme
 *   **Theme palette**: Applies curated colors across Title, Author, % Symbol, % Number, and RT Badge based on the Title color.
 *   **Book Title**: Appears on your public report graphic.
 *   **Author Name**: Appears alongside the title (e.g., "Title - Author").
 *   **Typography & color overrides**: Fine-tune fonts, weights, and colors for title, author, percent number/symbol, and RT badge.
 
+<a name="social-media-publishing"></a>
 #### Sharing & Automation
 *   **Update Frequency**: How often to auto-update the live embed file. Options: Manual Only, Daily, Weekly, or Monthly. "Manual" requires clicking the update button in the Author Progress Report modal.
 *   **Refresh Alert Threshold**: Days before showing a refresh reminder in the Timeline view (1-90 days, default 30). Only shown when Update Frequency is set to Manual.

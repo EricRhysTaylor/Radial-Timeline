@@ -32,7 +32,7 @@ This page covers the fresh vault flow. If you already have scenes, jump to [[Exi
 - Progress (1). Writing status and progress stage.
 - Narrative (2). Manuscript order and subplot structure.
 - Chronologue (3). Story-world time.
-- Gossamer (4). Beat momentum and scoring.
+- Gossamer (4). Beat-level scoring across Momentum, Tension, Activity, and Interiority.
 
 ## 5. Minimum daily workflow
 - Write scenes and keep `Synopsis` up to date.

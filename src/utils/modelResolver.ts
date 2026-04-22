@@ -12,6 +12,8 @@
  * the actual alias for API calls.
  */
 
+import { BUILTIN_MODELS } from '../ai/registry/builtinModels';
+
 // Static fallback mappings for "latest" aliases
 // These are updated when we get actual model info from API responses
 const LATEST_ALIAS_DISPLAY_NAMES: Record<string, string> = {
@@ -51,19 +53,25 @@ export function getModelDisplayName(modelId: string, options?: { debug?: boolean
 
     const snapshotLabel = formatOpenAiSnapshotName(modelId, debug);
     if (snapshotLabel) return snapshotLabel;
-    
+
     // Check if we have a cached resolution from a recent API call
     const cached = resolvedModelCache.get(modelId);
     if (cached) {
         // Show the resolved name with indication it's a "latest" alias
         return cached.displayName;
     }
-    
+
+    // Registry lookup — BUILTIN_MODELS.label is the authoritative display name
+    // for known concrete model IDs. Runs after cache so resolved-latest aliases
+    // still render with their `(via latest)` suffix.
+    const registryHit = BUILTIN_MODELS.find(m => m.id === modelId || m.alias === modelId);
+    if (registryHit) return registryHit.label;
+
     // Check if this is a known "latest" alias
     if (LATEST_ALIAS_DISPLAY_NAMES[modelId]) {
         return LATEST_ALIAS_DISPLAY_NAMES[modelId];
     }
-    
+
     // For specific versioned models, create a friendly name
     return formatModelName(modelId, debug);
 }
@@ -100,7 +108,7 @@ function formatModelName(modelId: string, debug: boolean): string {
     
     // Gemini models
     if (modelId.startsWith('gemini-')) {
-        // gemini-3-pro-preview -> Gemini 3 Pro Preview
+        // gemini-3.1-pro-preview -> Gemini 3.1 Pro Preview
         // gemini-2.5-pro -> Gemini 2.5 Pro
         const parts = modelId.replace('gemini-', '').split('-');
         return 'Gemini ' + parts.map(p => 
@@ -133,7 +141,7 @@ function formatModelName(modelId: string, debug: boolean): string {
  * Call this after receiving an API response that includes the actual model version.
  * 
  * @param aliasId The "latest" alias that was used (e.g., "gemini-pro-latest")
- * @param resolvedModelId The actual model it resolved to (e.g., "gemini-3-pro-preview")
+ * @param resolvedModelId The actual model it resolved to (e.g., "gemini-3.1-pro-preview")
  */
 export function cacheResolvedModel(aliasId: string, resolvedModelId: string): void {
     aliasId = normalizeModelId(aliasId);

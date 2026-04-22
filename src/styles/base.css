@@ -644,16 +644,6 @@ body.rt-modal-open .radial-timeline-container * {
   padding: 6px 2px 0;
 }
 
-.rt-gossamer-runs__latest {
-  flex: 0 0 auto;
-  font-size: 14px;
-  line-height: 14px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: color-mix(in srgb, var(--text-faint) 90%, transparent);
-  opacity: 0.68;
-}
-
 .rt-gossamer-runs__list {
   display: flex;
   flex-direction: column;
@@ -665,6 +655,13 @@ body.rt-modal-open .radial-timeline-container * {
   padding-top: 4px;
 }
 
+.rt-gossamer-runs__divider {
+  height: 1px;
+  margin: 4px 12px;
+  background: color-mix(in srgb, var(--text-faint) 45%, transparent);
+  opacity: 0.5;
+}
+
 .rt-gossamer-runs__checkbox-row {
   display: flex;
   align-items: center;
@@ -673,6 +670,12 @@ body.rt-modal-open .radial-timeline-container * {
   font-size: 15px;
   line-height: 16px;
   color: var(--text-normal);
+}
+
+.rt-gossamer-runs__checkbox-row > span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .rt-gossamer-runs__checkbox-row input[type="checkbox"] {

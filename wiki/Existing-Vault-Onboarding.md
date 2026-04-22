@@ -33,7 +33,7 @@ See [[YAML-Frontmatter|YAML Frontmatter]] for the full schema.
 - Pick a system in Settings -> Core -> Story beats system, or select **Custom** to define your own.
 - For custom systems: name your system, add beats, assign to acts, and drag to reorder.
 - Use **Create** to generate beat set notes, or **Merge** to realign existing files after changes.
-- Switch to Gossamer mode to visualize momentum.
+- Switch to Gossamer mode to compare beat-level scoring across the active signal.
 
 ## 5. Verify with key features
 - Search timeline to confirm your fields are indexed.

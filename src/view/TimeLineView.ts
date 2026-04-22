@@ -997,7 +997,8 @@ export class RadialTimelineView extends ItemView {
         const panelY = viewBoxMin + 24;
         const panelWidth = 352;
         const displayedRuns = runs.slice().reverse().slice(0, 15);
-        const listHeight = 8 + (displayedRuns.length * 30);
+        const dividerHeight = displayedRuns.length > 1 ? 9 : 0;
+        const listHeight = 8 + (displayedRuns.length * 30) + dividerHeight;
         // Header row remains ~44px; even with zero runs we still show the signal selector + pill.
         const panelHeight = 44 + (runs.length === 0 ? 0 : listHeight);
 
@@ -1082,8 +1083,13 @@ export class RadialTimelineView extends ItemView {
         if (runs.length > 0) {
             const list = document.createElementNS(xhtmlNs, 'div');
             list.className = 'rt-gossamer-runs__list rt-gossamer-runs__list--inline';
-            displayedRuns.forEach((record) => {
+            displayedRuns.forEach((record, idx) => {
                 list.appendChild(this.buildGossamerRunToggleRow(record));
+                if (idx === 0 && displayedRuns.length > 1 && record.isLatest) {
+                    const divider = document.createElementNS(xhtmlNs, 'div');
+                    divider.className = 'rt-gossamer-runs__divider';
+                    list.appendChild(divider);
+                }
             });
             panel.appendChild(list);
         } else {
@@ -1164,13 +1170,6 @@ export class RadialTimelineView extends ItemView {
         const text = document.createElementNS(xhtmlNs, 'span');
         text.textContent = record.label;
         row.appendChild(text);
-
-        if (record.isLatest) {
-            const badge = document.createElementNS(xhtmlNs, 'span');
-            badge.className = 'rt-gossamer-runs__latest';
-            badge.textContent = 'Latest';
-            row.appendChild(badge);
-        }
 
         const schedulePanelRefresh = () => {
             window.setTimeout(() => {

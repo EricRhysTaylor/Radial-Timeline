@@ -1296,7 +1296,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       derivedLines.push(`| ${beat.beatName} | ${beat.signal} | ${beat.score} | ${beat.idealRange} | ${status} |`);
     }
 
-    const reportFile = await writeGossamerLog(plugin, {
+    await writeGossamerLog(plugin, {
       status: 'success',
       provider: result.provider === 'none' ? 'openai' : result.provider,
       beatSystemLabel: beatSystemDisplayName,
@@ -1313,11 +1313,6 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       returnedAt,
       derivedSummary: derivedLines.join('\n')
     });
-
-    if (reportFile) {
-      const leaf = plugin.app.workspace.getLeaf('tab');
-      await leaf.openFile(reportFile);
-    }
 
     const successMessage = `✓ Updated ${updateCount} beats with ${signalMeta.label.toLowerCase()} scores`;
     

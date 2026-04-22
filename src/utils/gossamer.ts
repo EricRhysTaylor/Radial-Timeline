@@ -7,6 +7,7 @@ import { STAGE_ORDER } from './constants';
 import { normalizeBeatSetNameInput, toBeatMatchKey, toBeatModelMatchKey } from './beatsInputNormalize';
 import { comparePrefixTokens, extractPrefixToken } from './prefixOrder';
 import { coerceGossamerSignal, DEFAULT_GOSSAMER_SIGNAL, type GossamerSignalType } from '../types/gossamerSignals';
+import { getModelDisplayName } from './modelResolver';
 
 export type GossamerBeatStatus = 'present' | 'outlineOnly' | 'missing';
 
@@ -195,7 +196,7 @@ function formatGossamerRunTimestamp(value: string | undefined, fallbackIndex: nu
 }
 
 function buildGossamerRunModelLabel(metadata: GossamerSlotMetadata): string {
-  if (metadata.model) return metadata.model;
+  if (metadata.model) return getModelDisplayName(metadata.model);
   if (metadata.provider === 'manual') return 'Manual entry';
   if (metadata.provider) return metadata.provider;
   return 'Legacy run';

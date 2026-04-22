@@ -2,7 +2,7 @@
 
 **Keyboard Shortcut**: `1`
 
-Progress Mode isolates each subplot into its own radial pass, removing the combined outer ring. This mode focuses on **Author time** (your writing status) and **Progress stages** (revision stages), making it ideal for tracking momentum.
+Progress Mode isolates each subplot into its own radial pass, removing the combined outer ring. This mode focuses on **Author time** (your writing status) and **Progress stages** (revision stages), making it ideal for tracking workflow at a glance.
 
 <div style="text-align: center; margin: 20px 0;">
   <img src="images/subplot.jpeg" alt="Progress Mode" style="width: 300px; max-width: 100%; border-radius: 8px;" />

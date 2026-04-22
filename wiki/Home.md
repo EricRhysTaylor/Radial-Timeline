@@ -22,7 +22,7 @@ Radial Timeline™ captures and visualizes all 4 critical timelines:
 *   **Author time**: your scene writing progress with target due dates tracking Todo, Working, Complete and Overdue.
 *   **Progress stages**: manuscript revision stages from Zero draft through Press-ready.
 
-Narrative and Chronologue modes keep subplot colors front-and-center so you can compare structure without workflow noise. When you need to see Todo/Working/Overdue status or progress stage colors, switch to Progress Mode — the combined outer ring is replaced by a single-subplot view and scenes inherit the author-status and progress-stage palette.
+[[Narrative-Mode|Narrative]] and [[Chronologue-Mode|Chronologue]] keep subplot colors front-and-center so you can compare structure without workflow noise. When you need to see Todo/Working/Overdue status or progress stage colors, switch to [[Progress-Mode|Progress Mode]] — the combined outer ring is replaced by a single-subplot view and scenes inherit the author-status and progress-stage palette.
 
 ---
 
@@ -42,7 +42,7 @@ Narrative and Chronologue modes keep subplot colors front-and-center so you can 
 <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-top: 20px;">
   <div style="text-align: center;">
     <img src="images/subplot.jpeg" alt="Progress Mode: author status (Todo/Working/Overdue/Complete) and progress stage colors" style="width: 300px; max-width: 100%; border-radius: 8px;" />
-    <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Progress Mode — schedule/status + progress stage momentum</div>
+    <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Progress Mode — schedule/status + progress stage view</div>
   </div>
   <div style="text-align: center;">
     <img src="images/chronologue.jpeg" alt="Chronologue Mode: scenes ordered by When/Duration with overlaps and adaptive time labeling" style="width: 300px; max-width: 100%; border-radius: 8px;" />
@@ -56,8 +56,8 @@ Narrative and Chronologue modes keep subplot colors front-and-center so you can 
     <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Chronologue Shift — compare elapsed time between scenes and surface discontinuity gaps</div>
   </div>
   <div style="text-align: center;">
-    <img src="images/gossamer.jpeg" alt="Gossamer Mode: narrative momentum across story beats with scoring history and ideal ranges" style="width: 300px; max-width: 100%; border-radius: 8px;" />
-    <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Gossamer Mode — momentum map across story beats</div>
+    <img src="images/gossamer.jpeg" alt="Gossamer Mode: beat-level scoring with multiple signals, saved runs, and momentum ranges" style="width: 300px; max-width: 100%; border-radius: 8px;" />
+    <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Gossamer Mode — compare Momentum, Tension, Activity, and Interiority across beats</div>
   </div>
 </div>
 
@@ -69,3 +69,4 @@ Narrative and Chronologue modes keep subplot colors front-and-center so you can 
 *   **[[Migrating-from-Other-Apps|Migrating from Scrivener & Other Apps]]**: How Obsidian’s markdown workflow differs from traditional writing tools.
 *   **[[Book Designer]]**: Instantly generate a manuscript set with acts, subplots, and beats.
 *   **[[Core Workflows]]**: Learn the basics of Radial Timeline.
+*   **[[Timeline-Modes|Timeline Modes]]**: Compare Progress, Narrative, Chronologue, and Gossamer at a glance.
