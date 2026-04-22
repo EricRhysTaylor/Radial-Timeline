@@ -1050,7 +1050,25 @@ export class RadialTimelineView extends ItemView {
             btn.setAttribute('aria-selected', signalId === activeSignal ? 'true' : 'false');
             btn.setAttribute('data-signal', signalId);
             if (signalId === activeSignal) btn.classList.add('is-active');
-            setIcon(btn as unknown as HTMLElement, meta.icon);
+            if (meta.inlineIconPath) {
+                const svgNs2 = 'http://www.w3.org/2000/svg';
+                const iconSvg = document.createElementNS(svgNs2, 'svg');
+                iconSvg.setAttribute('viewBox', '0 0 24 24');
+                iconSvg.setAttribute('class', `svg-icon lucide-${meta.icon}`);
+                iconSvg.setAttribute('width', '24');
+                iconSvg.setAttribute('height', '24');
+                iconSvg.setAttribute('fill', 'none');
+                iconSvg.setAttribute('stroke', 'currentColor');
+                iconSvg.setAttribute('stroke-width', '2');
+                iconSvg.setAttribute('stroke-linecap', 'round');
+                iconSvg.setAttribute('stroke-linejoin', 'round');
+                const path = document.createElementNS(svgNs2, 'path');
+                path.setAttribute('d', meta.inlineIconPath);
+                iconSvg.appendChild(path);
+                btn.appendChild(iconSvg);
+            } else {
+                setIcon(btn as unknown as HTMLElement, meta.icon);
+            }
             // Narrower balance width than default so the tooltip's native CSS wrap
             // can't re-break our last line into a widow (e.g. "count." alone).
             applyTooltip(btn as unknown as HTMLElement, meta.tooltip, 'bottom', 300);
