@@ -129,13 +129,17 @@ export function tooltip(
     element: HTMLElement | SVGElement,
     text: string,
     placement: TooltipPlacement = 'bottom',
-    maxWidth?: number
+    maxWidth?: number,
+    options?: { custom?: boolean }
 ): void {
     const balancedText = maxWidth !== undefined
         ? balanceTooltipText(text, maxWidth)
         : balanceTooltipText(text);
-    if (isSvgLikeElement(element)) {
-        // Use data attributes for SVG delegation (handled by setupTooltipsFromDataAttributes)
+    if (isSvgLikeElement(element) || options?.custom) {
+        // Use data attributes for delegation (handled by setupTooltipsFromDataAttributes).
+        // `custom: true` forces the rt-tooltip path for HTML elements that live
+        // inside an SVG foreignObject — lets us render title/body splits that
+        // Obsidian's native tooltip can't style.
         addTooltipData(element, balancedText, placement);
         return;
     }
