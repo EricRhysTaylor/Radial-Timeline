@@ -989,7 +989,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       feature: 'Gossamer',
       task: `Beat${signalMeta.short.charAt(0) + signalMeta.short.slice(1).toLowerCase()}Analysis`,
       requiredCapabilities: ['jsonStrict', 'longContext', 'reasoningStrong', 'highOutputCap'],
-      featureModeInstructions: `Evaluate narrative ${signalMeta.label.toLowerCase()} at each beat using only the submitted manuscript and beat list. Avoid anchoring to prior scores.`,
+      featureModeInstructions: `Evaluate narrative ${signalMeta.label.toLowerCase()} at each beat using only the submitted manuscript and beat list.`,
       userInput: prompt,
       returnType: 'json',
       responseSchema: schema as unknown as Record<string, unknown>,

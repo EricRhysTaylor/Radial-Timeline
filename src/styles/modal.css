@@ -811,6 +811,13 @@
 
 /* rt-subplot-picker-badge - consolidated at top with ert-modal-badge */
 
+/* AI Prompt & Context advanced panel — wrap long lines instead of horizontal scroll. */
+.ert-ai-advanced-pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-x: hidden;
+}
+
 /* Gossamer / Pulse modal overrides */
 .rt-gossamer-score-modal .rt-pulse-progress-hero {
   padding: 12px 14px;

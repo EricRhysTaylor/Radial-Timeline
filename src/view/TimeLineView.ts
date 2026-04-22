@@ -1014,7 +1014,7 @@ export class RadialTimelineView extends ItemView {
         const controlsRow = document.createElementNS(xhtmlNs, 'div');
         controlsRow.className = 'rt-gossamer-runs__controls';
 
-        // Pill: two states only — "LATEST" (latest only) or "{n} RUNS" (everything else).
+        // Pill: two states only — "LATEST" (latest only) or "{n} PLOTS" (everything else).
         const button = document.createElementNS(xhtmlNs, 'div') as HTMLDivElement;
         button.className = 'rt-gossamer-runs__button';
         button.setAttribute('role', 'button');
@@ -1022,16 +1022,16 @@ export class RadialTimelineView extends ItemView {
         button.setAttribute('data-state', this.plugin.gossamerLatestOnly ? 'latest' : 'all');
         applyTooltip(
             button as unknown as HTMLElement,
-            this.plugin.gossamerLatestOnly ? 'Click to show all runs' : 'Click to show latest only',
+            this.plugin.gossamerLatestOnly ? 'Click to show all plots' : 'Click to show latest only',
             'bottom'
         );
         const buttonLabel = document.createElementNS(xhtmlNs, 'span');
         if (runs.length === 0) {
-            buttonLabel.textContent = '0 RUNS';
+            buttonLabel.textContent = '0 PLOTS';
         } else if (this.plugin.gossamerLatestOnly) {
             buttonLabel.textContent = 'LATEST';
         } else {
-            buttonLabel.textContent = `${runs.length} RUNS`;
+            buttonLabel.textContent = `${runs.length} PLOTS`;
         }
         button.appendChild(buttonLabel);
         controlsRow.appendChild(button);
@@ -1050,22 +1050,7 @@ export class RadialTimelineView extends ItemView {
             btn.setAttribute('aria-selected', signalId === activeSignal ? 'true' : 'false');
             btn.setAttribute('data-signal', signalId);
             if (signalId === activeSignal) btn.classList.add('is-active');
-            if (meta.inlineIconPath) {
-                const svgNs2 = 'http://www.w3.org/2000/svg';
-                const iconSvg = document.createElementNS(svgNs2, 'svg');
-                iconSvg.setAttribute('viewBox', '0 0 24 24');
-                iconSvg.setAttribute('class', `svg-icon lucide-${meta.icon}`);
-                iconSvg.setAttribute('fill', 'none');
-                iconSvg.setAttribute('stroke', 'currentColor');
-                iconSvg.setAttribute('stroke-linecap', 'round');
-                iconSvg.setAttribute('stroke-linejoin', 'round');
-                const path = document.createElementNS(svgNs2, 'path');
-                path.setAttribute('d', meta.inlineIconPath);
-                iconSvg.appendChild(path);
-                btn.appendChild(iconSvg);
-            } else {
-                setIcon(btn as unknown as HTMLElement, meta.icon);
-            }
+            setIcon(btn as unknown as HTMLElement, meta.icon);
             // Narrower balance width than default so the tooltip's native CSS wrap
             // can't re-break our last line into a widow (e.g. "count." alone).
             applyTooltip(btn as unknown as HTMLElement, meta.tooltip, 'bottom', 300);

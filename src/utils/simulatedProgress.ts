@@ -64,10 +64,10 @@ export class SimulatedProgress {
         const elapsed = now - this.startTime;
         const t = Math.min(1, elapsed / this.config.durationMs);
 
-        // Ease-out cubic so the bar slows as it approaches the cap.
-        const eased = 1 - Math.pow(1 - t, 3);
+        // Linear pacing: the caller passes a well-calibrated duration, so the bar
+        // should track wall-clock time at a steady rate rather than easing out.
         const base = this.config.startPercent +
-            (this.config.maxPercent - this.config.startPercent) * eased;
+            (this.config.maxPercent - this.config.startPercent) * t;
 
         // Small oscillation keeps the bar feeling alive while waiting.
         const jitter = this.config.jitter * Math.sin(elapsed / 900);

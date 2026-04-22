@@ -112,11 +112,11 @@ export function buildUnifiedBeatAnalysisPromptParts(
 } {
   const beatList = beats
     .map((b, i) => {
-      const placement = b.placement ? `[${b.placement}] ` : '';
+      const prefix = b.placement ? `[${b.placement}]` : `${i + 1}.`;
       const description = b.description && b.description.trim().length > 0
         ? ` — ${b.description.trim()}`
         : '';
-      return `${i + 1}. ${placement}${b.beatName}${description}`;
+      return `${prefix} ${b.beatName}${description}`;
     })
     .join('\n');
 

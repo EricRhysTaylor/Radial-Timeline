@@ -335,7 +335,7 @@ export const buildCanonicalGossamerExecutionEstimate = async (
         feature: 'Gossamer',
         task: 'BeatMomentumAnalysis',
         requiredCapabilities: ['jsonStrict', 'longContext', 'reasoningStrong', 'highOutputCap'],
-        featureModeInstructions: 'Evaluate narrative momentum at each beat using only the submitted manuscript and beat list. Avoid anchoring to prior scores.',
+        featureModeInstructions: 'Evaluate narrative momentum at each beat using only the submitted manuscript and beat list.',
         userInput: params.promptText,
         returnType: 'json',
         responseSchema: getUnifiedBeatAnalysisJsonSchema() as unknown as Record<string, unknown>,

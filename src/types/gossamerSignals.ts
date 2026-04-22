@@ -29,12 +29,6 @@ export interface GossamerSignalMetadata {
   tooltip: string;      // Hover text for signal selector button
   /** Scoring instruction block inserted into the shared prompt scaffold. */
   promptBlock: string;
-  /**
-   * Optional inline SVG path data. When present, the view renders this path
-   * instead of calling setIcon(), so we can ship a simpler silhouette than
-   * what lucide bundles. Must be a single `d` string for a 24×24 viewBox.
-   */
-  inlineIconPath?: string;
 }
 
 const MOMENTUM_BLOCK = `Score MOMENTUM (0-100) for each listed beat.
@@ -89,8 +83,6 @@ export const GOSSAMER_SIGNAL_METADATA: Record<GossamerSignalType, GossamerSignal
     label: 'Tension',
     short: 'TENSION',
     icon: 'flame',
-    // Simplified flame silhouette (no inner swirl) — lucide flame variant.
-    inlineIconPath: 'M12 3q1 4 4 6.5t3 5.5a1 1 0 0 1-14 0 5 5 0 0 1 1-3 1 1 0 0 0 5 0c0-2-1.5-3-1.5-5q0-2 2.5-4',
     tooltip: 'Tension\n\nMeasures the pressure the reader feels—how much strain, uncertainty, or unresolved conflict is carried forward. A quiet scene can be highly tense if the stakes are clear.',
     promptBlock: TENSION_BLOCK
   },
