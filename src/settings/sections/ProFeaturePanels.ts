@@ -6,7 +6,7 @@
  * Pro Feature Panels
  */
 
-import { App, Setting, setIcon, normalizePath, Notice, TFile, TFolder, Modal, ButtonComponent, AbstractInputSuggest, TextComponent } from 'obsidian';
+import { App, Setting, setIcon, normalizePath, Notice, TFile, TFolder, Modal, ButtonComponent, TextComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { ERT_CLASSES, ERT_DATA } from '../../ui/classes';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
@@ -250,13 +250,6 @@ const STARTER_PUBLISHING_SETUP_ALREADY_EXISTS = 'Starter publishing files alread
 const AUTO_CONFIGURE_BUTTON = 'Auto configure publishing';
 const AUTO_CONFIGURE_BUSY = 'Configuring publishing…';
 
-interface TemplatePathSuggestion {
-    fullPath: string;
-    storedPath: string;
-    exists: boolean;
-    inPandocFolder: boolean;
-}
-
 function getConfiguredPandocFolder(plugin: RadialTimelinePlugin): string {
     const defaultPandocFolder = normalizePath(DEFAULT_SETTINGS.pandocFolder || 'Radial Timeline/Pandoc');
     return normalizePath((plugin.settings.pandocFolder || defaultPandocFolder).trim() || defaultPandocFolder);
@@ -436,110 +429,6 @@ async function maybeRenameTemplateFileForPathChange(
     return true;
 }
 
-class PandocTemplatePathSuggest extends AbstractInputSuggest<TemplatePathSuggestion> {
-    private readonly plugin: RadialTimelinePlugin;
-    private readonly inputRef: HTMLInputElement;
-    private readonly onChoose: (path: string) => void;
-
-    constructor(
-        app: App,
-        input: HTMLInputElement,
-        plugin: RadialTimelinePlugin,
-        onChoose: (path: string) => void
-    ) {
-        super(app, input);
-        this.plugin = plugin;
-        this.inputRef = input;
-        this.onChoose = onChoose;
-    }
-
-    getSuggestions(query: string): TemplatePathSuggestion[] {
-        const rawQuery = (query || '').trim();
-        const normalizedQuery = rawQuery ? normalizePath(rawQuery.replace(/^\/+/, '')) : '';
-        const lowered = normalizedQuery.toLowerCase();
-        const candidateSet = new Set<string>();
-        const addCandidate = (path: string) => {
-            const trimmed = path.trim();
-            if (!trimmed) return;
-            candidateSet.add(normalizePath(trimmed));
-        };
-        const texPattern = /\.(tex|ltx|latex)$/i;
-
-        this.app.vault.getFiles()
-            .filter(file => texPattern.test(file.path))
-            .forEach(file => addCandidate(file.path));
-
-        (this.plugin.settings.pandocLayouts || [])
-            .forEach(layout => addCandidate(layout.path));
-
-        const pandocFolder = getConfiguredPandocFolder(this.plugin);
-        if (normalizedQuery) {
-            if (texPattern.test(normalizedQuery)) {
-                addCandidate(normalizedQuery);
-                addCandidate(`${pandocFolder}/${normalizedQuery}`);
-            } else {
-                addCandidate(`${normalizedQuery}.tex`);
-                addCandidate(`${pandocFolder}/${normalizedQuery}.tex`);
-            }
-        }
-
-        const ordered = Array.from(candidateSet).sort((a, b) => a.localeCompare(b));
-        const dedupedByStored = new Map<string, TemplatePathSuggestion>();
-        for (const fullPath of ordered) {
-            const normalized = normalizePath(fullPath);
-            const storedPath = compactTemplatePathForStorage(this.plugin, normalized);
-            const inPandocFolder = storedPath !== normalized;
-            const exists = this.app.vault.getAbstractFileByPath(normalized) instanceof TFile;
-            const suggestion: TemplatePathSuggestion = {
-                fullPath: normalized,
-                storedPath,
-                exists,
-                inPandocFolder
-            };
-            const key = suggestion.storedPath.toLowerCase();
-            const current = dedupedByStored.get(key);
-            if (!current) {
-                dedupedByStored.set(key, suggestion);
-                continue;
-            }
-            if (!current.exists && suggestion.exists) {
-                dedupedByStored.set(key, suggestion);
-                continue;
-            }
-            if (!current.inPandocFolder && suggestion.inPandocFolder) {
-                dedupedByStored.set(key, suggestion);
-            }
-        }
-
-        const suggestions = Array.from(dedupedByStored.values());
-        if (!lowered) return suggestions.slice(0, 40);
-        return suggestions
-            .filter(suggestion => {
-                const haystack = `${suggestion.storedPath} ${suggestion.fullPath}`.toLowerCase();
-                return haystack.includes(lowered);
-            })
-            .slice(0, 40);
-    }
-
-    renderSuggestion(suggestion: TemplatePathSuggestion, el: HTMLElement): void {
-        const row = el.createDiv({ cls: 'ert-template-path-suggest' });
-        row.createDiv({ cls: 'ert-template-path-suggest-path', text: suggestion.storedPath });
-        const metaParts = [suggestion.exists ? 'Existing file' : 'Suggested path'];
-        metaParts.push(suggestion.inPandocFolder ? 'Pandoc folder' : 'Custom path');
-        row.createDiv({
-            cls: 'ert-template-path-suggest-meta',
-            text: metaParts.join(' · ')
-        });
-    }
-
-    selectSuggestion(suggestion: TemplatePathSuggestion, _evt: MouseEvent | KeyboardEvent): void {
-        this.inputRef.value = suggestion.storedPath;
-        this.onChoose(suggestion.storedPath);
-        try { this.close(); } catch {}
-        try { this.inputRef.focus(); } catch {}
-    }
-}
-
 class StarterPublishingSetupModal extends Modal {
     private readonly onConfirm: (confirmed: boolean) => void;
     private readonly includeScriptExamples: boolean;
@@ -621,17 +510,6 @@ class StarterPublishingSetupModal extends Modal {
 async function confirmStarterPublishingSetup(app: App, includeScriptExamples: boolean): Promise<boolean> {
     return new Promise((resolve) => {
         new StarterPublishingSetupModal(app, resolve, includeScriptExamples).open();
-    });
-}
-
-function attachTemplatePathSuggest(
-    plugin: RadialTimelinePlugin,
-    text: TextComponent,
-    onSelect: (path: string) => void
-): void {
-    new PandocTemplatePathSuggest(plugin.app, text.inputEl, plugin, (path) => {
-        try { text.setValue(path); } catch {}
-        onSelect(path);
     });
 }
 
@@ -1801,12 +1679,15 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
         return 'Custom PDF layout.';
     };
     const buildLayoutDescription = (layout: PandocLayoutTemplate): string => {
-        const profile = layoutProfilesById.get(layout.id);
-        if (profile?.summary) return profile.summary;
-        if (profile?.description) return profile.description;
+        // 1. User-authored description (highest priority — an explicit override)
         const customDescription = typeof layout.description === 'string' ? layout.description.trim() : '';
         if (customDescription.length > 0) return customDescription;
-        return buildDefaultLayoutDescription(layout);
+        // 2. Rich, hand-authored per-variant default — what users should see for every bundled template
+        const defaultDescription = buildDefaultLayoutDescription(layout);
+        if (defaultDescription) return defaultDescription;
+        // 3. Last-resort generic category summary from the publishing model
+        const profile = layoutProfilesById.get(layout.id);
+        return profile?.summary || profile?.description || 'Custom PDF layout.';
     };
 
     // ── Layout Visual: Types ──────────────────────────────────────────────
@@ -2153,13 +2034,100 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
         return spreadEl;
     };
 
-    const renderLayoutFeatureList = (parent: HTMLElement, features: LayoutFeatureRow[]): void => {
+    const renderLayoutFeatureList = (parent: HTMLElement, features: LayoutFeatureRow[]): HTMLElement => {
         const featureCol = parent.createDiv({ cls: 'ert-layout-visual-features' });
         for (const feat of features) {
             const row = featureCol.createDiv({ cls: 'ert-layout-feature-row' });
             row.createSpan({ cls: 'ert-layout-feature-label', text: feat.label });
             row.createSpan({ cls: 'ert-layout-feature-value', text: feat.value });
         }
+        return featureCol;
+    };
+
+    /**
+     * Click-to-edit inline text. Displays as plain text until clicked, then swaps to an
+     * input/textarea. Enter commits, Escape cancels, blur commits.
+     */
+    type InlineEditableOptions = {
+        placeholder?: string;
+        multiline?: boolean;
+        onSave: (next: string) => Promise<void> | void;
+        fallbackText?: string;
+        displayClass?: string;
+        inputClass?: string;
+    };
+    const renderInlineEditable = (
+        container: HTMLElement,
+        initialValue: string,
+        options: InlineEditableOptions
+    ): void => {
+        const display = container.createSpan({
+            cls: `ert-editable-display ${options.displayClass || ''}`.trim(),
+            text: initialValue || options.fallbackText || ''
+        });
+        display.setAttr('role', 'button');
+        display.setAttr('tabindex', '0');
+        display.setAttr('aria-label', 'Click to edit');
+        display.setAttr('title', 'Click to edit');
+
+        const swapToEditor = () => {
+            const current = display.textContent || '';
+            display.hide();
+            const inputCls = `ert-editable-input ${options.inputClass || ''}`.trim();
+            const input = options.multiline
+                ? container.createEl('textarea', {
+                    cls: `ert-textarea ${inputCls}`,
+                    attr: { rows: '2' }
+                })
+                : container.createEl('input', {
+                    type: 'text',
+                    cls: `ert-input ${inputCls}`
+                });
+            input.value = current.trim() === (options.fallbackText || '').trim() ? '' : current;
+            if (options.placeholder) input.placeholder = options.placeholder;
+
+            let committed = false;
+            const commit = async () => {
+                if (committed) return;
+                committed = true;
+                const next = input.value.trim();
+                input.remove();
+                display.show();
+                display.textContent = next || options.fallbackText || '';
+                if (next !== current.trim()) {
+                    try { await options.onSave(next); } catch (err) {
+                        const msg = err instanceof Error ? err.message : String(err);
+                        new Notice(`Update failed: ${msg}`);
+                    }
+                }
+            };
+
+            input.addEventListener('blur', () => { void commit(); });
+            input.addEventListener('keydown', (e: KeyboardEvent) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    input.blur();
+                } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    committed = true;
+                    input.remove();
+                    display.show();
+                }
+            });
+
+            input.focus();
+            if (typeof (input as HTMLInputElement).select === 'function') {
+                (input as HTMLInputElement).select();
+            }
+        };
+
+        display.addEventListener('click', swapToEditor);
+        display.addEventListener('keydown', (e: KeyboardEvent) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                swapToEditor();
+            }
+        });
     };
 
     const renderLayoutPictograms = (
@@ -2192,20 +2160,96 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
         }
     };
 
-    const buildLayoutVisual = (container: HTMLElement, variant: FictionLayoutVariant, layoutId?: string): void => {
+    type LayoutVisualOptions = {
+        layoutId?: string;
+        description?: string;
+        descriptionFallback?: string;
+        editableDescription?: { onSave: (next: string) => Promise<void> | void };
+    };
+    const buildLayoutVisual = (
+        container: HTMLElement,
+        variant: FictionLayoutVariant,
+        options: LayoutVisualOptions = {}
+    ): void => {
         const visual = container.createDiv({ cls: 'ert-layout-visual' });
         const cols = visual.createDiv({ cls: 'ert-layout-visual-cols' });
 
         const features = getLayoutFeatures(variant);
-        renderLayoutFeatureList(cols, features);
+        const featureCol = renderLayoutFeatureList(cols, features);
+
+        // Description row: appended below feature rows, separated by a subtle rule.
+        // Read-only for bundled templates; click-to-edit for duplicated templates.
+        if (options.description !== undefined || options.editableDescription) {
+            featureCol.createDiv({ cls: 'ert-layout-feature-divider' });
+            const descRow = featureCol.createDiv({ cls: 'ert-layout-feature-description' });
+            if (options.editableDescription) {
+                renderInlineEditable(descRow, options.description || '', {
+                    placeholder: 'Describe this layout…',
+                    multiline: true,
+                    onSave: options.editableDescription.onSave,
+                    fallbackText: options.descriptionFallback,
+                    displayClass: 'ert-layout-feature-description-display',
+                    inputClass: 'ert-layout-feature-description-input'
+                });
+            } else {
+                descRow.textContent = options.description || options.descriptionFallback || '';
+            }
+        }
 
         // Resolve the active scene heading mode for this layout (Signature only)
-        const activeSceneMode = layoutId
-            ? (getLayoutOptionsForActiveBook(layoutId).sceneHeadingMode || 'scene-number-title')
+        const activeSceneMode = options.layoutId
+            ? (getLayoutOptionsForActiveBook(options.layoutId).sceneHeadingMode || 'scene-number-title')
             : undefined;
 
         const rows = getLayoutPictogramRows(variant);
         renderLayoutPictograms(cols, rows, activeSceneMode);
+    };
+
+    /**
+     * Rename a non-bundled (duplicated/legacy-custom) layout, auto-renaming its .tex file
+     * in the Pandoc folder so filename tracks display name. Collisions are avoided by
+     * appending `-2`, `-3`, etc. Fails quietly if the file cannot be moved.
+     */
+    const renameLayoutAndFile = async (layout: PandocLayoutTemplate, nextName: string): Promise<void> => {
+        const trimmed = nextName.trim();
+        if (!trimmed || trimmed === layout.name) {
+            layout.name = trimmed || layout.name;
+            await plugin.saveSettings();
+            return;
+        }
+        layout.name = trimmed;
+
+        const ext = '.tex';
+        const stem = slugifyToFileStem(trimmed).toLowerCase().replace(/-/g, '_') || 'layout';
+        const pandocFolder = getConfiguredPandocFolder(plugin);
+        const currentStored = compactTemplatePathForStorage(plugin, layout.path);
+
+        const makeStored = (filename: string): string => compactTemplatePathForStorage(plugin, filename);
+        const vaultPathFor = (filename: string): string => normalizePath(`${pandocFolder}/${filename}`);
+
+        let candidate = `rt_${stem}${ext}`;
+        let candidateStored = makeStored(candidate);
+        let index = 2;
+        while (
+            candidateStored !== currentStored &&
+            plugin.app.vault.getAbstractFileByPath(vaultPathFor(candidate))
+        ) {
+            candidate = `rt_${stem}-${index}${ext}`;
+            candidateStored = makeStored(candidate);
+            index += 1;
+        }
+
+        if (candidateStored !== currentStored) {
+            try {
+                await maybeRenameTemplateFileForPathChange(plugin, layout.path, candidateStored);
+                layout.path = candidateStored;
+            } catch (err) {
+                const message = err instanceof Error ? err.message : String(err);
+                new Notice(`Could not rename template file: ${message}`);
+            }
+        }
+
+        await plugin.saveSettings();
     };
 
     const getLayoutInstalledState = (layout: PandocLayoutTemplate): boolean => {
@@ -2322,17 +2366,6 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
         await plugin.saveSettings();
     };
 
-    /** Flash-validate a layout path input using the centralized helper. */
-    const flashValidateLayoutPath = (inputEl: HTMLInputElement, layout: PandocLayoutTemplate) => {
-        if (!layout.path.trim()) return;
-        const result = validatePandocLayout(plugin, layout);
-        const cls = result.valid ? 'ert-input--flash-success' : 'ert-input--flash-error';
-        replayTransientClass(inputEl, cls, {
-            removeClasses: ['ert-input--flash-success', 'ert-input--flash-error'],
-            durationMs: 1700
-        });
-    };
-
     const layoutRowsContainer = layoutPanel.createDiv({ cls: 'ert-layout-rows' });
     let expandedSpecialLayoutId: string | null = null;
 
@@ -2387,7 +2420,10 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             name: copyName,
             preset: layout.preset,
             path: compactTemplatePathForStorage(plugin, copyFilename),
-            description: buildDefaultLayoutDescription(layout),
+            // Seed the copy with the parent's visible description so bundled and duplicate
+            // render the same text. Bundled resolves via profile.summary; the copy has no
+            // profile match, so we capture the resolved text into layout.description.
+            description: buildLayoutDescription(layout),
             bundled: false,
             ...(layout.usesModernClassicStructure === true ? { usesModernClassicStructure: true } : {}),
             ...(layout.hasEpigraphs === true ? { hasEpigraphs: true } : {}),
@@ -2563,22 +2599,39 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             const variant = getFictionVariant(layout);
             const useVisual = layout.preset === 'novel' && variant !== 'generic';
 
+            const isEditableLayout = !isBundled && !isImported;
+
             const s = addProRow(new Setting(row))
-                .setName(getLayoutDisplayName(layout))
+                .setName('')
                 .setDesc('');
             s.settingEl.addClass('ert-layout-row-setting');
             s.descEl?.addClass('ert-layout-row-desc');
 
-            if (useVisual && s.descEl) {
-                buildLayoutVisual(s.descEl, variant, layout.id);
-            } else if (isImported && s.descEl) {
-                renderImportedLayoutSummary(s.descEl, layout);
-            } else {
-                s.setDesc(buildLayoutDescription(layout));
-            }
-
+            // Build the title (inline-editable for duplicated layouts, static for bundled)
             if (s.nameEl) {
+                s.nameEl.empty();
                 s.nameEl.addClass('ert-layout-row-name');
+                const displayName = getLayoutDisplayName(layout);
+                if (isEditableLayout) {
+                    const titleHost = s.nameEl.createSpan({ cls: 'ert-layout-row-title' });
+                    renderInlineEditable(titleHost, displayName, {
+                        placeholder: 'Layout name',
+                        onSave: async (nextName) => {
+                            if (!nextName) {
+                                new Notice('Layout name is required.');
+                                return;
+                            }
+                            await renameLayoutAndFile(layout, nextName);
+                            renderLayoutRows();
+                            refreshPublishingStatusCard();
+                        },
+                        fallbackText: displayName,
+                        displayClass: 'ert-layout-row-title-display',
+                        inputClass: 'ert-layout-row-title-input'
+                    });
+                } else {
+                    s.nameEl.createSpan({ cls: 'ert-layout-row-title', text: displayName });
+                }
                 const pill = s.nameEl.createSpan({
                     cls: `ert-layout-status-pill ${installed ? 'is-installed' : 'is-not-installed'}`,
                     text: installed ? 'Installed' : 'Not installed'
@@ -2586,91 +2639,32 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                 pill.setAttr('aria-label', installed ? 'Installed' : 'Not installed');
             }
 
-            if (!isBundled && !isImported) {
-                s.addText(text => {
-                    text.inputEl.addClass('ert-input--md');
-                    text.setPlaceholder('Layout name');
-                    text.setValue(layout.name);
-                    const saveName = async () => {
-                        const nextName = text.getValue().trim();
-                        if (!nextName) {
-                            new Notice('Layout name is required.');
-                            text.setValue(layout.name);
-                            return;
+            if (useVisual && s.descEl) {
+                const currentDescription = buildLayoutDescription(layout);
+                const defaultDescription = buildDefaultLayoutDescription(layout);
+                buildLayoutVisual(s.descEl, variant, {
+                    layoutId: layout.id,
+                    description: currentDescription,
+                    descriptionFallback: defaultDescription,
+                    editableDescription: isEditableLayout
+                        ? {
+                            onSave: async (nextDescription) => {
+                                const trimmed = nextDescription.trim();
+                                const fallback = buildDefaultLayoutDescription(layout).trim();
+                                if (!trimmed || trimmed === fallback) {
+                                    delete layout.description;
+                                } else {
+                                    layout.description = trimmed;
+                                }
+                                await plugin.saveSettings();
+                            }
                         }
-                        if (nextName === layout.name) return;
-                        layout.name = nextName;
-                        await plugin.saveSettings();
-                        renderLayoutRows();
-                        refreshPublishingStatusCard();
-                    };
-                    text.inputEl.addEventListener('blur', () => { void saveName(); });
-                    text.inputEl.addEventListener('keydown', (e: KeyboardEvent) => {
-                        if (e.key === 'Enter') { e.preventDefault(); void saveName(); }
-                    });
+                        : undefined
                 });
-
-                let descriptionInputEl: HTMLTextAreaElement | null = null;
-                s.addText(text => {
-                    text.inputEl.addClass('ert-input--lg');
-                    text.setPlaceholder('template.tex or path/to/template.tex');
-                    text.setValue(layout.path);
-                    const saveAndValidate = async () => {
-                        const previousPath = layout.path;
-                        const normalizedPath = compactTemplatePathForStorage(plugin, text.getValue());
-                        try {
-                            await maybeRenameTemplateFileForPathChange(plugin, previousPath, normalizedPath);
-                        } catch (error) {
-                            const message = error instanceof Error ? error.message : String(error);
-                            new Notice(`Could not rename template file: ${message}`);
-                        }
-                        layout.path = normalizedPath;
-                        try { text.setValue(normalizedPath); } catch {}
-                        await plugin.saveSettings();
-                        flashValidateLayoutPath(text.inputEl, layout);
-                        s.setDesc(buildLayoutDescription(layout));
-                        if (descriptionInputEl && (!layout.description || !layout.description.trim())) {
-                            const defaultDescription = buildDefaultLayoutDescription(layout);
-                            descriptionInputEl.value = defaultDescription;
-                            descriptionInputEl.placeholder = defaultDescription;
-                        }
-                        refreshPublishingStatusCard();
-                    };
-                    attachTemplatePathSuggest(plugin, text, (selectedPath) => {
-                        layout.path = selectedPath.trim();
-                        void saveAndValidate();
-                    });
-
-                    text.inputEl.addEventListener('blur', saveAndValidate);
-                    text.inputEl.addEventListener('keydown', (e: KeyboardEvent) => {
-                        if (e.key === 'Enter') { e.preventDefault(); void saveAndValidate(); }
-                    });
-                });
-
-                const descriptionEditor = row.createDiv({ cls: 'ert-layout-description-editor' });
-                descriptionEditor.createDiv({ cls: 'ert-layout-description-label', text: 'Description' });
-                descriptionInputEl = descriptionEditor.createEl('textarea', {
-                    cls: 'ert-textarea ert-textarea--compact ert-layout-description-input',
-                    attr: { rows: '2' }
-                });
-                const seededDescription = buildLayoutDescription(layout);
-                descriptionInputEl.value = seededDescription;
-                descriptionInputEl.placeholder = buildDefaultLayoutDescription(layout);
-                const saveDescription = async () => {
-                    if (!descriptionInputEl) return;
-                    const nextDescription = descriptionInputEl.value.trim();
-                    const defaultDescription = buildDefaultLayoutDescription(layout).trim();
-                    if (!nextDescription || nextDescription === defaultDescription) {
-                        delete layout.description;
-                        descriptionInputEl.value = defaultDescription;
-                    } else {
-                        layout.description = nextDescription;
-                    }
-                    await plugin.saveSettings();
-                    s.setDesc(buildLayoutDescription(layout));
-                };
-                descriptionInputEl.addEventListener('blur', () => { void saveDescription(); });
-                descriptionInputEl.addEventListener('change', () => { void saveDescription(); });
+            } else if (isImported && s.descEl) {
+                renderImportedLayoutSummary(s.descEl, layout);
+            } else {
+                s.setDesc(buildLayoutDescription(layout));
             }
 
             if (isBundled && !installed) {

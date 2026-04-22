@@ -89,7 +89,13 @@ export const GOSSAMER_SIGNAL_METADATA: Record<GossamerSignalType, GossamerSignal
     id: 'tension',
     label: 'Tension',
     short: 'TENSION',
-    icon: 'minimize-2',
+    icon: 'flame',
+    // Current Lucide flame (exact path from lucide.dev). We inline this
+    // because Obsidian ships an older Lucide where `flame` is the legacy
+    // double-flame silhouette. The override class is intentionally NOT
+    // `svg-icon lucide-flame` — those classes leak into Obsidian's global
+    // icon styling and its internals may re-render anything matching them.
+    inlineIconPath: 'M12 3q1 4 4 6.5t3 5.5a1 1 0 0 1-14 0 5 5 0 0 1 1-3 1 1 0 0 0 5 0c0-2-1.5-3-1.5-5q0-2 2.5-4',
     tooltip: 'Tension\n\nMeasures the pressure the reader feels—how much strain, uncertainty, or unresolved conflict is carried forward. A quiet scene can be highly tense if the stakes are clear.',
     promptBlock: TENSION_BLOCK
   },

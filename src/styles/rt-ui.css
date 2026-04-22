@@ -9853,6 +9853,39 @@
   flex-wrap: wrap;
 }
 
+.ert-ui.ert-scope--settings .ert-layout-row-title {
+  display: inline-flex;
+  align-items: center;
+}
+
+.ert-ui.ert-scope--settings .ert-layout-row-title-display {
+  cursor: pointer;
+  text-decoration: underline dashed;
+  text-underline-offset: 3px;
+  text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
+  transition: text-decoration-color 120ms ease;
+}
+
+.ert-ui.ert-scope--settings .ert-layout-row-title-display:hover {
+  text-decoration-style: solid;
+  text-decoration-color: currentColor;
+}
+
+.ert-ui.ert-scope--settings .ert-layout-row-title-display:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--interactive-accent) 45%, transparent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.ert-ui.ert-scope--settings .ert-layout-row-title-input {
+  font-weight: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  padding: 1px 4px;
+  margin: -1px -4px;
+  min-width: 14ch;
+}
+
 .ert-ui.ert-scope--settings .ert-layout-status-pill {
   display: inline-flex;
   align-items: center;
@@ -10048,25 +10081,6 @@
   }
 }
 
-.ert-ui.ert-scope--settings .ert-layout-description-editor {
-  display: grid;
-  gap: 4px;
-  padding: 0 var(--ert-pad-sm) var(--ert-gap-sm);
-}
-
-.ert-ui.ert-scope--settings .ert-layout-description-label {
-  font-size: 0.76rem;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.ert-ui.ert-scope--settings .ert-layout-description-input {
-  width: 100%;
-  min-height: 3.25rem;
-  font-family: var(--font-text);
-}
-
 .ert-ui.ert-scope--settings .ert-layout-special-toggle {
   margin-left: 2px;
 }
@@ -10211,6 +10225,48 @@
 .ert-ui.ert-scope--settings .ert-layout-feature-value {
   font-size: 0.74rem;
   color: var(--text-normal);
+}
+
+.ert-ui.ert-scope--settings .ert-layout-feature-divider {
+  height: 1px;
+  background: var(--background-modifier-border);
+  margin: 8px 0 6px;
+  opacity: 0.6;
+}
+
+.ert-ui.ert-scope--settings .ert-layout-feature-description {
+  font-size: 0.74rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+  padding-top: 2px;
+}
+
+.ert-ui.ert-scope--settings .ert-layout-feature-description-display {
+  display: block;
+  cursor: pointer;
+  padding: 8px 10px;
+  border: 2px dashed color-mix(in srgb, var(--text-muted) 35%, transparent);
+  border-radius: 6px;
+  min-height: 1.4em;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.ert-ui.ert-scope--settings .ert-layout-feature-description-display:hover {
+  border-color: color-mix(in srgb, var(--text-muted) 65%, transparent);
+  background: color-mix(in srgb, var(--background-modifier-hover) 60%, transparent);
+}
+
+.ert-ui.ert-scope--settings .ert-layout-feature-description-display:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--interactive-accent) 45%, transparent);
+  outline-offset: 2px;
+}
+
+.ert-ui.ert-scope--settings .ert-layout-feature-description-input {
+  width: 100%;
+  font-size: 0.74rem;
+  line-height: 1.45;
+  padding: 4px 6px;
+  min-height: 3em;
 }
 
 /* -- RIGHT: Pictogram Area -- */
@@ -11046,12 +11102,17 @@
 .ert-ui.ert-scope--settings :is(.ert-bookmeta-primary-value, .ert-bookmeta-detail-value).ert-bookmeta-preview-value--clickable {
   cursor: pointer;
   display: inline-block;
-  transition: color var(--duration-fast, 120ms) ease;
+  text-decoration: underline dashed;
+  text-underline-offset: 3px;
+  text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
+  transition: color var(--duration-fast, 120ms) ease, text-decoration-color 120ms ease;
 }
 
 .ert-ui.ert-scope--settings :is(.ert-bookmeta-primary-value, .ert-bookmeta-detail-value).ert-bookmeta-preview-value--clickable:hover,
 .ert-ui.ert-scope--settings :is(.ert-bookmeta-primary-value, .ert-bookmeta-detail-value).ert-bookmeta-preview-value--clickable:focus-visible {
   color: color-mix(in srgb, var(--interactive-accent) 72%, var(--text-normal));
+  text-decoration-style: solid;
+  text-decoration-color: currentColor;
   outline: none;
 }
 
@@ -11161,22 +11222,6 @@
   .ert-ui.ert-scope--settings .ert-bookmeta-primary-field {
     text-align: left;
   }
-}
-
-.ert-ui .ert-template-path-suggest {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.ert-ui .ert-template-path-suggest-path {
-  font-size: 0.88rem;
-  color: var(--text-normal);
-}
-
-.ert-ui .ert-template-path-suggest-meta {
-  font-size: 0.75rem;
-  color: var(--text-muted);
 }
 
 .ert-ui.ert-scope--settings .ert-pillBtn:focus-visible {

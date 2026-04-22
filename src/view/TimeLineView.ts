@@ -1057,11 +1057,15 @@ export class RadialTimelineView extends ItemView {
             btn.setAttribute('data-signal', signalId);
             if (signalId === activeSignal) btn.classList.add('is-active');
             if (meta.inlineIconPath) {
+                // Custom Lucide override. Intentionally DOES NOT carry the
+                // `svg-icon` or `lucide-<name>` classes — those opt into
+                // Obsidian's global icon styling (and potential re-renders).
+                // Our own class alone is enough for our CSS to size it.
                 const svgNs2 = 'http://www.w3.org/2000/svg';
                 const iconSvg = document.createElementNS(svgNs2, 'svg');
                 iconSvg.setAttribute('viewBox', '0 0 24 24');
                 iconSvg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-                iconSvg.setAttribute('class', `svg-icon lucide-${meta.icon} rt-gossamer-runs__signal-icon`);
+                iconSvg.setAttribute('class', 'rt-gossamer-runs__signal-icon');
                 iconSvg.setAttribute('width', '28');
                 iconSvg.setAttribute('height', '28');
                 iconSvg.setAttribute('fill', 'none');
