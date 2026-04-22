@@ -2561,7 +2561,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             if (expanded) row.addClass('is-special-expanded');
 
             const variant = getFictionVariant(layout);
-            const useVisual = isBundled && layout.preset === 'novel' && variant !== 'generic';
+            const useVisual = layout.preset === 'novel' && variant !== 'generic';
 
             const s = addProRow(new Setting(row))
                 .setName(getLayoutDisplayName(layout))

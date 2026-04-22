@@ -65,6 +65,7 @@ Export your manuscript in professional formats using customizable Pandoc templat
 - Custom LaTeX templates per format
 - Output to your export folder alongside analysis files
 
+> **Full guide**: [[Publishing]] — template catalog, Modern Classic setup, Chapters, Parts, act epigraphs.
 > **Settings**: [[Settings#publishing]]
 
 ---

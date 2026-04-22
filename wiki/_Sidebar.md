@@ -19,6 +19,8 @@
 *   **Inquiry**
     *   [[Inquiry]]
 *   **Publishing**
+    *   [[Publishing|Publishing Overview]]
+    *   [[Publishing#setting-up-modern-classic|Modern Classic Setup]]
     *   [[Core-Workflows#exporting-a-manuscript|Export Workflow]]
 *   **Author Progress Report**
     *   [[Author-Progress-Report|Author Progress Report]]

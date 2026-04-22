@@ -322,7 +322,7 @@ Everything you need to go from draft to finished manuscript.
 *   **Novel Manuscript** — Standard submission format for prose
 
 > [!NOTE]
-> Publishing exports are a Pro feature. See [[Pro#publishing-exports]] for full documentation. For the core manuscript export workflow (Markdown, outlines, index cards), see [[Core-Workflows#exporting-a-manuscript]].
+> Publishing exports are a Pro feature. See [[Publishing]] for the full guide — template catalog, the `Chapter:` field, how Parts are generated from Acts, Modern Classic setup, act epigraphs, and scene opener heading options. Pro-tier summary at [[Pro#publishing-exports]]. For the core manuscript export workflow (Markdown, outlines, index cards), see [[Core-Workflows#exporting-a-manuscript]].
 
 ---
 

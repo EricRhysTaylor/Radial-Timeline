@@ -1060,9 +1060,10 @@ export class RadialTimelineView extends ItemView {
                 const svgNs2 = 'http://www.w3.org/2000/svg';
                 const iconSvg = document.createElementNS(svgNs2, 'svg');
                 iconSvg.setAttribute('viewBox', '0 0 24 24');
-                iconSvg.setAttribute('class', `svg-icon lucide-${meta.icon}`);
-                iconSvg.setAttribute('width', '24');
-                iconSvg.setAttribute('height', '24');
+                iconSvg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+                iconSvg.setAttribute('class', `svg-icon lucide-${meta.icon} rt-gossamer-runs__signal-icon`);
+                iconSvg.setAttribute('width', '28');
+                iconSvg.setAttribute('height', '28');
                 iconSvg.setAttribute('fill', 'none');
                 iconSvg.setAttribute('stroke', 'currentColor');
                 iconSvg.setAttribute('stroke-width', '2');

@@ -961,7 +961,7 @@ export function renderAiSection(params: {
         const citationsOn = ensureCanonicalAiSettings().citationsEnabled !== false;
         if (exclusiveWithCitations && cacheAvailable) {
             return citationsOn
-                ? { text: 'Cache off (exclusive of cache)', extraCls: 'ert-ai-pill--muted' }
+                ? { text: 'Cache off (exclusive of citations)', extraCls: 'ert-ai-pill--muted' }
                 : { text: 'Cache on', extraCls: 'ert-ai-pill--active' };
         }
         return cacheAvailable

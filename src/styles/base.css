@@ -632,28 +632,26 @@ body.rt-modal-open .radial-timeline-container * {
   border-color: var(--text-normal);
 }
 
-.rt-gossamer-runs .rt-gossamer-runs__signal > svg,
-.rt-gossamer-runs .rt-gossamer-runs__signal svg.svg-icon,
-.rt-gossamer-runs .rt-gossamer-runs__signal .svg-icon {
-  width: 22px;
-  height: 22px;
-  min-width: 22px;
-  min-height: 22px;
+/* High-specificity lock for the custom-rendered lucide signal icons. Obsidian's
+ * global `svg.svg-icon { height: var(--icon-size); width: var(--icon-size) }`
+ * rule can win inside the foreignObject when inherited --icon-size differs
+ * from what we expect. We chain the full panel path + data-signal to beat it. */
+.rt-gossamer-runs .rt-gossamer-runs__controls .rt-gossamer-runs__signals .rt-gossamer-runs__signal[data-signal] > svg.rt-gossamer-runs__signal-icon,
+.rt-gossamer-runs .rt-gossamer-runs__controls .rt-gossamer-runs__signals .rt-gossamer-runs__signal[data-signal] > svg.svg-icon {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  max-width: 28px;
+  max-height: 28px;
+  aspect-ratio: 1 / 1;
   display: block;
   flex: 0 0 auto;
   stroke: currentColor;
-  stroke-width: 1.75;
+  stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
   fill: none;
-}
-
-/* Flame sits visually denser at the same stroke-width as line icons.
- * Trim it a hair so it reads at the same weight as chart/zap/brain. */
-.rt-gossamer-runs .rt-gossamer-runs__signal[data-signal="tension"] > svg,
-.rt-gossamer-runs .rt-gossamer-runs__signal[data-signal="tension"] svg.svg-icon,
-.rt-gossamer-runs .rt-gossamer-runs__signal[data-signal="tension"] .svg-icon {
-  stroke-width: 1.5;
 }
 
 .rt-gossamer-runs__empty {
