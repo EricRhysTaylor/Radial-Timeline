@@ -225,14 +225,9 @@ export interface ModelUiSignals {
 
 export function getModelUiSignals(model: ModelInfo): ModelUiSignals {
     const capabilities = resolveEngineCapabilities(model);
-    const hasExclusiveConstraint = capabilities.constraints.cacheVsCitationsExclusive
-        && capabilities.corpusReuse.availableInRt
-        && (capabilities.directManuscriptCitations.availableInRt || capabilities.groundedToolAttribution.availableInRt);
 
     let citationLabel: string | null = null;
-    if (hasExclusiveConstraint) {
-        citationLabel = 'Citation or Cache (exclusive)';
-    } else if (capabilities.directManuscriptCitations.availableInRt) {
+    if (capabilities.directManuscriptCitations.availableInRt) {
         citationLabel = 'Citation · Direct manuscript';
     } else if (capabilities.groundedToolAttribution.availableInRt) {
         citationLabel = model.provider === 'google'
@@ -242,11 +237,14 @@ export function getModelUiSignals(model: ModelInfo): ModelUiSignals {
         citationLabel = 'Sources · Limited implementation';
     }
 
+    // For models with the citations/cache mutex (e.g. Gemini), always emit both
+    // labels so the UI renders a dedicated Cache pill; the resolver uses
+    // citationsEnabled to set the active/muted state and wording.
     let reuseLabel: string | null = null;
-    if (!hasExclusiveConstraint) {
-        reuseLabel = capabilities.corpusReuse.availableInRt
-            ? 'Reuse · Provider cache'
-            : 'Reuse · No provider cache';
+    if (capabilities.corpusReuse.availableInRt) {
+        reuseLabel = 'Reuse · Provider cache';
+    } else {
+        reuseLabel = 'Reuse · No provider cache';
     }
 
     return {

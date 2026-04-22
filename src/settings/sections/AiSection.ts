@@ -932,26 +932,39 @@ export function renderAiSection(params: {
     const resolvePreviewCitationSignal = (model: ModelInfo): PreviewPill | null => {
         const signals = getModelUiSignals(model);
         if (!signals.citationLabel) return null;
+        const citationsOn = ensureCanonicalAiSettings().citationsEnabled !== false;
         if (/^Sources\s*·\s*/i.test(signals.citationLabel)) {
             return {
                 text: signals.citationLabel,
-                extraCls: ensureCanonicalAiSettings().citationsEnabled === false
-                    ? 'ert-ai-pill--muted'
-                    : 'ert-ai-pill--active'
+                extraCls: citationsOn ? 'ert-ai-pill--active' : 'ert-ai-pill--muted'
             };
         }
-        // Strip existing "Citation · " prefix to get the mechanism label (e.g. "Direct manuscript")
-        const mechanism = signals.citationLabel.replace(/^Citation\s*·\s*/i, '');
-        if (ensureCanonicalAiSettings().citationsEnabled === false) {
-            return { text: `Citations off · ${mechanism}`, extraCls: 'ert-ai-pill--muted' };
+        // For models with the citations/cache mutex, keep the pill compact
+        // (the separate Cache pill already carries the exclusivity story).
+        if (model.constraints?.cacheVsCitationsExclusive === true) {
+            return citationsOn
+                ? { text: 'Citations on', extraCls: 'ert-ai-pill--active' }
+                : { text: 'Citations off', extraCls: 'ert-ai-pill--muted' };
         }
-        return { text: `Citations on · ${mechanism}`, extraCls: 'ert-ai-pill--active' };
+        // Non-exclusive providers keep the mechanism suffix (useful context).
+        const mechanism = signals.citationLabel.replace(/^Citation\s*·\s*/i, '');
+        return citationsOn
+            ? { text: `Citations on · ${mechanism}`, extraCls: 'ert-ai-pill--active' }
+            : { text: `Citations off · ${mechanism}`, extraCls: 'ert-ai-pill--muted' };
     };
 
     const resolvePreviewReuseSignal = (model: ModelInfo): PreviewPill | null => {
         const label = getModelUiSignals(model).reuseLabel;
         if (!label) return null;
-        return /^Reuse\s*·\s*Provider cache$/i.test(label)
+        const cacheAvailable = /^Reuse\s*·\s*Provider cache$/i.test(label);
+        const exclusiveWithCitations = model.constraints?.cacheVsCitationsExclusive === true;
+        const citationsOn = ensureCanonicalAiSettings().citationsEnabled !== false;
+        if (exclusiveWithCitations && cacheAvailable) {
+            return citationsOn
+                ? { text: 'Cache off (exclusive of cache)', extraCls: 'ert-ai-pill--muted' }
+                : { text: 'Cache on', extraCls: 'ert-ai-pill--active' };
+        }
+        return cacheAvailable
             ? { text: label, extraCls: 'ert-ai-pill--active' }
             : { text: label, extraCls: 'ert-ai-pill--muted' };
     };
@@ -1701,12 +1714,15 @@ export function renderAiSection(params: {
         costEstimateCorpusSize.setText(options.sizeText);
         costEstimateCorpusStructure.setText(options.structureText);
     };
+    const COST_ESTIMATE_CORPUS_UNAVAILABLE = 'Open Inquiry View to update cost estimates.';
+
     const renderCostComparisonFailure = (message: string): void => {
         lastCostComparisonRows = [];
         costEstimateTable.empty();
+        const isCorpusUnavailable = message === COST_ESTIMATE_CORPUS_UNAVAILABLE;
         costEstimateTable.createDiv({
-            cls: 'ert-completion-error',
-            text: `Cost estimate failed: ${message}`
+            cls: isCorpusUnavailable ? 'ert-completion-no-data' : 'ert-completion-error',
+            text: isCorpusUnavailable ? message : `Cost estimate unavailable: ${message}`
         });
     };
 
@@ -1839,7 +1855,7 @@ export function renderAiSection(params: {
     }> => {
         const currentCorpus = getCurrentCorpusContext();
         if (!currentCorpus) {
-            throw new Error('Inquiry corpus context is not loaded. Open Inquiry View before using the cost table.');
+            throw new Error(COST_ESTIMATE_CORPUS_UNAVAILABLE);
         }
         const citationsOn = ensureCanonicalAiSettings().citationsEnabled !== false;
         const citationsSuffix = citationsOn ? ' (includes citation wrappers)' : '';
@@ -1928,13 +1944,14 @@ export function renderAiSection(params: {
         } catch (error) {
             if (requestId !== costComparisonRequestId) return;
             const message = error instanceof Error ? error.message : String(error);
+            const isCorpusUnavailable = message === COST_ESTIMATE_CORPUS_UNAVAILABLE;
             renderCostEstimateCorpusSummary({
-                sizeText: 'Cost estimate failed.',
-                structureText: message
+                sizeText: isCorpusUnavailable ? 'Cost estimates unavailable.' : 'Cost estimate unavailable.',
+                structureText: isCorpusUnavailable ? COST_ESTIMATE_CORPUS_UNAVAILABLE : message
             });
             setActiveCostComparisonRow(null, null);
             renderCostComparisonFailure(message);
-            costEstimateFreshness.setText('Pricing load failed');
+            costEstimateFreshness.setText(isCorpusUnavailable ? '' : 'Pricing load unavailable');
             promoBannerContainer.empty();
         }
     };
