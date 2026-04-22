@@ -66,20 +66,10 @@ function getStyleKey(layout: PandocLayoutTemplate): string {
     return `${layout.preset}-custom`;
 }
 
-function getSummary(layout: PandocLayoutTemplate, outputIntent: OutputIntent): string {
-    if (layout.description?.trim()) return layout.description.trim();
-
-    switch (outputIntent) {
-        case 'screenplay-pdf':
-            return 'Production-style screenplay PDF layout for dialogue-forward scripts.';
-        case 'podcast-script':
-            return 'Readable script layout for host narration and audio production notes.';
-        case 'submission-manuscript':
-            return 'Traditional manuscript formatting for agent, editor, and workshop submission.';
-        case 'print-book':
-        default:
-            return 'Book-style interior layout for polished reading PDFs and print proofs.';
-    }
+// Descriptions are authored on the layout (bundled templates in pandocBundledLayouts.ts;
+// copies inherit at duplicate time; imports set their own). No category-level fallback.
+function getSummary(layout: PandocLayoutTemplate): string {
+    return layout.description?.trim() || '';
 }
 
 function getCapabilities(layout: PandocLayoutTemplate): TemplateCapability[] {
@@ -138,17 +128,18 @@ export function adaptPandocLayoutToTemplateAsset(layout: PandocLayoutTemplate): 
 export function adaptPandocLayoutToTemplateProfile(layout: PandocLayoutTemplate): TemplateProfile {
     const outputIntent = getOutputIntent(layout);
     const capabilities = getCapabilities(layout);
+    const description = getSummary(layout);
     return {
         id: layout.id,
         assetId: `${layout.id}::asset`,
         legacyLayoutId: layout.id,
         origin: getProfileOrigin(layout),
         name: layout.name,
-        description: layout.description?.trim() || getSummary(layout, outputIntent),
+        description,
         usageContexts: [layout.preset as UsageContext],
         outputIntent,
         styleKey: getStyleKey(layout),
-        summary: getSummary(layout, outputIntent),
+        summary: description,
         guidance: layout.preset === 'novel'
             ? 'Pairs with the current Pandoc + LaTeX pipeline and the existing matter workflow.'
             : 'Uses the current Pandoc + LaTeX pipeline without changing the export engine.',

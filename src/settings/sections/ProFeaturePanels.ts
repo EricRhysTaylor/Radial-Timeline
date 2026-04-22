@@ -28,7 +28,6 @@ import { resolveManuscriptOutputFolder } from '../../utils/aiOutput';
 import { updateBookMetaField, type EditableBookMetaFieldKey } from '../../utils/bookMetaEditing';
 import { isProActive } from '../proEntitlement';
 import {
-    SHARED_CHAPTER_FIELD_PUBLICATION_COPY,
     SHARED_CHAPTER_FIELD_SOURCE_LABEL_TITLE
 } from '../../utils/timelineChapters';
 import {
@@ -1653,41 +1652,11 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
         if (layout.preset === 'screenplay' && layout.bundled) return 'Screenplay';
         return normalizeVersionLabels(layout.name || 'Custom Layout');
     };
-    const buildDefaultLayoutDescription = (layout: PandocLayoutTemplate): string => {
-        if (layout.preset === 'screenplay') {
-            return 'Industry screenplay format with uppercase sluglines, dialogue-first spacing, and production-safe margins. Page numbers run in the header with a Courier-family typewriter look.';
-        }
-        if (layout.preset === 'novel') {
-            const variant = getFictionVariant(layout);
-            if (variant === 'classic') {
-                return 'Centered running header with book title and bottom-centered page numbers. One-inch margins, 1.5 line spacing, serif body text, and minimal ornamentation.';
-            }
-            if (variant === 'modernClassic') {
-                return `Acts can open with optional epigraphs and Roman numeral PART pages. ${SHARED_CHAPTER_FIELD_PUBLICATION_COPY} Centered headers pair page number with author (even) or title with page number (odd). Scene breaks use lower-case Roman numerals with a short rule.`;
-            }
-            if (variant === 'signature') {
-                return 'Page numbers are header-only: the left-page header pairs page number with author, and the right-page header pairs title with page number. Scene opener pages use generous vertical spacing and suppress headers and folios. Refined serif body typography.';
-            }
-            if (variant === 'contemporary') {
-                return 'Running headers show book title on even pages and section context on odd pages. Page numbers are centered at the bottom. Chapter and section opener pages suppress headers and page numbers.';
-            }
-            return 'Serif fiction layout with print-oriented margins and running headers.';
-        }
-        if (layout.preset === 'podcast') {
-            return 'Narration-first script format with speaker/segment clarity, timing-friendly spacing, and clean cue separation. Header metadata and page numbering are positioned for fast booth or desk reference.';
-        }
-        return 'Custom PDF layout.';
-    };
+    // Single source of truth: descriptions are authored on the template itself.
+    // Bundled templates carry their description in pandocBundledLayouts.ts.
+    // Duplicated templates inherit at duplicate time. Imports set their own on import.
     const buildLayoutDescription = (layout: PandocLayoutTemplate): string => {
-        // 1. User-authored description (highest priority — an explicit override)
-        const customDescription = typeof layout.description === 'string' ? layout.description.trim() : '';
-        if (customDescription.length > 0) return customDescription;
-        // 2. Rich, hand-authored per-variant default — what users should see for every bundled template
-        const defaultDescription = buildDefaultLayoutDescription(layout);
-        if (defaultDescription) return defaultDescription;
-        // 3. Last-resort generic category summary from the publishing model
-        const profile = layoutProfilesById.get(layout.id);
-        return profile?.summary || profile?.description || 'Custom PDF layout.';
+        return layout.description?.trim() || '';
     };
 
     // ── Layout Visual: Types ──────────────────────────────────────────────
@@ -2163,7 +2132,6 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
     type LayoutVisualOptions = {
         layoutId?: string;
         description?: string;
-        descriptionFallback?: string;
         editableDescription?: { onSave: (next: string) => Promise<void> | void };
     };
     const buildLayoutVisual = (
@@ -2179,7 +2147,7 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
 
         // Description row: appended below feature rows, separated by a subtle rule.
         // Read-only for bundled templates; click-to-edit for duplicated templates.
-        if (options.description !== undefined || options.editableDescription) {
+        if (options.description || options.editableDescription) {
             featureCol.createDiv({ cls: 'ert-layout-feature-divider' });
             const descRow = featureCol.createDiv({ cls: 'ert-layout-feature-description' });
             if (options.editableDescription) {
@@ -2187,12 +2155,11 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
                     placeholder: 'Describe this layout…',
                     multiline: true,
                     onSave: options.editableDescription.onSave,
-                    fallbackText: options.descriptionFallback,
                     displayClass: 'ert-layout-feature-description-display',
                     inputClass: 'ert-layout-feature-description-input'
                 });
             } else {
-                descRow.textContent = options.description || options.descriptionFallback || '';
+                descRow.textContent = options.description || '';
             }
         }
 
@@ -2640,21 +2607,17 @@ export function renderProFeaturePanels({ app, plugin, containerEl }: ProFeatureP
             }
 
             if (useVisual && s.descEl) {
-                const currentDescription = buildLayoutDescription(layout);
-                const defaultDescription = buildDefaultLayoutDescription(layout);
                 buildLayoutVisual(s.descEl, variant, {
                     layoutId: layout.id,
-                    description: currentDescription,
-                    descriptionFallback: defaultDescription,
+                    description: buildLayoutDescription(layout),
                     editableDescription: isEditableLayout
                         ? {
                             onSave: async (nextDescription) => {
                                 const trimmed = nextDescription.trim();
-                                const fallback = buildDefaultLayoutDescription(layout).trim();
-                                if (!trimmed || trimmed === fallback) {
-                                    delete layout.description;
-                                } else {
+                                if (trimmed) {
                                     layout.description = trimmed;
+                                } else {
+                                    delete layout.description;
                                 }
                                 await plugin.saveSettings();
                             }

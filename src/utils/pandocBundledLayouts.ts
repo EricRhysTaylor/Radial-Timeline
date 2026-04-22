@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import type RadialTimelinePlugin from '../main';
 import type { PandocLayoutTemplate } from '../types';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
+import { SHARED_CHAPTER_FIELD_PUBLICATION_COPY } from './timelineChapters';
 
 interface BundledPandocLayoutTemplate extends PandocLayoutTemplate {
     bundled: true;
@@ -57,6 +58,7 @@ const BUNDLED_PANDOC_LAYOUT_TEMPLATES: BundledPandocLayoutTemplate[] = [
         preset: 'screenplay',
         path: 'screenplay_template.tex',
         bundled: true,
+        description: 'Industry screenplay format with uppercase sluglines, dialogue-first spacing, and production-safe margins. Page numbers run in the header with a Courier-family typewriter look.',
         content: [
             '% Pandoc LaTeX Template - Screenplay Format',
             '% US industry standard: Courier 12pt, specific margins',
@@ -93,6 +95,7 @@ const BUNDLED_PANDOC_LAYOUT_TEMPLATES: BundledPandocLayoutTemplate[] = [
         preset: 'podcast',
         path: 'podcast_template.tex',
         bundled: true,
+        description: 'Narration-first script format with speaker/segment clarity, timing-friendly spacing, and clean cue separation. Header metadata and page numbering are positioned for fast booth or desk reference.',
         content: [
             '% Pandoc LaTeX Template - Podcast Script Format',
             '% Clean sans-serif for audio production scripts',
@@ -126,6 +129,7 @@ const BUNDLED_PANDOC_LAYOUT_TEMPLATES: BundledPandocLayoutTemplate[] = [
         path: 'rt_signature_literary.tex',
         bundled: true,
         hasSceneOpenerHeadingOptions: true,
+        description: 'Page numbers are header-only: the left-page header pairs page number with author, and the right-page header pairs title with page number. Scene opener pages use generous vertical spacing and suppress headers and folios. Refined serif body typography.',
         content: [
             '% Pandoc LaTeX Template - Signature Literary',
             '% Refined fiction layout with alternating running heads.',
@@ -233,6 +237,7 @@ const BUNDLED_PANDOC_LAYOUT_TEMPLATES: BundledPandocLayoutTemplate[] = [
         preset: 'novel',
         path: 'rt_classic_manuscript.tex',
         bundled: true,
+        description: 'Centered running header with book title and bottom-centered page numbers. One-inch margins, 1.5 line spacing, serif body text, and minimal ornamentation.',
         content: [
             '% Pandoc LaTeX Template - Basic Manuscript',
             '% Traditional manuscript layout with simple headers and centered folios.',
@@ -303,6 +308,7 @@ const BUNDLED_PANDOC_LAYOUT_TEMPLATES: BundledPandocLayoutTemplate[] = [
         preset: 'novel',
         path: 'rt_contemporary_literary.tex',
         bundled: true,
+        description: 'Running headers show book title on even pages and section context on odd pages. Page numbers are centered at the bottom. Chapter and section opener pages suppress headers and page numbers.',
         content: [
             '% Pandoc LaTeX Template - Contemporary Literary',
             '% Running headers: title (left pages) and section title (right pages).',
@@ -377,6 +383,7 @@ const BUNDLED_PANDOC_LAYOUT_TEMPLATES: BundledPandocLayoutTemplate[] = [
         bundled: true,
         usesModernClassicStructure: true,
         hasEpigraphs: true,
+        description: `Acts can open with optional epigraphs and Roman numeral PART pages. ${SHARED_CHAPTER_FIELD_PUBLICATION_COPY} Centered headers pair page number with author (even) or title with page number (odd). Scene breaks use lower-case Roman numerals with a short rule.`,
         content: [
             '% rt_modern_classic.tex',
             '% Modern Classic fiction layout for 6x9 trade',
@@ -500,6 +507,7 @@ export function getBundledPandocLayouts(): PandocLayoutTemplate[] {
         preset: layout.preset,
         path: layout.path,
         bundled: true,
+        ...(layout.description ? { description: layout.description } : {}),
         ...(layout.usesModernClassicStructure === true ? { usesModernClassicStructure: true } : {}),
         ...(layout.hasEpigraphs === true ? { hasEpigraphs: true } : {}),
         ...(layout.hasSceneOpenerHeadingOptions === true ? { hasSceneOpenerHeadingOptions: true } : {})
@@ -546,6 +554,9 @@ export function ensureBundledPandocLayoutsRegistered(plugin: RadialTimelinePlugi
             preset: canonical.preset,
             path: canonical.path,
             bundled: true,
+            // Bundled descriptions are authored in code and never user-edited; always refresh
+            // from canonical so copy updates propagate on plugin upgrade.
+            ...(canonical.description ? { description: canonical.description } : {}),
             ...(canonical.usesModernClassicStructure === true ? { usesModernClassicStructure: true } : {}),
             ...(canonical.hasEpigraphs === true ? { hasEpigraphs: true } : {}),
             ...(canonical.hasSceneOpenerHeadingOptions === true ? { hasSceneOpenerHeadingOptions: true } : {})
@@ -555,6 +566,7 @@ export function ensureBundledPandocLayoutsRegistered(plugin: RadialTimelinePlugi
             || migrated.name !== layout.name
             || migrated.preset !== layout.preset
             || migrated.path !== layout.path
+            || migrated.description !== layout.description
             || migrated.usesModernClassicStructure !== layout.usesModernClassicStructure
             || migrated.hasEpigraphs !== layout.hasEpigraphs
             || migrated.hasSceneOpenerHeadingOptions !== layout.hasSceneOpenerHeadingOptions
