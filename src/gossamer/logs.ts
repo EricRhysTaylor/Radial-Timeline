@@ -31,7 +31,11 @@ function humanizeOperation(operation: string): string {
         .replace(/^gossamer-/, '')
         .split(/[-_]+/)
         .filter(Boolean)
-        .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+        .map((segment) => {
+            const lower = segment.toLowerCase();
+            if (lower === 'ai') return 'AI';
+            return segment.charAt(0).toUpperCase() + segment.slice(1);
+        })
         .join(' ') || 'Archive';
 }
 

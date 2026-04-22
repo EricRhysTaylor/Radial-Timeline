@@ -17,8 +17,10 @@ import {
 export interface UnifiedBeatInfo {
   beatName: string;
   beatNumber: number;
-  idealRange: string; // e.g., "0-20"
-  // Note: previousScore and previousJustification are intentionally NOT included
+  idealRange: string; // e.g., "0-20" — used downstream for range validation; NOT sent to AI (anchoring)
+  placement?: string; // Structural placement token from beat-note title prefix, e.g. "1.01", "4.01"
+  description?: string; // Beat Synopsis from frontmatter — tells the AI what this beat is in the story
+  // Note: previousScore, previousJustification, and idealRange are intentionally NOT sent to the AI
   // to avoid anchoring bias. Each analysis is fresh based on manuscript content only.
 }
 
@@ -109,7 +111,13 @@ export function buildUnifiedBeatAnalysisPromptParts(
   prompt: string;
 } {
   const beatList = beats
-    .map((b, i) => `${i + 1}. ${b.beatName}`)
+    .map((b, i) => {
+      const placement = b.placement ? `[${b.placement}] ` : '';
+      const description = b.description && b.description.trim().length > 0
+        ? ` — ${b.description.trim()}`
+        : '';
+      return `${i + 1}. ${placement}${b.beatName}${description}`;
+    })
     .join('\n');
 
   const signalBlock = GOSSAMER_SIGNAL_METADATA[signal].promptBlock;

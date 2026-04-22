@@ -13,7 +13,8 @@ export class GossamerScoreService {
     async saveScores(
         scores: Map<string, number>,
         signal: GossamerSignalType = DEFAULT_GOSSAMER_SIGNAL,
-        justifications?: Map<string, string>
+        justifications?: Map<string, string>,
+        source: 'manual-entry' | 'clipboard-paste' = 'manual-entry'
     ): Promise<void> {
         const sourcePath = this.plugin.settings.sourcePath || '';
         const allFiles = this.app.vault.getMarkdownFiles();
@@ -67,10 +68,11 @@ export class GossamerScoreService {
                 return willAppendGossamerPrune(priorFrontmatter) || Object.keys(collectGossamerManagedSnapshot(priorFrontmatter)).length > 0;
             });
         const snapshotPath = await archiveGossamerFrontmatterFields(this.app, filesToSnapshot, {
-            operation: 'gossamer-save',
+            operation: source === 'clipboard-paste' ? 'gossamer-clipboard-save' : 'gossamer-save',
             selectFields: (frontmatter) => collectGossamerManagedSnapshot(frontmatter as Record<string, any>),
             meta: {
                 scope: 'beat-note',
+                signal,
                 beatCount: filesToSnapshot.length
             }
         });

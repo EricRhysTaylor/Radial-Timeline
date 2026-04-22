@@ -1,11 +1,11 @@
 {
-  "checkedAt": "2026-04-20T23:52:51.788Z",
+  "checkedAt": "2026-04-22T00:19:25.052Z",
   "mode": "report",
   "snapshotBefore": {
     "generatedAt": "2026-04-20T15:13:05.818Z"
   },
   "snapshotAfter": {
-    "generatedAt": "2026-04-20T15:13:05.818Z"
+    "generatedAt": "2026-04-22T00:19:25.044Z"
   },
   "changes": {
     "openai": {

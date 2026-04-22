@@ -71,6 +71,7 @@ type GossamerLogPayload = {
   status: 'success' | 'error';
   provider: Exclude<AIProviderId, 'none'>;
   beatSystemLabel: string;
+  signal: GossamerSignalType;
   modelRequested: string;
   modelResolved?: string;
   prompt: string;
@@ -102,7 +103,9 @@ async function writeGossamerLog(
   const timestampSource = payload.returnedAt ?? payload.submittedAt ?? new Date();
   const readableTimestamp = formatLogTimestamp(timestampSource);
   const safeBeatSystem = sanitizeSegment(payload.beatSystemLabel) || 'Gossamer';
-  const scopeTarget = `Manuscript · ${payload.beatSystemLabel}`;
+  const signalLabel = GOSSAMER_SIGNAL_METADATA[payload.signal].label;
+  const safeSignal = sanitizeSegment(signalLabel) || 'Momentum';
+  const scopeTarget = `Manuscript · ${signalLabel} · ${payload.beatSystemLabel}`;
 
   const { sanitized: sanitizedPayload, hadRedactions } = sanitizeLogPayload(payload.requestPayload ?? null);
   const sanitizationNotes = hadRedactions
@@ -123,8 +126,8 @@ async function writeGossamerLog(
     try {
       const contentFolder = await ensureGossamerContentLogFolder(plugin.app);
       if (contentFolder) {
-        const contentTitle = `Gossamer Content Log — ${payload.beatSystemLabel} ${readableTimestamp}`;
-        const contentBaseName = `Gossamer Content Log — ${safeBeatSystem} ${readableTimestamp}`;
+        const contentTitle = `Gossamer Content Log — ${signalLabel} — ${payload.beatSystemLabel} ${readableTimestamp}`;
+        const contentBaseName = `Gossamer Content Log — ${safeSignal} — ${safeBeatSystem} ${readableTimestamp}`;
 
         const contentLogContent = formatAiLogContent({
           title: contentTitle,
@@ -180,8 +183,8 @@ async function writeGossamerLog(
     }
     const summaryFolderPath = normalizePath(summaryFolder.path);
 
-    const summaryTitle = `Gossamer Log — ${payload.beatSystemLabel} ${readableTimestamp}`;
-    const summaryBaseName = `Gossamer Log — ${safeBeatSystem} ${readableTimestamp}`;
+    const summaryTitle = `Gossamer Log — ${signalLabel} — ${payload.beatSystemLabel} ${readableTimestamp}`;
+    const summaryBaseName = `Gossamer Log — ${safeSignal} — ${safeBeatSystem} ${readableTimestamp}`;
 
     // Build result summary from derived summary (first line or key info)
     let resultSummary: string | undefined;
@@ -209,8 +212,27 @@ async function writeGossamerLog(
       retryAttempts: 0
     });
 
+    // Append the full prompt envelope (sans manuscript body) so the summary log
+    // makes the payload structure self-evident without enabling Content Logs.
+    const manuscriptChars = payload.manuscriptText.length;
+    const promptWithoutManuscript = manuscriptChars > 0
+      ? payload.prompt.replace(payload.manuscriptText, `[Manuscript text — ${manuscriptChars.toLocaleString()} chars — omitted here; see Content Log for full body]`)
+      : payload.prompt;
+    const payloadSection = [
+      '',
+      '## Payload sent to AI',
+      `- Signal: ${signalLabel}`,
+      `- Beat system: ${payload.beatSystemLabel}`,
+      `- Manuscript length: ${manuscriptChars.toLocaleString()} characters`,
+      '',
+      '```',
+      promptWithoutManuscript,
+      '```',
+      ''
+    ].join('\n');
+
     const summaryFilePath = resolveAvailableLogPath(plugin.app.vault, summaryFolderPath, summaryBaseName);
-    summaryFile = await plugin.app.vault.create(summaryFilePath, summaryContent.trim());
+    summaryFile = await plugin.app.vault.create(summaryFilePath, `${summaryContent.trim()}\n${payloadSection}`);
   } catch (e) {
     console.error('[Gossamer][log] Failed to write summary log:', sanitizeLogPayload(e).sanitized);
     // Non-blocking: logging failures should not break the AI run
@@ -891,23 +913,27 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
         return aNum - bNum;
       })
       .map((beat, index) => {
-        const beatData = beat as any; // SAFE: Dynamic access to Gossamer and Range fields
-        
-        // Get cache for this beat note to read Range field
+        // Get cache for this beat note to read frontmatter fields
         const file = plugin.app.vault.getAbstractFileByPath(beat.path || '');
         const cache = file ? plugin.app.metadataCache.getFileCache(file as any) : null;
         const fm = cache?.frontmatter;
-        
-        // Read Range field directly from metadata cache
+
         const rangeValue = (typeof fm?.Range === 'string' ? fm.Range : '0-100');
-        
+        const rawTitle = beat.title || 'Unknown Beat';
+        const placementMatch = rawTitle.match(/^(\d+(?:\.\d+)?)/);
+        const placement = placementMatch ? placementMatch[1] : undefined;
+        const beatName = rawTitle.replace(/^\d+(?:\.\d+)?\s+/, '');
+        const synopsis = typeof fm?.Synopsis === 'string' ? fm.Synopsis.trim() : '';
+
         return {
-          beatName: (beat.title || 'Unknown Beat').replace(/^\d+(?:\.\d+)?\s+/, ''),
+          beatName,
           beatNumber: index + 1,
-          idealRange: rangeValue
-          // Note: Previous scores/justifications are intentionally NOT included
-          // to avoid anchoring bias. Each analysis is fresh based on manuscript content only.
-          // Historical scores remain in metadata (Gossamer1, Gossamer2, etc.) for user reference.
+          idealRange: rangeValue,
+          placement,
+          description: synopsis.length > 0 ? synopsis : undefined
+          // Note: idealRange, previous scores, and previous justifications are intentionally NOT
+          // sent to the AI to avoid anchoring bias. idealRange is used downstream (after response)
+          // for range validation. Historical scores remain in metadata for user reference.
         };
       });
 
@@ -1037,6 +1063,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
         status: 'error',
         provider: providerForLog,
         beatSystemLabel: beatSystemDisplayName,
+        signal: selectedSignal,
         modelRequested: result.modelRequested,
         modelResolved: result.modelResolved,
         prompt,
@@ -1186,10 +1213,11 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
         return willAppendGossamerPrune(priorFrontmatter) || Object.keys(collectGossamerManagedSnapshot(priorFrontmatter)).length > 0;
       });
     const snapshotPath = await archiveGossamerFrontmatterFields(plugin.app, filesToSnapshot, {
-      operation: 'gossamer-clipboard-save',
+      operation: 'gossamer-ai-run',
       selectFields: (frontmatter) => collectGossamerManagedSnapshot(frontmatter as Record<string, any>),
       meta: {
         scope: 'beat-note',
+        signal: selectedSignal,
         beatCount: filesToSnapshot.length
       }
     });
@@ -1272,6 +1300,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       status: 'success',
       provider: result.provider === 'none' ? 'openai' : result.provider,
       beatSystemLabel: beatSystemDisplayName,
+      signal: selectedSignal,
       modelRequested: result.modelRequested,
       modelResolved: result.modelResolved,
       prompt,

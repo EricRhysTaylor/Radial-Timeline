@@ -1382,9 +1382,6 @@ export class SceneAnalysisProcessingModal extends Modal {
                 : '',
             `Packaging: Automatic`,
             '',
-            'Feature mode instructions:',
-            redactSensitiveValue(ctx.featureModeInstructions || '(none)'),
-            '',
             'Final composed prompt:',
             redactSensitiveValue(ctx.finalPrompt || '(none)')
         ];

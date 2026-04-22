@@ -920,9 +920,10 @@ export default class RadialTimelinePlugin extends Plugin {
     async saveGossamerScores(
         scores: Map<string, number>,
         signal: GossamerSignalType = DEFAULT_GOSSAMER_SIGNAL,
-        justifications?: Map<string, string>
+        justifications?: Map<string, string>,
+        source: 'manual-entry' | 'clipboard-paste' = 'manual-entry'
     ): Promise<void> {
-        await this.gossamerScoreService.saveScores(scores, signal, justifications);
+        await this.gossamerScoreService.saveScores(scores, signal, justifications, source);
     }
 
     onunload() {

@@ -587,7 +587,7 @@ export class GossamerScoreModal extends Modal {
         if (result.ok) {
           // Paste IS the commit in this flow — save immediately so user isn't
           // stuck wondering which button to press next.
-          await this.saveScores();
+          await this.saveScores('clipboard-paste');
         }
       });
     const aiMeta = aiGroup.createDiv({ cls: 'rt-gossamer-footer__meta' });
@@ -953,7 +953,7 @@ export class GossamerScoreModal extends Modal {
     return undefined;
   }
 
-  private async saveScores(): Promise<void> {
+  private async saveScores(source: 'manual-entry' | 'clipboard-paste' = 'manual-entry'): Promise<void> {
     const scores = new Map<string, number>();
     const justifications = new Map<string, string>();
     const deletions = new Map<string, Set<number>>(); // beatTitle -> Set of Gossamer numbers to delete
@@ -988,7 +988,7 @@ export class GossamerScoreModal extends Modal {
     try {
       if (scores.size > 0) {
         const signalForSave = this.plugin.gossamerSelectedSignal ?? DEFAULT_GOSSAMER_SIGNAL;
-        await this.plugin.saveGossamerScores(scores, signalForSave, justifications);
+        await this.plugin.saveGossamerScores(scores, signalForSave, justifications, source);
       }
 
       // Process deletions if there are any

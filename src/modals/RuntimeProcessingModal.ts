@@ -677,9 +677,6 @@ export class RuntimeProcessingModal extends Modal {
             `Applied caps: input=${ctx.maxInputTokens}, output=${ctx.maxOutputTokens}`,
             `Packaging: Automatic`,
             '',
-            'Feature mode instructions:',
-            redactSensitiveValue(ctx.featureModeInstructions || '(none)'),
-            '',
             'Final composed prompt:',
             redactSensitiveValue(ctx.finalPrompt || '(none)')
         ];

@@ -270,9 +270,6 @@ export class GossamerProcessingModal extends Modal {
             `Packaging: Automatic`,
             `Evidence: ${this.manuscriptInfo?.evidenceMode || 'Auto (scene bodies first)'}`,
             '',
-            'Feature mode instructions:',
-            redactSensitiveValue(ctx.featureModeInstructions || '(none)'),
-            '',
             'Final composed prompt:',
             redactSensitiveValue(ctx.finalPrompt || '(none)')
         ];
