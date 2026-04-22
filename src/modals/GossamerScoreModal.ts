@@ -19,6 +19,7 @@ import {
   resolveSelectedBeatModelFromSettings
 } from '../utils/beatSystemState';
 import { isPathInFolderScope } from '../utils/pathScope';
+import { getActiveBookTitle } from '../utils/books';
 import { comparePrefixTokens, extractPrefixToken } from '../utils/prefixOrder';
 import { getActiveLoadedBeatTab } from '../storyBeats/workspaceState';
 import { archiveGossamerFrontmatterFields } from '../gossamer/logs';
@@ -362,7 +363,9 @@ export class GossamerScoreModal extends Modal {
     const activeSignal: GossamerSignalType = this.plugin.gossamerSelectedSignal ?? DEFAULT_GOSSAMER_SIGNAL;
     const signalMeta = GOSSAMER_SIGNAL_METADATA[activeSignal];
     const headerEl = contentEl.createDiv({ cls: 'ert-modal-header' });
-    headerEl.createSpan({ text: `Gossamer ${signalMeta.label.toLowerCase()}`, cls: 'ert-modal-badge' });
+    const bookTitle = getActiveBookTitle(this.plugin.settings);
+    const badgeParts = [`Gossamer ${signalMeta.label.toLowerCase()}`, bookTitle].filter(Boolean);
+    headerEl.createSpan({ text: badgeParts.join(' · '), cls: 'ert-modal-badge' });
     headerEl.createDiv({ text: `${beatModelLabel} beat system`, cls: 'ert-modal-title' });
     const heroSubtitle = headerEl.createDiv({ cls: 'ert-modal-subtitle' });
     heroSubtitle.setText(`Enter ${signalMeta.label.toLowerCase()} scores (0-100) for each beat. Previous scores will be saved as history.`);
