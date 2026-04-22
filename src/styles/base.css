@@ -491,11 +491,30 @@ body.rt-modal-open .radial-timeline-container * {
   gap: 10px;
   width: 100%;
   height: 100%;
+  padding: 0.35rem 0.5rem;
   box-sizing: border-box;
-  pointer-events: auto;
+  /* pointer-events are re-enabled on interactive children so masked-out
+     regions let timeline hits through. */
+  pointer-events: none;
+  overflow: hidden;
+  -webkit-mask-image: radial-gradient(
+    circle var(--rt-gossamer-runs-fade-radius, 790px) at var(--rt-gossamer-runs-fade-center-x, 800px) var(--rt-gossamer-runs-fade-center-y, 800px),
+    rgba(0, 0, 0, 0) 0,
+    rgba(0, 0, 0, 0) var(--rt-gossamer-runs-fade-radius, 790px),
+    rgba(0, 0, 0, 0.5) calc(var(--rt-gossamer-runs-fade-radius, 790px) + (var(--rt-gossamer-runs-fade-width, 110px) * 0.45)),
+    rgba(0, 0, 0, 1) calc(var(--rt-gossamer-runs-fade-radius, 790px) + var(--rt-gossamer-runs-fade-width, 110px))
+  );
+  mask-image: radial-gradient(
+    circle var(--rt-gossamer-runs-fade-radius, 790px) at var(--rt-gossamer-runs-fade-center-x, 800px) var(--rt-gossamer-runs-fade-center-y, 800px),
+    rgba(0, 0, 0, 0) 0,
+    rgba(0, 0, 0, 0) var(--rt-gossamer-runs-fade-radius, 790px),
+    rgba(0, 0, 0, 0.5) calc(var(--rt-gossamer-runs-fade-radius, 790px) + (var(--rt-gossamer-runs-fade-width, 110px) * 0.45)),
+    rgba(0, 0, 0, 1) calc(var(--rt-gossamer-runs-fade-radius, 790px) + var(--rt-gossamer-runs-fade-width, 110px))
+  );
 }
 
 .rt-gossamer-runs__controls {
+  pointer-events: auto;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -645,6 +664,7 @@ body.rt-modal-open .radial-timeline-container * {
 }
 
 .rt-gossamer-runs__list {
+  pointer-events: auto;
   display: flex;
   flex-direction: column;
   gap: 4px;

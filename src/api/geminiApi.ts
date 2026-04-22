@@ -139,6 +139,51 @@ export function extractGeminiGroundingCitations(responseData: unknown): SourceCi
   return dedupeGeminiCitations(citations);
 }
 
+// Gemini's responseSchema accepts a limited OpenAPI 3.0 subset and rejects
+// standard JSON-Schema keys like `additionalProperties`, `$schema`, `$ref`,
+// and `allOf`/`oneOf`/`not`. RT's schemas are authored for OpenAI strict mode
+// (which requires `additionalProperties: false`), so we strip unsupported
+// keys before dispatch. See https://ai.google.dev/gemini-api/docs/structured-output
+const GEMINI_SCHEMA_SUPPORTED_KEYS = new Set([
+  'type',
+  'format',
+  'description',
+  'nullable',
+  'enum',
+  'maxItems',
+  'minItems',
+  'properties',
+  'required',
+  'items',
+  'propertyOrdering',
+  'anyOf',
+  'title',
+  'default'
+]);
+
+export function sanitizeGeminiSchema(schema: unknown): Record<string, unknown> {
+  if (!schema || typeof schema !== 'object') return {};
+  const source = schema as Record<string, unknown>;
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(source)) {
+    if (!GEMINI_SCHEMA_SUPPORTED_KEYS.has(key)) continue;
+    if (key === 'properties' && value && typeof value === 'object') {
+      const props: Record<string, unknown> = {};
+      for (const [propKey, propValue] of Object.entries(value as Record<string, unknown>)) {
+        props[propKey] = sanitizeGeminiSchema(propValue);
+      }
+      out.properties = props;
+    } else if (key === 'items') {
+      out.items = sanitizeGeminiSchema(value);
+    } else if (key === 'anyOf' && Array.isArray(value)) {
+      out.anyOf = value.map(entry => sanitizeGeminiSchema(entry));
+    } else {
+      out[key] = value;
+    }
+  }
+  return out;
+}
+
 export async function callGeminiApi(
   apiKey: string,
   modelId: string,
@@ -227,7 +272,7 @@ export async function callGeminiApi(
   // Enable JSON mode if schema provided
   if (jsonSchema) {
     body.generationConfig.responseMimeType = 'application/json';
-    body.generationConfig.responseSchema = jsonSchema;
+    body.generationConfig.responseSchema = sanitizeGeminiSchema(jsonSchema);
   }
   // Secondary safety net: Gemini rejects tools + responseMimeType 'application/json'.
   // Central sanitization handles cacheVsCitationsExclusive; this guard handles

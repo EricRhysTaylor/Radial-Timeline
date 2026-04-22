@@ -482,9 +482,20 @@ function showCustomTooltip(
         hideTimeout = null;
     }
 
-    // Update content
-    customTooltipEl.setText(text);
-    
+    // Update content. Tooltips authored as "Title\n\nBody" render as two
+    // elements so the title can be all-caps and the body justified. Plain
+    // tooltips fall back to setText unchanged.
+    const paragraphs = text.split(/\n{2,}/);
+    if (paragraphs.length >= 2) {
+        customTooltipEl.empty();
+        const title = paragraphs[0].replace(/\n/g, ' ').trim();
+        const body = paragraphs.slice(1).join(' ').replace(/\n/g, ' ').trim();
+        customTooltipEl.createDiv({ cls: 'rt-tooltip__title', text: title });
+        customTooltipEl.createDiv({ cls: 'rt-tooltip__body', text: body });
+    } else {
+        customTooltipEl.setText(text);
+    }
+
     // Reset classes and position before measuring to avoid shrink-to-fit from the previous location.
     customTooltipEl.className = 'rt-tooltip'; // reset placement classes
     customTooltipEl.style.left = '0px';

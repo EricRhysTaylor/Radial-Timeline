@@ -995,8 +995,8 @@ export class RadialTimelineView extends ItemView {
         const viewBoxMin = -(SVG_SIZE / 2);
         const panelX = viewBoxMin;
         const panelY = viewBoxMin + 24;
-        const panelWidth = 352;
-        const displayedRuns = runs.slice().reverse().slice(0, 15);
+        const panelWidth = 520;
+        const displayedRuns = runs.slice().reverse().slice(0, 30);
         const dividerHeight = displayedRuns.length > 1 ? 9 : 0;
         const listHeight = 8 + (displayedRuns.length * 30) + dividerHeight;
         // Header row remains ~44px; even with zero runs we still show the signal selector + pill.
@@ -1008,9 +1008,14 @@ export class RadialTimelineView extends ItemView {
         foreignObject.setAttribute('width', String(panelWidth));
         foreignObject.setAttribute('height', String(panelHeight));
         foreignObject.setAttribute('class', 'rt-gossamer-runs-fo');
+        foreignObject.style.pointerEvents = 'none';
 
         const panel = document.createElementNS(xhtmlNs, 'section');
         panel.className = 'rt-gossamer-runs';
+        panel.style.setProperty('--rt-gossamer-runs-fade-center-x', `${-panelX}px`);
+        panel.style.setProperty('--rt-gossamer-runs-fade-center-y', `${-panelY}px`);
+        panel.style.setProperty('--rt-gossamer-runs-fade-radius', `${MONTH_LABEL_RADIUS}px`);
+        panel.style.setProperty('--rt-gossamer-runs-fade-width', '110px');
 
         const controlsRow = document.createElementNS(xhtmlNs, 'div');
         controlsRow.className = 'rt-gossamer-runs__controls';

@@ -1324,6 +1324,15 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
     modal.completeProcessing(true, successMessage);
     new Notice(logMessage);
 
+    // Auto-reveal the new run. latestOnly already shows the newest; an empty
+    // visibleRunIds already means "show all". Only explicit compare selections
+    // need the new runId appended so the stack keeps the fresh data visible.
+    if (!plugin.gossamerLatestOnly && plugin.gossamerVisibleRunIds.length > 0) {
+      const existing = plugin.gossamerVisibleRunIds.filter((id) => id !== runId);
+      plugin.gossamerVisibleRunIds = [...existing, runId].slice(-30);
+      await plugin.saveGossamerRunFilterState();
+    }
+
     // Refresh timeline AFTER processing completes to show updated Gossamer scores
     // Use direct refresh on all views to bypass debounce for immediate visual feedback
     plugin.getTimelineViews().forEach(v => v.refreshTimeline());

@@ -17,10 +17,12 @@ import { BUILTIN_MODELS } from '../ai/registry/builtinModels';
 // Static fallback mappings for "latest" aliases
 // These are updated when we get actual model info from API responses
 const LATEST_ALIAS_DISPLAY_NAMES: Record<string, string> = {
-    // Gemini
-    'gemini-pro-latest': 'Gemini 2.5 Pro',
-    'gemini-flash-latest': 'Gemini 2.5 Flash',
-    'gemini-flash-lite-latest': 'Gemini Flash Lite',
+    // Gemini — values mirror scripts/models/latest-aliases.json (refreshed daily).
+    // Google's server-side meta-aliases resolve to whatever preview is currently promoted;
+    // these are the static fallbacks used before the runtime resolver sees a real API response.
+    'gemini-pro-latest': 'Gemini 3.1 Pro Preview',
+    'gemini-flash-latest': 'Gemini 3 Flash Preview',
+    'gemini-flash-lite-latest': 'Gemini 3.1 Flash Lite Preview',
     
     // OpenAI
     'gpt-5.4': 'GPT-5.4',

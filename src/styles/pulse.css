@@ -1823,6 +1823,31 @@
   opacity: 1;
 }
 
+.rt-tooltip__title {
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  font-size: 13px;
+  text-align: center;
+  margin-bottom: 6px;
+  color: var(--text-normal);
+}
+
+.rt-tooltip:has(.rt-tooltip__title) {
+  padding: 9px 12px;
+  text-align: left;
+  white-space: normal;
+}
+
+.rt-tooltip__body {
+  text-align: justify;
+  text-align-last: center;
+  hyphens: auto;
+  white-space: normal;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
 /* Tooltip Arrow */
 .rt-tooltip::after {
   content: '';
