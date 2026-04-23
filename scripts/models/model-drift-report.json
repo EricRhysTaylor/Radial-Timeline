@@ -1,32 +1,23 @@
 {
-  "checkedAt": "2026-04-23T01:52:52.332Z",
+  "checkedAt": "2026-04-23T02:24:44.112Z",
   "mode": "report",
   "snapshotBefore": {
-    "generatedAt": "2026-04-22T00:19:25.044Z"
+    "generatedAt": "2026-04-23T01:52:52.325Z"
   },
   "snapshotAfter": {
     "generatedAt": "2026-04-23T01:52:52.325Z"
   },
   "changes": {
     "openai": {
-      "added": [
-        "gpt-image-2",
-        "gpt-image-2-2026-04-21"
-      ],
+      "added": [],
       "removed": []
     },
     "anthropic": {
       "added": [],
-      "removed": [
-        "claude-3-haiku-20240307"
-      ]
+      "removed": []
     },
     "google": {
-      "added": [
-        "deep-research-max-preview-04-2026",
-        "deep-research-preview-04-2026",
-        "gemini-embedding-2"
-      ],
+      "added": [],
       "removed": []
     }
   },
@@ -34,10 +25,6 @@
   "anthropicNewestChanged": null,
   "tokenLimitChanges": [],
   "releaseAlerts": [],
-  "hasActionableChanges": true,
-  "recommendedFollowUps": [
-    "Review scripts/models/latest-models.json and scripts/models/model-drift-report.json for provider catalog drift.",
-    "If a new provider model should ship in RT, update scripts/models/registry.json and src/ai/registry/builtinModels.ts.",
-    "If RT surfaces cost or positioning for the model, update src/ai/cost/providerPricing.ts and src/data/aiModels.ts."
-  ]
+  "hasActionableChanges": false,
+  "recommendedFollowUps": []
 }
