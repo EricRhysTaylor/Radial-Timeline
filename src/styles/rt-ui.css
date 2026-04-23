@@ -4887,6 +4887,23 @@
   background: none;
 }
 
+.ert-ui.ert-scope--settings .ert-settings-release-notes-details-body.markdown-preview-view > :first-child,
+.ert-ui.ert-scope--modal .ert-release-notes-details-body.markdown-preview-view > :first-child {
+  margin-top: 0;
+}
+
+.ert-ui.ert-scope--settings .ert-settings-release-notes-details-body.markdown-preview-view :is(h1, h2, h3, h4, h5, h6),
+.ert-ui.ert-scope--modal .ert-release-notes-details-body.markdown-preview-view :is(h1, h2, h3, h4, h5, h6) {
+  margin-top: 1.4em;
+  margin-bottom: 0.5em;
+  line-height: 1.22;
+}
+
+.ert-ui.ert-scope--settings .ert-settings-release-notes-details-body.markdown-preview-view :is(h1, h2),
+.ert-ui.ert-scope--modal .ert-release-notes-details-body.markdown-preview-view :is(h1, h2) {
+  margin-top: 1.6em;
+}
+
 .ert-ui.ert-scope--settings .ert-settings-release-notes-details-body .ert-settings-release-notes-preview {
   margin-top: 12px;
   padding: 16px;
@@ -8908,6 +8925,12 @@
 
 .ert-ui.ert-scope--modal .ert-release-notes-details-body.markdown-preview-view p {
   line-height: 1.6;
+}
+
+.ert-ui.ert-scope--settings .ert-settings-release-notes-details-body.markdown-preview-view :is(p, ul, ol),
+.ert-ui.ert-scope--modal .ert-release-notes-details-body.markdown-preview-view :is(p, ul, ol) {
+  margin-top: 0.75em;
+  margin-bottom: 0.75em;
 }
 
 .ert-ui.ert-scope--modal .ert-release-notes-actions {

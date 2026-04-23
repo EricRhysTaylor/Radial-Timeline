@@ -3,9 +3,10 @@
  * Copyright (c) 2025 Eric Rhys Taylor
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
-import { ButtonComponent, normalizePath, Platform, setIcon } from 'obsidian';
+import { ButtonComponent, Platform, setIcon } from 'obsidian';
 import RadialTimelinePlugin from '../main';
 import { BookDesignerModal } from '../modals/BookDesignerModal';
+import { RT_LOGO_PATHS, RT_LOGO_VIEWBOX } from '../branding/rtLogo';
 
 interface WelcomeScreenParams {
     container: HTMLElement;
@@ -57,6 +58,8 @@ const WELCOME_ICONS = {
     tertiary: 'info'
 } as const;
 
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
 const addButtonIcon = (buttonEl: HTMLButtonElement, iconName: string): void => {
     const icon = buttonEl.createSpan({ cls: 'rt-welcome-button-icon' });
     buttonEl.prepend(icon);
@@ -88,18 +91,55 @@ const runCreateNoteCommand = (plugin: RadialTimelinePlugin): void => {
     commandManager?.executeCommandById?.('radial-timeline:create-note');
 };
 
+const appendWelcomeBackgroundLogo = (parent: HTMLElement): void => {
+    const svg = document.createElementNS(SVG_NS, 'svg');
+    svg.setAttr('viewBox', `${RT_LOGO_VIEWBOX.x} ${RT_LOGO_VIEWBOX.y} ${RT_LOGO_VIEWBOX.width} ${RT_LOGO_VIEWBOX.height}`);
+    svg.setAttr('preserveAspectRatio', 'xMidYMid meet');
+    svg.setAttr('aria-hidden', 'true');
+
+    const defs = document.createElementNS(SVG_NS, 'defs');
+    const gradient = document.createElementNS(SVG_NS, 'linearGradient');
+    gradient.setAttr('id', 'rt-welcome-bg-logo-gradient');
+    gradient.setAttr('x1', '0%');
+    gradient.setAttr('y1', '0%');
+    gradient.setAttr('x2', '0%');
+    gradient.setAttr('y2', '100%');
+
+    const start = document.createElementNS(SVG_NS, 'stop');
+    start.setAttr('offset', '0%');
+    start.setAttr('stop-color', '#ffffff');
+    start.setAttr('stop-opacity', '0.01');
+
+    const middle = document.createElementNS(SVG_NS, 'stop');
+    middle.setAttr('offset', '50%');
+    middle.setAttr('stop-color', '#ffffff');
+    middle.setAttr('stop-opacity', '0.125');
+
+    const end = document.createElementNS(SVG_NS, 'stop');
+    end.setAttr('offset', '100%');
+    end.setAttr('stop-color', '#ffffff');
+    end.setAttr('stop-opacity', '0.01');
+
+    gradient.append(start, middle, end);
+    defs.append(gradient);
+    svg.append(defs);
+
+    RT_LOGO_PATHS.forEach((pathData) => {
+        const path = document.createElementNS(SVG_NS, 'path');
+        path.setAttr('d', pathData);
+        path.setAttr('fill', 'url(#rt-welcome-bg-logo-gradient)');
+        svg.append(path);
+    });
+
+    parent.appendChild(svg);
+};
+
 export function renderWelcomeScreen({ container, plugin, refreshTimeline }: WelcomeScreenParams): void {
     container.addClass('rt-welcome-view');
 
     // Background RT logo - large and faint
     const bgIcon = container.createDiv({ cls: 'rt-welcome-bg-icon' });
-    const configDir = (plugin.app.vault as unknown as { configDir?: string }).configDir ?? '.obsidian';
-    const pluginId = plugin.manifest.id;
-    const assetPath = normalizePath(`${configDir}/plugins/${pluginId}/assets/rt-logo.png`);
-    // SAFE: vault.adapter.getResourcePath is required for converting vault paths to asset URLs (no Vault API alternative)
-    const adapter = plugin.app.vault.adapter as unknown as { getResourcePath?: (path: string) => string };
-    const logoHref = adapter.getResourcePath ? adapter.getResourcePath(assetPath) : assetPath;
-    bgIcon.createEl('img', { attr: { src: logoHref, alt: '' } });
+    appendWelcomeBackgroundLogo(bgIcon);
 
     // Huge Welcome Title (custom styled block, not an H1)
     container.createDiv({ cls: 'rt-welcome-title', text: 'Welcome' });

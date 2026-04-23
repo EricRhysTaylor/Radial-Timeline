@@ -41,20 +41,13 @@
   justify-content: center;
   pointer-events: none;
   z-index: 0;
-  opacity: 0.04;
+  opacity: 1;
 }
 
 .rt-welcome-bg-icon svg {
   width: 100%;
   height: 100%;
-  stroke: var(--text-muted);
-  stroke-width: 0.5;
-}
-
-.rt-welcome-bg-icon img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
+  overflow: visible;
 }
 
 .rt-welcome-title {
