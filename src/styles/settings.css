@@ -1,6 +1,6 @@
 /* Source path autocomplete suggestions */
 .source-path-suggestions {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--ert-shadow-soft);
   border-radius: 4px;
   margin-top: 2px;
   min-width: 200px;

@@ -143,7 +143,7 @@
 .ert-settings-root .setting-item.setting-item-heading .setting-item-name {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--ert-gap-tight);
 }
 
 .ert-settings-root .setting-item.setting-item-heading .ert-setting-heading-icon {
@@ -187,7 +187,7 @@
 }
 
 .ert-runtime-count {
-  padding: 12px;
+  padding: var(--ert-pad-sm);
   background: var(--background-secondary);
   border-radius: 6px;
   text-align: center;
@@ -263,7 +263,7 @@
 .ert-runtime-dropdown-container {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--ert-gap-xs);
   min-width: 180px;
 }
 
@@ -283,12 +283,12 @@
 /* Current scene display */
 .ert-runtime-current-scene {
   margin-top: 12px;
-  padding: 10px 12px;
+  padding: var(--ert-pad-cozy) var(--ert-pad-sm);
   background: var(--background-secondary);
   border-radius: 6px;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--ert-gap-xs);
 }
 
 .ert-runtime-current-scene-muted {
@@ -311,7 +311,7 @@
 .ert-runtime-status-checkbox {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--ert-gap-sm);
   cursor: pointer;
 }
 
@@ -346,7 +346,7 @@
 .ert-runtime-accordion-header {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--ert-gap-sm);
   cursor: pointer;
   padding: 8px 0;
   user-select: none;
@@ -392,7 +392,7 @@
 .ert-runtime-setting-row {
   display: flex;
   justify-content: space-between;
-  padding: 6px 0;
+  padding: var(--ert-pad-tight) 0;
   font-size: 13px;
 }
 
@@ -431,7 +431,7 @@
 }
 
 .rt-books-panel {
-  gap: 8px;
+  gap: var(--ert-gap-sm);
 }
 
 /* Book card: single-row Setting with bordered card look */
@@ -439,10 +439,10 @@
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  column-gap: 12px;
+  column-gap: var(--ert-gap-md);
   border: 1px solid var(--background-modifier-border);
   border-radius: var(--radius-m, 8px);
-  padding: 8px 12px;
+  padding: var(--ert-pad-xs) var(--ert-pad-sm);
   background: var(--background-primary);
   transition:
     border-color 0.15s ease,
@@ -469,7 +469,7 @@
 .rt-book-card__name {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--ert-gap-sm);
 }
 
 .rt-book-card .setting-item-info {
@@ -580,7 +580,7 @@
   margin: 0;
   pointer-events: none;
   box-shadow:
-    0 16px 36px rgba(0, 0, 0, 0.32),
+    0 16px 36px color-mix(in srgb, var(--background-modifier-border) 72%, transparent),
     0 0 0 1px color-mix(in srgb, var(--background-modifier-border) 90%, transparent);
 }
 
