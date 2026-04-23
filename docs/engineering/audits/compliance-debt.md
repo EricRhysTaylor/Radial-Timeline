@@ -1,6 +1,6 @@
 # Compliance Debt
 
-Generated: 2026-04-23T02:50:59.952Z
+Generated: 2026-04-23T03:48:30.925Z
 
 Snapshot of every compliance **error** at the time of baseline reset. Work through these to ratchet the compliance baseline down. After fixing a batch, run `node scripts/compliance-check.mjs --update-baseline` to lock in the new lower ceiling.
 
@@ -8,15 +8,12 @@ Regenerate this report anytime with: `node scripts/compliance-report.mjs`.
 
 ## Totals
 
-- **Total errors:** 117
+- **Total errors:** 93
 - `raw-addEventListener`: 79
-- `console-log`: 22
 - `node-core-import`: 6
 - `adapter`: 4
 - `fetch-vs-requestUrl`: 3
 - `node-core-require`: 1
-- `eval`: 1
-- `new-function`: 1
 
 ## How to work a rule
 
@@ -61,18 +58,18 @@ src/settings/sections/BeatPropertiesSection.ts:3752:20 — row.addEventListener(
 src/settings/sections/BeatPropertiesSection.ts:3762:27 — dragHandle.addEventListener('dragend', () => {
 src/settings/sections/BeatPropertiesSection.ts:3826:19 — addBtn.addEventListener('click', () => {
 src/settings/sections/BeatPropertiesSection.ts:3862:22 — revertBtn.addEventListener('click', async () => {
-src/settings/sections/BeatPropertiesSection.ts:4696:27 — pillEl.addEventListener('click', async () => {
-src/settings/sections/BeatPropertiesSection.ts:4760:28 — chipBtn.addEventListener('click', () => {
-src/settings/sections/BeatPropertiesSection.ts:4840:27 — pillEl.addEventListener('click', async () => {
-src/settings/sections/BeatPropertiesSection.ts:4867:28 — prevBtn.addEventListener('click', () => { page--; renderNoteList(); });
-src/settings/sections/BeatPropertiesSection.ts:4875:28 — nextBtn.addEventListener('click', () => { page++; renderNoteList(); });
-src/settings/sections/BeatPropertiesSection.ts:4883:31 — openAllBtn.addEventListener('click', async () => {
-src/settings/sections/BeatPropertiesSection.ts:5499:34 — confirmInput?.addEventListener('input', updateDeleteState);
-src/settings/sections/BeatPropertiesSection.ts:5500:38 — acknowledgeInput?.addEventListener('change', updateDeleteState);
-src/settings/sections/BeatPropertiesSection.ts:5778:34 — confirmInput?.addEventListener('input', updateDeleteState);
-src/settings/sections/BeatPropertiesSection.ts:5779:38 — acknowledgeInput?.addEventListener('change', updateDeleteState);
-src/settings/sections/BeatPropertiesSection.ts:5928:29 — confirmInput.addEventListener('input', () => {
-src/settings/sections/BeatPropertiesSection.ts:6004:26 — backdropYamlToggleBtn.addEventListener('click', () => { renderBackdropAuditVisibility(); });
+src/settings/sections/BeatPropertiesSection.ts:4680:27 — pillEl.addEventListener('click', async () => {
+src/settings/sections/BeatPropertiesSection.ts:4744:28 — chipBtn.addEventListener('click', () => {
+src/settings/sections/BeatPropertiesSection.ts:4824:27 — pillEl.addEventListener('click', async () => {
+src/settings/sections/BeatPropertiesSection.ts:4851:28 — prevBtn.addEventListener('click', () => { page--; renderNoteList(); });
+src/settings/sections/BeatPropertiesSection.ts:4859:28 — nextBtn.addEventListener('click', () => { page++; renderNoteList(); });
+src/settings/sections/BeatPropertiesSection.ts:4867:31 — openAllBtn.addEventListener('click', async () => {
+src/settings/sections/BeatPropertiesSection.ts:5448:34 — confirmInput?.addEventListener('input', updateDeleteState);
+src/settings/sections/BeatPropertiesSection.ts:5449:38 — acknowledgeInput?.addEventListener('change', updateDeleteState);
+src/settings/sections/BeatPropertiesSection.ts:5717:34 — confirmInput?.addEventListener('input', updateDeleteState);
+src/settings/sections/BeatPropertiesSection.ts:5718:38 — acknowledgeInput?.addEventListener('change', updateDeleteState);
+src/settings/sections/BeatPropertiesSection.ts:5859:29 — confirmInput.addEventListener('input', () => {
+src/settings/sections/BeatPropertiesSection.ts:5927:26 — backdropYamlToggleBtn.addEventListener('click', () => { renderBackdropAuditVisibility(); });
 ```
 
 ### src/settings/sections/ProFeaturePanels.ts (14)
@@ -181,7 +178,7 @@ src/inquiry/InquiryView.ts:582:16 — element.addEventListener(event, listener, 
 ### src/main.ts (1)
 
 ```
-src/main.ts:945:22 — this.eventBus.addEventListener(type, wrapped);
+src/main.ts:937:22 — this.eventBus.addEventListener(type, wrapped);
 ```
 
 ### src/settings/sections/GeneralSection.ts (1)
@@ -194,66 +191,6 @@ src/settings/sections/GeneralSection.ts:133:29 — text.inputEl.addEventListener
 
 ```
 src/settings/sections/ProgressSection.ts:242:21 — toggleButton.addEventListener('click', () => {
-```
-
-## `console-log` (22)
-
-
-### src/settings/sections/BeatPropertiesSection.ts (8)
-
-```
-src/settings/sections/BeatPropertiesSection.ts:4418:13 — console.debug('[YamlAudit] yaml_audit_run', {
-src/settings/sections/BeatPropertiesSection.ts:4939:13 — console.debug('[YamlAudit] reference_id_backfill_execute', {
-src/settings/sections/BeatPropertiesSection.ts:5004:13 — console.debug('[YamlAudit] reference_id_duplicate_repair_execute', {
-src/settings/sections/BeatPropertiesSection.ts:5088:13 — console.debug('[YamlAudit] yaml_backfill_execute', {
-src/settings/sections/BeatPropertiesSection.ts:5163:13 — console.debug('[YamlAudit] yaml_fill_empty_execute', {
-src/settings/sections/BeatPropertiesSection.ts:5577:13 — console.debug('[YamlManager] yaml_delete_extra_execute', {
-src/settings/sections/BeatPropertiesSection.ts:5816:13 — console.debug('[YamlManager] yaml_delete_advanced_execute', {
-src/settings/sections/BeatPropertiesSection.ts:5947:13 — console.debug('[YamlManager] yaml_reorder_execute', {
-```
-
-### src/inquiry/InquiryView.ts (5)
-
-```
-src/inquiry/InquiryView.ts:661:9 — console.log('[InquiryView Performance Counters]', this.perfCounters);
-src/inquiry/InquiryView.ts:3491:13 — console.debug(`[InquiryView] refreshUI triggered: ${options.reason} (skipCorpus: ${options.skipCorpus ?? false})`);
-src/inquiry/InquiryView.ts:3953:13 — console.debug('[Inquiry] Pressure gauge reset — estimate pending');
-src/inquiry/InquiryView.ts:3963:9 — console.debug('[Inquiry] Pressure gauge render',
-src/inquiry/InquiryView.ts:8858:13 — console.debug('[Inquiry] Estimate snapshot failed or stale — pressure gauge will not render');
-```
-
-### src/ai/runtime/aiClient.ts (3)
-
-```
-src/ai/runtime/aiClient.ts:448:17 — console.debug(`[AI] Registry model ${model.provider}:${model.id} has no pricing entry.`);
-src/ai/runtime/aiClient.ts:458:21 — console.debug(`[AI] Pricing entry ${provider}:${modelId} has no registry model.`);
-src/ai/runtime/aiClient.ts:1091:13 — console.debug(`[AI Sanitization] ${providerId}/${params.modelId}:`, notes);
-```
-
-### src/inquiry/runner/InquiryRunnerService.ts (2)
-
-```
-src/inquiry/runner/InquiryRunnerService.ts:508:9 — console.debug(`[Inquiry] buildEvidenceBlocks: ${totalEntries} manifest entries, ${sceneEntriesAll} scenes (${sceneEntries.length} active), ${outlineEntries.length} outlines, ${referenceEntries.length} references`);
-src/inquiry/runner/InquiryRunnerService.ts:519:9 — console.debug(`[Inquiry] buildEvidenceBlocks: ${scenes.length} scene snapshots from ${sceneEntries.length} entries`);
-```
-
-### src/main.ts (2)
-
-```
-src/main.ts:715:17 — console.debug('[SchemaMigration]', {
-src/main.ts:725:13 — console.debug('[SchemaMigration]', {
-```
-
-### src/inquiry/services/inquiryEstimateService.ts (1)
-
-```
-src/inquiry/services/inquiryEstimateService.ts:103:17 — console.debug('[Inquiry] Estimate snapshot discarded — superseded by newer request');
-```
-
-### src/services/SceneDataService.ts (1)
-
-```
-src/services/SceneDataService.ts:82:9 — console.debug('[SchemaMigration]', payload);
 ```
 
 ## `node-core-import` (6)
@@ -330,22 +267,4 @@ src/ai/registry/remoteRegistry.ts:62:28 — const response = await fetch(url);
 
 ```
 src/settings/sections/ProFeaturePanels.ts:62:20 — const fs = require('fs') as typeof import('fs');
-```
-
-## `eval` (1)
-
-
-### src/utils/yamlSafety.ts (1)
-
-```
-src/utils/yamlSafety.ts:66:37 — { regex: /\beval\s*\(/, label: 'eval() call', severity: 'danger' },
-```
-
-## `new-function` (1)
-
-
-### src/utils/yamlSafety.ts (1)
-
-```
-src/utils/yamlSafety.ts:68:44 — { regex: /\bnew\s+Function\b/, label: 'new Function()', severity: 'danger' },
 ```

@@ -37,8 +37,6 @@ export class SceneDataService {
     private settings: RadialTimelineSettings;
     /** Central BookMeta for the active manuscript (exactly one per book). */
     private _bookMeta: BookMeta | null = null;
-    /** Tracks one-time migration notices to avoid repetitive console spam. */
-    private migrationDebugNotices = new Set<string>();
     /** Tracks usage of compatibility fallbacks for metrics. */
     private migrationCounters = new Map<string, number>();
 
@@ -47,18 +45,8 @@ export class SceneDataService {
         this.settings = settings;
     }
 
-    private trackCompatUsage(id: string, file: string, message?: string): void {
+    private trackCompatUsage(id: string, _file: string, _message?: string): void {
         this.migrationCounters.set(id, (this.migrationCounters.get(id) ?? 0) + 1);
-        if (message) {
-            // Uniquely identify this warning by ID + file path
-            const warningKey = `${id}:${file}`;
-            this.logMigrationDebugOnce(warningKey, {
-                event: 'compat_fallback',
-                path: file,
-                msg: message,
-                fallbackId: id
-            });
-        }
     }
 
     /**
@@ -74,12 +62,6 @@ export class SceneDataService {
      */
     updateSettings(settings: RadialTimelineSettings): void {
         this.settings = settings;
-    }
-
-    private logMigrationDebugOnce(key: string, payload: Record<string, unknown>): void {
-        if (this.migrationDebugNotices.has(key)) return;
-        this.migrationDebugNotices.add(key);
-        console.debug('[SchemaMigration]', payload);
     }
 
     /**
@@ -338,21 +320,6 @@ export class SceneDataService {
                         sourcePath: file.path
                     };
 
-                    if (!this._bookMeta.title) {
-                        this.logMigrationDebugOnce('book-meta-missing-title', {
-                            event: 'book_meta_missing_title',
-                            path: file.path,
-                            action: 'BookMeta is missing required "title" field'
-                        });
-                    }
-                    if (this._bookMeta.rights && !this._bookMeta.rights.year) {
-                        this.logMigrationDebugOnce('book-meta-missing-year', {
-                            event: 'book_meta_missing_year',
-                            path: file.path,
-                            action: 'BookMeta is missing required "rights.year" field'
-                        });
-                    }
-
                 } else if (metadata && isMatterClassValue(metadata.Class)) {
                     // Front-matter / back-matter notes – included in manuscript pipeline,
                     // excluded from timeline stats via isNonSceneItem().
@@ -470,14 +437,6 @@ export class SceneDataService {
                 "Publish Stage": beatSource["Publish Stage"] as string | undefined,
                 // Raw frontmatter for accessing Gossamer Justification and other dynamic fields
                 rawFrontmatter: beatSource
-            });
-        }
-
-        if (this.migrationCounters.size > 0) {
-            // Log summary only once per session to avoid spam
-            this.logMigrationDebugOnce('compat-metrics-summary', {
-                event: 'compat_metrics_summary',
-                counters: Object.fromEntries(this.migrationCounters)
             });
         }
 

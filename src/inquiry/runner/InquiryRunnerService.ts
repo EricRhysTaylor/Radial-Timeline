@@ -502,11 +502,6 @@ export class InquiryRunnerService implements InquiryRunner {
             .filter(entry => entry.class !== 'scene' && entry.class !== 'outline')
             .filter(entry => this.isModeActive(entry.mode));
 
-        // Diagnostic: log entry counts to surface evidence pipeline failures.
-        const totalEntries = allEntries.length;
-        const sceneEntriesAll = allEntries.filter(entry => entry.class === 'scene').length;
-        console.debug(`[Inquiry] buildEvidenceBlocks: ${totalEntries} manifest entries, ${sceneEntriesAll} scenes (${sceneEntries.length} active), ${outlineEntries.length} outlines, ${referenceEntries.length} references`);
-
         if (input.scope === 'saga') {
             const sagaOutlines = await this.collectOutlines(outlineEntries.filter(entry => entry.scope === 'saga'), 'Saga outline');
             blocks.push(...sagaOutlines);
@@ -516,7 +511,6 @@ export class InquiryRunnerService implements InquiryRunner {
         blocks.push(...bookOutlines);
 
         const scenes = await this.buildSceneSnapshots(sceneEntries);
-        console.debug(`[Inquiry] buildEvidenceBlocks: ${scenes.length} scene snapshots from ${sceneEntries.length} entries`);
 
         const sceneModeByPath = new Map(
             sceneEntries.map(entry => [entry.path, this.normalizeEntryMode(entry.mode)])

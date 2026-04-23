@@ -712,20 +712,12 @@ export default class RadialTimelinePlugin extends Plugin {
                     };
                 }
                 backdropTemplateMigrated = true;
-                console.debug('[SchemaMigration]', {
-                    event: 'backdrop_template_initialized_with_context',
-                    action: 'legacy backdrop template migrated to Context base key'
-                });
             }
         }
         if (this.settings.backdropYamlTemplates?.base?.includes('Synopsis:')) {
             this.settings.backdropYamlTemplates.base = this.settings.backdropYamlTemplates.base.replace(/^Synopsis:/gm, 'Context:');
             backdropTemplateMigrated = true;
             schemaOntologyMigrated = true;
-            console.debug('[SchemaMigration]', {
-                event: 'backdrop_base_template_synopsis_to_context',
-                action: 'updated backdrop base template to write Context',
-            });
         }
         if (this.settings.backdropHoverMetadataFields === undefined) {
             this.settings.backdropHoverMetadataFields = [];

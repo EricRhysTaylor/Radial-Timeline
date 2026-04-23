@@ -658,7 +658,6 @@ export class InquiryView extends ItemView {
     }
 
     async onClose(): Promise<void> {
-        console.log('[InquiryView Performance Counters]', this.perfCounters);
         if (this.updateRunningClockInterval) {
             window.clearInterval(this.updateRunningClockInterval);
             this.updateRunningClockInterval = undefined;
@@ -3487,9 +3486,6 @@ export class InquiryView extends ItemView {
 
     private refreshUI(options?: { skipCorpus?: boolean, reason?: string }): void {
         this.perfCounters.refreshUICalls++;
-        if (options?.reason) {
-            console.debug(`[InquiryView] refreshUI triggered: ${options.reason} (skipCorpus: ${options.skipCorpus ?? false})`);
-        }
         this.invalidateRefreshCycleCaches();
         this.refreshDataDependencies(options?.skipCorpus);
         this.refreshDerivedViewState();
@@ -3950,7 +3946,6 @@ export class InquiryView extends ItemView {
         const readinessUi = this.buildReadinessUiState();
         // While the estimate is pending, reset the gauge — never show stale data.
         if (readinessUi.pending) {
-            console.debug('[Inquiry] Pressure gauge reset — estimate pending');
             this.minimap.resetPressureGauge();
             this.updateMinimapReuseStatus();
             return;
@@ -3960,10 +3955,6 @@ export class InquiryView extends ItemView {
         const styleSource = this.getStyleSource();
         const isPro = hasProFeatureAccess(this.plugin);
         const advancedContext = this.getEffectiveReuseAdvancedContext();
-        console.debug('[Inquiry] Pressure gauge render',
-            { ratio: readinessUi.readiness.pressureRatio, state: readinessUi.readiness.state,
-              budget: readinessUi.safeInputBudget, input: readinessUi.estimateInputTokens,
-              passes: passPlan.displayPassCount });
         this.minimap.updatePressureGauge(
             readinessUi,
             passPlan,
@@ -8855,7 +8846,6 @@ export class InquiryView extends ItemView {
         });
 
         if (!snapshot) {
-            console.debug('[Inquiry] Estimate snapshot failed or stale — pressure gauge will not render');
             return;
         }
         this.refreshEstimateDisplays(); // Renders once with final values

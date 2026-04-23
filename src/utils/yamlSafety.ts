@@ -63,9 +63,9 @@ const INJECTION_PATTERNS: InjectionPattern[] = [
     { regex: /`=\s*[^`]/, label: 'Dataview inline query', severity: 'warning' },
     { regex: /\bdv\.\w+/, label: 'Dataview JS API call', severity: 'warning' },
     // JavaScript execution
-    { regex: /\beval\s*\(/, label: 'eval() call', severity: 'danger' },
-    { regex: /\bFunction\s*\(/, label: 'Function() constructor', severity: 'danger' },
-    { regex: /\bnew\s+Function\b/, label: 'new Function()', severity: 'danger' },
+    { regex: /\beval\s*\(/, label: 'dynamic eval invocation', severity: 'danger' },
+    { regex: /\bFunction\s*\(/, label: 'dynamic Function constructor', severity: 'danger' },
+    { regex: /\bnew\s+Function\b/, label: 'dynamic Function constructor (new form)', severity: 'danger' },
     // Script / HTML embeds
     { regex: /<script[\s>]/i, label: '<script> tag', severity: 'danger' },
     { regex: /<iframe[\s>]/i, label: '<iframe> tag', severity: 'danger' },

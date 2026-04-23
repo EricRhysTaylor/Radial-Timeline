@@ -4415,22 +4415,6 @@ export function renderBeatPropertiesSection(params: {
                 includeSafetyScan: true,
             });
 
-            console.debug('[YamlAudit] yaml_audit_run', {
-                noteType,
-                scope: auditScopeSummary,
-                totalNotes: auditResult.summary.totalNotes,
-                missing: auditResult.summary.notesWithMissing,
-                missingIds: auditResult.summary.notesMissingIds,
-                duplicateIds: auditResult.summary.notesDuplicateIds,
-                extra: auditResult.summary.notesWithExtra,
-                drift: auditResult.summary.notesWithDrift,
-                warnings: auditResult.summary.notesWithWarnings,
-                unsafe: auditResult.summary.notesUnsafe,
-                suspicious: auditResult.summary.notesSuspicious,
-                unread: auditResult.summary.unreadNotes,
-                clean: auditResult.summary.clean,
-            });
-
             copyBtn?.classList.remove('ert-settings-hidden');
             if (auditResult.summary.notesWithMissing > 0) {
                 backfillBtn?.classList.remove('ert-settings-hidden');
@@ -4936,14 +4920,6 @@ export function renderBeatPropertiesSection(params: {
                 noteType
             });
 
-            console.debug('[YamlAudit] reference_id_backfill_execute', {
-                noteType,
-                scope: auditScopeSummary,
-                updated: result.updated,
-                skipped: result.skipped,
-                failed: result.failed
-            });
-
             const parts: string[] = [];
             if (result.updated > 0) parts.push(`Updated ${result.updated} note${result.updated !== 1 ? 's' : ''}`);
             if (result.skipped > 0) parts.push(`${result.skipped} already had IDs`);
@@ -4999,14 +4975,6 @@ export function renderBeatPropertiesSection(params: {
                 app,
                 files: targetFiles,
                 noteType
-            });
-
-            console.debug('[YamlAudit] reference_id_duplicate_repair_execute', {
-                noteType,
-                scope: auditScopeSummary,
-                updated: result.updated,
-                skipped: result.skipped,
-                failed: result.failed
             });
 
             const parts: string[] = [];
@@ -5085,14 +5053,6 @@ export function renderBeatPropertiesSection(params: {
                 fieldsToInsert,
             });
 
-            console.debug('[YamlAudit] yaml_backfill_execute', {
-                noteType,
-                updated: result.updated,
-                skipped: result.skipped,
-                failed: result.failed,
-                fieldsInserted: Object.keys(fieldsToInsert),
-            });
-
             const parts: string[] = [];
             if (beatPurposeMigration && beatPurposeMigration.movedToPurpose > 0) {
                 parts.push(`Migrated ${beatPurposeMigration.movedToPurpose} Description→Purpose`);
@@ -5158,17 +5118,6 @@ export function renderBeatPropertiesSection(params: {
                 app,
                 files: fillEmptyPlan.files,
                 fieldsToInsert: fillEmptyPlan.fieldsToInsert,
-            });
-
-            console.debug('[YamlAudit] yaml_fill_empty_execute', {
-                noteType,
-                beatSystemKey: resolveBeatAuditSystemKey(),
-                sourcePath: fillEmptyPlan.sourcePath,
-                updated: result.updated,
-                filledFields: result.filledFields,
-                skipped: result.skipped,
-                failed: result.failed,
-                keys: fillEmptyPlan.touchedKeys,
             });
 
             const parts: string[] = [];
@@ -5574,16 +5523,6 @@ export function renderBeatPropertiesSection(params: {
                 sum + entry.fields.filter(field => field === 'Description').length
             ), 0) ?? 0;
 
-            console.debug('[YamlManager] yaml_delete_extra_execute', {
-                noteType,
-                deleted: deletedPaths.size,
-                failed,
-                safetySkipped,
-                migratedToPurpose,
-                removedDescriptionByMigration,
-                removedEmptyDescription,
-            });
-
             const parts: string[] = [];
             if (migratedToPurpose > 0) parts.push(`Migrated ${migratedToPurpose} Description→Purpose`);
             if (removedDescriptionByMigration + removedEmptyDescription > 0) {
@@ -5813,14 +5752,6 @@ export function renderBeatPropertiesSection(params: {
                 safetyResults: auditResult.safetyResults,
             });
 
-            console.debug('[YamlManager] yaml_delete_advanced_execute', {
-                noteType,
-                deleted: result.deleted,
-                skipped: result.skipped,
-                failed: result.failed,
-                safetySkipped: result.safetySkipped,
-                advancedKeys: deletableAdvKeys,
-            });
 
             const msgParts: string[] = [];
             if (result.deleted > 0) msgParts.push(`Cleaned ${result.deleted} note${result.deleted !== 1 ? 's' : ''}`);
@@ -5942,14 +5873,6 @@ export function renderBeatPropertiesSection(params: {
                 files: notesWithDrift.map(n => n.file),
                 canonicalOrder,
                 safetyResults: auditResult.safetyResults,
-            });
-
-            console.debug('[YamlManager] yaml_reorder_execute', {
-                noteType,
-                reordered: result.reordered,
-                skipped: result.skipped,
-                failed: result.failed,
-                safetySkipped: result.safetySkipped,
             });
 
             const parts: string[] = [];

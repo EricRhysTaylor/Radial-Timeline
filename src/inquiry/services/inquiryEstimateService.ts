@@ -100,7 +100,6 @@ export class InquiryEstimateService {
 
             // Guard: if a newer request has superseded this one, discard.
             if (this.currentStateKey !== stateKey) {
-                console.debug('[Inquiry] Estimate snapshot discarded — superseded by newer request');
                 return null;
             }
 
