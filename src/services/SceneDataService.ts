@@ -13,7 +13,7 @@
 
 import { App, TFile } from 'obsidian';
 import type { TimelineItem, RadialTimelineSettings, BookMeta, MatterMeta } from '../types';
-import { normalizeBeatFrontmatterKeys, normalizeFrontmatterKeys } from '../utils/frontmatter';
+import { getActiveFrontmatterMappings, normalizeBeatFrontmatterKeys, normalizeFrontmatterKeys } from '../utils/frontmatter';
 import { parseWhenField } from '../utils/date';
 import { normalizeBooleanValue, isStoryBeat } from '../utils/sceneHelpers';
 import { stripWikiLinks } from '../utils/text';
@@ -106,7 +106,7 @@ export class SceneDataService {
         for (const file of files) {
             try {
                 const rawMetadata = this.app.metadataCache.getFileCache(file)?.frontmatter;
-                const mappings = this.settings.enableCustomMetadataMapping ? this.settings.frontmatterMappings : undefined;
+                const mappings = getActiveFrontmatterMappings(this.settings);
                 const metadata = rawMetadata ? normalizeFrontmatterKeys(rawMetadata, mappings) : undefined;
 
                 if (metadata && metadata.Class === "Scene") {

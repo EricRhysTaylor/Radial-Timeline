@@ -113,7 +113,7 @@ import type {
 } from './runner/types';
 import { InquirySessionStore } from './InquirySessionStore';
 import type { InquirySession, InquirySessionStatus } from './sessionTypes';
-import { normalizeFrontmatterKeys } from '../utils/frontmatter';
+import { getActiveFrontmatterMappings, normalizeFrontmatterKeys } from '../utils/frontmatter';
 import { getSequencedBooks } from '../utils/books';
 import type { InquirySourcesSettings } from '../types/settings';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
@@ -559,7 +559,8 @@ export class InquiryView extends ItemView {
     constructor(leaf: WorkspaceLeaf, plugin: RadialTimelinePlugin) {
         super(leaf);
         this.plugin = plugin;
-        this.runner = new InquiryRunnerService(this.plugin, this.app.vault, this.app.metadataCache, this.plugin.settings.frontmatterMappings);
+        const mappings = getActiveFrontmatterMappings(this.plugin.settings);
+        this.runner = new InquiryRunnerService(this.plugin, this.app.vault, this.app.metadataCache, mappings);
         const lastMode = this.plugin.settings.inquiryLastMode;
         if (lastMode === 'flow' || lastMode === 'depth') {
             this.state.mode = lastMode;
@@ -567,7 +568,7 @@ export class InquiryView extends ItemView {
         this.ensurePromptConfig();
         this.state.selectedPromptIds = this.buildDefaultSelectedPromptIds();
         this.sessionStore = new InquirySessionStore(plugin);
-        this.corpusResolver = new InquiryCorpusResolver(this.app.vault, this.app.metadataCache, this.plugin.settings.frontmatterMappings);
+        this.corpusResolver = new InquiryCorpusResolver(this.app.vault, this.app.metadataCache, mappings);
     }
 
     private registerSvgEvent<TEvent extends Event>(
@@ -3550,7 +3551,7 @@ export class InquiryView extends ItemView {
 
     private refreshCorpus(): void {
         this.invalidateBriefingPurgeAvailability();
-        this.corpusResolver = new InquiryCorpusResolver(this.app.vault, this.app.metadataCache, this.plugin.settings.frontmatterMappings);
+        this.corpusResolver = new InquiryCorpusResolver(this.app.vault, this.app.metadataCache, getActiveFrontmatterMappings(this.plugin.settings));
         const sources = this.normalizeInquirySources(this.plugin.settings.inquirySources);
         this.corpus = this.corpusResolver.resolve({
             scope: this.state.scope,
@@ -3788,7 +3789,7 @@ export class InquiryView extends ItemView {
     private isSceneFile(file: TFile): boolean {
         const frontmatter = this.app.metadataCache.getFileCache(file)?.frontmatter as Record<string, unknown> | undefined;
         if (!frontmatter) return false;
-        const normalized = normalizeFrontmatterKeys(frontmatter, this.plugin.settings.frontmatterMappings);
+        const normalized = normalizeFrontmatterKeys(frontmatter, getActiveFrontmatterMappings(this.plugin.settings));
         const classValues = this.extractClassValues(normalized);
         return classValues.includes('scene');
     }
@@ -4986,7 +4987,7 @@ export class InquiryView extends ItemView {
             if (!isPathIncludedByInquiryBooks(file.path, bookResolution.candidates, this.state.scope)) return false;
             const frontmatter = this.app.metadataCache.getFileCache(file)?.frontmatter as Record<string, unknown> | undefined;
             if (!frontmatter) return false;
-            const normalized = normalizeFrontmatterKeys(frontmatter, this.plugin.settings.frontmatterMappings);
+            const normalized = normalizeFrontmatterKeys(frontmatter, getActiveFrontmatterMappings(this.plugin.settings));
             const classValues = this.extractClassValues(normalized);
             return classValues.includes('outline');
         });
@@ -5115,7 +5116,7 @@ export class InquiryView extends ItemView {
     private getDocumentTitle(file: TFile): string {
         const frontmatter = this.app.metadataCache.getFileCache(file)?.frontmatter as Record<string, unknown> | undefined;
         if (frontmatter) {
-            const normalized = normalizeFrontmatterKeys(frontmatter, this.plugin.settings.frontmatterMappings);
+            const normalized = normalizeFrontmatterKeys(frontmatter, getActiveFrontmatterMappings(this.plugin.settings));
             const rawTitle = normalized['Title'] ?? normalized['title'];
             if (typeof rawTitle === 'string' && rawTitle.trim()) {
                 return rawTitle.trim();
@@ -7783,7 +7784,7 @@ export class InquiryView extends ItemView {
             const cache = this.app.metadataCache.getFileCache(file);
             const frontmatter = cache?.frontmatter as Record<string, unknown> | undefined;
             if (!frontmatter) return;
-            const normalized = normalizeFrontmatterKeys(frontmatter, this.plugin.settings.frontmatterMappings);
+            const normalized = normalizeFrontmatterKeys(frontmatter, getActiveFrontmatterMappings(this.plugin.settings));
             const classValues = this.extractClassValues(normalized);
             if (!classValues.length) return;
 
@@ -7986,7 +7987,7 @@ export class InquiryView extends ItemView {
     }
 
     private getFrontmatterScope(frontmatter: Record<string, unknown>): InquiryScope | undefined {
-        return getFrontmatterScopePure(frontmatter, this.plugin.settings.frontmatterMappings);
+        return getFrontmatterScopePure(frontmatter, getActiveFrontmatterMappings(this.plugin.settings));
     }
 
     private hashString(value: string): string {
@@ -8844,7 +8845,7 @@ export class InquiryView extends ItemView {
             },
             vault: this.app.vault,
             metadataCache: this.app.metadataCache,
-            frontmatterMappings: this.plugin.settings.frontmatterMappings,
+            frontmatterMappings: getActiveFrontmatterMappings(this.plugin.settings),
             runner: this.runner,
             engine,
             overrideSummary: overrides,
@@ -10628,7 +10629,7 @@ export class InquiryView extends ItemView {
         const cache = this.app.metadataCache.getFileCache(file);
         const frontmatter = cache?.frontmatter as Record<string, unknown> | undefined;
         if (!frontmatter) return null;
-        return normalizeFrontmatterKeys(frontmatter, this.plugin.settings.frontmatterMappings);
+        return normalizeFrontmatterKeys(frontmatter, getActiveFrontmatterMappings(this.plugin.settings));
     }
 
     /**

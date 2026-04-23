@@ -97,7 +97,7 @@ Configure the structural pacing guide for your story.
 *   **Beat filename numbering**: Generated beat notes use decimal minor prefixes (for example, `7.01 Midpoint.md`) so scene integer slots remain canonical.
 *   **Repair beat notes**: (Appears when misaligned beats or missing Beat Model are detected) Updates frontmatter (Act, Beat Model, Class) only. Does not rename files. See [[Beat-Audit-Heal]] for details.
 *   **Beat properties editor**: Customize additional beat properties and choose which fields appear in the beat hover synopsis. Stored per beat system.
-*   **Saved sets (Pro)**: Save and switch between multiple custom beat systems (unlimited beat sets). Each system stores its beat list, Beat properties editor fields, and hover metadata selections. Core includes a single custom beat system.
+*   **Saved sets**: Save and switch between multiple custom beat systems. Each system stores its beat list, Beat properties editor fields, and hover metadata selections.
 
 > [!NOTE]
 > Custom beat properties use the same structure as preset systems (`Class: Beat`, `Act`, `Purpose`, `Beat Model`, `Range`, etc.). Use the Beat properties editor to extend this with your own fields.
@@ -380,7 +380,6 @@ Pro Mode extends Radial Timeline with advanced workflows for authors who want mo
 *   **Publishing exports** — Manuscript generation via Pandoc
 *   **APR Campaigns** — Multiple Author Progress Report campaigns
 *   **Chronologue Runtime sub-mode** — Scene duration visualization
-*   **Saved beat sets** — Unlimited custom beat systems
 *   **Website Exclusives** — Template vaults and guided demonstrations
 
 > [!NOTE]

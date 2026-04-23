@@ -5,7 +5,7 @@
  */
 
 import { getFrontMatterInfo, parseYaml, type Vault, type TFile } from 'obsidian';
-import { normalizeFrontmatterKeys } from '../utils/frontmatter';
+import { getActiveFrontmatterMappings, normalizeFrontmatterKeys } from '../utils/frontmatter';
 import { stripObsidianComments } from '../utils/text';
 import { normalizeBooleanValue } from '../utils/sceneHelpers';
 import type RadialTimelinePlugin from '../main';
@@ -186,7 +186,7 @@ export async function getAllSceneData(
             try {
                 const fmText = (fmInfo as { frontmatter?: string }).frontmatter ?? '';
                 const rawFrontmatter = fmText ? (parseYaml(fmText) || {}) : {};
-                const mappings = plugin.settings.enableCustomMetadataMapping ? plugin.settings.frontmatterMappings : undefined;
+                const mappings = getActiveFrontmatterMappings(plugin.settings);
                 frontmatter = normalizeFrontmatterKeys(rawFrontmatter, mappings);
             } catch {
                 return null;

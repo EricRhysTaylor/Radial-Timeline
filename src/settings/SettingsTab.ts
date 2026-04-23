@@ -406,11 +406,23 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             this.plugin.registerDomEvent(autoUpdateBtn, 'click', async () => {
                 const template = this.plugin.settings.sceneYamlTemplates?.advanced ?? '';
                 const updated = applyAlertMigrations(alert, template);
+                const migrationMap = new Map((alert.migrations ?? []).map(migration => [migration.oldKey, migration.newKey]));
 
                 if (!this.plugin.settings.sceneYamlTemplates) {
                     this.plugin.settings.sceneYamlTemplates = { base: '', advanced: '' };
                 }
                 this.plugin.settings.sceneYamlTemplates.advanced = updated;
+                if (migrationMap.size && Array.isArray(this.plugin.settings.hoverMetadataFields)) {
+                    this.plugin.settings.hoverMetadataFields = this.plugin.settings.hoverMetadataFields.map(field => {
+                        const nextKey = migrationMap.get(field.key);
+                        if (!nextKey) return field;
+                        return {
+                            ...field,
+                            key: nextKey,
+                            label: field.label === field.key ? nextKey : field.label,
+                        };
+                    });
+                }
 
                 dismissAlert(alert.id, this.plugin.settings);
                 await this.plugin.saveSettings();

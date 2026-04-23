@@ -17,7 +17,7 @@ import {
 import { normalizeBeatNameInput, normalizeBeatSetNameInput, toBeatModelMatchKey } from '../utils/beatsInputNormalize';
 import { cloneBeatLibraryItem, getBeatLibraryItemBySource, getBuiltinBeatLibraryItems, getSavedBeatLibraryItems, getStarterBeatLibraryItems } from './libraryState';
 import { resolveBookScopedFiles } from '../services/NoteScopeResolver';
-import { normalizeFrontmatterKeys } from '../utils/frontmatter';
+import { getActiveFrontmatterMappings, normalizeFrontmatterKeys } from '../utils/frontmatter';
 import { isStoryBeat } from '../utils/sceneHelpers';
 
 /** Maps legacy manuscript Beat Model values to their current canonical names. */
@@ -247,7 +247,7 @@ export function getLoadedBeatTabs(settings: RadialTimelineSettings): LoadedBeatT
 function collectManuscriptDetectedTabs(app: App, settings: RadialTimelineSettings): LoadedBeatTab[] {
     const beatScope = resolveBookScopedFiles({ app, settings, noteType: 'Beat' });
     if (!beatScope.files.length) return [];
-    const mappings = settings.enableCustomMetadataMapping ? settings.frontmatterMappings : undefined;
+    const mappings = getActiveFrontmatterMappings(settings);
     const libraryItems = [
         ...getBuiltinBeatLibraryItems(settings),
         ...getStarterBeatLibraryItems(settings),

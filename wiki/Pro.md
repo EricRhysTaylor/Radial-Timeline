@@ -15,7 +15,6 @@ Pro Mode extends Radial Timeline with deeper analysis, polished exports, campaig
 *   **Publishing exports** — Manuscript generation via Pandoc for screenplay, podcast, and novel formats
 *   **Chronologue Runtime sub-mode** — Blue wireframe showing scene runtime duration arcs
 *   **Campaign Manager** — Multiple Author Progress Report campaigns with independent schedules and Teaser Reveal
-*   **Saved beat sets** — Unlimited custom beat systems (Core includes one)
 *   **Website Exclusives** — Template vaults, Omnibus Inquiry briefings, and guided workflow demonstrations
 
 ---

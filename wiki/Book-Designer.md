@@ -79,7 +79,7 @@ You can also create custom beat notes manually:
 *   Radial Timeline will detect these notes and display them in Gossamer mode. The `Beat Model` value must match the system name in settings to be recognized.
 
 > [!NOTE]
-> Custom beat notes use the same properties structure as preset systems. Use the **Beat properties editor** in Settings → Story beats system to add your own beat-specific fields and hover metadata. Pro also lets you save unlimited custom beat systems (saved sets).
+> Custom beat notes use the same properties structure as preset systems. Use the **Beat properties editor** in Settings → Story beats system to add your own beat-specific fields and hover metadata. You can also save and switch between custom beat systems (saved sets).
 
 ## Advanced Metadata
 

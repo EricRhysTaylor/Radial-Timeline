@@ -43,7 +43,7 @@ import { INQUIRY_CANONICAL_ESTIMATE_QUESTION } from '../../inquiry/constants';
 import { buildInquiryJsonSchema } from '../../inquiry/jsonSchema';
 import type { CorpusManifestEntry } from '../../inquiry/runner/types';
 import { buildInquiryPromptParts, INQUIRY_ROLE_TEMPLATE_GUARDRAIL } from '../../inquiry/promptScaffold';
-import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
+import { getActiveFrontmatterMappings, normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { cleanEvidenceBody } from '../../inquiry/utils/evidenceCleaning';
 import { getSortedSceneFiles } from '../../utils/manuscript';
 import { InquirySessionStore } from '../../inquiry/InquirySessionStore';
@@ -710,7 +710,7 @@ export function renderAiSection(params: {
                 const cache = app.metadataCache.getFileCache(file);
                 const rawFrontmatter = cache?.frontmatter as Record<string, unknown> | undefined;
                 const frontmatter = rawFrontmatter
-                    ? normalizeFrontmatterKeys(rawFrontmatter, plugin.settings.frontmatterMappings)
+                    ? normalizeFrontmatterKeys(rawFrontmatter, getActiveFrontmatterMappings(plugin.settings))
                     : {};
                 chars = extractSummary(frontmatter).length;
             } else if (entry.mode === 'full') {
@@ -1770,7 +1770,7 @@ export function renderAiSection(params: {
             manifestEntries: currentCorpus.manifestEntries,
             vault: app.vault,
             metadataCache: app.metadataCache,
-            frontmatterMappings: plugin.settings.frontmatterMappings
+            frontmatterMappings: getActiveFrontmatterMappings(plugin.settings)
         });
     };
 
@@ -1995,7 +1995,7 @@ export function renderAiSection(params: {
             plugin,
             vault: app.vault,
             metadataCache: app.metadataCache,
-            frontmatterMappings: plugin.settings.frontmatterMappings,
+            frontmatterMappings: getActiveFrontmatterMappings(plugin.settings),
             provider: engine?.provider,
             modelId: engine?.modelId,
             beatSystem: selectedBeatModel || 'Save The Cat',

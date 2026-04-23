@@ -68,7 +68,7 @@ When "Custom" is selected, the beat system editor appears:
 *   **Reorder**: Drag and drop beats to change their order within or across acts.
 *   **Rename**: Edit beat names inline. After renaming or reordering, use **Merge** to update existing files.
 *   **Beat properties editor**: Customize additional beat properties and select which fields appear in beat hover metadata (stored per system).
-*   **Saved sets ✦ Pro**: Save and switch between multiple custom beat systems (unlimited beat sets). Each system stores beats plus Beat properties editor fields and hover metadata.
+*   **Saved sets**: Save and switch between multiple custom beat systems. Each system stores beats plus Beat properties editor fields and hover metadata.
 
 Row colors show the sync status between your beat list and the actual note files:
 *   **Green** — beat note exists and is aligned.

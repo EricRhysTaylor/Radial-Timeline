@@ -18,7 +18,7 @@ import { ERT_CLASSES, ERT_DATA } from '../../ui/classes';
 import { getActiveMigrations, REFACTOR_ALERTS, areAlertMigrationsComplete, dismissAlert, type FieldMigration } from '../refactorAlerts';
 import { getScenePrefixNumber } from '../../utils/text';
 import { comparePrefixTokens, extractPrefixToken } from '../../utils/prefixOrder';
-import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
+import { getActiveFrontmatterMappings, normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { openOrRevealFile } from '../../utils/fileUtils';
 import { tooltipForComponent } from '../../utils/tooltip';
 import {
@@ -2888,7 +2888,7 @@ export function renderBeatPropertiesSection(params: {
     };
 
     const getBeatNoteCustomContentSummary = (files: TFile[]): BeatNoteCustomContentSummary => {
-        const mappings = plugin.settings.enableCustomMetadataMapping ? plugin.settings.frontmatterMappings : undefined;
+        const mappings = getActiveFrontmatterMappings(plugin.settings);
         const baseKeys = new Set(getBaseKeys('Beat', plugin.settings));
         const templateCustomKeys = new Set(getCustomKeys('Beat', plugin.settings));
         const templateKeySamples = new Set<string>();
@@ -4067,7 +4067,7 @@ export function renderBeatPropertiesSection(params: {
         };
         const buildDeprecatedMigrationPlan = (files: TFile[]): DeprecatedMigrationPlan | null => {
             if (noteType !== 'Beat' && noteType !== 'Backdrop') return null;
-            const mappings = plugin.settings.enableCustomMetadataMapping ? plugin.settings.frontmatterMappings : undefined;
+            const mappings = getActiveFrontmatterMappings(plugin.settings);
             const legacyKey = noteType === 'Beat' ? 'Description' : 'Synopsis';
             const canonicalKey = noteType === 'Beat' ? 'Purpose' : 'Context';
 
@@ -5311,7 +5311,7 @@ export function renderBeatPropertiesSection(params: {
             const descMigrationTargets: TFile[] = [];
             let descPreservedCount = 0;
             if (isBeatDescriptionFlow) {
-                const mappings = plugin.settings.enableCustomMetadataMapping ? plugin.settings.frontmatterMappings : undefined;
+                const mappings = getActiveFrontmatterMappings(plugin.settings);
                 for (const file of targetFiles) {
                     const cache = app.metadataCache.getFileCache(file);
                     if (!cache?.frontmatter) continue;

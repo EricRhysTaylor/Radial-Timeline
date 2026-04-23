@@ -16,7 +16,7 @@ import {
     getExcludeKeyPredicate,
 } from './yamlTemplateNormalize';
 import type { RadialTimelineSettings } from '../types/settings';
-import { normalizeFrontmatterKeys } from './frontmatter';
+import { getActiveFrontmatterMappings, normalizeFrontmatterKeys } from './frontmatter';
 import { normalizeBeatSetNameInput, toBeatModelMatchKey } from './beatsInputNormalize';
 import { STARTER_BEAT_SETS } from './beatsSystems';
 import { findSavedBeatSystem } from './beatSystemState';
@@ -119,7 +119,7 @@ function hasCanonicalSummaryUpdateKey(frontmatter: Record<string, unknown>): boo
 }
 
 function collectSceneTitleIndex(app: App, settings: RadialTimelineSettings): string[] {
-    const mappings = settings.enableCustomMetadataMapping ? settings.frontmatterMappings : undefined;
+    const mappings = getActiveFrontmatterMappings(settings);
     const titles = new Set<string>();
 
     const scopedScenes = resolveBookScopedFiles({ app, settings, noteType: 'Scene' }).files;
@@ -277,7 +277,7 @@ export async function runYamlAudit(options: YamlAuditOptions): Promise<YamlAudit
         canonicalOrder = canonicalOrder.filter((key) => !sceneAiSchemaKeys.has(key));
     }
 
-    const mappings = settings.enableCustomMetadataMapping ? settings.frontmatterMappings : undefined;
+    const mappings = getActiveFrontmatterMappings(settings);
     const sceneTitleIndex = noteType === 'Backdrop' ? collectSceneTitleIndex(app, settings) : [];
 
     // Build the known-key set for the safety scanner (template + dynamic keys)
@@ -496,7 +496,7 @@ export function collectFilesForAuditWithScope(
 ): AuditScopeResult {
     const scoped = resolveBookScopedFiles({ app, settings, noteType });
     const files = scoped.files;
-    const mappings = settings.enableCustomMetadataMapping ? settings.frontmatterMappings : undefined;
+    const mappings = getActiveFrontmatterMappings(settings);
 
     // Resolve Beat Model name for custom systems.
     // beatSystemKey may be in internal format 'custom:<id>' but frontmatter stores

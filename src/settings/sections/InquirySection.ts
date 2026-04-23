@@ -10,7 +10,7 @@ import type {
     InquirySourcesPreset,
     InquirySourcesSettings
 } from '../../types/settings';
-import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
+import { getActiveFrontmatterMappings, normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import { t, getFormattingLocale } from '../../i18n';
 import { ERT_CLASSES } from '../../ui/classes';
@@ -494,7 +494,7 @@ export function renderInquirySection(params: SectionParams): void {
             const cache = plugin.app.metadataCache.getFileCache(file);
             const frontmatter = cache?.frontmatter as Record<string, unknown> | undefined;
             if (!frontmatter) return;
-            const normalized = normalizeFrontmatterKeys(frontmatter, plugin.settings.frontmatterMappings);
+            const normalized = normalizeFrontmatterKeys(frontmatter, getActiveFrontmatterMappings(plugin.settings));
             const rawClass = normalized['Class'];
             if (!rawClass) return;
             const values = Array.isArray(rawClass) ? rawClass : [rawClass];

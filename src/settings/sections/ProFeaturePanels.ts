@@ -16,7 +16,7 @@ import { generateSceneContent } from '../../utils/sceneGenerator';
 import { DEFAULT_SETTINGS } from '../defaults';
 import { validatePandocLayout, slugifyToFileStem } from '../../utils/exportFormats';
 import type { BookLayoutOptions, BookMeta, BookProfile, ManuscriptSceneHeadingMode, PandocLayoutTemplate, PublishingValidationSnapshot, TemplateProfile, ValidationIssue, ValidationSummary } from '../../types';
-import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
+import { getActiveFrontmatterMappings, normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { ImportTemplateModal, type ImportedTemplateCommit } from '../../modals/ImportTemplateModal';
 import { confirmWithErtModal } from '../../modals/ErtConfirmModal';
 import { getActiveBookExportContext } from '../../utils/exportContext';
@@ -624,9 +624,7 @@ function buildMatterRepairPlan(plugin: RadialTimelinePlugin): MatterRepairPlan {
         return { sourceFolder: '', issues: [], repairableIssues: [], unresolvedIssues: [] };
     }
 
-    const mappings = plugin.settings.enableCustomMetadataMapping
-        ? plugin.settings.frontmatterMappings
-        : undefined;
+    const mappings = getActiveFrontmatterMappings(plugin.settings);
 
     const files = plugin.app.vault.getMarkdownFiles()
         .filter(file => isPathInFolderScope(file.path, sourceFolder));
@@ -775,9 +773,7 @@ function getActiveBookMetaStatus(plugin: RadialTimelinePlugin): ActiveBookMetaSt
     const sourceFolder = getActiveBookExportContext(plugin).sourceFolder.trim();
     if (!sourceFolder) return { found: false, sourceFolder };
 
-    const mappings = plugin.settings.enableCustomMetadataMapping
-        ? plugin.settings.frontmatterMappings
-        : undefined;
+    const mappings = getActiveFrontmatterMappings(plugin.settings);
 
     const candidates = plugin.app.vault.getMarkdownFiles()
         .filter(file => isPathInFolderScope(file.path, sourceFolder))
@@ -841,9 +837,7 @@ function getActiveBookMatterSummary(plugin: RadialTimelinePlugin): ActiveBookMat
         return { sourceFolder: '', frontCount: 0, backCount: 0, totalCount: 0 };
     }
 
-    const mappings = plugin.settings.enableCustomMetadataMapping
-        ? plugin.settings.frontmatterMappings
-        : undefined;
+    const mappings = getActiveFrontmatterMappings(plugin.settings);
 
     let frontCount = 0;
     let backCount = 0;

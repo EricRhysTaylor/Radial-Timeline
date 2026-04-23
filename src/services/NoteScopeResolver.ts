@@ -2,7 +2,7 @@ import { App, TFile, TFolder, normalizePath } from 'obsidian';
 import type { RadialTimelineSettings } from '../types/settings';
 import { getActiveBook, DEFAULT_BOOK_TITLE } from '../utils/books';
 import { isPathInExplicitFolderScope } from '../utils/pathScope';
-import { normalizeFrontmatterKeys } from '../utils/frontmatter';
+import { getActiveFrontmatterMappings, normalizeFrontmatterKeys } from '../utils/frontmatter';
 
 export type ScopedNoteType = 'Scene' | 'Beat' | 'Backdrop' | 'Outline';
 
@@ -135,7 +135,7 @@ export function resolveBookScopedFiles(options: {
         };
     }
 
-    const mappings = settings.enableCustomMetadataMapping ? settings.frontmatterMappings : undefined;
+    const mappings = getActiveFrontmatterMappings(settings);
     const files = markdownScope.files.filter(file => {
         const cache = app.metadataCache.getFileCache(file);
         if (!cache?.frontmatter) return false;
@@ -152,4 +152,3 @@ export function resolveBookScopedFiles(options: {
         scopeSummary: explainScope(files, { noteType, bookTitle: markdownScope.bookTitle })
     };
 }
-

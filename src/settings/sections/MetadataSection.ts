@@ -1,14 +1,9 @@
 import { App, Setting as Settings, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { ERT_CLASSES } from '../../ui/classes';
+import { getSupportedFrontmatterRemapTargets } from '../../utils/frontmatter';
 
-const CANONICAL_KEYS = [
-    'Class', 'When', 'Subplot', 'Act', 'Duration', 'Character', 'POV', 'Place', 'Synopsis', 
-    'Summary', 'Status', 'Publish Stage', 'Due', 'Pending Edits', 'Beat Model', 'Range',
-    'Purpose', 'Context', 'Description', 'Scope'
-].sort();
-
-const ALL_CANONICAL_KEYS = CANONICAL_KEYS;
+const ALL_CANONICAL_KEYS = getSupportedFrontmatterRemapTargets();
 const CANONICAL_KEY_LABELS: Record<string, string> = {
     'Publish Stage': 'Progress Stage',
 };
@@ -22,7 +17,7 @@ export function renderMetadataSection(params: { app: App; plugin: RadialTimeline
     // Single toggle that both enables the feature and controls visibility
     const remapSetting = new Settings(remapPanel)
         .setName('Remap frontmatter field keys')
-        .setDesc('Map your custom frontmatter keys to Radial Timeline base keys.')
+        .setDesc('Map custom frontmatter keys to Radial Timeline scene core fields.')
         .addToggle(toggle => {
             toggle
                 .setValue(plugin.settings.enableCustomMetadataMapping ?? false)

@@ -2,12 +2,56 @@
  * Frontmatter utilities - case-insensitive key handling
  */
 
+import type { RadialTimelineSettings } from '../types/settings';
+import { DEFAULT_SETTINGS } from '../settings/defaults';
+import { getBaseKeys } from './yamlTemplateNormalize';
+
 export interface CanonicalAliasConflict {
   canonicalKey: string;
   keys: string[];
 }
 
-function buildFrontmatterKeyMappings(customMappings?: Record<string, string>): Record<string, string> {
+let supportedFrontmatterRemapTargetsCache: Set<string> | null = null;
+
+function getSupportedFrontmatterRemapTargetSet(): Set<string> {
+  if (!supportedFrontmatterRemapTargetsCache) {
+    supportedFrontmatterRemapTargetsCache = new Set(
+      getBaseKeys('Scene', DEFAULT_SETTINGS)
+    );
+  }
+  return supportedFrontmatterRemapTargetsCache;
+}
+
+export function getSupportedFrontmatterRemapTargets(): string[] {
+  return [...getSupportedFrontmatterRemapTargetSet()].sort();
+}
+
+export function sanitizeFrontmatterMappings(customMappings?: Record<string, string>): Record<string, string> | undefined {
+  if (!customMappings) return undefined;
+
+  const sanitized: Record<string, string> = {};
+  for (const [rawUserKey, rawCanonicalKey] of Object.entries(customMappings)) {
+    const userKey = rawUserKey.trim();
+    const canonicalKey = rawCanonicalKey.trim();
+    if (!userKey || !canonicalKey) continue;
+    if (!getSupportedFrontmatterRemapTargetSet().has(canonicalKey)) continue;
+    sanitized[userKey] = canonicalKey;
+  }
+
+  return Object.keys(sanitized).length > 0 ? sanitized : undefined;
+}
+
+export function getActiveFrontmatterMappings(
+  settings: Pick<RadialTimelineSettings, 'enableCustomMetadataMapping' | 'frontmatterMappings'>
+): Record<string, string> | undefined {
+  if (!settings.enableCustomMetadataMapping) return undefined;
+  return sanitizeFrontmatterMappings(settings.frontmatterMappings);
+}
+
+function buildFrontmatterKeyMappings(
+  customMappings?: Record<string, string>,
+  options?: { allowUnsupportedCustomMappings?: boolean }
+): Record<string, string> {
   const keyMappings: Record<string, string> = {
     'id': 'ID',
     'class': 'Class',
@@ -95,8 +139,11 @@ function buildFrontmatterKeyMappings(customMappings?: Record<string, string>): R
     'publisher': 'Publisher'
   };
 
-  if (customMappings) {
-    for (const [userKey, canonicalKey] of Object.entries(customMappings)) {
+  const resolvedMappings = options?.allowUnsupportedCustomMappings
+    ? customMappings
+    : sanitizeFrontmatterMappings(customMappings);
+  if (resolvedMappings) {
+    for (const [userKey, canonicalKey] of Object.entries(resolvedMappings)) {
       const normalizedKey = userKey.toLowerCase().replace(/[\s_-]/g, '');
       keyMappings[normalizedKey] = canonicalKey;
     }
@@ -175,8 +222,21 @@ export function normalizeFrontmatterKeys(fm: Record<string, unknown>, customMapp
  * it directly to canonical `Purpose`.
  */
 export function normalizeBeatFrontmatterKeys(fm: Record<string, unknown>, customMappings?: Record<string, string>): Record<string, unknown> {
-  return normalizeFrontmatterKeys(fm, {
+  const normalized: Record<string, unknown> = {};
+  const keyMappings = buildFrontmatterKeyMappings({
     ...(customMappings ?? {}),
     description: 'Purpose'
+  }, {
+    allowUnsupportedCustomMappings: true
   });
+
+  for (const [key, value] of Object.entries(fm)) {
+    const normalizedKey = key.toLowerCase().replace(/[\s_-]/g, '');
+    const canonicalKey = keyMappings[normalizedKey] || key;
+    if (!(canonicalKey in normalized)) {
+      normalized[canonicalKey] = value;
+    }
+  }
+
+  return normalized;
 }

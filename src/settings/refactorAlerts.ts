@@ -11,6 +11,7 @@
  */
 
 import type { RadialTimelineSettings } from '../types';
+import { getActiveFrontmatterMappings } from '../utils/frontmatter';
 
 // ============================================================================
 // Types
@@ -189,7 +190,7 @@ export function cleanupAdvancedTemplate(advancedTemplate: string): string {
  */
 export function getActiveRefactorAlerts(settings: RadialTimelineSettings): RefactorAlert[] {
     const dismissed = settings.dismissedAlerts ?? [];
-    const remappings = settings.frontmatterMappings ?? {};
+    const remappings = getActiveFrontmatterMappings(settings) ?? {};
     const template = settings.sceneYamlTemplates?.advanced ?? '';
 
     return REFACTOR_ALERTS.filter(alert => {

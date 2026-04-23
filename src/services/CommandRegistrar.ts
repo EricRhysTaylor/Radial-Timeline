@@ -24,7 +24,7 @@ import { buildExportFilename, buildPrecursorFilename, buildOutlineExport, getExp
 import { hasProFeatureAccess } from '../settings/featureGate';
 import { getActiveBookExportContext } from '../utils/exportContext';
 import { getActiveBook } from '../utils/books';
-import { normalizeFrontmatterKeys } from '../utils/frontmatter';
+import { getActiveFrontmatterMappings, normalizeFrontmatterKeys } from '../utils/frontmatter';
 import { isPathInFolderScope } from '../utils/pathScope';
 import { ensureReferenceIdTemplateFrontmatter, ensureSceneTemplateFrontmatter } from '../utils/sceneIds';
 import { chunkScenesIntoParts } from '../utils/splitOutput';
@@ -128,21 +128,22 @@ export class CommandRegistrar {
             }
         });
 
-        this.plugin.addCommand({
-            id: 'timeline-order',
-            name: t('commands.timelineOrder'),
-            callback: () => {
-                new TimelineRepairModal(this.app, this.plugin).open();
-            }
-        });
+        // Temporarily hidden from command palette for upcoming release — not quite ready.
+        // this.plugin.addCommand({
+        //     id: 'timeline-order',
+        //     name: t('commands.timelineOrder'),
+        //     callback: () => {
+        //         new TimelineRepairModal(this.app, this.plugin).open();
+        //     }
+        // });
 
-        this.plugin.addCommand({
-            id: 'timeline-audit',
-            name: t('commands.timelineAudit'),
-            callback: () => {
-                new TimelineAuditModal(this.app, this.plugin).open();
-            }
-        });
+        // this.plugin.addCommand({
+        //     id: 'timeline-audit',
+        //     name: t('commands.timelineAudit'),
+        //     callback: () => {
+        //         new TimelineAuditModal(this.app, this.plugin).open();
+        //     }
+        // });
 
         this.plugin.addCommand({
             id: 'manuscript-export',
@@ -821,9 +822,7 @@ export class CommandRegistrar {
     }
 
     private resolveBookMetaForExport(sourceFolder: string): { bookMeta: BookMeta | null; warning?: string } {
-        const mappings = this.plugin.settings.enableCustomMetadataMapping
-            ? this.plugin.settings.frontmatterMappings
-            : undefined;
+        const mappings = getActiveFrontmatterMappings(this.plugin.settings);
 
         const candidates = this.app.vault.getMarkdownFiles()
             .filter(file => isPathInFolderScope(file.path, sourceFolder))

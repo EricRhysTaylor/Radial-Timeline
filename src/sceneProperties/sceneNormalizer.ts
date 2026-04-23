@@ -1,5 +1,5 @@
 import type { TFile } from 'obsidian';
-import { normalizeFrontmatterKeys } from '../utils/frontmatter';
+import { getActiveFrontmatterMappings, normalizeFrontmatterKeys } from '../utils/frontmatter';
 import { collectFilesForAuditWithScope, runYamlAudit } from '../utils/yamlAudit';
 import type { BackfillResult } from '../utils/yamlBackfill';
 import { runYamlBackfill } from '../utils/yamlBackfill';
@@ -85,7 +85,7 @@ export async function analyzeScenes(
     const policy = resolveScenePropertyPolicy(ctx.settings);
     const expected = resolveSceneExpectedKeys(ctx.settings, definitions, policy);
     const rawNotesByPath = new Map(rawAudit.notes.map((note) => [note.file.path, note]));
-    const mappings = ctx.settings.enableCustomMetadataMapping ? ctx.settings.frontmatterMappings : undefined;
+    const mappings = getActiveFrontmatterMappings(ctx.settings);
     const notes: SceneNormalizationNote[] = [];
 
     for (const file of files) {

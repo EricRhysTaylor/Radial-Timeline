@@ -15,6 +15,7 @@ import { buildGossamerEvidenceDocument } from '../gossamer/evidence/buildGossame
 import { ensureManuscriptOutputFolder, resolveManuscriptOutputFolder } from '../utils/aiOutput';
 import { buildExportFilename } from '../utils/exportFormats';
 import { getPlotSystem } from '../utils/beatsSystems';
+import { getActiveFrontmatterMappings } from '../utils/frontmatter';
 import {
   resolveSelectedBeatModelFromSettings
 } from '../utils/beatSystemState';
@@ -793,7 +794,7 @@ export class GossamerScoreModal extends Modal {
         sceneFiles,
         vault: this.plugin.app.vault,
         metadataCache: this.plugin.app.metadataCache,
-        frontmatterMappings: this.plugin.settings.frontmatterMappings
+        frontmatterMappings: getActiveFrontmatterMappings(this.plugin.settings)
       });
       if (!evidenceDocument.text || evidenceDocument.text.trim().length === 0) {
         new Notice('Manuscript is empty. Cannot build AI prompt.');

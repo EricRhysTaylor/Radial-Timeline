@@ -14,7 +14,7 @@ import type {
     ValidationSummary,
 } from '../types';
 import { getAutoPdfEngineSelection, resolveTemplatePath, validatePandocLayout } from '../utils/exportFormats';
-import { normalizeFrontmatterKeys } from '../utils/frontmatter';
+import { getActiveFrontmatterMappings, normalizeFrontmatterKeys } from '../utils/frontmatter';
 import { parseMatterMetaFromFrontmatter } from '../utils/matterMeta';
 import { isPathInFolderScope } from '../utils/pathScope';
 import { adaptPandocLayoutsToPublishingModel } from '../utils/publishingModel';
@@ -642,9 +642,7 @@ export class PublishingValidationService {
     }
 
     private resolveBookMetaForBook(sourceFolder: string): { bookMeta: BookMeta | null; warning?: string } {
-        const mappings = this.plugin.settings.enableCustomMetadataMapping
-            ? this.plugin.settings.frontmatterMappings
-            : undefined;
+        const mappings = getActiveFrontmatterMappings(this.plugin.settings);
 
         const candidates = this.plugin.app.vault.getMarkdownFiles()
             .filter(file => isPathInFolderScope(file.path, sourceFolder))
@@ -682,9 +680,7 @@ export class PublishingValidationService {
     }
 
     private getMatterFiles(sourceFolder: string): Array<{ path: string; frontmatter: Record<string, unknown> }> {
-        const mappings = this.plugin.settings.enableCustomMetadataMapping
-            ? this.plugin.settings.frontmatterMappings
-            : undefined;
+        const mappings = getActiveFrontmatterMappings(this.plugin.settings);
 
         return this.plugin.app.vault.getMarkdownFiles()
             .filter(file => isPathInFolderScope(file.path, sourceFolder))

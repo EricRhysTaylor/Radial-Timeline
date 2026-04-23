@@ -45,6 +45,7 @@ import type { AIRunRequest, AIProviderId } from './ai/types';
 import { buildGossamerEvidenceDocument } from './gossamer/evidence/buildGossamerEvidence';
 import { logCountingForensics } from './ai/diagnostics/countingForensics';
 import { toBeatModelMatchKey } from './utils/beatsInputNormalize';
+import { getActiveFrontmatterMappings } from './utils/frontmatter';
 
 interface ResolvedGossamerEvidence {
   document: Awaited<ReturnType<typeof buildGossamerEvidenceDocument>>;
@@ -62,7 +63,7 @@ const resolveGossamerEvidence = async (params: {
     sceneFiles: params.sceneFiles,
     vault: params.plugin.app.vault,
     metadataCache: params.plugin.app.metadataCache,
-    frontmatterMappings: params.plugin.settings.frontmatterMappings
+    frontmatterMappings: getActiveFrontmatterMappings(params.plugin.settings)
   });
   return { document, label: 'Scene bodies' };
 };
@@ -441,6 +442,31 @@ export interface ParsedBeatEntry {
 }
 
 /**
+ * Remove citation/footnote artifacts that some LLM clients inject when they
+ * reference an uploaded attachment. These include:
+ *   • ChatGPT's `[oai_citation:0‡filename.md](sediment://file_...)` markdown link
+ *   • Bare `[oai_citation:N‡...]` tags without a URL
+ *   • Chinese-bracket form `【N†source】` used by older ChatGPT builds
+ *   • Stray `(sediment://...)` parenthetical links
+ * Returns the trimmed result, or undefined if nothing remains.
+ */
+export function scrubAiCitationArtifacts(text: string): string | undefined {
+  if (!text) return undefined;
+  let out = text;
+  // Markdown-link form: [oai_citation:...](sediment://...)
+  out = out.replace(/\s*\[oai_citation:[^\]]*\]\(sediment:\/\/[^)]*\)\s*/g, ' ');
+  // Bare tag form
+  out = out.replace(/\s*\[oai_citation:[^\]]*\]\s*/g, ' ');
+  // Chinese-bracket citation
+  out = out.replace(/\s*【[^】]*†[^】]*】\s*/g, ' ');
+  // Orphaned sediment link without wrapper
+  out = out.replace(/\s*\(sediment:\/\/[^)]*\)\s*/g, ' ');
+  // Collapse whitespace introduced by the replacements
+  out = out.replace(/\s{2,}/g, ' ').trim();
+  return out.length > 0 ? out : undefined;
+}
+
+/**
  * Parse LLM response that may include justifications.
  *
  * Preferred format (emitted by the new Copy-AI-Prompt flow):
@@ -477,7 +503,8 @@ export function parseScoresAndJustifications(clipboardText: string): Map<string,
     if (!beatName || beatName.length > 120) continue;
 
     const entry: ParsedBeatEntry = { score: scoreNum };
-    if (justificationRaw && justificationRaw.length > 0) entry.justification = justificationRaw;
+    const cleanedJustification = scrubAiCitationArtifacts(justificationRaw ?? '');
+    if (cleanedJustification) entry.justification = cleanedJustification;
 
     // Register under the raw name + normalized variants for fuzzy match downstream.
     results.set(beatName, entry);

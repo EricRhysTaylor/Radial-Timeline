@@ -1,6 +1,6 @@
 import type { App, TFile } from 'obsidian';
 import { explainScope, resolveBookScopedFiles, resolveBookScopedMarkdownFiles } from '../services/NoteScopeResolver';
-import { normalizeFrontmatterKeys } from '../utils/frontmatter';
+import { getActiveFrontmatterMappings, normalizeFrontmatterKeys } from '../utils/frontmatter';
 import { parseActLabels, resolveActLabel } from '../utils/acts';
 import { getPlotSystem } from '../utils/beatsSystems';
 import {
@@ -237,7 +237,7 @@ export function getBeatSystemStructuralStatus(params: {
         return emptyResult();
     }
 
-    const mappings = settings.enableCustomMetadataMapping ? settings.frontmatterMappings : undefined;
+    const mappings = getActiveFrontmatterMappings(settings);
     const expectedModelKey = toBeatModelMatchKey(selectedSystemLabel);
     const exactByBeatKey = new Map<string, BeatMatchedNote[]>();
     const looseByBeatKey = new Map<string, BeatMatchedNote[]>();
