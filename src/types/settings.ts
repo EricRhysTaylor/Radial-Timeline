@@ -781,6 +781,13 @@ export interface RadialTimelineSettings {
     // LLM Timing Calibration (for progress bar animation)
     pulseTimingStats?: LlmTimingStats;
 
+    /**
+     * Version of the latest release note the user explicitly collapsed in the "What's New"
+     * settings panel. When set and it matches the current featured release, the panel stays
+     * closed on subsequent renders. Cleared automatically when a newer release ships.
+     */
+    dismissedLatestReleaseVersion?: string;
+
     // Export / Pandoc (Pro)
     pandocPath?: string;
     pandocFolder?: string;  // Vault path for Pandoc templates and compile scripts

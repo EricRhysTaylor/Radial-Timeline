@@ -28,5 +28,21 @@ export async function renderReleaseNotesSection({ plugin, containerEl }: Release
     }
 
     const featuredEntry = entries[0] ?? entries[entries.length - 1]!;
-    await renderReleaseNotesList(section, entries, featuredEntry, plugin, 'ert-settings-release-notes');
+    await renderReleaseNotesList(
+        section,
+        entries,
+        featuredEntry,
+        plugin,
+        'ert-settings-release-notes',
+        '',
+        {
+            dismissedFeaturedVersion: plugin.settings.dismissedLatestReleaseVersion,
+            onFeaturedToggle: (dismissed: boolean) => {
+                const nextValue = dismissed ? featuredEntry.version : undefined;
+                if (plugin.settings.dismissedLatestReleaseVersion === nextValue) return;
+                plugin.settings.dismissedLatestReleaseVersion = nextValue;
+                void plugin.saveSettings();
+            }
+        }
+    );
 }

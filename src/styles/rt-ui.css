@@ -540,33 +540,40 @@
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  align-items: flex-start;
-  flex-wrap: wrap;
-  gap: var(--ert-gap-sm);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  column-gap: var(--ert-gap-sm);
+  align-items: start;
 }
 
 .ert-ui.ert-scope--settings .ert-pro-key-container .setting-item-info {
-  flex: 1 1 100%;
+  flex: initial;
   min-width: 0;
-  width: 100%;
+  width: auto;
 }
 
 .ert-ui.ert-scope--settings .ert-pro-key-container .setting-item-control {
-  flex: 1 1 100%;
-  width: 100%;
+  flex: initial;
+  width: max-content;
   min-width: 0;
   margin-left: 0;
-  justify-content: flex-start;
-  flex-wrap: wrap;
+  justify-self: end;
+  align-self: start;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+  gap: var(--ert-gap-xs, var(--ert-gap-sm));
 }
 
 .ert-ui.ert-scope--settings .ert-pro-key-container .setting-item-control > * {
   max-width: 100%;
+  flex: 0 1 auto;
 }
 
 .ert-ui.ert-scope--settings .ert-pro-key-container :is(input.ert-input--lg, input[type="text"], input[type="password"]) {
   width: min(100%, var(--ert-input-width-lg));
-  min-width: min(100%, var(--ert-input-width-lg));
+  min-width: min(280px, 100%);
 }
 
 .ert-ui.ert-scope--settings .ert-pro-key-container .setting-item-name {
@@ -579,6 +586,25 @@
 
 .ert-ui.ert-scope--settings .ert-pro-key-container .ert-link-accent {
   color: var(--rt-pro-color);
+}
+
+@media (max-width: 860px) {
+  .ert-ui.ert-scope--settings .ert-pro-key-container .setting-item {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: var(--ert-gap-sm);
+    align-items: start;
+  }
+
+  .ert-ui.ert-scope--settings .ert-pro-key-container .setting-item-control {
+    justify-self: stretch;
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .ert-ui.ert-scope--settings .ert-pro-key-container :is(input.ert-input--lg, input[type="text"], input[type="password"]) {
+    min-width: 0;
+  }
 }
 
 .ert-ui.ert-scope--settings .ert-pro-mode.is-pro-disabled .ert-pro-key-container .setting-item-name {
@@ -5139,6 +5165,9 @@
   border-bottom: 1px solid var(--background-modifier-border);
   padding-bottom: 2px;
   margin-bottom: 2px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: 1.2;
 }
 
 :is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-color-grid-controls {
@@ -9652,7 +9681,6 @@
 
 .ert-ui.ert-scope--settings .ert-campaign-teaser-section {
   padding-top: var(--ert-gap-sm);
-  border-top: 1px solid var(--background-modifier-border);
 }
 
 .ert-ui.ert-scope--settings .ert-teaser {
@@ -9701,7 +9729,9 @@
   gap: var(--ert-gap-md);
   margin-top: var(--ert-gap-md);
   padding-top: var(--ert-gap-md);
-  border-top: 1px solid var(--background-modifier-border);
+  /* Pro-styled divider: matches the Pro row borders so it reads clearly
+     against the dark surface instead of fading into the background. */
+  border-top: 1px solid var(--ert-pro-border);
 }
 
 .ert-ui.ert-scope--settings .ert-teaser__field {

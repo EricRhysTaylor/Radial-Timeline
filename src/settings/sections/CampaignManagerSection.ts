@@ -932,7 +932,7 @@ function renderCampaignDetails(
     const exportQualitySetting = new Setting(details)
         .setName('Export quality')
         .addDropdown(drop => {
-            drop.selectEl.addClass('ert-input', 'ert-input--lg');
+            drop.selectEl.addClass('ert-input', 'ert-input--md');
             const globalQuality = plugin.settings.authorProgress?.defaults.aprExportQuality ?? 'standard';
             const latestCampaign = plugin.settings.authorProgress?.campaigns?.[index];
             const campaignQuality = latestCampaign?.aprExportQuality ?? campaign.aprExportQuality;

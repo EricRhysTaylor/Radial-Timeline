@@ -7,12 +7,12 @@ import { colorSwatch, type ColorSwatchHandle } from '../../ui/ui';
 import { ERT_DATA } from '../../ui/classes';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 
-const SUBPLOT_LABEL_MAX_LENGTH = 16;
-
-function truncateSubplotLabel(value: string, maxLength = SUBPLOT_LABEL_MAX_LENGTH): string {
-    const trimmed = value.trim();
-    if (trimmed.length <= maxLength) return trimmed;
-    return `${trimmed.slice(0, Math.max(0, maxLength - 3)).trimEnd()}...`;
+/**
+ * Return the subplot name trimmed of surrounding whitespace.
+ * No length truncation — the card is allowed to grow / wrap to fit the name.
+ */
+function normalizeSubplotLabel(value: string): string {
+    return value.trim();
 }
 
 async function getTimelineSubplotOrder(plugin: RadialTimelinePlugin): Promise<string[]> {
@@ -190,7 +190,7 @@ export function renderColorsSection(containerEl: HTMLElement, plugin: RadialTime
         for (let i = 1; i < subplotLabels.length; i++) {
             const subplotName = subplotOrder[i];
             if (!subplotName || subplotName.toLowerCase() === 'main plot') continue;
-            subplotLabels[i].setText(truncateSubplotLabel(subplotName));
+            subplotLabels[i].setText(normalizeSubplotLabel(subplotName));
         }
     })();
 }
